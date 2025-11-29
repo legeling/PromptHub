@@ -135,7 +135,19 @@
     "description": "Description",
     "compareModels": "Model Comparison",
     "enableCompare": "Enable Compare Mode",
-    "runCompare": "Run Comparison"
+    "runCompare": "Run Comparison",
+    "modelType": "Model Type",
+    "chatModel": "Chat Model",
+    "imageModel": "Image Model",
+    "imageSize": "Image Size",
+    "imageQuality": "Image Quality",
+    "imageStyle": "Image Style",
+    "qualityStandard": "Standard",
+    "qualityHD": "HD",
+    "styleVivid": "Vivid",
+    "styleNatural": "Natural",
+    "testImage": "Test Image",
+    "multiModelCompare": "Multi-Model Compare"
   },
   "resources": {
     "title": "Recommended Resources",

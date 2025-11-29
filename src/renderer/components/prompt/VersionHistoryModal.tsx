@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Modal } from '../ui';
-import { ClockIcon, RotateCcwIcon, GitCompareIcon } from 'lucide-react';
+import { ClockIcon, RotateCcwIcon, GitCompareIcon, PlusIcon, MinusIcon } from 'lucide-react';
 import { getPromptVersions } from '../../services/database';
 import type { Prompt, PromptVersion } from '../../../shared/types';
 
@@ -11,34 +11,156 @@ interface VersionHistoryModalProps {
   onRestore: (version: PromptVersion) => void;
 }
 
-// 简单的文本差异对比
-function DiffView({ oldText, newText, label }: { oldText: string; newText: string; label: string }) {
-  if (oldText === newText) {
-    return (
-      <div className="text-sm text-muted-foreground italic">无变化</div>
-    );
+// 计算两个字符串的 LCS (最长公共子序列) 用于 diff
+function computeLCS(a: string[], b: string[]): number[][] {
+  const m = a.length;
+  const n = b.length;
+  const dp: number[][] = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+  
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (a[i - 1] === b[j - 1]) {
+        dp[i][j] = dp[i - 1][j - 1] + 1;
+      } else {
+        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+      }
+    }
   }
+  return dp;
+}
 
+interface DiffLine {
+  type: 'add' | 'remove' | 'unchanged';
+  content: string;
+  oldLineNum?: number;
+  newLineNum?: number;
+}
+
+// 生成 git 风格的 diff
+function generateDiff(oldText: string, newText: string): DiffLine[] {
   const oldLines = (oldText || '').split('\n');
   const newLines = (newText || '').split('\n');
   
+  if (oldText === newText) {
+    return oldLines.map((line, i) => ({
+      type: 'unchanged' as const,
+      content: line,
+      oldLineNum: i + 1,
+      newLineNum: i + 1,
+    }));
+  }
+  
+  const dp = computeLCS(oldLines, newLines);
+  const diff: DiffLine[] = [];
+  
+  let i = oldLines.length;
+  let j = newLines.length;
+  const stack: DiffLine[] = [];
+  
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && oldLines[i - 1] === newLines[j - 1]) {
+      stack.push({ 
+        type: 'unchanged', 
+        content: oldLines[i - 1], 
+        oldLineNum: i, 
+        newLineNum: j 
+      });
+      i--;
+      j--;
+    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+      stack.push({ 
+        type: 'add', 
+        content: newLines[j - 1], 
+        newLineNum: j 
+      });
+      j--;
+    } else if (i > 0) {
+      stack.push({ 
+        type: 'remove', 
+        content: oldLines[i - 1], 
+        oldLineNum: i 
+      });
+      i--;
+    }
+  }
+  
+  while (stack.length > 0) {
+    diff.push(stack.pop()!);
+  }
+  
+  return diff;
+}
+
+// Git 风格差异视图
+function GitDiffView({ oldText, newText, label }: { oldText: string; newText: string; label: string }) {
+  const diff = useMemo(() => generateDiff(oldText, newText), [oldText, newText]);
+  
+  const stats = useMemo(() => {
+    const added = diff.filter(d => d.type === 'add').length;
+    const removed = diff.filter(d => d.type === 'remove').length;
+    return { added, removed };
+  }, [diff]);
+  
+  const isUnchanged = stats.added === 0 && stats.removed === 0;
+  
   return (
     <div className="space-y-2">
-      <div className="text-xs font-medium text-muted-foreground uppercase">{label}</div>
-      <div className="grid grid-cols-2 gap-2">
-        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20">
-          <div className="text-xs text-red-500 font-medium mb-2">旧版本</div>
-          <div className="text-sm font-mono whitespace-pre-wrap max-h-32 overflow-y-auto text-red-700 dark:text-red-300">
-            {oldText || '(空)'}
+      <div className="flex items-center justify-between">
+        <div className="text-xs font-medium text-muted-foreground uppercase">{label}</div>
+        {!isUnchanged && (
+          <div className="flex items-center gap-3 text-xs">
+            <span className="flex items-center gap-1 text-green-600">
+              <PlusIcon className="w-3 h-3" />
+              {stats.added}
+            </span>
+            <span className="flex items-center gap-1 text-red-600">
+              <MinusIcon className="w-3 h-3" />
+              {stats.removed}
+            </span>
           </div>
-        </div>
-        <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
-          <div className="text-xs text-green-500 font-medium mb-2">新版本</div>
-          <div className="text-sm font-mono whitespace-pre-wrap max-h-32 overflow-y-auto text-green-700 dark:text-green-300">
-            {newText || '(空)'}
-          </div>
-        </div>
+        )}
       </div>
+      
+      {isUnchanged ? (
+        <div className="text-sm text-muted-foreground italic p-3 bg-muted/30 rounded-lg">无变化</div>
+      ) : (
+        <div className="rounded-lg border border-border overflow-hidden font-mono text-xs">
+          <div className="max-h-64 overflow-y-auto">
+            {diff.map((line, index) => (
+              <div
+                key={index}
+                className={`flex ${
+                  line.type === 'add' 
+                    ? 'bg-green-500/15 text-green-700 dark:text-green-300' 
+                    : line.type === 'remove' 
+                      ? 'bg-red-500/15 text-red-700 dark:text-red-300' 
+                      : 'bg-transparent text-foreground/80'
+                }`}
+              >
+                {/* 行号 */}
+                <div className="flex-shrink-0 w-16 flex text-muted-foreground/50 select-none border-r border-border/50">
+                  <span className="w-8 text-right px-1 border-r border-border/30">
+                    {line.oldLineNum || ''}
+                  </span>
+                  <span className="w-8 text-right px-1">
+                    {line.newLineNum || ''}
+                  </span>
+                </div>
+                {/* 符号 */}
+                <div className={`flex-shrink-0 w-5 text-center font-bold ${
+                  line.type === 'add' ? 'text-green-600' : line.type === 'remove' ? 'text-red-600' : ''
+                }`}>
+                  {line.type === 'add' ? '+' : line.type === 'remove' ? '-' : ' '}
+                </div>
+                {/* 内容 */}
+                <div className="flex-1 px-2 py-0.5 whitespace-pre-wrap break-all">
+                  {line.content || ' '}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -141,17 +263,20 @@ export function VersionHistoryModal({ isOpen, onClose, prompt, onRestore }: Vers
           <div className="flex-1 space-y-4">
             {showDiff && selectedVersion && compareVersion ? (
               <>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-                  <span className="px-2 py-1 rounded bg-red-500/20 text-red-500">v{selectedVersion.version}</span>
-                  <span>→</span>
-                  <span className="px-2 py-1 rounded bg-green-500/20 text-green-500">v{compareVersion.version}</span>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4 p-2 rounded-lg bg-muted/30">
+                  <span className="px-2 py-1 rounded bg-red-500/20 text-red-600 font-mono text-xs">v{selectedVersion.version}</span>
+                  <span className="text-muted-foreground">→</span>
+                  <span className="px-2 py-1 rounded bg-green-500/20 text-green-600 font-mono text-xs">v{compareVersion.version}</span>
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    {new Date(selectedVersion.createdAt).toLocaleDateString()} → {new Date(compareVersion.createdAt).toLocaleDateString()}
+                  </span>
                 </div>
-                <DiffView 
+                <GitDiffView 
                   oldText={selectedVersion.systemPrompt || ''} 
                   newText={compareVersion.systemPrompt || ''} 
                   label="System Prompt"
                 />
-                <DiffView 
+                <GitDiffView 
                   oldText={selectedVersion.userPrompt} 
                   newText={compareVersion.userPrompt} 
                   label="User Prompt"

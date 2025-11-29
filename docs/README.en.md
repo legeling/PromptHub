@@ -160,8 +160,10 @@ PromptHub/
 **New Features**
 - ✨ AI model configuration (18+ domestic and international providers)
 - ✨ AI connection test (async test with response time)
-- ✨ AI model comparison (parallel test two models)
+- ✨ AI model comparison (parallel test multiple models)
+- ✨ Image generation model support (DALL-E 3, etc.)
 - ✨ Complete i18n support (Settings page fully internationalized)
+- ✨ Git-style version diff (line-level diff, add/remove stats)
 
 **Improvements**
 - 🎨 Optimized settings page UI
