@@ -3,8 +3,33 @@ import { XIcon, FolderIcon, TrashIcon } from 'lucide-react';
 import { useFolderStore } from '../../stores/folder.store';
 import type { Folder } from '../../../shared/types';
 
-// 可选的文件夹图标
-const FOLDER_ICONS = ['📁', '💼', '📚', '🎨', '💡', '🔧', '📝', '🎯', '🚀', '⭐'];
+// 可选的文件夹图标 - 分类整理
+const FOLDER_ICON_CATEGORIES = [
+  {
+    name: '常用',
+    icons: ['📁', '📂', '🗂️', '📋', '📌', '⭐', '❤️', '🔥', '✨', '💎'],
+  },
+  {
+    name: '工作',
+    icons: ['💼', '📊', '📈', '💻', '🖥️', '⌨️', '🔧', '⚙️', '🛠️', '📱'],
+  },
+  {
+    name: '学习',
+    icons: ['📚', '📖', '📝', '✏️', '🎓', '🔬', '🧪', '💡', '🧠', '📐'],
+  },
+  {
+    name: '创意',
+    icons: ['🎨', '🎭', '🎬', '📷', '🎵', '🎮', '🎯', '🚀', '🌈', '🎪'],
+  },
+  {
+    name: '生活',
+    icons: ['🏠', '🌍', '🌸', '🍀', '☀️', '🌙', '⛅', '🎁', '🎉', '🎊'],
+  },
+  {
+    name: '符号',
+    icons: ['💬', '💭', '📢', '🔔', '🔒', '🔑', '🏷️', '📎', '🔗', '📍'],
+  },
+];
 
 interface FolderModalProps {
   isOpen: boolean;
@@ -94,20 +119,27 @@ export function FolderModal({ isOpen, onClose, folder }: FolderModalProps) {
           {/* 图标选择 */}
           <div>
             <label className="block text-sm font-medium mb-2">图标</label>
-            <div className="flex flex-wrap gap-2">
-              {FOLDER_ICONS.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => setIcon(emoji)}
-                  className={`w-10 h-10 rounded-lg text-xl flex items-center justify-center transition-colors ${
-                    icon === emoji
-                      ? 'bg-primary text-white'
-                      : 'bg-muted hover:bg-muted/80'
-                  }`}
-                >
-                  {emoji}
-                </button>
+            <div className="max-h-48 overflow-y-auto space-y-3 pr-2">
+              {FOLDER_ICON_CATEGORIES.map((category) => (
+                <div key={category.name}>
+                  <div className="text-xs text-muted-foreground mb-1.5">{category.name}</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {category.icons.map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => setIcon(emoji)}
+                        className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center transition-colors ${
+                          icon === emoji
+                            ? 'bg-primary text-white'
+                            : 'bg-muted hover:bg-muted/80'
+                        }`}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           </div>

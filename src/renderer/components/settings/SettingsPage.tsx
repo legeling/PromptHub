@@ -13,9 +13,15 @@ import {
   SunIcon,
   MoonIcon,
   MonitorIcon,
+  UploadIcon,
+  DownloadIcon,
+  RefreshCwIcon,
+  BrainIcon,
+  KeyIcon,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { downloadBackup, restoreFromFile, clearDatabase } from '../../services/database';
+import { testConnection, uploadToWebDAV, downloadFromWebDAV } from '../../services/webdav';
 import { useSettingsStore, MORANDI_THEMES, FONT_SIZES, ThemeMode } from '../../stores/settings.store';
 import { useToast } from '../ui/Toast';
 
@@ -23,14 +29,40 @@ interface SettingsPageProps {
   onBack: () => void;
 }
 
-// 设置菜单项
+// 设置菜单项 - 使用 key 而非硬编码文本
 const SETTINGS_MENU = [
-  { id: 'general', label: '常规设置', icon: SettingsIcon },
-  { id: 'appearance', label: '显示设置', icon: PaletteIcon },
-  { id: 'data', label: '数据设置', icon: DatabaseIcon },
-  { id: 'language', label: '语言', icon: GlobeIcon },
-  { id: 'notifications', label: '通知', icon: BellIcon },
-  { id: 'about', label: '关于', icon: InfoIcon },
+  { id: 'general', labelKey: 'settings.general', icon: SettingsIcon },
+  { id: 'appearance', labelKey: 'settings.appearance', icon: PaletteIcon },
+  { id: 'data', labelKey: 'settings.data', icon: DatabaseIcon },
+  { id: 'ai', labelKey: 'settings.ai', icon: BrainIcon },
+  { id: 'language', labelKey: 'settings.language', icon: GlobeIcon },
+  { id: 'notifications', labelKey: 'settings.notifications', icon: BellIcon },
+  { id: 'about', labelKey: 'settings.about', icon: InfoIcon },
+];
+
+// AI 模型提供商 - 支持动态模型输入
+const AI_PROVIDERS = [
+  // 海外
+  { id: 'openai', name: 'OpenAI', defaultUrl: 'https://api.openai.com/v1', defaultModels: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo', 'o1-preview', 'o1-mini'] },
+  { id: 'anthropic', name: 'Anthropic (Claude)', defaultUrl: 'https://api.anthropic.com/v1', defaultModels: ['claude-3-5-sonnet-20241022', 'claude-3-opus-20240229', 'claude-3-haiku-20240307'] },
+  { id: 'google', name: 'Google (Gemini)', defaultUrl: 'https://generativelanguage.googleapis.com/v1beta', defaultModels: ['gemini-2.0-flash-exp', 'gemini-1.5-pro', 'gemini-1.5-flash'] },
+  { id: 'xai', name: 'xAI (Grok)', defaultUrl: 'https://api.x.ai/v1', defaultModels: ['grok-beta', 'grok-2-1212'] },
+  { id: 'mistral', name: 'Mistral AI', defaultUrl: 'https://api.mistral.ai/v1', defaultModels: ['mistral-large-latest', 'mistral-medium-latest', 'mistral-small-latest'] },
+  // 国内
+  { id: 'deepseek', name: 'DeepSeek (深度求索)', defaultUrl: 'https://api.deepseek.com/v1', defaultModels: ['deepseek-chat', 'deepseek-coder', 'deepseek-reasoner'] },
+  { id: 'moonshot', name: 'Moonshot (Kimi)', defaultUrl: 'https://api.moonshot.cn/v1', defaultModels: ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'] },
+  { id: 'zhipu', name: '智谱 AI (GLM)', defaultUrl: 'https://open.bigmodel.cn/api/paas/v4', defaultModels: ['glm-4-plus', 'glm-4', 'glm-4-flash', 'glm-4v'] },
+  { id: 'qwen', name: '通义千问 (阿里)', defaultUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', defaultModels: ['qwen-max', 'qwen-plus', 'qwen-turbo', 'qwen-long'] },
+  { id: 'ernie', name: '文心一言 (百度)', defaultUrl: 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop', defaultModels: ['ernie-4.0-8k', 'ernie-3.5-8k', 'ernie-speed-8k'] },
+  { id: 'spark', name: '讯飞星火', defaultUrl: 'https://spark-api-open.xf-yun.com/v1', defaultModels: ['generalv3.5', 'generalv3', 'generalv2'] },
+  { id: 'doubao', name: '豆包 (字节)', defaultUrl: 'https://ark.cn-beijing.volces.com/api/v3', defaultModels: ['doubao-pro-32k', 'doubao-lite-32k'] },
+  { id: 'baichuan', name: '百川智能', defaultUrl: 'https://api.baichuan-ai.com/v1', defaultModels: ['Baichuan4', 'Baichuan3-Turbo', 'Baichuan2-Turbo'] },
+  { id: 'minimax', name: 'MiniMax', defaultUrl: 'https://api.minimax.chat/v1', defaultModels: ['abab6.5s-chat', 'abab6-chat', 'abab5.5-chat'] },
+  { id: 'stepfun', name: '阶跃星辰', defaultUrl: 'https://api.stepfun.com/v1', defaultModels: ['step-1-200k', 'step-1-32k', 'step-1v-32k'] },
+  { id: 'yi', name: '零一万物 (Yi)', defaultUrl: 'https://api.lingyiwanwu.com/v1', defaultModels: ['yi-large', 'yi-medium', 'yi-spark'] },
+  { id: 'azure', name: 'Azure OpenAI', defaultUrl: '', defaultModels: ['gpt-4o', 'gpt-4', 'gpt-35-turbo'] },
+  { id: 'ollama', name: 'Ollama (本地)', defaultUrl: 'http://localhost:11434/v1', defaultModels: ['llama3', 'mistral', 'codellama', 'qwen2'] },
+  { id: 'custom', name: '自定义 (OpenAI 兼容)', defaultUrl: '', defaultModels: [] },
 ];
 
 export function SettingsPage({ onBack }: SettingsPageProps) {
@@ -44,10 +76,10 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
   const handleExportData = async () => {
     try {
       await downloadBackup();
-      showToast('数据导出成功', 'success');
+      showToast(t('toast.exportSuccess'), 'success');
     } catch (error) {
       console.error('Export failed:', error);
-      showToast('数据导出失败', 'error');
+      showToast(t('toast.exportFailed'), 'error');
     }
   };
 
@@ -60,11 +92,11 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
       if (file) {
         try {
           await restoreFromFile(file);
-          showToast('数据导入成功，即将刷新页面', 'success');
+          showToast(t('toast.importSuccess'), 'success');
           setTimeout(() => window.location.reload(), 1000);
         } catch (error) {
           console.error('Import failed:', error);
-          showToast('数据导入失败', 'error');
+          showToast(t('toast.importFailed'), 'error');
         }
       }
     };
@@ -72,14 +104,14 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
   };
 
   const handleClearData = async () => {
-    if (confirm('确定要清空所有数据吗？此操作不可恢复！')) {
+    if (confirm(t('settings.clearDesc') + '?')) {
       try {
         await clearDatabase();
-        showToast('数据已清空，即将刷新页面', 'success');
+        showToast(t('toast.clearSuccess'), 'success');
         setTimeout(() => window.location.reload(), 1000);
       } catch (error) {
         console.error('Clear failed:', error);
-        showToast('清空数据失败', 'error');
+        showToast(t('toast.clearFailed'), 'error');
       }
     }
   };
@@ -89,19 +121,22 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
       case 'general':
         return (
           <div className="space-y-6">
-            <SettingSection title="启动设置">
+            <SettingSection title={t('settings.startup')}>
               <SettingItem
-                label="开机自启动"
-                description="系统启动时自动运行 PromptHub"
+                label={t('settings.launchAtStartup')}
+                description={t('settings.launchAtStartupDesc')}
               >
                 <ToggleSwitch 
                   checked={settings.launchAtStartup}
-                  onChange={settings.setLaunchAtStartup}
+                  onChange={(checked) => {
+                    settings.setLaunchAtStartup(checked);
+                    window.electron?.setAutoLaunch?.(checked);
+                  }}
                 />
               </SettingItem>
               <SettingItem
-                label="启动时最小化"
-                description="启动后最小化到系统托盘"
+                label={t('settings.minimizeOnLaunch')}
+                description={t('settings.minimizeOnLaunchDesc')}
               >
                 <ToggleSwitch 
                   checked={settings.minimizeOnLaunch}
@@ -110,10 +145,10 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
               </SettingItem>
             </SettingSection>
 
-            <SettingSection title="编辑器设置">
+            <SettingSection title={t('settings.editor')}>
               <SettingItem
-                label="自动保存"
-                description="编辑时自动保存更改"
+                label={t('settings.autoSave')}
+                description={t('settings.autoSaveDesc')}
               >
                 <ToggleSwitch 
                   checked={settings.autoSave}
@@ -121,8 +156,8 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 />
               </SettingItem>
               <SettingItem
-                label="显示行号"
-                description="在编辑器中显示行号"
+                label={t('settings.showLineNumbers')}
+                description={t('settings.showLineNumbersDesc')}
               >
                 <ToggleSwitch 
                   checked={settings.showLineNumbers}
@@ -134,14 +169,14 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
         );
 
       case 'appearance':
-        const themeModes: { id: ThemeMode; name: string; icon: React.ReactNode }[] = [
-          { id: 'light', name: '浅色', icon: <SunIcon className="w-5 h-5" /> },
-          { id: 'dark', name: '深色', icon: <MoonIcon className="w-5 h-5" /> },
-          { id: 'system', name: '跟随系统', icon: <MonitorIcon className="w-5 h-5" /> },
+        const themeModes: { id: ThemeMode; labelKey: string; icon: React.ReactNode }[] = [
+          { id: 'light', labelKey: 'settings.light', icon: <SunIcon className="w-5 h-5" /> },
+          { id: 'dark', labelKey: 'settings.dark', icon: <MoonIcon className="w-5 h-5" /> },
+          { id: 'system', labelKey: 'settings.system', icon: <MonitorIcon className="w-5 h-5" /> },
         ];
         return (
           <div className="space-y-6">
-            <SettingSection title="外观模式">
+            <SettingSection title={t('settings.themeMode')}>
               <div className="grid grid-cols-3 gap-3 p-4">
                 {themeModes.map((mode) => (
                   <button
@@ -154,13 +189,13 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                     }`}
                   >
                     {mode.icon}
-                    <span>{mode.name}</span>
+                    <span>{t(mode.labelKey)}</span>
                   </button>
                 ))}
               </div>
             </SettingSection>
 
-            <SettingSection title="主题色">
+            <SettingSection title={t('settings.themeColor')}>
               <div className="p-4">
                 <div className="grid grid-cols-6 gap-4">
                   {MORANDI_THEMES.map((theme) => (
@@ -189,7 +224,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
               </div>
             </SettingSection>
 
-            <SettingSection title="字体大小">
+            <SettingSection title={t('settings.fontSize')}>
               <div className="grid grid-cols-3 gap-3 p-4">
                 {FONT_SIZES.map((size) => (
                   <button
@@ -213,42 +248,39 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
       case 'data':
         return (
           <div className="space-y-6">
-            <SettingSection title="存储位置">
+            <SettingSection title={t('settings.dataPath')}>
               <div className="p-4 space-y-3">
                 <div className="flex items-center gap-3">
                   <FolderIcon className="w-5 h-5 text-muted-foreground" />
                   <div className="flex-1">
-                    <p className="text-sm font-medium">数据目录</p>
+                    <p className="text-sm font-medium">{t('settings.dataPath')}</p>
                     <p className="text-xs text-muted-foreground font-mono mt-0.5">
                       {settings.dataPath}
                     </p>
                   </div>
                   <button
-                    onClick={() => {
-                      const newPath = prompt('输入新的数据目录路径:', settings.dataPath);
-                      if (newPath) {
-                        settings.setDataPath(newPath);
+                    onClick={async () => {
+                      const result = await window.electron?.selectFolder?.();
+                      if (result) {
+                        settings.setDataPath(result);
                       }
                     }}
                     className="h-8 px-3 rounded-lg bg-muted text-sm hover:bg-muted/80 transition-colors"
                   >
-                    更改
+                    {t('settings.change')}
                   </button>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  更改路径后需要重启应用，数据不会自动迁移。
-                </p>
               </div>
             </SettingSection>
 
-            <SettingSection title="WebDAV 同步">
+            <SettingSection title={t('settings.webdav')}>
               <div className="p-4 space-y-4">
                 <div className="flex items-center gap-3">
                   <CloudIcon className="w-5 h-5 text-muted-foreground" />
                   <div className="flex-1">
-                    <p className="text-sm font-medium">远程同步</p>
+                    <p className="text-sm font-medium">{t('settings.webdavEnabled')}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      通过 WebDAV 协议同步数据到远程服务器
+                      {t('settings.webdavEnabledDesc')}
                     </p>
                   </div>
                   <ToggleSwitch 
@@ -259,7 +291,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 {settings.webdavEnabled && (
                   <div className="space-y-3 pt-2 border-t border-border">
                     <div>
-                      <label className="text-xs text-muted-foreground mb-1 block">服务器地址</label>
+                      <label className="text-xs text-muted-foreground mb-1 block">{t('settings.webdavUrl')}</label>
                       <input
                         type="text"
                         placeholder="https://dav.example.com/path"
@@ -269,93 +301,263 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-muted-foreground mb-1 block">用户名</label>
+                      <label className="text-xs text-muted-foreground mb-1 block">{t('settings.webdavUsername')}</label>
                       <input
                         type="text"
-                        placeholder="用户名"
+                        placeholder={t('settings.webdavUsername')}
                         value={settings.webdavUsername}
                         onChange={(e) => settings.setWebdavUsername(e.target.value)}
                         className="w-full h-9 px-3 rounded-lg bg-muted border-0 text-sm placeholder:text-muted-foreground/50"
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-muted-foreground mb-1 block">密码</label>
+                      <label className="text-xs text-muted-foreground mb-1 block">{t('settings.webdavPassword')}</label>
                       <input
                         type="password"
-                        placeholder="密码"
+                        placeholder={t('settings.webdavPassword')}
                         value={settings.webdavPassword}
                         onChange={(e) => settings.setWebdavPassword(e.target.value)}
                         className="w-full h-9 px-3 rounded-lg bg-muted border-0 text-sm placeholder:text-muted-foreground/50"
                       />
                     </div>
-                    <div className="flex gap-2 pt-2">
+                    <div className="flex flex-wrap gap-2 pt-2">
                       <button
-                        onClick={() => showToast('连接测试功能开发中', 'info')}
-                        className="h-8 px-4 rounded-lg bg-muted text-sm hover:bg-muted/80 transition-colors"
+                        onClick={async () => {
+                          if (!settings.webdavUrl || !settings.webdavUsername || !settings.webdavPassword) {
+                            return;
+                          }
+                          const result = await testConnection({
+                            url: settings.webdavUrl,
+                            username: settings.webdavUsername,
+                            password: settings.webdavPassword,
+                          });
+                          showToast(result.success ? t('toast.connectionSuccess') : t('toast.connectionFailed'), result.success ? 'success' : 'error');
+                        }}
+                        className="h-8 px-4 rounded-lg bg-muted text-sm hover:bg-muted/80 transition-colors flex items-center gap-2"
                       >
-                        测试连接
+                        <RefreshCwIcon className="w-4 h-4" />
+                        {t('settings.testConnection')}
                       </button>
                       <button
-                        onClick={() => showToast('同步功能开发中', 'info')}
-                        className="h-8 px-4 rounded-lg bg-primary text-white text-sm hover:bg-primary/90 transition-colors"
+                        onClick={async () => {
+                          if (!settings.webdavUrl || !settings.webdavUsername || !settings.webdavPassword) {
+                            return;
+                          }
+                          const result = await uploadToWebDAV({
+                            url: settings.webdavUrl,
+                            username: settings.webdavUsername,
+                            password: settings.webdavPassword,
+                          });
+                          showToast(result.success ? t('toast.uploadSuccess') : t('toast.uploadFailed'), result.success ? 'success' : 'error');
+                        }}
+                        className="h-8 px-4 rounded-lg bg-primary text-white text-sm hover:bg-primary/90 transition-colors flex items-center gap-2"
                       >
-                        立即同步
+                        <UploadIcon className="w-4 h-4" />
+                        {t('settings.upload')}
                       </button>
+                      <button
+                        onClick={async () => {
+                          if (!settings.webdavUrl || !settings.webdavUsername || !settings.webdavPassword) {
+                            return;
+                          }
+                          const result = await downloadFromWebDAV({
+                            url: settings.webdavUrl,
+                            username: settings.webdavUsername,
+                            password: settings.webdavPassword,
+                          });
+                          if (result.success) {
+                            showToast(t('toast.downloadSuccess'), 'success');
+                            setTimeout(() => window.location.reload(), 1000);
+                          } else {
+                            showToast(t('toast.downloadFailed'), 'error');
+                          }
+                        }}
+                        className="h-8 px-4 rounded-lg bg-muted text-sm hover:bg-muted/80 transition-colors flex items-center gap-2"
+                      >
+                        <DownloadIcon className="w-4 h-4" />
+                        {t('settings.download')}
+                      </button>
+                    </div>
+                    
+                    {/* 自动同步选项 */}
+                    <div className="flex items-center justify-between pt-3 border-t border-border">
+                      <div>
+                        <p className="text-sm font-medium">{t('settings.webdavAutoSync')}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {t('settings.webdavAutoSyncDesc')}
+                        </p>
+                      </div>
+                      <ToggleSwitch 
+                        checked={settings.webdavAutoSync}
+                        onChange={settings.setWebdavAutoSync}
+                      />
                     </div>
                   </div>
                 )}
               </div>
             </SettingSection>
 
-            <SettingSection title="数据管理">
+            <SettingSection title={t('settings.backup')}>
               <SettingItem
-                label="导出数据"
-                description="将所有 Prompt 和设置导出为 JSON 文件"
+                label={t('settings.export')}
+                description={t('settings.exportDesc')}
               >
                 <button
                   onClick={handleExportData}
                   className="h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
                 >
-                  导出
+                  {t('settings.export')}
                 </button>
               </SettingItem>
               <SettingItem
-                label="导入数据"
-                description="从 JSON 文件恢复数据"
+                label={t('settings.import')}
+                description={t('settings.importDesc')}
               >
                 <button
                   onClick={handleImportData}
                   className="h-9 px-4 rounded-lg bg-muted text-foreground text-sm font-medium hover:bg-muted/80 transition-colors"
                 >
-                  导入
+                  {t('settings.import')}
                 </button>
               </SettingItem>
               <SettingItem
-                label="清空数据"
-                description="删除所有本地数据（不可恢复）"
+                label={t('settings.clear')}
+                description={t('settings.clearDesc')}
               >
                 <button
                   onClick={handleClearData}
                   className="h-9 px-4 rounded-lg bg-destructive text-white text-sm font-medium hover:bg-destructive/90 transition-colors"
                 >
-                  清空
+                  {t('settings.clear')}
                 </button>
               </SettingItem>
             </SettingSection>
 
-            <SettingSection title="隐私与安全">
-              <div className="px-4 py-3 text-sm text-muted-foreground space-y-2">
-                <p>• 所有数据都存储在本地，不会上传到任何服务器</p>
-                <p>• 你可以随时导出或删除所有数据</p>
-                <p>• 应用不会收集任何个人信息</p>
+            <SettingSection title={t('settings.dbInfo')}>
+              <div className="p-4 text-sm text-muted-foreground space-y-1">
+                <p>• IndexedDB</p>
+                <p>• PromptHubDB</p>
+              </div>
+            </SettingSection>
+          </div>
+        );
+
+      case 'ai':
+        const currentProvider = AI_PROVIDERS.find(p => p.id === settings.aiProvider);
+        return (
+          <div className="space-y-6">
+            <SettingSection title={t('settings.aiConfig')}>
+              <div className="p-4 space-y-4">
+                {/* 提供商选择 */}
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1.5 block">{t('settings.provider')}</label>
+                  <select
+                    value={settings.aiProvider}
+                    onChange={(e) => {
+                      const provider = AI_PROVIDERS.find(p => p.id === e.target.value);
+                      settings.setAiProvider(e.target.value);
+                      if (provider?.defaultUrl) {
+                        settings.setAiApiUrl(provider.defaultUrl);
+                      }
+                      if (provider?.defaultModels[0]) {
+                        settings.setAiModel(provider.defaultModels[0]);
+                      }
+                    }}
+                    className="w-full h-10 px-3 rounded-lg bg-muted border-0 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  >
+                    <optgroup label={t('settings.overseas')}>
+                      {AI_PROVIDERS.filter(p => ['openai', 'anthropic', 'google', 'xai', 'mistral'].includes(p.id)).map((provider) => (
+                        <option key={provider.id} value={provider.id}>{provider.name}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label={t('settings.domestic')}>
+                      {AI_PROVIDERS.filter(p => ['deepseek', 'moonshot', 'zhipu', 'qwen', 'ernie', 'spark', 'doubao', 'baichuan', 'minimax', 'stepfun', 'yi'].includes(p.id)).map((provider) => (
+                        <option key={provider.id} value={provider.id}>{provider.name}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label={t('settings.other')}>
+                      {AI_PROVIDERS.filter(p => ['azure', 'ollama', 'custom'].includes(p.id)).map((provider) => (
+                        <option key={provider.id} value={provider.id}>{provider.name}</option>
+                      ))}
+                    </optgroup>
+                  </select>
+                </div>
+
+                {/* API Key */}
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1.5 block">{t('settings.apiKey')}</label>
+                  <div className="relative">
+                    <KeyIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <input
+                      type="password"
+                      placeholder="输入你的 API Key"
+                      value={settings.aiApiKey}
+                      onChange={(e) => settings.setAiApiKey(e.target.value)}
+                      className="w-full h-10 pl-10 pr-3 rounded-lg bg-muted border-0 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    />
+                  </div>
+                </div>
+
+                {/* API URL */}
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1.5 block">{t('settings.apiUrl')}</label>
+                  <input
+                    type="text"
+                    placeholder={currentProvider?.defaultUrl || t('settings.apiUrl')}
+                    value={settings.aiApiUrl}
+                    onChange={(e) => settings.setAiApiUrl(e.target.value)}
+                    className="w-full h-10 px-3 rounded-lg bg-muted border-0 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+
+                {/* 模型选择 - 支持下拉 + 自定义输入 */}
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1.5 block">{t('settings.model')}</label>
+                  <div className="flex gap-2">
+                    {currentProvider?.defaultModels.length ? (
+                      <select
+                        value={currentProvider.defaultModels.includes(settings.aiModel) ? settings.aiModel : ''}
+                        onChange={(e) => e.target.value && settings.setAiModel(e.target.value)}
+                        className="flex-1 h-10 px-3 rounded-lg bg-muted border-0 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      >
+                        <option value="">{t('settings.selectModel')}</option>
+                        {currentProvider.defaultModels.map((model) => (
+                          <option key={model} value={model}>{model}</option>
+                        ))}
+                      </select>
+                    ) : null}
+                    <input
+                      type="text"
+                      placeholder={t('settings.customModel')}
+                      value={settings.aiModel}
+                      onChange={(e) => settings.setAiModel(e.target.value)}
+                      className={`${currentProvider?.defaultModels.length ? 'flex-1' : 'w-full'} h-10 px-3 rounded-lg bg-muted border-0 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30`}
+                    />
+                  </div>
+                </div>
+
+                {/* 保存按钮 */}
+                <button
+                  onClick={() => {
+                    if (!settings.aiApiKey) {
+                      showToast(t('toast.configApiKey'), 'error');
+                      return;
+                    }
+                    showToast(t('settings.aiConfigSaved'), 'success');
+                  }}
+                  className="w-full h-10 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
+                >
+                  {t('settings.saveConfig')}
+                </button>
               </div>
             </SettingSection>
 
-            <SettingSection title="数据库信息">
-              <div className="p-4 text-sm text-muted-foreground space-y-1">
-                <p>• 存储类型: IndexedDB</p>
-                <p>• 数据库名称: PromptHubDB</p>
-                <p>• 支持自动备份和恢复</p>
+            <SettingSection title={t('settings.description')}>
+              <div className="p-4 text-sm text-muted-foreground space-y-2">
+                <p>• {t('settings.aiConfigDesc1')}</p>
+                <p>• {t('settings.aiConfigDesc2')}</p>
+                <p>• {t('settings.aiConfigDesc3')}</p>
+                <p>• {t('settings.aiConfigDesc4')}</p>
               </div>
             </SettingSection>
           </div>
@@ -364,17 +566,16 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
       case 'language':
         return (
           <div className="space-y-6">
-            <SettingSection title="界面语言">
+            <SettingSection title={t('settings.language')}>
               <SettingItem
-                label="语言"
-                description="选择界面显示语言"
+                label={t('settings.language')}
+                description={t('settings.selectLanguage')}
               >
                 <select 
                   className="h-9 px-3 rounded-lg bg-muted border-0 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                   value={settings.language}
                   onChange={(e) => {
                     settings.setLanguage(e.target.value as 'zh' | 'en');
-                    showToast('语言已更改，刷新页面后生效', 'info');
                   }}
                 >
                   <option value="zh">简体中文</option>
@@ -383,12 +584,12 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
               </SettingItem>
             </SettingSection>
             <div className="p-4 rounded-lg bg-muted/50 text-sm text-muted-foreground flex items-center justify-between">
-              <span>更改语言后需要刷新页面才能生效。</span>
+              <span>{t('settings.languageChangeHint')}</span>
               <button
                 onClick={() => window.location.reload()}
                 className="h-8 px-3 rounded-lg bg-primary text-white text-sm hover:bg-primary/90 transition-colors"
               >
-                立即刷新
+                {t('settings.refreshNow')}
               </button>
             </div>
           </div>
@@ -397,10 +598,10 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
       case 'notifications':
         return (
           <div className="space-y-6">
-            <SettingSection title="通知设置">
+            <SettingSection title={t('settings.notifications')}>
               <SettingItem
-                label="启用通知"
-                description="允许应用发送桌面通知"
+                label={t('settings.enableNotifications')}
+                description={t('settings.enableNotificationsDesc')}
               >
                 <ToggleSwitch 
                   checked={settings.enableNotifications}
@@ -408,8 +609,8 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 />
               </SettingItem>
               <SettingItem
-                label="复制成功提示"
-                description="复制 Prompt 后显示提示"
+                label={t('settings.copyNotification')}
+                description={t('settings.copyNotificationDesc')}
               >
                 <ToggleSwitch 
                   checked={settings.showCopyNotification}
@@ -417,8 +618,8 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 />
               </SettingItem>
               <SettingItem
-                label="保存成功提示"
-                description="保存更改后显示提示"
+                label={t('settings.saveNotification')}
+                description={t('settings.saveNotificationDesc')}
               >
                 <ToggleSwitch 
                   checked={settings.showSaveNotification}
@@ -438,61 +639,52 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 <span className="text-white text-xl font-bold">P</span>
               </div>
               <h2 className="text-lg font-semibold">PromptHub</h2>
-              <p className="text-sm text-muted-foreground mt-1">版本 0.1.1</p>
+              <p className="text-sm text-muted-foreground mt-1">{t('settings.version')} 0.1.2</p>
             </div>
 
-            <SettingSection title="简介">
-              <div className="px-4 py-3 text-sm text-muted-foreground">
-                PromptHub 是一个本地优先的 Prompt 管理工具，帮助你高效管理和组织 AI 提示词。支持变量模板、版本管理、标签分类等功能。
+            <SettingSection title={t('settings.projectInfo')}>
+              <div className="px-4 py-3 text-sm text-muted-foreground space-y-1">
+                <p>• {t('settings.projectInfoDesc1')}</p>
+                <p>• {t('settings.projectInfoDesc2')}</p>
+                <p>• {t('settings.projectInfoDesc3')}</p>
               </div>
             </SettingSection>
 
-            <SettingSection title="更新">
-              <SettingItem label="自动检查更新" description="启动时自动检查新版本">
+            <SettingSection title={t('settings.checkUpdate')}>
+              <SettingItem label={t('settings.autoCheckUpdate')} description={t('settings.autoCheckUpdateDesc')}>
                 <ToggleSwitch 
                   checked={settings.autoCheckUpdate}
                   onChange={settings.setAutoCheckUpdate}
                 />
               </SettingItem>
-              <SettingItem label="检查更新" description="当前版本: 0.1.1">
+              <SettingItem label={t('settings.checkUpdate')} description={`${t('settings.version')}: 0.1.2`}>
                 <button
                   onClick={() => {
                     window.open('https://github.com/legeling/PromptHub/releases', '_blank');
-                    showToast('已打开 GitHub Releases 页面', 'info');
                   }}
                   className="h-8 px-4 rounded-lg bg-primary text-white text-sm hover:bg-primary/90 transition-colors"
                 >
-                  检查
+                  {t('settings.checkUpdate')}
                 </button>
               </SettingItem>
             </SettingSection>
 
-            <SettingSection title="链接">
-              <SettingItem label="GitHub 仓库" description="查看源代码和提交问题">
+            <SettingSection title={t('settings.openSource')}>
+              <SettingItem label="GitHub" description={t('settings.viewOnGithub')}>
                 <a 
                   href="https://github.com/legeling/PromptHub" 
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-primary text-sm hover:underline"
                 >
-                  打开
+                  GitHub
                 </a>
               </SettingItem>
             </SettingSection>
 
-            <SettingSection title="技术栈">
-              <div className="px-4 py-3 text-sm text-muted-foreground space-y-1">
-                <p>• Electron + React + TypeScript</p>
-                <p>• TailwindCSS + Zustand</p>
-                <p>• IndexedDB 本地存储</p>
-              </div>
-            </SettingSection>
-
-            <SettingSection title="开源协议">
-              <div className="px-4 py-3 text-sm text-muted-foreground">
-                MIT License © 2025 PromptHub
-              </div>
-            </SettingSection>
+            <div className="px-4 py-3 text-sm text-muted-foreground text-center">
+              MIT License © 2025 PromptHub
+            </div>
           </div>
         );
     }
@@ -509,7 +701,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeftIcon className="w-4 h-4" />
-            <span>返回</span>
+            <span>{t('common.back')}</span>
           </button>
         </div>
 
@@ -526,7 +718,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
               }`}
             >
               <item.icon className="w-4 h-4" />
-              <span>{item.label}</span>
+              <span>{t(item.labelKey)}</span>
             </button>
           ))}
         </nav>
@@ -536,7 +728,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-xl font-semibold mb-6">
-            {SETTINGS_MENU.find((m) => m.id === activeSection)?.label}
+            {t(SETTINGS_MENU.find((m) => m.id === activeSection)?.labelKey || '')}
           </h1>
           {renderContent()}
         </div>
@@ -603,12 +795,14 @@ function ToggleSwitch({ checked, onChange, defaultChecked = false }: ToggleSwitc
   return (
     <button
       onClick={handleClick}
-      className={`relative w-11 h-6 rounded-full transition-colors ${
-        isChecked ? 'bg-primary' : 'bg-muted-foreground/30'
+      className={`relative w-12 h-7 rounded-full transition-all duration-200 flex-shrink-0 ${
+        isChecked 
+          ? 'bg-primary' 
+          : 'bg-gray-300 dark:bg-gray-600'
       }`}
     >
       <span
-        className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-md transition-transform ${
+        className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow-md transition-all duration-200 ${
           isChecked ? 'left-6' : 'left-1'
         }`}
       />

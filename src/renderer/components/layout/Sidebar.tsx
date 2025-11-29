@@ -4,6 +4,7 @@ import { useFolderStore } from '../../stores/folder.store';
 import { usePromptStore } from '../../stores/prompt.store';
 import { ResourcesModal } from '../resources/ResourcesModal';
 import { FolderModal } from '../folder';
+import { useTranslation } from 'react-i18next';
 import type { Folder } from '../../../shared/types';
 import {
   DndContext,
@@ -142,6 +143,7 @@ function SortableFolderItem({ folder, isActive, onSelect, onEdit, isOver }: Sort
 }
 
 export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
+  const { t } = useTranslation();
   const folders = useFolderStore((state) => state.folders);
   const selectedFolderId = useFolderStore((state) => state.selectedFolderId);
   const selectFolder = useFolderStore((state) => state.selectFolder);
@@ -202,17 +204,23 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
         <div className="space-y-1">
           <NavItem
             icon={<LayoutGridIcon className="w-5 h-5" />}
-            label="全部 Prompts"
+            label={t('nav.allPrompts')}
             count={prompts.length}
-            active={selectedFolderId === null}
-            onClick={() => selectFolder(null)}
+            active={selectedFolderId === null && currentPage === 'home'}
+            onClick={() => {
+              selectFolder(null);
+              if (currentPage !== 'home') onNavigate('home');
+            }}
           />
           <NavItem
             icon={<StarIcon className="w-5 h-5" />}
-            label="收藏"
+            label={t('nav.favorites')}
             count={favoriteCount}
-            active={selectedFolderId === 'favorites'}
-            onClick={() => selectFolder('favorites')}
+            active={selectedFolderId === 'favorites' && currentPage === 'home'}
+            onClick={() => {
+              selectFolder('favorites');
+              if (currentPage !== 'home') onNavigate('home');
+            }}
           />
         </div>
 
@@ -220,7 +228,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
         <div className="pt-4">
           <div className="flex items-center justify-between px-3 mb-2">
             <span className="text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
-              文件夹
+              {t('nav.folders')}
             </span>
             <button 
               onClick={() => {
@@ -247,8 +255,11 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
                   <SortableFolderItem
                     key={folder.id}
                     folder={folder}
-                    isActive={selectedFolderId === folder.id}
-                    onSelect={() => selectFolder(folder.id)}
+                    isActive={selectedFolderId === folder.id && currentPage === 'home'}
+                    onSelect={() => {
+                      selectFolder(folder.id);
+                      if (currentPage !== 'home') onNavigate('home');
+                    }}
                     onEdit={() => {
                       setEditingFolder(folder);
                       setIsFolderModalOpen(true);
@@ -257,7 +268,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
                 ))}
                 {folders.length === 0 && (
                   <p className="px-3 py-4 text-sm text-sidebar-foreground/50 text-center">
-                    暂无文件夹
+                    {t('folder.empty')}
                   </p>
                 )}
               </div>
@@ -270,7 +281,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
           <div className="pt-4">
             <div className="flex items-center px-3 mb-2">
               <span className="text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
-                标签
+                {t('nav.tags')}
               </span>
             </div>
             <div className="flex flex-wrap gap-1.5 px-3">
@@ -281,9 +292,10 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
                     const newTag = selectedTag === tag ? null : tag;
                     setSelectedTag(newTag);
                     setFilterTag(newTag);
+                    if (currentPage !== 'home') onNavigate('home');
                   }}
                   className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors duration-200 ${
-                    selectedTag === tag
+                    selectedTag === tag && currentPage === 'home'
                       ? 'bg-primary text-white'
                       : 'bg-sidebar-accent text-sidebar-foreground/70 hover:bg-primary hover:text-white'
                   }`}
@@ -304,7 +316,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
           className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors"
         >
           <LinkIcon className="w-4 h-4" />
-          <span>推荐资源</span>
+          <span>{t('nav.resources')}</span>
         </button>
         <button
           onClick={() => onNavigate('settings')}
@@ -315,7 +327,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
           }`}
         >
           <SettingsIcon className="w-4 h-4" />
-          <span>设置</span>
+          <span>{t('header.settings')}</span>
         </button>
       </div>
 

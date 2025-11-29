@@ -52,9 +52,16 @@ interface SettingsState {
   webdavUrl: string;
   webdavUsername: string;
   webdavPassword: string;
+  webdavAutoSync: boolean;
   
   // 更新设置
   autoCheckUpdate: boolean;
+  
+  // AI 模型配置
+  aiProvider: string; // 支持动态供应商
+  aiApiKey: string;
+  aiApiUrl: string;
+  aiModel: string;
   
   // Actions
   setThemeMode: (mode: ThemeMode) => void;
@@ -74,7 +81,12 @@ interface SettingsState {
   setWebdavUrl: (url: string) => void;
   setWebdavUsername: (username: string) => void;
   setWebdavPassword: (password: string) => void;
+  setWebdavAutoSync: (enabled: boolean) => void;
   setAutoCheckUpdate: (enabled: boolean) => void;
+  setAiProvider: (provider: string) => void;
+  setAiApiKey: (key: string) => void;
+  setAiApiUrl: (url: string) => void;
+  setAiModel: (model: string) => void;
   applyTheme: () => void;
 }
 
@@ -101,7 +113,12 @@ export const useSettingsStore = create<SettingsState>()(
       webdavUrl: '',
       webdavUsername: '',
       webdavPassword: '',
+      webdavAutoSync: false,
       autoCheckUpdate: true,
+      aiProvider: 'openai',
+      aiApiKey: '',
+      aiApiUrl: '',
+      aiModel: 'gpt-4o',
       
       setThemeMode: (mode) => {
         set({ themeMode: mode });
@@ -158,7 +175,12 @@ export const useSettingsStore = create<SettingsState>()(
       setWebdavUrl: (url) => set({ webdavUrl: url }),
       setWebdavUsername: (username) => set({ webdavUsername: username }),
       setWebdavPassword: (password) => set({ webdavPassword: password }),
+      setWebdavAutoSync: (enabled) => set({ webdavAutoSync: enabled }),
       setAutoCheckUpdate: (enabled) => set({ autoCheckUpdate: enabled }),
+      setAiProvider: (provider) => set({ aiProvider: provider }),
+      setAiApiKey: (key) => set({ aiApiKey: key }),
+      setAiApiUrl: (url) => set({ aiApiUrl: url }),
+      setAiModel: (model) => set({ aiModel: model }),
       
       applyTheme: () => {
         const state = get();

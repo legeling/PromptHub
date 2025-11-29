@@ -1,10 +1,11 @@
 {
   "name": "prompthub",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "本地版的 Prompt 管理器，带版本控制",
   "main": "out/main/index.js",
   "author": "PromptHub Team",
   "license": "MIT",
+  "packageManager": "pnpm@8.15.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/legeling/PromptHub.git"
@@ -16,9 +17,8 @@
     "preview": "vite preview",
     "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "electron:build": "vite build && electron-builder",
-    "electron:build:mac": "vite build && electron-builder --mac --publish never",
-    "electron:build:win": "vite build && electron-builder --win --publish never",
-    "electron:build:linux": "vite build && electron-builder --linux --publish never",
+    "electron:build:mac": "vite build && electron-builder --mac --x64 --arm64 --publish never",
+    "electron:build:win": "vite build && electron-builder --win --x64 --arm64 --publish never",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
     "test": "vitest",

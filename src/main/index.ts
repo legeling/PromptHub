@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, ipcMain } from 'electron';
+import { app, BrowserWindow, shell, ipcMain, dialog, Notification } from 'electron';
 import path from 'path';
 // TODO: 暂时禁用数据库（需要解决 better-sqlite3 与 Electron 39 的兼容问题）
 // import { initDatabase } from './database';
@@ -77,6 +77,40 @@ ipcMain.on('window:maximize', () => {
 
 ipcMain.on('window:close', () => {
   mainWindow?.close();
+});
+
+// 设置开机自启动
+ipcMain.on('app:setAutoLaunch', (_event, enabled: boolean) => {
+  app.setLoginItemSettings({
+    openAtLogin: enabled,
+    openAsHidden: false,
+  });
+});
+
+// 选择文件夹对话框
+ipcMain.handle('dialog:selectFolder', async () => {
+  const result = await dialog.showOpenDialog(mainWindow!, {
+    properties: ['openDirectory'],
+    title: '选择数据目录',
+  });
+  if (!result.canceled && result.filePaths.length > 0) {
+    return result.filePaths[0];
+  }
+  return null;
+});
+
+// 发送系统通知
+ipcMain.handle('notification:show', async (_event, options: { title: string; body: string }) => {
+  if (Notification.isSupported()) {
+    const notification = new Notification({
+      title: options.title,
+      body: options.body,
+      icon: path.join(__dirname, '../renderer/icon.png'),
+    });
+    notification.show();
+    return true;
+  }
+  return false;
 });
 
 // 应用启动

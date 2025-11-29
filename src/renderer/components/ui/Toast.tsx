@@ -1,5 +1,6 @@
 import { useState, useEffect, createContext, useContext, useCallback } from 'react';
 import { CheckCircleIcon, XCircleIcon, InfoIcon, AlertTriangleIcon, XIcon } from 'lucide-react';
+import { useSettingsStore } from '../../stores/settings.store';
 
 // Toast 类型
 type ToastType = 'success' | 'error' | 'info' | 'warning';
@@ -11,7 +12,7 @@ interface Toast {
 }
 
 interface ToastContextType {
-  showToast: (message: string, type?: ToastType) => void;
+  showToast: (message: string, type?: ToastType, sendSystemNotification?: boolean) => void;
 }
 
 const ToastContext = createContext<ToastContextType | null>(null);
@@ -19,16 +20,23 @@ const ToastContext = createContext<ToastContextType | null>(null);
 // Toast Provider
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const enableNotifications = useSettingsStore((state) => state.enableNotifications);
 
-  const showToast = useCallback((message: string, type: ToastType = 'success') => {
+  const showToast = useCallback((message: string, type: ToastType = 'success', sendSystemNotification = false) => {
     const id = Date.now().toString();
     setToasts((prev) => [...prev, { id, message, type }]);
+    
+    // 发送系统通知（如果启用且请求）
+    if (sendSystemNotification && enableNotifications && window.electron?.showNotification) {
+      const title = type === 'success' ? '成功' : type === 'error' ? '错误' : type === 'warning' ? '警告' : '提示';
+      window.electron.showNotification(`PromptHub - ${title}`, message);
+    }
     
     // 3秒后自动消失
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 3000);
-  }, []);
+  }, [enableNotifications]);
 
   const removeToast = (id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));

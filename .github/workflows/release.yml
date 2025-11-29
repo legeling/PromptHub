@@ -15,8 +15,6 @@ jobs:
             platform: mac
           - os: windows-latest
             platform: win
-          - os: ubuntu-latest
-            platform: linux
 
     runs-on: ${{ matrix.os }}
 
@@ -30,12 +28,23 @@ jobs:
           node-version: '20'
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
         with:
-          version: 8
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Build for ${{ matrix.platform }}
         run: pnpm electron:build:${{ matrix.platform }}
@@ -48,10 +57,8 @@ jobs:
           name: ${{ matrix.platform }}-build
           path: |
             dist/*.dmg
+            dist/*.zip
             dist/*.exe
-            dist/*.AppImage
-            dist/*.deb
-            dist/*.rpm
           if-no-files-found: ignore
 
   release:

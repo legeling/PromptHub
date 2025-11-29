@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { usePromptStore } from '../../stores/prompt.store';
 import { useFolderStore } from '../../stores/folder.store';
-import { StarIcon, CopyIcon, HistoryIcon, HashIcon, ClockIcon, SparklesIcon, EditIcon, TrashIcon, CheckIcon, GripVerticalIcon } from 'lucide-react';
+import { useSettingsStore } from '../../stores/settings.store';
+import { StarIcon, CopyIcon, HistoryIcon, HashIcon, ClockIcon, SparklesIcon, EditIcon, TrashIcon, CheckIcon, PlayIcon, LoaderIcon, XIcon } from 'lucide-react';
 import { EditPromptModal, VersionHistoryModal } from '../prompt';
 import { useToast } from '../ui/Toast';
+import { chatCompletion, buildMessagesFromPrompt } from '../../services/ai';
+import { useTranslation } from 'react-i18next';
 import type { Prompt, PromptVersion } from '../../../shared/types';
-import { useDraggable } from '@dnd-kit/core';
-import { CSS } from '@dnd-kit/utilities';
 
-// 可拖拽的 Prompt 卡片
-function DraggablePromptCard({ 
+// Prompt 卡片组件（暂时禁用拖拽，优先保证点击功能）
+function PromptCard({ 
   prompt, 
   isSelected, 
   onSelect 
@@ -18,73 +19,50 @@ function DraggablePromptCard({
   isSelected: boolean; 
   onSelect: () => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: `prompt-${prompt.id}`,
-    data: { type: 'prompt', prompt },
-  });
-
-  const style = {
-    transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.5 : 1,
-  };
-
   return (
     <div
-      ref={setNodeRef}
-      style={style}
-      className="group relative"
+      onClick={onSelect}
+      className={`
+        w-full text-left p-4 rounded-xl cursor-pointer
+        transition-colors duration-150
+        ${isSelected
+          ? 'bg-primary text-white'
+          : 'bg-card hover:bg-accent'
+        }
+      `}
     >
-      <button
-        onClick={onSelect}
-        className={`
-          w-full text-left p-4 rounded-xl
-          transition-colors duration-150
-          ${isSelected
-            ? 'bg-primary text-white'
-            : 'bg-card hover:bg-accent'
-          }
-        `}
-      >
-        <div className="flex items-start justify-between gap-2 mb-1">
-          <h3 className="font-semibold truncate">{prompt.title}</h3>
-          <div className="flex items-center gap-1">
-            {prompt.isFavorite && (
-              <StarIcon className={`w-4 h-4 flex-shrink-0 ${
-                isSelected ? 'fill-white text-white' : 'fill-yellow-400 text-yellow-400'
-              }`} />
-            )}
-          </div>
+      <div className="flex items-start justify-between gap-2 mb-1">
+        <h3 className="font-semibold truncate">{prompt.title}</h3>
+        <div className="flex items-center gap-1">
+          {prompt.isFavorite && (
+            <StarIcon className={`w-4 h-4 flex-shrink-0 ${
+              isSelected ? 'fill-white text-white' : 'fill-yellow-400 text-yellow-400'
+            }`} />
+          )}
         </div>
-        {prompt.description && (
-          <p className={`text-sm truncate mb-2 ${
-            isSelected ? 'text-white/80' : 'text-muted-foreground'
-          }`}>
-            {prompt.description}
-          </p>
-        )}
-        <div className={`flex items-center gap-3 text-xs ${
-          isSelected ? 'text-white/60' : 'text-muted-foreground'
+      </div>
+      {prompt.description && (
+        <p className={`text-sm truncate mb-2 ${
+          isSelected ? 'text-white/80' : 'text-muted-foreground'
         }`}>
-          <span className="flex items-center gap-1">
-            <ClockIcon className="w-3 h-3" />
-            {new Date(prompt.updatedAt).toLocaleDateString()}
-          </span>
-          <span>v{prompt.version}</span>
-        </div>
-      </button>
-      {/* 拖拽手柄 */}
-      <div
-        {...attributes}
-        {...listeners}
-        className="absolute left-1 top-1/2 -translate-y-1/2 p-1 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
-      >
-        <GripVerticalIcon className={`w-4 h-4 ${isSelected ? 'text-white/50' : 'text-muted-foreground/50'}`} />
+          {prompt.description}
+        </p>
+      )}
+      <div className={`flex items-center gap-3 text-xs ${
+        isSelected ? 'text-white/60' : 'text-muted-foreground'
+      }`}>
+        <span className="flex items-center gap-1">
+          <ClockIcon className="w-3 h-3" />
+          {new Date(prompt.updatedAt).toLocaleDateString()}
+        </span>
+        <span>v{prompt.version}</span>
       </div>
     </div>
   );
 }
 
 export function MainContent() {
+  const { t } = useTranslation();
   const prompts = usePromptStore((state) => state.prompts);
   const selectedId = usePromptStore((state) => state.selectedId);
   const selectPrompt = usePromptStore((state) => state.selectPrompt);
@@ -98,7 +76,16 @@ export function MainContent() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isVersionModalOpen, setIsVersionModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isTestingAI, setIsTestingAI] = useState(false);
+  const [aiResponse, setAiResponse] = useState<string | null>(null);
+  const [showAiPanel, setShowAiPanel] = useState(false);
   const { showToast } = useToast();
+  
+  // AI 配置
+  const aiProvider = useSettingsStore((state) => state.aiProvider);
+  const aiApiKey = useSettingsStore((state) => state.aiApiKey);
+  const aiApiUrl = useSettingsStore((state) => state.aiApiUrl);
+  const aiModel = useSettingsStore((state) => state.aiModel);
 
   const handleRestoreVersion = async (version: PromptVersion) => {
     if (selectedPrompt) {
@@ -145,13 +132,13 @@ export function MainContent() {
             <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
               <SparklesIcon className="w-8 h-8 text-primary" />
             </div>
-            <p className="text-lg font-medium text-foreground mb-1">暂无 Prompt</p>
-            <p className="text-sm text-muted-foreground">点击「新建」创建第一个 Prompt</p>
+            <p className="text-lg font-medium text-foreground mb-1">{t('prompt.noPrompts')}</p>
+            <p className="text-sm text-muted-foreground">{t('prompt.addFirst')}</p>
           </div>
         ) : (
           <div className="p-3 space-y-2">
             {filteredPrompts.map((prompt) => (
-              <DraggablePromptCard
+              <PromptCard
                 key={prompt.id}
                 prompt={prompt}
                 isSelected={selectedId === prompt.id}
@@ -167,7 +154,7 @@ export function MainContent() {
         {selectedPrompt ? (
           <div className="max-w-3xl mx-auto p-8">
             {/* 标题区域 */}
-            <div className="flex items-start justify-between mb-6">
+            <div className="flex items-start justify-between mb-4">
               <div className="flex-1">
                 <h2 className="text-2xl font-bold text-foreground mb-2">{selectedPrompt.title}</h2>
                 {selectedPrompt.description && (
@@ -195,6 +182,23 @@ export function MainContent() {
                   <EditIcon className="w-5 h-5" />
                 </button>
               </div>
+            </div>
+
+            {/* 元信息 */}
+            <div className="flex items-center gap-4 text-sm text-muted-foreground mb-6">
+              <span className="flex items-center gap-1.5">
+                <ClockIcon className="w-4 h-4" />
+                更新于 {new Date(selectedPrompt.updatedAt).toLocaleString('zh-CN', { 
+                  year: 'numeric', 
+                  month: '2-digit', 
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-accent text-accent-foreground text-xs font-medium">
+                版本 {selectedPrompt.version}
+              </span>
             </div>
 
             {/* 标签 */}
@@ -239,7 +243,7 @@ export function MainContent() {
             </div>
 
             {/* 操作按钮 - iOS 风格 */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <button 
                 onClick={() => {
                   const text = selectedPrompt.systemPrompt 
@@ -259,6 +263,43 @@ export function MainContent() {
               >
                 {copied ? <CheckIcon className="w-4 h-4" /> : <CopyIcon className="w-4 h-4" />}
                 <span>{copied ? '已复制' : '复制 Prompt'}</span>
+              </button>
+              <button 
+                onClick={async () => {
+                  if (!aiApiKey) {
+                    showToast('请先在设置中配置 AI 模型', 'error');
+                    return;
+                  }
+                  setShowAiPanel(true);
+                  setIsTestingAI(true);
+                  setAiResponse(null);
+                  try {
+                    const messages = buildMessagesFromPrompt(
+                      selectedPrompt.systemPrompt,
+                      selectedPrompt.userPrompt
+                    );
+                    const response = await chatCompletion(
+                      { provider: aiProvider, apiKey: aiApiKey, apiUrl: aiApiUrl, model: aiModel },
+                      messages
+                    );
+                    setAiResponse(response);
+                  } catch (error) {
+                    setAiResponse(`错误: ${error instanceof Error ? error.message : '未知错误'}`);
+                    showToast('AI 调用失败', 'error');
+                  } finally {
+                    setIsTestingAI(false);
+                  }
+                }}
+                disabled={isTestingAI}
+                className="
+                  flex items-center gap-2 h-10 px-5 rounded-lg
+                  bg-green-500 text-white text-sm font-medium
+                  hover:bg-green-600 disabled:opacity-50
+                  transition-colors duration-150
+                "
+              >
+                {isTestingAI ? <LoaderIcon className="w-4 h-4 animate-spin" /> : <PlayIcon className="w-4 h-4" />}
+                <span>{isTestingAI ? '测试中...' : 'AI 测试'}</span>
               </button>
               <button 
                 onClick={() => setIsVersionModalOpen(true)}
@@ -290,6 +331,49 @@ export function MainContent() {
                 <span>删除</span>
               </button>
             </div>
+
+            {/* AI 测试结果面板 */}
+            {showAiPanel && (
+              <div className="mt-6 p-5 rounded-2xl bg-card border border-border">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <SparklesIcon className="w-4 h-4 text-green-500" />
+                    <span className="text-sm font-medium">AI 响应</span>
+                    <span className="text-xs text-muted-foreground">({aiModel})</span>
+                  </div>
+                  <button
+                    onClick={() => setShowAiPanel(false)}
+                    className="p-1 rounded hover:bg-muted transition-colors"
+                  >
+                    <XIcon className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                </div>
+                <div className="p-4 rounded-xl bg-muted/50 font-mono text-sm leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto">
+                  {isTestingAI ? (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <LoaderIcon className="w-4 h-4 animate-spin" />
+                      <span>正在调用 AI...</span>
+                    </div>
+                  ) : aiResponse ? (
+                    aiResponse
+                  ) : (
+                    <span className="text-muted-foreground">等待响应...</span>
+                  )}
+                </div>
+                {aiResponse && !isTestingAI && (
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(aiResponse);
+                      showToast('已复制 AI 响应', 'success');
+                    }}
+                    className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <CopyIcon className="w-3 h-3" />
+                    复制响应
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* 编辑弹窗 */}
             <EditPromptModal

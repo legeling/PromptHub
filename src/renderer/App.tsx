@@ -5,6 +5,8 @@ import { usePromptStore } from './stores/prompt.store';
 import { useFolderStore } from './stores/folder.store';
 import { useSettingsStore } from './stores/settings.store';
 import { initDatabase, seedDatabase } from './services/database';
+import { downloadFromWebDAV } from './services/webdav';
+import { useToast } from './components/ui/Toast';
 import { DndContext, DragEndEvent, pointerWithin } from '@dnd-kit/core';
 
 // 页面类型
@@ -13,10 +15,12 @@ type PageType = 'home' | 'settings';
 function App() {
   const fetchPrompts = usePromptStore((state) => state.fetchPrompts);
   const fetchFolders = useFolderStore((state) => state.fetchFolders);
+  const folders = useFolderStore((state) => state.folders);
   const updatePrompt = usePromptStore((state) => state.updatePrompt);
   const applyTheme = useSettingsStore((state) => state.applyTheme);
   const [currentPage, setCurrentPage] = useState<PageType>('home');
   const [isLoading, setIsLoading] = useState(true);
+  const { showToast } = useToast();
 
   // 处理 Prompt 拖拽到文件夹
   const handleDragEnd = (event: DragEndEvent) => {
@@ -31,9 +35,11 @@ function App() {
     if (activeData?.type === 'prompt' && overData?.type === 'folder') {
       const promptId = activeData.prompt.id;
       const folderId = overData.folderId;
+      const folder = folders.find(f => f.id === folderId);
       
       // 更新 Prompt 的文件夹
       updatePrompt(promptId, { folderId });
+      showToast(`已移动到「${folder?.name || '文件夹'}」`, 'success');
     }
   };
 
@@ -46,6 +52,28 @@ function App() {
       try {
         await initDatabase();
         await seedDatabase();
+        
+        // 检查是否需要自动同步
+        const settings = useSettingsStore.getState();
+        if (settings.webdavEnabled && settings.webdavAutoSync && 
+            settings.webdavUrl && settings.webdavUsername && settings.webdavPassword) {
+          console.log('🔄 Auto syncing from WebDAV...');
+          try {
+            const result = await downloadFromWebDAV({
+              url: settings.webdavUrl,
+              username: settings.webdavUsername,
+              password: settings.webdavPassword,
+            });
+            if (result.success) {
+              console.log('✅ Auto sync completed');
+            } else {
+              console.log('⚠️ Auto sync failed:', result.message);
+            }
+          } catch (syncError) {
+            console.error('⚠️ Auto sync error:', syncError);
+          }
+        }
+        
         await fetchPrompts();
         await fetchFolders();
         console.log('✅ App initialized');

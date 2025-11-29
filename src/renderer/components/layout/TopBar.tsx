@@ -3,12 +3,14 @@ import { usePromptStore } from '../../stores/prompt.store';
 import { useSettingsStore } from '../../stores/settings.store';
 import { useState } from 'react';
 import { CreatePromptModal } from '../prompt/CreatePromptModal';
+import { useTranslation } from 'react-i18next';
 
 interface TopBarProps {
   onOpenSettings: () => void;
 }
 
 export function TopBar({ onOpenSettings }: TopBarProps) {
+  const { t } = useTranslation();
   const searchQuery = usePromptStore((state) => state.searchQuery);
   const setSearchQuery = usePromptStore((state) => state.setSearchQuery);
   const createPrompt = usePromptStore((state) => state.createPrompt);
@@ -51,7 +53,7 @@ export function TopBar({ onOpenSettings }: TopBarProps) {
             <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder="搜索 Prompt..."
+              placeholder={t('header.search')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full h-9 pl-9 pr-4 rounded-lg bg-muted/50 border-0 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
@@ -67,7 +69,7 @@ export function TopBar({ onOpenSettings }: TopBarProps) {
             className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
           >
             <PlusIcon className="w-4 h-4" />
-            <span>新建</span>
+            <span>{t('header.new')}</span>
           </button>
 
           {/* 主题切换 */}

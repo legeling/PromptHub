@@ -523,3 +523,10 @@ export async function restoreFromFile(file: File): Promise<void> {
   const backup = JSON.parse(text) as DatabaseBackup;
   await importDatabase(backup);
 }
+
+/**
+ * 从备份数据恢复（用于 WebDAV 同步）
+ */
+export async function restoreFromBackup(backup: DatabaseBackup): Promise<void> {
+  await importDatabase(backup);
+}

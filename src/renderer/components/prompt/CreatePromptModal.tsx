@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Modal, Button, Input, Textarea } from '../ui';
 import { HashIcon, XIcon, FolderIcon } from 'lucide-react';
 import { useFolderStore } from '../../stores/folder.store';
+import { usePromptStore } from '../../stores/prompt.store';
 
 interface CreatePromptModalProps {
   isOpen: boolean;
@@ -25,6 +26,10 @@ export function CreatePromptModal({ isOpen, onClose, onCreate }: CreatePromptMod
   const [tagInput, setTagInput] = useState('');
   const [folderId, setFolderId] = useState<string>('');
   const folders = useFolderStore((state) => state.folders);
+  const prompts = usePromptStore((state) => state.prompts);
+  
+  // 获取所有已存在的标签
+  const existingTags = [...new Set(prompts.flatMap((p) => p.tags))];
 
   const handleSubmit = () => {
     if (!title.trim() || !userPrompt.trim()) return;
@@ -110,27 +115,48 @@ export function CreatePromptModal({ isOpen, onClose, onCreate }: CreatePromptMod
           <label className="block text-sm font-medium text-foreground">
             标签（可选）
           </label>
+          {/* 已选标签 */}
           <div className="flex flex-wrap gap-2 mb-2">
             {tags.map((tag) => (
               <span
                 key={tag}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-accent text-accent-foreground"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-primary text-white"
               >
                 <HashIcon className="w-3 h-3" />
                 {tag}
                 <button
                   onClick={() => handleRemoveTag(tag)}
-                  className="ml-1 hover:text-destructive"
+                  className="ml-1 hover:text-white/70"
                 >
                   <XIcon className="w-3 h-3" />
                 </button>
               </span>
             ))}
           </div>
+          {/* 已有标签选择 */}
+          {existingTags.length > 0 && (
+            <div className="mb-2">
+              <div className="text-xs text-muted-foreground mb-1.5">选择已有标签：</div>
+              <div className="flex flex-wrap gap-1.5">
+                {existingTags.filter(t => !tags.includes(t)).map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => setTags([...tags, tag])}
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-muted hover:bg-accent transition-colors"
+                  >
+                    <HashIcon className="w-3 h-3" />
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {/* 新建标签 */}
           <div className="flex gap-2">
             <input
               type="text"
-              placeholder="输入标签后按回车"
+              placeholder="输入新标签后按回车"
               value={tagInput}
               onChange={(e) => setTagInput(e.target.value)}
               onKeyDown={handleTagKeyDown}

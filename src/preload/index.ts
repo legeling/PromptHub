@@ -85,6 +85,9 @@ contextBridge.exposeInMainWorld('electron', {
   minimize: () => ipcRenderer.send('window:minimize'),
   maximize: () => ipcRenderer.send('window:maximize'),
   close: () => ipcRenderer.send('window:close'),
+  setAutoLaunch: (enabled: boolean) => ipcRenderer.send('app:setAutoLaunch', enabled),
+  selectFolder: () => ipcRenderer.invoke('dialog:selectFolder'),
+  showNotification: (title: string, body: string) => ipcRenderer.invoke('notification:show', { title, body }),
 });
 
 // 类型声明
@@ -97,6 +100,9 @@ declare global {
       minimize?: () => void;
       maximize?: () => void;
       close?: () => void;
+      setAutoLaunch?: (enabled: boolean) => void;
+      selectFolder?: () => Promise<string | null>;
+      showNotification?: (title: string, body: string) => Promise<boolean>;
     };
   }
 }
