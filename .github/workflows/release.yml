@@ -29,6 +29,10 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
+        with:
+          # 显式使用与 package.json 中一致的 pnpm 版本
+          version: 9.15.0
+          run_install: false
 
       - name: Get pnpm store directory
         shell: bash
