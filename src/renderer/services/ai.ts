@@ -294,15 +294,23 @@ export async function generateImage(
  */
 export async function testImageGeneration(
   config: AIConfig,
-  testPrompt?: string
+  testPrompt?: string,
+  options?: {
+    size?: '256x256' | '512x512' | '1024x1024' | '1024x1792' | '1792x1024';
+    quality?: 'standard' | 'hd';
+    style?: 'vivid' | 'natural';
+    n?: number;
+  }
 ): Promise<ImageTestResult> {
   const startTime = Date.now();
   const prompt = testPrompt || 'A cute cat sitting on a windowsill';
   
   try {
     const result = await generateImage(config, prompt, { 
-      size: '1024x1024',
-      quality: 'standard' 
+      size: options?.size ?? '1024x1024',
+      quality: options?.quality ?? 'standard',
+      style: options?.style ?? 'vivid',
+      n: options?.n ?? 1,
     });
     
     const imageData = result.data[0];
@@ -330,7 +338,7 @@ export async function testImageGeneration(
 // ============ 多模型对比分析 ============
 
 export interface MultiModelCompareResult {
-  prompt: string;
+  messages: ChatMessage[];
   results: AITestResult[];
   totalTime: number;
 }
@@ -340,7 +348,7 @@ export interface MultiModelCompareResult {
  */
 export async function multiModelCompare(
   configs: AIConfig[],
-  prompt: string,
+  messages: ChatMessage[],
   options?: {
     temperature?: number;
     maxTokens?: number;
@@ -351,9 +359,7 @@ export async function multiModelCompare(
   const promises = configs.map(async (config) => {
     const resultStartTime = Date.now();
     try {
-      const response = await chatCompletion(config, [
-        { role: 'user', content: prompt }
-      ], options);
+      const response = await chatCompletion(config, messages, options);
       
       return {
         success: true,
@@ -376,7 +382,7 @@ export async function multiModelCompare(
   const results = await Promise.all(promises);
   
   return {
-    prompt,
+    messages,
     results,
     totalTime: Date.now() - startTime,
   };

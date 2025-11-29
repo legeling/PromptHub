@@ -25,7 +25,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { downloadBackup, restoreFromFile, clearDatabase } from '../../services/database';
 import { testConnection, uploadToWebDAV, downloadFromWebDAV } from '../../services/webdav';
-import { testAIConnection, AITestResult } from '../../services/ai';
+import { testAIConnection, testImageGeneration, AITestResult, ImageTestResult } from '../../services/ai';
 import { useSettingsStore, MORANDI_THEMES, FONT_SIZES, ThemeMode } from '../../stores/settings.store';
 import { useToast } from '../ui/Toast';
 
@@ -69,6 +69,10 @@ const AI_PROVIDERS = [
   { id: 'custom', name: '自定义 (OpenAI 兼容)', defaultUrl: '', defaultModels: [] },
 ];
 
+type ImageSize = '256x256' | '512x512' | '1024x1024' | '1024x1792' | '1792x1024';
+type ImageQuality = 'standard' | 'hd';
+type ImageStyle = 'vivid' | 'natural';
+
 export function SettingsPage({ onBack }: SettingsPageProps) {
   const [activeSection, setActiveSection] = useState('general');
   const { t } = useTranslation();
@@ -84,6 +88,14 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
   const [compareConfig, setCompareConfig] = useState({ provider: '', apiKey: '', apiUrl: '', model: '' });
   const [compareTesting, setCompareTesting] = useState(false);
   const [compareResult, setCompareResult] = useState<AITestResult | null>(null);
+
+  // 图像测试状态
+  const [imageTesting, setImageTesting] = useState(false);
+  const [imageTestResult, setImageTestResult] = useState<ImageTestResult | null>(null);
+  const [imagePrompt, setImagePrompt] = useState('A cute cat sitting on a windowsill');
+  const [imageSize, setImageSize] = useState<ImageSize>('1024x1024');
+  const [imageQuality, setImageQuality] = useState<ImageQuality>('standard');
+  const [imageStyle, setImageStyle] = useState<ImageStyle>('vivid');
 
   // AI 测试函数
   const handleTestAI = async () => {
@@ -144,6 +156,41 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
     setCompareResult(result2);
     setAiTesting(false);
     setCompareTesting(false);
+  };
+
+  const handleTestImage = async () => {
+    if (!settings.aiApiKey || !settings.aiApiUrl || !settings.aiModel) {
+      showToast(t('toast.configApiKey'), 'error');
+      return;
+    }
+
+    setImageTesting(true);
+    setImageTestResult(null);
+
+    const result = await testImageGeneration(
+      {
+        provider: settings.aiProvider,
+        apiKey: settings.aiApiKey,
+        apiUrl: settings.aiApiUrl,
+        model: settings.aiModel,
+        type: 'image',
+      },
+      imagePrompt,
+      {
+        size: imageSize,
+        quality: imageQuality,
+        style: imageStyle,
+      }
+    );
+
+    setImageTestResult(result);
+    setImageTesting(false);
+
+    if (result.success) {
+      showToast(`${t('toast.connectionSuccess')} (${result.latency}ms)`, 'success');
+    } else {
+      showToast(result.error || t('toast.connectionFailed'), 'error');
+    }
   };
 
   const handleExportData = async () => {
@@ -648,6 +695,101 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                       <p className="text-xs opacity-80 line-clamp-3">{aiTestResult.response}</p>
                     ) : (
                       <p className="text-xs">{aiTestResult.error}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </SettingSection>
+
+            {/* 图像模型测试 */}
+            <SettingSection title={t('settings.testImage')}>
+              <div className="p-4 space-y-4">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">{t('settings.imagePrompt')}</label>
+                  <textarea
+                    value={imagePrompt}
+                    onChange={(e) => setImagePrompt(e.target.value)}
+                    className="w-full min-h-[80px] px-3 py-2 rounded-lg bg-muted border-0 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y"
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">{t('settings.imageSize')}</label>
+                    <select
+                      value={imageSize}
+                      onChange={(e) => setImageSize(e.target.value as ImageSize)}
+                      className="w-full h-9 px-3 rounded-lg bg-muted border-0 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    >
+                      <option value="256x256">256x256</option>
+                      <option value="512x512">512x512</option>
+                      <option value="1024x1024">1024x1024</option>
+                      <option value="1024x1792">1024x1792</option>
+                      <option value="1792x1024">1792x1024</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">{t('settings.imageQuality')}</label>
+                    <select
+                      value={imageQuality}
+                      onChange={(e) => setImageQuality(e.target.value as ImageQuality)}
+                      className="w-full h-9 px-3 rounded-lg bg-muted border-0 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    >
+                      <option value="standard">{t('settings.qualityStandard')}</option>
+                      <option value="hd">{t('settings.qualityHD')}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">{t('settings.imageStyle')}</label>
+                    <select
+                      value={imageStyle}
+                      onChange={(e) => setImageStyle(e.target.value as ImageStyle)}
+                      className="w-full h-9 px-3 rounded-lg bg-muted border-0 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    >
+                      <option value="vivid">{t('settings.styleVivid')}</option>
+                      <option value="natural">{t('settings.styleNatural')}</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleTestImage}
+                  disabled={imageTesting}
+                  className="w-full h-10 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {imageTesting ? (
+                    <Loader2Icon className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <PlayIcon className="w-4 h-4" />
+                  )}
+                  {t('settings.testImage')}
+                </button>
+
+                {imageTestResult && (
+                  <div className={`mt-2 p-3 rounded-lg text-sm ${imageTestResult.success ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-xs">
+                        <span className="font-medium mr-2">{imageTestResult.model}</span>
+                        <span className="opacity-70">{imageTestResult.latency}ms</span>
+                      </div>
+                    </div>
+                    {imageTestResult.success ? (
+                      <div className="space-y-2">
+                        {(imageTestResult.imageUrl || imageTestResult.imageBase64) && (
+                          <div className="w-full flex justify-center">
+                            <img
+                              src={imageTestResult.imageUrl || `data:image/png;base64,${imageTestResult.imageBase64}`}
+                              alt="AI Generated"
+                              className="max-h-64 rounded-lg border border-border object-contain"
+                            />
+                          </div>
+                        )}
+                        {imageTestResult.revisedPrompt && (
+                          <p className="text-xs opacity-80">{imageTestResult.revisedPrompt}</p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-xs">{imageTestResult.error}</p>
                     )}
                   </div>
                 )}

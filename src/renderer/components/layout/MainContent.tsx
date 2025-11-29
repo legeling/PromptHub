@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { usePromptStore } from '../../stores/prompt.store';
 import { useFolderStore } from '../../stores/folder.store';
 import { useSettingsStore } from '../../stores/settings.store';
-import { StarIcon, CopyIcon, HistoryIcon, HashIcon, ClockIcon, SparklesIcon, EditIcon, TrashIcon, CheckIcon, PlayIcon, LoaderIcon, XIcon } from 'lucide-react';
+import { StarIcon, CopyIcon, HistoryIcon, HashIcon, ClockIcon, SparklesIcon, EditIcon, TrashIcon, CheckIcon, PlayIcon, LoaderIcon, XIcon, GitCompareIcon } from 'lucide-react';
 import { EditPromptModal, VersionHistoryModal } from '../prompt';
 import { useToast } from '../ui/Toast';
-import { chatCompletion, buildMessagesFromPrompt } from '../../services/ai';
+import { chatCompletion, buildMessagesFromPrompt, multiModelCompare, AITestResult } from '../../services/ai';
 import { useTranslation } from 'react-i18next';
 import type { Prompt, PromptVersion } from '../../../shared/types';
 
@@ -79,6 +79,10 @@ export function MainContent() {
   const [isTestingAI, setIsTestingAI] = useState(false);
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [showAiPanel, setShowAiPanel] = useState(false);
+  const [isComparingModels, setIsComparingModels] = useState(false);
+  const [compareModelsInput, setCompareModelsInput] = useState('');
+  const [compareResults, setCompareResults] = useState<AITestResult[] | null>(null);
+  const [compareError, setCompareError] = useState<string | null>(null);
   const { showToast } = useToast();
   
   // AI 配置
@@ -231,7 +235,7 @@ export function MainContent() {
             )}
 
             {/* User Prompt */}
-            <div className="mb-8">
+            <div className="mb-6">
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   User Prompt
@@ -240,6 +244,108 @@ export function MainContent() {
               <div className="p-5 rounded-2xl bg-card border border-border font-mono text-sm leading-relaxed whitespace-pre-wrap">
                 {selectedPrompt.userPrompt}
               </div>
+            </div>
+
+            {/* 多模型对比区域 */}
+            <div className="mb-8 p-5 rounded-2xl bg-card border border-border">
+              <div className="flex items-center gap-2 mb-4">
+                <GitCompareIcon className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium">多模型对比</span>
+                <span className="text-xs text-muted-foreground">同一 Prompt，使用多个模型对比响应</span>
+              </div>
+              <div className="flex flex-col gap-2 mb-3">
+                <label className="text-xs text-muted-foreground">模型列表（逗号分隔，将自动包含当前模型 {aiModel}）</label>
+                <input
+                  type="text"
+                  value={compareModelsInput}
+                  onChange={(e) => setCompareModelsInput(e.target.value)}
+                  placeholder="例如：gpt-4o,gpt-4o-mini,deepseek-chat"
+                  className="h-9 px-3 rounded-lg bg-muted border-0 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+              <button
+                onClick={async () => {
+                  if (!aiApiKey || !aiApiUrl || !aiModel) {
+                    showToast('请先在设置中配置 AI 模型', 'error');
+                    return;
+                  }
+                  if (!selectedPrompt) return;
+
+                  const extraModels = compareModelsInput
+                    .split(',')
+                    .map((m) => m.trim())
+                    .filter((m) => m.length > 0 && m !== aiModel);
+
+                  const uniqueModels = Array.from(new Set([aiModel, ...extraModels]));
+
+                  if (uniqueModels.length < 2) {
+                    showToast('请至少配置两个不同的模型名称', 'error');
+                    return;
+                  }
+
+                  const configs = uniqueModels.map((modelName) => ({
+                    provider: aiProvider,
+                    apiKey: aiApiKey,
+                    apiUrl: aiApiUrl,
+                    model: modelName,
+                  }));
+
+                  const messages = buildMessagesFromPrompt(
+                    selectedPrompt.systemPrompt,
+                    selectedPrompt.userPrompt
+                  );
+
+                  setIsComparingModels(true);
+                  setCompareResults(null);
+                  setCompareError(null);
+                  try {
+                    const result = await multiModelCompare(configs, messages);
+                    setCompareResults(result.results);
+                  } catch (error) {
+                    setCompareError(error instanceof Error ? error.message : '未知错误');
+                  } finally {
+                    setIsComparingModels(false);
+                  }
+                }}
+                disabled={isComparingModels}
+                className="flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-xs font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              >
+                {isComparingModels ? (
+                  <LoaderIcon className="w-3 h-3 animate-spin" />
+                ) : (
+                  <GitCompareIcon className="w-3 h-3" />
+                )}
+                <span>{isComparingModels ? '对比中...' : '开始对比测试'}</span>
+              </button>
+
+              {compareError && (
+                <p className="mt-2 text-xs text-red-500">{compareError}</p>
+              )}
+
+              {compareResults && compareResults.length > 0 && (
+                <div className="mt-4 grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {compareResults.map((res) => (
+                    <div
+                      key={`${res.provider}-${res.model}`}
+                      className={`p-3 rounded-lg border text-xs space-y-2 ${
+                        res.success ? 'border-emerald-400/50 bg-emerald-500/5' : 'border-red-400/50 bg-red-500/5'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="font-medium truncate">
+                          {res.model}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">
+                          {res.latency}ms
+                        </div>
+                      </div>
+                      <div className="text-[11px] leading-relaxed whitespace-pre-wrap max-h-40 overflow-y-auto">
+                        {res.success ? (res.response || '(空)') : (res.error || '未知错误')}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* 操作按钮 - iOS 风格 */}

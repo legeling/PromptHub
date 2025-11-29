@@ -139,6 +139,7 @@
     "modelType": "Model Type",
     "chatModel": "Chat Model",
     "imageModel": "Image Model",
+    "imagePrompt": "Image prompt",
     "imageSize": "Image Size",
     "imageQuality": "Image Quality",
     "imageStyle": "Image Style",

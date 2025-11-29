@@ -140,6 +140,7 @@
     "chatModel": "对话模型",
     "imageModel": "图像模型",
     "imageSize": "图像尺寸",
+    "imagePrompt": "绘画提示词",
     "imageQuality": "图像质量",
     "imageStyle": "图像风格",
     "qualityStandard": "标准",
