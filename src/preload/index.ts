@@ -10,6 +10,11 @@ import type {
 } from '../shared/types';
 
 const api = {
+  // 窗口控制 (Windows)
+  minimize: () => ipcRenderer.send('window:minimize'),
+  maximize: () => ipcRenderer.send('window:maximize'),
+  close: () => ipcRenderer.send('window:close'),
+
   // Prompt
   prompt: {
     create: (data: CreatePromptDTO) =>
@@ -75,11 +80,23 @@ const api = {
 
 contextBridge.exposeInMainWorld('api', api);
 
+// 暴露窗口控制 API
+contextBridge.exposeInMainWorld('electron', {
+  minimize: () => ipcRenderer.send('window:minimize'),
+  maximize: () => ipcRenderer.send('window:maximize'),
+  close: () => ipcRenderer.send('window:close'),
+});
+
 // 类型声明
 export type API = typeof api;
 
 declare global {
   interface Window {
     api: API;
+    electron?: {
+      minimize?: () => void;
+      maximize?: () => void;
+      close?: () => void;
+    };
   }
 }

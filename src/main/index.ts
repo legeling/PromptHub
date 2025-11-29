@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell } from 'electron';
+import { app, BrowserWindow, shell, ipcMain } from 'electron';
 import path from 'path';
 // TODO: 暂时禁用数据库（需要解决 better-sqlite3 与 Electron 39 的兼容问题）
 // import { initDatabase } from './database';
@@ -14,6 +14,9 @@ let mainWindow: BrowserWindow | null = null;
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
 async function createWindow() {
+  const isMac = process.platform === 'darwin';
+  const isWin = process.platform === 'win32';
+  
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -24,9 +27,13 @@ async function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
     },
-    titleBarStyle: 'hiddenInset', // macOS 风格标题栏
-    trafficLightPosition: { x: 16, y: 16 }, // 红绿灯位置
-    show: true, // 直接显示窗口
+    // Windows 使用无边框窗口，macOS 使用原生标题栏
+    frame: isWin ? false : true,
+    titleBarStyle: isMac ? 'hiddenInset' : 'default',
+    trafficLightPosition: isMac ? { x: 16, y: 16 } : undefined,
+    // Windows 深色标题栏
+    backgroundColor: '#1a1d23',
+    show: true,
   });
 
   // 加载页面
@@ -54,6 +61,23 @@ async function createWindow() {
     mainWindow = null;
   });
 }
+
+// 注册窗口控制 IPC
+ipcMain.on('window:minimize', () => {
+  mainWindow?.minimize();
+});
+
+ipcMain.on('window:maximize', () => {
+  if (mainWindow?.isMaximized()) {
+    mainWindow.unmaximize();
+  } else {
+    mainWindow?.maximize();
+  }
+});
+
+ipcMain.on('window:close', () => {
+  mainWindow?.close();
+});
 
 // 应用启动
 app.whenReady().then(async () => {

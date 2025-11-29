@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Modal, Button, Input, Textarea } from '../ui';
-import { HashIcon, XIcon } from 'lucide-react';
+import { HashIcon, XIcon, FolderIcon } from 'lucide-react';
+import { useFolderStore } from '../../stores/folder.store';
 
 interface CreatePromptModalProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ interface CreatePromptModalProps {
     systemPrompt?: string;
     userPrompt: string;
     tags: string[];
+    folderId?: string;
   }) => void;
 }
 
@@ -21,6 +23,8 @@ export function CreatePromptModal({ isOpen, onClose, onCreate }: CreatePromptMod
   const [userPrompt, setUserPrompt] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
+  const [folderId, setFolderId] = useState<string>('');
+  const folders = useFolderStore((state) => state.folders);
 
   const handleSubmit = () => {
     if (!title.trim() || !userPrompt.trim()) return;
@@ -31,6 +35,7 @@ export function CreatePromptModal({ isOpen, onClose, onCreate }: CreatePromptMod
       systemPrompt: systemPrompt.trim() || undefined,
       userPrompt: userPrompt.trim(),
       tags,
+      folderId: folderId || undefined,
     });
 
     // 重置表单
@@ -39,6 +44,7 @@ export function CreatePromptModal({ isOpen, onClose, onCreate }: CreatePromptMod
     setSystemPrompt('');
     setUserPrompt('');
     setTags([]);
+    setFolderId('');
     onClose();
   };
 
@@ -79,6 +85,25 @@ export function CreatePromptModal({ isOpen, onClose, onCreate }: CreatePromptMod
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
+
+        {/* 文件夹选择 */}
+        <div className="space-y-1.5">
+          <label className="block text-sm font-medium text-foreground">
+            文件夹（可选）
+          </label>
+          <select
+            value={folderId}
+            onChange={(e) => setFolderId(e.target.value)}
+            className="w-full h-10 px-4 rounded-xl bg-muted/50 border-0 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:bg-background transition-all duration-200"
+          >
+            <option value="">不选择文件夹</option>
+            {folders.map((folder) => (
+              <option key={folder.id} value={folder.id}>
+                {folder.icon} {folder.name}
+              </option>
+            ))}
+          </select>
+        </div>
 
         {/* 标签 */}
         <div className="space-y-1.5">

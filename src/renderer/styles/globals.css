@@ -92,6 +92,20 @@
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+  /* 移除默认的黄色 focus 边框，使用自定义样式 */
+  button:focus,
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline: none;
+  }
+  /* 为需要的元素添加自定义 focus 样式 */
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    @apply ring-2 ring-primary/50 ring-offset-0;
+  }
 }
 
 /* 自定义滚动条 */

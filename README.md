@@ -5,7 +5,7 @@
     <a href="https://github.com/legeling/PromptHub/stargazers"><img src="https://img.shields.io/github/stars/legeling/PromptHub?style=flat-square" alt="GitHub Stars"/></a>
     <a href="https://github.com/legeling/PromptHub/network/members"><img src="https://img.shields.io/github/forks/legeling/PromptHub?style=flat-square" alt="GitHub Forks"/></a>
     <img src="https://img.shields.io/badge/TypeScript-5.0-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript"/>
-    <img src="https://img.shields.io/badge/Electron-28-47848F?style=flat-square&logo=electron&logoColor=white" alt="Electron"/>
+    <img src="https://img.shields.io/badge/Electron-33-47848F?style=flat-square&logo=electron&logoColor=white" alt="Electron"/>
     <img src="https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=white" alt="React"/>
     <img src="https://img.shields.io/github/license/legeling/PromptHub?style=flat-square" alt="License"/>
   </p>
@@ -34,7 +34,11 @@
 ## 📸 截图
 
 <div align="center">
-  <img src="./docs/imgs/image.png" width="80%" alt="主界面"/>
+  <p><strong>macOS</strong></p>
+  <img src="./docs/imgs/image.png" width="80%" alt="macOS 主界面"/>
+  <br/><br/>
+  <p><strong>Windows</strong></p>
+  <img src="./docs/imgs/windos_main.png" width="80%" alt="Windows 主界面"/>
 </div>
 
 ## 📦 安装
@@ -123,9 +127,19 @@ PromptHub/
 └── package.json
 ```
 
+## 📈 Star History
+
+<a href="https://star-history.com/#legeling/PromptHub&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=legeling/PromptHub&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=legeling/PromptHub&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=legeling/PromptHub&type=Date" />
+  </picture>
+</a>
+
 ## 🗺️ 路线图
 
-### v0.1.0 (当前)
+### v0.1.1 (当前)
 - [x] Prompt CRUD 管理
 - [x] 文件夹和标签系统
 - [x] 收藏功能
@@ -133,13 +147,16 @@ PromptHub/
 - [x] 数据导入导出
 - [x] 主题定制 (深色/浅色/跟随系统)
 - [x] 多语言支持 (中/英)
+- [x] WebDAV 同步配置
+- [x] Windows 无边框窗口
 
 ### 未来规划
 - [ ] 变量填充界面
 - [ ] Prompt 模板市场
-- [ ] 云同步功能
+- [ ] WebDAV 同步实现
 - [ ] 浏览器插件
 - [ ] AI 测试功能
+- [ ] 自动更新功能
 
 ## 🤝 贡献
 

@@ -41,15 +41,20 @@ interface SettingsState {
   showCopyNotification: boolean;
   showSaveNotification: boolean;
   
-  // 隐私设置
-  sendAnalytics: boolean;
-  sendCrashReports: boolean;
-  
   // 语言设置
   language: 'zh' | 'en';
   
   // 数据路径
   dataPath: string;
+  
+  // WebDAV 同步设置
+  webdavEnabled: boolean;
+  webdavUrl: string;
+  webdavUsername: string;
+  webdavPassword: string;
+  
+  // 更新设置
+  autoCheckUpdate: boolean;
   
   // Actions
   setThemeMode: (mode: ThemeMode) => void;
@@ -63,10 +68,13 @@ interface SettingsState {
   setEnableNotifications: (enabled: boolean) => void;
   setShowCopyNotification: (enabled: boolean) => void;
   setShowSaveNotification: (enabled: boolean) => void;
-  setSendAnalytics: (enabled: boolean) => void;
-  setSendCrashReports: (enabled: boolean) => void;
   setLanguage: (lang: 'zh' | 'en') => void;
   setDataPath: (path: string) => void;
+  setWebdavEnabled: (enabled: boolean) => void;
+  setWebdavUrl: (url: string) => void;
+  setWebdavUsername: (username: string) => void;
+  setWebdavPassword: (password: string) => void;
+  setAutoCheckUpdate: (enabled: boolean) => void;
   applyTheme: () => void;
 }
 
@@ -87,10 +95,13 @@ export const useSettingsStore = create<SettingsState>()(
       enableNotifications: true,
       showCopyNotification: true,
       showSaveNotification: true,
-      sendAnalytics: false,
-      sendCrashReports: false,
       language: 'zh',
       dataPath: '~/Library/Application Support/PromptHub',
+      webdavEnabled: false,
+      webdavUrl: '',
+      webdavUsername: '',
+      webdavPassword: '',
+      autoCheckUpdate: true,
       
       setThemeMode: (mode) => {
         set({ themeMode: mode });
@@ -138,13 +149,16 @@ export const useSettingsStore = create<SettingsState>()(
       setEnableNotifications: (enabled) => set({ enableNotifications: enabled }),
       setShowCopyNotification: (enabled) => set({ showCopyNotification: enabled }),
       setShowSaveNotification: (enabled) => set({ showSaveNotification: enabled }),
-      setSendAnalytics: (enabled) => set({ sendAnalytics: enabled }),
-      setSendCrashReports: (enabled) => set({ sendCrashReports: enabled }),
       setLanguage: (lang) => {
         set({ language: lang });
         changeLanguage(lang);
       },
       setDataPath: (path) => set({ dataPath: path }),
+      setWebdavEnabled: (enabled) => set({ webdavEnabled: enabled }),
+      setWebdavUrl: (url) => set({ webdavUrl: url }),
+      setWebdavUsername: (username) => set({ webdavUsername: username }),
+      setWebdavPassword: (password) => set({ webdavPassword: password }),
+      setAutoCheckUpdate: (enabled) => set({ autoCheckUpdate: enabled }),
       
       applyTheme: () => {
         const state = get();

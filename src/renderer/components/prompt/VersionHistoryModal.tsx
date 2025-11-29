@@ -39,8 +39,10 @@ export function VersionHistoryModal({ isOpen, onClose, prompt, onRestore }: Vers
 
   const handleRestore = () => {
     if (selectedVersion) {
-      onRestore(selectedVersion);
-      onClose();
+      if (confirm(`确定要恢复到 v${selectedVersion.version} 版本吗？当前内容将被覆盖。`)) {
+        onRestore(selectedVersion);
+        onClose();
+      }
     }
   };
 

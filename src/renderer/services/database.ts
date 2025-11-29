@@ -263,17 +263,21 @@ export async function createPrompt(data: Omit<Prompt, 'id' | 'createdAt' | 'upda
   });
 }
 
-export async function updatePrompt(id: string, data: Partial<Prompt>): Promise<Prompt> {
+export async function updatePrompt(id: string, data: Partial<Prompt>, incrementVersion = true): Promise<Prompt> {
   const database = await getDatabase();
   const existing = await getPromptById(id);
   if (!existing) throw new Error('Prompt not found');
+
+  // 只有内容变化才增加版本号
+  const hasContentChange = data.systemPrompt !== undefined || data.userPrompt !== undefined;
+  const shouldIncrementVersion = incrementVersion && hasContentChange;
 
   const updated: Prompt = {
     ...existing,
     ...data,
     id,
     updatedAt: new Date().toISOString(),
-    version: existing.version + 1,
+    version: shouldIncrementVersion ? existing.version + 1 : existing.version,
   };
 
   return new Promise((resolve, reject) => {

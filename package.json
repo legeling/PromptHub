@@ -1,6 +1,6 @@
 {
   "name": "prompthub",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "本地版的 Prompt 管理器，带版本控制",
   "main": "out/main/index.js",
   "author": "PromptHub Team",
@@ -26,6 +26,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "i18next": "^24.0.0",
     "react-i18next": "^15.0.0",
     "zustand": "^5.0.0"
@@ -41,7 +44,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "concurrently": "^9.0.0",
-    "electron": "^33.0.0",
+    "electron": "33",
     "electron-builder": "^25.0.0",
     "eslint": "^9.0.0",
     "eslint-plugin-react": "^7.37.0",

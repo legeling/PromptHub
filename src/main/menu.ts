@@ -5,6 +5,13 @@ import { Menu, app, shell, BrowserWindow } from 'electron';
  */
 export function createMenu(): void {
   const isMac = process.platform === 'darwin';
+  const isWin = process.platform === 'win32';
+
+  // Windows 下不显示菜单栏
+  if (isWin) {
+    Menu.setApplicationMenu(null);
+    return;
+  }
 
   const template: Electron.MenuItemConstructorOptions[] = [
     // 应用菜单（macOS）

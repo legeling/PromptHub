@@ -1,8 +1,29 @@
-import { useState } from 'react';
-import { StarIcon, HashIcon, PlusIcon, LayoutGridIcon, LinkIcon, SettingsIcon } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { StarIcon, HashIcon, PlusIcon, LayoutGridIcon, LinkIcon, SettingsIcon, MoreHorizontalIcon, GripVerticalIcon } from 'lucide-react';
 import { useFolderStore } from '../../stores/folder.store';
 import { usePromptStore } from '../../stores/prompt.store';
 import { ResourcesModal } from '../resources/ResourcesModal';
+import { FolderModal } from '../folder';
+import type { Folder } from '../../../shared/types';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragOverEvent,
+  useDroppable,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 type PageType = 'home' | 'settings';
 
@@ -43,21 +64,137 @@ function NavItem({ icon, label, count, active, onClick }: NavItemProps) {
   );
 }
 
+// 可排序的文件夹项
+interface SortableFolderItemProps {
+  folder: Folder;
+  isActive: boolean;
+  onSelect: () => void;
+  onEdit: () => void;
+  isOver?: boolean;
+}
+
+function SortableFolderItem({ folder, isActive, onSelect, onEdit, isOver }: SortableFolderItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setSortableRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: folder.id });
+
+  // 作为 Prompt 的放置目标
+  const { setNodeRef: setDroppableRef, isOver: isDropOver } = useDroppable({
+    id: `folder-drop-${folder.id}`,
+    data: { type: 'folder', folderId: folder.id },
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={(node) => {
+        setSortableRef(node);
+        setDroppableRef(node);
+      }}
+      style={style}
+      className={`group relative flex items-center ${isDropOver ? 'bg-primary/20 rounded-lg ring-2 ring-primary' : ''}`}
+    >
+      {/* 拖拽手柄 */}
+      <button
+        {...attributes}
+        {...listeners}
+        className="p-1 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        <GripVerticalIcon className="w-3 h-3 text-sidebar-foreground/40" />
+      </button>
+      
+      <button
+        onClick={onSelect}
+        className={`
+          flex-1 flex items-center gap-3 px-2 py-2 rounded-lg text-sm
+          transition-all duration-150
+          ${isActive
+            ? 'bg-sidebar-accent text-sidebar-foreground'
+            : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
+          }
+        `}
+      >
+        <span className="text-base">{folder.icon || '📁'}</span>
+        <span className="flex-1 text-left truncate">{folder.name}</span>
+      </button>
+      
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onEdit();
+        }}
+        className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-sidebar-accent transition-all"
+      >
+        <MoreHorizontalIcon className="w-4 h-4 text-sidebar-foreground/50" />
+      </button>
+    </div>
+  );
+}
+
 export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
   const folders = useFolderStore((state) => state.folders);
   const selectedFolderId = useFolderStore((state) => state.selectedFolderId);
   const selectFolder = useFolderStore((state) => state.selectFolder);
+  const reorderFolders = useFolderStore((state) => state.reorderFolders);
   const prompts = usePromptStore((state) => state.prompts);
   const [isResourcesOpen, setIsResourcesOpen] = useState(false);
+  const [isMac, setIsMac] = useState(false);
+  const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
+  const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const setFilterTag = usePromptStore((state) => state.setFilterTag);
+
+  // 拖拽传感器
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  useEffect(() => {
+    // 检测是否为 macOS 平台
+    const platform = navigator.userAgent.toLowerCase();
+    setIsMac(platform.includes('mac'));
+  }, []);
 
   const favoriteCount = prompts.filter((p) => p.isFavorite).length;
   const allTags = prompts.flatMap((p) => p.tags);
   const uniqueTags = [...new Set(allTags)];
 
+  // 处理文件夹拖拽结束
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      const oldIndex = folders.findIndex((f) => f.id === active.id);
+      const newIndex = folders.findIndex((f) => f.id === over.id);
+      
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newOrder = arrayMove(folders, oldIndex, newIndex);
+        reorderFolders(newOrder.map((f) => f.id));
+      }
+    }
+  };
+
   return (
     <aside className="w-56 bg-sidebar border-r border-sidebar-border flex flex-col">
-      {/* 顶部留白区域 - 给窗口控制按钮留空间 */}
-      <div className="h-10 titlebar-drag shrink-0" />
+      {/* 顶部留白区域 - 仅 macOS 需要给窗口控制按钮留空间 */}
+      {isMac && <div className="h-10 titlebar-drag shrink-0" />}
 
       {/* 导航区域 */}
       <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
@@ -85,27 +222,47 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
             <span className="text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
               文件夹
             </span>
-            <button className="p-1.5 rounded-lg hover:bg-sidebar-accent text-sidebar-foreground/50 hover:text-primary transition-colors">
+            <button 
+              onClick={() => {
+                setEditingFolder(null);
+                setIsFolderModalOpen(true);
+              }}
+              className="p-1.5 rounded-lg hover:bg-sidebar-accent text-sidebar-foreground/50 hover:text-primary transition-colors"
+            >
               <PlusIcon className="w-4 h-4" />
             </button>
           </div>
           
-          <div className="space-y-0.5">
-            {folders.map((folder) => (
-              <NavItem
-                key={folder.id}
-                icon={<span className="text-base">{folder.icon || '📁'}</span>}
-                label={folder.name}
-                active={selectedFolderId === folder.id}
-                onClick={() => selectFolder(folder.id)}
-              />
-            ))}
-            {folders.length === 0 && (
-              <p className="px-3 py-4 text-sm text-sidebar-foreground/50 text-center">
-                暂无文件夹
-              </p>
-            )}
-          </div>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={folders.map((f) => f.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="space-y-0.5">
+                {folders.map((folder) => (
+                  <SortableFolderItem
+                    key={folder.id}
+                    folder={folder}
+                    isActive={selectedFolderId === folder.id}
+                    onSelect={() => selectFolder(folder.id)}
+                    onEdit={() => {
+                      setEditingFolder(folder);
+                      setIsFolderModalOpen(true);
+                    }}
+                  />
+                ))}
+                {folders.length === 0 && (
+                  <p className="px-3 py-4 text-sm text-sidebar-foreground/50 text-center">
+                    暂无文件夹
+                  </p>
+                )}
+              </div>
+            </SortableContext>
+          </DndContext>
         </div>
 
         {/* 标签区域 */}
@@ -120,9 +277,16 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
               {uniqueTags.slice(0, 8).map((tag) => (
                 <button
                   key={tag}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium
-                    bg-sidebar-accent text-sidebar-foreground/70 hover:bg-primary hover:text-white
-                    transition-colors duration-200"
+                  onClick={() => {
+                    const newTag = selectedTag === tag ? null : tag;
+                    setSelectedTag(newTag);
+                    setFilterTag(newTag);
+                  }}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors duration-200 ${
+                    selectedTag === tag
+                      ? 'bg-primary text-white'
+                      : 'bg-sidebar-accent text-sidebar-foreground/70 hover:bg-primary hover:text-white'
+                  }`}
                 >
                   <HashIcon className="w-3 h-3" />
                   {tag}
@@ -159,6 +323,16 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
       <ResourcesModal
         isOpen={isResourcesOpen}
         onClose={() => setIsResourcesOpen(false)}
+      />
+
+      {/* 文件夹弹窗 */}
+      <FolderModal
+        isOpen={isFolderModalOpen}
+        onClose={() => {
+          setIsFolderModalOpen(false);
+          setEditingFolder(null);
+        }}
+        folder={editingFolder}
       />
     </aside>
   );

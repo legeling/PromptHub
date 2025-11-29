@@ -64,12 +64,10 @@ export function Header() {
         <button
           onClick={() => setIsCreateModalOpen(true)}
           className="
-            flex items-center gap-2 h-10 px-5 rounded-xl
-            bg-primary text-white text-sm font-semibold
-            shadow-sm shadow-primary/25
-            hover:shadow-md hover:shadow-primary/30 hover:scale-[1.02]
-            active:scale-[0.98]
-            transition-all duration-200
+            flex items-center gap-2 h-9 px-4 rounded-lg
+            bg-primary text-white text-sm font-medium
+            hover:bg-primary/90
+            transition-colors duration-150
           "
         >
           <PlusIcon className="w-4 h-4" />
@@ -80,11 +78,10 @@ export function Header() {
         <button
           onClick={() => setIsDark(!isDark)}
           className="
-            p-2.5 rounded-xl
+            p-2 rounded-lg
             text-muted-foreground hover:text-foreground
             hover:bg-accent
-            active:scale-95
-            transition-all duration-200
+            transition-colors duration-150
           "
         >
           {isDark ? <SunIcon className="w-5 h-5" /> : <MoonIcon className="w-5 h-5" />}
@@ -94,11 +91,10 @@ export function Header() {
         <button
           onClick={() => setIsSettingsOpen(true)}
           className="
-            p-2.5 rounded-xl
+            p-2 rounded-lg
             text-muted-foreground hover:text-foreground
             hover:bg-accent
-            active:scale-95
-            transition-all duration-200
+            transition-colors duration-150
           "
         >
           <SettingsIcon className="w-5 h-5" />

@@ -3,14 +3,16 @@ import {
   SettingsIcon,
   PaletteIcon,
   DatabaseIcon,
-  KeyboardIcon,
   InfoIcon,
   GlobeIcon,
   BellIcon,
-  ShieldIcon,
   ArrowLeftIcon,
   CheckIcon,
   FolderIcon,
+  CloudIcon,
+  SunIcon,
+  MoonIcon,
+  MonitorIcon,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { downloadBackup, restoreFromFile, clearDatabase } from '../../services/database';
@@ -26,10 +28,8 @@ const SETTINGS_MENU = [
   { id: 'general', label: '常规设置', icon: SettingsIcon },
   { id: 'appearance', label: '显示设置', icon: PaletteIcon },
   { id: 'data', label: '数据设置', icon: DatabaseIcon },
-  { id: 'shortcuts', label: '快捷键', icon: KeyboardIcon },
   { id: 'language', label: '语言', icon: GlobeIcon },
   { id: 'notifications', label: '通知', icon: BellIcon },
-  { id: 'privacy', label: '隐私', icon: ShieldIcon },
   { id: 'about', label: '关于', icon: InfoIcon },
 ];
 
@@ -134,34 +134,35 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
         );
 
       case 'appearance':
-        const themeModes: { id: ThemeMode; name: string }[] = [
-          { id: 'light', name: '浅色' },
-          { id: 'dark', name: '深色' },
-          { id: 'system', name: '跟随系统' },
+        const themeModes: { id: ThemeMode; name: string; icon: React.ReactNode }[] = [
+          { id: 'light', name: '浅色', icon: <SunIcon className="w-5 h-5" /> },
+          { id: 'dark', name: '深色', icon: <MoonIcon className="w-5 h-5" /> },
+          { id: 'system', name: '跟随系统', icon: <MonitorIcon className="w-5 h-5" /> },
         ];
         return (
           <div className="space-y-6">
             <SettingSection title="外观模式">
-              <div className="flex gap-2 p-3">
+              <div className="grid grid-cols-3 gap-3 p-4">
                 {themeModes.map((mode) => (
                   <button
                     key={mode.id}
                     onClick={() => settings.setThemeMode(mode.id)}
-                    className={`flex-1 py-3 px-4 rounded-xl text-sm font-medium transition-all ${
+                    className={`flex flex-col items-center gap-2 py-4 px-4 rounded-lg text-sm font-medium transition-colors ${
                       settings.themeMode === mode.id
-                        ? 'bg-primary text-primary-foreground shadow-sm'
-                        : 'bg-muted/60 text-foreground hover:bg-muted'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted/50 text-foreground hover:bg-muted'
                     }`}
                   >
-                    {mode.name}
+                    {mode.icon}
+                    <span>{mode.name}</span>
                   </button>
                 ))}
               </div>
             </SettingSection>
 
             <SettingSection title="主题色">
-              <div className="p-3">
-                <div className="grid grid-cols-6 gap-3">
+              <div className="p-4">
+                <div className="grid grid-cols-6 gap-4">
                   {MORANDI_THEMES.map((theme) => (
                     <button
                       key={theme.id}
@@ -170,15 +171,15 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                       title={theme.name}
                     >
                       <div 
-                        className={`w-12 h-12 rounded-xl transition-all shadow-sm ${
+                        className={`w-10 h-10 rounded-lg transition-all ${
                           settings.themeColor === theme.id 
-                            ? 'ring-2 ring-primary ring-offset-2 ring-offset-background scale-105' 
-                            : 'hover:scale-105'
+                            ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' 
+                            : 'hover:opacity-80'
                         }`}
-                        style={{ backgroundColor: `hsl(${theme.hue}, ${theme.saturation}%, 50%)` }}
+                        style={{ backgroundColor: `hsl(${theme.hue}, ${theme.saturation}%, 55%)` }}
                       >
                         {settings.themeColor === theme.id && (
-                          <CheckIcon className="w-5 h-5 text-white m-auto mt-3.5" />
+                          <CheckIcon className="w-4 h-4 text-white m-auto mt-3" />
                         )}
                       </div>
                       <span className="text-xs text-muted-foreground">{theme.name}</span>
@@ -189,15 +190,15 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
             </SettingSection>
 
             <SettingSection title="字体大小">
-              <div className="flex gap-2 p-3">
+              <div className="grid grid-cols-3 gap-3 p-4">
                 {FONT_SIZES.map((size) => (
                   <button
                     key={size.id}
                     onClick={() => settings.setFontSize(size.id)}
-                    className={`flex-1 py-3 px-4 rounded-xl text-sm font-medium transition-all ${
+                    className={`py-3 px-4 rounded-lg text-sm font-medium transition-colors ${
                       settings.fontSize === size.id
-                        ? 'bg-primary text-primary-foreground shadow-sm'
-                        : 'bg-muted/60 text-foreground hover:bg-muted'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted/50 text-foreground hover:bg-muted'
                     }`}
                   >
                     {size.name}
@@ -240,6 +241,72 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
               </div>
             </SettingSection>
 
+            <SettingSection title="WebDAV 同步">
+              <div className="p-4 space-y-4">
+                <div className="flex items-center gap-3">
+                  <CloudIcon className="w-5 h-5 text-muted-foreground" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">远程同步</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      通过 WebDAV 协议同步数据到远程服务器
+                    </p>
+                  </div>
+                  <ToggleSwitch 
+                    checked={settings.webdavEnabled}
+                    onChange={settings.setWebdavEnabled}
+                  />
+                </div>
+                {settings.webdavEnabled && (
+                  <div className="space-y-3 pt-2 border-t border-border">
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">服务器地址</label>
+                      <input
+                        type="text"
+                        placeholder="https://dav.example.com/path"
+                        value={settings.webdavUrl}
+                        onChange={(e) => settings.setWebdavUrl(e.target.value)}
+                        className="w-full h-9 px-3 rounded-lg bg-muted border-0 text-sm placeholder:text-muted-foreground/50"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">用户名</label>
+                      <input
+                        type="text"
+                        placeholder="用户名"
+                        value={settings.webdavUsername}
+                        onChange={(e) => settings.setWebdavUsername(e.target.value)}
+                        className="w-full h-9 px-3 rounded-lg bg-muted border-0 text-sm placeholder:text-muted-foreground/50"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">密码</label>
+                      <input
+                        type="password"
+                        placeholder="密码"
+                        value={settings.webdavPassword}
+                        onChange={(e) => settings.setWebdavPassword(e.target.value)}
+                        className="w-full h-9 px-3 rounded-lg bg-muted border-0 text-sm placeholder:text-muted-foreground/50"
+                      />
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                      <button
+                        onClick={() => showToast('连接测试功能开发中', 'info')}
+                        className="h-8 px-4 rounded-lg bg-muted text-sm hover:bg-muted/80 transition-colors"
+                      >
+                        测试连接
+                      </button>
+                      <button
+                        onClick={() => showToast('同步功能开发中', 'info')}
+                        className="h-8 px-4 rounded-lg bg-primary text-white text-sm hover:bg-primary/90 transition-colors"
+                      >
+                        立即同步
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </SettingSection>
+
             <SettingSection title="数据管理">
               <SettingItem
                 label="导出数据"
@@ -276,37 +343,20 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
               </SettingItem>
             </SettingSection>
 
+            <SettingSection title="隐私与安全">
+              <div className="px-4 py-3 text-sm text-muted-foreground space-y-2">
+                <p>• 所有数据都存储在本地，不会上传到任何服务器</p>
+                <p>• 你可以随时导出或删除所有数据</p>
+                <p>• 应用不会收集任何个人信息</p>
+              </div>
+            </SettingSection>
+
             <SettingSection title="数据库信息">
               <div className="p-4 text-sm text-muted-foreground space-y-1">
                 <p>• 存储类型: IndexedDB</p>
                 <p>• 数据库名称: PromptHubDB</p>
                 <p>• 支持自动备份和恢复</p>
               </div>
-            </SettingSection>
-          </div>
-        );
-
-      case 'shortcuts':
-        return (
-          <div className="space-y-6">
-            <SettingSection title="全局快捷键">
-              <ShortcutItem label="新建 Prompt" shortcut="⌘ N" />
-              <ShortcutItem label="搜索" shortcut="⌘ K" />
-              <ShortcutItem label="设置" shortcut="⌘ ," />
-              <ShortcutItem label="切换主题" shortcut="⌘ ⇧ T" />
-            </SettingSection>
-            <SettingSection title="编辑器快捷键">
-              <ShortcutItem label="保存" shortcut="⌘ S" />
-              <ShortcutItem label="复制 Prompt" shortcut="⌘ ⇧ C" />
-              <ShortcutItem label="预览" shortcut="⌘ P" />
-              <ShortcutItem label="撤销" shortcut="⌘ Z" />
-              <ShortcutItem label="重做" shortcut="⌘ ⇧ Z" />
-            </SettingSection>
-            <SettingSection title="导航快捷键">
-              <ShortcutItem label="上一个 Prompt" shortcut="↑" />
-              <ShortcutItem label="下一个 Prompt" shortcut="↓" />
-              <ShortcutItem label="收藏/取消收藏" shortcut="⌘ D" />
-              <ShortcutItem label="删除" shortcut="⌘ ⌫" />
             </SettingSection>
           </div>
         );
@@ -322,15 +372,24 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 <select 
                   className="h-9 px-3 rounded-lg bg-muted border-0 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                   value={settings.language}
-                  onChange={(e) => settings.setLanguage(e.target.value as 'zh' | 'en')}
+                  onChange={(e) => {
+                    settings.setLanguage(e.target.value as 'zh' | 'en');
+                    showToast('语言已更改，刷新页面后生效', 'info');
+                  }}
                 >
                   <option value="zh">简体中文</option>
                   <option value="en">English</option>
                 </select>
               </SettingItem>
             </SettingSection>
-            <div className="p-4 rounded-lg bg-muted/50 text-sm text-muted-foreground">
-              更改语言后需要重启应用才能生效。
+            <div className="p-4 rounded-lg bg-muted/50 text-sm text-muted-foreground flex items-center justify-between">
+              <span>更改语言后需要刷新页面才能生效。</span>
+              <button
+                onClick={() => window.location.reload()}
+                className="h-8 px-3 rounded-lg bg-primary text-white text-sm hover:bg-primary/90 transition-colors"
+              >
+                立即刷新
+              </button>
             </div>
           </div>
         );
@@ -370,73 +429,68 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
           </div>
         );
 
-      case 'privacy':
-        return (
-          <div className="space-y-6">
-            <SettingSection title="隐私设置">
-              <SettingItem
-                label="发送匿名使用数据"
-                description="帮助我们改进产品（不包含任何个人信息）"
-              >
-                <ToggleSwitch 
-                  checked={settings.sendAnalytics}
-                  onChange={settings.setSendAnalytics}
-                />
-              </SettingItem>
-              <SettingItem
-                label="崩溃报告"
-                description="自动发送崩溃报告以帮助修复问题"
-              >
-                <ToggleSwitch 
-                  checked={settings.sendCrashReports}
-                  onChange={settings.setSendCrashReports}
-                />
-              </SettingItem>
-            </SettingSection>
-            <SettingSection title="数据安全">
-              <div className="px-4 py-3 text-sm text-muted-foreground space-y-2">
-                <p>• 所有数据都存储在本地，不会上传到任何服务器</p>
-                <p>• 你可以随时导出或删除所有数据</p>
-                <p>• 我们不会收集你的 Prompt 内容</p>
-              </div>
-            </SettingSection>
-          </div>
-        );
-
       case 'about':
         return (
           <div className="space-y-6">
-            <div className="text-center py-8">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-primary flex items-center justify-center">
-                <span className="text-white text-2xl font-bold">P</span>
+            {/* 应用信息卡片 */}
+            <div className="text-center py-6">
+              <div className="w-14 h-14 mx-auto mb-3 rounded-xl bg-primary flex items-center justify-center">
+                <span className="text-white text-xl font-bold">P</span>
               </div>
-              <h2 className="text-xl font-semibold">PromptHub</h2>
-              <p className="text-muted-foreground mt-1">版本 0.1.0</p>
+              <h2 className="text-lg font-semibold">PromptHub</h2>
+              <p className="text-sm text-muted-foreground mt-1">版本 0.1.1</p>
             </div>
-            <SettingSection title="关于">
-              <div className="space-y-2 text-sm text-muted-foreground px-4 py-3">
-                <p>PromptHub 是一个本地优先的 Prompt 管理工具，帮助你高效管理和组织 AI 提示词。</p>
+
+            <SettingSection title="简介">
+              <div className="px-4 py-3 text-sm text-muted-foreground">
+                PromptHub 是一个本地优先的 Prompt 管理工具，帮助你高效管理和组织 AI 提示词。支持变量模板、版本管理、标签分类等功能。
               </div>
             </SettingSection>
+
+            <SettingSection title="更新">
+              <SettingItem label="自动检查更新" description="启动时自动检查新版本">
+                <ToggleSwitch 
+                  checked={settings.autoCheckUpdate}
+                  onChange={settings.setAutoCheckUpdate}
+                />
+              </SettingItem>
+              <SettingItem label="检查更新" description="当前版本: 0.1.1">
+                <button
+                  onClick={() => {
+                    window.open('https://github.com/legeling/PromptHub/releases', '_blank');
+                    showToast('已打开 GitHub Releases 页面', 'info');
+                  }}
+                  className="h-8 px-4 rounded-lg bg-primary text-white text-sm hover:bg-primary/90 transition-colors"
+                >
+                  检查
+                </button>
+              </SettingItem>
+            </SettingSection>
+
             <SettingSection title="链接">
               <SettingItem label="GitHub 仓库" description="查看源代码和提交问题">
                 <a 
                   href="https://github.com/legeling/PromptHub" 
                   target="_blank"
+                  rel="noopener noreferrer"
                   className="text-primary text-sm hover:underline"
                 >
                   打开
                 </a>
               </SettingItem>
-              <SettingItem label="检查更新" description="当前已是最新版本">
-                <button className="h-8 px-3 rounded-lg bg-muted text-sm hover:bg-muted/80 transition-colors">
-                  检查
-                </button>
-              </SettingItem>
             </SettingSection>
+
+            <SettingSection title="技术栈">
+              <div className="px-4 py-3 text-sm text-muted-foreground space-y-1">
+                <p>• Electron + React + TypeScript</p>
+                <p>• TailwindCSS + Zustand</p>
+                <p>• IndexedDB 本地存储</p>
+              </div>
+            </SettingSection>
+
             <SettingSection title="开源协议">
               <div className="px-4 py-3 text-sm text-muted-foreground">
-                MIT License © 2024 PromptHub
+                MIT License © 2025 PromptHub
               </div>
             </SettingSection>
           </div>
@@ -478,9 +532,9 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
         </nav>
       </div>
 
-      {/* 设置内容区 */}
+      {/* 设置内容区 - 自适应宽度 */}
       <div className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-2xl">
+        <div className="max-w-4xl mx-auto">
           <h1 className="text-xl font-semibold mb-6">
             {SETTINGS_MENU.find((m) => m.id === activeSection)?.label}
           </h1>
@@ -491,12 +545,12 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
   );
 }
 
-// 设置区块组件
+// 设置区块组件 - 扁平化设计
 function SettingSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <h3 className="text-sm font-medium text-muted-foreground mb-3">{title}</h3>
-      <div className="space-y-1 bg-card rounded-xl border border-border overflow-hidden">
+      <h3 className="text-sm font-medium text-muted-foreground mb-2">{title}</h3>
+      <div className="bg-card rounded-lg border border-border overflow-hidden">
         {children}
       </div>
     </div>
@@ -550,11 +604,11 @@ function ToggleSwitch({ checked, onChange, defaultChecked = false }: ToggleSwitc
     <button
       onClick={handleClick}
       className={`relative w-11 h-6 rounded-full transition-colors ${
-        isChecked ? 'bg-primary' : 'bg-muted'
+        isChecked ? 'bg-primary' : 'bg-muted-foreground/30'
       }`}
     >
       <span
-        className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+        className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-md transition-transform ${
           isChecked ? 'left-6' : 'left-1'
         }`}
       />
@@ -562,12 +616,3 @@ function ToggleSwitch({ checked, onChange, defaultChecked = false }: ToggleSwitc
   );
 }
 
-// 快捷键项组件
-function ShortcutItem({ label, shortcut }: { label: string; shortcut: string }) {
-  return (
-    <div className="flex items-center justify-between px-4 py-3 border-b border-border last:border-0">
-      <span className="text-sm">{label}</span>
-      <kbd className="px-2 py-1 rounded bg-muted text-xs font-mono">{shortcut}</kbd>
-    </div>
-  );
-}

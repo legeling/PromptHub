@@ -1,10 +1,88 @@
 import { useState } from 'react';
 import { usePromptStore } from '../../stores/prompt.store';
 import { useFolderStore } from '../../stores/folder.store';
-import { StarIcon, CopyIcon, HistoryIcon, HashIcon, ClockIcon, SparklesIcon, EditIcon, TrashIcon, CheckIcon } from 'lucide-react';
+import { StarIcon, CopyIcon, HistoryIcon, HashIcon, ClockIcon, SparklesIcon, EditIcon, TrashIcon, CheckIcon, GripVerticalIcon } from 'lucide-react';
 import { EditPromptModal, VersionHistoryModal } from '../prompt';
 import { useToast } from '../ui/Toast';
-import type { PromptVersion } from '../../../shared/types';
+import type { Prompt, PromptVersion } from '../../../shared/types';
+import { useDraggable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
+
+// 可拖拽的 Prompt 卡片
+function DraggablePromptCard({ 
+  prompt, 
+  isSelected, 
+  onSelect 
+}: { 
+  prompt: Prompt; 
+  isSelected: boolean; 
+  onSelect: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `prompt-${prompt.id}`,
+    data: { type: 'prompt', prompt },
+  });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="group relative"
+    >
+      <button
+        onClick={onSelect}
+        className={`
+          w-full text-left p-4 rounded-xl
+          transition-colors duration-150
+          ${isSelected
+            ? 'bg-primary text-white'
+            : 'bg-card hover:bg-accent'
+          }
+        `}
+      >
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <h3 className="font-semibold truncate">{prompt.title}</h3>
+          <div className="flex items-center gap-1">
+            {prompt.isFavorite && (
+              <StarIcon className={`w-4 h-4 flex-shrink-0 ${
+                isSelected ? 'fill-white text-white' : 'fill-yellow-400 text-yellow-400'
+              }`} />
+            )}
+          </div>
+        </div>
+        {prompt.description && (
+          <p className={`text-sm truncate mb-2 ${
+            isSelected ? 'text-white/80' : 'text-muted-foreground'
+          }`}>
+            {prompt.description}
+          </p>
+        )}
+        <div className={`flex items-center gap-3 text-xs ${
+          isSelected ? 'text-white/60' : 'text-muted-foreground'
+        }`}>
+          <span className="flex items-center gap-1">
+            <ClockIcon className="w-3 h-3" />
+            {new Date(prompt.updatedAt).toLocaleDateString()}
+          </span>
+          <span>v{prompt.version}</span>
+        </div>
+      </button>
+      {/* 拖拽手柄 */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="absolute left-1 top-1/2 -translate-y-1/2 p-1 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        <GripVerticalIcon className={`w-4 h-4 ${isSelected ? 'text-white/50' : 'text-muted-foreground/50'}`} />
+      </div>
+    </div>
+  );
+}
 
 export function MainContent() {
   const prompts = usePromptStore((state) => state.prompts);
@@ -14,6 +92,7 @@ export function MainContent() {
   const deletePrompt = usePromptStore((state) => state.deletePrompt);
   const updatePrompt = usePromptStore((state) => state.updatePrompt);
   const searchQuery = usePromptStore((state) => state.searchQuery);
+  const filterTag = usePromptStore((state) => state.filterTag);
   const selectedFolderId = useFolderStore((state) => state.selectedFolderId);
   
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -50,6 +129,11 @@ export function MainContent() {
     );
   }
 
+  // 标签筛选
+  if (filterTag) {
+    filteredPrompts = filteredPrompts.filter((p) => p.tags.includes(filterTag));
+  }
+
   const selectedPrompt = prompts.find((p) => p.id === selectedId);
 
   return (
@@ -67,43 +151,12 @@ export function MainContent() {
         ) : (
           <div className="p-3 space-y-2">
             {filteredPrompts.map((prompt) => (
-              <button
+              <DraggablePromptCard
                 key={prompt.id}
-                onClick={() => selectPrompt(prompt.id)}
-                className={`
-                  w-full text-left p-4 rounded-2xl
-                  transition-all duration-200 ease-out
-                  ${selectedId === prompt.id
-                    ? 'bg-primary text-white shadow-lg shadow-primary/25 scale-[1.02]'
-                    : 'bg-card hover:bg-accent hover:shadow-md active:scale-[0.98]'
-                  }
-                `}
-              >
-                <div className="flex items-start justify-between gap-2 mb-1">
-                  <h3 className="font-semibold truncate">{prompt.title}</h3>
-                  {prompt.isFavorite && (
-                    <StarIcon className={`w-4 h-4 flex-shrink-0 ${
-                      selectedId === prompt.id ? 'fill-white text-white' : 'fill-yellow-400 text-yellow-400'
-                    }`} />
-                  )}
-                </div>
-                {prompt.description && (
-                  <p className={`text-sm truncate mb-2 ${
-                    selectedId === prompt.id ? 'text-white/80' : 'text-muted-foreground'
-                  }`}>
-                    {prompt.description}
-                  </p>
-                )}
-                <div className={`flex items-center gap-3 text-xs ${
-                  selectedId === prompt.id ? 'text-white/60' : 'text-muted-foreground'
-                }`}>
-                  <span className="flex items-center gap-1">
-                    <ClockIcon className="w-3 h-3" />
-                    {new Date(prompt.updatedAt).toLocaleDateString()}
-                  </span>
-                  <span>v{prompt.version}</span>
-                </div>
-              </button>
+                prompt={prompt}
+                isSelected={selectedId === prompt.id}
+                onSelect={() => selectPrompt(prompt.id)}
+              />
             ))}
           </div>
         )}
@@ -198,12 +251,10 @@ export function MainContent() {
                   setTimeout(() => setCopied(false), 2000);
                 }}
                 className="
-                  flex items-center gap-2 h-11 px-6 rounded-xl
-                  bg-primary text-white text-sm font-semibold
-                  shadow-sm shadow-primary/25
-                  hover:shadow-md hover:shadow-primary/30 hover:scale-[1.02]
-                  active:scale-[0.98]
-                  transition-all duration-200
+                  flex items-center gap-2 h-10 px-5 rounded-lg
+                  bg-primary text-white text-sm font-medium
+                  hover:bg-primary/90
+                  transition-colors duration-150
                 "
               >
                 {copied ? <CheckIcon className="w-4 h-4" /> : <CopyIcon className="w-4 h-4" />}
@@ -212,11 +263,10 @@ export function MainContent() {
               <button 
                 onClick={() => setIsVersionModalOpen(true)}
                 className="
-                  flex items-center gap-2 h-11 px-6 rounded-xl
+                  flex items-center gap-2 h-10 px-5 rounded-lg
                   bg-card border border-border text-sm font-medium
-                  hover:bg-accent hover:scale-[1.02]
-                  active:scale-[0.98]
-                  transition-all duration-200
+                  hover:bg-accent
+                  transition-colors duration-150
                 "
               >
                 <HistoryIcon className="w-4 h-4" />
@@ -230,11 +280,10 @@ export function MainContent() {
                   }
                 }}
                 className="
-                  flex items-center gap-2 h-11 px-6 rounded-xl
+                  flex items-center gap-2 h-10 px-5 rounded-lg
                   bg-card border border-destructive/30 text-destructive text-sm font-medium
-                  hover:bg-destructive/10 hover:scale-[1.02]
-                  active:scale-[0.98]
-                  transition-all duration-200
+                  hover:bg-destructive/10
+                  transition-colors duration-150
                 "
               >
                 <TrashIcon className="w-4 h-4" />
