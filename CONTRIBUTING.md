@@ -138,9 +138,9 @@ packages/
 
 ## 💬 交流
 
-- [GitHub Issues](https://github.com/xxx/PromptHub/issues) - Bug 反馈
-- [GitHub Discussions](https://github.com/xxx/PromptHub/discussions) - 功能讨论
+- [GitHub Issues](https://github.com/legeling/PromptHub/issues) - Bug 反馈
+- [GitHub Discussions](https://github.com/legeling/PromptHub/discussions) - 功能讨论
 
 ## 📄 许可证
 
-贡献的代码将采用 [MIT License](./LICENSE)。
+贡献的代码将采用 [AGPL-3.0 License](./LICENSE)。
