@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal } from '../ui';
-import { ClockIcon, RotateCcwIcon, GitCompareIcon, PlusIcon, MinusIcon } from 'lucide-react';
+import { ClockIcon, RotateCcwIcon, GitCompareIcon, PlusIcon, MinusIcon, SparklesIcon } from 'lucide-react';
 import { getPromptVersions } from '../../services/database';
 import type { Prompt, PromptVersion } from '../../../shared/types';
 
@@ -196,6 +196,7 @@ export function VersionHistoryModal({ isOpen, onClose, prompt, onRestore }: Vers
         userPrompt: prompt.userPrompt,
         variables: prompt.variables || [],
         note: '当前版本',
+        aiResponse: prompt.lastAiResponse, // 使用当前版本的 AI 响应
         createdAt: prompt.updatedAt,
       };
       
@@ -325,6 +326,18 @@ export function VersionHistoryModal({ isOpen, onClose, prompt, onRestore }: Vers
                     </div>
                     <div className="p-3 rounded-lg bg-muted/50 text-sm">
                       {selectedVersion.note}
+                    </div>
+                  </div>
+                )}
+                {/* AI 响应 */}
+                {selectedVersion.aiResponse && (
+                  <div>
+                    <div className="text-xs font-medium text-muted-foreground uppercase mb-2 flex items-center gap-1.5">
+                      <SparklesIcon className="w-3.5 h-3.5 text-primary" />
+                      {t('prompt.aiResponse')}
+                    </div>
+                    <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 text-sm whitespace-pre-wrap max-h-48 overflow-y-auto">
+                      {selectedVersion.aiResponse}
                     </div>
                   </div>
                 )}

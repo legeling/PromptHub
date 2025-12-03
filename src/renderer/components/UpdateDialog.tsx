@@ -49,13 +49,11 @@ export function UpdateDialog({ isOpen, onClose }: UpdateDialogProps) {
     };
   }, []);
 
-  // 当对话框打开时，重置状态以允许重新检查
+  // 当对话框打开时，如果没有缓存状态才自动检查
   useEffect(() => {
-    if (isOpen) {
-      // 只有在非下载中状态时才重置
-      if (updateStatus?.status !== 'downloading' && updateStatus?.status !== 'downloaded') {
-        setUpdateStatus(null);
-      }
+    if (isOpen && updateStatus === null) {
+      // 首次打开时自动检查更新
+      handleCheckUpdate();
     }
   }, [isOpen]);
 

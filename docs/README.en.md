@@ -7,7 +7,7 @@
   <p>
     <a href="https://github.com/legeling/PromptHub/stargazers"><img src="https://img.shields.io/github/stars/legeling/PromptHub?style=flat-square&color=yellow" alt="GitHub Stars"/></a>
     <a href="https://github.com/legeling/PromptHub/network/members"><img src="https://img.shields.io/github/forks/legeling/PromptHub?style=flat-square" alt="GitHub Forks"/></a>
-    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.1.9-green?style=flat-square" alt="Version"/></a>
+    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.2.0-green?style=flat-square" alt="Version"/></a>
     <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/github/downloads/legeling/PromptHub/total?style=flat-square&color=blue" alt="Downloads"/></a>
     <img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="License: AGPL-3.0"/>
   </p>
@@ -45,6 +45,9 @@
 - **🎨 Theme Customization** - Dark/Light/System modes with multiple accent colors
 - **🌐 Multi-Language** - Chinese and English interface support
 - **💾 Local Storage** - All data stored locally for privacy
+- **🖥️ Cross-Platform** - Support for macOS, Windows, Linux
+- **📊 List View** - Table-style display with sorting and batch operations
+- **🤖 AI Testing** - Built-in multi-model testing with 18+ providers
 
 ## 📸 Screenshots
 
@@ -63,6 +66,9 @@
   <br/><br/>
   <p><strong>Version Comparison</strong></p>
   <img src="./imgs/version-compare.png" width="80%" alt="Version Comparison"/>
+  <br/><br/>
+  <p><strong>List View Mode</strong></p>
+  <img src="./imgs/view.png" width="80%" alt="List View Mode"/>
 </div>
 
 ## 📦 Installation
@@ -182,7 +188,7 @@ PromptHub/
 
 ## 🗺️ Roadmap
 
-### v0.1.8 (Current)
+### v0.2.0 (Current)
 - [x] Prompt CRUD management
 - [x] Folder and tag system
 - [x] Favorites feature
@@ -202,15 +208,41 @@ PromptHub/
 - [x] Minimize to system tray
 - [x] Linux platform support
 - [x] Editor line numbers
+- [x] **List view mode** (table-style display of all prompts)
+- [x] **AI test result persistence** (save last test result for each prompt)
+- [x] **Sorting functionality** (by time, title, usage count)
 
 ### Future Plans
 - [ ] Web version (Docker/Cloudflare deployment)
-- [ ] Multiple view modes (list/card/table)
-- [ ] Advanced filtering & sorting
 - [ ] Prompt template marketplace
 - [ ] Browser extension
 
 ## 📝 Changelog
+
+### v0.2.0 (2025-12-03)
+**New Features**
+- ✨ List view mode: table-style display of all prompts with horizontal scrolling and pagination
+- ✨ Batch operations: multi-select with batch favorite, move to folder, delete
+- ✨ AI test result persistence: save last test result for each prompt
+- ✨ Sorting functionality: sort by time, title, usage count
+- ✨ View switching: toggle between card view and list view
+- ✨ Detail modal shows AI response
+
+**Improvements**
+- 🎨 New list view UI (rounded design, beautiful checkboxes, hover tooltips)
+- 🎨 Separated loading states for single/multi-model testing
+- 🎨 AI test modal supports variable filling
+
+### v0.1.9 (2025-12-01)
+**New Features**
+- ✨ Local SVG/PNG icons for model categories with real provider logos
+- ✨ Localized and wider prompt version history modal for better diff reading
+
+**Improvements**
+- 🔧 Fixed Linux packaging failure by adding missing author.email
+- 🔧 Full incremental auto-update support for macOS and Windows (dmg/zip/exe + blockmap)
+- 🔧 Update dialog now shows plain-text release notes and wraps long error messages
+- 🔧 Fixed update dialog always re-checking on every open (status is cached)
 
 ### v0.1.8 (2025-12-01)
 **New Features**
@@ -329,5 +361,10 @@ This project is licensed under the [AGPL-3.0 License](./LICENSE).
 
 <div align="center">
   <p><strong>If you find this project helpful, please give it a ⭐!</strong></p>
+  
+  <a href="https://www.buymeacoffee.com/legeling" target="_blank">
+    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50" />
+  </a>
+  
   <p>Made with ❤️ by <a href="https://github.com/legeling">legeling</a></p>
 </div>

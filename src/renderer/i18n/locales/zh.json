@@ -90,7 +90,32 @@
     "noVariables": "此 Prompt 没有变量",
     "defaultValue": "默认值",
     "fromHistory": "历史记录",
-    "systemVariables": "系统变量"
+    "systemVariables": "系统变量",
+    "sortBy": "排序",
+    "sortNewest": "最新优先",
+    "sortOldest": "最早优先",
+    "sortTitleAsc": "标题 A-Z",
+    "sortTitleDesc": "标题 Z-A",
+    "sortMostUsed": "使用最多",
+    "sortLeastUsed": "使用最少",
+    "viewCard": "卡片视图",
+    "viewList": "列表视图",
+    "usageCount": "使用次数",
+    "createdAt": "创建时间",
+    "promptCount": "共 {{count}} 个",
+    "actions": "操作",
+    "pageSize": "每页",
+    "movedToFolder": "已移动到文件夹",
+    "dataPathChanged": "数据路径已更改",
+    "batchFavorited": "已批量收藏",
+    "batchMoved": "已批量移动",
+    "batchDeleted": "已批量删除",
+    "enterValue": "输入值",
+    "selected": "已选择 {{count}} 项",
+    "batchFavorite": "批量收藏",
+    "batchMove": "批量移动",
+    "batchDelete": "批量删除",
+    "confirmBatchDelete": "确定要删除这 {{count}} 个 Prompt 吗？"
   },
   "folder": {
     "new": "新建文件夹",
@@ -285,7 +310,9 @@
     "success": "成功",
     "optional": "可选",
     "back": "返回",
-    "done": "完成"
+    "done": "完成",
+    "yesterday": "昨天",
+    "daysAgo": "天前"
   },
   "toast": {
     "exportSuccess": "数据导出成功",
@@ -308,6 +335,9 @@
     "configAI": "请先在设置中配置 AI 模型",
     "aiFailed": "AI 调用失败",
     "movedToFolder": "已移动到文件夹",
-    "dataPathChanged": "数据目录已更改"
+    "dataPathChanged": "数据目录已更改",
+    "batchFavorited": "已批量收藏",
+    "batchMoved": "已批量移动",
+    "batchDeleted": "已批量删除"
   }
 }

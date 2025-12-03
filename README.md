@@ -7,7 +7,7 @@
   <p>
     <a href="https://github.com/legeling/PromptHub/stargazers"><img src="https://img.shields.io/github/stars/legeling/PromptHub?style=flat-square&color=yellow" alt="GitHub Stars"/></a>
     <a href="https://github.com/legeling/PromptHub/network/members"><img src="https://img.shields.io/github/forks/legeling/PromptHub?style=flat-square" alt="GitHub Forks"/></a>
-    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.1.9-green?style=flat-square" alt="Version"/></a>
+    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.2.0-green?style=flat-square" alt="Version"/></a>
     <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/github/downloads/legeling/PromptHub/total?style=flat-square&color=blue" alt="Downloads"/></a>
     <img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="License: AGPL-3.0"/>
   </p>
@@ -46,6 +46,8 @@
 - **🌐 多语言** - 支持中文和英文界面
 - **💾 本地存储** - 所有数据存储在本地，隐私安全有保障
 - **🖥️ 跨平台** - 支持 macOS、Windows、Linux
+- **📊 列表视图** - 表格式展示 Prompt，支持排序和批量操作
+- **🤖 AI 测试** - 内置多模型测试，支持 18+ 服务商
 
 ## 📸 截图
 
@@ -64,6 +66,9 @@
   <br/><br/>
   <p><strong>版本对比</strong></p>
   <img src="./docs/imgs/version-compare.png" width="80%" alt="版本对比"/>
+  <br/><br/>
+  <p><strong>列表视图模式</strong></p>
+  <img src="./docs/imgs/view.png" width="80%" alt="列表视图模式"/>
 </div>
 
 ## 📦 安装
@@ -198,7 +203,7 @@ PromptHub/
 
 ## 🗺️ 路线图
 
-### v0.1.8 (当前)
+### v0.2.0 (当前)
 - [x] Prompt CRUD 管理
 - [x] 文件夹和标签系统
 - [x] 收藏功能
@@ -220,15 +225,41 @@ PromptHub/
 - [x] 最小化到系统托盘
 - [x] Linux 平台支持
 - [x] 编辑器行号显示
+- [x] 列表视图模式（表格式展示所有 Prompt）
+- [x] AI 测试结果持久化（每个 Prompt 保留最后一次测试结果）
+- [x] 排序功能（按时间、标题、使用次数排序）
 
 ### 未来规划
 - [ ] Web 版本（Docker/Cloudflare 部署）
-- [ ] 多视图展示（列表/卡片/表格）
-- [ ] 高级筛选与排序
 - [ ] Prompt 模板市场
 - [ ] 浏览器插件
 
 ## 📝 更新日志
+
+### v0.2.0 (2025-12-03)
+**新功能**
+- ✨ 列表视图模式：表格式展示所有 Prompt，支持横向滚动和分页
+- ✨ 批量操作：支持多选后批量收藏、移动到文件夹、删除
+- ✨ AI 测试结果持久化：每个 Prompt 保留最后一次测试结果
+- ✨ 排序功能：支持按时间、标题、使用次数排序
+- ✨ 视图切换：卡片视图/列表视图一键切换
+- ✨ 详情弹窗显示 AI 响应
+
+**优化**
+- 🎨 全新列表视图 UI（圆角设计、美观的多选框、悬浮提示）
+- 🎨 分离单模型/多模型测试的 loading 状态
+- 🎨 AI 测试弹窗支持变量填充
+
+### v0.1.9 (2025-12-01)
+**新功能**
+- ✨ AI 模型分类图标使用本地 SVG/PNG 资源，展示真实提供商 Logo
+- ✨ Prompt 版本历史弹窗国际化 & 加宽展示，阅读体验更好
+
+**优化**
+- 🔧 修复 Linux 打包缺少 author.email 导致构建失败
+- 🔧 完整支持 macOS / Windows 自动更新增量包（dmg/zip/exe + blockmap）
+- 🔧 更新弹窗支持纯文本 Release Notes、错误信息自动换行
+- 🔧 修复检查更新弹窗每次打开都会重新请求的问题
 
 ### v0.1.8 (2025-12-01)
 **新功能**
@@ -375,5 +406,10 @@ PromptHub/
 
 <div align="center">
   <p><strong>如果这个项目对你有帮助，请给个 ⭐ 支持一下！</strong></p>
+  
+  <a href="https://www.buymeacoffee.com/legeling" target="_blank">
+    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50" />
+  </a>
+  
   <p>Made with ❤️ by <a href="https://github.com/legeling">legeling</a></p>
 </div>

@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { usePromptStore } from '../../stores/prompt.store';
 import { useFolderStore } from '../../stores/folder.store';
 import { useSettingsStore } from '../../stores/settings.store';
 import { StarIcon, CopyIcon, HistoryIcon, HashIcon, SparklesIcon, EditIcon, TrashIcon, CheckIcon, PlayIcon, LoaderIcon, XIcon, GitCompareIcon, ClockIcon } from 'lucide-react';
-import { EditPromptModal, VersionHistoryModal, VariableInputModal } from '../prompt';
+import { EditPromptModal, VersionHistoryModal, VariableInputModal, PromptListHeader, PromptListView, PromptTableView, AiTestModal, PromptDetailModal } from '../prompt';
 import { useToast } from '../ui/Toast';
 import { chatCompletion, buildMessagesFromPrompt, multiModelCompare, AITestResult } from '../../services/ai';
 import { useTranslation } from 'react-i18next';
@@ -60,6 +60,10 @@ export function MainContent() {
   const updatePrompt = usePromptStore((state) => state.updatePrompt);
   const searchQuery = usePromptStore((state) => state.searchQuery);
   const filterTags = usePromptStore((state) => state.filterTags);
+  const sortBy = usePromptStore((state) => state.sortBy);
+  const sortOrder = usePromptStore((state) => state.sortOrder);
+  const viewMode = usePromptStore((state) => state.viewMode);
+  const incrementUsageCount = usePromptStore((state) => state.incrementUsageCount);
   const selectedFolderId = useFolderStore((state) => state.selectedFolderId);
   
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -154,11 +158,18 @@ export function MainContent() {
   };
 
   // AI 测试函数（支持变量替换后的 prompt）
-  const runAiTest = async (systemPrompt: string | undefined, userPrompt: string) => {
+  const runAiTest = async (systemPrompt: string | undefined, userPrompt: string, promptId?: string) => {
     setShowAiPanel(true);
     setIsTestingAI(true);
     setAiResponse(null);
     setIsAiTestVariableModalOpen(false);
+    
+    // 增加使用次数
+    const targetId = promptId || selectedId;
+    if (targetId) {
+      await incrementUsageCount(targetId);
+    }
+    
     try {
       const messages = buildMessagesFromPrompt(systemPrompt, userPrompt);
       const response = await chatCompletion(
@@ -201,58 +212,278 @@ export function MainContent() {
     }
   };
 
-  // 过滤 Prompts
-  let filteredPrompts = prompts;
+  // 过滤 Prompts - 使用 useMemo 确保正确响应 searchQuery 变化
+  const filteredPrompts = useMemo(() => {
+    let result = prompts;
 
-  if (selectedFolderId === 'favorites') {
-    filteredPrompts = filteredPrompts.filter((p) => p.isFavorite);
-  } else if (selectedFolderId) {
-    filteredPrompts = filteredPrompts.filter((p) => p.folderId === selectedFolderId);
-  }
+    if (selectedFolderId === 'favorites') {
+      result = result.filter((p) => p.isFavorite);
+    } else if (selectedFolderId) {
+      result = result.filter((p) => p.folderId === selectedFolderId);
+    }
 
-  if (searchQuery) {
-    const query = searchQuery.toLowerCase();
-    filteredPrompts = filteredPrompts.filter(
-      (p) =>
-        p.title.toLowerCase().includes(query) ||
-        p.description?.toLowerCase().includes(query) ||
-        p.userPrompt.toLowerCase().includes(query)
-    );
-  }
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(
+        (p) =>
+          p.title.toLowerCase().includes(query) ||
+          p.description?.toLowerCase().includes(query) ||
+          p.userPrompt.toLowerCase().includes(query)
+      );
+    }
 
-  // 标签筛选（多选：必须包含所有选中的标签）
-  if (filterTags.length > 0) {
-    filteredPrompts = filteredPrompts.filter((p) => 
-      filterTags.every(tag => p.tags.includes(tag))
-    );
-  }
+    // 标签筛选（多选：必须包含所有选中的标签）
+    if (filterTags.length > 0) {
+      result = result.filter((p) => 
+        filterTags.every(tag => p.tags.includes(tag))
+      );
+    }
+
+    return result;
+  }, [prompts, selectedFolderId, searchQuery, filterTags]);
+
+  // 排序
+  const sortedPrompts = useMemo(() => {
+    const sorted = [...filteredPrompts];
+    sorted.sort((a, b) => {
+      let comparison = 0;
+      switch (sortBy) {
+        case 'updatedAt':
+          comparison = new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
+          break;
+        case 'createdAt':
+          comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          break;
+        case 'title':
+          comparison = a.title.localeCompare(b.title);
+          break;
+        case 'usageCount':
+          comparison = (a.usageCount || 0) - (b.usageCount || 0);
+          break;
+        default:
+          comparison = 0;
+      }
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+    return sorted;
+  }, [filteredPrompts, sortBy, sortOrder]);
 
   const selectedPrompt = prompts.find((p) => p.id === selectedId);
 
+  // 用于表格视图的编辑 prompt
+  const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null);
+  // AI 测试弹窗状态
+  const [isAiTestModalOpen, setIsAiTestModalOpen] = useState(false);
+  const [aiTestPrompt, setAiTestPrompt] = useState<Prompt | null>(null);
+  // AI 响应缓存（用于列表视图预览）
+  const [aiResponseCache, setAiResponseCache] = useState<Record<string, string>>({});
+  const setViewMode = usePromptStore((state) => state.setViewMode);
+
+  // 处理复制 Prompt
+  const handleCopyPrompt = async (prompt: Prompt) => {
+    const text = prompt.userPrompt;
+    await navigator.clipboard.writeText(text);
+    await incrementUsageCount(prompt.id);
+    showToast(t('toast.copied'), 'success', showCopyNotification);
+  };
+
+  // 处理删除 Prompt（表格视图用）
+  const handleDeletePrompt = async (prompt: Prompt) => {
+    if (confirm(t('prompt.confirmDeletePrompt'))) {
+      await deletePrompt(prompt.id);
+      showToast(t('prompt.promptDeleted'), 'success');
+    }
+  };
+
+  // 处理 AI 测试（表格视图用 - 弹窗模式）
+  const handleAiTestFromTable = (prompt: Prompt) => {
+    if (!aiApiKey) {
+      showToast(t('toast.configAI'), 'error');
+      return;
+    }
+    setAiTestPrompt(prompt);
+    setIsAiTestModalOpen(true);
+  };
+
+  // 查看详情弹窗状态
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [detailPrompt, setDetailPrompt] = useState<Prompt | null>(null);
+  // 版本历史弹窗状态
+  const [isVersionModalOpenTable, setIsVersionModalOpenTable] = useState(false);
+  const [versionHistoryPrompt, setVersionHistoryPrompt] = useState<Prompt | null>(null);
+
+  // 查看详情 - 弹窗显示
+  const handleViewDetail = (prompt: Prompt) => {
+    setDetailPrompt(prompt);
+    setIsDetailModalOpen(true);
+  };
+
+  // 版本历史
+  const handleVersionHistory = (prompt: Prompt) => {
+    setVersionHistoryPrompt(prompt);
+    setIsVersionModalOpenTable(true);
+  };
+
+  // 恢复版本（表格视图用）
+  const handleRestoreVersionFromTable = async (version: PromptVersion) => {
+    if (versionHistoryPrompt) {
+      await updatePrompt(versionHistoryPrompt.id, {
+        systemPrompt: version.systemPrompt,
+        userPrompt: version.userPrompt,
+      });
+      showToast(t('toast.restored'), 'success');
+      setIsVersionModalOpenTable(false);
+      setVersionHistoryPrompt(null);
+    }
+  };
+
+  // 处理 AI 测试使用次数增加并缓存结果
+  const handleAiUsageIncrement = async (promptId: string) => {
+    await incrementUsageCount(promptId);
+  };
+
+  // 保存 AI 响应到 Prompt
+  const handleSaveAiResponse = async (promptId: string, response: string) => {
+    await updatePrompt(promptId, { lastAiResponse: response });
+    // 同时更新缓存以便立即显示
+    setAiResponseCache((prev) => ({ ...prev, [promptId]: response }));
+  };
+
+  // 批量操作函数
+  const handleBatchFavorite = async (ids: string[], favorite: boolean) => {
+    for (const id of ids) {
+      if (favorite) {
+        const prompt = prompts.find(p => p.id === id);
+        if (prompt && !prompt.isFavorite) {
+          await toggleFavorite(id);
+        }
+      }
+    }
+    showToast(t('toast.batchFavorited') || `已收藏 ${ids.length} 个 Prompt`, 'success');
+  };
+
+  const handleBatchMove = async (ids: string[], folderId: string | undefined) => {
+    for (const id of ids) {
+      await updatePrompt(id, { folderId });
+    }
+    showToast(t('toast.batchMoved') || `已移动 ${ids.length} 个 Prompt`, 'success');
+  };
+
+  const handleBatchDelete = async (ids: string[]) => {
+    if (!confirm(t('prompt.confirmBatchDelete', { count: ids.length }) || `确定要删除这 ${ids.length} 个 Prompt 吗？`)) {
+      return;
+    }
+    for (const id of ids) {
+      await deletePrompt(id);
+    }
+    showToast(t('toast.batchDeleted') || `已删除 ${ids.length} 个 Prompt`, 'success');
+  };
+
+  // 列表视图模式：整个区域是表格
+  if (viewMode === 'list') {
+    return (
+      <main className="flex-1 flex flex-col overflow-hidden bg-background">
+        {/* 顶部：排序 + 视图切换 */}
+        <PromptListHeader count={sortedPrompts.length} />
+        
+        {/* 表格视图 */}
+        <div className="flex-1 overflow-hidden">
+          <PromptTableView
+            prompts={sortedPrompts}
+            onSelect={(id) => selectPrompt(id)}
+            onToggleFavorite={toggleFavorite}
+            onCopy={handleCopyPrompt}
+            onEdit={(prompt) => setEditingPrompt(prompt)}
+            onDelete={handleDeletePrompt}
+            onAiTest={handleAiTestFromTable}
+            onVersionHistory={handleVersionHistory}
+            onViewDetail={handleViewDetail}
+            aiResults={aiResponseCache}
+            onBatchFavorite={handleBatchFavorite}
+            onBatchMove={handleBatchMove}
+            onBatchDelete={handleBatchDelete}
+          />
+        </div>
+
+        {/* 编辑弹窗 */}
+        {editingPrompt && (
+          <EditPromptModal
+            isOpen={true}
+            onClose={() => setEditingPrompt(null)}
+            prompt={editingPrompt}
+          />
+        )}
+
+        {/* AI 测试弹窗 */}
+        <AiTestModal
+          isOpen={isAiTestModalOpen}
+          onClose={() => {
+            setIsAiTestModalOpen(false);
+            setAiTestPrompt(null);
+          }}
+          prompt={aiTestPrompt}
+          onUsageIncrement={handleAiUsageIncrement}
+          onSaveResponse={handleSaveAiResponse}
+        />
+
+        {/* 查看详情弹窗 */}
+        <PromptDetailModal
+          isOpen={isDetailModalOpen}
+          onClose={() => {
+            setIsDetailModalOpen(false);
+            setDetailPrompt(null);
+          }}
+          prompt={detailPrompt}
+          onCopy={handleCopyPrompt}
+        />
+
+        {/* 版本历史弹窗 */}
+        {versionHistoryPrompt && (
+          <VersionHistoryModal
+            isOpen={isVersionModalOpenTable}
+            onClose={() => {
+              setIsVersionModalOpenTable(false);
+              setVersionHistoryPrompt(null);
+            }}
+            prompt={versionHistoryPrompt}
+            onRestore={handleRestoreVersionFromTable}
+          />
+        )}
+      </main>
+    );
+  }
+
+  // 卡片视图模式：左右分栏
   return (
     <main className="flex-1 flex overflow-hidden bg-background">
-      {/* Prompt 列表 - iOS 风格卡片 */}
-      <div className="w-80 border-r border-border overflow-y-auto bg-card/50">
-        {filteredPrompts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-              <SparklesIcon className="w-8 h-8 text-primary" />
+      {/* Prompt 列表 */}
+      <div className="w-80 border-r border-border flex flex-col bg-card/50">
+        {/* 列表头部：排序 + 视图切换 */}
+        <PromptListHeader count={sortedPrompts.length} />
+        
+        {/* 列表内容 */}
+        <div className="flex-1 overflow-y-auto">
+          {sortedPrompts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+                <SparklesIcon className="w-8 h-8 text-primary" />
+              </div>
+              <p className="text-lg font-medium text-foreground mb-1">{t('prompt.noPrompts')}</p>
+              <p className="text-sm text-muted-foreground">{t('prompt.addFirst')}</p>
             </div>
-            <p className="text-lg font-medium text-foreground mb-1">{t('prompt.noPrompts')}</p>
-            <p className="text-sm text-muted-foreground">{t('prompt.addFirst')}</p>
-          </div>
-        ) : (
-          <div className="p-3 space-y-2">
-            {filteredPrompts.map((prompt) => (
-              <PromptCard
-                key={prompt.id}
-                prompt={prompt}
-                isSelected={selectedId === prompt.id}
-                onSelect={() => selectPrompt(prompt.id)}
-              />
-            ))}
-          </div>
-        )}
+          ) : (
+            <div className="p-3 space-y-2">
+              {sortedPrompts.map((prompt) => (
+                <PromptCard
+                  key={prompt.id}
+                  prompt={prompt}
+                  isSelected={selectedId === prompt.id}
+                  onSelect={() => selectPrompt(prompt.id)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Prompt 详情 - iOS 风格 */}
@@ -462,7 +693,7 @@ export function MainContent() {
             {/* 操作按钮 - iOS 风格 */}
             <div className="flex items-center gap-3 flex-wrap">
               <button 
-                onClick={() => {
+                onClick={async () => {
                   // 检查是否有变量
                   const variableRegex = /\{\{([^}]+)\}\}/g;
                   const hasVariables = variableRegex.test(selectedPrompt.userPrompt) || 
@@ -472,7 +703,8 @@ export function MainContent() {
                     setIsVariableModalOpen(true);
                   } else {
                     const text = selectedPrompt.userPrompt;
-                    navigator.clipboard.writeText(text);
+                    await navigator.clipboard.writeText(text);
+                    await incrementUsageCount(selectedPrompt.id);
                     setCopied(true);
                     showToast(t('toast.copied'), 'success', showCopyNotification);
                     setTimeout(() => setCopied(false), 2000);

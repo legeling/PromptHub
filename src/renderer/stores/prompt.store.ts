@@ -1,6 +1,13 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { Prompt, CreatePromptDTO, UpdatePromptDTO } from '../../shared/types';
 import * as db from '../services/database';
+
+// 排序方式
+export type SortBy = 'updatedAt' | 'createdAt' | 'title' | 'usageCount';
+export type SortOrder = 'desc' | 'asc';
+// 视图模式
+export type ViewMode = 'card' | 'list';
 
 interface PromptState {
   prompts: Prompt[];
@@ -8,6 +15,11 @@ interface PromptState {
   isLoading: boolean;
   searchQuery: string;
   filterTags: string[];
+  // 排序
+  sortBy: SortBy;
+  sortOrder: SortOrder;
+  // 视图模式
+  viewMode: ViewMode;
 
   // Actions
   fetchPrompts: () => Promise<void>;
@@ -19,16 +31,26 @@ interface PromptState {
   toggleFilterTag: (tag: string) => void;
   clearFilterTags: () => void;
   toggleFavorite: (id: string) => Promise<void>;
+  // 排序和视图
+  setSortBy: (sortBy: SortBy) => void;
+  setSortOrder: (sortOrder: SortOrder) => void;
+  setViewMode: (viewMode: ViewMode) => void;
+  incrementUsageCount: (id: string) => Promise<void>;
 }
 
-export const usePromptStore = create<PromptState>((set, get) => ({
-  prompts: [],
-  selectedId: null,
-  isLoading: false,
-  searchQuery: '',
-  filterTags: [],
+export const usePromptStore = create<PromptState>()(
+  persist(
+    (set, get) => ({
+      prompts: [],
+      selectedId: null,
+      isLoading: false,
+      searchQuery: '',
+      filterTags: [],
+      sortBy: 'updatedAt' as SortBy,
+      sortOrder: 'desc' as SortOrder,
+      viewMode: 'card' as ViewMode,
 
-  fetchPrompts: async () => {
+      fetchPrompts: async () => {
     set({ isLoading: true });
     try {
       console.log('Fetching prompts...');
@@ -111,4 +133,29 @@ export const usePromptStore = create<PromptState>((set, get) => ({
       }));
     }
   },
-}));
+
+      // 排序和视图
+      setSortBy: (sortBy) => set({ sortBy }),
+      setSortOrder: (sortOrder) => set({ sortOrder }),
+      setViewMode: (viewMode) => set({ viewMode }),
+
+      incrementUsageCount: async (id) => {
+        const prompt = get().prompts.find((p) => p.id === id);
+        if (prompt) {
+          const updated = await db.updatePrompt(id, { usageCount: (prompt.usageCount || 0) + 1 });
+          set((state) => ({
+            prompts: state.prompts.map((p) => (p.id === id ? updated : p)),
+          }));
+        }
+      },
+    }),
+    {
+      name: 'prompt-store',
+      partialize: (state) => ({
+        sortBy: state.sortBy,
+        sortOrder: state.sortOrder,
+        viewMode: state.viewMode,
+      }),
+    }
+  )
+);

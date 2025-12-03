@@ -25,8 +25,9 @@
     "artifactName": "${productName}-${version}-${arch}.${ext}",
     "icon": "resources/icon.icns",
     "category": "public.app-category.productivity",
-    "hardenedRuntime": true,
-    "gatekeeperAssess": false
+    "hardenedRuntime": false,
+    "gatekeeperAssess": false,
+    "identity": null
   },
   "win": {
     "target": [

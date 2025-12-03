@@ -15,6 +15,7 @@ export interface Prompt {
   version: number;
   currentVersion: number;
   usageCount: number;
+  lastAiResponse?: string;  // 最后一次 AI 测试的响应
   createdAt: string;  // ISO 8601 格式
   updatedAt: string;  // ISO 8601 格式
 }
@@ -38,6 +39,7 @@ export interface PromptVersion {
   userPrompt: string;
   variables: Variable[];
   note?: string;
+  aiResponse?: string;  // 该版本的 AI 测试响应
   createdAt: string;  // ISO 8601 格式
 }
 
@@ -61,6 +63,8 @@ export interface UpdatePromptDTO {
   tags?: string[];
   folderId?: string;
   isFavorite?: boolean;
+  usageCount?: number;
+  lastAiResponse?: string;
 }
 
 export interface SearchQuery {

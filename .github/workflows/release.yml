@@ -57,13 +57,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Remove universal exe (keep only arch-specific)
-        if: matrix.platform == 'win'
-        shell: bash
-        run: |
-          # 删除通用 exe，只保留带架构标识的
-          find dist -name "*.exe" ! -name "*-x64.exe" ! -name "*-arm64.exe" -delete || true
-
       - name: Remove debug files
         shell: bash
         run: |

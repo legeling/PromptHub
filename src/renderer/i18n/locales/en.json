@@ -90,7 +90,29 @@
     "noVariables": "This Prompt has no variables",
     "defaultValue": "Default",
     "fromHistory": "From history",
-    "systemVariables": "System Variables"
+    "systemVariables": "System Variables",
+    "sortBy": "Sort",
+    "sortNewest": "Newest First",
+    "sortOldest": "Oldest First",
+    "sortTitleAsc": "Title A-Z",
+    "sortTitleDesc": "Title Z-A",
+    "sortMostUsed": "Most Used",
+    "sortLeastUsed": "Least Used",
+    "viewCard": "Card View",
+    "viewList": "List View",
+    "usageCount": "Usage",
+    "createdAt": "Created",
+    "promptCount": "{{count}} prompts",
+    "actions": "Actions",
+    "pageSize": "Per page",
+    "addToFavorites": "Add to favorites",
+    "viewDetail": "View detail",
+    "enterValue": "Enter value",
+    "selected": "{{count}} selected",
+    "batchFavorite": "Batch Favorite",
+    "batchMove": "Batch Move",
+    "batchDelete": "Batch Delete",
+    "confirmBatchDelete": "Are you sure you want to delete these {{count}} prompts?"
   },
   "folder": {
     "new": "New Folder",
@@ -285,7 +307,9 @@
     "success": "Success",
     "optional": "Optional",
     "back": "Back",
-    "done": "Done"
+    "done": "Done",
+    "yesterday": "Yesterday",
+    "daysAgo": " days ago"
   },
   "toast": {
     "exportSuccess": "Data exported successfully",
@@ -308,6 +332,9 @@
     "configAI": "Please configure AI model in settings first",
     "aiFailed": "AI request failed",
     "movedToFolder": "Moved to folder",
-    "dataPathChanged": "Data path changed"
+    "dataPathChanged": "Data path changed",
+    "batchFavorited": "Batch favorited",
+    "batchMoved": "Batch moved",
+    "batchDeleted": "Batch deleted"
   }
 }
