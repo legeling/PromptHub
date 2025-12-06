@@ -327,7 +327,7 @@ export async function resetDatabase(): Promise<void> {
     db.close();
     db = null;
   }
-  
+
   // 删除数据库
   return new Promise((resolve, reject) => {
     const request = indexedDB.deleteDatabase(DB_NAME);
@@ -347,7 +347,7 @@ export async function resetDatabase(): Promise<void> {
  */
 export async function seedDatabase(): Promise<void> {
   const database = await getDatabase();
-  
+
   // 检查是否已有数据
   const promptCount = await new Promise<number>((resolve) => {
     const transaction = database.transaction(STORES.PROMPTS, 'readonly');
@@ -561,6 +561,34 @@ export async function createFolder(data: Omit<Folder, 'id' | 'createdAt' | 'upda
   });
 }
 
+export async function updateFolder(id: string, data: Partial<Folder>): Promise<Folder> {
+  const database = await getDatabase();
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction(STORES.FOLDERS, 'readwrite');
+    const store = transaction.objectStore(STORES.FOLDERS);
+
+    const getRequest = store.get(id);
+    getRequest.onsuccess = () => {
+      const existing = getRequest.result;
+      if (!existing) {
+        reject(new Error('Folder not found'));
+        return;
+      }
+
+      const updated: Folder = {
+        ...existing,
+        ...data,
+        updatedAt: new Date().toISOString(),
+      };
+
+      const putRequest = store.put(updated);
+      putRequest.onsuccess = () => resolve(updated);
+      putRequest.onerror = () => reject(putRequest.error);
+    };
+    getRequest.onerror = () => reject(getRequest.error);
+  });
+}
+
 export async function deleteFolder(id: string): Promise<void> {
   const database = await getDatabase();
   return new Promise((resolve, reject) => {
@@ -570,6 +598,28 @@ export async function deleteFolder(id: string): Promise<void> {
 
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error);
+  });
+}
+
+export async function updateFolderOrders(updates: { id: string; order: number }[]): Promise<void> {
+  const database = await getDatabase();
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction(STORES.FOLDERS, 'readwrite');
+    const store = transaction.objectStore(STORES.FOLDERS);
+
+    updates.forEach(({ id, order }) => {
+      const request = store.get(id);
+      request.onsuccess = () => {
+        const folder = request.result;
+        if (folder) {
+          folder.order = order;
+          store.put(folder);
+        }
+      };
+    });
+
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
   });
 }
 
@@ -686,7 +736,7 @@ export async function downloadBackup(): Promise<void> {
   const backup = await exportDatabase();
   const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
-  
+
   const a = document.createElement('a');
   a.href = url;
   a.download = `prompthub-backup-${new Date().toISOString().split('T')[0]}.json`;

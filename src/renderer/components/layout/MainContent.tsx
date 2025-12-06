@@ -1,32 +1,32 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { usePromptStore } from '../../stores/prompt.store';
 import { useFolderStore } from '../../stores/folder.store';
 import { useSettingsStore } from '../../stores/settings.store';
 import { StarIcon, CopyIcon, HistoryIcon, HashIcon, SparklesIcon, EditIcon, TrashIcon, CheckIcon, PlayIcon, LoaderIcon, XIcon, GitCompareIcon, ClockIcon } from 'lucide-react';
-import { EditPromptModal, VersionHistoryModal, VariableInputModal, PromptListHeader, PromptListView, PromptTableView, AiTestModal, PromptDetailModal } from '../prompt';
+import { EditPromptModal, VersionHistoryModal, VariableInputModal, PromptListHeader, PromptListView, PromptTableView, AiTestModal, PromptDetailModal, PromptGalleryView } from '../prompt';
+import { ContextMenu, ContextMenuItem } from '../ui/ContextMenu';
+import { ImagePreviewModal } from '../ui/ImagePreviewModal';
 import { useToast } from '../ui/Toast';
 import { chatCompletion, buildMessagesFromPrompt, multiModelCompare, AITestResult } from '../../services/ai';
 import { useTranslation } from 'react-i18next';
 import type { Prompt, PromptVersion } from '../../../shared/types';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeSanitize from 'rehype-sanitize';
-import rehypeHighlight from 'rehype-highlight';
-import { defaultSchema } from 'hast-util-sanitize';
 
 // Prompt 卡片组件（紧凑版本）
-function PromptCard({ 
-  prompt, 
-  isSelected, 
-  onSelect 
-}: { 
-  prompt: Prompt; 
-  isSelected: boolean; 
+function PromptCard({
+  prompt,
+  isSelected,
+  onSelect,
+  onContextMenu
+}: {
+  prompt: Prompt;
+  isSelected: boolean;
   onSelect: () => void;
+  onContextMenu: (e: React.MouseEvent) => void;
 }) {
   return (
     <div
       onClick={onSelect}
+      onContextMenu={onContextMenu}
       className={`
         w-full text-left px-3 py-2.5 rounded-lg cursor-pointer
         transition-colors duration-150
@@ -39,15 +39,13 @@ function PromptCard({
       <div className="flex items-center justify-between gap-2">
         <h3 className="font-medium truncate text-sm">{prompt.title}</h3>
         {prompt.isFavorite && (
-          <StarIcon className={`w-3.5 h-3.5 flex-shrink-0 ${
-            isSelected ? 'fill-white text-white' : 'fill-yellow-400 text-yellow-400'
-          }`} />
+          <StarIcon className={`w-3.5 h-3.5 flex-shrink-0 ${isSelected ? 'fill-white text-white' : 'fill-yellow-400 text-yellow-400'
+            }`} />
         )}
       </div>
       {prompt.description && (
-        <p className={`text-xs truncate mt-0.5 ${
-          isSelected ? 'text-white/70' : 'text-muted-foreground'
-        }`}>
+        <p className={`text-xs truncate mt-0.5 ${isSelected ? 'text-white/70' : 'text-muted-foreground'
+          }`}>
           {prompt.description}
         </p>
       )}
@@ -70,7 +68,8 @@ export function MainContent() {
   const viewMode = usePromptStore((state) => state.viewMode);
   const incrementUsageCount = usePromptStore((state) => state.incrementUsageCount);
   const selectedFolderId = useFolderStore((state) => state.selectedFolderId);
-  
+  const folders = useFolderStore((state) => state.folders);
+
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isVersionModalOpen, setIsVersionModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -79,11 +78,8 @@ export function MainContent() {
   const [isVariableModalOpen, setIsVariableModalOpen] = useState(false);
   const [isAiTestVariableModalOpen, setIsAiTestVariableModalOpen] = useState(false);
   const [isCompareVariableModalOpen, setIsCompareVariableModalOpen] = useState(false);
-  const detailRef = useRef<HTMLDivElement | null>(null);
-  const [toolbarRect, setToolbarRect] = useState<{ left: number; width: number }>({ left: 0, width: 0 });
-  const renderMarkdownPref = useSettingsStore((state) => state.renderMarkdown);
-  const setRenderMarkdownPref = useSettingsStore((state) => state.setRenderMarkdown);
-  const [renderMarkdownEnabled, setRenderMarkdownEnabled] = useState(renderMarkdownPref);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; prompt: Prompt } | null>(null);
   const { showToast } = useToast();
 
   // 按 prompt ID 保存测试状态和结果（持久化）
@@ -107,13 +103,13 @@ export function MainContent() {
   const updatePromptState = (promptId: string, updates: Partial<typeof currentState>) => {
     setPromptTestStates(prev => ({
       ...prev,
-      [promptId]: { 
+      [promptId]: {
         isTestingAI: prev[promptId]?.isTestingAI || false,
         isComparingModels: prev[promptId]?.isComparingModels || false,
         aiResponse: prev[promptId]?.aiResponse || null,
         compareResults: prev[promptId]?.compareResults || null,
         compareError: prev[promptId]?.compareError || null,
-        ...updates 
+        ...updates
       }
     }));
   };
@@ -138,6 +134,11 @@ export function MainContent() {
     if (selectedId) updatePromptState(selectedId, { compareError: error });
   };
 
+  // 切换 Folder 时重置选中的 Prompt (隐私保护)
+  useEffect(() => {
+    selectPrompt(null);
+  }, [selectedFolderId, selectPrompt]);
+
   // 切换 Prompt 时重置选中的模型（但保留测试结果和状态）
   useEffect(() => {
     setSelectedModelIds([]);
@@ -149,123 +150,6 @@ export function MainContent() {
     }
   }, [selectedId, promptTestStates]);
 
-  // 同步全局渲染偏好
-  useEffect(() => {
-    setRenderMarkdownEnabled(renderMarkdownPref);
-  }, [renderMarkdownPref]);
-
-  const sanitizeSchema: any = useMemo(() => {
-    const schema = { ...defaultSchema, attributes: { ...defaultSchema.attributes } };
-    schema.attributes.code = [...(schema.attributes.code || []), ['className']];
-    schema.attributes.span = [...(schema.attributes.span || []), ['className']];
-    schema.attributes.pre = [...(schema.attributes.pre || []), ['className']];
-    return schema;
-  }, []);
-
-  const rehypePlugins = useMemo(
-    () => [
-      // 忽略未知语言，避免占位符（如 {{language}}）导致高亮报错
-      [rehypeHighlight, { ignoreMissing: true }] as any,
-      [rehypeSanitize, sanitizeSchema] as any,
-    ],
-    [sanitizeSchema],
-  );
-
-  const markdownComponents = useMemo(() => ({
-    h1: (props: any) => <h1 className="text-2xl font-bold mb-4 text-foreground" {...props} />,
-    h2: (props: any) => <h2 className="text-xl font-semibold mb-3 mt-5 text-foreground" {...props} />,
-    h3: (props: any) => <h3 className="text-lg font-semibold mb-3 mt-4 text-foreground" {...props} />,
-    h4: (props: any) => <h4 className="text-base font-semibold mb-2 mt-3 text-foreground" {...props} />,
-    p: (props: any) => <p className="mb-3 leading-relaxed text-foreground/90" {...props} />,
-    ul: (props: any) => <ul className="list-disc pl-5 mb-3 space-y-1" {...props} />,
-    ol: (props: any) => <ol className="list-decimal pl-5 mb-3 space-y-1" {...props} />,
-    li: (props: any) => <li className="leading-relaxed" {...props} />,
-    code: (props: any) => <code className="px-1 py-0.5 rounded bg-muted font-mono text-[13px]" {...props} />,
-    pre: (props: any) => (
-      <pre className="p-3 rounded-lg bg-muted overflow-x-auto text-[13px] leading-relaxed" {...props} />
-    ),
-    blockquote: (props: any) => (
-      <blockquote className="border-l-4 border-border pl-3 text-muted-foreground italic mb-3" {...props} />
-    ),
-    hr: () => <hr className="my-4 border-border" />,
-    table: (props: any) => <table className="table-auto border-collapse w-full text-sm mb-3" {...props} />,
-    th: (props: any) => (
-      <th className="border border-border px-2 py-1 bg-muted text-left font-medium" {...props} />
-    ),
-    td: (props: any) => <td className="border border-border px-2 py-1" {...props} />,
-    a: (props: any) => <a className="text-primary hover:underline" {...props} target="_blank" rel="noreferrer" />,
-    strong: (props: any) => <strong className="font-semibold text-foreground" {...props} />,
-    em: (props: any) => <em className="italic text-foreground/90" {...props} />,
-  }), []);
-
-  const renderPromptContent = (content?: string) => {
-    if (!content) {
-      return (
-        <div className="p-5 rounded-2xl bg-card border border-border text-sm text-muted-foreground">
-          {t('prompt.noContent')}
-        </div>
-      );
-    }
-
-    if (!renderMarkdownEnabled) {
-      return (
-        <div className="p-5 rounded-2xl bg-card border border-border font-mono text-[15px] leading-[1.7] whitespace-pre-wrap">
-          {content}
-        </div>
-      );
-    }
-
-    return (
-      <div className="p-5 rounded-2xl bg-card border border-border text-[15px] leading-[1.7] markdown-content break-words space-y-3">
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
-          rehypePlugins={rehypePlugins}
-          components={markdownComponents}
-        >
-          {content}
-        </ReactMarkdown>
-      </div>
-    );
-  };
-
-  const toggleRenderMarkdown = () => {
-    const next = !renderMarkdownEnabled;
-    setRenderMarkdownEnabled(next);
-    setRenderMarkdownPref(next);
-  };
-
-  // 计算底部固定工具栏的宽度和位置，使其与详情容器对齐
-  useEffect(() => {
-    const updateRect = () => {
-      if (typeof window === 'undefined') return;
-      const el = detailRef.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      setToolbarRect({
-        left: rect.left + window.scrollX,
-        width: rect.width,
-      });
-    };
-
-    updateRect();
-    const resizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateRect) : null;
-    if (resizeObserver && detailRef.current) {
-      resizeObserver.observe(detailRef.current);
-    }
-
-    window.addEventListener('resize', updateRect, { passive: true });
-    window.addEventListener('scroll', updateRect, { passive: true });
-
-    return () => {
-      window.removeEventListener('resize', updateRect);
-      window.removeEventListener('scroll', updateRect);
-      if (resizeObserver && detailRef.current) {
-        resizeObserver.unobserve(detailRef.current);
-        resizeObserver.disconnect();
-      }
-    };
-  }, []);
-  
   // AI 配置
   const aiProvider = useSettingsStore((state) => state.aiProvider);
   const aiApiKey = useSettingsStore((state) => state.aiApiKey);
@@ -290,13 +174,13 @@ export function MainContent() {
     setIsTestingAI(true);
     setAiResponse(null);
     setIsAiTestVariableModalOpen(false);
-    
+
     // 增加使用次数
     const targetId = promptId || selectedId;
     if (targetId) {
       await incrementUsageCount(targetId);
     }
-    
+
     try {
       const messages = buildMessagesFromPrompt(systemPrompt, userPrompt);
       const response = await chatCompletion(
@@ -347,6 +231,12 @@ export function MainContent() {
       result = result.filter((p) => p.isFavorite);
     } else if (selectedFolderId) {
       result = result.filter((p) => p.folderId === selectedFolderId);
+    } else {
+      // 在"全部 Prompts"视图中，隐藏私密文件夹的内容
+      const privateFolderIds = folders.filter(f => f.isPrivate).map(f => f.id);
+      if (privateFolderIds.length > 0) {
+        result = result.filter(p => !p.folderId || !privateFolderIds.includes(p.folderId));
+      }
     }
 
     if (searchQuery) {
@@ -361,13 +251,13 @@ export function MainContent() {
 
     // 标签筛选（多选：必须包含所有选中的标签）
     if (filterTags.length > 0) {
-      result = result.filter((p) => 
+      result = result.filter((p) =>
         filterTags.every(tag => p.tags.includes(tag))
       );
     }
 
     return result;
-  }, [prompts, selectedFolderId, searchQuery, filterTags]);
+  }, [prompts, selectedFolderId, searchQuery, filterTags, folders]);
 
   // 排序
   const sortedPrompts = useMemo(() => {
@@ -465,8 +355,52 @@ export function MainContent() {
   };
 
   // 处理 AI 测试使用次数增加并缓存结果
-  const handleAiUsageIncrement = async (promptId: string) => {
-    await incrementUsageCount(promptId);
+  const handleContextMenu = (e: React.MouseEvent, prompt: Prompt) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, prompt });
+  };
+
+  const menuItems: ContextMenuItem[] = contextMenu ? [
+    {
+      label: t('prompt.viewDetails', '查看详情'),
+      icon: <CheckIcon className="w-4 h-4" />, // CheckIcon placeholder, logic implies View Detail
+      onClick: () => handleViewDetail(contextMenu.prompt),
+    },
+    {
+      label: t('prompt.edit'),
+      icon: <EditIcon className="w-4 h-4" />,
+      onClick: () => setEditingPrompt(contextMenu.prompt),
+    },
+    {
+      label: t('prompt.copy'),
+      icon: <CopyIcon className="w-4 h-4" />,
+      onClick: () => handleCopyPrompt(contextMenu.prompt),
+    },
+    {
+      label: contextMenu.prompt.isFavorite ? (t('prompt.removeFromFavorites') || '取消收藏') : (t('prompt.addToFavorites') || '收藏'),
+      icon: <StarIcon className={`w-4 h-4 ${contextMenu.prompt.isFavorite ? 'fill-yellow-400 text-yellow-400' : ''}`} />,
+      onClick: () => toggleFavorite(contextMenu.prompt.id),
+    },
+    {
+      label: t('prompt.aiTest'),
+      icon: <PlayIcon className="w-4 h-4" />,
+      onClick: () => handleAiTestFromTable(contextMenu.prompt),
+    },
+    {
+      label: t('prompt.history'),
+      icon: <HistoryIcon className="w-4 h-4" />,
+      onClick: () => handleVersionHistory(contextMenu.prompt),
+    },
+    {
+      label: t('prompt.delete'),
+      icon: <TrashIcon className="w-4 h-4" />,
+      variant: 'destructive',
+      onClick: () => handleDeletePrompt(contextMenu.prompt),
+    },
+  ] : [];
+
+  const handleAiUsageIncrement = async (id: string, model?: string) => {
+    await incrementUsageCount(id);
   };
 
   // 保存 AI 响应到 Prompt
@@ -512,7 +446,7 @@ export function MainContent() {
       <main className="flex-1 flex flex-col overflow-hidden bg-background">
         {/* 顶部：排序 + 视图切换 */}
         <PromptListHeader count={sortedPrompts.length} />
-        
+
         {/* 表格视图 */}
         <div className="flex-1 overflow-hidden">
           <PromptTableView
@@ -529,6 +463,7 @@ export function MainContent() {
             onBatchFavorite={handleBatchFavorite}
             onBatchMove={handleBatchMove}
             onBatchDelete={handleBatchDelete}
+            onContextMenu={handleContextMenu}
           />
         </div>
 
@@ -562,6 +497,7 @@ export function MainContent() {
           }}
           prompt={detailPrompt}
           onCopy={handleCopyPrompt}
+          onEdit={(prompt) => setEditingPrompt(prompt)}
         />
 
         {/* 版本历史弹窗 */}
@@ -576,6 +512,100 @@ export function MainContent() {
             onRestore={handleRestoreVersionFromTable}
           />
         )}
+
+        {/* 图片预览弹窗 */}
+        <ImagePreviewModal
+          isOpen={!!previewImage}
+          onClose={() => setPreviewImage(null)}
+          imageSrc={previewImage}
+        />
+
+        {/* 右键菜单 */}
+        {contextMenu && (
+          <ContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            items={menuItems}
+            onClose={() => setContextMenu(null)}
+          />
+        )}
+      </main>
+    );
+  }
+
+  // Gallery 视图
+  if (viewMode === 'gallery') {
+    return (
+      <main className="flex-1 flex flex-col overflow-hidden bg-background">
+        <PromptListHeader count={sortedPrompts.length} />
+        <PromptGalleryView
+          prompts={sortedPrompts}
+          onSelect={(id) => selectPrompt(id)}
+          onToggleFavorite={toggleFavorite}
+          onCopy={handleCopyPrompt}
+          onEdit={(prompt) => setEditingPrompt(prompt)}
+          onDelete={handleDeletePrompt}
+          onAiTest={handleAiTestFromTable}
+          onVersionHistory={handleVersionHistory}
+          onViewDetail={handleViewDetail}
+          onContextMenu={handleContextMenu}
+        />
+
+        {/* 编辑弹窗 */}
+        {editingPrompt && (
+          <EditPromptModal
+            isOpen={true}
+            onClose={() => setEditingPrompt(null)}
+            prompt={editingPrompt}
+          />
+        )}
+
+        {/* AI 测试弹窗 */}
+        <AiTestModal
+          isOpen={isAiTestModalOpen}
+          onClose={() => {
+            setIsAiTestModalOpen(false);
+            setAiTestPrompt(null);
+          }}
+          prompt={aiTestPrompt}
+          onUsageIncrement={handleAiUsageIncrement}
+          onSaveResponse={handleSaveAiResponse}
+        />
+
+        {/* 查看详情弹窗 */}
+        <PromptDetailModal
+          isOpen={isDetailModalOpen}
+          onClose={() => {
+            setIsDetailModalOpen(false);
+            setDetailPrompt(null);
+          }}
+          prompt={detailPrompt}
+          onCopy={handleCopyPrompt}
+          onEdit={(prompt) => setEditingPrompt(prompt)}
+        />
+
+        {/* 版本历史弹窗 */}
+        {versionHistoryPrompt && (
+          <VersionHistoryModal
+            isOpen={isVersionModalOpenTable}
+            onClose={() => {
+              setIsVersionModalOpenTable(false);
+              setVersionHistoryPrompt(null);
+            }}
+            prompt={versionHistoryPrompt}
+            onRestore={handleRestoreVersionFromTable}
+          />
+        )}
+
+        {/* 右键菜单 */}
+        {contextMenu && (
+          <ContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            items={menuItems}
+            onClose={() => setContextMenu(null)}
+          />
+        )}
       </main>
     );
   }
@@ -587,7 +617,7 @@ export function MainContent() {
       <div className="w-80 border-r border-border flex flex-col bg-card/50">
         {/* 列表头部：排序 + 视图切换 */}
         <PromptListHeader count={sortedPrompts.length} />
-        
+
         {/* 列表内容 */}
         <div className="flex-1 overflow-y-auto">
           {sortedPrompts.length === 0 ? (
@@ -606,6 +636,7 @@ export function MainContent() {
                   prompt={prompt}
                   isSelected={selectedId === prompt.id}
                   onSelect={() => selectPrompt(prompt.id)}
+                  onContextMenu={(e) => handleContextMenu(e, prompt)}
                 />
               ))}
             </div>
@@ -616,10 +647,7 @@ export function MainContent() {
       {/* Prompt 详情 - iOS 风格 */}
       <div className="flex-1 overflow-y-auto">
         {selectedPrompt ? (
-          <div
-            ref={detailRef}
-            className="max-w-5xl mx-auto px-6 py-6 pb-32 min-h-full"
-          >
+          <div className="max-w-3xl mx-auto p-8">
             {/* 标题区域 */}
             <div className="flex items-start justify-between mb-4">
               <div className="flex-1">
@@ -642,7 +670,7 @@ export function MainContent() {
                 >
                   <StarIcon className={`w-5 h-5 ${selectedPrompt.isFavorite ? 'fill-current' : ''}`} />
                 </button>
-                <button 
+                <button
                   onClick={() => setIsEditModalOpen(true)}
                   className="p-2.5 rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground transition-all duration-200 active:scale-95"
                 >
@@ -662,15 +690,24 @@ export function MainContent() {
               </span>
             </div>
 
-            {/* 渲染模式切换 */}
-            <div className="flex items-center justify-end mb-4">
-              <button
-                onClick={toggleRenderMarkdown}
-                className="text-xs px-2 py-1 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              >
-                {renderMarkdownEnabled ? t('prompt.viewRaw') : t('prompt.viewMarkdown')}
-              </button>
-            </div>
+            {/* 图片 */}
+            {selectedPrompt.images && selectedPrompt.images.length > 0 && (
+              <div className="mb-6">
+                <h4 className="text-sm font-medium text-muted-foreground mb-2">{t('prompt.images', '参考图片')}</h4>
+                <div className="flex flex-wrap gap-4">
+                  {selectedPrompt.images.map((img, index) => (
+                    <div key={index} className="rounded-lg overflow-hidden border border-border shadow-sm">
+                      <img
+                        src={`local-image://${img}`}
+                        alt={`image-${index}`}
+                        className="max-w-[200px] max-h-[200px] object-cover hover:scale-105 transition-transform duration-300 cursor-pointer"
+                        onClick={() => setPreviewImage(img)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* 标签 */}
             {selectedPrompt.tags.length > 0 && (
@@ -695,7 +732,9 @@ export function MainContent() {
                     System Prompt
                   </span>
                 </div>
-                {renderPromptContent(selectedPrompt.systemPrompt)}
+                <div className="p-5 rounded-2xl bg-card border border-border font-mono text-sm leading-relaxed whitespace-pre-wrap">
+                  {selectedPrompt.systemPrompt}
+                </div>
               </div>
             )}
 
@@ -706,7 +745,9 @@ export function MainContent() {
                   User Prompt
                 </span>
               </div>
-              {renderPromptContent(selectedPrompt.userPrompt)}
+              <div className="p-5 rounded-2xl bg-card border border-border font-mono text-sm leading-relaxed whitespace-pre-wrap">
+                {selectedPrompt.userPrompt}
+              </div>
             </div>
 
             {/* 多模型对比区域 */}
@@ -719,7 +760,7 @@ export function MainContent() {
                     <span className="text-xs text-muted-foreground">{t('prompt.selectModelsHint')}</span>
                   </div>
                 </div>
-                
+
                 {/* 模型选择列表 */}
                 <div className="flex flex-wrap gap-2 mb-4">
                   {aiModels.map((model) => {
@@ -754,7 +795,7 @@ export function MainContent() {
                     );
                   })}
                 </div>
-                
+
                 <div className="flex items-center justify-end gap-3">
                   {selectedModelIds.length > 0 && (
                     <button
@@ -774,9 +815,9 @@ export function MainContent() {
 
                       // 检查是否有变量
                       const variableRegex = /\{\{([^}]+)\}\}/g;
-                      const hasVariables = variableRegex.test(selectedPrompt.userPrompt) || 
+                      const hasVariables = variableRegex.test(selectedPrompt.userPrompt) ||
                         (selectedPrompt.systemPrompt && variableRegex.test(selectedPrompt.systemPrompt));
-                      
+
                       if (hasVariables) {
                         setIsCompareVariableModalOpen(true);
                       } else {
@@ -804,9 +845,8 @@ export function MainContent() {
                     {compareResults.map((res) => (
                       <div
                         key={`${res.provider}-${res.model}`}
-                        className={`p-3 rounded-lg border text-xs space-y-2 ${
-                          res.success ? 'border-emerald-400/50 bg-emerald-500/5' : 'border-red-400/50 bg-red-500/5'
-                        }`}
+                        className={`p-3 rounded-lg border text-xs space-y-2 ${res.success ? 'border-emerald-400/50 bg-emerald-500/5' : 'border-red-400/50 bg-red-500/5'
+                          }`}
                       >
                         <div className="flex items-center justify-between">
                           <div className="font-medium truncate">
@@ -826,227 +866,197 @@ export function MainContent() {
               </div>
             )}
 
-            {/* 固定底部操作栏：与详情区域对齐，贴底不悬浮 */}
-            {toolbarRect.width > 0 && (
-              <div
-                className="fixed z-30 px-6 py-3 bg-background border-t border-border flex items-center gap-3 flex-wrap"
-                style={{
-                  left: toolbarRect.left,
-                  width: toolbarRect.width,
-                  bottom: 0,
+            {/* 操作按钮 - iOS 风格 */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <button
+                onClick={async () => {
+                  // 检查是否有变量
+                  const variableRegex = /\{\{([^}]+)\}\}/g;
+                  const hasVariables = variableRegex.test(selectedPrompt.userPrompt) ||
+                    (selectedPrompt.systemPrompt && variableRegex.test(selectedPrompt.systemPrompt));
+
+                  if (hasVariables) {
+                    setIsVariableModalOpen(true);
+                  } else {
+                    const text = selectedPrompt.userPrompt;
+                    await navigator.clipboard.writeText(text);
+                    await incrementUsageCount(selectedPrompt.id);
+                    setCopied(true);
+                    showToast(t('toast.copied'), 'success', showCopyNotification);
+                    setTimeout(() => setCopied(false), 2000);
+                  }
                 }}
+                className="
+                  flex items-center gap-2 h-10 px-5 rounded-lg
+                  bg-primary text-white text-sm font-medium
+                  hover:bg-primary/90
+                  transition-colors duration-150
+                "
               >
-                <button 
-                  onClick={async () => {
-                    // 检查是否有变量
-                    const variableRegex = /\{\{([^}]+)\}\}/g;
-                    const hasVariables = variableRegex.test(selectedPrompt.userPrompt) || 
-                      (selectedPrompt.systemPrompt && variableRegex.test(selectedPrompt.systemPrompt));
-                    
-                    if (hasVariables) {
-                      setIsVariableModalOpen(true);
-                    } else {
-                      const text = selectedPrompt.userPrompt;
-                      await navigator.clipboard.writeText(text);
-                      await incrementUsageCount(selectedPrompt.id);
-                      setCopied(true);
-                      showToast(t('toast.copied'), 'success', showCopyNotification);
-                      setTimeout(() => setCopied(false), 2000);
-                    }
-                  }}
-                  className="
-                    flex items-center gap-2 h-10 px-5 rounded-lg
-                    bg-primary text-white text-sm font-medium
-                    hover:bg-primary/90
-                    transition-colors duration-150
-                  "
-                >
-                  {copied ? <CheckIcon className="w-4 h-4" /> : <CopyIcon className="w-4 h-4" />}
-                  <span>{copied ? t('prompt.copied') : t('prompt.copy')}</span>
-                </button>
-                <button 
-                  onClick={() => {
-                    if (!aiApiKey) {
-                      showToast(t('toast.configAI'), 'error');
-                      return;
-                    }
-                    // 检查是否有变量
-                    const variableRegex = /\{\{([^}]+)\}\}/g;
-                    const hasVariables = variableRegex.test(selectedPrompt.userPrompt) || 
-                      (selectedPrompt.systemPrompt && variableRegex.test(selectedPrompt.systemPrompt));
-                    
-                    if (hasVariables) {
-                      setIsAiTestVariableModalOpen(true);
-                    } else {
-                      // 没有变量，直接测试
-                      runAiTest(selectedPrompt.systemPrompt, selectedPrompt.userPrompt);
-                    }
-                  }}
-                  disabled={isTestingAI}
-                  className="
-                    flex items-center gap-2 h-10 px-5 rounded-lg
-                    bg-primary/90 text-white text-sm font-medium
-                    hover:bg-primary disabled:opacity-50
-                    transition-colors duration-150
-                  "
-                >
-                  {isTestingAI ? <LoaderIcon className="w-4 h-4 animate-spin" /> : <PlayIcon className="w-4 h-4" />}
-                  <span>{isTestingAI ? t('prompt.testing') : t('prompt.aiTest')}</span>
-                </button>
-                <button 
-                  onClick={() => setIsVersionModalOpen(true)}
-                  className="
-                    flex items-center gap-2 h-10 px-5 rounded-lg
-                    bg-card border border-border text-sm font-medium
-                    hover:bg-accent
-                    transition-colors duration-150
-                  "
-                >
-                  <HistoryIcon className="w-4 h-4" />
-                  <span>{t('prompt.history')}</span>
-                </button>
-                <button 
-                  onClick={async () => {
-                    if (confirm(t('prompt.confirmDeletePrompt'))) {
-                      await deletePrompt(selectedPrompt.id);
-                      showToast(t('prompt.promptDeleted'), 'success');
-                    }
-                  }}
-                  className="
-                    flex items-center gap-2 h-10 px-5 rounded-lg
-                    bg-card border border-destructive/30 text-destructive text-sm font-medium
-                    hover:bg-destructive/10
-                    transition-colors duration-150
-                  "
-                >
-                  <TrashIcon className="w-4 h-4" />
-                  <span>{t('prompt.delete')}</span>
-                </button>
-              </div>
-            )}
+                {copied ? <CheckIcon className="w-4 h-4" /> : <CopyIcon className="w-4 h-4" />}
+                <span>{copied ? t('prompt.copied') : t('prompt.copy')}</span>
+              </button>
+              <button
+                onClick={() => {
+                  if (!aiApiKey) {
+                    showToast(t('toast.configAI'), 'error');
+                    return;
+                  }
+                  // 检查是否有变量
+                  const variableRegex = /\{\{([^}]+)\}\}/g;
+                  const hasVariables = variableRegex.test(selectedPrompt.userPrompt) ||
+                    (selectedPrompt.systemPrompt && variableRegex.test(selectedPrompt.systemPrompt));
 
-            {/* AI 测试结果面板 */}
-            {showAiPanel && (
-              <div className="mt-6 p-5 rounded-2xl bg-card border border-border">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <SparklesIcon className="w-4 h-4 text-green-500" />
-                    <span className="text-sm font-medium">{t('prompt.aiResponse')}</span>
-                    <span className="text-xs text-muted-foreground">
-                      ({(() => {
-                        const defaultModel = aiModels.find(m => m.isDefault);
-                        if (defaultModel) {
-                          return `${defaultModel.name || defaultModel.provider} | ${defaultModel.model}`;
-                        }
-                        return aiModel;
-                      })()})
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => setShowAiPanel(false)}
-                    className="p-1 rounded hover:bg-muted transition-colors"
-                  >
-                    <XIcon className="w-4 h-4 text-muted-foreground" />
-                  </button>
-                </div>
-                <div className="p-4 rounded-xl bg-muted/50 font-mono text-sm leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto">
-                  {isTestingAI ? (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <LoaderIcon className="w-4 h-4 animate-spin" />
-                      <span>{t('prompt.callingAI')}</span>
-                    </div>
-                  ) : aiResponse ? (
-                    aiResponse
-                  ) : (
-                    <span className="text-muted-foreground">{t('prompt.waitingResponse')}</span>
-                  )}
-                </div>
-                {aiResponse && !isTestingAI && (
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(aiResponse);
-                      showToast(t('prompt.responseCopied'), 'success');
-                    }}
-                    className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <CopyIcon className="w-3 h-3" />
-                    {t('prompt.copyResponse')}
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* 编辑弹窗 */}
-            <EditPromptModal
-              isOpen={isEditModalOpen}
-              onClose={() => setIsEditModalOpen(false)}
-              prompt={selectedPrompt}
-            />
-
-            {/* 历史版本弹窗 */}
-            <VersionHistoryModal
-              isOpen={isVersionModalOpen}
-              onClose={() => setIsVersionModalOpen(false)}
-              prompt={selectedPrompt}
-              onRestore={handleRestoreVersion}
-            />
-
-            {/* 变量填充弹窗 - 复制 */}
-            <VariableInputModal
-              isOpen={isVariableModalOpen}
-              onClose={() => setIsVariableModalOpen(false)}
-              promptId={selectedPrompt.id}
-              systemPrompt={selectedPrompt.systemPrompt}
-              userPrompt={selectedPrompt.userPrompt}
-              mode="copy"
-              onCopy={() => {
-                setCopied(true);
-                showToast(t('toast.copied'), 'success');
-                setTimeout(() => setCopied(false), 2000);
-                setIsVariableModalOpen(false);
-              }}
-            />
-
-            {/* 变量填充弹窗 - AI 测试 */}
-            <VariableInputModal
-              isOpen={isAiTestVariableModalOpen}
-              onClose={() => setIsAiTestVariableModalOpen(false)}
-              promptId={selectedPrompt.id}
-              systemPrompt={selectedPrompt.systemPrompt}
-              userPrompt={selectedPrompt.userPrompt}
-              mode="aiTest"
-              onAiTest={(filledSystemPrompt, filledUserPrompt) => {
-                runAiTest(filledSystemPrompt, filledUserPrompt);
-              }}
-              isAiTesting={isTestingAI}
-            />
-
-            {/* 变量填充弹窗 - 多模型对比 */}
-            <VariableInputModal
-              isOpen={isCompareVariableModalOpen}
-              onClose={() => setIsCompareVariableModalOpen(false)}
-              promptId={selectedPrompt.id}
-              systemPrompt={selectedPrompt.systemPrompt}
-              userPrompt={selectedPrompt.userPrompt}
-              mode="aiTest"
-              onAiTest={(filledSystemPrompt, filledUserPrompt) => {
-                runModelCompare(filledSystemPrompt, filledUserPrompt);
-              }}
-              isAiTesting={isComparingModels}
-            />
+                  if (hasVariables) {
+                    setIsAiTestVariableModalOpen(true);
+                  } else {
+                    // 没有变量，直接测试
+                    runAiTest(selectedPrompt.systemPrompt, selectedPrompt.userPrompt);
+                  }
+                }}
+                disabled={isTestingAI}
+                className="
+                  flex items-center gap-2 h-10 px-5 rounded-lg
+                  bg-primary/90 text-white text-sm font-medium
+                  hover:bg-primary disabled:opacity-50
+                  transition-colors duration-150
+                "
+              >
+                {isTestingAI ? <LoaderIcon className="w-4 h-4 animate-spin" /> : <PlayIcon className="w-4 h-4" />}
+                <span>{isTestingAI ? t('prompt.testing') : t('prompt.aiTest')}</span>
+              </button>
+              <button
+                onClick={() => setIsVersionModalOpen(true)}
+                className="
+                  flex items-center gap-2 h-10 px-5 rounded-lg
+                  bg-card border border-border text-sm font-medium
+                  hover:bg-accent
+                  transition-colors duration-150
+                "
+              >
+                <HistoryIcon className="w-4 h-4" />
+                <span>{t('prompt.history')}</span>
+              </button>
+              <button
+                onClick={async () => {
+                  if (confirm(t('prompt.confirmDeletePrompt'))) {
+                    await deletePrompt(selectedPrompt.id);
+                    showToast(t('prompt.promptDeleted'), 'success');
+                  }
+                }}
+                className="
+                  flex items-center gap-2 h-10 px-5 rounded-lg
+                  bg-card border border-destructive/30 text-destructive text-sm font-medium
+                  hover:bg-destructive/10
+                  transition-colors duration-150
+                "
+              >
+                <TrashIcon className="w-4 h-4" />
+                <span>{t('prompt.delete')}</span>
+              </button>
+            </div>
           </div>
         ) : (
-          <div className="h-full flex flex-col items-center justify-center text-center p-8">
-            <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center mb-6">
-              <SparklesIcon className="w-10 h-10 text-primary" />
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+            <div className="w-16 h-16 rounded-2xl bg-accent/50 flex items-center justify-center mb-4">
+              <SparklesIcon className="w-8 h-8 text-muted-foreground/50" />
             </div>
-            <h3 className="text-xl font-semibold text-foreground mb-2">{t('prompt.selectPrompt')}</h3>
-            <p className="text-muted-foreground max-w-sm">
-              {t('prompt.selectPromptDesc')}
-            </p>
+            <p>{t('prompt.selectPrompt')}</p>
           </div>
         )}
       </div>
+
+      {/* 编辑弹窗 */}
+      {selectedPrompt && (
+        <EditPromptModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          prompt={selectedPrompt}
+        />
+      )}
+
+      {/* AI 测试弹窗（变量输入） */}
+      <AiTestModal
+        isOpen={showAiPanel}
+        onClose={() => setShowAiPanel(false)}
+        prompt={selectedPrompt || null}
+        onUsageIncrement={handleAiUsageIncrement}
+        onSaveResponse={handleSaveAiResponse}
+      />
+
+      {/* 变量输入弹窗（用于复制） */}
+      {
+        selectedPrompt && (
+          <VariableInputModal
+            isOpen={isVariableModalOpen}
+            onClose={() => setIsVariableModalOpen(false)}
+            promptId={selectedPrompt.id}
+            systemPrompt={selectedPrompt.systemPrompt}
+            userPrompt={selectedPrompt.userPrompt}
+            mode="copy"
+            onCopy={async (text) => {
+              await navigator.clipboard.writeText(text);
+              await incrementUsageCount(selectedPrompt.id);
+              setCopied(true);
+              showToast(t('toast.copied'), 'success', showCopyNotification);
+              setTimeout(() => setCopied(false), 2000);
+              setIsVariableModalOpen(false);
+            }}
+          />
+        )
+      }
+
+      {/* 变量输入弹窗（用于 AI 测试） */}
+      {
+        selectedPrompt && (
+          <VariableInputModal
+            isOpen={isAiTestVariableModalOpen}
+            onClose={() => setIsAiTestVariableModalOpen(false)}
+            promptId={selectedPrompt.id}
+            systemPrompt={selectedPrompt.systemPrompt}
+            userPrompt={selectedPrompt.userPrompt}
+            mode="aiTest"
+            onAiTest={(filledSystemPrompt, filledUserPrompt) => {
+              runAiTest(filledSystemPrompt, filledUserPrompt);
+            }}
+            isAiTesting={isTestingAI}
+          />
+        )
+      }
+
+      {/* 变量输入弹窗（用于多模型对比） */}
+      {
+        selectedPrompt && (
+          <VariableInputModal
+            isOpen={isCompareVariableModalOpen}
+            onClose={() => setIsCompareVariableModalOpen(false)}
+            promptId={selectedPrompt.id}
+            systemPrompt={selectedPrompt.systemPrompt}
+            userPrompt={selectedPrompt.userPrompt}
+            mode="aiTest"
+            onAiTest={(filledSystemPrompt, filledUserPrompt) => {
+              runModelCompare(filledSystemPrompt, filledUserPrompt);
+            }}
+            isAiTesting={isComparingModels}
+          />
+        )
+      }
+      {/* 版本历史弹窗 */}
+      {selectedPrompt && (
+        <VersionHistoryModal
+          isOpen={isVersionModalOpen}
+          onClose={() => setIsVersionModalOpen(false)}
+          prompt={selectedPrompt}
+          onRestore={handleRestoreVersion}
+        />
+      )}
+
+      {/* 图片预览弹窗 */}
+      <ImagePreviewModal
+        isOpen={!!previewImage}
+        onClose={() => setPreviewImage(null)}
+        imageSrc={previewImage}
+      />
     </main>
   );
 }

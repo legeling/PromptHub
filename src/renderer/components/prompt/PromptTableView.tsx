@@ -1,13 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StarIcon, CopyIcon, PlayIcon, EditIcon, TrashIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, HistoryIcon, FolderIcon, Trash2Icon } from 'lucide-react';
 import type { Prompt } from '../../../shared/types';
 import { useFolderStore } from '../../stores/folder.store';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeHighlight from 'rehype-highlight';
-import rehypeSanitize from 'rehype-sanitize';
-import { defaultSchema } from 'hast-util-sanitize';
 
 // 自定义 Checkbox 组件
 function Checkbox({ checked, onChange, className = '' }: { checked: boolean; onChange: () => void; className?: string }) {
@@ -15,15 +10,14 @@ function Checkbox({ checked, onChange, className = '' }: { checked: boolean; onC
     <button
       type="button"
       onClick={(e) => { e.stopPropagation(); onChange(); }}
-      className={`w-[18px] h-[18px] rounded border-2 flex items-center justify-center transition-all ${
-        checked 
-          ? 'bg-primary border-primary text-white' 
-          : 'border-gray-300 dark:border-gray-600 hover:border-primary/50 bg-white dark:bg-gray-800'
-      } ${className}`}
+      className={`w-[18px] h-[18px] rounded border-2 flex items-center justify-center transition-all ${checked
+        ? 'bg-primary border-primary text-white'
+        : 'border-gray-300 dark:border-gray-600 hover:border-primary/50 bg-white dark:bg-gray-800'
+        } ${className}`}
     >
       {checked && (
         <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
-          <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       )}
     </button>
@@ -44,6 +38,7 @@ interface PromptTableViewProps {
   onBatchFavorite?: (ids: string[], favorite: boolean) => void;
   onBatchMove?: (ids: string[], folderId: string | undefined) => void;
   onBatchDelete?: (ids: string[]) => void;
+  onContextMenu: (e: React.MouseEvent, prompt: Prompt) => void;
 }
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
@@ -62,6 +57,7 @@ export function PromptTableView({
   onBatchFavorite,
   onBatchMove,
   onBatchDelete,
+  onContextMenu,
 }: PromptTableViewProps) {
   const { t } = useTranslation();
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -70,36 +66,6 @@ export function PromptTableView({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showFolderMenu, setShowFolderMenu] = useState(false);
   const folders = useFolderStore((state) => state.folders);
-
-  const sanitizeSchema: any = useMemo(() => {
-    const schema = { ...defaultSchema, attributes: { ...defaultSchema.attributes } };
-    schema.attributes.code = [...(schema.attributes.code || []), ['className']];
-    schema.attributes.span = [...(schema.attributes.span || []), ['className']];
-    schema.attributes.pre = [...(schema.attributes.pre || []), ['className']];
-    return schema;
-  }, []);
-
-  const rehypePlugins = useMemo(
-    () => [
-      [rehypeHighlight, { ignoreMissing: true }] as any,
-      [rehypeSanitize, sanitizeSchema] as any,
-    ],
-    [sanitizeSchema],
-  );
-
-  const renderMarkdownPreview = (text: string) => {
-    if (!text) return <span className="text-muted-foreground/40 text-xs">-</span>;
-    return (
-      <div className="text-muted-foreground text-xs leading-relaxed line-clamp-2 max-w-[220px] markdown-content">
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
-          rehypePlugins={rehypePlugins}
-        >
-          {text}
-        </ReactMarkdown>
-      </div>
-    );
-  };
 
   // 分页
   const totalPages = Math.ceil(prompts.length / pageSize);
@@ -122,9 +88,9 @@ export function PromptTableView({
   // 格式化日期
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString(undefined, { 
+    return date.toLocaleDateString(undefined, {
       year: 'numeric',
-      month: '2-digit', 
+      month: '2-digit',
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit'
@@ -294,122 +260,133 @@ export function PromptTableView({
                 const isSelected = selectedIds.has(prompt.id);
                 const aiContent = prompt.lastAiResponse || aiResults[prompt.id] || '';
                 return (
-                <tr 
-                  key={prompt.id}
-                  className={`border-b border-border/50 last:border-b-0 hover:bg-accent/50 dark:hover:bg-accent/20 transition-colors ${isSelected ? 'bg-primary/5' : ''}`}
-                >
-                  {/* 多选框 */}
-                  <td className="w-[50px] px-4 py-3">
-                    <Checkbox checked={isSelected} onChange={() => toggleSelect(prompt.id)} />
-                  </td>
-                  {/* 标题 - 可点击查看详情 */}
-                  <td className="px-4 py-3 min-w-[140px]">
-                    <button
-                      onClick={() => onViewDetail(prompt)}
-                      className="font-medium text-primary hover:text-primary/80 hover:underline truncate max-w-[140px] text-left"
-                      title={prompt.title}
-                    >
-                      {prompt.title}
-                    </button>
-                  </td>
-
-                  {/* Prompt 内容预览 */}
-                  <td className="px-4 py-3 min-w-[180px]">
-                    <div className="cursor-help" title={prompt.userPrompt}>
-                      {renderMarkdownPreview(prompt.userPrompt)}
-                    </div>
-                  </td>
-
-                  {/* AI 响应预览 */}
-                  <td className="px-4 py-3 min-w-[180px]">
-                    <div className="cursor-help" title={aiContent}>
-                      {renderMarkdownPreview(aiContent)}
-                    </div>
-                  </td>
-
-                  {/* 变量数 */}
-                  <td className="px-4 py-3 text-center">
-                    <span className={`text-xs ${getVariableCount(prompt) > 0 ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
-                      {getVariableCount(prompt) || '-'}
-                    </span>
-                  </td>
-
-                  {/* 使用次数 */}
-                  <td className="px-4 py-3 text-center text-muted-foreground text-xs">
-                    {prompt.usageCount || 0}
-                  </td>
-
-                  {/* 操作 - 固定在右侧 */}
-                  <td className={`px-2 py-3 sticky right-0 z-10 shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.1)] ${isSelected ? 'bg-primary/5' : 'bg-card'} dark:bg-card`}>
-                    <div 
-                      className="flex items-center justify-center gap-0.5 bg-card dark:bg-card rounded-lg px-1"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {/* 复制 */}
+                  <tr
+                    key={prompt.id}
+                    onContextMenu={(e) => onContextMenu(e, prompt)}
+                    className={`border-b border-border/50 last:border-b-0 hover:bg-accent/50 dark:hover:bg-accent/20 transition-colors ${isSelected ? 'bg-primary/5' : ''}`}
+                  >
+                    {/* 多选框 */}
+                    <td className="w-[50px] px-4 py-3">
+                      <Checkbox checked={isSelected} onChange={() => toggleSelect(prompt.id)} />
+                    </td>
+                    {/* 标题 - 可点击查看详情 */}
+                    <td className="px-4 py-3 min-w-[140px]">
                       <button
-                        onClick={() => handleCopy(prompt)}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                        title={t('prompt.copy')}
+                        onClick={() => onViewDetail(prompt)}
+                        className="font-medium text-primary hover:text-primary/80 hover:underline truncate max-w-[140px] text-left"
+                        title={prompt.title}
                       >
-                        {copiedId === prompt.id ? (
-                          <CheckIcon className="w-4 h-4 text-green-500" />
-                        ) : (
-                          <CopyIcon className="w-4 h-4" />
-                        )}
+                        {prompt.title}
                       </button>
+                    </td>
 
-                      {/* AI 测试 */}
-                      <button
-                        onClick={() => onAiTest(prompt)}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                        title={t('prompt.aiTest')}
+                    {/* Prompt 内容预览 */}
+                    <td className="px-4 py-3 min-w-[180px]">
+                      <p
+                        className="text-muted-foreground text-xs line-clamp-2 max-w-[200px] cursor-help"
+                        title={prompt.userPrompt}
                       >
-                        <PlayIcon className="w-4 h-4" />
-                      </button>
+                        {prompt.userPrompt.slice(0, 100)}{prompt.userPrompt.length > 100 ? '...' : ''}
+                      </p>
+                    </td>
 
-                      {/* 版本历史 */}
-                      <button
-                        onClick={() => onVersionHistory(prompt)}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                        title={t('prompt.history')}
+                    {/* AI 响应预览 */}
+                    <td className="px-4 py-3 min-w-[180px]">
+                      {aiContent ? (
+                        <p
+                          className="text-muted-foreground text-xs line-clamp-2 max-w-[200px] cursor-help"
+                          title={aiContent}
+                        >
+                          {aiContent.slice(0, 100)}{aiContent.length > 100 ? '...' : ''}
+                        </p>
+                      ) : (
+                        <span className="text-muted-foreground/40 text-xs">-</span>
+                      )}
+                    </td>
+
+                    {/* 变量数 */}
+                    <td className="px-4 py-3 text-center">
+                      <span className={`text-xs ${getVariableCount(prompt) > 0 ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
+                        {getVariableCount(prompt) || '-'}
+                      </span>
+                    </td>
+
+                    {/* 使用次数 */}
+                    <td className="px-4 py-3 text-center text-muted-foreground text-xs">
+                      {prompt.usageCount || 0}
+                    </td>
+
+                    {/* 操作 - 固定在右侧 */}
+                    <td className={`px-2 py-3 sticky right-0 z-10 shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.1)] ${isSelected ? 'bg-primary/5' : 'bg-card'} dark:bg-card`}>
+                      <div
+                        className="flex items-center justify-center gap-0.5 bg-card dark:bg-card rounded-lg px-1"
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        <HistoryIcon className="w-4 h-4" />
-                      </button>
+                        {/* 复制 */}
+                        <button
+                          onClick={() => handleCopy(prompt)}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                          title={t('prompt.copy')}
+                        >
+                          {copiedId === prompt.id ? (
+                            <CheckIcon className="w-4 h-4 text-green-500" />
+                          ) : (
+                            <CopyIcon className="w-4 h-4" />
+                          )}
+                        </button>
 
-                      {/* 收藏 */}
-                      <button
-                        onClick={() => onToggleFavorite(prompt.id)}
-                        className={`p-1.5 rounded-lg transition-colors ${
-                          prompt.isFavorite
+                        {/* AI 测试 */}
+                        <button
+                          onClick={() => onAiTest(prompt)}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                          title={t('prompt.aiTest')}
+                        >
+                          <PlayIcon className="w-4 h-4" />
+                        </button>
+
+                        {/* 版本历史 */}
+                        <button
+                          onClick={() => onVersionHistory(prompt)}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                          title={t('prompt.history')}
+                        >
+                          <HistoryIcon className="w-4 h-4" />
+                        </button>
+
+                        {/* 收藏 */}
+                        <button
+                          onClick={() => onToggleFavorite(prompt.id)}
+                          className={`p-1.5 rounded-lg transition-colors ${prompt.isFavorite
                             ? 'text-yellow-500 hover:bg-yellow-500/10'
                             : 'text-muted-foreground hover:text-yellow-500 hover:bg-accent'
-                        }`}
-                        title={prompt.isFavorite ? t('nav.favorites') : t('prompt.addToFavorites')}
-                      >
-                        <StarIcon className={`w-4 h-4 ${prompt.isFavorite ? 'fill-current' : ''}`} />
-                      </button>
+                            }`}
+                          title={prompt.isFavorite ? t('nav.favorites') : t('prompt.addToFavorites')}
+                        >
+                          <StarIcon className={`w-4 h-4 ${prompt.isFavorite ? 'fill-current' : ''}`} />
+                        </button>
 
-                      {/* 编辑 */}
-                      <button
-                        onClick={() => onEdit(prompt)}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                        title={t('prompt.edit')}
-                      >
-                        <EditIcon className="w-4 h-4" />
-                      </button>
+                        {/* 编辑 */}
+                        <button
+                          onClick={() => onEdit(prompt)}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                          title={t('prompt.edit')}
+                        >
+                          <EditIcon className="w-4 h-4" />
+                        </button>
 
-                      {/* 删除 */}
-                      <button
-                        onClick={() => onDelete(prompt)}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                        title={t('prompt.delete')}
-                      >
-                        <TrashIcon className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              )})}
+                        {/* 删除 */}
+                        <button
+                          onClick={() => onDelete(prompt)}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                          title={t('prompt.delete')}
+                        >
+                          <TrashIcon className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -472,11 +449,10 @@ export function PromptTableView({
                     <button
                       key={page}
                       onClick={() => goToPage(page)}
-                      className={`w-8 h-8 rounded-md text-sm transition-colors ${
-                        currentPage === page
-                          ? 'bg-primary text-white'
-                          : 'hover:bg-accent'
-                      }`}
+                      className={`w-8 h-8 rounded-md text-sm transition-colors ${currentPage === page
+                        ? 'bg-primary text-white'
+                        : 'hover:bg-accent'
+                        }`}
                     >
                       {page}
                     </button>

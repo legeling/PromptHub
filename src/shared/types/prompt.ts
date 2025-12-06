@@ -11,6 +11,7 @@ export interface Prompt {
   variables: Variable[];
   tags: string[];
   folderId?: string;
+  images?: string[];
   isFavorite: boolean;
   version: number;
   currentVersion: number;
@@ -52,6 +53,7 @@ export interface CreatePromptDTO {
   variables?: Variable[];
   tags?: string[];
   folderId?: string;
+  images?: string[];
 }
 
 export interface UpdatePromptDTO {
@@ -62,6 +64,7 @@ export interface UpdatePromptDTO {
   variables?: Variable[];
   tags?: string[];
   folderId?: string;
+  images?: string[];
   isFavorite?: boolean;
   usageCount?: number;
   lastAiResponse?: string;

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDownIcon, LayoutGridIcon, ListIcon } from 'lucide-react';
+import { ChevronDownIcon, LayoutGridIcon, ListIcon, ImageIcon } from 'lucide-react';
 import { usePromptStore, SortBy, SortOrder, ViewMode } from '../../stores/prompt.store';
 
 interface SortOption {
@@ -24,6 +24,8 @@ export function PromptListHeader({ count }: PromptListHeaderProps) {
   const setSortBy = usePromptStore((state) => state.setSortBy);
   const setSortOrder = usePromptStore((state) => state.setSortOrder);
   const setViewMode = usePromptStore((state) => state.setViewMode);
+  const galleryImageSize = usePromptStore((state) => state.galleryImageSize);
+  const setGalleryImageSize = usePromptStore((state) => state.setGalleryImageSize);
 
   // 排序选项
   const sortOptions: SortOption[] = [
@@ -86,11 +88,10 @@ export function PromptListHeader({ count }: PromptListHeaderProps) {
                 <button
                   key={`${option.sortBy}-${option.sortOrder}`}
                   onClick={() => handleSelectSort(option)}
-                  className={`w-full px-3 py-1.5 text-left text-xs hover:bg-accent transition-colors ${
-                    option.sortBy === sortBy && option.sortOrder === sortOrder
-                      ? 'text-primary font-medium'
-                      : 'text-foreground'
-                  }`}
+                  className={`w-full px-3 py-1.5 text-left text-xs hover:bg-accent transition-colors ${option.sortBy === sortBy && option.sortOrder === sortOrder
+                    ? 'text-primary font-medium'
+                    : 'text-foreground'
+                    }`}
                 >
                   {option.label}
                 </button>
@@ -99,26 +100,61 @@ export function PromptListHeader({ count }: PromptListHeaderProps) {
           )}
         </div>
 
+        {/* 图片大小控制 - 仅在 Gallery 模式显示 */}
+        {viewMode === 'gallery' && (
+          <div className="flex items-center border border-border rounded-md overflow-hidden mr-2">
+            <button
+              onClick={() => setGalleryImageSize('small')}
+              className={`px-2 py-1 text-xs transition-colors ${galleryImageSize === 'small' ? 'bg-primary text-white' : 'hover:bg-accent text-muted-foreground'}`}
+              title={t('prompt.sizeSmall', '小图')}
+            >
+              S
+            </button>
+            <button
+              onClick={() => setGalleryImageSize('medium')}
+              className={`px-2 py-1 text-xs transition-colors ${galleryImageSize === 'medium' ? 'bg-primary text-white' : 'hover:bg-accent text-muted-foreground'}`}
+              title={t('prompt.sizeMedium', '中图')}
+            >
+              M
+            </button>
+            <button
+              onClick={() => setGalleryImageSize('large')}
+              className={`px-2 py-1 text-xs transition-colors ${galleryImageSize === 'large' ? 'bg-primary text-white' : 'hover:bg-accent text-muted-foreground'}`}
+              title={t('prompt.sizeLarge', '大图')}
+            >
+              L
+            </button>
+          </div>
+        )}
+
         {/* 视图切换按钮 */}
         <div className="flex items-center rounded-md border border-border overflow-hidden">
           <button
             onClick={() => setViewMode('card')}
-            className={`p-1.5 transition-colors ${
-              viewMode === 'card'
-                ? 'bg-primary text-white'
-                : 'bg-transparent text-muted-foreground hover:bg-accent'
-            }`}
+            className={`p-1.5 transition-colors ${viewMode === 'card'
+              ? 'bg-primary text-white'
+              : 'bg-transparent text-muted-foreground hover:bg-accent'
+              }`}
             title={t('prompt.viewCard')}
           >
             <LayoutGridIcon className="w-3.5 h-3.5" />
           </button>
           <button
+            onClick={() => setViewMode('gallery')}
+            className={`p-1.5 transition-colors ${viewMode === 'gallery'
+              ? 'bg-primary text-white'
+              : 'bg-transparent text-muted-foreground hover:bg-accent'
+              }`}
+            title={t('prompt.viewGallery', '图片视图')}
+          >
+            <ImageIcon className="w-3.5 h-3.5" />
+          </button>
+          <button
             onClick={() => setViewMode('list')}
-            className={`p-1.5 transition-colors ${
-              viewMode === 'list'
-                ? 'bg-primary text-white'
-                : 'bg-transparent text-muted-foreground hover:bg-accent'
-            }`}
+            className={`p-1.5 transition-colors ${viewMode === 'list'
+              ? 'bg-primary text-white'
+              : 'bg-transparent text-muted-foreground hover:bg-accent'
+              }`}
             title={t('prompt.viewList')}
           >
             <ListIcon className="w-3.5 h-3.5" />

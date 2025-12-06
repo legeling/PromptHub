@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Textarea, Input, Button } from '../ui';
-import { SaveIcon, XIcon, HashIcon, PlayIcon, CopyIcon } from 'lucide-react';
+import { SaveIcon, XIcon, HashIcon, PlayIcon, CopyIcon, ImageIcon } from 'lucide-react';
 import type { Prompt } from '../../../shared/types';
 import { useSettingsStore } from '../../stores/settings.store';
 import ReactMarkdown from 'react-markdown';
@@ -21,6 +21,7 @@ export function PromptEditor({ prompt, onSave, onCancel }: PromptEditorProps) {
   const [systemPrompt, setSystemPrompt] = useState(prompt.systemPrompt || '');
   const [userPrompt, setUserPrompt] = useState(prompt.userPrompt);
   const [tags, setTags] = useState<string[]>(prompt.tags);
+  const [images, setImages] = useState<string[]>(prompt.images || []);
   const [tagInput, setTagInput] = useState('');
   const [variableValues, setVariableValues] = useState<Record<string, string>>({});
   const { editorMarkdownPreview, setEditorMarkdownPreview } = useSettingsStore((state) => ({
@@ -109,6 +110,7 @@ export function PromptEditor({ prompt, onSave, onCancel }: PromptEditorProps) {
       systemPrompt: systemPrompt || undefined,
       userPrompt,
       tags,
+      images,
     });
   };
 
@@ -126,6 +128,24 @@ export function PromptEditor({ prompt, onSave, onCancel }: PromptEditorProps) {
 
   const handleCopyPreview = () => {
     navigator.clipboard.writeText(generatePreview());
+  };
+
+  const handleSelectImage = async () => {
+    try {
+      const filePaths = await window.electron?.selectImage?.();
+      if (filePaths && filePaths.length > 0) {
+        const savedImages = await window.electron?.saveImage?.(filePaths);
+        if (savedImages) {
+          setImages([...images, ...savedImages]);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to select images:', error);
+    }
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setImages(images.filter((_, i) => i !== index));
   };
 
   return (
@@ -160,6 +180,35 @@ export function PromptEditor({ prompt, onSave, onCancel }: PromptEditorProps) {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
+          </div>
+
+          {/* 图片管理 */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-foreground">参考图片</label>
+            <div className="flex flex-wrap gap-3">
+              {images.map((img, index) => (
+                <div key={index} className="relative group w-24 h-24 rounded-lg overflow-hidden border border-border">
+                  <img
+                    src={`local-image://${img}`}
+                    alt={`preview-${index}`}
+                    className="w-full h-full object-cover"
+                  />
+                  <button
+                    onClick={() => handleRemoveImage(index)}
+                    className="absolute top-1 right-1 p-1 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <XIcon className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={handleSelectImage}
+                className="w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 flex flex-col items-center justify-center text-muted-foreground hover:text-primary transition-colors"
+              >
+                <ImageIcon className="w-6 h-6 mb-1" />
+                <span className="text-xs">上传图片</span>
+              </button>
+            </div>
           </div>
 
           {/* 标签 */}
@@ -262,7 +311,7 @@ export function PromptEditor({ prompt, onSave, onCancel }: PromptEditorProps) {
                   复制结果
                 </Button>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-3">
                 {variables.map((variable) => (
                   <Input

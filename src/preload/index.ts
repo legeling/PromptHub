@@ -103,6 +103,12 @@ contextBridge.exposeInMainWorld('electron', {
       ipcRenderer.removeAllListeners('updater:status');
     },
   },
+  // 图片
+  selectImage: () => ipcRenderer.invoke('dialog:selectImage'),
+  saveImage: (paths: string[]) => ipcRenderer.invoke('image:save', paths),
+  saveImageBuffer: (buffer: ArrayBuffer) => ipcRenderer.invoke('image:save-buffer', Buffer.from(buffer)),
+  downloadImage: (url: string) => ipcRenderer.invoke('image:download', url),
+  openImage: (fileName: string) => ipcRenderer.invoke('image:open', fileName),
 });
 
 // 类型声明
@@ -128,6 +134,11 @@ declare global {
         onStatus: (callback: (status: any) => void) => void;
         offStatus: () => void;
       };
+      selectImage?: () => Promise<string[]>;
+      saveImage?: (paths: string[]) => Promise<string[]>;
+      saveImageBuffer?: (buffer: ArrayBuffer) => Promise<string | null>;
+      downloadImage?: (url: string) => Promise<string | null>;
+      openImage?: (fileName: string) => Promise<boolean>;
     };
   }
 }

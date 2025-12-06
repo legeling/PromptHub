@@ -1,8 +1,7 @@
-import { app, BrowserWindow, shell, ipcMain, dialog, Notification, Tray, Menu, nativeImage } from 'electron';
+import { app, BrowserWindow, shell, ipcMain, dialog, Notification, Tray, Menu, nativeImage, session, protocol } from 'electron';
 import path from 'path';
-// TODO: 暂时禁用数据库（需要解决 better-sqlite3 与 Electron 39 的兼容问题）
-// import { initDatabase } from './database';
-// import { registerAllIPC } from './ipc';
+import { initDatabase } from './database';
+import { registerAllIPC } from './ipc';
 import { createMenu } from './menu';
 import { registerShortcuts } from './shortcuts';
 import { initUpdater, registerUpdaterIPC } from './updater';
@@ -15,12 +14,26 @@ let tray: Tray | null = null;
 let minimizeToTray = false;
 let isQuitting = false;
 
+// 注册特权协议（必须在 app ready 之前调用）
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'local-image',
+    privileges: {
+      secure: true,
+      standard: true,
+      supportFetchAPI: true,
+      bypassCSP: true,
+      stream: true
+    }
+  }
+]);
+
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
 async function createWindow() {
   const isMac = process.platform === 'darwin';
   const isWin = process.platform === 'win32';
-  
+
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -130,19 +143,19 @@ function createMacTrayIcon(): Electron.NativeImage {
   } else {
     iconPath = path.join(process.resourcesPath, 'icon.iconset/icon_16x16@2x.png');
   }
-  
+
   const icon = nativeImage.createFromPath(iconPath);
   if (icon.isEmpty()) {
     console.error('Failed to load tray icon from:', iconPath);
     // 尝试备用路径
-    const altPath = isDev 
+    const altPath = isDev
       ? path.join(__dirname, '../../resources/icon.iconset/icon_32x32.png')
       : path.join(process.resourcesPath, 'icon.iconset/icon_32x32.png');
     const altIcon = nativeImage.createFromPath(altPath);
     altIcon.setTemplateImage(true);
     return altIcon.resize({ width: 18, height: 18 });
   }
-  
+
   icon.setTemplateImage(true);
   return icon.resize({ width: 18, height: 18 });
 }
@@ -150,12 +163,12 @@ function createMacTrayIcon(): Electron.NativeImage {
 // 创建系统托盘
 function createTray() {
   if (tray) return;
-  
+
   const isMac = process.platform === 'darwin';
-  
+
   try {
     let icon: Electron.NativeImage;
-    
+
     if (isMac) {
       // macOS: 使用 P 字母模板图标
       icon = createMacTrayIcon();
@@ -170,7 +183,7 @@ function createTray() {
       icon = nativeImage.createFromPath(iconPath);
       icon = icon.resize({ width: 16, height: 16 });
     }
-    
+
     tray = new Tray(icon);
   } catch (e) {
     console.error('Failed to load tray icon:', e);
@@ -184,7 +197,7 @@ function createTray() {
     const fallbackIcon = nativeImage.createFromPath(iconPath);
     tray = new Tray(fallbackIcon.resize({ width: 18, height: 18 }));
   }
-  
+
   const contextMenu = Menu.buildFromTemplate([
     {
       label: '显示窗口',
@@ -202,10 +215,10 @@ function createTray() {
       },
     },
   ]);
-  
+
   tray.setToolTip('PromptHub');
   tray.setContextMenu(contextMenu);
-  
+
   // 点击托盘图标显示窗口
   tray.on('click', () => {
     if (mainWindow?.isVisible()) {
@@ -246,7 +259,7 @@ ipcMain.handle('shell:openPath', async (_event, folderPath: string) => {
   } else if (folderPath.includes('%APPDATA%')) {
     realPath = folderPath.replace('%APPDATA%', app.getPath('appData'));
   }
-  
+
   try {
     await shell.openPath(realPath);
     return { success: true };
@@ -265,7 +278,7 @@ ipcMain.handle('notification:show', async (_event, options: { title: string; bod
     } else {
       iconPath = path.join(process.resourcesPath, 'icon.png');
     }
-    
+
     const notification = new Notification({
       title: options.title,
       body: options.body,
@@ -279,9 +292,26 @@ ipcMain.handle('notification:show', async (_event, options: { title: string; bod
 
 // 应用启动
 app.whenReady().then(async () => {
-  // TODO: 暂时禁用数据库
-  // const db = initDatabase();
-  // registerAllIPC(db);
+  // 注册 local-image 协议
+  session.defaultSession.protocol.registerFileProtocol('local-image', (request, callback) => {
+    let url = request.url.replace('local-image://', '');
+    // 移除开头的斜杠（防止路径被解析为绝对路径）
+    url = url.replace(/^\/+/, '');
+    // 移除结尾的斜杠
+    url = url.replace(/\/+$/, '');
+
+    try {
+      const decodedUrl = decodeURIComponent(url);
+      const imagePath = path.join(app.getPath('userData'), 'images', decodedUrl);
+      callback({ path: imagePath });
+    } catch (error) {
+      console.error('Failed to register protocol', error);
+    }
+  });
+
+  // 初始化数据库
+  const db = initDatabase();
+  registerAllIPC(db);
 
   // 创建菜单
   createMenu();

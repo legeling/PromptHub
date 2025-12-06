@@ -1,3 +1,31 @@
+我大概来说一下我修改了哪些内容：
+
+1. 添加隐私文件夹并设置密码
+2. 添加图片预览
+	  - 可以本地上传或者直接复制粘贴
+	  - 可以窗口内预览图片
+3. 添加图片模式列表模式
+4. 修改【创建】【保存】的位置
+5. 右键菜单支持：
+     - 在卡片视图、列表视图和画廊视图中均已支持右键点击。
+     - 右键菜单包含：查看详情、编辑、复制、收藏、AI 测试、版本历史、删除。
+6. 画廊视图图片大小调整：
+     - 在画廊视图下，顶部工具栏会出现 S / M / L 切换按钮。
+     - 支持切换小图、中图、大图（自动调整网格列数）。
+     - 设置会自动保存。
+
+---
+### 截图
+
+<img width="2412" alt="Image" src="https://github.com/user-attachments/assets/96295a98-af2a-4e66-86ef-a9a3aeb0fc24" />
+
+<img width="2397" alt="Image" src="https://github.com/user-attachments/assets/a6382801-d436-4e2d-b652-77834aae0f9f" />
+
+<img width="2414" alt="Image" src="https://github.com/user-attachments/assets/ae7258ed-7f70-4244-8f18-325e7cebffeb" />
+
+<img width="2402" alt="Image" src="https://github.com/user-attachments/assets/376c01b1-3654-468e-bb0b-80e7e8589932" />
+
+---
 <div align="center">
   <img src="./docs/imgs/icon.png" alt="PromptHub Logo" width="120" height="120" />
   <h1>PromptHub</h1>

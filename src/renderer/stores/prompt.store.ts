@@ -7,7 +7,8 @@ import * as db from '../services/database';
 export type SortBy = 'updatedAt' | 'createdAt' | 'title' | 'usageCount';
 export type SortOrder = 'desc' | 'asc';
 // 视图模式
-export type ViewMode = 'card' | 'list';
+export type ViewMode = 'card' | 'list' | 'gallery';
+export type GalleryImageSize = 'small' | 'medium' | 'large';
 
 interface PromptState {
   prompts: Prompt[];
@@ -20,6 +21,7 @@ interface PromptState {
   sortOrder: SortOrder;
   // 视图模式
   viewMode: ViewMode;
+  galleryImageSize: GalleryImageSize;
 
   // Actions
   fetchPrompts: () => Promise<void>;
@@ -35,6 +37,7 @@ interface PromptState {
   setSortBy: (sortBy: SortBy) => void;
   setSortOrder: (sortOrder: SortOrder) => void;
   setViewMode: (viewMode: ViewMode) => void;
+  setGalleryImageSize: (size: GalleryImageSize) => void;
   incrementUsageCount: (id: string) => Promise<void>;
 }
 
@@ -49,95 +52,97 @@ export const usePromptStore = create<PromptState>()(
       sortBy: 'updatedAt' as SortBy,
       sortOrder: 'desc' as SortOrder,
       viewMode: 'card' as ViewMode,
+      galleryImageSize: 'medium' as GalleryImageSize,
 
       fetchPrompts: async () => {
-    set({ isLoading: true });
-    try {
-      console.log('Fetching prompts...');
-      // 确保数据库已初始化并填充种子数据
-      await db.seedDatabase();
-      // 从 IndexedDB 获取数据
-      const prompts = await db.getAllPrompts();
-      console.log('Fetched prompts:', prompts.length, prompts);
-      set({ prompts });
-    } catch (error) {
-      console.error('Failed to fetch prompts:', error);
-    } finally {
-      set({ isLoading: false });
-    }
-  },
+        set({ isLoading: true });
+        try {
+          console.log('Fetching prompts...');
+          // 确保数据库已初始化并填充种子数据
+          await db.seedDatabase();
+          // 从 IndexedDB 获取数据
+          const prompts = await db.getAllPrompts();
+          console.log('Fetched prompts:', prompts.length, prompts);
+          set({ prompts });
+        } catch (error) {
+          console.error('Failed to fetch prompts:', error);
+        } finally {
+          set({ isLoading: false });
+        }
+      },
 
-  createPrompt: async (data) => {
-    const prompt = await db.createPrompt({
-      ...data,
-      variables: data.variables || [],
-      tags: data.tags || [],
-      isFavorite: false,
-      usageCount: 0,
-      currentVersion: 1,
-    });
-    set((state) => ({ prompts: [prompt, ...state.prompts] }));
-    return prompt;
-  },
-
-  updatePrompt: async (id, data) => {
-    const currentPrompt = get().prompts.find((p) => p.id === id);
-    
-    // 如果内容有变化，先保存当前版本
-    if (currentPrompt && (data.systemPrompt !== undefined || data.userPrompt !== undefined)) {
-      const hasContentChange = 
-        (data.systemPrompt !== undefined && data.systemPrompt !== currentPrompt.systemPrompt) ||
-        (data.userPrompt !== undefined && data.userPrompt !== currentPrompt.userPrompt);
-      
-      if (hasContentChange) {
-        await db.createPromptVersion(id, {
-          systemPrompt: currentPrompt.systemPrompt,
-          userPrompt: currentPrompt.userPrompt,
-          version: currentPrompt.version,
+      createPrompt: async (data) => {
+        const prompt = await db.createPrompt({
+          ...data,
+          variables: data.variables || [],
+          tags: data.tags || [],
+          isFavorite: false,
+          usageCount: 0,
+          currentVersion: 1,
         });
-      }
-    }
-    
-    const updated = await db.updatePrompt(id, data);
-    set((state) => ({
-      prompts: state.prompts.map((p) => (p.id === id ? updated : p)),
-    }));
-  },
+        set((state) => ({ prompts: [prompt, ...state.prompts] }));
+        return prompt;
+      },
 
-  deletePrompt: async (id) => {
-    await db.deletePrompt(id);
-    set((state) => ({
-      prompts: state.prompts.filter((p) => p.id !== id),
-      selectedId: state.selectedId === id ? null : state.selectedId,
-    }));
-  },
+      updatePrompt: async (id, data) => {
+        const currentPrompt = get().prompts.find((p) => p.id === id);
 
-  selectPrompt: (id) => set({ selectedId: id }),
+        // 如果内容有变化，先保存当前版本
+        if (currentPrompt && (data.systemPrompt !== undefined || data.userPrompt !== undefined)) {
+          const hasContentChange =
+            (data.systemPrompt !== undefined && data.systemPrompt !== currentPrompt.systemPrompt) ||
+            (data.userPrompt !== undefined && data.userPrompt !== currentPrompt.userPrompt);
 
-  setSearchQuery: (query) => set({ searchQuery: query }),
+          if (hasContentChange) {
+            await db.createPromptVersion(id, {
+              systemPrompt: currentPrompt.systemPrompt,
+              userPrompt: currentPrompt.userPrompt,
+              version: currentPrompt.version,
+            });
+          }
+        }
 
-  toggleFilterTag: (tag) => set((state) => ({
-    filterTags: state.filterTags.includes(tag)
-      ? state.filterTags.filter(t => t !== tag)
-      : [...state.filterTags, tag]
-  })),
+        const updated = await db.updatePrompt(id, data);
+        set((state) => ({
+          prompts: state.prompts.map((p) => (p.id === id ? updated : p)),
+        }));
+      },
 
-  clearFilterTags: () => set({ filterTags: [] }),
+      deletePrompt: async (id) => {
+        await db.deletePrompt(id);
+        set((state) => ({
+          prompts: state.prompts.filter((p) => p.id !== id),
+          selectedId: state.selectedId === id ? null : state.selectedId,
+        }));
+      },
 
-  toggleFavorite: async (id) => {
-    const prompt = get().prompts.find((p) => p.id === id);
-    if (prompt) {
-      const updated = await db.updatePrompt(id, { isFavorite: !prompt.isFavorite });
-      set((state) => ({
-        prompts: state.prompts.map((p) => (p.id === id ? updated : p)),
-      }));
-    }
-  },
+      selectPrompt: (id) => set({ selectedId: id }),
+
+      setSearchQuery: (query) => set({ searchQuery: query }),
+
+      toggleFilterTag: (tag) => set((state) => ({
+        filterTags: state.filterTags.includes(tag)
+          ? state.filterTags.filter(t => t !== tag)
+          : [...state.filterTags, tag]
+      })),
+
+      clearFilterTags: () => set({ filterTags: [] }),
+
+      toggleFavorite: async (id) => {
+        const prompt = get().prompts.find((p) => p.id === id);
+        if (prompt) {
+          const updated = await db.updatePrompt(id, { isFavorite: !prompt.isFavorite });
+          set((state) => ({
+            prompts: state.prompts.map((p) => (p.id === id ? updated : p)),
+          }));
+        }
+      },
 
       // 排序和视图
       setSortBy: (sortBy) => set({ sortBy }),
       setSortOrder: (sortOrder) => set({ sortOrder }),
       setViewMode: (viewMode) => set({ viewMode }),
+      setGalleryImageSize: (size) => set({ galleryImageSize: size }),
 
       incrementUsageCount: async (id) => {
         const prompt = get().prompts.find((p) => p.id === id);
@@ -155,6 +160,7 @@ export const usePromptStore = create<PromptState>()(
         sortBy: state.sortBy,
         sortOrder: state.sortOrder,
         viewMode: state.viewMode,
+        galleryImageSize: state.galleryImageSize,
       }),
     }
   )

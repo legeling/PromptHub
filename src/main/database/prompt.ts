@@ -9,7 +9,7 @@ import type {
 } from '@shared/types';
 
 export class PromptDB {
-  constructor(private db: Database.Database) {}
+  constructor(private db: Database.Database) { }
 
   /**
    * 创建 Prompt
@@ -21,9 +21,9 @@ export class PromptDB {
     const stmt = this.db.prepare(`
       INSERT INTO prompts (
         id, title, description, system_prompt, user_prompt,
-        variables, tags, folder_id, is_favorite, current_version,
+        variables, tags, folder_id, images, is_favorite, current_version,
         usage_count, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 1, 0, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
@@ -35,6 +35,7 @@ export class PromptDB {
       JSON.stringify(data.variables || []),
       JSON.stringify(data.tags || []),
       data.folderId || null,
+      JSON.stringify(data.images || []),
       now,
       now
     );
@@ -101,6 +102,10 @@ export class PromptDB {
     if (data.folderId !== undefined) {
       updates.push('folder_id = ?');
       values.push(data.folderId);
+    }
+    if (data.images !== undefined) {
+      updates.push('images = ?');
+      values.push(JSON.stringify(data.images));
     }
     if (data.isFavorite !== undefined) {
       updates.push('is_favorite = ?');
@@ -282,6 +287,7 @@ export class PromptDB {
       variables: JSON.parse(row.variables || '[]'),
       tags: JSON.parse(row.tags || '[]'),
       folderId: row.folder_id,
+      images: JSON.parse(row.images || '[]'),
       isFavorite: row.is_favorite === 1,
       version: row.current_version,
       currentVersion: row.current_version,

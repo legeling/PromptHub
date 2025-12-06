@@ -1,5 +1,5 @@
-import { autoUpdater, UpdateInfo as ElectronUpdateInfo } from 'electron-updater';
 import { BrowserWindow, ipcMain, app } from 'electron';
+import type { UpdateInfo as ElectronUpdateInfo, AppUpdater } from 'electron-updater';
 
 // 简化的更新信息类型（用于 IPC 传输）
 interface SimpleUpdateInfo {
@@ -50,11 +50,8 @@ function toSimpleInfo(info: ElectronUpdateInfo): SimpleUpdateInfo {
   };
 }
 
-// 禁用自动下载，让用户选择
-autoUpdater.autoDownload = false;
-autoUpdater.autoInstallOnAppQuit = true;
-
 let mainWindow: BrowserWindow | null = null;
+let autoUpdater: AppUpdater | null = null;
 
 export interface UpdateStatus {
   status: 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error';
@@ -63,11 +60,25 @@ export interface UpdateStatus {
   error?: string;
 }
 
-export function initUpdater(win: BrowserWindow) {
+async function getAutoUpdater(): Promise<AppUpdater> {
+  if (autoUpdater) return autoUpdater;
+
+  const module = await import('electron-updater');
+  autoUpdater = module.autoUpdater;
+
+  // 禁用自动下载，让用户选择
+  autoUpdater.autoDownload = false;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  return autoUpdater;
+}
+
+export async function initUpdater(win: BrowserWindow) {
   mainWindow = win;
+  const updater = await getAutoUpdater();
 
   // 检查更新出错
-  autoUpdater.on('error', (error) => {
+  updater.on('error', (error) => {
     console.error('Update error:', error);
     let message = (error && (error as Error).message) || String(error);
     if (message.includes('ZIP file not provided')) {
@@ -81,13 +92,13 @@ export function initUpdater(win: BrowserWindow) {
   });
 
   // 检查更新中
-  autoUpdater.on('checking-for-update', () => {
+  updater.on('checking-for-update', () => {
     console.info('Checking for update...');
     sendStatusToWindow({ status: 'checking' });
   });
 
   // 有可用更新
-  autoUpdater.on('update-available', (info) => {
+  updater.on('update-available', (info) => {
     console.info('Update available:', info.version);
     sendStatusToWindow({
       status: 'available',
@@ -96,7 +107,7 @@ export function initUpdater(win: BrowserWindow) {
   });
 
   // 没有可用更新
-  autoUpdater.on('update-not-available', (info) => {
+  updater.on('update-not-available', (info) => {
     console.info('Update not available, current version is latest');
     sendStatusToWindow({
       status: 'not-available',
@@ -105,7 +116,7 @@ export function initUpdater(win: BrowserWindow) {
   });
 
   // 下载进度
-  autoUpdater.on('download-progress', (progress: ProgressInfo) => {
+  updater.on('download-progress', (progress: ProgressInfo) => {
     console.info(`Download progress: ${progress.percent.toFixed(2)}%`);
     sendStatusToWindow({
       status: 'downloading',
@@ -114,7 +125,7 @@ export function initUpdater(win: BrowserWindow) {
   });
 
   // 下载完成
-  autoUpdater.on('update-downloaded', (info) => {
+  updater.on('update-downloaded', (info) => {
     console.info('Update downloaded:', info.version);
     sendStatusToWindow({
       status: 'downloaded',
@@ -144,7 +155,8 @@ export function registerUpdaterIPC() {
       return { success: false, error: 'Update check disabled in development mode' };
     }
     try {
-      const result = await autoUpdater.checkForUpdates();
+      const updater = await getAutoUpdater();
+      const result = await updater.checkForUpdates();
       return { success: true, result };
     } catch (error) {
       return { success: false, error: (error as Error).message };
@@ -157,7 +169,8 @@ export function registerUpdaterIPC() {
       return { success: false, error: 'Download disabled in development mode' };
     }
     try {
-      await autoUpdater.downloadUpdate();
+      const updater = await getAutoUpdater();
+      await updater.downloadUpdate();
       return { success: true };
     } catch (error) {
       return { success: false, error: (error as Error).message };
@@ -167,7 +180,8 @@ export function registerUpdaterIPC() {
   // 安装更新并重启
   ipcMain.handle('updater:install', async () => {
     if (!isDev) {
-      autoUpdater.quitAndInstall(false, true);
+      const updater = await getAutoUpdater();
+      updater.quitAndInstall(false, true);
     }
   });
 }

@@ -7,12 +7,12 @@ interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   title?: string;
+  headerActions?: ReactNode;
   children: ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
-  extraActions?: ReactNode;
 }
 
-export function Modal({ isOpen, onClose, title, children, size = 'md', extraActions }: ModalProps) {
+export function Modal({ isOpen, onClose, title, headerActions, children, size = 'md' }: ModalProps) {
   // ESC 关闭
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -31,13 +31,13 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', extraActi
   if (!isOpen) return null;
 
   const modalContent = (
-    <div 
+    <div
       className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
       style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
     >
       {/* 背景遮罩 */}
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-white/50 dark:bg-black/50 backdrop-blur-md"
         onClick={onClose}
         style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
       />
@@ -46,7 +46,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', extraActi
       <div
         className={clsx(
           'relative bg-card rounded-2xl shadow-2xl border border-border',
-          'overflow-hidden flex flex-col',
+          'max-h-[85vh] overflow-hidden flex flex-col',
           'transform transition-all duration-200',
           {
             'w-full max-w-sm': size === 'sm',
@@ -54,24 +54,24 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', extraActi
             'w-full max-w-lg': size === 'lg',
             'w-full max-w-2xl': size === 'xl',
             'w-full max-w-3xl': size === '2xl',
-            'w-full max-w-6xl': size === 'full',
+            'w-full max-w-4xl': size === 'full',
           }
         )}
-        style={{ margin: 'auto', maxHeight: size === 'full' ? '92vh' : '85vh' }}
+        style={{ margin: 'auto' }}
       >
         {/* 标题栏 */}
         {title && (
           <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
-            <div className="flex items-center gap-3">
-              <h2 className="text-lg font-semibold text-foreground">{title}</h2>
-              {extraActions}
+            <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+            <div className="flex items-center gap-2">
+              {headerActions}
+              <button
+                onClick={onClose}
+                className="p-2 -mr-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              >
+                <XIcon className="w-5 h-5" />
+              </button>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 -mr-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            >
-              <XIcon className="w-5 h-5" />
-            </button>
           </div>
         )}
 

@@ -8,6 +8,8 @@ export interface Folder {
   icon?: string; // emoji
   parentId?: string;
   order: number;
+  isPrivate?: boolean;
+  password?: string;
   createdAt: string;  // ISO 8601 格式
   updatedAt: string;  // ISO 8601 格式
 }
@@ -16,6 +18,8 @@ export interface CreateFolderDTO {
   name: string;
   icon?: string;
   parentId?: string;
+  isPrivate?: boolean;
+  password?: string;
 }
 
 export interface UpdateFolderDTO {
@@ -23,4 +27,6 @@ export interface UpdateFolderDTO {
   icon?: string;
   parentId?: string;
   order?: number;
+  isPrivate?: boolean;
+  password?: string;
 }

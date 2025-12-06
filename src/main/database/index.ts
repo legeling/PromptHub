@@ -28,6 +28,18 @@ export function initDatabase(): Database.Database {
   // 创建表结构
   db.exec(SCHEMA);
 
+  // 迁移：检查 prompts 表是否有 images 字段
+  try {
+    const tableInfo = db.pragma('table_info(prompts)') as any[];
+    const hasImages = tableInfo.some(col => col.name === 'images');
+    if (!hasImages) {
+      console.log('Migrating: Adding images column to prompts table');
+      db.prepare('ALTER TABLE prompts ADD COLUMN images TEXT').run();
+    }
+  } catch (error) {
+    console.error('Migration failed:', error);
+  }
+
   console.log(`Database initialized at: ${dbPath}`);
   return db;
 }

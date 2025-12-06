@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import { registerPromptIPC } from './prompt.ipc';
 import { registerFolderIPC } from './folder.ipc';
 import { registerSettingsIPC } from './settings.ipc';
+import { registerImageIPC } from './image.ipc';
 import { PromptDB } from '../database/prompt';
 import { FolderDB } from '../database/folder';
 
@@ -15,4 +16,5 @@ export function registerAllIPC(db: Database.Database): void {
   registerPromptIPC(promptDB);
   registerFolderIPC(folderDB);
   registerSettingsIPC(db);
+  registerImageIPC();
 }

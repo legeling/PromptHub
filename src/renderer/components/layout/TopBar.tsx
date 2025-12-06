@@ -24,6 +24,7 @@ export function TopBar({ onOpenSettings }: TopBarProps) {
     systemPrompt?: string;
     userPrompt: string;
     tags: string[];
+    images?: string[];
   }) => {
     try {
       await createPrompt({
@@ -33,6 +34,7 @@ export function TopBar({ onOpenSettings }: TopBarProps) {
         userPrompt: data.userPrompt,
         tags: data.tags,
         variables: [],
+        images: data.images,
       });
       setIsCreateModalOpen(false);
     } catch (error) {

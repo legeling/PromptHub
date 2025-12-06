@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS prompts (
   variables TEXT,
   tags TEXT,
   folder_id TEXT,
+  images TEXT,
   is_favorite INTEGER DEFAULT 0,
   current_version INTEGER DEFAULT 1,
   usage_count INTEGER DEFAULT 0,

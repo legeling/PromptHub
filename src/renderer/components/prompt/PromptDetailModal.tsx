@@ -1,19 +1,16 @@
 import { useTranslation } from 'react-i18next';
-import { StarIcon, HashIcon, ClockIcon, CopyIcon, CheckIcon, SparklesIcon, Maximize2Icon, Minimize2Icon } from 'lucide-react';
+import { StarIcon, HashIcon, ClockIcon, CopyIcon, CheckIcon, SparklesIcon, EditIcon } from 'lucide-react';
 import { Modal } from '../ui/Modal';
+import { ImagePreviewModal } from '../ui/ImagePreviewModal';
 import type { Prompt } from '../../../shared/types';
-import { useMemo, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeSanitize from 'rehype-sanitize';
-import rehypeHighlight from 'rehype-highlight';
-import { defaultSchema } from 'hast-util-sanitize';
+import { useState } from 'react';
 
 interface PromptDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   prompt: Prompt | null;
   onCopy?: (prompt: Prompt) => void;
+  onEdit?: (prompt: Prompt) => void;
 }
 
 export function PromptDetailModal({
@@ -21,36 +18,13 @@ export function PromptDetailModal({
   onClose,
   prompt,
   onCopy,
+  onEdit,
 }: PromptDetailModalProps) {
   const { t } = useTranslation();
   const [copiedSystem, setCopiedSystem] = useState(false);
   const [copiedUser, setCopiedUser] = useState(false);
   const [copiedAi, setCopiedAi] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-
-  const sanitizeSchema: any = useMemo(() => {
-    const schema = { ...defaultSchema, attributes: { ...defaultSchema.attributes } };
-    schema.attributes.code = [...(schema.attributes.code || []), ['className']];
-    schema.attributes.span = [...(schema.attributes.span || []), ['className']];
-    schema.attributes.pre = [...(schema.attributes.pre || []), ['className']];
-    return schema;
-  }, []);
-
-  const rehypePlugins = useMemo(
-    () => [
-      [rehypeHighlight, { ignoreMissing: true }] as any,
-      [rehypeSanitize, sanitizeSchema] as any,
-    ],
-    [sanitizeSchema],
-  );
-
-  const renderMarkdownBlock = (text: string, className = '') => (
-    <div className={`markdown-content text-sm leading-relaxed ${className}`}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={rehypePlugins}>
-        {text}
-      </ReactMarkdown>
-    </div>
-  );
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   if (!prompt) return null;
 
@@ -107,15 +81,20 @@ export function PromptDetailModal({
       isOpen={isOpen}
       onClose={onClose}
       title={prompt.title}
-      size={isFullscreen ? 'full' : '2xl'}
-      extraActions={
-        <button
-          onClick={() => setIsFullscreen((v) => !v)}
-          className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          title={isFullscreen ? t('common.exitFull') || '退出全屏' : t('common.fullscreen') || '全屏'}
-        >
-          {isFullscreen ? <Minimize2Icon className="w-4 h-4" /> : <Maximize2Icon className="w-4 h-4" />}
-        </button>
+      size="2xl"
+      headerActions={
+        onEdit && (
+          <button
+            onClick={() => {
+              onEdit(prompt);
+              onClose();
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-sm font-medium"
+          >
+            <EditIcon className="w-4 h-4" />
+            <span>{t('prompt.edit', '编辑')}</span>
+          </button>
+        )
       }
     >
       <div className="space-y-6">
@@ -141,6 +120,25 @@ export function PromptDetailModal({
           <div>
             <h4 className="text-sm font-medium text-muted-foreground mb-2">{t('prompt.description')}</h4>
             <p className="text-sm bg-muted/30 rounded-lg p-3">{prompt.description}</p>
+          </div>
+        )}
+
+        {/* 图片 */}
+        {prompt.images && prompt.images.length > 0 && (
+          <div>
+            <h4 className="text-sm font-medium text-muted-foreground mb-2">{t('prompt.images', '参考图片')}</h4>
+            <div className="flex flex-wrap gap-4">
+              {prompt.images.map((img, index) => (
+                <div key={index} className="rounded-lg overflow-hidden border border-border shadow-sm">
+                  <img
+                    src={`local-image://${img}`}
+                    alt={`image-${index}`}
+                    className="max-w-[200px] max-h-[200px] object-cover hover:scale-105 transition-transform duration-300 cursor-pointer"
+                    onClick={() => setPreviewImage(img)}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -194,8 +192,8 @@ export function PromptDetailModal({
                 {copiedSystem ? t('prompt.copied') : t('prompt.copy')}
               </button>
             </div>
-            <div className="bg-muted/30 rounded-lg p-4 max-h-56 overflow-y-auto border border-border/60">
-              {renderMarkdownBlock(prompt.systemPrompt)}
+            <div className="bg-muted/30 rounded-lg p-4 max-h-48 overflow-y-auto">
+              <pre className="text-sm whitespace-pre-wrap font-mono">{prompt.systemPrompt}</pre>
             </div>
           </div>
         )}
@@ -212,8 +210,8 @@ export function PromptDetailModal({
               {copiedUser ? t('prompt.copied') : t('prompt.copy')}
             </button>
           </div>
-          <div className="bg-muted/30 rounded-lg p-4 max-h-80 overflow-y-auto border border-border/60">
-            {renderMarkdownBlock(prompt.userPrompt)}
+          <div className="bg-muted/30 rounded-lg p-4 max-h-64 overflow-y-auto">
+            <pre className="text-sm whitespace-pre-wrap font-mono">{prompt.userPrompt}</pre>
           </div>
         </div>
 
@@ -233,12 +231,19 @@ export function PromptDetailModal({
                 {copiedAi ? t('prompt.copied') : t('prompt.copyResponse')}
               </button>
             </div>
-            <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 max-h-80 overflow-y-auto">
-              {renderMarkdownBlock(prompt.lastAiResponse, 'text-sm')}
+            <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 max-h-64 overflow-y-auto">
+              <pre className="text-sm whitespace-pre-wrap">{prompt.lastAiResponse}</pre>
             </div>
           </div>
         )}
       </div>
+
+      {/* 图片预览弹窗 */}
+      <ImagePreviewModal
+        isOpen={!!previewImage}
+        onClose={() => setPreviewImage(null)}
+        imageSrc={previewImage}
+      />
     </Modal>
   );
 }

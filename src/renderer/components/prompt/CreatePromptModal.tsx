@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Modal, Button, Input, Textarea } from '../ui';
 import { Select } from '../ui/Select';
-import { HashIcon, XIcon, FolderIcon } from 'lucide-react';
+import { HashIcon, XIcon, FolderIcon, ImageIcon } from 'lucide-react';
 import { useFolderStore } from '../../stores/folder.store';
 import { usePromptStore } from '../../stores/prompt.store';
 import { useTranslation } from 'react-i18next';
@@ -15,6 +15,7 @@ interface CreatePromptModalProps {
     systemPrompt?: string;
     userPrompt: string;
     tags: string[];
+    images?: string[];
     folderId?: string;
   }) => void;
 }
@@ -28,21 +29,23 @@ export function CreatePromptModal({ isOpen, onClose, onCreate }: CreatePromptMod
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [folderId, setFolderId] = useState<string>('');
+  const [images, setImages] = useState<string[]>([]);
   const folders = useFolderStore((state) => state.folders);
   const prompts = usePromptStore((state) => state.prompts);
-  
+
   // 获取所有已存在的标签
   const existingTags = [...new Set(prompts.flatMap((p) => p.tags))];
 
   const handleSubmit = () => {
     if (!title.trim() || !userPrompt.trim()) return;
-    
+
     onCreate({
       title: title.trim(),
       description: description.trim() || undefined,
       systemPrompt: systemPrompt.trim() || undefined,
       userPrompt: userPrompt.trim(),
       tags,
+      images,
       folderId: folderId || undefined,
     });
 
@@ -52,6 +55,7 @@ export function CreatePromptModal({ isOpen, onClose, onCreate }: CreatePromptMod
     setSystemPrompt('');
     setUserPrompt('');
     setTags([]);
+    setImages([]);
     setFolderId('');
     onClose();
   };
@@ -75,8 +79,41 @@ export function CreatePromptModal({ isOpen, onClose, onCreate }: CreatePromptMod
     }
   };
 
+  const handleSelectImage = async () => {
+    try {
+      const filePaths = await window.electron?.selectImage?.();
+      if (filePaths && filePaths.length > 0) {
+        const savedImages = await window.electron?.saveImage?.(filePaths);
+        if (savedImages) {
+          setImages([...images, ...savedImages]);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to select images:', error);
+    }
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setImages(images.filter((_, i) => i !== index));
+  };
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={t('prompt.createPrompt')} size="xl">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={t('prompt.createPrompt')}
+      size="xl"
+      headerActions={
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={handleSubmit}
+          disabled={!title.trim() || !userPrompt.trim()}
+        >
+          {t('prompt.create')}
+        </Button>
+      }
+    >
       <div className="space-y-5">
         {/* 标题 */}
         <Input
@@ -171,6 +208,37 @@ export function CreatePromptModal({ isOpen, onClose, onCreate }: CreatePromptMod
           </div>
         </div>
 
+        {/* 图片上传 */}
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-foreground">
+            {t('prompt.imagesOptional', '参考图片（可选）')}
+          </label>
+          <div className="flex flex-wrap gap-3">
+            {images.map((img, index) => (
+              <div key={index} className="relative group w-20 h-20 rounded-lg overflow-hidden border border-border">
+                <img
+                  src={`local-image://${img}`}
+                  alt={`preview-${index}`}
+                  className="w-full h-full object-cover"
+                />
+                <button
+                  onClick={() => handleRemoveImage(index)}
+                  className="absolute top-1 right-1 p-1 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <XIcon className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+            <button
+              onClick={handleSelectImage}
+              className="w-20 h-20 rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 flex flex-col items-center justify-center text-muted-foreground hover:text-primary transition-colors"
+            >
+              <ImageIcon className="w-6 h-6 mb-1" />
+              <span className="text-[10px]">{t('common.upload', '上传')}</span>
+            </button>
+          </div>
+        </div>
+
         {/* System Prompt */}
         <Textarea
           label={t('prompt.systemPromptOptional')}
@@ -194,20 +262,6 @@ export function CreatePromptModal({ isOpen, onClose, onCreate }: CreatePromptMod
           <p className="text-muted-foreground">
             {t('prompt.variableTipContent')}
           </p>
-        </div>
-
-        {/* 操作按钮 */}
-        <div className="flex justify-end gap-3 pt-2">
-          <Button variant="secondary" onClick={onClose}>
-            {t('common.cancel')}
-          </Button>
-          <Button
-            variant="primary"
-            onClick={handleSubmit}
-            disabled={!title.trim() || !userPrompt.trim()}
-          >
-            {t('prompt.create')}
-          </Button>
         </div>
       </div>
     </Modal>

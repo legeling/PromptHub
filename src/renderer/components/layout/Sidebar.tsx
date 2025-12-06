@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { StarIcon, HashIcon, PlusIcon, LayoutGridIcon, LinkIcon, SettingsIcon, MoreHorizontalIcon, GripVerticalIcon } from 'lucide-react';
+import { StarIcon, HashIcon, PlusIcon, LayoutGridIcon, LinkIcon, SettingsIcon, MoreHorizontalIcon, GripVerticalIcon, LockIcon } from 'lucide-react';
 import { useFolderStore } from '../../stores/folder.store';
 import { usePromptStore } from '../../stores/prompt.store';
 import { ResourcesModal } from '../resources/ResourcesModal';
 import { FolderModal } from '../folder';
+import { PasswordModal } from '../folder/PasswordModal';
 import { useTranslation } from 'react-i18next';
 import type { Folder } from '../../../shared/types';
 import {
@@ -72,9 +73,10 @@ interface SortableFolderItemProps {
   onSelect: () => void;
   onEdit: () => void;
   isOver?: boolean;
+  isLocked?: boolean;
 }
 
-function SortableFolderItem({ folder, isActive, onSelect, onEdit, isOver }: SortableFolderItemProps) {
+function SortableFolderItem({ folder, isActive, onSelect, onEdit, isOver, isLocked }: SortableFolderItemProps) {
   const {
     attributes,
     listeners,
@@ -113,7 +115,7 @@ function SortableFolderItem({ folder, isActive, onSelect, onEdit, isOver }: Sort
       >
         <GripVerticalIcon className="w-3 h-3 text-sidebar-foreground/40" />
       </button>
-      
+
       <button
         onClick={onSelect}
         className={`
@@ -126,9 +128,12 @@ function SortableFolderItem({ folder, isActive, onSelect, onEdit, isOver }: Sort
         `}
       >
         <span className="text-base">{folder.icon || '📁'}</span>
-        <span className="flex-1 text-left truncate">{folder.name}</span>
+        <span className="flex-1 text-left truncate flex items-center gap-1">
+          {folder.name}
+          {isLocked && <LockIcon className="w-3 h-3 text-muted-foreground/70" />}
+        </span>
       </button>
-      
+
       <button
         onClick={(e) => {
           e.stopPropagation();
@@ -148,11 +153,15 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
   const selectedFolderId = useFolderStore((state) => state.selectedFolderId);
   const selectFolder = useFolderStore((state) => state.selectFolder);
   const reorderFolders = useFolderStore((state) => state.reorderFolders);
+  const unlockedFolderIds = useFolderStore((state) => state.unlockedFolderIds);
+  const unlockFolder = useFolderStore((state) => state.unlockFolder);
   const prompts = usePromptStore((state) => state.prompts);
   const [isResourcesOpen, setIsResourcesOpen] = useState(false);
   const [isMac, setIsMac] = useState(false);
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
   const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [passwordFolder, setPasswordFolder] = useState<Folder | null>(null);
   const filterTags = usePromptStore((state) => state.filterTags);
   const toggleFilterTag = usePromptStore((state) => state.toggleFilterTag);
 
@@ -181,11 +190,11 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
   // 处理文件夹拖拽结束
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    
+
     if (over && active.id !== over.id) {
       const oldIndex = folders.findIndex((f) => f.id === active.id);
       const newIndex = folders.findIndex((f) => f.id === over.id);
-      
+
       if (oldIndex !== -1 && newIndex !== -1) {
         const newOrder = arrayMove(folders, oldIndex, newIndex);
         reorderFolders(newOrder.map((f) => f.id));
@@ -230,7 +239,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
             <span className="text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
               {t('nav.folders')}
             </span>
-            <button 
+            <button
               onClick={() => {
                 setEditingFolder(null);
                 setIsFolderModalOpen(true);
@@ -240,7 +249,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
               <PlusIcon className="w-4 h-4" />
             </button>
           </div>
-          
+
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -256,9 +265,15 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
                     key={folder.id}
                     folder={folder}
                     isActive={selectedFolderId === folder.id && currentPage === 'home'}
+                    isLocked={folder.isPrivate && !unlockedFolderIds.has(folder.id)}
                     onSelect={() => {
-                      selectFolder(folder.id);
-                      if (currentPage !== 'home') onNavigate('home');
+                      if (folder.isPrivate && !unlockedFolderIds.has(folder.id)) {
+                        setPasswordFolder(folder);
+                        setIsPasswordModalOpen(true);
+                      } else {
+                        selectFolder(folder.id);
+                        if (currentPage !== 'home') onNavigate('home');
+                      }
                     }}
                     onEdit={() => {
                       setEditingFolder(folder);
@@ -292,11 +307,10 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
                     toggleFilterTag(tag);
                     if (currentPage !== 'home') onNavigate('home');
                   }}
-                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors duration-200 ${
-                    filterTags.includes(tag) && currentPage === 'home'
-                      ? 'bg-primary text-white'
-                      : 'bg-sidebar-accent text-sidebar-foreground/70 hover:bg-primary hover:text-white'
-                  }`}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors duration-200 ${filterTags.includes(tag) && currentPage === 'home'
+                    ? 'bg-primary text-white'
+                    : 'bg-sidebar-accent text-sidebar-foreground/70 hover:bg-primary hover:text-white'
+                    }`}
                 >
                   <HashIcon className="w-3 h-3" />
                   {tag}
@@ -318,11 +332,10 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
         </button>
         <button
           onClick={() => onNavigate('settings')}
-          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-            currentPage === 'settings'
-              ? 'bg-sidebar-accent text-sidebar-foreground'
-              : 'text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
-          }`}
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${currentPage === 'settings'
+            ? 'bg-sidebar-accent text-sidebar-foreground'
+            : 'text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
+            }`}
         >
           <SettingsIcon className="w-4 h-4" />
           <span>{t('header.settings')}</span>
@@ -343,6 +356,30 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
           setEditingFolder(null);
         }}
         folder={editingFolder}
+      />
+
+      <PasswordModal
+        isOpen={isPasswordModalOpen}
+        onClose={() => {
+          setIsPasswordModalOpen(false);
+          setPasswordFolder(null);
+        }}
+        onSubmit={(password) => {
+          if (passwordFolder && password === passwordFolder.password) {
+            unlockFolder(passwordFolder.id);
+            selectFolder(passwordFolder.id);
+            if (currentPage !== 'home') onNavigate('home');
+            setIsPasswordModalOpen(false);
+            setPasswordFolder(null);
+          } else {
+            // Error handling is inside PasswordModal? No, PasswordModal doesn't know correct password.
+            // I need to handle error in PasswordModal or pass error prop?
+            // PasswordModal handles empty password, but incorrect password needs to be handled here.
+            // Wait, PasswordModal onSubmit just passes password.
+            // I should probably show toast or alert.
+            alert('密码错误');
+          }
+        }}
       />
     </aside>
   );
