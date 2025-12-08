@@ -774,19 +774,35 @@ export async function importDatabase(backup: DatabaseBackup): Promise<void> {
 export async function clearDatabase(): Promise<void> {
   const database = await getDatabase();
 
-  const transaction = database.transaction(
-    [STORES.PROMPTS, STORES.FOLDERS, STORES.VERSIONS],
-    'readwrite'
+  // 获取所有存在的 store 名称
+  const storeNames = Array.from(database.objectStoreNames);
+  const storesToClear = [STORES.PROMPTS, STORES.FOLDERS, STORES.VERSIONS].filter(
+    store => storeNames.includes(store)
   );
+  
+  if (storesToClear.length === 0) {
+    console.warn('No stores to clear');
+    return;
+  }
 
-  transaction.objectStore(STORES.PROMPTS).clear();
-  transaction.objectStore(STORES.FOLDERS).clear();
-  transaction.objectStore(STORES.VERSIONS).clear();
+  const transaction = database.transaction(storesToClear, 'readwrite');
 
-  return new Promise((resolve, reject) => {
+  for (const storeName of storesToClear) {
+    transaction.objectStore(storeName).clear();
+  }
+
+  await new Promise<void>((resolve, reject) => {
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error);
   });
+  
+  // 清除图片文件
+  try {
+    await window.electron?.clearImages?.();
+    console.log('Images cleared');
+  } catch (error) {
+    console.warn('Failed to clear images:', error);
+  }
 }
 
 /**

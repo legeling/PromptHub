@@ -123,6 +123,7 @@ contextBridge.exposeInMainWorld('electron', {
   readImageBase64: (fileName: string) => ipcRenderer.invoke('image:readBase64', fileName),
   saveImageBase64: (fileName: string, base64: string) => ipcRenderer.invoke('image:saveBase64', fileName, base64),
   imageExists: (fileName: string) => ipcRenderer.invoke('image:exists', fileName),
+  clearImages: () => ipcRenderer.invoke('image:clear'),
 });
 
 // 类型声明
@@ -158,6 +159,7 @@ declare global {
       readImageBase64?: (fileName: string) => Promise<string | null>;
       saveImageBase64?: (fileName: string, base64: string) => Promise<boolean>;
       imageExists?: (fileName: string) => Promise<boolean>;
+      clearImages?: () => Promise<boolean>;
     };
   }
 }

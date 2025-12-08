@@ -174,4 +174,23 @@ export function registerImageIPC() {
         const imagePath = path.join(userDataPath, 'images', fileName);
         return fs.existsSync(imagePath);
     });
+    
+    // 清除所有图片
+    ipcMain.handle('image:clear', async () => {
+        try {
+            const userDataPath = app.getPath('userData');
+            const imagesDir = path.join(userDataPath, 'images');
+            if (fs.existsSync(imagesDir)) {
+                const files = fs.readdirSync(imagesDir);
+                for (const file of files) {
+                    fs.unlinkSync(path.join(imagesDir, file));
+                }
+                console.log(`Cleared ${files.length} images`);
+            }
+            return true;
+        } catch (error) {
+            console.error('Failed to clear images:', error);
+            return false;
+        }
+    });
 }

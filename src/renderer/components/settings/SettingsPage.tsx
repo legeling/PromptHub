@@ -121,6 +121,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
   
   // 更新对话框状态
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
+  const [appVersion, setAppVersion] = useState<string>('');
   const [editingModelType, setEditingModelType] = useState<'chat' | 'image'>('chat');
   const [newModel, setNewModel] = useState({
     name: '',
@@ -152,6 +153,11 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
   const chatModels = settings.aiModels.filter(m => m.type === 'chat' || !m.type);
   const imageModels = settings.aiModels.filter(m => m.type === 'image');
 
+  // 获取应用版本号
+  useEffect(() => {
+    window.electron?.updater?.getVersion().then((v) => setAppVersion(v || ''));
+  }, []);
+
   // 安全 / 主密码
   const [securityStatus, setSecurityStatus] = useState<{ configured: boolean; unlocked: boolean }>({ configured: false, unlocked: false });
   const [newMasterPwd, setNewMasterPwd] = useState('');
@@ -162,6 +168,11 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
   const [oldPwd, setOldPwd] = useState('');
   const [newPwd, setNewPwd] = useState('');
   const [newPwdConfirm, setNewPwdConfirm] = useState('');
+  
+  // 清除数据确认弹窗
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [clearPwd, setClearPwd] = useState('');
+  const [clearLoading, setClearLoading] = useState(false);
 
   // 测试单个对话模型
   const handleTestModel = async (model: typeof settings.aiModels[0]) => {
@@ -677,15 +688,42 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
   };
 
   const handleClearData = async () => {
-    if (confirm(t('settings.clearDesc') + '?')) {
-      try {
-        await clearDatabase();
-        showToast(t('toast.clearSuccess'), 'success');
-        setTimeout(() => window.location.reload(), 1000);
-      } catch (error) {
-        console.error('Clear failed:', error);
-        showToast(t('toast.clearFailed'), 'error');
+    // 如果已设置主密码，需要先验证
+    if (securityStatus.configured) {
+      setShowClearConfirm(true);
+      return;
+    }
+    // 未设置主密码时，提示需要先设置
+    showToast(t('settings.clearNeedPassword') || '清除数据属于高危操作，请先在安全设置中设置主密码', 'error');
+  };
+  
+  const handleConfirmClear = async () => {
+    if (!clearPwd) {
+      showToast(t('settings.enterPassword') || '请输入主密码', 'error');
+      return;
+    }
+    
+    setClearLoading(true);
+    try {
+      // 验证密码
+      const result = await window.api.security.unlock(clearPwd);
+      if (!result.success) {
+        showToast(t('settings.wrongPassword') || '密码错误', 'error');
+        setClearLoading(false);
+        return;
       }
+      
+      // 密码正确，执行清除
+      await clearDatabase();
+      showToast(t('toast.clearSuccess'), 'success');
+      setShowClearConfirm(false);
+      setClearPwd('');
+      setTimeout(() => window.location.reload(), 1000);
+    } catch (error) {
+      console.error('Clear failed:', error);
+      showToast(t('toast.clearFailed'), 'error');
+    } finally {
+      setClearLoading(false);
     }
   };
 
@@ -1762,14 +1800,11 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
           <div className="space-y-6">
             {/* 应用信息卡片 */}
             <div className="text-center py-6">
-              <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
-                <svg viewBox="0 0 24 24" width="32" height="32" className="text-white">
-                  <path fill="currentColor" d="M12 3L14.5 8.5L20.5 9L16 13.5L17 19.5L12 17L7 19.5L8 13.5L3.5 9L9.5 8.5L12 3Z" opacity="0.9"/>
-                  <path fill="currentColor" d="M12 7L13.5 10H17L14 12.5L15 16L12 14L9 16L10 12.5L7 10H10.5L12 7Z"/>
-                </svg>
+              <div className="w-16 h-16 mx-auto mb-3 rounded-2xl overflow-hidden shadow-lg">
+                <img src="/icon.png" alt="PromptHub" className="w-full h-full object-cover" />
               </div>
               <h2 className="text-lg font-semibold">PromptHub</h2>
-              <p className="text-sm text-muted-foreground mt-1">{t('settings.version')} 0.1.8</p>
+              <p className="text-sm text-muted-foreground mt-1">{t('settings.version')} {appVersion || '...'}</p>
             </div>
 
             <SettingSection title={t('settings.projectInfo')}>
@@ -1787,7 +1822,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                   onChange={settings.setAutoCheckUpdate}
                 />
               </SettingItem>
-              <SettingItem label={t('settings.checkUpdate')} description={`${t('settings.version')}: 0.1.8`}>
+              <SettingItem label={t('settings.checkUpdate')} description={`${t('settings.version')}: ${appVersion || '...'}`}>
                 <button
                   onClick={() => setShowUpdateDialog(true)}
                   className="h-8 px-4 rounded-lg bg-primary text-white text-sm hover:bg-primary/90 transition-colors"
@@ -1842,12 +1877,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
               </div>
             </SettingSection>
 
-            <div className="px-4 py-4 text-sm text-muted-foreground text-center space-y-2">
-              <div className="flex items-center justify-center gap-1">
-                <span>Made with</span>
-                <HeartIcon className="w-4 h-4 text-red-500 fill-red-500" />
-                <span>by legeling</span>
-              </div>
+            <div className="px-4 py-4 text-sm text-muted-foreground text-center">
               <div>AGPL-3.0 License © 2025 PromptHub</div>
             </div>
           </div>
@@ -1904,6 +1934,55 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
         isOpen={showUpdateDialog}
         onClose={() => setShowUpdateDialog(false)}
       />
+
+      {/* 清除数据确认弹窗 */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-background rounded-2xl w-[400px] p-6 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center">
+                <TrashIcon className="w-5 h-5 text-red-500" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-red-500">{t('settings.dangerOperation') || '危险操作'}</h3>
+                <p className="text-sm text-muted-foreground">{t('settings.clearDesc')}</p>
+              </div>
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">{t('settings.enterMasterPassword') || '请输入主密码确认'}</label>
+              <input
+                type="password"
+                value={clearPwd}
+                onChange={(e) => setClearPwd(e.target.value)}
+                placeholder={t('settings.masterPasswordPlaceholder') || '输入主密码'}
+                className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                onKeyDown={(e) => e.key === 'Enter' && handleConfirmClear()}
+              />
+            </div>
+            
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setShowClearConfirm(false);
+                  setClearPwd('');
+                }}
+                className="flex-1 px-4 py-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
+                disabled={clearLoading}
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={handleConfirmClear}
+                disabled={clearLoading || !clearPwd}
+                className="flex-1 px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50"
+              >
+                {clearLoading ? <Loader2Icon className="w-4 h-4 animate-spin mx-auto" /> : t('settings.confirmClear') || '确认清除'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 模型选择弹窗 */}
       {showModelPicker && (

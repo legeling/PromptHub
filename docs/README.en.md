@@ -7,7 +7,7 @@
   <p>
     <a href="https://github.com/legeling/PromptHub/stargazers"><img src="https://img.shields.io/github/stars/legeling/PromptHub?style=flat-square&color=yellow" alt="GitHub Stars"/></a>
     <a href="https://github.com/legeling/PromptHub/network/members"><img src="https://img.shields.io/github/forks/legeling/PromptHub?style=flat-square" alt="GitHub Forks"/></a>
-    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.2.1-green?style=flat-square" alt="Version"/></a>
+    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.2.2-green?style=flat-square" alt="Version"/></a>
     <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/github/downloads/legeling/PromptHub/total?style=flat-square&color=blue" alt="Downloads"/></a>
     <img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="License: AGPL-3.0"/>
   </p>
@@ -73,6 +73,8 @@
   <br/><br/>
   <p><strong>List View Mode</strong></p>
   <img src="./imgs/view.png" width="80%" alt="List View Mode"/>
+  <p><strong>Gallery Mode</strong></p>
+  <img src="./imgs/gallery.png" width="80%" alt="Gallery Mode"/>
 </div>
 
 ## 📦 Installation
@@ -192,7 +194,7 @@ PromptHub/
 
 ## 🗺️ Roadmap
 
-### v0.2.1 (Current)
+### v0.2.2 (Current)
 - [x] Prompt CRUD management
 - [x] Folder and tag system
 - [x] Favorites feature
@@ -227,6 +229,17 @@ PromptHub/
 - [ ] Browser extension
 
 ## 📝 Changelog
+
+### v0.2.2 (2025-12-08)
+**Bug Fixes**
+- 🐛 Fixed hardcoded version number in About page (now fetched dynamically)
+- 🐛 Fixed About page icon not displaying correctly
+- 🐛 Fixed update check failing (`cannot set properties of undefined`)
+- 🐛 Fixed error handling when auto-updater module fails to load
+
+**Improvements**
+- 🎨 Show manual download link when auto-update fails
+- 🔒 Clear data now requires master password verification (high-risk operation protection)
 
 ### v0.2.1 (2025-12-07)
 **New Features**

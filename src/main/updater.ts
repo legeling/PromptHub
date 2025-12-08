@@ -60,22 +60,34 @@ export interface UpdateStatus {
   error?: string;
 }
 
-async function getAutoUpdater(): Promise<AppUpdater> {
+async function getAutoUpdater(): Promise<AppUpdater | null> {
   if (autoUpdater) return autoUpdater;
 
-  const module = await import('electron-updater');
-  autoUpdater = module.autoUpdater;
+  try {
+    const module = await import('electron-updater');
+    autoUpdater = module.autoUpdater;
 
-  // 禁用自动下载，让用户选择
-  autoUpdater.autoDownload = false;
-  autoUpdater.autoInstallOnAppQuit = true;
+    // 禁用自动下载，让用户选择
+    if (autoUpdater) {
+      autoUpdater.autoDownload = false;
+      autoUpdater.autoInstallOnAppQuit = true;
+    }
 
-  return autoUpdater;
+    return autoUpdater;
+  } catch (error) {
+    console.error('Failed to load electron-updater:', error);
+    return null;
+  }
 }
 
 export async function initUpdater(win: BrowserWindow) {
   mainWindow = win;
   const updater = await getAutoUpdater();
+
+  if (!updater) {
+    console.warn('Auto updater not available');
+    return;
+  }
 
   // 检查更新出错
   updater.on('error', (error) => {
@@ -156,10 +168,14 @@ export function registerUpdaterIPC() {
     }
     try {
       const updater = await getAutoUpdater();
+      if (!updater) {
+        return { success: false, error: '自动更新模块加载失败，请前往 GitHub Releases 手动下载：https://github.com/legeling/PromptHub/releases' };
+      }
       const result = await updater.checkForUpdates();
       return { success: true, result };
     } catch (error) {
-      return { success: false, error: (error as Error).message };
+      const errMsg = (error as Error).message || String(error);
+      return { success: false, error: `检查更新失败: ${errMsg}\n\n请手动下载：https://github.com/legeling/PromptHub/releases` };
     }
   });
 
@@ -170,10 +186,14 @@ export function registerUpdaterIPC() {
     }
     try {
       const updater = await getAutoUpdater();
+      if (!updater) {
+        return { success: false, error: '自动更新模块不可用，请前往 GitHub Releases 手动下载：https://github.com/legeling/PromptHub/releases' };
+      }
       await updater.downloadUpdate();
       return { success: true };
     } catch (error) {
-      return { success: false, error: (error as Error).message };
+      const errMsg = (error as Error).message || String(error);
+      return { success: false, error: `下载更新失败: ${errMsg}\n\n请手动下载：https://github.com/legeling/PromptHub/releases` };
     }
   });
 
@@ -181,7 +201,9 @@ export function registerUpdaterIPC() {
   ipcMain.handle('updater:install', async () => {
     if (!isDev) {
       const updater = await getAutoUpdater();
-      updater.quitAndInstall(false, true);
+      if (updater) {
+        updater.quitAndInstall(false, true);
+      }
     }
   });
 }

@@ -57,6 +57,12 @@ function App() {
     
     // 初始化数据库，然后加载数据
     const init = async (retryCount = 0) => {
+      // 设置最大加载时间，防止无限等待
+      const maxLoadingTime = setTimeout(() => {
+        console.warn('⚠️ Loading timeout, showing UI anyway');
+        setIsLoading(false);
+      }, 5000);
+      
       try {
         await initDatabase();
         await seedDatabase();
@@ -69,9 +75,11 @@ function App() {
         if (retryCount < 1 && error instanceof Error && error.message.includes('timeout')) {
           console.log('🔄 Retrying database initialization...');
           await new Promise(resolve => setTimeout(resolve, 500));
+          clearTimeout(maxLoadingTime);
           return init(retryCount + 1);
         }
       } finally {
+        clearTimeout(maxLoadingTime);
         setIsLoading(false);
       }
       
@@ -137,7 +145,10 @@ function App() {
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
-        <div className="text-muted-foreground">加载中...</div>
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <div className="text-muted-foreground text-sm">Loading...</div>
+        </div>
       </div>
     );
   }

@@ -152,7 +152,7 @@ export const useSettingsStore = create<SettingsState>()(
       autoSave: true,
       showLineNumbers: false,
       launchAtStartup: false,
-      minimizeOnLaunch: false,
+      minimizeOnLaunch: true,
       enableNotifications: true,
       showCopyNotification: true,
       showSaveNotification: true,

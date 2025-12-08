@@ -7,7 +7,7 @@
   <p>
     <a href="https://github.com/legeling/PromptHub/stargazers"><img src="https://img.shields.io/github/stars/legeling/PromptHub?style=flat-square&color=yellow" alt="GitHub Stars"/></a>
     <a href="https://github.com/legeling/PromptHub/network/members"><img src="https://img.shields.io/github/forks/legeling/PromptHub?style=flat-square" alt="GitHub Forks"/></a>
-    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.2.1-green?style=flat-square" alt="Version"/></a>
+    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.2.2-green?style=flat-square" alt="Version"/></a>
     <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/github/downloads/legeling/PromptHub/total?style=flat-square&color=blue" alt="Downloads"/></a>
     <img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="License: AGPL-3.0"/>
   </p>
@@ -75,6 +75,8 @@
   <br/><br/>
   <p><strong>列表视图模式</strong></p>
   <img src="./docs/imgs/view.png" width="80%" alt="列表视图模式"/>
+  <p><strong>画廊模式</strong></p>
+  <img src="./docs/imgs/gallery.png" width="80%" alt="画廊模式"/>
 </div>
 
 ## 📦 安装
@@ -209,7 +211,7 @@ PromptHub/
 
 ## 🗺️ 路线图
 
-### v0.2.1 (当前)
+### v0.2.2 (当前)
 - [x] Prompt CRUD 管理
 - [x] 文件夹和标签系统
 - [x] 收藏功能
@@ -244,6 +246,17 @@ PromptHub/
 - [ ] 浏览器插件
 
 ## 📝 更新日志
+
+### v0.2.2 (2025-12-08)
+**修复**
+- 🐛 修复关于页面版本号硬编码问题（现在动态获取）
+- 🐛 修复关于页面图标显示异常
+- 🐛 修复检查更新功能失效（`cannot set properties of undefined`）
+- 🐛 修复自动更新模块加载失败时的错误处理
+
+**优化**
+- 🎨 更新失败时显示手动下载链接
+- 🔒 清除数据现在需要输入主密码验证（高危操作保护）
 
 ### v0.2.1 (2025-12-07)
 **新功能**
@@ -425,8 +438,17 @@ PromptHub/
 - [TailwindCSS](https://tailwindcss.com/) - CSS 框架
 - [Zustand](https://zustand-demo.pmnd.rs/) - 状态管理
 - [Lucide](https://lucide.dev/) - 图标库
-- 所有为 PromptHub 做出贡献的 [贡献者](https://github.com/legeling/PromptHub/graphs/contributors)！  
-  <a href="https://github.com/legeling/PromptHub/graphs/contributors"><img src="https://contrib.rocks/image?repo=legeling/PromptHub" alt="Contributors" /></a>
+
+## 👥 贡献者
+
+感谢所有为 PromptHub 做出贡献的开发者！
+
+<a href="https://github.com/legeling/PromptHub/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=legeling/PromptHub" alt="Contributors" />
+</a>
+
+特别感谢：
+- [@yizhimuzhuozi](https://github.com/yizhimuzhuozi) 
 
 ---
 
