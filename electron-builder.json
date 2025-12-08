@@ -9,6 +9,24 @@
   "files": [
     "out/**/*"
   ],
+  "extraResources": [
+    {
+      "from": "resources/icon.ico",
+      "to": "icon.ico"
+    },
+    {
+      "from": "resources/icon.icns",
+      "to": "icon.icns"
+    },
+    {
+      "from": "resources/icon.iconset",
+      "to": "icon.iconset"
+    },
+    {
+      "from": "docs/imgs/icon.png",
+      "to": "icon.png"
+    }
+  ],
   "asarUnpack": [
     "**/*.node"
   ],

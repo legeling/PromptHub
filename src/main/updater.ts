@@ -1,5 +1,6 @@
 import { BrowserWindow, ipcMain, app } from 'electron';
-import type { UpdateInfo as ElectronUpdateInfo, AppUpdater } from 'electron-updater';
+import type { UpdateInfo as ElectronUpdateInfo } from 'electron-updater';
+import { autoUpdater } from 'electron-updater';
 
 // 简化的更新信息类型（用于 IPC 传输）
 interface SimpleUpdateInfo {
@@ -51,7 +52,6 @@ function toSimpleInfo(info: ElectronUpdateInfo): SimpleUpdateInfo {
 }
 
 let mainWindow: BrowserWindow | null = null;
-let autoUpdater: AppUpdater | null = null;
 
 export interface UpdateStatus {
   status: 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error';
@@ -60,37 +60,15 @@ export interface UpdateStatus {
   error?: string;
 }
 
-async function getAutoUpdater(): Promise<AppUpdater | null> {
-  if (autoUpdater) return autoUpdater;
-
-  try {
-    const module = await import('electron-updater');
-    autoUpdater = module.autoUpdater;
-
-    // 禁用自动下载，让用户选择
-    if (autoUpdater) {
-      autoUpdater.autoDownload = false;
-      autoUpdater.autoInstallOnAppQuit = true;
-    }
-
-    return autoUpdater;
-  } catch (error) {
-    console.error('Failed to load electron-updater:', error);
-    return null;
-  }
-}
-
-export async function initUpdater(win: BrowserWindow) {
+export function initUpdater(win: BrowserWindow) {
   mainWindow = win;
-  const updater = await getAutoUpdater();
 
-  if (!updater) {
-    console.warn('Auto updater not available');
-    return;
-  }
+  // 禁用自动下载，让用户选择
+  autoUpdater.autoDownload = false;
+  autoUpdater.autoInstallOnAppQuit = true;
 
   // 检查更新出错
-  updater.on('error', (error) => {
+  autoUpdater.on('error', (error) => {
     console.error('Update error:', error);
     let message = (error && (error as Error).message) || String(error);
     if (message.includes('ZIP file not provided')) {
@@ -104,13 +82,13 @@ export async function initUpdater(win: BrowserWindow) {
   });
 
   // 检查更新中
-  updater.on('checking-for-update', () => {
+  autoUpdater.on('checking-for-update', () => {
     console.info('Checking for update...');
     sendStatusToWindow({ status: 'checking' });
   });
 
   // 有可用更新
-  updater.on('update-available', (info) => {
+  autoUpdater.on('update-available', (info) => {
     console.info('Update available:', info.version);
     sendStatusToWindow({
       status: 'available',
@@ -119,7 +97,7 @@ export async function initUpdater(win: BrowserWindow) {
   });
 
   // 没有可用更新
-  updater.on('update-not-available', (info) => {
+  autoUpdater.on('update-not-available', (info) => {
     console.info('Update not available, current version is latest');
     sendStatusToWindow({
       status: 'not-available',
@@ -128,7 +106,7 @@ export async function initUpdater(win: BrowserWindow) {
   });
 
   // 下载进度
-  updater.on('download-progress', (progress: ProgressInfo) => {
+  autoUpdater.on('download-progress', (progress: ProgressInfo) => {
     console.info(`Download progress: ${progress.percent.toFixed(2)}%`);
     sendStatusToWindow({
       status: 'downloading',
@@ -137,7 +115,7 @@ export async function initUpdater(win: BrowserWindow) {
   });
 
   // 下载完成
-  updater.on('update-downloaded', (info) => {
+  autoUpdater.on('update-downloaded', (info) => {
     console.info('Update downloaded:', info.version);
     sendStatusToWindow({
       status: 'downloaded',
@@ -167,11 +145,7 @@ export function registerUpdaterIPC() {
       return { success: false, error: 'Update check disabled in development mode' };
     }
     try {
-      const updater = await getAutoUpdater();
-      if (!updater) {
-        return { success: false, error: '自动更新模块加载失败，请前往 GitHub Releases 手动下载：https://github.com/legeling/PromptHub/releases' };
-      }
-      const result = await updater.checkForUpdates();
+      const result = await autoUpdater.checkForUpdates();
       return { success: true, result };
     } catch (error) {
       const errMsg = (error as Error).message || String(error);
@@ -185,11 +159,7 @@ export function registerUpdaterIPC() {
       return { success: false, error: 'Download disabled in development mode' };
     }
     try {
-      const updater = await getAutoUpdater();
-      if (!updater) {
-        return { success: false, error: '自动更新模块不可用，请前往 GitHub Releases 手动下载：https://github.com/legeling/PromptHub/releases' };
-      }
-      await updater.downloadUpdate();
+      await autoUpdater.downloadUpdate();
       return { success: true };
     } catch (error) {
       const errMsg = (error as Error).message || String(error);
@@ -200,10 +170,7 @@ export function registerUpdaterIPC() {
   // 安装更新并重启
   ipcMain.handle('updater:install', async () => {
     if (!isDev) {
-      const updater = await getAutoUpdater();
-      if (updater) {
-        updater.quitAndInstall(false, true);
-      }
+      autoUpdater.quitAndInstall(false, true);
     }
   });
 }

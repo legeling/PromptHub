@@ -180,8 +180,17 @@ function createTray() {
       } else {
         iconPath = path.join(process.resourcesPath, 'icon.ico');
       }
+      console.log('Loading tray icon from:', iconPath);
       icon = nativeImage.createFromPath(iconPath);
-      icon = icon.resize({ width: 16, height: 16 });
+      if (icon.isEmpty()) {
+        console.error('Tray icon is empty, trying alternative path');
+        // 尝试备用路径
+        const altPath = path.join(process.resourcesPath, 'app.asar.unpacked', 'resources', 'icon.ico');
+        icon = nativeImage.createFromPath(altPath);
+      }
+      if (!icon.isEmpty()) {
+        icon = icon.resize({ width: 16, height: 16 });
+      }
     }
 
     tray = new Tray(icon);

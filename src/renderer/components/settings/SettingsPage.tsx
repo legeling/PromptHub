@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import appIconUrl from '../../../assets/icon.png';
 import {
   SettingsIcon,
   PaletteIcon,
@@ -1801,7 +1802,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
             {/* 应用信息卡片 */}
             <div className="text-center py-6">
               <div className="w-16 h-16 mx-auto mb-3 rounded-2xl overflow-hidden shadow-lg">
-                <img src="/icon.png" alt="PromptHub" className="w-full h-full object-cover" />
+                <img src={appIconUrl} alt="PromptHub" className="w-full h-full object-cover" />
               </div>
               <h2 className="text-lg font-semibold">PromptHub</h2>
               <p className="text-sm text-muted-foreground mt-1">{t('settings.version')} {appVersion || '...'}</p>

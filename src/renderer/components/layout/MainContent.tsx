@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { usePromptStore } from '../../stores/prompt.store';
 import { useFolderStore } from '../../stores/folder.store';
 import { useSettingsStore } from '../../stores/settings.store';
@@ -6,6 +6,7 @@ import { StarIcon, CopyIcon, HistoryIcon, HashIcon, SparklesIcon, EditIcon, Tras
 import { EditPromptModal, VersionHistoryModal, VariableInputModal, PromptListHeader, PromptListView, PromptTableView, AiTestModal, PromptDetailModal, PromptGalleryView } from '../prompt';
 import { ContextMenu, ContextMenuItem } from '../ui/ContextMenu';
 import { ImagePreviewModal } from '../ui/ImagePreviewModal';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { useToast } from '../ui/Toast';
 import { chatCompletion, buildMessagesFromPrompt, multiModelCompare, AITestResult } from '../../services/ai';
 import { useTranslation } from 'react-i18next';
@@ -85,6 +86,7 @@ export function MainContent() {
   const [isCompareVariableModalOpen, setIsCompareVariableModalOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; prompt: Prompt } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; prompt: Prompt | null }>({ isOpen: false, prompt: null });
   const renderMarkdownPref = useSettingsStore((state) => state.renderMarkdown);
   const setRenderMarkdownPref = useSettingsStore((state) => state.setRenderMarkdown);
   const [renderMarkdownEnabled, setRenderMarkdownEnabled] = useState(renderMarkdownPref);
@@ -397,12 +399,18 @@ export function MainContent() {
   };
 
   // 处理删除 Prompt（表格视图用）
-  const handleDeletePrompt = async (prompt: Prompt) => {
-    if (confirm(t('prompt.confirmDeletePrompt'))) {
-      await deletePrompt(prompt.id);
+  const handleDeletePrompt = useCallback((prompt: Prompt) => {
+    setDeleteConfirm({ isOpen: true, prompt });
+  }, []);
+
+  // 确认删除
+  const confirmDelete = useCallback(async () => {
+    if (deleteConfirm.prompt) {
+      await deletePrompt(deleteConfirm.prompt.id);
       showToast(t('prompt.promptDeleted'), 'success');
     }
-  };
+    setDeleteConfirm({ isOpen: false, prompt: null });
+  }, [deleteConfirm.prompt, deletePrompt, showToast, t]);
 
   // 处理 AI 测试（表格视图用 - 弹窗模式）
   const handleAiTestFromTable = (prompt: Prompt) => {
@@ -1054,12 +1062,7 @@ export function MainContent() {
                 <span>{t('prompt.history')}</span>
               </button>
               <button
-                onClick={async () => {
-                  if (confirm(t('prompt.confirmDeletePrompt'))) {
-                    await deletePrompt(selectedPrompt.id);
-                    showToast(t('prompt.promptDeleted'), 'success');
-                  }
-                }}
+                onClick={() => handleDeletePrompt(selectedPrompt)}
                 className="flex items-center gap-2 h-9 px-4 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-sm font-medium hover:bg-destructive/20 transition-colors"
               >
                 <TrashIcon className="w-4 h-4" />
@@ -1161,6 +1164,18 @@ export function MainContent() {
         isOpen={!!previewImage}
         onClose={() => setPreviewImage(null)}
         imageSrc={previewImage}
+      />
+
+      {/* 删除确认对话框 */}
+      <ConfirmDialog
+        isOpen={deleteConfirm.isOpen}
+        onClose={() => setDeleteConfirm({ isOpen: false, prompt: null })}
+        onConfirm={confirmDelete}
+        title={t('prompt.delete')}
+        message={t('prompt.confirmDeletePrompt')}
+        confirmText={t('common.confirm')}
+        cancelText={t('common.cancel')}
+        variant="destructive"
       />
     </main>
   );
