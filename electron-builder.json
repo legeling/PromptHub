@@ -15,10 +15,6 @@
       "to": "icon.ico"
     },
     {
-      "from": "resources/icon.icns",
-      "to": "icon.icns"
-    },
-    {
       "from": "resources/icon.iconset",
       "to": "icon.iconset"
     },
