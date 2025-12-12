@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PlayIcon, LoaderIcon, CopyIcon, CheckIcon, GitCompareIcon } from 'lucide-react';
 import { Modal } from '../ui/Modal';
@@ -25,12 +25,13 @@ export function AiTestModal({
   onUsageIncrement,
   onSaveResponse,
 }: AiTestModalProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [mode, setMode] = useState<'single' | 'compare'>('single');
   // 分离单模型和多模型的 loading 状态
   const [isSingleLoading, setIsSingleLoading] = useState(false);
   const [isCompareLoading, setIsCompareLoading] = useState(false);
   const [aiResponse, setAiResponse] = useState<string | null>(null);
+  const [thinkingContent, setThinkingContent] = useState<string | null>(null);
   const [compareResults, setCompareResults] = useState<AITestResult[] | null>(null);
   const [selectedModelIds, setSelectedModelIds] = useState<string[]>([]);
   const [copied, setCopied] = useState(false);
@@ -43,6 +44,17 @@ export function AiTestModal({
   const aiApiUrl = useSettingsStore((state) => state.aiApiUrl);
   const aiModel = useSettingsStore((state) => state.aiModel);
   const aiModels = useSettingsStore((state) => state.aiModels);
+
+  const preferEnglish = useMemo(() => {
+    const lang = (i18n.language || '').toLowerCase();
+    // 目前 Prompt 只提供 EN 版本字段：非中文界面默认优先使用英文版（有则用，无则回退中文）
+    return !(lang.startsWith('zh'));
+  }, [i18n.language]);
+
+  const defaultChatModel = useMemo(() => {
+    const chatModels = aiModels.filter((m) => (m.type ?? 'chat') === 'chat');
+    return chatModels.find((m) => m.isDefault) ?? chatModels[0] ?? null;
+  }, [aiModels]);
 
   // 提取变量
   const extractVariables = (text: string): string[] => {
@@ -60,15 +72,18 @@ export function AiTestModal({
   // 获取所有变量
   const allVariables = useMemo(() => {
     if (!prompt) return [];
-    const sysVars = extractVariables(prompt.systemPrompt || '');
-    const userVars = extractVariables(prompt.userPrompt);
+    const sysText = preferEnglish ? (prompt.systemPromptEn || prompt.systemPrompt || '') : (prompt.systemPrompt || '');
+    const userText = preferEnglish ? (prompt.userPromptEn || prompt.userPrompt) : prompt.userPrompt;
+    const sysVars = extractVariables(sysText);
+    const userVars = extractVariables(userText);
     return [...new Set([...sysVars, ...userVars])];
-  }, [prompt]);
+  }, [prompt, preferEnglish]);
 
   // 重置状态
   useEffect(() => {
     if (isOpen && prompt) {
       setAiResponse(null);
+      setThinkingContent(null);
       setCompareResults(null);
       setIsSingleLoading(false);
       setIsCompareLoading(false);
@@ -90,15 +105,42 @@ export function AiTestModal({
     });
   };
 
-  const systemPrompt = filledSystemPrompt ?? replaceVariables(prompt.systemPrompt || '');
-  const userPrompt = filledUserPrompt ?? replaceVariables(prompt.userPrompt);
+  const baseSystemPrompt = preferEnglish ? (prompt.systemPromptEn || prompt.systemPrompt || '') : (prompt.systemPrompt || '');
+  const baseUserPrompt = preferEnglish ? (prompt.userPromptEn || prompt.userPrompt) : prompt.userPrompt;
+  const systemPrompt = filledSystemPrompt ?? replaceVariables(baseSystemPrompt);
+  const userPrompt = filledUserPrompt ?? replaceVariables(baseUserPrompt);
+
+  const buildSingleConfig = useCallback(() => {
+    if (defaultChatModel) {
+      return {
+        id: defaultChatModel.id,
+        provider: defaultChatModel.provider,
+        apiKey: defaultChatModel.apiKey,
+        apiUrl: defaultChatModel.apiUrl,
+        model: defaultChatModel.model,
+        chatParams: defaultChatModel.chatParams,
+      };
+    }
+    // 兼容旧版单模型配置
+    return {
+      provider: aiProvider,
+      apiKey: aiApiKey,
+      apiUrl: aiApiUrl,
+      model: aiModel,
+    };
+  }, [defaultChatModel, aiProvider, aiApiKey, aiApiUrl, aiModel]);
+
+  const singleConfigForUi = useMemo(() => buildSingleConfig(), [buildSingleConfig]);
+  const canRunSingleTest = !!(singleConfigForUi.apiKey && singleConfigForUi.apiUrl && singleConfigForUi.model);
 
   // 单模型测试
   const runSingleTest = async () => {
-    if (!aiApiKey) return;
-    
+    const config = buildSingleConfig();
+    if (!config.apiKey || !config.apiUrl || !config.model) return;
+
     setIsSingleLoading(true);
     setAiResponse(null);
+    setThinkingContent(null);
     
     // 增加使用次数
     if (onUsageIncrement) {
@@ -107,11 +149,30 @@ export function AiTestModal({
     
     try {
       const messages = buildMessagesFromPrompt(systemPrompt, userPrompt);
+      const useStream = !!config.chatParams?.stream;
+      const useThinking = !!config.chatParams?.enableThinking;
+
+      if (useStream) {
+        setAiResponse('');
+        if (useThinking) setThinkingContent('');
+      }
+
       const result = await chatCompletion(
-        { provider: aiProvider, apiKey: aiApiKey, apiUrl: aiApiUrl, model: aiModel },
-        messages
+        // 注意：config 中的 chatParams 会决定是否走流式输出以及是否启用思考模式
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        config as any,
+        messages,
+        useStream
+          ? {
+              streamCallbacks: {
+                onContent: (chunk) => setAiResponse((prev) => (prev ?? '') + chunk),
+                onThinking: (chunk) => setThinkingContent((prev) => (prev ?? '') + chunk),
+              },
+            }
+          : undefined
       );
       setAiResponse(result.content);
+      setThinkingContent(result.thinkingContent || null);
       // 保存 AI 响应到 Prompt
       if (onSaveResponse && result.content) {
         onSaveResponse(prompt.id, result.content);
@@ -138,16 +199,60 @@ export function AiTestModal({
     const selectedConfigs = aiModels
       .filter((m) => selectedModelIds.includes(m.id))
       .map((m) => ({
+        id: m.id,
         provider: m.provider,
         apiKey: m.apiKey,
         apiUrl: m.apiUrl,
         model: m.model,
+        chatParams: m.chatParams,
       }));
 
     const messages = buildMessagesFromPrompt(systemPrompt, userPrompt);
 
     try {
-      const result = await multiModelCompare(selectedConfigs, messages);
+      // 支持流式：提前渲染占位结果，让用户能看到“正在流式输出”的差异
+      setCompareResults(
+        selectedConfigs.map((c) => ({
+          success: true,
+          response: '',
+          thinkingContent: '',
+          latency: 0,
+          model: c.model,
+          provider: c.provider,
+        }))
+      );
+
+      const streamCallbacksMap = new Map<string, any>();
+      for (const cfg of selectedConfigs) {
+        if (cfg.chatParams?.stream) {
+          streamCallbacksMap.set(cfg.id, {
+            onContent: (chunk: string) => {
+              setCompareResults((prev) => {
+                if (!prev) return prev;
+                return prev.map((r) =>
+                  r.model === cfg.model && r.provider === cfg.provider
+                    ? { ...r, response: (r.response || '') + chunk }
+                    : r
+                );
+              });
+            },
+            onThinking: (chunk: string) => {
+              setCompareResults((prev) => {
+                if (!prev) return prev;
+                return prev.map((r) =>
+                  r.model === cfg.model && r.provider === cfg.provider
+                    ? { ...r, thinkingContent: (r.thinkingContent || '') + chunk }
+                    : r
+                );
+              });
+            },
+          });
+        }
+      }
+
+      const result = await multiModelCompare(selectedConfigs as any, messages, {
+        streamCallbacksMap,
+      });
       setCompareResults(result.results);
     } catch (error) {
       // Handle error
@@ -244,7 +349,7 @@ export function AiTestModal({
               </span>
               <button
                 onClick={runSingleTest}
-                disabled={isSingleLoading || !aiApiKey}
+                disabled={isSingleLoading || !canRunSingleTest}
                 className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
                 {isSingleLoading ? (
@@ -269,6 +374,16 @@ export function AiTestModal({
                     {copied ? t('prompt.copied') : t('prompt.copyResponse')}
                   </button>
                 </div>
+                {/* 思考过程（如果有） */}
+                {thinkingContent !== null && (
+                  <div className="bg-muted/30 border border-border rounded-lg p-3 max-h-40 overflow-y-auto">
+                    <div className="text-xs font-medium text-muted-foreground mb-1">
+                      {t('settings.thinkingContent', '思考过程')}
+                    </div>
+                    <p className="text-xs whitespace-pre-wrap">{thinkingContent}</p>
+                  </div>
+                )}
+
                 <div className="bg-card border border-border rounded-lg p-4 max-h-64 overflow-y-auto">
                   <p className="text-sm whitespace-pre-wrap">{aiResponse}</p>
                 </div>
@@ -337,6 +452,12 @@ export function AiTestModal({
                     <p className="text-xs text-muted-foreground whitespace-pre-wrap line-clamp-6">
                       {res.success ? (res.response || '(空)') : (res.error || '未知错误')}
                     </p>
+                    {res.success && res.thinkingContent && (
+                      <p className="mt-2 text-[10px] text-muted-foreground whitespace-pre-wrap line-clamp-4">
+                        <span className="font-medium">{t('settings.thinkingContent', '思考过程')}：</span>
+                        {res.thinkingContent}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>

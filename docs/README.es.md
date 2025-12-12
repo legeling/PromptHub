@@ -1,13 +1,13 @@
 <div align="center">
   <img src="./imgs/icon.png" alt="PromptHub Logo" width="120" height="120" />
   <h1>PromptHub</h1>
-  <p><strong>🚀 Gestor de Prompts de IA de Código Abierto, Local-First</strong></p>
-  <p>Gestión eficiente, control de versiones, plantillas de variables, pruebas multi-modelo — Flujo de trabajo de Prompts todo en uno</p>
+  <p><strong>🚀 Gestor de Prompts de IA Open‑Source, Local‑First</strong></p>
+  <p>Gestión eficiente, control de versiones, plantillas de variables, pruebas multi‑modelo — Flujo de trabajo todo‑en‑uno</p>
   
   <p>
     <a href="https://github.com/legeling/PromptHub/stargazers"><img src="https://img.shields.io/github/stars/legeling/PromptHub?style=flat-square&color=yellow" alt="GitHub Stars"/></a>
     <a href="https://github.com/legeling/PromptHub/network/members"><img src="https://img.shields.io/github/forks/legeling/PromptHub?style=flat-square" alt="GitHub Forks"/></a>
-    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.2.5-green?style=flat-square" alt="Version"/></a>
+    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.2.6-green?style=flat-square" alt="Version"/></a>
     <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/github/downloads/legeling/PromptHub/total?style=flat-square&color=blue" alt="Downloads"/></a>
     <img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="License: AGPL-3.0"/>
   </p>
@@ -25,7 +25,8 @@
     <a href="./README.ja.md">日本語</a> ·
     <a href="./README.es.md">Español</a> ·
     <a href="./README.de.md">Deutsch</a> ·
-    <a href="./README.fr.md">Français</a>
+    <a href="./README.fr.md">Français</a> ·
+    <a href="./README.zh-TW.md">繁體中文</a>
   </p>
 </div>
 
@@ -43,12 +44,11 @@
 
 | Plataforma | Arquitectura | Descargar |
 |:---:|:---:|:---:|
-| **Windows** | x64 | [PromptHub-Setup.exe](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup.exe) |
-| **Windows** | x64 (Portable) | [PromptHub-Portable.exe](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Portable.exe) |
-| **macOS** | Apple Silicon (M1/M2/M3) | [PromptHub-arm64.dmg](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-arm64.dmg) |
-| **macOS** | Intel | [PromptHub-x64.dmg](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-x64.dmg) |
-| **Linux** | x64 (AppImage) | [PromptHub.AppImage](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub.AppImage) |
-| **Linux** | x64 (deb) | [PromptHub.deb](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub.deb) |
+| **Windows** | x64 | [PromptHub-Setup-0.2.6-x64.exe](https://github.com/legeling/PromptHub/releases/download/v0.2.6/PromptHub-Setup-0.2.6-x64.exe) |
+| **macOS** | Apple Silicon (M1/M2/M3) | [PromptHub-0.2.6-arm64.dmg](https://github.com/legeling/PromptHub/releases/download/v0.2.6/PromptHub-0.2.6-arm64.dmg) |
+| **macOS** | Intel | [PromptHub-0.2.6-x64.dmg](https://github.com/legeling/PromptHub/releases/download/v0.2.6/PromptHub-0.2.6-x64.dmg) |
+| **Linux** | x64 (AppImage) | [PromptHub-0.2.6-x64.AppImage](https://github.com/legeling/PromptHub/releases/download/v0.2.6/PromptHub-0.2.6-x64.AppImage) |
+| **Linux** | x64 (deb) | [PromptHub-0.2.6-amd64.deb](https://github.com/legeling/PromptHub/releases/download/v0.2.6/PromptHub-0.2.6-amd64.deb) |
 
 ---
 
@@ -60,20 +60,142 @@
 - **🔧 Sistema de Variables** - Variables de plantilla `{{variable}}` con reemplazo dinámico
 - **📋 Copiar con Un Clic** - Copiar prompts al portapapeles rápidamente
 - **🔍 Búsqueda de Texto Completo** - Búsqueda rápida en títulos, descripciones y contenido
-- **📤 Exportación de Datos** - Copia de seguridad y restauración en formato JSON
+- **📤 Exportación/Importación** - Backup y restauración JSON (incluye imágenes y configuración de IA)
 - **🎨 Personalización de Temas** - Modos Oscuro/Claro/Sistema con múltiples colores de acento
 - **🌐 Multi-Idioma** - Soporte para chino simplificado, chino tradicional, inglés, japonés, español, alemán, francés
 - **💾 Almacenamiento Local** - Todos los datos almacenados localmente para privacidad
 - **🖥️ Multiplataforma** - Soporte para macOS, Windows, Linux
-- **🤖 Pruebas de IA** - Pruebas multi-modelo integradas con más de 18 proveedores
-- **🔐 Contraseña Maestra** - Protege contenido privado con contraseña maestra
+- **📊 Vista de lista** - Tabla con ordenación y operaciones por lote
+- **🤖 Pruebas de IA** - Pruebas multi‑modelo integradas (18+ proveedores)
+- **🎨 Modelos de imagen** - Configurar y probar generación de imágenes (p. ej. DALL‑E)
+- **🧭 Vista previa Markdown** - Render seguro + resaltado de código
+- **🪟 Modo ancho y pantalla completa** - Mejor experiencia de edición/lectura
+- **🔐 Contraseña maestra y carpetas privadas** - Protección de contenido privado (cifrado WIP)
+- **🖼️ Imágenes** - Subir/pegar imágenes locales y previsualizar en modal
+- **☁️ Sincronización WebDAV** - Sincronización en la nube (inicio / intervalos)
 
 ## 📸 Capturas de Pantalla
 
 <div align="center">
   <p><strong>Interfaz Principal</strong></p>
   <img src="./imgs/image.png" width="80%" alt="Interfaz Principal"/>
+  <br/><br/>
+  <p><strong>Temas</strong></p>
+  <img src="./imgs/theme.png" width="80%" alt="Temas"/>
+  <br/><br/>
+  <p><strong>Backup de datos</strong></p>
+  <img src="./imgs/data.png" width="80%" alt="Backup"/>
+  <br/><br/>
+  <p><strong>Configuración de modelos IA</strong></p>
+  <img src="./imgs/model.png" width="80%" alt="Configuración IA"/>
+  <br/><br/>
+  <p><strong>Comparación de versiones</strong></p>
+  <img src="./imgs/version-compare.png" width="80%" alt="Comparación de versiones"/>
+  <br/><br/>
+  <p><strong>Vista de lista</strong></p>
+  <img src="./imgs/view.png" width="80%" alt="Vista de lista"/>
+  <p><strong>Galería</strong></p>
+  <img src="./imgs/gallery.png" width="80%" alt="Galería"/>
 </div>
+
+## 📦 Instalación
+
+### Descargar
+
+Descarga el instalador desde [Releases](https://github.com/legeling/PromptHub/releases):
+
+| Plataforma | Archivo |
+|----------|----------|
+| macOS (Intel) | `PromptHub-x.x.x-x64.dmg` |
+| macOS (Apple Silicon) | `PromptHub-x.x.x-arm64.dmg` |
+| Windows | `PromptHub-Setup-x.x.x-x64.exe` |
+| Linux | `PromptHub-x.x.x.AppImage` / `.deb` |
+
+### macOS (primer arranque)
+
+Al no estar notarizada por Apple, macOS puede mostrar **“dañada”** / **“no se puede verificar el desarrollador”**.
+
+Solución recomendada:
+
+```bash
+sudo xattr -rd com.apple.quarantine /Applications/PromptHub.app
+```
+
+<div align="center">
+  <img src="./imgs/install.png" width="60%" alt="Instalación macOS"/>
+</div>
+
+### Compilar desde el código fuente
+
+```bash
+git clone https://github.com/legeling/PromptHub.git
+cd PromptHub
+
+pnpm install
+pnpm dev
+pnpm build
+```
+
+## 🚀 Guía rápida
+
+1. Crea un Prompt (título, descripción, System Prompt opcional, User Prompt, tags).
+2. Usa variables con `{{variable}}`.
+3. Copia o prueba con IA (streaming / thinking según el modelo).
+
+## 🛠️ Tech Stack
+
+| Categoría | Tecnología |
+|----------|------------|
+| Framework | Electron 33 |
+| Frontend | React 18 + TypeScript 5 |
+| Estilos | TailwindCSS |
+| State | Zustand |
+| Storage | IndexedDB + SQLite |
+| Build | Vite + electron-builder |
+
+## 📈 Star History
+
+<a href="https://star-history.com/#legeling/PromptHub&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=legeling/PromptHub&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=legeling/PromptHub&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=legeling/PromptHub&type=Date" />
+  </picture>
+</a>
+
+## 🗺️ Roadmap
+
+### v0.2.6 (actual)
+- [x] CRUD + carpetas/tags
+- [x] Favoritos
+- [x] Historial y restauración
+- [x] Exportar/Importar
+- [x] Temas
+- [x] Multi‑idioma
+- [x] WebDAV
+- [x] Config IA + test / comparación
+- [x] Vista de lista + batch ops
+- [x] Vista previa Markdown
+
+## 📝 Changelog
+
+### v0.2.6 (2025-12-12)
+**Novedades**
+- 🎨 Ajustes de pantalla renovados: UI más moderna + animaciones + color de tema personalizado
+- 🧰 Datos: exportación selectiva (solo exportar) + copia completa/restaurar (comprimido `.phub.gz`, incluye prompts/imágenes/config IA/ajustes)
+- ☁️ WebDAV: ahora también sincroniza configuración de IA y ajustes de la app (mejor consistencia entre dispositivos)
+
+**Correcciones**
+- 🐛 La preferencia de idioma ya no se sobrescribe (multi‑idioma funciona de forma fiable)
+- 🐛 Streaming / modo pensamiento ya afecta a las pruebas de IA (incluye comparación multi‑modelo en vista tarjeta)
+- 🐛 Corregido bug del estado del regex en detección de variables (el modal se abre correctamente)
+- 🐛 Corregido: el diálogo de cierre en Windows solo aparecía una vez
+
+### v0.2.5 (2025-12-12)
+**Novedades**
+- 🌐 Multi‑idioma (zh / zh‑TW / en / ja / es / de / fr)
+- 🪟 Diálogo de cierre en Windows (minimizar a bandeja / salir + recordar)
+- 📥 Tabla de descarga rápida en el README
 
 ## 🛠️ Desarrollo
 
@@ -83,18 +205,23 @@ git clone https://github.com/legeling/PromptHub.git
 cd PromptHub
 
 # Instalar dependencias
-npm install
+pnpm install
 
 # Iniciar servidor de desarrollo
-npm run dev
+pnpm dev
 
 # Compilar
-npm run build
+pnpm build
 ```
 
 ## 📄 Licencia
 
 [AGPL-3.0](../LICENSE)
+
+## 💬 Soporte
+
+- **Issues**: [GitHub Issues](https://github.com/legeling/PromptHub/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/legeling/PromptHub/discussions)
 
 ## 🙏 Agradecimientos
 

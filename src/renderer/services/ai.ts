@@ -64,6 +64,8 @@ export interface ImageParams {
 }
 
 export interface AIConfig {
+  // 可选：用于区分同名模型（多模型对比的流式回调映射）
+  id?: string;
   provider: string;
   apiKey: string;
   apiUrl: string;
@@ -570,7 +572,7 @@ export async function multiModelCompare(
   
   const promises = configs.map(async (config) => {
     const resultStartTime = Date.now();
-    const streamCallbacks = options?.streamCallbacksMap?.get(config.model);
+    const streamCallbacks = options?.streamCallbacksMap?.get(config.id || config.model);
     
     try {
       const result = await chatCompletion(config, messages, {

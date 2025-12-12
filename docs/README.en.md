@@ -7,7 +7,7 @@
   <p>
     <a href="https://github.com/legeling/PromptHub/stargazers"><img src="https://img.shields.io/github/stars/legeling/PromptHub?style=flat-square&color=yellow" alt="GitHub Stars"/></a>
     <a href="https://github.com/legeling/PromptHub/network/members"><img src="https://img.shields.io/github/forks/legeling/PromptHub?style=flat-square" alt="GitHub Forks"/></a>
-    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.2.5-green?style=flat-square" alt="Version"/></a>
+    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.2.6-green?style=flat-square" alt="Version"/></a>
     <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/github/downloads/legeling/PromptHub/total?style=flat-square&color=blue" alt="Downloads"/></a>
     <img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="License: AGPL-3.0"/>
   </p>
@@ -25,7 +25,8 @@
     <a href="./README.ja.md">日本語</a> ·
     <a href="./README.es.md">Español</a> ·
     <a href="./README.de.md">Deutsch</a> ·
-    <a href="./README.fr.md">Français</a>
+    <a href="./README.fr.md">Français</a> ·
+    <a href="./README.zh-TW.md">繁體中文</a>
   </p>
 </div>
 
@@ -43,12 +44,11 @@
 
 | Platform | Architecture | Download |
 |:---:|:---:|:---:|
-| **Windows** | x64 | [PromptHub-Setup.exe](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup.exe) |
-| **Windows** | x64 (Portable) | [PromptHub-Portable.exe](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Portable.exe) |
-| **macOS** | Apple Silicon (M1/M2/M3) | [PromptHub-arm64.dmg](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-arm64.dmg) |
-| **macOS** | Intel | [PromptHub-x64.dmg](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-x64.dmg) |
-| **Linux** | x64 (AppImage) | [PromptHub.AppImage](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub.AppImage) |
-| **Linux** | x64 (deb) | [PromptHub.deb](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub.deb) |
+| **Windows** | x64 | [PromptHub-Setup-0.2.6-x64.exe](https://github.com/legeling/PromptHub/releases/download/v0.2.6/PromptHub-Setup-0.2.6-x64.exe) |
+| **macOS** | Apple Silicon (M1/M2/M3) | [PromptHub-0.2.6-arm64.dmg](https://github.com/legeling/PromptHub/releases/download/v0.2.6/PromptHub-0.2.6-arm64.dmg) |
+| **macOS** | Intel | [PromptHub-0.2.6-x64.dmg](https://github.com/legeling/PromptHub/releases/download/v0.2.6/PromptHub-0.2.6-x64.dmg) |
+| **Linux** | x64 (AppImage) | [PromptHub-0.2.6-x64.AppImage](https://github.com/legeling/PromptHub/releases/download/v0.2.6/PromptHub-0.2.6-x64.AppImage) |
+| **Linux** | x64 (deb) | [PromptHub-0.2.6-amd64.deb](https://github.com/legeling/PromptHub/releases/download/v0.2.6/PromptHub-0.2.6-amd64.deb) |
 
 ---
 
@@ -60,17 +60,19 @@
 - **🔧 Variable System** - Template variables `{{variable}}` with dynamic replacement
 - **📋 One-Click Copy** - Quickly copy prompts to clipboard
 - **🔍 Full-Text Search** - Fast search across titles, descriptions, and content
-- **📤 Data Export** - JSON format backup and restore
+- **📤 Export & Backup** - Selective export (export-only) + full backup/restore (compressed `.phub.gz`, incl. images, AI config, settings)
 - **🎨 Theme Customization** - Dark/Light/System modes with multiple accent colors
 - **🌐 Multi-Language** - Chinese, English, Japanese, Spanish, German, French interface support
 - **💾 Local Storage** - All data stored locally for privacy
 - **🖥️ Cross-Platform** - Support for macOS, Windows, Linux
 - **📊 List View** - Table-style display with sorting and batch operations
 - **🤖 AI Testing** - Built-in multi-model testing with 18+ providers
+- **🎨 Image Models** - Configure & test image generation models (e.g., DALL‑E)
 - **🧭 Markdown Preview** - Safe Markdown rendering with syntax highlight everywhere (Detail, List, Edit)
 - **🪟 Wide & Full Modes** - Optimized editing experience with wider and fullscreen modes
 - **🔐 Master Password & Private Folders** - Secure private content with a master password (data encryption WIP)
 - **🖼️ Image Upload & Preview** - Upload/paste local images and preview them in modals
+- **☁️ WebDAV Sync** - Sync via WebDAV (prompts/images/AI config/settings; startup sync + interval sync)
 
 ## 📸 Screenshots
 
@@ -181,7 +183,7 @@ Edit history is automatically saved. Click "History" to view and restore previou
 | Frontend | React 18 + TypeScript 5 |
 | Styling | TailwindCSS |
 | State Management | Zustand |
-| Local Storage | IndexedDB |
+| Local Storage | IndexedDB + SQLite |
 | Build Tools | Vite + electron-builder |
 
 ## 📁 Project Structure
@@ -213,14 +215,14 @@ PromptHub/
 
 ## 🗺️ Roadmap
 
-### v0.2.2 (Current)
+### v0.2.6 (Current)
 - [x] Prompt CRUD management
 - [x] Folder and tag system
 - [x] Favorites feature
 - [x] Version history
 - [x] Data import/export
 - [x] Theme customization (Dark/Light/System)
-- [x] Multi-language support (Chinese/English)
+- [x] Multi-language support (zh / zh-TW / en / ja / es / de / fr)
 - [x] WebDAV sync
 - [x] Windows frameless window
 - [x] Folder drag & drop sorting
@@ -249,11 +251,30 @@ PromptHub/
 
 ## 📝 Changelog
 
-### v0.2.5 (2025-12-11)
+### v0.2.6 (2025-12-12)
 **New Features**
+- 🎨 Display settings upgraded: modern UI + smoother animations + custom theme color
+- 🧰 Data management upgraded: selective export (export-only) + full backup/restore (compressed `.phub.gz`, incl. prompts/images/AI config/settings)
+- ☁️ WebDAV upgraded: sync now includes AI config & app settings for better cross-device consistency
+
+**Bug Fixes**
+- 🐛 Fixed language preference being overwritten (multi-language now works reliably)
+- 🐛 Fixed streaming/thinking mode not affecting AI tests (incl. multi-model compare in card view)
+- 🐛 Fixed variable detection regex state bug causing the variable modal not to open
+- 🐛 Fixed Windows close dialog showing only once
+
+### v0.2.5 (2025-12-12)
+**New Features**
+- 🌐 Added multi-language support (Simplified Chinese, Traditional Chinese, English, Japanese, Spanish, German, French)
+- 🪟 Windows close dialog: choose to minimize to tray or exit (with remember option)
+- 💬 Added Issue feedback button in About page
+- 🌍 Seed data now initializes based on user's language setting
 - 📥 Added quick download table to README for Windows/macOS/Linux
 - 🔔 Improved update dialog with Markdown-rendered release notes
 - 🚀 Auto-check for updates on startup (configurable in settings)
+
+**Improvements**
+- 🎨 Bilingual hint text no longer hardcoded to "Chinese-English"
 
 **Bug Fixes**
 - ☁️ Fixed WebDAV sync failure with Nutstore (added MKCOL directory creation and User-Agent header)
@@ -457,7 +478,7 @@ Contributions are welcome! Please follow these steps:
 
 ## 📄 License
 
-This project is licensed under the [AGPL-3.0 License](./LICENSE).
+This project is licensed under the [AGPL-3.0 License](../LICENSE).
 
 ## 💬 Support
 

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { XIcon, MinusIcon, LogOutIcon } from 'lucide-react';
 import { useSettingsStore } from '../../stores/settings.store';
+import { Checkbox } from './Checkbox';
 
 interface CloseDialogProps {
   isOpen: boolean;
@@ -14,11 +15,25 @@ export function CloseDialog({ isOpen, onClose }: CloseDialogProps) {
   const [rememberChoice, setRememberChoice] = useState(false);
   const settings = useSettingsStore();
 
+  // 每次打开都重置勾选状态，避免上次残留
+  useEffect(() => {
+    if (isOpen) {
+      setRememberChoice(false);
+    }
+  }, [isOpen]);
+
+  const handleCancel = () => {
+    // 重要：用户只是关闭了弹窗（没有选择最小化/退出）
+    // 需要通知主进程重置 pendingCloseAction，否则下次点关闭将不会再次弹窗
+    window.electron?.sendCloseDialogCancel?.();
+    onClose();
+  };
+
   // ESC 关闭
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose();
+        handleCancel();
       }
     };
     if (isOpen) {
@@ -57,7 +72,7 @@ export function CloseDialog({ isOpen, onClose }: CloseDialogProps) {
       {/* 背景遮罩 */}
       <div
         className="absolute inset-0 bg-white/50 dark:bg-black/50 backdrop-blur-md"
-        onClick={onClose}
+        onClick={handleCancel}
         style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
       />
 
@@ -69,7 +84,7 @@ export function CloseDialog({ isOpen, onClose }: CloseDialogProps) {
             {t('closeDialog.title')}
           </h2>
           <button
-            onClick={onClose}
+            onClick={handleCancel}
             className="p-2 -mr-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           >
             <XIcon className="w-5 h-5" />
@@ -110,17 +125,14 @@ export function CloseDialog({ isOpen, onClose }: CloseDialogProps) {
           </div>
 
           {/* 记住选择 */}
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
+          <div className="flex items-center">
+            <Checkbox
               checked={rememberChoice}
-              onChange={(e) => setRememberChoice(e.target.checked)}
-              className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+              onChange={setRememberChoice}
+              label={t('closeDialog.rememberChoice')}
+              className="text-muted-foreground"
             />
-            <span className="text-sm text-muted-foreground">
-              {t('closeDialog.rememberChoice')}
-            </span>
-          </label>
+          </div>
         </div>
       </div>
     </div>

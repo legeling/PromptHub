@@ -3,7 +3,7 @@ import { StarIcon, HashIcon, ClockIcon, CopyIcon, CheckIcon, SparklesIcon, EditI
 import { Modal } from '../ui/Modal';
 import { ImagePreviewModal } from '../ui/ImagePreviewModal';
 import type { Prompt } from '../../../shared/types';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize from 'rehype-sanitize';
@@ -25,13 +25,30 @@ export function PromptDetailModal({
   onCopy,
   onEdit,
 }: PromptDetailModalProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [copiedSystem, setCopiedSystem] = useState(false);
   const [copiedUser, setCopiedUser] = useState(false);
   const [copiedAi, setCopiedAi] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showEnglish, setShowEnglish] = useState(false);
+
+  const preferEnglish = useMemo(() => {
+    const lang = (i18n.language || '').toLowerCase();
+    return !(lang.startsWith('zh'));
+  }, [i18n.language]);
+
+  // 根据界面语言自动选择 Prompt 语言（如果有英文版本）
+  // 注意：Prompt 目前只提供 EN 字段，因此非中文界面默认优先显示英文
+  useEffect(() => {
+    if (!prompt) return;
+    const hasEnglish = !!(prompt.systemPromptEn || prompt.userPromptEn);
+    if (!hasEnglish) {
+      setShowEnglish(false);
+      return;
+    }
+    setShowEnglish(preferEnglish);
+  }, [prompt?.id, prompt?.systemPromptEn, prompt?.userPromptEn, preferEnglish]);
 
   const sanitizeSchema: any = useMemo(() => {
     const schema = { ...defaultSchema, attributes: { ...defaultSchema.attributes } };

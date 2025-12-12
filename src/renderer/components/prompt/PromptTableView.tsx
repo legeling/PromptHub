@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StarIcon, CopyIcon, PlayIcon, EditIcon, TrashIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, HistoryIcon, FolderIcon, Trash2Icon } from 'lucide-react';
 import type { Prompt } from '../../../shared/types';
@@ -59,13 +59,18 @@ export function PromptTableView({
   onBatchDelete,
   onContextMenu,
 }: PromptTableViewProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showFolderMenu, setShowFolderMenu] = useState(false);
   const folders = useFolderStore((state) => state.folders);
+
+  const preferEnglish = useMemo(() => {
+    const lang = (i18n.language || '').toLowerCase();
+    return !(lang.startsWith('zh'));
+  }, [i18n.language]);
 
   const renderTextPreview = (content?: string) => {
     if (!content) {
@@ -91,7 +96,11 @@ export function PromptTableView({
     const regex = /\{\{([^}]+)\}\}/g;
     const matches = new Set<string>();
     let match;
-    const text = (prompt.systemPrompt || '') + prompt.userPrompt;
+    const text =
+      (prompt.systemPrompt || '') +
+      prompt.userPrompt +
+      (prompt.systemPromptEn || '') +
+      (prompt.userPromptEn || '');
     while ((match = regex.exec(text)) !== null) {
       matches.add(match[1]);
     }
@@ -295,7 +304,7 @@ export function PromptTableView({
 
                     {/* Prompt 内容预览 */}
                     <td className="px-4 py-3 min-w-[180px]">
-                      {renderTextPreview(prompt.userPrompt)}
+                      {renderTextPreview(preferEnglish ? (prompt.userPromptEn || prompt.userPrompt) : prompt.userPrompt)}
                     </td>
 
                     {/* AI 响应预览 */}

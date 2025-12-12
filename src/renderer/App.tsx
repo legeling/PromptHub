@@ -98,11 +98,11 @@ function App() {
     // 应用保存的主题设置
     applyTheme();
     
-    // 同步语言设置：确保 settings store 与 i18n 实际语言一致
-    const currentLang = i18n.language === 'en' ? 'en' : 'zh';
-    const storedLang = useSettingsStore.getState().language;
-    if (storedLang !== currentLang) {
-      useSettingsStore.getState().setLanguage(currentLang as 'zh' | 'en');
+    // 同步语言设置：以 settings store 为准（支持 zh/zh-TW/en/ja/es/de/fr）
+    // i18n 初始化时会尝试从同一个 persist store 读取语言，但这里再兜底一次，避免初始化顺序导致的覆盖问题
+    const languageSettings = useSettingsStore.getState();
+    if (languageSettings.language && i18n.language !== languageSettings.language) {
+      languageSettings.setLanguage(languageSettings.language);
     }
     
     // 初始化数据库，然后加载数据

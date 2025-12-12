@@ -104,6 +104,9 @@ contextBridge.exposeInMainWorld('electron', {
   sendCloseDialogResult: (action: 'minimize' | 'exit', remember: boolean) => {
     ipcRenderer.send('window:closeDialogResult', { action, remember });
   },
+  sendCloseDialogCancel: () => {
+    ipcRenderer.send('window:closeDialogCancel');
+  },
   selectFolder: () => ipcRenderer.invoke('dialog:selectFolder'),
   openPath: (path: string) => ipcRenderer.invoke('shell:openPath', path),
   showNotification: (title: string, body: string) => ipcRenderer.invoke('notification:show', { title, body }),
@@ -149,6 +152,7 @@ declare global {
       setCloseAction?: (action: 'ask' | 'minimize' | 'exit') => void;
       onShowCloseDialog?: (callback: () => void) => void;
       sendCloseDialogResult?: (action: 'minimize' | 'exit', remember: boolean) => void;
+      sendCloseDialogCancel?: () => void;
       selectFolder?: () => Promise<string | null>;
       openPath?: (path: string) => Promise<{ success: boolean; error?: string }>;
       showNotification?: (title: string, body: string) => Promise<boolean>;

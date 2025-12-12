@@ -176,6 +176,16 @@
   animation: scaleIn 0.2s ease-out;
 }
 
+@keyframes floatSoft {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+  100% { transform: translateY(0); }
+}
+
+.animate-floatSoft {
+  animation: floatSoft 3s ease-in-out infinite;
+}
+
 /* 选中文本颜色 */
 ::selection {
   background: hsl(var(--primary) / 0.2);

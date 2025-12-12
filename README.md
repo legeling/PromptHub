@@ -7,7 +7,7 @@
   <p>
     <a href="https://github.com/legeling/PromptHub/stargazers"><img src="https://img.shields.io/github/stars/legeling/PromptHub?style=flat-square&color=yellow" alt="GitHub Stars"/></a>
     <a href="https://github.com/legeling/PromptHub/network/members"><img src="https://img.shields.io/github/forks/legeling/PromptHub?style=flat-square" alt="GitHub Forks"/></a>
-    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.2.5-green?style=flat-square" alt="Version"/></a>
+    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.2.6-green?style=flat-square" alt="Version"/></a>
     <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/github/downloads/legeling/PromptHub/total?style=flat-square&color=blue" alt="Downloads"/></a>
     <img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="License: AGPL-3.0"/>
   </p>
@@ -25,7 +25,8 @@
     <a href="./docs/README.ja.md">日本語</a> ·
     <a href="./docs/README.es.md">Español</a> ·
     <a href="./docs/README.de.md">Deutsch</a> ·
-    <a href="./docs/README.fr.md">Français</a>
+    <a href="./docs/README.fr.md">Français</a> ·
+    <a href="./docs/README.zh-TW.md">繁體中文</a>
   </p>
 </div>
 
@@ -43,11 +44,11 @@
 
 | 平台 / Platform | 架构 / Arch | 下载链接 / Download |
 |:---:|:---:|:---:|
-| **Windows** | x64 | [PromptHub-Setup.exe](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup.exe) |
-| **macOS** | Apple Silicon (M系列芯片) | [PromptHub-arm64.dmg](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-arm64.dmg) |
-| **macOS** | Intel | [PromptHub-x64.dmg](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-x64.dmg) |
-| **Linux** | x64 (AppImage) | [PromptHub.AppImage](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub.AppImage) |
-| **Linux** | x64 (deb) | [PromptHub.deb](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub.deb) |
+| **Windows** | x64 | [PromptHub-Setup-0.2.6-x64.exe](https://github.com/legeling/PromptHub/releases/download/v0.2.6/PromptHub-Setup-0.2.6-x64.exe) |
+| **macOS** | Apple Silicon (M系列芯片) | [PromptHub-0.2.6-arm64.dmg](https://github.com/legeling/PromptHub/releases/download/v0.2.6/PromptHub-0.2.6-arm64.dmg) |
+| **macOS** | Intel | [PromptHub-0.2.6-x64.dmg](https://github.com/legeling/PromptHub/releases/download/v0.2.6/PromptHub-0.2.6-x64.dmg) |
+| **Linux** | x64 (AppImage) | [PromptHub-0.2.6-x64.AppImage](https://github.com/legeling/PromptHub/releases/download/v0.2.6/PromptHub-0.2.6-x64.AppImage) |
+| **Linux** | x64 (deb) | [PromptHub-0.2.6-amd64.deb](https://github.com/legeling/PromptHub/releases/download/v0.2.6/PromptHub-0.2.6-amd64.deb) |
 
 ---
 
@@ -59,7 +60,7 @@
 - **🔧 变量系统** - 模板变量 `{{variable}}`，动态替换
 - **📋 一键复制** - 快速复制 Prompt 到剪贴板
 - **🔍 全文搜索** - 快速搜索标题、描述和内容
-- **📤 数据导出** - JSON 格式备份和恢复（包含图片和 AI 配置）
+- **📤 数据导出/备份** - 选择性导出（仅导出）/ 全量备份与恢复（支持 `.phub.gz` 压缩，包含图片、AI 配置、系统设置）
 - **🎨 主题定制** - 深色/浅色/跟随系统，多种主题色可选
 - **🌐 多语言** - 支持简体中文、繁体中文、英文、日语、西班牙语、德语、法语
 - **💾 本地存储** - 所有数据存储在本地，隐私安全有保障
@@ -71,7 +72,7 @@
 - **🪟 宽屏与全屏模式** - 编辑/查看详情时支持更宽的视野和全屏模式
 - **🔐 主密码与私密文件夹** - 支持设置主密码，私密文件夹内容加密存储
 - **🖼️ 图片上传与预览** - 支持上传/粘贴本地图片，并在弹窗内预览
-- **☁️ WebDAV 同步** - 支持 WebDAV 云同步，自动定时同步、启动同步
+- **☁️ WebDAV 同步** - 支持 WebDAV 云同步（prompts/图片/AI 配置/系统设置），启动同步 + 定时同步
 
 ## 📸 截图
 
@@ -229,14 +230,14 @@ PromptHub/
 
 ## 🗺️ 路线图
 
-### v0.2.2 (当前)
+### v0.2.6 (当前)
 - [x] Prompt CRUD 管理
 - [x] 文件夹和标签系统
 - [x] 收藏功能
 - [x] 版本历史
 - [x] 数据导入导出
 - [x] 主题定制 (深色/浅色/跟随系统)
-- [x] 多语言支持 (中/英)
+- [x] 多语言支持（简体中文、繁体中文、英文、日语、西班牙语、德语、法语）
 - [x] WebDAV 同步功能
 - [x] Windows 无边框窗口
 - [x] 文件夹拖拽排序
@@ -264,6 +265,24 @@ PromptHub/
 - [ ] 浏览器插件
 
 ## 📝 更新日志
+
+### v0.2.6 (2025-12-12)
+**新功能**
+- 🎨 显示设置升级：更现代的外观 UI + 更细腻的动效，并支持自定义主题色
+- 🧰 数据管理升级：选择性导出（仅导出）+ 全量备份/恢复（`.phub.gz` 压缩，包含 prompts/图片/AI 配置/系统设置）
+- ☁️ WebDAV 同步升级：同步范围扩展到 AI 配置与系统设置，换设备可更接近“一模一样”
+
+**修复**
+- 🐛 修复语言设置被错误重置为“仅中/英”导致多语言不生效的问题
+- 🐛 修复开启“流式输出 / 思考模式”后 AI 测试无表现差异的问题（支持流式增量展示与思考过程展示）
+- 🐛 修复多模型对比在卡片视图下未传入流式回调导致不流式的问题
+- 🐛 修复变量检测正则状态问题导致 `systemPrompt` 变量未被识别、变量弹窗不弹的问题
+- 🐛 修复 Windows 关闭窗口弹窗只显示一次的问题（取消/关闭弹窗会正确重置状态）
+- 🐛 修复部分页面缺少 React Hooks 导入导致的运行时报错/白屏问题
+
+**优化**
+- 🎨 Windows 关闭窗口弹窗的“记住偏好”勾选框改为自定义样式并适配暗黑模式
+- 📝 补齐多语言 README（en/de/fr/es/ja/zh-TW）内容结构与关键信息
 
 ### v0.2.5 (2025-12-12)
 **新功能**

@@ -2,6 +2,23 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import i18n, { changeLanguage } from '../i18n';
 
+const SUPPORTED_LANGUAGES = ['zh', 'zh-TW', 'en', 'ja', 'es', 'de', 'fr'] as const;
+export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
+
+const normalizeLanguage = (lang: string): SupportedLanguage => {
+  if (SUPPORTED_LANGUAGES.includes(lang as SupportedLanguage)) {
+    return lang as SupportedLanguage;
+  }
+  const lower = (lang || '').toLowerCase();
+  if (lower === 'zh-tw' || lower === 'zh-hant') return 'zh-TW';
+  if (lower.startsWith('zh')) return 'zh';
+  if (lower.startsWith('ja')) return 'ja';
+  if (lower.startsWith('es')) return 'es';
+  if (lower.startsWith('de')) return 'de';
+  if (lower.startsWith('fr')) return 'fr';
+  return 'en';
+};
+
 // 获取默认数据目录路径（根据平台）
 const getDefaultDataPath = (): string => {
   const platform = navigator.userAgent.toLowerCase();
@@ -29,6 +46,42 @@ export const FONT_SIZES = [
   { id: 'medium', value: 16, name: '中' },
   { id: 'large', value: 18, name: '大' },
 ];
+
+type Hs = { hue: number; saturation: number };
+
+const clamp = (n: number, min: number, max: number): number => Math.max(min, Math.min(max, n));
+
+/**
+ * 将 HEX 颜色转换为 HSL 的 hue/saturation（lightness 由 CSS 变量定义）
+ * - 仅用于主题色：最终写入 --theme-hue / --theme-saturation
+ */
+const hexToHs = (hex: string): Hs => {
+  const normalized = (hex || '').trim().replace(/^#/, '');
+  if (!/^[0-9a-fA-F]{6}$/.test(normalized)) {
+    throw new Error(`Invalid hex color: ${hex}`);
+  }
+  const r = parseInt(normalized.slice(0, 2), 16) / 255;
+  const g = parseInt(normalized.slice(2, 4), 16) / 255;
+  const b = parseInt(normalized.slice(4, 6), 16) / 255;
+
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const delta = max - min;
+
+  let h = 0;
+  if (delta !== 0) {
+    if (max === r) h = ((g - b) / delta) % 6;
+    else if (max === g) h = (b - r) / delta + 2;
+    else h = (r - g) / delta + 4;
+    h = Math.round(h * 60);
+    if (h < 0) h += 360;
+  }
+
+  const l = (max + min) / 2;
+  const s = delta === 0 ? 0 : delta / (1 - Math.abs(2 * l - 1));
+
+  return { hue: clamp(h, 0, 360), saturation: clamp(Math.round(s * 100), 0, 100) };
+};
 
 // 主题模式
 export type ThemeMode = 'light' | 'dark' | 'system';
@@ -80,6 +133,8 @@ interface SettingsState {
   themeColor: string;
   themeHue: number;
   themeSaturation: number;
+  customThemeHex: string; // 自定义主题色（HEX）
+  settingsUpdatedAt: string; // 设置最后更新时间（用于 WebDAV/备份一致性判断）
   fontSize: string;
   renderMarkdown: boolean; // 详情页默认使用 Markdown 渲染
   editorMarkdownPreview: boolean; // 编辑器默认开启预览
@@ -99,7 +154,7 @@ interface SettingsState {
   showSaveNotification: boolean;
   
   // 语言设置 / Language settings
-  language: string;  // zh, zh-TW, en, ja, es, de, fr
+  language: SupportedLanguage;  // zh, zh-TW, en, ja, es, de, fr
   
   // 数据路径
   dataPath: string;
@@ -131,6 +186,7 @@ interface SettingsState {
   setThemeMode: (mode: ThemeMode) => void;
   setDarkMode: (isDark: boolean) => void;
   setThemeColor: (colorId: string) => void;
+  setCustomThemeHex: (hex: string) => void;
   setFontSize: (size: string) => void;
   setRenderMarkdown: (enabled: boolean) => void;
   setEditorMarkdownPreview: (enabled: boolean) => void;
@@ -168,13 +224,20 @@ interface SettingsState {
 
 export const useSettingsStore = create<SettingsState>()(
   persist(
-    (set, get) => ({
+    (set, get) => {
+      const touch = (): string => new Date().toISOString();
+      const setTouched = (partial: Partial<SettingsState>) =>
+        set({ ...partial, settingsUpdatedAt: touch() } as SettingsState);
+
+      return {
       // 默认值
       themeMode: 'system' as ThemeMode,
       isDarkMode: true,
       themeColor: 'royal-blue',
       themeHue: 220,
       themeSaturation: 70,
+      customThemeHex: '#3b82f6',
+      settingsUpdatedAt: new Date().toISOString(),
       fontSize: 'medium',
       renderMarkdown: true,
       editorMarkdownPreview: false,
@@ -186,7 +249,7 @@ export const useSettingsStore = create<SettingsState>()(
       enableNotifications: true,
       showCopyNotification: true,
       showSaveNotification: true,
-      language: (i18n.language === 'en' ? 'en' : 'zh') as 'zh' | 'en',
+      language: normalizeLanguage(i18n.language),
       dataPath: getDefaultDataPath(),
       webdavEnabled: false,
       webdavUrl: '',
@@ -205,27 +268,39 @@ export const useSettingsStore = create<SettingsState>()(
       aiModels: [],
       
       setThemeMode: (mode) => {
-        set({ themeMode: mode });
+        setTouched({ themeMode: mode });
         if (mode === 'system') {
           const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-          set({ isDarkMode: prefersDark });
+          setTouched({ isDarkMode: prefersDark });
           document.documentElement.classList.toggle('dark', prefersDark);
         } else {
           const isDark = mode === 'dark';
-          set({ isDarkMode: isDark });
+          setTouched({ isDarkMode: isDark });
           document.documentElement.classList.toggle('dark', isDark);
         }
       },
       
       setDarkMode: (isDark) => {
-        set({ isDarkMode: isDark, themeMode: isDark ? 'dark' : 'light' });
+        setTouched({ isDarkMode: isDark, themeMode: isDark ? 'dark' : 'light' });
         document.documentElement.classList.toggle('dark', isDark);
       },
       
       setThemeColor: (colorId) => {
+        if (colorId === 'custom') {
+          const state = get();
+          const hs = hexToHs(state.customThemeHex);
+          setTouched({
+            themeColor: 'custom',
+            themeHue: hs.hue,
+            themeSaturation: hs.saturation,
+          });
+          document.documentElement.style.setProperty('--theme-hue', String(hs.hue));
+          document.documentElement.style.setProperty('--theme-saturation', String(hs.saturation));
+          return;
+        }
         const theme = MORANDI_THEMES.find(t => t.id === colorId);
         if (theme) {
-          set({ 
+          setTouched({ 
             themeColor: colorId, 
             themeHue: theme.hue,
             themeSaturation: theme.saturation 
@@ -234,64 +309,76 @@ export const useSettingsStore = create<SettingsState>()(
           document.documentElement.style.setProperty('--theme-saturation', String(theme.saturation));
         }
       },
-      setRenderMarkdown: (enabled) => set({ renderMarkdown: enabled }),
-      setEditorMarkdownPreview: (enabled) => set({ editorMarkdownPreview: enabled }),
+      setCustomThemeHex: (hex) => {
+        const hs = hexToHs(hex);
+        setTouched({
+          customThemeHex: `#${hex.replace(/^#/, '')}`,
+          themeColor: 'custom',
+          themeHue: hs.hue,
+          themeSaturation: hs.saturation,
+        });
+        document.documentElement.style.setProperty('--theme-hue', String(hs.hue));
+        document.documentElement.style.setProperty('--theme-saturation', String(hs.saturation));
+      },
+      setRenderMarkdown: (enabled) => setTouched({ renderMarkdown: enabled }),
+      setEditorMarkdownPreview: (enabled) => setTouched({ editorMarkdownPreview: enabled }),
       
       setFontSize: (size) => {
-        set({ fontSize: size });
+        setTouched({ fontSize: size });
         const fontConfig = FONT_SIZES.find(f => f.id === size);
         if (fontConfig) {
           document.documentElement.style.setProperty('--base-font-size', `${fontConfig.value}px`);
         }
       },
       
-      setAutoSave: (enabled) => set({ autoSave: enabled }),
-      setShowLineNumbers: (enabled) => set({ showLineNumbers: enabled }),
-      setLaunchAtStartup: (enabled) => set({ launchAtStartup: enabled }),
+      setAutoSave: (enabled) => setTouched({ autoSave: enabled }),
+      setShowLineNumbers: (enabled) => setTouched({ showLineNumbers: enabled }),
+      setLaunchAtStartup: (enabled) => setTouched({ launchAtStartup: enabled }),
       setMinimizeOnLaunch: (enabled) => {
-        set({ minimizeOnLaunch: enabled });
+        setTouched({ minimizeOnLaunch: enabled });
         // 通知主进程更新托盘状态
         window.electron?.setMinimizeToTray?.(enabled);
       },
       setCloseAction: (action) => {
-        set({ closeAction: action });
+        setTouched({ closeAction: action });
         // 通知主进程更新关闭行为 / Notify main process of close action change
         window.electron?.setCloseAction?.(action);
       },
-      setEnableNotifications: (enabled) => set({ enableNotifications: enabled }),
-      setShowCopyNotification: (enabled) => set({ showCopyNotification: enabled }),
-      setShowSaveNotification: (enabled) => set({ showSaveNotification: enabled }),
+      setEnableNotifications: (enabled) => setTouched({ enableNotifications: enabled }),
+      setShowCopyNotification: (enabled) => setTouched({ showCopyNotification: enabled }),
+      setShowSaveNotification: (enabled) => setTouched({ showSaveNotification: enabled }),
       setLanguage: (lang) => {
-        set({ language: lang });
-        changeLanguage(lang);
+        const normalized = normalizeLanguage(lang);
+        setTouched({ language: normalized });
+        changeLanguage(normalized);
       },
-      setDataPath: (path) => set({ dataPath: path }),
-      setWebdavEnabled: (enabled) => set({ webdavEnabled: enabled }),
-      setWebdavUrl: (url) => set({ webdavUrl: url }),
-      setWebdavUsername: (username) => set({ webdavUsername: username }),
-      setWebdavPassword: (password) => set({ webdavPassword: password }),
-      setWebdavAutoSync: (enabled) => set({ webdavAutoSync: enabled, webdavSyncOnStartup: enabled }),
-      setWebdavSyncOnStartup: (enabled) => set({ webdavSyncOnStartup: enabled }),
-      setWebdavSyncOnStartupDelay: (delay) => set({ webdavSyncOnStartupDelay: Math.max(0, Math.min(60, delay)) }),
-      setWebdavAutoSyncInterval: (interval) => set({ webdavAutoSyncInterval: Math.max(0, interval) }),
-      setWebdavSyncOnSave: (enabled) => set({ webdavSyncOnSave: enabled }),
-      setAutoCheckUpdate: (enabled) => set({ autoCheckUpdate: enabled }),
-      setAiProvider: (provider) => set({ aiProvider: provider }),
-      setAiApiKey: (key) => set({ aiApiKey: key }),
-      setAiApiUrl: (url) => set({ aiApiUrl: url }),
-      setAiModel: (model) => set({ aiModel: model }),
+      setDataPath: (path) => setTouched({ dataPath: path }),
+      setWebdavEnabled: (enabled) => setTouched({ webdavEnabled: enabled }),
+      setWebdavUrl: (url) => setTouched({ webdavUrl: url }),
+      setWebdavUsername: (username) => setTouched({ webdavUsername: username }),
+      setWebdavPassword: (password) => setTouched({ webdavPassword: password }),
+      setWebdavAutoSync: (enabled) => setTouched({ webdavAutoSync: enabled, webdavSyncOnStartup: enabled }),
+      setWebdavSyncOnStartup: (enabled) => setTouched({ webdavSyncOnStartup: enabled }),
+      setWebdavSyncOnStartupDelay: (delay) => setTouched({ webdavSyncOnStartupDelay: Math.max(0, Math.min(60, delay)) }),
+      setWebdavAutoSyncInterval: (interval) => setTouched({ webdavAutoSyncInterval: Math.max(0, interval) }),
+      setWebdavSyncOnSave: (enabled) => setTouched({ webdavSyncOnSave: enabled }),
+      setAutoCheckUpdate: (enabled) => setTouched({ autoCheckUpdate: enabled }),
+      setAiProvider: (provider) => setTouched({ aiProvider: provider }),
+      setAiApiKey: (key) => setTouched({ aiApiKey: key }),
+      setAiApiUrl: (url) => setTouched({ aiApiUrl: url }),
+      setAiModel: (model) => setTouched({ aiModel: model }),
       
       // 多模型管理方法
       addAiModel: (config) => {
         const id = `model_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         const models = get().aiModels;
         const isFirst = models.length === 0;
-        set({
+        setTouched({
           aiModels: [...models, { ...config, id, isDefault: isFirst }],
         });
         // 如果是第一个模型，同步到旧版配置
         if (isFirst) {
-          set({
+          setTouched({
             aiProvider: config.provider,
             aiApiKey: config.apiKey,
             aiApiUrl: config.apiUrl,
@@ -304,11 +391,11 @@ export const useSettingsStore = create<SettingsState>()(
         const models = get().aiModels.map((m) =>
           m.id === id ? { ...m, ...config } : m
         );
-        set({ aiModels: models });
+        setTouched({ aiModels: models });
         // 如果更新的是默认模型，同步到旧版配置
         const updated = models.find((m) => m.id === id);
         if (updated?.isDefault) {
-          set({
+          setTouched({
             aiProvider: updated.provider,
             aiApiKey: updated.apiKey,
             aiApiUrl: updated.apiUrl,
@@ -324,14 +411,14 @@ export const useSettingsStore = create<SettingsState>()(
         // 如果删除的是默认模型，设置第一个为默认
         if (toDelete?.isDefault && remaining.length > 0) {
           remaining[0].isDefault = true;
-          set({
+          setTouched({
             aiProvider: remaining[0].provider,
             aiApiKey: remaining[0].apiKey,
             aiApiUrl: remaining[0].apiUrl,
             aiModel: remaining[0].model,
           });
         }
-        set({ aiModels: remaining });
+        setTouched({ aiModels: remaining });
       },
       
       setDefaultAiModel: (id) => {
@@ -348,11 +435,11 @@ export const useSettingsStore = create<SettingsState>()(
           }
           return m;
         });
-        set({ aiModels: models });
+        setTouched({ aiModels: models });
         
         // 只有对话模型才同步到旧版配置
         if (targetType === 'chat') {
-          set({
+          setTouched({
             aiProvider: targetModel.provider,
             aiApiKey: targetModel.apiKey,
             aiApiUrl: targetModel.apiUrl,
@@ -382,7 +469,8 @@ export const useSettingsStore = create<SettingsState>()(
           window.electron?.setMinimizeToTray?.(true);
         }
       },
-    }),
+      };
+    },
     {
       name: 'prompthub-settings',
     }

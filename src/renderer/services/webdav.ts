@@ -37,6 +37,9 @@ interface BackupData {
     aiApiUrl?: string;
     aiModel?: string;
   };
+  // 系统设置（可选，用于跨设备一致）
+  settings?: any;
+  settingsUpdatedAt?: string;
 }
 
 // WebDAV 文件路径
@@ -144,24 +147,44 @@ async function collectImages(prompts: any[]): Promise<{ [fileName: string]: stri
  */
 function getAiConfig(): BackupData['aiConfig'] {
   try {
-    const stored = localStorage.getItem('settings-storage');
-    if (stored) {
-      const data = JSON.parse(stored);
-      const state = data?.state;
-      if (state) {
-        return {
-          aiModels: state.aiModels || [],
-          aiProvider: state.aiProvider,
-          aiApiKey: state.aiApiKey,
-          aiApiUrl: state.aiApiUrl,
-          aiModel: state.aiModel,
-        };
-      }
-    }
+    const primary = localStorage.getItem('prompthub-settings');
+    const legacy = localStorage.getItem('settings-storage');
+    const raw = primary || legacy;
+    if (!raw) return undefined;
+    const data = JSON.parse(raw);
+    const state = data?.state;
+    if (!state) return undefined;
+    return {
+      aiModels: state.aiModels || [],
+      aiProvider: state.aiProvider,
+      aiApiKey: state.aiApiKey,
+      aiApiUrl: state.aiApiUrl,
+      aiModel: state.aiModel,
+    };
   } catch (error) {
     console.warn('Failed to get AI config:', error);
   }
   return undefined;
+}
+
+/**
+ * 获取系统设置快照（从 localStorage）
+ */
+function getSettingsSnapshot(): { state?: any; settingsUpdatedAt?: string } | undefined {
+  try {
+    const raw = localStorage.getItem('prompthub-settings');
+    if (!raw) return undefined;
+    const data = JSON.parse(raw);
+    const state = data?.state;
+    if (!state) return undefined;
+    return {
+      state,
+      settingsUpdatedAt: state.settingsUpdatedAt,
+    };
+  } catch (error) {
+    console.warn('Failed to get settings snapshot:', error);
+    return undefined;
+  }
 }
 
 /**
@@ -171,21 +194,36 @@ function restoreAiConfig(aiConfig: BackupData['aiConfig']): void {
   if (!aiConfig) return;
   
   try {
-    const stored = localStorage.getItem('settings-storage');
-    if (stored) {
-      const data = JSON.parse(stored);
-      if (data?.state) {
-        // 只更新 AI 相关配置
-        if (aiConfig.aiModels) data.state.aiModels = aiConfig.aiModels;
-        if (aiConfig.aiProvider) data.state.aiProvider = aiConfig.aiProvider;
-        if (aiConfig.aiApiKey) data.state.aiApiKey = aiConfig.aiApiKey;
-        if (aiConfig.aiApiUrl) data.state.aiApiUrl = aiConfig.aiApiUrl;
-        if (aiConfig.aiModel) data.state.aiModel = aiConfig.aiModel;
-        localStorage.setItem('settings-storage', JSON.stringify(data));
-      }
-    }
+    const primaryKey = 'prompthub-settings';
+    const legacyKey = 'settings-storage';
+    const storedPrimary = localStorage.getItem(primaryKey);
+    const storedLegacy = localStorage.getItem(legacyKey);
+    const targetKey = storedPrimary ? primaryKey : (storedLegacy ? legacyKey : primaryKey);
+    const stored = storedPrimary || storedLegacy;
+    const data = stored ? JSON.parse(stored) : { state: {} };
+    if (!data.state) data.state = {};
+
+    // 只更新 AI 相关配置
+    if (aiConfig.aiModels) data.state.aiModels = aiConfig.aiModels;
+    if (aiConfig.aiProvider) data.state.aiProvider = aiConfig.aiProvider;
+    if (aiConfig.aiApiKey) data.state.aiApiKey = aiConfig.aiApiKey;
+    if (aiConfig.aiApiUrl) data.state.aiApiUrl = aiConfig.aiApiUrl;
+    if (aiConfig.aiModel) data.state.aiModel = aiConfig.aiModel;
+    localStorage.setItem(targetKey, JSON.stringify(data));
   } catch (error) {
     console.warn('Failed to restore AI config:', error);
+  }
+}
+
+/**
+ * 恢复系统设置（到 localStorage）
+ */
+function restoreSettingsSnapshot(settings: BackupData['settings']): void {
+  if (!settings?.state) return;
+  try {
+    localStorage.setItem('prompthub-settings', JSON.stringify({ state: settings.state }));
+  } catch (error) {
+    console.warn('Failed to restore settings snapshot:', error);
   }
 }
 
@@ -204,6 +242,8 @@ export async function uploadToWebDAV(config: WebDAVConfig): Promise<SyncResult> 
     
     // 获取 AI 配置
     const aiConfig = getAiConfig();
+    // 获取系统设置快照
+    const settingsSnapshot = getSettingsSnapshot();
     
     const backupData: BackupData = {
       version: '2.0',
@@ -212,6 +252,8 @@ export async function uploadToWebDAV(config: WebDAVConfig): Promise<SyncResult> 
       folders,
       images,
       aiConfig,
+      settings: settingsSnapshot ? { state: settingsSnapshot.state } : undefined,
+      settingsUpdatedAt: settingsSnapshot?.settingsUpdatedAt,
     };
 
     const authHeader = 'Basic ' + btoa(`${config.username}:${config.password}`);
@@ -312,10 +354,15 @@ export async function downloadFromWebDAV(config: WebDAVConfig): Promise<SyncResu
     if (data.aiConfig) {
       restoreAiConfig(data.aiConfig);
     }
+
+    // 恢复系统设置
+    if (data.settings) {
+      restoreSettingsSnapshot(data.settings);
+    }
     
     return { 
       success: true, 
-      message: `下载成功 (${data.prompts?.length || 0} 条 Prompt, ${imagesRestored} 张图片${data.aiConfig ? ', AI配置已同步' : ''})`,
+      message: `下载成功 (${data.prompts?.length || 0} 条 Prompt, ${imagesRestored} 张图片${data.aiConfig ? ', AI配置已同步' : ''}${data.settings ? ', 设置已同步' : ''})`,
       timestamp: data.exportedAt,
       details: {
         promptsDownloaded: data.prompts?.length || 0,
@@ -387,6 +434,21 @@ export async function bidirectionalSync(config: WebDAVConfig): Promise<SyncResul
       if (updatedAt > localLatestTime) {
         localLatestTime = updatedAt;
       }
+    }
+
+    // 设置更新时间也纳入比较（保证换设备配置一致）
+    try {
+      const raw = localStorage.getItem('prompthub-settings');
+      if (raw) {
+        const data = JSON.parse(raw);
+        const settingsUpdatedAt = data?.state?.settingsUpdatedAt;
+        if (settingsUpdatedAt) {
+          const t = new Date(settingsUpdatedAt);
+          if (t > localLatestTime) localLatestTime = t;
+        }
+      }
+    } catch {
+      // ignore
     }
     
     // 获取远程备份信息

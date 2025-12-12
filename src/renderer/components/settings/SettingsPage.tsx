@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, cloneElement } from 'react';
+import type { ReactNode } from 'react';
 import appIconUrl from '../../../assets/icon.png';
 import {
   SettingsIcon,
@@ -38,13 +39,14 @@ import {
   MessageSquareIcon,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { downloadBackup, restoreFromFile, clearDatabase } from '../../services/database';
+import { downloadBackup, downloadCompressedBackup, downloadSelectiveExport, restoreFromFile, clearDatabase } from '../../services/database';
 import { testConnection, uploadToWebDAV, downloadFromWebDAV } from '../../services/webdav';
 import { testAIConnection, testImageGeneration, fetchAvailableModels, getBaseUrl, getApiEndpointPreview, getImageApiEndpointPreview, AITestResult, ImageTestResult, ModelInfo, StreamCallbacks } from '../../services/ai';
 import { useSettingsStore, MORANDI_THEMES, FONT_SIZES, ThemeMode } from '../../stores/settings.store';
 import { useToast } from '../ui/Toast';
 import { Select, SelectOption } from '../ui/Select';
 import { getCategoryIcon } from '../ui/ModelIcons';
+import { Checkbox } from '../ui';
 
 interface SettingsPageProps {
   onBack: () => void;
@@ -701,20 +703,44 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
     refreshSecurityStatus();
   }, []);
 
-  const handleExportData = async () => {
+  // 数据导出/备份选项
+  const [exportScope, setExportScope] = useState({
+    prompts: true,
+    folders: true,
+    images: true,
+    aiConfig: true,
+    settings: true,
+    versions: false,
+  });
+
+  const handleSelectiveExport = async () => {
     try {
-      await downloadBackup();
+      await downloadSelectiveExport(exportScope);
       showToast(t('toast.exportSuccess'), 'success');
     } catch (error) {
-      console.error('Export failed:', error);
+      console.error('Selective export failed:', error);
       showToast(t('toast.exportFailed'), 'error');
     }
   };
 
-  const handleImportData = () => {
+  const handleFullBackup = async (compressed: boolean) => {
+    try {
+      if (compressed) {
+        await downloadCompressedBackup();
+      } else {
+        await downloadBackup();
+      }
+      showToast(t('toast.exportSuccess'), 'success');
+    } catch (error) {
+      console.error('Backup failed:', error);
+      showToast(t('toast.exportFailed'), 'error');
+    }
+  };
+
+  const handleImportBackup = () => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.json';
+    input.accept = '.json,.phub,.gz';
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
@@ -842,7 +868,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
         );
 
       case 'appearance':
-        const themeModes: { id: ThemeMode; labelKey: string; icon: React.ReactNode }[] = [
+        const themeModes: { id: ThemeMode; labelKey: string; icon: ReactNode }[] = [
           { id: 'light', labelKey: 'settings.light', icon: <SunIcon className="w-5 h-5" /> },
           { id: 'dark', labelKey: 'settings.dark', icon: <MoonIcon className="w-5 h-5" /> },
           { id: 'system', labelKey: 'settings.system', icon: <MonitorIcon className="w-5 h-5" /> },
@@ -850,53 +876,141 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
         return (
           <div className="space-y-6">
             <SettingSection title={t('settings.themeMode')}>
-              <div className="grid grid-cols-3 gap-3 p-4">
-                {themeModes.map((mode) => (
-                  <button
-                    key={mode.id}
-                    onClick={() => settings.setThemeMode(mode.id)}
-                    className={`flex flex-col items-center gap-2 py-4 px-4 rounded-lg text-sm font-medium transition-colors ${
-                      settings.themeMode === mode.id
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted/50 text-foreground hover:bg-muted'
-                    }`}
-                  >
-                    {mode.icon}
-                    <span>{t(mode.labelKey)}</span>
-                  </button>
-                ))}
+              {/* Segmented control */}
+              <div className="p-4">
+                <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-muted/35 border border-border/60">
+                  {themeModes.map((mode) => {
+                    const selected = settings.themeMode === mode.id;
+                    return (
+                      <button
+                        key={mode.id}
+                        onClick={() => settings.setThemeMode(mode.id)}
+                        className={`relative flex-1 h-10 rounded-xl text-[13px] font-medium transition-all duration-200 ${
+                          selected
+                            ? 'bg-card text-foreground shadow-sm'
+                            : 'text-foreground/70 hover:text-foreground hover:bg-background/40'
+                        }`}
+                      >
+                        <span className="inline-flex items-center justify-center gap-2">
+                          <span className={`transition-transform duration-200 ${selected ? 'scale-105' : ''}`}>
+                            {cloneElement(mode.icon as any, { className: 'w-4 h-4' })}
+                          </span>
+                          {t(mode.labelKey)}
+                        </span>
+                        {selected && <span className="absolute inset-0 rounded-lg ring-1 ring-primary/25" />}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </SettingSection>
 
             <SettingSection title={t('settings.themeColor')}>
               <div className="p-4">
-                <div className="grid grid-cols-6 gap-4">
+                {/* 选中颜色名称（不挤占色带空间） */}
+                <div className="flex items-center justify-end mb-3">
+                  <div className="text-xs text-muted-foreground tabular-nums">
+                    {settings.themeColor === 'custom'
+                      ? `${t('settings.customColor', '自定义')} ${settings.customThemeHex}`
+                      : (() => {
+                          const theme = MORANDI_THEMES.find((x) => x.id === settings.themeColor);
+                          if (!theme) return '';
+                          const key = `settings.color${theme.id.charAt(0).toUpperCase() + theme.id.slice(1).replace(/-([a-z])/g, (_, c) => c.toUpperCase())}`;
+                          return t(key);
+                        })()}
+                  </div>
+                </div>
+                {/* 单行色带（均匀分布 + ring 安全边距，避免裁切） */}
+                <div className="flex items-center w-full px-2 py-2 overflow-y-visible">
                   {MORANDI_THEMES.map((theme) => {
                     const colorNameKey = `settings.color${theme.id.charAt(0).toUpperCase() + theme.id.slice(1).replace(/-([a-z])/g, (_, c) => c.toUpperCase())}`;
+                    const selected = settings.themeColor === theme.id;
                     return (
-                      <button
-                        key={theme.id}
-                        onClick={() => settings.setThemeColor(theme.id)}
-                        className="group flex flex-col items-center gap-2"
-                        title={t(colorNameKey)}
-                      >
-                        <div 
-                          className={`w-10 h-10 rounded-lg transition-all ${
-                            settings.themeColor === theme.id 
-                              ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' 
-                              : 'hover:opacity-80'
+                      <div key={theme.id} className="flex-1 flex justify-center min-w-0">
+                        <button
+                          onClick={() => settings.setThemeColor(theme.id)}
+                          className={`relative h-10 w-10 flex-shrink-0 rounded-full transition-all duration-200 ${
+                            selected
+                              ? 'ring-2 ring-primary ring-offset-2 ring-offset-background'
+                              : 'hover:opacity-90'
                           }`}
+                          title={t(colorNameKey)}
+                          aria-label={t(colorNameKey)}
                           style={{ backgroundColor: `hsl(${theme.hue}, ${theme.saturation}%, 55%)` }}
                         >
-                          {settings.themeColor === theme.id && (
-                            <CheckIcon className="w-4 h-4 text-white m-auto mt-3" />
+                          {selected && (
+                            <span className="absolute inset-0 grid place-items-center">
+                              <CheckIcon className="w-4 h-4 text-white drop-shadow" />
+                            </span>
                           )}
-                        </div>
-                        <span className="text-xs text-muted-foreground">{t(colorNameKey)}</span>
-                      </button>
+                        </button>
+                      </div>
                     );
                   })}
+                  {/* 自定义颜色入口 */}
+                  <div className="flex-1 flex justify-center min-w-0">
+                    <button
+                      onClick={() => settings.setThemeColor('custom')}
+                      className={`relative h-10 w-10 flex-shrink-0 rounded-full transition-all duration-200 ${
+                        settings.themeColor === 'custom'
+                          ? 'ring-2 ring-primary ring-offset-2 ring-offset-background'
+                          : 'hover:opacity-95'
+                      }`}
+                      title={t('settings.customColor', '自定义')}
+                      aria-label={t('settings.customColor', '自定义')}
+                      style={{ backgroundColor: settings.customThemeHex }}
+                    >
+                      {settings.themeColor === 'custom' && (
+                        <span className="absolute inset-0 grid place-items-center">
+                          <CheckIcon className="w-4 h-4 text-white drop-shadow" />
+                        </span>
+                      )}
+                    </button>
+                  </div>
                 </div>
+
+                {/* 仅在选择自定义时展开 */}
+                {settings.themeColor === 'custom' && (
+                  <div className="mt-4 p-4 rounded-xl border border-border/60 bg-muted/20 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-medium">{t('settings.customColor', '自定义主题色')}</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          {t('settings.customColorDesc', '选择任意颜色，立即应用到全局主题')}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={settings.customThemeHex}
+                          onChange={(e) => settings.setCustomThemeHex(e.target.value)}
+                          className="h-9 w-10 rounded-lg border border-border bg-transparent p-1"
+                          aria-label={t('settings.customColor', '自定义主题色')}
+                        />
+                        <input
+                          type="text"
+                          value={settings.customThemeHex}
+                          onChange={(e) => settings.setCustomThemeHex(e.target.value)}
+                          className="h-9 w-28 px-3 rounded-lg bg-background border border-border text-sm font-mono"
+                          placeholder="#3b82f6"
+                        />
+                      </div>
+                    </div>
+
+                    {/* 紧凑预览 */}
+                    <div className="mt-4 flex items-center gap-2">
+                      <div className="flex-1 h-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">
+                        {t('settings.primary', '主按钮')}
+                      </div>
+                      <div className="flex-1 h-9 rounded-lg bg-accent text-accent-foreground flex items-center justify-center text-sm font-medium">
+                        {t('settings.accent', '强调')}
+                      </div>
+                      <div className="flex-1 h-9 rounded-lg border border-border bg-background flex items-center justify-center text-sm font-medium">
+                        {t('settings.neutral', '中性')}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </SettingSection>
 
@@ -908,14 +1022,14 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                     <button
                       key={size.id}
                       onClick={() => settings.setFontSize(size.id)}
-                      className={`py-3 px-4 rounded-lg text-sm font-medium transition-colors ${
+                      className={`py-2.5 px-4 rounded-xl text-[13px] font-medium transition-all duration-200 ${
                         settings.fontSize === size.id
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted/50 text-foreground hover:bg-muted'
-                      }`}
+                          ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
+                          : 'bg-muted/40 text-foreground hover:bg-muted/70 hover:shadow'
+                      } hover:-translate-y-0.5 active:translate-y-0`}
                     >
                       {t(sizeNameKey)}
-                      <span className="block text-xs opacity-70 mt-0.5">{size.value}px</span>
+                      <span className="block text-[11px] opacity-70 mt-0.5">{size.value}px</span>
                     </button>
                   );
                 })}
@@ -1238,28 +1352,81 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
             </SettingSection>
 
             <SettingSection title={t('settings.backup')}>
-              <SettingItem
-                label={t('settings.export')}
-                description={t('settings.exportDesc')}
-              >
-                <button
-                  onClick={handleExportData}
-                  className="h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
-                >
-                  {t('settings.export')}
-                </button>
-              </SettingItem>
-              <SettingItem
-                label={t('settings.import')}
-                description={t('settings.importDesc')}
-              >
-                <button
-                  onClick={handleImportData}
-                  className="h-9 px-4 rounded-lg bg-muted text-foreground text-sm font-medium hover:bg-muted/80 transition-colors"
-                >
-                  {t('settings.import')}
-                </button>
-              </SettingItem>
+              {/* 选择性导出（只导出） */}
+              <div className="p-4 space-y-3 border border-border/60 rounded-xl bg-muted/20">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold">{t('settings.selectiveExport', '选择性导出')}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      {t('settings.selectiveExportDesc', '按需导出指定数据（仅导出，不提供导入）')}
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleSelectiveExport}
+                    className="h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
+                  >
+                    {t('settings.export', '导出')}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {([
+                    { key: 'prompts', label: t('settings.exportPrompts', 'Prompts') },
+                    { key: 'folders', label: t('settings.exportFolders', '文件夹') },
+                    { key: 'images', label: t('settings.exportImages', '图片') },
+                    { key: 'aiConfig', label: t('settings.exportAiConfig', 'AI 配置') },
+                    { key: 'settings', label: t('settings.exportSettings', '系统设置') },
+                    { key: 'versions', label: t('settings.exportVersions', '版本历史') },
+                  ] as const).map((item) => {
+                    const checked = (exportScope as any)[item.key] as boolean;
+                    return (
+                      <div
+                        key={item.key}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-lg border transition-colors cursor-pointer select-none ${
+                          checked ? 'border-primary/40 bg-primary/5' : 'border-border/60 hover:bg-muted/40'
+                        }`}
+                        onClick={() => setExportScope((prev) => ({ ...prev, [item.key]: !checked }))}
+                      >
+                        <div className="pointer-events-none">
+                          <Checkbox
+                            checked={checked}
+                            onChange={() => {}}
+                          />
+                        </div>
+                        <span className="text-sm">{item.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 全量备份/恢复 */}
+              <div className="p-4 space-y-3 border border-border/60 rounded-xl bg-muted/20">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold">{t('settings.fullBackup', '全量备份 / 恢复')}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      {t('settings.fullBackupDesc', '用于迁移/跨设备恢复：包含 prompts、图片、AI 配置、系统设置')}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleFullBackup(true)}
+                      className="h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
+                      title={t('settings.backupCompressed', '压缩备份')}
+                    >
+                      {t('settings.backupCompressed', '压缩备份')}
+                    </button>
+                    <button
+                      onClick={handleImportBackup}
+                      className="h-9 px-4 rounded-lg bg-muted text-foreground text-sm font-medium hover:bg-muted/80 transition-colors"
+                    >
+                      {t('settings.restore', '恢复')}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               <SettingItem
                 label={t('settings.clear')}
                 description={t('settings.clearDesc')}
@@ -2156,10 +2323,10 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
             <button
               key={item.id}
               onClick={() => setActiveSection(item.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] transition-all duration-150 ${
                 activeSection === item.id
-                  ? 'bg-primary text-white'
-                  : 'text-foreground/80 hover:bg-muted'
+                  ? 'bg-primary text-white shadow-sm'
+                  : 'text-foreground/80 hover:bg-muted/70'
               }`}
             >
               <item.icon className="w-4 h-4" />
@@ -2170,12 +2337,14 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
       </div>
 
       {/* 设置内容区 - 自适应宽度 */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto px-6 py-5">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-xl font-semibold mb-6">
+          <h1 className="text-lg font-semibold mb-4">
             {t(SETTINGS_MENU.find((m) => m.id === activeSection)?.labelKey || '')}
           </h1>
-          {renderContent()}
+          <div key={activeSection} className="animate-in fade-in slide-in-from-bottom-2 duration-200">
+            {renderContent()}
+          </div>
         </div>
       </div>
 
@@ -2622,11 +2791,11 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
 }
 
 // 设置区块组件 - 扁平化设计
-function SettingSection({ title, children }: { title: string; children: React.ReactNode }) {
+function SettingSection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="relative">
       <h3 className="text-sm font-medium text-muted-foreground mb-2">{title}</h3>
-      <div className="bg-card rounded-lg border border-border">
+      <div className="bg-card rounded-xl border border-border shadow-sm">
         {children}
       </div>
     </div>
@@ -2641,10 +2810,10 @@ function SettingItem({
 }: {
   label: string;
   description?: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between px-4 py-3 border-b border-border last:border-0">
+    <div className="flex items-center justify-between px-4 py-3 border-b border-border/70 last:border-0 transition-colors hover:bg-muted/20">
       <div>
         <div className="text-sm font-medium">{label}</div>
         {description && (

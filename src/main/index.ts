@@ -190,6 +190,11 @@ ipcMain.on('window:closeDialogResult', (_event, data: { action: 'minimize' | 'ex
   }
 });
 
+// 用户关闭/取消了关闭对话框（不做任何动作，只允许下次再次弹出）
+ipcMain.on('window:closeDialogCancel', () => {
+  pendingCloseAction = false;
+});
+
 // 创建 macOS 模板图标
 function createMacTrayIcon(): Electron.NativeImage {
   // 使用应用图标作为托盘图标

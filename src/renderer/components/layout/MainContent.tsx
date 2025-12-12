@@ -8,7 +8,7 @@ import { ContextMenu, ContextMenuItem } from '../ui/ContextMenu';
 import { ImagePreviewModal } from '../ui/ImagePreviewModal';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { useToast } from '../ui/Toast';
-import { chatCompletion, buildMessagesFromPrompt, multiModelCompare, AITestResult } from '../../services/ai';
+import { chatCompletion, buildMessagesFromPrompt, multiModelCompare, AITestResult, StreamCallbacks } from '../../services/ai';
 import { useTranslation } from 'react-i18next';
 import type { Prompt, PromptVersion } from '../../../shared/types';
 import ReactMarkdown from 'react-markdown';
@@ -60,7 +60,7 @@ function PromptCard({
 }
 
 export function MainContent() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const prompts = usePromptStore((state) => state.prompts);
   const selectedId = usePromptStore((state) => state.selectedId);
   const selectPrompt = usePromptStore((state) => state.selectPrompt);
@@ -90,11 +90,17 @@ export function MainContent() {
   const [showEnglish, setShowEnglish] = useState(false);
   const { showToast } = useToast();
 
+  const preferEnglish = useMemo(() => {
+    const lang = (i18n.language || '').toLowerCase();
+    return !(lang.startsWith('zh'));
+  }, [i18n.language]);
+
   // 按 prompt ID 保存测试状态和结果（持久化）
   const [promptTestStates, setPromptTestStates] = useState<Record<string, {
     isTestingAI: boolean;
     isComparingModels: boolean;
     aiResponse: string | null;
+    aiThinking: string | null;
     compareResults: AITestResult[] | null;
     compareError: string | null;
   }>>({});
@@ -104,6 +110,7 @@ export function MainContent() {
   const isTestingAI = currentState?.isTestingAI || false;
   const isComparingModels = currentState?.isComparingModels || false;
   const aiResponse = currentState?.aiResponse || null;
+  const aiThinking = currentState?.aiThinking || null;
   const compareResults = currentState?.compareResults || null;
   const compareError = currentState?.compareError || null;
 
@@ -115,6 +122,7 @@ export function MainContent() {
         isTestingAI: prev[promptId]?.isTestingAI || false,
         isComparingModels: prev[promptId]?.isComparingModels || false,
         aiResponse: prev[promptId]?.aiResponse || null,
+        aiThinking: prev[promptId]?.aiThinking || null,
         compareResults: prev[promptId]?.compareResults || null,
         compareError: prev[promptId]?.compareError || null,
         ...updates
@@ -132,6 +140,10 @@ export function MainContent() {
 
   const setAiResponse = (response: string | null) => {
     if (selectedId) updatePromptState(selectedId, { aiResponse: response });
+  };
+
+  const setAiThinking = (thinking: string | null) => {
+    if (selectedId) updatePromptState(selectedId, { aiThinking: thinking });
   };
 
   const setCompareResults = (results: AITestResult[] | null) => {
@@ -159,6 +171,27 @@ export function MainContent() {
   const aiModel = useSettingsStore((state) => state.aiModel);
   const aiModels = useSettingsStore((state) => state.aiModels);
   const showCopyNotification = useSettingsStore((state) => state.showCopyNotification);
+
+  const defaultChatModel = useMemo(() => {
+    const chatModels = aiModels.filter((m) => (m.type ?? 'chat') === 'chat');
+    return chatModels.find((m) => m.isDefault) ?? chatModels[0] ?? null;
+  }, [aiModels]);
+
+  const singleChatConfig = useMemo(() => {
+    if (defaultChatModel) {
+      return {
+        id: defaultChatModel.id,
+        provider: defaultChatModel.provider,
+        apiKey: defaultChatModel.apiKey,
+        apiUrl: defaultChatModel.apiUrl,
+        model: defaultChatModel.model,
+        chatParams: defaultChatModel.chatParams,
+      };
+    }
+    return { provider: aiProvider, apiKey: aiApiKey, apiUrl: aiApiUrl, model: aiModel };
+  }, [defaultChatModel, aiProvider, aiApiKey, aiApiUrl, aiModel]);
+
+  const canRunSingleAiTest = !!(singleChatConfig.apiKey && singleChatConfig.apiUrl && singleChatConfig.model);
 
   useEffect(() => {
     setRenderMarkdownEnabled(renderMarkdownPref);
@@ -259,6 +292,7 @@ export function MainContent() {
     // setShowAiPanel(true);  // 移除：不再打开 AiTestModal
     setIsTestingAI(true);
     setAiResponse(null);
+    setAiThinking(null);
     setIsAiTestVariableModalOpen(false);
 
     // 增加使用次数
@@ -268,12 +302,26 @@ export function MainContent() {
     }
 
     try {
+      if (!canRunSingleAiTest) {
+        throw new Error(t('toast.configAI') || '请先配置 AI');
+      }
       const messages = buildMessagesFromPrompt(systemPrompt, userPrompt);
-      const result = await chatCompletion(
-        { provider: aiProvider, apiKey: aiApiKey, apiUrl: aiApiUrl, model: aiModel },
-        messages
-      );
+      const useStream = !!singleChatConfig.chatParams?.stream;
+      const useThinking = !!singleChatConfig.chatParams?.enableThinking;
+
+      if (useStream) {
+        setAiResponse('');
+        if (useThinking) setAiThinking('');
+      }
+
+      const result = await chatCompletion(singleChatConfig as any, messages, useStream ? {
+        streamCallbacks: {
+          onContent: (chunk) => setAiResponse((prev) => (prev ?? '') + chunk),
+          onThinking: (chunk) => setAiThinking((prev) => (prev ?? '') + chunk),
+        },
+      } : undefined);
       setAiResponse(result.content);
+      setAiThinking(result.thinkingContent || null);
     } catch (error) {
       setAiResponse(`${t('common.error')}: ${error instanceof Error ? error.message : t('common.error')}`);
       showToast(t('toast.aiFailed'), 'error');
@@ -288,19 +336,65 @@ export function MainContent() {
     const selectedConfigs = aiModels
       .filter((m) => selectedModelIds.includes(m.id))
       .map((m) => ({
+        id: m.id,
         provider: m.provider,
         apiKey: m.apiKey,
         apiUrl: m.apiUrl,
         model: m.model,
+        chatParams: m.chatParams,
       }));
 
     const messages = buildMessagesFromPrompt(systemPrompt, userPrompt);
 
     setIsComparingModels(true);
-    setCompareResults(null);
     setCompareError(null);
+    
     try {
-      const result = await multiModelCompare(selectedConfigs, messages);
+      // 支持流式：提前渲染占位结果，让用户能看到"正在流式输出"的差异
+      setCompareResults(
+        selectedConfigs.map((c) => ({
+          success: true,
+          response: '',
+          thinkingContent: '',
+          latency: 0,
+          model: c.model,
+          provider: c.provider,
+        }))
+      );
+
+      // 为启用流式的模型创建流式回调 Map
+      const streamCallbacksMap = new Map<string, StreamCallbacks>();
+      for (const cfg of selectedConfigs) {
+        if (cfg.chatParams?.stream) {
+          streamCallbacksMap.set(cfg.id, {
+            onContent: (chunk: string) => {
+              setCompareResults((prev) => {
+                if (!prev) return prev;
+                return prev.map((r) =>
+                  r.model === cfg.model && r.provider === cfg.provider
+                    ? { ...r, response: (r.response || '') + chunk }
+                    : r
+                );
+              });
+            },
+            onThinking: (chunk: string) => {
+              setCompareResults((prev) => {
+                if (!prev) return prev;
+                return prev.map((r) =>
+                  r.model === cfg.model && r.provider === cfg.provider
+                    ? { ...r, thinkingContent: (r.thinkingContent || '') + chunk }
+                    : r
+                );
+              });
+            },
+          });
+        }
+      }
+
+      const result = await multiModelCompare(selectedConfigs as any, messages, {
+        streamCallbacksMap,
+      });
+      // 流式模式下，结果已经在回调中更新，这里只做最终同步（确保非流式模型的结果也正确显示）
       setCompareResults(result.results);
     } catch (error) {
       setCompareError(error instanceof Error ? error.message : t('common.error'));
@@ -331,7 +425,10 @@ export function MainContent() {
         (p) =>
           p.title.toLowerCase().includes(query) ||
           p.description?.toLowerCase().includes(query) ||
-          p.userPrompt.toLowerCase().includes(query)
+          p.userPrompt.toLowerCase().includes(query) ||
+          (p.userPromptEn ? p.userPromptEn.toLowerCase().includes(query) : false) ||
+          (p.systemPrompt ? p.systemPrompt.toLowerCase().includes(query) : false) ||
+          (p.systemPromptEn ? p.systemPromptEn.toLowerCase().includes(query) : false)
       );
     }
 
@@ -373,6 +470,20 @@ export function MainContent() {
 
   const selectedPrompt = prompts.find((p) => p.id === selectedId);
 
+  // 根据界面语言自动选择 Prompt 语言（如果有英文版本）
+  useEffect(() => {
+    if (!selectedPrompt) {
+      setShowEnglish(false);
+      return;
+    }
+    const hasEnglish = !!(selectedPrompt.systemPromptEn || selectedPrompt.userPromptEn);
+    if (!hasEnglish) {
+      setShowEnglish(false);
+      return;
+    }
+    setShowEnglish(preferEnglish);
+  }, [selectedPrompt?.id, selectedPrompt?.systemPromptEn, selectedPrompt?.userPromptEn, preferEnglish]);
+
   // 用于表格视图的编辑 prompt
   const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null);
   // AI 测试弹窗状态
@@ -406,7 +517,7 @@ export function MainContent() {
 
   // 处理 AI 测试（表格视图用 - 弹窗模式）
   const handleAiTestFromTable = (prompt: Prompt) => {
-    if (!aiApiKey) {
+    if (!canRunSingleAiTest) {
       showToast(t('toast.configAI'), 'error');
       return;
     }
@@ -821,10 +932,10 @@ export function MainContent() {
                         }
                         if (!selectedPrompt) return;
 
-                        // 检查是否有变量
-                        const variableRegex = /\{\{([^}]+)\}\}/g;
-                        const hasVariables = variableRegex.test(selectedPrompt.userPrompt) ||
-                          (selectedPrompt.systemPrompt && variableRegex.test(selectedPrompt.systemPrompt));
+                        // 检查是否有变量（为每个字符串创建新的正则实例，避免全局标志导致的状态问题）
+                        const hasVariables = 
+                          /\{\{([^}]+)\}\}/.test(selectedPrompt.userPrompt) ||
+                          (selectedPrompt.systemPrompt && /\{\{([^}]+)\}\}/.test(selectedPrompt.systemPrompt));
 
                         if (hasVariables) {
                           setIsCompareVariableModalOpen(true);
@@ -864,6 +975,16 @@ export function MainContent() {
                               {res.latency}ms
                             </div>
                           </div>
+                          {res.success && res.thinkingContent && (
+                            <div className="bg-muted/20 border border-border/60 rounded-md p-2 max-h-24 overflow-y-auto">
+                              <div className="text-[10px] font-medium text-muted-foreground mb-1">
+                                {t('settings.thinkingContent', '思考过程')}
+                              </div>
+                              <div className="text-[10px] leading-relaxed whitespace-pre-wrap">
+                                {res.thinkingContent}
+                              </div>
+                            </div>
+                          )}
                           <div className="text-[11px] leading-relaxed whitespace-pre-wrap max-h-40 overflow-y-auto">
                             {res.success ? (res.response || '(空)') : (res.error || '未知错误')}
                           </div>
@@ -902,8 +1023,20 @@ export function MainContent() {
                       <span className="text-sm">{t('prompt.testing', '测试中...')}</span>
                     </div>
                   ) : (
-                    <div className="text-sm leading-relaxed whitespace-pre-wrap max-h-60 overflow-y-auto">
-                      {aiResponse}
+                    <div className="space-y-3">
+                      {aiThinking !== null && (
+                        <div className="bg-muted/30 border border-border rounded-lg p-3 max-h-40 overflow-y-auto">
+                          <div className="text-xs font-medium text-muted-foreground mb-1">
+                            {t('settings.thinkingContent', '思考过程')}
+                          </div>
+                          <div className="text-xs leading-relaxed whitespace-pre-wrap">
+                            {aiThinking || t('common.loading', '处理中...')}
+                          </div>
+                        </div>
+                      )}
+                      <div className="text-sm leading-relaxed whitespace-pre-wrap max-h-60 overflow-y-auto">
+                        {aiResponse}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -919,10 +1052,10 @@ export function MainContent() {
                     const currentUserPrompt = showEnglish ? (selectedPrompt.userPromptEn || selectedPrompt.userPrompt) : selectedPrompt.userPrompt;
                     const currentSystemPrompt = showEnglish ? (selectedPrompt.systemPromptEn || selectedPrompt.systemPrompt) : selectedPrompt.systemPrompt;
                     
-                    // 检查是否有变量
-                    const variableRegex = /\{\{([^}]+)\}\}/g;
-                    const hasVariables = variableRegex.test(currentUserPrompt) ||
-                      (currentSystemPrompt && variableRegex.test(currentSystemPrompt));
+                    // 检查是否有变量（为每个字符串创建新的正则实例，避免全局标志导致的状态问题）
+                    const hasVariables = 
+                      /\{\{([^}]+)\}\}/.test(currentUserPrompt) ||
+                      (currentSystemPrompt && /\{\{([^}]+)\}\}/.test(currentSystemPrompt));
 
                     if (hasVariables) {
                       setIsVariableModalOpen(true);
@@ -941,7 +1074,7 @@ export function MainContent() {
                 </button>
                 <button
                   onClick={() => {
-                    if (!aiApiKey) {
+                    if (!canRunSingleAiTest) {
                       showToast(t('toast.configAI'), 'error');
                       return;
                     }
@@ -949,9 +1082,10 @@ export function MainContent() {
                     const currentUserPrompt = showEnglish ? (selectedPrompt.userPromptEn || selectedPrompt.userPrompt) : selectedPrompt.userPrompt;
                     const currentSystemPrompt = showEnglish ? (selectedPrompt.systemPromptEn || selectedPrompt.systemPrompt) : selectedPrompt.systemPrompt;
                     
-                    const variableRegex = /\{\{([^}]+)\}\}/g;
-                    const hasVariables = variableRegex.test(currentUserPrompt) ||
-                      (currentSystemPrompt && variableRegex.test(currentSystemPrompt));
+                    // 检查是否有变量（为每个字符串创建新的正则实例，避免全局标志导致的状态问题）
+                    const hasVariables = 
+                      /\{\{([^}]+)\}\}/.test(currentUserPrompt) ||
+                      (currentSystemPrompt && /\{\{([^}]+)\}\}/.test(currentSystemPrompt));
 
                     if (hasVariables) {
                       setIsAiTestVariableModalOpen(true);

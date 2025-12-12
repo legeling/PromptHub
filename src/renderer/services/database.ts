@@ -605,7 +605,25 @@ export interface DatabaseBackup {
     aiApiUrl?: string;
     aiModel?: string;
   };
+  // 系统设置快照（可选，用于跨设备一致）
+  settings?: { state: any };
+  settingsUpdatedAt?: string;
 }
+
+export type ExportScope = {
+  prompts?: boolean;
+  folders?: boolean;
+  versions?: boolean;
+  images?: boolean;
+  aiConfig?: boolean;
+  settings?: boolean;
+};
+
+export type PromptHubFile =
+  | { kind: 'prompthub-export'; exportedAt: string; scope: Required<ExportScope>; payload: Partial<DatabaseBackup> }
+  | { kind: 'prompthub-backup'; exportedAt: string; payload: DatabaseBackup };
+
+const SETTINGS_STORAGE_KEY = 'prompthub-settings';
 
 /**
  * 收集所有需要备份的图片
@@ -643,20 +661,23 @@ async function collectImages(prompts: Prompt[]): Promise<{ [fileName: string]: s
  */
 function getAiConfig(): DatabaseBackup['aiConfig'] {
   try {
-    const stored = localStorage.getItem('settings-storage');
-    if (stored) {
-      const data = JSON.parse(stored);
-      const state = data?.state;
-      if (state) {
-        return {
-          aiModels: state.aiModels || [],
-          aiProvider: state.aiProvider,
-          aiApiKey: state.aiApiKey,
-          aiApiUrl: state.aiApiUrl,
-          aiModel: state.aiModel,
-        };
-      }
-    }
+    // 当前版本的 settings store 持久化 key
+    const primary = localStorage.getItem('prompthub-settings');
+    // 旧版兼容（历史 key）
+    const legacy = localStorage.getItem('settings-storage');
+    const raw = primary || legacy;
+    if (!raw) return undefined;
+
+    const data = JSON.parse(raw);
+    const state = data?.state;
+    if (!state) return undefined;
+    return {
+      aiModels: state.aiModels || [],
+      aiProvider: state.aiProvider,
+      aiApiKey: state.aiApiKey,
+      aiApiUrl: state.aiApiUrl,
+      aiModel: state.aiModel,
+    };
   } catch (e) {
     console.warn('Failed to get AI config:', e);
   }
@@ -669,21 +690,61 @@ function getAiConfig(): DatabaseBackup['aiConfig'] {
 function restoreAiConfig(aiConfig: DatabaseBackup['aiConfig']): void {
   if (!aiConfig) return;
   try {
-    const stored = localStorage.getItem('settings-storage');
-    if (stored) {
-      const data = JSON.parse(stored);
-      if (data.state) {
-        data.state.aiModels = aiConfig.aiModels || [];
-        data.state.aiProvider = aiConfig.aiProvider || data.state.aiProvider;
-        data.state.aiApiKey = aiConfig.aiApiKey || data.state.aiApiKey;
-        data.state.aiApiUrl = aiConfig.aiApiUrl || data.state.aiApiUrl;
-        data.state.aiModel = aiConfig.aiModel || data.state.aiModel;
-        localStorage.setItem('settings-storage', JSON.stringify(data));
-      }
-    }
+    const primaryKey = 'prompthub-settings';
+    const legacyKey = 'settings-storage';
+    const storedPrimary = localStorage.getItem(primaryKey);
+    const storedLegacy = localStorage.getItem(legacyKey);
+
+    const targetKey = storedPrimary ? primaryKey : (storedLegacy ? legacyKey : primaryKey);
+    const stored = storedPrimary || storedLegacy;
+    const data = stored ? JSON.parse(stored) : { state: {} };
+
+    if (!data.state) data.state = {};
+    data.state.aiModels = aiConfig.aiModels || [];
+    if (aiConfig.aiProvider) data.state.aiProvider = aiConfig.aiProvider;
+    if (aiConfig.aiApiKey) data.state.aiApiKey = aiConfig.aiApiKey;
+    if (aiConfig.aiApiUrl) data.state.aiApiUrl = aiConfig.aiApiUrl;
+    if (aiConfig.aiModel) data.state.aiModel = aiConfig.aiModel;
+    localStorage.setItem(targetKey, JSON.stringify(data));
   } catch (e) {
     console.warn('Failed to restore AI config:', e);
   }
+}
+
+function getSettingsSnapshot(): { state: any; settingsUpdatedAt?: string } | undefined {
+  try {
+    const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (!raw) return undefined;
+    const data = JSON.parse(raw);
+    const state = data?.state;
+    if (!state) return undefined;
+    return { state, settingsUpdatedAt: state.settingsUpdatedAt };
+  } catch (e) {
+    console.warn('Failed to get settings snapshot:', e);
+    return undefined;
+  }
+}
+
+function restoreSettingsSnapshot(snapshot: { state: any } | undefined): void {
+  if (!snapshot?.state) return;
+  try {
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ state: snapshot.state }));
+  } catch (e) {
+    console.warn('Failed to restore settings snapshot:', e);
+  }
+}
+
+async function gzipText(text: string): Promise<Blob> {
+  // Electron/Chromium 支持 CompressionStream
+  const cs = new CompressionStream('gzip');
+  const stream = new Blob([text], { type: 'application/json' }).stream().pipeThrough(cs);
+  return await new Response(stream).blob();
+}
+
+async function gunzipToText(blob: Blob): Promise<string> {
+  const ds = new DecompressionStream('gzip');
+  const stream = blob.stream().pipeThrough(ds);
+  return await new Response(stream).text();
 }
 
 /**
@@ -710,6 +771,8 @@ export async function exportDatabase(): Promise<DatabaseBackup> {
   
   // 获取 AI 配置
   const aiConfig = getAiConfig();
+  // 获取系统设置快照
+  const settingsSnapshot = getSettingsSnapshot();
 
   return {
     version: DB_VERSION,
@@ -719,6 +782,8 @@ export async function exportDatabase(): Promise<DatabaseBackup> {
     versions,
     images,
     aiConfig,
+    settings: settingsSnapshot ? { state: settingsSnapshot.state } : undefined,
+    settingsUpdatedAt: settingsSnapshot?.settingsUpdatedAt,
   };
 }
 
@@ -776,6 +841,11 @@ export async function importDatabase(backup: DatabaseBackup): Promise<void> {
   if (backup.aiConfig) {
     restoreAiConfig(backup.aiConfig);
   }
+
+  // 恢复系统设置
+  if (backup.settings) {
+    restoreSettingsSnapshot(backup.settings);
+  }
 }
 
 /**
@@ -830,7 +900,8 @@ export function getDatabaseInfo(): { name: string; description: string } {
  */
 export async function downloadBackup(): Promise<void> {
   const backup = await exportDatabase();
-  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const file: PromptHubFile = { kind: 'prompthub-backup', exportedAt: backup.exportedAt, payload: backup };
+  const blob = new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
 
   const a = document.createElement('a');
@@ -843,12 +914,109 @@ export async function downloadBackup(): Promise<void> {
 }
 
 /**
+ * 下载压缩的全量备份（.phub.gz）
+ */
+export async function downloadCompressedBackup(): Promise<void> {
+  const backup = await exportDatabase();
+  const file: PromptHubFile = { kind: 'prompthub-backup', exportedAt: backup.exportedAt, payload: backup };
+  const gz = await gzipText(JSON.stringify(file));
+  const url = URL.createObjectURL(gz);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `prompthub-backup-${new Date().toISOString().split('T')[0]}.phub.gz`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * 选择性导出（仅导出，不提供导入）
+ */
+export async function downloadSelectiveExport(scope: ExportScope): Promise<void> {
+  const normalized: Required<ExportScope> = {
+    prompts: !!scope.prompts,
+    folders: !!scope.folders,
+    versions: !!scope.versions,
+    images: !!scope.images,
+    aiConfig: !!scope.aiConfig,
+    settings: !!scope.settings,
+  };
+
+  const payload: Partial<DatabaseBackup> = {
+    version: DB_VERSION,
+    exportedAt: new Date().toISOString(),
+  };
+
+  if (normalized.prompts) payload.prompts = await getAllPrompts();
+  if (normalized.folders) payload.folders = await getAllFolders();
+  if (normalized.versions) {
+    const database = await getDatabase();
+    payload.versions = await new Promise<PromptVersion[]>((resolve, reject) => {
+      const transaction = database.transaction(STORES.VERSIONS, 'readonly');
+      const store = transaction.objectStore(STORES.VERSIONS);
+      const request = store.getAll();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+  if (normalized.images) {
+    const promptsForImages = payload.prompts || (await getAllPrompts());
+    payload.images = await collectImages(promptsForImages);
+  }
+  if (normalized.aiConfig) payload.aiConfig = getAiConfig();
+  if (normalized.settings) {
+    const snap = getSettingsSnapshot();
+    if (snap) {
+      payload.settings = { state: snap.state };
+      payload.settingsUpdatedAt = snap.settingsUpdatedAt;
+    }
+  }
+
+  const file: PromptHubFile = {
+    kind: 'prompthub-export',
+    exportedAt: payload.exportedAt || new Date().toISOString(),
+    scope: normalized,
+    payload,
+  };
+
+  // 始终使用 gzip 压缩，减少体积并避免用户对 JSON 包含图片的困惑
+  const gz = await gzipText(JSON.stringify(file));
+  const url = URL.createObjectURL(gz);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `prompthub-export-${new Date().toISOString().split('T')[0]}.phub.gz`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/**
  * 从文件恢复备份
  */
 export async function restoreFromFile(file: File): Promise<void> {
-  const text = await file.text();
-  const backup = JSON.parse(text) as DatabaseBackup;
-  await importDatabase(backup);
+  let text: string;
+  if (file.name.endsWith('.gz')) {
+    text = await gunzipToText(file);
+  } else {
+    text = await file.text();
+  }
+
+  const parsed = JSON.parse(text) as any;
+
+  // 新格式：PromptHubFile
+  if (parsed?.kind === 'prompthub-backup') {
+    await importDatabase(parsed.payload as DatabaseBackup);
+    return;
+  }
+  if (parsed?.kind === 'prompthub-export') {
+    // 选择性导出不支持导入，避免误用造成数据丢失/不完整恢复
+    throw new Error('选择性导出文件不支持导入，请使用“全量备份/恢复”文件');
+  }
+
+  // 旧格式兼容：直接 DatabaseBackup
+  await importDatabase(parsed as DatabaseBackup);
 }
 
 /**
