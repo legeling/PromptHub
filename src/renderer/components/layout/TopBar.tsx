@@ -2,7 +2,7 @@ import { SearchIcon, PlusIcon, SettingsIcon, SunIcon, MoonIcon } from 'lucide-re
 import { usePromptStore } from '../../stores/prompt.store';
 import { useSettingsStore } from '../../stores/settings.store';
 import { useFolderStore } from '../../stores/folder.store';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { CreatePromptModal } from '../prompt/CreatePromptModal';
 import { useTranslation } from 'react-i18next';
 
@@ -19,6 +19,25 @@ export function TopBar({ onOpenSettings }: TopBarProps) {
   const setDarkMode = useSettingsStore((state) => state.setDarkMode);
   const selectedFolderId = useFolderStore((state) => state.selectedFolderId);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Listen for shortcut events
+  useEffect(() => {
+    const handleNewPrompt = () => {
+      setIsCreateModalOpen(true);
+    };
+    const handleSearch = () => {
+      searchInputRef.current?.focus();
+    };
+
+    window.addEventListener('shortcut:newPrompt', handleNewPrompt);
+    window.addEventListener('shortcut:search', handleSearch);
+
+    return () => {
+      window.removeEventListener('shortcut:newPrompt', handleNewPrompt);
+      window.removeEventListener('shortcut:search', handleSearch);
+    };
+  }, []);
 
   const handleCreatePrompt = async (data: {
     title: string;
@@ -62,6 +81,7 @@ export function TopBar({ onOpenSettings }: TopBarProps) {
           <div className="w-full max-w-lg relative">
             <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             <input
+              ref={searchInputRef}
               type="text"
               placeholder={t('header.search')}
               value={searchQuery}

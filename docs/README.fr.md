@@ -7,7 +7,7 @@
   <p>
     <a href="https://github.com/legeling/PromptHub/stargazers"><img src="https://img.shields.io/github/stars/legeling/PromptHub?style=flat-square&color=yellow" alt="GitHub Stars"/></a>
     <a href="https://github.com/legeling/PromptHub/network/members"><img src="https://img.shields.io/github/forks/legeling/PromptHub?style=flat-square" alt="GitHub Forks"/></a>
-    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.2.6-green?style=flat-square" alt="Version"/></a>
+    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.2.7-green?style=flat-square" alt="Version"/></a>
     <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/github/downloads/legeling/PromptHub/total?style=flat-square&color=blue" alt="Downloads"/></a>
     <img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="License: AGPL-3.0"/>
   </p>
@@ -21,12 +21,12 @@
   
   <p>
     <a href="../README.md">简体中文</a> ·
+    <a href="./README.zh-TW.md">繁體中文</a> ·
     <a href="./README.en.md">English</a> ·
     <a href="./README.ja.md">日本語</a> ·
-    <a href="./README.es.md">Español</a> ·
     <a href="./README.de.md">Deutsch</a> ·
-    <a href="./README.fr.md">Français</a> ·
-    <a href="./README.zh-TW.md">繁體中文</a>
+    <a href="./README.es.md">Español</a> ·
+    <a href="./README.fr.md">Français</a>
   </p>
 </div>
 
@@ -78,24 +78,31 @@
 
 <div align="center">
   <p><strong>Interface Principale</strong></p>
-  <img src="./imgs/image.png" width="80%" alt="Interface Principale"/>
+  <img src="./imgs/1-index.png" width="80%" alt="Interface Principale"/>
   <br/><br/>
-  <p><strong>Thèmes</strong></p>
-  <img src="./imgs/theme.png" width="80%" alt="Thèmes"/>
-  <br/><br/>
-  <p><strong>Sauvegarde</strong></p>
-  <img src="./imgs/data.png" width="80%" alt="Sauvegarde"/>
-  <br/><br/>
-  <p><strong>Configuration IA</strong></p>
-  <img src="./imgs/model.png" width="80%" alt="Configuration IA"/>
-  <br/><br/>
-  <p><strong>Comparaison de versions</strong></p>
-  <img src="./imgs/version-compare.png" width="80%" alt="Comparaison de versions"/>
+  <p><strong>Vue Galerie</strong></p>
+  <img src="./imgs/2-gallery-view.png" width="80%" alt="Vue Galerie"/>
   <br/><br/>
   <p><strong>Vue Liste</strong></p>
-  <img src="./imgs/view.png" width="80%" alt="Vue Liste"/>
-  <p><strong>Galerie</strong></p>
-  <img src="./imgs/gallery.png" width="80%" alt="Galerie"/>
+  <img src="./imgs/3-list-view.png" width="80%" alt="Vue Liste"/>
+  <br/><br/>
+  <p><strong>Sauvegarde</strong></p>
+  <img src="./imgs/4-backup.png" width="80%" alt="Sauvegarde"/>
+  <br/><br/>
+  <p><strong>Thèmes</strong></p>
+  <img src="./imgs/5-theme.png" width="80%" alt="Thèmes"/>
+  <br/><br/>
+  <p><strong>Mode Bilingue</strong></p>
+  <img src="./imgs/6-double-language.png" width="80%" alt="Mode Bilingue"/>
+  <br/><br/>
+  <p><strong>Saisie des Variables</strong></p>
+  <img src="./imgs/7-variable.png" width="80%" alt="Saisie des Variables"/>
+  <br/><br/>
+  <p><strong>Comparaison de Versions</strong></p>
+  <img src="./imgs/8-version-compare.png" width="80%" alt="Comparaison de Versions"/>
+  <br/><br/>
+  <p><strong>Support Multilingue</strong></p>
+  <img src="./imgs/9-i18n.png" width="80%" alt="Support Multilingue"/>
 </div>
 
 ## 📦 Installation
@@ -194,23 +201,21 @@ Copiez en un clic, ou lancez un test IA (streaming & mode “thinking” selon l
 
 ## 📝 Changelog
 
-### v0.2.6 (2025-12-12)
+Voir le changelog complet : **[CHANGELOG.md](../CHANGELOG.md)**
+
+### Dernière version v0.2.6 (2025-12-15)
+
 **Nouveautés**
-- 🎨 Réglages d’affichage modernisés : UI plus “produit” + animations + couleur de thème personnalisée
-- 🧰 Données : export sélectif (export uniquement) + sauvegarde/restauration complète (compressée `.phub.gz`, inclut prompts/images/config IA/paramètres)
-- ☁️ WebDAV : la synchronisation inclut désormais la config IA et les paramètres de l’app (meilleure cohérence multi‑appareils)
+- 🎨 Réglages d'affichage modernisés : UI plus moderne + animations + couleur de thème personnalisée
+- 🧰 Données : export sélectif + sauvegarde/restauration complète (compressée `.phub.gz`)
+- ☁️ WebDAV sauvegarde incrémentielle : ne télécharge que les fichiers modifiés, économise la bande passante
+- 🔐 Support de sauvegarde chiffrée AES-256 (expérimental)
 
 **Correctifs**
-- 🐛 La préférence de langue n’est plus écrasée (le multi‑langue fonctionne de façon fiable)
-- 🐛 Le streaming / “thinking mode” s’applique aux tests IA (y compris la comparaison multi‑modèles en vue carte)
-- 🐛 Correction du bug d’état du regex pour la détection des variables (la modale s’ouvre correctement)
-- 🐛 Correction : la boîte de dialogue de fermeture Windows n’apparaissait qu’une seule fois
+- 🐛 Correction de l'échec de synchronisation WebDAV (#11)
+- 🐛 Correction des problèmes de multi-langue, streaming, détection de variables
 
-### v0.2.5 (2025-12-12)
-**Nouveautés**
-- 🌐 Multi‑langue (zh / zh‑TW / en / ja / es / de / fr)
-- 🪟 Dialog de fermeture Windows (minimiser au tray / quitter + mémoriser)
-- 📥 Tableau de téléchargement rapide dans le README
+> 📋 [Voir le changelog complet](../CHANGELOG.md)
 
 ## 🛠️ Développement
 
@@ -253,3 +258,30 @@ Ce projet utilise les projets open-source suivants :
 <div align="center">
   <p>⭐ Si vous aimez ce projet, donnez-lui une étoile !</p>
 </div>
+
+---
+
+## ☕ Soutenir / Sponsor
+
+Si PromptHub vous aide dans votre travail, n'hésitez pas à offrir un café à l'auteur ☕
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center">
+        <img src="./imgs/donate/wechat.png" width="200" alt="WeChat Pay"/>
+        <br/>
+        <b>WeChat Pay</b>
+      </td>
+      <td align="center">
+        <img src="./imgs/donate/alipay.jpg" width="200" alt="Alipay"/>
+        <br/>
+        <b>Alipay</b>
+      </td>
+    </tr>
+  </table>
+</div>
+
+📧 **Contact**: legeling567@gmail.com
+
+Merci à tous les supporters ! Votre soutien me motive à continuer le développement !

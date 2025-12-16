@@ -1,4 +1,4 @@
-import { useState, useEffect, cloneElement } from 'react';
+import { useState, useEffect, cloneElement, useRef } from 'react';
 import type { ReactNode } from 'react';
 import appIconUrl from '../../../assets/icon.png';
 import {
@@ -39,6 +39,8 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   MessageSquareIcon,
+  KeyboardIcon,
+  AlertTriangleIcon,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { downloadBackup, downloadCompressedBackup, downloadSelectiveExport, restoreFromFile, clearDatabase } from '../../services/database';
@@ -60,6 +62,7 @@ const SETTINGS_MENU = [
   { id: 'appearance', labelKey: 'settings.appearance', icon: PaletteIcon },
   { id: 'data', labelKey: 'settings.data', icon: DatabaseIcon },
   { id: 'ai', labelKey: 'settings.ai', icon: BrainIcon },
+  { id: 'shortcuts', labelKey: 'settings.shortcuts', icon: KeyboardIcon },
   { id: 'language', labelKey: 'settings.language', icon: GlobeIcon },
   { id: 'notifications', labelKey: 'settings.notifications', icon: BellIcon },
   { id: 'security', labelKey: 'settings.security', icon: KeyIcon },
@@ -68,11 +71,17 @@ const SETTINGS_MENU = [
 
 // AI 模型提供商 - 支持动态模型输入
 const AI_PROVIDERS = [
-  // 海外
-  { id: 'openai', name: 'OpenAI', defaultUrl: 'https://api.openai.com/v1', defaultModels: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo', 'o1-preview', 'o1-mini'] },
+  // === 顶级生图模型供应商 (2025) ===
+  { id: 'openai', name: 'OpenAI (GPT-Image / DALL-E)', defaultUrl: 'https://api.openai.com/v1', defaultModels: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo', 'o1-preview', 'o1-mini'], imageModels: ['gpt-image-1', 'dall-e-3', 'dall-e-2'] },
+  { id: 'google', name: 'Nano Banana (Gemini)', defaultUrl: 'https://generativelanguage.googleapis.com/v1beta', defaultModels: ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-1.5-pro'], imageModels: ['gemini-2.0-flash-exp-image', 'imagen-3.0-generate-002'] },
+  { id: 'flux', name: 'FLUX (Black Forest Labs)', defaultUrl: 'https://api.bfl.ai/v1', defaultModels: [], imageModels: ['flux-pro-1.1', 'flux-pro', 'flux-dev', 'flux-schnell', 'flux-kontext'] },
+  { id: 'ideogram', name: 'Ideogram', defaultUrl: 'https://api.ideogram.ai', defaultModels: [], imageModels: ['ideogram-v3', 'ideogram-v2-turbo', 'ideogram-v2'] },
+  { id: 'recraft', name: 'Recraft V3', defaultUrl: 'https://external.api.recraft.ai/v1', defaultModels: [], imageModels: ['recraft-v3', 'recraft-v3-svg'] },
+  { id: 'stability', name: 'Stability AI (SD3.5)', defaultUrl: 'https://api.stability.ai/v2beta', defaultModels: [], imageModels: ['sd3.5-large', 'sd3.5-large-turbo', 'sd3.5-medium', 'stable-image-ultra', 'stable-image-core'] },
+  { id: 'replicate', name: 'Replicate', defaultUrl: 'https://api.replicate.com/v1', defaultModels: [], imageModels: ['black-forest-labs/flux-1.1-pro', 'black-forest-labs/flux-schnell', 'stability-ai/sdxl'] },
+  // === 对话模型供应商 ===
   { id: 'anthropic', name: 'Anthropic (Claude)', defaultUrl: 'https://api.anthropic.com/v1', defaultModels: ['claude-3-5-sonnet-20241022', 'claude-3-opus-20240229', 'claude-3-haiku-20240307'] },
-  { id: 'google', name: 'Google (Gemini)', defaultUrl: 'https://generativelanguage.googleapis.com/v1beta', defaultModels: ['gemini-2.0-flash-exp', 'gemini-1.5-pro', 'gemini-1.5-flash'] },
-  { id: 'xai', name: 'xAI (Grok)', defaultUrl: 'https://api.x.ai/v1', defaultModels: ['grok-beta', 'grok-2-1212'] },
+  { id: 'xai', name: 'xAI (Grok)', defaultUrl: 'https://api.x.ai/v1', defaultModels: ['grok-beta', 'grok-2-1212'], imageModels: ['grok-2-image'] },
   { id: 'mistral', name: 'Mistral AI', defaultUrl: 'https://api.mistral.ai/v1', defaultModels: ['mistral-large-latest', 'mistral-medium-latest', 'mistral-small-latest'] },
   // 国内
   { id: 'deepseek', name: 'DeepSeek (深度求索)', defaultUrl: 'https://api.deepseek.com/v1', defaultModels: ['deepseek-chat', 'deepseek-coder', 'deepseek-reasoner'] },
@@ -94,6 +103,110 @@ const AI_PROVIDERS = [
 type ImageSize = '256x256' | '512x512' | '1024x1024' | '1024x1792' | '1792x1024';
 type ImageQuality = 'standard' | 'hd';
 type ImageStyle = 'vivid' | 'natural';
+
+// 快捷键输入组件
+function ShortcutItem({
+  label,
+  description,
+  shortcut,
+  onShortcutChange,
+  onClear,
+  conflict,
+}: {
+  label: string;
+  description: string;
+  shortcut: string;
+  onShortcutChange: (shortcut: string) => void;
+  onClear: () => void;
+  conflict?: string;
+}) {
+  const { t } = useTranslation();
+  const [recording, setRecording] = useState(false);
+  const [tempKeys, setTempKeys] = useState<string[]>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const formatShortcut = (shortcut: string) => {
+    if (!shortcut) return t('settings.notSet');
+    return shortcut
+      .replace('CommandOrControl', navigator.platform.includes('Mac') ? '⌘' : 'Ctrl')
+      .replace('Control', navigator.platform.includes('Mac') ? '⌃' : 'Ctrl')
+      .replace('Alt', navigator.platform.includes('Mac') ? '⌥' : 'Alt')
+      .replace('Shift', navigator.platform.includes('Mac') ? '⇧' : 'Shift')
+      .replace('Meta', '⌘')
+      .replace(/\+/g, ' + ');
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!recording) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const keys: string[] = [];
+    if (e.metaKey || e.ctrlKey) keys.push('CommandOrControl');
+    if (e.altKey) keys.push('Alt');
+    if (e.shiftKey) keys.push('Shift');
+
+    const key = e.key.toUpperCase();
+    if (!['CONTROL', 'ALT', 'SHIFT', 'META'].includes(key)) {
+      keys.push(key === ' ' ? 'Space' : key);
+    }
+
+    setTempKeys(keys);
+
+    // 如果有修饰键和普通键，完成录制
+    if (keys.length >= 2 && !['CONTROL', 'ALT', 'SHIFT', 'META'].includes(key)) {
+      const shortcutStr = keys.join('+');
+      setRecording(false);
+      setTempKeys([]);
+      onShortcutChange(shortcutStr);
+    }
+  };
+
+  const handleBlur = () => {
+    setRecording(false);
+    setTempKeys([]);
+  };
+
+  return (
+    <div className="flex items-center justify-between px-4 py-3 border-b border-border/70 last:border-0 transition-colors hover:bg-muted/20">
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-medium">{label}</div>
+        <div className="text-xs text-muted-foreground mt-0.5">{description}</div>
+        {conflict && (
+          <div className="text-xs text-red-500 mt-1 flex items-center gap-1">
+            <AlertTriangleIcon className="w-3 h-3" />
+            {t('settings.conflictWith', { key: conflict })}
+          </div>
+        )}
+      </div>
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <input
+          ref={inputRef}
+          type="text"
+          readOnly
+          value={recording ? (tempKeys.length > 0 ? formatShortcut(tempKeys.join('+')) : t('settings.pressKeys')) : formatShortcut(shortcut)}
+          onFocus={() => setRecording(true)}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
+          className={`w-32 h-8 px-3 text-center text-sm rounded-lg border cursor-pointer transition-colors ${
+            recording
+              ? 'border-primary bg-primary/10 text-primary'
+              : 'border-border bg-background hover:border-primary/50'
+          }`}
+        />
+        {shortcut && (
+          <button
+            onClick={onClear}
+            className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            title={t('settings.clearShortcut')}
+          >
+            <XIcon className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 // 可复用的密码输入组件
 function PasswordInput({ 
@@ -240,6 +353,59 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
   const [streamingContent, setStreamingContent] = useState('');
   const [streamingThinking, setStreamingThinking] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
+
+  // 快捷键状态 / Shortcut state
+  const [shortcuts, setShortcuts] = useState<Record<string, string>>({
+    showApp: 'CommandOrControl+Shift+P',
+    newPrompt: 'CommandOrControl+N',
+    search: 'CommandOrControl+F',
+    settings: 'CommandOrControl+,',
+  });
+  const [shortcutConflicts, setShortcutConflicts] = useState<Record<string, string | undefined>>({});
+  const [recordingShortcut, setRecordingShortcut] = useState<string | null>(null);
+
+  // 加载快捷键设置
+  useEffect(() => {
+    window.electron?.getShortcuts?.().then((savedShortcuts) => {
+      if (savedShortcuts) {
+        setShortcuts(savedShortcuts);
+      }
+    });
+  }, []);
+
+  // 检查快捷键冲突
+  const checkShortcutConflict = (key: string, shortcut: string): string | undefined => {
+    for (const [k, v] of Object.entries(shortcuts)) {
+      if (k !== key && v === shortcut) {
+        return k;
+      }
+    }
+    return undefined;
+  };
+
+  // 处理快捷键更改
+  const handleShortcutChange = async (key: string, shortcut: string) => {
+    const conflict = checkShortcutConflict(key, shortcut);
+    if (conflict) {
+      setShortcutConflicts({ ...shortcutConflicts, [key]: conflict });
+      showToast(t('settings.shortcutConflict', { key: t(`settings.shortcut${conflict.charAt(0).toUpperCase() + conflict.slice(1)}`) }), 'error');
+      return;
+    }
+    setShortcutConflicts({ ...shortcutConflicts, [key]: undefined });
+    const newShortcuts = { ...shortcuts, [key]: shortcut };
+    setShortcuts(newShortcuts);
+    await window.electron?.setShortcuts?.(newShortcuts);
+    showToast(t('settings.shortcutUpdated'), 'success');
+  };
+
+  // 清除快捷键
+  const handleShortcutClear = async (key: string) => {
+    const newShortcuts = { ...shortcuts, [key]: '' };
+    setShortcuts(newShortcuts);
+    setShortcutConflicts({ ...shortcutConflicts, [key]: undefined });
+    await window.electron?.setShortcuts?.(newShortcuts);
+    showToast(t('settings.shortcutCleared'), 'success');
+  };
 
   // 测试单个对话模型（支持流式输出和参数配置）
   // Test single chat model (supports streaming and parameter config)
@@ -1189,10 +1355,28 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                   </div>
                   <button
                     onClick={async () => {
-                      const result = await window.electron?.selectFolder?.();
-                      if (result) {
-                        settings.setDataPath(result);
-                        showToast(t('toast.dataPathChanged'), 'success');
+                      const newPath = await window.electron?.selectFolder?.();
+                      if (newPath) {
+                        // 确认迁移
+                        const confirmed = window.confirm(
+                          t('settings.confirmDataMigration', '确定要将数据迁移到新目录吗？\n\n迁移完成后需要重启应用。')
+                        );
+                        if (!confirmed) return;
+                        
+                        // 执行迁移
+                        const result = await window.electron?.migrateData?.(newPath);
+                        if (result?.success) {
+                          settings.setDataPath(newPath);
+                          showToast(t('toast.dataPathChanged') + ' ' + t('settings.restartRequired', '请重启应用'), 'success');
+                          // 提示重启
+                          setTimeout(() => {
+                            if (window.confirm(t('settings.restartNow', '数据迁移完成，是否立即重启应用？'))) {
+                              window.location.reload();
+                            }
+                          }, 1000);
+                        } else {
+                          showToast(t('toast.dataPathChangeFailed', '数据迁移失败') + ': ' + (result?.error || ''), 'error');
+                        }
                       }
                     }}
                     className="h-8 px-3 rounded-lg bg-muted text-sm hover:bg-muted/80 transition-colors"
@@ -2137,15 +2321,20 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                       <Select
                         value={newModel.provider}
                         onChange={(value) => {
-                          const provider = AI_PROVIDERS.find(p => p.id === value);
+                          const provider = AI_PROVIDERS.find(p => p.id === value) as any;
+                          let defaultModel = '';
+                          if (value === 'openai') defaultModel = 'dall-e-3';
+                          else if (value === 'google') defaultModel = 'gemini-2.5-flash-preview-05-20';
+                          else if (value === 'stability') defaultModel = 'stable-image-core';
+                          else if (provider?.imageModels?.[0]) defaultModel = provider.imageModels[0];
                           setNewModel({
                             ...newModel,
                             provider: value,
                             apiUrl: provider?.defaultUrl || '',
-                            model: value === 'openai' ? 'dall-e-3' : '',
+                            model: defaultModel,
                           });
                         }}
-                        options={AI_PROVIDERS.filter(p => ['openai', 'azure', 'custom'].includes(p.id)).map((p) => ({ value: p.id, label: p.name }))}
+                        options={AI_PROVIDERS.filter(p => ['openai', 'google', 'stability', 'azure', 'custom'].includes(p.id)).map((p) => ({ value: p.id, label: p.name }))}
                       />
                     </div>
                     <div>
@@ -2192,7 +2381,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                       </div>
                       <input
                         type="text"
-                        placeholder="e.g., dall-e-3, stable-diffusion"
+                        placeholder="e.g., dall-e-3, gemini-2.5-flash-preview-05-20, stable-image-core"
                         value={newModel.model}
                         onChange={(e) => setNewModel({ ...newModel, model: e.target.value })}
                         className="w-full h-9 px-3 rounded-lg bg-muted border-0 text-sm"
@@ -2247,6 +2436,60 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 <p>• {t('settings.aiConfigDesc4')}</p>
               </div>
             </SettingSection>
+          </div>
+        );
+
+      case 'shortcuts':
+        return (
+          <div className="space-y-6">
+            <SettingSection title={t('settings.globalShortcuts')}>
+              <div>
+                <ShortcutItem
+                  label={t('settings.shortcutShowApp')}
+                  description={t('settings.shortcutShowAppDesc')}
+                  shortcut={shortcuts.showApp || ''}
+                  onShortcutChange={(shortcut) => handleShortcutChange('showApp', shortcut)}
+                  onClear={() => handleShortcutClear('showApp')}
+                  conflict={shortcutConflicts.showApp}
+                />
+                <ShortcutItem
+                  label={t('settings.shortcutNewPrompt')}
+                  description={t('settings.shortcutNewPromptDesc')}
+                  shortcut={shortcuts.newPrompt || ''}
+                  onShortcutChange={(shortcut) => handleShortcutChange('newPrompt', shortcut)}
+                  onClear={() => handleShortcutClear('newPrompt')}
+                  conflict={shortcutConflicts.newPrompt}
+                />
+                <ShortcutItem
+                  label={t('settings.shortcutSearch')}
+                  description={t('settings.shortcutSearchDesc')}
+                  shortcut={shortcuts.search || ''}
+                  onShortcutChange={(shortcut) => handleShortcutChange('search', shortcut)}
+                  onClear={() => handleShortcutClear('search')}
+                  conflict={shortcutConflicts.search}
+                />
+                <ShortcutItem
+                  label={t('settings.shortcutSettings')}
+                  description={t('settings.shortcutSettingsDesc')}
+                  shortcut={shortcuts.settings || ''}
+                  onShortcutChange={(shortcut) => handleShortcutChange('settings', shortcut)}
+                  onClear={() => handleShortcutClear('settings')}
+                  conflict={shortcutConflicts.settings}
+                />
+              </div>
+            </SettingSection>
+
+            <div className="p-4 rounded-lg bg-muted/50 border border-border">
+              <div className="flex items-start gap-3">
+                <AlertTriangleIcon className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-muted-foreground space-y-1">
+                  <p className="font-medium text-foreground">{t('settings.shortcutTips')}</p>
+                  <p>• {t('settings.shortcutTip1')}</p>
+                  <p>• {t('settings.shortcutTip2')}</p>
+                  <p>• {t('settings.shortcutTip3')}</p>
+                </div>
+              </div>
+            </div>
           </div>
         );
 

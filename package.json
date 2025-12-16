@@ -1,6 +1,6 @@
 {
   "name": "prompthub",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "一款开源、本地优先的 AI Prompt 管理工具，帮助你高效管理、版本控制和复用",
   "main": "out/main/index.js",
   "author": {

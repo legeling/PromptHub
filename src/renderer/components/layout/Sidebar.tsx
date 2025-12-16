@@ -303,7 +303,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
                   onClick={() => setShowAllTags(!showAllTags)}
                   className="text-xs text-primary hover:underline"
                 >
-                  {showAllTags ? t('common.collapse', '收起') : t('common.showAll', `全部 ${uniqueTags.length}`)}
+                  {showAllTags ? t('common.collapse') : `${t('common.showAll')} ${uniqueTags.length}`}
                 </button>
               )}
             </div>

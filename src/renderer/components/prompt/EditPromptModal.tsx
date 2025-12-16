@@ -1,10 +1,11 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Modal, Button, Input, Textarea } from '../ui';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Modal, Button, Input, Textarea, UnsavedChangesDialog } from '../ui';
 import { Select } from '../ui/Select';
 import { HashIcon, XIcon, ImageIcon, Maximize2Icon, Minimize2Icon, PlusIcon, GlobeIcon } from 'lucide-react';
 import { usePromptStore } from '../../stores/prompt.store';
 import { useFolderStore } from '../../stores/folder.store';
 import { useTranslation } from 'react-i18next';
+import { useToast } from '../ui/Toast';
 import type { Prompt } from '../../../shared/types';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -20,6 +21,7 @@ interface EditPromptModalProps {
 
 export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProps) {
   const { t } = useTranslation();
+  const { showToast } = useToast();
   const updatePrompt = usePromptStore((state) => state.updatePrompt);
   const prompts = usePromptStore((state) => state.prompts);
   const folders = useFolderStore((state) => state.folders);
@@ -39,6 +41,47 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
   const [userTab, setUserTab] = useState<'edit' | 'preview'>('edit');
   const [systemTab, setSystemTab] = useState<'edit' | 'preview'>('edit');
   const [showEnglishVersion, setShowEnglishVersion] = useState(false);
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const [imageUrl, setImageUrl] = useState('');
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const [isDownloadingImage, setIsDownloadingImage] = useState(false);
+
+  // 检查是否有未保存的更改
+  const hasUnsavedChanges = useCallback(() => {
+    if (!prompt) return false;
+    return (
+      title !== prompt.title ||
+      description !== (prompt.description || '') ||
+      systemPrompt !== (prompt.systemPrompt || '') ||
+      systemPromptEn !== (prompt.systemPromptEn || '') ||
+      userPrompt !== prompt.userPrompt ||
+      userPromptEn !== (prompt.userPromptEn || '') ||
+      JSON.stringify(tags) !== JSON.stringify(prompt.tags || []) ||
+      JSON.stringify(images) !== JSON.stringify(prompt.images || []) ||
+      folderId !== prompt.folderId
+    );
+  }, [prompt, title, description, systemPrompt, systemPromptEn, userPrompt, userPromptEn, tags, images, folderId]);
+
+  // 处理关闭请求
+  const handleCloseRequest = useCallback(() => {
+    if (hasUnsavedChanges()) {
+      setShowUnsavedDialog(true);
+    } else {
+      onClose();
+    }
+  }, [hasUnsavedChanges, onClose]);
+
+  // 处理保存并关闭
+  const handleSaveAndClose = async () => {
+    await handleSubmit();
+    setShowUnsavedDialog(false);
+  };
+
+  // 处理放弃更改
+  const handleDiscardChanges = () => {
+    setShowUnsavedDialog(false);
+    onClose();
+  };
 
   const sanitizeSchema: any = useMemo(() => {
     const schema = { ...defaultSchema, attributes: { ...defaultSchema.attributes } };
@@ -154,16 +197,35 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
   };
 
   const handleUrlUpload = async (url: string) => {
+    if (!url.trim()) return;
+    
+    setIsDownloadingImage(true);
+    showToast(t('prompt.downloadingImage', '正在下载图片...'), 'info');
+    
     try {
-      const fileName = await window.electron?.downloadImage?.(url);
+      // 添加超时处理
+      const timeoutPromise = new Promise<null>((_, reject) => {
+        setTimeout(() => reject(new Error('timeout')), 30000);
+      });
+      
+      const downloadPromise = window.electron?.downloadImage?.(url);
+      const fileName = await Promise.race([downloadPromise, timeoutPromise]);
+      
       if (fileName) {
         setImages(prev => [...prev, fileName]);
+        showToast(t('prompt.uploadSuccess', '图片添加成功'), 'success');
       } else {
-        alert(t('prompt.uploadFailed', '图片下载失败'));
+        showToast(t('prompt.uploadFailed', '图片下载失败，请检查链接是否有效'), 'error');
       }
     } catch (error) {
       console.error('Failed to upload image from URL:', error);
-      alert(t('prompt.uploadFailed', '图片下载失败'));
+      if (error instanceof Error && error.message === 'timeout') {
+        showToast(t('prompt.downloadTimeout', '图片下载超时，请检查网络或链接'), 'error');
+      } else {
+        showToast(t('prompt.uploadFailed', '图片下载失败，请检查链接是否有效'), 'error');
+      }
+    } finally {
+      setIsDownloadingImage(false);
     }
   };
 
@@ -198,7 +260,7 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleCloseRequest}
       title={t('prompt.editPrompt')}
       size={isFullscreen ? 'full' : 'xl'}
       headerActions={
@@ -268,16 +330,71 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
           <div className="text-xs text-muted-foreground flex gap-2 mt-1">
             <button
               className="hover:text-primary underline"
-              onClick={() => {
-                const url = window.prompt(t('prompt.enterImageUrl', '请输入图片链接 / Enter image URL'));
-                if (url) handleUrlUpload(url);
-              }}
+              onClick={() => setShowUrlInput(true)}
             >
               {t('prompt.addImageByUrl', '通过链接添加')}
             </button>
             <span>|</span>
             <span>{t('prompt.pasteImageHint', '支持直接粘贴图片')}</span>
           </div>
+          {showUrlInput && (
+            <div className="flex gap-2 mt-2">
+              <input
+                type="text"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                placeholder={t('prompt.enterImageUrl', '请输入图片链接 / Enter image URL')}
+                className="flex-1 h-8 px-3 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && imageUrl) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleUrlUpload(imageUrl);
+                    setImageUrl('');
+                    setShowUrlInput(false);
+                  } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setShowUrlInput(false);
+                    setImageUrl('');
+                  }
+                }}
+              />
+              <button
+                onClick={() => {
+                  if (imageUrl && !isDownloadingImage) {
+                    handleUrlUpload(imageUrl);
+                    setImageUrl('');
+                    setShowUrlInput(false);
+                  }
+                }}
+                disabled={isDownloadingImage || !imageUrl}
+                className="h-8 px-3 rounded-lg bg-primary text-white text-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+              >
+                {isDownloadingImage ? (
+                  <>
+                    <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                    {t('common.loading', '加载中...')}
+                  </>
+                ) : (
+                  t('common.confirm', '确定')
+                )}
+              </button>
+              <button
+                onClick={() => {
+                  if (!isDownloadingImage) {
+                    setShowUrlInput(false);
+                    setImageUrl('');
+                  }
+                }}
+                disabled={isDownloadingImage}
+                className="h-8 px-3 rounded-lg bg-muted text-sm hover:bg-muted/80 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {t('common.cancel', '取消')}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* 文件夹 */}
@@ -521,6 +638,14 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
           </div>
         )}
       </div>
+
+      {/* 未保存更改提示弹窗 */}
+      <UnsavedChangesDialog
+        isOpen={showUnsavedDialog}
+        onClose={() => setShowUnsavedDialog(false)}
+        onSave={handleSaveAndClose}
+        onDiscard={handleDiscardChanges}
+      />
     </Modal>
   );
 }

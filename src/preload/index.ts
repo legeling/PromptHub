@@ -110,6 +110,9 @@ contextBridge.exposeInMainWorld('electron', {
   selectFolder: () => ipcRenderer.invoke('dialog:selectFolder'),
   openPath: (path: string) => ipcRenderer.invoke('shell:openPath', path),
   showNotification: (title: string, body: string) => ipcRenderer.invoke('notification:show', { title, body }),
+  // 数据目录
+  getDataPath: () => ipcRenderer.invoke('data:getPath'),
+  migrateData: (newPath: string) => ipcRenderer.invoke('data:migrate', newPath),
   // 更新器
   updater: {
     check: () => ipcRenderer.invoke('updater:check'),
@@ -146,6 +149,13 @@ contextBridge.exposeInMainWorld('electron', {
     download: (fileUrl: string, config: { url: string; username: string; password: string }) =>
       ipcRenderer.invoke('webdav:download', fileUrl, config),
   },
+  // 快捷键
+  getShortcuts: () => ipcRenderer.invoke('shortcuts:get'),
+  setShortcuts: (shortcuts: Record<string, string>) => ipcRenderer.invoke('shortcuts:set', shortcuts),
+  // 快捷键触发事件
+  onShortcutTriggered: (callback: (action: string) => void) => {
+    ipcRenderer.on('shortcut:triggered', (_event, action) => callback(action));
+  },
 });
 
 // 类型声明
@@ -167,6 +177,9 @@ declare global {
       selectFolder?: () => Promise<string | null>;
       openPath?: (path: string) => Promise<{ success: boolean; error?: string }>;
       showNotification?: (title: string, body: string) => Promise<boolean>;
+      // 数据目录
+      getDataPath?: () => Promise<string>;
+      migrateData?: (newPath: string) => Promise<{ success: boolean; message?: string; newPath?: string; needsRestart?: boolean; error?: string }>;
       updater?: {
         check: () => Promise<{ success: boolean; result?: any; error?: string }>;
         download: () => Promise<{ success: boolean; error?: string }>;
@@ -197,6 +210,10 @@ declare global {
         download: (fileUrl: string, config: { url: string; username: string; password: string }) =>
           Promise<{ success: boolean; data?: string; notFound?: boolean; error?: string }>;
       };
+      // 快捷键
+      getShortcuts?: () => Promise<Record<string, string> | null>;
+      setShortcuts?: (shortcuts: Record<string, string>) => Promise<boolean>;
+      onShortcutTriggered?: (callback: (action: string) => void) => void;
     };
   }
 }

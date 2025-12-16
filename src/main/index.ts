@@ -1,9 +1,10 @@
 import { app, BrowserWindow, shell, ipcMain, dialog, Notification, Tray, Menu, nativeImage, session, protocol } from 'electron';
 import path from 'path';
+import fs from 'fs';
 import { initDatabase } from './database';
 import { registerAllIPC } from './ipc';
 import { createMenu } from './menu';
-import { registerShortcuts } from './shortcuts';
+import { registerShortcuts, registerShortcutsIPC } from './shortcuts';
 import { initUpdater, registerUpdaterIPC } from './updater';
 import { registerWebDAVIPC } from './webdav';
 
@@ -321,6 +322,89 @@ ipcMain.handle('dialog:selectFolder', async () => {
   return null;
 });
 
+// 获取当前数据目录
+ipcMain.handle('data:getPath', () => {
+  return app.getPath('userData');
+});
+
+// 迁移数据到新目录
+ipcMain.handle('data:migrate', async (_event, newPath: string) => {
+  const currentPath = app.getPath('userData');
+  
+  try {
+    // 检查新目录是否存在，不存在则创建
+    if (!fs.existsSync(newPath)) {
+      fs.mkdirSync(newPath, { recursive: true });
+    }
+    
+    // 需要迁移的文件和目录
+    const itemsToMigrate = [
+      'prompthub.db',      // 数据库文件
+      'images',            // 图片目录
+    ];
+    
+    let migratedCount = 0;
+    
+    for (const item of itemsToMigrate) {
+      const sourcePath = path.join(currentPath, item);
+      const destPath = path.join(newPath, item);
+      
+      if (fs.existsSync(sourcePath)) {
+        // 检查目标是否已存在
+        if (fs.existsSync(destPath)) {
+          // 如果是目录，递归复制
+          if (fs.statSync(sourcePath).isDirectory()) {
+            copyDirRecursive(sourcePath, destPath);
+          } else {
+            // 如果是文件，覆盖
+            fs.copyFileSync(sourcePath, destPath);
+          }
+        } else {
+          // 目标不存在，直接复制
+          if (fs.statSync(sourcePath).isDirectory()) {
+            copyDirRecursive(sourcePath, destPath);
+          } else {
+            fs.copyFileSync(sourcePath, destPath);
+          }
+        }
+        migratedCount++;
+      }
+    }
+    
+    return { 
+      success: true, 
+      message: `成功迁移 ${migratedCount} 个项目`,
+      newPath,
+      needsRestart: true,
+    };
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : '未知错误',
+    };
+  }
+});
+
+// 递归复制目录
+function copyDirRecursive(src: string, dest: string) {
+  if (!fs.existsSync(dest)) {
+    fs.mkdirSync(dest, { recursive: true });
+  }
+  
+  const entries = fs.readdirSync(src, { withFileTypes: true });
+  
+  for (const entry of entries) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    
+    if (entry.isDirectory()) {
+      copyDirRecursive(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+}
+
 // 在文件管理器中打开文件夹
 ipcMain.handle('shell:openPath', async (_event, folderPath: string) => {
   // 处理特殊路径
@@ -395,6 +479,9 @@ app.whenReady().then(async () => {
 
   // 注册 WebDAV IPC（绕过 CORS）
   registerWebDAVIPC();
+
+  // 注册快捷键 IPC
+  registerShortcutsIPC();
 
   // 创建窗口
   await createWindow();

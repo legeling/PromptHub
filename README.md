@@ -1,33 +1,51 @@
 <div align="center">
-  <img src="./docs/imgs/icon.png" alt="PromptHub Logo" width="120" height="120" />
-  <h1>PromptHub</h1>
-  <p><strong>🚀 开源免费的 AI Prompt 管理工具，数据完全存储在本地</strong></p>
-  <p>高效管理、版本控制、变量模板、多模型测试 — 一站式 Prompt 工作台</p>
+  <img src="./docs/imgs/icon.png" alt="PromptHub Logo" width="128" height="128" />
   
-  <p>
-    <a href="https://github.com/legeling/PromptHub/stargazers"><img src="https://img.shields.io/github/stars/legeling/PromptHub?style=flat-square&color=yellow" alt="GitHub Stars"/></a>
-    <a href="https://github.com/legeling/PromptHub/network/members"><img src="https://img.shields.io/github/forks/legeling/PromptHub?style=flat-square" alt="GitHub Forks"/></a>
-    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.2.6-green?style=flat-square" alt="Version"/></a>
-    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/github/downloads/legeling/PromptHub/total?style=flat-square&color=blue" alt="Downloads"/></a>
-    <img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="License: AGPL-3.0"/>
-  </p>
+  # PromptHub
   
-  <p>
-    <img src="https://img.shields.io/badge/TypeScript-5.0-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript"/>
-    <img src="https://img.shields.io/badge/Electron-33-47848F?style=flat-square&logo=electron&logoColor=white" alt="Electron"/>
-    <img src="https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=white" alt="React"/>
-    <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white" alt="TailwindCSS"/>
-  </p>
+  **🚀 开源免费的 AI Prompt 管理工具 | 数据本地存储 | 隐私优先**
   
-  <p>
-    <a href="./README.md">简体中文</a> ·
-    <a href="./docs/README.en.md">English</a> ·
-    <a href="./docs/README.ja.md">日本語</a> ·
-    <a href="./docs/README.es.md">Español</a> ·
-    <a href="./docs/README.de.md">Deutsch</a> ·
-    <a href="./docs/README.fr.md">Français</a> ·
-    <a href="./docs/README.zh-TW.md">繁體中文</a>
-  </p>
+  *高效管理 · 版本控制 · 变量模板 · 多模型测试 — 一站式 Prompt 工作台*
+
+  <br/>
+  
+  <!-- Badges -->
+  [![GitHub Stars](https://img.shields.io/github/stars/legeling/PromptHub?style=for-the-badge&logo=github&color=yellow)](https://github.com/legeling/PromptHub/stargazers)
+  [![GitHub Forks](https://img.shields.io/github/forks/legeling/PromptHub?style=for-the-badge&logo=github)](https://github.com/legeling/PromptHub/network/members)
+  [![Downloads](https://img.shields.io/github/downloads/legeling/PromptHub/total?style=for-the-badge&logo=github&color=blue)](https://github.com/legeling/PromptHub/releases)
+  
+  [![Version](https://img.shields.io/badge/version-v0.2.7-success?style=for-the-badge)](https://github.com/legeling/PromptHub/releases)
+  [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](./LICENSE)
+  [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=for-the-badge)](https://github.com/legeling/PromptHub/pulls)
+  
+  <br/>
+  
+  <!-- Tech Stack -->
+  ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)
+  ![Electron](https://img.shields.io/badge/Electron-47848F?style=flat-square&logo=electron&logoColor=white)
+  ![React](https://img.shields.io/badge/React-61DAFB?style=flat-square&logo=react&logoColor=black)
+  ![TailwindCSS](https://img.shields.io/badge/Tailwind-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white)
+  ![SQLite](https://img.shields.io/badge/SQLite-003B57?style=flat-square&logo=sqlite&logoColor=white)
+  
+  <br/>
+  
+  <!-- Platform Support -->
+  ![macOS](https://img.shields.io/badge/macOS-000000?style=flat-square&logo=apple&logoColor=white)
+  ![Windows](https://img.shields.io/badge/Windows-0078D6?style=flat-square&logo=windows&logoColor=white)
+  ![Linux](https://img.shields.io/badge/Linux-FCC624?style=flat-square&logo=linux&logoColor=black)
+  
+  <br/>
+  
+  [简体中文](./README.md) · [繁體中文](./docs/README.zh-TW.md) · [English](./docs/README.en.md) · [日本語](./docs/README.ja.md) · [Deutsch](./docs/README.de.md) · [Español](./docs/README.es.md) · [Français](./docs/README.fr.md)
+
+</div>
+
+<br/>
+
+<div align="center">
+  <a href="https://github.com/legeling/PromptHub/releases">
+    <img src="https://img.shields.io/badge/📥_立即下载-Releases-blue?style=for-the-badge&logo=github" alt="Download"/>
+  </a>
 </div>
 
 <br/>
@@ -38,78 +56,101 @@
 
 ---
 
-## 📥 下载安装 / Download
-
-> 💡 点击下方链接直接下载最新版本，或访问 [Releases 页面](https://github.com/legeling/PromptHub/releases) 查看所有版本。
-
-| 平台 / Platform | 架构 / Arch | 下载链接 / Download |
-|:---:|:---:|:---:|
-| **Windows** | x64 | [PromptHub-Setup-0.2.6-x64.exe](https://github.com/legeling/PromptHub/releases/download/v0.2.6/PromptHub-Setup-0.2.6-x64.exe) |
-| **macOS** | Apple Silicon (M系列芯片) | [PromptHub-0.2.6-arm64.dmg](https://github.com/legeling/PromptHub/releases/download/v0.2.6/PromptHub-0.2.6-arm64.dmg) |
-| **macOS** | Intel | [PromptHub-0.2.6-x64.dmg](https://github.com/legeling/PromptHub/releases/download/v0.2.6/PromptHub-0.2.6-x64.dmg) |
-| **Linux** | x64 (AppImage) | [PromptHub-0.2.6-x64.AppImage](https://github.com/legeling/PromptHub/releases/download/v0.2.6/PromptHub-0.2.6-x64.AppImage) |
-| **Linux** | x64 (deb) | [PromptHub-0.2.6-amd64.deb](https://github.com/legeling/PromptHub/releases/download/v0.2.6/PromptHub-0.2.6-amd64.deb) |
-
----
-
 ## ✨ 功能特性
 
-- **📝 Prompt 管理** - 创建、编辑、删除，支持文件夹和标签分类
-- **⭐ 收藏系统** - 快速收藏常用 Prompt，一键访问
-- **🔄 版本控制** - 自动保存历史版本，支持查看和回滚
-- **🔧 变量系统** - 模板变量 `{{variable}}`，动态替换
-- **📋 一键复制** - 快速复制 Prompt 到剪贴板
-- **🔍 全文搜索** - 快速搜索标题、描述和内容
-- **📤 数据导出/备份** - 选择性导出（仅导出）/ 全量备份与恢复（支持 `.phub.gz` 压缩，包含图片、AI 配置、系统设置）
-- **🎨 主题定制** - 深色/浅色/跟随系统，多种主题色可选
-- **🌐 多语言** - 支持简体中文、繁体中文、英文、日语、西班牙语、德语、法语
-- **💾 本地存储** - 所有数据存储在本地，隐私安全有保障
-- **🖥️ 跨平台** - 支持 macOS、Windows、Linux
-- **📊 列表视图** - 表格式展示 Prompt，支持排序和批量操作
-- **🤖 AI 测试** - 内置多模型测试，支持 18+ 服务商
-- **🎨 生图模型** - 支持配置和测试图像生成模型（DALL-E、Midjourney 等）
-- **🧭 Markdown 预览** - 全场景支持 Markdown 渲染与代码高亮
-- **🪟 宽屏与全屏模式** - 编辑/查看详情时支持更宽的视野和全屏模式
-- **🔐 主密码与私密文件夹** - 支持设置主密码，私密文件夹内容加密存储
-- **🖼️ 图片上传与预览** - 支持上传/粘贴本地图片，并在弹窗内预览
-- **☁️ WebDAV 同步** - 支持 WebDAV 云同步（prompts/图片/AI 配置/系统设置），启动同步 + 定时同步
+<table>
+<tr>
+<td width="50%">
+
+### 📝 Prompt 管理
+- 创建、编辑、删除，支持文件夹和标签分类
+- 自动保存历史版本，支持查看、对比和回滚
+- 模板变量 `{{variable}}`，复制时动态替换
+- 快速收藏常用 Prompt，一键访问
+- 全文搜索标题、描述和内容
+
+</td>
+<td width="50%">
+
+### 🤖 AI 能力
+- 内置 AI 测试，支持 **18+ 服务商**
+- OpenAI、Claude、Gemini、DeepSeek、通义千问...
+- 同一 Prompt 多模型并行测试对比
+- 支持图像生成模型（DALL-E、Stability AI）
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 💾 数据与同步
+- 所有数据存储在本地，隐私安全有保障
+- 全量备份与恢复（`.phub.gz` 压缩格式）
+- WebDAV 云同步（坚果云、Nextcloud 等）
+- 支持启动同步 + 定时同步
+
+</td>
+<td width="50%">
+
+### 🎨 界面与体验
+- 多视图模式：卡片、画廊、列表
+- 深色/浅色/跟随系统，多种主题色
+- 7 种语言支持
+- Markdown 渲染与代码高亮
+- 跨平台：macOS / Windows / Linux
+
+</td>
+</tr>
+</table>
+
+### 🔐 安全功能
+
+- **主密码保护** - 支持设置应用级主密码
+- **私密文件夹** - 私密文件夹内容加密存储（Beta）
 
 ## 📸 截图
 
 <div align="center">
   <p><strong>主界面</strong></p>
-  <img src="./docs/imgs/image.png" width="80%" alt="macOS 主界面"/>
+  <img src="./docs/imgs/1-index.png" width="80%" alt="主界面"/>
   <br/><br/>
-  <p><strong>主题设置</strong></p>
-  <img src="./docs/imgs/theme.png" width="80%" alt="主题设置"/>
+  <p><strong>画廊视图</strong></p>
+  <img src="./docs/imgs/2-gallery-view.png" width="80%" alt="画廊视图"/>
+  <br/><br/>
+  <p><strong>列表视图</strong></p>
+  <img src="./docs/imgs/3-list-view.png" width="80%" alt="列表视图"/>
   <br/><br/>
   <p><strong>数据备份</strong></p>
-  <img src="./docs/imgs/data.png" width="80%" alt="数据备份"/>
+  <img src="./docs/imgs/4-backup.png" width="80%" alt="数据备份"/>
   <br/><br/>
-  <p><strong>AI 模型配置</strong></p>
-  <img src="./docs/imgs/model.png" width="80%" alt="AI 模型配置"/>
+  <p><strong>主题设置</strong></p>
+  <img src="./docs/imgs/5-theme.png" width="80%" alt="主题设置"/>
+  <br/><br/>
+  <p><strong>双语对照</strong></p>
+  <img src="./docs/imgs/6-double-language.png" width="80%" alt="双语对照"/>
+  <br/><br/>
+  <p><strong>变量填充</strong></p>
+  <img src="./docs/imgs/7-variable.png" width="80%" alt="变量填充"/>
   <br/><br/>
   <p><strong>版本对比</strong></p>
-  <img src="./docs/imgs/version-compare.png" width="80%" alt="版本对比"/>
+  <img src="./docs/imgs/8-version-compare.png" width="80%" alt="版本对比"/>
   <br/><br/>
-  <p><strong>列表视图模式</strong></p>
-  <img src="./docs/imgs/view.png" width="80%" alt="列表视图模式"/>
-  <p><strong>画廊模式</strong></p>
-  <img src="./docs/imgs/gallery.png" width="80%" alt="画廊模式"/>
+  <p><strong>多语言支持</strong></p>
+  <img src="./docs/imgs/9-i18n.png" width="80%" alt="多语言支持"/>
 </div>
 
-## 📦 安装
+## 安装
 
-### 下载安装包
+### 下载
 
 从 [Releases](https://github.com/legeling/PromptHub/releases) 下载对应平台的安装包：
 
-| 平台 | 下载 |
-|------|------|
-| macOS (Intel) | `PromptHub-x.x.x-x64.dmg` |
-| macOS (Apple Silicon) | `PromptHub-x.x.x-arm64.dmg` |
-| Windows | `PromptHub-Setup-x.x.x-x64.exe` |
-| Linux | `PromptHub-x.x.x.AppImage` 或 `.deb` |
+| 平台 | 架构 | 格式 |
+|------|------|------|
+| Windows | x64 | `.exe` 安装包 |
+| macOS | Apple Silicon (M系列) | `.dmg` 镜像 |
+| macOS | Intel | `.dmg` 镜像 |
+| Linux | x64 | `.AppImage` / `.deb` |
 
 ### macOS 首次启动
 
@@ -146,7 +187,7 @@ pnpm dev
 pnpm build
 ```
 
-## 🚀 快速开始
+## 快速开始
 
 ### 1. 创建 Prompt
 
@@ -175,7 +216,7 @@ pnpm build
 
 编辑 Prompt 时会自动保存历史版本，点击「历史版本」可以查看和恢复。
 
-## 🛠️ 技术栈
+## 技术栈
 
 | 类别 | 技术 |
 |------|------|
@@ -186,7 +227,7 @@ pnpm build
 | 本地存储 | IndexedDB + SQLite |
 | 构建工具 | Vite + electron-builder |
 
-## 📁 项目结构
+## 项目结构
 
 ```
 PromptHub/
@@ -218,7 +259,7 @@ PromptHub/
 └── package.json
 ```
 
-## 📈 Star History
+## Star History
 
 <a href="https://star-history.com/#legeling/PromptHub&Date">
   <picture>
@@ -228,9 +269,9 @@ PromptHub/
   </picture>
 </a>
 
-## 🗺️ 路线图
+## 路线图
 
-### v0.2.6 (当前)
+### v0.2.7 (当前)
 - [x] Prompt CRUD 管理
 - [x] 文件夹和标签系统
 - [x] 收藏功能
@@ -264,238 +305,25 @@ PromptHub/
 - [ ] Prompt 模板市场
 - [ ] 浏览器插件
 
-## 📝 更新日志
+## 更新日志
 
-### v0.2.6 (2025-12-15)
+查看完整的更新日志：**[CHANGELOG.md](./CHANGELOG.md)**
+
+### 最新版本 v0.2.7 (2025-12-16)
+
 **新功能**
-- 🎨 显示设置升级：更现代的外观 UI + 更细腻的动效，并支持自定义主题色
-- 🧰 数据管理升级：选择性导出（仅导出）+ 全量备份/恢复（`.phub.gz` 压缩，包含 prompts/图片/AI 配置/系统设置）
-- ☁️ WebDAV 同步升级：同步范围扩展到 AI 配置与系统设置，换设备可更接近"一模一样"
-
-**修复**
-- 🐛 修复语言设置被错误重置为"仅中/英"导致多语言不生效的问题
-- 🐛 修复开启"流式输出 / 思考模式"后 AI 测试无表现差异的问题（支持流式增量展示与思考过程展示）
-- 🐛 修复多模型对比在卡片视图下未传入流式回调导致不流式的问题
-- 🐛 修复变量检测正则状态问题导致 `systemPrompt` 变量未被识别、变量弹窗不弹的问题
-- 🐛 修复 Windows 关闭窗口弹窗只显示一次的问题（取消/关闭弹窗会正确重置状态）
-- 🐛 修复部分页面缺少 React Hooks 导入导致的运行时报错/白屏问题
-- 🐛 修复右键菜单"取消收藏"多语言翻译缺失问题
-- 🐛 修复右键菜单点击"AI 测试"后黑屏问题（React Hooks 规则违反）
-- 🐛 修复右键菜单"查看详情"翻译键名错误问题
+- 全局快捷键：自定义快捷键唤起应用、新建 Prompt、搜索、打开设置
+- 快捷键冲突检测：自动检测并提示快捷键冲突
+- 生图模型扩展：新增 Google Gemini 和 Stability AI
+- 未保存更改提醒：编辑时关闭会提示保存/放弃/取消
 
 **优化**
-- 🎨 Windows 关闭窗口弹窗的"记住偏好"勾选框改为自定义样式并适配暗黑模式
-- 📝 补齐多语言 README（en/de/fr/es/ja/zh-TW）内容结构与关键信息
-- ☁️ 修复 WebDAV 在开发模式下的 CORS 问题（通过主进程 IPC 绕过）
-- ☁️ 优化 WebDAV 上传兼容性（添加 Content-Length 头以支持坚果云等服务）
-- 🎨 WebDAV 测试连接按钮添加旋转加载动画
+- 完善多语言翻译（中/英/日/德/法/西/繁体中文）
+- 图片下载失败使用自定义 Toast 提示
 
-### v0.2.5 (2025-12-12)
-**新功能**
-- 🌐 添加多语言支持（简体中文、繁体中文、英文、日语、西班牙语、德语、法语）
-- 🪟 Windows 关闭窗口时可选择最小化到托盘或退出（支持记住选择）
-- 💬 关于页面添加问题反馈 Issue 按钮
-- 🌍 初始化数据根据用户语言自动选择对应语言版本
-- 📥 README 添加快速下载表格，支持 Windows/macOS/Linux 各架构一键下载
-- 🔔 优化软件更新功能，支持 Markdown 渲染 Release Notes
-- 🚀 启动时自动检查更新（可在设置中关闭）
+> [查看完整更新日志](./CHANGELOG.md)
 
-**优化**
-- 🎨 双语对照提示文案优化，不再硬编码"中英"
-
-**修复**
-- ☁️ 修复坚果云 WebDAV 同步失败问题（添加 MKCOL 目录创建和 User-Agent 头）
-
-### v0.2.4 (2025-12-10)
-**新功能**
-- 🌐 支持双语提示词（中英文版本），详情页可切换显示
-- 📋 复制和 AI 测试操作会根据当前语言模式使用对应版本
-
-**优化**
-- 🎨 优化视图切换动画，添加平滑淡入淡出效果 (Closes #13)
-- 🎨 视图切换按钮添加滑动指示器动画
-
-### v0.2.3 (2025-12-10)
-**修复**
-- 🐛 修复 Windows 删除 Prompt 后输入框无法输入的问题（原生 confirm 对话框焦点丢失）
-- 🐛 修复 Windows 托盘图标显示为透明的问题
-- 🐛 修复打包后关于页面图标不显示的问题
-- 🐛 修复自动更新模块加载失败的问题（改为静态导入）
-- 🐛 修复新建 Prompt 时选择文件夹后保存丢失的问题
-- 🐛 修复 CI/CD 构建失败问题（EEXIST: file already exists）
-
-**优化**
-- 🎨 使用自定义确认对话框替代原生 confirm，提升 Windows 兼容性
-- 🎨 优化托盘图标加载逻辑，添加备用路径
-- 🎨 新建 Prompt 时默认选择当前所在文件夹
-- 🌐 修复"上传"按钮多语言适配
-
-### v0.2.2 (2025-12-08)
-**修复**
-- 🐛 修复关于页面版本号硬编码问题（现在动态获取）
-- 🐛 修复关于页面图标显示异常
-- 🐛 修复检查更新功能失效（`cannot set properties of undefined`）
-- 🐛 修复自动更新模块加载失败时的错误处理
-
-**优化**
-- 🎨 更新失败时显示手动下载链接
-- 🔒 清除数据现在需要输入主密码验证（高危操作保护）
-
-### v0.2.1 (2025-12-07)
-**新功能**
-- ✨ **Markdown 全场景预览**：列表视图、详情弹窗、编辑弹窗均支持 Markdown 渲染与代码高亮（自动忽略未知语言错误）。
-- ✨ **主密码与安全设置**：支持设置应用级主密码，锁定/解锁状态管理。
-- ✨ **私密文件夹（Beta）**：支持将文件夹设为私密，需主密码解锁后方可操作（加密存储功能开发中）。
-- ✨ **编辑体验优化**：编辑弹窗支持“编辑/预览”模式切换，输入框高度优化，支持全屏/宽屏模式。
-- ✨ **标签排序**：标签列表自动按字母/拼音排序，保持视图一致性。
-- ✨ **图片上传与预览**：支持上传/粘贴本地图片，并在弹窗内预览。
-
-**优化**
-- 🔧 **Qwen/通义千问兼容**：修复非流式调用时的 `enable_thinking` 参数报错问题。
-- 🔧 **UI 细节**：修复编辑弹窗全屏遮挡左上角按钮的问题。
-- 🔧 **性能优化**：优化 Markdown 渲染性能与依赖配置。
-
-### v0.2.0 (2025-12-03)
-**新功能**
-- ✨ 列表视图模式：表格式展示所有 Prompt，支持横向滚动和分页
-- ✨ 批量操作：支持多选后批量收藏、移动到文件夹、删除
-- ✨ AI 测试结果持久化：每个 Prompt 保留最后一次测试结果
-- ✨ 排序功能：支持按时间、标题、使用次数排序
-- ✨ 视图切换：卡片视图/列表视图一键切换
-- ✨ 详情弹窗显示 AI 响应
-
-**优化**
-- 🎨 全新列表视图 UI（圆角设计、美观的多选框、悬浮提示）
-- 🎨 分离单模型/多模型测试的 loading 状态
-- 🎨 AI 测试弹窗支持变量填充
-
-### v0.1.9 (2025-12-01)
-**新功能**
-- ✨ AI 模型分类图标使用本地 SVG/PNG 资源，展示真实提供商 Logo
-- ✨ Prompt 版本历史弹窗国际化 & 加宽展示，阅读体验更好
-
-**优化**
-- 🔧 修复 Linux 打包缺少 author.email 导致构建失败
-- 🔧 完整支持 macOS / Windows 自动更新增量包（dmg/zip/exe + blockmap）
-- 🔧 更新弹窗支持纯文本 Release Notes、错误信息自动换行
-- 🔧 修复检查更新弹窗每次打开都会重新请求的问题
-
-### v0.1.8 (2025-12-01)
-**新功能**
-- ✨ 最小化到系统托盘功能（Windows/macOS/Linux）
-- ✨ 数据目录路径可点击打开
-- ✨ 编辑器支持行号显示
-- ✨ 新增 Linux 平台支持（AppImage/deb）
-- ✨ AI 模型动态获取（从供应商 API 获取可用模型列表）
-- ✨ 模型选择弹窗（支持搜索、分类、批量添加）
-- ✨ 模型分类展示（GPT/Claude/Gemini/DeepSeek 等自动分类）
-- ✨ 模型分类图标（每个类别显示对应的 SVG 图标）
-- ✨ API URL 智能预览（自动补全 /v1/chat/completions）
-- ✨ 已添加模型按供应商分组折叠显示
-
-**优化**
-- 🎨 变量输入框支持自动变高（多行文本输入更友好）
-- 🎨 优化 macOS 托盘图标显示
-- 🎨 AI 测试状态按 Prompt 独立管理（切换 Prompt 不影响测试）
-- 🎨 测试结果持久化（切换 Prompt 后结果保留）
-- 🔧 检查更新支持多次点击
-- 🔧 修复通知功能图标路径问题
-
-### v0.1.7 (2025-11-30)
-**新功能**
-- ✨ AI 测试支持变量填充（与复制功能一致的体验）
-- ✨ 多模型对比支持变量填充
-
-**优化**
-- 🎨 深色模式主题色增强（提高饱和度和可见度）
-- 🎨 优化开关按钮深色模式样式（添加边框和更好的对比度）
-- 🎨 AI 测试按钮改用主题色
-- 🎨 关于页面图标美化
-- 🔧 移除语言设置的"立即刷新"按钮（语言切换已即时生效）
-
-### v0.1.6 (2025-11-30)
-**优化**
-- 🔧 修复自动更新元数据文件缺失问题（CI 上传 latest-mac.yml）
-- 🔧 优化 Release 说明格式
-
-### v0.1.5 (2025-11-30)
-**新功能**
-- ✨ 变量填充界面（复制时自动检测变量，弹出填充界面）
-
-**优化**
-- 🎨 文件夹选择下拉框改用自定义样式组件
-- 🎨 编辑/新建 Prompt 弹窗加宽
-- 🔧 修复版本对比问题（当前版本加入版本列表）
-- 🔧 生产环境禁止打开开发者工具
-
-### v0.1.4 (2025-11-30)
-**新功能**
-- ✨ 多模型配置管理（支持添加无限数量的 AI 模型）
-- ✨ 多模型对比改为选择模式（从已配置模型中选择）
-- ✨ 自定义下拉选择框组件（优化原生样式）
-- ✨ 全面国际化支持（主页、编辑器、弹窗等全部适配多语言）
-- ✨ 应用内自动更新（检查、下载、安装一体化）
-
-**优化**
-- 🎨 Prompt 卡片压缩（移除时间和版本显示）
-- 🎨 多模型对比按钮移至右侧
-- 🎨 优化 README 文档和截图展示
-- 🔧 修复 MAC 顶部区域无法拖动窗口问题（整个顶部栏可拖动）
-- 🔧 修复语言设置显示不同步问题
-- 🔧 修复切换 Prompt 时对比结果残留问题
-- 🔧 移除 macOS zip 构建包，只保留 dmg
-
-### v0.1.3 (2025-11-29)
-**新功能**
-- ✨ AI 模型配置（支持 18+ 国内外服务商）
-- ✨ AI 连接测试功能（异步测试，显示响应时间）
-- ✨ AI 模型对比测试（并行测试多个模型效果）
-- ✨ 图像生成模型支持（DALL-E 3 等）
-- ✨ 完整的多语言支持（设置页面全面国际化）
-- ✨ Git 风格版本对比（行级差异、添加/删除统计）
-
-**优化**
-- 🎨 优化设置页面 UI
-- 🔧 移除 Prompt 卡片拖拽（修复点击问题）
-
-### v0.1.2 (2025-11-29)
-**新功能**
-- ✨ WebDAV 同步功能（上传/下载数据到远程服务器）
-- ✨ 文件夹拖拽排序
-- ✨ Prompt 拖拽到文件夹
-- ✨ 新建 Prompt 时可选择文件夹
-- ✨ 版本恢复确认提示
-
-**优化**
-- 🎨 修复深色模式下开关按钮不可见问题
-- 🎨 设置开关添加操作反馈提示
-- 🎨 优化语言切换体验（添加刷新按钮）
-- 🔧 开机自启动功能实现
-
-### v0.1.1 (2025-11-29)
-**新功能**
-- ✨ 文件夹创建/编辑/删除功能
-- ✨ 标签筛选功能
-- ✨ 检查更新功能+
-
-- ✨ Windows 自定义标题栏
-
-**优化**
-- 🎨 扁平化 UI 设计
-- 🎨 移除卡片阴影和缩放效果
-- 🔧 WebDAV 同步配置界面
-
-### v0.1.0 (2025-11-29)
-- 🎉 首次发布
-- ✨ Prompt CRUD 管理
-- ✨ 文件夹和标签系统
-- ✨ 收藏功能
-- ✨ 版本历史
-- ✨ 数据导入导出
-- ✨ 主题定制
-- ✨ 多语言支持
-
-## 🤝 贡献
+## 贡献
 
 欢迎贡献代码！请遵循以下步骤：
 
@@ -505,16 +333,16 @@ PromptHub/
 4. 推送到分支 (`git push origin feature/amazing-feature`)
 5. 创建 Pull Request
 
-## 📄 许可证
+## 许可证
 
 本项目采用 [AGPL-3.0 License](./LICENSE) 开源协议。
 
-## 💬 支持
+## 支持
 
 - **问题反馈**: [GitHub Issues](https://github.com/legeling/PromptHub/issues)
 - **功能建议**: [GitHub Discussions](https://github.com/legeling/PromptHub/discussions)
 
-## 🙏 致谢
+## 致谢
 
 - [Electron](https://www.electronjs.org/) - 跨平台桌面应用框架
 - [React](https://react.dev/) - UI 框架
@@ -522,7 +350,7 @@ PromptHub/
 - [Zustand](https://zustand-demo.pmnd.rs/) - 状态管理
 - [Lucide](https://lucide.dev/) - 图标库
 
-## 👥 贡献者
+## 贡献者
 
 感谢所有为 PromptHub 做出贡献的开发者！
 
@@ -537,9 +365,40 @@ PromptHub/
 
 <div align="center">
   <p><strong>如果这个项目对你有帮助，请给个 ⭐ 支持一下！</strong></p>
+  <p><strong>If this project helps you, please give it a ⭐!</strong></p>
   
   <a href="https://www.buymeacoffee.com/legeling" target="_blank">
     <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50" />
   </a>
-  
 </div>
+
+---
+
+## 赞助支持 / Sponsor
+
+如果 PromptHub 对你的工作有帮助，欢迎请作者喝杯咖啡！
+
+If PromptHub is helpful to your work, feel free to buy the author a coffee!
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center">
+        <img src="./docs/imgs/donate/wechat.png" width="200" alt="WeChat Pay"/>
+        <br/>
+        <b>微信支付 / WeChat Pay</b>
+      </td>
+      <td align="center">
+        <img src="./docs/imgs/donate/alipay.jpg" width="200" alt="Alipay"/>
+        <br/>
+        <b>支付宝 / Alipay</b>
+      </td>
+    </tr>
+  </table>
+</div>
+
+**联系邮箱 / Contact**: legeling567@gmail.com
+
+感谢每一位支持者！你们的支持是我持续开发的动力！
+
+Thank you to every supporter! Your support keeps me motivated to continue development!

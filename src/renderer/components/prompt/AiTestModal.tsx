@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PlayIcon, LoaderIcon, CopyIcon, CheckIcon, GitCompareIcon } from 'lucide-react';
+import { PlayIcon, LoaderIcon, CopyIcon, CheckIcon, GitCompareIcon, ImageIcon, PlusIcon, DownloadIcon } from 'lucide-react';
 import { Modal } from '../ui/Modal';
-import { chatCompletion, buildMessagesFromPrompt, multiModelCompare, AITestResult } from '../../services/ai';
+import { chatCompletion, buildMessagesFromPrompt, multiModelCompare, AITestResult, generateImage } from '../../services/ai';
 import { useSettingsStore } from '../../stores/settings.store';
+import { useToast } from '../ui/Toast';
 import type { Prompt } from '../../../shared/types';
 
 interface AiTestModalProps {
@@ -14,6 +15,7 @@ interface AiTestModalProps {
   filledUserPrompt?: string;
   onUsageIncrement?: (promptId: string) => void;
   onSaveResponse?: (promptId: string, response: string) => void;
+  onAddImage?: (imageUrl: string) => void; // 新增：将生成的图片添加到 Prompt
 }
 
 export function AiTestModal({
@@ -24,15 +26,19 @@ export function AiTestModal({
   filledUserPrompt,
   onUsageIncrement,
   onSaveResponse,
+  onAddImage,
 }: AiTestModalProps) {
   const { t, i18n } = useTranslation();
-  const [mode, setMode] = useState<'single' | 'compare'>('single');
+  const { showToast } = useToast();
+  const [mode, setMode] = useState<'single' | 'compare' | 'image'>('single');
   // 分离单模型和多模型的 loading 状态
   const [isSingleLoading, setIsSingleLoading] = useState(false);
   const [isCompareLoading, setIsCompareLoading] = useState(false);
+  const [isImageLoading, setIsImageLoading] = useState(false);
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [thinkingContent, setThinkingContent] = useState<string | null>(null);
   const [compareResults, setCompareResults] = useState<AITestResult[] | null>(null);
+  const [generatedImages, setGeneratedImages] = useState<string[]>([]);
   const [selectedModelIds, setSelectedModelIds] = useState<string[]>([]);
   const [copied, setCopied] = useState(false);
   // 变量填充状态
@@ -54,6 +60,17 @@ export function AiTestModal({
   const defaultChatModel = useMemo(() => {
     const chatModels = aiModels.filter((m) => (m.type ?? 'chat') === 'chat');
     return chatModels.find((m) => m.isDefault) ?? chatModels[0] ?? null;
+  }, [aiModels]);
+
+  // 获取默认生图模型
+  const defaultImageModel = useMemo(() => {
+    const imageModels = aiModels.filter((m) => m.type === 'image');
+    return imageModels.find((m) => m.isDefault) ?? imageModels[0] ?? null;
+  }, [aiModels]);
+
+  // 获取所有生图模型
+  const imageModels = useMemo(() => {
+    return aiModels.filter((m) => m.type === 'image');
   }, [aiModels]);
 
   // 提取变量
@@ -130,8 +147,10 @@ export function AiTestModal({
       setAiResponse(null);
       setThinkingContent(null);
       setCompareResults(null);
+      setGeneratedImages([]);
       setIsSingleLoading(false);
       setIsCompareLoading(false);
+      setIsImageLoading(false);
       // 初始化变量值
       const initialValues: Record<string, string> = {};
       allVariables.forEach((v) => {
@@ -288,6 +307,95 @@ export function AiTestModal({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // 生图测试
+  const runImageTest = async () => {
+    if (!defaultImageModel) {
+      showToast(t('settings.configImageModel', '请先配置生图模型'), 'error');
+      return;
+    }
+
+    setIsImageLoading(true);
+    setGeneratedImages([]);
+
+    // 增加使用次数
+    if (onUsageIncrement) {
+      onUsageIncrement(prompt.id);
+    }
+
+    try {
+      const config = {
+        provider: defaultImageModel.provider,
+        apiKey: defaultImageModel.apiKey,
+        apiUrl: defaultImageModel.apiUrl,
+        model: defaultImageModel.model,
+      };
+
+      const result = await generateImage(config, userPrompt, { n: 1 });
+      
+      const urls: string[] = [];
+      for (const item of result.data) {
+        if (item.url) {
+          urls.push(item.url);
+        } else if (item.b64_json) {
+          // 将 base64 转换为 data URL
+          urls.push(`data:image/png;base64,${item.b64_json}`);
+        }
+      }
+      
+      setGeneratedImages(urls);
+      if (urls.length > 0) {
+        showToast(t('settings.imageGenSuccess', '图片生成成功'), 'success');
+      }
+    } catch (error) {
+      showToast(`${t('common.error')}: ${error instanceof Error ? error.message : t('common.error')}`, 'error');
+    } finally {
+      setIsImageLoading(false);
+    }
+  };
+
+  // 将生成的图片添加到 Prompt
+  const handleAddImageToPrompt = async (imageUrl: string) => {
+    if (!onAddImage) return;
+    
+    try {
+      // 如果是外部 URL，需要先下载到本地
+      if (imageUrl.startsWith('http')) {
+        const fileName = await window.electron?.downloadImage?.(imageUrl);
+        if (fileName) {
+          onAddImage(fileName);
+          showToast(t('prompt.imageAddedToPrompt', '图片已添加到 Prompt'), 'success');
+        } else {
+          showToast(t('prompt.uploadFailed', '图片添加失败'), 'error');
+        }
+      } else if (imageUrl.startsWith('data:')) {
+        // base64 图片，需要保存到本地
+        // 提取 base64 数据（去掉 data:image/png;base64, 前缀）
+        const base64Data = imageUrl.split(',')[1];
+        const fileName = `generated-${Date.now()}.png`;
+        await window.electron?.saveImageBase64?.(fileName, base64Data);
+        onAddImage(fileName);
+        showToast(t('prompt.imageAddedToPrompt', '图片已添加到 Prompt'), 'success');
+      }
+    } catch (error) {
+      showToast(t('prompt.uploadFailed', '图片添加失败'), 'error');
+    }
+  };
+
+  // 下载图片
+  const handleDownloadImage = async (imageUrl: string, index: number) => {
+    try {
+      const link = document.createElement('a');
+      link.href = imageUrl;
+      link.download = `generated-image-${index + 1}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast(t('common.downloadSuccess', '下载成功'), 'success');
+    } catch (error) {
+      showToast(t('common.downloadFailed', '下载失败'), 'error');
+    }
+  };
+
   return (
     <Modal
       isOpen={isOpen}
@@ -297,7 +405,7 @@ export function AiTestModal({
     >
       <div className="space-y-4">
         {/* 模式切换 */}
-        <div className="flex items-center gap-2 border-b border-border pb-4">
+        <div className="flex items-center gap-2 border-b border-border pb-4 flex-wrap">
           <button
             onClick={() => setMode('single')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -319,6 +427,17 @@ export function AiTestModal({
           >
             <GitCompareIcon className="w-4 h-4" />
             {t('settings.multiModelCompare')}
+          </button>
+          <button
+            onClick={() => setMode('image')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              mode === 'image'
+                ? 'bg-primary text-white'
+                : 'bg-muted text-muted-foreground hover:bg-accent'
+            }`}
+          >
+            <ImageIcon className="w-4 h-4" />
+            {t('settings.testImage')}
           </button>
         </div>
 
@@ -471,6 +590,85 @@ export function AiTestModal({
                     )}
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 生图测试 */}
+        {mode === 'image' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <span className="text-sm text-muted-foreground">
+                  {t('settings.model')}: {defaultImageModel?.model || t('settings.noImageModel', '未配置生图模型')}
+                </span>
+                {defaultImageModel && (
+                  <p className="text-xs text-muted-foreground">
+                    {t('settings.provider')}: {defaultImageModel.provider}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={runImageTest}
+                disabled={isImageLoading || !defaultImageModel}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              >
+                {isImageLoading ? (
+                  <LoaderIcon className="w-4 h-4 animate-spin" />
+                ) : (
+                  <ImageIcon className="w-4 h-4" />
+                )}
+                {isImageLoading ? t('prompt.generating', '生成中...') : t('settings.testImage')}
+              </button>
+            </div>
+
+            {/* 生成的图片 */}
+            {generatedImages.length > 0 && (
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium text-muted-foreground">
+                  {t('settings.generatedImages', '生成的图片')}
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {generatedImages.map((imageUrl, idx) => (
+                    <div key={idx} className="relative group rounded-lg overflow-hidden border border-border">
+                      <img
+                        src={imageUrl}
+                        alt={`Generated ${idx + 1}`}
+                        className="w-full h-auto object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        {onAddImage && (
+                          <button
+                            onClick={() => handleAddImageToPrompt(imageUrl)}
+                            className="flex items-center gap-1 px-3 py-2 rounded-lg bg-primary text-white text-xs font-medium hover:bg-primary/90"
+                            title={t('prompt.addToPrompt', '添加到 Prompt')}
+                          >
+                            <PlusIcon className="w-4 h-4" />
+                            {t('prompt.addToPrompt', '添加到 Prompt')}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDownloadImage(imageUrl, idx)}
+                          className="flex items-center gap-1 px-3 py-2 rounded-lg bg-muted text-foreground text-xs font-medium hover:bg-muted/80"
+                          title={t('common.download', '下载')}
+                        >
+                          <DownloadIcon className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 无生图模型提示 */}
+            {!defaultImageModel && (
+              <div className="p-4 rounded-lg bg-muted/50 border border-border text-center">
+                <ImageIcon className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.noImageModelHint', '请先在设置中配置生图模型')}
+                </p>
               </div>
             )}
           </div>

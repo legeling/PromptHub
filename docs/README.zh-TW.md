@@ -7,7 +7,7 @@
   <p>
     <a href="https://github.com/legeling/PromptHub/stargazers"><img src="https://img.shields.io/github/stars/legeling/PromptHub?style=flat-square&color=yellow" alt="GitHub Stars"/></a>
     <a href="https://github.com/legeling/PromptHub/network/members"><img src="https://img.shields.io/github/forks/legeling/PromptHub?style=flat-square" alt="GitHub Forks"/></a>
-    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.2.6-green?style=flat-square" alt="Version"/></a>
+    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.2.7-green?style=flat-square" alt="Version"/></a>
     <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/github/downloads/legeling/PromptHub/total?style=flat-square&color=blue" alt="Downloads"/></a>
     <img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="License: AGPL-3.0"/>
   </p>
@@ -21,12 +21,12 @@
   
   <p>
     <a href="../README.md">简体中文</a> ·
+    <a href="./README.zh-TW.md">繁體中文</a> ·
     <a href="./README.en.md">English</a> ·
     <a href="./README.ja.md">日本語</a> ·
-    <a href="./README.es.md">Español</a> ·
     <a href="./README.de.md">Deutsch</a> ·
-    <a href="./README.fr.md">Français</a> ·
-    <a href="./README.zh-TW.md">繁體中文</a>
+    <a href="./README.es.md">Español</a> ·
+    <a href="./README.fr.md">Français</a>
   </p>
 </div>
 
@@ -78,24 +78,31 @@
 
 <div align="center">
   <p><strong>主介面</strong></p>
-  <img src="./imgs/image.png" width="80%" alt="主介面"/>
+  <img src="./imgs/1-index.png" width="80%" alt="主介面"/>
   <br/><br/>
-  <p><strong>主題設定</strong></p>
-  <img src="./imgs/theme.png" width="80%" alt="主題設定"/>
+  <p><strong>畫廊視圖</strong></p>
+  <img src="./imgs/2-gallery-view.png" width="80%" alt="畫廊視圖"/>
+  <br/><br/>
+  <p><strong>列表視圖</strong></p>
+  <img src="./imgs/3-list-view.png" width="80%" alt="列表視圖"/>
   <br/><br/>
   <p><strong>資料備份</strong></p>
-  <img src="./imgs/data.png" width="80%" alt="資料備份"/>
+  <img src="./imgs/4-backup.png" width="80%" alt="資料備份"/>
   <br/><br/>
-  <p><strong>AI 模型設定</strong></p>
-  <img src="./imgs/model.png" width="80%" alt="AI 模型設定"/>
+  <p><strong>主題設定</strong></p>
+  <img src="./imgs/5-theme.png" width="80%" alt="主題設定"/>
+  <br/><br/>
+  <p><strong>雙語對照</strong></p>
+  <img src="./imgs/6-double-language.png" width="80%" alt="雙語對照"/>
+  <br/><br/>
+  <p><strong>變數填充</strong></p>
+  <img src="./imgs/7-variable.png" width="80%" alt="變數填充"/>
   <br/><br/>
   <p><strong>版本對比</strong></p>
-  <img src="./imgs/version-compare.png" width="80%" alt="版本對比"/>
+  <img src="./imgs/8-version-compare.png" width="80%" alt="版本對比"/>
   <br/><br/>
-  <p><strong>列表檢視模式</strong></p>
-  <img src="./imgs/view.png" width="80%" alt="列表檢視模式"/>
-  <p><strong>畫廊模式</strong></p>
-  <img src="./imgs/gallery.png" width="80%" alt="畫廊模式"/>
+  <p><strong>多語言支援</strong></p>
+  <img src="./imgs/9-i18n.png" width="80%" alt="多語言支援"/>
 </div>
 
 ## 📦 安裝說明
@@ -250,41 +257,21 @@ PromptHub/
 
 ## 📝 更新日誌
 
-### v0.2.6 (2025-12-12)
-**新功能**
-- 🎨 顯示設定升級：更現代的外觀 UI + 更細膩的動效，並支援自訂主題色
-- 🧰 資料管理升級：選擇性匯出（僅匯出）+ 全量備份/還原（`.phub.gz` 壓縮，包含 prompts/圖片/AI 設定/系統設定）
-- ☁️ WebDAV 同步升級：同步範圍擴展到 AI 設定與系統設定，換裝置更接近「一模一樣」
+查看完整的更新日誌：**[CHANGELOG.md](../CHANGELOG.md)**
 
-**修復**
-- 🐛 修復語言偏好被覆蓋導致多語言不生效的問題
-- 🐛 修復開啟「流式輸出 / 思考模式」後 AI 測試無差異的問題（含卡片視圖多模型對比）
-- 🐛 修復變數檢測正則狀態問題導致變數彈窗不彈的問題
-- 🐛 修復 Windows 關閉視窗彈窗只顯示一次的問題
+### 最新版本 v0.2.7 (2025-12-16)
 
-### v0.2.5 (2025-12-12)
 **新功能**
-- 🌐 新增多語言支援（簡體中文、繁體中文、英文、日語、西班牙語、德語、法語）
-- 🪟 Windows 關閉視窗時可選擇最小化到系統匣或結束（支援記住選擇）
-- 💬 關於頁面新增問題回饋 Issue 按鈕
-- 🌍 初始化資料根據使用者語言自動選擇對應語言版本
-- 📥 README 新增快速下載表格，支援 Windows/macOS/Linux 各架構一鍵下載
-- 🔔 優化軟體更新功能，支援 Markdown 渲染 Release Notes
-- 🚀 啟動時自動檢查更新（可在設定中關閉）
+- ⌨️ 全域快捷鍵：自訂快捷鍵喚起應用程式、新建 Prompt、搜尋、開啟設定
+- ⌨️ 快捷鍵衝突檢測：自動檢測並提示快捷鍵衝突
+- 🎨 生圖模型擴充：新增 Google Gemini 和 Stability AI
+- 💾 未儲存更改提醒：編輯時關閉會提示儲存/放棄/取消
 
 **優化**
-- 🎨 雙語對照提示文案優化，不再寫死「中英」
+- 🌐 完善多語言翻譯（中/英/日/德/法/西/繁體中文）
+- 🎨 圖片下載失敗使用自訂 Toast 提示
 
-**修復**
-- ☁️ 修復堅果雲 WebDAV 同步失敗問題（新增 MKCOL 目錄建立和 User-Agent 標頭）
-
-### v0.2.4 (2025-12-10)
-**新功能**
-- 🌐 支援雙語提示詞（中英文版本），詳情頁可切換顯示
-- 📋 複製和 AI 測試操作會根據當前語言模式使用對應版本
-
-**優化**
-- 🎨 優化檢視切換動畫，新增平滑淡入淡出效果
+> 📋 [查看完整更新日誌](../CHANGELOG.md)
 
 ## 🤝 貢獻指南
 
@@ -322,6 +309,35 @@ PromptHub/
   <a href="https://www.buymeacoffee.com/legeling" target="_blank">
     <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50" />
   </a>
-  
+</div>
+
+---
+
+## ☕ 贊助支持 / Sponsor
+
+如果 PromptHub 對你的工作有幫助，歡迎請作者喝杯咖啡 ☕
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center">
+        <img src="./imgs/donate/wechat.png" width="200" alt="WeChat Pay"/>
+        <br/>
+        <b>微信支付 / WeChat Pay</b>
+      </td>
+      <td align="center">
+        <img src="./imgs/donate/alipay.jpg" width="200" alt="Alipay"/>
+        <br/>
+        <b>支付寶 / Alipay</b>
+      </td>
+    </tr>
+  </table>
+</div>
+
+📧 **聯絡信箱 / Contact**: legeling567@gmail.com
+
+感謝每一位支持者！你們的支持是我持續開發的動力！
+
+<div align="center">
   <p>由 <a href="https://github.com/legeling">legeling</a> 用 ❤️ 製作</p>
 </div>

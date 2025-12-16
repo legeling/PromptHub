@@ -74,8 +74,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <ToastContext.Provider value={{ showToast }}>
       {children}
       
-      {/* Toast 容器 */}
-      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+      {/* Toast 容器 - z-index 需要高于 Modal (z-[9999]) */}
+      <div className="fixed bottom-4 right-4 z-[10000] flex flex-col gap-2">
         {toasts.map((toast) => (
           <div
             key={toast.id}

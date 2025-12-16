@@ -5,6 +5,7 @@ import { HashIcon, XIcon, FolderIcon, ImageIcon, Maximize2Icon, Minimize2Icon, P
 import { useFolderStore } from '../../stores/folder.store';
 import { usePromptStore } from '../../stores/prompt.store';
 import { useTranslation } from 'react-i18next';
+import { useToast } from '../ui/Toast';
 
 interface CreatePromptModalProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ interface CreatePromptModalProps {
 
 export function CreatePromptModal({ isOpen, onClose, onCreate, defaultFolderId }: CreatePromptModalProps) {
   const { t } = useTranslation();
+  const { showToast } = useToast();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [systemPrompt, setSystemPrompt] = useState('');
@@ -37,6 +39,9 @@ export function CreatePromptModal({ isOpen, onClose, onCreate, defaultFolderId }
   const [images, setImages] = useState<string[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showEnglishVersion, setShowEnglishVersion] = useState(false);
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const [imageUrl, setImageUrl] = useState('');
+  const [isDownloadingImage, setIsDownloadingImage] = useState(false);
   const folders = useFolderStore((state) => state.folders);
   const prompts = usePromptStore((state) => state.prompts);
 
@@ -115,6 +120,67 @@ export function CreatePromptModal({ isOpen, onClose, onCreate, defaultFolderId }
   const handleRemoveImage = (index: number) => {
     setImages(images.filter((_, i) => i !== index));
   };
+
+  const handleUrlUpload = async (url: string) => {
+    if (!url.trim()) return;
+    
+    setIsDownloadingImage(true);
+    showToast(t('prompt.downloadingImage', '正在下载图片...'), 'info');
+    
+    try {
+      // 添加超时处理
+      const timeoutPromise = new Promise<null>((_, reject) => {
+        setTimeout(() => reject(new Error('timeout')), 30000);
+      });
+      
+      const downloadPromise = window.electron?.downloadImage?.(url);
+      const fileName = await Promise.race([downloadPromise, timeoutPromise]);
+      
+      if (fileName) {
+        setImages(prev => [...prev, fileName]);
+        showToast(t('prompt.uploadSuccess', '图片添加成功'), 'success');
+      } else {
+        showToast(t('prompt.uploadFailed', '图片下载失败，请检查链接是否有效'), 'error');
+      }
+    } catch (error) {
+      console.error('Failed to upload image from URL:', error);
+      if (error instanceof Error && error.message === 'timeout') {
+        showToast(t('prompt.downloadTimeout', '图片下载超时，请检查网络或链接'), 'error');
+      } else {
+        showToast(t('prompt.uploadFailed', '图片下载失败，请检查链接是否有效'), 'error');
+      }
+    } finally {
+      setIsDownloadingImage(false);
+    }
+  };
+
+  // 监听粘贴事件
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handlePaste = async (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (const item of items) {
+        if (item.type.indexOf('image') !== -1) {
+          const blob = item.getAsFile();
+          if (blob) {
+            const buffer = await blob.arrayBuffer();
+            const fileName = await window.electron?.saveImageBuffer?.(buffer);
+            if (fileName) {
+              setImages(prev => [...prev, fileName]);
+            }
+          }
+        }
+      }
+    };
+
+    window.addEventListener('paste', handlePaste);
+    return () => {
+      window.removeEventListener('paste', handlePaste);
+    };
+  }, [isOpen]);
 
   return (
     <Modal
@@ -243,7 +309,7 @@ export function CreatePromptModal({ isOpen, onClose, onCreate, defaultFolderId }
           </label>
           <div className="flex flex-wrap gap-3">
             {images.map((img, index) => (
-              <div key={index} className="relative group w-20 h-20 rounded-lg overflow-hidden border border-border">
+              <div key={index} className="relative group w-24 h-24 rounded-lg overflow-hidden border border-border">
                 <img
                   src={`local-image://${img}`}
                   alt={`preview-${index}`}
@@ -259,12 +325,80 @@ export function CreatePromptModal({ isOpen, onClose, onCreate, defaultFolderId }
             ))}
             <button
               onClick={handleSelectImage}
-              className="w-20 h-20 rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 flex flex-col items-center justify-center text-muted-foreground hover:text-primary transition-colors"
+              className="w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 flex flex-col items-center justify-center text-muted-foreground hover:text-primary transition-colors text-center p-2"
             >
               <ImageIcon className="w-6 h-6 mb-1" />
-              <span className="text-[10px]">{t('common.upload', '上传')}</span>
+              <span className="text-[10px] leading-tight">{t('prompt.uploadImage', '上传/粘贴/链接')}</span>
             </button>
           </div>
+          <div className="text-xs text-muted-foreground flex gap-2 mt-1">
+            <button
+              className="hover:text-primary underline"
+              onClick={() => setShowUrlInput(true)}
+            >
+              {t('prompt.addImageByUrl', '通过链接添加')}
+            </button>
+            <span>|</span>
+            <span>{t('prompt.pasteImageHint', '支持直接粘贴图片')}</span>
+          </div>
+          {showUrlInput && (
+            <div className="flex gap-2 mt-2">
+              <input
+                type="text"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                placeholder={t('prompt.enterImageUrl', '请输入图片链接 / Enter image URL')}
+                className="flex-1 h-8 px-3 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && imageUrl) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleUrlUpload(imageUrl);
+                    setImageUrl('');
+                    setShowUrlInput(false);
+                  } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setShowUrlInput(false);
+                    setImageUrl('');
+                  }
+                }}
+              />
+              <button
+                onClick={() => {
+                  if (imageUrl && !isDownloadingImage) {
+                    handleUrlUpload(imageUrl);
+                    setImageUrl('');
+                    setShowUrlInput(false);
+                  }
+                }}
+                disabled={isDownloadingImage || !imageUrl}
+                className="h-8 px-3 rounded-lg bg-primary text-white text-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+              >
+                {isDownloadingImage ? (
+                  <>
+                    <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                    {t('common.loading', '加载中...')}
+                  </>
+                ) : (
+                  t('common.confirm', '确定')
+                )}
+              </button>
+              <button
+                onClick={() => {
+                  if (!isDownloadingImage) {
+                    setShowUrlInput(false);
+                    setImageUrl('');
+                  }
+                }}
+                disabled={isDownloadingImage}
+                className="h-8 px-3 rounded-lg bg-muted text-sm hover:bg-muted/80 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {t('common.cancel', '取消')}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* 英文版本切换 */}

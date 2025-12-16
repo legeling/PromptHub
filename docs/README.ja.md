@@ -7,7 +7,7 @@
   <p>
     <a href="https://github.com/legeling/PromptHub/stargazers"><img src="https://img.shields.io/github/stars/legeling/PromptHub?style=flat-square&color=yellow" alt="GitHub Stars"/></a>
     <a href="https://github.com/legeling/PromptHub/network/members"><img src="https://img.shields.io/github/forks/legeling/PromptHub?style=flat-square" alt="GitHub Forks"/></a>
-    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.2.6-green?style=flat-square" alt="Version"/></a>
+    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.2.7-green?style=flat-square" alt="Version"/></a>
     <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/github/downloads/legeling/PromptHub/total?style=flat-square&color=blue" alt="Downloads"/></a>
     <img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="License: AGPL-3.0"/>
   </p>
@@ -21,12 +21,12 @@
   
   <p>
     <a href="../README.md">简体中文</a> ·
+    <a href="./README.zh-TW.md">繁體中文</a> ·
     <a href="./README.en.md">English</a> ·
     <a href="./README.ja.md">日本語</a> ·
-    <a href="./README.es.md">Español</a> ·
     <a href="./README.de.md">Deutsch</a> ·
-    <a href="./README.fr.md">Français</a> ·
-    <a href="./README.zh-TW.md">繁體中文</a>
+    <a href="./README.es.md">Español</a> ·
+    <a href="./README.fr.md">Français</a>
   </p>
 </div>
 
@@ -78,16 +78,31 @@
 
 <div align="center">
   <p><strong>メインインターフェース</strong></p>
-  <img src="./imgs/image.png" width="80%" alt="メインインターフェース"/>
+  <img src="./imgs/1-index.png" width="80%" alt="メインインターフェース"/>
   <br/><br/>
-  <p><strong>テーマ設定</strong></p>
-  <img src="./imgs/theme.png" width="80%" alt="テーマ設定"/>
+  <p><strong>ギャラリービュー</strong></p>
+  <img src="./imgs/2-gallery-view.png" width="80%" alt="ギャラリービュー"/>
+  <br/><br/>
+  <p><strong>リストビュー</strong></p>
+  <img src="./imgs/3-list-view.png" width="80%" alt="リストビュー"/>
   <br/><br/>
   <p><strong>データバックアップ</strong></p>
-  <img src="./imgs/data.png" width="80%" alt="データバックアップ"/>
+  <img src="./imgs/4-backup.png" width="80%" alt="データバックアップ"/>
   <br/><br/>
-  <p><strong>AI モデル設定</strong></p>
-  <img src="./imgs/model.png" width="80%" alt="AI モデル設定"/>
+  <p><strong>テーマ設定</strong></p>
+  <img src="./imgs/5-theme.png" width="80%" alt="テーマ設定"/>
+  <br/><br/>
+  <p><strong>バイリンガルモード</strong></p>
+  <img src="./imgs/6-double-language.png" width="80%" alt="バイリンガルモード"/>
+  <br/><br/>
+  <p><strong>変数入力</strong></p>
+  <img src="./imgs/7-variable.png" width="80%" alt="変数入力"/>
+  <br/><br/>
+  <p><strong>バージョン比較</strong></p>
+  <img src="./imgs/8-version-compare.png" width="80%" alt="バージョン比較"/>
+  <br/><br/>
+  <p><strong>多言語サポート</strong></p>
+  <img src="./imgs/9-i18n.png" width="80%" alt="多言語サポート"/>
 </div>
 
 ## 📦 インストール
@@ -200,30 +215,21 @@ pnpm build
 
 ## 📝 更新履歴
 
-### v0.2.6 (2025-12-12)
+完全な更新履歴はこちら：**[CHANGELOG.md](../CHANGELOG.md)**
+
+### 最新バージョン v0.2.6 (2025-12-15)
+
 **新機能**
 - 🎨 表示設定を刷新：モダンな UI + なめらかなアニメーション + カスタムテーマカラー
-- 🧰 データ管理を強化：選択エクスポート（エクスポート専用）+ フルバックアップ/復元（圧縮 `.phub.gz`、prompts/画像/AI 設定/アプリ設定を含む）
-- ☁️ WebDAV を強化：AI 設定とアプリ設定も同期し、端末間でより同一の状態に
+- 🧰 データ管理を強化：選択エクスポート + フルバックアップ/復元（圧縮 `.phub.gz`）
+- ☁️ WebDAV 増分バックアップ：変更されたファイルのみアップロード、帯域幅を大幅に削減
+- 🔐 AES-256 暗号化バックアップ対応（実験的）
 
 **バグ修正**
-- 🐛 言語設定が上書きされて多言語が効かない問題を修正
-- 🐛 ストリーミング/思考モードが AI テストに反映されない問題を修正（カードビューの多モデル比較も含む）
-- 🐛 変数検出の正規表現状態バグで変数モーダルが出ない問題を修正
-- 🐛 Windows の終了確認ダイアログが一度しか出ない問題を修正
+- 🐛 WebDAV 同期失敗を修正 (#11)
+- 🐛 多言語、ストリーミング出力、変数検出などの問題を修正
 
-### v0.2.5 (2025-12-12)
-**新機能**
-- 🌐 多言語サポートを追加（簡体字中国語、繁体字中国語、英語、日本語、スペイン語、ドイツ語、フランス語）
-- 🪟 Windows 閉じるダイアログ：トレイに最小化または終了を選択可能（選択を記憶）
-- 💬 About ページに Issue フィードバックボタンを追加
-- 🌍 シードデータがユーザーの言語設定に基づいて初期化
-
-**改善**
-- 🎨 バイリンガルヒントテキストが「中国語-英語」にハードコードされなくなりました
-
-**バグ修正**
-- ☁️ Nutstore での WebDAV 同期失敗を修正
+> 📋 [完全な更新履歴を見る](../CHANGELOG.md)
 
 ## 📄 ライセンス
 
@@ -247,6 +253,35 @@ pnpm build
 
 <div align="center">
   <p><strong>このプロジェクトが役に立ったら、⭐ をお願いします！</strong></p>
-  
+</div>
+
+---
+
+## ☕ サポート / Sponsor
+
+PromptHub があなたの仕事に役立つなら、作者にコーヒーをおごってください ☕
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center">
+        <img src="./imgs/donate/wechat.png" width="200" alt="WeChat Pay"/>
+        <br/>
+        <b>WeChat Pay</b>
+      </td>
+      <td align="center">
+        <img src="./imgs/donate/alipay.jpg" width="200" alt="Alipay"/>
+        <br/>
+        <b>Alipay</b>
+      </td>
+    </tr>
+  </table>
+</div>
+
+📧 **連絡先**: legeling567@gmail.com
+
+すべてのサポーターに感謝します！皆さんのサポートが開発を続ける原動力です！
+
+<div align="center">
   <p><a href="https://github.com/legeling">legeling</a> が ❤️ を込めて作成</p>
 </div>

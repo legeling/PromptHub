@@ -7,7 +7,7 @@
   <p>
     <a href="https://github.com/legeling/PromptHub/stargazers"><img src="https://img.shields.io/github/stars/legeling/PromptHub?style=flat-square&color=yellow" alt="GitHub Stars"/></a>
     <a href="https://github.com/legeling/PromptHub/network/members"><img src="https://img.shields.io/github/forks/legeling/PromptHub?style=flat-square" alt="GitHub Forks"/></a>
-    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.2.6-green?style=flat-square" alt="Version"/></a>
+    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.2.7-green?style=flat-square" alt="Version"/></a>
     <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/github/downloads/legeling/PromptHub/total?style=flat-square&color=blue" alt="Downloads"/></a>
     <img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="License: AGPL-3.0"/>
   </p>
@@ -21,12 +21,12 @@
   
   <p>
     <a href="../README.md">简体中文</a> ·
+    <a href="./README.zh-TW.md">繁體中文</a> ·
     <a href="./README.en.md">English</a> ·
     <a href="./README.ja.md">日本語</a> ·
-    <a href="./README.es.md">Español</a> ·
     <a href="./README.de.md">Deutsch</a> ·
-    <a href="./README.fr.md">Français</a> ·
-    <a href="./README.zh-TW.md">繁體中文</a>
+    <a href="./README.es.md">Español</a> ·
+    <a href="./README.fr.md">Français</a>
   </p>
 </div>
 
@@ -40,15 +40,20 @@
 
 ## 📥 Download
 
-> 💡 Click the links below to download the latest version, or visit the [Releases page](https://github.com/legeling/PromptHub/releases) for all versions.
+<div align="center">
+  <a href="https://github.com/legeling/PromptHub/releases">
+    <img src="https://img.shields.io/badge/📥_Download-Releases_Page-blue?style=for-the-badge" alt="Download"/>
+  </a>
+</div>
 
-| Platform | Architecture | Download |
+> 💡 Click the button above to visit the Releases page and download the latest version. Supports Windows / macOS / Linux.
+
+| Platform | Architecture | Format |
 |:---:|:---:|:---:|
-| **Windows** | x64 | [PromptHub-Setup-0.2.6-x64.exe](https://github.com/legeling/PromptHub/releases/download/v0.2.6/PromptHub-Setup-0.2.6-x64.exe) |
-| **macOS** | Apple Silicon (M1/M2/M3) | [PromptHub-0.2.6-arm64.dmg](https://github.com/legeling/PromptHub/releases/download/v0.2.6/PromptHub-0.2.6-arm64.dmg) |
-| **macOS** | Intel | [PromptHub-0.2.6-x64.dmg](https://github.com/legeling/PromptHub/releases/download/v0.2.6/PromptHub-0.2.6-x64.dmg) |
-| **Linux** | x64 (AppImage) | [PromptHub-0.2.6-x64.AppImage](https://github.com/legeling/PromptHub/releases/download/v0.2.6/PromptHub-0.2.6-x64.AppImage) |
-| **Linux** | x64 (deb) | [PromptHub-0.2.6-amd64.deb](https://github.com/legeling/PromptHub/releases/download/v0.2.6/PromptHub-0.2.6-amd64.deb) |
+| **Windows** | x64 | `.exe` installer |
+| **macOS** | Apple Silicon (M1/M2/M3) | `.dmg` image |
+| **macOS** | Intel | `.dmg` image |
+| **Linux** | x64 | `.AppImage` / `.deb` |
 
 ---
 
@@ -78,24 +83,31 @@
 
 <div align="center">
   <p><strong>Main Interface</strong></p>
-  <img src="./imgs/image.png" width="80%" alt="Main Interface"/>
+  <img src="./imgs/1-index.png" width="80%" alt="Main Interface"/>
   <br/><br/>
-  <p><strong>Theme Settings</strong></p>
-  <img src="./imgs/theme.png" width="80%" alt="Theme Settings"/>
+  <p><strong>Gallery View</strong></p>
+  <img src="./imgs/2-gallery-view.png" width="80%" alt="Gallery View"/>
+  <br/><br/>
+  <p><strong>List View</strong></p>
+  <img src="./imgs/3-list-view.png" width="80%" alt="List View"/>
   <br/><br/>
   <p><strong>Data Backup</strong></p>
-  <img src="./imgs/data.png" width="80%" alt="Data Backup"/>
+  <img src="./imgs/4-backup.png" width="80%" alt="Data Backup"/>
   <br/><br/>
-  <p><strong>AI Model Configuration</strong></p>
-  <img src="./imgs/model.png" width="80%" alt="AI Model Configuration"/>
+  <p><strong>Theme Settings</strong></p>
+  <img src="./imgs/5-theme.png" width="80%" alt="Theme Settings"/>
   <br/><br/>
-  <p><strong>Version Comparison</strong></p>
-  <img src="./imgs/version-compare.png" width="80%" alt="Version Comparison"/>
+  <p><strong>Bilingual Mode</strong></p>
+  <img src="./imgs/6-double-language.png" width="80%" alt="Bilingual Mode"/>
   <br/><br/>
-  <p><strong>List View Mode</strong></p>
-  <img src="./imgs/view.png" width="80%" alt="List View Mode"/>
-  <p><strong>Gallery Mode</strong></p>
-  <img src="./imgs/gallery.png" width="80%" alt="Gallery Mode"/>
+  <p><strong>Variable Filling</strong></p>
+  <img src="./imgs/7-variable.png" width="80%" alt="Variable Filling"/>
+  <br/><br/>
+  <p><strong>Version Compare</strong></p>
+  <img src="./imgs/8-version-compare.png" width="80%" alt="Version Compare"/>
+  <br/><br/>
+  <p><strong>Multi-language Support</strong></p>
+  <img src="./imgs/9-i18n.png" width="80%" alt="Multi-language Support"/>
 </div>
 
 ## 📦 Installation
@@ -215,7 +227,7 @@ PromptHub/
 
 ## 🗺️ Roadmap
 
-### v0.2.6 (Current)
+### v0.2.7 (Current)
 - [x] Prompt CRUD management
 - [x] Folder and tag system
 - [x] Favorites feature
@@ -251,220 +263,21 @@ PromptHub/
 
 ## 📝 Changelog
 
-### v0.2.6 (2025-12-12)
+See full changelog: **[CHANGELOG.md](../CHANGELOG.md)**
+
+### Latest Version v0.2.7 (2025-12-16)
+
 **New Features**
-- 🎨 Display settings upgraded: modern UI + smoother animations + custom theme color
-- 🧰 Data management upgraded: selective export (export-only) + full backup/restore (compressed `.phub.gz`, incl. prompts/images/AI config/settings)
-- ☁️ WebDAV upgraded: sync now includes AI config & app settings for better cross-device consistency
-
-**Bug Fixes**
-- 🐛 Fixed language preference being overwritten (multi-language now works reliably)
-- 🐛 Fixed streaming/thinking mode not affecting AI tests (incl. multi-model compare in card view)
-- 🐛 Fixed variable detection regex state bug causing the variable modal not to open
-- 🐛 Fixed Windows close dialog showing only once
-
-### v0.2.5 (2025-12-12)
-**New Features**
-- 🌐 Added multi-language support (Simplified Chinese, Traditional Chinese, English, Japanese, Spanish, German, French)
-- 🪟 Windows close dialog: choose to minimize to tray or exit (with remember option)
-- 💬 Added Issue feedback button in About page
-- 🌍 Seed data now initializes based on user's language setting
-- 📥 Added quick download table to README for Windows/macOS/Linux
-- 🔔 Improved update dialog with Markdown-rendered release notes
-- 🚀 Auto-check for updates on startup (configurable in settings)
+- ⌨️ Global shortcuts: Customize hotkeys for showing app, new prompt, search, settings
+- ⌨️ Shortcut conflict detection: Automatically detect and warn about conflicts
+- 🎨 Image models: Added Google Gemini and Stability AI
+- 💾 Unsaved changes dialog: Prompt to save/discard/cancel when closing editor
 
 **Improvements**
-- 🎨 Bilingual hint text no longer hardcoded to "Chinese-English"
+- 🌐 Improved i18n translations for all supported languages
+- 🎨 Image download failure now uses custom Toast instead of system alert
 
-**Bug Fixes**
-- ☁️ Fixed WebDAV sync failure with Nutstore (added MKCOL directory creation and User-Agent header)
-
-### v0.2.4 (2025-12-10)
-**New Features**
-- 🌐 Bilingual prompt support (Chinese/English versions), switchable in detail view
-- 📋 Copy and AI test operations use content based on current language mode
-
-**Improvements**
-- 🎨 Improved view transition with smooth fade animation (Closes #13)
-- 🎨 View mode switcher with sliding indicator animation
-
-### v0.2.3 (2025-12-10)
-**Bug Fixes**
-- 🐛 Fixed Windows input fields becoming unresponsive after deleting a Prompt (native confirm dialog focus issue)
-- 🐛 Fixed Windows tray icon appearing transparent
-- 🐛 Fixed About page icon not showing in packaged app
-- 🐛 Fixed auto-updater module failing to load (switched to static import)
-- 🐛 Fixed folder selection being lost when creating a new Prompt
-- 🐛 Fixed CI/CD build failure (EEXIST: file already exists)
-
-**Improvements**
-- 🎨 Replaced native confirm dialog with custom ConfirmDialog for better Windows compatibility
-- 🎨 Improved tray icon loading logic with fallback paths
-- 🎨 Default to current folder when creating new Prompt
-- 🌐 Fixed "Upload" button i18n support
-
-### v0.2.2 (2025-12-08)
-**Bug Fixes**
-- 🐛 Fixed hardcoded version number in About page (now fetched dynamically)
-- 🐛 Fixed About page icon not displaying correctly
-- 🐛 Fixed update check failing (`cannot set properties of undefined`)
-- 🐛 Fixed error handling when auto-updater module fails to load
-
-**Improvements**
-- 🎨 Show manual download link when auto-update fails
-- 🔒 Clear data now requires master password verification (high-risk operation protection)
-
-### v0.2.1 (2025-12-07)
-**New Features**
-- ✨ Markdown Preview: Safe Markdown rendering in List view, Detail modal, and Edit modal (unknown languages ignored).
-- ✨ Master Password & Security: App-level master password setup with lock/unlock states.
-- ✨ Private Folders (Beta): Mark folders as private, requiring unlock to access (encryption WIP).
-- ✨ Enhanced Editing: Edit/Preview toggle, optimized input height, and Fullscreen/Wide modes.
-- ✨ Sorted Tags: Tags are automatically sorted for better consistency.
-- ✨ Image Upload & Preview: Upload/paste local images and preview them within modals.
-
-**Improvements**
-- 🔧 Qwen Compatibility: Fixed `enable_thinking` error for non-streaming calls.
-- 🔧 UI Polish: Fixed fullscreen edit modal overlapping header buttons.
-- 🔧 Performance: Optimized Markdown rendering and dependencies.
-
-### v0.2.0 (2025-12-03)
-**New Features**
-- ✨ List view mode: table-style display of all prompts with horizontal scrolling and pagination
-- ✨ Batch operations: multi-select with batch favorite, move to folder, delete
-- ✨ AI test result persistence: save last test result for each prompt
-- ✨ Sorting functionality: sort by time, title, usage count
-- ✨ View switching: toggle between card view and list view
-- ✨ Detail modal shows AI response
-
-**Improvements**
-- 🎨 New list view UI (rounded design, beautiful checkboxes, hover tooltips)
-- 🎨 Separated loading states for single/multi-model testing
-- 🎨 AI test modal supports variable filling
-
-### v0.1.9 (2025-12-01)
-**New Features**
-- ✨ Local SVG/PNG assets for AI model icons
-- ✨ Wider and internationalized Version History modal
-
-**Improvements**
-- 🔧 Fixed Linux build failure (author.email)
-- 🔧 Full macOS/Windows delta update support
-- 🔧 Release Notes in update dialog support plain text wrapping
-- 🔧 Fixed redundant requests in update checker
-
-### v0.1.8 (2025-12-01)
-**New Features**
-- ✨ Minimize to system tray
-- ✨ Clickable data directory path
-- ✨ Editor line numbers
-- ✨ Linux platform support (AppImage/deb)
-- ✨ Dynamic AI model fetching
-- ✨ Model selection modal with search and categories
-- ✨ Auto-categorized model display with icons
-- ✨ Smart API URL preview
-- ✨ Grouped model display
-
-**Improvements**
-- 🎨 Auto-expanding variable inputs
-- 🎨 Optimized macOS tray icon
-- 🎨 Independent AI test states per prompt
-- 🎨 Persistent test results
-- 🔧 Multiple clicks support for update check
-- 🔧 Fixed notification icon path
-
-### v0.1.7 (2025-11-30)
-**New Features**
-- ✨ Variable filling in AI test
-- ✨ Variable filling in multi-model comparison
-
-**Improvements**
-- 🎨 Enhanced dark mode accent colors
-- 🎨 Improved toggle switch style
-- 🎨 Themed AI test button
-- 🎨 Polished About page icons
-- 🔧 Removed "Refresh" button from language settings
-
-### v0.1.6 (2025-11-30)
-**Improvements**
-- 🔧 Fixed missing auto-update metadata (CI upload)
-- 🔧 Optimized Release Notes format
-
-### v0.1.5 (2025-11-30)
-**New Features**
-- ✨ Variable filling interface on copy
-
-**Improvements**
-- 🎨 Custom folder selection dropdown
-- 🎨 Wider Edit/New Prompt modal
-- 🔧 Fixed current version display in comparison
-- 🔧 Disabled dev tools in production
-
-### v0.1.4 (2025-11-30)
-**New Features**
-- ✨ Multi-model configuration management
-- ✨ Selection-based model comparison
-- ✨ Custom Select component
-- ✨ Full internationalization
-- ✨ In-app auto update
-
-**Improvements**
-- 🎨 Compact Prompt cards
-- 🎨 Relocated comparison button
-- 🎨 Optimized README and screenshots
-- 🔧 Fixed macOS window dragging issue
-- 🔧 Fixed language setting sync
-- 🔧 Fixed comparison result persistence issue
-- 🔧 Removed macOS zip build artifact
-
-### v0.1.3 (2025-11-29)
-**New Features**
-- ✨ AI model configuration (18+ providers)
-- ✨ AI connection test
-- ✨ AI model comparison
-- ✨ Image generation support
-- ✨ Settings page i18n
-- ✨ Git-style version comparison
-
-**Improvements**
-- 🎨 Optimized Settings UI
-- 🔧 Removed card dragging (fixed click issues)
-
-### v0.1.2 (2025-11-29)
-**New Features**
-- ✨ WebDAV sync
-- ✨ Folder drag & drop sorting
-- ✨ Prompt drag & drop to folder
-- ✨ Folder selection in New Prompt
-- ✨ Restore version confirmation
-
-**Improvements**
-- 🎨 Fixed dark mode toggle visibility
-- 🎨 Added feedback for settings toggles
-- 🎨 Improved language switching
-- 🔧 Implemented launch at startup
-
-### v0.1.1 (2025-11-29)
-**New Features**
-- ✨ Folder CRUD
-- ✨ Tag filtering
-- ✨ Check for updates
-- ✨ Windows custom title bar
-
-**Improvements**
-- 🎨 Flat UI design
-- 🎨 Removed card shadows and scaling
-- 🔧 WebDAV config interface
-
-### v0.1.0 (2025-11-29)
-- 🎉 First release
-- ✨ Prompt CRUD
-- ✨ Folders & Tags
-- ✨ Favorites
-- ✨ Version History
-- ✨ Import/Export
-- ✨ Themes
-- ✨ Multi-language support
+> 📋 [View full changelog](../CHANGELOG.md)
 
 ## 🤝 Contribution
 
@@ -502,6 +315,35 @@ This project is licensed under the [AGPL-3.0 License](../LICENSE).
   <a href="https://www.buymeacoffee.com/legeling" target="_blank">
     <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50" />
   </a>
-  
+</div>
+
+---
+
+## ☕ Sponsor
+
+If PromptHub is helpful to your work, feel free to buy the author a coffee ☕
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center">
+        <img src="./imgs/donate/wechat.png" width="200" alt="WeChat Pay"/>
+        <br/>
+        <b>WeChat Pay</b>
+      </td>
+      <td align="center">
+        <img src="./imgs/donate/alipay.jpg" width="200" alt="Alipay"/>
+        <br/>
+        <b>Alipay</b>
+      </td>
+    </tr>
+  </table>
+</div>
+
+📧 **Contact**: legeling567@gmail.com
+
+Thank you to every supporter! Your support keeps me motivated to continue development!
+
+<div align="center">
   <p>Made with ❤️ by <a href="https://github.com/legeling">legeling</a></p>
 </div>

@@ -49,6 +49,24 @@ function App() {
       setShowCloseDialog(true);
     });
 
+    // Listen for global shortcut triggers
+    window.electron?.onShortcutTriggered?.((action: string) => {
+      switch (action) {
+        case 'newPrompt':
+          // Dispatch custom event to trigger new prompt modal
+          window.dispatchEvent(new CustomEvent('shortcut:newPrompt'));
+          break;
+        case 'search':
+          // Focus search input
+          window.dispatchEvent(new CustomEvent('shortcut:search'));
+          break;
+        case 'settings':
+          setCurrentPage('settings');
+          break;
+        // showApp is handled in main process
+      }
+    });
+
     // Check for updates on startup
     // useSettingsStore.getState() might not be ready if persisted? 
     // Usually zustand persist middleware handles it synchronously from localStorage if configured right.

@@ -1169,6 +1169,17 @@ export function MainContent() {
         prompt={aiTestPrompt}
         onUsageIncrement={handleAiUsageIncrement}
         onSaveResponse={handleSaveAiResponse}
+        onAddImage={async (fileName) => {
+          // 将生成的图片添加到当前测试的 Prompt
+          if (aiTestPrompt) {
+            const newImages = [...(aiTestPrompt.images || []), fileName];
+            await updatePrompt(aiTestPrompt.id, { images: newImages });
+            setAiTestPrompt({
+              ...aiTestPrompt,
+              images: newImages,
+            });
+          }
+        }}
       />
 
       {/* 查看详情弹窗 (用于 List/Gallery 视图) */}

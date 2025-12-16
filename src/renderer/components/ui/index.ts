@@ -5,6 +5,7 @@ export { Select } from './Select';
 export { Modal } from './Modal';
 export { useToast, ToastProvider } from './Toast';
 export { ConfirmDialog } from './ConfirmDialog';
+export { UnsavedChangesDialog } from './UnsavedChangesDialog';
 export { ContextMenu } from './ContextMenu';
 export { ImagePreviewModal } from './ImagePreviewModal';
 export { CloseDialog } from './CloseDialog';

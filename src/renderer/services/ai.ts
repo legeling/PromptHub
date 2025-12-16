@@ -413,6 +413,7 @@ export async function compareAIModels(
 
 /**
  * 调用图像生成模型
+ * 支持多种供应商：OpenAI, FLUX, Ideogram, Recraft, Stability AI, Replicate 等
  */
 export async function generateImage(
   config: AIConfig,
@@ -423,9 +424,10 @@ export async function generateImage(
     style?: 'vivid' | 'natural';
     n?: number;
     response_format?: 'url' | 'b64_json';
+    aspect_ratio?: string; // FLUX/Ideogram 使用
   }
 ): Promise<ImageGenerationResponse> {
-  const { apiKey, apiUrl, model } = config;
+  const { apiKey, apiUrl, model, provider } = config;
   
   if (!apiKey) {
     throw new Error('请先配置 API Key');
@@ -435,20 +437,61 @@ export async function generateImage(
     throw new Error('请先配置 API 地址');
   }
 
-  // 构建请求 URL
+  // 根据供应商选择不同的 API 调用方式
+  const providerLower = (provider || '').toLowerCase();
+  
+  // FLUX (Black Forest Labs)
+  if (providerLower === 'flux' || apiUrl.includes('bfl.ai')) {
+    return await generateImageFlux(apiKey, apiUrl, model, prompt, options);
+  }
+  
+  // Ideogram
+  if (providerLower === 'ideogram' || apiUrl.includes('ideogram.ai')) {
+    return await generateImageIdeogram(apiKey, apiUrl, model, prompt, options);
+  }
+  
+  // Recraft
+  if (providerLower === 'recraft' || apiUrl.includes('recraft.ai')) {
+    return await generateImageRecraft(apiKey, apiUrl, model, prompt, options);
+  }
+  
+  // Replicate
+  if (providerLower === 'replicate' || apiUrl.includes('replicate.com')) {
+    return await generateImageReplicate(apiKey, model, prompt, options);
+  }
+  
+  // Stability AI
+  if (providerLower === 'stability' || apiUrl.includes('stability.ai')) {
+    return await generateImageStability(apiKey, apiUrl, model, prompt, options);
+  }
+
+  // OpenAI 兼容格式（包括 OpenAI, Google, Azure 等）
+  return await generateImageOpenAI(apiKey, apiUrl, model, prompt, options);
+}
+
+// OpenAI 兼容格式
+async function generateImageOpenAI(
+  apiKey: string,
+  apiUrl: string,
+  model: string,
+  prompt: string,
+  options?: {
+    size?: string;
+    quality?: 'standard' | 'hd';
+    style?: 'vivid' | 'natural';
+    n?: number;
+    response_format?: 'url' | 'b64_json';
+  }
+): Promise<ImageGenerationResponse> {
   let endpoint = apiUrl.replace(/\/$/, '');
   
-  // 如果已经包含 images/generations，直接使用
   if (endpoint.includes('/images/generations')) {
     // 保持原样
   } else if (endpoint.endsWith('/chat/completions')) {
-    // 替换 chat/completions 为 images/generations
     endpoint = endpoint.replace(/\/chat\/completions$/, '/images/generations');
   } else if (endpoint.match(/\/v\d+$/)) {
-    // 如果以 /v1, /v2, /v3 等结尾，追加 /images/generations
     endpoint = endpoint + '/images/generations';
   } else {
-    // 默认追加 /v1/images/generations
     endpoint = endpoint + '/v1/images/generations';
   }
 
@@ -457,57 +500,269 @@ export async function generateImage(
     'Authorization': `Bearer ${apiKey}`,
   };
 
-  // 构建请求体 - 只包含必要参数，避免不兼容的参数导致错误
   const body: Record<string, any> = {
     prompt,
     model: model || 'dall-e-3',
     n: options?.n ?? 1,
   };
   
-  // 只有明确指定了 size 才添加（不同 API 对 size 的要求不同）
-  if (options?.size) {
-    body.size = options.size;
+  if (options?.size) body.size = options.size;
+  if (options?.quality) body.quality = options.quality;
+  if (options?.style) body.style = options.style;
+  if (options?.response_format !== undefined) body.response_format = options.response_format;
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    let errorMessage = `图像生成失败 (${response.status})`;
+    try {
+      const errorJson = JSON.parse(errorText);
+      errorMessage = errorJson.error?.message || errorJson.message || errorMessage;
+    } catch {
+      if (errorText) errorMessage = errorText.slice(0, 200);
+    }
+    throw new Error(errorMessage);
+  }
+
+  return await response.json();
+}
+
+// FLUX (Black Forest Labs) API
+async function generateImageFlux(
+  apiKey: string,
+  apiUrl: string,
+  model: string,
+  prompt: string,
+  options?: { aspect_ratio?: string; n?: number }
+): Promise<ImageGenerationResponse> {
+  const endpoint = apiUrl.replace(/\/$/, '') + '/images/generations';
+  
+  const body: Record<string, any> = {
+    prompt,
+    model: model || 'flux-pro-1.1',
+    width: 1024,
+    height: 1024,
+  };
+  
+  // FLUX 使用 aspect_ratio
+  if (options?.aspect_ratio) {
+    const [w, h] = options.aspect_ratio.split(':').map(Number);
+    if (w && h) {
+      body.width = w > h ? 1024 : Math.round(1024 * w / h);
+      body.height = h > w ? 1024 : Math.round(1024 * h / w);
+    }
+  }
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Key': apiKey,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`FLUX 图像生成失败: ${errorText.slice(0, 200)}`);
+  }
+
+  const result = await response.json();
+  return {
+    created: Date.now(),
+    data: [{ url: result.sample || result.url || result.image }],
+  };
+}
+
+// Ideogram API
+async function generateImageIdeogram(
+  apiKey: string,
+  apiUrl: string,
+  model: string,
+  prompt: string,
+  options?: { aspect_ratio?: string; n?: number }
+): Promise<ImageGenerationResponse> {
+  const endpoint = apiUrl.replace(/\/$/, '') + '/generate';
+  
+  const body: Record<string, any> = {
+    image_request: {
+      prompt,
+      model: model || 'V_3',
+      aspect_ratio: options?.aspect_ratio || 'ASPECT_1_1',
+    },
+  };
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Api-Key': apiKey,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Ideogram 图像生成失败: ${errorText.slice(0, 200)}`);
+  }
+
+  const result = await response.json();
+  const images = result.data || [];
+  return {
+    created: Date.now(),
+    data: images.map((img: any) => ({ url: img.url })),
+  };
+}
+
+// Recraft API
+async function generateImageRecraft(
+  apiKey: string,
+  apiUrl: string,
+  model: string,
+  prompt: string,
+  options?: { size?: string; n?: number }
+): Promise<ImageGenerationResponse> {
+  const endpoint = apiUrl.replace(/\/$/, '') + '/images/generations';
+  
+  const body: Record<string, any> = {
+    prompt,
+    model: model || 'recraftv3',
+    n: options?.n ?? 1,
+  };
+  
+  if (options?.size) body.size = options.size;
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Recraft 图像生成失败: ${errorText.slice(0, 200)}`);
+  }
+
+  const result = await response.json();
+  return {
+    created: Date.now(),
+    data: result.data || [{ url: result.image?.url }],
+  };
+}
+
+// Replicate API
+async function generateImageReplicate(
+  apiKey: string,
+  model: string,
+  prompt: string,
+  options?: { aspect_ratio?: string; n?: number }
+): Promise<ImageGenerationResponse> {
+  // Replicate 使用 predictions API
+  const endpoint = 'https://api.replicate.com/v1/predictions';
+  
+  const body: Record<string, any> = {
+    version: model, // Replicate 使用 model version
+    input: {
+      prompt,
+      num_outputs: options?.n ?? 1,
+    },
+  };
+  
+  if (options?.aspect_ratio) {
+    body.input.aspect_ratio = options.aspect_ratio;
+  }
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Replicate 图像生成失败: ${errorText.slice(0, 200)}`);
+  }
+
+  const prediction = await response.json();
+  
+  // Replicate 是异步的，需要轮询结果
+  let result = prediction;
+  while (result.status === 'starting' || result.status === 'processing') {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    const pollResponse = await fetch(result.urls.get, {
+      headers: { 'Authorization': `Bearer ${apiKey}` },
+    });
+    result = await pollResponse.json();
   }
   
-  // OpenAI 特有参数，只在需要时添加
-  if (options?.quality) {
-    body.quality = options.quality;
-  }
-  if (options?.style) {
-    body.style = options.style;
-  }
-  if (options?.response_format !== undefined) {
-    body.response_format = options.response_format;
+  if (result.status === 'failed') {
+    throw new Error(`Replicate 图像生成失败: ${result.error}`);
   }
 
-  try {
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-    });
+  const outputs = Array.isArray(result.output) ? result.output : [result.output];
+  return {
+    created: Date.now(),
+    data: outputs.map((url: string) => ({ url })),
+  };
+}
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage = `图像生成失败 (${response.status})`;
-      try {
-        const errorJson = JSON.parse(errorText);
-        errorMessage = errorJson.error?.message || errorJson.message || errorMessage;
-      } catch {
-        if (errorText) {
-          errorMessage = errorText.slice(0, 200);
-        }
-      }
-      throw new Error(errorMessage);
+// Stability AI API
+async function generateImageStability(
+  apiKey: string,
+  apiUrl: string,
+  model: string,
+  prompt: string,
+  options?: { size?: string; n?: number }
+): Promise<ImageGenerationResponse> {
+  const endpoint = apiUrl.replace(/\/$/, '') + '/generation/' + (model || 'stable-diffusion-xl-1024-v1-0') + '/text-to-image';
+  
+  const body: Record<string, any> = {
+    text_prompts: [{ text: prompt, weight: 1 }],
+    samples: options?.n ?? 1,
+    steps: 30,
+  };
+  
+  if (options?.size) {
+    const [width, height] = options.size.split('x').map(Number);
+    if (width && height) {
+      body.width = width;
+      body.height = height;
     }
-
-    return await response.json();
-  } catch (error) {
-    if (error instanceof Error) {
-      throw error;
-    }
-    throw new Error('网络请求失败，请检查网络连接');
   }
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+      'Accept': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Stability AI 图像生成失败: ${errorText.slice(0, 200)}`);
+  }
+
+  const result = await response.json();
+  return {
+    created: Date.now(),
+    data: result.artifacts?.map((art: any) => ({
+      b64_json: art.base64,
+    })) || [],
+  };
 }
 
 /**
