@@ -21,6 +21,10 @@
     {
       "from": "docs/imgs/icon.png",
       "to": "icon.png"
+    },
+    {
+      "from": "CHANGELOG.md",
+      "to": "CHANGELOG.md"
     }
   ],
   "asarUnpack": [

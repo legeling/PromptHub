@@ -1,6 +1,8 @@
 import { BrowserWindow, ipcMain, app, shell } from 'electron';
 import type { UpdateInfo as ElectronUpdateInfo } from 'electron-updater';
 import { autoUpdater } from 'electron-updater';
+import fs from 'fs';
+import path from 'path';
 
 // 简化的更新信息类型（用于 IPC 传输）
 interface SimpleUpdateInfo {
@@ -16,32 +18,107 @@ interface ProgressInfo {
   transferred: number;
 }
 
-// 将 GitHub Release 返回的 HTML 说明转换为适合展示的纯文本
-function htmlToPlainText(html: string): string {
-  return html
-    .replace(/<br\s*\/?>(?=\s*)/gi, '\n')
-    .replace(/<\/(p|div|h[1-6]|li|ul|ol|table|thead|tbody|tr)>/gi, '\n')
-    .replace(/<li[^>]*>/gi, '\u2022 ')
-    .replace(/<(p|div|h[1-6]|ul|ol|table|thead|tbody|tr)[^>]*>/gi, '')
-    .replace(/<[^>]+>/g, '')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+// 比较版本号，返回 1 (a > b), -1 (a < b), 0 (a == b)
+function compareVersions(a: string, b: string): number {
+  const partsA = a.replace(/^v/, '').split('.').map(Number);
+  const partsB = b.replace(/^v/, '').split('.').map(Number);
+  
+  for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+    const numA = partsA[i] || 0;
+    const numB = partsB[i] || 0;
+    if (numA > numB) return 1;
+    if (numA < numB) return -1;
+  }
+  return 0;
+}
+
+// 从 CHANGELOG.md 读取指定版本区间的更新日志
+function getChangelogForVersionRange(newVersion: string, currentVersion: string): string {
+  try {
+    const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+    let changelogPath: string;
+    
+    if (isDev) {
+      changelogPath = path.join(__dirname, '../../CHANGELOG.md');
+    } else {
+      // 打包后，CHANGELOG.md 在 resources 目录
+      changelogPath = path.join(process.resourcesPath, 'CHANGELOG.md');
+      // 如果不存在，尝试 app.asar.unpacked
+      if (!fs.existsSync(changelogPath)) {
+        changelogPath = path.join(process.resourcesPath, 'app.asar.unpacked', 'CHANGELOG.md');
+      }
+      // 还不存在，尝试 app 目录
+      if (!fs.existsSync(changelogPath)) {
+        changelogPath = path.join(app.getAppPath(), 'CHANGELOG.md');
+      }
+    }
+    
+    if (!fs.existsSync(changelogPath)) {
+      console.warn('CHANGELOG.md not found at:', changelogPath);
+      return '';
+    }
+    
+    const content = fs.readFileSync(changelogPath, 'utf-8');
+    
+    // 解析 CHANGELOG，提取版本区间内的所有更新
+    // 格式: ## [0.2.9] - 2025-12-18
+    const versionRegex = /^## \[(\d+\.\d+\.\d+(?:-[a-zA-Z0-9.]+)?)\]/gm;
+    const versions: { version: string; startIndex: number }[] = [];
+    
+    let match;
+    while ((match = versionRegex.exec(content)) !== null) {
+      versions.push({
+        version: match[1],
+        startIndex: match.index,
+      });
+    }
+    
+    // 找到需要包含的版本（大于 currentVersion 且小于等于 newVersion）
+    const relevantSections: string[] = [];
+    
+    for (let i = 0; i < versions.length; i++) {
+      const ver = versions[i].version;
+      // 版本在 (currentVersion, newVersion] 区间内
+      if (compareVersions(ver, currentVersion) > 0 && compareVersions(ver, newVersion) <= 0) {
+        const startIndex = versions[i].startIndex;
+        const endIndex = versions[i + 1]?.startIndex || content.length;
+        let section = content.slice(startIndex, endIndex).trim();
+        
+        // 移除分隔线
+        section = section.replace(/^---\s*$/gm, '').trim();
+        
+        relevantSections.push(section);
+      }
+    }
+    
+    if (relevantSections.length === 0) {
+      return '';
+    }
+    
+    return relevantSections.join('\n\n---\n\n');
+  } catch (error) {
+    console.error('Failed to read CHANGELOG.md:', error);
+    return '';
+  }
 }
 
 // 从 electron-updater 的 UpdateInfo 转换为简化格式
 function toSimpleInfo(info: ElectronUpdateInfo): SimpleUpdateInfo {
-  let releaseNotes = '';
-  if (typeof info.releaseNotes === 'string') {
-    releaseNotes = htmlToPlainText(info.releaseNotes);
-  } else if (Array.isArray(info.releaseNotes)) {
-    releaseNotes = info.releaseNotes
-      .map((n) => (n.note ? htmlToPlainText(n.note) : ''))
-      .filter(Boolean)
-      .join('\n\n');
-  }
-
-  if (releaseNotes.length > 1000) {
-    releaseNotes = releaseNotes.slice(0, 1000) + '...';
+  const currentVersion = app.getVersion();
+  
+  // 优先从 CHANGELOG.md 读取版本区间的更新日志
+  let releaseNotes = getChangelogForVersionRange(info.version, currentVersion);
+  
+  // 如果 CHANGELOG 没有内容，回退到 GitHub Release 的说明
+  if (!releaseNotes) {
+    if (typeof info.releaseNotes === 'string') {
+      releaseNotes = info.releaseNotes;
+    } else if (Array.isArray(info.releaseNotes)) {
+      releaseNotes = info.releaseNotes
+        .map((n) => (n.note ? n.note : ''))
+        .filter(Boolean)
+        .join('\n\n');
+    }
   }
 
   return {

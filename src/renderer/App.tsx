@@ -72,26 +72,35 @@ function App() {
       }
     });
 
-    // Check for updates on startup
-    // useSettingsStore.getState() might not be ready if persisted? 
-    // Usually zustand persist middleware handles it synchronously from localStorage if configured right.
-    // We'll delay slightly to be safe or just call it.
-    setTimeout(() => {
-        const settings = useSettingsStore.getState();
-        if (settings.autoCheckUpdate) {
-            window.electron?.updater?.check();
-        }
-    }, 1000);
+    // Check for updates on startup and periodically
+    const UPDATE_CHECK_INTERVAL = 60 * 60 * 1000; // 1 hour
+    let updateCheckTimer: NodeJS.Timeout | null = null;
 
-    // Listen for manual check trigger
+    const checkForUpdates = () => {
+      const settings = useSettingsStore.getState();
+      if (settings.autoCheckUpdate) {
+        window.electron?.updater?.check();
+      }
+    };
+
+    // Initial check after 3 seconds
+    setTimeout(checkForUpdates, 3000);
+
+    // Periodic check every hour
+    updateCheckTimer = setInterval(checkForUpdates, UPDATE_CHECK_INTERVAL);
+
+    // Listen for manual check trigger - always force a fresh check
     const handleOpenUpdate = () => {
        setInitialUpdateStatus(null);
+       setUpdateAvailable(null); // Clear cached status
        setShowUpdateDialog(true);
     };
     window.addEventListener('open-update-dialog', handleOpenUpdate);
 
     return () => {
-      // window.electron?.updater?.offStatus(); // Assuming offStatus exists or we just leave it (listeners might stack if HMR, but for prod it's fine)
+      if (updateCheckTimer) {
+        clearInterval(updateCheckTimer);
+      }
       window.removeEventListener('open-update-dialog', handleOpenUpdate);
     };
   }, []);

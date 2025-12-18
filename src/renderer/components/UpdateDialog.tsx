@@ -87,10 +87,10 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
     };
   }, []);
 
-  // 当对话框打开时，如果没有缓存状态才自动检查
+  // 当对话框打开时，总是强制检查更新（不使用缓存）
   useEffect(() => {
-    if (isOpen && updateStatus === null) {
-      // 首次打开时自动检查更新
+    if (isOpen) {
+      // 每次打开都强制检查更新
       handleCheckUpdate();
     }
   }, [isOpen]);
@@ -157,8 +157,8 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
               </div>
             </div>
             {updateStatus.info.releaseNotes && (
-              <div className="mb-4 p-3 rounded-lg bg-muted/50 max-h-60 overflow-y-auto prose prose-sm dark:prose-invert max-w-none">
-                <p className="text-xs font-medium text-muted-foreground mb-1">
+              <div className="mb-4 p-4 rounded-lg bg-muted/50 flex-1 min-h-[200px] max-h-[350px] overflow-y-auto prose prose-sm dark:prose-invert max-w-none">
+                <p className="text-xs font-medium text-muted-foreground mb-2">
                   {t('settings.releaseNotes')}
                 </p>
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -273,7 +273,7 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
             <p className="text-sm text-muted-foreground break-all whitespace-pre-wrap max-h-32 overflow-y-auto mb-4">
               {updateStatus.error}
             </p>
-            <div className="p-3 rounded-lg bg-muted/50 mb-4">
+            <div className="p-3 rounded-lg bg-muted/50">
               <p className="text-sm text-muted-foreground mb-2">{t('settings.manualDownloadHint')}</p>
               <button
                 onClick={() => window.electron?.updater?.openReleases()}
@@ -283,12 +283,6 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
                 {t('settings.manualDownload')}
               </button>
             </div>
-            <button
-              onClick={handleCheckUpdate}
-              className="px-4 py-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
-            >
-              {t('settings.checkUpdate')}
-            </button>
           </div>
         );
     }
@@ -297,7 +291,7 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div
-        className="w-full max-w-md mx-4 p-6 rounded-2xl bg-card border border-border shadow-xl"
+        className="w-full max-w-xl mx-4 p-6 rounded-2xl bg-card border border-border shadow-xl min-h-[400px] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
@@ -309,7 +303,9 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
             <XIcon className="w-5 h-5 text-muted-foreground" />
           </button>
         </div>
-        {renderContent()}
+        <div className="flex-1 flex flex-col">
+          {renderContent()}
+        </div>
       </div>
     </div>
   );

@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.3.0] - 2025-12-18
+
+### 优化 / Changed
+- 🔄 **检查更新优化**：点击检查更新都会真正发起请求，不再使用缓存
+  - **Update Check Improvement**: Every manual check now forces a fresh request without caching
+- ⏰ **周期性检查更新**：启用自动检查后，每小时自动检查一次新版本
+  - **Periodic Update Check**: Auto-check runs every hour when enabled
+- 🎨 **更新提示样式优化**：移除闪烁动画，使用主题色虚线边框，与新建按钮增加间距
+  - **Update Indicator Style**: Removed pulse animation, uses theme color with dashed border
+- 📐 **更新对话框增大**：对话框尺寸从 max-w-md 增大到 max-w-xl，更新日志区域更大
+  - **Larger Update Dialog**: Increased dialog size for better readability
+- 📝 **精确版本更新日志**：更新日志现在精确显示从当前版本到新版本区间内的所有更新内容
+  - **Precise Changelog**: Release notes now show all changes between current and new version
+
+---
+
 ## [0.2.9] - 2025-12-18
 
 ### 新功能 / Added

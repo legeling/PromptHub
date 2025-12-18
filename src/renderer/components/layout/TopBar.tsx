@@ -99,15 +99,18 @@ export function TopBar({ onOpenSettings, updateAvailable, onShowUpdateDialog }: 
         <div className="flex items-center gap-1 ml-4">
           {/* 更新提示 */}
           {updateAvailable && updateAvailable.status === 'available' && (
-            <button
-              onClick={onShowUpdateDialog}
-              className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-green-500/10 text-green-600 dark:text-green-400 text-sm font-medium hover:bg-green-500/20 transition-colors animate-pulse"
-              style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-              title={t('settings.updateAvailable')}
-            >
-              <DownloadIcon className="w-4 h-4" />
-              <span className="hidden sm:inline">{t('settings.newVersion', { version: updateAvailable.info?.version })}</span>
-            </button>
+            <>
+              <button
+                onClick={onShowUpdateDialog}
+                className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-dashed border-primary/50 bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors"
+                style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+                title={t('settings.updateAvailable')}
+              >
+                <DownloadIcon className="w-4 h-4" />
+                <span className="hidden sm:inline">{t('settings.newVersion', { version: updateAvailable.info?.version })}</span>
+              </button>
+              <div className="w-px h-5 bg-border mx-1" />
+            </>
           )}
 
           {/* 新建按钮 */}
