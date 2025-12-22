@@ -148,12 +148,12 @@ function SortableFolderItem({ folder, isActive, onSelect, onEdit, isOver, isLock
       style={style}
       className={`group relative flex items-center ${isDropOver ? 'bg-primary/20 rounded-lg ring-2 ring-primary' : ''}`}
     >
-      {/* Drag handle - hidden in collapsed mode */}
-      {!collapsed && (
+      {/* Drag handle - only when selected & not collapsed */}
+      {!collapsed && isActive && (
         <button
           {...attributes}
           {...listeners}
-          className="p-1 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity absolute left-0"
+          className="p-1 cursor-grab active:cursor-grabbing opacity-60 hover:opacity-100 transition-opacity absolute left-0"
         >
           <GripVerticalIcon className="w-3 h-3 text-sidebar-foreground/40" />
         </button>
@@ -184,13 +184,13 @@ function SortableFolderItem({ folder, isActive, onSelect, onEdit, isOver, isLock
         )}
       </button>
 
-      {!collapsed && (
+      {!collapsed && isActive && (
         <button
           onClick={(e) => {
             e.stopPropagation();
             onEdit();
           }}
-          className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-sidebar-accent transition-all absolute right-1"
+          className="p-1 rounded opacity-70 hover:opacity-100 hover:bg-sidebar-accent transition-all absolute right-1"
         >
           <MoreHorizontalIcon className="w-4 h-4 text-sidebar-foreground/50" />
         </button>
@@ -342,7 +342,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
             setIsCollapsed(!isCollapsed);
             closeTagPopover();
           }}
-          className="h-6 w-6 rounded-full border border-border bg-background shadow-sm hover:shadow-md hover:bg-accent hover:text-accent-foreground flex items-center justify-center transition-all duration-200"
+          className="h-12 w-7 rounded-full border border-border bg-background shadow-sm hover:shadow-md hover:bg-accent hover:text-accent-foreground flex items-center justify-center transition-all duration-200"
           title={isCollapsed ? t('common.expand', '展开') : t('common.collapse', '收起')}
         >
           {isCollapsed ? (
