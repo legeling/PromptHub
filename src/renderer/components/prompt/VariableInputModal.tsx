@@ -84,7 +84,7 @@ export function VariableInputModal({
     const matches = combined.matchAll(VARIABLE_REGEX);
     const vars: ParsedVariable[] = [];
     const seen = new Set<string>();
-    
+
     for (const match of matches) {
       const name = match[1].trim();
       if (!seen.has(name) && !SYSTEM_VARIABLES[name]) {
@@ -105,11 +105,11 @@ export function VariableInputModal({
     if (isOpen) {
       const history = getVariableHistory(promptId);
       const initialVars: Record<string, string> = {};
-      
+
       parsedVariables.forEach((v) => {
         initialVars[v.name] = history[v.name] || v.defaultValue || '';
       });
-      
+
       setVariables(initialVars);
       setCopied(false);
     }
@@ -122,12 +122,12 @@ export function VariableInputModal({
     if (systemPrompt) {
       result = `[System]\n${systemPrompt}\n\n[User]\n${userPrompt}`;
     }
-    
+
     Object.entries(variables).forEach(([name, value]) => {
       const regex = new RegExp(`\\{\\{\\s*${name}\\s*\\}\\}`, 'g');
       result = result.replace(regex, value || `{{${name}}}`);
     });
-    
+
     return result;
   }, [systemPrompt, userPrompt, variables]);
 
@@ -139,14 +139,14 @@ export function VariableInputModal({
   // 替换变量（包括系统变量）
   const replaceVariables = (text: string) => {
     let result = text;
-    
+
     // Replace system variables
     // 替换系统变量
     Object.entries(SYSTEM_VARIABLES).forEach(([name, getValue]) => {
       const regex = new RegExp(`\\{\\{\\s*${name}\\s*\\}\\}`, 'g');
       result = result.replace(regex, getValue());
     });
-    
+
     // Replace user variables (including default value format)
     // 替换用户变量（包括带默认值的格式）
     parsedVariables.forEach((v) => {
@@ -156,7 +156,7 @@ export function VariableInputModal({
       const regex = new RegExp(`\\{\\{\\s*${v.name}(?::[^}]*)?\\s*\\}\\}`, 'g');
       result = result.replace(regex, value || `{{${v.name}}}`);
     });
-    
+
     return result;
   };
 
@@ -164,11 +164,11 @@ export function VariableInputModal({
     // Save variable history
     // 保存变量历史
     saveVariableHistory(promptId, variables);
-    
+
     // Replace variables
     // 替换变量
     const result = replaceVariables(userPrompt);
-    
+
     navigator.clipboard.writeText(result);
     onCopy?.(result);
     setCopied(true);
@@ -179,12 +179,12 @@ export function VariableInputModal({
     // Save variable history
     // 保存变量历史
     saveVariableHistory(promptId, variables);
-    
+
     // Replace variables
     // 替换变量
     const filledUserPrompt = replaceVariables(userPrompt);
     const filledSystemPrompt = systemPrompt ? replaceVariables(systemPrompt) : undefined;
-    
+
     onAiTest?.(filledSystemPrompt, filledUserPrompt);
   };
 
@@ -196,71 +196,69 @@ export function VariableInputModal({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={t('prompt.variableInput')} size="2xl">
-      <div className="space-y-5">
-        {/* Variable input */}
-        {/* 变量输入 */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <VariableIcon className="w-4 h-4" />
-            <span>{t('prompt.fillVariables')}</span>
+      <div className="flex flex-col max-h-[70vh]">
+        {/* Scrollable content / 可滚动内容 */}
+        <div className="flex-1 overflow-y-auto space-y-5 pr-1">
+          {/* Variable input / 变量输入 */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <VariableIcon className="w-4 h-4" />
+              <span>{t('prompt.fillVariables')}</span>
+            </div>
+
+            <div className="grid gap-3">
+              {parsedVariables.map((v) => (
+                <div key={v.name} className="space-y-1">
+                  <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                    <code className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-xs">
+                      {`{{${v.name}}}`}
+                    </code>
+                    {v.defaultValue && (
+                      <span className="text-xs text-muted-foreground">
+                        {t('prompt.defaultValue')}: {v.defaultValue}
+                      </span>
+                    )}
+                    {variables[v.name] && variables[v.name] !== v.defaultValue && (
+                      <span className="flex items-center gap-1 text-xs text-green-600">
+                        <HistoryIcon className="w-3 h-3" />
+                        {t('prompt.fromHistory')}
+                      </span>
+                    )}
+                  </label>
+                  <textarea
+                    value={variables[v.name] || ''}
+                    onChange={(e) => {
+                      setVariables({ ...variables, [v.name]: e.target.value });
+                      // Auto adjust height / 自动调整高度
+                      e.target.style.height = 'auto';
+                      e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                    }}
+                    placeholder={v.defaultValue || t('prompt.inputVariable', { name: v.name })}
+                    rows={1}
+                    className="w-full min-h-[40px] px-4 py-2.5 rounded-xl bg-muted/50 border-0 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:bg-background transition-all duration-200 resize-none overflow-hidden"
+                    style={{ height: 'auto' }}
+                    onFocus={(e) => {
+                      // Initialize height / 初始化高度
+                      e.target.style.height = 'auto';
+                      e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
-          
-          <div className="grid gap-3">
-            {parsedVariables.map((v) => (
-              <div key={v.name} className="space-y-1">
-                <label className="text-sm font-medium text-foreground flex items-center gap-2">
-                  <code className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-xs">
-                    {`{{${v.name}}}`}
-                  </code>
-                  {v.defaultValue && (
-                    <span className="text-xs text-muted-foreground">
-                      {t('prompt.defaultValue')}: {v.defaultValue}
-                    </span>
-                  )}
-                  {variables[v.name] && variables[v.name] !== v.defaultValue && (
-                    <span className="flex items-center gap-1 text-xs text-green-600">
-                      <HistoryIcon className="w-3 h-3" />
-                      {t('prompt.fromHistory')}
-                    </span>
-                  )}
-                </label>
-                <textarea
-                  value={variables[v.name] || ''}
-                  onChange={(e) => {
-                    setVariables({ ...variables, [v.name]: e.target.value });
-                    // Auto adjust height
-                    // 自动调整高度
-                    e.target.style.height = 'auto';
-                    e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
-                  }}
-                  placeholder={v.defaultValue || t('prompt.inputVariable', { name: v.name })}
-                  rows={1}
-                  className="w-full min-h-[40px] px-4 py-2.5 rounded-xl bg-muted/50 border-0 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:bg-background transition-all duration-200 resize-none overflow-hidden"
-                  style={{ height: 'auto' }}
-                  onFocus={(e) => {
-                    // Initialize height
-                    // 初始化高度
-                    e.target.style.height = 'auto';
-                    e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
-                  }}
-                />
-              </div>
-            ))}
+
+          {/* Preview / 预览 */}
+          <div className="space-y-2">
+            <div className="text-sm font-medium text-foreground">{t('prompt.previewResult')}</div>
+            <div className="p-4 rounded-xl bg-muted/50 font-mono text-sm leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto">
+              {filledPrompt}
+            </div>
           </div>
         </div>
 
-        {/* Preview */}
-        {/* 预览 */}
-        <div className="space-y-2">
-          <div className="text-sm font-medium text-foreground">{t('prompt.previewResult')}</div>
-          <div className="p-4 rounded-xl bg-muted/50 font-mono text-sm leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto">
-            {filledPrompt}
-          </div>
-        </div>
-
-        {/* Action buttons */}
-        {/* 操作按钮 */}
-        <div className="flex justify-end gap-3 pt-2">
+        {/* Fixed action buttons / 固定操作按钮 */}
+        <div className="flex justify-end gap-3 pt-4 border-t border-border mt-4 shrink-0">
           <Button variant="secondary" onClick={onClose}>
             {t('common.cancel')}
           </Button>

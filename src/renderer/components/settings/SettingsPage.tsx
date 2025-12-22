@@ -79,7 +79,7 @@ const AI_PROVIDERS = [
   { id: 'anthropic', name: 'Anthropic (Claude)', defaultUrl: 'https://api.anthropic.com', group: 'International / 国际' },
   { id: 'xai', name: 'xAI (Grok)', defaultUrl: 'https://api.x.ai', group: 'International / 国际' },
   { id: 'mistral', name: 'Mistral AI', defaultUrl: 'https://api.mistral.ai', group: 'International / 国际' },
-  
+
   // Domestic / 国内
   { id: 'deepseek', name: 'DeepSeek (深度求索)', defaultUrl: 'https://api.deepseek.com', group: 'Domestic / 国内' },
   { id: 'moonshot', name: 'Moonshot (Kimi)', defaultUrl: 'https://api.moonshot.cn', group: 'Domestic / 国内' },
@@ -92,7 +92,7 @@ const AI_PROVIDERS = [
   { id: 'minimax', name: 'MiniMax', defaultUrl: 'https://api.minimax.chat', group: 'Domestic / 国内' },
   { id: 'stepfun', name: '阶跃星辰', defaultUrl: 'https://api.stepfun.com', group: 'Domestic / 国内' },
   { id: 'yi', name: '零一万物 (Yi)', defaultUrl: 'https://api.lingyiwanwu.com', group: 'Domestic / 国内' },
-  
+
   // Other / 其他
   { id: 'azure', name: 'Azure OpenAI', defaultUrl: '', group: 'Other / 其他' },
   { id: 'ollama', name: 'Ollama (本地)', defaultUrl: 'http://localhost:11434', group: 'Other / 其他' },
@@ -109,7 +109,7 @@ const AI_IMAGE_PROVIDERS = [
   { id: 'stability', name: 'Stability AI (SD3.5)', defaultUrl: 'https://api.stability.ai', group: 'International / 国际' },
   { id: 'replicate', name: 'Replicate', defaultUrl: 'https://api.replicate.com', group: 'International / 国际' },
   { id: 'xai', name: 'xAI (Grok)', defaultUrl: 'https://api.x.ai', group: 'International / 国际' },
-  
+
   // Other / 其他
   { id: 'azure', name: 'Azure OpenAI', defaultUrl: '', group: 'Other / 其他' },
   { id: 'custom', name: '自定义 (OpenAI 兼容)', defaultUrl: '', group: 'Other / 其他' },
@@ -205,11 +205,10 @@ function ShortcutItem({
           onFocus={() => setRecording(true)}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
-          className={`w-32 h-8 px-3 text-center text-sm rounded-lg border cursor-pointer transition-colors ${
-            recording
-              ? 'border-primary bg-primary/10 text-primary'
-              : 'border-border bg-background hover:border-primary/50'
-          }`}
+          className={`w-32 h-8 px-3 text-center text-sm rounded-lg border cursor-pointer transition-colors ${recording
+            ? 'border-primary bg-primary/10 text-primary'
+            : 'border-border bg-background hover:border-primary/50'
+            }`}
         />
         {shortcut && (
           <button
@@ -227,15 +226,15 @@ function ShortcutItem({
 
 // Reusable password input component
 // 可复用的密码输入组件
-function PasswordInput({ 
-  value, 
-  onChange, 
-  placeholder, 
-  className = '' 
-}: { 
-  value: string; 
-  onChange: (value: string) => void; 
-  placeholder?: string; 
+function PasswordInput({
+  value,
+  onChange,
+  placeholder,
+  className = ''
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
   className?: string;
 }) {
   const [show, setShow] = useState(false);
@@ -263,11 +262,11 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
   const [activeSection, setActiveSection] = useState('general');
   const { t } = useTranslation();
   const { showToast } = useToast();
-  
+
   // Use settings store
   // 使用 settings store
   const settings = useSettingsStore();
-  
+
   // AI test state
   // AI 测试状态
   const [aiTesting, setAiTesting] = useState(false);
@@ -291,7 +290,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
   const [showAddChatModel, setShowAddChatModel] = useState(false);
   const [showAddImageModel, setShowAddImageModel] = useState(false);
   const [editingModelId, setEditingModelId] = useState<string | null>(null);
-  
+
   // Update dialog state
   // 更新对话框状态
   const [appVersion, setAppVersion] = useState<string>('');
@@ -314,6 +313,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
     presencePenalty: 0,
     stream: false,
     enableThinking: false,
+    customParams: {} as Record<string, string | number | boolean>,
   });
   // Image model parameters state
   // 图像模型参数配置状态
@@ -335,7 +335,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
   const [showModelPicker, setShowModelPicker] = useState(false);
   const [modelSearchQuery, setModelSearchQuery] = useState('');
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
-  
+
   // Model list fetching state (image models)
   // 获取模型列表状态（生图模型）
   const [fetchingImageModels, setFetchingImageModels] = useState(false);
@@ -343,7 +343,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
   const [showImageModelPicker, setShowImageModelPicker] = useState(false);
   const [imageModelSearchQuery, setImageModelSearchQuery] = useState('');
   const [collapsedImageCategories, setCollapsedImageCategories] = useState<Set<string>>(new Set());
-  
+
   // Image test result modal
   // 生图测试结果弹窗
   const [imageTestModalResult, setImageTestModalResult] = useState<ImageTestResult | null>(null);
@@ -376,7 +376,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
   const [oldPwd, setOldPwd] = useState('');
   const [newPwd, setNewPwd] = useState('');
   const [newPwdConfirm, setNewPwdConfirm] = useState('');
-  
+
   // Clear data confirm modal
   // 清除数据确认弹窗
   const [showClearConfirm, setShowClearConfirm] = useState(false);
@@ -454,13 +454,13 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
     setAiTestResult(null);
     setStreamingContent('');
     setStreamingThinking('');
-    
+
     const useStream = model.chatParams?.stream ?? false;
-    
+
     if (useStream) {
       setIsStreaming(true);
     }
-    
+
     const result = await testAIConnection(
       {
         provider: model.provider,
@@ -475,11 +475,11 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
         onThinking: (chunk) => setStreamingThinking(prev => prev + chunk),
       } : undefined
     );
-    
+
     setIsStreaming(false);
     setAiTestResult(result);
     setTestingModelId(null);
-    
+
     if (result.success) {
       const thinkingInfo = result.thinkingContent ? ' (含思考过程)' : '';
       showToast(`连接成功 (${result.latency}ms)${thinkingInfo}`, 'success');
@@ -598,16 +598,16 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
   // 测试单个生图模型
   const handleTestImageModel = async (model: typeof settings.aiModels[0]) => {
     setTestingModelId(model.id);
-    
+
     const result = await testImageGeneration({
       provider: model.provider,
       apiKey: model.apiKey,
       apiUrl: model.apiUrl,
       model: model.model,
     }, 'A cute cat sitting on a windowsill');
-    
+
     setTestingModelId(null);
-    
+
     // Show result modal
     // 显示结果弹窗
     setImageTestModalResult(result);
@@ -620,15 +620,15 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
       showToast(t('settings.fillApiFirst'), 'error');
       return;
     }
-    
+
     setFetchingModels(true);
     setAvailableModels([]);
     setModelSearchQuery('');
-    
+
     const result = await fetchAvailableModels(newModel.apiUrl, newModel.apiKey);
-    
+
     setFetchingModels(false);
-    
+
     if (result.success && result.models.length > 0) {
       setAvailableModels(result.models);
       setShowModelPicker(true);
@@ -637,7 +637,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
       showToast(result.error || t('settings.noModelsFound'), 'error');
     }
   };
-  
+
   // Fetch available model list (image models)
   // 获取可用模型列表（生图模型）
   const handleFetchImageModels = async () => {
@@ -645,14 +645,14 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
       showToast(t('settings.fillApiFirst'), 'error');
       return;
     }
-    
+
     setFetchingImageModels(true);
     setAvailableImageModels([]);
-    
+
     const result = await fetchAvailableModels(newModel.apiUrl, newModel.apiKey);
-    
+
     setFetchingImageModels(false);
-    
+
     if (result.success && result.models.length > 0) {
       setAvailableImageModels(result.models);
       setShowImageModelPicker(true);
@@ -669,7 +669,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
       showToast(t('settings.fillApiFirst'), 'error');
       return;
     }
-    
+
     // Add model to list
     // 添加模型到列表
     settings.addAiModel({
@@ -682,7 +682,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
     });
     showToast(t('settings.modelAdded'), 'success');
   };
-  
+
   // Add selected model (image models)
   // 添加选中的模型（生图模型）
   const handleAddImageModel = (modelId: string) => {
@@ -690,7 +690,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
       showToast(t('settings.fillApiFirst'), 'error');
       return;
     }
-    
+
     // Add model to list
     // 添加模型到列表
     settings.addAiModel({
@@ -706,14 +706,14 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
 
   // Filter model list (chat models)
   // 过滤模型列表（对话模型）
-  const filteredModels = availableModels.filter((m) => 
+  const filteredModels = availableModels.filter((m) =>
     m.id.toLowerCase().includes(modelSearchQuery.toLowerCase()) ||
     m.owned_by?.toLowerCase().includes(modelSearchQuery.toLowerCase())
   );
-  
+
   // Filter model list (image models)
   // 过滤模型列表（生图模型）
-  const filteredImageModels = availableImageModels.filter((m) => 
+  const filteredImageModels = availableImageModels.filter((m) =>
     m.id.toLowerCase().includes(imageModelSearchQuery.toLowerCase()) ||
     m.owned_by?.toLowerCase().includes(imageModelSearchQuery.toLowerCase())
   );
@@ -804,7 +804,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
       return next;
     });
   };
-  
+
   // Toggle category collapse state (image models)
   // 切换分类折叠状态（生图模型）
   const toggleImageCategory = (category: string) => {
@@ -818,7 +818,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
       return next;
     });
   };
-  
+
   // Group image models by category
   // 按分类组织生图模型
   const categorizedImageModels = filteredImageModels.reduce((acc, model) => {
@@ -832,7 +832,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
     acc[category].push(model);
     return acc;
   }, {} as Record<string, ModelInfo[]>);
-  
+
   // Image model category ordering
   // 生图模型分类排序
   const imageCategoryOrder = categoryOrder.map(c => c === 'Gemini' ? 'nanobananai 🍌' : c);
@@ -883,7 +883,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
   // Provider collapse state
   // 供应商折叠状态
   const [collapsedProviders, setCollapsedProviders] = useState<Set<string>>(new Set());
-  
+
   const toggleProviderCollapse = (apiUrl: string) => {
     setCollapsedProviders(prev => {
       const next = new Set(prev);
@@ -903,20 +903,20 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
       showToast(t('toast.configApiKey'), 'error');
       return;
     }
-    
+
     setAiTesting(true);
     setAiTestResult(null);
-    
+
     const result = await testAIConnection({
       provider: settings.aiProvider,
       apiKey: settings.aiApiKey,
       apiUrl: settings.aiApiUrl,
       model: settings.aiModel,
     });
-    
+
     setAiTestResult(result);
     setAiTesting(false);
-    
+
     if (result.success) {
       showToast(`${t('toast.connectionSuccess')} (${result.latency}ms)`, 'success');
     } else {
@@ -931,12 +931,12 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
       showToast(t('toast.configApiKey'), 'error');
       return;
     }
-    
+
     setAiTesting(true);
     setCompareTesting(true);
     setAiTestResult(null);
     setCompareResult(null);
-    
+
     // Test both models in parallel
     // 并行测试两个模型
     const [result1, result2] = await Promise.all([
@@ -953,7 +953,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
         model: compareConfig.model,
       }),
     ]);
-    
+
     setAiTestResult(result1);
     setCompareResult(result2);
     setAiTesting(false);
@@ -1061,13 +1061,13 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
     // 未设置主密码时，提示需要先设置
     showToast(t('settings.clearNeedPassword') || '清除数据属于高危操作，请先在安全设置中设置主密码', 'error');
   };
-  
+
   const handleConfirmClear = async () => {
     if (!clearPwd) {
       showToast(t('settings.enterPassword') || '请输入主密码', 'error');
       return;
     }
-    
+
     setClearLoading(true);
     try {
       // Verify password
@@ -1078,7 +1078,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
         setClearLoading(false);
         return;
       }
-      
+
       // Password verified; proceed to clear
       // 密码正确，执行清除
       await clearDatabase();
@@ -1104,7 +1104,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 label={t('settings.launchAtStartup')}
                 description={t('settings.launchAtStartupDesc')}
               >
-                <ToggleSwitch 
+                <ToggleSwitch
                   checked={settings.launchAtStartup}
                   onChange={(checked) => {
                     settings.setLaunchAtStartup(checked);
@@ -1116,7 +1116,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 label={t('settings.minimizeOnLaunch')}
                 description={t('settings.minimizeOnLaunchDesc')}
               >
-                <ToggleSwitch 
+                <ToggleSwitch
                   checked={settings.minimizeOnLaunch}
                   onChange={settings.setMinimizeOnLaunch}
                 />
@@ -1147,7 +1147,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 label={t('settings.autoSave')}
                 description={t('settings.autoSaveDesc')}
               >
-                <ToggleSwitch 
+                <ToggleSwitch
                   checked={settings.autoSave}
                   onChange={settings.setAutoSave}
                 />
@@ -1156,7 +1156,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 label={t('settings.showLineNumbers')}
                 description={t('settings.showLineNumbersDesc')}
               >
-                <ToggleSwitch 
+                <ToggleSwitch
                   checked={settings.showLineNumbers}
                   onChange={settings.setShowLineNumbers}
                 />
@@ -1183,11 +1183,10 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                       <button
                         key={mode.id}
                         onClick={() => settings.setThemeMode(mode.id)}
-                        className={`relative flex-1 h-10 rounded-xl text-[13px] font-medium transition-all duration-200 ${
-                          selected
-                            ? 'bg-card text-foreground shadow-sm'
-                            : 'text-foreground/70 hover:text-foreground hover:bg-background/40'
-                        }`}
+                        className={`relative flex-1 h-10 rounded-xl text-[13px] font-medium transition-all duration-200 ${selected
+                          ? 'bg-card text-foreground shadow-sm'
+                          : 'text-foreground/70 hover:text-foreground hover:bg-background/40'
+                          }`}
                       >
                         <span className="inline-flex items-center justify-center gap-2">
                           <span className={`transition-transform duration-200 ${selected ? 'scale-105' : ''}`}>
@@ -1211,11 +1210,11 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                     {settings.themeColor === 'custom'
                       ? `${t('settings.customColor', '自定义')} ${settings.customThemeHex}`
                       : (() => {
-                          const theme = MORANDI_THEMES.find((x) => x.id === settings.themeColor);
-                          if (!theme) return '';
-                          const key = `settings.color${theme.id.charAt(0).toUpperCase() + theme.id.slice(1).replace(/-([a-z])/g, (_, c) => c.toUpperCase())}`;
-                          return t(key);
-                        })()}
+                        const theme = MORANDI_THEMES.find((x) => x.id === settings.themeColor);
+                        if (!theme) return '';
+                        const key = `settings.color${theme.id.charAt(0).toUpperCase() + theme.id.slice(1).replace(/-([a-z])/g, (_, c) => c.toUpperCase())}`;
+                        return t(key);
+                      })()}
                   </div>
                 </div>
                 {/* 单行色带（均匀分布 + ring 安全边距，避免裁切） */}
@@ -1227,11 +1226,10 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                       <div key={theme.id} className="flex-1 flex justify-center min-w-0">
                         <button
                           onClick={() => settings.setThemeColor(theme.id)}
-                          className={`relative h-10 w-10 flex-shrink-0 rounded-full transition-all duration-200 ${
-                            selected
-                              ? 'ring-2 ring-primary ring-offset-2 ring-offset-background'
-                              : 'hover:opacity-90'
-                          }`}
+                          className={`relative h-10 w-10 flex-shrink-0 rounded-full transition-all duration-200 ${selected
+                            ? 'ring-2 ring-primary ring-offset-2 ring-offset-background'
+                            : 'hover:opacity-90'
+                            }`}
                           title={t(colorNameKey)}
                           aria-label={t(colorNameKey)}
                           style={{ backgroundColor: `hsl(${theme.hue}, ${theme.saturation}%, 55%)` }}
@@ -1249,11 +1247,10 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                   <div className="flex-1 flex justify-center min-w-0">
                     <button
                       onClick={() => settings.setThemeColor('custom')}
-                      className={`relative h-10 w-10 flex-shrink-0 rounded-full transition-all duration-200 ${
-                        settings.themeColor === 'custom'
-                          ? 'ring-2 ring-primary ring-offset-2 ring-offset-background'
-                          : 'hover:opacity-95'
-                      }`}
+                      className={`relative h-10 w-10 flex-shrink-0 rounded-full transition-all duration-200 ${settings.themeColor === 'custom'
+                        ? 'ring-2 ring-primary ring-offset-2 ring-offset-background'
+                        : 'hover:opacity-95'
+                        }`}
                       title={t('settings.customColor', '自定义')}
                       aria-label={t('settings.customColor', '自定义')}
                       style={{ backgroundColor: settings.customThemeHex }}
@@ -1320,11 +1317,10 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                     <button
                       key={size.id}
                       onClick={() => settings.setFontSize(size.id)}
-                      className={`py-2.5 px-4 rounded-xl text-[13px] font-medium transition-all duration-200 ${
-                        settings.fontSize === size.id
-                          ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
-                          : 'bg-muted/40 text-foreground hover:bg-muted/70 hover:shadow'
-                      } hover:-translate-y-0.5 active:translate-y-0`}
+                      className={`py-2.5 px-4 rounded-xl text-[13px] font-medium transition-all duration-200 ${settings.fontSize === size.id
+                        ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
+                        : 'bg-muted/40 text-foreground hover:bg-muted/70 hover:shadow'
+                        } hover:-translate-y-0.5 active:translate-y-0`}
                     >
                       {t(sizeNameKey)}
                       <span className="block text-[11px] opacity-70 mt-0.5">{size.value}px</span>
@@ -1455,7 +1451,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                           t('settings.confirmDataMigration', '确定要将数据迁移到新目录吗？\n\n迁移完成后需要重启应用。')
                         );
                         if (!confirmed) return;
-                        
+
                         // Execute migration
                         // 执行迁移
                         const result = await window.electron?.migrateData?.(newPath);
@@ -1492,7 +1488,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                       {t('settings.webdavEnabledDesc')}
                     </p>
                   </div>
-                  <ToggleSwitch 
+                  <ToggleSwitch
                     checked={settings.webdavEnabled}
                     onChange={settings.setWebdavEnabled}
                   />
@@ -1617,7 +1613,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                         {t('settings.download')}
                       </button>
                     </div>
-                    
+
                     {/* 自动运行（定时同步） */}
                     <div className="flex items-center justify-between pt-3 border-t border-border">
                       <div className="flex-1 mr-4">
@@ -1640,7 +1636,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                         />
                       </div>
                     </div>
-                    
+
                     {/* 启动后自动运行一次 */}
                     <div className="flex items-center justify-between pt-3 border-t border-border">
                       <div className="flex-1 mr-4">
@@ -1671,7 +1667,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                         />
                       </div>
                     </div>
-                    
+
                     {/* 保存时同步（实验性质） */}
                     <div className="flex items-center justify-between pt-3 border-t border-border">
                       <div className="flex-1 mr-4">
@@ -1680,12 +1676,12 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                           {t('settings.webdavSyncOnSaveDesc')}
                         </p>
                       </div>
-                      <ToggleSwitch 
+                      <ToggleSwitch
                         checked={settings.webdavSyncOnSave}
                         onChange={settings.setWebdavSyncOnSave}
                       />
                     </div>
-                    
+
                     {/* 包含图片 */}
                     <div className="flex items-center justify-between pt-3 border-t border-border">
                       <div className="flex-1 mr-4">
@@ -1694,12 +1690,12 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                           {t('settings.webdavIncludeImagesDesc')}
                         </p>
                       </div>
-                      <ToggleSwitch 
+                      <ToggleSwitch
                         checked={settings.webdavIncludeImages}
                         onChange={settings.setWebdavIncludeImages}
                       />
                     </div>
-                    
+
                     {/* 增量同步 */}
                     <div className="flex items-center justify-between pt-3 border-t border-border">
                       <div className="flex-1 mr-4">
@@ -1708,12 +1704,12 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                           {t('settings.webdavIncrementalSyncDesc')}
                         </p>
                       </div>
-                      <ToggleSwitch 
+                      <ToggleSwitch
                         checked={settings.webdavIncrementalSync}
                         onChange={settings.setWebdavIncrementalSync}
                       />
                     </div>
-                    
+
                     {/* 加密备份（实验性） */}
                     <div className="flex items-center justify-between pt-3 border-t border-border">
                       <div className="flex-1 mr-4">
@@ -1722,12 +1718,12 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                           {t('settings.webdavEncryptionDesc')}
                         </p>
                       </div>
-                      <ToggleSwitch 
+                      <ToggleSwitch
                         checked={settings.webdavEncryptionEnabled}
                         onChange={settings.setWebdavEncryptionEnabled}
                       />
                     </div>
-                    
+
                     {/* 加密密码输入框 */}
                     {settings.webdavEncryptionEnabled && (
                       <div className="pt-2">
@@ -1775,15 +1771,14 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                     return (
                       <div
                         key={item.key}
-                        className={`flex items-center gap-3 px-3 py-2 rounded-lg border transition-colors cursor-pointer select-none ${
-                          checked ? 'border-primary/40 bg-primary/5' : 'border-border/60 hover:bg-muted/40'
-                        }`}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-lg border transition-colors cursor-pointer select-none ${checked ? 'border-primary/40 bg-primary/5' : 'border-border/60 hover:bg-muted/40'
+                          }`}
                         onClick={() => setExportScope((prev) => ({ ...prev, [item.key]: !checked }))}
                       >
                         <div className="pointer-events-none">
                           <Checkbox
                             checked={checked}
-                            onChange={() => {}}
+                            onChange={() => { }}
                           />
                         </div>
                         <span className="text-sm">{item.label}</span>
@@ -1853,15 +1848,14 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                     {Object.entries(groupedChatModels).map(([apiUrl, group]) => {
                       const isCollapsed = collapsedProviders.has(apiUrl);
                       const hasDefault = group.models.some(m => m.isDefault);
-                      
+
                       return (
                         <div key={apiUrl} className="border border-border rounded-lg overflow-hidden">
                           {/* 供应商标题 */}
                           <button
                             onClick={() => toggleProviderCollapse(apiUrl)}
-                            className={`w-full flex items-center justify-between p-3 hover:bg-muted/50 transition-colors ${
-                              hasDefault ? 'bg-primary/5' : 'bg-muted/30'
-                            }`}
+                            className={`w-full flex items-center justify-between p-3 hover:bg-muted/50 transition-colors ${hasDefault ? 'bg-primary/5' : 'bg-muted/30'
+                              }`}
                           >
                             <div className="flex items-center gap-2">
                               {isCollapsed ? (
@@ -1875,18 +1869,18 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                                     ? group.models.length > 0 ? getModelCategory(group.models[0]) : 'Other'
                                     : group.providerId === 'openai' ? 'GPT' :
                                       group.providerId === 'google' ? 'Gemini' :
-                                      group.providerId === 'anthropic' ? 'Claude' :
-                                      group.providerId === 'deepseek' ? 'DeepSeek' :
-                                      group.providerId === 'moonshot' ? 'Moonshot' :
-                                      group.providerId === 'zhipu' ? 'GLM' :
-                                      group.providerId === 'qwen' ? 'Qwen' :
-                                      group.providerId === 'doubao' ? 'Doubao' :
-                                      group.providerId === 'mistral' ? 'Mistral' :
-                                      group.providerId === 'baichuan' ? 'Baichuan' :
-                                      group.providerId === 'yi' ? 'Yi' :
-                                      group.providerId === 'ernie' ? 'ERNIE' :
-                                      group.providerId === 'spark' ? 'Spark' :
-                                      group.provider, 
+                                        group.providerId === 'anthropic' ? 'Claude' :
+                                          group.providerId === 'deepseek' ? 'DeepSeek' :
+                                            group.providerId === 'moonshot' ? 'Moonshot' :
+                                              group.providerId === 'zhipu' ? 'GLM' :
+                                                group.providerId === 'qwen' ? 'Qwen' :
+                                                  group.providerId === 'doubao' ? 'Doubao' :
+                                                    group.providerId === 'mistral' ? 'Mistral' :
+                                                      group.providerId === 'baichuan' ? 'Baichuan' :
+                                                        group.providerId === 'yi' ? 'Yi' :
+                                                          group.providerId === 'ernie' ? 'ERNIE' :
+                                                            group.providerId === 'spark' ? 'Spark' :
+                                                              group.provider,
                                   18
                                 )}
                               </span>
@@ -1902,16 +1896,15 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                               {new URL(apiUrl).host}
                             </span>
                           </button>
-                          
+
                           {/* 模型列表 */}
                           {!isCollapsed && (
                             <div className="divide-y divide-border">
                               {group.models.map((model) => (
                                 <div
                                   key={model.id}
-                                  className={`flex items-center justify-between px-4 py-2.5 hover:bg-muted/30 transition-colors ${
-                                    model.isDefault ? 'bg-primary/5' : ''
-                                  }`}
+                                  className={`flex items-center justify-between px-4 py-2.5 hover:bg-muted/30 transition-colors ${model.isDefault ? 'bg-primary/5' : ''
+                                    }`}
                                 >
                                   <div className="flex items-center gap-3">
                                     <div className="flex-shrink-0">
@@ -1974,9 +1967,10 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                                             presencePenalty: model.chatParams.presencePenalty ?? 0,
                                             stream: model.chatParams.stream ?? false,
                                             enableThinking: model.chatParams.enableThinking ?? false,
+                                            customParams: model.chatParams.customParams ?? {},
                                           });
                                         } else {
-                                          setChatParams({ temperature: 0.7, maxTokens: 2048, topP: 1.0, topK: undefined, frequencyPenalty: 0, presencePenalty: 0, stream: false, enableThinking: false });
+                                          setChatParams({ temperature: 0.7, maxTokens: 2048, topP: 1.0, topK: undefined, frequencyPenalty: 0, presencePenalty: 0, stream: false, enableThinking: false, customParams: {} });
                                         }
                                         setShowAddChatModel(true);
                                       }}
@@ -2112,7 +2106,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                         className="w-full h-9 px-3 rounded-lg bg-muted border-0 text-sm"
                       />
                     </div>
-                    
+
                     {/* 高级参数配置 / Advanced Parameters */}
                     <div className="border border-border rounded-lg overflow-hidden">
                       <button
@@ -2127,7 +2121,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                           <ChevronRightIcon className="w-4 h-4 text-muted-foreground" />
                         )}
                       </button>
-                      
+
                       {showAdvancedParams && (
                         <div className="p-3 space-y-4 border-t border-border">
                           {/* 流式输出开关 / Stream Output Toggle */}
@@ -2144,7 +2138,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                               <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${chatParams.stream ? 'translate-x-5' : ''}`} />
                             </button>
                           </div>
-                          
+
                           {/* 思考模式开关 / Thinking Mode Toggle */}
                           <div className="flex items-center justify-between">
                             <div>
@@ -2159,7 +2153,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                               <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${chatParams.enableThinking ? 'translate-x-5' : ''}`} />
                             </button>
                           </div>
-                          
+
                           {/* 温度滑动条 / Temperature Slider */}
                           <div>
                             <div className="flex items-center justify-between mb-1">
@@ -2177,7 +2171,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                             />
                             <p className="text-xs text-muted-foreground mt-1">{t('settings.temperatureDesc')}</p>
                           </div>
-                          
+
                           {/* 最大 Token / Max Tokens */}
                           <div>
                             <div className="flex items-center justify-between mb-1">
@@ -2195,7 +2189,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                             />
                             <p className="text-xs text-muted-foreground mt-1">{t('settings.maxTokensDesc')}</p>
                           </div>
-                          
+
                           {/* Top P 滑动条 / Top P Slider */}
                           <div>
                             <div className="flex items-center justify-between mb-1">
@@ -2213,7 +2207,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                             />
                             <p className="text-xs text-muted-foreground mt-1">{t('settings.topPDesc')}</p>
                           </div>
-                          
+
                           {/* 频率惩罚 / Frequency Penalty */}
                           <div>
                             <div className="flex items-center justify-between mb-1">
@@ -2231,7 +2225,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                             />
                             <p className="text-xs text-muted-foreground mt-1">{t('settings.frequencyPenaltyDesc')}</p>
                           </div>
-                          
+
                           {/* 存在惩罚 / Presence Penalty */}
                           <div>
                             <div className="flex items-center justify-between mb-1">
@@ -2249,10 +2243,86 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                             />
                             <p className="text-xs text-muted-foreground mt-1">{t('settings.presencePenaltyDesc')}</p>
                           </div>
+
+                          {/* Custom Parameters / 自定义参数 */}
+                          <div className="border-t border-border pt-4 mt-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <label className="text-sm font-medium">{t('settings.customParams', '自定义参数')}</label>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newKey = `param_${Date.now()}`;
+                                  setChatParams({
+                                    ...chatParams,
+                                    customParams: { ...chatParams.customParams, [newKey]: '' }
+                                  });
+                                }}
+                                className="text-xs text-primary hover:underline"
+                              >
+                                + {t('settings.addCustomParam', '添加参数')}
+                              </button>
+                            </div>
+                            <p className="text-xs text-muted-foreground mb-3">
+                              {t('settings.customParamsDesc', '添加自定义请求参数，如 max_completion_tokens 等')}
+                            </p>
+                            <div className="space-y-2">
+                              {Object.entries(chatParams.customParams).map(([key, value]) => (
+                                <div key={key} className="flex items-center gap-2">
+                                  <input
+                                    type="text"
+                                    placeholder={t('settings.paramName', '参数名')}
+                                    defaultValue={key.startsWith('param_') ? '' : key}
+                                    onBlur={(e) => {
+                                      const newKey = e.target.value.trim();
+                                      if (newKey && newKey !== key) {
+                                        // Rename key / 重命名键
+                                        const { [key]: oldValue, ...rest } = chatParams.customParams;
+                                        setChatParams({
+                                          ...chatParams,
+                                          customParams: { ...rest, [newKey]: oldValue }
+                                        });
+                                      }
+                                    }}
+                                    className="flex-1 h-8 px-3 rounded-lg bg-muted/50 border-0 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                  />
+                                  <input
+                                    type="text"
+                                    placeholder={t('settings.paramValue', '参数值')}
+                                    value={String(value)}
+                                    onChange={(e) => {
+                                      // Auto-detect value type / 自动检测值类型
+                                      let parsedValue: string | number | boolean = e.target.value;
+                                      if (e.target.value === 'true') parsedValue = true;
+                                      else if (e.target.value === 'false') parsedValue = false;
+                                      else if (!isNaN(Number(e.target.value)) && e.target.value !== '') {
+                                        parsedValue = Number(e.target.value);
+                                      }
+                                      setChatParams({
+                                        ...chatParams,
+                                        customParams: { ...chatParams.customParams, [key]: parsedValue }
+                                      });
+                                    }}
+                                    className="flex-1 h-8 px-3 rounded-lg bg-muted/50 border-0 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const { [key]: _, ...rest } = chatParams.customParams;
+                                      setChatParams({ ...chatParams, customParams: rest });
+                                    }}
+                                    className="p-1.5 rounded hover:bg-destructive/10 text-destructive transition-colors"
+                                    title={t('common.delete')}
+                                  >
+                                    <TrashIcon className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>
-                    
+
                     <button
                       onClick={() => {
                         if (!newModel.apiKey || !newModel.apiUrl || !newModel.model) {
@@ -2272,6 +2342,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                             presencePenalty: chatParams.presencePenalty,
                             stream: chatParams.stream,
                             enableThinking: chatParams.enableThinking,
+                            customParams: chatParams.customParams,
                           },
                         };
                         if (editingModelId && editingModelType === 'chat') {
@@ -2284,7 +2355,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                         setShowAddChatModel(false);
                         setEditingModelId(null);
                         setNewModel({ name: '', provider: 'openai', apiKey: '', apiUrl: '', model: '' });
-                        setChatParams({ temperature: 0.7, maxTokens: 2048, topP: 1.0, topK: undefined, frequencyPenalty: 0, presencePenalty: 0, stream: false, enableThinking: false });
+                        setChatParams({ temperature: 0.7, maxTokens: 2048, topP: 1.0, topK: undefined, frequencyPenalty: 0, presencePenalty: 0, stream: false, enableThinking: false, customParams: {} });
                         setShowAdvancedParams(false);
                       }}
                       className="w-full h-9 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
@@ -2317,7 +2388,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                   <div className="space-y-2">
                     {Object.entries(groupedImageModels).map(([apiUrl, group]) => {
                       const isCollapsed = collapsedProviders.has(`image-${apiUrl}`);
-                      
+
                       return (
                         <div key={apiUrl} className="border border-border rounded-lg overflow-hidden">
                           {/* 供应商标题 */}
@@ -2337,18 +2408,18 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                                     ? group.models.length > 0 ? getModelCategory(group.models[0]) : 'Other'
                                     : group.providerId === 'openai' ? 'GPT' :
                                       group.providerId === 'google' ? 'nanobananai 🍌' :
-                                      group.providerId === 'anthropic' ? 'Claude' :
-                                      group.providerId === 'deepseek' ? 'DeepSeek' :
-                                      group.providerId === 'moonshot' ? 'Moonshot' :
-                                      group.providerId === 'zhipu' ? 'GLM' :
-                                      group.providerId === 'qwen' ? 'Qwen' :
-                                      group.providerId === 'doubao' ? 'Doubao' :
-                                      group.providerId === 'mistral' ? 'Mistral' :
-                                      group.providerId === 'baichuan' ? 'Baichuan' :
-                                      group.providerId === 'yi' ? 'Yi' :
-                                      group.providerId === 'ernie' ? 'ERNIE' :
-                                      group.providerId === 'spark' ? 'Spark' :
-                                      group.provider, 
+                                        group.providerId === 'anthropic' ? 'Claude' :
+                                          group.providerId === 'deepseek' ? 'DeepSeek' :
+                                            group.providerId === 'moonshot' ? 'Moonshot' :
+                                              group.providerId === 'zhipu' ? 'GLM' :
+                                                group.providerId === 'qwen' ? 'Qwen' :
+                                                  group.providerId === 'doubao' ? 'Doubao' :
+                                                    group.providerId === 'mistral' ? 'Mistral' :
+                                                      group.providerId === 'baichuan' ? 'Baichuan' :
+                                                        group.providerId === 'yi' ? 'Yi' :
+                                                          group.providerId === 'ernie' ? 'ERNIE' :
+                                                            group.providerId === 'spark' ? 'Spark' :
+                                                              group.provider,
                                   18
                                 )}
                               </span>
@@ -2361,7 +2432,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                               {(() => { try { return new URL(apiUrl).host; } catch { return apiUrl; } })()}
                             </span>
                           </button>
-                          
+
                           {/* 模型列表 */}
                           {!isCollapsed && (
                             <div className="divide-y divide-border">
@@ -2695,7 +2766,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 label={t('settings.enableNotifications')}
                 description={t('settings.enableNotificationsDesc')}
               >
-                <ToggleSwitch 
+                <ToggleSwitch
                   checked={settings.enableNotifications}
                   onChange={settings.setEnableNotifications}
                 />
@@ -2704,7 +2775,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 label={t('settings.copyNotification')}
                 description={t('settings.copyNotificationDesc')}
               >
-                <ToggleSwitch 
+                <ToggleSwitch
                   checked={settings.showCopyNotification}
                   onChange={settings.setShowCopyNotification}
                 />
@@ -2713,7 +2784,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 label={t('settings.saveNotification')}
                 description={t('settings.saveNotificationDesc')}
               >
-                <ToggleSwitch 
+                <ToggleSwitch
                   checked={settings.showSaveNotification}
                   onChange={settings.setShowSaveNotification}
                 />
@@ -2744,7 +2815,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
 
             <SettingSection title={t('settings.checkUpdate')}>
               <SettingItem label={t('settings.autoCheckUpdate')} description={t('settings.autoCheckUpdateDesc')}>
-                <ToggleSwitch 
+                <ToggleSwitch
                   checked={settings.autoCheckUpdate}
                   onChange={settings.setAutoCheckUpdate}
                 />
@@ -2761,8 +2832,8 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
 
             <SettingSection title={t('settings.openSource')}>
               <SettingItem label="GitHub" description={t('settings.viewOnGithub')}>
-                <a 
-                  href="https://github.com/legeling/PromptHub" 
+                <a
+                  href="https://github.com/legeling/PromptHub"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-primary text-sm hover:underline"
@@ -2771,8 +2842,8 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 </a>
               </SettingItem>
               <SettingItem label={t('settings.reportIssue')} description={t('settings.reportIssueDesc')}>
-                <a 
-                  href="https://github.com/legeling/PromptHub/issues/new" 
+                <a
+                  href="https://github.com/legeling/PromptHub/issues/new"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="h-8 px-4 rounded-lg bg-orange-500 text-white text-sm hover:bg-orange-600 transition-colors inline-flex items-center gap-1.5"
@@ -2785,8 +2856,8 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
 
             <SettingSection title={t('settings.author')}>
               <div className="px-4 py-3 space-y-3">
-                <a 
-                  href="https://github.com/legeling" 
+                <a
+                  href="https://github.com/legeling"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors group"
@@ -2800,7 +2871,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                   </div>
                   <ExternalLinkIcon className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </a>
-                <a 
+                <a
                   href="mailto:legeling567@gmail.com"
                   className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors group"
                 >
@@ -2844,11 +2915,10 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
             <button
               key={item.id}
               onClick={() => setActiveSection(item.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] transition-all duration-150 ${
-                activeSection === item.id
-                  ? 'bg-primary text-white shadow-sm'
-                  : 'text-foreground/80 hover:bg-muted/70'
-              }`}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] transition-all duration-150 ${activeSection === item.id
+                ? 'bg-primary text-white shadow-sm'
+                : 'text-foreground/80 hover:bg-muted/70'
+                }`}
             >
               <item.icon className="w-4 h-4" />
               <span>{t(item.labelKey)}</span>
@@ -2883,7 +2953,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 <p className="text-sm text-muted-foreground">{t('settings.clearDesc')}</p>
               </div>
             </div>
-            
+
             <div className="mb-4">
               <label className="block text-sm font-medium mb-2">{t('settings.enterMasterPassword') || '请输入主密码确认'}</label>
               <PasswordInput
@@ -2892,7 +2962,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 placeholder={t('settings.masterPasswordPlaceholder') || '输入主密码'}
               />
             </div>
-            
+
             <div className="flex gap-2">
               <button
                 onClick={() => {
@@ -2930,7 +3000,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 <XIcon className="w-5 h-5" />
               </button>
             </div>
-            
+
             {/* 搜索框 */}
             <div className="p-4 border-b border-border">
               <div className="relative">
@@ -2948,7 +3018,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 {modelSearchQuery && ` • ${t('settings.filteredModels', { count: filteredModels.length })}`}
               </p>
             </div>
-            
+
             {/* 模型列表 - 按分类折叠显示 */}
             <div className="flex-1 overflow-y-auto p-2">
               {filteredModels.length === 0 ? (
@@ -2960,10 +3030,10 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                   {sortedCategories.map((category) => {
                     const models = categorizedModels[category];
                     const isCollapsed = collapsedCategories.has(category);
-                    const addedCount = models.filter(m => 
+                    const addedCount = models.filter(m =>
                       settings.aiModels.some(am => am.model === m.id && am.apiUrl === newModel.apiUrl)
                     ).length;
-                    
+
                     return (
                       <div key={category} className="border border-border rounded-lg overflow-hidden">
                         {/* 分类标题 */}
@@ -3003,7 +3073,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                             {t('settings.addAll')}
                           </button>
                         </button>
-                        
+
                         {/* 模型列表 */}
                         {!isCollapsed && (
                           <div className="divide-y divide-border">
@@ -3014,9 +3084,8 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                               return (
                                 <div
                                   key={model.id}
-                                  className={`flex items-center justify-between px-4 py-2.5 hover:bg-muted/30 transition-colors ${
-                                    isAdded ? 'bg-primary/5' : ''
-                                  }`}
+                                  className={`flex items-center justify-between px-4 py-2.5 hover:bg-muted/30 transition-colors ${isAdded ? 'bg-primary/5' : ''
+                                    }`}
                                 >
                                   <div className="flex items-center gap-3 flex-1 min-w-0">
                                     <div className="flex-shrink-0">
@@ -3032,11 +3101,10 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                                   <button
                                     onClick={() => handleAddModel(model.id)}
                                     disabled={isAdded}
-                                    className={`ml-3 p-1.5 rounded-lg transition-colors ${
-                                      isAdded 
-                                        ? 'bg-primary/20 text-primary cursor-default' 
-                                        : 'hover:bg-primary/10 text-muted-foreground hover:text-primary'
-                                    }`}
+                                    className={`ml-3 p-1.5 rounded-lg transition-colors ${isAdded
+                                      ? 'bg-primary/20 text-primary cursor-default'
+                                      : 'hover:bg-primary/10 text-muted-foreground hover:text-primary'
+                                      }`}
                                     title={isAdded ? t('settings.modelAlreadyAdded') : t('settings.addModel')}
                                   >
                                     {isAdded ? (
@@ -3056,7 +3124,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 </div>
               )}
             </div>
-            
+
             {/* 底部按钮 */}
             <div className="p-4 border-t border-border">
               <button
@@ -3069,7 +3137,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
           </div>
         </div>
       )}
-      
+
       {/* 生图模型选择弹窗 */}
       {showImageModelPicker && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -3084,7 +3152,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 <XIcon className="w-5 h-5" />
               </button>
             </div>
-            
+
             {/* 搜索框 */}
             <div className="p-4 border-b border-border">
               <div className="relative">
@@ -3102,7 +3170,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 {imageModelSearchQuery && ` • ${t('settings.filteredModels', { count: filteredImageModels.length })}`}
               </p>
             </div>
-            
+
             {/* 模型列表 - 按分类折叠显示 */}
             <div className="flex-1 overflow-y-auto p-2">
               {filteredImageModels.length === 0 ? (
@@ -3114,10 +3182,10 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                   {sortedImageCategories.map((category) => {
                     const models = categorizedImageModels[category];
                     const isCollapsed = collapsedImageCategories.has(category);
-                    const addedCount = models.filter(m => 
+                    const addedCount = models.filter(m =>
                       settings.aiModels.some(am => am.model === m.id && am.apiUrl === newModel.apiUrl && am.type === 'image')
                     ).length;
-                    
+
                     return (
                       <div key={category} className="border border-border rounded-lg overflow-hidden">
                         {/* 分类标题 */}
@@ -3157,7 +3225,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                             {t('settings.addAll')}
                           </button>
                         </button>
-                        
+
                         {/* 模型列表 */}
                         {!isCollapsed && (
                           <div className="divide-y divide-border">
@@ -3168,9 +3236,8 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                               return (
                                 <div
                                   key={model.id}
-                                  className={`flex items-center justify-between px-4 py-2.5 hover:bg-muted/30 transition-colors ${
-                                    isAdded ? 'bg-primary/5' : ''
-                                  }`}
+                                  className={`flex items-center justify-between px-4 py-2.5 hover:bg-muted/30 transition-colors ${isAdded ? 'bg-primary/5' : ''
+                                    }`}
                                 >
                                   <div className="flex items-center gap-3 flex-1 min-w-0">
                                     <div className="flex-shrink-0">
@@ -3186,11 +3253,10 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                                   <button
                                     onClick={() => handleAddImageModel(model.id)}
                                     disabled={isAdded}
-                                    className={`ml-3 p-1.5 rounded-lg transition-colors ${
-                                      isAdded 
-                                        ? 'bg-primary/20 text-primary cursor-default' 
-                                        : 'hover:bg-primary/10 text-muted-foreground hover:text-primary'
-                                    }`}
+                                    className={`ml-3 p-1.5 rounded-lg transition-colors ${isAdded
+                                      ? 'bg-primary/20 text-primary cursor-default'
+                                      : 'hover:bg-primary/10 text-muted-foreground hover:text-primary'
+                                      }`}
                                     title={isAdded ? t('settings.modelAlreadyAdded') : t('settings.addModel')}
                                   >
                                     {isAdded ? (
@@ -3210,7 +3276,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 </div>
               )}
             </div>
-            
+
             {/* 底部按钮 */}
             <div className="p-4 border-t border-border">
               <button
@@ -3223,7 +3289,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
           </div>
         </div>
       )}
-      
+
       {/* 生图测试结果弹窗 */}
       {imageTestModalResult && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -3240,7 +3306,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 <XIcon className="w-5 h-5" />
               </button>
             </div>
-            
+
             {/* 弹窗内容 */}
             <div className="flex-1 overflow-y-auto p-4">
               {imageTestModalResult.success ? (
@@ -3248,23 +3314,23 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                   {/* 生成的图片 */}
                   {imageTestModalResult.imageUrl && (
                     <div className="rounded-lg overflow-hidden border border-border">
-                      <img 
-                        src={imageTestModalResult.imageUrl} 
-                        alt="Generated" 
+                      <img
+                        src={imageTestModalResult.imageUrl}
+                        alt="Generated"
                         className="w-full h-auto"
                       />
                     </div>
                   )}
                   {imageTestModalResult.imageBase64 && (
                     <div className="rounded-lg overflow-hidden border border-border">
-                      <img 
-                        src={`data:image/png;base64,${imageTestModalResult.imageBase64}`} 
-                        alt="Generated" 
+                      <img
+                        src={`data:image/png;base64,${imageTestModalResult.imageBase64}`}
+                        alt="Generated"
                         className="w-full h-auto"
                       />
                     </div>
                   )}
-                  
+
                   {/* 信息 */}
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
@@ -3301,7 +3367,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 </div>
               )}
             </div>
-            
+
             {/* Bottom actions */}
             {/* 底部按钮 */}
             <div className="p-4 border-t border-border">
@@ -3380,16 +3446,14 @@ function ToggleSwitch({ checked, onChange, defaultChecked = false }: ToggleSwitc
   return (
     <button
       onClick={handleClick}
-      className={`relative w-12 h-7 rounded-full transition-all duration-200 flex-shrink-0 border-2 ${
-        isChecked 
-          ? 'bg-primary border-primary' 
-          : 'bg-muted border-border dark:bg-primary/20 dark:border-primary/40'
-      }`}
+      className={`relative w-12 h-7 rounded-full transition-all duration-200 flex-shrink-0 border-2 ${isChecked
+        ? 'bg-primary border-primary'
+        : 'bg-muted border-border dark:bg-primary/20 dark:border-primary/40'
+        }`}
     >
       <span
-        className={`absolute top-0.5 w-5 h-5 rounded-full transition-all duration-200 ${
-          isChecked ? 'bg-white' : 'bg-muted-foreground/50 dark:bg-primary/60'
-        }`}
+        className={`absolute top-0.5 w-5 h-5 rounded-full transition-all duration-200 ${isChecked ? 'bg-white' : 'bg-muted-foreground/50 dark:bg-primary/60'
+          }`}
         style={{ left: isChecked ? '22px' : '2px' }}
       />
     </button>

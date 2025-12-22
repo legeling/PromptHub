@@ -13,7 +13,11 @@
   "header": {
     "search": "Search Prompt...",
     "new": "New",
-    "settings": "Settings"
+    "settings": "Settings",
+    "noResults": "No results",
+    "prevResult": "Previous (Shift+Tab)",
+    "nextResult": "Next (Tab)",
+    "clearSearch": "Clear search"
   },
   "prompt": {
     "title": "Title",
@@ -153,7 +157,38 @@
     "delete": "Delete",
     "empty": "No folders",
     "icon": "Icon",
-    "name": "Name"
+    "name": "Name",
+    "namePlaceholder": "Enter folder name",
+    "setPrivate": "Set as private folder",
+    "privateNeedPassword": "Please set a master password in Settings > Security first",
+    "privateNeedPasswordInline": "Please set a master password in \"Settings - Security\" first.",
+    "privateHint": "After saving, this folder will be encrypted and will require password verification.",
+    "unlockTitle": "Enter master password",
+    "unlockDesc": "You need to unlock the master password before saving a private folder",
+    "unlockPlaceholder": "Enter master password",
+    "unlocking": "Unlocking...",
+    "unlockSuccess": "Unlocked",
+    "unlockFailed": "Unlock failed",
+    "wrongPassword": "Wrong password",
+    "deleteTitle": "Delete folder \"{{name}}\"",
+    "containsPrompts": "This folder contains {{count}} prompts",
+    "deleteFolderOnly": "Delete folder only",
+    "deleteFolderOnlyDesc": "Keep {{count}} prompts and move them to root",
+    "deleteAllContent": "Delete all contents",
+    "deleteAllContentDesc": "Delete the folder and all {{count}} prompts inside",
+    "confirmDelete": "Confirm delete",
+    "deletedWithPrompts": "Deleted folder and {{count}} prompts",
+    "deletedMovedPrompts": "Deleted folder, moved {{count}} prompts to root",
+    "duplicateTitle": "Folder name already exists",
+    "duplicateDesc": "A folder named \"{{name}}\" already exists. Do you still want to create it?",
+    "confirmCreate": "Create anyway",
+    "masterPasswordRequired": "Please enter master password",
+    "deletePrivateTitle": "Delete private folder",
+    "deletePrivateDesc": "This will delete the private folder \"{{name}}\" and all encrypted contents. Enter master password to confirm.",
+    "deleting": "Deleting...",
+    "wrongPasswordCannotDelete": "Wrong master password, cannot delete",
+    "folderDeleted": "Folder deleted",
+    "deleteFailed": "Delete failed"
   },
   "settings": {
     "security": "Security",
@@ -455,7 +490,12 @@
     "shortcutConflict": "Shortcut conflicts with \"{{key}}\"",
     "conflictWith": "Conflicts with \"{{key}}\"",
     "shortcutUpdated": "Shortcut updated",
-    "shortcutCleared": "Shortcut cleared"
+    "shortcutCleared": "Shortcut cleared",
+    "customParams": "Custom Parameters",
+    "addCustomParam": "Add Parameter",
+    "customParamsDesc": "Add custom request parameters, e.g., max_completion_tokens",
+    "paramName": "Parameter Name",
+    "paramValue": "Parameter Value"
   },
   "resources": {
     "title": "Recommended Resources",
@@ -473,6 +513,7 @@
     "add": "Add",
     "close": "Close",
     "loading": "Loading...",
+    "saving": "Saving...",
     "error": "Error",
     "success": "Success",
     "optional": "Optional",
@@ -486,7 +527,9 @@
     "downloadSuccess": "Download successful",
     "downloadFailed": "Download failed",
     "showAll": "All",
-    "collapse": "Collapse"
+    "collapse": "Collapse",
+    "expand": "Expand",
+    "chars": "chars"
   },
   "toast": {
     "exportSuccess": "Data exported successfully",

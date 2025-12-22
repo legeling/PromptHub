@@ -14,7 +14,7 @@
   [![GitHub Forks](https://img.shields.io/github/forks/legeling/PromptHub?style=for-the-badge&logo=github)](https://github.com/legeling/PromptHub/network/members)
   [![Downloads](https://img.shields.io/github/downloads/legeling/PromptHub/total?style=for-the-badge&logo=github&color=blue)](https://github.com/legeling/PromptHub/releases)
   
-  [![Version](https://img.shields.io/badge/version-v0.3.1-success?style=for-the-badge)](https://github.com/legeling/PromptHub/releases)
+  [![Version](https://img.shields.io/badge/version-v0.3.2-success?style=for-the-badge)](https://github.com/legeling/PromptHub/releases)
   [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](./LICENSE)
   [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=for-the-badge)](https://github.com/legeling/PromptHub/pulls)
   
@@ -271,7 +271,7 @@ PromptHub/
 
 ## 路线图
 
-### v0.3.1 (当前)
+### v0.3.2 (当前)
 - [x] Prompt CRUD 管理
 - [x] 文件夹和标签系统
 - [x] 收藏功能
@@ -311,7 +311,7 @@ PromptHub/
 
 查看完整的更新日志：**[CHANGELOG.md](./CHANGELOG.md)**
 
-### 最新版本 v0.3.1 (2025-12-19)
+### 最新版本 v0.3.2 (2025-12-22)
 
 **优化**
 - 🔍 搜索体验优化：引入权重评分机制，优先匹配标题
@@ -388,7 +388,7 @@ If PromptHub is helpful to your work, feel free to buy the author a coffee!
         <b>微信支付 / WeChat Pay</b>
       </td>
       <td align="center">
-        <img src="./docs/imgs/donate/alipay.png" width="200" alt="Alipay"/>
+        <img src="./docs/imgs/donate/alipay.jpg" width="200" alt="Alipay"/>
         <br/>
         <b>支付宝 / Alipay</b>
       </td>

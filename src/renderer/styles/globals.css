@@ -290,3 +290,13 @@ body {
   border-top: 1px solid hsl(var(--border));
   margin: 1em 0;
 }
+
+/* Hide scrollbar utility */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

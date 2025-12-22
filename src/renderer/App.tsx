@@ -313,7 +313,7 @@ function App() {
         {/* Windows 标题栏 */}
         <TitleBar />
         
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-y-hidden overflow-x-visible">
           {/* Sidebar */}
           {/* 侧边栏 */}
           <Sidebar 

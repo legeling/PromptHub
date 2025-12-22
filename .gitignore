@@ -30,6 +30,7 @@ out/
 .cursor/
 *.swp
 *.swo
+.windsurfrules
 
 # OS
 .DS_Store

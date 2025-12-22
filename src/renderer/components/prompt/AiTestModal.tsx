@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PlayIcon, LoaderIcon, CopyIcon, CheckIcon, GitCompareIcon, ImageIcon, PlusIcon, DownloadIcon } from 'lucide-react';
 import { Modal } from '../ui/Modal';
+import { CollapsibleThinking } from '../ui/CollapsibleThinking';
 import { chatCompletion, buildMessagesFromPrompt, multiModelCompare, AITestResult, generateImage } from '../../services/ai';
 import { useSettingsStore } from '../../stores/settings.store';
 import { useToast } from '../ui/Toast';
@@ -214,9 +215,15 @@ export function AiTestModal({
             : undefined,
         }
       );
-      setAiResponse(result.content);
-      setThinkingContent(result.thinkingContent || null);
-      // 保存 AI 响应到 Prompt
+
+      // IMPORTANT: Don't overwrite streamed content in stream mode!
+      // 重要：流式模式下不要覆盖已流式更新的内容！
+      if (!useStream) {
+        setAiResponse(result.content);
+        setThinkingContent(result.thinkingContent || null);
+      }
+
+      // 保存 AI 响应到 Prompt / Save AI response to Prompt
       if (onSaveResponse && result.content) {
         onSaveResponse(prompt.id, result.content);
       }
@@ -423,8 +430,8 @@ export function AiTestModal({
           <button
             onClick={() => setMode('single')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === 'single'
-                ? 'bg-primary text-white'
-                : 'bg-muted text-muted-foreground hover:bg-accent'
+              ? 'bg-primary text-white'
+              : 'bg-muted text-muted-foreground hover:bg-accent'
               }`}
           >
             <PlayIcon className="w-4 h-4" />
@@ -433,8 +440,8 @@ export function AiTestModal({
           <button
             onClick={() => setMode('compare')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === 'compare'
-                ? 'bg-primary text-white'
-                : 'bg-muted text-muted-foreground hover:bg-accent'
+              ? 'bg-primary text-white'
+              : 'bg-muted text-muted-foreground hover:bg-accent'
               }`}
           >
             <GitCompareIcon className="w-4 h-4" />
@@ -443,8 +450,8 @@ export function AiTestModal({
           <button
             onClick={() => setMode('image')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === 'image'
-                ? 'bg-primary text-white'
-                : 'bg-muted text-muted-foreground hover:bg-accent'
+              ? 'bg-primary text-white'
+              : 'bg-muted text-muted-foreground hover:bg-accent'
               }`}
           >
             <ImageIcon className="w-4 h-4" />
@@ -515,15 +522,11 @@ export function AiTestModal({
                     {copied ? t('prompt.copied') : t('prompt.copyResponse')}
                   </button>
                 </div>
-                {/* 思考过程（如果有） */}
-                {thinkingContent !== null && (
-                  <div className="bg-muted/30 border border-border rounded-lg p-3 max-h-40 overflow-y-auto">
-                    <div className="text-xs font-medium text-muted-foreground mb-1">
-                      {t('settings.thinkingContent', '思考过程')}
-                    </div>
-                    <p className="text-xs whitespace-pre-wrap">{thinkingContent}</p>
-                  </div>
-                )}
+                {/* Thinking process / 思考过程（如果有） */}
+                <CollapsibleThinking
+                  content={thinkingContent}
+                  isLoading={isSingleLoading}
+                />
 
                 <div className="bg-card border border-border rounded-lg p-4 max-h-64 overflow-y-auto">
                   <p className="text-sm whitespace-pre-wrap">{aiResponse}</p>
@@ -547,8 +550,8 @@ export function AiTestModal({
                     key={model.id}
                     onClick={() => toggleModelSelection(model.id)}
                     className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${selectedModelIds.includes(model.id)
-                        ? 'bg-primary text-white'
-                        : 'bg-muted text-muted-foreground hover:bg-accent'
+                      ? 'bg-primary text-white'
+                      : 'bg-muted text-muted-foreground hover:bg-accent'
                       }`}
                   >
                     {model.name || model.model}
@@ -592,10 +595,10 @@ export function AiTestModal({
                       {res.success ? (res.response || '(空)') : (res.error || '未知错误')}
                     </p>
                     {res.success && res.thinkingContent && (
-                      <p className="mt-2 text-[10px] text-muted-foreground whitespace-pre-wrap line-clamp-4">
-                        <span className="font-medium">{t('settings.thinkingContent', '思考过程')}：</span>
-                        {res.thinkingContent}
-                      </p>
+                      <CollapsibleThinking
+                        content={res.thinkingContent}
+                        className="mt-2"
+                      />
                     )}
                   </div>
                 ))}

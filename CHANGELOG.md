@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.3.2] - 2025-12-22
+
+### 优化 / Changed
+- 🔍 **搜索展示优化**：优化搜索结果展示逻辑，提升搜索体验
+  - **Search Display Optimization**: Improved search results display logic for better user experience
+- 🎨 **文件夹图标扩展**：文件夹图标选择器新增 60+ Lucide 图标，支持 Emoji/Icon 双模式切换
+  - **Folder Icon Expansion**: Added 60+ Lucide icons with Emoji/Icon mode switcher
+- 📂 **侧边栏布局优化**：文件夹少时标签紧跟文件夹，文件夹多时标签固定底部，滚动条隐藏
+  - **Sidebar Layout Optimization**: Tags follow folders when few, fixed at bottom when many, hidden scrollbar
+- 🗑️ **删除文件夹确认**：删除包含 Prompt 的文件夹时，弹出自定义确认对话框，支持仅删除文件夹或删除所有内容
+  - **Folder Deletion Confirmation**: Custom dialog when deleting folders with prompts, choose to keep or delete contents
+- ⚠️ **文件夹名称检测**：创建文件夹时检测重复名称，弹出确认对话框
+  - **Duplicate Name Detection**: Warns when creating folders with existing names
+
+---
+
 ## [0.3.1] - 2025-12-20
 
 ### 优化 / Changed

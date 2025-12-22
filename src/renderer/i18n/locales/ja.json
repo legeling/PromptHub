@@ -13,7 +13,11 @@
   "header": {
     "search": "Prompt を検索...",
     "new": "新規作成",
-    "settings": "設定"
+    "settings": "設定",
+    "noResults": "結果なし",
+    "prevResult": "前へ (Shift+Tab)",
+    "nextResult": "次へ (Tab)",
+    "clearSearch": "検索をクリア"
   },
   "prompt": {
     "title": "タイトル",
@@ -148,7 +152,38 @@
     "delete": "削除",
     "empty": "フォルダがありません",
     "icon": "アイコン",
-    "name": "名前"
+    "name": "名前",
+    "namePlaceholder": "フォルダ名を入力",
+    "setPrivate": "プライベートフォルダにする",
+    "privateNeedPassword": "先に「設定 > セキュリティ」でマスターパスワードを設定してください",
+    "privateNeedPasswordInline": "先に\"設定 - セキュリティ\"でマスターパスワードを設定してください。",
+    "privateHint": "保存後、このフォルダは暗号化され、アクセス時にパスワード確認が必要になります。",
+    "unlockTitle": "マスターパスワードを入力",
+    "unlockDesc": "プライベートフォルダを保存する前にマスターパスワードのロック解除が必要です",
+    "unlockPlaceholder": "マスターパスワードを入力",
+    "unlocking": "ロック解除中...",
+    "unlockSuccess": "ロック解除しました",
+    "unlockFailed": "ロック解除に失敗しました",
+    "wrongPassword": "パスワードが間違っています",
+    "deleteTitle": "フォルダ「{{name}}」を削除",
+    "containsPrompts": "このフォルダには {{count}} 件の Prompt があります",
+    "deleteFolderOnly": "フォルダのみ削除",
+    "deleteFolderOnlyDesc": "{{count}} 件の Prompt を残し、ルートに移動します",
+    "deleteAllContent": "すべて削除",
+    "deleteAllContentDesc": "フォルダと中の {{count}} 件の Prompt を削除します",
+    "confirmDelete": "削除を確認",
+    "deletedWithPrompts": "フォルダと {{count}} 件の Prompt を削除しました",
+    "deletedMovedPrompts": "フォルダを削除し、{{count}} 件の Prompt をルートに移動しました",
+    "duplicateTitle": "フォルダ名が既に存在します",
+    "duplicateDesc": "「{{name}}」という名前のフォルダが既に存在します。それでも作成しますか？",
+    "confirmCreate": "作成する",
+    "masterPasswordRequired": "マスターパスワードを入力してください",
+    "deletePrivateTitle": "プライベートフォルダを削除",
+    "deletePrivateDesc": "この操作はプライベートフォルダ「{{name}}」と暗号化された内容をすべて削除します。確認のためマスターパスワードを入力してください。",
+    "deleting": "削除中...",
+    "wrongPasswordCannotDelete": "マスターパスワードが間違っているため削除できません",
+    "folderDeleted": "フォルダを削除しました",
+    "deleteFailed": "削除に失敗しました"
   },
   "settings": {
     "security": "セキュリティ",
@@ -448,7 +483,12 @@
     "shortcutConflict": "ショートカットが「{{key}}」と競合しています",
     "conflictWith": "「{{key}}」と競合",
     "shortcutUpdated": "ショートカットが更新されました",
-    "shortcutCleared": "ショートカットがクリアされました"
+    "shortcutCleared": "ショートカットがクリアされました",
+    "customParams": "カスタムパラメータ",
+    "addCustomParam": "パラメータを追加",
+    "customParamsDesc": "カスタムリクエストパラメータを追加（例：max_completion_tokens）",
+    "paramName": "パラメータ名",
+    "paramValue": "パラメータ値"
   },
   "resources": {
     "title": "おすすめリソース",
@@ -466,6 +506,7 @@
     "add": "追加",
     "close": "閉じる",
     "loading": "読み込み中...",
+    "saving": "保存中...",
     "error": "エラー",
     "success": "成功",
     "optional": "任意",
@@ -479,7 +520,9 @@
     "downloadSuccess": "ダウンロード成功",
     "downloadFailed": "ダウンロード失敗",
     "showAll": "すべて",
-    "collapse": "折りたたむ"
+    "collapse": "折りたたむ",
+    "expand": "展開",
+    "chars": "文字"
   },
   "toast": {
     "exportSuccess": "データのエクスポートに成功しました",

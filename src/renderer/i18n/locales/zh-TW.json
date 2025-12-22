@@ -13,7 +13,11 @@
   "header": {
     "search": "搜尋 Prompt...",
     "new": "新建",
-    "settings": "設定"
+    "settings": "設定",
+    "noResults": "無結果",
+    "prevResult": "上一個 (Shift+Tab)",
+    "nextResult": "下一個 (Tab)",
+    "clearSearch": "清除搜尋"
   },
   "prompt": {
     "title": "標題",
@@ -142,13 +146,44 @@
     "confirmBatchDelete": "確定要刪除這 {{count}} 個 Prompt 嗎？"
   },
   "folder": {
-    "new": "新建資料夾",
+    "new": "新增資料夾",
     "edit": "編輯資料夾",
     "rename": "重新命名",
     "delete": "刪除",
     "empty": "暫無資料夾",
     "icon": "圖示",
-    "name": "名稱"
+    "name": "名稱",
+    "namePlaceholder": "輸入資料夾名稱",
+    "setPrivate": "設為私密資料夾",
+    "privateNeedPassword": "請先在設定-安全中設定主密碼後再開啟私密",
+    "privateNeedPasswordInline": "請到\"設定 - 安全\"設定主密碼後再開啟私密。",
+    "privateHint": "儲存後此資料夾內容將加密儲存，進入時需要驗證密碼。",
+    "unlockTitle": "輸入主密碼",
+    "unlockDesc": "儲存私密資料夾前需要先解鎖主密碼",
+    "unlockPlaceholder": "請輸入主密碼",
+    "unlocking": "解鎖中...",
+    "unlockSuccess": "解鎖成功",
+    "unlockFailed": "解鎖失敗",
+    "wrongPassword": "密碼錯誤",
+    "deleteTitle": "刪除資料夾「{{name}}」",
+    "containsPrompts": "此資料夾包含 {{count}} 個提示詞",
+    "deleteFolderOnly": "僅刪除資料夾",
+    "deleteFolderOnlyDesc": "保留 {{count}} 個提示詞，移至根目錄",
+    "deleteAllContent": "刪除所有內容",
+    "deleteAllContentDesc": "刪除資料夾及內部所有 {{count}} 個提示詞",
+    "confirmDelete": "確認刪除",
+    "deletedWithPrompts": "已刪除資料夾及 {{count}} 個提示詞",
+    "deletedMovedPrompts": "已刪除資料夾，{{count}} 個提示詞已移至根目錄",
+    "duplicateTitle": "資料夾名稱已存在",
+    "duplicateDesc": "已存在名為「{{name}}」的資料夾，是否仍要建立？",
+    "confirmCreate": "確認建立",
+    "masterPasswordRequired": "請輸入主密碼",
+    "deletePrivateTitle": "刪除私密資料夾",
+    "deletePrivateDesc": "此操作將刪除資料夾「{{name}}」及其內的所有加密內容，請輸入主密碼確認",
+    "deleting": "刪除中...",
+    "wrongPasswordCannotDelete": "主密碼錯誤，無法刪除",
+    "folderDeleted": "資料夾已刪除",
+    "deleteFailed": "刪除失敗"
   },
   "settings": {
     "security": "安全",
@@ -443,7 +478,12 @@
     "shortcutConflict": "快捷鍵與「{{key}}」衝突",
     "conflictWith": "與「{{key}}」衝突",
     "shortcutUpdated": "快捷鍵已更新",
-    "shortcutCleared": "快捷鍵已清除"
+    "shortcutCleared": "快捷鍵已清除",
+    "customParams": "自訂參數",
+    "addCustomParam": "新增參數",
+    "customParamsDesc": "新增自訂請求參數，如 max_completion_tokens 等",
+    "paramName": "參數名",
+    "paramValue": "參數值"
   },
   "resources": {
     "title": "推薦資源",
@@ -461,6 +501,7 @@
     "add": "新增",
     "close": "關閉",
     "loading": "載入中...",
+    "saving": "儲存中...",
     "error": "錯誤",
     "success": "成功",
     "optional": "選填",
@@ -474,7 +515,9 @@
     "downloadSuccess": "下載成功",
     "downloadFailed": "下載失敗",
     "showAll": "全部",
-    "collapse": "收起"
+    "collapse": "收起",
+    "expand": "展開",
+    "chars": "字元"
   },
   "toast": {
     "exportSuccess": "資料匯出成功",

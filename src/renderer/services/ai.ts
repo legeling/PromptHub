@@ -15,6 +15,7 @@ export interface ChatCompletionRequest {
   model: string;
   temperature?: number;
   max_tokens?: number;
+  max_completion_tokens?: number;  // 新版 OpenAI 模型（o1, gpt-5 等）使用此参数
   top_p?: number;
   top_k?: number;
   frequency_penalty?: number;
@@ -54,6 +55,7 @@ export interface ChatParams {
   presencePenalty?: number;   // 存在惩罚 / Presence penalty
   stream?: boolean;           // 流式输出 / Streaming output
   enableThinking?: boolean;   // 思考模式 / Thinking mode
+  customParams?: Record<string, string | number | boolean>;  // 自定义参数 / Custom parameters
 }
 
 // Image model parameters
@@ -216,14 +218,30 @@ export async function chatCompletion(
     enableThinking: options?.enableThinking ?? chatParams?.enableThinking ?? false,
   };
 
+  // 检测是否为需要 max_completion_tokens 的新模型
+  // Detect if it's a new model that requires max_completion_tokens
+  const useMaxCompletionTokens =
+    model.toLowerCase().includes('o1') ||
+    model.toLowerCase().includes('o3') ||
+    model.toLowerCase().startsWith('gpt-5') ||
+    model.toLowerCase().includes('gpt-4o') ||
+    providerId.includes('openai');
+
   // 构建请求体 / Build request body
   const body: ChatCompletionRequest = {
     model,
     messages,
     temperature: mergedParams.temperature,
-    max_tokens: mergedParams.maxTokens,
     stream: mergedParams.stream,
   };
+
+  // 根据模型类型选择正确的 token 限制参数
+  // Choose the correct token limit parameter based on model type
+  if (useMaxCompletionTokens) {
+    body.max_completion_tokens = mergedParams.maxTokens;
+  } else {
+    body.max_tokens = mergedParams.maxTokens;
+  }
 
   // 添加可选参数 / Add optional parameters
   if (mergedParams.topP !== undefined) {
@@ -258,6 +276,17 @@ export async function chatCompletion(
     body.enable_thinking = true;
   }
 
+  // 处理自定义参数 / Handle custom parameters
+  const customParams = chatParams?.customParams;
+  if (customParams && typeof customParams === 'object') {
+    const bodyAny = body as unknown as Record<string, unknown>;
+    for (const [key, value] of Object.entries(customParams)) {
+      if (key && value !== undefined && value !== '') {
+        bodyAny[key] = value;
+      }
+    }
+  }
+
   try {
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -281,7 +310,11 @@ export async function chatCompletion(
     }
 
     // 流式输出处理 / Streaming output handling
+    // Debug: Log streaming status / 调试：记录流式状态
+    console.log('[AI Service] Stream mode:', mergedParams.stream, 'Callbacks provided:', !!options?.streamCallbacks);
+
     if (mergedParams.stream) {
+      console.log('[AI Service] Starting stream response handling...');
       return await handleStreamResponse(response, options?.onStream, options?.streamCallbacks);
     }
 
@@ -327,14 +360,31 @@ async function handleStreamResponse(
   let thinkingContent = '';
   let buffer = '';
 
+  // Helper to yield control to the event loop, allowing RAF to run
+  // 让出事件循环控制权的辅助函数，允许 RAF 运行
+  const yieldToEventLoop = () =>
+    new Promise<void>((resolve) => {
+      if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(() => resolve());
+      } else {
+        setTimeout(resolve, 0);
+      }
+    });
+
   try {
+    let chunkCount = 0;
+
     while (true) {
       const { done, value } = await reader.read();
-      if (done) break;
+      if (done) {
+        console.log('[AI Stream] Stream completed, total chunks:', chunkCount);
+        break;
+      }
 
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n');
       buffer = lines.pop() || '';
+      let deltasSinceYield = 0;
 
       for (const line of lines) {
         const trimmed = line.trim();
@@ -346,6 +396,8 @@ async function handleStreamResponse(
           const delta = json.choices?.[0]?.delta;
 
           if (delta) {
+            chunkCount++;
+            deltasSinceYield++;
             // 处理思考内容 / Handle thinking content
             if (delta.reasoning_content) {
               thinkingContent += delta.reasoning_content;
@@ -357,12 +409,28 @@ async function handleStreamResponse(
               fullContent += delta.content;
               onStream?.(delta.content);
               streamCallbacks?.onContent?.(delta.content);
+              // Log first chunk to verify streaming / 记录第一个块以验证流式输出
+              if (chunkCount === 1) {
+                console.log('[AI Stream] First content chunk received:', delta.content.slice(0, 50));
+              }
+            }
+            if (deltasSinceYield >= 20) {
+              deltasSinceYield = 0;
+              await yieldToEventLoop();
             }
           }
         } catch {
           // 忽略解析错误 / Ignore parse errors
         }
       }
+
+      // Yield to event loop after every read to allow UI updates
+      // 每次读取后都让出事件循环以允许 UI 更新
+      // This is CRITICAL for streaming to appear smooth instead of all-at-once
+      if (chunkCount % 50 === 0) {
+        console.log(`[AI Stream] Yielding at chunk ${chunkCount}, content length: ${fullContent.length}`);
+      }
+      await yieldToEventLoop();
     }
   } finally {
     reader.releaseLock();

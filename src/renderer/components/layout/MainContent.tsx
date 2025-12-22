@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, Children, isValidElement, cloneElement } from 'react';
+import { flushSync } from 'react-dom';
 import { usePromptStore } from '../../stores/prompt.store';
 import { useFolderStore } from '../../stores/folder.store';
 import { useSettingsStore } from '../../stores/settings.store';
@@ -8,6 +9,7 @@ import { ContextMenu, ContextMenuItem } from '../ui/ContextMenu';
 import { ImagePreviewModal } from '../ui/ImagePreviewModal';
 import { LocalImage } from '../ui/LocalImage';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
+import { CollapsibleThinking } from '../ui/CollapsibleThinking';
 import { useToast } from '../ui/Toast';
 import { chatCompletion, buildMessagesFromPrompt, multiModelCompare, AITestResult, StreamCallbacks } from '../../services/ai';
 import { useTranslation } from 'react-i18next';
@@ -200,10 +202,19 @@ export function MainContent() {
   const currentState = selectedId ? promptTestStates[selectedId] : null;
   const isTestingAI = currentState?.isTestingAI || false;
   const isComparingModels = currentState?.isComparingModels || false;
-  const aiResponse = currentState?.aiResponse || null;
-  const aiThinking = currentState?.aiThinking || null;
   const compareResults = currentState?.compareResults || null;
   const compareError = currentState?.compareError || null;
+
+  // Separate streaming state for real-time display (bypasses complex state updates)
+  // 独立的流式状态，用于实时显示（绕过复杂的状态更新）
+  const [streamingContent, setStreamingContent] = useState<string>('');
+  const [streamingThinking, setStreamingThinking] = useState<string>('');
+  const [isStreaming, setIsStreaming] = useState(false);
+
+  // Use streaming content when actively streaming, otherwise use stored state
+  // 流式传输时使用流式内容，否则使用存储的状态
+  const aiResponse = isStreaming ? streamingContent : (currentState?.aiResponse || null);
+  const aiThinking = isStreaming ? streamingThinking : (currentState?.aiThinking || null);
 
   // Update current prompt test state
   // 更新当前 prompt 的测试状态
@@ -443,22 +454,93 @@ export function MainContent() {
       const useStream = !!singleChatConfig.chatParams?.stream;
       const useThinking = !!singleChatConfig.chatParams?.enableThinking;
 
+      // Debug: Log stream configuration / 调试：记录流式配置
+      console.log('[MainContent] AI Test - Stream:', useStream, 'Thinking:', useThinking);
+      console.log('[MainContent] chatParams:', singleChatConfig.chatParams);
+
       if (useStream) {
-        setAiResponse('');
-        if (useThinking) setAiThinking('');
+        // Start streaming mode - use independent state for real-time updates
+        // 开始流式模式 - 使用独立状态进行实时更新
+        setIsStreaming(true);
+        setStreamingContent('');
+        setStreamingThinking('');
       }
+
+      // Use refs for buffering raw data / 使用 ref 缓冲原始数据
+      const fullContentRef = { current: '' };
+      const fullThinkingRef = { current: '' };
+
+      let contentRafId: number | null = null;
+      let thinkingRafId: number | null = null;
+
+      const scheduleContentFlush = () => {
+        if (contentRafId !== null) return;
+        contentRafId = requestAnimationFrame(() => {
+          contentRafId = null;
+          flushSync(() => {
+            setStreamingContent(fullContentRef.current);
+          });
+        });
+      };
+
+      const scheduleThinkingFlush = () => {
+        if (thinkingRafId !== null) return;
+        thinkingRafId = requestAnimationFrame(() => {
+          thinkingRafId = null;
+          flushSync(() => {
+            setStreamingThinking(fullThinkingRef.current);
+          });
+        });
+      };
 
       const result = await chatCompletion(singleChatConfig as any, messages, {
         stream: useStream,
         enableThinking: useThinking,
         streamCallbacks: useStream ? {
-          onContent: (chunk) => setAiResponse((prev) => (prev ?? '') + chunk),
-          onThinking: (chunk) => setAiThinking((prev) => (prev ?? '') + chunk),
+          onContent: (chunk) => {
+            fullContentRef.current += chunk;
+            scheduleContentFlush();
+          },
+          onThinking: (chunk) => {
+            fullThinkingRef.current += chunk;
+            scheduleThinkingFlush();
+          },
+          onComplete: (fullContent, thinkingContent) => {
+            console.log(`[Stream UI] Complete!`);
+            if (contentRafId !== null) {
+              cancelAnimationFrame(contentRafId);
+              contentRafId = null;
+            }
+            if (thinkingRafId !== null) {
+              cancelAnimationFrame(thinkingRafId);
+              thinkingRafId = null;
+            }
+            // End streaming mode and save to persistent state
+            // 结束流式模式并保存到持久状态
+            setIsStreaming(false);
+            setAiResponse(fullContent);
+            if (thinkingContent) {
+              setAiThinking(thinkingContent);
+            }
+          }
         } : undefined,
       });
-      setAiResponse(result.content);
-      setAiThinking(result.thinkingContent || null);
+
+      // Final consistency guarantee
+      // 最终一致性保证
+      if (!useStream) {
+        setAiResponse(result.content);
+        setAiThinking(result.thinkingContent || null);
+      } else {
+        // Ensure streaming state is off and content is saved
+        setIsStreaming(false);
+        setAiResponse(fullContentRef.current || result.content);
+        if (fullThinkingRef.current) {
+          setAiThinking(fullThinkingRef.current);
+        }
+      }
     } catch (error) {
+      setIsStreaming(false);
       setAiResponse(`${t('common.error')}: ${error instanceof Error ? error.message : t('common.error')}`);
       showToast(t('toast.aiFailed'), 'error');
     } finally {
@@ -863,8 +945,8 @@ export function MainContent() {
       {/* 列表视图模式 */}
       <div
         className={`absolute inset-0 flex flex-col bg-background transition-opacity duration-200 ease-in-out ${viewMode === 'list'
-            ? 'opacity-100 z-10 pointer-events-auto'
-            : 'opacity-0 z-0 pointer-events-none'
+          ? 'opacity-100 z-10 pointer-events-auto'
+          : 'opacity-0 z-0 pointer-events-none'
           }`}
       >
         {/* Top: sort + view switch */}
@@ -898,8 +980,8 @@ export function MainContent() {
       {/* Gallery 视图 */}
       <div
         className={`absolute inset-0 flex flex-col bg-background transition-opacity duration-200 ease-in-out ${viewMode === 'gallery'
-            ? 'opacity-100 z-10 pointer-events-auto'
-            : 'opacity-0 z-0 pointer-events-none'
+          ? 'opacity-100 z-10 pointer-events-auto'
+          : 'opacity-0 z-0 pointer-events-none'
           }`}
       >
         <PromptListHeader count={sortedPrompts.length} />
@@ -922,8 +1004,8 @@ export function MainContent() {
       {/* 卡片视图模式：左右分栏 */}
       <div
         className={`absolute inset-0 flex overflow-hidden bg-background transition-opacity duration-200 ease-in-out ${viewMode === 'card'
-            ? 'opacity-100 z-10 pointer-events-auto'
-            : 'opacity-0 z-0 pointer-events-none'
+          ? 'opacity-100 z-10 pointer-events-auto'
+          : 'opacity-0 z-0 pointer-events-none'
           }`}
       >
         {/* Prompt list */}
@@ -1211,14 +1293,10 @@ export function MainContent() {
                                 </div>
                               </div>
                               {res.success && res.thinkingContent && (
-                                <div className="bg-muted/20 border border-border/60 rounded-md p-2 max-h-24 overflow-y-auto">
-                                  <div className="text-[10px] font-medium text-muted-foreground mb-1">
-                                    {t('settings.thinkingContent', '思考过程')}
-                                  </div>
-                                  <div className="text-[10px] leading-relaxed whitespace-pre-wrap">
-                                    {res.thinkingContent}
-                                  </div>
-                                </div>
+                                <CollapsibleThinking
+                                  content={res.thinkingContent}
+                                  className="text-[10px]"
+                                />
                               )}
                               <div className="text-[11px] leading-relaxed whitespace-pre-wrap max-h-40 overflow-y-auto">
                                 {res.success ? (res.response || '(空)') : (res.error || '未知错误')}
@@ -1260,16 +1338,11 @@ export function MainContent() {
                         </div>
                       ) : (
                         <div className="space-y-3">
-                          {aiThinking !== null && (
-                            <div className="bg-muted/30 border border-border rounded-lg p-3 max-h-40 overflow-y-auto">
-                              <div className="text-xs font-medium text-muted-foreground mb-1">
-                                {t('settings.thinkingContent', '思考过程')}
-                              </div>
-                              <div className="text-xs leading-relaxed whitespace-pre-wrap">
-                                {aiThinking || t('common.loading', '处理中...')}
-                              </div>
-                            </div>
-                          )}
+                          {/* Collapsible thinking process / 可折叠的思考过程 */}
+                          <CollapsibleThinking
+                            content={aiThinking}
+                            isLoading={isTestingAI}
+                          />
                           <div className="text-sm leading-relaxed whitespace-pre-wrap max-h-60 overflow-y-auto">
                             {aiResponse}
                           </div>
