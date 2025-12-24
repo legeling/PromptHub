@@ -212,7 +212,7 @@ export async function initDatabase(): Promise<IDBDatabase> {
     }
     db = null;
   }
-  
+
   return new Promise((resolve, reject) => {
     // 添加超时机制，防止无限等待
     // Add timeout mechanism to prevent infinite waiting
@@ -220,14 +220,14 @@ export async function initDatabase(): Promise<IDBDatabase> {
       console.error('Database open timeout after 10s');
       reject(new Error('Database open timeout'));
     }, 10000);
-    
+
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
     request.onerror = () => {
       clearTimeout(timeout);
       reject(new Error('Failed to open database'));
     };
-    
+
     request.onblocked = () => {
       console.warn('Database open blocked - another connection is open');
       // 不立即 reject，等待 onsuccess 或超时
@@ -237,7 +237,7 @@ export async function initDatabase(): Promise<IDBDatabase> {
     request.onsuccess = () => {
       clearTimeout(timeout);
       db = request.result;
-      
+
       // 监听版本变化事件，当其他标签页升级数据库时关闭连接
       // Listen for version change events, close connection when other tabs upgrade database
       db.onversionchange = () => {
@@ -245,7 +245,7 @@ export async function initDatabase(): Promise<IDBDatabase> {
         db?.close();
         db = null;
       };
-      
+
       resolve(db);
     };
 
@@ -351,12 +351,12 @@ export async function seedDatabase(): Promise<void> {
     // Get current language
     const currentLanguage = i18n.language || 'en';
     console.log('Seeding database with initial data for language:', currentLanguage);
-    
+
     // 获取对应语言的种子数据
     // Get seed data for corresponding language
     const seedPrompts = getSeedPrompts(currentLanguage);
     const seedFolders = getSeedFolders(currentLanguage);
-    
+
     const transaction = database.transaction([STORES.PROMPTS, STORES.FOLDERS], 'readwrite');
     const promptStore = transaction.objectStore(STORES.PROMPTS);
     const folderStore = transaction.objectStore(STORES.FOLDERS);
@@ -605,7 +605,7 @@ export async function deleteFolder(id: string): Promise<void> {
 
 export async function updateFolderOrders(updates: { id: string; order: number }[]): Promise<void> {
   const database = await getDatabase();
-  
+
   // 逐个更新文件夹顺序
   // Update folder order one by one
   for (const { id, order } of updates) {
@@ -613,7 +613,7 @@ export async function updateFolderOrders(updates: { id: string; order: number }[
       const transaction = database.transaction(STORES.FOLDERS, 'readwrite');
       const store = transaction.objectStore(STORES.FOLDERS);
       const request = store.get(id);
-      
+
       request.onsuccess = () => {
         const folder = request.result;
         if (folder) {
@@ -722,10 +722,21 @@ function getAiConfig(): DatabaseBackup['aiConfig'] {
     const data = JSON.parse(raw);
     const state = data?.state;
     if (!state) return undefined;
+
+    // Security: Filter out API keys from AI models before exporting
+    // 安全：导出前过滤 AI 模型中的 API 密钥
+    // API keys are sensitive and should NOT be included in backups
+    // API 密钥是敏感信息，不应包含在备份中
+    const filteredModels = (state.aiModels || []).map((model: any) => {
+      const { apiKey, ...rest } = model;
+      return rest;
+    });
+
     return {
-      aiModels: state.aiModels || [],
+      aiModels: filteredModels,
       aiProvider: state.aiProvider,
-      aiApiKey: state.aiApiKey,
+      // aiApiKey is intentionally excluded for security
+      // aiApiKey 出于安全考虑被故意排除
       aiApiUrl: state.aiApiUrl,
       aiModel: state.aiModel,
     };
@@ -770,7 +781,28 @@ function getSettingsSnapshot(): { state: any; settingsUpdatedAt?: string } | und
     const data = JSON.parse(raw);
     const state = data?.state;
     if (!state) return undefined;
-    return { state, settingsUpdatedAt: state.settingsUpdatedAt };
+
+    // Security: Filter out sensitive fields before exporting
+    // 安全：导出前过滤敏感字段
+    // These fields should NOT be synced to WebDAV for security reasons:
+    // 这些字段出于安全考虑不应同步到 WebDAV：
+    // - webdavUsername / webdavPassword: WebDAV credentials (circular reference & security)
+    // - webdavEncryptionPassword: Encryption key (security)
+    // - aiApiKey: API keys for AI services (security)
+    // Issue: https://github.com/legeling/PromptHub/issues/23
+    const sensitiveFields = [
+      'webdavUsername',
+      'webdavPassword',
+      'webdavEncryptionPassword',
+      'aiApiKey',
+    ];
+
+    const filteredState = { ...state };
+    for (const field of sensitiveFields) {
+      delete filteredState[field];
+    }
+
+    return { state: filteredState, settingsUpdatedAt: state.settingsUpdatedAt };
   } catch (e) {
     console.warn('Failed to get settings snapshot:', e);
     return undefined;
@@ -824,7 +856,7 @@ export async function exportDatabase(): Promise<DatabaseBackup> {
   // 收集图片
   // Collect images
   const images = await collectImages(prompts);
-  
+
   // 获取 AI 配置
   // Get AI configuration
   const aiConfig = getAiConfig();
@@ -883,7 +915,7 @@ export async function importDatabase(backup: DatabaseBackup): Promise<void> {
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error);
   });
-  
+
   // 恢复图片
   // Restore images
   if (backup.images) {
@@ -898,7 +930,7 @@ export async function importDatabase(backup: DatabaseBackup): Promise<void> {
     }
     console.log(`Restored ${imagesRestored} images`);
   }
-  
+
   // 恢复 AI 配置
   // Restore AI configuration
   if (backup.aiConfig) {
@@ -925,7 +957,7 @@ export async function clearDatabase(): Promise<void> {
   const storesToClear = [STORES.PROMPTS, STORES.FOLDERS, STORES.VERSIONS].filter(
     store => storeNames.includes(store)
   );
-  
+
   if (storesToClear.length === 0) {
     console.warn('No stores to clear');
     return;
@@ -941,7 +973,7 @@ export async function clearDatabase(): Promise<void> {
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error);
   });
-  
+
   // 清除图片文件
   // Clear image files
   try {

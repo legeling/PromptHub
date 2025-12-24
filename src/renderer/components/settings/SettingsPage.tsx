@@ -2820,6 +2820,12 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                   onChange={settings.setAutoCheckUpdate}
                 />
               </SettingItem>
+              <SettingItem label={t('settings.tryMirrorSource')} description={t('settings.mirrorSourceRisk')}>
+                <ToggleSwitch
+                  checked={settings.useUpdateMirror}
+                  onChange={settings.setUseUpdateMirror}
+                />
+              </SettingItem>
               <SettingItem label={t('settings.checkUpdate')} description={`${t('settings.version')}: ${appVersion || '...'}`}>
                 <button
                   onClick={() => window.dispatchEvent(new CustomEvent('open-update-dialog'))}

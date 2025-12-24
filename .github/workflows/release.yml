@@ -15,6 +15,10 @@ jobs:
             platform: mac
           - os: windows-latest
             platform: win
+            arch: x64
+          - os: windows-latest
+            platform: win
+            arch: arm64
           - os: ubuntu-latest
             platform: linux
 
@@ -57,10 +61,27 @@ jobs:
         run: |
           rm -rf dist || true
 
-      - name: Build for ${{ matrix.platform }}
-        run: pnpm electron:build:${{ matrix.platform }}
+      - name: Build for ${{ matrix.platform }} ${{ matrix.arch }}
+        shell: bash
+        run: |
+          if [ "${{ matrix.platform }}" = "win" ] && [ -n "${{ matrix.arch }}" ]; then
+            # Windows: build specific architecture
+            pnpm vite build && pnpm electron-builder --win --${{ matrix.arch }} --publish never
+          else
+            pnpm electron:build:${{ matrix.platform }}
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Rename latest.yml for Windows arch-specific
+        if: matrix.platform == 'win' && matrix.arch != ''
+        shell: bash
+        run: |
+          # Rename latest.yml to latest-{arch}.yml
+          if [ -f "dist/latest.yml" ]; then
+            mv dist/latest.yml dist/latest-${{ matrix.arch }}.yml
+            echo "Renamed latest.yml to latest-${{ matrix.arch }}.yml"
+          fi
 
       - name: Remove debug files
         shell: bash
@@ -71,7 +92,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.platform }}-build
+          name: ${{ matrix.platform }}-${{ matrix.arch || 'default' }}-build
           path: |
             dist/*.dmg
             dist/*.zip

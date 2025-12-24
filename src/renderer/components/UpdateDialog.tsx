@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { DownloadIcon, CheckCircleIcon, XIcon, Loader2Icon, RefreshCwIcon, FolderOpenIcon, ExternalLinkIcon } from 'lucide-react';
+import { DownloadIcon, CheckCircleIcon, XIcon, Loader2Icon, RefreshCwIcon, FolderOpenIcon, ExternalLinkIcon, ZapIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { useSettingsStore } from '../stores/settings.store';
 
 export interface UpdateInfo {
   version: string;
@@ -17,7 +18,7 @@ export interface ProgressInfo {
   transferred: number;
 }
 
-export type UpdateStatus = 
+export type UpdateStatus =
   | { status: 'checking' }
   | { status: 'available'; info: UpdateInfo }
   | { status: 'not-available'; info: UpdateInfo }
@@ -33,7 +34,9 @@ interface UpdateDialogProps {
 
 export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogProps) {
   const { t } = useTranslation();
+  const settings = useSettingsStore();
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(initialStatus || null);
+  const [useMirror, setUseMirror] = useState<boolean>(settings.useUpdateMirror);
   const [currentVersion, setCurrentVersion] = useState<string>('');
   const [platform, setPlatform] = useState<string>('');
 
@@ -63,7 +66,7 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
     if (process.env.NODE_ENV === 'development') {
       // Uncomment one of the following to test different states
       // 取消注释以下任一项来测试不同状态
-      
+
       devTimers.push(setTimeout(() => {
         setUpdateStatus({
           status: 'available',
@@ -74,11 +77,11 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
           },
         });
       }, 1500));
-      
+
       devTimers.push(setTimeout(() => {
         setUpdateStatus({ status: 'not-available', info: { version: '0.2.5' } });
       }, 1500));
-      
+
       devTimers.push(setTimeout(() => {
         setUpdateStatus({ status: 'downloading', progress: { percent: 45, bytesPerSecond: 1024000, total: 50000000, transferred: 22500000 } });
       }, 1500));
@@ -102,14 +105,15 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
   useEffect(() => {
     if (isOpen) {
       // Force check every time the dialog opens
-      // 每次打开都强制检查更新
-      handleCheckUpdate();
+      // Using global mirror setting by default
+      handleCheckUpdate(settings.useUpdateMirror);
     }
   }, [isOpen]);
 
-  const handleCheckUpdate = async () => {
+  const handleCheckUpdate = async (mirror: boolean) => {
+    setUseMirror(mirror);
     setUpdateStatus({ status: 'checking' });
-    const result = await window.electron?.updater?.check();
+    const result = await window.electron?.updater?.check(mirror);
     // If update check returns an error (e.g. in dev), set error status
     // 如果检查更新返回错误（例如开发环境），设置错误状态
     if (result && !result.success) {
@@ -120,7 +124,7 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
   };
 
   const handleDownload = async () => {
-    await window.electron?.updater?.download();
+    await window.electron?.updater?.download(useMirror);
   };
 
   const handleInstall = async () => {
@@ -137,7 +141,7 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
             {t('settings.version')}: {currentVersion}
           </p>
           <button
-            onClick={handleCheckUpdate}
+            onClick={() => handleCheckUpdate(false)}
             className="flex items-center gap-2 mx-auto px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors"
           >
             <RefreshCwIcon className="w-4 h-4" />
@@ -152,7 +156,9 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
         return (
           <div className="text-center py-8">
             <Loader2Icon className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
-            <p className="text-muted-foreground">{t('settings.checking')}</p>
+            <p className="text-muted-foreground">
+              {useMirror ? t('settings.usingMirrorSource') : t('settings.checking')}
+            </p>
           </div>
         );
 
@@ -279,23 +285,26 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
 
       case 'error':
         return (
-          <div className="text-center py-8">
-            <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-red-500/10 flex items-center justify-center">
+          <div className="text-center py-6 flex flex-col h-full shrink-0">
+            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-red-500/10 flex items-center justify-center">
               <XIcon className="w-6 h-6 text-red-500" />
             </div>
             <h3 className="font-semibold text-lg mb-1 text-red-500">{t('common.error')}</h3>
-            <p className="text-sm text-muted-foreground break-all whitespace-pre-wrap max-h-32 overflow-y-auto mb-4">
+            <p className="text-sm text-muted-foreground break-all whitespace-pre-wrap max-h-24 overflow-y-auto mb-4 px-2">
               {updateStatus.error}
             </p>
-            <div className="p-3 rounded-lg bg-muted/50">
-              <p className="text-sm text-muted-foreground mb-2">{t('settings.manualDownloadHint')}</p>
-              <button
-                onClick={() => window.electron?.updater?.openReleases()}
-                className="flex items-center justify-center gap-2 w-full px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors"
-              >
-                <ExternalLinkIcon className="w-4 h-4" />
-                {t('settings.manualDownload')}
-              </button>
+
+            <div className="space-y-4 mt-auto">
+              <div className="p-4 rounded-xl bg-muted/30 border border-border/50 text-left">
+                <p className="text-xs text-muted-foreground mb-3">{t('settings.manualDownloadHint')}</p>
+                <button
+                  onClick={() => window.electron?.updater?.openReleases()}
+                  className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-xl bg-background border border-border hover:bg-muted transition-all text-sm font-medium shadow-sm active:scale-95"
+                >
+                  <ExternalLinkIcon className="w-4 h-4 text-muted-foreground" />
+                  {t('settings.manualDownload')}
+                </button>
+              </div>
             </div>
           </div>
         );

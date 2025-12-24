@@ -208,6 +208,8 @@ interface SettingsState {
   // Update settings
   // 更新设置
   autoCheckUpdate: boolean;
+  useUpdateMirror: boolean; // Use GitHub accelerator mirror (e.g. ghfast.top)
+  // 使用 GitHub 加速镜像（如 ghfast.top）
 
   // AI model configuration (legacy single model compatibility)
   // AI 模型配置（兼容旧版单模型配置）
@@ -253,6 +255,7 @@ interface SettingsState {
   setWebdavEncryptionEnabled: (enabled: boolean) => void;
   setWebdavEncryptionPassword: (password: string) => void;
   setAutoCheckUpdate: (enabled: boolean) => void;
+  setUseUpdateMirror: (enabled: boolean) => void;
   setAiProvider: (provider: string) => void;
   setAiApiKey: (key: string) => void;
   setAiApiUrl: (url: string) => void;
@@ -309,6 +312,7 @@ export const useSettingsStore = create<SettingsState>()(
         webdavEncryptionEnabled: false,
         webdavEncryptionPassword: '',
         autoCheckUpdate: true,
+        useUpdateMirror: false,
         aiProvider: 'openai',
         aiApiKey: '',
         aiApiUrl: '',
@@ -416,6 +420,7 @@ export const useSettingsStore = create<SettingsState>()(
         setWebdavEncryptionEnabled: (enabled) => setTouched({ webdavEncryptionEnabled: enabled }),
         setWebdavEncryptionPassword: (password) => setTouched({ webdavEncryptionPassword: password }),
         setAutoCheckUpdate: (enabled) => setTouched({ autoCheckUpdate: enabled }),
+        setUseUpdateMirror: (enabled) => setTouched({ useUpdateMirror: enabled }),
         setAiProvider: (provider) => setTouched({ aiProvider: provider }),
         setAiApiKey: (key) => setTouched({ aiApiKey: key }),
         setAiApiUrl: (url) => setTouched({ aiApiUrl: url }),
