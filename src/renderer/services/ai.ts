@@ -220,11 +220,14 @@ export async function chatCompletion(
 
   // 检测是否为需要 max_completion_tokens 的新模型
   // Detect if it's a new model that requires max_completion_tokens
-  const useMaxCompletionTokens =
-    model.toLowerCase().includes('o1') ||
-    model.toLowerCase().includes('o3') ||
-    model.toLowerCase().startsWith('gpt-5') ||
-    model.toLowerCase().includes('gpt-4o') ||
+  // Updated for Issue #21: Support automatic fallback/retry for token parameters
+  const modelLower = model.toLowerCase();
+  let useMaxCompletionTokens =
+    modelLower.includes('o1') ||
+    modelLower.includes('o3') ||
+    modelLower.includes('gpt-4o') ||
+    modelLower.includes('gpt-4.5') || 
+    /gpt-[5-9]/.test(modelLower) ||  // Matches gpt-5, gpt-5.2, gpt-6, etc.
     providerId.includes('openai');
 
   // 构建请求体 / Build request body
@@ -288,7 +291,7 @@ export async function chatCompletion(
   }
 
   try {
-    const response = await fetch(endpoint, {
+    let response = await fetch(endpoint, {
       method: 'POST',
       headers,
       body: JSON.stringify(body),
@@ -297,7 +300,7 @@ export async function chatCompletion(
     if (!response.ok) {
       const errorText = await response.text();
       let errorMessage = `API 请求失败 (${response.status})`;
-      // API request failed
+      
       try {
         const errorJson = JSON.parse(errorText);
         errorMessage = errorJson.error?.message || errorJson.message || errorMessage;
@@ -306,7 +309,51 @@ export async function chatCompletion(
           errorMessage = errorText.slice(0, 200);
         }
       }
-      throw new Error(errorMessage);
+
+      // Check for token parameter compatibility issues (Issue #21)
+      // 检查 Token 参数兼容性问题
+      const isTokenParamError = 
+        errorMessage.includes("'max_tokens' is not supported") || 
+        errorMessage.includes("'max_completion_tokens' is not supported") ||
+        errorMessage.includes("Use 'max_completion_tokens' instead") ||
+        errorMessage.includes("Use 'max_tokens' instead");
+
+      if (isTokenParamError) {
+        console.warn(`[AI Service] Token parameter mismatch detected: "${errorMessage}". Retrying with alternative parameter...`);
+        
+        // Toggle parameter
+        if (useMaxCompletionTokens) {
+          // Switch to max_tokens (old style)
+          delete body.max_completion_tokens;
+          body.max_tokens = mergedParams.maxTokens;
+        } else {
+          // Switch to max_completion_tokens (new style)
+          delete body.max_tokens;
+          body.max_completion_tokens = mergedParams.maxTokens;
+        }
+
+        // Retry request
+        response = await fetch(endpoint, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(body),
+        });
+
+        // If explicitly failed again, process error normally
+        if (!response.ok) {
+           const retryErrorText = await response.text();
+           let retryErrorMessage = `API 请求失败 (重试后): ${response.status}`;
+           try {
+             const retryJson = JSON.parse(retryErrorText);
+             retryErrorMessage = retryJson.error?.message || retryJson.message || retryErrorMessage;
+           } catch { 
+             if (retryErrorText) retryErrorMessage = retryErrorText.slice(0, 200);
+           }
+           throw new Error(retryErrorMessage);
+        }
+      } else {
+        throw new Error(errorMessage);
+      }
     }
 
     // 流式输出处理 / Streaming output handling
