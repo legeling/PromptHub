@@ -290,6 +290,8 @@ export async function chatCompletion(
     }
   }
 
+
+
   try {
     let response = await fetch(endpoint, {
       method: 'POST',
@@ -318,6 +320,13 @@ export async function chatCompletion(
         errorMessage.includes("Use 'max_completion_tokens' instead") ||
         errorMessage.includes("Use 'max_tokens' instead");
 
+      // Check for enable_thinking compatibility issues (Issue #9)
+      // 检查 enable_thinking 参数兼容性问题 (Issue #9)
+      const isThinkingParamError = 
+        errorMessage.includes("enable_thinking must be set to false") ||
+        errorMessage.includes("enable_thinking only support stream") ||
+        errorMessage.includes("parameter.enable_thinking");
+
       if (isTokenParamError) {
         console.warn(`[AI Service] Token parameter mismatch detected: "${errorMessage}". Retrying with alternative parameter...`);
         
@@ -331,6 +340,31 @@ export async function chatCompletion(
           delete body.max_tokens;
           body.max_completion_tokens = mergedParams.maxTokens;
         }
+
+        // Retry request
+        response = await fetch(endpoint, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(body),
+        });
+
+        // If explicitly failed again, process error normally
+        if (!response.ok) {
+           const retryErrorText = await response.text();
+           let retryErrorMessage = `API 请求失败 (重试后): ${response.status}`;
+           try {
+             const retryJson = JSON.parse(retryErrorText);
+             retryErrorMessage = retryJson.error?.message || retryJson.message || retryErrorMessage;
+           } catch { 
+             if (retryErrorText) retryErrorMessage = retryErrorText.slice(0, 200);
+           }
+           throw new Error(retryErrorMessage);
+        }
+      } else if (isThinkingParamError) {
+        console.warn(`[AI Service] enable_thinking parameter error detected: "${errorMessage}". Retrying with enable_thinking=false...`);
+        
+        // Disable thinking and retry
+        body.enable_thinking = false;
 
         // Retry request
         response = await fetch(endpoint, {
