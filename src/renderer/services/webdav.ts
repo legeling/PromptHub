@@ -874,9 +874,30 @@ export async function incrementalDownload(config: WebDAVConfig, options?: WebDAV
 
     let manifest: BackupManifest;
     try {
-      manifest = JSON.parse(manifestResult.data);
-    } catch {
-      return { success: false, message: 'Invalid manifest file format / manifest 文件格式错误' };
+      // Clean up data: remove BOM and whitespace
+      // 清理数据：移除 BOM 和空白字符
+      let cleanData = manifestResult.data;
+      if (cleanData.charCodeAt(0) === 0xFEFF) {
+        cleanData = cleanData.slice(1);
+      }
+      cleanData = cleanData.trim();
+
+      manifest = JSON.parse(cleanData);
+    } catch (parseError) {
+      // Log detailed error info for debugging
+      // 记录详细错误信息用于调试
+      const preview = manifestResult.data.substring(0, 200);
+      console.error('[WebDAV] Failed to parse manifest.json:', parseError);
+      console.error('[WebDAV] Received data preview:', preview);
+      console.error('[WebDAV] Data length:', manifestResult.data.length);
+
+      // Check if it's an HTML error page from the server
+      // 检查是否是服务器返回的 HTML 错误页面
+      if (manifestResult.data.trim().startsWith('<')) {
+        return { success: false, message: 'Server returned HTML instead of JSON, please check WebDAV server status / 服务器返回了 HTML 而非 JSON，请检查 WebDAV 服务器状态' };
+      }
+
+      return { success: false, message: `Invalid manifest file format / manifest 文件格式错误 (${preview.substring(0, 50)}...)` };
     }
 
     // Download data file

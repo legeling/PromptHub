@@ -15,6 +15,7 @@ export type GalleryImageSize = 'small' | 'medium' | 'large';
 interface PromptState {
   prompts: Prompt[];
   selectedId: string | null;
+  selectedIds: string[];
   isLoading: boolean;
   searchQuery: string;
   filterTags: string[];
@@ -32,8 +33,10 @@ interface PromptState {
   fetchPrompts: () => Promise<void>;
   createPrompt: (data: CreatePromptDTO) => Promise<Prompt>;
   updatePrompt: (id: string, data: UpdatePromptDTO) => Promise<void>;
+  movePrompts: (ids: string[], folderId: string) => Promise<void>;
   deletePrompt: (id: string) => Promise<void>;
   selectPrompt: (id: string | null) => void;
+  setSelectedIds: (ids: string[]) => void;
   setSearchQuery: (query: string) => void;
   toggleFilterTag: (tag: string) => void;
   clearFilterTags: () => void;
@@ -53,6 +56,7 @@ export const usePromptStore = create<PromptState>()(
     (set, get) => ({
       prompts: [],
       selectedId: null,
+      selectedIds: [],
       isLoading: false,
       searchQuery: '',
       filterTags: [],
@@ -119,15 +123,35 @@ export const usePromptStore = create<PromptState>()(
         }));
       },
 
+      movePrompts: async (ids, folderId) => {
+        await db.movePrompts(ids, folderId);
+        set((state) => ({
+          prompts: state.prompts.map((p) => 
+            ids.includes(p.id) ? { ...p, folderId, updatedAt: new Date().toISOString() } : p
+          ),
+        }));
+      },
+
       deletePrompt: async (id) => {
         await db.deletePrompt(id);
         set((state) => ({
           prompts: state.prompts.filter((p) => p.id !== id),
           selectedId: state.selectedId === id ? null : state.selectedId,
+          selectedIds: state.selectedIds.filter((selectedId) => selectedId !== id),
         }));
       },
 
-      selectPrompt: (id) => set({ selectedId: id }),
+      selectPrompt: (id) => set({ 
+        selectedId: id,
+        selectedIds: id ? [id] : []
+      }),
+
+      setSelectedIds: (ids) => set((state) => ({
+        selectedIds: ids,
+        // If only one is selected, update selectedId for compatibility
+        // 如果只选中一个，更新 selectedId 以保持兼容性
+        selectedId: ids.length === 1 ? ids[0] : (ids.includes(state.selectedId || '') ? state.selectedId : null)
+      })),
 
       setSearchQuery: (query) => set({ searchQuery: query }),
 

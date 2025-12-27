@@ -68,6 +68,11 @@
     "versionLabel": "Version {{version}}",
     "confirmDeletePrompt": "Sind Sie sicher, dass Sie diesen Prompt löschen möchten?",
     "promptDeleted": "Prompt gelöscht",
+    "unsavedChanges": "Nicht gespeicherte Änderungen",
+    "unsavedChangesMessage": "Sie haben nicht gespeicherte Änderungen. Möchten Sie diese speichern?",
+    "discardChanges": "Verwerfen",
+    "imageDownloadFailed": "Bilddownload fehlgeschlagen",
+    "imageDownloadFailedMessage": "Das Bild konnte nicht von dieser URL heruntergeladen werden. Bitte prüfen Sie den Link.",
     "aiResponse": "KI-Antwort",
     "callingAI": "KI wird aufgerufen...",
     "waitingResponse": "Warte auf Antwort...",
@@ -183,7 +188,11 @@
     "deleting": "Löschen...",
     "wrongPasswordCannotDelete": "Falsches Master-Passwort, Löschen nicht möglich",
     "folderDeleted": "Ordner gelöscht",
-    "deleteFailed": "Löschen fehlgeschlagen"
+    "deleteFailed": "Löschen fehlgeschlagen",
+    "parentFolder": "Übergeordneter Ordner",
+    "noParent": "Keiner (Root)",
+    "noAvailableParents": "Keine verfügbaren übergeordneten Ordner",
+    "parentHint": "Maximal {{depth}} Verschachtelungsebenen"
   },
   "settings": {
     "security": "Sicherheit",
@@ -222,6 +231,11 @@
     "launchAtStartupDesc": "PromptHub beim Systemstart ausführen",
     "minimizeOnLaunch": "Beim Start minimieren",
     "minimizeOnLaunchDesc": "Beim Start in die Taskleiste minimieren",
+    "closeAction": "Schließaktion",
+    "closeActionDesc": "Wählen Sie, was beim Schließen des Fensters passieren soll",
+    "askEveryTime": "Jedes Mal fragen",
+    "closeToTray": "In Taskleiste minimieren",
+    "closeApp": "Anwendung beenden",
     "editor": "Editor",
     "autoSave": "Automatisch speichern",
     "autoSaveDesc": "Änderungen beim Bearbeiten automatisch speichern",
@@ -488,12 +502,8 @@
     "customParamsDesc": "Benutzerdefinierte Anfrage-Parameter hinzufügen, z.B. max_completion_tokens",
     "paramName": "Parametername",
     "paramValue": "Parameterwert",
-    "closeAction": "Schließaktion",
-    "closeActionDesc": "Wählen Sie, was beim Schließen des Fensters passieren soll",
-    "closeToTray": "In Taskleiste minimieren",
-    "closeApp": "Anwendung beenden",
-    "askEveryTime": "Jedes Mal fragen",
-    "rememberChoice": "Auswahl merken"
+    "autoFillDisabled": "Automatisches Ausfüllen deaktiviert (#)",
+    "apiUrlHint": "Mit # beenden, um automatisches Ausfüllen zu deaktivieren"
   },
   "resources": {
     "title": "Empfohlene Ressourcen",

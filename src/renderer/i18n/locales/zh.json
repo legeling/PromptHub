@@ -188,7 +188,11 @@
     "deleting": "删除中...",
     "wrongPasswordCannotDelete": "主密码错误，无法删除",
     "folderDeleted": "文件夹已删除",
-    "deleteFailed": "删除失败"
+    "deleteFailed": "删除失败",
+    "parentFolder": "父级文件夹",
+    "noParent": "无（根目录）",
+    "noAvailableParents": "没有可用的父级文件夹",
+    "parentHint": "最多支持 {{depth}} 层嵌套"
   },
   "settings": {
     "security": "安全",

@@ -49,6 +49,8 @@ export const FONT_SIZES = [
   { id: 'large', value: 18, name: 'Large' },
 ];
 
+const DEFAULT_TAGS_SECTION_HEIGHT = 140;
+
 type Hs = { hue: number; saturation: number };
 
 const clamp = (n: number, min: number, max: number): number => Math.max(min, Math.min(max, n));
@@ -211,6 +213,11 @@ interface SettingsState {
   useUpdateMirror: boolean; // Use GitHub accelerator mirror (e.g. ghfast.top)
   // 使用 GitHub 加速镜像（如 ghfast.top）
 
+  // Sidebar settings
+  // 侧边栏设置
+  tagsSectionHeight: number;
+  isTagsSectionCollapsed: boolean;
+
   // AI model configuration (legacy single model compatibility)
   // AI 模型配置（兼容旧版单模型配置）
   aiProvider: string;
@@ -256,6 +263,8 @@ interface SettingsState {
   setWebdavEncryptionPassword: (password: string) => void;
   setAutoCheckUpdate: (enabled: boolean) => void;
   setUseUpdateMirror: (enabled: boolean) => void;
+  setTagsSectionHeight: (height: number) => void;
+  setIsTagsSectionCollapsed: (collapsed: boolean) => void;
   setAiProvider: (provider: string) => void;
   setAiApiKey: (key: string) => void;
   setAiApiUrl: (url: string) => void;
@@ -313,6 +322,8 @@ export const useSettingsStore = create<SettingsState>()(
         webdavEncryptionPassword: '',
         autoCheckUpdate: true,
         useUpdateMirror: false,
+        tagsSectionHeight: DEFAULT_TAGS_SECTION_HEIGHT,
+        isTagsSectionCollapsed: false,
         aiProvider: 'openai',
         aiApiKey: '',
         aiApiUrl: '',
@@ -421,6 +432,8 @@ export const useSettingsStore = create<SettingsState>()(
         setWebdavEncryptionPassword: (password) => setTouched({ webdavEncryptionPassword: password }),
         setAutoCheckUpdate: (enabled) => setTouched({ autoCheckUpdate: enabled }),
         setUseUpdateMirror: (enabled) => setTouched({ useUpdateMirror: enabled }),
+        setTagsSectionHeight: (height) => setTouched({ tagsSectionHeight: height }),
+        setIsTagsSectionCollapsed: (collapsed) => setTouched({ isTagsSectionCollapsed: collapsed }),
         setAiProvider: (provider) => setTouched({ aiProvider: provider }),
         setAiApiKey: (key) => setTouched({ aiApiKey: key }),
         setAiApiUrl: (url) => setTouched({ aiApiUrl: url }),
@@ -539,6 +552,17 @@ export const useSettingsStore = create<SettingsState>()(
     },
     {
       name: 'prompthub-settings',
+      version: 1,
+      migrate: (state) => {
+        if (!state || typeof state !== 'object') {
+          return state as SettingsState;
+        }
+        const next = { ...(state as SettingsState) };
+        if (typeof next.tagsSectionHeight === 'number' && next.tagsSectionHeight < DEFAULT_TAGS_SECTION_HEIGHT) {
+          next.tagsSectionHeight = DEFAULT_TAGS_SECTION_HEIGHT;
+        }
+        return next;
+      },
     }
   )
 );

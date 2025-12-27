@@ -478,6 +478,39 @@ export async function deletePrompt(id: string): Promise<void> {
   });
 }
 
+/**
+ * 批量移动 Prompt 到指定文件夹
+ * Batch move prompts to a folder
+ */
+export async function movePrompts(ids: string[], folderId: string): Promise<void> {
+  const database = await getDatabase();
+  const now = new Date().toISOString();
+
+  // 逐个更新 Prompt 的文件夹
+  // Update prompt folders one by one
+  for (const id of ids) {
+    await new Promise<void>((resolve, reject) => {
+      const transaction = database.transaction(STORES.PROMPTS, 'readwrite');
+      const store = transaction.objectStore(STORES.PROMPTS);
+      const getRequest = store.get(id);
+
+      getRequest.onsuccess = () => {
+        const prompt = getRequest.result;
+        if (prompt) {
+          prompt.folderId = folderId;
+          prompt.updatedAt = now;
+          const putRequest = store.put(prompt);
+          putRequest.onsuccess = () => resolve();
+          putRequest.onerror = () => reject(putRequest.error);
+        } else {
+          resolve();
+        }
+      };
+      getRequest.onerror = () => reject(getRequest.error);
+    });
+  }
+}
+
 // ==================== Version 操作 ====================
 // ==================== Version Operations ====================
 

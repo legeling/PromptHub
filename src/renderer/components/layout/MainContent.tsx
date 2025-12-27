@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, Children, isValidElement, cloneElement } from 'react';
 import { flushSync } from 'react-dom';
-import { usePromptStore } from '../../stores/prompt.store';
+import { usePromptStore, ViewMode } from '../../stores/prompt.store';
 import { useFolderStore } from '../../stores/folder.store';
 import { useSettingsStore } from '../../stores/settings.store';
 import { StarIcon, CopyIcon, HistoryIcon, HashIcon, SparklesIcon, EditIcon, TrashIcon, CheckIcon, PlayIcon, LoaderIcon, XIcon, GitCompareIcon, ClockIcon, GlobeIcon, PinIcon } from 'lucide-react';
@@ -19,6 +19,8 @@ import remarkGfm from 'remark-gfm';
 import rehypeSanitize from 'rehype-sanitize';
 import rehypeHighlight from 'rehype-highlight';
 import { defaultSchema } from 'hast-util-sanitize';
+import { useDraggable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 
 function escapeRegExp(str: string) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -93,7 +95,7 @@ function PromptCard({
 }: {
   prompt: Prompt;
   isSelected: boolean;
-  onSelect: () => void;
+  onSelect: (e: React.MouseEvent) => void;
   onContextMenu: (e: React.MouseEvent) => void;
   highlightTerms: string[];
 }) {
@@ -101,8 +103,22 @@ function PromptCard({
     ? 'bg-white/20 text-white rounded px-0.5'
     : 'bg-primary/15 text-primary rounded px-0.5';
 
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: prompt.id,
+    data: { type: 'prompt', prompt }
+  });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    opacity: isDragging ? 0.5 : 1,
+  };
+
   return (
     <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
       onClick={onSelect}
       onContextMenu={onContextMenu}
       className={`
@@ -112,6 +128,7 @@ function PromptCard({
           ? 'bg-primary text-white'
           : 'bg-card hover:bg-accent'
         }
+        ${isDragging ? 'z-50 shadow-xl ring-2 ring-primary/50' : ''}
       `}
     >
       <div className="flex items-center justify-between gap-2">
@@ -142,7 +159,9 @@ export function MainContent() {
   const { t, i18n } = useTranslation();
   const prompts = usePromptStore((state) => state.prompts);
   const selectedId = usePromptStore((state) => state.selectedId);
+  const selectedIds = usePromptStore((state) => state.selectedIds);
   const selectPrompt = usePromptStore((state) => state.selectPrompt);
+  const setSelectedIds = usePromptStore((state) => state.setSelectedIds);
   const toggleFavorite = usePromptStore((state) => state.toggleFavorite);
   const togglePinned = usePromptStore((state) => state.togglePinned);
   const deletePrompt = usePromptStore((state) => state.deletePrompt);
@@ -154,6 +173,7 @@ export function MainContent() {
   const viewMode = usePromptStore((state) => state.viewMode);
   const incrementUsageCount = usePromptStore((state) => state.incrementUsageCount);
   const selectedFolderId = useFolderStore((state) => state.selectedFolderId);
+  const unlockedFolderIds = useFolderStore((state) => state.unlockedFolderIds);
   const folders = useFolderStore((state) => state.folders);
 
   const [copied, setCopied] = useState(false);
@@ -169,6 +189,30 @@ export function MainContent() {
   const [renderMarkdownEnabled, setRenderMarkdownEnabled] = useState(renderMarkdownPref);
   const [showEnglish, setShowEnglish] = useState(false);
   const { showToast } = useToast();
+
+  const handleSelectPrompt = useCallback((prompt: Prompt, e: React.MouseEvent) => {
+    // Check if we are in multi-select mode (Ctrl/Cmd/Shift)
+    // 检查是否在多选模式 (Ctrl/Cmd/Shift)
+    if (e.metaKey || e.ctrlKey) {
+      // Toggle selection
+      if (selectedIds.includes(prompt.id)) {
+        setSelectedIds(selectedIds.filter(id => id !== prompt.id));
+      } else {
+        setSelectedIds([...selectedIds, prompt.id]);
+      }
+    } else if (e.shiftKey) {
+      // Range selection (simplified: add to selection for now)
+      // 范围选择（简化：目前只添加到选择）
+      // Ideally this would find the range between last selected and current
+      if (!selectedIds.includes(prompt.id)) {
+        setSelectedIds([...selectedIds, prompt.id]);
+      }
+    } else {
+      // Single select
+      // 单选
+      selectPrompt(prompt.id);
+    }
+  }, [selectedIds, selectPrompt, setSelectedIds]);
 
   const preferEnglish = useMemo(() => {
     const lang = (i18n.language || '').toLowerCase();
@@ -634,7 +678,18 @@ export function MainContent() {
     if (selectedFolderId === 'favorites') {
       result = result.filter((p) => p.isFavorite);
     } else if (selectedFolderId) {
-      result = result.filter((p) => p.folderId === selectedFolderId);
+      const childFolderIds = folders
+        .filter((folder) => folder.parentId === selectedFolderId)
+        .map((folder) => folder.id);
+      const visibleFolderIds = new Set([selectedFolderId, ...childFolderIds]);
+      const lockedFolderIds = new Set(
+        folders
+          .filter((folder) => folder.isPrivate && !unlockedFolderIds.has(folder.id))
+          .map((folder) => folder.id)
+      );
+      result = result.filter(
+        (p) => p.folderId && visibleFolderIds.has(p.folderId) && !lockedFolderIds.has(p.folderId)
+      );
     } else {
       // In the "All Prompts" view, hide contents of private folders
       // 在"全部 Prompts"视图中，隐藏私密文件夹的内容
@@ -708,7 +763,7 @@ export function MainContent() {
     }
 
     return result;
-  }, [prompts, selectedFolderId, searchQuery, filterTags, folders]);
+  }, [prompts, selectedFolderId, searchQuery, filterTags, folders, unlockedFolderIds]);
 
   // Sorting (pinned prompts always first)
   // 排序（置顶的始终在最前面）
@@ -939,15 +994,22 @@ export function MainContent() {
     showToast(t('toast.batchDeleted') || `已删除 ${ids.length} 个 Prompt`, 'success');
   };
 
+  const getViewClass = (mode: ViewMode, layout: 'col' | 'row' = 'col') => {
+    const isActive = viewMode === mode;
+    const layoutClass = layout === 'col' ? 'flex flex-col' : 'flex overflow-hidden';
+    return `absolute inset-0 ${layoutClass} bg-background transition-opacity ease-out ${
+      isActive
+        ? 'opacity-100 z-10 pointer-events-auto duration-200'
+        : 'opacity-0 z-0 pointer-events-none duration-0'
+    }`;
+  };
+
   return (
     <main className="flex-1 relative overflow-hidden bg-background">
       {/* List view mode */}
       {/* 列表视图模式 */}
       <div
-        className={`absolute inset-0 flex flex-col bg-background transition-opacity duration-200 ease-in-out ${viewMode === 'list'
-          ? 'opacity-100 z-10 pointer-events-auto'
-          : 'opacity-0 z-0 pointer-events-none'
-          }`}
+        className={getViewClass('list')}
       >
         {/* Top: sort + view switch */}
         {/* 顶部：排序 + 视图切换 */}
@@ -979,10 +1041,7 @@ export function MainContent() {
       {/* Gallery view */}
       {/* Gallery 视图 */}
       <div
-        className={`absolute inset-0 flex flex-col bg-background transition-opacity duration-200 ease-in-out ${viewMode === 'gallery'
-          ? 'opacity-100 z-10 pointer-events-auto'
-          : 'opacity-0 z-0 pointer-events-none'
-          }`}
+        className={getViewClass('gallery')}
       >
         <PromptListHeader count={sortedPrompts.length} />
         <PromptGalleryView
@@ -1003,10 +1062,7 @@ export function MainContent() {
       {/* Card view mode: two-column layout */}
       {/* 卡片视图模式：左右分栏 */}
       <div
-        className={`absolute inset-0 flex overflow-hidden bg-background transition-opacity duration-200 ease-in-out ${viewMode === 'card'
-          ? 'opacity-100 z-10 pointer-events-auto'
-          : 'opacity-0 z-0 pointer-events-none'
-          }`}
+        className={getViewClass('card', 'row')}
       >
         {/* Prompt list */}
         {/* Prompt 列表 */}
@@ -1032,8 +1088,8 @@ export function MainContent() {
                   <PromptCard
                     key={prompt.id}
                     prompt={prompt}
-                    isSelected={selectedId === prompt.id}
-                    onSelect={() => selectPrompt(prompt.id)}
+                    isSelected={selectedIds.includes(prompt.id)}
+                    onSelect={(e) => handleSelectPrompt(prompt, e)}
                     onContextMenu={(e) => handleContextMenu(e, prompt)}
                     highlightTerms={highlightTerms}
                   />

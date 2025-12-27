@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
-import { XIcon, FolderIcon, TrashIcon, LockIcon, AlertTriangleIcon, Folder as FolderIconLucide, FolderOpen, BookOpen, Code, Database, FileText, Image, Music, Video, Archive, Package, Briefcase, GraduationCap, Palette, Rocket, Heart, Star, Zap, Coffee, Home, Settings, BookMarked, Bug, Calendar, Camera, CheckCircle, Circle, Cloud, Cpu, CreditCard, Crown, Flame, Gamepad2, Gift, Globe, Hammer, Headphones, Inbox, Key, Layers, Lightbulb, Mail, Map, MessageSquare, Monitor, Moon, Newspaper, PenTool, Phone, Pizza, Plane, Play, Search, Shield, ShoppingCart, Smartphone, Sparkles, Sun, Tag, Target, Terminal, Trash2, Trophy, Truck, Tv, Upload, Users, Wallet, Watch, Wrench } from 'lucide-react';
-import { useFolderStore } from '../../stores/folder.store';
+import { useState, useEffect, useMemo } from 'react';
+import { XIcon, FolderIcon, TrashIcon, LockIcon, AlertTriangleIcon, ChevronRightIcon, Folder as FolderIconLucide, FolderOpen, BookOpen, Code, Database, FileText, Image, Music, Video, Archive, Package, Briefcase, GraduationCap, Palette, Rocket, Heart, Star, Zap, Coffee, Home, Settings, BookMarked, Bug, Calendar, Camera, CheckCircle, Circle, Cloud, Cpu, CreditCard, Crown, Flame, Gamepad2, Gift, Globe, Hammer, Headphones, Inbox, Key, Layers, Lightbulb, Mail, Map, MessageSquare, Monitor, Moon, Newspaper, PenTool, Phone, Pizza, Plane, Play, Search, Shield, ShoppingCart, Smartphone, Sparkles, Sun, Tag, Target, Terminal, Trash2, Trophy, Truck, Tv, Upload, Users, Wallet, Watch, Wrench } from 'lucide-react';
+import { useFolderStore, buildFolderTree, FolderTreeNode, canSetParent, canCreateInParent, getFolderPath, MAX_FOLDER_DEPTH } from '../../stores/folder.store';
 import { usePromptStore } from '../../stores/prompt.store';
 import type { Folder } from '../../../shared/types';
 import { useToast } from '../ui/Toast';
 import { useTranslation } from 'react-i18next';
+import { renderFolderIcon } from '../layout/folderIconHelper';
 
 // Optional folder icons - categorized
 // 可选的文件夹图标 - 分类整理
@@ -80,6 +81,8 @@ export function FolderModal({ isOpen, onClose, folder }: FolderModalProps) {
   const [promptsInFolder, setPromptsInFolder] = useState(0);
   const [iconMode, setIconMode] = useState<'emoji' | 'icon'>('emoji');
   const [showDuplicateConfirm, setShowDuplicateConfirm] = useState(false);
+  const [parentId, setParentId] = useState<string | undefined>(undefined);
+  const [showParentSelect, setShowParentSelect] = useState(false);
   const { showToast } = useToast();
 
   const createFolder = useFolderStore((state) => state.createFolder);
@@ -97,13 +100,51 @@ export function FolderModal({ isOpen, onClose, folder }: FolderModalProps) {
       setName(folder.name);
       setIcon(folder.icon || '📁');
       setIsPrivate(folder.isPrivate || false);
+      setParentId(folder.parentId);
     } else {
       setName('');
       setIcon('📁');
       setIsPrivate(false);
+      setParentId(undefined);
     }
     window.api?.security?.status?.().then((s) => setSecurityStatus(s)).catch(() => {});
   }, [folder, isOpen]);
+
+  // Build folder tree for parent selection
+  // 构建文件夹树用于父级选择
+  const folderTree = useMemo(() => buildFolderTree(folders), [folders]);
+  
+  // Get available parent folders (exclude self and descendants in edit mode)
+  // 获取可用的父级文件夹（编辑模式下排除自己和后代）
+  const getAvailableParents = useMemo(() => {
+    const result: { folder: Folder; depth: number }[] = [];
+    
+    function traverse(nodes: FolderTreeNode[]) {
+      nodes.forEach(node => {
+        // In edit mode, exclude self and check if can be a valid parent
+        const isValidParent = !isEditMode || 
+          (folder?.id !== node.id && canSetParent(folders, folder!.id, node.id));
+        
+        // Check depth limit
+        const canHaveChildren = canCreateInParent(folders, node.id);
+        
+        if (isValidParent && canHaveChildren) {
+          result.push({ folder: node, depth: node.depth });
+        }
+        
+        traverse(node.children);
+      });
+    }
+    
+    traverse(folderTree);
+    return result;
+  }, [folders, folderTree, folder, isEditMode]);
+  
+  // Get current parent folder name
+  const currentParentName = useMemo(() => {
+    if (!parentId) return null;
+    return folders.find(f => f.id === parentId)?.name || null;
+  }, [parentId, folders]);
 
   if (!isOpen) return null;
 
@@ -139,12 +180,14 @@ export function FolderModal({ isOpen, onClose, folder }: FolderModalProps) {
           name: name.trim(),
           icon,
           isPrivate,
+          parentId,
         });
       } else {
         await createFolder({
           name: name.trim(),
           icon,
-          isPrivate
+          isPrivate,
+          parentId,
         });
       }
       onClose();
@@ -287,7 +330,7 @@ export function FolderModal({ isOpen, onClose, folder }: FolderModalProps) {
         />
 
         {/* 弹窗内容 */}
-        <div className="relative bg-card rounded-xl w-full max-w-md mx-4 overflow-hidden border border-border">
+        <div className="relative bg-card rounded-xl w-full max-w-2xl mx-4 border border-border flex flex-col max-h-[85vh]">
         {/* 标题栏 */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <h2 className="text-lg font-semibold">
@@ -302,7 +345,8 @@ export function FolderModal({ isOpen, onClose, folder }: FolderModalProps) {
         </div>
 
         {/* 表单 */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-5">
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
+          <div className="flex-1 overflow-y-auto p-5 space-y-5 min-h-0">
           {/* 图标选择 */}
           <div>
             <label className="block text-sm font-medium mb-2">{t('folder.icon', '图标')}</label>
@@ -405,6 +449,72 @@ export function FolderModal({ isOpen, onClose, folder }: FolderModalProps) {
             />
           </div>
 
+          {/* 父级文件夹选择 (Issue #14) */}
+          <div>
+            <label className="block text-sm font-medium mb-2">{t('folder.parentFolder', '父级文件夹')}</label>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowParentSelect(!showParentSelect)}
+                className="w-full h-10 px-3 rounded-lg bg-muted border-0 text-sm text-left flex items-center justify-between hover:bg-muted/80 transition-colors"
+              >
+                <span className={currentParentName ? 'text-foreground' : 'text-muted-foreground/50'}>
+                  {currentParentName || t('folder.noParent', '无（根目录）')}
+                </span>
+                <ChevronRightIcon className={`w-4 h-4 text-muted-foreground transition-transform ${showParentSelect ? 'rotate-90' : ''}`} />
+              </button>
+              
+              {showParentSelect && (
+                <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {/* 根目录选项 */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setParentId(undefined);
+                      setShowParentSelect(false);
+                    }}
+                    className={`w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors flex items-center gap-2 ${
+                      !parentId ? 'bg-primary/10 text-primary' : ''
+                    }`}
+                  >
+                    <FolderIconLucide className="w-4 h-4" />
+                    {t('folder.noParent', '无（根目录）')}
+                  </button>
+                  
+                  {/* 可用的父级文件夹 */}
+                  {getAvailableParents.map(({ folder: f, depth }) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => {
+                        setParentId(f.id);
+                        setShowParentSelect(false);
+                      }}
+                      className={`w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors flex items-center gap-2 ${
+                        parentId === f.id ? 'bg-primary/10 text-primary' : ''
+                      }`}
+                      style={{ paddingLeft: `${(depth + 1) * 12 + 12}px` }}
+                    >
+                      <span className="flex items-center justify-center w-5 h-5">
+                        {renderFolderIcon(f.icon)}
+                      </span>
+                      <span className="truncate">{f.name}</span>
+                    </button>
+                  ))}
+                  
+                  {getAvailableParents.length === 0 && (
+                    <div className="px-3 py-2 text-sm text-muted-foreground">
+                      {t('folder.noAvailableParents', '没有可用的父级文件夹')}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {t('folder.parentHint', '最多支持 {{depth}} 层嵌套', { depth: MAX_FOLDER_DEPTH })}
+            </p>
+          </div>
+
           {/* 隐私设置 */}
           <div className="space-y-3">
             <button
@@ -448,8 +558,9 @@ export function FolderModal({ isOpen, onClose, folder }: FolderModalProps) {
             )}
           </div>
 
+          </div>
           {/* 操作按钮 */}
-          <div className="flex items-center justify-between pt-2">
+          <div className="flex items-center justify-between px-5 pb-5 pt-3 border-t border-border bg-card">
             {isEditMode ? (
               <button
                 type="button"

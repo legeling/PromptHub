@@ -150,6 +150,7 @@ export async function chatCompletion(
 ): Promise<ChatCompletionResult> {
   const { provider, apiKey, apiUrl, model, chatParams } = config;
   const providerId = provider?.toLowerCase() || '';
+  const isGemini = apiUrl.includes('generativelanguage.googleapis.com');
 
   if (!apiKey) {
     throw new Error('请先配置 API Key');
@@ -179,10 +180,21 @@ export async function chatCompletion(
   } else {
     // 移除尾部斜杠
     endpoint = endpoint.replace(/\/$/, '');
+    if (isGemini && endpoint.endsWith('/models')) {
+      endpoint = endpoint.replace(/\/models$/, '');
+    }
 
     // 如果已经包含 /chat/completions，保持原样
     if (endpoint.endsWith('/chat/completions')) {
       // 保持原样
+    } else if (isGemini) {
+      if (endpoint.endsWith('/openai')) {
+        endpoint = endpoint + '/chat/completions';
+      } else if (endpoint.match(/\/v\d+(?:beta)?$/)) {
+        endpoint = endpoint + '/openai/chat/completions';
+      } else {
+        endpoint = endpoint + '/v1beta/openai/chat/completions';
+      }
     } else if (endpoint.match(/\/v\d+$/)) {
       // 如果已经有版本路径如 /v1，直接追加 /chat/completions
       endpoint = endpoint + '/chat/completions';
@@ -201,6 +213,8 @@ export async function chatCompletion(
   if (provider === 'anthropic') {
     headers['x-api-key'] = apiKey;
     headers['anthropic-version'] = '2023-06-01';
+  } else if (isGemini) {
+    headers['x-goog-api-key'] = apiKey;
   } else {
     headers['Authorization'] = `Bearer ${apiKey}`;
   }
@@ -1179,11 +1193,11 @@ export function getBaseUrl(apiUrl: string): string {
  * Get complete API endpoint preview (for display)
  * 如果用户输入以 # 结尾，则不自动填充后续路径
  * 如果用户没有输入 /v1，会自动补全
- * 对于 Gemini API，使用 /models 端点
+ * 对于 Gemini API，使用 OpenAI 兼容端点
  * Get complete API endpoint preview (for display)
  * If the input ends with #, do not auto-fill the subsequent path
  * Auto-complete /v1 if user didn't input it
- * Use /models endpoint for Gemini API
+ * Use OpenAI-compatible endpoint for Gemini API
  */
 export function getApiEndpointPreview(apiUrl: string): string {
   if (!apiUrl) return '';
@@ -1196,14 +1210,16 @@ export function getApiEndpointPreview(apiUrl: string): string {
 
   const baseUrl = getBaseUrl(apiUrl);
 
-  // Gemini API uses different endpoint format
-  // Gemini（Google Generative Language API）并非 OpenAI 的 images/generations 规范
+  // Gemini API uses OpenAI-compatible endpoint format
+  // Gemini（Google Generative Language API）使用 OpenAI 兼容端点
   if (baseUrl.includes('generativelanguage.googleapis.com')) {
-    // Gemini API: https://generativelanguage.googleapis.com/v1beta/models
-    if (baseUrl.match(/\/v\d+(?:beta)?$/)) {
-      return baseUrl + '/models';
+    if (baseUrl.endsWith('/openai')) {
+      return baseUrl + '/chat/completions';
     }
-    return baseUrl + '/v1beta/models';
+    if (baseUrl.match(/\/v\d+(?:beta)?$/)) {
+      return baseUrl + '/openai/chat/completions';
+    }
+    return baseUrl + '/v1beta/openai/chat/completions';
   }
 
   // Check if version path is already included
@@ -1236,10 +1252,11 @@ export function getImageApiEndpointPreview(apiUrl: string): string {
   // Gemini is not OpenAI's images/generations specification
   // Gemini（Google Generative Language API）并非 OpenAI 的 images/generations 规范
   if (baseUrl.includes('generativelanguage.googleapis.com')) {
-    if (baseUrl.match(/\/v\d+(?:beta)?$/)) {
-      return baseUrl + '/models';
+    const geminiBaseUrl = baseUrl.replace(/\/openai$/, '');
+    if (geminiBaseUrl.match(/\/v\d+(?:beta)?$/)) {
+      return geminiBaseUrl + '/models';
     }
-    return baseUrl + '/v1beta/models';
+    return geminiBaseUrl + '/v1beta/models';
   }
 
   let endpoint = apiUrl.replace(/\/$/, '');
@@ -1279,13 +1296,14 @@ export async function fetchAvailableModels(
   try {
     // Calculate base URL and add /models
     // 计算 base URL 并添加 /models
-    const baseUrl = getBaseUrl(apiUrl);
+    let baseUrl = getBaseUrl(apiUrl);
     let endpoint = baseUrl + '/models';
 
     // Gemini: https://generativelanguage.googleapis.com/v1beta/models
     // Users might only fill host (without /v1beta), need to complete according to Gemini specification
     // 用户可能只填 host（不含 /v1beta），这里需要按 Gemini 规范补齐
     if (baseUrl.includes('generativelanguage.googleapis.com')) {
+      baseUrl = baseUrl.replace(/\/openai$/, '');
       if (baseUrl.match(/\/v\d+(?:beta)?$/)) {
         endpoint = baseUrl + '/models';
       } else {
@@ -1293,12 +1311,19 @@ export async function fetchAvailableModels(
       }
     }
 
+    const isGemini = baseUrl.includes('generativelanguage.googleapis.com');
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (isGemini) {
+      headers['x-goog-api-key'] = apiKey;
+    } else {
+      headers['Authorization'] = `Bearer ${apiKey}`;
+    }
+
     const response = await fetch(endpoint, {
       method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
+      headers,
     });
 
     if (!response.ok) {
@@ -1324,6 +1349,25 @@ export async function fetchAvailableModels(
           owned_by: m.owned_by,
           created: m.created,
         }))
+        .sort((a: ModelInfo, b: ModelInfo) => a.id.localeCompare(b.id));
+
+      return { success: true, models };
+    }
+
+    // Gemini 格式的响应 / Gemini format response
+    if (data.models && Array.isArray(data.models)) {
+      const models = data.models
+        .filter((m: { name?: string }) => m.name)
+        .map((m: { name: string; displayName?: string; description?: string }) => {
+          // Gemini returns "models/gemini-pro", we need "gemini-pro" for OpenAI compatible endpoint
+          const id = m.name.replace(/^models\//, '');
+          return {
+            id: id,
+            name: m.displayName ? `${m.displayName} (${id})` : id,
+            owned_by: 'Google',
+            description: m.description,
+          };
+        })
         .sort((a: ModelInfo, b: ModelInfo) => a.id.localeCompare(b.id));
 
       return { success: true, models };

@@ -68,6 +68,11 @@
     "versionLabel": "バージョン {{version}}",
     "confirmDeletePrompt": "この Prompt を削除してもよろしいですか？",
     "promptDeleted": "Prompt が削除されました",
+    "unsavedChanges": "未保存の変更",
+    "unsavedChangesMessage": "保存されていない変更があります。保存しますか？",
+    "discardChanges": "保存しない",
+    "imageDownloadFailed": "画像のダウンロードに失敗しました",
+    "imageDownloadFailedMessage": "このURLから画像をダウンロードできません。リンクが正しいか確認してください。",
     "aiResponse": "AI 応答",
     "callingAI": "AI を呼び出し中...",
     "waitingResponse": "応答を待っています...",
@@ -183,7 +188,11 @@
     "deleting": "削除中...",
     "wrongPasswordCannotDelete": "マスターパスワードが間違っているため削除できません",
     "folderDeleted": "フォルダを削除しました",
-    "deleteFailed": "削除に失敗しました"
+    "deleteFailed": "削除に失敗しました",
+    "parentFolder": "親フォルダ",
+    "noParent": "なし（ルート）",
+    "noAvailableParents": "利用可能な親フォルダがありません",
+    "parentHint": "最大 {{depth}} レベルのネストをサポートしています"
   },
   "settings": {
     "security": "セキュリティ",
@@ -439,6 +448,8 @@
     "confirmDelete": "このモデル設定を削除してもよろしいですか？",
     "modelAdded": "モデルが追加されました",
     "modelUpdated": "モデルが更新されました",
+    "autoFillDisabled": "自動入力が無効です (#)",
+    "apiUrlHint": "末尾に # を入力すると自動入力を無効にします",
     "fillComplete": "完全なモデル設定を入力してください",
     "noModelsHint": "モデルを追加すると、Prompt 詳細ページでマルチモデル比較テストができます",
     "testConnectionBtn": "接続テスト",

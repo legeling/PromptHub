@@ -21,6 +21,8 @@ function App() {
   const fetchFolders = useFolderStore((state) => state.fetchFolders);
   const folders = useFolderStore((state) => state.folders);
   const updatePrompt = usePromptStore((state) => state.updatePrompt);
+  const movePrompts = usePromptStore((state) => state.movePrompts);
+  const selectedIds = usePromptStore((state) => state.selectedIds);
   const applyTheme = useSettingsStore((state) => state.applyTheme);
   const [currentPage, setCurrentPage] = useState<PageType>('home');
   const [isLoading, setIsLoading] = useState(true);
@@ -152,7 +154,7 @@ function App() {
 
   // Handle dragging a prompt into a folder
   // 处理 Prompt 拖拽到文件夹
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     
     if (!over) return;
@@ -162,15 +164,32 @@ function App() {
     const activeData = active.data.current;
     const overData = over.data.current;
     
-    if (activeData?.type === 'prompt' && overData?.type === 'folder') {
+    if (activeData?.type === 'prompt' && (overData?.type === 'folder' || overData?.type === 'folder-nest')) {
       const promptId = activeData.prompt.id;
       const folderId = overData.folderId;
       const folder = folders.find(f => f.id === folderId);
       
-      // Update prompt folder
-      // 更新 Prompt 的文件夹
-      updatePrompt(promptId, { folderId });
-      showToast(`已移动到「${folder?.name || '文件夹'}」`, 'success');
+      // Determine prompts to move
+      // 确定要移动的 prompts
+      let promptsToMove = [promptId];
+      
+      // If the dragged prompt is part of the current selection, move all selected prompts
+      // 如果拖拽的 Prompt 是当前选中项的一部分，则移动所有选中的 Prompts
+      if (selectedIds.includes(promptId)) {
+        promptsToMove = selectedIds;
+      }
+      
+      // Update prompts folder
+      // 更新 Prompts 的文件夹
+      await movePrompts(promptsToMove, folderId);
+      
+      const count = promptsToMove.length;
+      showToast(
+        count > 1 
+          ? `已将 ${count} 个 Prompt 移动到「${folder?.name || '文件夹'}」` 
+          : `已移动到「${folder?.name || '文件夹'}」`,
+        'success'
+      );
     }
   };
 

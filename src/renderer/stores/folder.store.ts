@@ -19,6 +19,7 @@ interface FolderState {
   unlockFolder: (id: string) => void;
   lockFolder: (id: string) => void;
   reorderFolders: (ids: string[]) => Promise<void>;
+  moveFolder: (id: string, newParentId: string | null, newIndex: number) => Promise<void>;
 }
 
 export const useFolderStore = create<FolderState>((set, get) => ({
@@ -117,6 +118,46 @@ export const useFolderStore = create<FolderState>((set, get) => ({
       return { unlockedFolderIds: newUnlocked };
     }),
 
+  moveFolder: async (id, newParentId, newIndex) => {
+    try {
+      const { folders } = get();
+      const folderToMove = folders.find(f => f.id === id);
+      if (!folderToMove) return;
+      if (newParentId && !canSetParent(folders, id, newParentId)) return;
+
+      const now = new Date().toISOString();
+      const nextFolder = { ...folderToMove, parentId: newParentId || undefined, order: newIndex, updatedAt: now };
+
+      // 1. Get all folders that will be siblings in the new parent
+      const otherFolders = folders.filter(f => f.id !== id);
+      const newSiblings = otherFolders
+        .filter(f => (newParentId ? f.parentId === newParentId : !f.parentId))
+        .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+      // 2. Insert the moved folder at the new index
+      newSiblings.splice(newIndex, 0, nextFolder);
+
+      // 3. Update orders for all siblings
+      const orderUpdates = newSiblings.map((f, index) => ({ id: f.id, order: index }));
+
+      // 4. Optimistically update local state for smoother drag end
+      set((state) => ({
+        folders: state.folders.map((f) => {
+          if (f.id === id) return nextFolder;
+          const update = orderUpdates.find((u) => u.id === f.id);
+          if (update) return { ...f, order: update.order };
+          return f;
+        })
+      }));
+
+      // 5. Persist changes
+      await db.updateFolder(id, { parentId: newParentId || undefined });
+      await db.updateFolderOrders(orderUpdates);
+    } catch (error) {
+      console.error('Failed to move folder:', error);
+    }
+  },
+
   reorderFolders: async (ids) => {
     try {
       const updates = ids.map((id, index) => ({ id, order: index }));
@@ -133,3 +174,176 @@ export const useFolderStore = create<FolderState>((set, get) => ({
     }
   },
 }));
+
+// ============================================
+// 多层级文件夹工具函数 (Issue #14)
+// Multi-level folder utility functions
+// ============================================
+
+/**
+ * 树形文件夹节点
+ * Tree folder node
+ */
+export interface FolderTreeNode extends Folder {
+  children: FolderTreeNode[];
+  depth: number;
+}
+
+/**
+ * 将扁平文件夹列表转换为树形结构
+ * Convert flat folder list to tree structure
+ */
+export function buildFolderTree(folders: Folder[]): FolderTreeNode[] {
+  const folderMap = new Map<string, FolderTreeNode>();
+  const rootNodes: FolderTreeNode[] = [];
+
+  // First pass: create all nodes
+  // 第一遍：创建所有节点
+  folders.forEach(folder => {
+    folderMap.set(folder.id, { ...folder, children: [], depth: 0 });
+  });
+
+  // Second pass: build tree structure
+  // 第二遍：构建树形结构
+  folders.forEach(folder => {
+    const node = folderMap.get(folder.id)!;
+    if (folder.parentId && folderMap.has(folder.parentId)) {
+      const parent = folderMap.get(folder.parentId)!;
+      parent.children.push(node);
+    } else {
+      rootNodes.push(node);
+    }
+  });
+
+  // Third pass: calculate depths and sort children
+  // 第三遍：计算深度并排序子节点
+  function setDepth(nodes: FolderTreeNode[], depth: number) {
+    nodes.forEach(node => {
+      node.depth = depth;
+      node.children.sort((a, b) => a.order - b.order);
+      setDepth(node.children, depth + 1);
+    });
+  }
+  rootNodes.sort((a, b) => a.order - b.order);
+  setDepth(rootNodes, 0);
+
+  return rootNodes;
+}
+
+/**
+ * 获取根级文件夹（没有 parentId 的）
+ * Get root level folders (those without parentId)
+ */
+export function getRootFolders(folders: Folder[]): Folder[] {
+  return folders
+    .filter(f => !f.parentId)
+    .sort((a, b) => a.order - b.order);
+}
+
+/**
+ * 获取指定文件夹的子文件夹
+ * Get child folders of a specific folder
+ */
+export function getChildFolders(folders: Folder[], parentId: string): Folder[] {
+  return folders
+    .filter(f => f.parentId === parentId)
+    .sort((a, b) => a.order - b.order);
+}
+
+/**
+ * 获取文件夹的完整路径（用于面包屑导航）
+ * Get full path of a folder (for breadcrumb navigation)
+ */
+export function getFolderPath(folders: Folder[], folderId: string): Folder[] {
+  const path: Folder[] = [];
+  let current = folders.find(f => f.id === folderId);
+  
+  while (current) {
+    path.unshift(current);
+    current = current.parentId 
+      ? folders.find(f => f.id === current!.parentId) 
+      : undefined;
+  }
+  
+  return path;
+}
+
+/**
+ * 获取文件夹的深度（0 = 根级）
+ * Get folder depth (0 = root level)
+ */
+export function getFolderDepth(folders: Folder[], folderId: string): number {
+  return getFolderPath(folders, folderId).length - 1;
+}
+
+/**
+ * 获取文件夹的所有后代 ID（用于防止循环引用）
+ * Get all descendant IDs of a folder (to prevent circular references)
+ */
+export function getAllDescendantIds(folders: Folder[], folderId: string): Set<string> {
+  const descendants = new Set<string>();
+  
+  function collectDescendants(parentId: string) {
+    folders.forEach(folder => {
+      if (folder.parentId === parentId && !descendants.has(folder.id)) {
+        descendants.add(folder.id);
+        collectDescendants(folder.id);
+      }
+    });
+  }
+  
+  collectDescendants(folderId);
+  return descendants;
+}
+
+/**
+ * 获取文件夹子树的最大相对深度（用于嵌套限制）
+ * Get max descendant depth relative to the folder (for nesting limits)
+ */
+export function getMaxDescendantDepth(folders: Folder[], folderId: string): number {
+  let maxDepth = 0;
+  function walk(parentId: string, depth: number) {
+    folders.forEach(folder => {
+      if (folder.parentId === parentId) {
+        if (depth > maxDepth) maxDepth = depth;
+        walk(folder.id, depth + 1);
+      }
+    });
+  }
+  walk(folderId, 1);
+  return maxDepth;
+}
+
+/**
+ * 检查是否可以将文件夹设为某个父级（防止循环引用）
+ * Check if a folder can be set as a child of another folder (prevent circular references)
+ */
+export function canSetParent(folders: Folder[], folderId: string, newParentId: string | undefined): boolean {
+  if (!newParentId) return true; // Can always move to root / 总是可以移到根级
+  if (folderId === newParentId) return false; // Can't be its own parent / 不能是自己的父级
+  
+  // Check if newParentId is a descendant of folderId
+  // 检查 newParentId 是否是 folderId 的后代
+  const descendants = getAllDescendantIds(folders, folderId);
+  if (descendants.has(newParentId)) return false;
+
+  const parentDepth = getFolderDepth(folders, newParentId);
+  const maxDescendantDepth = getMaxDescendantDepth(folders, folderId);
+  return parentDepth + 1 + maxDescendantDepth <= MAX_FOLDER_DEPTH - 1;
+}
+
+/**
+ * 最大嵌套深度限制（根目录 + 一层子文件夹）
+ * Maximum nesting depth limit (root + one child level)
+ */
+export const MAX_FOLDER_DEPTH = 2;
+
+/**
+ * 检查是否可以在指定父级下创建新文件夹（深度限制）
+ * Check if a new folder can be created under the specified parent (depth limit)
+ */
+export function canCreateInParent(folders: Folder[], parentId: string | undefined): boolean {
+  if (!parentId) return true; // Root level is always OK / 根级总是可以
+  const depth = getFolderDepth(folders, parentId);
+  return depth < MAX_FOLDER_DEPTH - 1; // -1 because we're adding a child
+}

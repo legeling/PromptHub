@@ -188,7 +188,11 @@
     "deleting": "Deleting...",
     "wrongPasswordCannotDelete": "Wrong master password, cannot delete",
     "folderDeleted": "Folder deleted",
-    "deleteFailed": "Delete failed"
+    "deleteFailed": "Delete failed",
+    "parentFolder": "Parent Folder",
+    "noParent": "None (Root)",
+    "noAvailableParents": "No available parent folders",
+    "parentHint": "Maximum {{depth}} levels of nesting"
   },
   "settings": {
     "security": "Security",
