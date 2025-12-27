@@ -41,14 +41,15 @@ describe('自动更新 - 真实场景测试（调用真实代码）', () => {
 
     describe('getChangelogForVersionRange - 真实代码测试', () => {
 
-        it('从 0.2.9 升级到 0.3.2 应该只显示 0.3.0, 0.3.1, 0.3.2 的更新日志', () => {
-            const result = getChangelogForVersionRange('0.3.2', '0.2.9');
+        it('从 0.2.9 升级到 0.3.3 应该只显示 0.3.0, 0.3.1, 0.3.2, 0.3.3 的更新日志', () => {
+            const result = getChangelogForVersionRange('0.3.3', '0.2.9');
 
             console.log('=== 更新日志内容 ===');
             console.log(result);
             console.log('=== 结束 ===');
 
-            // 应该包含 0.3.2, 0.3.1, 0.3.0
+            // 应该包含 0.3.3, 0.3.2, 0.3.1, 0.3.0
+            expect(result).toContain('## [0.3.3]');
             expect(result).toContain('## [0.3.2]');
             expect(result).toContain('## [0.3.1]');
             expect(result).toContain('## [0.3.0]');
@@ -79,14 +80,17 @@ describe('自动更新 - 真实场景测试（调用真实代码）', () => {
         });
 
         it('已经是最新版本时应该返回空字符串', () => {
-            const result = getChangelogForVersionRange('0.3.2', '0.3.2');
+            const result = getChangelogForVersionRange('0.3.3', '0.3.3');
             expect(result).toBe('');
         });
 
         it('更新日志内容应该包含实际的功能描述', () => {
-            const result = getChangelogForVersionRange('0.3.2', '0.2.9');
+            const result = getChangelogForVersionRange('0.3.3', '0.2.9');
 
             // 验证包含实际的功能描述
+            // 0.3.3 的内容
+            expect(result).toContain('多层级文件夹支持');
+
             // 0.3.2 的内容
             expect(result).toContain('搜索展示优化');
             expect(result).toContain('文件夹图标扩展');
@@ -104,7 +108,7 @@ describe('自动更新 - 真实场景测试（调用真实代码）', () => {
         it('应该正确比较版本号', () => {
             expect(compareVersions('0.3.0', '0.2.9')).toBe(1);  // 0.3.0 > 0.2.9
             expect(compareVersions('0.2.9', '0.3.0')).toBe(-1); // 0.2.9 < 0.3.0
-            expect(compareVersions('0.3.2', '0.3.2')).toBe(0);  // 相等
+            expect(compareVersions('0.3.3', '0.3.3')).toBe(0);  // 相等
             expect(compareVersions('1.0.0', '0.9.9')).toBe(1);  // 主版本号更大
             expect(compareVersions('0.10.0', '0.9.0')).toBe(1); // 次版本号 10 > 9
         });
@@ -112,7 +116,7 @@ describe('自动更新 - 真实场景测试（调用真实代码）', () => {
         it('应该正确处理带 v 前缀的版本号', () => {
             expect(compareVersions('v0.3.0', '0.2.9')).toBe(1);
             expect(compareVersions('0.3.0', 'v0.2.9')).toBe(1);
-            expect(compareVersions('v0.3.2', 'v0.3.2')).toBe(0);
+            expect(compareVersions('v0.3.3', 'v0.3.3')).toBe(0);
         });
     });
 

@@ -14,7 +14,7 @@
   [![GitHub Forks](https://img.shields.io/github/forks/legeling/PromptHub?style=for-the-badge&logo=github)](https://github.com/legeling/PromptHub/network/members)
   [![Downloads](https://img.shields.io/github/downloads/legeling/PromptHub/total?style=for-the-badge&logo=github&color=blue)](https://github.com/legeling/PromptHub/releases)
   
-  [![Version](https://img.shields.io/badge/version-v0.3.2-success?style=for-the-badge)](https://github.com/legeling/PromptHub/releases)
+  [![Version](https://img.shields.io/badge/version-v0.3.3-success?style=for-the-badge)](https://github.com/legeling/PromptHub/releases)
   [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](./LICENSE)
   [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=for-the-badge)](https://github.com/legeling/PromptHub/pulls)
   
@@ -143,14 +143,19 @@
 
 ### 下载
 
-从 [Releases](https://github.com/legeling/PromptHub/releases) 下载对应平台的安装包：
+从 [Releases](https://github.com/legeling/PromptHub/releases) 下载最新版本 v0.3.3：
 
-| 平台 | 架构 | 格式 |
-|------|------|------|
-| Windows | x64 | `.exe` 安装包 |
-| macOS | Apple Silicon (M系列) | `.dmg` 镜像 |
-| macOS | Intel | `.dmg` 镜像 |
-| Linux | x64 | `.AppImage` / `.deb` |
+#### 🪟 Windows
+[![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/download/v0.3.3/PromptHub-Setup-0.3.3-x64.exe)
+[![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/download/v0.3.3/PromptHub-Setup-0.3.3-arm64.exe)
+
+#### 🍎 macOS
+[![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/download/v0.3.3/PromptHub-0.3.3-arm64.dmg)
+[![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/download/v0.3.3/PromptHub-0.3.3-x64.dmg)
+
+#### 🐧 Linux
+[![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/download/v0.3.3/PromptHub-0.3.3-x64.AppImage)
+[![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/download/v0.3.3/prompthub_0.3.3_amd64.deb)
 
 ### macOS 首次启动
 
@@ -271,54 +276,41 @@ PromptHub/
 
 ## 路线图
 
-### v0.3.2 (当前)
-- [x] Prompt CRUD 管理
-- [x] 文件夹和标签系统
-- [x] 收藏功能
-- [x] 版本历史
-- [x] 数据导入导出
-- [x] 主题定制 (深色/浅色/跟随系统)
-- [x] 多语言支持（简体中文、繁体中文、英文、日语、西班牙语、德语、法语）
-- [x] WebDAV 同步功能
-- [x] Windows 无边框窗口
-- [x] 文件夹拖拽排序
-- [x] AI 模型配置（18+ 服务商）
-- [x] AI 连接测试 & 模型对比
-- [x] 多模型配置管理（无限数量）
-- [x] MAC 窗口拖动优化
-- [x] 自定义下拉选择框样式
-- [x] 全面国际化支持（主页、编辑器、弹窗）
-- [x] 应用内自动更新
-- [x] 变量填充界面（复制/AI测试时均支持）
-- [x] 最小化到系统托盘
-- [x] Linux 平台支持
-- [x] 编辑器行号显示
-- [x] 列表视图模式（表格式展示所有 Prompt）
-- [x] AI 测试结果持久化（每个 Prompt 保留最后一次测试结果）
-- [x] 排序功能（按时间、标题、使用次数排序）
-- [x] Markdown 全场景预览
-- [x] 主密码与安全设置（私密文件夹 WIP）
-- [x] Qwen/通义模型兼容性优化
-- [x] 搜索算法优化（基于权重评分）
-- [x] 预制模型地址校准
+### v0.3.3 (当前)
+- [x] **多层级文件夹**：支持无限层级文件夹嵌套与拖拽管理
+- [x] **版本控制系统**：像管理代码一样管理 Prompt，支持历史对比与一键回滚
+- [x] **变量模板系统**：支持 `{{variable}}` 语法，自动生成填充表单，支持复制前预览
+- [x] **多模型实验室**：内置 18+ 供应商，支持多模型并行对比测试与响应时间分析
+- [x] **跨设备同步**：支持 WebDAV 增量同步与全量备份，数据高度可控
+- [x] **极致阅读体验**：支持 Markdown 全场景渲染、代码高亮、双语对照模式
+- [x] **多维高效管理**：文件夹、标签、收藏、使用次数统计、全文评分搜索
+- [x] **多视图模式**：提供卡片、精简列表、画廊三种视图，适配不同使用场景
+- [x] **系统深度集成**：全局快捷键唤起、最小化到系统托盘、暗黑模式支持
+- [x] **更新镜像加速**：内置多个 GitHub 加速镜像，解决国内用户下载更新缓慢的问题
+- [x] **安全与隐私**：主密码保护、私密文件夹加密存储，所有数据坚持本地优先
 
 ### 未来规划
-- [ ] Web 版本（Docker/Cloudflare 部署）
-- [ ] Prompt 模板市场
-- [ ] 浏览器插件
+- [ ] **浏览器扩展**：在网页端（如 ChatGPT/Claude）直接调取 PromptHub 库，实现无缝工作
+- [ ] **移动端应用**：支持手机端查看、搜索与简单的编辑同步
+- [ ] **提示词广场**：内置高质量提示词模板库，支持一键导入与分享
+- [ ] **插件系统**：支持用户自定义扩展 AI 供应商或本地模型（如 Ollama）集成
+- [ ] **批量导出与转换**：支持将提示词导出为常用 AI 工具支持的特定格式
+- [ ] **增强型变量**：支持选择框、动态日期等更复杂的变量类型
 
 ## 更新日志
 
 查看完整的更新日志：**[CHANGELOG.md](./CHANGELOG.md)**
 
-### 最新版本 v0.3.2 (2025-12-22)
+### 最新版本 v0.3.3 (2025-12-27)
+
+**新功能**
+- 📂 **多层级文件夹**：支持文件夹多级嵌套与拖拽排序 (Closes #14)
+- 🚀 **镜像源加速**：内置 GitHub 加速镜像，显著提升更新下载速度
+- 🤖 **Gemini 修复**：适配 Google 原生 API 格式，修复模型列表获取 (#24)
 
 **优化**
-- 🔍 搜索体验优化：引入权重评分机制，优先匹配标题
-- 🤖 预制供应商优化：校准所有预制 AI 供应商 API 地址
-- 🎨 分类图标识别：支持识别手动添加模型的供应商图标
-- 🍌 Nano Banana 专属视觉：nanobananai 🍌 专属图标
-- 📝 API 地址提示：增加 # 禁用自动填充的引导提示
+- 🌐 **多语言补全**：完善了日、繁、德、法、西 5 种语言的缺失翻译
+- 🔧 **类型修复**：修复多处 TypeScript 类型定义错误
 
 > [查看完整更新日志](./CHANGELOG.md)
 

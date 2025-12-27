@@ -1,10 +1,22 @@
-# 更新日志 / Changelog
+## [0.3.3] - 2025-12-27
 
-所有重要的版本更新都会记录在此文件中。
-All notable changes to this project will be documented in this file.
+### 新功能 / Added
+- 📂 **多层级文件夹支持**：支持文件夹多级嵌套，通过拖拽即可轻松管理复杂的目录结构 (Closes #14)
+  - **Multi-level Folder Support**: Added support for multi-level folder nesting with intuitive drag-and-drop management (Closes #14)
+- 🚀 **GitHub 镜像源加速**：新增多个 GitHub 加速镜像源，显著提升国内用户下载更新的速度
+  - **GitHub Mirror Support**: Added multiple GitHub accelerator mirrors to significantly speed up update downloads for users in restricted regions
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+### 修复 / Fixed
+- 🤖 **Gemini 模型修复**：适配 Google Gemini API 的原生响应格式，修复无法获取模型列表的问题 (#24)
+  - **Gemini API Fix**: Adapted to native Gemini API response format, fixing model list fetching issues (#24)
+- 🎨 **文件夹交互修复**：修复鼠标移入侧边栏时所有文件夹操作按钮同时显示的 UI 问题
+  - **UI Interaction Fix**: Fixed issue where all folder action buttons were displayed simultaneously on sidebar hover
+- 🌐 **多语言完善**：同步并补全了日、繁中、德、法、西语中缺失的翻译键值
+  - **i18n Completion**: Synchronized and completed missing translation keys for JA, ZH-TW, DE, FR, and ES
+
+### 优化 / Changed
+- 🔧 **TypeScript 类型增强**：修复多处 TS 类型错误，提升代码健壮性
+  - **TS Type Enhancement**: Fixed multiple TypeScript errors for better code stability
 
 ---
 

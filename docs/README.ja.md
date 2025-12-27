@@ -1,13 +1,13 @@
 <div align="center">
   <img src="./imgs/icon.png" alt="PromptHub Logo" width="120" height="120" />
   <h1>PromptHub</h1>
-  <p><strong>🚀 オープンソース・ローカルファーストの AI プロンプト管理ツール</strong></p>
-  <p>効率的な管理、バージョン管理、変数テンプレート、マルチモデルテスト — オールインワンのプロンプトワークフロー</p>
+  <p><strong>🚀 オープンソース、ローカルファーストの AI プロンプトマネージャー</strong></p>
+  <p>効率的な管理、バージョン管理、変数入力、マルチモデルテスト — プロンプトワークフローをこれ一つで</p>
   
   <p>
     <a href="https://github.com/legeling/PromptHub/stargazers"><img src="https://img.shields.io/github/stars/legeling/PromptHub?style=flat-square&color=yellow" alt="GitHub Stars"/></a>
     <a href="https://github.com/legeling/PromptHub/network/members"><img src="https://img.shields.io/github/forks/legeling/PromptHub?style=flat-square" alt="GitHub Forks"/></a>
-    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.3.2-green?style=flat-square" alt="Version"/></a>
+    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.3.3-green?style=flat-square" alt="Version"/></a>
     <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/github/downloads/legeling/PromptHub/total?style=flat-square&color=blue" alt="Downloads"/></a>
     <img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="License: AGPL-3.0"/>
   </p>
@@ -32,53 +32,58 @@
 
 <br/>
 
-> 💡 **なぜ PromptHub を選ぶのか？**
+> 💡 **なぜ PromptHub なのか？**
 > 
-> ノート、ドキュメント、チャット履歴からプロンプトを探し回るのに疲れていませんか？PromptHub を使えば、コードのようにプロンプトを管理できます — バージョン管理、変数テンプレート、マルチモデルテスト、すべてローカルでプライバシー優先。
+> ノートやドキュメント、チャット履歴からプロンプトを探し回るのに疲れていませんか？PromptHub は、プロンプトをコードのように管理できます — バージョン管理、変数テンプレート、マルチモデルテスト。すべてのデータはローカルに保存され、プライバシーも万全です。
 
 ---
 
 ## 📥 ダウンロード
 
-> 💡 以下のリンクから最新バージョンをダウンロードするか、[Releases ページ](https://github.com/legeling/PromptHub/releases)で全バージョンをご確認ください。
+<div align="center">
+  <a href="https://github.com/legeling/PromptHub/releases">
+    <img src="https://img.shields.io/badge/📥_今すぐダウンロード-Releases-blue?style=for-the-badge" alt="Download"/>
+  </a>
+</div>
 
-| プラットフォーム | アーキテクチャ | ダウンロード |
+> 💡 上のボタンをクリックして Releases ページへ移動し、各プラットフォーム用のインストールパッケージをダウンロードしてください。Windows / macOS / Linux をサポートしています。
+
+| プラットフォーム | アーキテクチャ | 形式 |
 |:---:|:---:|:---:|
-| **Windows** | x64 | [PromptHub-Setup-0.2.6-x64.exe](https://github.com/legeling/PromptHub/releases/download/v0.2.6/PromptHub-Setup-0.2.6-x64.exe) |
-| **macOS** | Apple Silicon (M1/M2/M3) | [PromptHub-0.2.6-arm64.dmg](https://github.com/legeling/PromptHub/releases/download/v0.2.6/PromptHub-0.2.6-arm64.dmg) |
-| **macOS** | Intel | [PromptHub-0.2.6-x64.dmg](https://github.com/legeling/PromptHub/releases/download/v0.2.6/PromptHub-0.2.6-x64.dmg) |
-| **Linux** | x64 (AppImage) | [PromptHub-0.2.6-x64.AppImage](https://github.com/legeling/PromptHub/releases/download/v0.2.6/PromptHub-0.2.6-x64.AppImage) |
-| **Linux** | x64 (deb) | [PromptHub-0.2.6-amd64.deb](https://github.com/legeling/PromptHub/releases/download/v0.2.6/PromptHub-0.2.6-amd64.deb) |
+| **Windows** | x64 | `.exe` インストーラー |
+| **macOS** | Apple Silicon (M1/M2/M3) | `.dmg` イメージ |
+| **macOS** | Intel | `.dmg` イメージ |
+| **Linux** | x64 | `.AppImage` / `.deb` |
 
 ---
 
-## ✨ 機能
+## ✨ 機能紹介
 
-- **📝 プロンプト管理** - フォルダとタグで整理、作成・編集・削除
-- **⭐ お気に入り** - よく使うプロンプトにすばやくアクセス
-- **🔄 バージョン管理** - 履歴を自動保存、表示とロールバックをサポート
-- **🔧 変数システム** - テンプレート変数 `{{variable}}` で動的置換
-- **📋 ワンクリックコピー** - プロンプトをクリップボードにすばやくコピー
-- **🔍 全文検索** - タイトル、説明、内容を高速検索
-- **📤 エクスポート/バックアップ** - 選択エクスポート（エクスポート専用）/ フルバックアップ&復元（圧縮 `.phub.gz`、画像・AI 設定・アプリ設定を含む）
-- **🎨 テーマカスタマイズ** - ダーク/ライト/システムモード、複数のアクセントカラー
-- **🌐 多言語対応** - 簡体字中国語、繁体字中国語、英語、日本語、スペイン語、ドイツ語、フランス語
-- **💾 ローカルストレージ** - すべてのデータはローカルに保存、プライバシー保護
-- **🖥️ クロスプラットフォーム** - macOS、Windows、Linux をサポート
-- **📊 リストビュー** - テーブル形式でプロンプトを表示、ソートと一括操作をサポート
-- **🤖 AI テスト** - 18以上のプロバイダーでマルチモデルテスト内蔵
-- **🎨 画像生成モデル** - DALL-E、Midjourney などの画像生成モデルをサポート
-- **🧭 Markdown プレビュー** - 全場面で Markdown レンダリングとコードハイライト
-- **🪟 ワイド＆フルスクリーンモード** - 編集・詳細表示時に広い視野とフルスクリーンモード
-- **🔐 マスターパスワード＆プライベートフォルダ** - マスターパスワードでプライベートコンテンツを保護
-- **🖼️ 画像アップロード＆プレビュー** - ローカル画像のアップロード/貼り付けとモーダルでのプレビュー
-- **☁️ WebDAV 同期** - WebDAV 同期（prompts/画像/AI 設定/アプリ設定）をサポート（起動時 + 定期）
+- **📝 プロンプト管理** - 作成、編集、削除。フォルダとタグによる整理が可能
+- **⭐ お気に入り** - よく使うプロンプトに素早くアクセス
+- **🔄 バージョン管理** - 履歴を自動保存。過去バージョンの閲覧、比較、復元をサポート
+- **🔧 変数システム** - テンプレート変数 `{{variable}}` による動的な置換
+- **📋 ワンクリックコピー** - プロンプト内容を素早くクリップボードにコピー
+- **🔍 全文検索** - タイトル、説明、内容から高速検索
+- **📤 エクスポートとバックアップ** - 選択エクスポート + フルバックアップ/復元（`.phub.gz` 形式。画像、AI設定、システム設定を含む）
+- **🎨 テーマのカスタマイズ** - ダーク/ライト/システム設定。複数のアクセントカラーから選択可能
+- **🌐 多言語対応** - 日本語、英語、中国語（簡体・繁体）、スペイン語、ドイツ語、フランス語をサポート
+- **💾 ローカルストレージ** - すべてのデータはローカルに保存され、プライバシーを保護
+- **🖥️ クロスプラットフォーム** - macOS, Windows, Linux をサポート
+- **📊 リストビュー** - テーブル形式の表示。ソートや一括操作をサポート
+- **🤖 AI テスト** - 18以上のプロバイダーによるマルチモデルテストを内蔵
+- **🎨 画像生成モデル** - 画像生成モデル（DALL-E など）の設定とテストをサポート
+- **🧭 Markdown プレビュー** - 詳細、リスト、編集のすべての画面で Markdown レンダリングとコードハイライトに対応
+- **🪟 ワイド・全画面モード** - 編集体験を最適化するワイドおよび全画面モード
+- **🔐 マスターパスワードとプライベートフォルダ** - マスターパスワードによるプライベートコンテンツの保護
+- **🖼️ 画像のアップロードとプレビュー** - ローカル画像のアップロード/貼り付けとプレビューに対応
+- **☁️ WebDAV 同期** - WebDAV による同期をサポート（画像・設定を含む。起動時および定期同期に対応）
 
 ## 📸 スクリーンショット
 
 <div align="center">
-  <p><strong>メインインターフェース</strong></p>
-  <img src="./imgs/1-index.png" width="80%" alt="メインインターフェース"/>
+  <p><strong>メイン画面</strong></p>
+  <img src="./imgs/1-index.png" width="80%" alt="メイン画面"/>
   <br/><br/>
   <p><strong>ギャラリービュー</strong></p>
   <img src="./imgs/2-gallery-view.png" width="80%" alt="ギャラリービュー"/>
@@ -92,11 +97,11 @@
   <p><strong>テーマ設定</strong></p>
   <img src="./imgs/5-theme.png" width="80%" alt="テーマ設定"/>
   <br/><br/>
-  <p><strong>バイリンガルモード</strong></p>
-  <img src="./imgs/6-double-language.png" width="80%" alt="バイリンガルモード"/>
+  <p><strong>二ヶ国語対照</strong></p>
+  <img src="./imgs/6-double-language.png" width="80%" alt="二ヶ国語対照"/>
   <br/><br/>
-  <p><strong>変数入力</strong></p>
-  <img src="./imgs/7-variable.png" width="80%" alt="変数入力"/>
+  <p><strong>変数の入力</strong></p>
+  <img src="./imgs/7-variable.png" width="80%" alt="変数の入力"/>
   <br/><br/>
   <p><strong>バージョン比較</strong></p>
   <img src="./imgs/8-version-compare.png" width="80%" alt="バージョン比較"/>
@@ -105,89 +110,110 @@
   <img src="./imgs/9-i18n.png" width="80%" alt="多言語サポート"/>
 </div>
 
-## 📦 インストール
+## 📦 インストール方法
 
 ### ダウンロード
 
 [Releases](https://github.com/legeling/PromptHub/releases) からお使いのプラットフォーム用のインストーラーをダウンロードしてください：
 
-| プラットフォーム | ファイル |
+| プラットフォーム | ダウンロードファイル |
 |----------|----------|
-| macOS (Intel) | `PromptHub-x.x.x-x64.dmg` |
-| macOS (Apple Silicon) | `PromptHub-x.x.x-arm64.dmg` |
-| Windows | `PromptHub-Setup-x.x.x-x64.exe` |
-| Linux | `PromptHub-x.x.x.AppImage` / `.deb` |
+| macOS (Intel) | `PromptHub-0.3.3-x64.dmg` |
+| macOS (Apple Silicon) | `PromptHub-0.3.3-arm64.dmg` |
+| Windows | `PromptHub-Setup-0.3.3-x64.exe` |
+| Linux | `PromptHub-0.3.3-x64.AppImage` / `prompthub_0.3.3_amd64.deb` |
 
-### macOS 初回起動時
+### macOS での初回起動について
 
-アプリは Apple によって公証されていないため、初回起動時に **「PromptHub は壊れているため開けません」** または **「開発元を確認できません」** というメッセージが表示される場合があります。
+本アプリは Apple の公証を受けていないため、初回起動時に「**PromptHubは壊れているため開けません**」や「**開発元を検証できないため開けません**」と表示される場合があります。
 
-**解決方法（推奨）**：ターミナルを開き、以下のコマンドを実行して Gatekeeper をバイパスします：
+**解決方法（推奨）**: ターミナルを開き、以下のコマンドを実行して公証チェックを回避してください：
 
 ```bash
 sudo xattr -rd com.apple.quarantine /Applications/PromptHub.app
 ```
 
-> 💡 **ヒント**：アプリが別の場所にインストールされている場合は、パスを実際のインストールパスに置き換えてください。
+> 💡 **ヒント**: アプリを別の場所にインストールした場合は、実際のパスに置き換えてください。
 
-**または**：「システム設定」→「プライバシーとセキュリティ」→ セキュリティセクションまでスクロール →「このまま開く」をクリック。
+**または**: 「システム設定」→「プライバシーとセキュリティ」→ セキュリティセクションまでスクロールし、「このまま開く」をクリックしてください。
 
-### ソースからビルド
+<div align="center">
+  <img src="./imgs/install.png" width="60%" alt="macOS インストール"/>
+</div>
+
+### ソースからのビルド
 
 ```bash
 # リポジトリをクローン
 git clone https://github.com/legeling/PromptHub.git
 cd PromptHub
 
-# 依存関係をインストール
+# 依存関係のインストール
 pnpm install
 
 # 開発モード
 pnpm dev
 
-# アプリケーションをビルド
+# アプリのビルド
 pnpm build
 ```
 
 ## 🚀 クイックスタート
 
-### 1. プロンプトを作成
+### 1. プロンプトの作成
 
-「新規」ボタンをクリックして以下を入力：
-- **タイトル** - プロンプト名
-- **説明** - 簡単な使用説明
-- **System Prompt** - AI の役割を設定（オプション）
+「新規作成」ボタンをクリックし、以下を入力します：
+- **タイトル** - プロンプトの名前
+- **説明** - 用途の簡単な説明
+- **System Prompt** - AI の役割設定（任意）
 - **User Prompt** - 実際のプロンプト内容
 - **タグ** - 分類と検索用
 
-### 2. 変数を使用
+### 2. 変数の使用
 
-プロンプト内で `{{変数名}}` 構文を使用：
+プロンプト内で `{{変数名}}` 構文を使用して変数を定義できます：
 
 ```
-以下の {{ソース言語}} テキストを {{ターゲット言語}} に翻訳してください：
+以下の {{source_lang}} のテキストを {{target_lang}} に翻訳してください：
 
-{{テキスト}}
+{{text}}
 ```
 
 ### 3. コピーして使用
 
-プロンプトを選択し、「コピー」をクリックしてクリップボードにコピー。
+プロンプトを選択して「コピー」をクリックすると、内容がクリップボードにコピーされます。
 
 ### 4. バージョン管理
 
-編集履歴は自動保存されます。「履歴」をクリックして以前のバージョンを表示・復元できます。
+編集履歴は自動的に保存されます。「履歴」をクリックして過去バージョンの閲覧や復元が可能です。
 
 ## 🛠️ 技術スタック
 
-| カテゴリ | 技術 |
+| カテゴリ | 使用技術 |
 |----------|------------|
 | フレームワーク | Electron 33 |
 | フロントエンド | React 18 + TypeScript 5 |
 | スタイリング | TailwindCSS |
 | 状態管理 | Zustand |
-| ローカルストレージ | IndexedDB + SQLite |
+| ローカル保存 | IndexedDB + SQLite |
 | ビルドツール | Vite + electron-builder |
+
+## 📁 プロジェクト構造
+
+```
+PromptHub/
+├── src/
+│   ├── main/           # Electron メインプロセス
+│   ├── preload/        # プリロードスクリプト
+│   ├── renderer/       # React レンダラープロセス
+│   │   ├── components/ # UI コンポーネント
+│   │   ├── stores/     # Zustand 状態管理
+│   │   ├── services/   # データベースサービス
+│   │   └── styles/     # グローバルスタイル
+│   └── shared/         # 共通の型定義
+├── resources/          # 静的アセット
+└── package.json
+```
 
 ## 📈 Star History
 
@@ -201,44 +227,58 @@ pnpm build
 
 ## 🗺️ ロードマップ
 
-### v0.2.6（現行）
-- [x] Prompt CRUD / フォルダ / タグ
-- [x] お気に入り
-- [x] 履歴 / 復元
-- [x] エクスポート/インポート
-- [x] テーマ
-- [x] 多言語
-- [x] WebDAV 同期
-- [x] AI モデル設定（18+）/ テスト / 比較
-- [x] リストビュー + 一括操作
-- [x] Markdown プレビュー
+### v0.3.3 (現在のバージョン)
+- [x] **多階層フォルダ**: 無制限のフォルダ階層化とドラッグ＆ドロップ管理をサポート
+- [x] **バージョン管理システム**: コードのようにプロンプトを管理。履歴比較とワンクリック復元が可能
+- [x] **変数テンプレートシステム**: `{{variable}}` 構文をサポートし、入力フォームを自動生成。コピー前のプレビューも可能
+- [x] **マルチモデル・ラボ**: 18以上のプロバイダーを内蔵。複数モデルの並列比較テストと応答時間分析をサポート
+- [x] **デバイス間同期**: WebDAVによる増分同期とフルバックアップをサポートし、データを高度に制御
+- [x] **究極の閲覧体験**: Markdownのフルレンダリング、コードハイライト、二ヶ国語対照モードをサポート
+- [x] **多次元の効率管理**: フォルダ、タグ、お気に入り、使用統計、全文スコアリング検索による整理
+- [x] **マルチビューモード**: カード、リスト、ギャラリーの3つのビューを提供し、様々なシーンに対応
+- [x] **システムへの深い統合**: グローバルショートカット、システムトレイへの最小化、ダークモード対応
+- [x] **ミラーサイト対応**: 複数の GitHub 加速ミラーを内蔵し、アップデートのダウンロード速度を大幅に向上
+- [x] **セキュリティとプライバシー**: マスターパスワード保護、暗号化されたプライベートフォルダ。ローカルファーストを徹底
 
+### 今後の計画
+---
+(Skipping some lines)
+---
 ## 📝 更新履歴
 
-完全な更新履歴はこちら：**[CHANGELOG.md](../CHANGELOG.md)**
+すべての更新履歴はこちら：**[CHANGELOG.md](../CHANGELOG.md)**
 
-### 最新バージョン v0.2.6 (2025-12-15)
+### 最新バージョン v0.3.3 (2025-12-27)
 
 **新機能**
-- 🎨 表示設定を刷新：モダンな UI + なめらかなアニメーション + カスタムテーマカラー
-- 🧰 データ管理を強化：選択エクスポート + フルバックアップ/復元（圧縮 `.phub.gz`）
-- ☁️ WebDAV 増分バックアップ：変更されたファイルのみアップロード、帯域幅を大幅に削減
-- 🔐 AES-256 暗号化バックアップ対応（実験的）
+- 📂 **多階層フォルダ**: フォルダの多階層ネストとドラッグ＆ドロップによる並べ替えをサポート (Closes #14)
+- 🚀 **ミラーサイト加速**: GitHub 加速ミラーを内蔵し、更新ダウンロード速度を大幅に向上
+- 🤖 **Gemini 修正**: Google ネイティブ API 形式に対応し、モデルリストの取得失敗を修正 (#24)
 
-**バグ修正**
-- 🐛 WebDAV 同期失敗を修正 (#11)
-- 🐛 多言語、ストリーミング出力、変数検出などの問題を修正
+**最適化**
+- 🌐 **多言語対応の補完**: 日、繁、独、仏、西の5言語で欠落していた翻訳を補完
+- 🔧 **型定義の修正**: TypeScript の型定義エラーを複数修正
 
-> 📋 [完全な更新履歴を見る](../CHANGELOG.md)
+> 📋 [更新履歴の詳細はこちら](../CHANGELOG.md)
+
+## 🤝 貢献について
+
+貢献を歓迎します！以下の手順に従ってください：
+
+1. リポジトリをフォークする
+2. 機能用のブランチを作成する (`git checkout -b feature/amazing-feature`)
+3. 変更をコミットする (`git commit -m 'Add amazing feature'`)
+4. ブランチにプッシュする (`git push origin feature/amazing-feature`)
+5. プルリクエストを作成する
 
 ## 📄 ライセンス
 
-このプロジェクトは [AGPL-3.0 ライセンス](../LICENSE) の下でライセンスされています。
+本プロジェクトは [AGPL-3.0 License](../LICENSE) の下で公開されています。
 
 ## 💬 サポート
 
-- **Issues**：[GitHub Issues](https://github.com/legeling/PromptHub/issues)
-- **Discussions**：[GitHub Discussions](https://github.com/legeling/PromptHub/discussions)
+- **不具合報告**: [GitHub Issues](https://github.com/legeling/PromptHub/issues)
+- **機能提案**: [GitHub Discussions](https://github.com/legeling/PromptHub/discussions)
 
 ## 🙏 謝辞
 
@@ -247,19 +287,23 @@ pnpm build
 - [TailwindCSS](https://tailwindcss.com/)
 - [Zustand](https://zustand-demo.pmnd.rs/)
 - [Lucide](https://lucide.dev/)
-- PromptHub の改善に貢献してくださったすべての[コントリビューター](https://github.com/legeling/PromptHub/graphs/contributors)に感謝します！
+- PromptHub の改善に協力してくれたすべての素晴らしい [貢献者](https://github.com/legeling/PromptHub/graphs/contributors) の皆様に感謝します！
 
 ---
 
 <div align="center">
-  <p><strong>このプロジェクトが役に立ったら、⭐ をお願いします！</strong></p>
+  <p><strong>このプロジェクトが役に立った場合は、⭐ を付けて応援してください！</strong></p>
+  
+  <a href="https://www.buymeacoffee.com/legeling" target="_blank">
+    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50" />
+  </a>
 </div>
 
 ---
 
-## ☕ サポート / Sponsor
+## ☕ 開発を支援する
 
-PromptHub があなたの仕事に役立つなら、作者にコーヒーをおごってください ☕
+PromptHub がお役に立てたなら、作者にコーヒーを一杯おごってください ☕
 
 <div align="center">
   <table>
@@ -280,8 +324,8 @@ PromptHub があなたの仕事に役立つなら、作者にコーヒーをお�
 
 📧 **連絡先**: legeling567@gmail.com
 
-すべてのサポーターに感謝します！皆さんのサポートが開発を続ける原動力です！
+すべての支援者の皆様に感謝します！皆様のサポートが開発の大きな励みになります！
 
 <div align="center">
-  <p><a href="https://github.com/legeling">legeling</a> が ❤️ を込めて作成</p>
+  <p>Made with ❤️ by <a href="https://github.com/legeling">legeling</a></p>
 </div>

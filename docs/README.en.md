@@ -7,7 +7,7 @@
   <p>
     <a href="https://github.com/legeling/PromptHub/stargazers"><img src="https://img.shields.io/github/stars/legeling/PromptHub?style=flat-square&color=yellow" alt="GitHub Stars"/></a>
     <a href="https://github.com/legeling/PromptHub/network/members"><img src="https://img.shields.io/github/forks/legeling/PromptHub?style=flat-square" alt="GitHub Forks"/></a>
-    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.3.2-green?style=flat-square" alt="Version"/></a>
+    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.3.3-green?style=flat-square" alt="Version"/></a>
     <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/github/downloads/legeling/PromptHub/total?style=flat-square&color=blue" alt="Downloads"/></a>
     <img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="License: AGPL-3.0"/>
   </p>
@@ -118,10 +118,10 @@ Download the installer for your platform from [Releases](https://github.com/lege
 
 | Platform | Download |
 |----------|----------|
-| macOS (Intel) | `PromptHub-x.x.x-x64.dmg` |
-| macOS (Apple Silicon) | `PromptHub-x.x.x-arm64.dmg` |
-| Windows | `PromptHub-x.x.x-Setup-x64.exe` |
-| Linux | `PromptHub-x.x.x.AppImage` / `.deb` |
+| macOS (Intel) | `PromptHub-0.3.3-x64.dmg` |
+| macOS (Apple Silicon) | `PromptHub-0.3.3-arm64.dmg` |
+| Windows | `PromptHub-Setup-0.3.3-x64.exe` |
+| Linux | `PromptHub-0.3.3-x64.AppImage` / `prompthub_0.3.3_amd64.deb` |
 
 ### macOS First Launch
 
@@ -227,55 +227,35 @@ PromptHub/
 
 ## 🗺️ Roadmap
 
-### v0.2.7 (Current)
-- [x] Prompt CRUD management
-- [x] Folder and tag system
-- [x] Favorites feature
-- [x] Version history
-- [x] Data import/export
-- [x] Theme customization (Dark/Light/System)
-- [x] Multi-language support (zh / zh-TW / en / ja / es / de / fr)
-- [x] WebDAV sync
-- [x] Windows frameless window
-- [x] Folder drag & drop sorting
-- [x] AI model configuration (18+ providers)
-- [x] AI connection test & model comparison
-- [x] Multi-model configuration (unlimited)
-- [x] Full i18n support (homepage, editor, modals)
-- [x] In-app auto update
-- [x] Variable fill-in interface (copy & AI test)
-- [x] Minimize to system tray
-- [x] Linux platform support
-- [x] Editor line numbers
-- [x] List view mode
-- [x] AI test result persistence
-- [x] Sorting functionality
-- [x] Markdown Preview Everywhere
-- [x] Master Password & Private Folders (Basic)
-- [x] Qwen/Tongyi Model Compatibility
-- [x] Image Upload & Preview (upload/paste + modal preview)
+### v0.3.3 (Current)
+- [x] **Multi-level Folders**: Support infinite folder nesting and drag-and-drop management.
+- [x] **Version Control System**: Manage Prompts like code, with history comparison and one-click rollback.
+- [x] **Variable Template System**: Support `{{variable}}` syntax, automatically generate input forms with pre-copy preview.
+- [x] **Multi-Model Lab**: Built-in 18+ providers, supporting parallel comparison testing and response time analysis.
+- [x] **Cross-Device Sync**: WebDAV incremental sync and full backup, ensuring full data control.
+- [x] **Superior Reading Experience**: Full Markdown rendering, code highlighting, and bilingual comparison mode.
+- [x] **Multi-dimensional Management**: Efficiently organize with folders, tags, favorites, usage statistics, and full-text scoring search.
+- [x] **Multiple View Modes**: Provides Card, Compact List, and Gallery views for different scenarios.
+- [x] **Deep System Integration**: Global shortcuts, minimize to tray, and native dark mode support.
+- [x] **Update Mirror Support**: Built-in GitHub accelerator mirrors to significantly speed up update downloads.
+- [x] **Security & Privacy**: Master password protection, encrypted private folders, and a local-first data policy.
 
 ### Future Plans
-- [ ] Data encryption for private folders (AES-256)
-- [ ] Web version (Docker/Cloudflare deployment)
-- [ ] Prompt template marketplace
-- [ ] Browser extension
-
+--- (Skipping some lines) ---
 ## 📝 Changelog
 
 See full changelog: **[CHANGELOG.md](../CHANGELOG.md)**
 
-### Latest Version v0.2.7 (2025-12-16)
+### Latest Version v0.3.3 (2025-12-27)
 
 **New Features**
-- ⌨️ Global shortcuts: Customize hotkeys for showing app, new prompt, search, settings
-- ⌨️ Shortcut conflict detection: Automatically detect and warn about conflicts
-- 🎨 Image models: Added Google Gemini and Stability AI
-- 💾 Unsaved changes dialog: Prompt to save/discard/cancel when closing editor
+- 📂 **Multi-level Folders**: Support infinite nesting and drag-and-drop reordering (Closes #14).
+- 🚀 **Mirror Acceleration**: Built-in GitHub mirrors to speed up update downloads.
+- 🤖 **Gemini Fix**: Adapted to native Gemini API format, fixing model list fetching (#24).
 
 **Improvements**
-- 🌐 Improved i18n translations for all supported languages
-- 🎨 Image download failure now uses custom Toast instead of system alert
+- 🌐 **i18n Completion**: Completed missing translations for 5 languages (JA, ZH-TW, DE, FR, ES).
+- 🔧 **Type Fixes**: Fixed multiple TypeScript type definition errors.
 
 > 📋 [View full changelog](../CHANGELOG.md)
 
