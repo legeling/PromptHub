@@ -70,7 +70,7 @@ export const SortableTreeItem = forwardRef<HTMLLIElement, SortableTreeItemProps>
           {...attributes}
           {...listeners}
           className={`
-            group relative flex items-center transition-[background-color] duration-200 rounded-lg min-h-[32px] cursor-default
+            group/folder relative flex items-center transition-[background-color] duration-200 rounded-lg min-h-[32px] cursor-default
             ${isActive
               ? 'bg-sidebar-accent text-sidebar-foreground'
               : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
@@ -138,7 +138,7 @@ export const SortableTreeItem = forwardRef<HTMLLIElement, SortableTreeItemProps>
                 onEdit?.();
               }}
               className={`
-                p-1.5 rounded opacity-0 group-hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/5 transition-all mr-1 z-30
+                p-1.5 rounded opacity-0 group-hover/folder:opacity-100 hover:bg-black/5 dark:hover:bg-white/5 transition-all mr-1 z-30
                 ${isActive ? 'opacity-60' : ''}
               `}
             >
