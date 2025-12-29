@@ -82,6 +82,8 @@ jobs:
             mv dist/latest.yml dist/latest-${{ matrix.arch }}.yml
             echo "Renamed latest.yml to latest-${{ matrix.arch }}.yml"
           fi
+          # Ensure latest-{arch}.yml points to the arch-specific installer
+          node -e "const fs=require('fs');const path=require('path');const arch='${{ matrix.arch }}';const yml=path.join('dist',`latest-${arch}.yml`);if(!fs.existsSync(yml)) process.exit(0);const exe=fs.readdirSync('dist').find(f=>f.startsWith('PromptHub-Setup-')&&f.endsWith(`-${arch}.exe`));if(!exe) process.exit(0);let data=fs.readFileSync(yml,'utf8');data=data.replace(/PromptHub-Setup-[0-9.]+\\.exe\\.blockmap/g, `${exe}.blockmap`).replace(/PromptHub-Setup-[0-9.]+\\.exe/g, exe);fs.writeFileSync(yml,data);console.log(`Patched ${yml} -> ${exe}`);"
           # Keep latest.yml as x64 alias for compatibility
           if [ "${{ matrix.arch }}" = "x64" ] && [ -f "dist/latest-x64.yml" ]; then
             cp dist/latest-x64.yml dist/latest.yml
@@ -154,25 +156,38 @@ jobs:
               seen[$base]="$file"
             fi
           done < <(find artifacts -type f -print0)
+      
+      - name: Set release version
+        shell: bash
+        run: |
+          echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: artifacts/**/*
+          files: |
+            artifacts/**/PromptHub-*-x64.dmg
+            artifacts/**/PromptHub-*-arm64.dmg
+            artifacts/**/PromptHub-Setup-*-x64.exe
+            artifacts/**/PromptHub-Setup-*-arm64.exe
+            artifacts/**/PromptHub-*-x64.AppImage
+            artifacts/**/prompthub_*_amd64.deb
+            artifacts/**/PromptHub-*.zip
+            artifacts/**/latest*.yml
+            artifacts/**/*.blockmap
           draft: false
           prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') }}
           generate_release_notes: true
           body: |
             ## 📦 下载安装
             
-            | 平台 | 芯片 | 下载文件示例 |
-            |------|------|--------------|
-            | macOS | Intel 芯片 | `PromptHub-x.x.x-x64.dmg` |
-            | macOS | M 系列芯片 | `PromptHub-x.x.x-arm64.dmg` |
-            | Windows | x64 | `PromptHub-Setup-x.x.x-x64.exe` |
-            | Linux | x64 | `PromptHub-x.x.x.AppImage` / `.deb` |
+            | 平台 | 下载 |
+            |------|------|
+            | ![Windows](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white) | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-${{ env.VERSION }}-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-${{ env.VERSION }}-arm64.exe) |
+            | ![macOS](https://img.shields.io/badge/macOS-000000?style=for-the-badge&logo=apple&logoColor=white) | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-${{ env.VERSION }}-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-${{ env.VERSION }}-x64.dmg) |
+            | ![Linux](https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black) | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-${{ env.VERSION }}-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_${{ env.VERSION }}_amd64.deb) |
             
-            > 💡 实际文件名中的 `x.x.x` 会是本次发布的版本号，例如 `0.1.6`。
+            > 💡 链接指向 latest 标签，始终下载最新版本。
             
             ### ⚠️ macOS 首次启动
             如果提示"无法打开"或"已损坏"，请在终端执行：
