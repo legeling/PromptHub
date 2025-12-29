@@ -7,7 +7,7 @@
   <p>
     <a href="https://github.com/legeling/PromptHub/stargazers"><img src="https://img.shields.io/github/stars/legeling/PromptHub?style=flat-square&color=yellow" alt="GitHub Stars"/></a>
     <a href="https://github.com/legeling/PromptHub/network/members"><img src="https://img.shields.io/github/forks/legeling/PromptHub?style=flat-square" alt="GitHub Forks"/></a>
-    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.3.3-green?style=flat-square" alt="Version"/></a>
+    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.3.4-green?style=flat-square" alt="Version"/></a>
     <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/github/downloads/legeling/PromptHub/total?style=flat-square&color=blue" alt="Downloads"/></a>
     <img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="License: AGPL-3.0"/>
   </p>
@@ -118,10 +118,10 @@
 
 | 平台 | 下載文件 |
 |----------|----------|
-| macOS (Intel) | `PromptHub-0.3.3-x64.dmg` |
-| macOS (Apple Silicon) | `PromptHub-0.3.3-arm64.dmg` |
-| Windows | `PromptHub-Setup-0.3.3-x64.exe` |
-| Linux | `PromptHub-0.3.3-x64.AppImage` / `prompthub_0.3.3_amd64.deb` |
+| macOS (Intel) | `PromptHub-0.3.4-x64.dmg` |
+| macOS (Apple Silicon) | `PromptHub-0.3.4-arm64.dmg` |
+| Windows | `PromptHub-Setup-0.3.4-x64.exe` |
+| Linux | `PromptHub-0.3.4-x64.AppImage` / `prompthub_0.3.4_amd64.deb` |
 
 ### macOS 首次啟動
 
@@ -227,7 +227,7 @@ PromptHub/
 
 ## 🗺️ 路線圖
 
-### v0.3.3 (當前)
+### v0.3.4 (當前)
 - [x] **多層級資料夾**：支援無限層級資料夾巢狀與拖拽管理
 - [x] **版本控制系統**：像管理代碼一樣管理 Prompt，支援歷史對比與一鍵回滾
 - [x] **變數範本系統**：支援 `{{variable}}` 語法，自動生成填充表單，支援複製前預覽
@@ -252,16 +252,15 @@ PromptHub/
 
 查看完整更新日誌：**[CHANGELOG.md](../CHANGELOG.md)**
 
-### 最新版本 v0.3.3 (2025-12-27)
+### 最新版本 v0.3.4 (2025-12-29)
 
-**新功能**
-- 📂 **多層級資料夾**：支援資料夾多級巢狀與拖拽排序 (Closes #14)
-- 🚀 **鏡像源加速**：內置 GitHub 加速鏡像，顯著提升更新下載速度
-- 🤖 **Gemini 修復**：適配 Google 原生 API 格式，修復模型列表獲取 (#24)
+**修復**
+- 🧭 **Prompt 預覽恢復**：卡片模式點擊即可預覽與編輯
+- 🤖 **Gemini 測試連線**：修正模型名與參數相容，避免 API 400
 
 **優化**
-- 🌐 **多語言補全**：完善了日、繁、德、法、西 5 種語言的缺失翻譯
-- 🔧 **類型修復**：修復多處 TypeScript 類型定義錯誤
+- 🚫 **列表拖拽禁用**：Prompt 列表不再可拖動，避免誤操作
+- 📦 **發布流程修復**：清理多餘 blockmap，修正 Windows 更新通道與 latest 檔案
 
 > 📋 [查看完整更新日誌](../CHANGELOG.md)
 

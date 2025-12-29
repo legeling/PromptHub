@@ -7,7 +7,7 @@
   <p>
     <a href="https://github.com/legeling/PromptHub/stargazers"><img src="https://img.shields.io/github/stars/legeling/PromptHub?style=flat-square&color=yellow" alt="GitHub Stars"/></a>
     <a href="https://github.com/legeling/PromptHub/network/members"><img src="https://img.shields.io/github/forks/legeling/PromptHub?style=flat-square" alt="GitHub Forks"/></a>
-    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.3.3-green?style=flat-square" alt="Version"/></a>
+    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.3.4-green?style=flat-square" alt="Version"/></a>
     <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/github/downloads/legeling/PromptHub/total?style=flat-square&color=blue" alt="Downloads"/></a>
     <img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="License: AGPL-3.0"/>
   </p>
@@ -118,10 +118,10 @@ Download the installer for your platform from [Releases](https://github.com/lege
 
 | Platform | Download |
 |----------|----------|
-| macOS (Intel) | `PromptHub-0.3.3-x64.dmg` |
-| macOS (Apple Silicon) | `PromptHub-0.3.3-arm64.dmg` |
-| Windows | `PromptHub-Setup-0.3.3-x64.exe` |
-| Linux | `PromptHub-0.3.3-x64.AppImage` / `prompthub_0.3.3_amd64.deb` |
+| macOS (Intel) | `PromptHub-0.3.4-x64.dmg` |
+| macOS (Apple Silicon) | `PromptHub-0.3.4-arm64.dmg` |
+| Windows | `PromptHub-Setup-0.3.4-x64.exe` |
+| Linux | `PromptHub-0.3.4-x64.AppImage` / `prompthub_0.3.4_amd64.deb` |
 
 ### macOS First Launch
 
@@ -227,7 +227,7 @@ PromptHub/
 
 ## 🗺️ Roadmap
 
-### v0.3.3 (Current)
+### v0.3.4 (Current)
 - [x] **Multi-level Folders**: Support infinite folder nesting and drag-and-drop management.
 - [x] **Version Control System**: Manage Prompts like code, with history comparison and one-click rollback.
 - [x] **Variable Template System**: Support `{{variable}}` syntax, automatically generate input forms with pre-copy preview.
@@ -246,16 +246,15 @@ PromptHub/
 
 See full changelog: **[CHANGELOG.md](../CHANGELOG.md)**
 
-### Latest Version v0.3.3 (2025-12-27)
+### Latest Version v0.3.4 (2025-12-29)
 
-**New Features**
-- 📂 **Multi-level Folders**: Support infinite nesting and drag-and-drop reordering (Closes #14).
-- 🚀 **Mirror Acceleration**: Built-in GitHub mirrors to speed up update downloads.
-- 🤖 **Gemini Fix**: Adapted to native Gemini API format, fixing model list fetching (#24).
+**Fixes**
+- 🧭 **Prompt Preview Restored**: Card view selection now opens preview/editor as expected.
+- 🤖 **Gemini Test Fix**: Normalized model name/params to avoid API 400.
 
 **Improvements**
-- 🌐 **i18n Completion**: Completed missing translations for 5 languages (JA, ZH-TW, DE, FR, ES).
-- 🔧 **Type Fixes**: Fixed multiple TypeScript type definition errors.
+- 🚫 **Disable Prompt Dragging**: Removed unintended drag behavior in prompt list.
+- 📦 **Release Pipeline Fix**: Cleaned extra blockmap and fixed Windows update channel/metadata.
 
 > 📋 [View full changelog](../CHANGELOG.md)
 

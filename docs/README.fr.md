@@ -7,7 +7,7 @@
   <p>
     <a href="https://github.com/legeling/PromptHub/stargazers"><img src="https://img.shields.io/github/stars/legeling/PromptHub?style=flat-square&color=yellow" alt="GitHub Stars"/></a>
     <a href="https://github.com/legeling/PromptHub/network/members"><img src="https://img.shields.io/github/forks/legeling/PromptHub?style=flat-square" alt="GitHub Forks"/></a>
-    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.3.3-green?style=flat-square" alt="Version"/></a>
+    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.3.4-green?style=flat-square" alt="Version"/></a>
     <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/github/downloads/legeling/PromptHub/total?style=flat-square&color=blue" alt="Téléchargements"/></a>
     <img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="Licence : AGPL-3.0"/>
   </p>
@@ -118,10 +118,10 @@ Téléchargez l'installateur pour votre plateforme depuis [Releases](https://git
 
 | Plateforme | Fichier de téléchargement |
 |----------|----------|
-| macOS (Intel) | `PromptHub-0.3.3-x64.dmg` |
-| macOS (Apple Silicon) | `PromptHub-0.3.3-arm64.dmg` |
-| Windows | `PromptHub-Setup-0.3.3-x64.exe` |
-| Linux | `PromptHub-0.3.3-x64.AppImage` / `prompthub_0.3.3_amd64.deb` |
+| macOS (Intel) | `PromptHub-0.3.4-x64.dmg` |
+| macOS (Apple Silicon) | `PromptHub-0.3.4-arm64.dmg` |
+| Windows | `PromptHub-Setup-0.3.4-x64.exe` |
+| Linux | `PromptHub-0.3.4-x64.AppImage` / `prompthub_0.3.4_amd64.deb` |
 
 ### Premier démarrage sur macOS
 
@@ -227,7 +227,7 @@ PromptHub/
 
 ## 🗺️ Feuille de route (Roadmap)
 
-### v0.3.3 (Version actuelle)
+### v0.3.4 (Version actuelle)
 - [x] **Dossiers multiniveaux** : Prise en charge de l'imbrication illimitée des dossiers et gestion par glisser-déposer.
 - [x] **Système de contrôle de version** : Gérer les Prompts comme du code, avec comparaison d'historique et récupération en un clic.
 - [x] **Système de modèles de variables** : Prise en charge de la syntaxe `{{variable}}`, génère automatiquement des formulaires de saisie avec prévisualisation avant copie.
@@ -252,16 +252,15 @@ PromptHub/
 
 Vous pouvez voir le journal complet ici : **[CHANGELOG.md](../CHANGELOG.md)**
 
-### Version actuelle v0.3.3 (27/12/2025)
+### Version actuelle v0.3.4 (29/12/2025)
 
-**Nouvelles fonctionnalités**
-- 📂 **Dossiers multiniveaux**: Prise en charge de l'imbrication illimitée et gestion par glisser-déposer (Closes #14).
-- 🚀 **Accélération des miroirs**: Miroirs GitHub intégrés pour des téléchargements de mises à jour plus rapides.
-- 🤖 **Correction de l'API Gemini**: Adaptation au format nativo de l'API Gemini, correction de la récupération de la liste des modèles (#24).
+**Corrections**
+- 🧭 **Prévisualisation des prompts rétablie** : En mode carte, le clic ouvre à nouveau la prévisualisation/édition.
+- 🤖 **Test Gemini** : Normalisation du nom/paramètres pour éviter l'API 400.
 
 **Optimisations**
-- 🌐 **Complétion de la localisation** : Ajout des traductions manquantes pour JA, ZH-TW, DE, FR et ES.
-- 🔧 **Corrections de types** : Correction de plusieurs erreurs de type TypeScript.
+- 🚫 **Glisser-déposer désactivé** : Suppression du drag accidentel dans la liste des prompts.
+- 📦 **Correctif pipeline release** : Suppression des blockmap en trop, correction du canal Windows et de latest.
 
 > 📋 [Voir le journal des modifications complet](../CHANGELOG.md)
 

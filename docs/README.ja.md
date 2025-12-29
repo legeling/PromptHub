@@ -7,7 +7,7 @@
   <p>
     <a href="https://github.com/legeling/PromptHub/stargazers"><img src="https://img.shields.io/github/stars/legeling/PromptHub?style=flat-square&color=yellow" alt="GitHub Stars"/></a>
     <a href="https://github.com/legeling/PromptHub/network/members"><img src="https://img.shields.io/github/forks/legeling/PromptHub?style=flat-square" alt="GitHub Forks"/></a>
-    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.3.3-green?style=flat-square" alt="Version"/></a>
+    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.3.4-green?style=flat-square" alt="Version"/></a>
     <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/github/downloads/legeling/PromptHub/total?style=flat-square&color=blue" alt="Downloads"/></a>
     <img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="License: AGPL-3.0"/>
   </p>
@@ -118,10 +118,10 @@
 
 | プラットフォーム | ダウンロードファイル |
 |----------|----------|
-| macOS (Intel) | `PromptHub-0.3.3-x64.dmg` |
-| macOS (Apple Silicon) | `PromptHub-0.3.3-arm64.dmg` |
-| Windows | `PromptHub-Setup-0.3.3-x64.exe` |
-| Linux | `PromptHub-0.3.3-x64.AppImage` / `prompthub_0.3.3_amd64.deb` |
+| macOS (Intel) | `PromptHub-0.3.4-x64.dmg` |
+| macOS (Apple Silicon) | `PromptHub-0.3.4-arm64.dmg` |
+| Windows | `PromptHub-Setup-0.3.4-x64.exe` |
+| Linux | `PromptHub-0.3.4-x64.AppImage` / `prompthub_0.3.4_amd64.deb` |
 
 ### macOS での初回起動について
 
@@ -227,7 +227,7 @@ PromptHub/
 
 ## 🗺️ ロードマップ
 
-### v0.3.3 (現在のバージョン)
+### v0.3.4 (現在のバージョン)
 - [x] **多階層フォルダ**: 無制限のフォルダ階層化とドラッグ＆ドロップ管理をサポート
 - [x] **バージョン管理システム**: コードのようにプロンプトを管理。履歴比較とワンクリック復元が可能
 - [x] **変数テンプレートシステム**: `{{variable}}` 構文をサポートし、入力フォームを自動生成。コピー前のプレビューも可能
@@ -248,16 +248,15 @@ PromptHub/
 
 すべての更新履歴はこちら：**[CHANGELOG.md](../CHANGELOG.md)**
 
-### 最新バージョン v0.3.3 (2025-12-27)
+### 最新バージョン v0.3.4 (2025-12-29)
 
-**新機能**
-- 📂 **多階層フォルダ**: フォルダの多階層ネストとドラッグ＆ドロップによる並べ替えをサポート (Closes #14)
-- 🚀 **ミラーサイト加速**: GitHub 加速ミラーを内蔵し、更新ダウンロード速度を大幅に向上
-- 🤖 **Gemini 修正**: Google ネイティブ API 形式に対応し、モデルリストの取得失敗を修正 (#24)
+**修正**
+- 🧭 **Prompt プレビュー復元**: カード表示でクリックするとプレビュー/編集が開くように修正
+- 🤖 **Gemini 接続テスト**: モデル名とパラメータ互換を調整し API 400 を回避
 
 **最適化**
-- 🌐 **多言語対応の補完**: 日、繁、独、仏、西の5言語で欠落していた翻訳を補完
-- 🔧 **型定義の修正**: TypeScript の型定義エラーを複数修正
+- 🚫 **リストのドラッグ無効化**: Prompt リストの誤ドラッグを防止
+- 📦 **リリース手順修正**: 余分な blockmap を削除し Windows 更新チャネルと latest を修正
 
 > 📋 [更新履歴の詳細はこちら](../CHANGELOG.md)
 

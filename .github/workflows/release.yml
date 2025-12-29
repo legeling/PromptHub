@@ -129,6 +129,31 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+      
+      - name: Deduplicate release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          declare -A seen
+          while IFS= read -r -d '' file; do
+            base=$(basename "$file")
+            if [[ -n "${seen[$base]:-}" ]]; then
+              keep="${seen[$base]}"
+              if [[ "$base" == *-x64.exe* ]] && [[ "$file" == *"win-x64-build"* ]] && [[ "$keep" != *"win-x64-build"* ]]; then
+                rm -f "$keep"
+                seen[$base]="$file"
+                continue
+              fi
+              if [[ "$base" == *-arm64.exe* ]] && [[ "$file" == *"win-arm64-build"* ]] && [[ "$keep" != *"win-arm64-build"* ]]; then
+                rm -f "$keep"
+                seen[$base]="$file"
+                continue
+              fi
+              rm -f "$file"
+            else
+              seen[$base]="$file"
+            fi
+          done < <(find artifacts -type f -print0)
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
