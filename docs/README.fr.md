@@ -46,14 +46,11 @@
   </a>
 </div>
 
-> 💡 Cliquez sur le bouton ci-dessus pour accéder à la page des versions et télécharger le package d'installation pour votre plateforme. Prend en charge Windows / macOS / Linux.
-
-| Plateforme | Architecture | Format |
-|:---:|:---:|:---:|
-| **Windows** | x64 | Installateur `.exe` |
-| **macOS** | Apple Silicon (M1/M2/M3) | Image `.dmg` |
-| **macOS** | Intel | Image `.dmg` |
-| **Linux** | x64 | `.AppImage` / `.deb` |
+| Plateforme | Téléchargement |
+|:---:|:---:|
+| Windows | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.4-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.4-arm64.exe) |
+| macOS | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-x64.dmg) |
+| Linux | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.3.4_amd64.deb) |
 
 ---
 
@@ -116,12 +113,11 @@
 
 Téléchargez l'installateur pour votre plateforme depuis [Releases](https://github.com/legeling/PromptHub/releases) :
 
-| Plateforme | Fichier de téléchargement |
-|----------|----------|
-| macOS (Intel) | `PromptHub-0.3.4-x64.dmg` |
-| macOS (Apple Silicon) | `PromptHub-0.3.4-arm64.dmg` |
-| Windows | `PromptHub-Setup-0.3.4-x64.exe` |
-| Linux | `PromptHub-0.3.4-x64.AppImage` / `prompthub_0.3.4_amd64.deb` |
+| Plateforme | Téléchargement |
+|:---:|:---:|
+| Windows | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.4-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.4-arm64.exe) |
+| macOS | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-x64.dmg) |
+| Linux | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.3.4_amd64.deb) |
 
 ### Premier démarrage sur macOS
 

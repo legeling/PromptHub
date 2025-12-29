@@ -270,6 +270,12 @@ export function initUpdater(win: BrowserWindow) {
         'Auto update requires ZIP installer, but current Release does not have corresponding ZIP file. Please go to GitHub Releases page to download manually, or wait for next version to fix auto update.';
       // 自动更新需要 ZIP 安装包，但当前版本的 Release 中没有对应的 ZIP 文件。请前往 GitHub Releases 页面手动下载安装，或等待下一个版本修复自动更新。
     }
+    if (message.toLowerCase().includes('sha512') && message.toLowerCase().includes('mismatch')) {
+      message =
+        'SHA512 checksum mismatch: downloaded update file failed integrity check.\n' +
+        '这表示下载到的更新文件校验失败（常见原因：下载不完整、网络代理/镜像篡改、缓存不一致）。\n' +
+        '建议：重试下载；或关闭“更新镜像加速”后再试。';
+    }
     sendStatusToWindow({
       status: 'error',
       error: message,
@@ -465,5 +471,17 @@ export function registerUpdaterIPC() {
   // 打开 GitHub Releases 页面
   ipcMain.handle('updater:openReleases', () => {
     shell.openExternal('https://github.com/legeling/PromptHub/releases');
+  });
+
+  ipcMain.handle('updater:openDownloadedUpdate', () => {
+    const installerPath = (autoUpdater as unknown as { installerPath?: string }).installerPath;
+    if (installerPath) {
+      shell.showItemInFolder(installerPath);
+      return { success: true, path: installerPath };
+    }
+
+    const downloadDir = app.getPath('downloads');
+    shell.openPath(downloadDir);
+    return { success: false, path: downloadDir };
   });
 }

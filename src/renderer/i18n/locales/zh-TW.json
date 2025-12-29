@@ -369,6 +369,7 @@
     "downloadProgress": "下載進度：{{percent}}%",
     "downloadComplete": "下載完成",
     "downloadCompleteDesc": "新版本已下載完成，是否立即安裝？",
+    "installRestartHint": "安裝會關閉應用並啟動安裝程式。",
     "installNow": "立即安裝",
     "installLater": "稍後安裝",
     "downloadUpdate": "下載更新",

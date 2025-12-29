@@ -136,13 +136,13 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
   const renderContent = () => {
     if (!updateStatus) {
       return (
-        <div className="text-center py-8">
+        <div className="flex-1 flex flex-col items-center justify-center text-center py-8">
           <p className="text-muted-foreground mb-4">
             {t('settings.version')}: {currentVersion}
           </p>
           <button
             onClick={() => handleCheckUpdate(false)}
-            className="flex items-center gap-2 mx-auto px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors"
           >
             <RefreshCwIcon className="w-4 h-4" />
             {t('settings.checkUpdate')}
@@ -154,7 +154,7 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
     switch (updateStatus.status) {
       case 'checking':
         return (
-          <div className="text-center py-8">
+          <div className="flex-1 flex flex-col items-center justify-center text-center py-8">
             <Loader2Icon className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
             <p className="text-muted-foreground">
               {useMirror ? t('settings.usingMirrorSource') : t('settings.checking')}
@@ -206,7 +206,7 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
 
       case 'not-available':
         return (
-          <div className="text-center py-8">
+          <div className="flex-1 flex flex-col items-center justify-center text-center py-8">
             <CheckCircleIcon className="w-12 h-12 mx-auto mb-4 text-green-500" />
             <h3 className="font-semibold text-lg mb-1">{t('settings.noUpdate')}</h3>
             <p className="text-sm text-muted-foreground">
@@ -218,8 +218,8 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
       case 'downloading':
         const percent = updateStatus.progress?.percent || 0;
         return (
-          <div className="py-8">
-            <div className="mb-4">
+          <div className="flex-1 flex flex-col items-center justify-center py-8">
+            <div className="w-full max-w-md mb-4">
               <div className="flex justify-between text-sm mb-2">
                 <span>{t('settings.downloading')}</span>
                 <span>{percent.toFixed(1)}%</span>
@@ -252,6 +252,11 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
                 </p>
               </div>
             </div>
+            {!isMac && (
+              <p className="text-xs text-muted-foreground mb-4">
+                {t('settings.installRestartHint')}
+              </p>
+            )}
             {isMac && (
               <div className="mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
                 <p className="text-sm text-amber-600 dark:text-amber-400 whitespace-pre-line">
@@ -259,26 +264,37 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
                 </p>
               </div>
             )}
-            <div className="flex gap-2">
-              <button
-                onClick={handleInstall}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors"
-              >
-                {isMac ? (
-                  <>
-                    <FolderOpenIcon className="w-4 h-4" />
-                    {t('settings.openDownloadFolder')}
-                  </>
-                ) : (
-                  t('settings.installNow')
-                )}
-              </button>
-              <button
-                onClick={onClose}
-                className="px-4 py-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
-              >
-                {t('settings.installLater')}
-              </button>
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                <button
+                  onClick={handleInstall}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors"
+                >
+                  {isMac ? (
+                    <>
+                      <FolderOpenIcon className="w-4 h-4" />
+                      {t('settings.openDownloadFolder')}
+                    </>
+                  ) : (
+                    t('settings.installNow')
+                  )}
+                </button>
+                <button
+                  onClick={onClose}
+                  className="px-4 py-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
+                >
+                  {t('settings.installLater')}
+                </button>
+              </div>
+              {!isMac && (
+                <button
+                  onClick={() => window.electron?.updater?.openDownloadedUpdate?.()}
+                  className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-border hover:bg-muted/50 transition-colors text-sm"
+                >
+                  <FolderOpenIcon className="w-4 h-4" />
+                  {t('settings.openDownloadFolder')}
+                </button>
+              )}
             </div>
           </div>
         );

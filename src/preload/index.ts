@@ -131,6 +131,7 @@ contextBridge.exposeInMainWorld('electron', {
     check: (useMirror?: boolean) => ipcRenderer.invoke('updater:check', useMirror),
     download: (useMirror?: boolean) => ipcRenderer.invoke('updater:download', useMirror),
     install: () => ipcRenderer.invoke('updater:install'),
+    openDownloadedUpdate: () => ipcRenderer.invoke('updater:openDownloadedUpdate'),
     getVersion: () => ipcRenderer.invoke('updater:version'),
     getPlatform: () => ipcRenderer.invoke('updater:platform'),
     openReleases: () => ipcRenderer.invoke('updater:openReleases'),
@@ -220,6 +221,7 @@ declare global {
         check: (useMirror?: boolean) => Promise<{ success: boolean; result?: any; error?: string }>;
         download: (useMirror?: boolean) => Promise<{ success: boolean; error?: string }>;
         install: () => Promise<{ success: boolean; manual?: boolean } | void>;
+        openDownloadedUpdate: () => Promise<{ success: boolean; path?: string }>;
         getVersion: () => Promise<string>;
         getPlatform: () => Promise<string>;
         openReleases: () => Promise<void>;

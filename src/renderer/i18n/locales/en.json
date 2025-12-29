@@ -369,6 +369,7 @@
     "downloadProgress": "Download progress: {{percent}}%",
     "downloadComplete": "Download Complete",
     "downloadCompleteDesc": "New version downloaded. Install now?",
+    "installRestartHint": "Installing will close the app and start the installer.",
     "installNow": "Install Now",
     "installLater": "Later",
     "downloadUpdate": "Download Update",
