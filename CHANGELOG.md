@@ -1,3 +1,23 @@
+## [0.3.4] - 2025-12-29
+
+### 修复 / Fixed
+- 🧭 **Prompt 预览恢复**：卡片模式点击即可正常选中并在右侧预览/编辑
+  - **Prompt Preview Restored**: Card view selection now opens preview/editor as expected
+- 🤖 **Gemini 测试连接**：修正模型名与参数兼容，避免 API 400
+  - **Gemini Test Fix**: Normalized model name/params to avoid 400 errors
+
+### 优化 / Changed
+- 🚫 **列表拖拽禁用**：Prompt 列表不再可拖动，避免误操作
+  - **Disable Prompt Dragging**: Removed unintended drag behavior in prompt list
+- ⌨️ **快捷键提示样式统一**：与 AI 模式提示一致，视觉更统一
+  - **Shortcut Tips Style**: Unified tips styling with AI mode
+- 🏷️ **标签区默认高度**：默认展示 3 行标签并升级旧设置
+  - **Default Tag Height**: Show ~3 rows by default with migration for older settings
+- 📦 **发布流程修复**：清理多余 blockmap，修正 Windows 更新通道与 latest 文件
+  - **Release Pipeline Fix**: Cleaned extra blockmap and fixed Windows update channel/metadata
+
+---
+
 ## [0.3.3] - 2025-12-27
 
 ### 新功能 / Added

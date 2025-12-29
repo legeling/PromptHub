@@ -256,7 +256,7 @@ export function initUpdater(win: BrowserWindow) {
     const arch = process.arch === 'arm64' ? 'arm64' : 'x64';
     // Set channel to match architecture-specific yaml file (e.g. latest-x64.yml)
     // 设置通道以匹配架构特定的 yaml 文件（例如 latest-x64.yml）
-    autoUpdater.channel = `latest-${arch}`;
+    autoUpdater.channel = arch;
     console.log(`[Updater] Windows detected, arch: ${arch}, channel: ${autoUpdater.channel}`);
   }
 

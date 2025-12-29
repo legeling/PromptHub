@@ -73,7 +73,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Rename latest.yml for Windows arch-specific
+      - name: Normalize Windows update metadata
         if: matrix.platform == 'win' && matrix.arch != ''
         shell: bash
         run: |
@@ -82,6 +82,19 @@ jobs:
             mv dist/latest.yml dist/latest-${{ matrix.arch }}.yml
             echo "Renamed latest.yml to latest-${{ matrix.arch }}.yml"
           fi
+          # Keep latest.yml as x64 alias for compatibility
+          if [ "${{ matrix.arch }}" = "x64" ] && [ -f "dist/latest-x64.yml" ]; then
+            cp dist/latest-x64.yml dist/latest.yml
+            echo "Copied latest-x64.yml to latest.yml"
+          fi
+          # Remove duplicate NSIS blockmap without arch (prevents release upload errors)
+          shopt -s nullglob
+          for file in dist/*.exe.blockmap; do
+            case "$file" in
+              *-x64.exe.blockmap|*-arm64.exe.blockmap) ;;
+              *) rm -f "$file" ;;
+            esac
+          done
 
       - name: Remove debug files
         shell: bash

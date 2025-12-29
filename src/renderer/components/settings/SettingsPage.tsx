@@ -2716,17 +2716,13 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
               </div>
             </SettingSection>
 
-            <div className="p-4 rounded-lg bg-muted/50 border border-border">
-              <div className="flex items-start gap-3">
-                <AlertTriangleIcon className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-muted-foreground space-y-1">
-                  <p className="font-medium text-foreground">{t('settings.shortcutTips')}</p>
-                  <p>• {t('settings.shortcutTip1')}</p>
-                  <p>• {t('settings.shortcutTip2')}</p>
-                  <p>• {t('settings.shortcutTip3')}</p>
-                </div>
+            <SettingSection title={t('settings.shortcutTips')}>
+              <div className="p-4 text-sm text-muted-foreground space-y-1">
+                <p>• {t('settings.shortcutTip1')}</p>
+                <p>• {t('settings.shortcutTip2')}</p>
+                <p>• {t('settings.shortcutTip3')}</p>
               </div>
-            </div>
+            </SettingSection>
           </div>
         );
 
@@ -3465,4 +3461,3 @@ function ToggleSwitch({ checked, onChange, defaultChecked = false }: ToggleSwitc
     </button>
   );
 }
-

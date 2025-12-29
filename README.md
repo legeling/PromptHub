@@ -14,7 +14,7 @@
   [![GitHub Forks](https://img.shields.io/github/forks/legeling/PromptHub?style=for-the-badge&logo=github)](https://github.com/legeling/PromptHub/network/members)
   [![Downloads](https://img.shields.io/github/downloads/legeling/PromptHub/total?style=for-the-badge&logo=github&color=blue)](https://github.com/legeling/PromptHub/releases)
   
-  [![Version](https://img.shields.io/badge/version-v0.3.3-success?style=for-the-badge)](https://github.com/legeling/PromptHub/releases)
+  [![Version](https://img.shields.io/badge/version-v0.3.4-success?style=for-the-badge)](https://github.com/legeling/PromptHub/releases)
   [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](./LICENSE)
   [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=for-the-badge)](https://github.com/legeling/PromptHub/pulls)
   
@@ -143,19 +143,19 @@
 
 ### 下载
 
-从 [Releases](https://github.com/legeling/PromptHub/releases) 下载最新版本 v0.3.3：
+从 [Releases](https://github.com/legeling/PromptHub/releases) 下载最新版本 v0.3.4：
 
 #### 🪟 Windows
-[![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/download/v0.3.3/PromptHub-Setup-0.3.3-x64.exe)
-[![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/download/v0.3.3/PromptHub-Setup-0.3.3-arm64.exe)
+[![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/download/v0.3.4/PromptHub-Setup-0.3.4-x64.exe)
+[![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/download/v0.3.4/PromptHub-Setup-0.3.4-arm64.exe)
 
 #### 🍎 macOS
-[![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/download/v0.3.3/PromptHub-0.3.3-arm64.dmg)
-[![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/download/v0.3.3/PromptHub-0.3.3-x64.dmg)
+[![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/download/v0.3.4/PromptHub-0.3.4-arm64.dmg)
+[![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/download/v0.3.4/PromptHub-0.3.4-x64.dmg)
 
 #### 🐧 Linux
-[![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/download/v0.3.3/PromptHub-0.3.3-x64.AppImage)
-[![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/download/v0.3.3/prompthub_0.3.3_amd64.deb)
+[![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/download/v0.3.4/PromptHub-0.3.4-x64.AppImage)
+[![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/download/v0.3.4/prompthub_0.3.4_amd64.deb)
 
 ### macOS 首次启动
 
@@ -276,7 +276,7 @@ PromptHub/
 
 ## 路线图
 
-### v0.3.3 (当前)
+### v0.3.4 (当前)
 - [x] **多层级文件夹**：支持无限层级文件夹嵌套与拖拽管理
 - [x] **版本控制系统**：像管理代码一样管理 Prompt，支持历史对比与一键回滚
 - [x] **变量模板系统**：支持 `{{variable}}` 语法，自动生成填充表单，支持复制前预览
@@ -301,16 +301,15 @@ PromptHub/
 
 查看完整的更新日志：**[CHANGELOG.md](./CHANGELOG.md)**
 
-### 最新版本 v0.3.3 (2025-12-27)
+### 最新版本 v0.3.4 (2025-12-29)
 
-**新功能**
-- 📂 **多层级文件夹**：支持文件夹多级嵌套与拖拽排序 (Closes #14)
-- 🚀 **镜像源加速**：内置 GitHub 加速镜像，显著提升更新下载速度
-- 🤖 **Gemini 修复**：适配 Google 原生 API 格式，修复模型列表获取 (#24)
+**修复**
+- 🧭 **Prompt 预览恢复**：卡片模式点击即可预览与编辑
+- 🤖 **Gemini 测试连接**：修正模型名与参数兼容，避免 API 400
 
 **优化**
-- 🌐 **多语言补全**：完善了日、繁、德、法、西 5 种语言的缺失翻译
-- 🔧 **类型修复**：修复多处 TypeScript 类型定义错误
+- 🚫 **列表拖拽禁用**：Prompt 列表不再可拖动，避免误操作
+- 📦 **发布流程修复**：清理多余 blockmap，修复 Windows 更新通道与 latest 文件
 
 > [查看完整更新日志](./CHANGELOG.md)
 

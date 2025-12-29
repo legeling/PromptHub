@@ -19,8 +19,6 @@ import remarkGfm from 'remark-gfm';
 import rehypeSanitize from 'rehype-sanitize';
 import rehypeHighlight from 'rehype-highlight';
 import { defaultSchema } from 'hast-util-sanitize';
-import { useDraggable } from '@dnd-kit/core';
-import { CSS } from '@dnd-kit/utilities';
 
 function escapeRegExp(str: string) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -103,22 +101,8 @@ function PromptCard({
     ? 'bg-white/20 text-white rounded px-0.5'
     : 'bg-primary/15 text-primary rounded px-0.5';
 
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: prompt.id,
-    data: { type: 'prompt', prompt }
-  });
-
-  const style = {
-    transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.5 : 1,
-  };
-
   return (
     <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
       onClick={onSelect}
       onContextMenu={onContextMenu}
       className={`
@@ -128,7 +112,6 @@ function PromptCard({
           ? 'bg-primary text-white'
           : 'bg-card hover:bg-accent'
         }
-        ${isDragging ? 'z-50 shadow-xl ring-2 ring-primary/50' : ''}
       `}
     >
       <div className="flex items-center justify-between gap-2">

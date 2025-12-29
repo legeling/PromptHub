@@ -151,6 +151,7 @@ export async function chatCompletion(
   const { provider, apiKey, apiUrl, model, chatParams } = config;
   const providerId = provider?.toLowerCase() || '';
   const isGemini = apiUrl.includes('generativelanguage.googleapis.com');
+  const normalizedModel = isGemini ? model.replace(/^models\//, '') : model;
 
   if (!apiKey) {
     throw new Error('请先配置 API Key');
@@ -246,7 +247,7 @@ export async function chatCompletion(
 
   // 构建请求体 / Build request body
   const body: ChatCompletionRequest = {
-    model,
+    model: normalizedModel,
     messages,
     temperature: mergedParams.temperature,
     stream: mergedParams.stream,
@@ -267,10 +268,10 @@ export async function chatCompletion(
   if (mergedParams.topK !== undefined) {
     body.top_k = mergedParams.topK;
   }
-  if (mergedParams.frequencyPenalty !== undefined) {
+  if (!isGemini && mergedParams.frequencyPenalty !== undefined) {
     body.frequency_penalty = mergedParams.frequencyPenalty;
   }
-  if (mergedParams.presencePenalty !== undefined) {
+  if (!isGemini && mergedParams.presencePenalty !== undefined) {
     body.presence_penalty = mergedParams.presencePenalty;
   }
 
