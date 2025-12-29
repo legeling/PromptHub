@@ -83,7 +83,7 @@ jobs:
             echo "Renamed latest.yml to latest-${{ matrix.arch }}.yml"
           fi
           # Ensure latest-{arch}.yml points to the arch-specific installer
-          node -e "const fs=require('fs');const path=require('path');const arch='${{ matrix.arch }}';const yml=path.join('dist',`latest-${arch}.yml`);if(!fs.existsSync(yml)) process.exit(0);const exe=fs.readdirSync('dist').find(f=>f.startsWith('PromptHub-Setup-')&&f.endsWith(`-${arch}.exe`));if(!exe) process.exit(0);let data=fs.readFileSync(yml,'utf8');data=data.replace(/PromptHub-Setup-[0-9.]+\\.exe\\.blockmap/g, `${exe}.blockmap`).replace(/PromptHub-Setup-[0-9.]+\\.exe/g, exe);fs.writeFileSync(yml,data);console.log(`Patched ${yml} -> ${exe}`);"
+          node -e "const fs=require('fs');const path=require('path');const arch='${{ matrix.arch }}';const yml=path.join('dist','latest-'+arch+'.yml');if(!fs.existsSync(yml)) process.exit(0);const exe=fs.readdirSync('dist').find(f=>f.startsWith('PromptHub-Setup-')&&f.endsWith('-'+arch+'.exe'));if(!exe) process.exit(0);let data=fs.readFileSync(yml,'utf8');data=data.replace(/PromptHub-Setup-[0-9.]+\\.exe\\.blockmap/g, exe+'.blockmap').replace(/PromptHub-Setup-[0-9.]+\\.exe/g, exe);fs.writeFileSync(yml,data);console.log('Patched '+yml+' -> '+exe);"
           # Keep latest.yml as x64 alias for compatibility
           if [ "${{ matrix.arch }}" = "x64" ] && [ -f "dist/latest-x64.yml" ]; then
             cp dist/latest-x64.yml dist/latest.yml
