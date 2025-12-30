@@ -1,0 +1,56 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { Navbar } from '../components/Navbar';
+import { Hero } from '../components/Hero';
+import { FeatureGrid } from '../components/FeatureGrid';
+import { Workflow } from '../components/Workflow';
+import { Values } from '../components/Values';
+import { FAQ } from '../components/FAQ';
+import { Community } from '../components/Community';
+import { Backers } from '../components/Backers';
+import { DownloadSection } from '../components/DownloadSection';
+import { ui } from '../i18n/ui';
+
+const lang = 'zh';
+const dict = ui[lang];
+const { title, description, keywords } = dict.seo;
+---
+
+<script is:inline>
+  // 自动语言识别与跳转
+  (function() {
+    const hasSetLang = localStorage.getItem('user_lang_set');
+    if (hasSetLang) return;
+
+    const userLang = navigator.language || navigator.userLanguage;
+    if (userLang.startsWith('en')) {
+      window.location.replace('/en');
+    }
+  })();
+</script>
+
+<Layout title={title} description={description} keywords={keywords}>
+	<Navbar client:load lang={lang} dict={dict.nav} currentPath={Astro.url.pathname} />
+	
+	<main>
+		<Hero client:load dict={dict.hero} />
+		<FeatureGrid client:visible dict={dict.features} />
+		<Workflow client:visible dict={dict.workflow} />
+		<Values client:visible dict={dict.values} />
+		<FAQ client:visible dict={dict.faq} />
+		<Community client:visible dict={dict.community} />
+		<Backers client:visible dict={dict.backers} limit={3} />
+		<DownloadSection client:visible dict={dict.download} />
+	</main>
+
+	<footer class="py-12 border-t border-white/5 text-center text-zinc-500 text-sm">
+		<div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4">
+			<p>© {new Date().getFullYear()} {dict.footer.rights}</p>
+			<div class="flex gap-6">
+				<a href="https://github.com/legeling/PromptHub" class="hover:text-white transition-colors">GitHub</a>
+				<a href="/docs/introduction" class="hover:text-white transition-colors">{dict.nav.docs}</a>
+				<a href="https://github.com/legeling/PromptHub/issues" class="hover:text-white transition-colors">{dict.footer.issues}</a>
+			</div>
+		</div>
+	</footer>
+</Layout>

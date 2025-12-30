@@ -187,6 +187,25 @@ export function CreatePromptModal({ isOpen, onClose, onCreate, defaultFolderId }
     };
   }, [isOpen]);
 
+  // 监听快捷键 (Cmd+S / Cmd+Enter 保存，Cmd/Shift+F 全屏切换)
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Save: Cmd+S or Cmd+Enter
+      if ((e.metaKey || e.ctrlKey) && (e.key === 's' || e.key === 'S' || e.key === 'Enter')) {
+        e.preventDefault();
+        handleSubmit();
+      }
+      // Fullscreen: Cmd+Shift+F
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'f' || e.key === 'F')) {
+        e.preventDefault();
+        setIsFullscreen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, handleSubmit]);
+
   return (
     <Modal
       isOpen={isOpen}

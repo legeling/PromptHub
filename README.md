@@ -25,7 +25,7 @@
   ![Electron](https://img.shields.io/badge/Electron-47848F?style=flat-square&logo=electron&logoColor=white)
   ![React](https://img.shields.io/badge/React-61DAFB?style=flat-square&logo=react&logoColor=black)
   ![TailwindCSS](https://img.shields.io/badge/Tailwind-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white)
-  ![SQLite](https://img.shields.io/badge/SQLite-003B57?style=flat-square&logo=sqlite&logoColor=white)
+  ![SQLite](https://img.shields.io/badge/SQLite-0.3.47?style=flat-square&logo=sqlite&logoColor=white)
   
   <br/>
   
@@ -51,7 +51,7 @@
 <br/>
 
 > 💡 **为什么选择 PromptHub？**
-> 
+>
 > 还在笔记本、文档和聊天记录里到处翻找 Prompt？PromptHub 让你像管理代码一样管理 Prompt — 支持版本控制、变量模板、多模型测试，所有数据都存在本地，隐私安全有保障。
 
 ---
@@ -63,6 +63,7 @@
 <td width="50%">
 
 ### 📝 Prompt 管理
+
 - 创建、编辑、删除，支持文件夹和标签分类
 - 自动保存历史版本，支持查看、对比和回滚
 - 模板变量 `{{variable}}`，复制时动态替换
@@ -73,10 +74,11 @@
 <td width="50%">
 
 ### 🤖 AI 能力
-- 内置 AI 测试，支持 **18+ 服务商**
-- OpenAI、Claude、Gemini、DeepSeek、通义千问...
+
+- 内置 AI 测试，支持 **国内外主流服务商**
+- 覆盖各类主流大语言模型、各类开源及闭源模型
 - 同一 Prompt 多模型并行测试对比
-- 支持图像生成模型（DALL-E、Stability AI）
+- 支持各类图像生成模型性能测评
 
 </td>
 </tr>
@@ -84,6 +86,7 @@
 <td width="50%">
 
 ### 💾 数据与同步
+
 - 所有数据存储在本地，隐私安全有保障
 - 全量备份与恢复（`.phub.gz` 压缩格式）
 - WebDAV 云同步（坚果云、Nextcloud 等）
@@ -93,6 +96,7 @@
 <td width="50%">
 
 ### 🎨 界面与体验
+
 - 多视图模式：卡片、画廊、列表
 - 深色/浅色/跟随系统，多种主题色
 - 7 种语言支持
@@ -145,11 +149,11 @@
 
 从 [Releases](https://github.com/legeling/PromptHub/releases) 下载最新版本 v0.3.4：
 
-| 平台 | 下载 |
-|------|------|
+| 平台    | 下载                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Windows | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.4-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.4-arm64.exe) |
-| macOS | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-x64.dmg) |
-| Linux | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.3.4_amd64.deb) |
+| macOS   | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-x64.dmg)     |
+| Linux   | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.3.4_amd64.deb)              |
 
 ### macOS 首次启动
 
@@ -191,6 +195,7 @@ pnpm build
 ### 1. 创建 Prompt
 
 点击「新建」按钮，填写：
+
 - **标题** - Prompt 名称
 - **描述** - 简短说明用途
 - **System Prompt** - 设置 AI 角色（可选）
@@ -217,13 +222,13 @@ pnpm build
 
 ## 技术栈
 
-| 类别 | 技术 |
-|------|------|
-| 框架 | Electron 33 |
-| 前端 | React 18 + TypeScript 5 |
-| 样式 | TailwindCSS |
-| 状态管理 | Zustand |
-| 本地存储 | IndexedDB + SQLite |
+| 类别     | 技术                    |
+| -------- | ----------------------- |
+| 框架     | Electron 33             |
+| 前端     | React 18 + TypeScript 5 |
+| 样式     | TailwindCSS             |
+| 状态管理 | Zustand                 |
+| 本地存储 | IndexedDB + SQLite      |
 | 构建工具 | Vite + electron-builder |
 
 ## 项目结构
@@ -271,10 +276,11 @@ PromptHub/
 ## 路线图
 
 ### v0.3.4 (当前)
+
 - [x] **多层级文件夹**：支持无限层级文件夹嵌套与拖拽管理
 - [x] **版本控制系统**：像管理代码一样管理 Prompt，支持历史对比与一键回滚
 - [x] **变量模板系统**：支持 `{{variable}}` 语法，自动生成填充表单，支持复制前预览
-- [x] **多模型实验室**：内置 18+ 供应商，支持多模型并行对比测试与响应时间分析
+- [x] **多模型实验室**：内置国内外主流服务商，支持多模型并行对比测试与响应时间分析
 - [x] **跨设备同步**：支持 WebDAV 增量同步与全量备份，数据高度可控
 - [x] **极致阅读体验**：支持 Markdown 全场景渲染、代码高亮、双语对照模式
 - [x] **多维高效管理**：文件夹、标签、收藏、使用次数统计、全文评分搜索
@@ -284,6 +290,7 @@ PromptHub/
 - [x] **安全与隐私**：主密码保护、私密文件夹加密存储，所有数据坚持本地优先
 
 ### 未来规划
+
 - [ ] **浏览器扩展**：在网页端（如 ChatGPT/Claude）直接调取 PromptHub 库，实现无缝工作
 - [ ] **移动端应用**：支持手机端查看、搜索与简单的编辑同步
 - [ ] **提示词广场**：内置高质量提示词模板库，支持一键导入与分享
@@ -295,15 +302,17 @@ PromptHub/
 
 查看完整的更新日志：**[CHANGELOG.md](./CHANGELOG.md)**
 
-### 最新版本 v0.3.4 (2025-12-29)
+### 最新版本 v0.3.4 (2025-12-30)
 
-**修复**
-- 🧭 **Prompt 预览恢复**：卡片模式点击即可预览与编辑
-- 🤖 **Gemini 测试连接**：修正模型名与参数兼容，避免 API 400
+**新增**
+
+- 💖 **支持者清单**：新增致谢支持者页面与组件
+- 🔍 **SEO 增强**：全面优化网站元数据与搜索引擎友好度
 
 **优化**
-- 🚫 **列表拖拽禁用**：Prompt 列表不再可拖动，避免误操作
-- 📦 **发布流程修复**：清理多余 blockmap，修复 Windows 更新通道与 latest 文件
+
+- � **模型名称泛化**：统一将特定模型名称替换为通用大模型术语
+- 🎨 **Hero 界面优化**：精简 Hero 区域文案，更具视觉冲击力
 
 > [查看完整更新日志](./CHANGELOG.md)
 
@@ -343,7 +352,8 @@ PromptHub/
 </a>
 
 特别感谢：
-- [@yizhimuzhuozi](https://github.com/yizhimuzhuozi) 
+
+- [@yizhimuzhuozi](https://github.com/yizhimuzhuozi)
 
 ---
 
@@ -380,6 +390,16 @@ If PromptHub is helpful to your work, feel free to buy the author a coffee!
     </tr>
   </table>
 </div>
+
+<div id="backers"></div>
+
+## 💖 致谢支持者 / Backers
+
+感谢以下朋友对 PromptHub 的捐赠支持：
+
+| 日期       | 支持者 | 金额    | 留言                             |
+| :--------- | :----- | :------ | :------------------------------- |
+| 2025-12-29 | \*昊   | ￥20.00 | 感谢您的软件！能力有限，小小支持 |
 
 **联系邮箱 / Contact**: legeling567@gmail.com
 

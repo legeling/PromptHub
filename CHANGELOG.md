@@ -1,12 +1,14 @@
 ## [0.3.4] - 2025-12-29
 
 ### 修复 / Fixed
+
 - 🧭 **Prompt 预览恢复**：卡片模式点击即可正常选中并在右侧预览/编辑
   - **Prompt Preview Restored**: Card view selection now opens preview/editor as expected
 - 🤖 **Gemini 测试连接**：修正模型名与参数兼容，避免 API 400
   - **Gemini Test Fix**: Normalized model name/params to avoid 400 errors
 
 ### 优化 / Changed
+
 - 🚫 **列表拖拽禁用**：Prompt 列表不再可拖动，避免误操作
   - **Disable Prompt Dragging**: Removed unintended drag behavior in prompt list
 - ⌨️ **快捷键提示样式统一**：与 AI 模式提示一致，视觉更统一
@@ -21,20 +23,23 @@
 ## [0.3.3] - 2025-12-27
 
 ### 新功能 / Added
+
 - 📂 **多层级文件夹支持**：支持文件夹多级嵌套，通过拖拽即可轻松管理复杂的目录结构 (Closes #14)
   - **Multi-level Folder Support**: Added support for multi-level folder nesting with intuitive drag-and-drop management (Closes #14)
 - 🚀 **GitHub 镜像源加速**：新增多个 GitHub 加速镜像源，显著提升国内用户下载更新的速度
   - **GitHub Mirror Support**: Added multiple GitHub accelerator mirrors to significantly speed up update downloads for users in restricted regions
 
 ### 修复 / Fixed
-- 🤖 **Gemini 模型修复**：适配 Google Gemini API 的原生响应格式，修复无法获取模型列表的问题 (#24)
-  - **Gemini API Fix**: Adapted to native Gemini API response format, fixing model list fetching issues (#24)
+
+- 🤖 **模型修复**：适配 Google Gemini API 的原生响应格式，修复无法获取模型列表的问题 (#24)
+  - **Model API Fix**: Adapted to native API response format, fixing model list fetching issues (#24)
 - 🎨 **文件夹交互修复**：修复鼠标移入侧边栏时所有文件夹操作按钮同时显示的 UI 问题
   - **UI Interaction Fix**: Fixed issue where all folder action buttons were displayed simultaneously on sidebar hover
 - 🌐 **多语言完善**：同步并补全了日、繁中、德、法、西语中缺失的翻译键值
   - **i18n Completion**: Synchronized and completed missing translation keys for JA, ZH-TW, DE, FR, and ES
 
 ### 优化 / Changed
+
 - 🔧 **TypeScript 类型增强**：修复多处 TS 类型错误，提升代码健壮性
   - **TS Type Enhancement**: Fixed multiple TypeScript errors for better code stability
 
@@ -43,6 +48,7 @@
 ## [0.3.2] - 2025-12-22
 
 ### 优化 / Changed
+
 - 🔍 **搜索展示优化**：优化搜索结果展示逻辑，提升搜索体验
   - **Search Display Optimization**: Improved search results display logic for better user experience
 - 🎨 **文件夹图标扩展**：文件夹图标选择器新增 60+ Lucide 图标，支持 Emoji/Icon 双模式切换
@@ -59,6 +65,7 @@
 ## [0.3.1] - 2025-12-20
 
 ### 优化 / Changed
+
 - 🔍 **搜索体验优化**：引入权重评分机制，优先匹配标题，大幅提升搜索准确度 (Closes #18)
   - **Search Logic Improvement**: Introduced weighted scoring system prioritizing title matches for better accuracy (Closes #18)
 - 🤖 **预制供应商优化**：核对并修正所有预制 AI 供应商地址，确保默认连接通用 (Closes #19)
@@ -73,6 +80,7 @@
 ## [0.3.0] - 2025-12-18
 
 ### 优化 / Changed
+
 - 🔄 **检查更新优化**：点击检查更新都会真正发起请求，不再使用缓存
   - **Update Check Improvement**: Every manual check now forces a fresh request without caching
 - ⏰ **周期性检查更新**：启用自动检查后，每小时自动检查一次新版本
@@ -89,12 +97,14 @@
 ## [0.2.9] - 2025-12-18
 
 ### 新功能 / Added
+
 - 📌 **Prompt 置顶功能**：支持将重要 Prompt 置顶显示，置顶项始终排在列表最前面
   - **Prompt Pinning**: Pin important prompts to the top of the list for quick access
 - ✨ **切换动画**：Prompt 列表和详情区域添加平滑过渡动画，提升视觉体验
   - **Transition Animations**: Added smooth animations when switching prompts and views
 
 ### 优化 / Changed
+
 - 🔒 **Windows 单实例模式**：防止多开应用窗口，从托盘恢复时聚焦已有窗口
   - **Windows Single Instance**: Prevents multiple app windows; focuses existing window when restoring from tray
 - 🎨 **设置页面按钮间距**：优化设置菜单按钮间距，视觉更舒适
@@ -109,16 +119,19 @@
 ## [0.2.8] - 2025-12-18
 
 ### 新功能 / Added
+
 - 🔔 **顶栏更新提醒入口**：在搜索框右侧以轻量提示展示可用更新，点击后才打开更新对话框
   - **Top-bar Update Indicator**: Shows a subtle "update available" pill next to the search bar and opens the dialog on demand
 
 ### 优化 / Changed
+
 - 🍎 **macOS 升级逻辑调整**：下载完成后自动打开下载目录，引导用户手动安装并提供操作步骤
   - **macOS Update Flow**: Opens the Downloads folder after downloading so users can manually install unsigned builds
 - 🌐 **更新对话框补充手动下载入口**：自动更新失败时直接给出 GitHub Releases 按钮，方便用户自行下载
   - **Manual Download Button**: Update dialog now links to GitHub Releases whenever auto-update fails
 
 ### 修复 / Fixed
+
 - 🖼️ **本地图片占位与错误处理**：新增 `LocalImage` 组件并应用于详情/主内容，避免因文件缺失导致 ERR_FILE_NOT_FOUND
   - **Local Image Fallback**: Added `LocalImage` component with graceful degradation to prevent ERR_FILE_NOT_FOUND when images are missing
 
@@ -127,6 +140,7 @@
 ## [0.2.7] - 2025-12-16
 
 ### 新功能 / Added
+
 - ⌨️ **全局快捷键功能**：支持自定义快捷键唤起应用、新建 Prompt、搜索、打开设置
   - **Global Shortcuts**: Customize hotkeys for showing app, new prompt, search, and settings
 - ⌨️ **快捷键冲突检测**：自动检测并提示快捷键冲突
@@ -139,6 +153,7 @@
   - **Unsaved Changes Dialog**: Prompt to save, discard, or cancel when closing editor
 
 ### 优化 / Changed
+
 - 🎨 图片下载失败使用自定义 Toast 提示替代系统弹窗
   - Image download failure now uses custom Toast instead of system alert
 - 🌐 完善多语言翻译（快捷键相关的中/英/日/德/法/西/繁体中文）
@@ -149,6 +164,7 @@
 ## [0.2.6] - 2025-12-15
 
 ### 新功能 / Added
+
 - 🎨 **显示设置升级**：更现代的外观 UI + 更细腻的动效，并支持自定义主题色
   - **Display Settings Upgrade**: Modern UI with smoother animations and custom theme colors
 - 🧰 **数据管理升级**：选择性导出（仅导出）+ 全量备份/恢复（`.phub.gz` 压缩，包含 prompts/图片/AI 配置/系统设置）
@@ -161,6 +177,7 @@
   - **AES-256 Encrypted Backup** (experimental)
 
 ### 修复 / Fixed
+
 - 🐛 修复语言设置被错误重置为"仅中/英"导致多语言不生效的问题
   - Fixed language settings being incorrectly reset causing i18n issues
 - 🐛 修复开启"流式输出 / 思考模式"后 AI 测试无表现差异的问题
@@ -183,6 +200,7 @@
   - Fixed WebDAV sync failure (#11)
 
 ### 优化 / Changed
+
 - 🎨 Windows 关闭窗口弹窗的"记住偏好"勾选框改为自定义样式并适配暗黑模式
   - Custom styled "Remember choice" checkbox with dark mode support
 - 📝 补齐多语言 README（en/de/fr/es/ja/zh-TW）内容结构与关键信息
@@ -199,6 +217,7 @@
 ## [0.2.5] - 2025-12-12
 
 ### 新功能 / Added
+
 - 🌐 **添加多语言支持**（简体中文、繁体中文、英文、日语、西班牙语、德语、法语）
   - **Multi-language Support** (Simplified Chinese, Traditional Chinese, English, Japanese, Spanish, German, French)
 - 🪟 **Windows 关闭窗口时可选择最小化到托盘或退出**（支持记住选择）
@@ -215,10 +234,12 @@
   - **Auto Update Check**: Check for updates on startup (can be disabled)
 
 ### 优化 / Changed
+
 - 🎨 双语对照提示文案优化，不再硬编码"中英"
   - Improved bilingual prompt text, no longer hardcoded "Chinese/English"
 
 ### 修复 / Fixed
+
 - ☁️ 修复坚果云 WebDAV 同步失败问题（添加 MKCOL 目录创建和 User-Agent 头）
   - Fixed Nutstore WebDAV sync failure (added MKCOL and User-Agent header)
 
@@ -227,12 +248,14 @@
 ## [0.2.4] - 2025-12-10
 
 ### 新功能 / Added
+
 - 🌐 **支持双语提示词**（中英文版本），详情页可切换显示
   - **Bilingual Prompts**: Support Chinese/English versions with toggle in detail view
 - 📋 **复制和 AI 测试操作会根据当前语言模式使用对应版本**
   - **Language-aware Copy/Test**: Use corresponding version based on current language mode
 
 ### 优化 / Changed
+
 - 🎨 优化视图切换动画，添加平滑淡入淡出效果 (Closes #13)
   - Improved view switch animation with smooth fade effect (Closes #13)
 - 🎨 视图切换按钮添加滑动指示器动画
@@ -243,6 +266,7 @@
 ## [0.2.3] - 2025-12-10
 
 ### 修复 / Fixed
+
 - 🐛 修复 Windows 删除 Prompt 后输入框无法输入的问题（原生 confirm 对话框焦点丢失）
   - Fixed Windows input focus lost after deleting Prompt (native confirm dialog issue)
 - 🐛 修复 Windows 托盘图标显示为透明的问题
@@ -257,6 +281,7 @@
   - Fixed CI/CD build failure (EEXIST: file already exists)
 
 ### 优化 / Changed
+
 - 🎨 使用自定义确认对话框替代原生 confirm，提升 Windows 兼容性
   - Custom confirm dialog replacing native confirm for better Windows compatibility
 - 🎨 优化托盘图标加载逻辑，添加备用路径
@@ -271,6 +296,7 @@
 ## [0.2.2] - 2025-12-08
 
 ### 修复 / Fixed
+
 - 🐛 修复关于页面版本号硬编码问题（现在动态获取）
   - Fixed hardcoded version in About page (now dynamically fetched)
 - 🐛 修复关于页面图标显示异常
@@ -281,6 +307,7 @@
   - Fixed error handling when auto-update module fails to load
 
 ### 优化 / Changed
+
 - 🎨 更新失败时显示手动下载链接
   - Show manual download link when update fails
 - 🔒 清除数据现在需要输入主密码验证（高危操作保护）
@@ -291,6 +318,7 @@
 ## [0.2.1] - 2025-12-07
 
 ### 新功能 / Added
+
 - ✨ **Markdown 全场景预览**：列表视图、详情弹窗、编辑弹窗均支持 Markdown 渲染与代码高亮
   - **Full Markdown Preview**: List view, detail modal, edit modal all support Markdown rendering with code highlighting
 - ✨ **主密码与安全设置**：支持设置应用级主密码，锁定/解锁状态管理
@@ -305,6 +333,7 @@
   - **Image Upload & Preview**: Upload/paste local images with in-modal preview
 
 ### 优化 / Changed
+
 - 🔧 **Qwen/通义千问兼容**：修复非流式调用时的 `enable_thinking` 参数报错问题
   - **Qwen Compatibility**: Fixed `enable_thinking` parameter error in non-streaming calls
 - 🔧 **UI 细节**：修复编辑弹窗全屏遮挡左上角按钮的问题
@@ -317,6 +346,7 @@
 ## [0.2.0] - 2025-12-03
 
 ### 新功能 / Added
+
 - ✨ **列表视图模式**：表格式展示所有 Prompt，支持横向滚动和分页
   - **List View Mode**: Table display for all Prompts with horizontal scroll and pagination
 - ✨ **批量操作**：支持多选后批量收藏、移动到文件夹、删除
@@ -331,6 +361,7 @@
   - **Detail Modal**: Shows AI response
 
 ### 优化 / Changed
+
 - 🎨 全新列表视图 UI（圆角设计、美观的多选框、悬浮提示）
   - New list view UI (rounded design, beautiful checkboxes, hover tips)
 - 🎨 分离单模型/多模型测试的 loading 状态
@@ -343,12 +374,14 @@
 ## [0.1.9] - 2025-12-01
 
 ### 新功能 / Added
+
 - ✨ **AI 模型分类图标**：使用本地 SVG/PNG 资源，展示真实提供商 Logo
   - **AI Model Icons**: Local SVG/PNG resources showing real provider logos
 - ✨ **Prompt 版本历史弹窗国际化** & 加宽展示，阅读体验更好
   - **Version History i18n**: Internationalized and widened for better reading
 
 ### 优化 / Changed
+
 - 🔧 修复 Linux 打包缺少 author.email 导致构建失败
   - Fixed Linux build failure due to missing author.email
 - 🔧 完整支持 macOS / Windows 自动更新增量包（dmg/zip/exe + blockmap）
@@ -363,6 +396,7 @@
 ## [0.1.8] - 2025-12-01
 
 ### 新功能 / Added
+
 - ✨ **最小化到系统托盘功能**（Windows/macOS/Linux）
   - **Minimize to System Tray** (Windows/macOS/Linux)
 - ✨ **数据目录路径可点击打开**
@@ -375,8 +409,14 @@
   - **Dynamic AI Model Fetching** (from provider API)
 - ✨ **模型选择弹窗**（支持搜索、分类、批量添加）
   - **Model Selection Modal** (search, categorize, batch add)
-- ✨ **模型分类展示**（GPT/Claude/Gemini/DeepSeek 等自动分类）
-  - **Model Categorization** (auto-categorize GPT/Claude/Gemini/DeepSeek etc.)
+- ✨ **多模型测试**
+
+一键对比国内外主流大语言模型的回复质量，快速找到最佳 Prompt。
+
+- **Multi-Model Testing**
+
+Compare mainstream LLMs side-by-side to identify the best prompt for your needs.
+
 - ✨ **模型分类图标**（每个类别显示对应的 SVG 图标）
   - **Category Icons** (SVG icon for each category)
 - ✨ **API URL 智能预览**（自动补全 /v1/chat/completions）
@@ -385,6 +425,7 @@
   - **Collapsible Model Groups by Provider**
 
 ### 优化 / Changed
+
 - 🎨 变量输入框支持自动变高（多行文本输入更友好）
   - Variable input auto-height for multi-line text
 - 🎨 优化 macOS 托盘图标显示
@@ -403,12 +444,14 @@
 ## [0.1.7] - 2025-11-30
 
 ### 新功能 / Added
+
 - ✨ **AI 测试支持变量填充**（与复制功能一致的体验）
   - **AI Test Variable Filling** (same experience as copy)
 - ✨ **多模型对比支持变量填充**
   - **Multi-Model Compare Variable Filling**
 
 ### 优化 / Changed
+
 - 🎨 深色模式主题色增强（提高饱和度和可见度）
   - Enhanced dark mode theme colors (increased saturation and visibility)
 - 🎨 优化开关按钮深色模式样式（添加边框和更好的对比度）
@@ -425,6 +468,7 @@
 ## [0.1.6] - 2025-11-30
 
 ### 优化 / Changed
+
 - 🔧 修复自动更新元数据文件缺失问题（CI 上传 latest-mac.yml）
   - Fixed missing auto-update metadata file (CI uploads latest-mac.yml)
 - 🔧 优化 Release 说明格式
@@ -435,10 +479,12 @@
 ## [0.1.5] - 2025-11-30
 
 ### 新功能 / Added
+
 - ✨ **变量填充界面**（复制时自动检测变量，弹出填充界面）
   - **Variable Filling UI** (auto-detect variables when copying, show filling dialog)
 
 ### 优化 / Changed
+
 - 🎨 文件夹选择下拉框改用自定义样式组件
   - Custom styled folder selection dropdown
 - 🎨 编辑/新建 Prompt 弹窗加宽
@@ -453,6 +499,7 @@
 ## [0.1.4] - 2025-11-30
 
 ### 新功能 / Added
+
 - ✨ **多模型配置管理**（支持添加无限数量的 AI 模型）
   - **Multi-Model Config** (support unlimited AI models)
 - ✨ **多模型对比改为选择模式**（从已配置模型中选择）
@@ -465,6 +512,7 @@
   - **In-App Auto Update** (check, download, install integrated)
 
 ### 优化 / Changed
+
 - 🎨 Prompt 卡片压缩（移除时间和版本显示）
   - Compressed Prompt cards (removed time and version display)
 - 🎨 多模型对比按钮移至右侧
@@ -485,6 +533,7 @@
 ## [0.1.3] - 2025-11-29
 
 ### 新功能 / Added
+
 - ✨ **AI 模型配置**（支持 18+ 国内外服务商）
   - **AI Model Config** (supports 18+ domestic and international providers)
 - ✨ **AI 连接测试功能**（异步测试，显示响应时间）
@@ -499,6 +548,7 @@
   - **Git-style Version Compare** (line-level diff, add/delete stats)
 
 ### 优化 / Changed
+
 - 🎨 优化设置页面 UI
   - Improved settings page UI
 - 🔧 移除 Prompt 卡片拖拽（修复点击问题）
@@ -509,6 +559,7 @@
 ## [0.1.2] - 2025-11-29
 
 ### 新功能 / Added
+
 - ✨ **WebDAV 同步功能**（上传/下载数据到远程服务器）
   - **WebDAV Sync** (upload/download data to remote server)
 - ✨ **文件夹拖拽排序**
@@ -521,6 +572,7 @@
   - **Version Restore Confirmation**
 
 ### 优化 / Changed
+
 - 🎨 修复深色模式下开关按钮不可见问题
   - Fixed toggle button invisible in dark mode
 - 🎨 设置开关添加操作反馈提示
@@ -535,6 +587,7 @@
 ## [0.1.1] - 2025-11-29
 
 ### 新功能 / Added
+
 - ✨ **文件夹创建/编辑/删除功能**
   - **Folder Create/Edit/Delete**
 - ✨ **标签筛选功能**
@@ -545,6 +598,7 @@
   - **Windows Custom Title Bar**
 
 ### 优化 / Changed
+
 - 🎨 扁平化 UI 设计
   - Flat UI design
 - 🎨 移除卡片阴影和缩放效果
@@ -557,6 +611,7 @@
 ## [0.1.0] - 2025-11-29
 
 ### 新功能 / Added
+
 - 🎉 **首次发布** / **Initial Release**
 - ✨ **Prompt CRUD 管理** / **Prompt CRUD Management**
 - ✨ **文件夹和标签系统** / **Folder and Tag System**

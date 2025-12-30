@@ -75,19 +75,19 @@ const SETTINGS_MENU = [
 const AI_PROVIDERS = [
   // International / 国际
   { id: 'openai', name: 'OpenAI', defaultUrl: 'https://api.openai.com', group: 'International / 国际' },
-  { id: 'google', name: 'Google (Gemini)', defaultUrl: 'https://generativelanguage.googleapis.com', group: 'International / 国际' },
-  { id: 'anthropic', name: 'Anthropic (Claude)', defaultUrl: 'https://api.anthropic.com', group: 'International / 国际' },
-  { id: 'xai', name: 'xAI (Grok)', defaultUrl: 'https://api.x.ai', group: 'International / 国际' },
+  { id: 'google', name: 'Google', defaultUrl: 'https://generativelanguage.googleapis.com', group: 'International / 国际' },
+  { id: 'anthropic', name: 'Anthropic', defaultUrl: 'https://api.anthropic.com', group: 'International / 国际' },
+  { id: 'xai', name: 'xAI', defaultUrl: 'https://api.x.ai', group: 'International / 国际' },
   { id: 'mistral', name: 'Mistral AI', defaultUrl: 'https://api.mistral.ai', group: 'International / 国际' },
 
   // Domestic / 国内
-  { id: 'deepseek', name: 'DeepSeek (深度求索)', defaultUrl: 'https://api.deepseek.com', group: 'Domestic / 国内' },
-  { id: 'moonshot', name: 'Moonshot (Kimi)', defaultUrl: 'https://api.moonshot.cn', group: 'Domestic / 国内' },
-  { id: 'zhipu', name: '智谱 AI (GLM)', defaultUrl: 'https://open.bigmodel.cn/api/paas', group: 'Domestic / 国内' },
-  { id: 'qwen', name: '通义千问 (阿里)', defaultUrl: 'https://dashscope.aliyuncs.com/compatible-mode', group: 'Domestic / 国内' },
-  { id: 'ernie', name: '文心一言 (百度)', defaultUrl: 'https://qianfan.baidubce.com/v2', group: 'Domestic / 国内' },
+  { id: 'deepseek', name: 'DeepSeek', defaultUrl: 'https://api.deepseek.com', group: 'Domestic / 国内' },
+  { id: 'moonshot', name: 'Moonshot', defaultUrl: 'https://api.moonshot.cn', group: 'Domestic / 国内' },
+  { id: 'zhipu', name: '智谱 AI', defaultUrl: 'https://open.bigmodel.cn/api/paas', group: 'Domestic / 国内' },
+  { id: 'qwen', name: '通义千问', defaultUrl: 'https://dashscope.aliyuncs.com/compatible-mode', group: 'Domestic / 国内' },
+  { id: 'ernie', name: '文心一言', defaultUrl: 'https://qianfan.baidubce.com/v2', group: 'Domestic / 国内' },
   { id: 'spark', name: '讯飞星火', defaultUrl: 'https://spark-api-open.xf-yun.com', group: 'Domestic / 国内' },
-  { id: 'doubao', name: '豆包 (字节)', defaultUrl: 'https://ark.cn-beijing.volces.com/api', group: 'Domestic / 国内' },
+  { id: 'doubao', name: '豆包', defaultUrl: 'https://ark.cn-beijing.volces.com/api', group: 'Domestic / 国内' },
   { id: 'baichuan', name: '百川智能', defaultUrl: 'https://api.baichuan-ai.com', group: 'Domestic / 国内' },
   { id: 'minimax', name: 'MiniMax', defaultUrl: 'https://api.minimax.chat', group: 'Domestic / 国内' },
   { id: 'stepfun', name: '阶跃星辰', defaultUrl: 'https://api.stepfun.com', group: 'Domestic / 国内' },
@@ -101,14 +101,14 @@ const AI_PROVIDERS = [
 
 const AI_IMAGE_PROVIDERS = [
   // International / 国际
-  { id: 'openai', name: 'OpenAI (GPT-Image / DALL-E)', defaultUrl: 'https://api.openai.com', group: 'International / 国际' },
-  { id: 'google', name: 'Google (nanobananai 🍌 / Imagen)', defaultUrl: 'https://generativelanguage.googleapis.com', group: 'International / 国际' },
-  { id: 'flux', name: 'FLUX (Black Forest Labs)', defaultUrl: 'https://api.bfl.ai', group: 'International / 国际' },
+  { id: 'openai', name: 'OpenAI', defaultUrl: 'https://api.openai.com', group: 'International / 国际' },
+  { id: 'google', name: 'Google', defaultUrl: 'https://generativelanguage.googleapis.com', group: 'International / 国际' },
+  { id: 'flux', name: 'FLUX', defaultUrl: 'https://api.bfl.ai', group: 'International / 国际' },
   { id: 'ideogram', name: 'Ideogram', defaultUrl: 'https://api.ideogram.ai', group: 'International / 国际' },
-  { id: 'recraft', name: 'Recraft V3', defaultUrl: 'https://external.api.recraft.ai', group: 'International / 国际' },
-  { id: 'stability', name: 'Stability AI (SD3.5)', defaultUrl: 'https://api.stability.ai', group: 'International / 国际' },
+  { id: 'recraft', name: 'Recraft', defaultUrl: 'https://external.api.recraft.ai', group: 'International / 国际' },
+  { id: 'stability', name: 'Stability AI', defaultUrl: 'https://api.stability.ai', group: 'International / 国际' },
   { id: 'replicate', name: 'Replicate', defaultUrl: 'https://api.replicate.com', group: 'International / 国际' },
-  { id: 'xai', name: 'xAI (Grok)', defaultUrl: 'https://api.x.ai', group: 'International / 国际' },
+  { id: 'xai', name: 'xAI', defaultUrl: 'https://api.x.ai', group: 'International / 国际' },
 
   // Other / 其他
   { id: 'azure', name: 'Azure OpenAI', defaultUrl: '', group: 'Other / 其他' },

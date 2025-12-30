@@ -33,7 +33,7 @@
 <br/>
 
 > 💡 **為什麼選擇 PromptHub？**
-> 
+>
 > 還在筆記本、文檔和聊天記錄裡到處翻找 Prompt？PromptHub 讓你像管理代碼一樣管理 Prompt — 支援版本控制、變量模板、多模型測試，所有數據都存在本地，隱私安全有保障。
 
 ---
@@ -46,11 +46,11 @@
   </a>
 </div>
 
-| 平台 | 下載 |
-|:---:|:---:|
+|  平台   |                                                                                                                                                                                                                  下載                                                                                                                                                                                                                   |
+| :-----: | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
 | Windows | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.4-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.4-arm64.exe) |
-| macOS | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-x64.dmg) |
-| Linux | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.3.4_amd64.deb) |
+|  macOS  |   [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-x64.dmg)   |
+|  Linux  |       [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.3.4_amd64.deb)        |
 
 ---
 
@@ -68,8 +68,8 @@
 - **💾 本地存儲** - 所有數據存儲在本地，隱私安全有保障
 - **🖥️ 跨平台支持** - 支持 macOS, Windows, Linux
 - **📊 列表視圖** - 表格式展示，支持排序與批量操作
-- **🤖 AI 測試** - 內置多模型測試，支持 18+ 服務商
-- **🎨 生圖模型** - 支持配置與測試生圖模型（如 DALL-E）
+- **🤖 AI 測試** - 內置多模型測試，支持各類內外主流服務商
+- **🎨 生圖模型** - 支持配置與測試各類主流生圖模型
 - **🧭 Markdown 預覽** - 全場景 Markdown 渲染與代碼高亮（詳情、列表、編輯）
 - **🪟 寬屏與全屏模式** - 針對編輯體驗優化的寬屏與全屏模式
 - **🔐 主密碼與私密資料夾** - 通過主密碼保護私密內容
@@ -111,13 +111,13 @@
 
 ### 下載
 
-從 [Releases](https://github.com/legeling/PromptHub/releases) 下載對應平台的安裝包：
+從 [Releases](https://github.com/legeling/PromptHub/releases) 下載最新版本 v0.3.4：
 
-| 平台 | 下載 |
-|:---:|:---:|
+|  平台   |                                                                                                                                                                                                                  下載                                                                                                                                                                                                                   |
+| :-----: | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
 | Windows | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.4-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.4-arm64.exe) |
-| macOS | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-x64.dmg) |
-| Linux | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.3.4_amd64.deb) |
+|  macOS  |   [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-x64.dmg)   |
+|  Linux  |       [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.3.4_amd64.deb)        |
 
 ### macOS 首次啟動
 
@@ -159,6 +159,7 @@ pnpm build
 ### 1. 創建 Prompt
 
 點擊「新建」按鈕，填寫：
+
 - **標題** - Prompt 名稱
 - **描述** - 簡短說明用途
 - **System Prompt** - 設置 AI 角色（可選）
@@ -185,13 +186,13 @@ pnpm build
 
 ## 🛠️ 技術棧
 
-| 類別 | 技術 |
-|------|------|
-| 框架 | Electron 33 |
-| 前端 | React 18 + TypeScript 5 |
-| 樣式 | TailwindCSS |
-| 狀態管理 | Zustand |
-| 本地存儲 | IndexedDB + SQLite |
+| 類別     | 技術                    |
+| -------- | ----------------------- |
+| 框架     | Electron 33             |
+| 前端     | React 18 + TypeScript 5 |
+| 樣式     | TailwindCSS             |
+| 狀態管理 | Zustand                 |
+| 本地存儲 | IndexedDB + SQLite      |
 | 構建工具 | Vite + electron-builder |
 
 ## 📁 項目結構
@@ -224,10 +225,11 @@ PromptHub/
 ## 🗺️ 路線圖
 
 ### v0.3.4 (當前)
+
 - [x] **多層級資料夾**：支援無限層級資料夾巢狀與拖拽管理
 - [x] **版本控制系統**：像管理代碼一樣管理 Prompt，支援歷史對比與一鍵回滾
 - [x] **變數範本系統**：支援 `{{variable}}` 語法，自動生成填充表單，支援複製前預覽
-- [x] **多模型實驗室**：內置 18+ 供應商，支援多模型並行對比測試與回應時間分析
+- [x] **多模型實驗室**：內置各類主流服務商，支援多模型並行對比測試與回應時間分析
 - [x] **跨設備同步**：支援 WebDAV 增量同步與全量備份，數據高度可控
 - [x] **極致閱讀體驗**：支援 Markdown 全場景渲染、代碼高亮、雙語對照模式
 - [x] **多維高效管理**：資料夾、標籤、收藏、使用次數統計、全文評分搜尋
@@ -237,6 +239,7 @@ PromptHub/
 - [x] **安全與隱私**：主密碼保護、私密資料夾加密存儲，所有數據堅持本地優先
 
 ### 未來規劃
+
 - [ ] **瀏覽器擴充功能**：在網頁端（如 ChatGPT/Claude）直接調取 PromptHub 庫，實現無縫工作
 - [ ] **行動端應用**：支援手機端查看、搜尋與簡單的編輯同步
 - [ ] **提示詞廣場**：內置高品質提示詞範本庫，支援一鍵導入與分享
@@ -248,15 +251,17 @@ PromptHub/
 
 查看完整更新日誌：**[CHANGELOG.md](../CHANGELOG.md)**
 
-### 最新版本 v0.3.4 (2025-12-29)
+### 最新版本 v0.3.4 (2025-12-30)
 
-**修復**
-- 🧭 **Prompt 預覽恢復**：卡片模式點擊即可預覽與編輯
-- 🤖 **Gemini 測試連線**：修正模型名與參數相容，避免 API 400
+**新增**
+
+- 💖 **支持者清單**：新增致謝支持助頁面與組件
+- 🔍 **SEO 增強**：全面優化網站元數據與搜尋引擎友好度
 
 **優化**
-- 🚫 **列表拖拽禁用**：Prompt 列表不再可拖動，避免誤操作
-- 📦 **發布流程修復**：清理多餘 blockmap，修正 Windows 更新通道與 latest 檔案
+
+- 🚀 **模型名稱泛化**：統一將特定模型名稱替換為通用大模型術語
+- 🎨 **Hero 介面優化**：精簡 Hero 區域文案，更具視覺衝擊力
 
 > 📋 [查看完整更新日誌](../CHANGELOG.md)
 

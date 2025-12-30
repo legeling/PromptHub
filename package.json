@@ -22,7 +22,7 @@
     "preview": "vite preview",
     "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "electron:build": "vite build && electron-builder",
-    "electron:build:mac": "vite build && electron-builder --mac --x64 --arm64 --publish never",
+    "electron:build:mac": "vite build && electrwon-builder --mac --x64 --arm64 --publish never",
     "electron:build:win": "vite build && electron-builder --win --x64 --arm64 --publish never",
     "electron:build:linux": "vite build && electron-builder --linux --x64 --publish never",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",

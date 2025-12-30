@@ -1,0 +1,389 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { getCollection } from 'astro:content';
+import { Navbar } from '../../components/Navbar';
+import { 
+  ChevronRight, 
+  Box, 
+  Zap, 
+  Shield, 
+  Rocket, 
+  Layers, 
+  Download, 
+  Github,
+  Wrench,
+  Clock,
+  History,
+  CheckCircle2,
+  Calendar
+} from 'lucide-react';
+import { ui } from '../../i18n/ui';
+
+export async function getStaticPaths() {
+  const docsEntries = await getCollection('docs');
+  const paths = docsEntries.map(entry => ({
+    params: { slug: entry.slug }, props: { entry },
+  }));
+
+  // 为更新日志手动添加一个英文路径，以支持静态生成
+  const changelogEntry = docsEntries.find(d => d.slug === 'changelog');
+  if (changelogEntry) {
+    paths.push({
+      params: { slug: 'en/changelog' },
+      props: { entry: changelogEntry }
+    });
+  }
+  return paths;
+}
+
+const { entry } = Astro.props;
+const { Content, headings } = await entry.render();
+const allDocs = await getCollection('docs');
+
+const isChangelog = Astro.params.slug?.endsWith('changelog');
+const isIntroduction = Astro.params.slug?.endsWith('introduction');
+
+// 语言判断逻辑：基于路径参数
+const currentLang = Astro.params.slug?.startsWith('en/') ? 'en' : 'zh';
+const dict = ui[currentLang];
+
+// --- 复杂解析逻辑 (仅针对 Changelog) ---
+interface ChangelogItem {
+  title: string;
+  description: string;
+}
+
+interface ChangelogCategory {
+  name: string;
+  type: 'fixed' | 'added' | 'changed';
+  items: ChangelogItem[];
+}
+
+interface ChangelogVersion {
+  version: string;
+  date: string;
+  categories: ChangelogCategory[];
+}
+
+let structuredChangelog: ChangelogVersion[] = [];
+
+// 移除 Emoji 的正则 (使用现代 Unicode 属性转义)
+const emojiRegex = /\p{Extended_Pictographic}/gu;
+
+// 清理文本：移除 Emoji 和 Markdown 加粗标记
+function cleanText(text: string): { title: string; description: string } {
+  // 移除 Emoji
+  let cleaned = text.replace(emojiRegex, '').trim();
+  
+  // 提取 **title**：description 格式
+  const match = cleaned.match(/^\*\*(.+?)\*\*[：:]\s*(.+)$/);
+  if (match) {
+    return { title: match[1].trim(), description: match[2].trim() };
+  }
+  
+  // 备用：整段作为描述
+  cleaned = cleaned.replace(/\*\*/g, '');
+  return { title: '', description: cleaned };
+}
+
+if (isChangelog) {
+  const rawBody = entry.body;
+  
+  // 按版本分割 (## [x.x.x])
+  const versionBlocks = rawBody.split(/(?=^## \[)/m).filter(Boolean);
+  
+  for (const block of versionBlocks) {
+    const lines = block.split('\n');
+    const headerLine = lines[0]; // ## [0.3.4] - 2025-12-29
+    
+    const versionMatch = headerLine.match(/\[([\d.]+)\]/);
+    const dateMatch = headerLine.match(/- (\d{4}-\d{2}-\d{2})/);
+    
+    if (!versionMatch) continue;
+    
+    const version = versionMatch[1];
+    const date = dateMatch ? dateMatch[1] : '';
+    
+    // 按类别分割 (### xxx)
+    const categoryBlocks = block.split(/(?=^### )/m).filter(s => !s.startsWith('## '));
+    const categories: ChangelogCategory[] = [];
+    
+    for (const catBlock of categoryBlocks) {
+      const catLines = catBlock.split('\n');
+      const catHeader = catLines[0].replace('### ', '').trim(); // 修复 / Fixed
+      
+      if (!catHeader) continue;
+      
+      const isFixed = catHeader.includes('修复') || catHeader.toLowerCase().includes('fixed');
+      const isAdded = catHeader.includes('新功能') || catHeader.toLowerCase().includes('added');
+      const isChanged = catHeader.includes('优化') || catHeader.toLowerCase().includes('changed');
+      
+      const items: ChangelogItem[] = [];
+      
+      for (let i = 1; i < catLines.length; i++) {
+        const line = catLines[i];
+        
+        // 中文项 (一级列表，无缩进)
+        if (line.match(/^- [^\s]/)) {
+          if (currentLang === 'zh') {
+            const cleaned = cleanText(line.replace(/^- /, ''));
+            items.push(cleaned);
+          }
+        }
+        // 英文项 (二级列表，有缩进)
+        else if (line.match(/^\s{2,}- /)) {
+          if (currentLang === 'en') {
+            const cleaned = cleanText(line.replace(/^\s+- /, ''));
+            items.push(cleaned);
+          }
+        }
+      }
+      
+      if (items.length > 0) {
+        categories.push({
+          name: currentLang === 'en' 
+            ? (catHeader.split(' / ').pop() || catHeader) 
+            : (catHeader.split(' / ')[0] || catHeader),
+          type: isFixed ? 'fixed' : isAdded ? 'added' : 'changed',
+          items
+        });
+      }
+    }
+    
+    if (categories.length > 0) {
+      structuredChangelog.push({ version, date, categories });
+    }
+  }
+}
+
+// 侧边栏逻辑
+const sidebarDocs = allDocs.filter(d => 
+  currentLang === 'en' ? d.slug.startsWith('en/') : !d.slug.startsWith('en/')
+);
+
+function formatTitle(slug: string) {
+  if (slug.endsWith('introduction')) return currentLang === 'en' ? 'Introduction' : '项目介绍';
+  if (slug.endsWith('changelog')) return currentLang === 'en' ? 'Changelog' : '更新日志';
+  return slug.split('/').pop();
+}
+---
+
+<Layout title={`${entry.data.title || formatTitle(entry.slug)} - PromptHub`}>
+  <Navbar client:load lang={currentLang} dict={dict.nav} currentPath={Astro.url.pathname} />
+  
+  <div class="max-w-7xl mx-auto px-6 pt-24 flex gap-12 min-h-screen">
+    {/* Left Sidebar - 仅在更新日志页显示版本目录 */}
+    {isChangelog && structuredChangelog.length > 0 && (
+      <aside class="hidden lg:block w-48 flex-shrink-0 pt-8 border-r border-white/5">
+        <nav class="sticky top-32 pr-6">
+          <p class="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em] mb-4 px-2">
+            {currentLang === 'en' ? 'Versions' : '版本目录'}
+          </p>
+          <div class="space-y-0.5 overflow-y-auto max-h-[70vh] no-scrollbar">
+            {structuredChangelog.map((v, idx) => (
+              <a 
+                href={`#v${v.version}`}
+                class={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-all ${idx === 0 ? 'text-white bg-white/5' : 'text-zinc-500 hover:text-white hover:bg-white/5'}`}
+              >
+                {idx === 0 && <div class="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />}
+                <span class="font-mono">v{v.version}</span>
+              </a>
+            ))}
+          </div>
+        </nav>
+      </aside>
+    )}
+
+    {/* 非更新日志页面使用通用侧边栏 */}
+    {!isChangelog && (
+      <aside class="hidden lg:block w-56 flex-shrink-0 pt-8 border-r border-white/5">
+        <nav class="sticky top-32 space-y-6 pr-6 max-h-[calc(100vh-10rem)] overflow-y-auto no-scrollbar">
+          {/* 入门 */}
+          <div>
+            <p class="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em] mb-3 px-2">
+              {currentLang === 'en' ? 'Getting Started' : '入门指南'}
+            </p>
+            <div class="space-y-0.5">
+               <a href={currentLang === 'en' ? '/docs/en/introduction' : '/docs/introduction'} 
+                  class={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${Astro.params.slug?.endsWith('introduction') ? 'text-white bg-white/5 font-medium' : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.02]'}`}>
+                 <div class={`w-1.5 h-1.5 rounded-full ${Astro.params.slug?.endsWith('introduction') ? 'bg-accent shadow-[0_0_8px_#00F0FF]' : 'bg-transparent'}`} />
+                 {currentLang === 'en' ? 'Overview' : '项目概览'}
+               </a>
+               <a href={currentLang === 'en' ? '/docs/en/quick-start' : '/docs/quick-start'} 
+                  class={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${Astro.params.slug?.endsWith('quick-start') ? 'text-white bg-white/5 font-medium' : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.02]'}`}>
+                 <div class={`w-1.5 h-1.5 rounded-full ${Astro.params.slug?.endsWith('quick-start') ? 'bg-accent shadow-[0_0_8px_#00F0FF]' : 'bg-transparent'}`} />
+                 {currentLang === 'en' ? 'Quick Start' : '快速开始'}
+               </a>
+            </div>
+          </div>
+          
+          {/* 功能 */}
+          <div>
+            <p class="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em] mb-3 px-2">
+              {currentLang === 'en' ? 'Features' : '功能详解'}
+            </p>
+            <div class="space-y-0.5">
+               <a href={currentLang === 'en' ? '/docs/en/features' : '/docs/features'} 
+                  class={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${Astro.params.slug?.endsWith('features') ? 'text-white bg-white/5 font-medium' : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.02]'}`}>
+                 <div class={`w-1.5 h-1.5 rounded-full ${Astro.params.slug?.endsWith('features') ? 'bg-accent shadow-[0_0_8px_#00F0FF]' : 'bg-transparent'}`} />
+                 {currentLang === 'en' ? 'Core Features' : '核心功能'}
+               </a>
+            </div>
+          </div>
+
+          {/* 更新 */}
+          <div>
+            <p class="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em] mb-3 px-2">
+              {currentLang === 'en' ? 'Updates' : '更新动态'}
+            </p>
+            <div class="space-y-0.5">
+               <a href={currentLang === 'en' ? '/docs/en/changelog' : '/docs/changelog'} 
+                  class={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${isChangelog ? 'text-white bg-white/5 font-medium' : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.02]'}`}>
+                 <div class={`w-1.5 h-1.5 rounded-full ${isChangelog ? 'bg-accent shadow-[0_0_8px_#00F0FF]' : 'bg-transparent'}`} />
+                 {currentLang === 'en' ? 'Changelog' : '更新日志'}
+               </a>
+            </div>
+          </div>
+
+          {/* 社区 */}
+          <div>
+            <p class="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em] mb-3 px-2">
+              {currentLang === 'en' ? 'Community' : '社区'}
+            </p>
+            <div class="space-y-0.5">
+               <a href={currentLang === 'en' ? '/docs/en/backers' : '/docs/backers'} 
+                  class={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${Astro.params.slug?.endsWith('backers') ? 'text-white bg-white/5 font-medium' : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.02]'}`}>
+                 <div class={`w-1.5 h-1.5 rounded-full ${Astro.params.slug?.endsWith('backers') ? 'bg-accent shadow-[0_0_8px_#00F0FF]' : 'bg-transparent'}`} />
+                 {currentLang === 'en' ? 'Backers' : '支持者名单'}
+               </a>
+               <a href="https://github.com/legeling/PromptHub" target="_blank" rel="noreferrer"
+                  class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.02]">
+                 <div class="w-1.5 h-1.5 rounded-full bg-transparent" />
+                 GitHub
+                 <svg class="w-3 h-3 ml-auto opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+               </a>
+               <a href="https://github.com/legeling/PromptHub/issues" target="_blank" rel="noreferrer"
+                  class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.02]">
+                 <div class="w-1.5 h-1.5 rounded-full bg-transparent" />
+                 {currentLang === 'en' ? 'Report Issue' : '反馈问题'}
+                 <svg class="w-3 h-3 ml-auto opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+               </a>
+            </div>
+          </div>
+        </nav>
+      </aside>
+    )}
+
+    <main class="flex-1 min-w-0 py-8 relative">
+      {/* 渐变装饰 */}
+      <div class="absolute top-0 left-0 w-full h-full pointer-events-none -z-10 overflow-hidden">
+        <div class="absolute top-20 left-10 w-96 h-96 bg-accent/5 blur-[120px] rounded-full"></div>
+      </div>
+
+      {isChangelog ? (
+        <section class="max-w-3xl">
+          <header class="mb-20">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 border border-accent/20 text-accent text-[10px] font-bold uppercase tracking-widest mb-6">
+              <History class="w-3.5 h-3.5" />
+              <span>{currentLang === 'en' ? 'Full History' : '完整历史'}</span>
+            </div>
+            <h1 class="text-5xl lg:text-7xl font-black tracking-tighter text-white mb-6 leading-none">
+              {currentLang === 'en' ? 'Changelog' : '更新日志'}
+            </h1>
+            <p class="text-xl text-zinc-500 font-medium">
+              {currentLang === 'en' 
+                ? 'Tracking every detail, improvement, and fix in the PromptHub ecosystem.' 
+                : '纵览 PromptHub 的成长足迹，记录每一次细微的突破与进化。'}
+            </p>
+          </header>
+
+          <div class="space-y-20 relative before:absolute before:left-[1.25rem] before:top-4 before:bottom-0 before:w-px before:bg-gradient-to-b before:from-white/10 before:via-white/5 before:to-transparent">
+            {structuredChangelog.map((v, idx) => (
+              <article 
+                id={`v${v.version}`} 
+                class="relative pl-14 scroll-mt-32"
+              >
+                {/* 时间轴节点 */}
+                <div class={`absolute left-0 top-0 w-10 h-10 rounded-xl bg-background border flex items-center justify-center z-10 shadow-xl transition-colors ${idx === 0 ? 'border-accent/50' : 'border-white/10'}`}>
+                  {idx === 0 ? <Zap class="w-5 h-5 text-accent" /> : <Clock class="w-4 h-4 text-zinc-600" />}
+                </div>
+
+                <header class="mb-8">
+                  <div class="flex items-baseline gap-4 mb-3">
+                    <h2 class="text-3xl font-black tracking-tight text-white">v{v.version}</h2>
+                    <time class="text-sm font-mono text-zinc-600">{v.date}</time>
+                  </div>
+                  <div class="h-px w-24 bg-gradient-to-r from-white/20 to-transparent" />
+                </header>
+
+                <div class="space-y-10">
+                  {v.categories.map(cat => (
+                    <div>
+                      <h3 class="flex items-center gap-2.5 text-xs font-bold uppercase tracking-[0.15em] mb-5">
+                        {cat.type === 'fixed' && <Wrench class="w-4 h-4 text-red-400" />}
+                        {cat.type === 'added' && <Rocket class="w-4 h-4 text-green-400" />}
+                        {cat.type === 'changed' && <Zap class="w-4 h-4 text-yellow-400" />}
+                        <span class={cat.type === 'fixed' ? 'text-red-400' : cat.type === 'added' ? 'text-green-400' : 'text-yellow-400'}>
+                          {cat.name}
+                        </span>
+                      </h3>
+                      <ul class="space-y-4 pl-1">
+                        {cat.items.map(item => (
+                          <li class="flex gap-3 text-[15px] leading-relaxed group">
+                            <span class="shrink-0 w-1.5 h-1.5 rounded-full bg-white/20 mt-2.5 group-hover:bg-accent transition-colors" />
+                            <div>
+                              {item.title && <strong class="text-zinc-200 font-semibold">{item.title}</strong>}
+                              {item.title && item.description && <span class="text-zinc-600 mx-1">—</span>}
+                              <span class="text-zinc-500 group-hover:text-zinc-400 transition-colors">{item.description}</span>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : (
+        <article class="prose prose-invert prose-zinc max-w-none 
+          prose-headings:font-bold prose-headings:tracking-tight prose-headings:text-white
+          prose-h1:text-4xl prose-h1:mb-10
+          prose-h2:text-2xl prose-h2:mt-16 prose-p:text-zinc-400 prose-p:leading-relaxed
+          prose-a:text-accent prose-a:no-underline hover:prose-a:underline
+          prose-img:rounded-2xl prose-img:border prose-img:border-white/10
+          ">
+          <Content />
+        </article>
+      )}
+    </main>
+
+    {/* Right Sidebar - TOC (仅非日志页显示) */}
+    {!isChangelog && (
+      <aside class="hidden xl:block w-56 flex-shrink-0 pt-8 pl-8 border-l border-white/5">
+        <div class="sticky top-32">
+          <p class="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-4">
+            {currentLang === 'en' ? 'On this page' : '本页目录'}
+          </p>
+          <nav class="space-y-2">
+            {headings.filter(h => h.depth > 1 && h.depth <= 3).map(h => (
+              <a 
+                href={`#${h.slug}`}
+                class="block text-xs transition-colors text-zinc-500 hover:text-white"
+                style={{ paddingLeft: `${(h.depth - 2) * 12}px` }}
+              >
+                {h.text}
+              </a>
+            ))}
+          </nav>
+        </div>
+      </aside>
+    )}
+  </div>
+</Layout>
+
+<style is:global>
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+</style>

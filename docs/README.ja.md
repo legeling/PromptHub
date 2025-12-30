@@ -33,7 +33,7 @@
 <br/>
 
 > 💡 **なぜ PromptHub なのか？**
-> 
+>
 > ノートやドキュメント、チャット履歴からプロンプトを探し回るのに疲れていませんか？PromptHub は、プロンプトをコードのように管理できます — バージョン管理、変数テンプレート、マルチモデルテスト。すべてのデータはローカルに保存され、プライバシーも万全です。
 
 ---
@@ -46,11 +46,11 @@
   </a>
 </div>
 
-| プラットフォーム | ダウンロード |
-|:---:|:---:|
-| Windows | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.4-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.4-arm64.exe) |
-| macOS | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-x64.dmg) |
-| Linux | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.3.4_amd64.deb) |
+| プラットフォーム |                                                                                                                                                                                                              ダウンロード                                                                                                                                                                                                               |
+| :--------------: | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
+|     Windows      | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.4-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.4-arm64.exe) |
+|      macOS       |   [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-x64.dmg)   |
+|      Linux       |       [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.3.4_amd64.deb)        |
 
 ---
 
@@ -68,8 +68,8 @@
 - **💾 ローカルストレージ** - すべてのデータはローカルに保存され、プライバシーを保護
 - **🖥️ クロスプラットフォーム** - macOS, Windows, Linux をサポート
 - **📊 リストビュー** - テーブル形式の表示。ソートや一括操作をサポート
-- **🤖 AI テスト** - 18以上のプロバイダーによるマルチモデルテストを内蔵
-- **🎨 画像生成モデル** - 画像生成モデル（DALL-E など）の設定とテストをサポート
+- **🤖 AI テスト** - 国内外の主要なプロバイダーによるマルチモデルテストを内蔵
+- **🎨 画像生成モデル** - 様々な画像生成モデルの設定とテストをサポート
 - **🧭 Markdown プレビュー** - 詳細、リスト、編集のすべての画面で Markdown レンダリングとコードハイライトに対応
 - **🪟 ワイド・全画面モード** - 編集体験を最適化するワイドおよび全画面モード
 - **🔐 マスターパスワードとプライベートフォルダ** - マスターパスワードによるプライベートコンテンツの保護
@@ -113,11 +113,11 @@
 
 [Releases](https://github.com/legeling/PromptHub/releases) からお使いのプラットフォーム用のインストーラーをダウンロードしてください：
 
-| プラットフォーム | ダウンロード |
-|:---:|:---:|
-| Windows | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.4-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.4-arm64.exe) |
-| macOS | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-x64.dmg) |
-| Linux | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.3.4_amd64.deb) |
+| プラットフォーム |                                                                                                                                                                                                              ダウンロード                                                                                                                                                                                                               |
+| :--------------: | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
+|     Windows      | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.4-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.4-arm64.exe) |
+|      macOS       |   [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-x64.dmg)   |
+|      Linux       |       [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.3.4_amd64.deb)        |
 
 ### macOS での初回起動について
 
@@ -159,6 +159,7 @@ pnpm build
 ### 1. プロンプトの作成
 
 「新規作成」ボタンをクリックし、以下を入力します：
+
 - **タイトル** - プロンプトの名前
 - **説明** - 用途の簡単な説明
 - **System Prompt** - AI の役割設定（任意）
@@ -185,14 +186,14 @@ pnpm build
 
 ## 🛠️ 技術スタック
 
-| カテゴリ | 使用技術 |
-|----------|------------|
-| フレームワーク | Electron 33 |
+| カテゴリ       | 使用技術                |
+| -------------- | ----------------------- |
+| フレームワーク | Electron 33             |
 | フロントエンド | React 18 + TypeScript 5 |
-| スタイリング | TailwindCSS |
-| 状態管理 | Zustand |
-| ローカル保存 | IndexedDB + SQLite |
-| ビルドツール | Vite + electron-builder |
+| スタイリング   | TailwindCSS             |
+| 状態管理       | Zustand                 |
+| ローカル保存   | IndexedDB + SQLite      |
+| ビルドツール   | Vite + electron-builder |
 
 ## 📁 プロジェクト構造
 
@@ -224,10 +225,11 @@ PromptHub/
 ## 🗺️ ロードマップ
 
 ### v0.3.4 (現在のバージョン)
+
 - [x] **多階層フォルダ**: 無制限のフォルダ階層化とドラッグ＆ドロップ管理をサポート
 - [x] **バージョン管理システム**: コードのようにプロンプトを管理。履歴比較とワンクリック復元が可能
 - [x] **変数テンプレートシステム**: `{{variable}}` 構文をサポートし、入力フォームを自動生成。コピー前のプレビューも可能
-- [x] **マルチモデル・ラボ**: 18以上のプロバイダーを内蔵。複数モデルの並列比較テストと応答時間分析をサポート
+- [x] **マルチモデル・ラボ**: 国内外の主要なプロバイダーを内蔵。複数モデルの並列比較テストと応答時間分析をサポート
 - [x] **デバイス間同期**: WebDAVによる増分同期とフルバックアップをサポートし、データを高度に制御
 - [x] **究極の閲覧体験**: Markdownのフルレンダリング、コードハイライト、二ヶ国語対照モードをサポート
 - [x] **多次元の効率管理**: フォルダ、タグ、お気に入り、使用統計、全文スコアリング検索による整理
@@ -237,22 +239,26 @@ PromptHub/
 - [x] **セキュリティとプライバシー**: マスターパスワード保護、暗号化されたプライベートフォルダ。ローカルファーストを徹底
 
 ### 今後の計画
+
 ---
+
 (Skipping some lines)
----
+
 ## 📝 更新履歴
 
 すべての更新履歴はこちら：**[CHANGELOG.md](../CHANGELOG.md)**
 
-### 最新バージョン v0.3.4 (2025-12-29)
+### 最新バージョン v0.3.4 (2025-12-30)
 
-**修正**
-- 🧭 **Prompt プレビュー復元**: カード表示でクリックするとプレビュー/編集が開くように修正
-- 🤖 **Gemini 接続テスト**: モデル名とパラメータ互換を調整し API 400 を回避
+**新規**
 
-**最適化**
-- 🚫 **リストのドラッグ無効化**: Prompt リストの誤ドラッグを防止
-- 📦 **リリース手順修正**: 余分な blockmap を削除し Windows 更新チャネルと latest を修正
+- 💖 **支援者リスト**: プロジェクト支援者のための専用ページとコンポーネントを追加
+- 🔍 **SEO 強化**: 検索エンジンでの視認性を高めるためにメタデータを最適化
+
+**改善**
+
+- 🚀 **モデル名の一般化**: 特定のモデル名を一般的な LLM 用語に置き換え
+- 🎨 **Hero UI の洗練**: Hero セクションのメッセージを簡素化し、よりインパクトのあるものに
 
 > 📋 [更新履歴の詳細はこちら](../CHANGELOG.md)
 

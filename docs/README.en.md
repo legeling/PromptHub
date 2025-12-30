@@ -33,7 +33,7 @@
 <br/>
 
 > 💡 **Why PromptHub?**
-> 
+>
 > Tired of searching for prompts in notebooks, documents, and chat histories? PromptHub lets you manage prompts like code — version control, variable templates, multi-model testing, all local and privacy-first.
 
 ---
@@ -46,11 +46,11 @@
   </a>
 </div>
 
-| Platform | Download |
-|:---:|:---:|
-| Windows | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.4-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.4-arm64.exe) |
-| macOS | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-x64.dmg) |
-| Linux | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.3.4_amd64.deb) |
+| Platform |                                                                                                                                                                                                                Download                                                                                                                                                                                                                 |
+| :------: | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
+| Windows  | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.4-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.4-arm64.exe) |
+|  macOS   |   [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-x64.dmg)   |
+|  Linux   |       [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.3.4_amd64.deb)        |
 
 ---
 
@@ -68,8 +68,8 @@
 - **💾 Local Storage** - All data stored locally for privacy
 - **🖥️ Cross-Platform** - Support for macOS, Windows, Linux
 - **📊 List View** - Table-style display with sorting and batch operations
-- **🤖 AI Testing** - Built-in multi-model testing with 18+ providers
-- **🎨 Image Models** - Configure & test image generation models (e.g., DALL‑E)
+- **🤖 AI Testing** - Built-in multi-model testing for various mainstream providers
+- **🎨 Image Models** - Configure & test various image generation models
 - **🧭 Markdown Preview** - Safe Markdown rendering with syntax highlight everywhere (Detail, List, Edit)
 - **🪟 Wide & Full Modes** - Optimized editing experience with wider and fullscreen modes
 - **🔐 Master Password & Private Folders** - Secure private content with a master password (data encryption WIP)
@@ -113,11 +113,11 @@
 
 Download the latest version v0.3.4 from [Releases](https://github.com/legeling/PromptHub/releases):
 
-| Platform | Download |
-|:---:|:---:|
-| Windows | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.4-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.4-arm64.exe) |
-| macOS | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-x64.dmg) |
-| Linux | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.3.4_amd64.deb) |
+| Platform |                                                                                                                                                                                                                Download                                                                                                                                                                                                                 |
+| :------: | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
+| Windows  | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.4-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.4-arm64.exe) |
+|  macOS   |   [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-x64.dmg)   |
+|  Linux   |       [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.4-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.3.4_amd64.deb)        |
 
 ### macOS First Launch
 
@@ -159,6 +159,7 @@ pnpm build
 ### 1. Create a Prompt
 
 Click the "New" button and fill in:
+
 - **Title** - Prompt name
 - **Description** - Brief usage description
 - **System Prompt** - Set AI role (optional)
@@ -185,14 +186,14 @@ Edit history is automatically saved. Click "History" to view and restore previou
 
 ## 🛠️ Tech Stack
 
-| Category | Technology |
-|----------|------------|
-| Framework | Electron 33 |
-| Frontend | React 18 + TypeScript 5 |
-| Styling | TailwindCSS |
-| State Management | Zustand |
-| Local Storage | IndexedDB + SQLite |
-| Build Tools | Vite + electron-builder |
+| Category         | Technology              |
+| ---------------- | ----------------------- |
+| Framework        | Electron 33             |
+| Frontend         | React 18 + TypeScript 5 |
+| Styling          | TailwindCSS             |
+| State Management | Zustand                 |
+| Local Storage    | IndexedDB + SQLite      |
+| Build Tools      | Vite + electron-builder |
 
 ## 📁 Project Structure
 
@@ -224,10 +225,11 @@ PromptHub/
 ## 🗺️ Roadmap
 
 ### v0.3.4 (Current)
+
 - [x] **Multi-level Folders**: Support infinite folder nesting and drag-and-drop management.
 - [x] **Version Control System**: Manage Prompts like code, with history comparison and one-click rollback.
 - [x] **Variable Template System**: Support `{{variable}}` syntax, automatically generate input forms with pre-copy preview.
-- [x] **Multi-Model Lab**: Built-in 18+ providers, supporting parallel comparison testing and response time analysis.
+- [x] **Multi-Model Lab**: Built-in various mainstream providers, supporting parallel comparison testing and response time analysis.
 - [x] **Cross-Device Sync**: WebDAV incremental sync and full backup, ensuring full data control.
 - [x] **Superior Reading Experience**: Full Markdown rendering, code highlighting, and bilingual comparison mode.
 - [x] **Multi-dimensional Management**: Efficiently organize with folders, tags, favorites, usage statistics, and full-text scoring search.
@@ -237,20 +239,24 @@ PromptHub/
 - [x] **Security & Privacy**: Master password protection, encrypted private folders, and a local-first data policy.
 
 ### Future Plans
+
 --- (Skipping some lines) ---
+
 ## 📝 Changelog
 
 See full changelog: **[CHANGELOG.md](../CHANGELOG.md)**
 
-### Latest Version v0.3.4 (2025-12-29)
+### Latest Version v0.3.4 (2025-12-30)
 
-**Fixes**
-- 🧭 **Prompt Preview Restored**: Card view selection now opens preview/editor as expected.
-- 🤖 **Gemini Test Fix**: Normalized model name/params to avoid API 400.
+**New**
+
+- 💖 **Backers List**: Added dedicated page and component for project supporters.
+- 🔍 **SEO Enhancements**: Optimized metadata for better search engine visibility.
 
 **Improvements**
-- 🚫 **Disable Prompt Dragging**: Removed unintended drag behavior in prompt list.
-- 📦 **Release Pipeline Fix**: Cleaned extra blockmap and fixed Windows update channel/metadata.
+
+- 🚀 **Model Generalization**: Replaced specific model names with generic LLM terms.
+- 🎨 **Hero UI Refinement**: Streamlined hero section messaging for greater impact.
 
 > 📋 [View full changelog](../CHANGELOG.md)
 
