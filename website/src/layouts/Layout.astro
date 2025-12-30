@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import SpeedInsights from '@vercel/speed-insights/astro';
 
 interface Props {
 	title: string;
@@ -44,5 +45,6 @@ const {
 	</head>
 	<body class="bg-background text-white antialiased overflow-x-hidden">
 		<slot />
+		<SpeedInsights />
 	</body>
 </html>
