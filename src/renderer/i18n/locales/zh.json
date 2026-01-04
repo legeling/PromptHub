@@ -132,6 +132,7 @@
     "createdAt": "创建时间",
     "promptCount": "共 {{count}} 个",
     "actions": "操作",
+    "columnConfig": "列设置",
     "pageSize": "每页",
     "movedToFolder": "已移动到文件夹",
     "dataPathChanged": "数据路径已更改",

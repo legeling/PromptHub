@@ -132,6 +132,7 @@
     "createdAt": "Created",
     "promptCount": "{{count}} prompts",
     "actions": "Actions",
+    "columnConfig": "Column Settings",
     "pageSize": "Per page",
     "movedToFolder": "Moved to folder",
     "dataPathChanged": "Data path changed",

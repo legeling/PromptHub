@@ -1,8 +1,11 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, useCallback, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StarIcon, CopyIcon, PlayIcon, EditIcon, TrashIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, HistoryIcon, FolderIcon, Trash2Icon } from 'lucide-react';
 import type { Prompt } from '../../../shared/types';
 import { useFolderStore } from '../../stores/folder.store';
+import { useTableConfig, type ColumnConfig } from '../../hooks/useTableConfig';
+import { ResizableHeader } from './ResizableHeader';
+import { ColumnConfigMenu } from './ColumnConfigMenu';
 
 function escapeRegExp(str: string) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -100,6 +103,16 @@ export function PromptTableView({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showFolderMenu, setShowFolderMenu] = useState(false);
   const folders = useFolderStore((state) => state.folders);
+  
+  // Table column configuration
+  // 表格列配置
+  const {
+    columns,
+    toggleColumnVisibility,
+    updateColumnWidth,
+    resetToDefaults,
+    getVisibleColumns,
+  } = useTableConfig();
 
   const preferEnglish = useMemo(() => {
     const lang = (i18n.language || '').toLowerCase();
@@ -295,164 +308,218 @@ export function PromptTableView({
           <table className="w-full text-sm min-w-[1000px]">
             <thead className="sticky top-0 z-20">
               <tr className="bg-muted/30 dark:bg-muted/20 border-b border-border">
-                {/* Select checkbox */}
-                {/* 多选框 */}
-                <th className="w-[50px] px-4 py-3">
-                  <Checkbox
-                    checked={currentPrompts.length > 0 && selectedIds.size === currentPrompts.length}
-                    onChange={toggleSelectAll}
-                  />
-                </th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground whitespace-nowrap min-w-[140px]">
-                  {t('prompt.title')}
-                </th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground whitespace-nowrap min-w-[180px]">
-                  {t('prompt.userPrompt')}
-                </th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground whitespace-nowrap min-w-[180px]">
-                  {t('prompt.aiResponse')}
-                </th>
-                <th className="text-center px-4 py-3 font-medium text-muted-foreground whitespace-nowrap w-[60px]">
-                  {t('prompt.variables')}
-                </th>
-                <th className="text-center px-4 py-3 font-medium text-muted-foreground whitespace-nowrap w-[70px]">
-                  {t('prompt.usageCount')}
-                </th>
-                <th className="text-center px-4 py-3 font-medium text-muted-foreground whitespace-nowrap w-[140px] sticky right-0 z-30 bg-muted/30 dark:bg-muted/20 shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.1)]">
-                  {t('prompt.actions')}
-                </th>
+                {getVisibleColumns().map((column) => {
+                  // Render different content based on column id
+                  // 根据列 ID 渲染不同内容
+                  if (column.id === 'checkbox') {
+                    return (
+                      <th key={column.id} className="px-4 py-3" style={{ width: column.width }}>
+                        <Checkbox
+                          checked={currentPrompts.length > 0 && selectedIds.size === currentPrompts.length}
+                          onChange={toggleSelectAll}
+                        />
+                      </th>
+                    );
+                  }
+                  
+                  if (column.id === 'actions') {
+                    return (
+                      <th
+                        key={column.id}
+                        className="text-center px-4 py-3 font-medium text-muted-foreground whitespace-nowrap sticky right-0 z-30 bg-muted/30 dark:bg-muted/20 shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.1)]"
+                        style={{ width: column.width }}
+                      >
+                        <div className="flex items-center justify-center gap-2">
+                          <span>{t('prompt.actions')}</span>
+                          <ColumnConfigMenu
+                            columns={columns}
+                            onToggleVisibility={toggleColumnVisibility}
+                            onReset={resetToDefaults}
+                          />
+                        </div>
+                      </th>
+                    );
+                  }
+
+                  // Regular columns with resizable headers
+                  // 常规列，支持拖拽调整宽度
+                  const isCenter = column.id === 'variables' || column.id === 'usageCount';
+                  return (
+                    <ResizableHeader
+                      key={column.id}
+                      column={column}
+                      onResize={updateColumnWidth}
+                      className={`${isCenter ? 'text-center' : 'text-left'} px-4 py-3 font-medium text-muted-foreground whitespace-nowrap`}
+                    >
+                      {t(column.label)}
+                    </ResizableHeader>
+                  );
+                })}
               </tr>
             </thead>
             <tbody>
               {currentPrompts.map((prompt) => {
                 const isSelected = selectedIds.has(prompt.id);
                 const aiContent = prompt.lastAiResponse || aiResults[prompt.id] || '';
+                
+                // Helper to render cell content based on column id
+                // 根据列 ID 渲染单元格内容的辅助函数
+                const renderCell = (column: ColumnConfig) => {
+                  const colWidth = { width: column.width, minWidth: column.minWidth };
+                  
+                  switch (column.id) {
+                    case 'checkbox':
+                      return (
+                        <td key={column.id} className="px-4 py-3" style={colWidth}>
+                          <Checkbox checked={isSelected} onChange={() => toggleSelect(prompt.id)} />
+                        </td>
+                      );
+                    
+                    case 'title':
+                      return (
+                        <td key={column.id} className="px-4 py-3" style={colWidth}>
+                          <button
+                            onClick={() => onViewDetail(prompt)}
+                            className="font-medium text-primary hover:text-primary/80 hover:underline truncate text-left block"
+                            style={{ maxWidth: column.width - 32 }}
+                            title={prompt.title}
+                          >
+                            {renderHighlightedText(prompt.title, highlightTerms, highlightClassName)}
+                          </button>
+                        </td>
+                      );
+                    
+                    case 'userPrompt':
+                      return (
+                        <td key={column.id} className="px-4 py-3" style={colWidth}>
+                          <span 
+                            className="text-xs text-muted-foreground truncate block" 
+                            style={{ maxWidth: column.width - 32 }}
+                            title={preferEnglish ? (prompt.userPromptEn || prompt.userPrompt) : prompt.userPrompt}
+                          >
+                            {renderTextPreview(preferEnglish ? (prompt.userPromptEn || prompt.userPrompt) : prompt.userPrompt)}
+                          </span>
+                        </td>
+                      );
+                    
+                    case 'aiResponse':
+                      return (
+                        <td key={column.id} className="px-4 py-3" style={colWidth}>
+                          <span 
+                            className="text-xs text-muted-foreground truncate block" 
+                            style={{ maxWidth: column.width - 32 }}
+                            title={aiContent}
+                          >
+                            {renderTextPreview(aiContent)}
+                          </span>
+                        </td>
+                      );
+                    
+                    case 'variables':
+                      return (
+                        <td key={column.id} className="px-4 py-3 text-center" style={colWidth}>
+                          <span className={`text-xs ${getVariableCount(prompt) > 0 ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
+                            {getVariableCount(prompt) || '-'}
+                          </span>
+                        </td>
+                      );
+                    
+                    case 'usageCount':
+                      return (
+                        <td key={column.id} className="px-4 py-3 text-center text-muted-foreground text-xs" style={colWidth}>
+                          {prompt.usageCount || 0}
+                        </td>
+                      );
+                    
+                    case 'actions':
+                      return (
+                        <td 
+                          key={column.id}
+                          className={`px-2 py-3 sticky right-0 z-10 shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.1)] ${isSelected ? 'bg-primary/5' : 'bg-card'} dark:bg-card`}
+                          style={colWidth}
+                        >
+                          <div
+                            className="flex items-center justify-center gap-0.5 bg-card dark:bg-card rounded-lg px-1"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {/* Copy */}
+                            <button
+                              onClick={() => handleCopy(prompt)}
+                              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                              title={t('prompt.copy')}
+                            >
+                              {copiedId === prompt.id ? (
+                                <CheckIcon className="w-4 h-4 text-green-500" />
+                              ) : (
+                                <CopyIcon className="w-4 h-4" />
+                              )}
+                            </button>
+
+                            {/* AI test */}
+                            <button
+                              onClick={() => onAiTest(prompt)}
+                              className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                              title={t('prompt.aiTest')}
+                            >
+                              <PlayIcon className="w-4 h-4" />
+                            </button>
+
+                            {/* Version history */}
+                            <button
+                              onClick={() => onVersionHistory(prompt)}
+                              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                              title={t('prompt.history')}
+                            >
+                              <HistoryIcon className="w-4 h-4" />
+                            </button>
+
+                            {/* Favorite */}
+                            <button
+                              onClick={() => onToggleFavorite(prompt.id)}
+                              className={`p-1.5 rounded-lg transition-colors ${prompt.isFavorite
+                                ? 'text-yellow-500 hover:bg-yellow-500/10'
+                                : 'text-muted-foreground hover:text-yellow-500 hover:bg-accent'
+                                }`}
+                              title={prompt.isFavorite ? t('nav.favorites') : t('prompt.addToFavorites')}
+                            >
+                              <StarIcon className={`w-4 h-4 ${prompt.isFavorite ? 'fill-current' : ''}`} />
+                            </button>
+
+                            {/* Edit */}
+                            <button
+                              onClick={() => onEdit(prompt)}
+                              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                              title={t('prompt.edit')}
+                            >
+                              <EditIcon className="w-4 h-4" />
+                            </button>
+
+                            {/* Delete */}
+                            <button
+                              onClick={() => onDelete(prompt)}
+                              className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                              title={t('prompt.delete')}
+                            >
+                              <TrashIcon className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      );
+                    
+                    default:
+                      return null;
+                  }
+                };
+
                 return (
                   <tr
                     key={prompt.id}
                     onContextMenu={(e) => onContextMenu(e, prompt)}
                     className={`border-b border-border/50 last:border-b-0 hover:bg-accent/50 dark:hover:bg-accent/20 transition-colors ${isSelected ? 'bg-primary/5' : ''}`}
                   >
-                    {/* Select checkbox */}
-                    {/* 多选框 */}
-                    <td className="w-[50px] px-4 py-3">
-                      <Checkbox checked={isSelected} onChange={() => toggleSelect(prompt.id)} />
-                    </td>
-                    {/* Title - click to view details */}
-                    {/* 标题 - 可点击查看详情 */}
-                    <td className="px-4 py-3 min-w-[140px]">
-                      <button
-                        onClick={() => onViewDetail(prompt)}
-                        className="font-medium text-primary hover:text-primary/80 hover:underline truncate max-w-[140px] text-left"
-                        title={prompt.title}
-                      >
-                        {renderHighlightedText(prompt.title, highlightTerms, highlightClassName)}
-                      </button>
-                    </td>
-
-                    {/* Prompt content preview */}
-                    {/* Prompt 内容预览 */}
-                    <td className="px-4 py-3 min-w-[180px]">
-                      {renderTextPreview(preferEnglish ? (prompt.userPromptEn || prompt.userPrompt) : prompt.userPrompt)}
-                    </td>
-
-                    {/* AI response preview */}
-                    {/* AI 响应预览 */}
-                    <td className="px-4 py-3 min-w-[180px]">
-                      {renderTextPreview(aiContent)}
-                    </td>
-
-                    {/* Variable count */}
-                    {/* 变量数 */}
-                    <td className="px-4 py-3 text-center">
-                      <span className={`text-xs ${getVariableCount(prompt) > 0 ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
-                        {getVariableCount(prompt) || '-'}
-                      </span>
-                    </td>
-
-                    {/* Usage count */}
-                    {/* 使用次数 */}
-                    <td className="px-4 py-3 text-center text-muted-foreground text-xs">
-                      {prompt.usageCount || 0}
-                    </td>
-
-                    {/* Actions - sticky on the right */}
-                    {/* 操作 - 固定在右侧 */}
-                    <td className={`px-2 py-3 sticky right-0 z-10 shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.1)] ${isSelected ? 'bg-primary/5' : 'bg-card'} dark:bg-card`}>
-                      <div
-                        className="flex items-center justify-center gap-0.5 bg-card dark:bg-card rounded-lg px-1"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {/* Copy */}
-                        {/* 复制 */}
-                        <button
-                          onClick={() => handleCopy(prompt)}
-                          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                          title={t('prompt.copy')}
-                        >
-                          {copiedId === prompt.id ? (
-                            <CheckIcon className="w-4 h-4 text-green-500" />
-                          ) : (
-                            <CopyIcon className="w-4 h-4" />
-                          )}
-                        </button>
-
-                        {/* AI test */}
-                        {/* AI 测试 */}
-                        <button
-                          onClick={() => onAiTest(prompt)}
-                          className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                          title={t('prompt.aiTest')}
-                        >
-                          <PlayIcon className="w-4 h-4" />
-                        </button>
-
-                        {/* Version history */}
-                        {/* 版本历史 */}
-                        <button
-                          onClick={() => onVersionHistory(prompt)}
-                          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                          title={t('prompt.history')}
-                        >
-                          <HistoryIcon className="w-4 h-4" />
-                        </button>
-
-                        {/* Favorite */}
-                        {/* 收藏 */}
-                        <button
-                          onClick={() => onToggleFavorite(prompt.id)}
-                          className={`p-1.5 rounded-lg transition-colors ${prompt.isFavorite
-                            ? 'text-yellow-500 hover:bg-yellow-500/10'
-                            : 'text-muted-foreground hover:text-yellow-500 hover:bg-accent'
-                            }`}
-                          title={prompt.isFavorite ? t('nav.favorites') : t('prompt.addToFavorites')}
-                        >
-                          <StarIcon className={`w-4 h-4 ${prompt.isFavorite ? 'fill-current' : ''}`} />
-                        </button>
-
-                        {/* Edit */}
-                        {/* 编辑 */}
-                        <button
-                          onClick={() => onEdit(prompt)}
-                          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                          title={t('prompt.edit')}
-                        >
-                          <EditIcon className="w-4 h-4" />
-                        </button>
-
-                        {/* Delete */}
-                        {/* 删除 */}
-                        <button
-                          onClick={() => onDelete(prompt)}
-                          className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                          title={t('prompt.delete')}
-                        >
-                          <TrashIcon className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
+                    {getVisibleColumns().map(renderCell)}
                   </tr>
-                )
+                );
               })}
             </tbody>
           </table>
