@@ -248,24 +248,41 @@ export function initUpdater(win: BrowserWindow) {
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
 
-  // Configure auto updater to use architecture-specific channel on Windows
-  // 配置 autoUpdater 在 Windows 上使用架构特定的通道
-  // This will make it request latest-x64.yml or latest-arm64.yml instead of latest.yml
-  // 这会让它请求 latest-x64.yml 或 latest-arm64.yml 而不是 latest.yml
+  // Configure auto updater channel based on platform and architecture
+  // 根据平台和架构配置 autoUpdater channel
+  // 
+  // electron-updater channel behavior:
+  // - channel = undefined/null -> looks for 'latest.yml'
+  // - channel = 'xxx' -> looks for 'xxx.yml'
+  // - channel = 'latest-xxx' -> looks for 'latest-xxx.yml'
+  //
+  // Our CI generates:
+  // - Windows x64: latest.yml (copied from latest-x64.yml)
+  // - Windows arm64: latest-arm64.yml
+  // - macOS: latest-mac.yml
+  // - Linux: latest-linux.yml
+  //
   if (process.platform === 'win32') {
-    const arch = process.arch === 'arm64' ? 'arm64' : 'x64';
-    // Set channel to match architecture-specific yaml file (e.g. latest-x64.yml)
-    // 设置通道以匹配架构特定的 yaml 文件（例如 latest-x64.yml）
-    autoUpdater.channel = arch;
-    console.log(`[Updater] Windows detected, arch: ${arch}, channel: ${autoUpdater.channel}`);
+    if (process.arch === 'arm64') {
+      // ARM64 needs to use latest-arm64.yml
+      // ARM64 需要使用 latest-arm64.yml
+      autoUpdater.channel = 'latest-arm64';
+      console.log(`[Updater] Windows ARM64 detected, channel: ${autoUpdater.channel}`);
+    } else {
+      // x64 uses default latest.yml (no channel override needed)
+      // x64 使用默认的 latest.yml（不需要覆盖 channel）
+      console.log(`[Updater] Windows x64 detected, using default channel (latest.yml)`);
+    }
   } else if (process.platform === 'darwin') {
-    // macOS: electron-builder generates latest-mac.yml by default
-    // But our CI generates latest-arm64.yml and latest-x64.yml for mac
-    // We need to use the 'mac' channel which will look for latest-mac.yml
-    // macOS: electron-builder 默认生成 latest-mac.yml
-    // 我们的 CI 也生成了这个文件，所以使用 'mac' channel
-    autoUpdater.channel = 'mac';
+    // macOS uses latest-mac.yml
+    // macOS 使用 latest-mac.yml
+    autoUpdater.channel = 'latest-mac';
     console.log(`[Updater] macOS detected, arch: ${process.arch}, channel: ${autoUpdater.channel}`);
+  } else if (process.platform === 'linux') {
+    // Linux uses latest-linux.yml
+    // Linux 使用 latest-linux.yml
+    autoUpdater.channel = 'latest-linux';
+    console.log(`[Updater] Linux detected, channel: ${autoUpdater.channel}`);
   }
 
   // Update check error
