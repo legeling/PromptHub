@@ -258,6 +258,14 @@ export function initUpdater(win: BrowserWindow) {
     // 设置通道以匹配架构特定的 yaml 文件（例如 latest-x64.yml）
     autoUpdater.channel = arch;
     console.log(`[Updater] Windows detected, arch: ${arch}, channel: ${autoUpdater.channel}`);
+  } else if (process.platform === 'darwin') {
+    // macOS: electron-builder generates latest-mac.yml by default
+    // But our CI generates latest-arm64.yml and latest-x64.yml for mac
+    // We need to use the 'mac' channel which will look for latest-mac.yml
+    // macOS: electron-builder 默认生成 latest-mac.yml
+    // 我们的 CI 也生成了这个文件，所以使用 'mac' channel
+    autoUpdater.channel = 'mac';
+    console.log(`[Updater] macOS detected, arch: ${process.arch}, channel: ${autoUpdater.channel}`);
   }
 
   // Update check error
