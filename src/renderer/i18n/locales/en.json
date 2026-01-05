@@ -86,6 +86,8 @@
     "titlePlaceholder": "Name your Prompt",
     "descriptionOptional": "Description (Optional)",
     "descriptionPlaceholder": "Briefly describe this Prompt",
+    "sourceOptional": "Source (Optional)",
+    "sourcePlaceholder": "Where did you find this Prompt? e.g. URL, book, etc.",
     "folderOptional": "Folder (Optional)",
     "noFolder": "No folder",
     "tagsOptional": "Tags (Optional)",
@@ -133,6 +135,14 @@
     "promptCount": "{{count}} prompts",
     "actions": "Actions",
     "columnConfig": "Column Settings",
+    "columnConfigHint": "Click to toggle column visibility",
+    "columnDesc": {
+      "title": "Prompt name/title",
+      "userPrompt": "User prompt content preview",
+      "aiResponse": "AI response content preview",
+      "variables": "Number of replaceable variables",
+      "usageCount": "Copy/usage count statistics"
+    },
     "pageSize": "Per page",
     "movedToFolder": "Moved to folder",
     "dataPathChanged": "Data path changed",
@@ -539,7 +549,10 @@
     "showAll": "All",
     "collapse": "Collapse",
     "expand": "Expand",
-    "chars": "chars"
+    "chars": "chars",
+    "reset": "Reset",
+    "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit Fullscreen"
   },
   "toast": {
     "exportSuccess": "Data exported successfully",
@@ -574,5 +587,26 @@
     "minimizeToTray": "Minimize to Tray",
     "exitApp": "Exit App",
     "rememberChoice": "Remember my choice"
+  },
+  "quickAdd": {
+    "title": "Quick Add",
+    "manualAdd": "Manual Add",
+    "manualAddDesc": "Manually fill in details",
+    "desc": "Paste content for AI analysis & categorization",
+    "quickAddDesc": "Paste Prompt, AI auto-categorizes",
+    "smartFolder": "AI Smart Auto-Folder",
+    "needConfig": "AI Required",
+    "noAiConfig": "AI service not configured",
+    "noAiConfigDesc": "Please configure an AI provider in settings to use smart analysis.",
+    "tokenWarning": "Using AI analysis will consume some tokens",
+    "pastePrompt": "Paste your Prompt",
+    "placeholder": "Paste your Prompt content here...",
+    "analyzing": "Analyzing...",
+    "analyzeWithAi": "Analyze with AI",
+    "parseError": "Failed to parse AI response",
+    "analysisFailed": "AI analysis failed",
+    "analysisResult": "AI Analysis Result",
+    "suggestedFolder": "Suggested Folder",
+    "create": "Create"
   }
 }

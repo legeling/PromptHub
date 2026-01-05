@@ -4,8 +4,10 @@ import { Select } from '../ui/Select';
 import { HashIcon, XIcon, FolderIcon, ImageIcon, Maximize2Icon, Minimize2Icon, PlusIcon, GlobeIcon } from 'lucide-react';
 import { useFolderStore } from '../../stores/folder.store';
 import { usePromptStore } from '../../stores/prompt.store';
+import { useSettingsStore } from '../../stores/settings.store';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../ui/Toast';
+import { renderFolderIcon } from '../layout/folderIconHelper';
 
 interface CreatePromptModalProps {
   isOpen: boolean;
@@ -20,6 +22,7 @@ interface CreatePromptModalProps {
     tags: string[];
     images?: string[];
     folderId?: string;
+    source?: string;
   }) => void;
   defaultFolderId?: string;
 }
@@ -42,8 +45,12 @@ export function CreatePromptModal({ isOpen, onClose, onCreate, defaultFolderId }
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
   const [isDownloadingImage, setIsDownloadingImage] = useState(false);
+  const [source, setSource] = useState('');
+  const [showSourceSuggestions, setShowSourceSuggestions] = useState(false);
   const folders = useFolderStore((state) => state.folders);
   const prompts = usePromptStore((state) => state.prompts);
+  const sourceHistory = useSettingsStore((state) => state.sourceHistory);
+  const addSourceHistory = useSettingsStore((state) => state.addSourceHistory);
 
   // When modal opens, set default folder
   // 当弹窗打开时，设置默认文件夹
@@ -70,7 +77,13 @@ export function CreatePromptModal({ isOpen, onClose, onCreate, defaultFolderId }
       tags,
       images,
       folderId: folderId || undefined,
+      source: source.trim() || undefined,
     });
+
+    // 保存来源到历史 / Save source to history
+    if (source.trim()) {
+      addSourceHistory(source.trim());
+    }
 
     // Reset form
     // 重置表单
@@ -83,6 +96,7 @@ export function CreatePromptModal({ isOpen, onClose, onCreate, defaultFolderId }
     setTags([]);
     setImages([]);
     setFolderId('');
+    setSource('');
     setShowEnglishVersion(false);
     onClose();
   };
@@ -251,6 +265,45 @@ export function CreatePromptModal({ isOpen, onClose, onCreate, defaultFolderId }
           onChange={(e) => setDescription(e.target.value)}
         />
 
+        {/* 来源 / Source */}
+        <div className="space-y-1.5 relative">
+          <label className="block text-sm font-medium text-foreground">
+            {t('prompt.sourceOptional') || '来源（可选）'}
+          </label>
+          <div className="relative">
+            <input
+              type="text"
+              placeholder={t('prompt.sourcePlaceholder') || '记录 Prompt 的来源，如网站链接、书籍等'}
+              value={source}
+              onChange={(e) => setSource(e.target.value)}
+              onFocus={() => setShowSourceSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowSourceSuggestions(false), 150)}
+              className="w-full h-10 px-4 rounded-xl bg-muted/50 border-0 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:bg-background transition-all duration-200"
+            />
+            {showSourceSuggestions && sourceHistory.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto">
+                {sourceHistory
+                  .filter(s => s.toLowerCase().includes(source.toLowerCase()))
+                  .slice(0, 8)
+                  .map((item, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      className="w-full px-3 py-2 text-sm text-left hover:bg-accent/50 transition-colors truncate"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setSource(item);
+                        setShowSourceSuggestions(false);
+                      }}
+                    >
+                      {item}
+                    </button>
+                  ))}
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Folder selection */}
         {/* 文件夹选择 */}
         <div className="space-y-1.5">
@@ -265,7 +318,14 @@ export function CreatePromptModal({ isOpen, onClose, onCreate, defaultFolderId }
               { value: '', label: t('prompt.noFolder') },
               ...folders.map((folder) => ({
                 value: folder.id,
-                label: `${folder.icon || '📁'} ${folder.name}`,
+                label: (
+                  <div className="flex items-center gap-2">
+                    <span className="shrink-0 flex items-center justify-center w-4 h-4 text-muted-foreground">
+                      {renderFolderIcon(folder.icon)}
+                    </span>
+                    <span className="truncate">{folder.name}</span>
+                  </div>
+                ),
               })),
             ]}
           />

@@ -17,7 +17,7 @@ export const ui = {
       backers: '支持者',
     },
     hero: {
-      version: 'v0.3.4 版已发布',
+      version: 'v0.3.5 版已发布',
       titleStart: '专业的 Prompt IDE',
       titleEnd: '让提示词井然有序。',
       desc: '提示词管理｜版本控制｜多模型测试 —— 属于开发者与创作者的私有 Prompt 实验室。',
@@ -180,7 +180,7 @@ export const ui = {
       backers: 'Backers',
     },
     hero: {
-      version: 'v0.3.4 Released',
+      version: 'v0.3.5 Released',
       titleStart: 'The Pro-Grade Workspace',
       titleEnd: 'For Your AI Prompts.',
       desc: 'Prompt Management | Version Control | Multi-Model Arena — A private laboratory for developers and creators.',

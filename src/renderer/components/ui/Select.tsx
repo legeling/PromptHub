@@ -3,7 +3,8 @@ import { ChevronDownIcon, CheckIcon } from 'lucide-react';
 
 export interface SelectOption {
   value: string;
-  label: string;
+  label: React.ReactNode;
+  labelText?: string; // Searchable/Accessibility text
   group?: string;
 }
 

@@ -15,6 +15,7 @@ export function ResizableHeader({
   className = '',
 }: ResizableHeaderProps) {
   const [isResizing, setIsResizing] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
   const startXRef = useRef(0);
   const startWidthRef = useRef(0);
 
@@ -50,21 +51,33 @@ export function ResizableHeader({
 
   return (
     <th
-      className={`relative ${className}`}
+      className="relative p-0"
       style={{ width: column.width, minWidth: column.minWidth }}
     >
-      {children}
+      {/* 背景和内容容器 */}
+      <div className={`bg-muted/30 dark:bg-muted/20 h-full ${className}`}>
+        {children}
+      </div>
+      
+      {/* 拖拽手柄 - 放在最外层，使用高 z-index */}
       {column.resizable && (
         <div
-          className={`
-            absolute top-0 right-0 h-full w-1 cursor-col-resize
-            hover:bg-primary/50 active:bg-primary
-            transition-colors duration-150
-            ${isResizing ? 'bg-primary' : 'bg-transparent'}
-          `}
+          className="absolute top-0 right-0 h-full w-2 cursor-col-resize z-50"
+          style={{ transform: 'translateX(50%)' }}
           onMouseDown={handleMouseDown}
+          onMouseEnter={() => setIsHovering(true)}
+          onMouseLeave={() => setIsHovering(false)}
           onClick={(e) => e.stopPropagation()}
-        />
+        >
+          {/* 可见的拖拽条 / Visible resize bar */}
+          <div 
+            className={`
+              absolute top-1 bottom-1 left-1/2 -translate-x-1/2 w-0.5 rounded-full
+              transition-all duration-150
+              ${isResizing ? 'bg-primary w-1' : isHovering ? 'bg-primary/70' : 'bg-transparent'}
+            `}
+          />
+        </div>
       )}
     </th>
   );

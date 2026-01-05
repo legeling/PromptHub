@@ -86,6 +86,8 @@
     "titlePlaceholder": "Prompt に名前を付けてください",
     "descriptionOptional": "説明（任意）",
     "descriptionPlaceholder": "この Prompt の用途を簡単に説明",
+    "sourceOptional": "ソース (オプション)",
+    "sourcePlaceholder": "この Prompt の出典を記録します (URL、書籍など)",
     "folderOptional": "フォルダ（任意）",
     "noFolder": "フォルダを選択しない",
     "tagsOptional": "タグ（任意）",
@@ -132,6 +134,15 @@
     "createdAt": "作成日時",
     "promptCount": "合計 {{count}} 件",
     "actions": "操作",
+    "columnConfig": "列設定",
+    "columnConfigHint": "クリックして列の表示/非表示を切り替えます",
+    "columnDesc": {
+      "title": "Prompt の名前",
+      "userPrompt": "User Prompt 内容のプレビュー",
+      "aiResponse": "AI 応答内容のプレビュー",
+      "variables": "置換可能な変数の数",
+      "usageCount": "コピー/使用回数の統計"
+    },
     "pageSize": "ページあたり",
     "movedToFolder": "フォルダに移動しました",
     "dataPathChanged": "データパスが変更されました",
@@ -538,7 +549,10 @@
     "showAll": "すべて",
     "collapse": "折りたたむ",
     "expand": "展開",
-    "chars": "文字"
+    "chars": "文字",
+    "reset": "リセット",
+    "fullscreen": "全画面",
+    "exitFullscreen": "全画面終了"
   },
   "toast": {
     "exportSuccess": "データのエクスポートに成功しました",
@@ -573,5 +587,26 @@
     "minimizeToTray": "トレイに最小化",
     "exitApp": "アプリを終了",
     "rememberChoice": "選択を記憶する"
+  },
+  "quickAdd": {
+    "title": "クイック追加",
+    "manualAdd": "手動追加",
+    "manualAddDesc": "詳細情報を入力して Prompt を作成",
+    "desc": "AI分析と分類のためにコンテンツを貼り付ける",
+    "quickAddDesc": "Prompt を貼り付け、AI が自動的に分析・分類",
+    "smartFolder": "スマート振り分け",
+    "needConfig": "AI 設定が必要",
+    "noAiConfig": "AI サービスが未設定",
+    "noAiConfigDesc": "スマート分析機能を使用するには、まず設定で AI プロバイダーを設定してください。",
+    "tokenWarning": "AI 分析機能を使用するとトークンを消費します",
+    "pastePrompt": "Prompt を貼り付け",
+    "placeholder": "ここに Prompt の内容を貼り付けてください...",
+    "analyzing": "分析中...",
+    "analyzeWithAi": "AI スマート分析を使用",
+    "parseError": "AI の応答を解析できません",
+    "analysisFailed": "AI 分析に失敗しました",
+    "analysisResult": "AI 分析結果",
+    "suggestedFolder": "推奨フォルダ",
+    "create": "作成"
   }
 }

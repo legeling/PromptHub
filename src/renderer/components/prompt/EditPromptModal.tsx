@@ -14,6 +14,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeSanitize from 'rehype-sanitize';
 import rehypeHighlight from 'rehype-highlight';
 import { defaultSchema } from 'hast-util-sanitize';
+import { renderFolderIcon } from '../layout/folderIconHelper';
 
 interface EditPromptModalProps {
   isOpen: boolean;
@@ -48,8 +49,12 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const [isDownloadingImage, setIsDownloadingImage] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
+  const [source, setSource] = useState('');
+  const [showSourceSuggestions, setShowSourceSuggestions] = useState(false);
 
   const settings = useSettingsStore();
+  const sourceHistory = settings.sourceHistory;
+  const addSourceHistory = settings.addSourceHistory;
   const defaultModel = settings.aiModels.find(m => m.isDefault);
   const canTranslate = !!defaultModel;
 
@@ -66,9 +71,10 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
       userPromptEn !== (prompt.userPromptEn || '') ||
       JSON.stringify(tags) !== JSON.stringify(prompt.tags || []) ||
       JSON.stringify(images) !== JSON.stringify(prompt.images || []) ||
-      folderId !== prompt.folderId
+      folderId !== prompt.folderId ||
+      source !== (prompt.source || '')
     );
-  }, [prompt, title, description, systemPrompt, systemPromptEn, userPrompt, userPromptEn, tags, images, folderId]);
+  }, [prompt, title, description, systemPrompt, systemPromptEn, userPrompt, userPromptEn, tags, images, folderId, source]);
 
 // Handle close request
   // 处理关闭请求
@@ -144,6 +150,7 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
       setTags(prompt.tags || []);
       setImages(prompt.images || []);
       setFolderId(prompt.folderId);
+      setSource(prompt.source || '');
       // 如果已有英文版本，自动展开
       setShowEnglishVersion(!!(prompt.systemPromptEn || prompt.userPromptEn));
     }
@@ -163,7 +170,12 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
         tags,
         images,
         folderId,
+        source: source.trim() || undefined,
       });
+      // 保存来源到历史 / Save source to history
+      if (source.trim()) {
+        addSourceHistory(source.trim());
+      }
       onClose();
     } catch (error) {
       console.error('Failed to update prompt:', error);
@@ -359,7 +371,7 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
       isOpen={isOpen}
       onClose={handleCloseRequest}
       title={t('prompt.editPrompt')}
-      size={isFullscreen ? 'full' : 'xl'}
+      size={isFullscreen ? 'fullscreen' : 'xl'}
       headerActions={
         <>
           <button
@@ -396,6 +408,45 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
+
+        {/* 来源 / Source */}
+        <div className="space-y-1.5 relative">
+          <label className="block text-sm font-medium text-foreground">
+            {t('prompt.sourceOptional') || '来源（可选）'}
+          </label>
+          <div className="relative">
+            <input
+              type="text"
+              placeholder={t('prompt.sourcePlaceholder') || '记录 Prompt 的来源，如网站链接、书籍等'}
+              value={source}
+              onChange={(e) => setSource(e.target.value)}
+              onFocus={() => setShowSourceSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowSourceSuggestions(false), 150)}
+              className="w-full h-10 px-4 rounded-xl bg-muted/50 border-0 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:bg-background transition-all duration-200"
+            />
+            {showSourceSuggestions && sourceHistory.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto">
+                {sourceHistory
+                  .filter(s => s.toLowerCase().includes(source.toLowerCase()))
+                  .slice(0, 8)
+                  .map((item, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      className="w-full px-3 py-2 text-sm text-left hover:bg-accent/50 transition-colors truncate"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setSource(item);
+                        setShowSourceSuggestions(false);
+                      }}
+                    >
+                      {item}
+                    </button>
+                  ))}
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* 图片管理 */}
         <div className="space-y-2">
@@ -507,7 +558,14 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
               { value: '', label: t('prompt.noFolder') },
               ...folders.map((folder) => ({
                 value: folder.id,
-                label: `${folder.icon || '📁'} ${folder.name}`,
+                label: (
+                  <div className="flex items-center gap-2">
+                    <span className="shrink-0 flex items-center justify-center w-4 h-4 text-muted-foreground">
+                      {renderFolderIcon(folder.icon)}
+                    </span>
+                    <span className="truncate">{folder.name}</span>
+                  </div>
+                ),
               })),
             ]}
           />

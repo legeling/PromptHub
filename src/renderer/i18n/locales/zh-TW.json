@@ -86,6 +86,8 @@
     "titlePlaceholder": "給你的 Prompt 起個名字",
     "descriptionOptional": "描述（選填）",
     "descriptionPlaceholder": "簡單描述這個 Prompt 的用途",
+    "sourceOptional": "來源（選填）",
+    "sourcePlaceholder": "記錄 Prompt 的來源，如網站連結、書籍等",
     "folderOptional": "資料夾（選填）",
     "noFolder": "不選擇資料夾",
     "tagsOptional": "標籤（選填）",
@@ -132,6 +134,15 @@
     "createdAt": "建立時間",
     "promptCount": "共 {{count}} 個",
     "actions": "操作",
+    "columnConfig": "列設定",
+    "columnConfigHint": "點擊切換列的顯示/隱藏",
+    "columnDesc": {
+      "title": "Prompt 的名稱",
+      "userPrompt": "使用者提示詞內容預覽",
+      "aiResponse": "AI 回應內容預覽",
+      "variables": "可替換的變數數量",
+      "usageCount": "複製/使用的次數統計"
+    },
     "pageSize": "每頁",
     "movedToFolder": "已移動到資料夾",
     "dataPathChanged": "資料路徑已變更",
@@ -538,7 +549,10 @@
     "showAll": "全部",
     "collapse": "收起",
     "expand": "展開",
-    "chars": "字元"
+    "chars": "字元",
+    "reset": "重置",
+    "fullscreen": "全螢幕",
+    "exitFullscreen": "退出全螢幕"
   },
   "toast": {
     "exportSuccess": "資料匯出成功",
@@ -573,5 +587,24 @@
     "minimizeToTray": "最小化到系統匣",
     "exitApp": "結束應用程式",
     "rememberChoice": "記住我的選擇"
+  },
+  "quickAdd": {
+    "title": "快速新增",
+    "manualAdd": "手動新增",
+    "manualAddDesc": "填寫詳細資訊建立 Prompt",
+    "quickAddDesc": "貼上 Prompt，AI 智慧分析分類",
+    "needConfig": "需配置 AI",
+    "noAiConfig": "尚未配置 AI 服務",
+    "noAiConfigDesc": "請先在設定中配置 AI 供應商，才能使用智慧分析功能。",
+    "tokenWarning": "使用 AI 分析功能將消耗一定的 Token",
+    "pastePrompt": "貼上你的 Prompt",
+    "placeholder": "在這裡貼上你的 Prompt 內容...",
+    "analyzing": "正在分析...",
+    "analyzeWithAi": "使用 AI 智慧分析",
+    "parseError": "無法解析 AI 回應",
+    "analysisFailed": "AI 分析失敗",
+    "analysisResult": "AI 分析結果",
+    "suggestedFolder": "建議資料夾",
+    "create": "建立"
   }
 }

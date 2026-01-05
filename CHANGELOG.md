@@ -1,3 +1,40 @@
+## [0.3.5] - 2026-01-05
+
+### 新功能 / Added
+
+- 🚀 **新建按钮优化**：采用 Split Button 设计，支持持久化记忆上一次使用的新建模式（手动或快速录入），提升操作效率
+  - **New Button Redesign**: Split button with persistent memory for preferred mode (Manual/Quick Add)
+- 🤖 **快速录入 AI 标签识别**：快速录入时 AI 会从现有标签库中智能识别并提取匹配标签，保持数据一致性
+  - **AI Tag Recognition**: Quick add mode now automatically identifies and matches existing tags using AI
+- 📂 **智能文件夹分类**：快速录入新增 “AI 智能分类” 选项，让 AI 自动推荐最合适的存储位置
+  - **AI Smart Categorization**: Added "AI Smart Match" option to automatically organize prompts into folders
+- 📝 **来源记录**：新增"来源"字段，可记录 Prompt 的出处（如网站、书籍等），并支持历史自动补全
+  - **Source Tracking**: New "Source" field to record where prompts came from (URL, book, etc.) with autocomplete history
+- ⚡ **快速添加弹窗**：新增独立的快速添加组件，支持一键粘贴 Prompt 并由 AI 自动分析生成标题、描述、标签
+  - **Quick Add Modal**: New standalone component for pasting prompts with AI-powered auto-analysis
+
+### 修复 / Fixed
+
+- 📁 **文件夹图标渲染**：修复了新建、编辑和快速录入弹窗中文件夹图标无法正确渲染的问题
+  - **Folder Icon Fix**: Corrected folder icons not rendering in modal select lists
+- 🎨 **表格滑动遮挡**：修复 Prompt 列表在横向滚动时操作列重叠与透明度问题，优化视觉层级
+  - **Table Scrolling Fix**: Resolved z-index and transparency issues for sticky 'Actions' column during horizontal scroll
+- 🌐 **多语言缺失**：补齐了快速录入功能相关的多语言翻译键值
+  - **i18n Update**: Added missing localization keys for New Button modes and Smart Categorization
+- 📏 **表格列宽调整**：修复了表格视图中部分列无法拖拽调整宽度的问题
+  - **Column Resize Fix**: Fixed column resize handles being blocked by adjacent columns and sticky action column
+
+### 优化 / Changed
+
+- ⚡ **性能优化**：优化了 TopBar 组件中的 Hook 调用，解决了因条件渲染 Hook 导致的 React 渲染报错
+  - **Hook Usage Optimization**: Refactored component hooks for consistent rendering and improved stability
+- 🔧 **配置持久化改进**：表格列配置现在只保存用户可自定义的属性，关键属性始终使用默认值
+  - **Config Persistence Improvement**: Table column config now only persists user-customizable properties
+- 🎯 **拖拽手柄优化**：增大拖拽区域、提高 z-index、优化悬停视觉反馈，使列宽调整更易用
+  - **Resize Handle UX**: Larger hit area, higher z-index, better hover feedback for column resizing
+
+---
+
 ## [0.3.4] - 2025-12-29
 
 ### 修复 / Fixed

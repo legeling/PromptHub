@@ -76,6 +76,19 @@ export function initDatabase(): Database.Database {
     console.error('Migration (is_pinned) failed:', error);
   }
 
+  // Migration: check if prompts table has source column
+  // 迁移：检查 prompts 表是否有 source 字段
+  try {
+    const tableInfo = db.pragma('table_info(prompts)') as any[];
+    const hasSource = tableInfo.some(col => col.name === 'source');
+    if (!hasSource) {
+      console.log('Migrating: Adding source column to prompts table');
+      db.prepare('ALTER TABLE prompts ADD COLUMN source TEXT').run();
+    }
+  } catch (error) {
+    console.error('Migration (source) failed:', error);
+  }
+
   console.log(`Database initialized at: ${dbPath}`);
   return db;
 }

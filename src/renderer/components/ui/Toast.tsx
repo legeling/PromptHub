@@ -1,4 +1,6 @@
 import { useState, useEffect, createContext, useContext, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { CheckCircleIcon, XCircleIcon, InfoIcon, AlertTriangleIcon, XIcon } from 'lucide-react';
 import { useSettingsStore } from '../../stores/settings.store';
 
@@ -20,6 +22,7 @@ const ToastContext = createContext<ToastContextType | null>(null);
 
 // Toast Provider
 export function ToastProvider({ children }: { children: React.ReactNode }) {
+  const { t } = useTranslation();
   const [toasts, setToasts] = useState<Toast[]>([]);
   const enableNotifications = useSettingsStore((state) => state.enableNotifications);
 
@@ -77,29 +80,34 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <ToastContext.Provider value={{ showToast }}>
       {children}
       
-      {/* Toast container - z-index needs to be higher than Modal (z-[9999]) */}
-      {/* Toast 容器 - z-index 需要高于 Modal (z-[9999]) */}
-      <div className="fixed bottom-4 right-4 z-[10000] flex flex-col gap-2">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={`
-              flex items-center gap-3 px-4 py-3 rounded-lg border shadow-lg
-              animate-in slide-in-from-right-5 fade-in duration-300
-              ${getBgColor(toast.type)}
-            `}
-          >
-            {getIcon(toast.type)}
-            <span className="text-sm font-medium text-foreground">{toast.message}</span>
-            <button
-              onClick={() => removeToast(toast.id)}
-              className="ml-2 p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded"
+      {/* Toast container - z-index needs to be the highest to stay above everything */}
+      {/* Toast 容器 - z-index 需要最高，确保在所有元素之上 */}
+      {createPortal(
+        <div className="fixed bottom-6 right-6 z-[99999] flex flex-col gap-3 pointer-events-none">
+          {toasts.map((toast) => (
+            <div
+              key={toast.id}
+              className={`
+                flex items-center gap-3 px-5 py-3.5 rounded-2xl border shadow-2xl pointer-events-auto
+                animate-in slide-in-from-right-10 fade-in duration-300
+                backdrop-blur-md
+                ${getBgColor(toast.type)}
+              `}
             >
-              <XIcon className="w-4 h-4 text-muted-foreground" />
-            </button>
-          </div>
-        ))}
-      </div>
+              {getIcon(toast.type)}
+              <span className="text-sm font-semibold text-foreground">{toast.message}</span>
+              <button
+                onClick={() => removeToast(toast.id)}
+                className="ml-2 p-1.5 hover:bg-black/10 dark:hover:bg-white/10 rounded-lg transition-colors"
+                title={t('common.close') || '关闭'}
+              >
+                <XIcon className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+          ))}
+        </div>,
+        document.body
+      )}
     </ToastContext.Provider>
   );
 }

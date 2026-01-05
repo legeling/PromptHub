@@ -86,6 +86,8 @@
     "titlePlaceholder": "Dale un nombre a tu Prompt",
     "descriptionOptional": "Descripción (opcional)",
     "descriptionPlaceholder": "Describe brevemente el propósito de este Prompt",
+    "sourceOptional": "Fuente (opcional)",
+    "sourcePlaceholder": "¿De dónde sacaste este Prompt? p. ej. URL, libro, etc.",
     "folderOptional": "Carpeta (opcional)",
     "noFolder": "Sin carpeta",
     "tagsOptional": "Etiquetas (opcional)",
@@ -132,6 +134,15 @@
     "createdAt": "Creado",
     "promptCount": "{{count}} en total",
     "actions": "Acciones",
+    "columnConfig": "Configuración de columnas",
+    "columnConfigHint": "Haga clic para alternar la visibilidad de las columnas",
+    "columnDesc": {
+      "title": "Nombre/Título del Prompt",
+      "userPrompt": "Vista previa del contenido del User Prompt",
+      "aiResponse": "Vista previa del contenido de la respuesta de la IA",
+      "variables": "Número de variables reemplazables",
+      "usageCount": "Estadísticas de copias/uso"
+    },
     "pageSize": "Por página",
     "movedToFolder": "Movido a carpeta",
     "dataPathChanged": "Ruta de datos cambiada",
@@ -538,7 +549,10 @@
     "showAll": "Todo",
     "collapse": "Colapsar",
     "expand": "Expandir",
-    "chars": "caracteres"
+    "chars": "caracteres",
+    "reset": "Restablecer",
+    "fullscreen": "Pantalla completa",
+    "exitFullscreen": "Salir de pantalla completa"
   },
   "toast": {
     "exportSuccess": "Datos exportados exitosamente",
@@ -573,5 +587,26 @@
     "minimizeToTray": "Minimizar a la bandeja",
     "exitApp": "Salir de la aplicación",
     "rememberChoice": "Recordar mi elección"
+  },
+  "quickAdd": {
+    "title": "Adición rápida",
+    "manualAdd": "Adición manual",
+    "manualAddDesc": "Complete los detalles para crear un Prompt",
+    "desc": "Pegue contenido para análisis y categorización de IA",
+    "quickAddDesc": "Pegue un Prompt, la IA lo analiza y categoriza",
+    "smartFolder": "Clasificación inteligente",
+    "needConfig": "Requiere configuración de IA",
+    "noAiConfig": "Servicio de IA no configurado",
+    "noAiConfigDesc": "Primero configure el proveedor de IA en los ajustes para usar el análisis inteligente.",
+    "tokenWarning": "El uso del análisis de IA consumirá tokens",
+    "pastePrompt": "Pegue su Prompt",
+    "placeholder": "Pegue el contenido de su Prompt aquí...",
+    "analyzing": "Analizando...",
+    "analyzeWithAi": "Usar análisis inteligente de IA",
+    "parseError": "No se pudo analizar la respuesta de la IA",
+    "analysisFailed": "El análisis de la IA falló",
+    "analysisResult": "Resultado del análisis de IA",
+    "suggestedFolder": "Carpeta sugerida",
+    "create": "Crear"
   }
 }

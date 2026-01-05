@@ -1,10 +1,12 @@
-import { SearchIcon, PlusIcon, SettingsIcon, SunIcon, MoonIcon, DownloadIcon, XIcon, ChevronUpIcon, ChevronDownIcon } from 'lucide-react';
+import { SearchIcon, PlusIcon, SettingsIcon, SunIcon, MoonIcon, DownloadIcon, XIcon, ChevronUpIcon, ChevronDownIcon, SparklesIcon, EditIcon } from 'lucide-react';
+import { clsx } from 'clsx';
 import { UpdateStatus } from '../UpdateDialog';
 import { usePromptStore } from '../../stores/prompt.store';
 import { useSettingsStore } from '../../stores/settings.store';
 import { useFolderStore } from '../../stores/folder.store';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { CreatePromptModal } from '../prompt/CreatePromptModal';
+import { QuickAddModal } from '../prompt/QuickAddModal';
 import { useTranslation } from 'react-i18next';
 
 interface TopBarProps {
@@ -22,11 +24,20 @@ export function TopBar({ onOpenSettings, updateAvailable, onShowUpdateDialog }: 
   const createPrompt = usePromptStore((state) => state.createPrompt);
   const isDarkMode = useSettingsStore((state) => state.isDarkMode);
   const setDarkMode = useSettingsStore((state) => state.setDarkMode);
+  const aiModels = useSettingsStore((state) => state.aiModels);
+  const aiApiKey = useSettingsStore((state) => state.aiApiKey);
+  const creationMode = useSettingsStore((state) => state.creationMode);
   const selectedFolderId = useFolderStore((state) => state.selectedFolderId);
   const folders = useFolderStore((state) => state.folders);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isQuickAddModalOpen, setIsQuickAddModalOpen] = useState(false);
+  const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const createMenuRef = useRef<HTMLDivElement>(null);
   const [currentResultIndex, setCurrentResultIndex] = useState(0);
+  
+  // Check if AI is configured
+  const hasAiConfig = aiModels.length > 0 || (aiApiKey && aiApiKey.trim() !== '');
 
   // 计算搜索结果（与 MainContent 保持一致的逻辑）
   const searchResults = useMemo(() => {
@@ -153,6 +164,17 @@ export function TopBar({ onOpenSettings, updateAvailable, onShowUpdateDialog }: 
     };
   }, []);
 
+  // Click outside to close create menu
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (createMenuRef.current && !createMenuRef.current.contains(event.target as Node)) {
+        setIsCreateMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const handleCreatePrompt = async (data: {
     title: string;
     description?: string;
@@ -160,26 +182,30 @@ export function TopBar({ onOpenSettings, updateAvailable, onShowUpdateDialog }: 
     systemPromptEn?: string;
     userPrompt: string;
     userPromptEn?: string;
-    tags: string[];
+    tags?: string[];
     images?: string[];
     folderId?: string;
+    source?: string;
   }) => {
     try {
-      await createPrompt({
+      const prompt = await createPrompt({
         title: data.title,
         description: data.description,
         systemPrompt: data.systemPrompt,
         systemPromptEn: data.systemPromptEn,
         userPrompt: data.userPrompt,
         userPromptEn: data.userPromptEn,
-        tags: data.tags,
+        tags: data.tags || [],
         variables: [],
         images: data.images,
         folderId: data.folderId,
+        source: data.source,
       });
       setIsCreateModalOpen(false);
+      return prompt;
     } catch (error) {
       console.error('Failed to create prompt:', error);
+      return null;
     }
   };
 
@@ -267,15 +293,75 @@ export function TopBar({ onOpenSettings, updateAvailable, onShowUpdateDialog }: 
             </>
           )}
 
-          {/* 新建按钮 */}
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
+          {/* Split Button for New Prompt */}
+          <div 
+            ref={createMenuRef}
+            className="flex items-center rounded-lg bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 transition-all ml-4 relative h-8" 
             style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
           >
-            <PlusIcon className="w-4 h-4" />
-            <span>{t('header.new')}</span>
-          </button>
+            <button
+              onClick={() => {
+                const mode = useSettingsStore.getState().creationMode;
+                if (mode === 'manual') setIsCreateModalOpen(true);
+                else setIsQuickAddModalOpen(true);
+              }}
+              className="flex items-center gap-1.5 h-full pl-3 pr-2 text-sm font-medium border-r border-primary-foreground/20 active:scale-95 transition-transform"
+            >
+              {creationMode === 'manual' ? (
+                <PlusIcon className="w-4 h-4" />
+              ) : (
+                <SparklesIcon className="w-4 h-4" />
+              )}
+              <span>{creationMode === 'manual' ? t('header.new') : t('quickAdd.title')}</span>
+            </button>
+            
+            <button
+              onClick={() => setIsCreateMenuOpen(!isCreateMenuOpen)}
+              className="flex items-center justify-center h-full px-1.5 hover:bg-black/10 transition-colors rounded-r-lg"
+            >
+              <ChevronDownIcon className="w-3.5 h-3.5" />
+            </button>
+            
+            {isCreateMenuOpen && (
+              <div className="absolute top-full right-0 mt-1 w-48 bg-popover rounded-lg border border-border shadow-md py-1 z-50 animate-in fade-in zoom-in-95 duration-100 overflow-hidden">
+                <button
+                  onClick={() => {
+                    useSettingsStore.getState().setCreationMode('manual');
+                    setIsCreateMenuOpen(false);
+                  }}
+                  className={clsx(
+                    "flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground text-left transition-colors",
+                    creationMode === 'manual' && "bg-accent/50 text-accent-foreground"
+                  )}
+                >
+                  <PlusIcon className="w-4 h-4 text-muted-foreground" />
+                  <div className="flex flex-col items-start gap-0.5">
+                    <span className="font-medium">{t('header.new')}</span>
+                    <span className="text-[10px] text-muted-foreground leading-none">{t('quickAdd.manualAddDesc') || '手动填写 Prompt'}</span>
+                  </div>
+                  {creationMode === 'manual' && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />}
+                </button>
+                <div className="h-px bg-border my-0.5 mx-2 opacity-50" />
+                <button
+                  onClick={() => {
+                    useSettingsStore.getState().setCreationMode('quick');
+                    setIsCreateMenuOpen(false);
+                  }}
+                  className={clsx(
+                    "flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground text-left transition-colors",
+                    creationMode === 'quick' && "bg-accent/50 text-accent-foreground"
+                  )}
+                >
+                  <SparklesIcon className="w-4 h-4 text-primary" />
+                  <div className="flex flex-col items-start gap-0.5">
+                     <span className="font-medium">{t('quickAdd.title')}</span>
+                     <span className="text-[10px] text-muted-foreground leading-none">{t('quickAdd.desc') || 'AI 辅助生成配置'}</span>
+                  </div>
+                  {creationMode === 'quick' && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />}
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* 主题切换 */}
           <button
@@ -303,6 +389,13 @@ export function TopBar({ onOpenSettings, updateAvailable, onShowUpdateDialog }: 
         onClose={() => setIsCreateModalOpen(false)}
         onCreate={handleCreatePrompt}
         defaultFolderId={selectedFolderId || undefined}
+      />
+      
+      {/* 快速添加弹窗 */}
+      <QuickAddModal
+        isOpen={isQuickAddModalOpen}
+        onClose={() => setIsQuickAddModalOpen(false)}
+        onCreate={handleCreatePrompt}
       />
     </>
   );

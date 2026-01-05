@@ -86,6 +86,8 @@
     "titlePlaceholder": "给你的 Prompt 起个名字",
     "descriptionOptional": "描述（可选）",
     "descriptionPlaceholder": "简单描述这个 Prompt 的用途",
+    "sourceOptional": "来源（可选）",
+    "sourcePlaceholder": "记录 Prompt 的来源，如网站链接、书籍等",
     "folderOptional": "文件夹（可选）",
     "noFolder": "不选择文件夹",
     "tagsOptional": "标签（可选）",
@@ -133,6 +135,14 @@
     "promptCount": "共 {{count}} 个",
     "actions": "操作",
     "columnConfig": "列设置",
+    "columnConfigHint": "点击切换列的显示/隐藏",
+    "columnDesc": {
+      "title": "Prompt 的名称",
+      "userPrompt": "用户提示词内容预览",
+      "aiResponse": "AI 响应内容预览",
+      "variables": "可替换的变量数量",
+      "usageCount": "复制/使用的次数统计"
+    },
     "pageSize": "每页",
     "movedToFolder": "已移动到文件夹",
     "dataPathChanged": "数据路径已更改",
@@ -539,7 +549,10 @@
     "showAll": "全部",
     "collapse": "收起",
     "expand": "展开",
-    "chars": "字符"
+    "chars": "字符",
+    "reset": "重置",
+    "fullscreen": "全屏",
+    "exitFullscreen": "退出全屏"
   },
   "toast": {
     "exportSuccess": "数据导出成功",
@@ -574,5 +587,26 @@
     "minimizeToTray": "最小化到托盘",
     "exitApp": "退出应用",
     "rememberChoice": "记住我的选择"
+  },
+  "quickAdd": {
+    "title": "快速添加",
+    "manualAdd": "手动添加",
+    "manualAddDesc": "手动填写 Prompt 详细信息",
+    "desc": "粘贴内容由 AI 智能分析并分类",
+    "quickAddDesc": "粘贴 Prompt，AI 智能分析分类",
+    "smartFolder": "AI 智能自动分类",
+    "needConfig": "需配置 AI",
+    "noAiConfig": "尚未配置 AI 服务",
+    "noAiConfigDesc": "请先在设置中配置 AI 供应商，才能使用智能分析功能。",
+    "tokenWarning": "使用 AI 分析功能将消耗一定的 Token",
+    "pastePrompt": "粘贴你的 Prompt",
+    "placeholder": "在这里粘贴你的 Prompt 内容...",
+    "analyzing": "正在分析...",
+    "analyzeWithAi": "使用 AI 智能分析",
+    "parseError": "无法解析 AI 响应",
+    "analysisFailed": "AI 分析失败",
+    "analysisResult": "AI 分析结果",
+    "suggestedFolder": "建议文件夹",
+    "create": "创建"
   }
 }

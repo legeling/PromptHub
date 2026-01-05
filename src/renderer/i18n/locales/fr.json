@@ -86,6 +86,8 @@
     "titlePlaceholder": "Donnez un nom à votre Prompt",
     "descriptionOptional": "Description (optionnel)",
     "descriptionPlaceholder": "Décrivez brièvement l'objectif de ce Prompt",
+    "sourceOptional": "Source (optionnel)",
+    "sourcePlaceholder": "D'où vient ce Prompt ? ex: URL, livre, etc.",
     "folderOptional": "Dossier (optionnel)",
     "noFolder": "Aucun dossier",
     "tagsOptional": "Tags (optionnel)",
@@ -132,6 +134,15 @@
     "createdAt": "Créé",
     "promptCount": "{{count}} au total",
     "actions": "Actions",
+    "columnConfig": "Paramètres des colonnes",
+    "columnConfigHint": "Cliquez pour basculer la visibilité des colonnes",
+    "columnDesc": {
+      "title": "Nom/Titre du Prompt",
+      "userPrompt": "Aperçu du contenu du User Prompt",
+      "aiResponse": "Aperçu du contenu de la réponse de l'IA",
+      "variables": "Nombre de variables remplaçables",
+      "usageCount": "Statistiques de copies/utilisation"
+    },
     "pageSize": "Par page",
     "movedToFolder": "Déplacé vers le dossier",
     "dataPathChanged": "Chemin des données modifié",
@@ -538,7 +549,10 @@
     "showAll": "Tout",
     "collapse": "Réduire",
     "expand": "Développer",
-    "chars": "caractères"
+    "chars": "caractères",
+    "reset": "Réinitialiser",
+    "fullscreen": "Plein écran",
+    "exitFullscreen": "Quitter le plein écran"
   },
   "toast": {
     "exportSuccess": "Données exportées avec succès",
@@ -573,5 +587,26 @@
     "minimizeToTray": "Minimiser dans la barre des tâches",
     "exitApp": "Quitter l'application",
     "rememberChoice": "Se souvenir de mon choix"
+  },
+  "quickAdd": {
+    "title": "Ajout rapide",
+    "manualAdd": "Ajout manuel",
+    "manualAddDesc": "Remplir les détails pour créer un Prompt",
+    "desc": "Collez le contenu pour l'analyse et la catégorisation par l'IA",
+    "quickAddDesc": "Coller un Prompt, l'IA analyse et catégorise",
+    "smartFolder": "Classement intelligent",
+    "needConfig": "Configuration IA requise",
+    "noAiConfig": "Service IA non configuré",
+    "noAiConfigDesc": "Veuillez d'abord configurer le fournisseur d'IA dans les paramètres pour utiliser l'analyse intelligente.",
+    "tokenWarning": "L'utilisation de l'analyse IA consommera des jetons",
+    "pastePrompt": "Collez votre Prompt",
+    "placeholder": "Collez le contenu de votre Prompt ici...",
+    "analyzing": "Analyse en cours...",
+    "analyzeWithAi": "Utiliser l'analyse intelligente IA",
+    "parseError": "Impossible d'analyser la réponse de l'IA",
+    "analysisFailed": "L'analyse de l'IA a échoué",
+    "analysisResult": "Résultat de l'analyse IA",
+    "suggestedFolder": "Dossier suggéré",
+    "create": "Créer"
   }
 }

@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS prompts (
   is_pinned INTEGER DEFAULT 0,
   current_version INTEGER DEFAULT 1,
   usage_count INTEGER DEFAULT 0,
+  source TEXT,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   FOREIGN KEY (folder_id) REFERENCES folders(id) ON DELETE SET NULL

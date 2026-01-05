@@ -3,6 +3,7 @@ import { useState, useCallback, useEffect } from 'react';
 export interface ColumnConfig {
   id: string;
   label: string;
+  description?: string;  // 列描述 / Column description
   visible: boolean;
   width: number;
   minWidth: number;
@@ -20,13 +21,17 @@ export interface TableConfig {
 const STORAGE_KEY = 'prompthub-table-config';
 
 const DEFAULT_COLUMNS: ColumnConfig[] = [
-  { id: 'checkbox', label: '', visible: true, width: 50, minWidth: 50, resizable: false, reorderable: false, sticky: 'left' },
+  { id: 'checkbox', label: '', visible: true, width: 40, minWidth: 40, resizable: false, reorderable: false, sticky: 'left' },
   { id: 'title', label: 'prompt.title', visible: true, width: 160, minWidth: 100, maxWidth: 300, resizable: true, reorderable: true },
+  { id: 'description', label: 'prompt.description', visible: false, width: 200, minWidth: 100, maxWidth: 400, resizable: true, reorderable: true },
+  { id: 'systemPrompt', label: 'prompt.systemPrompt', visible: false, width: 200, minWidth: 100, maxWidth: 400, resizable: true, reorderable: true },
   { id: 'userPrompt', label: 'prompt.userPrompt', visible: true, width: 220, minWidth: 120, maxWidth: 400, resizable: true, reorderable: true },
   { id: 'aiResponse', label: 'prompt.aiResponse', visible: true, width: 220, minWidth: 120, maxWidth: 400, resizable: true, reorderable: true },
+  { id: 'tags', label: 'prompt.tags', visible: false, width: 150, minWidth: 80, maxWidth: 300, resizable: true, reorderable: true },
   { id: 'variables', label: 'prompt.variables', visible: true, width: 80, minWidth: 60, maxWidth: 120, resizable: true, reorderable: true },
   { id: 'usageCount', label: 'prompt.usageCount', visible: true, width: 90, minWidth: 70, maxWidth: 120, resizable: true, reorderable: true },
-  { id: 'actions', label: 'prompt.actions', visible: true, width: 160, minWidth: 140, resizable: false, reorderable: false, sticky: 'right' },
+  { id: 'updatedAt', label: 'prompt.updatedAt', visible: false, width: 140, minWidth: 120, maxWidth: 200, resizable: true, reorderable: true },
+  { id: 'actions', label: 'prompt.actions', visible: true, width: 140, minWidth: 120, resizable: false, reorderable: false, sticky: 'right' },
 ];
 
 const DEFAULT_ORDER = DEFAULT_COLUMNS.map(col => col.id);
@@ -42,9 +47,19 @@ export function useTableConfig() {
       if (saved) {
         const parsed = JSON.parse(saved) as TableConfig;
         // Merge with defaults to handle new columns
+        // 关键属性（resizable, minWidth, sticky, reorderable）始终使用默认值
+        // Critical properties always use default values
         const mergedColumns = DEFAULT_COLUMNS.map(defaultCol => {
           const savedCol = parsed.columns.find(c => c.id === defaultCol.id);
-          return savedCol ? { ...defaultCol, ...savedCol } : defaultCol;
+          if (!savedCol) return defaultCol;
+          
+          // Only restore user-customizable properties (visible, width)
+          // 只恢复用户可自定义的属性
+          return {
+            ...defaultCol,
+            visible: savedCol.visible ?? defaultCol.visible,
+            width: savedCol.width ?? defaultCol.width,
+          };
         });
         setColumns(mergedColumns);
         // Only use saved order if it contains all current column ids

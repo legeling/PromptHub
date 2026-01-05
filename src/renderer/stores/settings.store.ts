@@ -140,7 +140,10 @@ export interface AIModelConfig {
   imageParams?: ImageModelParams;
 }
 
+export type CreationMode = 'manual' | 'quick';
+
 interface SettingsState {
+  creationMode: CreationMode;
   // Display settings
   // 显示设置
   themeMode: ThemeMode;
@@ -229,6 +232,9 @@ interface SettingsState {
   // 多模型配置（新版）
   aiModels: AIModelConfig[];
 
+  // 来源历史 / Source history for autocomplete
+  sourceHistory: string[];
+
   // Actions
   // 操作
   setThemeMode: (mode: ThemeMode) => void;
@@ -274,6 +280,8 @@ interface SettingsState {
   updateAiModel: (id: string, config: Partial<AIModelConfig>) => void;
   deleteAiModel: (id: string) => void;
   setDefaultAiModel: (id: string) => void;
+  setCreationMode: (mode: CreationMode) => void;
+  addSourceHistory: (source: string) => void;
   applyTheme: () => void;
 }
 
@@ -329,6 +337,19 @@ export const useSettingsStore = create<SettingsState>()(
         aiApiUrl: '',
         aiModel: 'gpt-4o',
         aiModels: [],
+        creationMode: 'manual' as CreationMode,
+        sourceHistory: [],
+
+        setCreationMode: (mode) => setTouched({ creationMode: mode }),
+
+        addSourceHistory: (source) => {
+          if (!source.trim()) return;
+          const history = get().sourceHistory;
+          // 移除重复项，放到最前面 / Remove duplicate and add to front
+          const filtered = history.filter(s => s !== source.trim());
+          const updated = [source.trim(), ...filtered].slice(0, 20);
+          setTouched({ sourceHistory: updated });
+        },
 
         setThemeMode: (mode) => {
           setTouched({ themeMode: mode });

@@ -86,6 +86,8 @@
     "titlePlaceholder": "Geben Sie Ihrem Prompt einen Namen",
     "descriptionOptional": "Beschreibung (optional)",
     "descriptionPlaceholder": "Beschreiben Sie kurz den Zweck dieses Prompts",
+    "sourceOptional": "Quelle (Optional)",
+    "sourcePlaceholder": "Woher hast du diesen Prompt? z.B. URL, Buch usw.",
     "folderOptional": "Ordner (optional)",
     "noFolder": "Kein Ordner",
     "tagsOptional": "Tags (optional)",
@@ -132,6 +134,15 @@
     "createdAt": "Erstellt",
     "promptCount": "{{count}} insgesamt",
     "actions": "Aktionen",
+    "columnConfig": "Spalteneinstellungen",
+    "columnConfigHint": "Klicken, um die Sichtbarkeit umschalten",
+    "columnDesc": {
+      "title": "Prompt-Name/Titel",
+      "userPrompt": "Vorschau der User-Prompt-Inhalte",
+      "aiResponse": "Vorschau der AI-Antwort-Inhalte",
+      "variables": "Anzahl der ersetzbaren Variablen",
+      "usageCount": "Statistiken für Kopien/Nutzung"
+    },
     "pageSize": "Pro Seite",
     "movedToFolder": "In Ordner verschoben",
     "dataPathChanged": "Datenpfad geändert",
@@ -538,7 +549,10 @@
     "showAll": "Alle",
     "collapse": "Einklappen",
     "expand": "Ausklappen",
-    "chars": "Zeichen"
+    "chars": "Zeichen",
+    "reset": "Zurücksetzen",
+    "fullscreen": "Vollbild",
+    "exitFullscreen": "Vollbild beenden"
   },
   "toast": {
     "exportSuccess": "Daten erfolgreich exportiert",
@@ -573,5 +587,26 @@
     "minimizeToTray": "In Taskleiste minimieren",
     "exitApp": "Anwendung beenden",
     "rememberChoice": "Meine Auswahl merken"
+  },
+  "quickAdd": {
+    "title": "Schnelles Hinzufügen",
+    "manualAdd": "Manuell hinzufügen",
+    "manualAddDesc": "Details ausfüllen, um einen Prompt zu erstellen",
+    "desc": "Inhalte für KI-Analyse & Kategorisierung einfügen",
+    "quickAddDesc": "Prompt einfügen, KI analysiert und kategorisiert ihn",
+    "smartFolder": "Intelligente Zuordnung",
+    "needConfig": "KI-Konfiguration erforderlich",
+    "noAiConfig": "KI-Dienst nicht konfiguriert",
+    "noAiConfigDesc": "Bitte konfigurieren Sie zuerst den KI-Anbieter, um die intelligente Analyse zu nutzen.",
+    "tokenWarning": "Die KI-Analyse verbraucht Token",
+    "pastePrompt": "Prompt einfügen",
+    "placeholder": "Fügen Sie hier Ihren Prompt-Inhalt ein...",
+    "analyzing": "Analysiere...",
+    "analyzeWithAi": "KI-Analyse verwenden",
+    "parseError": "KI-Antwort konnte nicht verarbeitet werden",
+    "analysisFailed": "KI-Analyse fehlgeschlagen",
+    "analysisResult": "KI-Analyseergebnis",
+    "suggestedFolder": "Vorgeschlagener Ordner",
+    "create": "Erstellen"
   }
 }

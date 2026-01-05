@@ -304,6 +304,14 @@ export function PromptTableView({
       {/* Table - supports horizontal scrolling */}
       {/* 表格 - 支持横向滚动 */}
       <div className="flex-1 overflow-auto px-4 py-2">
+        {/* Table toolbar / 表格工具栏 */}
+        <div className="flex items-center justify-end mb-2">
+          <ColumnConfigMenu
+            columns={columns}
+            onToggleVisibility={toggleColumnVisibility}
+            onReset={resetToDefaults}
+          />
+        </div>
         <div className="rounded-xl border border-border overflow-x-auto bg-card">
           <table className="w-full text-sm min-w-[1000px]">
             <thead className="sticky top-0 z-20">
@@ -326,16 +334,12 @@ export function PromptTableView({
                     return (
                       <th
                         key={column.id}
-                        className="text-center px-4 py-3 font-medium text-muted-foreground whitespace-nowrap sticky right-0 z-30 bg-muted/30 dark:bg-muted/20 shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.1)]"
+                        className="sticky right-0 z-40 p-0 bg-card shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.15)]"
                         style={{ width: column.width }}
                       >
-                        <div className="flex items-center justify-center gap-2">
+                        <div className="absolute inset-0 bg-muted/30 dark:bg-muted/20" />
+                        <div className="relative flex items-center justify-center px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">
                           <span>{t('prompt.actions')}</span>
-                          <ColumnConfigMenu
-                            columns={columns}
-                            onToggleVisibility={toggleColumnVisibility}
-                            onReset={resetToDefaults}
-                          />
                         </div>
                       </th>
                     );
@@ -388,6 +392,32 @@ export function PromptTableView({
                           </button>
                         </td>
                       );
+
+                    case 'description':
+                      return (
+                        <td key={column.id} className="px-4 py-3" style={colWidth}>
+                          <span 
+                            className="text-xs text-muted-foreground truncate block" 
+                            style={{ maxWidth: column.width - 32 }}
+                            title={prompt.description}
+                          >
+                            {renderHighlightedText(prompt.description || '-', highlightTerms, highlightClassName)}
+                          </span>
+                        </td>
+                      );
+
+                    case 'systemPrompt':
+                      return (
+                        <td key={column.id} className="px-4 py-3" style={colWidth}>
+                          <span 
+                            className="text-xs text-muted-foreground truncate block" 
+                            style={{ maxWidth: column.width - 32 }}
+                            title={preferEnglish ? (prompt.systemPromptEn || prompt.systemPrompt) : prompt.systemPrompt}
+                          >
+                            {renderTextPreview(preferEnglish ? (prompt.systemPromptEn || prompt.systemPrompt) : prompt.systemPrompt)}
+                          </span>
+                        </td>
+                      );
                     
                     case 'userPrompt':
                       return (
@@ -430,16 +460,46 @@ export function PromptTableView({
                           {prompt.usageCount || 0}
                         </td>
                       );
+
+                    case 'tags':
+                      return (
+                        <td key={column.id} className="px-4 py-3" style={colWidth}>
+                          <div className="flex flex-wrap gap-1 max-w-full overflow-hidden">
+                            {prompt.tags && prompt.tags.length > 0 ? (
+                              prompt.tags.slice(0, 2).map((tag) => (
+                                <span key={tag} className="px-1.5 py-0.5 rounded-md bg-muted text-[10px] text-muted-foreground truncate max-w-[80px]">
+                                  {tag}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-xs text-muted-foreground/50">-</span>
+                            )}
+                            {prompt.tags && prompt.tags.length > 2 && (
+                              <span className="text-[10px] text-muted-foreground/50">+{prompt.tags.length - 2}</span>
+                            )}
+                          </div>
+                        </td>
+                      );
+
+                    case 'updatedAt':
+                      return (
+                        <td key={column.id} className="px-4 py-3 text-xs text-muted-foreground" style={colWidth}>
+                          <span title={new Date(prompt.updatedAt).toLocaleString()}>
+                            {new Date(prompt.updatedAt).toLocaleDateString()}
+                          </span>
+                        </td>
+                      );
                     
                     case 'actions':
                       return (
                         <td 
                           key={column.id}
-                          className={`px-2 py-3 sticky right-0 z-10 shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.1)] ${isSelected ? 'bg-primary/5' : 'bg-card'} dark:bg-card`}
+                          className="sticky right-0 z-30 p-0 bg-card shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.15)]"
                           style={colWidth}
                         >
+                          {isSelected && <div className="absolute inset-0 bg-primary/5 pointer-events-none" />}
                           <div
-                            className="flex items-center justify-center gap-0.5 bg-card dark:bg-card rounded-lg px-1"
+                            className="relative flex items-center justify-center gap-0.5 px-2 py-3"
                             onClick={(e) => e.stopPropagation()}
                           >
                             {/* Copy */}

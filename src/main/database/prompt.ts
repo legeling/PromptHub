@@ -22,9 +22,9 @@ export class PromptDB {
     const stmt = this.db.prepare(`
       INSERT INTO prompts (
         id, title, description, system_prompt, user_prompt,
-        variables, tags, folder_id, images, is_favorite, current_version,
+        variables, tags, folder_id, images, source, is_favorite, current_version,
         usage_count, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
@@ -37,6 +37,10 @@ export class PromptDB {
       JSON.stringify(data.tags || []),
       data.folderId || null,
       JSON.stringify(data.images || []),
+      data.source || null,
+      0,
+      1,
+      0,
       now,
       now
     );
@@ -120,6 +124,10 @@ export class PromptDB {
     if (data.isPinned !== undefined) {
       updates.push('is_pinned = ?');
       values.push(data.isPinned ? 1 : 0);
+    }
+    if (data.source !== undefined) {
+      updates.push('source = ?');
+      values.push(data.source);
     }
 
     values.push(id);
@@ -315,6 +323,7 @@ export class PromptDB {
       version: row.current_version,
       currentVersion: row.current_version,
       usageCount: row.usage_count,
+      source: row.source,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };

@@ -265,7 +265,14 @@ export function initUpdater(win: BrowserWindow) {
   autoUpdater.on('error', (error) => {
     console.error('Update error:', error);
     let message = (error && (error as Error).message) || String(error);
-    if (message.includes('ZIP file not provided')) {
+    // Handle 404 error for missing yml files
+    // 处理找不到 yml 文件的 404 错误
+    if (message.includes('404') || message.includes('Cannot find')) {
+      message =
+        'Update check failed: Cannot find update manifest file in the latest release.\n' +
+        '更新检查失败：无法在最新版本中找到更新配置文件。\n' +
+        '请前往 GitHub Releases 页面手动下载安装。';
+    } else if (message.includes('ZIP file not provided')) {
       message =
         'Auto update requires ZIP installer, but current Release does not have corresponding ZIP file. Please go to GitHub Releases page to download manually, or wait for next version to fix auto update.';
       // 自动更新需要 ZIP 安装包，但当前版本的 Release 中没有对应的 ZIP 文件。请前往 GitHub Releases 页面手动下载安装，或等待下一个版本修复自动更新。

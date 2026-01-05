@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { ChevronDownIcon, LayoutGridIcon, ListIcon, ImageIcon } from 'lucide-react';
 import { usePromptStore, SortBy, SortOrder, ViewMode } from '../../stores/prompt.store';
@@ -16,7 +17,9 @@ interface PromptListHeaderProps {
 export function PromptListHeader({ count }: PromptListHeaderProps) {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   const sortBy = usePromptStore((state) => state.sortBy);
   const sortOrder = usePromptStore((state) => state.sortOrder);
@@ -49,13 +52,32 @@ export function PromptListHeader({ count }: PromptListHeaderProps) {
   // 点击外部关闭下拉菜单
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node) &&
+          buttonRef.current && !buttonRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Calculate dropdown position
+  const updateMenuPosition = useCallback(() => {
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setMenuPosition({
+        top: rect.bottom + 4,
+        right: window.innerWidth - rect.right,
+      });
+    }
+  }, []);
+
+  const handleToggleMenu = () => {
+    if (!isOpen) {
+      updateMenuPosition();
+    }
+    setIsOpen(!isOpen);
+  };
 
   const handleSelectSort = (option: SortOption) => {
     setSortBy(option.sortBy);
@@ -80,17 +102,22 @@ export function PromptListHeader({ count }: PromptListHeaderProps) {
       <div className="flex items-center gap-1">
         {/* Sort dropdown */}
         {/* 排序下拉 */}
-        <div ref={dropdownRef} className="relative">
+        <div className="relative">
           <button
-            onClick={() => setIsOpen(!isOpen)}
+            ref={buttonRef}
+            onClick={handleToggleMenu}
             className="flex items-center gap-1 px-2 py-1 text-xs rounded-md hover:bg-accent transition-colors"
           >
             <span className="text-muted-foreground">{currentOption.label}</span>
             <ChevronDownIcon className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
           </button>
 
-          {isOpen && (
-            <div className="absolute right-0 top-full mt-1 w-32 py-1 rounded-lg bg-popover border border-border shadow-lg z-50">
+          {isOpen && createPortal(
+            <div 
+              ref={dropdownRef}
+              className="fixed w-32 py-1 rounded-lg bg-popover border border-border shadow-lg z-[9999]"
+              style={{ top: menuPosition.top, right: menuPosition.right }}
+            >
               {sortOptions.map((option) => (
                 <button
                   key={`${option.sortBy}-${option.sortOrder}`}
@@ -103,7 +130,8 @@ export function PromptListHeader({ count }: PromptListHeaderProps) {
                   {option.label}
                 </button>
               ))}
-            </div>
+            </div>,
+            document.body
           )}
         </div>
 
