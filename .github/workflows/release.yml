@@ -3,7 +3,7 @@ name: Build and Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
 
 jobs:
@@ -31,7 +31,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -77,17 +77,24 @@ jobs:
         if: matrix.platform == 'win' && matrix.arch != ''
         shell: bash
         run: |
-          # Rename latest.yml to latest-{arch}.yml
-          if [ -f "dist/latest.yml" ]; then
-            mv dist/latest.yml dist/latest-${{ matrix.arch }}.yml
-            echo "Renamed latest.yml to latest-${{ matrix.arch }}.yml"
-          fi
-          # Ensure latest-{arch}.yml points to the arch-specific installer
-          node -e "const fs=require('fs');const path=require('path');const arch='${{ matrix.arch }}';const yml=path.join('dist','latest-'+arch+'.yml');if(!fs.existsSync(yml)) process.exit(0);const exe=fs.readdirSync('dist').find(f=>f.startsWith('PromptHub-Setup-')&&f.endsWith('-'+arch+'.exe'));if(!exe) process.exit(0);let data=fs.readFileSync(yml,'utf8');data=data.replace(/PromptHub-Setup-[0-9.]+\\.exe\\.blockmap/g, exe+'.blockmap').replace(/PromptHub-Setup-[0-9.]+\\.exe/g, exe);fs.writeFileSync(yml,data);console.log('Patched '+yml+' -> '+exe);"
-          # Keep latest.yml as x64 alias for compatibility
-          if [ "${{ matrix.arch }}" = "x64" ] && [ -f "dist/latest-x64.yml" ]; then
-            cp dist/latest-x64.yml dist/latest.yml
-            echo "Copied latest-x64.yml to latest.yml"
+          # For x64: keep latest.yml as-is (this is what electron-updater expects by default)
+          # For arm64: create latest-arm64.yml for future multi-arch support
+          if [ "${{ matrix.arch }}" = "arm64" ]; then
+            if [ -f "dist/latest.yml" ]; then
+              # Rename to latest-arm64.yml for arm64 builds
+              mv dist/latest.yml dist/latest-arm64.yml
+              echo "Renamed latest.yml to latest-arm64.yml for ARM64"
+            fi
+          else
+            # x64: just ensure the yml points to correct exe filename
+            if [ -f "dist/latest.yml" ]; then
+              exe=$(ls dist/PromptHub-Setup-*-x64.exe 2>/dev/null | head -1 | xargs -I {} basename {})
+              if [ -n "$exe" ]; then
+                sed -i.bak "s/PromptHub-Setup-[0-9.]*\.exe/$exe/g" dist/latest.yml
+                rm -f dist/latest.yml.bak
+                echo "Updated latest.yml to point to $exe"
+              fi
+            fi
           fi
           # Remove duplicate NSIS blockmap without arch (prevents release upload errors)
           shopt -s nullglob
@@ -125,42 +132,42 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
-    
+
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-      
-      - name: Deduplicate release assets
-        shell: bash
-        run: |
-          set -euo pipefail
-          declare -A seen
-          while IFS= read -r -d '' file; do
-            base=$(basename "$file")
-            if [[ -n "${seen[$base]:-}" ]]; then
-              keep="${seen[$base]}"
-              if [[ "$base" == *-x64.exe* ]] && [[ "$file" == *"win-x64-build"* ]] && [[ "$keep" != *"win-x64-build"* ]]; then
-                rm -f "$keep"
-                seen[$base]="$file"
-                continue
-              fi
-              if [[ "$base" == *-arm64.exe* ]] && [[ "$file" == *"win-arm64-build"* ]] && [[ "$keep" != *"win-arm64-build"* ]]; then
-                rm -f "$keep"
-                seen[$base]="$file"
-                continue
-              fi
-              rm -f "$file"
-            else
-              seen[$base]="$file"
-            fi
-          done < <(find artifacts -type f -print0)
-      
+
       - name: Set release version
         shell: bash
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      - name: Merge Windows update metadata
+        shell: bash
         run: |
-          echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+          # Find the x64 latest.yml and arm64 latest-arm64.yml using path filters
+          x64_yml=$(find artifacts -name "latest.yml" -path "*/win-x64-build/*" | head -1)
+          arm64_yml=$(find artifacts -name "latest-arm64.yml" -path "*/win-arm64-build/*" | head -1)
+
+          if [ -n "$x64_yml" ] && [ -n "$arm64_yml" ]; then
+            echo "Merging Windows ARM64 metadata into latest.yml..."
+            python3 - "$x64_yml" "$arm64_yml" << 'EOF'
+            import os, re, sys
+            x64_path, arm64_path = sys.argv[1:3]
+            with open(x64_path, 'r') as f: x64_content = f.read()
+            with open(arm64_path, 'r') as f: arm64_content = f.read()
+            match_arm64 = re.search(r'(\s+-\s+url:.*?arm64\.exe.*?\n\s+sha512:.*?\n\s+size:.*?\n)', arm64_content, re.S)
+            if match_arm64:
+                arm64_block = match_arm64.group(1)
+                new_content = re.sub(r'(files:\s*\n\s+-\s+url:.*?\n\s+sha512:.*?\n\s+size:.*?\n)', r'\1' + arm64_block, x64_content, flags=re.S)
+                with open(x64_path, 'w') as f: f.write(new_content)
+                print('Successfully merged ARM64 entry into latest.yml')
+            else:
+                print('Warning: Could not find ARM64 entry in arm64 yml')
+            EOF
+            rm -f "$arm64_yml"
+          fi
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -180,23 +187,23 @@ jobs:
           generate_release_notes: true
           body: |
             ## 📦 下载安装
-            
+
             | 平台 | 下载 |
             |------|------|
             | Windows | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-${{ env.VERSION }}-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-${{ env.VERSION }}-arm64.exe) |
             | macOS | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-${{ env.VERSION }}-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-${{ env.VERSION }}-x64.dmg) |
             | Linux | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-${{ env.VERSION }}-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_${{ env.VERSION }}_amd64.deb) |
-            
+
             ### ⚠️ macOS 首次启动
             如果提示"无法打开"或"已损坏"，请在终端执行：
             ```bash
             sudo xattr -rd com.apple.quarantine /Applications/PromptHub.app
             ```
-            
+
             ---
-            
+
             ## 🔄 本次更新
-            
+
             详细更新日志请查看 [更新日志](https://github.com/legeling/PromptHub#-更新日志)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

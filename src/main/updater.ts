@@ -248,42 +248,15 @@ export function initUpdater(win: BrowserWindow) {
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
 
-  // Configure auto updater channel based on platform and architecture
-  // 根据平台和架构配置 autoUpdater channel
-  // 
-  // electron-updater channel behavior:
-  // - channel = undefined/null -> looks for 'latest.yml'
-  // - channel = 'xxx' -> looks for 'xxx.yml'
-  // - channel = 'latest-xxx' -> looks for 'latest-xxx.yml'
+  // electron-updater default behavior (no channel override needed):
+  // electron-updater 默认行为（不需要覆盖 channel）：
+  // - Windows: looks for 'latest.yml'
+  // - macOS: looks for 'latest-mac.yml'
+  // - Linux: looks for 'latest-linux.yml'
   //
-  // Our CI generates:
-  // - Windows x64: latest.yml (copied from latest-x64.yml)
-  // - Windows arm64: latest-arm64.yml
-  // - macOS: latest-mac.yml
-  // - Linux: latest-linux.yml
-  //
-  if (process.platform === 'win32') {
-    if (process.arch === 'arm64') {
-      // ARM64 needs to use latest-arm64.yml
-      // ARM64 需要使用 latest-arm64.yml
-      autoUpdater.channel = 'latest-arm64';
-      console.log(`[Updater] Windows ARM64 detected, channel: ${autoUpdater.channel}`);
-    } else {
-      // x64 uses default latest.yml (no channel override needed)
-      // x64 使用默认的 latest.yml（不需要覆盖 channel）
-      console.log(`[Updater] Windows x64 detected, using default channel (latest.yml)`);
-    }
-  } else if (process.platform === 'darwin') {
-    // macOS uses latest-mac.yml
-    // macOS 使用 latest-mac.yml
-    autoUpdater.channel = 'latest-mac';
-    console.log(`[Updater] macOS detected, arch: ${process.arch}, channel: ${autoUpdater.channel}`);
-  } else if (process.platform === 'linux') {
-    // Linux uses latest-linux.yml
-    // Linux 使用 latest-linux.yml
-    autoUpdater.channel = 'latest-linux';
-    console.log(`[Updater] Linux detected, channel: ${autoUpdater.channel}`);
-  }
+  // Our CI generates these files with the correct names.
+  // 我们的 CI 会生成这些正确命名的文件。
+  console.log(`[Updater] Platform: ${process.platform}, Arch: ${process.arch}`);
 
   // Update check error
   // 检查更新出错
