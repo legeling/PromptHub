@@ -146,26 +146,11 @@ jobs:
       - name: Merge Windows update metadata
         shell: bash
         run: |
-          # Find the x64 latest.yml and arm64 latest-arm64.yml using path filters
           x64_yml=$(find artifacts -name "latest.yml" -path "*/win-x64-build/*" | head -1)
           arm64_yml=$(find artifacts -name "latest-arm64.yml" -path "*/win-arm64-build/*" | head -1)
-
           if [ -n "$x64_yml" ] && [ -n "$arm64_yml" ]; then
             echo "Merging Windows ARM64 metadata into latest.yml..."
-            python3 - "$x64_yml" "$arm64_yml" << 'EOF'
-            import os, re, sys
-            x64_path, arm64_path = sys.argv[1:3]
-            with open(x64_path, 'r') as f: x64_content = f.read()
-            with open(arm64_path, 'r') as f: arm64_content = f.read()
-            match_arm64 = re.search(r'(\s+-\s+url:.*?arm64\.exe.*?\n\s+sha512:.*?\n\s+size:.*?\n)', arm64_content, re.S)
-            if match_arm64:
-                arm64_block = match_arm64.group(1)
-                new_content = re.sub(r'(files:\s*\n\s+-\s+url:.*?\n\s+sha512:.*?\n\s+size:.*?\n)', r'\1' + arm64_block, x64_content, flags=re.S)
-                with open(x64_path, 'w') as f: f.write(new_content)
-                print('Successfully merged ARM64 entry into latest.yml')
-            else:
-                print('Warning: Could not find ARM64 entry in arm64 yml')
-            EOF
+            python3 -c "import sys, re; x, a = sys.argv[1:3]; xc = open(x).read(); ac = open(a).read(); m = re.search(r'(\s+-\s+url:.*?arm64\.exe.*?\n\s+sha512:.*?\n\s+size:.*?\n)', ac, re.S); open(x, 'w').write(re.sub(r'(files:\s*\n\s+-\s+url:.*?\n\s+sha512:.*?\n\s+size:.*?\n)', r'\1' + m.group(1), xc, flags=re.S)) if m else print('Warning: No ARM64 entry found')" "$x64_yml" "$arm64_yml"
             rm -f "$arm64_yml"
           fi
 
