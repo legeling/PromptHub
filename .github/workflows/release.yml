@@ -77,8 +77,8 @@ jobs:
         if: matrix.platform == 'win' && matrix.arch != ''
         shell: bash
         run: |
-          # For x64: keep latest.yml as-is (this is what electron-updater expects by default)
-          # For arm64: create latest-arm64.yml for future multi-arch support
+          # Generate appropriate yml files for each architecture
+          # 为每个架构生成适当的 yml 文件
           if [ "${{ matrix.arch }}" = "arm64" ]; then
             if [ -f "dist/latest.yml" ]; then
               # Rename to latest-arm64.yml for arm64 builds
@@ -86,7 +86,10 @@ jobs:
               echo "Renamed latest.yml to latest-arm64.yml for ARM64"
             fi
           else
-            # x64: just ensure the yml points to correct exe filename
+            # x64: Generate BOTH latest.yml AND latest-x64.yml for backward compatibility
+            # x64: 同时生成 latest.yml 和 latest-x64.yml 以保持向后兼容
+            # - New versions (0.3.5+) use default behavior -> latest.yml
+            # - Old versions (0.3.4 and earlier) use channel='x64' -> latest-x64.yml
             if [ -f "dist/latest.yml" ]; then
               exe=$(ls dist/PromptHub-Setup-*-x64.exe 2>/dev/null | head -1 | xargs -I {} basename {})
               if [ -n "$exe" ]; then
@@ -94,6 +97,10 @@ jobs:
                 rm -f dist/latest.yml.bak
                 echo "Updated latest.yml to point to $exe"
               fi
+              # Create latest-x64.yml as a copy for backward compatibility with old versions
+              # 创建 latest-x64.yml 副本以兼容旧版本
+              cp dist/latest.yml dist/latest-x64.yml
+              echo "Created latest-x64.yml for backward compatibility"
             fi
           fi
           # Remove duplicate NSIS blockmap without arch (prevents release upload errors)
