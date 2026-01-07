@@ -164,6 +164,9 @@ export function MainContent() {
   const [isVariableModalOpen, setIsVariableModalOpen] = useState(false);
   const [isAiTestVariableModalOpen, setIsAiTestVariableModalOpen] = useState(false);
   const [isCompareVariableModalOpen, setIsCompareVariableModalOpen] = useState(false);
+  // 用于列表/画廊视图复制时的变量弹窗
+  const [isCopyVariableModalOpen, setIsCopyVariableModalOpen] = useState(false);
+  const [copyPrompt, setCopyPrompt] = useState<Prompt | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; prompt: Prompt } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; prompt: Prompt | null }>({ isOpen: false, prompt: null });
@@ -809,13 +812,27 @@ export function MainContent() {
   const [aiResponseCache, setAiResponseCache] = useState<Record<string, string>>({});
   const setViewMode = usePromptStore((state) => state.setViewMode);
 
-  // Handle copying prompt
-  // 处理复制 Prompt
+  // Handle copying prompt - check for variables first
+  // 处理复制 Prompt - 先检查是否有变量
   const handleCopyPrompt = async (prompt: Prompt) => {
-    const text = prompt.userPrompt;
-    await navigator.clipboard.writeText(text);
-    await incrementUsageCount(prompt.id);
-    showToast(t('toast.copied'), 'success', showCopyNotification);
+    // 检测是否包含变量 (排除系统变量)
+    const VARIABLE_REGEX = /\{\{([^}:]+)(?::([^}]*))?\}\}/g;
+    const SYSTEM_VARIABLES = ['CURRENT_DATE', 'CURRENT_TIME', 'CURRENT_DATETIME', 'CURRENT_YEAR', 'CURRENT_MONTH', 'CURRENT_DAY', 'CURRENT_WEEKDAY'];
+    const combined = `${prompt.systemPrompt || ''}\n${prompt.userPrompt}`;
+    const matches = [...combined.matchAll(VARIABLE_REGEX)];
+    const hasUserVariables = matches.some(m => !SYSTEM_VARIABLES.includes(m[1].trim()));
+    
+    if (hasUserVariables) {
+      // 有变量，打开弹窗让用户填写
+      setCopyPrompt(prompt);
+      setIsCopyVariableModalOpen(true);
+    } else {
+      // 没有变量，直接复制
+      const text = prompt.userPrompt;
+      await navigator.clipboard.writeText(text);
+      await incrementUsageCount(prompt.id);
+      showToast(t('toast.copied'), 'success', showCopyNotification);
+    }
   };
 
   // Handle deleting prompt (for table view)
@@ -1583,6 +1600,31 @@ export function MainContent() {
             runModelCompare(filledSystemPrompt, filledUserPrompt);
           }}
           isAiTesting={isComparingModels}
+        />
+      )}
+
+      {/* Variable input modal (copy from list/gallery view) */}
+      {/* 变量输入弹窗（列表/画廊视图复制用） */}
+      {copyPrompt && (
+        <VariableInputModal
+          isOpen={isCopyVariableModalOpen}
+          onClose={() => {
+            setIsCopyVariableModalOpen(false);
+            setCopyPrompt(null);
+          }}
+          promptId={copyPrompt.id}
+          systemPrompt={copyPrompt.systemPrompt}
+          userPrompt={copyPrompt.userPrompt}
+          mode="copy"
+          onCopy={async (text) => {
+            await navigator.clipboard.writeText(text);
+            await incrementUsageCount(copyPrompt.id);
+            setCopied(true);
+            showToast(t('toast.copied'), 'success', showCopyNotification);
+            setTimeout(() => setCopied(false), 2000);
+            setIsCopyVariableModalOpen(false);
+            setCopyPrompt(null);
+          }}
         />
       )}
 

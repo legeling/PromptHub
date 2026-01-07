@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS prompts (
   current_version INTEGER DEFAULT 1,
   usage_count INTEGER DEFAULT 0,
   source TEXT,
+  notes TEXT,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   FOREIGN KEY (folder_id) REFERENCES folders(id) ON DELETE SET NULL

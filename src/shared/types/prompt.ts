@@ -22,6 +22,7 @@ export interface Prompt {
   currentVersion: number;
   usageCount: number;
   source?: string;          // 来源 / Source URL or reference
+  notes?: string;           // 备注 / Personal notes about the prompt
   lastAiResponse?: string;  // Last AI test response / 最后一次 AI 测试的响应
   createdAt: string;  // ISO 8601 format / ISO 8601 格式
   updatedAt: string;  // ISO 8601 format / ISO 8601 格式
@@ -64,6 +65,7 @@ export interface CreatePromptDTO {
   images?: string[];
   videos?: string[];
   source?: string;
+  notes?: string;
 }
 
 export interface UpdatePromptDTO {
@@ -82,6 +84,7 @@ export interface UpdatePromptDTO {
   isPinned?: boolean;
   usageCount?: number;
   source?: string;
+  notes?: string;
   lastAiResponse?: string;
 }
 

@@ -345,4 +345,24 @@ export function registerImageIPC() {
         const userDataPath = app.getPath('userData');
         return path.join(userDataPath, 'videos', fileName);
     });
+
+    // Clear all videos
+    // 清除所有视频
+    ipcMain.handle('video:clear', async () => {
+        try {
+            const userDataPath = app.getPath('userData');
+            const videosDir = path.join(userDataPath, 'videos');
+            if (fs.existsSync(videosDir)) {
+                const files = fs.readdirSync(videosDir);
+                for (const file of files) {
+                    fs.unlinkSync(path.join(videosDir, file));
+                }
+                console.log(`Cleared ${files.length} videos`);
+            }
+            return true;
+        } catch (error) {
+            console.error('Failed to clear videos:', error);
+            return false;
+        }
+    });
 }

@@ -52,7 +52,7 @@ export function Modal({ isOpen, onClose, title, headerActions, children, size = 
       setIsAnimating(false);
       const timer = setTimeout(() => {
         setShouldRender(false);
-      }, 300);
+      }, 200);
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
@@ -80,7 +80,7 @@ export function Modal({ isOpen, onClose, title, headerActions, children, size = 
   const modalContent = (
     <div
       className={clsx(
-        'fixed inset-0 z-[9999] flex items-center justify-center transition-all duration-500 ease-in-out',
+        'fixed inset-0 z-[9999] flex items-center justify-center transition-all duration-200 ease-in-out',
         // In fullscreen mode, use p-16 (64px) to move the entire modal box away from traffic lights
         isFullscreen ? 'p-16' : 'p-4'
       )}
@@ -89,7 +89,7 @@ export function Modal({ isOpen, onClose, title, headerActions, children, size = 
       {/* Backdrop */}
       <div
         className={clsx(
-          'absolute inset-0 bg-white/40 dark:bg-black/40 backdrop-blur-md transition-opacity duration-300',
+          'absolute inset-0 bg-white/40 dark:bg-black/40 backdrop-blur-md transition-opacity duration-200',
           isAnimating ? 'opacity-100' : 'opacity-0'
         )}
         onClick={onClose}
@@ -100,11 +100,11 @@ export function Modal({ isOpen, onClose, title, headerActions, children, size = 
         className={clsx(
           'relative bg-card shadow-[0_0_100px_-20px_rgba(0,0,0,0.6)] border border-border',
           'overflow-hidden flex flex-col rounded-2xl',
-          'transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1)', // Bouncy transition for size changes
+          'transition-all duration-200 ease-out', // Faster transition without bounce
           // Mount/Unmount animation states (opacity + scale + drift)
           isAnimating 
             ? 'opacity-100 scale-100 translate-y-0' 
-            : 'opacity-0 scale-95 translate-y-8'
+            : 'opacity-0 scale-95 translate-y-4'
         )}
         style={{ 
           margin: 'auto',

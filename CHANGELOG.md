@@ -9,6 +9,17 @@
 - ☁️ **视频同步**：WebDAV 同步现已包含视频文件
   - **Video Sync**: WebDAV sync now includes video files
 
+### 优化 / Improvements
+
+- ⚡️ **Modal 动画加速**：大幅提升所有弹窗的打开/关闭速度，优化过渡体验
+  - **Faster Modals**: Significantly improved modal animation speed for snappier interactions
+- 🎨 **UI 一致性**：统一创建与编辑界面的按钮样式，添加保存图标
+  - **UI Consistency**: Standardized button styles and icons across create/edit modals
+- 🌍 **国际化完善**：补全法语、德语、西班牙语、日语、繁体中文的缺失翻译
+  - **i18n Complete**: Added missing translations for FR, DE, ES, JA, and ZH-TW
+- 🔄 **过渡动画优化**：优化从详情页到编辑页的切换动画，消除视觉跳动
+  - **Transition Polish**: Smoother transition between detail and edit modals
+
 ### 修复 / Fixed
 
 - 🎨 **下拉菜单 UI 优化**：修复新建下拉菜单的选中样式问题，采用悬浮圆角设计

@@ -208,23 +208,23 @@ export function VariableInputModal({
 
             <div className="grid gap-3">
               {parsedVariables.map((v) => (
-                <div key={v.name} className="space-y-1">
-                  <label className="text-sm font-medium text-foreground flex items-center gap-2">
-                    <code className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-xs">
-                      {`{{${v.name}}}`}
-                    </code>
-                    {v.defaultValue && (
-                      <span className="text-xs text-muted-foreground">
-                        {t('prompt.defaultValue')}: {v.defaultValue}
-                      </span>
-                    )}
+                <div key={v.name} className="space-y-1.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <label className="text-sm font-medium text-foreground">
+                      {t('prompt.variableName', '变量名')}: <span className="text-primary">{v.name}</span>
+                    </label>
                     {variables[v.name] && variables[v.name] !== v.defaultValue && (
-                      <span className="flex items-center gap-1 text-xs text-green-600">
+                      <span className="flex items-center gap-1 text-xs text-green-600 shrink-0">
                         <HistoryIcon className="w-3 h-3" />
                         {t('prompt.fromHistory')}
                       </span>
                     )}
-                  </label>
+                  </div>
+                  {v.defaultValue && (
+                    <div className="text-xs text-muted-foreground">
+                      {t('prompt.exampleValue', '示例值')}: <span className="text-foreground/80">{v.defaultValue}</span>
+                    </div>
+                  )}
                   <textarea
                     value={variables[v.name] || ''}
                     onChange={(e) => {
@@ -233,7 +233,7 @@ export function VariableInputModal({
                       e.target.style.height = 'auto';
                       e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
                     }}
-                    placeholder={v.defaultValue || t('prompt.inputVariable', { name: v.name })}
+                    placeholder={`${t('prompt.inputVariable', { name: v.name })}${v.defaultValue ? ` ${t('prompt.exampleHint', '例如')}: ${v.defaultValue}` : ''}`}
                     rows={1}
                     className="w-full min-h-[40px] px-4 py-2.5 rounded-xl bg-muted/50 border-0 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:bg-background transition-all duration-200 resize-none overflow-hidden"
                     style={{ height: 'auto' }}

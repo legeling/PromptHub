@@ -16,7 +16,6 @@ interface QuickAddModalProps {
     systemPrompt?: string;
     description?: string;
     folderId?: string;
-    source?: string;
   }) => Promise<any>;
 }
 
@@ -28,13 +27,9 @@ export function QuickAddModal({ isOpen, onClose, onCreate }: QuickAddModalProps)
   const prompts = usePromptStore((state) => state.prompts);
   
   const [promptText, setPromptText] = useState('');
-  const [source, setSource] = useState('');
-  const [showSourceSuggestions, setShowSourceSuggestions] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedFolderId, setSelectedFolderId] = useState<string | undefined>(undefined);
   
-  const sourceHistory = useSettingsStore((state) => state.sourceHistory);
-  const addSourceHistory = useSettingsStore((state) => state.addSourceHistory);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Check if AI is configured
@@ -44,7 +39,6 @@ export function QuickAddModal({ isOpen, onClose, onCreate }: QuickAddModalProps)
   useEffect(() => {
     if (isOpen) {
       setPromptText('');
-      setSource('');
       setSelectedFolderId(undefined);
       setIsSubmitting(false);
       setTimeout(() => textareaRef.current?.focus(), 100);
@@ -62,13 +56,7 @@ export function QuickAddModal({ isOpen, onClose, onCreate }: QuickAddModalProps)
       title: t('quickAdd.analyzing') || '正在分析...',
       userPrompt: promptText,
       folderId: selectedFolderId,
-      source: source.trim() || undefined,
     });
-    
-    // 保存来源到历史 / Save source to history
-    if (source.trim()) {
-      addSourceHistory(source.trim());
-    }
     
     onClose();
 
@@ -189,44 +177,6 @@ ${tagsString}
               placeholder={t('quickAdd.placeholder') || '在这里粘贴你的 Prompt 内容...'}
               className="w-full h-48 px-4 py-3 rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all text-sm leading-relaxed"
             />
-          </div>
-
-          <div className="space-y-2 relative">
-            <label className="text-sm font-medium text-muted-foreground">
-              {t('prompt.sourceOptional') || '来源（可选）'}
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                placeholder={t('prompt.sourcePlaceholder') || '记录 Prompt 的来源，如网站链接、书籍等'}
-                value={source}
-                onChange={(e) => setSource(e.target.value)}
-                onFocus={() => setShowSourceSuggestions(true)}
-                onBlur={() => setTimeout(() => setShowSourceSuggestions(false), 150)}
-                className="w-full h-10 px-4 rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all text-sm"
-              />
-              {showSourceSuggestions && sourceHistory.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto custom-scrollbar">
-                  {sourceHistory
-                    .filter(s => s.toLowerCase().includes(source.toLowerCase()))
-                    .slice(0, 8)
-                    .map((item, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        className="w-full px-4 py-2 text-sm text-left hover:bg-accent transition-colors truncate"
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          setSource(item);
-                          setShowSourceSuggestions(false);
-                        }}
-                      >
-                        {item}
-                      </button>
-                    ))}
-                </div>
-              )}
-            </div>
           </div>
 
           <div className="space-y-2">

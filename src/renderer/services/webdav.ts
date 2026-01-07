@@ -33,6 +33,8 @@ interface SyncResult {
     promptsDownloaded?: number;
     imagesUploaded?: number;
     imagesDownloaded?: number;
+    videosUploaded?: number;
+    videosDownloaded?: number;
     skipped?: number;  // Skipped files (unchanged) / 跳过的文件数（未变化）
   };
 }
@@ -51,6 +53,13 @@ interface BackupManifest {
       uploadedAt: string;    // Upload time / 上传时间
     };
   };
+  videos: {                  // Video index / 视频索引
+    [fileName: string]: {
+      hash: string;          // Content hash / 内容 hash
+      size: number;          // File size / 文件大小
+      uploadedAt: string;    // Upload time / 上传时间
+    };
+  };
   encrypted?: boolean;       // Whether encrypted / 是否加密
 }
 
@@ -61,6 +70,7 @@ interface BackupData {
   folders: any[];
   versions?: PromptVersion[];  // Version history / 版本历史
   images?: { [fileName: string]: string }; // fileName -> base64 (legacy compatible) / fileName -> base64（兼容旧版）
+  videos?: { [fileName: string]: string }; // fileName -> base64 (for video sync) / fileName -> base64（用于视频同步）
   // AI configuration (optional, for sync)
   // AI 配置（可选，用于同步）
   aiConfig?: {
@@ -93,6 +103,7 @@ const BACKUP_DIR = 'prompthub-backup';
 const MANIFEST_FILENAME = 'manifest.json';
 const DATA_FILENAME = 'data.json';
 const IMAGES_DIR = 'images';
+const VIDEOS_DIR = 'videos';
 // Compatible with legacy single-file backup
 // 兼容旧版单文件备份
 const LEGACY_BACKUP_FILENAME = 'prompthub-backup.json';
@@ -575,7 +586,9 @@ export async function uploadToWebDAV(config: WebDAVConfig, options?: WebDAVSyncO
     // 根据选项决定是否包含图片
     const includeImages = options?.includeImages ?? true;
     const images = includeImages ? fullBackup.images : undefined;
+    const videos = includeImages ? fullBackup.videos : undefined;
     const imagesCount = images ? Object.keys(images).length : 0;
+    const videosCount = videos ? Object.keys(videos).length : 0;
 
     const backupData: BackupData = {
       version: '3.0',  // Upgrade version / 升级版本号
@@ -584,6 +597,7 @@ export async function uploadToWebDAV(config: WebDAVConfig, options?: WebDAVSyncO
       folders: fullBackup.folders,
       versions: fullBackup.versions,  // Include version history / 包含版本历史
       images,
+      videos,
       aiConfig: fullBackup.aiConfig,
       settings: fullBackup.settings,
       settingsUpdatedAt: fullBackup.settingsUpdatedAt,
@@ -636,7 +650,7 @@ export async function uploadToWebDAV(config: WebDAVConfig, options?: WebDAVSyncO
       if (result.success) {
         return {
           success: true,
-          message: `Upload successful (${promptsCount} prompts, ${versionsCount} versions, ${imagesCount} images) / 上传成功 (${promptsCount} 条 Prompt, ${versionsCount} 个版本, ${imagesCount} 张图片)`,
+          message: `Upload successful (${promptsCount} prompts, ${versionsCount} versions, ${imagesCount} images, ${videosCount} videos) / 上传成功 (${promptsCount} 条 Prompt, ${versionsCount} 个版本, ${imagesCount} 张图片, ${videosCount} 个视频)`,
           timestamp: new Date().toISOString(),
           details: {
             promptsUploaded: promptsCount,
@@ -667,7 +681,7 @@ export async function uploadToWebDAV(config: WebDAVConfig, options?: WebDAVSyncO
     if (response.ok || response.status === 201 || response.status === 204) {
       return {
         success: true,
-        message: `Upload successful (${promptsCount} prompts, ${versionsCount} versions, ${imagesCount} images) / 上传成功 (${promptsCount} 条 Prompt, ${versionsCount} 个版本, ${imagesCount} 张图片)`,
+        message: `Upload successful (${promptsCount} prompts, ${versionsCount} versions, ${imagesCount} images, ${videosCount} videos) / 上传成功 (${promptsCount} 条 Prompt, ${versionsCount} 个版本, ${imagesCount} 张图片, ${videosCount} 个视频)`,
         timestamp: new Date().toISOString(),
         details: {
           promptsUploaded: promptsCount,
@@ -720,14 +734,19 @@ export async function incrementalUpload(config: WebDAVConfig, options?: WebDAVSy
     // Ensure directory structure exists
     // 确保目录结构存在
     await ensureDirectory(backupDirUrl, config);
-    if (options?.includeImages !== false) {
+    const includeImages = options?.includeImages !== false;
+
+    if (includeImages) {
       await ensureDirectory(imagesDirUrl, config);
+      await ensureDirectory(`${backupDirUrl}/${VIDEOS_DIR}`, config);
     }
 
-    // Get full data
-    // 获取完整数据
-    const fullBackup = await exportDatabase();
-    const includeImages = options?.includeImages !== false;
+    // Get full data but skip video content to save memory
+    // 获取全量数据但跳过视频内容以节省内存
+    const fullBackup = await exportDatabase({ skipVideoContent: true });
+    
+    // Keep images in memory as they are usually small
+    // 保持图片在内存中，因为它们通常比较小
 
     // Prepare core data (without images)
     // 准备核心数据（不含图片）
@@ -814,6 +833,56 @@ export async function incrementalUpload(config: WebDAVConfig, options?: WebDAVSy
       }
     }
 
+    // Incremental video upload
+    // 处理视频增量上传
+    const newVideoManifest: BackupManifest['videos'] = {};
+    const videosDirUrl = `${backupDirUrl}/${VIDEOS_DIR}`;
+    let videosUploaded = 0;
+
+    // Stream-like processing for videos to avoid OOM
+    // 流式处理视频以避免 OOM
+    if (includeImages) {
+      // 1. Collect video filenames
+      const videoFiles = new Set<string>();
+      fullBackup.prompts.forEach(p => p.videos?.forEach(v => videoFiles.add(v)));
+      
+      // 2. Process one by one
+      for (const fileName of videoFiles) {
+        try {
+          // Read on demand
+          const base64 = await window.electron?.readVideoBase64?.(fileName);
+          if (!base64) {
+            console.warn(`[WebDAV] Skipped video ${fileName}: File not found or empty`);
+            continue;
+          }
+
+          const videoHash = await computeHash(base64);
+          const remoteVideo = remoteManifest?.videos?.[fileName];
+
+          if (!remoteVideo || remoteVideo.hash !== videoHash) {
+            const videoUrl = `${videosDirUrl}/${encodeURIComponent(fileName)}.base64`;
+            // Upload immediately and release memory
+            const success = await uploadFile(videoUrl, config, base64);
+            if (success) {
+              videosUploaded++;
+              console.log(`📤 Uploaded video: ${fileName}`);
+            }
+          } else {
+            skippedCount++;
+            console.log(`⏭️ Skipped video: ${fileName} (unchanged)`);
+          }
+
+          newVideoManifest[fileName] = {
+            hash: videoHash,
+            size: base64.length,
+            uploadedAt: new Date().toISOString(),
+          };
+        } catch (videoError) {
+          console.error(`[WebDAV] Failed to process video ${fileName}:`, videoError);
+        }
+      }
+    }
+
     // Update manifest
     // 更新 manifest
     const newManifest: BackupManifest = {
@@ -822,6 +891,7 @@ export async function incrementalUpload(config: WebDAVConfig, options?: WebDAVSy
       updatedAt: new Date().toISOString(),
       dataHash,
       images: newImageManifest,
+      videos: newVideoManifest,
       encrypted: !!options?.encryptionPassword,
     };
 
@@ -833,14 +903,16 @@ export async function incrementalUpload(config: WebDAVConfig, options?: WebDAVSy
     const promptsCount = fullBackup.prompts.length;
     const versionsCount = fullBackup.versions?.length || 0;
     const totalImages = Object.keys(newImageManifest).length;
+    const totalVideos = Object.keys(newVideoManifest).length;
 
     return {
       success: true,
-      message: `Incremental upload completed (${promptsCount} prompts, ${versionsCount} versions, ${imagesUploaded}/${totalImages} images updated, ${skippedCount} files skipped) / 增量上传完成 (${promptsCount} 条 Prompt, ${versionsCount} 个版本, ${imagesUploaded}/${totalImages} 张图片更新, ${skippedCount} 个文件跳过)`,
+      message: `Incremental upload completed (${promptsCount} prompts, ${versionsCount} versions, ${imagesUploaded}/${totalImages} images updated, ${videosUploaded}/${totalVideos} videos updated, ${skippedCount} files skipped) / 增量上传完成 (${promptsCount} 条 Prompt, ${versionsCount} 个版本, ${imagesUploaded}/${totalImages} 张图片更新, ${videosUploaded}/${totalVideos} 个视频更新, ${skippedCount} 个文件跳过)`,
       timestamp: new Date().toISOString(),
       details: {
         promptsUploaded: promptsCount,
         imagesUploaded,
+        videosUploaded,
         skipped: skippedCount,
       },
     };
@@ -964,6 +1036,23 @@ export async function incrementalDownload(config: WebDAVConfig, options?: WebDAV
       }
     }
 
+    // Download videos
+    // 下载视频
+    let videosDownloaded = 0;
+    const videosDirUrl = `${backupDirUrl}/${VIDEOS_DIR}`;
+    if (manifest.videos && Object.keys(manifest.videos).length > 0) {
+      for (const [fileName] of Object.entries(manifest.videos)) {
+        const videoUrl = `${videosDirUrl}/${encodeURIComponent(fileName)}.base64`;
+        const videoResult = await downloadFile(videoUrl, config);
+        if (videoResult.success && videoResult.data) {
+          const success = await window.electron?.saveVideoBase64?.(fileName, videoResult.data);
+          if (success) {
+            videosDownloaded++;
+          }
+        }
+      }
+    }
+
     // Restore AI config and settings
     // 恢复 AI 配置和设置
     if (coreData.aiConfig) {
@@ -975,11 +1064,12 @@ export async function incrementalDownload(config: WebDAVConfig, options?: WebDAV
 
     return {
       success: true,
-      message: `Incremental download completed (${coreData.prompts?.length || 0} prompts, ${imagesDownloaded} images) / 增量下载完成 (${coreData.prompts?.length || 0} 条 Prompt, ${imagesDownloaded} 张图片)`,
+      message: `Incremental download completed (${coreData.prompts?.length || 0} prompts, ${imagesDownloaded} images, ${videosDownloaded} videos) / 增量下载完成 (${coreData.prompts?.length || 0} 条 Prompt, ${imagesDownloaded} 张图片, ${videosDownloaded} 个视频)`,
       timestamp: coreData.exportedAt,
       details: {
         promptsDownloaded: coreData.prompts?.length || 0,
         imagesDownloaded,
+        videosDownloaded,
       },
     };
   } catch (error) {
@@ -1074,6 +1164,8 @@ export async function downloadFromWebDAV(config: WebDAVConfig, options?: WebDAVS
       images = data.images;
     }
 
+    const videos = parsed.videos || data?.videos;
+
     // Restore data (convert to DatabaseBackup format)
     // 恢复数据 - 转换为 DatabaseBackup 格式
     await restoreFromBackup({
@@ -1082,6 +1174,7 @@ export async function downloadFromWebDAV(config: WebDAVConfig, options?: WebDAVS
       prompts: data.prompts,
       folders: data.folders,
       versions: data.versions || [],
+      videos: videos || {},
     });
 
     // Restore images (using the correct image data source)
@@ -1105,7 +1198,7 @@ export async function downloadFromWebDAV(config: WebDAVConfig, options?: WebDAVS
 
     return {
       success: true,
-      message: `Download successful (${data.prompts?.length || 0} prompts, ${imagesRestored} images${data.aiConfig ? ', AI config synced' : ''}${data.settings ? ', settings synced' : ''}) / 下载成功 (${data.prompts?.length || 0} 条 Prompt, ${imagesRestored} 张图片${data.aiConfig ? ', AI配置已同步' : ''}${data.settings ? ', 设置已同步' : ''})`,
+      message: `Download successful (${data.prompts?.length || 0} prompts, ${imagesRestored} images, ${Object.keys(videos || {}).length} videos${data.aiConfig ? ', AI config synced' : ''}${data.settings ? ', settings synced' : ''}) / 下载成功 (${data.prompts?.length || 0} 条 Prompt, ${imagesRestored} 张图片, ${Object.keys(videos || {}).length} 个视频${data.aiConfig ? ', AI配置已同步' : ''}${data.settings ? ', 设置已同步' : ''})`,
       timestamp: data.exportedAt,
       details: {
         promptsDownloaded: data.prompts?.length || 0,

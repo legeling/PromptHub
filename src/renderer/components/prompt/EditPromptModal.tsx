@@ -1,7 +1,8 @@
+
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Modal, Button, Input, Textarea, UnsavedChangesDialog } from '../ui';
 import { Select } from '../ui/Select';
-import { HashIcon, XIcon, ImageIcon, Maximize2Icon, Minimize2Icon, PlusIcon, GlobeIcon, SparklesIcon, Loader2Icon, PlayIcon, VideoIcon } from 'lucide-react';
+import { HashIcon, XIcon, ImageIcon, Maximize2Icon, Minimize2Icon, PlusIcon, GlobeIcon, SparklesIcon, Loader2Icon, PlayIcon, VideoIcon, ChevronDownIcon, ChevronRightIcon, SaveIcon } from 'lucide-react';
 import { usePromptStore } from '../../stores/prompt.store';
 import { useFolderStore } from '../../stores/folder.store';
 import { useSettingsStore } from '../../stores/settings.store';
@@ -51,7 +52,13 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
   const [isDownloadingImage, setIsDownloadingImage] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
   const [source, setSource] = useState('');
+  const [notes, setNotes] = useState('');
   const [showSourceSuggestions, setShowSourceSuggestions] = useState(false);
+  // 属性面板折叠状态
+  const [showAttributes, setShowAttributes] = useState(false);
+  // 真正的全屏编辑状态
+  const [activeFullscreenField, setActiveFullscreenField] = useState<'system' | 'systemEn' | 'user' | 'userEn' | null>(null);
+  const [isNativeFullscreen, setIsNativeFullscreen] = useState(false);
 
   const settings = useSettingsStore();
   const sourceHistory = settings.sourceHistory;
@@ -59,7 +66,6 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
   const defaultModel = settings.aiModels.find(m => m.isDefault);
   const canTranslate = !!defaultModel;
 
-// Check for unsaved changes
   // 检查是否有未保存的更改
   const hasUnsavedChanges = useCallback(() => {
     if (!prompt) return false;
@@ -74,11 +80,11 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
       JSON.stringify(images) !== JSON.stringify(prompt.images || []) ||
       JSON.stringify(videos) !== JSON.stringify(prompt.videos || []) ||
       folderId !== prompt.folderId ||
-      source !== (prompt.source || '')
+      source !== (prompt.source || '') ||
+      notes !== (prompt.notes || '')
     );
-  }, [prompt, title, description, systemPrompt, systemPromptEn, userPrompt, userPromptEn, tags, images, videos, folderId, source]);
+  }, [prompt, title, description, systemPrompt, systemPromptEn, userPrompt, userPromptEn, tags, images, videos, folderId, source, notes]);
 
-// Handle close request
   // 处理关闭请求
   const handleCloseRequest = useCallback(() => {
     if (hasUnsavedChanges()) {
@@ -88,14 +94,12 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
     }
   }, [hasUnsavedChanges, onClose]);
 
-// Handle save and close
   // 处理保存并关闭
   const handleSaveAndClose = async () => {
     await handleSubmit();
     setShowUnsavedDialog(false);
   };
 
-// Handle discard changes
   // 处理放弃更改
   const handleDiscardChanges = () => {
     setShowUnsavedDialog(false);
@@ -154,6 +158,7 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
       setVideos(prompt.videos || []);
       setFolderId(prompt.folderId);
       setSource(prompt.source || '');
+      setNotes(prompt.notes || '');
       // 如果已有英文版本，自动展开
       setShowEnglishVersion(!!(prompt.systemPromptEn || prompt.userPromptEn));
     }
@@ -175,6 +180,7 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
         videos,
         folderId,
         source: source.trim() || undefined,
+        notes: notes.trim() || undefined,
       });
       // 保存来源到历史 / Save source to history
       if (source.trim()) {
@@ -385,10 +391,97 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
         e.preventDefault();
         setIsFullscreen(prev => !prev);
       }
+      // Exit native fullscreen with Escape
+      if (e.key === 'Escape' && isNativeFullscreen) {
+        handleExitNativeFullscreen();
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, handleSubmit]);
+  }, [isOpen, handleSubmit, isNativeFullscreen]);
+
+  // 进入真正的全屏模式
+  const handleEnterNativeFullscreen = (field: 'system' | 'systemEn' | 'user' | 'userEn') => {
+    setActiveFullscreenField(field);
+    setIsNativeFullscreen(true);
+    window.electron?.enterFullscreen?.();
+  };
+
+  // 退出真正的全屏模式
+  const handleExitNativeFullscreen = () => {
+    setActiveFullscreenField(null);
+    setIsNativeFullscreen(false);
+    window.electron?.exitFullscreen?.();
+  };
+
+  // 获取当前全屏字段的值
+  const getFullscreenFieldValue = () => {
+    switch (activeFullscreenField) {
+      case 'system': return systemPrompt;
+      case 'systemEn': return systemPromptEn;
+      case 'user': return userPrompt;
+      case 'userEn': return userPromptEn;
+      default: return '';
+    }
+  };
+
+  // 设置当前全屏字段的值
+  const setFullscreenFieldValue = (val: string) => {
+    switch (activeFullscreenField) {
+      case 'system': setSystemPrompt(val); break;
+      case 'systemEn': setSystemPromptEn(val); break;
+      case 'user': setUserPrompt(val); break;
+      case 'userEn': setUserPromptEn(val); break;
+    }
+  };
+
+  // 获取全屏字段的标题
+  const getFullscreenFieldTitle = () => {
+    switch (activeFullscreenField) {
+      case 'system': return t('prompt.systemPromptOptional');
+      case 'systemEn': return `${t('prompt.systemPromptOptional')} (EN)`;
+      case 'user': return t('prompt.userPromptLabel');
+      case 'userEn': return `${t('prompt.userPromptLabel')} (EN)`;
+      default: return '';
+    }
+  };
+
+  // 如果是真正的全屏模式，渲染全屏编辑器
+  if (isNativeFullscreen && activeFullscreenField) {
+    return (
+      <div className="fixed inset-0 z-[9999] bg-background flex flex-col">
+        {/* 全屏编辑器头部 */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/30 shrink-0">
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold">{getFullscreenFieldTitle()}</h2>
+            <span className="text-sm text-muted-foreground">Markdown Supported</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleExitNativeFullscreen}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-muted text-sm font-medium transition-colors"
+            >
+              <Minimize2Icon className="w-4 h-4" />
+              {t('common.exitFullscreen', '退出全屏')}
+            </button>
+            <Button variant="primary" onClick={handleExitNativeFullscreen}>
+              {t('common.done', '完成')}
+            </Button>
+          </div>
+        </div>
+        {/* 全屏编辑区域 */}
+        <div className="flex-1 overflow-hidden">
+          <textarea
+            className="w-full h-full p-8 resize-none bg-background border-none outline-none text-lg font-mono leading-relaxed"
+            value={getFullscreenFieldValue()}
+            onChange={(e) => setFullscreenFieldValue(e.target.value)}
+            autoFocus
+            placeholder="Type your prompt here..."
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Modal
@@ -411,6 +504,7 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
             onClick={handleSubmit}
             disabled={!title.trim() || !userPrompt.trim()}
           >
+            <SaveIcon className="w-4 h-4 mr-2" />
             {t('prompt.save')}
           </Button>
         </>
@@ -418,271 +512,286 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
     >
       <div className="space-y-5">
         {/* 标题 */}
-        <Input
-          label={t('prompt.titleLabel')}
-          placeholder={t('prompt.titlePlaceholder')}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-
-        {/* 描述 */}
-        <Input
-          label={t('prompt.descriptionOptional')}
-          placeholder={t('prompt.descriptionPlaceholder')}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-
-        {/* 来源 / Source */}
-        <div className="space-y-1.5 relative">
-          <label className="block text-sm font-medium text-foreground">
-            {t('prompt.sourceOptional') || '来源（可选）'}
-          </label>
-          <div className="relative">
-            <input
-              type="text"
-              placeholder={t('prompt.sourcePlaceholder') || '记录 Prompt 的来源，如网站链接、书籍等'}
-              value={source}
-              onChange={(e) => setSource(e.target.value)}
-              onFocus={() => setShowSourceSuggestions(true)}
-              onBlur={() => setTimeout(() => setShowSourceSuggestions(false), 150)}
-              className="w-full h-10 px-4 rounded-xl bg-muted/50 border-0 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:bg-background transition-all duration-200"
-            />
-            {showSourceSuggestions && sourceHistory.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto">
-                {sourceHistory
-                  .filter(s => s.toLowerCase().includes(source.toLowerCase()))
-                  .slice(0, 8)
-                  .map((item, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      className="w-full px-3 py-2 text-sm text-left hover:bg-accent/50 transition-colors truncate"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        setSource(item);
-                        setShowSourceSuggestions(false);
-                      }}
-                    >
-                      {item}
-                    </button>
-                  ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* 图片/视频管理 Media Management */}
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-foreground">{t('prompt.referenceMedia', '参考媒体')}</label>
-          <div className="flex flex-wrap gap-3">
-            {/* 图片预览 Image previews */}
-            {images.map((img, index) => (
-              <div key={`img-${index}`} className="relative group w-24 h-24 rounded-lg overflow-hidden border border-border">
-                <img
-                  src={`local-image://${img}`}
-                  alt={`preview-${index}`}
-                  className="w-full h-full object-cover"
-                />
-                <button
-                  onClick={() => handleRemoveImage(index)}
-                  className="absolute top-1 right-1 p-1 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <XIcon className="w-3 h-3" />
-                </button>
-              </div>
-            ))}
-            {/* 视频预览 Video previews */}
-            {videos.map((video, index) => (
-              <div key={`vid-${index}`} className="relative group w-24 h-24 rounded-lg overflow-hidden border border-border bg-muted">
-                <video
-                  src={`local-video://${video}`}
-                  className="w-full h-full object-cover"
-                  muted
-                  preload="metadata"
-                />
-                {/* Play icon overlay */}
-                <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none">
-                  <div className="w-8 h-8 rounded-full bg-white/80 flex items-center justify-center">
-                    <PlayIcon className="w-4 h-4 text-primary fill-current ml-0.5" />
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleRemoveVideo(index)}
-                  className="absolute top-1 right-1 p-1 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <XIcon className="w-3 h-3" />
-                </button>
-              </div>
-            ))}
-            {/* 上传按钮 Upload buttons */}
-            <button
-              onClick={handleSelectImage}
-              className="w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 flex flex-col items-center justify-center text-muted-foreground hover:text-primary transition-colors text-center p-2"
-            >
-              <ImageIcon className="w-6 h-6 mb-1" />
-              <span className="text-[10px] leading-tight">{t('prompt.uploadImage', '上传图片')}</span>
-            </button>
-            <button
-              onClick={handleSelectVideo}
-              className="w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 flex flex-col items-center justify-center text-muted-foreground hover:text-primary transition-colors text-center p-2"
-            >
-              <VideoIcon className="w-6 h-6 mb-1" />
-              <span className="text-[10px] leading-tight">{t('prompt.uploadVideo', '上传视频')}</span>
-            </button>
-          </div>
-          <div className="text-xs text-muted-foreground flex flex-wrap gap-2 mt-1">
-            <button
-              className="hover:text-primary underline"
-              onClick={() => setShowUrlInput(true)}
-            >
-              {t('prompt.addImageByUrl', '通过链接添加')}
-            </button>
-            <span>|</span>
-            <span>{t('prompt.mediaHint', '支持图片(PNG/JPG/GIF)和视频(MP4/WebM)')}</span>
-          </div>
-          {showUrlInput && (
-            <div className="flex gap-2 mt-2">
-              <input
-                type="text"
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                placeholder={t('prompt.enterImageUrl', '请输入图片链接 / Enter image URL')}
-                className="flex-1 h-8 px-3 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && imageUrl) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleUrlUpload(imageUrl);
-                    setImageUrl('');
-                    setShowUrlInput(false);
-                  } else if (e.key === 'Escape') {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setShowUrlInput(false);
-                    setImageUrl('');
-                  }
-                }}
-              />
-              <button
-                onClick={() => {
-                  if (imageUrl && !isDownloadingImage) {
-                    handleUrlUpload(imageUrl);
-                    setImageUrl('');
-                    setShowUrlInput(false);
-                  }
-                }}
-                disabled={isDownloadingImage || !imageUrl}
-                className="h-8 px-3 rounded-lg bg-primary text-white text-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
-              >
-                {isDownloadingImage ? (
-                  <>
-                    <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                    {t('common.loading', '加载中...')}
-                  </>
-                ) : (
-                  t('common.confirm', '确定')
-                )}
-              </button>
-              <button
-                onClick={() => {
-                  if (!isDownloadingImage) {
-                    setShowUrlInput(false);
-                    setImageUrl('');
-                  }
-                }}
-                disabled={isDownloadingImage}
-                className="h-8 px-3 rounded-lg bg-muted text-sm hover:bg-muted/80 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {t('common.cancel', '取消')}
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* 文件夹 */}
         <div className="space-y-1.5">
-          <label className="block text-sm font-medium text-foreground">
-            {t('prompt.folderOptional')}
-          </label>
-          <Select
-            value={folderId || ''}
-            onChange={(val) => setFolderId(val || undefined)}
-            placeholder={t('prompt.noFolder')}
-            options={[
-              { value: '', label: t('prompt.noFolder') },
-              ...folders.map((folder) => ({
-                value: folder.id,
-                label: (
-                  <div className="flex items-center gap-2">
-                    <span className="shrink-0 flex items-center justify-center w-4 h-4 text-muted-foreground">
-                      {renderFolderIcon(folder.icon)}
-                    </span>
-                    <span className="truncate">{folder.name}</span>
-                  </div>
-                ),
-              })),
-            ]}
+          <label className="block text-sm font-medium text-foreground">{t('prompt.titleLabel')}</label>
+          <input
+            type="text"
+            placeholder={t('prompt.titlePlaceholder')}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="w-full h-12 px-4 rounded-xl bg-muted/50 border-0 text-xl font-semibold placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:bg-background transition-all duration-200"
           />
         </div>
 
-        {/* 标签 */}
-        <div className="space-y-1.5">
-          <label className="block text-sm font-medium text-foreground">
-            {t('prompt.tagsOptional')}
-          </label>
-          {/* 已选标签 */}
-          <div className="flex flex-wrap gap-2 mb-2">
-            {tags.map((tag) => (
-              <span
-                key={tag}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-primary text-white"
-              >
-                <HashIcon className="w-3 h-3" />
-                {tag}
-                <button
-                  onClick={() => handleRemoveTag(tag)}
-                  className="ml-1 hover:text-white/70"
-                >
-                  <XIcon className="w-3 h-3" />
-                </button>
+        {/* 可折叠的属性面板 */}
+        <div className="border border-border/50 rounded-xl bg-muted/20 overflow-hidden">
+          <button 
+            onClick={() => setShowAttributes(!showAttributes)}
+            className="flex items-center gap-2 px-4 py-3 w-full text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
+          >
+            {showAttributes ? <ChevronDownIcon className="w-4 h-4 text-muted-foreground" /> : <ChevronRightIcon className="w-4 h-4 text-muted-foreground" />}
+            <span>{t('prompt.properties', '属性 (Properties)')}</span>
+            {!showAttributes && (
+              <span className="text-xs text-muted-foreground ml-2 font-normal truncate max-w-[400px]">
+                {[
+                  folders.find(f => f.id === folderId)?.name, 
+                  tags.length > 0 ? `${tags.length} ${t('prompt.tags', 'tags')}` : null,
+                  images.length + videos.length > 0 ? `${images.length + videos.length} ${t('prompt.media', 'media')}` : null
+                ].filter(Boolean).join(' • ')}
               </span>
-            ))}
-          </div>
-          {/* 已有标签选择 */}
-          {existingTags.length > 0 && (
-            <div className="mb-2">
-              <div className="text-xs text-muted-foreground mb-1.5">{t('prompt.selectExistingTags')}</div>
-              <div className="flex flex-wrap gap-1.5">
-                {existingTags.filter(t => !tags.includes(t)).map((tag) => (
+            )}
+          </button>
+
+          {showAttributes && (
+            <div className="px-4 pb-4 space-y-4 animate-in fade-in slide-in-from-top-1">
+              {/* 描述 */}
+              <Input
+                label={t('prompt.descriptionOptional')}
+                placeholder={t('prompt.descriptionPlaceholder')}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+
+              {/* 来源 / Source */}
+              <div className="space-y-1.5 relative">
+                <label className="block text-sm font-medium text-foreground">
+                  {t('prompt.sourceOptional') || '来源（可选）'}
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder={t('prompt.sourcePlaceholder') || '记录 Prompt 的来源，如网站链接、书籍等'}
+                    value={source}
+                    onChange={(e) => setSource(e.target.value)}
+                    onFocus={() => setShowSourceSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowSourceSuggestions(false), 150)}
+                    className="w-full h-10 px-4 rounded-xl bg-muted/50 border-0 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:bg-background transition-all duration-200"
+                  />
+                  {showSourceSuggestions && sourceHistory.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto">
+                      {sourceHistory
+                        .filter(s => s.toLowerCase().includes(source.toLowerCase()))
+                        .slice(0, 8)
+                        .map((item, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            className="w-full px-3 py-2 text-sm text-left hover:bg-accent/50 transition-colors truncate"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              setSource(item);
+                              setShowSourceSuggestions(false);
+                            }}
+                          >
+                            {item}
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 参考媒体 (图片和视频) */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-foreground">{t('prompt.referenceMedia')}</label>
+                <div className="flex flex-wrap gap-3">
+                  {images.map((img, index) => (
+                    <div key={`img-${index}`} className="relative group w-24 h-24 rounded-lg overflow-hidden border border-border">
+                      <img
+                        src={`local-image://${img}`}
+                        alt={`preview-${index}`}
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        onClick={() => handleRemoveImage(index)}
+                        className="absolute top-1 right-1 p-1 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <XIcon className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                  {videos.map((video, index) => (
+                    <div key={`vid-${index}`} className="relative group w-24 h-24 rounded-lg overflow-hidden border border-border bg-black">
+                      <video src={`local-video://${video}`} className="w-full h-full object-cover opacity-70" />
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <PlayIcon className="w-6 h-6 text-white/80" />
+                      </div>
+                      <button
+                        onClick={() => handleRemoveVideo(index)}
+                        className="absolute top-1 right-1 p-1 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <XIcon className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
                   <button
-                    key={tag}
-                    type="button"
-                    onClick={() => setTags([...tags, tag])}
-                    className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-muted hover:bg-accent transition-colors"
+                    onClick={handleSelectImage}
+                    className="w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 flex flex-col items-center justify-center text-muted-foreground hover:text-primary transition-colors text-center p-2"
                   >
-                    <HashIcon className="w-3 h-3" />
-                    {tag}
+                    <ImageIcon className="w-6 h-6 mb-1" />
+                    <span className="text-[10px] leading-tight">{t('prompt.uploadImage', '上传/粘贴/链接')}</span>
                   </button>
-                ))}
+                  <button
+                    onClick={handleSelectVideo}
+                    className="w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 flex flex-col items-center justify-center text-muted-foreground hover:text-primary transition-colors text-center p-2"
+                  >
+                    <VideoIcon className="w-6 h-6 mb-1" />
+                    <span className="text-[10px] leading-tight">{t('prompt.uploadVideo', '上传视频')}</span>
+                  </button>
+                </div>
+                {/* 通过链接添加 */}
+                {!showUrlInput ? (
+                  <button
+                    onClick={() => setShowUrlInput(true)}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    {t('prompt.addImageByUrl', '通过链接添加')}
+                  </button>
+                ) : (
+                  <div className="flex gap-2 mt-2">
+                    <input
+                      type="text"
+                      placeholder="https://example.com/image.jpg"
+                      value={imageUrl}
+                      onChange={(e) => setImageUrl(e.target.value)}
+                      className="flex-1 h-8 px-3 rounded-lg bg-muted/50 border-0 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && imageUrl && !isDownloadingImage) {
+                          handleUrlUpload(imageUrl);
+                          setImageUrl('');
+                          setShowUrlInput(false);
+                        }
+                        if (e.key === 'Escape') {
+                          setShowUrlInput(false);
+                          setImageUrl('');
+                        }
+                      }}
+                    />
+                    <button
+                      onClick={() => {
+                        if (imageUrl && !isDownloadingImage) {
+                          handleUrlUpload(imageUrl);
+                          setImageUrl('');
+                          setShowUrlInput(false);
+                        }
+                      }}
+                      disabled={isDownloadingImage || !imageUrl}
+                      className="h-8 px-3 rounded-lg bg-primary text-white text-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isDownloadingImage ? t('common.loading', '加载中...') : t('common.confirm', '确定')}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowUrlInput(false);
+                        setImageUrl('');
+                      }}
+                      disabled={isDownloadingImage}
+                      className="h-8 px-3 rounded-lg bg-muted text-sm hover:bg-muted/80 disabled:opacity-50"
+                    >
+                      {t('common.cancel', '取消')}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* 文件夹 */}
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-foreground">
+                  {t('prompt.folderOptional')}
+                </label>
+                <Select
+                  value={folderId || ''}
+                  onChange={(val) => setFolderId(val || undefined)}
+                  placeholder={t('prompt.noFolder')}
+                  options={[
+                    { value: '', label: t('prompt.noFolder') },
+                    ...folders.map((folder) => ({
+                      value: folder.id,
+                      label: (
+                        <div className="flex items-center gap-2">
+                          <span className="shrink-0 flex items-center justify-center w-4 h-4 text-muted-foreground">
+                            {renderFolderIcon(folder.icon)}
+                          </span>
+                          <span className="truncate">{folder.name}</span>
+                        </div>
+                      ),
+                    })),
+                  ]}
+                />
+              </div>
+
+              {/* 标签 */}
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-foreground">
+                  {t('prompt.tagsOptional')}
+                </label>
+                {/* 已选标签 */}
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-primary text-white"
+                    >
+                      <HashIcon className="w-3 h-3" />
+                      {tag}
+                      <button
+                        onClick={() => handleRemoveTag(tag)}
+                        className="ml-1 hover:text-white/70"
+                      >
+                        <XIcon className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                {/* 已有标签选择 */}
+                {existingTags.length > 0 && (
+                  <div className="mb-2">
+                    <div className="text-xs text-muted-foreground mb-1.5">{t('prompt.selectExistingTags')}</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {existingTags.filter(t => !tags.includes(t)).map((tag) => (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => setTags([...tags, tag])}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-muted hover:bg-accent transition-colors"
+                        >
+                          <HashIcon className="w-3 h-3" />
+                          {tag}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {/* 新建标签 */}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder={t('prompt.enterTagHint')}
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={handleTagKeyDown}
+                    className="flex-1 h-10 px-4 rounded-xl bg-muted/50 border-0 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:bg-background transition-all duration-200"
+                  />
+                  <Button variant="secondary" size="md" onClick={handleAddTag}>
+                    {t('prompt.addTag')}
+                  </Button>
+                </div>
+              </div>
+
+              {/* 备注 / Notes */}
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-foreground">
+                  {t('prompt.notesOptional', '备注（可选）')}
+                </label>
+                <textarea
+                  placeholder={t('prompt.notesPlaceholder', '记录关于这个 Prompt 的个人笔记...')}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="w-full min-h-[80px] px-4 py-3 rounded-xl bg-muted/50 border-0 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:bg-background transition-all duration-200 resize-none"
+                />
               </div>
             </div>
           )}
-          {/* 新建标签 */}
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder={t('prompt.enterTagHint')}
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyDown={handleTagKeyDown}
-              className="flex-1 h-10 px-4 rounded-xl bg-muted/50 border-0 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:bg-background transition-all duration-200"
-            />
-            <Button variant="secondary" size="md" onClick={handleAddTag}>
-              {t('prompt.addTag')}
-            </Button>
-          </div>
         </div>
 
         {/* 英文版本切换 */}
@@ -738,26 +847,35 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <label className="block text-sm font-medium text-foreground">{t('prompt.systemPromptOptional')}</label>
-            <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/50 p-1">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/50 p-1">
+                <button
+                  onClick={() => setSystemTab('edit')}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                    systemTab === 'edit'
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {t('prompt.edit', '编辑')}
+                </button>
+                <button
+                  onClick={() => setSystemTab('preview')}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                    systemTab === 'preview'
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {t('prompt.preview', '预览')}
+                </button>
+              </div>
               <button
-                onClick={() => setSystemTab('edit')}
-                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                  systemTab === 'edit'
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
+                onClick={() => handleEnterNativeFullscreen('system')}
+                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors border border-border"
+                title={t('prompt.fullscreen', '全屏编辑')}
               >
-                {t('prompt.edit', '编辑')}
-              </button>
-              <button
-                onClick={() => setSystemTab('preview')}
-                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                  systemTab === 'preview'
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {t('prompt.preview', '预览')}
+                <Maximize2Icon className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -766,65 +884,81 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
               placeholder={t('prompt.systemPromptPlaceholder')}
               value={systemPrompt}
               onChange={(e) => setSystemPrompt(e.target.value)}
-              className="min-h-[180px]"
+              className="min-h-[120px]"
             />
           ) : (
-            <div className="p-4 rounded-xl bg-card border border-border text-[15px] leading-[1.7] markdown-content break-words space-y-3 min-h-[180px]">
+            <div className="p-4 rounded-xl bg-card border border-border text-sm markdown-content break-words min-h-[120px]">
               {systemPrompt ? (
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  rehypePlugins={rehypePlugins}
-                  components={markdownComponents}
-                >
+                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={rehypePlugins} components={markdownComponents}>
                   {systemPrompt}
                 </ReactMarkdown>
               ) : (
-                <div className="text-muted-foreground text-sm">{t('prompt.noContent', '暂无内容')}</div>
+                <div className="text-muted-foreground text-sm italic">{t('prompt.noContent')}</div>
               )}
+            </div>
+          )}
+          {/* System Prompt English */}
+          {showEnglishVersion && (
+            <div className="mt-2 pl-4 border-l-2 border-primary/20 space-y-2">
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                  <span className="bg-primary/10 text-primary px-1 rounded text-[10px]">EN</span>
+                  {t('prompt.systemPromptEn')}
+                </label>
+                <button
+                  onClick={() => handleEnterNativeFullscreen('systemEn')}
+                  className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  title={t('prompt.fullscreen')}
+                >
+                  <Maximize2Icon className="w-3 h-3" />
+                </button>
+              </div>
+              <Textarea
+                placeholder="Enter English System Prompt..."
+                value={systemPromptEn}
+                onChange={(e) => setSystemPromptEn(e.target.value)}
+                className="min-h-[80px]"
+              />
             </div>
           )}
         </div>
 
-        {/* System Prompt English */}
-        {showEnglishVersion && (
-          <div className="space-y-2 pl-4 border-l-2 border-primary/30">
-            <label className="text-sm font-medium text-foreground flex items-center gap-2">
-              <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary">EN</span>
-              {t('prompt.systemPromptEn')}
-            </label>
-            <Textarea
-              placeholder="Enter English System Prompt..."
-              value={systemPromptEn}
-              onChange={(e) => setSystemPromptEn(e.target.value)}
-              className="min-h-[150px]"
-            />
-          </div>
-        )}
-
         {/* User Prompt */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <label className="block text-sm font-medium text-foreground">{t('prompt.userPromptLabel')}</label>
-            <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/50 p-1">
+            <label className="block text-sm font-medium text-foreground">
+              {t('prompt.userPromptLabel')}
+              <span className="ml-2 text-xs text-destructive">*</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/50 p-1">
+                <button
+                  onClick={() => setUserTab('edit')}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                    userTab === 'edit'
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {t('prompt.edit', '编辑')}
+                </button>
+                <button
+                  onClick={() => setUserTab('preview')}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                    userTab === 'preview'
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {t('prompt.preview', '预览')}
+                </button>
+              </div>
               <button
-                onClick={() => setUserTab('edit')}
-                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                  userTab === 'edit'
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
+                onClick={() => handleEnterNativeFullscreen('user')}
+                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors border border-border"
+                title={t('prompt.fullscreen', '全屏编辑')}
               >
-                {t('prompt.edit', '编辑')}
-              </button>
-              <button
-                onClick={() => setUserTab('preview')}
-                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                  userTab === 'preview'
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {t('prompt.preview', '预览')}
+                <Maximize2Icon className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -833,40 +967,44 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
               placeholder={t('prompt.userPromptPlaceholder')}
               value={userPrompt}
               onChange={(e) => setUserPrompt(e.target.value)}
-              className="min-h-[260px]"
+              className="min-h-[200px]"
             />
           ) : (
-            <div className="p-4 rounded-xl bg-card border border-border text-[15px] leading-[1.7] markdown-content break-words space-y-3 min-h-[260px]">
+            <div className="p-4 rounded-xl bg-card border border-border text-sm markdown-content break-words min-h-[200px]">
               {userPrompt ? (
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  rehypePlugins={rehypePlugins}
-                  components={markdownComponents}
-                >
+                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={rehypePlugins} components={markdownComponents}>
                   {userPrompt}
                 </ReactMarkdown>
               ) : (
-                <div className="text-muted-foreground text-sm">{t('prompt.noContent', '暂无内容')}</div>
+                <div className="text-muted-foreground text-sm italic">{t('prompt.noContent')}</div>
               )}
             </div>
           )}
+          {/* User Prompt English */}
+          {showEnglishVersion && (
+            <div className="mt-2 pl-4 border-l-2 border-primary/20 space-y-2">
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                  <span className="bg-primary/10 text-primary px-1 rounded text-[10px]">EN</span>
+                  {t('prompt.userPromptEn')}
+                </label>
+                <button
+                  onClick={() => handleEnterNativeFullscreen('userEn')}
+                  className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  title={t('prompt.fullscreen')}
+                >
+                  <Maximize2Icon className="w-3 h-3" />
+                </button>
+              </div>
+              <Textarea
+                placeholder="Enter English User Prompt..."
+                value={userPromptEn}
+                onChange={(e) => setUserPromptEn(e.target.value)}
+                className="min-h-[120px]"
+              />
+            </div>
+          )}
         </div>
-
-        {/* User Prompt English */}
-        {showEnglishVersion && (
-          <div className="space-y-2 pl-4 border-l-2 border-primary/30">
-            <label className="text-sm font-medium text-foreground flex items-center gap-2">
-              <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary">EN</span>
-              {t('prompt.userPromptEn')}
-            </label>
-            <Textarea
-              placeholder="Enter English User Prompt..."
-              value={userPromptEn}
-              onChange={(e) => setUserPromptEn(e.target.value)}
-              className="min-h-[200px]"
-            />
-          </div>
-        )}
       </div>
 
       {/* 未保存更改提示弹窗 */}

@@ -674,6 +674,7 @@ export interface DatabaseBackup {
   folders: Folder[];
   versions: PromptVersion[];
   images?: { [fileName: string]: string }; // fileName -> base64
+  videos?: { [fileName: string]: string }; // fileName -> base64
   // System settings snapshot (optional, for cross-device consistency)
   // 系统设置快照（可选，用于跨设备一致）
   aiConfig?: {
@@ -735,6 +736,40 @@ async function collectImages(prompts: Prompt[]): Promise<{ [fileName: string]: s
   }
 
   return images;
+}
+
+/**
+ * 收集所有需要备份的视频
+ * Collect all videos that need to be backed up
+ */
+async function collectVideos(prompts: Prompt[]): Promise<{ [fileName: string]: string }> {
+  const videos: { [fileName: string]: string } = {};
+  const videoFileNames = new Set<string>();
+
+  // 收集所有 prompt 中引用的视频
+  // Collect all videos referenced in prompts
+  for (const prompt of prompts) {
+    if (prompt.videos && Array.isArray(prompt.videos)) {
+      for (const video of prompt.videos) {
+        videoFileNames.add(video);
+      }
+    }
+  }
+
+  // 读取视频为 Base64
+  // Read videos as Base64
+  for (const fileName of videoFileNames) {
+    try {
+      const base64 = await window.electron?.readVideoBase64?.(fileName);
+      if (base64) {
+        videos[fileName] = base64;
+      }
+    } catch (error) {
+      console.warn(`Failed to read video ${fileName}:`, error);
+    }
+  }
+
+  return videos;
 }
 
 /**
@@ -869,7 +904,7 @@ async function gunzipToText(blob: Blob): Promise<string> {
  * 导出数据库为 JSON（包含图片和 AI 配置）
  * Export database as JSON (including images and AI configuration)
  */
-export async function exportDatabase(): Promise<DatabaseBackup> {
+export async function exportDatabase(options?: { skipVideoContent?: boolean }): Promise<DatabaseBackup> {
   const [prompts, folders] = await Promise.all([
     getAllPrompts(),
     getAllFolders(),
@@ -890,6 +925,10 @@ export async function exportDatabase(): Promise<DatabaseBackup> {
   // Collect images
   const images = await collectImages(prompts);
 
+  // 收集视频
+  // Collect videos
+  const videos = options?.skipVideoContent ? undefined : await collectVideos(prompts);
+
   // 获取 AI 配置
   // Get AI configuration
   const aiConfig = getAiConfig();
@@ -904,6 +943,7 @@ export async function exportDatabase(): Promise<DatabaseBackup> {
     folders,
     versions,
     images,
+    videos,
     aiConfig,
     settings: settingsSnapshot ? { state: settingsSnapshot.state } : undefined,
     settingsUpdatedAt: settingsSnapshot?.settingsUpdatedAt,
@@ -964,6 +1004,21 @@ export async function importDatabase(backup: DatabaseBackup): Promise<void> {
     console.log(`Restored ${imagesRestored} images`);
   }
 
+  // 恢复视频
+  // Restore videos
+  if (backup.videos) {
+    let videosRestored = 0;
+    for (const [fileName, base64] of Object.entries(backup.videos)) {
+      try {
+        await window.electron?.saveVideoBase64?.(fileName, base64);
+        videosRestored++;
+      } catch (error) {
+        console.warn(`Failed to restore video ${fileName}:`, error);
+      }
+    }
+    console.log(`Restored ${videosRestored} videos`);
+  }
+
   // 恢复 AI 配置
   // Restore AI configuration
   if (backup.aiConfig) {
@@ -1014,6 +1069,15 @@ export async function clearDatabase(): Promise<void> {
     console.log('Images cleared');
   } catch (error) {
     console.warn('Failed to clear images:', error);
+  }
+
+  // 清除视频文件
+  // Clear video files
+  try {
+    await window.electron?.clearVideos?.();
+    console.log('Videos cleared');
+  } catch (error) {
+    console.warn('Failed to clear videos:', error);
   }
 }
 

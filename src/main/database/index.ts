@@ -89,6 +89,19 @@ export function initDatabase(): Database.Database {
     console.error('Migration (source) failed:', error);
   }
 
+  // Migration: check if prompts table has notes column
+  // 迁移：检查 prompts 表是否有 notes 字段
+  try {
+    const tableInfo = db.pragma('table_info(prompts)') as any[];
+    const hasNotes = tableInfo.some(col => col.name === 'notes');
+    if (!hasNotes) {
+      console.log('Migrating: Adding notes column to prompts table');
+      db.prepare('ALTER TABLE prompts ADD COLUMN notes TEXT').run();
+    }
+  } catch (error) {
+    console.error('Migration (notes) failed:', error);
+  }
+
   console.log(`Database initialized at: ${dbPath}`);
   return db;
 }

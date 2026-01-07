@@ -98,6 +98,11 @@ contextBridge.exposeInMainWorld('electron', {
   minimize: () => ipcRenderer.send('window:minimize'),
   maximize: () => ipcRenderer.send('window:maximize'),
   close: () => ipcRenderer.send('window:close'),
+  // Fullscreen control
+  // 全屏控制
+  enterFullscreen: () => ipcRenderer.send('window:enterFullscreen'),
+  exitFullscreen: () => ipcRenderer.send('window:exitFullscreen'),
+  isFullscreen: () => ipcRenderer.invoke('window:isFullscreen'),
   setAutoLaunch: (enabled: boolean) => ipcRenderer.send('app:setAutoLaunch', enabled),
   setMinimizeToTray: (enabled: boolean) => ipcRenderer.send('app:setMinimizeToTray', enabled),
   setCloseAction: (action: 'ask' | 'minimize' | 'exit') => ipcRenderer.send('app:setCloseAction', action),
@@ -201,6 +206,7 @@ contextBridge.exposeInMainWorld('electron', {
   saveVideoBase64: (fileName: string, base64: string) => ipcRenderer.invoke('video:saveBase64', fileName, base64),
   videoExists: (fileName: string) => ipcRenderer.invoke('video:exists', fileName),
   getVideoPath: (fileName: string) => ipcRenderer.invoke('video:getPath', fileName),
+  clearVideos: () => ipcRenderer.invoke('video:clear'),
 });
 
 // Type declarations
@@ -214,6 +220,11 @@ declare global {
       minimize?: () => void;
       maximize?: () => void;
       close?: () => void;
+      // Fullscreen control
+      // 全屏控制
+      enterFullscreen?: () => void;
+      exitFullscreen?: () => void;
+      isFullscreen?: () => Promise<boolean>;
       setAutoLaunch?: (enabled: boolean) => void;
       setMinimizeToTray?: (enabled: boolean) => void;
       setCloseAction?: (action: 'ask' | 'minimize' | 'exit') => void;
@@ -277,6 +288,7 @@ declare global {
       saveVideoBase64?: (fileName: string, base64: string) => Promise<boolean>;
       videoExists?: (fileName: string) => Promise<boolean>;
       getVideoPath?: (fileName: string) => Promise<string>;
+      clearVideos?: () => Promise<boolean>;
     };
   }
 }

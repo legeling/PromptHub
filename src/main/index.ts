@@ -207,6 +207,20 @@ ipcMain.on('window:close', () => {
   mainWindow?.close();
 });
 
+// Fullscreen control
+// 全屏控制
+ipcMain.on('window:enterFullscreen', () => {
+  mainWindow?.setFullScreen(true);
+});
+
+ipcMain.on('window:exitFullscreen', () => {
+  mainWindow?.setFullScreen(false);
+});
+
+ipcMain.handle('window:isFullscreen', () => {
+  return mainWindow?.isFullScreen() ?? false;
+});
+
 // Configure auto launch on login
 // 设置开机自启动
 ipcMain.on('app:setAutoLaunch', (_event, enabled: boolean) => {
