@@ -141,6 +141,11 @@ jobs:
       contents: write
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -160,8 +165,8 @@ jobs:
         shell: bash
         run: |
           # Delete the existing release to avoid asset deletion conflicts
-          # 删除现有的 release 以避免资产删除冲突
-          gh release delete "${GITHUB_REF_NAME}" --yes --cleanup-tag || true
+          # Do NOT use --cleanup-tag, keep the tag for release action
+          gh release delete "${GITHUB_REF_NAME}" --yes || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
