@@ -161,52 +161,72 @@ jobs:
           echo "=== Artifact structure ==="
           find artifacts -type f -name "*.yml" -o -name "*.exe" -o -name "*.dmg" | head -50
 
-      - name: Delete existing release if exists
+      - name: Create Release with gh CLI
         shell: bash
         run: |
-          # Delete the existing release to avoid asset deletion conflicts
-          # Do NOT use --cleanup-tag, keep the tag for release action
-          gh release delete "${GITHUB_REF_NAME}" --yes || true
+          # 1. Prepare Release Notes
+          cat > release_notes.md <<EOF
+          ## 📦 下载安装
+
+          | 平台 | 下载 |
+          |------|------|
+          | Windows | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-${VERSION}-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-${VERSION}-arm64.exe) |
+          | macOS | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-${VERSION}-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-${VERSION}-x64.dmg) |
+          | Linux | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-${VERSION}-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_${VERSION}_amd64.deb) |
+
+          ### ⚠️ macOS 首次启动
+          如果提示"无法打开"或"已损坏"，请在终端执行：
+          \`\`\`bash
+          sudo xattr -rd com.apple.quarantine /Applications/PromptHub.app
+          \`\`\`
+
+          ---
+
+          ## 🔄 本次更新
+
+          详细更新日志请查看 [更新日志](https://github.com/legeling/PromptHub#-更新日志)
+          EOF
+
+          # 2. Collect Assets
+          echo "Collecting assets..."
+          # Use find to strictly select the files we want to upload, avoiding directories
+          FILES=$(find artifacts -type f \( \
+            -name "PromptHub-*-x64.dmg" -o \
+            -name "PromptHub-*-arm64.dmg" -o \
+            -name "PromptHub-Setup-*-x64.exe" -o \
+            -name "PromptHub-Setup-*-arm64.exe" -o \
+            -name "PromptHub-*-x64.AppImage" -o \
+            -name "prompthub_*_amd64.deb" -o \
+            -name "PromptHub-*.zip" -o \
+            -name "latest*.yml" -o \
+            -name "*.blockmap" \
+          \))
+
+          echo "Files to upload:"
+          echo "$FILES"
+
+          # 3. Clean up existing release
+          echo "Checking for existing release..."
+          gh release delete "${GITHUB_REF_NAME}" --yes --cleanup-tag || true
+          # IMPORTANT: Add delay to allow GitHub API to propagate the deletion
+          echo "Waiting for GitHub API consistency..."
+          sleep 10
+
+          # 4. Re-create Tag (Ensure it exists for the release)
+          # Since we fetched with fetch-depth: 0, we can push the tag again if it was deleted
+          # But --cleanup-tag was used? No, we used --cleanup-tag above to be ensuring clean slate
+          # Now we need to ensure the tag exists.
+          git tag -f "${GITHUB_REF_NAME}"
+          git push origin "${GITHUB_REF_NAME}" --force
+
+          # 5. Create Release and Upload
+          echo "Creating release..."
+          # We use xargs to pass the newlines-separated file list to gh
+          echo "$FILES" | tr '\n' '\0' | xargs -0 gh release create "${GITHUB_REF_NAME}" \
+            --title "PromptHub ${VERSION}" \
+            --notes-file release_notes.md \
+            --draft=false \
+            --prerelease=${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') }} \
+            --generate-notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          fail_on_unmatched_files: false
-          files: |
-            artifacts/**/PromptHub-*-x64.dmg
-            artifacts/**/PromptHub-*-arm64.dmg
-            artifacts/**/PromptHub-Setup-*-x64.exe
-            artifacts/**/PromptHub-Setup-*-arm64.exe
-            artifacts/**/PromptHub-*-x64.AppImage
-            artifacts/**/prompthub_*_amd64.deb
-            artifacts/**/PromptHub-*.zip
-            artifacts/**/latest*.yml
-            artifacts/**/*.blockmap
-          draft: false
-          prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') }}
-
-          generate_release_notes: true
-          body: |
-            ## 📦 下载安装
-
-            | 平台 | 下载 |
-            |------|------|
-            | Windows | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-${{ env.VERSION }}-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-${{ env.VERSION }}-arm64.exe) |
-            | macOS | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-${{ env.VERSION }}-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-${{ env.VERSION }}-x64.dmg) |
-            | Linux | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-${{ env.VERSION }}-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_${{ env.VERSION }}_amd64.deb) |
-
-            ### ⚠️ macOS 首次启动
-            如果提示"无法打开"或"已损坏"，请在终端执行：
-            ```bash
-            sudo xattr -rd com.apple.quarantine /Applications/PromptHub.app
-            ```
-
-            ---
-
-            ## 🔄 本次更新
-
-            详细更新日志请查看 [更新日志](https://github.com/legeling/PromptHub#-更新日志)
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
