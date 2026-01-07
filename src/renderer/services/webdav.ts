@@ -877,13 +877,25 @@ export async function incrementalDownload(config: WebDAVConfig, options?: WebDAV
       // Clean up data: remove BOM and whitespace
       // 清理数据：移除 BOM 和空白字符
       let cleanData = manifestResult.data;
+      
+      // Remove BOM if present
       if (cleanData.charCodeAt(0) === 0xFEFF) {
         cleanData = cleanData.slice(1);
       }
-      cleanData = cleanData.trim();
 
+      // Aggressively find JSON boundaries (handle garbage before/after)
+      // 激进地查找 JSON 边界（处理前后的垃圾字符）
+      const firstBrace = cleanData.indexOf('{');
+      const lastBrace = cleanData.lastIndexOf('}');
+      
+      if (firstBrace !== -1 && lastBrace !== -1) {
+        cleanData = cleanData.substring(firstBrace, lastBrace + 1);
+      }
+
+      cleanData = cleanData.trim();
       manifest = JSON.parse(cleanData);
     } catch (parseError) {
+
       // Log detailed error info for debugging
       // 记录详细错误信息用于调试
       const preview = manifestResult.data.substring(0, 200);
