@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { StarIcon, HashIcon, ClockIcon, CopyIcon, CheckIcon, SparklesIcon, EditIcon, Maximize2Icon, Minimize2Icon, GlobeIcon } from 'lucide-react';
+import { StarIcon, HashIcon, ClockIcon, CopyIcon, CheckIcon, SparklesIcon, EditIcon, Maximize2Icon, Minimize2Icon, GlobeIcon, PlayIcon, VideoIcon } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { ImagePreviewModal } from '../ui/ImagePreviewModal';
 import { LocalImage } from '../ui/LocalImage';
@@ -246,6 +246,28 @@ export function PromptDetailModal({
                     className="max-w-[200px] max-h-[200px] object-cover hover:scale-105 transition-transform duration-300 cursor-pointer"
                     fallbackClassName="w-[200px] h-[150px]"
                     onClick={() => setPreviewImage(img)}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 视频 Videos */}
+        {prompt.videos && prompt.videos.length > 0 && (
+          <div>
+            <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1">
+              <VideoIcon className="w-4 h-4" />
+              {t('prompt.previewVideos', '预览视频')}
+            </h4>
+            <div className="flex flex-wrap gap-4">
+              {prompt.videos.map((video, index) => (
+                <div key={index} className="relative rounded-lg overflow-hidden border border-border shadow-sm bg-muted">
+                  <video
+                    src={`local-video://${video}`}
+                    className="max-w-[300px] max-h-[200px] object-cover"
+                    controls
+                    preload="metadata"
                   />
                 </div>
               ))}

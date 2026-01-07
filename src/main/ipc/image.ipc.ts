@@ -205,4 +205,144 @@ export function registerImageIPC() {
             return false;
         }
     });
+
+    // ==================== Video Support ====================
+    // ==================== 视频支持 ====================
+
+    // Select videos
+    // 选择视频
+    ipcMain.handle('dialog:selectVideo', async () => {
+        const result = await dialog.showOpenDialog({
+            properties: ['openFile', 'multiSelections'],
+            filters: [
+                { name: 'Videos', extensions: ['mp4', 'webm', 'mov', 'avi', 'mkv'] }
+            ]
+        });
+
+        if (!result.canceled && result.filePaths.length > 0) {
+            return result.filePaths;
+        }
+        return [];
+    });
+
+    // Save videos to app data directory
+    // 保存视频到应用数据目录
+    ipcMain.handle('video:save', async (_event, filePaths: string[]) => {
+        const userDataPath = app.getPath('userData');
+        const videosDir = path.join(userDataPath, 'videos');
+
+        if (!fs.existsSync(videosDir)) {
+            fs.mkdirSync(videosDir, { recursive: true });
+        }
+
+        const savedVideos: string[] = [];
+
+        for (const filePath of filePaths) {
+            try {
+                const ext = path.extname(filePath);
+                const fileName = `${uuidv4()}${ext}`;
+                const destPath = path.join(videosDir, fileName);
+
+                fs.copyFileSync(filePath, destPath);
+                savedVideos.push(fileName);
+            } catch (error) {
+                console.error(`Failed to save video ${filePath}:`, error);
+            }
+        }
+
+        return savedVideos;
+    });
+
+    // Open video with default app
+    // 使用默认应用打开视频
+    ipcMain.handle('video:open', async (_event, fileName: string) => {
+        const userDataPath = app.getPath('userData');
+        const videoPath = path.join(userDataPath, 'videos', fileName);
+
+        try {
+            await shell.openPath(videoPath);
+            return true;
+        } catch (error) {
+            console.error(`Failed to open video ${videoPath}:`, error);
+            return false;
+        }
+    });
+
+    // Get list of all local video file names
+    // 获取所有本地视频文件名列表
+    ipcMain.handle('video:list', async () => {
+        const userDataPath = app.getPath('userData');
+        const videosDir = path.join(userDataPath, 'videos');
+
+        if (!fs.existsSync(videosDir)) {
+            return [];
+        }
+
+        try {
+            const files = fs.readdirSync(videosDir);
+            return files.filter(f => /\.(mp4|webm|mov|avi|mkv)$/i.test(f));
+        } catch (error) {
+            console.error('Failed to list videos:', error);
+            return [];
+        }
+    });
+
+    // Read video as Base64
+    // 读取视频为 Base64
+    ipcMain.handle('video:readBase64', async (_event, fileName: string) => {
+        const userDataPath = app.getPath('userData');
+        const videoPath = path.join(userDataPath, 'videos', fileName);
+
+        try {
+            if (!fs.existsSync(videoPath)) {
+                return null;
+            }
+            const buffer = fs.readFileSync(videoPath);
+            return buffer.toString('base64');
+        } catch (error) {
+            console.error(`Failed to read video ${fileName}:`, error);
+            return null;
+        }
+    });
+
+    // Save video from Base64 (for sync download)
+    // 从 Base64 保存视频（用于同步下载）
+    ipcMain.handle('video:saveBase64', async (_event, fileName: string, base64Data: string) => {
+        const userDataPath = app.getPath('userData');
+        const videosDir = path.join(userDataPath, 'videos');
+
+        if (!fs.existsSync(videosDir)) {
+            fs.mkdirSync(videosDir, { recursive: true });
+        }
+
+        try {
+            const destPath = path.join(videosDir, fileName);
+            // Skip if file already exists
+            // 如果文件已存在，跳过
+            if (fs.existsSync(destPath)) {
+                return true;
+            }
+            const buffer = Buffer.from(base64Data, 'base64');
+            fs.writeFileSync(destPath, buffer);
+            return true;
+        } catch (error) {
+            console.error(`Failed to save video ${fileName}:`, error);
+            return false;
+        }
+    });
+
+    // Check if video exists
+    // 检查视频是否存在
+    ipcMain.handle('video:exists', async (_event, fileName: string) => {
+        const userDataPath = app.getPath('userData');
+        const videoPath = path.join(userDataPath, 'videos', fileName);
+        return fs.existsSync(videoPath);
+    });
+
+    // Get video file path (for local protocol)
+    // 获取视频文件路径（用于本地协议）
+    ipcMain.handle('video:getPath', async (_event, fileName: string) => {
+        const userDataPath = app.getPath('userData');
+        return path.join(userDataPath, 'videos', fileName);
+    });
 }

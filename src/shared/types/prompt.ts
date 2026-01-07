@@ -15,6 +15,7 @@ export interface Prompt {
   tags: string[];
   folderId?: string;
   images?: string[];
+  videos?: string[];         // Video file names for preview / 视频预览文件名
   isFavorite: boolean;
   isPinned: boolean;        // Pinned / 置顶
   version: number;
@@ -61,6 +62,7 @@ export interface CreatePromptDTO {
   tags?: string[];
   folderId?: string;
   images?: string[];
+  videos?: string[];
   source?: string;
 }
 
@@ -75,6 +77,7 @@ export interface UpdatePromptDTO {
   tags?: string[];
   folderId?: string;
   images?: string[];
+  videos?: string[];
   isFavorite?: boolean;
   isPinned?: boolean;
   usageCount?: number;

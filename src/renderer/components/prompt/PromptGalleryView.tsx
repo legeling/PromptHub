@@ -1,8 +1,7 @@
-
 import { useRef, memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Prompt } from '../../../shared/types';
-import { ImageIcon, FolderIcon, HashIcon, MoreHorizontalIcon, StarIcon, EditIcon, TrashIcon, CopyIcon, PlayIcon, HistoryIcon } from 'lucide-react';
+import { ImageIcon, FolderIcon, HashIcon, MoreHorizontalIcon, StarIcon, EditIcon, TrashIcon, CopyIcon, PlayIcon, HistoryIcon, VideoIcon } from 'lucide-react';
 import { useFolderStore } from '../../stores/folder.store';
 import { usePromptStore } from '../../stores/prompt.store';
 
@@ -61,18 +60,23 @@ const GalleryCard = memo(({
     highlightTerms: string[];
 }) => {
     const [imageError, setImageError] = useState(false);
+    const [videoError, setVideoError] = useState(false);
     const highlightClassName = 'bg-primary/15 text-primary rounded px-0.5';
-    const imageSrc = prompt.images && prompt.images.length > 0 && !imageError
-        ? `local-image://${prompt.images[0]}`
-        : null;
+    
+    // Determine media source: prioritize image, then video
+    // 确定媒体源：优先图片，其次视频
+    const hasImage = prompt.images && prompt.images.length > 0 && !imageError;
+    const hasVideo = prompt.videos && prompt.videos.length > 0 && !videoError;
+    const imageSrc = hasImage ? `local-image://${prompt.images![0]}` : null;
+    const videoSrc = hasVideo ? `local-video://${prompt.videos![0]}` : null;
 
     return (
         <div
             className="group relative flex flex-col bg-card rounded-xl overflow-hidden border border-border hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer h-full"
             onClick={onSelect}
         >
-            {/* Image / Placeholder Area */}
-            {/* 图片 / 占位区域 */}
+            {/* Image / Video / Placeholder Area */}
+            {/* 图片 / 视频 / 占位区域 */}
             <div className="aspect-[4/3] w-full bg-muted/30 relative overflow-hidden">
                 {imageSrc ? (
                     <img
@@ -82,9 +86,37 @@ const GalleryCard = memo(({
                         loading="lazy"
                         onError={() => setImageError(true)}
                     />
+                ) : videoSrc ? (
+                    <>
+                        {/* Video thumbnail - use video element with poster or first frame */}
+                        {/* 视频缩略图 - 使用 video 元素的第一帧 */}
+                        <video
+                            src={videoSrc}
+                            className="w-full h-full object-cover"
+                            muted
+                            preload="metadata"
+                            onError={() => setVideoError(true)}
+                        />
+                        {/* Play button overlay */}
+                        {/* 播放按钮覆盖层 */}
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                            <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
+                                <PlayIcon className="w-6 h-6 text-primary fill-current ml-1" />
+                            </div>
+                        </div>
+                    </>
                 ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground/30">
                         <ImageIcon className="w-12 h-12 mb-2 opacity-50" />
+                    </div>
+                )}
+
+                {/* Video indicator badge (when has both image and video) */}
+                {/* 视频指示器徽章（当同时有图片和视频时） */}
+                {hasImage && hasVideo && (
+                    <div className="absolute bottom-2 left-2 flex items-center gap-1 px-2 py-1 rounded-full bg-black/60 text-white text-xs">
+                        <VideoIcon className="w-3 h-3" />
+                        <span>视频</span>
                     </div>
                 )}
 

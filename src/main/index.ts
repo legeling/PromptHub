@@ -35,6 +35,16 @@ protocol.registerSchemesAsPrivileged([
       bypassCSP: true,
       stream: true
     }
+  },
+  {
+    scheme: 'local-video',
+    privileges: {
+      secure: true,
+      standard: true,
+      supportFetchAPI: true,
+      bypassCSP: true,
+      stream: true
+    }
   }
 ]);
 
@@ -556,9 +566,40 @@ app.whenReady().then(async () => {
         return callback({ path: '' });
       }
 
-      callback({ path: imagePath });
+    callback({ path: imagePath });
     } catch (error) {
       console.error('Failed to register protocol', error);
+      callback({ path: '' });
+    }
+  });
+
+  // Register local-video protocol
+  // 注册 local-video 协议
+  session.defaultSession.protocol.registerFileProtocol('local-video', (request, callback) => {
+    let url = request.url.replace('local-video://', '');
+    // Strip leading slashes to avoid absolute path interpretation
+    // 移除开头的斜杠（防止路径被解析为绝对路径）
+    url = url.replace(/^\/+/, '');
+    // Strip trailing slashes
+    // 移除结尾的斜杠
+    url = url.replace(/\/+$/, '');
+
+    try {
+      const decodedUrl = decodeURIComponent(url);
+      const baseDir = path.join(app.getPath('userData'), 'videos');
+      const normalized = path.normalize(decodedUrl).replace(/^([\/\\])+/g, '');
+      const videoPath = path.join(baseDir, normalized);
+
+      // Prevent path traversal
+      // 防止路径穿越
+      if (!videoPath.startsWith(baseDir + path.sep) && videoPath !== baseDir) {
+        console.warn('Blocked local-video path traversal:', decodedUrl);
+        return callback({ path: '' });
+      }
+
+      callback({ path: videoPath });
+    } catch (error) {
+      console.error('Failed to register local-video protocol', error);
       callback({ path: '' });
     }
   });

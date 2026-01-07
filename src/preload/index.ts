@@ -191,6 +191,16 @@ contextBridge.exposeInMainWorld('electron', {
       ipcRenderer.removeListener('shortcut:triggered', listener);
     };
   },
+  // Videos
+  // 视频
+  selectVideo: () => ipcRenderer.invoke('dialog:selectVideo'),
+  saveVideo: (paths: string[]) => ipcRenderer.invoke('video:save', paths),
+  openVideo: (fileName: string) => ipcRenderer.invoke('video:open', fileName),
+  listVideos: () => ipcRenderer.invoke('video:list'),
+  readVideoBase64: (fileName: string) => ipcRenderer.invoke('video:readBase64', fileName),
+  saveVideoBase64: (fileName: string, base64: string) => ipcRenderer.invoke('video:saveBase64', fileName, base64),
+  videoExists: (fileName: string) => ipcRenderer.invoke('video:exists', fileName),
+  getVideoPath: (fileName: string) => ipcRenderer.invoke('video:getPath', fileName),
 });
 
 // Type declarations
@@ -257,6 +267,16 @@ declare global {
       getShortcuts?: () => Promise<Record<string, string> | null>;
       setShortcuts?: (shortcuts: Record<string, string>) => Promise<boolean>;
       onShortcutTriggered?: (callback: (action: string) => void) => void | (() => void);
+      // Videos
+      // 视频
+      selectVideo?: () => Promise<string[]>;
+      saveVideo?: (paths: string[]) => Promise<string[]>;
+      openVideo?: (fileName: string) => Promise<boolean>;
+      listVideos?: () => Promise<string[]>;
+      readVideoBase64?: (fileName: string) => Promise<string | null>;
+      saveVideoBase64?: (fileName: string, base64: string) => Promise<boolean>;
+      videoExists?: (fileName: string) => Promise<boolean>;
+      getVideoPath?: (fileName: string) => Promise<string>;
     };
   }
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Modal, Button, Input, Textarea, UnsavedChangesDialog } from '../ui';
 import { Select } from '../ui/Select';
-import { HashIcon, XIcon, ImageIcon, Maximize2Icon, Minimize2Icon, PlusIcon, GlobeIcon, SparklesIcon, Loader2Icon } from 'lucide-react';
+import { HashIcon, XIcon, ImageIcon, Maximize2Icon, Minimize2Icon, PlusIcon, GlobeIcon, SparklesIcon, Loader2Icon, PlayIcon, VideoIcon } from 'lucide-react';
 import { usePromptStore } from '../../stores/prompt.store';
 import { useFolderStore } from '../../stores/folder.store';
 import { useSettingsStore } from '../../stores/settings.store';
@@ -40,6 +40,7 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
   const [folderId, setFolderId] = useState<string | undefined>(undefined);
 
   const [images, setImages] = useState<string[]>([]);
+  const [videos, setVideos] = useState<string[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [userTab, setUserTab] = useState<'edit' | 'preview'>('edit');
   const [systemTab, setSystemTab] = useState<'edit' | 'preview'>('edit');
@@ -71,10 +72,11 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
       userPromptEn !== (prompt.userPromptEn || '') ||
       JSON.stringify(tags) !== JSON.stringify(prompt.tags || []) ||
       JSON.stringify(images) !== JSON.stringify(prompt.images || []) ||
+      JSON.stringify(videos) !== JSON.stringify(prompt.videos || []) ||
       folderId !== prompt.folderId ||
       source !== (prompt.source || '')
     );
-  }, [prompt, title, description, systemPrompt, systemPromptEn, userPrompt, userPromptEn, tags, images, folderId, source]);
+  }, [prompt, title, description, systemPrompt, systemPromptEn, userPrompt, userPromptEn, tags, images, videos, folderId, source]);
 
 // Handle close request
   // 处理关闭请求
@@ -149,6 +151,7 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
       setUserPromptEn(prompt.userPromptEn || '');
       setTags(prompt.tags || []);
       setImages(prompt.images || []);
+      setVideos(prompt.videos || []);
       setFolderId(prompt.folderId);
       setSource(prompt.source || '');
       // 如果已有英文版本，自动展开
@@ -169,6 +172,7 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
         userPromptEn: userPromptEn.trim() || undefined,
         tags,
         images,
+        videos,
         folderId,
         source: source.trim() || undefined,
       });
@@ -284,6 +288,26 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
 
   const handleRemoveImage = (index: number) => {
     setImages(images.filter((_, i) => i !== index));
+  };
+
+  // Video handling functions
+  // 视频处理函数
+  const handleSelectVideo = async () => {
+    try {
+      const filePaths = await window.electron?.selectVideo?.();
+      if (filePaths && filePaths.length > 0) {
+        const savedVideos = await window.electron?.saveVideo?.(filePaths);
+        if (savedVideos) {
+          setVideos([...videos, ...savedVideos]);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to select videos:', error);
+    }
+  };
+
+  const handleRemoveVideo = (index: number) => {
+    setVideos(videos.filter((_, i) => i !== index));
   };
 
   const handleUrlUpload = async (url: string) => {
@@ -448,12 +472,13 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
           </div>
         </div>
 
-        {/* 图片管理 */}
+        {/* 图片/视频管理 Media Management */}
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-foreground">{t('prompt.referenceImages')}</label>
+          <label className="block text-sm font-medium text-foreground">{t('prompt.referenceMedia', '参考媒体')}</label>
           <div className="flex flex-wrap gap-3">
+            {/* 图片预览 Image previews */}
             {images.map((img, index) => (
-              <div key={index} className="relative group w-24 h-24 rounded-lg overflow-hidden border border-border">
+              <div key={`img-${index}`} className="relative group w-24 h-24 rounded-lg overflow-hidden border border-border">
                 <img
                   src={`local-image://${img}`}
                   alt={`preview-${index}`}
@@ -467,15 +492,46 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
                 </button>
               </div>
             ))}
+            {/* 视频预览 Video previews */}
+            {videos.map((video, index) => (
+              <div key={`vid-${index}`} className="relative group w-24 h-24 rounded-lg overflow-hidden border border-border bg-muted">
+                <video
+                  src={`local-video://${video}`}
+                  className="w-full h-full object-cover"
+                  muted
+                  preload="metadata"
+                />
+                {/* Play icon overlay */}
+                <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none">
+                  <div className="w-8 h-8 rounded-full bg-white/80 flex items-center justify-center">
+                    <PlayIcon className="w-4 h-4 text-primary fill-current ml-0.5" />
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleRemoveVideo(index)}
+                  className="absolute top-1 right-1 p-1 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <XIcon className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+            {/* 上传按钮 Upload buttons */}
             <button
               onClick={handleSelectImage}
               className="w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 flex flex-col items-center justify-center text-muted-foreground hover:text-primary transition-colors text-center p-2"
             >
               <ImageIcon className="w-6 h-6 mb-1" />
-              <span className="text-[10px] leading-tight">{t('prompt.uploadImage', '上传/粘贴/链接')}</span>
+              <span className="text-[10px] leading-tight">{t('prompt.uploadImage', '上传图片')}</span>
+            </button>
+            <button
+              onClick={handleSelectVideo}
+              className="w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 flex flex-col items-center justify-center text-muted-foreground hover:text-primary transition-colors text-center p-2"
+            >
+              <VideoIcon className="w-6 h-6 mb-1" />
+              <span className="text-[10px] leading-tight">{t('prompt.uploadVideo', '上传视频')}</span>
             </button>
           </div>
-          <div className="text-xs text-muted-foreground flex gap-2 mt-1">
+          <div className="text-xs text-muted-foreground flex flex-wrap gap-2 mt-1">
             <button
               className="hover:text-primary underline"
               onClick={() => setShowUrlInput(true)}
@@ -483,7 +539,7 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
               {t('prompt.addImageByUrl', '通过链接添加')}
             </button>
             <span>|</span>
-            <span>{t('prompt.pasteImageHint', '支持直接粘贴图片')}</span>
+            <span>{t('prompt.mediaHint', '支持图片(PNG/JPG/GIF)和视频(MP4/WebM)')}</span>
           </div>
           {showUrlInput && (
             <div className="flex gap-2 mt-2">

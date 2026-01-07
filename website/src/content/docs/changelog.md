@@ -1,3 +1,25 @@
+## [0.3.6] - 2026-01-07
+
+### 新功能 / Added
+
+- 🎥 **Prompt 视频预览**：支持为 Prompt 添加视频预览，适用于视频生成类 Prompt，支持 MP4/WebM/MOV 格式
+  - **Prompt Video Preview**: Support generating video previews for prompts, suitable for video generation prompts (MP4/WebM/MOV)
+- 📤 **视频文件支持**：支持上传、播放本地视频文件，均由本地加密存储
+  - **Video File Support**: Support upload and playback of local video files, securely stored locally
+- ☁️ **视频同步**：WebDAV 同步现已包含视频文件
+  - **Video Sync**: WebDAV sync now includes video files
+
+### 修复 / Fixed
+
+- 🎨 **下拉菜单 UI 优化**：修复新建下拉菜单的选中样式问题，采用悬浮圆角设计
+  - **Dropdown UI Polish**: Fixed selection style in create dropdown with floating rounded design
+- 🐛 **WebDAV 解析修复**：修复 manifest.json 解析错误问题，增强跨平台兼容性
+  - **WebDAV Parse Fix**: Fixed manifest.json parsing error for better cross-platform compatibility
+- 🐛 **更新检测修复**：修复 macOS 和 Windows ARM64 平台的更新检测逻辑
+  - **Updater Fix**: Fixed update detection logic for macOS and Windows ARM64
+
+---
+
 ## [0.3.5] - 2026-01-05
 
 ### 新功能 / Added

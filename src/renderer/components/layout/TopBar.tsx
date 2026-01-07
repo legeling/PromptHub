@@ -323,39 +323,39 @@ export function TopBar({ onOpenSettings, updateAvailable, onShowUpdateDialog }: 
             </button>
             
             {isCreateMenuOpen && (
-              <div className="absolute top-full right-0 mt-1 w-48 bg-popover rounded-lg border border-border shadow-md py-1 z-50 animate-in fade-in zoom-in-95 duration-100 overflow-hidden">
-                <button
+              <div className="absolute top-full right-0 mt-1 w-48 bg-popover rounded-lg border border-border shadow-lg p-1 z-50 animate-in fade-in zoom-in-95 duration-100">
+              <button
                   onClick={() => {
                     useSettingsStore.getState().setCreationMode('manual');
                     setIsCreateMenuOpen(false);
                   }}
                   className={clsx(
-                    "flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground text-left transition-colors",
-                    creationMode === 'manual' && "bg-accent/50 text-accent-foreground"
+                    "flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-accent text-left transition-colors rounded-md",
+                    creationMode === 'manual' && "bg-accent"
                   )}
                 >
                   <PlusIcon className="w-4 h-4 text-muted-foreground" />
                   <div className="flex flex-col items-start gap-0.5">
                     <span className="font-medium">{t('header.new')}</span>
-                    <span className="text-[10px] text-muted-foreground leading-none">{t('quickAdd.manualAddDesc') || '手动填写 Prompt'}</span>
+                    <span className="text-[10px] text-muted-foreground leading-none">{t('quickAdd.manualAddDesc') || '手动填写 Prompt 详细信息'}</span>
                   </div>
                   {creationMode === 'manual' && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />}
                 </button>
-                <div className="h-px bg-border my-0.5 mx-2 opacity-50" />
+                <div className="h-px bg-border my-1 mx-2 opacity-50" />
                 <button
                   onClick={() => {
                     useSettingsStore.getState().setCreationMode('quick');
                     setIsCreateMenuOpen(false);
                   }}
                   className={clsx(
-                    "flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground text-left transition-colors",
-                    creationMode === 'quick' && "bg-accent/50 text-accent-foreground"
+                    "flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-accent text-left transition-colors rounded-md",
+                    creationMode === 'quick' && "bg-accent"
                   )}
                 >
                   <SparklesIcon className="w-4 h-4 text-primary" />
                   <div className="flex flex-col items-start gap-0.5">
                      <span className="font-medium">{t('quickAdd.title')}</span>
-                     <span className="text-[10px] text-muted-foreground leading-none">{t('quickAdd.desc') || 'AI 辅助生成配置'}</span>
+                     <span className="text-[10px] text-muted-foreground leading-none">{t('quickAdd.desc') || '粘贴内容由 AI 智能分析并分类'}</span>
                   </div>
                   {creationMode === 'quick' && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />}
                 </button>
