@@ -156,9 +156,19 @@ jobs:
           echo "=== Artifact structure ==="
           find artifacts -type f -name "*.yml" -o -name "*.exe" -o -name "*.dmg" | head -50
 
+      - name: Delete existing release if exists
+        shell: bash
+        run: |
+          # Delete the existing release to avoid asset deletion conflicts
+          # 删除现有的 release 以避免资产删除冲突
+          gh release delete "${GITHUB_REF_NAME}" --yes --cleanup-tag || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
+          fail_on_unmatched_files: false
           files: |
             artifacts/**/PromptHub-*-x64.dmg
             artifacts/**/PromptHub-*-arm64.dmg
@@ -171,6 +181,7 @@ jobs:
             artifacts/**/*.blockmap
           draft: false
           prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') }}
+
           generate_release_notes: true
           body: |
             ## 📦 下载安装
