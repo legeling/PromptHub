@@ -248,15 +248,22 @@ export function initUpdater(win: BrowserWindow) {
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
 
-  // electron-updater default behavior (no channel override needed):
-  // electron-updater 默认行为（不需要覆盖 channel）：
-  // - Windows: looks for 'latest.yml'
-  // - macOS: looks for 'latest-mac.yml'
-  // - Linux: looks for 'latest-linux.yml'
+  // electron-updater channel configuration:
+  // electron-updater channel 配置：
+  // - Windows x64: uses default 'latest.yml'
+  // - Windows ARM64: uses 'arm64' channel -> 'latest-arm64.yml'
+  // - macOS: uses default 'latest-mac.yml'
+  // - Linux: uses default 'latest-linux.yml'
   //
-  // Our CI generates these files with the correct names.
-  // 我们的 CI 会生成这些正确命名的文件。
-  console.log(`[Updater] Platform: ${process.platform}, Arch: ${process.arch}`);
+  // This ensures backward compatibility with older versions that don't set channel.
+  // 这确保了与旧版本的向后兼容性（旧版本不设置 channel）。
+  if (process.platform === 'win32' && process.arch === 'arm64') {
+    autoUpdater.channel = 'arm64';
+    console.log(`[Updater] Windows ARM64 detected, using channel: arm64`);
+  } else {
+    console.log(`[Updater] Platform: ${process.platform}, Arch: ${process.arch}, using default channel`);
+  }
+
 
   // Update check error
   // 检查更新出错

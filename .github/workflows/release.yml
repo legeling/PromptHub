@@ -143,16 +143,11 @@ jobs:
         shell: bash
         run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
 
-      - name: Merge Windows update metadata
+      - name: List artifacts for debugging
         shell: bash
         run: |
-          x64_yml=$(find artifacts -name "latest.yml" -path "*/win-x64-build/*" | head -1)
-          arm64_yml=$(find artifacts -name "latest-arm64.yml" -path "*/win-arm64-build/*" | head -1)
-          if [ -n "$x64_yml" ] && [ -n "$arm64_yml" ]; then
-            echo "Merging Windows ARM64 metadata into latest.yml..."
-            python3 -c "import sys, re; x, a = sys.argv[1:3]; xc = open(x).read(); ac = open(a).read(); m = re.search(r'(\s+-\s+url:.*?arm64\.exe.*?\n\s+sha512:.*?\n\s+size:.*?\n)', ac, re.S); open(x, 'w').write(re.sub(r'(files:\s*\n\s+-\s+url:.*?\n\s+sha512:.*?\n\s+size:.*?\n)', r'\1' + m.group(1), xc, flags=re.S)) if m else print('Warning: No ARM64 entry found')" "$x64_yml" "$arm64_yml"
-            rm -f "$arm64_yml"
-          fi
+          echo "=== Artifact structure ==="
+          find artifacts -type f -name "*.yml" -o -name "*.exe" -o -name "*.dmg" | head -50
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
