@@ -86,17 +86,11 @@ jobs:
               echo "Renamed latest.yml to latest-arm64.yml for ARM64"
             fi
           else
-            # x64: Generate BOTH latest.yml AND latest-x64.yml for backward compatibility
-            # x64: 同时生成 latest.yml 和 latest-x64.yml 以保持向后兼容
-            # - New versions (0.3.5+) use default behavior -> latest.yml
-            # - Old versions (0.3.4 and earlier) use channel='x64' -> latest-x64.yml
+            # x64: Generate latest-x64.yml for backward compatibility with older versions
+            # x64: 生成 latest-x64.yml 以兼容旧版本
+            # electron-builder already generates correct filenames via artifactName
+            # electron-builder 已通过 artifactName 配置生成正确的文件名
             if [ -f "dist/latest.yml" ]; then
-              exe=$(ls dist/PromptHub-Setup-*-x64.exe 2>/dev/null | head -1 | xargs -I {} basename {})
-              if [ -n "$exe" ]; then
-                sed -i.bak "s/PromptHub-Setup-[0-9.]*\.exe/$exe/g" dist/latest.yml
-                rm -f dist/latest.yml.bak
-                echo "Updated latest.yml to point to $exe"
-              fi
               # Create latest-x64.yml as a copy for backward compatibility with old versions
               # 创建 latest-x64.yml 副本以兼容旧版本
               cp dist/latest.yml dist/latest-x64.yml
