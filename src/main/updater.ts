@@ -35,8 +35,14 @@ const MIRROR_SOURCES = [
 const OFFICIAL_REPO = {
   provider: 'github' as const,
   owner: 'legeling',
-  repo: 'PromptHub'
+  repo: 'PromptHub',
+  releaseType: 'release' as const
 };
+
+function applyMirrorDownloadSettings(useMirror: boolean) {
+  const updater = autoUpdater as unknown as { useMultipleRangeRequest?: boolean };
+  updater.useMultipleRangeRequest = !useMirror;
+}
 
 // Compare version numbers, return 1 (a > b), -1 (a < b), 0 (a == b)
 // 比较版本号，返回 1 (a > b), -1 (a < b), 0 (a == b)
@@ -375,6 +381,8 @@ export function registerUpdaterIPC() {
       return { success: false, error: 'Update check disabled in development mode' };
     }
 
+    applyMirrorDownloadSettings(Boolean(useMirror));
+
     // If mirror is enabled, use mirror sources directly
     // 如果启用了镜像，直接使用镜像源（不先尝试官方）
     if (useMirror) {
@@ -416,6 +424,7 @@ export function registerUpdaterIPC() {
       return { success: false, error: 'Download disabled in development mode' };
     }
 
+    applyMirrorDownloadSettings(Boolean(useMirror));
     lastPercent = 0;
 
     // If mirror is enabled, use mirror sources directly

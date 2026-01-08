@@ -81,6 +81,7 @@ jobs:
           # 为每个架构生成适当的 yml 文件
           if [ "${{ matrix.arch }}" = "arm64" ]; then
             if [ -f "dist/latest.yml" ]; then
+              node scripts/fix-latest-yml.js --file dist/latest.yml --arch arm64
               # Rename to latest-arm64.yml for arm64 builds
               mv dist/latest.yml dist/latest-arm64.yml
               echo "Renamed latest.yml to latest-arm64.yml for ARM64"
@@ -91,6 +92,7 @@ jobs:
             # electron-builder already generates correct filenames via artifactName
             # electron-builder 已通过 artifactName 配置生成正确的文件名
             if [ -f "dist/latest.yml" ]; then
+              node scripts/fix-latest-yml.js --file dist/latest.yml --arch x64
               # Create latest-x64.yml as a copy for backward compatibility with old versions
               # 创建 latest-x64.yml 副本以兼容旧版本
               cp dist/latest.yml dist/latest-x64.yml
