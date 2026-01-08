@@ -90,7 +90,7 @@
     "allowToChangeInstallationDirectory": true,
     "createDesktopShortcut": true,
     "createStartMenuShortcut": true,
-    "differentialPackage": true
+    "differentialPackage": false
   },
   "publish": {
     "provider": "github",

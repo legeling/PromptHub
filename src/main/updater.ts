@@ -369,84 +369,84 @@ export function registerUpdaterIPC() {
   });
 
   // 检查更新
+  // Check for updates - respect user's mirror preference
   ipcMain.handle('updater:check', async (_event, useMirror?: boolean) => {
     if (isDev) {
       return { success: false, error: 'Update check disabled in development mode' };
     }
 
-    // 1. Try official source first
-    // 1. 首先尝试官方源
+    // If mirror is enabled, use mirror sources directly
+    // 如果启用了镜像，直接使用镜像源（不先尝试官方）
+    if (useMirror) {
+      for (const mirrorUrl of MIRROR_SOURCES) {
+        try {
+          console.log(`[Updater] Using mirror for check: ${mirrorUrl}`);
+          autoUpdater.setFeedURL({
+            provider: 'generic',
+            url: mirrorUrl
+          });
+          const result = await autoUpdater.checkForUpdates();
+          console.log(`[Updater] Mirror check succeeded: ${mirrorUrl}`);
+          return { success: true, result };
+        } catch (mirrorError) {
+          console.warn(`[Updater] Mirror check failed: ${mirrorUrl}`);
+        }
+      }
+      // All mirrors failed
+      return { success: false, error: 'All mirror sources failed. Please try disabling mirror acceleration.' };
+    }
+
+    // Mirror disabled, use official source
+    // 未启用镜像，使用官方源
     try {
+      console.log('[Updater] Using official source for check');
       autoUpdater.setFeedURL(OFFICIAL_REPO);
       const result = await autoUpdater.checkForUpdates();
       return { success: true, result };
     } catch (officialError) {
-      console.warn('[Updater] Official check failed, useMirror setting:', useMirror);
-
-      // 2. If official fails and useMirror is enabled, try mirrors
-      // 2. 如果官方失败且启用了镜像，尝试镜像源
-      if (useMirror) {
-        for (const mirrorUrl of MIRROR_SOURCES) {
-          try {
-            console.log(`[Updater] Trying mirror check: ${mirrorUrl}`);
-            autoUpdater.setFeedURL({
-              provider: 'generic',
-              url: mirrorUrl
-            });
-            const result = await autoUpdater.checkForUpdates();
-            // Reset to official after success
-            autoUpdater.setFeedURL(OFFICIAL_REPO);
-            return { success: true, result };
-          } catch (mirrorError) {
-            console.warn(`[Updater] Mirror check failed: ${mirrorUrl}`);
-          }
-        }
-      }
-
-      // 3. All attempts failed
-      autoUpdater.setFeedURL(OFFICIAL_REPO);
       const errMsg = (officialError as Error).message || String(officialError);
       return { success: false, error: `Update check failed: ${errMsg}` };
     }
   });
 
   // Start downloading update
-  // 开始下载更新
+  // 开始下载更新 - respect user's mirror preference
   ipcMain.handle('updater:download', async (_event, useMirror?: boolean) => {
     if (isDev) {
       return { success: false, error: 'Download disabled in development mode' };
     }
 
-    // 1. Try official download first
+    lastPercent = 0;
+
+    // If mirror is enabled, use mirror sources directly
+    // 如果启用了镜像，直接使用镜像源
+    if (useMirror) {
+      for (const mirrorUrl of MIRROR_SOURCES) {
+        try {
+          console.log(`[Updater] Using mirror for download: ${mirrorUrl}`);
+          autoUpdater.setFeedURL({
+            provider: 'generic',
+            url: mirrorUrl
+          });
+          await autoUpdater.downloadUpdate();
+          return { success: true };
+        } catch (mirrorError) {
+          console.warn(`[Updater] Mirror download failed: ${mirrorUrl}`);
+          lastPercent = 0; // Reset progress for next attempt
+        }
+      }
+      // All mirrors failed
+      return { success: false, error: 'All mirror sources failed. Please try disabling mirror acceleration.' };
+    }
+
+    // Mirror disabled, use official source
+    // 未启用镜像，使用官方源
     try {
-      lastPercent = 0;
+      console.log('[Updater] Using official source for download');
       autoUpdater.setFeedURL(OFFICIAL_REPO);
       await autoUpdater.downloadUpdate();
       return { success: true };
     } catch (officialError) {
-      console.warn('[Updater] Official download failed, useMirror setting:', useMirror);
-
-      // 2. Try mirrors if enabled
-      if (useMirror) {
-        for (const mirrorUrl of MIRROR_SOURCES) {
-          try {
-            console.log(`[Updater] Trying mirror download: ${mirrorUrl}`);
-            autoUpdater.setFeedURL({
-              provider: 'generic',
-              url: mirrorUrl
-            });
-            lastPercent = 0;
-            await autoUpdater.downloadUpdate();
-            // Reset to official after starting download
-            autoUpdater.setFeedURL(OFFICIAL_REPO);
-            return { success: true };
-          } catch (mirrorError) {
-            console.warn(`[Updater] Mirror download failed: ${mirrorUrl}`);
-          }
-        }
-      }
-
-      autoUpdater.setFeedURL(OFFICIAL_REPO);
       const errMsg = (officialError as Error).message || String(officialError);
       return { success: false, error: `Download update failed: ${errMsg}` };
     }
