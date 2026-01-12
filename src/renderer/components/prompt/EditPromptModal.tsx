@@ -490,7 +490,7 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
       title={t('prompt.editPrompt')}
       size={isFullscreen ? 'fullscreen' : 'xl'}
       headerActions={
-        <>
+        <div className="flex items-center gap-2">
           <button
             onClick={() => setIsFullscreen(!isFullscreen)}
             className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
@@ -504,10 +504,10 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
             onClick={handleSubmit}
             disabled={!title.trim() || !userPrompt.trim()}
           >
-            <SaveIcon className="w-4 h-4 mr-2" />
+            <SaveIcon className="w-4 h-4" />
             {t('prompt.save')}
           </Button>
-        </>
+        </div>
       }
     >
       <div className="space-y-5">
@@ -552,44 +552,7 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
                 onChange={(e) => setDescription(e.target.value)}
               />
 
-              {/* 来源 / Source */}
-              <div className="space-y-1.5 relative">
-                <label className="block text-sm font-medium text-foreground">
-                  {t('prompt.sourceOptional') || '来源（可选）'}
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder={t('prompt.sourcePlaceholder') || '记录 Prompt 的来源，如网站链接、书籍等'}
-                    value={source}
-                    onChange={(e) => setSource(e.target.value)}
-                    onFocus={() => setShowSourceSuggestions(true)}
-                    onBlur={() => setTimeout(() => setShowSourceSuggestions(false), 150)}
-                    className="w-full h-10 px-4 rounded-xl bg-muted/50 border-0 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:bg-background transition-all duration-200"
-                  />
-                  {showSourceSuggestions && sourceHistory.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto">
-                      {sourceHistory
-                        .filter(s => s.toLowerCase().includes(source.toLowerCase()))
-                        .slice(0, 8)
-                        .map((item, idx) => (
-                          <button
-                            key={idx}
-                            type="button"
-                            className="w-full px-3 py-2 text-sm text-left hover:bg-accent/50 transition-colors truncate"
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              setSource(item);
-                              setShowSourceSuggestions(false);
-                            }}
-                          >
-                            {item}
-                          </button>
-                        ))}
-                    </div>
-                  )}
-                </div>
-              </div>
+
 
               {/* 参考媒体 (图片和视频) */}
               <div className="space-y-2">
@@ -775,6 +738,45 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
                   <Button variant="secondary" size="md" onClick={handleAddTag}>
                     {t('prompt.addTag')}
                   </Button>
+                </div>
+              </div>
+
+              {/* 来源 / Source */}
+              <div className="space-y-1.5 relative">
+                <label className="block text-sm font-medium text-foreground">
+                  {t('prompt.sourceOptional') || '来源（可选）'}
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder={t('prompt.sourcePlaceholder') || '记录 Prompt 的来源，如网站链接、书籍等'}
+                    value={source}
+                    onChange={(e) => setSource(e.target.value)}
+                    onFocus={() => setShowSourceSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowSourceSuggestions(false), 150)}
+                    className="w-full h-10 px-4 rounded-xl bg-muted/50 border-0 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:bg-background transition-all duration-200"
+                  />
+                  {showSourceSuggestions && sourceHistory.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto">
+                      {sourceHistory
+                        .filter(s => s.toLowerCase().includes(source.toLowerCase()))
+                        .slice(0, 8)
+                        .map((item, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            className="w-full px-3 py-2 text-sm text-left hover:bg-accent/50 transition-colors truncate"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              setSource(item);
+                              setShowSourceSuggestions(false);
+                            }}
+                          >
+                            {item}
+                          </button>
+                        ))}
+                    </div>
+                  )}
                 </div>
               </div>
 

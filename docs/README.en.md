@@ -7,7 +7,7 @@
   <p>
     <a href="https://github.com/legeling/PromptHub/stargazers"><img src="https://img.shields.io/github/stars/legeling/PromptHub?style=flat-square&color=yellow" alt="GitHub Stars"/></a>
     <a href="https://github.com/legeling/PromptHub/network/members"><img src="https://img.shields.io/github/forks/legeling/PromptHub?style=flat-square" alt="GitHub Forks"/></a>
-    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.3.6-green?style=flat-square" alt="Version"/></a>
+    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.3.7-green?style=flat-square" alt="Version"/></a>
     <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/github/downloads/legeling/PromptHub/total?style=flat-square&color=blue" alt="Downloads"/></a>
     <img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="License: AGPL-3.0"/>
   </p>
@@ -111,7 +111,7 @@
 
 ### Download
 
-Download the latest version v0.3.6 from [Releases](https://github.com/legeling/PromptHub/releases):
+Download the latest version v0.3.7 from [Releases](https://github.com/legeling/PromptHub/releases):
 
 | Platform |                                                                                                                                                                                                                Download                                                                                                                                                                                                                 |
 | :------: | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
@@ -224,7 +224,7 @@ PromptHub/
 
 ## 🗺️ Roadmap
 
-### v0.3.6 (Current)
+### v0.3.7 (Current)
 
 - [x] **Multi-level Folders**: Support infinite folder nesting and drag-and-drop management.
 - [x] **Version Control System**: Manage Prompts like code, with history comparison and one-click rollback.
@@ -246,7 +246,7 @@ PromptHub/
 
 See full changelog: **[CHANGELOG.md](../CHANGELOG.md)**
 
-### Latest Version v0.3.6 (2026-01-07)
+### Latest Version v0.3.7 (2026-01-12)
 
 **New**
 
@@ -297,6 +297,17 @@ This project is licensed under the [AGPL-3.0 License](../LICENSE).
     <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50" />
   </a>
 </div>
+
+---
+
+## 💖 Special Thanks / Backers
+
+Thank you to the following friends for their donation support to PromptHub:
+
+| Date       | Backer | Amount   | Message                                                    |
+| :--------- | :----- | :------- | :--------------------------------------------------------- |
+| 2026-01-08 | \*🌊   | ￥100.00 | Support excellent software!                                |
+| 2025-12-29 | \*昊   | ￥20.00  | Thanks for your software! Limited capacity, small support. |
 
 ---
 

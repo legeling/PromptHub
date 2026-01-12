@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { StarIcon, HashIcon, ClockIcon, CopyIcon, CheckIcon, SparklesIcon, EditIcon, Maximize2Icon, Minimize2Icon, GlobeIcon, PlayIcon, VideoIcon } from 'lucide-react';
+import { StarIcon, HashIcon, ClockIcon, CopyIcon, CheckIcon, SparklesIcon, EditIcon, Maximize2Icon, Minimize2Icon, GlobeIcon, PlayIcon, VideoIcon, BracesIcon } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { ImagePreviewModal } from '../ui/ImagePreviewModal';
 import { LocalImage } from '../ui/LocalImage';
@@ -234,6 +234,35 @@ export function PromptDetailModal({
           </div>
         )}
 
+        {/* 来源 / Source */}
+        {prompt.source && (
+          <div>
+            <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1">
+              <GlobeIcon className="w-3.5 h-3.5" />
+              {t('prompt.source')}
+            </h4>
+            <div className="text-sm bg-muted/30 rounded-lg p-3 break-all">
+              {prompt.source.startsWith('http') ? (
+                <a href={prompt.source} target="_blank" rel="noreferrer" className="text-primary hover:underline flex items-center gap-1 inline-flex">
+                  <span className="truncate max-w-full">{prompt.source}</span>
+                </a>
+              ) : (
+                <span className="text-foreground/90">{prompt.source}</span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 备注 / Notes */}
+        {prompt.notes && (
+          <div>
+            <h4 className="text-sm font-medium text-muted-foreground mb-2">{t('prompt.notes')}</h4>
+            <div className="text-sm bg-yellow-500/5 border border-yellow-500/10 rounded-lg p-3 text-foreground/80 italic">
+              {prompt.notes}
+            </div>
+          </div>
+        )}
+
         {/* 图片 */}
         {prompt.images && prompt.images.length > 0 && (
           <div>
@@ -297,7 +326,8 @@ export function PromptDetailModal({
         {/* 变量 */}
         {allVariables.length > 0 && (
           <div>
-            <h4 className="text-sm font-medium text-muted-foreground mb-2">
+            <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+              <BracesIcon className="w-4 h-4" />
               {t('prompt.variables')} ({allVariables.length})
             </h4>
             <div className="flex flex-wrap gap-2">

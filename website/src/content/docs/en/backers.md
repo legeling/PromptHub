@@ -9,9 +9,10 @@ The development of PromptHub is driven by the community. We sincerely thank the 
 
 ## Backer List
 
-| Date       | Backer | Amount  | Message                          |
-| :--------- | :----- | :------ | :------------------------------- |
-| 2025-12-29 | \*昊   | ￥20.00 | 感谢您的软件！能力有限，小小支持 |
+| Date       | Backer | Amount   | Message                                                    |
+| :--------- | :----- | :------- | :--------------------------------------------------------- |
+| 2026-01-08 | \*🌊   | ￥100.00 | Support excellent software!                                |
+| 2025-12-29 | \*昊   | ￥20.00  | Thanks for your software! Limited capacity, small support. |
 
 ## How to Become a Backer?
 

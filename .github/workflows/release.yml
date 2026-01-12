@@ -11,8 +11,14 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: macos-latest
+          # macOS: Use Intel runner for x64, Apple Silicon runner for arm64
+          # better-sqlite3 native module must be built on matching architecture
+          - os: macos-13 # Intel runner for x64 builds
             platform: mac
+            arch: x64
+          - os: macos-latest # Apple Silicon runner for arm64 builds
+            platform: mac
+            arch: arm64
           - os: windows-latest
             platform: win
             arch: x64
@@ -41,14 +47,15 @@ jobs:
           run_install: false
 
       - name: Get pnpm store directory
+        id: pnpm-cache
         shell: bash
         run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
 
       - name: Setup pnpm cache
         uses: actions/cache@v4
         with:
-          path: ${{ env.STORE_PATH }}
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
@@ -64,9 +71,14 @@ jobs:
       - name: Build for ${{ matrix.platform }} ${{ matrix.arch }}
         shell: bash
         run: |
-          if [ "${{ matrix.platform }}" = "win" ] && [ -n "${{ matrix.arch }}" ]; then
-            # Windows: build specific architecture
-            pnpm vite build && pnpm electron-builder --win --${{ matrix.arch }} --publish never
+          if [ -n "${{ matrix.arch }}" ]; then
+            # Build specific architecture (Windows or macOS with arch specified)
+            # 构建特定架构（Windows 或指定了 arch 的 macOS）
+            if [ "${{ matrix.platform }}" = "win" ]; then
+              pnpm vite build && pnpm electron-builder --win --${{ matrix.arch }} --publish never
+            elif [ "${{ matrix.platform }}" = "mac" ]; then
+              pnpm vite build && pnpm electron-builder --mac --${{ matrix.arch }} --publish never
+            fi
           else
             pnpm electron:build:${{ matrix.platform }}
           fi
@@ -107,6 +119,23 @@ jobs:
               *) rm -f "$file" ;;
             esac
           done
+
+      - name: Normalize macOS update metadata
+        if: matrix.platform == 'mac' && matrix.arch != ''
+        shell: bash
+        run: |
+          # macOS: Rename latest-mac.yml to arch-specific versions
+          # macOS: 将 latest-mac.yml 重命名为架构特定版本
+          if [ -f "dist/latest-mac.yml" ]; then
+            if [ "${{ matrix.arch }}" = "arm64" ]; then
+              mv dist/latest-mac.yml dist/latest-mac-arm64.yml
+              echo "Renamed latest-mac.yml to latest-mac-arm64.yml"
+            else
+              # x64: Keep as latest-mac.yml (default for updater) and also create latest-mac-x64.yml
+              cp dist/latest-mac.yml dist/latest-mac-x64.yml
+              echo "Created latest-mac-x64.yml for x64"
+            fi
+          fi
 
       - name: Remove debug files
         shell: bash

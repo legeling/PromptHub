@@ -7,7 +7,7 @@
   <p>
     <a href="https://github.com/legeling/PromptHub/stargazers"><img src="https://img.shields.io/github/stars/legeling/PromptHub?style=flat-square&color=yellow" alt="GitHub Stars"/></a>
     <a href="https://github.com/legeling/PromptHub/network/members"><img src="https://img.shields.io/github/forks/legeling/PromptHub?style=flat-square" alt="GitHub Forks"/></a>
-    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.3.6-green?style=flat-square" alt="Version"/></a>
+    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.3.7-green?style=flat-square" alt="Version"/></a>
     <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/github/downloads/legeling/PromptHub/total?style=flat-square&color=blue" alt="Downloads"/></a>
     <img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="Lizenz: AGPL-3.0"/>
   </p>
@@ -224,7 +224,7 @@ PromptHub/
 
 ## 🗺️ Roadmap
 
-### v0.3.6 (Aktuelle Version)
+### v0.3.7 (Aktuelle Version)
 
 - [x] **Mehrstufige Ordner**: Unterstützt unbegrenzte Ordnerverschachtelung und Drag-and-Drop-Verwaltung
 - [x] **Versionskontrollsystem**: Prompts wie Code verwalten, mit Versionsvergleich und Ein-Klick-Rollback
@@ -251,7 +251,7 @@ PromptHub/
 
 Den vollständigen Verlauf finden Sie hier: **[CHANGELOG.md](../CHANGELOG.md)**
 
-### Aktuelle Version v0.3.6 (30.12.2025)
+### Aktuelle Version v0.3.7 (12.01.2026)
 
 **Neu**
 
@@ -302,6 +302,17 @@ Dieses Projekt ist unter der [AGPL-3.0-Lizenz](../LICENSE) lizenziert.
     <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50" />
   </a>
 </div>
+
+---
+
+## 💖 Besonderer Dank / Backers
+
+Vielen Dank an die folgenden Freunde für ihre Spendenunterstützung für PromptHub:
+
+| Datum      | Unterstützer | Betrag   | Nachricht                                                  |
+| :--------- | :----------- | :------- | :--------------------------------------------------------- |
+| 2026-01-08 | \*🌊         | ￥100.00 | Unterstützung für exzellente Software!                     |
+| 2025-12-29 | \*昊         | ￥20.00  | Danke für Ihre Software! Begrenzte Kapazität, kleine Hilfe |
 
 ---
 

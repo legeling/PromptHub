@@ -14,7 +14,7 @@
   [![GitHub Forks](https://img.shields.io/github/forks/legeling/PromptHub?style=for-the-badge&logo=github)](https://github.com/legeling/PromptHub/network/members)
   [![Downloads](https://img.shields.io/github/downloads/legeling/PromptHub/total?style=for-the-badge&logo=github&color=blue)](https://github.com/legeling/PromptHub/releases)
   
-  [![Version](https://img.shields.io/badge/version-v0.3.6-success?style=for-the-badge)](https://github.com/legeling/PromptHub/releases)
+  [![Version](https://img.shields.io/badge/version-v0.3.7-success?style=for-the-badge)](https://github.com/legeling/PromptHub/releases)
   [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](./LICENSE)
   [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=for-the-badge)](https://github.com/legeling/PromptHub/pulls)
   
@@ -149,7 +149,7 @@
 
 ### 下载
 
-从 [Releases](https://github.com/legeling/PromptHub/releases) 下载最新版本 v0.3.6：
+从 [Releases](https://github.com/legeling/PromptHub/releases) 下载最新版本 v0.3.7：
 
 | 平台    | 下载                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -277,7 +277,7 @@ PromptHub/
 
 ## 路线图
 
-### v0.3.6 (当前)
+### v0.3.7 (当前)
 
 - [x] **多层级文件夹**：支持无限层级文件夹嵌套与拖拽管理
 - [x] **版本控制系统**：像管理代码一样管理 Prompt，支持历史对比与一键回滚
@@ -304,7 +304,7 @@ PromptHub/
 
 查看完整的更新日志：**[CHANGELOG.md](./CHANGELOG.md)**
 
-### 最新版本 v0.3.6 (2026-01-07)
+### 最新版本 v0.3.7 (2026-01-12)
 
 **新增**
 
@@ -402,9 +402,10 @@ If PromptHub is helpful to your work, feel free to buy the author a coffee!
 
 感谢以下朋友对 PromptHub 的捐赠支持：
 
-| 日期       | 支持者 | 金额    | 留言                             |
-| :--------- | :----- | :------ | :------------------------------- |
-| 2025-12-29 | \*昊   | ￥20.00 | 感谢您的软件！能力有限，小小支持 |
+| 日期       | 支持者 | 金额     | 留言                             |
+| :--------- | :----- | :------- | :------------------------------- |
+| 2026-01-08 | \*🌊   | ￥100.00 | 支持优秀的软件！                 |
+| 2025-12-29 | \*昊   | ￥20.00  | 感谢您的软件！能力有限，小小支持 |
 
 **联系邮箱 / Contact**: legeling567@gmail.com
 

@@ -161,6 +161,7 @@ export const ui = {
       becomeTitle: '成为支持者',
       becomeDesc: '支持开源，获得致谢',
       list: [
+        { name: '*🌊', amount: '￥100.00', date: '2026-01-08', message: '支持优秀的软件！' },
         { name: '*昊', amount: '￥20.00', date: '2025-12-29', message: '感谢您的软件！能力有限，小小支持' }
       ]
     },
@@ -323,7 +324,8 @@ export const ui = {
       becomeTitle: 'Become a Backer',
       becomeDesc: 'Support Open Source',
       list: [
-        { name: '*昊', amount: '￥20.00', date: '2025-12-29', message: '感谢您的软件！能力有限，小小支持' }
+        { name: '*🌊', amount: '￥100.00', date: '2026-01-08', message: 'Support excellent software!' },
+        { name: '*昊', amount: '￥20.00', date: '2025-12-29', message: 'Thanks for your software! Limited capacity, small support.' }
       ]
     },
     footer: {

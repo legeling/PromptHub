@@ -1186,6 +1186,37 @@ export function MainContent() {
                     </div>
                   )}
 
+                  {/* Source / 来源 */}
+                  {selectedPrompt.source && (
+                    <div className="mb-4">
+                      <div className="flex items-center gap-1 text-sm font-medium text-muted-foreground mb-1.5">
+                        <GlobeIcon className="w-3.5 h-3.5" />
+                        {t('prompt.source')}
+                      </div>
+                      <div className="text-sm bg-muted/30 rounded-xl p-3 border border-border/50 break-all">
+                        {selectedPrompt.source.startsWith('http') ? (
+                          <a href={selectedPrompt.source} target="_blank" rel="noreferrer" className="text-primary hover:underline flex items-center gap-1 inline-flex">
+                            <span className="truncate max-w-full">{selectedPrompt.source}</span>
+                          </a>
+                        ) : (
+                          <span className="text-foreground/90">{selectedPrompt.source}</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Notes / 备注 */}
+                  {selectedPrompt.notes && (
+                    <div className="mb-4">
+                      <div className="flex items-center gap-1 text-sm font-medium text-muted-foreground mb-1.5">
+                        {t('prompt.notes')}
+                      </div>
+                      <div className="text-sm bg-yellow-500/5 border border-yellow-500/10 rounded-xl p-3 text-foreground/80 italic">
+                        {selectedPrompt.notes}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Language toggle button */}
                   {/* 语言切换按钮 */}
                   {(selectedPrompt.systemPromptEn || selectedPrompt.userPromptEn) && (

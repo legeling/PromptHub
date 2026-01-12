@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Modal, Button } from '../ui';
 import { useTranslation } from 'react-i18next';
-import { CopyIcon, CheckIcon, VariableIcon, HistoryIcon, CalendarIcon, ClockIcon, PlayIcon, Loader2Icon } from 'lucide-react';
+import { CopyIcon, CheckIcon, BracesIcon, HistoryIcon, CalendarIcon, ClockIcon, PlayIcon, Loader2Icon } from 'lucide-react';
 
 type ModalMode = 'copy' | 'aiTest';
 
@@ -202,7 +202,7 @@ export function VariableInputModal({
           {/* Variable input / 变量输入 */}
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <VariableIcon className="w-4 h-4" />
+              <BracesIcon className="w-4 h-4" />
               <span>{t('prompt.fillVariables')}</span>
             </div>
 

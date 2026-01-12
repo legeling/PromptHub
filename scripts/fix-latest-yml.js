@@ -18,12 +18,12 @@ if (!filePath || !arch) {
 }
 
 const content = fs.readFileSync(filePath, 'utf8');
-const entryRegex = /- url:\s*(.+)\r?\n\s*sha512:\s*(.+)/g;
+const entryRegex = /- url:\s*(.+)\r?\n\s*sha512:\s*(.+)(?:\r?\n\s*size:\s*(\d+))?/g;
 const entries = [];
 let match;
 
 while ((match = entryRegex.exec(content)) !== null) {
-  entries.push({ url: match[1].trim(), sha512: match[2].trim() });
+  entries.push({ url: match[1].trim(), sha512: match[2].trim(), size: match[3] });
 }
 
 const target = entries.find((entry) => entry.url.includes(`-${arch}.exe`));
@@ -38,10 +38,12 @@ if (!filesBlockRegex.test(content)) {
   process.exit(1);
 }
 
-let next = content.replace(
-  filesBlockRegex,
-  `files:\n  - url: ${target.url}\n    sha512: ${target.sha512}\n`
-);
+let filesBlock = `files:\n  - url: ${target.url}\n    sha512: ${target.sha512}\n`;
+if (target.size) {
+  filesBlock += `    size: ${target.size}\n`;
+}
+
+let next = content.replace(filesBlockRegex, filesBlock);
 next = next.replace(/^path:.*$/m, `path: ${target.url}`);
 next = next.replace(/^sha512:.*$/m, `sha512: ${target.sha512}`);
 

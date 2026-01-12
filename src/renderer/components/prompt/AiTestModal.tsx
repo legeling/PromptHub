@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PlayIcon, LoaderIcon, CopyIcon, CheckIcon, GitCompareIcon, ImageIcon, PlusIcon, DownloadIcon } from 'lucide-react';
+import { PlayIcon, LoaderIcon, CopyIcon, CheckIcon, GitCompareIcon, ImageIcon, PlusIcon, DownloadIcon, BracesIcon } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { CollapsibleThinking } from '../ui/CollapsibleThinking';
 import { chatCompletion, buildMessagesFromPrompt, multiModelCompare, AITestResult, generateImage } from '../../services/ai';
@@ -462,7 +462,10 @@ export function AiTestModal({
         {/* 变量填充 */}
         {allVariables.length > 0 && (
           <div className="space-y-3">
-            <h4 className="text-sm font-medium text-muted-foreground">{t('prompt.fillVariables')}</h4>
+            <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+              <BracesIcon className="w-4 h-4" />
+              {t('prompt.fillVariables')}
+            </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {allVariables.map((variable) => (
                 <div key={variable} className="space-y-1">

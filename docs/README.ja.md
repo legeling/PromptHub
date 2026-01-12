@@ -7,7 +7,7 @@
   <p>
     <a href="https://github.com/legeling/PromptHub/stargazers"><img src="https://img.shields.io/github/stars/legeling/PromptHub?style=flat-square&color=yellow" alt="GitHub Stars"/></a>
     <a href="https://github.com/legeling/PromptHub/network/members"><img src="https://img.shields.io/github/forks/legeling/PromptHub?style=flat-square" alt="GitHub Forks"/></a>
-    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.3.6-green?style=flat-square" alt="Version"/></a>
+    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.3.7-green?style=flat-square" alt="Version"/></a>
     <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/github/downloads/legeling/PromptHub/total?style=flat-square&color=blue" alt="Downloads"/></a>
     <img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="License: AGPL-3.0"/>
   </p>
@@ -224,7 +224,7 @@ PromptHub/
 
 ## 🗺️ ロードマップ
 
-### v0.3.6 (現在のバージョン)
+### v0.3.7 (現在のバージョン)
 
 - [x] **多階層フォルダ**: 無制限のフォルダ階層化とドラッグ＆ドロップ管理をサポート
 - [x] **バージョン管理システム**: コードのようにプロンプトを管理。履歴比較とワンクリック復元が可能
@@ -248,7 +248,7 @@ PromptHub/
 
 すべての更新履歴はこちら：**[CHANGELOG.md](../CHANGELOG.md)**
 
-### 最新バージョン v0.3.6 (2026-01-07)
+### 最新バージョン v0.3.7 (2026-01-12)
 
 **新規**
 
@@ -299,6 +299,17 @@ PromptHub/
     <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50" />
   </a>
 </div>
+
+---
+
+## 💖 支援者への謝辞 / Backers
+
+PromptHub への寄付を通じて開発を支援してくださった方々に深く感謝いたします：
+
+| 日付       | 支援者 | 金額     | メッセージ                                           |
+| :--------- | :----- | :------- | :--------------------------------------------------- |
+| 2026-01-08 | \*🌊   | ￥100.00 | 素晴らしいソフトウェアを応援しています！             |
+| 2025-12-29 | \*昊   | ￥20.00  | あなたのソフトウェアに感謝！微力ながら応援しています |
 
 ---
 

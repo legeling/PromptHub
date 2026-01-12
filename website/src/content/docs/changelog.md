@@ -1,3 +1,25 @@
+## [0.3.7] - 2026-01-12
+
+### 优化 / Improvements
+
+- 🎨 **UI 细节优化**：修复弹窗操作按钮间距过大的问题，使布局更加紧凑美观
+  - **UI Polish**: Fixed excessive button spacing in headers for a more compact and consistent layout
+- 🔗 **变量输入体验**：将变量图标从 `(x)` 替换为 `{}` (Braces)，消除视觉歧义，并统一了详情页和 AI 测试中的变量展示
+  - **Variable Input UX**: Replaced ambiguous `Variable` icon with `Braces` to avoid confusion with error signs, and unified variable displays
+- 📂 **属性字段归集**：将 "来源" 和 "备注" 字段逻辑归类，使属性面板信息层级更清晰
+  - **Attribute Grouping**: Grouped "Source" and "Notes" fields for better information hierarchy
+- 🌍 **多语言全适配**：补全并更新了所有支持语言（中、英、日、德、西、法、繁中）的最新功能翻译
+  - **Full i18n Support**: Updated translations for all supported languages (ZH, EN, JA, DE, ES, FR, ZH-TW)
+- ⚙️ **CI/CD 构建优化**：优化 Release 工作流，支持 macOS 分架构（Intel/Apple Silicon）独立构建
+  - **CI/CD Optimization**: Improved release workflow with separate builds for macOS x64 and arm64
+
+### 修复 / Fixed
+
+- 🚀 **自动更新修复**：禁用 NSIS 增量更新包，解决 Windows 平台更新时 SHA512 不匹配的问题
+  - **Auto-update Fix**: Disabled NSIS differential packages to resolve SHA512 mismatch errors on Windows
+- 🐛 **Lint 修复**：修复 GitHub Action 中的上下文访问校验警告
+  - **Workflow Lint**: Fixed context access validation warnings in GitHub Actions
+
 ## [0.3.6] - 2026-01-07
 
 ### 新功能 / Added

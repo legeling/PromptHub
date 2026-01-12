@@ -7,7 +7,7 @@
   <p>
     <a href="https://github.com/legeling/PromptHub/stargazers"><img src="https://img.shields.io/github/stars/legeling/PromptHub?style=flat-square&color=yellow" alt="GitHub Stars"/></a>
     <a href="https://github.com/legeling/PromptHub/network/members"><img src="https://img.shields.io/github/forks/legeling/PromptHub?style=flat-square" alt="GitHub Forks"/></a>
-    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.3.6-green?style=flat-square" alt="Version"/></a>
+    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.3.7-green?style=flat-square" alt="Version"/></a>
     <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/github/downloads/legeling/PromptHub/total?style=flat-square&color=blue" alt="Downloads"/></a>
     <img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="License: AGPL-3.0"/>
   </p>
@@ -111,7 +111,7 @@
 
 ### 下載
 
-從 [Releases](https://github.com/legeling/PromptHub/releases) 下載最新版本 v0.3.6：
+從 [Releases](https://github.com/legeling/PromptHub/releases) 下載最新版本 v0.3.7：
 
 |  平台   |                                                                                                                                                                                                                  下載                                                                                                                                                                                                                   |
 | :-----: | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
@@ -224,7 +224,7 @@ PromptHub/
 
 ## 🗺️ 路線圖
 
-### v0.3.6 (當前)
+### v0.3.7 (當前)
 
 - [x] **多層級資料夾**：支援無限層級資料夾巢狀與拖拽管理
 - [x] **版本控制系統**：像管理代碼一樣管理 Prompt，支援歷史對比與一鍵回滾
@@ -251,7 +251,7 @@ PromptHub/
 
 查看完整更新日誌：**[CHANGELOG.md](../CHANGELOG.md)**
 
-### 最新版本 v0.3.6 (2026-01-07)
+### 最新版本 v0.3.7 (2026-01-12)
 
 **新增**
 
@@ -302,6 +302,17 @@ PromptHub/
     <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50" />
   </a>
 </div>
+
+---
+
+## 💖 致謝支持者 / Backers
+
+感謝以下朋友對 PromptHub 的捐助支持：
+
+| 日期       | 支持者 | 金額     | 留言                             |
+| :--------- | :----- | :------- | :------------------------------- |
+| 2026-01-08 | \*🌊   | ￥100.00 | 支持優秀的軟件！                 |
+| 2025-12-29 | \*昊   | ￥20.00  | 感謝您的軟件！能力有限，小小支持 |
 
 ---
 
