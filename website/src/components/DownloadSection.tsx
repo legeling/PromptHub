@@ -51,11 +51,11 @@ export const DownloadSection = ({ dict }: DownloadSectionProps) => {
               <p className="text-sm text-zinc-500">{dict.mac.desc}</p>
             </div>
             <div className="w-full space-y-3">
-              <Button variant="primary" className="w-full" href="https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.6-arm64.dmg">
+              <Button variant="primary" className="w-full" href="https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.7-arm64.dmg">
                 <Download className="w-4 h-4" />
                 {dict.mac.btn}
               </Button>
-              <a href="https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.6-x64.dmg" className="block text-xs text-zinc-500 hover:text-white transition-colors">
+              <a href="https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.7-x64.dmg" className="block text-xs text-zinc-500 hover:text-white transition-colors">
                 {dict.mac.subBtn}
               </a>
             </div>
@@ -77,11 +77,11 @@ export const DownloadSection = ({ dict }: DownloadSectionProps) => {
               <p className="text-sm text-zinc-500">{dict.win.desc}</p>
             </div>
             <div className="w-full space-y-3">
-              <Button variant="primary" className="w-full" href="https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.6-x64.exe">
+              <Button variant="primary" className="w-full" href="https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.7-x64.exe">
                 <Download className="w-4 h-4" />
                 {dict.win.btn}
               </Button>
-              <a href="https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.6-arm64.exe" className="block text-xs text-zinc-500 hover:text-white transition-colors">
+              <a href="https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.7-arm64.exe" className="block text-xs text-zinc-500 hover:text-white transition-colors">
                 {dict.win.subBtn}
               </a>
             </div>
@@ -103,11 +103,11 @@ export const DownloadSection = ({ dict }: DownloadSectionProps) => {
               <p className="text-sm text-zinc-500">{dict.linux.desc}</p>
             </div>
             <div className="w-full space-y-3">
-              <Button variant="primary" className="w-full" href="https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.6-x64.AppImage">
+              <Button variant="primary" className="w-full" href="https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.7-x64.AppImage">
                 <Download className="w-4 h-4" />
                 {dict.linux.btn}
               </Button>
-              <a href="https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.3.6_amd64.deb" className="block text-xs text-zinc-500 hover:text-white transition-colors">
+              <a href="https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.3.7_amd64.deb" className="block text-xs text-zinc-500 hover:text-white transition-colors">
                 {dict.linux.subBtn}
               </a>
             </div>
