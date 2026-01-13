@@ -2,7 +2,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Modal, Button, Input, Textarea, UnsavedChangesDialog } from '../ui';
 import { Select } from '../ui/Select';
-import { HashIcon, XIcon, ImageIcon, Maximize2Icon, Minimize2Icon, PlusIcon, GlobeIcon, SparklesIcon, Loader2Icon, PlayIcon, VideoIcon, ChevronDownIcon, ChevronRightIcon, SaveIcon } from 'lucide-react';
+import { HashIcon, XIcon, ImageIcon, Maximize2Icon, Minimize2Icon, PlusIcon, GlobeIcon, SparklesIcon, Loader2Icon, PlayIcon, VideoIcon, ChevronDownIcon, ChevronRightIcon, SaveIcon, MessageSquareTextIcon } from 'lucide-react';
+
 import { usePromptStore } from '../../stores/prompt.store';
 import { useFolderStore } from '../../stores/folder.store';
 import { useSettingsStore } from '../../stores/settings.store';
@@ -32,6 +33,7 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [promptType, setPromptType] = useState<'text' | 'image' | 'video'>('text');
   const [systemPrompt, setSystemPrompt] = useState('');
   const [systemPromptEn, setSystemPromptEn] = useState('');
   const [userPrompt, setUserPrompt] = useState('');
@@ -149,6 +151,7 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
     if (prompt) {
       setTitle(prompt.title);
       setDescription(prompt.description || '');
+      setPromptType(prompt.promptType || 'text');
       setSystemPrompt(prompt.systemPrompt || '');
       setSystemPromptEn(prompt.systemPromptEn || '');
       setUserPrompt(prompt.userPrompt);
@@ -171,6 +174,7 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
       await updatePrompt(prompt.id, {
         title: title.trim(),
         description: description.trim() || undefined,
+        promptType,
         systemPrompt: systemPrompt.trim() || undefined,
         systemPromptEn: systemPromptEn.trim() || undefined,
         userPrompt: userPrompt.trim(),
@@ -552,7 +556,32 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
                 onChange={(e) => setDescription(e.target.value)}
               />
 
-
+              {/* Prompt 类型 */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-foreground">{t('prompt.type', 'Prompt 类型')}</label>
+                <div className="flex gap-2">
+                  {(['text', 'image'] as const).map((type) => (
+                    <button
+                      key={type}
+                      onClick={() => setPromptType(type)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                        promptType === type
+                          ? 'bg-primary text-white shadow-sm'
+                          : 'bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {type === 'text' && <MessageSquareTextIcon className="w-4 h-4" />}
+                      {type === 'image' && <ImageIcon className="w-4 h-4" />}
+                      {type === 'text' && t('prompt.typeText', '文本')}
+                      {type === 'image' && t('prompt.typeImage', '媒体')}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {promptType === 'text' && t('prompt.typeTextDesc', '使用对话模型（如 GPT-4）进行测试')}
+                  {promptType === 'image' && t('prompt.typeImageDesc', '使用生图模型（如 DALL-E）进行测试，生成的图片会自动保存到预览')}
+                </p>
+              </div>
 
               {/* 参考媒体 (图片和视频) */}
               <div className="space-y-2">

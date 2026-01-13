@@ -3,8 +3,15 @@
     "name": "PromptHub",
     "description": "Gestor de Prompts local con control de versiones"
   },
+  "filter": {
+    "all": "Todo",
+    "text": "Texto",
+    "image": "Imagen"
+  },
   "nav": {
     "allPrompts": "Todos los Prompts",
+    "textPrompts": "Prompts de texto",
+    "imagePrompts": "Prompts de imagen",
     "favorites": "Favoritos",
     "folders": "Carpetas",
     "tags": "Etiquetas",
@@ -145,6 +152,17 @@
     "sortLeastUsed": "Menos usado",
     "viewCard": "Vista de tarjetas",
     "viewList": "Vista de lista",
+    "viewGallery": "Vista de galería",
+    "viewKanban": "Vista Kanban",
+    "columns2": "2 columnas",
+    "columns3": "3 columnas",
+    "columns4": "4 columnas",
+    "pinnedPrompts": "Prompts fijados",
+    "pin": "Fijar",
+    "unpin": "Desfijar",
+    "expandAll": "Expandir todo",
+    "collapseAll": "Contraer todo",
+    "unpinAll": "Limpiar todo",
     "usageCount": "Veces usado",
     "createdAt": "Creado",
     "promptCount": "{{count}} en total",
@@ -166,8 +184,6 @@
     "batchDeleted": "Eliminados en lote",
     "addToFavorites": "Añadir a favoritos",
     "removeFromFavorites": "Quitar de favoritos",
-    "pin": "Fijar",
-    "unpin": "Desfijar",
     "viewDetail": "Ver detalles",
     "enterValue": "Introducir valor",
     "selected": "{{count}} seleccionados",
@@ -221,6 +237,9 @@
     "parentHint": "Máximo {{depth}} niveles de anidamiento"
   },
   "settings": {
+    "developer": "Opciones de desarrollador",
+    "debugMode": "Modo de depuración",
+    "debugModeDesc": "Habilitar depuración de consola (Soporta Ctrl+Shift+I / Cmd+Option+I)",
     "security": "Seguridad",
     "securityStatus": "Estado",
     "masterSet": "Contraseña maestra configurada",

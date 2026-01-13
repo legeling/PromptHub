@@ -55,7 +55,7 @@ export function ImagePreviewModal({ isOpen, onClose, imageSrc }: ImagePreviewMod
                     </div>
                 ) : (
                     <img
-                        src={`local-image://${imageSrc}`}
+                        src={imageSrc.startsWith('http') || imageSrc.startsWith('data:') || imageSrc.startsWith('local-image://') ? imageSrc : `local-image://${imageSrc}`}
                         alt="Preview"
                         className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
                         onError={() => setImageError(true)}

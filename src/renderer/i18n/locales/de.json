@@ -3,8 +3,15 @@
     "name": "PromptHub",
     "description": "Lokaler Prompt-Manager mit Versionskontrolle"
   },
+  "filter": {
+    "all": "Alle",
+    "text": "Text",
+    "image": "Bild"
+  },
   "nav": {
     "allPrompts": "Alle Prompts",
+    "textPrompts": "Text-Prompts",
+    "imagePrompts": "Bild-Prompts",
     "favorites": "Favoriten",
     "folders": "Ordner",
     "tags": "Tags",
@@ -145,6 +152,17 @@
     "sortLeastUsed": "Wenigstgenutzt",
     "viewCard": "Kartenansicht",
     "viewList": "Listenansicht",
+    "viewGallery": "Galerieansicht",
+    "viewKanban": "Kanban-Ansicht",
+    "columns2": "2 Spalten",
+    "columns3": "3 Spalten",
+    "columns4": "4 Spalten",
+    "pinnedPrompts": "Angepinnte Prompts",
+    "pin": "Anpinnen",
+    "unpin": "Lösen",
+    "expandAll": "Alle ausklappen",
+    "collapseAll": "Alle einklappen",
+    "unpinAll": "Alle lösen",
     "usageCount": "Nutzungsanzahl",
     "createdAt": "Erstellt",
     "promptCount": "{{count}} insgesamt",
@@ -166,8 +184,6 @@
     "batchDeleted": "Stapelweise gelöscht",
     "addToFavorites": "Zu Favoriten hinzufügen",
     "removeFromFavorites": "Aus Favoriten entfernen",
-    "pin": "Anheften",
-    "unpin": "Lösen",
     "viewDetail": "Details anzeigen",
     "enterValue": "Wert eingeben",
     "selected": "{{count}} ausgewählt",
@@ -221,6 +237,9 @@
     "parentHint": "Maximal {{depth}} Verschachtelungsebenen"
   },
   "settings": {
+    "developer": "Entwickleroptionen",
+    "debugMode": "Debug-Modus",
+    "debugModeDesc": "Konsolen-Debugging aktivieren (Unterstützt Ctrl+Shift+I / Cmd+Option+I)",
     "security": "Sicherheit",
     "securityStatus": "Status",
     "masterSet": "Master-Passwort festgelegt",

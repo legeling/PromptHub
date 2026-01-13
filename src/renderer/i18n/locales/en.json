@@ -3,8 +3,15 @@
     "name": "PromptHub",
     "description": "Local Prompt Manager with Version Control"
   },
+  "filter": {
+    "all": "All",
+    "text": "Text",
+    "image": "Image"
+  },
   "nav": {
     "allPrompts": "All Prompts",
+    "textPrompts": "Text Prompts",
+    "imagePrompts": "Image Prompts",
     "favorites": "Favorites",
     "folders": "Folders",
     "tags": "Tags",
@@ -34,6 +41,14 @@
     "tags": "Tags",
     "media": "media",
     "properties": "Properties",
+    "type": "Prompt Type",
+    "typeText": "Text",
+    "typeImage": "Media",
+    "typeTextDesc": "Test with chat models (e.g., GPT-4)",
+    "typeImageDesc": "Test with image models (e.g., DALL-E). Generated images will be saved to preview.",
+    "videoNotSupported": "Video generation coming soon!",
+    "mismatchText": "Current Prompt is Text type, please configure a Chat Model in settings.",
+    "mismatchImage": "Current Prompt is Media type, please configure an Image Model in settings.",
     "notesOptional": "Notes (Optional)",
     "notes": "Notes",
     "notesPlaceholder": "Personal notes about this prompt...",
@@ -145,6 +160,18 @@
     "sortLeastUsed": "Least Used",
     "viewCard": "Card View",
     "viewList": "List View",
+    "viewGallery": "Gallery View",
+    "viewKanban": "Kanban View",
+    "columns2": "2 Columns",
+    "columns3": "3 Columns",
+    "columns4": "4 Columns",
+    "columns5": "5 Columns",
+    "pinnedPrompts": "Pinned Prompts",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "expandAll": "Expand All",
+    "collapseAll": "Collapse All",
+    "unpinAll": "Clear All",
     "usageCount": "Usage",
     "createdAt": "Created",
     "promptCount": "{{count}} prompts",
@@ -166,8 +193,6 @@
     "batchDeleted": "Batch deleted",
     "addToFavorites": "Add to Favorites",
     "removeFromFavorites": "Remove from Favorites",
-    "pin": "Pin to Top",
-    "unpin": "Unpin",
     "viewDetail": "View detail",
     "enterValue": "Enter value",
     "selected": "{{count}} selected",
@@ -221,6 +246,9 @@
     "parentHint": "Maximum {{depth}} levels of nesting"
   },
   "settings": {
+    "developer": "Developer Options",
+    "debugMode": "Debug Mode",
+    "debugModeDesc": "Enable console debugging (Supports Ctrl+Shift+I / Cmd+Option+I)",
     "security": "Security",
     "securityStatus": "Status",
     "masterSet": "Master password set",
@@ -594,7 +622,8 @@
     "dataPathChangeFailed": "Data migration failed",
     "batchFavorited": "Batch favorited",
     "batchMoved": "Batch moved",
-    "batchDeleted": "Batch deleted"
+    "batchDeleted": "Batch deleted",
+    "imageSaved": "Image saved to preview"
   },
   "closeDialog": {
     "title": "Close Application",

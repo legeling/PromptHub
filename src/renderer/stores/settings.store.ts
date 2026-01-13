@@ -167,6 +167,7 @@ interface SettingsState {
   showLineNumbers: boolean;
   launchAtStartup: boolean;
   minimizeOnLaunch: boolean;
+  debugMode: boolean;
 
   // 关闭行为设置 (Windows) / Close behavior settings (Windows)
   closeAction: 'ask' | 'minimize' | 'exit';  // ask=prompt every time, minimize=minimize to tray, exit=exit directly
@@ -248,6 +249,7 @@ interface SettingsState {
   setShowLineNumbers: (enabled: boolean) => void;
   setLaunchAtStartup: (enabled: boolean) => void;
   setMinimizeOnLaunch: (enabled: boolean) => void;
+  setDebugMode: (enabled: boolean) => void;
   setCloseAction: (action: 'ask' | 'minimize' | 'exit') => void;
   setEnableNotifications: (enabled: boolean) => void;
   setShowCopyNotification: (enabled: boolean) => void;
@@ -309,6 +311,7 @@ export const useSettingsStore = create<SettingsState>()(
         showLineNumbers: false,
         launchAtStartup: false,
         minimizeOnLaunch: true,
+        debugMode: false,
         closeAction: 'ask' as const,  // Default to ask every time / 默认每次询问
         enableNotifications: true,
         showCopyNotification: true,
@@ -428,6 +431,10 @@ export const useSettingsStore = create<SettingsState>()(
           setTouched({ closeAction: action });
           // Notify main process of close action change / 通知主进程更新关闭行为
           window.electron?.setCloseAction?.(action);
+        },
+        setDebugMode: (enabled) => {
+          setTouched({ debugMode: enabled });
+          window.electron?.setDebugMode?.(enabled);
         },
         setEnableNotifications: (enabled) => setTouched({ enableNotifications: enabled }),
         setShowCopyNotification: (enabled) => setTouched({ showCopyNotification: enabled }),
@@ -567,6 +574,9 @@ export const useSettingsStore = create<SettingsState>()(
           // 初始化托盘状态
           if (state.minimizeOnLaunch) {
             window.electron?.setMinimizeToTray?.(true);
+          }
+          if (state.debugMode) {
+            window.electron?.setDebugMode?.(true);
           }
         },
       };

@@ -1,5 +1,12 @@
 ## [0.3.7] - 2026-01-12
 
+### 新功能 / Added
+
+- 📋 **看板/Bento 视图模式**：新增 Kanban 视图，支持响应式 Bento 网格布局，支持 2-4 列自由切换，方便多 Prompt 对比
+  - **Kanban/Bento View**: Added a new Kanban view with responsive Bento grid layout, supporting 2-4 columns for easy comparison
+- 📌 **Prompt 置顶对比**：支持置顶多个 Prompt 到顶部独立区域，支持一键全部展开/收起，极大提升 Prompt 优化效率
+  - **Pinned Comparison**: Pin multiple prompts to a dedicated top section with quick "Expand/Collapse All" actions
+
 ### 优化 / Improvements
 
 - 🎨 **UI 细节优化**：修复弹窗操作按钮间距过大的问题，使布局更加紧凑美观
@@ -15,6 +22,8 @@
 
 ### 修复 / Fixed
 
+- 🍎 **macOS Intel 启动修复**：修复 macOS Intel 版本启动后白屏/无响应的问题，原因是 `better-sqlite3` 原生模块未针对 Electron 编译 (closes #35)
+  - **macOS Intel Launch Fix**: Fixed blank screen on macOS Intel caused by `better-sqlite3` ABI mismatch with Electron
 - 🚀 **自动更新修复**：禁用 NSIS 增量更新包，解决 Windows 平台更新时 SHA512 不匹配的问题
   - **Auto-update Fix**: Disabled NSIS differential packages to resolve SHA512 mismatch errors on Windows
 - 🐛 **Lint 修复**：修复 GitHub Action 中的上下文访问校验警告

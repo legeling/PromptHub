@@ -9,3 +9,4 @@ export { PromptTableView } from './PromptTableView';
 export { AiTestModal } from './AiTestModal';
 export { PromptDetailModal } from './PromptDetailModal';
 export { PromptGalleryView } from './PromptGalleryView';
+export { PromptKanbanView } from './PromptKanbanView';

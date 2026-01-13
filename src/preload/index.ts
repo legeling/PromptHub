@@ -104,6 +104,8 @@ contextBridge.exposeInMainWorld('electron', {
   exitFullscreen: () => ipcRenderer.send('window:exitFullscreen'),
   isFullscreen: () => ipcRenderer.invoke('window:isFullscreen'),
   setAutoLaunch: (enabled: boolean) => ipcRenderer.send('app:setAutoLaunch', enabled),
+  setDebugMode: (enabled: boolean) => ipcRenderer.send('app:setDebugMode', enabled),
+  toggleDevTools: () => ipcRenderer.send('window:toggleDevTools'),
   setMinimizeToTray: (enabled: boolean) => ipcRenderer.send('app:setMinimizeToTray', enabled),
   setCloseAction: (action: 'ask' | 'minimize' | 'exit') => ipcRenderer.send('app:setCloseAction', action),
   // Close dialog callbacks
@@ -162,6 +164,13 @@ contextBridge.exposeInMainWorld('electron', {
   saveImageBuffer: (buffer: ArrayBuffer) => ipcRenderer.invoke('image:save-buffer', Buffer.from(buffer)),
   downloadImage: (url: string) => ipcRenderer.invoke('image:download', url),
   openImage: (fileName: string) => ipcRenderer.invoke('image:open', fileName),
+  // Save base64 image with auto-generated filename
+  // 保存 base64 图片并自动生成文件名
+  saveBase64Image: async (base64: string): Promise<string | null> => {
+    const fileName = `ai-generated-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`;
+    const result = await ipcRenderer.invoke('image:saveBase64', fileName, base64);
+    return result ? fileName : null;
+  },
   // Image sync
   // 图片同步相关
   listImages: () => ipcRenderer.invoke('image:list'),
@@ -226,6 +235,8 @@ declare global {
       exitFullscreen?: () => void;
       isFullscreen?: () => Promise<boolean>;
       setAutoLaunch?: (enabled: boolean) => void;
+      setDebugMode?: (enabled: boolean) => void;
+      toggleDevTools?: () => void;
       setMinimizeToTray?: (enabled: boolean) => void;
       setCloseAction?: (action: 'ask' | 'minimize' | 'exit') => void;
       onShowCloseDialog?: (callback: () => void) => void | (() => void);

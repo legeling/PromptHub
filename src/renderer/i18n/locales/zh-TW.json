@@ -3,8 +3,15 @@
     "name": "PromptHub",
     "description": "本地版的 Prompt 管理器，帶版本控制"
   },
+  "filter": {
+    "all": "全部",
+    "text": "文本",
+    "image": "繪圖"
+  },
   "nav": {
     "allPrompts": "全部 Prompts",
+    "textPrompts": "文本提示詞",
+    "imagePrompts": "繪圖提示詞",
     "favorites": "收藏",
     "folders": "資料夾",
     "tags": "標籤",
@@ -145,6 +152,17 @@
     "sortLeastUsed": "使用最少",
     "viewCard": "卡片檢視",
     "viewList": "列表檢視",
+    "viewGallery": "圖片檢視",
+    "viewKanban": "看板檢視",
+    "columns2": "2 列",
+    "columns3": "3 列",
+    "columns4": "4 列",
+    "pinnedPrompts": "固定的 Prompt",
+    "pin": "固定",
+    "unpin": "取消固定",
+    "expandAll": "全部展開",
+    "collapseAll": "全部收起",
+    "unpinAll": "清除",
     "usageCount": "使用次數",
     "createdAt": "建立時間",
     "promptCount": "共 {{count}} 個",
@@ -166,8 +184,6 @@
     "batchDeleted": "已批次刪除",
     "addToFavorites": "加入收藏",
     "removeFromFavorites": "取消收藏",
-    "pin": "置頂",
-    "unpin": "取消置頂",
     "viewDetail": "查看詳情",
     "enterValue": "輸入值",
     "selected": "已選擇 {{count}} 項",
@@ -221,6 +237,9 @@
     "parentHint": "最多支援 {{depth}} 層巢狀"
   },
   "settings": {
+    "developer": "開發者選項",
+    "debugMode": "調試模式",
+    "debugModeDesc": "啟用控制台調試 (支持 Ctrl+Shift+I / Cmd+Option+I 喚起)",
     "security": "安全",
     "securityStatus": "狀態",
     "masterSet": "已設定主密碼",

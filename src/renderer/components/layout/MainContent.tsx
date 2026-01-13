@@ -3,15 +3,15 @@ import { flushSync } from 'react-dom';
 import { usePromptStore, ViewMode } from '../../stores/prompt.store';
 import { useFolderStore } from '../../stores/folder.store';
 import { useSettingsStore } from '../../stores/settings.store';
-import { StarIcon, CopyIcon, HistoryIcon, HashIcon, SparklesIcon, EditIcon, TrashIcon, CheckIcon, PlayIcon, LoaderIcon, XIcon, GitCompareIcon, ClockIcon, GlobeIcon, PinIcon } from 'lucide-react';
-import { EditPromptModal, VersionHistoryModal, VariableInputModal, PromptListHeader, PromptListView, PromptTableView, AiTestModal, PromptDetailModal, PromptGalleryView } from '../prompt';
+import { StarIcon, CopyIcon, HistoryIcon, HashIcon, SparklesIcon, EditIcon, TrashIcon, CheckIcon, PlayIcon, LoaderIcon, XIcon, GitCompareIcon, ClockIcon, GlobeIcon, PinIcon, MessageSquareTextIcon, ImageIcon, DownloadIcon, SaveIcon, ZoomInIcon } from 'lucide-react';
+import { EditPromptModal, VersionHistoryModal, VariableInputModal, PromptListHeader, PromptListView, PromptTableView, AiTestModal, PromptDetailModal, PromptGalleryView, PromptKanbanView } from '../prompt';
 import { ContextMenu, ContextMenuItem } from '../ui/ContextMenu';
 import { ImagePreviewModal } from '../ui/ImagePreviewModal';
 import { LocalImage } from '../ui/LocalImage';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { CollapsibleThinking } from '../ui/CollapsibleThinking';
 import { useToast } from '../ui/Toast';
-import { chatCompletion, buildMessagesFromPrompt, multiModelCompare, AITestResult, StreamCallbacks } from '../../services/ai';
+import { chatCompletion, generateImage, buildMessagesFromPrompt, multiModelCompare, AITestResult, StreamCallbacks } from '../../services/ai';
 import { useTranslation } from 'react-i18next';
 import type { Prompt, PromptVersion } from '../../../shared/types';
 import ReactMarkdown from 'react-markdown';
@@ -119,6 +119,10 @@ function PromptCard({
           {prompt.isPinned && (
             <PinIcon className={`w-3 h-3 flex-shrink-0 ${isSelected ? 'text-white' : 'text-primary'}`} />
           )}
+          {/* Prompt type icon - only show for image/media type */}
+          {prompt.promptType === 'image' && (
+            <ImageIcon className={`w-3 h-3 flex-shrink-0 ${isSelected ? 'text-white/70' : 'text-blue-500'}`} />
+          )}
           <h3 className="font-medium truncate text-sm">
             {renderHighlightedText(prompt.title, highlightTerms, highlightClassName)}
           </h3>
@@ -174,6 +178,8 @@ export function MainContent() {
   const setRenderMarkdownPref = useSettingsStore((state) => state.setRenderMarkdown);
   const [renderMarkdownEnabled, setRenderMarkdownEnabled] = useState(renderMarkdownPref);
   const [showEnglish, setShowEnglish] = useState(false);
+  const promptTypeFilter = usePromptStore((state) => state.promptTypeFilter);
+  const setPromptTypeFilter = usePromptStore((state) => state.setPromptTypeFilter);
   const { showToast } = useToast();
 
   const handleSelectPrompt = useCallback((prompt: Prompt, e: React.MouseEvent) => {
@@ -223,6 +229,7 @@ export function MainContent() {
     isComparingModels: boolean;
     aiResponse: string | null;
     aiThinking: string | null;
+    isAiResponseImage?: boolean;
     compareResults: AITestResult[] | null;
     compareError: string | null;
   }>>({});
@@ -245,6 +252,7 @@ export function MainContent() {
   // 流式传输时使用流式内容，否则使用存储的状态
   const aiResponse = isStreaming ? streamingContent : (currentState?.aiResponse || null);
   const aiThinking = isStreaming ? streamingThinking : (currentState?.aiThinking || null);
+  const isAiResponseImage = currentState?.isAiResponseImage || false;
 
   // Update current prompt test state
   // 更新当前 prompt 的测试状态
@@ -256,6 +264,7 @@ export function MainContent() {
         isComparingModels: prev[promptId]?.isComparingModels || false,
         aiResponse: prev[promptId]?.aiResponse || null,
         aiThinking: prev[promptId]?.aiThinking || null,
+        isAiResponseImage: prev[promptId]?.isAiResponseImage || false,
         compareResults: prev[promptId]?.compareResults || null,
         compareError: prev[promptId]?.compareError || null,
         ...updates
@@ -290,6 +299,12 @@ export function MainContent() {
       } else {
         updatePromptState(selectedId, { aiThinking: thinking });
       }
+    }
+  };
+
+  const setIsAiResponseImage = (isImage: boolean) => {
+    if (selectedId) {
+      updatePromptState(selectedId, { isAiResponseImage: isImage });
     }
   };
 
@@ -334,6 +349,11 @@ export function MainContent() {
     return chatModels.find((m) => m.isDefault) ?? chatModels[0] ?? null;
   }, [aiModels]);
 
+  const defaultImageModel = useMemo(() => {
+    const imgModels = aiModels.filter((m) => m.type === 'image');
+    return imgModels.find((m) => m.isDefault) ?? imgModels[0] ?? null;
+  }, [aiModels]);
+
   const singleChatConfig = useMemo(() => {
     if (defaultChatModel) {
       return {
@@ -348,7 +368,8 @@ export function MainContent() {
     return { provider: aiProvider, apiKey: aiApiKey, apiUrl: aiApiUrl, model: aiModel };
   }, [defaultChatModel, aiProvider, aiApiKey, aiApiUrl, aiModel]);
 
-  const canRunSingleAiTest = !!(singleChatConfig.apiKey && singleChatConfig.apiUrl && singleChatConfig.model);
+  const canRunSingleAiTest = !!((singleChatConfig.apiKey && singleChatConfig.apiUrl && singleChatConfig.model) || 
+    (defaultImageModel && defaultImageModel.apiKey && defaultImageModel.apiUrl && defaultImageModel.model));
 
   useEffect(() => {
     setRenderMarkdownEnabled(renderMarkdownPref);
@@ -457,16 +478,13 @@ export function MainContent() {
     }
   };
 
-  // AI test function (supports variable substitution)
-  // AI 测试函数（支持变量替换后的 prompt）
   const runAiTest = async (systemPrompt: string | undefined, userPrompt: string, promptId?: string) => {
     // Do not use modal in card view; render results inline
     // 卡片视图不使用弹窗，直接在页面内显示结果
-    // setShowAiPanel(true);  // Removed: do not open AiTestModal
-    // setShowAiPanel(true);  // 移除：不再打开 AiTestModal
     setIsTestingAI(true);
     setAiResponse(null);
     setAiThinking(null);
+    setIsAiResponseImage(false);
     setIsAiTestVariableModalOpen(false);
 
     // Increment usage count
@@ -476,10 +494,95 @@ export function MainContent() {
       await incrementUsageCount(targetId);
     }
 
+    // Get the current prompt to check its type
+    // 获取当前 prompt 以检查其类型
+    const currentPrompt = prompts.find(p => p.id === targetId);
+    const currentPromptType = currentPrompt?.promptType || 'text';
+
     try {
       if (!canRunSingleAiTest) {
         throw new Error(t('toast.configAI') || '请先配置 AI');
       }
+
+      // Use promptType to decide which API to call
+      // 根据 promptType 决定调用哪个 API
+      if (currentPromptType === 'image') {
+         if (!defaultImageModel) {
+             throw new Error(t('mismatchImage') || 'Prompt type is Media but no Image Model configured');
+         }
+
+         console.log('[MainContent] Image Prompt. Using model:', defaultImageModel.name || defaultImageModel.model);
+         try {
+             const result = await generateImage({
+                 provider: defaultImageModel.provider,
+                 apiKey: defaultImageModel.apiKey,
+                 apiUrl: defaultImageModel.apiUrl,
+                 model: defaultImageModel.model,
+                 imageParams: defaultImageModel.imageParams
+             } as any, userPrompt);
+             
+             const imageUrl = result.data?.[0]?.url;
+             const imageBase64 = result.data?.[0]?.b64_json;
+             
+             if (imageUrl || imageBase64) {
+                 const displayUrl = imageUrl || `data:image/png;base64,${imageBase64}`;
+                 setIsAiResponseImage(true);
+                 setAiResponse(displayUrl);
+                 
+                 // Save generated image to prompt's images array
+                 // 将生成的图片保存到 prompt 的预览图中
+                 if (targetId) {
+                     try {
+                         let savedFileName: string | null = null;
+                         
+                         if (imageUrl) {
+                             // Download from URL
+                             savedFileName = await (window.electron as any).downloadImage(imageUrl);
+                         } else if (imageBase64) {
+                             // Save base64 directly
+                             const fileName = `ai-generated-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`;
+                             const success = await (window.electron as any).saveImageBase64(fileName, imageBase64);
+                             if (success) savedFileName = fileName;
+                         }
+                         
+                         if (savedFileName && currentPrompt) {
+                             const updatedImages = [...(currentPrompt.images || []), savedFileName];
+                             await updatePrompt(targetId, { images: updatedImages });
+                             showToast(t('toast.imageSaved', '图片已保存到预览'), 'success');
+                         }
+                     } catch (saveErr) {
+                         console.warn('[MainContent] Failed to save generated image:', saveErr);
+                         // Still show the image even if saving failed
+                     }
+                 }
+                 return; 
+             }
+         } catch (e) {
+             console.error("[MainContent] Image generation failed:", e);
+             setAiResponse(`${t('common.error')}: ${e instanceof Error ? e.message : 'Image generation failed'}`);
+             showToast(t('toast.aiFailed'), 'error');
+             return;
+         }
+      }
+
+      if (currentPromptType === 'video') {
+         // Video generation not yet implemented
+         // 视频生成尚未实现
+         setAiResponse(t('videoNotSupported', '视频生成功能即将推出，敬请期待！'));
+         showToast(t('videoNotSupported', '视频生成暂不支持'), 'info');
+         return;
+      }
+
+      // Default: Text/Chat mode
+      // 默认：文本对话模式
+
+      if (!(singleChatConfig.apiKey && singleChatConfig.apiUrl && singleChatConfig.model)) {
+        if (defaultImageModel) {
+             throw new Error(t('mismatchText') || 'Prompt type is Text but no Chat Model configured');
+        }
+        throw new Error(t('toast.configAI') || '请先配置对话模型');
+      }
+
       const messages = buildMessagesFromPrompt(systemPrompt, userPrompt);
       const useStream = !!singleChatConfig.chatParams?.stream;
       const useThinking = !!singleChatConfig.chatParams?.enableThinking;
@@ -748,8 +851,13 @@ export function MainContent() {
       );
     }
 
+    // Prompt type filtering / 类型筛选
+    if (promptTypeFilter !== 'all') {
+      result = result.filter((p) => (p.promptType || 'text') === promptTypeFilter);
+    }
+
     return result;
-  }, [prompts, selectedFolderId, searchQuery, filterTags, folders, unlockedFolderIds]);
+  }, [prompts, selectedFolderId, searchQuery, filterTags, folders, unlockedFolderIds, promptTypeFilter]);
 
   // Sorting (pinned prompts always first)
   // 排序（置顶的始终在最前面）
@@ -1011,6 +1119,42 @@ export function MainContent() {
       <div
         className={getViewClass('list')}
       >
+        {/* Prompt type filter / 类型筛选 */}
+        <div className="flex items-center gap-1 px-3 py-2 border-b border-border">
+          <button
+            onClick={() => setPromptTypeFilter('all')}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+              promptTypeFilter === 'all'
+                ? 'bg-primary text-white'
+                : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+            }`}
+          >
+            {t('filter.all', '全部')}
+          </button>
+          <button
+            onClick={() => setPromptTypeFilter('text')}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+              promptTypeFilter === 'text'
+                ? 'bg-primary text-white'
+                : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+            }`}
+          >
+            <MessageSquareTextIcon className="w-3 h-3" />
+            {t('prompt.typeText', '文本')}
+          </button>
+          <button
+            onClick={() => setPromptTypeFilter('image')}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+              promptTypeFilter === 'image'
+                ? 'bg-primary text-white'
+                : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+            }`}
+          >
+            <ImageIcon className="w-3 h-3" />
+            {t('prompt.typeImage', '媒体')}
+          </button>
+        </div>
+
         {/* Top: sort + view switch */}
         {/* 顶部：排序 + 视图切换 */}
         <PromptListHeader count={sortedPrompts.length} />
@@ -1045,6 +1189,27 @@ export function MainContent() {
       >
         <PromptListHeader count={sortedPrompts.length} />
         <PromptGalleryView
+          prompts={sortedPrompts}
+          highlightTerms={highlightTerms}
+          onSelect={(id) => selectPrompt(id)}
+          onToggleFavorite={toggleFavorite}
+          onCopy={handleCopyPrompt}
+          onEdit={(prompt) => setEditingPrompt(prompt)}
+          onDelete={handleDeletePrompt}
+          onAiTest={handleAiTestFromTable}
+          onVersionHistory={handleVersionHistory}
+          onViewDetail={handleViewDetail}
+          onContextMenu={handleContextMenu}
+        />
+      </div>
+
+      {/* Kanban view */}
+      {/* 看板视图 */}
+      <div
+        className={getViewClass('kanban')}
+      >
+        <PromptListHeader count={sortedPrompts.length} />
+        <PromptKanbanView
           prompts={sortedPrompts}
           highlightTerms={highlightTerms}
           onSelect={(id) => selectPrompt(id)}
@@ -1170,21 +1335,35 @@ export function MainContent() {
                     </div>
                   )}
 
-                  {/* Tags */}
-                  {/* 标签 */}
-                  {selectedPrompt.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mb-4">
-                      {selectedPrompt.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium bg-accent text-accent-foreground"
-                        >
-                          <HashIcon className="w-3 h-3" />
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                  {/* Prompt Type Badge / 类型标识 */}
+                  <div className="flex flex-wrap gap-1.5 mb-4">
+                    <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium ${
+                      (selectedPrompt.promptType || 'text') === 'image'
+                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
+                        : 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
+                    }`}>
+                      {(selectedPrompt.promptType || 'text') === 'image' 
+                        ? <ImageIcon className="w-3 h-3" />
+                        : <MessageSquareTextIcon className="w-3 h-3" />
+                      }
+                      {(selectedPrompt.promptType || 'text') === 'image' 
+                        ? t('prompt.typeImage', '媒体')
+                        : t('prompt.typeText', '文本')
+                      }
+                    </span>
+                    
+                    {/* Tags */}
+                    {/* 标签 */}
+                    {selectedPrompt.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium bg-accent text-accent-foreground"
+                      >
+                        <HashIcon className="w-3 h-3" />
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
 
                   {/* Source / 来源 */}
                   {selectedPrompt.source && (
@@ -1403,7 +1582,7 @@ export function MainContent() {
                         <div className="flex items-center gap-2">
                           <SparklesIcon className="w-4 h-4 text-primary" />
                           <span className="text-sm font-medium">{t('prompt.aiResponse', 'AI 响应')}</span>
-                          <span className="text-xs text-muted-foreground">({aiModel})</span>
+                          <span className="text-xs text-muted-foreground">({(selectedPrompt?.promptType === 'image' || isAiResponseImage) ? (defaultImageModel?.model || aiModel) : aiModel})</span>
                         </div>
                         {aiResponse && (
                           <button
@@ -1430,8 +1609,67 @@ export function MainContent() {
                             content={aiThinking}
                             isLoading={isTestingAI}
                           />
-                          <div className="text-sm leading-relaxed whitespace-pre-wrap max-h-60 overflow-y-auto">
-                            {aiResponse}
+                          <div className="text-sm leading-relaxed whitespace-pre-wrap max-h-80 overflow-y-auto">
+                            {isAiResponseImage && aiResponse ? (
+                              <div className="relative group">
+                                <img 
+                                  src={aiResponse} 
+                                  className="max-w-full rounded-lg shadow-sm bg-black/5 cursor-pointer hover:opacity-90 transition-opacity" 
+                                  alt="Generated AI"
+                                  onClick={() => setPreviewImage(aiResponse)}
+                                />
+                                {/* Image action buttons */}
+                                <div className="absolute bottom-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button
+                                    onClick={() => setPreviewImage(aiResponse)}
+                                    className="p-1.5 rounded-lg bg-black/60 text-white hover:bg-black/80 transition-colors"
+                                    title={t('common.preview', '放大预览')}
+                                  >
+                                    <ZoomInIcon className="w-4 h-4" />
+                                  </button>
+                                    <button
+                                      onClick={async () => {
+                                        try {
+                                          const link = document.createElement('a');
+                                          let href = aiResponse;
+                                          
+                                          // For remote URLs, fetch as blob to force download
+                                          if (!aiResponse.startsWith('data:')) {
+                                              try {
+                                                  const resp = await fetch(aiResponse);
+                                                  const blob = await resp.blob();
+                                                  href = URL.createObjectURL(blob);
+                                              } catch (e) {
+                                                  console.warn('Failed to fetch image blob, falling back to direct link', e);
+                                              }
+                                          }
+                                          
+                                          link.href = href;
+                                          link.download = `ai-generated-${Date.now()}.png`;
+                                          document.body.appendChild(link);
+                                          link.click();
+                                          document.body.removeChild(link);
+                                          
+                                          if (href !== aiResponse) {
+                                              setTimeout(() => URL.revokeObjectURL(href), 100);
+                                          }
+                                          
+                                          showToast(t('common.downloadSuccess', '下载已开始'), 'success');
+                                        } catch (err) {
+                                          console.error('Failed to download image:', err);
+                                          showToast(t('common.error', '下载失败'), 'error');
+                                        }
+                                      }}
+                                      className="p-1.5 rounded-lg bg-black/60 text-white hover:bg-black/80 transition-colors"
+                                      title={t('common.download', '下载图片')}
+                                    >
+                                      <DownloadIcon className="w-4 h-4" />
+                                    </button>
+                                </div>
+                              </div>
+                            ) : (
+                                aiResponse
+                            )}
                           </div>
                         </div>
                       )}

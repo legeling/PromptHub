@@ -3,8 +3,15 @@
     "name": "PromptHub",
     "description": "ローカル版 Prompt マネージャー、バージョン管理付き"
   },
+  "filter": {
+    "all": "すべて",
+    "text": "テキスト",
+    "image": "画像"
+  },
   "nav": {
     "allPrompts": "すべての Prompts",
+    "textPrompts": "テキストプロンプト",
+    "imagePrompts": "画像プロンプト",
     "favorites": "お気に入り",
     "folders": "フォルダ",
     "tags": "タグ",
@@ -145,6 +152,17 @@
     "sortLeastUsed": "使用回数が少ない順",
     "viewCard": "カードビュー",
     "viewList": "リストビュー",
+    "viewGallery": "ギャラリービュー",
+    "viewKanban": "カンバンビュー",
+    "columns2": "2 列",
+    "columns3": "3 列",
+    "columns4": "4 列",
+    "pinnedPrompts": "ピン留めされた Prompt",
+    "pin": "ピン留め",
+    "unpin": "ピン留め解除",
+    "expandAll": "すべて展開",
+    "collapseAll": "すべて折りたたむ",
+    "unpinAll": "すべて解除",
     "usageCount": "使用回数",
     "createdAt": "作成日時",
     "promptCount": "合計 {{count}} 件",
@@ -166,8 +184,6 @@
     "batchDeleted": "一括削除しました",
     "addToFavorites": "お気に入りに追加",
     "removeFromFavorites": "お気に入りから削除",
-    "pin": "ピン留め",
-    "unpin": "ピン留め解除",
     "viewDetail": "詳細を表示",
     "enterValue": "値を入力",
     "selected": "{{count}} 件選択中",
@@ -221,6 +237,9 @@
     "parentHint": "最大 {{depth}} レベルのネストをサポートしています"
   },
   "settings": {
+    "developer": "開発者オプション",
+    "debugMode": "デバッグモード",
+    "debugModeDesc": "コンソールデバッグを有効にする (Ctrl+Shift+I / Cmd+Option+I)",
     "security": "セキュリティ",
     "securityStatus": "ステータス",
     "masterSet": "マスターパスワード設定済み",

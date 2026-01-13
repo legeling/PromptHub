@@ -3,8 +3,15 @@
     "name": "PromptHub",
     "description": "Gestionnaire de Prompts local avec contrôle de version"
   },
+  "filter": {
+    "all": "Tout",
+    "text": "Texte",
+    "image": "Image"
+  },
   "nav": {
     "allPrompts": "Tous les Prompts",
+    "textPrompts": "Prompts texte",
+    "imagePrompts": "Prompts image",
     "favorites": "Favoris",
     "folders": "Dossiers",
     "tags": "Tags",
@@ -145,6 +152,17 @@
     "sortLeastUsed": "Moins utilisé",
     "viewCard": "Vue carte",
     "viewList": "Vue liste",
+    "viewGallery": "Vue galerie",
+    "viewKanban": "Vue Kanban",
+    "columns2": "2 colonnes",
+    "columns3": "3 colonnes",
+    "columns4": "4 colonnes",
+    "pinnedPrompts": "Prompts épinglés",
+    "pin": "Épingler",
+    "unpin": "Désépingler",
+    "expandAll": "Tout développer",
+    "collapseAll": "Tout réduire",
+    "unpinAll": "Tout effacer",
     "usageCount": "Nombre d'utilisations",
     "createdAt": "Créé",
     "promptCount": "{{count}} au total",
@@ -166,8 +184,6 @@
     "batchDeleted": "Supprimés en lot",
     "addToFavorites": "Ajouter aux favoris",
     "removeFromFavorites": "Retirer des favoris",
-    "pin": "Épingler",
-    "unpin": "Désépingler",
     "viewDetail": "Voir les détails",
     "enterValue": "Entrer une valeur",
     "selected": "{{count}} sélectionnés",
@@ -221,6 +237,9 @@
     "parentHint": "Maximum {{depth}} niveaux d'imbrication"
   },
   "settings": {
+    "developer": "Options pour les développeurs",
+    "debugMode": "Mode débogage",
+    "debugModeDesc": "Activer le débogage de la console (Supporte Ctrl+Shift+I / Cmd+Option+I)",
     "security": "Sécurité",
     "securityStatus": "Statut",
     "masterSet": "Mot de passe maître défini",

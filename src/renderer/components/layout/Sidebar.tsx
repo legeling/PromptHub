@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { StarIcon, HashIcon, PlusIcon, LayoutGridIcon, LinkIcon, SettingsIcon, ChevronLeftIcon, ChevronRightIcon, XIcon, ChevronDownIcon, ChevronUpIcon } from 'lucide-react';
+import { StarIcon, HashIcon, PlusIcon, LayoutGridIcon, LinkIcon, SettingsIcon, ChevronLeftIcon, ChevronRightIcon, XIcon, ChevronDownIcon, ChevronUpIcon, ImageIcon, MessageSquareTextIcon } from 'lucide-react';
 import { useFolderStore } from '../../stores/folder.store';
 import { usePromptStore } from '../../stores/prompt.store';
 import { useSettingsStore } from '../../stores/settings.store';
@@ -73,8 +73,11 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
   const toggleExpand = useFolderStore((state) => state.toggleExpand);
   const updateFolder = useFolderStore((state) => state.updateFolder);
   const prompts = usePromptStore((state) => state.prompts);
+  const promptTypeFilter = usePromptStore((state) => state.promptTypeFilter);
+  const setPromptTypeFilter = usePromptStore((state) => state.setPromptTypeFilter);
   const [isResourcesOpen, setIsResourcesOpen] = useState(false);
   const [isMac, setIsMac] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
   const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -104,6 +107,17 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
     useEffect(() => {
       const platform = navigator.userAgent.toLowerCase();
       setIsMac(platform.includes('mac'));
+
+      const checkFullscreen = async () => {
+        if (window.electron?.isFullscreen) {
+          const full = await window.electron.isFullscreen();
+          setIsFullscreen(full);
+        }
+      };
+      
+      checkFullscreen();
+      window.addEventListener('resize', checkFullscreen);
+      return () => window.removeEventListener('resize', checkFullscreen);
     }, []);
   
     useEffect(() => {
@@ -252,7 +266,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
         }`}
     >
       {/* Top spacing - Extra padding for Mac traffic lights */}
-      {isMac && <div className="h-12 titlebar-drag shrink-0" />}
+      {isMac && !isFullscreen && <div className="h-12 titlebar-drag shrink-0" />}
 
       {/* Collapse Button */}
       <div className="absolute top-1/2 -translate-y-1/2 -right-3 z-50 opacity-0 group-hover:opacity-100 transition-all duration-300 delay-100">
@@ -275,17 +289,100 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
       {/* Navigation area - Fixed top */}
       <div className="flex-shrink-0 flex flex-col px-3 py-2">
         <div className="space-y-1 shrink-0">
-          <NavItem
-            icon={<LayoutGridIcon className="w-5 h-5" />}
-            label={t('nav.allPrompts')}
-            count={prompts.length}
-            active={selectedFolderId === null && currentPage === 'home'}
-            collapsed={isCollapsed}
-            onClick={() => {
-              selectFolder(null);
-              if (currentPage !== 'home') onNavigate('home');
-            }}
-          />
+          {/* Filter Group: Segmented Control when expanded, Vertical Icons when collapsed */}
+          {!isCollapsed ? (
+            <div className="mb-2">
+              <div className="grid grid-cols-3 gap-1 p-1 bg-sidebar-accent/40 rounded-lg">
+                <button
+                  onClick={() => {
+                    setPromptTypeFilter('all');
+                    selectFolder(null);
+                    if (currentPage !== 'home') onNavigate('home');
+                  }}
+                  className={`flex flex-col items-center justify-center py-2 rounded-md transition-all duration-200 ${
+                    selectedFolderId === null && currentPage === 'home' && promptTypeFilter === 'all'
+                      ? 'bg-background shadow-sm text-primary'
+                      : 'text-muted-foreground hover:bg-sidebar-accent hover:text-foreground'
+                  }`}
+                  title={t('nav.allPrompts')}
+                >
+                  <LayoutGridIcon className="w-4 h-4 mb-1" />
+                  <span className="text-[10px] font-medium leading-none">{t('filter.all', '全部')}</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setPromptTypeFilter('text');
+                    selectFolder(null);
+                    if (currentPage !== 'home') onNavigate('home');
+                  }}
+                  className={`flex flex-col items-center justify-center py-2 rounded-md transition-all duration-200 ${
+                    selectedFolderId === null && currentPage === 'home' && promptTypeFilter === 'text'
+                      ? 'bg-background shadow-sm text-primary'
+                      : 'text-muted-foreground hover:bg-sidebar-accent hover:text-foreground'
+                  }`}
+                  title={t('nav.textPrompts', '文本提示词')}
+                >
+                  <MessageSquareTextIcon className="w-4 h-4 mb-1" />
+                  <span className="text-[10px] font-medium leading-none">{t('filter.text', '文本')}</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setPromptTypeFilter('image');
+                    selectFolder(null);
+                    if (currentPage !== 'home') onNavigate('home');
+                  }}
+                  className={`flex flex-col items-center justify-center py-2 rounded-md transition-all duration-200 ${
+                    selectedFolderId === null && currentPage === 'home' && promptTypeFilter === 'image'
+                      ? 'bg-background shadow-sm text-primary'
+                      : 'text-muted-foreground hover:bg-sidebar-accent hover:text-foreground'
+                  }`}
+                  title={t('nav.imagePrompts', '绘图提示词')}
+                >
+                  <ImageIcon className="w-4 h-4 mb-1" />
+                  <span className="text-[10px] font-medium leading-none">{t('filter.image', '绘图')}</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              <NavItem
+                icon={<LayoutGridIcon className="w-5 h-5" />}
+                label={t('nav.allPrompts')}
+                count={prompts.length}
+                active={selectedFolderId === null && currentPage === 'home' && promptTypeFilter === 'all'}
+                collapsed={true}
+                onClick={() => {
+                  setPromptTypeFilter('all');
+                  selectFolder(null);
+                  if (currentPage !== 'home') onNavigate('home');
+                }}
+              />
+              <NavItem
+                icon={<MessageSquareTextIcon className="w-5 h-5" />}
+                label={t('nav.textPrompts', '文本提示词')}
+                count={prompts.filter(p => !p.promptType || p.promptType === 'text').length}
+                active={promptTypeFilter === 'text' && selectedFolderId === null && currentPage === 'home'}
+                collapsed={true}
+                onClick={() => {
+                  setPromptTypeFilter('text');
+                  selectFolder(null);
+                  if (currentPage !== 'home') onNavigate('home');
+                }}
+              />
+              <NavItem
+                icon={<ImageIcon className="w-5 h-5" />}
+                label={t('nav.imagePrompts', '绘图提示词')}
+                count={prompts.filter(p => p.promptType === 'image').length}
+                active={promptTypeFilter === 'image' && selectedFolderId === null && currentPage === 'home'}
+                collapsed={true}
+                onClick={() => {
+                  setPromptTypeFilter('image');
+                  selectFolder(null);
+                  if (currentPage !== 'home') onNavigate('home');
+                }}
+              />
+            </div>
+          )}
           <NavItem
             icon={<StarIcon className="w-5 h-5" />}
             label={t('nav.favorites')}

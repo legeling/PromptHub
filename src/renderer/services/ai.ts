@@ -647,6 +647,7 @@ export async function generateImage(
   // 根据供应商选择不同的 API 调用方式
   // Choose different API calling methods based on provider
   const providerLower = (provider || '').toLowerCase();
+  const modelLower = (model || '').toLowerCase();
 
   // FLUX (Black Forest Labs)
   if (providerLower === 'flux' || apiUrl.includes('bfl.ai')) {
@@ -673,8 +674,217 @@ export async function generateImage(
     return await generateImageStability(apiKey, apiUrl, model, prompt, options);
   }
 
-  // OpenAI 兼容格式（包括 OpenAI, Google, Azure 等）
+  // Google/Gemini Image Generation (uses generateContent API, not OpenAI format)
+  // 如果模型名包含 gemini 且是图片生成类型，使用 Gemini 的 generateContent API
+  if (modelLower.includes('gemini') && (modelLower.includes('image') || modelLower.includes('imagen'))) {
+    return await generateImageGemini(apiKey, apiUrl, model, prompt, options);
+  }
+
+  // OpenAI 兼容格式（包括 OpenAI, Azure 等）
   return await generateImageOpenAI(apiKey, apiUrl, model, prompt, options);
+}
+
+// Google Gemini Image Generation via generateContent API
+// Google Gemini 通过 generateContent API 生成图片
+async function generateImageGemini(
+  apiKey: string,
+  apiUrl: string,
+  model: string,
+  prompt: string,
+  options?: { n?: number }
+): Promise<ImageGenerationResponse> {
+  // Build endpoint - Gemini uses generateContent
+  // 构建端点 - Gemini 使用 generateContent
+  let endpoint = apiUrl.replace(/\/$/, '');
+  
+  // Handle different URL formats
+  if (endpoint.includes('/chat/completions')) {
+    endpoint = endpoint.replace('/chat/completions', '');
+  }
+  if (endpoint.includes('/v1beta')) {
+    endpoint = `${endpoint}/models/${model}:generateContent`;
+  } else if (endpoint.includes('/v1')) {
+    endpoint = endpoint.replace('/v1', '/v1beta');
+    endpoint = `${endpoint}/models/${model}:generateContent`;
+  } else {
+    // Assume it's a proxy, try OpenAI-compatible chat endpoint
+    endpoint = `${endpoint}/v1/chat/completions`;
+  }
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  let body: Record<string, any>;
+
+  // Check if using native Gemini API or OpenAI-compatible proxy
+  if (endpoint.includes(':generateContent')) {
+    // Native Gemini API format
+    headers['x-goog-api-key'] = apiKey;
+    body = {
+      contents: [{
+        parts: [{ text: prompt }]
+      }],
+      generationConfig: {
+        responseModalities: ['TEXT', 'IMAGE']
+      }
+    };
+  } else {
+    // OpenAI-compatible proxy format (use chat completions)
+    headers['Authorization'] = `Bearer ${apiKey}`;
+    body = {
+      model,
+      messages: [{ role: 'user', content: prompt }],
+      stream: false
+    };
+  }
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    let errorMessage = `Gemini 图像生成失败 (${response.status})`;
+    try {
+      const errorJson = JSON.parse(errorText);
+      errorMessage = errorJson.error?.message 
+        || errorJson.error?.status
+        || errorJson.message
+        || (typeof errorJson.error === 'string' ? errorJson.error : null)
+        || errorMessage;
+      
+      // Append error code if available
+      if (errorJson.error?.code) {
+        errorMessage = `${errorMessage} (code: ${errorJson.error.code})`;
+      }
+    } catch {
+      if (errorText) errorMessage = `${errorMessage}: ${errorText.slice(0, 500)}`;
+    }
+    throw new Error(errorMessage);
+  }
+
+  const result = await response.json();
+  
+  // Handle different response formats
+  // 处理不同的响应格式
+  console.log('[generateImageGemini] Response received:', JSON.stringify(result, null, 2).slice(0, 2000));
+  
+  if (result.candidates) {
+    // Native Gemini format
+    const candidate = result.candidates[0];
+    const parts = candidate?.content?.parts || [];
+    console.log('[generateImageGemini] Gemini native format, parts count:', parts.length);
+    
+    const imagePart = parts.find((p: any) => p.inlineData?.mimeType?.startsWith('image/'));
+    
+    if (imagePart?.inlineData) {
+      console.log('[generateImageGemini] Found image data, mimeType:', imagePart.inlineData.mimeType);
+      return {
+        created: Date.now(),
+        data: [{
+          b64_json: imagePart.inlineData.data,
+        }],
+      };
+    }
+    
+    // Check if there's text response (might indicate an error or refusal)
+    const textPart = parts.find((p: any) => p.text);
+    if (textPart?.text) {
+      console.warn('[generateImageGemini] Got text instead of image:', textPart.text);
+      throw new Error(`模型返回了文本而非图像: ${textPart.text.slice(0, 200)}`);
+    }
+    
+    // No image in response
+    console.error('[generateImageGemini] No image data in candidates. Parts:', parts);
+    throw new Error('Gemini 响应中未包含图像数据。请确保使用支持图像生成的模型。');
+  }
+  
+  if (result.choices) {
+    // OpenAI-compatible format from proxy
+    const content = result.choices[0]?.message?.content;
+    console.log('[generateImageGemini] OpenAI format, content type:', typeof content, 
+      typeof content === 'string' ? content.slice(0, 200) : '(array or object)');
+    
+    // Check if content contains image URL or base64
+    if (typeof content === 'string') {
+      // Try to extract URL if present
+      const urlMatch = content.match(/https?:\/\/[^\s"'<>]+/i);
+      if (urlMatch) {
+        console.log('[generateImageGemini] Found URL in content:', urlMatch[0]);
+        return {
+          created: Date.now(),
+          data: [{ url: urlMatch[0] }],
+        };
+      }
+      // Check if it's base64
+      if (content.startsWith('data:image/') || content.match(/^[A-Za-z0-9+/=]{100,}/)) {
+        console.log('[generateImageGemini] Found base64 in content');
+        return {
+          created: Date.now(),
+          data: [{ b64_json: content.replace(/^data:image\/[^;]+;base64,/, '') }],
+        };
+      }
+      
+      // Content is text, not image - might be refusal or error
+      console.warn('[generateImageGemini] Content is text, not image:', content.slice(0, 500));
+      throw new Error(`模型返回了文本而非图像: ${content.slice(0, 300)}`);
+    }
+    
+    // Content might be array with image_url
+    if (Array.isArray(result.choices[0]?.message?.content)) {
+      console.log('[generateImageGemini] Content is array, looking for image_url...');
+      const imgContent = result.choices[0].message.content.find((c: any) => c.type === 'image_url');
+      if (imgContent?.image_url?.url) {
+        console.log('[generateImageGemini] Found image_url:', imgContent.image_url.url.slice(0, 100));
+        const url = imgContent.image_url.url;
+        if (url.startsWith('data:image/')) {
+          return {
+            created: Date.now(),
+            data: [{ b64_json: url.replace(/^data:image\/[^;]+;base64,/, '') }],
+          };
+        }
+        return {
+          created: Date.now(),
+          data: [{ url }],
+        };
+      }
+    }
+    
+    // Check for images array in message (some proxies use this format)
+    // 检查 message.images 数组（某些代理使用此格式）
+    const images = result.choices[0]?.message?.images;
+    if (Array.isArray(images) && images.length > 0) {
+      console.log('[generateImageGemini] Found message.images array:', images.length, 'images');
+      const firstImage = images[0];
+      const imageUrl = firstImage?.image_url?.url || firstImage?.url;
+      
+      if (imageUrl) {
+        console.log('[generateImageGemini] Extracted image URL:', imageUrl.slice(0, 100));
+        if (imageUrl.startsWith('data:image/')) {
+          return {
+            created: Date.now(),
+            data: [{ b64_json: imageUrl.replace(/^data:image\/[^;]+;base64,/, '') }],
+          };
+        }
+        return {
+          created: Date.now(),
+          data: [{ url: imageUrl }],
+        };
+      }
+    }
+    
+    // Content is null but no images found
+    if (result.choices[0]?.message?.content === null) {
+      console.error('[generateImageGemini] content is null and no images found in message');
+    }
+  }
+
+  // If we got here, response format is unexpected
+  console.error('[generateImageGemini] Unexpected response format. Full response:', JSON.stringify(result, null, 2));
+  throw new Error(`无法从响应中提取图像。响应格式: ${JSON.stringify(result).slice(0, 500)}`);
 }
 
 // OpenAI 兼容格式
@@ -731,9 +941,25 @@ async function generateImageOpenAI(
     // Image generation failed
     try {
       const errorJson = JSON.parse(errorText);
-      errorMessage = errorJson.error?.message || errorJson.message || errorMessage;
+      // Try different error message formats
+      // 尝试不同的错误消息格式
+      errorMessage = errorJson.error?.message 
+        || errorJson.error?.type 
+        || errorJson.message 
+        || errorJson.detail
+        || (typeof errorJson.error === 'string' ? errorJson.error : null)
+        || errorMessage;
+      
+      // If we have additional error info, append it
+      // 如果有更多错误信息，附加上去
+      if (errorJson.error?.code) {
+        errorMessage = `${errorMessage} (code: ${errorJson.error.code})`;
+      }
+      if (errorJson.error?.type && errorJson.error?.type !== errorMessage) {
+        errorMessage = `[${errorJson.error.type}] ${errorMessage}`;
+      }
     } catch {
-      if (errorText) errorMessage = errorText.slice(0, 200);
+      if (errorText) errorMessage = errorText.slice(0, 500);
     }
     throw new Error(errorMessage);
   }

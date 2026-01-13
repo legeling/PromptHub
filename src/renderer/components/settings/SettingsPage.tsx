@@ -1162,6 +1162,8 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 />
               </SettingItem>
             </SettingSection>
+
+
           </div>
         );
 
@@ -1912,7 +1914,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                                     </div>
                                     <div className="flex items-center gap-2">
                                       {model.isDefault && (
-                                        <StarIcon className="w-3.5 h-3.5 text-primary fill-primary" />
+                                        <StarIcon className="w-4 h-4 text-yellow-500 fill-yellow-500" />
                                       )}
                                       <div>
                                         <div className="font-medium text-sm">{model.name || model.model}</div>
@@ -2886,6 +2888,20 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                   </div>
                 </a>
               </div>
+            </SettingSection>
+
+
+
+            <SettingSection title={t('settings.developer', '开发者选项')}>
+              <SettingItem
+                label={t('settings.debugMode', '调试模式')}
+                description={t('settings.debugModeDesc', '启用控制台调试 (支持 Ctrl+Shift+I / Cmd+Option+I 唤起)')}
+              >
+                <ToggleSwitch
+                  checked={settings.debugMode}
+                  onChange={settings.setDebugMode}
+                />
+              </SettingItem>
             </SettingSection>
 
             <div className="px-4 py-4 text-sm text-muted-foreground text-center">

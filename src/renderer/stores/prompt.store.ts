@@ -9,8 +9,9 @@ export type SortBy = 'updatedAt' | 'createdAt' | 'title' | 'usageCount';
 export type SortOrder = 'desc' | 'asc';
 // View mode
 // 视图模式
-export type ViewMode = 'card' | 'list' | 'gallery';
+export type ViewMode = 'card' | 'list' | 'gallery' | 'kanban';
 export type GalleryImageSize = 'small' | 'medium' | 'large';
+export type KanbanColumns = 2 | 3 | 4;
 
 interface PromptState {
   prompts: Prompt[];
@@ -19,6 +20,7 @@ interface PromptState {
   isLoading: boolean;
   searchQuery: string;
   filterTags: string[];
+  promptTypeFilter: 'all' | 'text' | 'image';
   // Sort and order
   // 排序和顺序
   sortBy: SortBy;
@@ -27,6 +29,7 @@ interface PromptState {
   // 视图模式
   viewMode: ViewMode;
   galleryImageSize: GalleryImageSize;
+  kanbanColumns: KanbanColumns;
 
   // Actions
   // 操作
@@ -40,6 +43,7 @@ interface PromptState {
   setSearchQuery: (query: string) => void;
   toggleFilterTag: (tag: string) => void;
   clearFilterTags: () => void;
+  setPromptTypeFilter: (filter: 'all' | 'text' | 'image') => void;
   toggleFavorite: (id: string) => Promise<void>;
   togglePinned: (id: string) => Promise<void>;
   // Sort and view
@@ -48,6 +52,7 @@ interface PromptState {
   setSortOrder: (sortOrder: SortOrder) => void;
   setViewMode: (viewMode: ViewMode) => void;
   setGalleryImageSize: (size: GalleryImageSize) => void;
+  setKanbanColumns: (columns: KanbanColumns) => void;
   incrementUsageCount: (id: string) => Promise<void>;
 }
 
@@ -60,10 +65,12 @@ export const usePromptStore = create<PromptState>()(
       isLoading: false,
       searchQuery: '',
       filterTags: [],
+      promptTypeFilter: 'all',
       sortBy: 'updatedAt' as SortBy,
       sortOrder: 'desc' as SortOrder,
       viewMode: 'card' as ViewMode,
       galleryImageSize: 'medium' as GalleryImageSize,
+      kanbanColumns: 3 as KanbanColumns,
 
       fetchPrompts: async () => {
         set({ isLoading: true });
@@ -162,6 +169,8 @@ export const usePromptStore = create<PromptState>()(
       })),
 
       clearFilterTags: () => set({ filterTags: [] }),
+      
+      setPromptTypeFilter: (filter) => set({ promptTypeFilter: filter }),
 
       toggleFavorite: async (id) => {
         const prompt = get().prompts.find((p) => p.id === id);
@@ -189,6 +198,7 @@ export const usePromptStore = create<PromptState>()(
       setSortOrder: (sortOrder) => set({ sortOrder }),
       setViewMode: (viewMode) => set({ viewMode }),
       setGalleryImageSize: (size) => set({ galleryImageSize: size }),
+      setKanbanColumns: (columns) => set({ kanbanColumns: columns }),
 
       incrementUsageCount: async (id) => {
         const prompt = get().prompts.find((p) => p.id === id);
@@ -207,7 +217,9 @@ export const usePromptStore = create<PromptState>()(
         sortOrder: state.sortOrder,
         viewMode: state.viewMode,
         galleryImageSize: state.galleryImageSize,
-      }),
+            kanbanColumns: state.kanbanColumns,
+            promptTypeFilter: state.promptTypeFilter,
+          }),
     }
   )
 );

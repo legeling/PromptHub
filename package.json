@@ -39,6 +39,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "better-sqlite3": "^12.5.0",
     "electron-updater": "^6.6.2",
+    "framer-motion": "^12.26.1",
     "hast-util-sanitize": "^5.0.0",
     "i18next": "^24.0.0",
     "react-i18next": "^15.0.0",

@@ -22,6 +22,7 @@ let closeAction: 'ask' | 'minimize' | 'exit' = 'ask';
 // Whether we are waiting for the user to choose a close behavior
 // 是否正在等待用户选择关闭行为
 let pendingCloseAction = false;
+let isDebugMode = false;
 
 // Register privileged schemes (must be called before app is ready)
 // 注册特权协议（必须在 app ready 之前调用）
@@ -126,6 +127,9 @@ async function createWindow() {
     // Disable DevTools shortcuts in production
     // 生产环境禁止打开开发者工具
     mainWindow.webContents.on('before-input-event', (event, input) => {
+      // If debug mode is enabled, allow shortcuts
+      if (isDebugMode) return;
+
       // Block F12, Ctrl+Shift+I, Cmd+Option+I
       // 禁止 F12、Ctrl+Shift+I、Cmd+Option+I
       if (
@@ -250,6 +254,18 @@ ipcMain.on('app:setCloseAction', (_event, action: 'ask' | 'minimize' | 'exit') =
   if (action === 'minimize' && process.platform === 'win32') {
     createTray();
   }
+});
+
+// Set debug mode
+// 设置调试模式
+ipcMain.on('app:setDebugMode', (_event, enabled: boolean) => {
+  isDebugMode = enabled;
+});
+
+// Toggle DevTools
+// 切换开发者工具
+ipcMain.on('window:toggleDevTools', () => {
+  mainWindow?.webContents.toggleDevTools();
 });
 
 // Handle close dialog result

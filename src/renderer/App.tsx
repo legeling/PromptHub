@@ -24,6 +24,7 @@ function App() {
   const movePrompts = usePromptStore((state) => state.movePrompts);
   const selectedIds = usePromptStore((state) => state.selectedIds);
   const applyTheme = useSettingsStore((state) => state.applyTheme);
+  const debugMode = useSettingsStore((state) => state.debugMode);
   const [currentPage, setCurrentPage] = useState<PageType>('home');
   const [isLoading, setIsLoading] = useState(true);
   const { showToast } = useToast();
@@ -192,6 +193,11 @@ function App() {
       );
     }
   };
+
+  // Sync debug mode
+  useEffect(() => {
+    window.electron?.setDebugMode?.(debugMode);
+  }, [debugMode]);
 
   useEffect(() => {
     // Apply persisted theme settings

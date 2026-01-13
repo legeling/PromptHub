@@ -3,10 +3,14 @@
  * Prompt 核心类型定义
  */
 
+// Prompt 类型：文本对话 / 图片生成 / 视频生成
+export type PromptType = 'text' | 'image' | 'video';
+
 export interface Prompt {
   id: string;
   title: string;
   description?: string;
+  promptType?: PromptType;  // Prompt 类型，默认 text
   systemPrompt?: string;
   systemPromptEn?: string;  // English System Prompt / 英文版 System Prompt
   userPrompt: string;
@@ -71,6 +75,7 @@ export interface CreatePromptDTO {
 export interface UpdatePromptDTO {
   title?: string;
   description?: string;
+  promptType?: PromptType;
   systemPrompt?: string;
   systemPromptEn?: string;
   userPrompt?: string;
