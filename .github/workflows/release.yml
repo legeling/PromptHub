@@ -13,7 +13,7 @@ jobs:
         include:
           # macOS: Use Intel runner for x64, Apple Silicon runner for arm64
           # better-sqlite3 native module must be built on matching architecture
-          - os: macos-13 # Intel runner for x64 builds
+          - os: macos-15-intel # Intel runner for x64 builds
             platform: mac
             arch: x64
           - os: macos-latest # Apple Silicon runner for arm64 builds
