@@ -289,10 +289,11 @@ export function initUpdater(win: BrowserWindow) {
       // 自动更新需要 ZIP 安装包，但当前版本的 Release 中没有对应的 ZIP 文件。请前往 GitHub Releases 页面手动下载安装，或等待下一个版本修复自动更新。
     }
     if (message.toLowerCase().includes('sha512') && message.toLowerCase().includes('mismatch')) {
+      console.log('[Updater] SHA512 mismatch, temp directory:', app.getPath('temp'));
       message =
-        'SHA512 checksum mismatch: downloaded update file failed integrity check.\n' +
-        '这表示下载到的更新文件校验失败（常见原因：下载不完整、网络代理/镜像篡改、缓存不一致）。\n' +
-        '建议：重试下载；或关闭“更新镜像加速”后再试。';
+        'SHA512 校验失败\n\n' +
+        '这通常是由于 CDN 缓存不一致或网络问题导致的。\n' +
+        '文件可能已下载完成，您可以点击下方按钮打开文件夹手动尝试安装。';
     }
     sendStatusToWindow({
       status: 'error',

@@ -124,19 +124,24 @@ async function createWindow() {
     }
   } else {
     await mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
-    // Disable DevTools shortcuts in production
-    // 生产环境禁止打开开发者工具
+    // Handle DevTools shortcuts in production
+    // 生产环境处理开发者工具快捷键
     mainWindow.webContents.on('before-input-event', (event, input) => {
-      // If debug mode is enabled, allow shortcuts
-      if (isDebugMode) return;
-
-      // Block F12, Ctrl+Shift+I, Cmd+Option+I
-      // 禁止 F12、Ctrl+Shift+I、Cmd+Option+I
-      if (
+      // Check for DevTools shortcuts: F12, Ctrl+Shift+I, Cmd+Option+I
+      // 检查是否为开发者工具快捷键
+      const isDevToolsShortcut =
         input.key === 'F12' ||
         (input.control && input.shift && input.key.toLowerCase() === 'i') ||
-        (input.meta && input.alt && input.key.toLowerCase() === 'i')
-      ) {
+        (input.meta && input.alt && input.key.toLowerCase() === 'i');
+
+      if (isDevToolsShortcut) {
+        if (isDebugMode) {
+          // Debug mode enabled: actively open/close DevTools
+          // 调试模式已启用：主动打开/关闭开发者工具
+          mainWindow?.webContents.toggleDevTools();
+        }
+        // Always prevent default to have full control
+        // 始终阻止默认行为以完全控制
         event.preventDefault();
       }
     });

@@ -310,6 +310,19 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
               {updateStatus.error}
             </p>
 
+            {/* SHA512 error: show open folder button */}
+            {updateStatus.error.includes('SHA512') && (
+              <div className="mb-4">
+                <button
+                  onClick={() => window.electron?.updater?.openDownloadedUpdate?.()}
+                  className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-xl bg-green-600 text-white hover:bg-green-700 transition-all text-sm font-medium shadow-sm active:scale-95"
+                >
+                  <FolderOpenIcon className="w-4 h-4" />
+                  打开下载文件夹
+                </button>
+              </div>
+            )}
+
             <div className="space-y-4 mt-auto">
               <div className="p-4 rounded-xl bg-muted/30 border border-border/50 text-left">
                 <p className="text-xs text-muted-foreground mb-3">{t('settings.manualDownloadHint')}</p>
