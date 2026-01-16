@@ -5,6 +5,18 @@ import { CopyIcon, CheckIcon, BracesIcon, HistoryIcon, CalendarIcon, ClockIcon, 
 
 type ModalMode = 'copy' | 'aiTest';
 
+// Output format type for AI test (Issue #38)
+// AI 测试的输出格式类型
+export type OutputFormatType = 'text' | 'json_object' | 'json_schema';
+export interface OutputFormatConfig {
+  type: OutputFormatType;
+  jsonSchema?: {
+    name: string;
+    strict?: boolean;
+    schema: Record<string, unknown>;
+  };
+}
+
 interface VariableInputModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -13,7 +25,7 @@ interface VariableInputModalProps {
   userPrompt: string;
   mode?: ModalMode;
   onCopy?: (filledPrompt: string) => void;
-  onAiTest?: (filledSystemPrompt: string | undefined, filledUserPrompt: string) => void;
+  onAiTest?: (filledSystemPrompt: string | undefined, filledUserPrompt: string, outputFormat?: OutputFormatConfig) => void;
   isAiTesting?: boolean;
 }
 
@@ -76,6 +88,11 @@ export function VariableInputModal({
   const { t } = useTranslation();
   const [variables, setVariables] = useState<Record<string, string>>({});
   const [copied, setCopied] = useState(false);
+  // Output format state (Issue #38)
+  // 输出格式状态
+  const [outputFormat, setOutputFormat] = useState<OutputFormatType>('text');
+  const [jsonSchemaName, setJsonSchemaName] = useState('response');
+  const [jsonSchemaContent, setJsonSchemaContent] = useState('');
 
   // Parse all variables (including default values)
   // 解析所有变量（包括默认值）
@@ -185,7 +202,25 @@ export function VariableInputModal({
     const filledUserPrompt = replaceVariables(userPrompt);
     const filledSystemPrompt = systemPrompt ? replaceVariables(systemPrompt) : undefined;
 
-    onAiTest?.(filledSystemPrompt, filledUserPrompt);
+    // Build output format config
+    // 构建输出格式配置
+    let formatConfig: OutputFormatConfig | undefined;
+    if (outputFormat !== 'text') {
+      formatConfig = { type: outputFormat };
+      if (outputFormat === 'json_schema' && jsonSchemaContent) {
+        try {
+          formatConfig.jsonSchema = {
+            name: jsonSchemaName || 'response',
+            strict: true,
+            schema: JSON.parse(jsonSchemaContent),
+          };
+        } catch {
+          // Invalid JSON, ignore schema
+        }
+      }
+    }
+
+    onAiTest?.(filledSystemPrompt, filledUserPrompt, formatConfig);
   };
 
   // If no variables, copy original text directly
@@ -258,49 +293,118 @@ export function VariableInputModal({
         </div>
 
         {/* Fixed action buttons / 固定操作按钮 */}
-        <div className="flex justify-end gap-3 pt-4 border-t border-border mt-4 shrink-0">
-          <Button variant="secondary" onClick={onClose}>
-            {t('common.cancel')}
-          </Button>
-          {mode === 'copy' ? (
-            <Button
-              variant="primary"
-              onClick={handleCopy}
-              disabled={!allFilled}
-            >
-              {copied ? (
-                <>
-                  <CheckIcon className="w-4 h-4 mr-1.5" />
-                  {t('prompt.copied')}
-                </>
-              ) : (
-                <>
-                  <CopyIcon className="w-4 h-4 mr-1.5" />
-                  {t('prompt.copyResult')}
-                </>
-              )}
-            </Button>
+        <div className="flex items-center justify-between pt-4 border-t border-border mt-4 shrink-0">
+          {/* Output format selector (Issue #38) - compact version in footer */}
+          {mode === 'aiTest' ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">{t('prompt.outputFormat')}:</span>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setOutputFormat('text')}
+                  className={`px-2 py-1 rounded text-xs font-medium transition-colors ${outputFormat === 'text'
+                    ? 'bg-primary text-white'
+                    : 'bg-muted text-muted-foreground hover:bg-accent'
+                    }`}
+                >
+                  {t('prompt.outputFormatText')}
+                </button>
+                <button
+                  onClick={() => setOutputFormat('json_object')}
+                  className={`px-2 py-1 rounded text-xs font-medium transition-colors ${outputFormat === 'json_object'
+                    ? 'bg-primary text-white'
+                    : 'bg-muted text-muted-foreground hover:bg-accent'
+                    }`}
+                >
+                  JSON
+                </button>
+                <button
+                  onClick={() => setOutputFormat('json_schema')}
+                  className={`px-2 py-1 rounded text-xs font-medium transition-colors ${outputFormat === 'json_schema'
+                    ? 'bg-primary text-white'
+                    : 'bg-muted text-muted-foreground hover:bg-accent'
+                    }`}
+                >
+                  Schema
+                </button>
+              </div>
+            </div>
           ) : (
-            <Button
-              variant="primary"
-              onClick={handleAiTest}
-              disabled={!allFilled || isAiTesting}
-              className="bg-green-500 hover:bg-green-600"
-            >
-              {isAiTesting ? (
-                <>
-                  <Loader2Icon className="w-4 h-4 mr-1.5 animate-spin" />
-                  {t('prompt.testing')}
-                </>
-              ) : (
-                <>
-                  <PlayIcon className="w-4 h-4 mr-1.5" />
-                  {t('prompt.aiTest')}
-                </>
-              )}
-            </Button>
+            <div /> // Empty placeholder for copy mode
           )}
+
+          <div className="flex gap-3">
+            <Button variant="secondary" onClick={onClose}>
+              {t('common.cancel')}
+            </Button>
+            {mode === 'copy' ? (
+              <Button
+                variant="primary"
+                onClick={handleCopy}
+                disabled={!allFilled}
+              >
+                {copied ? (
+                  <>
+                    <CheckIcon className="w-4 h-4 mr-1.5" />
+                    {t('prompt.copied')}
+                  </>
+                ) : (
+                  <>
+                    <CopyIcon className="w-4 h-4 mr-1.5" />
+                    {t('prompt.copyResult')}
+                  </>
+                )}
+              </Button>
+            ) : (
+              <Button
+                variant="primary"
+                onClick={handleAiTest}
+                disabled={!allFilled || isAiTesting}
+                className="bg-green-500 hover:bg-green-600"
+              >
+                {isAiTesting ? (
+                  <>
+                    <Loader2Icon className="w-4 h-4 mr-1.5 animate-spin" />
+                    {t('prompt.testing')}
+                  </>
+                ) : (
+                  <>
+                    <PlayIcon className="w-4 h-4 mr-1.5" />
+                    {t('prompt.aiTest')}
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
         </div>
+
+        {/* JSON Schema editor modal - show when json_schema selected */}
+        {mode === 'aiTest' && outputFormat === 'json_schema' && (
+          <div className="mt-3 p-3 rounded-lg bg-muted/50 border border-border space-y-2">
+            <div className="flex gap-3">
+              <div className="flex-1 space-y-1">
+                <label className="text-xs text-muted-foreground">{t('prompt.jsonSchemaName')}</label>
+                <input
+                  type="text"
+                  value={jsonSchemaName}
+                  onChange={(e) => setJsonSchemaName(e.target.value)}
+                  placeholder="response"
+                  className="w-full px-3 py-1.5 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">{t('prompt.jsonSchemaContent')}</label>
+              <textarea
+                value={jsonSchemaContent}
+                onChange={(e) => setJsonSchemaContent(e.target.value)}
+                placeholder={t('prompt.jsonSchemaPlaceholder')}
+                rows={3}
+                className="w-full px-3 py-2 text-sm font-mono bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+              />
+              <p className="text-xs text-muted-foreground">{t('prompt.jsonSchemaHint')}</p>
+            </div>
+          </div>
+        )}
       </div>
     </Modal>
   );

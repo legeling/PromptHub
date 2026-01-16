@@ -307,7 +307,9 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
             </div>
             <h3 className="font-semibold text-lg mb-1 text-red-500">{t('common.error')}</h3>
             <p className="text-sm text-muted-foreground break-all whitespace-pre-wrap max-h-24 overflow-y-auto mb-4 px-2">
-              {updateStatus.error}
+              {updateStatus.error.includes('SHA512') 
+                ? t('error.sha512Desc', updateStatus.error)
+                : updateStatus.error}
             </p>
 
             {/* SHA512 error: show open folder button */}
@@ -318,7 +320,7 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
                   className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-xl bg-green-600 text-white hover:bg-green-700 transition-all text-sm font-medium shadow-sm active:scale-95"
                 >
                   <FolderOpenIcon className="w-4 h-4" />
-                  打开下载文件夹
+                  {t('settings.openDownloadFolder')}
                 </button>
               </div>
             )}

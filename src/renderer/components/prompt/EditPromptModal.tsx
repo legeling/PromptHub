@@ -25,7 +25,7 @@ interface EditPromptModalProps {
 }
 
 export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { showToast } = useToast();
   const updatePrompt = usePromptStore((state) => state.updatePrompt);
   const prompts = usePromptStore((state) => state.prompts);
@@ -257,7 +257,7 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
       setShowEnglishVersion(true);
       showToast(t('prompt.englishGenerated', '已生成英文版 Prompt'), 'success');
     } catch (e) {
-      showToast(e instanceof Error ? e.message : (t('common.error') || '翻译失败'), 'error');
+      showToast(e instanceof Error ? e.message : (t('common.error') || 'Translation failed'), 'error');
     } finally {
       setIsTranslating(false);
     }
@@ -456,20 +456,20 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
       <div className="fixed inset-0 z-[9999] bg-background flex flex-col">
         {/* 全屏编辑器头部 */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/30 shrink-0">
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg font-semibold">{getFullscreenFieldTitle()}</h2>
-            <span className="text-sm text-muted-foreground">Markdown Supported</span>
-          </div>
+            <div className="flex items-center gap-3">
+              <h2 className="text-lg font-semibold">{getFullscreenFieldTitle()}</h2>
+              <span className="text-sm text-muted-foreground">{t('common.markdownSupported')}</span>
+            </div>
           <div className="flex items-center gap-3">
             <button
               onClick={handleExitNativeFullscreen}
               className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-muted text-sm font-medium transition-colors"
             >
               <Minimize2Icon className="w-4 h-4" />
-              {t('common.exitFullscreen', '退出全屏')}
+              {t('common.exitFullscreen', 'Exit Fullscreen')}
             </button>
             <Button variant="primary" onClick={handleExitNativeFullscreen}>
-              {t('common.done', '完成')}
+              {t('common.done', 'Done')}
             </Button>
           </div>
         </div>
@@ -480,7 +480,7 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
             value={getFullscreenFieldValue()}
             onChange={(e) => setFullscreenFieldValue(e.target.value)}
             autoFocus
-            placeholder="Type your prompt here..."
+            placeholder={t('prompt.typeYourPrompt')}
           />
         </div>
       </div>
@@ -498,7 +498,7 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
           <button
             onClick={() => setIsFullscreen(!isFullscreen)}
             className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            title={isFullscreen ? t('prompt.exitFullscreen', '退出全屏') : t('prompt.fullscreen', '全屏编辑')}
+            title={isFullscreen ? t('prompt.exitFullscreen', 'Exit Fullscreen') : t('prompt.fullscreen', 'Fullscreen')}
           >
             {isFullscreen ? <Minimize2Icon className="w-4 h-4" /> : <Maximize2Icon className="w-4 h-4" />}
           </button>
@@ -534,7 +534,7 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
             className="flex items-center gap-2 px-4 py-3 w-full text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
           >
             {showAttributes ? <ChevronDownIcon className="w-4 h-4 text-muted-foreground" /> : <ChevronRightIcon className="w-4 h-4 text-muted-foreground" />}
-            <span>{t('prompt.properties', '属性 (Properties)')}</span>
+            <span>{t('prompt.properties', 'Properties')}</span>
             {!showAttributes && (
               <span className="text-xs text-muted-foreground ml-2 font-normal truncate max-w-[400px]">
                 {[
@@ -558,7 +558,7 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
 
               {/* Prompt 类型 */}
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-foreground">{t('prompt.type', 'Prompt 类型')}</label>
+                <label className="block text-sm font-medium text-foreground">{t('prompt.type', 'Prompt Type')}</label>
                 <div className="flex gap-2">
                   {(['text', 'image'] as const).map((type) => (
                     <button
@@ -572,14 +572,14 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
                     >
                       {type === 'text' && <MessageSquareTextIcon className="w-4 h-4" />}
                       {type === 'image' && <ImageIcon className="w-4 h-4" />}
-                      {type === 'text' && t('prompt.typeText', '文本')}
-                      {type === 'image' && t('prompt.typeImage', '媒体')}
+                      {type === 'text' && t('prompt.typeText', 'Text')}
+                      {type === 'image' && t('prompt.typeImage', 'Media')}
                     </button>
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {promptType === 'text' && t('prompt.typeTextDesc', '使用对话模型（如 GPT-4）进行测试')}
-                  {promptType === 'image' && t('prompt.typeImageDesc', '使用生图模型（如 DALL-E）进行测试，生成的图片会自动保存到预览')}
+                  {promptType === 'text' && t('prompt.typeTextDesc', 'Test with chat models (e.g. GPT-4)')}
+                  {promptType === 'image' && t('prompt.typeImageDesc', 'Test with image models (e.g. DALL-E)')}
                 </p>
               </div>
 
@@ -621,14 +621,14 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
                     className="w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 flex flex-col items-center justify-center text-muted-foreground hover:text-primary transition-colors text-center p-2"
                   >
                     <ImageIcon className="w-6 h-6 mb-1" />
-                    <span className="text-[10px] leading-tight">{t('prompt.uploadImage', '上传/粘贴/链接')}</span>
+                    <span className="text-[10px] leading-tight">{t('prompt.uploadImage', 'Upload/Add Link')}</span>
                   </button>
                   <button
                     onClick={handleSelectVideo}
                     className="w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 flex flex-col items-center justify-center text-muted-foreground hover:text-primary transition-colors text-center p-2"
                   >
                     <VideoIcon className="w-6 h-6 mb-1" />
-                    <span className="text-[10px] leading-tight">{t('prompt.uploadVideo', '上传视频')}</span>
+                    <span className="text-[10px] leading-tight">{t('prompt.uploadVideo', 'Upload Video')}</span>
                   </button>
                 </div>
                 {/* 通过链接添加 */}
@@ -637,7 +637,7 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
                     onClick={() => setShowUrlInput(true)}
                     className="text-xs text-primary hover:underline"
                   >
-                    {t('prompt.addImageByUrl', '通过链接添加')}
+                    {t('prompt.addImageByUrl', 'Add by URL')}
                   </button>
                 ) : (
                   <div className="flex gap-2 mt-2">
@@ -670,7 +670,7 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
                       disabled={isDownloadingImage || !imageUrl}
                       className="h-8 px-3 rounded-lg bg-primary text-white text-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {isDownloadingImage ? t('common.loading', '加载中...') : t('common.confirm', '确定')}
+                      {isDownloadingImage ? t('common.loading', 'Loading...') : t('common.confirm', 'Confirm')}
                     </button>
                     <button
                       onClick={() => {
@@ -680,7 +680,7 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
                       disabled={isDownloadingImage}
                       className="h-8 px-3 rounded-lg bg-muted text-sm hover:bg-muted/80 disabled:opacity-50"
                     >
-                      {t('common.cancel', '取消')}
+                      {t('common.cancel', 'Cancel')}
                     </button>
                   </div>
                 )}
@@ -773,12 +773,12 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
               {/* 来源 / Source */}
               <div className="space-y-1.5 relative">
                 <label className="block text-sm font-medium text-foreground">
-                  {t('prompt.sourceOptional') || '来源（可选）'}
+                  {t('prompt.sourceOptional') || 'Source (Optional)'}
                 </label>
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder={t('prompt.sourcePlaceholder') || '记录 Prompt 的来源，如网站链接、书籍等'}
+                    placeholder={t('prompt.sourcePlaceholder') || 'Record prompt source (e.g. website, book)'}
                     value={source}
                     onChange={(e) => setSource(e.target.value)}
                     onFocus={() => setShowSourceSuggestions(true)}
@@ -826,6 +826,8 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
         </div>
 
         {/* 英文版本切换 */}
+        {/* 英文版本切换 / Toggle English Version (Hide if language is English) */}
+        {!i18n.language.startsWith('en') && (
         <div className="flex items-center justify-between p-3 rounded-xl bg-accent/30 border border-border">
           <div className="flex items-center gap-2">
             <GlobeIcon className="w-4 h-4 text-primary" />
@@ -833,6 +835,7 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
               <div className="text-sm font-medium">{t('prompt.bilingualHint')}</div>
             </div>
           </div>
+          {!i18n.language.startsWith('en') && (
           <div className="flex items-center gap-2">
             <button
               onClick={handleTranslateToEnglish}
@@ -872,7 +875,9 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
               )}
             </button>
           </div>
+          )}
         </div>
+        )}
 
         {/* System Prompt */}
         <div className="space-y-2">

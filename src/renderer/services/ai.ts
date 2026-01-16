@@ -22,6 +22,16 @@ export interface ChatCompletionRequest {
   presence_penalty?: number;
   stream?: boolean;
   enable_thinking?: boolean;
+  // Output format: undefined = text, { type: 'json_object' } = JSON mode, { type: 'json_schema', ... } = JSON Schema
+  // 输出格式：undefined = 文本，{ type: 'json_object' } = JSON 模式，{ type: 'json_schema', ... } = JSON Schema
+  response_format?: {
+    type: 'text' | 'json_object' | 'json_schema';
+    json_schema?: {
+      name: string;
+      strict?: boolean;
+      schema: Record<string, unknown>;
+    };
+  };
 }
 
 export interface ChatCompletionResponse {
@@ -146,6 +156,15 @@ export async function chatCompletion(
     enableThinking?: boolean;
     onStream?: (chunk: string) => void;  // 兼容旧版 / Legacy compatibility
     streamCallbacks?: StreamCallbacks;
+    // Output format options / 输出格式选项
+    responseFormat?: {
+      type: 'text' | 'json_object' | 'json_schema';
+      jsonSchema?: {
+        name: string;
+        strict?: boolean;
+        schema: Record<string, unknown>;
+      };
+    };
   }
 ): Promise<ChatCompletionResult> {
   const { provider, apiKey, apiUrl, model, chatParams } = config;
@@ -305,6 +324,21 @@ export async function chatCompletion(
     }
   }
 
+  // 处理输出格式 / Handle response format (Issue #38)
+  if (options?.responseFormat && options.responseFormat.type !== 'text') {
+    if (options.responseFormat.type === 'json_object') {
+      body.response_format = { type: 'json_object' };
+    } else if (options.responseFormat.type === 'json_schema' && options.responseFormat.jsonSchema) {
+      body.response_format = {
+        type: 'json_schema',
+        json_schema: {
+          name: options.responseFormat.jsonSchema.name,
+          strict: options.responseFormat.jsonSchema.strict ?? true,
+          schema: options.responseFormat.jsonSchema.schema,
+        },
+      };
+    }
+  }
 
 
   try {
@@ -1524,7 +1558,7 @@ export async function fetchAvailableModels(
     // Calculate base URL and add /models
     // 计算 base URL 并添加 /models
     let baseUrl = getBaseUrl(apiUrl);
-    let endpoint = baseUrl + '/models';
+    let endpoint: string;
 
     // Gemini: https://generativelanguage.googleapis.com/v1beta/models
     // Users might only fill host (without /v1beta), need to complete according to Gemini specification
@@ -1535,6 +1569,18 @@ export async function fetchAvailableModels(
         endpoint = baseUrl + '/models';
       } else {
         endpoint = baseUrl + '/v1beta/models';
+      }
+    } else {
+      // For other APIs (OpenAI compatible), check if version path exists
+      // 对于其他 API（OpenAI 兼容），检查是否存在版本路径
+      if (baseUrl.match(/\/v\d+$/)) {
+        // Already has version path like /v1, /v2, etc.
+        // 已有版本路径如 /v1, /v2 等
+        endpoint = baseUrl + '/models';
+      } else {
+        // No version path, add /v1/models
+        // 无版本路径，添加 /v1/models
+        endpoint = baseUrl + '/v1/models';
       }
     }
 

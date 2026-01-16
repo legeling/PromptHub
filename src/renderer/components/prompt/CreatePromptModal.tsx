@@ -31,7 +31,7 @@ interface CreatePromptModalProps {
 }
 
 export function CreatePromptModal({ isOpen, onClose, onCreate, defaultFolderId }: CreatePromptModalProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { showToast } = useToast();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -290,20 +290,20 @@ export function CreatePromptModal({ isOpen, onClose, onCreate, defaultFolderId }
     return (
       <div className="fixed inset-0 z-[9999] bg-background flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/30 shrink-0">
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg font-semibold">{getFullscreenFieldTitle()}</h2>
-            <span className="text-sm text-muted-foreground">Markdown Supported</span>
-          </div>
+            <div className="flex items-center gap-3">
+              <h2 className="text-lg font-semibold">{getFullscreenFieldTitle()}</h2>
+              <span className="text-sm text-muted-foreground">{t('common.markdownSupported')}</span>
+            </div>
           <div className="flex items-center gap-3">
             <button
               onClick={handleExitNativeFullscreen}
               className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-muted text-sm font-medium transition-colors"
             >
               <Minimize2Icon className="w-4 h-4" />
-              {t('common.exitFullscreen', '退出全屏')}
+              {t('common.exitFullscreen', 'Exit Fullscreen')}
             </button>
             <Button variant="primary" onClick={handleExitNativeFullscreen}>
-              {t('common.done', '完成')}
+              {t('common.done', 'Done')}
             </Button>
           </div>
         </div>
@@ -313,7 +313,7 @@ export function CreatePromptModal({ isOpen, onClose, onCreate, defaultFolderId }
             value={getFullscreenFieldValue()}
             onChange={(e) => setFullscreenFieldValue(e.target.value)}
             autoFocus
-            placeholder="Type your prompt here..."
+            placeholder={t('prompt.typeYourPrompt')}
           />
         </div>
       </div>
@@ -331,7 +331,7 @@ export function CreatePromptModal({ isOpen, onClose, onCreate, defaultFolderId }
           <button
             onClick={() => setIsFullscreen(!isFullscreen)}
             className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            title={isFullscreen ? t('prompt.exitFullscreen', '退出全屏') : t('prompt.fullscreen', '全屏编辑')}
+            title={isFullscreen ? t('prompt.exitFullscreen', 'Exit Fullscreen') : t('prompt.fullscreen', 'Fullscreen')}
           >
             {isFullscreen ? <Minimize2Icon className="w-4 h-4" /> : <Maximize2Icon className="w-4 h-4" />}
           </button>
@@ -367,7 +367,7 @@ export function CreatePromptModal({ isOpen, onClose, onCreate, defaultFolderId }
             className="flex items-center gap-2 px-4 py-3 w-full text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
           >
             {showAttributes ? <ChevronDownIcon className="w-4 h-4 text-muted-foreground" /> : <ChevronRightIcon className="w-4 h-4 text-muted-foreground" />}
-            <span>{t('prompt.properties', '属性 (Properties)')}</span>
+            <span>{t('prompt.properties', 'Properties')}</span>
             {!showAttributes && (
               <span className="text-xs text-muted-foreground ml-2 font-normal truncate max-w-[400px]">
                 {[
@@ -425,19 +425,19 @@ export function CreatePromptModal({ isOpen, onClose, onCreate, defaultFolderId }
                     className="w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 flex flex-col items-center justify-center text-muted-foreground hover:text-primary transition-colors text-center p-2"
                   >
                     <ImageIcon className="w-6 h-6 mb-1" />
-                    <span className="text-[10px] leading-tight">{t('prompt.uploadImage', '上传/粘贴/链接')}</span>
+                    <span className="text-[10px] leading-tight">{t('prompt.uploadImage', 'Upload/Add Link')}</span>
                   </button>
                   <button
                     onClick={handleSelectVideo}
                     className="w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 flex flex-col items-center justify-center text-muted-foreground hover:text-primary transition-colors text-center p-2"
                   >
                     <VideoIcon className="w-6 h-6 mb-1" />
-                    <span className="text-[10px] leading-tight">{t('prompt.uploadVideo', '上传视频')}</span>
+                    <span className="text-[10px] leading-tight">{t('prompt.uploadVideo', 'Upload Video')}</span>
                   </button>
                 </div>
                 {!showUrlInput ? (
                   <button onClick={() => setShowUrlInput(true)} className="text-xs text-primary hover:underline">
-                    {t('prompt.addImageByUrl', '通过链接添加')}
+                    {t('prompt.addImageByUrl', 'Add by URL')}
                   </button>
                 ) : (
                   <div className="flex gap-2 mt-2">
@@ -470,14 +470,14 @@ export function CreatePromptModal({ isOpen, onClose, onCreate, defaultFolderId }
                       disabled={isDownloadingImage || !imageUrl}
                       className="h-8 px-3 rounded-lg bg-primary text-white text-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {isDownloadingImage ? t('common.loading', '加载中...') : t('common.confirm', '确定')}
+                      {isDownloadingImage ? t('common.loading', 'Loading...') : t('common.confirm', 'Confirm')}
                     </button>
                     <button
                       onClick={() => { setShowUrlInput(false); setImageUrl(''); }}
                       disabled={isDownloadingImage}
                       className="h-8 px-3 rounded-lg bg-muted text-sm hover:bg-muted/80 disabled:opacity-50"
                     >
-                      {t('common.cancel', '取消')}
+                      {t('common.cancel', 'Cancel')}
                     </button>
                   </div>
                 )}
@@ -557,12 +557,12 @@ export function CreatePromptModal({ isOpen, onClose, onCreate, defaultFolderId }
               {/* 来源 / Source */}
               <div className="space-y-1.5 relative">
                 <label className="block text-sm font-medium text-foreground">
-                  {t('prompt.sourceOptional') || '来源（可选）'}
+                  {t('prompt.sourceOptional') || 'Source (Optional)'}
                 </label>
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder={t('prompt.sourcePlaceholder') || '记录 Prompt 的来源，如网站链接、书籍等'}
+                    placeholder={t('prompt.sourcePlaceholder') || 'Record prompt source (e.g. website, book)'}
                     value={source}
                     onChange={(e) => setSource(e.target.value)}
                     onFocus={() => setShowSourceSuggestions(true)}
@@ -596,10 +596,10 @@ export function CreatePromptModal({ isOpen, onClose, onCreate, defaultFolderId }
               {/* 备注 */}
               <div className="space-y-1.5">
                 <label className="block text-sm font-medium text-foreground">
-                  {t('prompt.notesOptional', '备注（可选）')}
+                  {t('prompt.notesOptional', 'Notes (Optional)')}
                 </label>
                 <textarea
-                  placeholder={t('prompt.notesPlaceholder', '记录关于这个 Prompt 的个人笔记...')}
+                  placeholder={t('prompt.notesPlaceholder', 'Personal notes about this prompt...')}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   className="w-full min-h-[80px] px-4 py-3 rounded-xl bg-muted/50 border-0 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:bg-background transition-all duration-200 resize-none"
@@ -609,7 +609,8 @@ export function CreatePromptModal({ isOpen, onClose, onCreate, defaultFolderId }
           )}
         </div>
 
-        {/* 英文版本切换 */}
+        {/* 英文版本切换 / Toggle English Version (Hide if language is English) */}
+        {!i18n.language.startsWith('en') && (
         <div className="flex items-center justify-between p-3 rounded-xl bg-accent/30 border border-border">
           <div className="flex items-center gap-2">
             <GlobeIcon className="w-4 h-4 text-primary" />
@@ -636,6 +637,7 @@ export function CreatePromptModal({ isOpen, onClose, onCreate, defaultFolderId }
             )}
           </button>
         </div>
+        )}
 
         {/* System Prompt */}
         <div className="space-y-2">
@@ -649,7 +651,7 @@ export function CreatePromptModal({ isOpen, onClose, onCreate, defaultFolderId }
                     systemTab === 'edit' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  {t('prompt.edit', '编辑')}
+                  {t('prompt.edit', 'Edit')}
                 </button>
                 <button
                   onClick={() => setSystemTab('preview')}
@@ -657,13 +659,13 @@ export function CreatePromptModal({ isOpen, onClose, onCreate, defaultFolderId }
                     systemTab === 'preview' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  {t('prompt.preview', '预览')}
+                  {t('prompt.preview', 'Preview')}
                 </button>
               </div>
               <button
                 onClick={() => handleEnterNativeFullscreen('system')}
                 className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors border border-border"
-                title={t('prompt.fullscreen', '全屏编辑')}
+                title={t('prompt.fullscreen', 'Fullscreen Edit')}
               >
                 <Maximize2Icon className="w-4 h-4" />
               </button>
@@ -697,7 +699,7 @@ export function CreatePromptModal({ isOpen, onClose, onCreate, defaultFolderId }
                 </button>
               </div>
               <Textarea
-                placeholder="Enter English System Prompt..."
+                placeholder={t('prompt.enterEnglishSystemPrompt')}
                 value={systemPromptEn}
                 onChange={(e) => setSystemPromptEn(e.target.value)}
                 className="min-h-[80px]"
@@ -721,7 +723,7 @@ export function CreatePromptModal({ isOpen, onClose, onCreate, defaultFolderId }
                     userTab === 'edit' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  {t('prompt.edit', '编辑')}
+                  {t('prompt.edit', 'Edit')}
                 </button>
                 <button
                   onClick={() => setUserTab('preview')}
@@ -729,13 +731,13 @@ export function CreatePromptModal({ isOpen, onClose, onCreate, defaultFolderId }
                     userTab === 'preview' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  {t('prompt.preview', '预览')}
+                  {t('prompt.preview', 'Preview')}
                 </button>
               </div>
               <button
                 onClick={() => handleEnterNativeFullscreen('user')}
                 className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors border border-border"
-                title={t('prompt.fullscreen', '全屏编辑')}
+                title={t('prompt.fullscreen', 'Fullscreen Edit')}
               >
                 <Maximize2Icon className="w-4 h-4" />
               </button>
@@ -769,7 +771,7 @@ export function CreatePromptModal({ isOpen, onClose, onCreate, defaultFolderId }
                 </button>
               </div>
               <Textarea
-                placeholder="Enter English User Prompt..."
+                placeholder={t('prompt.enterEnglishUserPrompt')}
                 value={userPromptEn}
                 onChange={(e) => setUserPromptEn(e.target.value)}
                 className="min-h-[120px]"

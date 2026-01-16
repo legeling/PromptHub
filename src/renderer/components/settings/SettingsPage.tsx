@@ -1059,12 +1059,12 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
     }
     // If master password is not configured, prompt to set it first
     // 未设置主密码时，提示需要先设置
-    showToast(t('settings.clearNeedPassword') || '清除数据属于高危操作，请先在安全设置中设置主密码', 'error');
+    showToast(t('settings.clearNeedPassword') || 'Clearing data is a high-risk operation, please set a master password in security settings first', 'error');
   };
 
   const handleConfirmClear = async () => {
     if (!clearPwd) {
-      showToast(t('settings.enterPassword') || '请输入主密码', 'error');
+      showToast(t('settings.enterPassword') || 'Please enter master password', 'error');
       return;
     }
 
@@ -1074,7 +1074,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
       // 验证密码
       const result = await window.api.security.unlock(clearPwd);
       if (!result.success) {
-        showToast(t('settings.wrongPassword') || '密码错误', 'error');
+        showToast(t('settings.wrongPassword') || 'Wrong password', 'error');
         setClearLoading(false);
         return;
       }
@@ -1210,7 +1210,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 <div className="flex items-center justify-end mb-3">
                   <div className="text-xs text-muted-foreground tabular-nums">
                     {settings.themeColor === 'custom'
-                      ? `${t('settings.customColor', '自定义')} ${settings.customThemeHex}`
+                      ? `${t('settings.customColor', 'Custom')} ${settings.customThemeHex}`
                       : (() => {
                         const theme = MORANDI_THEMES.find((x) => x.id === settings.themeColor);
                         if (!theme) return '';
@@ -1253,8 +1253,8 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                         ? 'ring-2 ring-primary ring-offset-2 ring-offset-background'
                         : 'hover:opacity-95'
                         }`}
-                      title={t('settings.customColor', '自定义')}
-                      aria-label={t('settings.customColor', '自定义')}
+                      title={t('settings.customColor', 'Custom')}
+                      aria-label={t('settings.customColor', 'Custom')}
                       style={{ backgroundColor: settings.customThemeHex }}
                     >
                       {settings.themeColor === 'custom' && (
@@ -1271,9 +1271,9 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                   <div className="mt-4 p-4 rounded-xl border border-border/60 bg-muted/20 animate-in fade-in slide-in-from-bottom-2 duration-200">
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <div className="text-sm font-medium">{t('settings.customColor', '自定义主题色')}</div>
+                        <div className="text-sm font-medium">{t('settings.customColor', 'Custom Theme Color')}</div>
                         <div className="text-xs text-muted-foreground mt-0.5">
-                          {t('settings.customColorDesc', '选择任意颜色，立即应用到全局主题')}
+                          {t('settings.customColorDesc', 'Apply any color to the global theme instantly')}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -1282,7 +1282,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                           value={settings.customThemeHex}
                           onChange={(e) => settings.setCustomThemeHex(e.target.value)}
                           className="h-9 w-10 rounded-lg border border-border bg-transparent p-1"
-                          aria-label={t('settings.customColor', '自定义主题色')}
+                          aria-label={t('settings.customColor', 'Custom Theme Color')}
                         />
                         <input
                           type="text"
@@ -1297,13 +1297,13 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                     {/* 紧凑预览 */}
                     <div className="mt-4 flex items-center gap-2">
                       <div className="flex-1 h-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">
-                        {t('settings.primary', '主按钮')}
+                        {t('settings.primary', 'Primary')}
                       </div>
                       <div className="flex-1 h-9 rounded-lg bg-accent text-accent-foreground flex items-center justify-center text-sm font-medium">
-                        {t('settings.accent', '强调')}
+                        {t('settings.accent', 'Accent')}
                       </div>
                       <div className="flex-1 h-9 rounded-lg border border-border bg-background flex items-center justify-center text-sm font-medium">
-                        {t('settings.neutral', '中性')}
+                        {t('settings.neutral', 'Neutral')}
                       </div>
                     </div>
                   </div>
@@ -1342,34 +1342,34 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <KeyIcon className="w-4 h-4" />
                   <span>
-                    {t('settings.securityStatus', '状态')}：
+                    {t('settings.securityStatus', 'Status')}:
                     {securityStatus.configured
-                      ? t('settings.masterSet', '已设置主密码')
-                      : t('settings.masterNotSet', '未设置主密码')}
+                      ? t('settings.masterSet', 'Master Password Set')
+                      : t('settings.masterNotSet', 'Master Password Not Set')}
                   </span>
                 </div>
 
                 {!securityStatus.configured && (
                   <div className="space-y-3 pt-2 border-t border-border/60">
                     <div className="text-sm font-medium">
-                      {t('settings.setMaster', '设置主密码（至少 4 位）')}
+                      {t('settings.setMaster', 'Set master password (min 4 chars)')}
                     </div>
                     <PasswordInput
                       value={newMasterPwd}
                       onChange={setNewMasterPwd}
-                      placeholder={t('settings.masterPlaceholder', '输入主密码')}
+                      placeholder={t('settings.masterPlaceholder', 'Enter master password')}
                     />
                     <PasswordInput
                       value={newMasterPwdConfirm}
                       onChange={setNewMasterPwdConfirm}
-                      placeholder={t('settings.masterConfirmPlaceholder', '确认主密码')}
+                      placeholder={t('settings.masterConfirmPlaceholder', 'Confirm master password')}
                     />
                     <button
                       onClick={handleSetMasterPassword}
                       className="h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
                       disabled={secLoading}
                     >
-                      {secLoading ? t('common.loading', '处理中...') : t('settings.setMasterBtn', '设置主密码')}
+                      {secLoading ? t('common.loading', 'Loading...') : t('settings.setMasterBtn', 'Set Master Password')}
                     </button>
                   </div>
                 )}
@@ -1377,12 +1377,12 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 {securityStatus.configured && (
                   <div className="space-y-3 pt-2 border-t border-border/60">
                     <div className="flex items-center justify-between">
-                      <div className="text-sm font-medium">{t('settings.changePwd', '修改主密码')}</div>
+                      <div className="text-sm font-medium">{t('settings.changePwd', 'Change Master Password')}</div>
                       <button
                         onClick={() => setShowChangePwd(!showChangePwd)}
                         className="text-xs text-primary hover:underline"
                       >
-                        {showChangePwd ? t('common.cancel', '取消') : t('settings.changePwdBtn', '修改密码')}
+                        {showChangePwd ? t('common.cancel', 'Cancel') : t('settings.changePwdBtn', 'Change Password')}
                       </button>
                     </div>
                     {showChangePwd && (
@@ -1390,24 +1390,24 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                         <PasswordInput
                           value={oldPwd}
                           onChange={setOldPwd}
-                          placeholder={t('settings.oldPwdPlaceholder', '输入当前主密码')}
+                          placeholder={t('settings.oldPwdPlaceholder', 'Enter current master password')}
                         />
                         <PasswordInput
                           value={newPwd}
                           onChange={setNewPwd}
-                          placeholder={t('settings.newPwdPlaceholder', '输入新主密码（至少 4 位）')}
+                          placeholder={t('settings.newPwdPlaceholder', 'Enter new master password (min 4 chars)')}
                         />
                         <PasswordInput
                           value={newPwdConfirm}
                           onChange={setNewPwdConfirm}
-                          placeholder={t('settings.newPwdConfirmPlaceholder', '确认新主密码')}
+                          placeholder={t('settings.newPwdConfirmPlaceholder', 'Confirm new master password')}
                         />
                         <button
                           onClick={handleChangeMasterPassword}
                           className="h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
                           disabled={secLoading}
                         >
-                          {secLoading ? t('common.loading', '处理中...') : t('settings.confirmChange', '确认修改')}
+                          {secLoading ? t('common.loading', 'Loading...') : t('settings.confirmChange', 'Confirm Change')}
                         </button>
                       </div>
                     )}
@@ -1417,7 +1417,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   {t(
                     'settings.securityDesc',
-                    '主密码用于解锁私密内容。密码不落盘，未解锁时私密数据不可见。请务必记住主密码。',
+                    'Master password is used to unlock private content. It is not stored on disk. If lost, data cannot be recovered.',
                   )}
                 </p>
               </div>
@@ -1450,7 +1450,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                         // Confirm migration
                         // 确认迁移
                         const confirmed = window.confirm(
-                          t('settings.confirmDataMigration', '确定要将数据迁移到新目录吗？\n\n迁移完成后需要重启应用。')
+                          t('settings.confirmDataMigration', 'Are you sure you want to migrate data to the new directory?\n\nRestart is required after migration.')
                         );
                         if (!confirmed) return;
 
@@ -1459,16 +1459,16 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                         const result = await window.electron?.migrateData?.(newPath);
                         if (result?.success) {
                           settings.setDataPath(newPath);
-                          showToast(t('toast.dataPathChanged') + ' ' + t('settings.restartRequired', '请重启应用'), 'success');
+                          showToast(t('toast.dataPathChanged') + ' ' + t('settings.restartRequired', 'Please restart app'), 'success');
                           // Prompt for restart
                           // 提示重启
                           setTimeout(() => {
-                            if (window.confirm(t('settings.restartNow', '数据迁移完成，是否立即重启应用？'))) {
+                            if (window.confirm(t('settings.restartNow', 'Data migration completed. Restart app now?'))) {
                               window.location.reload();
                             }
                           }, 1000);
                         } else {
-                          showToast(t('toast.dataPathChangeFailed', '数据迁移失败') + ': ' + (result?.error || ''), 'error');
+                          showToast(t('toast.dataPathChangeFailed', 'Data migration failed') + ': ' + (result?.error || ''), 'error');
                         }
                       }
                     }}

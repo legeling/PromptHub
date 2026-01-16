@@ -1,3 +1,23 @@
+## [0.3.8] - 2026-01-15
+
+### 新功能 / Added
+
+- ✨ **JSON 输出支持**：AI 测试新增 JSON Mode 和 JSON Schema 输出格式支持，满足结构化数据生成需求
+  - **Output Format Support**: Added support for JSON Mode and JSON Schema output formats in AI test, enabling structured data generation
+- ⚡️ **英文模式优化**：在英文界面下自动精简 UI，隐藏不必要的"英文版"切换按钮
+  - **English UI Optimization**: Automatically hides redundant "English Version" toggle buttons when using the English interface
+
+### 修复 / Fixed
+
+- 🐛 **WebDAV 修复**：修复同步过程中可能导致 WebDAV 用户名和密码丢失的问题
+  - **WebDAV Credential Fix**: Fixed issues where WebDAV credentials could be lost during sync operations
+- 🐛 **设置记忆修复**：修复窗口关闭行为设置（最小化/退出）无法持久化保存的问题
+  - **Close Action Persistence**: Fixed issue where window close behavior preference (minimize/quit) was not saved
+- 🐛 **API 路径修复**：修复部分非标准 API 路径在获取模型列表时报 404 的问题
+  - **Model Fetch Logic**: Fixed 404 errors when fetching model lists from non-standard API endpoints
+- 🌍 **国际化优化**：修复多处未翻译的文本和 fallback 逻辑
+  - **i18n Polish**: Fixed various missing translations and fallback behaviors
+
 ## [0.3.7] - 2026-01-13
 
 ### 新功能 / Added

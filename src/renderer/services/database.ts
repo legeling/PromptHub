@@ -880,7 +880,31 @@ function getSettingsSnapshot(): { state: any; settingsUpdatedAt?: string } | und
 function restoreSettingsSnapshot(snapshot: { state: any } | undefined): void {
   if (!snapshot?.state) return;
   try {
-    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ state: snapshot.state }));
+    // Read current local settings to preserve sensitive fields
+    // 读取当前本地设置以保留敏感字段
+    const currentRaw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+    const currentData = currentRaw ? JSON.parse(currentRaw) : { state: {} };
+    const currentState = currentData?.state || {};
+
+    // Sensitive fields that should NOT be overwritten by restore
+    // 不应被恢复操作覆盖的敏感字段
+    const sensitiveFields = [
+      'webdavUsername',
+      'webdavPassword',
+      'webdavEncryptionPassword',
+      'aiApiKey',
+    ];
+
+    // Merge: use restored settings as base, but preserve local sensitive fields
+    // 合并：以恢复的设置为基础，但保留本地敏感字段
+    const mergedState = { ...snapshot.state };
+    for (const field of sensitiveFields) {
+      if (currentState[field] !== undefined) {
+        mergedState[field] = currentState[field];
+      }
+    }
+
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ state: mergedState }));
   } catch (e) {
     console.warn('Failed to restore settings snapshot:', e);
   }

@@ -99,7 +99,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               <button
                 onClick={() => removeToast(toast.id)}
                 className="ml-2 p-1.5 hover:bg-black/10 dark:hover:bg-white/10 rounded-lg transition-colors"
-                title={t('common.close') || '关闭'}
+                title={t('common.close') || 'Close'}
               >
                 <XIcon className="w-4 h-4 text-muted-foreground" />
               </button>

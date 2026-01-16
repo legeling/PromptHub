@@ -47,6 +47,11 @@ export function AiTestModal({
   // Variable fill state
   // 变量填充状态
   const [variableValues, setVariableValues] = useState<Record<string, string>>({});
+  // Output format state (Issue #38)
+  // 输出格式状态
+  const [outputFormat, setOutputFormat] = useState<'text' | 'json_object' | 'json_schema'>('text');
+  const [jsonSchemaName, setJsonSchemaName] = useState('response');
+  const [jsonSchemaContent, setJsonSchemaContent] = useState('');
 
   // AI settings
   // AI 设置
@@ -213,6 +218,22 @@ export function AiTestModal({
               onThinking: (chunk) => setThinkingContent((prev) => (prev ?? '') + chunk),
             }
             : undefined,
+          // Output format (Issue #38)
+          // 输出格式
+          responseFormat: outputFormat === 'text' ? undefined : {
+            type: outputFormat,
+            jsonSchema: outputFormat === 'json_schema' && jsonSchemaContent ? (() => {
+              try {
+                return {
+                  name: jsonSchemaName || 'response',
+                  strict: true,
+                  schema: JSON.parse(jsonSchemaContent),
+                };
+              } catch {
+                return undefined;
+              }
+            })() : undefined,
+          },
         }
       );
 
@@ -494,6 +515,67 @@ export function AiTestModal({
         {/* 单模型测试 */}
         {mode === 'single' && (
           <div className="space-y-4">
+            {/* 输出格式选择器 (Issue #38) */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium text-muted-foreground">{t('prompt.outputFormat')}</h4>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setOutputFormat('text')}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${outputFormat === 'text'
+                    ? 'bg-primary text-white'
+                    : 'bg-muted text-muted-foreground hover:bg-accent'
+                    }`}
+                >
+                  {t('prompt.outputFormatText')}
+                </button>
+                <button
+                  onClick={() => setOutputFormat('json_object')}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${outputFormat === 'json_object'
+                    ? 'bg-primary text-white'
+                    : 'bg-muted text-muted-foreground hover:bg-accent'
+                    }`}
+                >
+                  {t('prompt.outputFormatJson')}
+                </button>
+                <button
+                  onClick={() => setOutputFormat('json_schema')}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${outputFormat === 'json_schema'
+                    ? 'bg-primary text-white'
+                    : 'bg-muted text-muted-foreground hover:bg-accent'
+                    }`}
+                >
+                  {t('prompt.outputFormatJsonSchema')}
+                </button>
+              </div>
+
+              {/* JSON Schema 编辑器 */}
+              {outputFormat === 'json_schema' && (
+                <div className="space-y-2 p-3 rounded-lg bg-muted/50 border border-border">
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">{t('prompt.jsonSchemaName')}</label>
+                    <input
+                      type="text"
+                      value={jsonSchemaName}
+                      onChange={(e) => setJsonSchemaName(e.target.value)}
+                      placeholder="response"
+                      className="w-full px-3 py-1.5 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">{t('prompt.jsonSchemaContent')}</label>
+                    <textarea
+                      value={jsonSchemaContent}
+                      onChange={(e) => setJsonSchemaContent(e.target.value)}
+                      placeholder={t('prompt.jsonSchemaPlaceholder')}
+                      rows={6}
+                      className="w-full px-3 py-2 text-sm font-mono bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                    />
+                    <p className="text-xs text-muted-foreground">{t('prompt.jsonSchemaHint')}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">
                 {t('settings.model')}: {aiModel || '-'}

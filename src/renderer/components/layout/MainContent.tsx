@@ -5,6 +5,7 @@ import { useFolderStore } from '../../stores/folder.store';
 import { useSettingsStore } from '../../stores/settings.store';
 import { StarIcon, CopyIcon, HistoryIcon, HashIcon, SparklesIcon, EditIcon, TrashIcon, CheckIcon, PlayIcon, LoaderIcon, XIcon, GitCompareIcon, ClockIcon, GlobeIcon, PinIcon, MessageSquareTextIcon, ImageIcon, DownloadIcon, SaveIcon, ZoomInIcon } from 'lucide-react';
 import { EditPromptModal, VersionHistoryModal, VariableInputModal, PromptListHeader, PromptListView, PromptTableView, AiTestModal, PromptDetailModal, PromptGalleryView, PromptKanbanView } from '../prompt';
+import type { OutputFormatConfig } from '../prompt/VariableInputModal';
 import { ContextMenu, ContextMenuItem } from '../ui/ContextMenu';
 import { ImagePreviewModal } from '../ui/ImagePreviewModal';
 import { LocalImage } from '../ui/LocalImage';
@@ -478,7 +479,7 @@ export function MainContent() {
     }
   };
 
-  const runAiTest = async (systemPrompt: string | undefined, userPrompt: string, promptId?: string) => {
+  const runAiTest = async (systemPrompt: string | undefined, userPrompt: string, promptId?: string, outputFormat?: OutputFormatConfig) => {
     // Do not use modal in card view; render results inline
     // 卡片视图不使用弹窗，直接在页面内显示结果
     setIsTestingAI(true);
@@ -629,6 +630,9 @@ export function MainContent() {
       const result = await chatCompletion(singleChatConfig as any, messages, {
         stream: useStream,
         enableThinking: useThinking,
+        // Pass output format if specified (Issue #38)
+        // 传递输出格式（如果指定）
+        responseFormat: outputFormat,
         streamCallbacks: useStream ? {
           onContent: (chunk) => {
             fullContentRef.current += chunk;
@@ -1422,7 +1426,7 @@ export function MainContent() {
                     <div className="mb-4">
                       <div className="flex items-center justify-between gap-2 mb-2">
                         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                          System Prompt
+                          {t('prompt.systemPromptLabel', 'System Prompt')}
                           {showEnglish && <span className="px-1 py-0.5 rounded bg-primary/10 text-primary text-[10px]">EN</span>}
                         </span>
                       </div>
@@ -1434,7 +1438,7 @@ export function MainContent() {
                   <div className="mb-4">
                     <div className="flex items-center justify-between gap-2 mb-2">
                       <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                        User Prompt
+                        {t('prompt.userPromptLabel', 'User Prompt')}
                         {showEnglish && <span className="px-1 py-0.5 rounded bg-primary/10 text-primary text-[10px]">EN</span>}
                       </span>
                       <button
@@ -1442,7 +1446,7 @@ export function MainContent() {
                         onClick={toggleRenderMarkdown}
                         className="text-[12px] px-3 py-1 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                       >
-                        {renderMarkdownEnabled ? t('prompt.showPlain', '显示原文') : t('prompt.showMarkdown', 'Markdown')}
+                        {renderMarkdownEnabled ? t('prompt.viewRaw', 'Show Plain Text') : t('prompt.viewMarkdown', 'Markdown')}
                       </button>
                     </div>
                     {renderPromptContent(showEnglish ? (selectedPrompt.userPromptEn || selectedPrompt.userPrompt) : selectedPrompt.userPrompt)}
@@ -1848,8 +1852,8 @@ export function MainContent() {
           systemPrompt={showEnglish ? (selectedPrompt.systemPromptEn || selectedPrompt.systemPrompt) : selectedPrompt.systemPrompt}
           userPrompt={showEnglish ? (selectedPrompt.userPromptEn || selectedPrompt.userPrompt) : selectedPrompt.userPrompt}
           mode="aiTest"
-          onAiTest={(filledSystemPrompt, filledUserPrompt) => {
-            runAiTest(filledSystemPrompt, filledUserPrompt);
+          onAiTest={(filledSystemPrompt, filledUserPrompt, outputFormat) => {
+            runAiTest(filledSystemPrompt, filledUserPrompt, undefined, outputFormat);
           }}
           isAiTesting={isTestingAI}
         />

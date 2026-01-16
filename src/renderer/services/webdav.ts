@@ -552,11 +552,37 @@ function restoreAiConfig(aiConfig: BackupData['aiConfig']): void {
 /**
  * Restore system settings (to localStorage)
  * 恢复系统设置（到 localStorage）
+ * IMPORTANT: Preserve local sensitive fields that are NOT synced to WebDAV
+ * 重要：保留本地敏感字段，这些字段不会同步到 WebDAV
  */
 function restoreSettingsSnapshot(settings: BackupData['settings']): void {
   if (!settings?.state) return;
   try {
-    localStorage.setItem('prompthub-settings', JSON.stringify({ state: settings.state }));
+    // Read current local settings to preserve sensitive fields
+    // 读取当前本地设置以保留敏感字段
+    const currentRaw = localStorage.getItem('prompthub-settings');
+    const currentData = currentRaw ? JSON.parse(currentRaw) : { state: {} };
+    const currentState = currentData?.state || {};
+
+    // Sensitive fields that should NOT be overwritten by WebDAV sync
+    // 不应被 WebDAV 同步覆盖的敏感字段
+    const sensitiveFields = [
+      'webdavUsername',
+      'webdavPassword',
+      'webdavEncryptionPassword',
+      'aiApiKey',
+    ];
+
+    // Merge: use remote settings as base, but preserve local sensitive fields
+    // 合并：以远程设置为基础，但保留本地敏感字段
+    const mergedState = { ...settings.state };
+    for (const field of sensitiveFields) {
+      if (currentState[field] !== undefined) {
+        mergedState[field] = currentState[field];
+      }
+    }
+
+    localStorage.setItem('prompthub-settings', JSON.stringify({ state: mergedState }));
   } catch (error) {
     console.warn('Failed to restore settings snapshot:', error);
   }

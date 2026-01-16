@@ -578,6 +578,10 @@ export const useSettingsStore = create<SettingsState>()(
           if (state.debugMode) {
             window.electron?.setDebugMode?.(true);
           }
+          // Sync close action
+          if (state.closeAction) {
+            window.electron?.setCloseAction?.(state.closeAction);
+          }
         },
       };
     },
