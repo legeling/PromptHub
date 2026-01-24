@@ -541,6 +541,10 @@
     "shortcutSettings": "設定を開く",
     "shortcutSettingsDesc": "設定ページを素早く開く",
     "shortcutOptions": "ショートカットオプション",
+    "shortcutMode": "モード",
+    "shortcutModeGlobal": "グローバル",
+    "shortcutModeLocal": "ローカル",
+    "shortcutModeDesc": "グローバルショートカットはどのアプリからでも機能します。ローカルショートカットはPromptHubがアクティブな場合のみ機能します",
     "enableGlobalShortcuts": "グローバルショートカットを有効化",
     "enableGlobalShortcutsDesc": "他のアプリケーションでショートカットを使用可能にする",
     "shortcutTips": "ヒント",
@@ -558,7 +562,15 @@
     "addCustomParam": "パラメータを追加",
     "customParamsDesc": "カスタムリクエストパラメータを追加（例：max_completion_tokens）",
     "paramName": "パラメータ名",
-    "paramValue": "パラメータ値"
+    "paramValue": "パラメータ値",
+    "clipboardImport": "クリップボード自動インポート",
+    "clipboardImportDesc": "ウィンドウにフォーカスしたとき、クリップボード内の Prompt JSON を検出してインポートを促す",
+    "shareJSON": "JSONとして共有"
+  },
+  "import": {
+    "clipboardTitle": "クリップボードから Prompt をインポート",
+    "detectedPrompt": "Prompt データを検出",
+    "detectedDesc": "クリップボードの内容が Prompt 形式に一致します。ライブラリにインポートしますか？"
   },
   "resources": {
     "title": "おすすめリソース",

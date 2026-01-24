@@ -553,6 +553,10 @@
     "shortcutSettings": "打开设置",
     "shortcutSettingsDesc": "快速打开设置页面",
     "shortcutOptions": "快捷键选项",
+    "shortcutMode": "快捷键模式",
+    "shortcutModeGlobal": "全局",
+    "shortcutModeLocal": "局部",
+    "shortcutModeDesc": "全局快捷键在任何应用中都生效，局部快捷键仅在 PromptHub 窗口激活时生效",
     "enableGlobalShortcuts": "启用全局快捷键",
     "enableGlobalShortcutsDesc": "允许在其他应用中使用快捷键",
     "shortcutTips": "使用提示",
@@ -570,7 +574,15 @@
     "addCustomParam": "添加参数",
     "customParamsDesc": "添加自定义请求参数，如 max_completion_tokens 等",
     "paramName": "参数名",
-    "paramValue": "参数值"
+    "paramValue": "参数值",
+    "clipboardImport": "剪切板快速导入",
+    "clipboardImportDesc": "当应用获得焦点时，自动检测剪切板中的 Prompt JSON 并提示导入",
+    "shareJSON": "分享为 JSON"
+  },
+  "import": {
+    "clipboardTitle": "从剪切板导入 Prompt",
+    "detectedPrompt": "检测到 Prompt 数据",
+    "detectedDesc": "剪切板中的内容符合 Prompt 格式，是否将其导入到您的库中？"
   },
   "resources": {
     "title": "推荐资源",

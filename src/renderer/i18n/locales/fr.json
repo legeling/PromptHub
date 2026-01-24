@@ -539,6 +539,10 @@
     "shortcutSettings": "Ouvrir les paramètres",
     "shortcutSettingsDesc": "Ouvrir rapidement la page des paramètres",
     "shortcutOptions": "Options de raccourcis",
+    "shortcutMode": "Mode",
+    "shortcutModeGlobal": "Global",
+    "shortcutModeLocal": "Local",
+    "shortcutModeDesc": "Les raccourcis globaux fonctionnent dans n'importe quelle application. Les raccourcis locaux fonctionnent uniquement lorsque PromptHub est actif",
     "enableGlobalShortcuts": "Activer les raccourcis globaux",
     "enableGlobalShortcutsDesc": "Permettre l'utilisation des raccourcis dans d'autres applications",
     "shortcutTips": "Conseils",
@@ -558,7 +562,15 @@
     "paramName": "Nom du paramètre",
     "paramValue": "Valeur du paramètre",
     "autoFillDisabled": "Remplissage automatique désactivé (#)",
-    "apiUrlHint": "Terminez par # pour désactiver le remplissage automatique"
+    "apiUrlHint": "Terminez par # pour désactiver le remplissage automatique",
+    "clipboardImport": "Import automatique du presse-papiers",
+    "clipboardImportDesc": "Détecter le JSON Prompt dans le presse-papiers et proposer l'importation lorsque la fenêtre est active",
+    "shareJSON": "Partager en JSON"
+  },
+  "import": {
+    "clipboardTitle": "Importer un Prompt depuis le presse-papiers",
+    "detectedPrompt": "Données de Prompt détectées",
+    "detectedDesc": "Le contenu du presse-papiers correspond au format Prompt. Voulez-vous l'importer dans votre bibliothèque ?"
   },
   "resources": {
     "title": "Ressources recommandées",

@@ -194,6 +194,7 @@ contextBridge.exposeInMainWorld('electron', {
   // 快捷键
   getShortcuts: () => ipcRenderer.invoke('shortcuts:get'),
   setShortcuts: (shortcuts: Record<string, string>) => ipcRenderer.invoke('shortcuts:set', shortcuts),
+  setShortcutMode: (modes: Record<string, 'global' | 'local'>) => ipcRenderer.send('shortcuts:setMode', modes),
   // Shortcut trigger events
   // 快捷键触发事件
   onShortcutTriggered: (callback: (action: string) => void) => {
@@ -203,6 +204,15 @@ contextBridge.exposeInMainWorld('electron', {
     // 返回取消订阅函数，避免组件卸载/重挂载导致监听泄漏
     return () => {
       ipcRenderer.removeListener('shortcut:triggered', listener);
+    };
+  },
+  // Listen for shortcut updates
+  // 监听快捷键更新
+  onShortcutsUpdated: (callback: (shortcuts: Record<string, string>) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, shortcuts: Record<string, string>) => callback(shortcuts);
+    ipcRenderer.on('shortcuts:updated', listener);
+    return () => {
+      ipcRenderer.removeListener('shortcuts:updated', listener);
     };
   },
   // Videos
@@ -288,7 +298,9 @@ declare global {
       // 快捷键
       getShortcuts?: () => Promise<Record<string, string> | null>;
       setShortcuts?: (shortcuts: Record<string, string>) => Promise<boolean>;
+      setShortcutMode?: (modes: Record<string, 'global' | 'local'>) => void;
       onShortcutTriggered?: (callback: (action: string) => void) => void | (() => void);
+      onShortcutsUpdated?: (callback: (shortcuts: Record<string, string>) => void) => void | (() => void);
       // Videos
       // 视频
       selectVideo?: () => Promise<string[]>;

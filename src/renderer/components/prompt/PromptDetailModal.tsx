@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { StarIcon, HashIcon, ClockIcon, CopyIcon, CheckIcon, SparklesIcon, EditIcon, Maximize2Icon, Minimize2Icon, GlobeIcon, PlayIcon, VideoIcon, BracesIcon } from 'lucide-react';
+import { StarIcon, HashIcon, ClockIcon, CopyIcon, CheckIcon, SparklesIcon, EditIcon, Maximize2Icon, Minimize2Icon, GlobeIcon, PlayIcon, VideoIcon, BracesIcon, Share2Icon } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { ImagePreviewModal } from '../ui/ImagePreviewModal';
 import { LocalImage } from '../ui/LocalImage';
@@ -33,6 +33,8 @@ export function PromptDetailModal({
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showEnglish, setShowEnglish] = useState(false);
+  const [shared, setShared] = useState(false);
+
 
   const preferEnglish = useMemo(() => {
     const lang = (i18n.language || '').toLowerCase();
@@ -154,6 +156,34 @@ export function PromptDetailModal({
     }
   };
 
+
+  const handleShare = async () => {
+    if (!prompt) return;
+    
+    const data = {
+      name: prompt.title,
+      description: prompt.description,
+      userPrompt: prompt.userPrompt,
+      systemPrompt: prompt.systemPrompt,
+      userPromptEn: prompt.userPromptEn,
+      systemPromptEn: prompt.systemPromptEn,
+      tags: prompt.tags,
+      variables: allVariables,
+      source: 'prompthub',
+      version: '1.0'
+    };
+    
+    const jsonStr = JSON.stringify(data, null, 2);
+    await navigator.clipboard.writeText(jsonStr);
+    
+    // Set a session flag to prevent the app from detecting its own copy as a new import
+    const checksum = `${jsonStr.length}-${jsonStr.substring(0, 10)}`;
+    sessionStorage.setItem('lastCopiedPromptSignature', checksum);
+    
+    setShared(true);
+    setTimeout(() => setShared(false), 2000);
+  };
+
   const headerActions = (
     <div className="flex items-center gap-2">
       {/* 语言切换按钮 */}
@@ -180,6 +210,14 @@ export function PromptDetailModal({
         title={isFullscreen ? t('common.exitFullscreen', '退出全屏') : t('common.fullscreen', '全屏')}
       >
         {isFullscreen ? <Minimize2Icon className="w-4 h-4" /> : <Maximize2Icon className="w-4 h-4" />}
+      </button>
+
+      <button
+        onClick={handleShare}
+        className={`p-2 rounded-lg transition-all ${shared ? 'text-green-500 bg-green-500/10' : 'text-muted-foreground hover:text-foreground hover:bg-accent'}`}
+        title={t('prompt.shareJSON', '分享为 JSON')}
+      >
+        {shared ? <CheckIcon className="w-4 h-4" /> : <Share2Icon className="w-4 h-4" />}
       </button>
       {onEdit && (
         <button

@@ -539,6 +539,10 @@
     "shortcutSettings": "Einstellungen öffnen",
     "shortcutSettingsDesc": "Einstellungsseite schnell öffnen",
     "shortcutOptions": "Tastenkürzel-Optionen",
+    "shortcutMode": "Modus",
+    "shortcutModeGlobal": "Global",
+    "shortcutModeLocal": "Lokal",
+    "shortcutModeDesc": "Globale Tastenkürzel funktionieren in jeder App. Lokale Tastenkürzel nur, wenn PromptHub aktiv ist",
     "enableGlobalShortcuts": "Globale Tastenkürzel aktivieren",
     "enableGlobalShortcutsDesc": "Tastenkürzel in anderen Anwendungen verwenden",
     "shortcutTips": "Tipps",
@@ -558,7 +562,15 @@
     "paramName": "Parametername",
     "paramValue": "Parameterwert",
     "autoFillDisabled": "Automatisches Ausfüllen deaktiviert (#)",
-    "apiUrlHint": "Mit # beenden, um automatisches Ausfüllen zu deaktivieren"
+    "apiUrlHint": "Mit # beenden, um automatisches Ausfüllen zu deaktivieren",
+    "clipboardImport": "Zwischenablage Auto-Import",
+    "clipboardImportDesc": "Prompt-JSON in der Zwischenablage erkennen und zum Import auffordern, wenn das Fenster fokussiert wird",
+    "shareJSON": "Als JSON teilen"
+  },
+  "import": {
+    "clipboardTitle": "Prompt aus Zwischenablage importieren",
+    "detectedPrompt": "Prompt-Daten erkannt",
+    "detectedDesc": "Der Inhalt der Zwischenablage entspricht dem Prompt-Format. Möchten Sie ihn in Ihre Bibliothek importieren?"
   },
   "resources": {
     "title": "Empfohlene Ressourcen",

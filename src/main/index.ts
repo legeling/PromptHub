@@ -577,108 +577,117 @@ ipcMain.handle('notification:show', async (_event, options: { title: string; bod
 // App startup
 // 应用启动
 app.whenReady().then(async () => {
-  // Register local-image protocol
-  // 注册 local-image 协议
-  session.defaultSession.protocol.registerFileProtocol('local-image', (request, callback) => {
-    let url = request.url.replace('local-image://', '');
-    // Strip leading slashes to avoid absolute path interpretation
-    // 移除开头的斜杠（防止路径被解析为绝对路径）
-    url = url.replace(/^\/+/, '');
-    // Strip trailing slashes
-    // 移除结尾的斜杠
-    url = url.replace(/\/+$/, '');
+  try {
+    // Register local-image protocol
+    // 注册 local-image 协议
+    session.defaultSession.protocol.registerFileProtocol('local-image', (request, callback) => {
+      let url = request.url.replace('local-image://', '');
+      // Strip leading slashes to avoid absolute path interpretation
+      // 移除开头的斜杠（防止路径被解析为绝对路径）
+      url = url.replace(/^\/+/, '');
+      // Strip trailing slashes
+      // 移除结尾的斜杠
+      url = url.replace(/\/+$/, '');
 
-    try {
-      const decodedUrl = decodeURIComponent(url);
-      const baseDir = path.join(app.getPath('userData'), 'images');
-      const normalized = path.normalize(decodedUrl).replace(/^([\\/])+/g, '');
-      const imagePath = path.join(baseDir, normalized);
+      try {
+        const decodedUrl = decodeURIComponent(url);
+        const baseDir = path.join(app.getPath('userData'), 'images');
+        const normalized = path.normalize(decodedUrl).replace(/^([\\/])+/g, '');
+        const imagePath = path.join(baseDir, normalized);
 
-      // Prevent path traversal
-      // 防止路径穿越
-      if (!imagePath.startsWith(baseDir + path.sep) && imagePath !== baseDir) {
-        console.warn('Blocked local-image path traversal:', decodedUrl);
-        return callback({ path: '' });
+        // Prevent path traversal
+        // 防止路径穿越
+        if (!imagePath.startsWith(baseDir + path.sep) && imagePath !== baseDir) {
+          console.warn('Blocked local-image path traversal:', decodedUrl);
+          return callback({ path: '' });
+        }
+
+        callback({ path: imagePath });
+      } catch (error) {
+        console.error('Failed to register protocol', error);
+        callback({ path: '' });
       }
+    });
 
-    callback({ path: imagePath });
-    } catch (error) {
-      console.error('Failed to register protocol', error);
-      callback({ path: '' });
-    }
-  });
+    // Register local-video protocol
+    // 注册 local-video 协议
+    session.defaultSession.protocol.registerFileProtocol('local-video', (request, callback) => {
+      let url = request.url.replace('local-video://', '');
+      // Strip leading slashes to avoid absolute path interpretation
+      // 移除开头的斜杠（防止路径被解析为绝对路径）
+      url = url.replace(/^\/+/, '');
+      // Strip trailing slashes
+      // 移除结尾的斜杠
+      url = url.replace(/\/+$/, '');
 
-  // Register local-video protocol
-  // 注册 local-video 协议
-  session.defaultSession.protocol.registerFileProtocol('local-video', (request, callback) => {
-    let url = request.url.replace('local-video://', '');
-    // Strip leading slashes to avoid absolute path interpretation
-    // 移除开头的斜杠（防止路径被解析为绝对路径）
-    url = url.replace(/^\/+/, '');
-    // Strip trailing slashes
-    // 移除结尾的斜杠
-    url = url.replace(/\/+$/, '');
+      try {
+        const decodedUrl = decodeURIComponent(url);
+        const baseDir = path.join(app.getPath('userData'), 'videos');
+        const normalized = path.normalize(decodedUrl).replace(/^([\/\\])+/g, '');
+        const videoPath = path.join(baseDir, normalized);
 
-    try {
-      const decodedUrl = decodeURIComponent(url);
-      const baseDir = path.join(app.getPath('userData'), 'videos');
-      const normalized = path.normalize(decodedUrl).replace(/^([\/\\])+/g, '');
-      const videoPath = path.join(baseDir, normalized);
+        // Prevent path traversal
+        // 防止路径穿越
+        if (!videoPath.startsWith(baseDir + path.sep) && videoPath !== baseDir) {
+          console.warn('Blocked local-video path traversal:', decodedUrl);
+          return callback({ path: '' });
+        }
 
-      // Prevent path traversal
-      // 防止路径穿越
-      if (!videoPath.startsWith(baseDir + path.sep) && videoPath !== baseDir) {
-        console.warn('Blocked local-video path traversal:', decodedUrl);
-        return callback({ path: '' });
+        callback({ path: videoPath });
+      } catch (error) {
+        console.error('Failed to register local-video protocol', error);
+        callback({ path: '' });
       }
+    });
 
-      callback({ path: videoPath });
-    } catch (error) {
-      console.error('Failed to register local-video protocol', error);
-      callback({ path: '' });
-    }
-  });
+    // Initialize database
+    // 初始化数据库
+    const db = initDatabase();
+    registerAllIPC(db);
 
-  // Initialize database
-  // 初始化数据库
-  const db = initDatabase();
-  registerAllIPC(db);
+    // Create application menu
+    // 创建菜单
+    createMenu();
 
-  // Create application menu
-  // 创建菜单
-  createMenu();
+    // Register global shortcuts
+    // 注册快捷键
+    registerShortcuts();
 
-  // Register global shortcuts
-  // 注册快捷键
-  registerShortcuts();
+    // Register updater IPC
+    // 注册更新器 IPC
+    registerUpdaterIPC();
 
-  // Register updater IPC
-  // 注册更新器 IPC
-  registerUpdaterIPC();
+    // Register WebDAV IPC (bypass CORS)
+    // 注册 WebDAV IPC（绕过 CORS）
+    registerWebDAVIPC();
 
-  // Register WebDAV IPC (bypass CORS)
-  // 注册 WebDAV IPC（绕过 CORS）
-  registerWebDAVIPC();
+    // Register shortcuts IPC
+    // 注册快捷键 IPC
+    registerShortcutsIPC();
 
-  // Register shortcuts IPC
-  // 注册快捷键 IPC
-  registerShortcutsIPC();
-
-  // Create main window
-  // 创建窗口
-  await createWindow();
-
-  // Init updater (production only)
-  // 初始化更新器（仅在生产环境）
-  if (!isDev && mainWindow) {
-    initUpdater(mainWindow);
-  }
-
-  // macOS: show window when clicking Dock icon
-  // macOS: 点击 dock 图标时显示窗口
-  app.on('activate', async () => {
+    // Create main window
+    // 创建窗口
     await createWindow();
-  });
+
+    // Init updater (production only)
+    // 初始化更新器（仅在生产环境）
+    if (!isDev && mainWindow) {
+      initUpdater(mainWindow);
+    }
+
+    // macOS: show window when clicking Dock icon
+    // macOS: 点击 dock 图标时显示窗口
+    app.on('activate', async () => {
+      await createWindow();
+    });
+  } catch (error) {
+    console.error('Failed to initialize app:', error);
+    dialog.showErrorBox(
+      'Startup Error / 启动错误',
+      `An error occurred during application startup:\n\n${error instanceof Error ? error.message : String(error)}\n\nStack:\n${error instanceof Error ? error.stack : ''}`
+    );
+    app.quit();
+  }
 });
 
 // Quit when all windows are closed (Windows & Linux)

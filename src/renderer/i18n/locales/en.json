@@ -554,6 +554,10 @@
     "shortcutSettings": "Open Settings",
     "shortcutSettingsDesc": "Quickly open the settings page",
     "shortcutOptions": "Shortcut Options",
+    "shortcutMode": "Shortcut Mode",
+    "shortcutModeGlobal": "Global",
+    "shortcutModeLocal": "Local",
+    "shortcutModeDesc": "Global shortcuts work from any app. Local shortcuts only work when PromptHub is focused",
     "enableGlobalShortcuts": "Enable Global Shortcuts",
     "enableGlobalShortcutsDesc": "Allow shortcuts to work in other applications",
     "shortcutTips": "Tips",
@@ -571,7 +575,15 @@
     "addCustomParam": "Add Parameter",
     "customParamsDesc": "Add custom request parameters, e.g., max_completion_tokens",
     "paramName": "Parameter Name",
-    "paramValue": "Parameter Value"
+    "paramValue": "Parameter Value",
+    "clipboardImport": "Clipboard Auto-import",
+    "clipboardImportDesc": "Detect Prompt JSON in clipboard and prompt for import when window is focused",
+    "shareJSON": "Share as JSON"
+  },
+  "import": {
+    "clipboardTitle": "Import Prompt from Clipboard",
+    "detectedPrompt": "Prompt Detected",
+    "detectedDesc": "The content in your clipboard matches the Prompt format. Would you like to import it?"
   },
   "resources": {
     "title": "Recommended Resources",

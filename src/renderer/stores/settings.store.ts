@@ -144,6 +144,10 @@ export type CreationMode = 'manual' | 'quick';
 
 interface SettingsState {
   creationMode: CreationMode;
+  // Clipboard auto-import
+  // 剪切板自动导入
+  clipboardImportEnabled: boolean;
+
   // Display settings
   // 显示设置
   themeMode: ThemeMode;
@@ -172,6 +176,12 @@ interface SettingsState {
   // 关闭行为设置 (Windows) / Close behavior settings (Windows)
   closeAction: 'ask' | 'minimize' | 'exit';  // ask=prompt every time, minimize=minimize to tray, exit=exit directly
   // ask=每次询问, minimize=最小化到托盘, exit=直接退出
+
+  // 快捷键模式配置 / Shortcut modes configuration
+  // key: shortcut action id, value: 'global' | 'local'
+  shortcutModes: Record<string, 'global' | 'local'>;
+  // 全局/局部快捷键模式，默认 showApp 为 global，其他 recommended 为 local
+
 
   // Notification settings
   // 通知设置
@@ -242,6 +252,7 @@ interface SettingsState {
   setDarkMode: (isDark: boolean) => void;
   setThemeColor: (colorId: string) => void;
   setCustomThemeHex: (hex: string) => void;
+  setClipboardImportEnabled: (enabled: boolean) => void;
   setFontSize: (size: string) => void;
   setRenderMarkdown: (enabled: boolean) => void;
   setEditorMarkdownPreview: (enabled: boolean) => void;
@@ -250,8 +261,9 @@ interface SettingsState {
   setLaunchAtStartup: (enabled: boolean) => void;
   setMinimizeOnLaunch: (enabled: boolean) => void;
   setDebugMode: (enabled: boolean) => void;
-  setCloseAction: (action: 'ask' | 'minimize' | 'exit') => void;
   setEnableNotifications: (enabled: boolean) => void;
+  setCloseAction: (action: 'ask' | 'minimize' | 'exit') => void;
+  setShortcutMode: (key: string, mode: 'global' | 'local') => void;
   setShowCopyNotification: (enabled: boolean) => void;
   setShowSaveNotification: (enabled: boolean) => void;
   setLanguage: (lang: string) => void;
@@ -297,6 +309,7 @@ export const useSettingsStore = create<SettingsState>()(
       return {
         // Default values
         // 默认值
+        clipboardImportEnabled: false,
         themeMode: 'system' as ThemeMode,
         isDarkMode: true,
         themeColor: 'royal-blue',
@@ -313,6 +326,12 @@ export const useSettingsStore = create<SettingsState>()(
         minimizeOnLaunch: true,
         debugMode: false,
         closeAction: 'ask' as const,  // Default to ask every time / 默认每次询问
+        shortcutModes: {
+          showApp: 'global',
+          newPrompt: 'local',
+          search: 'local',
+          settings: 'local',
+        },
         enableNotifications: true,
         showCopyNotification: true,
         showSaveNotification: true,
@@ -418,6 +437,7 @@ export const useSettingsStore = create<SettingsState>()(
           }
         },
 
+        setClipboardImportEnabled: (enabled) => setTouched({ clipboardImportEnabled: enabled }),
         setAutoSave: (enabled) => setTouched({ autoSave: enabled }),
         setShowLineNumbers: (enabled) => setTouched({ showLineNumbers: enabled }),
         setLaunchAtStartup: (enabled) => setTouched({ launchAtStartup: enabled }),
@@ -435,6 +455,14 @@ export const useSettingsStore = create<SettingsState>()(
         setDebugMode: (enabled) => {
           setTouched({ debugMode: enabled });
           window.electron?.setDebugMode?.(enabled);
+        },
+        setShortcutMode: (key, mode) => {
+          const currentModes = get().shortcutModes || {};
+          const newModes = { ...currentModes, [key]: mode };
+          setTouched({ shortcutModes: newModes });
+          // Notify main process to update shortcut registration
+          // 通知主进程更新快捷键注册
+          window.electron?.setShortcutMode?.(newModes);
         },
         setEnableNotifications: (enabled) => setTouched({ enableNotifications: enabled }),
         setShowCopyNotification: (enabled) => setTouched({ showCopyNotification: enabled }),

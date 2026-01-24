@@ -534,6 +534,10 @@
     "shortcutSettings": "Abrir configuración",
     "shortcutSettingsDesc": "Abrir rápidamente la página de configuración",
     "shortcutOptions": "Opciones de atajos",
+    "shortcutMode": "Modo",
+    "shortcutModeGlobal": "Global",
+    "shortcutModeLocal": "Local",
+    "shortcutModeDesc": "Los atajos globales funcionan en cualquier aplicación. Los atajos locales solo funcionan cuando PromptHub está activo",
     "enableGlobalShortcuts": "Habilitar atajos globales",
     "enableGlobalShortcutsDesc": "Permitir que los atajos funcionen en otras aplicaciones",
     "shortcutTips": "Consejos",
@@ -558,7 +562,15 @@
     "closeApp": "Salir de la aplicación",
     "askEveryTime": "Preguntar cada vez",
     "autoFillDisabled": "Autocompletado desactivado (#)",
-    "apiUrlHint": "Termina con # para desactivar el autocompletado"
+    "apiUrlHint": "Termina con # para desactivar el autocompletado",
+    "clipboardImport": "Importación automática del portapapeles",
+    "clipboardImportDesc": "Detectar JSON de Prompt en el portapapeles y solicitar importación cuando la ventana esté enfocada",
+    "shareJSON": "Compartir como JSON"
+  },
+  "import": {
+    "clipboardTitle": "Importar Prompt desde el portapapeles",
+    "detectedPrompt": "Datos de Prompt detectados",
+    "detectedDesc": "El contenido del portapapeles coincide con el formato Prompt. ¿Desea importarlo a su biblioteca?"
   },
   "resources": {
     "title": "Recursos recomendados",

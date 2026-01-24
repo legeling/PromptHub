@@ -1,3 +1,25 @@
+## [0.3.9] - 2026-01-24
+
+### 新功能 / Added
+
+- ⌨️ **局部快捷键模式 / Local Shortcut Mode**：新增局部快捷键支持，可在设置中为每个快捷键独立选择"全局"或"局部"模式，局部模式仅在应用窗口激活时生效，避免与其他应用冲突
+  - Added per-shortcut mode selection (Global/Local) in settings. Local shortcuts only work when the app window is focused, avoiding conflicts with other applications
+- 📤 **分享为 JSON / Share as JSON**：新增"分享为 JSON"功能，支持将 Prompt 序列化为 JSON 并复制到剪贴板，方便分享和迁移
+  - Added "Share as JSON" feature to serialize prompts for easy sharing and migration
+- 📥 **剪贴板智能导入增强 / Enhanced Clipboard Import**：剪贴板导入现在打开完整的编辑窗口而非简单预览，支持导入前修改所有字段
+  - Clipboard import now opens the full editor instead of a preview modal, allowing field modifications before saving
+
+### 优化 / Improvements
+
+- 🎨 **右键菜单增强 / Context Menu Enhancement**：在列表、表格、看板视图的右键菜单中新增"分享为 JSON"选项
+  - Added "Share as JSON" option to context menus across all view modes
+- ✨ **详情页分享按钮 / Detail View Share Button**：在 Prompt 详情页头部新增分享按钮，点击即可快速分享
+  - Added a share button in the prompt detail header for quick access
+- 🔄 **防重复导入 / Prevent Self-Import**：分享后会设置标记，防止立即将自己分享的内容再次导入
+  - Shared content is marked to prevent immediate re-import of your own prompts
+
+---
+
 ## [0.3.8] - 2026-01-16
 
 ### 新功能 / Added

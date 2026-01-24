@@ -18,16 +18,20 @@ import rehypeHighlight from 'rehype-highlight';
 import { defaultSchema } from 'hast-util-sanitize';
 import { renderFolderIcon } from '../layout/folderIconHelper';
 
-interface EditPromptModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  prompt: Prompt;
-}
+  /* Existing code */
+  // Add initialData to props
+  interface EditPromptModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    prompt?: Prompt | null;
+    initialData?: Partial<Prompt>;
+  }
 
-export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProps) {
+export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPromptModalProps) {
   const { t, i18n } = useTranslation();
   const { showToast } = useToast();
   const updatePrompt = usePromptStore((state) => state.updatePrompt);
+  const createPrompt = usePromptStore((state) => state.createPrompt);
   const prompts = usePromptStore((state) => state.prompts);
   const folders = useFolderStore((state) => state.folders);
 
@@ -70,22 +74,33 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
 
   // 检查是否有未保存的更改
   const hasUnsavedChanges = useCallback(() => {
-    if (!prompt) return false;
-    return (
-      title !== prompt.title ||
-      description !== (prompt.description || '') ||
-      systemPrompt !== (prompt.systemPrompt || '') ||
-      systemPromptEn !== (prompt.systemPromptEn || '') ||
-      userPrompt !== prompt.userPrompt ||
-      userPromptEn !== (prompt.userPromptEn || '') ||
-      JSON.stringify(tags) !== JSON.stringify(prompt.tags || []) ||
-      JSON.stringify(images) !== JSON.stringify(prompt.images || []) ||
-      JSON.stringify(videos) !== JSON.stringify(prompt.videos || []) ||
-      folderId !== prompt.folderId ||
-      source !== (prompt.source || '') ||
-      notes !== (prompt.notes || '')
-    );
-  }, [prompt, title, description, systemPrompt, systemPromptEn, userPrompt, userPromptEn, tags, images, videos, folderId, source, notes]);
+    if (prompt) {
+      return (
+        title !== prompt.title ||
+        description !== (prompt.description || '') ||
+        systemPrompt !== (prompt.systemPrompt || '') ||
+        systemPromptEn !== (prompt.systemPromptEn || '') ||
+        userPrompt !== prompt.userPrompt ||
+        userPromptEn !== (prompt.userPromptEn || '') ||
+        JSON.stringify(tags) !== JSON.stringify(prompt.tags || []) ||
+        JSON.stringify(images) !== JSON.stringify(prompt.images || []) ||
+        JSON.stringify(videos) !== JSON.stringify(prompt.videos || []) ||
+        folderId !== prompt.folderId ||
+        source !== (prompt.source || '') ||
+        notes !== (prompt.notes || '')
+      );
+    } else {
+      // Creation mode: check if fields match initialData or are non-empty if initialData is empty
+      // Simplification: if title or userPrompt is non-empty, assume unsaved changes if closing without save
+      // Or better: just strict comparison with initial values (which might be from initialData or empty)
+      const initInfo = initialData || {};
+      return (
+        title !== (initInfo.title || '') ||
+        userPrompt !== (initInfo.userPrompt || '') ||
+        systemPrompt !== (initInfo.systemPrompt || '')
+      );
+    }
+  }, [prompt, initialData, title, description, systemPrompt, systemPromptEn, userPrompt, userPromptEn, tags, images, videos, folderId, source, notes]);
 
   // 处理关闭请求
   const handleCloseRequest = useCallback(() => {
@@ -148,30 +163,64 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
 
   // 当 prompt 变化时更新表单
   useEffect(() => {
-    if (prompt) {
-      setTitle(prompt.title);
-      setDescription(prompt.description || '');
-      setPromptType(prompt.promptType || 'text');
-      setSystemPrompt(prompt.systemPrompt || '');
-      setSystemPromptEn(prompt.systemPromptEn || '');
-      setUserPrompt(prompt.userPrompt);
-      setUserPromptEn(prompt.userPromptEn || '');
-      setTags(prompt.tags || []);
-      setImages(prompt.images || []);
-      setVideos(prompt.videos || []);
-      setFolderId(prompt.folderId);
-      setSource(prompt.source || '');
-      setNotes(prompt.notes || '');
-      // 如果已有英文版本，自动展开
-      setShowEnglishVersion(!!(prompt.systemPromptEn || prompt.userPromptEn));
+    if (isOpen) {
+      if (prompt) {
+        setTitle(prompt.title);
+        setDescription(prompt.description || '');
+        setPromptType(prompt.promptType || 'text');
+        setSystemPrompt(prompt.systemPrompt || '');
+        setSystemPromptEn(prompt.systemPromptEn || '');
+        setUserPrompt(prompt.userPrompt);
+        setUserPromptEn(prompt.userPromptEn || '');
+        setTags(prompt.tags || []);
+        setImages(prompt.images || []);
+        setVideos(prompt.videos || []);
+        setFolderId(prompt.folderId);
+        setSource(prompt.source || '');
+        setNotes(prompt.notes || '');
+        // 如果已有英文版本，自动展开
+        setShowEnglishVersion(!!(prompt.systemPromptEn || prompt.userPromptEn));
+      } else if (initialData) {
+        // Creation Mode with initial data (e.g. from Clipboard)
+        setTitle(initialData.title || '');
+        setDescription(initialData.description || '');
+        setPromptType(initialData.promptType || 'text');
+        setSystemPrompt(initialData.systemPrompt || '');
+        setSystemPromptEn(initialData.systemPromptEn || '');
+        setUserPrompt(initialData.userPrompt || '');
+        setUserPromptEn(initialData.userPromptEn || '');
+        setTags(initialData.tags || []);
+        setImages(initialData.images || []);
+        setVideos(initialData.videos || []);
+        setFolderId(initialData.folderId);
+        setSource(initialData.source || '');
+        setNotes(initialData.notes || '');
+        setShowEnglishVersion(!!(initialData.systemPromptEn || initialData.userPromptEn));
+      } else {
+        // Creation Mode (Clean)
+        setTitle('');
+        setDescription('');
+        setPromptType('text');
+        setSystemPrompt('');
+        setSystemPromptEn('');
+        setUserPrompt('');
+        setUserPromptEn('');
+        setTags([]);
+        setImages([]);
+        setVideos([]);
+        setFolderId(undefined); // Or default folder?
+        setSource('');
+        setNotes('');
+        setShowEnglishVersion(false);
+      }
     }
-  }, [prompt]);
+  }, [prompt, initialData, isOpen]);
 
   const handleSubmit = async () => {
     if (!title.trim() || !userPrompt.trim()) return;
 
     try {
-      await updatePrompt(prompt.id, {
+      const promptData = {
         title: title.trim(),
         description: description.trim() || undefined,
         promptType,
@@ -185,14 +234,22 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
         folderId,
         source: source.trim() || undefined,
         notes: notes.trim() || undefined,
-      });
+      };
+
+      if (prompt) {
+        await updatePrompt(prompt.id, promptData);
+      } else {
+        await createPrompt(promptData);
+      }
+
       // 保存来源到历史 / Save source to history
       if (source.trim()) {
         addSourceHistory(source.trim());
       }
       onClose();
     } catch (error) {
-      console.error('Failed to update prompt:', error);
+      console.error('Failed to save prompt:', error);
+      showToast(t('common.error') || 'Failed to save', 'error');
     }
   };
 
@@ -491,7 +548,7 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
     <Modal
       isOpen={isOpen}
       onClose={handleCloseRequest}
-      title={t('prompt.editPrompt')}
+      title={prompt ? t('prompt.editPrompt') : t('prompt.createPrompt')}
       size={isFullscreen ? 'fullscreen' : 'xl'}
       headerActions={
         <div className="flex items-center gap-2">
@@ -509,7 +566,7 @@ export function EditPromptModal({ isOpen, onClose, prompt }: EditPromptModalProp
             disabled={!title.trim() || !userPrompt.trim()}
           >
             <SaveIcon className="w-4 h-4" />
-            {t('prompt.save')}
+            {prompt ? t('prompt.save') : t('prompt.create')}
           </Button>
         </div>
       }

@@ -3,7 +3,7 @@ import { flushSync } from 'react-dom';
 import { usePromptStore, ViewMode } from '../../stores/prompt.store';
 import { useFolderStore } from '../../stores/folder.store';
 import { useSettingsStore } from '../../stores/settings.store';
-import { StarIcon, CopyIcon, HistoryIcon, HashIcon, SparklesIcon, EditIcon, TrashIcon, CheckIcon, PlayIcon, LoaderIcon, XIcon, GitCompareIcon, ClockIcon, GlobeIcon, PinIcon, MessageSquareTextIcon, ImageIcon, DownloadIcon, SaveIcon, ZoomInIcon } from 'lucide-react';
+import { StarIcon, CopyIcon, HistoryIcon, HashIcon, SparklesIcon, EditIcon, TrashIcon, CheckIcon, PlayIcon, LoaderIcon, XIcon, GitCompareIcon, ClockIcon, GlobeIcon, PinIcon, MessageSquareTextIcon, ImageIcon, DownloadIcon, SaveIcon, ZoomInIcon, Share2Icon } from 'lucide-react';
 import { EditPromptModal, VersionHistoryModal, VariableInputModal, PromptListHeader, PromptListView, PromptTableView, AiTestModal, PromptDetailModal, PromptGalleryView, PromptKanbanView } from '../prompt';
 import type { OutputFormatConfig } from '../prompt/VariableInputModal';
 import { ContextMenu, ContextMenuItem } from '../ui/ContextMenu';
@@ -165,6 +165,8 @@ export function MainContent() {
   const folders = useFolderStore((state) => state.folders);
 
   const [copied, setCopied] = useState(false);
+  const [shared, setShared] = useState(false);
+
   const [selectedModelIds, setSelectedModelIds] = useState<string[]>([]);
   const [isVariableModalOpen, setIsVariableModalOpen] = useState(false);
   const [isAiTestVariableModalOpen, setIsAiTestVariableModalOpen] = useState(false);
@@ -1011,6 +1013,50 @@ export function MainContent() {
     }
   };
 
+  // Handle share prompt as JSON
+  const handleSharePrompt = async (prompt: Prompt) => {
+    // Extract variables logic
+    const extractVariables = (text: string): string[] => {
+      const regex = /\{\{([^}]+)\}\}/g;
+      const matches: string[] = [];
+      let match;
+      while ((match = regex.exec(text)) !== null) {
+        if (!matches.includes(match[1])) {
+          matches.push(match[1]);
+        }
+      }
+      return matches;
+    };
+
+    const allVariables = [
+      ...extractVariables(prompt.systemPrompt || ''),
+      ...extractVariables(prompt.userPrompt),
+    ].filter((v, i, arr) => arr.indexOf(v) === i);
+    
+    const data = {
+      name: prompt.title,
+      description: prompt.description,
+      userPrompt: prompt.userPrompt,
+      systemPrompt: prompt.systemPrompt,
+      userPromptEn: prompt.userPromptEn,
+      systemPromptEn: prompt.systemPromptEn,
+      tags: prompt.tags,
+      variables: allVariables,
+      source: 'prompthub',
+      version: '1.0'
+    };
+    
+    const jsonStr = JSON.stringify(data, null, 2);
+    await navigator.clipboard.writeText(jsonStr);
+    
+    const checksum = `${jsonStr.length}-${jsonStr.substring(0, 10)}`;
+    sessionStorage.setItem('lastCopiedPromptSignature', checksum);
+    
+    showToast(t('toast.copied'), 'success');
+    setShared(true);
+    setTimeout(() => setShared(false), 2000);
+  };
+
   // Context menu anchor (also used by table view)
   // 处理 AI 测试使用次数增加并缓存结果
   const handleContextMenu = (e: React.MouseEvent, prompt: Prompt) => {
@@ -1033,6 +1079,11 @@ export function MainContent() {
       label: t('prompt.copy'),
       icon: <CopyIcon className="w-4 h-4" />,
       onClick: () => handleCopyPrompt(contextMenu.prompt),
+    },
+    {
+      label: t('prompt.shareJSON', '分享为 JSON'),
+      icon: <Share2Icon className="w-4 h-4" />,
+      onClick: () => handleSharePrompt(contextMenu.prompt),
     },
     {
       label: contextMenu.prompt.isFavorite ? (t('prompt.removeFromFavorites') || '取消收藏') : (t('prompt.addToFavorites') || '收藏'),
@@ -1297,6 +1348,13 @@ export function MainContent() {
                     `}
                       >
                         <StarIcon className={`w-5 h-5 ${selectedPrompt.isFavorite ? 'fill-current' : ''}`} />
+                      </button>
+                      <button
+                        onClick={() => handleSharePrompt(selectedPrompt)}
+                        className={`p-2.5 rounded-xl transition-all duration-200 ${shared ? 'text-green-500 bg-green-500/10' : 'text-muted-foreground hover:bg-accent hover:text-foreground'} active:scale-95`}
+                        title={t('prompt.shareJSON', '分享为 JSON')}
+                      >
+                         {shared ? <CheckIcon className="w-5 h-5" /> : <Share2Icon className="w-5 h-5" />}
                       </button>
                       <button
                         onClick={() => setEditingPrompt(selectedPrompt)}

@@ -5,6 +5,8 @@ import { usePromptStore } from './stores/prompt.store';
 import { useFolderStore } from './stores/folder.store';
 import { useSettingsStore } from './stores/settings.store';
 import { initDatabase, seedDatabase } from './services/database';
+import { ImportedPromptData } from './components/prompt/ImportPromptModal';
+import { EditPromptModal } from './components/prompt/EditPromptModal';
 import { autoSync } from './services/webdav';
 import { useToast } from './components/ui/Toast';
 import { DndContext, DragEndEvent, pointerWithin } from '@dnd-kit/core';
@@ -25,9 +27,15 @@ function App() {
   const selectedIds = usePromptStore((state) => state.selectedIds);
   const applyTheme = useSettingsStore((state) => state.applyTheme);
   const debugMode = useSettingsStore((state) => state.debugMode);
+  const shortcutModes = useSettingsStore((state) => state.shortcutModes);
   const [currentPage, setCurrentPage] = useState<PageType>('home');
   const [isLoading, setIsLoading] = useState(true);
   const { showToast } = useToast();
+
+  const clipboardImportEnabled = useSettingsStore(state => state.clipboardImportEnabled);
+  const [importData, setImportData] = useState<ImportedPromptData | null>(null);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [lastClipboardChecksum, setLastClipboardChecksum] = useState<string>('');
   
   // Update state
   // 更新状态
@@ -41,6 +49,128 @@ function App() {
   // Update status (used for TopBar indicator)
   // 更新状态（用于顶部栏显示更新提示）
   const [updateAvailable, setUpdateAvailable] = useState<UpdateStatus | null>(null);
+
+  // Local shortcuts state
+  // 局部快捷键状态
+  const [localShortcuts, setLocalShortcuts] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    // Initial load local shortcuts
+    // 初始化加载局部快捷键
+    window.electron?.getShortcuts?.().then((shortcuts) => {
+      if (shortcuts) setLocalShortcuts(shortcuts);
+    });
+
+    // Listen for updates
+    // 监听更新
+    const offShortcutsUpdated = window.electron?.onShortcutsUpdated?.((shortcuts) => {
+      setLocalShortcuts(shortcuts);
+    });
+
+    return () => {
+      if (typeof offShortcutsUpdated === 'function') {
+        offShortcutsUpdated();
+      }
+    };
+  }, []);
+
+
+  // Clipboard detection logic
+  useEffect(() => {
+    if (!clipboardImportEnabled) return;
+
+    const checkClipboard = async () => {
+      // Small delay to ensure clipboard is ready after focus
+      await new Promise(resolve => setTimeout(resolve, 150));
+      
+      try {
+        const text = await navigator.clipboard.readText();
+        if (!text || text.length < 20) return;
+
+        const checksum = `${text.length}-${text.substring(0, 10)}`;
+        if (checksum === lastClipboardChecksum) return;
+
+        // Verify if it was copied by us in this session
+        const selfSignature = sessionStorage.getItem('lastCopiedPromptSignature');
+        if (selfSignature === checksum) {
+          return;
+        }
+
+        if (text.trim().startsWith('{')) {
+          try {
+            const data = JSON.parse(text);
+            // Validation: Must have a title/name and at least one prompt field
+            if ((data.name || data.title) && (data.userPrompt || data.systemPrompt)) {
+              setImportData(data);
+              setShowImportModal(true);
+              setLastClipboardChecksum(checksum);
+            }
+          } catch (e) {
+            // Not a valid JSON or not a prompt JSON
+          }
+        }
+      } catch (err) {
+        // May fail if permission is denied or window not focused
+      }
+    };
+
+    window.addEventListener('focus', checkClipboard);
+    return () => window.removeEventListener('focus', checkClipboard);
+  }, [clipboardImportEnabled, lastClipboardChecksum]);
+
+  // Handle local shortcuts
+  // 处理局部快捷键
+  useEffect(() => {
+    // Check individual shortcut modes inside the handler
+    // 在处理器内部检查单独的快捷键模式
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+       const parts = [];
+       const isMac = navigator.userAgent.toLowerCase().includes('mac');
+       
+       if (isMac ? e.metaKey : e.ctrlKey) parts.push('CommandOrControl');
+       if (e.altKey) parts.push('Alt');
+       if (e.shiftKey) parts.push('Shift');
+       
+       let key = e.key;
+       // Ignore modifier keys events
+       if (['Control', 'Alt', 'Shift', 'Meta'].includes(key)) return;
+       
+       if (key === ' ') key = 'Space';
+       parts.push(key.toUpperCase());
+       
+       const pressed = parts.join('+');
+       
+       // Check matching
+       for (const [action, accelerator] of Object.entries(localShortcuts)) {
+         if (accelerator === pressed) {
+           // Check mode for this specific action
+           // 检查此特定操作的模式
+           const mode = (shortcutModes && shortcutModes[action]) || 'local'; // Default to local
+           
+           if (mode === 'local') {
+             e.preventDefault();
+             // Trigger action based on type
+             switch (action) {
+               case 'newPrompt':
+                 window.dispatchEvent(new CustomEvent('shortcut:newPrompt'));
+                 break;
+               case 'search':
+                 window.dispatchEvent(new CustomEvent('shortcut:search'));
+                 break;
+               case 'settings':
+                 setCurrentPage('settings');
+                 break;
+               // showApp is typically global only, or handled by OS/Electron focus
+             }
+           }
+         }
+       }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [shortcutModes, localShortcuts]);
 
   useEffect(() => {
     // Listen for update status
@@ -379,6 +509,27 @@ function App() {
           isOpen={showCloseDialog}
           onClose={() => setShowCloseDialog(false)}
         />
+
+        {/* Use EditPromptModal for importing, passing clipboard data as initialData */}
+        {showImportModal && (
+          <EditPromptModal
+            isOpen={showImportModal}
+            onClose={() => {
+              setShowImportModal(false);
+              setImportData(null);
+            }}
+            initialData={importData ? {
+              title: importData.name || importData.title,
+              description: importData.description,
+              userPrompt: importData.userPrompt,
+              systemPrompt: importData.systemPrompt,
+              userPromptEn: importData.userPromptEn,
+              systemPromptEn: importData.systemPromptEn,
+              tags: importData.tags,
+              source: importData.source || 'clipboard',
+            } : undefined}
+          />
+        )}
       </div>
     </DndContext>
   );

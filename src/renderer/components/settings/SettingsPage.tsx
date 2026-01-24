@@ -128,6 +128,8 @@ function ShortcutItem({
   onShortcutChange,
   onClear,
   conflict,
+  mode,
+  onModeChange,
 }: {
   label: string;
   description: string;
@@ -135,6 +137,8 @@ function ShortcutItem({
   onShortcutChange: (shortcut: string) => void;
   onClear: () => void;
   conflict?: string;
+  mode?: 'global' | 'local';
+  onModeChange?: (mode: 'global' | 'local') => void;
 }) {
   const { t } = useTranslation();
   const [recording, setRecording] = useState(false);
@@ -185,18 +189,31 @@ function ShortcutItem({
   };
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 border-b border-border/70 last:border-0 transition-colors hover:bg-muted/20">
-      <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium">{label}</div>
-        <div className="text-xs text-muted-foreground mt-0.5">{description}</div>
+    <div className="flex items-center justify-between px-4 py-5 border-b border-border/50 last:border-0 transition-colors hover:bg-muted/10">
+      <div className="flex-1 min-w-0 mr-8">
+        <div className="text-sm font-medium text-foreground">{label}</div>
+        <div className="text-xs text-muted-foreground mt-1.5 leading-normal">{description}</div>
         {conflict && (
-          <div className="text-xs text-red-500 mt-1 flex items-center gap-1">
-            <AlertTriangleIcon className="w-3 h-3" />
+          <div className="text-xs text-red-500 mt-2 flex items-center gap-1.5 font-medium">
+            <AlertTriangleIcon className="w-3.5 h-3.5" />
             {t('settings.conflictWith', { key: conflict })}
           </div>
         )}
       </div>
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="flex items-center gap-4 flex-shrink-0">
+        {mode && onModeChange && (
+          <div className="w-[110px]">
+            <Select
+              value={mode}
+              onChange={(value) => onModeChange(value as 'global' | 'local')}
+              options={[
+                { value: 'global', label: t('settings.shortcutModeGlobal') },
+                { value: 'local', label: t('settings.shortcutModeLocal') },
+              ]}
+              className="h-9 text-xs"
+            />
+          </div>
+        )}
         <input
           ref={inputRef}
           type="text"
@@ -205,20 +222,22 @@ function ShortcutItem({
           onFocus={() => setRecording(true)}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
-          className={`w-32 h-8 px-3 text-center text-sm rounded-lg border cursor-pointer transition-colors ${recording
-            ? 'border-primary bg-primary/10 text-primary'
-            : 'border-border bg-background hover:border-primary/50'
+          className={`w-40 h-9 px-3 text-center text-xs font-medium rounded-md border shadow-sm cursor-pointer transition-all ${recording
+            ? 'border-primary ring-2 ring-primary/20 bg-primary/5 text-primary'
+            : 'border-input bg-card hover:bg-accent hover:text-accent-foreground'
             }`}
         />
-        {shortcut && (
-          <button
-            onClick={onClear}
-            className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-            title={t('settings.clearShortcut')}
-          >
-            <XIcon className="w-4 h-4" />
-          </button>
-        )}
+        <div className="w-8 flex justify-center">
+          {shortcut && (
+            <button
+              onClick={onClear}
+              className="p-2 rounded-full hover:bg-muted text-muted-foreground hover:text-destructive transition-colors"
+              title={t('settings.clearShortcut')}
+            >
+              <XIcon className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -1119,6 +1138,15 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                 <ToggleSwitch
                   checked={settings.minimizeOnLaunch}
                   onChange={settings.setMinimizeOnLaunch}
+                />
+              </SettingItem>
+              <SettingItem
+                label={t('settings.clipboardImport', '剪切板快速导入')}
+                description={t('settings.clipboardImportDesc', '获得焦点时检测剪切板代码块并提示导入')}
+              >
+                <ToggleSwitch
+                  checked={settings.clipboardImportEnabled}
+                  onChange={settings.setClipboardImportEnabled}
                 />
               </SettingItem>
               {/* Windows close behavior settings */}
@@ -2681,7 +2709,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
       case 'shortcuts':
         return (
           <div className="space-y-6">
-            <SettingSection title={t('settings.globalShortcuts')}>
+            <SettingSection title={t('settings.shortcutOptions')}>
               <div>
                 <ShortcutItem
                   label={t('settings.shortcutShowApp')}
@@ -2690,6 +2718,8 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                   onShortcutChange={(shortcut) => handleShortcutChange('showApp', shortcut)}
                   onClear={() => handleShortcutClear('showApp')}
                   conflict={shortcutConflicts.showApp}
+                  mode={settings.shortcutModes?.showApp || 'global'}
+                  onModeChange={(mode) => settings.setShortcutMode?.('showApp', mode)}
                 />
                 <ShortcutItem
                   label={t('settings.shortcutNewPrompt')}
@@ -2698,6 +2728,8 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                   onShortcutChange={(shortcut) => handleShortcutChange('newPrompt', shortcut)}
                   onClear={() => handleShortcutClear('newPrompt')}
                   conflict={shortcutConflicts.newPrompt}
+                  mode={settings.shortcutModes?.newPrompt || 'local'}
+                  onModeChange={(mode) => settings.setShortcutMode?.('newPrompt', mode)}
                 />
                 <ShortcutItem
                   label={t('settings.shortcutSearch')}
@@ -2706,6 +2738,8 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                   onShortcutChange={(shortcut) => handleShortcutChange('search', shortcut)}
                   onClear={() => handleShortcutClear('search')}
                   conflict={shortcutConflicts.search}
+                  mode={settings.shortcutModes?.search || 'local'}
+                  onModeChange={(mode) => settings.setShortcutMode?.('search', mode)}
                 />
                 <ShortcutItem
                   label={t('settings.shortcutSettings')}
@@ -2714,15 +2748,18 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                   onShortcutChange={(shortcut) => handleShortcutChange('settings', shortcut)}
                   onClear={() => handleShortcutClear('settings')}
                   conflict={shortcutConflicts.settings}
+                  mode={settings.shortcutModes?.settings || 'local'}
+                  onModeChange={(mode) => settings.setShortcutMode?.('settings', mode)}
                 />
               </div>
             </SettingSection>
 
             <SettingSection title={t('settings.shortcutTips')}>
-              <div className="p-4 text-sm text-muted-foreground space-y-1">
+              <div className="p-4 text-sm text-muted-foreground space-y-2">
                 <p>• {t('settings.shortcutTip1')}</p>
                 <p>• {t('settings.shortcutTip2')}</p>
                 <p>• {t('settings.shortcutTip3')}</p>
+                <p>• {t('settings.shortcutModeDesc')}</p>
               </div>
             </SettingSection>
           </div>
