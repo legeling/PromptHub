@@ -85,6 +85,9 @@
     ],
     "category": "Utility"
   },
+  "appImage": {
+    "artifactName": "${productName}-${version}-x64.${ext}"
+  },
   "nsis": {
     "oneClick": false,
     "allowToChangeInstallationDirectory": true,
