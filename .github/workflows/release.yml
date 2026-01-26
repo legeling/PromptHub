@@ -68,9 +68,19 @@ jobs:
         run: |
           # Rebuild native modules for the target architecture
           # 为目标架构重建原生模块
-          if [ "${{ matrix.platform }}" = "mac" ] && [ -n "${{ matrix.arch }}" ]; then
-            echo "Rebuilding for macOS ${{ matrix.arch }}"
-            pnpm run rebuild
+
+          # First, remove any prebuilt binaries to force rebuild from source
+          # 首先删除预编译二进制，强制从源码重新编译
+          rm -rf node_modules/better-sqlite3/build || true
+          rm -rf node_modules/better-sqlite3/prebuilds || true
+
+          if [ "${{ matrix.platform }}" = "mac" ]; then
+            echo "Rebuilding better-sqlite3 for macOS ${{ matrix.arch }}"
+            # Force rebuild with explicit architecture
+            npx electron-rebuild -f -w better-sqlite3 --arch ${{ matrix.arch }}
+          elif [ "${{ matrix.platform }}" = "win" ]; then
+            echo "Rebuilding better-sqlite3 for Windows ${{ matrix.arch }}"
+            npx electron-rebuild -f -w better-sqlite3 --arch ${{ matrix.arch }}
           else
             pnpm run rebuild
           fi
