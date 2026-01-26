@@ -56,15 +56,48 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          key: ${{ runner.os }}-${{ matrix.arch || 'default' }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+            ${{ runner.os }}-${{ matrix.arch || 'default' }}-pnpm-store-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Rebuild native modules for Electron
-        run: pnpm run rebuild
+        shell: bash
+        run: |
+          # Rebuild native modules for the target architecture
+          # 为目标架构重建原生模块
+          if [ "${{ matrix.platform }}" = "mac" ] && [ -n "${{ matrix.arch }}" ]; then
+            echo "Rebuilding for macOS ${{ matrix.arch }}"
+            pnpm run rebuild
+          else
+            pnpm run rebuild
+          fi
+
+      - name: Verify native module architecture (macOS)
+        if: matrix.platform == 'mac'
+        shell: bash
+        run: |
+          # Verify the better-sqlite3 native module is built for correct architecture
+          # 验证 better-sqlite3 原生模块是否为正确架构编译
+          NATIVE_MODULE="node_modules/better-sqlite3/build/Release/better_sqlite3.node"
+          if [ -f "$NATIVE_MODULE" ]; then
+            echo "Checking architecture of $NATIVE_MODULE"
+            file "$NATIVE_MODULE"
+            ARCH=$(file "$NATIVE_MODULE" | grep -o 'arm64\|x86_64')
+            echo "Detected architecture: $ARCH"
+            if [ "${{ matrix.arch }}" = "arm64" ] && [ "$ARCH" != "arm64" ]; then
+              echo "ERROR: Expected arm64 but got $ARCH"
+              exit 1
+            elif [ "${{ matrix.arch }}" = "x64" ] && [ "$ARCH" != "x86_64" ]; then
+              echo "ERROR: Expected x86_64 but got $ARCH"
+              exit 1
+            fi
+            echo "Architecture verification passed!"
+          else
+            echo "WARNING: Native module not found at $NATIVE_MODULE"
+          fi
 
       - name: Clean previous build artifacts
         shell: bash
