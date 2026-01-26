@@ -12,11 +12,12 @@ jobs:
       matrix:
         include:
           # macOS: Use Intel runner for x64, Apple Silicon runner for arm64
+          # CRITICAL: macos-latest is x86_64, macos-14 is true Apple Silicon M1
           # better-sqlite3 native module must be built on matching architecture
-          - os: macos-15-intel # Intel runner for x64 builds
+          - os: macos-13 # Intel (x86_64) runner for x64 builds
             platform: mac
             arch: x64
-          - os: macos-latest # Apple Silicon runner for arm64 builds
+          - os: macos-14 # Apple Silicon M1 (arm64) runner for arm64 builds
             platform: mac
             arch: arm64
           - os: windows-latest
