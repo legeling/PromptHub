@@ -39,15 +39,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          architecture: ${{ matrix.arch == 'arm64' && 'arm64' || 'x64' }}
+          # Only use arm64 Node on macOS arm64 runners. Windows/Linux runners are x64.
+          # 仅在 macOS arm64 runner 上使用 arm64 Node，Windows/Linux runner 都是 x64
+          architecture: ${{ matrix.platform == 'mac' && matrix.arch == 'arm64' && 'arm64' || 'x64' }}
 
       - name: Check Environment Architecture
         shell: bash
         run: |
           echo "System Architecture (uname -m): $(uname -m)"
           echo "Node Architecture (process.arch): $(node -p 'process.arch')"
-          if [ "${{ matrix.arch }}" = "arm64" ] && [ "$(node -p 'process.arch')" != "arm64" ]; then
-            echo "ERROR: Node.js is not arm64!"
+          # Only enforce arch match on macOS where we have dedicated runners
+          if [ "${{ matrix.platform }}" = "mac" ] && [ "${{ matrix.arch }}" = "arm64" ] && [ "$(node -p 'process.arch')" != "arm64" ]; then
+            echo "ERROR: Node.js is not arm64 on macOS arm64 runner!"
             exit 1
           fi
 

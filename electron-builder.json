@@ -31,7 +31,7 @@
     "**/*.node"
   ],
   "asar": true,
-  "npmRebuild": true,
+  "npmRebuild": false,
   "nodeGypRebuild": false,
   "mac": {
     "target": [
