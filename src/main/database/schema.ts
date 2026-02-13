@@ -58,12 +58,42 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT NOT NULL
 );
 
+-- Skills 表
+CREATE TABLE IF NOT EXISTS skills (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  content TEXT, -- System Prompt / SKILL.md content
+  mcp_config TEXT, -- JSON string for MCP servers config
+  protocol_type TEXT DEFAULT 'mcp', -- e.g., 'mcp', 'claude-code'
+  version TEXT,
+  author TEXT,
+  tags TEXT,
+  is_favorite INTEGER DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
 -- 索引
 CREATE INDEX IF NOT EXISTS idx_prompts_folder ON prompts(folder_id);
 CREATE INDEX IF NOT EXISTS idx_prompts_updated ON prompts(updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_prompts_favorite ON prompts(is_favorite);
 CREATE INDEX IF NOT EXISTS idx_versions_prompt ON prompt_versions(prompt_id);
 CREATE INDEX IF NOT EXISTS idx_folders_parent ON folders(parent_id);
+CREATE INDEX IF NOT EXISTS idx_skills_updated ON skills(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_skills_favorite ON skills(is_favorite);
+
+-- 排序字段索引（性能优化）
+-- Sorting field indexes (performance optimization)
+CREATE INDEX IF NOT EXISTS idx_prompts_pinned ON prompts(is_pinned);
+CREATE INDEX IF NOT EXISTS idx_prompts_created ON prompts(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_prompts_usage ON prompts(usage_count DESC);
+CREATE INDEX IF NOT EXISTS idx_folders_sort ON folders(sort_order);
+
+-- 复合索引（性能优化）
+-- Composite indexes (performance optimization)
+CREATE INDEX IF NOT EXISTS idx_prompts_folder_favorite ON prompts(folder_id, is_favorite);
+CREATE INDEX IF NOT EXISTS idx_prompts_folder_updated ON prompts(folder_id, updated_at DESC);
 
 -- 全文搜索 (FTS5)
 CREATE VIRTUAL TABLE IF NOT EXISTS prompts_fts USING fts5(

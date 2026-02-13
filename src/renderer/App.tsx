@@ -1,18 +1,21 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, lazy, Suspense } from 'react';
 import { Sidebar, TopBar, MainContent, TitleBar } from './components/layout';
-import { SettingsPage } from './components/settings';
 import { usePromptStore } from './stores/prompt.store';
 import { useFolderStore } from './stores/folder.store';
 import { useSettingsStore } from './stores/settings.store';
 import { initDatabase, seedDatabase } from './services/database';
 import { ImportedPromptData } from './components/prompt/ImportPromptModal';
-import { EditPromptModal } from './components/prompt/EditPromptModal';
 import { autoSync } from './services/webdav';
 import { useToast } from './components/ui/Toast';
 import { DndContext, DragEndEvent, pointerWithin } from '@dnd-kit/core';
 import i18n from './i18n';
 import { UpdateDialog, UpdateStatus } from './components/UpdateDialog';
 import { CloseDialog } from './components/ui/CloseDialog';
+
+// Lazy load heavy components for better initial load performance
+// 懒加载大型组件以提升初始加载性能
+const SettingsPage = lazy(() => import('./components/settings/SettingsPage').then(m => ({ default: m.SettingsPage })));
+const EditPromptModal = lazy(() => import('./components/prompt/EditPromptModal').then(m => ({ default: m.EditPromptModal })));
 
 // Page type
 // 页面类型
@@ -492,7 +495,9 @@ function App() {
             {currentPage === 'home' ? (
               <MainContent />
             ) : (
-              <SettingsPage onBack={() => setCurrentPage('home')} />
+              <Suspense fallback={<div className="flex-1 flex items-center justify-center"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
+                <SettingsPage onBack={() => setCurrentPage('home')} />
+              </Suspense>
             )}
           </div>
         </div>
@@ -512,23 +517,25 @@ function App() {
 
         {/* Use EditPromptModal for importing, passing clipboard data as initialData */}
         {showImportModal && (
-          <EditPromptModal
-            isOpen={showImportModal}
-            onClose={() => {
-              setShowImportModal(false);
-              setImportData(null);
-            }}
-            initialData={importData ? {
-              title: importData.name || importData.title,
-              description: importData.description,
-              userPrompt: importData.userPrompt,
-              systemPrompt: importData.systemPrompt,
-              userPromptEn: importData.userPromptEn,
-              systemPromptEn: importData.systemPromptEn,
-              tags: importData.tags,
-              source: importData.source || 'clipboard',
-            } : undefined}
-          />
+          <Suspense fallback={null}>
+            <EditPromptModal
+              isOpen={showImportModal}
+              onClose={() => {
+                setShowImportModal(false);
+                setImportData(null);
+              }}
+              initialData={importData ? {
+                title: importData.name || importData.title,
+                description: importData.description,
+                userPrompt: importData.userPrompt,
+                systemPrompt: importData.systemPrompt,
+                userPromptEn: importData.userPromptEn,
+                systemPromptEn: importData.systemPromptEn,
+                tags: importData.tags,
+                source: importData.source || 'clipboard',
+              } : undefined}
+            />
+          </Suspense>
         )}
       </div>
     </DndContext>

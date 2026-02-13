@@ -1,3 +1,31 @@
+## [0.4.0] - 2026-02-12
+
+### 新功能 / Added
+
+- 🧩 **Skill 技能商店**：内建 20+ 精选 AI 代理技能，来自 Anthropic、OpenAI 等官方源
+  - **Skill Store**: Built-in store with 20+ curated AI agent skills from Anthropic, OpenAI and more
+- 🚀 **多平台一键安装**：支持将 SKILL.md 安装到 Claude Code、Cursor、Windsurf、Codex、Kiro、Gemini CLI 等 12+ 平台
+  - **Multi-Platform Install**: One-click install SKILL.md to Claude Code, Cursor, Windsurf, Codex, Kiro, Gemini CLI and 12+ platforms
+- 🔍 **本地扫描预览**：自动发现本地已有 SKILL.md，支持预览选擇后批量导入
+  - **Local Scan Preview**: Auto-discover local SKILL.md files, preview and batch import
+- 🔗 **Symlink/复制模式**：支持软链接同步编辑或独立复制到各平台
+  - **Symlink/Copy Mode**: Symbolic link for synced editing or independent copy to each platform
+- 🌐 **AI 技能翻译**：支持沉浸式翻译和全文翻译技能内容
+  - **AI Skill Translation**: Immersive and full-text translation modes for skill content
+- 🏷️ **技能标签筛选**：侧边栏标签快速过滤技能
+  - **Skill Tag Filtering**: Sidebar tags for quick skill filtering
+- 📦 **清晰的工作流**：「添加到库」→ 自动弹出「安装到平台」选择弹窗
+  - **Clear Workflow**: "Add to Library" → auto-popup "Install to Platform" dialog
+
+### 优化 / Improvements
+
+- 🎨 **术语统一**：平台操作统一使用「安装」术语，更直观
+  - **Terminology**: Unified platform operations to use "Install" terminology
+- 🧩 **标签过滤优化**：自动过滤系统生成的无意义标签（local、discovered、平台 ID 等）
+  - **Tag Filter Polish**: Auto-filter system-generated tags (local, discovered, platform IDs)
+
+---
+
 ## [0.3.9] - 2026-01-24
 
 ### 新功能 / Added

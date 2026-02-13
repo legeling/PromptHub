@@ -41,6 +41,19 @@ export function PromptDetailModal({
     return !(lang.startsWith('zh'));
   }, [i18n.language]);
 
+  // 动态语言标签
+  const uiLangTag = useMemo(() => {
+    const lang = (i18n.language || '').toLowerCase();
+    if (lang.startsWith('zh')) return 'ZH';
+    if (lang.startsWith('ja')) return 'JA';
+    if (lang.startsWith('de')) return 'DE';
+    if (lang.startsWith('fr')) return 'FR';
+    if (lang.startsWith('es')) return 'ES';
+    if (lang.startsWith('ko')) return 'KO';
+    if (lang.startsWith('en')) return 'EN';
+    return lang.split('-')[0].toUpperCase();
+  }, [i18n.language]);
+
   // Automatically select Prompt language based on UI language (if English version exists)
   // 根据界面语言自动选择 Prompt 语言（如果有英文版本）
   // Note: Prompt currently only provides EN field, so non-Chinese interface defaults to showing English
@@ -186,8 +199,8 @@ export function PromptDetailModal({
 
   const headerActions = (
     <div className="flex items-center gap-2">
-      {/* 语言切换按钮 */}
-      {(prompt.systemPromptEn || prompt.userPromptEn) && (
+      {/* 语言切换按钮 - 英文界面时隐藏 */}
+      {(prompt.systemPromptEn || prompt.userPromptEn) && !i18n.language.startsWith('en') && (
         <button
           onClick={() => setShowEnglish(!showEnglish)}
           className={`
@@ -197,10 +210,10 @@ export function PromptDetailModal({
               : 'bg-muted hover:bg-accent text-foreground'
             }
           `}
-          title={showEnglish ? t('prompt.showChinese') : t('prompt.showEnglish')}
+          title={showEnglish ? t('prompt.showLocalized', '显示当前语言') : t('prompt.showEnglish')}
         >
           <GlobeIcon className="w-3.5 h-3.5" />
-          {showEnglish ? 'EN' : 'ZH'}
+          {showEnglish ? 'EN' : uiLangTag}
         </button>
       )}
 

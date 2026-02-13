@@ -1,13 +1,13 @@
 <div align="center">
   <img src="./imgs/icon.png" alt="PromptHub Logo" width="120" height="120" />
   <h1>PromptHub</h1>
-  <p><strong>🚀 Open-Source, Lokal-Zuerst KI-Prompt-Manager</strong></p>
-  <p>Effiziente Verwaltung, Versionskontrolle, Variablenvorlagen, Multi-Modell-Tests — Ihr All-in-One Prompt-Arbeitsplatz</p>
+  <p><strong>🚀 Open-Source, Lokal-Zuerst KI-Prompt- & Skill-Manager</strong></p>
+  <p>Prompt-Verwaltung · Skill-Store · Multi-Plattform-Installation · Versionskontrolle · Multi-Modell-Tests — All-in-One KI-Arbeitsplatz</p>
   
   <p>
     <a href="https://github.com/legeling/PromptHub/stargazers"><img src="https://img.shields.io/github/stars/legeling/PromptHub?style=flat-square&color=yellow" alt="GitHub Stars"/></a>
     <a href="https://github.com/legeling/PromptHub/network/members"><img src="https://img.shields.io/github/forks/legeling/PromptHub?style=flat-square" alt="GitHub Forks"/></a>
-    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.3.9-green?style=flat-square" alt="Version"/></a>
+    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.4.0-green?style=flat-square" alt="Version"/></a>
     <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/github/downloads/legeling/PromptHub/total?style=flat-square&color=blue" alt="Downloads"/></a>
     <img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="Lizenz: AGPL-3.0"/>
   </p>
@@ -34,7 +34,7 @@
 
 > 💡 **Warum PromptHub?**
 >
-> Sind Sie es leid, Prompts in Notizbüchern, Dokumenten und Chat-Verläufen zu suchen? Mit PromptHub verwalten Sie Prompts wie Code — Versionskontrolle, Variablenvorlagen, Multi-Modell-Tests, alles lokal und mit Fokus auf Privatsphäre.
+> PromptHub ist mehr als ein Prompt-Manager — es ist ein **KI-Skill-Verteilungszentrum**. Verwalten Sie Ihre Prompts und SKILL.md-Skills und installieren Sie sie mit einem Klick auf Claude Code, Cursor, Windsurf, Codex und 12+ KI-Coding-Tools. Alle Daten werden lokal gespeichert, Privatsphäre zuerst.
 
 ---
 
@@ -48,33 +48,38 @@
 
 | Plattform |                                                                                                                                                                                                                Download                                                                                                                                                                                                                 |
 | :-------: | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
-|  Windows  | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.8-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.8-arm64.exe) |
-|   macOS   |   [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.8-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.8-x64.dmg)   |
-|   Linux   |       [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.8-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.3.8_amd64.deb)        |
+|  Windows  | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.4.0-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.4.0-arm64.exe) |
+|   macOS   |   [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.0-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.0-x64.dmg)   |
+|   Linux   |       [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.0-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.4.0_amd64.deb)        |
 
 ---
 
 ## ✨ Funktionen
 
-- **📝 Prompt-Verwaltung** - Erstellen, Bearbeiten, Löschen mit Ordner- und Tag-Organisation
-- **⭐ Favoriten** - Schneller Zugriff auf häufig verwendete Prompts
-- **🔄 Versionskontrolle** - Automatische Speicherung des Verlaufs mit Anzeige und Rollback-Unterstützung
-- **🔧 Variablensystem** - Vorlagenvariablen `{{variable}}` mit dynamischem Austausch
-- **📋 Ein-Klick-Kopie** - Prompts schnell in die Zwischenablage kopieren
-- **🔍 Volltextsuche** - Schnelle Suche in Titeln, Beschreibungen und Inhalten
-- **📤 Export & Backup** - Selektiver Export + Vollständige Sicherung/Wiederherstellung (komprimiertes `.phub.gz`, inkl. Bilder, KI-Konfig, Einstellungen)
-- **🎨 Design-Anpassung** - Dunkel/Hell/System-Modus mit mehreren Akzentfarben
-- **🌐 Mehrsprachigkeit** - Unterstützung für Deutsch, Englisch, Chinesisch (vereinfacht/traditionell), Japanisch, Spanisch und Französisch
-- **💾 Lokale Speicherung** - Alle Daten werden zum Schutz der Privatsphäre lokal gespeichert
-- **🖥️ Plattformübergreifend** - Unterstützung für macOS, Windows, Linux
-- **📊 Listenansicht** - Tabellenartige Anzeige mit Sortierung und Batch-Operationen
-- **🤖 KI-Tests** - Integrierte Multi-Modell-Tests mit verschiedenen gängigen Anbietern
-- **🎨 Bildmodelle** - Konfigurieren und Testen von verschiedenen Bildgenerierungsmodellen
-- **🧭 Markdown-Vorschau** - Markdown-Rendering mit Syntax-Highlighting überall (Details, Liste, Bearbeiten)
-- **🪟 Breitbild- & Vollbildmodus** - Optimierte Bearbeitungserfahrung durch Breitbild- und Vollbildmodi
-- **🔐 Master-Passwort & Private Ordner** - Schutz privater Inhalte durch ein Master-Passwort
-- **🖼️ Bildupload & Vorschau** - Unterstützt das Hochladen/Einfügen lokaler Bilder und die Vorschau in Modals
-- **☁️ WebDAV-Synchronisation** - Synchronisierung über WebDAV (inkl. Bilder und Einstellungen; unterstützt Start- und Intervallsynchronisation)
+### 📝 Prompt-Verwaltung
+- Erstellen, Bearbeiten, Löschen mit Ordner- und Tag-Organisation
+- Automatische Speicherung des Verlaufs mit Anzeige und Rollback
+- Vorlagenvariablen `{{variable}}` mit dynamischem Austausch
+- Volltextsuche, Favoriten, Multimedia-Anhänge
+
+### 🧩 Skill-Verwaltung 🆕
+- **Skill-Store**: 20+ ausgewählte Skills (von Anthropic, OpenAI u.a.)
+- **Multi-Plattform-Installation**: Ein-Klick-Installation auf Claude Code, Cursor, Windsurf, Codex, Kiro, Gemini CLI und 12+ Plattformen
+- **Lokaler Scan**: Automatische Erkennung lokaler SKILL.md-Dateien, Vorschau und Import
+- **Symlink/Kopie-Modus**: Symbolischer Link oder unabhängige Kopie
+- **KI-Übersetzung**: Immersive/Volltext-Übersetzung von Skill-Inhalten
+- **Tag-Filterung**: Schnelles Filtern von Skills nach Tags
+
+### 🤖 KI-Fähigkeiten
+- Integrierte Multi-Modell-Tests mit verschiedenen Anbietern
+- Paralleler Vergleichstest mit mehreren Modellen
+- KI-Skill-Inhaltsgenerierung und -verfeinerung
+
+### � Daten & Synchronisierung
+- Alle Daten lokal gespeichert, Privatsphäre geschützt
+- Vollständige Sicherung/Wiederherstellung (`.phub.gz`)
+- WebDAV Cloud-Synchronisierung
+- Dunkel/Hell/System, 7 Sprachen, plattformübergreifend
 
 ## 📸 Screenshots
 
@@ -115,9 +120,9 @@ Laden Sie das Installationsprogramm für Ihre Plattform von der [Release-Seite](
 
 | Plattform |                                                                                                                                                                                                                Download                                                                                                                                                                                                                 |
 | :-------: | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
-|  Windows  | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.8-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.8-arm64.exe) |
-|   macOS   |   [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.8-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.8-x64.dmg)   |
-|   Linux   |       [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.8-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.3.8_amd64.deb)        |
+|  Windows  | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.4.0-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.4.0-arm64.exe) |
+|   macOS   |   [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.0-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.0-x64.dmg)   |
+|   Linux   |       [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.0-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.4.0_amd64.deb)        |
 
 ### macOS Erststart
 
@@ -192,7 +197,7 @@ Der Bearbeitungsverlauf wird automatisch gespeichert. Klicken Sie auf "Verlauf",
 | Frontend           | React 18 + TypeScript 5 |
 | Styling            | TailwindCSS             |
 | Statusverwaltung   | Zustand                 |
-| Lokale Speicherung | IndexedDB + SQLite      |
+| Lokale Speicherung | SQLite                  |
 | Build-Tools        | Vite + electron-builder |
 
 ## 📁 Projektstruktur
@@ -224,47 +229,44 @@ PromptHub/
 
 ## 🗺️ Roadmap
 
-### v0.3.7 (Aktuelle Version)
+### v0.4.0 (Aktuelle Version) 🎉
 
-- [x] **Mehrstufige Ordner**: Unterstützt unbegrenzte Ordnerverschachtelung und Drag-and-Drop-Verwaltung
-- [x] **Versionskontrollsystem**: Prompts wie Code verwalten, mit Versionsvergleich und Ein-Klick-Rollback
-- [x] **Variablen-Vorlagensystem**: Unterstützt `{{variable}}`-Syntax, generiert automatisch Eingabeformulare mit Vorschau vor dem Kopieren
-- [x] **Multi-Modell-Labor**: Verschiedene gängige Anbieter integriert, unterstützt parallele Vergleichstests und Analyse der Antwortzeiten
-- [x] **Geräteübergreifende Synchronisierung**: WebDAV-basierte inkrementelle Synchronisierung und vollständige Sicherung für volle Datenkontrolle
-- [x] **Exzellentes Leseerlebnis**: Markdown-Rendering in allen Szenarien, Syntax-Highlighting und zweisprachiger Vergleichsmodus
-- [x] **Multidimensionale Verwaltung**: Effiziente Organisation durch Ordner, Tags, Favoriten, Nutzungsstatistiken und Volltext-Scoring-Suche
-- [x] **Multi-View-Modus**: Bietet Karten-, Listen- und Galerieansichten für verschiedene Anwendungsszenarien
-- [x] **Tiefe Systemintegration**: Globale Tastenkürzel, Minimieren in die Taskleiste und nativer Dark-Mode-Support
-- [x] **Update-Beschleunigung**: Integrierte GitHub-Spiegel für schnellere Downloads in eingeschränkten Regionen
-- [x] **Sicherheit & Datenschutz**: Master-Passwort-Schutz, verschlüsselte private Ordner und lokaler Datenschutzfokus
+- [x] **Skill-Store**: 20+ ausgewählte KI-Agenten-Skills (Anthropic, OpenAI u.a.)
+- [x] **Multi-Plattform-Installation**: SKILL.md auf Claude Code, Cursor, Windsurf, Codex und 12+ Plattformen installieren
+- [x] **Lokaler Scan & Vorschau**: Lokale SKILL.md automatisch erkennen, Vorschau und Batch-Import
+- [x] **Symlink/Kopie-Modus**: Symbolischer Link oder unabhängige Kopie
+- [x] **KI-Skill-Übersetzung**: Immersive und Volltext-Übersetzung
+- [x] **Tag-Filterung**: Sidebar-Tags zum schnellen Filtern
+- [x] **Klarer Workflow**: „Zur Bibliothek hinzufügen" → automatisch „Auf Plattform installieren"-Dialog
+
+### v0.3.x
+
+- [x] Mehrstufige Ordner, Versionskontrolle, Variablenvorlagen
+- [x] Multi-Modell-Labor, WebDAV-Sync, Markdown-Rendering
+- [x] Multi-View-Modus, Systemintegration, Sicherheit & Datenschutz
 
 ### Zukünftige Pläne
 
-- [ ] **Browser-Erweiterung**: Direkter Zugriff auf die PromptHub-Bibliothek in Webseiten (z.B. ChatGPT/Claude) für nahtloses Arbeiten
-- [ ] **Mobile App**: Unterstützung für das Anzeigen, Suchen und einfache Bearbeiten/Synchronisieren auf dem Smartphone
-- [ ] **Prompt-Marktplatz**: Integrierte Bibliothek hochwertiger Prompt-Vorlagen mit Ein-Klick-Import und Teilen
-- [ ] **Plug-in-System**: Unterstützung für benutzerdefinierte Erweiterungen von KI-Anbietern oder Integration lokaler Modelle (z.B. Ollama)集成
-- [ ] **Batch-Export & Konvertierung**: Export von Prompts in spezifische Formate gängiger KI-Tools
-- [ ] **Erweiterte Variablen**: Unterstützung für Auswahlboxen, dynamische Daten und komplexere Variablentypen
+- [ ] **Browser-Erweiterung**: Zugriff auf PromptHub von ChatGPT/Claude-Webseiten
+- [ ] **Mobile App**: Anzeigen, Suchen und Bearbeiten auf dem Smartphone
+- [ ] **Plug-in-System**: Benutzerdefinierte KI-Anbieter oder lokale Modelle integrieren
+- [ ] **Skill-Marktplatz**: Community-erstellte Skills hochladen und teilen
 
 ## 📝 Versionsverlauf
 
 Den vollständigen Verlauf finden Sie hier: **[CHANGELOG.md](../CHANGELOG.md)**
 
-### Neueste Version v0.3.8 (2026-01-16)
+### Neueste Version v0.4.0 (2026-02-12) 🎉
 
-**Neu**
+**Wichtige neue Funktionen**
 
-- ✨ **JSON-Ausgabeunterstützung**: Unterstützung für JSON Mode und JSON Schema-Ausgabeformate in KI-Tests hinzugefügt
-- ⚡️ **Optimierung des englischen Modus**: Automatisch optimierte Benutzeroberfläche im englischen Modus, Ausblenden unnötiger Schaltflächen
-- 🌍 **Vervollständigung der Internationalisierung**: Fehlende Übersetzungen für FR, DE, ES, JA und ZH-TW ergänzt
-
-**Fehlerbehebungen**
-
-- 🎥 **Editor-Scroll-Fix**: Zeilennummern im Prompt-Editor scrollen jetzt synchron mit dem Inhalt
-- 🐛 **WebDAV-Fix**: Potenzieller Verlust von WebDAV-Zugangsdaten während der Synchronisation behoben
-- 🐛 **Einstellungsspeicherung**: Einstellungen für das Schließen des Fensters (Minimieren/Beenden) werden jetzt dauerhaft gespeichert
-- 🐛 **API-Pfad-Fix**: 404-Fehler beim Abrufen von Modelllisten bei bestimmten nicht standardmäßigen API-Endpunkten behoben
+- 🧩 **Skill-Store**: 20+ ausgewählte KI-Agenten-Skills (Anthropic, OpenAI)
+- 🚀 **Multi-Plattform-Installation**: SKILL.md auf 12 Plattformen installieren
+- 🔍 **Lokaler Scan & Vorschau**: Lokale SKILL.md automatisch erkennen, Batch-Import
+- 🔗 **Symlink/Kopie-Modus**: Symbolischer Link oder unabhängige Kopie
+- � **KI-Skill-Übersetzung**: Immersive und Volltext-Übersetzung
+- 🏷️ **Tag-Filterung**: Sidebar-Tags zum schnellen Filtern
+- � **Klarer Workflow**: „Zur Bibliothek hinzufügen" → automatisch „Auf Plattform installieren"
 
 > 📋 [Vollständiges Änderungsprotokoll anzeigen](../CHANGELOG.md)
 

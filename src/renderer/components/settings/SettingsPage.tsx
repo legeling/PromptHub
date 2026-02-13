@@ -1,4 +1,4 @@
-import { useState, useEffect, cloneElement, useRef } from 'react';
+import { useState, useEffect, cloneElement, useRef, memo } from 'react';
 import type { ReactNode } from 'react';
 import appIconUrl from '../../../assets/icon.png';
 import {
@@ -119,9 +119,9 @@ type ImageSize = '256x256' | '512x512' | '1024x1024' | '1024x1792' | '1792x1024'
 type ImageQuality = 'standard' | 'hd';
 type ImageStyle = 'vivid' | 'natural';
 
-// Shortcut input component
-// 快捷键输入组件
-function ShortcutItem({
+// Shortcut input component - wrapped with React.memo for performance
+// 快捷键输入组件 - 使用 React.memo 包装以提升性能
+const ShortcutItem = memo(function ShortcutItem({
   label,
   description,
   shortcut,
@@ -241,11 +241,11 @@ function ShortcutItem({
       </div>
     </div>
   );
-}
+});
 
-// Reusable password input component
-// 可复用的密码输入组件
-function PasswordInput({
+// Reusable password input component - wrapped with React.memo for performance
+// 可复用的密码输入组件 - 使用 React.memo 包装以提升性能
+const PasswordInput = memo(function PasswordInput({
   value,
   onChange,
   placeholder,
@@ -275,7 +275,7 @@ function PasswordInput({
       </button>
     </div>
   );
-}
+});
 
 export function SettingsPage({ onBack }: SettingsPageProps) {
   const [activeSection, setActiveSection] = useState('general');
@@ -1125,10 +1125,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
               >
                 <ToggleSwitch
                   checked={settings.launchAtStartup}
-                  onChange={(checked) => {
-                    settings.setLaunchAtStartup(checked);
-                    window.electron?.setAutoLaunch?.(checked);
-                  }}
+                  onChange={settings.setLaunchAtStartup}
                 />
               </SettingItem>
               <SettingItem
@@ -2692,6 +2689,36 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
                     {t('settings.noModelsHint')}
                   </p>
                 )}
+              </div>
+            </SettingSection>
+
+            <SettingSection title={t('settings.translationMode', 'Translation Mode')}>
+              <div className="p-4 space-y-3">
+                <p className="text-xs text-muted-foreground">{t('settings.translationModeDesc', 'Choose how AI translates skill content')}</p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => settings.setTranslationMode('immersive')}
+                    className={`flex-1 p-3 rounded-xl border-2 transition-all text-left ${
+                      settings.translationMode === 'immersive'
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/30'
+                    }`}
+                  >
+                    <div className="text-sm font-semibold">{t('settings.translationImmersive', 'Immersive')}</div>
+                    <p className="text-xs text-muted-foreground mt-1">{t('settings.translationImmersiveDesc', 'Original and translated text shown side by side, paragraph by paragraph')}</p>
+                  </button>
+                  <button
+                    onClick={() => settings.setTranslationMode('full')}
+                    className={`flex-1 p-3 rounded-xl border-2 transition-all text-left ${
+                      settings.translationMode === 'full'
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/30'
+                    }`}
+                  >
+                    <div className="text-sm font-semibold">{t('settings.translationFull', 'Full Translation')}</div>
+                    <p className="text-xs text-muted-foreground mt-1">{t('settings.translationFullDesc', 'Replace original text with fully translated content')}</p>
+                  </button>
+                </div>
               </div>
             </SettingSection>
 

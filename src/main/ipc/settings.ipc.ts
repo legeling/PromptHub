@@ -5,6 +5,25 @@ import type { Settings } from '../../shared/types';
 import { DEFAULT_SETTINGS } from '../../shared/types';
 
 /**
+ * Get minimizeOnLaunch setting from database
+ * 从数据库读取启动时最小化设置
+ * @param db Database instance
+ * @returns boolean - whether to minimize on launch
+ */
+export function getMinimizeOnLaunchSetting(db: Database.Database): boolean {
+  try {
+    const stmt = db.prepare('SELECT value FROM settings WHERE key = ?');
+    const row = stmt.get('minimizeOnLaunch') as { value: string } | undefined;
+    if (row) {
+      return JSON.parse(row.value) === true;
+    }
+  } catch (e) {
+    console.error('Failed to read minimizeOnLaunch setting:', e);
+  }
+  return false; // Default to false
+}
+
+/**
  * Register settings-related IPC handlers
  * 注册设置相关 IPC 处理器
  */

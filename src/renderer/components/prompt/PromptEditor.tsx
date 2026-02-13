@@ -4,6 +4,7 @@ import { Textarea, Input, Button } from '../ui';
 import { SaveIcon, XIcon, HashIcon, PlayIcon, CopyIcon, ImageIcon } from 'lucide-react';
 import type { Prompt } from '../../../shared/types';
 import { useSettingsStore } from '../../stores/settings.store';
+import { useShallow } from 'zustand/react/shallow';
 import { useToast } from '../ui/Toast';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -31,10 +32,14 @@ export function PromptEditor({ prompt, onSave, onCancel }: PromptEditorProps) {
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
   const [isDownloadingImage, setIsDownloadingImage] = useState(false);
-  const { editorMarkdownPreview, setEditorMarkdownPreview } = useSettingsStore((state) => ({
-    editorMarkdownPreview: state.editorMarkdownPreview,
-    setEditorMarkdownPreview: state.setEditorMarkdownPreview,
-  }));
+  // Use useShallow for object selectors to prevent unnecessary re-renders
+  // 使用 useShallow 来防止不必要的重新渲染
+  const { editorMarkdownPreview, setEditorMarkdownPreview } = useSettingsStore(
+    useShallow((state) => ({
+      editorMarkdownPreview: state.editorMarkdownPreview,
+      setEditorMarkdownPreview: state.setEditorMarkdownPreview,
+    }))
+  );
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>(editorMarkdownPreview ? 'preview' : 'edit');
 
   // Extract variables

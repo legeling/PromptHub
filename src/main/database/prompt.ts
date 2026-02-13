@@ -77,10 +77,12 @@ export class PromptDB {
   /**
    * Update Prompt
    * 更新 Prompt
+   * Performance optimized: Builds return object in memory instead of re-querying
+   * 性能优化：在内存中构建返回对象，而不是重新查询
    */
   update(id: string, data: UpdatePromptDTO): Prompt | null {
-    const prompt = this.getById(id);
-    if (!prompt) return null;
+    const existingPrompt = this.getById(id);
+    if (!existingPrompt) return null;
 
     const now = Date.now();
     const updates: string[] = ['updated_at = ?'];
@@ -148,7 +150,28 @@ export class PromptDB {
       this.createVersion(id);
     }
 
-    return this.getById(id);
+    // Build updated prompt in memory instead of re-querying (performance optimization)
+    // 在内存中构建更新后的 prompt 对象，而不是重新查询（性能优化）
+    // Note: updatedAt is stored as number in DB but typed as string - using 'as any' for compatibility
+    // 注意：updatedAt 在数据库中存储为数字但类型定义为字符串 - 使用 'as any' 保持兼容
+    const updatedPrompt: Prompt = {
+      ...existingPrompt,
+      updatedAt: now as any,
+      ...(data.title !== undefined && { title: data.title }),
+      ...(data.description !== undefined && { description: data.description }),
+      ...(data.systemPrompt !== undefined && { systemPrompt: data.systemPrompt }),
+      ...(data.userPrompt !== undefined && { userPrompt: data.userPrompt }),
+      ...(data.variables !== undefined && { variables: data.variables }),
+      ...(data.tags !== undefined && { tags: data.tags }),
+      ...(data.folderId !== undefined && { folderId: data.folderId }),
+      ...(data.images !== undefined && { images: data.images }),
+      ...(data.isFavorite !== undefined && { isFavorite: data.isFavorite }),
+      ...(data.isPinned !== undefined && { isPinned: data.isPinned }),
+      ...(data.source !== undefined && { source: data.source }),
+      ...(data.notes !== undefined && { notes: data.notes }),
+    };
+
+    return updatedPrompt;
   }
 
   /**

@@ -1,8 +1,10 @@
 import { app, BrowserWindow, shell, ipcMain, dialog, Notification, Tray, Menu, nativeImage, session, protocol } from 'electron';
 import path from 'path';
 import fs from 'fs';
+import Database from 'better-sqlite3';
 import { initDatabase } from './database';
 import { registerAllIPC } from './ipc';
+import { getMinimizeOnLaunchSetting } from './ipc/settings.ipc';
 import { createMenu } from './menu';
 import { registerShortcuts, registerShortcutsIPC } from './shortcuts';
 import { initUpdater, registerUpdaterIPC } from './updater';
@@ -15,6 +17,9 @@ import { registerWebDAVIPC } from './webdav';
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let minimizeToTray = false;
+// Database instance (module-level for access in createWindow)
+// 数据库实例（模块级变量，供 createWindow 访问）
+let appDb: Database.Database | null = null;
 let isQuitting = false;
 // Close action: 'ask' = ask every time, 'minimize' = minimize to tray, 'exit' = exit directly
 // 关闭行为: 'ask' = 每次询问, 'minimize' = 最小化到托盘, 'exit' = 直接退出
@@ -97,6 +102,7 @@ async function createWindow() {
       preload: path.join(__dirname, '../preload/index.js'),
       nodeIntegration: false,
       contextIsolation: true,
+      sandbox: true,
     },
     // Use frameless window on Windows, native title bar on macOS
     // Windows 使用无边框窗口，macOS 使用原生标题栏
@@ -106,7 +112,33 @@ async function createWindow() {
     // Dark background for Windows title bar
     // Windows 深色标题栏
     backgroundColor: '#1a1d23',
-    show: true,
+    // Don't show immediately - wait for ready-to-show to check minimizeOnLaunch setting
+    // 不立即显示 - 等待 ready-to-show 事件检查 minimizeOnLaunch 设置
+    show: false,
+  });
+
+  // Handle window ready-to-show: check if we should minimize on launch
+  // 窗口准备就绪时：检查是否应该启动时最小化
+  mainWindow.once('ready-to-show', () => {
+    if (!appDb) {
+      // No database available, show window normally
+      // 数据库不可用，正常显示窗口
+      mainWindow?.show();
+      return;
+    }
+
+    const shouldMinimize = getMinimizeOnLaunchSetting(appDb);
+    if (shouldMinimize) {
+      // Minimize to tray on launch
+      // 启动时最小化到托盘
+      createTray();
+      // Don't show window, just keep it hidden
+      // 不显示窗口，保持隐藏
+    } else {
+      // Show window normally
+      // 正常显示窗口
+      mainWindow?.show();
+    }
   });
 
   // Load renderer page
@@ -232,10 +264,12 @@ ipcMain.handle('window:isFullscreen', () => {
 
 // Configure auto launch on login
 // 设置开机自启动
-ipcMain.on('app:setAutoLaunch', (_event, enabled: boolean) => {
+ipcMain.on('app:setAutoLaunch', (_event, enabled: boolean, minimizeOnLaunch?: boolean) => {
   app.setLoginItemSettings({
     openAtLogin: enabled,
-    openAsHidden: false,
+    // If minimizeOnLaunch is true, start hidden (minimize to tray on launch)
+    // 如果 minimizeOnLaunch 为 true，则隐藏启动（启动时最小化到托盘）
+    openAsHidden: enabled && minimizeOnLaunch === true,
   });
 });
 
@@ -643,6 +677,7 @@ app.whenReady().then(async () => {
     // Initialize database
     // 初始化数据库
     const db = initDatabase();
+    appDb = db; // Save to module-level variable for createWindow access
     registerAllIPC(db);
 
     // Create application menu

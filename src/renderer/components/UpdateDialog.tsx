@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { DownloadIcon, CheckCircleIcon, XIcon, Loader2Icon, RefreshCwIcon, FolderOpenIcon, ExternalLinkIcon, ZapIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeSanitize from 'rehype-sanitize';
 import { useSettingsStore } from '../stores/settings.store';
 
 export interface UpdateInfo {
@@ -34,9 +35,11 @@ interface UpdateDialogProps {
 
 export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogProps) {
   const { t } = useTranslation();
-  const settings = useSettingsStore();
+  // Only subscribe to the field we need, not the entire store
+  // 只订阅需要的字段，而不是整个 store
+  const useUpdateMirror = useSettingsStore((state) => state.useUpdateMirror);
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(initialStatus || null);
-  const [useMirror, setUseMirror] = useState<boolean>(settings.useUpdateMirror);
+  const [useMirror, setUseMirror] = useState<boolean>(useUpdateMirror);
   const [currentVersion, setCurrentVersion] = useState<string>('');
   const [platform, setPlatform] = useState<string>('');
 
@@ -106,7 +109,7 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
     if (isOpen) {
       // Force check every time the dialog opens
       // Using global mirror setting by default
-      handleCheckUpdate(settings.useUpdateMirror);
+      handleCheckUpdate(useUpdateMirror);
     }
   }, [isOpen]);
 
@@ -181,7 +184,7 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
                 <p className="text-xs font-medium text-muted-foreground mb-2">
                   {t('settings.releaseNotes')}
                 </p>
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]}>
                   {updateStatus.info.releaseNotes}
                 </ReactMarkdown>
               </div>

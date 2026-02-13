@@ -4,9 +4,13 @@ title: 项目概览
 
 # PromptHub
 
-开源免费的 AI Prompt 管理工具，专为需要高效管理、版本控制和测试提示词的开发者与创作者设计。
+开源免费的 AI Prompt 与 Skill 管理工具。管理你的 Prompt 和 SKILL.md 技能，一键安装到 Claude Code、Cursor、Windsurf、Codex 等 12+ 主流 AI 编程工具。
 
 ## 核心特性
+
+### 🧩 Skill 技能管理（v0.4.0 新增）
+
+内建 20+ 精选 AI 代理技能，支持一键安装到 12+ 平台。本地扫描发现已有 SKILL.md，支持 Symlink/复制模式、AI 翻译、标签筛选。
 
 ### 本地优先
 

@@ -1,13 +1,13 @@
 <div align="center">
   <img src="./imgs/icon.png" alt="PromptHub Logo" width="120" height="120" />
   <h1>PromptHub</h1>
-  <p><strong>🚀 Gestor de Prompts de IA de código abierto, primero local</strong></p>
-  <p>Gestión eficiente, control de versiones, relleno de variables, pruebas multimodelo — Todo en uno para tu flujo de trabajo de Prompts</p>
+  <p><strong>🚀 Gestor de Prompts y Skills de IA de código abierto, primero local</strong></p>
+  <p>Gestión de Prompts · Tienda de Skills · Instalación multiplataforma · Control de versiones · Pruebas multimodelo — Espacio de trabajo IA todo en uno</p>
   
   <p>
     <a href="https://github.com/legeling/PromptHub/stargazers"><img src="https://img.shields.io/github/stars/legeling/PromptHub?style=flat-square&color=yellow" alt="GitHub Stars"/></a>
     <a href="https://github.com/legeling/PromptHub/network/members"><img src="https://img.shields.io/github/forks/legeling/PromptHub?style=flat-square" alt="GitHub Forks"/></a>
-    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.3.9-green?style=flat-square" alt="Versión"/></a>
+    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.4.0-green?style=flat-square" alt="Versión"/></a>
     <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/github/downloads/legeling/PromptHub/total?style=flat-square&color=blue" alt="Descargas"/></a>
     <img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="Licencia: AGPL-3.0"/>
   </p>
@@ -34,7 +34,7 @@
 
 > 💡 **¿Por qué PromptHub?**
 >
-> ¿Cansado de buscar prompts en cuadernos, documentos e historiales de chat? PromptHub te permite gestionar tus prompts como si fueran código — control de versiones, plantillas de variables, pruebas multimodelo, todo local y priorizando la privacidad.
+> PromptHub no es solo un gestor de prompts, es un **centro de distribución de skills de IA**. Gestiona tus prompts y skills SKILL.md, e instálalos con un clic en Claude Code, Cursor, Windsurf, Codex y 12+ herramientas de codificación IA. Todos los datos se almacenan localmente, priorizando la privacidad.
 
 ---
 
@@ -48,33 +48,38 @@
 
 | Plataforma |                                                                                                                                                                                                                Descarga                                                                                                                                                                                                                 |
 | :--------: | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
-|  Windows   | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.8-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.8-arm64.exe) |
-|   macOS    |   [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.8-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.8-x64.dmg)   |
-|   Linux    |       [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.8-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.3.8_amd64.deb)        |
+|  Windows   | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.4.0-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.4.0-arm64.exe) |
+|   macOS    |   [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.0-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.0-x64.dmg)   |
+|   Linux    |       [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.0-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.4.0_amd64.deb)        |
 
 ---
 
 ## ✨ Características
 
-- **📝 Gestión de Prompts** - Crea, edita y elimina con organización por carpetas y etiquetas
-- **⭐ Favoritos** - Acceso rápido a los prompts que usas con más frecuencia
-- **🔄 Control de versiones** - Guardado automático del historial con visualización y soporte de recuperación
-- **🔧 Sistema de variables** - Variables de plantilla `{{variable}}` con reemplazo dinámico
-- **📋 Copia con un clic** - Copia rápidamente el contenido de los prompts al portapapeles
-- **🔍 Búsqueda de texto completo** - Búsqueda rápida en títulos, descripciones y contenido
-- **📤 Exportación y copia de seguridad** - Exportación selectiva + copia de seguridad completa/restauración (formato `.phub.gz`, incluye imágenes, config. de IA y ajustes)
-- **🎨 Personalización de temas** - Modos Oscuro/Claro/Sistema con múltiples colores de acento
-- **🌐 Multilingüe** - Soporte de interfaz en español, inglés, chino (simplificado/tradicional), japonés, alemán y francés
-- **💾 Almacenamiento local** - Todos los datos se guardan localmente para proteger la privacidad
-- **🖥️ Multiplataforma** - Soporte para macOS, Windows y Linux
-- **📊 Vista de lista** - Visualización tipo tabla con ordenación y operaciones por lotes
-- **🤖 Pruebas de IA** - Pruebas multimodelo integradas con diversos proveedores principales
-- **🎨 Modelos de imagen** - Configura y prueba diversos modelos de generación de imágenes
-- **🧭 Vista previa de Markdown** - Renderizado Markdown con resaltado de sintaxis en todas partes (detalles, lista, edición)
-- **🪟 Modos ancho y pantalla completa** - Experiencia de edición optimizada con modos de pantalla completa y extendida
-- **🔐 Contraseña maestra y carpetas privadas** - Protege contenido privado con una contraseña maestra
-- **🖼️ Subida y vista previa de imágenes** - Soporta subir/pegar imágenes locales y previsualizarlas en modales
-- **☁️ Sincronización WebDAV** - Sincronización a través de WebDAV (incluye imágenes y ajustes; soporte para sincronización al inicio y periódica)
+### 📝 Gestión de Prompts
+- Crea, edita y elimina con organización por carpetas y etiquetas
+- Guardado automático del historial con visualización y recuperación
+- Variables de plantilla `{{variable}}` con reemplazo dinámico
+- Búsqueda de texto completo, favoritos, adjuntos multimedia
+
+### 🧩 Gestión de Skills 🆕
+- **Tienda de Skills**: 20+ skills seleccionados (de Anthropic, OpenAI, etc.)
+- **Instalación multiplataforma**: Instalación con un clic en Claude Code, Cursor, Windsurf, Codex, Kiro, Gemini CLI y 12+ plataformas
+- **Escaneo local**: Detección automática de SKILL.md locales, vista previa e importación
+- **Modo Symlink/Copia**: Enlace simbólico o copia independiente
+- **Traducción IA**: Traducción inmersiva/completa del contenido de skills
+- **Filtrado por etiquetas**: Filtrado rápido de skills por etiquetas
+
+### 🤖 Capacidades de IA
+- Pruebas multimodelo integradas con diversos proveedores
+- Pruebas comparativas en paralelo con múltiples modelos
+- Generación y refinamiento de contenido de skills con IA
+
+### 💾 Datos y Sincronización
+- Todos los datos almacenados localmente, privacidad protegida
+- Copia de seguridad completa/restauración (`.phub.gz`)
+- Sincronización en la nube WebDAV
+- Oscuro/Claro/Sistema, 7 idiomas, multiplataforma
 
 ## 📸 Capturas de pantalla
 
@@ -115,9 +120,9 @@ Descarga el instalador para tu plataforma desde [Releases](https://github.com/le
 
 | Plataforma |                                                                                                                                                                                                                Descarga                                                                                                                                                                                                                 |
 | :--------: | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
-|  Windows   | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.8-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.8-arm64.exe) |
-|   macOS    |   [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.8-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.8-x64.dmg)   |
-|   Linux    |       [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.8-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.3.8_amd64.deb)        |
+|  Windows   | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.4.0-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.4.0-arm64.exe) |
+|   macOS    |   [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.0-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.0-x64.dmg)   |
+|   Linux    |       [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.0-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.4.0_amd64.deb)        |
 
 ### Primer inicio en macOS
 
@@ -192,7 +197,7 @@ El historial de edición se guarda automáticamente. Haz clic en "Historial" par
 | Frontend                     | React 18 + TypeScript 5 |
 | Estilos                      | TailwindCSS             |
 | Gestión de estado            | Zustand                 |
-| Almacenamiento local         | IndexedDB + SQLite      |
+| Almacenamiento local         | SQLite                  |
 | Herramientas de construcción | Vite + electron-builder |
 
 ## 📁 Estructura del proyecto
@@ -224,47 +229,44 @@ PromptHub/
 
 ## 🗺️ Hoja de ruta (Roadmap)
 
-### v0.3.7 (Versión actual)
+### v0.4.0 (Versión actual) 🎉
 
-- [x] **Carpetas multinivel**: Soporte para anidamiento ilimitado de carpetas y gestión mediante arrastrar y soltar
-- [x] **Sistema de control de versiones**: Gestiona Prompts como si fueran código, con comparación de historial y recuperación con un clic
-- [x] **Sistema de plantillas con variables**: Soporte para la sintaxis `{{variable}}`, genera automáticamente formularios de entrada con vista previa antes de copiar
-- [x] **Laboratorio multimodelo**: Diversos proveedores principales integrados, soporte para pruebas comparativas en paralelo y análisis del tiempo de respuesta
-- [x] **Sincronización entre dispositivos**: Sincronización incremental basada en WebDAV y copia de seguridad completa para un control total de los datos
-- [x] **Experiencia de lectura superior**: Renderizado Markdown en todos los escenarios, resaltado de sintaxis y modo de comparación bilingüe
-- [x] **Gestión multidimensional**: Organización eficiente mediante carpetas, etiquetas, favoritos, estadísticas de uso y búsqueda con puntuación de texto completo
-- [x] **Modo multivista**: Ofrece vistas de tarjeta, lista compacta y galería para diferentes escenarios de uso
-- [x] **Integración profunda con el sistema**: Atajos de teclado globales, minimización a la bandeja del sistema y soporte nativo para modo oscuro
-- [x] **Aceleración de actualizaciones**: Espejos de GitHub integrados para descargas significativamente más rápidas en regiones con restricciones
-- [x] **Seguridad y privacidad**: Protección con contraseña maestra, carpetas privadas cifradas y enfoque en la privacidad local
+- [x] **Tienda de Skills**: 20+ skills de agentes IA seleccionados (Anthropic, OpenAI, etc.)
+- [x] **Instalación multiplataforma**: Instala SKILL.md en Claude Code, Cursor, Windsurf, Codex y 12+ plataformas
+- [x] **Escaneo y vista previa local**: Detección automática de SKILL.md locales, vista previa e importación por lotes
+- [x] **Modo Symlink/Copia**: Enlace simbólico o copia independiente
+- [x] **Traducción IA de skills**: Traducción inmersiva y completa
+- [x] **Filtrado por etiquetas**: Etiquetas en la barra lateral para filtrado rápido
+- [x] **Flujo de trabajo claro**: «Añadir a la biblioteca» → diálogo automático «Instalar en plataforma»
+
+### v0.3.x
+
+- [x] Carpetas multinivel, control de versiones, plantillas con variables
+- [x] Laboratorio multimodelo, sincronización WebDAV, renderizado Markdown
+- [x] Modo multivista, integración con el sistema, seguridad y privacidad
 
 ### Planes futuros
 
-- [ ] **Extensión de navegador**: Acceso directo a la biblioteca de PromptHub en páginas web (ej. ChatGPT/Claude) para un flujo de trabajo fluido
-- [ ] **Aplicación móvil**: Soporte para visualizar, buscar y realizar ediciones sencillas o sincronización en el smartphone
-- [ ] **Plaza de Prompts**: Biblioteca integrada de plantillas de prompts de alta calidad con importación y compartición en un clic
-- [ ] **Sistema de complementos**: Soporte para extensiones personalizadas de proveedores de IA o integración de modelos locales (ej. Ollama)
-- [ ] **Exportación y conversión por lotes**: Exportación de prompts a formatos específicos compatibles con herramientas de IA populares
-- [ ] **Variables mejoradas**: Soporte para cuadros de selección, fechas dinámicas y tipos de variables más complejos
+- [ ] **Extensión de navegador**: Acceso a PromptHub desde páginas web de ChatGPT/Claude
+- [ ] **Aplicación móvil**: Visualizar, buscar y editar desde el smartphone
+- [ ] **Sistema de complementos**: Extensiones personalizadas de proveedores de IA o modelos locales
+- [ ] **Mercado de Skills**: Subir y compartir skills creados por la comunidad
 
 ## 📝 Registro de cambios
 
 Puedes ver el registro completo aquí: **[CHANGELOG.md](../CHANGELOG.md)**
 
-### Última versión v0.3.8 (2026-01-16)
+### Última versión v0.4.0 (2026-02-12) 🎉
 
-**Novedades**
+**Nuevas funciones importantes**
 
-- ✨ **Soporte de salida JSON**: Soporte para formatos JSON Mode y JSON Schema en pruebas de IA
-- ⚡️ **Optimización del modo inglés**: Interfaz simplificada en inglés, ocultando botones de idioma innecesarios
-- 🌍 **Completado de i18n**: Traducciones completadas para FR, DE, ES, JA y ZH-TW
-
-**Correcciones**
-
-- 🎥 **Corrección de scroll del editor**: Los números de línea ahora se desplazan sincronizados con el contenido
-- 🐛 **Corrección de WebDAV**: Se corrigió la pérdida potencial de credenciales de WebDAV durante la sincronización
-- 🐛 **Persistencia de ajustes**: Se corrigieron los ajustes de acción al cerrar (minimizar/salir) que no se guardaban
-- 🐛 **Corrección de ruta API**: Se corrigieron errores 404 al obtener listas de modelos en ciertos endpoints no estándar
+- 🧩 **Tienda de Skills**: 20+ skills de agentes IA seleccionados (Anthropic, OpenAI)
+- 🚀 **Instalación multiplataforma**: Instala SKILL.md en 12 plataformas
+- 🔍 **Escaneo y vista previa local**: Detección automática de SKILL.md locales, importación por lotes
+- 🔗 **Modo Symlink/Copia**: Enlace simbólico o copia independiente
+- 🌐 **Traducción IA de skills**: Traducción inmersiva y completa
+- 🏷️ **Filtrado por etiquetas**: Etiquetas en la barra lateral para filtrado rápido
+- � **Flujo de trabajo claro**: «Añadir a la biblioteca» → automáticamente «Instalar en plataforma»
 
 > 📋 [Ver registro de cambios](../CHANGELOG.md)
 

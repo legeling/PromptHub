@@ -9,7 +9,7 @@
     --theme-hue: 210;
     --theme-saturation: 35;
     --base-font-size: 16px;
-    
+
     /* Light mode colors */
     /* 浅色模式配色 */
     --background: 220 14% 96%;
@@ -18,7 +18,7 @@
     --card-foreground: 220 20% 25%;
     --popover: 0 0% 100%;
     --popover-foreground: 220 20% 25%;
-    
+
     /* Morandi theme colors - soft and elegant */
     /* 莫兰迪主题色 - 柔和淡雅 */
     --primary: var(--theme-hue) var(--theme-saturation) 55%;
@@ -35,14 +35,14 @@
     --input: 220 13% 90%;
     --ring: var(--theme-hue) var(--theme-saturation) 55%;
     --radius: 0.75rem;
-    
+
     /* Sidebar - light mode */
     /* 侧边栏 - 浅色模式 */
     --sidebar: 0 0% 100%;
     --sidebar-foreground: 220 20% 25%;
     --sidebar-accent: 220 14% 95%;
     --sidebar-border: 220 13% 90%;
-    
+
     /* Shadows */
     /* 阴影 */
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
@@ -51,55 +51,55 @@
   }
 
   .dark {
-    /* Dark mode colors */
-    /* 深色模式配色 */
-    --background: 220 20% 12%;
-    --foreground: 220 15% 90%;
-    --card: 220 18% 15%;
-    --card-foreground: 220 15% 90%;
-    --popover: 220 18% 15%;
-    --popover-foreground: 220 15% 90%;
-    
-    /* Morandi theme colors - dark mode follows user-selected theme hue */
-    /* 莫兰迪主题色 - 深色模式跟随用户选择的主题色 */
-    --primary: var(--theme-hue) var(--theme-saturation) 50%;
+    /* Dark mode colors - deeper and more premium */
+    /* 深色模式配色 - 更深邃、更高级 */
+    --background: 220 25% 7%;
+    --foreground: 220 15% 92%;
+    --card: 220 22% 10%;
+    --card-foreground: 220 15% 92%;
+    --popover: 220 22% 12%;
+    --popover-foreground: 220 15% 92%;
+
+    /* Morandi theme colors */
+    --primary: var(--theme-hue) var(--theme-saturation) 55%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 15% 18%;
-    --secondary-foreground: 220 15% 90%;
-    --muted: 220 15% 18%;
-    --muted-foreground: 220 12% 55%;
-    --accent: var(--theme-hue) 15% 22%;
-    --accent-foreground: var(--theme-hue) var(--theme-saturation) 75%;
-    --destructive: 0 60% 50%;
+    --secondary: 220 20% 12%;
+    --secondary-foreground: 220 15% 92%;
+    --muted: 220 20% 12%;
+    --muted-foreground: 220 12% 60%;
+    --accent: var(--theme-hue) 20% 15%;
+    --accent-foreground: var(--theme-hue) var(--theme-saturation) 85%;
+    --destructive: 0 70% 55%;
     --destructive-foreground: 0 0% 100%;
-    --border: 220 15% 22%;
-    --input: 220 15% 22%;
-    --ring: var(--theme-hue) var(--theme-saturation) 50%;
-    
-    /* Sidebar - dark mode */
-    /* 侧边栏 - 深色模式 */
-    --sidebar: 220 20% 10%;
-    --sidebar-foreground: 220 15% 90%;
-    --sidebar-accent: var(--theme-hue) 15% 20%;
-    --sidebar-border: 220 15% 20%;
-    
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
-    --shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.4);
+    --border: 220 20% 14%;
+    --input: 220 20% 14%;
+    --ring: var(--theme-hue) var(--theme-saturation) 55%;
+
+    /* Sidebar - unified dark look */
+    /* 侧边栏 - 统一的深色外观 */
+    --sidebar: 220 25% 7%;
+    --sidebar-foreground: 220 15% 92%;
+    --sidebar-accent: 220 20% 14%;
+    --sidebar-border: 220 20% 12%;
+
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.4);
+    --shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.6);
   }
 }
 
 @layer base {
   * {
     @apply border-border;
-    
   }
   html {
     font-size: var(--base-font-size, 16px);
   }
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
   }
   /* Remove default yellow focus outline and use custom style */
   /* 移除默认的黄色 focus 边框，使用自定义样式 */
@@ -151,27 +151,31 @@
 /* iOS-style animations */
 /* iOS 风格动画 */
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideUp {
-  from { 
+  from {
     opacity: 0;
     transform: translateY(10px);
   }
-  to { 
+  to {
     opacity: 1;
     transform: translateY(0);
   }
 }
 
 @keyframes scaleIn {
-  from { 
+  from {
     opacity: 0;
     transform: scale(0.95);
   }
-  to { 
+  to {
     opacity: 1;
     transform: scale(1);
   }
@@ -190,9 +194,15 @@
 }
 
 @keyframes floatSoft {
-  0% { transform: translateY(0); }
-  50% { transform: translateY(-2px); }
-  100% { transform: translateY(0); }
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+  100% {
+    transform: translateY(0);
+  }
 }
 
 .animate-floatSoft {
@@ -234,19 +244,31 @@ body {
   color: hsl(var(--foreground));
   line-height: 1.6;
 }
-.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6 {
   color: hsl(var(--foreground));
   font-weight: 600;
   margin-top: 1em;
   margin-bottom: 0.5em;
 }
-.prose h1 { font-size: 1.5em; }
-.prose h2 { font-size: 1.25em; }
-.prose h3 { font-size: 1.1em; }
+.prose h1 {
+  font-size: 1.5em;
+}
+.prose h2 {
+  font-size: 1.25em;
+}
+.prose h3 {
+  font-size: 1.1em;
+}
 .prose p {
   margin-bottom: 0.75em;
 }
-.prose ul, .prose ol {
+.prose ul,
+.prose ol {
   padding-left: 1.5em;
   margin-bottom: 0.75em;
 }

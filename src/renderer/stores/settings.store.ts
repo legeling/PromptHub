@@ -141,6 +141,7 @@ export interface AIModelConfig {
 }
 
 export type CreationMode = 'manual' | 'quick';
+export type TranslationMode = 'immersive' | 'full';
 
 interface SettingsState {
   creationMode: CreationMode;
@@ -231,6 +232,8 @@ interface SettingsState {
   // 侧边栏设置
   tagsSectionHeight: number;
   isTagsSectionCollapsed: boolean;
+  skillTagsSectionHeight: number;
+  isSkillTagsSectionCollapsed: boolean;
 
   // AI model configuration (legacy single model compatibility)
   // AI 模型配置（兼容旧版单模型配置）
@@ -242,6 +245,9 @@ interface SettingsState {
   // Multi-model configuration (new version)
   // 多模型配置（新版）
   aiModels: AIModelConfig[];
+
+  // Translation mode setting / 翻译模式设置
+  translationMode: TranslationMode;  // immersive=沉浸式, full=全文翻译
 
   // 来源历史 / Source history for autocomplete
   sourceHistory: string[];
@@ -285,6 +291,8 @@ interface SettingsState {
   setUseUpdateMirror: (enabled: boolean) => void;
   setTagsSectionHeight: (height: number) => void;
   setIsTagsSectionCollapsed: (collapsed: boolean) => void;
+  setSkillTagsSectionHeight: (height: number) => void;
+  setIsSkillTagsSectionCollapsed: (collapsed: boolean) => void;
   setAiProvider: (provider: string) => void;
   setAiApiKey: (key: string) => void;
   setAiApiUrl: (url: string) => void;
@@ -295,6 +303,7 @@ interface SettingsState {
   deleteAiModel: (id: string) => void;
   setDefaultAiModel: (id: string) => void;
   setCreationMode: (mode: CreationMode) => void;
+  setTranslationMode: (mode: TranslationMode) => void;
   addSourceHistory: (source: string) => void;
   applyTheme: () => void;
 }
@@ -354,15 +363,19 @@ export const useSettingsStore = create<SettingsState>()(
         useUpdateMirror: false,
         tagsSectionHeight: DEFAULT_TAGS_SECTION_HEIGHT,
         isTagsSectionCollapsed: false,
+        skillTagsSectionHeight: DEFAULT_TAGS_SECTION_HEIGHT,
+        isSkillTagsSectionCollapsed: false,
         aiProvider: 'openai',
         aiApiKey: '',
         aiApiUrl: '',
         aiModel: 'gpt-4o',
         aiModels: [],
         creationMode: 'manual' as CreationMode,
+        translationMode: 'immersive' as TranslationMode,
         sourceHistory: [],
 
         setCreationMode: (mode) => setTouched({ creationMode: mode }),
+        setTranslationMode: (mode) => setTouched({ translationMode: mode }),
 
         addSourceHistory: (source) => {
           if (!source.trim()) return;
@@ -440,12 +453,24 @@ export const useSettingsStore = create<SettingsState>()(
         setClipboardImportEnabled: (enabled) => setTouched({ clipboardImportEnabled: enabled }),
         setAutoSave: (enabled) => setTouched({ autoSave: enabled }),
         setShowLineNumbers: (enabled) => setTouched({ showLineNumbers: enabled }),
-        setLaunchAtStartup: (enabled) => setTouched({ launchAtStartup: enabled }),
+        setLaunchAtStartup: (enabled) => {
+          setTouched({ launchAtStartup: enabled });
+          // Update auto launch with current minimizeOnLaunch setting
+          // 更新开机自启，同时传递 minimizeOnLaunch 设置
+          const minimizeOnLaunch = get().minimizeOnLaunch;
+          window.electron?.setAutoLaunch?.(enabled, minimizeOnLaunch);
+        },
         setMinimizeOnLaunch: (enabled) => {
           setTouched({ minimizeOnLaunch: enabled });
           // Notify main process to update tray status
           // 通知主进程更新托盘状态
           window.electron?.setMinimizeToTray?.(enabled);
+          // If auto launch is enabled, update the openAsHidden setting
+          // 如果开机自启已启用，更新 openAsHidden 设置
+          const launchAtStartup = get().launchAtStartup;
+          if (launchAtStartup) {
+            window.electron?.setAutoLaunch?.(true, enabled);
+          }
         },
         setCloseAction: (action) => {
           setTouched({ closeAction: action });
@@ -490,6 +515,8 @@ export const useSettingsStore = create<SettingsState>()(
         setUseUpdateMirror: (enabled) => setTouched({ useUpdateMirror: enabled }),
         setTagsSectionHeight: (height) => setTouched({ tagsSectionHeight: height }),
         setIsTagsSectionCollapsed: (collapsed) => setTouched({ isTagsSectionCollapsed: collapsed }),
+        setSkillTagsSectionHeight: (height) => setTouched({ skillTagsSectionHeight: height }),
+        setIsSkillTagsSectionCollapsed: (collapsed) => setTouched({ isSkillTagsSectionCollapsed: collapsed }),
         setAiProvider: (provider) => setTouched({ aiProvider: provider }),
         setAiApiKey: (key) => setTouched({ aiApiKey: key }),
         setAiApiUrl: (url) => setTouched({ aiApiUrl: url }),

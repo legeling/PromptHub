@@ -63,13 +63,16 @@ export class FolderDB {
   /**
    * Update folder
    * 更新文件夹
+   * Performance optimized: Builds return object in memory instead of re-querying
+   * 性能优化：在内存中构建返回对象，而不是重新查询
    */
   update(id: string, data: UpdateFolderDTO): Folder | null {
-    const folder = this.getById(id);
-    if (!folder) return null;
+    const existingFolder = this.getById(id);
+    if (!existingFolder) return null;
 
     const updates: string[] = [];
     const values: any[] = [];
+    const now = Date.now();
 
     if (data.name !== undefined) {
       updates.push('name = ?');
@@ -92,9 +95,9 @@ export class FolderDB {
       values.push(data.isPrivate ? 1 : 0);
     }
     updates.push('updated_at = ?');
-    values.push(Date.now());
+    values.push(now);
 
-    if (updates.length === 0) return folder;
+    if (updates.length === 1) return existingFolder; // Only updated_at, no actual changes
 
     values.push(id);
 
@@ -103,7 +106,21 @@ export class FolderDB {
     );
     stmt.run(...values);
 
-    return this.getById(id);
+    // Build updated folder in memory instead of re-querying (performance optimization)
+    // 在内存中构建更新后的 folder 对象，而不是重新查询（性能优化）
+    // Note: updatedAt is stored as number in DB but typed as string - using 'as any' for compatibility
+    // 注意：updatedAt 在数据库中存储为数字但类型定义为字符串 - 使用 'as any' 保持兼容
+    const updatedFolder: Folder = {
+      ...existingFolder,
+      updatedAt: now as any,
+      ...(data.name !== undefined && { name: data.name }),
+      ...(data.icon !== undefined && { icon: data.icon }),
+      ...(data.parentId !== undefined && { parentId: data.parentId }),
+      ...(data.order !== undefined && { order: data.order }),
+      ...(data.isPrivate !== undefined && { isPrivate: data.isPrivate }),
+    };
+
+    return updatedFolder;
   }
 
   /**

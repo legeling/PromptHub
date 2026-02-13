@@ -1,8 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { StarIcon, HashIcon, PlusIcon, LayoutGridIcon, LinkIcon, SettingsIcon, ChevronLeftIcon, ChevronRightIcon, XIcon, ChevronDownIcon, ChevronUpIcon, ImageIcon, MessageSquareTextIcon } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
+import { StarIcon, HashIcon, PlusIcon, LayoutGridIcon, LinkIcon, SettingsIcon, ChevronLeftIcon, ChevronRightIcon, XIcon, ChevronDownIcon, ChevronUpIcon, ImageIcon, MessageSquareTextIcon, CommandIcon, CuboidIcon, ShoppingBagIcon, DownloadIcon, GlobeIcon } from 'lucide-react';
 import { useFolderStore } from '../../stores/folder.store';
 import { usePromptStore } from '../../stores/prompt.store';
 import { useSettingsStore } from '../../stores/settings.store';
+import { useUIStore } from '../../stores/ui.store';
+import { useSkillStore } from '../../stores/skill.store';
+import { SKILL_PLATFORMS } from '../../../shared/constants/platforms';
 import { ResourcesModal } from '../resources/ResourcesModal';
 import { FolderModal, PrivateFolderUnlockModal } from '../folder';
 import { useTranslation } from 'react-i18next';
@@ -26,40 +29,40 @@ interface NavItemProps {
   collapsed?: boolean;
 }
 
-function NavItem({ icon, label, count, active, onClick, collapsed }: NavItemProps) {
+// NavItem wrapped with React.memo for performance
+// 使用 React.memo 包装 NavItem 以提升性能
+const NavItem = memo(function NavItem({ icon, label, count, active, onClick, collapsed }: NavItemProps) {
   return (
-    <button
-      onClick={onClick}
-      title={collapsed ? label : undefined}
-      className={`
-        w-full flex ${collapsed ? 'flex-col items-center gap-1' : 'items-center gap-3'} px-3 py-2 rounded-lg text-sm
-        transition-all duration-200
-        ${active
-          ? 'bg-sidebar-accent text-sidebar-foreground'
-          : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
-        }
-      `}
-    >
-      <span className="w-5 h-5 flex items-center justify-center">{icon}</span>
-      {!collapsed && (
-        <>
-          <span className="flex-1 text-left truncate">{label}</span>
-          {count !== undefined && (
-            <span className="text-xs px-1.5 py-0.5 rounded bg-sidebar-accent text-sidebar-foreground/60">
-              {count}
-            </span>
-          )}
-        </>
-      )}
-
-      {collapsed && (
-        <span className="text-[10px] leading-none text-sidebar-foreground/60 max-w-full truncate">
-          {label.slice(0, 2)}
+    <div className={`w-full flex justify-center py-0.5`}>
+      <button
+        onClick={onClick}
+        title={label}
+        className={`
+          flex items-center justify-center rounded-lg transition-all duration-300 relative group
+          ${collapsed ? 'w-10 h-10' : 'w-full gap-3 px-3 py-2'}
+          ${active
+            ? 'bg-primary text-white shadow-sm'
+            : 'text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
+          }
+        `}
+      >
+        <span className={`flex items-center justify-center transition-transform duration-300 ${collapsed ? 'w-5 h-5 group-hover:scale-110' : 'w-4 h-4'}`}>
+          {icon}
         </span>
-      )}
-    </button>
+        {!collapsed && (
+          <>
+            <span className="flex-1 text-left truncate text-sm">{label}</span>
+            {count !== undefined && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sidebar-accent/80 text-sidebar-foreground/50 border border-white/5">
+                {count}
+              </span>
+            )}
+          </>
+        )}
+      </button>
+    </div>
   );
-}
+});
 
 export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
   const { t } = useTranslation();
@@ -99,6 +102,37 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
   const setTagsSectionHeight = useSettingsStore((state) => state.setTagsSectionHeight);
   const isTagsCollapsed = useSettingsStore((state) => state.isTagsSectionCollapsed);
   const setIsTagsCollapsed = useSettingsStore((state) => state.setIsTagsSectionCollapsed);
+  const viewMode = useUIStore((state) => state.viewMode);
+  const setViewMode = useUIStore((state) => state.setViewMode);
+  
+  // Skill store
+  const skills = useSkillStore((state) => state.skills);
+  const skillFilterType = useSkillStore((state) => state.filterType);
+  const setSkillFilterType = useSkillStore((state) => state.setFilterType);
+  const skillFavoritesCount = useMemo(() => skills.filter(s => s.is_favorite).length, [skills]);
+  const skillInstalledCount = useMemo(() => skills.filter(s => !!s.registry_slug).length, [skills]);
+  const deployedSkillNames = useSkillStore((state) => state.deployedSkillNames);
+  const skillDeployedCount = useMemo(() => skills.filter(s => deployedSkillNames.has(s.name)).length, [skills, deployedSkillNames]);
+  const storeView = useSkillStore((state) => state.storeView);
+  const setStoreView = useSkillStore((state) => state.setStoreView);
+  const skillFilterTags = useSkillStore((state) => state.filterTags);
+  const toggleSkillFilterTag = useSkillStore((state) => state.toggleFilterTag);
+  const clearSkillFilterTags = useSkillStore((state) => state.clearFilterTags);
+  const uniqueSkillTags = useMemo(() => {
+    const platformIds = new Set(SKILL_PLATFORMS.map(p => p.id));
+    const autoTags = new Set(['local', 'discovered', 'github', 'imported', ...platformIds]);
+    const all = skills.flatMap(s => s.tags || []).filter(t => !autoTags.has(t));
+    return [...new Set(all)];
+  }, [skills]);
+  const [showAllSkillTags, setShowAllSkillTags] = useState(false);
+
+  // Skill tags section settings (mirrors prompt tags behavior)
+  const skillTagsSectionHeight = useSettingsStore((state) => state.skillTagsSectionHeight);
+  const setSkillTagsSectionHeight = useSettingsStore((state) => state.setSkillTagsSectionHeight);
+  const isSkillTagsCollapsed = useSettingsStore((state) => state.isSkillTagsSectionCollapsed);
+  const setIsSkillTagsCollapsed = useSettingsStore((state) => state.setIsSkillTagsSectionCollapsed);
+
+  
     const [isResizing, setIsResizing] = useState(false);
     const sidebarRef = useRef<HTMLElement>(null);
     const dragStartY = useRef(0);
@@ -207,9 +241,13 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
           requestAnimationFrame(() => {
             setIsTagPopoverVisible(true);
           });
-        };      const favoriteCount = prompts.filter((p) => p.isFavorite).length;
-      const allTags = prompts.flatMap((p) => p.tags);
-      const uniqueTags = [...new Set(allTags)];
+        };
+      
+      // Memoize expensive calculations to avoid re-computation on every render
+      // 使用 useMemo 缓存昂贵的计算，避免每次渲染都重新计算
+      const favoriteCount = useMemo(() => prompts.filter((p) => p.isFavorite).length, [prompts]);
+      const allTags = useMemo(() => prompts.flatMap((p) => p.tags), [prompts]);
+      const uniqueTags = useMemo(() => [...new Set(allTags)], [allTags]);
     
         const moveFolder = useFolderStore((state) => state.moveFolder);
       
@@ -225,27 +263,35 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
             if (newIndex !== -1) {
               await moveFolder(activeId, activeItem.parentId, newIndex);
             }
-          }, [moveFolder]);      // Resize handler
-      const handleResizeStart = (e: React.MouseEvent) => {
+          }, [moveFolder]);
+
+      // Resize handler (shared for prompt and skill tags sections)
+      const resizeTarget = useRef<'prompt' | 'skill'>('prompt');
+
+      const handleResizeStart = (e: React.MouseEvent, target: 'prompt' | 'skill' = 'prompt') => {
         e.preventDefault();
         setIsResizing(true);
+        resizeTarget.current = target;
         dragStartY.current = e.clientY;
-        dragStartHeight.current = tagsSectionHeight;
+        dragStartHeight.current = target === 'prompt' ? tagsSectionHeight : skillTagsSectionHeight;
         document.body.style.cursor = 'ns-resize';
       };
     
       useEffect(() => {
         if (!isResizing) return;
     
-              const handleMouseMove = (e: MouseEvent) => {
-                const deltaY = dragStartY.current - e.clientY;
-                const newHeight = dragStartHeight.current + deltaY;
-                
-                const minHeight = 140; // Roughly 3 rows of tags + header
-                const maxHeight = window.innerHeight - 300; // Leave space for folders and nav
-                
-                setTagsSectionHeight(Math.max(minHeight, Math.min(maxHeight, newHeight)));
-              };    
+        const handleMouseMove = (e: MouseEvent) => {
+          const deltaY = dragStartY.current - e.clientY;
+          const newHeight = dragStartHeight.current + deltaY;
+          const minHeight = 140;
+          const maxHeight = window.innerHeight - 300;
+          const clampedHeight = Math.max(minHeight, Math.min(maxHeight, newHeight));
+          if (resizeTarget.current === 'prompt') {
+            setTagsSectionHeight(clampedHeight);
+          } else {
+            setSkillTagsSectionHeight(clampedHeight);
+          }
+        };
         const handleMouseUp = () => {
           setIsResizing(false);
           document.body.style.cursor = '';
@@ -258,7 +304,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
           window.removeEventListener('mousemove', handleMouseMove);
           window.removeEventListener('mouseup', handleMouseUp);
         };
-      }, [isResizing, setTagsSectionHeight]);
+      }, [isResizing, setTagsSectionHeight, setSkillTagsSectionHeight]);
   return (
     <aside
       ref={sidebarRef}
@@ -286,6 +332,55 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
         </button>
       </div>
 
+      {/* Mode Switcher */}
+      <div className={`px-2 pt-4 pb-2 shrink-0 ${isCollapsed ? 'flex flex-col items-center' : ''}`}>
+        <div className={`
+          relative flex transition-all duration-300
+          ${isCollapsed 
+            ? 'flex-col gap-2' 
+            : 'p-1 bg-sidebar-accent/50 rounded-xl border border-white/5'
+          }
+        `}>
+          <button
+            onClick={() => {
+              setViewMode('prompt');
+              if (currentPage !== 'home') onNavigate('home');
+            }}
+            title={t('common.prompts')}
+            className={`
+              relative flex items-center justify-center transition-all duration-300 z-10
+              ${isCollapsed 
+                ? `w-10 h-10 rounded-xl ${viewMode === 'prompt' ? 'bg-primary text-white shadow-lg' : 'text-sidebar-foreground/50 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'}` 
+                : `flex-1 py-1.5 gap-2 text-xs font-semibold rounded-lg ${viewMode === 'prompt' ? 'bg-background text-foreground shadow-sm' : 'text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-white/5'}`
+              }
+            `}
+          >
+            <CommandIcon className="w-5 h-5" />
+            {!isCollapsed && <span className="truncate">{t('common.prompts')}</span>}
+          </button>
+          
+          <button
+            onClick={() => {
+              setViewMode('skill');
+              if (currentPage !== 'home') onNavigate('home');
+            }}
+            title={t('common.skills')}
+            className={`
+              relative flex items-center justify-center transition-all duration-300 z-10
+              ${isCollapsed 
+                ? `w-10 h-10 rounded-xl ${viewMode === 'skill' ? 'bg-primary text-white shadow-lg' : 'text-sidebar-foreground/50 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'}` 
+                : `flex-1 py-1.5 gap-2 text-xs font-semibold rounded-lg ${viewMode === 'skill' ? 'bg-background text-foreground shadow-sm' : 'text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-white/5'}`
+              }
+            `}
+          >
+            <CuboidIcon className="w-5 h-5" />
+            {!isCollapsed && <span className="truncate">{t('common.skills')}</span>}
+          </button>
+        </div>
+      </div>
+
+      {viewMode === 'prompt' ? (
+      <>
       {/* Navigation area - Fixed top */}
       <div className="flex-shrink-0 flex flex-col px-3 py-2">
         <div className="space-y-1 shrink-0">
@@ -604,6 +699,251 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
             </div>
           </div>
         </div>
+      )}
+
+      </>
+      ) : (
+        <>
+        {/* Skill Navigation */}
+        <div className="flex-shrink-0 flex flex-col px-3 py-2">
+          <div className="space-y-1 shrink-0">
+            <NavItem
+              icon={<LayoutGridIcon className="w-5 h-5" />}
+              label={t('nav.allSkills', '所有技能')}
+              count={skills.length}
+              active={skillFilterType === 'all' && storeView === 'my-skills' && currentPage === 'home'}
+              collapsed={isCollapsed}
+              onClick={() => {
+                setSkillFilterType('all');
+                setStoreView('my-skills');
+                if (currentPage !== 'home') onNavigate('home');
+              }}
+            />
+            <NavItem
+              icon={<StarIcon className="w-5 h-5" />}
+              label={t('nav.favorites')}
+              count={skillFavoritesCount}
+              active={skillFilterType === 'favorites' && storeView === 'my-skills' && currentPage === 'home'}
+              collapsed={isCollapsed}
+              onClick={() => {
+                setSkillFilterType('favorites');
+                setStoreView('my-skills');
+                if (currentPage !== 'home') onNavigate('home');
+              }}
+            />
+            <NavItem
+              icon={<DownloadIcon className="w-5 h-5" />}
+              label={t('nav.added', '已添加')}
+              count={skillInstalledCount}
+              active={skillFilterType === 'installed' && storeView === 'my-skills' && currentPage === 'home'}
+              collapsed={isCollapsed}
+              onClick={() => {
+                setSkillFilterType('installed');
+                setStoreView('my-skills');
+                if (currentPage !== 'home') onNavigate('home');
+              }}
+            />
+            <NavItem
+              icon={<GlobeIcon className="w-5 h-5" />}
+              label={t('nav.deployed', '已安装')}
+              count={skillDeployedCount}
+              active={skillFilterType === 'deployed' && storeView === 'my-skills' && currentPage === 'home'}
+              collapsed={isCollapsed}
+              onClick={() => {
+                setSkillFilterType('deployed');
+                setStoreView('my-skills');
+                if (currentPage !== 'home') onNavigate('home');
+              }}
+            />
+            <div className="h-px bg-sidebar-border/50 my-2" />
+            <NavItem
+              icon={<ShoppingBagIcon className="w-5 h-5" />}
+              label={t('skill.store', 'Skill Store')}
+              active={storeView === 'store' && currentPage === 'home'}
+              collapsed={isCollapsed}
+              onClick={() => {
+                setStoreView('store');
+                if (currentPage !== 'home') onNavigate('home');
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Skill Tags Section - Mirrors prompt tags behavior (resize, collapse, popover) */}
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          {/* Spacer to push tags to bottom */}
+          <div className="flex-1" />
+
+          {/* Resize Handle */}
+          {uniqueSkillTags.length > 0 && !isCollapsed && !isSkillTagsCollapsed && (
+            <div 
+              className={`h-1 cursor-ns-resize hover:bg-primary/40 transition-colors z-30 shrink-0 mx-2 rounded-full ${isResizing ? 'bg-primary/60' : 'bg-transparent'}`}
+              onMouseDown={(e) => handleResizeStart(e, 'skill')}
+            />
+          )}
+
+          {/* Tags Content */}
+          {uniqueSkillTags.length > 0 && (
+            <div 
+              className={`shrink-0 flex flex-col overflow-hidden bg-sidebar ${isCollapsed ? 'items-center' : ''}`}
+              style={{ height: isCollapsed || isSkillTagsCollapsed ? 'auto' : `${skillTagsSectionHeight}px` }}
+            >
+              {!isCollapsed && (
+                <div className="flex items-center justify-between px-6 py-2 border-t border-sidebar-border/50 shrink-0">
+                  <button 
+                    onClick={() => setIsSkillTagsCollapsed(!isSkillTagsCollapsed)}
+                    className="flex items-center gap-1 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider hover:text-sidebar-foreground/80 transition-colors"
+                  >
+                    {isSkillTagsCollapsed ? <ChevronUpIcon className="w-3 h-3" /> : <ChevronDownIcon className="w-3 h-3" />}
+                    {t('nav.tags')}
+                  </button>
+                  {!isSkillTagsCollapsed && (
+                    <div className="flex items-center gap-2">
+                      {skillFilterTags.length > 0 && (
+                        <button
+                          onClick={() => clearSkillFilterTags()}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          {t('common.clear', '清空')}
+                        </button>
+                      )}
+                      {uniqueSkillTags.length > 8 && (
+                        <button
+                          onClick={() => setShowAllSkillTags(!showAllSkillTags)}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          {showAllSkillTags ? t('common.collapse') : `${t('common.showAll')} ${uniqueSkillTags.length}`}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!isCollapsed ? (
+                !isSkillTagsCollapsed && (
+                  <div className="flex-1 overflow-y-auto px-6 pb-4 scrollbar-hide animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {(showAllSkillTags ? uniqueSkillTags : uniqueSkillTags.slice(0, 8)).map((tag, index) => (
+                        <button
+                          key={tag}
+                          onClick={() => {
+                            toggleSkillFilterTag(tag);
+                            setStoreView('my-skills');
+                            if (currentPage !== 'home') onNavigate('home');
+                          }}
+                          style={{ animationDelay: `${index * 30}ms`, animationFillMode: 'both' }}
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors duration-200 animate-in fade-in slide-in-from-left-1 ${
+                            skillFilterTags.includes(tag) && currentPage === 'home'
+                              ? 'bg-primary text-white'
+                              : 'bg-sidebar-accent text-sidebar-foreground/70 hover:bg-primary hover:text-white'
+                          }`}
+                        >
+                          <HashIcon className="w-3 h-3" />
+                          {tag}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )
+              ) : (
+                <div className="pt-2 border-t border-sidebar-border/50 flex flex-col items-center gap-2 pb-2">
+                  <button
+                    ref={tagButtonRef}
+                    onClick={() => {
+                      if (isTagPopoverOpen) {
+                        closeTagPopover();
+                      } else {
+                        openTagPopover();
+                        if (currentPage !== 'home') onNavigate('home');
+                      }
+                    }}
+                    title={t('nav.tags')}
+                    className={`w-10 h-10 flex flex-col items-center justify-center rounded-lg transition-colors duration-200 ${
+                      skillFilterTags.length > 0 && currentPage === 'home'
+                        ? 'bg-primary text-white'
+                        : 'bg-sidebar-accent text-sidebar-foreground/70 hover:bg-primary hover:text-white'
+                    }`}
+                  >
+                    <HashIcon className="w-4 h-4" />
+                    <span className="text-[10px] leading-none mt-0.5">
+                      {skillFilterTags.length > 0 ? skillFilterTags.length : t('nav.tags').slice(0, 2)}
+                    </span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Skill Tags Popover (collapsed sidebar) */}
+        {isTagPopoverOpen && (
+          <div
+            ref={tagPopoverRef}
+            className={`fixed z-[9999] transition-all duration-150 ${
+              tagPopoverPos.bottom !== undefined ? 'origin-bottom-left' : 'origin-top-left'
+            } ${isTagPopoverVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-1'}`}
+            style={{ 
+              top: tagPopoverPos.top,
+              bottom: tagPopoverPos.bottom,
+              left: tagPopoverPos.left, 
+              width: 320, 
+              maxHeight: 'min(420px, calc(100vh - 24px))' 
+            }}
+          >
+            <div className="bg-card border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                <div className="text-sm font-medium text-foreground">
+                  {t('nav.tags')}
+                </div>
+                <div className="flex items-center gap-2">
+                  {skillFilterTags.length > 0 && (
+                    <button
+                      onClick={() => {
+                        clearSkillFilterTags();
+                        if (currentPage !== 'home') onNavigate('home');
+                      }}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      {t('common.clear', '清空')}
+                    </button>
+                  )}
+                  <button
+                    onClick={closeTagPopover}
+                    className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  >
+                    <XIcon className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+              <div className="p-4 overflow-y-auto">
+                <div className="flex flex-wrap gap-2">
+                  {uniqueSkillTags.map((tag) => {
+                    const active = skillFilterTags.includes(tag) && currentPage === 'home';
+                    return (
+                      <button
+                        key={tag}
+                        onClick={() => {
+                          toggleSkillFilterTag(tag);
+                          setStoreView('my-skills');
+                          if (currentPage !== 'home') onNavigate('home');
+                        }}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${active
+                          ? 'bg-primary text-white'
+                          : 'bg-muted text-foreground/80 hover:bg-primary hover:text-white'
+                        }`}
+                      >
+                        <HashIcon className="w-4 h-4" />
+                        <span className="truncate max-w-[14rem]">{tag}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        </>
       )}
 
       {/* Bottom actions */}

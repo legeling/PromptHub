@@ -3,9 +3,9 @@
   
   # PromptHub
   
-  **🚀 开源免费的 AI Prompt 管理工具 | 数据本地存储 | 隐私优先**
+  **🚀 开源免费的 AI Prompt 与 Skill 管理工具 | 数据本地存储 | 隐私优先**
   
-  *高效管理 · 版本控制 · 变量模板 · 多模型测试 — 一站式 Prompt 工作台*
+  *Prompt 管理 · 技能商店 · 多平台分发 · 版本控制 · 变量模板 · 多模型测试 — 一站式 AI 工作台*
 
   <br/>
   
@@ -14,7 +14,7 @@
   [![GitHub Forks](https://img.shields.io/github/forks/legeling/PromptHub?style=for-the-badge&logo=github)](https://github.com/legeling/PromptHub/network/members)
   [![Downloads](https://img.shields.io/github/downloads/legeling/PromptHub/total?style=for-the-badge&logo=github&color=blue)](https://github.com/legeling/PromptHub/releases)
   
-  [![Version](https://img.shields.io/badge/version-v0.3.9-success?style=for-the-badge)](https://github.com/legeling/PromptHub/releases)
+  [![Version](https://img.shields.io/badge/version-v0.4.0-success?style=for-the-badge)](https://github.com/legeling/PromptHub/releases)
   [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](./LICENSE)
   [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=for-the-badge)](https://github.com/legeling/PromptHub/pulls)
   
@@ -52,7 +52,7 @@
 
 > 💡 **为什么选择 PromptHub？**
 >
-> 还在笔记本、文档和聊天记录里到处翻找 Prompt？PromptHub 让你像管理代码一样管理 Prompt — 支持版本控制、变量模板、多模型测试，所有数据都存在本地，隐私安全有保障。
+> PromptHub 不仅是 Prompt 管理工具，更是 **AI 技能分发中心**。管理你的 Prompt 和 SKILL.md 技能，一键安装到 Claude Code、Cursor、Windsurf、Codex 等 12+ 主流 AI 编程工具。支持版本控制、变量模板、多模型测试，所有数据都存在本地，隐私安全有保障。
 
 ---
 
@@ -68,23 +68,35 @@
 - 自动保存历史版本，支持查看、对比和回滚
 - 模板变量 `{{variable}}`，复制时动态替换
 - 快速收藏常用 Prompt，一键访问
-- 快速收藏常用 Prompt，一键访问
 - 全文搜索标题、描述和内容
 - 支持多媒体参考（图片/视频）预览与附件管理
 
 </td>
 <td width="50%">
 
-### 🤖 AI 能力
+### � Skill 技能管理 🆕
+
+- **技能商店**：内置 20+ 精选技能（来自 Anthropic、OpenAI 等）
+- **多平台安装**：一键安装到 Claude Code、Cursor、Windsurf、Codex、Kiro、Gemini CLI 等 12+ 平台
+- **本地扫描**：自动发现本地已有 SKILL.md，预览选择后导入
+- **软链接/复制模式**：支持 Symlink 同步编辑或独立复制
+- **AI 翻译**：沉浸式/全文翻译技能内容，方便阅读
+- **标签筛选**：按标签快速过滤技能
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### � AI 能力
 
 - 内置 AI 测试，支持 **国内外主流服务商**
 - 覆盖各类主流大语言模型、各类开源及闭源模型
 - 同一 Prompt 多模型并行测试对比
 - 支持各类图像生成模型性能测评
+- AI 生成技能内容、智能润色
 
 </td>
-</tr>
-<tr>
 <td width="50%">
 
 ### 💾 数据与同步
@@ -95,6 +107,8 @@
 - 支持启动同步 + 定时同步
 
 </td>
+</tr>
+<tr>
 <td width="50%">
 
 ### 🎨 界面与体验
@@ -106,13 +120,16 @@
 - 跨平台：macOS / Windows / Linux
 
 </td>
-</tr>
-</table>
+<td width="50%">
 
 ### 🔐 安全功能
 
 - **主密码保护** - 支持设置应用级主密码
 - **私密文件夹** - 私密文件夹内容加密存储（Beta）
+
+</td>
+</tr>
+</table>
 
 ## 📸 截图
 
@@ -149,13 +166,13 @@
 
 ### 下载
 
-从 [Releases](https://github.com/legeling/PromptHub/releases) 下载最新版本 v0.3.7：
+从 [Releases](https://github.com/legeling/PromptHub/releases) 下载最新版本 v0.4.0：
 
 | 平台    | 下载                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Windows | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.8-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.8-arm64.exe) |
-| macOS   | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.8-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.8-x64.dmg)     |
-| Linux   | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.8-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.3.8_amd64.deb)              |
+| Windows | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.4.0-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.4.0-arm64.exe) |
+| macOS   | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.0-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.0-x64.dmg)     |
+| Linux   | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.0-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.4.0_amd64.deb)              |
 
 ### macOS 首次启动
 
@@ -222,6 +239,15 @@ pnpm build
 
 编辑 Prompt 时会自动保存历史版本，点击「历史版本」可以查看和恢复。
 
+### 5. Skill 技能管理
+
+1. **从商店添加**：进入「技能商店」浏览精选技能，点击「添加到库」
+2. **安装到平台**：添加后自动弹出平台选择弹窗，勾选目标 IDE 一键安装
+3. **扫描本地**：自动发现本地已有的 SKILL.md，预览后选择性导入
+4. **管理与编辑**：在库中编辑技能内容，支持 AI 生成和润色
+
+> 💡 **支持的平台**：Claude Code、GitHub Copilot、Cursor、Windsurf、Kiro、Gemini CLI、Trae、OpenCode、Codex CLI、Roo Code、Amp、OpenClaw
+
 ## 技术栈
 
 | 类别     | 技术                    |
@@ -230,7 +256,7 @@ pnpm build
 | 前端     | React 18 + TypeScript 5 |
 | 样式     | TailwindCSS             |
 | 状态管理 | Zustand                 |
-| 本地存储 | IndexedDB + SQLite      |
+| 本地存储 | SQLite                  |
 | 构建工具 | Vite + electron-builder |
 
 ## 项目结构
@@ -241,6 +267,7 @@ PromptHub/
 │   ├── main/                # Electron 主进程
 │   │   ├── database/        # SQLite 数据库操作
 │   │   ├── ipc/             # IPC 通信处理
+│   │   ├── services/        # 核心服务 (Skill 安装器等)
 │   │   ├── index.ts         # 主进程入口
 │   │   ├── menu.ts          # 应用菜单
 │   │   ├── shortcuts.ts     # 快捷键
@@ -251,14 +278,15 @@ PromptHub/
 │   │   │   ├── folder/      # 文件夹组件
 │   │   │   ├── layout/      # 布局组件
 │   │   │   ├── prompt/      # Prompt 组件
+│   │   │   ├── skill/       # Skill 组件
 │   │   │   ├── settings/    # 设置页面
 │   │   │   └── ui/          # 通用 UI 组件
-│   │   ├── i18n/            # 国际化
-│   │   ├── services/        # 服务层 (IndexedDB, AI, WebDAV)
+│   │   ├── i18n/            # 国际化 (7 种语言)
+│   │   ├── services/        # 服务层 (AI, WebDAV)
 │   │   ├── stores/          # Zustand 状态管理
 │   │   └── styles/          # 全局样式
 │   └── shared/              # 共享类型和常量
-│       ├── constants/       # 常量定义
+│       ├── constants/       # 常量定义 (平台配置、技能注册表)
 │       └── types/           # TypeScript 类型
 ├── resources/               # 应用图标等静态资源
 ├── .github/workflows/       # CI/CD 配置
@@ -277,7 +305,18 @@ PromptHub/
 
 ## 路线图
 
-### v0.3.8 (当前)
+### v0.4.0 (当前) 🎉
+
+- [x] **Skill 技能商店**：内置 20+ 精选 AI 代理技能，来自 Anthropic、OpenAI 等官方源
+- [x] **多平台安装**：支持一键安装 SKILL.md 到 Claude Code、Cursor、Windsurf、Codex 等 12+ 平台
+- [x] **本地扫描预览**：自动发现本地已有 SKILL.md，支持预览选择后批量导入
+- [x] **软链接/复制模式**：支持 Symlink 同步编辑或独立复制到各平台
+- [x] **AI 技能翻译**：支持沉浸式翻译和全文翻译，方便阅读英文技能
+- [x] **AI 技能生成**：支持 AI 生成技能内容和智能润色
+- [x] **技能标签筛选**：侧边栏标签快速过滤技能
+- [x] **清晰的工作流**：「添加到库」→「安装到平台」，添加后自动弹出平台选择
+
+### v0.3.x
 
 - [x] **多层级文件夹**：支持无限层级文件夹嵌套与拖拽管理
 - [x] **版本控制系统**：像管理代码一样管理 Prompt，支持历史对比与一键回滚
@@ -295,35 +334,27 @@ PromptHub/
 
 - [ ] **浏览器扩展**：在网页端（如 ChatGPT/Claude）直接调取 PromptHub 库，实现无缝工作
 - [ ] **移动端应用**：支持手机端查看、搜索与简单的编辑同步
-- [ ] **提示词广场**：内置高质量提示词模板库，支持一键导入与分享
 - [ ] **插件系统**：支持用户自定义扩展 AI 供应商或本地模型（如 Ollama）集成
 - [ ] **批量导出与转换**：支持将提示词导出为常用 AI 工具支持的特定格式
 - [ ] **增强型变量**：支持选择框、动态日期等更复杂的变量类型
+- [ ] **技能市场**：支持用户上传和分享自己创建的技能
 
 ## 更新日志
 
 查看完整的更新日志：**[CHANGELOG.md](./CHANGELOG.md)**
 
-### 最新版本 v0.3.8 (2026-01-16)
+### 最新版本 v0.4.0 (2026-02-12) 🎉
 
-**新增**
+**重大新功能**
 
-- ✨ **JSON 输出支持**：AI 测试新增 JSON Mode 和 JSON Schema 输出格式支持，满足结构化数据生成需求
-- ⚡️ **英文模式优化**：在英文界面下自动精简 UI，隐藏不必要的"英文版"切换按钮
-- 🎥 **Prompt 视频预览**：支持为 Prompt 添加视频预览，适用于视频生成类 Prompt
-- ⚡️ **Modal 动画加速**：大幅提升所有弹窗的打开/关闭速度，优化过渡体验
-- 🎨 **UI 一致性**：统一创建与编辑界面的按钮样式，添加保存图标
-- 🌍 **国际化完善**：补全法语、德语、西班牙语、日语、繁体中文的缺失翻译
-
-**修复**
-
-- 🎥 **编辑器滚动修复**：修复了行号无法随内容同步滚动的问题
-- 🐛 **WebDAV 修复**：修复同步过程中可能导致 WebDAV 用户名和密码丢失的问题
-- 🐛 **设置记忆修复**：修复窗口关闭行为设置（最小化/退出）无法持久化保存的问题
-- 🐛 **API 路径修复**：修复部分非标准 API 路径在获取模型列表时报 404 的问题
-- 🐛 **更新检测修复**：修复 macOS 和 Windows ARM64 平台的更新检测逻辑
-- 🐛 **WebDAV 解析修复**：增强跨平台兼容性
-- 🔄 **过渡动画优化**：优化从详情页到编辑页的切换动画，消除视觉跳动
+- 🧩 **Skill 技能商店**：内置 20+ 精选 AI 代理技能（PDF、Excel、Playwright、Figma、部署等），来自 Anthropic 和 OpenAI 官方源
+- 🚀 **多平台一键安装**：支持将 SKILL.md 安装到 Claude Code、GitHub Copilot、Cursor、Windsurf、Kiro、Gemini CLI、Trae、OpenCode、Codex CLI、Roo Code、Amp、OpenClaw 等 12 个平台
+- 🔍 **本地扫描预览**：自动发现本地已有的 SKILL.md 文件，支持预览选择后批量导入
+- 🔗 **Symlink/复制模式**：支持软链接（编辑自动同步）或独立复制到各平台
+- 🌐 **AI 技能翻译**：支持沉浸式翻译（原文/译文交替）和全文翻译，可在设置中切换
+- ✨ **AI 技能生成**：输入描述即可 AI 生成完整技能内容，支持智能润色
+- 🏷️ **技能标签筛选**：侧边栏显示技能标签，点击快速过滤
+- � **清晰工作流**：「添加到库」→ 自动弹出「安装到平台」选择弹窗，流程直觉清晰
 
 > [查看完整更新日志](./CHANGELOG.md)
 

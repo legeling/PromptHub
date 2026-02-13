@@ -4,9 +4,13 @@ title: Overview
 
 # PromptHub
 
-An open-source AI Prompt management tool designed for developers and creators who need efficient prompt organization, version control, and testing.
+An open-source AI Prompt & Skill management tool. Manage your prompts and SKILL.md skills, one-click install to Claude Code, Cursor, Windsurf, Codex and 12+ mainstream AI coding tools.
 
 ## Key Features
+
+### 🧩 Skill Management (New in v0.4.0)
+
+Built-in store with 20+ curated AI agent skills. One-click install to 12+ platforms. Local scan to discover existing SKILL.md files. Supports Symlink/copy modes, AI translation, and tag filtering.
 
 ### Local-First
 

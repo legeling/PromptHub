@@ -3,6 +3,82 @@ import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 
+/**
+ * Validate external URL to prevent SSRF attacks
+ * 验证外部 URL 以防止 SSRF 攻击
+ */
+function isValidExternalUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    
+    // Only allow http/https protocols
+    // 只允许 http/https 协议
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      return false;
+    }
+    
+    const host = parsed.hostname.toLowerCase();
+    
+    // Block localhost
+    // 禁止 localhost
+    if (host === 'localhost' || host === '127.0.0.1' || host === '::1') {
+      return false;
+    }
+    
+    // Block private IP ranges (RFC 1918)
+    // 禁止内网 IP 范围
+    if (host.startsWith('10.') || 
+        host.startsWith('192.168.') ||
+        host.match(/^172\.(1[6-9]|2[0-9]|3[01])\./) ||
+        host.startsWith('0.') ||
+        host === '0.0.0.0') {
+      return false;
+    }
+    
+    // Block link-local and cloud metadata endpoints
+    // 禁止链路本地和云元数据端点
+    if (host.startsWith('169.254.') || host === '169.254.169.254') {
+      return false;
+    }
+    
+    // Block IPv6 localhost and link-local
+    // 禁止 IPv6 本地地址
+    if (host.startsWith('fe80:') || host.startsWith('fc') || host.startsWith('fd')) {
+      return false;
+    }
+    
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Validate filename to prevent path traversal
+ * 验证文件名以防止路径遍历
+ */
+function validateFileName(fileName: string, baseDir: string): string {
+  // Only take the basename, removing any path components
+  // 只取文件名部分，移除所有路径组件
+  const safeName = path.basename(fileName);
+  
+  // Reject if filename differs from input or contains path traversal
+  // 如果文件名与输入不同或包含路径遍历则拒绝
+  if (safeName !== fileName || fileName.includes('..')) {
+    throw new Error('Invalid filename: path traversal detected');
+  }
+  
+  const fullPath = path.join(baseDir, safeName);
+  
+  // Double-check the resolved path is within the base directory
+  // 二次验证解析后的路径在基础目录内
+  if (!fullPath.startsWith(baseDir + path.sep) && fullPath !== baseDir) {
+    throw new Error('Invalid filename: path traversal detected');
+  }
+  
+  return fullPath;
+}
+
 export function registerImageIPC() {
     // Select images
     // 选择图片
@@ -51,13 +127,16 @@ export function registerImageIPC() {
     // 使用默认应用打开图片
     ipcMain.handle('image:open', async (_event, fileName: string) => {
         const userDataPath = app.getPath('userData');
-        const imagePath = path.join(userDataPath, 'images', fileName);
+        const imagesDir = path.join(userDataPath, 'images');
 
         try {
+            // Validate filename to prevent path traversal
+            // 验证文件名以防止路径遍历
+            const imagePath = validateFileName(fileName, imagesDir);
             await shell.openPath(imagePath);
             return true;
         } catch (error) {
-            console.error(`Failed to open image ${imagePath}:`, error);
+            console.error(`Failed to open image ${fileName}:`, error);
             return false;
         }
     });
@@ -85,6 +164,13 @@ export function registerImageIPC() {
     // Download image
     // 下载图片
     ipcMain.handle('image:download', async (_event, url: string) => {
+        // Validate URL to prevent SSRF
+        // 验证 URL 以防止 SSRF
+        if (!isValidExternalUrl(url)) {
+            console.error(`Blocked SSRF attempt: ${url}`);
+            throw new Error('Invalid or blocked URL');
+        }
+
         const userDataPath = app.getPath('userData');
         const imagesDir = path.join(userDataPath, 'images');
 
@@ -138,9 +224,12 @@ export function registerImageIPC() {
     // 读取图片为 Base64
     ipcMain.handle('image:readBase64', async (_event, fileName: string) => {
         const userDataPath = app.getPath('userData');
-        const imagePath = path.join(userDataPath, 'images', fileName);
+        const imagesDir = path.join(userDataPath, 'images');
 
         try {
+            // Validate filename to prevent path traversal
+            // 验证文件名以防止路径遍历
+            const imagePath = validateFileName(fileName, imagesDir);
             if (!fs.existsSync(imagePath)) {
                 return null;
             }
@@ -163,7 +252,9 @@ export function registerImageIPC() {
         }
 
         try {
-            const destPath = path.join(imagesDir, fileName);
+            // Validate filename to prevent path traversal
+            // 验证文件名以防止路径遍历
+            const destPath = validateFileName(fileName, imagesDir);
             // Skip if file already exists
             // 如果文件已存在，跳过
             if (fs.existsSync(destPath)) {
@@ -182,8 +273,15 @@ export function registerImageIPC() {
     // 检查图片是否存在
     ipcMain.handle('image:exists', async (_event, fileName: string) => {
         const userDataPath = app.getPath('userData');
-        const imagePath = path.join(userDataPath, 'images', fileName);
-        return fs.existsSync(imagePath);
+        const imagesDir = path.join(userDataPath, 'images');
+        try {
+            // Validate filename to prevent path traversal
+            // 验证文件名以防止路径遍历
+            const imagePath = validateFileName(fileName, imagesDir);
+            return fs.existsSync(imagePath);
+        } catch {
+            return false;
+        }
     });
     
     // Clear all images
@@ -257,13 +355,16 @@ export function registerImageIPC() {
     // 使用默认应用打开视频
     ipcMain.handle('video:open', async (_event, fileName: string) => {
         const userDataPath = app.getPath('userData');
-        const videoPath = path.join(userDataPath, 'videos', fileName);
+        const videosDir = path.join(userDataPath, 'videos');
 
         try {
+            // Validate filename to prevent path traversal
+            // 验证文件名以防止路径遍历
+            const videoPath = validateFileName(fileName, videosDir);
             await shell.openPath(videoPath);
             return true;
         } catch (error) {
-            console.error(`Failed to open video ${videoPath}:`, error);
+            console.error(`Failed to open video ${fileName}:`, error);
             return false;
         }
     });
@@ -291,9 +392,12 @@ export function registerImageIPC() {
     // 读取视频为 Base64
     ipcMain.handle('video:readBase64', async (_event, fileName: string) => {
         const userDataPath = app.getPath('userData');
-        const videoPath = path.join(userDataPath, 'videos', fileName);
+        const videosDir = path.join(userDataPath, 'videos');
 
         try {
+            // Validate filename to prevent path traversal
+            // 验证文件名以防止路径遍历
+            const videoPath = validateFileName(fileName, videosDir);
             if (!fs.existsSync(videoPath)) {
                 return null;
             }
@@ -316,7 +420,9 @@ export function registerImageIPC() {
         }
 
         try {
-            const destPath = path.join(videosDir, fileName);
+            // Validate filename to prevent path traversal
+            // 验证文件名以防止路径遍历
+            const destPath = validateFileName(fileName, videosDir);
             // Skip if file already exists
             // 如果文件已存在，跳过
             if (fs.existsSync(destPath)) {
@@ -335,15 +441,25 @@ export function registerImageIPC() {
     // 检查视频是否存在
     ipcMain.handle('video:exists', async (_event, fileName: string) => {
         const userDataPath = app.getPath('userData');
-        const videoPath = path.join(userDataPath, 'videos', fileName);
-        return fs.existsSync(videoPath);
+        const videosDir = path.join(userDataPath, 'videos');
+        try {
+            // Validate filename to prevent path traversal
+            // 验证文件名以防止路径遍历
+            const videoPath = validateFileName(fileName, videosDir);
+            return fs.existsSync(videoPath);
+        } catch {
+            return false;
+        }
     });
 
     // Get video file path (for local protocol)
     // 获取视频文件路径（用于本地协议）
     ipcMain.handle('video:getPath', async (_event, fileName: string) => {
         const userDataPath = app.getPath('userData');
-        return path.join(userDataPath, 'videos', fileName);
+        const videosDir = path.join(userDataPath, 'videos');
+        // Validate filename to prevent path traversal
+        // 验证文件名以防止路径遍历
+        return validateFileName(fileName, videosDir);
     });
 
     // Clear all videos

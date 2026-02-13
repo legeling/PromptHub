@@ -182,9 +182,14 @@ export function VariableInputModal({
     // 保存变量历史
     saveVariableHistory(promptId, variables);
 
-    // Replace variables
-    // 替换变量
-    const result = replaceVariables(userPrompt);
+    // Replace variables (include both systemPrompt and userPrompt)
+    // 替换变量（包含 systemPrompt 和 userPrompt）
+    const filledUserPrompt = replaceVariables(userPrompt);
+    let result = filledUserPrompt;
+    if (systemPrompt) {
+      const filledSystemPrompt = replaceVariables(systemPrompt);
+      result = `[System]\n${filledSystemPrompt}\n\n[User]\n${filledUserPrompt}`;
+    }
 
     navigator.clipboard.writeText(result);
     onCopy?.(result);

@@ -1,13 +1,13 @@
 <div align="center">
   <img src="./imgs/icon.png" alt="PromptHub Logo" width="120" height="120" />
   <h1>PromptHub</h1>
-  <p><strong>🚀 開源免費的 AI Prompt 管理工具 | 數據本地存儲 | 隱私優先</strong></p>
-  <p>高效管理 · 版本控制 · 變量模板 · 多模型測試 — 一站式 Prompt 工作台</p>
+  <p><strong>🚀 開源免費的 AI Prompt 與 Skill 管理工具 | 數據本地存儲 | 隱私優先</strong></p>
+  <p>Prompt 管理 · 技能商店 · 多平台安裝 · 版本控制 · 變量模板 · 多模型測試 — 一站式 AI 工作台</p>
   
   <p>
     <a href="https://github.com/legeling/PromptHub/stargazers"><img src="https://img.shields.io/github/stars/legeling/PromptHub?style=flat-square&color=yellow" alt="GitHub Stars"/></a>
     <a href="https://github.com/legeling/PromptHub/network/members"><img src="https://img.shields.io/github/forks/legeling/PromptHub?style=flat-square" alt="GitHub Forks"/></a>
-    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.3.9-green?style=flat-square" alt="Version"/></a>
+    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.4.0-green?style=flat-square" alt="Version"/></a>
     <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/github/downloads/legeling/PromptHub/total?style=flat-square&color=blue" alt="Downloads"/></a>
     <img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="License: AGPL-3.0"/>
   </p>
@@ -34,7 +34,7 @@
 
 > 💡 **為什麼選擇 PromptHub？**
 >
-> 還在筆記本、文檔和聊天記錄裡到處翻找 Prompt？PromptHub 讓你像管理代碼一樣管理 Prompt — 支援版本控制、變量模板、多模型測試，所有數據都存在本地，隱私安全有保障。
+> PromptHub 不僅是 Prompt 管理工具，更是 **AI 技能分發中心**。管理你的 Prompt 和 SKILL.md 技能，一鍵安裝到 Claude Code、Cursor、Windsurf、Codex 等 12+ 主流 AI 編程工具。支援版本控制、變量模板、多模型測試，所有數據都存在本地，隱私安全有保障。
 
 ---
 
@@ -48,33 +48,38 @@
 
 |  平台   |                                                                                                                                                                                                                  下載                                                                                                                                                                                                                   |
 | :-----: | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
-| Windows | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.8-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.8-arm64.exe) |
-|  macOS  |   [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.8-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.8-x64.dmg)   |
-|  Linux  |       [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.8-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.3.8_amd64.deb)        |
+| Windows | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.4.0-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.4.0-arm64.exe) |
+|  macOS  |   [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.0-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.0-x64.dmg)   |
+|  Linux  |       [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.0-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.4.0_amd64.deb)        |
 
 ---
 
 ## ✨ 功能特性
 
-- **📝 Prompt 管理** - 創建、編輯、刪除，支持資料夾和標籤分類
-- **⭐ 收藏功能** - 快速訪問常用 Prompt
-- **🔄 版本控制** - 自動保存歷史版本，支持查看、對比和回退
-- **🔧 變量系統** - 模板變量 `{{variable}}`，複製時動態替換
-- **📋 一鍵複製** - 快速將 Prompt 內容複製到剪貼板
-- **🔍 全文搜索** - 快速搜索標題、描述和內容
-- **📤 導出與備份** - 選擇性導出 + 全量備份/恢復（`.phub.gz` 壓縮格式，含圖片、AI 配置、系統設置）
-- **🎨 主題定制** - 深色/淺色/跟隨系統，多種主題色可選
-- **🌐 多語言支持** - 簡體中文、繁體中文、英文、日語、西班牙語、德語、法語界面
-- **💾 本地存儲** - 所有數據存儲在本地，隱私安全有保障
-- **🖥️ 跨平台支持** - 支持 macOS, Windows, Linux
-- **📊 列表視圖** - 表格式展示，支持排序與批量操作
-- **🤖 AI 測試** - 內置多模型測試，支持各類內外主流服務商
-- **🎨 生圖模型** - 支持配置與測試各類主流生圖模型
-- **🧭 Markdown 預覽** - 全場景 Markdown 渲染與代碼高亮（詳情、列表、編輯）
-- **🪟 寬屏與全屏模式** - 針對編輯體驗優化的寬屏與全屏模式
-- **🔐 主密碼與私密資料夾** - 通過主密碼保護私密內容
-- **🖼️ 圖片上傳與預覽** - 支持上傳/粘貼本地圖片並在彈窗預覽
-- **☁️ WebDAV 同步** - 支持 WebDAV 同步（含圖片、配置；支持啟動同步與定時同步）
+### 📝 Prompt 管理
+- 創建、編輯、刪除，支援資料夾和標籤分類
+- 自動保存歷史版本，支援查看、對比和回退
+- 模板變量 `{{variable}}`，複製時動態替換
+- 全文搜索、收藏、多媒體附件
+
+### 🧩 Skill 技能管理 🆕
+- **技能商店**：內建 20+ 精選技能（來自 Anthropic、OpenAI 等）
+- **多平台安裝**：一鍵安裝到 Claude Code、Cursor、Windsurf、Codex、Kiro、Gemini CLI 等 12+ 平台
+- **本地掃描**：自動發現本地已有 SKILL.md，預覽選擇後導入
+- **軟鏈接/複製模式**：支援 Symlink 同步編輯或獨立複製
+- **AI 翻譯**：沉浸式/全文翻譯技能內容
+- **標籤篩選**：按標籤快速過濾技能
+
+### 🤖 AI 能力
+- 內建多模型測試，支援各類主流服務商
+- 同一 Prompt 多模型並行測試對比
+- AI 技能內容生成與涡色
+
+### � 數據與同步
+- 所有數據存儲在本地，隱私安全有保障
+- 全量備份與恢復（`.phub.gz`）
+- WebDAV 雲同步
+- 深色/淺色/跟隨系統，7 種語言，跨平台
 
 ## 📸 截圖展示
 
@@ -111,13 +116,13 @@
 
 ### 下載
 
-從 [Releases](https://github.com/legeling/PromptHub/releases) 下載最新版本 v0.3.7：
+從 [Releases](https://github.com/legeling/PromptHub/releases) 下載最新版本 v0.4.0：
 
 |  平台   |                                                                                                                                                                                                                  下載                                                                                                                                                                                                                   |
 | :-----: | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
-| Windows | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.8-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.3.8-arm64.exe) |
-|  macOS  |   [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.8-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.8-x64.dmg)   |
-|  Linux  |       [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.3.8-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.3.8_amd64.deb)        |
+| Windows | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.4.0-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.4.0-arm64.exe) |
+|  macOS  |   [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.0-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.0-x64.dmg)   |
+|  Linux  |       [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.0-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.4.0_amd64.deb)        |
 
 ### macOS 首次啟動
 
@@ -192,7 +197,7 @@ pnpm build
 | 前端     | React 18 + TypeScript 5 |
 | 樣式     | TailwindCSS             |
 | 狀態管理 | Zustand                 |
-| 本地存儲 | IndexedDB + SQLite      |
+| 本地存儲 | SQLite                  |
 | 構建工具 | Vite + electron-builder |
 
 ## 📁 項目結構
@@ -224,47 +229,45 @@ PromptHub/
 
 ## 🗺️ 路線圖
 
-### v0.3.7 (當前)
+### v0.4.0（當前）🎉
 
-- [x] **多層級資料夾**：支援無限層級資料夾巢狀與拖拽管理
-- [x] **版本控制系統**：像管理代碼一樣管理 Prompt，支援歷史對比與一鍵回滾
-- [x] **變數範本系統**：支援 `{{variable}}` 語法，自動生成填充表單，支援複製前預覽
-- [x] **多模型實驗室**：內置各類主流服務商，支援多模型並行對比測試與回應時間分析
-- [x] **跨設備同步**：支援 WebDAV 增量同步與全量備份，數據高度可控
-- [x] **極致閱讀體驗**：支援 Markdown 全場景渲染、代碼高亮、雙語對照模式
-- [x] **多維高效管理**：資料夾、標籤、收藏、使用次數統計、全文評分搜尋
-- [x] **多視圖模式**：提供卡片、精簡列表、畫廊三種視圖，適配不同使用場景
-- [x] **系統深度整合**：全域快捷鍵喚起、最小化到系統匣、暗黑模式支援
-- [x] **更新鏡像加速**：內置多個 GitHub 加速鏡像，解決國內用戶下載更新緩慢的問題
-- [x] **安全與隱私**：主密碼保護、私密資料夾加密存儲，所有數據堅持本地優先
+- [x] **Skill 技能商店**：內建 20+ 精選 AI 代理技能，來自 Anthropic、OpenAI 等官方源
+- [x] **多平台安裝**：支援一鍵安裝 SKILL.md 到 Claude Code、Cursor、Windsurf、Codex 等 12+ 平台
+- [x] **本地掃描預覽**：自動發現本地已有 SKILL.md，支援預覽選擇後批量導入
+- [x] **軟鏈接/複製模式**：支援 Symlink 同步編輯或獨立複製到各平台
+- [x] **AI 技能翻譯**：支援沉浸式翻譯和全文翻譯
+- [x] **AI 技能生成**：支援 AI 生成技能內容和智能涡色
+- [x] **技能標籤篩選**：側邊欄標籤快速過濾技能
+- [x] **清晰的工作流**：「添加到庫」→ 自動彈出「安裝到平台」選擇彈窗
+
+### v0.3.x
+
+- [x] 多層級資料夾、版本控制、變數範本
+- [x] 多模型實驗室、WebDAV 同步、Markdown 渲染
+- [x] 多視圖模式、系統整合、安全與隱私
 
 ### 未來規劃
 
-- [ ] **瀏覽器擴充功能**：在網頁端（如 ChatGPT/Claude）直接調取 PromptHub 庫，實現無縫工作
-- [ ] **行動端應用**：支援手機端查看、搜尋與簡單的編輯同步
-- [ ] **提示詞廣場**：內置高品質提示詞範本庫，支援一鍵導入與分享
-- [ ] **外掛系統**：支援用戶自定義擴充 AI 供應商或本地模型（如 Ollama）整合
-- [ ] **批次匯出與轉換**：支援將提示詞匯出為常用 AI 工具支援的特定格式
-- [ ] **增強型變數**：支援選擇框、動態日期等更複雜的變數類型
+- [ ] **瀏覽器擴充功能**：在網頁端（如 ChatGPT/Claude）直接調取 PromptHub 庫
+- [ ] **行動端應用**：支援手機端查看、搜尋與編輯
+- [ ] **外掛系統**：支援用戶自定義擴充 AI 供應商或本地模型
+- [ ] **技能市場**：支援用戶上傳和分享自己創建的技能
 
 ## 📝 更新日誌
 
 查看完整更新日誌：**[CHANGELOG.md](../CHANGELOG.md)**
 
-### 最新版本 v0.3.8 (2026-01-16)
+### 最新版本 v0.4.0 (2026-02-12) 🎉
 
-**新增**
+**重大新功能**
 
-- ✨ **JSON 輸出支持**：AI 測試新增 JSON Mode 與 JSON Schema 輸出格式支持
-- ⚡️ **英文模式優化**：在英文界面下自動精簡 UI，隱藏不必要的「英文版」切換按鈕
-- 🌍 **國際化完善**：補全法語、德語、西班牙語、日語、繁體中文的缺失翻譯
-
-**修復**
-
-- 🎥 **編輯器滾動修復**：修復了行號無法隨內容同步滾動的問題
-- 🐛 **WebDAV 修復**：修復同步過程中可能導致 WebDAV 用戶名和密碼丟失的問題
-- 🐛 **設定記憶修復**：修復窗口關閉行為設定（最小化/退出）無法持久化保存的問題
-- 🐛 **API 路徑修復**：修復部分非標準 API 路徑在獲取模型列表時報 404 的問題
+- 🧩 **Skill 技能商店**：內建 20+ 精選 AI 代理技能，來自 Anthropic 和 OpenAI
+- 🚀 **多平台一鍵安裝**：支援將 SKILL.md 安裝到 12 個平台
+- 🔍 **本地掃描預覽**：自動發現本地 SKILL.md，預覽後批量導入
+- 🔗 **Symlink/複製模式**：支援軟鏈接或獨立複製
+- 🌐 **AI 技能翻譯**：沉浸式和全文翻譯模式
+- 🏷️ **技能標籤篩選**：側邊欄標籤快速過濾
+- � **清晰工作流**：「添加到庫」→ 自動彈出「安裝到平台」
 
 > 📋 [更新日誌詳情](../CHANGELOG.md)
 

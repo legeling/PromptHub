@@ -1,8 +1,13 @@
-import { useState, useEffect, useMemo, useCallback, Children, isValidElement, cloneElement } from 'react';
+import { useState, useEffect, useMemo, useCallback, Children, isValidElement, cloneElement, memo, lazy, Suspense } from 'react';
 import { flushSync } from 'react-dom';
 import { usePromptStore, ViewMode } from '../../stores/prompt.store';
 import { useFolderStore } from '../../stores/folder.store';
 import { useSettingsStore } from '../../stores/settings.store';
+import { useUIStore } from '../../stores/ui.store';
+
+// Lazy load SkillManager for better initial load performance
+// 懒加载 SkillManager 以提升初始加载性能
+const SkillManager = lazy(() => import('../skill/SkillManager').then(m => ({ default: m.SkillManager })));
 import { StarIcon, CopyIcon, HistoryIcon, HashIcon, SparklesIcon, EditIcon, TrashIcon, CheckIcon, PlayIcon, LoaderIcon, XIcon, GitCompareIcon, ClockIcon, GlobeIcon, PinIcon, MessageSquareTextIcon, ImageIcon, DownloadIcon, SaveIcon, ZoomInIcon, Share2Icon } from 'lucide-react';
 import { EditPromptModal, VersionHistoryModal, VariableInputModal, PromptListHeader, PromptListView, PromptTableView, AiTestModal, PromptDetailModal, PromptGalleryView, PromptKanbanView } from '../prompt';
 import type { OutputFormatConfig } from '../prompt/VariableInputModal';
@@ -83,9 +88,9 @@ function renderHighlightedChildren(children: any, terms: string[], highlightClas
   });
 }
 
-// Prompt card component (compact version)
-// Prompt 卡片组件（紧凑版本）
-function PromptCard({
+// Prompt card component (compact version) - wrapped with React.memo for performance
+// Prompt 卡片组件（紧凑版本）- 使用 React.memo 包装以提升性能
+const PromptCard = memo(function PromptCard({
   prompt,
   isSelected,
   onSelect,
@@ -141,7 +146,7 @@ function PromptCard({
       )}
     </div>
   );
-}
+});
 
 export function MainContent() {
   const { t, i18n } = useTranslation();
@@ -183,6 +188,7 @@ export function MainContent() {
   const [showEnglish, setShowEnglish] = useState(false);
   const promptTypeFilter = usePromptStore((state) => state.promptTypeFilter);
   const setPromptTypeFilter = usePromptStore((state) => state.setPromptTypeFilter);
+  const uiViewMode = useUIStore((state) => state.viewMode);
   const { showToast } = useToast();
 
   const handleSelectPrompt = useCallback((prompt: Prompt, e: React.MouseEvent) => {
@@ -941,8 +947,12 @@ export function MainContent() {
       setCopyPrompt(prompt);
       setIsCopyVariableModalOpen(true);
     } else {
-      // 没有变量，直接复制
-      const text = prompt.userPrompt;
+      // 没有变量，直接复制（包含 systemPrompt 和 userPrompt）
+      // No variables, copy directly (include both systemPrompt and userPrompt)
+      let text = prompt.userPrompt;
+      if (prompt.systemPrompt) {
+        text = `[System]\n${prompt.systemPrompt}\n\n[User]\n${prompt.userPrompt}`;
+      }
       await navigator.clipboard.writeText(text);
       await incrementUsageCount(prompt.id);
       showToast(t('toast.copied'), 'success', showCopyNotification);
@@ -1064,54 +1074,59 @@ export function MainContent() {
     setContextMenu({ x: e.clientX, y: e.clientY, prompt });
   };
 
-  const menuItems: ContextMenuItem[] = contextMenu ? [
-    {
-      label: t('prompt.viewDetail'),
-      icon: <CheckIcon className="w-4 h-4" />, // CheckIcon placeholder, logic implies View Detail
-      onClick: () => handleViewDetail(contextMenu.prompt),
-    },
-    {
-      label: t('prompt.edit'),
-      icon: <EditIcon className="w-4 h-4" />,
-      onClick: () => setEditingPrompt(contextMenu.prompt),
-    },
-    {
-      label: t('prompt.copy'),
-      icon: <CopyIcon className="w-4 h-4" />,
-      onClick: () => handleCopyPrompt(contextMenu.prompt),
-    },
-    {
-      label: t('prompt.shareJSON', '分享为 JSON'),
-      icon: <Share2Icon className="w-4 h-4" />,
-      onClick: () => handleSharePrompt(contextMenu.prompt),
-    },
-    {
-      label: contextMenu.prompt.isFavorite ? (t('prompt.removeFromFavorites') || '取消收藏') : (t('prompt.addToFavorites') || '收藏'),
-      icon: <StarIcon className={`w-4 h-4 ${contextMenu.prompt.isFavorite ? 'fill-yellow-400 text-yellow-400' : ''}`} />,
-      onClick: () => toggleFavorite(contextMenu.prompt.id),
-    },
-    {
-      label: contextMenu.prompt.isPinned ? t('prompt.unpin') : t('prompt.pin'),
-      icon: <PinIcon className={`w-4 h-4 ${contextMenu.prompt.isPinned ? 'fill-primary text-primary' : ''}`} />,
-      onClick: () => togglePinned(contextMenu.prompt.id),
-    },
-    {
-      label: t('prompt.aiTest'),
-      icon: <PlayIcon className="w-4 h-4" />,
-      onClick: () => handleAiTestFromTable(contextMenu.prompt),
-    },
-    {
-      label: t('prompt.history'),
-      icon: <HistoryIcon className="w-4 h-4" />,
-      onClick: () => handleVersionHistory(contextMenu.prompt),
-    },
-    {
-      label: t('prompt.delete'),
-      icon: <TrashIcon className="w-4 h-4" />,
-      variant: 'destructive',
-      onClick: () => handleDeletePrompt(contextMenu.prompt),
-    },
-  ] : [];
+  // Memoize context menu items to avoid re-creating the array on every render
+  // 使用 useMemo 缓存右键菜单项，避免每次渲染都重新创建数组
+  const menuItems: ContextMenuItem[] = useMemo(() => {
+    if (!contextMenu) return [];
+    return [
+      {
+        label: t('prompt.viewDetail'),
+        icon: <CheckIcon className="w-4 h-4" />,
+        onClick: () => handleViewDetail(contextMenu.prompt),
+      },
+      {
+        label: t('prompt.edit'),
+        icon: <EditIcon className="w-4 h-4" />,
+        onClick: () => setEditingPrompt(contextMenu.prompt),
+      },
+      {
+        label: t('prompt.copy'),
+        icon: <CopyIcon className="w-4 h-4" />,
+        onClick: () => handleCopyPrompt(contextMenu.prompt),
+      },
+      {
+        label: t('prompt.shareJSON', '分享为 JSON'),
+        icon: <Share2Icon className="w-4 h-4" />,
+        onClick: () => handleSharePrompt(contextMenu.prompt),
+      },
+      {
+        label: contextMenu.prompt.isFavorite ? (t('prompt.removeFromFavorites') || '取消收藏') : (t('prompt.addToFavorites') || '收藏'),
+        icon: <StarIcon className={`w-4 h-4 ${contextMenu.prompt.isFavorite ? 'fill-yellow-400 text-yellow-400' : ''}`} />,
+        onClick: () => toggleFavorite(contextMenu.prompt.id),
+      },
+      {
+        label: contextMenu.prompt.isPinned ? t('prompt.unpin') : t('prompt.pin'),
+        icon: <PinIcon className={`w-4 h-4 ${contextMenu.prompt.isPinned ? 'fill-primary text-primary' : ''}`} />,
+        onClick: () => togglePinned(contextMenu.prompt.id),
+      },
+      {
+        label: t('prompt.aiTest'),
+        icon: <PlayIcon className="w-4 h-4" />,
+        onClick: () => handleAiTestFromTable(contextMenu.prompt),
+      },
+      {
+        label: t('prompt.history'),
+        icon: <HistoryIcon className="w-4 h-4" />,
+        onClick: () => handleVersionHistory(contextMenu.prompt),
+      },
+      {
+        label: t('prompt.delete'),
+        icon: <TrashIcon className="w-4 h-4" />,
+        variant: 'destructive',
+        onClick: () => handleDeletePrompt(contextMenu.prompt),
+      },
+    ];
+  }, [contextMenu, t, toggleFavorite, togglePinned, handleViewDetail, handleCopyPrompt, handleSharePrompt, handleAiTestFromTable, handleVersionHistory, handleDeletePrompt]);
 
   const handleAiUsageIncrement = async (id: string, model?: string) => {
     await incrementUsageCount(id);
@@ -1157,7 +1172,9 @@ export function MainContent() {
     showToast(t('toast.batchDeleted') || `已删除 ${ids.length} 个 Prompt`, 'success');
   };
 
-  const getViewClass = (mode: ViewMode, layout: 'col' | 'row' = 'col') => {
+  // Memoize getViewClass to avoid re-creating the function on every render
+  // 使用 useCallback 缓存 getViewClass，避免每次渲染都重新创建函数
+  const getViewClass = useCallback((mode: ViewMode, layout: 'col' | 'row' = 'col') => {
     const isActive = viewMode === mode;
     const layoutClass = layout === 'col' ? 'flex flex-col' : 'flex overflow-hidden';
     return `absolute inset-0 ${layoutClass} bg-background transition-opacity ease-out ${
@@ -1165,50 +1182,23 @@ export function MainContent() {
         ? 'opacity-100 z-10 pointer-events-auto duration-200'
         : 'opacity-0 z-0 pointer-events-none duration-0'
     }`;
-  };
+  }, [viewMode]);
 
   return (
     <main className="flex-1 relative overflow-hidden bg-background">
+      {/* Skill Mode */}
+      {uiViewMode === 'skill' ? (
+        <Suspense fallback={<div className="flex-1 flex items-center justify-center"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
+          <SkillManager />
+        </Suspense>
+      ) : (
+      <>
       {/* List view mode */}
       {/* 列表视图模式 */}
       <div
         className={getViewClass('list')}
       >
-        {/* Prompt type filter / 类型筛选 */}
-        <div className="flex items-center gap-1 px-3 py-2 border-b border-border">
-          <button
-            onClick={() => setPromptTypeFilter('all')}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-              promptTypeFilter === 'all'
-                ? 'bg-primary text-white'
-                : 'bg-muted hover:bg-muted/80 text-muted-foreground'
-            }`}
-          >
-            {t('filter.all', '全部')}
-          </button>
-          <button
-            onClick={() => setPromptTypeFilter('text')}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-              promptTypeFilter === 'text'
-                ? 'bg-primary text-white'
-                : 'bg-muted hover:bg-muted/80 text-muted-foreground'
-            }`}
-          >
-            <MessageSquareTextIcon className="w-3 h-3" />
-            {t('prompt.typeText', '文本')}
-          </button>
-          <button
-            onClick={() => setPromptTypeFilter('image')}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-              promptTypeFilter === 'image'
-                ? 'bg-primary text-white'
-                : 'bg-muted hover:bg-muted/80 text-muted-foreground'
-            }`}
-          >
-            <ImageIcon className="w-3 h-3" />
-            {t('prompt.typeImage', '媒体')}
-          </button>
-        </div>
+
 
         {/* Top: sort + view switch */}
         {/* 顶部：排序 + 视图切换 */}
@@ -1458,9 +1448,9 @@ export function MainContent() {
                     </div>
                   )}
 
-                  {/* Language toggle button */}
-                  {/* 语言切换按钮 */}
-                  {(selectedPrompt.systemPromptEn || selectedPrompt.userPromptEn) && (
+                  {/* Language toggle button - hidden for English UI */}
+                  {/* 语言切换按钮 - 英文界面时隐藏 */}
+                  {(selectedPrompt.systemPromptEn || selectedPrompt.userPromptEn) && !i18n.language.startsWith('en') && (
                     <div className="flex justify-end mb-4">
                       <button
                         onClick={() => setShowEnglish(!showEnglish)}
@@ -2003,6 +1993,8 @@ export function MainContent() {
           items={menuItems}
           onClose={() => setContextMenu(null)}
         />
+      )}
+      </>
       )}
     </main>
   );

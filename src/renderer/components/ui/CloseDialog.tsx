@@ -13,7 +13,9 @@ interface CloseDialogProps {
 export function CloseDialog({ isOpen, onClose }: CloseDialogProps) {
   const { t } = useTranslation();
   const [rememberChoice, setRememberChoice] = useState(false);
-  const settings = useSettingsStore();
+  // Only subscribe to the action we need, not the entire store
+  // 只订阅需要的 action，而不是整个 store
+  const setCloseAction = useSettingsStore((state) => state.setCloseAction);
 
   // Reset checkbox state each time dialog opens to avoid residual state
   // 每次打开都重置勾选状态，避免上次残留
@@ -52,7 +54,7 @@ export function CloseDialog({ isOpen, onClose }: CloseDialogProps) {
 
   const handleMinimize = () => {
     if (rememberChoice) {
-      settings.setCloseAction('minimize');
+      setCloseAction('minimize');
     }
     window.electron?.sendCloseDialogResult?.('minimize', rememberChoice);
     onClose();
@@ -60,7 +62,7 @@ export function CloseDialog({ isOpen, onClose }: CloseDialogProps) {
 
   const handleExit = () => {
     if (rememberChoice) {
-      settings.setCloseAction('exit');
+      setCloseAction('exit');
     }
     window.electron?.sendCloseDialogResult?.('exit', rememberChoice);
     onClose();

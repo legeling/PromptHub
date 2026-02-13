@@ -7,6 +7,8 @@ import type {
   CreateFolderDTO,
   UpdateFolderDTO,
   Settings,
+  CreateSkillParams,
+  UpdateSkillParams,
 } from '../shared/types';
 
 const api = {
@@ -62,6 +64,45 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.FOLDER_REORDER, ids),
   },
 
+  // Skill
+  skill: {
+    create: (data: CreateSkillParams) =>
+      ipcRenderer.invoke(IPC_CHANNELS.SKILL_CREATE, data),
+    get: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.SKILL_GET, id),
+    getAll: () => ipcRenderer.invoke(IPC_CHANNELS.SKILL_GET_ALL),
+    update: (id: string, data: UpdateSkillParams) =>
+      ipcRenderer.invoke(IPC_CHANNELS.SKILL_UPDATE, id, data),
+    delete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.SKILL_DELETE, id),
+    scanLocal: () => ipcRenderer.invoke(IPC_CHANNELS.SKILL_SCAN_LOCAL),
+    scanLocalPreview: () => ipcRenderer.invoke(IPC_CHANNELS.SKILL_SCAN_LOCAL_PREVIEW),
+    installToPlatform: (platform: 'claude' | 'cursor', name: string, mcpConfig: any) =>
+      ipcRenderer.invoke(IPC_CHANNELS.SKILL_INSTALL_TO_PLATFORM, platform, name, mcpConfig),
+    uninstallFromPlatform: (platform: 'claude' | 'cursor', name: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.SKILL_UNINSTALL_FROM_PLATFORM, platform, name),
+    getPlatformStatus: (name: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.SKILL_GET_PLATFORM_STATUS, name),
+    export: (id: string, format: 'skillmd' | 'json') =>
+      ipcRenderer.invoke(IPC_CHANNELS.SKILL_EXPORT, id, format),
+    import: (jsonContent: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.SKILL_IMPORT, jsonContent),
+    // SKILL.md Multi-Platform Installation
+    // SKILL.md 多平台安装
+    getSupportedPlatforms: () =>
+      ipcRenderer.invoke(IPC_CHANNELS.SKILL_GET_SUPPORTED_PLATFORMS),
+    detectPlatforms: () =>
+      ipcRenderer.invoke(IPC_CHANNELS.SKILL_DETECT_PLATFORMS),
+    installMd: (skillName: string, skillMdContent: string, platformId: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.SKILL_INSTALL_MD, skillName, skillMdContent, platformId),
+    uninstallMd: (skillName: string, platformId: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.SKILL_UNINSTALL_MD, skillName, platformId),
+    getMdInstallStatus: (skillName: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.SKILL_GET_MD_INSTALL_STATUS, skillName),
+    installMdSymlink: (skillName: string, skillMdContent: string, platformId: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.SKILL_INSTALL_MD_SYMLINK, skillName, skillMdContent, platformId),
+    fetchRemoteContent: (url: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.SKILL_FETCH_REMOTE_CONTENT, url),
+  },
+
   // Settings
   settings: {
     get: () => ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET),
@@ -77,9 +118,22 @@ const api = {
       ipcRenderer.invoke(IPC_CHANNELS.IMPORT_PROMPTS, data),
   },
 
-  // Listen to main process events
-  // 监听主进程事件
+  // Listen to main process events (with whitelist)
+  // 监听主进程事件（使用白名单）
   on: (channel: string, callback: (...args: any[]) => void) => {
+    // Whitelist of allowed channels to listen
+    // 允许监听的通道白名单
+    const ALLOWED_LISTEN_CHANNELS = [
+      'updater:status',
+      'shortcut:triggered',
+      'window:close-action',
+      'window:showCloseDialog',
+    ];
+    
+    if (!ALLOWED_LISTEN_CHANNELS.includes(channel)) {
+      console.warn(`Blocked listening to unauthorized channel: ${channel}`);
+      return;
+    }
     ipcRenderer.on(channel, (_event, ...args) => callback(...args));
   },
 
@@ -103,7 +157,7 @@ contextBridge.exposeInMainWorld('electron', {
   enterFullscreen: () => ipcRenderer.send('window:enterFullscreen'),
   exitFullscreen: () => ipcRenderer.send('window:exitFullscreen'),
   isFullscreen: () => ipcRenderer.invoke('window:isFullscreen'),
-  setAutoLaunch: (enabled: boolean) => ipcRenderer.send('app:setAutoLaunch', enabled),
+  setAutoLaunch: (enabled: boolean, minimizeOnLaunch?: boolean) => ipcRenderer.send('app:setAutoLaunch', enabled, minimizeOnLaunch),
   setDebugMode: (enabled: boolean) => ipcRenderer.send('app:setDebugMode', enabled),
   toggleDevTools: () => ipcRenderer.send('window:toggleDevTools'),
   setMinimizeToTray: (enabled: boolean) => ipcRenderer.send('app:setMinimizeToTray', enabled),
@@ -244,7 +298,7 @@ declare global {
       enterFullscreen?: () => void;
       exitFullscreen?: () => void;
       isFullscreen?: () => Promise<boolean>;
-      setAutoLaunch?: (enabled: boolean) => void;
+      setAutoLaunch?: (enabled: boolean, minimizeOnLaunch?: boolean) => void;
       setDebugMode?: (enabled: boolean) => void;
       toggleDevTools?: () => void;
       setMinimizeToTray?: (enabled: boolean) => void;

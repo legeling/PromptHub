@@ -102,6 +102,34 @@ export function initDatabase(): Database.Database {
     console.error('Migration (notes) failed:', error);
   }
 
+  // Migration: check if skills table has skill store columns
+  // 迁移：检查 skills 表是否有技能商店相关字段
+  try {
+    const skillInfo = db.pragma('table_info(skills)') as any[];
+    const skillColumns = skillInfo.map(col => col.name);
+
+    const newColumns: { name: string; type: string }[] = [
+      { name: 'source_url', type: 'TEXT' },
+      { name: 'icon_url', type: 'TEXT' },
+      { name: 'icon_emoji', type: 'TEXT' },
+      { name: 'category', type: "TEXT DEFAULT 'general'" },
+      { name: 'is_builtin', type: 'INTEGER DEFAULT 0' },
+      { name: 'registry_slug', type: 'TEXT' },
+      { name: 'content_url', type: 'TEXT' },
+      { name: 'prerequisites', type: 'TEXT' },
+      { name: 'compatibility', type: 'TEXT' },
+    ];
+
+    for (const col of newColumns) {
+      if (!skillColumns.includes(col.name)) {
+        console.log(`Migrating: Adding ${col.name} column to skills table`);
+        db.prepare(`ALTER TABLE skills ADD COLUMN ${col.name} ${col.type}`).run();
+      }
+    }
+  } catch (error) {
+    console.error('Migration (skills store columns) failed:', error);
+  }
+
   console.log(`Database initialized at: ${dbPath}`);
   return db;
 }

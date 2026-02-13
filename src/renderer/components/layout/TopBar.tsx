@@ -4,10 +4,13 @@ import { UpdateStatus } from '../UpdateDialog';
 import { usePromptStore } from '../../stores/prompt.store';
 import { useSettingsStore } from '../../stores/settings.store';
 import { useFolderStore } from '../../stores/folder.store';
+import { useSkillStore } from '../../stores/skill.store';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { CreatePromptModal } from '../prompt/CreatePromptModal';
 import { QuickAddModal } from '../prompt/QuickAddModal';
+import { CreateSkillModal } from '../skill/CreateSkillModal';
 import { useTranslation } from 'react-i18next';
+import { useUIStore } from '../../stores/ui.store';
 
 interface TopBarProps {
   onOpenSettings: () => void;
@@ -17,11 +20,19 @@ interface TopBarProps {
 
 export function TopBar({ onOpenSettings, updateAvailable, onShowUpdateDialog }: TopBarProps) {
   const { t } = useTranslation();
-  const searchQuery = usePromptStore((state) => state.searchQuery);
-  const setSearchQuery = usePromptStore((state) => state.setSearchQuery);
+  // Prompt store
+  const promptSearchQuery = usePromptStore((state) => state.searchQuery);
+  const setPromptSearchQuery = usePromptStore((state) => state.setSearchQuery);
   const prompts = usePromptStore((state) => state.prompts);
   const selectPrompt = usePromptStore((state) => state.selectPrompt);
   const createPrompt = usePromptStore((state) => state.createPrompt);
+  
+  // Skill store
+  const skillSearchQuery = useSkillStore((state) => state.searchQuery);
+  const setSkillSearchQuery = useSkillStore((state) => state.setSearchQuery);
+  const getFilteredSkills = useSkillStore((state) => state.getFilteredSkills);
+  const selectSkill = useSkillStore((state) => state.selectSkill);
+  
   const isDarkMode = useSettingsStore((state) => state.isDarkMode);
   const setDarkMode = useSettingsStore((state) => state.setDarkMode);
   const aiModels = useSettingsStore((state) => state.aiModels);
@@ -29,21 +40,27 @@ export function TopBar({ onOpenSettings, updateAvailable, onShowUpdateDialog }: 
   const creationMode = useSettingsStore((state) => state.creationMode);
   const selectedFolderId = useFolderStore((state) => state.selectedFolderId);
   const folders = useFolderStore((state) => state.folders);
+  const uiViewMode = useUIStore((state) => state.viewMode);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isQuickAddModalOpen, setIsQuickAddModalOpen] = useState(false);
+  const [isCreateSkillModalOpen, setIsCreateSkillModalOpen] = useState(false);
   const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const createMenuRef = useRef<HTMLDivElement>(null);
   const [currentResultIndex, setCurrentResultIndex] = useState(0);
   
+  // Unified search query based on mode
+  const searchQuery = uiViewMode === 'skill' ? skillSearchQuery : promptSearchQuery;
+  const setSearchQuery = uiViewMode === 'skill' ? setSkillSearchQuery : setPromptSearchQuery;
+  
   // Check if AI is configured
   const hasAiConfig = aiModels.length > 0 || (aiApiKey && aiApiKey.trim() !== '');
 
-  // 计算搜索结果（与 MainContent 保持一致的逻辑）
-  const searchResults = useMemo(() => {
-    if (!searchQuery.trim()) return [];
+  // 计算 Prompt 搜索结果（与 MainContent 保持一致的逻辑）
+  const promptSearchResults = useMemo(() => {
+    if (uiViewMode !== 'prompt' || !promptSearchQuery.trim()) return [];
 
-    const queryLower = searchQuery.toLowerCase();
+    const queryLower = promptSearchQuery.toLowerCase();
     const queryCompact = queryLower.replace(/\s+/g, '');
     const keywords = queryLower.split(/\s+/).filter((k) => k.length > 0);
 
@@ -107,41 +124,76 @@ export function TopBar({ onOpenSettings, updateAvailable, onShowUpdateDialog }: 
       .filter(item => item.score > 0)
       .sort((a, b) => b.score - a.score)
       .map(item => item.prompt);
-  }, [searchQuery, prompts, selectedFolderId, folders]);
+  }, [promptSearchQuery, prompts, selectedFolderId, folders, uiViewMode]);
+
+  // 计算 Skill 搜索结果
+  const skillSearchResults = useMemo(() => {
+    if (uiViewMode !== 'skill') return [];
+    return getFilteredSkills();
+  }, [uiViewMode, skillSearchQuery, getFilteredSkills]);
+
+  // 根据模式选择搜索结果
+  const searchResults = uiViewMode === 'skill' ? skillSearchResults : promptSearchResults;
+  const searchResultCount = searchResults.length;
 
   // 导航到上一个/下一个结果
   const navigateResult = useCallback((direction: 'prev' | 'next') => {
-    if (searchResults.length === 0) return;
+    if (searchResultCount === 0) return;
 
     let newIndex = currentResultIndex;
     if (direction === 'next') {
-      newIndex = (currentResultIndex + 1) % searchResults.length;
+      newIndex = (currentResultIndex + 1) % searchResultCount;
     } else {
-      newIndex = (currentResultIndex - 1 + searchResults.length) % searchResults.length;
+      newIndex = (currentResultIndex - 1 + searchResultCount) % searchResultCount;
     }
     setCurrentResultIndex(newIndex);
-    selectPrompt(searchResults[newIndex].id);
-  }, [searchResults, currentResultIndex, selectPrompt]);
+    
+    if (uiViewMode === 'skill') {
+      const skillResults = skillSearchResults;
+      if (skillResults[newIndex]) {
+        selectSkill(skillResults[newIndex].id);
+      }
+    } else {
+      const promptResults = promptSearchResults;
+      if (promptResults[newIndex]) {
+        selectPrompt(promptResults[newIndex].id);
+      }
+    }
+  }, [searchResultCount, currentResultIndex, selectPrompt, selectSkill, uiViewMode, skillSearchResults, promptSearchResults]);
 
   // 当搜索查询变化时重置索引并选中第一个结果
   useEffect(() => {
     setCurrentResultIndex(0);
-    if (searchResults.length > 0) {
-      selectPrompt(searchResults[0].id);
+    if (uiViewMode === 'skill') {
+      if (skillSearchResults.length > 0) {
+        selectSkill(skillSearchResults[0].id);
+      }
+    } else {
+      if (promptSearchResults.length > 0) {
+        selectPrompt(promptSearchResults[0].id);
+      }
     }
-  }, [searchQuery]);
+  }, [searchQuery, uiViewMode]);
 
   // 处理键盘事件
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Tab' && searchQuery && searchResults.length > 0) {
+    if (e.key === 'Tab' && searchQuery && searchResultCount > 0) {
       e.preventDefault();
       navigateResult(e.shiftKey ? 'prev' : 'next');
     } else if (e.key === 'Escape') {
       setSearchQuery('');
       searchInputRef.current?.blur();
-    } else if (e.key === 'Enter' && searchResults.length > 0) {
+    } else if (e.key === 'Enter' && searchResultCount > 0) {
       // Enter 确认选择当前结果
-      selectPrompt(searchResults[currentResultIndex].id);
+      if (uiViewMode === 'skill') {
+        if (skillSearchResults[currentResultIndex]) {
+          selectSkill(skillSearchResults[currentResultIndex].id);
+        }
+      } else {
+        if (promptSearchResults[currentResultIndex]) {
+          selectPrompt(promptSearchResults[currentResultIndex].id);
+        }
+      }
       searchInputRef.current?.blur();
     }
   };
@@ -171,8 +223,19 @@ export function TopBar({ onOpenSettings, updateAvailable, onShowUpdateDialog }: 
         setIsCreateMenuOpen(false);
       }
     }
+    
+    // Listen for open-create-skill-modal event
+    function handleOpenSkillModal() {
+      setIsCreateSkillModalOpen(true);
+    }
+
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('open-create-skill-modal', handleOpenSkillModal);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('open-create-skill-modal', handleOpenSkillModal);
+    };
   }, []);
 
   const handleCreatePrompt = async (data: {
@@ -223,7 +286,7 @@ export function TopBar({ onOpenSettings, updateAvailable, onShowUpdateDialog }: 
             <input
               ref={searchInputRef}
               type="text"
-              placeholder={t('header.search')}
+              placeholder={uiViewMode === 'skill' ? t('header.searchSkill', 'Search Skill...') : t('header.search')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -238,13 +301,13 @@ export function TopBar({ onOpenSettings, updateAvailable, onShowUpdateDialog }: 
               >
                 {/* 结果计数 */}
                 <span className="text-xs text-muted-foreground tabular-nums px-1">
-                  {searchResults.length > 0
-                    ? `${currentResultIndex + 1}/${searchResults.length}`
+                  {searchResultCount > 0
+                    ? `${currentResultIndex + 1}/${searchResultCount}`
                     : t('header.noResults', '0 结果')
                   }
                 </span>
                 {/* 上下导航按钮 */}
-                {searchResults.length > 1 && (
+                {searchResultCount > 1 && (
                   <>
                     <button
                       onClick={() => navigateResult('prev')}
@@ -293,28 +356,38 @@ export function TopBar({ onOpenSettings, updateAvailable, onShowUpdateDialog }: 
             </>
           )}
 
-          {/* Split Button for New Prompt */}
+          {/* Split Button for New Prompt / New Skill */}
           <div 
             ref={createMenuRef}
             className="flex items-center rounded-lg bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 transition-all ml-4 relative h-8" 
             style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
           >
             <button
-              onClick={() => {
-                const mode = useSettingsStore.getState().creationMode;
-                if (mode === 'manual') setIsCreateModalOpen(true);
-                else setIsQuickAddModalOpen(true);
+              onClick={async () => {
+                if (uiViewMode === 'skill') {
+                  // Open Skill creation modal
+                  setIsCreateSkillModalOpen(true);
+                } else {
+                  // Create Prompt
+                  const mode = useSettingsStore.getState().creationMode;
+                  if (mode === 'manual') setIsCreateModalOpen(true);
+                  else setIsQuickAddModalOpen(true);
+                }
               }}
               className="flex items-center gap-1.5 h-full pl-3 pr-2 text-sm font-medium border-r border-primary-foreground/20 active:scale-95 transition-transform"
             >
-              {creationMode === 'manual' ? (
+              {uiViewMode === 'skill' ? (
+                <PlusIcon className="w-4 h-4" />
+              ) : creationMode === 'manual' ? (
                 <PlusIcon className="w-4 h-4" />
               ) : (
                 <SparklesIcon className="w-4 h-4" />
               )}
-              <span>{creationMode === 'manual' ? t('header.new') : t('quickAdd.title')}</span>
+              <span>{uiViewMode === 'skill' ? t('header.new') : (creationMode === 'manual' ? t('header.new') : t('quickAdd.title'))}</span>
             </button>
             
+            {uiViewMode === 'prompt' && (
+            <>
             <button
               onClick={() => setIsCreateMenuOpen(!isCreateMenuOpen)}
               className="flex items-center justify-center h-full px-1.5 hover:bg-black/10 transition-colors rounded-r-lg"
@@ -361,6 +434,8 @@ export function TopBar({ onOpenSettings, updateAvailable, onShowUpdateDialog }: 
                 </button>
               </div>
             )}
+            </>
+            )}
           </div>
 
           {/* 主题切换 */}
@@ -370,15 +445,6 @@ export function TopBar({ onOpenSettings, updateAvailable, onShowUpdateDialog }: 
             style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
           >
             {isDarkMode ? <SunIcon className="w-4 h-4" /> : <MoonIcon className="w-4 h-4" />}
-          </button>
-
-          {/* 设置按钮 */}
-          <button
-            onClick={onOpenSettings}
-            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-          >
-            <SettingsIcon className="w-4 h-4" />
           </button>
         </div>
       </header>
@@ -396,6 +462,12 @@ export function TopBar({ onOpenSettings, updateAvailable, onShowUpdateDialog }: 
         isOpen={isQuickAddModalOpen}
         onClose={() => setIsQuickAddModalOpen(false)}
         onCreate={handleCreatePrompt}
+      />
+
+      {/* 新建 Skill 弹窗 */}
+      <CreateSkillModal
+        isOpen={isCreateSkillModalOpen}
+        onClose={() => setIsCreateSkillModalOpen(false)}
       />
     </>
   );

@@ -1,6 +1,7 @@
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Modal, Button, Input, Textarea, UnsavedChangesDialog } from '../ui';
+import { handleMarkdownListKeyDown } from '../ui/Textarea';
 import { Select } from '../ui/Select';
 import { HashIcon, XIcon, ImageIcon, Maximize2Icon, Minimize2Icon, PlusIcon, GlobeIcon, SparklesIcon, Loader2Icon, PlayIcon, VideoIcon, ChevronDownIcon, ChevronRightIcon, SaveIcon, MessageSquareTextIcon } from 'lucide-react';
 
@@ -49,8 +50,6 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
   const [images, setImages] = useState<string[]>([]);
   const [videos, setVideos] = useState<string[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [userTab, setUserTab] = useState<'edit' | 'preview'>('edit');
-  const [systemTab, setSystemTab] = useState<'edit' | 'preview'>('edit');
   const [showEnglishVersion, setShowEnglishVersion] = useState(false);
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
@@ -65,11 +64,14 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
   // 真正的全屏编辑状态
   const [activeFullscreenField, setActiveFullscreenField] = useState<'system' | 'systemEn' | 'user' | 'userEn' | null>(null);
   const [isNativeFullscreen, setIsNativeFullscreen] = useState(false);
+  const fullscreenTextareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const settings = useSettingsStore();
-  const sourceHistory = settings.sourceHistory;
-  const addSourceHistory = settings.addSourceHistory;
-  const defaultModel = settings.aiModels.find(m => m.isDefault);
+  // Only subscribe to the fields we need, not the entire store
+  // 只订阅需要的字段，而不是整个 store
+  const sourceHistory = useSettingsStore((state) => state.sourceHistory);
+  const addSourceHistory = useSettingsStore((state) => state.addSourceHistory);
+  const aiModels = useSettingsStore((state) => state.aiModels);
+  const defaultModel = aiModels.find(m => m.isDefault);
   const canTranslate = !!defaultModel;
 
   // 检查是否有未保存的更改
@@ -320,6 +322,89 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
     }
   };
 
+  // 获取目标语言名称
+  const getLanguageName = (langCode: string): string => {
+    const lang = langCode.toLowerCase();
+    if (lang.startsWith('zh')) return 'Chinese';
+    if (lang.startsWith('ja')) return 'Japanese';
+    if (lang.startsWith('de')) return 'German';
+    if (lang.startsWith('fr')) return 'French';
+    if (lang.startsWith('es')) return 'Spanish';
+    if (lang.startsWith('ko')) return 'Korean';
+    if (lang.startsWith('pt')) return 'Portuguese';
+    if (lang.startsWith('ru')) return 'Russian';
+    if (lang.startsWith('it')) return 'Italian';
+    return 'the target language';
+  };
+
+  // 从英文翻译到当前语言
+  const handleTranslateFromEnglish = async () => {
+    if (!canTranslate || !defaultModel) {
+      showToast(t('toast.configAI') || '请先配置 AI', 'error');
+      return;
+    }
+    if (!systemPromptEn && !userPromptEn) {
+      showToast(t('prompt.noEnglishContentToTranslate', '没有英文内容可翻译'), 'error');
+      return;
+    }
+
+    setIsTranslating(true);
+    try {
+      const targetLang = getLanguageName(i18n.language);
+      const instruction =
+        `You are a professional prompt translator. Translate the provided English System Prompt and User Prompt into natural, accurate ${targetLang}.\n` +
+        '- Keep original meaning, tone, and intent.\n' +
+        '- Preserve ALL formatting, Markdown, lists, and code blocks.\n' +
+        '- Do NOT translate or alter placeholders like {{variable}}.\n' +
+        '- Do NOT add explanations.\n' +
+        'Return STRICT JSON ONLY: {"systemPrompt":"...","userPrompt":"..."}. If systemPromptEn is empty, use empty string for systemPrompt.';
+
+      const contentToTranslate = JSON.stringify({
+        systemPromptEn: systemPromptEn || '',
+        userPromptEn: userPromptEn || '',
+      });
+
+      const result = await testAIConnection(
+        {
+          provider: defaultModel.provider,
+          apiKey: defaultModel.apiKey,
+          apiUrl: defaultModel.apiUrl,
+          model: defaultModel.model,
+        },
+        `${instruction}\n\nContent to translate:\n${contentToTranslate}`
+      );
+
+      if (!result.success || !result.response) {
+        throw new Error(result.error || t('common.error') || '翻译失败');
+      }
+
+      const jsonMatch = result.response.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error(t('common.error') || '翻译结果解析失败');
+      }
+
+      const jsonText = jsonMatch[0];
+      const parsed = JSON.parse(jsonText) as { systemPrompt?: string; userPrompt?: string };
+
+      if (typeof parsed.userPrompt !== 'string') {
+        throw new Error(t('common.error') || '翻译结果解析失败');
+      }
+
+      if (parsed.systemPrompt !== undefined) {
+        setSystemPrompt(parsed.systemPrompt);
+      }
+      if (parsed.userPrompt) {
+        setUserPrompt(parsed.userPrompt);
+      }
+
+      showToast(t('prompt.localizedGenerated', '已生成当前语言版本'), 'success');
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : (t('common.error') || 'Translation failed'), 'error');
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
   const handleAddTag = () => {
     const tag = tagInput.trim();
     if (tag && !tags.includes(tag)) {
@@ -507,16 +592,36 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
     }
   };
 
-  // 如果是真正的全屏模式，渲染全屏编辑器
+  // 全屏编辑器的 Markdown 列表续行处理
+  const handleFullscreenKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const currentValue = getFullscreenFieldValue();
+    const handled = handleMarkdownListKeyDown(
+      e,
+      currentValue,
+      (newValue, cursorPos) => {
+        setFullscreenFieldValue(newValue);
+        // Set cursor position after React updates the DOM
+        requestAnimationFrame(() => {
+          if (fullscreenTextareaRef.current) {
+            fullscreenTextareaRef.current.selectionStart = cursorPos;
+            fullscreenTextareaRef.current.selectionEnd = cursorPos;
+          }
+        });
+      }
+    );
+    // handled is used implicitly by preventDefault in handleMarkdownListKeyDown
+  }, [activeFullscreenField, systemPrompt, systemPromptEn, userPrompt, userPromptEn]);
+
+  // 如果是真正的全屏模式，渲染全屏编辑器（左右分屏：编辑 + 预览）
   if (isNativeFullscreen && activeFullscreenField) {
     return (
       <div className="fixed inset-0 z-[9999] bg-background flex flex-col">
         {/* 全屏编辑器头部 */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/30 shrink-0">
-            <div className="flex items-center gap-3">
-              <h2 className="text-lg font-semibold">{getFullscreenFieldTitle()}</h2>
-              <span className="text-sm text-muted-foreground">{t('common.markdownSupported')}</span>
-            </div>
+        <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-muted/30 shrink-0">
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold">{getFullscreenFieldTitle()}</h2>
+            <span className="text-sm text-muted-foreground">{t('common.markdownSupported')}</span>
+          </div>
           <div className="flex items-center gap-3">
             <button
               onClick={handleExitNativeFullscreen}
@@ -530,15 +635,40 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
             </Button>
           </div>
         </div>
-        {/* 全屏编辑区域 */}
-        <div className="flex-1 overflow-hidden">
-          <textarea
-            className="w-full h-full p-8 resize-none bg-background border-none outline-none text-lg font-mono leading-relaxed"
-            value={getFullscreenFieldValue()}
-            onChange={(e) => setFullscreenFieldValue(e.target.value)}
-            autoFocus
-            placeholder={t('prompt.typeYourPrompt')}
-          />
+        {/* 分屏区域：左边编辑 + 右边预览 */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* 左边：编辑区 */}
+          <div className="w-1/2 border-r border-border flex flex-col overflow-hidden">
+            <div className="px-4 py-2 border-b border-border bg-muted/20 text-xs font-medium text-muted-foreground shrink-0">
+              {t('prompt.edit', '编辑')}
+            </div>
+            <textarea
+              ref={fullscreenTextareaRef}
+              className="flex-1 w-full p-6 resize-none bg-background border-none outline-none text-base font-mono leading-relaxed"
+              value={getFullscreenFieldValue()}
+              onChange={(e) => setFullscreenFieldValue(e.target.value)}
+              onKeyDown={handleFullscreenKeyDown}
+              autoFocus
+              placeholder={t('prompt.typeYourPrompt')}
+            />
+          </div>
+          {/* 右边：实时预览 */}
+          <div className="w-1/2 flex flex-col overflow-hidden">
+            <div className="px-4 py-2 border-b border-border bg-muted/20 text-xs font-medium text-muted-foreground shrink-0">
+              {t('prompt.preview', '预览')}
+            </div>
+            <div className="flex-1 overflow-auto p-6">
+              <div className="prose prose-sm max-w-none markdown-content">
+                {getFullscreenFieldValue() ? (
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={rehypePlugins} components={markdownComponents}>
+                    {getFullscreenFieldValue()}
+                  </ReactMarkdown>
+                ) : (
+                  <div className="text-muted-foreground text-sm italic">{t('prompt.noContent', '暂无内容')}</div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -894,11 +1024,12 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
           </div>
           {!i18n.language.startsWith('en') && (
           <div className="flex items-center gap-2">
+            {/* 当前语言 → 英文 */}
             <button
               onClick={handleTranslateToEnglish}
-              disabled={isTranslating || !canTranslate}
+              disabled={isTranslating || !canTranslate || (!systemPrompt && !userPrompt)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                isTranslating || !canTranslate
+                isTranslating || !canTranslate || (!systemPrompt && !userPrompt)
                   ? 'opacity-50 cursor-not-allowed bg-muted text-muted-foreground'
                   : 'bg-primary/10 text-primary hover:bg-primary/20'
               }`}
@@ -909,7 +1040,25 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
               ) : (
                 <SparklesIcon className="w-3.5 h-3.5" />
               )}
-              {t('prompt.translate', 'Translate')}
+              → EN
+            </button>
+            {/* 英文 → 当前语言 */}
+            <button
+              onClick={handleTranslateFromEnglish}
+              disabled={isTranslating || !canTranslate || (!systemPromptEn && !userPromptEn)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                isTranslating || !canTranslate || (!systemPromptEn && !userPromptEn)
+                  ? 'opacity-50 cursor-not-allowed bg-muted text-muted-foreground'
+                  : 'bg-primary/10 text-primary hover:bg-primary/20'
+              }`}
+              title={t('prompt.translateFromEnglish', '从英文翻译到当前语言')}
+            >
+              {isTranslating ? (
+                <Loader2Icon className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <SparklesIcon className="w-3.5 h-3.5" />
+              )}
+              EN →
             </button>
             <button
               onClick={() => setShowEnglishVersion(!showEnglishVersion)}
@@ -940,56 +1089,44 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <label className="block text-sm font-medium text-foreground">{t('prompt.systemPromptOptional')}</label>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/50 p-1">
-                <button
-                  onClick={() => setSystemTab('edit')}
-                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                    systemTab === 'edit'
-                      ? 'bg-background text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {t('prompt.edit', '编辑')}
-                </button>
-                <button
-                  onClick={() => setSystemTab('preview')}
-                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                    systemTab === 'preview'
-                      ? 'bg-background text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {t('prompt.preview', '预览')}
-                </button>
+            <button
+              onClick={() => handleEnterNativeFullscreen('system')}
+              className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors border border-border"
+              title={t('prompt.fullscreen', '全屏编辑')}
+            >
+              <Maximize2Icon className="w-4 h-4" />
+            </button>
+          </div>
+          {/* 分屏布局：左边编辑 + 右边预览 */}
+          <div className="flex rounded-xl border border-border overflow-hidden min-h-[200px]">
+            {/* 左边：编辑区 */}
+            <div className="w-1/2 border-r border-border flex flex-col">
+              <Textarea
+                placeholder={t('prompt.systemPromptPlaceholder')}
+                value={systemPrompt}
+                onChange={(e) => setSystemPrompt(e.target.value)}
+                className="flex-1 min-h-[200px] rounded-none border-0"
+                enableMarkdownList
+              />
+            </div>
+            {/* 右边：实时预览 */}
+            <div className="w-1/2 flex flex-col bg-muted/30">
+              <div className="px-3 py-1.5 border-b border-border bg-muted/50 text-xs font-medium text-muted-foreground shrink-0">
+                {t('prompt.preview', '预览')}
               </div>
-              <button
-                onClick={() => handleEnterNativeFullscreen('system')}
-                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors border border-border"
-                title={t('prompt.fullscreen', '全屏编辑')}
-              >
-                <Maximize2Icon className="w-4 h-4" />
-              </button>
+              <div className="flex-1 overflow-auto p-4">
+                <div className="prose prose-sm max-w-none markdown-content">
+                  {systemPrompt ? (
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={rehypePlugins} components={markdownComponents}>
+                      {systemPrompt}
+                    </ReactMarkdown>
+                  ) : (
+                    <div className="text-muted-foreground text-sm italic">{t('prompt.noContent', '暂无内容')}</div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-          {systemTab === 'edit' ? (
-            <Textarea
-              placeholder={t('prompt.systemPromptPlaceholder')}
-              value={systemPrompt}
-              onChange={(e) => setSystemPrompt(e.target.value)}
-              className="min-h-[120px]"
-            />
-          ) : (
-            <div className="p-4 rounded-xl bg-card border border-border text-sm markdown-content break-words min-h-[120px]">
-              {systemPrompt ? (
-                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={rehypePlugins} components={markdownComponents}>
-                  {systemPrompt}
-                </ReactMarkdown>
-              ) : (
-                <div className="text-muted-foreground text-sm italic">{t('prompt.noContent')}</div>
-              )}
-            </div>
-          )}
           {/* System Prompt English */}
           {showEnglishVersion && (
             <div className="mt-2 pl-4 border-l-2 border-primary/20 space-y-2">
@@ -1011,6 +1148,7 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
                 value={systemPromptEn}
                 onChange={(e) => setSystemPromptEn(e.target.value)}
                 className="min-h-[80px]"
+                enableMarkdownList
               />
             </div>
           )}
@@ -1023,56 +1161,44 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
               {t('prompt.userPromptLabel')}
               <span className="ml-2 text-xs text-destructive">*</span>
             </label>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/50 p-1">
-                <button
-                  onClick={() => setUserTab('edit')}
-                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                    userTab === 'edit'
-                      ? 'bg-background text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {t('prompt.edit', '编辑')}
-                </button>
-                <button
-                  onClick={() => setUserTab('preview')}
-                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                    userTab === 'preview'
-                      ? 'bg-background text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {t('prompt.preview', '预览')}
-                </button>
+            <button
+              onClick={() => handleEnterNativeFullscreen('user')}
+              className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors border border-border"
+              title={t('prompt.fullscreen', '全屏编辑')}
+            >
+              <Maximize2Icon className="w-4 h-4" />
+            </button>
+          </div>
+          {/* 分屏布局：左边编辑 + 右边预览 */}
+          <div className="flex rounded-xl border border-border overflow-hidden min-h-[280px]">
+            {/* 左边：编辑区 */}
+            <div className="w-1/2 border-r border-border flex flex-col">
+              <Textarea
+                placeholder={t('prompt.userPromptPlaceholder')}
+                value={userPrompt}
+                onChange={(e) => setUserPrompt(e.target.value)}
+                className="flex-1 min-h-[280px] rounded-none border-0"
+                enableMarkdownList
+              />
+            </div>
+            {/* 右边：实时预览 */}
+            <div className="w-1/2 flex flex-col bg-muted/30">
+              <div className="px-3 py-1.5 border-b border-border bg-muted/50 text-xs font-medium text-muted-foreground shrink-0">
+                {t('prompt.preview', '预览')}
               </div>
-              <button
-                onClick={() => handleEnterNativeFullscreen('user')}
-                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors border border-border"
-                title={t('prompt.fullscreen', '全屏编辑')}
-              >
-                <Maximize2Icon className="w-4 h-4" />
-              </button>
+              <div className="flex-1 overflow-auto p-4">
+                <div className="prose prose-sm max-w-none markdown-content">
+                  {userPrompt ? (
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={rehypePlugins} components={markdownComponents}>
+                      {userPrompt}
+                    </ReactMarkdown>
+                  ) : (
+                    <div className="text-muted-foreground text-sm italic">{t('prompt.noContent', '暂无内容')}</div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-          {userTab === 'edit' ? (
-            <Textarea
-              placeholder={t('prompt.userPromptPlaceholder')}
-              value={userPrompt}
-              onChange={(e) => setUserPrompt(e.target.value)}
-              className="min-h-[200px]"
-            />
-          ) : (
-            <div className="p-4 rounded-xl bg-card border border-border text-sm markdown-content break-words min-h-[200px]">
-              {userPrompt ? (
-                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={rehypePlugins} components={markdownComponents}>
-                  {userPrompt}
-                </ReactMarkdown>
-              ) : (
-                <div className="text-muted-foreground text-sm italic">{t('prompt.noContent')}</div>
-              )}
-            </div>
-          )}
           {/* User Prompt English */}
           {showEnglishVersion && (
             <div className="mt-2 pl-4 border-l-2 border-primary/20 space-y-2">
@@ -1094,6 +1220,7 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
                 value={userPromptEn}
                 onChange={(e) => setUserPromptEn(e.target.value)}
                 className="min-h-[120px]"
+                enableMarkdownList
               />
             </div>
           )}
