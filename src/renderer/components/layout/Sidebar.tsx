@@ -344,6 +344,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
           <button
             onClick={() => {
               setViewMode('prompt');
+              closeTagPopover();
               if (currentPage !== 'home') onNavigate('home');
             }}
             title={t('common.prompts')}
@@ -362,6 +363,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
           <button
             onClick={() => {
               setViewMode('skill');
+              closeTagPopover();
               if (currentPage !== 'home') onNavigate('home');
             }}
             title={t('common.skills')}

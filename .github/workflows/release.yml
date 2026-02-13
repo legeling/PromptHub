@@ -84,6 +84,10 @@ jobs:
           # Rebuild native modules for the target architecture
           # 为目标架构重建原生模块
 
+          # Detect exact Electron version from installed package
+          ELECTRON_VERSION=$(node -p "require('electron/package.json').version")
+          echo "Detected Electron version: $ELECTRON_VERSION"
+
           # First, remove any prebuilt binaries to force rebuild from source
           # 首先删除预编译二进制，强制从源码重新编译
           rm -rf node_modules/better-sqlite3/build || true
@@ -91,11 +95,10 @@ jobs:
 
           if [ "${{ matrix.platform }}" = "mac" ]; then
             echo "Rebuilding better-sqlite3 for macOS ${{ matrix.arch }}"
-            # Force rebuild with explicit architecture
-            npx electron-rebuild -f -w better-sqlite3 --arch ${{ matrix.arch }}
+            npx electron-rebuild -f -w better-sqlite3 --arch ${{ matrix.arch }} -v $ELECTRON_VERSION
           elif [ "${{ matrix.platform }}" = "win" ]; then
             echo "Rebuilding better-sqlite3 for Windows ${{ matrix.arch }}"
-            npx electron-rebuild -f -w better-sqlite3 --arch ${{ matrix.arch }}
+            npx electron-rebuild -f -w better-sqlite3 --arch ${{ matrix.arch }} -v $ELECTRON_VERSION
           else
             pnpm run rebuild
           fi
@@ -121,7 +124,34 @@ jobs:
             fi
             echo "Architecture verification passed!"
           else
-            echo "WARNING: Native module not found at $NATIVE_MODULE"
+            echo "ERROR: Native module not found at $NATIVE_MODULE"
+            exit 1
+          fi
+
+      - name: Verify native module (Windows)
+        if: matrix.platform == 'win'
+        shell: bash
+        run: |
+          # Verify the better-sqlite3 native module exists and is a valid PE binary
+          # 验证 better-sqlite3 原生模块存在且是有效的 PE 二进制
+          NATIVE_MODULE="node_modules/better-sqlite3/build/Release/better_sqlite3.node"
+          if [ -f "$NATIVE_MODULE" ]; then
+            echo "Native module found at $NATIVE_MODULE"
+            FILE_SIZE=$(stat -c%s "$NATIVE_MODULE" 2>/dev/null || stat -f%z "$NATIVE_MODULE")
+            echo "File size: $FILE_SIZE bytes"
+            # Check it's a PE binary (starts with MZ)
+            HEADER=$(xxd -l 2 -p "$NATIVE_MODULE")
+            if [ "$HEADER" = "4d5a" ]; then
+              echo "Valid PE binary (MZ header detected)"
+            else
+              echo "ERROR: Not a valid PE binary! Header: $HEADER"
+              echo "This file may have been compiled for a different platform."
+              exit 1
+            fi
+          else
+            echo "ERROR: Native module not found at $NATIVE_MODULE"
+            echo "electron-rebuild may have failed silently."
+            exit 1
           fi
 
       - name: Clean previous build artifacts
