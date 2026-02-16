@@ -1,9 +1,8 @@
 import { useTranslation } from 'react-i18next';
-import { CuboidIcon, StarIcon, TrashIcon, DownloadIcon, ChevronRightIcon, CheckIcon } from 'lucide-react';
+import { CuboidIcon, StarIcon, TrashIcon, DownloadIcon } from 'lucide-react';
 import { SkillIcon } from './SkillIcon';
 import { useState, useEffect, useMemo } from 'react';
 import { useSkillStore } from '../../stores/skill.store';
-import { SkillDetailView } from './SkillDetailView';
 import { PlatformIcon } from '../ui/PlatformIcon';
 import type { Skill } from '../../../shared/types';
 
@@ -99,9 +98,8 @@ export function SkillListView({ skills, onQuickInstall }: SkillListViewProps) {
   }
 
   return (
-    <div className="flex h-full">
-      {/* List */}
-      <div className={`${selectedSkillId ? 'w-1/2 border-r border-border' : 'w-full'} transition-all duration-300`}>
+    <div className="h-full">
+      <div className="w-full">
         <div className="divide-y divide-border">
           {skills.map((skill, index) => {
             const isSelected = selectedSkillId === skill.id;
@@ -111,7 +109,7 @@ export function SkillListView({ skills, onQuickInstall }: SkillListViewProps) {
             return (
               <div
                 key={skill.id}
-                onClick={() => selectSkill(isSelected ? null : skill.id)}
+                onClick={() => selectSkill(skill.id)}
                 style={{ animationDelay: `${index * 30}ms` }}
                 className={`group flex items-center gap-4 px-6 py-4 cursor-pointer transition-all animate-in fade-in slide-in-from-left-2 ${
                   isSelected 
@@ -160,11 +158,9 @@ export function SkillListView({ skills, onQuickInstall }: SkillListViewProps) {
                         </div>
                       );
                     })}
-                    {installCount > 0 && (
-                      <span className="text-[10px] text-green-500 font-medium ml-1">
-                        {installCount}/{totalPlatforms}
-                      </span>
-                    )}
+                    <span className="text-[10px] text-primary font-medium ml-1">
+                      {installCount}/{totalPlatforms}
+                    </span>
                   </div>
                 )}
 
@@ -175,7 +171,7 @@ export function SkillListView({ skills, onQuickInstall }: SkillListViewProps) {
                       e.stopPropagation();
                       onQuickInstall(skill);
                     }}
-                    className="opacity-0 group-hover:opacity-100 p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-all active:scale-90"
+                    className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-all active:scale-90"
                     title={t('skill.quickInstall', '快速安装')}
                   >
                     <DownloadIcon className="w-4 h-4" />
@@ -188,7 +184,7 @@ export function SkillListView({ skills, onQuickInstall }: SkillListViewProps) {
                     className={`p-2 rounded-lg transition-all active:scale-90 ${
                       skill.is_favorite
                         ? 'text-yellow-500 hover:text-yellow-600'
-                        : 'opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-yellow-500 hover:bg-yellow-500/10'
+                        : 'text-muted-foreground hover:text-yellow-500 hover:bg-yellow-500/10'
                     }`}
                     title={skill.is_favorite ? t('skill.removeFavorite') : t('skill.addFavorite')}
                   >
@@ -201,25 +197,17 @@ export function SkillListView({ skills, onQuickInstall }: SkillListViewProps) {
                         deleteSkill(skill.id);
                       }
                     }}
-                    className="opacity-0 group-hover:opacity-100 p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-all active:scale-90"
+                    className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-all active:scale-90"
                     title={t('common.delete')}
                   >
                     <TrashIcon className="w-4 h-4" />
                   </button>
-                  <ChevronRightIcon className={`w-4 h-4 text-muted-foreground transition-transform ${isSelected ? 'rotate-90' : ''}`} />
                 </div>
               </div>
             );
           })}
         </div>
       </div>
-
-      {/* Detail Panel */}
-      {selectedSkillId && (
-        <div className="w-1/2 overflow-hidden">
-          <SkillDetailView />
-        </div>
-      )}
     </div>
   );
 }

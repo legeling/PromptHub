@@ -34,14 +34,16 @@ export class SkillDB {
     const id = uuidv4();
     const now = Date.now();
 
+    const tagsJson = JSON.stringify(data.tags || []);
+
     const stmt = this.db.prepare(`
       INSERT INTO skills (
         id, name, description, content, mcp_config,
-        protocol_type, version, author, tags, is_favorite,
+        protocol_type, version, author, tags, original_tags, is_favorite,
         source_url, icon_url, icon_emoji, category, is_builtin,
         registry_slug, content_url, prerequisites, compatibility,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
@@ -53,7 +55,8 @@ export class SkillDB {
       data.protocol_type || 'mcp',
       data.version || '1.0.0',
       data.author || 'User',
-      JSON.stringify(data.tags || []),
+      tagsJson,
+      data.original_tags ? JSON.stringify(data.original_tags) : tagsJson, // Snapshot import-time tags
       data.is_favorite ? 1 : 0,
       data.source_url || null,
       data.icon_url || null,
@@ -263,6 +266,7 @@ export class SkillDB {
       content_url: row.content_url || undefined,
       prerequisites: row.prerequisites ? JSON.parse(row.prerequisites) : undefined,
       compatibility: row.compatibility ? JSON.parse(row.compatibility) : undefined,
+      original_tags: row.original_tags ? JSON.parse(row.original_tags) : undefined,
     };
   }
 }

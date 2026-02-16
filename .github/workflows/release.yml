@@ -176,6 +176,31 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Verify packaged native module (macOS)
+        if: matrix.platform == 'mac'
+        shell: bash
+        run: |
+          # Verify the native module inside the final .app bundle has correct architecture
+          # 验证最终 .app 包内的原生模块架构是否正确
+          APP_MODULE=$(find dist -path "*/app.asar.unpacked/node_modules/better-sqlite3/build/Release/better_sqlite3.node" -type f | head -1)
+          if [ -n "$APP_MODULE" ]; then
+            echo "Found packaged module: $APP_MODULE"
+            file "$APP_MODULE"
+            ARCH=$(file "$APP_MODULE" | grep -o 'arm64\|x86_64')
+            echo "Packaged module architecture: $ARCH"
+            if [ "${{ matrix.arch }}" = "arm64" ] && [ "$ARCH" != "arm64" ]; then
+              echo "FATAL: Packaged app contains x86_64 module but target is arm64!"
+              echo "This means electron-builder replaced the correct binary during packaging."
+              exit 1
+            elif [ "${{ matrix.arch }}" = "x64" ] && [ "$ARCH" != "x86_64" ]; then
+              echo "FATAL: Packaged app contains arm64 module but target is x64!"
+              exit 1
+            fi
+            echo "Post-build architecture verification passed!"
+          else
+            echo "WARNING: Could not find native module in packaged app (may be inside asar)"
+          fi
+
       - name: Normalize Windows update metadata
         if: matrix.platform == 'win' && matrix.arch != ''
         shell: bash

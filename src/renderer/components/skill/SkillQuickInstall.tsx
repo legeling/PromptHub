@@ -118,7 +118,7 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md mx-4 animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
+      <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-[85vh] flex flex-col animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-border">
           <div className="flex items-center gap-3">
@@ -139,7 +139,7 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
         </div>
 
         {/* Content */}
-        <div className="p-5 space-y-4">
+        <div className="p-5 space-y-4 overflow-y-auto flex-1 min-h-0 scrollbar-hide">
           {availablePlatforms.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <p className="text-sm">{t('skill.noPlatformsDetected', '未检测到可用平台')}</p>
@@ -163,7 +163,7 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
                 </button>
               </div>
               
-              <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
                 {availablePlatforms.map((platform) => {
                   const isInstalled = installStatus[platform.id];
                   const isSelected = selectedPlatforms.has(platform.id);
@@ -212,7 +212,7 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
 
         {/* Footer */}
         {!allInstalled && availablePlatforms.length > 0 && (
-          <div className="p-5 border-t border-border">
+          <div className="p-5 border-t border-border shrink-0">
             <button
               onClick={handleInstall}
               disabled={selectedPlatforms.size === 0 || isInstalling}

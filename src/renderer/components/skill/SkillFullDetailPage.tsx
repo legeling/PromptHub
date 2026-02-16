@@ -382,9 +382,22 @@ export function SkillFullDetailPage() {
                     {t('skill.skillDescription', '技能描述')}
                   </h3>
                   <div className="bg-card p-5 rounded-2xl border border-border">
-                    <p className="text-sm text-foreground/90 leading-relaxed italic">
-                      {selectedSkill.description || t('skill.defaultDescriptionLong')}
-                    </p>
+                    {(() => {
+                      const descCacheKey = `skill_desc_${selectedSkill.id}_${targetLang}_${translationMode}`;
+                      const cachedDesc = getTranslation(descCacheKey);
+                      if (showTranslation && cachedDesc) {
+                        return (
+                          <p className="text-sm text-primary/80 leading-relaxed italic">
+                            {cachedDesc}
+                          </p>
+                        );
+                      }
+                      return (
+                        <p className="text-sm text-foreground/90 leading-relaxed italic">
+                          {selectedSkill.description || t('skill.defaultDescriptionLong')}
+                        </p>
+                      );
+                    })()}
                   </div>
                 </section>
 
@@ -397,6 +410,7 @@ export function SkillFullDetailPage() {
                     <div className="flex gap-2">
                       {selectedSkill.instructions && (() => {
                         const cacheKey = `skill_${selectedSkill.id}_${targetLang}_${translationMode}`;
+                        const descCacheKey = `skill_desc_${selectedSkill.id}_${targetLang}_${translationMode}`;
                         const cached = getTranslation(cacheKey);
                         return (
                           <button
@@ -405,7 +419,11 @@ export function SkillFullDetailPage() {
                               setIsTranslating(true);
                               try {
                                 const stripped = stripFrontmatter(selectedSkill.instructions || '');
-                                await translateContent(stripped, cacheKey, targetLang);
+                                const promises: Promise<any>[] = [translateContent(stripped, cacheKey, targetLang)];
+                                if (selectedSkill.description) {
+                                  promises.push(translateContent(selectedSkill.description, descCacheKey, targetLang));
+                                }
+                                await Promise.all(promises);
                                 setShowTranslation(true);
                                 showToast(t('skill.translateSuccess', 'Translation complete'), 'success');
                               } catch (e: any) {
@@ -433,33 +451,10 @@ export function SkillFullDetailPage() {
                         {copyStatus['instr'] ? <CheckIcon className="w-3.5 h-3.5 text-green-500" /> : <CopyIcon className="w-3.5 h-3.5" />}
                         {copyStatus['instr'] ? t('skill.copied') : t('skill.copyMd')}
                       </button>
-                      <button 
-                        onClick={() => setIsEditing(!isEditing)}
-                        className={`p-1 px-3 rounded-lg text-xs flex items-center gap-1.5 transition-colors ${isEditing ? 'bg-primary text-white' : 'bg-accent/50 hover:bg-accent'}`}
-                      >
-                        <Edit3Icon className="w-3.5 h-3.5" />
-                        {isEditing ? t('skill.editing') : t('common.edit')}
-                      </button>
                     </div>
                   </div>
                   
                   <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm min-h-[300px]">
-                    {isEditing ? (
-                      <div className="flex flex-col">
-                        <textarea
-                          value={editedInstructions}
-                          onChange={(e) => setEditedInstructions(e.target.value)}
-                          className="w-full h-[500px] p-5 bg-background text-sm font-mono border-none focus:ring-0 focus:outline-none resize-none scrollbar-hide"
-                          placeholder={t('skill.instructionsPlaceholder')}
-                        />
-                        <div className="p-3 bg-accent/30 border-t border-border flex justify-end gap-2">
-                          <button onClick={() => {setIsEditing(false); setEditedInstructions(selectedSkill.instructions || '')}} className="px-3 py-1.5 text-xs text-muted-foreground hover:bg-white/5 rounded-lg transition-colors">{t('skill.cancel')}</button>
-                          <button onClick={handleSaveInstructions} disabled={isSaving} className="px-4 py-1.5 bg-primary text-white text-xs font-bold rounded-lg shadow-lg shadow-primary/20 disabled:opacity-50">
-                            {isSaving ? t('common.saving') : t('skill.saveChanges')}
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
                       <div className="p-6 prose dark:prose-invert prose-sm max-w-none prose-h1:text-base prose-h1:font-bold prose-h2:text-sm prose-h2:font-semibold prose-h3:text-xs prose-h3:font-semibold prose-p:text-[13px] prose-li:text-[13px] prose-code:text-[12px] prose-pre:text-[12px] prose-pre:bg-muted prose-pre:border prose-pre:border-border text-[13px]">
                         {selectedSkill.instructions ? (
                           (() => {
@@ -514,7 +509,6 @@ export function SkillFullDetailPage() {
                           </div>
                         )}
                       </div>
-                    )}
                   </div>
                 </section>
               </div>

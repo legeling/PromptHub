@@ -8,7 +8,7 @@ import { HashIcon, XIcon, ImageIcon, Maximize2Icon, Minimize2Icon, PlusIcon, Glo
 import { usePromptStore } from '../../stores/prompt.store';
 import { useFolderStore } from '../../stores/folder.store';
 import { useSettingsStore } from '../../stores/settings.store';
-import { testAIConnection } from '../../services/ai';
+import { chatCompletion } from '../../services/ai';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../ui/Toast';
 import type { Prompt } from '../../../shared/types';
@@ -18,6 +18,27 @@ import rehypeSanitize from 'rehype-sanitize';
 import rehypeHighlight from 'rehype-highlight';
 import { defaultSchema } from 'hast-util-sanitize';
 import { renderFolderIcon } from '../layout/folderIconHelper';
+
+/**
+ * Detect if text is purely English (no CJK characters).
+ * Strict: any Chinese/Japanese/Korean character = NOT pure English.
+ * 严格判断：任何中日韩字符存在即不认为是纯英文
+ */
+function isPureEnglish(text: string): boolean {
+  if (!text || text.trim().length < 10) return false;
+  // Strip code blocks, inline code, placeholders, URLs
+  const cleaned = text
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/`[^`]*`/g, '')
+    .replace(/\{\{[^}]*\}\}/g, '')
+    .replace(/https?:\/\/\S+/g, '');
+  // CJK Unified Ideographs, CJK Extension A, Hiragana, Katakana, Hangul
+  const cjkPattern = /[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/;
+  if (cjkPattern.test(cleaned)) return false;
+  // Must have meaningful Latin text (at least 10 letters)
+  const latinOnly = cleaned.replace(/[^a-zA-Z]/g, '');
+  return latinOnly.length >= 10;
+}
 
   /* Existing code */
   // Add initialData to props
@@ -73,6 +94,13 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
   const aiModels = useSettingsStore((state) => state.aiModels);
   const defaultModel = aiModels.find(m => m.isDefault);
   const canTranslate = !!defaultModel;
+
+  // Detect if main content is pure English (strict: no CJK allowed)
+  // 检测主内容是否为纯英文（严格：不允许中日韩字符）
+  const isMainContentEnglish = useMemo(() => {
+    const combined = [systemPrompt, userPrompt].filter(Boolean).join(' ');
+    return isPureEnglish(combined);
+  }, [systemPrompt, userPrompt]);
 
   // 检查是否有未保存的更改
   const hasUnsavedChanges = useCallback(() => {
@@ -267,7 +295,7 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
 
     setIsTranslating(true);
     try {
-      const instruction =
+      const systemInstruction =
         'You are a professional prompt translator. Translate the provided System Prompt and User Prompt into natural, accurate English.\n' +
         '- Keep original meaning, tone, and intent.\n' +
         '- Preserve ALL formatting, Markdown, lists, and code blocks.\n' +
@@ -280,21 +308,25 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
         userPrompt: userPrompt || '',
       });
 
-      const result = await testAIConnection(
+      const result = await chatCompletion(
         {
           provider: defaultModel.provider,
           apiKey: defaultModel.apiKey,
           apiUrl: defaultModel.apiUrl,
           model: defaultModel.model,
         },
-        `${instruction}\n\nContent to translate:\n${contentToTranslate}`
+        [
+          { role: 'system', content: systemInstruction },
+          { role: 'user', content: contentToTranslate },
+        ],
+        { temperature: 0.3, maxTokens: 8192 }
       );
 
-      if (!result.success || !result.response) {
-        throw new Error(result.error || t('common.error') || '翻译失败');
+      if (!result.content) {
+        throw new Error(t('common.error') || '翻译失败');
       }
 
-      const jsonMatch = result.response.match(/\{[\s\S]*\}/);
+      const jsonMatch = result.content.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         throw new Error(t('common.error') || '翻译结果解析失败');
       }
@@ -338,18 +370,31 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
   };
 
   // 从英文翻译到当前语言
+  // When main content is English (auto-detected), use it as the English source
+  // 当主内容被检测为纯英文时，自动将其作为英文源进行翻译
   const handleTranslateFromEnglish = async () => {
     if (!canTranslate || !defaultModel) {
       showToast(t('toast.configAI') || '请先配置 AI', 'error');
       return;
     }
-    if (!systemPromptEn && !userPromptEn) {
+
+    // Determine English source: use En fields if available, otherwise use main content if it's English
+    const englishSystem = systemPromptEn || (isMainContentEnglish ? systemPrompt : '');
+    const englishUser = userPromptEn || (isMainContentEnglish ? userPrompt : '');
+
+    if (!englishSystem && !englishUser) {
       showToast(t('prompt.noEnglishContentToTranslate', '没有英文内容可翻译'), 'error');
       return;
     }
 
     setIsTranslating(true);
     try {
+      // If main content is English and En fields are empty, copy main → En fields first
+      if (isMainContentEnglish && !systemPromptEn && !userPromptEn) {
+        if (systemPrompt) setSystemPromptEn(systemPrompt);
+        if (userPrompt) setUserPromptEn(userPrompt);
+      }
+
       const targetLang = getLanguageName(i18n.language);
       const instruction =
         `You are a professional prompt translator. Translate the provided English System Prompt and User Prompt into natural, accurate ${targetLang}.\n` +
@@ -360,25 +405,29 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
         'Return STRICT JSON ONLY: {"systemPrompt":"...","userPrompt":"..."}. If systemPromptEn is empty, use empty string for systemPrompt.';
 
       const contentToTranslate = JSON.stringify({
-        systemPromptEn: systemPromptEn || '',
-        userPromptEn: userPromptEn || '',
+        systemPromptEn: englishSystem,
+        userPromptEn: englishUser,
       });
 
-      const result = await testAIConnection(
+      const result = await chatCompletion(
         {
           provider: defaultModel.provider,
           apiKey: defaultModel.apiKey,
           apiUrl: defaultModel.apiUrl,
           model: defaultModel.model,
         },
-        `${instruction}\n\nContent to translate:\n${contentToTranslate}`
+        [
+          { role: 'system', content: instruction },
+          { role: 'user', content: contentToTranslate },
+        ],
+        { temperature: 0.3, maxTokens: 8192 }
       );
 
-      if (!result.success || !result.response) {
-        throw new Error(result.error || t('common.error') || '翻译失败');
+      if (!result.content) {
+        throw new Error(t('common.error') || '翻译失败');
       }
 
-      const jsonMatch = result.response.match(/\{[\s\S]*\}/);
+      const jsonMatch = result.content.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         throw new Error(t('common.error') || '翻译结果解析失败');
       }
@@ -397,6 +446,7 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
         setUserPrompt(parsed.userPrompt);
       }
 
+      setShowEnglishVersion(true);
       showToast(t('prompt.localizedGenerated', '已生成当前语言版本'), 'success');
     } catch (e) {
       showToast(e instanceof Error ? e.message : (t('common.error') || 'Translation failed'), 'error');
@@ -1024,16 +1074,16 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
           </div>
           {!i18n.language.startsWith('en') && (
           <div className="flex items-center gap-2">
-            {/* 当前语言 → 英文 */}
+            {/* 当前语言 → 英文 (disabled when content is already English) */}
             <button
               onClick={handleTranslateToEnglish}
-              disabled={isTranslating || !canTranslate || (!systemPrompt && !userPrompt)}
+              disabled={isTranslating || !canTranslate || (!systemPrompt && !userPrompt) || isMainContentEnglish}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                isTranslating || !canTranslate || (!systemPrompt && !userPrompt)
+                isTranslating || !canTranslate || (!systemPrompt && !userPrompt) || isMainContentEnglish
                   ? 'opacity-50 cursor-not-allowed bg-muted text-muted-foreground'
                   : 'bg-primary/10 text-primary hover:bg-primary/20'
               }`}
-              title={t('prompt.translateToEnglish', '一键翻译生成英文版')}
+              title={isMainContentEnglish ? t('prompt.alreadyEnglish', '内容已是英文') : t('prompt.translateToEnglish', '一键翻译生成英文版')}
             >
               {isTranslating ? (
                 <Loader2Icon className="w-3.5 h-3.5 animate-spin" />
@@ -1042,16 +1092,16 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
               )}
               → EN
             </button>
-            {/* 英文 → 当前语言 */}
+            {/* 英文 → 当前语言 (enabled when main content is English even if En fields are empty) */}
             <button
               onClick={handleTranslateFromEnglish}
-              disabled={isTranslating || !canTranslate || (!systemPromptEn && !userPromptEn)}
+              disabled={isTranslating || !canTranslate || (!systemPromptEn && !userPromptEn && !isMainContentEnglish)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                isTranslating || !canTranslate || (!systemPromptEn && !userPromptEn)
+                isTranslating || !canTranslate || (!systemPromptEn && !userPromptEn && !isMainContentEnglish)
                   ? 'opacity-50 cursor-not-allowed bg-muted text-muted-foreground'
                   : 'bg-primary/10 text-primary hover:bg-primary/20'
               }`}
-              title={t('prompt.translateFromEnglish', '从英文翻译到当前语言')}
+              title={isMainContentEnglish ? t('prompt.translateDetectedEnglish', '检测到英文内容，翻译为当前语言') : t('prompt.translateFromEnglish', '从英文翻译到当前语言')}
             >
               {isTranslating ? (
                 <Loader2Icon className="w-3.5 h-3.5 animate-spin" />
@@ -1072,6 +1122,11 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
                 <>
                   <XIcon className="w-3.5 h-3.5" />
                   {t('prompt.removeEnglishVersion')}
+                </>
+              ) : isMainContentEnglish ? (
+                <>
+                  <PlusIcon className="w-3.5 h-3.5" />
+                  {t('prompt.addLocalizedVersion', '添加本地语言版本')}
                 </>
               ) : (
                 <>

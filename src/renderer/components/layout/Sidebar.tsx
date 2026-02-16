@@ -5,7 +5,6 @@ import { usePromptStore } from '../../stores/prompt.store';
 import { useSettingsStore } from '../../stores/settings.store';
 import { useUIStore } from '../../stores/ui.store';
 import { useSkillStore } from '../../stores/skill.store';
-import { SKILL_PLATFORMS } from '../../../shared/constants/platforms';
 import { ResourcesModal } from '../resources/ResourcesModal';
 import { FolderModal, PrivateFolderUnlockModal } from '../folder';
 import { useTranslation } from 'react-i18next';
@@ -119,10 +118,18 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
   const toggleSkillFilterTag = useSkillStore((state) => state.toggleFilterTag);
   const clearSkillFilterTags = useSkillStore((state) => state.clearFilterTags);
   const uniqueSkillTags = useMemo(() => {
-    const platformIds = new Set(SKILL_PLATFORMS.map(p => p.id));
-    const autoTags = new Set(['local', 'discovered', 'github', 'imported', ...platformIds]);
-    const all = skills.flatMap(s => s.tags || []).filter(t => !autoTags.has(t));
-    return [...new Set(all)];
+    // Only show user-added tags (tags that are NOT in original_tags)
+    const userTags: string[] = [];
+    for (const s of skills) {
+      const tags = s.tags || [];
+      const originalSet = new Set(s.original_tags || []);
+      for (const tag of tags) {
+        if (!originalSet.has(tag)) {
+          userTags.push(tag);
+        }
+      }
+    }
+    return [...new Set(userTags)];
   }, [skills]);
   const [showAllSkillTags, setShowAllSkillTags] = useState(false);
 

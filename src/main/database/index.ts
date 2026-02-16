@@ -118,6 +118,7 @@ export function initDatabase(): Database.Database {
       { name: 'content_url', type: 'TEXT' },
       { name: 'prerequisites', type: 'TEXT' },
       { name: 'compatibility', type: 'TEXT' },
+      { name: 'original_tags', type: 'TEXT' },
     ];
 
     for (const col of newColumns) {
@@ -125,6 +126,12 @@ export function initDatabase(): Database.Database {
         console.log(`Migrating: Adding ${col.name} column to skills table`);
         db.prepare(`ALTER TABLE skills ADD COLUMN ${col.name} ${col.type}`).run();
       }
+    }
+
+    // Backfill: set original_tags = tags for existing skills that don't have original_tags yet
+    if (!skillColumns.includes('original_tags')) {
+      db.prepare(`UPDATE skills SET original_tags = tags WHERE original_tags IS NULL`).run();
+      console.log('Migrated: Backfilled original_tags for existing skills');
     }
   } catch (error) {
     console.error('Migration (skills store columns) failed:', error);

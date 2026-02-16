@@ -58,9 +58,9 @@ export function SkillManager() {
     return <SkillStore />;
   }
 
-  // Gallery view: if a skill is selected, show full detail page
-  // Gallery 视图：如果选中了技能，显示全宽详情页
-  if (viewMode === 'gallery' && selectedSkillId) {
+  // If a skill is selected, show full detail page (same behavior for both gallery and list views)
+  // 如果选中了技能，显示全宽详情页（画廊和列表视图使用相同交互）
+  if (selectedSkillId) {
     return <SkillFullDetailPage />;
   }
 

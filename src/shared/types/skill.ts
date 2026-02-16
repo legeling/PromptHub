@@ -10,6 +10,7 @@ export interface Skill {
   author?: string;
   source_url?: string; // GitHub URL or registry source
   tags?: string[]; // stored as JSON string in DB, parsed array in runtime
+  original_tags?: string[]; // tags at import time; user-added tags = tags - original_tags
   is_favorite: boolean;
   created_at: number;
   updated_at: number;
