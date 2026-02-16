@@ -266,7 +266,7 @@ Vous pouvez voir le journal complet ici : **[CHANGELOG.md](../CHANGELOG.md)**
 - 🔗 **Mode Symlink/Copie** : Lien symbolique ou copie indépendante
 - 🌐 **Traduction IA des skills** : Traduction immersive et complète
 - 🏷️ **Filtrage par tags** : Tags dans la barre latérale pour un filtrage rapide
-- � **Flux de travail clair** : « Ajouter à la bibliothèque » → automatiquement « Installer sur la plateforme »
+- 📦 **Flux de travail clair** : « Ajouter à la bibliothèque » → automatiquement « Installer sur la plateforme »
 
 > 📋 [Voir le journal des modifications](../CHANGELOG.md)
 

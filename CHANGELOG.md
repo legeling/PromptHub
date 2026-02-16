@@ -72,11 +72,11 @@
 
 ### 新功能 / Added
 
-- �️ **调试模式**：在"关于"页面新增开发者调试模式，开启后支持快捷键唤起控制台 (Ctrl+Shift+I)
+- 🛠️ **调试模式**：在"关于"页面新增开发者调试模式，开启后支持快捷键唤起控制台 (Ctrl+Shift+I)
   - **Debug Mode**: Added developer debug mode in About page with shortcut support
 - 🧩 **侧边栏导航优化**：将顶部导航项整合为分段控制器，节省空间并优化视觉体验
   - **Sidebar Compact Nav**: Consolidated top navigation items into a segmented control for better space efficiency
-- �📋 **看板/Bento 视图模式**：新增 Kanban 视图，支持响应式 Bento 网格布局，支持 2-4 列自由切换
+- 📋 **看板/Bento 视图模式**：新增 Kanban 视图，支持响应式 Bento 网格布局，支持 2-4 列自由切换
   - **Kanban/Bento View**: Added a new Kanban view with responsive Bento grid layout
 - 📌 **Prompt 置顶对比**：支持置顶多个 Prompt 到顶部独立区域，支持一键全部展开/收起
   - **Pinned Comparison**: Pin multiple prompts to a dedicated top section with quick "Expand/Collapse All" actions

@@ -75,7 +75,7 @@
 - Paralleler Vergleichstest mit mehreren Modellen
 - KI-Skill-Inhaltsgenerierung und -verfeinerung
 
-### � Daten & Synchronisierung
+### 💾 Daten & Synchronisierung
 - Alle Daten lokal gespeichert, Privatsphäre geschützt
 - Vollständige Sicherung/Wiederherstellung (`.phub.gz`)
 - WebDAV Cloud-Synchronisierung
@@ -264,9 +264,9 @@ Den vollständigen Verlauf finden Sie hier: **[CHANGELOG.md](../CHANGELOG.md)**
 - 🚀 **Multi-Plattform-Installation**: SKILL.md auf 12 Plattformen installieren
 - 🔍 **Lokaler Scan & Vorschau**: Lokale SKILL.md automatisch erkennen, Batch-Import
 - 🔗 **Symlink/Kopie-Modus**: Symbolischer Link oder unabhängige Kopie
-- � **KI-Skill-Übersetzung**: Immersive und Volltext-Übersetzung
+- 🌐 **KI-Skill-Übersetzung**: Immersive und Volltext-Übersetzung
 - 🏷️ **Tag-Filterung**: Sidebar-Tags zum schnellen Filtern
-- � **Klarer Workflow**: „Zur Bibliothek hinzufügen" → automatisch „Auf Plattform installieren"
+- 📦 **Klarer Workflow**: „Zur Bibliothek hinzufügen" → automatisch „Auf Plattform installieren"
 
 > 📋 [Vollständiges Änderungsprotokoll anzeigen](../CHANGELOG.md)
 

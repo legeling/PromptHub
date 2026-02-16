@@ -266,7 +266,7 @@ Puedes ver el registro completo aquí: **[CHANGELOG.md](../CHANGELOG.md)**
 - 🔗 **Modo Symlink/Copia**: Enlace simbólico o copia independiente
 - 🌐 **Traducción IA de skills**: Traducción inmersiva y completa
 - 🏷️ **Filtrado por etiquetas**: Etiquetas en la barra lateral para filtrado rápido
-- � **Flujo de trabajo claro**: «Añadir a la biblioteca» → automáticamente «Instalar en plataforma»
+- 📦 **Flujo de trabajo claro**: «Añadir a la biblioteca» → automáticamente «Instalar en plataforma»
 
 > 📋 [Ver registro de cambios](../CHANGELOG.md)
 

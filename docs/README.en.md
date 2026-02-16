@@ -204,9 +204,9 @@ Edit history is automatically saved. Click "History" to view and restore previou
 3. **Scan Local**: Auto-discover existing SKILL.md files, preview and selectively import
 4. **Edit & Polish**: Edit skill content in your library, with AI generation and polishing support
 
-> � **Supported Platforms**: Claude Code, GitHub Copilot, Cursor, Windsurf, Kiro, Gemini CLI, Trae, OpenCode, Codex CLI, Roo Code, Amp, OpenClaw
+> 🖥️ **Supported Platforms**: Claude Code, GitHub Copilot, Cursor, Windsurf, Kiro, Gemini CLI, Trae, OpenCode, Codex CLI, Roo Code, Amp, OpenClaw
 
-## �🛠️ Tech Stack
+## 🛠️ Tech Stack
 
 | Category         | Technology              |
 | ---------------- | ----------------------- |
@@ -285,7 +285,7 @@ See full changelog: **[CHANGELOG.md](../CHANGELOG.md)**
 - 🌐 **AI Skill Translation**: Immersive (interleaved original/translated) and full translation modes
 - ✨ **AI Skill Generation**: Generate complete skill content from description, with smart polishing
 - 🏷️ **Tag Filtering**: Sidebar skill tags for quick filtering
-- � **Clear Workflow**: "Add to Library" → auto-popup "Install to Platforms" selection
+- 📦 **Clear Workflow**: "Add to Library" → auto-popup "Install to Platforms" selection
 
 > 📋 [View full changelog](../CHANGELOG.md)
 
