@@ -371,3 +371,13 @@ jobs:
             --generate-notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Homebrew Cask
+        if: ${{ !contains(github.ref, 'beta') && !contains(github.ref, 'alpha') }}
+        shell: bash
+        run: |
+          # Wait for release assets to be fully available
+          sleep 15
+          bash scripts/update-homebrew-cask.sh "$VERSION"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
