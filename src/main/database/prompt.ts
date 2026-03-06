@@ -1,15 +1,15 @@
-import Database from './sqlite';
-import { v4 as uuidv4 } from 'uuid';
+import Database from "./sqlite";
+import { v4 as uuidv4 } from "uuid";
 import type {
   Prompt,
   CreatePromptDTO,
   UpdatePromptDTO,
   SearchQuery,
   PromptVersion,
-} from '@shared/types';
+} from "@shared/types";
 
 export class PromptDB {
-  constructor(private db: Database.Database) { }
+  constructor(private db: Database.Database) {}
 
   /**
    * Create Prompt
@@ -21,16 +21,17 @@ export class PromptDB {
 
     const stmt = this.db.prepare(`
       INSERT INTO prompts (
-        id, title, description, system_prompt, user_prompt,
+        id, title, description, prompt_type, system_prompt, user_prompt,
         variables, tags, folder_id, images, source, notes, is_favorite, current_version,
         usage_count, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
       id,
       data.title,
       data.description || null,
+      data.promptType || "text",
       data.systemPrompt || null,
       data.userPrompt,
       JSON.stringify(data.variables || []),
@@ -43,12 +44,12 @@ export class PromptDB {
       1,
       0,
       now,
-      now
+      now,
     );
 
     // Create initial version
     // 创建初始版本
-    this.createVersion(id, 'Initial version');
+    this.createVersion(id, "Initial version");
     // 初始版本
 
     return this.getById(id)!;
@@ -59,7 +60,7 @@ export class PromptDB {
    * 根据 ID 获取 Prompt
    */
   getById(id: string): Prompt | null {
-    const stmt = this.db.prepare('SELECT * FROM prompts WHERE id = ?');
+    const stmt = this.db.prepare("SELECT * FROM prompts WHERE id = ?");
     const row = stmt.get(id) as any;
     return row ? this.rowToPrompt(row) : null;
   }
@@ -69,7 +70,9 @@ export class PromptDB {
    * 获取所有 Prompt
    */
   getAll(): Prompt[] {
-    const stmt = this.db.prepare('SELECT * FROM prompts ORDER BY updated_at DESC');
+    const stmt = this.db.prepare(
+      "SELECT * FROM prompts ORDER BY updated_at DESC",
+    );
     const rows = stmt.all() as any[];
     return rows.map((row) => this.rowToPrompt(row));
   }
@@ -85,70 +88,83 @@ export class PromptDB {
     if (!existingPrompt) return null;
 
     const now = Date.now();
-    const updates: string[] = ['updated_at = ?'];
+    const updates: string[] = ["updated_at = ?"];
     const values: any[] = [now];
 
     if (data.title !== undefined) {
-      updates.push('title = ?');
+      updates.push("title = ?");
       values.push(data.title);
     }
     if (data.description !== undefined) {
-      updates.push('description = ?');
+      updates.push("description = ?");
       values.push(data.description);
     }
+    if (data.promptType !== undefined) {
+      updates.push("prompt_type = ?");
+      values.push(data.promptType);
+    }
     if (data.systemPrompt !== undefined) {
-      updates.push('system_prompt = ?');
+      updates.push("system_prompt = ?");
       values.push(data.systemPrompt);
     }
     if (data.userPrompt !== undefined) {
-      updates.push('user_prompt = ?');
+      updates.push("user_prompt = ?");
       values.push(data.userPrompt);
     }
     if (data.variables !== undefined) {
-      updates.push('variables = ?');
+      updates.push("variables = ?");
       values.push(JSON.stringify(data.variables));
     }
     if (data.tags !== undefined) {
-      updates.push('tags = ?');
+      updates.push("tags = ?");
       values.push(JSON.stringify(data.tags));
     }
     if (data.folderId !== undefined) {
-      updates.push('folder_id = ?');
+      updates.push("folder_id = ?");
       values.push(data.folderId);
     }
     if (data.images !== undefined) {
-      updates.push('images = ?');
+      updates.push("images = ?");
       values.push(JSON.stringify(data.images));
     }
     if (data.isFavorite !== undefined) {
-      updates.push('is_favorite = ?');
+      updates.push("is_favorite = ?");
       values.push(data.isFavorite ? 1 : 0);
     }
     if (data.isPinned !== undefined) {
-      updates.push('is_pinned = ?');
+      updates.push("is_pinned = ?");
       values.push(data.isPinned ? 1 : 0);
     }
     if (data.source !== undefined) {
-      updates.push('source = ?');
+      updates.push("source = ?");
       values.push(data.source);
     }
     if (data.notes !== undefined) {
-      updates.push('notes = ?');
+      updates.push("notes = ?");
       values.push(data.notes);
     }
 
     values.push(id);
 
-    const stmt = this.db.prepare(
-      `UPDATE prompts SET ${updates.join(', ')} WHERE id = ?`
-    );
-    stmt.run(...values);
+    // Wrap SQL update + version creation in a transaction for atomicity
+    const runUpdate = this.db.transaction(() => {
+      const stmt = this.db.prepare(
+        `UPDATE prompts SET ${updates.join(", ")} WHERE id = ?`,
+      );
+      stmt.run(...values);
 
-    // Create a new version if content changes
-    // 如果内容有变化，创建新版本
-    if (data.systemPrompt !== undefined || data.userPrompt !== undefined || data.variables !== undefined) {
-      this.createVersion(id);
-    }
+      // Create a new version if content changes
+      // 如果内容有变化，创建新版本
+      if (
+        data.systemPrompt !== undefined ||
+        data.userPrompt !== undefined ||
+        data.variables !== undefined
+      ) {
+        this.createVersion(id);
+      }
+    });
+
+    runUpdate();
 
     // Build updated prompt in memory instead of re-querying (performance optimization)
     // 在内存中构建更新后的 prompt 对象，而不是重新查询（性能优化）
@@ -159,7 +175,10 @@ export class PromptDB {
       updatedAt: now as any,
       ...(data.title !== undefined && { title: data.title }),
       ...(data.description !== undefined && { description: data.description }),
-      ...(data.systemPrompt !== undefined && { systemPrompt: data.systemPrompt }),
+      ...(data.promptType !== undefined && { promptType: data.promptType }),
+      ...(data.systemPrompt !== undefined && {
+        systemPrompt: data.systemPrompt,
+      }),
       ...(data.userPrompt !== undefined && { userPrompt: data.userPrompt }),
       ...(data.variables !== undefined && { variables: data.variables }),
       ...(data.tags !== undefined && { tags: data.tags }),
@@ -179,7 +198,7 @@ export class PromptDB {
    * 删除 Prompt
    */
   delete(id: string): boolean {
-    const stmt = this.db.prepare('DELETE FROM prompts WHERE id = ?');
+    const stmt = this.db.prepare("DELETE FROM prompts WHERE id = ?");
     const result = stmt.run(id);
     return result.changes > 0;
   }
@@ -189,51 +208,57 @@ export class PromptDB {
    * 搜索 Prompt
    */
   search(query: SearchQuery): Prompt[] {
-    let sql = 'SELECT * FROM prompts WHERE 1=1';
+    let sql = "SELECT * FROM prompts WHERE 1=1";
     const params: any[] = [];
 
     if (query.keyword) {
-      sql += ' AND id IN (SELECT rowid FROM prompts_fts WHERE prompts_fts MATCH ?)';
-      params.push(query.keyword);
+      sql +=
+        " AND rowid IN (SELECT rowid FROM prompts_fts WHERE prompts_fts MATCH ?)";
+      // Escape FTS5 special characters by wrapping in double quotes
+      params.push(`"${query.keyword.replace(/"/g, '""')}"`);
     }
 
     if (query.folderId) {
-      sql += ' AND folder_id = ?';
+      sql += " AND folder_id = ?";
       params.push(query.folderId);
     }
 
     if (query.isFavorite !== undefined) {
-      sql += ' AND is_favorite = ?';
+      sql += " AND is_favorite = ?";
       params.push(query.isFavorite ? 1 : 0);
     }
 
     if (query.tags && query.tags.length > 0) {
       // Simple tag match
       // 简单的标签匹配
-      const tagConditions = query.tags.map(() => 'tags LIKE ?').join(' OR ');
+      const tagConditions = query.tags.map(() => "tags LIKE ?").join(" OR ");
       sql += ` AND (${tagConditions})`;
       params.push(...query.tags.map((tag) => `%"${tag}"%`));
     }
 
     // Sorting
     // 排序
-    const sortBy = query.sortBy || 'updatedAt';
-    const sortOrder = query.sortOrder || 'desc';
-    const sortColumn = {
-      title: 'title',
-      createdAt: 'created_at',
-      updatedAt: 'updated_at',
-      usageCount: 'usage_count',
-    }[sortBy];
-    sql += ` ORDER BY ${sortColumn} ${sortOrder.toUpperCase()}`;
+    const sortBy = query.sortBy || "updatedAt";
+    const sortOrder = query.sortOrder || "desc";
+    const sortColumn =
+      (
+        {
+          title: "title",
+          createdAt: "created_at",
+          updatedAt: "updated_at",
+          usageCount: "usage_count",
+        } as Record<string, string>
+      )[sortBy] ?? "updated_at";
+    const safeOrder = sortOrder.toUpperCase() === "ASC" ? "ASC" : "DESC";
+    sql += ` ORDER BY ${sortColumn} ${safeOrder}`;
 
     // Pagination
     // 分页
     if (query.limit) {
-      sql += ' LIMIT ?';
+      sql += " LIMIT ?";
       params.push(query.limit);
       if (query.offset) {
-        sql += ' OFFSET ?';
+        sql += " OFFSET ?";
         params.push(query.offset);
       }
     }
@@ -249,7 +274,7 @@ export class PromptDB {
    */
   incrementUsage(id: string): void {
     const stmt = this.db.prepare(
-      'UPDATE prompts SET usage_count = usage_count + 1 WHERE id = ?'
+      "UPDATE prompts SET usage_count = usage_count + 1 WHERE id = ?",
     );
     stmt.run(id);
   }
@@ -262,41 +287,57 @@ export class PromptDB {
     const prompt = this.getById(promptId);
     if (!prompt) return null;
 
-    const id = uuidv4();
-    const version = prompt.currentVersion;
-    const now = Date.now();
+    const txn = this.db.transaction(() => {
+      // Re-read current_version inside transaction for consistency
+      const freshRow = this.db
+        .prepare("SELECT current_version FROM prompts WHERE id = ?")
+        .get(promptId) as { current_version: number } | undefined;
+      if (!freshRow) return null;
 
-    const stmt = this.db.prepare(`
-      INSERT INTO prompt_versions (
-        id, prompt_id, version, system_prompt, user_prompt, variables, note, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `);
+      const version = freshRow.current_version ?? 1;
+      const id = uuidv4();
+      const now = Date.now();
 
-    stmt.run(
-      id,
-      promptId,
-      version,
-      prompt.systemPrompt || null,
-      prompt.userPrompt,
-      JSON.stringify(prompt.variables),
-      note || null,
-      now
-    );
+      this.db
+        .prepare(
+          `
+        INSERT INTO prompt_versions (
+          id, prompt_id, version, system_prompt, user_prompt, variables, note, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+        )
+        .run(
+          id,
+          promptId,
+          version,
+          prompt.systemPrompt || null,
+          prompt.userPrompt,
+          JSON.stringify(prompt.variables),
+          note || null,
+          now,
+        );
 
-    // Update current version number
-    // 更新当前版本号
-    this.db.prepare('UPDATE prompts SET current_version = current_version + 1 WHERE id = ?').run(promptId);
+      // Update current version number
+      // 更新当前版本号
+      this.db
+        .prepare(
+          "UPDATE prompts SET current_version = current_version + 1 WHERE id = ?",
+        )
+        .run(promptId);
 
-    return {
-      id,
-      promptId,
-      version,
-      systemPrompt: prompt.systemPrompt,
-      userPrompt: prompt.userPrompt,
-      variables: prompt.variables,
-      note,
-      createdAt: new Date(now).toISOString(),
-    };
+      return {
+        id,
+        promptId,
+        version,
+        systemPrompt: prompt.systemPrompt,
+        userPrompt: prompt.userPrompt,
+        variables: prompt.variables,
+        note,
+        createdAt: new Date(now).toISOString(),
+      } as PromptVersion;
+    });
+
+    return txn();
   }
 
   /**
@@ -305,7 +346,7 @@ export class PromptDB {
    */
   getVersions(promptId: string): PromptVersion[] {
     const stmt = this.db.prepare(
-      'SELECT * FROM prompt_versions WHERE prompt_id = ? ORDER BY version DESC'
+      "SELECT * FROM prompt_versions WHERE prompt_id = ? ORDER BY version DESC",
     );
     const rows = stmt.all(promptId) as any[];
     return rows.map((row) => this.rowToVersion(row));
@@ -317,7 +358,7 @@ export class PromptDB {
    */
   rollback(promptId: string, version: number): Prompt | null {
     const stmt = this.db.prepare(
-      'SELECT * FROM prompt_versions WHERE prompt_id = ? AND version = ?'
+      "SELECT * FROM prompt_versions WHERE prompt_id = ? AND version = ?",
     );
     const row = stmt.get(promptId, version) as any;
     if (!row) return null;
@@ -340,12 +381,13 @@ export class PromptDB {
       id: row.id,
       title: row.title,
       description: row.description,
+      promptType: row.prompt_type || "text",
       systemPrompt: row.system_prompt,
       userPrompt: row.user_prompt,
-      variables: JSON.parse(row.variables || '[]'),
-      tags: JSON.parse(row.tags || '[]'),
+      variables: JSON.parse(row.variables || "[]"),
+      tags: JSON.parse(row.tags || "[]"),
       folderId: row.folder_id,
-      images: JSON.parse(row.images || '[]'),
+      images: JSON.parse(row.images || "[]"),
       isFavorite: row.is_favorite === 1,
       isPinned: row.is_pinned === 1,
       version: row.current_version,
@@ -369,7 +411,7 @@ export class PromptDB {
       version: row.version,
       systemPrompt: row.system_prompt,
       userPrompt: row.user_prompt,
-      variables: JSON.parse(row.variables || '[]'),
+      variables: JSON.parse(row.variables || "[]"),
       note: row.note,
       createdAt: row.created_at,
     };

@@ -1,25 +1,33 @@
-import { useEffect, useState, lazy, Suspense } from 'react';
-import { Sidebar, TopBar, MainContent, TitleBar } from './components/layout';
-import { usePromptStore } from './stores/prompt.store';
-import { useFolderStore } from './stores/folder.store';
-import { useSettingsStore } from './stores/settings.store';
-import { initDatabase, seedDatabase } from './services/database';
-import { ImportedPromptData } from './components/prompt/ImportPromptModal';
-import { autoSync } from './services/webdav';
-import { useToast } from './components/ui/Toast';
-import { DndContext, DragEndEvent, pointerWithin } from '@dnd-kit/core';
-import i18n from './i18n';
-import { UpdateDialog, UpdateStatus } from './components/UpdateDialog';
-import { CloseDialog } from './components/ui/CloseDialog';
+import { useEffect, useState, lazy, Suspense } from "react";
+import { Sidebar, TopBar, MainContent, TitleBar } from "./components/layout";
+import { usePromptStore } from "./stores/prompt.store";
+import { useFolderStore } from "./stores/folder.store";
+import { useSettingsStore } from "./stores/settings.store";
+import { initDatabase, seedDatabase } from "./services/database";
+import { ImportedPromptData } from "./components/prompt/ImportPromptModal";
+import { autoSync } from "./services/webdav";
+import { useToast } from "./components/ui/Toast";
+import { DndContext, DragEndEvent, pointerWithin } from "@dnd-kit/core";
+import i18n from "./i18n";
+import { UpdateDialog, UpdateStatus } from "./components/UpdateDialog";
+import { CloseDialog } from "./components/ui/CloseDialog";
 
 // Lazy load heavy components for better initial load performance
 // 懒加载大型组件以提升初始加载性能
-const SettingsPage = lazy(() => import('./components/settings/SettingsPage').then(m => ({ default: m.SettingsPage })));
-const EditPromptModal = lazy(() => import('./components/prompt/EditPromptModal').then(m => ({ default: m.EditPromptModal })));
+const SettingsPage = lazy(() =>
+  import("./components/settings/SettingsPage").then((m) => ({
+    default: m.SettingsPage,
+  })),
+);
+const EditPromptModal = lazy(() =>
+  import("./components/prompt/EditPromptModal").then((m) => ({
+    default: m.EditPromptModal,
+  })),
+);
 
 // Page type
 // 页面类型
-type PageType = 'home' | 'settings';
+type PageType = "home" | "settings";
 
 function App() {
   const fetchPrompts = usePromptStore((state) => state.fetchPrompts);
@@ -31,31 +39,39 @@ function App() {
   const applyTheme = useSettingsStore((state) => state.applyTheme);
   const debugMode = useSettingsStore((state) => state.debugMode);
   const shortcutModes = useSettingsStore((state) => state.shortcutModes);
-  const [currentPage, setCurrentPage] = useState<PageType>('home');
+  const [currentPage, setCurrentPage] = useState<PageType>("home");
   const [isLoading, setIsLoading] = useState(true);
   const { showToast } = useToast();
 
-  const clipboardImportEnabled = useSettingsStore(state => state.clipboardImportEnabled);
+  const clipboardImportEnabled = useSettingsStore(
+    (state) => state.clipboardImportEnabled,
+  );
   const [importData, setImportData] = useState<ImportedPromptData | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [lastClipboardChecksum, setLastClipboardChecksum] = useState<string>('');
-  
+  const [lastClipboardChecksum, setLastClipboardChecksum] =
+    useState<string>("");
+
   // Update state
   // 更新状态
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
-  const [initialUpdateStatus, setInitialUpdateStatus] = useState<UpdateStatus | null>(null);
-  
+  const [initialUpdateStatus, setInitialUpdateStatus] =
+    useState<UpdateStatus | null>(null);
+
   // Close dialog state (Windows)
   // 关闭对话框状态（Windows）
   const [showCloseDialog, setShowCloseDialog] = useState(false);
 
   // Update status (used for TopBar indicator)
   // 更新状态（用于顶部栏显示更新提示）
-  const [updateAvailable, setUpdateAvailable] = useState<UpdateStatus | null>(null);
+  const [updateAvailable, setUpdateAvailable] = useState<UpdateStatus | null>(
+    null,
+  );
 
   // Local shortcuts state
   // 局部快捷键状态
-  const [localShortcuts, setLocalShortcuts] = useState<Record<string, string>>({});
+  const [localShortcuts, setLocalShortcuts] = useState<Record<string, string>>(
+    {},
+  );
 
   useEffect(() => {
     // Initial load local shortcuts
@@ -66,17 +82,18 @@ function App() {
 
     // Listen for updates
     // 监听更新
-    const offShortcutsUpdated = window.electron?.onShortcutsUpdated?.((shortcuts) => {
-      setLocalShortcuts(shortcuts);
-    });
+    const offShortcutsUpdated = window.electron?.onShortcutsUpdated?.(
+      (shortcuts) => {
+        setLocalShortcuts(shortcuts);
+      },
+    );
 
     return () => {
-      if (typeof offShortcutsUpdated === 'function') {
+      if (typeof offShortcutsUpdated === "function") {
         offShortcutsUpdated();
       }
     };
   }, []);
-
 
   // Clipboard detection logic
   useEffect(() => {
@@ -84,8 +101,8 @@ function App() {
 
     const checkClipboard = async () => {
       // Small delay to ensure clipboard is ready after focus
-      await new Promise(resolve => setTimeout(resolve, 150));
-      
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
       try {
         const text = await navigator.clipboard.readText();
         if (!text || text.length < 20) return;
@@ -94,16 +111,21 @@ function App() {
         if (checksum === lastClipboardChecksum) return;
 
         // Verify if it was copied by us in this session
-        const selfSignature = sessionStorage.getItem('lastCopiedPromptSignature');
+        const selfSignature = sessionStorage.getItem(
+          "lastCopiedPromptSignature",
+        );
         if (selfSignature === checksum) {
           return;
         }
 
-        if (text.trim().startsWith('{')) {
+        if (text.trim().startsWith("{")) {
           try {
             const data = JSON.parse(text);
             // Validation: Must have a title/name and at least one prompt field
-            if ((data.name || data.title) && (data.userPrompt || data.systemPrompt)) {
+            if (
+              (data.name || data.title) &&
+              (data.userPrompt || data.systemPrompt)
+            ) {
               setImportData(data);
               setShowImportModal(true);
               setLastClipboardChecksum(checksum);
@@ -117,8 +139,8 @@ function App() {
       }
     };
 
-    window.addEventListener('focus', checkClipboard);
-    return () => window.removeEventListener('focus', checkClipboard);
+    window.addEventListener("focus", checkClipboard);
+    return () => window.removeEventListener("focus", checkClipboard);
   }, [clipboardImportEnabled, lastClipboardChecksum]);
 
   // Handle local shortcuts
@@ -128,51 +150,51 @@ function App() {
     // 在处理器内部检查单独的快捷键模式
 
     const handleKeyDown = (e: KeyboardEvent) => {
-       const parts = [];
-       const isMac = navigator.userAgent.toLowerCase().includes('mac');
-       
-       if (isMac ? e.metaKey : e.ctrlKey) parts.push('CommandOrControl');
-       if (e.altKey) parts.push('Alt');
-       if (e.shiftKey) parts.push('Shift');
-       
-       let key = e.key;
-       // Ignore modifier keys events
-       if (['Control', 'Alt', 'Shift', 'Meta'].includes(key)) return;
-       
-       if (key === ' ') key = 'Space';
-       parts.push(key.toUpperCase());
-       
-       const pressed = parts.join('+');
-       
-       // Check matching
-       for (const [action, accelerator] of Object.entries(localShortcuts)) {
-         if (accelerator === pressed) {
-           // Check mode for this specific action
-           // 检查此特定操作的模式
-           const mode = (shortcutModes && shortcutModes[action]) || 'local'; // Default to local
-           
-           if (mode === 'local') {
-             e.preventDefault();
-             // Trigger action based on type
-             switch (action) {
-               case 'newPrompt':
-                 window.dispatchEvent(new CustomEvent('shortcut:newPrompt'));
-                 break;
-               case 'search':
-                 window.dispatchEvent(new CustomEvent('shortcut:search'));
-                 break;
-               case 'settings':
-                 setCurrentPage('settings');
-                 break;
-               // showApp is typically global only, or handled by OS/Electron focus
-             }
-           }
-         }
-       }
+      const parts = [];
+      const isMac = navigator.userAgent.toLowerCase().includes("mac");
+
+      if (isMac ? e.metaKey : e.ctrlKey) parts.push("CommandOrControl");
+      if (e.altKey) parts.push("Alt");
+      if (e.shiftKey) parts.push("Shift");
+
+      let key = e.key;
+      // Ignore modifier keys events
+      if (["Control", "Alt", "Shift", "Meta"].includes(key)) return;
+
+      if (key === " ") key = "Space";
+      parts.push(key.toUpperCase());
+
+      const pressed = parts.join("+");
+
+      // Check matching
+      for (const [action, accelerator] of Object.entries(localShortcuts)) {
+        if (accelerator === pressed) {
+          // Check mode for this specific action
+          // 检查此特定操作的模式
+          const mode = (shortcutModes && shortcutModes[action]) || "local"; // Default to local
+
+          if (mode === "local") {
+            e.preventDefault();
+            // Trigger action based on type
+            switch (action) {
+              case "newPrompt":
+                window.dispatchEvent(new CustomEvent("shortcut:newPrompt"));
+                break;
+              case "search":
+                window.dispatchEvent(new CustomEvent("shortcut:search"));
+                break;
+              case "settings":
+                setCurrentPage("settings");
+                break;
+              // showApp is typically global only, or handled by OS/Electron focus
+            }
+          }
+        }
+      }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [shortcutModes, localShortcuts]);
 
   useEffect(() => {
@@ -180,7 +202,7 @@ function App() {
     // 监听更新状态
     const handleStatus = (status: UpdateStatus) => {
       // If update available, save status for TopBar indicator (don't auto-show dialog)
-      if (status.status === 'available') {
+      if (status.status === "available") {
         setUpdateAvailable(status);
         setInitialUpdateStatus(status);
         // Do not auto-show dialog; only show after user clicks TopBar indicator
@@ -190,34 +212,38 @@ function App() {
     };
 
     const offUpdaterStatus = window.electron?.updater?.onStatus(handleStatus);
-    
+
     // Listen for close dialog trigger (Windows)
     // 监听关闭对话框触发（Windows）
     const handleShowCloseDialog = () => setShowCloseDialog(true);
-    const offShowCloseDialog = window.electron?.onShowCloseDialog?.(handleShowCloseDialog);
+    const offShowCloseDialog = window.electron?.onShowCloseDialog?.(
+      handleShowCloseDialog,
+    );
 
     // Listen for global shortcut triggers
     // 监听全局快捷键触发
     const handleShortcutTriggered = (action: string) => {
       switch (action) {
-        case 'newPrompt':
+        case "newPrompt":
           // Dispatch custom event to trigger new prompt modal
           // 触发自定义事件以打开“新建 Prompt”弹窗
-          window.dispatchEvent(new CustomEvent('shortcut:newPrompt'));
+          window.dispatchEvent(new CustomEvent("shortcut:newPrompt"));
           break;
-        case 'search':
+        case "search":
           // Focus search input
           // 聚焦搜索输入框
-          window.dispatchEvent(new CustomEvent('shortcut:search'));
+          window.dispatchEvent(new CustomEvent("shortcut:search"));
           break;
-        case 'settings':
-          setCurrentPage('settings');
+        case "settings":
+          setCurrentPage("settings");
           break;
         // showApp is handled in main process
         // showApp 由主进程处理
       }
     };
-    const offShortcutTriggered = window.electron?.onShortcutTriggered?.(handleShortcutTriggered);
+    const offShortcutTriggered = window.electron?.onShortcutTriggered?.(
+      handleShortcutTriggered,
+    );
 
     // Check for updates on startup and periodically
     // 启动时和周期性检查更新
@@ -232,7 +258,7 @@ function App() {
         if (isCheckingUpdate) return;
         isCheckingUpdate = true;
         const p = window.electron?.updater?.check();
-        if (p && typeof (p as any).finally === 'function') {
+        if (p && typeof (p as any).finally === "function") {
           (p as Promise<any>).finally(() => {
             isCheckingUpdate = false;
           });
@@ -253,26 +279,26 @@ function App() {
     // Listen for manual check trigger - always force a fresh check
     // 监听手动检查触发（始终强制刷新检查状态）
     const handleOpenUpdate = () => {
-       setInitialUpdateStatus(null);
-       setUpdateAvailable(null); // Clear cached status
-       setShowUpdateDialog(true);
+      setInitialUpdateStatus(null);
+      setUpdateAvailable(null); // Clear cached status
+      setShowUpdateDialog(true);
     };
-    window.addEventListener('open-update-dialog', handleOpenUpdate);
+    window.addEventListener("open-update-dialog", handleOpenUpdate);
 
     return () => {
       // Cleanup Electron/IPC listeners to prevent leaks on unmount/remount
       // 清理 Electron/IPC 监听，避免卸载/重挂载导致重复触发
-      if (typeof offUpdaterStatus === 'function') {
+      if (typeof offUpdaterStatus === "function") {
         offUpdaterStatus();
       } else {
         // Backward compatible fallback (may remove all updater listeners)
         // 兼容旧实现兜底（可能移除所有 updater 监听）
         window.electron?.updater?.offStatus?.();
       }
-      if (typeof offShowCloseDialog === 'function') {
+      if (typeof offShowCloseDialog === "function") {
         offShowCloseDialog();
       }
-      if (typeof offShortcutTriggered === 'function') {
+      if (typeof offShortcutTriggered === "function") {
         offShortcutTriggered();
       }
 
@@ -282,7 +308,7 @@ function App() {
       if (startupUpdateCheckTimer) {
         clearTimeout(startupUpdateCheckTimer);
       }
-      window.removeEventListener('open-update-dialog', handleOpenUpdate);
+      window.removeEventListener("open-update-dialog", handleOpenUpdate);
     };
   }, []);
 
@@ -290,39 +316,42 @@ function App() {
   // 处理 Prompt 拖拽到文件夹
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
-    
+
     if (!over) return;
-    
+
     // Check if a prompt is dragged into a folder
     // 检查是否是 Prompt 拖拽到文件夹
     const activeData = active.data.current;
     const overData = over.data.current;
-    
-    if (activeData?.type === 'prompt' && (overData?.type === 'folder' || overData?.type === 'folder-nest')) {
+
+    if (
+      activeData?.type === "prompt" &&
+      (overData?.type === "folder" || overData?.type === "folder-nest")
+    ) {
       const promptId = activeData.prompt.id;
       const folderId = overData.folderId;
-      const folder = folders.find(f => f.id === folderId);
-      
+      const folder = folders.find((f) => f.id === folderId);
+
       // Determine prompts to move
       // 确定要移动的 prompts
       let promptsToMove = [promptId];
-      
+
       // If the dragged prompt is part of the current selection, move all selected prompts
       // 如果拖拽的 Prompt 是当前选中项的一部分，则移动所有选中的 Prompts
       if (selectedIds.includes(promptId)) {
         promptsToMove = selectedIds;
       }
-      
+
       // Update prompts folder
       // 更新 Prompts 的文件夹
       await movePrompts(promptsToMove, folderId);
-      
+
       const count = promptsToMove.length;
       showToast(
-        count > 1 
-          ? `已将 ${count} 个 Prompt 移动到「${folder?.name || '文件夹'}」` 
-          : `已移动到「${folder?.name || '文件夹'}」`,
-        'success'
+        count > 1
+          ? `已将 ${count} 个 Prompt 移动到「${folder?.name || "文件夹"}」`
+          : `已移动到「${folder?.name || "文件夹"}」`,
+        "success",
       );
     }
   };
@@ -336,39 +365,46 @@ function App() {
     // Apply persisted theme settings
     // 应用保存的主题设置
     applyTheme();
-    
+
     // Sync language setting: use settings store as the source of truth (zh/zh-TW/en/ja/es/de/fr)
     // i18n reads from the persisted store on init, but we also apply it here as a fallback
     // 同步语言设置：以 settings store 为准（支持 zh/zh-TW/en/ja/es/de/fr）
     // i18n 初始化时会尝试从同一个 persist store 读取语言，但这里再兜底一次，避免初始化顺序导致的覆盖问题
     const languageSettings = useSettingsStore.getState();
-    if (languageSettings.language && i18n.language !== languageSettings.language) {
+    if (
+      languageSettings.language &&
+      i18n.language !== languageSettings.language
+    ) {
       languageSettings.setLanguage(languageSettings.language);
     }
-    
+
     // Initialize database, then load data
     // 初始化数据库，然后加载数据
     const init = async (retryCount = 0) => {
       // Set max loading time to avoid waiting forever
       // 设置最大加载时间，防止无限等待
       const maxLoadingTime = setTimeout(() => {
-        console.warn('⚠️ Loading timeout, showing UI anyway');
+        console.warn("⚠️ Loading timeout, showing UI anyway");
         setIsLoading(false);
       }, 5000);
-      
+
       try {
         await initDatabase();
         await seedDatabase();
         await fetchPrompts();
         await fetchFolders();
-        console.log('✅ App initialized');
+        console.log("✅ App initialized");
       } catch (error) {
-        console.error('❌ Init failed:', error);
+        console.error("❌ Init failed:", error);
         // Retry once for timeout errors
         // 如果是超时错误，尝试重试一次
-        if (retryCount < 1 && error instanceof Error && error.message.includes('timeout')) {
-          console.log('🔄 Retrying database initialization...');
-          await new Promise(resolve => setTimeout(resolve, 500));
+        if (
+          retryCount < 1 &&
+          error instanceof Error &&
+          error.message.includes("timeout")
+        ) {
+          console.log("🔄 Retrying database initialization...");
+          await new Promise((resolve) => setTimeout(resolve, 500));
           clearTimeout(maxLoadingTime);
           return init(retryCount + 1);
         }
@@ -376,12 +412,17 @@ function App() {
         clearTimeout(maxLoadingTime);
         setIsLoading(false);
       }
-      
+
       // Sync after startup (run after data is loaded; do not block UI)
       // 启动后同步（在数据加载完成后执行，不阻塞 UI）
       const settings = useSettingsStore.getState();
-      if (settings.webdavEnabled && settings.webdavSyncOnStartup && 
-          settings.webdavUrl && settings.webdavUsername && settings.webdavPassword) {
+      if (
+        settings.webdavEnabled &&
+        settings.webdavSyncOnStartup &&
+        settings.webdavUrl &&
+        settings.webdavUsername &&
+        settings.webdavPassword
+      ) {
         const delay = (settings.webdavSyncOnStartupDelay || 10) * 1000;
         console.log(`🔄 Will sync with WebDAV in ${delay / 1000}s...`);
         setTimeout(async () => {
@@ -395,34 +436,45 @@ function App() {
               {
                 includeImages: settings.webdavIncludeImages,
                 incrementalSync: settings.webdavIncrementalSync,
-                encryptionPassword: settings.webdavEncryptionEnabled && settings.webdavEncryptionPassword ? settings.webdavEncryptionPassword : undefined,
-              }
+                encryptionPassword:
+                  settings.webdavEncryptionEnabled &&
+                  settings.webdavEncryptionPassword
+                    ? settings.webdavEncryptionPassword
+                    : undefined,
+              },
             );
             if (result.success) {
-              console.log('✅ Startup sync completed:', result.message);
+              console.log("✅ Startup sync completed:", result.message);
               // Reload data after sync
               // 同步后重新加载数据
               await fetchPrompts();
               await fetchFolders();
             } else {
-              console.log('⚠️ Startup sync failed:', result.message);
+              console.log("⚠️ Startup sync failed:", result.message);
             }
           } catch (syncError) {
-            console.error('⚠️ Startup sync error:', syncError);
+            console.error("⚠️ Startup sync error:", syncError);
           }
         }, delay);
       }
     };
     init();
-    
+
     // Periodic auto sync
     // 定时自动同步
     const settings = useSettingsStore.getState();
     let intervalId: NodeJS.Timeout | null = null;
-    if (settings.webdavEnabled && settings.webdavAutoSyncInterval > 0 &&
-        settings.webdavUrl && settings.webdavUsername && settings.webdavPassword) {
+    if (
+      settings.webdavEnabled &&
+      settings.webdavAutoSyncInterval > 0 &&
+      settings.webdavUrl &&
+      settings.webdavUsername &&
+      settings.webdavPassword
+    ) {
       const intervalMs = settings.webdavAutoSyncInterval * 60 * 1000;
-      console.log(`🔄 Auto sync interval: ${settings.webdavAutoSyncInterval} minutes`);
+      console.log(
+        `🔄 Auto sync interval: ${settings.webdavAutoSyncInterval} minutes`,
+      );
       intervalId = setInterval(async () => {
         try {
           const result = await autoSync(
@@ -434,20 +486,24 @@ function App() {
             {
               includeImages: settings.webdavIncludeImages,
               incrementalSync: settings.webdavIncrementalSync,
-              encryptionPassword: settings.webdavEncryptionEnabled && settings.webdavEncryptionPassword ? settings.webdavEncryptionPassword : undefined,
-            }
+              encryptionPassword:
+                settings.webdavEncryptionEnabled &&
+                settings.webdavEncryptionPassword
+                  ? settings.webdavEncryptionPassword
+                  : undefined,
+            },
           );
           if (result.success) {
-            console.log('✅ Interval sync completed:', result.message);
+            console.log("✅ Interval sync completed:", result.message);
             await fetchPrompts();
             await fetchFolders();
           }
         } catch (e) {
-          console.error('⚠️ Interval sync error:', e);
+          console.error("⚠️ Interval sync error:", e);
         }
       }, intervalMs);
     }
-    
+
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
@@ -470,44 +526,47 @@ function App() {
         {/* Windows title bar */}
         {/* Windows 标题栏 */}
         <TitleBar />
-        
+
         <div className="flex flex-1 overflow-y-hidden overflow-x-visible">
           {/* Sidebar */}
           {/* 侧边栏 */}
-          <Sidebar 
-            currentPage={currentPage} 
-            onNavigate={setCurrentPage} 
-          />
+          <Sidebar currentPage={currentPage} onNavigate={setCurrentPage} />
 
           {/* Main content */}
           {/* 主内容区 */}
           <div className="flex flex-1 flex-col overflow-hidden">
             {/* Top bar */}
             {/* 顶部栏 */}
-            <TopBar 
-              onOpenSettings={() => setCurrentPage('settings')} 
+            <TopBar
+              onOpenSettings={() => setCurrentPage("settings")}
               updateAvailable={updateAvailable}
               onShowUpdateDialog={() => setShowUpdateDialog(true)}
             />
-            
+
             {/* Page content */}
             {/* 页面内容 */}
-            {currentPage === 'home' ? (
+            {currentPage === "home" ? (
               <MainContent />
             ) : (
-              <Suspense fallback={<div className="flex-1 flex items-center justify-center"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
-                <SettingsPage onBack={() => setCurrentPage('home')} />
+              <Suspense
+                fallback={
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  </div>
+                }
+              >
+                <SettingsPage onBack={() => setCurrentPage("home")} />
               </Suspense>
             )}
           </div>
         </div>
-        
-        <UpdateDialog 
-          isOpen={showUpdateDialog} 
-          onClose={() => setShowUpdateDialog(false)} 
+
+        <UpdateDialog
+          isOpen={showUpdateDialog}
+          onClose={() => setShowUpdateDialog(false)}
           initialStatus={initialUpdateStatus}
         />
-        
+
         {/* Windows close dialog */}
         {/* Windows 关闭对话框 */}
         <CloseDialog
@@ -524,16 +583,21 @@ function App() {
                 setShowImportModal(false);
                 setImportData(null);
               }}
-              initialData={importData ? {
-                title: importData.name || importData.title,
-                description: importData.description,
-                userPrompt: importData.userPrompt,
-                systemPrompt: importData.systemPrompt,
-                userPromptEn: importData.userPromptEn,
-                systemPromptEn: importData.systemPromptEn,
-                tags: importData.tags,
-                source: importData.source || 'clipboard',
-              } : undefined}
+              initialData={
+                importData
+                  ? {
+                      title: importData.name || importData.title,
+                      description: importData.description,
+                      promptType: importData.promptType,
+                      userPrompt: importData.userPrompt,
+                      systemPrompt: importData.systemPrompt,
+                      userPromptEn: importData.userPromptEn,
+                      systemPromptEn: importData.systemPromptEn,
+                      tags: importData.tags,
+                      source: importData.source || "clipboard",
+                    }
+                  : undefined
+              }
             />
           </Suspense>
         )}

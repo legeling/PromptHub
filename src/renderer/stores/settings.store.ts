@@ -1,59 +1,68 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import i18n, { changeLanguage } from '../i18n';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import i18n, { changeLanguage } from "../i18n";
 
-const SUPPORTED_LANGUAGES = ['zh', 'zh-TW', 'en', 'ja', 'es', 'de', 'fr'] as const;
+const SUPPORTED_LANGUAGES = [
+  "zh",
+  "zh-TW",
+  "en",
+  "ja",
+  "es",
+  "de",
+  "fr",
+] as const;
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 
 const normalizeLanguage = (lang: string): SupportedLanguage => {
   if (SUPPORTED_LANGUAGES.includes(lang as SupportedLanguage)) {
     return lang as SupportedLanguage;
   }
-  const lower = (lang || '').toLowerCase();
-  if (lower === 'zh-tw' || lower === 'zh-hant') return 'zh-TW';
-  if (lower.startsWith('zh')) return 'zh';
-  if (lower.startsWith('ja')) return 'ja';
-  if (lower.startsWith('es')) return 'es';
-  if (lower.startsWith('de')) return 'de';
-  if (lower.startsWith('fr')) return 'fr';
-  return 'en';
+  const lower = (lang || "").toLowerCase();
+  if (lower === "zh-tw" || lower === "zh-hant") return "zh-TW";
+  if (lower.startsWith("zh")) return "zh";
+  if (lower.startsWith("ja")) return "ja";
+  if (lower.startsWith("es")) return "es";
+  if (lower.startsWith("de")) return "de";
+  if (lower.startsWith("fr")) return "fr";
+  return "en";
 };
 
 // Get default data directory path (based on platform)
 // 获取默认数据目录路径（根据平台）
 const getDefaultDataPath = (): string => {
   const platform = navigator.userAgent.toLowerCase();
-  if (platform.includes('win')) {
-    return '%APPDATA%/PromptHub';
-  } else if (platform.includes('mac')) {
-    return '~/Library/Application Support/PromptHub';
+  if (platform.includes("win")) {
+    return "%APPDATA%/PromptHub";
+  } else if (platform.includes("mac")) {
+    return "~/Library/Application Support/PromptHub";
   } else {
-    return '~/.config/PromptHub';
+    return "~/.config/PromptHub";
   }
 };
 
 // Theme colors - Morandi color palette + classic royal blue
 // 主题色 - 莫兰迪色系 + 经典宝蓝
 export const MORANDI_THEMES = [
-  { id: 'royal-blue', hue: 220, saturation: 70, name: 'Royal Blue' },
-  { id: 'blue', hue: 210, saturation: 35, name: 'Misty Blue' },
-  { id: 'purple', hue: 260, saturation: 30, name: 'Smoky Purple' },
-  { id: 'green', hue: 150, saturation: 30, name: 'Bean Green' },
-  { id: 'orange', hue: 25, saturation: 40, name: 'Apricot Orange' },
-  { id: 'teal', hue: 175, saturation: 30, name: 'Teal Blue' },
+  { id: "royal-blue", hue: 220, saturation: 70, name: "Royal Blue" },
+  { id: "blue", hue: 210, saturation: 35, name: "Misty Blue" },
+  { id: "purple", hue: 260, saturation: 30, name: "Smoky Purple" },
+  { id: "green", hue: 150, saturation: 30, name: "Bean Green" },
+  { id: "orange", hue: 25, saturation: 40, name: "Apricot Orange" },
+  { id: "teal", hue: 175, saturation: 30, name: "Teal Blue" },
 ];
 
 export const FONT_SIZES = [
-  { id: 'small', value: 14, name: 'Small' },
-  { id: 'medium', value: 16, name: 'Medium' },
-  { id: 'large', value: 18, name: 'Large' },
+  { id: "small", value: 14, name: "Small" },
+  { id: "medium", value: 16, name: "Medium" },
+  { id: "large", value: 18, name: "Large" },
 ];
 
 const DEFAULT_TAGS_SECTION_HEIGHT = 140;
 
 type Hs = { hue: number; saturation: number };
 
-const clamp = (n: number, min: number, max: number): number => Math.max(min, Math.min(max, n));
+const clamp = (n: number, min: number, max: number): number =>
+  Math.max(min, Math.min(max, n));
 
 /**
  * Convert HEX color to HSL hue/saturation (lightness is defined by CSS variables)
@@ -62,7 +71,7 @@ const clamp = (n: number, min: number, max: number): number => Math.max(min, Mat
  * - 仅用于主题色：最终写入 --theme-hue / --theme-saturation
  */
 const hexToHs = (hex: string): Hs => {
-  const normalized = (hex || '').trim().replace(/^#/, '');
+  const normalized = (hex || "").trim().replace(/^#/, "");
   if (!/^[0-9a-fA-F]{6}$/.test(normalized)) {
     throw new Error(`Invalid hex color: ${hex}`);
   }
@@ -86,52 +95,55 @@ const hexToHs = (hex: string): Hs => {
   const l = (max + min) / 2;
   const s = delta === 0 ? 0 : delta / (1 - Math.abs(2 * l - 1));
 
-  return { hue: clamp(h, 0, 360), saturation: clamp(Math.round(s * 100), 0, 100) };
+  return {
+    hue: clamp(h, 0, 360),
+    saturation: clamp(Math.round(s * 100), 0, 100),
+  };
 };
 
 // Theme mode
 // 主题模式
-export type ThemeMode = 'light' | 'dark' | 'system';
+export type ThemeMode = "light" | "dark" | "system";
 
 // AI model type
 // AI 模型类型
-export type AIModelType = 'chat' | 'image';
+export type AIModelType = "chat" | "image";
 
 // 对话模型参数配置
 // Chat model parameters configuration
 export interface ChatModelParams {
-  temperature?: number;       // 温度 (0-2)，控制随机性 / Temperature, controls randomness
-  maxTokens?: number;         // 最大输出 token 数 / Max output tokens
-  topP?: number;              // Top-P 采样 (0-1) / Top-P sampling
-  topK?: number;              // Top-K 采样 / Top-K sampling
-  frequencyPenalty?: number;  // 频率惩罚 (-2 to 2) / Frequency penalty
-  presencePenalty?: number;   // 存在惩罚 (-2 to 2) / Presence penalty
-  stream?: boolean;           // 是否启用流式输出 / Enable streaming output
-  enableThinking?: boolean;   // 是否启用思考模式（思考模型专用）/ Enable thinking mode
-  customParams?: Record<string, string | number | boolean>;  // 自定义参数 / Custom parameters
+  temperature?: number; // 温度 (0-2)，控制随机性 / Temperature, controls randomness
+  maxTokens?: number; // 最大输出 token 数 / Max output tokens
+  topP?: number; // Top-P 采样 (0-1) / Top-P sampling
+  topK?: number; // Top-K 采样 / Top-K sampling
+  frequencyPenalty?: number; // 频率惩罚 (-2 to 2) / Frequency penalty
+  presencePenalty?: number; // 存在惩罚 (-2 to 2) / Presence penalty
+  stream?: boolean; // 是否启用流式输出 / Enable streaming output
+  enableThinking?: boolean; // 是否启用思考模式（思考模型专用）/ Enable thinking mode
+  customParams?: Record<string, string | number | boolean>; // 自定义参数 / Custom parameters
 }
 
 // 图像模型参数配置
 // Image model parameters configuration
 export interface ImageModelParams {
-  size?: string;              // 图像尺寸，如 1024x1024 / Image size
-  quality?: 'standard' | 'hd'; // 图像质量 / Image quality
-  style?: 'vivid' | 'natural'; // 图像风格 / Image style
-  n?: number;                 // 生成数量 / Number of images to generate
+  size?: string; // 图像尺寸，如 1024x1024 / Image size
+  quality?: "standard" | "hd"; // 图像质量 / Image quality
+  style?: "vivid" | "natural"; // 图像风格 / Image style
+  n?: number; // 生成数量 / Number of images to generate
 }
 
 // AI model configuration type
 // AI 模型配置类型
 export interface AIModelConfig {
   id: string;
-  type: AIModelType;  // Model type: chat model or image generation model
+  type: AIModelType; // Model type: chat model or image generation model
   // 模型类型：对话模型或生图模型
-  name?: string;      // Custom name (optional), used for display
+  name?: string; // Custom name (optional), used for display
   // 自定义名称（可选），用于显示
-  provider: string;   // 供应商 ID
+  provider: string; // 供应商 ID
   apiKey: string;
   apiUrl: string;
-  model: string;      // Model name, such as gpt-4o, dall-e-3
+  model: string; // Model name, such as gpt-4o, dall-e-3
   // 模型名称，如 gpt-4o, dall-e-3
   isDefault?: boolean;
   // Custom parameters
@@ -140,8 +152,8 @@ export interface AIModelConfig {
   imageParams?: ImageModelParams;
 }
 
-export type CreationMode = 'manual' | 'quick';
-export type TranslationMode = 'immersive' | 'full';
+export type CreationMode = "manual" | "quick";
+export type TranslationMode = "immersive" | "full";
 
 interface SettingsState {
   creationMode: CreationMode;
@@ -175,14 +187,13 @@ interface SettingsState {
   debugMode: boolean;
 
   // 关闭行为设置 (Windows) / Close behavior settings (Windows)
-  closeAction: 'ask' | 'minimize' | 'exit';  // ask=prompt every time, minimize=minimize to tray, exit=exit directly
+  closeAction: "ask" | "minimize" | "exit"; // ask=prompt every time, minimize=minimize to tray, exit=exit directly
   // ask=每次询问, minimize=最小化到托盘, exit=直接退出
 
   // 快捷键模式配置 / Shortcut modes configuration
   // key: shortcut action id, value: 'global' | 'local'
-  shortcutModes: Record<string, 'global' | 'local'>;
+  shortcutModes: Record<string, "global" | "local">;
   // 全局/局部快捷键模式，默认 showApp 为 global，其他 recommended 为 local
-
 
   // Notification settings
   // 通知设置
@@ -191,7 +202,7 @@ interface SettingsState {
   showSaveNotification: boolean;
 
   // 语言设置 / Language settings
-  language: SupportedLanguage;  // zh, zh-TW, en, ja, es, de, fr
+  language: SupportedLanguage; // zh, zh-TW, en, ja, es, de, fr
 
   // Data path
   // 数据路径
@@ -203,23 +214,23 @@ interface SettingsState {
   webdavUrl: string;
   webdavUsername: string;
   webdavPassword: string;
-  webdavAutoSync: boolean;  // Legacy compatibility, equivalent to webdavSyncOnStartup
+  webdavAutoSync: boolean; // Legacy compatibility, equivalent to webdavSyncOnStartup
   // 旧版兼容，等同于 webdavSyncOnStartup
-  webdavSyncOnStartup: boolean;  // Auto sync once after startup
+  webdavSyncOnStartup: boolean; // Auto sync once after startup
   // 启动后自动同步一次
-  webdavSyncOnStartupDelay: number;  // Delay seconds after startup (0-60)
+  webdavSyncOnStartupDelay: number; // Delay seconds after startup (0-60)
   // 启动后延迟秒数（0-60）
-  webdavAutoSyncInterval: number;  // Auto sync interval (minutes, 0=disabled)
+  webdavAutoSyncInterval: number; // Auto sync interval (minutes, 0=disabled)
   // 自动同步间隔（分钟，0=关闭）
-  webdavSyncOnSave: boolean;  // Sync on save (experimental)
+  webdavSyncOnSave: boolean; // Sync on save (experimental)
   // 保存时同步（实验性）
-  webdavIncludeImages: boolean;  // Whether to include images
+  webdavIncludeImages: boolean; // Whether to include images
   // 是否包含图片
-  webdavIncrementalSync: boolean;  // Whether to use incremental sync
+  webdavIncrementalSync: boolean; // Whether to use incremental sync
   // 是否使用增量同步
-  webdavEncryptionEnabled: boolean;  // Whether to enable encryption (experimental)
+  webdavEncryptionEnabled: boolean; // Whether to enable encryption (experimental)
   // 是否启用加密（实验性）
-  webdavEncryptionPassword: string;  // Encryption password
+  webdavEncryptionPassword: string; // Encryption password
   // 加密密码
 
   // Update settings
@@ -247,10 +258,16 @@ interface SettingsState {
   aiModels: AIModelConfig[];
 
   // Translation mode setting / 翻译模式设置
-  translationMode: TranslationMode;  // immersive=沉浸式, full=全文翻译
+  translationMode: TranslationMode; // immersive=沉浸式, full=全文翻译
 
   // 来源历史 / Source history for autocomplete
   sourceHistory: string[];
+
+  // Custom skill scan paths / 自定义 Skill 扫描路径
+  customSkillScanPaths: string[];
+
+  // Skill install method / Skill 安装方式
+  skillInstallMethod: "symlink" | "copy";
 
   // Actions
   // 操作
@@ -268,8 +285,8 @@ interface SettingsState {
   setMinimizeOnLaunch: (enabled: boolean) => void;
   setDebugMode: (enabled: boolean) => void;
   setEnableNotifications: (enabled: boolean) => void;
-  setCloseAction: (action: 'ask' | 'minimize' | 'exit') => void;
-  setShortcutMode: (key: string, mode: 'global' | 'local') => void;
+  setCloseAction: (action: "ask" | "minimize" | "exit") => void;
+  setShortcutMode: (key: string, mode: "global" | "local") => void;
   setShowCopyNotification: (enabled: boolean) => void;
   setShowSaveNotification: (enabled: boolean) => void;
   setLanguage: (lang: string) => void;
@@ -298,7 +315,7 @@ interface SettingsState {
   setAiApiUrl: (url: string) => void;
   setAiModel: (model: string) => void;
   // 多模型管理
-  addAiModel: (config: Omit<AIModelConfig, 'id'>) => void;
+  addAiModel: (config: Omit<AIModelConfig, "id">) => void;
   updateAiModel: (id: string, config: Partial<AIModelConfig>) => void;
   deleteAiModel: (id: string) => void;
   setDefaultAiModel: (id: string) => void;
@@ -306,6 +323,12 @@ interface SettingsState {
   setTranslationMode: (mode: TranslationMode) => void;
   addSourceHistory: (source: string) => void;
   applyTheme: () => void;
+  // Custom skill scan paths actions / 自定义 Skill 扫描路径操作
+  setCustomSkillScanPaths: (paths: string[]) => void;
+  addCustomSkillScanPath: (path: string) => void;
+  removeCustomSkillScanPath: (path: string) => void;
+  // Skill install method action / Skill 安装方式操作
+  setSkillInstallMethod: (method: "symlink" | "copy") => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -319,14 +342,14 @@ export const useSettingsStore = create<SettingsState>()(
         // Default values
         // 默认值
         clipboardImportEnabled: false,
-        themeMode: 'system' as ThemeMode,
+        themeMode: "system" as ThemeMode,
         isDarkMode: true,
-        themeColor: 'royal-blue',
+        themeColor: "royal-blue",
         themeHue: 220,
         themeSaturation: 70,
-        customThemeHex: '#3b82f6',
+        customThemeHex: "#3b82f6",
         settingsUpdatedAt: new Date().toISOString(),
-        fontSize: 'medium',
+        fontSize: "medium",
         renderMarkdown: true,
         editorMarkdownPreview: false,
         autoSave: true,
@@ -334,12 +357,12 @@ export const useSettingsStore = create<SettingsState>()(
         launchAtStartup: false,
         minimizeOnLaunch: true,
         debugMode: false,
-        closeAction: 'ask' as const,  // Default to ask every time / 默认每次询问
+        closeAction: "ask" as const, // Default to ask every time / 默认每次询问
         shortcutModes: {
-          showApp: 'global',
-          newPrompt: 'local',
-          search: 'local',
-          settings: 'local',
+          showApp: "global",
+          newPrompt: "local",
+          search: "local",
+          settings: "local",
         },
         enableNotifications: true,
         showCopyNotification: true,
@@ -347,9 +370,9 @@ export const useSettingsStore = create<SettingsState>()(
         language: normalizeLanguage(i18n.language),
         dataPath: getDefaultDataPath(),
         webdavEnabled: false,
-        webdavUrl: '',
-        webdavUsername: '',
-        webdavPassword: '',
+        webdavUrl: "",
+        webdavUsername: "",
+        webdavPassword: "",
         webdavAutoSync: false,
         webdavSyncOnStartup: true,
         webdavSyncOnStartupDelay: 10,
@@ -358,21 +381,23 @@ export const useSettingsStore = create<SettingsState>()(
         webdavIncludeImages: true,
         webdavIncrementalSync: true,
         webdavEncryptionEnabled: false,
-        webdavEncryptionPassword: '',
+        webdavEncryptionPassword: "",
         autoCheckUpdate: true,
         useUpdateMirror: false,
         tagsSectionHeight: DEFAULT_TAGS_SECTION_HEIGHT,
         isTagsSectionCollapsed: false,
         skillTagsSectionHeight: DEFAULT_TAGS_SECTION_HEIGHT,
         isSkillTagsSectionCollapsed: false,
-        aiProvider: 'openai',
-        aiApiKey: '',
-        aiApiUrl: '',
-        aiModel: 'gpt-4o',
+        aiProvider: "openai",
+        aiApiKey: "",
+        aiApiUrl: "",
+        aiModel: "gpt-4o",
         aiModels: [],
-        creationMode: 'manual' as CreationMode,
-        translationMode: 'immersive' as TranslationMode,
+        creationMode: "manual" as CreationMode,
+        translationMode: "immersive" as TranslationMode,
         sourceHistory: [],
+        customSkillScanPaths: [],
+        skillInstallMethod: "symlink" as const,
 
         setCreationMode: (mode) => setTouched({ creationMode: mode }),
         setTranslationMode: (mode) => setTouched({ translationMode: mode }),
@@ -381,78 +406,107 @@ export const useSettingsStore = create<SettingsState>()(
           if (!source.trim()) return;
           const history = get().sourceHistory;
           // 移除重复项，放到最前面 / Remove duplicate and add to front
-          const filtered = history.filter(s => s !== source.trim());
+          const filtered = history.filter((s) => s !== source.trim());
           const updated = [source.trim(), ...filtered].slice(0, 20);
           setTouched({ sourceHistory: updated });
         },
 
         setThemeMode: (mode) => {
           setTouched({ themeMode: mode });
-          if (mode === 'system') {
-            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (mode === "system") {
+            const prefersDark = window.matchMedia(
+              "(prefers-color-scheme: dark)",
+            ).matches;
             setTouched({ isDarkMode: prefersDark });
-            document.documentElement.classList.toggle('dark', prefersDark);
+            document.documentElement.classList.toggle("dark", prefersDark);
           } else {
-            const isDark = mode === 'dark';
+            const isDark = mode === "dark";
             setTouched({ isDarkMode: isDark });
-            document.documentElement.classList.toggle('dark', isDark);
+            document.documentElement.classList.toggle("dark", isDark);
           }
         },
 
         setDarkMode: (isDark) => {
-          setTouched({ isDarkMode: isDark, themeMode: isDark ? 'dark' : 'light' });
-          document.documentElement.classList.toggle('dark', isDark);
+          setTouched({
+            isDarkMode: isDark,
+            themeMode: isDark ? "dark" : "light",
+          });
+          document.documentElement.classList.toggle("dark", isDark);
         },
 
         setThemeColor: (colorId) => {
-          if (colorId === 'custom') {
+          if (colorId === "custom") {
             const state = get();
             const hs = hexToHs(state.customThemeHex);
             setTouched({
-              themeColor: 'custom',
+              themeColor: "custom",
               themeHue: hs.hue,
               themeSaturation: hs.saturation,
             });
-            document.documentElement.style.setProperty('--theme-hue', String(hs.hue));
-            document.documentElement.style.setProperty('--theme-saturation', String(hs.saturation));
+            document.documentElement.style.setProperty(
+              "--theme-hue",
+              String(hs.hue),
+            );
+            document.documentElement.style.setProperty(
+              "--theme-saturation",
+              String(hs.saturation),
+            );
             return;
           }
-          const theme = MORANDI_THEMES.find(t => t.id === colorId);
+          const theme = MORANDI_THEMES.find((t) => t.id === colorId);
           if (theme) {
             setTouched({
               themeColor: colorId,
               themeHue: theme.hue,
-              themeSaturation: theme.saturation
+              themeSaturation: theme.saturation,
             });
-            document.documentElement.style.setProperty('--theme-hue', String(theme.hue));
-            document.documentElement.style.setProperty('--theme-saturation', String(theme.saturation));
+            document.documentElement.style.setProperty(
+              "--theme-hue",
+              String(theme.hue),
+            );
+            document.documentElement.style.setProperty(
+              "--theme-saturation",
+              String(theme.saturation),
+            );
           }
         },
         setCustomThemeHex: (hex) => {
           const hs = hexToHs(hex);
           setTouched({
-            customThemeHex: `#${hex.replace(/^#/, '')}`,
-            themeColor: 'custom',
+            customThemeHex: `#${hex.replace(/^#/, "")}`,
+            themeColor: "custom",
             themeHue: hs.hue,
             themeSaturation: hs.saturation,
           });
-          document.documentElement.style.setProperty('--theme-hue', String(hs.hue));
-          document.documentElement.style.setProperty('--theme-saturation', String(hs.saturation));
+          document.documentElement.style.setProperty(
+            "--theme-hue",
+            String(hs.hue),
+          );
+          document.documentElement.style.setProperty(
+            "--theme-saturation",
+            String(hs.saturation),
+          );
         },
         setRenderMarkdown: (enabled) => setTouched({ renderMarkdown: enabled }),
-        setEditorMarkdownPreview: (enabled) => setTouched({ editorMarkdownPreview: enabled }),
+        setEditorMarkdownPreview: (enabled) =>
+          setTouched({ editorMarkdownPreview: enabled }),
 
         setFontSize: (size) => {
           setTouched({ fontSize: size });
-          const fontConfig = FONT_SIZES.find(f => f.id === size);
+          const fontConfig = FONT_SIZES.find((f) => f.id === size);
           if (fontConfig) {
-            document.documentElement.style.setProperty('--base-font-size', `${fontConfig.value}px`);
+            document.documentElement.style.setProperty(
+              "--base-font-size",
+              `${fontConfig.value}px`,
+            );
           }
         },
 
-        setClipboardImportEnabled: (enabled) => setTouched({ clipboardImportEnabled: enabled }),
+        setClipboardImportEnabled: (enabled) =>
+          setTouched({ clipboardImportEnabled: enabled }),
         setAutoSave: (enabled) => setTouched({ autoSave: enabled }),
-        setShowLineNumbers: (enabled) => setTouched({ showLineNumbers: enabled }),
+        setShowLineNumbers: (enabled) =>
+          setTouched({ showLineNumbers: enabled }),
         setLaunchAtStartup: (enabled) => {
           setTouched({ launchAtStartup: enabled });
           // Update auto launch with current minimizeOnLaunch setting
@@ -489,9 +543,12 @@ export const useSettingsStore = create<SettingsState>()(
           // 通知主进程更新快捷键注册
           window.electron?.setShortcutMode?.(newModes);
         },
-        setEnableNotifications: (enabled) => setTouched({ enableNotifications: enabled }),
-        setShowCopyNotification: (enabled) => setTouched({ showCopyNotification: enabled }),
-        setShowSaveNotification: (enabled) => setTouched({ showSaveNotification: enabled }),
+        setEnableNotifications: (enabled) =>
+          setTouched({ enableNotifications: enabled }),
+        setShowCopyNotification: (enabled) =>
+          setTouched({ showCopyNotification: enabled }),
+        setShowSaveNotification: (enabled) =>
+          setTouched({ showSaveNotification: enabled }),
         setLanguage: (lang) => {
           const normalized = normalizeLanguage(lang);
           setTouched({ language: normalized });
@@ -500,23 +557,42 @@ export const useSettingsStore = create<SettingsState>()(
         setDataPath: (path) => setTouched({ dataPath: path }),
         setWebdavEnabled: (enabled) => setTouched({ webdavEnabled: enabled }),
         setWebdavUrl: (url) => setTouched({ webdavUrl: url }),
-        setWebdavUsername: (username) => setTouched({ webdavUsername: username }),
-        setWebdavPassword: (password) => setTouched({ webdavPassword: password }),
-        setWebdavAutoSync: (enabled) => setTouched({ webdavAutoSync: enabled, webdavSyncOnStartup: enabled }),
-        setWebdavSyncOnStartup: (enabled) => setTouched({ webdavSyncOnStartup: enabled }),
-        setWebdavSyncOnStartupDelay: (delay) => setTouched({ webdavSyncOnStartupDelay: Math.max(0, Math.min(60, delay)) }),
-        setWebdavAutoSyncInterval: (interval) => setTouched({ webdavAutoSyncInterval: Math.max(0, interval) }),
-        setWebdavSyncOnSave: (enabled) => setTouched({ webdavSyncOnSave: enabled }),
-        setWebdavIncludeImages: (enabled) => setTouched({ webdavIncludeImages: enabled }),
-        setWebdavIncrementalSync: (enabled) => setTouched({ webdavIncrementalSync: enabled }),
-        setWebdavEncryptionEnabled: (enabled) => setTouched({ webdavEncryptionEnabled: enabled }),
-        setWebdavEncryptionPassword: (password) => setTouched({ webdavEncryptionPassword: password }),
-        setAutoCheckUpdate: (enabled) => setTouched({ autoCheckUpdate: enabled }),
-        setUseUpdateMirror: (enabled) => setTouched({ useUpdateMirror: enabled }),
-        setTagsSectionHeight: (height) => setTouched({ tagsSectionHeight: height }),
-        setIsTagsSectionCollapsed: (collapsed) => setTouched({ isTagsSectionCollapsed: collapsed }),
-        setSkillTagsSectionHeight: (height) => setTouched({ skillTagsSectionHeight: height }),
-        setIsSkillTagsSectionCollapsed: (collapsed) => setTouched({ isSkillTagsSectionCollapsed: collapsed }),
+        setWebdavUsername: (username) =>
+          setTouched({ webdavUsername: username }),
+        setWebdavPassword: (password) =>
+          setTouched({ webdavPassword: password }),
+        setWebdavAutoSync: (enabled) =>
+          setTouched({ webdavAutoSync: enabled, webdavSyncOnStartup: enabled }),
+        setWebdavSyncOnStartup: (enabled) =>
+          setTouched({ webdavSyncOnStartup: enabled }),
+        setWebdavSyncOnStartupDelay: (delay) =>
+          setTouched({
+            webdavSyncOnStartupDelay: Math.max(0, Math.min(60, delay)),
+          }),
+        setWebdavAutoSyncInterval: (interval) =>
+          setTouched({ webdavAutoSyncInterval: Math.max(0, interval) }),
+        setWebdavSyncOnSave: (enabled) =>
+          setTouched({ webdavSyncOnSave: enabled }),
+        setWebdavIncludeImages: (enabled) =>
+          setTouched({ webdavIncludeImages: enabled }),
+        setWebdavIncrementalSync: (enabled) =>
+          setTouched({ webdavIncrementalSync: enabled }),
+        setWebdavEncryptionEnabled: (enabled) =>
+          setTouched({ webdavEncryptionEnabled: enabled }),
+        setWebdavEncryptionPassword: (password) =>
+          setTouched({ webdavEncryptionPassword: password }),
+        setAutoCheckUpdate: (enabled) =>
+          setTouched({ autoCheckUpdate: enabled }),
+        setUseUpdateMirror: (enabled) =>
+          setTouched({ useUpdateMirror: enabled }),
+        setTagsSectionHeight: (height) =>
+          setTouched({ tagsSectionHeight: height }),
+        setIsTagsSectionCollapsed: (collapsed) =>
+          setTouched({ isTagsSectionCollapsed: collapsed }),
+        setSkillTagsSectionHeight: (height) =>
+          setTouched({ skillTagsSectionHeight: height }),
+        setIsSkillTagsSectionCollapsed: (collapsed) =>
+          setTouched({ isSkillTagsSectionCollapsed: collapsed }),
         setAiProvider: (provider) => setTouched({ aiProvider: provider }),
         setAiApiKey: (key) => setTouched({ aiApiKey: key }),
         setAiApiUrl: (url) => setTouched({ aiApiUrl: url }),
@@ -545,7 +621,7 @@ export const useSettingsStore = create<SettingsState>()(
 
         updateAiModel: (id, config) => {
           const models = get().aiModels.map((m) =>
-            m.id === id ? { ...m, ...config } : m
+            m.id === id ? { ...m, ...config } : m,
           );
           setTouched({ aiModels: models });
           // If updating the default model, sync to legacy configuration
@@ -583,12 +659,12 @@ export const useSettingsStore = create<SettingsState>()(
           const targetModel = get().aiModels.find((m) => m.id === id);
           if (!targetModel) return;
 
-          const targetType = targetModel.type || 'chat';
+          const targetType = targetModel.type || "chat";
 
           // Only update isDefault status for models of the same type
           // 只更新同类型模型的 isDefault 状态
           const models = get().aiModels.map((m) => {
-            const modelType = m.type || 'chat';
+            const modelType = m.type || "chat";
             if (modelType === targetType) {
               return { ...m, isDefault: m.id === id };
             }
@@ -598,7 +674,7 @@ export const useSettingsStore = create<SettingsState>()(
 
           // Only chat models sync to legacy configuration
           // 只有对话模型才同步到旧版配置
-          if (targetType === 'chat') {
+          if (targetType === "chat") {
             setTouched({
               aiProvider: targetModel.provider,
               aiApiKey: targetModel.apiKey,
@@ -613,17 +689,26 @@ export const useSettingsStore = create<SettingsState>()(
           // Handle theme mode
           // 处理主题模式
           let isDark = state.isDarkMode;
-          if (state.themeMode === 'system') {
-            isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (state.themeMode === "system") {
+            isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
           } else {
-            isDark = state.themeMode === 'dark';
+            isDark = state.themeMode === "dark";
           }
-          document.documentElement.classList.toggle('dark', isDark);
-          document.documentElement.style.setProperty('--theme-hue', String(state.themeHue));
-          document.documentElement.style.setProperty('--theme-saturation', String(state.themeSaturation));
-          const fontConfig = FONT_SIZES.find(f => f.id === state.fontSize);
+          document.documentElement.classList.toggle("dark", isDark);
+          document.documentElement.style.setProperty(
+            "--theme-hue",
+            String(state.themeHue),
+          );
+          document.documentElement.style.setProperty(
+            "--theme-saturation",
+            String(state.themeSaturation),
+          );
+          const fontConfig = FONT_SIZES.find((f) => f.id === state.fontSize);
           if (fontConfig) {
-            document.documentElement.style.setProperty('--base-font-size', `${fontConfig.value}px`);
+            document.documentElement.style.setProperty(
+              "--base-font-size",
+              `${fontConfig.value}px`,
+            );
           }
           // Initialize tray status
           // 初始化托盘状态
@@ -638,21 +723,42 @@ export const useSettingsStore = create<SettingsState>()(
             window.electron?.setCloseAction?.(state.closeAction);
           }
         },
+
+        // Custom skill scan paths actions / 自定义 Skill 扫描路径操作
+        setCustomSkillScanPaths: (paths) =>
+          set({ customSkillScanPaths: paths }),
+        addCustomSkillScanPath: (path) =>
+          set((state) => ({
+            customSkillScanPaths: state.customSkillScanPaths.includes(path)
+              ? state.customSkillScanPaths
+              : [...state.customSkillScanPaths, path],
+          })),
+        removeCustomSkillScanPath: (path) =>
+          set((state) => ({
+            customSkillScanPaths: state.customSkillScanPaths.filter(
+              (p) => p !== path,
+            ),
+          })),
+        // Skill install method action / Skill 安装方式操作
+        setSkillInstallMethod: (method) => set({ skillInstallMethod: method }),
       };
     },
     {
-      name: 'prompthub-settings',
+      name: "prompthub-settings",
       version: 1,
       migrate: (state) => {
-        if (!state || typeof state !== 'object') {
+        if (!state || typeof state !== "object") {
           return state as SettingsState;
         }
         const next = { ...(state as SettingsState) };
-        if (typeof next.tagsSectionHeight === 'number' && next.tagsSectionHeight < DEFAULT_TAGS_SECTION_HEIGHT) {
+        if (
+          typeof next.tagsSectionHeight === "number" &&
+          next.tagsSectionHeight < DEFAULT_TAGS_SECTION_HEIGHT
+        ) {
           next.tagsSectionHeight = DEFAULT_TAGS_SECTION_HEIGHT;
         }
         return next;
       },
-    }
-  )
+    },
+  ),
 );

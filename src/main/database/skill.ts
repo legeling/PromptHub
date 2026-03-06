@@ -34,23 +34,28 @@ export class SkillDB {
    */
   create(
     data: CreateSkillParams,
-    options?: { skipInitialVersion?: boolean },
+    options?: { skipInitialVersion?: boolean; overwriteExisting?: boolean },
   ): Skill {
-    if (
-      !data.name ||
-      typeof data.name !== "string" ||
-      data.name.trim().length === 0
-    ) {
+    const normalizedName =
+      typeof data.name === "string" ? data.name.trim() : data.name;
+
+    if (!normalizedName || typeof normalizedName !== "string") {
       throw new Error(
         `Cannot create skill: name is required but got "${data.name}"`,
       );
     }
 
-    // Upsert: if a skill with the same name already exists, update it instead
-    // Upsert：如果同名 skill 已存在，则更新而非抛出错误
-    const existing = this.getByName(data.name);
+    const existing = this.getByName(normalizedName);
     if (existing) {
-      return this.update(existing.id, data) ?? existing;
+      if (options?.overwriteExisting) {
+        return (
+          this.update(existing.id, {
+            ...data,
+            name: normalizedName,
+          }) ?? existing
+        );
+      }
+      throw new Error(`Skill already exists: ${normalizedName}`);
     }
 
     const id = uuidv4();
@@ -65,35 +70,47 @@ export class SkillDB {
         source_url, local_repo_path, icon_url, icon_emoji, category, is_builtin,
         registry_slug, content_url, prerequisites, compatibility, current_version,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (
+        @id, @name, @description, @content, @mcp_config,
+        @protocol_type, @version, @author, @tags, @original_tags, @is_favorite,
+        @source_url, @local_repo_path, @icon_url, @icon_emoji, @category, @is_builtin,
+        @registry_slug, @content_url, @prerequisites, @compatibility, @current_version,
+        @created_at, @updated_at
+      )
     `);
 
-    stmt.run(
-      id,
-      data.name,
-      data.description || null,
-      data.content || data.instructions || null, // Prioritize content, fallback to instructions
-      data.mcp_config || null,
-      data.protocol_type || "mcp",
-      data.version || "1.0.0",
-      data.author || "User",
-      tagsJson,
-      data.original_tags ? JSON.stringify(data.original_tags) : tagsJson, // Snapshot import-time tags
-      data.is_favorite ? 1 : 0,
-      data.source_url || null,
-      data.local_repo_path || null,
-      data.icon_url || null,
-      data.icon_emoji || null,
-      data.category || "general",
-      data.is_builtin ? 1 : 0,
-      data.registry_slug || null,
-      data.content_url || null,
-      data.prerequisites ? JSON.stringify(data.prerequisites) : null,
-      data.compatibility ? JSON.stringify(data.compatibility) : null,
-      data.currentVersion ?? 1,
-      now,
-      now,
-    );
+    stmt.run({
+      "@id": id,
+      "@name": normalizedName,
+      "@description": data.description || null,
+      "@content": data.content || data.instructions || null,
+      "@mcp_config": data.mcp_config || null,
+      "@protocol_type": data.protocol_type || "mcp",
+      "@version": data.version || "1.0.0",
+      "@author": data.author || "User",
+      "@tags": tagsJson,
+      "@original_tags": data.original_tags
+        ? JSON.stringify(data.original_tags)
+        : tagsJson,
+      "@is_favorite": data.is_favorite ? 1 : 0,
+      "@source_url": data.source_url || null,
+      "@local_repo_path": data.local_repo_path || null,
+      "@icon_url": data.icon_url || null,
+      "@icon_emoji": data.icon_emoji || null,
+      "@category": data.category || "general",
+      "@is_builtin": data.is_builtin ? 1 : 0,
+      "@registry_slug": data.registry_slug || null,
+      "@content_url": data.content_url || null,
+      "@prerequisites": data.prerequisites
+        ? JSON.stringify(data.prerequisites)
+        : null,
+      "@compatibility": data.compatibility
+        ? JSON.stringify(data.compatibility)
+        : null,
+      "@current_version": data.currentVersion ?? 1,
+      "@created_at": now,
+      "@updated_at": now,
+    });
 
     // Create initial version (unless explicitly skipped, e.g. during backup restore)
     // 创建初始版本（除非显式跳过，如备份恢复时）
@@ -136,13 +153,25 @@ export class SkillDB {
     const existingSkill = this.getById(id);
     if (!existingSkill) return null;
 
+    if (data.name !== undefined) {
+      const normalizedName = data.name.trim();
+      if (!normalizedName) {
+        throw new Error("Skill name cannot be empty");
+      }
+
+      const duplicateSkill = this.getByName(normalizedName);
+      if (duplicateSkill && duplicateSkill.id !== id) {
+        throw new Error(`Skill already exists: ${normalizedName}`);
+      }
+    }
+
     const now = Date.now();
     const updates: string[] = ["updated_at = ?"];
     const values: any[] = [now];
 
     if (data.name !== undefined) {
       updates.push("name = ?");
-      values.push(data.name);
+      values.push(data.name.trim());
     }
     if (data.description !== undefined) {
       updates.push("description = ?");
@@ -243,7 +272,7 @@ export class SkillDB {
     const updatedSkill: Skill = {
       ...existingSkill,
       updated_at: now,
-      ...(data.name !== undefined && { name: data.name }),
+      ...(data.name !== undefined && { name: data.name.trim() }),
       ...(data.description !== undefined && { description: data.description }),
       ...((data.content !== undefined || data.instructions !== undefined) && {
         content: newContent,
@@ -323,17 +352,21 @@ export class SkillDB {
         .prepare(
           `INSERT INTO skill_versions (
           id, skill_id, version, content, files_snapshot, note, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (
+          @id, @skill_id, @version, @content, @files_snapshot, @note, @created_at
+        )`,
         )
-        .run(
-          id,
-          skillId,
-          version,
-          skill.content || null,
-          filesSnapshot ? JSON.stringify(filesSnapshot) : null,
-          note || null,
-          now,
-        );
+        .run({
+          "@id": id,
+          "@skill_id": skillId,
+          "@version": version,
+          "@content": skill.content || null,
+          "@files_snapshot": filesSnapshot
+            ? JSON.stringify(filesSnapshot)
+            : null,
+          "@note": note || null,
+          "@created_at": now,
+        });
 
       // Update current version number
       // 更新当前版本号
@@ -437,17 +470,23 @@ export class SkillDB {
       .prepare(
         `INSERT OR IGNORE INTO skill_versions (
           id, skill_id, version, content, files_snapshot, note, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (
+          @id, @skill_id, @version, @content, @files_snapshot, @note, @created_at
+        )`,
       )
-      .run(
-        version.id,
-        version.skillId,
-        version.version,
-        version.content || null,
-        version.filesSnapshot ? JSON.stringify(version.filesSnapshot) : null,
-        version.note || null,
-        version.createdAt ? new Date(version.createdAt).getTime() : Date.now(),
-      );
+      .run({
+        "@id": version.id,
+        "@skill_id": version.skillId,
+        "@version": version.version,
+        "@content": version.content || null,
+        "@files_snapshot": version.filesSnapshot
+          ? JSON.stringify(version.filesSnapshot)
+          : null,
+        "@note": version.note || null,
+        "@created_at": version.createdAt
+          ? new Date(version.createdAt).getTime()
+          : Date.now(),
+      });
   }
 
   /**

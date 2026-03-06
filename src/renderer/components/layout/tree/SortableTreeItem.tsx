@@ -75,9 +75,10 @@ export const SortableTreeItem = forwardRef<HTMLLIElement, SortableTreeItemProps>
               ? 'bg-sidebar-accent text-sidebar-foreground'
               : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
             }
+            ${collapsed ? 'justify-center px-0' : ''}
           `}
           style={{
-            paddingLeft: paddingLeft + 8
+            paddingLeft: collapsed ? 0 : paddingLeft + 8,
           }}
         >
           {/* 1. Collapse/Expand Arrow - Larger hit area */}

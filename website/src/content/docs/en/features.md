@@ -227,3 +227,41 @@ PromptHub provides extensive global and local shortcuts for maximum efficiency.
 | `Cmd/Ctrl + S`     | Save Editor                |
 | `Cmd/Ctrl + Enter` | Save & Close Editor        |
 | `Escape`           | Clear Search / Close Modal |
+
+## Skill Management
+
+Starting from v0.4.0, PromptHub includes a Skill management module to help you manage and distribute AI agent skills (SKILL.md).
+
+### Skill Store
+
+Built-in store with 20+ curated AI agent skills from Anthropic, OpenAI and more:
+
+- **One-Click Add**: Browse skill cards in the store and add to your local library instantly
+- **Category Browsing**: Filter by tags (code review, doc writing, test generation, etc.)
+- **Official Sources**: All skills come from well-known AI platform best practices
+
+### Multi-Platform Install
+
+One-click install SKILL.md to 12+ mainstream AI coding tools:
+
+- **Supported Platforms**: Claude Code, Cursor, Windsurf, Codex, Kiro, Gemini CLI and more
+- **Install Modes**:
+  - **Symlink**: Edits to the original file automatically sync to all installed platforms
+  - **Copy**: Independent copy, unaffected by source file changes
+- **Auto-popup**: After adding a skill to library, the platform selection dialog appears automatically
+
+### Local Scan
+
+Auto-discover existing SKILL.md files in local directories:
+
+- **Directory Scan**: Recursively search specified directories for existing SKILL.md files
+- **Preview & Select**: Scan results support preview, batch import after selection
+- **Deduplication**: Automatically identifies already-imported skills to avoid duplicates
+
+### AI Translation
+
+AI-powered translation of skill content for easier reading:
+
+- **Immersive Translation**: Paragraph-by-paragraph bilingual translation with original text preserved
+- **Full Translation**: One-click translation of entire skill content
+- **Multi-Language**: Automatically selects target language based on UI language

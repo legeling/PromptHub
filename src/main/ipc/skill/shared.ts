@@ -10,15 +10,50 @@ export interface SkillIPCContext {
   db: SkillDB;
 }
 
+export async function ensureLocalRepoPath(
+  db: SkillDB,
+  skillId: string,
+): Promise<string | null> {
+  const skill = db.getById(skillId);
+  if (!skill) return null;
+
+  const repoPath =
+    skill.local_repo_path || SkillInstaller.getLocalRepoPath(skill.name);
+
+  try {
+    const stat = fs.statSync(repoPath);
+    if (stat.isDirectory()) {
+      return repoPath;
+    }
+  } catch {
+    // fall through to bootstrap from DB content
+  }
+
+  const repoContent = skill.instructions || skill.content || "";
+  if (!repoContent.trim()) {
+    return null;
+  }
+
+  const savedRepoPath = await SkillInstaller.saveContentToLocalRepo(
+    skill.name,
+    repoContent,
+  );
+  if (skill.local_repo_path !== savedRepoPath) {
+    db.update(skillId, { local_repo_path: savedRepoPath });
+  }
+  return savedRepoPath;
+}
+
 export async function readCurrentFilesSnapshot(
   db: SkillDB,
   skillId: string,
 ): Promise<SkillFileSnapshot[]> {
+  const ensuredRepoPath = await ensureLocalRepoPath(db, skillId);
   const skill = db.getById(skillId);
   if (!skill) return [];
 
-  const files: SkillLocalFileEntry[] = skill.local_repo_path
-    ? await SkillInstaller.readLocalRepoFilesByPath(skill.local_repo_path)
+  const files: SkillLocalFileEntry[] = ensuredRepoPath
+    ? await SkillInstaller.readLocalRepoFilesByPath(ensuredRepoPath)
     : await SkillInstaller.readLocalRepoFiles(skill.name);
 
   return files
@@ -41,8 +76,10 @@ export async function replaceRepoFiles(
     throw new Error(`Skill not found: ${skillId}`);
   }
 
-  const repoPath =
-    skill.local_repo_path || SkillInstaller.getLocalRepoPath(skill.name);
+  const repoPath = await ensureLocalRepoPath(db, skillId);
+  if (!repoPath) {
+    throw new Error(`Unable to resolve local repo for skill: ${skillId}`);
+  }
   await SkillInstaller.replaceLocalRepoFilesByPath(repoPath, filesSnapshot);
 }
 

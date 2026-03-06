@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS prompts (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
   description TEXT,
+  prompt_type TEXT DEFAULT 'text',
   system_prompt TEXT,
   user_prompt TEXT NOT NULL,
   variables TEXT,
@@ -74,8 +75,22 @@ CREATE TABLE IF NOT EXISTS skills (
   author TEXT,
   tags TEXT,
   is_favorite INTEGER DEFAULT 0,
+  current_version INTEGER DEFAULT 1,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
+);
+
+-- Skill 版本表
+CREATE TABLE IF NOT EXISTS skill_versions (
+  id TEXT PRIMARY KEY,
+  skill_id TEXT NOT NULL,
+  version INTEGER NOT NULL,
+  content TEXT,
+  files_snapshot TEXT,
+  note TEXT,
+  created_at INTEGER NOT NULL,
+  FOREIGN KEY (skill_id) REFERENCES skills(id) ON DELETE CASCADE,
+  UNIQUE(skill_id, version)
 );
 `;
 
@@ -90,6 +105,7 @@ CREATE INDEX IF NOT EXISTS idx_versions_prompt ON prompt_versions(prompt_id);
 CREATE INDEX IF NOT EXISTS idx_folders_parent ON folders(parent_id);
 CREATE INDEX IF NOT EXISTS idx_skills_updated ON skills(updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_skills_favorite ON skills(is_favorite);
+CREATE INDEX IF NOT EXISTS idx_skill_versions_skill ON skill_versions(skill_id);
 
 CREATE INDEX IF NOT EXISTS idx_prompts_pinned ON prompts(is_pinned);
 CREATE INDEX IF NOT EXISTS idx_prompts_created ON prompts(created_at DESC);

@@ -11,7 +11,7 @@ import type {
 export const skillApi = {
   create: (
     data: CreateSkillParams,
-    options?: { skipInitialVersion?: boolean },
+    options?: { skipInitialVersion?: boolean; overwriteExisting?: boolean },
   ) => ipcRenderer.invoke(IPC_CHANNELS.SKILL_CREATE, data, options),
   get: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.SKILL_GET, id),
   getAll: () => ipcRenderer.invoke(IPC_CHANNELS.SKILL_GET_ALL),

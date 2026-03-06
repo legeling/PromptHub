@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { XIcon, DownloadIcon, CheckIcon, GlobeIcon, TagIcon, Loader2Icon, TrashIcon, LanguagesIcon } from 'lucide-react';
+import { XIcon, DownloadIcon, CheckIcon, GlobeIcon, TagIcon, Loader2Icon, TrashIcon, LanguagesIcon, RefreshCwIcon } from 'lucide-react';
 import { SkillIcon } from './SkillIcon';
 import { useSkillStore } from '../../stores/skill.store';
 import { useSettingsStore } from '../../stores/settings.store';
@@ -41,6 +41,7 @@ export function SkillStoreDetail({ skill, isInstalled, onClose }: SkillStoreDeta
   const uninstallRegistrySkill = useSkillStore((state) => state.uninstallRegistrySkill);
   const translateContent = useSkillStore((state) => state.translateContent);
   const getTranslation = useSkillStore((state) => state.getTranslation);
+  const clearTranslation = useSkillStore((state) => state.clearTranslation);
   const translationMode = useSettingsStore((state) => state.translationMode);
   const [isInstalling, setIsInstalling] = useState(false);
   const [isUninstalling, setIsUninstalling] = useState(false);
@@ -99,6 +100,26 @@ export function SkillStoreDetail({ skill, isInstalled, onClose }: SkillStoreDeta
       await translateContent(textToTranslate, translationCacheKey, targetLang);
       setShowTranslation(true);
       showToast(t('skill.translateSuccess', 'Translation complete'), 'success');
+    } catch (e: any) {
+      if (e?.message === 'AI_NOT_CONFIGURED') {
+        showToast(t('skill.aiNotConfigured', 'Please configure AI model in Settings first'), 'error');
+      } else {
+        showToast(t('skill.translateFailed', 'Translation failed') + `: ${e}`, 'error');
+      }
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
+  const handleRefreshTranslation = async () => {
+    setIsTranslating(true);
+    try {
+      clearTranslation(translationCacheKey);
+      const body = stripFrontmatter(skill.content);
+      const textToTranslate = body.length > 0 ? body : skill.description;
+      await translateContent(textToTranslate, translationCacheKey, targetLang, { forceRefresh: true });
+      setShowTranslation(true);
+      showToast(t('skill.translateRefreshed', 'Translation refreshed'), 'success');
     } catch (e: any) {
       if (e?.message === 'AI_NOT_CONFIGURED') {
         showToast(t('skill.aiNotConfigured', 'Please configure AI model in Settings first'), 'error');
@@ -189,28 +210,41 @@ export function SkillStoreDetail({ skill, isInstalled, onClose }: SkillStoreDeta
         <div className="flex-1 overflow-y-auto p-5 scrollbar-hide">
           {/* Translate button */}
           <div className="flex items-center justify-end mb-3">
-            <button
-              onClick={handleTranslate}
-              disabled={isTranslating}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                showTranslation && cachedTranslation
-                  ? 'bg-primary/10 text-primary'
-                  : 'bg-accent/50 hover:bg-accent text-muted-foreground hover:text-foreground'
-              } disabled:opacity-50`}
-            >
-              {isTranslating ? (
-                <Loader2Icon className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <LanguagesIcon className="w-3.5 h-3.5" />
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleTranslate}
+                disabled={isTranslating}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  showTranslation && cachedTranslation
+                    ? 'bg-primary/10 text-primary'
+                    : 'bg-accent/50 hover:bg-accent text-muted-foreground hover:text-foreground'
+                } disabled:opacity-50`}
+              >
+                {isTranslating ? (
+                  <Loader2Icon className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <LanguagesIcon className="w-3.5 h-3.5" />
+                )}
+                {isTranslating
+                  ? t('skill.translating', 'Translating...')
+                  : showTranslation && cachedTranslation
+                    ? t('skill.showOriginal', 'Show Original')
+                    : cachedTranslation
+                      ? t('skill.showTranslation', 'Show Translation')
+                      : t('skill.translate', 'AI Translate')}
+              </button>
+              {cachedTranslation && (
+                <button
+                  onClick={handleRefreshTranslation}
+                  disabled={isTranslating}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-accent/50 hover:bg-accent text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                  title={t('skill.refreshTranslation', '刷新翻译')}
+                >
+                  <RefreshCwIcon className={`w-3.5 h-3.5 ${isTranslating ? 'animate-spin' : ''}`} />
+                  {t('skill.refreshTranslation', '刷新翻译')}
+                </button>
               )}
-              {isTranslating
-                ? t('skill.translating', 'Translating...')
-                : showTranslation && cachedTranslation
-                  ? t('skill.showOriginal', 'Show Original')
-                  : cachedTranslation
-                    ? t('skill.showTranslation', 'Show Translation')
-                    : t('skill.translate', 'AI Translate')}
-            </button>
+            </div>
           </div>
 
           {/* SKILL.md content rendered as markdown */}

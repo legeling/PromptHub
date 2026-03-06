@@ -438,7 +438,7 @@ export function FolderModal({ isOpen, onClose, folder }: FolderModalProps) {
 
           {/* 名称输入 */}
           <div>
-            <label className="block text-sm font-medium mb-2">{t('folder.name', '名称')}</label>
+            <label className="block text-sm font-medium mb-2">{t('folder.name', '名称')}<span className="ml-1 text-destructive">*</span></label>
             <input
               type="text"
               value={name}

@@ -13,7 +13,7 @@ export function registerSkillCrudHandlers({ db }: SkillIPCContext): void {
     async (
       _,
       data: CreateSkillParams,
-      options?: { skipInitialVersion?: boolean },
+      options?: { skipInitialVersion?: boolean; overwriteExisting?: boolean },
     ) => {
       if (
         !data ||
@@ -56,7 +56,65 @@ export function registerSkillCrudHandlers({ db }: SkillIPCContext): void {
       if (!data || typeof data !== "object") {
         throw new Error("skill:update requires a non-null data object");
       }
-      return db.update(id, data);
+
+      const existingSkill = db.getById(id);
+      if (!existingSkill) {
+        return null;
+      }
+
+      const nextName =
+        typeof data.name === "string" ? data.name.trim() : undefined;
+      const isRenaming =
+        typeof nextName === "string" && nextName !== existingSkill.name;
+      const nextData: UpdateSkillParams = { ...data };
+      let deployedPlatforms: string[] = [];
+
+      if (isRenaming && nextName) {
+        try {
+          const platformStatus =
+            await SkillInstaller.getSkillMdInstallStatus(existingSkill.name);
+          deployedPlatforms = Object.entries(platformStatus)
+            .filter(([, installed]) => installed)
+            .map(([platformId]) => platformId);
+        } catch (error) {
+          console.warn(
+            `Failed to inspect deployed status before renaming "${existingSkill.name}":`,
+            error,
+          );
+        }
+
+        const migratedRepoPath = await SkillInstaller.renameManagedLocalRepo(
+          existingSkill.name,
+          nextName,
+          existingSkill.local_repo_path,
+        );
+        if (migratedRepoPath !== existingSkill.local_repo_path) {
+          nextData.local_repo_path = migratedRepoPath ?? undefined;
+        }
+        nextData.name = nextName;
+      }
+
+      const updatedSkill = db.update(id, nextData);
+
+      if (updatedSkill && isRenaming && nextName && deployedPlatforms.length > 0) {
+        const nextContent =
+          updatedSkill.instructions ??
+          updatedSkill.content ??
+          existingSkill.instructions ??
+          existingSkill.content ??
+          "";
+
+        await Promise.allSettled(
+          deployedPlatforms.map(async (platformId) => {
+            if (nextContent.trim()) {
+              await SkillInstaller.installSkillMd(nextName, nextContent, platformId);
+            }
+            await SkillInstaller.uninstallSkillMd(existingSkill.name, platformId);
+          }),
+        );
+      }
+
+      return updatedSkill;
     },
   );
 
@@ -67,19 +125,10 @@ export function registerSkillCrudHandlers({ db }: SkillIPCContext): void {
 
     const skill = db.getById(id);
     if (skill?.name) {
-      try {
-        if (skill.local_repo_path) {
-          await SkillInstaller.deleteRepoByPath(skill.local_repo_path);
-        } else {
-          await SkillInstaller.deleteLocalRepo(skill.name);
-        }
-      } catch (error) {
-        console.warn(
-          `Failed to delete local repo for skill "${skill.name}":`,
-          error,
-        );
-      }
-
+      // Only uninstall SKILL.md from platforms, do NOT delete the source directory.
+      // Deletion from PromptHub only removes the library record, not the original files.
+      // 仅从各平台卸载 SKILL.md，不删除源目录。
+      // 从 PromptHub 删除只移除库记录，不影响原始文件。
       try {
         const platforms = SkillInstaller.getSupportedPlatforms();
         await Promise.allSettled(

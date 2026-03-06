@@ -1,7 +1,7 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
-type ViewMode = 'prompt' | 'skill';
+type ViewMode = "prompt" | "skill";
 
 interface UIState {
   viewMode: ViewMode;
@@ -15,19 +15,20 @@ interface UIState {
 export const useUIStore = create<UIState>()(
   persist(
     (set) => ({
-      viewMode: 'prompt',
+      viewMode: "prompt",
       setViewMode: (mode) => set({ viewMode: mode }),
       isSidebarCollapsed: false,
-      toggleSidebar: () => set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
-      setSidebarCollapsed: (collapsed) => set({ isSidebarCollapsed: collapsed }),
+      toggleSidebar: () =>
+        set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
+      setSidebarCollapsed: (collapsed) =>
+        set({ isSidebarCollapsed: collapsed }),
     }),
     {
-      name: 'ui-storage',
-      // Only persist viewMode and sidebar state
-      partialize: (state) => ({ 
-        viewMode: state.viewMode,
-        isSidebarCollapsed: state.isSidebarCollapsed 
+      name: "ui-storage",
+      // Only persist sidebar state; viewMode always resets to 'prompt' on launch
+      partialize: (state) => ({
+        isSidebarCollapsed: state.isSidebarCollapsed,
       }),
-    }
-  )
+    },
+  ),
 );

@@ -39,6 +39,12 @@ export class SkillInstaller {
     return path.join(app.getPath("userData"), "skills");
   }
 
+  static isManagedRepoPath(absolutePath: string): boolean {
+    const resolved = path.resolve(absolutePath);
+    const relative = path.relative(this.skillsDir, resolved);
+    return !relative.startsWith("..") && !path.isAbsolute(relative);
+  }
+
   static async init() {
     try {
       await fs.mkdir(this.skillsDir, { recursive: true });
@@ -948,6 +954,40 @@ export class SkillInstaller {
   static getLocalRepoPath(skillName: string): string {
     this.validateSkillName(skillName);
     return path.join(this.skillsDir, skillName);
+  }
+
+  static async renameManagedLocalRepo(
+    oldSkillName: string,
+    newSkillName: string,
+    existingRepoPath?: string | null,
+  ): Promise<string | null> {
+    this.validateSkillName(oldSkillName);
+    this.validateSkillName(newSkillName);
+    await this.init();
+
+    if (existingRepoPath && !this.isManagedRepoPath(existingRepoPath)) {
+      return existingRepoPath;
+    }
+
+    const sourcePath = existingRepoPath
+      ? path.resolve(existingRepoPath)
+      : this.getLocalRepoPath(oldSkillName);
+    const targetPath = this.getLocalRepoPath(newSkillName);
+
+    if (sourcePath === targetPath) {
+      return targetPath;
+    }
+
+    if (!(await this.fileExists(sourcePath))) {
+      return targetPath;
+    }
+
+    if (await this.fileExists(targetPath)) {
+      throw new Error(`Local repo already exists for skill: ${newSkillName}`);
+    }
+
+    await fs.rename(sourcePath, targetPath);
+    return targetPath;
   }
 
   /**

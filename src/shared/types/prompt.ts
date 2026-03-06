@@ -4,32 +4,32 @@
  */
 
 // Prompt 类型：文本对话 / 图片生成 / 视频生成
-export type PromptType = 'text' | 'image' | 'video';
+export type PromptType = "text" | "image" | "video";
 
 export interface Prompt {
   id: string;
   title: string;
   description?: string;
-  promptType?: PromptType;  // Prompt 类型，默认 text
+  promptType?: PromptType; // Prompt 类型，默认 text
   systemPrompt?: string;
-  systemPromptEn?: string;  // English System Prompt / 英文版 System Prompt
+  systemPromptEn?: string; // English System Prompt / 英文版 System Prompt
   userPrompt: string;
-  userPromptEn?: string;    // English User Prompt / 英文版 User Prompt
+  userPromptEn?: string; // English User Prompt / 英文版 User Prompt
   variables: Variable[];
   tags: string[];
   folderId?: string;
   images?: string[];
-  videos?: string[];         // Video file names for preview / 视频预览文件名
+  videos?: string[]; // Video file names for preview / 视频预览文件名
   isFavorite: boolean;
-  isPinned: boolean;        // Pinned / 置顶
+  isPinned: boolean; // Pinned / 置顶
   version: number;
   currentVersion: number;
   usageCount: number;
-  source?: string;          // 来源 / Source URL or reference
-  notes?: string;           // 备注 / Personal notes about the prompt
-  lastAiResponse?: string;  // Last AI test response / 最后一次 AI 测试的响应
-  createdAt: string;  // ISO 8601 format / ISO 8601 格式
-  updatedAt: string;  // ISO 8601 format / ISO 8601 格式
+  source?: string; // 来源 / Source URL or reference
+  notes?: string; // 备注 / Personal notes about the prompt
+  lastAiResponse?: string; // Last AI test response / 最后一次 AI 测试的响应
+  createdAt: string; // ISO 8601 format / ISO 8601 格式
+  updatedAt: string; // ISO 8601 format / ISO 8601 格式
 }
 
 export interface Variable {
@@ -41,7 +41,7 @@ export interface Variable {
   required: boolean;
 }
 
-export type VariableType = 'text' | 'textarea' | 'number' | 'select';
+export type VariableType = "text" | "textarea" | "number" | "select";
 
 export interface PromptVersion {
   id: string;
@@ -51,14 +51,15 @@ export interface PromptVersion {
   userPrompt: string;
   variables: Variable[];
   note?: string;
-  aiResponse?: string;  // AI test response for this version / 该版本的 AI 测试响应
-  createdAt: string;  // ISO 8601 format / ISO 8601 格式
+  aiResponse?: string; // AI test response for this version / 该版本的 AI 测试响应
+  createdAt: string; // ISO 8601 format / ISO 8601 格式
 }
 
 // DTO Types
 export interface CreatePromptDTO {
   title: string;
   description?: string;
+  promptType?: PromptType;
   systemPrompt?: string;
   systemPromptEn?: string;
   userPrompt: string;
@@ -98,8 +99,8 @@ export interface SearchQuery {
   tags?: string[];
   folderId?: string;
   isFavorite?: boolean;
-  sortBy?: 'title' | 'createdAt' | 'updatedAt' | 'usageCount';
-  sortOrder?: 'asc' | 'desc';
+  sortBy?: "title" | "createdAt" | "updatedAt" | "usageCount";
+  sortOrder?: "asc" | "desc";
   limit?: number;
   offset?: number;
 }

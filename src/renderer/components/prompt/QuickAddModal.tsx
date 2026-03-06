@@ -1,11 +1,18 @@
-import { useState, useRef, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
-import { SparklesIcon, XIcon, FolderIcon, Loader2Icon, Wand2Icon } from 'lucide-react';
-import { useSettingsStore } from '../../stores/settings.store';
-import { useFolderStore } from '../../stores/folder.store';
-import { usePromptStore } from '../../stores/prompt.store';
-import { chatCompletion, type AIConfig } from '../../services/ai';
-import { renderFolderIcon } from '../layout/folderIconHelper';
+import { useState, useRef, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
+import {
+  SparklesIcon,
+  XIcon,
+  FolderIcon,
+  Loader2Icon,
+  Wand2Icon,
+} from "lucide-react";
+import { useSettingsStore } from "../../stores/settings.store";
+import { useFolderStore } from "../../stores/folder.store";
+import { usePromptStore } from "../../stores/prompt.store";
+import { chatCompletion, type AIConfig } from "../../services/ai";
+import { renderFolderIcon } from "../layout/folderIconHelper";
+import { UnsavedChangesDialog } from "../ui/UnsavedChangesDialog";
 
 interface QuickAddModalProps {
   isOpen: boolean;
@@ -16,29 +23,54 @@ interface QuickAddModalProps {
     systemPrompt?: string;
     description?: string;
     folderId?: string;
+    promptType?: "text" | "image";
   }) => Promise<any>;
+  defaultPromptType?: "text" | "image";
 }
 
-export function QuickAddModal({ isOpen, onClose, onCreate }: QuickAddModalProps) {
+export function QuickAddModal({
+  isOpen,
+  onClose,
+  onCreate,
+  defaultPromptType,
+}: QuickAddModalProps) {
   const { t } = useTranslation();
   const folders = useFolderStore((state) => state.folders);
   const aiModels = useSettingsStore((state) => state.aiModels);
   const aiApiKey = useSettingsStore((state) => state.aiApiKey);
   const prompts = usePromptStore((state) => state.prompts);
-  
-  const [promptText, setPromptText] = useState('');
+
+  const [promptText, setPromptText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedFolderId, setSelectedFolderId] = useState<string | undefined>(undefined);
-  
+  const [selectedFolderId, setSelectedFolderId] = useState<string | undefined>(
+    undefined,
+  );
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Check if AI is configured
-  const hasAiConfig = aiModels.length > 0 || (aiApiKey && aiApiKey.trim() !== '');
+  const hasAiConfig =
+    aiModels.length > 0 || (aiApiKey && aiApiKey.trim() !== "");
+
+  // Check unsaved changes
+  const hasUnsavedChanges = useCallback(() => {
+    return promptText.trim() !== "";
+  }, [promptText]);
+
+  // Handle close request with guard
+  const handleCloseRequest = useCallback(() => {
+    if (hasUnsavedChanges()) {
+      setShowUnsavedDialog(true);
+    } else {
+      onClose();
+    }
+  }, [hasUnsavedChanges, onClose]);
 
   // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
-      setPromptText('');
+      setPromptText("");
       setSelectedFolderId(undefined);
       setIsSubmitting(false);
       setTimeout(() => textareaRef.current?.focus(), 100);
@@ -48,24 +80,28 @@ export function QuickAddModal({ isOpen, onClose, onCreate }: QuickAddModalProps)
   // Handle create
   const handleCreate = async () => {
     if (!promptText.trim() || isSubmitting) return;
-    
+
     setIsSubmitting(true);
-    
+
     // Create prompt immediately with placeholder info
     const createdPrompt = await onCreate({
-      title: t('quickAdd.analyzing') || '正在分析...',
+      title: t("quickAdd.analyzing") || "正在分析...",
       userPrompt: promptText,
       folderId: selectedFolderId,
+      promptType: defaultPromptType || "text",
     });
-    
+
     onClose();
 
     // Background AI analysis
     if (hasAiConfig && createdPrompt) {
       try {
-        const folderNames = folders.map(f => f.name).join(', ');
-        const existingTags = [...new Set(prompts.flatMap(p => p.tags || []))].sort();
-        const tagsString = existingTags.length > 0 ? existingTags.join(', ') : '无现有标签';
+        const folderNames = folders.map((f) => f.name).join(", ");
+        const existingTags = [
+          ...new Set(prompts.flatMap((p) => p.tags || [])),
+        ].sort();
+        const tagsString =
+          existingTags.length > 0 ? existingTags.join(", ") : "无现有标签";
 
         const analysisPrompt = `请分析以下用户提供的 Prompt，并返回 JSON 格式的结果：
   
@@ -75,7 +111,7 @@ ${promptText}
 """
 
 可用的文件夹列表：
-${folderNames || '暂无文件夹'}
+${folderNames || "暂无文件夹"}
 
 已知存在的标签（请优先从这些标签中提取或匹配）：
 ${tagsString}
@@ -89,7 +125,7 @@ ${tagsString}
   "tags": ["根据内容提取关键词作为标签，优先使用已存在的标签，如果必要可以生成1-2个新标签"]
 }`;
 
-        const aiModel = aiModels.find(m => m.isDefault) || aiModels[0];
+        const aiModel = aiModels.find((m) => m.isDefault) || aiModels[0];
         if (aiModel) {
           const config: AIConfig = {
             provider: aiModel.provider,
@@ -97,23 +133,30 @@ ${tagsString}
             apiUrl: aiModel.apiUrl,
             model: aiModel.model,
           };
-          
-          const aiResult = await chatCompletion(config, [
-            { role: 'user', content: analysisPrompt }
-          ], { temperature: 0.3 });
-          
+
+          const aiResult = await chatCompletion(
+            config,
+            [{ role: "user", content: analysisPrompt }],
+            { temperature: 0.3 },
+          );
+
           const responseContent = aiResult.content;
           const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
-          
+
           if (jsonMatch) {
             const parsedResult = JSON.parse(jsonMatch[0]);
             let targetFolderId = selectedFolderId;
 
             // If no folder selected, use AI suggestion
             if (!targetFolderId && parsedResult.suggestedFolder) {
-              const matchedFolder = folders.find(f => 
-                f.name.toLowerCase().includes(parsedResult.suggestedFolder.toLowerCase()) ||
-                parsedResult.suggestedFolder.toLowerCase().includes(f.name.toLowerCase())
+              const matchedFolder = folders.find(
+                (f) =>
+                  f.name
+                    .toLowerCase()
+                    .includes(parsedResult.suggestedFolder.toLowerCase()) ||
+                  parsedResult.suggestedFolder
+                    .toLowerCase()
+                    .includes(f.name.toLowerCase()),
               );
               if (matchedFolder) {
                 targetFolderId = matchedFolder.id;
@@ -121,7 +164,8 @@ ${tagsString}
             }
 
             // Update prompt with AI results
-            const { usePromptStore } = await import('../../stores/prompt.store');
+            const { usePromptStore } =
+              await import("../../stores/prompt.store");
             await usePromptStore.getState().updatePrompt(createdPrompt.id, {
               title: parsedResult.title || createdPrompt.title,
               systemPrompt: parsedResult.systemPrompt,
@@ -132,11 +176,11 @@ ${tagsString}
           }
         }
       } catch (err) {
-        console.error('Background AI analysis failed:', err);
+        console.error("Background AI analysis failed:", err);
         // Fallback title if analysis fails
-        const { usePromptStore } = await import('../../stores/prompt.store');
+        const { usePromptStore } = await import("../../stores/prompt.store");
         await usePromptStore.getState().updatePrompt(createdPrompt.id, {
-          title: promptText.trim().split('\n')[0].slice(0, 30) || 'New Prompt',
+          title: promptText.trim().split("\n")[0].slice(0, 30) || "New Prompt",
         });
       }
     }
@@ -146,19 +190,21 @@ ${tagsString}
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div 
+      <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
+        onClick={handleCloseRequest}
       />
-      
+
       <div className="relative w-full max-w-2xl mx-4 bg-card rounded-2xl shadow-2xl border border-border overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div className="flex items-center gap-2">
             <SparklesIcon className="w-5 h-5 text-primary" />
-            <h2 className="text-lg font-semibold">{t('quickAdd.title') || '快速添加 Prompt'}</h2>
+            <h2 className="text-lg font-semibold">
+              {t("quickAdd.title") || "快速添加 Prompt"}
+            </h2>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleCloseRequest}
             className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           >
             <XIcon className="w-5 h-5" />
@@ -168,32 +214,37 @@ ${tagsString}
         <div className="p-6 space-y-6">
           <div className="space-y-2">
             <label className="text-sm font-medium text-muted-foreground">
-              {t('quickAdd.pastePrompt') || '粘贴你的 Prompt'}
+              {t("quickAdd.pastePrompt") || "粘贴你的 Prompt"}
+              <span className="ml-1 text-destructive">*</span>
             </label>
             <textarea
               ref={textareaRef}
               value={promptText}
               onChange={(e) => setPromptText(e.target.value)}
-              placeholder={t('quickAdd.placeholder') || '在这里粘贴你的 Prompt 内容...'}
+              placeholder={
+                t("quickAdd.placeholder") || "在这里粘贴你的 Prompt 内容..."
+              }
               className="w-full h-48 px-4 py-3 rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all text-sm leading-relaxed"
             />
           </div>
 
           <div className="space-y-2">
             <label className="text-sm font-medium text-muted-foreground">
-              {t('prompt.folderOptional') || '保存到文件夹（可选）'}
+              {t("prompt.folderOptional") || "保存到文件夹（可选）"}
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
               <button
                 onClick={() => setSelectedFolderId(undefined)}
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all ${
-                  !selectedFolderId 
-                    ? 'bg-primary/10 border-primary/30 text-primary' 
-                    : 'bg-muted/30 border-transparent text-muted-foreground hover:bg-muted/50'
+                  !selectedFolderId
+                    ? "bg-primary/10 border-primary/30 text-primary"
+                    : "bg-muted/30 border-transparent text-muted-foreground hover:bg-muted/50"
                 }`}
               >
                 <Wand2Icon className="w-4 h-4 shrink-0" />
-                <span className="truncate">{t('quickAdd.smartFolder') || 'AI 智能分类'}</span>
+                <span className="truncate">
+                  {t("quickAdd.smartFolder") || "AI 智能分类"}
+                </span>
               </button>
               {folders.map((folder) => (
                 <button
@@ -201,8 +252,8 @@ ${tagsString}
                   onClick={() => setSelectedFolderId(folder.id)}
                   className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all ${
                     selectedFolderId === folder.id
-                      ? 'bg-primary/10 border-primary/30 text-primary' 
-                      : 'bg-muted/30 border-transparent text-muted-foreground hover:bg-muted/50'
+                      ? "bg-primary/10 border-primary/30 text-primary"
+                      : "bg-muted/30 border-transparent text-muted-foreground hover:bg-muted/50"
                   }`}
                   title={folder.name}
                 >
@@ -218,10 +269,10 @@ ${tagsString}
 
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border bg-muted/20">
           <button
-            onClick={onClose}
+            onClick={handleCloseRequest}
             className="px-4 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           >
-            {t('common.cancel') || '取消'}
+            {t("common.cancel") || "取消"}
           </button>
           <button
             onClick={handleCreate}
@@ -229,10 +280,22 @@ ${tagsString}
             className="flex items-center gap-2 px-6 py-2 rounded-lg bg-primary text-white font-medium hover:bg-primary/90 transition-all disabled:opacity-50 active:scale-95 shadow-lg shadow-primary/20"
           >
             {isSubmitting && <Loader2Icon className="w-4 h-4 animate-spin" />}
-            {t('quickAdd.create') || '立即创建'}
+            {t("quickAdd.create") || "立即创建"}
           </button>
         </div>
       </div>
+      <UnsavedChangesDialog
+        isOpen={showUnsavedDialog}
+        onClose={() => setShowUnsavedDialog(false)}
+        onSave={() => {
+          setShowUnsavedDialog(false);
+          handleCreate();
+        }}
+        onDiscard={() => {
+          setShowUnsavedDialog(false);
+          onClose();
+        }}
+      />
     </div>
   );
 }

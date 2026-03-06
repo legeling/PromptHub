@@ -2,7 +2,35 @@ import { ipcMain } from "electron";
 import { IPC_CHANNELS } from "../../../shared/constants";
 import { SkillInstaller } from "../../services/skill-installer";
 import type { SkillIPCContext } from "./shared";
-import { resolveRepoPath } from "./shared";
+import { ensureLocalRepoPath } from "./shared";
+
+async function resolveManagedRepoPath(
+  context: SkillIPCContext,
+  skillId: string,
+): Promise<string> {
+  const skill = context.db.getById(skillId);
+  if (!skill) {
+    throw new Error(`Skill not found: ${skillId}`);
+  }
+
+  if (
+    skill.local_repo_path &&
+    SkillInstaller.isManagedRepoPath(skill.local_repo_path)
+  ) {
+    return skill.local_repo_path;
+  }
+
+  const ensuredRepoPath = await ensureLocalRepoPath(context.db, skillId);
+  if (ensuredRepoPath && SkillInstaller.isManagedRepoPath(ensuredRepoPath)) {
+    return ensuredRepoPath;
+  }
+
+  const managedRepoPath = SkillInstaller.getLocalRepoPath(skill.name);
+  if (skill.local_repo_path !== managedRepoPath) {
+    context.db.update(skillId, { local_repo_path: managedRepoPath });
+  }
+  return managedRepoPath;
+}
 
 export function registerSkillLocalRepoHandlers({ db }: SkillIPCContext): void {
   ipcMain.handle(
@@ -24,8 +52,9 @@ export function registerSkillLocalRepoHandlers({ db }: SkillIPCContext): void {
     }
     const skill = db.getById(skillId);
     if (!skill) return [];
-    if (skill.local_repo_path) {
-      return SkillInstaller.readLocalRepoFilesByPath(skill.local_repo_path);
+    const repoPath = await ensureLocalRepoPath(db, skillId);
+    if (repoPath) {
+      return SkillInstaller.readLocalRepoFilesByPath(repoPath);
     }
     return SkillInstaller.readLocalRepoFiles(skill.name);
   });
@@ -36,16 +65,12 @@ export function registerSkillLocalRepoHandlers({ db }: SkillIPCContext): void {
       if (typeof skillId !== "string" || skillId.trim() === "") {
         throw new Error("skill:writeLocalFile requires a non-empty skillId");
       }
-      const skill = db.getById(skillId);
-      if (!skill) throw new Error(`Skill not found: ${skillId}`);
-      if (skill.local_repo_path) {
-        return SkillInstaller.writeLocalRepoFileByPath(
-          skill.local_repo_path,
-          relativePath,
-          content,
-        );
-      }
-      return SkillInstaller.writeLocalRepoFile(skill.name, relativePath, content);
+      const repoPath = await resolveManagedRepoPath({ db }, skillId);
+      return SkillInstaller.writeLocalRepoFileByPath(
+        repoPath,
+        relativePath,
+        content,
+      );
     },
   );
 
@@ -55,15 +80,8 @@ export function registerSkillLocalRepoHandlers({ db }: SkillIPCContext): void {
       if (typeof skillId !== "string" || skillId.trim() === "") {
         throw new Error("skill:deleteLocalFile requires a non-empty skillId");
       }
-      const skill = db.getById(skillId);
-      if (!skill) throw new Error(`Skill not found: ${skillId}`);
-      if (skill.local_repo_path) {
-        return SkillInstaller.deleteLocalRepoFileByPath(
-          skill.local_repo_path,
-          relativePath,
-        );
-      }
-      return SkillInstaller.deleteLocalRepoFile(skill.name, relativePath);
+      const repoPath = await resolveManagedRepoPath({ db }, skillId);
+      return SkillInstaller.deleteLocalRepoFileByPath(repoPath, relativePath);
     },
   );
 
@@ -73,19 +91,15 @@ export function registerSkillLocalRepoHandlers({ db }: SkillIPCContext): void {
       if (typeof skillId !== "string" || skillId.trim() === "") {
         throw new Error("skill:createLocalDir requires a non-empty skillId");
       }
-      const skill = db.getById(skillId);
-      if (!skill) throw new Error(`Skill not found: ${skillId}`);
-      if (skill.local_repo_path) {
-        return SkillInstaller.createLocalRepoDirByPath(
-          skill.local_repo_path,
-          relativePath,
-        );
-      }
-      return SkillInstaller.createLocalRepoDir(skill.name, relativePath);
+      const repoPath = await resolveManagedRepoPath({ db }, skillId);
+      return SkillInstaller.createLocalRepoDirByPath(repoPath, relativePath);
     },
   );
 
-  ipcMain.handle(IPC_CHANNELS.SKILL_GET_REPO_PATH, async (_, skillId: string) =>
-    resolveRepoPath(db, skillId),
-  );
+  ipcMain.handle(IPC_CHANNELS.SKILL_GET_REPO_PATH, async (_, skillId: string) => {
+    if (typeof skillId !== "string" || skillId.trim() === "") {
+      return null;
+    }
+    return ensureLocalRepoPath(db, skillId);
+  });
 }

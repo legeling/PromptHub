@@ -1,3 +1,29 @@
+## [0.4.2] - 2026-03-06
+
+### 修复 / Fixed
+
+- 🔒 **安全加固 / Security Hardening**：修复 FTS 搜索 rowid 映射、SSRF 漏洞、任意路径写入/打开风险
+  - Fixed FTS search rowid mapping, SSRF vulnerability, arbitrary path write/open risks
+- 🔧 **数据库事务 / Database Transactions**：关键操作包裹事务，递归文件夹限制深度，deleteAll 原子化
+  - Wrapped critical operations in transactions, recursive folder depth limits, atomic deleteAll
+- 🛡️ **IPC 输入验证 / IPC Input Validation**：所有 IPC 通道增加参数校验，GitHub URL 验证，移除 bypassCSP
+  - Added parameter validation to all IPC channels, GitHub URL validation, removed bypassCSP
+
+### 优化 / Improvements
+
+- 🏗️ **设置页面重构 / Settings Refactor**：SettingsPage.tsx 从 ~4910 行拆分为 10 个独立标签页组件（127 行入口）
+  - Split SettingsPage.tsx from ~4910 lines into 10 independent tab components (127-line entry)
+- ✅ **MCP Schema 验证 / MCP Schema Validation**：skill-installer.ts 增加运行时 MCP 配置验证
+  - Added runtime MCP config schema validation in skill-installer.ts
+- ⚡ **性能优化 / Performance Optimization**：AISettings 组件 5x useMemo + 3x useCallback 优化
+  - AISettings component optimized with 5x useMemo + 3x useCallback
+- 🌐 **网站技能描述 / Website Skill Descriptions**：首页特性卡片从 6 扩展到 9，新增技能商店、多平台安装、本地扫描
+  - Expanded feature grid from 6 to 9 cards, added Skill Store, Multi-Platform Install, Local Scan
+- 📄 **文档补充 / Documentation**：features.md 新增完整技能管理章节（商店、安装、扫描、翻译）
+  - Added complete Skill Management section to features.md (store, install, scan, translation)
+
+---
+
 ## [0.4.0] - 2026-02-12
 
 ### 新功能 / Added

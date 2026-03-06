@@ -1,14 +1,26 @@
-import { app, BrowserWindow, shell, ipcMain, dialog, Notification, Tray, Menu, nativeImage, session, protocol } from 'electron';
-import path from 'path';
-import fs from 'fs';
-import Database from './database/sqlite';
-import { initDatabase } from './database';
-import { registerAllIPC } from './ipc';
-import { getMinimizeOnLaunchSetting } from './ipc/settings.ipc';
-import { createMenu } from './menu';
-import { registerShortcuts, registerShortcutsIPC } from './shortcuts';
-import { initUpdater, registerUpdaterIPC } from './updater';
-import { registerWebDAVIPC } from './webdav';
+import {
+  app,
+  BrowserWindow,
+  shell,
+  ipcMain,
+  dialog,
+  Notification,
+  Tray,
+  Menu,
+  nativeImage,
+  session,
+  protocol,
+} from "electron";
+import path from "path";
+import fs from "fs";
+import Database from "./database/sqlite";
+import { initDatabase, closeDatabase } from "./database";
+import { registerAllIPC } from "./ipc";
+import { getMinimizeOnLaunchSetting } from "./ipc/settings.ipc";
+import { createMenu } from "./menu";
+import { registerShortcuts, registerShortcutsIPC } from "./shortcuts";
+import { initUpdater, registerUpdaterIPC } from "./updater";
+import { registerWebDAVIPC } from "./webdav";
 
 // Disable GPU acceleration (optional; may be needed on some systems)
 // 禁用 GPU 加速（可选，某些系统上可能需要）
@@ -23,7 +35,7 @@ let appDb: Database.Database | null = null;
 let isQuitting = false;
 // Close action: 'ask' = ask every time, 'minimize' = minimize to tray, 'exit' = exit directly
 // 关闭行为: 'ask' = 每次询问, 'minimize' = 最小化到托盘, 'exit' = 直接退出
-let closeAction: 'ask' | 'minimize' | 'exit' = 'ask';
+let closeAction: "ask" | "minimize" | "exit" = "ask";
 // Whether we are waiting for the user to choose a close behavior
 // 是否正在等待用户选择关闭行为
 let pendingCloseAction = false;
@@ -33,28 +45,26 @@ let isDebugMode = false;
 // 注册特权协议（必须在 app ready 之前调用）
 protocol.registerSchemesAsPrivileged([
   {
-    scheme: 'local-image',
+    scheme: "local-image",
     privileges: {
       secure: true,
       standard: true,
       supportFetchAPI: true,
-      bypassCSP: true,
-      stream: true
-    }
+      stream: true,
+    },
   },
   {
-    scheme: 'local-video',
+    scheme: "local-video",
     privileges: {
       secure: true,
       standard: true,
       supportFetchAPI: true,
-      bypassCSP: true,
-      stream: true
-    }
-  }
+      stream: true,
+    },
+  },
 ]);
 
-const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+const isDev = process.env.NODE_ENV === "development" || !app.isPackaged;
 
 // Single instance lock (prevent multiple instances)
 // 单实例锁定（防止多开）
@@ -67,7 +77,7 @@ if (!gotTheLock) {
 } else {
   // When a second instance launches, focus existing window (or recreate if missing)
   // 当第二个实例启动时，聚焦到已有窗口（若窗口已销毁则重建）
-  app.on('second-instance', async () => {
+  app.on("second-instance", async () => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       if (mainWindow.isMinimized()) {
         mainWindow.restore();
@@ -90,8 +100,8 @@ async function createWindow() {
     return;
   }
 
-  const isMac = process.platform === 'darwin';
-  const isWin = process.platform === 'win32';
+  const isMac = process.platform === "darwin";
+  const isWin = process.platform === "win32";
 
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -99,7 +109,7 @@ async function createWindow() {
     minWidth: 800,
     minHeight: 600,
     webPreferences: {
-      preload: path.join(__dirname, '../preload/index.js'),
+      preload: path.join(__dirname, "../preload/index.js"),
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
@@ -107,11 +117,11 @@ async function createWindow() {
     // Use frameless window on Windows, native title bar on macOS
     // Windows 使用无边框窗口，macOS 使用原生标题栏
     frame: isWin ? false : true,
-    titleBarStyle: isMac ? 'hiddenInset' : 'default',
+    titleBarStyle: isMac ? "hiddenInset" : "default",
     trafficLightPosition: isMac ? { x: 16, y: 16 } : undefined,
     // Dark background for Windows title bar
     // Windows 深色标题栏
-    backgroundColor: '#1a1d23',
+    backgroundColor: "#1a1d23",
     // Don't show immediately - wait for ready-to-show to check minimizeOnLaunch setting
     // 不立即显示 - 等待 ready-to-show 事件检查 minimizeOnLaunch 设置
     show: false,
@@ -119,7 +129,7 @@ async function createWindow() {
 
   // Handle window ready-to-show: check if we should minimize on launch
   // 窗口准备就绪时：检查是否应该启动时最小化
-  mainWindow.once('ready-to-show', () => {
+  mainWindow.once("ready-to-show", () => {
     if (!appDb) {
       // No database available, show window normally
       // 数据库不可用，正常显示窗口
@@ -146,25 +156,26 @@ async function createWindow() {
   if (isDev) {
     // Dev mode: try to load Vite dev server
     // 开发模式：尝试连接 Vite 开发服务器
-    const devServerUrl = process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173';
-    console.log('Loading dev server:', devServerUrl);
+    const devServerUrl =
+      process.env.VITE_DEV_SERVER_URL || "http://localhost:5173";
+    console.log("Loading dev server:", devServerUrl);
     try {
       await mainWindow.loadURL(devServerUrl);
       mainWindow.webContents.openDevTools();
     } catch (error) {
-      console.error('Failed to load dev server:', error);
+      console.error("Failed to load dev server:", error);
     }
   } else {
-    await mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
+    await mainWindow.loadFile(path.join(__dirname, "../renderer/index.html"));
     // Handle DevTools shortcuts in production
     // 生产环境处理开发者工具快捷键
-    mainWindow.webContents.on('before-input-event', (event, input) => {
+    mainWindow.webContents.on("before-input-event", (event, input) => {
       // Check for DevTools shortcuts: F12, Ctrl+Shift+I, Cmd+Option+I
       // 检查是否为开发者工具快捷键
       const isDevToolsShortcut =
-        input.key === 'F12' ||
-        (input.control && input.shift && input.key.toLowerCase() === 'i') ||
-        (input.meta && input.alt && input.key.toLowerCase() === 'i');
+        input.key === "F12" ||
+        (input.control && input.shift && input.key.toLowerCase() === "i") ||
+        (input.meta && input.alt && input.key.toLowerCase() === "i");
 
       if (isDevToolsShortcut) {
         if (isDebugMode) {
@@ -183,29 +194,29 @@ async function createWindow() {
   // 处理外部链接
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
-    return { action: 'deny' };
+    return { action: "deny" };
   });
 
   // Close behavior: decide based on settings whether to minimize to tray or close
   // 关闭行为：根据设置决定是最小化到托盘还是关闭
-  mainWindow.on('close', (event) => {
+  mainWindow.on("close", (event) => {
     // If quitting, allow close to proceed
     // 如果正在退出应用，直接关闭
     if (isQuitting) return;
-    
-    const isWin = process.platform === 'win32';
-    
+
+    const isWin = process.platform === "win32";
+
     // Windows-specific close behavior
     // Windows 平台特殊处理
     if (isWin) {
-      if (closeAction === 'ask' && !pendingCloseAction) {
+      if (closeAction === "ask" && !pendingCloseAction) {
         // Ask user which action to take
         // 询问用户
         event.preventDefault();
         pendingCloseAction = true;
-        mainWindow?.webContents.send('window:showCloseDialog');
+        mainWindow?.webContents.send("window:showCloseDialog");
         return false;
-      } else if (closeAction === 'minimize') {
+      } else if (closeAction === "minimize") {
         // Minimize to tray
         // 最小化到托盘
         event.preventDefault();
@@ -225,18 +236,18 @@ async function createWindow() {
     }
   });
 
-  mainWindow.on('closed', () => {
+  mainWindow.on("closed", () => {
     mainWindow = null;
   });
 }
 
 // Register window control IPC
 // 注册窗口控制 IPC
-ipcMain.on('window:minimize', () => {
+ipcMain.on("window:minimize", () => {
   mainWindow?.minimize();
 });
 
-ipcMain.on('window:maximize', () => {
+ipcMain.on("window:maximize", () => {
   if (mainWindow?.isMaximized()) {
     mainWindow.unmaximize();
   } else {
@@ -244,38 +255,45 @@ ipcMain.on('window:maximize', () => {
   }
 });
 
-ipcMain.on('window:close', () => {
+ipcMain.on("window:close", () => {
   mainWindow?.close();
 });
 
 // Fullscreen control
 // 全屏控制
-ipcMain.on('window:enterFullscreen', () => {
+ipcMain.on("window:enterFullscreen", () => {
   mainWindow?.setFullScreen(true);
 });
 
-ipcMain.on('window:exitFullscreen', () => {
+ipcMain.on("window:exitFullscreen", () => {
   mainWindow?.setFullScreen(false);
 });
 
-ipcMain.handle('window:isFullscreen', () => {
+ipcMain.handle("window:isFullscreen", () => {
   return mainWindow?.isFullScreen() ?? false;
 });
 
 // Configure auto launch on login
 // 设置开机自启动
-ipcMain.on('app:setAutoLaunch', (_event, enabled: boolean, minimizeOnLaunch?: boolean) => {
-  app.setLoginItemSettings({
-    openAtLogin: enabled,
-    // If minimizeOnLaunch is true, start hidden (minimize to tray on launch)
-    // 如果 minimizeOnLaunch 为 true，则隐藏启动（启动时最小化到托盘）
-    openAsHidden: enabled && minimizeOnLaunch === true,
-  });
-});
+ipcMain.on(
+  "app:setAutoLaunch",
+  (_event, enabled: boolean, minimizeOnLaunch?: boolean) => {
+    if (typeof enabled !== "boolean") {
+      console.error("app:setAutoLaunch requires enabled to be a boolean");
+      return;
+    }
+    app.setLoginItemSettings({
+      openAtLogin: enabled,
+      // If minimizeOnLaunch is true, start hidden (minimize to tray on launch)
+      // 如果 minimizeOnLaunch 为 true，则隐藏启动（启动时最小化到托盘）
+      openAsHidden: enabled && minimizeOnLaunch === true,
+    });
+  },
+);
 
 // Configure minimize-to-tray behavior
 // 设置最小化到托盘
-ipcMain.on('app:setMinimizeToTray', (_event, enabled: boolean) => {
+ipcMain.on("app:setMinimizeToTray", (_event, enabled: boolean) => {
   minimizeToTray = enabled;
   if (enabled) {
     createTray();
@@ -286,52 +304,76 @@ ipcMain.on('app:setMinimizeToTray', (_event, enabled: boolean) => {
 
 // Set close action (Windows)
 // 设置关闭行为 (Windows)
-ipcMain.on('app:setCloseAction', (_event, action: 'ask' | 'minimize' | 'exit') => {
-  closeAction = action;
-  // Ensure tray exists when minimizing to tray
-  // 如果设置为最小化到托盘，确保托盘已创建
-  if (action === 'minimize' && process.platform === 'win32') {
-    createTray();
-  }
-});
+ipcMain.on(
+  "app:setCloseAction",
+  (_event, action: "ask" | "minimize" | "exit") => {
+    if (action !== "ask" && action !== "minimize" && action !== "exit") {
+      console.error(
+        "app:setCloseAction requires action to be 'ask', 'minimize', or 'exit'",
+      );
+      return;
+    }
+    closeAction = action;
+    // Ensure tray exists when minimizing to tray
+    // 如果设置为最小化到托盘，确保托盘已创建
+    if (action === "minimize" && process.platform === "win32") {
+      createTray();
+    }
+  },
+);
 
 // Set debug mode
 // 设置调试模式
-ipcMain.on('app:setDebugMode', (_event, enabled: boolean) => {
+ipcMain.on("app:setDebugMode", (_event, enabled: boolean) => {
   isDebugMode = enabled;
 });
 
 // Toggle DevTools
 // 切换开发者工具
-ipcMain.on('window:toggleDevTools', () => {
+ipcMain.on("window:toggleDevTools", () => {
   mainWindow?.webContents.toggleDevTools();
 });
 
 // Handle close dialog result
 // 处理关闭对话框结果
-ipcMain.on('window:closeDialogResult', (_event, data: { action: 'minimize' | 'exit'; remember: boolean }) => {
-  pendingCloseAction = false;
-  
-  if (data.remember) {
-    closeAction = data.action;
-  }
-  
-  if (data.action === 'minimize') {
-    mainWindow?.hide();
-    // Ensure tray exists
-    // 确保托盘已创建
-    createTray();
-  } else {
-    // Quit app
-    // 退出应用
-    isQuitting = true;
-    mainWindow?.close();
-  }
-});
+ipcMain.on(
+  "window:closeDialogResult",
+  (_event, data: { action: "minimize" | "exit"; remember: boolean }) => {
+    if (!data || typeof data !== "object") {
+      console.error("window:closeDialogResult requires a non-null data object");
+      pendingCloseAction = false;
+      return;
+    }
+    if (data.action !== "minimize" && data.action !== "exit") {
+      console.error(
+        "window:closeDialogResult requires action to be 'minimize' or 'exit'",
+      );
+      pendingCloseAction = false;
+      return;
+    }
+    pendingCloseAction = false;
+
+    if (data.remember) {
+      closeAction = data.action;
+    }
+
+    if (data.action === "minimize") {
+      mainWindow?.hide();
+      // Ensure tray exists
+      // 确保托盘已创建
+      createTray();
+    } else {
+      // Quit app
+      // 退出应用
+      isQuitting = true;
+      mainWindow?.close();
+    }
+  },
+);
 
 // User cancelled close dialog (do nothing; allow it to show again next time)
 // 用户关闭/取消了关闭对话框（不做任何动作，只允许下次再次弹出）
-ipcMain.on('window:closeDialogCancel', () => {
+ipcMain.on("window:closeDialogCancel", () => {
   pendingCloseAction = false;
 });
 
@@ -342,19 +384,25 @@ function createMacTrayIcon(): Electron.NativeImage {
   // 使用应用图标作为托盘图标
   let iconPath: string;
   if (isDev) {
-    iconPath = path.join(__dirname, '../../resources/icon.iconset/icon_16x16@2x.png');
+    iconPath = path.join(
+      __dirname,
+      "../../resources/icon.iconset/icon_16x16@2x.png",
+    );
   } else {
-    iconPath = path.join(process.resourcesPath, 'icon.iconset/icon_16x16@2x.png');
+    iconPath = path.join(
+      process.resourcesPath,
+      "icon.iconset/icon_16x16@2x.png",
+    );
   }
 
   const icon = nativeImage.createFromPath(iconPath);
   if (icon.isEmpty()) {
-    console.error('Failed to load tray icon from:', iconPath);
+    console.error("Failed to load tray icon from:", iconPath);
     // Try fallback path
     // 尝试备用路径
     const altPath = isDev
-      ? path.join(__dirname, '../../resources/icon.iconset/icon_32x32.png')
-      : path.join(process.resourcesPath, 'icon.iconset/icon_32x32.png');
+      ? path.join(__dirname, "../../resources/icon.iconset/icon_32x32.png")
+      : path.join(process.resourcesPath, "icon.iconset/icon_32x32.png");
     const altIcon = nativeImage.createFromPath(altPath);
     altIcon.setTemplateImage(true);
     return altIcon.resize({ width: 18, height: 18 });
@@ -369,7 +417,7 @@ function createMacTrayIcon(): Electron.NativeImage {
 function createTray() {
   if (tray) return;
 
-  const isMac = process.platform === 'darwin';
+  const isMac = process.platform === "darwin";
 
   try {
     let icon: Electron.NativeImage;
@@ -383,17 +431,22 @@ function createTray() {
       // Windows/Linux: 使用应用图标
       let iconPath: string;
       if (isDev) {
-        iconPath = path.join(__dirname, '../../resources/icon.ico');
+        iconPath = path.join(__dirname, "../../resources/icon.ico");
       } else {
-        iconPath = path.join(process.resourcesPath, 'icon.ico');
+        iconPath = path.join(process.resourcesPath, "icon.ico");
       }
-      console.log('Loading tray icon from:', iconPath);
+      console.log("Loading tray icon from:", iconPath);
       icon = nativeImage.createFromPath(iconPath);
       if (icon.isEmpty()) {
-        console.error('Tray icon is empty, trying alternative path');
+        console.error("Tray icon is empty, trying alternative path");
         // Try fallback path
         // 尝试备用路径
-        const altPath = path.join(process.resourcesPath, 'app.asar.unpacked', 'resources', 'icon.ico');
+        const altPath = path.join(
+          process.resourcesPath,
+          "app.asar.unpacked",
+          "resources",
+          "icon.ico",
+        );
         icon = nativeImage.createFromPath(altPath);
       }
       if (!icon.isEmpty()) {
@@ -403,14 +456,20 @@ function createTray() {
 
     tray = new Tray(icon);
   } catch (e) {
-    console.error('Failed to load tray icon:', e);
+    console.error("Failed to load tray icon:", e);
     // Fallback to app icon when tray icon fails to load
     // 如果加载图标失败，使用应用图标
     let iconPath: string;
     if (isDev) {
-      iconPath = path.join(__dirname, '../../resources/icon.iconset/icon_16x16@2x.png');
+      iconPath = path.join(
+        __dirname,
+        "../../resources/icon.iconset/icon_16x16@2x.png",
+      );
     } else {
-      iconPath = path.join(process.resourcesPath, 'icon.iconset/icon_16x16@2x.png');
+      iconPath = path.join(
+        process.resourcesPath,
+        "icon.iconset/icon_16x16@2x.png",
+      );
     }
     const fallbackIcon = nativeImage.createFromPath(iconPath);
     tray = new Tray(fallbackIcon.resize({ width: 18, height: 18 }));
@@ -418,15 +477,15 @@ function createTray() {
 
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: '显示窗口',
+      label: "显示窗口",
       click: () => {
         mainWindow?.show();
         mainWindow?.focus();
       },
     },
-    { type: 'separator' },
+    { type: "separator" },
     {
-      label: '退出',
+      label: "退出",
       click: () => {
         isQuitting = true;
         app.quit();
@@ -434,12 +493,12 @@ function createTray() {
     },
   ]);
 
-  tray.setToolTip('PromptHub');
+  tray.setToolTip("PromptHub");
   tray.setContextMenu(contextMenu);
 
   // Show window when tray icon is clicked
   // 点击托盘图标显示窗口
-  tray.on('click', () => {
+  tray.on("click", () => {
     if (mainWindow?.isVisible()) {
       mainWindow.focus();
     } else {
@@ -460,10 +519,10 @@ function destroyTray() {
 
 // Select folder dialog
 // 选择文件夹对话框
-ipcMain.handle('dialog:selectFolder', async () => {
+ipcMain.handle("dialog:selectFolder", async () => {
   const result = await dialog.showOpenDialog(mainWindow!, {
-    properties: ['openDirectory'],
-    title: '选择数据目录',
+    properties: ["openDirectory"],
+    title: "选择数据目录",
   });
   if (!result.canceled && result.filePaths.length > 0) {
     return result.filePaths[0];
@@ -473,37 +532,67 @@ ipcMain.handle('dialog:selectFolder', async () => {
 
 // Get current data directory
 // 获取当前数据目录
-ipcMain.handle('data:getPath', () => {
-  return app.getPath('userData');
+ipcMain.handle("data:getPath", () => {
+  return app.getPath("userData");
 });
 
 // Migrate data to a new directory
 // 迁移数据到新目录
-ipcMain.handle('data:migrate', async (_event, newPath: string) => {
-  const currentPath = app.getPath('userData');
-  
+ipcMain.handle("data:migrate", async (_event, newPath: string) => {
+  if (typeof newPath !== "string" || newPath.trim().length === 0) {
+    return {
+      success: false,
+      error: "data:migrate requires a non-empty newPath string",
+    };
+  }
+  const currentPath = app.getPath("userData");
+
+  // Security: ensure newPath is not a system-sensitive directory
+  // 安全：确保 newPath 不是系统敏感目录
+  const resolvedNewPath = path.resolve(newPath);
+  const sensitiveRoots = [
+    "/etc",
+    "/usr",
+    "/bin",
+    "/sbin",
+    "/var",
+    "/tmp",
+    "/System",
+    "/Library",
+    "C:\\Windows",
+    "C:\\Program Files",
+  ];
+  for (const root of sensitiveRoots) {
+    if (resolvedNewPath.toLowerCase().startsWith(root.toLowerCase())) {
+      return {
+        success: false,
+        error: `Cannot migrate to system directory: ${resolvedNewPath}`,
+      };
+    }
+  }
+
   try {
     // Create target directory if missing
     // 检查新目录是否存在，不存在则创建
     if (!fs.existsSync(newPath)) {
       fs.mkdirSync(newPath, { recursive: true });
     }
-    
+
     // Items to migrate
     // 需要迁移的文件和目录
     const itemsToMigrate = [
-      'prompthub.db',      // Database file
+      "prompthub.db", // Database file
       // 数据库文件
-      'images',            // Images directory
+      "images", // Images directory
       // 图片目录
     ];
-    
+
     let migratedCount = 0;
-    
+
     for (const item of itemsToMigrate) {
       const sourcePath = path.join(currentPath, item);
       const destPath = path.join(newPath, item);
-      
+
       if (fs.existsSync(sourcePath)) {
         // Check whether destination exists
         // 检查目标是否已存在
@@ -526,18 +615,18 @@ ipcMain.handle('data:migrate', async (_event, newPath: string) => {
         migratedCount++;
       }
     }
-    
-    return { 
-      success: true, 
+
+    return {
+      success: true,
       message: `Successfully migrated ${migratedCount} items`,
       // 成功迁移 {migratedCount} 个项目
       newPath,
       needsRestart: true,
     };
   } catch (error) {
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error',
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
       // 未知错误
     };
   }
@@ -549,13 +638,13 @@ function copyDirRecursive(src: string, dest: string) {
   if (!fs.existsSync(dest)) {
     fs.mkdirSync(dest, { recursive: true });
   }
-  
+
   const entries = fs.readdirSync(src, { withFileTypes: true });
-  
+
   for (const entry of entries) {
     const srcPath = path.join(src, entry.name);
     const destPath = path.join(dest, entry.name);
-    
+
     if (entry.isDirectory()) {
       copyDirRecursive(srcPath, destPath);
     } else {
@@ -566,14 +655,31 @@ function copyDirRecursive(src: string, dest: string) {
 
 // Open a folder in the system file manager
 // 在文件管理器中打开文件夹
-ipcMain.handle('shell:openPath', async (_event, folderPath: string) => {
+ipcMain.handle("shell:openPath", async (_event, folderPath: string) => {
+  if (typeof folderPath !== "string" || folderPath.trim().length === 0) {
+    return {
+      success: false,
+      error: "shell:openPath requires a non-empty folderPath string",
+    };
+  }
   // Expand special path tokens
   // 处理特殊路径
   let realPath = folderPath;
-  if (folderPath.startsWith('~')) {
-    realPath = folderPath.replace('~', app.getPath('home'));
-  } else if (folderPath.includes('%APPDATA%')) {
-    realPath = folderPath.replace('%APPDATA%', app.getPath('appData'));
+  if (folderPath.startsWith("~")) {
+    realPath = folderPath.replace("~", app.getPath("home"));
+  } else if (folderPath.includes("%APPDATA%")) {
+    realPath = folderPath.replace("%APPDATA%", app.getPath("appData"));
+  }
+
+  // Security: only allow opening directories, not executable files
+  // 安全：只允许打开目录，不允许打开可执行文件
+  try {
+    const stat = fs.statSync(realPath);
+    if (!stat.isDirectory()) {
+      return { success: false, error: "Only directories can be opened" };
+    }
+  } catch (statError) {
+    // Path doesn't exist yet — let shell.openPath handle the error
   }
 
   try {
@@ -586,27 +692,38 @@ ipcMain.handle('shell:openPath', async (_event, folderPath: string) => {
 
 // Show system notification
 // 发送系统通知
-ipcMain.handle('notification:show', async (_event, options: { title: string; body: string }) => {
-  if (Notification.isSupported()) {
-    // Resolve icon path
-    // 获取图标路径
-    let iconPath: string;
-    if (isDev) {
-      iconPath = path.join(__dirname, '../../resources/icon.png');
-    } else {
-      iconPath = path.join(process.resourcesPath, 'icon.png');
+ipcMain.handle(
+  "notification:show",
+  async (_event, options: { title: string; body: string }) => {
+    if (!options || typeof options !== "object") {
+      throw new Error("notification:show requires a non-null options object");
     }
+    if (typeof options.title !== "string" || typeof options.body !== "string") {
+      throw new Error(
+        "notification:show requires title and body to be strings",
+      );
+    }
+    if (Notification.isSupported()) {
+      // Resolve icon path
+      // 获取图标路径
+      let iconPath: string;
+      if (isDev) {
+        iconPath = path.join(__dirname, "../../resources/icon.png");
+      } else {
+        iconPath = path.join(process.resourcesPath, "icon.png");
+      }
 
-    const notification = new Notification({
-      title: options.title,
-      body: options.body,
-      icon: iconPath,
-    });
-    notification.show();
-    return true;
-  }
-  return false;
-});
+      const notification = new Notification({
+        title: options.title,
+        body: options.body,
+        icon: iconPath,
+      });
+      notification.show();
+      return true;
+    }
+    return false;
+  },
+);
 
 // App startup
 // 应用启动
@@ -614,65 +731,81 @@ app.whenReady().then(async () => {
   try {
     // Register local-image protocol
     // 注册 local-image 协议
-    session.defaultSession.protocol.registerFileProtocol('local-image', (request, callback) => {
-      let url = request.url.replace('local-image://', '');
-      // Strip leading slashes to avoid absolute path interpretation
-      // 移除开头的斜杠（防止路径被解析为绝对路径）
-      url = url.replace(/^\/+/, '');
-      // Strip trailing slashes
-      // 移除结尾的斜杠
-      url = url.replace(/\/+$/, '');
+    session.defaultSession.protocol.registerFileProtocol(
+      "local-image",
+      (request, callback) => {
+        let url = request.url.replace("local-image://", "");
+        // Strip leading slashes to avoid absolute path interpretation
+        // 移除开头的斜杠（防止路径被解析为绝对路径）
+        url = url.replace(/^\/+/, "");
+        // Strip trailing slashes
+        // 移除结尾的斜杠
+        url = url.replace(/\/+$/, "");
 
-      try {
-        const decodedUrl = decodeURIComponent(url);
-        const baseDir = path.join(app.getPath('userData'), 'images');
-        const normalized = path.normalize(decodedUrl).replace(/^([\\/])+/g, '');
-        const imagePath = path.join(baseDir, normalized);
+        try {
+          const decodedUrl = decodeURIComponent(url);
+          const baseDir = path.join(app.getPath("userData"), "images");
+          const normalized = path
+            .normalize(decodedUrl)
+            .replace(/^([\\/])+/g, "");
+          const imagePath = path.join(baseDir, normalized);
 
-        // Prevent path traversal
-        // 防止路径穿越
-        if (!imagePath.startsWith(baseDir + path.sep) && imagePath !== baseDir) {
-          console.warn('Blocked local-image path traversal:', decodedUrl);
-          return callback({ path: '' });
+          // Prevent path traversal
+          // 防止路径穿越
+          if (
+            !imagePath.startsWith(baseDir + path.sep) &&
+            imagePath !== baseDir
+          ) {
+            console.warn("Blocked local-image path traversal:", decodedUrl);
+            return callback({ path: "" });
+          }
+
+          callback({ path: imagePath });
+        } catch (error) {
+          console.error("Failed to register protocol", error);
+          callback({ path: "" });
         }
-
-        callback({ path: imagePath });
-      } catch (error) {
-        console.error('Failed to register protocol', error);
-        callback({ path: '' });
-      }
-    });
+      },
+    );
 
     // Register local-video protocol
     // 注册 local-video 协议
-    session.defaultSession.protocol.registerFileProtocol('local-video', (request, callback) => {
-      let url = request.url.replace('local-video://', '');
-      // Strip leading slashes to avoid absolute path interpretation
-      // 移除开头的斜杠（防止路径被解析为绝对路径）
-      url = url.replace(/^\/+/, '');
-      // Strip trailing slashes
-      // 移除结尾的斜杠
-      url = url.replace(/\/+$/, '');
+    session.defaultSession.protocol.registerFileProtocol(
+      "local-video",
+      (request, callback) => {
+        let url = request.url.replace("local-video://", "");
+        // Strip leading slashes to avoid absolute path interpretation
+        // 移除开头的斜杠（防止路径被解析为绝对路径）
+        url = url.replace(/^\/+/, "");
+        // Strip trailing slashes
+        // 移除结尾的斜杠
+        url = url.replace(/\/+$/, "");
 
-      try {
-        const decodedUrl = decodeURIComponent(url);
-        const baseDir = path.join(app.getPath('userData'), 'videos');
-        const normalized = path.normalize(decodedUrl).replace(/^([\/\\])+/g, '');
-        const videoPath = path.join(baseDir, normalized);
+        try {
+          const decodedUrl = decodeURIComponent(url);
+          const baseDir = path.join(app.getPath("userData"), "videos");
+          const normalized = path
+            .normalize(decodedUrl)
+            .replace(/^([\/\\])+/g, "");
+          const videoPath = path.join(baseDir, normalized);
 
-        // Prevent path traversal
-        // 防止路径穿越
-        if (!videoPath.startsWith(baseDir + path.sep) && videoPath !== baseDir) {
-          console.warn('Blocked local-video path traversal:', decodedUrl);
-          return callback({ path: '' });
+          // Prevent path traversal
+          // 防止路径穿越
+          if (
+            !videoPath.startsWith(baseDir + path.sep) &&
+            videoPath !== baseDir
+          ) {
+            console.warn("Blocked local-video path traversal:", decodedUrl);
+            return callback({ path: "" });
+          }
+
+          callback({ path: videoPath });
+        } catch (error) {
+          console.error("Failed to register local-video protocol", error);
+          callback({ path: "" });
         }
-
-        callback({ path: videoPath });
-      } catch (error) {
-        console.error('Failed to register local-video protocol', error);
-        callback({ path: '' });
-      }
-    });
+      },
+    );
 
     // Initialize database
     // 初始化数据库
@@ -712,14 +845,14 @@ app.whenReady().then(async () => {
 
     // macOS: show window when clicking Dock icon
     // macOS: 点击 dock 图标时显示窗口
-    app.on('activate', async () => {
+    app.on("activate", async () => {
       await createWindow();
     });
   } catch (error) {
-    console.error('Failed to initialize app:', error);
+    console.error("Failed to initialize app:", error);
     dialog.showErrorBox(
-      'Startup Error / 启动错误',
-      `An error occurred during application startup:\n\n${error instanceof Error ? error.message : String(error)}\n\nStack:\n${error instanceof Error ? error.stack : ''}`
+      "Startup Error / 启动错误",
+      `An error occurred during application startup:\n\n${error instanceof Error ? error.message : String(error)}\n\nStack:\n${error instanceof Error ? error.stack : ""}`,
     );
     app.quit();
   }
@@ -727,16 +860,17 @@ app.whenReady().then(async () => {
 
 // Quit when all windows are closed (Windows & Linux)
 // 所有窗口关闭时退出（Windows & Linux）
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") {
     app.quit();
   }
 });
 
 // Cleanup before quitting
 // 应用退出前清理
-app.on('before-quit', () => {
+app.on("before-quit", () => {
   isQuitting = true;
+  closeDatabase();
 });
 
 // Export main window reference (used by other modules)

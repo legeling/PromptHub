@@ -24,6 +24,7 @@ import {
   LanguagesIcon,
   FolderOpenIcon,
   HistoryIcon,
+  RefreshCwIcon,
 } from "lucide-react";
 import { SkillIcon } from "./SkillIcon";
 import { useState, useEffect, useMemo, useCallback } from "react";
@@ -33,6 +34,7 @@ import { useToast } from "../ui/Toast";
 import { EditSkillModal } from "./EditSkillModal";
 import { SkillFileEditor } from "./SkillFileEditor";
 import { SkillVersionHistory } from "./SkillVersionHistory";
+import { ConfirmDialog } from "../ui/ConfirmDialog";
 import type { SkillVersion } from "../../../shared/types";
 import { PlatformIcon } from "../ui/PlatformIcon";
 import ReactMarkdown from "react-markdown";
@@ -43,6 +45,7 @@ import "highlight.js/styles/github-dark.css";
 import "./SkillMarkdown.css";
 import {
   restoreSkillVersion,
+  resolveSkillDescription,
   stripFrontmatter,
   type SkillPlatform,
 } from "./detail-utils";
@@ -102,10 +105,12 @@ export function SkillFullDetailPage() {
   const [installMode, setInstallMode] = useState<InstallMode>(
     () => skillInstallMethod,
   );
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
   const [showTranslation, setShowTranslation] = useState(false);
   const translateContent = useSkillStore((state) => state.translateContent);
   const getTranslation = useSkillStore((state) => state.getTranslation);
+  const clearTranslation = useSkillStore((state) => state.clearTranslation);
 
   const targetLang = useMemo(() => {
     const lang = (i18n.language || "").toLowerCase();
@@ -117,6 +122,27 @@ export function SkillFullDetailPage() {
           ? "한국어"
           : "English";
   }, [i18n.language]);
+
+  const resolvedDescription = useMemo(
+    () =>
+      resolveSkillDescription(
+        selectedSkill?.instructions || selectedSkill?.content,
+      ),
+    [selectedSkill?.instructions, selectedSkill?.content],
+  );
+
+  const translationCacheKey = selectedSkill
+    ? `skill_${selectedSkill.id}_${targetLang}_${translationMode}`
+    : "";
+  const descriptionTranslationCacheKey = selectedSkill
+    ? `skill_desc_${selectedSkill.id}_${targetLang}_${translationMode}`
+    : "";
+  const cachedInstructionsTranslation = translationCacheKey
+    ? getTranslation(translationCacheKey)
+    : null;
+  const cachedDescriptionTranslation = descriptionTranslationCacheKey
+    ? getTranslation(descriptionTranslationCacheKey)
+    : null;
 
   // Render immersive translation: split interleaved <t>...</t> lines
   const renderImmersive = useCallback((raw: string) => {
@@ -333,17 +359,16 @@ export function SkillFullDetailPage() {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!selectedSkill) return;
-    if (
-      confirm(
-        t("skill.confirmDelete", { name: selectedSkill.name }) ||
-          `Delete skill "${selectedSkill.name}"?`,
-      )
-    ) {
-      await deleteSkill(selectedSkill.id);
-      selectSkill(null);
-    }
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!selectedSkill) return;
+    await deleteSkill(selectedSkill.id);
+    setIsDeleteConfirmOpen(false);
+    selectSkill(null);
   };
 
   const handleRestoreVersion = async (version: SkillVersion) => {
@@ -351,6 +376,64 @@ export function SkillFullDetailPage() {
       await restoreSkillVersion(selectedSkill.id, version, loadSkills);
       showToast(t("toast.restored"), "success");
       setIsVersionHistoryOpen(false);
+    }
+  };
+
+  const handleTranslateSkill = async (forceRefresh = false) => {
+    if (!selectedSkill) return;
+
+    if (!forceRefresh && cachedInstructionsTranslation) {
+      setShowTranslation(!showTranslation);
+      return;
+    }
+
+    setIsTranslating(true);
+    try {
+      if (forceRefresh) {
+        clearTranslation(translationCacheKey);
+        clearTranslation(descriptionTranslationCacheKey);
+      }
+
+      const stripped = stripFrontmatter(selectedSkill.instructions || "");
+      const promises: Promise<unknown>[] = [
+        translateContent(stripped, translationCacheKey, targetLang, {
+          forceRefresh,
+        }),
+      ];
+
+      if (resolvedDescription) {
+        promises.push(
+          translateContent(
+            resolvedDescription,
+            descriptionTranslationCacheKey,
+            targetLang,
+            { forceRefresh },
+          ),
+        );
+      }
+
+      await Promise.all(promises);
+      setShowTranslation(true);
+      showToast(
+        forceRefresh
+          ? t("skill.translateRefreshed", "Translation refreshed")
+          : t("skill.translateSuccess", "Translation complete"),
+        "success",
+      );
+    } catch (e: any) {
+      if (e?.message === "AI_NOT_CONFIGURED") {
+        showToast(
+          t(
+            "skill.aiNotConfigured",
+            "Please configure AI model in Settings first",
+          ),
+          "error",
+        );
+      } else {
+        showToast(t("skill.translateFailed", "Translation failed"), "error");
+      }
+    } finally {
+      setIsTranslating(false);
     }
   };
 
@@ -498,18 +581,16 @@ export function SkillFullDetailPage() {
                       {/* Description text */}
                       <div className="p-5 border-b border-border">
                         {(() => {
-                          const descCacheKey = `skill_desc_${selectedSkill.id}_${targetLang}_${translationMode}`;
-                          const cachedDesc = getTranslation(descCacheKey);
-                          if (showTranslation && cachedDesc) {
+                          if (showTranslation && cachedDescriptionTranslation) {
                             return (
                               <p className="text-sm text-primary/80 leading-relaxed italic">
-                                {cachedDesc}
+                                {cachedDescriptionTranslation}
                               </p>
                             );
                           }
                           return (
                             <p className="text-sm text-foreground/90 leading-relaxed">
-                              {selectedSkill.description ||
+                              {resolvedDescription ||
                                 t("skill.defaultDescriptionLong")}
                             </p>
                           );
@@ -628,93 +709,58 @@ export function SkillFullDetailPage() {
                         {t("skill.instructionsSection")}
                       </h3>
                       <div className="flex gap-2">
-                        {selectedSkill.instructions &&
+                        {(selectedSkill.instructions || selectedSkill.content) &&
                           (() => {
-                            const cacheKey = `skill_${selectedSkill.id}_${targetLang}_${translationMode}`;
-                            const descCacheKey = `skill_desc_${selectedSkill.id}_${targetLang}_${translationMode}`;
-                            const cached = getTranslation(cacheKey);
                             return (
-                              <button
-                                onClick={async () => {
-                                  if (cached) {
-                                    setShowTranslation(!showTranslation);
-                                    return;
-                                  }
-                                  setIsTranslating(true);
-                                  try {
-                                    const stripped = stripFrontmatter(
-                                      selectedSkill.instructions || "",
-                                    );
-                                    const promises: Promise<any>[] = [
-                                      translateContent(
-                                        stripped,
-                                        cacheKey,
-                                        targetLang,
-                                      ),
-                                    ];
-                                    if (selectedSkill.description) {
-                                      promises.push(
-                                        translateContent(
-                                          selectedSkill.description,
-                                          descCacheKey,
-                                          targetLang,
-                                        ),
-                                      );
-                                    }
-                                    await Promise.all(promises);
-                                    setShowTranslation(true);
-                                    showToast(
-                                      t(
-                                        "skill.translateSuccess",
-                                        "Translation complete",
-                                      ),
-                                      "success",
-                                    );
-                                  } catch (e: any) {
-                                    if (e?.message === "AI_NOT_CONFIGURED") {
-                                      showToast(
-                                        t(
-                                          "skill.aiNotConfigured",
-                                          "Please configure AI model in Settings first",
-                                        ),
-                                        "error",
-                                      );
-                                    } else {
-                                      showToast(
-                                        t(
-                                          "skill.translateFailed",
-                                          "Translation failed",
-                                        ),
-                                        "error",
-                                      );
-                                    }
-                                  } finally {
-                                    setIsTranslating(false);
-                                  }
-                                }}
-                                disabled={isTranslating}
-                                className={`p-1 px-3 rounded-lg text-xs flex items-center gap-1.5 transition-colors ${
-                                  showTranslation && cached
-                                    ? "bg-primary/10 text-primary"
-                                    : "bg-accent/50 hover:bg-accent"
-                                } disabled:opacity-50`}
-                              >
-                                {isTranslating ? (
-                                  <Loader2Icon className="w-3.5 h-3.5 animate-spin" />
-                                ) : (
-                                  <LanguagesIcon className="w-3.5 h-3.5" />
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleTranslateSkill(false)}
+                                  disabled={isTranslating}
+                                  className={`p-1 px-3 rounded-lg text-xs flex items-center gap-1.5 transition-colors ${
+                                    showTranslation && cachedInstructionsTranslation
+                                      ? "bg-primary/10 text-primary"
+                                      : "bg-accent/50 hover:bg-accent"
+                                  } disabled:opacity-50`}
+                                >
+                                  {isTranslating ? (
+                                    <Loader2Icon className="w-3.5 h-3.5 animate-spin" />
+                                  ) : (
+                                    <LanguagesIcon className="w-3.5 h-3.5" />
+                                  )}
+                                  {isTranslating
+                                    ? t("skill.translating", "Translating...")
+                                    : showTranslation &&
+                                        cachedInstructionsTranslation
+                                      ? t("skill.showOriginal", "Original")
+                                      : cachedInstructionsTranslation
+                                        ? t(
+                                            "skill.showTranslation",
+                                            "Translation",
+                                          )
+                                        : t("skill.translate", "AI Translate")}
+                                </button>
+                                {cachedInstructionsTranslation && (
+                                  <button
+                                    onClick={() => handleTranslateSkill(true)}
+                                    disabled={isTranslating}
+                                    className="p-1 px-3 rounded-lg text-xs flex items-center gap-1.5 bg-accent/50 hover:bg-accent transition-colors disabled:opacity-50"
+                                    title={t(
+                                      "skill.refreshTranslation",
+                                      "刷新翻译",
+                                    )}
+                                  >
+                                    <RefreshCwIcon
+                                      className={`w-3.5 h-3.5 ${
+                                        isTranslating ? "animate-spin" : ""
+                                      }`}
+                                    />
+                                    {t(
+                                      "skill.refreshTranslation",
+                                      "刷新翻译",
+                                    )}
+                                  </button>
                                 )}
-                                {isTranslating
-                                  ? t("skill.translating", "Translating...")
-                                  : showTranslation && cached
-                                    ? t("skill.showOriginal", "Original")
-                                    : cached
-                                      ? t(
-                                          "skill.showTranslation",
-                                          "Translation",
-                                        )
-                                      : t("skill.translate", "AI Translate")}
-                              </button>
+                              </div>
                             );
                           })()}
                         <button
@@ -742,12 +788,12 @@ export function SkillFullDetailPage() {
                       <div className="p-6 skill-markdown-body">
                         {selectedSkill.instructions ? (
                           (() => {
-                            const cacheKey = `skill_${selectedSkill.id}_${targetLang}_${translationMode}`;
-                            const cached = getTranslation(cacheKey);
-                            if (showTranslation && cached) {
+                            if (showTranslation && cachedInstructionsTranslation) {
                               // Immersive mode: interleaved original + translation
                               if (translationMode === "immersive") {
-                                const segments = renderImmersive(cached);
+                                const segments = renderImmersive(
+                                  cachedInstructionsTranslation,
+                                );
                                 return (
                                   <div className="markdown-body">
                                     {segments.map((seg, i) =>
@@ -792,7 +838,7 @@ export function SkillFullDetailPage() {
                                       rehypeSanitize,
                                     ]}
                                   >
-                                    {cached}
+                                    {cachedInstructionsTranslation}
                                   </ReactMarkdown>
                                 </div>
                               );
@@ -824,18 +870,13 @@ export function SkillFullDetailPage() {
 
                 {/* Right column: Platform installation & metadata */}
                 <div className="space-y-6">
+                  <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] flex items-center justify-between">
+                    <span>{t("skill.platformIntegration")}</span>
+                    <span className="text-[10px]">SKILL.md</span>
+                  </h3>
                   {/* Platform Installation */}
                   {availablePlatforms.length > 0 && (
                     <section className="bg-card rounded-2xl border border-border p-5 space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em]">
-                          {t("skill.platformIntegration")}
-                        </h3>
-                        <span className="text-[10px] text-muted-foreground">
-                          SKILL.md
-                        </span>
-                      </div>
-
                       {/* Install mode toggle */}
                       <div className="flex items-center gap-1 p-1 bg-accent/50 rounded-lg">
                         <button
@@ -1188,6 +1229,34 @@ export function SkillFullDetailPage() {
         onClose={() => setIsVersionHistoryOpen(false)}
         skill={selectedSkill}
         onRestore={handleRestoreVersion}
+      />
+
+      {/* Delete confirmation dialog */}
+      {/* 删除确认对话框 */}
+      <ConfirmDialog
+        isOpen={isDeleteConfirmOpen}
+        onClose={() => setIsDeleteConfirmOpen(false)}
+        onConfirm={confirmDelete}
+        variant="destructive"
+        title={t("skill.confirmDeleteTitle", "确认删除")}
+        message={
+          <div className="space-y-2">
+            <p>
+              {t("skill.confirmDeleteSingle", {
+                name: selectedSkill?.name || "",
+                defaultValue: `确定要删除技能「${selectedSkill?.name || ""}」吗？`,
+              })}
+            </p>
+            <p className="text-xs text-muted-foreground/80">
+              {t(
+                "skill.deleteHint",
+                "仅从 PromptHub 库中移除，不会删除源文件目录。已分发到平台的安装会同时卸载。",
+              )}
+            </p>
+          </div>
+        }
+        confirmText={t("common.delete", "删除")}
+        cancelText={t("common.cancel", "取消")}
       />
     </div>
   );

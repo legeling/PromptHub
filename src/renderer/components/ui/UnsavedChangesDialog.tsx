@@ -1,7 +1,7 @@
-import { useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
-import { AlertCircleIcon } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
+import { AlertCircleIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface UnsavedChangesDialogProps {
   isOpen: boolean;
@@ -17,12 +17,12 @@ export function UnsavedChangesDialog({
   onDiscard,
 }: UnsavedChangesDialogProps) {
   const { t } = useTranslation();
-  const cancelButtonRef = useRef<HTMLButtonElement>(null);
+  const saveButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => {
-        cancelButtonRef.current?.focus();
+        saveButtonRef.current?.focus();
       }, 50);
     }
   }, [isOpen]);
@@ -30,14 +30,14 @@ export function UnsavedChangesDialog({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isOpen) return;
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         e.preventDefault();
         onClose();
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
@@ -65,36 +65,36 @@ export function UnsavedChangesDialog({
         {/* Title */}
         {/* 标题 */}
         <h3 className="text-lg font-semibold text-center mb-2">
-          {t('prompt.unsavedChanges', '未保存的更改')}
+          {t("prompt.unsavedChanges", "未保存的更改")}
         </h3>
 
         {/* Message */}
         {/* 消息 */}
         <div className="text-sm text-muted-foreground text-center mb-6">
-          {t('prompt.unsavedChangesMessage', '您有未保存的更改，是否要保存？')}
+          {t("prompt.unsavedChangesMessage", "您有未保存的更改，是否要保存？")}
         </div>
 
         {/* Buttons */}
         {/* 按钮 */}
         <div className="flex gap-3">
           <button
-            ref={cancelButtonRef}
             onClick={onClose}
             className="flex-1 h-10 px-4 rounded-lg border border-border bg-background hover:bg-muted transition-colors text-sm font-medium"
           >
-            {t('common.cancel', '取消')}
+            {t("common.cancel", "取消")}
           </button>
           <button
             onClick={onDiscard}
             className="flex-1 h-10 px-4 rounded-lg border border-border bg-background hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors text-sm font-medium"
           >
-            {t('prompt.discardChanges', '不保存')}
+            {t("prompt.discardChanges", "不保存")}
           </button>
           <button
+            ref={saveButtonRef}
             onClick={onSave}
             className="flex-1 h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium transition-colors hover:bg-primary/90"
           >
-            {t('common.save', '保存')}
+            {t("common.save", "保存")}
           </button>
         </div>
       </div>

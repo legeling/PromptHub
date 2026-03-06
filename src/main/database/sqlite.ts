@@ -10,7 +10,7 @@
  * compilation.
  */
 
-import { Database as WasmDatabase } from 'node-sqlite3-wasm';
+import { Database as WasmDatabase } from "node-sqlite3-wasm";
 
 class Statement {
   constructor(private stmt: any) {}
@@ -45,7 +45,7 @@ class DatabaseAdapter {
    * - GET form  (e.g. 'table_info(prompts)') → returns row array
    */
   pragma(source: string): any {
-    if (source.includes('=')) {
+    if (source.includes("=")) {
       this._db.exec(`PRAGMA ${source}`);
       return undefined;
     }
@@ -66,13 +66,24 @@ class DatabaseAdapter {
    */
   transaction<T extends (...args: any[]) => any>(fn: T): T {
     return ((...args: any[]) => {
-      this._db.exec('BEGIN');
+      const wasInTransaction = (this._db as any).inTransaction ?? false;
+      if (!wasInTransaction) {
+        this._db.exec("BEGIN");
+      }
       try {
         const result = fn(...args);
-        this._db.exec('COMMIT');
+        if (!wasInTransaction) {
+          this._db.exec("COMMIT");
+        }
         return result;
       } catch (e) {
-        this._db.exec('ROLLBACK');
+        try {
+          if (!wasInTransaction) {
+            this._db.exec("ROLLBACK");
+          }
+        } catch {
+          // ignore rollback error
+        }
         throw e;
       }
     }) as T;
