@@ -11,34 +11,23 @@ import { useSettingsStore } from '../../stores/settings.store';
 import { chatCompletion } from '../../services/ai';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../ui/Toast';
-import type { Prompt } from '../../../shared/types';
+import type { CreatePromptDTO, Prompt, UpdatePromptDTO } from '../../../shared/types';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize from 'rehype-sanitize';
 import rehypeHighlight from 'rehype-highlight';
 import { defaultSchema } from 'hast-util-sanitize';
 import { renderFolderIcon } from '../layout/folderIconHelper';
-
-/**
- * Detect if text is purely English (no CJK characters).
- * Strict: any Chinese/Japanese/Korean character = NOT pure English.
- * 严格判断：任何中日韩字符存在即不认为是纯英文
- */
-function isPureEnglish(text: string): boolean {
-  if (!text || text.trim().length < 10) return false;
-  // Strip code blocks, inline code, placeholders, URLs
-  const cleaned = text
-    .replace(/```[\s\S]*?```/g, '')
-    .replace(/`[^`]*`/g, '')
-    .replace(/\{\{[^}]*\}\}/g, '')
-    .replace(/https?:\/\/\S+/g, '');
-  // CJK Unified Ideographs, CJK Extension A, Hiragana, Katakana, Hangul
-  const cjkPattern = /[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/;
-  if (cjkPattern.test(cleaned)) return false;
-  // Must have meaningful Latin text (at least 10 letters)
-  const latinOnly = cleaned.replace(/[^a-zA-Z]/g, '');
-  return latinOnly.length >= 10;
-}
+import {
+  buildPromptPayload,
+  createPromptFormData,
+  getExistingPromptTags,
+  getLanguageName,
+  hasPromptFormChanges,
+  isPureEnglish,
+} from './prompt-modal-utils';
+import { usePromptMediaManager } from './usePromptMediaManager';
+import { usePromptNativeFullscreen } from './usePromptNativeFullscreen';
 
   /* Existing code */
   // Add initialData to props
@@ -68,23 +57,15 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
   const [tagInput, setTagInput] = useState('');
   const [folderId, setFolderId] = useState<string | undefined>(undefined);
 
-  const [images, setImages] = useState<string[]>([]);
-  const [videos, setVideos] = useState<string[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showEnglishVersion, setShowEnglishVersion] = useState(false);
-  const [showUrlInput, setShowUrlInput] = useState(false);
-  const [imageUrl, setImageUrl] = useState('');
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
-  const [isDownloadingImage, setIsDownloadingImage] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
   const [source, setSource] = useState('');
   const [notes, setNotes] = useState('');
   const [showSourceSuggestions, setShowSourceSuggestions] = useState(false);
   // 属性面板折叠状态
   const [showAttributes, setShowAttributes] = useState(false);
-  // 真正的全屏编辑状态
-  const [activeFullscreenField, setActiveFullscreenField] = useState<'system' | 'systemEn' | 'user' | 'userEn' | null>(null);
-  const [isNativeFullscreen, setIsNativeFullscreen] = useState(false);
   const fullscreenTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Only subscribe to the fields we need, not the entire store
@@ -102,35 +83,115 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
     return isPureEnglish(combined);
   }, [systemPrompt, userPrompt]);
 
+  const {
+    imageUrl,
+    images,
+    isDownloadingImage,
+    setImageUrl,
+    setShowUrlInput,
+    showUrlInput,
+    videos,
+    handleRemoveImage,
+    handleRemoveVideo,
+    handleSelectImage,
+    handleSelectVideo,
+    handleUrlUpload,
+  } = usePromptMediaManager({
+    isOpen,
+    initialImages: prompt?.images || initialData?.images || [],
+    initialVideos: prompt?.videos || initialData?.videos || [],
+    translate: (key, fallback) => t(key, fallback),
+    showToast,
+  });
+
+  const {
+    activeFullscreenField,
+    fullscreenTitle,
+    fullscreenValue,
+    isNativeFullscreen,
+    enterNativeFullscreen,
+    exitNativeFullscreen,
+    updateFullscreenValue,
+  } = usePromptNativeFullscreen({
+    getFieldValue: (field) => {
+      switch (field) {
+        case 'system':
+          return systemPrompt;
+        case 'systemEn':
+          return systemPromptEn;
+        case 'user':
+          return userPrompt;
+        case 'userEn':
+          return userPromptEn;
+      }
+    },
+    setFieldValue: (field, value) => {
+      switch (field) {
+        case 'system':
+          setSystemPrompt(value);
+          break;
+        case 'systemEn':
+          setSystemPromptEn(value);
+          break;
+        case 'user':
+          setUserPrompt(value);
+          break;
+        case 'userEn':
+          setUserPromptEn(value);
+          break;
+      }
+    },
+    getFieldTitle: (field) => {
+      switch (field) {
+        case 'system':
+          return t('prompt.systemPromptOptional');
+        case 'systemEn':
+          return `${t('prompt.systemPromptOptional')} (EN)`;
+        case 'user':
+          return t('prompt.userPromptLabel');
+        case 'userEn':
+          return `${t('prompt.userPromptLabel')} (EN)`;
+      }
+    },
+  });
+
+  const formState = useMemo(
+    () => ({
+      title,
+      description,
+      promptType,
+      systemPrompt,
+      systemPromptEn,
+      userPrompt,
+      userPromptEn,
+      tags,
+      folderId,
+      images,
+      videos,
+      source,
+      notes,
+    }),
+    [
+      title,
+      description,
+      promptType,
+      systemPrompt,
+      systemPromptEn,
+      userPrompt,
+      userPromptEn,
+      tags,
+      folderId,
+      images,
+      videos,
+      source,
+      notes,
+    ],
+  );
+
   // 检查是否有未保存的更改
   const hasUnsavedChanges = useCallback(() => {
-    if (prompt) {
-      return (
-        title !== prompt.title ||
-        description !== (prompt.description || '') ||
-        systemPrompt !== (prompt.systemPrompt || '') ||
-        systemPromptEn !== (prompt.systemPromptEn || '') ||
-        userPrompt !== prompt.userPrompt ||
-        userPromptEn !== (prompt.userPromptEn || '') ||
-        JSON.stringify(tags) !== JSON.stringify(prompt.tags || []) ||
-        JSON.stringify(images) !== JSON.stringify(prompt.images || []) ||
-        JSON.stringify(videos) !== JSON.stringify(prompt.videos || []) ||
-        folderId !== prompt.folderId ||
-        source !== (prompt.source || '') ||
-        notes !== (prompt.notes || '')
-      );
-    } else {
-      // Creation mode: check if fields match initialData or are non-empty if initialData is empty
-      // Simplification: if title or userPrompt is non-empty, assume unsaved changes if closing without save
-      // Or better: just strict comparison with initial values (which might be from initialData or empty)
-      const initInfo = initialData || {};
-      return (
-        title !== (initInfo.title || '') ||
-        userPrompt !== (initInfo.userPrompt || '') ||
-        systemPrompt !== (initInfo.systemPrompt || '')
-      );
-    }
-  }, [prompt, initialData, title, description, systemPrompt, systemPromptEn, userPrompt, userPromptEn, tags, images, videos, folderId, source, notes]);
+    return hasPromptFormChanges(formState, prompt || initialData);
+  }, [formState, initialData, prompt]);
 
   // 处理关闭请求
   const handleCloseRequest = useCallback(() => {
@@ -189,60 +250,26 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
   }), []);
 
   // 获取所有已存在的标签
-  const existingTags = [...new Set(prompts.flatMap((p) => p.tags))].sort((a, b) => a.localeCompare(b));
+  const existingTags = useMemo(() => getExistingPromptTags(prompts), [prompts]);
 
   // 当 prompt 变化时更新表单
   useEffect(() => {
     if (isOpen) {
-      if (prompt) {
-        setTitle(prompt.title);
-        setDescription(prompt.description || '');
-        setPromptType(prompt.promptType || 'text');
-        setSystemPrompt(prompt.systemPrompt || '');
-        setSystemPromptEn(prompt.systemPromptEn || '');
-        setUserPrompt(prompt.userPrompt);
-        setUserPromptEn(prompt.userPromptEn || '');
-        setTags(prompt.tags || []);
-        setImages(prompt.images || []);
-        setVideos(prompt.videos || []);
-        setFolderId(prompt.folderId);
-        setSource(prompt.source || '');
-        setNotes(prompt.notes || '');
-        // 如果已有英文版本，自动展开
-        setShowEnglishVersion(!!(prompt.systemPromptEn || prompt.userPromptEn));
-      } else if (initialData) {
-        // Creation Mode with initial data (e.g. from Clipboard)
-        setTitle(initialData.title || '');
-        setDescription(initialData.description || '');
-        setPromptType(initialData.promptType || 'text');
-        setSystemPrompt(initialData.systemPrompt || '');
-        setSystemPromptEn(initialData.systemPromptEn || '');
-        setUserPrompt(initialData.userPrompt || '');
-        setUserPromptEn(initialData.userPromptEn || '');
-        setTags(initialData.tags || []);
-        setImages(initialData.images || []);
-        setVideos(initialData.videos || []);
-        setFolderId(initialData.folderId);
-        setSource(initialData.source || '');
-        setNotes(initialData.notes || '');
-        setShowEnglishVersion(!!(initialData.systemPromptEn || initialData.userPromptEn));
-      } else {
-        // Creation Mode (Clean)
-        setTitle('');
-        setDescription('');
-        setPromptType('text');
-        setSystemPrompt('');
-        setSystemPromptEn('');
-        setUserPrompt('');
-        setUserPromptEn('');
-        setTags([]);
-        setImages([]);
-        setVideos([]);
-        setFolderId(undefined); // Or default folder?
-        setSource('');
-        setNotes('');
-        setShowEnglishVersion(false);
-      }
+      const form = createPromptFormData(prompt || initialData, {
+        promptType: 'text',
+      });
+      setTitle(form.title);
+      setDescription(form.description);
+      setPromptType(form.promptType);
+      setSystemPrompt(form.systemPrompt);
+      setSystemPromptEn(form.systemPromptEn);
+      setUserPrompt(form.userPrompt);
+      setUserPromptEn(form.userPromptEn);
+      setTags(form.tags);
+      setFolderId(form.folderId);
+      setSource(form.source);
+      setNotes(form.notes);
+      setShowEnglishVersion(!!(form.systemPromptEn || form.userPromptEn));
     }
   }, [prompt, initialData, isOpen]);
 
@@ -250,26 +277,12 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
     if (!title.trim() || !userPrompt.trim()) return;
 
     try {
-      const promptData = {
-        title: title.trim(),
-        description: description.trim() || undefined,
-        promptType,
-        systemPrompt: systemPrompt.trim() || undefined,
-        systemPromptEn: systemPromptEn.trim() || undefined,
-        userPrompt: userPrompt.trim(),
-        userPromptEn: userPromptEn.trim() || undefined,
-        tags,
-        images,
-        videos,
-        folderId,
-        source: source.trim() || undefined,
-        notes: notes.trim() || undefined,
-      };
+      const promptData = buildPromptPayload(formState);
 
       if (prompt) {
-        await updatePrompt(prompt.id, promptData);
+        await updatePrompt(prompt.id, promptData as UpdatePromptDTO);
       } else {
-        await createPrompt(promptData);
+        await createPrompt(promptData as CreatePromptDTO);
       }
 
       // 保存来源到历史 / Save source to history
@@ -352,21 +365,6 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
     } finally {
       setIsTranslating(false);
     }
-  };
-
-  // 获取目标语言名称
-  const getLanguageName = (langCode: string): string => {
-    const lang = langCode.toLowerCase();
-    if (lang.startsWith('zh')) return 'Chinese';
-    if (lang.startsWith('ja')) return 'Japanese';
-    if (lang.startsWith('de')) return 'German';
-    if (lang.startsWith('fr')) return 'French';
-    if (lang.startsWith('es')) return 'Spanish';
-    if (lang.startsWith('ko')) return 'Korean';
-    if (lang.startsWith('pt')) return 'Portuguese';
-    if (lang.startsWith('ru')) return 'Russian';
-    if (lang.startsWith('it')) return 'Italian';
-    return 'the target language';
   };
 
   // 从英文翻译到当前语言
@@ -474,105 +472,6 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
     }
   };
 
-  const handleSelectImage = async () => {
-    try {
-      const filePaths = await window.electron?.selectImage?.();
-      if (filePaths && filePaths.length > 0) {
-        const savedImages = await window.electron?.saveImage?.(filePaths);
-        if (savedImages) {
-          setImages([...images, ...savedImages]);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to select images:', error);
-    }
-  };
-
-  const handleRemoveImage = (index: number) => {
-    setImages(images.filter((_, i) => i !== index));
-  };
-
-  // Video handling functions
-  // 视频处理函数
-  const handleSelectVideo = async () => {
-    try {
-      const filePaths = await window.electron?.selectVideo?.();
-      if (filePaths && filePaths.length > 0) {
-        const savedVideos = await window.electron?.saveVideo?.(filePaths);
-        if (savedVideos) {
-          setVideos([...videos, ...savedVideos]);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to select videos:', error);
-    }
-  };
-
-  const handleRemoveVideo = (index: number) => {
-    setVideos(videos.filter((_, i) => i !== index));
-  };
-
-  const handleUrlUpload = async (url: string) => {
-    if (!url.trim()) return;
-    
-    setIsDownloadingImage(true);
-    showToast(t('prompt.downloadingImage', '正在下载图片...'), 'info');
-    
-    try {
-      // 添加超时处理
-      const timeoutPromise = new Promise<null>((_, reject) => {
-        setTimeout(() => reject(new Error('timeout')), 30000);
-      });
-      
-      const downloadPromise = window.electron?.downloadImage?.(url);
-      const fileName = await Promise.race([downloadPromise, timeoutPromise]);
-      
-      if (fileName) {
-        setImages(prev => [...prev, fileName]);
-        showToast(t('prompt.uploadSuccess', '图片添加成功'), 'success');
-      } else {
-        showToast(t('prompt.uploadFailed', '图片下载失败，请检查链接是否有效'), 'error');
-      }
-    } catch (error) {
-      console.error('Failed to upload image from URL:', error);
-      if (error instanceof Error && error.message === 'timeout') {
-        showToast(t('prompt.downloadTimeout', '图片下载超时，请检查网络或链接'), 'error');
-      } else {
-        showToast(t('prompt.uploadFailed', '图片下载失败，请检查链接是否有效'), 'error');
-      }
-    } finally {
-      setIsDownloadingImage(false);
-    }
-  };
-
-  // 监听粘贴事件
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handlePaste = async (e: ClipboardEvent) => {
-      const items = e.clipboardData?.items;
-      if (!items) return;
-
-      for (const item of items) {
-        if (item.type.indexOf('image') !== -1) {
-          const blob = item.getAsFile();
-          if (blob) {
-            const buffer = await blob.arrayBuffer();
-            const fileName = await window.electron?.saveImageBuffer?.(buffer);
-            if (fileName) {
-              setImages(prev => [...prev, fileName]);
-            }
-          }
-        }
-      }
-    };
-
-    window.addEventListener('paste', handlePaste);
-    return () => {
-      window.removeEventListener('paste', handlePaste);
-    };
-  }, [isOpen]);
-
   // 监听快捷键 (Cmd+S / Cmd+Enter 保存，Cmd/Shift+S 全屏切换)
   useEffect(() => {
     if (!isOpen) return;
@@ -589,67 +488,21 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
       }
       // Exit native fullscreen with Escape
       if (e.key === 'Escape' && isNativeFullscreen) {
-        handleExitNativeFullscreen();
+        exitNativeFullscreen();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, handleSubmit, isNativeFullscreen]);
-
-  // 进入真正的全屏模式
-  const handleEnterNativeFullscreen = (field: 'system' | 'systemEn' | 'user' | 'userEn') => {
-    setActiveFullscreenField(field);
-    setIsNativeFullscreen(true);
-    window.electron?.enterFullscreen?.();
-  };
-
-  // 退出真正的全屏模式
-  const handleExitNativeFullscreen = () => {
-    setActiveFullscreenField(null);
-    setIsNativeFullscreen(false);
-    window.electron?.exitFullscreen?.();
-  };
-
-  // 获取当前全屏字段的值
-  const getFullscreenFieldValue = () => {
-    switch (activeFullscreenField) {
-      case 'system': return systemPrompt;
-      case 'systemEn': return systemPromptEn;
-      case 'user': return userPrompt;
-      case 'userEn': return userPromptEn;
-      default: return '';
-    }
-  };
-
-  // 设置当前全屏字段的值
-  const setFullscreenFieldValue = (val: string) => {
-    switch (activeFullscreenField) {
-      case 'system': setSystemPrompt(val); break;
-      case 'systemEn': setSystemPromptEn(val); break;
-      case 'user': setUserPrompt(val); break;
-      case 'userEn': setUserPromptEn(val); break;
-    }
-  };
-
-  // 获取全屏字段的标题
-  const getFullscreenFieldTitle = () => {
-    switch (activeFullscreenField) {
-      case 'system': return t('prompt.systemPromptOptional');
-      case 'systemEn': return `${t('prompt.systemPromptOptional')} (EN)`;
-      case 'user': return t('prompt.userPromptLabel');
-      case 'userEn': return `${t('prompt.userPromptLabel')} (EN)`;
-      default: return '';
-    }
-  };
+  }, [isOpen, handleSubmit, isNativeFullscreen, exitNativeFullscreen]);
 
   // 全屏编辑器的 Markdown 列表续行处理
   const handleFullscreenKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    const currentValue = getFullscreenFieldValue();
+    const currentValue = fullscreenValue;
     const handled = handleMarkdownListKeyDown(
       e,
       currentValue,
       (newValue, cursorPos) => {
-        setFullscreenFieldValue(newValue);
+        updateFullscreenValue(newValue);
         // Set cursor position after React updates the DOM
         requestAnimationFrame(() => {
           if (fullscreenTextareaRef.current) {
@@ -660,7 +513,7 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
       }
     );
     // handled is used implicitly by preventDefault in handleMarkdownListKeyDown
-  }, [activeFullscreenField, systemPrompt, systemPromptEn, userPrompt, userPromptEn]);
+  }, [fullscreenValue, updateFullscreenValue]);
 
   // 如果是真正的全屏模式，渲染全屏编辑器（左右分屏：编辑 + 预览）
   if (isNativeFullscreen && activeFullscreenField) {
@@ -669,18 +522,18 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
         {/* 全屏编辑器头部 */}
         <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-muted/30 shrink-0">
           <div className="flex items-center gap-3">
-            <h2 className="text-lg font-semibold">{getFullscreenFieldTitle()}</h2>
+            <h2 className="text-lg font-semibold">{fullscreenTitle}</h2>
             <span className="text-sm text-muted-foreground">{t('common.markdownSupported')}</span>
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={handleExitNativeFullscreen}
+              onClick={exitNativeFullscreen}
               className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-muted text-sm font-medium transition-colors"
             >
               <Minimize2Icon className="w-4 h-4" />
               {t('common.exitFullscreen', 'Exit Fullscreen')}
             </button>
-            <Button variant="primary" onClick={handleExitNativeFullscreen}>
+            <Button variant="primary" onClick={exitNativeFullscreen}>
               {t('common.done', 'Done')}
             </Button>
           </div>
@@ -695,8 +548,8 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
             <textarea
               ref={fullscreenTextareaRef}
               className="flex-1 w-full p-6 resize-none bg-background border-none outline-none text-base font-mono leading-relaxed"
-              value={getFullscreenFieldValue()}
-              onChange={(e) => setFullscreenFieldValue(e.target.value)}
+              value={fullscreenValue}
+              onChange={(e) => updateFullscreenValue(e.target.value)}
               onKeyDown={handleFullscreenKeyDown}
               autoFocus
               placeholder={t('prompt.typeYourPrompt')}
@@ -709,9 +562,9 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
             </div>
             <div className="flex-1 overflow-auto p-6">
               <div className="prose prose-sm max-w-none markdown-content">
-                {getFullscreenFieldValue() ? (
+                {fullscreenValue ? (
                   <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={rehypePlugins} components={markdownComponents}>
-                    {getFullscreenFieldValue()}
+                    {fullscreenValue}
                   </ReactMarkdown>
                 ) : (
                   <div className="text-muted-foreground text-sm italic">{t('prompt.noContent', '暂无内容')}</div>
@@ -754,7 +607,7 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
       <div className="space-y-5">
         {/* 标题 */}
         <div className="space-y-1.5">
-          <label className="block text-sm font-medium text-foreground">{t('prompt.titleLabel')}</label>
+          <label className="block text-sm font-medium text-foreground">{t('prompt.titleLabel')}<span className="ml-1 text-destructive">*</span></label>
           <input
             type="text"
             placeholder={t('prompt.titlePlaceholder')}
@@ -1145,7 +998,7 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
           <div className="flex items-center justify-between">
             <label className="block text-sm font-medium text-foreground">{t('prompt.systemPromptOptional')}</label>
             <button
-              onClick={() => handleEnterNativeFullscreen('system')}
+              onClick={() => enterNativeFullscreen('system')}
               className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors border border-border"
               title={t('prompt.fullscreen', '全屏编辑')}
             >
@@ -1191,7 +1044,7 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
                   {t('prompt.systemPromptEn')}
                 </label>
                 <button
-                  onClick={() => handleEnterNativeFullscreen('systemEn')}
+                  onClick={() => enterNativeFullscreen('systemEn')}
                   className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                   title={t('prompt.fullscreen')}
                 >
@@ -1217,7 +1070,7 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
               <span className="ml-2 text-xs text-destructive">*</span>
             </label>
             <button
-              onClick={() => handleEnterNativeFullscreen('user')}
+              onClick={() => enterNativeFullscreen('user')}
               className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors border border-border"
               title={t('prompt.fullscreen', '全屏编辑')}
             >
@@ -1263,7 +1116,7 @@ export function EditPromptModal({ isOpen, onClose, prompt, initialData }: EditPr
                   {t('prompt.userPromptEn')}
                 </label>
                 <button
-                  onClick={() => handleEnterNativeFullscreen('userEn')}
+                  onClick={() => enterNativeFullscreen('userEn')}
                   className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                   title={t('prompt.fullscreen')}
                 >
