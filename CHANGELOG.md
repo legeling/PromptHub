@@ -1,3 +1,23 @@
+## [0.4.4] - 2026-03-08
+
+### 修复 / Fixed
+
+- 🍎 **macOS 更新体验修复**：macOS 绕过 Squirrel 自动更新（因无代码签名证书导致校验失败），改为直接下载 DMG 到 Downloads 文件夹，支持镜像加速与进度显示
+  - **macOS Update UX Fix**: Bypassed Squirrel auto-update on macOS (code signature validation fails without Apple Developer certificate), now downloads DMG directly to Downloads folder with mirror fallback and progress display
+- 🖥️ **全屏退出修复** (closes #63, #65)：修复 Windows 无边框窗口进入全屏后无法退出、macOS 通过菜单/绿色按钮进入全屏时 Escape 键无效的问题；新增全局 Escape 退出全屏监听，补齐 CreateSkillModal 缺失的全屏退出快捷键
+  - **Fullscreen Exit Fix** (closes #63, #65): Fixed inability to exit fullscreen on Windows frameless windows and Escape key not working when entering fullscreen via macOS menu/green button; added global Escape-exits-fullscreen listener and missing keyboard handler in CreateSkillModal
+
+### 优化 / Improvements
+
+- 🍺 **Homebrew 升级提示**：macOS 更新提示中新增 `brew upgrade --cask prompthub` 指引，方便 Homebrew 用户快速升级
+  - **Homebrew Upgrade Guidance**: Added `brew upgrade --cask prompthub` instructions to macOS update prompt for Homebrew users
+- 🌍 **更新提示多语言**：macOS 手动安装提示更新为 7 语言（zh/zh-TW/en/ja/de/es/fr），包含 DMG 安装和 Homebrew 升级两种方式
+  - **Update Prompt i18n**: Updated macOS manual install instructions across all 7 locales with DMG and Homebrew upgrade paths
+- 🔧 **CI/CD manifest 修正**：新增发布前 SHA512/size 校正脚本，修复 electron-builder 生成的 manifest 与实际二进制不一致的问题
+  - **CI/CD Manifest Fix**: Added pre-release SHA512/size reconciliation script, fixing electron-builder manifest vs actual binary mismatch
+
+---
+
 ## [0.4.3] - 2026-03-07
 
 ### 修复 / Fixed
