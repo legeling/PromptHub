@@ -261,36 +261,66 @@ jobs:
           详细更新日志请查看 [更新日志](https://github.com/legeling/PromptHub#-更新日志)
           EOF
 
-          # 2. Collect and Deduplicate Assets
-          echo "Collecting and deduplicating assets..."
+          # 2. Collect release assets deterministically.
+          # Avoid flattening multiple artifact folders with blind overwrite, or
+          # manifests will no longer match the binaries they describe.
+          echo "Collecting release assets..."
           mkdir -p release_assets
 
-          # Find all matching files and copy them to a single directory
-          # This handles duplicates by overwriting (latest version wins)
-          find artifacts -type f \( \
-            -name "PromptHub-*-x64.dmg" -o \
-            -name "PromptHub-*-arm64.dmg" -o \
-            -name "PromptHub-Setup-*-x64.exe" -o \
-            -name "PromptHub-Setup-*-arm64.exe" -o \
-            -name "PromptHub-*-x64.AppImage" -o \
-            -name "prompthub_*_amd64.deb" -o \
-            -name "PromptHub-*.zip" -o \
-            -name "latest*.yml" -o \
-            -name "*.blockmap" \
-          \) -exec cp -f {} release_assets/ \;
+          copy_unique() {
+            local pattern="$1"
+            local matches=()
+
+            while IFS= read -r line; do
+              matches+=("$line")
+            done < <(find artifacts -type f -name "$pattern" | sort)
+
+            if [ "${#matches[@]}" -eq 0 ]; then
+              echo "Missing release asset: $pattern"
+              exit 1
+            fi
+
+            if [ "${#matches[@]}" -gt 1 ]; then
+              echo "Ambiguous release asset for pattern $pattern:"
+              printf '  %s\n' "${matches[@]}"
+              exit 1
+            fi
+
+            cp "${matches[0]}" "release_assets/$(basename "${matches[0]}")"
+          }
+
+          copy_unique "PromptHub-${VERSION}-x64.dmg"
+          copy_unique "PromptHub-${VERSION}-arm64.dmg"
+          copy_unique "PromptHub-${VERSION}-x64.dmg.blockmap"
+          copy_unique "PromptHub-${VERSION}-arm64.dmg.blockmap"
+          copy_unique "PromptHub-${VERSION}-x64.zip"
+          copy_unique "PromptHub-${VERSION}-arm64.zip"
+          copy_unique "PromptHub-${VERSION}-x64.zip.blockmap"
+          copy_unique "PromptHub-${VERSION}-arm64.zip.blockmap"
+          copy_unique "PromptHub-${VERSION}-x64.AppImage"
+          copy_unique "PromptHub-Setup-${VERSION}-x64.exe"
+          copy_unique "PromptHub-Setup-${VERSION}-arm64.exe"
+          copy_unique "prompthub_${VERSION}_amd64.deb"
+          copy_unique "latest.yml"
+          copy_unique "latest-x64.yml"
+          copy_unique "latest-arm64.yml"
+          copy_unique "latest-linux.yml"
+          copy_unique "latest-mac.yml"
+          copy_unique "latest-mac-x64.yml"
+          copy_unique "latest-mac-arm64.yml"
 
           echo "Files to upload (deduplicated):"
           ls -1 release_assets/
 
           # 3. Merge macOS manifests into one canonical latest-mac.yml for both Intel and Apple Silicon.
-          # This keeps old mac clients updating via latest-mac.yml while also publishing latest-mac-arm64.yml.
-          if [ -f "release_assets/latest-mac.yml" ] && [ -f "release_assets/latest-mac-arm64.yml" ]; then
+          # Keep the arch-specific manifests intact so verification still checks
+          # the original updater metadata emitted by electron-builder.
+          if [ -f "release_assets/latest-mac-x64.yml" ] && [ -f "release_assets/latest-mac-arm64.yml" ]; then
             node scripts/merge-mac-latest-yml.js \
-              --x64 release_assets/latest-mac.yml \
+              --x64 release_assets/latest-mac-x64.yml \
               --arm64 release_assets/latest-mac-arm64.yml \
               --output release_assets/latest-mac.yml
-            cp release_assets/latest-mac.yml release_assets/latest-mac-arm64.yml
-            cp release_assets/latest-mac.yml release_assets/latest-mac-x64.yml
+            echo "Merged macOS manifests into release_assets/latest-mac.yml"
           fi
 
           # 4. Verify manifest hashes before publishing. A mismatch here would become a broken auto update.
