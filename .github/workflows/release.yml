@@ -128,19 +128,8 @@ jobs:
             exit 1
           fi
 
-      # NSIS installer stubs report x86 PE headers even when the packaged app is arm64.
-      # Keep the explicit check for x64, but skip the unreliable arm64 installer PE validation.
-      - name: Verify Windows installer architecture
-        if: matrix.platform == 'win' && matrix.arch == 'x64'
-        shell: bash
-        run: |
-          EXE_FILE=$(find dist -maxdepth 1 -name "PromptHub-Setup-*-${{ matrix.arch }}.exe" | head -n 1)
-          if [ -z "$EXE_FILE" ]; then
-            echo "Expected Windows installer not found for ${{ matrix.arch }}"
-            exit 1
-          fi
-
-          node scripts/verify-windows-installer-arch.js --file "$EXE_FILE" --arch "${{ matrix.arch }}"
+      # NSIS installer executables expose the bootstrap PE header instead of the packaged app
+      # architecture, so installer-level PE checks report false mismatches on Windows builds.
 
       - name: Normalize Windows update metadata
         if: matrix.platform == 'win' && matrix.arch != ''
