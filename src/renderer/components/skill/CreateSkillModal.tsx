@@ -817,7 +817,7 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
 
         {/* Content */}
         <div
-          className={`p-6 ${mode === "manual" ? "flex-1 overflow-y-auto" : ""}`}
+          className={`p-6 ${mode === "manual" || mode === "scan" ? "flex-1 overflow-y-auto" : ""}`}
         >
           {error && (
             <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive">
@@ -1705,34 +1705,38 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
                   </button>
                 </div>
               )}
-
-              {/* Footer: Import */}
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
-                {scanDone && annotatedScanResults.length > 0 && (
-                  <button
-                    onClick={handleImportSelected}
-                    disabled={isLoading || selectedScanItems.size === 0}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
-                  >
-                    {isLoading ? (
-                      <>
-                        <LoaderIcon className="w-4 h-4 animate-spin" />
-                        {t("skill.importing", "Importing...")} ({importingCount}
-                        /{selectedScanItems.size})
-                      </>
-                    ) : (
-                      <>
-                        <CheckIcon className="w-4 h-4" />
-                        {t("skill.importSelected", "Import Selected")} (
-                        {selectedScanItems.size})
-                      </>
-                    )}
-                  </button>
-                )}
-              </div>
             </div>
           )}
         </div>
+
+        {/* Footer for scan mode */}
+        {mode === "scan" && scanDone && annotatedScanResults.length > 0 && (
+          <div className="flex items-center justify-between px-6 py-3 border-t border-border shrink-0 bg-card">
+            <span className="text-xs text-muted-foreground">
+              {selectedScanItems.size} / {selectableScanResults.length}{" "}
+              {t("skill.selected", "selected")}
+            </span>
+            <button
+              onClick={handleImportSelected}
+              disabled={isLoading || selectedScanItems.size === 0}
+              className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
+            >
+              {isLoading ? (
+                <>
+                  <LoaderIcon className="w-4 h-4 animate-spin" />
+                  {t("skill.importing", "Importing...")} ({importingCount}/
+                  {selectedScanItems.size})
+                </>
+              ) : (
+                <>
+                  <CheckIcon className="w-4 h-4" />
+                  {t("skill.importSelected", "Import Selected")} (
+                  {selectedScanItems.size})
+                </>
+              )}
+            </button>
+          </div>
+        )}
 
         {/* Footer for manual mode */}
         {mode === "manual" && (
