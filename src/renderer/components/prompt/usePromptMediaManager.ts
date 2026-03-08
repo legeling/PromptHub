@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface PromptMediaManagerOptions {
   isOpen: boolean;
@@ -6,6 +6,18 @@ interface PromptMediaManagerOptions {
   initialVideos?: string[];
   translate: (key: string, fallback?: string) => string;
   showToast: (message: string, type?: "info" | "success" | "error") => void;
+}
+
+/**
+ * Shallow-compare two string arrays by value (not reference)
+ * 浅比较两个字符串数组的值（非引用）
+ */
+function arraysEqual(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
 }
 
 export function usePromptMediaManager({
@@ -21,10 +33,32 @@ export function usePromptMediaManager({
   const [imageUrl, setImageUrl] = useState("");
   const [isDownloadingImage, setIsDownloadingImage] = useState(false);
 
+  // Track previous initial values to avoid infinite re-render loops
+  // caused by callers passing new array references with same content
+  // 跟踪上一次的初始值，避免调用方传入相同内容但不同引用的数组导致无限重渲染
+  const prevInitialImagesRef = useRef<string[]>(initialImages);
+  const prevInitialVideosRef = useRef<string[]>(initialVideos);
+
   useEffect(() => {
     if (!isOpen) return;
-    setImages(initialImages);
-    setVideos(initialVideos);
+
+    const imagesChanged = !arraysEqual(
+      prevInitialImagesRef.current,
+      initialImages,
+    );
+    const videosChanged = !arraysEqual(
+      prevInitialVideosRef.current,
+      initialVideos,
+    );
+
+    if (imagesChanged) {
+      setImages(initialImages);
+      prevInitialImagesRef.current = initialImages;
+    }
+    if (videosChanged) {
+      setVideos(initialVideos);
+      prevInitialVideosRef.current = initialVideos;
+    }
   }, [initialImages, initialVideos, isOpen]);
 
   const handleSelectImage = useCallback(async () => {
@@ -88,7 +122,10 @@ export function usePromptMediaManager({
           );
         } else {
           showToast(
-            translate("prompt.uploadFailed", "图片下载失败，请检查链接是否有效"),
+            translate(
+              "prompt.uploadFailed",
+              "图片下载失败，请检查链接是否有效",
+            ),
             "error",
           );
         }
@@ -104,7 +141,10 @@ export function usePromptMediaManager({
           );
         } else {
           showToast(
-            translate("prompt.uploadFailed", "图片下载失败，请检查链接是否有效"),
+            translate(
+              "prompt.uploadFailed",
+              "图片下载失败，请检查链接是否有效",
+            ),
             "error",
           );
         }

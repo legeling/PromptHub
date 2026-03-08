@@ -28,7 +28,7 @@ export function SecuritySettings() {
       const status = await window.api.security.status();
       setSecurityStatus(status);
     } catch (e: any) {
-      showToast(e?.message || "获取安全状态失败", "error");
+      showToast(e?.message || t("settings.statusFetchFail"), "error");
     }
   };
 
@@ -40,12 +40,11 @@ export function SecuritySettings() {
 
   const handleSetMasterPassword = async () => {
     if (!newMasterPwd || newMasterPwd.length < 4) {
-      showToast("主密码长度至少 4 位", "error");
+      showToast(t("settings.pwdTooShort"), "error");
       return;
     }
     if (newMasterPwd !== newMasterPwdConfirm) {
-      showToast("两次输入不一致", "error");
-      return;
+      showToast(t("settings.pwdMismatch"), "error");
     }
     setSecLoading(true);
     try {
@@ -53,9 +52,9 @@ export function SecuritySettings() {
       await refreshSecurityStatus();
       setNewMasterPwd("");
       setNewMasterPwdConfirm("");
-      showToast("主密码已设置并解锁", "success");
+      showToast(t("settings.masterSetSuccess"), "success");
     } catch (e: any) {
-      showToast(e?.message || "设置主密码失败", "error");
+      showToast(e?.message || t("settings.masterSetFail"), "error");
     } finally {
       setSecLoading(false);
     }
@@ -63,7 +62,7 @@ export function SecuritySettings() {
 
   const handleUnlock = async () => {
     if (!unlockPwd) {
-      showToast("请输入主密码", "error");
+      showToast(t("settings.enterMasterPwd"), "error");
       return;
     }
     setSecLoading(true);
@@ -72,12 +71,12 @@ export function SecuritySettings() {
       if (result.success) {
         await refreshSecurityStatus();
         setUnlockPwd("");
-        showToast("解锁成功", "success");
+        showToast(t("settings.unlockSuccess"), "success");
       } else {
-        showToast("密码错误", "error");
+        showToast(t("settings.pwdWrong"), "error");
       }
     } catch (e: any) {
-      showToast(e?.message || "解锁失败", "error");
+      showToast(e?.message || t("settings.unlockFail"), "error");
     } finally {
       setSecLoading(false);
     }
@@ -88,9 +87,9 @@ export function SecuritySettings() {
     try {
       await window.api.security.lock();
       await refreshSecurityStatus();
-      showToast("已锁定", "success");
+      showToast(t("settings.lockSuccess"), "success");
     } catch (e: any) {
-      showToast(e?.message || "锁定失败", "error");
+      showToast(e?.message || t("settings.lockFail"), "error");
     } finally {
       setSecLoading(false);
     }
@@ -98,16 +97,15 @@ export function SecuritySettings() {
 
   const handleChangeMasterPassword = async () => {
     if (!oldPwd) {
-      showToast("请输入当前主密码", "error");
+      showToast(t("settings.enterCurrentPwd"), "error");
       return;
     }
     if (!newPwd || newPwd.length < 4) {
-      showToast("新密码长度至少 4 位", "error");
+      showToast(t("settings.newPwdTooShort"), "error");
       return;
     }
     if (newPwd !== newPwdConfirm) {
-      showToast("两次输入不一致", "error");
-      return;
+      showToast(t("settings.pwdMismatch"), "error");
     }
     setSecLoading(true);
     try {
@@ -115,7 +113,7 @@ export function SecuritySettings() {
       // 先验证旧密码
       const unlockResult = await window.api.security.unlock(oldPwd);
       if (!unlockResult.success) {
-        showToast("当前主密码错误", "error");
+        showToast(t("settings.currentPwdWrong"), "error");
         setSecLoading(false);
         return;
       }
@@ -127,9 +125,9 @@ export function SecuritySettings() {
       setNewPwd("");
       setNewPwdConfirm("");
       setShowChangePwd(false);
-      showToast("主密码已修改并重新解锁", "success");
+      showToast(t("settings.changePwdSuccess"), "success");
     } catch (e: any) {
-      showToast(e?.message || "修改失败", "error");
+      showToast(e?.message || t("settings.changePwdFail"), "error");
     } finally {
       setSecLoading(false);
     }
