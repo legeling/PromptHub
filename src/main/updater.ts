@@ -1,8 +1,10 @@
-import { BrowserWindow, ipcMain, app, shell } from 'electron';
-import type { UpdateInfo as ElectronUpdateInfo } from 'electron-updater';
-import { autoUpdater } from 'electron-updater';
-import fs from 'fs';
-import path from 'path';
+import { BrowserWindow, ipcMain, app, shell } from "electron";
+import type { UpdateInfo as ElectronUpdateInfo } from "electron-updater";
+import { autoUpdater } from "electron-updater";
+import fs from "fs";
+import path from "path";
+import https from "https";
+import http from "http";
 
 // Simplified update info type (for IPC transmission)
 // 简化的更新信息类型（用于 IPC 传输）
@@ -26,29 +28,31 @@ interface ProgressInfo {
 // 以下镜像均已通过 HTTP 状态码验证可访问（200 或 302）
 // All mirrors below have been verified accessible via HTTP status code (200 or 302)
 const MIRROR_SOURCES = [
-  'https://ghfast.top/https://github.com/legeling/PromptHub/releases/latest/download',           // ✅ HTTP 302
-  'https://gh-proxy.com/https://github.com/legeling/PromptHub/releases/latest/download',         // ✅ HTTP 302
-  'https://hub.gitmirror.com/https://github.com/legeling/PromptHub/releases/latest/download',    // ✅ HTTP 200
-  'https://cors.isteed.cc/github.com/legeling/PromptHub/releases/latest/download',               // ✅ HTTP 200
+  "https://ghfast.top/https://github.com/legeling/PromptHub/releases/latest/download", // ✅ HTTP 302
+  "https://gh-proxy.com/https://github.com/legeling/PromptHub/releases/latest/download", // ✅ HTTP 302
+  "https://hub.gitmirror.com/https://github.com/legeling/PromptHub/releases/latest/download", // ✅ HTTP 200
+  "https://cors.isteed.cc/github.com/legeling/PromptHub/releases/latest/download", // ✅ HTTP 200
 ];
 
 const OFFICIAL_REPO = {
-  provider: 'github' as const,
-  owner: 'legeling',
-  repo: 'PromptHub',
-  releaseType: 'release' as const
+  provider: "github" as const,
+  owner: "legeling",
+  repo: "PromptHub",
+  releaseType: "release" as const,
 };
 
 function applyMirrorDownloadSettings(useMirror: boolean) {
-  const updater = autoUpdater as unknown as { useMultipleRangeRequest?: boolean };
+  const updater = autoUpdater as unknown as {
+    useMultipleRangeRequest?: boolean;
+  };
   updater.useMultipleRangeRequest = !useMirror;
 }
 
 // Compare version numbers, return 1 (a > b), -1 (a < b), 0 (a == b)
 // 比较版本号，返回 1 (a > b), -1 (a < b), 0 (a == b)
 export function compareVersions(a: string, b: string): number {
-  const partsA = a.replace(/^v/, '').split('.').map(Number);
-  const partsB = b.replace(/^v/, '').split('.').map(Number);
+  const partsA = a.replace(/^v/, "").split(".").map(Number);
+  const partsB = b.replace(/^v/, "").split(".").map(Number);
 
   for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
     const numA = partsA[i] || 0;
@@ -61,46 +65,53 @@ export function compareVersions(a: string, b: string): number {
 
 // Read changelog for specified version range from CHANGELOG.md
 // 从 CHANGELOG.md 读取指定版本区间的更新日志
-export function getChangelogForVersionRange(newVersion: string, currentVersion: string): string {
+export function getChangelogForVersionRange(
+  newVersion: string,
+  currentVersion: string,
+): string {
   try {
-    const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+    const isDev = process.env.NODE_ENV === "development" || !app.isPackaged;
     let changelogPath: string;
 
     if (isDev) {
-      changelogPath = path.join(__dirname, '../../CHANGELOG.md');
+      changelogPath = path.join(__dirname, "../../CHANGELOG.md");
     } else {
       // Check if resourcesPath exists (may be undefined in test environment)
       // 检查 resourcesPath 是否存在（在测试环境中可能为 undefined）
       if (!process.resourcesPath) {
-        return '';
+        return "";
       }
       // After packaging, CHANGELOG.md is in resources directory
       // 打包后，CHANGELOG.md 在 resources 目录
-      changelogPath = path.join(process.resourcesPath, 'CHANGELOG.md');
+      changelogPath = path.join(process.resourcesPath, "CHANGELOG.md");
       // If not exists, try app.asar.unpacked
       // 如果不存在，尝试 app.asar.unpacked
       if (!fs.existsSync(changelogPath)) {
-        changelogPath = path.join(process.resourcesPath, 'app.asar.unpacked', 'CHANGELOG.md');
+        changelogPath = path.join(
+          process.resourcesPath,
+          "app.asar.unpacked",
+          "CHANGELOG.md",
+        );
       }
       // Still not exists, try app directory
       // 还不存在，尝试 app 目录
       if (!fs.existsSync(changelogPath)) {
-        changelogPath = path.join(app.getAppPath(), 'CHANGELOG.md');
+        changelogPath = path.join(app.getAppPath(), "CHANGELOG.md");
       }
     }
 
     if (!fs.existsSync(changelogPath)) {
-      console.warn('[Updater] CHANGELOG.md not found at:', changelogPath);
-      console.warn('[Updater] isDev:', isDev);
-      console.warn('[Updater] __dirname:', __dirname);
-      console.warn('[Updater] resourcesPath:', process.resourcesPath);
-      console.warn('[Updater] appPath:', app.getAppPath());
-      return '';
+      console.warn("[Updater] CHANGELOG.md not found at:", changelogPath);
+      console.warn("[Updater] isDev:", isDev);
+      console.warn("[Updater] __dirname:", __dirname);
+      console.warn("[Updater] resourcesPath:", process.resourcesPath);
+      console.warn("[Updater] appPath:", app.getAppPath());
+      return "";
     }
 
-    console.log('[Updater] Reading CHANGELOG from:', changelogPath);
+    console.log("[Updater] Reading CHANGELOG from:", changelogPath);
 
-    const content = fs.readFileSync(changelogPath, 'utf-8');
+    const content = fs.readFileSync(changelogPath, "utf-8");
 
     // Parse CHANGELOG, extract all updates within version range
     // Format: ## [0.2.9] - 2025-12-18
@@ -125,27 +136,30 @@ export function getChangelogForVersionRange(newVersion: string, currentVersion: 
       const ver = versions[i].version;
       // Version is in (currentVersion, newVersion] range
       // 版本在 (currentVersion, newVersion] 区间内
-      if (compareVersions(ver, currentVersion) > 0 && compareVersions(ver, newVersion) <= 0) {
+      if (
+        compareVersions(ver, currentVersion) > 0 &&
+        compareVersions(ver, newVersion) <= 0
+      ) {
         const startIndex = versions[i].startIndex;
         const endIndex = versions[i + 1]?.startIndex || content.length;
         let section = content.slice(startIndex, endIndex).trim();
 
         // Remove separator lines
         // 移除分隔线
-        section = section.replace(/^---\s*$/gm, '').trim();
+        section = section.replace(/^---\s*$/gm, "").trim();
 
         relevantSections.push(section);
       }
     }
 
     if (relevantSections.length === 0) {
-      return '';
+      return "";
     }
 
-    return relevantSections.join('\n\n---\n\n');
+    return relevantSections.join("\n\n---\n\n");
   } catch (error) {
-    console.error('Failed to read CHANGELOG.md:', error);
-    return '';
+    console.error("Failed to read CHANGELOG.md:", error);
+    return "";
   }
 }
 
@@ -161,14 +175,14 @@ function toSimpleInfo(info: ElectronUpdateInfo): SimpleUpdateInfo {
   // If CHANGELOG has no content, fallback to GitHub Release notes
   // 如果 CHANGELOG 没有内容，回退到 GitHub Release 的说明
   if (!releaseNotes) {
-    let githubNotes = '';
-    if (typeof info.releaseNotes === 'string') {
+    let githubNotes = "";
+    if (typeof info.releaseNotes === "string") {
       githubNotes = info.releaseNotes;
     } else if (Array.isArray(info.releaseNotes)) {
       githubNotes = info.releaseNotes
-        .map((n) => (n.note ? n.note : ''))
+        .map((n) => (n.note ? n.note : ""))
         .filter(Boolean)
-        .join('\n\n');
+        .join("\n\n");
     }
 
     // Check if GitHub notes is the full CHANGELOG (contains multiple version headers)
@@ -178,8 +192,14 @@ function toSimpleInfo(info: ElectronUpdateInfo): SimpleUpdateInfo {
     if (versionHeaders.length > 3) {
       // Likely full CHANGELOG, try to extract version range
       // 可能是完整的 CHANGELOG，尝试提取版本区间
-      console.log('[Updater] GitHub notes appears to be full CHANGELOG, extracting version range...');
-      releaseNotes = extractVersionRange(githubNotes, info.version, currentVersion);
+      console.log(
+        "[Updater] GitHub notes appears to be full CHANGELOG, extracting version range...",
+      );
+      releaseNotes = extractVersionRange(
+        githubNotes,
+        info.version,
+        currentVersion,
+      );
     } else {
       releaseNotes = githubNotes;
     }
@@ -194,7 +214,11 @@ function toSimpleInfo(info: ElectronUpdateInfo): SimpleUpdateInfo {
 
 // Extract version range from CHANGELOG content (for fallback)
 // 从 CHANGELOG 内容中提取版本区间（用于 fallback）
-function extractVersionRange(content: string, newVersion: string, currentVersion: string): string {
+function extractVersionRange(
+  content: string,
+  newVersion: string,
+  currentVersion: string,
+): string {
   const versionRegex = /^## \[(\d+\.\d+\.\d+(?:-[a-zA-Z0-9.]+)?)\]/gm;
   const versions: { version: string; startIndex: number }[] = [];
 
@@ -210,11 +234,14 @@ function extractVersionRange(content: string, newVersion: string, currentVersion
 
   for (let i = 0; i < versions.length; i++) {
     const ver = versions[i].version;
-    if (compareVersions(ver, currentVersion) > 0 && compareVersions(ver, newVersion) <= 0) {
+    if (
+      compareVersions(ver, currentVersion) > 0 &&
+      compareVersions(ver, newVersion) <= 0
+    ) {
       const startIndex = versions[i].startIndex;
       const endIndex = versions[i + 1]?.startIndex || content.length;
       let section = content.slice(startIndex, endIndex).trim();
-      section = section.replace(/^---\s*$/gm, '').trim();
+      section = section.replace(/^---\s*$/gm, "").trim();
       relevantSections.push(section);
     }
   }
@@ -225,22 +252,39 @@ function extractVersionRange(content: string, newVersion: string, currentVersion
     if (versions.length > 0) {
       const startIndex = versions[0].startIndex;
       const endIndex = versions[1]?.startIndex || content.length;
-      return content.slice(startIndex, endIndex).trim().replace(/^---\s*$/gm, '').trim();
+      return content
+        .slice(startIndex, endIndex)
+        .trim()
+        .replace(/^---\s*$/gm, "")
+        .trim();
     }
     return content;
   }
 
-  return relevantSections.join('\n\n---\n\n');
+  return relevantSections.join("\n\n---\n\n");
 }
 
 let mainWindow: BrowserWindow | null = null;
 let lastPercent = 0; // Track last progress to prevent regression
 // 跟踪上次进度，防止进度回退
 
-const isMac = process.platform === 'darwin';
+const isMac = process.platform === "darwin";
+
+// macOS: track last detected update info for DMG download
+// macOS: 记录最近一次检测到的更新信息，用于 DMG 下载
+let lastUpdateInfo: ElectronUpdateInfo | null = null;
+// macOS: path to the downloaded DMG file
+// macOS: 已下载的 DMG 文件路径
+let macDownloadedDmgPath: string | null = null;
 
 export interface UpdateStatus {
-  status: 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error';
+  status:
+    | "checking"
+    | "available"
+    | "not-available"
+    | "downloading"
+    | "downloaded"
+    | "error";
   info?: SimpleUpdateInfo;
   progress?: ProgressInfo;
   error?: string;
@@ -252,7 +296,9 @@ export function initUpdater(win: BrowserWindow) {
   // Disable auto download, let user choose
   // 禁用自动下载，让用户选择
   autoUpdater.autoDownload = false;
-  autoUpdater.autoInstallOnAppQuit = true;
+  // macOS: disable auto-install on quit since Squirrel won't work without code signing
+  // macOS: 禁用退出时自动安装，因为没有代码签名 Squirrel 不会工作
+  autoUpdater.autoInstallOnAppQuit = !isMac;
 
   // electron-updater channel configuration:
   // electron-updater channel 配置：
@@ -263,96 +309,114 @@ export function initUpdater(win: BrowserWindow) {
   //
   // This ensures backward compatibility with older versions that don't set channel.
   // 这确保了与旧版本的向后兼容性（旧版本不设置 channel）。
-  if (process.platform === 'win32' && process.arch === 'arm64') {
-    autoUpdater.channel = 'arm64';
+  if (process.platform === "win32" && process.arch === "arm64") {
+    autoUpdater.channel = "arm64";
     console.log(`[Updater] Windows ARM64 detected, using channel: arm64`);
   } else {
-    console.log(`[Updater] Platform: ${process.platform}, Arch: ${process.arch}, using default channel`);
+    console.log(
+      `[Updater] Platform: ${process.platform}, Arch: ${process.arch}, using default channel`,
+    );
   }
-
 
   // Update check error
   // 检查更新出错
-  autoUpdater.on('error', (error) => {
-    console.error('Update error:', error);
+  autoUpdater.on("error", (error) => {
+    console.error("Update error:", error);
     let message = (error && (error as Error).message) || String(error);
     // Handle 404 error for missing yml files
     // 处理找不到 yml 文件的 404 错误
-    if (message.includes('404') || message.includes('Cannot find')) {
+    if (message.includes("404") || message.includes("Cannot find")) {
       message =
-        'Update check failed: Cannot find update manifest file in the latest release.\n' +
-        '更新检查失败：无法在最新版本中找到更新配置文件。\n' +
-        '请前往 GitHub Releases 页面手动下载安装。';
-    } else if (message.includes('ZIP file not provided')) {
+        "Update check failed: Cannot find update manifest file in the latest release.\n" +
+        "更新检查失败：无法在最新版本中找到更新配置文件。\n" +
+        "请前往 GitHub Releases 页面手动下载安装。";
+    } else if (message.includes("ZIP file not provided")) {
       message =
-        'Auto update requires ZIP installer, but current Release does not have corresponding ZIP file. Please go to GitHub Releases page to download manually, or wait for next version to fix auto update.';
+        "Auto update requires ZIP installer, but current Release does not have corresponding ZIP file. Please go to GitHub Releases page to download manually, or wait for next version to fix auto update.";
       // 自动更新需要 ZIP 安装包，但当前版本的 Release 中没有对应的 ZIP 文件。请前往 GitHub Releases 页面手动下载安装，或等待下一个版本修复自动更新。
     }
-    if (message.toLowerCase().includes('sha512') && message.toLowerCase().includes('mismatch')) {
-      console.log('[Updater] SHA512 mismatch, temp directory:', app.getPath('temp'));
+    if (
+      message.toLowerCase().includes("sha512") &&
+      message.toLowerCase().includes("mismatch")
+    ) {
+      console.log(
+        "[Updater] SHA512 mismatch, temp directory:",
+        app.getPath("temp"),
+      );
       message =
-        'SHA512 校验失败\n\n' +
-        '这通常是由于 CDN 缓存不一致或网络问题导致的。\n' +
-        '文件可能已下载完成，您可以点击下方按钮打开文件夹手动尝试安装。';
+        "SHA512 校验失败\n\n" +
+        "这通常是由于 CDN 缓存不一致或网络问题导致的。\n" +
+        "文件可能已下载完成，您可以点击下方按钮打开文件夹手动尝试安装。";
     }
     sendStatusToWindow({
-      status: 'error',
+      status: "error",
       error: message,
     });
   });
 
   // Checking for update
   // 检查更新中
-  autoUpdater.on('checking-for-update', () => {
-    console.info('Checking for update...');
-    sendStatusToWindow({ status: 'checking' });
+  autoUpdater.on("checking-for-update", () => {
+    console.info("Checking for update...");
+    sendStatusToWindow({ status: "checking" });
   });
 
   // Update available
   // 有可用更新
-  autoUpdater.on('update-available', (info) => {
-    console.info('Update available:', info.version);
+  autoUpdater.on("update-available", (info) => {
+    console.info("Update available:", info.version);
+    // macOS: store update info for later DMG download
+    // macOS: 保存更新信息，供后续 DMG 下载使用
+    if (isMac) {
+      lastUpdateInfo = info;
+      console.log(
+        `[Updater/macDMG] Stored update info: v${info.version}, files:`,
+        info.files?.map((f) => f.url),
+      );
+    }
     sendStatusToWindow({
-      status: 'available',
+      status: "available",
       info: toSimpleInfo(info),
     });
   });
 
   // No update available
   // 没有可用更新
-  autoUpdater.on('update-not-available', (info) => {
-    console.info('Update not available, current version is latest');
+  autoUpdater.on("update-not-available", (info) => {
+    console.info("Update not available, current version is latest");
     sendStatusToWindow({
-      status: 'not-available',
+      status: "not-available",
       info: toSimpleInfo(info),
     });
   });
 
   // Download progress
   // 下载进度
-  autoUpdater.on('download-progress', (progress: ProgressInfo) => {
+  autoUpdater.on("download-progress", (progress: ProgressInfo) => {
     // Prevent progress regression (electron-updater resets progress when downloading multiple files)
     // 防止进度回退（electron-updater 下载多个文件时会重置进度）
     if (progress.percent < lastPercent && lastPercent < 99) {
       // Keep last progress when regression occurs
       // 进度回退时，保持上次进度
-      console.info(`Download progress (ignored regression): ${progress.percent.toFixed(2)}% -> keeping ${lastPercent.toFixed(2)}%`);
+      console.info(
+        `Download progress (ignored regression): ${progress.percent.toFixed(2)}% -> keeping ${lastPercent.toFixed(2)}%`,
+      );
       return;
     }
     lastPercent = progress.percent;
     console.info(`Download progress: ${progress.percent.toFixed(2)}%`);
     sendStatusToWindow({
-      status: 'downloading',
+      status: "downloading",
       progress,
     });
   });
 
   // Download completed
   // 下载完成
-  autoUpdater.on('update-downloaded', (info) => {
-    console.info('Update downloaded:', info.version);
+  autoUpdater.on("update-downloaded", (info) => {
+    console.info("Update downloaded:", info.version);
     sendStatusToWindow({
-      status: 'downloaded',
+      status: "downloaded",
       info: toSimpleInfo(info),
     });
   });
@@ -360,26 +424,268 @@ export function initUpdater(win: BrowserWindow) {
 
 function sendStatusToWindow(status: UpdateStatus) {
   if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send('updater:status', status);
+    mainWindow.webContents.send("updater:status", status);
+  }
+}
+
+// --- macOS DMG direct download (bypass Squirrel) ---
+// --- macOS DMG 直接下载（绕过 Squirrel） ---
+
+/**
+ * Find the DMG download URL from update info for current architecture.
+ * electron-updater's UpdateInfo.files contains all files listed in latest-mac.yml.
+ * 从更新信息中找到当前架构对应的 DMG 下载链接。
+ */
+function findMacDmgUrl(
+  info: ElectronUpdateInfo,
+  feedUrl: string,
+): string | null {
+  const arch = process.arch; // 'x64' or 'arm64'
+  const files = info.files || [];
+
+  // Find DMG file matching current architecture
+  // 找到匹配当前架构的 DMG 文件
+  const dmgFile =
+    files.find((f) => f.url.endsWith(".dmg") && f.url.includes(`-${arch}.`)) ||
+    files.find((f) => f.url.endsWith(".dmg"));
+
+  if (!dmgFile) {
+    console.error("[Updater/macDMG] No DMG file found in update info");
+    return null;
+  }
+
+  // Build full URL: feedUrl base + filename
+  // 构建完整 URL：feedUrl 基础路径 + 文件名
+  const baseUrl = feedUrl.replace(/\/$/, "");
+  return `${baseUrl}/${dmgFile.url}`;
+}
+
+/**
+ * Download a file via HTTP(S) with redirect following and progress reporting.
+ * 通过 HTTP(S) 下载文件，支持重定向跟踪和进度上报。
+ */
+function downloadFile(
+  url: string,
+  destPath: string,
+  onProgress: (progress: ProgressInfo) => void,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const doRequest = (requestUrl: string, redirectCount: number) => {
+      if (redirectCount > 5) {
+        reject(new Error("Too many redirects"));
+        return;
+      }
+
+      const client = requestUrl.startsWith("https") ? https : http;
+      const req = client.get(requestUrl, (res) => {
+        // Handle redirects (301, 302, 303, 307, 308)
+        // 处理重定向
+        if (
+          res.statusCode &&
+          res.statusCode >= 300 &&
+          res.statusCode < 400 &&
+          res.headers.location
+        ) {
+          const redirectUrl = res.headers.location.startsWith("http")
+            ? res.headers.location
+            : new URL(res.headers.location, requestUrl).href;
+          console.log(
+            `[Updater/macDMG] Redirect ${res.statusCode} -> ${redirectUrl}`,
+          );
+          res.resume(); // Drain response to free socket
+          doRequest(redirectUrl, redirectCount + 1);
+          return;
+        }
+
+        if (res.statusCode !== 200) {
+          res.resume();
+          reject(new Error(`HTTP ${res.statusCode} for ${requestUrl}`));
+          return;
+        }
+
+        const total = parseInt(res.headers["content-length"] || "0", 10);
+        let transferred = 0;
+        const startTime = Date.now();
+
+        const fileStream = fs.createWriteStream(destPath);
+
+        res.on("data", (chunk: Buffer) => {
+          transferred += chunk.length;
+          const elapsed = (Date.now() - startTime) / 1000 || 0.001;
+          const bytesPerSecond = Math.round(transferred / elapsed);
+          const percent = total > 0 ? (transferred / total) * 100 : 0;
+          onProgress({ percent, bytesPerSecond, total, transferred });
+        });
+
+        res.pipe(fileStream);
+
+        fileStream.on("finish", () => {
+          fileStream.close();
+          resolve();
+        });
+
+        fileStream.on("error", (err) => {
+          fs.unlink(destPath, () => {}); // Clean up partial file
+          reject(err);
+        });
+      });
+
+      req.on("error", (err) => {
+        fs.unlink(destPath, () => {});
+        reject(err);
+      });
+
+      req.setTimeout(30000, () => {
+        req.destroy();
+        fs.unlink(destPath, () => {});
+        reject(new Error("Download request timed out"));
+      });
+    };
+
+    doRequest(url, 0);
+  });
+}
+
+/**
+ * Build the feed URL string that was last used (for constructing DMG download URL).
+ * We derive this from the autoUpdater's internal state or from stored context.
+ * 构建上次使用的 feed URL（用于拼接 DMG 下载链接）。
+ */
+function buildFeedUrl(useMirror: boolean): string {
+  if (useMirror) {
+    // Return first mirror source as starting point; caller will retry all mirrors
+    // 返回第一个镜像源作为起点；调用方会逐一重试
+    return MIRROR_SOURCES[0];
+  }
+  return `https://github.com/${OFFICIAL_REPO.owner}/${OFFICIAL_REPO.repo}/releases/latest/download`;
+}
+
+/**
+ * macOS: download DMG file directly to ~/Downloads, bypassing Squirrel.
+ * macOS: 直接下载 DMG 到 ~/Downloads，绕过 Squirrel 自动更新。
+ */
+async function macDownloadDmg(
+  useMirror: boolean,
+): Promise<{ success: boolean; error?: string }> {
+  if (!lastUpdateInfo) {
+    return {
+      success: false,
+      error: "No update info available. Please check for updates first.",
+    };
+  }
+
+  const version = lastUpdateInfo.version;
+  const dmgFileName = `PromptHub-${version}-${process.arch}.dmg`;
+  const destPath = path.join(app.getPath("downloads"), dmgFileName);
+
+  // If already downloaded, skip re-download
+  // 如果已经下载过，跳过重新下载
+  if (fs.existsSync(destPath)) {
+    const stat = fs.statSync(destPath);
+    if (stat.size > 1024 * 1024) {
+      // > 1MB, likely valid
+      console.log(
+        `[Updater/macDMG] DMG already exists at: ${destPath} (${stat.size} bytes)`,
+      );
+      macDownloadedDmgPath = destPath;
+      sendStatusToWindow({
+        status: "downloaded",
+        info: toSimpleInfo(lastUpdateInfo),
+      });
+      return { success: true };
+    }
+    // Too small, probably a partial download — remove and retry
+    // 太小，可能是部分下载 — 删除后重试
+    fs.unlinkSync(destPath);
+  }
+
+  lastPercent = 0;
+
+  const tryDownload = async (feedUrl: string): Promise<void> => {
+    const dmgUrl = findMacDmgUrl(lastUpdateInfo!, feedUrl);
+    if (!dmgUrl) {
+      throw new Error("Cannot determine DMG download URL from update manifest");
+    }
+
+    console.log(`[Updater/macDMG] Downloading from: ${dmgUrl}`);
+    console.log(`[Updater/macDMG] Saving to: ${destPath}`);
+
+    await downloadFile(dmgUrl, destPath, (progress) => {
+      // Apply anti-regression logic
+      // 应用防进度回退逻辑
+      if (progress.percent < lastPercent && lastPercent < 99) {
+        return;
+      }
+      lastPercent = progress.percent;
+      sendStatusToWindow({ status: "downloading", progress });
+    });
+  };
+
+  // Mirror mode: try each mirror in order
+  // 镜像模式：依次尝试每个镜像源
+  if (useMirror) {
+    for (const mirrorUrl of MIRROR_SOURCES) {
+      try {
+        await tryDownload(mirrorUrl);
+        macDownloadedDmgPath = destPath;
+        sendStatusToWindow({
+          status: "downloaded",
+          info: toSimpleInfo(lastUpdateInfo),
+        });
+        return { success: true };
+      } catch (mirrorError) {
+        console.warn(
+          `[Updater/macDMG] Mirror download failed: ${mirrorUrl}`,
+          mirrorError,
+        );
+        lastPercent = 0;
+        // Clean up partial file before next attempt
+        if (fs.existsSync(destPath)) fs.unlinkSync(destPath);
+      }
+    }
+    return {
+      success: false,
+      error:
+        "All mirror sources failed. Please try disabling mirror acceleration.",
+    };
+  }
+
+  // Official source
+  // 官方源
+  try {
+    const feedUrl = buildFeedUrl(false);
+    await tryDownload(feedUrl);
+    macDownloadedDmgPath = destPath;
+    sendStatusToWindow({
+      status: "downloaded",
+      info: toSimpleInfo(lastUpdateInfo),
+    });
+    return { success: true };
+  } catch (err) {
+    const errMsg = (err as Error).message || String(err);
+    return { success: false, error: `Download DMG failed: ${errMsg}` };
   }
 }
 
 // Register IPC handlers
 // 注册 IPC 处理程序
 export function registerUpdaterIPC() {
-  const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+  const isDev = process.env.NODE_ENV === "development" || !app.isPackaged;
 
   // Get current version - always available
   // 获取当前版本 - 总是可用
-  ipcMain.handle('updater:version', () => {
+  ipcMain.handle("updater:version", () => {
     return app.getVersion();
   });
 
   // 检查更新
   // Check for updates - respect user's mirror preference
-  ipcMain.handle('updater:check', async (_event, useMirror?: boolean) => {
+  ipcMain.handle("updater:check", async (_event, useMirror?: boolean) => {
     if (isDev) {
-      return { success: false, error: 'Update check disabled in development mode' };
+      return {
+        success: false,
+        error: "Update check disabled in development mode",
+      };
     }
 
     applyMirrorDownloadSettings(Boolean(useMirror));
@@ -391,8 +697,8 @@ export function registerUpdaterIPC() {
         try {
           console.log(`[Updater] Using mirror for check: ${mirrorUrl}`);
           autoUpdater.setFeedURL({
-            provider: 'generic',
-            url: mirrorUrl
+            provider: "generic",
+            url: mirrorUrl,
           });
           const result = await autoUpdater.checkForUpdates();
           console.log(`[Updater] Mirror check succeeded: ${mirrorUrl}`);
@@ -402,13 +708,17 @@ export function registerUpdaterIPC() {
         }
       }
       // All mirrors failed
-      return { success: false, error: 'All mirror sources failed. Please try disabling mirror acceleration.' };
+      return {
+        success: false,
+        error:
+          "All mirror sources failed. Please try disabling mirror acceleration.",
+      };
     }
 
     // Mirror disabled, use official source
     // 未启用镜像，使用官方源
     try {
-      console.log('[Updater] Using official source for check');
+      console.log("[Updater] Using official source for check");
       autoUpdater.setFeedURL(OFFICIAL_REPO);
       const result = await autoUpdater.checkForUpdates();
       return { success: true, result };
@@ -420,13 +730,23 @@ export function registerUpdaterIPC() {
 
   // Start downloading update
   // 开始下载更新 - respect user's mirror preference
-  ipcMain.handle('updater:download', async (_event, useMirror?: boolean) => {
+  ipcMain.handle("updater:download", async (_event, useMirror?: boolean) => {
     if (isDev) {
-      return { success: false, error: 'Download disabled in development mode' };
+      return { success: false, error: "Download disabled in development mode" };
     }
 
-    applyMirrorDownloadSettings(Boolean(useMirror));
     lastPercent = 0;
+
+    // macOS: bypass Squirrel, download DMG directly to ~/Downloads
+    // macOS: 绕过 Squirrel，直接下载 DMG 到 ~/Downloads
+    if (isMac) {
+      console.log("[Updater/macDMG] Using direct DMG download for macOS");
+      return await macDownloadDmg(Boolean(useMirror));
+    }
+
+    // Windows/Linux: use electron-updater's built-in download (Squirrel/NSIS)
+    // Windows/Linux: 使用 electron-updater 内置下载（Squirrel/NSIS）
+    applyMirrorDownloadSettings(Boolean(useMirror));
 
     // If mirror is enabled, use mirror sources directly
     // 如果启用了镜像，直接使用镜像源
@@ -435,8 +755,8 @@ export function registerUpdaterIPC() {
         try {
           console.log(`[Updater] Using mirror for download: ${mirrorUrl}`);
           autoUpdater.setFeedURL({
-            provider: 'generic',
-            url: mirrorUrl
+            provider: "generic",
+            url: mirrorUrl,
           });
           await autoUpdater.downloadUpdate();
           return { success: true };
@@ -446,13 +766,17 @@ export function registerUpdaterIPC() {
         }
       }
       // All mirrors failed
-      return { success: false, error: 'All mirror sources failed. Please try disabling mirror acceleration.' };
+      return {
+        success: false,
+        error:
+          "All mirror sources failed. Please try disabling mirror acceleration.",
+      };
     }
 
     // Mirror disabled, use official source
     // 未启用镜像，使用官方源
     try {
-      console.log('[Updater] Using official source for download');
+      console.log("[Updater] Using official source for download");
       autoUpdater.setFeedURL(OFFICIAL_REPO);
       await autoUpdater.downloadUpdate();
       return { success: true };
@@ -464,15 +788,20 @@ export function registerUpdaterIPC() {
 
   // Install update and restart
   // 安装更新并重启
-  ipcMain.handle('updater:install', async () => {
+  ipcMain.handle("updater:install", async () => {
     if (!isDev) {
       if (isMac) {
-        // macOS: open download directory for manual installation
-        // because auto install will fail without code signing
-        // macOS: 打开下载目录让用户手动安装
-        // 因为没有代码签名，自动安装会失败
-        const downloadDir = app.getPath('downloads');
-        shell.openPath(downloadDir);
+        // macOS: open the downloaded DMG for manual installation
+        // macOS: 打开已下载的 DMG 文件让用户手动安装
+        if (macDownloadedDmgPath && fs.existsSync(macDownloadedDmgPath)) {
+          // Open (mount) the DMG file directly
+          // 直接打开（挂载）DMG 文件
+          shell.openPath(macDownloadedDmgPath);
+        } else {
+          // Fallback: open Downloads folder
+          // 回退：打开下载文件夹
+          shell.openPath(app.getPath("downloads"));
+        }
         return { success: true, manual: true };
       } else {
         // Windows/Linux: auto install
@@ -485,24 +814,34 @@ export function registerUpdaterIPC() {
 
   // Get platform info
   // 获取平台信息
-  ipcMain.handle('updater:platform', () => {
+  ipcMain.handle("updater:platform", () => {
     return process.platform;
   });
 
   // Open GitHub Releases page
   // 打开 GitHub Releases 页面
-  ipcMain.handle('updater:openReleases', () => {
-    shell.openExternal('https://github.com/legeling/PromptHub/releases');
+  ipcMain.handle("updater:openReleases", () => {
+    shell.openExternal("https://github.com/legeling/PromptHub/releases");
   });
 
-  ipcMain.handle('updater:openDownloadedUpdate', () => {
-    const installerPath = (autoUpdater as unknown as { installerPath?: string }).installerPath;
+  ipcMain.handle("updater:openDownloadedUpdate", () => {
+    // macOS: show the downloaded DMG in Finder
+    // macOS: 在 Finder 中显示已下载的 DMG
+    if (isMac && macDownloadedDmgPath && fs.existsSync(macDownloadedDmgPath)) {
+      shell.showItemInFolder(macDownloadedDmgPath);
+      return { success: true, path: macDownloadedDmgPath };
+    }
+
+    // Windows/Linux: show electron-updater's downloaded installer
+    // Windows/Linux: 显示 electron-updater 下载的安装包
+    const installerPath = (autoUpdater as unknown as { installerPath?: string })
+      .installerPath;
     if (installerPath) {
       shell.showItemInFolder(installerPath);
       return { success: true, path: installerPath };
     }
 
-    const downloadDir = app.getPath('downloads');
+    const downloadDir = app.getPath("downloads");
     shell.openPath(downloadDir);
     return { success: false, path: downloadDir };
   });
