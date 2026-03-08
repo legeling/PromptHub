@@ -361,7 +361,20 @@ jobs:
             echo "Merged macOS manifests into release_assets/latest-mac.yml"
           fi
 
-          # 4. Verify manifest hashes before publishing. A mismatch here would become a broken auto update.
+          # 4. Reconcile manifest hashes with actual binary files.
+          # electron-builder on macOS may emit manifests before the final
+          # DMG/ZIP is fully written, causing SHA512/size drift.  Patch the
+          # manifests so published updater metadata always matches the real
+          # artifacts that users will download.
+          node scripts/fix-manifest-hashes.js \
+            release_assets/latest.yml \
+            release_assets/latest-arm64.yml \
+            release_assets/latest-x64.yml \
+            release_assets/latest-mac.yml \
+            release_assets/latest-mac-arm64.yml \
+            release_assets/latest-mac-x64.yml
+
+          # 5. Verify manifest hashes before publishing. A mismatch here would become a broken auto update.
           node scripts/verify-update-manifest.js \
             release_assets/latest.yml \
             release_assets/latest-arm64.yml \
@@ -370,14 +383,14 @@ jobs:
             release_assets/latest-mac-arm64.yml \
             release_assets/latest-mac-x64.yml
 
-          # 5. Never replace an existing release/tag with different bytes.
+          # 6. Never replace an existing release/tag with different bytes.
           # Reusing the same version poisons updater metadata and CDN caches.
           if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
             echo "Release ${GITHUB_REF_NAME} already exists. Published versions must be immutable."
             exit 1
           fi
 
-          # 6. Create Release and Upload
+          # 7. Create Release and Upload
           echo "Creating release..."
           gh release create "${GITHUB_REF_NAME}" \
             release_assets/* \
