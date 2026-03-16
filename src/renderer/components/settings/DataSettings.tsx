@@ -42,6 +42,8 @@ export function DataSettings() {
   const { t } = useTranslation();
   const { showToast } = useToast();
   const settings = useSettingsStore();
+  const persistedDataPath = settings.dataPath;
+  const setDataPath = settings.setDataPath;
 
   // WebDAV operation state
   // WebDAV 操作状态
@@ -66,6 +68,7 @@ export function DataSettings() {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [clearPwd, setClearPwd] = useState("");
   const [clearLoading, setClearLoading] = useState(false);
+  const [currentDataPath, setCurrentDataPath] = useState(persistedDataPath);
 
   // Security status for clear-data flow (independent from SecuritySettings)
   // 清除数据流程需要的安全状态（独立于 SecuritySettings）
@@ -76,6 +79,23 @@ export function DataSettings() {
       setSecurityConfigured(status.configured);
     });
   }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    window.electron?.getDataPath?.().then((resolvedPath) => {
+      if (!mounted || !resolvedPath) {
+        return;
+      }
+      setCurrentDataPath(resolvedPath);
+      if (resolvedPath !== persistedDataPath) {
+        setDataPath(resolvedPath);
+      }
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, [persistedDataPath, setDataPath]);
 
   const handleSelectiveExport = async () => {
     try {
@@ -182,11 +202,11 @@ export function DataSettings() {
               <div className="flex-1">
                 <p className="text-sm font-medium">{t("settings.dataPath")}</p>
                 <button
-                  onClick={() => window.electron?.openPath?.(settings.dataPath)}
+                  onClick={() => window.electron?.openPath?.(currentDataPath)}
                   className="text-xs text-primary font-mono mt-0.5 hover:underline flex items-center gap-1 cursor-pointer"
                   title={t("settings.openFolder")}
                 >
-                  {settings.dataPath}
+                  {currentDataPath}
                   <ExternalLinkIcon className="w-3 h-3" />
                 </button>
               </div>
@@ -209,7 +229,9 @@ export function DataSettings() {
                     const result =
                       await window.electron?.migrateData?.(newPath);
                     if (result?.success) {
-                      settings.setDataPath(newPath);
+                      const resolvedPath = result.newPath || newPath;
+                      setDataPath(resolvedPath);
+                      setCurrentDataPath(resolvedPath);
                       showToast(
                         t("toast.dataPathChanged") +
                           " " +

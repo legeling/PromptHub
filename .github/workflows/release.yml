@@ -383,22 +383,30 @@ jobs:
             release_assets/latest-mac-arm64.yml \
             release_assets/latest-mac-x64.yml
 
-          # 6. Never replace an existing release/tag with different bytes.
-          # Reusing the same version poisons updater metadata and CDN caches.
+          # 6. Create or refresh the Release.
+          # Hotfix republishes for the same tag are allowed; existing assets with
+          # the same file name are replaced in-place via --clobber.
           if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
-            echo "Release ${GITHUB_REF_NAME} already exists. Published versions must be immutable."
-            exit 1
-          fi
+            echo "Release ${GITHUB_REF_NAME} already exists. Updating assets in place..."
+            gh release edit "${GITHUB_REF_NAME}" \
+              --title "PromptHub ${VERSION}" \
+              --notes-file release_notes.md \
+              --draft=false \
+              --prerelease=${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') }}
 
-          # 7. Create Release and Upload
-          echo "Creating release..."
-          gh release create "${GITHUB_REF_NAME}" \
-            release_assets/* \
-            --title "PromptHub ${VERSION}" \
-            --notes-file release_notes.md \
-            --draft=false \
-            --prerelease=${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') }} \
-            --generate-notes
+            gh release upload "${GITHUB_REF_NAME}" \
+              release_assets/* \
+              --clobber
+          else
+            echo "Creating release..."
+            gh release create "${GITHUB_REF_NAME}" \
+              release_assets/* \
+              --title "PromptHub ${VERSION}" \
+              --notes-file release_notes.md \
+              --draft=false \
+              --prerelease=${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') }} \
+              --generate-notes
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

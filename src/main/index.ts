@@ -27,6 +27,10 @@ import {
   isE2EEnabled,
   shouldUseDevServer,
 } from "./testing/e2e";
+import {
+  resolveInitialUserDataPath,
+  writeConfiguredDataPath,
+} from "./data-path";
 
 // Disable GPU acceleration (optional; may be needed on some systems)
 // 禁用 GPU 加速（可选，某些系统上可能需要）
@@ -72,6 +76,16 @@ protocol.registerSchemesAsPrivileged([
 
 const isE2E = isE2EEnabled();
 configureE2ETestProfile();
+if (!isE2E) {
+  const resolvedUserDataPath = resolveInitialUserDataPath({
+    appDataPath: app.getPath("appData"),
+    defaultUserDataPath: app.getPath("userData"),
+    exePath: process.execPath,
+    isPackaged: app.isPackaged,
+    platform: process.platform,
+  });
+  app.setPath("userData", resolvedUserDataPath);
+}
 const isDev = shouldUseDevServer(app.isPackaged);
 
 // Single instance lock (prevent multiple instances)
@@ -571,6 +585,14 @@ ipcMain.handle("data:migrate", async (_event, newPath: string) => {
     };
   }
   const currentPath = app.getPath("userData");
+  if (path.resolve(currentPath) === path.resolve(newPath)) {
+    return {
+      success: true,
+      message: "Data directory is already current",
+      newPath: path.resolve(newPath),
+      needsRestart: false,
+    };
+  }
 
   // Security: ensure newPath is not a system-sensitive directory
   // 安全：确保 newPath 不是系统敏感目录
@@ -610,6 +632,12 @@ ipcMain.handle("data:migrate", async (_event, newPath: string) => {
       // 数据库文件
       "images", // Images directory
       // 图片目录
+      "videos", // Videos directory
+      // 视频目录
+      "skills", // Managed skills
+      // 托管技能目录
+      "shortcuts.json", // Shortcut config
+      "shortcut-mode.json", // Shortcut mode config
     ];
 
     let migratedCount = 0;
@@ -641,11 +669,14 @@ ipcMain.handle("data:migrate", async (_event, newPath: string) => {
       }
     }
 
+    const resolvedTargetPath = path.resolve(newPath);
+    writeConfiguredDataPath(app.getPath("appData"), resolvedTargetPath);
+
     return {
       success: true,
       message: `Successfully migrated ${migratedCount} items`,
       // 成功迁移 {migratedCount} 个项目
-      newPath,
+      newPath: resolvedTargetPath,
       needsRestart: true,
     };
   } catch (error) {

@@ -92,11 +92,13 @@
     "artifactName": "${productName}-${version}-x64.${ext}"
   },
   "nsis": {
+    "guid": "16181c11-b075-53d6-87cb-f192f9b74217",
     "oneClick": false,
     "allowToChangeInstallationDirectory": true,
     "createDesktopShortcut": true,
     "createStartMenuShortcut": true,
-    "differentialPackage": false
+    "differentialPackage": false,
+    "include": "resources/installer.nsh"
   },
   "publish": {
     "provider": "github",
