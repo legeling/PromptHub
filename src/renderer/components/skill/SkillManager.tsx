@@ -386,27 +386,88 @@ export function SkillManager() {
     <div className="flex-1 flex flex-row h-full bg-background overflow-hidden relative">
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <div className="border-b border-border bg-background/80 px-4 py-3 backdrop-blur-sm z-10 sm:px-6">
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="flex items-center gap-2">
-              <CuboidIcon className="w-5 h-5 text-primary" />
-              <div>
-                <h2 className="text-lg font-semibold">{headerTitle}</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">
+        <div className="border-b border-border bg-background/80 px-4 py-4 backdrop-blur-sm z-10 sm:px-6">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <CuboidIcon className="w-5 h-5 text-primary" />
+                    <h2 className="text-lg font-semibold">{headerTitle}</h2>
+                  </div>
+                  <span className="inline-flex items-center rounded-full border border-white/5 bg-accent/50 px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                    {isDistributionView
+                      ? distributionStatsLabel
+                      : `${filteredSkills.length}${filterType !== "all" ? ` / ${skills.length}` : ""}`}
+                  </span>
+                </div>
+                <p className="mt-1.5 text-xs text-muted-foreground">
                   {headerSubtitle}
                 </p>
               </div>
-            </div>
-            <div className="h-4 w-px bg-border mx-1" />
-            <span className="text-[11px] font-medium text-muted-foreground bg-accent/50 px-2 py-0.5 rounded-full border border-white/5">
-              {isDistributionView
-                ? distributionStatsLabel
-                : `${filteredSkills.length}${filterType !== "all" ? ` / ${skills.length}` : ""}`}
-            </span>
-          </div>
 
-          <div className="flex flex-col gap-3 xl:items-end">
+              <div className="flex items-center gap-2 self-start lg:self-center lg:justify-end">
+                {!isSelectionMode ? (
+                  <button
+                    onClick={toggleSelectionMode}
+                    className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/25 hover:bg-card"
+                    title={t("skill.batchManage", "批量管理")}
+                  >
+                    <CheckSquareIcon className="w-4 h-4" />
+                    {t("skill.batchManage", "批量管理")}
+                  </button>
+                ) : null}
+                <div className="flex items-center bg-muted rounded-lg p-0.5">
+                  <button
+                    onClick={() => setViewMode("gallery")}
+                    className={`p-2 rounded-md transition-colors ${
+                      viewMode === "gallery"
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                    title={t("skill.galleryView", "画廊视图")}
+                  >
+                    <LayoutGridIcon className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setViewMode("list")}
+                    className={`p-2 rounded-md transition-colors ${
+                      viewMode === "list"
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                    title={t("skill.listView", "列表视图")}
+                  >
+                    <ListIcon className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="h-4 w-px bg-border" />
+                <button
+                  onClick={() => handleScanLocal(customSkillScanPaths)}
+                  disabled={isScanning}
+                  className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-accent transition-colors disabled:opacity-50"
+                  title={t("skill.scanLocal", "Scan local skills")}
+                >
+                  <FolderInputIcon
+                    className={`w-4 h-4 ${isScanning ? "animate-spin" : ""}`}
+                  />
+                </button>
+                <div className="h-4 w-px bg-border" />
+                <button
+                  onClick={async () => {
+                    await loadSkills();
+                    await loadDeployedStatus();
+                  }}
+                  className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-accent transition-colors"
+                  title={t("settings.refresh")}
+                >
+                  <RefreshCwIcon
+                    className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`}
+                  />
+                </button>
+              </div>
+            </div>
+
             {isSelectionMode ? (
               <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-primary/15 bg-primary/[0.06] p-2">
                 <div className="px-3 py-2">
@@ -490,75 +551,6 @@ export function SkillManager() {
                 </button>
               </div>
             ) : null}
-
-          <div className="flex items-center gap-2 self-end">
-            {isSelectionMode ? (
-              <div className="hidden h-4 w-px bg-border xl:block" />
-            ) : (
-              <>
-                <button
-                  onClick={toggleSelectionMode}
-                  className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/25 hover:bg-card"
-                  title={t("skill.batchManage", "批量管理")}
-                >
-                  <CheckSquareIcon className="w-4 h-4" />
-                  {t("skill.batchManage", "批量管理")}
-                </button>
-                <div className="h-4 w-px bg-border" />
-              </>
-            )}
-            {/* View mode toggle */}
-            {/* 视图模式切换 */}
-            <div className="flex items-center bg-muted rounded-lg p-0.5">
-              <button
-                onClick={() => setViewMode("gallery")}
-                className={`p-2 rounded-md transition-colors ${
-                  viewMode === "gallery"
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-                title={t("skill.galleryView", "画廊视图")}
-              >
-                <LayoutGridIcon className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setViewMode("list")}
-                className={`p-2 rounded-md transition-colors ${
-                  viewMode === "list"
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-                title={t("skill.listView", "列表视图")}
-              >
-                <ListIcon className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="h-4 w-px bg-border" />
-            <button
-              onClick={() => handleScanLocal(customSkillScanPaths)}
-              disabled={isScanning}
-              className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-accent transition-colors disabled:opacity-50"
-              title={t("skill.scanLocal", "Scan local skills")}
-            >
-              <FolderInputIcon
-                className={`w-4 h-4 ${isScanning ? "animate-spin" : ""}`}
-              />
-            </button>
-            <div className="h-4 w-px bg-border" />
-            <button
-              onClick={async () => {
-                await loadSkills();
-                await loadDeployedStatus();
-              }}
-              className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-accent transition-colors"
-              title={t("settings.refresh")}
-            >
-              <RefreshCwIcon
-                className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`}
-              />
-            </button>
-          </div>
-          </div>
           </div>
         </div>
 

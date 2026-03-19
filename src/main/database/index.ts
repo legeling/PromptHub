@@ -1,8 +1,8 @@
 import Database from "./sqlite";
 import path from "path";
 import fs from "fs";
-import { app } from "electron";
 import { SCHEMA_TABLES, SCHEMA_INDEXES } from "./schema";
+import { getSkillsDir, getUserDataPath } from "../runtime-paths";
 
 let db: Database.Database | null = null;
 
@@ -11,7 +11,7 @@ let db: Database.Database | null = null;
  * 获取数据库文件路径
  */
 function getDbPath(): string {
-  const userDataPath = app.getPath("userData");
+  const userDataPath = getUserDataPath();
   return path.join(userDataPath, "prompthub.db");
 }
 
@@ -40,6 +40,7 @@ export function initDatabase(): Database.Database {
   if (db) return db;
 
   const dbPath = getDbPath();
+  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
   clearStaleLock(dbPath);
   db = new Database(dbPath);
 
@@ -182,7 +183,7 @@ export function initDatabase(): Database.Database {
     // Wrapped in a one-time migration guard so it only runs on first startup.
     if (!hasMigration("backfill_local_repo_path_v1")) {
       try {
-        const skillsDir = path.join(app.getPath("userData"), "skills");
+        const skillsDir = getSkillsDir();
         const skillsWithoutPath = db!
           .prepare(
             "SELECT id, name, source_url FROM skills WHERE local_repo_path IS NULL OR local_repo_path = ''",

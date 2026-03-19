@@ -1,3 +1,75 @@
+## [0.4.6] - 2026-03-19
+
+### 修复 / Fixed
+
+- 🪟 **Skill 批量同步弹窗布局修复**：重做批量同步弹窗为更紧凑的单列流程，移除横向滚动并恢复整窗纵向滚动，避免目标平台和底部操作区被挤压
+  - **Skill Batch Deploy Dialog Layout Fix**: Redesigned the bulk deploy dialog into a tighter single-column flow, removed horizontal scrolling, and restored full-dialog vertical scrolling so target platforms and footer actions stay accessible
+- 🧭 **Skills 顶部工具栏布局修复**：将页面说明固定在左侧，操作工具统一收拢到右侧，修复顶部信息层级混乱的问题
+  - **Skills Header Toolbar Layout Fix**: Kept page description anchored on the left and grouped actions on the right, fixing the awkward hierarchy in the Skills header
+
+### 优化 / Improvements
+
+- 🎯 **批量同步信息层级优化**：安装方式、目标平台、已选技能与摘要重排为更符合操作顺序的结构，批量同步流程更直观
+  - **Bulk Deploy Information Hierarchy**: Reordered install mode, target platforms, selected skills, and summary into a clearer task flow for bulk deployment
+- 📚 **发版文档与官网同步**：将 README、多语言 README、官网发布元数据与文档入口同步到 `v0.4.6`
+  - **Release Docs & Website Sync**: Synced README, localized READMEs, website release metadata, and doc entry points to `v0.4.6`
+
+---
+
+## [0.4.5] - 2026-03-14
+
+### 修复 / Fixed
+
+- 🌐 **提示词复制语言修复** (closes #67)：修复图片/画廊视图在英文模式下复制内容仍落回中文的问题；复制弹窗与直接复制现在都会跟随当前显示语言
+  - **Prompt Copy Language Fix** (closes #67): Fixed image/gallery copy using the Chinese prompt while the UI was showing English; both direct copy and variable modal now follow the visible language
+- 🧩 **Skill 白屏修复** (closes #66)：修复部分旧 Skill 因标签/兼容性等元数据格式异常，点击后详情页直接白屏的问题；新增旧数据规范化与详情渲染容错
+  - **Skill White Screen Fix** (closes #66): Fixed blank detail pages for legacy skills with malformed metadata such as tags/compatibility fields; added normalization for legacy data and safer detail rendering
+- 🔄 **分发状态刷新修复**：修复 Skill 分发或卸载后，左侧菜单和过滤状态未及时同步，仍显示“未分发”的问题
+  - **Deployment Status Refresh Fix**: Fixed sidebar/filter deployment state staying stale after install or uninstall operations and still showing skills as pending
+- 📁 **本地托管目录扫描修复**：默认本地扫描现在会包含 PromptHub 自己托管的 `userData/skills` 目录，手动放入的 Skill 可被识别
+  - **Managed Skill Folder Scan Fix**: Default local scan now includes PromptHub's managed `userData/skills` directory so manually added skills can be discovered
+- 📸 **版本快照交互修复**：修复创建快照按钮依赖原生 `window.prompt()` 导致 Electron 环境下“点击没反应”的问题，改为应用内弹窗
+  - **Snapshot Interaction Fix**: Replaced unstable native `window.prompt()` snapshot creation with an in-app modal after the button appeared unresponsive in Electron
+
+### 优化 / Improvements
+
+- 🚀 **Skill 批量工作流增强**：补齐批量分发与批量标签操作，选择态工具栏与分发弹窗交互更清晰
+  - **Bulk Skill Workflow Improvements**: Expanded bulk distribution and bulk tagging flows with clearer selection toolbar and deploy dialog interactions
+- 🔍 **导入体验优化**：本地导入预览支持搜索，标签改为可选操作，减少导入阻力
+  - **Import UX Improvements**: Added search to local import preview and made tagging optional to reduce friction during import
+- 🕓 **Skill 版本管理补齐**：支持版本历史预览、Diff 对比和恢复，文件编辑与 `SKILL.md` 变更会自动留快照
+  - **Skill Versioning Enhancements**: Added version history preview, diff comparison, and restore flow; file edits and `SKILL.md` updates now create snapshots automatically
+
+---
+
+## [0.4.4] - 2026-03-08
+
+### 修复 / Fixed
+
+- 🍎 **macOS 更新体验修复**：macOS 绕过 Squirrel 自动更新（因无代码签名证书导致校验失败），改为直接下载 DMG 到 Downloads 文件夹，支持镜像加速与进度显示
+  - **macOS Update UX Fix**: Bypassed Squirrel auto-update on macOS (code signature validation fails without Apple Developer certificate), now downloads DMG directly to Downloads folder with mirror fallback and progress display
+- 🖥️ **全屏退出修复** (closes #63, #65)：修复 Windows 无边框窗口进入全屏后无法退出、macOS 通过菜单/绿色按钮进入全屏时 Escape 键无效的问题；新增全局 Escape 退出全屏监听，补齐 CreateSkillModal 缺失的全屏退出快捷键
+  - **Fullscreen Exit Fix** (closes #63, #65): Fixed inability to exit fullscreen on Windows frameless windows and Escape key not working when entering fullscreen via macOS menu/green button; added global Escape-exits-fullscreen listener and missing keyboard handler in CreateSkillModal
+- 🔐 **安全设置国际化修复**：修复 SecuritySettings 中 15 处硬编码中文 toast 提示，全部替换为 i18n 多语言 key
+  - **Security Settings i18n Fix**: Replaced 15 hardcoded Chinese toast messages in SecuritySettings with i18n keys across all 7 locales
+- 🖼️ **图片上传死循环修复**：修复 usePromptMediaManager 中因 `initialImages`/`initialVideos` 数组引用每次渲染变化导致的 `Maximum update depth exceeded` 无限循环
+  - **Image Upload Infinite Loop Fix**: Fixed `Maximum update depth exceeded` in usePromptMediaManager caused by array reference changes on every render for `initialImages`/`initialVideos`
+
+### 优化 / Improvements
+
+- 🍺 **Homebrew 升级提示**：macOS 更新提示中新增 `brew upgrade --cask prompthub` 指引，方便 Homebrew 用户快速升级
+  - **Homebrew Upgrade Guidance**: Added `brew upgrade --cask prompthub` instructions to macOS update prompt for Homebrew users
+- 🌍 **更新提示多语言**：macOS 手动安装提示更新为 7 语言（zh/zh-TW/en/ja/de/es/fr），包含 DMG 安装和 Homebrew 升级两种方式
+  - **Update Prompt i18n**: Updated macOS manual install instructions across all 7 locales with DMG and Homebrew upgrade paths
+- 🔧 **CI/CD manifest 修正**：新增发布前 SHA512/size 校正脚本，修复 electron-builder 生成的 manifest 与实际二进制不一致的问题
+  - **CI/CD Manifest Fix**: Added pre-release SHA512/size reconciliation script, fixing electron-builder manifest vs actual binary mismatch
+- 🖼️ **绘图提示词 UI 优化**：`image` 类型提示词的"参考媒体"区域从折叠属性面板中提取出来，作为一级 UI 元素与 Prompt 编辑器同层展示
+  - **Image Prompt UI Enhancement**: Extracted "Reference Media" section from collapsible Properties panel for `image` type prompts, displayed as a first-class UI element at the same level as the prompt editor
+- 💡 **上传限制提示**：媒体上传区域新增格式与大小说明（图片 JPG/PNG/GIF/WebP，视频 MP4/WebM/MOV，单文件 ≤50MB）
+  - **Upload Limit Hints**: Added format and size hints to media upload areas (Images: JPG/PNG/GIF/WebP, Videos: MP4/WebM/MOV, ≤50MB per file)
+
+---
+
 ## [0.4.3] - 2026-03-07
 
 ### 修复 / Fixed

@@ -1,20 +1,32 @@
-import { useState } from 'react';
-import { SparklesIcon, TerminalIcon, GithubIcon, WindIcon, SparkleIcon, ZapIcon, BotIcon, LayoutGridIcon, BugIcon } from 'lucide-react';
+import { useState } from "react";
+import {
+  SparklesIcon,
+  TerminalIcon,
+  GithubIcon,
+  WindIcon,
+  SparkleIcon,
+  ZapIcon,
+  BotIcon,
+  LayoutGridIcon,
+  BugIcon,
+} from "lucide-react";
 
 // Import platform icons
 // 导入平台图标
-import claudeIcon from '../../assets/platforms/claude.png';
-import cursorIcon from '../../assets/platforms/cursor.png';
-import copilotIcon from '../../assets/platforms/copilot.png';
-import windsurfIcon from '../../assets/platforms/windsurf.png';
-import kiroIcon from '../../assets/platforms/kiro.png';
-import geminiIcon from '../../assets/platforms/gemini.png';
-import traeIcon from '../../assets/platforms/trae.png';
-import opencodeIcon from '../../assets/platforms/opencode.png';
-import codexIcon from '../../assets/platforms/codex.png';
-import rooIcon from '../../assets/platforms/roo.png';
-import ampIcon from '../../assets/platforms/amp.png';
-import openclawIcon from '../../assets/platforms/openclaw.png';
+import claudeIcon from "../../assets/platforms/claude.png";
+import cursorIcon from "../../assets/platforms/cursor.png";
+import copilotIcon from "../../assets/platforms/copilot.png";
+import windsurfIcon from "../../assets/platforms/windsurf.png";
+import kiroIcon from "../../assets/platforms/kiro.png";
+import geminiIcon from "../../assets/platforms/gemini.png";
+import traeIcon from "../../assets/platforms/trae.png";
+import opencodeIcon from "../../assets/platforms/opencode.png";
+import codexIcon from "../../assets/platforms/codex.png";
+import rooIcon from "../../assets/platforms/roo.png";
+import ampIcon from "../../assets/platforms/amp.png";
+import openclawIcon from "../../assets/platforms/openclaw.png";
+import qoderIcon from "../../assets/platforms/qoder.png";
+import qoderworkIcon from "../../assets/platforms/qoderwork.png";
 
 // Platform icon mapping
 // 平台图标映射
@@ -31,6 +43,8 @@ const PLATFORM_ICONS: Record<string, string> = {
   roo: rooIcon,
   amp: ampIcon,
   openclaw: openclawIcon,
+  qoder: qoderIcon,
+  qoderwork: qoderworkIcon,
 };
 
 // Fallback Lucide icons for platforms without PNG
@@ -48,6 +62,8 @@ const FALLBACK_ICONS: Record<string, React.ReactNode> = {
   roo: <BotIcon />,
   amp: <ZapIcon />,
   openclaw: <BugIcon />,
+  qoder: <BotIcon />,
+  qoderwork: <BotIcon />,
 };
 
 interface PlatformIconProps {
@@ -60,34 +76,41 @@ interface PlatformIconProps {
  * Platform icon component with PNG icons and Lucide fallback
  * 平台图标组件，支持 PNG 图标和 Lucide 图标 fallback
  */
-export function PlatformIcon({ platformId, size = 24, className = '' }: PlatformIconProps) {
+export function PlatformIcon({
+  platformId,
+  size = 24,
+  className = "",
+}: PlatformIconProps) {
   const [imageError, setImageError] = useState(false);
-  
+
   const iconSrc = PLATFORM_ICONS[platformId];
   const fallbackIcon = FALLBACK_ICONS[platformId] || <LayoutGridIcon />;
-  
+
   // If no PNG icon or image failed to load, use fallback
   // 如果没有 PNG 图标或图片加载失败，使用 fallback
   if (!iconSrc || imageError) {
     return (
-      <span 
+      <span
         className={`inline-flex items-center justify-center ${className}`}
         style={{ width: size, height: size }}
       >
         {/* Clone the icon element with proper size */}
-        <span style={{ width: size, height: size }} className="flex items-center justify-center">
+        <span
+          style={{ width: size, height: size }}
+          className="flex items-center justify-center"
+        >
           {fallbackIcon}
         </span>
       </span>
     );
   }
-  
+
   return (
     <span
       className={`inline-flex items-center justify-center ${className} ${
-        platformId === 'copilot'
-          ? 'rounded-xl bg-slate-100 ring-1 ring-slate-200 dark:bg-slate-800/80 dark:ring-slate-700'
-          : ''
+        platformId === "copilot"
+          ? "rounded-xl bg-slate-100 ring-1 ring-slate-200 dark:bg-slate-800/80 dark:ring-slate-700"
+          : ""
       }`}
       style={{ width: size, height: size }}
     >
@@ -97,9 +120,9 @@ export function PlatformIcon({ platformId, size = 24, className = '' }: Platform
         width={size}
         height={size}
         className={`object-contain ${
-          platformId === 'copilot'
-            ? 'brightness-0 dark:brightness-0 dark:invert'
-            : ''
+          platformId === "copilot"
+            ? "brightness-0 dark:brightness-0 dark:invert"
+            : ""
         }`}
         onError={() => setImageError(true)}
         loading="lazy"
@@ -112,6 +135,9 @@ export function PlatformIcon({ platformId, size = 24, className = '' }: Platform
  * Get platform icon as React element (for use in platform config)
  * 获取平台图标作为 React 元素（用于平台配置）
  */
-export function getPlatformIconElement(platformId: string, size: number = 16): React.ReactNode {
+export function getPlatformIconElement(
+  platformId: string,
+  size: number = 16,
+): React.ReactNode {
   return <PlatformIcon platformId={platformId} size={size} />;
 }

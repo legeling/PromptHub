@@ -37,9 +37,8 @@ export function SkillBatchDeployDialog({
   const skillInstallMethod = useSettingsStore(
     (state) => state.skillInstallMethod,
   );
-  const [installMode, setInstallMode] = useState<SkillInstallMode>(
-    skillInstallMethod,
-  );
+  const [installMode, setInstallMode] =
+    useState<SkillInstallMode>(skillInstallMethod);
   const [supportedPlatforms, setSupportedPlatforms] = useState<SkillPlatform[]>(
     [],
   );
@@ -127,7 +126,9 @@ export function SkillBatchDeployDialog({
       setSelectedPlatforms(new Set());
       return;
     }
-    setSelectedPlatforms(new Set(availablePlatforms.map((platform) => platform.id)));
+    setSelectedPlatforms(
+      new Set(availablePlatforms.map((platform) => platform.id)),
+    );
   };
 
   const handleDeploy = async () => {
@@ -161,8 +162,8 @@ export function SkillBatchDeployDialog({
               ? "skill.batchDeploySummary"
               : "skill.batchUndeploySummary",
             {
-            success: result.successCount,
-            total: result.totalCount,
+              success: result.successCount,
+              total: result.totalCount,
               defaultValue:
                 actionMode === "deploy"
                   ? `已同步 ${result.successCount}/${result.totalCount} 个目标`
@@ -203,15 +204,15 @@ export function SkillBatchDeployDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm">
-      <div className="flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-2xl">
+      <div className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-2xl">
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <div>
             <div className="flex items-center gap-2">
               <SendIcon className="h-5 w-5 text-primary" />
               <h2 className="text-lg font-semibold">
-              {t("skill.batchDeploy", "批量同步到平台")}
-            </h2>
-          </div>
+                {t("skill.batchDeploy", "批量同步到平台")}
+              </h2>
+            </div>
             <p className="mt-1 text-xs text-muted-foreground">
               {t("skill.batchDeployHint", {
                 count: skills.length,
@@ -227,22 +228,24 @@ export function SkillBatchDeployDialog({
           </button>
         </div>
 
-        <div className="grid gap-6 overflow-y-auto p-6 lg:grid-cols-[1.2fr,0.8fr]">
+        <div className="flex-1 min-h-0 overflow-y-auto p-6">
           <div className="space-y-4">
-            <div className="rounded-2xl border border-border bg-background/60 p-4">
+            <section className="rounded-2xl border border-border bg-background/60 p-4">
               <h3 className="text-sm font-semibold">
                 {t("skill.batchAction", "操作模式")}
               </h3>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                {([
-                  ["deploy", t("skill.batchDeploy", "批量同步到平台")],
-                  ["undeploy", t("skill.batchUndeploy", "批量从平台卸载")],
-                ] as const).map(([mode, label]) => (
+                {(
+                  [
+                    ["deploy", t("skill.batchDeploy", "批量同步到平台")],
+                    ["undeploy", t("skill.batchUndeploy", "批量从平台卸载")],
+                  ] as const
+                ).map(([mode, label]) => (
                   <button
                     key={mode}
                     type="button"
                     onClick={() => setActionMode(mode)}
-                    className={`rounded-xl border px-3 py-3 text-left transition-colors ${
+                    className={`rounded-xl border px-4 py-3 text-left transition-colors ${
                       actionMode === mode
                         ? "border-primary/40 bg-primary/5 text-primary"
                         : "border-border bg-card hover:border-primary/25"
@@ -252,76 +255,62 @@ export function SkillBatchDeployDialog({
                   </button>
                 ))}
               </div>
-            </div>
+            </section>
 
-            <div className="rounded-2xl border border-border bg-background/60 p-4">
-              <div className="mb-4 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl border border-border bg-card px-4 py-3">
-                  <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                    {t("skill.selectedSkills", "已选技能")}
-                  </div>
-                  <div className="mt-1 text-2xl font-semibold text-foreground">
-                    {skills.length}
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-border bg-card px-4 py-3">
-                  <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                    {t("skill.detectedPlatforms", "已检测平台")}
-                  </div>
-                  <div className="mt-1 text-2xl font-semibold text-foreground">
-                    {availablePlatforms.length}
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-border bg-card px-4 py-3">
-                  <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                    {t("skill.totalTargets", "总目标数")}
-                  </div>
-                  <div className="mt-1 text-2xl font-semibold text-foreground">
-                    {totalTargets}
-                  </div>
-                </div>
-              </div>
-
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-semibold">
-                  {t("skill.selectedSkills", "已选技能")}
-                </h3>
-                <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                  {skills.length}
-                </span>
-              </div>
-              <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
-                {skills.map((skill) => (
-                  <div
-                    key={skill.id}
-                    className="flex items-center justify-between rounded-xl border border-border bg-card px-3 py-2"
-                  >
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-medium">
-                        {skill.name}
+            <section className="rounded-2xl border border-border bg-background/60 p-4">
+              <h3 className="text-sm font-semibold">
+                {actionMode === "deploy"
+                  ? t("skill.installMethod", "安装方式")
+                  : t("skill.operation", "操作")}
+              </h3>
+              {actionMode === "deploy" ? (
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {(["copy", "symlink"] as SkillInstallMode[]).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setInstallMode(mode)}
+                      className={`rounded-xl border px-4 py-3 text-left transition-colors ${
+                        installMode === mode
+                          ? "border-primary/40 bg-primary/5"
+                          : "border-border bg-card hover:border-primary/25"
+                      }`}
+                    >
+                      <div className="text-sm font-medium">
+                        {mode === "symlink"
+                          ? t("skill.symlink", "Symlink")
+                          : t("skill.copyMode", "Copy")}
                       </div>
-                      {skill.description ? (
-                        <div className="truncate text-xs text-muted-foreground">
-                          {skill.description}
-                        </div>
-                      ) : null}
-                    </div>
-                    {skill.version ? (
-                      <span className="ml-3 shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary">
-                        v{skill.version}
-                      </span>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            </div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {mode === "symlink"
+                          ? t(
+                              "skill.symlinkHint",
+                              "平台目录保留软链接，后续更新更轻量。",
+                            )
+                          : t(
+                              "skill.copyHint",
+                              "复制一份 SKILL.md 到平台目录，兼容性更稳。",
+                            )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-3 rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+                  {t(
+                    "skill.batchUndeployHint",
+                    "会从所选平台目录移除对应 skill，不影响 PromptHub 本地仓库。",
+                  )}
+                </div>
+              )}
+            </section>
 
-            <div className="rounded-2xl border border-border bg-background/60 p-4">
-              <div className="mb-3 flex items-center justify-between">
+            <section className="rounded-2xl border border-border bg-background/60 p-4">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <h3 className="text-sm font-semibold">
                   {t("skill.targetPlatforms", "目标平台")}
                 </h3>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   {availablePlatforms.length > 0 ? (
                     <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary">
                       {t("skill.selectedPlatforms", {
@@ -386,7 +375,9 @@ export function SkillBatchDeployDialog({
                             <PlatformIcon platformId={platform.id} size={20} />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <div className="text-sm font-medium">{platform.name}</div>
+                            <div className="text-sm font-medium">
+                              {platform.name}
+                            </div>
                             <div className="text-xs text-muted-foreground">
                               {platform.id}
                             </div>
@@ -402,76 +393,71 @@ export function SkillBatchDeployDialog({
                   </div>
                 </>
               )}
-            </div>
-          </div>
+            </section>
 
-          <div className="space-y-4">
-            <div className="rounded-2xl border border-border bg-background/60 p-4">
-              <h3 className="text-sm font-semibold">
-                {actionMode === "deploy"
-                  ? t("skill.installMethod", "安装方式")
-                  : t("skill.operation", "操作")}
-              </h3>
-              {actionMode === "deploy" ? (
-                <div className="mt-3 grid gap-2">
-                  {(["copy", "symlink"] as SkillInstallMode[]).map((mode) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => setInstallMode(mode)}
-                      className={`rounded-xl border px-3 py-3 text-left transition-colors ${
-                        installMode === mode
-                          ? "border-primary/40 bg-primary/5"
-                          : "border-border bg-card hover:border-primary/25"
-                      }`}
-                    >
-                      <div className="text-sm font-medium">
-                        {mode === "symlink"
-                          ? t("skill.symlink", "Symlink")
-                          : t("skill.copyMode", "Copy")}
+            <section className="rounded-2xl border border-border bg-background/60 p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-semibold">
+                  {t("skill.selectedSkills", "已选技能")}
+                </h3>
+                <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                  {skills.length}
+                </span>
+              </div>
+              <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
+                {skills.map((skill) => (
+                  <div
+                    key={skill.id}
+                    className="flex items-center justify-between rounded-xl border border-border bg-card px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium">
+                        {skill.name}
                       </div>
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        {mode === "symlink"
-                          ? t(
-                              "skill.symlinkHint",
-                              "平台目录保留软链接，后续更新更轻量。",
-                            )
-                          : t(
-                              "skill.copyHint",
-                              "复制一份 SKILL.md 到平台目录，兼容性更稳。",
-                            )}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="mt-3 rounded-xl border border-border bg-card px-3 py-3 text-sm text-muted-foreground">
-                  {t(
-                    "skill.batchUndeployHint",
-                    "会从所选平台目录移除对应 skill，不影响 PromptHub 本地仓库。",
-                  )}
-                </div>
-              )}
-            </div>
+                      {skill.description ? (
+                        <div className="truncate text-xs text-muted-foreground">
+                          {skill.description}
+                        </div>
+                      ) : null}
+                    </div>
+                    {skill.version ? (
+                      <span className="ml-3 shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary">
+                        v{skill.version}
+                      </span>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </section>
 
-            <div className="rounded-2xl border border-border bg-background/60 p-4">
+            <section className="rounded-2xl border border-border bg-background/60 p-4">
               <h3 className="text-sm font-semibold">
                 {t("skill.syncSummary", "同步摘要")}
               </h3>
-              <div className="mt-3 space-y-2 text-sm text-muted-foreground">
-                <div className="flex items-center justify-between">
-                  <span>{t("skill.selectedSkills", "已选技能")}</span>
-                  <span className="font-medium text-foreground">{skills.length}</span>
+              <div className="mt-4 grid gap-2 grid-cols-3">
+                <div className="rounded-xl border border-border bg-card px-3 py-2">
+                  <div className="text-[10px] font-medium uppercase tracking-wide leading-tight text-muted-foreground">
+                    {t("skill.selectedSkills", "已选技能")}
+                  </div>
+                  <div className="mt-1 text-xl font-semibold text-foreground">
+                    {skills.length}
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span>{t("skill.targetPlatforms", "目标平台")}</span>
-                  <span className="font-medium text-foreground">
+                <div className="rounded-xl border border-border bg-card px-3 py-2">
+                  <div className="text-[10px] font-medium uppercase tracking-wide leading-tight text-muted-foreground">
+                    {t("skill.targetPlatforms", "目标平台")}
+                  </div>
+                  <div className="mt-1 text-xl font-semibold text-foreground">
                     {selectedPlatforms.size}
-                  </span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span>{t("skill.totalTargets", "总目标数")}</span>
-                  <span className="font-medium text-foreground">{totalTargets}</span>
+                <div className="rounded-xl border border-border bg-card px-3 py-2">
+                  <div className="text-[10px] font-medium uppercase tracking-wide leading-tight text-muted-foreground">
+                    {t("skill.totalTargets", "总目标数")}
+                  </div>
+                  <div className="mt-1 text-xl font-semibold text-foreground">
+                    {totalTargets}
+                  </div>
                 </div>
               </div>
 
@@ -532,13 +518,14 @@ export function SkillBatchDeployDialog({
                   <div className="mt-2 space-y-1 text-xs text-muted-foreground">
                     {lastFailures.slice(0, 6).map((failure) => (
                       <div key={`${failure.skillName}-${failure.platformId}`}>
-                        {failure.skillName} {"->"} {failure.platformId}: {failure.reason}
+                        {failure.skillName} {"->"} {failure.platformId}:{" "}
+                        {failure.reason}
                       </div>
                     ))}
                   </div>
                 </div>
               ) : null}
-            </div>
+            </section>
           </div>
         </div>
 

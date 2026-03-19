@@ -1,0 +1,9 @@
+packages:
+  - "."
+
+onlyBuiltDependencies:
+  - electron
+  - esbuild
+  - better-sqlite3
+
+shamefullyHoist: true

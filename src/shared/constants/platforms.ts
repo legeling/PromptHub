@@ -142,6 +142,26 @@ export const SKILL_PLATFORMS: SkillPlatform[] = [
       linux: "~/.openclaw/skills",
     },
   },
+  {
+    id: "qoder",
+    name: "Qoder",
+    icon: "Bot",
+    skillsDir: {
+      darwin: "~/.qoder/skills",
+      win32: "%USERPROFILE%\\.qoder\\skills",
+      linux: "~/.qoder/skills",
+    },
+  },
+  {
+    id: "qoderwork",
+    name: "QoderWorker",
+    icon: "Code",
+    skillsDir: {
+      darwin: "~/.qoderwork/skills",
+      win32: "%USERPROFILE%\\.qoderwork\\skills",
+      linux: "~/.qoderwork/skills",
+    },
+  },
 ];
 
 /**

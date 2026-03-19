@@ -31,6 +31,7 @@ import {
   resolveInitialUserDataPath,
   writeConfiguredDataPath,
 } from "./data-path";
+import { configureRuntimePaths } from "./runtime-paths";
 
 // Disable GPU acceleration (optional; may be needed on some systems)
 // 禁用 GPU 加速（可选，某些系统上可能需要）
@@ -86,6 +87,13 @@ if (!isE2E) {
   });
   app.setPath("userData", resolvedUserDataPath);
 }
+configureRuntimePaths({
+  appDataPath: app.getPath("appData"),
+  userDataPath: app.getPath("userData"),
+  exePath: process.execPath,
+  isPackaged: app.isPackaged,
+  platform: process.platform,
+});
 const isDev = shouldUseDevServer(app.isPackaged);
 
 // Single instance lock (prevent multiple instances)

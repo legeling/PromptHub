@@ -1,3 +1,21 @@
+## [0.4.6] - 2026-03-19
+
+### 修复 / Fixed
+
+- 🪟 **Skill 批量同步弹窗布局修复**：重做批量同步弹窗为更紧凑的单列流程，移除横向滚动并恢复整窗纵向滚动，避免目标平台和底部操作区被挤压
+  - **Skill Batch Deploy Dialog Layout Fix**: Redesigned the bulk deploy dialog into a tighter single-column flow, removed horizontal scrolling, and restored full-dialog vertical scrolling so target platforms and footer actions stay accessible
+- 🧭 **Skills 顶部工具栏布局修复**：将页面说明固定在左侧，操作工具统一收拢到右侧，修复顶部信息层级混乱的问题
+  - **Skills Header Toolbar Layout Fix**: Kept page description anchored on the left and grouped actions on the right, fixing the awkward hierarchy in the Skills header
+
+### 优化 / Improvements
+
+- 🎯 **批量同步信息层级优化**：安装方式、目标平台、已选技能与摘要重排为更符合操作顺序的结构，批量同步流程更直观
+  - **Bulk Deploy Information Hierarchy**: Reordered install mode, target platforms, selected skills, and summary into a clearer task flow for bulk deployment
+- 📚 **发版文档与官网同步**：将 README、多语言 README、官网发布元数据与文档入口同步到 `v0.4.6`
+  - **Release Docs & Website Sync**: Synced README, localized READMEs, website release metadata, and doc entry points to `v0.4.6`
+
+---
+
 ## [0.4.5] - 2026-03-14
 
 ### 修复 / Fixed

@@ -37,7 +37,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           # Only use arm64 Node on macOS arm64 runners. Windows/Linux runners are x64.
           # 仅在 macOS arm64 runner 上使用 arm64 Node，Windows/Linux runner 都是 x64
           architecture: ${{ matrix.platform == 'mac' && matrix.arch == 'arm64' && 'arm64' || 'x64' }}

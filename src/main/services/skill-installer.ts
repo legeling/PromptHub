@@ -6,7 +6,6 @@ import * as https from "https";
 import * as nodeNet from "net";
 import * as os from "os";
 import * as path from "path";
-import { app } from "electron";
 import type {
   ScannedSkill,
   SkillLocalFileEntry,
@@ -14,7 +13,8 @@ import type {
   SkillManifest,
 } from "../../shared/types";
 import { SkillDB } from "../database/skill";
-import { parseSkillMd, validateSkillName } from "./skill-validator";
+import { parseSkillMd } from "./skill-validator";
+import { getSkillsDir } from "../runtime-paths";
 import {
   SKILL_PLATFORMS,
   type SkillPlatform,
@@ -101,7 +101,9 @@ function isPrivateIPv6(address: string): boolean {
     return nodeNet.isIP(mappedAddress) === 4 && isPrivateIPv4(mappedAddress);
   }
 
-  const firstHextet = normalized.split(":").find((segment) => segment.length > 0);
+  const firstHextet = normalized
+    .split(":")
+    .find((segment) => segment.length > 0);
   if (!firstHextet) {
     return false;
   }
@@ -138,7 +140,9 @@ function sanitizeImportedTags(value: unknown): string[] {
     return ["imported"];
   }
   const tags = value
-    .filter((tag): tag is string => typeof tag === "string" && tag.trim().length > 0)
+    .filter(
+      (tag): tag is string => typeof tag === "string" && tag.trim().length > 0,
+    )
     .map((tag) => tag.trim().slice(0, 128));
   return tags.length > 0 ? tags : ["imported"];
 }
@@ -151,7 +155,9 @@ function getRequestModule(protocol: string): typeof http | typeof https {
   return protocol === "https:" ? https : http;
 }
 
-async function resolvePublicAddress(hostname: string): Promise<ResolvedAddress> {
+async function resolvePublicAddress(
+  hostname: string,
+): Promise<ResolvedAddress> {
   if (isBlockedHostname(hostname)) {
     throw new Error("Access to local network addresses is not allowed");
   }
@@ -227,7 +233,9 @@ async function fetchRemoteText(
         ) {
           response.resume();
           const nextUrl = new URL(location, parsedUrl).toString();
-          void fetchRemoteText(nextUrl, redirectCount + 1).then(resolve).catch(reject);
+          void fetchRemoteText(nextUrl, redirectCount + 1)
+            .then(resolve)
+            .catch(reject);
           return;
         }
 
@@ -278,7 +286,7 @@ async function fetchRemoteText(
 
 export class SkillInstaller {
   private static get skillsDir() {
-    return path.join(app.getPath("userData"), "skills");
+    return getSkillsDir();
   }
 
   private static getDefaultScanEntries(): Array<{
@@ -328,10 +336,18 @@ export class SkillInstaller {
     const realSkillsDir = await fs
       .realpath(resolvedSkillsDir)
       .catch(() => resolvedSkillsDir);
+    // Also resolve the base path through realpath so symlinks on either side
+    // don't cause a false-positive traversal detection.
+    // 对 basePath 也执行 realpath，避免任一侧有符号链接时误报 path traversal。
+    const realResolvedBasePath = await fs
+      .realpath(resolvedBasePath)
+      .catch(() => resolvedBasePath);
 
     if (
       !isPathWithin(resolvedSkillsDir, resolvedBasePath) &&
-      !isPathWithin(realSkillsDir, resolvedBasePath)
+      !isPathWithin(realSkillsDir, resolvedBasePath) &&
+      !isPathWithin(resolvedSkillsDir, realResolvedBasePath) &&
+      !isPathWithin(realSkillsDir, realResolvedBasePath)
     ) {
       throw new Error(
         "Path traversal detected: base path is outside skills directory",
@@ -363,7 +379,13 @@ export class SkillInstaller {
       { ensureExists: options?.ensureBaseExists },
     );
     const fullPath = path.resolve(resolvedBasePath, relativePath);
-    if (!isPathWithin(realBasePath, fullPath)) {
+    // Also check against the realpath of fullPath in case of symlinks.
+    // 对 fullPath 也执行 realpath 检查，避免路径含符号链接时误报。
+    const realFullPath = await fs.realpath(fullPath).catch(() => fullPath);
+    if (
+      !isPathWithin(realBasePath, fullPath) &&
+      !isPathWithin(realBasePath, realFullPath)
+    ) {
       throw new Error("Path traversal detected: target path escapes repo root");
     }
     return { fullPath, realBasePath };
@@ -478,6 +500,150 @@ export class SkillInstaller {
       }
       throw error;
     }
+  }
+
+  static async installFromSource(
+    source: string,
+    db: SkillDB,
+    options?: { name?: string },
+  ): Promise<string> {
+    const trimmedSource = source.trim();
+    if (!trimmedSource) {
+      throw new Error("Skill source cannot be empty");
+    }
+
+    if (/^https?:\/\/github\.com\//i.test(trimmedSource)) {
+      return this.installFromGithub(trimmedSource, db);
+    }
+
+    if (/^https:\/\//i.test(trimmedSource)) {
+      const remoteContent = await this.fetchRemoteContent(trimmedSource);
+      return this.installFromSkillContent(remoteContent, db, {
+        name: options?.name,
+        sourceUrl: trimmedSource,
+      });
+    }
+
+    return this.installFromLocalPath(trimmedSource, db, options);
+  }
+
+  static async installFromLocalPath(
+    sourcePath: string,
+    db: SkillDB,
+    options?: { name?: string },
+  ): Promise<string> {
+    const resolvedSourcePath = path.resolve(sourcePath);
+    const sourceStat = await fs.stat(resolvedSourcePath).catch(() => null);
+
+    if (!sourceStat) {
+      throw new Error(`Skill source not found: ${resolvedSourcePath}`);
+    }
+
+    if (sourceStat.isDirectory()) {
+      const skillMdPath = path.join(resolvedSourcePath, "SKILL.md");
+      const skillMdExists = await this.fileExists(skillMdPath);
+
+      if (!skillMdExists) {
+        throw new Error(
+          `SKILL.md not found in directory: ${resolvedSourcePath}`,
+        );
+      }
+
+      const skillContent = await fs.readFile(skillMdPath, "utf-8");
+      return this.installFromSkillContent(skillContent, db, {
+        name: options?.name,
+        sourceUrl: resolvedSourcePath,
+        repoSourceDir: resolvedSourcePath,
+      });
+    }
+
+    const extension = path.extname(resolvedSourcePath).toLowerCase();
+    if (extension === ".json") {
+      const jsonContent = await fs.readFile(resolvedSourcePath, "utf-8");
+      return this.importFromJson(jsonContent, db);
+    }
+
+    const fileContent = await fs.readFile(resolvedSourcePath, "utf-8");
+    return this.installFromSkillContent(fileContent, db, {
+      name: options?.name,
+      sourceUrl: resolvedSourcePath,
+      repoSourceDir:
+        path.basename(resolvedSourcePath).toLowerCase() === "skill.md"
+          ? path.dirname(resolvedSourcePath)
+          : undefined,
+    });
+  }
+
+  static async installFromSkillContent(
+    skillContent: string,
+    db: SkillDB,
+    options?: {
+      name?: string;
+      sourceUrl?: string;
+      repoSourceDir?: string;
+    },
+  ): Promise<string> {
+    const parsed = parseSkillMd(skillContent);
+    const manifest = options?.repoSourceDir
+      ? await this.readManifest(options.repoSourceDir)
+      : {};
+    const fallbackName = options?.repoSourceDir
+      ? path.basename(options.repoSourceDir)
+      : undefined;
+    const skillName =
+      options?.name?.trim() ||
+      parsed?.frontmatter.name ||
+      manifest.name ||
+      fallbackName;
+
+    if (!skillName || !skillName.trim()) {
+      throw new Error(
+        "Skill name is required; pass --name or add SKILL.md frontmatter",
+      );
+    }
+
+    const createdSkill = db.create({
+      name: skillName,
+      description:
+        parsed?.frontmatter.description ||
+        manifest.description ||
+        `Installed from ${options?.sourceUrl || "local source"}`,
+      instructions: skillContent,
+      content: skillContent,
+      protocol_type: "skill",
+      version: parsed?.frontmatter.version || manifest.version,
+      author: parsed?.frontmatter.author || manifest.author || "Local",
+      tags: [],
+      original_tags: parsed?.frontmatter.tags || manifest.tags || [],
+      is_favorite: false,
+      source_url: options?.sourceUrl,
+    });
+
+    let localRepoPath: string | undefined;
+    if (options?.repoSourceDir) {
+      try {
+        localRepoPath = await this.saveToLocalRepo(
+          skillName,
+          options.repoSourceDir,
+        );
+      } catch (error) {
+        console.warn(
+          `Failed to copy local repo for skill "${skillName}":`,
+          error,
+        );
+      }
+    } else {
+      localRepoPath = await this.saveContentToLocalRepo(
+        skillName,
+        skillContent,
+      );
+    }
+
+    if (localRepoPath) {
+      db.update(createdSkill.id, { local_repo_path: localRepoPath });
+    }
+
+    return createdSkill.id;
   }
 
   /**
@@ -1480,7 +1646,11 @@ export class SkillInstaller {
     for (const file of filesSnapshot) {
       this.validateRelativePath(file.relativePath);
       const fullPath = path.resolve(resolvedBasePath, file.relativePath);
-      if (!isPathWithin(realBasePath, fullPath)) {
+      const realFullPath = await fs.realpath(fullPath).catch(() => fullPath);
+      if (
+        !isPathWithin(realBasePath, fullPath) &&
+        !isPathWithin(realBasePath, realFullPath)
+      ) {
         throw new Error("Path traversal detected while restoring repo files");
       }
       await fs.mkdir(path.dirname(fullPath), { recursive: true });
