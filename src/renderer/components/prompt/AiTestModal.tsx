@@ -1,12 +1,18 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { PlayIcon, LoaderIcon, CopyIcon, CheckIcon, GitCompareIcon, ImageIcon, PlusIcon, DownloadIcon, BracesIcon } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { CollapsibleThinking } from '../ui/CollapsibleThinking';
 import { chatCompletion, buildMessagesFromPrompt, multiModelCompare, AITestResult, generateImage } from '../../services/ai';
+import { resolveScenarioModel } from '../../services/ai-defaults';
 import { useSettingsStore } from '../../stores/settings.store';
 import { useToast } from '../ui/Toast';
 import type { Prompt } from '../../../shared/types';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeSanitize from 'rehype-sanitize';
+import rehypeHighlight from 'rehype-highlight';
 
 interface AiTestModalProps {
   isOpen: boolean;
@@ -52,6 +58,13 @@ export function AiTestModal({
   const [outputFormat, setOutputFormat] = useState<'text' | 'json_object' | 'json_schema'>('text');
   const [jsonSchemaName, setJsonSchemaName] = useState('response');
   const [jsonSchemaContent, setJsonSchemaContent] = useState('');
+  const singleContentBufferRef = useRef('');
+  const singleThinkingBufferRef = useRef('');
+  const singleContentRafRef = useRef<number | null>(null);
+  const singleThinkingRafRef = useRef<number | null>(null);
+  const compareBuffersRef = useRef<Record<string, { response: string; thinkingContent: string }>>({});
+  const compareFlushRafRef = useRef<number | null>(null);
+  const rehypePlugins = useMemo(() => [rehypeSanitize, rehypeHighlight], []);
 
   // AI settings
   // AI 设置
@@ -60,6 +73,7 @@ export function AiTestModal({
   const aiApiUrl = useSettingsStore((state) => state.aiApiUrl);
   const aiModel = useSettingsStore((state) => state.aiModel);
   const aiModels = useSettingsStore((state) => state.aiModels);
+  const scenarioModelDefaults = useSettingsStore((state) => state.scenarioModelDefaults);
 
   const preferEnglish = useMemo(() => {
     const lang = (i18n.language || '').toLowerCase();
@@ -69,22 +83,111 @@ export function AiTestModal({
   }, [i18n.language]);
 
   const defaultChatModel = useMemo(() => {
-    const chatModels = aiModels.filter((m) => (m.type ?? 'chat') === 'chat');
-    return chatModels.find((m) => m.isDefault) ?? chatModels[0] ?? null;
-  }, [aiModels]);
+    return resolveScenarioModel(aiModels, scenarioModelDefaults, 'promptTest', 'chat');
+  }, [aiModels, scenarioModelDefaults]);
 
   // Get default image generation model
   // 获取默认生图模型
   const defaultImageModel = useMemo(() => {
-    const imageModels = aiModels.filter((m) => m.type === 'image');
-    return imageModels.find((m) => m.isDefault) ?? imageModels[0] ?? null;
-  }, [aiModels]);
+    return resolveScenarioModel(aiModels, scenarioModelDefaults, 'imageTest', 'image');
+  }, [aiModels, scenarioModelDefaults]);
 
   // Get all image generation models
   // 获取所有生图模型
   const imageModels = useMemo(() => {
     return aiModels.filter((m) => m.type === 'image');
   }, [aiModels]);
+
+  const compareModels = useMemo(() => {
+    const isImagePrompt = prompt?.promptType === 'image';
+    if (isImagePrompt) {
+      return [];
+    }
+    return aiModels.filter((model) => (model.type ?? 'chat') === 'chat');
+  }, [aiModels, prompt?.promptType]);
+
+  useEffect(() => {
+    setSelectedModelIds((prev) =>
+      prev.filter((id) => compareModels.some((model) => model.id === id))
+    );
+  }, [compareModels]);
+
+  useEffect(() => {
+    if (!isOpen || !prompt) return;
+    setMode(prompt.promptType === 'image' ? 'image' : 'single');
+  }, [isOpen, prompt]);
+
+  const cancelSingleStreamRafs = useCallback(() => {
+    if (singleContentRafRef.current !== null) {
+      cancelAnimationFrame(singleContentRafRef.current);
+      singleContentRafRef.current = null;
+    }
+    if (singleThinkingRafRef.current !== null) {
+      cancelAnimationFrame(singleThinkingRafRef.current);
+      singleThinkingRafRef.current = null;
+    }
+  }, []);
+
+  const resetSingleStreamBuffers = useCallback(() => {
+    cancelSingleStreamRafs();
+    singleContentBufferRef.current = '';
+    singleThinkingBufferRef.current = '';
+  }, [cancelSingleStreamRafs]);
+
+  const scheduleSingleContentFlush = useCallback(() => {
+    if (singleContentRafRef.current !== null) return;
+    singleContentRafRef.current = requestAnimationFrame(() => {
+      singleContentRafRef.current = null;
+      flushSync(() => {
+        setAiResponse(singleContentBufferRef.current);
+      });
+    });
+  }, []);
+
+  const scheduleSingleThinkingFlush = useCallback(() => {
+    if (singleThinkingRafRef.current !== null) return;
+    singleThinkingRafRef.current = requestAnimationFrame(() => {
+      singleThinkingRafRef.current = null;
+      flushSync(() => {
+        setThinkingContent(singleThinkingBufferRef.current);
+      });
+    });
+  }, []);
+
+  const flushCompareBuffers = useCallback(() => {
+    setCompareResults((prev) => {
+      if (!prev) return prev;
+      return prev.map((result) => {
+        const buffered = result.id ? compareBuffersRef.current[result.id] : undefined;
+        if (!buffered) {
+          return result;
+        }
+        return {
+          ...result,
+          response: buffered.response,
+          thinkingContent: buffered.thinkingContent,
+        };
+      });
+    });
+  }, []);
+
+  const scheduleCompareFlush = useCallback(() => {
+    if (compareFlushRafRef.current !== null) return;
+    compareFlushRafRef.current = requestAnimationFrame(() => {
+      compareFlushRafRef.current = null;
+      flushSync(() => {
+        flushCompareBuffers();
+      });
+    });
+  }, [flushCompareBuffers]);
+
+  const resetCompareBuffers = useCallback(() => {
+    if (compareFlushRafRef.current !== null) {
+      cancelAnimationFrame(compareFlushRafRef.current);
+      compareFlushRafRef.current = null;
+    }
+    compareBuffersRef.current = {};
+  }, []);
 
   // Extract variables
   // 提取变量
@@ -160,6 +263,8 @@ export function AiTestModal({
   // 重置状态
   useEffect(() => {
     if (isOpen && prompt) {
+      resetSingleStreamBuffers();
+      resetCompareBuffers();
       setAiResponse(null);
       setThinkingContent(null);
       setCompareResults(null);
@@ -174,7 +279,14 @@ export function AiTestModal({
       });
       setVariableValues(initialValues);
     }
-  }, [isOpen, prompt?.id, allVariables]);
+  }, [isOpen, prompt?.id, allVariables, resetCompareBuffers, resetSingleStreamBuffers]);
+
+  useEffect(() => {
+    return () => {
+      resetSingleStreamBuffers();
+      resetCompareBuffers();
+    };
+  }, [resetCompareBuffers, resetSingleStreamBuffers]);
 
   // 如果没有 prompt，返回 null（所有 hooks 已在上面调用完毕）
   if (!prompt) return null;
@@ -187,6 +299,7 @@ export function AiTestModal({
     setIsSingleLoading(true);
     setAiResponse(null);
     setThinkingContent(null);
+    resetSingleStreamBuffers();
 
     // 增加使用次数
     if (onUsageIncrement) {
@@ -199,6 +312,8 @@ export function AiTestModal({
       const useThinking = !!config.chatParams?.enableThinking;
 
       if (useStream) {
+        singleContentBufferRef.current = '';
+        singleThinkingBufferRef.current = '';
         setAiResponse('');
         if (useThinking) setThinkingContent('');
       }
@@ -213,8 +328,14 @@ export function AiTestModal({
           enableThinking: useThinking,
           streamCallbacks: useStream
             ? {
-              onContent: (chunk) => setAiResponse((prev) => (prev ?? '') + chunk),
-              onThinking: (chunk) => setThinkingContent((prev) => (prev ?? '') + chunk),
+              onContent: (chunk) => {
+                singleContentBufferRef.current += chunk;
+                scheduleSingleContentFlush();
+              },
+              onThinking: (chunk) => {
+                singleThinkingBufferRef.current += chunk;
+                scheduleSingleThinkingFlush();
+              },
             }
             : undefined,
           // Output format (Issue #38)
@@ -241,6 +362,10 @@ export function AiTestModal({
       if (!useStream) {
         setAiResponse(result.content);
         setThinkingContent(result.thinkingContent || null);
+      } else {
+        cancelSingleStreamRafs();
+        setAiResponse(singleContentBufferRef.current || result.content);
+        setThinkingContent(singleThinkingBufferRef.current || result.thinkingContent || null);
       }
 
       // 保存 AI 响应到 Prompt / Save AI response to Prompt
@@ -248,6 +373,7 @@ export function AiTestModal({
         onSaveResponse(prompt.id, result.content);
       }
     } catch (error) {
+      cancelSingleStreamRafs();
       setAiResponse(`${t('common.error')}: ${error instanceof Error ? error.message : t('common.error')}`);
     } finally {
       setIsSingleLoading(false);
@@ -266,7 +392,7 @@ export function AiTestModal({
       onUsageIncrement(prompt.id);
     }
 
-    const selectedConfigs = aiModels
+    const selectedConfigs = compareModels
       .filter((m) => selectedModelIds.includes(m.id))
       .map((m) => ({
         id: m.id,
@@ -275,11 +401,20 @@ export function AiTestModal({
         apiUrl: m.apiUrl,
         model: m.model,
         chatParams: m.chatParams,
+        imageParams: m.imageParams,
       }));
 
     const messages = buildMessagesFromPrompt(systemPrompt, userPrompt);
 
     try {
+      resetCompareBuffers();
+      compareBuffersRef.current = Object.fromEntries(
+        selectedConfigs.map((config) => [
+          config.id,
+          { response: '', thinkingContent: '' },
+        ])
+      );
+
       // 支持流式：提前渲染占位结果，让用户能看到“正在流式输出”的差异
       setCompareResults(
         selectedConfigs.map((c) => ({
@@ -298,24 +433,16 @@ export function AiTestModal({
         if (cfg.chatParams?.stream) {
           streamCallbacksMap.set(cfg.id, {
             onContent: (chunk: string) => {
-              setCompareResults((prev) => {
-                if (!prev) return prev;
-                return prev.map((r) =>
-                  (r as any).id === cfg.id
-                    ? { ...r, response: (r.response || '') + chunk }
-                    : r
-                );
-              });
+              const buffer = compareBuffersRef.current[cfg.id];
+              if (!buffer) return;
+              buffer.response += chunk;
+              scheduleCompareFlush();
             },
             onThinking: (chunk: string) => {
-              setCompareResults((prev) => {
-                if (!prev) return prev;
-                return prev.map((r) =>
-                  (r as any).id === cfg.id
-                    ? { ...r, thinkingContent: (r.thinkingContent || '') + chunk }
-                    : r
-                );
-              });
+              const buffer = compareBuffersRef.current[cfg.id];
+              if (!buffer) return;
+              buffer.thinkingContent += chunk;
+              scheduleCompareFlush();
             },
           });
         }
@@ -324,10 +451,12 @@ export function AiTestModal({
       const result = await multiModelCompare(selectedConfigs as any, messages, {
         streamCallbacksMap,
       });
+      flushCompareBuffers();
       setCompareResults(result.results);
     } catch (error) {
       // Handle error
     } finally {
+      resetCompareBuffers();
       setIsCompareLoading(false);
     }
   };
@@ -394,6 +523,23 @@ export function AiTestModal({
     }
   };
 
+  const renderAiResponseContent = (content?: string) => {
+    if (!content) {
+      return null;
+    }
+
+    return (
+      <div className="text-[15px] leading-relaxed markdown-content space-y-3 break-words">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          rehypePlugins={rehypePlugins}
+        >
+          {content}
+        </ReactMarkdown>
+      </div>
+    );
+  };
+
   // 将生成的图片添加到 Prompt
   const handleAddImageToPrompt = async (imageUrl: string) => {
     if (!onAddImage) return;
@@ -447,26 +593,30 @@ export function AiTestModal({
       <div className="space-y-4">
         {/* 模式切换 */}
         <div className="flex items-center gap-2 border-b border-border pb-4 flex-wrap">
-          <button
-            onClick={() => setMode('single')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === 'single'
-              ? 'bg-primary text-white'
-              : 'bg-muted text-muted-foreground hover:bg-accent'
-              }`}
-          >
-            <PlayIcon className="w-4 h-4" />
-            {t('prompt.aiTest')}
-          </button>
-          <button
-            onClick={() => setMode('compare')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === 'compare'
-              ? 'bg-primary text-white'
-              : 'bg-muted text-muted-foreground hover:bg-accent'
-              }`}
-          >
-            <GitCompareIcon className="w-4 h-4" />
-            {t('settings.multiModelCompare')}
-          </button>
+          {prompt.promptType !== 'image' && (
+            <>
+              <button
+                onClick={() => setMode('single')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === 'single'
+                  ? 'bg-primary text-white'
+                  : 'bg-muted text-muted-foreground hover:bg-accent'
+                  }`}
+              >
+                <PlayIcon className="w-4 h-4" />
+                {t('prompt.aiTest')}
+              </button>
+              <button
+                onClick={() => setMode('compare')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === 'compare'
+                  ? 'bg-primary text-white'
+                  : 'bg-muted text-muted-foreground hover:bg-accent'
+                  }`}
+              >
+                <GitCompareIcon className="w-4 h-4" />
+                {t('settings.multiModelCompare')}
+              </button>
+            </>
+          )}
           <button
             onClick={() => setMode('image')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === 'image'
@@ -613,7 +763,7 @@ export function AiTestModal({
                 />
 
                 <div className="bg-card border border-border rounded-lg p-4 max-h-64 overflow-y-auto">
-                  <p className="text-sm whitespace-pre-wrap">{aiResponse}</p>
+                  {renderAiResponseContent(aiResponse)}
                 </div>
               </div>
             )}
@@ -629,7 +779,7 @@ export function AiTestModal({
                 {t('prompt.selectModelsHint')}
               </h4>
               <div className="flex flex-wrap gap-2">
-                {aiModels.map((model) => (
+                {compareModels.map((model) => (
                   <button
                     key={model.id}
                     onClick={() => toggleModelSelection(model.id)}
@@ -675,9 +825,11 @@ export function AiTestModal({
                       <span className="text-xs font-medium truncate">{res.model}</span>
                       <span className="text-[10px] text-muted-foreground">{res.latency}ms</span>
                     </div>
-                    <p className="text-xs text-muted-foreground whitespace-pre-wrap line-clamp-6">
-                      {res.success ? (res.response || '(空)') : (res.error || '未知错误')}
-                    </p>
+                    <div className="text-xs text-muted-foreground max-h-40 overflow-y-auto">
+                      {res.success
+                        ? (renderAiResponseContent(res.response || '(空)') ?? '(空)')
+                        : (res.error || '未知错误')}
+                    </div>
                     {res.success && res.thinkingContent && (
                       <CollapsibleThinking
                         content={res.thinkingContent}

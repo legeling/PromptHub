@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 import { IPC_CHANNELS } from "../shared/constants/ipc-channels";
+import { aiApi } from "./api/ai";
 import { folderApi } from "./api/folder";
 import { ioApi } from "./api/io";
 import { promptApi } from "./api/prompt";
@@ -52,6 +53,7 @@ const api = {
   skill: skillApi,
   settings: settingsApi,
   io: ioApi,
+  ai: aiApi,
 
   // Listen to main process events (with whitelist)
   // 监听主进程事件（使用白名单）
@@ -64,6 +66,7 @@ const api = {
       "window:close-action",
       "window:showCloseDialog",
       "window:fullscreen-changed",
+      "window:visibility-changed",
     ];
 
     if (!ALLOWED_LISTEN_CHANNELS.includes(channel)) {
@@ -94,12 +97,14 @@ contextBridge.exposeInMainWorld("electron", {
   minimize: () => ipcRenderer.send("window:minimize"),
   maximize: () => ipcRenderer.send("window:maximize"),
   close: () => ipcRenderer.send("window:close"),
+  toggleVisibility: () => ipcRenderer.send("window:toggleVisibility"),
   // Fullscreen control
   // 全屏控制
   enterFullscreen: () => ipcRenderer.send("window:enterFullscreen"),
   exitFullscreen: () => ipcRenderer.send("window:exitFullscreen"),
   toggleFullscreen: () => ipcRenderer.send("window:toggleFullscreen"),
   isFullscreen: () => ipcRenderer.invoke("window:isFullscreen"),
+  isVisible: () => ipcRenderer.invoke("window:isVisible"),
   setAutoLaunch: (enabled: boolean, minimizeOnLaunch?: boolean) =>
     ipcRenderer.send("app:setAutoLaunch", enabled, minimizeOnLaunch),
   setDebugMode: (enabled: boolean) =>
@@ -133,6 +138,7 @@ contextBridge.exposeInMainWorld("electron", {
   // Data directory
   // 数据目录
   getDataPath: () => ipcRenderer.invoke("data:getPath"),
+  getDataPathStatus: () => ipcRenderer.invoke("data:getStatus"),
   migrateData: (newPath: string) => ipcRenderer.invoke("data:migrate", newPath),
   // Updater
   // 更新器
@@ -220,6 +226,10 @@ contextBridge.exposeInMainWorld("electron", {
       config: { url: string; username: string; password: string },
     ) => ipcRenderer.invoke("webdav:stat", fileUrl, config),
   },
+  e2e: {
+    getStats: () => ipcRenderer.invoke("e2e:getStats"),
+    resetStats: () => ipcRenderer.invoke("e2e:resetStats"),
+  },
   // Shortcuts
   // 快捷键
   getShortcuts: () => ipcRenderer.invoke("shortcuts:get"),
@@ -283,11 +293,13 @@ declare global {
       minimize?: () => void;
       maximize?: () => void;
       close?: () => void;
+      toggleVisibility?: () => void;
       // Fullscreen control
       // 全屏控制
       enterFullscreen?: () => void;
       exitFullscreen?: () => void;
       isFullscreen?: () => Promise<boolean>;
+      isVisible?: () => Promise<boolean>;
       toggleFullscreen?: () => void;
       setAutoLaunch?: (enabled: boolean, minimizeOnLaunch?: boolean) => void;
       setDebugMode?: (enabled: boolean) => void;
@@ -308,6 +320,11 @@ declare global {
       // Data directory
       // 数据目录
       getDataPath?: () => Promise<string>;
+      getDataPathStatus?: () => Promise<{
+        currentPath: string;
+        configuredPath?: string | null;
+        needsRestart: boolean;
+      }>;
       migrateData?: (newPath: string) => Promise<{
         success: boolean;
         message?: string;
@@ -381,6 +398,18 @@ declare global {
           notFound?: boolean;
           error?: string;
         }>;
+      };
+      e2e?: {
+        getStats: () => Promise<{
+          webdav: {
+            testConnection: number;
+            ensureDirectory: number;
+            upload: number;
+            download: number;
+            stat: number;
+          };
+        }>;
+        resetStats: () => Promise<boolean>;
       };
       // Shortcuts
       // 快捷键

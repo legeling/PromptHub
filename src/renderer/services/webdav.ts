@@ -35,10 +35,11 @@ interface WebDAVConfig {
   password: string;
 }
 
-interface SyncResult {
+export interface SyncResult {
   success: boolean;
   message: string;
   timestamp?: string;
+  localChanged?: boolean;
   details?: {
     promptsUploaded?: number;
     promptsDownloaded?: number;
@@ -104,6 +105,8 @@ interface BackupData {
   // Skills (stored in main process SQLite)
   // 技能（存储在主进程 SQLite）
   skills?: any[];
+  skillVersions?: any[];
+  skillFiles?: Record<string, any[]>;
 }
 
 // WebDAV sync options
@@ -511,10 +514,7 @@ export async function uploadToWebDAV(
   try {
     // Full backup mode (legacy compatible)
     // 全量备份模式（兼容旧版）
-    const [fullBackup, skills] = await Promise.all([
-      exportDatabase(),
-      window.api.skill?.getAll().catch(() => []) || [],
-    ]);
+    const fullBackup = await exportDatabase();
 
     // Decide whether to include images based on options
     // 根据选项决定是否包含图片
@@ -535,7 +535,9 @@ export async function uploadToWebDAV(
       aiConfig: fullBackup.aiConfig,
       settings: fullBackup.settings,
       settingsUpdatedAt: fullBackup.settingsUpdatedAt,
-      skills, // Include skills / 包含技能
+      skills: fullBackup.skills,
+      skillVersions: fullBackup.skillVersions,
+      skillFiles: fullBackup.skillFiles,
     };
 
     // Ensure remote directory exists
@@ -559,6 +561,9 @@ export async function uploadToWebDAV(
           aiConfig: backupData.aiConfig,
           settings: backupData.settings,
           settingsUpdatedAt: backupData.settingsUpdatedAt,
+          skills: backupData.skills,
+          skillVersions: backupData.skillVersions,
+          skillFiles: backupData.skillFiles,
         };
         const encryptedContent = await encryptData(
           JSON.stringify(dataToEncrypt),
@@ -597,6 +602,7 @@ export async function uploadToWebDAV(
           success: true,
           message: `Upload successful (${promptsCount} prompts, ${versionsCount} versions, ${imagesCount} images, ${videosCount} videos) / 上传成功 (${promptsCount} 条 Prompt, ${versionsCount} 个版本, ${imagesCount} 张图片, ${videosCount} 个视频)`,
           timestamp: new Date().toISOString(),
+          localChanged: false,
           details: {
             promptsUploaded: promptsCount,
             imagesUploaded: imagesCount,
@@ -631,6 +637,7 @@ export async function uploadToWebDAV(
         success: true,
         message: `Upload successful (${promptsCount} prompts, ${versionsCount} versions, ${imagesCount} images, ${videosCount} videos) / 上传成功 (${promptsCount} 条 Prompt, ${versionsCount} 个版本, ${imagesCount} 张图片, ${videosCount} 个视频)`,
         timestamp: new Date().toISOString(),
+        localChanged: false,
         details: {
           promptsUploaded: promptsCount,
           imagesUploaded: imagesCount,
@@ -721,6 +728,9 @@ export async function incrementalUpload(
       aiConfig: fullBackup.aiConfig,
       settings: fullBackup.settings,
       settingsUpdatedAt: fullBackup.settingsUpdatedAt,
+      skills: fullBackup.skills,
+      skillVersions: fullBackup.skillVersions,
+      skillFiles: fullBackup.skillFiles,
     };
 
     let dataString = JSON.stringify(coreData);
@@ -858,8 +868,31 @@ export async function incrementalUpload(
       }
     }
 
-    // Update manifest
-    // 更新 manifest
+    const promptsCount = fullBackup.prompts.length;
+    const versionsCount = fullBackup.versions?.length || 0;
+    const totalImages = Object.keys(newImageManifest).length;
+    const totalVideos = Object.keys(newVideoManifest).length;
+    const hasRemoteChanges =
+      uploadedCount > 0 || imagesUploaded > 0 || videosUploaded > 0;
+
+    if (!hasRemoteChanges) {
+      return {
+        success: true,
+        message:
+          "Already up to date, no sync needed / 数据已是最新，无需同步",
+        timestamp: new Date().toISOString(),
+        localChanged: false,
+        details: {
+          promptsUploaded: 0,
+          imagesUploaded: 0,
+          videosUploaded: 0,
+          skipped: skippedCount,
+        },
+      };
+    }
+
+    // Update manifest only when the remote backup actually changed.
+    // 仅当远端备份确实发生变化时才更新 manifest。
     const newManifest: BackupManifest = {
       version: "4.0",
       createdAt: remoteManifest?.createdAt || new Date().toISOString(),
@@ -882,15 +915,11 @@ export async function incrementalUpload(
       };
     }
 
-    const promptsCount = fullBackup.prompts.length;
-    const versionsCount = fullBackup.versions?.length || 0;
-    const totalImages = Object.keys(newImageManifest).length;
-    const totalVideos = Object.keys(newVideoManifest).length;
-
     return {
       success: true,
       message: `Incremental upload completed (${promptsCount} prompts, ${versionsCount} versions, ${imagesUploaded}/${totalImages} images updated, ${videosUploaded}/${totalVideos} videos updated, ${skippedCount} files skipped) / 增量上传完成 (${promptsCount} 条 Prompt, ${versionsCount} 个版本, ${imagesUploaded}/${totalImages} 张图片更新, ${videosUploaded}/${totalVideos} 个视频更新, ${skippedCount} 个文件跳过)`,
       timestamp: new Date().toISOString(),
+      localChanged: false,
       details: {
         promptsUploaded: promptsCount,
         imagesUploaded,
@@ -1029,6 +1058,9 @@ export async function incrementalDownload(
       prompts: coreData.prompts,
       folders: coreData.folders,
       versions: coreData.versions || [],
+      skills: coreData.skills,
+      skillVersions: coreData.skillVersions,
+      skillFiles: coreData.skillFiles,
     });
 
     // Download images
@@ -1085,10 +1117,12 @@ export async function incrementalDownload(
       success: true,
       message: `Incremental download completed (${coreData.prompts?.length || 0} prompts, ${imagesDownloaded} images, ${videosDownloaded} videos) / 增量下载完成 (${coreData.prompts?.length || 0} 条 Prompt, ${imagesDownloaded} 张图片, ${videosDownloaded} 个视频)`,
       timestamp: coreData.exportedAt,
+      localChanged: true,
       details: {
         promptsDownloaded: coreData.prompts?.length || 0,
         imagesDownloaded,
         videosDownloaded,
+        skillsDownloaded: coreData.skills?.length || 0,
       },
     };
   } catch (error) {
@@ -1227,6 +1261,9 @@ export async function downloadFromWebDAV(
       folders: data.folders,
       versions: data.versions || [],
       videos: videos || {},
+      skills: data.skills,
+      skillVersions: data.skillVersions,
+      skillFiles: data.skillFiles,
     });
 
     // Restore images (using the correct image data source)
@@ -1250,55 +1287,15 @@ export async function downloadFromWebDAV(
       });
     }
 
-    // Restore skills (if exists in backup)
-    // 恢复技能（如果备份中存在）
-    let skillsRestored = 0;
-    if (data.skills && Array.isArray(data.skills) && window.api.skill) {
-      for (const skill of data.skills) {
-        if (
-          !skill.name ||
-          typeof skill.name !== "string" ||
-          skill.name.trim().length === 0
-        ) {
-          console.warn(
-            "Skipping skill from backup with missing name:",
-            skill.id,
-          );
-          continue;
-        }
-
-        try {
-          await window.api.skill.create({
-            name: skill.name,
-            description: skill.description,
-            instructions: skill.instructions || skill.content,
-            content: skill.instructions || skill.content,
-            protocol_type: skill.protocol_type || "skill",
-            version: skill.version,
-            author: skill.author,
-            tags: skill.tags,
-            is_favorite: skill.is_favorite || false,
-            registry_slug: skill.registry_slug,
-          });
-          skillsRestored++;
-        } catch (err: any) {
-          // Skip duplicate skills (name already exists)
-          // 跳过重复的技能（名称已存在）
-          if (!err?.message?.includes("already exists")) {
-            console.warn(`Failed to restore skill "${skill.name}":`, err);
-          }
-        }
-      }
-    }
-
     return {
       success: true,
       message: `Download successful (${data.prompts?.length || 0} prompts, ${imagesRestored} images, ${Object.keys(videos || {}).length} videos${data.aiConfig ? ", AI config synced" : ""}${data.settings ? ", settings synced" : ""}) / 下载成功 (${data.prompts?.length || 0} 条 Prompt, ${imagesRestored} 张图片, ${Object.keys(videos || {}).length} 个视频${data.aiConfig ? ", AI配置已同步" : ""}${data.settings ? ", 设置已同步" : ""})`,
       timestamp: data.exportedAt,
+      localChanged: true,
       details: {
         promptsDownloaded: data.prompts?.length || 0,
         imagesDownloaded: imagesRestored,
-        skillsDownloaded: skillsRestored,
+        skillsDownloaded: data.skills?.length || 0,
       },
     };
   } catch (error) {
@@ -1501,6 +1498,7 @@ export async function bidirectionalSync(
         success: true,
         message: "Already up to date, no sync needed / 数据已是最新，无需同步",
         timestamp: new Date().toISOString(),
+        localChanged: false,
       };
     }
   } catch (error) {

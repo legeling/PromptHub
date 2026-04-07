@@ -1,9 +1,9 @@
 import type { PromptVersion } from "../../shared/types";
 import type {
   Skill,
+  SkillFileSnapshot,
   SkillLocalFileEntry,
   SkillVersion,
-  SkillFileSnapshot,
 } from "../../shared/types/skill";
 import {
   clearDatabase,
@@ -12,56 +12,27 @@ import {
   getDatabase,
 } from "./database";
 import {
+  DB_BACKUP_VERSION,
+  normalizeImportedBackup,
+  parsePromptHubBackupFileContent,
+} from "./database-backup-format";
+import type {
+  DatabaseBackup,
+  ExportScope,
+  PromptHubFile,
+} from "./database-backup-format";
+export type {
+  DatabaseBackup,
+  ExportScope,
+  PromptHubFile,
+} from "./database-backup-format";
+import {
   getAiConfigSnapshot,
   getSettingsStateSnapshot,
   restoreAiConfigSnapshot,
   restoreSettingsStateSnapshot,
 } from "./settings-snapshot";
-
-export interface DatabaseBackup {
-  version: number;
-  exportedAt: string;
-  prompts: Awaited<ReturnType<typeof getAllPrompts>>;
-  folders: Awaited<ReturnType<typeof getAllFolders>>;
-  versions: PromptVersion[];
-  images?: { [fileName: string]: string };
-  videos?: { [fileName: string]: string };
-  aiConfig?: {
-    aiModels?: any[];
-    aiProvider?: string;
-    aiApiKey?: string;
-    aiApiUrl?: string;
-    aiModel?: string;
-  };
-  settings?: { state: any };
-  settingsUpdatedAt?: string;
-  skills?: Skill[];
-  skillVersions?: SkillVersion[];
-  skillFiles?: {
-    [skillId: string]: SkillFileSnapshot[];
-  };
-}
-
-export type ExportScope = {
-  prompts?: boolean;
-  folders?: boolean;
-  versions?: boolean;
-  images?: boolean;
-  aiConfig?: boolean;
-  settings?: boolean;
-  skills?: boolean;
-};
-
-export type PromptHubFile =
-  | {
-      kind: "prompthub-export";
-      exportedAt: string;
-      scope: Required<ExportScope>;
-      payload: Partial<DatabaseBackup>;
-    }
-  | { kind: "prompthub-backup"; exportedAt: string; payload: DatabaseBackup };
-
-const DB_VERSION = 1;
+const DB_VERSION = DB_BACKUP_VERSION;
 const VERSION_STORE = "versions";
 const IMAGE_BATCH_SIZE = 10;
 const IMAGE_MAX_SIZE_BYTES = 10 * 1024 * 1024;
@@ -292,6 +263,7 @@ export async function exportDatabase(options?: {
 }
 
 export async function importDatabase(backup: DatabaseBackup): Promise<void> {
+  const normalizedBackup = normalizeImportedBackup(backup);
   const database = await getDatabase();
   const restoredSkillIdMap = new Map<string, string>();
   const restoredSkillsByName = new Map<string, Skill>();
@@ -307,15 +279,15 @@ export async function importDatabase(backup: DatabaseBackup): Promise<void> {
   const folderStore = transaction.objectStore("folders");
   const versionStore = transaction.objectStore(VERSION_STORE);
 
-  for (const prompt of backup.prompts) {
+  for (const prompt of normalizedBackup.prompts) {
     promptStore.add(prompt);
   }
 
-  for (const folder of backup.folders) {
+  for (const folder of normalizedBackup.folders) {
     folderStore.add(folder);
   }
 
-  for (const version of backup.versions) {
+  for (const version of normalizedBackup.versions) {
     versionStore.add(version);
   }
 
@@ -324,8 +296,8 @@ export async function importDatabase(backup: DatabaseBackup): Promise<void> {
     transaction.onerror = () => reject(transaction.error);
   });
 
-  if (backup.images) {
-    for (const [fileName, base64] of Object.entries(backup.images)) {
+  if (normalizedBackup.images) {
+    for (const [fileName, base64] of Object.entries(normalizedBackup.images)) {
       try {
         await window.electron?.saveImageBase64?.(fileName, base64);
       } catch (error) {
@@ -334,8 +306,8 @@ export async function importDatabase(backup: DatabaseBackup): Promise<void> {
     }
   }
 
-  if (backup.videos) {
-    for (const [fileName, base64] of Object.entries(backup.videos)) {
+  if (normalizedBackup.videos) {
+    for (const [fileName, base64] of Object.entries(normalizedBackup.videos)) {
       try {
         await window.electron?.saveVideoBase64?.(fileName, base64);
       } catch (error) {
@@ -344,12 +316,12 @@ export async function importDatabase(backup: DatabaseBackup): Promise<void> {
     }
   }
 
-  if (backup.aiConfig) {
-    restoreAiConfigSnapshot(backup.aiConfig);
+  if (normalizedBackup.aiConfig) {
+    restoreAiConfigSnapshot(normalizedBackup.aiConfig);
   }
 
-  if (backup.settings) {
-    restoreSettingsStateSnapshot(backup.settings);
+  if (normalizedBackup.settings) {
+    restoreSettingsStateSnapshot(normalizedBackup.settings);
   }
 
   try {
@@ -358,8 +330,8 @@ export async function importDatabase(backup: DatabaseBackup): Promise<void> {
     console.warn("Failed to clear existing skills:", error);
   }
 
-  if (backup.skills && backup.skills.length > 0) {
-    for (const skill of backup.skills) {
+  if (normalizedBackup.skills && normalizedBackup.skills.length > 0) {
+    for (const skill of normalizedBackup.skills) {
       if (!skill.name || typeof skill.name !== "string" || !skill.name.trim()) {
         console.warn("Skipping skill from backup with missing name:", skill.id);
         continue;
@@ -391,10 +363,10 @@ export async function importDatabase(backup: DatabaseBackup): Promise<void> {
     }
   }
 
-  if (backup.skillVersions && backup.skillVersions.length > 0) {
+  if (normalizedBackup.skillVersions && normalizedBackup.skillVersions.length > 0) {
     const nextCurrentVersionBySkillId = new Map<string, number>();
 
-    for (const version of backup.skillVersions) {
+    for (const version of normalizedBackup.skillVersions) {
       try {
         const restoredSkillId =
           restoredSkillIdMap.get(version.skillId) ?? version.skillId;
@@ -430,8 +402,8 @@ export async function importDatabase(backup: DatabaseBackup): Promise<void> {
     }
   }
 
-  if (backup.skillFiles) {
-    for (const [skillKey, files] of Object.entries(backup.skillFiles)) {
+  if (normalizedBackup.skillFiles) {
+    for (const [skillKey, files] of Object.entries(normalizedBackup.skillFiles)) {
       const restoredSkillId =
         restoredSkillIdMap.get(skillKey) ??
         restoredSkillsByName.get(skillKey)?.id ??
@@ -567,18 +539,7 @@ export async function restoreFromFile(file: File): Promise<void> {
   const text = file.name.endsWith(".gz")
     ? await gunzipToText(file)
     : await file.text();
-  const parsed = JSON.parse(text) as any;
-
-  if (parsed?.kind === "prompthub-backup") {
-    await importDatabase(parsed.payload as DatabaseBackup);
-    return;
-  }
-
-  if (parsed?.kind === "prompthub-export") {
-    throw new Error("选择性导出文件不支持导入，请使用“全量备份/恢复”文件");
-  }
-
-  await importDatabase(parsed as DatabaseBackup);
+  await importDatabase(parsePromptHubBackupFileContent(text));
 }
 
 export async function restoreFromBackup(backup: DatabaseBackup): Promise<void> {

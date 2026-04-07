@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo, useCallback, Children, isValidElement, cloneElement, memo, lazy, Suspense } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, Children, isValidElement, cloneElement, memo, lazy, Suspense } from 'react';
 import { flushSync } from 'react-dom';
 import { usePromptStore, ViewMode } from '../../stores/prompt.store';
 import { useFolderStore } from '../../stores/folder.store';
 import { useSettingsStore } from '../../stores/settings.store';
 import { useUIStore } from '../../stores/ui.store';
+import { resolveScenarioModel } from '../../services/ai-defaults';
 
 // Lazy load SkillManager for better initial load performance
 // 懒加载 SkillManager 以提升初始加载性能
@@ -30,6 +31,16 @@ import {
   hasUserDefinedPromptVariables,
   resolvePromptContentByLanguage,
 } from '../prompt/prompt-copy-utils';
+import {
+  filterVisiblePrompts,
+  sortVisiblePrompts,
+} from '../../services/prompt-filter';
+
+const LARGE_PROMPT_LIST_THRESHOLD = 160;
+const INITIAL_PROMPT_RENDER_COUNT = 160;
+const PROMPT_RENDER_CHUNK_SIZE = 160;
+const PROMPT_RENDER_CHUNK_DELAY_MS = 24;
+const PROMPT_CARD_INTRINSIC_SIZE = "76px";
 
 function escapeRegExp(str: string) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -116,6 +127,10 @@ const PromptCard = memo(function PromptCard({
     <div
       onClick={onSelect}
       onContextMenu={onContextMenu}
+      style={{
+        contentVisibility: 'auto',
+        containIntrinsicSize: PROMPT_CARD_INTRINSIC_SIZE,
+      }}
       className={`
         w-full text-left px-3 py-2.5 rounded-lg cursor-pointer
         transition-all duration-200 animate-in fade-in slide-in-from-left-2
@@ -176,6 +191,12 @@ export function MainContent() {
 
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
+  const [renderedPromptCount, setRenderedPromptCount] = useState(() => {
+    if (viewMode === 'list') {
+      return prompts.length;
+    }
+    return Math.min(prompts.length, INITIAL_PROMPT_RENDER_COUNT);
+  });
 
   const [selectedModelIds, setSelectedModelIds] = useState<string[]>([]);
   const [isVariableModalOpen, setIsVariableModalOpen] = useState(false);
@@ -195,6 +216,43 @@ export function MainContent() {
   const setPromptTypeFilter = usePromptStore((state) => state.setPromptTypeFilter);
   const uiViewMode = useUIStore((state) => state.viewMode);
   const { showToast } = useToast();
+  const compareBuffersRef = useRef<Record<string, { response: string; thinkingContent: string }>>({});
+  const compareFlushRafRef = useRef<number | null>(null);
+
+  const flushCompareBuffers = useCallback(() => {
+    setCompareResults((prev) => {
+      if (!prev) return prev;
+      return prev.map((result) => {
+        const buffered = result.id ? compareBuffersRef.current[result.id] : undefined;
+        if (!buffered) {
+          return result;
+        }
+        return {
+          ...result,
+          response: buffered.response,
+          thinkingContent: buffered.thinkingContent,
+        };
+      });
+    });
+  }, []);
+
+  const scheduleCompareFlush = useCallback(() => {
+    if (compareFlushRafRef.current !== null) return;
+    compareFlushRafRef.current = requestAnimationFrame(() => {
+      compareFlushRafRef.current = null;
+      flushSync(() => {
+        flushCompareBuffers();
+      });
+    });
+  }, [flushCompareBuffers]);
+
+  const resetCompareBuffers = useCallback(() => {
+    if (compareFlushRafRef.current !== null) {
+      cancelAnimationFrame(compareFlushRafRef.current);
+      compareFlushRafRef.current = null;
+    }
+    compareBuffersRef.current = {};
+  }, []);
 
   const handleSelectPrompt = useCallback((prompt: Prompt, e: React.MouseEvent) => {
     // Check if we are in multi-select mode (Ctrl/Cmd/Shift)
@@ -235,6 +293,7 @@ export function MainContent() {
   }, [i18n.language]);
 
   const highlightTerms = useMemo(() => getHighlightTerms(searchQuery), [searchQuery]);
+  const selectedPromptIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
   // Store test states/results by prompt ID (persisted in component state)
   // 按 prompt ID 保存测试状态和结果（持久化）
@@ -346,7 +405,7 @@ export function MainContent() {
   // Reset selected models when switching prompts
   // 切换 Prompt 时重置选中的模型
   useEffect(() => {
-    setSelectedModelIds([]);
+    setSelectedModelIds((prev) => (prev.length === 0 ? prev : []));
   }, [selectedId]);
 
   // AI configuration
@@ -356,17 +415,37 @@ export function MainContent() {
   const aiApiUrl = useSettingsStore((state) => state.aiApiUrl);
   const aiModel = useSettingsStore((state) => state.aiModel);
   const aiModels = useSettingsStore((state) => state.aiModels);
+  const scenarioModelDefaults = useSettingsStore((state) => state.scenarioModelDefaults);
   const showCopyNotification = useSettingsStore((state) => state.showCopyNotification);
 
   const defaultChatModel = useMemo(() => {
-    const chatModels = aiModels.filter((m) => (m.type ?? 'chat') === 'chat');
-    return chatModels.find((m) => m.isDefault) ?? chatModels[0] ?? null;
-  }, [aiModels]);
+    return resolveScenarioModel(aiModels, scenarioModelDefaults, 'promptTest', 'chat');
+  }, [aiModels, scenarioModelDefaults]);
 
   const defaultImageModel = useMemo(() => {
-    const imgModels = aiModels.filter((m) => m.type === 'image');
-    return imgModels.find((m) => m.isDefault) ?? imgModels[0] ?? null;
-  }, [aiModels]);
+    return resolveScenarioModel(aiModels, scenarioModelDefaults, 'imageTest', 'image');
+  }, [aiModels, scenarioModelDefaults]);
+
+  const compareModels = useMemo(() => {
+    const isImagePrompt = prompts.find((p) => p.id === selectedId)?.promptType === 'image';
+    if (isImagePrompt) {
+      return [];
+    }
+    return aiModels.filter((model) => (model.type ?? 'chat') === 'chat');
+  }, [aiModels, prompts, selectedId]);
+
+  useEffect(() => {
+    setSelectedModelIds((prev) => {
+      const next = prev.filter((id) => compareModels.some((model) => model.id === id));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [compareModels]);
+
+  useEffect(() => {
+    return () => {
+      resetCompareBuffers();
+    };
+  }, [resetCompareBuffers]);
 
   const singleChatConfig = useMemo(() => {
     if (defaultChatModel) {
@@ -386,7 +465,9 @@ export function MainContent() {
     (defaultImageModel && defaultImageModel.apiKey && defaultImageModel.apiUrl && defaultImageModel.model));
 
   useEffect(() => {
-    setRenderMarkdownEnabled(renderMarkdownPref);
+    setRenderMarkdownEnabled((prev) =>
+      prev === renderMarkdownPref ? prev : renderMarkdownPref,
+    );
   }, [renderMarkdownPref]);
 
   const sanitizeSchema: any = useMemo(() => {
@@ -465,6 +546,32 @@ export function MainContent() {
 
     return (
       <div className="p-4 rounded-xl bg-card border border-border text-[15px] leading-relaxed markdown-content space-y-3 break-words">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          rehypePlugins={rehypePlugins}
+          components={markdownComponents}
+        >
+          {content}
+        </ReactMarkdown>
+      </div>
+    );
+  };
+
+  const renderAiResponseContent = (content?: string) => {
+    if (!content) {
+      return null;
+    }
+
+    if (!renderMarkdownEnabled) {
+      return (
+        <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+          {content}
+        </div>
+      );
+    }
+
+    return (
+      <div className="text-[15px] leading-relaxed markdown-content space-y-3 break-words">
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           rehypePlugins={rehypePlugins}
@@ -702,7 +809,7 @@ export function MainContent() {
   // 多模型对比函数（支持变量替换后的 prompt）
   const runModelCompare = async (systemPrompt: string | undefined, userPrompt: string) => {
     setIsCompareVariableModalOpen(false);
-    const selectedConfigs = aiModels
+    const selectedConfigs = compareModels
       .filter((m) => selectedModelIds.includes(m.id))
       .map((m) => ({
         id: m.id,
@@ -711,6 +818,7 @@ export function MainContent() {
         apiUrl: m.apiUrl,
         model: m.model,
         chatParams: m.chatParams,
+        imageParams: m.imageParams,
       }));
 
     const messages = buildMessagesFromPrompt(systemPrompt, userPrompt);
@@ -719,6 +827,14 @@ export function MainContent() {
     setCompareError(null);
 
     try {
+      resetCompareBuffers();
+      compareBuffersRef.current = Object.fromEntries(
+        selectedConfigs.map((config) => [
+          config.id,
+          { response: '', thinkingContent: '' },
+        ])
+      );
+
       // Streaming support: render placeholder results early so users can see streaming progress
       // 支持流式：提前渲染占位结果，让用户能看到"正在流式输出"的差异
       setCompareResults(
@@ -740,24 +856,16 @@ export function MainContent() {
         if (cfg.chatParams?.stream) {
           streamCallbacksMap.set(cfg.id, {
             onContent: (chunk: string) => {
-              setCompareResults((prev) => {
-                if (!prev) return prev;
-                return prev.map((r) =>
-                  (r as any).id === cfg.id
-                    ? { ...r, response: (r.response || '') + chunk }
-                    : r
-                );
-              });
+              const buffer = compareBuffersRef.current[cfg.id];
+              if (!buffer) return;
+              buffer.response += chunk;
+              scheduleCompareFlush();
             },
             onThinking: (chunk: string) => {
-              setCompareResults((prev) => {
-                if (!prev) return prev;
-                return prev.map((r) =>
-                  (r as any).id === cfg.id
-                    ? { ...r, thinkingContent: (r.thinkingContent || '') + chunk }
-                    : r
-                );
-              });
+              const buffer = compareBuffersRef.current[cfg.id];
+              if (!buffer) return;
+              buffer.thinkingContent += chunk;
+              scheduleCompareFlush();
             },
           });
         }
@@ -766,12 +874,14 @@ export function MainContent() {
       const result = await multiModelCompare(selectedConfigs as any, messages, {
         streamCallbacksMap,
       });
+      flushCompareBuffers();
       // In streaming mode, results are updated via callbacks; sync once more for non-streaming models
       // 流式模式下，结果已经在回调中更新，这里只做最终同步（确保非流式模型的结果也正确显示）
       setCompareResults(result.results);
     } catch (error) {
       setCompareError(error instanceof Error ? error.message : t('common.error'));
     } finally {
+      resetCompareBuffers();
       setIsComparingModels(false);
     }
   };
@@ -779,134 +889,85 @@ export function MainContent() {
   // Filter prompts - use useMemo to respond correctly to searchQuery changes
   // 过滤 Prompts - 使用 useMemo 确保正确响应 searchQuery 变化
   const filteredPrompts = useMemo(() => {
-    let result = prompts;
-
-    if (selectedFolderId === 'favorites') {
-      result = result.filter((p) => p.isFavorite);
-    } else if (selectedFolderId) {
-      const childFolderIds = folders
-        .filter((folder) => folder.parentId === selectedFolderId)
-        .map((folder) => folder.id);
-      const visibleFolderIds = new Set([selectedFolderId, ...childFolderIds]);
-      const lockedFolderIds = new Set(
-        folders
-          .filter((folder) => folder.isPrivate && !unlockedFolderIds.has(folder.id))
-          .map((folder) => folder.id)
-      );
-      result = result.filter(
-        (p) => p.folderId && visibleFolderIds.has(p.folderId) && !lockedFolderIds.has(p.folderId)
-      );
-    } else {
-      // In the "All Prompts" view, hide contents of private folders
-      // 在"全部 Prompts"视图中，隐藏私密文件夹的内容
-      const privateFolderIds = folders.filter(f => f.isPrivate).map(f => f.id);
-      if (privateFolderIds.length > 0) {
-        result = result.filter(p => !p.folderId || !privateFolderIds.includes(p.folderId));
-      }
-    }
-
-    if (searchQuery) {
-      const queryLower = searchQuery.toLowerCase();
-      const queryCompact = queryLower.replace(/\s+/g, '');
-      const keywords = queryLower.split(/\s+/).filter((k) => k.length > 0);
-
-      const isSubsequence = (needle: string, haystack: string) => {
-        if (!needle) return true;
-        if (needle.length > haystack.length) return false;
-        let i = 0;
-        for (let j = 0; j < haystack.length && i < needle.length; j++) {
-          if (haystack[j] === needle[i]) i++;
-        }
-        return i === needle.length;
-      };
-
-      // Scoring logic: 100 for title exact, 50 for title include, 20 for desc include, 10 for prompts include
-      // 评分逻辑：标题精确匹配 100，标题包含 50，描述包含 20，Prompt 包含 10
-      result = result.map(p => {
-        let score = 0;
-        const titleLower = p.title.toLowerCase();
-        const descLower = (p.description || '').toLowerCase();
-        const userPromptLower = p.userPrompt.toLowerCase();
-
-        // Exact title match
-        if (titleLower === queryLower) score += 100;
-        // Title includes query
-        else if (titleLower.includes(queryLower)) score += 50;
-        // Subsequence title match
-        else if (queryCompact.length >= 2 && isSubsequence(queryCompact, titleLower.replace(/\s+/g, ''))) score += 30;
-
-        // Description includes query
-        if (descLower.includes(queryLower)) score += 20;
-
-        // All keywords match anywhere
-        const searchableText = [
-          p.title,
-          p.description || '',
-          p.userPrompt,
-          p.userPromptEn || '',
-          p.systemPrompt || '',
-          p.systemPromptEn || '',
-        ].join(' ').toLowerCase();
-
-        if (keywords.every(k => searchableText.includes(k))) {
-          score += 10;
-        }
-
-        // Final score check
-        return { prompt: p, score };
-      })
-        .filter(item => item.score > 0)
-        .sort((a, b) => b.score - a.score)
-        .map(item => item.prompt);
-    }
-
-    // Tag filtering (multi-select: must contain all selected tags)
-    // 标签筛选（多选：必须包含所有选中的标签）
-    if (filterTags.length > 0) {
-      result = result.filter((p) =>
-        filterTags.every(tag => p.tags.includes(tag))
-      );
-    }
-
-    // Prompt type filtering / 类型筛选
-    if (promptTypeFilter !== 'all') {
-      result = result.filter((p) => (p.promptType || 'text') === promptTypeFilter);
-    }
-
-    return result;
-  }, [prompts, selectedFolderId, searchQuery, filterTags, folders, unlockedFolderIds, promptTypeFilter]);
+    return filterVisiblePrompts({
+      prompts,
+      selectedFolderId,
+      folders,
+      unlockedFolderIds,
+      searchQuery,
+      filterTags,
+      promptTypeFilter,
+    });
+  }, [prompts, selectedFolderId, folders, unlockedFolderIds, searchQuery, filterTags, promptTypeFilter]);
 
   // Sorting (pinned prompts always first)
   // 排序（置顶的始终在最前面）
-  const sortedPrompts = useMemo(() => {
-    const sorted = [...filteredPrompts];
-    sorted.sort((a, b) => {
-      // Pinned items first
-      // 置顶的排在前面
-      if (a.isPinned && !b.isPinned) return -1;
-      if (!a.isPinned && b.isPinned) return 1;
+  const sortedPrompts = useMemo(
+    () => sortVisiblePrompts(filteredPrompts, sortBy, sortOrder),
+    [filteredPrompts, sortBy, sortOrder],
+  );
 
-      let comparison = 0;
-      switch (sortBy) {
-        case 'updatedAt':
-          comparison = new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
-          break;
-        case 'createdAt':
-          comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-          break;
-        case 'title':
-          comparison = a.title.localeCompare(b.title);
-          break;
-        case 'usageCount':
-          comparison = (a.usageCount || 0) - (b.usageCount || 0);
-          break;
-        default:
-          comparison = 0;
+  useEffect(() => {
+    const targetCount =
+      viewMode === 'list' || sortedPrompts.length <= LARGE_PROMPT_LIST_THRESHOLD
+        ? sortedPrompts.length
+        : Math.min(sortedPrompts.length, INITIAL_PROMPT_RENDER_COUNT);
+
+    if (viewMode === 'list' || sortedPrompts.length <= LARGE_PROMPT_LIST_THRESHOLD) {
+      if (renderedPromptCount !== targetCount) {
+        setRenderedPromptCount(targetCount);
       }
-      return sortOrder === 'asc' ? comparison : -comparison;
-    });
-    return sorted;
-  }, [filteredPrompts, sortBy, sortOrder]);
+      return;
+    }
+
+    let cancelled = false;
+    let nextTimer: number | null = null;
+
+    if (renderedPromptCount !== targetCount) {
+      setRenderedPromptCount(targetCount);
+    }
+
+    const scheduleNextChunk = () => {
+      nextTimer = window.setTimeout(() => {
+        if (cancelled) return;
+
+        setRenderedPromptCount((current) => {
+          if (current >= sortedPrompts.length) {
+            return current;
+          }
+
+          const nextCount = Math.min(
+            sortedPrompts.length,
+            current + PROMPT_RENDER_CHUNK_SIZE,
+          );
+
+          if (nextCount < sortedPrompts.length) {
+            scheduleNextChunk();
+          }
+
+          return nextCount;
+        });
+      }, PROMPT_RENDER_CHUNK_DELAY_MS);
+    };
+
+    if (INITIAL_PROMPT_RENDER_COUNT < sortedPrompts.length) {
+      scheduleNextChunk();
+    }
+
+    return () => {
+      cancelled = true;
+      if (nextTimer !== null) {
+        window.clearTimeout(nextTimer);
+      }
+    };
+  }, [renderedPromptCount, sortedPrompts, viewMode]);
+
+  const visiblePrompts = useMemo(() => {
+    if (viewMode === 'list') {
+      return sortedPrompts;
+    }
+    return sortedPrompts.slice(0, renderedPromptCount);
+  }, [renderedPromptCount, sortedPrompts, viewMode]);
 
   const selectedPrompt = prompts.find((p) => p.id === selectedId);
 
@@ -914,15 +975,15 @@ export function MainContent() {
   // 根据界面语言自动选择 Prompt 语言（如果有英文版本）
   useEffect(() => {
     if (!selectedPrompt) {
-      setShowEnglish(false);
+      setShowEnglish((prev) => (prev ? false : prev));
       return;
     }
     const hasEnglish = !!(selectedPrompt.systemPromptEn || selectedPrompt.userPromptEn);
     if (!hasEnglish) {
-      setShowEnglish(false);
+      setShowEnglish((prev) => (prev ? false : prev));
       return;
     }
-    setShowEnglish(preferEnglish);
+    setShowEnglish((prev) => (prev === preferEnglish ? prev : preferEnglish));
   }, [selectedPrompt?.id, selectedPrompt?.systemPromptEn, selectedPrompt?.userPromptEn, preferEnglish]);
 
   // Editing prompt for table view
@@ -1235,7 +1296,7 @@ export function MainContent() {
       >
         <PromptListHeader count={sortedPrompts.length} />
         <PromptGalleryView
-          prompts={sortedPrompts}
+          prompts={visiblePrompts}
           highlightTerms={highlightTerms}
           onSelect={(id) => selectPrompt(id)}
           onToggleFavorite={toggleFavorite}
@@ -1256,7 +1317,7 @@ export function MainContent() {
       >
         <PromptListHeader count={sortedPrompts.length} />
         <PromptKanbanView
-          prompts={sortedPrompts}
+          prompts={visiblePrompts}
           highlightTerms={highlightTerms}
           onSelect={(id) => selectPrompt(id)}
           onToggleFavorite={toggleFavorite}
@@ -1295,11 +1356,11 @@ export function MainContent() {
               </div>
             ) : (
               <div className="p-3 space-y-2">
-                {sortedPrompts.map((prompt) => (
+                {visiblePrompts.map((prompt) => (
                   <PromptCard
                     key={prompt.id}
                     prompt={prompt}
-                    isSelected={selectedIds.includes(prompt.id)}
+                    isSelected={selectedPromptIdSet.has(prompt.id)}
                     onSelect={(e) => handleSelectPrompt(prompt, e)}
                     onContextMenu={(e) => handleContextMenu(e, prompt)}
                     highlightTerms={highlightTerms}
@@ -1503,7 +1564,7 @@ export function MainContent() {
 
                   {/* Multi-model comparison */}
                   {/* 多模型对比区域 */}
-                  {aiModels.length > 0 && (
+                  {selectedPrompt.promptType !== 'image' && compareModels.length > 0 && (
                     <div className="mb-4 p-4 rounded-xl bg-card border border-border">
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2">
@@ -1516,7 +1577,7 @@ export function MainContent() {
                       {/* Model selection list */}
                       {/* 模型选择列表 */}
                       <div className="flex flex-wrap gap-2 mb-4">
-                        {aiModels.map((model) => {
+                        {compareModels.map((model) => {
                           const isSelected = selectedModelIds.includes(model.id);
                           // Get provider display name
                           // 获取供应商简称
@@ -1617,8 +1678,10 @@ export function MainContent() {
                                   className="text-[10px]"
                                 />
                               )}
-                              <div className="text-[11px] leading-relaxed whitespace-pre-wrap max-h-40 overflow-y-auto">
-                                {res.success ? (res.response || '(空)') : (res.error || '未知错误')}
+                              <div className="text-[11px] leading-relaxed max-h-40 overflow-y-auto">
+                                {res.success
+                                  ? (renderAiResponseContent(res.response || '(空)') ?? '(空)')
+                                  : (res.error || '未知错误')}
                               </div>
                             </div>
                           ))}
@@ -1650,19 +1713,25 @@ export function MainContent() {
                           </button>
                         )}
                       </div>
-                      {isTestingAI ? (
+                      {isTestingAI && !aiResponse ? (
                         <div className="flex items-center gap-2 text-muted-foreground">
                           <LoaderIcon className="w-4 h-4 animate-spin" />
                           <span className="text-sm">{t('prompt.testing', '测试中...')}</span>
                         </div>
                       ) : (
                         <div className="space-y-3">
+                          {isTestingAI ? (
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <LoaderIcon className="w-3 h-3 animate-spin" />
+                              <span>{t('prompt.testing', '测试中...')}</span>
+                            </div>
+                          ) : null}
                           {/* Collapsible thinking process / 可折叠的思考过程 */}
                           <CollapsibleThinking
                             content={aiThinking}
                             isLoading={isTestingAI}
                           />
-                          <div className="text-sm leading-relaxed whitespace-pre-wrap max-h-80 overflow-y-auto">
+                          <div className="text-sm leading-relaxed max-h-80 overflow-y-auto">
                             {isAiResponseImage && aiResponse ? (
                               <div className="relative group">
                                 <img 
@@ -1721,7 +1790,7 @@ export function MainContent() {
                                 </div>
                               </div>
                             ) : (
-                                aiResponse
+                              renderAiResponseContent(aiResponse)
                             )}
                           </div>
                         </div>

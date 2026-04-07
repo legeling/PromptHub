@@ -211,4 +211,41 @@ describe("skill store", () => {
       }),
     ]);
   });
+
+  it("prefers install_name over registry slug when importing a registry skill", async () => {
+    const create = vi.fn().mockResolvedValue(
+      createSkillFixture({
+        id: "skill-2",
+        name: "find-skills",
+        registry_slug: "vercel-labs-skills-find-skills",
+      }),
+    );
+    const getAll = vi.fn().mockResolvedValue([]);
+
+    (window as any).api.skill.create = create;
+    (window as any).api.skill.getAll = getAll;
+
+    await useSkillStore.getState().installRegistrySkill({
+      slug: "vercel-labs-skills-find-skills",
+      install_name: "find-skills",
+      name: "find-skills",
+      description: "Community skill",
+      category: "dev",
+      author: "vercel-labs",
+      source_url: "https://github.com/vercel-labs/skills",
+      store_url: "https://skills.sh/vercel-labs/skills/find-skills",
+      tags: ["search"],
+      version: "1.0.0",
+      content: "# Finding Skills",
+      weekly_installs: "774.9K",
+      compatibility: ["opencode", "codex"],
+    });
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "find-skills",
+        registry_slug: "vercel-labs-skills-find-skills",
+      }),
+    );
+  });
 });

@@ -281,6 +281,24 @@ export function SkillStoreDetail({ skill, isInstalled, onClose }: SkillStoreDeta
 
           {/* Meta info */}
           <div className="mt-4 grid grid-cols-2 gap-2">
+            {skill.weekly_installs && (
+              <div className="p-3 bg-accent/30 rounded-xl border border-border">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                  {t('skill.weeklyInstalls', 'Weekly Installs')}
+                </span>
+                <div className="mt-1 text-xs text-foreground">{skill.weekly_installs}</div>
+              </div>
+            )}
+
+            {skill.github_stars && (
+              <div className="p-3 bg-accent/30 rounded-xl border border-border">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                  {t('skill.githubStars', 'GitHub Stars')}
+                </span>
+                <div className="mt-1 text-xs text-foreground">{skill.github_stars}</div>
+              </div>
+            )}
+
             {/* Source */}
             {skill.source_url && (
               <div className="p-3 bg-accent/30 rounded-xl border border-border">
@@ -292,6 +310,22 @@ export function SkillStoreDetail({ skill, isInstalled, onClose }: SkillStoreDeta
                   className="block text-xs text-primary hover:underline mt-1 truncate"
                 >
                   {skill.source_url.replace('https://github.com/', '')}
+                </a>
+              </div>
+            )}
+
+            {skill.store_url && (
+              <div className="p-3 bg-accent/30 rounded-xl border border-border">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                  {t('skill.storePage', 'Store Page')}
+                </span>
+                <a
+                  href={skill.store_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block text-xs text-primary hover:underline mt-1 truncate"
+                >
+                  {skill.store_url.replace('https://', '')}
                 </a>
               </div>
             )}
@@ -310,6 +344,21 @@ export function SkillStoreDetail({ skill, isInstalled, onClose }: SkillStoreDeta
               </div>
             )}
           </div>
+
+          {skill.security_audits && skill.security_audits.length > 0 && (
+            <div className="mt-4 p-3 bg-accent/30 rounded-xl border border-border">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                {t('skill.securityAudits', 'Security Audits')}
+              </span>
+              <div className="mt-2 space-y-1">
+                {skill.security_audits.map((audit) => (
+                  <div key={audit} className="text-xs text-foreground/80">
+                    {audit}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Tags */}
           {skill.tags.length > 0 && (

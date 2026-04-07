@@ -177,10 +177,6 @@ describe("skill ui integration", () => {
     await act(async () => {
       await renderWithI18n(<SkillFullDetailPage />, { language: "en" });
     });
-    await waitFor(() => {
-      expect(window.api.skill.readLocalFiles).toHaveBeenCalledWith(baseSkill.id);
-    });
-
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Snapshot" }));
     });

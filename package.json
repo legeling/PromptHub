@@ -1,6 +1,6 @@
 {
   "name": "prompthub",
-  "version": "0.4.7",
+  "version": "0.4.8",
   "description": "一款开源、本地优先的 AI Prompt 管理工具，帮助你高效管理、版本控制和复用",
   "main": "out/main/index.js",
   "bin": {
@@ -43,7 +43,7 @@
     "electron:build:mac": "vite build && vite build --config vite.cli.config.ts && electron-builder --mac --x64 --arm64 --publish never",
     "electron:build:win": "vite build && vite build --config vite.cli.config.ts && electron-builder --win --x64 --arm64 --publish never",
     "electron:build:linux": "vite build && vite build --config vite.cli.config.ts && electron-builder --linux --x64 --publish never",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint": "eslint . --ext ts,tsx,mts --report-unused-disable-directives --max-warnings 0",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
     "test": "vitest",
     "test:cli": "vitest run tests/unit/cli/run.test.ts",
@@ -52,10 +52,15 @@
     "test:i18n": "vitest run tests/unit/services/skill-locale-regression.test.ts tests/unit/components/skill-detail-utils.test.ts tests/unit/components/skill-i18n-smoke.test.tsx tests/unit/services/i18n-init.test.ts tests/unit/stores/settings-language.test.ts",
     "test:run": "vitest run",
     "test:coverage": "vitest --coverage",
+    "test:perf": "pnpm perf:budget",
     "test:e2e": "pnpm build && playwright test",
-    "test:e2e:smoke": "playwright test tests/e2e/app.spec.ts",
+    "test:e2e:smoke": "pnpm build && playwright test tests/e2e/app.spec.ts",
     "test:release": "pnpm lint && pnpm typecheck && pnpm test:unit && pnpm test:integration && pnpm build && pnpm test:e2e:smoke",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "perf:large-data": "node --experimental-strip-types scripts/profile-large-datasets.mts",
+    "perf:large-data:heavy": "node --experimental-strip-types scripts/profile-large-datasets.mts --prompts=5000 --skills=2000 --iterations=20",
+    "perf:budget": "node --experimental-strip-types scripts/check-large-data-budgets.mts",
+    "perf:budget:ci": "node --experimental-strip-types scripts/check-large-data-budgets.mts --prompts=5000 --skills=2000 --iterations=20"
   },
   "dependencies": {
     "node-sqlite3-wasm": "^0.8.0"

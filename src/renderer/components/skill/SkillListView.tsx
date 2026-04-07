@@ -14,6 +14,23 @@ import { PlatformIcon } from "../ui/PlatformIcon";
 import type { Skill } from "../../../shared/types";
 import type { SkillPlatform } from "../../../shared/constants/platforms";
 
+const MAX_STAGGERED_ROWS = 12;
+
+function normalizePlatformStatusMap(
+  value: unknown,
+): Record<string, boolean> {
+  if (!value || typeof value !== "object") {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).filter((entry): entry is [string, boolean] => {
+      const [, installed] = entry;
+      return typeof installed === "boolean";
+    }),
+  );
+}
+
 interface SkillListViewProps {
   skills: Skill[];
   onQuickInstall: (skill: Skill) => void;
@@ -22,6 +39,8 @@ interface SkillListViewProps {
   selectedSkillIds?: Set<string>;
   onToggleSelection?: (skillId: string) => void;
 }
+
+const skillPlatformStatusCache = new Map<string, Record<string, boolean>>();
 
 /**
  * Compact List View for Skills
@@ -69,14 +88,40 @@ export function SkillListView({
   // Load install status for all skills
   useEffect(() => {
     const loadStatuses = async () => {
-      const names = skills.map((skill) => skill.name);
+      const nextStatuses = Object.fromEntries(
+        skills.map((skill) => [skill.id, skillPlatformStatusCache.get(skill.name) ?? {}]),
+      );
+      setPlatformStatuses(nextStatuses);
+
+      const missingNames = Array.from(
+        new Set(
+          skills
+            .map((skill) => skill.name)
+            .filter((name) => !skillPlatformStatusCache.has(name)),
+        ),
+      );
+
+      if (missingNames.length === 0) {
+        return;
+      }
+
       try {
-        const statusByName =
-          await window.api.skill.getMdInstallStatusBatch(names);
-        const statuses = Object.fromEntries(
-          skills.map((skill) => [skill.id, statusByName[skill.name] ?? {}]),
+        const statusByName = (await window.api.skill.getMdInstallStatusBatch(
+          missingNames,
+        )) as Record<string, unknown>;
+
+        for (const [name, status] of Object.entries(statusByName)) {
+          skillPlatformStatusCache.set(name, normalizePlatformStatusMap(status));
+        }
+
+        setPlatformStatuses(
+          Object.fromEntries(
+            skills.map((skill) => [
+              skill.id,
+              skillPlatformStatusCache.get(skill.name) ?? {},
+            ]),
+          ),
         );
-        setPlatformStatuses(statuses);
       } catch (error) {
         console.error("Failed to load install status batch:", error);
       }
@@ -151,7 +196,11 @@ export function SkillListView({
                   }
                   selectSkill(skill.id);
                 }}
-                style={{ animationDelay: `${index * 30}ms` }}
+                style={{
+                  animationDelay: `${Math.min(index, MAX_STAGGERED_ROWS) * 30}ms`,
+                  contentVisibility: "auto",
+                  containIntrinsicSize: "84px",
+                }}
                 className={`group flex items-center gap-4 px-6 py-4 cursor-pointer transition-all animate-in fade-in slide-in-from-left-2 ${
                   selectionMode && isChecked
                     ? "bg-primary/8"

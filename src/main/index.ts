@@ -18,16 +18,22 @@ import { initDatabase, closeDatabase } from "./database";
 import { registerAllIPC } from "./ipc";
 import { getMinimizeOnLaunchSetting } from "./ipc/settings.ipc";
 import { createMenu } from "./menu";
-import { registerShortcuts, registerShortcutsIPC } from "./shortcuts";
+import {
+  registerShortcuts,
+  registerShortcutsIPC,
+  toggleWindowForShowApp,
+} from "./shortcuts";
 import { initUpdater, registerUpdaterIPC } from "./updater";
 import { registerWebDAVIPC } from "./webdav";
 import {
   applyE2ESeed,
   configureE2ETestProfile,
   isE2EEnabled,
+  registerE2EIPC,
   shouldUseDevServer,
 } from "./testing/e2e";
 import {
+  readConfiguredDataPath,
   resolveInitialUserDataPath,
   writeConfiguredDataPath,
 } from "./data-path";
@@ -56,6 +62,10 @@ let closeAction: "ask" | "minimize" | "exit" = "ask";
 // 是否正在等待用户选择关闭行为
 let pendingCloseAction = false;
 let isDebugMode = false;
+
+function emitWindowVisibility(isVisible: boolean) {
+  mainWindow?.webContents.send("window:visibility-changed", isVisible);
+}
 
 // Register privileged schemes (must be called before app is ready)
 // 注册特权协议（必须在 app ready 之前调用）
@@ -172,6 +182,7 @@ async function createWindow() {
       // No database available, show window normally
       // 数据库不可用，正常显示窗口
       mainWindow?.show();
+      emitWindowVisibility(true);
       return;
     }
 
@@ -180,14 +191,21 @@ async function createWindow() {
       // Minimize to tray on launch
       // 启动时最小化到托盘
       createTray();
+      emitWindowVisibility(false);
       // Don't show window, just keep it hidden
       // 不显示窗口，保持隐藏
     } else {
       // Show window normally
       // 正常显示窗口
       mainWindow?.show();
+      emitWindowVisibility(true);
     }
   });
+
+  mainWindow.on("show", () => emitWindowVisibility(true));
+  mainWindow.on("hide", () => emitWindowVisibility(false));
+  mainWindow.on("minimize", () => emitWindowVisibility(false));
+  mainWindow.on("restore", () => emitWindowVisibility(true));
 
   // Notify renderer when OS fullscreen state changes
   // 当操作系统全屏状态变化时通知渲染进程
@@ -320,6 +338,16 @@ ipcMain.on("window:exitFullscreen", () => {
 
 ipcMain.handle("window:isFullscreen", () => {
   return mainWindow?.isFullScreen() ?? false;
+});
+
+ipcMain.handle("window:isVisible", () => {
+  return mainWindow?.isVisible() ?? false;
+});
+
+ipcMain.on("window:toggleVisibility", () => {
+  if (mainWindow) {
+    toggleWindowForShowApp(mainWindow);
+  }
 });
 
 ipcMain.on("window:toggleFullscreen", () => {
@@ -591,6 +619,19 @@ ipcMain.handle("data:getPath", () => {
   return app.getPath("userData");
 });
 
+ipcMain.handle("data:getStatus", () => {
+  const currentPath = app.getPath("userData");
+  const configuredPath = readConfiguredDataPath(app.getPath("appData"));
+
+  return {
+    configuredPath,
+    currentPath,
+    needsRestart:
+      !!configuredPath &&
+      path.resolve(configuredPath) !== path.resolve(currentPath),
+  };
+});
+
 // Migrate data to a new directory
 // 迁移数据到新目录
 ipcMain.handle("data:migrate", async (_event, newPath: string) => {
@@ -801,6 +842,16 @@ ipcMain.handle(
 // 应用启动
 app.whenReady().then(async () => {
   try {
+    // A second packaged instance on Windows may still reach whenReady() before quit
+    // if we only call app.quit() after failing the single-instance lock.
+    // Guard bootstrap here so the loser instance never continues into createWindow/loadFile.
+    // Windows 上第二个实例在拿不到单实例锁后，仍可能先进入 whenReady() 再退出。
+    // 这里再次拦截，确保失败实例不会继续执行 createWindow/loadFile。
+    if (!gotTheLock && !isE2E && !isDesktopCliMode) {
+      app.quit();
+      return;
+    }
+
     if (desktopCliArgs) {
       const exitCode = await runCli(desktopCliArgs);
       app.exit(exitCode);
@@ -907,6 +958,7 @@ app.whenReady().then(async () => {
     // Register WebDAV IPC (bypass CORS)
     // 注册 WebDAV IPC（绕过 CORS）
     registerWebDAVIPC();
+    registerE2EIPC();
 
     // Register shortcuts IPC
     // 注册快捷键 IPC

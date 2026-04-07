@@ -1,4 +1,4 @@
-import { useRef, memo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Prompt } from '../../../shared/types';
 import { ImageIcon, FolderIcon, HashIcon, MoreHorizontalIcon, StarIcon, EditIcon, TrashIcon, CopyIcon, PlayIcon, HistoryIcon, VideoIcon } from 'lucide-react';
@@ -183,11 +183,11 @@ export function PromptGalleryView({
     const { t } = useTranslation();
     const folders = useFolderStore(state => state.folders);
     const galleryImageSize = usePromptStore(state => state.galleryImageSize);
-
-    const getFolderName = (folderId?: string) => {
-        if (!folderId) return t('folder.uncategorized', '未分类');
-        return folders.find(f => f.id === folderId)?.name || t('folder.uncategorized', '未分类');
-    };
+    const uncategorizedLabel = t('folder.uncategorized', '未分类');
+    const folderNameMap = useMemo(
+        () => new Map(folders.map((folder) => [folder.id, folder.name])),
+        [folders],
+    );
 
     if (prompts.length === 0) {
         return (
@@ -220,7 +220,7 @@ export function PromptGalleryView({
                                 e.stopPropagation();
                                 onToggleFavorite(prompt.id);
                             }}
-                            folderName={getFolderName(prompt.folderId)}
+                            folderName={prompt.folderId ? (folderNameMap.get(prompt.folderId) || uncategorizedLabel) : uncategorizedLabel}
                             highlightTerms={highlightTerms}
                         />
                     </div>

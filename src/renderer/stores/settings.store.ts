@@ -28,19 +28,6 @@ const normalizeLanguage = (lang: string): SupportedLanguage => {
   return "en";
 };
 
-// Get default data directory path (based on platform)
-// 获取默认数据目录路径（根据平台）
-const getDefaultDataPath = (): string => {
-  const platform = navigator.userAgent.toLowerCase();
-  if (platform.includes("win")) {
-    return "%APPDATA%/PromptHub";
-  } else if (platform.includes("mac")) {
-    return "~/Library/Application Support/PromptHub";
-  } else {
-    return "~/.config/PromptHub";
-  }
-};
-
 // Theme colors - Morandi color palette + classic royal blue
 // 主题色 - 莫兰迪色系 + 经典宝蓝
 export const MORANDI_THEMES = [
@@ -155,6 +142,13 @@ export interface AIModelConfig {
 
 export type CreationMode = "manual" | "quick";
 export type TranslationMode = "immersive" | "full";
+export type AIUsageScenario =
+  | "quickAdd"
+  | "promptTest"
+  | "imageTest"
+  | "translation";
+
+export type ScenarioModelDefaults = Partial<Record<AIUsageScenario, string>>;
 
 interface SettingsState {
   creationMode: CreationMode;
@@ -257,6 +251,7 @@ interface SettingsState {
   // Multi-model configuration (new version)
   // 多模型配置（新版）
   aiModels: AIModelConfig[];
+  scenarioModelDefaults: ScenarioModelDefaults;
 
   // Translation mode setting / 翻译模式设置
   translationMode: TranslationMode; // immersive=沉浸式, full=全文翻译
@@ -323,6 +318,10 @@ interface SettingsState {
   updateAiModel: (id: string, config: Partial<AIModelConfig>) => void;
   deleteAiModel: (id: string) => void;
   setDefaultAiModel: (id: string) => void;
+  setScenarioModelDefault: (
+    scenario: AIUsageScenario,
+    modelId: string | null,
+  ) => void;
   setCreationMode: (mode: CreationMode) => void;
   setTranslationMode: (mode: TranslationMode) => void;
   addSourceHistory: (source: string) => void;
@@ -386,7 +385,7 @@ export const useSettingsStore = create<SettingsState>()(
         showCopyNotification: true,
         showSaveNotification: true,
         language: normalizeLanguage(i18n.language),
-        dataPath: getDefaultDataPath(),
+        dataPath: "",
         webdavEnabled: false,
         webdavUrl: "",
         webdavUsername: "",
@@ -411,6 +410,7 @@ export const useSettingsStore = create<SettingsState>()(
         aiApiUrl: "",
         aiModel: "gpt-4o",
         aiModels: [],
+        scenarioModelDefaults: {},
         creationMode: "manual" as CreationMode,
         translationMode: "immersive" as TranslationMode,
         sourceHistory: [],
@@ -660,6 +660,12 @@ export const useSettingsStore = create<SettingsState>()(
           const models = get().aiModels;
           const toDelete = models.find((m) => m.id === id);
           const remaining = models.filter((m) => m.id !== id);
+          const scenarioModelDefaults = { ...get().scenarioModelDefaults };
+          for (const [scenario, modelId] of Object.entries(scenarioModelDefaults)) {
+            if (modelId === id) {
+              delete scenarioModelDefaults[scenario as AIUsageScenario];
+            }
+          }
           // If deleting the default model, set the first one as default
           // 如果删除的是默认模型，设置第一个为默认
           if (toDelete?.isDefault && remaining.length > 0) {
@@ -671,7 +677,7 @@ export const useSettingsStore = create<SettingsState>()(
               aiModel: remaining[0].model,
             });
           }
-          setTouched({ aiModels: remaining });
+          setTouched({ aiModels: remaining, scenarioModelDefaults });
         },
 
         setDefaultAiModel: (id) => {
@@ -701,6 +707,16 @@ export const useSettingsStore = create<SettingsState>()(
               aiModel: targetModel.model,
             });
           }
+        },
+
+        setScenarioModelDefault: (scenario, modelId) => {
+          const nextDefaults = { ...get().scenarioModelDefaults };
+          if (modelId) {
+            nextDefaults[scenario] = modelId;
+          } else {
+            delete nextDefaults[scenario];
+          }
+          setTouched({ scenarioModelDefaults: nextDefaults });
         },
 
         applyTheme: () => {
@@ -782,7 +798,7 @@ export const useSettingsStore = create<SettingsState>()(
     },
     {
       name: "prompthub-settings",
-      version: 2,
+      version: 3,
       migrate: (state) => {
         if (!state || typeof state !== "object") {
           return state as SettingsState;
@@ -793,6 +809,13 @@ export const useSettingsStore = create<SettingsState>()(
           next.tagsSectionHeight < DEFAULT_TAGS_SECTION_HEIGHT
         ) {
           next.tagsSectionHeight = DEFAULT_TAGS_SECTION_HEIGHT;
+        }
+        if (
+          !next.scenarioModelDefaults ||
+          typeof next.scenarioModelDefaults !== "object" ||
+          Array.isArray(next.scenarioModelDefaults)
+        ) {
+          next.scenarioModelDefaults = {};
         }
         if (
           !next.customSkillPlatformPaths ||

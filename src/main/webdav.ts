@@ -8,6 +8,7 @@
 import { ipcMain } from "electron";
 import https from "https";
 import http from "http";
+import { getE2EWebDAVMode, handleE2EWebDAVRequest, isE2EEnabled } from "./testing/e2e";
 
 interface WebDAVConfig {
   url: string;
@@ -104,11 +105,18 @@ async function sendWebDAVRequest(
  * 注册 WebDAV IPC 处理器
  */
 export function registerWebDAVIPC() {
+  const useE2EWebDAVMock =
+    isE2EEnabled() && getE2EWebDAVMode() !== "off";
+
   // Test connection
   // 测试连接
   ipcMain.handle(
     "webdav:testConnection",
     async (_event, config: WebDAVConfig) => {
+      if (useE2EWebDAVMock) {
+        return handleE2EWebDAVRequest("testConnection", config.url);
+      }
+
       const authHeader =
         "Basic " +
         Buffer.from(`${config.username}:${config.password}`).toString("base64");
@@ -143,6 +151,10 @@ export function registerWebDAVIPC() {
   ipcMain.handle(
     "webdav:ensureDirectory",
     async (_event, url: string, config: WebDAVConfig) => {
+      if (useE2EWebDAVMock) {
+        return handleE2EWebDAVRequest("ensureDirectory", url);
+      }
+
       const authHeader =
         "Basic " +
         Buffer.from(`${config.username}:${config.password}`).toString("base64");
@@ -171,6 +183,10 @@ export function registerWebDAVIPC() {
   ipcMain.handle(
     "webdav:upload",
     async (_event, fileUrl: string, config: WebDAVConfig, data: string) => {
+      if (useE2EWebDAVMock) {
+        return handleE2EWebDAVRequest("upload", fileUrl);
+      }
+
       const authHeader =
         "Basic " +
         Buffer.from(`${config.username}:${config.password}`).toString("base64");
@@ -206,6 +222,10 @@ export function registerWebDAVIPC() {
   ipcMain.handle(
     "webdav:stat",
     async (_event, fileUrl: string, config: WebDAVConfig) => {
+      if (useE2EWebDAVMock) {
+        return handleE2EWebDAVRequest("stat", fileUrl);
+      }
+
       const authHeader =
         "Basic " +
         Buffer.from(`${config.username}:${config.password}`).toString("base64");
@@ -248,6 +268,10 @@ export function registerWebDAVIPC() {
   ipcMain.handle(
     "webdav:download",
     async (_event, fileUrl: string, config: WebDAVConfig) => {
+      if (useE2EWebDAVMock) {
+        return handleE2EWebDAVRequest("download", fileUrl);
+      }
+
       const authHeader =
         "Basic " +
         Buffer.from(`${config.username}:${config.password}`).toString("base64");

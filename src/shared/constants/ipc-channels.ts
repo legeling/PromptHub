@@ -30,6 +30,12 @@ export const IPC_CHANNELS = {
   SETTINGS_GET: "settings:get",
   SETTINGS_SET: "settings:set",
 
+  // AI transport
+  AI_HTTP_REQUEST: "ai:httpRequest",
+  AI_HTTP_STREAM: "ai:httpStream",
+  AI_HTTP_STREAM_CHUNK: "ai:httpStreamChunk",
+  AI_HTTP_STREAM_ERROR: "ai:httpStreamError",
+
   // Import/Export
   EXPORT_PROMPTS: "export:prompts",
   IMPORT_PROMPTS: "import:prompts",
@@ -77,12 +83,14 @@ export const IPC_CHANNELS = {
   SKILL_CREATE_LOCAL_DIR: "skill:createLocalDir",
   SKILL_SAVE_TO_REPO: "skill:saveToRepo",
   SKILL_GET_REPO_PATH: "skill:getRepoPath",
+  SKILL_SYNC_FROM_REPO: "skill:syncFromRepo",
 
   // Skill Version
   // Skill 版本管理
   SKILL_VERSION_GET_ALL: "skill:version:getAll",
   SKILL_VERSION_CREATE: "skill:version:create",
   SKILL_VERSION_ROLLBACK: "skill:version:rollback",
+  SKILL_VERSION_DELETE: "skill:version:delete",
   // Skill Backup Restore
   // Skill 备份恢复
   SKILL_DELETE_ALL: "skill:deleteAll",

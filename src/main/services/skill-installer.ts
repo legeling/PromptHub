@@ -15,6 +15,7 @@ import type {
 import { SkillDB } from "../database/skill";
 import { parseSkillMd } from "./skill-validator";
 import { getSkillsDir } from "../runtime-paths";
+import { sanitizeImportedSkillDraft } from "./skill-import-sanitize";
 import {
   SKILL_PLATFORMS,
   type SkillPlatform,
@@ -42,8 +43,6 @@ function getErrorMessage(error: unknown): string {
 const REMOTE_FETCH_TIMEOUT_MS = 30_000;
 const REMOTE_FETCH_MAX_BYTES = 5 * 1024 * 1024;
 const REMOTE_FETCH_MAX_REDIRECTS = 5;
-const IMPORT_FIELD_MAX_LENGTH = 10_000;
-
 interface ResolvedAddress {
   address: string;
   family: 4 | 6;
@@ -125,26 +124,6 @@ function isPrivateAddress(address: string): boolean {
     return isPrivateIPv6(address);
   }
   return false;
-}
-
-function sanitizeImportedString(
-  value: unknown,
-  fallback: string | undefined = "",
-  maxLength = IMPORT_FIELD_MAX_LENGTH,
-): string | undefined {
-  return typeof value === "string" ? value.slice(0, maxLength) : fallback;
-}
-
-function sanitizeImportedTags(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return ["imported"];
-  }
-  const tags = value
-    .filter(
-      (tag): tag is string => typeof tag === "string" && tag.trim().length > 0,
-    )
-    .map((tag) => tag.trim().slice(0, 128));
-  return tags.length > 0 ? tags : ["imported"];
 }
 
 function toRequestPath(parsedUrl: URL): string {
@@ -591,21 +570,40 @@ export class SkillInstaller {
       );
     }
 
+    const sanitized = sanitizeImportedSkillDraft(
+      {
+        name: skillName,
+        description: parsed?.frontmatter.description,
+        fallbackDescription:
+          manifest.description ||
+          `Installed from ${options?.sourceUrl || "local source"}`,
+        version: parsed?.frontmatter.version,
+        fallbackVersion: manifest.version,
+        author: parsed?.frontmatter.author,
+        fallbackAuthor: manifest.author || "Local",
+        tags: parsed?.frontmatter.tags,
+        fallbackTags: manifest.tags,
+        instructions: skillContent,
+        source_url: options?.sourceUrl,
+        local_repo_path: options?.repoSourceDir,
+        protocol_type: "skill",
+      },
+      { defaultTags: [] },
+    );
+
     const createdSkill = db.create({
-      name: skillName,
-      description:
-        parsed?.frontmatter.description ||
-        manifest.description ||
-        `Installed from ${options?.sourceUrl || "local source"}`,
-      instructions: skillContent,
-      content: skillContent,
-      protocol_type: "skill",
-      version: parsed?.frontmatter.version || manifest.version,
-      author: parsed?.frontmatter.author || manifest.author || "Local",
+      name: sanitized.name!,
+      description: sanitized.description,
+      instructions: sanitized.instructions,
+      content: sanitized.instructions,
+      protocol_type: sanitized.protocol_type,
+      version: sanitized.version,
+      author: sanitized.author,
       tags: [],
-      original_tags: parsed?.frontmatter.tags || manifest.tags || [],
+      original_tags: sanitized.tags,
       is_favorite: false,
-      source_url: options?.sourceUrl,
+      source_url: sanitized.source_url,
+      local_repo_path: sanitized.local_repo_path,
     });
 
     let localRepoPath: string | undefined;
@@ -669,8 +667,26 @@ export class SkillInstaller {
                 // 使用 skill-validator 解析 SKILL.md frontmatter
                 const parsed = parseSkillMd(instructions);
 
-                let name =
-                  parsed?.frontmatter.name || manifest.name || entry.name;
+                const sanitized = sanitizeImportedSkillDraft(
+                  {
+                    name: parsed?.frontmatter.name,
+                    fallbackName: manifest.name || entry.name,
+                    description: parsed?.frontmatter.description,
+                    fallbackDescription: manifest.description || `Local skill found in ${entry.name}`,
+                    version: parsed?.frontmatter.version,
+                    fallbackVersion: manifest.version,
+                    author: parsed?.frontmatter.author,
+                    fallbackAuthor: manifest.author || "Local",
+                    tags: parsed?.frontmatter.tags,
+                    fallbackTags: [],
+                    instructions,
+                    local_repo_path: skillFolderPath,
+                    protocol_type: "skill",
+                  },
+                  { defaultTags: [] },
+                );
+
+                const name = sanitized.name;
 
                 if (!name || name.trim().length === 0) {
                   console.warn(
@@ -679,26 +695,18 @@ export class SkillInstaller {
                   continue;
                 }
 
-                let description =
-                  parsed?.frontmatter.description ||
-                  manifest.description ||
-                  `Local skill found in ${entry.name}`;
-                let version =
-                  parsed?.frontmatter.version || manifest.version || undefined;
-                let author =
-                  parsed?.frontmatter.author || manifest.author || "Local";
                 db.create({
                   name,
-                  description,
-                  version,
-                  author,
-                  instructions: instructions,
-                  content: instructions,
-                  protocol_type: "skill",
+                  description: sanitized.description,
+                  version: sanitized.version,
+                  author: sanitized.author,
+                  instructions: sanitized.instructions,
+                  content: sanitized.instructions,
+                  protocol_type: sanitized.protocol_type,
                   is_favorite: false,
                   tags: [],
-                  original_tags: parsed?.frontmatter.tags || [],
-                  local_repo_path: skillFolderPath,
+                  original_tags: sanitized.tags,
+                  local_repo_path: sanitized.local_repo_path,
                 });
                 count++;
                 console.log(
@@ -786,20 +794,34 @@ export class SkillInstaller {
                     existing.platforms.push(platformName);
                   }
                 } else {
+                  const sanitized = sanitizeImportedSkillDraft(
+                    {
+                      name: parsed?.frontmatter.name,
+                      fallbackName: manifest.name || entry.name,
+                      description: parsed?.frontmatter.description,
+                      fallbackDescription:
+                        manifest.description ||
+                        `Local skill found in ${entry.name}`,
+                      version: parsed?.frontmatter.version,
+                      fallbackVersion: manifest.version,
+                      author: parsed?.frontmatter.author,
+                      fallbackAuthor: manifest.author || "Local",
+                      tags: parsed?.frontmatter.tags,
+                      fallbackTags: [],
+                      instructions,
+                      local_repo_path: skillFolderPath,
+                      protocol_type: "skill",
+                    },
+                    { defaultTags: [] },
+                  );
                   skillMap.set(skillFolderPath, {
-                    name,
+                    name: sanitized.name!,
                     description:
-                      parsed?.frontmatter.description ||
-                      manifest.description ||
-                      `Local skill found in ${entry.name}`,
-                    version:
-                      parsed?.frontmatter.version ||
-                      manifest.version ||
-                      undefined,
-                    author:
-                      parsed?.frontmatter.author || manifest.author || "Local",
-                    tags: parsed?.frontmatter.tags || [],
-                    instructions,
+                      sanitized.description || `Local skill found in ${entry.name}`,
+                    version: sanitized.version,
+                    author: sanitized.author || "Local",
+                    tags: sanitized.tags,
+                    instructions: sanitized.instructions || instructions,
                     filePath: skillMdPath,
                     localPath: skillFolderPath,
                     platforms: [platformName],
@@ -975,15 +997,24 @@ export class SkillInstaller {
         "utf-8",
       );
       const parsed = JSON.parse(content) as Record<string, unknown>;
+      const sanitized = sanitizeImportedSkillDraft(
+        {
+          name: parsed.name,
+          description: parsed.description,
+          version: parsed.version,
+          author: parsed.author,
+          tags: parsed.tags,
+          instructions: parsed.instructions,
+        },
+        { defaultTags: [] },
+      );
       return {
-        name: sanitizeImportedString(parsed.name, undefined),
-        description: sanitizeImportedString(parsed.description, undefined),
-        version: sanitizeImportedString(parsed.version, undefined, 256),
-        author: sanitizeImportedString(parsed.author, undefined, 256),
-        tags: Array.isArray(parsed.tags)
-          ? parsed.tags.filter((tag): tag is string => typeof tag === "string")
-          : undefined,
-        instructions: sanitizeImportedString(parsed.instructions, undefined),
+        name: sanitized.name,
+        description: sanitized.description,
+        version: sanitized.version,
+        author: sanitized.author,
+        tags: sanitized.tags.length > 0 ? sanitized.tags : undefined,
+        instructions: sanitized.instructions,
       };
     } catch {
       return {};
@@ -1730,47 +1761,45 @@ export class SkillInstaller {
   ): Promise<string> {
     try {
       const data = JSON.parse(jsonContent) as Record<string, unknown>;
-      const name = sanitizeImportedString(data.name).trim();
+      const sanitized = sanitizeImportedSkillDraft(
+        {
+          name: data.name,
+          description: data.description,
+          version: data.version,
+          author: data.author,
+          tags: data.tags,
+          instructions: data.instructions,
+          icon_url: data.icon_url,
+          icon_emoji: data.icon_emoji,
+          icon_background: data.icon_background,
+          category: data.category,
+          prerequisites: data.prerequisites,
+          compatibility: data.compatibility,
+          protocol_type: data.protocol_type,
+        },
+        { defaultTags: ["imported"] },
+      );
+      const name = sanitized.name?.trim();
       if (!name) {
         throw new Error("Invalid skill JSON: missing name");
       }
-      const instructions = sanitizeImportedString(data.instructions);
-      const description = sanitizeImportedString(data.description);
-      const version = sanitizeImportedString(data.version, "1.0.0", 256);
-      const author = sanitizeImportedString(data.author, "Imported", 256);
-      const iconUrl = sanitizeImportedString(data.icon_url, undefined, 500000);
-      const iconEmoji = sanitizeImportedString(data.icon_emoji, undefined, 32);
-      const iconBackground = sanitizeImportedString(
-        data.icon_background,
-        undefined,
-        64,
-      );
-      const protocolTypeValue = sanitizeImportedString(
-        data.protocol_type,
-        "skill",
-        32,
-      );
-      const protocolType =
-        protocolTypeValue === "skill" ||
-        protocolTypeValue === "mcp" ||
-        protocolTypeValue === "claude-code"
-          ? protocolTypeValue
-          : "skill";
-      const tags = sanitizeImportedTags(data.tags);
 
       const skill = db.create({
         name,
-        description,
-        version,
-        author,
-        instructions,
-        content: instructions,
-        protocol_type: protocolType,
-        tags,
+        description: sanitized.description,
+        version: sanitized.version,
+        author: sanitized.author,
+        instructions: sanitized.instructions,
+        content: sanitized.instructions,
+        protocol_type: sanitized.protocol_type,
+        tags: sanitized.tags,
         is_favorite: false,
-        icon_url: iconUrl,
-        icon_emoji: iconEmoji,
-        icon_background: iconBackground,
+        icon_url: sanitized.icon_url,
+        icon_emoji: sanitized.icon_emoji,
+        icon_background: sanitized.icon_background,
+        category: sanitized.category,
+        prerequisites: sanitized.prerequisites,
+        compatibility: sanitized.compatibility,
       });
 
       return skill.id;

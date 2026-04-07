@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ChevronDownIcon,
@@ -11,8 +11,10 @@ import {
   MinusIcon,
   PlusIcon,
   RotateCcwIcon,
+  TrashIcon,
 } from "lucide-react";
 import { Modal } from "../ui";
+import { ConfirmDialog } from "../ui/ConfirmDialog";
 import type { Skill, SkillVersion } from "../../../shared/types";
 import {
   generateTextDiff,
@@ -131,6 +133,10 @@ export function SkillVersionHistoryModal({
   const [view, setView] = useState<ContentView>("preview");
   const [isLoading, setIsLoading] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [versionToDelete, setVersionToDelete] = useState<SkillVersion | null>(
+    null,
+  );
   const [currentFilesSnapshot, setCurrentFilesSnapshot] = useState<
     Array<{ relativePath: string; content: string }>
   >([]);
@@ -138,51 +144,40 @@ export function SkillVersionHistoryModal({
     new Set(),
   );
 
+  const loadVersions = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [versionsResult, currentFilesResult] = await Promise.allSettled([
+        window.api.skill.versionGetAll(skill.id),
+        window.api.skill.readLocalFiles(skill.id),
+      ]);
+      if (versionsResult.status !== "fulfilled") {
+        throw versionsResult.reason;
+      }
+      const nextVersions = versionsResult.value;
+      setVersions(nextVersions);
+      setCurrentFilesSnapshot(
+        currentFilesResult.status === "fulfilled"
+          ? snapshotsFromLocalFiles(currentFilesResult.value, currentContent)
+          : resolveVersionSnapshots(null, currentContent),
+      );
+      setSelectedVersionId(nextVersions[0]?.id ?? null);
+      setCompareTarget("current");
+      setView("preview");
+    } catch (error) {
+      console.error("Failed to load skill versions:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentContent, skill.id]);
+
   useEffect(() => {
     if (!isOpen) {
       return;
     }
 
-    let cancelled = false;
-
-    async function loadVersions() {
-      setIsLoading(true);
-      try {
-        const [versionsResult, currentFilesResult] = await Promise.allSettled([
-          window.api.skill.versionGetAll(skill.id),
-          window.api.skill.readLocalFiles(skill.id),
-        ]);
-        if (cancelled) {
-          return;
-        }
-        if (versionsResult.status !== "fulfilled") {
-          throw versionsResult.reason;
-        }
-        const nextVersions = versionsResult.value;
-        setVersions(nextVersions);
-        setCurrentFilesSnapshot(
-          currentFilesResult.status === "fulfilled"
-            ? snapshotsFromLocalFiles(currentFilesResult.value, currentContent)
-            : resolveVersionSnapshots(null, currentContent),
-        );
-        setSelectedVersionId(nextVersions[0]?.id ?? null);
-        setCompareTarget("current");
-        setView("preview");
-      } catch (error) {
-        console.error("Failed to load skill versions:", error);
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
-    }
-
     void loadVersions();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [currentContent, isOpen, skill.id]);
+  }, [isOpen, loadVersions]);
 
   const selectedVersion = useMemo(
     () => versions.find((item) => item.id === selectedVersionId) ?? null,
@@ -286,6 +281,23 @@ export function SkillVersionHistoryModal({
       console.error("Failed to restore skill version:", error);
     } finally {
       setIsRestoring(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!versionToDelete) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await window.api.skill.versionDelete(skill.id, versionToDelete.id);
+      setVersionToDelete(null);
+      await loadVersions();
+    } catch (error) {
+      console.error("Failed to delete skill version:", error);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -395,6 +407,19 @@ export function SkillVersionHistoryModal({
                       {t("skill.diffView", "Diff")}
                     </button>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => selectedVersion && setVersionToDelete(selectedVersion)}
+                    disabled={!selectedVersion || isDeleting || isRestoring}
+                    className="inline-flex items-center gap-2 rounded-xl border border-red-500/20 px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isDeleting ? (
+                      <Loader2Icon className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <TrashIcon className="h-4 w-4" />
+                    )}
+                    {t("common.delete", "删除")}
+                  </button>
                   <button
                     type="button"
                     onClick={handleRestore}
@@ -557,6 +582,30 @@ export function SkillVersionHistoryModal({
           </div>
         </div>
       )}
+      <ConfirmDialog
+        isOpen={Boolean(versionToDelete)}
+        onClose={() => {
+          if (isDeleting) {
+            return;
+          }
+          setVersionToDelete(null);
+        }}
+        onConfirm={handleDelete}
+        title={t("skill.deleteVersionTitle", "删除版本快照")}
+        message={t(
+          "skill.deleteVersionConfirm",
+          versionToDelete
+            ? `删除 v${versionToDelete.version} 后将无法恢复这条历史记录。是否继续？`
+            : "删除后将无法恢复这条历史记录。是否继续？",
+        )}
+        confirmText={
+          isDeleting
+            ? t("common.loading", "加载中")
+            : t("common.delete", "删除")
+        }
+        cancelText={t("common.cancel", "取消")}
+        variant="destructive"
+      />
     </Modal>
   );
 }

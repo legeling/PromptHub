@@ -25,6 +25,9 @@ describe("skill-normalize", () => {
       is_favorite: false,
       created_at: "1700000000000" as any,
       updated_at: "1700000001000" as any,
+      category: { bad: true } as any,
+      icon_url: ["oops"] as any,
+      source_url: "" as any,
     });
 
     expect(normalized.tags).toEqual(["ops", "docs"]);
@@ -34,5 +37,8 @@ describe("skill-normalize", () => {
     expect(normalized.currentVersion).toBe(3);
     expect(normalized.created_at).toBe(1700000000000);
     expect(normalized.updated_at).toBe(1700000001000);
+    expect(normalized.category).toBeUndefined();
+    expect(normalized.icon_url).toBeUndefined();
+    expect(normalized.source_url).toBeUndefined();
   });
 });

@@ -14,7 +14,7 @@
   [![GitHub Forks](https://img.shields.io/github/forks/legeling/PromptHub?style=for-the-badge&logo=github)](https://github.com/legeling/PromptHub/network/members)
   [![Downloads](https://img.shields.io/github/downloads/legeling/PromptHub/total?style=for-the-badge&logo=github&color=blue)](https://github.com/legeling/PromptHub/releases)
   
-  [![Version](https://img.shields.io/badge/version-v0.4.7-success?style=for-the-badge)](https://github.com/legeling/PromptHub/releases)
+  [![Version](https://img.shields.io/badge/version-v0.4.8-success?style=for-the-badge)](https://github.com/legeling/PromptHub/releases)
   [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](./LICENSE)
   [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=for-the-badge)](https://github.com/legeling/PromptHub/pulls)
   
@@ -176,13 +176,13 @@
 
 ### 下载
 
-从 [Releases](https://github.com/legeling/PromptHub/releases) 下载最新版本 v0.4.7：
+从 [Releases](https://github.com/legeling/PromptHub/releases) 下载最新版本 v0.4.8：
 
 | 平台    | 下载                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Windows | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.4.7-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.4.7-arm64.exe) |
-| macOS   | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.7-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.7-x64.dmg)     |
-| Linux   | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.7-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.4.7_amd64.deb)              |
+| Windows | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.4.8-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.4.8-arm64.exe) |
+| macOS   | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.8-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.8-x64.dmg)     |
+| Linux   | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.8-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.4.8_amd64.deb)              |
 
 > 💡 **架构选择建议**
 >
@@ -429,15 +429,15 @@ PromptHub/
 
 ## 路线图
 
-### v0.4.7 (当前) 🎉
+### v0.4.8 (当前) 🎉
 
-- [x] **Skill 批量同步弹窗重做**：改为更紧凑的单列流程，去掉横向滚动并恢复整窗纵向滚动
-- [x] **目标平台优先展示**：批量同步时先看到安装方式和目标平台，避免关键操作被已选技能列表挤出视区
-- [x] **Skills 顶部信息区重排**：页面说明固定在左侧，操作工具栏对齐右侧，批量模式层级更清晰
-- [x] **桌面版 CLI 命令**：安装桌面版并首次启动后，会自动安装 `prompthub` 命令包装器
-- [x] **平台目标目录覆写**：每个平台都可以单独指定 Skills 目录，扫描、分发、卸载与状态检测保持一致
-- [x] **CodeBuddy / Qoder / QoderWork 支持**：补齐更多 AI 编程工具平台与图标资源
-- [x] **发版文档与官网同步**：README、官网发布元数据与多语言文档已同步到 `v0.4.7`
+- [x] **AI 工作台实装**：模型管理、端点编辑、连接测试与场景默认模型已接入真实设置链路
+- [x] **skills.sh 社区商店接入**：社区榜单、每周安装量、GitHub Star 与商店详情已集成到 PromptHub
+- [x] **Prompt / Skill 历史版本删除**：支持清理不再需要保留的单条历史记录
+- [x] **Skill 手动修改回写**：重新打开详情页时会从本地 `SKILL.md` 同步最新元数据与内容
+- [x] **备份与 WebDAV 修复**：统一备份导入格式，补齐 Skill 的 WebDAV 上传与恢复链路
+- [x] **数据目录与迁移表达修复**：设置页显示真实数据目录，并明确提示迁移后需重启切换
+- [x] **大规模 Skill 性能优化**：本地数百个 Skill 的列表和画廊视图改为分批渲染，并补上性能预算测试
 
 ### v0.4.3
 
@@ -477,24 +477,26 @@ PromptHub/
 
 查看完整的更新日志：**[CHANGELOG.md](./CHANGELOG.md)**
 
-### 最新版本 v0.4.7 (2026-03-30)
+### 最新版本 v0.4.8 (2026-03-31)
 
 **新增 / Added**
 
-- 🖥️ **桌面版 CLI 命令**：首次启动桌面版后自动安装 `prompthub` 命令包装器
-- 🤝 **平台支持扩展**：新增 Qoder、QoderWork 与 CodeBuddy 平台支持
+- 🗑️ **历史版本删除**：支持删除 Prompt 与 Skill 的单条历史快照
+- 🌐 **skills.sh 社区商店接入**：支持从 skills.sh 社区商店直接导入热门 Skill
+- 🤖 **AI 工作台实装**：最新 AI 设置界面已接入真实模型管理、连接测试与场景默认模型
 
 **修复 / Fixed**
 
-- 🪟 **Skill 批量同步弹窗布局修复**：重做为单列流程，移除横向滚动并恢复整窗纵向滚动
-- 🧭 **Skills 顶部工具栏布局修复**：页面说明固定在左侧，操作工具统一收拢到右侧
-- 🌍 **Prompt 双语编辑修复**：修复英文 Prompt 在中文界面下“添加本地语言版本”仍落到英文字段的问题
+- 💾 **备份导入格式统一**：`prompthub-backup`、`prompthub-export` 与旧裸 JSON 可通过统一入口恢复
+- ☁️ **WebDAV Skill 同步修复**：修复 WebDAV 同步遗漏 Skill、Skill 版本与 Skill 文件的问题
+- 📂 **数据目录状态修复**：设置页显示当前真实数据目录，并区分待重启切换的新目录
+- 🪟 **Windows 升级路径修复**：持久化安装目录并修复自定义安装目录升级时的数据目录策略问题
 
 **优化 / Improvements**
 
-- 🎯 **批量同步信息层级优化**：安装方式、目标平台、已选技能与摘要重排为更清晰的操作顺序
-- 🗂️ **平台目标目录覆写**：支持为每个平台单独配置 Skills 目录，扫描和分发统一生效
-- 📚 **发版文档与官网同步**：README、多语言 README、官网发布元数据与文档入口同步到 `v0.4.7`
+- 🚀 **大规模 Skill 列表性能优化**：列表与画廊视图改为分批渲染，并降低首次进入页面卡顿
+- 🧪 **备份/同步测试矩阵补强**：新增本地备份恢复、WebDAV legacy/incremental 与 Skill 恢复回归测试
+- 📚 **发版文档同步**：CHANGELOG、README 与英文 README 同步到 `v0.4.8`
 
 > [查看完整更新日志](./CHANGELOG.md)
 

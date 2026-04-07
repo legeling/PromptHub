@@ -62,8 +62,17 @@ Always treat these as source of truth first:
 1. Identify target version and release date.
 2. Update `package.json`.
 3. Add the new top release section to `CHANGELOG.md`.
-4. Update `README.md`.
-5. Sync localized README files under `docs/`.
+4. Update `README.md`, including:
+   - version badge
+   - download section text
+   - release download links
+   - roadmap/current-version section
+   - latest-version summary section
+5. Sync localized README files under `docs/`, especially `docs/README.en.md`, with the same surfaces:
+   - version badge
+   - download links
+   - roadmap/current-version section
+   - latest-version summary section
 6. Run:
 
 ```bash
@@ -73,7 +82,13 @@ node website/scripts/sync-release.mjs
 7. If needed, patch website copy beyond generated metadata.
 8. If app copy changed, sync `src/renderer/i18n/locales/*.json`.
 9. If GUI changed, verify docs/screenshots match the text.
-10. Run:
+10. Search for stale version strings in docs before finishing, for example:
+
+```bash
+rg -n "0\\.[0-9]+\\.[0-9]+" README.md docs
+```
+
+11. Run:
 
 ```bash
 pnpm exec tsc --noEmit --pretty false
@@ -83,6 +98,13 @@ pnpm exec tsc --noEmit --pretty false
 
 - Keep changelog bilingual if the current release style is bilingual.
 - Keep README badge version, download links, and install text consistent with the target version.
+- Keep README "current version" and "latest version" summary blocks aligned with the newest changelog entry.
+- When the release includes operational fixes, do not omit them from docs. Commonly missed categories:
+  - backup / restore format changes
+  - WebDAV sync behavior
+  - data directory / migration behavior
+  - performance / large-dataset work
+  - test / CI / release-gate improvements
 - Do not silently skip localized docs; explicitly report what was updated and what was not.
 - If the release mentions CLI, clarify whether it is desktop-available or only available via CLI/npm distribution.
 - Prefer existing automation:
@@ -98,4 +120,3 @@ Final response should say:
 - whether screenshots were updated
 - which locales/docs were updated
 - what was intentionally skipped
-

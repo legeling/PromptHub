@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal } from '../ui';
-import { ClockIcon, RotateCcwIcon, GitCompareIcon, PlusIcon, MinusIcon, SparklesIcon } from 'lucide-react';
-import { getPromptVersions } from '../../services/database';
+import { ClockIcon, RotateCcwIcon, GitCompareIcon, PlusIcon, MinusIcon, SparklesIcon, TrashIcon } from 'lucide-react';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
+import { deletePromptVersion, getPromptVersions } from '../../services/database';
 import type { Prompt, PromptVersion } from '../../../shared/types';
 
 interface VersionHistoryModalProps {
@@ -179,6 +180,8 @@ export function VersionHistoryModal({ isOpen, onClose, prompt, onRestore }: Vers
   const [showDiff, setShowDiff] = useState(false);
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [versionToDelete, setVersionToDelete] = useState<PromptVersion | null>(null);
 
   useEffect(() => {
     if (isOpen && prompt) {
@@ -227,6 +230,24 @@ export function VersionHistoryModal({ isOpen, onClose, prompt, onRestore }: Vers
         onRestore(selectedVersion);
         onClose();
       }
+    }
+  };
+
+  const handleDeleteVersion = async () => {
+    if (!versionToDelete || versionToDelete.id === 'current') {
+      setVersionToDelete(null);
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await deletePromptVersion(versionToDelete.id);
+      await loadVersions();
+      setVersionToDelete(null);
+    } catch (error) {
+      console.error('Failed to delete prompt version:', error);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -361,24 +382,36 @@ export function VersionHistoryModal({ isOpen, onClose, prompt, onRestore }: Vers
       {/* 操作按钮 */}
       {versions.length > 0 && selectedVersion && (
         <div className="flex justify-between mt-6 pt-4 border-t border-border">
-          <button
-            onClick={() => {
-              if (showDiff) {
-                setShowDiff(false);
-                setCompareVersion(null);
-              } else {
-                setShowDiff(true);
-              }
-            }}
-            className={`flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-medium transition-colors ${
-              showDiff 
-                ? 'bg-primary text-white' 
-                : 'hover:bg-muted'
-            }`}
-          >
-            <GitCompareIcon className="w-4 h-4" />
-            {showDiff ? t('prompt.exitCompare') : t('prompt.versionCompare')}
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                if (showDiff) {
+                  setShowDiff(false);
+                  setCompareVersion(null);
+                } else {
+                  setShowDiff(true);
+                }
+              }}
+              className={`flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-medium transition-colors ${
+                showDiff 
+                  ? 'bg-primary text-white' 
+                  : 'hover:bg-muted'
+              }`}
+            >
+              <GitCompareIcon className="w-4 h-4" />
+              {showDiff ? t('prompt.exitCompare') : t('prompt.versionCompare')}
+            </button>
+            {!showDiff && selectedVersion.id !== 'current' && (
+              <button
+                onClick={() => setVersionToDelete(selectedVersion)}
+                disabled={isDeleting}
+                className="flex items-center gap-2 h-9 px-4 rounded-lg border border-red-500/20 text-red-600 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+              >
+                <TrashIcon className="w-4 h-4" />
+                {t('common.delete', 'Delete')}
+              </button>
+            )}
+          </div>
           <div className="flex gap-3">
             <button
               onClick={onClose}
@@ -398,6 +431,26 @@ export function VersionHistoryModal({ isOpen, onClose, prompt, onRestore }: Vers
           </div>
         </div>
       )}
+      <ConfirmDialog
+        isOpen={Boolean(versionToDelete)}
+        onClose={() => {
+          if (isDeleting) return;
+          setVersionToDelete(null);
+        }}
+        onConfirm={handleDeleteVersion}
+        title={t('prompt.deleteVersionTitle', 'Delete version')}
+        message={t(
+          'prompt.deleteVersionConfirm',
+          versionToDelete
+            ? `Delete v${versionToDelete.version}? This history entry will be removed permanently.`
+            : 'Delete this history version?',
+        )}
+        confirmText={
+          isDeleting ? t('common.loading', 'Loading...') : t('common.delete', 'Delete')
+        }
+        cancelText={t('common.cancel')}
+        variant="destructive"
+      />
     </Modal>
   );
 }

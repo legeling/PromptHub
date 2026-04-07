@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   getInstallScopedDataPath,
   hasExistingAppData,
+  isDefaultPerUserInstallDir,
   isProtectedInstallDir,
   readConfiguredDataPath,
   resolveInitialUserDataPath,
@@ -81,6 +82,38 @@ describe("data path bootstrap", () => {
         },
       ),
     ).toBe(expectedPath);
+  });
+
+  it("falls back to default userData for default per-user Windows install locations", () => {
+    const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), "prompthub-per-user-"));
+    tempDirs.push(rootDir);
+
+    const defaultUserDataPath = path.join(rootDir, "PromptHub");
+
+    expect(
+      isDefaultPerUserInstallDir(
+        "C:\\Users\\Alice\\AppData\\Local\\Programs\\PromptHub",
+        "win32",
+      ),
+    ).toBe(true);
+
+    expect(
+      resolveInitialUserDataPath(
+        {
+          appDataPath: path.join(rootDir, "appdata"),
+          defaultUserDataPath,
+          exePath:
+            "C:\\Users\\Alice\\AppData\\Local\\Programs\\PromptHub\\PromptHub.exe",
+          isPackaged: true,
+          platform: "win32",
+        },
+        {
+          readConfiguredDataPath: () => null,
+          hasExistingAppData: () => false,
+          isPathWritable: () => true,
+        },
+      ),
+    ).toBe(defaultUserDataPath);
   });
 
   it("falls back to default userData for protected install locations", () => {

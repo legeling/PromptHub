@@ -1,4 +1,4 @@
-import { useState, useCallback, memo } from 'react';
+import { useState, useCallback, memo, useMemo } from 'react';
 import { motion, LayoutGroup } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { Prompt } from '../../../shared/types';
@@ -290,16 +290,29 @@ export function PromptKanbanView({
   const { t } = useTranslation();
   const folders = useFolderStore(state => state.folders);
   const kanbanColumns = usePromptStore(state => state.kanbanColumns);
+  const uncategorizedLabel = t('folder.uncategorized', '未分类');
   
   // State for pinned cards
   const [pinnedCards, setPinnedCards] = useState<PinnedCard[]>([]);
   // State for collapsing the entire pinned section
   const [isPinnedSectionCollapsed, setIsPinnedSectionCollapsed] = useState(false);
 
-  const getFolderName = (folderId?: string) => {
-    if (!folderId) return t('folder.uncategorized', '未分类');
-    return folders.find(f => f.id === folderId)?.name || t('folder.uncategorized', '未分类');
-  };
+  const folderNameMap = useMemo(
+    () => new Map(folders.map((folder) => [folder.id, folder.name])),
+    [folders],
+  );
+  const promptMap = useMemo(
+    () => new Map(prompts.map((prompt) => [prompt.id, prompt])),
+    [prompts],
+  );
+  const pinnedCardStateMap = useMemo(
+    () => new Map(pinnedCards.map((card) => [card.promptId, card])),
+    [pinnedCards],
+  );
+  const pinnedPromptIdSet = useMemo(
+    () => new Set(pinnedCards.map((card) => card.promptId)),
+    [pinnedCards],
+  );
 
   const handlePin = useCallback((promptId: string) => {
     setPinnedCards(prev => {
@@ -340,16 +353,24 @@ export function PromptKanbanView({
     setPinnedCards([]);
   }, []);
 
-  const pinnedPrompts = pinnedCards
-    .map(pc => prompts.find(p => p.id === pc.promptId))
-    .filter(Boolean) as Prompt[];
+  const pinnedPrompts = useMemo(
+    () =>
+      pinnedCards
+        .map((card) => promptMap.get(card.promptId))
+        .filter(Boolean) as Prompt[],
+    [pinnedCards, promptMap],
+  );
 
-  const unpinnedPrompts = prompts.filter(
-    p => !pinnedCards.some(pc => pc.promptId === p.id)
+  const unpinnedPrompts = useMemo(
+    () => prompts.filter((prompt) => !pinnedPromptIdSet.has(prompt.id)),
+    [prompts, pinnedPromptIdSet],
   );
 
   // Check if any card is expanded
-  const hasExpandedCards = pinnedCards.some(p => p.isExpanded);
+  const hasExpandedCards = useMemo(
+    () => pinnedCards.some((card) => card.isExpanded),
+    [pinnedCards],
+  );
 
   // Grid columns based on user preference (max 4 columns)
   // Use md breakpoint for 3 cols, lg for 4 cols to be more responsive
@@ -424,7 +445,7 @@ export function PromptKanbanView({
                   'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
                 }`}>
                   {pinnedPrompts.map(prompt => {
-                    const cardState = pinnedCards.find(pc => pc.promptId === prompt.id);
+                    const cardState = pinnedCardStateMap.get(prompt.id);
                     return (
                       <motion.div 
                         key={prompt.id}
@@ -452,7 +473,7 @@ export function PromptKanbanView({
                           onAiTest={() => onAiTest(prompt)}
                           onToggleFavorite={() => onToggleFavorite(prompt.id)}
                           onViewDetail={() => onViewDetail(prompt)}
-                          folderName={getFolderName(prompt.folderId)}
+                          folderName={prompt.folderId ? (folderNameMap.get(prompt.folderId) || uncategorizedLabel) : uncategorizedLabel}
                         />
                       </motion.div>
                     );
@@ -495,7 +516,7 @@ export function PromptKanbanView({
                   onAiTest={() => onAiTest(prompt)}
                   onToggleFavorite={() => onToggleFavorite(prompt.id)}
                   onViewDetail={() => onViewDetail(prompt)}
-                  folderName={getFolderName(prompt.folderId)}
+                  folderName={prompt.folderId ? (folderNameMap.get(prompt.folderId) || uncategorizedLabel) : uncategorizedLabel}
                 />
               </motion.div>
             ))}

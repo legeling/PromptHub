@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   SparklesIcon,
@@ -10,9 +10,14 @@ import {
 import { useSettingsStore } from "../../stores/settings.store";
 import { useFolderStore } from "../../stores/folder.store";
 import { usePromptStore } from "../../stores/prompt.store";
-import { chatCompletion, type AIConfig } from "../../services/ai";
+import { chatCompletion } from "../../services/ai";
 import { renderFolderIcon } from "../layout/folderIconHelper";
 import { UnsavedChangesDialog } from "../ui/UnsavedChangesDialog";
+import { useToast } from "../ui/Toast";
+import {
+  getQuickAddFallbackTitle,
+  resolveQuickAddAnalysisConfig,
+} from "./quick-add-utils";
 
 interface QuickAddModalProps {
   isOpen: boolean;
@@ -35,9 +40,16 @@ export function QuickAddModal({
   defaultPromptType,
 }: QuickAddModalProps) {
   const { t } = useTranslation();
+  const { showToast } = useToast();
   const folders = useFolderStore((state) => state.folders);
   const aiModels = useSettingsStore((state) => state.aiModels);
+  const scenarioModelDefaults = useSettingsStore(
+    (state) => state.scenarioModelDefaults,
+  );
+  const aiProvider = useSettingsStore((state) => state.aiProvider);
   const aiApiKey = useSettingsStore((state) => state.aiApiKey);
+  const aiApiUrl = useSettingsStore((state) => state.aiApiUrl);
+  const aiModel = useSettingsStore((state) => state.aiModel);
   const prompts = usePromptStore((state) => state.prompts);
 
   const [promptText, setPromptText] = useState("");
@@ -49,9 +61,18 @@ export function QuickAddModal({
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Check if AI is configured
-  const hasAiConfig =
-    aiModels.length > 0 || (aiApiKey && aiApiKey.trim() !== "");
+  const analysisConfig = useMemo(
+    () =>
+      resolveQuickAddAnalysisConfig({
+        aiModels,
+        scenarioModelDefaults,
+        aiProvider,
+        aiApiKey,
+        aiApiUrl,
+        aiModel,
+      }),
+    [aiApiKey, aiApiUrl, aiModel, aiModels, aiProvider, scenarioModelDefaults],
+  );
 
   // Check unsaved changes
   const hasUnsavedChanges = useCallback(() => {
@@ -81,9 +102,15 @@ export function QuickAddModal({
   const handleCreate = async () => {
     if (!promptText.trim() || isSubmitting) return;
 
+    if (!analysisConfig) {
+      showToast(t("quickAdd.noAiConfigDesc"), "error");
+      return;
+    }
+
     setIsSubmitting(true);
 
-    // Create prompt immediately with placeholder info
+    // Create prompt immediately. Only use the "analyzing" placeholder when
+    // we actually have a usable chat model for background analysis.
     const createdPrompt = await onCreate({
       title: t("quickAdd.analyzing") || "正在分析...",
       userPrompt: promptText,
@@ -91,19 +118,23 @@ export function QuickAddModal({
       promptType: defaultPromptType || "text",
     });
 
+    if (!createdPrompt) {
+      setIsSubmitting(false);
+      return;
+    }
+
     onClose();
 
     // Background AI analysis
-    if (hasAiConfig && createdPrompt) {
-      try {
-        const folderNames = folders.map((f) => f.name).join(", ");
-        const existingTags = [
-          ...new Set(prompts.flatMap((p) => p.tags || [])),
-        ].sort();
-        const tagsString =
-          existingTags.length > 0 ? existingTags.join(", ") : "无现有标签";
+    try {
+      const folderNames = folders.map((f) => f.name).join(", ");
+      const existingTags = [
+        ...new Set(prompts.flatMap((p) => p.tags || [])),
+      ].sort();
+      const tagsString =
+        existingTags.length > 0 ? existingTags.join(", ") : "无现有标签";
 
-        const analysisPrompt = `请分析以下用户提供的 Prompt，并返回 JSON 格式的结果：
+      const analysisPrompt = `请分析以下用户提供的 Prompt，并返回 JSON 格式的结果：
   
 用户 Prompt:
 """
@@ -125,64 +156,52 @@ ${tagsString}
   "tags": ["根据内容提取关键词作为标签，优先使用已存在的标签，如果必要可以生成1-2个新标签"]
 }`;
 
-        const aiModel = aiModels.find((m) => m.isDefault) || aiModels[0];
-        if (aiModel) {
-          const config: AIConfig = {
-            provider: aiModel.provider,
-            apiKey: aiModel.apiKey,
-            apiUrl: aiModel.apiUrl,
-            model: aiModel.model,
-          };
+      const aiResult = await chatCompletion(
+        analysisConfig,
+        [{ role: "user", content: analysisPrompt }],
+        { temperature: 0.3 },
+      );
 
-          const aiResult = await chatCompletion(
-            config,
-            [{ role: "user", content: analysisPrompt }],
-            { temperature: 0.3 },
+      const responseContent = aiResult.content;
+      const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
+
+      if (jsonMatch) {
+        const parsedResult = JSON.parse(jsonMatch[0]);
+        let targetFolderId = selectedFolderId;
+
+        // If no folder selected, use AI suggestion
+        if (!targetFolderId && parsedResult.suggestedFolder) {
+          const matchedFolder = folders.find(
+            (f) =>
+              f.name
+                .toLowerCase()
+                .includes(parsedResult.suggestedFolder.toLowerCase()) ||
+              parsedResult.suggestedFolder
+                .toLowerCase()
+                .includes(f.name.toLowerCase()),
           );
-
-          const responseContent = aiResult.content;
-          const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
-
-          if (jsonMatch) {
-            const parsedResult = JSON.parse(jsonMatch[0]);
-            let targetFolderId = selectedFolderId;
-
-            // If no folder selected, use AI suggestion
-            if (!targetFolderId && parsedResult.suggestedFolder) {
-              const matchedFolder = folders.find(
-                (f) =>
-                  f.name
-                    .toLowerCase()
-                    .includes(parsedResult.suggestedFolder.toLowerCase()) ||
-                  parsedResult.suggestedFolder
-                    .toLowerCase()
-                    .includes(f.name.toLowerCase()),
-              );
-              if (matchedFolder) {
-                targetFolderId = matchedFolder.id;
-              }
-            }
-
-            // Update prompt with AI results
-            const { usePromptStore } =
-              await import("../../stores/prompt.store");
-            await usePromptStore.getState().updatePrompt(createdPrompt.id, {
-              title: parsedResult.title || createdPrompt.title,
-              systemPrompt: parsedResult.systemPrompt,
-              description: parsedResult.description,
-              folderId: targetFolderId,
-              tags: Array.isArray(parsedResult.tags) ? parsedResult.tags : [],
-            });
+          if (matchedFolder) {
+            targetFolderId = matchedFolder.id;
           }
         }
-      } catch (err) {
-        console.error("Background AI analysis failed:", err);
-        // Fallback title if analysis fails
+
+        // Update prompt with AI results
         const { usePromptStore } = await import("../../stores/prompt.store");
         await usePromptStore.getState().updatePrompt(createdPrompt.id, {
-          title: promptText.trim().split("\n")[0].slice(0, 30) || "New Prompt",
+          title: parsedResult.title || createdPrompt.title,
+          systemPrompt: parsedResult.systemPrompt,
+          description: parsedResult.description,
+          folderId: targetFolderId,
+          tags: Array.isArray(parsedResult.tags) ? parsedResult.tags : [],
         });
       }
+    } catch (err) {
+      console.error("Background AI analysis failed:", err);
+      // Fallback title if analysis fails
+      const { usePromptStore } = await import("../../stores/prompt.store");
+      await usePromptStore.getState().updatePrompt(createdPrompt.id, {
+        title: getQuickAddFallbackTitle(promptText, t("prompt.newPrompt")),
+      });
     }
   };
 

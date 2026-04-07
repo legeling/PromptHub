@@ -78,6 +78,19 @@ export function registerSkillVersionHandlers({ db }: SkillIPCContext): void {
     },
   );
 
+  ipcMain.handle(
+    IPC_CHANNELS.SKILL_VERSION_DELETE,
+    async (_, skillId: string, versionId: string) => {
+      if (typeof skillId !== "string" || skillId.trim().length === 0) {
+        throw new Error("skill:versionDelete requires a non-empty skillId");
+      }
+      if (typeof versionId !== "string" || versionId.trim().length === 0) {
+        throw new Error("skill:versionDelete requires a non-empty versionId");
+      }
+      return db.deleteVersion(skillId, versionId);
+    },
+  );
+
   ipcMain.handle(IPC_CHANNELS.SKILL_DELETE_ALL, async () => {
     try {
       await SkillInstaller.deleteAllLocalRepos();

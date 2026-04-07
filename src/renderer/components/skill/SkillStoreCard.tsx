@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import type { RegistrySkill } from "../../../shared/types";
 import { SkillIcon } from "./SkillIcon";
 
+const MAX_STAGGERED_STORE_CARDS = 12;
+
 interface SkillStoreCardProps {
   skill: RegistrySkill;
   isInstalled: boolean;
@@ -26,7 +28,11 @@ export function SkillStoreCard({
   return (
     <div
       onClick={onClick}
-      style={{ animationDelay: `${index * 30}ms` }}
+      style={{
+        animationDelay: `${Math.min(index, MAX_STAGGERED_STORE_CARDS) * 30}ms`,
+        contentVisibility: "auto",
+        containIntrinsicSize: "86px",
+      }}
       className="group relative flex items-center gap-3 p-3.5 bg-card border border-border rounded-xl hover:border-primary/40 transition-all cursor-pointer animate-in fade-in slide-in-from-bottom-2 hover:shadow-md"
     >
       <SkillIcon
@@ -44,6 +50,11 @@ export function SkillStoreCard({
         <p className="text-[11px] text-muted-foreground truncate mt-0.5">
           {skill.description}
         </p>
+        {skill.weekly_installs && (
+          <div className="mt-1.5 inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+            {skill.weekly_installs}/wk
+          </div>
+        )}
       </div>
 
       <div className="shrink-0">

@@ -40,6 +40,10 @@ export function createWindowApiMock(overrides?: DeepPartial<MockRecord>) {
       folder: {},
       settings: {},
       io: {},
+      ai: {
+        request: vi.fn(),
+        requestStream: vi.fn(),
+      },
       on: vi.fn(),
       off: vi.fn(),
       security: {
@@ -78,9 +82,11 @@ export function createWindowApiMock(overrides?: DeepPartial<MockRecord>) {
         deleteLocalFile: vi.fn().mockResolvedValue(undefined),
         createLocalDir: vi.fn().mockResolvedValue(undefined),
         getRepoPath: vi.fn().mockResolvedValue(""),
+        syncFromRepo: vi.fn().mockResolvedValue(null),
         versionGetAll: vi.fn().mockResolvedValue([]),
         versionCreate: vi.fn().mockResolvedValue(undefined),
         versionRollback: vi.fn().mockResolvedValue(undefined),
+        versionDelete: vi.fn().mockResolvedValue(true),
         deleteAll: vi.fn().mockResolvedValue(undefined),
         insertVersionDirect: vi.fn().mockResolvedValue(undefined),
       },
@@ -103,6 +109,7 @@ export function createWindowElectronMock(overrides?: DeepPartial<MockRecord>) {
       minimize: vi.fn(),
       maximize: vi.fn(),
       close: vi.fn(),
+      toggleVisibility: vi.fn(),
       enterFullscreen: vi.fn(),
       exitFullscreen: vi.fn(),
       toggleFullscreen: vi.fn(),
@@ -119,6 +126,7 @@ export function createWindowElectronMock(overrides?: DeepPartial<MockRecord>) {
       openPath: vi.fn(),
       showNotification: vi.fn(),
       getDataPath: vi.fn(),
+      getDataPathStatus: vi.fn(),
       migrateData: vi.fn(),
       updater: {
         check: vi.fn(),

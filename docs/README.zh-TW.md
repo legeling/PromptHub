@@ -7,7 +7,7 @@
   <p>
     <a href="https://github.com/legeling/PromptHub/stargazers"><img src="https://img.shields.io/github/stars/legeling/PromptHub?style=flat-square&color=yellow" alt="GitHub Stars"/></a>
     <a href="https://github.com/legeling/PromptHub/network/members"><img src="https://img.shields.io/github/forks/legeling/PromptHub?style=flat-square" alt="GitHub Forks"/></a>
-    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.4.7-green?style=flat-square" alt="Version"/></a>
+    <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/badge/version-v0.4.8-green?style=flat-square" alt="Version"/></a>
     <a href="https://github.com/legeling/PromptHub/releases"><img src="https://img.shields.io/github/downloads/legeling/PromptHub/total?style=flat-square&color=blue" alt="Downloads"/></a>
     <img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="License: AGPL-3.0"/>
   </p>
@@ -48,9 +48,9 @@
 
 |  平台   |                                                                                                                                                                                                                  下載                                                                                                                                                                                                                   |
 | :-----: | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
-| Windows | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.4.7-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.4.7-arm64.exe) |
-|  macOS  |   [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.7-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.7-x64.dmg)   |
-|  Linux  |       [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.7-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.4.7_amd64.deb)        |
+| Windows | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.4.8-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.4.8-arm64.exe) |
+|  macOS  |   [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.8-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.8-x64.dmg)   |
+|  Linux  |       [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.8-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.4.8_amd64.deb)        |
 
 ---
 
@@ -120,13 +120,13 @@
 
 ### 下載
 
-從 [Releases](https://github.com/legeling/PromptHub/releases) 下載最新版本 v0.4.7：
+從 [Releases](https://github.com/legeling/PromptHub/releases) 下載最新版本 v0.4.8：
 
 |  平台   |                                                                                                                                                                                                                  下載                                                                                                                                                                                                                   |
 | :-----: | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
-| Windows | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.4.7-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.4.7-arm64.exe) |
-|  macOS  |   [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.7-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.7-x64.dmg)   |
-|  Linux  |       [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.7-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.4.7_amd64.deb)        |
+| Windows | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.4.8-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.4.8-arm64.exe) |
+|  macOS  |   [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.8-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.8-x64.dmg)   |
+|  Linux  |       [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.4.8-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.4.8_amd64.deb)        |
 
 ### macOS 首次啟動
 
@@ -294,15 +294,15 @@ PromptHub/
 
 ## 🗺️ 路線圖
 
-### v0.4.7（當前）🎉
+### v0.4.8（當前）🎉
 
-- [x] **Skill 批量同步彈窗重做**：改為更緊湊的單列流程，移除橫向滾動並恢復整窗縱向滾動
-- [x] **目標平台優先展示**：批量同步時先看到安裝方式與目標平台，避免關鍵操作被已選技能列表擠出視區
-- [x] **Skills 頂部資訊區重排**：頁面說明固定在左側，操作工具欄對齊右側，批量模式層級更清楚
-- [x] **桌面版 CLI 命令**：首次啟動桌面版後，會自動安裝 `prompthub` 命令包裝器
-- [x] **平台目標目錄覆寫**：每個平台都可單獨指定 Skills 目錄，掃描、分發、卸載與狀態檢查保持一致
-- [x] **CodeBuddy / Qoder / QoderWork 支援**：補齊更多 AI 編程工具平台與對應圖示資源
-- [x] **發版文件與官網同步**：README、官網發布資料與多語言文件已同步到 `v0.4.7`
+- [x] **AI 工作台實裝**：模型管理、端點編輯、連線測試與場景預設模型已接入最新設定流程
+- [x] **skills.sh 社群商店接入**：可直接從 skills.sh 社群商店匯入熱門 Skill
+- [x] **歷史版本刪除**：Prompt 與 Skill 的單條歷史快照現在可以個別刪除
+- [x] **備份 / WebDAV 強化**：統一備份匯入格式，並補齊 Skill 在 WebDAV 舊版與增量同步中的完整載荷
+- [x] **資料目錄遷移顯示修復**：設定頁會顯示真實生效中的資料目錄，並明確標示需重啟後才切換的新目錄
+- [x] **大量 Skill 效能優化**：大型 Skill 列表改為分批渲染，並加入效能預算檢查
+- [x] **發版文件同步**：README、CHANGELOG 與多語言發版文件已同步到 `v0.4.8`
 
 ### v0.3.x
 
@@ -321,21 +321,26 @@ PromptHub/
 
 查看完整更新日誌：**[CHANGELOG.md](../CHANGELOG.md)**
 
-### 最新版本 v0.4.7 (2026-03-30) 🎉
+### 最新版本 v0.4.8 (2026-03-31) 🎉
 
 **新增**
 
-- 🖥️ **桌面版 CLI 命令**：首次啟動桌面版後會自動安裝 `prompthub` 命令包裝器
-- 🤝 **平台支援擴展**：新增 Qoder、QoderWork 與 CodeBuddy 平台支援
+- 🗑️ **歷史版本刪除**：支援刪除 Prompt 與 Skill 的單條歷史快照
+- 🌐 **skills.sh 社群商店接入**：支援從 skills.sh 社群商店直接匯入熱門 Skill
+- 🤖 **AI 工作台實裝**：最新 AI 設定頁已接入真實模型管理、連線測試與場景預設模型
 
 **修復**
 
-- 🌍 **Prompt 雙語編輯修復**：修復英文 Prompt 在中文介面下點擊「新增本地語言版本」後仍然落到英文字段的問題
+- 💾 **備份匯入格式統一**：`prompthub-backup`、`prompthub-export` 與舊裸 JSON 現在都可透過同一條恢復流程匯入
+- ☁️ **WebDAV Skill 同步修復**：WebDAV 現在會一併上傳與恢復 `skills`、`skillVersions` 和 `skillFiles`
+- 📂 **資料目錄狀態修復**：設定頁現在能區分目前生效中的資料目錄與重啟後才切換的新目錄
+- ⌨️ **顯示 / 隱藏應用快捷鍵修復**：全域與局部 `showApp` 快捷鍵現在都能真正切換視窗顯示狀態
 
 **優化**
 
-- 🗂️ **平台目標目錄覆寫**：支援為每個平台單獨配置 Skills 目錄，掃描與分發統一生效
-- 📚 **發版文件與官網同步**：README、多語言 README、官網發布資料與文件入口同步到 `v0.4.7`
+- 🚀 **大型 Skill 列表效能優化**：大型 Skill 列表改為分批渲染，降低首次載入卡頓
+- 🧪 **備份 / 同步測試矩陣補強**：補上本地恢復、WebDAV 舊版 / 增量同步與 Skill 恢復的回歸測試
+- 📚 **發版文件同步**：CHANGELOG、README 與多語言發版文件同步到 `v0.4.8`
 
 > 📋 [更新日誌詳情](../CHANGELOG.md)
 

@@ -108,6 +108,8 @@ export interface MarketplaceSkillEntry {
   id?: string;
   name?: string;
   title?: string;
+  install_name?: string;
+  installName?: string;
   description?: string;
   category?: SkillCategory;
   icon_url?: string;
@@ -133,6 +135,16 @@ export interface MarketplaceSkillEntry {
   version?: string | number;
   prerequisites?: string[];
   compatibility?: string[];
+  store_url?: string;
+  storeUrl?: string;
+  weekly_installs?: string;
+  weeklyInstalls?: string;
+  github_stars?: string;
+  githubStars?: string;
+  installed_on?: string[];
+  installedOn?: string[];
+  security_audits?: string[];
+  securityAudits?: string[];
 }
 
 export interface MarketplaceRegistryDocument {
@@ -149,6 +161,7 @@ export interface MarketplaceRegistryDocument {
 export interface RegistrySkill {
   slug: string;
   name: string;
+  install_name?: string;
   description: string;
   category: SkillCategory;
   icon_url?: string;
@@ -156,12 +169,17 @@ export interface RegistrySkill {
   icon_emoji?: string;
   author: string;
   source_url: string;
+  store_url?: string;
   tags: string[];
   version: string;
   content: string; // Embedded SKILL.md content
   content_url?: string; // Remote SKILL.md URL (for updates)
   prerequisites?: string[];
   compatibility?: string[];
+  weekly_installs?: string;
+  github_stars?: string;
+  installed_on?: string[];
+  security_audits?: string[];
 }
 
 export interface SkillStoreSource {

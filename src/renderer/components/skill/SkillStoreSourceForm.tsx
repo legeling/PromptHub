@@ -48,7 +48,7 @@ export function SkillStoreSourceForm({
               option.value === "marketplace-json"
                 ? t("skill.sourceTypeMarketplaceHint", "直接拉取 marketplace.json 并解析其中的 skills 列表。")
                 : option.value === "git-repo"
-                  ? t("skill.sourceTypeGitHint", "输入 GitHub 仓库地址，自动扫描 skills/*/SKILL.md。")
+                  ? t("skill.sourceTypeGitHint", "输入 GitHub 仓库地址，或本地 git 工作目录路径，自动扫描 skills/*/SKILL.md。")
                   : t("skill.sourceTypeLocalHint", "输入本地目录路径，扫描目录中的 skills。");
 
             return (
@@ -117,6 +117,9 @@ export function SkillStoreSourceForm({
             <div>{t("skill.storeExampleGit", "Git 仓库示例")}</div>
             <div className="mt-1 font-mono break-all text-[11px]">
               https://github.com/anthropics/skills
+            </div>
+            <div className="mt-1 font-mono break-all text-[11px]">
+              ~/Projects/my-skill-repo
             </div>
           </>
         )}

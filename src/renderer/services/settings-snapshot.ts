@@ -3,6 +3,7 @@ const LEGACY_SETTINGS_KEY = "settings-storage";
 
 export interface AIConfigSnapshot {
   aiModels?: any[];
+  scenarioModelDefaults?: Record<string, string>;
   aiProvider?: string;
   aiApiKey?: string;
   aiApiUrl?: string;
@@ -58,6 +59,7 @@ export function getAiConfigSnapshot(options?: {
 
     return {
       aiModels: filteredModels,
+      scenarioModelDefaults: state.scenarioModelDefaults || {},
       aiProvider: state.aiProvider,
       ...(options?.includeRootApiKey ? { aiApiKey: state.aiApiKey } : {}),
       aiApiUrl: state.aiApiUrl,
@@ -105,6 +107,9 @@ export function restoreAiConfigSnapshot(
     if (!data.state) data.state = {};
 
     if (aiConfig.aiModels) data.state.aiModels = aiConfig.aiModels;
+    if (aiConfig.scenarioModelDefaults) {
+      data.state.scenarioModelDefaults = aiConfig.scenarioModelDefaults;
+    }
     if (aiConfig.aiProvider) data.state.aiProvider = aiConfig.aiProvider;
     if (aiConfig.aiApiKey) data.state.aiApiKey = aiConfig.aiApiKey;
     if (aiConfig.aiApiUrl) data.state.aiApiUrl = aiConfig.aiApiUrl;

@@ -52,6 +52,7 @@ export function SkillFullDetailPage() {
   const deleteSkill = useSkillStore((state) => state.deleteSkill);
   const toggleFavorite = useSkillStore((state) => state.toggleFavorite);
   const loadSkills = useSkillStore((state) => state.loadSkills);
+  const syncSkillFromRepo = useSkillStore((state) => state.syncSkillFromRepo);
 
   const selectedSkill = useMemo(
     () => skills.find((s) => s.id === selectedSkillId),
@@ -140,23 +141,22 @@ export function SkillFullDetailPage() {
         return;
       }
 
-      const fallbackContent =
-        selectedSkill.instructions || selectedSkill.content || "";
-
       try {
-        const files = await window.api.skill.readLocalFiles(selectedSkill.id);
+        const syncedSkill = await syncSkillFromRepo(selectedSkill.id);
         const repoSkillMd =
-          files.find(
-            (file) =>
-              !file.isDirectory &&
-              file.path.toLowerCase() === "skill.md",
-          )?.content || fallbackContent;
+          syncedSkill?.instructions ||
+          syncedSkill?.content ||
+          selectedSkill.instructions ||
+          selectedSkill.content ||
+          "";
         if (!cancelled) {
           setResolvedSkillMdContent(repoSkillMd);
         }
       } catch {
         if (!cancelled) {
-          setResolvedSkillMdContent(fallbackContent);
+          setResolvedSkillMdContent(
+            selectedSkill.instructions || selectedSkill.content || "",
+          );
         }
       }
     }
@@ -171,6 +171,7 @@ export function SkillFullDetailPage() {
     selectedSkill?.instructions,
     selectedSkill?.content,
     selectedSkill?.updated_at,
+    syncSkillFromRepo,
   ]);
   const {
     availablePlatforms,

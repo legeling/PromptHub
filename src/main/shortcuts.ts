@@ -41,6 +41,28 @@ let shortcutModes: Record<string, 'global' | 'local'> = {
   settings: 'local',
 };
 
+type ShortcutWindow = Pick<
+  BrowserWindow,
+  'isMinimized' | 'restore' | 'isVisible' | 'show' | 'hide' | 'focus'
+>;
+
+export function toggleWindowForShowApp(win: ShortcutWindow): void {
+  if (win.isMinimized()) {
+    win.restore();
+    win.show();
+    win.focus();
+    return;
+  }
+
+  if (win.isVisible()) {
+    win.hide();
+    return;
+  }
+
+  win.show();
+  win.focus();
+}
+
 /**
  * Load shortcut configuration
  * 加载快捷键配置
@@ -121,12 +143,10 @@ function registerSingleShortcut(action: string, accelerator: string): boolean {
       if (windows.length > 0) {
         const win = windows[0];
         
-        // For show-app shortcut: show and focus window
-        // 如果是显示应用快捷键，显示并聚焦窗口
+        // For show-app shortcut: toggle window visibility
+        // 如果是显示应用快捷键，切换窗口显示状态
         if (action === 'showApp') {
-          if (win.isMinimized()) win.restore();
-          win.show();
-          win.focus();
+          toggleWindowForShowApp(win);
         }
         
         // Send shortcut event to renderer
@@ -273,4 +293,3 @@ export function registerShortcutsIPC(): void {
     return shortcutModes;
   });
 }
-

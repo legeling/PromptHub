@@ -15,6 +15,7 @@ import {
   TagsIcon,
 } from "lucide-react";
 import { SkillGalleryCard } from "./SkillGalleryCard";
+import { SkillRenderBoundary } from "./SkillRenderBoundary";
 import { useSkillStore } from "../../stores/skill.store";
 import { useSettingsStore } from "../../stores/settings.store";
 import { SkillQuickInstall } from "./SkillQuickInstall";
@@ -26,6 +27,10 @@ import { filterVisibleSkills } from "../../services/skill-filter";
 
 const MAX_STAGGERED_CARDS = 10;
 const CARD_STAGGER_MS = 50;
+const LARGE_SKILL_LIST_THRESHOLD = 120;
+const INITIAL_SKILL_RENDER_COUNT = 120;
+const SKILL_RENDER_CHUNK_SIZE = 120;
+const SKILL_RENDER_CHUNK_DELAY_MS = 24;
 
 // Lazy load list view for better performance
 // 懒加载列表视图以提升性能
@@ -112,6 +117,11 @@ export function SkillManager() {
   const [scannedSkills, setScannedSkills] = useState<ScannedSkill[]>([]);
   const [isScanning, setIsScanning] = useState(false);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [renderedSkillCount, setRenderedSkillCount] = useState(() =>
+    filteredSkills.length <= LARGE_SKILL_LIST_THRESHOLD
+      ? filteredSkills.length
+      : Math.min(INITIAL_SKILL_RENDER_COUNT, filteredSkills.length),
+  );
   const [selectedSkillIds, setSelectedSkillIds] = useState<Set<string>>(
     new Set(),
   );
@@ -159,15 +169,120 @@ export function SkillManager() {
     return result.importedCount;
   };
 
-  // Load skills on mount, then load deployed status
+  const visibleSkills = useMemo(() => {
+    if (filteredSkills.length <= LARGE_SKILL_LIST_THRESHOLD) {
+      return filteredSkills;
+    }
+
+    return filteredSkills.slice(0, renderedSkillCount);
+  }, [filteredSkills, renderedSkillCount]);
+  const selectedSkills = useMemo(
+    () => filteredSkills.filter((skill) => selectedSkillIds.has(skill.id)),
+    [filteredSkills, selectedSkillIds],
+  );
+  const allVisibleSelected = useMemo(
+    () =>
+      filteredSkills.length > 0 &&
+      filteredSkills.every((skill) => selectedSkillIds.has(skill.id)),
+    [filteredSkills, selectedSkillIds],
+  );
+
+  // Load skills on mount, then defer deployed status to idle time
   useEffect(() => {
-    loadSkills().then(() => loadDeployedStatus());
+    let disposed = false;
+    let idleId: number | undefined;
+    let timeoutId: number | undefined;
+    const browserWindow = window as Window & {
+      requestIdleCallback?: (
+        callback: IdleRequestCallback,
+        options?: IdleRequestOptions,
+      ) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+
+    void loadSkills().then(() => {
+      if (disposed) return;
+
+      const run = () => {
+        if (!disposed) {
+          void loadDeployedStatus();
+        }
+      };
+
+      if (typeof browserWindow.requestIdleCallback === "function") {
+        idleId = browserWindow.requestIdleCallback(run, { timeout: 800 });
+      } else {
+        timeoutId = window.setTimeout(run, 80);
+      }
+    });
+
+    return () => {
+      disposed = true;
+      if (
+        idleId !== undefined &&
+        typeof browserWindow.cancelIdleCallback === "function"
+      ) {
+        browserWindow.cancelIdleCallback(idleId);
+      }
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId);
+      }
+    };
   }, [loadSkills, loadDeployedStatus]);
 
   useEffect(() => {
+    const targetCount =
+      filteredSkills.length <= LARGE_SKILL_LIST_THRESHOLD
+        ? filteredSkills.length
+        : Math.min(INITIAL_SKILL_RENDER_COUNT, filteredSkills.length);
+
+    if (filteredSkills.length <= LARGE_SKILL_LIST_THRESHOLD) {
+      if (renderedSkillCount !== targetCount) {
+        setRenderedSkillCount(targetCount);
+      }
+      return;
+    }
+
+    let disposed = false;
+    let timeoutId: number | undefined;
+
+    if (renderedSkillCount !== targetCount) {
+      setRenderedSkillCount(targetCount);
+    }
+
+    const scheduleNextChunk = () => {
+      timeoutId = window.setTimeout(() => {
+        if (disposed) return;
+
+        setRenderedSkillCount((current) => {
+          const next = Math.min(
+            current + SKILL_RENDER_CHUNK_SIZE,
+            filteredSkills.length,
+          );
+          if (next < filteredSkills.length) {
+            scheduleNextChunk();
+          }
+          return next;
+        });
+      }, SKILL_RENDER_CHUNK_DELAY_MS);
+    };
+
+    if (INITIAL_SKILL_RENDER_COUNT < filteredSkills.length) {
+      scheduleNextChunk();
+    }
+
+    return () => {
+      disposed = true;
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [filteredSkills, renderedSkillCount]);
+
+  useEffect(() => {
     if (storeView === "store") {
-      setIsSelectionMode(false);
-      setSelectedSkillIds(new Set());
+      setIsSelectionMode((prev) => (prev ? false : prev));
+      setSelectedSkillIds((prev) => (prev.size === 0 ? prev : new Set()));
     }
   }, [storeView]);
 
@@ -198,21 +313,29 @@ export function SkillManager() {
           </div>
         }
       >
-        <SkillFullDetailPage />
+        <SkillRenderBoundary
+          resetKey={selectedSkillId}
+          title={t("skill.detailRenderError", "这个 Skill 暂时打不开")}
+          description={t(
+            "skill.detailRenderErrorHint",
+            "我们已经拦住了这次渲染异常，避免整个页面白屏。你可以先返回列表，或者立即重试加载详情。",
+          )}
+          primaryActionLabel={t("common.back", "返回")}
+          onPrimaryAction={() => selectSkill(null)}
+          secondaryActionLabel={t("common.retry", "重试")}
+          onSecondaryAction={() => {
+            void loadSkills().then(() => loadDeployedStatus());
+          }}
+        >
+          <SkillFullDetailPage />
+        </SkillRenderBoundary>
       </Suspense>
     );
   }
 
-  const selectedSkills = filteredSkills.filter((skill) =>
-    selectedSkillIds.has(skill.id),
-  );
-  const allVisibleSelected =
-    filteredSkills.length > 0 &&
-    filteredSkills.every((skill) => selectedSkillIds.has(skill.id));
-
   const toggleSelectionMode = () => {
     setIsSelectionMode((prev) => !prev);
-    setSelectedSkillIds(new Set());
+    setSelectedSkillIds((prev) => (prev.size === 0 ? prev : new Set()));
   };
 
   const toggleSkillSelection = (skillId: string) => {
@@ -400,6 +523,15 @@ export function SkillManager() {
                       ? distributionStatsLabel
                       : `${filteredSkills.length}${filterType !== "all" ? ` / ${skills.length}` : ""}`}
                   </span>
+                  {filteredSkills.length > visibleSkills.length && (
+                    <span className="text-[11px] text-muted-foreground">
+                      {t("skill.progressiveRendering", {
+                        rendered: visibleSkills.length,
+                        total: filteredSkills.length,
+                        defaultValue: `正在分批渲染 ${visibleSkills.length}/${filteredSkills.length}`,
+                      })}
+                    </span>
+                  )}
                 </div>
                 <p className="mt-1.5 text-xs text-muted-foreground">
                   {headerSubtitle}
@@ -567,7 +699,7 @@ export function SkillManager() {
               }
             >
               <SkillListView
-                skills={filteredSkills}
+                skills={visibleSkills}
                 onQuickInstall={setQuickInstallSkill}
                 onRequestDelete={(id, name) =>
                   setDeleteConfirm({
@@ -600,14 +732,16 @@ export function SkillManager() {
                 </div>
               ) : (
                 <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-                  {filteredSkills.map((skill, index) => {
+                  {visibleSkills.map((skill, index) => {
                     const isSelected = selectedSkillIds.has(skill.id);
 
                     return (
                     <SkillGalleryCard
                       key={skill.id}
                       animationDelayMs={
-                        Math.min(index, MAX_STAGGERED_CARDS) * CARD_STAGGER_MS
+                        filteredSkills.length > LARGE_SKILL_LIST_THRESHOLD
+                          ? 0
+                          : Math.min(index, MAX_STAGGERED_CARDS) * CARD_STAGGER_MS
                       }
                       isSelected={isSelected}
                       isSelectionMode={isSelectionMode}

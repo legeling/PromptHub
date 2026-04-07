@@ -1,3 +1,5 @@
+import type { AITransportResponse } from "../../shared/types";
+
 /**
  * AI Service - Call various AI model APIs
  * Most domestic and international service providers are compatible with OpenAI format
@@ -6,7 +8,7 @@
  */
 
 export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant';
+  role: "system" | "user" | "assistant";
   content: string;
 }
 
@@ -15,7 +17,7 @@ export interface ChatCompletionRequest {
   model: string;
   temperature?: number;
   max_tokens?: number;
-  max_completion_tokens?: number;  // 新版 OpenAI 模型（o1, gpt-5 等）使用此参数
+  max_completion_tokens?: number; // 新版 OpenAI 模型（o1, gpt-5 等）使用此参数
   top_p?: number;
   top_k?: number;
   frequency_penalty?: number;
@@ -25,7 +27,7 @@ export interface ChatCompletionRequest {
   // Output format: undefined = text, { type: 'json_object' } = JSON mode, { type: 'json_schema', ... } = JSON Schema
   // 输出格式：undefined = 文本，{ type: 'json_object' } = JSON 模式，{ type: 'json_schema', ... } = JSON Schema
   response_format?: {
-    type: 'text' | 'json_object' | 'json_schema';
+    type: "text" | "json_object" | "json_schema";
     json_schema?: {
       name: string;
       strict?: boolean;
@@ -39,7 +41,7 @@ export interface ChatCompletionResponse {
   choices: {
     index: number;
     message: ChatMessage & {
-      reasoning_content?: string;  // 思考模型的思考内容 / Thinking content for reasoning models
+      reasoning_content?: string; // 思考模型的思考内容 / Thinking content for reasoning models
     };
     finish_reason: string;
     delta?: {
@@ -57,23 +59,23 @@ export interface ChatCompletionResponse {
 // Chat model parameters
 // 对话模型参数
 export interface ChatParams {
-  temperature?: number;       // 温度 (0-2) / Temperature
-  maxTokens?: number;         // 最大 token 数 / Max tokens
-  topP?: number;              // Top-P 采样 / Top-P sampling
-  topK?: number;              // Top-K 采样 / Top-K sampling
-  frequencyPenalty?: number;  // 频率惩罚 / Frequency penalty
-  presencePenalty?: number;   // 存在惩罚 / Presence penalty
-  stream?: boolean;           // 流式输出 / Streaming output
-  enableThinking?: boolean;   // 思考模式 / Thinking mode
-  customParams?: Record<string, string | number | boolean>;  // 自定义参数 / Custom parameters
+  temperature?: number; // 温度 (0-2) / Temperature
+  maxTokens?: number; // 最大 token 数 / Max tokens
+  topP?: number; // Top-P 采样 / Top-P sampling
+  topK?: number; // Top-K 采样 / Top-K sampling
+  frequencyPenalty?: number; // 频率惩罚 / Frequency penalty
+  presencePenalty?: number; // 存在惩罚 / Presence penalty
+  stream?: boolean; // 流式输出 / Streaming output
+  enableThinking?: boolean; // 思考模式 / Thinking mode
+  customParams?: Record<string, string | number | boolean>; // 自定义参数 / Custom parameters
 }
 
 // Image model parameters
 // 图像模型参数
 export interface ImageParams {
   size?: string;
-  quality?: 'standard' | 'hd';
-  style?: 'vivid' | 'natural';
+  quality?: "standard" | "hd";
+  style?: "vivid" | "natural";
   n?: number;
 }
 
@@ -85,7 +87,7 @@ export interface AIConfig {
   apiKey: string;
   apiUrl: string;
   model: string;
-  type?: 'chat' | 'image'; // 模型类型 / Model type
+  type?: "chat" | "image"; // 模型类型 / Model type
   chatParams?: ChatParams;
   imageParams?: ImageParams;
 }
@@ -97,10 +99,10 @@ export interface ImageGenerationRequest {
   prompt: string;
   model?: string;
   n?: number;
-  size?: '256x256' | '512x512' | '1024x1024' | '1024x1792' | '1792x1024';
-  quality?: 'standard' | 'hd';
-  style?: 'vivid' | 'natural';
-  response_format?: 'url' | 'b64_json';
+  size?: "256x256" | "512x512" | "1024x1024" | "1024x1792" | "1792x1024";
+  quality?: "standard" | "hd";
+  style?: "vivid" | "natural";
+  response_format?: "url" | "b64_json";
 }
 
 export interface ImageGenerationResponse {
@@ -126,9 +128,9 @@ export interface ImageTestResult {
 // Streaming output callback interface
 // 流式输出回调接口
 export interface StreamCallbacks {
-  onContent?: (chunk: string) => void;           // 内容块回调 / Content chunk callback
-  onThinking?: (chunk: string) => void;          // 思考内容回调 / Thinking content callback
-  onComplete?: (fullContent: string, thinkingContent?: string) => void;  // 完成回调 / Completion callback
+  onContent?: (chunk: string) => void; // 内容块回调 / Content chunk callback
+  onThinking?: (chunk: string) => void; // 思考内容回调 / Thinking content callback
+  onComplete?: (fullContent: string, thinkingContent?: string) => void; // 完成回调 / Completion callback
 }
 
 // Chat completion result
@@ -136,6 +138,160 @@ export interface StreamCallbacks {
 export interface ChatCompletionResult {
   content: string;
   thinkingContent?: string;
+}
+
+interface ResponseLike {
+  ok: boolean;
+  status: number;
+  statusText: string;
+  headers: Record<string, string>;
+  text: () => Promise<string>;
+  json: <T = unknown>() => Promise<T>;
+}
+
+interface StreamState {
+  fullContent: string;
+  thinkingContent: string;
+  buffer: string;
+  chunkCount: number;
+}
+
+function getAITransport() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  return window.api?.ai ?? null;
+}
+
+function createResponseLike(response: AITransportResponse): ResponseLike {
+  return {
+    ok: response.ok,
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+    text: async () => response.body,
+    json: async <T = unknown>() => JSON.parse(response.body) as T,
+  };
+}
+
+function createStreamState(): StreamState {
+  return {
+    fullContent: "",
+    thinkingContent: "",
+    buffer: "",
+    chunkCount: 0,
+  };
+}
+
+function yieldToEventLoop() {
+  return new Promise<void>((resolve) => {
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(() => resolve());
+    } else {
+      setTimeout(resolve, 0);
+    }
+  });
+}
+
+async function processStreamTextChunk(
+  chunkText: string,
+  state: StreamState,
+  onStream?: (chunk: string) => void,
+  streamCallbacks?: StreamCallbacks,
+  options?: {
+    flush?: boolean;
+    yieldToUi?: boolean;
+  },
+): Promise<void> {
+  state.buffer += chunkText;
+  const lines = state.buffer.split("\n");
+  state.buffer = options?.flush ? "" : lines.pop() || "";
+  let deltasSinceYield = 0;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed === "data: [DONE]") continue;
+    if (!trimmed.startsWith("data: ")) continue;
+
+    try {
+      const json = JSON.parse(trimmed.slice(6));
+      const delta = json.choices?.[0]?.delta;
+
+      if (!delta) {
+        continue;
+      }
+
+      state.chunkCount++;
+      deltasSinceYield++;
+
+      if (delta.reasoning_content) {
+        state.thinkingContent += delta.reasoning_content;
+        streamCallbacks?.onThinking?.(delta.reasoning_content);
+      }
+
+      if (delta.content) {
+        state.fullContent += delta.content;
+        onStream?.(delta.content);
+        streamCallbacks?.onContent?.(delta.content);
+        if (state.chunkCount === 1) {
+          console.log(
+            "[AI Stream] First content chunk received:",
+            delta.content.slice(0, 50),
+          );
+        }
+      }
+
+      if (options?.yieldToUi && deltasSinceYield >= 20) {
+        deltasSinceYield = 0;
+        await yieldToEventLoop();
+      }
+    } catch {
+      // 忽略解析错误 / Ignore parse errors
+    }
+  }
+
+  if (options?.yieldToUi) {
+    if (state.chunkCount > 0 && state.chunkCount % 50 === 0) {
+      console.log(
+        `[AI Stream] Yielding at chunk ${state.chunkCount}, content length: ${state.fullContent.length}`,
+      );
+    }
+    await yieldToEventLoop();
+  }
+}
+
+function finalizeStreamState(
+  state: StreamState,
+  streamCallbacks?: StreamCallbacks,
+): ChatCompletionResult {
+  streamCallbacks?.onComplete?.(
+    state.fullContent,
+    state.thinkingContent || undefined,
+  );
+
+  return {
+    content: state.fullContent,
+    thinkingContent: state.thinkingContent || undefined,
+  };
+}
+
+async function getErrorMessageFromResponse(
+  response: ResponseLike,
+): Promise<string> {
+  const errorText = await response.text();
+  let errorMessage = `API 请求失败 (${response.status})`;
+
+  try {
+    const errorJson = JSON.parse(errorText);
+    errorMessage =
+      errorJson.error?.message || errorJson.message || errorMessage;
+  } catch {
+    if (errorText) {
+      errorMessage = errorText.slice(0, 200);
+    }
+  }
+
+  return errorMessage;
 }
 
 /**
@@ -154,35 +310,34 @@ export async function chatCompletion(
     presencePenalty?: number;
     stream?: boolean;
     enableThinking?: boolean;
-    onStream?: (chunk: string) => void;  // 兼容旧版 / Legacy compatibility
+    onStream?: (chunk: string) => void; // 兼容旧版 / Legacy compatibility
     streamCallbacks?: StreamCallbacks;
     // Output format options / 输出格式选项
     responseFormat?: {
-      type: 'text' | 'json_object' | 'json_schema';
+      type: "text" | "json_object" | "json_schema";
       jsonSchema?: {
         name: string;
         strict?: boolean;
         schema: Record<string, unknown>;
       };
     };
-  }
+  },
 ): Promise<ChatCompletionResult> {
   const { provider, apiKey, apiUrl, model, chatParams } = config;
-  const providerId = provider?.toLowerCase() || '';
-  const isGemini = apiUrl.includes('generativelanguage.googleapis.com');
-  const normalizedModel = isGemini ? model.replace(/^models\//, '') : model;
+  const providerId = provider?.toLowerCase() || "";
+  const isGemini = apiUrl.includes("generativelanguage.googleapis.com");
+  const normalizedModel = isGemini ? model.replace(/^models\//, "") : model;
 
   if (!apiKey) {
-    throw new Error('请先配置 API Key');
+    throw new Error("API Key is not configured");
   }
 
   if (!apiUrl) {
-    throw new Error('请先配置 API 地址');
+    throw new Error("API URL is not configured");
   }
 
   if (!model) {
-    throw new Error('请先选择模型');
-    // Please select a model first
+    throw new Error("No model selected");
   }
 
   // 构建请求 URL / Build request URL
@@ -192,51 +347,36 @@ export async function chatCompletion(
 
   // 如果以 # 结尾，移除 # 并不做任何自动补全
   // If ends with #, remove # and don't auto-complete
-  if (endpoint.endsWith('#')) {
+  if (endpoint.endsWith("#")) {
     endpoint = endpoint.slice(0, -1);
-    if (!endpoint.endsWith('/chat/completions')) {
-      endpoint = endpoint.replace(/\/$/, '') + '/chat/completions';
+    if (!endpoint.endsWith("/chat/completions")) {
+      endpoint = endpoint.replace(/\/$/, "") + "/chat/completions";
     }
   } else {
     // 移除尾部斜杠
-    endpoint = endpoint.replace(/\/$/, '');
-    if (isGemini && endpoint.endsWith('/models')) {
-      endpoint = endpoint.replace(/\/models$/, '');
+    endpoint = endpoint.replace(/\/$/, "");
+    if (isGemini && endpoint.endsWith("/models")) {
+      endpoint = endpoint.replace(/\/models$/, "");
     }
 
     // 如果已经包含 /chat/completions，保持原样
-    if (endpoint.endsWith('/chat/completions')) {
+    if (endpoint.endsWith("/chat/completions")) {
       // 保持原样
     } else if (isGemini) {
-      if (endpoint.endsWith('/openai')) {
-        endpoint = endpoint + '/chat/completions';
+      if (endpoint.endsWith("/openai")) {
+        endpoint = endpoint + "/chat/completions";
       } else if (endpoint.match(/\/v\d+(?:beta)?$/)) {
-        endpoint = endpoint + '/openai/chat/completions';
+        endpoint = endpoint + "/openai/chat/completions";
       } else {
-        endpoint = endpoint + '/v1beta/openai/chat/completions';
+        endpoint = endpoint + "/v1beta/openai/chat/completions";
       }
     } else if (endpoint.match(/\/v\d+$/)) {
       // 如果已经有版本路径如 /v1，直接追加 /chat/completions
-      endpoint = endpoint + '/chat/completions';
+      endpoint = endpoint + "/chat/completions";
     } else {
       // 否则自动补全 /v1/chat/completions
-      endpoint = endpoint + '/v1/chat/completions';
+      endpoint = endpoint + "/v1/chat/completions";
     }
-  }
-
-  // 构建请求头 / Build request headers
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-
-  // 不同供应商的认证方式 / Different provider authentication
-  if (provider === 'anthropic') {
-    headers['x-api-key'] = apiKey;
-    headers['anthropic-version'] = '2023-06-01';
-  } else if (isGemini) {
-    headers['x-goog-api-key'] = apiKey;
-  } else {
-    headers['Authorization'] = `Bearer ${apiKey}`;
   }
 
   // 合并参数：config.chatParams < options（options 优先级更高）
@@ -249,20 +389,37 @@ export async function chatCompletion(
     frequencyPenalty: options?.frequencyPenalty ?? chatParams?.frequencyPenalty,
     presencePenalty: options?.presencePenalty ?? chatParams?.presencePenalty,
     stream: options?.stream ?? chatParams?.stream ?? false,
-    enableThinking: options?.enableThinking ?? chatParams?.enableThinking ?? false,
+    enableThinking:
+      options?.enableThinking ?? chatParams?.enableThinking ?? false,
   };
+
+  // 构建请求头 / Build request headers
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Accept: mergedParams.stream ? "text/event-stream" : "application/json",
+  };
+
+  // 不同供应商的认证方式 / Different provider authentication
+  if (provider === "anthropic") {
+    headers["x-api-key"] = apiKey;
+    headers["anthropic-version"] = "2023-06-01";
+  } else if (isGemini) {
+    headers["x-goog-api-key"] = apiKey;
+  } else {
+    headers["Authorization"] = `Bearer ${apiKey}`;
+  }
 
   // 检测是否为需要 max_completion_tokens 的新模型
   // Detect if it's a new model that requires max_completion_tokens
   // Updated for Issue #21: Support automatic fallback/retry for token parameters
   const modelLower = model.toLowerCase();
   let useMaxCompletionTokens =
-    modelLower.includes('o1') ||
-    modelLower.includes('o3') ||
-    modelLower.includes('gpt-4o') ||
-    modelLower.includes('gpt-4.5') || 
-    /gpt-[5-9]/.test(modelLower) ||  // Matches gpt-5, gpt-5.2, gpt-6, etc.
-    providerId.includes('openai');
+    modelLower.includes("o1") ||
+    modelLower.includes("o3") ||
+    modelLower.includes("gpt-4o") ||
+    modelLower.includes("gpt-4.5") ||
+    /gpt-[5-9]/.test(modelLower) || // Matches gpt-5, gpt-5.2, gpt-6, etc.
+    providerId.includes("openai");
 
   // 构建请求体 / Build request body
   const body: ChatCompletionRequest = {
@@ -296,9 +453,9 @@ export async function chatCompletion(
 
   // 检测是否为 Qwen 模型 / Detect if Qwen model
   const isQwen =
-    providerId.includes('qwen') ||
-    providerId.includes('dashscope') ||
-    model.toLowerCase().includes('qwen');
+    providerId.includes("qwen") ||
+    providerId.includes("dashscope") ||
+    model.toLowerCase().includes("qwen");
 
   // 处理思考模式 / Handle thinking mode
   // 只有在流式模式下才能启用思考，非流式必须禁用
@@ -315,22 +472,25 @@ export async function chatCompletion(
 
   // 处理自定义参数 / Handle custom parameters
   const customParams = chatParams?.customParams;
-  if (customParams && typeof customParams === 'object') {
+  if (customParams && typeof customParams === "object") {
     const bodyAny = body as unknown as Record<string, unknown>;
     for (const [key, value] of Object.entries(customParams)) {
-      if (key && value !== undefined && value !== '') {
+      if (key && value !== undefined && value !== "") {
         bodyAny[key] = value;
       }
     }
   }
 
   // 处理输出格式 / Handle response format (Issue #38)
-  if (options?.responseFormat && options.responseFormat.type !== 'text') {
-    if (options.responseFormat.type === 'json_object') {
-      body.response_format = { type: 'json_object' };
-    } else if (options.responseFormat.type === 'json_schema' && options.responseFormat.jsonSchema) {
+  if (options?.responseFormat && options.responseFormat.type !== "text") {
+    if (options.responseFormat.type === "json_object") {
+      body.response_format = { type: "json_object" };
+    } else if (
+      options.responseFormat.type === "json_schema" &&
+      options.responseFormat.jsonSchema
+    ) {
       body.response_format = {
-        type: 'json_schema',
+        type: "json_schema",
         json_schema: {
           name: options.responseFormat.jsonSchema.name,
           strict: options.responseFormat.jsonSchema.strict ?? true,
@@ -340,119 +500,174 @@ export async function chatCompletion(
     }
   }
 
+  const transport = getAITransport();
 
-  try {
-    let response = await fetch(endpoint, {
-      method: 'POST',
+  const sendRequest = async (): Promise<{
+    streamResult?: ChatCompletionResult;
+    response?: ResponseLike;
+  }> => {
+    const requestBody = JSON.stringify(body);
+
+    if (mergedParams.stream && transport) {
+      const streamState = createStreamState();
+      let streamError: string | null = null;
+
+      const response = await transport.requestStream(
+        {
+          method: "POST",
+          url: endpoint,
+          headers,
+          body: requestBody,
+        },
+        {
+          onChunk: (chunk) => {
+            void processStreamTextChunk(
+              chunk,
+              streamState,
+              options?.onStream,
+              options?.streamCallbacks,
+            );
+          },
+          onError: (error) => {
+            streamError = error;
+          },
+        },
+      );
+
+      if (!response.ok) {
+        return { response: createResponseLike(response) };
+      }
+
+      if (streamError) {
+        throw new Error(streamError);
+      }
+
+      await processStreamTextChunk(
+        "",
+        streamState,
+        options?.onStream,
+        options?.streamCallbacks,
+        { flush: true },
+      );
+
+      return {
+        streamResult: finalizeStreamState(
+          streamState,
+          options?.streamCallbacks,
+        ),
+      };
+    }
+
+    if (transport) {
+      const response = await transport.request({
+        method: "POST",
+        url: endpoint,
+        headers,
+        body: requestBody,
+      });
+      return { response: createResponseLike(response) };
+    }
+
+    const response = await fetch(endpoint, {
+      method: "POST",
       headers,
-      body: JSON.stringify(body),
+      body: requestBody,
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage = `API 请求失败 (${response.status})`;
-      
-      try {
-        const errorJson = JSON.parse(errorText);
-        errorMessage = errorJson.error?.message || errorJson.message || errorMessage;
-      } catch {
-        if (errorText) {
-          errorMessage = errorText.slice(0, 200);
-        }
-      }
+    if (mergedParams.stream) {
+      console.log("[AI Service] Starting stream response handling...");
+      return {
+        streamResult: await handleStreamResponse(
+          response,
+          options?.onStream,
+          options?.streamCallbacks,
+        ),
+      };
+    }
+
+    return { response };
+  };
+
+  try {
+    let requestResult = await sendRequest();
+    let response = requestResult.response;
+
+    if (response && !response.ok) {
+      const errorMessage = await getErrorMessageFromResponse(response);
 
       // Check for token parameter compatibility issues (Issue #21)
       // 检查 Token 参数兼容性问题
-      const isTokenParamError = 
-        errorMessage.includes("'max_tokens' is not supported") || 
+      const isTokenParamError =
+        errorMessage.includes("'max_tokens' is not supported") ||
         errorMessage.includes("'max_completion_tokens' is not supported") ||
         errorMessage.includes("Use 'max_completion_tokens' instead") ||
         errorMessage.includes("Use 'max_tokens' instead");
 
       // Check for enable_thinking compatibility issues (Issue #9)
       // 检查 enable_thinking 参数兼容性问题 (Issue #9)
-      const isThinkingParamError = 
+      const isThinkingParamError =
         errorMessage.includes("enable_thinking must be set to false") ||
         errorMessage.includes("enable_thinking only support stream") ||
         errorMessage.includes("parameter.enable_thinking");
 
       if (isTokenParamError) {
-        console.warn(`[AI Service] Token parameter mismatch detected: "${errorMessage}". Retrying with alternative parameter...`);
-        
-        // Toggle parameter
+        console.warn(
+          `[AI Service] Token parameter mismatch detected: "${errorMessage}". Retrying with alternative parameter...`,
+        );
+
         if (useMaxCompletionTokens) {
-          // Switch to max_tokens (old style)
           delete body.max_completion_tokens;
           body.max_tokens = mergedParams.maxTokens;
         } else {
-          // Switch to max_completion_tokens (new style)
           delete body.max_tokens;
           body.max_completion_tokens = mergedParams.maxTokens;
         }
 
-        // Retry request
-        response = await fetch(endpoint, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(body),
-        });
+        requestResult = await sendRequest();
+        response = requestResult.response;
 
-        // If explicitly failed again, process error normally
-        if (!response.ok) {
-           const retryErrorText = await response.text();
-           let retryErrorMessage = `API 请求失败 (重试后): ${response.status}`;
-           try {
-             const retryJson = JSON.parse(retryErrorText);
-             retryErrorMessage = retryJson.error?.message || retryJson.message || retryErrorMessage;
-           } catch { 
-             if (retryErrorText) retryErrorMessage = retryErrorText.slice(0, 200);
-           }
-           throw new Error(retryErrorMessage);
+        if (response && !response.ok) {
+          throw new Error(await getErrorMessageFromResponse(response));
         }
       } else if (isThinkingParamError) {
-        console.warn(`[AI Service] enable_thinking parameter error detected: "${errorMessage}". Retrying with enable_thinking=false...`);
-        
-        // Disable thinking and retry
+        console.warn(
+          `[AI Service] enable_thinking parameter error detected: "${errorMessage}". Retrying with enable_thinking=false...`,
+        );
+
         body.enable_thinking = false;
+        requestResult = await sendRequest();
+        response = requestResult.response;
 
-        // Retry request
-        response = await fetch(endpoint, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(body),
-        });
-
-        // If explicitly failed again, process error normally
-        if (!response.ok) {
-           const retryErrorText = await response.text();
-           let retryErrorMessage = `API 请求失败 (重试后): ${response.status}`;
-           try {
-             const retryJson = JSON.parse(retryErrorText);
-             retryErrorMessage = retryJson.error?.message || retryJson.message || retryErrorMessage;
-           } catch { 
-             if (retryErrorText) retryErrorMessage = retryErrorText.slice(0, 200);
-           }
-           throw new Error(retryErrorMessage);
+        if (response && !response.ok) {
+          throw new Error(await getErrorMessageFromResponse(response));
         }
       } else {
         throw new Error(errorMessage);
       }
     }
 
+    if (requestResult.streamResult) {
+      return requestResult.streamResult;
+    }
+
+    if (!response) {
+      throw new Error("AI 返回结果为空");
+    }
+
     // 流式输出处理 / Streaming output handling
     // Debug: Log streaming status / 调试：记录流式状态
-    console.log('[AI Service] Stream mode:', mergedParams.stream, 'Callbacks provided:', !!options?.streamCallbacks);
-
-    if (mergedParams.stream) {
-      console.log('[AI Service] Starting stream response handling...');
-      return await handleStreamResponse(response, options?.onStream, options?.streamCallbacks);
-    }
+    console.log(
+      "[AI Service] Stream mode:",
+      mergedParams.stream,
+      "Callbacks provided:",
+      !!options?.streamCallbacks,
+    );
 
     // 非流式响应 / Non-streaming response
     const data: ChatCompletionResponse = await response.json();
 
     if (!data.choices || data.choices.length === 0) {
-      throw new Error('AI 返回结果为空');
+      throw new Error("AI 返回结果为空");
       // AI returned empty result
     }
 
@@ -465,7 +680,7 @@ export async function chatCompletion(
     if (error instanceof Error) {
       throw error;
     }
-    throw new Error('网络请求失败，请检查网络连接');
+    throw new Error("网络请求失败，请检查网络连接");
     // Network request failed, please check network connection
   }
 }
@@ -477,101 +692,49 @@ export async function chatCompletion(
 async function handleStreamResponse(
   response: Response,
   onStream?: (chunk: string) => void,
-  streamCallbacks?: StreamCallbacks
+  streamCallbacks?: StreamCallbacks,
 ): Promise<ChatCompletionResult> {
   const reader = response.body?.getReader();
   if (!reader) {
-    throw new Error('无法读取响应流');
+    throw new Error("无法读取响应流");
     // Cannot read response stream
   }
 
   const decoder = new TextDecoder();
-  let fullContent = '';
-  let thinkingContent = '';
-  let buffer = '';
-
-  // Helper to yield control to the event loop, allowing RAF to run
-  // 让出事件循环控制权的辅助函数，允许 RAF 运行
-  const yieldToEventLoop = () =>
-    new Promise<void>((resolve) => {
-      if (typeof requestAnimationFrame === 'function') {
-        requestAnimationFrame(() => resolve());
-      } else {
-        setTimeout(resolve, 0);
-      }
-    });
+  const state = createStreamState();
 
   try {
-    let chunkCount = 0;
-
     while (true) {
       const { done, value } = await reader.read();
       if (done) {
-        console.log('[AI Stream] Stream completed, total chunks:', chunkCount);
+        console.log(
+          "[AI Stream] Stream completed, total chunks:",
+          state.chunkCount,
+        );
         break;
       }
 
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-      let deltasSinceYield = 0;
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed || trimmed === 'data: [DONE]') continue;
-        if (!trimmed.startsWith('data: ')) continue;
-
-        try {
-          const json = JSON.parse(trimmed.slice(6));
-          const delta = json.choices?.[0]?.delta;
-
-          if (delta) {
-            chunkCount++;
-            deltasSinceYield++;
-            // 处理思考内容 / Handle thinking content
-            if (delta.reasoning_content) {
-              thinkingContent += delta.reasoning_content;
-              streamCallbacks?.onThinking?.(delta.reasoning_content);
-            }
-
-            // 处理正常内容 / Handle normal content
-            if (delta.content) {
-              fullContent += delta.content;
-              onStream?.(delta.content);
-              streamCallbacks?.onContent?.(delta.content);
-              // Log first chunk to verify streaming / 记录第一个块以验证流式输出
-              if (chunkCount === 1) {
-                console.log('[AI Stream] First content chunk received:', delta.content.slice(0, 50));
-              }
-            }
-            if (deltasSinceYield >= 20) {
-              deltasSinceYield = 0;
-              await yieldToEventLoop();
-            }
-          }
-        } catch {
-          // 忽略解析错误 / Ignore parse errors
-        }
-      }
-
-      // Yield to event loop after every read to allow UI updates
-      // 每次读取后都让出事件循环以允许 UI 更新
-      // This is CRITICAL for streaming to appear smooth instead of all-at-once
-      if (chunkCount % 50 === 0) {
-        console.log(`[AI Stream] Yielding at chunk ${chunkCount}, content length: ${fullContent.length}`);
-      }
-      await yieldToEventLoop();
+      await processStreamTextChunk(
+        decoder.decode(value, { stream: true }),
+        state,
+        onStream,
+        streamCallbacks,
+        { yieldToUi: true },
+      );
     }
+
+    await processStreamTextChunk(
+      decoder.decode(),
+      state,
+      onStream,
+      streamCallbacks,
+      { flush: true, yieldToUi: true },
+    );
   } finally {
     reader.releaseLock();
   }
 
-  streamCallbacks?.onComplete?.(fullContent, thinkingContent || undefined);
-
-  return {
-    content: fullContent,
-    thinkingContent: thinkingContent || undefined,
-  };
+  return finalizeStreamState(state, streamCallbacks);
 }
 
 export interface AITestResult {
@@ -580,7 +743,7 @@ export interface AITestResult {
   id?: string;
   success: boolean;
   response?: string;
-  thinkingContent?: string;  // 思考内容 / Thinking content
+  thinkingContent?: string; // 思考内容 / Thinking content
   error?: string;
   latency?: number; // 响应时间 (ms)
   model: string;
@@ -594,10 +757,10 @@ export interface AITestResult {
 export async function testAIConnection(
   config: AIConfig,
   testPrompt?: string,
-  streamCallbacks?: StreamCallbacks
+  streamCallbacks?: StreamCallbacks,
 ): Promise<AITestResult> {
   const startTime = Date.now();
-  const prompt = testPrompt || 'Hello! Please respond with a brief greeting.';
+  const prompt = testPrompt || "Hello! Please respond with a brief greeting.";
 
   // 使用配置中的参数，但限制 maxTokens 用于测试
   // Use config parameters, but limit maxTokens for testing
@@ -605,14 +768,16 @@ export async function testAIConnection(
   const useThinking = config.chatParams?.enableThinking ?? false;
 
   try {
-    const result = await chatCompletion(config, [
-      { role: 'user', content: prompt }
-    ], {
-      maxTokens: 2048,
-      stream: useStream,
-      enableThinking: useThinking,
-      streamCallbacks,
-    });
+    const result = await chatCompletion(
+      config,
+      [{ role: "user", content: prompt }],
+      {
+        maxTokens: 2048,
+        stream: useStream,
+        enableThinking: useThinking,
+        streamCallbacks,
+      },
+    );
 
     return {
       id: config.id,
@@ -627,7 +792,7 @@ export async function testAIConnection(
     return {
       id: config.id,
       success: false,
-      error: error instanceof Error ? error.message : '未知错误',
+      error: error instanceof Error ? error.message : "未知错误",
       latency: Date.now() - startTime,
       model: config.model,
       provider: config.provider,
@@ -641,9 +806,11 @@ export async function testAIConnection(
  */
 export async function compareAIModels(
   configs: AIConfig[],
-  testPrompt: string
+  testPrompt: string,
 ): Promise<AITestResult[]> {
-  const promises = configs.map(config => testAIConnection(config, testPrompt));
+  const promises = configs.map((config) =>
+    testAIConnection(config, testPrompt),
+  );
   return Promise.all(promises);
 }
 
@@ -660,62 +827,108 @@ export async function generateImage(
   config: AIConfig,
   prompt: string,
   options?: {
-    size?: string;  // 不同 API 支持不同的尺寸格式 / Different APIs support different size formats
-    quality?: 'standard' | 'hd';
-    style?: 'vivid' | 'natural';
+    size?: string; // 不同 API 支持不同的尺寸格式 / Different APIs support different size formats
+    quality?: "standard" | "hd";
+    style?: "vivid" | "natural";
     n?: number;
-    response_format?: 'url' | 'b64_json';
+    response_format?: "url" | "b64_json";
     aspect_ratio?: string; // FLUX/Ideogram 使用
-  }
+  },
 ): Promise<ImageGenerationResponse> {
   const { apiKey, apiUrl, model, provider } = config;
+  const mergedOptions = {
+    ...config.imageParams,
+    ...options,
+  };
 
   if (!apiKey) {
-    throw new Error('请先配置 API Key');
+    throw new Error("API Key is not configured");
   }
 
   if (!apiUrl) {
-    throw new Error('请先配置 API 地址');
+    throw new Error("API URL is not configured");
   }
 
   // 根据供应商选择不同的 API 调用方式
   // Choose different API calling methods based on provider
-  const providerLower = (provider || '').toLowerCase();
-  const modelLower = (model || '').toLowerCase();
+  const providerLower = (provider || "").toLowerCase();
+  const modelLower = (model || "").toLowerCase();
 
   // FLUX (Black Forest Labs)
-  if (providerLower === 'flux' || apiUrl.includes('bfl.ai')) {
-    return await generateImageFlux(apiKey, apiUrl, model, prompt, options);
+  if (providerLower === "flux" || apiUrl.includes("bfl.ai")) {
+    return await generateImageFlux(
+      apiKey,
+      apiUrl,
+      model,
+      prompt,
+      mergedOptions,
+    );
   }
 
   // Ideogram
-  if (providerLower === 'ideogram' || apiUrl.includes('ideogram.ai')) {
-    return await generateImageIdeogram(apiKey, apiUrl, model, prompt, options);
+  if (providerLower === "ideogram" || apiUrl.includes("ideogram.ai")) {
+    return await generateImageIdeogram(
+      apiKey,
+      apiUrl,
+      model,
+      prompt,
+      mergedOptions,
+    );
   }
 
   // Recraft
-  if (providerLower === 'recraft' || apiUrl.includes('recraft.ai')) {
-    return await generateImageRecraft(apiKey, apiUrl, model, prompt, options);
+  if (providerLower === "recraft" || apiUrl.includes("recraft.ai")) {
+    return await generateImageRecraft(
+      apiKey,
+      apiUrl,
+      model,
+      prompt,
+      mergedOptions,
+    );
   }
 
   // Replicate
-  if (providerLower === 'replicate' || apiUrl.includes('replicate.com')) {
-    return await generateImageReplicate(apiKey, model, prompt, options);
+  if (providerLower === "replicate" || apiUrl.includes("replicate.com")) {
+    return await generateImageReplicate(apiKey, model, prompt, mergedOptions);
   }
 
   // Stability AI
-  if (providerLower === 'stability' || apiUrl.includes('stability.ai')) {
-    return await generateImageStability(apiKey, apiUrl, model, prompt, options);
+  if (providerLower === "stability" || apiUrl.includes("stability.ai")) {
+    return await generateImageStability(
+      apiKey,
+      apiUrl,
+      model,
+      prompt,
+      mergedOptions,
+    );
   }
 
   // Google/Gemini Image Generation (uses generateContent API, not OpenAI format)
-  // 如果模型名包含 gemini 且是图片生成类型，使用 Gemini 的 generateContent API
-  if (modelLower.includes('gemini') && (modelLower.includes('image') || modelLower.includes('imagen'))) {
-    return await generateImageGemini(apiKey, apiUrl, model, prompt, options);
+  // Match on provider='google'/'gemini', URL containing googleapis, or model name heuristics
+  if (
+    providerLower === "google" ||
+    providerLower === "gemini" ||
+    apiUrl.includes("generativelanguage.googleapis.com") ||
+    (modelLower.includes("gemini") &&
+      (modelLower.includes("image") || modelLower.includes("imagen")))
+  ) {
+    return await generateImageGemini(
+      apiKey,
+      apiUrl,
+      model,
+      prompt,
+      mergedOptions,
+    );
   }
 
-  // OpenAI 兼容格式（包括 OpenAI, Azure 等）
-  return await generateImageOpenAI(apiKey, apiUrl, model, prompt, options);
+  // OpenAI-compatible format (includes OpenAI, Azure, etc.)
+  return await generateImageOpenAI(
+    apiKey,
+    apiUrl,
+    model,
+    prompt,
+    mergedOptions,
+  );
 }
 
 // Google Gemini Image Generation via generateContent API
@@ -725,20 +938,20 @@ async function generateImageGemini(
   apiUrl: string,
   model: string,
   prompt: string,
-  options?: { n?: number }
+  options?: { n?: number },
 ): Promise<ImageGenerationResponse> {
   // Build endpoint - Gemini uses generateContent
   // 构建端点 - Gemini 使用 generateContent
-  let endpoint = apiUrl.replace(/\/$/, '');
-  
+  let endpoint = apiUrl.replace(/\/$/, "");
+
   // Handle different URL formats
-  if (endpoint.includes('/chat/completions')) {
-    endpoint = endpoint.replace('/chat/completions', '');
+  if (endpoint.includes("/chat/completions")) {
+    endpoint = endpoint.replace("/chat/completions", "");
   }
-  if (endpoint.includes('/v1beta')) {
+  if (endpoint.includes("/v1beta")) {
     endpoint = `${endpoint}/models/${model}:generateContent`;
-  } else if (endpoint.includes('/v1')) {
-    endpoint = endpoint.replace('/v1', '/v1beta');
+  } else if (endpoint.includes("/v1")) {
+    endpoint = endpoint.replace("/v1", "/v1beta");
     endpoint = `${endpoint}/models/${model}:generateContent`;
   } else {
     // Assume it's a proxy, try OpenAI-compatible chat endpoint
@@ -746,138 +959,185 @@ async function generateImageGemini(
   }
 
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   };
 
   let body: Record<string, any>;
 
   // Check if using native Gemini API or OpenAI-compatible proxy
-  if (endpoint.includes(':generateContent')) {
+  if (endpoint.includes(":generateContent")) {
     // Native Gemini API format
-    headers['x-goog-api-key'] = apiKey;
+    headers["x-goog-api-key"] = apiKey;
     body = {
-      contents: [{
-        parts: [{ text: prompt }]
-      }],
+      contents: [
+        {
+          parts: [{ text: prompt }],
+        },
+      ],
       generationConfig: {
-        responseModalities: ['TEXT', 'IMAGE']
-      }
+        responseModalities: ["TEXT", "IMAGE"],
+      },
     };
   } else {
     // OpenAI-compatible proxy format (use chat completions)
-    headers['Authorization'] = `Bearer ${apiKey}`;
+    headers["Authorization"] = `Bearer ${apiKey}`;
     body = {
       model,
-      messages: [{ role: 'user', content: prompt }],
-      stream: false
+      messages: [{ role: "user", content: prompt }],
+      stream: false,
     };
   }
 
   const response = await fetch(endpoint, {
-    method: 'POST',
+    method: "POST",
     headers,
     body: JSON.stringify(body),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    let errorMessage = `Gemini 图像生成失败 (${response.status})`;
+    let errorMessage = `Gemini image generation failed (${response.status})`;
     try {
       const errorJson = JSON.parse(errorText);
-      errorMessage = errorJson.error?.message 
-        || errorJson.error?.status
-        || errorJson.message
-        || (typeof errorJson.error === 'string' ? errorJson.error : null)
-        || errorMessage;
-      
+      errorMessage =
+        errorJson.error?.message ||
+        errorJson.error?.status ||
+        errorJson.message ||
+        (typeof errorJson.error === "string" ? errorJson.error : null) ||
+        errorMessage;
+
       // Append error code if available
       if (errorJson.error?.code) {
         errorMessage = `${errorMessage} (code: ${errorJson.error.code})`;
       }
     } catch {
-      if (errorText) errorMessage = `${errorMessage}: ${errorText.slice(0, 500)}`;
+      if (errorText)
+        errorMessage = `${errorMessage}: ${errorText.slice(0, 500)}`;
     }
     throw new Error(errorMessage);
   }
 
   const result = await response.json();
-  
+
   // Handle different response formats
   // 处理不同的响应格式
-  console.log('[generateImageGemini] Response received:', JSON.stringify(result, null, 2).slice(0, 2000));
-  
+  console.log(
+    "[generateImageGemini] Response received:",
+    JSON.stringify(result, null, 2).slice(0, 2000),
+  );
+
   if (result.candidates) {
     // Native Gemini format
     const candidate = result.candidates[0];
     const parts = candidate?.content?.parts || [];
-    console.log('[generateImageGemini] Gemini native format, parts count:', parts.length);
-    
-    const imagePart = parts.find((p: any) => p.inlineData?.mimeType?.startsWith('image/'));
-    
+    console.log(
+      "[generateImageGemini] Gemini native format, parts count:",
+      parts.length,
+    );
+
+    const imagePart = parts.find((p: any) =>
+      p.inlineData?.mimeType?.startsWith("image/"),
+    );
+
     if (imagePart?.inlineData) {
-      console.log('[generateImageGemini] Found image data, mimeType:', imagePart.inlineData.mimeType);
+      console.log(
+        "[generateImageGemini] Found image data, mimeType:",
+        imagePart.inlineData.mimeType,
+      );
       return {
         created: Date.now(),
-        data: [{
-          b64_json: imagePart.inlineData.data,
-        }],
+        data: [
+          {
+            b64_json: imagePart.inlineData.data,
+          },
+        ],
       };
     }
-    
+
     // Check if there's text response (might indicate an error or refusal)
     const textPart = parts.find((p: any) => p.text);
     if (textPart?.text) {
-      console.warn('[generateImageGemini] Got text instead of image:', textPart.text);
-      throw new Error(`模型返回了文本而非图像: ${textPart.text.slice(0, 200)}`);
+      console.warn(
+        "[generateImageGemini] Got text instead of image:",
+        textPart.text,
+      );
+      throw new Error(
+        `Model returned text instead of an image: ${textPart.text.slice(0, 200)}`,
+      );
     }
-    
+
     // No image in response
-    console.error('[generateImageGemini] No image data in candidates. Parts:', parts);
-    throw new Error('Gemini 响应中未包含图像数据。请确保使用支持图像生成的模型。');
+    console.error(
+      "[generateImageGemini] No image data in candidates. Parts:",
+      parts,
+    );
+    throw new Error(
+      "Gemini response did not contain image data. Please ensure you are using a model that supports image generation.",
+    );
   }
-  
+
   if (result.choices) {
     // OpenAI-compatible format from proxy
     const content = result.choices[0]?.message?.content;
-    console.log('[generateImageGemini] OpenAI format, content type:', typeof content, 
-      typeof content === 'string' ? content.slice(0, 200) : '(array or object)');
-    
+    console.log(
+      "[generateImageGemini] OpenAI format, content type:",
+      typeof content,
+      typeof content === "string" ? content.slice(0, 200) : "(array or object)",
+    );
+
     // Check if content contains image URL or base64
-    if (typeof content === 'string') {
+    if (typeof content === "string") {
       // Try to extract URL if present
       const urlMatch = content.match(/https?:\/\/[^\s"'<>]+/i);
       if (urlMatch) {
-        console.log('[generateImageGemini] Found URL in content:', urlMatch[0]);
+        console.log("[generateImageGemini] Found URL in content:", urlMatch[0]);
         return {
           created: Date.now(),
           data: [{ url: urlMatch[0] }],
         };
       }
       // Check if it's base64
-      if (content.startsWith('data:image/') || content.match(/^[A-Za-z0-9+/=]{100,}/)) {
-        console.log('[generateImageGemini] Found base64 in content');
+      if (
+        content.startsWith("data:image/") ||
+        content.match(/^[A-Za-z0-9+/=]{100,}/)
+      ) {
+        console.log("[generateImageGemini] Found base64 in content");
         return {
           created: Date.now(),
-          data: [{ b64_json: content.replace(/^data:image\/[^;]+;base64,/, '') }],
+          data: [
+            { b64_json: content.replace(/^data:image\/[^;]+;base64,/, "") },
+          ],
         };
       }
-      
+
       // Content is text, not image - might be refusal or error
-      console.warn('[generateImageGemini] Content is text, not image:', content.slice(0, 500));
-      throw new Error(`模型返回了文本而非图像: ${content.slice(0, 300)}`);
+      console.warn(
+        "[generateImageGemini] Content is text, not image:",
+        content.slice(0, 500),
+      );
+      throw new Error(
+        `Model returned text instead of an image: ${content.slice(0, 300)}`,
+      );
     }
-    
+
     // Content might be array with image_url
     if (Array.isArray(result.choices[0]?.message?.content)) {
-      console.log('[generateImageGemini] Content is array, looking for image_url...');
-      const imgContent = result.choices[0].message.content.find((c: any) => c.type === 'image_url');
+      console.log(
+        "[generateImageGemini] Content is array, looking for image_url...",
+      );
+      const imgContent = result.choices[0].message.content.find(
+        (c: any) => c.type === "image_url",
+      );
       if (imgContent?.image_url?.url) {
-        console.log('[generateImageGemini] Found image_url:', imgContent.image_url.url.slice(0, 100));
+        console.log(
+          "[generateImageGemini] Found image_url:",
+          imgContent.image_url.url.slice(0, 100),
+        );
         const url = imgContent.image_url.url;
-        if (url.startsWith('data:image/')) {
+        if (url.startsWith("data:image/")) {
           return {
             created: Date.now(),
-            data: [{ b64_json: url.replace(/^data:image\/[^;]+;base64,/, '') }],
+            data: [{ b64_json: url.replace(/^data:image\/[^;]+;base64,/, "") }],
           };
         }
         return {
@@ -886,21 +1146,30 @@ async function generateImageGemini(
         };
       }
     }
-    
+
     // Check for images array in message (some proxies use this format)
     // 检查 message.images 数组（某些代理使用此格式）
     const images = result.choices[0]?.message?.images;
     if (Array.isArray(images) && images.length > 0) {
-      console.log('[generateImageGemini] Found message.images array:', images.length, 'images');
+      console.log(
+        "[generateImageGemini] Found message.images array:",
+        images.length,
+        "images",
+      );
       const firstImage = images[0];
       const imageUrl = firstImage?.image_url?.url || firstImage?.url;
-      
+
       if (imageUrl) {
-        console.log('[generateImageGemini] Extracted image URL:', imageUrl.slice(0, 100));
-        if (imageUrl.startsWith('data:image/')) {
+        console.log(
+          "[generateImageGemini] Extracted image URL:",
+          imageUrl.slice(0, 100),
+        );
+        if (imageUrl.startsWith("data:image/")) {
           return {
             created: Date.now(),
-            data: [{ b64_json: imageUrl.replace(/^data:image\/[^;]+;base64,/, '') }],
+            data: [
+              { b64_json: imageUrl.replace(/^data:image\/[^;]+;base64,/, "") },
+            ],
           };
         }
         return {
@@ -909,16 +1178,23 @@ async function generateImageGemini(
         };
       }
     }
-    
+
     // Content is null but no images found
     if (result.choices[0]?.message?.content === null) {
-      console.error('[generateImageGemini] content is null and no images found in message');
+      console.error(
+        "[generateImageGemini] content is null and no images found in message",
+      );
     }
   }
 
   // If we got here, response format is unexpected
-  console.error('[generateImageGemini] Unexpected response format. Full response:', JSON.stringify(result, null, 2));
-  throw new Error(`无法从响应中提取图像。响应格式: ${JSON.stringify(result).slice(0, 500)}`);
+  console.error(
+    "[generateImageGemini] Unexpected response format. Full response:",
+    JSON.stringify(result, null, 2),
+  );
+  throw new Error(
+    `Failed to extract image from response. Response format: ${JSON.stringify(result).slice(0, 500)}`,
+  );
 }
 
 // OpenAI 兼容格式
@@ -929,61 +1205,63 @@ async function generateImageOpenAI(
   prompt: string,
   options?: {
     size?: string;
-    quality?: 'standard' | 'hd';
-    style?: 'vivid' | 'natural';
+    quality?: "standard" | "hd";
+    style?: "vivid" | "natural";
     n?: number;
-    response_format?: 'url' | 'b64_json';
-  }
+    response_format?: "url" | "b64_json";
+  },
 ): Promise<ImageGenerationResponse> {
-  let endpoint = apiUrl.replace(/\/$/, '');
+  let endpoint = apiUrl.replace(/\/$/, "");
 
-  if (endpoint.includes('/images/generations')) {
+  if (endpoint.includes("/images/generations")) {
     // 保持原样 / Keep as is
-  } else if (endpoint.endsWith('/chat/completions')) {
-    endpoint = endpoint.replace(/\/chat\/completions$/, '/images/generations');
+  } else if (endpoint.endsWith("/chat/completions")) {
+    endpoint = endpoint.replace(/\/chat\/completions$/, "/images/generations");
   } else if (endpoint.match(/\/v\d+$/)) {
-    endpoint = endpoint + '/images/generations';
+    endpoint = endpoint + "/images/generations";
   } else {
-    endpoint = endpoint + '/v1/images/generations';
+    endpoint = endpoint + "/v1/images/generations";
   }
 
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${apiKey}`,
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${apiKey}`,
   };
 
   const body: Record<string, any> = {
     prompt,
-    model: model || 'dall-e-3',
+    model: model || "dall-e-3",
     n: options?.n ?? 1,
   };
 
   if (options?.size) body.size = options.size;
   if (options?.quality) body.quality = options.quality;
   if (options?.style) body.style = options.style;
-  if (options?.response_format !== undefined) body.response_format = options.response_format;
+  if (options?.response_format !== undefined)
+    body.response_format = options.response_format;
 
   const response = await fetch(endpoint, {
-    method: 'POST',
+    method: "POST",
     headers,
     body: JSON.stringify(body),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    let errorMessage = `图像生成失败 (${response.status})`;
+    let errorMessage = `Image generation failed (${response.status})`;
     // Image generation failed
     try {
       const errorJson = JSON.parse(errorText);
       // Try different error message formats
       // 尝试不同的错误消息格式
-      errorMessage = errorJson.error?.message 
-        || errorJson.error?.type 
-        || errorJson.message 
-        || errorJson.detail
-        || (typeof errorJson.error === 'string' ? errorJson.error : null)
-        || errorMessage;
-      
+      errorMessage =
+        errorJson.error?.message ||
+        errorJson.error?.type ||
+        errorJson.message ||
+        errorJson.detail ||
+        (typeof errorJson.error === "string" ? errorJson.error : null) ||
+        errorMessage;
+
       // If we have additional error info, append it
       // 如果有更多错误信息，附加上去
       if (errorJson.error?.code) {
@@ -1007,13 +1285,13 @@ async function generateImageFlux(
   apiUrl: string,
   model: string,
   prompt: string,
-  options?: { aspect_ratio?: string; n?: number }
+  options?: { aspect_ratio?: string; n?: number },
 ): Promise<ImageGenerationResponse> {
-  const endpoint = apiUrl.replace(/\/$/, '') + '/images/generations';
+  const endpoint = apiUrl.replace(/\/$/, "") + "/images/generations";
 
   const body: Record<string, any> = {
     prompt,
-    model: model || 'flux-pro-1.1',
+    model: model || "flux-pro-1.1",
     width: 1024,
     height: 1024,
   };
@@ -1021,25 +1299,25 @@ async function generateImageFlux(
   // FLUX 使用 aspect_ratio
   // FLUX uses aspect_ratio
   if (options?.aspect_ratio) {
-    const [w, h] = options.aspect_ratio.split(':').map(Number);
+    const [w, h] = options.aspect_ratio.split(":").map(Number);
     if (w && h) {
-      body.width = w > h ? 1024 : Math.round(1024 * w / h);
-      body.height = h > w ? 1024 : Math.round(1024 * h / w);
+      body.width = w > h ? 1024 : Math.round((1024 * w) / h);
+      body.height = h > w ? 1024 : Math.round((1024 * h) / w);
     }
   }
 
   const response = await fetch(endpoint, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'X-Key': apiKey,
+      "Content-Type": "application/json",
+      "X-Key": apiKey,
     },
     body: JSON.stringify(body),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`FLUX 图像生成失败: ${errorText.slice(0, 200)}`);
+    throw new Error(`FLUX image generation failed: ${errorText.slice(0, 200)}`);
     // FLUX image generation failed
   }
 
@@ -1056,30 +1334,32 @@ async function generateImageIdeogram(
   apiUrl: string,
   model: string,
   prompt: string,
-  options?: { aspect_ratio?: string; n?: number }
+  options?: { aspect_ratio?: string; n?: number },
 ): Promise<ImageGenerationResponse> {
-  const endpoint = apiUrl.replace(/\/$/, '') + '/generate';
+  const endpoint = apiUrl.replace(/\/$/, "") + "/generate";
 
   const body: Record<string, any> = {
     image_request: {
       prompt,
-      model: model || 'V_3',
-      aspect_ratio: options?.aspect_ratio || 'ASPECT_1_1',
+      model: model || "V_3",
+      aspect_ratio: options?.aspect_ratio || "ASPECT_1_1",
     },
   };
 
   const response = await fetch(endpoint, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'Api-Key': apiKey,
+      "Content-Type": "application/json",
+      "Api-Key": apiKey,
     },
     body: JSON.stringify(body),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Ideogram 图像生成失败: ${errorText.slice(0, 200)}`);
+    throw new Error(
+      `Ideogram image generation failed: ${errorText.slice(0, 200)}`,
+    );
     // Ideogram image generation failed
   }
 
@@ -1097,30 +1377,32 @@ async function generateImageRecraft(
   apiUrl: string,
   model: string,
   prompt: string,
-  options?: { size?: string; n?: number }
+  options?: { size?: string; n?: number },
 ): Promise<ImageGenerationResponse> {
-  const endpoint = apiUrl.replace(/\/$/, '') + '/images/generations';
+  const endpoint = apiUrl.replace(/\/$/, "") + "/images/generations";
 
   const body: Record<string, any> = {
     prompt,
-    model: model || 'recraftv3',
+    model: model || "recraftv3",
     n: options?.n ?? 1,
   };
 
   if (options?.size) body.size = options.size;
 
   const response = await fetch(endpoint, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify(body),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Recraft 图像生成失败: ${errorText.slice(0, 200)}`);
+    throw new Error(
+      `Recraft image generation failed: ${errorText.slice(0, 200)}`,
+    );
     // Recraft image generation failed
   }
 
@@ -1136,11 +1418,11 @@ async function generateImageReplicate(
   apiKey: string,
   model: string,
   prompt: string,
-  options?: { aspect_ratio?: string; n?: number }
+  options?: { aspect_ratio?: string; n?: number },
 ): Promise<ImageGenerationResponse> {
   // Replicate 使用 predictions API
   // Replicate uses predictions API
-  const endpoint = 'https://api.replicate.com/v1/predictions';
+  const endpoint = "https://api.replicate.com/v1/predictions";
 
   const body: Record<string, any> = {
     version: model, // Replicate 使用 model version / Replicate uses model version
@@ -1155,17 +1437,19 @@ async function generateImageReplicate(
   }
 
   const response = await fetch(endpoint, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify(body),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Replicate 图像生成失败: ${errorText.slice(0, 200)}`);
+    throw new Error(
+      `Replicate image generation failed: ${errorText.slice(0, 200)}`,
+    );
     // Replicate image generation failed
   }
 
@@ -1174,20 +1458,22 @@ async function generateImageReplicate(
   // Replicate 是异步的，需要轮询结果
   // Replicate is asynchronous, need to poll for results
   let result = prediction;
-  while (result.status === 'starting' || result.status === 'processing') {
-    await new Promise(resolve => setTimeout(resolve, 1000));
+  while (result.status === "starting" || result.status === "processing") {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     const pollResponse = await fetch(result.urls.get, {
-      headers: { 'Authorization': `Bearer ${apiKey}` },
+      headers: { Authorization: `Bearer ${apiKey}` },
     });
     result = await pollResponse.json();
   }
 
-  if (result.status === 'failed') {
-    throw new Error(`Replicate 图像生成失败: ${result.error}`);
+  if (result.status === "failed") {
+    throw new Error(`Replicate image generation failed: ${result.error}`);
     // Replicate image generation failed
   }
 
-  const outputs = Array.isArray(result.output) ? result.output : [result.output];
+  const outputs = Array.isArray(result.output)
+    ? result.output
+    : [result.output];
   return {
     created: Date.now(),
     data: outputs.map((url: string) => ({ url })),
@@ -1200,9 +1486,13 @@ async function generateImageStability(
   apiUrl: string,
   model: string,
   prompt: string,
-  options?: { size?: string; n?: number }
+  options?: { size?: string; n?: number },
 ): Promise<ImageGenerationResponse> {
-  const endpoint = apiUrl.replace(/\/$/, '') + '/generation/' + (model || 'stable-diffusion-xl-1024-v1-0') + '/text-to-image';
+  const endpoint =
+    apiUrl.replace(/\/$/, "") +
+    "/generation/" +
+    (model || "stable-diffusion-xl-1024-v1-0") +
+    "/text-to-image";
 
   const body: Record<string, any> = {
     text_prompts: [{ text: prompt, weight: 1 }],
@@ -1211,7 +1501,7 @@ async function generateImageStability(
   };
 
   if (options?.size) {
-    const [width, height] = options.size.split('x').map(Number);
+    const [width, height] = options.size.split("x").map(Number);
     if (width && height) {
       body.width = width;
       body.height = height;
@@ -1219,27 +1509,30 @@ async function generateImageStability(
   }
 
   const response = await fetch(endpoint, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-      'Accept': 'application/json',
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+      Accept: "application/json",
     },
     body: JSON.stringify(body),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Stability AI 图像生成失败: ${errorText.slice(0, 200)}`);
+    throw new Error(
+      `Stability AI image generation failed: ${errorText.slice(0, 200)}`,
+    );
     // Stability AI image generation failed
   }
 
   const result = await response.json();
   return {
     created: Date.now(),
-    data: result.artifacts?.map((art: any) => ({
-      b64_json: art.base64,
-    })) || [],
+    data:
+      result.artifacts?.map((art: any) => ({
+        b64_json: art.base64,
+      })) || [],
   };
 }
 
@@ -1251,15 +1544,19 @@ async function generateImageStability(
  */
 export async function testImageGeneration(
   config: AIConfig,
-  testPrompt?: string
+  testPrompt?: string,
 ): Promise<ImageTestResult> {
   const startTime = Date.now();
-  const prompt = testPrompt || 'A cute cat sitting on a windowsill';
+  const prompt = testPrompt || "A cute cat sitting on a windowsill";
 
   try {
     // 测试时不传递 size 等参数，让 API 使用默认值
     // Don't pass size and other parameters during testing, let API use default values
-    const result = await generateImage(config, prompt, { n: 1 });
+    const result = await generateImage(
+      { ...config, imageParams: undefined },
+      prompt,
+      { n: 1 },
+    );
 
     const imageData = result.data[0];
 
@@ -1275,7 +1572,7 @@ export async function testImageGeneration(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : '未知错误',
+      error: error instanceof Error ? error.message : "未知错误",
       latency: Date.now() - startTime,
       model: config.model,
       provider: config.provider,
@@ -1368,7 +1665,7 @@ export async function generateSkillContent(
   skillName: string,
   skillPurpose: string,
   streamCallbacks?: StreamCallbacks,
-  customSystemPrompt?: string
+  customSystemPrompt?: string,
 ): Promise<string> {
   const userPrompt = `Create a SKILL.md file for the following skill:
 
@@ -1379,8 +1676,8 @@ Generate a complete, well-structured SKILL.md following the Anthropic Agent Skil
 
   const systemPrompt = customSystemPrompt || SKILL_CREATOR_SYSTEM_PROMPT;
   const messages: ChatMessage[] = [
-    { role: 'system', content: systemPrompt },
-    { role: 'user', content: userPrompt }
+    { role: "system", content: systemPrompt },
+    { role: "user", content: userPrompt },
   ];
 
   const result = await chatCompletion(config, messages, {
@@ -1423,13 +1720,13 @@ export async function polishSkillContent(
 ): Promise<string> {
   const userPrompt = `Please polish the following SKILL.md content. Preserve ALL core capabilities and instructions. Only improve structure, formatting, and readability according to the SKILL.md standard.
 
-${skillName ? `**Skill Name**: ${skillName}\n` : ''}
+${skillName ? `**Skill Name**: ${skillName}\n` : ""}
 **Existing Content**:
 ${existingContent}`;
 
   const messages: ChatMessage[] = [
-    { role: 'system', content: SKILL_POLISH_SYSTEM_PROMPT },
-    { role: 'user', content: userPrompt }
+    { role: "system", content: SKILL_POLISH_SYSTEM_PROMPT },
+    { role: "user", content: userPrompt },
   ];
 
   const result = await chatCompletion(config, messages, {
@@ -1461,15 +1758,17 @@ export async function multiModelCompare(
   options?: {
     temperature?: number;
     maxTokens?: number;
-    streamCallbacksMap?: Map<string, StreamCallbacks>;  // Streaming callback for each model
+    streamCallbacksMap?: Map<string, StreamCallbacks>; // Streaming callback for each model
     // 每个模型的流式回调
-  }
+  },
 ): Promise<MultiModelCompareResult> {
   const startTime = Date.now();
 
   const promises = configs.map(async (config) => {
     const resultStartTime = Date.now();
-    const streamCallbacks = options?.streamCallbacksMap?.get(config.id || config.model);
+    const streamCallbacks = options?.streamCallbacksMap?.get(
+      config.id || config.model,
+    );
 
     try {
       // 显式传递 stream 和 enableThinking 参数
@@ -1498,7 +1797,7 @@ export async function multiModelCompare(
       return {
         id: config.id,
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : "Unknown error",
         latency: Date.now() - resultStartTime,
         model: config.model,
         provider: config.provider,
@@ -1522,7 +1821,7 @@ export async function multiModelCompare(
 export function buildMessagesFromPrompt(
   systemPrompt: string | undefined,
   userPrompt: string,
-  variables?: Record<string, string>
+  variables?: Record<string, string>,
 ): ChatMessage[] {
   const messages: ChatMessage[] = [];
 
@@ -1532,8 +1831,8 @@ export function buildMessagesFromPrompt(
   if (variables) {
     for (const [key, value] of Object.entries(variables)) {
       processedUserPrompt = processedUserPrompt.replace(
-        new RegExp(`\\{\\{${key}\\}\\}`, 'g'),
-        value
+        new RegExp(`\\{\\{${key}\\}\\}`, "g"),
+        value,
       );
     }
   }
@@ -1543,15 +1842,15 @@ export function buildMessagesFromPrompt(
     if (variables) {
       for (const [key, value] of Object.entries(variables)) {
         processedSystemPrompt = processedSystemPrompt.replace(
-          new RegExp(`\\{\\{${key}\\}\\}`, 'g'),
-          value
+          new RegExp(`\\{\\{${key}\\}\\}`, "g"),
+          value,
         );
       }
     }
-    messages.push({ role: 'system', content: processedSystemPrompt });
+    messages.push({ role: "system", content: processedSystemPrompt });
   }
 
-  messages.push({ role: 'user', content: processedUserPrompt });
+  messages.push({ role: "user", content: processedUserPrompt });
 
   return messages;
 }
@@ -1570,6 +1869,9 @@ export interface FetchModelsResult {
   success: boolean;
   models: ModelInfo[];
   error?: string;
+  reason?: "auth" | "network" | "unsupported" | "http" | "parse";
+  endpoint?: string;
+  status?: number;
 }
 
 /**
@@ -1578,27 +1880,33 @@ export interface FetchModelsResult {
  * 如果用户在 URL 末尾输入 #，则视为显式指定，不进行后续补全，预览显示 # 之前的部分
  * Calculate base URL (for display preview)
  * Handle various user input scenarios, return standardized base URL
- * If the user enters # at the end of the URL, it is treated as explicitly specified, 
+ * If the user enters # at the end of the URL, it is treated as explicitly specified,
  * no subsequent completion is performed, and the preview displays the part before #
  */
 export function getBaseUrl(apiUrl: string): string {
-  if (!apiUrl) return '';
+  if (!apiUrl) return "";
 
   let url = apiUrl.trim();
 
   // Handle # suffix: if ends with #, treat as explicit and remove # for display
   // 处理 # 后缀：如果以 # 结尾，视为显式指定，显示时移除 #
-  if (url.endsWith('#')) {
+  if (url.endsWith("#")) {
     return url.slice(0, -1);
   }
 
-  if (url.endsWith('/')) {
+  if (url.endsWith("/")) {
     url = url.slice(0, -1);
   }
 
   // Remove common endpoint suffixes
   // 移除常见的端点后缀
-  const suffixes = ['/chat/completions', '/completions', '/models', '/embeddings', '/images/generations'];
+  const suffixes = [
+    "/chat/completions",
+    "/completions",
+    "/models",
+    "/embeddings",
+    "/images/generations",
+  ];
   for (const suffix of suffixes) {
     if (url.endsWith(suffix)) {
       url = url.slice(0, -suffix.length);
@@ -1607,6 +1915,25 @@ export function getBaseUrl(apiUrl: string): string {
   }
 
   return url;
+}
+
+/**
+ * Normalize user input for persisted API URL storage
+ * 保持用户显式的 # 标记，同时把完整 endpoint 收敛为 base URL
+ */
+export function normalizeApiUrlInput(apiUrl: string): string {
+  if (!apiUrl) return "";
+
+  const trimmed = apiUrl.trim();
+  const explicit = trimmed.endsWith("#");
+  const rawValue = explicit ? trimmed.slice(0, -1) : trimmed;
+  const normalized = getBaseUrl(rawValue);
+
+  if (!normalized) {
+    return explicit ? "#" : "";
+  }
+
+  return explicit ? `${normalized}#` : normalized;
 }
 
 /**
@@ -1620,11 +1947,11 @@ export function getBaseUrl(apiUrl: string): string {
  * Use OpenAI-compatible endpoint for Gemini API
  */
 export function getApiEndpointPreview(apiUrl: string): string {
-  if (!apiUrl) return '';
+  if (!apiUrl) return "";
 
   // If ends with #, just return the part before # without any auto-fill
   // 如果以 # 结尾，直接返回 # 之前的部分，不进行任何自动填充
-  if (apiUrl.trim().endsWith('#')) {
+  if (apiUrl.trim().endsWith("#")) {
     return apiUrl.trim().slice(0, -1);
   }
 
@@ -1632,25 +1959,25 @@ export function getApiEndpointPreview(apiUrl: string): string {
 
   // Gemini API uses OpenAI-compatible endpoint format
   // Gemini（Google Generative Language API）使用 OpenAI 兼容端点
-  if (baseUrl.includes('generativelanguage.googleapis.com')) {
-    if (baseUrl.endsWith('/openai')) {
-      return baseUrl + '/chat/completions';
+  if (baseUrl.includes("generativelanguage.googleapis.com")) {
+    if (baseUrl.endsWith("/openai")) {
+      return baseUrl + "/chat/completions";
     }
     if (baseUrl.match(/\/v\d+(?:beta)?$/)) {
-      return baseUrl + '/openai/chat/completions';
+      return baseUrl + "/openai/chat/completions";
     }
-    return baseUrl + '/v1beta/openai/chat/completions';
+    return baseUrl + "/v1beta/openai/chat/completions";
   }
 
   // Check if version path is already included
   // 检查是否已经包含版本路径
-  if (baseUrl.endsWith('/v1') || baseUrl.match(/\/v\d+$/)) {
-    return baseUrl + '/chat/completions';
+  if (baseUrl.endsWith("/v1") || baseUrl.match(/\/v\d+$/)) {
+    return baseUrl + "/chat/completions";
   }
 
   // Auto-complete /v1
   // 自动补全 /v1
-  return baseUrl + '/v1/chat/completions';
+  return baseUrl + "/v1/chat/completions";
 }
 
 /**
@@ -1659,11 +1986,11 @@ export function getApiEndpointPreview(apiUrl: string): string {
  * 获取生图 API 端点预览（用于显示）
  */
 export function getImageApiEndpointPreview(apiUrl: string): string {
-  if (!apiUrl) return '';
+  if (!apiUrl) return "";
 
   // If ends with #, just return the part before # without any auto-fill
   // 如果以 # 结尾，直接返回 # 之前的部分，不进行任何自动填充
-  if (apiUrl.trim().endsWith('#')) {
+  if (apiUrl.trim().endsWith("#")) {
     return apiUrl.trim().slice(0, -1);
   }
 
@@ -1671,32 +1998,32 @@ export function getImageApiEndpointPreview(apiUrl: string): string {
 
   // Gemini is not OpenAI's images/generations specification
   // Gemini（Google Generative Language API）并非 OpenAI 的 images/generations 规范
-  if (baseUrl.includes('generativelanguage.googleapis.com')) {
-    const geminiBaseUrl = baseUrl.replace(/\/openai$/, '');
+  if (baseUrl.includes("generativelanguage.googleapis.com")) {
+    const geminiBaseUrl = baseUrl.replace(/\/openai$/, "");
     if (geminiBaseUrl.match(/\/v\d+(?:beta)?$/)) {
-      return geminiBaseUrl + '/models';
+      return geminiBaseUrl + "/models";
     }
-    return geminiBaseUrl + '/v1beta/models';
+    return geminiBaseUrl + "/v1beta/models";
   }
 
-  let endpoint = apiUrl.replace(/\/$/, '');
+  let endpoint = apiUrl.replace(/\/$/, "");
 
   // If already contains images/generations, use directly
   // 如果已经包含 images/generations，直接使用
-  if (endpoint.includes('/images/generations')) {
+  if (endpoint.includes("/images/generations")) {
     return endpoint;
-  } else if (endpoint.endsWith('/chat/completions')) {
+  } else if (endpoint.endsWith("/chat/completions")) {
     // Replace chat/completions with images/generations
     // 替换 chat/completions 为 images/generations
-    return endpoint.replace(/\/chat\/completions$/, '/images/generations');
+    return endpoint.replace(/\/chat\/completions$/, "/images/generations");
   } else if (endpoint.match(/\/v\d+$/)) {
     // If ends with /v1, /v2, /v3, etc., append /images/generations
     // 如果以 /v1, /v2, /v3 等结尾，追加 /images/generations
-    return endpoint + '/images/generations';
+    return endpoint + "/images/generations";
   } else {
     // Default append /v1/images/generations
     // 默认追加 /v1/images/generations
-    return endpoint + '/v1/images/generations';
+    return endpoint + "/v1/images/generations";
   }
 }
 
@@ -1706,10 +2033,14 @@ export function getImageApiEndpointPreview(apiUrl: string): string {
  */
 export async function fetchAvailableModels(
   apiUrl: string,
-  apiKey: string
+  apiKey: string,
 ): Promise<FetchModelsResult> {
   if (!apiKey || !apiUrl) {
-    return { success: false, models: [], error: 'Please fill in API Key and API URL first' };
+    return {
+      success: false,
+      models: [],
+      error: "Please fill in API Key and API URL first",
+    };
     // 请先填写 API Key 和 API 地址
   }
 
@@ -1722,12 +2053,12 @@ export async function fetchAvailableModels(
     // Gemini: https://generativelanguage.googleapis.com/v1beta/models
     // Users might only fill host (without /v1beta), need to complete according to Gemini specification
     // 用户可能只填 host（不含 /v1beta），这里需要按 Gemini 规范补齐
-    if (baseUrl.includes('generativelanguage.googleapis.com')) {
-      baseUrl = baseUrl.replace(/\/openai$/, '');
+    if (baseUrl.includes("generativelanguage.googleapis.com")) {
+      baseUrl = baseUrl.replace(/\/openai$/, "");
       if (baseUrl.match(/\/v\d+(?:beta)?$/)) {
-        endpoint = baseUrl + '/models';
+        endpoint = baseUrl + "/models";
       } else {
-        endpoint = baseUrl + '/v1beta/models';
+        endpoint = baseUrl + "/v1beta/models";
       }
     } else {
       // For other APIs (OpenAI compatible), check if version path exists
@@ -1735,36 +2066,56 @@ export async function fetchAvailableModels(
       if (baseUrl.match(/\/v\d+$/)) {
         // Already has version path like /v1, /v2, etc.
         // 已有版本路径如 /v1, /v2 等
-        endpoint = baseUrl + '/models';
+        endpoint = baseUrl + "/models";
       } else {
         // No version path, add /v1/models
         // 无版本路径，添加 /v1/models
-        endpoint = baseUrl + '/v1/models';
+        endpoint = baseUrl + "/v1/models";
       }
     }
 
-    const isGemini = baseUrl.includes('generativelanguage.googleapis.com');
+    const isGemini = baseUrl.includes("generativelanguage.googleapis.com");
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     };
     if (isGemini) {
-      headers['x-goog-api-key'] = apiKey;
+      headers["x-goog-api-key"] = apiKey;
     } else {
-      headers['Authorization'] = `Bearer ${apiKey}`;
+      headers["Authorization"] = `Bearer ${apiKey}`;
     }
 
-    const response = await fetch(endpoint, {
-      method: 'GET',
-      headers,
-    });
+    const transport = getAITransport();
+    const response = transport
+      ? createResponseLike(
+          await transport.request({
+            method: "GET",
+            url: endpoint,
+            headers,
+          }),
+        )
+      : await fetch(endpoint, {
+          method: "GET",
+          headers,
+        });
 
     if (!response.ok) {
       const errorText = await response.text();
+      const reason =
+        response.status === 401 || response.status === 403
+          ? "auth"
+          : response.status === 404 ||
+              response.status === 405 ||
+              response.status === 501
+            ? "unsupported"
+            : "http";
       return {
         success: false,
         models: [],
-        error: `获取模型列表失败: ${response.status} - ${errorText.substring(0, 100)}`
-        // Failed to get model list 
+        error: `获取模型列表失败: ${response.status} - ${errorText.substring(0, 100)}`,
+        reason,
+        endpoint,
+        status: response.status,
+        // Failed to get model list
       };
     }
 
@@ -1790,16 +2141,18 @@ export async function fetchAvailableModels(
     if (data.models && Array.isArray(data.models)) {
       const models = data.models
         .filter((m: { name?: string }) => m.name)
-        .map((m: { name: string; displayName?: string; description?: string }) => {
-          // Gemini returns "models/gemini-pro", we need "gemini-pro" for OpenAI compatible endpoint
-          const id = m.name.replace(/^models\//, '');
-          return {
-            id: id,
-            name: m.displayName ? `${m.displayName} (${id})` : id,
-            owned_by: 'Google',
-            description: m.description,
-          };
-        })
+        .map(
+          (m: { name: string; displayName?: string; description?: string }) => {
+            // Gemini returns "models/gemini-pro", we need "gemini-pro" for OpenAI compatible endpoint
+            const id = m.name.replace(/^models\//, "");
+            return {
+              id: id,
+              name: m.displayName ? `${m.displayName} (${id})` : id,
+              owned_by: "Google",
+              description: m.description,
+            };
+          },
+        )
         .sort((a: ModelInfo, b: ModelInfo) => a.id.localeCompare(b.id));
 
       return { success: true, models };
@@ -1811,20 +2164,32 @@ export async function fetchAvailableModels(
       const models = data
         .filter((m: { id?: string; model?: string }) => m.id || m.model)
         .map((m: { id?: string; model?: string; name?: string }) => ({
-          id: m.id || m.model || '',
+          id: m.id || m.model || "",
           name: m.name || m.id || m.model,
         }));
       return { success: true, models };
     }
 
-    return { success: false, models: [], error: '无法解析模型列表响应' };
-    // Cannot parse model list response
-  } catch (error) {
     return {
       success: false,
       models: [],
-      error: error instanceof Error ? error.message : '获取模型列表失败'
-      // Failed to get model list 
+      error: "无法解析模型列表响应",
+      reason: "unsupported",
+      endpoint,
+    };
+    // Cannot parse model list response
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "获取模型列表失败";
+    return {
+      success: false,
+      models: [],
+      error: message,
+      reason:
+        message.toLowerCase().includes("failed to fetch") ||
+        message.toLowerCase().includes("network")
+          ? "network"
+          : "http",
+      // Failed to get model list
     };
   }
 }

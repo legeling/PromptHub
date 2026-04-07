@@ -35,6 +35,7 @@ describe("settings-snapshot", () => {
         { id: "m1", name: "Model One" },
         { id: "m2", name: "Model Two" },
       ],
+      scenarioModelDefaults: {},
       aiProvider: "openai",
       aiApiUrl: "https://api.example.com",
       aiModel: "gpt-test",
@@ -45,6 +46,7 @@ describe("settings-snapshot", () => {
         { id: "m1", name: "Model One" },
         { id: "m2", name: "Model Two" },
       ],
+      scenarioModelDefaults: {},
       aiProvider: "openai",
       aiApiKey: "root-secret",
       aiApiUrl: "https://api.example.com",
@@ -107,6 +109,7 @@ describe("settings-snapshot", () => {
       aiApiUrl: "https://restored.example.com",
       aiModel: "claude-test",
       aiModels: [{ id: "claude-test", name: "Claude Test" }],
+      scenarioModelDefaults: { translation: "claude-test" },
     });
 
     expect(getSettingsStateSnapshot()).toEqual({
@@ -117,6 +120,7 @@ describe("settings-snapshot", () => {
         aiApiUrl: "https://restored.example.com",
         aiModel: "claude-test",
         aiModels: [{ id: "claude-test", name: "Claude Test" }],
+        scenarioModelDefaults: { translation: "claude-test" },
       },
       settingsUpdatedAt: undefined,
     });

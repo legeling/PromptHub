@@ -15,6 +15,7 @@ import remarkGfm from "remark-gfm";
 import type { TFunction } from "i18next";
 import type { Skill } from "../../../shared/types";
 import { normalizeStringArray } from "../../services/skill-normalize";
+import { SkillRenderBoundary } from "./SkillRenderBoundary";
 import {
   renderImmersiveSegments,
   stripFrontmatter,
@@ -53,6 +54,10 @@ export function SkillPreviewPane({
     () => normalizeStringArray(selectedSkill.tags).slice(0, 4),
     [selectedSkill.tags],
   );
+  const safeCategory =
+    typeof selectedSkill.category === "string" ? selectedSkill.category : undefined;
+  const safeAuthor =
+    typeof selectedSkill.author === "string" ? selectedSkill.author : undefined;
 
   return (
     <div className="lg:col-span-2 flex h-full min-h-0 flex-col overflow-hidden space-y-6">
@@ -72,15 +77,15 @@ export function SkillPreviewPane({
           )}
 
           <div className="flex flex-wrap gap-2">
-            {selectedSkill.author && (
+            {safeAuthor && (
               <span className="text-xs bg-accent px-2 py-1 rounded-full font-medium text-foreground/80 flex items-center gap-1">
                 <GlobeIcon className="w-3 h-3 text-muted-foreground" />
-                {selectedSkill.author}
+                {safeAuthor}
               </span>
             )}
-            {selectedSkill.category && (
+            {safeCategory && (
               <span className="text-xs bg-accent px-2 py-1 rounded-full font-medium capitalize">
-                {selectedSkill.category}
+                {safeCategory}
               </span>
             )}
             {visibleTags.map((tag) => (
@@ -156,60 +161,71 @@ export function SkillPreviewPane({
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
           <div className="skill-markdown-body min-h-0 flex-1 overflow-y-auto overscroll-contain p-6">
-            {skillContent.trim() ? (
-              showTranslation && cachedInstructionsTranslation ? (
-                translationMode === "immersive" ? (
-                  <div className="markdown-body">
-                    {renderImmersiveSegments(cachedInstructionsTranslation).map((segment, index) =>
-                      segment.type === "translation" ? (
-                        <div
-                          key={index}
-                          className="border-l-2 border-primary/40 pl-3 my-1 text-primary/70 text-[12px] italic"
-                        >
+            <SkillRenderBoundary
+              compact
+              resetKey={`${selectedSkill.id}:${selectedSkill.updated_at}:${showTranslation ? "translated" : "original"}:${translationMode}`}
+              title={t("skill.previewRenderError", "Skill 预览暂时无法渲染")}
+              description={t(
+                "skill.previewRenderErrorHint",
+                "这份 Skill 的内容或元数据格式存在兼容性问题，但不会再把整个详情页冲白。你可以稍后重试，或切回文件视图继续检查原始内容。",
+              )}
+              secondaryActionLabel={t("common.retry", "重试")}
+            >
+              {skillContent.trim() ? (
+                showTranslation && cachedInstructionsTranslation ? (
+                  translationMode === "immersive" ? (
+                    <div className="markdown-body">
+                      {renderImmersiveSegments(cachedInstructionsTranslation).map((segment, index) =>
+                        segment.type === "translation" ? (
+                          <div
+                            key={index}
+                            className="border-l-2 border-primary/40 pl-3 my-1 text-primary/70 text-[12px] italic"
+                          >
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              rehypePlugins={[rehypeHighlight, rehypeSanitize]}
+                            >
+                              {segment.text}
+                            </ReactMarkdown>
+                          </div>
+                        ) : (
                           <ReactMarkdown
+                            key={index}
                             remarkPlugins={[remarkGfm]}
                             rehypePlugins={[rehypeHighlight, rehypeSanitize]}
                           >
                             {segment.text}
                           </ReactMarkdown>
-                        </div>
-                      ) : (
-                        <ReactMarkdown
-                          key={index}
-                          remarkPlugins={[remarkGfm]}
-                          rehypePlugins={[rehypeHighlight, rehypeSanitize]}
-                        >
-                          {segment.text}
-                        </ReactMarkdown>
-                      ),
-                    )}
-                  </div>
+                        ),
+                      )}
+                    </div>
+                  ) : (
+                    <div className="markdown-body">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        rehypePlugins={[rehypeHighlight, rehypeSanitize]}
+                      >
+                        {cachedInstructionsTranslation}
+                      </ReactMarkdown>
+                    </div>
+                  )
                 ) : (
                   <div className="markdown-body">
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       rehypePlugins={[rehypeHighlight, rehypeSanitize]}
                     >
-                      {cachedInstructionsTranslation}
+                      {stripFrontmatter(skillContent)}
                     </ReactMarkdown>
                   </div>
                 )
               ) : (
-                <div className="markdown-body">
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    rehypePlugins={[rehypeHighlight, rehypeSanitize]}
-                  >
-                    {stripFrontmatter(skillContent)}
-                  </ReactMarkdown>
+                <div className="flex flex-col items-center justify-center py-16 opacity-30">
+                  <BookOpenIcon className="w-12 h-12 mb-2" />
+                  <p>{t("skill.noInstructions")}</p>
                 </div>
-              )
-            ) : (
-              <div className="flex flex-col items-center justify-center py-16 opacity-30">
-                <BookOpenIcon className="w-12 h-12 mb-2" />
-                <p>{t("skill.noInstructions")}</p>
-              </div>
-            )}
+              )}
+            </SkillRenderBoundary>
           </div>
         </div>
       </section>

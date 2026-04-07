@@ -129,6 +129,8 @@ export const skillApi = {
     ),
   getRepoPath: (skillId: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.SKILL_GET_REPO_PATH, skillId),
+  syncFromRepo: (skillId: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.SKILL_SYNC_FROM_REPO, skillId),
   versionGetAll: (skillId: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.SKILL_VERSION_GET_ALL, skillId),
   versionCreate: (
@@ -144,6 +146,8 @@ export const skillApi = {
     ),
   versionRollback: (skillId: string, version: number) =>
     ipcRenderer.invoke(IPC_CHANNELS.SKILL_VERSION_ROLLBACK, skillId, version),
+  versionDelete: (skillId: string, versionId: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.SKILL_VERSION_DELETE, skillId, versionId),
   deleteAll: () => ipcRenderer.invoke(IPC_CHANNELS.SKILL_DELETE_ALL),
   insertVersionDirect: (version: SkillVersion) =>
     ipcRenderer.invoke(IPC_CHANNELS.SKILL_INSERT_VERSION_DIRECT, version),

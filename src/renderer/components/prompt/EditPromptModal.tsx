@@ -23,6 +23,7 @@ import {
 import { usePromptStore } from "../../stores/prompt.store";
 import { useFolderStore } from "../../stores/folder.store";
 import { useSettingsStore } from "../../stores/settings.store";
+import { resolveScenarioModel } from "../../services/ai-defaults";
 import { chatCompletion } from "../../services/ai";
 import { useTranslation } from "react-i18next";
 import { useToast } from "../ui/Toast";
@@ -100,10 +101,15 @@ export function EditPromptModal({
   const sourceHistory = useSettingsStore((state) => state.sourceHistory);
   const addSourceHistory = useSettingsStore((state) => state.addSourceHistory);
   const aiModels = useSettingsStore((state) => state.aiModels);
+  const scenarioModelDefaults = useSettingsStore((state) => state.scenarioModelDefaults);
   const translationModel = useMemo(() => {
-    const chatModels = aiModels.filter((model) => model.type === "chat");
-    return chatModels.find((model) => model.isDefault) ?? chatModels[0] ?? null;
-  }, [aiModels]);
+    return resolveScenarioModel(
+      aiModels,
+      scenarioModelDefaults,
+      "translation",
+      "chat",
+    );
+  }, [aiModels, scenarioModelDefaults]);
   const canTranslate = !!translationModel;
 
   // Detect if main content is pure English (strict: no CJK allowed)

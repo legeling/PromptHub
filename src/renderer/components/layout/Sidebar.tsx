@@ -7,12 +7,13 @@ import { useUIStore } from '../../stores/ui.store';
 import { useSkillStore } from '../../stores/skill.store';
 import { ResourcesModal } from '../resources/ResourcesModal';
 import { FolderModal, PrivateFolderUnlockModal } from '../folder';
-import { getUserSkillTags } from '../skill/skill-modal-utils';
 import { useTranslation } from 'react-i18next';
 import type { Folder } from '../../../shared/types';
 import { BUILTIN_SKILL_REGISTRY } from '../../../shared/constants/skill-registry';
 import { SortableTree } from './tree/SortableTree';
 import type { FlattenedItem } from './tree/utilities';
+import { buildPromptStats } from '../../services/prompt-filter';
+import { buildSkillStats } from '../../services/skill-stats';
 
 type PageType = 'home' | 'settings';
 
@@ -110,16 +111,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
   const skills = useSkillStore((state) => state.skills);
   const skillFilterType = useSkillStore((state) => state.filterType);
   const setSkillFilterType = useSkillStore((state) => state.setFilterType);
-  const skillFavoritesCount = useMemo(() => skills.filter(s => s.is_favorite).length, [skills]);
   const deployedSkillNames = useSkillStore((state) => state.deployedSkillNames);
-  const skillDeployedCount = useMemo(
-    () => skills.filter((s) => deployedSkillNames.has(s.name)).length,
-    [skills, deployedSkillNames],
-  );
-  const skillPendingCount = useMemo(
-    () => skills.filter((s) => !deployedSkillNames.has(s.name)).length,
-    [skills, deployedSkillNames],
-  );
   const storeView = useSkillStore((state) => state.storeView);
   const setStoreView = useSkillStore((state) => state.setStoreView);
   const registrySkills = useSkillStore((state) => state.registrySkills);
@@ -130,16 +122,19 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
   const skillFilterTags = useSkillStore((state) => state.filterTags);
   const toggleSkillFilterTag = useSkillStore((state) => state.toggleFilterTag);
   const clearSkillFilterTags = useSkillStore((state) => state.clearFilterTags);
-  const uniqueSkillTags = useMemo(() => {
-    return [...new Set(skills.flatMap((skill) => getUserSkillTags(skill)))].sort(
-      (a, b) => a.localeCompare(b),
-    );
-  }, [skills]);
   const claudeCodeStoreCount = useMemo(
     () => remoteStoreEntries['claude-code']?.skills.length || 0,
     [remoteStoreEntries],
   );
   const [showAllSkillTags, setShowAllSkillTags] = useState(false);
+  const promptStats = useMemo(() => buildPromptStats(prompts), [prompts]);
+  const skillStats = useMemo(
+    () => buildSkillStats(skills, deployedSkillNames),
+    [skills, deployedSkillNames],
+  );
+  const favoriteCount = promptStats.favoriteCount;
+  const uniqueTags = promptStats.uniqueTags;
+  const uniqueSkillTags = skillStats.uniqueUserTags;
 
   const confirmLeaveDirtySkillEditor = useCallback(() => {
     const hasUnsaved = (
@@ -275,12 +270,6 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
           });
         };
       
-      // Memoize expensive calculations to avoid re-computation on every render
-      // 使用 useMemo 缓存昂贵的计算，避免每次渲染都重新计算
-      const favoriteCount = useMemo(() => prompts.filter((p) => p.isFavorite).length, [prompts]);
-      const allTags = useMemo(() => prompts.flatMap((p) => p.tags), [prompts]);
-      const uniqueTags = useMemo(() => [...new Set(allTags)], [allTags]);
-    
         const moveFolder = useFolderStore((state) => state.moveFolder);
       
           const handleReorderFolders = useCallback(async (newItems: FlattenedItem[], activeId: string) => {
@@ -477,7 +466,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
               <NavItem
                 icon={<LayoutGridIcon className="w-5 h-5" />}
                 label={t('nav.allPrompts')}
-                count={prompts.length}
+                count={promptStats.totalCount}
                 active={selectedFolderId === null && currentPage === 'home' && promptTypeFilter === 'all'}
                 collapsed={true}
                 onClick={() => {
@@ -489,7 +478,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
               <NavItem
                 icon={<MessageSquareTextIcon className="w-5 h-5" />}
                 label={t('nav.textPrompts', '文本提示词')}
-                count={prompts.filter(p => !p.promptType || p.promptType === 'text').length}
+                count={promptStats.textCount}
                 active={promptTypeFilter === 'text' && selectedFolderId === null && currentPage === 'home'}
                 collapsed={true}
                 onClick={() => {
@@ -501,7 +490,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
               <NavItem
                 icon={<ImageIcon className="w-5 h-5" />}
                 label={t('nav.imagePrompts', '绘图提示词')}
-                count={prompts.filter(p => p.promptType === 'image').length}
+                count={promptStats.imageCount}
                 active={promptTypeFilter === 'image' && selectedFolderId === null && currentPage === 'home'}
                 collapsed={true}
                 onClick={() => {
@@ -757,7 +746,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
             <NavItem
               icon={<StarIcon className="w-5 h-5" />}
               label={t('nav.favorites')}
-              count={skillFavoritesCount}
+              count={skillStats.favoriteCount}
               active={skillFilterType === 'favorites' && storeView === 'my-skills' && currentPage === 'home'}
               collapsed={isCollapsed}
               onClick={() => {
@@ -770,7 +759,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
             <NavItem
               icon={<GlobeIcon className="w-5 h-5" />}
               label={t('skill.deployed', '已分发')}
-              count={skillDeployedCount}
+              count={skillStats.deployedCount}
               active={storeView === 'distribution' && currentPage === 'home'}
               collapsed={isCollapsed}
               onClick={() => {
@@ -782,7 +771,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
             <NavItem
               icon={<Clock3Icon className="w-5 h-5" />}
               label={t('skill.pendingDeployment', '待分发')}
-              count={skillPendingCount}
+              count={skillStats.pendingCount}
               active={skillFilterType === 'pending' && storeView === 'my-skills' && currentPage === 'home'}
               collapsed={isCollapsed}
               onClick={() => {

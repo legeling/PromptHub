@@ -75,14 +75,12 @@ export const usePromptStore = create<PromptState>()(
       fetchPrompts: async () => {
         set({ isLoading: true });
         try {
-          console.log('Fetching prompts...');
           // Ensure database is initialized and seed data is populated
           // 确保数据库已初始化并填充种子数据
           await db.seedDatabase();
           // Get data from IndexedDB
           // 从 IndexedDB 获取数据
           const prompts = await db.getAllPrompts();
-          console.log('Fetched prompts:', prompts.length, prompts);
           set({ prompts });
         } catch (error) {
           console.error('Failed to fetch prompts:', error);

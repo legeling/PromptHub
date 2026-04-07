@@ -143,6 +143,18 @@ export function isProtectedInstallDir(
   return normalized.startsWith("/usr") || normalized.startsWith("/opt");
 }
 
+export function isDefaultPerUserInstallDir(
+  targetPath: string,
+  platform: NodeJS.Platform,
+): boolean {
+  if (platform !== "win32") {
+    return false;
+  }
+
+  const normalized = resolvePlatformPath(targetPath, platform).toLowerCase();
+  return normalized.includes("\\appdata\\local\\programs\\");
+}
+
 export function isPathWritable(targetPath: string): boolean {
   try {
     fs.mkdirSync(targetPath, { recursive: true });
@@ -167,6 +179,13 @@ export function getInstallScopedDataPath(
     platform,
   );
   if (isProtectedInstallDir(installDir, platform)) {
+    return null;
+  }
+
+  // Current-user installs under AppData\Local\Programs are the default
+  // Windows installer target and still live on the system drive.
+  // Treat only explicit custom install locations as eligible for install-scoped data.
+  if (isDefaultPerUserInstallDir(installDir, platform)) {
     return null;
   }
 

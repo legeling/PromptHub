@@ -33,6 +33,18 @@ import {
   PasswordInput,
 } from "./shared";
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  if (typeof error === "string" && error.trim()) {
+    return error;
+  }
+
+  return "Unknown error";
+}
+
 /**
  * DataSettings — Data management tab
  * Handles: data path, WebDAV sync, backup/restore, clear data
@@ -44,6 +56,8 @@ export function DataSettings() {
   const settings = useSettingsStore();
   const persistedDataPath = settings.dataPath;
   const setDataPath = settings.setDataPath;
+  const [currentDataPath, setCurrentDataPath] = useState("");
+  const [pendingDataPath, setPendingDataPath] = useState<string | null>(null);
 
   // WebDAV operation state
   // WebDAV 操作状态
@@ -68,11 +82,33 @@ export function DataSettings() {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [clearPwd, setClearPwd] = useState("");
   const [clearLoading, setClearLoading] = useState(false);
-  const [currentDataPath, setCurrentDataPath] = useState(persistedDataPath);
-
   // Security status for clear-data flow (independent from SecuritySettings)
   // 清除数据流程需要的安全状态（独立于 SecuritySettings）
   const [securityConfigured, setSecurityConfigured] = useState(false);
+
+  const refreshDataPathStatus = async () => {
+    const status = await window.electron?.getDataPathStatus?.();
+    if (status?.currentPath) {
+      setCurrentDataPath(status.currentPath);
+      setPendingDataPath(
+        status.needsRestart ? status.configuredPath || null : null,
+      );
+      if (status.configuredPath && status.configuredPath !== persistedDataPath) {
+        setDataPath(status.configuredPath);
+      }
+      return;
+    }
+
+    const resolvedPath = await window.electron?.getDataPath?.();
+    if (!resolvedPath) {
+      return;
+    }
+    setCurrentDataPath(resolvedPath);
+    setPendingDataPath(null);
+    if (resolvedPath !== persistedDataPath) {
+      setDataPath(resolvedPath);
+    }
+  };
 
   useEffect(() => {
     window.api?.security?.status().then((status) => {
@@ -82,13 +118,9 @@ export function DataSettings() {
 
   useEffect(() => {
     let mounted = true;
-    window.electron?.getDataPath?.().then((resolvedPath) => {
-      if (!mounted || !resolvedPath) {
-        return;
-      }
-      setCurrentDataPath(resolvedPath);
-      if (resolvedPath !== persistedDataPath) {
-        setDataPath(resolvedPath);
+    void refreshDataPathStatus().catch((error) => {
+      if (mounted) {
+        console.error("Failed to load data path status:", error);
       }
     });
 
@@ -134,7 +166,10 @@ export function DataSettings() {
           setTimeout(() => window.location.reload(), 1000);
         } catch (error) {
           console.error("Import failed:", error);
-          showToast(t("toast.importFailed"), "error");
+          showToast(
+            `${t("toast.importFailed")}: ${getErrorMessage(error)}`,
+            "error",
+          );
         }
       }
     };
@@ -202,13 +237,24 @@ export function DataSettings() {
               <div className="flex-1">
                 <p className="text-sm font-medium">{t("settings.dataPath")}</p>
                 <button
-                  onClick={() => window.electron?.openPath?.(currentDataPath)}
+                  onClick={() =>
+                    currentDataPath && window.electron?.openPath?.(currentDataPath)
+                  }
                   className="text-xs text-primary font-mono mt-0.5 hover:underline flex items-center gap-1 cursor-pointer"
                   title={t("settings.openFolder")}
                 >
-                  {currentDataPath}
+                  {currentDataPath || t("common.loading", "Loading...")}
                   <ExternalLinkIcon className="w-3 h-3" />
                 </button>
+                {pendingDataPath && pendingDataPath !== currentDataPath ? (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {t(
+                      "settings.pendingDataPath",
+                      "Will switch to this directory after restart:",
+                    )}{" "}
+                    <span className="font-mono">{pendingDataPath}</span>
+                  </p>
+                ) : null}
               </div>
               <button
                 onClick={async () => {
@@ -231,7 +277,7 @@ export function DataSettings() {
                     if (result?.success) {
                       const resolvedPath = result.newPath || newPath;
                       setDataPath(resolvedPath);
-                      setCurrentDataPath(resolvedPath);
+                      await refreshDataPathStatus();
                       showToast(
                         t("toast.dataPathChanged") +
                           " " +

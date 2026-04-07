@@ -22,7 +22,7 @@ import { ShortcutsSettings } from "./ShortcutsSettings";
 import { SkillSettings } from "./SkillSettings";
 import { AboutSettings } from "./AboutSettings";
 import { DataSettings } from "./DataSettings";
-import { AISettings } from "./AISettings";
+import { AISettingsPrototype } from "./AISettingsPrototype";
 
 interface SettingsPageProps {
   onBack: () => void;
@@ -58,7 +58,7 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
       case "data":
         return <DataSettings />;
       case "ai":
-        return <AISettings />;
+        return <AISettingsPrototype />;
       case "shortcuts":
         return <ShortcutsSettings />;
       case "language":

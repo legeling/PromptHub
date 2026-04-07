@@ -1,0 +1,27 @@
+{
+  "settings": {
+    "minimizeOnLaunch": true,
+    "webdavEnabled": true,
+    "webdavUrl": "https://e2e.example.com/dav",
+    "webdavUsername": "e2e-user",
+    "webdavPassword": "e2e-pass",
+    "webdavSyncOnStartup": true,
+    "webdavSyncOnStartupDelay": 1,
+    "webdavAutoSyncInterval": 0,
+    "autoCheckUpdate": false
+  },
+  "skills": [
+    {
+      "name": "write",
+      "description": "Write better content",
+      "author": "E2E Seed",
+      "tags": ["general"],
+      "files": [
+        {
+          "relativePath": "SKILL.md",
+          "content": "---\ndescription: Write better content\n---\n\n# Write\n\nHelp the user write better."
+        }
+      ]
+    }
+  ]
+}

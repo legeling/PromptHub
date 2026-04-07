@@ -185,6 +185,8 @@ export function parseSkillMd(content: string): ParsedSkillMd | null {
       const items = arrayContent.split(',').map(item => item.trim().replace(/^['"]|['"]$/g, ''));
       if (key === 'tags') {
         frontmatter.tags = items.filter(Boolean);
+      } else if (key === 'compatibility') {
+        frontmatter.compatibility = items.filter(Boolean).join(', ');
       }
       continue;
     }

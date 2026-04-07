@@ -1,4 +1,4 @@
-import { useEffect, useState, lazy, Suspense } from "react";
+import { useEffect, useRef, useState, lazy, Suspense } from "react";
 import { Sidebar, TopBar, MainContent, TitleBar } from "./components/layout";
 import { usePromptStore } from "./stores/prompt.store";
 import { useFolderStore } from "./stores/folder.store";
@@ -6,6 +6,12 @@ import { useSettingsStore } from "./stores/settings.store";
 import { initDatabase, seedDatabase } from "./services/database";
 import { ImportedPromptData } from "./components/prompt/ImportPromptModal";
 import { autoSync } from "./services/webdav";
+import {
+  hasValidWebDAVConfig,
+  shouldRunBackgroundUpdateCheck,
+  shouldRunPeriodicWebDAVSync,
+  shouldRunStartupWebDAVSync,
+} from "./services/app-background";
 import { useToast } from "./components/ui/Toast";
 import { DndContext, DragEndEvent, pointerWithin } from "@dnd-kit/core";
 import i18n from "./i18n";
@@ -48,8 +54,11 @@ function App() {
   );
   const [importData, setImportData] = useState<ImportedPromptData | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [lastClipboardChecksum, setLastClipboardChecksum] =
-    useState<string>("");
+  const lastClipboardChecksumRef = useRef<string>("");
+  const isUpdateCheckInFlightRef = useRef(false);
+  const isWebDAVSyncInFlightRef = useRef(false);
+  const pendingStartupSyncRef = useRef(false);
+  const isWindowVisibleRef = useRef(true);
 
   // OS-level fullscreen state (synced from main process events)
   // OS 级全屏状态（通过主进程事件同步）
@@ -112,7 +121,7 @@ function App() {
         if (!text || text.length < 20) return;
 
         const checksum = `${text.length}-${text.substring(0, 10)}`;
-        if (checksum === lastClipboardChecksum) return;
+        if (checksum === lastClipboardChecksumRef.current) return;
 
         // Verify if it was copied by us in this session
         const selfSignature = sessionStorage.getItem(
@@ -132,7 +141,7 @@ function App() {
             ) {
               setImportData(data);
               setShowImportModal(true);
-              setLastClipboardChecksum(checksum);
+              lastClipboardChecksumRef.current = checksum;
             }
           } catch (e) {
             // Not a valid JSON or not a prompt JSON
@@ -145,7 +154,7 @@ function App() {
 
     window.addEventListener("focus", checkClipboard);
     return () => window.removeEventListener("focus", checkClipboard);
-  }, [clipboardImportEnabled, lastClipboardChecksum]);
+  }, [clipboardImportEnabled]);
 
   // Global Escape key: exit OS fullscreen regardless of which component entered it
   // 全局 Escape 键：无论哪个组件进入了 OS 全屏，都可以退出
@@ -194,6 +203,9 @@ function App() {
             e.preventDefault();
             // Trigger action based on type
             switch (action) {
+              case "showApp":
+                window.electron?.toggleVisibility?.();
+                break;
               case "newPrompt":
                 window.dispatchEvent(new CustomEvent("shortcut:newPrompt"));
                 break;
@@ -203,7 +215,6 @@ function App() {
               case "settings":
                 setCurrentPage("settings");
                 break;
-              // showApp is typically global only, or handled by OS/Electron focus
             }
           }
         }
@@ -221,6 +232,16 @@ function App() {
       setIsOsFullscreen(isFullscreen);
     };
     window.api?.on?.("window:fullscreen-changed", handleFullscreenChanged);
+
+    const handleWindowVisibilityChanged = (isVisible: boolean) => {
+      isWindowVisibleRef.current = isVisible;
+    };
+    window.api?.on?.("window:visibility-changed", handleWindowVisibilityChanged);
+    window.electron?.isVisible?.().then((isVisible) => {
+      if (typeof isVisible === "boolean") {
+        isWindowVisibleRef.current = isVisible;
+      }
+    });
 
     // Listen for update status
     // 监听更新状态
@@ -274,21 +295,29 @@ function App() {
     const UPDATE_CHECK_INTERVAL = 60 * 60 * 1000; // 1 hour
     let updateCheckTimer: NodeJS.Timeout | null = null;
     let startupUpdateCheckTimer: NodeJS.Timeout | null = null;
-    let isCheckingUpdate = false;
 
     const checkForUpdates = () => {
       const settings = useSettingsStore.getState();
-      if (settings.autoCheckUpdate) {
-        if (isCheckingUpdate) return;
-        isCheckingUpdate = true;
-        const p = window.electron?.updater?.check();
-        if (p && typeof (p as any).finally === "function") {
-          (p as Promise<any>).finally(() => {
-            isCheckingUpdate = false;
-          });
-        } else {
-          isCheckingUpdate = false;
-        }
+      const isVisible = isWindowVisibleRef.current;
+      const isOnline = navigator.onLine !== false;
+      if (
+        !shouldRunBackgroundUpdateCheck(settings.autoCheckUpdate, {
+          isVisible,
+          isOnline,
+          isRunning: isUpdateCheckInFlightRef.current,
+        })
+      ) {
+        return;
+      }
+
+      isUpdateCheckInFlightRef.current = true;
+      const p = window.electron?.updater?.check();
+      if (p && typeof (p as Promise<unknown>).finally === "function") {
+        (p as Promise<unknown>).finally(() => {
+          isUpdateCheckInFlightRef.current = false;
+        });
+      } else {
+        isUpdateCheckInFlightRef.current = false;
       }
     };
 
@@ -313,6 +342,10 @@ function App() {
       // Cleanup Electron/IPC listeners to prevent leaks on unmount/remount
       // 清理 Electron/IPC 监听，避免卸载/重挂载导致重复触发
       window.api?.off?.("window:fullscreen-changed", handleFullscreenChanged);
+      window.api?.off?.(
+        "window:visibility-changed",
+        handleWindowVisibilityChanged,
+      );
       if (typeof offUpdaterStatus === "function") {
         offUpdaterStatus();
       } else {
@@ -405,6 +438,82 @@ function App() {
 
     // Initialize database, then load data
     // 初始化数据库，然后加载数据
+    let startupSyncTimer: NodeJS.Timeout | null = null;
+    let intervalId: NodeJS.Timeout | null = null;
+
+    const runAutoSync = async (
+      reason: "startup" | "startup-resume" | "interval",
+    ) => {
+      const settings = useSettingsStore.getState();
+      const state = {
+        isVisible: isWindowVisibleRef.current,
+        isOnline: navigator.onLine !== false,
+        isRunning: isWebDAVSyncInFlightRef.current,
+      };
+
+      const canRun =
+        reason === "interval"
+          ? shouldRunPeriodicWebDAVSync(settings, state)
+          : shouldRunStartupWebDAVSync(settings, state);
+
+      if (!canRun) {
+        if (
+          reason !== "interval" &&
+          settings.webdavSyncOnStartup &&
+          hasValidWebDAVConfig(settings)
+        ) {
+          pendingStartupSyncRef.current = true;
+        }
+        return;
+      }
+
+      pendingStartupSyncRef.current = false;
+      isWebDAVSyncInFlightRef.current = true;
+
+      try {
+        const result = await autoSync(
+          {
+            url: settings.webdavUrl,
+            username: settings.webdavUsername,
+            password: settings.webdavPassword,
+          },
+          {
+            includeImages: settings.webdavIncludeImages,
+            incrementalSync: settings.webdavIncrementalSync,
+            encryptionPassword:
+              settings.webdavEncryptionEnabled &&
+              settings.webdavEncryptionPassword
+                ? settings.webdavEncryptionPassword
+                : undefined,
+          },
+        );
+
+        if (!result.success) {
+          console.log(`⚠️ ${reason} sync failed:`, result.message);
+          return;
+        }
+
+        console.log(`✅ ${reason} sync completed:`, result.message);
+        if (result.localChanged) {
+          await Promise.all([fetchPrompts(), fetchFolders()]);
+        }
+      } catch (syncError) {
+        console.error(`⚠️ ${reason} sync error:`, syncError);
+      } finally {
+        isWebDAVSyncInFlightRef.current = false;
+      }
+    };
+
+    const handleBackgroundTaskResume = () => {
+      if (
+        pendingStartupSyncRef.current &&
+        isWindowVisibleRef.current &&
+        navigator.onLine !== false
+      ) {
+        void runAutoSync("startup-resume");
+      }
+    };
+
     const init = async (retryCount = 0) => {
       // Set max loading time to avoid waiting forever
       // 设置最大加载时间，防止无限等待
@@ -441,45 +550,15 @@ function App() {
       // Sync after startup (run after data is loaded; do not block UI)
       // 启动后同步（在数据加载完成后执行，不阻塞 UI）
       const settings = useSettingsStore.getState();
-      if (
-        settings.webdavEnabled &&
-        settings.webdavSyncOnStartup &&
-        settings.webdavUrl &&
-        settings.webdavUsername &&
-        settings.webdavPassword
-      ) {
+      if (settings.webdavSyncOnStartup && hasValidWebDAVConfig(settings)) {
         const delay = (settings.webdavSyncOnStartupDelay || 10) * 1000;
         console.log(`🔄 Will sync with WebDAV in ${delay / 1000}s...`);
-        setTimeout(async () => {
-          try {
-            const result = await autoSync(
-              {
-                url: settings.webdavUrl,
-                username: settings.webdavUsername,
-                password: settings.webdavPassword,
-              },
-              {
-                includeImages: settings.webdavIncludeImages,
-                incrementalSync: settings.webdavIncrementalSync,
-                encryptionPassword:
-                  settings.webdavEncryptionEnabled &&
-                  settings.webdavEncryptionPassword
-                    ? settings.webdavEncryptionPassword
-                    : undefined,
-              },
-            );
-            if (result.success) {
-              console.log("✅ Startup sync completed:", result.message);
-              // Reload data after sync
-              // 同步后重新加载数据
-              await fetchPrompts();
-              await fetchFolders();
-            } else {
-              console.log("⚠️ Startup sync failed:", result.message);
-            }
-          } catch (syncError) {
-            console.error("⚠️ Startup sync error:", syncError);
+        startupSyncTimer = setTimeout(() => {
+          if (!isWindowVisibleRef.current || navigator.onLine === false) {
+            pendingStartupSyncRef.current = true;
+            return;
           }
+          void runAutoSync("startup");
         }, delay);
       }
     };
@@ -488,49 +567,34 @@ function App() {
     // Periodic auto sync
     // 定时自动同步
     const settings = useSettingsStore.getState();
-    let intervalId: NodeJS.Timeout | null = null;
     if (
-      settings.webdavEnabled &&
       settings.webdavAutoSyncInterval > 0 &&
-      settings.webdavUrl &&
-      settings.webdavUsername &&
-      settings.webdavPassword
+      hasValidWebDAVConfig(settings)
     ) {
       const intervalMs = settings.webdavAutoSyncInterval * 60 * 1000;
       console.log(
         `🔄 Auto sync interval: ${settings.webdavAutoSyncInterval} minutes`,
       );
-      intervalId = setInterval(async () => {
-        try {
-          const result = await autoSync(
-            {
-              url: settings.webdavUrl,
-              username: settings.webdavUsername,
-              password: settings.webdavPassword,
-            },
-            {
-              includeImages: settings.webdavIncludeImages,
-              incrementalSync: settings.webdavIncrementalSync,
-              encryptionPassword:
-                settings.webdavEncryptionEnabled &&
-                settings.webdavEncryptionPassword
-                  ? settings.webdavEncryptionPassword
-                  : undefined,
-            },
-          );
-          if (result.success) {
-            console.log("✅ Interval sync completed:", result.message);
-            await fetchPrompts();
-            await fetchFolders();
-          }
-        } catch (e) {
-          console.error("⚠️ Interval sync error:", e);
-        }
+      intervalId = setInterval(() => {
+        void runAutoSync("interval");
       }, intervalMs);
     }
 
+    document.addEventListener("visibilitychange", handleBackgroundTaskResume);
+    window.api?.on?.("window:visibility-changed", handleBackgroundTaskResume);
+    window.addEventListener("focus", handleBackgroundTaskResume);
+    window.addEventListener("online", handleBackgroundTaskResume);
+
     return () => {
+      if (startupSyncTimer) clearTimeout(startupSyncTimer);
       if (intervalId) clearInterval(intervalId);
+      document.removeEventListener(
+        "visibilitychange",
+        handleBackgroundTaskResume,
+      );
+      window.api?.off?.("window:visibility-changed", handleBackgroundTaskResume);
+      window.removeEventListener("focus", handleBackgroundTaskResume);
+      window.removeEventListener("online", handleBackgroundTaskResume);
     };
   }, []);
 

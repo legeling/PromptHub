@@ -94,6 +94,7 @@ function createSkillStoreState(overrides: Partial<Record<string, unknown>> = {})
     deleteSkill: vi.fn().mockResolvedValue(undefined),
     toggleFavorite: vi.fn().mockResolvedValue(undefined),
     updateSkill: vi.fn().mockResolvedValue(undefined),
+    syncSkillFromRepo: vi.fn().mockResolvedValue(null),
     isLoading: false,
     selectedSkillId: null,
     selectSkill: vi.fn(),
@@ -186,8 +187,15 @@ describe("skill i18n smoke", () => {
   });
 
   it("renders skill detail page chrome in english without chinese fallback text", async () => {
+    const syncedSkill = {
+      ...baseSkill,
+      description: "Write helper",
+      instructions: "---\ndescription: Write helper\n---\n\n# Write",
+      content: "---\ndescription: Write helper\n---\n\n# Write",
+    };
     const skillStoreState = createSkillStoreState({
       selectedSkillId: baseSkill.id,
+      syncSkillFromRepo: vi.fn().mockResolvedValue(syncedSkill),
     });
     const settingsState = createSettingsState();
 
@@ -205,6 +213,10 @@ describe("skill i18n smoke", () => {
     await waitFor(() => {
       expect(screen.getByText("Platform Integration")).toBeInTheDocument();
     });
+    await waitFor(() => {
+      expect(screen.getByText("Write helper")).toBeInTheDocument();
+    });
+    expect(skillStoreState.syncSkillFromRepo).toHaveBeenCalledWith(baseSkill.id);
     expect(screen.getByText("Imported from Local Folder")).toBeInTheDocument();
     expect(screen.queryByText("源码/内容")).not.toBeInTheDocument();
     expect(screen.queryByText("批量管理")).not.toBeInTheDocument();

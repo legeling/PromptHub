@@ -1,6 +1,7 @@
 import { ipcMain } from "electron";
 import { IPC_CHANNELS } from "../../../shared/constants";
 import { SkillInstaller } from "../../services/skill-installer";
+import { buildSkillSyncUpdateFromRepo } from "../../services/skill-repo-sync";
 import type { SkillIPCContext } from "./shared";
 import { ensureLocalRepoPath, readCurrentFilesSnapshot } from "./shared";
 
@@ -51,14 +52,38 @@ async function syncSkillContentFromRepo(
   skillId: string,
   repoPath: string,
 ): Promise<void> {
-  const files = await SkillInstaller.readLocalRepoFilesByPath(repoPath);
+  await syncSkillFromRepo(context, skillId, repoPath);
+}
+
+async function syncSkillFromRepo(
+  context: SkillIPCContext,
+  skillId: string,
+  repoPath?: string,
+) {
+  const skill = context.db.getById(skillId);
+  if (!skill) {
+    return null;
+  }
+
+  const resolvedRepoPath = repoPath ?? (await ensureLocalRepoPath(context.db, skillId));
+  if (!resolvedRepoPath) {
+    return skill;
+  }
+
+  const files = await SkillInstaller.readLocalRepoFilesByPath(resolvedRepoPath);
   const skillMdFile = files.find(
     (file) => !file.isDirectory && file.path.toLowerCase() === "skill.md",
   );
-  context.db.update(skillId, {
-    content: skillMdFile?.content || "",
-    instructions: skillMdFile?.content || "",
-  });
+  if (!skillMdFile?.content) {
+    return skill;
+  }
+
+  const nextUpdate = buildSkillSyncUpdateFromRepo(skill, skillMdFile.content);
+  if (!nextUpdate) {
+    return skill;
+  }
+
+  return context.db.update(skillId, nextUpdate);
 }
 
 export function registerSkillLocalRepoHandlers({ db }: SkillIPCContext): void {
@@ -247,5 +272,12 @@ export function registerSkillLocalRepoHandlers({ db }: SkillIPCContext): void {
       return null;
     }
     return ensureLocalRepoPath(db, skillId);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SKILL_SYNC_FROM_REPO, async (_, skillId: string) => {
+    if (typeof skillId !== "string" || skillId.trim() === "") {
+      return null;
+    }
+    return syncSkillFromRepo({ db }, skillId);
   });
 }

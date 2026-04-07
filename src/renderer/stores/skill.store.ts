@@ -17,8 +17,13 @@ import {
   SKILL_CATEGORIES,
 } from "../../shared/constants/skill-registry";
 import { chatCompletion } from "../services/ai";
+import { resolveScenarioModel } from "../services/ai-defaults";
 import { filterVisibleSkills } from "../services/skill-filter";
 import { normalizeSkill, normalizeSkills } from "../services/skill-normalize";
+import {
+  validateStoreSourceInput,
+  type CustomStoreSourceType,
+} from "../services/skill-store-source";
 import { useSettingsStore } from "./settings.store";
 
 export type SkillFilterType =
@@ -247,21 +252,6 @@ async function syncRemoteGitHubSkillRepo(
   );
 }
 
-function validateStoreSourceUrl(url: string): string {
-  let parsedUrl: URL;
-  try {
-    parsedUrl = new URL(url);
-  } catch {
-    throw new Error("INVALID_STORE_SOURCE_URL");
-  }
-
-  if (parsedUrl.protocol !== "https:") {
-    throw new Error("STORE_SOURCE_HTTPS_REQUIRED");
-  }
-
-  return parsedUrl.toString();
-}
-
 async function runWithConcurrency<T>(
   items: T[],
   limit: number,
@@ -320,6 +310,7 @@ interface SkillState {
   selectSkill: (id: string | null) => void;
   createSkill: (data: CreateSkillParams) => Promise<Skill | null>;
   updateSkill: (id: string, data: UpdateSkillParams) => Promise<Skill | null>;
+  syncSkillFromRepo: (id: string) => Promise<Skill | null>;
   deleteSkill: (id: string) => Promise<boolean>;
   toggleFavorite: (id: string) => Promise<void>;
   scanLocalSkills: () => Promise<number>;
@@ -366,7 +357,7 @@ interface SkillState {
   addCustomStoreSource: (
     name: string,
     url: string,
-    type?: SkillStoreSource["type"],
+    type?: CustomStoreSourceType,
   ) => void;
   removeCustomStoreSource: (id: string) => void;
   toggleCustomStoreSource: (id: string) => void;
@@ -541,6 +532,26 @@ export const useSkillStore = create<SkillState>()(
         } catch (error) {
           console.error("Failed to update skill:", error);
           throw error;
+        }
+      },
+
+      syncSkillFromRepo: async (id) => {
+        try {
+          const syncedSkill = await window.api.skill.syncFromRepo(id);
+          if (!syncedSkill) {
+            return null;
+          }
+
+          const normalizedSkill = normalizeSkill(syncedSkill);
+          set((state) => ({
+            skills: state.skills.map((skill) =>
+              skill.id === id ? normalizedSkill : skill,
+            ),
+          }));
+          return normalizedSkill;
+        } catch (error) {
+          console.error("Failed to sync skill from repo:", error);
+          return null;
         }
       },
 
@@ -839,7 +850,7 @@ export const useSkillStore = create<SkillState>()(
           }
 
           const newSkill = await window.api.skill.create({
-            name: regSkill.slug,
+            name: regSkill.install_name || regSkill.slug,
             description: regSkill.description,
             instructions: effectiveContent,
             content: effectiveContent,
@@ -950,7 +961,7 @@ export const useSkillStore = create<SkillState>()(
 
       addCustomStoreSource: (name, url, type = "marketplace-json") => {
         const trimmedName = name.trim();
-        const trimmedUrl = validateStoreSourceUrl(url.trim());
+        const trimmedUrl = validateStoreSourceInput(url.trim(), type);
         if (!trimmedName || !trimmedUrl) return;
 
         const newId = `custom_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -1071,11 +1082,12 @@ export const useSkillStore = create<SkillState>()(
 
         // Get AI config from settings store
         const settingsState = useSettingsStore.getState();
-        const chatModels = settingsState.aiModels.filter(
-          (m) => (m.type ?? "chat") === "chat",
+        const defaultModel = resolveScenarioModel(
+          settingsState.aiModels,
+          settingsState.scenarioModelDefaults,
+          "translation",
+          "chat",
         );
-        const defaultModel =
-          chatModels.find((m) => m.isDefault) ?? chatModels[0];
 
         const config = defaultModel
           ? {

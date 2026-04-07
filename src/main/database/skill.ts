@@ -476,6 +476,18 @@ export class SkillDB {
   }
 
   /**
+   * Delete one version snapshot for a skill.
+   * 删除 Skill 的单个版本快照。
+   */
+  deleteVersion(skillId: string, versionId: string): boolean {
+    const stmt = this.db.prepare(
+      "DELETE FROM skill_versions WHERE skill_id = ? AND id = ?",
+    );
+    const result = stmt.run(skillId, versionId);
+    return result.changes > 0;
+  }
+
+  /**
    * Rollback to specified version
    * 回滚到指定版本
    */

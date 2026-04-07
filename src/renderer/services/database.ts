@@ -11,11 +11,25 @@ import type {
   SkillVersion,
   SkillFileSnapshot,
 } from "../../shared/types/skill";
+import {
+  DB_BACKUP_VERSION,
+  parsePromptHubBackupFileContent,
+} from "./database-backup-format";
+import type {
+  DatabaseBackup,
+  ExportScope,
+  PromptHubFile,
+} from "./database-backup-format";
+export type {
+  DatabaseBackup,
+  ExportScope,
+  PromptHubFile,
+} from "./database-backup-format";
 import { getSeedPrompts, getSeedFolders } from "./seedData";
 import i18n from "../i18n";
 
 const DB_NAME = "PromptHubDB";
-const DB_VERSION = 1;
+const DB_VERSION = DB_BACKUP_VERSION;
 
 // Preset data - 3 folders: AI Programming, Role Playing, Drawing Prompts
 // 预制数据 - 3个文件夹：AI编程、角色扮演、绘图提示词
@@ -628,6 +642,19 @@ export async function createPromptVersion(
   });
 }
 
+export async function deletePromptVersion(versionId: string): Promise<void> {
+  const database = await getDatabase();
+
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction(STORES.VERSIONS, "readwrite");
+    const store = transaction.objectStore(STORES.VERSIONS);
+    const request = store.delete(versionId);
+
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
 // ==================== Folder 操作 ====================
 // ==================== Folder Operations ====================
 
@@ -747,54 +774,6 @@ export async function updateFolderOrders(
 
 // ==================== 备份与恢复 ====================
 // ==================== Backup & Restore ====================
-
-export interface DatabaseBackup {
-  version: number;
-  exportedAt: string;
-  prompts: Prompt[];
-  folders: Folder[];
-  versions: PromptVersion[];
-  images?: { [fileName: string]: string }; // fileName -> base64
-  videos?: { [fileName: string]: string }; // fileName -> base64
-  // System settings snapshot (optional, for cross-device consistency)
-  // 系统设置快照（可选，用于跨设备一致）
-  aiConfig?: {
-    aiModels?: any[];
-    aiProvider?: string;
-    aiApiKey?: string;
-    aiApiUrl?: string;
-    aiModel?: string;
-  };
-  // 系统设置快照（可选，用于跨设备一致）
-  settings?: { state: any };
-  settingsUpdatedAt?: string;
-  // Skill data (from SQLite, optional for backward compat)
-  // 技能数据（来自 SQLite，可选以兼容旧备份）
-  skills?: Skill[];
-  skillVersions?: SkillVersion[];
-  skillFiles?: {
-    [skillId: string]: SkillFileSnapshot[];
-  };
-}
-
-export type ExportScope = {
-  prompts?: boolean;
-  folders?: boolean;
-  versions?: boolean;
-  images?: boolean;
-  aiConfig?: boolean;
-  settings?: boolean;
-  skills?: boolean;
-};
-
-export type PromptHubFile =
-  | {
-      kind: "prompthub-export";
-      exportedAt: string;
-      scope: Required<ExportScope>;
-      payload: Partial<DatabaseBackup>;
-    }
-  | { kind: "prompthub-backup"; exportedAt: string; payload: DatabaseBackup };
 
 const SETTINGS_STORAGE_KEY = "prompthub-settings";
 
@@ -1034,6 +1013,7 @@ function getAiConfig(): DatabaseBackup["aiConfig"] {
 
     return {
       aiModels: filteredModels,
+      scenarioModelDefaults: state.scenarioModelDefaults || {},
       aiProvider: state.aiProvider,
       // aiApiKey is intentionally excluded for security
       // aiApiKey 出于安全考虑被故意排除
@@ -1068,6 +1048,9 @@ function restoreAiConfig(aiConfig: DatabaseBackup["aiConfig"]): void {
 
     if (!data.state) data.state = {};
     data.state.aiModels = aiConfig.aiModels || [];
+    if (aiConfig.scenarioModelDefaults) {
+      data.state.scenarioModelDefaults = aiConfig.scenarioModelDefaults;
+    }
     if (aiConfig.aiProvider) data.state.aiProvider = aiConfig.aiProvider;
     if (aiConfig.aiApiKey) data.state.aiApiKey = aiConfig.aiApiKey;
     if (aiConfig.aiApiUrl) data.state.aiApiUrl = aiConfig.aiApiUrl;
@@ -1632,21 +1615,7 @@ export async function restoreFromFile(file: File): Promise<void> {
   } else {
     text = await file.text();
   }
-
-  const parsed = JSON.parse(text) as any;
-
-  // 新格式：PromptHubFile
-  if (parsed?.kind === "prompthub-backup") {
-    await importDatabase(parsed.payload as DatabaseBackup);
-    return;
-  }
-  if (parsed?.kind === "prompthub-export") {
-    // 选择性导出不支持导入，避免误用造成数据丢失/不完整恢复
-    throw new Error("选择性导出文件不支持导入，请使用“全量备份/恢复”文件");
-  }
-
-  // 旧格式兼容：直接 DatabaseBackup
-  await importDatabase(parsed as DatabaseBackup);
+  await importDatabase(parsePromptHubBackupFileContent(text));
 }
 
 /**
