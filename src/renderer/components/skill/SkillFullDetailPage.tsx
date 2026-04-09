@@ -12,6 +12,8 @@ import {
   StarIcon,
   TrashIcon,
   FolderOpenIcon,
+  ShieldAlertIcon,
+  ShieldCheckIcon,
 } from "lucide-react";
 import { SkillIcon } from "./SkillIcon";
 import { SkillCodePane } from "./SkillCodePane";
@@ -36,6 +38,7 @@ import {
 } from "./detail-utils";
 import { useSkillPlatform } from "./use-skill-platform";
 import { SkillVersionHistoryModal } from "./SkillVersionHistoryModal";
+import type { SkillSafetyReport } from "../../../shared/types";
 
 /**
  * Full-width Skill Detail Page
@@ -69,6 +72,9 @@ export function SkillFullDetailPage() {
   const skillInstallMethod = useSettingsStore(
     (state) => state.skillInstallMethod,
   );
+  const autoScanInstalledSkills = useSettingsStore(
+    (state) => state.autoScanInstalledSkills,
+  );
   const [installMode, setInstallMode] = useState<InstallMode>(
     () => skillInstallMethod,
   );
@@ -77,6 +83,10 @@ export function SkillFullDetailPage() {
   const [showTranslation, setShowTranslation] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
+  const [isScanningSafety, setIsScanningSafety] = useState(false);
+  const [safetyReport, setSafetyReport] = useState<SkillSafetyReport | null>(
+    null,
+  );
   const [isSnapshotModalOpen, setIsSnapshotModalOpen] = useState(false);
   const [isCreatingSnapshot, setIsCreatingSnapshot] = useState(false);
   const [snapshotNote, setSnapshotNote] = useState("");
@@ -112,6 +122,14 @@ export function SkillFullDetailPage() {
     () => resolveSkillDescription(resolvedSkillMdContent),
     [resolvedSkillMdContent],
   );
+  const safetyTone =
+    safetyReport?.level === "blocked"
+      ? "border-destructive/40 bg-destructive/5 text-destructive"
+      : safetyReport?.level === "high-risk"
+        ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-300"
+        : safetyReport?.level === "warn"
+          ? "border-yellow-500/40 bg-yellow-500/10 text-yellow-700 dark:text-yellow-300"
+          : "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
 
   const translationCacheKey = selectedSkill
     ? `skill_${selectedSkill.id}_${targetLang}_${translationMode}`
@@ -173,6 +191,51 @@ export function SkillFullDetailPage() {
     selectedSkill?.updated_at,
     syncSkillFromRepo,
   ]);
+
+  useEffect(() => {
+    if (!selectedSkill || !autoScanInstalledSkills) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const runScan = async () => {
+      setIsScanningSafety(true);
+      try {
+        const report = await window.api.skill.scanSafety({
+          name: selectedSkill.name,
+          content:
+            resolvedSkillMdContent ||
+            selectedSkill.instructions ||
+            selectedSkill.content,
+          sourceUrl: selectedSkill.source_url,
+          contentUrl: selectedSkill.content_url,
+          localRepoPath: selectedSkill.local_repo_path,
+        });
+        if (!cancelled) {
+          setSafetyReport(report);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.warn("Failed to auto-scan skill safety:", error);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsScanningSafety(false);
+        }
+      }
+    };
+
+    void runScan();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    autoScanInstalledSkills,
+    resolvedSkillMdContent,
+    selectedSkill,
+  ]);
   const {
     availablePlatforms,
     batchInstall: installSelectedPlatforms,
@@ -223,6 +286,32 @@ export function SkillFullDetailPage() {
   };
 
   if (!selectedSkill) return null;
+
+  const runSafetyScan = async () => {
+    setIsScanningSafety(true);
+    try {
+      const report = await window.api.skill.scanSafety({
+        name: selectedSkill.name,
+        content:
+          resolvedSkillMdContent ||
+          selectedSkill.instructions ||
+          selectedSkill.content,
+        sourceUrl: selectedSkill.source_url,
+        contentUrl: selectedSkill.content_url,
+        localRepoPath: selectedSkill.local_repo_path,
+      });
+      setSafetyReport(report);
+      return report;
+    } catch (error) {
+      showToast(
+        `${t("skill.safetyScanFailed", "Safety scan failed")}: ${getErrorMessage(error)}`,
+        "error",
+      );
+      return null;
+    } finally {
+      setIsScanningSafety(false);
+    }
+  };
 
   const handleCopy = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
@@ -437,6 +526,19 @@ export function SkillFullDetailPage() {
             />
           </button>
           <button
+            onClick={() => {
+              void runSafetyScan();
+            }}
+            className="p-2.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-full transition-all active:scale-95"
+            title={t("skill.runSafetyAssessment", "立即检查")}
+          >
+            {safetyReport?.level === "safe" ? (
+              <ShieldCheckIcon className="w-5 h-5" />
+            ) : (
+              <ShieldAlertIcon className="w-5 h-5" />
+            )}
+          </button>
+          <button
             onClick={() => setIsVersionHistoryOpen(true)}
             className="p-2.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-full transition-all active:scale-95"
             title={t("skill.versionHistory", "版本历史")}
@@ -457,6 +559,49 @@ export function SkillFullDetailPage() {
           >
             <TrashIcon className="w-5 h-5" />
           </button>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="px-6 py-3 border-b border-border/70 bg-muted/10">
+        <div className={`rounded-xl border px-4 py-3 ${safetyTone}`}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-sm font-semibold">
+                {t("skill.safetyAssessment", "安全评估")}
+              </div>
+              <p className="mt-1 text-xs opacity-90">
+                {safetyReport?.summary ||
+                  t(
+                    "skill.safetyAssessmentEmpty",
+                    "还没有运行安全评估。你可以手动检查，也可以在设置里开启自动复查已安装 Skills。",
+                  )}
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                void runSafetyScan();
+              }}
+              disabled={isScanningSafety}
+              className="shrink-0 rounded-lg border border-current/20 px-3 py-2 text-xs font-medium transition-colors disabled:opacity-50"
+            >
+              {isScanningSafety
+                ? t("skill.safetyScanning", "检查中...")
+                : t("skill.runSafetyAssessment", "立即检查")}
+            </button>
+          </div>
+          {safetyReport && safetyReport.findings.length > 0 && (
+            <ul className="mt-3 space-y-1 text-xs opacity-90">
+              {safetyReport.findings.slice(0, 4).map((finding) => (
+                <li
+                  key={`${finding.code}-${finding.filePath || finding.evidence || ""}`}
+                >
+                  • {finding.title}
+                  {finding.filePath ? ` · ${finding.filePath}` : ""}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
 

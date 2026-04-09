@@ -23,6 +23,7 @@ import { SkillStoreCard } from "./SkillStoreCard";
 import { SkillStoreCustomSources } from "./SkillStoreCustomSources";
 import { SkillStoreSourceForm } from "./SkillStoreSourceForm";
 import { useSkillStore } from "../../stores/skill.store";
+import { useSettingsStore } from "../../stores/settings.store";
 import { isLikelyLocalSource } from "../../services/skill-store-source";
 import {
   parseSkillsShDetail,
@@ -159,11 +160,18 @@ function parseGithubRepo(url: string) {
 }
 
 function dedupeRegistrySkills(skills: RegistrySkill[]) {
-  const map = new Map<string, RegistrySkill>();
+  const bySlug = new Map<string, RegistrySkill>();
+  // Also deduplicate by normalized name to stay consistent with the
+  // backend SkillDB which uses LOWER(name) as the uniqueness key.
+  const seenNames = new Set<string>();
   for (const skill of skills) {
-    map.set(skill.slug, skill);
+    if (bySlug.has(skill.slug)) continue;
+    const normalizedName = (skill.install_name || skill.slug).toLowerCase();
+    if (seenNames.has(normalizedName)) continue;
+    bySlug.set(skill.slug, skill);
+    seenNames.add(normalizedName);
   }
-  return Array.from(map.values());
+  return Array.from(bySlug.values());
 }
 
 function parseJson<T>(raw: string, fallback: T): T {
@@ -274,6 +282,9 @@ export function SkillStore() {
   const [sourceUrl, setSourceUrl] = useState("");
   const [loadingSourceId, setLoadingSourceId] = useState<string | null>(null);
   const { showToast } = useToast();
+  const autoScanBeforeInstall = useSettingsStore(
+    (state) => state.autoScanStoreSkillsBeforeInstall,
+  );
 
   useEffect(() => {
     loadRegistry();
@@ -283,6 +294,13 @@ export function SkillStore() {
     return skills
       .filter((skill) => skill.registry_slug)
       .map((skill) => skill.registry_slug!);
+  }, [skills]);
+
+  // Locally-imported skills won't have registry_slug but may share a name
+  // with a registry skill.  Build a lowercase name set so the UI can
+  // correctly mark them as "installed" even without a slug match.
+  const installedNamesLower = useMemo(() => {
+    return new Set(skills.map((skill) => skill.name.toLowerCase()));
   }, [skills]);
 
   const selectedCustomSource = useMemo(
@@ -700,20 +718,27 @@ export function SkillStore() {
     );
   }, [selectedRegistrySlug, sourceRegistrySkills]);
 
+  const isSkillInstalled = useCallback(
+    (regSkill: RegistrySkill): boolean => {
+      if (installedSlugs.includes(regSkill.slug)) return true;
+      // Fall back to name-based matching for locally-imported skills
+      // that have no registry_slug
+      const installName = (
+        regSkill.install_name || regSkill.slug
+      ).toLowerCase();
+      return installedNamesLower.has(installName);
+    },
+    [installedSlugs, installedNamesLower],
+  );
+
   const installed = useMemo(
-    () =>
-      sourceRegistrySkills.filter((skill) =>
-        installedSlugs.includes(skill.slug),
-      ),
-    [installedSlugs, sourceRegistrySkills],
+    () => sourceRegistrySkills.filter(isSkillInstalled),
+    [isSkillInstalled, sourceRegistrySkills],
   );
 
   const recommended = useMemo(
-    () =>
-      sourceRegistrySkills.filter(
-        (skill) => !installedSlugs.includes(skill.slug),
-      ),
-    [installedSlugs, sourceRegistrySkills],
+    () => sourceRegistrySkills.filter((skill) => !isSkillInstalled(skill)),
+    [isSkillInstalled, sourceRegistrySkills],
   );
 
   const handleQuickInstall = async (
@@ -723,6 +748,25 @@ export function SkillStore() {
     e.stopPropagation();
     setInstallingSlug(skill.slug);
     try {
+      if (autoScanBeforeInstall) {
+        const report = await window.api.skill.scanSafety({
+          name: skill.name,
+          content: skill.content,
+          sourceUrl: skill.source_url,
+          contentUrl: skill.content_url,
+          securityAudits: skill.security_audits,
+        });
+        if (report.level === "blocked" || report.level === "high-risk") {
+          showToast(
+            t(
+              "skill.safetyScanBlockedInstall",
+              "This skill was flagged as high risk. Review the safety report before adding it.",
+            ),
+            "error",
+          );
+          return;
+        }
+      }
       const result = await installRegistrySkill(skill);
       if (result) {
         showToast(`${t("skill.addedToLibrary")}: ${skill.name}`, "success");
@@ -1135,7 +1179,7 @@ export function SkillStore() {
       {selectedDetailSkill && (
         <SkillStoreDetail
           skill={selectedDetailSkill}
-          isInstalled={installedSlugs.includes(selectedDetailSkill.slug)}
+          isInstalled={isSkillInstalled(selectedDetailSkill)}
           onClose={() => selectRegistrySkill(null)}
         />
       )}

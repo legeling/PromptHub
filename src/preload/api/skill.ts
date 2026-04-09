@@ -3,6 +3,8 @@ import { IPC_CHANNELS } from "../../shared/constants/ipc-channels";
 import type {
   CreateSkillParams,
   MCPServerConfig,
+  SkillSafetyReport,
+  SkillSafetyScanInput,
   SkillFileSnapshot,
   SkillLocalFileEntry,
   SkillLocalFileTreeEntry,
@@ -14,7 +16,7 @@ import type {
 export const skillApi = {
   create: (
     data: CreateSkillParams,
-    options?: { skipInitialVersion?: boolean; overwriteExisting?: boolean },
+    options?: { skipInitialVersion?: boolean },
   ) => ipcRenderer.invoke(IPC_CHANNELS.SKILL_CREATE, data, options),
   get: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.SKILL_GET, id),
   getAll: () => ipcRenderer.invoke(IPC_CHANNELS.SKILL_GET_ALL),
@@ -24,6 +26,8 @@ export const skillApi = {
   scanLocal: () => ipcRenderer.invoke(IPC_CHANNELS.SKILL_SCAN_LOCAL),
   scanLocalPreview: (customPaths?: string[]) =>
     ipcRenderer.invoke(IPC_CHANNELS.SKILL_SCAN_LOCAL_PREVIEW, customPaths),
+  scanSafety: (input: SkillSafetyScanInput): Promise<SkillSafetyReport> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SKILL_SCAN_SAFETY, input),
   installToPlatform: (
     platform: "claude" | "cursor",
     name: string,

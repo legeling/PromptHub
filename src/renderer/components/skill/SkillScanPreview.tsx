@@ -126,7 +126,9 @@ export function SkillScanPreview({
     if (allVisibleSelected) {
       setSelectedSkills((prev) => {
         const next = new Set(prev);
-        visibleSelectableSkills.forEach((skill) => next.delete(skill.localPath));
+        visibleSelectableSkills.forEach((skill) =>
+          next.delete(skill.localPath),
+        );
         return next;
       });
     } else {
@@ -147,7 +149,10 @@ export function SkillScanPreview({
     setIsImporting(true);
     try {
       const userTagsByPath = Object.fromEntries(
-        skillsToImport.map((skill) => [skill.localPath, tagDrafts[skill.localPath] || []]),
+        skillsToImport.map((skill) => [
+          skill.localPath,
+          tagDrafts[skill.localPath] || [],
+        ]),
       );
       await onImport(skillsToImport, userTagsByPath);
       onClose();
@@ -314,7 +319,7 @@ export function SkillScanPreview({
                     onChange={(event) => setSearchQuery(event.target.value)}
                     placeholder={t(
                       "skill.searchImportPlaceholder",
-                      "搜索名称、描述、标签、平台或路径",
+                      "Search by name, description, tags, platform, or path",
                     )}
                     className="h-10 w-full rounded-xl border border-border bg-card pl-9 pr-3 text-sm outline-none transition-colors focus:border-primary/40"
                   />
@@ -330,8 +335,8 @@ export function SkillScanPreview({
                 >
                   <TagsIcon className="h-4 w-4" />
                   {showOptionalTags
-                    ? t("skill.hideOptionalTags", "隐藏可选标签")
-                    : t("skill.showOptionalTags", "需要时再加标签")}
+                    ? t("skill.hideOptionalTags", "Hide optional tags")
+                    : t("skill.showOptionalTags", "Add tags when needed")}
                 </button>
               </div>
               <div className="text-xs text-muted-foreground">
@@ -339,7 +344,7 @@ export function SkillScanPreview({
                   visible: visibleSkills.length,
                   total: allSkills.length,
                   selected: selectedSkills.size,
-                  defaultValue: `当前显示 ${visibleSkills.length}/${allSkills.length} 项，已选 ${selectedSkills.size} 项`,
+                  defaultValue: `Showing ${visibleSkills.length}/${allSkills.length}, ${selectedSkills.size} selected`,
                 })}
               </div>
             </div>
@@ -444,7 +449,10 @@ export function SkillScanPreview({
                                 )}
                                 {skill.isInstalled && (
                                   <span className="text-[10px] bg-accent text-muted-foreground px-2 py-0.5 rounded-full">
-                                    {t("skill.importedBadge", "Already Imported")}
+                                    {t(
+                                      "skill.importedBadge",
+                                      "Already Imported",
+                                    )}
                                   </span>
                                 )}
                               </div>
@@ -462,7 +470,9 @@ export function SkillScanPreview({
                                 <input
                                   type="checkbox"
                                   checked={isSelected}
-                                  onChange={() => handleToggleSkill(skill.localPath)}
+                                  onChange={() =>
+                                    handleToggleSkill(skill.localPath)
+                                  }
                                   onClick={(e) => e.stopPropagation()}
                                   className="w-4 h-4 rounded border-border text-primary focus:ring-primary/30"
                                 />
@@ -487,69 +497,81 @@ export function SkillScanPreview({
                             ))}
                           </div>
 
-                          {!skill.isInstalled && isSelected && showOptionalTags && (
-                            <div className="mt-4 rounded-xl border border-border bg-accent/20 p-3 space-y-2">
-                              <div className="text-[11px] font-medium text-foreground">
-                                {t("skill.importTagsOptional", "导入标签（可选）")}
-                              </div>
-                              <div className="flex flex-wrap gap-1.5">
-                                {(tagDrafts[skill.localPath] || []).map((tag) => (
-                                  <span
-                                    key={tag}
-                                    className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-[11px] font-medium text-white"
-                                  >
-                                    {tag}
-                                    <button
-                                      type="button"
-                                      onClick={(event) => {
+                          {!skill.isInstalled &&
+                            isSelected &&
+                            showOptionalTags && (
+                              <div className="mt-4 rounded-xl border border-border bg-accent/20 p-3 space-y-2">
+                                <div className="text-[11px] font-medium text-foreground">
+                                  {t(
+                                    "skill.importTagsOptional",
+                                    "Import tags (optional)",
+                                  )}
+                                </div>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {(tagDrafts[skill.localPath] || []).map(
+                                    (tag) => (
+                                      <span
+                                        key={tag}
+                                        className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-[11px] font-medium text-white"
+                                      >
+                                        {tag}
+                                        <button
+                                          type="button"
+                                          onClick={(event) => {
+                                            event.stopPropagation();
+                                            handleRemoveTag(
+                                              skill.localPath,
+                                              tag,
+                                            );
+                                          }}
+                                          className="hover:text-white/70"
+                                        >
+                                          <XIcon className="w-3 h-3" />
+                                        </button>
+                                      </span>
+                                    ),
+                                  )}
+                                </div>
+                                <div className="flex gap-2">
+                                  <input
+                                    type="text"
+                                    value={tagInputs[skill.localPath] || ""}
+                                    onClick={(event) => event.stopPropagation()}
+                                    onChange={(event) =>
+                                      setTagInputs((prev) => ({
+                                        ...prev,
+                                        [skill.localPath]: event.target.value,
+                                      }))
+                                    }
+                                    onKeyDown={(event) => {
+                                      if (event.key === "Enter") {
+                                        event.preventDefault();
                                         event.stopPropagation();
-                                        handleRemoveTag(skill.localPath, tag);
-                                      }}
-                                      className="hover:text-white/70"
-                                    >
-                                      <XIcon className="w-3 h-3" />
-                                    </button>
-                                  </span>
-                                ))}
-                              </div>
-                              <div className="flex gap-2">
-                                <input
-                                  type="text"
-                                  value={tagInputs[skill.localPath] || ""}
-                                  onClick={(event) => event.stopPropagation()}
-                                  onChange={(event) =>
-                                    setTagInputs((prev) => ({
-                                      ...prev,
-                                      [skill.localPath]: event.target.value,
-                                    }))
-                                  }
-                                  onKeyDown={(event) => {
-                                    if (event.key === "Enter") {
-                                      event.preventDefault();
+                                        handleAddTag(skill.localPath);
+                                      }
+                                    }}
+                                    placeholder={t(
+                                      "skill.enterTagHint",
+                                      "Type a tag and press Enter",
+                                    )}
+                                    className="flex-1 h-9 rounded-xl border-0 bg-background px-3 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={(event) => {
                                       event.stopPropagation();
                                       handleAddTag(skill.localPath);
+                                    }}
+                                    disabled={
+                                      !tagInputs[skill.localPath]?.trim()
                                     }
-                                  }}
-                                  placeholder={t(
-                                    "skill.enterTagHint",
-                                    "输入新标签后按回车",
-                                  )}
-                                  className="flex-1 h-9 rounded-xl border-0 bg-background px-3 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    handleAddTag(skill.localPath);
-                                  }}
-                                  disabled={!tagInputs[skill.localPath]?.trim()}
-                                  className="rounded-xl bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-card disabled:opacity-50"
-                                >
-                                  {t("skill.addTag", "添加标签")}
-                                </button>
+                                    className="rounded-xl bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-card disabled:opacity-50"
+                                  >
+                                    {t("skill.addTag", "Add tag")}
+                                  </button>
+                                </div>
                               </div>
-                            </div>
-                          )}
+                            )}
 
                           <div
                             className="mt-4 flex items-center gap-1 text-[11px] text-muted-foreground/60 font-mono truncate"

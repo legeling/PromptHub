@@ -425,26 +425,26 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
     setError(null);
 
     try {
-      // Parse GitHub URL to extract repo info
-      const match = githubUrl.match(
-        /^https?:\/\/github\.com\/([^\/]+)\/([^\/]+?)(?:\.git)?\/?$/,
-      );
+      // Validate GitHub URL format before sending to backend
+      const match = githubUrl
+        .trim()
+        .match(
+          /^https?:\/\/github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+?)(?:\.git)?\/?$/,
+        );
       if (!match) {
         throw new Error(
           t("skill.invalidGithubUrl", "Invalid GitHub URL format"),
         );
       }
 
-      const [, owner, repo] = match;
-      const repoName = repo.replace(/\.git$/, "");
-
-      // For now, create a skill with the repo info
-      // TODO: Actually fetch and parse the skill manifest from the repo
+      // Pass the GitHub URL with an explicit flag to trigger git clone.
+      // The backend IPC handler delegates to SkillInstaller.installFromGithub
+      // when source_url is a valid GitHub URL and no content is provided.
       const createdSkill = await createSkill({
-        name: repoName,
-        description: `Skill from ${owner}/${repoName}`,
+        name: match[2],
+        description: "",
         protocol_type: "skill",
-        source_url: githubUrl,
+        source_url: githubUrl.trim(),
         is_favorite: false,
         tags: [],
         original_tags: ["github"],
@@ -1499,9 +1499,7 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
                     </label>
                     <button
                       type="button"
-                      onClick={() =>
-                        setShowScanOptionalTags((prev) => !prev)
-                      }
+                      onClick={() => setShowScanOptionalTags((prev) => !prev)}
                       className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-colors ${
                         showScanOptionalTags
                           ? "border-primary/40 bg-primary/5 text-primary"
@@ -1518,10 +1516,10 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
                   {/* Results header with count and select-all */}
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium">
-                      {t(
-                        "skill.scanFound",
-                        "Found {{count}} skill(s)",
-                      ).replace("{{count}}", String(visibleAnnotatedScanResults.length))}
+                      {t("skill.scanFound", "Found {{count}} skill(s)").replace(
+                        "{{count}}",
+                        String(visibleAnnotatedScanResults.length),
+                      )}
                     </p>
                     {visibleSelectableScanResults.length > 0 && (
                       <button
@@ -1645,86 +1643,86 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
                                 {!skill.isImported &&
                                   isSelected &&
                                   showScanOptionalTags && (
-                                  <div className="mt-4 rounded-xl border border-border bg-accent/20 p-3 space-y-2">
-                                    <div className="text-[11px] font-medium text-foreground">
-                                      {t(
-                                        "skill.importTagsOptional",
-                                        "导入标签（可选）",
-                                      )}
-                                    </div>
-                                    <div className="flex flex-wrap gap-1.5">
-                                      {(
-                                        scanTagDrafts[skill.localPath] || []
-                                      ).map((tag) => (
-                                        <span
-                                          key={tag}
-                                          className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-[11px] font-medium text-white"
-                                        >
-                                          <HashIcon className="w-3 h-3" />
-                                          {tag}
-                                          <button
-                                            type="button"
-                                            onClick={(event) => {
-                                              event.stopPropagation();
-                                              handleRemoveScanTag(
-                                                skill.localPath,
-                                                tag,
-                                              );
-                                            }}
-                                            className="hover:text-white/70"
+                                    <div className="mt-4 rounded-xl border border-border bg-accent/20 p-3 space-y-2">
+                                      <div className="text-[11px] font-medium text-foreground">
+                                        {t(
+                                          "skill.importTagsOptional",
+                                          "导入标签（可选）",
+                                        )}
+                                      </div>
+                                      <div className="flex flex-wrap gap-1.5">
+                                        {(
+                                          scanTagDrafts[skill.localPath] || []
+                                        ).map((tag) => (
+                                          <span
+                                            key={tag}
+                                            className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-[11px] font-medium text-white"
                                           >
-                                            <XIcon className="w-3 h-3" />
-                                          </button>
-                                        </span>
-                                      ))}
-                                    </div>
-                                    <div className="flex gap-2">
-                                      <input
-                                        type="text"
-                                        value={
-                                          scanTagInputs[skill.localPath] || ""
-                                        }
-                                        onClick={(event) =>
-                                          event.stopPropagation()
-                                        }
-                                        onChange={(event) =>
-                                          setScanTagInputs((prev) => ({
-                                            ...prev,
-                                            [skill.localPath]:
-                                              event.target.value,
-                                          }))
-                                        }
-                                        onKeyDown={(event) => {
-                                          if (event.key === "Enter") {
-                                            event.preventDefault();
+                                            <HashIcon className="w-3 h-3" />
+                                            {tag}
+                                            <button
+                                              type="button"
+                                              onClick={(event) => {
+                                                event.stopPropagation();
+                                                handleRemoveScanTag(
+                                                  skill.localPath,
+                                                  tag,
+                                                );
+                                              }}
+                                              className="hover:text-white/70"
+                                            >
+                                              <XIcon className="w-3 h-3" />
+                                            </button>
+                                          </span>
+                                        ))}
+                                      </div>
+                                      <div className="flex gap-2">
+                                        <input
+                                          type="text"
+                                          value={
+                                            scanTagInputs[skill.localPath] || ""
+                                          }
+                                          onClick={(event) =>
+                                            event.stopPropagation()
+                                          }
+                                          onChange={(event) =>
+                                            setScanTagInputs((prev) => ({
+                                              ...prev,
+                                              [skill.localPath]:
+                                                event.target.value,
+                                            }))
+                                          }
+                                          onKeyDown={(event) => {
+                                            if (event.key === "Enter") {
+                                              event.preventDefault();
+                                              event.stopPropagation();
+                                              handleAddScanTag(skill.localPath);
+                                            }
+                                          }}
+                                          placeholder={t(
+                                            "skill.enterTagHint",
+                                            "输入新标签后按回车",
+                                          )}
+                                          className="flex-1 h-9 rounded-xl border-0 bg-background px-3 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={(event) => {
                                             event.stopPropagation();
                                             handleAddScanTag(skill.localPath);
+                                          }}
+                                          disabled={
+                                            !scanTagInputs[
+                                              skill.localPath
+                                            ]?.trim()
                                           }
-                                        }}
-                                        placeholder={t(
-                                          "skill.enterTagHint",
-                                          "输入新标签后按回车",
-                                        )}
-                                        className="flex-1 h-9 rounded-xl border-0 bg-background px-3 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                                      />
-                                      <button
-                                        type="button"
-                                        onClick={(event) => {
-                                          event.stopPropagation();
-                                          handleAddScanTag(skill.localPath);
-                                        }}
-                                        disabled={
-                                          !scanTagInputs[
-                                            skill.localPath
-                                          ]?.trim()
-                                        }
-                                        className="rounded-xl bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-card disabled:opacity-50"
-                                      >
-                                        {t("skill.addTag", "添加标签")}
-                                      </button>
+                                          className="rounded-xl bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-card disabled:opacity-50"
+                                        >
+                                          {t("skill.addTag", "添加标签")}
+                                        </button>
+                                      </div>
                                     </div>
-                                  </div>
-                                )}
+                                  )}
 
                                 <div
                                   className="mt-4 flex items-center gap-1 text-[11px] text-muted-foreground/60 font-mono truncate"

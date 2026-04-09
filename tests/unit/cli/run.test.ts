@@ -1232,6 +1232,7 @@ describe("PromptHub CLI", () => {
         );
         expect(found).toBeDefined();
         expect(found.version).toBe("2.0.0");
+        expect(found.safetyReport.level).toBe("safe");
       });
 
       it("scan renders table output", async () => {
@@ -1254,6 +1255,7 @@ describe("PromptHub CLI", () => {
         ]);
         expect(res.exitCode).toBe(0);
         expect(res.joinedStdout).toContain("name");
+        expect(res.joinedStdout).toContain("safety");
         expect(res.joinedStdout).toContain("table-scan");
       });
 

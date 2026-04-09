@@ -4,8 +4,10 @@ import { useTranslation } from "react-i18next";
 
 import { SKILL_PLATFORMS } from "../../../shared/constants/platforms";
 import { useSettingsStore } from "../../stores/settings.store";
+import { useSkillStore } from "../../stores/skill.store";
 import { PlatformIcon } from "../ui/PlatformIcon";
 import { SettingSection } from "./shared";
+import { useToast } from "../ui/Toast";
 
 interface SkillSettingsProps {
   onNavigate: (section: string) => void;
@@ -21,7 +23,12 @@ function getCurrentPlatformKey(): "darwin" | "win32" | "linux" {
 export function SkillSettings({ onNavigate }: SkillSettingsProps) {
   const { t } = useTranslation();
   const settings = useSettingsStore();
+  const scanInstalledSkillSafety = useSkillStore(
+    (state) => state.scanInstalledSkillSafety,
+  );
+  const { showToast } = useToast();
   const [newScanPath, setNewScanPath] = useState("");
+  const [isBatchScanning, setIsBatchScanning] = useState(false);
   const currentPlatformKey = getCurrentPlatformKey();
 
   return (
@@ -73,6 +80,114 @@ export function SkillSettings({ onNavigate }: SkillSettingsProps) {
                 )}
               </p>
             </button>
+          </div>
+        </div>
+      </SettingSection>
+
+      <SettingSection
+        title={t("settings.skillSafetyChecks", "Skill 安全评估")}
+      >
+        <div className="p-4 space-y-3">
+          <p className="text-xs text-muted-foreground">
+            {t(
+              "settings.skillSafetyChecksDesc",
+              "控制已安装 Skill 的自动复查，以及从商店添加前是否自动做一次静态风险评估。",
+            )}
+          </p>
+          <button
+            onClick={() =>
+              settings.setAutoScanInstalledSkills(
+                !settings.autoScanInstalledSkills,
+              )
+            }
+            className={`w-full p-3 rounded-xl border-2 transition-all text-left ${
+              settings.autoScanInstalledSkills
+                ? "border-primary bg-primary/5"
+                : "border-border hover:border-primary/30"
+            }`}
+          >
+            <div className="text-sm font-semibold">
+              {t("settings.autoScanInstalledSkills", "自动复查已安装 Skills")}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {t(
+                "settings.autoScanInstalledSkillsDesc",
+                "打开 Skill 详情页时自动运行一次安全评估，方便持续发现高风险内容变更。",
+              )}
+            </p>
+          </button>
+          <button
+            onClick={() =>
+              settings.setAutoScanStoreSkillsBeforeInstall(
+                !settings.autoScanStoreSkillsBeforeInstall,
+              )
+            }
+            className={`w-full p-3 rounded-xl border-2 transition-all text-left ${
+              settings.autoScanStoreSkillsBeforeInstall
+                ? "border-primary bg-primary/5"
+                : "border-border hover:border-primary/30"
+            }`}
+          >
+            <div className="text-sm font-semibold">
+              {t("settings.autoScanStoreSkillsBeforeInstall", "商店添加前自动评估")}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {t(
+                "settings.autoScanStoreSkillsBeforeInstallDesc",
+                "默认关闭。开启后，从商店添加 Skill 前会先做一次静态风险检查，并拦住明显危险的条目。",
+              )}
+            </p>
+          </button>
+          <div className="rounded-xl border border-border/70 bg-muted/20 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold">
+                  {t("settings.batchScanInstalledSkills", "立即复查已安装 Skills")}
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t(
+                    "settings.batchScanInstalledSkillsDesc",
+                    "手动对当前库里的所有 Skill 运行一次静态安全评估，快速发现高风险内容。",
+                  )}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  const run = async () => {
+                    setIsBatchScanning(true);
+                    try {
+                      const summary = await scanInstalledSkillSafety();
+                      showToast(
+                        t("settings.batchScanInstalledSkillsResult", {
+                          total: summary.total,
+                          blocked: summary.blocked,
+                          highRisk: summary.highRisk,
+                          warn: summary.warn,
+                          defaultValue:
+                            `Checked ${summary.total} skills · blocked ${summary.blocked} · high risk ${summary.highRisk} · warn ${summary.warn}`,
+                        }),
+                        summary.blocked > 0 || summary.highRisk > 0
+                          ? "error"
+                          : summary.warn > 0
+                            ? "warning"
+                            : "success",
+                      );
+                    } catch (error) {
+                      showToast(String(error), "error");
+                    } finally {
+                      setIsBatchScanning(false);
+                    }
+                  };
+                  void run();
+                }}
+                disabled={isBatchScanning}
+                className="shrink-0 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                {isBatchScanning
+                  ? t("skill.safetyScanning", "检查中...")
+                  : t("skill.runSafetyAssessment", "立即检查")}
+              </button>
+            </div>
           </div>
         </div>
       </SettingSection>

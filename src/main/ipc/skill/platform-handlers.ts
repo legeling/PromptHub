@@ -1,10 +1,22 @@
 import { ipcMain } from "electron";
 import { IPC_CHANNELS } from "../../../shared/constants";
+import type { SkillSafetyScanInput } from "../../../shared/types";
 import { SkillInstaller } from "../../services/skill-installer";
+import { scanSkillSafety } from "../../services/skill-safety-scan";
 
 const SUPPORTED_MCP_PLATFORMS = new Set(["claude", "cursor"]);
 
 export function registerSkillPlatformHandlers(): void {
+  ipcMain.handle(
+    IPC_CHANNELS.SKILL_SCAN_SAFETY,
+    async (_, input: SkillSafetyScanInput) => {
+      if (!input || typeof input !== "object" || Array.isArray(input)) {
+        throw new Error("skill:scanSafety requires an input object");
+      }
+      return scanSkillSafety(input);
+    },
+  );
+
   ipcMain.handle(
     IPC_CHANNELS.SKILL_INSTALL_TO_PLATFORM,
     async (

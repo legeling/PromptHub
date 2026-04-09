@@ -782,6 +782,8 @@ async function handleSkillCommand(
       scanned,
       scanned.map((skill) => ({
         name: skill.name,
+        safety: skill.safetyReport?.level ?? "unknown",
+        findings: skill.safetyReport?.findings.length ?? 0,
         author: skill.author,
         version: skill.version,
         platforms: skill.platforms,

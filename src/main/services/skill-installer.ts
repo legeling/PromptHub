@@ -92,6 +92,7 @@ import {
   exportAsSkillMd,
   importFromJson,
 } from "./skill-installer-export";
+import { scanSkillSafety } from "./skill-safety-scan";
 
 // ========================================================================
 // Facade class — every static method delegates to the appropriate sub-module
@@ -265,6 +266,17 @@ export class SkillInstaller {
       if (getErrorCode(error) !== "ENOENT") throw error;
     }
 
+    // Also check if a skill with the same repo-derived name exists in DB
+    // to provide a clear error before attempting git clone.
+    const derivedName = repoName;
+    const existingByName = db.getByName(derivedName);
+    if (existingByName) {
+      throw new Error(
+        `A skill named "${derivedName}" already exists in the library (id: ${existingByName.id}). ` +
+          `Delete it first or use a different repository.`,
+      );
+    }
+
     try {
       console.log(`Cloning ${url} to ${installDir}`);
       await gitClone(url, installDir);
@@ -294,6 +306,13 @@ export class SkillInstaller {
         } catch (e) {
           console.error("Failed to read README.md:", e);
         }
+      }
+
+      if (!manifest.instructions) {
+        console.warn(
+          `No SKILL.md, README.md, or manifest instructions found in ${installDir}. ` +
+            `Skill will be created with empty content.`,
+        );
       }
 
       // Create Skill in DB
@@ -596,6 +615,7 @@ export class SkillInstaller {
    */
   static async scanLocalPreview(
     customPaths?: string[],
+    db?: SkillDB,
   ): Promise<ScannedSkill[]> {
     // Use a map keyed by skill folder path to deduplicate across platforms
     const skillMap = new Map<string, ScannedSkill>();
@@ -619,7 +639,7 @@ export class SkillInstaller {
     // Scan all platform directories in parallel.  The inner map-merge uses
     // only synchronous operations between reads, so concurrent access to
     // skillMap is safe in the single-threaded event loop.
-    await Promise.allSettled(
+    const settled = await Promise.allSettled(
       scanEntries.map(async ({ path: scanPath, platformName }) => {
         if (!(await fileExists(scanPath))) {
           return;
@@ -691,6 +711,11 @@ export class SkillInstaller {
                       filePath: skillMdPath,
                       localPath: skillFolderPath,
                       platforms: [platformName],
+                      safetyReport: await scanSkillSafety({
+                        name: sanitized.name,
+                        content: sanitized.instructions || instructions,
+                        localRepoPath: skillFolderPath,
+                      }),
                     });
                   }
                 } catch (err) {
@@ -705,7 +730,44 @@ export class SkillInstaller {
       }),
     );
 
-    return Array.from(skillMap.values());
+    // Log any unexpected rejections (inner try-catch should prevent these,
+    // but this ensures no failures are silently swallowed).
+    for (let i = 0; i < settled.length; i++) {
+      const result = settled[i];
+      if (result.status === "rejected") {
+        console.error(
+          `Scan entry "${scanEntries[i].path}" (${scanEntries[i].platformName}) rejected unexpectedly:`,
+          result.reason,
+        );
+      }
+    }
+
+    const results = Array.from(skillMap.values());
+
+    // Mark skills whose names collide (case-insensitive) so the UI can
+    // warn users that only the first will succeed during batch import.
+    const nameCount = new Map<string, number>();
+    for (const skill of results) {
+      const key = skill.name.toLowerCase();
+      nameCount.set(key, (nameCount.get(key) ?? 0) + 1);
+    }
+    for (const skill of results) {
+      if ((nameCount.get(skill.name.toLowerCase()) ?? 0) > 1) {
+        skill.nameConflict = true;
+      }
+    }
+
+    // Also mark skills whose names conflict with already-installed skills
+    // in the database, so the UI can warn before import attempts.
+    if (db) {
+      for (const skill of results) {
+        if (!skill.nameConflict && db.getByName(skill.name)) {
+          skill.nameConflict = true;
+        }
+      }
+    }
+
+    return results;
   }
 
   /**

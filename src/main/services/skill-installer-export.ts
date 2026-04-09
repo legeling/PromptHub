@@ -66,6 +66,7 @@ export function exportAsJson(skill: {
   tags?: string[];
   instructions?: string;
   protocol_type?: string;
+  source_url?: string;
   icon_url?: string;
   icon_emoji?: string;
   icon_background?: string;
@@ -78,6 +79,7 @@ export function exportAsJson(skill: {
     tags: skill.tags || [],
     instructions: skill.instructions || "",
     protocol_type: skill.protocol_type || "skill",
+    source_url: skill.source_url || "",
     icon_url: skill.icon_url || "",
     icon_emoji: skill.icon_emoji || "",
     icon_background: skill.icon_background || "",
@@ -112,6 +114,7 @@ export async function importFromJson(
         prerequisites: data.prerequisites,
         compatibility: data.compatibility,
         protocol_type: data.protocol_type,
+        source_url: data.source_url,
       },
       { defaultTags: ["imported"] },
     );
@@ -136,6 +139,7 @@ export async function importFromJson(
       category: sanitized.category,
       prerequisites: sanitized.prerequisites,
       compatibility: sanitized.compatibility,
+      source_url: sanitized.source_url,
     });
 
     return skill.id;

@@ -1412,3 +1412,434 @@ describe("P3: skills table UNIQUE index on LOWER(name)", () => {
     }
   });
 });
+
+// ================================================================
+// scanLocalPreview — nameConflict marking
+// ================================================================
+describe("scanLocalPreview nameConflict detection", () => {
+  it("marks skills with duplicate names across different paths as nameConflict", async () => {
+    // Create two different directories each containing a SKILL.md with the same name
+    const baseDir = path.join(tmpDir, "conflict-test");
+    const dir1 = path.join(baseDir, "skill-alpha");
+    const dir2 = path.join(baseDir, "skill-beta");
+    await fs.mkdir(dir1, { recursive: true });
+    await fs.mkdir(dir2, { recursive: true });
+
+    const skillMd1 = `---\nname: shared-name\ndescription: First one\n---\nInstructions A`;
+    const skillMd2 = `---\nname: shared-name\ndescription: Second one\n---\nInstructions B`;
+    await fs.writeFile(path.join(dir1, "SKILL.md"), skillMd1);
+    await fs.writeFile(path.join(dir2, "SKILL.md"), skillMd2);
+
+    const results = await SkillInstaller.scanLocalPreview([baseDir]);
+
+    expect(results.length).toBe(2);
+    for (const skill of results) {
+      expect(skill.nameConflict).toBe(true);
+    }
+  });
+
+  it("marks case-insensitive name collisions as nameConflict", async () => {
+    const baseDir = path.join(tmpDir, "case-conflict-test");
+    const dir1 = path.join(baseDir, "upper-skill");
+    const dir2 = path.join(baseDir, "lower-skill");
+    await fs.mkdir(dir1, { recursive: true });
+    await fs.mkdir(dir2, { recursive: true });
+
+    await fs.writeFile(
+      path.join(dir1, "SKILL.md"),
+      `---\nname: My-Skill\ndescription: Upper\n---\nContent`,
+    );
+    await fs.writeFile(
+      path.join(dir2, "SKILL.md"),
+      `---\nname: my-skill\ndescription: Lower\n---\nContent`,
+    );
+
+    const results = await SkillInstaller.scanLocalPreview([baseDir]);
+
+    expect(results.length).toBe(2);
+    expect(results.every((s) => s.nameConflict === true)).toBe(true);
+  });
+
+  it("does NOT mark nameConflict when names are unique", async () => {
+    const baseDir = path.join(tmpDir, "no-conflict-test");
+    const dir1 = path.join(baseDir, "skill-a");
+    const dir2 = path.join(baseDir, "skill-b");
+    await fs.mkdir(dir1, { recursive: true });
+    await fs.mkdir(dir2, { recursive: true });
+
+    await fs.writeFile(
+      path.join(dir1, "SKILL.md"),
+      `---\nname: alpha\n---\nContent`,
+    );
+    await fs.writeFile(
+      path.join(dir2, "SKILL.md"),
+      `---\nname: beta\n---\nContent`,
+    );
+
+    const results = await SkillInstaller.scanLocalPreview([baseDir]);
+
+    expect(results.length).toBe(2);
+    expect(
+      results.every(
+        (s) => s.nameConflict === undefined || s.nameConflict === false,
+      ),
+    ).toBe(true);
+  });
+
+  it("only marks conflicting names, not all skills", async () => {
+    const baseDir = path.join(tmpDir, "partial-conflict-test");
+    const dir1 = path.join(baseDir, "dup1");
+    const dir2 = path.join(baseDir, "dup2");
+    const dir3 = path.join(baseDir, "unique");
+    await fs.mkdir(dir1, { recursive: true });
+    await fs.mkdir(dir2, { recursive: true });
+    await fs.mkdir(dir3, { recursive: true });
+
+    await fs.writeFile(path.join(dir1, "SKILL.md"), `---\nname: dupe\n---\nA`);
+    await fs.writeFile(path.join(dir2, "SKILL.md"), `---\nname: dupe\n---\nB`);
+    await fs.writeFile(
+      path.join(dir3, "SKILL.md"),
+      `---\nname: unique-name\n---\nC`,
+    );
+
+    const results = await SkillInstaller.scanLocalPreview([baseDir]);
+
+    expect(results.length).toBe(3);
+
+    const dupes = results.filter((s) => s.name === "dupe");
+    const unique = results.filter((s) => s.name === "unique-name");
+
+    expect(dupes.length).toBe(2);
+    expect(dupes.every((s) => s.nameConflict === true)).toBe(true);
+    expect(unique.length).toBe(1);
+    expect(unique[0].nameConflict).toBeFalsy();
+  });
+});
+
+// ---------- S3: GitHub URL regex in IPC crud-handlers ----------
+
+describe("S3: GitHub URL regex validation in skill:create IPC", () => {
+  // The regex used in crud-handlers.ts: /^https?:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+/
+  const GITHUB_REGEX =
+    /^https?:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+/;
+
+  it.each([
+    "https://github.com/owner/repo",
+    "https://github.com/my-org/my-repo",
+    "https://github.com/user_name/repo.name",
+    "http://github.com/owner/repo",
+  ])("matches valid GitHub URL: %s", (url) => {
+    expect(GITHUB_REGEX.test(url)).toBe(true);
+  });
+
+  it.each([
+    "https://evil.com/github.com/fake/path",
+    "https://not-github.com/owner/repo",
+    "https://github.com.evil.com/owner/repo",
+    "ftp://github.com/owner/repo",
+    "github.com/owner/repo",
+    "",
+    "https://github.com/",
+    "https://github.com/owner/",
+  ])("rejects invalid or spoofed URL: %s", (url) => {
+    expect(GITHUB_REGEX.test(url)).toBe(false);
+  });
+});
+
+// ---------- S3 + M3: installFromGithub URL validation & DB duplicate check ----------
+
+describe("SkillInstaller.installFromGithub", () => {
+  it("rejects an invalid GitHub URL (missing owner/repo)", async () => {
+    await SkillInstaller.init();
+    // Need a real SkillDB for the DB check, but URL validation comes first
+    const mockDb = { getByName: vi.fn() } as unknown as SkillDB;
+    await expect(
+      SkillInstaller.installFromGithub(
+        "https://evil.com/github.com/fake",
+        mockDb,
+      ),
+    ).rejects.toThrow("Invalid GitHub URL");
+  });
+
+  it("rejects GitHub URL with subdomain spoof", async () => {
+    await SkillInstaller.init();
+    const mockDb = { getByName: vi.fn() } as unknown as SkillDB;
+    await expect(
+      SkillInstaller.installFromGithub(
+        "https://github.com.evil.com/owner/repo",
+        mockDb,
+      ),
+    ).rejects.toThrow("Invalid GitHub URL");
+  });
+
+  it("rejects when a skill with the derived repo name already exists in DB", async () => {
+    await SkillInstaller.init();
+
+    // Create a fake DB that reports the skill already exists
+    const mockDb = {
+      getByName: vi.fn((name: string) => {
+        if (name === "my-repo") {
+          return { id: "existing-id", name: "my-repo" };
+        }
+        return null;
+      }),
+    } as unknown as SkillDB;
+
+    await expect(
+      SkillInstaller.installFromGithub(
+        "https://github.com/some-owner/my-repo",
+        mockDb,
+      ),
+    ).rejects.toThrow(/already exists in the library/);
+  });
+});
+
+// ---------- M6: scanLocalPreview with db param marks DB-existing names ----------
+
+describe("scanLocalPreview DB conflict detection (M6)", () => {
+  let scanDb: Database.Database;
+  let skillDb: SkillDB;
+  const SKILL_MIGRATIONS_M6 = `
+    ALTER TABLE skills ADD COLUMN source_url TEXT;
+    ALTER TABLE skills ADD COLUMN local_repo_path TEXT;
+    ALTER TABLE skills ADD COLUMN icon_url TEXT;
+    ALTER TABLE skills ADD COLUMN icon_emoji TEXT;
+    ALTER TABLE skills ADD COLUMN icon_background TEXT;
+    ALTER TABLE skills ADD COLUMN category TEXT DEFAULT 'general';
+    ALTER TABLE skills ADD COLUMN is_builtin INTEGER DEFAULT 0;
+    ALTER TABLE skills ADD COLUMN registry_slug TEXT;
+    ALTER TABLE skills ADD COLUMN content_url TEXT;
+    ALTER TABLE skills ADD COLUMN prerequisites TEXT;
+    ALTER TABLE skills ADD COLUMN compatibility TEXT;
+    ALTER TABLE skills ADD COLUMN original_tags TEXT;
+  `;
+
+  beforeEach(async () => {
+    await SkillInstaller.init();
+
+    // Real in-memory DB
+    const sqliteDb = new Database(":memory:");
+    sqliteDb.exec(SCHEMA_TABLES);
+    for (const line of SKILL_MIGRATIONS_M6.split(";")) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      try {
+        sqliteDb.exec(trimmed);
+      } catch {
+        // Column already exists
+      }
+    }
+    sqliteDb.exec(SCHEMA_INDEXES);
+    scanDb = sqliteDb;
+    skillDb = new SkillDB(sqliteDb);
+  });
+
+  afterEach(() => {
+    try {
+      scanDb.close();
+    } catch {
+      /* already closed */
+    }
+  });
+
+  async function createSkillDirM6(
+    parentDir: string,
+    skillName: string,
+  ): Promise<string> {
+    const skillDir = path.join(parentDir, skillName);
+    await fs.mkdir(skillDir, { recursive: true });
+    await fs.writeFile(
+      path.join(skillDir, "SKILL.md"),
+      `---\nname: ${skillName}\ndescription: ${skillName} desc\n---\n\n# ${skillName}\n`,
+    );
+    return skillDir;
+  }
+
+  it("marks nameConflict for skills that already exist in DB", async () => {
+    // Pre-install a skill in the database
+    skillDb.create({
+      name: "already-installed",
+      description: "An installed skill",
+      protocol_type: "skill",
+      is_favorite: false,
+    });
+
+    // Create a scanned skill with the same name on disk
+    const scanDir = path.join(tmpDir, "db-conflict-scan");
+    await createSkillDirM6(scanDir, "already-installed");
+    await createSkillDirM6(scanDir, "brand-new");
+
+    const results = await SkillInstaller.scanLocalPreview([scanDir], skillDb);
+
+    const installed = results.find((s) => s.name === "already-installed");
+    const fresh = results.find((s) => s.name === "brand-new");
+
+    expect(installed).toBeDefined();
+    expect(installed!.nameConflict).toBe(true);
+
+    expect(fresh).toBeDefined();
+    expect(fresh!.nameConflict).toBeFalsy();
+  });
+
+  it("does NOT mark nameConflict when db param is omitted", async () => {
+    // Pre-install a skill in the database
+    skillDb.create({
+      name: "db-only",
+      description: "DB-only skill",
+      protocol_type: "skill",
+      is_favorite: false,
+    });
+
+    // Create a scanned skill with the same name on disk
+    const scanDir = path.join(tmpDir, "no-db-param-scan");
+    await createSkillDirM6(scanDir, "db-only");
+
+    // Call without db param — should NOT check DB
+    const results = await SkillInstaller.scanLocalPreview([scanDir]);
+
+    const scanned = results.find((s) => s.name === "db-only");
+    expect(scanned).toBeDefined();
+    // Without db param, the code can't know about DB conflicts
+    expect(scanned!.nameConflict).toBeFalsy();
+  });
+
+  it("marks case-insensitive DB conflicts via db.getByName", async () => {
+    // DB has "My-Skill" (mixed case)
+    skillDb.create({
+      name: "my-skill",
+      description: "Mixed case skill",
+      protocol_type: "skill",
+      is_favorite: false,
+    });
+
+    // Disk has "my-skill" (lowercase) — should conflict because
+    // db.getByName uses LOWER() matching
+    const scanDir = path.join(tmpDir, "case-db-conflict");
+    await createSkillDirM6(scanDir, "my-skill");
+
+    const results = await SkillInstaller.scanLocalPreview([scanDir], skillDb);
+
+    expect(results).toHaveLength(1);
+    expect(results[0].nameConflict).toBe(true);
+  });
+});
+
+// ---------- L3: JSON export/import round-trip preserves source_url ----------
+
+describe("L3: JSON export/import preserves source_url", () => {
+  it("exportAsJson includes source_url in output", () => {
+    const json = SkillInstaller.exportAsJson({
+      name: "url-skill",
+      source_url: "https://github.com/owner/repo",
+    });
+    const parsed = JSON.parse(json) as Record<string, unknown>;
+    expect(parsed.source_url).toBe("https://github.com/owner/repo");
+  });
+
+  it("exportAsJson defaults source_url to empty string when not provided", () => {
+    const json = SkillInstaller.exportAsJson({ name: "no-url-skill" });
+    const parsed = JSON.parse(json) as Record<string, unknown>;
+    expect(parsed.source_url).toBe("");
+  });
+
+  it("importFromJson round-trips source_url through export → import", async () => {
+    // Create a real in-memory DB
+    const sqliteDb = new Database(":memory:");
+    sqliteDb.exec(SCHEMA_TABLES);
+    const migrations = `
+      ALTER TABLE skills ADD COLUMN source_url TEXT;
+      ALTER TABLE skills ADD COLUMN local_repo_path TEXT;
+      ALTER TABLE skills ADD COLUMN icon_url TEXT;
+      ALTER TABLE skills ADD COLUMN icon_emoji TEXT;
+      ALTER TABLE skills ADD COLUMN icon_background TEXT;
+      ALTER TABLE skills ADD COLUMN category TEXT DEFAULT 'general';
+      ALTER TABLE skills ADD COLUMN is_builtin INTEGER DEFAULT 0;
+      ALTER TABLE skills ADD COLUMN registry_slug TEXT;
+      ALTER TABLE skills ADD COLUMN content_url TEXT;
+      ALTER TABLE skills ADD COLUMN prerequisites TEXT;
+      ALTER TABLE skills ADD COLUMN compatibility TEXT;
+      ALTER TABLE skills ADD COLUMN original_tags TEXT;
+    `;
+    for (const line of migrations.split(";")) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      try {
+        sqliteDb.exec(trimmed);
+      } catch {
+        // Column already exists
+      }
+    }
+    sqliteDb.exec(SCHEMA_INDEXES);
+    const db = new SkillDB(sqliteDb);
+
+    try {
+      // Export a skill with source_url
+      const json = SkillInstaller.exportAsJson({
+        name: "roundtrip-url",
+        description: "A skill with source URL",
+        source_url: "https://github.com/test/roundtrip",
+        instructions: "# Instructions\n\nDo things.",
+      });
+
+      // Import it
+      const id = await SkillInstaller.importFromJson(json, db);
+      expect(typeof id).toBe("string");
+
+      // Verify the source_url was preserved in DB
+      const imported = db.getById(id);
+      expect(imported).not.toBeNull();
+      expect(imported!.name).toBe("roundtrip-url");
+      expect(imported!.source_url).toBe("https://github.com/test/roundtrip");
+    } finally {
+      sqliteDb.close();
+    }
+  });
+
+  it("importFromJson handles missing source_url gracefully", async () => {
+    const sqliteDb = new Database(":memory:");
+    sqliteDb.exec(SCHEMA_TABLES);
+    const migrations = `
+      ALTER TABLE skills ADD COLUMN source_url TEXT;
+      ALTER TABLE skills ADD COLUMN local_repo_path TEXT;
+      ALTER TABLE skills ADD COLUMN icon_url TEXT;
+      ALTER TABLE skills ADD COLUMN icon_emoji TEXT;
+      ALTER TABLE skills ADD COLUMN icon_background TEXT;
+      ALTER TABLE skills ADD COLUMN category TEXT DEFAULT 'general';
+      ALTER TABLE skills ADD COLUMN is_builtin INTEGER DEFAULT 0;
+      ALTER TABLE skills ADD COLUMN registry_slug TEXT;
+      ALTER TABLE skills ADD COLUMN content_url TEXT;
+      ALTER TABLE skills ADD COLUMN prerequisites TEXT;
+      ALTER TABLE skills ADD COLUMN compatibility TEXT;
+      ALTER TABLE skills ADD COLUMN original_tags TEXT;
+    `;
+    for (const line of migrations.split(";")) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      try {
+        sqliteDb.exec(trimmed);
+      } catch {
+        // Column already exists
+      }
+    }
+    sqliteDb.exec(SCHEMA_INDEXES);
+    const db = new SkillDB(sqliteDb);
+
+    try {
+      // JSON without source_url field
+      const json = JSON.stringify({
+        name: "no-url-import",
+        description: "No source URL",
+        instructions: "# Content",
+      });
+
+      const id = await SkillInstaller.importFromJson(json, db);
+      const imported = db.getById(id);
+      expect(imported).not.toBeNull();
+      expect(imported!.name).toBe("no-url-import");
+      // source_url should be null or undefined — not crash
+      expect(imported!.source_url).toBeFalsy();
+    } finally {
+      sqliteDb.close();
+    }
+  });
+});

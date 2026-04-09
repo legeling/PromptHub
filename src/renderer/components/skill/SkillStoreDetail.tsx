@@ -1,12 +1,13 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { XIcon, DownloadIcon, CheckIcon, GlobeIcon, TagIcon, Loader2Icon, TrashIcon, LanguagesIcon, RefreshCwIcon } from 'lucide-react';
+import { XIcon, DownloadIcon, CheckIcon, GlobeIcon, TagIcon, Loader2Icon, TrashIcon, LanguagesIcon, RefreshCwIcon, ShieldAlertIcon, ShieldCheckIcon } from 'lucide-react';
 import { SkillIcon } from './SkillIcon';
 import { useSkillStore } from '../../stores/skill.store';
 import { useSettingsStore } from '../../stores/settings.store';
 import { useToast } from '../ui/Toast';
 import { SkillQuickInstall } from './SkillQuickInstall';
-import type { RegistrySkill, Skill } from '../../../shared/types';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
+import type { RegistrySkill, Skill, SkillSafetyReport } from '../../../shared/types';
 import { getErrorMessage, renderImmersiveSegments, stripFrontmatter } from './detail-utils';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -31,11 +32,15 @@ export function SkillStoreDetail({ skill, isInstalled, onClose }: SkillStoreDeta
   const getTranslation = useSkillStore((state) => state.getTranslation);
   const clearTranslation = useSkillStore((state) => state.clearTranslation);
   const translationMode = useSettingsStore((state) => state.translationMode);
+  const autoScanBeforeInstall = useSettingsStore((state) => state.autoScanStoreSkillsBeforeInstall);
   const [isInstalling, setIsInstalling] = useState(false);
   const [isUninstalling, setIsUninstalling] = useState(false);
   const [justInstalled, setJustInstalled] = useState(false);
   const [justUninstalled, setJustUninstalled] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
+  const [isScanningSafety, setIsScanningSafety] = useState(false);
+  const [safetyReport, setSafetyReport] = useState<SkillSafetyReport | null>(null);
+  const [pendingHighRiskInstallReport, setPendingHighRiskInstallReport] = useState<SkillSafetyReport | null>(null);
   const [showTranslation, setShowTranslation] = useState(false);
   const [deploySkill, setDeploySkill] = useState<Skill | null>(null);
 
@@ -46,6 +51,42 @@ export function SkillStoreDetail({ skill, isInstalled, onClose }: SkillStoreDeta
 
   const translationCacheKey = `store_${skill.slug}_${targetLang}_${translationMode}`;
   const cachedTranslation = getTranslation(translationCacheKey);
+  const safetyTone =
+    safetyReport?.level === 'blocked'
+      ? 'border-destructive/40 bg-destructive/5 text-destructive'
+      : safetyReport?.level === 'high-risk'
+        ? 'border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-300'
+        : safetyReport?.level === 'warn'
+          ? 'border-yellow-500/40 bg-yellow-500/10 text-yellow-700 dark:text-yellow-300'
+          : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300';
+
+  const scanSafety = useCallback(async () => {
+    setIsScanningSafety(true);
+    try {
+      const report = await window.api.skill.scanSafety({
+        name: skill.name,
+        content: skill.content,
+        sourceUrl: skill.source_url,
+        contentUrl: skill.content_url,
+        securityAudits: skill.security_audits,
+      });
+      setSafetyReport(report);
+      return report;
+    } catch (error: unknown) {
+      showToast(`${t('skill.safetyScanFailed', 'Safety scan failed')}: ${getErrorMessage(error)}`, 'error');
+      return null;
+    } finally {
+      setIsScanningSafety(false);
+    }
+  }, [
+    showToast,
+    skill.content,
+    skill.content_url,
+    skill.name,
+    skill.security_audits,
+    skill.source_url,
+    t,
+  ]);
 
   const handleTranslate = async () => {
     if (cachedTranslation) {
@@ -96,14 +137,35 @@ export function SkillStoreDetail({ skill, isInstalled, onClose }: SkillStoreDeta
     }
     setIsInstalling(true);
     try {
-      const result = await installFromRegistry(skill.slug);
-      if (result) {
-        setJustInstalled(true);
-        showToast(t('skill.addedToLibrary', 'Added') + `: ${skill.name}`, 'success');
-        // Auto-show deploy to platforms modal
-        setDeploySkill(result);
-        setTimeout(() => setJustInstalled(false), 2000);
+      const performInstall = async () => {
+        const result = await installFromRegistry(skill.slug);
+        if (result) {
+          setJustInstalled(true);
+          showToast(t('skill.addedToLibrary', 'Added') + `: ${skill.name}`, 'success');
+          setDeploySkill(result);
+          setTimeout(() => setJustInstalled(false), 2000);
+        }
+      };
+
+      if (autoScanBeforeInstall) {
+        const report = await scanSafety();
+        if (report?.level === 'blocked') {
+          showToast(
+            t(
+              'skill.safetyScanBlockedInstall',
+              'This skill was flagged as high risk. Review the safety report before adding it.',
+            ),
+            'error',
+          );
+          return;
+        }
+        if (report?.level === 'high-risk') {
+          setPendingHighRiskInstallReport(report);
+          return;
+        }
       }
+
+      await performInstall();
     } catch (e) {
       showToast(t('skill.updateFailed', 'Failed') + `: ${e}`, 'error');
     } finally {
@@ -360,6 +422,61 @@ export function SkillStoreDetail({ skill, isInstalled, onClose }: SkillStoreDeta
             </div>
           )}
 
+          <div className="mt-4 rounded-xl border border-border/70 bg-muted/20 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-foreground">
+                  {t('skill.safetyAssessment', '安全评估')}
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t(
+                    'skill.safetyAssessmentDesc',
+                    '手动检查这个 Skill 的来源、脚本行为和可疑文件；商店默认不会自动检查。',
+                  )}
+                </p>
+              </div>
+              <button
+                onClick={() => void scanSafety()}
+                disabled={isScanningSafety}
+                className="shrink-0 rounded-lg border border-border px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground disabled:opacity-50"
+              >
+                {isScanningSafety
+                  ? t('skill.safetyScanning', '检查中...')
+                  : t('skill.runSafetyAssessment', '立即检查')}
+              </button>
+            </div>
+
+            {safetyReport && (
+              <div className={`mt-3 rounded-xl border p-3 ${safetyTone}`}>
+                <div className="flex items-start gap-2">
+                  {safetyReport.level === 'safe' ? (
+                    <ShieldCheckIcon className="mt-0.5 h-4 w-4 shrink-0" />
+                  ) : (
+                    <ShieldAlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
+                  )}
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold">
+                      {t('skill.safetyLevelLabel', '风险级别')}: {safetyReport.level}
+                    </div>
+                    <p className="mt-1 text-xs opacity-90">
+                      {safetyReport.summary}
+                    </p>
+                    {safetyReport.findings.length > 0 && (
+                      <ul className="mt-2 space-y-1 text-xs opacity-90">
+                        {safetyReport.findings.slice(0, 4).map((finding) => (
+                          <li key={`${finding.code}-${finding.filePath || finding.evidence || ''}`}>
+                            • {finding.title}
+                            {finding.filePath ? ` · ${finding.filePath}` : ''}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Tags */}
           {skill.tags.length > 0 && (
             <div className="mt-4 flex items-center gap-2 flex-wrap">
@@ -430,6 +547,60 @@ export function SkillStoreDetail({ skill, isInstalled, onClose }: SkillStoreDeta
           onClose={() => setDeploySkill(null)}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={Boolean(pendingHighRiskInstallReport)}
+        onClose={() => setPendingHighRiskInstallReport(null)}
+        onConfirm={() => {
+          const run = async () => {
+            if (!pendingHighRiskInstallReport) return;
+            setPendingHighRiskInstallReport(null);
+            setIsInstalling(true);
+            try {
+              const result = await installFromRegistry(skill.slug);
+              if (result) {
+                setJustInstalled(true);
+                showToast(t('skill.addedToLibrary', 'Added') + `: ${skill.name}`, 'success');
+                setDeploySkill(result);
+                setTimeout(() => setJustInstalled(false), 2000);
+              }
+            } catch (error) {
+              showToast(t('skill.updateFailed', 'Failed') + `: ${error}`, 'error');
+            } finally {
+              setIsInstalling(false);
+            }
+          };
+
+          void run();
+        }}
+        title={t('skill.safetyHighRiskTitle', '检测到高风险 Skill')}
+        message={
+          pendingHighRiskInstallReport ? (
+            <div className="space-y-3 text-left">
+              <p>{pendingHighRiskInstallReport.summary}</p>
+              <ul className="space-y-1">
+                {pendingHighRiskInstallReport.findings.slice(0, 5).map((finding) => (
+                  <li key={`${finding.code}-${finding.filePath || finding.evidence || ''}`}>
+                    • {finding.title}
+                    {finding.filePath ? ` · ${finding.filePath}` : ''}
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs opacity-80">
+                {t(
+                  'skill.safetyHighRiskConfirm',
+                  '如果你确认来源可信，仍然可以继续添加；否则建议先检查源码和来源。',
+                )}
+              </p>
+            </div>
+          ) : (
+            ''
+          )
+        }
+        confirmText={t('skill.addAnyway', '仍然添加')}
+        cancelText={t('common.cancel', '取消')}
+        variant="destructive"
+      />
     </div>
   );
 }

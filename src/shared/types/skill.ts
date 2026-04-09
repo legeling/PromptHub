@@ -260,6 +260,37 @@ export interface ScanLocalResult {
   skipped: string[];
 }
 
+export type SkillSafetySeverity = "info" | "warn" | "high";
+
+export type SkillSafetyLevel = "safe" | "warn" | "high-risk" | "blocked";
+
+export interface SkillSafetyFinding {
+  code: string;
+  severity: SkillSafetySeverity;
+  title: string;
+  detail: string;
+  filePath?: string;
+  evidence?: string;
+}
+
+export interface SkillSafetyReport {
+  level: SkillSafetyLevel;
+  summary: string;
+  findings: SkillSafetyFinding[];
+  recommendedAction: "allow" | "review" | "block";
+  scannedAt: number;
+  checkedFileCount: number;
+}
+
+export interface SkillSafetyScanInput {
+  name?: string;
+  content?: string;
+  sourceUrl?: string;
+  contentUrl?: string;
+  localRepoPath?: string;
+  securityAudits?: string[];
+}
+
 export interface ScannedSkill {
   name: string;
   description: string;
@@ -272,4 +303,11 @@ export interface ScannedSkill {
   /** Parent directory of the SKILL.md file (skill folder path) */
   localPath: string;
   platforms: string[];
+  safetyReport?: SkillSafetyReport;
+  /**
+   * True when another scanned skill at a different path shares the same
+   * name (case-insensitive).  Batch import will fail for all but the first
+   * of such duplicates, so the UI should warn the user.
+   */
+  nameConflict?: boolean;
 }

@@ -12,6 +12,7 @@ import type {
   MCPServerConfig,
   SkillChatParams,
   ScanLocalResult,
+  SkillSafetyLevel,
 } from "../../shared/types";
 import {
   BUILTIN_SKILL_REGISTRY,
@@ -59,6 +60,15 @@ export interface ScannedImportResult {
   importedCount: number;
   skipped: Array<{ name: string; reason: string }>;
   failed: Array<{ name: string; reason: string }>;
+}
+
+export interface SkillSafetyBatchSummary {
+  total: number;
+  safe: number;
+  warn: number;
+  highRisk: number;
+  blocked: number;
+  bySkillId: Record<string, SkillSafetyLevel>;
 }
 
 /**
@@ -336,6 +346,9 @@ interface SkillState {
     skills: ScannedSkill[],
     userTagsByPath?: Record<string, string[]>,
   ) => Promise<ScannedImportResult>;
+  scanInstalledSkillSafety: (
+    skillIds?: string[],
+  ) => Promise<SkillSafetyBatchSummary>;
   installToPlatform: (
     platform: "claude" | "cursor",
     name: string,
@@ -659,7 +672,7 @@ export const useSkillStore = create<SkillState>()(
                 tags: userTags,
                 original_tags: scanned.tags,
                 is_favorite: false,
-                source_url: scanned.localPath,
+                local_repo_path: scanned.localPath,
               });
 
               // Copy skill files from original location into local repo
@@ -714,6 +727,43 @@ export const useSkillStore = create<SkillState>()(
             ],
           };
         }
+      },
+
+      scanInstalledSkillSafety: async (skillIds) => {
+        const targetSkills = get().skills.filter(
+          (skill) => !skillIds || skillIds.includes(skill.id),
+        );
+        const summary: SkillSafetyBatchSummary = {
+          total: targetSkills.length,
+          safe: 0,
+          warn: 0,
+          highRisk: 0,
+          blocked: 0,
+          bySkillId: {},
+        };
+
+        for (const skill of targetSkills) {
+          const report = await window.api.skill.scanSafety({
+            name: skill.name,
+            content: skill.instructions || skill.content,
+            sourceUrl: skill.source_url,
+            contentUrl: skill.content_url,
+            localRepoPath: skill.local_repo_path,
+          });
+          summary.bySkillId[skill.id] = report.level;
+
+          if (report.level === "safe") {
+            summary.safe += 1;
+          } else if (report.level === "warn") {
+            summary.warn += 1;
+          } else if (report.level === "high-risk") {
+            summary.highRisk += 1;
+          } else {
+            summary.blocked += 1;
+          }
+        }
+
+        return summary;
       },
 
       installToPlatform: async (platform, name, mcpConfig) => {

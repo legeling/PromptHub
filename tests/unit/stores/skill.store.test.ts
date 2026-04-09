@@ -278,4 +278,41 @@ description: Use this skill for PDF tasks.
 
     expect(create).not.toHaveBeenCalled();
   });
+
+  it("aggregates safety levels when batch scanning installed skills", async () => {
+    const scanSafety = vi
+      .fn()
+      .mockResolvedValueOnce({ level: "safe" })
+      .mockResolvedValueOnce({ level: "warn" })
+      .mockResolvedValueOnce({ level: "high-risk" })
+      .mockResolvedValueOnce({ level: "blocked" });
+
+    (window as any).api.skill.scanSafety = scanSafety;
+
+    useSkillStore.setState({
+      skills: [
+        createSkillFixture({ id: "skill-1", name: "safe-skill" }),
+        createSkillFixture({ id: "skill-2", name: "warn-skill" }),
+        createSkillFixture({ id: "skill-3", name: "high-skill" }),
+        createSkillFixture({ id: "skill-4", name: "blocked-skill" }),
+      ],
+    });
+
+    const summary = await useSkillStore.getState().scanInstalledSkillSafety();
+
+    expect(summary).toEqual({
+      total: 4,
+      safe: 1,
+      warn: 1,
+      highRisk: 1,
+      blocked: 1,
+      bySkillId: {
+        "skill-1": "safe",
+        "skill-2": "warn",
+        "skill-3": "high-risk",
+        "skill-4": "blocked",
+      },
+    });
+    expect(scanSafety).toHaveBeenCalledTimes(4);
+  });
 });

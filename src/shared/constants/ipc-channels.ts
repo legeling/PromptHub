@@ -57,6 +57,7 @@ export const IPC_CHANNELS = {
   SKILL_IMPORT: "skill:import",
   SKILL_SCAN_LOCAL: "skill:scanLocal",
   SKILL_SCAN_LOCAL_PREVIEW: "skill:scanLocalPreview",
+  SKILL_SCAN_SAFETY: "skill:scanSafety",
   SKILL_INSTALL_TO_PLATFORM: "skill:installToPlatform",
   SKILL_UNINSTALL_FROM_PLATFORM: "skill:uninstallFromPlatform",
   SKILL_GET_PLATFORM_STATUS: "skill:getPlatformStatus",

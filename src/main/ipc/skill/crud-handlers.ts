@@ -31,7 +31,9 @@ export function registerSkillCrudHandlers({ db }: SkillIPCContext): void {
 
       if (
         data.source_url &&
-        data.source_url.includes("github.com") &&
+        /^https?:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+/.test(
+          data.source_url,
+        ) &&
         !data.content &&
         !data.instructions
       ) {
@@ -39,7 +41,15 @@ export function registerSkillCrudHandlers({ db }: SkillIPCContext): void {
         return db.getById(id);
       }
 
-      return db.create(data, options);
+      // Strip overwriteExisting from IPC — only internal callers (e2e
+      // seeding) should be able to silently overwrite existing skills.
+      // Renderer-initiated creates must go through the normal
+      // duplicate-name check in SkillDB.create().
+      const safeOptions = options
+        ? { skipInitialVersion: options.skipInitialVersion }
+        : undefined;
+
+      return db.create(data, safeOptions);
     },
   );
 
@@ -205,7 +215,7 @@ export function registerSkillCrudHandlers({ db }: SkillIPCContext): void {
           "skill:scanLocalPreview expects customPaths to be an array",
         );
       }
-      return SkillInstaller.scanLocalPreview(customPaths);
+      return SkillInstaller.scanLocalPreview(customPaths, db);
     },
   );
 

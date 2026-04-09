@@ -272,6 +272,8 @@ interface SettingsState {
 
   // Skill install method / Skill 安装方式
   skillInstallMethod: "symlink" | "copy";
+  autoScanInstalledSkills: boolean;
+  autoScanStoreSkillsBeforeInstall: boolean;
 
   // Actions
   // 操作
@@ -339,6 +341,8 @@ interface SettingsState {
   resetCustomSkillPlatformPath: (platformId: string) => void;
   // Skill install method action / Skill 安装方式操作
   setSkillInstallMethod: (method: "symlink" | "copy") => void;
+  setAutoScanInstalledSkills: (enabled: boolean) => void;
+  setAutoScanStoreSkillsBeforeInstall: (enabled: boolean) => void;
 }
 
 function syncSettingsToMain(settings: Partial<Settings>): void {
@@ -422,6 +426,8 @@ export const useSettingsStore = create<SettingsState>()(
         customSkillScanPaths: [],
         customSkillPlatformPaths: {},
         skillInstallMethod: "symlink" as const,
+        autoScanInstalledSkills: false,
+        autoScanStoreSkillsBeforeInstall: false,
 
         setCreationMode: (mode) => setTouched({ creationMode: mode }),
         setTranslationMode: (mode) => setTouched({ translationMode: mode }),
@@ -800,6 +806,10 @@ export const useSettingsStore = create<SettingsState>()(
         // Skill install method action / Skill 安装方式操作
         setSkillInstallMethod: (method) =>
           setTouched({ skillInstallMethod: method }),
+        setAutoScanInstalledSkills: (enabled) =>
+          setTouched({ autoScanInstalledSkills: enabled }),
+        setAutoScanStoreSkillsBeforeInstall: (enabled) =>
+          setTouched({ autoScanStoreSkillsBeforeInstall: enabled }),
       };
     },
     {
@@ -829,6 +839,12 @@ export const useSettingsStore = create<SettingsState>()(
           Array.isArray(next.customSkillPlatformPaths)
         ) {
           next.customSkillPlatformPaths = {};
+        }
+        if (typeof next.autoScanInstalledSkills !== "boolean") {
+          next.autoScanInstalledSkills = false;
+        }
+        if (typeof next.autoScanStoreSkillsBeforeInstall !== "boolean") {
+          next.autoScanStoreSkillsBeforeInstall = false;
         }
         return next;
       },

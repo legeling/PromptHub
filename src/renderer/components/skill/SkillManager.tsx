@@ -387,10 +387,7 @@ export function SkillManager() {
     setShowBatchTagDialog(true);
   };
 
-  const handleBatchTagSubmit = async (
-    tag: string,
-    mode: SkillBatchTagMode,
-  ) => {
+  const handleBatchTagSubmit = async (tag: string, mode: SkillBatchTagMode) => {
     const results = await Promise.allSettled(
       selectedSkills.map(async (skill) => {
         const nextTags = updateSkillTags(skill.tags, tag, mode);
@@ -408,7 +405,9 @@ export function SkillManager() {
     const updatedCount = results.filter(
       (result) => result.status === "fulfilled" && result.value.updated,
     ).length;
-    const failedCount = results.filter((result) => result.status === "rejected").length;
+    const failedCount = results.filter(
+      (result) => result.status === "rejected",
+    ).length;
 
     showToast(
       failedCount > 0
@@ -736,29 +735,31 @@ export function SkillManager() {
                     const isSelected = selectedSkillIds.has(skill.id);
 
                     return (
-                    <SkillGalleryCard
-                      key={skill.id}
-                      animationDelayMs={
-                        filteredSkills.length > LARGE_SKILL_LIST_THRESHOLD
-                          ? 0
-                          : Math.min(index, MAX_STAGGERED_CARDS) * CARD_STAGGER_MS
-                      }
-                      isSelected={isSelected}
-                      isSelectionMode={isSelectionMode}
-                      onDelete={(selectedSkill) =>
-                        setDeleteConfirm({
-                          isOpen: true,
-                          skillIds: [selectedSkill.id],
-                          skillNames: [selectedSkill.name],
-                        })
-                      }
-                      onOpen={selectSkill}
-                      onQuickInstall={setQuickInstallSkill}
-                      onToggleFavorite={toggleFavorite}
-                      onToggleSelection={toggleSkillSelection}
-                      skill={skill}
-                    />
-                  )})}
+                      <SkillGalleryCard
+                        key={skill.id}
+                        animationDelayMs={
+                          filteredSkills.length > LARGE_SKILL_LIST_THRESHOLD
+                            ? 0
+                            : Math.min(index, MAX_STAGGERED_CARDS) *
+                              CARD_STAGGER_MS
+                        }
+                        isSelected={isSelected}
+                        isSelectionMode={isSelectionMode}
+                        onDelete={(selectedSkill) =>
+                          setDeleteConfirm({
+                            isOpen: true,
+                            skillIds: [selectedSkill.id],
+                            skillNames: [selectedSkill.name],
+                          })
+                        }
+                        onOpen={selectSkill}
+                        onQuickInstall={setQuickInstallSkill}
+                        onToggleFavorite={toggleFavorite}
+                        onToggleSelection={toggleSkillSelection}
+                        skill={skill}
+                      />
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -783,7 +784,11 @@ export function SkillManager() {
             scannedSkills={scannedSkills}
             installedPaths={
               new Set(
-                skills.filter((s) => s.source_url).map((s) => s.source_url!),
+                skills.flatMap((s) =>
+                  [s.local_repo_path, s.source_url].filter(
+                    (v): v is string => typeof v === "string" && v.length > 0,
+                  ),
+                ),
               )
             }
             onImport={handleImportScanned}
