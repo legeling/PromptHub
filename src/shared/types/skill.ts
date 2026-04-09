@@ -185,7 +185,12 @@ export interface RegistrySkill {
 export interface SkillStoreSource {
   id: string;
   name: string;
-  type: "official" | "community" | "marketplace-json" | "git-repo" | "local-dir";
+  type:
+    | "official"
+    | "community"
+    | "marketplace-json"
+    | "git-repo"
+    | "local-dir";
   url: string;
   enabled: boolean;
   order?: number;
@@ -245,6 +250,16 @@ export interface SkillLocalFileTreeEntry {
  * Scanned local skill (not yet imported)
  * 扫描到的本地技能（尚未导入）
  */
+/**
+ * Result of a `scanLocal()` batch import operation.
+ * Includes count of imported skills and names of skills that were
+ * skipped due to name collisions with already-installed skills.
+ */
+export interface ScanLocalResult {
+  imported: number;
+  skipped: string[];
+}
+
 export interface ScannedSkill {
   name: string;
   description: string;

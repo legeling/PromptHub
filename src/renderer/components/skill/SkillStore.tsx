@@ -530,7 +530,7 @@ export function SkillStore() {
   const loadLocalDirectoryStore = useCallback(
     async (dirPath: string): Promise<RegistrySkill[]> => {
       const scannedSkills = await scanLocalPreview([dirPath]);
-      return scannedSkills.map((skill) => ({
+      const mapped = scannedSkills.map((skill) => ({
         slug: slugify(skill.name),
         name: skill.name,
         description: skill.description || `${skill.name} skill`,
@@ -545,6 +545,8 @@ export function SkillStore() {
         content_url: skill.filePath,
         compatibility: skill.platforms,
       }));
+      // Deduplicate by slug, consistent with other store loaders
+      return dedupeRegistrySkills(mapped);
     },
     [scanLocalPreview],
   );

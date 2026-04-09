@@ -1,4 +1,5 @@
 import * as fs from "fs/promises";
+import * as fsSync from "fs";
 import * as path from "path";
 import * as os from "os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -14,6 +15,13 @@ import {
 } from "../../../src/main/runtime-paths";
 import { SkillInstaller } from "../../../src/main/services/skill-installer";
 import { SKILL_PLATFORMS } from "../../../src/shared/constants/platforms";
+// Direct imports for real DB tests (these are NOT mocked)
+import Database from "../../../src/main/database/sqlite";
+import {
+  SCHEMA_TABLES,
+  SCHEMA_INDEXES,
+} from "../../../src/main/database/schema";
+import { SkillDB } from "../../../src/main/database/skill";
 
 let tmpDir: string;
 
@@ -1012,6 +1020,180 @@ describe("P1-11: platform config concurrent safety", () => {
   });
 });
 
+// ---------- scanLocalPreview: custom-paths-only & dedup behavior ----------
+
+describe("SkillInstaller.scanLocalPreview", () => {
+  /**
+   * Helper: create a minimal SKILL.md inside <parentDir>/<skillName>/SKILL.md
+   */
+  async function createSkillDir(
+    parentDir: string,
+    skillName: string,
+    opts?: { description?: string; version?: string },
+  ): Promise<string> {
+    const skillDir = path.join(parentDir, skillName);
+    await fs.mkdir(skillDir, { recursive: true });
+    const desc = opts?.description || `${skillName} description`;
+    const ver = opts?.version || "1.0.0";
+    await fs.writeFile(
+      path.join(skillDir, "SKILL.md"),
+      `---\nname: ${skillName}\ndescription: ${desc}\nversion: ${ver}\n---\n\n# ${skillName}\n\nInstructions here.\n`,
+    );
+    return skillDir;
+  }
+
+  it("with customPaths scans ONLY those directories, not defaults", async () => {
+    await SkillInstaller.init();
+
+    // Create two separate directories: one simulating a custom path, one simulating
+    // a default platform directory.  Place a unique skill in each.
+    const customDir = path.join(tmpDir, "my-custom-skills");
+    const defaultLikeDir = path.join(tmpDir, "default-like-skills");
+    await fs.mkdir(customDir, { recursive: true });
+    await fs.mkdir(defaultLikeDir, { recursive: true });
+
+    await createSkillDir(customDir, "custom-skill-alpha");
+    await createSkillDir(defaultLikeDir, "default-skill-beta");
+
+    // Only scan the custom directory
+    const results = await SkillInstaller.scanLocalPreview([customDir]);
+
+    const names = results.map((r) => r.name);
+    expect(names).toContain("custom-skill-alpha");
+    // The default-like directory should NOT be scanned
+    expect(names).not.toContain("default-skill-beta");
+  });
+
+  it("without customPaths scans default platform directories", async () => {
+    await SkillInstaller.init();
+
+    // Place a skill in PromptHub's own skills directory (which is inside tmpDir)
+    const prompthubSkillsDir = path.join(tmpDir, "skills");
+    await fs.mkdir(prompthubSkillsDir, { recursive: true });
+    await createSkillDir(prompthubSkillsDir, "prompthub-builtin");
+
+    const results = await SkillInstaller.scanLocalPreview();
+
+    // PromptHub's own skills directory is always in the default scan entries
+    const names = results.map((r) => r.name);
+    expect(names).toContain("prompthub-builtin");
+  });
+
+  it("deduplicates skills at the same physical path across multiple customPaths", async () => {
+    await SkillInstaller.init();
+
+    const dir = path.join(tmpDir, "shared-skills");
+    await createSkillDir(dir, "dedupe-me");
+
+    // Pass the same directory twice
+    const results = await SkillInstaller.scanLocalPreview([dir, dir]);
+
+    const matching = results.filter((r) => r.name === "dedupe-me");
+    expect(matching).toHaveLength(1);
+  });
+
+  it("returns skills from multiple distinct customPaths", async () => {
+    await SkillInstaller.init();
+
+    const dirA = path.join(tmpDir, "dir-a");
+    const dirB = path.join(tmpDir, "dir-b");
+    await createSkillDir(dirA, "skill-from-a");
+    await createSkillDir(dirB, "skill-from-b");
+
+    const results = await SkillInstaller.scanLocalPreview([dirA, dirB]);
+
+    const names = results.map((r) => r.name);
+    expect(names).toContain("skill-from-a");
+    expect(names).toContain("skill-from-b");
+    expect(results).toHaveLength(2);
+  });
+
+  it("returns empty array for non-existent customPath", async () => {
+    await SkillInstaller.init();
+
+    const results = await SkillInstaller.scanLocalPreview([
+      path.join(tmpDir, "does-not-exist"),
+    ]);
+
+    expect(results).toEqual([]);
+  });
+
+  it("ignores empty/whitespace customPaths", async () => {
+    await SkillInstaller.init();
+
+    const dir = path.join(tmpDir, "valid-dir");
+    await createSkillDir(dir, "valid-skill");
+
+    const results = await SkillInstaller.scanLocalPreview(["  ", "", dir]);
+
+    // Only the valid directory's skill should appear
+    const names = results.map((r) => r.name);
+    expect(names).toContain("valid-skill");
+  });
+
+  it("skips entries without SKILL.md", async () => {
+    await SkillInstaller.init();
+
+    const dir = path.join(tmpDir, "mixed-dir");
+    await createSkillDir(dir, "has-skill-md");
+    // Create a directory without SKILL.md
+    await fs.mkdir(path.join(dir, "no-skill-md"), { recursive: true });
+    await fs.writeFile(
+      path.join(dir, "no-skill-md", "README.md"),
+      "# Not a skill",
+    );
+
+    const results = await SkillInstaller.scanLocalPreview([dir]);
+
+    const names = results.map((r) => r.name);
+    expect(names).toEqual(["has-skill-md"]);
+  });
+
+  it("marks all results with 'Custom' platform name when using customPaths", async () => {
+    await SkillInstaller.init();
+
+    const dir = path.join(tmpDir, "custom-platform-test");
+    await createSkillDir(dir, "platform-check-skill");
+
+    const results = await SkillInstaller.scanLocalPreview([dir]);
+
+    expect(results).toHaveLength(1);
+    expect(results[0].platforms).toEqual(["Custom"]);
+  });
+
+  it("parses frontmatter metadata correctly", async () => {
+    await SkillInstaller.init();
+
+    const dir = path.join(tmpDir, "metadata-test");
+    const skillDir = path.join(dir, "rich-skill");
+    await fs.mkdir(skillDir, { recursive: true });
+    await fs.writeFile(
+      path.join(skillDir, "SKILL.md"),
+      [
+        "---",
+        "name: rich-skill",
+        "description: A richly described skill",
+        "version: 2.5.0",
+        "author: TestAuthor",
+        "tags: [ai, testing]",
+        "---",
+        "",
+        "# Rich Skill",
+        "",
+        "Do rich things.",
+      ].join("\n"),
+    );
+
+    const results = await SkillInstaller.scanLocalPreview([dir]);
+
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe("rich-skill");
+    expect(results[0].description).toBe("A richly described skill");
+    expect(results[0].version).toBe("2.5.0");
+    expect(results[0].author).toBe("TestAuthor");
+  });
+});
+
 // ---------- P1-8: deleteRepoByPath TOCTOU fix ----------
 
 describe("P1-8: deleteRepoByPath TOCTOU resilience", () => {
@@ -1035,5 +1217,198 @@ describe("P1-8: deleteRepoByPath TOCTOU resilience", () => {
     await expect(
       SkillInstaller.deleteRepoByPath(repoPath),
     ).resolves.toBeUndefined();
+  });
+});
+
+// ---------- scanLocal: name collision reporting ----------
+
+describe("SkillInstaller.scanLocal (with real DB)", () => {
+  let scanTmpDir: string;
+  let sqliteDb: Database.Database;
+  let skillDb: SkillDB;
+  let previousHome: string | undefined;
+
+  /** SQL to add columns that migrations normally add */
+  const SKILL_MIGRATIONS = `
+    ALTER TABLE skills ADD COLUMN source_url TEXT;
+    ALTER TABLE skills ADD COLUMN local_repo_path TEXT;
+    ALTER TABLE skills ADD COLUMN icon_url TEXT;
+    ALTER TABLE skills ADD COLUMN icon_emoji TEXT;
+    ALTER TABLE skills ADD COLUMN icon_background TEXT;
+    ALTER TABLE skills ADD COLUMN category TEXT DEFAULT 'general';
+    ALTER TABLE skills ADD COLUMN is_builtin INTEGER DEFAULT 0;
+    ALTER TABLE skills ADD COLUMN registry_slug TEXT;
+    ALTER TABLE skills ADD COLUMN content_url TEXT;
+    ALTER TABLE skills ADD COLUMN prerequisites TEXT;
+    ALTER TABLE skills ADD COLUMN compatibility TEXT;
+    ALTER TABLE skills ADD COLUMN original_tags TEXT;
+  `;
+
+  async function createSkillInDir(
+    parentDir: string,
+    skillName: string,
+  ): Promise<void> {
+    const dir = path.join(parentDir, skillName);
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(
+      path.join(dir, "SKILL.md"),
+      `---\nname: ${skillName}\ndescription: ${skillName} desc\n---\n\n# ${skillName}\n`,
+    );
+  }
+
+  beforeEach(async () => {
+    scanTmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "scanlocal-test-"));
+    // Redirect HOME so getDefaultScanEntries() won't find real skills
+    previousHome = process.env.HOME;
+    process.env.HOME = scanTmpDir;
+
+    configureRuntimePaths({ userDataPath: scanTmpDir });
+    await SkillInstaller.init();
+
+    // Create a real in-memory DB for SkillDB
+    const dbTmpDir = fsSync.mkdtempSync(
+      path.join(os.tmpdir(), "scanlocal-db-"),
+    );
+    sqliteDb = new Database(path.join(dbTmpDir, "test.db"));
+    sqliteDb.exec(SCHEMA_TABLES);
+    // Add migration columns one at a time (some may already exist from SCHEMA_TABLES)
+    for (const line of SKILL_MIGRATIONS.split(";")) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      try {
+        sqliteDb.exec(trimmed);
+      } catch {
+        // Column already exists from SCHEMA_TABLES — expected
+      }
+    }
+    sqliteDb.exec(SCHEMA_INDEXES);
+    skillDb = new SkillDB(sqliteDb);
+  });
+
+  afterEach(async () => {
+    process.env.HOME = previousHome;
+    resetRuntimePaths();
+    vi.restoreAllMocks();
+    try {
+      sqliteDb?.close();
+    } catch {
+      /* may already be closed */
+    }
+    await fs.rm(scanTmpDir, { recursive: true, force: true }).catch(() => {});
+  });
+
+  afterEach(async () => {
+    resetRuntimePaths();
+    vi.restoreAllMocks();
+    sqliteDb?.close();
+    await fs.rm(scanTmpDir, { recursive: true, force: true }).catch(() => {});
+  });
+
+  it("returns imported count and empty skipped array for fresh import", async () => {
+    // Place skills in PromptHub's own skills directory
+    const skillsDir = path.join(scanTmpDir, "skills");
+    await createSkillInDir(skillsDir, "alpha");
+    await createSkillInDir(skillsDir, "beta");
+
+    const result = await SkillInstaller.scanLocal(skillDb);
+
+    expect(result.imported).toBe(2);
+    expect(result.skipped).toEqual([]);
+    // Verify they're actually in the DB
+    expect(skillDb.getByName("alpha")).not.toBeNull();
+    expect(skillDb.getByName("beta")).not.toBeNull();
+  });
+
+  it("reports name collisions in the skipped array", async () => {
+    // Pre-install a skill with the same name
+    skillDb.create({
+      name: "existing-skill",
+      description: "Already here",
+      content: "# Existing",
+      instructions: "# Existing",
+      protocol_type: "skill",
+      is_favorite: false,
+      tags: [],
+    });
+
+    // Place a skill with the same name in the scan directory
+    const skillsDir = path.join(scanTmpDir, "skills");
+    await createSkillInDir(skillsDir, "existing-skill");
+    await createSkillInDir(skillsDir, "new-skill");
+
+    const result = await SkillInstaller.scanLocal(skillDb);
+
+    expect(result.imported).toBe(1); // Only new-skill was imported
+    expect(result.skipped).toContain("existing-skill");
+    expect(result.skipped).toHaveLength(1);
+    expect(skillDb.getByName("new-skill")).not.toBeNull();
+  });
+
+  it("returns zero imported and empty skipped for empty directories", async () => {
+    const result = await SkillInstaller.scanLocal(skillDb);
+    expect(result.imported).toBe(0);
+    expect(result.skipped).toEqual([]);
+  });
+});
+
+// ---------- P3: UNIQUE index on skills.LOWER(name) ----------
+
+describe("P3: skills table UNIQUE index on LOWER(name)", () => {
+  it("SCHEMA_INDEXES contains UNIQUE index on LOWER(name)", () => {
+    expect(SCHEMA_INDEXES).toContain("idx_skills_name_lower");
+    expect(SCHEMA_INDEXES).toContain("UNIQUE INDEX");
+    expect(SCHEMA_INDEXES).toContain("LOWER(name)");
+  });
+
+  it("prevents inserting two skills with same name (case-insensitive) at DB level", () => {
+    const dbDir = fsSync.mkdtempSync(
+      path.join(os.tmpdir(), "unique-idx-test-"),
+    );
+    const testDb = new Database(path.join(dbDir, "test.db"));
+    try {
+      testDb.exec(SCHEMA_TABLES);
+      // Add migration columns
+      const migrationCols = [
+        "source_url TEXT",
+        "local_repo_path TEXT",
+        "icon_url TEXT",
+        "icon_emoji TEXT",
+        "icon_background TEXT",
+        "category TEXT DEFAULT 'general'",
+        "is_builtin INTEGER DEFAULT 0",
+        "registry_slug TEXT",
+        "content_url TEXT",
+        "prerequisites TEXT",
+        "compatibility TEXT",
+        "original_tags TEXT",
+      ];
+      for (const col of migrationCols) {
+        try {
+          testDb.exec(`ALTER TABLE skills ADD COLUMN ${col}`);
+        } catch {
+          /* already exists */
+        }
+      }
+      testDb.exec(SCHEMA_INDEXES);
+
+      const now = Date.now();
+      testDb
+        .prepare(
+          `INSERT INTO skills (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)`,
+        )
+        .run("id-1", "My-Skill", now, now);
+
+      // Same name, different case — should be rejected by UNIQUE index
+      expect(() => {
+        testDb
+          .prepare(
+            `INSERT INTO skills (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)`,
+          )
+          .run("id-2", "my-skill", now, now);
+      }).toThrow(/UNIQUE constraint failed/);
+    } finally {
+      testDb.close();
+      fsSync.rmSync(dbDir, { recursive: true, force: true });
+    }
   });
 });

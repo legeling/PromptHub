@@ -10,7 +10,10 @@ function isPlainObject(value: unknown): value is MockRecord {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function mergeMocks<T extends MockRecord>(base: T, overrides?: DeepPartial<T>): T {
+function mergeMocks<T extends MockRecord>(
+  base: T,
+  overrides?: DeepPartial<T>,
+): T {
   if (!overrides) {
     return base;
   }
@@ -59,7 +62,7 @@ export function createWindowApiMock(overrides?: DeepPartial<MockRecord>) {
         getAll: vi.fn().mockResolvedValue([]),
         update: vi.fn(),
         delete: vi.fn().mockResolvedValue(true),
-        scanLocal: vi.fn().mockResolvedValue(0),
+        scanLocal: vi.fn().mockResolvedValue({ imported: 0, skipped: [] }),
         scanLocalPreview: vi.fn().mockResolvedValue([]),
         installToPlatform: vi.fn().mockResolvedValue(undefined),
         uninstallFromPlatform: vi.fn().mockResolvedValue(undefined),

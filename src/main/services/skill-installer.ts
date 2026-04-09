@@ -14,7 +14,11 @@
  */
 import * as fs from "fs/promises";
 import * as path from "path";
-import type { ScannedSkill, SkillManifest } from "../../shared/types";
+import type {
+  ScannedSkill,
+  ScanLocalResult,
+  SkillManifest,
+} from "../../shared/types";
 import { SkillDB } from "../database/skill";
 import { parseSkillMd } from "./skill-validator";
 import { sanitizeImportedSkillDraft } from "./skill-import-sanitize";
@@ -475,8 +479,9 @@ export class SkillInstaller {
    *
    * Note: This method only scans SKILL.md format skills, NOT MCP configurations.
    */
-  static async scanLocal(db: SkillDB): Promise<number> {
+  static async scanLocal(db: SkillDB): Promise<ScanLocalResult> {
     let count = 0;
+    const skipped: string[] = [];
     const scanPaths = this.getDefaultScanEntries().map((entry) => entry.path);
 
     for (const scanPath of scanPaths) {
@@ -551,11 +556,20 @@ export class SkillInstaller {
                   `Discovered local skill via SKILL.md: ${name} in ${entry.name}`,
                 );
               } catch (error: unknown) {
-                // Skip non-fatal errors like duplicate names
-                console.warn(
-                  `Failed to import skill "${skillDisplayName}":`,
-                  getErrorMessage(error),
-                );
+                const msg = getErrorMessage(error);
+                // Distinguish name collisions from other errors so callers
+                // can report skipped skills to the user.
+                if (msg.includes("Skill already exists")) {
+                  skipped.push(skillDisplayName);
+                  console.log(
+                    `Skipped already-installed skill: ${skillDisplayName}`,
+                  );
+                } else {
+                  console.warn(
+                    `Failed to import skill "${skillDisplayName}":`,
+                    msg,
+                  );
+                }
               }
             }
           }
@@ -565,29 +579,41 @@ export class SkillInstaller {
       }
     }
 
-    return count;
+    return { imported: count, skipped };
   }
 
   /**
    * Scan local SKILL.md files and return them as a preview list (without importing).
    *
-   * @param customPaths - Additional directories to scan beyond the default platform paths
+   * When `customPaths` is provided, **only those directories are scanned** —
+   * the default platform paths are intentionally excluded to avoid duplicates
+   * (the same skill may exist in both a user's custom directory and a default
+   * platform directory like ~/.claude/skills).  When called with no arguments
+   * the full set of default platform directories is scanned.
+   *
+   * @param customPaths - If provided, ONLY these directories are scanned.
+   *                      If omitted/empty, the default platform paths are scanned.
    */
   static async scanLocalPreview(
     customPaths?: string[],
   ): Promise<ScannedSkill[]> {
     // Use a map keyed by skill folder path to deduplicate across platforms
     const skillMap = new Map<string, ScannedSkill>();
-    const scanEntries = this.getDefaultScanEntries();
 
-    // Append custom paths provided by the user
+    let scanEntries: Array<{ path: string; platformName: string }>;
+
     if (customPaths && customPaths.length > 0) {
+      // Only scan the user-specified directories — do NOT mix in defaults
+      scanEntries = [];
       for (const cp of customPaths) {
         const resolved = resolvePlatformPath(cp.trim());
         if (resolved && !scanEntries.find((e) => e.path === resolved)) {
           scanEntries.push({ path: resolved, platformName: "Custom" });
         }
       }
+    } else {
+      // No custom paths: scan all default platform directories
+      scanEntries = this.getDefaultScanEntries();
     }
 
     // Scan all platform directories in parallel.  The inner map-merge uses

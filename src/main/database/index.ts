@@ -320,6 +320,38 @@ export function initDatabase(): Database.Database {
         )
       `);
     }
+
+    // ── deduplicate skill names (defensive, before UNIQUE index) ─────────
+    // SCHEMA_INDEXES now creates a UNIQUE index on LOWER(name).  If any
+    // duplicates slipped through the app-level check, remove them here
+    // (keep the most recently updated row for each name).
+    if (!hasMigration("dedupe_skill_names_v1")) {
+      const dupeRows = db!
+        .prepare(
+          `SELECT LOWER(name) AS lname, COUNT(*) AS cnt
+           FROM skills GROUP BY LOWER(name) HAVING cnt > 1`,
+        )
+        .all() as Array<{ lname: string; cnt: number }>;
+
+      if (dupeRows.length > 0) {
+        console.log(
+          `Migrating: Removing ${dupeRows.length} duplicate skill name group(s)`,
+        );
+        for (const row of dupeRows) {
+          // Keep the row with the latest updated_at; delete the rest
+          db!
+            .prepare(
+              `DELETE FROM skills WHERE id NOT IN (
+                 SELECT id FROM skills
+                 WHERE LOWER(name) = ?
+                 ORDER BY updated_at DESC LIMIT 1
+               ) AND LOWER(name) = ?`,
+            )
+            .run(row.lname, row.lname);
+        }
+      }
+      markMigration("dedupe_skill_names_v1");
+    }
   });
 
   try {

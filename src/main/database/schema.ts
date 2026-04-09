@@ -106,6 +106,7 @@ CREATE INDEX IF NOT EXISTS idx_versions_prompt ON prompt_versions(prompt_id);
 CREATE INDEX IF NOT EXISTS idx_folders_parent ON folders(parent_id);
 CREATE INDEX IF NOT EXISTS idx_skills_updated ON skills(updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_skills_favorite ON skills(is_favorite);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_skills_name_lower ON skills(LOWER(name));
 CREATE INDEX IF NOT EXISTS idx_skill_versions_skill ON skill_versions(skill_id);
 
 CREATE INDEX IF NOT EXISTS idx_prompts_pinned ON prompts(is_pinned);

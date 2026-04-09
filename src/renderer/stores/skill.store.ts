@@ -11,6 +11,7 @@ import type {
   SkillMCPConfig,
   MCPServerConfig,
   SkillChatParams,
+  ScanLocalResult,
 } from "../../shared/types";
 import {
   BUILTIN_SKILL_REGISTRY,
@@ -329,7 +330,7 @@ interface SkillState {
   syncSkillFromRepo: (id: string) => Promise<Skill | null>;
   deleteSkill: (id: string) => Promise<boolean>;
   toggleFavorite: (id: string) => Promise<void>;
-  scanLocalSkills: () => Promise<number>;
+  scanLocalSkills: () => Promise<ScanLocalResult>;
   scanLocalPreview: (customPaths?: string[]) => Promise<ScannedSkill[]>;
   importScannedSkills: (
     skills: ScannedSkill[],
@@ -598,18 +599,18 @@ export const useSkillStore = create<SkillState>()(
       scanLocalSkills: async () => {
         set({ isLoading: true, error: null });
         try {
-          const count = await window.api.skill.scanLocal();
-          if (count > 0) {
+          const result: ScanLocalResult = await window.api.skill.scanLocal();
+          if (result.imported > 0) {
             const skills = normalizeSkills(await window.api.skill.getAll());
             set({ skills, isLoading: false });
           } else {
             set({ isLoading: false });
           }
-          return count;
+          return result;
         } catch (error) {
           console.error("Failed to scan local skills:", error);
           set({ error: String(error), isLoading: false });
-          return 0;
+          return { imported: 0, skipped: [] };
         }
       },
 
