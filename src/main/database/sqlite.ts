@@ -56,8 +56,8 @@ class Statement {
 class DatabaseAdapter {
   private _db: WasmDatabase;
 
-  constructor(path: string) {
-    this._db = new WasmDatabase(path);
+  constructor(path: string, options?: { readOnly?: boolean }) {
+    this._db = new WasmDatabase(path, options);
   }
 
   /**

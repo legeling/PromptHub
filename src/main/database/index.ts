@@ -491,7 +491,7 @@ export function detectRecoverableDatabases(
     // Try opening the candidate database read-only to count records
     let candidateDb: Database.Database | null = null;
     try {
-      candidateDb = new Database(dbFile, { readonly: true });
+      candidateDb = new Database(dbFile, { readOnly: true });
       candidateDb.pragma("foreign_keys = OFF");
 
       const promptRow = candidateDb
