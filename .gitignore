@@ -1,4 +1,8 @@
-# 重新包含被父级 gitignore 忽略的文件
+# ========================
+# Monorepo root .gitignore
+# ========================
+
+# Re-include common source file extensions (overrides parent-level ignores)
 !*.json
 !*.yaml
 !*.yml
@@ -9,22 +13,30 @@
 !*.css
 !*.svg
 
-# Node.js
+# ========================
+# Dependencies
+# ========================
 node_modules/
 .pnpm-store/
 
+# ========================
 # Build output
+# ========================
 out/
 dist/
 build/
-
-# Electron
-release/
 dist-electron/
-dist/
-out/
+release/
 
-# IDE
+# ========================
+# Lock files (pnpm only)
+# ========================
+package-lock.json
+yarn.lock
+
+# ========================
+# IDE / Editor
+# ========================
 .idea/
 .vscode/
 .cursor/
@@ -34,38 +46,50 @@ out/
 .claude/
 .agent/
 
+# ========================
 # OS
+# ========================
 .DS_Store
 Thumbs.db
 
+# ========================
 # Logs
+# ========================
 *.log
 npm-debug.log*
 pnpm-debug.log*
 
+# ========================
 # Environment
+# ========================
 .env
 .env.local
 .env.*.local
 
-# Test
+# ========================
+# Test / Coverage
+# ========================
 coverage/
 .nyc_output/
+test-results/
+playwright-report/
 
+# ========================
 # Cache
+# ========================
 .cache/
 .parcel-cache/
 .eslintcache
 
-# Database (开发时的本地数据库)
+# ========================
+# Database (local dev databases)
+# ========================
 *.db
 *.sqlite
 *.sqlite3
 
-# Temporary
+# ========================
+# Temporary files
+# ========================
 *.tmp
 *.temp
-
-# 内部文档
-文档/
-文档/*

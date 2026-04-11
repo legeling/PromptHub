@@ -1,49 +1,61 @@
-# PromptHub 项目规则
+# PromptHub Project Rules
 
-> Claude Code 项目级规则，自动加载到每次会话上下文。
+> Project-level rules, automatically loaded into every session context.
 
-## 项目概览
+## Project Overview
 
-- **技术栈**：Electron 33 + React 18 + TypeScript 5.6 + Vite 6 + Tailwind CSS 3.4
-- **数据库**：better-sqlite3（本地 SQLite）
-- **状态管理**：Zustand 5
-- **包管理器**：pnpm（禁止使用 npm/yarn）
-- **测试**：Vitest + Playwright
+- **Architecture**: pnpm monorepo (`apps/` + `packages/`)
+- **Tech Stack**: Electron 33 + React 18 + TypeScript 5 + Vite 6 + Tailwind CSS 3
+- **Database**: node-sqlite3-wasm (pure WASM SQLite, wrapped by `@prompthub/db`)
+- **State**: Zustand 5
+- **Package Manager**: pnpm (npm/yarn prohibited)
+- **Testing**: Vitest (unit) + Playwright (E2E)
+- **I18n**: i18next / react-i18next (7 locales: en, zh, zh-TW, ja, fr, de, es)
 
-## 强制规则
+## Monorepo Structure
 
-- 禁止自动 `git commit/push`，必须等用户明确指令
-- 禁止在 `src/` 或其他代码目录创建 `.md` 文档，文档统一放 `docs/`
-- 禁止 Mock 数据、TODO 占位符、空 catch
-- 每次修改前端代码后必须运行 `pnpm lint`
-- 修改功能时必须同步更新相关组件、类型定义、store、测试
+```
+PromptHub/                          # Root (AGPL-3.0)
+├── apps/
+│   └── desktop/                    # @prompthub/desktop — Electron app
+│       ├── src/main/               # Main process (IPC, services, security)
+│       ├── src/renderer/           # React SPA (components, stores, hooks)
+│       ├── src/preload/            # Electron preload scripts
+│       └── tests/                  # Unit / integration / E2E tests
+├── packages/
+│   ├── shared/                     # @prompthub/shared (MIT) — types + constants
+│   └── db/                         # @prompthub/db (MIT) — database layer
+│       └── src/                    # schema, adapter, prompt, folder, skill, init
+├── website/                        # Static landing site (independent, not in workspace)
+└── docs/                           # Project documentation
+```
 
-## 代码规范
-
-- TypeScript：使用 `interface` 定义类型，禁用 `any`
-- 命名：`camelCase` 函数/变量，`PascalCase` 组件/类/接口，`UPPER_SNAKE_CASE` 常量
-- 单个函数不超过 50 行，单个文件不超过 500 行
-
-## 常用命令
+## Key Commands (all run from repo root)
 
 ```bash
-pnpm dev        # 启动 Electron 开发模式
-pnpm dev:web    # 启动 Web 开发模式
-pnpm build      # 构建
-pnpm lint       # ESLint 检查（改完前端必跑）
-pnpm test       # Vitest 单元测试
-pnpm test:e2e   # Playwright E2E 测试
+pnpm electron:dev     # Start Electron dev mode
+pnpm build            # Production build (main + renderer + CLI)
+pnpm lint             # ESLint (must pass before commit)
+pnpm test:run         # Full unit test suite (Vitest)
+pnpm test:e2e         # Playwright E2E tests
 ```
 
-## 项目结构
+## Mandatory Rules
 
-```
-src/
-├── main/           # Electron 主进程
-├── preload/        # Electron preload 脚本
-└── renderer/       # React 前端
-    ├── components/ # UI 组件
-    ├── store/      # Zustand 状态
-    ├── hooks/      # 自定义 hooks
-    └── utils/      # 工具函数
-```
+- Never auto `git commit/push` — wait for explicit user instruction
+- No `.md` files in `src/` — docs go in `docs/`
+- No mock data, TODO placeholders, empty catch blocks
+- Run `pnpm lint` after every frontend change
+- Sync all related files when modifying a feature (components, types, store, i18n, tests)
+- All user-facing strings must use i18n (`t()`) — no hardcoded Chinese in source code
+- All 7 locales must be updated when adding i18n keys
+
+## Code Standards
+
+- TypeScript: prefer `interface`, prohibit `any` / `@ts-ignore` / `as any`
+- Naming: `camelCase` for functions/variables, `PascalCase` for components/classes/interfaces, `UPPER_SNAKE_CASE` for constants
+- IPC channels defined in `packages/shared/src/constants/ipc-channels.ts`
+- Database queries must use parameterized placeholders (`?`), never string concatenation
+- Path aliases: `@/` = `src/main/`, `@renderer/` = `src/renderer/`, `@shared/` = `packages/shared/src/`
+
+## For complete development rules, see `AGENTS.md`.
