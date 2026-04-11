@@ -27,6 +27,9 @@
     "test:e2e:smoke": "pnpm --filter @prompthub/desktop test:e2e:smoke",
     "test:release": "pnpm --filter @prompthub/desktop test:release",
     "typecheck": "pnpm --filter @prompthub/desktop typecheck",
-    "test:perf": "pnpm --filter @prompthub/desktop test:perf"
+    "test:perf": "pnpm --filter @prompthub/desktop test:perf",
+    "dev:server": "pnpm --filter @prompthub/server dev",
+    "start:server": "pnpm --filter @prompthub/server start",
+    "build:server": "pnpm --filter @prompthub/server build"
   }
 }

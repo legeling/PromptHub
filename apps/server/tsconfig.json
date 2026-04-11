@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    "sourceMap": true,
+    "outDir": "dist",
+    "rootDir": "src",
+    "paths": {
+      "@prompthub/shared": ["../../packages/shared/types/index.ts"],
+      "@prompthub/shared/*": ["../../packages/shared/*/index.ts"],
+      "@prompthub/db": ["../../packages/db/src/index.ts"],
+      "@prompthub/db/*": ["../../packages/db/src/*"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}

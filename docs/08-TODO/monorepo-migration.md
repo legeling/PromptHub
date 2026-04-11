@@ -6,7 +6,7 @@
 
 ```
 Phase 1: Monorepo 基础结构          ✅ 已完成
-Phase 2: 提取 packages/db           ❌ 待做
+Phase 2: 提取 packages/db           ✅ 已完成
 Phase 3: 新增 apps/server (Hono)    ❌ 待做
 Phase 4: 私有仓库 prompthub-cloud   ⏳ 部分完成
 Phase 5: CI/CD 验证 + 发布          ❌ 待做
@@ -61,35 +61,41 @@ Phase 5: CI/CD 验证 + 发布          ❌ 待做
 
 ---
 
-## Phase 2: 提取 packages/db ❌
+## Phase 2: 提取 packages/db ✅
 
+**提交:** `19dc369` (2026-04-11)
 **目标:** 将数据库层从 `apps/desktop/src/main/database/` 提取为独立包 `@prompthub/db`，使 desktop 和 server 可复用同一套数据访问层。
 
-### 待搬迁文件
+### 搬迁文件
 
-| 来源 (apps/desktop)           | 目标 (packages/db)      | 说明               |
-| ----------------------------- | ----------------------- | ------------------ |
-| `src/main/database/schema.ts` | `packages/db/schema.ts` | DDL 定义           |
-| `src/main/database/sqlite.ts` | `packages/db/sqlite.ts` | DatabaseAdapter    |
-| `src/main/database/index.ts`  | `packages/db/index.ts`  | 初始化 + migration |
-| `src/main/database/prompt.ts` | `packages/db/prompt.ts` | PromptDB           |
-| `src/main/database/folder.ts` | `packages/db/folder.ts` | FolderDB           |
-| `src/main/database/skill.ts`  | `packages/db/skill.ts`  | SkillDB            |
+| 来源 (apps/desktop)           | 目标 (packages/db/src) | 说明                        |
+| ----------------------------- | ---------------------- | --------------------------- |
+| `src/main/database/schema.ts` | `schema.ts`            | DDL 定义                    |
+| `src/main/database/sqlite.ts` | `adapter.ts`           | DatabaseAdapter (WASM 封装) |
+| `src/main/database/index.ts`  | `init.ts`              | 初始化 + migration (纯 DB)  |
+| `src/main/database/prompt.ts` | `prompt.ts`            | PromptDB                    |
+| `src/main/database/folder.ts` | `folder.ts`            | FolderDB                    |
+| `src/main/database/skill.ts`  | `skill.ts`             | SkillDB                     |
 
-### 步骤
+### 已完成步骤
 
-- [ ] 创建 `packages/db/package.json` (`@prompthub/db`, MIT)
-- [ ] 创建 `packages/db/tsconfig.json`
-- [ ] 搬迁 database 文件 + 更新 import
-- [ ] desktop 中改为 `import { PromptDB, FolderDB } from '@prompthub/db'`
-- [ ] 处理 `better-sqlite3` 依赖（desktop 用 native binding，server 可能用不同 driver）
-- [ ] 验证 build + test 通过
+- [x] 创建 `packages/db/package.json` (`@prompthub/db`, MIT, v0.1.0)
+- [x] 创建 `packages/db/tsconfig.json`
+- [x] 搬迁 database 文件到 `packages/db/src/`
+- [x] `index.ts` 拆分：纯 DB init/migration 进包 (`init.ts`)，数据恢复逻辑留 desktop
+- [x] 通过 `InitDatabaseHooks.resolveSkillRepoPath` 回调注入文件系统扫描逻辑
+- [x] desktop 中创建代理 re-export 文件（保持 13 个消费者 + 8 个测试文件 import 不变）
+- [x] 更新 vite/vitest 配置添加 `@prompthub/db` alias
+- [x] uuid 版本对齐到 `^13.0.0`
+- [x] 更新 `bin-entry.test.ts` 的 dependencies 断言
+- [x] 验证：lint 0 error, 66 test files, 801 tests all passed
 
-### 设计考量
+### 设计决策
 
-- `better-sqlite3` 是 native 模块，Electron 和 Node.js server 的 binding 不同
-- 可能需要抽象 Database Driver 接口：desktop 用 `better-sqlite3`，SaaS 用 PostgreSQL (Drizzle)
-- **决策点：** 是否在此阶段就引入 Drizzle ORM，还是先保持 raw SQL 只做包拆分
+- **用 WASM 而非 native binding**：项目用 `node-sqlite3-wasm`，不是 `better-sqlite3`，避免了跨平台 native 编译问题
+- **代理文件策略**：desktop 的 `database/` 目录保留薄代理文件 re-export from `@prompthub/db`，最小化消费者端改动
+- **Hooks 解耦**：`initDatabase()` 接受 `InitDatabaseHooks` 参数，将 Electron 特定逻辑（路径解析、skill repo 扫描）通过回调注入
+- **保持 raw SQL**：此阶段不引入 ORM，Phase 3 server 可根据需要选择 Drizzle
 
 ---
 
@@ -208,21 +214,34 @@ PromptHub/                           # workspace 根
 ├── package.json                     # scripts 通过 pnpm --filter 代理
 ├── pnpm-workspace.yaml              # packages: ["packages/*", "apps/*"]
 ├── pnpm-lock.yaml
-├── CHANGELOG.md / LICENSE / README.md / AGENTS.md
+├── CHANGELOG.md / LICENSE / README.md / AGENTS.md / CLAUDE.md
 ├── docs/                            # 文档（留在根目录）
 ├── .github/workflows/               # CI/CD（已更新）
 │
 ├── packages/
-│   └── shared/                      # @prompthub/shared (MIT)
-│       ├── package.json
+│   ├── shared/                      # @prompthub/shared (MIT)
+│   │   ├── package.json
+│   │   ├── tsconfig.json
+│   │   ├── types/                   # 共享类型定义
+│   │   └── constants/               # 共享常量
+│   │
+│   └── db/                          # @prompthub/db (MIT)
+│       ├── package.json             # deps: node-sqlite3-wasm, uuid
 │       ├── tsconfig.json
-│       ├── types/                   # 共享类型定义
-│       └── constants/               # 共享常量
+│       └── src/
+│           ├── adapter.ts           # DatabaseAdapter (WASM wrapper)
+│           ├── schema.ts            # SCHEMA_TABLES, SCHEMA_INDEXES
+│           ├── init.ts              # initDatabase(), getDatabase(), hooks
+│           ├── prompt.ts            # PromptDB
+│           ├── folder.ts            # FolderDB
+│           ├── skill.ts             # SkillDB
+│           └── index.ts             # barrel export
 │
 └── apps/
     └── desktop/                     # @prompthub/desktop (AGPL-3.0)
-        ├── package.json
-        ├── src/                     # main/, renderer/, preload/, cli/
+        ├── package.json             # deps: @prompthub/db, @prompthub/shared
+        ├── src/
+        │   └── main/database/       # 薄代理文件 re-export from @prompthub/db
         ├── tests/                   # unit/, integration/, e2e/
         ├── resources/               # icons, installer
         ├── scripts/                 # 构建脚本
@@ -231,4 +250,4 @@ PromptHub/                           # workspace 根
 
 ---
 
-_最后更新: 2026-04-11 — Phase 1 完成_
+_最后更新: 2026-04-11 — Phase 1 & 2 完成，项目结构整理完成_
