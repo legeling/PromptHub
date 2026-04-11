@@ -34,6 +34,7 @@ describe("CLI npm entry", () => {
     ]);
     expect(packageJson.engines?.node).toBe(">=22.0.0");
     expect(packageJson.dependencies).toEqual({
+      "@prompthub/db": "workspace:*",
       "@prompthub/shared": "workspace:*",
       "node-sqlite3-wasm": expect.any(String),
     });

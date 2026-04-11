@@ -16,6 +16,7 @@ export default defineConfig({
       "@renderer": path.resolve(__dirname, "src/renderer"),
       "@shared": path.resolve(__dirname, "../../packages/shared"),
       "@prompthub/shared": path.resolve(__dirname, "../../packages/shared"),
+      "@prompthub/db": path.resolve(__dirname, "../../packages/db/src"),
     },
   },
 });

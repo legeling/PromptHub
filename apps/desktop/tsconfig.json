@@ -21,6 +21,8 @@
       "@/*": ["src/*"],
       "@shared/*": ["../../packages/shared/*"],
       "@prompthub/shared/*": ["../../packages/shared/*"],
+      "@prompthub/db": ["../../packages/db/src/index.ts"],
+      "@prompthub/db/*": ["../../packages/db/src/*"],
       "@renderer/*": ["src/renderer/*"]
     }
   },

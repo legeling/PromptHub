@@ -64,6 +64,7 @@
     "perf:budget:ci": "node --experimental-strip-types scripts/profile-large-datasets.mts --prompts=5000 --skills=2000 --iterations=20"
   },
   "dependencies": {
+    "@prompthub/db": "workspace:*",
     "@prompthub/shared": "workspace:*",
     "node-sqlite3-wasm": "^0.8.0"
   },
