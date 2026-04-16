@@ -205,11 +205,7 @@ jobs:
         shell: bash
         working-directory: apps/desktop
         run: |
-          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
-            VERSION="${GITHUB_REF_NAME#v}"
-          else
-            VERSION="$(node -p "require('./package.json').version")"
-          fi
+          VERSION="$(node -p "require('./package.json').version")"
           mkdir -p upload_dist
 
           copy_if_exists() {
@@ -284,7 +280,9 @@ jobs:
 
       - name: Set release version
         shell: bash
-        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+        run: |
+          echo "VERSION=$(node -p "require('./apps/desktop/package.json').version")" >> "$GITHUB_ENV"
+          echo "RELEASE_TAG=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
 
       - name: List artifacts for debugging
         shell: bash
