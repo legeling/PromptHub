@@ -6,10 +6,8 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "declaration": true,
+    "noEmit": true,
     "jsx": "react-jsx",
-    "sourceMap": true,
-    "outDir": "dist",
     "paths": {
       "@prompthub/shared": ["../../packages/shared/types/index.ts"],
       "@prompthub/shared/*": ["../../packages/shared/*/index.ts"],
