@@ -6,6 +6,10 @@ const CONFIG_FILE_NAME = "data-path.json";
 
 const DATA_MARKERS = [
   "prompthub.db",
+  "workspace",
+  "IndexedDB",
+  "Local Storage",
+  "Session Storage",
   "images",
   "videos",
   "skills",

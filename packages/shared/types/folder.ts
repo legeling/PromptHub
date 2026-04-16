@@ -3,8 +3,12 @@
  * 文件夹类型定义
  */
 
+export type FolderVisibility = 'private' | 'shared';
+
 export interface Folder {
   id: string;
+  ownerUserId?: string | null;
+  visibility?: FolderVisibility;
   name: string;
   icon?: string; // emoji
   parentId?: string;
@@ -19,6 +23,7 @@ export interface CreateFolderDTO {
   icon?: string;
   parentId?: string;
   isPrivate?: boolean;
+  visibility?: FolderVisibility;
 }
 
 export interface UpdateFolderDTO {
@@ -27,4 +32,5 @@ export interface UpdateFolderDTO {
   parentId?: string;
   order?: number;
   isPrivate?: boolean;
+  visibility?: FolderVisibility;
 }

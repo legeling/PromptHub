@@ -179,6 +179,26 @@ describe("data path bootstrap", () => {
     expect(hasExistingAppData(userDataDir)).toBe(true);
   });
 
+  it("detects existing renderer storage markers", () => {
+    const userDataDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "prompthub-renderer-data-"),
+    );
+    tempDirs.push(userDataDir);
+
+    fs.mkdirSync(path.join(userDataDir, "IndexedDB"), { recursive: true });
+    expect(hasExistingAppData(userDataDir)).toBe(true);
+  });
+
+  it("detects existing workspace markers", () => {
+    const userDataDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "prompthub-workspace-data-"),
+    );
+    tempDirs.push(userDataDir);
+
+    fs.mkdirSync(path.join(userDataDir, "workspace"), { recursive: true });
+    expect(hasExistingAppData(userDataDir)).toBe(true);
+  });
+
   describe("isPathWritable", () => {
     it("returns true for an existing writable directory", () => {
       const dir = fs.mkdtempSync(path.join(os.tmpdir(), "prompthub-writable-"));

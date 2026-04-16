@@ -157,6 +157,31 @@ export class FolderDB {
     transaction();
   }
 
+  insertFolderDirect(folder: Folder): void {
+    this.db
+      .prepare(
+        `INSERT OR REPLACE INTO folders (
+          id, name, icon, parent_id, sort_order, is_private, created_at, updated_at
+        ) VALUES (
+          @id, @name, @icon, @parent_id, @sort_order, @is_private, @created_at, @updated_at
+        )`,
+      )
+      .run({
+        "@id": folder.id,
+        "@name": folder.name,
+        "@icon": folder.icon ?? null,
+        "@parent_id": folder.parentId ?? null,
+        "@sort_order": folder.order ?? 0,
+        "@is_private": folder.isPrivate ? 1 : 0,
+        "@created_at": folder.createdAt
+          ? new Date(folder.createdAt).getTime()
+          : Date.now(),
+        "@updated_at": folder.updatedAt
+          ? new Date(folder.updatedAt).getTime()
+          : Date.now(),
+      });
+  }
+
   /**
    * Convert database row to Folder object
    * 数据库行转 Folder 对象

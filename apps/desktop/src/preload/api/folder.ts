@@ -1,6 +1,10 @@
 import { ipcRenderer } from "electron";
 import { IPC_CHANNELS } from "@prompthub/shared/constants/ipc-channels";
-import type { CreateFolderDTO, UpdateFolderDTO } from "@prompthub/shared/types";
+import type {
+  CreateFolderDTO,
+  Folder,
+  UpdateFolderDTO,
+} from "@prompthub/shared/types";
 
 export const folderApi = {
   create: (data: CreateFolderDTO) =>
@@ -11,4 +15,6 @@ export const folderApi = {
   delete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.FOLDER_DELETE, id),
   reorder: (ids: string[]) =>
     ipcRenderer.invoke(IPC_CHANNELS.FOLDER_REORDER, ids),
+  insertDirect: (folder: Folder) =>
+    ipcRenderer.invoke(IPC_CHANNELS.FOLDER_INSERT_DIRECT, folder),
 };

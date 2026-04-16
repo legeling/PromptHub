@@ -42,6 +42,11 @@ const VIDEO_MAX_SIZE_BYTES = 100 * 1024 * 1024;
 const VIDEO_MAX_COUNT = 100;
 const SKILL_CONCURRENCY = 5;
 
+interface MediaCollectionLimits {
+  maxCount?: number;
+  maxSizeBytes?: number;
+}
+
 async function processBatched<T, R>(
   items: T[],
   batchSize: number,
@@ -58,9 +63,11 @@ async function processBatched<T, R>(
 
 async function collectImages(
   prompts: Awaited<ReturnType<typeof getAllPrompts>>,
+  limits?: MediaCollectionLimits,
 ): Promise<{ [fileName: string]: string }> {
   const images: { [fileName: string]: string } = {};
   const imageFileNames = new Set<string>();
+  const readFailures: string[] = [];
 
   for (const prompt of prompts) {
     if (prompt.images && Array.isArray(prompt.images)) {
@@ -71,19 +78,29 @@ async function collectImages(
   }
 
   const allNames = Array.from(imageFileNames);
-  if (allNames.length > IMAGE_MAX_COUNT) {
+  if (
+    typeof limits?.maxCount === "number" &&
+    allNames.length > limits.maxCount
+  ) {
     console.warn(
-      `Image count (${allNames.length}) exceeds limit (${IMAGE_MAX_COUNT}), truncating`,
+      `Image count (${allNames.length}) exceeds limit (${limits.maxCount}), truncating`,
     );
   }
-  const namesToProcess = allNames.slice(0, IMAGE_MAX_COUNT);
+  const namesToProcess =
+    typeof limits?.maxCount === "number"
+      ? allNames.slice(0, limits.maxCount)
+      : allNames;
 
   await processBatched(namesToProcess, IMAGE_BATCH_SIZE, async (fileName) => {
     try {
       const size = await window.electron?.getImageSize?.(fileName);
-      if (size != null && size > IMAGE_MAX_SIZE_BYTES) {
+      if (
+        typeof limits?.maxSizeBytes === "number" &&
+        size != null &&
+        size > limits.maxSizeBytes
+      ) {
         console.warn(
-          `Skipping image ${fileName}: size ${(size / 1024 / 1024).toFixed(1)}MB exceeds ${IMAGE_MAX_SIZE_BYTES / 1024 / 1024}MB limit`,
+          `Skipping image ${fileName}: size ${(size / 1024 / 1024).toFixed(1)}MB exceeds ${limits.maxSizeBytes / 1024 / 1024}MB limit`,
         );
         return;
       }
@@ -93,18 +110,28 @@ async function collectImages(
         images[fileName] = base64;
       }
     } catch (error) {
+      readFailures.push(fileName);
       console.warn(`Failed to read image ${fileName}:`, error);
     }
   });
+
+  if (readFailures.length > 0) {
+    const preview = readFailures.slice(0, 5).join(", ");
+    throw new Error(
+      `Backup export failed to read ${readFailures.length} image files: ${preview}`,
+    );
+  }
 
   return images;
 }
 
 async function collectVideos(
   prompts: Awaited<ReturnType<typeof getAllPrompts>>,
+  limits?: MediaCollectionLimits,
 ): Promise<{ [fileName: string]: string }> {
   const videos: { [fileName: string]: string } = {};
   const videoFileNames = new Set<string>();
+  const readFailures: string[] = [];
 
   for (const prompt of prompts) {
     if (prompt.videos && Array.isArray(prompt.videos)) {
@@ -115,19 +142,29 @@ async function collectVideos(
   }
 
   const allNames = Array.from(videoFileNames);
-  if (allNames.length > VIDEO_MAX_COUNT) {
+  if (
+    typeof limits?.maxCount === "number" &&
+    allNames.length > limits.maxCount
+  ) {
     console.warn(
-      `Video count (${allNames.length}) exceeds limit (${VIDEO_MAX_COUNT}), truncating`,
+      `Video count (${allNames.length}) exceeds limit (${limits.maxCount}), truncating`,
     );
   }
-  const namesToProcess = allNames.slice(0, VIDEO_MAX_COUNT);
+  const namesToProcess =
+    typeof limits?.maxCount === "number"
+      ? allNames.slice(0, limits.maxCount)
+      : allNames;
 
   await processBatched(namesToProcess, VIDEO_BATCH_SIZE, async (fileName) => {
     try {
       const size = await window.electron?.getVideoSize?.(fileName);
-      if (size != null && size > VIDEO_MAX_SIZE_BYTES) {
+      if (
+        typeof limits?.maxSizeBytes === "number" &&
+        size != null &&
+        size > limits.maxSizeBytes
+      ) {
         console.warn(
-          `Skipping video ${fileName}: size ${(size / 1024 / 1024).toFixed(1)}MB exceeds ${VIDEO_MAX_SIZE_BYTES / 1024 / 1024}MB limit`,
+          `Skipping video ${fileName}: size ${(size / 1024 / 1024).toFixed(1)}MB exceeds ${limits.maxSizeBytes / 1024 / 1024}MB limit`,
         );
         return;
       }
@@ -137,9 +174,17 @@ async function collectVideos(
         videos[fileName] = base64;
       }
     } catch (error) {
+      readFailures.push(fileName);
       console.warn(`Failed to read video ${fileName}:`, error);
     }
   });
+
+  if (readFailures.length > 0) {
+    const preview = readFailures.slice(0, 5).join(", ");
+    throw new Error(
+      `Backup export failed to read ${readFailures.length} video files: ${preview}`,
+    );
+  }
 
   return videos;
 }
@@ -152,48 +197,67 @@ async function collectSkillData(): Promise<{
   const skills: Skill[] = [];
   const skillVersions: SkillVersion[] = [];
   const skillFiles: { [skillId: string]: SkillFileSnapshot[] } = {};
+  const readFailures: string[] = [];
+  const skillApi = window.api?.skill;
 
+  if (!skillApi?.getAll) {
+    return { skills, skillVersions, skillFiles };
+  }
+
+  let allSkills: Skill[] = [];
   try {
-    const allSkills: Skill[] = (await window.api?.skill?.getAll()) ?? [];
-    skills.push(...allSkills);
-
-    await processBatched(allSkills, SKILL_CONCURRENCY, async (skill) => {
-      const [versionsResult, filesResult] = await Promise.allSettled([
-        window.api?.skill?.versionGetAll(skill.id),
-        window.api?.skill?.readLocalFiles(skill.id),
-      ]);
-
-      if (versionsResult.status === "fulfilled" && versionsResult.value) {
-        skillVersions.push(...versionsResult.value);
-      } else if (versionsResult.status === "rejected") {
-        console.warn(
-          `Failed to get versions for skill ${skill.name}:`,
-          versionsResult.reason,
-        );
-      }
-
-      if (filesResult.status === "fulfilled" && filesResult.value) {
-        const fileSnapshots: SkillFileSnapshot[] = (
-          filesResult.value as SkillLocalFileEntry[]
-        )
-          .filter((file) => !file.isDirectory)
-          .map((file) => ({
-            relativePath: file.path,
-            content: file.content,
-          }));
-
-        if (fileSnapshots.length > 0) {
-          skillFiles[skill.id] = fileSnapshots;
-        }
-      } else if (filesResult.status === "rejected") {
-        console.warn(
-          `Failed to read local files for skill ${skill.name}:`,
-          filesResult.reason,
-        );
-      }
-    });
+    allSkills = (await skillApi.getAll()) ?? [];
   } catch (error) {
-    console.warn("Failed to collect skill data:", error);
+    throw new Error(
+      `Backup export failed to list skills: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+
+  skills.push(...allSkills);
+
+  await processBatched(allSkills, SKILL_CONCURRENCY, async (skill) => {
+    const [versionsResult, filesResult] = await Promise.allSettled([
+      skillApi.versionGetAll?.(skill.id),
+      skillApi.readLocalFiles?.(skill.id),
+    ]);
+
+    if (versionsResult.status === "fulfilled" && versionsResult.value) {
+      skillVersions.push(...versionsResult.value);
+    } else if (versionsResult.status === "rejected") {
+      readFailures.push(`skill versions ${skill.name}`);
+      console.warn(
+        `Failed to get versions for skill ${skill.name}:`,
+        versionsResult.reason,
+      );
+    }
+
+    if (filesResult.status === "fulfilled" && filesResult.value) {
+      const fileSnapshots: SkillFileSnapshot[] = (
+        filesResult.value as SkillLocalFileEntry[]
+      )
+        .filter((file) => !file.isDirectory)
+        .map((file) => ({
+          relativePath: file.path,
+          content: file.content,
+        }));
+
+      if (fileSnapshots.length > 0) {
+        skillFiles[skill.id] = fileSnapshots;
+      }
+    } else if (filesResult.status === "rejected") {
+      readFailures.push(`skill files ${skill.name}`);
+      console.warn(
+        `Failed to read local files for skill ${skill.name}:`,
+        filesResult.reason,
+      );
+    }
+  });
+
+  if (readFailures.length > 0) {
+    const preview = readFailures.slice(0, 5).join(", ");
+    throw new Error(
+      `Backup export failed to read ${readFailures.length} skill records: ${preview}`,
+    );
   }
 
   return { skills, skillVersions, skillFiles };
@@ -212,6 +276,17 @@ async function gunzipToText(blob: Blob): Promise<string> {
 }
 
 async function getAllPromptVersions(): Promise<PromptVersion[]> {
+  if (window.api?.version?.getAll) {
+    const prompts = await getAllPrompts();
+    const versionLists = await Promise.all(
+      prompts.map(async (prompt) => {
+        const versions = await window.api?.version?.getAll?.(prompt.id);
+        return versions ?? [];
+      }),
+    );
+    return versionLists.flat();
+  }
+
   const database = await getDatabase();
   return new Promise<PromptVersion[]>((resolve, reject) => {
     const transaction = database.transaction(VERSION_STORE, "readonly");
@@ -222,8 +297,50 @@ async function getAllPromptVersions(): Promise<PromptVersion[]> {
   });
 }
 
+async function importDatabaseViaMainProcess(
+  normalizedBackup: DatabaseBackup,
+): Promise<boolean> {
+  if (
+    !window.api?.prompt?.getAll ||
+    !window.api?.prompt?.delete ||
+    !window.api?.prompt?.insertDirect ||
+    !window.api?.folder?.getAll ||
+    !window.api?.folder?.delete ||
+    !window.api?.folder?.insertDirect ||
+    !window.api?.version?.insertDirect
+  ) {
+    return false;
+  }
+
+  const existingPrompts = await getAllPrompts();
+  for (const prompt of existingPrompts) {
+    await window.api.prompt.delete(prompt.id);
+  }
+
+  const existingFolders = await getAllFolders();
+  for (const folder of existingFolders) {
+    await window.api.folder.delete(folder.id);
+  }
+
+  for (const folder of normalizedBackup.folders) {
+    await window.api.folder.insertDirect(folder);
+  }
+
+  for (const prompt of normalizedBackup.prompts) {
+    await window.api.prompt.insertDirect(prompt);
+  }
+
+  for (const version of normalizedBackup.versions) {
+    await window.api.version.insertDirect(version);
+  }
+
+  await window.api.prompt.syncWorkspace?.();
+  return true;
+}
+
 export async function exportDatabase(options?: {
   skipVideoContent?: boolean;
+  limitMedia?: boolean;
 }): Promise<DatabaseBackup> {
   const [prompts, folders, versions] = await Promise.all([
     getAllPrompts(),
@@ -231,9 +348,24 @@ export async function exportDatabase(options?: {
     getAllPromptVersions(),
   ]);
 
+  const imageLimits = options?.limitMedia
+    ? {
+        maxCount: IMAGE_MAX_COUNT,
+        maxSizeBytes: IMAGE_MAX_SIZE_BYTES,
+      }
+    : undefined;
+  const videoLimits = options?.limitMedia
+    ? {
+        maxCount: VIDEO_MAX_COUNT,
+        maxSizeBytes: VIDEO_MAX_SIZE_BYTES,
+      }
+    : undefined;
+
   const [images, videos, skillData] = await Promise.all([
-    collectImages(prompts),
-    options?.skipVideoContent ? Promise.resolve(undefined) : collectVideos(prompts),
+    collectImages(prompts, imageLimits),
+    options?.skipVideoContent
+      ? Promise.resolve(undefined)
+      : collectVideos(prompts, videoLimits),
     collectSkillData(),
   ]);
 
@@ -264,43 +396,50 @@ export async function exportDatabase(options?: {
 
 export async function importDatabase(backup: DatabaseBackup): Promise<void> {
   const normalizedBackup = normalizeImportedBackup(backup);
-  const database = await getDatabase();
   const restoredSkillIdMap = new Map<string, string>();
   const restoredSkillsByName = new Map<string, Skill>();
+  const restoreFailures: string[] = [];
+  const restoredViaMainProcess =
+    await importDatabaseViaMainProcess(normalizedBackup);
 
-  await clearDatabase();
+  if (!restoredViaMainProcess) {
+    const database = await getDatabase();
 
-  const transaction = database.transaction(
-    ["prompts", "folders", VERSION_STORE],
-    "readwrite",
-  );
+    await clearDatabase();
 
-  const promptStore = transaction.objectStore("prompts");
-  const folderStore = transaction.objectStore("folders");
-  const versionStore = transaction.objectStore(VERSION_STORE);
+    const transaction = database.transaction(
+      ["prompts", "folders", VERSION_STORE],
+      "readwrite",
+    );
 
-  for (const prompt of normalizedBackup.prompts) {
-    promptStore.add(prompt);
+    const promptStore = transaction.objectStore("prompts");
+    const folderStore = transaction.objectStore("folders");
+    const versionStore = transaction.objectStore(VERSION_STORE);
+
+    for (const prompt of normalizedBackup.prompts) {
+      promptStore.add(prompt);
+    }
+
+    for (const folder of normalizedBackup.folders) {
+      folderStore.add(folder);
+    }
+
+    for (const version of normalizedBackup.versions) {
+      versionStore.add(version);
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+    });
   }
-
-  for (const folder of normalizedBackup.folders) {
-    folderStore.add(folder);
-  }
-
-  for (const version of normalizedBackup.versions) {
-    versionStore.add(version);
-  }
-
-  await new Promise<void>((resolve, reject) => {
-    transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error);
-  });
 
   if (normalizedBackup.images) {
     for (const [fileName, base64] of Object.entries(normalizedBackup.images)) {
       try {
         await window.electron?.saveImageBase64?.(fileName, base64);
       } catch (error) {
+        restoreFailures.push(`image ${fileName}`);
         console.warn(`Failed to restore image ${fileName}:`, error);
       }
     }
@@ -311,6 +450,7 @@ export async function importDatabase(backup: DatabaseBackup): Promise<void> {
       try {
         await window.electron?.saveVideoBase64?.(fileName, base64);
       } catch (error) {
+        restoreFailures.push(`video ${fileName}`);
         console.warn(`Failed to restore video ${fileName}:`, error);
       }
     }
@@ -327,6 +467,7 @@ export async function importDatabase(backup: DatabaseBackup): Promise<void> {
   try {
     await window.api?.skill?.deleteAll();
   } catch (error) {
+    restoreFailures.push("existing skills cleanup");
     console.warn("Failed to clear existing skills:", error);
   }
 
@@ -358,6 +499,7 @@ export async function importDatabase(backup: DatabaseBackup): Promise<void> {
           restoredSkillsByName.set(restoredSkill.name, restoredSkill);
         }
       } catch (error) {
+        restoreFailures.push(`skill ${skill.name}`);
         console.warn(`Failed to restore skill ${skill.name}:`, error);
       }
     }
@@ -383,6 +525,9 @@ export async function importDatabase(backup: DatabaseBackup): Promise<void> {
           ),
         );
       } catch (error) {
+        restoreFailures.push(
+          `skill version ${version.skillId}@${version.version}`,
+        );
         console.warn(
           `Failed to restore skill version ${version.skillId}@${version.version}:`,
           error,
@@ -394,6 +539,7 @@ export async function importDatabase(backup: DatabaseBackup): Promise<void> {
       try {
         await window.api?.skill?.update(skillId, { currentVersion });
       } catch (error) {
+        restoreFailures.push(`skill current version ${skillId}`);
         console.warn(
           `Failed to restore current version for skill ${skillId}:`,
           error,
@@ -417,6 +563,7 @@ export async function importDatabase(backup: DatabaseBackup): Promise<void> {
             file.content,
           );
         } catch (error) {
+          restoreFailures.push(`skill file ${skillKey}/${file.relativePath}`);
           console.warn(
             `Failed to restore skill file ${skillKey}/${file.relativePath}:`,
             error,
@@ -424,6 +571,13 @@ export async function importDatabase(backup: DatabaseBackup): Promise<void> {
         }
       }
     }
+  }
+
+  if (restoreFailures.length > 0) {
+    const preview = restoreFailures.slice(0, 5).join(", ");
+    throw new Error(
+      `Backup restore completed with ${restoreFailures.length} file errors: ${preview}`,
+    );
   }
 }
 

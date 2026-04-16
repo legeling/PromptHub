@@ -7,8 +7,6 @@ import type {
 } from "@prompthub/shared/types";
 import * as db from "../services/database";
 
-let _seedPromise: Promise<void> | null = null;
-
 // Sort method
 // 排序方式
 export type SortBy = "updatedAt" | "createdAt" | "title" | "usageCount";
@@ -81,12 +79,6 @@ export const usePromptStore = create<PromptState>()(
       fetchPrompts: async () => {
         set({ isLoading: true });
         try {
-          // Ensure database is initialized and seed data is populated (once).
-          // Uses a shared Promise to prevent concurrent callers from seeding twice.
-          if (!_seedPromise) {
-            _seedPromise = db.seedDatabase();
-          }
-          await _seedPromise;
           // Get data from IndexedDB
           const prompts = await db.getAllPrompts();
           set({ prompts });
@@ -112,29 +104,6 @@ export const usePromptStore = create<PromptState>()(
       },
 
       updatePrompt: async (id, data) => {
-        const currentPrompt = get().prompts.find((p) => p.id === id);
-
-        // If content has changed, save current version first
-        // 如果内容有变化，先保存当前版本
-        if (
-          currentPrompt &&
-          (data.systemPrompt !== undefined || data.userPrompt !== undefined)
-        ) {
-          const hasContentChange =
-            (data.systemPrompt !== undefined &&
-              data.systemPrompt !== currentPrompt.systemPrompt) ||
-            (data.userPrompt !== undefined &&
-              data.userPrompt !== currentPrompt.userPrompt);
-
-          if (hasContentChange) {
-            await db.createPromptVersion(id, {
-              systemPrompt: currentPrompt.systemPrompt,
-              userPrompt: currentPrompt.userPrompt,
-              version: currentPrompt.version,
-            });
-          }
-        }
-
         const updated = await db.updatePrompt(id, data);
         set((state) => ({
           prompts: state.prompts.map((p) => (p.id === id ? updated : p)),

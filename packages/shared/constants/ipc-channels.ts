@@ -11,12 +11,16 @@ export const IPC_CHANNELS = {
   PROMPT_DELETE: "prompt:delete",
   PROMPT_SEARCH: "prompt:search",
   PROMPT_COPY: "prompt:copy",
+  PROMPT_INSERT_DIRECT: "prompt:insertDirect",
+  PROMPT_SYNC_WORKSPACE: "prompt:syncWorkspace",
 
   // Version
   VERSION_GET_ALL: "version:getAll",
   VERSION_CREATE: "version:create",
   VERSION_ROLLBACK: "version:rollback",
   VERSION_DIFF: "version:diff",
+  VERSION_DELETE: "version:delete",
+  VERSION_INSERT_DIRECT: "version:insertDirect",
 
   // Folder
   FOLDER_CREATE: "folder:create",
@@ -24,6 +28,7 @@ export const IPC_CHANNELS = {
   FOLDER_UPDATE: "folder:update",
   FOLDER_DELETE: "folder:delete",
   FOLDER_REORDER: "folder:reorder",
+  FOLDER_INSERT_DIRECT: "folder:insertDirect",
 
   // Settings
   SETTINGS_GET: "settings:get",

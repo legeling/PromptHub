@@ -367,7 +367,15 @@ declare global {
         download: (
           useMirror?: boolean,
         ) => Promise<{ success: boolean; error?: string }>;
-        install: () => Promise<{ success: boolean; manual?: boolean } | void>;
+        install: () => Promise<
+          | {
+              success: boolean;
+              manual?: boolean;
+              backupPath?: string;
+              error?: string;
+            }
+          | void
+        >;
         openDownloadedUpdate: () => Promise<{
           success: boolean;
           path?: string;

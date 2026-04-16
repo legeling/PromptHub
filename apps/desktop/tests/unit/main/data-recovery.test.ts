@@ -65,6 +65,15 @@ function createTestDatabase(
   db.close();
 }
 
+function createRendererStorage(
+  dirPath: string,
+  fileName = "IndexedDB/file__0.indexeddb.leveldb/LOG",
+): void {
+  const absolutePath = path.join(dirPath, fileName);
+  fs.mkdirSync(path.dirname(absolutePath), { recursive: true });
+  fs.writeFileSync(absolutePath, "renderer-storage-data");
+}
+
 describe("Data Recovery", () => {
   let tmpBase: string;
 
@@ -211,6 +220,22 @@ describe("Data Recovery", () => {
       const results = detectRecoverableDatabases(currentDir, [candidateDir]);
       expect(results).toEqual([]);
     });
+
+    it("detects renderer storage even when SQLite has no prompts", () => {
+      const currentDir = path.join(tmpBase, "current");
+      fs.mkdirSync(currentDir);
+
+      const candidateDir = path.join(tmpBase, "candidate");
+      fs.mkdirSync(candidateDir);
+      createTestDatabase(candidateDir, { prompts: 0 });
+      createRendererStorage(candidateDir);
+
+      const results = detectRecoverableDatabases(currentDir, [candidateDir]);
+      expect(results).toHaveLength(1);
+      expect(results[0].sourcePath).toBe(candidateDir);
+      expect(results[0].promptCount).toBe(0);
+      expect(results[0].dbSizeBytes).toBeGreaterThan(0);
+    });
   });
 
   // ─────────────────────────────────────────────
@@ -334,6 +359,53 @@ describe("Data Recovery", () => {
       ).toBe('{"showApp":"CmdOrCtrl+Shift+P"}');
     });
 
+    it("copies renderer browser storage directories", () => {
+      const sourceDir = path.join(tmpBase, "source");
+      fs.mkdirSync(sourceDir);
+      createRendererStorage(sourceDir);
+
+      const targetDir = path.join(tmpBase, "target");
+      fs.mkdirSync(targetDir);
+
+      const result = performDatabaseRecovery(sourceDir, targetDir);
+      expect(result.success).toBe(true);
+      expect(
+        fs.existsSync(
+          path.join(targetDir, "IndexedDB", "file__0.indexeddb.leveldb", "LOG"),
+        ),
+      ).toBe(true);
+      expect(
+        fs.readFileSync(
+          path.join(targetDir, "IndexedDB", "file__0.indexeddb.leveldb", "LOG"),
+          "utf8",
+        ),
+      ).toBe("renderer-storage-data");
+    });
+
+    it("copies workspace prompt files during recovery", () => {
+      const sourceDir = path.join(tmpBase, "source");
+      fs.mkdirSync(sourceDir);
+      fs.mkdirSync(path.join(sourceDir, "workspace", "prompts", "ops"), {
+        recursive: true,
+      });
+      fs.writeFileSync(
+        path.join(sourceDir, "workspace", "prompts", "ops", "prompt.md"),
+        "workspace-prompt-data",
+      );
+
+      const targetDir = path.join(tmpBase, "target");
+      fs.mkdirSync(targetDir);
+
+      const result = performDatabaseRecovery(sourceDir, targetDir);
+      expect(result.success).toBe(true);
+      expect(
+        fs.readFileSync(
+          path.join(targetDir, "workspace", "prompts", "ops", "prompt.md"),
+          "utf8",
+        ),
+      ).toBe("workspace-prompt-data");
+    });
+
     it("does not overwrite existing config files in target", () => {
       const sourceDir = path.join(tmpBase, "source");
       fs.mkdirSync(sourceDir);
@@ -358,17 +430,17 @@ describe("Data Recovery", () => {
       ).toBe('{"target":"data"}');
     });
 
-    it("returns error when source database does not exist", () => {
+    it("returns error when source path has no recoverable data", () => {
       const sourceDir = path.join(tmpBase, "nonexistent-source");
       fs.mkdirSync(sourceDir);
-      // No database created
+      // No database or renderer storage created
 
       const targetDir = path.join(tmpBase, "target");
       fs.mkdirSync(targetDir);
 
       const result = performDatabaseRecovery(sourceDir, targetDir);
       expect(result.success).toBe(false);
-      expect(result.error).toContain("Source database not found");
+      expect(result.error).toContain("Source path has no recoverable data");
     });
 
     it("handles recovery when target directory has no existing database", () => {

@@ -19,8 +19,8 @@ export function registerAllIPC(db: Database.Database): void {
   const folderDB = new FolderDB(db);
   const skillDB = new SkillDB(db);
 
-  registerPromptIPC(promptDB);
-  registerFolderIPC(folderDB);
+  registerPromptIPC(promptDB, folderDB);
+  registerFolderIPC(folderDB, promptDB);
   registerSkillIPC(skillDB);
   registerSettingsIPC(db);
   registerSecurityIPC(db);

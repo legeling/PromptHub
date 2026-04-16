@@ -1,17 +1,31 @@
 import { ipcMain } from 'electron';
 import { IPC_CHANNELS } from '@prompthub/shared/constants';
 import { PromptDB } from '../database/prompt';
-import type { CreatePromptDTO, UpdatePromptDTO, SearchQuery } from '@prompthub/shared/types';
+import { FolderDB } from '../database/folder';
+import type {
+  CreatePromptDTO,
+  Prompt,
+  PromptVersion,
+  SearchQuery,
+  UpdatePromptDTO,
+} from '@prompthub/shared/types';
+import { syncPromptWorkspaceFromDatabase } from "../services/prompt-workspace";
 
 /**
  * Register Prompt-related IPC handlers
  * 注册 Prompt 相关 IPC 处理器
  */
-export function registerPromptIPC(db: PromptDB): void {
+export function registerPromptIPC(db: PromptDB, folderDb: FolderDB): void {
+  const syncWorkspace = () => {
+    syncPromptWorkspaceFromDatabase(db, folderDb);
+  };
+
   // Create Prompt
   // 创建 Prompt
   ipcMain.handle(IPC_CHANNELS.PROMPT_CREATE, async (_, data: CreatePromptDTO) => {
-    return db.create(data);
+    const created = db.create(data);
+    syncWorkspace();
+    return created;
   });
 
   // Get single Prompt
@@ -29,13 +43,21 @@ export function registerPromptIPC(db: PromptDB): void {
   // Update Prompt
   // 更新 Prompt
   ipcMain.handle(IPC_CHANNELS.PROMPT_UPDATE, async (_, id: string, data: UpdatePromptDTO) => {
-    return db.update(id, data);
+    const updated = db.update(id, data);
+    if (updated) {
+      syncWorkspace();
+    }
+    return updated;
   });
 
   // Delete Prompt
   // 删除 Prompt
   ipcMain.handle(IPC_CHANNELS.PROMPT_DELETE, async (_, id: string) => {
-    return db.delete(id);
+    const deleted = db.delete(id);
+    if (deleted) {
+      syncWorkspace();
+    }
+    return deleted;
   });
 
   // Search Prompts
@@ -67,6 +89,16 @@ export function registerPromptIPC(db: PromptDB): void {
     }
   );
 
+  ipcMain.handle(IPC_CHANNELS.PROMPT_INSERT_DIRECT, async (_, prompt: Prompt) => {
+    db.insertPromptDirect(prompt);
+    return true;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.PROMPT_SYNC_WORKSPACE, async () => {
+    syncWorkspace();
+    return true;
+  });
+
   // Get all versions
   // 获取所有版本
   ipcMain.handle(IPC_CHANNELS.VERSION_GET_ALL, async (_, promptId: string) => {
@@ -76,12 +108,31 @@ export function registerPromptIPC(db: PromptDB): void {
   // Create version
   // 创建版本
   ipcMain.handle(IPC_CHANNELS.VERSION_CREATE, async (_, promptId: string, note?: string) => {
-    return db.createVersion(promptId, note);
+    const created = db.createVersion(promptId, note);
+    syncWorkspace();
+    return created;
   });
 
   // Rollback version
   // 回滚版本
   ipcMain.handle(IPC_CHANNELS.VERSION_ROLLBACK, async (_, promptId: string, version: number) => {
-    return db.rollback(promptId, version);
+    const rolledBack = db.rollback(promptId, version);
+    if (rolledBack) {
+      syncWorkspace();
+    }
+    return rolledBack;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.VERSION_DELETE, async (_, versionId: string) => {
+    const deleted = db.deleteVersion(versionId);
+    if (deleted) {
+      syncWorkspace();
+    }
+    return deleted;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.VERSION_INSERT_DIRECT, async (_, version: PromptVersion) => {
+    db.insertVersionDirect(version);
+    return true;
   });
 }

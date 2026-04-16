@@ -164,6 +164,36 @@ export function initDatabase(
         .run();
     }
 
+    if (!promptCols.includes("system_prompt_en")) {
+      console.log("Migrating: Adding system_prompt_en column to prompts table");
+      db!.prepare("ALTER TABLE prompts ADD COLUMN system_prompt_en TEXT").run();
+    }
+
+    if (!promptCols.includes("user_prompt_en")) {
+      console.log("Migrating: Adding user_prompt_en column to prompts table");
+      db!.prepare("ALTER TABLE prompts ADD COLUMN user_prompt_en TEXT").run();
+    }
+
+    if (!promptCols.includes("videos")) {
+      console.log("Migrating: Adding videos column to prompts table");
+      db!.prepare("ALTER TABLE prompts ADD COLUMN videos TEXT").run();
+    }
+
+    if (!promptCols.includes("last_ai_response")) {
+      console.log("Migrating: Adding last_ai_response column to prompts table");
+      db!.prepare("ALTER TABLE prompts ADD COLUMN last_ai_response TEXT").run();
+    }
+
+    if (!promptCols.includes("owner_user_id")) {
+      console.log("Migrating: Adding owner_user_id column to prompts table");
+      db!.prepare("ALTER TABLE prompts ADD COLUMN owner_user_id TEXT REFERENCES users(id) ON DELETE SET NULL").run();
+    }
+
+    if (!promptCols.includes("visibility")) {
+      console.log("Migrating: Adding visibility column to prompts table");
+      db!.prepare("ALTER TABLE prompts ADD COLUMN visibility TEXT NOT NULL DEFAULT 'private'").run();
+    }
+
     // Migrations: folders table (query column list once)
     const folderCols = (
       db!.pragma("table_info(folders)") as PragmaColumnInfo[]
@@ -179,6 +209,16 @@ export function initDatabase(
     if (!folderCols.includes("updated_at")) {
       console.log("Migrating: Adding updated_at column to folders table");
       db!.prepare("ALTER TABLE folders ADD COLUMN updated_at INTEGER").run();
+    }
+
+    if (!folderCols.includes("owner_user_id")) {
+      console.log("Migrating: Adding owner_user_id column to folders table");
+      db!.prepare("ALTER TABLE folders ADD COLUMN owner_user_id TEXT REFERENCES users(id) ON DELETE SET NULL").run();
+    }
+
+    if (!folderCols.includes("visibility")) {
+      console.log("Migrating: Adding visibility column to folders table");
+      db!.prepare("ALTER TABLE folders ADD COLUMN visibility TEXT NOT NULL DEFAULT 'private'").run();
     }
 
     // Migrations: skills table (query column list once)
@@ -214,6 +254,16 @@ export function initDatabase(
           .prepare(`ALTER TABLE skills ADD COLUMN ${col.name} ${col.type}`)
           .run();
       }
+    }
+
+    if (!skillCols.includes("owner_user_id")) {
+      console.log("Migrating: Adding owner_user_id column to skills table");
+      db!.prepare("ALTER TABLE skills ADD COLUMN owner_user_id TEXT REFERENCES users(id) ON DELETE SET NULL").run();
+    }
+
+    if (!skillCols.includes("visibility")) {
+      console.log("Migrating: Adding visibility column to skills table");
+      db!.prepare("ALTER TABLE skills ADD COLUMN visibility TEXT NOT NULL DEFAULT 'private'").run();
     }
 
     // Backfill: set original_tags = tags for existing skills that don't have original_tags yet
@@ -299,6 +349,64 @@ export function initDatabase(
       markMigration("normalize_skill_version_tracking_v1");
     }
 
+    if (!hasMigration("server_auth_tables_v1")) {
+      db!.exec(`
+        CREATE TABLE IF NOT EXISTS users (
+          id TEXT PRIMARY KEY,
+          username TEXT NOT NULL UNIQUE,
+          password_hash TEXT NOT NULL,
+          role TEXT NOT NULL DEFAULT 'user' CHECK(role IN ('admin', 'user')),
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS refresh_tokens (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          token_hash TEXT NOT NULL,
+          expires_at INTEGER NOT NULL,
+          created_at INTEGER NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS user_settings (
+          user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          key TEXT NOT NULL,
+          value TEXT NOT NULL,
+          updated_at INTEGER NOT NULL,
+          PRIMARY KEY (user_id, key)
+        );
+      `);
+      markMigration("server_auth_tables_v1");
+    }
+
+    const userCols = (
+      db!.pragma("table_info(users)") as PragmaColumnInfo[]
+    ).map((c) => c.name);
+
+    if (!userCols.includes("role")) {
+      console.log("Migrating: Adding role column to users table");
+      db!.prepare("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'").run();
+    }
+
+    const userSettingsExists = db!
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='user_settings'",
+      )
+      .get();
+
+    if (!userSettingsExists) {
+      console.log("Migrating: Creating user_settings table");
+      db!.exec(`
+        CREATE TABLE IF NOT EXISTS user_settings (
+          user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          key TEXT NOT NULL,
+          value TEXT NOT NULL,
+          updated_at INTEGER NOT NULL,
+          PRIMARY KEY (user_id, key)
+        )
+      `);
+    }
+
     // ── skill_versions table ────────────────────────────────────────────────
     const skillVersionsExists = db!
       .prepare(
@@ -349,6 +457,25 @@ export function initDatabase(
         }
       }
       markMigration("dedupe_skill_names_v1");
+    }
+
+    const promptVersionCols = (
+      db!.pragma("table_info(prompt_versions)") as PragmaColumnInfo[]
+    ).map((c) => c.name);
+
+    if (!promptVersionCols.includes("system_prompt_en")) {
+      console.log("Migrating: Adding system_prompt_en column to prompt_versions table");
+      db!.prepare("ALTER TABLE prompt_versions ADD COLUMN system_prompt_en TEXT").run();
+    }
+
+    if (!promptVersionCols.includes("user_prompt_en")) {
+      console.log("Migrating: Adding user_prompt_en column to prompt_versions table");
+      db!.prepare("ALTER TABLE prompt_versions ADD COLUMN user_prompt_en TEXT").run();
+    }
+
+    if (!promptVersionCols.includes("ai_response")) {
+      console.log("Migrating: Adding ai_response column to prompt_versions table");
+      db!.prepare("ALTER TABLE prompt_versions ADD COLUMN ai_response TEXT").run();
     }
   });
 

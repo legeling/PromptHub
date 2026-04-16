@@ -75,3 +75,11 @@ export function getUserDataPath(): string {
 export function getSkillsDir(): string {
   return path.join(getUserDataPath(), "skills");
 }
+
+export function getWorkspaceDir(): string {
+  return path.join(getUserDataPath(), "workspace");
+}
+
+export function getPromptsWorkspaceDir(): string {
+  return path.join(getWorkspaceDir(), "prompts");
+}

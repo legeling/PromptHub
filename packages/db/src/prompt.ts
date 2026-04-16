@@ -6,7 +6,47 @@ import type {
   UpdatePromptDTO,
   SearchQuery,
   PromptVersion,
+  PromptType,
 } from "@prompthub/shared/types";
+
+interface PromptRow {
+  id: string;
+  title: string;
+  description: string | null;
+  prompt_type: PromptType | null;
+  system_prompt: string | null;
+  system_prompt_en: string | null;
+  user_prompt: string;
+  user_prompt_en: string | null;
+  variables: string | null;
+  tags: string | null;
+  folder_id: string | null;
+  images: string | null;
+  videos: string | null;
+  is_favorite: number;
+  is_pinned: number;
+  current_version: number;
+  usage_count: number;
+  source: string | null;
+  notes: string | null;
+  last_ai_response: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface PromptVersionRow {
+  id: string;
+  prompt_id: string;
+  version: number;
+  system_prompt: string | null;
+  system_prompt_en: string | null;
+  user_prompt: string;
+  user_prompt_en: string | null;
+  variables: string | null;
+  note: string | null;
+  ai_response: string | null;
+  created_at: string;
+}
 
 export class PromptDB {
   constructor(private db: Database.Database) {}
@@ -21,10 +61,10 @@ export class PromptDB {
 
     const stmt = this.db.prepare(`
       INSERT INTO prompts (
-        id, title, description, prompt_type, system_prompt, user_prompt,
-        variables, tags, folder_id, images, source, notes, is_favorite, current_version,
-        usage_count, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        id, title, description, prompt_type, system_prompt, system_prompt_en, user_prompt,
+        user_prompt_en, variables, tags, folder_id, images, videos, source, notes,
+        last_ai_response, is_favorite, current_version, usage_count, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
@@ -33,13 +73,17 @@ export class PromptDB {
       data.description || null,
       data.promptType || "text",
       data.systemPrompt || null,
+      data.systemPromptEn || null,
       data.userPrompt,
+      data.userPromptEn || null,
       JSON.stringify(data.variables || []),
       JSON.stringify(data.tags || []),
       data.folderId || null,
       JSON.stringify(data.images || []),
+      JSON.stringify(data.videos || []),
       data.source || null,
       data.notes || null,
+      null,
       0,
       1,
       0,
@@ -61,7 +105,7 @@ export class PromptDB {
    */
   getById(id: string): Prompt | null {
     const stmt = this.db.prepare("SELECT * FROM prompts WHERE id = ?");
-    const row = stmt.get(id) as any;
+    const row = stmt.get(id) as PromptRow | undefined;
     return row ? this.rowToPrompt(row) : null;
   }
 
@@ -73,7 +117,7 @@ export class PromptDB {
     const stmt = this.db.prepare(
       "SELECT * FROM prompts ORDER BY updated_at DESC",
     );
-    const rows = stmt.all() as any[];
+    const rows = stmt.all() as PromptRow[];
     return rows.map((row) => this.rowToPrompt(row));
   }
 
@@ -89,7 +133,7 @@ export class PromptDB {
 
     const now = Date.now();
     const updates: string[] = ["updated_at = ?"];
-    const values: any[] = [now];
+    const values: Array<string | number | null> = [now];
 
     if (data.title !== undefined) {
       updates.push("title = ?");
@@ -107,9 +151,17 @@ export class PromptDB {
       updates.push("system_prompt = ?");
       values.push(data.systemPrompt);
     }
+    if (data.systemPromptEn !== undefined) {
+      updates.push("system_prompt_en = ?");
+      values.push(data.systemPromptEn);
+    }
     if (data.userPrompt !== undefined) {
       updates.push("user_prompt = ?");
       values.push(data.userPrompt);
+    }
+    if (data.userPromptEn !== undefined) {
+      updates.push("user_prompt_en = ?");
+      values.push(data.userPromptEn);
     }
     if (data.variables !== undefined) {
       updates.push("variables = ?");
@@ -127,6 +179,10 @@ export class PromptDB {
       updates.push("images = ?");
       values.push(JSON.stringify(data.images));
     }
+    if (data.videos !== undefined) {
+      updates.push("videos = ?");
+      values.push(JSON.stringify(data.videos));
+    }
     if (data.isFavorite !== undefined) {
       updates.push("is_favorite = ?");
       values.push(data.isFavorite ? 1 : 0);
@@ -143,6 +199,14 @@ export class PromptDB {
       updates.push("notes = ?");
       values.push(data.notes);
     }
+    if (data.usageCount !== undefined) {
+      updates.push("usage_count = ?");
+      values.push(data.usageCount);
+    }
+    if (data.lastAiResponse !== undefined) {
+      updates.push("last_ai_response = ?");
+      values.push(data.lastAiResponse);
+    }
 
     values.push(id);
 
@@ -157,7 +221,9 @@ export class PromptDB {
       // 如果内容有变化，创建新版本
       if (
         data.systemPrompt !== undefined ||
+        data.systemPromptEn !== undefined ||
         data.userPrompt !== undefined ||
+        data.userPromptEn !== undefined ||
         data.variables !== undefined
       ) {
         this.createVersion(id);
@@ -168,26 +234,31 @@ export class PromptDB {
 
     // Build updated prompt in memory instead of re-querying (performance optimization)
     // 在内存中构建更新后的 prompt 对象，而不是重新查询（性能优化）
-    // Note: updatedAt is stored as number in DB but typed as string - using 'as any' for compatibility
-    // 注意：updatedAt 在数据库中存储为数字但类型定义为字符串 - 使用 'as any' 保持兼容
     const updatedPrompt: Prompt = {
       ...existingPrompt,
-      updatedAt: now as any,
+      updatedAt: new Date(now).toISOString(),
       ...(data.title !== undefined && { title: data.title }),
       ...(data.description !== undefined && { description: data.description }),
       ...(data.promptType !== undefined && { promptType: data.promptType }),
       ...(data.systemPrompt !== undefined && {
         systemPrompt: data.systemPrompt,
       }),
+      ...(data.systemPromptEn !== undefined && {
+        systemPromptEn: data.systemPromptEn,
+      }),
       ...(data.userPrompt !== undefined && { userPrompt: data.userPrompt }),
+      ...(data.userPromptEn !== undefined && { userPromptEn: data.userPromptEn }),
       ...(data.variables !== undefined && { variables: data.variables }),
       ...(data.tags !== undefined && { tags: data.tags }),
       ...(data.folderId !== undefined && { folderId: data.folderId }),
       ...(data.images !== undefined && { images: data.images }),
+      ...(data.videos !== undefined && { videos: data.videos }),
       ...(data.isFavorite !== undefined && { isFavorite: data.isFavorite }),
       ...(data.isPinned !== undefined && { isPinned: data.isPinned }),
+      ...(data.usageCount !== undefined && { usageCount: data.usageCount }),
       ...(data.source !== undefined && { source: data.source }),
       ...(data.notes !== undefined && { notes: data.notes }),
+      ...(data.lastAiResponse !== undefined && { lastAiResponse: data.lastAiResponse }),
     };
 
     return updatedPrompt;
@@ -209,7 +280,7 @@ export class PromptDB {
    */
   search(query: SearchQuery): Prompt[] {
     let sql = "SELECT * FROM prompts WHERE 1=1";
-    const params: any[] = [];
+    const params: Array<string | number> = [];
 
     if (query.keyword) {
       sql +=
@@ -264,7 +335,7 @@ export class PromptDB {
     }
 
     const stmt = this.db.prepare(sql);
-    const rows = stmt.all(...params) as any[];
+    const rows = stmt.all(...params) as PromptRow[];
     return rows.map((row) => this.rowToPrompt(row));
   }
 
@@ -302,8 +373,9 @@ export class PromptDB {
         .prepare(
           `
         INSERT INTO prompt_versions (
-          id, prompt_id, version, system_prompt, user_prompt, variables, note, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          id, prompt_id, version, system_prompt, system_prompt_en, user_prompt,
+          user_prompt_en, variables, note, ai_response, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
         )
         .run(
@@ -311,9 +383,12 @@ export class PromptDB {
           promptId,
           version,
           prompt.systemPrompt || null,
+          prompt.systemPromptEn || null,
           prompt.userPrompt,
+          prompt.userPromptEn || null,
           JSON.stringify(prompt.variables),
           note || null,
+          prompt.lastAiResponse || null,
           now,
         );
 
@@ -330,9 +405,12 @@ export class PromptDB {
         promptId,
         version,
         systemPrompt: prompt.systemPrompt,
+        systemPromptEn: prompt.systemPromptEn,
         userPrompt: prompt.userPrompt,
+        userPromptEn: prompt.userPromptEn,
         variables: prompt.variables,
         note,
+        aiResponse: prompt.lastAiResponse,
         createdAt: new Date(now).toISOString(),
       } as PromptVersion;
     });
@@ -348,8 +426,89 @@ export class PromptDB {
     const stmt = this.db.prepare(
       "SELECT * FROM prompt_versions WHERE prompt_id = ? ORDER BY version DESC",
     );
-    const rows = stmt.all(promptId) as any[];
+    const rows = stmt.all(promptId) as PromptVersionRow[];
     return rows.map((row) => this.rowToVersion(row));
+  }
+
+  deleteVersion(versionId: string): boolean {
+    const stmt = this.db.prepare("DELETE FROM prompt_versions WHERE id = ?");
+    const result = stmt.run(versionId);
+    return result.changes > 0;
+  }
+
+  /**
+   * Insert a version row directly (for backup restore).
+   * 直接插入版本行（用于备份恢复）。
+   */
+  insertVersionDirect(version: PromptVersion): void {
+    this.db
+      .prepare(
+        `INSERT OR IGNORE INTO prompt_versions (
+          id, prompt_id, version, system_prompt, system_prompt_en, user_prompt,
+          user_prompt_en, variables, note, ai_response, created_at
+        ) VALUES (
+          @id, @prompt_id, @version, @system_prompt, @system_prompt_en, @user_prompt,
+          @user_prompt_en, @variables, @note, @ai_response, @created_at
+        )`,
+      )
+      .run({
+        "@id": version.id,
+        "@prompt_id": version.promptId,
+        "@version": version.version,
+        "@system_prompt": version.systemPrompt || null,
+        "@system_prompt_en": version.systemPromptEn || null,
+        "@user_prompt": version.userPrompt,
+        "@user_prompt_en": version.userPromptEn || null,
+        "@variables": JSON.stringify(version.variables),
+        "@note": version.note || null,
+        "@ai_response": version.aiResponse || null,
+        "@created_at": version.createdAt
+          ? new Date(version.createdAt).getTime()
+          : Date.now(),
+      });
+  }
+
+  insertPromptDirect(prompt: Prompt): void {
+    this.db
+      .prepare(
+        `INSERT OR REPLACE INTO prompts (
+          id, title, description, prompt_type, system_prompt, system_prompt_en, user_prompt,
+          user_prompt_en, variables, tags, folder_id, images, videos, is_favorite, is_pinned,
+          current_version, usage_count, source, notes, last_ai_response, created_at, updated_at
+        ) VALUES (
+          @id, @title, @description, @prompt_type, @system_prompt, @system_prompt_en, @user_prompt,
+          @user_prompt_en, @variables, @tags, @folder_id, @images, @videos, @is_favorite, @is_pinned,
+          @current_version, @usage_count, @source, @notes, @last_ai_response, @created_at, @updated_at
+        )`,
+      )
+      .run({
+        "@id": prompt.id,
+        "@title": prompt.title,
+        "@description": prompt.description ?? null,
+        "@prompt_type": prompt.promptType ?? "text",
+        "@system_prompt": prompt.systemPrompt ?? null,
+        "@system_prompt_en": prompt.systemPromptEn ?? null,
+        "@user_prompt": prompt.userPrompt,
+        "@user_prompt_en": prompt.userPromptEn ?? null,
+        "@variables": JSON.stringify(prompt.variables ?? []),
+        "@tags": JSON.stringify(prompt.tags ?? []),
+        "@folder_id": prompt.folderId ?? null,
+        "@images": JSON.stringify(prompt.images ?? []),
+        "@videos": JSON.stringify(prompt.videos ?? []),
+        "@is_favorite": prompt.isFavorite ? 1 : 0,
+        "@is_pinned": prompt.isPinned ? 1 : 0,
+        "@current_version": prompt.currentVersion ?? prompt.version ?? 1,
+        "@usage_count": prompt.usageCount ?? 0,
+        "@source": prompt.source ?? null,
+        "@notes": prompt.notes ?? null,
+        "@last_ai_response": prompt.lastAiResponse ?? null,
+        "@created_at": prompt.createdAt
+          ? new Date(prompt.createdAt).getTime()
+          : Date.now(),
+        "@updated_at": prompt.updatedAt
+          ? new Date(prompt.updatedAt).getTime()
+          : Date.now(),
+      });
   }
 
   /**
@@ -360,15 +519,18 @@ export class PromptDB {
     const stmt = this.db.prepare(
       "SELECT * FROM prompt_versions WHERE prompt_id = ? AND version = ?",
     );
-    const row = stmt.get(promptId, version) as any;
+    const row = stmt.get(promptId, version) as PromptVersionRow | undefined;
     if (!row) return null;
 
     const versionData = this.rowToVersion(row);
 
     return this.update(promptId, {
-      systemPrompt: versionData.systemPrompt,
+      systemPrompt: versionData.systemPrompt ?? undefined,
+      systemPromptEn: versionData.systemPromptEn ?? undefined,
       userPrompt: versionData.userPrompt,
+      userPromptEn: versionData.userPromptEn ?? undefined,
       variables: versionData.variables,
+      lastAiResponse: versionData.aiResponse ?? undefined,
     });
   }
 
@@ -376,18 +538,21 @@ export class PromptDB {
    * Convert database row to Prompt object
    * 数据库行转 Prompt 对象
    */
-  private rowToPrompt(row: any): Prompt {
+  private rowToPrompt(row: PromptRow): Prompt {
     return {
       id: row.id,
       title: row.title,
       description: row.description,
       promptType: row.prompt_type || "text",
       systemPrompt: row.system_prompt,
+      systemPromptEn: row.system_prompt_en,
       userPrompt: row.user_prompt,
+      userPromptEn: row.user_prompt_en,
       variables: JSON.parse(row.variables || "[]"),
       tags: JSON.parse(row.tags || "[]"),
       folderId: row.folder_id,
       images: JSON.parse(row.images || "[]"),
+      videos: JSON.parse(row.videos || "[]"),
       isFavorite: row.is_favorite === 1,
       isPinned: row.is_pinned === 1,
       version: row.current_version,
@@ -395,6 +560,7 @@ export class PromptDB {
       usageCount: row.usage_count,
       source: row.source,
       notes: row.notes,
+      lastAiResponse: row.last_ai_response,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
@@ -404,15 +570,18 @@ export class PromptDB {
    * Convert database row to PromptVersion object
    * 数据库行转 PromptVersion 对象
    */
-  private rowToVersion(row: any): PromptVersion {
+  private rowToVersion(row: PromptVersionRow): PromptVersion {
     return {
       id: row.id,
       promptId: row.prompt_id,
       version: row.version,
       systemPrompt: row.system_prompt,
+      systemPromptEn: row.system_prompt_en,
       userPrompt: row.user_prompt,
+      userPromptEn: row.user_prompt_en,
       variables: JSON.parse(row.variables || "[]"),
       note: row.note,
+      aiResponse: row.ai_response,
       createdAt: row.created_at,
     };
   }

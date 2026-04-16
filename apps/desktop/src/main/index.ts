@@ -49,6 +49,9 @@ import {
   extractDesktopCliArgs,
 } from "./desktop-cli";
 import { runCli } from "../cli/run";
+import { PromptDB } from "./database/prompt";
+import { FolderDB } from "./database/folder";
+import { bootstrapPromptWorkspace } from "./services/prompt-workspace";
 
 // Disable GPU acceleration (optional; may be needed on some systems)
 // 禁用 GPU 加速（可选，某些系统上可能需要）
@@ -663,6 +666,11 @@ ipcMain.handle("data:getStatus", () => {
 let cachedRecoveryResult: RecoverableDatabase[] | null = null;
 
 ipcMain.handle("data:checkRecovery", () => {
+  if (isE2E) {
+    cachedRecoveryResult = [];
+    return [];
+  }
+
   if (cachedRecoveryResult !== null) {
     return cachedRecoveryResult;
   }
@@ -816,6 +824,14 @@ ipcMain.handle("data:migrate", async (_event, newPath: string) => {
     const itemsToMigrate = [
       "prompthub.db", // Database file
       // 数据库文件
+      "workspace", // File-backed prompt workspace
+      // 文件化 Prompt 工作区
+      "IndexedDB", // Renderer IndexedDB profile
+      // 渲染进程 IndexedDB 配置
+      "Local Storage", // Renderer localStorage profile
+      // 渲染进程 localStorage 配置
+      "Session Storage", // Renderer session profile
+      // 渲染进程 sessionStorage 配置
       "images", // Images directory
       // 图片目录
       "videos", // Videos directory
@@ -1069,6 +1085,7 @@ app.whenReady().then(async () => {
     // 初始化数据库
     const db = initDatabase();
     applyE2ESeed(db);
+    bootstrapPromptWorkspace(new PromptDB(db), new FolderDB(db));
     appDb = db; // Save to module-level variable for createWindow access
     registerAllIPC(db);
 

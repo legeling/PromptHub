@@ -44,6 +44,13 @@ export interface RecoverableDatabase {
   dbSizeBytes: number;
 }
 
+const BROWSER_STORAGE_DIRS = [
+  "IndexedDB",
+  "Local Storage",
+  "Session Storage",
+];
+const FILE_STORAGE_DIRS = ["workspace"];
+
 // ── Path resolution ──────────────────────────────────────────────────────────
 
 function getDbPath(): string {
@@ -129,70 +136,70 @@ export function detectRecoverableDatabases(
     }
 
     const dbFile = path.join(candidate, "prompthub.db");
-    if (!fs.existsSync(dbFile)) {
-      continue;
-    }
+    const browserStorageBytes = getBrowserStorageBytes(candidate);
+    const fileStorageBytes = getFileStorageBytes(candidate);
 
-    let stat: fs.Stats;
-    try {
-      stat = fs.statSync(dbFile);
-    } catch {
-      continue;
-    }
-
-    // Skip empty/tiny files (< 4KB is basically an empty SQLite file)
-    if (stat.size < 4096) {
-      continue;
-    }
+    let dbSizeBytes = 0;
+    let promptCount = 0;
+    let folderCount = 0;
+    let skillCount = 0;
 
     let candidateDb: DatabaseAdapter.Database | null = null;
-    try {
-      candidateDb = new DatabaseAdapter(dbFile, { readOnly: true });
-      candidateDb.pragma("foreign_keys = OFF");
-
-      const promptRow = candidateDb
-        .prepare("SELECT COUNT(*) as count FROM prompts")
-        .get() as { count: number } | undefined;
-      const promptCount = promptRow?.count ?? 0;
-
-      if (promptCount === 0) {
-        continue;
-      }
-
-      const folderRow = candidateDb
-        .prepare("SELECT COUNT(*) as count FROM folders")
-        .get() as { count: number } | undefined;
-      const folderCount = folderRow?.count ?? 0;
-
-      let skillCount = 0;
+    if (fs.existsSync(dbFile)) {
       try {
-        const skillRow = candidateDb
-          .prepare("SELECT COUNT(*) as count FROM skills")
-          .get() as { count: number } | undefined;
-        skillCount = skillRow?.count ?? 0;
-      } catch {
-        // skills table may not exist in very old databases
-      }
+        const stat = fs.statSync(dbFile);
+        dbSizeBytes = stat.size;
 
-      results.push({
-        sourcePath: candidate,
-        promptCount,
-        folderCount,
-        skillCount,
-        dbSizeBytes: stat.size,
-      });
-    } catch (err) {
-      console.warn(
-        `[Recovery] Failed to inspect candidate database at ${dbFile}:`,
-        err,
-      );
-    } finally {
-      try {
-        candidateDb?.close();
-      } catch {
-        // ignore close errors
+        // Skip empty/tiny SQLite files unless there is renderer storage data.
+        if (stat.size >= 4096) {
+          candidateDb = new DatabaseAdapter(dbFile, { readOnly: true });
+          candidateDb.pragma("foreign_keys = OFF");
+
+          const promptRow = candidateDb
+            .prepare("SELECT COUNT(*) as count FROM prompts")
+            .get() as { count: number } | undefined;
+          promptCount = promptRow?.count ?? 0;
+
+          const folderRow = candidateDb
+            .prepare("SELECT COUNT(*) as count FROM folders")
+            .get() as { count: number } | undefined;
+          folderCount = folderRow?.count ?? 0;
+
+          try {
+            const skillRow = candidateDb
+              .prepare("SELECT COUNT(*) as count FROM skills")
+              .get() as { count: number } | undefined;
+            skillCount = skillRow?.count ?? 0;
+          } catch {
+            // skills table may not exist in very old databases
+          }
+        }
+      } catch (err) {
+        console.warn(
+          `[Recovery] Failed to inspect candidate database at ${dbFile}:`,
+          err,
+        );
+      } finally {
+        try {
+          candidateDb?.close();
+        } catch {
+          // ignore close errors
+        }
       }
     }
+
+    if (promptCount === 0 && browserStorageBytes === 0 && fileStorageBytes === 0) {
+      continue;
+    }
+
+    results.push({
+      sourcePath: candidate,
+      promptCount,
+      folderCount,
+      skillCount,
+      dbSizeBytes:
+        promptCount > 0 ? dbSizeBytes : browserStorageBytes + fileStorageBytes,
+    });
   }
 
   return results;
@@ -209,14 +216,21 @@ export function performDatabaseRecovery(
   const sourceDb = path.join(sourcePath, "prompthub.db");
   const targetDb = path.join(currentDataPath, "prompthub.db");
 
-  if (!fs.existsSync(sourceDb)) {
-    return { success: false, error: `Source database not found: ${sourceDb}` };
+  if (
+    !fs.existsSync(sourceDb) &&
+    getBrowserStorageBytes(sourcePath) === 0 &&
+    getFileStorageBytes(sourcePath) === 0
+  ) {
+    return {
+      success: false,
+      error: `Source path has no recoverable data: ${sourcePath}`,
+    };
   }
 
   try {
     // 1. Backup current database
     let backupPath: string | undefined;
-    if (fs.existsSync(targetDb)) {
+    if (fs.existsSync(sourceDb) && fs.existsSync(targetDb)) {
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       backupPath = `${targetDb}.pre-recovery-${timestamp}`;
       fs.copyFileSync(targetDb, backupPath);
@@ -224,11 +238,19 @@ export function performDatabaseRecovery(
     }
 
     // 2. Copy source database over current
-    fs.copyFileSync(sourceDb, targetDb);
-    console.log(`[Recovery] Copied database from ${sourceDb} to ${targetDb}`);
+    if (fs.existsSync(sourceDb)) {
+      fs.copyFileSync(sourceDb, targetDb);
+      console.log(`[Recovery] Copied database from ${sourceDb} to ${targetDb}`);
+    }
 
     // 3. Copy associated asset directories if they exist in source but not in target
-    const assetDirs = ["images", "videos", "skills"];
+    const assetDirs = [
+      "images",
+      "videos",
+      "skills",
+      ...FILE_STORAGE_DIRS,
+      ...BROWSER_STORAGE_DIRS,
+    ];
     for (const dir of assetDirs) {
       const sourceDir = path.join(sourcePath, dir);
       const targetDir = path.join(currentDataPath, dir);
@@ -275,4 +297,40 @@ function copyDirMerge(src: string, dest: string): void {
       fs.copyFileSync(srcPath, destPath);
     }
   }
+}
+
+function getBrowserStorageBytes(basePath: string): number {
+  return BROWSER_STORAGE_DIRS.reduce((total, dirName) => {
+    return total + getDirectorySize(path.join(basePath, dirName));
+  }, 0);
+}
+
+function getFileStorageBytes(basePath: string): number {
+  return FILE_STORAGE_DIRS.reduce((total, dirName) => {
+    return total + getDirectorySize(path.join(basePath, dirName));
+  }, 0);
+}
+
+function getDirectorySize(targetPath: string): number {
+  if (!fs.existsSync(targetPath)) {
+    return 0;
+  }
+
+  let stat: fs.Stats;
+  try {
+    stat = fs.statSync(targetPath);
+  } catch {
+    return 0;
+  }
+
+  if (!stat.isDirectory()) {
+    return stat.size;
+  }
+
+  let total = 0;
+  const entries = fs.readdirSync(targetPath, { withFileTypes: true });
+  for (const entry of entries) {
+    total += getDirectorySize(path.join(targetPath, entry.name));
+  }
+  return total;
 }

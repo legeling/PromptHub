@@ -5,6 +5,18 @@ import type { SkillIPCContext } from "./shared";
 import { readCurrentFilesSnapshot, replaceRepoFiles } from "./shared";
 import { SkillInstaller } from "../../services/skill-installer";
 
+function isValidSkillVersionCreatedAt(value: unknown): boolean {
+  if (typeof value === "number") {
+    return Number.isFinite(value);
+  }
+
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return false;
+  }
+
+  return Number.isFinite(new Date(value).getTime());
+}
+
 export function registerSkillVersionHandlers({ db }: SkillIPCContext): void {
   ipcMain.handle(
     IPC_CHANNELS.SKILL_VERSION_GET_ALL,
@@ -136,11 +148,10 @@ export function registerSkillVersionHandlers({ db }: SkillIPCContext): void {
         );
       }
       if (
-        typeof version.createdAt !== "number" ||
-        !Number.isFinite(version.createdAt)
+        !isValidSkillVersionCreatedAt(version.createdAt)
       ) {
         throw new Error(
-          "skill:insertVersionDirect requires created_at to be a finite number",
+          "skill:insertVersionDirect requires createdAt to be a valid ISO date string or finite timestamp",
         );
       }
       return db.insertVersionDirect(version);

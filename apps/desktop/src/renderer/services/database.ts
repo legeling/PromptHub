@@ -25,218 +25,9 @@ export type {
   ExportScope,
   PromptHubFile,
 } from "./database-backup-format";
-import { getSeedPrompts, getSeedFolders } from "./seedData";
-import i18n from "../i18n";
 
 const DB_NAME = "PromptHubDB";
 const DB_VERSION = DB_BACKUP_VERSION;
-
-// Preset data - 3 folders: AI Programming, Role Playing, Drawing Prompts
-// 预制数据 - 3个文件夹：AI编程、角色扮演、绘图提示词
-// @deprecated Use multilingual data from seedData.ts
-const SEED_PROMPTS: Prompt[] = [
-  // ========== AI 编程规则 ==========
-  // ========== AI Programming Rules ==========
-  {
-    id: "seed-1",
-    title: "Cursor Rules 专家",
-    description: "生成高质量的 Cursor/Windsurf AI 编程规则",
-    folderId: "folder-coding",
-    systemPrompt:
-      "你是一位 AI 辅助编程专家，精通 Cursor、Windsurf 等 AI IDE 的规则编写。你了解如何编写清晰、有效的 AI 编程指令，让 AI 更好地理解项目上下文和编码规范。",
-    userPrompt:
-      "请为我的 {{project_type}} 项目生成一份 Cursor Rules 文件：\n\n技术栈：{{tech_stack}}\n项目描述：{{description}}\n\n要求包含：\n1. 项目概述和目录结构说明\n2. 代码风格和命名规范\n3. 架构模式和设计原则\n4. 常用代码模板\n5. 禁止的实现方式\n6. 测试和文档要求",
-    variables: [],
-    tags: ["AI编程", "Cursor", "规则"],
-    isFavorite: true,
-    isPinned: false,
-    version: 1,
-    currentVersion: 1,
-    usageCount: 0,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "seed-2",
-    title: "代码审查专家",
-    description: "专业代码审查，发现问题并给出改进建议",
-    folderId: "folder-coding",
-    systemPrompt:
-      "你是一位资深软件工程师，专注于代码质量和最佳实践。审查时要严谨但友好，解释每个建议背后的原因。",
-    userPrompt:
-      "请审查以下 {{language}} 代码：\n\n```{{language}}\n{{code}}\n```\n\n请从以下方面审查：\n1. **代码质量**：命名规范、代码结构、可读性\n2. **潜在问题**：Bug、边界情况、异常处理\n3. **性能优化**：时间复杂度、内存使用\n4. **安全隐患**：输入验证、数据安全\n5. **改进建议**：具体的优化方案",
-    variables: [],
-    tags: ["AI编程", "代码审查"],
-    isFavorite: true,
-    isPinned: false,
-    version: 1,
-    currentVersion: 1,
-    usageCount: 0,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "seed-3",
-    title: "Git Commit 生成器",
-    description: "根据代码变更生成规范的 commit 信息",
-    folderId: "folder-coding",
-    systemPrompt:
-      "你是一位遵循 Conventional Commits 规范的开发者，擅长编写清晰、规范的提交信息。",
-    userPrompt:
-      "请根据以下代码变更生成 Git commit 信息：\n\n```diff\n{{diff}}\n```\n\n要求：\n1. 遵循格式：type(scope): description\n2. type：feat/fix/docs/style/refactor/test/chore\n3. 描述简洁，不超过 50 字符\n4. 如需要，添加详细 body",
-    variables: [],
-    tags: ["AI编程", "Git"],
-    isFavorite: false,
-    isPinned: false,
-    version: 1,
-    currentVersion: 1,
-    usageCount: 0,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  // ========== 角色扮演 ==========
-  // ========== Role Playing ==========
-  {
-    id: "seed-4",
-    title: "资深产品经理",
-    description: "扮演产品经理，帮助分析需求和设计产品",
-    folderId: "folder-roleplay",
-    systemPrompt:
-      "你是一位有 10 年经验的资深产品经理，曾在多家知名互联网公司工作。你擅长用户研究、需求分析、产品设计和项目管理。你的回答务实、有洞察力，会从用户价值和商业价值两个角度思考问题。",
-    userPrompt: "{{question}}",
-    variables: [],
-    tags: ["角色扮演", "产品"],
-    isFavorite: true,
-    isPinned: false,
-    version: 1,
-    currentVersion: 1,
-    usageCount: 0,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "seed-5",
-    title: "创业导师",
-    description: "扮演创业导师，提供创业建议和指导",
-    folderId: "folder-roleplay",
-    systemPrompt:
-      "你是一位成功的连续创业者和天使投资人，有丰富的创业和投资经验。你直言不讳，会指出创业者的盲点，但也会给予鼓励和实用建议。你关注商业模式、市场机会、团队建设和融资策略。",
-    userPrompt: "{{question}}",
-    variables: [],
-    tags: ["角色扮演", "创业"],
-    isFavorite: false,
-    isPinned: false,
-    version: 1,
-    currentVersion: 1,
-    usageCount: 0,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "seed-6",
-    title: "心理咨询师",
-    description: "扮演心理咨询师，提供情感支持和建议",
-    folderId: "folder-roleplay",
-    systemPrompt:
-      "你是一位专业的心理咨询师，拥有丰富的临床经验。你温和、有同理心，善于倾听和引导。你会帮助来访者探索自己的情绪和想法，但不会做出诊断或开具处方。如遇严重心理问题，你会建议寻求专业帮助。",
-    userPrompt: "{{question}}",
-    variables: [],
-    tags: ["角色扮演", "心理"],
-    isFavorite: false,
-    isPinned: false,
-    version: 1,
-    currentVersion: 1,
-    usageCount: 0,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  // ========== 绘图提示词 ==========
-  // ========== Drawing Prompts ==========
-  {
-    id: "seed-7",
-    title: "Midjourney 提示词生成",
-    description: "生成高质量的 Midjourney 绘图提示词",
-    folderId: "folder-image",
-    systemPrompt:
-      "你是一位精通 Midjourney 的 AI 绘画专家，了解各种艺术风格、构图技巧和提示词写法。你会生成详细、有创意的英文提示词，包含主体、风格、光影、构图等要素。",
-    userPrompt:
-      "请为以下描述生成 Midjourney 提示词：\n\n{{description}}\n\n风格偏好：{{style}}\n\n请生成：\n1. 完整的英文提示词\n2. 推荐的参数（--ar, --v, --s 等）\n3. 3个变体版本",
-    variables: [],
-    tags: ["绘图", "Midjourney"],
-    isFavorite: true,
-    isPinned: false,
-    version: 1,
-    currentVersion: 1,
-    usageCount: 0,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "seed-8",
-    title: "Stable Diffusion 提示词",
-    description: "生成 Stable Diffusion / FLUX 绘图提示词",
-    folderId: "folder-image",
-    systemPrompt:
-      "你是一位精通 Stable Diffusion 和 FLUX 的 AI 绘画专家，了解各种模型特点、LoRA 使用和提示词技巧。你会生成结构化的提示词，包含正向和负向提示。",
-    userPrompt:
-      "请为以下描述生成 SD/FLUX 提示词：\n\n{{description}}\n\n风格：{{style}}\n模型：{{model}}\n\n请生成：\n1. Positive Prompt（正向提示词）\n2. Negative Prompt（负向提示词）\n3. 推荐的采样器和步数",
-    variables: [],
-    tags: ["绘图", "SD", "FLUX"],
-    isFavorite: true,
-    isPinned: false,
-    version: 1,
-    currentVersion: 1,
-    usageCount: 0,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "seed-9",
-    title: "DALL-E 提示词优化",
-    description: "优化 DALL-E / GPT-4V 绘图提示词",
-    folderId: "folder-image",
-    systemPrompt:
-      "你是一位精通 DALL-E 和 GPT-4V 图像生成的专家，了解 OpenAI 图像模型的特点和最佳实践。你会生成清晰、具体的自然语言描述。",
-    userPrompt:
-      "请优化以下绘图描述，使其更适合 DALL-E 生成：\n\n原始描述：{{description}}\n\n请提供：\n1. 优化后的详细描述\n2. 艺术风格建议\n3. 构图和光影建议",
-    variables: [],
-    tags: ["绘图", "DALL-E"],
-    isFavorite: false,
-    isPinned: false,
-    version: 1,
-    currentVersion: 1,
-    usageCount: 0,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
-
-const SEED_FOLDERS: Folder[] = [
-  {
-    id: "folder-coding",
-    name: "AI 编程",
-    icon: "💻",
-    order: 0,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "folder-roleplay",
-    name: "角色扮演",
-    icon: "🎭",
-    order: 1,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "folder-image",
-    name: "绘图提示词",
-    icon: "🎨",
-    order: 2,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
 
 // Generate UUID using browser native API
 // 使用浏览器原生 API 生成 UUID
@@ -383,91 +174,18 @@ export async function resetDatabase(): Promise<void> {
   });
 }
 
-/**
- * 填充种子数据（首次启动时调用）
- * Fill seed data (called on first startup)
- */
-export async function seedDatabase(): Promise<void> {
-  const database = await getDatabase();
-
-  // 检查是否已有数据
-  // Check if there's already data
-  const promptCount = await new Promise<number>((resolve) => {
-    const transaction = database.transaction(STORES.PROMPTS, "readonly");
-    const store = transaction.objectStore(STORES.PROMPTS);
-    const request = store.count();
-    request.onsuccess = () => {
-      console.log("Current prompt count:", request.result);
-      resolve(request.result);
-    };
-    request.onerror = () => {
-      console.error("Failed to count prompts");
-      resolve(0);
-    };
-  });
-
-  // 如果没有数据，填充种子数据
-  // If no data, fill with seed data
-  if (promptCount === 0) {
-    // 获取当前语言
-    // Get current language
-    const currentLanguage = i18n.language || "en";
-    console.log(
-      "Seeding database with initial data for language:",
-      currentLanguage,
-    );
-
-    // 获取对应语言的种子数据
-    // Get seed data for corresponding language
-    const seedPrompts = getSeedPrompts(currentLanguage);
-    const seedFolders = getSeedFolders(currentLanguage);
-
-    const transaction = database.transaction(
-      [STORES.PROMPTS, STORES.FOLDERS],
-      "readwrite",
-    );
-    const promptStore = transaction.objectStore(STORES.PROMPTS);
-    const folderStore = transaction.objectStore(STORES.FOLDERS);
-
-    // 添加预制 Prompts
-    // Add preset Prompts
-    for (const prompt of seedPrompts) {
-      console.log("Adding prompt:", prompt.title);
-      promptStore.add(prompt);
-    }
-
-    // 添加预制文件夹
-    // Add preset folders
-    for (const folder of seedFolders) {
-      console.log("Adding folder:", folder.name);
-      folderStore.add(folder);
-    }
-
-    return new Promise((resolve, reject) => {
-      transaction.oncomplete = () => {
-        console.log(
-          "✅ Database seeded successfully with",
-          seedPrompts.length,
-          "prompts and",
-          seedFolders.length,
-          "folders",
-        );
-        resolve();
-      };
-      transaction.onerror = () => {
-        console.error("❌ Failed to seed database:", transaction.error);
-        reject(transaction.error);
-      };
-    });
-  } else {
-    console.log("Database already has data, skipping seed");
-  }
-}
-
 // ==================== Prompt 操作 ====================
 // ==================== Prompt Operations ====================
 
 export async function getAllPrompts(): Promise<Prompt[]> {
+  if (window.api?.prompt?.getAll) {
+    return (await window.api.prompt.getAll()) ?? [];
+  }
+
+  return legacyGetAllPrompts();
+}
+
+async function legacyGetAllPrompts(): Promise<Prompt[]> {
   const database = await getDatabase();
   return new Promise((resolve, reject) => {
     const transaction = database.transaction(STORES.PROMPTS, "readonly");
@@ -480,6 +198,10 @@ export async function getAllPrompts(): Promise<Prompt[]> {
 }
 
 export async function getPromptById(id: string): Promise<Prompt | undefined> {
+  if (window.api?.prompt?.get) {
+    return (await window.api.prompt.get(id)) ?? undefined;
+  }
+
   const database = await getDatabase();
   return new Promise((resolve, reject) => {
     const transaction = database.transaction(STORES.PROMPTS, "readonly");
@@ -494,6 +216,25 @@ export async function getPromptById(id: string): Promise<Prompt | undefined> {
 export async function createPrompt(
   data: Omit<Prompt, "id" | "createdAt" | "updatedAt" | "version">,
 ): Promise<Prompt> {
+  if (window.api?.prompt?.create) {
+    return window.api.prompt.create({
+      title: data.title,
+      description: data.description ?? undefined,
+      promptType: data.promptType,
+      systemPrompt: data.systemPrompt ?? undefined,
+      systemPromptEn: data.systemPromptEn ?? undefined,
+      userPrompt: data.userPrompt,
+      userPromptEn: data.userPromptEn ?? undefined,
+      variables: data.variables,
+      tags: data.tags,
+      folderId: data.folderId ?? undefined,
+      images: data.images,
+      videos: data.videos,
+      source: data.source ?? undefined,
+      notes: data.notes ?? undefined,
+    });
+  }
+
   const database = await getDatabase();
   const now = new Date().toISOString();
   const prompt: Prompt = {
@@ -519,6 +260,33 @@ export async function updatePrompt(
   data: Partial<Prompt>,
   incrementVersion = true,
 ): Promise<Prompt> {
+  if (window.api?.prompt?.update) {
+    const updated = await window.api.prompt.update(id, {
+      title: data.title,
+      description: data.description ?? undefined,
+      promptType: data.promptType,
+      systemPrompt: data.systemPrompt ?? undefined,
+      systemPromptEn: data.systemPromptEn ?? undefined,
+      userPrompt: data.userPrompt,
+      userPromptEn: data.userPromptEn ?? undefined,
+      variables: data.variables,
+      tags: data.tags,
+      folderId: data.folderId ?? undefined,
+      images: data.images,
+      videos: data.videos,
+      isFavorite: data.isFavorite,
+      isPinned: data.isPinned,
+      usageCount: data.usageCount,
+      source: data.source ?? undefined,
+      notes: data.notes ?? undefined,
+      lastAiResponse: data.lastAiResponse ?? undefined,
+    });
+    if (!updated) {
+      throw new Error(`Prompt not found: ${id}`);
+    }
+    return updated;
+  }
+
   const database = await getDatabase();
   const existing = await getPromptById(id);
   if (!existing) throw new Error("Prompt not found");
@@ -548,6 +316,11 @@ export async function updatePrompt(
 }
 
 export async function deletePrompt(id: string): Promise<void> {
+  if (window.api?.prompt?.delete) {
+    await window.api.prompt.delete(id);
+    return;
+  }
+
   const database = await getDatabase();
   return new Promise((resolve, reject) => {
     const transaction = database.transaction(STORES.PROMPTS, "readwrite");
@@ -567,6 +340,13 @@ export async function movePrompts(
   ids: string[],
   folderId: string,
 ): Promise<void> {
+  if (window.api?.prompt?.update) {
+    await Promise.all(
+      ids.map((id) => window.api.prompt.update(id, { folderId })),
+    );
+    return;
+  }
+
   const database = await getDatabase();
   const now = new Date().toISOString();
 
@@ -601,6 +381,16 @@ export async function movePrompts(
 export async function getPromptVersions(
   promptId: string,
 ): Promise<PromptVersion[]> {
+  if (window.api?.version?.getAll) {
+    return (await window.api.version.getAll(promptId)) ?? [];
+  }
+
+  return legacyGetPromptVersions(promptId);
+}
+
+async function legacyGetPromptVersions(
+  promptId: string,
+): Promise<PromptVersion[]> {
   const database = await getDatabase();
   return new Promise((resolve, reject) => {
     const transaction = database.transaction(STORES.VERSIONS, "readonly");
@@ -620,6 +410,14 @@ export async function createPromptVersion(
   promptId: string,
   data: { systemPrompt?: string; userPrompt: string; version: number },
 ): Promise<PromptVersion> {
+  if (window.api?.version?.create) {
+    const version = await window.api.version.create(promptId);
+    if (!version) {
+      throw new Error(`Failed to create version for prompt: ${promptId}`);
+    }
+    return version;
+  }
+
   const database = await getDatabase();
   const now = new Date().toISOString();
   const versionRecord: PromptVersion = {
@@ -643,6 +441,11 @@ export async function createPromptVersion(
 }
 
 export async function deletePromptVersion(versionId: string): Promise<void> {
+  if (window.api?.version?.delete) {
+    await window.api.version.delete(versionId);
+    return;
+  }
+
   const database = await getDatabase();
 
   return new Promise((resolve, reject) => {
@@ -659,6 +462,14 @@ export async function deletePromptVersion(versionId: string): Promise<void> {
 // ==================== Folder Operations ====================
 
 export async function getAllFolders(): Promise<Folder[]> {
+  if (window.api?.folder?.getAll) {
+    return (await window.api.folder.getAll()) ?? [];
+  }
+
+  return legacyGetAllFolders();
+}
+
+async function legacyGetAllFolders(): Promise<Folder[]> {
   const database = await getDatabase();
   return new Promise((resolve, reject) => {
     const transaction = database.transaction(STORES.FOLDERS, "readonly");
@@ -680,6 +491,16 @@ export async function getAllFolders(): Promise<Folder[]> {
 export async function createFolder(
   data: Omit<Folder, "id" | "createdAt" | "updatedAt">,
 ): Promise<Folder> {
+  if (window.api?.folder?.create) {
+    return window.api.folder.create({
+      name: data.name,
+      icon: data.icon,
+      parentId: data.parentId,
+      isPrivate: data.isPrivate,
+      visibility: data.visibility,
+    });
+  }
+
   const database = await getDatabase();
   const now = new Date().toISOString();
   const folder: Folder = {
@@ -703,6 +524,21 @@ export async function updateFolder(
   id: string,
   data: Partial<Folder>,
 ): Promise<Folder> {
+  if (window.api?.folder?.update) {
+    const updated = await window.api.folder.update(id, {
+      name: data.name,
+      icon: data.icon,
+      parentId: data.parentId,
+      order: data.order,
+      isPrivate: data.isPrivate,
+      visibility: data.visibility,
+    });
+    if (!updated) {
+      throw new Error(`Folder not found: ${id}`);
+    }
+    return updated;
+  }
+
   const database = await getDatabase();
   return new Promise((resolve, reject) => {
     const transaction = database.transaction(STORES.FOLDERS, "readwrite");
@@ -731,6 +567,11 @@ export async function updateFolder(
 }
 
 export async function deleteFolder(id: string): Promise<void> {
+  if (window.api?.folder?.delete) {
+    await window.api.folder.delete(id);
+    return;
+  }
+
   const database = await getDatabase();
   return new Promise((resolve, reject) => {
     const transaction = database.transaction(STORES.FOLDERS, "readwrite");
@@ -745,6 +586,13 @@ export async function deleteFolder(id: string): Promise<void> {
 export async function updateFolderOrders(
   updates: { id: string; order: number }[],
 ): Promise<void> {
+  if (window.api?.folder?.update) {
+    await Promise.all(
+      updates.map(({ id, order }) => window.api.folder.update(id, { order })),
+    );
+    return;
+  }
+
   const database = await getDatabase();
 
   // 逐个更新文件夹顺序
@@ -1083,6 +931,8 @@ function getSettingsSnapshot():
       "webdavUsername",
       "webdavPassword",
       "webdavEncryptionPassword",
+      "selfHostedSyncUsername",
+      "selfHostedSyncPassword",
       "aiApiKey",
     ];
 
@@ -1113,6 +963,8 @@ function restoreSettingsSnapshot(snapshot: { state: any } | undefined): void {
       "webdavUsername",
       "webdavPassword",
       "webdavEncryptionPassword",
+      "selfHostedSyncUsername",
+      "selfHostedSyncPassword",
       "aiApiKey",
     ];
 
@@ -1157,62 +1009,8 @@ async function gunzipToText(blob: Blob): Promise<string> {
 export async function exportDatabase(options?: {
   skipVideoContent?: boolean;
 }): Promise<DatabaseBackup> {
-  const [prompts, folders] = await Promise.all([
-    getAllPrompts(),
-    getAllFolders(),
-  ]);
-
-  // 获取所有版本
-  // Get all versions
-  const database = await getDatabase();
-  const versions = await new Promise<PromptVersion[]>((resolve, reject) => {
-    const transaction = database.transaction(STORES.VERSIONS, "readonly");
-    const store = transaction.objectStore(STORES.VERSIONS);
-    const request = store.getAll();
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-
-  // 收集图片
-  // Collect images
-  const images = await collectImages(prompts);
-
-  // 收集视频
-  // Collect videos
-  const videos = options?.skipVideoContent
-    ? undefined
-    : await collectVideos(prompts);
-
-  // 获取 AI 配置
-  // Get AI configuration
-  const aiConfig = getAiConfig();
-  // 获取系统设置快照
-  // Get system settings snapshot
-  const settingsSnapshot = getSettingsSnapshot();
-
-  // 收集 Skill 数据（从 SQLite）
-  // Collect Skill data (from SQLite)
-  const skillData = await collectSkillData();
-
-  return {
-    version: DB_VERSION,
-    exportedAt: new Date().toISOString(),
-    prompts,
-    folders,
-    versions,
-    images,
-    videos,
-    aiConfig,
-    settings: settingsSnapshot ? { state: settingsSnapshot.state } : undefined,
-    settingsUpdatedAt: settingsSnapshot?.settingsUpdatedAt,
-    skills: skillData.skills.length > 0 ? skillData.skills : undefined,
-    skillVersions:
-      skillData.skillVersions.length > 0 ? skillData.skillVersions : undefined,
-    skillFiles:
-      Object.keys(skillData.skillFiles).length > 0
-        ? skillData.skillFiles
-        : undefined,
-  };
+  const backupModule = await import("./database-backup");
+  return backupModule.exportDatabase(options);
 }
 
 /**
@@ -1220,208 +1018,8 @@ export async function exportDatabase(options?: {
  * Import database from JSON (including images and AI configuration)
  */
 export async function importDatabase(backup: DatabaseBackup): Promise<void> {
-  const database = await getDatabase();
-  const restoredSkillIdMap = new Map<string, string>();
-  const restoredSkillsByName = new Map<string, Skill>();
-
-  // 清空现有数据
-  // Clear existing data
-  await clearDatabase();
-
-  // 导入数据
-  // Import data
-  const transaction = database.transaction(
-    [STORES.PROMPTS, STORES.FOLDERS, STORES.VERSIONS],
-    "readwrite",
-  );
-
-  const promptStore = transaction.objectStore(STORES.PROMPTS);
-  const folderStore = transaction.objectStore(STORES.FOLDERS);
-  const versionStore = transaction.objectStore(STORES.VERSIONS);
-
-  for (const prompt of backup.prompts) {
-    promptStore.add(prompt);
-  }
-
-  for (const folder of backup.folders) {
-    folderStore.add(folder);
-  }
-
-  for (const version of backup.versions) {
-    versionStore.add(version);
-  }
-
-  await new Promise<void>((resolve, reject) => {
-    transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error);
-  });
-
-  // 恢复图片
-  // Restore images
-  if (backup.images) {
-    let imagesRestored = 0;
-    for (const [fileName, base64] of Object.entries(backup.images)) {
-      try {
-        await window.electron?.saveImageBase64?.(fileName, base64);
-        imagesRestored++;
-      } catch (error) {
-        console.warn(`Failed to restore image ${fileName}:`, error);
-      }
-    }
-    console.log(`Restored ${imagesRestored} images`);
-  }
-
-  // 恢复视频
-  // Restore videos
-  if (backup.videos) {
-    let videosRestored = 0;
-    for (const [fileName, base64] of Object.entries(backup.videos)) {
-      try {
-        await window.electron?.saveVideoBase64?.(fileName, base64);
-        videosRestored++;
-      } catch (error) {
-        console.warn(`Failed to restore video ${fileName}:`, error);
-      }
-    }
-    console.log(`Restored ${videosRestored} videos`);
-  }
-
-  // 恢复 AI 配置
-  // Restore AI configuration
-  if (backup.aiConfig) {
-    restoreAiConfig(backup.aiConfig);
-  }
-
-  // 恢复系统设置
-  // Restore system settings
-  if (backup.settings) {
-    restoreSettingsSnapshot(backup.settings);
-  }
-
-  // 恢复 Skill 数据（到 SQLite）
-  // Restore Skill data (to SQLite)
-  // First clear existing SQLite skills to prevent stale data mixing with restored data
-  // 先清空现有 SQLite skills，防止旧数据与恢复数据混合
-  try {
-    await window.api?.skill?.deleteAll();
-  } catch (error) {
-    console.warn("Failed to clear existing skills:", error);
-  }
-
-  if (backup.skills && backup.skills.length > 0) {
-    let skillsRestored = 0;
-    for (const skill of backup.skills) {
-      if (
-        !skill.name ||
-        typeof skill.name !== "string" ||
-        skill.name.trim().length === 0
-      ) {
-        console.warn("Skipping skill from backup with missing name:", skill.id);
-        continue;
-      }
-
-      try {
-        // Create skill record via IPC (SQLite), skip initial version creation
-        // since we restore versions separately from the backup
-        // 通过 IPC 创建 skill 记录（SQLite），跳过初始版本创建，
-        // 因为我们会从备份中单独恢复版本
-        const {
-          id: _id,
-          created_at: _ca,
-          updated_at: _ua,
-          ...createData
-        } = skill;
-        const restoredSkill = await window.api?.skill?.create(
-          {
-            ...createData,
-            is_favorite: createData.is_favorite ?? false,
-            protocol_type: createData.protocol_type ?? "skill",
-            currentVersion: createData.currentVersion,
-          },
-          { skipInitialVersion: true },
-        );
-        if (restoredSkill) {
-          restoredSkillIdMap.set(skill.id, restoredSkill.id);
-          restoredSkillsByName.set(restoredSkill.name, restoredSkill);
-        }
-        skillsRestored++;
-      } catch (error) {
-        console.warn(`Failed to restore skill ${skill.name}:`, error);
-      }
-    }
-    console.log(`Restored ${skillsRestored} skills`);
-  }
-
-  // 恢复 Skill 版本快照（到 SQLite）
-  // Restore Skill version snapshots (to SQLite)
-  if (backup.skillVersions && backup.skillVersions.length > 0) {
-    let versionsRestored = 0;
-    const nextCurrentVersionBySkillId = new Map<string, number>();
-    for (const version of backup.skillVersions) {
-      try {
-        const restoredSkillId =
-          restoredSkillIdMap.get(version.skillId) ?? version.skillId;
-        const remappedVersion: SkillVersion = {
-          ...version,
-          skillId: restoredSkillId,
-        };
-        await window.api?.skill?.insertVersionDirect(remappedVersion);
-        nextCurrentVersionBySkillId.set(
-          restoredSkillId,
-          Math.max(
-            nextCurrentVersionBySkillId.get(restoredSkillId) ?? 1,
-            version.version + 1,
-          ),
-        );
-        versionsRestored++;
-      } catch (error) {
-        console.warn(
-          `Failed to restore skill version ${version.skillId}@${version.version}:`,
-          error,
-        );
-      }
-    }
-    console.log(`Restored ${versionsRestored} skill versions`);
-
-    for (const [skillId, currentVersion] of nextCurrentVersionBySkillId) {
-      try {
-        await window.api?.skill?.update(skillId, { currentVersion });
-      } catch (error) {
-        console.warn(
-          `Failed to restore current version for skill ${skillId}:`,
-          error,
-        );
-      }
-    }
-  }
-
-  // 恢复 Skill 本地文件
-  // Restore Skill local files
-  if (backup.skillFiles) {
-    let filesRestored = 0;
-    for (const [skillKey, files] of Object.entries(backup.skillFiles)) {
-      const restoredSkillId =
-        restoredSkillIdMap.get(skillKey) ??
-        restoredSkillsByName.get(skillKey)?.id ??
-        skillKey;
-      for (const file of files) {
-        try {
-          await window.api?.skill?.writeLocalFile(
-            restoredSkillId,
-            file.relativePath,
-            file.content,
-          );
-          filesRestored++;
-        } catch (error) {
-          console.warn(
-            `Failed to restore skill file ${skillKey}/${file.relativePath}:`,
-            error,
-          );
-        }
-      }
-    }
-    console.log(`Restored ${filesRestored} skill files`);
-  }
+  const backupModule = await import("./database-backup");
+  await backupModule.importDatabase(backup);
 }
 
 /**
@@ -1481,9 +1079,63 @@ export async function clearDatabase(): Promise<void> {
  */
 export function getDatabaseInfo(): { name: string; description: string } {
   return {
-    name: DB_NAME,
-    description: "数据存储在浏览器 IndexedDB 中，位于用户数据目录下",
-    // Data is stored in browser IndexedDB, located in user data directory
+    name: "SQLite + Workspace Files",
+    description: "Prompt/Folder/Version 存储在主进程 SQLite，并同步为 workspace 文件",
+  };
+}
+
+export async function migrateLegacyIndexedDbToMainProcess(): Promise<{
+  migrated: boolean;
+  promptCount: number;
+  folderCount: number;
+  versionCount: number;
+}> {
+  if (
+    !window.api?.prompt?.getAll ||
+    !window.api?.prompt?.insertDirect ||
+    !window.api?.folder?.insertDirect ||
+    !window.api?.version?.insertDirect
+  ) {
+    return { migrated: false, promptCount: 0, folderCount: 0, versionCount: 0 };
+  }
+
+  const mainPrompts = await window.api.prompt.getAll();
+  if ((mainPrompts?.length ?? 0) > 0) {
+    return { migrated: false, promptCount: 0, folderCount: 0, versionCount: 0 };
+  }
+
+  const [legacyPrompts, legacyFolders] = await Promise.all([
+    legacyGetAllPrompts(),
+    legacyGetAllFolders(),
+  ]);
+
+  if (legacyPrompts.length === 0 && legacyFolders.length === 0) {
+    return { migrated: false, promptCount: 0, folderCount: 0, versionCount: 0 };
+  }
+
+  const legacyVersions = (
+    await Promise.all(legacyPrompts.map((prompt) => legacyGetPromptVersions(prompt.id)))
+  ).flat();
+
+  for (const folder of legacyFolders) {
+    await window.api.folder.insertDirect(folder);
+  }
+
+  for (const prompt of legacyPrompts) {
+    await window.api.prompt.insertDirect(prompt);
+  }
+
+  for (const version of legacyVersions) {
+    await window.api.version.insertDirect(version);
+  }
+
+  await window.api.prompt.syncWorkspace?.();
+
+  return {
+    migrated: true,
+    promptCount: legacyPrompts.length,
+    folderCount: legacyFolders.length,
+    versionCount: legacyVersions.length,
   };
 }
 
@@ -1492,24 +1144,8 @@ export function getDatabaseInfo(): { name: string; description: string } {
  * Download backup file
  */
 export async function downloadBackup(): Promise<void> {
-  const backup = await exportDatabase();
-  const file: PromptHubFile = {
-    kind: "prompthub-backup",
-    exportedAt: backup.exportedAt,
-    payload: backup,
-  };
-  const blob = new Blob([JSON.stringify(file, null, 2)], {
-    type: "application/json",
-  });
-  const url = URL.createObjectURL(blob);
-
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `prompthub-backup-${new Date().toISOString().split("T")[0]}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  const backupModule = await import("./database-backup");
+  await backupModule.downloadBackup();
 }
 
 /**
@@ -1517,21 +1153,8 @@ export async function downloadBackup(): Promise<void> {
  * Download compressed full backup (.phub.gz)
  */
 export async function downloadCompressedBackup(): Promise<void> {
-  const backup = await exportDatabase();
-  const file: PromptHubFile = {
-    kind: "prompthub-backup",
-    exportedAt: backup.exportedAt,
-    payload: backup,
-  };
-  const gz = await gzipText(JSON.stringify(file));
-  const url = URL.createObjectURL(gz);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `prompthub-backup-${new Date().toISOString().split("T")[0]}.phub.gz`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  const backupModule = await import("./database-backup");
+  await backupModule.downloadCompressedBackup();
 }
 
 /**
@@ -1540,87 +1163,22 @@ export async function downloadCompressedBackup(): Promise<void> {
 export async function downloadSelectiveExport(
   scope: ExportScope,
 ): Promise<void> {
-  const normalized: Required<ExportScope> = {
-    prompts: !!scope.prompts,
-    folders: !!scope.folders,
-    versions: !!scope.versions,
-    images: !!scope.images,
-    aiConfig: !!scope.aiConfig,
-    settings: !!scope.settings,
-    skills: !!scope.skills,
-  };
-
-  const payload: Partial<DatabaseBackup> = {
-    version: DB_VERSION,
-    exportedAt: new Date().toISOString(),
-  };
-
-  if (normalized.prompts) payload.prompts = await getAllPrompts();
-  if (normalized.folders) payload.folders = await getAllFolders();
-  if (normalized.versions) {
-    const database = await getDatabase();
-    payload.versions = await new Promise<PromptVersion[]>((resolve, reject) => {
-      const transaction = database.transaction(STORES.VERSIONS, "readonly");
-      const store = transaction.objectStore(STORES.VERSIONS);
-      const request = store.getAll();
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-  }
-  if (normalized.images) {
-    const promptsForImages = payload.prompts || (await getAllPrompts());
-    payload.images = await collectImages(promptsForImages);
-  }
-  if (normalized.aiConfig) payload.aiConfig = getAiConfig();
-  if (normalized.settings) {
-    const snap = getSettingsSnapshot();
-    if (snap) {
-      payload.settings = { state: snap.state };
-      payload.settingsUpdatedAt = snap.settingsUpdatedAt;
-    }
-  }
-  if (normalized.skills) {
-    const skillData = await collectSkillData();
-    payload.skills = skillData.skills;
-    payload.skillVersions = skillData.skillVersions;
-    payload.skillFiles = skillData.skillFiles;
-  }
-
-  const file: PromptHubFile = {
-    kind: "prompthub-export",
-    exportedAt: payload.exportedAt || new Date().toISOString(),
-    scope: normalized,
-    payload,
-  };
-
-  // 始终使用 gzip 压缩，减少体积并避免用户对 JSON 包含图片的困惑
-  const gz = await gzipText(JSON.stringify(file));
-  const url = URL.createObjectURL(gz);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `prompthub-export-${new Date().toISOString().split("T")[0]}.phub.gz`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  const backupModule = await import("./database-backup");
+  await backupModule.downloadSelectiveExport(scope);
 }
 
 /**
  * 从文件恢复备份
  */
 export async function restoreFromFile(file: File): Promise<void> {
-  let text: string;
-  if (file.name.endsWith(".gz")) {
-    text = await gunzipToText(file);
-  } else {
-    text = await file.text();
-  }
-  await importDatabase(parsePromptHubBackupFileContent(text));
+  const backupModule = await import("./database-backup");
+  await backupModule.restoreFromFile(file);
 }
 
 /**
  * 从备份数据恢复（用于 WebDAV 同步）
  */
 export async function restoreFromBackup(backup: DatabaseBackup): Promise<void> {
-  await importDatabase(backup);
+  const backupModule = await import("./database-backup");
+  await backupModule.restoreFromBackup(backup);
 }

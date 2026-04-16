@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import { test, expect } from "@playwright/test";
 
 import {
@@ -135,6 +137,35 @@ test.describe("E2E: Skill smoke", () => {
 
       await showAppWindow(app);
       await expect.poll(() => isAppWindowVisible(app)).toBe(true);
+    } finally {
+      await closePromptHub(app, userDataDir);
+    }
+  });
+
+  test("exports seeded prompts into workspace files on startup", async () => {
+    const { app, page, userDataDir } = await launchPromptHub(
+      "prompt-workspace.seed.json",
+    );
+
+    try {
+      await expect(page).toHaveTitle(/PromptHub/);
+
+      const promptFile = path.join(
+        userDataDir,
+        "workspace",
+        "prompts",
+        "ops",
+        "deploy-checklist__prompt_ops_1",
+        "prompt.md",
+      );
+
+      await expect
+        .poll(() => fs.existsSync(promptFile))
+        .toBe(true);
+
+      const raw = fs.readFileSync(promptFile, "utf8");
+      expect(raw).toContain('title: "Deploy Checklist"');
+      expect(raw).toContain("Review deploy health for {{service}}.");
     } finally {
       await closePromptHub(app, userDataDir);
     }
