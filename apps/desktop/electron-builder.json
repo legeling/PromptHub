@@ -71,7 +71,8 @@
         "arch": ["x64"]
       }
     ],
-    "category": "Utility"
+    "category": "Utility",
+    "artifactName": "${productName}-${version}-${arch}.${ext}"
   },
   "appImage": {
     "artifactName": "${productName}-${version}-x64.${ext}"

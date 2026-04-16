@@ -236,7 +236,7 @@ describe('web import/export routes', () => {
     }
   }, TEST_TIMEOUT);
 
-  it('round-trips data, replaces old visible records, restores settings, and preserves nested folders', async () => {
+  it('round-trips data, merges visible records, restores settings, and preserves nested folders', async () => {
     const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-import-export-test-'));
 
     try {
@@ -360,31 +360,43 @@ describe('web import/export routes', () => {
 
       const { payload: restoredPayload } = await exportPayload(app, token);
 
-      expect(restoredPayload.prompts).toHaveLength(1);
-      expect(restoredPayload.prompts[0]).toEqual(expect.objectContaining({
-        title: 'Round-trip Prompt',
-        userPrompt: 'Version two',
-        isFavorite: true,
-      }));
-      expect(restoredPayload.prompts.some((entry) => entry.title === 'Replacement Prompt')).toBe(false);
-      expect(restoredPayload.promptVersions.length).toBe(backupPayload.promptVersions.length);
+      expect(restoredPayload.prompts).toHaveLength(2);
+      expect(restoredPayload.prompts).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          title: 'Round-trip Prompt',
+          userPrompt: 'Version two',
+          isFavorite: true,
+        }),
+        expect.objectContaining({
+          title: 'Replacement Prompt',
+          userPrompt: 'Discard me',
+        }),
+      ]));
+      expect(restoredPayload.promptVersions.length).toBe(backupPayload.promptVersions.length + 1);
 
-      expect(restoredPayload.skills).toHaveLength(1);
-      expect(restoredPayload.skills[0]).toEqual(expect.objectContaining({
-        name: 'roundtrip-skill',
-        content: 'echo version two',
-      }));
-      expect(restoredPayload.skills.some((entry) => entry.name === 'replacement-skill')).toBe(false);
+      expect(restoredPayload.skills).toHaveLength(2);
+      expect(restoredPayload.skills).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          name: 'roundtrip-skill',
+          content: 'echo version two',
+        }),
+        expect.objectContaining({
+          name: 'replacement-skill',
+          content: 'echo discard',
+        }),
+      ]));
       expect(restoredPayload.skillVersions).toHaveLength(1);
 
       const restoredRootFolder = restoredPayload.folders.find((folder) => folder.name === 'Projects');
       const restoredChildFolder = restoredPayload.folders.find((folder) => folder.name === 'Nested');
-      expect(restoredPayload.folders).toHaveLength(2);
-      expect(restoredPayload.folders.some((entry) => entry.name === 'Replacement Folder')).toBe(false);
+      const replacementFolder = restoredPayload.folders.find((folder) => folder.name === 'Replacement Folder');
+      const roundTripPrompt = restoredPayload.prompts.find((prompt) => prompt.title === 'Round-trip Prompt');
+      expect(restoredPayload.folders).toHaveLength(3);
       expect(restoredRootFolder).toBeTruthy();
       expect(restoredChildFolder).toBeTruthy();
+      expect(replacementFolder).toBeTruthy();
       expect(restoredChildFolder?.parentId).toBe(restoredRootFolder?.id);
-      expect(restoredPayload.prompts[0]?.folderId).toBe(restoredChildFolder?.id);
+      expect(roundTripPrompt?.folderId).toBe(restoredChildFolder?.id);
 
       expect(restoredPayload.settings).toEqual(expect.objectContaining({
         theme: 'dark',

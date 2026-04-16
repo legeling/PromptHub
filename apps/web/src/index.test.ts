@@ -61,7 +61,7 @@ describe('web server entry bootstrap', () => {
   });
 
   it('serves the SPA fallback when client assets exist but the requested file does not', async () => {
-    existsSyncMock.mockImplementation((targetPath) => targetPath.endsWith('dist/client/index.html'));
+    existsSyncMock.mockImplementation((targetPath: string) => targetPath.endsWith('dist/client/index.html'));
     readFileMock.mockResolvedValue(new TextEncoder().encode('<html>app</html>'));
 
     await import('./index');
@@ -76,7 +76,8 @@ describe('web server entry bootstrap', () => {
 
   it('serves matching static assets with the correct content type', async () => {
     existsSyncMock.mockImplementation(
-      (targetPath) => targetPath.endsWith('dist/client/index.html') || targetPath.endsWith('dist/client/assets/app.js'),
+      (targetPath: string) =>
+        targetPath.endsWith('dist/client/index.html') || targetPath.endsWith('dist/client/assets/app.js'),
     );
     readFileMock.mockResolvedValue(new TextEncoder().encode('console.log(1);'));
 
