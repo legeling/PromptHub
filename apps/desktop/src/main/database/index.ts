@@ -179,6 +179,7 @@ export function detectRecoverableDatabases(
     const dbFile = path.join(candidate, "prompthub.db");
     const browserStorageBytes = getBrowserStorageBytes(candidate);
     const fileStorageBytes = getFileStorageBytes(candidate);
+    const workspaceStats = getWorkspaceRecoveryStats(candidate);
 
     let dbSizeBytes = 0;
     let promptCount = 0;
@@ -229,17 +230,23 @@ export function detectRecoverableDatabases(
       }
     }
 
-    if (promptCount === 0 && browserStorageBytes === 0 && fileStorageBytes === 0) {
+    const effectivePromptCount = Math.max(promptCount, workspaceStats.promptCount);
+    const effectiveFolderCount = Math.max(folderCount, workspaceStats.folderCount);
+
+    // Only surface candidates that appear to contain meaningful prompt data.
+    // A stray empty workspace/, folders.json, or .trash snapshot should not
+    // keep nagging the user with a "recoverable data" dialog that shows all 0s.
+    if (effectivePromptCount === 0 && browserStorageBytes === 0) {
       continue;
     }
 
     results.push({
       sourcePath: candidate,
-      promptCount,
-      folderCount,
+      promptCount: effectivePromptCount,
+      folderCount: effectiveFolderCount,
       skillCount,
       dbSizeBytes:
-        promptCount > 0 ? dbSizeBytes : browserStorageBytes + fileStorageBytes,
+        dbSizeBytes > 0 ? dbSizeBytes : browserStorageBytes + fileStorageBytes,
     });
   }
 
@@ -344,6 +351,58 @@ function getBrowserStorageBytes(basePath: string): number {
   return BROWSER_STORAGE_DIRS.reduce((total, dirName) => {
     return total + getDirectorySize(path.join(basePath, dirName));
   }, 0);
+}
+
+function getWorkspaceRecoveryStats(basePath: string): {
+  promptCount: number;
+  folderCount: number;
+} {
+  const workspaceDir = path.join(basePath, "workspace");
+  const promptsDir = path.join(workspaceDir, "prompts");
+  const foldersFile = path.join(workspaceDir, "folders.json");
+
+  return {
+    promptCount: countWorkspacePromptFiles(promptsDir),
+    folderCount: readWorkspaceFolderCount(foldersFile),
+  };
+}
+
+function countWorkspacePromptFiles(targetPath: string): number {
+  if (!fs.existsSync(targetPath)) {
+    return 0;
+  }
+
+  let stat: fs.Stats;
+  try {
+    stat = fs.statSync(targetPath);
+  } catch {
+    return 0;
+  }
+
+  if (!stat.isDirectory()) {
+    return path.basename(targetPath) === "prompt.md" ? 1 : 0;
+  }
+
+  let total = 0;
+  const entries = fs.readdirSync(targetPath, { withFileTypes: true });
+  for (const entry of entries) {
+    total += countWorkspacePromptFiles(path.join(targetPath, entry.name));
+  }
+  return total;
+}
+
+function readWorkspaceFolderCount(foldersFile: string): number {
+  if (!fs.existsSync(foldersFile)) {
+    return 0;
+  }
+
+  try {
+    const raw = fs.readFileSync(foldersFile, "utf8");
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? parsed.length : 0;
+  } catch {
+    return 0;
+  }
 }
 
 function getFileStorageBytes(basePath: string): number {

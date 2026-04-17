@@ -48,6 +48,13 @@ export function DataRecoveryDialog({
 
   if (!best) return null;
 
+  const requestClose = (): void => {
+    if (isSuccess || isRecovering) {
+      return;
+    }
+    void handleDismiss();
+  };
+
   const handleRecover = async (): Promise<void> => {
     setIsRecovering(true);
     setError(null);
@@ -79,7 +86,7 @@ export function DataRecoveryDialog({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={isSuccess || isRecovering ? () => {} : onClose}
+      onClose={requestClose}
       title={t("recovery.title")}
       size="md"
     >
@@ -154,9 +161,9 @@ export function DataRecoveryDialog({
 
             {/* Actions */}
             <div className="flex gap-3 justify-end pt-1">
-              <button
-                onClick={handleDismiss}
-                disabled={isRecovering}
+               <button
+                 onClick={handleDismiss}
+                 disabled={isRecovering}
                 className="px-4 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50"
               >
                 {t("recovery.dismiss")}

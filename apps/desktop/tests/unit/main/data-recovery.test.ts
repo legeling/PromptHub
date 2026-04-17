@@ -108,6 +108,28 @@ describe("Data Recovery", () => {
       db.close();
     });
 
+    it("returns false for a database with skills but no prompts", () => {
+      const db = new DatabaseAdapter(":memory:");
+      db.exec(SCHEMA_TABLES);
+      db.exec(SCHEMA_INDEXES);
+      db.prepare(
+        "INSERT INTO skills (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)",
+      ).run("skill-1", "skill-1", Date.now(), Date.now());
+      expect(isDatabaseEmpty(db)).toBe(false);
+      db.close();
+    });
+
+    it("returns false for a database with folders but no prompts", () => {
+      const db = new DatabaseAdapter(":memory:");
+      db.exec(SCHEMA_TABLES);
+      db.exec(SCHEMA_INDEXES);
+      db.prepare(
+        "INSERT INTO folders (id, name, created_at) VALUES (?, ?, ?)",
+      ).run("folder-1", "Folder 1", Date.now());
+      expect(isDatabaseEmpty(db)).toBe(false);
+      db.close();
+    });
+
     it("returns true when prompts table does not exist", () => {
       const db = new DatabaseAdapter(":memory:");
       // No schema created, so prompts table doesn't exist
@@ -235,6 +257,49 @@ describe("Data Recovery", () => {
       expect(results[0].sourcePath).toBe(candidateDir);
       expect(results[0].promptCount).toBe(0);
       expect(results[0].dbSizeBytes).toBeGreaterThan(0);
+    });
+
+    it("does not surface empty workspace-only candidates that have no prompt files", () => {
+      const currentDir = path.join(tmpBase, "current");
+      fs.mkdirSync(currentDir);
+
+      const candidateDir = path.join(tmpBase, "candidate");
+      fs.mkdirSync(path.join(candidateDir, "workspace", "prompts"), {
+        recursive: true,
+      });
+      fs.writeFileSync(
+        path.join(candidateDir, "workspace", "folders.json"),
+        JSON.stringify([{ id: "folder-1", name: "Ops" }]),
+        "utf8",
+      );
+
+      const results = detectRecoverableDatabases(currentDir, [candidateDir]);
+      expect(results).toEqual([]);
+    });
+
+    it("counts workspace prompt files when SQLite is empty", () => {
+      const currentDir = path.join(tmpBase, "current");
+      fs.mkdirSync(currentDir);
+
+      const candidateDir = path.join(tmpBase, "candidate");
+      fs.mkdirSync(path.join(candidateDir, "workspace", "prompts", "ops"), {
+        recursive: true,
+      });
+      fs.writeFileSync(
+        path.join(candidateDir, "workspace", "prompts", "ops", "prompt.md"),
+        "# Prompt",
+        "utf8",
+      );
+      fs.writeFileSync(
+        path.join(candidateDir, "workspace", "folders.json"),
+        JSON.stringify([{ id: "folder-1", name: "Ops" }]),
+        "utf8",
+      );
+
+      const results = detectRecoverableDatabases(currentDir, [candidateDir]);
+      expect(results).toHaveLength(1);
+      expect(results[0].promptCount).toBe(1);
+      expect(results[0].folderCount).toBe(1);
     });
   });
 

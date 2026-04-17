@@ -665,6 +665,7 @@ ipcMain.handle("data:getStatus", () => {
 // Data recovery: check for recoverable databases at known locations
 // 数据恢复：在已知位置检查可恢复的数据库
 let cachedRecoveryResult: RecoverableDatabase[] | null = null;
+const RECOVERY_DISMISS_MARKER = ".recovery-dismissed";
 // Process-lifetime guard: we only allow performRecovery to trigger a relaunch
 // ONCE per app session. Historically a combination of auto-recovery in the
 // renderer + `app.relaunch() + app.quit()` here produced an instant restart
@@ -691,6 +692,12 @@ ipcMain.handle("data:checkRecovery", () => {
   }
 
   const currentPath = app.getPath("userData");
+  const dismissMarkerPath = path.join(currentPath, RECOVERY_DISMISS_MARKER);
+  if (fs.existsSync(dismissMarkerPath)) {
+    cachedRecoveryResult = [];
+    return [];
+  }
+
   const candidatePaths = getRecoveryCandidatePaths(currentPath);
   const results = detectRecoverableDatabases(currentPath, candidatePaths);
   cachedRecoveryResult = results;
@@ -748,6 +755,16 @@ ipcMain.handle("data:performRecovery", async (_event, sourcePath: string) => {
   if (result.success) {
     // Clear cache so next check sees the recovered data
     cachedRecoveryResult = null;
+    try {
+      fs.rmSync(path.join(currentPath, RECOVERY_DISMISS_MARKER), {
+        force: true,
+      });
+    } catch (dismissMarkerError) {
+      console.warn(
+        "[Recovery] failed to clear dismiss marker (continuing):",
+        dismissMarkerError,
+      );
+    }
 
     // v0.5.3 review-follow-up: write a restore marker so the next boot's
     // bootstrapPromptWorkspace skips Phase 1 (WS → DB). Without this, prompt
@@ -798,6 +815,15 @@ ipcMain.handle("data:performRecovery", async (_event, sourcePath: string) => {
 
 ipcMain.handle("data:dismissRecovery", () => {
   cachedRecoveryResult = [];
+  try {
+    fs.writeFileSync(
+      path.join(app.getPath("userData"), RECOVERY_DISMISS_MARKER),
+      new Date().toISOString(),
+      "utf8",
+    );
+  } catch (error) {
+    console.warn("[Recovery] failed to persist dismiss marker:", error);
+  }
   return { success: true };
 });
 

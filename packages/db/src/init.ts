@@ -519,10 +519,28 @@ export function closeDatabase(): void {
  */
 export function isDatabaseEmpty(database: Database.Database): boolean {
   try {
-    const row = database
+    const promptRow = database
       .prepare("SELECT COUNT(*) as count FROM prompts")
       .get() as { count: number } | undefined;
-    return !row || row.count === 0;
+    const folderRow = database
+      .prepare("SELECT COUNT(*) as count FROM folders")
+      .get() as { count: number } | undefined;
+
+    let skillCount = 0;
+    try {
+      const skillRow = database
+        .prepare("SELECT COUNT(*) as count FROM skills")
+        .get() as { count: number } | undefined;
+      skillCount = skillRow?.count ?? 0;
+    } catch {
+      // skills table may not exist in older schemas
+    }
+
+    return (
+      (promptRow?.count ?? 0) === 0 &&
+      (folderRow?.count ?? 0) === 0 &&
+      skillCount === 0
+    );
   } catch {
     // Table might not exist in a freshly created DB
     return true;
