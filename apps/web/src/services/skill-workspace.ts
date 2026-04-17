@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { Database, SkillDB } from '@prompthub/db';
 import type { Skill, SkillVersion } from '@prompthub/shared';
-import { config } from '../config.js';
+import { getSkillsDir } from '../runtime-paths.js';
 
 const SKILL_FILE_NAME = 'SKILL.md';
 const SKILL_META_FILE_NAME = 'skill.json';
@@ -50,14 +50,6 @@ function slugify(input: string | null | undefined): string {
 
 function padVersion(version: number): string {
   return String(version).padStart(4, '0');
-}
-
-function getWorkspaceDir(): string {
-  return path.join(config.dataDir, 'workspace');
-}
-
-function getSkillsWorkspaceDir(): string {
-  return path.join(getWorkspaceDir(), 'skills');
 }
 
 function getSkillDirectory(skillsDir: string, skill: Skill): string {
@@ -190,7 +182,7 @@ export function syncSkillWorkspaceFromDatabase(
   db: Database.Database,
   skillDb: SkillDB,
 ): SkillWorkspaceSyncResult {
-  const skillsDir = getSkillsWorkspaceDir();
+  const skillsDir = getSkillsDir();
   const skills = listAllSkills(db, skillDb);
 
   fs.rmSync(skillsDir, { recursive: true, force: true });
@@ -240,7 +232,7 @@ export function importSkillWorkspaceIntoDatabase(
   db: Database.Database,
   skillDb: SkillDB,
 ): SkillWorkspaceSyncResult {
-  const skillsDir = getSkillsWorkspaceDir();
+  const skillsDir = getSkillsDir();
   const skillDirectories = collectSkillDirectories(skillsDir);
 
   if (!workspaceHasSkillData(skillsDir)) {
@@ -278,7 +270,7 @@ export function bootstrapSkillWorkspace(
   db: Database.Database,
   skillDb: SkillDB,
 ): { imported: boolean; exported: boolean } {
-  const skillsDir = getSkillsWorkspaceDir();
+  const skillsDir = getSkillsDir();
   const hasDatabaseSkills = skillDb.getAll().length > 0;
   const hasWorkspaceData = workspaceHasSkillData(skillsDir);
 

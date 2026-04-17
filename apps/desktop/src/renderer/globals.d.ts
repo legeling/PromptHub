@@ -1,4 +1,5 @@
-import type { DatabaseBackup } from "./services/database-backup-format";
+import type { DatabaseBackup, ImportSkippedStats } from "./services/database-backup-format";
+import type { API } from "../preload";
 
 declare global {
   interface PromptHubWebContext {
@@ -10,6 +11,7 @@ declare global {
   }
 
   interface Window {
+    api: API;
     __PROMPTHUB_WEB__?: boolean;
     __PROMPTHUB_WEB_CONTEXT__?: PromptHubWebContext;
     __PROMPTHUB_WEB_LOGOUT__?: (() => Promise<void>) | (() => void);
@@ -18,7 +20,7 @@ declare global {
         skipVideoContent?: boolean;
         limitMedia?: boolean;
       }) => Promise<DatabaseBackup>;
-      restoreFromBackup: (backup: DatabaseBackup) => Promise<void>;
+      restoreFromBackup: (backup: DatabaseBackup) => Promise<ImportSkippedStats>;
     };
   }
 }

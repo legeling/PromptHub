@@ -62,10 +62,17 @@ describe("updater install backup", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     backupMocks.createUpgradeDataSnapshotMock.mockResolvedValue({
-      backupPath: "/tmp/PromptHub-upgrade-backups/v0.5.1-2026-04-16T00-00-00",
-      createdAt: "2026-04-16T00:00:00.000Z",
-      version: "0.5.1",
-      copiedItems: ["prompthub.db", "skills"],
+      backupPath: "/tmp/PromptHub/backups/v0.5.1-2026-04-16T00-00-00",
+      backupId: "v0.5.1-2026-04-16T00-00-00",
+      manifest: {
+        kind: "prompthub-upgrade-backup",
+        schemaVersion: 2,
+        createdAt: "2026-04-16T00:00:00.000Z",
+        fromVersion: "0.5.1",
+        sourcePath: "/tmp/PromptHub",
+        copiedItems: ["prompthub.db", "skills"],
+        platform: "linux",
+      },
     });
   });
 
@@ -86,15 +93,14 @@ describe("updater install backup", () => {
 
     expect(backupMocks.createUpgradeDataSnapshotMock).toHaveBeenCalledWith(
       "/tmp/PromptHub",
-      "0.5.1",
+      { fromVersion: "0.5.1" },
     );
     if (process.platform === "darwin") {
       expect(electronMocks.openPathMock).toHaveBeenCalled();
       expect(result).toEqual({
         success: true,
         manual: true,
-        backupPath:
-          "/tmp/PromptHub-upgrade-backups/v0.5.1-2026-04-16T00-00-00",
+        backupPath: "/tmp/PromptHub/backups/v0.5.1-2026-04-16T00-00-00",
       });
       return;
     }
@@ -103,8 +109,7 @@ describe("updater install backup", () => {
     expect(result).toEqual({
       success: true,
       manual: false,
-      backupPath:
-        "/tmp/PromptHub-upgrade-backups/v0.5.1-2026-04-16T00-00-00",
+      backupPath: "/tmp/PromptHub/backups/v0.5.1-2026-04-16T00-00-00",
     });
   });
 

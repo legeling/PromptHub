@@ -103,6 +103,10 @@ export const IPC_CHANNELS = {
   DATA_CHECK_RECOVERY: "data:checkRecovery",
   DATA_PERFORM_RECOVERY: "data:performRecovery",
   DATA_DISMISS_RECOVERY: "data:dismissRecovery",
+  UPGRADE_BACKUP_LIST: "upgradeBackup:list",
+  UPGRADE_BACKUP_CREATE: "upgradeBackup:create",
+  UPGRADE_BACKUP_RESTORE: "upgradeBackup:restore",
+  UPGRADE_BACKUP_DELETE: "upgradeBackup:delete",
 
   // Image
   DIALOG_SELECT_IMAGE: "dialog:selectImage",

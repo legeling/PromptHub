@@ -1,4 +1,4 @@
-import { ipcMain, dialog, app, shell } from "electron";
+import { ipcMain, dialog, shell } from "electron";
 import path from "path";
 import fs from "fs/promises";
 import { v4 as uuidv4 } from "uuid";
@@ -7,6 +7,7 @@ import {
   resolvePublicAddress,
   isBlockedHostname,
 } from "../services/skill-installer-remote";
+import { getImagesDir, getVideosDir } from "../runtime-paths";
 
 /**
  * Validate external URL to prevent SSRF attacks.
@@ -98,8 +99,7 @@ export function registerImageIPC(): void {
   ipcMain.handle(
     IPC_CHANNELS.IMAGE_SAVE,
     async (_event, filePaths: string[]) => {
-      const userDataPath = app.getPath("userData");
-      const imagesDir = path.join(userDataPath, "images");
+      const imagesDir = getImagesDir();
 
       await ensureDir(imagesDir);
 
@@ -124,8 +124,7 @@ export function registerImageIPC(): void {
 
   // Open image with default app
   ipcMain.handle(IPC_CHANNELS.IMAGE_OPEN, async (_event, fileName: string) => {
-    const userDataPath = app.getPath("userData");
-    const imagesDir = path.join(userDataPath, "images");
+    const imagesDir = getImagesDir();
 
     try {
       const imagePath = validateFileName(fileName, imagesDir);
@@ -141,8 +140,7 @@ export function registerImageIPC(): void {
   ipcMain.handle(
     IPC_CHANNELS.IMAGE_SAVE_BUFFER,
     async (_event, buffer: Buffer) => {
-      const userDataPath = app.getPath("userData");
-      const imagesDir = path.join(userDataPath, "images");
+      const imagesDir = getImagesDir();
 
       await ensureDir(imagesDir);
 
@@ -166,8 +164,7 @@ export function registerImageIPC(): void {
       throw new Error("Invalid or blocked URL");
     }
 
-    const userDataPath = app.getPath("userData");
-    const imagesDir = path.join(userDataPath, "images");
+    const imagesDir = getImagesDir();
 
     await ensureDir(imagesDir);
 
@@ -196,8 +193,7 @@ export function registerImageIPC(): void {
 
   // Get list of all local image file names
   ipcMain.handle(IPC_CHANNELS.IMAGE_LIST, async () => {
-    const userDataPath = app.getPath("userData");
-    const imagesDir = path.join(userDataPath, "images");
+    const imagesDir = getImagesDir();
 
     if (!(await pathExists(imagesDir))) {
       return [];
@@ -216,8 +212,7 @@ export function registerImageIPC(): void {
   ipcMain.handle(
     IPC_CHANNELS.IMAGE_GET_SIZE,
     async (_event, fileName: string) => {
-      const userDataPath = app.getPath("userData");
-      const imagesDir = path.join(userDataPath, "images");
+      const imagesDir = getImagesDir();
       try {
         const imagePath = validateFileName(fileName, imagesDir);
         if (!(await pathExists(imagePath))) {
@@ -236,8 +231,7 @@ export function registerImageIPC(): void {
   ipcMain.handle(
     IPC_CHANNELS.IMAGE_READ_BASE64,
     async (_event, fileName: string) => {
-      const userDataPath = app.getPath("userData");
-      const imagesDir = path.join(userDataPath, "images");
+      const imagesDir = getImagesDir();
 
       try {
         const imagePath = validateFileName(fileName, imagesDir);
@@ -257,8 +251,7 @@ export function registerImageIPC(): void {
   ipcMain.handle(
     IPC_CHANNELS.IMAGE_SAVE_BASE64,
     async (_event, fileName: string, base64Data: string) => {
-      const userDataPath = app.getPath("userData");
-      const imagesDir = path.join(userDataPath, "images");
+      const imagesDir = getImagesDir();
 
       await ensureDir(imagesDir);
 
@@ -282,8 +275,7 @@ export function registerImageIPC(): void {
   ipcMain.handle(
     IPC_CHANNELS.IMAGE_EXISTS,
     async (_event, fileName: string) => {
-      const userDataPath = app.getPath("userData");
-      const imagesDir = path.join(userDataPath, "images");
+      const imagesDir = getImagesDir();
       try {
         const imagePath = validateFileName(fileName, imagesDir);
         return await pathExists(imagePath);
@@ -296,8 +288,7 @@ export function registerImageIPC(): void {
   // Clear all images
   ipcMain.handle(IPC_CHANNELS.IMAGE_CLEAR, async () => {
     try {
-      const userDataPath = app.getPath("userData");
-      const imagesDir = path.join(userDataPath, "images");
+      const imagesDir = getImagesDir();
       if (await pathExists(imagesDir)) {
         const files = await fs.readdir(imagesDir);
         await Promise.all(
@@ -333,8 +324,7 @@ export function registerImageIPC(): void {
   ipcMain.handle(
     IPC_CHANNELS.VIDEO_SAVE,
     async (_event, filePaths: string[]) => {
-      const userDataPath = app.getPath("userData");
-      const videosDir = path.join(userDataPath, "videos");
+      const videosDir = getVideosDir();
 
       await ensureDir(videosDir);
 
@@ -359,8 +349,7 @@ export function registerImageIPC(): void {
 
   // Open video with default app
   ipcMain.handle(IPC_CHANNELS.VIDEO_OPEN, async (_event, fileName: string) => {
-    const userDataPath = app.getPath("userData");
-    const videosDir = path.join(userDataPath, "videos");
+    const videosDir = getVideosDir();
 
     try {
       const videoPath = validateFileName(fileName, videosDir);
@@ -374,8 +363,7 @@ export function registerImageIPC(): void {
 
   // Get list of all local video file names
   ipcMain.handle(IPC_CHANNELS.VIDEO_LIST, async () => {
-    const userDataPath = app.getPath("userData");
-    const videosDir = path.join(userDataPath, "videos");
+    const videosDir = getVideosDir();
 
     if (!(await pathExists(videosDir))) {
       return [];
@@ -394,8 +382,7 @@ export function registerImageIPC(): void {
   ipcMain.handle(
     IPC_CHANNELS.VIDEO_GET_SIZE,
     async (_event, fileName: string) => {
-      const userDataPath = app.getPath("userData");
-      const videosDir = path.join(userDataPath, "videos");
+      const videosDir = getVideosDir();
       try {
         const videoPath = validateFileName(fileName, videosDir);
         if (!(await pathExists(videoPath))) {
@@ -414,8 +401,7 @@ export function registerImageIPC(): void {
   ipcMain.handle(
     IPC_CHANNELS.VIDEO_READ_BASE64,
     async (_event, fileName: string) => {
-      const userDataPath = app.getPath("userData");
-      const videosDir = path.join(userDataPath, "videos");
+      const videosDir = getVideosDir();
 
       try {
         const videoPath = validateFileName(fileName, videosDir);
@@ -435,8 +421,7 @@ export function registerImageIPC(): void {
   ipcMain.handle(
     IPC_CHANNELS.VIDEO_SAVE_BASE64,
     async (_event, fileName: string, base64Data: string) => {
-      const userDataPath = app.getPath("userData");
-      const videosDir = path.join(userDataPath, "videos");
+      const videosDir = getVideosDir();
 
       await ensureDir(videosDir);
 
@@ -460,8 +445,7 @@ export function registerImageIPC(): void {
   ipcMain.handle(
     IPC_CHANNELS.VIDEO_EXISTS,
     async (_event, fileName: string) => {
-      const userDataPath = app.getPath("userData");
-      const videosDir = path.join(userDataPath, "videos");
+      const videosDir = getVideosDir();
       try {
         const videoPath = validateFileName(fileName, videosDir);
         return await pathExists(videoPath);
@@ -475,8 +459,7 @@ export function registerImageIPC(): void {
   ipcMain.handle(
     IPC_CHANNELS.VIDEO_GET_PATH,
     async (_event, fileName: string) => {
-      const userDataPath = app.getPath("userData");
-      const videosDir = path.join(userDataPath, "videos");
+      const videosDir = getVideosDir();
       return validateFileName(fileName, videosDir);
     },
   );
@@ -484,8 +467,7 @@ export function registerImageIPC(): void {
   // Clear all videos
   ipcMain.handle(IPC_CHANNELS.VIDEO_CLEAR, async () => {
     try {
-      const userDataPath = app.getPath("userData");
-      const videosDir = path.join(userDataPath, "videos");
+      const videosDir = getVideosDir();
       if (await pathExists(videosDir)) {
         const files = await fs.readdir(videosDir);
         await Promise.all(

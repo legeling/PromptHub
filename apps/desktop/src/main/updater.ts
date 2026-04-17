@@ -805,10 +805,11 @@ export function registerUpdaterIPC() {
     }
 
     try {
-      const backup = await createUpgradeDataSnapshot(
-        app.getPath("userData"),
-        app.getVersion(),
-      );
+      // At install time the new binary hasn't run yet, so we only know
+      // `fromVersion` (the currently-running version being replaced).
+      const backup = await createUpgradeDataSnapshot(app.getPath("userData"), {
+        fromVersion: app.getVersion(),
+      });
 
       if (isMac) {
         // macOS: open the downloaded DMG for manual installation

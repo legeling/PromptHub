@@ -1,11 +1,23 @@
 import { globalShortcut, BrowserWindow, ipcMain, app } from 'electron';
 import path from 'path';
 import fs from 'fs';
+import { getConfigDir } from './runtime-paths';
 
 // Shortcut config storage path
 // 快捷键配置存储路径
-const getShortcutsPath = () => path.join(app.getPath('userData'), 'shortcuts.json');
-const getShortcutModePath = () => path.join(app.getPath('userData'), 'shortcut-mode.json');
+const getLegacyShortcutsPath = () => path.join(app.getPath('userData'), 'shortcuts.json');
+const getLegacyShortcutModePath = () => path.join(app.getPath('userData'), 'shortcut-mode.json');
+const getConfiguredShortcutsPath = () => path.join(getConfigDir(), 'shortcuts.json');
+const getConfiguredShortcutModePath = () =>
+  path.join(getConfigDir(), 'shortcut-mode.json');
+const getShortcutsPath = () => {
+  const configPath = getConfiguredShortcutsPath();
+  return fs.existsSync(configPath) ? configPath : getLegacyShortcutsPath();
+};
+const getShortcutModePath = () => {
+  const configPath = getConfiguredShortcutModePath();
+  return fs.existsSync(configPath) ? configPath : getLegacyShortcutModePath();
+};
 
 // Default shortcut configuration
 // 默认快捷键配置
@@ -106,7 +118,8 @@ function loadShortcutModes(): Record<string, 'global' | 'local'> {
  */
 function saveShortcuts(shortcuts: Record<string, string>): boolean {
   try {
-    const shortcutsPath = getShortcutsPath();
+    const shortcutsPath = getConfiguredShortcutsPath();
+    fs.mkdirSync(path.dirname(shortcutsPath), { recursive: true });
     fs.writeFileSync(shortcutsPath, JSON.stringify(shortcuts, null, 2));
     return true;
   } catch (error) {
@@ -121,7 +134,8 @@ function saveShortcuts(shortcuts: Record<string, string>): boolean {
  */
 function saveShortcutModes(modes: Record<string, 'global' | 'local'>): boolean {
   try {
-    const modePath = getShortcutModePath();
+    const modePath = getConfiguredShortcutModePath();
+    fs.mkdirSync(path.dirname(modePath), { recursive: true });
     fs.writeFileSync(modePath, JSON.stringify(modes, null, 2));
     return true;
   } catch (error) {

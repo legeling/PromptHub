@@ -12,8 +12,10 @@ import {
 } from "../runtime-paths";
 
 const FOLDERS_FILE_NAME = "folders.json";
+const FOLDER_METADATA_FILE_NAME = "_folder.json";
 const PROMPT_FILE_NAME = "prompt.md";
 const VERSIONS_DIR_NAME = "versions";
+const VERSION_ROOT_DIR_NAME = ".versions";
 const TRASH_DIR_NAME = ".trash";
 const TRASH_CONFLICTS_SUBDIR = "conflicts";
 const TRASH_RETENTION = 5;
@@ -97,17 +99,17 @@ interface PromptWorkspaceSyncResult {
 
 /**
  * Result of importing workspace → DB. Extends the basic counts with
- * `skippedPromptDirs`: directories whose prompt file failed to parse/import or
+ * `skippedPromptPaths`: prompt paths whose file failed to parse/import or
  * that lost a same-id conflict. Phase 2 of the "both" quadrant MUST pass these
  * to `syncPromptWorkspaceFromDatabase` so they are not misclassified as
  * orphans and trashed a second time.
  *
- * 导入返回值：除了基础计数外，`skippedPromptDirs` 记录那些解析失败或在
- * 同 id 冲突中落败的目录。合并象限（Q4）的 Phase 2 必须把它们传给
+ * 导入返回值：除了基础计数外，`skippedPromptPaths` 记录那些解析失败或在
+ * 同 id 冲突中落败的路径。合并象限（Q4）的 Phase 2 必须把它们传给
  * syncPromptWorkspaceFromDatabase，避免它们再次被当作孤立项回收。
  */
 interface PromptWorkspaceImportResult extends PromptWorkspaceSyncResult {
-  skippedPromptDirs: Set<string>;
+  skippedPromptPaths: Set<string>;
 }
 
 /**
@@ -275,7 +277,7 @@ function versionFrontmatter(version: PromptVersion): Record<string, unknown> {
   };
 }
 
-function readFoldersFile(workspaceDir: string): Folder[] {
+function readLegacyFoldersFile(workspaceDir: string): Folder[] {
   const foldersFile = path.join(workspaceDir, FOLDERS_FILE_NAME);
   if (!fs.existsSync(foldersFile)) {
     return [];
@@ -286,20 +288,104 @@ function readFoldersFile(workspaceDir: string): Folder[] {
     return Array.isArray(parsed) ? parsed : [];
   } catch (error) {
     console.error(
-      "[prompt-workspace] failed to parse folders.json, treating as empty:",
+      "[prompt-workspace] failed to parse legacy folders.json, treating as empty:",
       error,
     );
     return [];
   }
 }
 
-function writeFoldersFile(workspaceDir: string, folders: Folder[]): void {
-  ensureDir(workspaceDir);
-  fs.writeFileSync(
-    path.join(workspaceDir, FOLDERS_FILE_NAME),
-    JSON.stringify(folders, null, 2),
-    "utf8",
-  );
+function collectFolderMetadataFiles(rootDir: string): string[] {
+  if (!fs.existsSync(rootDir)) {
+    return [];
+  }
+
+  const files: string[] = [];
+  const walk = (dir: string): void => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name === TRASH_DIR_NAME) {
+        continue;
+      }
+
+      const absolutePath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(absolutePath);
+        continue;
+      }
+
+      if (entry.isFile() && entry.name === FOLDER_METADATA_FILE_NAME) {
+        files.push(absolutePath);
+      }
+    }
+  };
+
+  walk(rootDir);
+  return files;
+}
+
+function readFolderMetadataFiles(promptsDir: string): Folder[] {
+  return collectFolderMetadataFiles(promptsDir)
+    .map((filePath) => {
+      try {
+        const parsed = JSON.parse(fs.readFileSync(filePath, "utf8")) as Folder;
+        return parsed;
+      } catch (error) {
+        console.error(
+          `[prompt-workspace] failed to parse ${FOLDER_METADATA_FILE_NAME} at ${filePath}:`,
+          error,
+        );
+        return null;
+      }
+    })
+    .filter((folder): folder is Folder => folder !== null);
+}
+
+function readFoldersFile(workspaceDir: string, promptsDir: string): Folder[] {
+  const merged = new Map<string, Folder>();
+
+  for (const folder of readLegacyFoldersFile(workspaceDir)) {
+    merged.set(folder.id, folder);
+  }
+  for (const folder of readFolderMetadataFiles(promptsDir)) {
+    merged.set(folder.id, folder);
+  }
+
+  return [...merged.values()];
+}
+
+function getFolderMetadataPath(folderDir: string): string {
+  return path.join(folderDir, FOLDER_METADATA_FILE_NAME);
+}
+
+function writeFolderMetadataFiles(
+  workspaceDir: string,
+  promptsDir: string,
+  folders: Folder[],
+  folderMap: Map<string, Folder>,
+): void {
+  const expectedMetadataPaths = new Set<string>();
+
+  ensureDir(promptsDir);
+  for (const folder of folders) {
+    const folderDir = path.join(promptsDir, ...buildFolderSegments(folder.id, folderMap));
+    ensureDir(folderDir);
+
+    const metadataPath = getFolderMetadataPath(folderDir);
+    fs.writeFileSync(metadataPath, JSON.stringify(folder, null, 2), "utf8");
+    expectedMetadataPaths.add(path.resolve(metadataPath));
+  }
+
+  for (const existingMetadataPath of collectFolderMetadataFiles(promptsDir)) {
+    const resolved = path.resolve(existingMetadataPath);
+    if (!expectedMetadataPaths.has(resolved)) {
+      moveToTrash(existingMetadataPath);
+    }
+  }
+
+  const legacyFoldersPath = path.join(workspaceDir, FOLDERS_FILE_NAME);
+  if (fs.existsSync(legacyFoldersPath)) {
+    moveToTrash(legacyFoldersPath);
+  }
 }
 
 function buildFolderSegments(
@@ -324,17 +410,56 @@ function buildFolderSegments(
   return segments;
 }
 
-function getPromptDirectory(
+function getPromptParentDirectory(
   promptsDir: string,
   folderMap: Map<string, Folder>,
   prompt: Prompt,
 ): string {
   const folderSegments = buildFolderSegments(prompt.folderId ?? null, folderMap);
-  return path.join(
-    promptsDir,
-    ...folderSegments,
-    `${slugify(prompt.title)}__${prompt.id}`,
-  );
+  return path.join(promptsDir, ...folderSegments);
+}
+
+function buildPromptFileName(prompt: Prompt): string {
+  return `${slugify(prompt.title)}.md`;
+}
+
+function getPromptFilePath(
+  promptsDir: string,
+  folderMap: Map<string, Folder>,
+  prompt: Prompt,
+  takenPaths: Set<string>,
+): string {
+  const parentDir = getPromptParentDirectory(promptsDir, folderMap, prompt);
+  const baseName = buildPromptFileName(prompt);
+  const initialPath = path.join(parentDir, baseName);
+  const resolvedInitialPath = path.resolve(initialPath);
+
+  if (!takenPaths.has(resolvedInitialPath)) {
+    takenPaths.add(resolvedInitialPath);
+    return initialPath;
+  }
+
+  const fallbackBaseName = `${slugify(prompt.title)}-${prompt.id.slice(0, 8)}.md`;
+  const fallbackPath = path.join(parentDir, fallbackBaseName);
+  const resolvedFallbackPath = path.resolve(fallbackPath);
+  if (!takenPaths.has(resolvedFallbackPath)) {
+    takenPaths.add(resolvedFallbackPath);
+    return fallbackPath;
+  }
+
+  let counter = 2;
+  while (true) {
+    const candidatePath = path.join(
+      parentDir,
+      `${slugify(prompt.title)}-${counter}.md`,
+    );
+    const resolvedCandidatePath = path.resolve(candidatePath);
+    if (!takenPaths.has(resolvedCandidatePath)) {
+      takenPaths.add(resolvedCandidatePath);
+      return candidatePath;
+    }
+    counter += 1;
+  }
 }
 
 function collectPromptFiles(rootDir: string): string[] {
@@ -354,6 +479,20 @@ function collectPromptFiles(rootDir: string): string[] {
     }
     const absolutePath = path.join(rootDir, entry.name);
     if (entry.isDirectory()) {
+      if (entry.name === VERSIONS_DIR_NAME || entry.name === VERSION_ROOT_DIR_NAME) {
+        continue;
+      }
+
+      const legacyPromptFile = path.join(absolutePath, PROMPT_FILE_NAME);
+      if (fs.existsSync(legacyPromptFile)) {
+        const key = dedupKey(legacyPromptFile);
+        if (!seen.has(key)) {
+          seen.add(key);
+          files.push(legacyPromptFile);
+        }
+        continue;
+      }
+
       for (const nested of collectPromptFiles(absolutePath)) {
         const key = dedupKey(nested);
         if (!seen.has(key)) {
@@ -364,7 +503,11 @@ function collectPromptFiles(rootDir: string): string[] {
       continue;
     }
 
-    if (entry.isFile() && entry.name === PROMPT_FILE_NAME) {
+    if (
+      entry.isFile() &&
+      entry.name.endsWith(".md") &&
+      entry.name !== FOLDER_METADATA_FILE_NAME
+    ) {
       const key = dedupKey(absolutePath);
       if (!seen.has(key)) {
         seen.add(key);
@@ -374,6 +517,65 @@ function collectPromptFiles(rootDir: string): string[] {
   }
 
   return files;
+}
+
+function getPromptCleanupPath(promptFilePath: string): string {
+  if (path.basename(promptFilePath) === PROMPT_FILE_NAME) {
+    return path.dirname(promptFilePath);
+  }
+
+  return promptFilePath;
+}
+
+function getPromptVersionDir(workspaceDir: string, promptId: string): string {
+  return path.join(workspaceDir, VERSION_ROOT_DIR_NAME, promptId);
+}
+
+function collectLegacyPromptDirs(rootDir: string): string[] {
+  if (!fs.existsSync(rootDir)) {
+    return [];
+  }
+
+  const result: string[] = [];
+  const seen = new Set<string>();
+  const walk = (dir: string): void => {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.name === TRASH_DIR_NAME) continue;
+      const absolutePath = path.join(dir, entry.name);
+      if (!entry.isDirectory()) continue;
+
+      if (fs.existsSync(path.join(absolutePath, PROMPT_FILE_NAME))) {
+        const key = dedupKey(absolutePath);
+        if (!seen.has(key)) {
+          seen.add(key);
+          result.push(absolutePath);
+        }
+      } else {
+        walk(absolutePath);
+      }
+    }
+  };
+
+  walk(rootDir);
+  return result;
+}
+
+function cleanupLegacyVersionDirs(workspaceDir: string, promptIds: Set<string>): void {
+  const versionRoot = path.join(workspaceDir, VERSION_ROOT_DIR_NAME);
+  if (!fs.existsSync(versionRoot)) {
+    return;
+  }
+
+  for (const entry of fs.readdirSync(versionRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory()) {
+      continue;
+    }
+
+    if (!promptIds.has(entry.name)) {
+      moveToTrash(path.join(versionRoot, entry.name));
+    }
+  }
 }
 
 function toIsoString(value: unknown, fallback: string): string {
@@ -478,8 +680,15 @@ function parseVersionFile(filePath: string, promptId: string): PromptVersion {
   };
 }
 
-function readPromptVersions(promptDir: string, promptId: string): PromptVersion[] {
-  const versionsDir = path.join(promptDir, VERSIONS_DIR_NAME);
+function readPromptVersions(
+  workspaceDir: string,
+  promptFilePath: string,
+  promptId: string,
+): PromptVersion[] {
+  const legacyVersionsDir = path.join(path.dirname(promptFilePath), VERSIONS_DIR_NAME);
+  const versionsDir = fs.existsSync(getPromptVersionDir(workspaceDir, promptId))
+    ? getPromptVersionDir(workspaceDir, promptId)
+    : legacyVersionsDir;
   if (!fs.existsSync(versionsDir)) {
     return [];
   }
@@ -493,6 +702,10 @@ function readPromptVersions(promptDir: string, promptId: string): PromptVersion[
 
 function workspaceHasPromptData(promptsDir: string, workspaceDir: string): boolean {
   if (collectPromptFiles(promptsDir).length > 0) {
+    return true;
+  }
+
+  if (collectFolderMetadataFiles(promptsDir).length > 0) {
     return true;
   }
 
@@ -626,22 +839,29 @@ function pruneTrash(trashRoot: string): void {
 }
 
 function writePromptToDisk(
+  workspaceDir: string,
   promptsDir: string,
   folderMap: Map<string, Folder>,
   prompt: Prompt,
   versions: PromptVersion[],
-): { promptDir: string; versionCount: number } {
-  const promptDir = getPromptDirectory(promptsDir, folderMap, prompt);
-  ensureDir(promptDir);
+  takenPromptPaths: Set<string>,
+): { promptPath: string; versionCount: number } {
+  const promptPath = getPromptFilePath(
+    promptsDir,
+    folderMap,
+    prompt,
+    takenPromptPaths,
+  );
+  ensureDir(path.dirname(promptPath));
 
   fs.writeFileSync(
-    path.join(promptDir, PROMPT_FILE_NAME),
+    promptPath,
     `${formatFrontmatter(promptFrontmatter(prompt))}${formatPromptBody(prompt.systemPrompt, prompt.userPrompt)}`,
     "utf8",
   );
 
   const sorted = [...versions].sort((left, right) => left.version - right.version);
-  const versionsDir = path.join(promptDir, VERSIONS_DIR_NAME);
+  const versionsDir = getPromptVersionDir(workspaceDir, prompt.id);
 
   if (sorted.length > 0) {
     ensureDir(versionsDir);
@@ -675,41 +895,7 @@ function writePromptToDisk(
     moveToTrash(versionsDir);
   }
 
-  return { promptDir, versionCount: sorted.length };
-}
-
-/**
- * Recursively collect every leaf prompt directory (one that contains prompt.md).
- * Used to identify orphan directories that should be trashed.
- * 递归收集所有包含 prompt.md 的叶子目录，用于识别需回收的孤立目录。
- */
-function collectPromptDirs(rootDir: string): string[] {
-  if (!fs.existsSync(rootDir)) {
-    return [];
-  }
-
-  const result: string[] = [];
-  const seen = new Set<string>();
-  const walk = (dir: string): void => {
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
-    for (const entry of entries) {
-      if (entry.name === TRASH_DIR_NAME) continue;
-      const absolutePath = path.join(dir, entry.name);
-      if (!entry.isDirectory()) continue;
-
-      if (fs.existsSync(path.join(absolutePath, PROMPT_FILE_NAME))) {
-        const key = dedupKey(absolutePath);
-        if (!seen.has(key)) {
-          seen.add(key);
-          result.push(absolutePath);
-        }
-      } else {
-        walk(absolutePath);
-      }
-    }
-  };
-  walk(rootDir);
-  return result;
+  return { promptPath, versionCount: sorted.length };
 }
 
 /**
@@ -760,7 +946,7 @@ function pruneEmptyDirs(rootDir: string): void {
 export function syncPromptWorkspaceFromDatabase(
   promptDb: PromptDB,
   folderDb: FolderDB,
-  options: { skipTrashDirs?: Set<string> } = {},
+  options: { skipTrashPaths?: Set<string> } = {},
 ): PromptWorkspaceSyncResult {
   const workspaceDir = getWorkspaceDir();
   const promptsDir = getPromptsWorkspaceDir();
@@ -769,40 +955,49 @@ export function syncPromptWorkspaceFromDatabase(
   const folderMap = new Map(folders.map((folder) => [folder.id, folder]));
 
   ensureDir(promptsDir);
-  writeFoldersFile(workspaceDir, folders);
+  writeFolderMetadataFiles(workspaceDir, promptsDir, folders, folderMap);
 
-  // Write current state to disk, remember which dirs we own.
-  // 写入当前状态，记录属于我方的目录。
-  const expectedDirs = new Set<string>();
+  // Write current state to disk, remember which prompt files we own.
+  // 写入当前状态，记录属于我方的 prompt 文件。
+  const expectedPromptPaths = new Set<string>();
+  const takenPromptPaths = new Set<string>();
+  const expectedPromptIds = new Set<string>();
   let versionCount = 0;
 
   for (const prompt of prompts) {
-    const { promptDir, versionCount: vc } = writePromptToDisk(
+    const { promptPath, versionCount: vc } = writePromptToDisk(
+      workspaceDir,
       promptsDir,
       folderMap,
       prompt,
       promptDb.getVersions(prompt.id),
+      takenPromptPaths,
     );
-    expectedDirs.add(path.resolve(promptDir));
+    expectedPromptPaths.add(path.resolve(promptPath));
+    expectedPromptIds.add(prompt.id);
     versionCount += vc;
   }
 
-  // Trash prompt directories not present in DB.
-  // 回收 DB 中不存在的 prompt 目录。
-  // v0.5.3 review-follow-up: honor `skipTrashDirs` so directories that the
-  // caller already handled (parse failure, same-id conflict loser) are not
-  // trashed a second time.
-  // v0.5.3 review 反馈修复：尊重 skipTrashDirs，调用方已处理（解析失败或
-  // 同 id 冲突落败）的目录不得重复回收。
-  const skip = options.skipTrashDirs;
-  const existingDirs = collectPromptDirs(promptsDir).map((dir) =>
-    path.resolve(dir),
+  // Trash prompt files not present in DB.
+  // 回收 DB 中不存在的 prompt 文件。
+  const skip = options.skipTrashPaths;
+  const existingPromptPaths = collectPromptFiles(promptsDir).map((filePath) =>
+    path.resolve(filePath),
   );
-  for (const dir of existingDirs) {
-    if (expectedDirs.has(dir)) continue;
-    if (skip?.has(dir)) continue;
-    moveToTrash(dir);
+  for (const filePath of existingPromptPaths) {
+    if (expectedPromptPaths.has(filePath)) continue;
+    if (skip?.has(filePath)) continue;
+    moveToTrash(getPromptCleanupPath(filePath));
   }
+
+  for (const legacyDir of collectLegacyPromptDirs(promptsDir)) {
+    const legacyPromptPath = path.resolve(path.join(legacyDir, PROMPT_FILE_NAME));
+    if (expectedPromptPaths.has(legacyPromptPath)) continue;
+    if (skip?.has(legacyPromptPath)) continue;
+    moveToTrash(legacyDir);
+  }
+
+  cleanupLegacyVersionDirs(workspaceDir, expectedPromptIds);
 
   // Remove any empty parent directories (e.g. after folder rename).
   // 清理空的父目录（例如文件夹重命名后残留的空目录）。
@@ -832,17 +1027,17 @@ export function importPromptWorkspaceIntoDatabase(
 ): PromptWorkspaceImportResult {
   const workspaceDir = getWorkspaceDir();
   const promptsDir = getPromptsWorkspaceDir();
-  const folders = readFoldersFile(workspaceDir);
+  const folders = readFoldersFile(workspaceDir, promptsDir);
   const promptFiles = collectPromptFiles(promptsDir);
 
-  const skippedPromptDirs = new Set<string>();
+  const skippedPromptPaths = new Set<string>();
 
   if (!workspaceHasPromptData(promptsDir, workspaceDir)) {
     return {
       promptCount: 0,
       folderCount: 0,
       versionCount: 0,
-      skippedPromptDirs,
+      skippedPromptPaths,
     };
   }
 
@@ -892,11 +1087,10 @@ export function importPromptWorkspaceIntoDatabase(
   // v0.5.3 review 反馈修复：先完整解析所有文件再按 prompt.id 分组；
   // 同 id 冲突按 updatedAt 选最新者为胜者，原先依赖遍历顺序可能出现
   // "内容来自 A 但版本来自 B" 的错配。落败副本移入 .trash/conflicts/
-  // 并标记 skippedPromptDirs，确保 Phase 2 不把它们再当孤立项处理。
+  // 并标记 skippedPromptPaths，确保 Phase 2 不把它们再当孤立项处理。
   interface ParsedPrompt {
     prompt: Prompt;
     filePath: string;
-    promptDir: string;
   }
   const parsedByFile: Array<ParsedPrompt | null> = [];
   let skippedPrompts = 0;
@@ -907,12 +1101,10 @@ export function importPromptWorkspaceIntoDatabase(
       parsedByFile.push({
         prompt,
         filePath: promptFile,
-        promptDir: path.dirname(promptFile),
       });
     } catch (error) {
       skippedPrompts++;
-      const dir = path.dirname(promptFile);
-      skippedPromptDirs.add(path.resolve(dir));
+      skippedPromptPaths.add(path.resolve(promptFile));
       parsedByFile.push(null);
       console.error(
         `[prompt-workspace] failed to parse ${promptFile}, skipping:`,
@@ -944,17 +1136,17 @@ export function importPromptWorkspaceIntoDatabase(
 
   for (const loser of losers) {
     console.warn(
-      `[prompt-workspace] same-id conflict for prompt ${loser.prompt.id}: moving ${loser.promptDir} to .trash/conflicts`,
+      `[prompt-workspace] same-id conflict for prompt ${loser.prompt.id}: moving ${loser.filePath} to .trash/conflicts`,
     );
-    skippedPromptDirs.add(path.resolve(loser.promptDir));
+    skippedPromptPaths.add(path.resolve(loser.filePath));
     try {
-      moveToTrash(loser.promptDir, "conflict");
+      moveToTrash(getPromptCleanupPath(loser.filePath), "conflict");
     } catch (error) {
       // If we can't move the loser, at least ensure Phase 2 doesn't trash it
       // again; user can clean up manually via the conflicts/ folder.
-      // 即使移动失败也已加入 skippedPromptDirs，Phase 2 不会重复回收。
+      // 即使移动失败也已加入 skippedPromptPaths，Phase 2 不会重复回收。
       console.error(
-        `[prompt-workspace] failed to trash conflict copy at ${loser.promptDir}:`,
+        `[prompt-workspace] failed to trash conflict copy at ${loser.filePath}:`,
         error,
       );
     }
@@ -966,7 +1158,7 @@ export function importPromptWorkspaceIntoDatabase(
 
   let importedPrompts = 0;
   let versionCount = 0;
-  for (const { prompt, promptDir } of byId.values()) {
+  for (const { prompt, filePath } of byId.values()) {
     if (existingPrompts) {
       const existing = existingPrompts.get(prompt.id);
       if (
@@ -982,7 +1174,7 @@ export function importPromptWorkspaceIntoDatabase(
       importedPrompts++;
     } catch (error) {
       skippedPrompts++;
-      skippedPromptDirs.add(path.resolve(promptDir));
+      skippedPromptPaths.add(path.resolve(filePath));
       console.error(
         `[prompt-workspace] failed to import prompt ${prompt.id} (${prompt.title}):`,
         error,
@@ -990,7 +1182,7 @@ export function importPromptWorkspaceIntoDatabase(
       continue;
     }
 
-    const versions = readPromptVersions(promptDir, prompt.id);
+    const versions = readPromptVersions(workspaceDir, filePath, prompt.id);
     for (const version of versions) {
       // insertVersionDirect is INSERT OR IGNORE — safe to call repeatedly.
       // insertVersionDirect 是 INSERT OR IGNORE，重复调用安全。
@@ -1017,7 +1209,7 @@ export function importPromptWorkspaceIntoDatabase(
     promptCount: importedPrompts,
     folderCount: importedFolders,
     versionCount,
-    skippedPromptDirs,
+    skippedPromptPaths,
   };
 }
 
@@ -1133,13 +1325,13 @@ export function bootstrapPromptWorkspace(
   // Phase 1: import workspace entries newer than their DB counterparts.
   // Phase 2: re-sync DB → workspace (incremental, trashes orphans).
   // 阶段 1：将比 DB 更新的工作区条目导入；阶段 2：DB → 工作区增量同步，回收孤立项。
-  // v0.5.3 review 反馈修复：把 Phase 1 的 skippedPromptDirs 传给 Phase 2，
+  // v0.5.3 review 反馈修复：把 Phase 1 的 skippedPromptPaths 传给 Phase 2，
   // 避免解析失败或冲突 loser 的目录被当作 orphan 再次送入 trash。
   const imported = importPromptWorkspaceIntoDatabase(promptDb, folderDb, {
     onlyIfNewer: true,
   });
   const exported = syncPromptWorkspaceFromDatabase(promptDb, folderDb, {
-    skipTrashDirs: imported.skippedPromptDirs,
+    skipTrashPaths: imported.skippedPromptPaths,
   });
   return {
     quadrant: "both",

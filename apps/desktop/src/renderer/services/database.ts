@@ -1170,15 +1170,19 @@ export async function downloadSelectiveExport(
 /**
  * 从文件恢复备份
  */
-export async function restoreFromFile(file: File): Promise<void> {
+export async function restoreFromFile(
+  file: File,
+): Promise<import("./database-backup-format").ImportSkippedStats> {
   const backupModule = await import("./database-backup");
-  await backupModule.restoreFromFile(file);
+  return backupModule.restoreFromFile(file);
 }
 
 /**
  * 从备份数据恢复（用于 WebDAV 同步）
  */
-export async function restoreFromBackup(backup: DatabaseBackup): Promise<void> {
+export async function restoreFromBackup(
+  backup: DatabaseBackup,
+): Promise<import("./database-backup-format").ImportSkippedStats> {
   const backupModule = await import("./database-backup");
-  await backupModule.restoreFromBackup(backup);
+  return backupModule.restoreFromBackup(backup);
 }

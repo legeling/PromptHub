@@ -20,6 +20,28 @@ import {
   resetRuntimePaths,
 } from "../../../src/main/runtime-paths";
 
+const FOLDER_METADATA_FILE_NAME = "_folder.json";
+
+function writeLegacyFolderList(baseDir: string, folders: unknown[]): void {
+  fs.mkdirSync(baseDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(baseDir, "folders.json"),
+    JSON.stringify(folders, null, 2),
+    "utf8",
+  );
+}
+
+function writeLegacyPromptDir(
+  promptsDir: string,
+  relativeDir: string,
+  contents: string,
+): string {
+  const promptDir = path.join(promptsDir, relativeDir);
+  fs.mkdirSync(promptDir, { recursive: true });
+  fs.writeFileSync(path.join(promptDir, "prompt.md"), contents, "utf8");
+  return promptDir;
+}
+
 describe("prompt workspace storage", () => {
   let tempDir: string;
   let rawDb: DatabaseAdapter.Database;
@@ -66,15 +88,18 @@ describe("prompt workspace storage", () => {
     expect(result.versionCount).toBe(2);
 
     const workspaceDir = getWorkspaceDir();
-    const foldersFile = path.join(workspaceDir, "folders.json");
-    expect(fs.existsSync(foldersFile)).toBe(true);
+    const folderMetadataPath = path.join(
+      getPromptsWorkspaceDir(),
+      "writing-space",
+      FOLDER_METADATA_FILE_NAME,
+    );
+    expect(fs.existsSync(folderMetadataPath)).toBe(true);
 
     const promptsDir = getPromptsWorkspaceDir();
     const exportedPromptPath = path.join(
       promptsDir,
       "writing-space",
-      `reply-prompt__${prompt.id}`,
-      "prompt.md",
+      "reply-prompt.md",
     );
     expect(fs.existsSync(exportedPromptPath)).toBe(true);
 
@@ -85,10 +110,9 @@ describe("prompt workspace storage", () => {
     expect(rawPromptFile).toContain("Reply to {{name}} with empathy.");
 
     const versionFile = path.join(
-      promptsDir,
-      "writing-space",
-      `reply-prompt__${prompt.id}`,
-      "versions",
+      workspaceDir,
+      ".versions",
+      prompt.id,
       "0002.md",
     );
     expect(fs.existsSync(versionFile)).toBe(true);
@@ -100,23 +124,15 @@ describe("prompt workspace storage", () => {
     fs.mkdirSync(path.join(promptsDir, "ops", "deploy-check__prompt_1", "versions"), {
       recursive: true,
     });
-    fs.writeFileSync(
-      path.join(workspaceDir, "folders.json"),
-      JSON.stringify(
-        [
-          {
-            id: "folder_ops",
-            name: "Ops",
-            order: 0,
-            createdAt: "2026-04-13T00:00:00.000Z",
-            updatedAt: "2026-04-13T00:00:00.000Z",
-          },
-        ],
-        null,
-        2,
-      ),
-      "utf8",
-    );
+    writeLegacyFolderList(workspaceDir, [
+      {
+        id: "folder_ops",
+        name: "Ops",
+        order: 0,
+        createdAt: "2026-04-13T00:00:00.000Z",
+        updatedAt: "2026-04-13T00:00:00.000Z",
+      },
+    ]);
     fs.writeFileSync(
       path.join(promptsDir, "ops", "deploy-check__prompt_1", "prompt.md"),
       `---
@@ -188,12 +204,10 @@ Check deployment health for {{service}}.
   });
 
   it("bootstraps from workspace when database is empty (Q3: workspace-only)", () => {
-    fs.mkdirSync(path.join(getPromptsWorkspaceDir(), "general", "status__prompt_2"), {
-      recursive: true,
-    });
-    fs.writeFileSync(path.join(getWorkspaceDir(), "folders.json"), "[]", "utf8");
-    fs.writeFileSync(
-      path.join(getPromptsWorkspaceDir(), "general", "status__prompt_2", "prompt.md"),
+    writeLegacyFolderList(getWorkspaceDir(), []);
+    writeLegacyPromptDir(
+      getPromptsWorkspaceDir(),
+      path.join("general", "status__prompt_2"),
       `---
 id: "prompt_2"
 title: "Status"
@@ -205,8 +219,7 @@ updatedAt: "2026-04-13T00:00:00.000Z"
 
 <!-- PROMPTHUB:USER -->
 Summarize the latest status.
-`,
-      "utf8",
+      `,
     );
 
     const result = bootstrapPromptWorkspace(promptDb, folderDb);
@@ -250,8 +263,7 @@ Summarize the latest status.
     const exportedPath = path.join(
       getPromptsWorkspaceDir(),
       "upgrade-folder",
-      `pre-existing__${prompt.id}`,
-      "prompt.md",
+      "pre-existing.md",
     );
     expect(fs.existsSync(exportedPath)).toBe(true);
   });
@@ -272,14 +284,9 @@ Summarize the latest status.
     });
 
     // Seed workspace with a NEWER file on disk for the same id.
-    const promptDir = path.join(
+    const legacyPromptDir = writeLegacyPromptDir(
       getPromptsWorkspaceDir(),
       `shared__${prompt.id}`,
-    );
-    fs.mkdirSync(promptDir, { recursive: true });
-    fs.writeFileSync(path.join(getWorkspaceDir(), "folders.json"), "[]", "utf8");
-    fs.writeFileSync(
-      path.join(promptDir, "prompt.md"),
       `---
 id: ${JSON.stringify(prompt.id)}
 title: "Shared"
@@ -291,9 +298,9 @@ updatedAt: "2026-06-01T00:00:00.000Z"
 
 <!-- PROMPTHUB:USER -->
 New user prompt from disk.
-`,
-      "utf8",
+      `,
     );
+    writeLegacyFolderList(getWorkspaceDir(), []);
 
     const result = bootstrapPromptWorkspace(promptDb, folderDb);
 
@@ -302,7 +309,11 @@ New user prompt from disk.
     expect(merged?.userPrompt).toBe("New user prompt from disk.");
 
     // Disk should now reflect merged state (same text, re-serialized).
-    const diskContents = fs.readFileSync(path.join(promptDir, "prompt.md"), "utf8");
+    expect(fs.existsSync(legacyPromptDir)).toBe(false);
+    const diskContents = fs.readFileSync(
+      path.join(getPromptsWorkspaceDir(), "shared.md"),
+      "utf8",
+    );
     expect(diskContents).toContain("New user prompt from disk.");
   });
 
@@ -317,14 +328,10 @@ New user prompt from disk.
       updatedAt: "2026-06-01T00:00:00.000Z",
     });
 
-    const promptDir = path.join(
+    writeLegacyFolderList(getWorkspaceDir(), []);
+    const legacyPromptDir = writeLegacyPromptDir(
       getPromptsWorkspaceDir(),
       `db-wins__${prompt.id}`,
-    );
-    fs.mkdirSync(promptDir, { recursive: true });
-    fs.writeFileSync(path.join(getWorkspaceDir(), "folders.json"), "[]", "utf8");
-    fs.writeFileSync(
-      path.join(promptDir, "prompt.md"),
       `---
 id: ${JSON.stringify(prompt.id)}
 title: "DB Wins"
@@ -336,14 +343,14 @@ updatedAt: "2026-01-01T00:00:00.000Z"
 
 <!-- PROMPTHUB:USER -->
 Stale file content.
-`,
-      "utf8",
+      `,
     );
 
     bootstrapPromptWorkspace(promptDb, folderDb);
 
     expect(promptDb.getById(prompt.id)?.userPrompt).toBe("DB newer prompt");
-    expect(fs.readFileSync(path.join(promptDir, "prompt.md"), "utf8")).toContain(
+    expect(fs.existsSync(legacyPromptDir)).toBe(false);
+    expect(fs.readFileSync(path.join(getPromptsWorkspaceDir(), "db-wins.md"), "utf8")).toContain(
       "DB newer prompt",
     );
   });
@@ -358,9 +365,9 @@ Stale file content.
 
     const promptDir = path.join(
       getPromptsWorkspaceDir(),
-      `will-be-deleted__${prompt.id}`,
+      "will-be-deleted.md",
     );
-    expect(fs.existsSync(path.join(promptDir, "prompt.md"))).toBe(true);
+    expect(fs.existsSync(promptDir)).toBe(true);
 
     // Simulate deletion in DB.
     promptDb.delete(prompt.id);
@@ -385,7 +392,7 @@ Stale file content.
         }
       };
       walk(path.join(trashRoot, snap));
-      return files.some((f) => f.endsWith("prompt.md"));
+      return files.some((f) => f.endsWith("will-be-deleted.md"));
     });
     expect(foundInTrash).toBe(true);
   });
@@ -407,8 +414,7 @@ Stale file content.
     const file = path.join(
       getPromptsWorkspaceDir(),
       "team",
-      `hello__${prompt.id}`,
-      "prompt.md",
+      "hello.md",
     );
     expect(fs.existsSync(file)).toBe(true);
     expect(fs.readFileSync(file, "utf8")).toContain("Hi {{who}}");
@@ -427,15 +433,11 @@ Stale file content.
     // Seed workspace state: folders.json + a ghost prompt dir that references
     // a record which is NOT in DB (the restore dropped it).
     fs.mkdirSync(getWorkspaceDir(), { recursive: true });
-    fs.writeFileSync(path.join(getWorkspaceDir(), "folders.json"), "[]", "utf8");
+    writeLegacyFolderList(getWorkspaceDir(), []);
     const ghostId = "ghost-prompt-id-1234";
-    const ghostDir = path.join(
+    const ghostDir = writeLegacyPromptDir(
       getPromptsWorkspaceDir(),
       `ghost__${ghostId}`,
-    );
-    fs.mkdirSync(ghostDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(ghostDir, "prompt.md"),
       `---
 id: ${JSON.stringify(ghostId)}
 title: "Ghost"
@@ -447,8 +449,7 @@ updatedAt: "2099-01-01T00:00:00.000Z"
 
 <!-- PROMPTHUB:USER -->
 Should not come back.
-`,
-      "utf8",
+      `,
     );
 
     // Simulate performDatabaseRecovery writing a restore marker.
@@ -487,7 +488,7 @@ Should not come back.
     const dirOld = path.join(getPromptsWorkspaceDir(), `loser__${sharedId}`);
     fs.mkdirSync(dirNew, { recursive: true });
     fs.mkdirSync(dirOld, { recursive: true });
-    fs.writeFileSync(path.join(getWorkspaceDir(), "folders.json"), "[]", "utf8");
+    writeLegacyFolderList(getWorkspaceDir(), []);
 
     const writePrompt = (dir: string, body: string, updatedAt: string) => {
       fs.writeFileSync(
@@ -522,9 +523,9 @@ ${body}
 
     // Skipped set includes the loser path (absolute) so Phase 2 will not
     // re-sweep it. Winner must NOT appear in skipped set.
-    const skippedArray = Array.from(result.skippedPromptDirs);
-    expect(skippedArray).toContain(path.resolve(dirOld));
-    expect(skippedArray).not.toContain(path.resolve(dirNew));
+    const skippedArray = Array.from(result.skippedPromptPaths);
+    expect(skippedArray).toContain(path.resolve(path.join(dirOld, "prompt.md")));
+    expect(skippedArray).not.toContain(path.resolve(path.join(dirNew, "prompt.md")));
   });
 
   it("Q4 passes skippedPromptDirs to Phase 2 so insert-failing imports are not trashed as orphans", () => {
@@ -540,13 +541,9 @@ ${body}
     // insertPromptDirect throw during Phase 1 → the dir is added to
     // skippedPromptDirs and Phase 2 must NOT re-sweep it into .trash.
     const orphanId = "fk-fail-xyz789";
-    const fkFailDir = path.join(
+    const fkFailDir = writeLegacyPromptDir(
       getPromptsWorkspaceDir(),
       `fkfail__${orphanId}`,
-    );
-    fs.mkdirSync(fkFailDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(fkFailDir, "prompt.md"),
       `---
 id: ${JSON.stringify(orphanId)}
 title: "FK Fail"
@@ -559,8 +556,7 @@ updatedAt: "2099-01-01T00:00:00.000Z"
 
 <!-- PROMPTHUB:USER -->
 FK failure body.
-`,
-      "utf8",
+      `,
     );
 
     const result = bootstrapPromptWorkspace(promptDb, folderDb);

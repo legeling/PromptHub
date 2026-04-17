@@ -6,6 +6,7 @@ import type Database from "../database/sqlite";
 import { SkillDB } from "../database/skill";
 import { PromptDB } from "../database/prompt";
 import { FolderDB } from "../database/folder";
+import { getSkillsDir } from "../runtime-paths";
 import type { CreateSkillParams } from "@prompthub/shared/types";
 import type { Folder, Prompt, PromptVersion } from "@prompthub/shared/types";
 
@@ -281,7 +282,7 @@ export function applyE2ESeed(
   }
 
   const skillDb = new SkillDB(db);
-  const skillsRoot = path.join(app.getPath("userData"), "skills");
+  const skillsRoot = getSkillsDir();
   fs.mkdirSync(skillsRoot, { recursive: true });
 
   for (const skill of seed.skills) {

@@ -5,7 +5,13 @@ import { DataSettings } from "../../../src/renderer/components/settings/DataSett
 import { renderWithI18n } from "../../helpers/i18n";
 import { installWindowMocks } from "../../helpers/window";
 import { restoreFromFile } from "../../../src/renderer/services/database-backup";
+import { previewImportFile } from "../../../src/renderer/services/database-backup";
 import { testSelfHostedConnection } from "../../../src/renderer/services/self-hosted-sync";
+import {
+  createUpgradeBackup,
+  listUpgradeBackups,
+  restoreUpgradeBackup,
+} from "../../../src/renderer/services/upgrade-backup";
 
 const useSettingsStoreMock = vi.fn();
 const useToastMock = vi.fn();
@@ -22,6 +28,7 @@ vi.mock("../../../src/renderer/services/database-backup", () => ({
   downloadBackup: vi.fn(),
   downloadCompressedBackup: vi.fn(),
   downloadSelectiveExport: vi.fn(),
+  previewImportFile: vi.fn(),
   restoreFromFile: vi.fn(),
 }));
 
@@ -39,6 +46,13 @@ vi.mock("../../../src/renderer/services/self-hosted-sync", () => ({
   testSelfHostedConnection: vi.fn(),
   pushToSelfHostedWeb: vi.fn(),
   pullFromSelfHostedWeb: vi.fn(),
+}));
+
+vi.mock("../../../src/renderer/services/upgrade-backup", () => ({
+  createUpgradeBackup: vi.fn(),
+  listUpgradeBackups: vi.fn(),
+  deleteUpgradeBackup: vi.fn(),
+  restoreUpgradeBackup: vi.fn(),
 }));
 
 function createSettingsState() {
@@ -111,6 +125,13 @@ describe("DataSettings", () => {
 
     useSettingsStoreMock.mockReturnValue(createSettingsState());
     useToastMock.mockReturnValue({ showToast: vi.fn() });
+    vi.mocked(listUpgradeBackups).mockResolvedValue([]);
+    vi.mocked(createUpgradeBackup).mockResolvedValue({
+      created: true,
+      skipped: false,
+      backupId: "backup-1",
+      backupPath: "/tmp/PromptHub/backups/backup-1",
+    });
   });
 
   afterEach(() => {
@@ -137,10 +158,47 @@ describe("DataSettings", () => {
   });
 
   it("restores a backup file through the restore action and shows success", async () => {
-    vi.useFakeTimers();
     const showToast = vi.fn();
     useToastMock.mockReturnValue({ showToast });
-    vi.mocked(restoreFromFile).mockResolvedValue(undefined);
+    vi.mocked(previewImportFile).mockResolvedValue({
+      backup: {
+        version: 1,
+        exportedAt: "2026-04-17T00:00:00.000Z",
+        prompts: [],
+        folders: [],
+        versions: [],
+      },
+      summary: {
+        kind: "prompthub-backup",
+        exportedAt: "2026-04-17T00:00:00.000Z",
+        counts: {
+          prompts: 0,
+          folders: 0,
+          versions: 0,
+          skills: 0,
+          skillVersions: 0,
+          skillFiles: 0,
+          images: 0,
+          videos: 0,
+        },
+        skipped: {
+          folders: 0,
+          prompts: 0,
+          skillFiles: 0,
+          skillVersions: 0,
+          skills: 0,
+          versions: 0,
+        },
+      },
+    });
+    vi.mocked(restoreFromFile).mockResolvedValue({
+      folders: 0,
+      prompts: 0,
+      skillFiles: 0,
+      skillVersions: 0,
+      skills: 0,
+      versions: 0,
+    });
 
     const input = {
       accept: "",
@@ -175,6 +233,19 @@ describe("DataSettings", () => {
       } as unknown as Event);
     });
 
+    expect(previewImportFile).toHaveBeenCalledWith(file);
+
+    await waitFor(() => {
+      expect(screen.getByText("Review import summary")).toBeInTheDocument();
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Back up current data and import" }),
+    );
+
+    await waitFor(() => {
+      expect(createUpgradeBackup).toHaveBeenCalled();
+    });
     expect(restoreFromFile).toHaveBeenCalledWith(file);
     expect(showToast).toHaveBeenCalledWith("Data imported successfully", "success");
   });
@@ -183,6 +254,9 @@ describe("DataSettings", () => {
     const showToast = vi.fn();
     vi.spyOn(console, "error").mockImplementation(() => {});
     useToastMock.mockReturnValue({ showToast });
+    vi.mocked(previewImportFile).mockRejectedValue(
+      new Error("Selective export file is corrupted"),
+    );
     vi.mocked(restoreFromFile).mockRejectedValue(
       new Error("Selective export file is corrupted"),
     );
@@ -275,5 +349,101 @@ describe("DataSettings", () => {
     expect(screen.getByText("Backup & Restore")).toBeInTheDocument();
     expect(screen.queryByText("Will switch to this directory after restart:")).toBeNull();
     expect(screen.queryByRole("button", { name: "Test Connection" })).toBeNull();
+  });
+
+  it("renders automatic upgrade backups returned by the desktop API", async () => {
+    vi.mocked(listUpgradeBackups).mockResolvedValue([
+      {
+        backupId: "v0.5.3-2026-04-17T00-00-00-000Z",
+        backupPath: "/tmp/PromptHub/backups/v0.5.3-2026-04-17T00-00-00-000Z",
+        sizeBytes: 2048,
+        manifest: {
+          kind: "prompthub-upgrade-backup",
+          schemaVersion: 2,
+          createdAt: "2026-04-17T00:00:00.000Z",
+          fromVersion: "0.5.3",
+          toVersion: "0.5.4",
+          sourcePath: "/tmp/PromptHub",
+          copiedItems: ["prompthub.db", "workspace"],
+          platform: "darwin",
+        },
+      },
+    ]);
+
+    await act(async () => {
+      await renderWithI18n(<DataSettings />, { language: "en" });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Upgrade backups")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("0.5.3 -> 0.5.4")).toBeInTheDocument();
+    expect(
+      screen.getByText("Items: prompthub.db, workspace"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Restore this snapshot" }),
+    ).toBeInTheDocument();
+  });
+
+  it("confirms and restores an upgrade backup", async () => {
+    const showToast = vi.fn();
+    useToastMock.mockReturnValue({ showToast });
+    vi.mocked(listUpgradeBackups).mockResolvedValue([
+      {
+        backupId: "v0.5.3-2026-04-17T00-00-00-000Z",
+        backupPath: "/tmp/PromptHub/backups/v0.5.3-2026-04-17T00-00-00-000Z",
+        sizeBytes: 2048,
+        manifest: {
+          kind: "prompthub-upgrade-backup",
+          schemaVersion: 2,
+          createdAt: "2026-04-17T00:00:00.000Z",
+          fromVersion: "0.5.3",
+          toVersion: "0.5.4",
+          sourcePath: "/tmp/PromptHub",
+          copiedItems: ["prompthub.db", "workspace"],
+          platform: "darwin",
+        },
+      },
+    ]);
+    vi.mocked(restoreUpgradeBackup).mockResolvedValue({
+      success: true,
+      needsRestart: true,
+      restoredBackupId: "v0.5.3-2026-04-17T00-00-00-000Z",
+      currentStateBackupPath: "/tmp/PromptHub/backups/insurance",
+    });
+
+    await act(async () => {
+      await renderWithI18n(<DataSettings />, { language: "en" });
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Restore this snapshot" }),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Restore this snapshot" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Restore upgrade backup")).toBeInTheDocument();
+    });
+
+    const confirmButtons = screen.getAllByRole("button", {
+      name: "Restore this snapshot",
+    });
+    fireEvent.click(confirmButtons[confirmButtons.length - 1]);
+
+    await waitFor(() => {
+      expect(restoreUpgradeBackup).toHaveBeenCalledWith(
+        "v0.5.3-2026-04-17T00-00-00-000Z",
+      );
+    });
+
+    expect(showToast).toHaveBeenCalledWith(
+      "Upgrade backup restored. PromptHub will restart automatically.",
+      "success",
+    );
   });
 });

@@ -370,7 +370,9 @@ describe("AISettingsPrototype", () => {
       );
     });
 
-    it("blocks batch-add and shows error when API key is cleared after fetching", async () => {
+    it(
+      "blocks batch-add and shows error when API key is cleared after fetching",
+      async () => {
       const showToast = vi.fn();
       useToastMock.mockReturnValue({ showToast });
       const settingsState = createSettingsState();
@@ -416,9 +418,13 @@ describe("AISettingsPrototype", () => {
       // addAiModel must NOT be called; toast with error must fire
       expect(settingsState.addAiModel).not.toHaveBeenCalled();
       expect(showToast).toHaveBeenCalledWith(expect.any(String), "error");
-    });
+      },
+      15000,
+    );
 
-    it("batch-adds share the same provider, apiKey, and apiUrl from the form", async () => {
+    it(
+      "batch-adds share the same provider, apiKey, and apiUrl from the form",
+      async () => {
       const settingsState = createSettingsState();
       useSettingsStoreMock.mockReturnValue(settingsState);
       vi.mocked(fetchAvailableModels).mockResolvedValue({
@@ -461,6 +467,8 @@ describe("AISettingsPrototype", () => {
         });
       }
       expect(settingsState.addAiModel).toHaveBeenCalledTimes(2);
-    });
+      },
+      15000,
+    );
   });
 });

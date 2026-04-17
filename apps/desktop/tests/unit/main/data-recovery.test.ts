@@ -424,6 +424,26 @@ describe("Data Recovery", () => {
       ).toBe('{"showApp":"CmdOrCtrl+Shift+P"}');
     });
 
+    it("copies config files from the new config directory when present", () => {
+      const sourceDir = path.join(tmpBase, "source");
+      fs.mkdirSync(path.join(sourceDir, "config"), { recursive: true });
+      createTestDatabase(sourceDir, { prompts: 1 });
+      fs.writeFileSync(
+        path.join(sourceDir, "config", "shortcuts.json"),
+        '{"showApp":"Alt+Shift+P"}',
+      );
+
+      const targetDir = path.join(tmpBase, "target");
+      fs.mkdirSync(path.join(targetDir, "config"), { recursive: true });
+      createTestDatabase(targetDir);
+
+      performDatabaseRecovery(sourceDir, targetDir);
+
+      expect(
+        fs.readFileSync(path.join(targetDir, "config", "shortcuts.json"), "utf-8"),
+      ).toBe('{"showApp":"Alt+Shift+P"}');
+    });
+
     it("copies renderer browser storage directories", () => {
       const sourceDir = path.join(tmpBase, "source");
       fs.mkdirSync(sourceDir);

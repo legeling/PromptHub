@@ -3,6 +3,8 @@ import os from "os";
 import path from "path";
 import { app } from "electron";
 
+import { getLogsDir } from "./runtime-paths";
+
 /**
  * Startup diagnostic logger.
  *
@@ -25,9 +27,7 @@ import { app } from "electron";
 const MAX_LOG_SIZE_BYTES = 512 * 1024;
 
 function getLogFilePath(): string {
-  const userDataPath = app.getPath("userData");
-  const logsDir = path.join(userDataPath, "logs");
-  return path.join(logsDir, "startup.log");
+  return path.join(getLogsDir(), "startup.log");
 }
 
 function ensureLogDir(filePath: string): void {

@@ -43,7 +43,7 @@ import {
   resolveInitialUserDataPath,
   writeConfiguredDataPath,
 } from "./data-path";
-import { configureRuntimePaths } from "./runtime-paths";
+import { configureRuntimePaths, getImagesDir, getVideosDir } from "./runtime-paths";
 import {
   ensureDesktopCliInstalled,
   extractDesktopCliArgs,
@@ -52,6 +52,8 @@ import { runCli } from "../cli/run";
 import { PromptDB } from "./database/prompt";
 import { FolderDB } from "./database/folder";
 import { bootstrapPromptWorkspace, writeRestoreMarker } from "./services/prompt-workspace";
+import { migrateLegacyDataLayout } from "./services/data-layout-migration";
+import { runUpgradeBackupStartupTasks } from "./services/upgrade-backup-startup";
 import { logStartupEvent, scrubPath } from "./startup-log";
 
 // Disable GPU acceleration (optional; may be needed on some systems)
@@ -1117,7 +1119,7 @@ app.whenReady().then(async () => {
 
         try {
           const decodedUrl = decodeURIComponent(url);
-          const baseDir = path.join(app.getPath("userData"), "images");
+          const baseDir = getImagesDir();
           const normalized = path
             .normalize(decodedUrl)
             .replace(/^([\\/])+/g, "");
@@ -1156,7 +1158,7 @@ app.whenReady().then(async () => {
 
         try {
           const decodedUrl = decodeURIComponent(url);
-          const baseDir = path.join(app.getPath("userData"), "videos");
+          const baseDir = getVideosDir();
           const normalized = path
             .normalize(decodedUrl)
             .replace(/^([\/\\])+/g, "");
@@ -1179,6 +1181,44 @@ app.whenReady().then(async () => {
         }
       },
     );
+
+    try {
+      const backupStartup = await runUpgradeBackupStartupTasks(
+        app.getPath("userData"),
+        app.getVersion(),
+      );
+      logStartupEvent({
+        event: "startup:upgrade_backup",
+        status: backupStartup.status,
+        previousVersion: backupStartup.previousVersion,
+        currentVersion: backupStartup.currentVersion,
+        migratedLegacyBackups: backupStartup.migration.migrated,
+        skippedLegacyBackups: backupStartup.migration.skipped,
+        snapshotBackupId: backupStartup.snapshot?.backupId ?? null,
+        snapshotPath: scrubPath(backupStartup.snapshot?.backupPath ?? null),
+        snapshotFromVersion: backupStartup.snapshot?.manifest.fromVersion ?? null,
+        snapshotToVersion: backupStartup.snapshot?.manifest.toVersion ?? null,
+        snapshotError: backupStartup.snapshotError,
+      });
+
+      const layoutMigration = await migrateLegacyDataLayout(
+        app.getPath("userData"),
+        app.getVersion(),
+      );
+      logStartupEvent({
+        event: "startup:data_layout_migration",
+        status: layoutMigration.status,
+        backupId: layoutMigration.backupId,
+        movedEntries: layoutMigration.movedEntries,
+        markerPath: scrubPath(layoutMigration.markerPath),
+      });
+    } catch (error) {
+      console.warn("[startup] upgrade backup bootstrap failed, continuing:", error);
+      logStartupEvent({
+        event: "startup:upgrade_backup_failed_to_bootstrap",
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
 
     // Initialize database
     // 初始化数据库
@@ -1251,7 +1291,9 @@ app.whenReady().then(async () => {
       });
     }
     appDb = db; // Save to module-level variable for createWindow access
-    registerAllIPC(db);
+    registerAllIPC(db, (nextDb) => {
+      appDb = nextDb;
+    });
 
     // Create application menu
     // 创建菜单

@@ -6,6 +6,7 @@ import { ioApi } from "./api/io";
 import { promptApi } from "./api/prompt";
 import { settingsApi } from "./api/settings";
 import { skillApi } from "./api/skill";
+import { upgradeBackupApi } from "./api/upgrade-backup";
 import { versionApi } from "./api/version";
 import type {
   CreatePromptDTO,
@@ -58,6 +59,7 @@ const api = {
 
   skill: skillApi,
   settings: settingsApi,
+  upgradeBackup: upgradeBackupApi,
   io: ioApi,
   ai: aiApi,
 

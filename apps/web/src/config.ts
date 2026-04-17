@@ -18,7 +18,7 @@ const envSchema = z.object({
   AUTH_REFRESH_WINDOW_MS: z.coerce.number().int().positive().default(5 * 60 * 1000),
   AUTH_REFRESH_MAX_ATTEMPTS: z.coerce.number().int().positive().default(12),
 
-  DATA_DIR: z.string().default('./data'),
+  DATA_ROOT: z.string().default('./'),
 
   ALLOW_REGISTRATION: z
     .enum(['true', 'false'])
@@ -39,6 +39,8 @@ function loadConfig(): Config {
   }
 
   const env = parsed.data;
+
+  const rootDir = path.resolve(env.DATA_ROOT);
 
   return {
     port: env.PORT,
@@ -64,7 +66,8 @@ function loadConfig(): Config {
       },
     },
 
-    dataDir: path.resolve(env.DATA_DIR),
+    rootDir,
+    dataDir: path.join(rootDir, 'data'),
 
     allowRegistration: env.ALLOW_REGISTRATION,
     logLevel: env.LOG_LEVEL,
@@ -96,6 +99,7 @@ export interface Config {
     };
   };
 
+  rootDir: string;
   dataDir: string;
 
   allowRegistration: boolean;

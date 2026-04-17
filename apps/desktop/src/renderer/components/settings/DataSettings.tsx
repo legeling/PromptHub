@@ -15,8 +15,16 @@ import {
   downloadBackup,
   downloadCompressedBackup,
   downloadSelectiveExport,
+  previewImportFile,
   restoreFromFile,
 } from "../../services/database-backup";
+import {
+  createUpgradeBackup,
+  deleteUpgradeBackup,
+  listUpgradeBackups,
+  restoreUpgradeBackup,
+} from "../../services/upgrade-backup";
+import { hasAnySkipped } from "../../services/database-backup-format";
 import { recordManualBackup } from "../../services/backup-status";
 import { clearDatabase } from "../../services/database";
 import {
@@ -31,6 +39,7 @@ import {
 } from "../../services/self-hosted-sync";
 import { useSettingsStore } from "../../stores/settings.store";
 import { useToast } from "../ui/Toast";
+import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { Select } from "../ui/Select";
 import { Checkbox } from "../ui";
 import {
@@ -40,6 +49,8 @@ import {
   PasswordInput,
 } from "./shared";
 import { isWebRuntime } from "../../runtime";
+import type { UpgradeBackupEntry } from "@prompthub/shared/types";
+import type { ImportPreviewSummary } from "../../services/database-backup";
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {
@@ -68,6 +79,16 @@ export function DataSettings() {
   const [currentDataPath, setCurrentDataPath] = useState("");
   const [pendingDataPath, setPendingDataPath] = useState<string | null>(null);
   const [currentVersion, setCurrentVersion] = useState("");
+  const [upgradeBackups, setUpgradeBackups] = useState<UpgradeBackupEntry[]>([]);
+  const [loadingUpgradeBackups, setLoadingUpgradeBackups] = useState(false);
+  const [upgradeBackupActionId, setUpgradeBackupActionId] = useState<string | null>(null);
+  const [restoreCandidate, setRestoreCandidate] = useState<UpgradeBackupEntry | null>(null);
+  const [deleteCandidate, setDeleteCandidate] = useState<UpgradeBackupEntry | null>(null);
+  const [importPreview, setImportPreview] = useState<{
+    file: File;
+    summary: ImportPreviewSummary;
+  } | null>(null);
+  const [confirmingImport, setConfirmingImport] = useState(false);
 
   // WebDAV operation state
   // WebDAV 操作状态
@@ -123,6 +144,32 @@ export function DataSettings() {
     }
   };
 
+  const refreshUpgradeBackups = async () => {
+    if (webRuntime) {
+      return;
+    }
+
+    setLoadingUpgradeBackups(true);
+    try {
+      setUpgradeBackups(await listUpgradeBackups());
+    } catch (error) {
+      console.error("Failed to load upgrade backups:", error);
+      showToast(
+        `${t("settings.upgradeBackupLoadFailed", "Failed to load upgrade backups")}: ${getErrorMessage(error)}`,
+        "error",
+      );
+    } finally {
+      setLoadingUpgradeBackups(false);
+    }
+  };
+
+  const formatBytes = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+  };
+
   useEffect(() => {
     window.api?.security?.status().then((status) => {
       setSecurityConfigured(status.configured);
@@ -146,6 +193,10 @@ export function DataSettings() {
       mounted = false;
     };
   }, [persistedDataPath, setDataPath]);
+
+  useEffect(() => {
+    void refreshUpgradeBackups();
+  }, [webRuntime]);
 
   const handleSelectiveExport = async () => {
     try {
@@ -182,9 +233,8 @@ export function DataSettings() {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
         try {
-          await restoreFromFile(file);
-          showToast(t("toast.importSuccess"), "success");
-          setTimeout(() => window.location.reload(), 1000);
+          const preview = await previewImportFile(file);
+          setImportPreview({ file, summary: preview.summary });
         } catch (error) {
           console.error("Import failed:", error);
           showToast(
@@ -195,6 +245,59 @@ export function DataSettings() {
       }
     };
     input.click();
+  };
+
+  const formatSkippedDetails = (skipped: ImportPreviewSummary["skipped"]): string => {
+    return [
+      skipped.prompts > 0 ? `prompts: ${skipped.prompts}` : null,
+      skipped.folders > 0 ? `folders: ${skipped.folders}` : null,
+      skipped.versions > 0 ? `versions: ${skipped.versions}` : null,
+      skipped.skills > 0 ? `skills: ${skipped.skills}` : null,
+      skipped.skillVersions > 0 ? `skill versions: ${skipped.skillVersions}` : null,
+      skipped.skillFiles > 0 ? `skill files: ${skipped.skillFiles}` : null,
+    ]
+      .filter((part): part is string => part !== null)
+      .join(", ");
+  };
+
+  const handleConfirmImportBackup = async () => {
+    if (!importPreview) {
+      return;
+    }
+
+    setConfirmingImport(true);
+    try {
+      if (!webRuntime) {
+        await createUpgradeBackup({
+          fromVersion: currentVersion || undefined,
+          toVersion: currentVersion || undefined,
+        });
+        await refreshUpgradeBackups();
+      }
+
+      const skipped = await restoreFromFile(importPreview.file);
+      if (hasAnySkipped(skipped)) {
+        showToast(
+          t("toast.importPartialSuccess", {
+            details: formatSkippedDetails(skipped),
+          }),
+          "success",
+        );
+      } else {
+        showToast(t("toast.importSuccess"), "success");
+      }
+
+      setImportPreview(null);
+      setTimeout(() => window.location.reload(), 1000);
+    } catch (error) {
+      console.error("Import failed:", error);
+      showToast(
+        `${t("toast.importFailed")}: ${getErrorMessage(error)}`,
+        "error",
+      );
+    } finally {
+      setConfirmingImport(false);
+    }
   };
 
   const handleClearData = async () => {
@@ -211,6 +314,66 @@ export function DataSettings() {
         "Clearing data is a high-risk operation, please set a master password in security settings first",
       "error",
     );
+  };
+
+  const handleConfirmRestoreUpgradeBackup = async () => {
+    if (!restoreCandidate) {
+      return;
+    }
+
+    setUpgradeBackupActionId(restoreCandidate.backupId);
+    try {
+      const result = await restoreUpgradeBackup(restoreCandidate.backupId);
+      if (!result.success) {
+        showToast(
+          `${t("settings.upgradeBackupRestoreFailed", "Failed to restore upgrade backup")}: ${result.error || t("common.unknownError", "Unknown error")}`,
+          "error",
+        );
+        return;
+      }
+
+      showToast(
+        t(
+          "settings.upgradeBackupRestoreScheduled",
+          "Upgrade backup restored. PromptHub will restart automatically.",
+        ),
+        "success",
+      );
+      setRestoreCandidate(null);
+    } catch (error) {
+      console.error("Failed to restore upgrade backup:", error);
+      showToast(
+        `${t("settings.upgradeBackupRestoreFailed", "Failed to restore upgrade backup")}: ${getErrorMessage(error)}`,
+        "error",
+      );
+    } finally {
+      setUpgradeBackupActionId(null);
+    }
+  };
+
+  const handleConfirmDeleteUpgradeBackup = async () => {
+    if (!deleteCandidate) {
+      return;
+    }
+
+    setUpgradeBackupActionId(deleteCandidate.backupId);
+    try {
+      await deleteUpgradeBackup(deleteCandidate.backupId);
+      setDeleteCandidate(null);
+      await refreshUpgradeBackups();
+      showToast(
+        t("settings.upgradeBackupDeleteSuccess", "Upgrade backup deleted"),
+        "success",
+      );
+    } catch (error) {
+      console.error("Failed to delete upgrade backup:", error);
+      showToast(
+        `${t("settings.upgradeBackupDeleteFailed", "Failed to delete upgrade backup")}: ${getErrorMessage(error)}`,
+        "error",
+      );
+    } finally {
+      setUpgradeBackupActionId(null);
+    }
   };
 
   const handleConfirmClear = async () => {
@@ -1114,6 +1277,100 @@ export function DataSettings() {
           </div>
 
           {!webRuntime ? (
+            <div className="p-4 space-y-3 border-t border-border">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold">
+                    {t("settings.upgradeBackups", "Upgrade backups")}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    {t(
+                      "settings.upgradeBackupsDesc",
+                      "Automatic safety snapshots captured before upgrades. Restoring one will first back up your current state and then restart PromptHub.",
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={() => void refreshUpgradeBackups()}
+                  disabled={loadingUpgradeBackups}
+                  className="h-8 px-3 rounded-lg bg-muted text-sm hover:bg-muted/80 transition-colors flex items-center gap-2 disabled:opacity-50"
+                >
+                  <RefreshCwIcon
+                    className={`w-4 h-4 ${loadingUpgradeBackups ? "animate-spin" : ""}`}
+                  />
+                  {t("common.refresh", "Refresh")}
+                </button>
+              </div>
+
+              {upgradeBackups.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
+                  {loadingUpgradeBackups
+                    ? t("settings.upgradeBackupsLoading", "Loading upgrade backups...")
+                    : t("settings.upgradeBackupsEmpty", "No automatic upgrade backups found yet.")}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {upgradeBackups.map((backup) => {
+                    const busy = upgradeBackupActionId === backup.backupId;
+                    return (
+                      <div
+                        key={backup.backupId}
+                        className="rounded-xl border border-border bg-card/60 p-3 space-y-2"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-medium truncate">
+                              {backup.manifest.fromVersion}
+                              {backup.manifest.toVersion
+                                ? ` -> ${backup.manifest.toVersion}`
+                                : ""}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1 break-all">
+                              {backup.backupId}
+                            </div>
+                          </div>
+                          <div className="text-xs text-muted-foreground shrink-0">
+                            {formatBytes(backup.sizeBytes)}
+                          </div>
+                        </div>
+
+                        <div className="text-xs text-muted-foreground space-y-1">
+                          <div>
+                            {t("settings.upgradeBackupCreatedAt", "Created")}: {new Date(backup.manifest.createdAt).toLocaleString()}
+                          </div>
+                          <div>
+                            {t("settings.upgradeBackupItems", "Items")}: {backup.manifest.copiedItems.join(", ")}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 pt-1">
+                          <button
+                            onClick={() => setDeleteCandidate(backup)}
+                            disabled={busy}
+                            className="h-8 px-3 rounded-lg bg-muted text-sm hover:bg-muted/80 transition-colors disabled:opacity-50"
+                          >
+                            {t("common.delete", "Delete")}
+                          </button>
+                          <button
+                            onClick={() => setRestoreCandidate(backup)}
+                            disabled={busy}
+                            className="h-8 px-3 rounded-lg bg-primary text-white text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+                          >
+                            {busy ? (
+                              <Loader2Icon className="w-4 h-4 animate-spin" />
+                            ) : null}
+                            {t("settings.upgradeBackupRestoreAction", "Restore this snapshot")}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ) : null}
+
+          {!webRuntime ? (
             <SettingItem
               label={t("settings.clear")}
               description={t("settings.clearDesc")}
@@ -1130,13 +1387,16 @@ export function DataSettings() {
 
         <SettingSection title={t("settings.dbInfo")}>
           <div className="p-4 text-sm text-muted-foreground space-y-1">
-            <p>• workspace/prompts/*.md</p>
-            <p>• workspace/folders.json</p>
-            <p>• workspace/skills/&lt;skill-slug&gt;__&lt;skillId&gt;/</p>
-            <p>• workspace/settings/&lt;userId&gt;.json</p>
-            <p>• workspace/assets/&lt;userId&gt;/images/...</p>
-            <p>• workspace/assets/&lt;userId&gt;/videos/...</p>
-            <p>• index/prompthub.db</p>
+            <p>• data/prompts/**/*.md</p>
+            <p>• data/prompts/**/_folder.json</p>
+            <p>• data/.versions/&lt;prompt-id&gt;/*.md</p>
+            <p>• data/skills/&lt;skill-name&gt;/SKILL.md</p>
+            <p>• data/assets/images/...</p>
+            <p>• data/assets/videos/...</p>
+            <p>• config/shortcuts.json</p>
+            <p>• backups/pre-upgrade-.../</p>
+            <p>• logs/...</p>
+            <p>• prompthub.db</p>
           </div>
         </SettingSection>
       </div>
@@ -1198,6 +1458,112 @@ export function DataSettings() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={restoreCandidate !== null}
+        onClose={() => {
+          if (!upgradeBackupActionId) {
+            setRestoreCandidate(null);
+          }
+        }}
+        onConfirm={() => {
+          void handleConfirmRestoreUpgradeBackup();
+        }}
+        title={t("settings.upgradeBackupRestoreTitle", "Restore upgrade backup")}
+        message={
+          restoreCandidate
+            ? t(
+                "settings.upgradeBackupRestoreConfirm",
+                "Restore the automatic snapshot from {{from}}{{to}} created at {{createdAt}}? PromptHub will first save your current state as another backup, then restart.",
+                {
+                  from: restoreCandidate.manifest.fromVersion,
+                  to: restoreCandidate.manifest.toVersion
+                    ? ` -> ${restoreCandidate.manifest.toVersion}`
+                    : "",
+                  createdAt: new Date(
+                    restoreCandidate.manifest.createdAt,
+                  ).toLocaleString(),
+                },
+              )
+            : ""
+        }
+        confirmText={t("settings.upgradeBackupRestoreAction", "Restore this snapshot")}
+        cancelText={t("common.cancel", "Cancel")}
+        variant="destructive"
+      />
+
+      <ConfirmDialog
+        isOpen={deleteCandidate !== null}
+        onClose={() => {
+          if (!upgradeBackupActionId) {
+            setDeleteCandidate(null);
+          }
+        }}
+        onConfirm={() => {
+          void handleConfirmDeleteUpgradeBackup();
+        }}
+        title={t("settings.upgradeBackupDeleteTitle", "Delete upgrade backup")}
+        message={
+          deleteCandidate
+            ? t(
+                "settings.upgradeBackupDeleteConfirm",
+                "Delete the automatic snapshot {{backupId}}? This history entry cannot be recovered.",
+                {
+                  backupId: deleteCandidate.backupId,
+                },
+              )
+            : ""
+        }
+        confirmText={t("common.delete", "Delete")}
+        cancelText={t("common.cancel", "Cancel")}
+        variant="destructive"
+      />
+
+      <ConfirmDialog
+        isOpen={importPreview !== null}
+        onClose={() => {
+          if (!confirmingImport) {
+            setImportPreview(null);
+          }
+        }}
+        onConfirm={() => {
+          void handleConfirmImportBackup();
+        }}
+        title={t("settings.importPreviewTitle", "Review import summary")}
+        message={
+          importPreview ? (
+            <div className="space-y-2 text-left">
+              <p>
+                {t("settings.importPreviewFile", "File")}: {importPreview.file.name}
+              </p>
+              <p>
+                {t("settings.importPreviewExportedAt", "Exported at")}: {new Date(
+                  importPreview.summary.exportedAt,
+                ).toLocaleString()}
+              </p>
+              <p>
+                {t("settings.importPreviewCounts", "Will import")}: {importPreview.summary.counts.prompts} prompts, {importPreview.summary.counts.folders} folders, {importPreview.summary.counts.versions} versions, {importPreview.summary.counts.skills} skills
+              </p>
+              <p>
+                {t(
+                  "settings.importPreviewBackupNotice",
+                  "PromptHub will automatically create a local safety backup of your current state before importing.",
+                )}
+              </p>
+              {hasAnySkipped(importPreview.summary.skipped) ? (
+                <p>
+                  {t("settings.importPreviewSkipped", "Invalid records that will be skipped")}: {formatSkippedDetails(importPreview.summary.skipped)}
+                </p>
+              ) : null}
+            </div>
+          ) : (
+            ""
+          )
+        }
+        confirmText={t("settings.importConfirmAction", "Back up current data and import")}
+        cancelText={t("common.cancel", "Cancel")}
+        variant="destructive"
+      />
     </>
   );
 }

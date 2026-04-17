@@ -13,17 +13,23 @@ import {
 } from "./database";
 import {
   DB_BACKUP_VERSION,
+  createEmptySkippedStats,
   normalizeImportedBackup,
+  parsePromptHubBackupFile,
   parsePromptHubBackupFileContent,
 } from "./database-backup-format";
 import type {
   DatabaseBackup,
   ExportScope,
+  ImportSkippedStats,
+  ParsedBackup,
   PromptHubFile,
 } from "./database-backup-format";
 export type {
   DatabaseBackup,
   ExportScope,
+  ImportSkippedStats,
+  ParsedBackup,
   PromptHubFile,
 } from "./database-backup-format";
 import {
@@ -275,6 +281,69 @@ async function gunzipToText(blob: Blob): Promise<string> {
   return new Response(stream).text();
 }
 
+export interface ImportPreviewSummary {
+  kind: PromptHubFile["kind"] | "legacy-payload";
+  exportedAt: string;
+  counts: {
+    prompts: number;
+    folders: number;
+    versions: number;
+    skills: number;
+    skillVersions: number;
+    skillFiles: number;
+    images: number;
+    videos: number;
+  };
+  skipped: ImportSkippedStats;
+}
+
+async function readBackupFileText(file: File): Promise<string> {
+  return file.name.endsWith(".gz") ? gunzipToText(file) : file.text();
+}
+
+function parsePromptHubFileKind(text: string): ImportPreviewSummary["kind"] {
+  const parsed = JSON.parse(text) as unknown;
+  if (
+    parsed &&
+    typeof parsed === "object" &&
+    "kind" in parsed &&
+    (parsed.kind === "prompthub-backup" || parsed.kind === "prompthub-export")
+  ) {
+    return parsed.kind;
+  }
+  return "legacy-payload";
+}
+
+export async function previewImportFile(
+  file: File,
+): Promise<{ backup: DatabaseBackup; summary: ImportPreviewSummary }> {
+  const text = await readBackupFileText(file);
+  const kind = parsePromptHubFileKind(text);
+  const parsed: ParsedBackup = parsePromptHubBackupFile(text);
+  const { backup, skipped } = parsed;
+
+  const summary: ImportPreviewSummary = {
+    kind,
+    exportedAt: backup.exportedAt,
+    counts: {
+      prompts: backup.prompts.length,
+      folders: backup.folders.length,
+      versions: backup.versions.length,
+      skills: backup.skills?.length ?? 0,
+      skillVersions: backup.skillVersions?.length ?? 0,
+      skillFiles: Object.values(backup.skillFiles ?? {}).reduce(
+        (count, files) => count + files.length,
+        0,
+      ),
+      images: Object.keys(backup.images ?? {}).length,
+      videos: Object.keys(backup.videos ?? {}).length,
+    },
+    skipped,
+  };
+
+  return { backup, summary };
+}
+
 async function getAllPromptVersions(): Promise<PromptVersion[]> {
   if (window.api?.version?.getAll) {
     const prompts = await getAllPrompts();
@@ -396,6 +465,15 @@ export async function exportDatabase(options?: {
 
 export async function importDatabase(backup: DatabaseBackup): Promise<void> {
   const normalizedBackup = normalizeImportedBackup(backup);
+
+  // Never clear local data unless the imported payload has already passed the
+  // same structural validation as file-based imports.
+  parsePromptHubBackupFileContent(JSON.stringify({
+    kind: "prompthub-backup",
+    exportedAt: normalizedBackup.exportedAt,
+    payload: normalizedBackup,
+  }));
+
   const restoredSkillIdMap = new Map<string, string>();
   const restoredSkillsByName = new Map<string, Skill>();
   const restoreFailures: string[] = [];
@@ -689,13 +767,14 @@ export async function downloadSelectiveExport(
   URL.revokeObjectURL(url);
 }
 
-export async function restoreFromFile(file: File): Promise<void> {
-  const text = file.name.endsWith(".gz")
-    ? await gunzipToText(file)
-    : await file.text();
-  await importDatabase(parsePromptHubBackupFileContent(text));
+export async function restoreFromFile(file: File): Promise<ImportSkippedStats> {
+  const text = await readBackupFileText(file);
+  const { backup, skipped } = parsePromptHubBackupFile(text);
+  await importDatabase(backup);
+  return skipped;
 }
 
-export async function restoreFromBackup(backup: DatabaseBackup): Promise<void> {
+export async function restoreFromBackup(backup: DatabaseBackup): Promise<ImportSkippedStats> {
   await importDatabase(backup);
+  return createEmptySkippedStats();
 }

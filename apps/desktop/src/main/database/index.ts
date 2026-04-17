@@ -16,7 +16,12 @@ import {
   isDatabaseEmpty,
 } from "@prompthub/db";
 import type { InitDatabaseHooks } from "@prompthub/db";
-import { getSkillsDir, getUserDataPath } from "../runtime-paths";
+import {
+  getLegacyPromptsWorkspaceDir,
+  getLegacyWorkspaceDir,
+  getSkillsDir,
+  getUserDataPath,
+} from "../runtime-paths";
 
 // ── Re-exports from @prompthub/db ────────────────────────────────────────────
 // All consumers in the desktop app can continue importing from this file.
@@ -49,7 +54,7 @@ const BROWSER_STORAGE_DIRS = [
   "Local Storage",
   "Session Storage",
 ];
-const FILE_STORAGE_DIRS = ["workspace"];
+const FILE_STORAGE_DIRS = ["workspace", "data"];
 
 // ── Path resolution ──────────────────────────────────────────────────────────
 
@@ -311,9 +316,14 @@ export function performDatabaseRecovery(
     // 4. Copy config files
     const configFiles = ["shortcuts.json", "shortcut-mode.json"];
     for (const file of configFiles) {
-      const sourceFile = path.join(sourcePath, file);
-      const targetFile = path.join(currentDataPath, file);
+      const sourceFile = fs.existsSync(path.join(sourcePath, "config", file))
+        ? path.join(sourcePath, "config", file)
+        : path.join(sourcePath, file);
+      const targetFile = fs.existsSync(path.join(currentDataPath, "config"))
+        ? path.join(currentDataPath, "config", file)
+        : path.join(currentDataPath, file);
       if (fs.existsSync(sourceFile) && !fs.existsSync(targetFile)) {
+        fs.mkdirSync(path.dirname(targetFile), { recursive: true });
         fs.copyFileSync(sourceFile, targetFile);
         console.log(`[Recovery] Copied config file: ${file}`);
       }
@@ -357,13 +367,26 @@ function getWorkspaceRecoveryStats(basePath: string): {
   promptCount: number;
   folderCount: number;
 } {
-  const workspaceDir = path.join(basePath, "workspace");
-  const promptsDir = path.join(workspaceDir, "prompts");
-  const foldersFile = path.join(workspaceDir, "folders.json");
+  const legacyWorkspaceDir = path.join(basePath, path.basename(getLegacyWorkspaceDir()));
+  const legacyPromptsDir = path.join(
+    legacyWorkspaceDir,
+    path.basename(getLegacyPromptsWorkspaceDir()),
+  );
+  const legacyFoldersFile = path.join(legacyWorkspaceDir, "folders.json");
+
+  const dataDir = path.join(basePath, "data");
+  const dataPromptsDir = path.join(dataDir, "prompts");
+  const dataFoldersFile = path.join(dataDir, "folders.json");
 
   return {
-    promptCount: countWorkspacePromptFiles(promptsDir),
-    folderCount: readWorkspaceFolderCount(foldersFile),
+    promptCount: Math.max(
+      countWorkspacePromptFiles(legacyPromptsDir),
+      countWorkspacePromptFiles(dataPromptsDir),
+    ),
+    folderCount: Math.max(
+      readWorkspaceFolderCount(legacyFoldersFile),
+      readWorkspaceFolderCount(dataFoldersFile),
+    ),
   };
 }
 

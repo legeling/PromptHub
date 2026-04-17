@@ -11,6 +11,7 @@ vi.mock("../../../src/main/database", () => ({
 
 import {
   configureRuntimePaths,
+  getSkillsDir,
   resetRuntimePaths,
 } from "../../../src/main/runtime-paths";
 import { SkillInstaller } from "../../../src/main/services/skill-installer";
@@ -24,6 +25,10 @@ import {
 import { SkillDB } from "../../../src/main/database/skill";
 
 let tmpDir: string;
+
+function managedSkillsDir(): string {
+  return getSkillsDir();
+}
 
 const SKILL_MIGRATION_COLUMNS = [
   "source_url TEXT",
@@ -309,7 +314,7 @@ describe("SkillInstaller.getLocalRepoPath", () => {
 
 describe("SkillInstaller.init", () => {
   it("creates the skills directory if it does not exist", async () => {
-    const skillsDir = path.join(tmpDir, "skills");
+    const skillsDir = managedSkillsDir();
     // Should not exist yet
     await expect(fs.access(skillsDir)).rejects.toThrow();
 
@@ -385,7 +390,7 @@ describe("SkillInstaller.writeLocalRepoFile", () => {
       "# My Skill",
     );
 
-    const filePath = path.join(tmpDir, "skills", "my-skill", "README.md");
+    const filePath = path.join(managedSkillsDir(), "my-skill", "README.md");
     const content = await fs.readFile(filePath, "utf-8");
     expect(content).toBe("# My Skill");
   });
@@ -398,8 +403,7 @@ describe("SkillInstaller.writeLocalRepoFile", () => {
     );
 
     const filePath = path.join(
-      tmpDir,
-      "skills",
+      managedSkillsDir(),
       "my-skill",
       "docs",
       "guide",
@@ -527,7 +531,7 @@ describe("SkillInstaller.deleteLocalRepo", () => {
 describe("SkillInstaller.deleteRepoByPath", () => {
   it("deletes a repo within the skills directory", async () => {
     await SkillInstaller.saveContentToLocalRepo("target", "content");
-    const repoPath = path.join(tmpDir, "skills", "target");
+    const repoPath = path.join(managedSkillsDir(), "target");
 
     await expect(fs.access(repoPath)).resolves.toBeUndefined();
     await SkillInstaller.deleteRepoByPath(repoPath);
@@ -549,7 +553,7 @@ describe("SkillInstaller.deleteRepoByPath", () => {
 
   it("blocks path traversal via ../", async () => {
     // Attempt to delete a sibling of skills dir
-    const skillsDir = path.join(tmpDir, "skills");
+    const skillsDir = managedSkillsDir();
     await fs.mkdir(skillsDir, { recursive: true });
 
     const traversalPath = path.join(skillsDir, "..", "other-dir");
@@ -562,7 +566,7 @@ describe("SkillInstaller.deleteRepoByPath", () => {
 
   it("silently succeeds for non-existent path within skills dir", async () => {
     await SkillInstaller.init();
-    const nonExistent = path.join(tmpDir, "skills", "ghost");
+    const nonExistent = path.join(managedSkillsDir(), "ghost");
     await expect(
       SkillInstaller.deleteRepoByPath(nonExistent),
     ).resolves.toBeUndefined();
@@ -580,7 +584,7 @@ describe("SkillInstaller.deleteAllLocalRepos", () => {
 
     await SkillInstaller.deleteAllLocalRepos();
 
-    const skillsDir = path.join(tmpDir, "skills");
+    const skillsDir = managedSkillsDir();
     const stat = await fs.stat(skillsDir);
     expect(stat.isDirectory()).toBe(true);
 
@@ -589,7 +593,7 @@ describe("SkillInstaller.deleteAllLocalRepos", () => {
   });
 
   it("creates skills root if it does not exist", async () => {
-    const skillsDir = path.join(tmpDir, "skills");
+    const skillsDir = managedSkillsDir();
     // Ensure it doesn't exist
     await fs.rm(skillsDir, { recursive: true, force: true }).catch(() => {});
 
@@ -607,7 +611,7 @@ describe("SkillInstaller.isManagedRepoPath", () => {
     await SkillInstaller.init();
     // The path must actually exist so that realpathSync.native resolves symlinks
     // (e.g., macOS /var -> /private/var). Create the directory to ensure consistency.
-    const skillDir = path.join(tmpDir, "skills", "my-skill");
+    const skillDir = path.join(managedSkillsDir(), "my-skill");
     await fs.mkdir(skillDir, { recursive: true });
     expect(await SkillInstaller.isManagedRepoPath(skillDir)).toBe(true);
   });
@@ -623,7 +627,7 @@ describe("SkillInstaller.isManagedRepoPath", () => {
     // and is not absolute, so it returns true.
     // Create the dir first so realpathSync resolves consistently on macOS.
     await SkillInstaller.init();
-    const skillsDir = path.join(tmpDir, "skills");
+    const skillsDir = managedSkillsDir();
     expect(await SkillInstaller.isManagedRepoPath(skillsDir)).toBe(true);
   });
 
@@ -641,7 +645,7 @@ describe("SkillInstaller.deleteLocalRepoFile", () => {
       "extra.txt",
       "temporary",
     );
-    const filePath = path.join(tmpDir, "skills", "my-skill", "extra.txt");
+    const filePath = path.join(managedSkillsDir(), "my-skill", "extra.txt");
     await expect(fs.access(filePath)).resolves.toBeUndefined();
 
     await SkillInstaller.deleteLocalRepoFile("my-skill", "extra.txt");
@@ -661,7 +665,7 @@ describe("SkillInstaller.createLocalRepoDir", () => {
   it("creates a subdirectory inside the skill repo", async () => {
     await SkillInstaller.createLocalRepoDir("my-skill", "src/lib");
 
-    const dirPath = path.join(tmpDir, "skills", "my-skill", "src", "lib");
+    const dirPath = path.join(managedSkillsDir(), "my-skill", "src", "lib");
     const stat = await fs.stat(dirPath);
     expect(stat.isDirectory()).toBe(true);
   });
@@ -1097,7 +1101,7 @@ describe("SkillInstaller.scanLocalPreview", () => {
     await SkillInstaller.init();
 
     // Place a skill in PromptHub's own skills directory (which is inside tmpDir)
-    const prompthubSkillsDir = path.join(tmpDir, "skills");
+    const prompthubSkillsDir = managedSkillsDir();
     await fs.mkdir(prompthubSkillsDir, { recursive: true });
     await createSkillDir(prompthubSkillsDir, "prompthub-builtin");
 
@@ -1231,7 +1235,7 @@ describe("P1-8: deleteRepoByPath TOCTOU resilience", () => {
     // Path doesn't exist — should NOT throw (ENOENT is silently ignored)
     await expect(
       SkillInstaller.deleteRepoByPath(
-        path.join(tmpDir, "skills", "ghost-skill"),
+        path.join(managedSkillsDir(), "ghost-skill"),
       ),
     ).resolves.toBeUndefined();
   });
@@ -1310,7 +1314,7 @@ describe("SkillInstaller.scanLocal (with real DB)", () => {
 
   it("returns imported count and empty skipped array for fresh import", async () => {
     // Place skills in PromptHub's own skills directory
-    const skillsDir = path.join(scanTmpDir, "skills");
+    const skillsDir = managedSkillsDir();
     await createSkillInDir(skillsDir, "alpha");
     await createSkillInDir(skillsDir, "beta");
 
@@ -1336,7 +1340,7 @@ describe("SkillInstaller.scanLocal (with real DB)", () => {
     });
 
     // Place a skill with the same name in the scan directory
-    const skillsDir = path.join(scanTmpDir, "skills");
+    const skillsDir = managedSkillsDir();
     await createSkillInDir(skillsDir, "existing-skill");
     await createSkillInDir(skillsDir, "new-skill");
 

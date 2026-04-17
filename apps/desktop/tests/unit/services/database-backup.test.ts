@@ -305,7 +305,7 @@ describe("database-backup restore", () => {
       id: "folder-1",
       name: "Folder 1",
       parentId: null,
-      sortOrder: 1,
+      order: 1,
       createdAt: "2026-04-07T00:00:00.000Z",
       updatedAt: "2026-04-07T00:00:00.000Z",
     };
@@ -328,8 +328,8 @@ describe("database-backup restore", () => {
       author: "PromptHub",
       tags: ["writing"],
       is_favorite: false,
-      created_at: "2026-04-07T00:00:00.000Z",
-      updated_at: "2026-04-07T00:00:00.000Z",
+      created_at: Date.parse("2026-04-07T00:00:00.000Z"),
+      updated_at: Date.parse("2026-04-07T00:00:00.000Z"),
       currentVersion: 1,
     };
     const skillVersion = {
@@ -542,7 +542,67 @@ describe("database-backup restore", () => {
       ),
     } as unknown as File;
 
-    await expect(restoreFromFile(file)).resolves.toBeUndefined();
+    await expect(restoreFromFile(file)).resolves.toEqual(
+      expect.objectContaining({
+        folders: 0,
+        prompts: 0,
+        skillFiles: 0,
+        skillVersions: 0,
+        skills: 0,
+        versions: 0,
+      }),
+    );
+    expect(clearDatabaseMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects arbitrary JSON files without clearing existing data", async () => {
+    const file = {
+      name: "random.json",
+      text: vi.fn().mockResolvedValue(
+        JSON.stringify({ anything: true, nested: { value: 1 } }),
+      ),
+    } as unknown as File;
+
+    await expect(restoreFromFile(file)).rejects.toThrow(
+      "Invalid PromptHub backup: unsupported file format. Please import a PromptHub backup/export file.",
+    );
+
+    expect(clearDatabaseMock).not.toHaveBeenCalled();
+    expect(window.api.skill.deleteAll).not.toHaveBeenCalled();
+  });
+
+  it("filters malformed prompt records in lenient mode and still imports valid data", async () => {
+    const file = {
+      name: "partially-broken-backup.json",
+      text: vi.fn().mockResolvedValue(
+        JSON.stringify({
+          exportedAt: "2026-04-07T00:00:00.000Z",
+          prompts: [
+            { id: "prompt-bad" }, // missing required fields, should be dropped
+            {
+              createdAt: "2026-04-07T00:00:00.000Z",
+              currentVersion: 1,
+              id: "prompt-good",
+              isFavorite: false,
+              isPinned: false,
+              tags: [],
+              title: "Good",
+              updatedAt: "2026-04-07T00:00:00.000Z",
+              userPrompt: "Body",
+              usageCount: 0,
+              variables: [],
+              version: 1,
+            },
+          ],
+          folders: [],
+          versions: [],
+        }),
+      ),
+    } as unknown as File;
+
+    const skipped = await restoreFromFile(file);
+    expect(skipped.prompts).toBe(1);
+    expect(skipped.folders).toBe(0);
     expect(clearDatabaseMock).toHaveBeenCalledTimes(1);
   });
 
@@ -571,8 +631,8 @@ describe("database-backup restore", () => {
             author: "PromptHub",
             tags: ["writing"],
             is_favorite: false,
-            created_at: "2026-04-07T00:00:00.000Z",
-            updated_at: "2026-04-07T00:00:00.000Z",
+            created_at: Date.parse("2026-04-07T00:00:00.000Z"),
+            updated_at: Date.parse("2026-04-07T00:00:00.000Z"),
             currentVersion: 1,
           } as any,
         ],
@@ -595,7 +655,16 @@ describe("database-backup restore", () => {
           ],
         },
       }),
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual(
+      expect.objectContaining({
+        folders: 0,
+        prompts: 0,
+        skillFiles: 0,
+        skillVersions: 0,
+        skills: 0,
+        versions: 0,
+      }),
+    );
 
     expect(window.api.skill.deleteAll).toHaveBeenCalledTimes(1);
     expect(window.api.skill.create).toHaveBeenCalledWith(
