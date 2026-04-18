@@ -24,6 +24,7 @@ import type {
   MCPServerConfig,
   RecoveryCandidate,
   RecoveryPreviewResult,
+  RecoveryScanOptions,
 } from "@prompthub/shared/types";
 
 const listenerMap = new Map<
@@ -152,7 +153,8 @@ contextBridge.exposeInMainWorld("electron", {
   migrateData: (newPath: string) => ipcRenderer.invoke("data:migrate", newPath),
   // Data recovery
   // 数据恢复
-  checkRecovery: () => ipcRenderer.invoke("data:checkRecovery"),
+  checkRecovery: (options?: RecoveryScanOptions) =>
+    ipcRenderer.invoke("data:checkRecovery", options),
   previewRecovery: (sourcePath: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.DATA_PREVIEW_RECOVERY, sourcePath),
   performRecovery: (sourcePath: string) =>
@@ -351,7 +353,7 @@ declare global {
         error?: string;
       }>;
       // Data recovery
-      checkRecovery?: () => Promise<
+      checkRecovery?: (options?: RecoveryScanOptions) => Promise<
         RecoveryCandidate[]
       >;
       previewRecovery?: (sourcePath: string) => Promise<RecoveryPreviewResult>;

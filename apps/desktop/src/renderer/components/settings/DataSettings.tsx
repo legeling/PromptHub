@@ -9,6 +9,9 @@ import {
   TrashIcon,
   Loader2Icon,
   ServerCogIcon,
+  SearchIcon,
+  PlusIcon,
+  XIcon,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
@@ -40,6 +43,7 @@ import {
 import { useSettingsStore } from "../../stores/settings.store";
 import { useToast } from "../ui/Toast";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
+import { DataRecoveryDialog } from "../ui/DataRecoveryDialog";
 import { Select } from "../ui/Select";
 import { Checkbox } from "../ui";
 import {
@@ -49,8 +53,40 @@ import {
   PasswordInput,
 } from "./shared";
 import { isWebRuntime } from "../../runtime";
-import type { UpgradeBackupEntry } from "@prompthub/shared/types";
+import type { RecoveryCandidate, UpgradeBackupEntry } from "@prompthub/shared/types";
 import type { ImportPreviewSummary } from "../../services/database-backup";
+
+const MANUAL_RECOVERY_PATHS_STORAGE_KEY = "prompthub-manual-recovery-paths";
+
+function loadManualRecoveryPaths(): string[] {
+  try {
+    const raw = localStorage.getItem(MANUAL_RECOVERY_PATHS_STORAGE_KEY);
+    if (!raw) {
+      return [];
+    }
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return parsed.filter(
+      (value): value is string =>
+        typeof value === "string" && value.trim().length > 0,
+    );
+  } catch {
+    return [];
+  }
+}
+
+function persistManualRecoveryPaths(paths: string[]): void {
+  try {
+    localStorage.setItem(
+      MANUAL_RECOVERY_PATHS_STORAGE_KEY,
+      JSON.stringify(paths),
+    );
+  } catch {
+    // ignore localStorage persistence failures
+  }
+}
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {
@@ -89,6 +125,12 @@ export function DataSettings() {
     summary: ImportPreviewSummary;
   } | null>(null);
   const [confirmingImport, setConfirmingImport] = useState(false);
+  const [manualRecoveryPaths, setManualRecoveryPaths] = useState<string[]>([]);
+  const [scanningRecoverySources, setScanningRecoverySources] = useState(false);
+  const [manualRecoveryCandidates, setManualRecoveryCandidates] = useState<
+    RecoveryCandidate[]
+  >([]);
+  const [showRecoveryBrowser, setShowRecoveryBrowser] = useState(false);
 
   // WebDAV operation state
   // WebDAV 操作状态
@@ -180,6 +222,13 @@ export function DataSettings() {
       }
     });
   }, []);
+
+  useEffect(() => {
+    if (webRuntime) {
+      return;
+    }
+    setManualRecoveryPaths(loadManualRecoveryPaths());
+  }, [webRuntime]);
 
   useEffect(() => {
     let mounted = true;
@@ -411,6 +460,75 @@ export function DataSettings() {
     }
   };
 
+  const updateManualRecoveryPaths = (paths: string[]) => {
+    setManualRecoveryPaths(paths);
+    persistManualRecoveryPaths(paths);
+  };
+
+  const handleAddManualRecoveryPath = async () => {
+    const selected = await window.electron?.selectFolder?.();
+    if (!selected) {
+      return;
+    }
+
+    const normalized = selected.trim();
+    if (!normalized) {
+      return;
+    }
+
+    if (manualRecoveryPaths.includes(normalized)) {
+      showToast(
+        t(
+          "settings.manualRecoveryPathExists",
+          "This scan directory has already been added.",
+        ),
+        "error",
+      );
+      return;
+    }
+
+    updateManualRecoveryPaths([...manualRecoveryPaths, normalized]);
+  };
+
+  const handleRemoveManualRecoveryPath = (targetPath: string) => {
+    updateManualRecoveryPaths(
+      manualRecoveryPaths.filter((entry) => entry !== targetPath),
+    );
+  };
+
+  const handleScanRecoverySources = async () => {
+    setScanningRecoverySources(true);
+    try {
+      const candidates =
+        (await window.electron?.checkRecovery?.({
+          extraPaths: manualRecoveryPaths,
+          ignoreDismissMarker: true,
+        })) ?? [];
+
+      setManualRecoveryCandidates(candidates);
+      if (candidates.length === 0) {
+        showToast(
+          t(
+            "settings.recoveryScanEmpty",
+            "No recoverable history was found in the scanned locations.",
+          ),
+          "error",
+        );
+        return;
+      }
+
+      setShowRecoveryBrowser(true);
+    } catch (error) {
+      console.error("Failed to scan recovery sources:", error);
+      showToast(
+        `${t("settings.recoveryScanFailed", "Failed to scan recovery sources")}: ${getErrorMessage(error)}`,
+        "error",
+      );
+    } finally {
+      setScanningRecoverySources(false);
+    }
+  };
+
   return (
     <>
       <div className="space-y-6">
@@ -494,6 +612,93 @@ export function DataSettings() {
                 >
                   {t("settings.change")}
                 </button>
+              </div>
+            </div>
+          </SettingSection>
+        ) : null}
+
+        {!webRuntime ? (
+          <SettingSection title={t("settings.recoveryScanner", "Scan historical data")}>
+            <div className="p-4 space-y-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold">
+                    {t("settings.recoveryScannerTitle", "Historical data scanner")}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    {t(
+                      "settings.recoveryScannerDesc",
+                      "Scan old PromptHub data directories, upgrade backups, and manually added folders, then preview and restore the source you choose.",
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={() => void handleScanRecoverySources()}
+                  disabled={scanningRecoverySources}
+                  className="h-8 px-3 rounded-lg bg-primary text-white text-sm hover:bg-primary/90 transition-colors flex items-center gap-2 disabled:opacity-50"
+                >
+                  <SearchIcon
+                    className={`w-4 h-4 ${scanningRecoverySources ? "animate-pulse" : ""}`}
+                  />
+                  {t("settings.recoveryScanAction", "Scan now")}
+                </button>
+              </div>
+
+              <div className="rounded-lg border border-border bg-card/50 p-3 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-medium">
+                      {t("settings.recoveryExtraPaths", "Extra scan directories")}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      {t(
+                        "settings.recoveryExtraPathsDesc",
+                        "Add old install folders or copied data directories to include them in recovery scans.",
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => void handleAddManualRecoveryPath()}
+                    className="h-8 px-3 rounded-lg bg-muted text-sm hover:bg-muted/80 transition-colors flex items-center gap-2"
+                  >
+                    <PlusIcon className="w-4 h-4" />
+                    {t("settings.recoveryAddScanDir", "Add folder")}
+                  </button>
+                </div>
+
+                {manualRecoveryPaths.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
+                    {t(
+                      "settings.recoveryExtraPathsEmpty",
+                      "No extra scan directories added yet.",
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {manualRecoveryPaths.map((entry) => (
+                      <div
+                        key={entry}
+                        className="rounded-lg border border-border bg-background px-3 py-2 flex items-center justify-between gap-3"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => window.electron?.openPath?.(entry)}
+                          className="text-left min-w-0 text-xs text-primary font-mono hover:underline break-all"
+                        >
+                          {entry}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveManualRecoveryPath(entry)}
+                          className="h-7 w-7 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                          title={t("common.delete", "Delete")}
+                        >
+                          <XIcon className="w-4 h-4 mx-auto" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </SettingSection>
@@ -1563,6 +1768,13 @@ export function DataSettings() {
         confirmText={t("settings.importConfirmAction", "Back up current data and import")}
         cancelText={t("common.cancel", "Cancel")}
         variant="destructive"
+      />
+
+      <DataRecoveryDialog
+        isOpen={showRecoveryBrowser}
+        onClose={() => setShowRecoveryBrowser(false)}
+        databases={manualRecoveryCandidates}
+        persistDismiss={false}
       />
     </>
   );

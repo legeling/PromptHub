@@ -25,6 +25,7 @@
     "@prompthub/db": "workspace:*",
     "@prompthub/shared": "workspace:*",
     "bcryptjs": "^2.4.3",
+    "node-sqlite3-wasm": "^0.8.30",
     "dotenv": "^16.4.7",
     "hono": "^4.7.4",
     "i18next": "^24.0.0",

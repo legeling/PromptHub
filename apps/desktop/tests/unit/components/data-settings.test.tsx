@@ -157,6 +157,69 @@ describe("DataSettings", () => {
     expect(screen.getByText("/next/data")).toBeInTheDocument();
   });
 
+  it("lets users add manual recovery scan directories and open the recovery browser", async () => {
+    const checkRecoveryMock = vi.fn().mockResolvedValue([
+      {
+        sourcePath: "C:/Users/test/AppData/Roaming/prompthub",
+        sourceType: "external-user-data",
+        displayName: "Previous data directory",
+        displayPath: "C:/Users/test/AppData/Roaming/prompthub",
+        promptCount: 12,
+        folderCount: 3,
+        skillCount: 2,
+        dbSizeBytes: 16384,
+        lastModified: "2026-04-18T12:00:00.000Z",
+        previewAvailable: false,
+        dataSources: ["browser-storage"],
+        description: "Detected legacy renderer storage only.",
+      },
+    ]);
+
+    installWindowMocks({
+      api: {
+        security: {
+          status: vi.fn().mockResolvedValue({ configured: false }),
+        },
+      },
+      electron: {
+        getDataPathStatus: vi.fn().mockResolvedValue({
+          configuredPath: "/next/data",
+          currentPath: "/actual/data",
+          needsRestart: true,
+        }),
+        selectFolder: vi.fn().mockResolvedValue("D:/PromptHub-legacy"),
+        checkRecovery: checkRecoveryMock,
+      },
+    });
+
+    await act(async () => {
+      await renderWithI18n(<DataSettings />, { language: "en" });
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Add folder" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("D:/PromptHub-legacy")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Scan now" }));
+
+    await waitFor(() => {
+      expect(checkRecoveryMock).toHaveBeenCalledWith({
+        extraPaths: ["D:/PromptHub-legacy"],
+        ignoreDismissMarker: true,
+      });
+    });
+
+    expect(screen.getByText("Recovery Sources")).toBeInTheDocument();
+    expect(
+      screen.getAllByText("C:/Users/test/AppData/Roaming/prompthub").length,
+    ).toBeGreaterThan(0);
+  });
+
   it("restores a backup file through the restore action and shows success", async () => {
     const showToast = vi.fn();
     useToastMock.mockReturnValue({ showToast });

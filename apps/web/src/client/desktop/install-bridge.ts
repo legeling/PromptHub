@@ -18,6 +18,7 @@ import type {
   UpdateSkillParams,
 } from '@prompthub/shared/types';
 import { fetchWithAuthRetry } from '../api/auth-session';
+import i18n from '../i18n';
 
 const JSON_HEADERS = {
   'Content-Type': 'application/json',
@@ -360,10 +361,20 @@ export function installDesktopBridge(): void {
       }
       return false;
     },
-    getDataPath: async () => 'PromptHub Web Self-Hosted Data Directory',
+    getDataPath: async () =>
+      i18n.t(
+        'settings.webDataPathPlaceholder',
+        'PromptHub Web Self-Hosted Data Directory',
+      ),
     getDataPathStatus: async () => ({
-      currentPath: 'PromptHub Web Self-Hosted Data Directory',
-      configuredPath: 'PromptHub Web Self-Hosted Data Directory',
+      currentPath: i18n.t(
+        'settings.webDataPathPlaceholder',
+        'PromptHub Web Self-Hosted Data Directory',
+      ),
+      configuredPath: i18n.t(
+        'settings.webDataPathPlaceholder',
+        'PromptHub Web Self-Hosted Data Directory',
+      ),
       needsRestart: false,
     }),
     migrateData: async (_newPath: string) => ({

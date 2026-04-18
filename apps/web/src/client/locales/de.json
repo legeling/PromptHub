@@ -147,6 +147,7 @@
     "themeSystem": "Systemstandard",
     "language": "Sprache",
     "autoSave": "Automatisch speichern",
+    "webDataPathPlaceholder": "PromptHub Web Self-Hosted Datenverzeichnis",
     "save": "Einstellungen speichern",
     "saved": "Einstellungen aktualisiert.",
     "languages": {

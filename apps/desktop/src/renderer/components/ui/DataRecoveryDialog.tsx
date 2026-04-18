@@ -22,6 +22,7 @@ interface DataRecoveryDialogProps {
   isOpen: boolean;
   onClose: () => void;
   databases: RecoveryCandidate[];
+  persistDismiss?: boolean;
 }
 
 function formatBytes(bytes: number): string {
@@ -74,6 +75,7 @@ export function DataRecoveryDialog({
   isOpen,
   onClose,
   databases,
+  persistDismiss = true,
 }: DataRecoveryDialogProps): JSX.Element | null {
   const { t } = useTranslation();
   const [selectedSourcePath, setSelectedSourcePath] = useState<string | null>(
@@ -172,7 +174,7 @@ export function DataRecoveryDialog({
     if (isSuccess || isRecovering) {
       return;
     }
-    void handleDismiss();
+    onClose();
   };
 
   const handleRecover = async (): Promise<void> => {
@@ -202,7 +204,9 @@ export function DataRecoveryDialog({
       setShowConfirmDismiss(true);
       return;
     }
-    await window.electron?.dismissRecovery?.();
+    if (persistDismiss) {
+      await window.electron?.dismissRecovery?.();
+    }
     onClose();
   };
 

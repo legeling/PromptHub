@@ -38,7 +38,7 @@ describe("DataRecoveryDialog", () => {
     });
   });
 
-  it("does not bypass fresh-start confirmation when closed via Escape", async () => {
+  it("closes non-destructively when dismissed via Escape", async () => {
     const onClose = vi.fn();
 
     await act(async () => {
@@ -71,19 +71,7 @@ describe("DataRecoveryDialog", () => {
     });
 
     expect(dismissRecoveryMock).not.toHaveBeenCalled();
-    expect(onClose).not.toHaveBeenCalled();
-    expect(
-      screen.getByText(/start with an empty database/i),
-    ).toBeInTheDocument();
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Start Fresh" }));
-    });
-
-    await waitFor(() => {
-      expect(dismissRecoveryMock).toHaveBeenCalledTimes(1);
-      expect(onClose).toHaveBeenCalledTimes(1);
-    });
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it("renders multiple candidates, previews the selected source, and restores the chosen one", async () => {

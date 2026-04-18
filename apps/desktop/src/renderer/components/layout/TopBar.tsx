@@ -416,7 +416,9 @@ export function TopBar({
                 <GlobeIcon className="h-4 w-4" />
               </span>
               <div className="min-w-0">
-                <div className="truncate">PromptHub Web</div>
+                <div className="truncate">
+                  {t("header.topbarWebTitle", "PromptHub Web")}
+                </div>
               </div>
             </div>
           ) : null}

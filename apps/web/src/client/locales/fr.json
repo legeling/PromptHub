@@ -147,6 +147,7 @@
     "themeSystem": "Suivre le système",
     "language": "Langue",
     "autoSave": "Sauvegarde automatique",
+    "webDataPathPlaceholder": "Répertoire de données web auto-hébergé PromptHub",
     "save": "Enregistrer les paramètres",
     "saved": "Paramètres mis à jour.",
     "languages": {

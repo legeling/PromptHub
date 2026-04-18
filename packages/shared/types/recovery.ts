@@ -46,3 +46,8 @@ export interface RecoveryPreviewResult {
   items: RecoveryPreviewItem[];
   truncated: boolean;
 }
+
+export interface RecoveryScanOptions {
+  extraPaths?: string[];
+  ignoreDismissMarker?: boolean;
+}

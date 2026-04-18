@@ -147,6 +147,7 @@
     "themeSystem": "システムに従う",
     "language": "言語",
     "autoSave": "自動保存",
+    "webDataPathPlaceholder": "PromptHub Web セルフホスト データディレクトリ",
     "save": "設定を保存",
     "saved": "設定を更新しました。",
     "languages": {

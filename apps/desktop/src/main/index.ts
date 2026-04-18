@@ -13,7 +13,7 @@ import {
 } from "electron";
 import path from "path";
 import fs from "fs";
-import type { RecoveryCandidate } from "@prompthub/shared/types";
+import type { RecoveryCandidate, RecoveryScanOptions } from "@prompthub/shared/types";
 import Database from "./database/sqlite";
 import { initDatabase, closeDatabase } from "./database";
 import {
@@ -64,6 +64,7 @@ import {
   listStandaloneDatabaseBackupFiles,
   previewRecoveryCandidate,
 } from "./services/recovery-candidates";
+import { getRecoveryCandidatePaths } from "./services/recovery-paths";
 import { logStartupEvent, scrubPath } from "./startup-log";
 
 // Disable GPU acceleration (optional; may be needed on some systems)
@@ -688,19 +689,28 @@ const RECOVERY_DISMISS_MARKER = ".recovery-dismissed";
 // restart, not an infinite loop.
 let recoveryAttemptedThisSession = false;
 
-ipcMain.handle("data:checkRecovery", async () => {
+ipcMain.handle("data:checkRecovery", async (_event, options?: RecoveryScanOptions) => {
   if (isE2E) {
     cachedRecoveryResult = [];
     return [];
   }
 
-  if (cachedRecoveryResult !== null) {
+  const extraPaths = Array.isArray(options?.extraPaths)
+    ? options.extraPaths.filter(
+        (value): value is string =>
+          typeof value === "string" && value.trim().length > 0,
+      )
+    : [];
+  const ignoreDismissMarker = options?.ignoreDismissMarker === true;
+  const hasManualOverrides = ignoreDismissMarker || extraPaths.length > 0;
+
+  if (!hasManualOverrides && cachedRecoveryResult !== null) {
     return cachedRecoveryResult;
   }
 
   const currentPath = app.getPath("userData");
   const dismissMarkerPath = path.join(currentPath, RECOVERY_DISMISS_MARKER);
-  if (fs.existsSync(dismissMarkerPath)) {
+  if (!ignoreDismissMarker && fs.existsSync(dismissMarkerPath)) {
     cachedRecoveryResult = [];
     return [];
   }
@@ -712,10 +722,20 @@ ipcMain.handle("data:checkRecovery", async () => {
   }
 
   const isDbEmpty = !!appDb && isDatabaseEmpty(appDb);
-  const candidatePaths = getRecoveryCandidatePaths(currentPath);
+  const candidatePaths = getRecoveryCandidatePaths({
+    currentPath,
+    appDataPath: app.getPath("appData"),
+    homePath: app.getPath("home"),
+    exePath: process.execPath,
+    isPackaged: app.isPackaged,
+    platform: process.platform,
+  });
+  const mergedCandidatePaths = Array.from(
+    new Set([...candidatePaths, ...extraPaths].map((value) => path.resolve(value))),
+  );
   if (isDbEmpty) {
     results.push(
-      ...detectRecoverableDatabases(currentPath, candidatePaths).map((candidate) =>
+      ...detectRecoverableDatabases(currentPath, mergedCandidatePaths).map((candidate) =>
         buildDirectoryRecoveryCandidate(candidate),
       ),
     );
@@ -780,7 +800,7 @@ ipcMain.handle("data:checkRecovery", async () => {
   logStartupEvent({
     event: "recovery:candidates_detected",
     currentPath: scrubPath(currentPath),
-    candidatePathCount: candidatePaths.length,
+    candidatePathCount: mergedCandidatePaths.length,
     resultCount: dedupedResults.length,
     results: dedupedResults.map((r) => ({
       sourceType: r.sourceType,
@@ -792,6 +812,9 @@ ipcMain.handle("data:checkRecovery", async () => {
       lastModified: r.lastModified,
     })),
   });
+  if (!hasManualOverrides) {
+    cachedRecoveryResult = dedupedResults;
+  }
   return dedupedResults;
 });
 
@@ -987,43 +1010,6 @@ ipcMain.handle("data:dismissRecovery", () => {
  * Build the list of candidate paths where a previous database might reside.
  * On Windows this includes %APPDATA%/PromptHub (the Electron default).
  */
-function getRecoveryCandidatePaths(currentPath: string): string[] {
-  const candidates: string[] = [];
-  const platform = process.platform;
-
-  // The default Electron userData path (%APPDATA%/PromptHub on Windows,
-  // ~/Library/Application Support/PromptHub on macOS)
-  const appDataDefault = path.join(app.getPath("appData"), "PromptHub");
-  candidates.push(appDataDefault);
-
-  // On Windows, also check common portable/install-scoped locations
-  if (platform === "win32") {
-    // Check sibling "data" directory of install location
-    if (app.isPackaged) {
-      const installDir = path.dirname(process.execPath);
-      candidates.push(path.join(installDir, "data"));
-    }
-
-    // Check default per-user install location
-    const localAppData =
-      process.env.LOCALAPPDATA ||
-      path.join(app.getPath("home"), "AppData", "Local");
-    candidates.push(path.join(localAppData, "Programs", "PromptHub", "data"));
-  }
-
-  // Deduplicate and exclude current path
-  const normalizedCurrent = path.resolve(currentPath).toLowerCase();
-  const seen = new Set<string>();
-  return candidates.filter((p) => {
-    const normalized = path.resolve(p).toLowerCase();
-    if (normalized === normalizedCurrent || seen.has(normalized)) {
-      return false;
-    }
-    seen.add(normalized);
-    return true;
-  });
-}
-
 // Migrate data to a new directory
 // 迁移数据到新目录
 ipcMain.handle("data:migrate", async (_event, newPath: string) => {

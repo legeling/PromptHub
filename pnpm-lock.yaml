@@ -206,6 +206,9 @@ importers:
       jose:
         specifier: ^6.0.11
         version: 6.2.2
+      node-sqlite3-wasm:
+        specifier: ^0.8.30
+        version: 0.8.53
       react:
         specifier: ^18.3.0
         version: 18.3.1

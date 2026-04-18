@@ -191,6 +191,7 @@ export function detectRecoverableDatabases(
     const browserStorageBytes = getBrowserStorageBytes(candidate);
     const fileStorageBytes = getFileStorageBytes(candidate);
     const workspaceStats = getWorkspaceRecoveryStats(candidate);
+    const fileSkillCount = getFileSkillCount(candidate);
 
     let dbSizeBytes = 0;
     let promptCount = 0;
@@ -243,11 +244,16 @@ export function detectRecoverableDatabases(
 
     const effectivePromptCount = Math.max(promptCount, workspaceStats.promptCount);
     const effectiveFolderCount = Math.max(folderCount, workspaceStats.folderCount);
+    const effectiveSkillCount = Math.max(skillCount, fileSkillCount);
 
-    // Only surface candidates that appear to contain meaningful prompt data.
+    // Only surface candidates that appear to contain real user data.
     // A stray empty workspace/, folders.json, or .trash snapshot should not
     // keep nagging the user with a "recoverable data" dialog that shows all 0s.
-    if (effectivePromptCount === 0 && browserStorageBytes === 0) {
+    if (
+      effectivePromptCount === 0 &&
+      effectiveSkillCount === 0 &&
+      browserStorageBytes === 0
+    ) {
       continue;
     }
 
@@ -255,7 +261,7 @@ export function detectRecoverableDatabases(
       sourcePath: candidate,
       promptCount: effectivePromptCount,
       folderCount: effectiveFolderCount,
-      skillCount,
+      skillCount: effectiveSkillCount,
       dbSizeBytes:
         dbSizeBytes > 0 ? dbSizeBytes : browserStorageBytes + fileStorageBytes,
       hasDatabaseFile: dbSizeBytes >= 4096,
@@ -538,6 +544,27 @@ function readWorkspaceFolderCount(foldersFile: string): number {
   } catch {
     return 0;
   }
+}
+
+function countSkillDirectories(targetPath: string): number {
+  if (!fs.existsSync(targetPath)) {
+    return 0;
+  }
+
+  try {
+    return fs
+      .readdirSync(targetPath, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory()).length;
+  } catch {
+    return 0;
+  }
+}
+
+function getFileSkillCount(basePath: string): number {
+  return Math.max(
+    countSkillDirectories(path.join(basePath, "skills")),
+    countSkillDirectories(path.join(basePath, "data", "skills")),
+  );
 }
 
 function getFileStorageBytes(basePath: string): number {

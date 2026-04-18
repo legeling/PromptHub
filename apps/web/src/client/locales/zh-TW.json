@@ -147,6 +147,7 @@
     "themeSystem": "跟隨系統",
     "language": "語言",
     "autoSave": "自動儲存",
+    "webDataPathPlaceholder": "PromptHub 自部署網頁資料目錄",
     "save": "儲存設定",
     "saved": "設定已更新。",
     "languages": {
