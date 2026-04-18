@@ -160,6 +160,18 @@ contextBridge.exposeInMainWorld("electron", {
   performRecovery: (sourcePath: string) =>
     ipcRenderer.invoke("data:performRecovery", sourcePath),
   dismissRecovery: () => ipcRenderer.invoke("data:dismissRecovery"),
+  exportZip: (params: {
+    scope: {
+      prompts: boolean;
+      versions: boolean;
+      images: boolean;
+      skills: boolean;
+      config: boolean;
+      aiConfigJson?: string;
+      settingsJson?: string;
+      exportJson?: string;
+    };
+  }) => ipcRenderer.invoke("data:exportZip", params),
   // Updater
   // 更新器
   updater: {
@@ -363,6 +375,18 @@ declare global {
         error?: string;
       }>;
       dismissRecovery?: () => Promise<{ success: boolean }>;
+      exportZip?: (params: {
+        scope: {
+          prompts: boolean;
+          versions: boolean;
+          images: boolean;
+          skills: boolean;
+          config: boolean;
+          aiConfigJson?: string;
+          settingsJson?: string;
+          exportJson?: string;
+        };
+      }) => Promise<{ canceled: boolean; filePath?: string; error?: string }>;
       updater?: {
         check: (
           useMirror?: boolean,

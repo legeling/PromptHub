@@ -198,6 +198,21 @@ export interface ParsedBackup {
   skipped: ImportSkippedStats;
 }
 
+export function hasMeaningfulBackupContent(backup: DatabaseBackup): boolean {
+  return (
+    backup.prompts.length > 0 ||
+    backup.folders.length > 0 ||
+    backup.versions.length > 0 ||
+    (backup.skills?.length ?? 0) > 0 ||
+    (backup.skillVersions?.length ?? 0) > 0 ||
+    Object.values(backup.skillFiles ?? {}).some((files) => files.length > 0) ||
+    Object.keys(backup.images ?? {}).length > 0 ||
+    Object.keys(backup.videos ?? {}).length > 0 ||
+    !!backup.aiConfig ||
+    !!backup.settings
+  );
+}
+
 export function createEmptySkippedStats(): ImportSkippedStats {
   return {
     prompts: 0,

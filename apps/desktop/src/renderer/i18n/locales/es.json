@@ -391,13 +391,13 @@
     "selectiveExportDesc": "Exporta los datos seleccionados. Luego pueden restaurarse desde la acción de restauración.",
     "fullBackup": "Copia completa / Restaurar",
     "fullBackupDesc": "Para migración: incluye prompts, imágenes, configuración de IA, ajustes y habilidades",
-    "upgradeBackups": "Copias de actualización",
-    "upgradeBackupsDesc": "Instantáneas de seguridad creadas automáticamente antes de las actualizaciones. Al restaurar una, primero se guardará el estado actual y luego PromptHub se reiniciará automáticamente.",
+    "upgradeBackups": "Revertir datos",
+    "upgradeBackupsDesc": "Puntos de reversión locales creados automáticamente antes de las actualizaciones. Al restaurar se guarda el estado actual como nueva instantánea, luego se revierte y se reinicia automáticamente.",
     "upgradeBackupsLoading": "Cargando copias de actualización...",
     "upgradeBackupsEmpty": "Todavía no se encontraron copias automáticas de actualización.",
     "upgradeBackupLoadFailed": "No se pudieron cargar las copias de actualización",
     "upgradeBackupRestoreTitle": "Restaurar copia de actualización",
-    "upgradeBackupRestoreAction": "Restaurar esta instantánea",
+    "upgradeBackupRestoreAction": "Revertir a esta instantánea",
     "upgradeBackupRestoreConfirm": "¿Restaurar la instantánea automática creada el {{createdAt}} ({{from}}{{to}})? PromptHub primero guardará el estado actual como otra copia y luego se reiniciará automáticamente.",
     "upgradeBackupRestoreScheduled": "La copia de actualización se restauró correctamente. PromptHub se reiniciará automáticamente.",
     "upgradeBackupRestoreFailed": "No se pudo restaurar la copia de actualización",
@@ -405,7 +405,7 @@
     "upgradeBackupDeleteConfirm": "¿Eliminar la instantánea automática {{backupId}}? Este historial no se podrá recuperar.",
     "upgradeBackupDeleteSuccess": "Copia de actualización eliminada",
     "upgradeBackupDeleteFailed": "No se pudo eliminar la copia de actualización",
-    "upgradeBackupCreatedAt": "Creada",
+    "upgradeBackupCreatedAt": "Fecha de la instantánea",
     "upgradeBackupItems": "Elementos incluidos",
     "backupCompressed": "Copia comprimida",
     "restore": "Restaurar",
@@ -425,9 +425,9 @@
     "importPreviewBackupNotice": "PromptHub creará automáticamente una copia de seguridad local del estado actual antes de importar.",
     "importPreviewSkipped": "Registros no válidos que se omitirán",
     "importConfirmAction": "Respaldar los datos actuales e importar",
-    "recoveryScanner": "Escanear datos históricos",
-    "recoveryScannerTitle": "Escáner de datos históricos",
-    "recoveryScannerDesc": "Escanea directorios de datos antiguos de PromptHub, copias de actualización y carpetas añadidas manualmente; después podrás previsualizar y restaurar la fuente que elijas.",
+    "recoveryScanner": "Recuperación de datos históricos",
+    "recoveryScannerTitle": "Recuperación de datos históricos",
+    "recoveryScannerDesc": "Busca datos recuperables en directorios antiguos, carpetas manuales o copias de seguridad históricas, y permite seleccionar la fuente a restaurar.",
     "recoveryScanAction": "Escanear ahora",
     "recoveryExtraPaths": "Directorios de escaneo adicionales",
     "recoveryExtraPathsDesc": "Añade carpetas de instalaciones antiguas o directorios de datos copiados para incluirlos en el escaneo de recuperación.",
@@ -485,7 +485,7 @@
     "testConnection": "Probar conexión",
     "upload": "Subir",
     "download": "Descargar",
-    "dbInfo": "Información de la base de datos",
+    "dbInfo": "Rutas de datos locales",
     "aiConfig": "Configuración del modelo de IA",
     "provider": "Proveedor de servicio",
     "apiKey": "API Key",
@@ -819,7 +819,8 @@
     "registrationOpen": "Registro público habilitado",
     "registrationClosed": "Registro público deshabilitado",
     "signOut": "Cerrar sesión",
-    "webUpdatesManagedDesc": "Las actualizaciones del web autoalojado se gestionan mediante tu flujo de despliegue. Descarga la nueva versión y vuelve a desplegar el servicio en lugar de usar la actualización integrada del desktop."
+    "webUpdatesManagedDesc": "Las actualizaciones del web autoalojado se gestionan mediante tu flujo de despliegue. Descarga la nueva versión y vuelve a desplegar el servicio en lugar de usar la actualización integrada del desktop.",
+    "selfHostedSyncDesc": "Use su PromptHub Web desplegado como destino de copia de seguridad y fuente de restauración de datos de escritorio sin WebDAV."
   },
   "import": {
     "clipboardTitle": "Importar Prompt desde el portapapeles",
@@ -1342,6 +1343,7 @@
       "prompt": "Prompt",
       "folder": "Carpeta",
       "skill": "Habilidad"
-    }
+    },
+    "skillsOnly": "Solo contiene habilidades"
   }
 }

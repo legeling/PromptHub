@@ -291,6 +291,14 @@ export function DataRecoveryDialog({
                           </span>
                         </div>
 
+                        {candidate.promptCount === 0 && candidate.skillCount > 0 && (
+                          <div className="mt-2">
+                            <span className="text-[11px] rounded-full border border-amber-400/40 bg-amber-400/10 px-2 py-0.5 text-amber-600 dark:text-amber-400">
+                              {t("recovery.skillsOnly", "仅含技能数据")}
+                            </span>
+                          </div>
+                        )}
+
                         <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-foreground/70">
                           <span>{t("recovery.promptCount", { count: candidate.promptCount })}</span>
                           <span>{t("recovery.folderCount", { count: candidate.folderCount })}</span>

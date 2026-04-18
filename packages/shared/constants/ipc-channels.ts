@@ -114,6 +114,7 @@ export const IPC_CHANNELS = {
   DATA_PREVIEW_RECOVERY: "data:previewRecovery",
   DATA_PERFORM_RECOVERY: "data:performRecovery",
   DATA_DISMISS_RECOVERY: "data:dismissRecovery",
+  DATA_EXPORT_ZIP: "data:exportZip",
   UPGRADE_BACKUP_LIST: "upgradeBackup:list",
   UPGRADE_BACKUP_CREATE: "upgradeBackup:create",
   UPGRADE_BACKUP_RESTORE: "upgradeBackup:restore",

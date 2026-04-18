@@ -391,13 +391,13 @@
     "selectiveExportDesc": "Export selected data. Restorable later via the restore action.",
     "fullBackup": "Full backup / restore",
     "fullBackupDesc": "For migration: includes prompts, images, AI config, settings, and skills",
-    "upgradeBackups": "Upgrade backups",
-    "upgradeBackupsDesc": "Automatic safety snapshots captured before upgrades. Restoring one will first back up your current state and then restart PromptHub.",
+    "upgradeBackups": "Roll back data",
+    "upgradeBackupsDesc": "Local rollback points created automatically before upgrades. Restoring a snapshot first saves your current state as a new snapshot, then rolls back and restarts automatically.",
     "upgradeBackupsLoading": "Loading upgrade backups...",
     "upgradeBackupsEmpty": "No automatic upgrade backups found yet.",
     "upgradeBackupLoadFailed": "Failed to load upgrade backups",
     "upgradeBackupRestoreTitle": "Restore upgrade backup",
-    "upgradeBackupRestoreAction": "Restore this snapshot",
+    "upgradeBackupRestoreAction": "Roll back to this snapshot",
     "upgradeBackupRestoreConfirm": "Restore the automatic snapshot from {{from}}{{to}} created at {{createdAt}}? PromptHub will first save your current state as another backup, then restart.",
     "upgradeBackupRestoreScheduled": "Upgrade backup restored. PromptHub will restart automatically.",
     "upgradeBackupRestoreFailed": "Failed to restore upgrade backup",
@@ -405,8 +405,8 @@
     "upgradeBackupDeleteConfirm": "Delete the automatic snapshot {{backupId}}? This history entry cannot be recovered.",
     "upgradeBackupDeleteSuccess": "Upgrade backup deleted",
     "upgradeBackupDeleteFailed": "Failed to delete upgrade backup",
-    "upgradeBackupCreatedAt": "Created",
-    "upgradeBackupItems": "Items",
+    "upgradeBackupCreatedAt": "Snapshot time",
+    "upgradeBackupItems": "Included items",
     "backupCompressed": "Compressed backup",
     "restore": "Restore",
     "exportPrompts": "Prompts",
@@ -425,9 +425,9 @@
     "importPreviewBackupNotice": "PromptHub will automatically create a local safety backup of your current state before importing.",
     "importPreviewSkipped": "Invalid records that will be skipped",
     "importConfirmAction": "Back up current data and import",
-    "recoveryScanner": "Scan historical data",
-    "recoveryScannerTitle": "Historical data scanner",
-    "recoveryScannerDesc": "Scan old PromptHub data directories, upgrade backups, and manually added folders, then preview and restore the source you choose.",
+    "recoveryScanner": "Historical data recovery",
+    "recoveryScannerTitle": "Historical data recovery",
+    "recoveryScannerDesc": "Find recoverable data from old version directories, manually specified folders, or historical backups. Preview and select your restore source.",
     "recoveryScanAction": "Scan now",
     "recoveryExtraPaths": "Extra scan directories",
     "recoveryExtraPathsDesc": "Add old install folders or copied data directories to include them in recovery scans.",
@@ -485,7 +485,7 @@
     "testConnection": "Test Connection",
     "upload": "Upload",
     "download": "Download",
-    "dbInfo": "Database Info",
+    "dbInfo": "Local data paths",
     "aiConfig": "AI Model Configuration",
     "provider": "Provider",
     "apiKey": "API Key",
@@ -828,7 +828,8 @@
     "autoScanStoreSkillsBeforeInstallDesc": "Off by default. When enabled, a safety scan runs before adding a Skill from the store, blocking obviously dangerous entries.",
     "batchScanInstalledSkills": "Scan All Installed Skills Now",
     "batchScanInstalledSkillsDesc": "Manually run a safety scan on all Skills in your library to quickly find high-risk content.",
-    "batchScanInstalledSkillsResult": "Checked {{total}} skills · blocked {{blocked}} · high risk {{highRisk}} · warn {{warn}}"
+    "batchScanInstalledSkillsResult": "Checked {{total}} skills · blocked {{blocked}} · high risk {{highRisk}} · warn {{warn}}",
+    "selfHostedSyncDesc": "Use your deployed PromptHub Web as an authenticated backup target and restore source for desktop data without WebDAV."
   },
   "import": {
     "clipboardTitle": "Import Prompt from Clipboard",
@@ -1288,7 +1289,6 @@
     "importFailed": "Failed to import skills",
     "installMethod": "Install Method",
     "loadFailed": "Load failed",
-    "loadingCustomStore": "Loading custom store content...",
     "nameInvalid": "Invalid name format (only lowercase letters, numbers, and hyphens)",
     "nameTooLong": "Name must not exceed 64 characters",
     "openFileEditor": "Open File Editor",
@@ -1452,6 +1452,7 @@
       "prompt": "Prompt",
       "folder": "Folder",
       "skill": "Skill"
-    }
+    },
+    "skillsOnly": "Skills only"
   }
 }

@@ -280,7 +280,7 @@ export function DataSettings() {
   const handleImportBackup = () => {
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = ".json,.phub,.gz";
+    input.accept = ".json,.phub,.gz,.zip";
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
@@ -640,17 +640,17 @@ export function DataSettings() {
         ) : null}
 
         {!webRuntime ? (
-          <SettingSection title={t("settings.recoveryScanner", "Scan historical data")}>
+          <SettingSection title={t("settings.recoveryScanner", "历史数据急救")}>
             <div className="p-4 space-y-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="text-sm font-semibold">
-                    {t("settings.recoveryScannerTitle", "Historical data scanner")}
+                    {t("settings.recoveryScannerTitle", "历史数据急救")}
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">
                     {t(
                       "settings.recoveryScannerDesc",
-                      "Scan old PromptHub data directories, upgrade backups, and manually added folders, then preview and restore the source you choose.",
+                      "从旧版本目录、手动指定目录或历史备份中查找可恢复的数据，预览后选择恢复源。",
                     )}
                   </div>
                 </div>
@@ -1534,12 +1534,12 @@ export function DataSettings() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="text-sm font-semibold">
-                    {t("settings.upgradeBackups", "Upgrade backups")}
+                    {t("settings.upgradeBackups", "升级备份")}
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">
                     {t(
                       "settings.upgradeBackupsDesc",
-                      "Automatic safety snapshots captured before upgrades. Restoring one will first back up your current state and then restart PromptHub.",
+                      "升级前自动创建的本地回滚点。恢复某个快照时，会先把当前状态保存为新快照，再回滚并自动重启。",
                     )}
                   </div>
                 </div>
@@ -1589,10 +1589,16 @@ export function DataSettings() {
 
                         <div className="text-xs text-muted-foreground space-y-1">
                           <div>
-                            {t("settings.upgradeBackupCreatedAt", "Created")}: {new Date(backup.manifest.createdAt).toLocaleString()}
+                            {t("settings.upgradeBackupCreatedAt", "快照时间")}：{new Date(backup.manifest.createdAt).toLocaleString()}
                           </div>
                           <div>
-                            {t("settings.upgradeBackupItems", "Items")}: {backup.manifest.copiedItems.join(", ")}
+                            {t("settings.upgradeBackupItems", "包含项目")}：{backup.manifest.copiedItems
+                              .filter((item) =>
+                                ["prompthub.db", "data", "config", "skills", "workspace"].some(
+                                  (k) => item.includes(k),
+                                ),
+                              )
+                              .join("、") || backup.manifest.copiedItems.join("、")}
                           </div>
                         </div>
 
@@ -1612,7 +1618,7 @@ export function DataSettings() {
                             {busy ? (
                               <Loader2Icon className="w-4 h-4 animate-spin" />
                             ) : null}
-                            {t("settings.upgradeBackupRestoreAction", "Restore this snapshot")}
+                            {t("settings.upgradeBackupRestoreAction", "回滚到此快照")}
                           </button>
                         </div>
                       </div>
@@ -1638,18 +1644,24 @@ export function DataSettings() {
           ) : null}
         </SettingSection>
 
-        <SettingSection title={t("settings.dbInfo")}>
+        <SettingSection title={t("settings.dbInfo", "本地数据路径")}>
           <div className="p-4 text-sm text-muted-foreground space-y-1">
-            <p>• data/prompts/**/*.md</p>
-            <p>• data/prompts/**/_folder.json</p>
-            <p>• data/.versions/&lt;prompt-id&gt;/*.md</p>
-            <p>• data/skills/&lt;skill-name&gt;/SKILL.md</p>
-            <p>• data/assets/images/...</p>
-            <p>• data/assets/videos/...</p>
-            <p>• config/shortcuts.json</p>
-            <p>• backups/pre-upgrade-.../</p>
-            <p>• logs/...</p>
-            <p>• prompthub.db</p>
+            {currentDataPath ? (
+              [
+                "prompthub.db",
+                "data/",
+                "config/",
+                "skills/",
+                "backups/",
+                "logs/",
+              ].map((sub) => (
+                <p key={sub} className="font-mono text-xs break-all">
+                  {currentDataPath.replace(/\/$/, "")}/{sub}
+                </p>
+              ))
+            ) : (
+              <p className="italic">{t("common.loading", "Loading...")}</p>
+            )}
           </div>
         </SettingSection>
       </div>
@@ -1816,6 +1828,7 @@ export function DataSettings() {
         confirmText={t("settings.importConfirmAction", "Back up current data and import")}
         cancelText={t("common.cancel", "Cancel")}
         variant="destructive"
+        isLoading={confirmingImport}
       />
 
       <DataRecoveryDialog

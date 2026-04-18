@@ -391,13 +391,13 @@
     "selectiveExportDesc": "Ausgewählte Daten exportieren. Sie können später über „Wiederherstellen“ erneut importiert werden.",
     "fullBackup": "Vollständige Sicherung / Wiederherstellen",
     "fullBackupDesc": "Für Migration: enthält Prompts, Bilder, KI-Konfiguration, Einstellungen und Fähigkeiten",
-    "upgradeBackups": "Upgrade-Sicherungen",
-    "upgradeBackupsDesc": "Automatische Sicherheits-Snapshots vor Upgrades. Bei einer Wiederherstellung wird zuerst der aktuelle Zustand gesichert und anschließend PromptHub automatisch neu gestartet.",
+    "upgradeBackups": "Daten zurücksetzen",
+    "upgradeBackupsDesc": "Lokale Rollback-Punkte, die vor Updates automatisch erstellt wurden. Beim Wiederherstellen wird der aktuelle Zustand zuerst gespeichert, dann zurückgesetzt und automatisch neu gestartet.",
     "upgradeBackupsLoading": "Upgrade-Sicherungen werden geladen...",
     "upgradeBackupsEmpty": "Es wurden noch keine automatischen Upgrade-Sicherungen gefunden.",
     "upgradeBackupLoadFailed": "Upgrade-Sicherungen konnten nicht geladen werden",
     "upgradeBackupRestoreTitle": "Upgrade-Sicherung wiederherstellen",
-    "upgradeBackupRestoreAction": "Diesen Snapshot wiederherstellen",
+    "upgradeBackupRestoreAction": "Auf diesen Snapshot zurücksetzen",
     "upgradeBackupRestoreConfirm": "Den automatischen Snapshot vom {{createdAt}} ({{from}}{{to}}) wiederherstellen? PromptHub sichert zuerst den aktuellen Zustand und startet dann automatisch neu.",
     "upgradeBackupRestoreScheduled": "Upgrade-Sicherung wiederhergestellt. PromptHub wird automatisch neu gestartet.",
     "upgradeBackupRestoreFailed": "Upgrade-Sicherung konnte nicht wiederhergestellt werden",
@@ -405,7 +405,7 @@
     "upgradeBackupDeleteConfirm": "Den automatischen Snapshot {{backupId}} löschen? Dieser Verlaufseintrag kann nicht wiederhergestellt werden.",
     "upgradeBackupDeleteSuccess": "Upgrade-Sicherung gelöscht",
     "upgradeBackupDeleteFailed": "Upgrade-Sicherung konnte nicht gelöscht werden",
-    "upgradeBackupCreatedAt": "Erstellt am",
+    "upgradeBackupCreatedAt": "Snapshot-Zeitpunkt",
     "upgradeBackupItems": "Enthaltene Elemente",
     "backupCompressed": "Komprimierte Sicherung",
     "restore": "Wiederherstellen",
@@ -425,9 +425,9 @@
     "importPreviewBackupNotice": "PromptHub erstellt vor dem Import automatisch eine lokale Sicherheitskopie des aktuellen Zustands.",
     "importPreviewSkipped": "Ungültige Einträge, die übersprungen werden",
     "importConfirmAction": "Aktuelle Daten sichern und importieren",
-    "recoveryScanner": "Historische Daten scannen",
-    "recoveryScannerTitle": "Scanner für historische Daten",
-    "recoveryScannerDesc": "Durchsucht alte PromptHub-Datenverzeichnisse, Upgrade-Backups und manuell hinzugefügte Ordner und lässt Sie die gewünschte Quelle vor dem Wiederherstellen prüfen.",
+    "recoveryScanner": "Historische Daten wiederherstellen",
+    "recoveryScannerTitle": "Historische Daten wiederherstellen",
+    "recoveryScannerDesc": "Sucht in alten Verzeichnissen, manuell angegebenen Ordnern oder historischen Backups nach wiederherstellbaren Daten und ermöglicht die Auswahl der Quelle.",
     "recoveryScanAction": "Jetzt scannen",
     "recoveryExtraPaths": "Zusätzliche Scan-Verzeichnisse",
     "recoveryExtraPathsDesc": "Fügen Sie alte Installationsordner oder kopierte Datenverzeichnisse hinzu, damit sie in die Wiederherstellungssuche einbezogen werden.",
@@ -485,7 +485,7 @@
     "testConnection": "Verbindung testen",
     "upload": "Hochladen",
     "download": "Herunterladen",
-    "dbInfo": "Datenbank-Info",
+    "dbInfo": "Lokale Datenpfade",
     "aiConfig": "KI-Modell-Konfiguration",
     "provider": "Dienstanbieter",
     "apiKey": "API Key",
@@ -819,7 +819,8 @@
     "registrationOpen": "Öffentliche Registrierung aktiviert",
     "registrationClosed": "Öffentliche Registrierung deaktiviert",
     "signOut": "Abmelden",
-    "webUpdatesManagedDesc": "Updates der selbst gehosteten Webversion werden über Ihren Deployment-Prozess verwaltet. Holen Sie die neue Version und deployen Sie den Dienst erneut, statt das Desktop-In-App-Update zu verwenden."
+    "webUpdatesManagedDesc": "Updates der selbst gehosteten Webversion werden über Ihren Deployment-Prozess verwaltet. Holen Sie die neue Version und deployen Sie den Dienst erneut, statt das Desktop-In-App-Update zu verwenden.",
+    "selfHostedSyncDesc": "Verwenden Sie Ihr bereitgestelltes PromptHub Web als authentifiziertes Backup-Ziel und Datenwiederherstellungsquelle für Desktop-Daten ohne WebDAV."
   },
   "import": {
     "clipboardTitle": "Prompt aus Zwischenablage importieren",
@@ -1342,6 +1343,7 @@
       "prompt": "Prompt",
       "folder": "Ordner",
       "skill": "Skill"
-    }
+    },
+    "skillsOnly": "Nur Skill-Daten"
   }
 }

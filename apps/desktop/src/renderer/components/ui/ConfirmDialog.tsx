@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertTriangleIcon } from 'lucide-react';
+import { AlertTriangleIcon, Loader2 } from 'lucide-react';
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -11,6 +11,7 @@ interface ConfirmDialogProps {
   confirmText?: string;
   cancelText?: string;
   variant?: 'default' | 'destructive';
+  isLoading?: boolean;
 }
 
 export function ConfirmDialog({
@@ -22,6 +23,7 @@ export function ConfirmDialog({
   confirmText = 'Confirm',
   cancelText = 'Cancel',
   variant = 'default',
+  isLoading = false,
 }: ConfirmDialogProps) {
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
@@ -94,19 +96,22 @@ export function ConfirmDialog({
           <button
             ref={cancelButtonRef}
             onClick={onClose}
-            className="flex-1 h-10 px-4 rounded-lg border border-border bg-background hover:bg-muted transition-colors text-sm font-medium"
+            disabled={isLoading}
+            className="flex-1 h-10 px-4 rounded-lg border border-border bg-background hover:bg-muted transition-colors text-sm font-medium disabled:opacity-50"
           >
             {cancelText}
           </button>
           <button
             ref={confirmButtonRef}
             onClick={onConfirm}
-            className={`flex-1 h-10 px-4 rounded-lg text-white text-sm font-medium transition-colors ${
+            disabled={isLoading}
+            className={`flex-1 h-10 px-4 rounded-lg text-white text-sm font-medium transition-colors disabled:opacity-60 flex items-center justify-center gap-2 ${
               variant === 'destructive'
                 ? 'bg-red-600 hover:bg-red-700'
                 : 'bg-primary hover:bg-primary/90'
             }`}
           >
+            {isLoading && <Loader2 className="w-4 h-4 animate-spin shrink-0" />}
             {confirmText}
           </button>
         </div>

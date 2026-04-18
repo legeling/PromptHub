@@ -391,13 +391,13 @@
     "selectiveExportDesc": "Exporter les données sélectionnées. Elles pourront ensuite être réimportées via l’action de restauration.",
     "fullBackup": "Sauvegarde complète / Restaurer",
     "fullBackupDesc": "Pour migration : inclut prompts, images, config IA, paramètres et compétences",
-    "upgradeBackups": "Sauvegardes de mise à niveau",
-    "upgradeBackupsDesc": "Instantanés de sécurité créés automatiquement avant les mises à niveau. Lors d'une restauration, l'état actuel est d'abord sauvegardé puis PromptHub redémarre automatiquement.",
+    "upgradeBackups": "Restauration des données",
+    "upgradeBackupsDesc": "Points de restauration locaux créés automatiquement avant les mises à jour. La restauration sauvegarde d'abord l'état actuel puis effectue le retour en arrière et redémarre automatiquement.",
     "upgradeBackupsLoading": "Chargement des sauvegardes de mise à niveau...",
     "upgradeBackupsEmpty": "Aucune sauvegarde automatique de mise à niveau trouvée pour l’instant.",
     "upgradeBackupLoadFailed": "Échec du chargement des sauvegardes de mise à niveau",
     "upgradeBackupRestoreTitle": "Restaurer une sauvegarde de mise à niveau",
-    "upgradeBackupRestoreAction": "Restaurer cet instantané",
+    "upgradeBackupRestoreAction": "Revenir à cet instantané",
     "upgradeBackupRestoreConfirm": "Restaurer l’instantané automatique créé le {{createdAt}} ({{from}}{{to}}) ? PromptHub sauvegardera d’abord l’état actuel, puis redémarrera automatiquement.",
     "upgradeBackupRestoreScheduled": "La sauvegarde de mise à niveau a été restaurée. PromptHub va redémarrer automatiquement.",
     "upgradeBackupRestoreFailed": "Échec de la restauration de la sauvegarde de mise à niveau",
@@ -405,7 +405,7 @@
     "upgradeBackupDeleteConfirm": "Supprimer l’instantané automatique {{backupId}} ? Cette entrée d’historique sera définitivement perdue.",
     "upgradeBackupDeleteSuccess": "Sauvegarde de mise à niveau supprimée",
     "upgradeBackupDeleteFailed": "Échec de la suppression de la sauvegarde de mise à niveau",
-    "upgradeBackupCreatedAt": "Créé le",
+    "upgradeBackupCreatedAt": "Date de l'instantané",
     "upgradeBackupItems": "Éléments inclus",
     "backupCompressed": "Sauvegarde compressée",
     "restore": "Restaurer",
@@ -425,9 +425,9 @@
     "importPreviewBackupNotice": "PromptHub créera automatiquement une sauvegarde locale de sécurité de l’état actuel avant l’import.",
     "importPreviewSkipped": "Enregistrements invalides qui seront ignorés",
     "importConfirmAction": "Sauvegarder les données actuelles puis importer",
-    "recoveryScanner": "Analyser les données historiques",
-    "recoveryScannerTitle": "Analyseur d’historique",
-    "recoveryScannerDesc": "Analyse les anciens répertoires de données PromptHub, les sauvegardes de mise à niveau et les dossiers ajoutés manuellement, puis vous permet de prévisualiser et restaurer la source choisie.",
+    "recoveryScanner": "Récupération des données historiques",
+    "recoveryScannerTitle": "Récupération des données historiques",
+    "recoveryScannerDesc": "Recherche les données récupérables dans les anciens répertoires, dossiers spécifiés manuellement ou sauvegardes historiques, puis permet de choisir la source à restaurer.",
     "recoveryScanAction": "Analyser maintenant",
     "recoveryExtraPaths": "Répertoires d’analyse supplémentaires",
     "recoveryExtraPathsDesc": "Ajoutez d’anciens dossiers d’installation ou des répertoires de données copiés pour les inclure dans l’analyse de récupération.",
@@ -485,7 +485,7 @@
     "testConnection": "Tester la connexion",
     "upload": "Télécharger",
     "download": "Télécharger",
-    "dbInfo": "Info base de données",
+    "dbInfo": "Chemins des données locales",
     "aiConfig": "Configuration du modèle IA",
     "provider": "Fournisseur de service",
     "apiKey": "Clé API",
@@ -819,7 +819,8 @@
     "registrationOpen": "Inscription publique activée",
     "registrationClosed": "Inscription publique désactivée",
     "signOut": "Se déconnecter",
-    "webUpdatesManagedDesc": "Les mises à jour du web auto-hébergé se font via votre processus de déploiement. Récupérez la nouvelle version puis redéployez le service au lieu d’utiliser la mise à jour intégrée du desktop."
+    "webUpdatesManagedDesc": "Les mises à jour du web auto-hébergé se font via votre processus de déploiement. Récupérez la nouvelle version puis redéployez le service au lieu d’utiliser la mise à jour intégrée du desktop.",
+    "selfHostedSyncDesc": "Utilisez votre PromptHub Web déployé comme cible de sauvegarde et source de restauration des données desktop, sans WebDAV."
   },
   "import": {
     "clipboardTitle": "Importer un Prompt depuis le presse-papiers",
@@ -1342,6 +1343,7 @@
       "prompt": "Prompt",
       "folder": "Dossier",
       "skill": "Compétence"
-    }
+    },
+    "skillsOnly": "Contient uniquement des compétences"
   }
 }

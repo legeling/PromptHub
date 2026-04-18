@@ -286,7 +286,7 @@ describe("DataSettings", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Restore" }));
     expect(input.type).toBe("file");
-    expect(input.accept).toBe(".json,.phub,.gz");
+    expect(input.accept).toBe(".json,.phub,.gz,.zip");
 
     const file = { name: "prompthub-export.phub.gz" } as File;
 
@@ -438,15 +438,15 @@ describe("DataSettings", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("Upgrade backups")).toBeInTheDocument();
+      expect(screen.getByText("Roll back data")).toBeInTheDocument();
     });
 
     expect(screen.getByText("0.5.3 -> 0.5.4")).toBeInTheDocument();
     expect(
-      screen.getByText("Items: prompthub.db, workspace"),
+      screen.getByText(/包含项目|Included items/),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Restore this snapshot" }),
+      screen.getByRole("button", { name: "Roll back to this snapshot" }),
     ).toBeInTheDocument();
   });
 
@@ -483,18 +483,18 @@ describe("DataSettings", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("button", { name: "Restore this snapshot" }),
+        screen.getByRole("button", { name: "Roll back to this snapshot" }),
       ).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Restore this snapshot" }));
+    fireEvent.click(screen.getByRole("button", { name: "Roll back to this snapshot" }));
 
     await waitFor(() => {
       expect(screen.getByText("Restore upgrade backup")).toBeInTheDocument();
     });
 
     const confirmButtons = screen.getAllByRole("button", {
-      name: "Restore this snapshot",
+      name: "Roll back to this snapshot",
     });
     fireEvent.click(confirmButtons[confirmButtons.length - 1]);
 

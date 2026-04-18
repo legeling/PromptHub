@@ -67,12 +67,12 @@
     "node-sqlite3-wasm": "^0.8.0"
   },
   "devDependencies": {
-    "@prompthub/db": "workspace:*",
-    "@prompthub/shared": "workspace:*",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@playwright/test": "^1.57.0",
+    "@prompthub/db": "workspace:*",
+    "@prompthub/shared": "workspace:*",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",
     "@testing-library/user-event": "^14.6.1",
@@ -121,6 +121,7 @@
     "vite-plugin-electron-renderer": "^0.14.6",
     "vitest": "^2.0.0",
     "wait-on": "^8.0.0",
-    "zustand": "^5.0.0"
+    "zustand": "^5.0.0",
+    "fflate": "^0.8.2"
   }
 }

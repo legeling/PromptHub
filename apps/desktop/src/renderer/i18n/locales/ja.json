@@ -391,13 +391,13 @@
     "selectiveExportDesc": "必要なデータだけを書き出し、後で「復元」から再インポートできます。",
     "fullBackup": "フルバックアップ / 復元",
     "fullBackupDesc": "移行/端末間復元用：Prompts、画像、AI 設定、アプリ設定、スキルを含みます",
-    "upgradeBackups": "アップグレードバックアップ",
-    "upgradeBackupsDesc": "アップグレード前に自動作成された安全スナップショットです。復元時はまず現在の状態をバックアップし、その後 PromptHub を自動再起動します。",
+    "upgradeBackups": "データのロールバック",
+    "upgradeBackupsDesc": "アップグレード前に自動作成されたローカルのロールバックポイントです。スナップショットを復元すると、現在の状態を新しいスナップショットとして保存してからロールバックし、自動的に再起動します。",
     "upgradeBackupsLoading": "アップグレードバックアップを読み込み中...",
     "upgradeBackupsEmpty": "自動アップグレードバックアップはまだ見つかっていません。",
     "upgradeBackupLoadFailed": "アップグレードバックアップの読み込みに失敗しました",
     "upgradeBackupRestoreTitle": "アップグレードバックアップを復元",
-    "upgradeBackupRestoreAction": "このスナップショットを復元",
+    "upgradeBackupRestoreAction": "このスナップショットにロールバック",
     "upgradeBackupRestoreConfirm": "{{createdAt}} に作成された自動スナップショット（{{from}}{{to}}）を復元しますか？PromptHub は最初に現在の状態をもう一度バックアップし、その後自動的に再起動します。",
     "upgradeBackupRestoreScheduled": "アップグレードバックアップを復元しました。PromptHub は自動的に再起動します。",
     "upgradeBackupRestoreFailed": "アップグレードバックアップの復元に失敗しました",
@@ -405,7 +405,7 @@
     "upgradeBackupDeleteConfirm": "自動スナップショット {{backupId}} を削除しますか？この履歴は元に戻せません。",
     "upgradeBackupDeleteSuccess": "アップグレードバックアップを削除しました",
     "upgradeBackupDeleteFailed": "アップグレードバックアップの削除に失敗しました",
-    "upgradeBackupCreatedAt": "作成日時",
+    "upgradeBackupCreatedAt": "スナップショット日時",
     "upgradeBackupItems": "含まれる項目",
     "backupCompressed": "圧縮バックアップ",
     "restore": "復元",
@@ -425,9 +425,9 @@
     "importPreviewBackupNotice": "PromptHub はインポート前に現在の状態を自動でローカル安全バックアップとして保存します。",
     "importPreviewSkipped": "スキップされる無効なレコード",
     "importConfirmAction": "現在のデータをバックアップしてインポート",
-    "recoveryScanner": "履歴データをスキャン",
-    "recoveryScannerTitle": "履歴データスキャナー",
-    "recoveryScannerDesc": "古い PromptHub データディレクトリ、アップグレードバックアップ、手動で追加したフォルダをスキャンし、選んだソースをプレビューして復元します。",
+    "recoveryScanner": "履歴データ救急",
+    "recoveryScannerTitle": "履歴データ救急",
+    "recoveryScannerDesc": "旧バージョンのディレクトリ、手動指定フォルダ、または履歴バックアップから復元可能なデータを検索し、プレビューして復元元を選択します。",
     "recoveryScanAction": "今すぐスキャン",
     "recoveryExtraPaths": "追加スキャンディレクトリ",
     "recoveryExtraPathsDesc": "古いインストールフォルダや手動でコピーしたデータディレクトリを追加して、復元スキャン対象に含めます。",
@@ -485,7 +485,7 @@
     "testConnection": "接続テスト",
     "upload": "アップロード",
     "download": "ダウンロード",
-    "dbInfo": "データベース情報",
+    "dbInfo": "ローカルデータパス",
     "aiConfig": "AI モデル設定",
     "provider": "サービスプロバイダー",
     "apiKey": "API Key",
@@ -819,7 +819,8 @@
     "registrationOpen": "公開登録が有効",
     "registrationClosed": "公開登録が無効",
     "signOut": "ログアウト",
-    "webUpdatesManagedDesc": "セルフホスト Web の更新はデプロイ手順で管理します。アプリ内更新ではなく、新しいバージョンを取得して再デプロイしてください。"
+    "webUpdatesManagedDesc": "セルフホスト Web の更新はデプロイ手順で管理します。アプリ内更新ではなく、新しいバージョンを取得して再デプロイしてください。",
+    "selfHostedSyncDesc": "デプロイした PromptHub Web を、WebDAV なしでデスクトップデータのバックアップ先および復元元として使用します。"
   },
   "import": {
     "clipboardTitle": "クリップボードから Prompt をインポート",
@@ -1342,6 +1343,7 @@
       "prompt": "Prompt",
       "folder": "Folder",
       "skill": "Skill"
-    }
+    },
+    "skillsOnly": "スキルデータのみ"
   }
 }

@@ -391,13 +391,13 @@
     "selectiveExportDesc": "按需导出指定数据，可稍后通过“恢复”重新导入。",
     "fullBackup": "全量备份 / 恢复",
     "fullBackupDesc": "用于迁移/跨设备恢复：包含 prompts、图片、AI 配置、系统设置、技能",
-    "upgradeBackups": "升级备份",
-    "upgradeBackupsDesc": "升级前自动创建的安全快照。恢复时会先备份当前状态，然后自动重启 PromptHub。",
+    "upgradeBackups": "回滚数据",
+    "upgradeBackupsDesc": "升级前自动创建的本地回滚点。恢复某个快照时，会先把当前状态保存为新快照，再回滚并自动重启。",
     "upgradeBackupsLoading": "正在加载升级备份...",
     "upgradeBackupsEmpty": "暂未发现自动升级备份。",
     "upgradeBackupLoadFailed": "加载升级备份失败",
     "upgradeBackupRestoreTitle": "恢复升级备份",
-    "upgradeBackupRestoreAction": "恢复此快照",
+    "upgradeBackupRestoreAction": "回滚到此快照",
     "upgradeBackupRestoreConfirm": "确定要恢复 {{createdAt}} 创建的自动快照（{{from}}{{to}}）吗？PromptHub 会先把当前状态再备份一次，然后自动重启。",
     "upgradeBackupRestoreScheduled": "升级备份已恢复，PromptHub 将自动重启。",
     "upgradeBackupRestoreFailed": "恢复升级备份失败",
@@ -405,7 +405,7 @@
     "upgradeBackupDeleteConfirm": "确定要删除自动快照 {{backupId}} 吗？删除后将无法找回。",
     "upgradeBackupDeleteSuccess": "升级备份已删除",
     "upgradeBackupDeleteFailed": "删除升级备份失败",
-    "upgradeBackupCreatedAt": "创建时间",
+    "upgradeBackupCreatedAt": "快照时间",
     "upgradeBackupItems": "包含项目",
     "backupCompressed": "压缩备份",
     "restore": "恢复",
@@ -425,9 +425,9 @@
     "importPreviewBackupNotice": "PromptHub 会在导入前自动为当前状态创建一份本地安全备份。",
     "importPreviewSkipped": "将被跳过的无效记录",
     "importConfirmAction": "先备份当前数据再导入",
-    "recoveryScanner": "扫描历史数据",
-    "recoveryScannerTitle": "历史数据扫描",
-    "recoveryScannerDesc": "扫描旧版 PromptHub 数据目录、升级备份以及你手动添加的文件夹，然后预览并恢复你选择的数据源。",
+    "recoveryScanner": "历史数据急救",
+    "recoveryScannerTitle": "历史数据急救",
+    "recoveryScannerDesc": "从旧版本目录、手动指定目录或历史备份中查找可恢复的数据，预览后选择恢复源。",
     "recoveryScanAction": "立即扫描",
     "recoveryExtraPaths": "额外扫描目录",
     "recoveryExtraPathsDesc": "可添加旧安装目录或手动复制出来的数据目录，一并参与恢复扫描。",
@@ -485,7 +485,7 @@
     "testConnection": "测试连接",
     "upload": "上传",
     "download": "下载",
-    "dbInfo": "数据库信息",
+    "dbInfo": "本地数据路径",
     "aiConfig": "AI 模型配置",
     "provider": "服务提供商",
     "apiKey": "API Key",
@@ -819,7 +819,8 @@
     "registrationOpen": "已开启公开注册",
     "registrationClosed": "已关闭公开注册",
     "signOut": "退出登录",
-    "webUpdatesManagedDesc": "自部署网页版的更新由你的部署流程负责。请拉取新版本并重新部署，而不是使用桌面端的应用内更新。"
+    "webUpdatesManagedDesc": "自部署网页版的更新由你的部署流程负责。请拉取新版本并重新部署，而不是使用桌面端的应用内更新。",
+    "selfHostedSyncDesc": "将你部署的 PromptHub 网页版作为桌面端的备份目标和数据恢复源，无需 WebDAV。"
   },
   "import": {
     "clipboardTitle": "从剪切板导入 Prompt",
@@ -1374,6 +1375,7 @@
       "prompt": "Prompt",
       "folder": "文件夹",
       "skill": "技能"
-    }
+    },
+    "skillsOnly": "仅含技能数据"
   }
 }

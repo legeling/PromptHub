@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  downloadBackup,
   exportDatabase,
   restoreFromBackup,
   restoreFromFile,
@@ -81,6 +82,70 @@ describe("database-backup restore", () => {
     });
 
     installWindowMocks();
+  });
+
+  it("delays backup URL revocation so downloads are not truncated", async () => {
+    vi.useFakeTimers();
+    const originalCreateElement = document.createElement.bind(document);
+    const originalCreateObjectURL = URL.createObjectURL;
+    const originalRevokeObjectURL = URL.revokeObjectURL;
+
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      writable: true,
+      value: vi.fn(),
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      writable: true,
+      value: vi.fn(),
+    });
+
+    const createObjectURL = vi
+      .spyOn(URL, "createObjectURL")
+      .mockReturnValue("blob:test-download");
+    const revokeObjectURL = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+
+    const anchor = originalCreateElement("a");
+    const clickSpy = vi.spyOn(anchor, "click").mockImplementation(() => {});
+
+    const appendChild = vi.spyOn(document.body, "appendChild");
+    const removeChild = vi.spyOn(document.body, "removeChild");
+    vi.spyOn(document, "createElement").mockImplementation((tagName: string) => {
+      if (tagName === "a") {
+        return anchor;
+      }
+      return originalCreateElement(tagName);
+    });
+
+    await downloadBackup();
+
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(anchor.download).toMatch(/prompthub-backup-.*\.json/);
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    expect(revokeObjectURL).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(removeChild).toHaveBeenCalledWith(anchor);
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:test-download");
+
+    appendChild.mockRestore();
+    removeChild.mockRestore();
+    createObjectURL.mockRestore();
+    revokeObjectURL.mockRestore();
+    clickSpy.mockRestore();
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      writable: true,
+      value: originalCreateObjectURL,
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      writable: true,
+      value: originalRevokeObjectURL,
+    });
+    vi.useRealTimers();
   });
 
   it("exports skills, skill versions, and skill files in the unified backup payload", async () => {
@@ -565,6 +630,31 @@ describe("database-backup restore", () => {
 
     await expect(restoreFromFile(file)).rejects.toThrow(
       "Invalid PromptHub backup: unsupported file format. Please import a PromptHub backup/export file.",
+    );
+
+    expect(clearDatabaseMock).not.toHaveBeenCalled();
+    expect(window.api.skill.deleteAll).not.toHaveBeenCalled();
+  });
+
+  it("rejects an empty backup payload before clearing existing data", async () => {
+    const file = {
+      name: "empty-backup.phub",
+      text: vi.fn().mockResolvedValue(
+        JSON.stringify({
+          kind: "prompthub-backup",
+          exportedAt: "2026-04-18T00:00:00.000Z",
+          payload: {
+            exportedAt: "2026-04-18T00:00:00.000Z",
+            prompts: [],
+            folders: [],
+            versions: [],
+          },
+        }),
+      ),
+    } as unknown as File;
+
+    await expect(restoreFromFile(file)).rejects.toThrow(
+      "Backup restore was blocked because the imported backup is empty.",
     );
 
     expect(clearDatabaseMock).not.toHaveBeenCalled();

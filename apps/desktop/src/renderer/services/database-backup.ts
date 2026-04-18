@@ -14,6 +14,7 @@ import {
 import {
   DB_BACKUP_VERSION,
   createEmptySkippedStats,
+  hasMeaningfulBackupContent,
   normalizeImportedBackup,
   parsePromptHubBackupFile,
   parsePromptHubBackupFileContent,
@@ -276,6 +277,21 @@ async function gzipText(text: string): Promise<Blob> {
   return new Response(stream).blob();
 }
 
+function triggerBlobDownload(blob: Blob, fileName: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 1000);
+}
+
 async function gunzipToText(blob: Blob): Promise<string> {
   const stream = blob.stream().pipeThrough(new DecompressionStream("gzip"));
   return new Response(stream).text();
@@ -297,8 +313,23 @@ export interface ImportPreviewSummary {
   skipped: ImportSkippedStats;
 }
 
+async function unzipExportToText(file: File): Promise<string> {
+  const { unzipSync } = await import("fflate");
+  const buffer = await file.arrayBuffer();
+  const unzipped = unzipSync(new Uint8Array(buffer));
+  const jsonEntry = unzipped["import-with-prompthub.json"];
+  if (!jsonEntry) {
+    throw new Error(
+      "ZIP 文件中缺少 import-with-prompthub.json，无法导入。请使用 PromptHub 导出的 ZIP 文件。",
+    );
+  }
+  return new TextDecoder().decode(jsonEntry);
+}
+
 async function readBackupFileText(file: File): Promise<string> {
-  return file.name.endsWith(".gz") ? gunzipToText(file) : file.text();
+  if (file.name.endsWith(".gz")) return gunzipToText(file);
+  if (file.name.endsWith(".zip")) return unzipExportToText(file);
+  return file.text();
 }
 
 function parsePromptHubFileKind(text: string): ImportPreviewSummary["kind"] {
@@ -473,6 +504,13 @@ export async function importDatabase(backup: DatabaseBackup): Promise<void> {
     exportedAt: normalizedBackup.exportedAt,
     payload: normalizedBackup,
   }));
+
+  if (!hasMeaningfulBackupContent(normalizedBackup)) {
+    throw new Error(
+      "Backup restore was blocked because the imported backup is empty. " +
+        "Refusing to overwrite current data with an empty payload.",
+    );
+  }
 
   const restoredSkillIdMap = new Map<string, string>();
   const restoredSkillsByName = new Map<string, Skill>();
@@ -676,15 +714,10 @@ export async function downloadBackup(): Promise<void> {
   const blob = new Blob([JSON.stringify(file, null, 2)], {
     type: "application/json",
   });
-  const url = URL.createObjectURL(blob);
-
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `prompthub-backup-${new Date().toISOString().split("T")[0]}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  triggerBlobDownload(
+    blob,
+    `prompthub-backup-${new Date().toISOString().split("T")[0]}.json`,
+  );
 }
 
 export async function downloadCompressedBackup(): Promise<void> {
@@ -695,14 +728,10 @@ export async function downloadCompressedBackup(): Promise<void> {
     payload: backup,
   };
   const gz = await gzipText(JSON.stringify(file));
-  const url = URL.createObjectURL(gz);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `prompthub-backup-${new Date().toISOString().split("T")[0]}.phub.gz`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  triggerBlobDownload(
+    gz,
+    `prompthub-backup-${new Date().toISOString().split("T")[0]}.phub.gz`,
+  );
 }
 
 export async function downloadSelectiveExport(
@@ -718,6 +747,7 @@ export async function downloadSelectiveExport(
     skills: !!scope.skills,
   };
 
+  // Build the PromptHub JSON payload (used both as fallback download and embedded in ZIP for re-import)
   const payload: Partial<DatabaseBackup> = {
     version: DB_VERSION,
     exportedAt: new Date().toISOString(),
@@ -726,10 +756,6 @@ export async function downloadSelectiveExport(
   if (normalized.prompts) payload.prompts = await getAllPrompts();
   if (normalized.folders) payload.folders = await getAllFolders();
   if (normalized.versions) payload.versions = await getAllPromptVersions();
-  if (normalized.images) {
-    const promptsForImages = payload.prompts || (await getAllPrompts());
-    payload.images = await collectImages(promptsForImages);
-  }
   if (normalized.aiConfig) {
     payload.aiConfig = getAiConfigSnapshot({ includeRootApiKey: true });
   }
@@ -742,29 +768,56 @@ export async function downloadSelectiveExport(
       payload.settingsUpdatedAt = snap.settingsUpdatedAt;
     }
   }
-  if (normalized.skills) {
-    const skillData = await collectSkillData();
-    payload.skills = skillData.skills;
-    payload.skillVersions = skillData.skillVersions;
-    payload.skillFiles = skillData.skillFiles;
-  }
+  // Note: images and skills are included as files in the ZIP; omit bulky base64 blobs from the JSON
+  // 注意：图片和 Skill 文件以文件形式包含在 ZIP 中，JSON 里不重复存储 base64
 
-  const file: PromptHubFile = {
+  const exportFile: PromptHubFile = {
     kind: "prompthub-export",
     exportedAt: payload.exportedAt || new Date().toISOString(),
     scope: normalized,
     payload,
   };
+  const exportJson = JSON.stringify(exportFile, null, 2);
 
-  const gz = await gzipText(JSON.stringify(file));
-  const url = URL.createObjectURL(gz);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `prompthub-export-${new Date().toISOString().split("T")[0]}.phub.gz`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  // In Electron, delegate to main process which creates a proper ZIP with readable files
+  if (typeof window !== "undefined" && window.electron?.exportZip) {
+    let aiConfigJson: string | undefined;
+    let settingsJson: string | undefined;
+
+    if (normalized.aiConfig) {
+      const snap = getAiConfigSnapshot({ includeRootApiKey: true });
+      if (snap) aiConfigJson = JSON.stringify(snap, null, 2);
+    }
+    if (normalized.settings) {
+      const snap = getSettingsStateSnapshot({
+        updatedAt: new Date().toISOString(),
+      });
+      if (snap) settingsJson = JSON.stringify(snap, null, 2);
+    }
+
+    const result = await window.electron.exportZip({
+      scope: {
+        prompts: normalized.prompts || normalized.folders,
+        versions: normalized.versions,
+        images: normalized.images,
+        skills: normalized.skills,
+        config: false,
+        aiConfigJson,
+        settingsJson,
+        exportJson,
+      },
+    });
+
+    if (result?.error) throw new Error(result.error);
+    return;
+  }
+
+  // Fallback for web / non-Electron: download as PromptHub JSON format
+  const blob = new Blob([exportJson], { type: "application/json" });
+  triggerBlobDownload(
+    blob,
+    `prompthub-export-${new Date().toISOString().split("T")[0]}.json`,
+  );
 }
 
 export async function restoreFromFile(file: File): Promise<ImportSkippedStats> {
