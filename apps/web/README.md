@@ -76,7 +76,7 @@ pnpm install
 Important variables:
 
 - `JWT_SECRET`: required, at least 32 characters
-- `DATA_DIR`: where SQLite data and uploaded files are stored
+- `DATA_ROOT`: root directory for all PromptHub data (default: `./`). The app writes `data/`, `config/`, `logs/`, and `backups/` under this path.
 - `ALLOW_REGISTRATION=false`: keep this disabled; the first admin is created only through `/setup`
 
 ## Local Development
@@ -140,7 +140,9 @@ Default access URL:
 
 The compose file mounts:
 
-- `./data -> /app/data`
+- `./data -> /app/data` (prompt, skill, asset files)
+- `./config -> /app/config` (per-user settings, device registry)
+- `./logs -> /app/logs` (diagnostic logs)
 
 That means your SQLite database, workspace files, and uploaded media stay on disk outside the container.
 
@@ -194,13 +196,14 @@ Your data remains intact as long as you keep the same mounted `./data` directory
 
 What is stored there:
 
-- `prompthub.db`
-- `workspace/prompts/...`
-- `workspace/folders.json`
-- `workspace/skills/<skill-slug>__<skillId>/`
-- `workspace/settings/<userId>.json`
-- `workspace/assets/<userId>/images/...`
-- `workspace/assets/<userId>/videos/...`
+- `data/prompthub.db`
+- `data/prompts/<folder>/...`  (prompt `.md` files + per-folder `_folder.json`)
+- `data/prompts/.versions/<promptId>/...`  (version snapshots)
+- `data/skills/<skill-slug>__<skillId>/`
+- `data/assets/<userId>/images/...`
+- `data/assets/<userId>/videos/...`
+- `config/settings/<userId>.json`
+- `backups/`  (pre-upgrade snapshots)
 
 The database layer also creates a timestamped pre-migration backup before schema changes when possible.
 
@@ -216,16 +219,16 @@ apps/web/data
 
 That preserves:
 
-- the SQLite index
-- workspace markdown/files
-- workspace skill files and versions
-- per-user settings files
-- uploaded media under `workspace/assets/...`
-- migration backups such as `prompthub.db.backup-*`
+- the SQLite index (`data/prompthub.db`)
+- prompt and folder files (`data/prompts/`)
+- skill files and versions (`data/skills/`)
+- per-user settings (`config/settings/`)
+- uploaded media (`data/assets/`)
+- upgrade backups (`backups/`)
 
 ## Deployment Notes
 
-- Back up `DATA_DIR` regularly. It contains the instance database and uploaded assets.
+- Back up `DATA_ROOT` (or the mounted `./data` + `./config` directories) regularly.
 - Treat this app as a user-managed deployment artifact, not as a shared hosted service.
 - If you expose it to the public internet, use HTTPS and a reverse proxy in front of it.
 - CI validates the web app with lint, typecheck, tests, production build, Docker image build, and `docker compose config`.

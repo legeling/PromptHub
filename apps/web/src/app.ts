@@ -15,13 +15,11 @@ import mediaRoutes from './routes/media.js';
 import syncRoutes from './routes/sync.js';
 import importExportRoutes from './routes/import-export.js';
 import devicesRoutes from './routes/devices.js';
-import { migrateLegacyMediaWorkspace } from './services/media-workspace.js';
 import { bootstrapPromptWorkspace } from './services/prompt-workspace.js';
 import { bootstrapSkillWorkspace } from './services/skill-workspace.js';
 
 export function createApp(): Hono {
   const db = getServerDatabase();
-  migrateLegacyMediaWorkspace();
   bootstrapPromptWorkspace(db, new PromptDB(db), new FolderDB(db));
   bootstrapSkillWorkspace(db, new SkillDB(db));
 

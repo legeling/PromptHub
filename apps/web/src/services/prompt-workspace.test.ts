@@ -10,7 +10,7 @@ const ENV_KEYS = [
   'JWT_SECRET',
   'JWT_ACCESS_TTL',
   'JWT_REFRESH_TTL',
-  'DATA_DIR',
+  'DATA_ROOT',
   'ALLOW_REGISTRATION',
   'LOG_LEVEL',
 ] as const;
@@ -23,7 +23,7 @@ function configureTestEnv(dataDir: string): void {
   process.env.JWT_SECRET = 'test-secret-for-web-workspace-flow-1234567890';
   process.env.JWT_ACCESS_TTL = '900';
   process.env.JWT_REFRESH_TTL = '604800';
-  process.env.DATA_DIR = dataDir;
+  process.env.DATA_ROOT = dataDir;
   process.env.ALLOW_REGISTRATION = 'true';
   process.env.LOG_LEVEL = 'debug';
 }
@@ -128,27 +128,23 @@ describe('web prompt workspace storage', () => {
       expect(result.folderCount).toBe(1);
       expect(result.versionCount).toBe(2);
 
-      const workspaceDir = path.join(dataDir, 'workspace');
-      const promptsDir = path.join(workspaceDir, 'prompts');
-      const foldersFile = path.join(workspaceDir, 'folders.json');
-      expect(fs.existsSync(foldersFile)).toBe(true);
+      const promptsDir = path.join(dataDir, 'data', 'prompts');
 
-      const folders = JSON.parse(fs.readFileSync(foldersFile, 'utf8')) as Array<{
+      // Per-folder _folder.json must exist (no global folders.json)
+      const folderMetaFile = path.join(promptsDir, 'team-writing', '_folder.json');
+      expect(fs.existsSync(folderMetaFile)).toBe(true);
+
+      const folderMeta = JSON.parse(fs.readFileSync(folderMetaFile, 'utf8')) as {
         id: string;
         ownerUserId?: string | null;
         visibility?: 'private' | 'shared';
-      }>;
-      expect(folders).toHaveLength(1);
-      expect(folders[0]?.id).toBe(folder.id);
-      expect(folders[0]?.ownerUserId).toBe(owner.user.id);
-      expect(folders[0]?.visibility).toBe('shared');
+      };
+      expect(folderMeta.id).toBe(folder.id);
+      expect(folderMeta.ownerUserId).toBe(owner.user.id);
+      expect(folderMeta.visibility).toBe('shared');
 
-      const promptFile = path.join(
-        promptsDir,
-        'team-writing',
-        `launch-copy__${prompt.id}`,
-        'prompt.md',
-      );
+      // Prompt file: <slug>.md (not <slug>__<id>/prompt.md)
+      const promptFile = path.join(promptsDir, 'team-writing', 'launch-copy.md');
       expect(fs.existsSync(promptFile)).toBe(true);
 
       const rawPromptFile = fs.readFileSync(promptFile, 'utf8');
@@ -162,13 +158,8 @@ describe('web prompt workspace storage', () => {
         'Draft a launch message for {{audience}} with urgency.',
       );
 
-      const versionFile = path.join(
-        promptsDir,
-        'team-writing',
-        `launch-copy__${prompt.id}`,
-        'versions',
-        '0002.md',
-      );
+      // Version files: .versions/<promptId>/NNNN.md (not inside folder sub-tree)
+      const versionFile = path.join(promptsDir, '.versions', prompt.id, '0002.md');
       expect(fs.existsSync(versionFile)).toBe(true);
     } finally {
       fs.rmSync(dataDir, { recursive: true, force: true });
@@ -187,38 +178,33 @@ describe('web prompt workspace storage', () => {
       const { db, folderDb, promptDb, workspaceModule } = await loadWorkspaceContext();
       const owner = await createOwnerUser();
 
-      const workspaceDir = path.join(dataDir, 'workspace');
-      const promptDir = path.join(
-        workspaceDir,
-        'prompts',
-        'ops',
-        'deploy-check__prompt_1',
-      );
-      fs.mkdirSync(path.join(promptDir, 'versions'), { recursive: true });
+      const promptsDir = path.join(dataDir, 'data', 'prompts');
 
+      // Per-folder _folder.json (replaces global folders.json)
+      const opsFolderDir = path.join(promptsDir, 'ops');
+      fs.mkdirSync(opsFolderDir, { recursive: true });
       fs.writeFileSync(
-        path.join(workspaceDir, 'folders.json'),
+        path.join(opsFolderDir, '_folder.json'),
         JSON.stringify(
-          [
-            {
-              id: 'folder_ops',
-              name: 'Ops',
-              order: 0,
-              isPrivate: false,
-              ownerUserId: owner.user.id,
-              visibility: 'shared',
-              createdAt: '2026-04-13T00:00:00.000Z',
-              updatedAt: '2026-04-13T00:00:00.000Z',
-            },
-          ],
+          {
+            id: 'folder_ops',
+            name: 'Ops',
+            sortOrder: 0,
+            isPrivate: false,
+            ownerUserId: owner.user.id,
+            visibility: 'shared',
+            createdAt: '2026-04-13T00:00:00.000Z',
+            updatedAt: '2026-04-13T00:00:00.000Z',
+          },
           null,
           2,
         ),
         'utf8',
       );
 
+      // Prompt file: <slug>.md
       fs.writeFileSync(
-        path.join(promptDir, 'prompt.md'),
+        path.join(opsFolderDir, 'deploy-check.md'),
         `---
 id: "prompt_1"
 ownerUserId: ${JSON.stringify(owner.user.id)}
@@ -228,6 +214,8 @@ folderId: "folder_ops"
 promptType: "text"
 variables: [{"name":"service","type":"text","required":true}]
 tags: ["ops","deploy"]
+isFavorite: false
+isPinned: false
 usageCount: 11
 lastAiResponse: "healthy"
 createdAt: "2026-04-13T00:00:00.000Z"
@@ -242,8 +230,11 @@ Check deployment health for {{service}}.
         'utf8',
       );
 
+      // Version file: .versions/<promptId>/NNNN.md
+      const versionsDir = path.join(promptsDir, '.versions', 'prompt_1');
+      fs.mkdirSync(versionsDir, { recursive: true });
       fs.writeFileSync(
-        path.join(promptDir, 'versions', '0001.md'),
+        path.join(versionsDir, '0001.md'),
         `---
 id: "version_1"
 promptId: "prompt_1"
@@ -354,16 +345,15 @@ Check deployment health for {{service}}.
         data: { id: string };
       };
 
-      const foldersFile = path.join(dataDir, 'workspace', 'folders.json');
+      const foldersFile = path.join(dataDir, 'data', 'prompts', 'personal-vault', '_folder.json');
       expect(fs.existsSync(foldersFile)).toBe(true);
 
       const promptFile = path.join(
         dataDir,
-        'workspace',
+        'data',
         'prompts',
         'personal-vault',
-        `daily-summary__${promptPayload.data.id}`,
-        'prompt.md',
+        'daily-summary.md',
       );
       expect(fs.existsSync(promptFile)).toBe(true);
 
@@ -386,23 +376,19 @@ Check deployment health for {{service}}.
       try {
         configureTestEnv(dataDir);
 
-        const workspaceDir = path.join(dataDir, 'workspace');
-        const promptDir = path.join(
-          workspaceDir,
-          'prompts',
-          'recovered',
-          'draft__prompt_recovered',
-        );
-        fs.mkdirSync(promptDir, { recursive: true });
-        fs.writeFileSync(path.join(workspaceDir, 'folders.json'), '[]', 'utf8');
+        const promptsDir = path.join(dataDir, 'data', 'prompts');
+        const recoveredDir = path.join(promptsDir, 'recovered');
+        fs.mkdirSync(recoveredDir, { recursive: true });
         fs.writeFileSync(
-          path.join(promptDir, 'prompt.md'),
+          path.join(recoveredDir, 'draft.md'),
           `---
 id: "prompt_recovered"
 ownerUserId: "missing-user"
 visibility: "private"
 title: "Recovered Draft"
 promptType: "text"
+isFavorite: false
+isPinned: false
 createdAt: "2026-04-13T00:00:00.000Z"
 updatedAt: "2026-04-13T00:00:00.000Z"
 ---

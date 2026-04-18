@@ -13,7 +13,9 @@ services:
     environment:
       HOST: 0.0.0.0
       PORT: 3000
-      DATA_DIR: /app/data
+      DATA_ROOT: /app
       ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-false}
     volumes:
       - ./data:/app/data
+      - ./config:/app/config
+      - ./logs:/app/logs

@@ -13,6 +13,16 @@ export const IPC_CHANNELS = {
   PROMPT_COPY: "prompt:copy",
   PROMPT_INSERT_DIRECT: "prompt:insertDirect",
   PROMPT_SYNC_WORKSPACE: "prompt:syncWorkspace",
+  /**
+   * Atomic batch migration from legacy IndexedDB data.
+   * All inserts are wrapped in a single SQLite transaction.
+   * Returns { imported: true } when data was actually written, or { imported: false } if
+   * the target already had prompts (no-op guard).
+   *
+   * 原子批量迁移：将旧版 IndexedDB 数据一次性写入 SQLite（单事务）。
+   * 若 SQLite 已有数据则直接返回 { imported: false }（防止覆盖）。
+   */
+  PROMPT_MIGRATE_IDB_BATCH: "prompt:migrateIdbBatch",
 
   // Version
   VERSION_GET_ALL: "version:getAll",

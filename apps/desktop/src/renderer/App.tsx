@@ -674,10 +674,6 @@ function App() {
         await fetchFolders();
         console.log("✅ App initialized");
 
-        // Recovery is only relevant when the currently loaded prompt library is
-        // actually empty. This avoids SQLite-only heuristics from masking valid
-        // IndexedDB data in the active profile.
-        //
         // IMPORTANT: We MUST NOT auto-execute performRecovery here. Historically
         // this code auto-picked the best candidate and called performRecovery
         // directly, which triggered an unconditional relaunch+quit inside the
@@ -688,7 +684,7 @@ function App() {
         // The DataRecoveryDialog below is the only legitimate path to invoke
         // recovery — the user must explicitly confirm, so a loop is impossible.
         // See: https://github.com/legeling/PromptHub v0.5.2 regression.
-        if (!isWebRuntime() && usePromptStore.getState().prompts.length === 0) {
+        if (!isWebRuntime()) {
           try {
             const recoverable = await window.electron?.checkRecovery?.();
             if (recoverable && recoverable.length > 0) {

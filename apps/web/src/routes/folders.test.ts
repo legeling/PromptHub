@@ -10,7 +10,7 @@ const ENV_KEYS = [
   'JWT_SECRET',
   'JWT_ACCESS_TTL',
   'JWT_REFRESH_TTL',
-  'DATA_DIR',
+  'DATA_ROOT',
   'ALLOW_REGISTRATION',
   'LOG_LEVEL',
 ] as const;
@@ -23,7 +23,7 @@ async function createTestApp(dataDir: string) {
   process.env.JWT_SECRET = 'test-secret-for-web-folder-flow-1234567890';
   process.env.JWT_ACCESS_TTL = '900';
   process.env.JWT_REFRESH_TTL = '604800';
-  process.env.DATA_DIR = dataDir;
+  process.env.DATA_ROOT = dataDir;
   process.env.ALLOW_REGISTRATION = 'true';
   process.env.LOG_LEVEL = 'debug';
 

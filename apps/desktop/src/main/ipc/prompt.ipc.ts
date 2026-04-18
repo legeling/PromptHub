@@ -2,8 +2,10 @@ import { ipcMain } from 'electron';
 import { IPC_CHANNELS } from '@prompthub/shared/constants';
 import { PromptDB } from '../database/prompt';
 import { FolderDB } from '../database/folder';
+import type Database from '../database/sqlite';
 import type {
   CreatePromptDTO,
+  Folder,
   Prompt,
   PromptVersion,
   SearchQuery,
@@ -15,7 +17,7 @@ import { syncPromptWorkspaceFromDatabase } from "../services/prompt-workspace";
  * Register Prompt-related IPC handlers
  * 注册 Prompt 相关 IPC 处理器
  */
-export function registerPromptIPC(db: PromptDB, folderDb: FolderDB): void {
+export function registerPromptIPC(db: PromptDB, folderDb: FolderDB, rawDb: Database.Database): void {
   const syncWorkspace = () => {
     syncPromptWorkspaceFromDatabase(db, folderDb);
   };
@@ -93,6 +95,75 @@ export function registerPromptIPC(db: PromptDB, folderDb: FolderDB): void {
     db.insertPromptDirect(prompt);
     return true;
   });
+
+  /**
+   * Atomic batch IDB→SQLite migration.
+   * All inserts (folders + prompts + versions) are wrapped in a single SQLite
+   * transaction so there are no partial writes. If the target DB already has
+   * prompts the call is a safe no-op and returns { imported: false }.
+   *
+   * 原子批量迁移：将 IndexedDB 数据一次性写入 SQLite（单事务，无部分写入风险）。
+   * 若 SQLite 已有数据，直接返回 { imported: false }（防覆盖保护）。
+   */
+  ipcMain.handle(
+    IPC_CHANNELS.PROMPT_MIGRATE_IDB_BATCH,
+    async (
+      _,
+      payload: {
+        folders: Folder[];
+        prompts: Prompt[];
+        versions: PromptVersion[];
+      },
+    ): Promise<{
+      imported: boolean;
+      promptCount: number;
+      folderCount: number;
+      versionCount: number;
+    }> => {
+      // Input guard: reject null/non-object payloads.
+      // 输入保护：拒绝 null 或非对象入参。
+      if (!payload || typeof payload !== 'object') {
+        return { imported: false, promptCount: 0, folderCount: 0, versionCount: 0 };
+      }
+
+      // Guard: if SQLite already has prompts, do not overwrite.
+      // 保护：若 SQLite 已有 prompt，不覆盖。
+      const existing = db.getAll();
+      if (existing.length > 0) {
+        return { imported: false, promptCount: 0, folderCount: 0, versionCount: 0 };
+      }
+
+      const { folders = [], prompts = [], versions = [] } = payload;
+
+      if (prompts.length === 0 && folders.length === 0) {
+        return { imported: false, promptCount: 0, folderCount: 0, versionCount: 0 };
+      }
+
+      // Wrap all inserts in a single transaction for atomicity.
+      // 使用单事务包裹所有插入，确保原子性。
+      const migrate = rawDb.transaction(() => {
+        for (const folder of folders) {
+          folderDb.insertFolderDirect(folder);
+        }
+        for (const prompt of prompts) {
+          db.insertPromptDirect(prompt);
+        }
+        for (const version of versions) {
+          db.insertVersionDirect(version);
+        }
+      });
+
+      migrate();
+      syncWorkspace();
+
+      return {
+        imported: true,
+        promptCount: prompts.length,
+        folderCount: folders.length,
+        versionCount: versions.length,
+      };
+    },
+  );
 
   ipcMain.handle(IPC_CHANNELS.PROMPT_SYNC_WORKSPACE, async () => {
     syncWorkspace();

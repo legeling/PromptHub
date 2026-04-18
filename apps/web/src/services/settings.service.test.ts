@@ -10,7 +10,7 @@ const ENV_KEYS = [
   'JWT_SECRET',
   'JWT_ACCESS_TTL',
   'JWT_REFRESH_TTL',
-  'DATA_DIR',
+  'DATA_ROOT',
   'ALLOW_REGISTRATION',
   'LOG_LEVEL',
 ] as const;
@@ -23,7 +23,7 @@ function configureTestEnv(dataDir: string): void {
   process.env.JWT_SECRET = 'test-secret-for-web-settings-service-1234567890';
   process.env.JWT_ACCESS_TTL = '900';
   process.env.JWT_REFRESH_TTL = '604800';
-  process.env.DATA_DIR = dataDir;
+  process.env.DATA_ROOT = dataDir;
   process.env.ALLOW_REGISTRATION = 'true';
   process.env.LOG_LEVEL = 'debug';
 }
@@ -67,7 +67,7 @@ describe('web settings workspace storage', () => {
 
       const settingsFile = path.join(
         dataDir,
-        'workspace',
+        'config',
         'settings',
         `${owner.user.id}.json`,
       );
@@ -124,7 +124,7 @@ describe('web settings workspace storage', () => {
 
       const settingsFile = path.join(
         dataDir,
-        'workspace',
+        'config',
         'settings',
         `${owner.user.id}.json`,
       );
@@ -155,7 +155,7 @@ describe('web settings workspace storage', () => {
         import('../database'),
       ]);
 
-      const settingsDir = path.join(dataDir, 'workspace', 'settings');
+      const settingsDir = path.join(dataDir, 'config', 'settings');
       fs.mkdirSync(settingsDir, { recursive: true });
       fs.writeFileSync(
         path.join(settingsDir, `${owner.user.id}.json`),
@@ -204,7 +204,7 @@ describe('web settings workspace storage', () => {
         import('../database'),
       ]);
 
-      const settingsDir = path.join(dataDir, 'workspace', 'settings');
+      const settingsDir = path.join(dataDir, 'config', 'settings');
       fs.mkdirSync(settingsDir, { recursive: true });
       fs.writeFileSync(
         path.join(settingsDir, `${owner.user.id}.json`),

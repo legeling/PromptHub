@@ -1,6 +1,5 @@
 import fs from 'node:fs';
-import path from 'node:path';
-import { config } from '../config.js';
+import { getDevicesDir } from '../runtime-paths.js';
 
 export type RegisteredDeviceType = 'desktop' | 'browser';
 
@@ -26,16 +25,12 @@ export interface DeviceHeartbeatInput {
   userAgent?: string;
 }
 
-function getDevicesWorkspaceDir(): string {
-  return path.join(config.dataDir, 'workspace', 'settings', 'devices');
-}
-
 function getDevicesFilePath(userId: string): string {
-  return path.join(getDevicesWorkspaceDir(), `${userId}.json`);
+  return `${getDevicesDir()}/${userId}.json`;
 }
 
-function ensureDevicesWorkspaceDir(): void {
-  fs.mkdirSync(getDevicesWorkspaceDir(), { recursive: true });
+function ensureDevicesDir(): void {
+  fs.mkdirSync(getDevicesDir(), { recursive: true });
 }
 
 function readDevicesFile(userId: string): RegisteredDevice[] {
@@ -54,7 +49,7 @@ function readDevicesFile(userId: string): RegisteredDevice[] {
 }
 
 function writeDevicesFile(userId: string, devices: RegisteredDevice[]): void {
-  ensureDevicesWorkspaceDir();
+  ensureDevicesDir();
   fs.writeFileSync(
     getDevicesFilePath(userId),
     JSON.stringify(devices, null, 2),

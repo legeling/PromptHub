@@ -52,7 +52,7 @@ import { runCli } from "../cli/run";
 import { PromptDB } from "./database/prompt";
 import { FolderDB } from "./database/folder";
 import { bootstrapPromptWorkspace, writeRestoreMarker } from "./services/prompt-workspace";
-import { migrateLegacyDataLayout } from "./services/data-layout-migration";
+import { migrateLegacyDataLayout, detectResidualLegacyEntries, getDataLayoutMigrationMarkerPath } from "./services/data-layout-migration";
 import { runUpgradeBackupStartupTasks } from "./services/upgrade-backup-startup";
 import { logStartupEvent, scrubPath } from "./startup-log";
 
@@ -678,6 +678,47 @@ const RECOVERY_DISMISS_MARKER = ".recovery-dismissed";
 // restart, not an infinite loop.
 let recoveryAttemptedThisSession = false;
 
+function countDirectEntriesSafe(dirPath: string): number {
+  try {
+    if (!fs.existsSync(dirPath)) {
+      return 0;
+    }
+
+    return fs
+      .readdirSync(dirPath, { withFileTypes: true })
+      .filter((entry) => entry.isFile() || entry.isDirectory()).length;
+  } catch {
+    return 0;
+  }
+}
+
+function buildResidualLegacyRecoveryCandidate(
+  currentPath: string,
+): RecoverableDatabase | null {
+  const migrationMarker = getDataLayoutMigrationMarkerPath(currentPath);
+  if (!fs.existsSync(migrationMarker)) {
+    return null;
+  }
+
+  const residual = detectResidualLegacyEntries(currentPath);
+  if (residual.length === 0) {
+    return null;
+  }
+
+  const residualPromptCount = countDirectEntriesSafe(
+    path.join(currentPath, "workspace", "prompts"),
+  );
+  const residualSkillCount = countDirectEntriesSafe(path.join(currentPath, "skills"));
+
+  return {
+    sourcePath: currentPath,
+    promptCount: residualPromptCount,
+    folderCount: 0,
+    skillCount: residualSkillCount,
+    dbSizeBytes: 0,
+  };
+}
+
 ipcMain.handle("data:checkRecovery", () => {
   if (isE2E) {
     cachedRecoveryResult = [];
@@ -688,11 +729,6 @@ ipcMain.handle("data:checkRecovery", () => {
     return cachedRecoveryResult;
   }
 
-  if (!appDb || !isDatabaseEmpty(appDb)) {
-    cachedRecoveryResult = [];
-    return [];
-  }
-
   const currentPath = app.getPath("userData");
   const dismissMarkerPath = path.join(currentPath, RECOVERY_DISMISS_MARKER);
   if (fs.existsSync(dismissMarkerPath)) {
@@ -700,8 +736,18 @@ ipcMain.handle("data:checkRecovery", () => {
     return [];
   }
 
+  const results: RecoverableDatabase[] = [];
+  const residualCandidate = buildResidualLegacyRecoveryCandidate(currentPath);
+  if (residualCandidate) {
+    results.push(residualCandidate);
+  }
+
+  const isDbEmpty = !!appDb && isDatabaseEmpty(appDb);
   const candidatePaths = getRecoveryCandidatePaths(currentPath);
-  const results = detectRecoverableDatabases(currentPath, candidatePaths);
+  if (isDbEmpty) {
+    results.push(...detectRecoverableDatabases(currentPath, candidatePaths));
+  }
+
   cachedRecoveryResult = results;
   logStartupEvent({
     event: "recovery:candidates_detected",
@@ -748,6 +794,35 @@ ipcMain.handle("data:performRecovery", async (_event, sourcePath: string) => {
   });
 
   const currentPath = app.getPath("userData");
+
+  // Special case: sourcePath === currentPath means a partial data-layout
+  // migration left residual legacy entries in the current userData root.
+  // Re-run the migration in place rather than trying to copy the DB over itself.
+  //
+  // 特殊情况：sourcePath === currentPath 表示当前目录本身有迁移残留。
+  // 直接原地重跑迁移，而不是把 DB 复制到自身。
+  if (path.resolve(sourcePath) === path.resolve(currentPath)) {
+    try {
+      const migResult = await migrateLegacyDataLayout(currentPath, app.getVersion());
+      logStartupEvent({
+        event: "recovery:residual_migration_retry",
+        status: migResult.status,
+        movedEntries: migResult.movedEntries,
+        failedEntries: migResult.failedEntries,
+      });
+      cachedRecoveryResult = null;
+      closeDatabase();
+      setTimeout(() => {
+        app.relaunch();
+        app.exit(0);
+      }, 500);
+      return { success: true };
+    } catch (retryErr) {
+      const msg = retryErr instanceof Error ? retryErr.message : String(retryErr);
+      logStartupEvent({ event: "recovery:residual_migration_retry_failed", error: msg });
+      return { success: false, error: msg };
+    }
+  }
 
   // Close current database before overwriting
   closeDatabase();
@@ -1210,8 +1285,29 @@ app.whenReady().then(async () => {
         status: layoutMigration.status,
         backupId: layoutMigration.backupId,
         movedEntries: layoutMigration.movedEntries,
+        failedEntries: layoutMigration.failedEntries,
         markerPath: scrubPath(layoutMigration.markerPath),
       });
+
+      // Warn about residual legacy entries that could not be moved.
+      // These entries will be shown in DataRecoveryDialog so users are not
+      // silently left with inaccessible data.
+      //
+      // 若有旧版条目因迁移失败而残留在根目录，记录警告。
+      // DataRecoveryDialog 会读取此条目向用户展示，避免数据静默不可访问。
+      if (layoutMigration.failedEntries.length > 0) {
+        const residual = detectResidualLegacyEntries(app.getPath("userData"));
+        if (residual.length > 0) {
+          logStartupEvent({
+            event: "startup:data_layout_migration_partial",
+            residualEntries: residual,
+            message:
+              "Some legacy data directories could not be moved. " +
+              "DataRecoveryDialog will surface these so the user can resolve them. " +
+              "Source directories are preserved — no data was lost.",
+          });
+        }
+      }
     } catch (error) {
       console.warn("[startup] upgrade backup bootstrap failed, continuing:", error);
       logStartupEvent({

@@ -10,7 +10,7 @@ const ENV_KEYS = [
   'JWT_SECRET',
   'JWT_ACCESS_TTL',
   'JWT_REFRESH_TTL',
-  'DATA_DIR',
+  'DATA_ROOT',
   'ALLOW_REGISTRATION',
   'LOG_LEVEL',
 ] as const;
@@ -36,7 +36,7 @@ async function createTestApp(
   process.env.JWT_SECRET = 'test-secret-for-web-media-flow-1234567890';
   process.env.JWT_ACCESS_TTL = '900';
   process.env.JWT_REFRESH_TTL = '604800';
-  process.env.DATA_DIR = dataDir;
+  process.env.DATA_ROOT = dataDir;
   process.env.ALLOW_REGISTRATION = 'true';
   process.env.LOG_LEVEL = 'debug';
 
@@ -132,7 +132,7 @@ describe('web media routes', () => {
         fs.existsSync(
           path.join(
             dataDir,
-            'workspace',
+            'data',
             'assets',
             payload.data.user.id,
             'images',
@@ -206,45 +206,6 @@ describe('web media routes', () => {
         }),
       );
       expect(missingReadResponse.status).toBe(404);
-    } finally {
-      fs.rmSync(dataDir, { recursive: true, force: true });
-    }
-  }, TEST_TIMEOUT);
-
-  it('migrates legacy media files into workspace assets on startup', async () => {
-    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-media-test-'));
-
-    try {
-      const legacyUserId = 'legacy-user';
-      const legacyDir = path.join(dataDir, 'media', legacyUserId, 'images');
-      fs.mkdirSync(legacyDir, { recursive: true });
-      fs.writeFileSync(path.join(legacyDir, 'legacy.png'), 'legacy-image');
-
-      const app = await createTestApp(dataDir);
-      const { payload } = await registerUser(app, 'medialegacy', 'debugpass001');
-
-      const listResponse = await app.request(
-        new Request('http://local/api/media/images', {
-          headers: { Authorization: `Bearer ${payload.data.accessToken}` },
-        }),
-      );
-      expect(listResponse.status).toBe(200);
-
-      expect(
-        fs.existsSync(
-          path.join(
-            dataDir,
-            'workspace',
-            'assets',
-            legacyUserId,
-            'images',
-            'legacy.png',
-          ),
-        ),
-      ).toBe(true);
-      expect(
-        fs.existsSync(path.join(dataDir, 'media', legacyUserId, 'images', 'legacy.png')),
-      ).toBe(false);
     } finally {
       fs.rmSync(dataDir, { recursive: true, force: true });
     }

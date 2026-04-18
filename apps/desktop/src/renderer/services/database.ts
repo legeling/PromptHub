@@ -1084,32 +1084,89 @@ export function getDatabaseInfo(): { name: string; description: string } {
   };
 }
 
+/**
+ * Key stored in localStorage once a successful IDB→SQLite migration is done.
+ * Persists across restarts so we don't re-check IndexedDB every launch.
+ *
+ * 首次 IDB→SQLite 迁移成功后写入 localStorage 的标记 key，防止每次启动都重复检查。
+ */
+const IDB_MIGRATION_DONE_KEY = "prompthub:idb-migration-done";
+
+async function getMainProcessVersionKeys(promptIds: string[]): Promise<Set<string>> {
+  if (!window.api?.version?.getAll || promptIds.length === 0) {
+    return new Set();
+  }
+
+  const versionGroups = await Promise.all(
+    promptIds.map(async (promptId) => (await window.api.version.getAll(promptId)) ?? []),
+  );
+
+  return new Set(
+    versionGroups.flatMap((versions) =>
+      versions.map((version) => `${version.promptId}:${version.version}`),
+    ),
+  );
+}
+
+async function isMainProcessMigrationComplete(
+  legacyPrompts: Prompt[],
+  legacyFolders: Folder[],
+  legacyVersions: PromptVersion[],
+  mainPrompts: Prompt[],
+  mainFolders: Folder[],
+): Promise<boolean> {
+  const legacyPromptIds = new Set(legacyPrompts.map((prompt) => prompt.id));
+  const legacyFolderIds = new Set(legacyFolders.map((folder) => folder.id));
+  const mainPromptIds = new Set((mainPrompts ?? []).map((prompt) => prompt.id));
+  const mainFolderIds = new Set((mainFolders ?? []).map((folder) => folder.id));
+
+  const hasAllPrompts = Array.from(legacyPromptIds).every((id) => mainPromptIds.has(id));
+  const hasAllFolders = Array.from(legacyFolderIds).every((id) => mainFolderIds.has(id));
+  if (!hasAllPrompts || !hasAllFolders) {
+    return false;
+  }
+
+  const mainVersionKeys = await getMainProcessVersionKeys(Array.from(legacyPromptIds));
+  const legacyVersionKeys = new Set(
+    legacyVersions.map((version) => `${version.promptId}:${version.version}`),
+  );
+  return Array.from(legacyVersionKeys).every((key) => mainVersionKeys.has(key));
+}
+
 export async function migrateLegacyIndexedDbToMainProcess(): Promise<{
   migrated: boolean;
   promptCount: number;
   folderCount: number;
   versionCount: number;
 }> {
-  if (
-    !window.api?.prompt?.getAll ||
-    !window.api?.prompt?.insertDirect ||
-    !window.api?.folder?.insertDirect ||
-    !window.api?.version?.insertDirect
-  ) {
+  // Fast path: migration already confirmed in a previous session.
+  // 快速路径：localStorage 标记说明上次已完成，直接跳过。
+  if (localStorage.getItem(IDB_MIGRATION_DONE_KEY) === "1") {
     return { migrated: false, promptCount: 0, folderCount: 0, versionCount: 0 };
   }
 
-  const mainPrompts = await window.api.prompt.getAll();
-  if ((mainPrompts?.length ?? 0) > 0) {
+  // migrateIdbBatch is required: non-atomic fallback writes can strand partial
+  // data and then be misclassified as "done" on the next boot.
+  // 必须使用 migrateIdbBatch：非原子 fallback 可能留下部分写入并在下次启动被误判为已完成。
+  const hasBatchApi = !!window.api?.prompt?.migrateIdbBatch;
+  if (!hasBatchApi) {
+    console.warn(
+      "[IDB migration] migrateIdbBatch API is unavailable; refusing non-atomic migration.",
+    );
     return { migrated: false, promptCount: 0, folderCount: 0, versionCount: 0 };
   }
 
+  // Read legacy IndexedDB data.
+  // 读取旧版 IndexedDB 数据。
   const [legacyPrompts, legacyFolders] = await Promise.all([
     legacyGetAllPrompts(),
     legacyGetAllFolders(),
   ]);
 
   if (legacyPrompts.length === 0 && legacyFolders.length === 0) {
+    // Nothing in IDB either — mark as done so we skip this check on next boot.
+    // IDB 也没有数据 — 写入标记，下次启动跳过此检查。
+    localStorage.setItem(IDB_MIGRATION_DONE_KEY, "1");
     return { migrated: false, promptCount: 0, folderCount: 0, versionCount: 0 };
   }
 
@@ -1117,19 +1174,84 @@ export async function migrateLegacyIndexedDbToMainProcess(): Promise<{
     await Promise.all(legacyPrompts.map((prompt) => legacyGetPromptVersions(prompt.id)))
   ).flat();
 
-  for (const folder of legacyFolders) {
-    await window.api.folder.insertDirect(folder);
+  const fetchMainProcessSnapshot = async (): Promise<{
+    prompts: Prompt[];
+    folders: Folder[];
+  }> => {
+    const [prompts, folders] = await Promise.all([
+      window.api.prompt.getAll(),
+      window.api.folder?.getAll ? window.api.folder.getAll() : Promise.resolve([]),
+    ]);
+
+    return {
+      prompts: prompts ?? [],
+      folders: folders ?? [],
+    };
+  };
+
+  // Fetch main-process data once; reuse for completion check AND partial-data guard.
+  // 只获取一次主进程数据，同时供完整性检查和部分数据守卫使用（消除重复 IPC 调用）。
+  const { prompts: mainPrompts, folders: mainFolders } = await fetchMainProcessSnapshot();
+
+  if (
+    await isMainProcessMigrationComplete(
+      legacyPrompts,
+      legacyFolders,
+      legacyVersions,
+      mainPrompts,
+      mainFolders,
+    )
+  ) {
+    localStorage.setItem(IDB_MIGRATION_DONE_KEY, "1");
+    return { migrated: false, promptCount: 0, folderCount: 0, versionCount: 0 };
   }
 
-  for (const prompt of legacyPrompts) {
-    await window.api.prompt.insertDirect(prompt);
+  if (mainPrompts.length > 0 || mainFolders.length > 0) {
+    console.warn(
+      "[IDB migration] Main process already contains data but migration is incomplete; " +
+        "refusing to merge legacy IndexedDB data non-atomically.",
+    );
+    return { migrated: false, promptCount: 0, folderCount: 0, versionCount: 0 };
   }
 
-  for (const version of legacyVersions) {
-    await window.api.version.insertDirect(version);
+  try {
+    // Preferred: single atomic transaction on the main process.
+    // 首选：在主进程单事务一次性写入。
+    const result = await window.api.prompt.migrateIdbBatch({
+      folders: legacyFolders,
+      prompts: legacyPrompts,
+      versions: legacyVersions,
+    });
+
+    if (!result?.imported) {
+      const {
+        prompts: refreshedPrompts,
+        folders: refreshedFolders,
+      } = await fetchMainProcessSnapshot();
+
+      if (
+        await isMainProcessMigrationComplete(
+          legacyPrompts,
+          legacyFolders,
+          legacyVersions,
+          refreshedPrompts,
+          refreshedFolders,
+        )
+      ) {
+        localStorage.setItem(IDB_MIGRATION_DONE_KEY, "1");
+      }
+      return { migrated: false, promptCount: 0, folderCount: 0, versionCount: 0 };
+    }
+  } catch (err) {
+    // Migration failed — do NOT set the localStorage marker so we retry next boot.
+    // 迁移失败 — 不写标记，下次启动会重试。
+    console.error("[IDB migration] Failed to migrate IndexedDB data to SQLite:", err);
+    return { migrated: false, promptCount: 0, folderCount: 0, versionCount: 0 };
   }
 
-  await window.api.prompt.syncWorkspace?.();
+  // Mark migration as done so future boots skip the IDB check entirely.
+  // 写入持久化标记，后续启动直接跳过 IDB 检查。
+  localStorage.setItem(IDB_MIGRATION_DONE_KEY, "1");
 
   return {
     migrated: true,

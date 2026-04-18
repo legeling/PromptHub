@@ -257,7 +257,6 @@ function getPromptFilePath(
   }
 
   let counter = 2;
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     const candidatePath = path.join(parentDir, `${baseSlug}-${counter}.md`);
     const resolvedCandidatePath = path.resolve(candidatePath);

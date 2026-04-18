@@ -144,4 +144,90 @@ describe("data-layout-migration", () => {
     expect(result.backupId).toBeNull();
     expect(fs.existsSync(getDataLayoutMigrationMarkerPath(userDataPath))).toBe(false);
   });
+
+  it("preserves the source directory when the target already has conflicting files", async () => {
+    const userDataPath = path.join(tmpBase, "PromptHub");
+    fs.mkdirSync(path.join(userDataPath, "skills", "demo"), { recursive: true });
+    fs.writeFileSync(
+      path.join(userDataPath, "skills", "demo", "SKILL.md"),
+      "source-skill",
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(userDataPath, "skills", "demo", "notes.md"),
+      "source-notes",
+      "utf8",
+    );
+
+    fs.mkdirSync(path.join(userDataPath, "data", "skills", "demo"), {
+      recursive: true,
+    });
+    fs.writeFileSync(
+      path.join(userDataPath, "data", "skills", "demo", "SKILL.md"),
+      "different-target-content",
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(userDataPath, "data", "skills", "demo", "existing.md"),
+      "existing-target-file",
+      "utf8",
+    );
+
+    const result = await migrateLegacyDataLayout(userDataPath, "0.5.5");
+
+    expect(result.status).toBe("partial-failure");
+    expect(result.failedEntries).toContain("skills");
+    expect(
+      fs.readFileSync(
+        path.join(userDataPath, "skills", "demo", "SKILL.md"),
+        "utf8",
+      ),
+    ).toBe("source-skill");
+    expect(
+      fs.readFileSync(
+        path.join(userDataPath, "data", "skills", "demo", "SKILL.md"),
+        "utf8",
+      ),
+    ).toBe("different-target-content");
+  });
+
+  it("retries residual entries even when a migration marker already exists", async () => {
+    const userDataPath = path.join(tmpBase, "PromptHub");
+    const canonicalBackupId = "backup-initial-full";
+    fs.mkdirSync(path.join(userDataPath, "skills", "demo"), { recursive: true });
+    fs.writeFileSync(
+      path.join(userDataPath, "skills", "demo", "SKILL.md"),
+      "# retried skill",
+      "utf8",
+    );
+    fs.writeFileSync(
+      getDataLayoutMigrationMarkerPath(userDataPath),
+      JSON.stringify({
+        version: "0.5.5",
+        migratedAt: new Date().toISOString(),
+        movedEntries: ["workspace"],
+        failedEntries: ["skills"],
+        backupId: canonicalBackupId,
+      }),
+      "utf8",
+    );
+
+    const result = await migrateLegacyDataLayout(userDataPath, "0.5.5");
+
+    expect(result.status).toBe("migrated");
+    expect(result.backupId).toBe(canonicalBackupId);
+    expect(result.movedEntries).toEqual(expect.arrayContaining(["workspace", "skills"]));
+    expect(fs.existsSync(path.join(userDataPath, "skills"))).toBe(false);
+    expect(
+      fs.readFileSync(
+        path.join(userDataPath, "data", "skills", "demo", "SKILL.md"),
+        "utf8",
+      ),
+    ).toBe("# retried skill");
+
+    const markerRecord = JSON.parse(
+      fs.readFileSync(getDataLayoutMigrationMarkerPath(userDataPath), "utf8"),
+    ) as { backupId?: string };
+    expect(markerRecord.backupId).toBe(canonicalBackupId);
+  });
 });

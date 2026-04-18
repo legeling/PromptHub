@@ -11,7 +11,7 @@ const ENV_KEYS = [
   'JWT_SECRET',
   'JWT_ACCESS_TTL',
   'JWT_REFRESH_TTL',
-  'DATA_DIR',
+  'DATA_ROOT',
   'ALLOW_REGISTRATION',
   'LOG_LEVEL',
 ] as const;
@@ -24,7 +24,7 @@ function configureTestEnv(dataDir: string): void {
   process.env.JWT_SECRET = 'test-secret-for-web-skill-workspace-flow-1234567890';
   process.env.JWT_ACCESS_TTL = '900';
   process.env.JWT_REFRESH_TTL = '604800';
-  process.env.DATA_DIR = dataDir;
+  process.env.DATA_ROOT = dataDir;
   process.env.ALLOW_REGISTRATION = 'true';
   process.env.LOG_LEVEL = 'debug';
 }
@@ -125,7 +125,7 @@ describe('web skill workspace storage', () => {
 
         const skillDir = path.join(
           dataDir,
-          'workspace',
+          'data',
           'skills',
           `deploy-review__${skill.id}`,
         );
@@ -175,7 +175,7 @@ describe('web skill workspace storage', () => {
 
         const skillDir = path.join(
           dataDir,
-          'workspace',
+          'data',
           'skills',
           'incident-review__skill_1',
         );
@@ -326,7 +326,7 @@ describe('web skill workspace storage', () => {
 
         const skillDir = path.join(
           dataDir,
-          'workspace',
+          'data',
           'skills',
           `daily-ops-review__${skillId}`,
         );
@@ -367,7 +367,7 @@ describe('web skill workspace storage', () => {
 
         const skillDir = path.join(
           dataDir,
-          'workspace',
+          'data',
           'skills',
           'recovered-skill__skill_recovered',
         );

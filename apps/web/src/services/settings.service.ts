@@ -1,20 +1,15 @@
 import fs from 'node:fs';
-import path from 'node:path';
 import type { Settings } from '@prompthub/shared';
 import { DEFAULT_SETTINGS } from '@prompthub/shared';
 import { getServerDatabase } from '../database.js';
-import { config } from '../config.js';
-
-function getSettingsWorkspaceDir(): string {
-  return path.join(config.dataDir, 'workspace', 'settings');
-}
+import { getSettingsDir } from '../runtime-paths.js';
 
 function getSettingsFilePath(userId: string): string {
-  return path.join(getSettingsWorkspaceDir(), `${userId}.json`);
+  return `${getSettingsDir()}/${userId}.json`;
 }
 
-function ensureSettingsWorkspaceDir(): void {
-  fs.mkdirSync(getSettingsWorkspaceDir(), { recursive: true });
+function ensureSettingsDir(): void {
+  fs.mkdirSync(getSettingsDir(), { recursive: true });
 }
 
 function readSettingsFile(userId: string): Settings | null {
@@ -33,7 +28,7 @@ function readSettingsFile(userId: string): Settings | null {
 }
 
 function writeSettingsFile(userId: string, settings: Settings): void {
-  ensureSettingsWorkspaceDir();
+  ensureSettingsDir();
   fs.writeFileSync(
     getSettingsFilePath(userId),
     JSON.stringify(settings, null, 2),

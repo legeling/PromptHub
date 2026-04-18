@@ -23,7 +23,7 @@ export function registerAllIPC(
   const folderDB = new FolderDB(db);
   const skillDB = new SkillDB(db);
 
-  registerPromptIPC(promptDB, folderDB);
+  registerPromptIPC(promptDB, folderDB, db);
   registerFolderIPC(folderDB, promptDB);
   registerSkillIPC(skillDB);
   registerSettingsIPC(db);
