@@ -2,7 +2,13 @@ import type { RegistrySkill, SkillCategory } from "@prompthub/shared/types";
 
 export const SKILLS_SH_BASE_URL = "https://skills.sh";
 
-const DEFAULT_COMPATIBILITY = ["claude", "codex", "cursor", "opencode"];
+const DEFAULT_COMPATIBILITY = [
+  "claude",
+  "codex",
+  "cursor",
+  "opencode",
+  "antigravity",
+];
 const DETAIL_PATH_PATTERN = /^\/([^/]+)\/([^/]+)\/([^/?#]+)\/?$/;
 const HTML_ENTITY_MAP: Record<string, string> = {
   amp: "&",

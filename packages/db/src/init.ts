@@ -477,6 +477,20 @@ export function initDatabase(
       console.log("Migrating: Adding ai_response column to prompt_versions table");
       db!.prepare("ALTER TABLE prompt_versions ADD COLUMN ai_response TEXT").run();
     }
+
+    if (!hasMigration("fix_prompt_current_version_v1")) {
+      console.log(
+        "Migrating: Aligning prompt current_version with latest stored version",
+      );
+      db!.prepare(
+        `UPDATE prompts
+         SET current_version = COALESCE(
+           (SELECT MAX(version) FROM prompt_versions WHERE prompt_id = prompts.id),
+           0
+         )`,
+      ).run();
+      markMigration("fix_prompt_current_version_v1");
+    }
   });
 
   try {

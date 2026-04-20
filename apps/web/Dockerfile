@@ -40,6 +40,9 @@ COPY packages/db/package.json packages/db/package.json
 
 RUN pnpm install --prod --frozen-lockfile
 
+COPY --from=builder /app/packages/shared/types packages/shared/types
+COPY --from=builder /app/packages/shared/constants packages/shared/constants
+COPY --from=builder /app/packages/db/src packages/db/src
 COPY --from=builder /app/apps/web/dist apps/web/dist
 
 WORKDIR /app/apps/web

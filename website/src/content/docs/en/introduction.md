@@ -8,7 +8,7 @@ An open-source AI Prompt & Skill management tool. Manage your prompts and SKILL.
 
 ## Key Features
 
-### 🧩 Skill Management (v0.5.2)
+### 🧩 Skill Management (v0.5.3)
 
 Built-in store with 20+ curated AI agent skills. One-click install to 15+ platforms. Local scan discovers existing SKILL.md files. Supports Symlink/copy modes, per-platform target directory overrides, AI translation, and tag filtering.
 

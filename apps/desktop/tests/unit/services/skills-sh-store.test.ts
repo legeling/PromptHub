@@ -106,4 +106,39 @@ Use this skill to look up the right capability for a task.
     );
     expect(skill?.content).toContain("# Finding Skills");
   });
+
+  it("falls back to the default compatibility list when Installed on is absent", () => {
+    const html = `
+      <article>
+        <h1>find-skills</h1>
+        <h2>Summary</h2>
+        <p>Use this skill whenever the user asks how to find or discover skills.</p>
+        <h2>SKILL.md</h2>
+        <pre><code>---
+name: find-skills
+description: Discover relevant skills and recommend the best next step.
+tags: [search, discovery]
+---
+
+# Finding Skills
+        </code></pre>
+      </article>
+    `;
+
+    const skill = parseSkillsShDetail(html, {
+      owner: "vercel-labs",
+      repo: "skills",
+      skillName: "find-skills",
+      detailPath: "/vercel-labs/skills/find-skills",
+      detailUrl: "https://skills.sh/vercel-labs/skills/find-skills",
+    });
+
+    expect(skill?.compatibility).toEqual([
+      "claude",
+      "codex",
+      "cursor",
+      "opencode",
+      "antigravity",
+    ]);
+  });
 });

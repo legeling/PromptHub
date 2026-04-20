@@ -87,10 +87,10 @@ export class PromptDB {
       data.notes || null,
       null,
       0,
-      1,
-      0,
-      now,
-      now,
+        0,
+        0,
+        now,
+        now,
     );
 
     // Create initial version
@@ -260,8 +260,22 @@ export class PromptDB {
       ...(data.usageCount !== undefined && { usageCount: data.usageCount }),
       ...(data.source !== undefined && { source: data.source }),
       ...(data.notes !== undefined && { notes: data.notes }),
-      ...(data.lastAiResponse !== undefined && { lastAiResponse: data.lastAiResponse }),
+      ...(data.lastAiResponse !== undefined && {
+        lastAiResponse: data.lastAiResponse,
+      }),
     };
+
+    if (
+      data.systemPrompt !== undefined ||
+      data.systemPromptEn !== undefined ||
+      data.userPrompt !== undefined ||
+      data.userPromptEn !== undefined ||
+      data.variables !== undefined
+    ) {
+      const nextVersion = existingPrompt.currentVersion + 1;
+      updatedPrompt.currentVersion = nextVersion;
+      updatedPrompt.version = nextVersion;
+    }
 
     return updatedPrompt;
   }
@@ -367,7 +381,7 @@ export class PromptDB {
         .get(promptId) as { current_version: number } | undefined;
       if (!freshRow) return null;
 
-      const version = freshRow.current_version ?? 1;
+      const version = (freshRow.current_version ?? 0) + 1;
       const id = uuidv4();
       const now = Date.now();
 
@@ -397,10 +411,8 @@ export class PromptDB {
       // Update current version number
       // 更新当前版本号
       this.db
-        .prepare(
-          "UPDATE prompts SET current_version = current_version + 1 WHERE id = ?",
-        )
-        .run(promptId);
+        .prepare("UPDATE prompts SET current_version = ? WHERE id = ?")
+        .run(version, promptId);
 
       return {
         id,

@@ -67,6 +67,7 @@ export const Navbar = ({ lang, dict, currentPath = '' }: NavbarProps) => {
   const docsLink = lang === 'zh' ? '/docs/introduction' : '/docs/en/introduction';
   const changelogLink = lang === 'zh' ? '/docs/changelog' : '/docs/en/changelog'; 
   const backersLink = lang === 'zh' ? '/docs/backers' : '/docs/en/backers';
+  const downloadLink = `${homeLink}#download`;
 
   return (
     <>
@@ -154,7 +155,7 @@ export const Navbar = ({ lang, dict, currentPath = '' }: NavbarProps) => {
             </span>
           </a>
           
-          <Button variant="primary" size="sm" href="#download">
+          <Button variant="primary" size="sm" href={downloadLink}>
             <Download className="w-4 h-4" />
             {dict.download}
           </Button>
@@ -193,7 +194,7 @@ export const Navbar = ({ lang, dict, currentPath = '' }: NavbarProps) => {
               <a href={backersLink} onClick={() => setMobileMenuOpen(false)}>{dict.backers}</a>
             </nav>
             <div className="mt-auto space-y-4">
-              <Button className="w-full justify-center" size="lg" href="#download">
+              <Button className="w-full justify-center" size="lg" href={downloadLink}>
                 {dict.download}
               </Button>
             </div>

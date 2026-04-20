@@ -54,6 +54,22 @@ describe("skill-installer-utils", () => {
       expect(resolvedPath).toContain(".trae/skills");
     });
 
+    it("resolves the Antigravity global skills path", () => {
+      const getMock = vi.fn().mockReturnValue(undefined);
+      vi.mocked(initDatabase).mockReturnValue({
+        prepare: vi.fn().mockReturnValue({ get: getMock }),
+      } as unknown as ReturnType<typeof initDatabase>);
+
+      const platform = getPlatformById("antigravity");
+      expect(platform).toBeDefined();
+
+      const resolvedPath = getPlatformSkillsDir(platform!);
+
+      expect(resolvedPath).toContain(".gemini");
+      expect(resolvedPath).toContain("antigravity");
+      expect(resolvedPath).toContain("skills");
+    });
+
     it("uses overrides parameter when provided", () => {
       const platform = getPlatformById("claude");
       expect(platform).toBeDefined();

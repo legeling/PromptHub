@@ -83,6 +83,16 @@ export const SKILL_PLATFORMS: SkillPlatform[] = [
     },
   },
   {
+    id: "antigravity",
+    name: "Antigravity",
+    icon: "Sparkles",
+    skillsDir: {
+      darwin: "~/.gemini/antigravity/skills",
+      win32: "%USERPROFILE%\\.gemini\\antigravity\\skills",
+      linux: "~/.gemini/antigravity/skills",
+    },
+  },
+  {
     id: "trae",
     name: "Trae",
     icon: "Zap",

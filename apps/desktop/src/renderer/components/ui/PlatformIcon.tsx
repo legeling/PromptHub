@@ -19,6 +19,7 @@ import copilotIcon from "../../assets/platforms/copilot.png";
 import windsurfIcon from "../../assets/platforms/windsurf.png";
 import kiroIcon from "../../assets/platforms/kiro.png";
 import geminiIcon from "../../assets/platforms/gemini.png";
+import antigravityIcon from "../../assets/platforms/antigravity.svg";
 import traeIcon from "../../assets/platforms/trae.png";
 import opencodeIcon from "../../assets/platforms/opencode.png";
 import codexIcon from "../../assets/platforms/codex.png";
@@ -41,6 +42,7 @@ const PLATFORM_ICONS: Record<string, PlatformIconSource> = {
   windsurf: windsurfIcon,
   kiro: kiroIcon,
   gemini: geminiIcon,
+  antigravity: antigravityIcon,
   trae: traeIcon,
   opencode: opencodeIcon,
   codex: codexIcon,
@@ -64,6 +66,7 @@ const FALLBACK_ICONS: Record<string, React.ReactNode> = {
   windsurf: <WindIcon />,
   kiro: <SparkleIcon />,
   gemini: <SparklesIcon />,
+  antigravity: <SparklesIcon />,
   trae: <ZapIcon />,
   opencode: <TerminalIcon />,
   codex: <TerminalIcon />,

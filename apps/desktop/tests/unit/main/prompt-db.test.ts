@@ -170,9 +170,11 @@ describe("PromptDB (in-memory SQLite)", () => {
       const p = db.create({ title: "V", userPrompt: "original" });
       expect(db.getVersions(p.id).length).toBe(1);
 
-      db.update(p.id, { userPrompt: "modified" });
+      const updated = db.update(p.id, { userPrompt: "modified" });
       const versions = db.getVersions(p.id);
       expect(versions.length).toBe(2);
+      expect(updated?.currentVersion).toBe(2);
+      expect(updated?.version).toBe(2);
     });
 
     it("does NOT create version for non-content changes (title only)", () => {
@@ -383,6 +385,70 @@ describe("PromptDB (in-memory SQLite)", () => {
       const oldest = versions[versions.length - 1];
       expect(oldest.userPrompt).toBe("original");
       expect(oldest.systemPrompt).toBe("sys");
+    });
+
+    it("continues versioning after direct import stores the latest version number", () => {
+      db.insertPromptDirect({
+        id: "imported-prompt",
+        title: "Imported",
+        description: null,
+        promptType: "text",
+        systemPrompt: null,
+        systemPromptEn: null,
+        userPrompt: "v2",
+        userPromptEn: null,
+        variables: [],
+        tags: [],
+        folderId: null,
+        images: [],
+        videos: [],
+        isFavorite: false,
+        isPinned: false,
+        version: 2,
+        currentVersion: 2,
+        usageCount: 0,
+        source: null,
+        notes: null,
+        lastAiResponse: null,
+        createdAt: "2026-04-20T00:00:00.000Z",
+        updatedAt: "2026-04-20T00:00:00.000Z",
+      });
+      db.insertVersionDirect({
+        id: "imported-v1",
+        promptId: "imported-prompt",
+        version: 1,
+        systemPrompt: null,
+        systemPromptEn: null,
+        userPrompt: "v1",
+        userPromptEn: null,
+        variables: [],
+        note: "Initial version",
+        aiResponse: null,
+        createdAt: "2026-04-20T00:00:00.000Z",
+      });
+      db.insertVersionDirect({
+        id: "imported-v2",
+        promptId: "imported-prompt",
+        version: 2,
+        systemPrompt: null,
+        systemPromptEn: null,
+        userPrompt: "v2",
+        userPromptEn: null,
+        variables: [],
+        note: null,
+        aiResponse: null,
+        createdAt: "2026-04-20T00:01:00.000Z",
+      });
+
+      const updated = db.update("imported-prompt", { userPrompt: "v3" });
+
+      expect(updated?.currentVersion).toBe(3);
+      expect(updated?.version).toBe(3);
+      const versions = db.getVersions("imported-prompt");
+      expect(versions).toHaveLength(3);
+      expect(versions[0]?.version).toBe(3);
+      expect(versions[1]?.version).toBe(2);
+      expect(versions[2]?.version).toBe(1);
     });
   });
 

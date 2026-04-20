@@ -166,6 +166,10 @@ function formatTitle(slug: string) {
   if (slug.endsWith('changelog')) return currentLang === 'en' ? 'Changelog' : '更新日志';
   return slug.split('/').pop();
 }
+
+function versionAnchorId(version: string) {
+  return `v-${version.replace(/\./g, '-')}`;
+}
 ---
 
 <Layout title={`${entry.data.title || formatTitle(entry.slug)} - PromptHub`}>
@@ -181,8 +185,9 @@ function formatTitle(slug: string) {
           </p>
           <div class="space-y-0.5 overflow-y-auto max-h-[70vh] no-scrollbar">
             {structuredChangelog.map((v, idx) => (
-              <a 
-                href={`#v${v.version}`}
+               <a 
+                href={`#${versionAnchorId(v.version)}`}
+                data-doc-anchor-link="true"
                 class={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-all ${idx === 0 ? 'text-white bg-white/5' : 'text-zinc-500 hover:text-white hover:bg-white/5'}`}
               >
                 {idx === 0 && <div class="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />}
@@ -300,8 +305,8 @@ function formatTitle(slug: string) {
           <div class="space-y-20 relative before:absolute before:left-[1.25rem] before:top-4 before:bottom-0 before:w-px before:bg-gradient-to-b before:from-white/10 before:via-white/5 before:to-transparent">
             {structuredChangelog.map((v, idx) => (
               <article 
-                id={`v${v.version}`} 
-                class="relative pl-14 scroll-mt-32"
+                id={versionAnchorId(v.version)} 
+                class="relative pl-14 scroll-mt-32 doc-anchor-target"
               >
                 {/* 时间轴节点 */}
                 <div class={`absolute left-0 top-0 w-10 h-10 rounded-xl bg-background border flex items-center justify-center z-10 shadow-xl transition-colors ${idx === 0 ? 'border-accent/50' : 'border-white/10'}`}>
@@ -370,6 +375,7 @@ function formatTitle(slug: string) {
             {headings.filter(h => h.depth > 1 && h.depth <= 3).map(h => (
               <a 
                 href={`#${h.slug}`}
+                data-doc-anchor-link="true"
                 class="block text-xs transition-colors text-zinc-500 hover:text-white"
                 style={{ paddingLeft: `${(h.depth - 2) * 12}px` }}
               >
@@ -383,7 +389,59 @@ function formatTitle(slug: string) {
   </div>
 </Layout>
 
+<script is:inline>
+  (() => {
+    const headerOffset = 128;
+
+    const scrollToHash = (hash, behavior) => {
+      if (!hash || hash === '#') return;
+      const targetId = decodeURIComponent(hash.slice(1));
+      const target = document.getElementById(targetId);
+      if (!target) return;
+
+      const top = window.scrollY + target.getBoundingClientRect().top - headerOffset;
+      window.scrollTo({ top: Math.max(0, top), behavior });
+    };
+
+    const onAnchorClick = (event) => {
+      const link = event.currentTarget;
+      const hash = link.getAttribute('href');
+      if (!hash || !hash.startsWith('#')) return;
+
+      const targetId = decodeURIComponent(hash.slice(1));
+      if (!document.getElementById(targetId)) return;
+
+      event.preventDefault();
+      history.replaceState(null, '', hash);
+      scrollToHash(hash, 'smooth');
+    };
+
+    const registerAnchorLinks = () => {
+      document
+        .querySelectorAll('a[data-doc-anchor-link="true"]')
+        .forEach((link) => {
+          link.removeEventListener('click', onAnchorClick);
+          link.addEventListener('click', onAnchorClick);
+        });
+    };
+
+    registerAnchorLinks();
+
+    if (window.location.hash) {
+      requestAnimationFrame(() => scrollToHash(window.location.hash, 'auto'));
+    }
+
+    window.addEventListener('hashchange', () => {
+      scrollToHash(window.location.hash, 'smooth');
+    });
+  })();
+</script>
+
 <style is:global>
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  article :where(h1, h2, h3, h4, h5, h6)[id],
+  .doc-anchor-target {
+    scroll-margin-top: 8rem;
+  }
 </style>

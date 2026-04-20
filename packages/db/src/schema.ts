@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS prompts (
   videos TEXT,
   is_favorite INTEGER DEFAULT 0,
   is_pinned INTEGER DEFAULT 0,
-  current_version INTEGER DEFAULT 1,
+  current_version INTEGER DEFAULT 0,
   usage_count INTEGER DEFAULT 0,
   source TEXT,
   notes TEXT,

@@ -16,6 +16,13 @@ const REMOTE_FETCH_TIMEOUT_MS = 30_000;
 const REMOTE_FETCH_TRANSFER_TIMEOUT_MS = 60_000;
 const REMOTE_FETCH_MAX_BYTES = 5 * 1024 * 1024;
 const REMOTE_FETCH_MAX_REDIRECTS = 5;
+const REMOTE_FETCH_TRUSTED_HOSTS = new Set([
+  "api.github.com",
+  "github.com",
+  "raw.githubusercontent.com",
+  "skills.sh",
+  "www.skills.sh",
+]);
 
 interface ResolvedAddress {
   address: string;
@@ -125,6 +132,69 @@ export function isPrivateAddress(address: string): boolean {
   return false;
 }
 
+function isTrustedRemoteHostname(hostname: string): boolean {
+  const normalized = hostname.toLowerCase();
+  return REMOTE_FETCH_TRUSTED_HOSTS.has(normalized);
+}
+
+function expandIPv6Segments(address: string): string[] | null {
+  const normalized = address.toLowerCase().split("%")[0];
+  if (nodeNet.isIP(normalized) !== 6) {
+    return null;
+  }
+
+  const halves = normalized.split("::");
+  let segments: string[];
+  if (halves.length === 2) {
+    const left = halves[0] ? halves[0].split(":") : [];
+    const right = halves[1] ? halves[1].split(":") : [];
+    const missing = 8 - left.length - right.length;
+    segments = [...left, ...Array(missing).fill("0"), ...right];
+  } else {
+    segments = normalized.split(":");
+  }
+
+  if (segments.length !== 8) {
+    return null;
+  }
+
+  return segments.map((segment) => segment.padStart(4, "0"));
+}
+
+function decodeTrustedCompatibilityIPv6(address: string): string | null {
+  const segments = expandIPv6Segments(address);
+  if (!segments) {
+    return null;
+  }
+
+  const standardMappedPrefix = ["0000", "0000", "0000", "0000", "0000", "ffff"];
+  const translatedPrefix = ["0000", "0000", "0000", "0000", "ffff", "0000"];
+  const prefix = segments.slice(0, 6);
+  const hasSupportedPrefix =
+    prefix.every((segment, index) => segment === standardMappedPrefix[index]) ||
+    prefix.every((segment, index) => segment === translatedPrefix[index]);
+  if (!hasSupportedPrefix) {
+    return null;
+  }
+
+  const high = Number.parseInt(segments[6], 16);
+  const low = Number.parseInt(segments[7], 16);
+  if (Number.isNaN(high) || Number.isNaN(low)) {
+    return null;
+  }
+
+  return `${high >> 8}.${high & 0xff}.${low >> 8}.${low & 0xff}`;
+}
+
+function isTrustedRemoteCompatibilityAddress(address: string): boolean {
+  if (address.startsWith("198.18.") || address.startsWith("198.19.")) {
+    return true;
+  }
+
+  const decodedIPv4 = decodeTrustedCompatibilityIPv6(address);
+  return decodedIPv4 !== null && isTrustedRemoteCompatibilityAddress(decodedIPv4);
+}
+
 // ==================== HTTP helpers ====================
 
 function toRequestPath(parsedUrl: URL): string {
@@ -150,6 +220,12 @@ export async function resolvePublicAddress(
 
   if (nodeNet.isIP(hostname)) {
     if (isPrivateAddress(hostname)) {
+      if (
+        isTrustedRemoteHostname(hostname) &&
+        isTrustedRemoteCompatibilityAddress(hostname)
+      ) {
+        return { address: hostname, family: nodeNet.isIP(hostname) as 4 | 6 };
+      }
       throw new Error("Access to internal network addresses is not allowed");
     }
     return { address: hostname, family: nodeNet.isIP(hostname) as 4 | 6 }; // Safe: isIP returns 0|4|6, and 0 is caught above
@@ -158,6 +234,21 @@ export async function resolvePublicAddress(
   const addresses = await dns.lookup(hostname, { all: true, verbatim: true });
   if (addresses.length === 0) {
     throw new Error("Failed to resolve remote host");
+  }
+
+  const trustedCompatibilityAddresses = addresses.filter((entry) =>
+    isTrustedRemoteCompatibilityAddress(entry.address),
+  );
+  if (
+    trustedCompatibilityAddresses.length > 0 &&
+    trustedCompatibilityAddresses.length === addresses.length &&
+    isTrustedRemoteHostname(hostname)
+  ) {
+    const firstTrustedAddress = trustedCompatibilityAddresses[0];
+    return {
+      address: firstTrustedAddress.address,
+      family: firstTrustedAddress.family === 6 ? 6 : 4,
+    };
   }
 
   if (addresses.some((entry) => isPrivateAddress(entry.address))) {

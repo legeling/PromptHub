@@ -1,4 +1,12 @@
 import type { RegistrySkill, SkillCategory } from '../types/skill';
+
+const DEFAULT_SKILL_COMPATIBILITY = [
+  'claude',
+  'cursor',
+  'windsurf',
+  'opencode',
+  'antigravity',
+] as const;
 import {
   ICON_PDF, ICON_WORD, ICON_EXCEL, ICON_POWERPOINT, ICON_SHEETS,
   ICON_GITHUB, ICON_PLAYWRIGHT, ICON_GITHUB_ACTIONS, ICON_MCP, ICON_HTML5,
@@ -50,7 +58,7 @@ name: pdf
 description: Use this skill whenever the user wants to do anything with PDF files. This includes reading or extracting text/tables from PDFs, combining or merging multiple PDFs into one, splitting PDFs apart, rotating pages, adding watermarks, creating new PDFs, filling PDF forms, encrypting/decrypting PDFs, extracting images, and OCR on scanned PDFs.
 ---`,
     prerequisites: ['Python 3', 'pypdf / pdfplumber / reportlab'],
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'docx',
@@ -68,7 +76,7 @@ name: docx
 description: "Use this skill whenever the user wants to create, read, edit, or manipulate Word documents (.docx files). Triggers on any mention of Word doc, .docx, reports, memos, letters, or templates."
 ---`,
     prerequisites: ['Node.js (docx-js) or Python (python-docx)'],
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'xlsx',
@@ -86,7 +94,7 @@ name: xlsx
 description: "Use this skill any time a spreadsheet file is the primary input or output — open, read, edit, fix, or create .xlsx/.csv/.tsv files with formulas, formatting, charting, and data cleaning."
 ---`,
     prerequisites: ['Python 3', 'openpyxl / pandas'],
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'pptx',
@@ -104,7 +112,7 @@ name: pptx
 description: "Use this skill any time a .pptx file is involved — creating slide decks, pitch decks, reading, parsing, editing, or combining presentations."
 ---`,
     prerequisites: ['Python 3', 'python-pptx'],
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'spreadsheet-openai',
@@ -122,7 +130,7 @@ name: spreadsheet
 description: "Use when tasks involve creating, editing, analyzing, or formatting spreadsheets (.xlsx, .csv, .tsv) using Python (openpyxl, pandas), especially when formulas, references, and formatting need to be preserved."
 ---`,
     prerequisites: ['Python 3', 'openpyxl', 'pandas'],
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
 
   // ─── Development Tools / 开发工具 ───
@@ -142,7 +150,7 @@ name: yeet
 description: "Use only when the user explicitly asks to stage, commit, push, and open a GitHub pull request in one flow using the GitHub CLI (gh)."
 ---`,
     prerequisites: ['Git CLI', 'GitHub CLI (gh)'],
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'playwright',
@@ -160,7 +168,7 @@ name: playwright
 description: "Use when the task requires automating a real browser from the terminal (navigation, form filling, snapshots, screenshots, data extraction, UI-flow debugging) via playwright-cli."
 ---`,
     prerequisites: ['Node.js', 'npx'],
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'gh-fix-ci',
@@ -178,7 +186,7 @@ name: gh-fix-ci
 description: "Use when a user asks to debug or fix failing GitHub PR checks that run in GitHub Actions; use gh to inspect checks and logs, summarize failure context, draft a fix plan."
 ---`,
     prerequisites: ['GitHub CLI (gh)', 'repo + workflow scopes'],
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'gh-address-comments',
@@ -196,7 +204,7 @@ name: gh-address-comments
 description: Help address review/issue comments on the open GitHub PR for the current branch using gh CLI.
 ---`,
     prerequisites: ['GitHub CLI (gh)'],
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'mcp-builder',
@@ -214,7 +222,7 @@ name: mcp-builder
 description: Guide for creating high-quality MCP (Model Context Protocol) servers that enable LLMs to interact with external services through well-designed tools.
 ---`,
     prerequisites: ['Python (FastMCP) or Node/TypeScript (MCP SDK)'],
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'develop-web-game',
@@ -232,7 +240,7 @@ name: develop-web-game
 description: "Use when building or iterating on a web game (HTML/JS) and needs a reliable development + testing loop with Playwright-based testing."
 ---`,
     prerequisites: ['Node.js', 'Playwright'],
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'screenshot',
@@ -248,7 +256,7 @@ description: "Use when building or iterating on a web game (HTML/JS) and needs a
 name: screenshot
 description: "Use when the user explicitly asks for a desktop or system screenshot (full screen, specific app or window, or a pixel region)."
 ---`,
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
 
   // ─── AI Generation / AI 生成 ───
@@ -268,7 +276,7 @@ name: imagegen
 description: "Use when the user asks to generate or edit images via the OpenAI Image API (generate, edit/inpaint/mask, background removal, product shots, concept art, covers, or batch variants)."
 ---`,
     prerequisites: ['Python 3', 'OPENAI_API_KEY'],
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'transcribe',
@@ -286,7 +294,7 @@ name: transcribe
 description: "Transcribe audio files to text with optional diarization and known-speaker hints. Use when a user asks to transcribe speech from audio/video, extract text from recordings, or label speakers."
 ---`,
     prerequisites: ['Python 3', 'OPENAI_API_KEY'],
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
 
   // ─── Data Analysis / 数据分析 ───
@@ -306,7 +314,7 @@ name: jupyter-notebook
 description: "Use when the user asks to create, scaffold, or edit Jupyter notebooks (.ipynb) for experiments, explorations, or tutorials."
 ---`,
     prerequisites: ['Python 3', 'jupyterlab (optional)'],
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
 
   // ─── Project Management / 项目管理 ───
@@ -326,7 +334,7 @@ name: linear
 description: Manage issues, projects & team workflows in Linear. Use when the user wants to read, create or update tickets in Linear.
 ---`,
     prerequisites: ['Linear MCP server'],
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'notion-knowledge-capture',
@@ -344,7 +352,7 @@ name: notion-knowledge-capture
 description: Capture conversations into structured Notion pages via the Notion MCP server.
 ---`,
     prerequisites: ['Notion MCP server'],
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'sentry',
@@ -362,7 +370,7 @@ name: sentry
 description: "Use when the user asks to inspect Sentry issues or events, summarize recent production errors, or pull basic Sentry health data via the Sentry API."
 ---`,
     prerequisites: ['SENTRY_AUTH_TOKEN'],
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
 
   // ─── Deploy / 部署 ───
@@ -382,7 +390,7 @@ name: vercel-deploy
 description: Deploy applications and websites to Vercel. Use when the user requests deployment actions like "deploy my app" or "push this live".
 ---`,
     prerequisites: ['Vercel CLI'],
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'netlify-deploy',
@@ -400,7 +408,7 @@ name: netlify-deploy
 description: Deploy web projects to Netlify using the Netlify CLI (npx netlify). Use when the user asks to deploy, host, publish, or link a site on Netlify.
 ---`,
     prerequisites: ['Netlify CLI (npx netlify)'],
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'cloudflare-deploy',
@@ -418,7 +426,7 @@ name: cloudflare-deploy
 description: Deploy applications and infrastructure to Cloudflare using Workers, Pages, and related platform services.
 ---`,
     prerequisites: ['Cloudflare account', 'Wrangler CLI'],
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
 
   // ─── Design / 设计 ───
@@ -438,7 +446,7 @@ name: figma
 description: Use the Figma MCP server to fetch design context, screenshots, variables, and assets from Figma, and to translate Figma nodes into production code.
 ---`,
     prerequisites: ['Figma MCP server'],
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'frontend-design',
@@ -455,7 +463,7 @@ description: Use the Figma MCP server to fetch design context, screenshots, vari
 name: frontend-design
 description: Create distinctive, production-grade frontend interfaces with high design quality. Use when building web components, pages, dashboards, or applications.
 ---`,
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
 
   // ─── Security / 安全 ───
@@ -474,7 +482,7 @@ description: Create distinctive, production-grade frontend interfaces with high 
 name: security-best-practices
 description: "Perform language and framework specific security best-practice reviews. Trigger only when the user explicitly requests security guidance. Supported: Python, JS/TS, Go."
 ---`,
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
 
   // ─── Meta Skills / 元技能 ───
@@ -493,7 +501,7 @@ description: "Perform language and framework specific security best-practice rev
 name: skill-creator
 description: Guide for creating effective skills. Use when users want to create a new skill or update an existing skill that extends AI capabilities.
 ---`,
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
 
   // ─── New Skills from Community / 社区新技能 ───
@@ -514,7 +522,7 @@ description: Guide for creating effective skills. Use when users want to create 
 name: invoice-organizer
 description: Automatically organizes invoices and receipts for tax preparation by reading messy files, extracting key information, renaming them consistently, and sorting them into logical folders. Turns hours of manual bookkeeping into minutes of automated organization.
 ---`,
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
 
   // ─── Development Tools (continued) / 开发工具（续） ───
@@ -535,7 +543,7 @@ description: Suite of tools for creating elaborate, multi-component claude.ai HT
 license: Complete terms in LICENSE.txt
 ---`,
     prerequisites: ['React', 'Tailwind CSS'],
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'changelog-generator',
@@ -553,7 +561,7 @@ name: changelog-generator
 description: Automatically creates user-facing changelogs from git commits by analyzing commit history, categorizing changes, and transforming technical commits into clear, customer-friendly release notes. Turns hours of manual changelog writing into minutes of automated generation.
 ---`,
     prerequisites: ['Git CLI'],
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'tdd',
@@ -570,7 +578,7 @@ description: Automatically creates user-facing changelogs from git commits by an
 name: test-driven-development
 description: Use when implementing any feature or bugfix, before writing implementation code
 ---`,
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'software-architecture',
@@ -586,7 +594,7 @@ description: Use when implementing any feature or bugfix, before writing impleme
     content: `---
 description: Guide for quality focused software architecture. This skill should be used when users want to write code, design architecture, analyze code, in any case that relates to software development.
 ---`,
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'prompt-engineering',
@@ -602,7 +610,7 @@ description: Guide for quality focused software architecture. This skill should 
     content: `---
 description: Use this skill when you writing commands, hooks, skills for Agent, or prompts for sub agents or any other LLM interaction, including optimizing prompts, improving LLM outputs, or designing production prompt templates.
 ---`,
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'webapp-testing',
@@ -621,7 +629,7 @@ description: Toolkit for interacting with and testing local web applications usi
 license: Complete terms in LICENSE.txt
 ---`,
     prerequisites: ['Node.js', 'Playwright'],
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'git-worktrees',
@@ -639,7 +647,7 @@ name: using-git-worktrees
 description: Use when starting feature work that needs isolation from current workspace or before executing implementation plans - creates isolated git worktrees with smart directory selection and safety verification
 ---`,
     prerequisites: ['Git CLI'],
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'subagent-driven-dev',
@@ -655,7 +663,7 @@ description: Use when starting feature work that needs isolation from current wo
     content: `---
 description: Use when executing implementation plans with independent tasks in the current session or facing 3+ independent issues that can be investigated without shared state or dependencies - dispatches fresh subagent for each task with code review between tasks, enabling fast iteration with quality gates
 ---`,
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'docker-compose',
@@ -672,7 +680,7 @@ name: docker-compose
 description: "Use when the user wants to create, manage, or debug Docker Compose configurations. Set up multi-container applications, configure services, networks, and volumes with best practices."
 ---`,
     prerequisites: ['Docker', 'Docker Compose'],
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
 
   // ─── AI Generation (continued) / AI 生成（续） ───
@@ -692,7 +700,7 @@ name: deep-research
 description: "Execute autonomous multi-step research using Google Gemini Deep Research Agent. Use for: market analysis, competitive landscaping, literature reviews, technical research, due diligence. Takes 2-10 minutes but produces detailed, cited reports. Costs $2-5 per task."
 ---`,
     prerequisites: ['Python 3.8+', 'httpx', 'GEMINI_API_KEY'],
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'd3-visualization',
@@ -710,7 +718,7 @@ name: d3-viz
 description: Creating interactive data visualisations using d3.js. This skill should be used when creating custom charts, graphs, network diagrams, geographic visualisations, or any complex SVG-based data visualisation that requires fine-grained control over visual elements, transitions, or interactions.
 ---`,
     prerequisites: ['D3.js'],
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
 
   // ─── Data Analysis (continued) / 数据分析（续） ───
@@ -733,7 +741,7 @@ metadata:
   dependencies: python>=3.8, pandas>=2.0.0, matplotlib>=3.7.0, seaborn>=0.12.0
 ---`,
     prerequisites: ['Python 3.8+', 'pandas', 'matplotlib', 'seaborn'],
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'postgres-query',
@@ -751,7 +759,7 @@ name: postgres
 description: "Execute read-only SQL queries against multiple PostgreSQL databases. Use when: (1) querying PostgreSQL databases, (2) exploring database schemas/tables, (3) running SELECT queries for data analysis, (4) checking database contents. Supports multiple database connections with descriptions for intelligent auto-selection. Blocks all write operations (INSERT, UPDATE, DELETE, DROP, etc.) for safety."
 ---`,
     prerequisites: ['Python 3.8+', 'psycopg2-binary'],
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
 
   // ─── Project Management (continued) / 项目管理（续） ───
@@ -770,7 +778,7 @@ description: "Execute read-only SQL queries against multiple PostgreSQL database
 name: file-organizer
 description: Intelligently organizes your files and folders across your computer by understanding context, finding duplicates, suggesting better structures, and automating cleanup tasks. Reduces cognitive load and keeps your digital workspace tidy without manual effort.
 ---`,
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'resume-generator',
@@ -787,7 +795,7 @@ description: Intelligently organizes your files and folders across your computer
 name: tailored-resume-generator
 description: Analyzes job descriptions and generates tailored resumes that highlight relevant experience, skills, and achievements to maximize interview chances
 ---`,
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
 
   // ─── Design (continued) / 设计（续） ───
@@ -807,7 +815,7 @@ name: canvas-design
 description: Create beautiful visual art in .png and .pdf documents using design philosophy. You should use this skill when the user asks to create a poster, piece of art, design, or other static piece. Create original visual designs, never copying existing artists' work to avoid copyright violations.
 license: Complete terms in LICENSE.txt
 ---`,
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'theme-factory',
@@ -825,7 +833,7 @@ name: theme-factory
 description: Toolkit for styling artifacts with a theme. These artifacts can be slides, docs, reportings, HTML landing pages, etc. There are 10 pre-set themes with colors/fonts that you can apply to any artifact that has been creating, or can generate a new theme on-the-fly.
 license: Complete terms in LICENSE.txt
 ---`,
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
 
   // ─── Communication & Writing / 沟通与写作 ───
@@ -846,7 +854,7 @@ description: Download YouTube video transcripts when user provides a YouTube URL
 allowed-tools: Bash,Read,Write
 ---`,
     prerequisites: ['yt-dlp'],
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'article-extractor',
@@ -864,7 +872,7 @@ name: article-extractor
 description: Extract clean article content from URLs (blog posts, articles, tutorials) and save as readable text. Use when user wants to download, extract, or save an article/blog post from a URL without ads, navigation, or clutter.
 allowed-tools: Bash,Write
 ---`,
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'content-research-writer',
@@ -881,7 +889,7 @@ allowed-tools: Bash,Write
 name: content-research-writer
 description: Assists in writing high-quality content by conducting research, adding citations, improving hooks, iterating on outlines, and providing real-time feedback on each section. Transforms your writing process from solo effort to collaborative partnership.
 ---`,
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'twitter-optimizer',
@@ -899,7 +907,7 @@ name: twitter-algorithm-optimizer
 description: Analyze and optimize tweets for maximum reach using Twitter's open-source algorithm insights. Rewrite and edit user tweets to improve engagement and visibility based on how the recommendation system ranks content.
 license: AGPL-3.0 (referencing Twitter's algorithm source)
 ---`,
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
 
   // ─── Business & Marketing / 商业与营销 ───
@@ -918,7 +926,7 @@ license: AGPL-3.0 (referencing Twitter's algorithm source)
 name: domain-name-brainstormer
 description: Generates creative domain name ideas for your project and checks availability across multiple TLDs (.com, .io, .dev, .ai, etc.). Saves hours of brainstorming and manual checking.
 ---`,
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'lead-research',
@@ -935,7 +943,7 @@ description: Generates creative domain name ideas for your project and checks av
 name: lead-research-assistant
 description: Identifies high-quality leads for your product or service by analyzing your business, searching for target companies, and providing actionable contact strategies. Perfect for sales, business development, and marketing professionals.
 ---`,
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
 
   // ─── Design (additional) / 设计（补充） ───
@@ -954,7 +962,7 @@ description: Identifies high-quality leads for your product or service by analyz
 name: image-enhancer
 description: Improves the quality of images, especially screenshots, by enhancing resolution, sharpness, and clarity. Perfect for preparing images for presentations, documentation, or social media posts.
 ---`,
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'brand-guidelines',
@@ -972,7 +980,7 @@ name: brand-guidelines
 description: Applies Anthropic's official brand colors and typography to any sort of artifact that may benefit from having Anthropic's look-and-feel. Use it when brand colors or style guidelines, visual formatting, or company design standards apply.
 license: Complete terms in LICENSE.txt
 ---`,
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
 
   // ─── AI (additional) / AI（补充） ───
@@ -992,7 +1000,7 @@ name: youtube-downloader
 description: Download YouTube videos with customizable quality and format options. Use this skill when the user asks to download, save, or grab YouTube videos. Supports various quality settings (best, 1080p, 720p, 480p, 360p), multiple formats (mp4, webm, mkv), and audio-only downloads as MP3.
 ---`,
     prerequisites: ['yt-dlp', 'Python 3'],
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
 
   // ─── Meta Skills (continued) / 元技能（续） ───
@@ -1011,7 +1019,7 @@ description: Download YouTube videos with customizable quality and format option
 name: brainstorming
 description: Use when the user has a rough idea and wants to explore it further. Transform rough ideas into fully-formed designs through structured questioning, alternative exploration, and systematic refinement.
 ---`,
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
   {
     slug: 'kaizen',
@@ -1027,7 +1035,7 @@ description: Use when the user has a rough idea and wants to explore it further.
     content: `---
 description: Use when Code implementation and refactoring, architecturing or designing systems, process and workflow improvements, error handling and validation. Provide tehniquest to avoid over-engineering and apply iterative improvements.
 ---`,
-    compatibility: ['claude', 'cursor', 'windsurf', 'opencode'],
+    compatibility: [...DEFAULT_SKILL_COMPATIBILITY],
   },
 ];
 

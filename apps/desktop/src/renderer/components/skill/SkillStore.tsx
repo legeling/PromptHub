@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   SearchIcon,
@@ -305,11 +305,17 @@ export function SkillStore() {
   const [sourceName, setSourceName] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
   const [loadingSourceId, setLoadingSourceId] = useState<string | null>(null);
+  const remoteStoreEntriesRef = useRef(remoteStoreEntries);
+  const inflightStoreLoadsRef = useRef(new Map<string, Promise<void>>());
   const { showToast } = useToast();
   const autoScanBeforeInstall = useSettingsStore(
     (state) => state.autoScanStoreSkillsBeforeInstall,
   );
   const aiModels = useSettingsStore((state) => state.aiModels);
+
+  useEffect(() => {
+    remoteStoreEntriesRef.current = remoteStoreEntries;
+  }, [remoteStoreEntries]);
 
   useEffect(() => {
     if (typeof loadRegistry === "function") {
@@ -681,49 +687,66 @@ export function SkillStore() {
       if (!source) return;
       if ("enabled" in source && !source.enabled) return;
 
-      const cachedEntry = remoteStoreEntries[sourceId];
+      const loadKey = `${sourceId}:${forceRefresh ? "force" : "cached"}`;
+      const inflightLoad = inflightStoreLoadsRef.current.get(loadKey);
+      if (inflightLoad) {
+        await inflightLoad;
+        return;
+      }
+
+      const cachedEntry = remoteStoreEntriesRef.current[sourceId];
       // Cache is permanent — only bypass when user explicitly requests a refresh.
       // A cached entry with skills is always considered fresh.
       const hasCachedSkills = cachedEntry && cachedEntry.skills.length > 0;
+      const hasCachedFailure = Boolean(cachedEntry?.error);
+      // Failed loads should not auto-retry on every rerender.
+      // They may be retried via manual refresh or scheduled force refresh.
+      if (!forceRefresh && hasCachedFailure) return;
       if (!forceRefresh && hasCachedSkills) return;
 
-      setLoadingSourceId(sourceId);
-      try {
-        let skillsForSource: RegistrySkill[] = [];
-        if (source.type === "git-repo") {
-          skillsForSource = isLikelyLocalSource(source.url)
-            ? await loadLocalDirectoryStore(source.url)
-            : await loadGitHubSkillRepo(source.url);
-        } else if (source.type === "skills-sh") {
-          skillsForSource = await loadSkillsShStore();
-        } else if (source.type === "marketplace-json") {
-          skillsForSource = await loadMarketplaceStore(source.url);
-        } else if (source.type === "local-dir") {
-          skillsForSource = await loadLocalDirectoryStore(source.url);
-        }
+      const loadPromise = (async () => {
+        setLoadingSourceId(sourceId);
+        try {
+          let skillsForSource: RegistrySkill[] = [];
+          if (source.type === "git-repo") {
+            skillsForSource = isLikelyLocalSource(source.url)
+              ? await loadLocalDirectoryStore(source.url)
+              : await loadGitHubSkillRepo(source.url);
+          } else if (source.type === "skills-sh") {
+            skillsForSource = await loadSkillsShStore();
+          } else if (source.type === "marketplace-json") {
+            skillsForSource = await loadMarketplaceStore(source.url);
+          } else if (source.type === "local-dir") {
+            skillsForSource = await loadLocalDirectoryStore(source.url);
+          }
 
-        setRemoteStoreEntry(sourceId, {
-          loadedAt: Date.now(),
-          error: null,
-          skills: skillsForSource,
-        });
-      } catch (error) {
-        console.error(`Failed to load remote store ${sourceId}:`, error);
-        // Do NOT update loadedAt on failure — keeps cache stale so next visit retries automatically.
-        // Preserve previously-cached skills (if any) so the UI isn't wiped.
-        setRemoteStoreEntry(sourceId, {
-          loadedAt: cachedEntry?.loadedAt || 0,
-          error:
-            error instanceof Error
-              ? error.message
-              : t("skill.remoteStoreLoadFailed", "Failed to load remote store"),
-          skills: cachedEntry?.skills || [],
-        });
-      } finally {
-        setLoadingSourceId((current) =>
-          current === sourceId ? null : current,
-        );
-      }
+          setRemoteStoreEntry(sourceId, {
+            loadedAt: Date.now(),
+            error: null,
+            skills: skillsForSource,
+          });
+        } catch (error) {
+          console.error(`Failed to load remote store ${sourceId}:`, error);
+          // Do NOT update loadedAt on failure — keeps cache stale so next visit retries automatically.
+          // Preserve previously-cached skills (if any) so the UI isn't wiped.
+          setRemoteStoreEntry(sourceId, {
+            loadedAt: cachedEntry?.loadedAt || 0,
+            error:
+              error instanceof Error
+                ? error.message
+                : t("skill.remoteStoreLoadFailed", "Failed to load remote store"),
+            skills: cachedEntry?.skills || [],
+          });
+        } finally {
+          inflightStoreLoadsRef.current.delete(loadKey);
+          setLoadingSourceId((current) =>
+            current === sourceId ? null : current,
+          );
+        }
+      })();
+
+      inflightStoreLoadsRef.current.set(loadKey, loadPromise);
+      await loadPromise;
     },
     [
       customStoreSources,
@@ -731,7 +754,6 @@ export function SkillStore() {
       loadLocalDirectoryStore,
       loadMarketplaceStore,
       loadSkillsShStore,
-      remoteStoreEntries,
       setRemoteStoreEntry,
       t,
     ],
