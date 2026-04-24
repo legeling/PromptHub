@@ -285,7 +285,7 @@ export class BackupService {
       ...folder,
       parentId,
       visibility,
-      isPrivate: visibility === 'private',
+      isPrivate: folder.isPrivate ?? false,
     });
     this.db
       .prepare('UPDATE folders SET owner_user_id = ?, visibility = ? WHERE id = ?')

@@ -59,6 +59,10 @@ export function SkillStoreDetail({
   const installFromRegistry = useSkillStore(
     (state) => state.installFromRegistry,
   );
+  const updateRegistrySkill = useSkillStore((state) => state.updateRegistrySkill);
+  const getRegistrySkillUpdateStatus = useSkillStore(
+    (state) => state.getRegistrySkillUpdateStatus,
+  );
   const uninstallRegistrySkill = useSkillStore(
     (state) => state.uninstallRegistrySkill,
   );
@@ -74,6 +78,9 @@ export function SkillStoreDetail({
   const aiModels = useSettingsStore((state) => state.aiModels);
   const [isInstalling, setIsInstalling] = useState(false);
   const [isUninstalling, setIsUninstalling] = useState(false);
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<string | null>(null);
   const [justInstalled, setJustInstalled] = useState(false);
   const [justUninstalled, setJustUninstalled] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
@@ -297,7 +304,58 @@ export function SkillStoreDetail({
     }
   };
 
+  const handleCheckUpdate = async () => {
+    setIsCheckingUpdate(true);
+    try {
+      const check = await getRegistrySkillUpdateStatus(skill);
+      setUpdateStatus(check.status);
+      const message =
+        check.status === "update-available"
+          ? t("skill.updateAvailable", "Update available")
+          : check.status === "conflict"
+            ? t("skill.updateConflict", "Local changes conflict with the store update")
+            : check.status === "local-modified"
+              ? t("skill.localModified", "Local changes detected")
+              : check.status === "up-to-date"
+                ? t("skill.upToDate", "Already up to date")
+                : t("skill.notInstalled", "Not installed");
+      showToast(message, check.status === "update-available" ? "success" : "info");
+    } catch (error) {
+      showToast(`${t("skill.updateCheckFailed", "Update check failed")}: ${getErrorMessage(error)}`, "error");
+    } finally {
+      setIsCheckingUpdate(false);
+    }
+  };
+
+  const handleUpdate = async (overwriteLocalChanges = false) => {
+    setIsUpdating(true);
+    try {
+      const result = await updateRegistrySkill(skill.slug, { overwriteLocalChanges });
+      if (!result) {
+        showToast(t("skill.updateFailed", "Failed"), "error");
+        return;
+      }
+      setUpdateStatus(result.status);
+      if (result.status === "updated") {
+        showToast(`${t("skill.updateSuccess", "Updated")}: ${skill.name}`, "success");
+        return;
+      }
+      if (result.status === "conflict" || result.status === "local-modified") {
+        showToast(t("skill.updateConflict", "Local changes conflict with the store update"), "warning");
+        return;
+      }
+      if (result.status === "up-to-date") {
+        showToast(t("skill.upToDate", "Already up to date"), "info");
+      }
+    } catch (error) {
+      showToast(`${t("skill.updateFailed", "Failed")}: ${getErrorMessage(error)}`, "error");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const installed = isInstalled || justInstalled;
+  const canShowUpdateActions = installed && Boolean(skill.content_url || skill.content);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -643,6 +701,43 @@ export function SkillStoreDetail({
           <div className="flex items-center gap-2">
             {installed && !justUninstalled ? (
               <>
+                {canShowUpdateActions && (
+                  <>
+                    <button
+                      onClick={handleCheckUpdate}
+                      disabled={isCheckingUpdate || isUpdating}
+                      className="px-3 py-2 text-xs border border-border hover:bg-muted/60 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                    >
+                      {isCheckingUpdate ? (
+                        <Loader2Icon className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <RefreshCwIcon className="w-3.5 h-3.5" />
+                      )}
+                      {t("skill.checkUpdate", "Check update")}
+                    </button>
+                    <button
+                      onClick={() => handleUpdate(false)}
+                      disabled={isCheckingUpdate || isUpdating}
+                      className="px-3 py-2 text-xs bg-primary text-white hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                    >
+                      {isUpdating ? (
+                        <Loader2Icon className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <DownloadIcon className="w-3.5 h-3.5" />
+                      )}
+                      {t("skill.update", "Update")}
+                    </button>
+                    {(updateStatus === "conflict" || updateStatus === "local-modified") && (
+                      <button
+                        onClick={() => handleUpdate(true)}
+                        disabled={isUpdating}
+                        className="px-3 py-2 text-xs bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        {t("skill.overwriteLocalChanges", "Overwrite local changes")}
+                      </button>
+                    )}
+                  </>
+                )}
                 <button
                   onClick={handleUninstall}
                   disabled={isUninstalling}

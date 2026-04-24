@@ -19,6 +19,33 @@ export interface PromptStats {
   uniqueTags: string[];
 }
 
+export function collectDescendantFolderIds(
+  folders: Folder[],
+  rootIds: Iterable<string>,
+): Set<string> {
+  const collected = new Set(rootIds);
+  let changed = true;
+
+  while (changed) {
+    changed = false;
+    for (const folder of folders) {
+      if (folder.parentId && collected.has(folder.parentId) && !collected.has(folder.id)) {
+        collected.add(folder.id);
+        changed = true;
+      }
+    }
+  }
+
+  return collected;
+}
+
+export function collectPrivateFolderScopeIds(folders: Folder[]): Set<string> {
+  return collectDescendantFolderIds(
+    folders,
+    folders.filter((folder) => folder.isPrivate).map((folder) => folder.id),
+  );
+}
+
 function isSubsequence(needle: string, haystack: string) {
   if (!needle) return true;
   if (needle.length > haystack.length) return false;
@@ -43,15 +70,11 @@ export function filterVisiblePrompts({
   if (selectedFolderId === "favorites") {
     result = result.filter((prompt) => prompt.isFavorite);
   } else if (selectedFolderId) {
-    const childFolderIds = folders
-      .filter((folder) => folder.parentId === selectedFolderId)
-      .map((folder) => folder.id);
-    const visibleFolderIds = new Set([selectedFolderId, ...childFolderIds]);
-    const lockedFolderIds = new Set(
+    const visibleFolderIds = collectDescendantFolderIds(folders, [selectedFolderId]);
+    const lockedFolderIds = collectDescendantFolderIds(
+      folders,
       folders
-        .filter(
-          (folder) => folder.isPrivate && !unlockedFolderIds.has(folder.id),
-        )
+        .filter((folder) => folder.isPrivate && !unlockedFolderIds.has(folder.id))
         .map((folder) => folder.id),
     );
     result = result.filter(
@@ -61,14 +84,11 @@ export function filterVisiblePrompts({
         !lockedFolderIds.has(prompt.folderId),
     );
   } else {
-    const privateFolderIds = folders
-      .filter((folder) => folder.isPrivate)
-      .map((folder) => folder.id);
-    if (privateFolderIds.length > 0) {
-      const privateFolderIdSet = new Set(privateFolderIds);
+    const privateFolderIds = collectPrivateFolderScopeIds(folders);
+    if (privateFolderIds.size > 0) {
       result = result.filter(
         (prompt) =>
-          !prompt.folderId || !privateFolderIdSet.has(prompt.folderId),
+          !prompt.folderId || !privateFolderIds.has(prompt.folderId),
       );
     }
   }

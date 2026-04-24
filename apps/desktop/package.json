@@ -1,6 +1,6 @@
 {
   "name": "@prompthub/desktop",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "private": true,
   "description": "PromptHub Desktop - Electron application for AI prompt management",
   "main": "out/main/index.js",

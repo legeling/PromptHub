@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ImageIcon } from 'lucide-react';
+import { resolveLocalImageSrc } from '../../utils/media-url';
 
 interface LocalImageProps {
   src: string;
@@ -35,7 +36,7 @@ export function LocalImage({
     );
   }
 
-  const imageSrc = src.startsWith('local-image://') ? src : `local-image://${src}`;
+  const imageSrc = resolveLocalImageSrc(src);
 
   return (
     <img

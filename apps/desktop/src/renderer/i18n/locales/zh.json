@@ -820,7 +820,19 @@
     "registrationClosed": "已关闭公开注册",
     "signOut": "退出登录",
     "webUpdatesManagedDesc": "自部署网页版的更新由你的部署流程负责。请拉取新版本并重新部署，而不是使用桌面端的应用内更新。",
-    "selfHostedSyncDesc": "将你部署的 PromptHub 网页版作为桌面端的备份目标和数据恢复源，无需 WebDAV。"
+    "selfHostedSyncDesc": "将你部署的 PromptHub 网页版作为桌面端的备份目标和数据恢复源，无需 WebDAV。",
+    "webLoginPassword": "登录密码",
+    "webLoginPasswordDesc": "修改登录此自托管网页工作区使用的密码。",
+    "webPasswordTooShort": "新的登录密码至少需要 8 个字符",
+    "webPasswordChangeSuccess": "登录密码修改成功",
+    "webPasswordChangeFailed": "登录密码修改失败",
+    "webNewLoginPasswordPlaceholder": "输入新的登录密码（至少 8 个字符）",
+    "webConfirmLoginPasswordPlaceholder": "确认新的登录密码",
+    "stableChannel": "稳定版通道",
+    "previewChannel": "预览版通道",
+    "joinPreviewChannel": "加入预览版本",
+    "joinPreviewChannelDesc": "只有加入后，检查更新才会包含 GitHub Releases 里的预览版 / prerelease。",
+    "previewChannelWarning": "预览版可能不稳定，建议先备份数据，主要用于帮助测试新修复。"
   },
   "import": {
     "clipboardTitle": "从剪切板导入 Prompt",
@@ -1350,7 +1362,18 @@
     "targetPlatforms": "目标平台",
     "totalTargets": "目标总数",
     "translateRefreshed": "翻译已刷新",
-    "weeklyInstalls": "每周安装量"
+    "weeklyInstalls": "每周安装量",
+    "updateAvailable": "有可用更新",
+    "updateConflict": "本地修改与商店更新冲突",
+    "localModified": "检测到本地修改",
+    "upToDate": "已是最新",
+    "updateCheckFailed": "检查更新失败",
+    "updateSuccess": "更新成功",
+    "checkingUpdate": "检查中...",
+    "checkUpdate": "检查更新",
+    "updating": "更新中...",
+    "update": "更新",
+    "overwriteLocalChanges": "覆盖本地修改"
   },
   "error": {
     "sha512Desc": "SHA512 校验失败。\n这通常是由于 CDN 缓存不一致或网络劫持导致的。\n文件可能已下载完成，您可以尝试手动安装。"

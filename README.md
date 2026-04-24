@@ -14,7 +14,7 @@
   [![GitHub Forks](https://img.shields.io/github/forks/legeling/PromptHub?style=for-the-badge&logo=github)](https://github.com/legeling/PromptHub/network/members)
   [![Downloads](https://img.shields.io/github/downloads/legeling/PromptHub/total?style=for-the-badge&logo=github&color=blue)](https://github.com/legeling/PromptHub/releases)
   
-  [![Version](https://img.shields.io/badge/version-v0.5.4-success?style=for-the-badge)](https://github.com/legeling/PromptHub/releases)
+  [![Version](https://img.shields.io/badge/version-v0.5.5-success?style=for-the-badge)](https://github.com/legeling/PromptHub/releases)
   [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](./LICENSE)
   [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=for-the-badge)](https://github.com/legeling/PromptHub/pulls)
   
@@ -295,13 +295,13 @@ apps/web/data
 
 ### 下载
 
-从 [Releases](https://github.com/legeling/PromptHub/releases) 下载最新版本 v0.5.4：
+从 [Releases](https://github.com/legeling/PromptHub/releases) 下载最新版本 v0.5.5：
 
 | 平台    | 下载                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Windows | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.5.4-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.5.4-arm64.exe) |
-| macOS   | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.4-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.4-x64.dmg)     |
-| Linux   | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.4-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.5.4_amd64.deb)              |
+| Windows | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.5.5-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.5.5-arm64.exe) |
+| macOS   | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.5-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.5-x64.dmg)     |
+| Linux   | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.5-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/prompthub_0.5.5_amd64.deb)              |
 
 > 💡 **架构选择建议**
 >
@@ -560,12 +560,13 @@ PromptHub/
 
 ## 路线图
 
-### v0.5.4 (当前) 🚀
+### v0.5.5 (当前) 🚀
 
-- [x] **GitHub 仓库导入升级**：导入 Skill 时会先扫描仓库中的多个 `SKILL.md` 并支持多选，不再把整个仓库误当成单个 Skill
-- [x] **README 资源渲染修复**：GitHub 仓库内 Skill 的相对图片和相对链接现在能在商店详情页与已安装预览里正常显示
-- [x] **安全扫描降噪**：修复 `process.env` / `import.meta.env`、`export function` 等静态扫描误报，并将脚本文件告警改为聚合显示
-- [x] **Skill 体验修复**：GitHub 导入弹窗恢复宽版布局与固定底部操作区，Skill 图标选择器补齐暗色模式适配，多语言 `skill.*` 文案补齐
+- [x] **Skill 商店更新检测**：商店下载的 Skill 记录安装内容哈希，可检测远端 `SKILL.md` 是否更新
+- [x] **稳定 / 预览更新通道**：默认只更新稳定版，加入预览版本后才会接收 GitHub prerelease 测试版
+- [x] **Skill 更新冲突保护**：本地改动和远端改动同时存在时提示冲突，需显式覆盖才会更新
+- [x] **网页版媒体修复**：Docker/Web 环境支持图片、视频上传，并能显示桌面同步来的本地媒体链接
+- [x] **同步与密码修复**：修复网页端同步后普通文件夹误上锁，新增网页端登录密码修改入口，桌面取消私密需先解锁
 
 ### v0.4.9
 
@@ -625,23 +626,24 @@ PromptHub/
 
 查看完整的更新日志：**[CHANGELOG.md](./CHANGELOG.md)**
 
-### 最新版本 v0.5.4 (2026-04-21)
+### 最新版本 v0.5.5 (2026-04-24)
 
-**Skill 导入 / Skill Import**
+**Skill 更新 / Skill Updates**
 
-- 🧩 **GitHub 仓库导入改为先扫描再选择**：支持扫描多个 `SKILL.md` 并多选导入，没有 `SKILL.md` 时会回退到仓库根目录 `README.md`
-- 🖼️ **README 相对资源修复**：来自 GitHub 仓库的 README 相对图片和链接现在会自动解析为可访问地址
+- 🧩 **商店 Skill 更新检测**：商店下载的 Skill 会保存安装时内容哈希与版本，可检查远端 `SKILL.md` 是否变化
+- 🚦 **稳定 / 预览更新通道**：系统设置可加入预览版本；默认只检查稳定版，加入后才会检查 GitHub prerelease 测试版
+- 🛡️ **本地修改冲突保护**：本地改过且远端也变化时标记为冲突，只有显式覆盖才会更新
 
-**安全与可读性 / Safety & Readability**
+**网页版 / Web**
 
-- 🛡️ **静态安全扫描降噪**：修复 `process.env` / `import.meta.env`、`export function` 等误报，并将脚本文件警告改为汇总展示
-- 📋 **安全报告分组展示**：商店详情页与 Skill 详情页的安全 findings 现在按规则分组显示，减少重复告警刷屏
+- 🌐 **媒体上传与显示修复**：Web/Docker 环境支持图片、视频选择上传，并能显示桌面同步来的 `local-image://` / `local-video://` 媒体
+- 🔐 **同步私密状态修复**：桌面数据同步到网页端时，不再把缺失 `visibility` 的普通文件夹误判为私密
+- 🔑 **登录密码修改入口**：自托管 Web 设置页新增密码修改表单
 
-**界面与文档 / UI & Docs**
+**桌面与文档 / Desktop & Docs**
 
-- 🪟 **GitHub 导入弹窗布局修复**：恢复标准宽弹窗、固定底部操作区，只让结果区域滚动
-- 🌙 **Skill 图标选择器暗色模式修复**：深色主题下切换到更低亮度的预设色板，并自动计算自定义背景的可读前景色
-- 🌍 **多语言与发版文档同步**：补齐 `skill.*` locale 文案，并同步 README、多语言 README 与官网发布元数据到 `v0.5.4`
+- 🔒 **私密文件夹保护**：桌面端取消文件夹私密状态前必须先通过主密码解锁
+- 🌍 **多语言与发版文档同步**：补齐 Skill 更新文案，并同步 README、多语言 README 与官网发布元数据到 `v0.5.5`
 
 > [查看完整更新日志](./CHANGELOG.md)
 

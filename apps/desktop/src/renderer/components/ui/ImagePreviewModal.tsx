@@ -2,6 +2,7 @@ import { XIcon, ImageIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import { resolveLocalImageSrc } from '../../utils/media-url';
 
 interface ImagePreviewModalProps {
     isOpen: boolean;
@@ -57,7 +58,7 @@ export function ImagePreviewModal({ isOpen, onClose, imageSrc }: ImagePreviewMod
                     </div>
                 ) : (
                     <img
-                        src={imageSrc.startsWith('http') || imageSrc.startsWith('data:') || imageSrc.startsWith('local-image://') ? imageSrc : `local-image://${imageSrc}`}
+                        src={resolveLocalImageSrc(imageSrc)}
                         alt={t('prompt.preview')}
                         className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
                         onError={() => setImageError(true)}

@@ -29,6 +29,7 @@ import {
 } from "./prompt-modal-utils";
 import { usePromptMediaManager } from "./usePromptMediaManager";
 import { usePromptNativeFullscreen } from "./usePromptNativeFullscreen";
+import { resolveLocalImageSrc, resolveLocalVideoSrc } from "../../utils/media-url";
 
 interface CreatePromptModalProps {
   isOpen: boolean;
@@ -477,7 +478,7 @@ export function CreatePromptModal({
                           className="relative group w-24 h-24 rounded-lg overflow-hidden border border-border"
                         >
                           <img
-                            src={`local-image://${img}`}
+                            src={resolveLocalImageSrc(img)}
                             alt={`preview-${index}`}
                             className="w-full h-full object-cover"
                           />
@@ -495,7 +496,7 @@ export function CreatePromptModal({
                           className="relative group w-24 h-24 rounded-lg overflow-hidden border border-border bg-black"
                         >
                           <video
-                            src={`local-video://${video}`}
+                            src={resolveLocalVideoSrc(video)}
                             className="w-full h-full object-cover opacity-70"
                           />
                           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -759,7 +760,7 @@ export function CreatePromptModal({
                     className="relative group w-24 h-24 rounded-lg overflow-hidden border border-border"
                   >
                     <img
-                      src={`local-image://${img}`}
+                      src={resolveLocalImageSrc(img)}
                       alt={`preview-${index}`}
                       className="w-full h-full object-cover"
                     />
@@ -777,7 +778,7 @@ export function CreatePromptModal({
                     className="relative group w-24 h-24 rounded-lg overflow-hidden border border-border bg-black"
                   >
                     <video
-                      src={`local-video://${video}`}
+                      src={resolveLocalVideoSrc(video)}
                       className="w-full h-full object-cover opacity-70"
                     />
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

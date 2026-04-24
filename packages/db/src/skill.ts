@@ -21,6 +21,10 @@ interface SkillRow {
   tags: string | null;
   original_tags: string | null;
   is_favorite: number;
+  installed_content_hash: string | null;
+  installed_version: string | null;
+  installed_at: number | null;
+  updated_from_store_at: number | null;
   source_url: string | null;
   local_repo_path: string | null;
   icon_url: string | null;
@@ -117,14 +121,16 @@ export class SkillDB {
         id, name, description, content, mcp_config,
         protocol_type, version, author, tags, original_tags, is_favorite,
         source_url, local_repo_path, icon_url, icon_emoji, icon_background, category, is_builtin,
-        registry_slug, content_url, prerequisites, compatibility, current_version,
+        registry_slug, content_url, installed_content_hash, installed_version, installed_at,
+        updated_from_store_at, prerequisites, compatibility, current_version,
         version_tracking_enabled, safety_level, safety_score, safety_report, safety_scanned_at,
         created_at, updated_at
       ) VALUES (
         @id, @name, @description, @content, @mcp_config,
         @protocol_type, @version, @author, @tags, @original_tags, @is_favorite,
         @source_url, @local_repo_path, @icon_url, @icon_emoji, @icon_background, @category, @is_builtin,
-        @registry_slug, @content_url, @prerequisites, @compatibility, @current_version,
+        @registry_slug, @content_url, @installed_content_hash, @installed_version, @installed_at,
+        @updated_from_store_at, @prerequisites, @compatibility, @current_version,
         @version_tracking_enabled, @safety_level, @safety_score, @safety_report, @safety_scanned_at,
         @created_at, @updated_at
       )
@@ -155,6 +161,10 @@ export class SkillDB {
       "@is_builtin": data.is_builtin ? 1 : 0,
       "@registry_slug": data.registry_slug || null,
       "@content_url": data.content_url || null,
+      "@installed_content_hash": data.installed_content_hash || null,
+      "@installed_version": data.installed_version || null,
+      "@installed_at": data.installed_at ?? null,
+      "@updated_from_store_at": data.updated_from_store_at ?? null,
       "@prerequisites": data.prerequisites
         ? JSON.stringify(data.prerequisites)
         : null,
@@ -300,6 +310,22 @@ export class SkillDB {
       updates.push("content_url = ?");
       values.push(data.content_url);
     }
+    if (data.installed_content_hash !== undefined) {
+      updates.push("installed_content_hash = ?");
+      values.push(data.installed_content_hash);
+    }
+    if (data.installed_version !== undefined) {
+      updates.push("installed_version = ?");
+      values.push(data.installed_version);
+    }
+    if (data.installed_at !== undefined) {
+      updates.push("installed_at = ?");
+      values.push(data.installed_at);
+    }
+    if (data.updated_from_store_at !== undefined) {
+      updates.push("updated_from_store_at = ?");
+      values.push(data.updated_from_store_at);
+    }
     if (data.prerequisites !== undefined) {
       updates.push("prerequisites = ?");
       values.push(JSON.stringify(data.prerequisites));
@@ -374,6 +400,16 @@ export class SkillDB {
         registry_slug: data.registry_slug,
       }),
       ...(data.content_url !== undefined && { content_url: data.content_url }),
+      ...(data.installed_content_hash !== undefined && {
+        installed_content_hash: data.installed_content_hash,
+      }),
+      ...(data.installed_version !== undefined && {
+        installed_version: data.installed_version,
+      }),
+      ...(data.installed_at !== undefined && { installed_at: data.installed_at }),
+      ...(data.updated_from_store_at !== undefined && {
+        updated_from_store_at: data.updated_from_store_at,
+      }),
       ...(data.prerequisites !== undefined && {
         prerequisites: data.prerequisites,
       }),
@@ -561,14 +597,16 @@ export class SkillDB {
           id, name, description, content, mcp_config,
           protocol_type, version, author, tags, original_tags, is_favorite,
           source_url, local_repo_path, icon_url, icon_emoji, icon_background, category, is_builtin,
-          registry_slug, content_url, prerequisites, compatibility, current_version,
+          registry_slug, content_url, installed_content_hash, installed_version, installed_at,
+          updated_from_store_at, prerequisites, compatibility, current_version,
           version_tracking_enabled, safety_level, safety_score, safety_report, safety_scanned_at,
           created_at, updated_at
         ) VALUES (
           @id, @name, @description, @content, @mcp_config,
           @protocol_type, @version, @author, @tags, @original_tags, @is_favorite,
           @source_url, @local_repo_path, @icon_url, @icon_emoji, @icon_background, @category, @is_builtin,
-          @registry_slug, @content_url, @prerequisites, @compatibility, @current_version,
+          @registry_slug, @content_url, @installed_content_hash, @installed_version, @installed_at,
+          @updated_from_store_at, @prerequisites, @compatibility, @current_version,
           @version_tracking_enabled, @safety_level, @safety_score, @safety_report, @safety_scanned_at,
           @created_at, @updated_at
         )`,
@@ -594,6 +632,10 @@ export class SkillDB {
         "@is_builtin": skill.is_builtin ? 1 : 0,
         "@registry_slug": skill.registry_slug ?? null,
         "@content_url": skill.content_url ?? null,
+        "@installed_content_hash": skill.installed_content_hash ?? null,
+        "@installed_version": skill.installed_version ?? null,
+        "@installed_at": skill.installed_at ?? null,
+        "@updated_from_store_at": skill.updated_from_store_at ?? null,
         "@prerequisites": skill.prerequisites
           ? JSON.stringify(skill.prerequisites)
           : null,
@@ -683,6 +725,10 @@ export class SkillDB {
       is_builtin: row.is_builtin === 1,
       registry_slug: row.registry_slug || undefined,
       content_url: row.content_url || undefined,
+      installed_content_hash: row.installed_content_hash || undefined,
+      installed_version: row.installed_version || undefined,
+      installed_at: row.installed_at ?? undefined,
+      updated_from_store_at: row.updated_from_store_at ?? undefined,
       prerequisites: parseJsonArray<string>(row.prerequisites),
       compatibility: parseJsonArray<string>(row.compatibility),
       original_tags: parseJsonArray<string>(row.original_tags),

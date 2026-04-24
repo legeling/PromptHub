@@ -95,6 +95,25 @@ export function FolderModal({ isOpen, onClose, folder }: FolderModalProps) {
 
   const isEditMode = !!folder;
 
+  const saveFolder = async () => {
+    if (isEditMode && folder) {
+      await updateFolder(folder.id, {
+        name: name.trim(),
+        icon,
+        isPrivate,
+        parentId,
+      });
+    } else {
+      await createFolder({
+        name: name.trim(),
+        icon,
+        isPrivate,
+        parentId,
+      });
+    }
+    onClose();
+  };
+
   useEffect(() => {
     if (folder) {
       setName(folder.name);
@@ -166,31 +185,17 @@ export function FolderModal({ isOpen, onClose, folder }: FolderModalProps) {
       }
     }
 
-    // If private is enabled and currently not unlocked, require unlock first
-    // 如果开启私密且当前未解锁，要求先解锁
-    if (isPrivate && securityStatus.configured && !securityStatus.unlocked) {
+    const isChangingPrivateState = isEditMode
+      ? folder?.isPrivate !== isPrivate
+      : isPrivate;
+    if (isChangingPrivateState && securityStatus.configured && !securityStatus.unlocked) {
       setShowUnlockModal(true);
       return;
     }
 
     setIsSubmitting(true);
     try {
-      if (isEditMode && folder) {
-        await updateFolder(folder.id, {
-          name: name.trim(),
-          icon,
-          isPrivate,
-          parentId,
-        });
-      } else {
-        await createFolder({
-          name: name.trim(),
-          icon,
-          isPrivate,
-          parentId,
-        });
-      }
-      onClose();
+      await saveFolder();
     } catch (error) {
       console.error('Failed to save folder:', error);
     } finally {
@@ -217,7 +222,14 @@ export function FolderModal({ isOpen, onClose, folder }: FolderModalProps) {
         setShowUnlockModal(false);
         setUnlockPassword('');
         // 解锁后继续保存
-        handleSubmit({ preventDefault: () => {} } as any);
+        setIsSubmitting(true);
+        try {
+          await saveFolder();
+        } catch (error) {
+          console.error('Failed to save folder:', error);
+        } finally {
+          setIsSubmitting(false);
+        }
       } else {
         showToast(t('folder.wrongPassword'), 'error');
       }

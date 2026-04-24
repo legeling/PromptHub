@@ -1,5 +1,32 @@
 ## [Unreleased]
 
+## [0.5.5] - 2026-04-24
+
+### 新增 / Added
+
+- 🧩 **商店 Skill 更新检测与更新**：商店下载的 Skill 现在会保存安装时的规范化内容哈希与安装版本，可在详情页检查远端 `SKILL.md` 是否变化，并仅对商店来源 Skill 展示更新入口
+  - **Store Skill Update Detection and Update**: Store-installed skills now persist the normalized install-time content hash and installed version, can check whether the remote `SKILL.md` changed from the detail view, and only expose update actions for store-origin skills
+- 🚦 **稳定版 / 预览版更新通道**：系统设置新增“加入预览版本”开关；默认只检查 GitHub Latest 稳定版，用户主动加入后才会检查 Releases 中标记为 prerelease 的预览版
+  - **Stable / Preview Update Channels**: System settings now include a “Join Preview Channel” toggle. By default PromptHub checks only the GitHub Latest stable release; prerelease preview builds are checked only after the user opts in
+- 🛡️ **本地修改冲突保护**：更新前会同时比较“安装时哈希 / 当前本地哈希 / 最新远端哈希”，本地改过且远端也变化时标记为冲突；用户必须显式选择覆盖本地修改才会继续
+  - **Local Edit Conflict Protection**: Updates compare the install-time hash, current local hash, and latest remote hash; if both local and remote changed, the update is marked as a conflict and requires an explicit overwrite action
+
+### 修复 / Fixed
+
+- 🌐 **网页版媒体上传与显示修复**：Web/Docker 环境中的图片、视频选择现在会通过媒体 API 上传，桌面同步来的 `local-image://` / `local-video://` 地址会自动解析为网页端可访问的 `/api/media/...` 地址
+  - **Web Media Upload and Display Fixed**: Image/video selection in the Web/Docker build now uploads through the media API, and desktop-synced `local-image://` / `local-video://` URLs resolve to browser-accessible `/api/media/...` URLs
+- 🔐 **网页同步私密状态修复**：Web 端导入/同步文件夹时不再把缺失 `visibility` 的桌面数据误判为私密，避免普通文件夹同步后全部上锁
+  - **Web Sync Privacy State Fixed**: Web import/sync no longer treats desktop folders without `visibility` as private, preventing normal folders from becoming locked after sync
+- 🔑 **网页版登录密码修改入口**：自托管 Web 设置页新增密码修改表单，支持输入当前密码并设置新密码
+  - **Web Login Password Change Entry**: The self-hosted Web settings page now includes a password-change form that requires the current password and a new password
+- 🔒 **桌面私密文件夹取消加密保护**：编辑私密文件夹时，取消私密状态同样需要先通过主密码解锁，避免未授权直接取消加密
+  - **Desktop Private Folder Disable Protection**: Disabling privacy on an encrypted desktop folder now requires unlocking with the master password first
+
+### 维护 / Maintenance
+
+- 🔖 **版本与发版文档同步到 `v0.5.5`**：更新项目版本号、CHANGELOG、README/多语言 README 与官网 release metadata，并补齐 Skill 更新相关 i18n 与同步字段
+  - **Version and Release Docs Synced to `v0.5.5`**: Updated project versions, changelog, README/localized READMEs, website release metadata, and added Skill-update i18n plus sync metadata fields
+
 ## [0.5.4] - 2026-04-21
 
 ### 修复 / Fixed

@@ -11,6 +11,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeSanitize from 'rehype-sanitize';
 import rehypeHighlight from 'rehype-highlight';
 import { defaultSchema } from 'hast-util-sanitize';
+import { resolveLocalImageSrc } from '../../utils/media-url';
 
 interface PromptEditorProps {
   prompt: Prompt;
@@ -262,7 +263,7 @@ export function PromptEditor({ prompt, onSave, onCancel }: PromptEditorProps) {
               {images.map((img, index) => (
                 <div key={index} className="relative group w-24 h-24 rounded-lg overflow-hidden border border-border">
                   <img
-                    src={`local-image://${img}`}
+                    src={resolveLocalImageSrc(img)}
                     alt={`preview-${index}`}
                     className="w-full h-full object-cover"
                   />

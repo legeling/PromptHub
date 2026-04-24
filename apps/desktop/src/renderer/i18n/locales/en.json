@@ -829,7 +829,19 @@
     "batchScanInstalledSkills": "Scan All Installed Skills Now",
     "batchScanInstalledSkillsDesc": "Manually run a safety scan on all Skills in your library to quickly find high-risk content.",
     "batchScanInstalledSkillsResult": "Checked {{total}} skills · blocked {{blocked}} · high risk {{highRisk}} · warn {{warn}}",
-    "selfHostedSyncDesc": "Use your deployed PromptHub Web as an authenticated backup target and restore source for desktop data without WebDAV."
+    "selfHostedSyncDesc": "Use your deployed PromptHub Web as an authenticated backup target and restore source for desktop data without WebDAV.",
+    "webLoginPassword": "Login password",
+    "webLoginPasswordDesc": "Change the password used to sign in to this self-hosted web workspace.",
+    "webPasswordTooShort": "New login password must be at least 8 characters",
+    "webPasswordChangeSuccess": "Login password changed successfully",
+    "webPasswordChangeFailed": "Failed to change login password",
+    "webNewLoginPasswordPlaceholder": "Enter new login password (min 8 characters)",
+    "webConfirmLoginPasswordPlaceholder": "Confirm new login password",
+    "stableChannel": "Stable channel",
+    "previewChannel": "Preview channel",
+    "joinPreviewChannel": "Join Preview Channel",
+    "joinPreviewChannelDesc": "Only after joining, update checks will include prerelease preview builds from GitHub Releases.",
+    "previewChannelWarning": "Preview builds may be unstable. Please back up your data before updating and use them mainly for testing new fixes."
   },
   "import": {
     "clipboardTitle": "Import Prompt from Clipboard",
@@ -1361,7 +1373,18 @@
       "persistence-file": "Repository contains workflow or persistence-related files",
       "high-risk-binary": "Repository contains high-risk executable artifacts",
       "script-file": "Repository contains executable scripts"
-    }
+    },
+    "updateAvailable": "Update available",
+    "updateConflict": "Local changes conflict with the store update",
+    "localModified": "Local changes detected",
+    "upToDate": "Already up to date",
+    "updateCheckFailed": "Update check failed",
+    "updateSuccess": "Updated",
+    "checkingUpdate": "Checking...",
+    "checkUpdate": "Check update",
+    "updating": "Updating...",
+    "update": "Update",
+    "overwriteLocalChanges": "Overwrite local changes"
   },
   "error": {
     "sha512Desc": "SHA512 checksum mismatch.\nThis is usually caused by CDN cache inconsistencies or network issues.\nThe file may have been downloaded successfully. You can try to install it manually."

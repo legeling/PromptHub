@@ -10,6 +10,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeSanitize from 'rehype-sanitize';
 import rehypeHighlight from 'rehype-highlight';
 import { defaultSchema } from 'hast-util-sanitize';
+import { resolveLocalVideoSrc } from '../../utils/media-url';
 
 interface PromptDetailModalProps {
   isOpen: boolean;
@@ -345,7 +346,7 @@ export function PromptDetailModal({
               {prompt.videos.map((video, index) => (
                 <div key={index} className="relative rounded-lg overflow-hidden border border-border shadow-sm bg-muted">
                   <video
-                    src={`local-video://${video}`}
+                    src={resolveLocalVideoSrc(video)}
                     className="max-w-[300px] max-h-[200px] object-cover"
                     controls
                     preload="metadata"

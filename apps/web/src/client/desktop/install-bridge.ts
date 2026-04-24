@@ -104,6 +104,47 @@ function bufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
+function selectFiles(accept: string): Promise<File[]> {
+  return new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = accept;
+    input.multiple = true;
+    input.style.display = 'none';
+
+    input.addEventListener('change', () => {
+      const files = input.files ? Array.from(input.files) : [];
+      input.remove();
+      resolve(files);
+    }, { once: true });
+
+    input.addEventListener('cancel', () => {
+      input.remove();
+      resolve([]);
+    }, { once: true });
+
+    document.body.appendChild(input);
+    input.click();
+  });
+}
+
+async function uploadSelectedMedia(kind: 'images' | 'videos', accept: string): Promise<string[]> {
+  const files = await selectFiles(accept);
+  const uploadedFileNames: string[] = [];
+
+  for (const file of files) {
+    const base64Data = bufferToBase64(await file.arrayBuffer());
+    const fileName = await apiJson<string>(`/api/media/${kind}/base64`, {
+      method: 'POST',
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ fileName: file.name, base64Data }),
+    });
+    uploadedFileNames.push(fileName);
+  }
+
+  return uploadedFileNames;
+}
+
 async function requestAi(request: AITransportRequest): Promise<AITransportResponse> {
   return apiJson<AITransportResponse>('/api/ai/request', {
     method: 'POST',
@@ -389,14 +430,14 @@ export function installDesktopBridge(): void {
       download: async () => ({ success: false, error: 'Updater is unavailable on web' }),
       install: async () => ({ success: false, manual: true }),
       openDownloadedUpdate: async () => ({ success: false }),
-      getVersion: async () => '0.5.2-web',
+      getVersion: async () => '0.5.5-web',
       getPlatform: async () => getPlatform(),
       openReleases: async () => {},
       onStatus: (_callback: (status: unknown) => void) => () => {},
       offStatus: () => {},
     },
-    selectImage: async () => [],
-    saveImage: async (_paths: string[]) => [],
+    selectImage: async () => uploadSelectedMedia('images', 'image/*'),
+    saveImage: async (paths: string[]) => paths,
     saveImageBuffer: async (buffer: ArrayBuffer) => {
       const fileName = `${crypto.randomUUID()}.png`;
       await apiOk('/api/media/images/base64', 'POST', {
@@ -472,8 +513,8 @@ export function installDesktopBridge(): void {
     setShortcutMode: (_modes: Record<string, 'global' | 'local'>) => {},
     onShortcutTriggered: (_callback: (action: string) => void) => () => {},
     onShortcutsUpdated: (_callback: (shortcuts: Record<string, string>) => void) => () => {},
-    selectVideo: async () => [],
-    saveVideo: async (_paths: string[]) => [],
+    selectVideo: async () => uploadSelectedMedia('videos', 'video/*'),
+    saveVideo: async (paths: string[]) => paths,
     openVideo: async (fileName: string) => {
       window.open(`/api/media/videos/${encodeFileName(fileName)}`, '_blank');
       return true;

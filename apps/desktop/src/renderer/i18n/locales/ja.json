@@ -820,7 +820,19 @@
     "registrationClosed": "公開登録が無効",
     "signOut": "ログアウト",
     "webUpdatesManagedDesc": "セルフホスト Web の更新はデプロイ手順で管理します。アプリ内更新ではなく、新しいバージョンを取得して再デプロイしてください。",
-    "selfHostedSyncDesc": "デプロイした PromptHub Web を、WebDAV なしでデスクトップデータのバックアップ先および復元元として使用します。"
+    "selfHostedSyncDesc": "デプロイした PromptHub Web を、WebDAV なしでデスクトップデータのバックアップ先および復元元として使用します。",
+    "webLoginPassword": "ログインパスワード",
+    "webLoginPasswordDesc": "このセルフホスト Web ワークスペースへのログインに使うパスワードを変更します。",
+    "webPasswordTooShort": "新しいログインパスワードは 8 文字以上にしてください",
+    "webPasswordChangeSuccess": "ログインパスワードを変更しました",
+    "webPasswordChangeFailed": "ログインパスワードの変更に失敗しました",
+    "webNewLoginPasswordPlaceholder": "新しいログインパスワードを入力（8 文字以上）",
+    "webConfirmLoginPasswordPlaceholder": "新しいログインパスワードを確認",
+    "stableChannel": "安定版チャンネル",
+    "previewChannel": "プレビューチャンネル",
+    "joinPreviewChannel": "プレビュー版に参加",
+    "joinPreviewChannelDesc": "参加した場合のみ、GitHub Releases の prerelease プレビュー版も更新確認に含めます。",
+    "previewChannelWarning": "プレビュー版は不安定な場合があります。更新前にデータをバックアップし、新しい修正のテスト用途で利用してください。"
   },
   "import": {
     "clipboardTitle": "クリップボードから Prompt をインポート",
@@ -1350,7 +1362,18 @@
       "persistence-file": "Repository contains workflow or persistence-related files",
       "high-risk-binary": "Repository contains high-risk executable artifacts",
       "script-file": "Repository contains executable scripts"
-    }
+    },
+    "updateAvailable": "更新があります",
+    "updateConflict": "ローカル変更がストア更新と競合しています",
+    "localModified": "ローカル変更を検出しました",
+    "upToDate": "最新です",
+    "updateCheckFailed": "更新確認に失敗しました",
+    "updateSuccess": "更新しました",
+    "checkingUpdate": "確認中...",
+    "checkUpdate": "更新を確認",
+    "updating": "更新中...",
+    "update": "更新",
+    "overwriteLocalChanges": "ローカル変更を上書き"
   },
   "error": {
     "sha512Desc": "SHA512 checksum mismatch.\nThis is usually caused by CDN cache inconsistencies or network issues.\nThe file may have been downloaded successfully. You can try to install it manually."

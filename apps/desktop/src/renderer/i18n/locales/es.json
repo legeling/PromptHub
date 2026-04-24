@@ -820,7 +820,19 @@
     "registrationClosed": "Registro público deshabilitado",
     "signOut": "Cerrar sesión",
     "webUpdatesManagedDesc": "Las actualizaciones del web autoalojado se gestionan mediante tu flujo de despliegue. Descarga la nueva versión y vuelve a desplegar el servicio en lugar de usar la actualización integrada del desktop.",
-    "selfHostedSyncDesc": "Use su PromptHub Web desplegado como destino de copia de seguridad y fuente de restauración de datos de escritorio sin WebDAV."
+    "selfHostedSyncDesc": "Use su PromptHub Web desplegado como destino de copia de seguridad y fuente de restauración de datos de escritorio sin WebDAV.",
+    "webLoginPassword": "Contraseña de inicio de sesión",
+    "webLoginPasswordDesc": "Cambia la contraseña usada para iniciar sesión en este espacio web autoalojado.",
+    "webPasswordTooShort": "La nueva contraseña debe tener al menos 8 caracteres",
+    "webPasswordChangeSuccess": "Contraseña de inicio de sesión cambiada correctamente",
+    "webPasswordChangeFailed": "No se pudo cambiar la contraseña de inicio de sesión",
+    "webNewLoginPasswordPlaceholder": "Introduce la nueva contraseña (mín. 8 caracteres)",
+    "webConfirmLoginPasswordPlaceholder": "Confirma la nueva contraseña",
+    "stableChannel": "Canal estable",
+    "previewChannel": "Canal preview",
+    "joinPreviewChannel": "Unirse a versiones preview",
+    "joinPreviewChannelDesc": "Solo al activarlo, la búsqueda de actualizaciones incluirá builds preview / prerelease de GitHub Releases.",
+    "previewChannelWarning": "Las builds preview pueden ser inestables. Haz una copia de seguridad antes de actualizar y úsalas principalmente para probar correcciones."
   },
   "import": {
     "clipboardTitle": "Importar Prompt desde el portapapeles",
@@ -1350,7 +1362,18 @@
       "persistence-file": "Repository contains workflow or persistence-related files",
       "high-risk-binary": "Repository contains high-risk executable artifacts",
       "script-file": "Repository contains executable scripts"
-    }
+    },
+    "updateAvailable": "Actualización disponible",
+    "updateConflict": "Los cambios locales entran en conflicto con la actualización de la tienda",
+    "localModified": "Cambios locales detectados",
+    "upToDate": "Ya está actualizado",
+    "updateCheckFailed": "Error al buscar actualizaciones",
+    "updateSuccess": "Actualizado",
+    "checkingUpdate": "Comprobando...",
+    "checkUpdate": "Buscar actualización",
+    "updating": "Actualizando...",
+    "update": "Actualizar",
+    "overwriteLocalChanges": "Sobrescribir cambios locales"
   },
   "error": {
     "sha512Desc": "SHA512 checksum mismatch.\nThis is usually caused by CDN cache inconsistencies or network issues.\nThe file may have been downloaded successfully. You can try to install it manually."

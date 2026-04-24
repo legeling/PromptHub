@@ -49,6 +49,7 @@ import type {
 } from "@prompthub/shared/types";
 import { SKILL_CATEGORIES } from "@prompthub/shared/constants/skill-registry";
 import { getSafetyScanAIConfig } from "./detail-utils";
+import { findInstalledRegistrySkill } from "../../services/skill-store-update";
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   all: <LayoutGridIcon className="w-3.5 h-3.5" />,
@@ -796,6 +797,18 @@ export function SkillStore() {
     [installedSlugs, installedNamesLower],
   );
 
+  const hasPotentialUpdate = useCallback(
+    (regSkill: RegistrySkill): boolean => {
+      const installedSkill = findInstalledRegistrySkill(skills, regSkill);
+      if (!installedSkill) return false;
+      if (installedSkill.installed_content_hash) {
+        return installedSkill.installed_version !== regSkill.version;
+      }
+      return Boolean(installedSkill.version && installedSkill.version !== regSkill.version);
+    },
+    [skills],
+  );
+
   const installed = useMemo(
     () => sourceRegistrySkills.filter(isSkillInstalled),
     [isSkillInstalled, sourceRegistrySkills],
@@ -1134,6 +1147,7 @@ export function SkillStore() {
                       key={skill.slug}
                       skill={skill}
                       isInstalled={true}
+                      hasUpdate={hasPotentialUpdate(skill)}
                       index={index}
                       onClick={() => selectRegistrySkill(skill.slug)}
                     />

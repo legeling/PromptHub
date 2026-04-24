@@ -28,6 +28,12 @@ import {
   validateStoreSourceInput,
   type CustomStoreSourceType,
 } from "../services/skill-store-source";
+import {
+  computeSkillContentHash,
+  findInstalledRegistrySkill,
+  getRegistrySkillUpdateStatus,
+  type RegistrySkillUpdateCheck,
+} from "../services/skill-store-update";
 import { useSettingsStore } from "./settings.store";
 
 export type SkillFilterType =
@@ -72,6 +78,10 @@ export interface SkillSafetyBatchSummary {
   blocked: number;
   bySkillId: Record<string, SkillSafetyLevel>;
 }
+
+export type RegistrySkillUpdateResult =
+  | { status: "updated"; skill: Skill; check: RegistrySkillUpdateCheck }
+  | { status: "up-to-date" | "conflict" | "local-modified" | "not-installed"; check: RegistrySkillUpdateCheck };
 
 /**
  * Prune the translation cache: remove expired entries and evict oldest
@@ -144,6 +154,13 @@ function hasMeaningfulSkillBody(content?: string): boolean {
 
   const body = stripSkillFrontmatter(trimmed).trim();
   return body.length > 0;
+}
+
+function getRegistrySkillCandidates(state: SkillState): RegistrySkill[] {
+  const remoteSkills = Object.values(state.remoteStoreEntries).flatMap(
+    (entry) => entry.skills,
+  );
+  return [...state.registrySkills, ...remoteSkills];
 }
 
 function parseJson<T>(raw: string, fallback: T): T {
@@ -407,6 +424,14 @@ interface SkillState {
   // 技能商店操作
   setStoreView: (view: SkillStoreView) => void;
   loadRegistry: () => void;
+  computeRegistrySkillHash: (content: string) => Promise<string>;
+  getRegistrySkillUpdateStatus: (
+    skill: RegistrySkill,
+  ) => Promise<RegistrySkillUpdateCheck>;
+  updateRegistrySkill: (
+    slug: string,
+    options?: { overwriteLocalChanges?: boolean },
+  ) => Promise<RegistrySkillUpdateResult | null>;
   installRegistrySkill: (skill: RegistrySkill) => Promise<Skill | null>;
   installFromRegistry: (slug: string) => Promise<Skill | null>;
   uninstallRegistrySkill: (slug: string) => Promise<boolean>;
@@ -937,6 +962,81 @@ export const useSkillStore = create<SkillState>()(
         set({ registrySkills: registry, isLoadingRegistry: false });
       },
 
+      computeRegistrySkillHash: computeSkillContentHash,
+
+      getRegistrySkillUpdateStatus: async (regSkill) => {
+        let remoteContent = regSkill.content;
+        if (regSkill.content_url) {
+          const freshContent = await window.api.skill.fetchRemoteContent(
+            regSkill.content_url,
+          );
+          if (freshContent.trim()) {
+            remoteContent = freshContent;
+          }
+        }
+
+        return getRegistrySkillUpdateStatus(
+          findInstalledRegistrySkill(get().skills, regSkill),
+          regSkill,
+          remoteContent,
+        );
+      },
+
+      updateRegistrySkill: async (slug, options) => {
+        const regSkill = getRegistrySkillCandidates(get()).find(
+          (skill) => skill.slug === slug,
+        );
+        if (!regSkill) return null;
+
+        const check = await get().getRegistrySkillUpdateStatus(regSkill);
+        if (!check.installedSkill) {
+          return { status: "not-installed", check };
+        }
+        if (check.status === "up-to-date") {
+          return { status: "up-to-date", check };
+        }
+        if (
+          (check.status === "conflict" || check.status === "local-modified") &&
+          !options?.overwriteLocalChanges
+        ) {
+          return { status: check.status, check };
+        }
+
+        const installedSkill = check.installedSkill;
+        await window.api.skill.versionCreate(
+          installedSkill.id,
+          `Store update: ${installedSkill.version || "unknown"} -> ${regSkill.version}`,
+        );
+
+        const now = Date.now();
+        const updatedSkill = await get().updateSkill(installedSkill.id, {
+          description: regSkill.description,
+          instructions: check.remoteContent,
+          content: check.remoteContent,
+          version: regSkill.version,
+          author: regSkill.author,
+          source_url: regSkill.source_url,
+          icon_url: regSkill.icon_url,
+          icon_emoji: regSkill.icon_emoji,
+          icon_background: regSkill.icon_background,
+          category: regSkill.category,
+          is_builtin: true,
+          registry_slug: regSkill.slug,
+          content_url: regSkill.content_url,
+          original_tags: regSkill.tags,
+          prerequisites: regSkill.prerequisites,
+          compatibility: regSkill.compatibility,
+          installed_content_hash: check.remoteHash,
+          installed_version: regSkill.version,
+          updated_from_store_at: now,
+        });
+
+        if (!updatedSkill) {
+          return null;
+        }
+        return { status: "updated", skill: updatedSkill, check };
+      },
+
       installRegistrySkill: async (regSkill) => {
         try {
           let effectiveContent = regSkill.content;
@@ -962,6 +1062,8 @@ export const useSkillStore = create<SkillState>()(
             );
           }
 
+          const installedHash = await computeSkillContentHash(effectiveContent);
+          const installedAt = Date.now();
           const newSkill = await window.api.skill.create({
             name: regSkill.install_name || regSkill.slug,
             description: regSkill.description,
@@ -980,6 +1082,10 @@ export const useSkillStore = create<SkillState>()(
             is_builtin: true,
             registry_slug: regSkill.slug,
             content_url: regSkill.content_url,
+            installed_content_hash: installedHash,
+            installed_version: regSkill.version,
+            installed_at: installedAt,
+            updated_from_store_at: installedAt,
             prerequisites: regSkill.prerequisites,
             compatibility: regSkill.compatibility,
           });

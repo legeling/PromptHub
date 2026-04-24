@@ -14,6 +14,7 @@ export interface Settings {
   lastManualBackupVersion?: string;
   sync?: SyncSettings;
   device?: DeviceManagementSettings;
+  updateChannel?: UpdateChannel;
   // Security
   // 安全相关
   security?: {
@@ -41,6 +42,7 @@ export interface DeviceManagementSettings {
 
 export type Theme = 'light' | 'dark' | 'system';
 export type Language = 'en' | 'zh' | 'zh-TW' | 'ja' | 'fr' | 'de' | 'es';
+export type UpdateChannel = 'stable' | 'preview';
 
 export const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
@@ -58,4 +60,5 @@ export const DEFAULT_SETTINGS: Settings = {
     storeAutoSync: true,
     storeSyncCadence: '1d',
   },
+  updateChannel: 'stable',
 };

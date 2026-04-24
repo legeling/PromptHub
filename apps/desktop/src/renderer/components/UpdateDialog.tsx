@@ -49,6 +49,7 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
   // Only subscribe to the field we need, not the entire store
   // 只订阅需要的字段，而不是整个 store
   const useUpdateMirror = useSettingsStore((state) => state.useUpdateMirror);
+  const updateChannel = useSettingsStore((state) => state.updateChannel);
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(initialStatus || null);
   const [useMirror, setUseMirror] = useState<boolean>(useUpdateMirror);
   const [currentVersion, setCurrentVersion] = useState<string>('');
@@ -138,7 +139,7 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
         preserveVisibleStatus: isStableUpgradeState(initialStatus),
       });
     }
-  }, [initialStatus, isOpen, useUpdateMirror]);
+  }, [initialStatus, isOpen, updateChannel, useUpdateMirror]);
 
   const handleCheckUpdate = async (
     mirror: boolean,
@@ -148,7 +149,10 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
     if (!options?.preserveVisibleStatus) {
       setUpdateStatus({ status: 'checking' });
     }
-    const result = await window.electron?.updater?.check(mirror);
+    const result = await window.electron?.updater?.check({
+      useMirror: mirror,
+      channel: updateChannel,
+    });
     // If update check returns an error (e.g. in dev), set error status
     // 如果检查更新返回错误（例如开发环境），设置错误状态
     if (result && !result.success) {
@@ -159,7 +163,10 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
   };
 
   const handleDownload = async () => {
-    await window.electron?.updater?.download(useMirror);
+    await window.electron?.updater?.download({
+      useMirror,
+      channel: updateChannel,
+    });
   };
 
   const handleInstall = async () => {
@@ -263,7 +270,11 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
       return (
         <div className="flex-1 flex flex-col items-center justify-center text-center py-8">
           <p className="text-muted-foreground mb-4">
-            {t('settings.version')}: {currentVersion}
+            {t('settings.version')}: {currentVersion} · {t(
+              updateChannel === 'preview'
+                ? 'settings.previewChannel'
+                : 'settings.stableChannel',
+            )}
           </p>
           <button
             onClick={() => handleCheckUpdate(false)}
@@ -484,6 +495,13 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">{t('settings.checkUpdate')}</h2>
+          <span className="ml-3 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+            {t(
+              updateChannel === 'preview'
+                ? 'settings.previewChannel'
+                : 'settings.stableChannel',
+            )}
+          </span>
           <button
             onClick={onClose}
             className="p-1 rounded-lg hover:bg-muted transition-colors"

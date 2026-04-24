@@ -31,6 +31,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import { useUIStore } from "../../stores/ui.store";
+import { collectPrivateFolderScopeIds } from "../../services/prompt-filter";
 import { filterVisibleSkills } from "../../services/skill-filter";
 import {
   getRuntimeCapabilities,
@@ -133,13 +134,10 @@ export function TopBar({
     } else if (selectedFolderId) {
       filtered = filtered.filter((p) => p.folderId === selectedFolderId);
     } else {
-      // 在"全部"视图中，隐藏私密文件夹内容
-      const privateFolderIds = folders
-        .filter((f) => f.isPrivate)
-        .map((f) => f.id);
-      if (privateFolderIds.length > 0) {
+      const privateFolderIds = collectPrivateFolderScopeIds(folders);
+      if (privateFolderIds.size > 0) {
         filtered = filtered.filter(
-          (p) => !p.folderId || !privateFolderIds.includes(p.folderId),
+          (p) => !p.folderId || !privateFolderIds.has(p.folderId),
         );
       }
     }

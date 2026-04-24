@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import i18n, { changeLanguage } from "../i18n";
 import type { Settings } from "@prompthub/shared/types";
+import type { UpdateChannel } from "@prompthub/shared/types";
 
 const SUPPORTED_LANGUAGES = [
   "zh",
@@ -244,6 +245,7 @@ interface SettingsState {
   autoCheckUpdate: boolean;
   useUpdateMirror: boolean; // Use GitHub accelerator mirror (e.g. ghfast.top)
   // 使用 GitHub 加速镜像（如 ghfast.top）
+  updateChannel: UpdateChannel;
 
   // Sidebar settings
   // 侧边栏设置
@@ -327,6 +329,7 @@ interface SettingsState {
   setSelfHostedAutoSyncInterval: (interval: number) => void;
   setAutoCheckUpdate: (enabled: boolean) => void;
   setUseUpdateMirror: (enabled: boolean) => void;
+  setUpdateChannel: (channel: UpdateChannel) => void;
   setTagsSectionHeight: (height: number) => void;
   setIsTagsSectionCollapsed: (collapsed: boolean) => void;
   setSkillTagsSectionHeight: (height: number) => void;
@@ -438,6 +441,7 @@ export const useSettingsStore = create<SettingsState>()(
         selfHostedAutoSyncInterval: 0,
         autoCheckUpdate: true,
         useUpdateMirror: false,
+        updateChannel: "stable",
         tagsSectionHeight: DEFAULT_TAGS_SECTION_HEIGHT,
         isTagsSectionCollapsed: false,
         skillTagsSectionHeight: DEFAULT_TAGS_SECTION_HEIGHT,
@@ -658,6 +662,7 @@ export const useSettingsStore = create<SettingsState>()(
           setTouched({ autoCheckUpdate: enabled }),
         setUseUpdateMirror: (enabled) =>
           setTouched({ useUpdateMirror: enabled }),
+        setUpdateChannel: (channel) => setTouched({ updateChannel: channel }),
         setTagsSectionHeight: (height) =>
           setTouched({ tagsSectionHeight: height }),
         setIsTagsSectionCollapsed: (collapsed) =>

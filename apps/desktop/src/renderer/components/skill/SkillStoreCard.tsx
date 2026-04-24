@@ -1,4 +1,4 @@
-import { CheckIcon, Loader2Icon, PlusIcon } from "lucide-react";
+import { CheckIcon, DownloadIcon, Loader2Icon, PlusIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { RegistrySkill } from "@prompthub/shared/types";
 import { SkillIcon } from "./SkillIcon";
@@ -8,6 +8,7 @@ const MAX_STAGGERED_STORE_CARDS = 12;
 interface SkillStoreCardProps {
   skill: RegistrySkill;
   isInstalled: boolean;
+  hasUpdate?: boolean;
   index: number;
   installingSlug?: string | null;
   onQuickInstall?: (skill: RegistrySkill, e: React.MouseEvent) => void;
@@ -17,6 +18,7 @@ interface SkillStoreCardProps {
 export function SkillStoreCard({
   skill,
   isInstalled,
+  hasUpdate = false,
   index,
   installingSlug,
   onQuickInstall,
@@ -58,7 +60,11 @@ export function SkillStoreCard({
       </div>
 
       <div className="shrink-0">
-        {isInstalled ? (
+        {hasUpdate ? (
+          <div className="p-1.5 text-amber-500" title={t("skill.updateAvailable", "Update available")}>
+            <DownloadIcon className="w-4 h-4" />
+          </div>
+        ) : isInstalled ? (
           <div className="p-1.5 text-green-500" title={t("skill.imported", "Imported")}>
             <CheckIcon className="w-4 h-4" />
           </div>

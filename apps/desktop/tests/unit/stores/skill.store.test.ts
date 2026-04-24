@@ -293,6 +293,226 @@ description: Use this skill for PDF tasks.
     expect(create).not.toHaveBeenCalled();
   });
 
+  it("stores install fingerprints for registry skills and uses them for update checks", async () => {
+    const create = vi.fn().mockImplementation(async (data) => ({
+      id: "skill-writer",
+      created_at: 1,
+      updated_at: 1,
+      ...data,
+    }));
+    const fetchRemoteContent = vi.fn().mockResolvedValue("# Writer\n\nOriginal\n");
+    const writeLocalFile = vi.fn().mockResolvedValue(undefined);
+
+    (window as any).api.skill.create = create;
+    (window as any).api.skill.fetchRemoteContent = fetchRemoteContent;
+    (window as any).api.skill.writeLocalFile = writeLocalFile;
+
+    const installed = await useSkillStore.getState().installRegistrySkill({
+      slug: "writer",
+      name: "Writer",
+      description: "Write better",
+      category: "general",
+      author: "PromptHub",
+      source_url: "https://github.com/example/skills/tree/main/writer",
+      content_url: "https://raw.githubusercontent.com/example/skills/main/writer/SKILL.md",
+      tags: ["writing"],
+      version: "1.0.0",
+      content: "# Writer\n",
+    });
+
+    expect(installed?.installed_content_hash).toMatch(/^[a-f0-9]{64}$/);
+    expect(installed?.installed_version).toBe("1.0.0");
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        installed_content_hash: installed?.installed_content_hash,
+        installed_version: "1.0.0",
+      }),
+    );
+  });
+
+  it("updates a pristine registry skill after creating a version snapshot", async () => {
+    const remoteContent = "# Writer\n\nRemote update\n";
+    const fetchRemoteContent = vi.fn().mockResolvedValue(remoteContent);
+    const versionCreate = vi.fn().mockResolvedValue({ id: "version-1" });
+    const update = vi.fn().mockImplementation(async (_id, data) => ({
+      ...createSkillFixture({ id: "skill-writer", name: "writer" }),
+      ...data,
+      id: "skill-writer",
+      updated_at: 2,
+    }));
+
+    (window as any).api.skill.fetchRemoteContent = fetchRemoteContent;
+    (window as any).api.skill.versionCreate = versionCreate;
+    (window as any).api.skill.update = update;
+
+    const originalHash = await useSkillStore
+      .getState()
+      .computeRegistrySkillHash("# Writer\n\nOriginal\n");
+
+    useSkillStore.setState({
+      skills: [
+        createSkillFixture({
+          id: "skill-writer",
+          name: "writer",
+          registry_slug: "writer",
+          content: "# Writer\n\nOriginal\n",
+          instructions: "# Writer\n\nOriginal\n",
+          installed_content_hash: originalHash,
+          installed_version: "1.0.0",
+        }),
+      ],
+      registrySkills: [
+        {
+          slug: "writer",
+          name: "Writer",
+          description: "Write better",
+          category: "general",
+          author: "PromptHub",
+          source_url: "https://github.com/example/skills/tree/main/writer",
+          content_url: "https://raw.githubusercontent.com/example/skills/main/writer/SKILL.md",
+          tags: ["writing"],
+          version: "1.1.0",
+          content: remoteContent,
+        },
+      ],
+    });
+
+    const result = await useSkillStore.getState().updateRegistrySkill("writer");
+
+    expect(result?.status).toBe("updated");
+    expect(versionCreate).toHaveBeenCalledWith(
+      "skill-writer",
+      expect.stringContaining("Store update"),
+    );
+    expect(update).toHaveBeenCalledWith(
+      "skill-writer",
+      expect.objectContaining({
+        content: remoteContent,
+        instructions: remoteContent,
+        version: "1.1.0",
+        installed_version: "1.1.0",
+      }),
+    );
+  });
+
+  it("updates a pristine skill from a cached remote store source", async () => {
+    const remoteContent = "# Community Writer\n\nRemote update\n";
+    const fetchRemoteContent = vi.fn().mockResolvedValue(remoteContent);
+    const versionCreate = vi.fn().mockResolvedValue({ id: "version-remote" });
+    const update = vi.fn().mockImplementation(async (_id, data) => ({
+      ...createSkillFixture({ id: "skill-community-writer", name: "community-writer" }),
+      ...data,
+      id: "skill-community-writer",
+      updated_at: 2,
+    }));
+
+    (window as any).api.skill.fetchRemoteContent = fetchRemoteContent;
+    (window as any).api.skill.versionCreate = versionCreate;
+    (window as any).api.skill.update = update;
+
+    const originalHash = await useSkillStore
+      .getState()
+      .computeRegistrySkillHash("# Community Writer\n\nOriginal\n");
+
+    useSkillStore.setState({
+      skills: [
+        createSkillFixture({
+          id: "skill-community-writer",
+          name: "community-writer",
+          registry_slug: "community-writer",
+          content: "# Community Writer\n\nOriginal\n",
+          instructions: "# Community Writer\n\nOriginal\n",
+          installed_content_hash: originalHash,
+          installed_version: "1.0.0",
+        }),
+      ],
+      registrySkills: [],
+      remoteStoreEntries: {
+        community: {
+          loadedAt: 1,
+          error: null,
+          skills: [
+            {
+              slug: "community-writer",
+              name: "Community Writer",
+              description: "Write better",
+              category: "general",
+              author: "Community",
+              source_url: "https://github.com/example/community/tree/main/writer",
+              content_url:
+                "https://raw.githubusercontent.com/example/community/main/writer/SKILL.md",
+              tags: ["writing"],
+              version: "1.1.0",
+              content: remoteContent,
+            },
+          ],
+        },
+      },
+    });
+
+    const result = await useSkillStore
+      .getState()
+      .updateRegistrySkill("community-writer");
+
+    expect(result?.status).toBe("updated");
+    expect(versionCreate).toHaveBeenCalledWith(
+      "skill-community-writer",
+      expect.stringContaining("Store update"),
+    );
+    expect(update).toHaveBeenCalledWith(
+      "skill-community-writer",
+      expect.objectContaining({
+        content: remoteContent,
+        installed_content_hash: expect.stringMatching(/^[a-f0-9]{64}$/),
+        installed_version: "1.1.0",
+      }),
+    );
+  });
+
+  it("refuses registry updates when local content was edited unless overwrite is requested", async () => {
+    const remoteContent = "# Writer\n\nRemote update\n";
+    (window as any).api.skill.fetchRemoteContent = vi.fn().mockResolvedValue(remoteContent);
+    const update = vi.fn();
+    (window as any).api.skill.update = update;
+
+    const originalHash = await useSkillStore
+      .getState()
+      .computeRegistrySkillHash("# Writer\n\nOriginal\n");
+
+    useSkillStore.setState({
+      skills: [
+        createSkillFixture({
+          id: "skill-writer",
+          name: "writer",
+          registry_slug: "writer",
+          content: "# Writer\n\nLocal edits\n",
+          instructions: "# Writer\n\nLocal edits\n",
+          installed_content_hash: originalHash,
+          installed_version: "1.0.0",
+        }),
+      ],
+      registrySkills: [
+        {
+          slug: "writer",
+          name: "Writer",
+          description: "Write better",
+          category: "general",
+          author: "PromptHub",
+          source_url: "https://github.com/example/skills/tree/main/writer",
+          content_url: "https://raw.githubusercontent.com/example/skills/main/writer/SKILL.md",
+          tags: ["writing"],
+          version: "1.1.0",
+          content: remoteContent,
+        },
+      ],
+    });
+
+    const result = await useSkillStore.getState().updateRegistrySkill("writer");
+
+    expect(result?.status).toBe("conflict");
+    expect(update).not.toHaveBeenCalled();
+  });
+
   it("aggregates safety levels when batch scanning installed skills", async () => {
     const scanSafety = vi
       .fn()

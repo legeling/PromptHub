@@ -31,6 +31,10 @@ export interface Skill {
   is_builtin?: boolean; // Whether this is a built-in skill from registry
   registry_slug?: string; // Unique slug in the registry
   content_url?: string; // Remote SKILL.md URL
+  installed_content_hash?: string; // Hash of the last store-installed/updated content
+  installed_version?: string; // Store version at the last install/update
+  installed_at?: number; // Timestamp of initial store install
+  updated_from_store_at?: number; // Timestamp of the latest store update
   prerequisites?: string[]; // Prerequisites for using this skill
   compatibility?: string[]; // Compatible platforms
 

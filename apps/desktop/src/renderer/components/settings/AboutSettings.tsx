@@ -157,8 +157,28 @@ export function AboutSettings() {
             />
           </SettingItem>
           <SettingItem
+            label={t("settings.joinPreviewChannel")}
+            description={t("settings.joinPreviewChannelDesc")}
+          >
+            <ToggleSwitch
+              checked={settings.updateChannel === "preview"}
+              onChange={(enabled) =>
+                settings.setUpdateChannel(enabled ? "preview" : "stable")
+              }
+            />
+          </SettingItem>
+          {settings.updateChannel === "preview" && (
+            <div className="mx-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-700 dark:text-amber-300">
+              {t("settings.previewChannelWarning")}
+            </div>
+          )}
+          <SettingItem
             label={t("settings.checkUpdate")}
-            description={`${t("settings.version")}: ${appVersion || "..."}`}
+            description={`${t("settings.version")}: ${appVersion || "..."} · ${t(
+              settings.updateChannel === "preview"
+                ? "settings.previewChannel"
+                : "settings.stableChannel",
+            )}`}
           >
             <button
               onClick={() =>

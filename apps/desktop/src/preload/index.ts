@@ -175,10 +175,10 @@ contextBridge.exposeInMainWorld("electron", {
   // Updater
   // 更新器
   updater: {
-    check: (useMirror?: boolean) =>
-      ipcRenderer.invoke("updater:check", useMirror),
-    download: (useMirror?: boolean) =>
-      ipcRenderer.invoke("updater:download", useMirror),
+    check: (options?: boolean | { useMirror?: boolean; channel?: "stable" | "preview" }) =>
+      ipcRenderer.invoke("updater:check", options),
+    download: (options?: boolean | { useMirror?: boolean; channel?: "stable" | "preview" }) =>
+      ipcRenderer.invoke("updater:download", options),
     install: () => ipcRenderer.invoke("updater:install"),
     openDownloadedUpdate: () =>
       ipcRenderer.invoke("updater:openDownloadedUpdate"),
@@ -389,10 +389,10 @@ declare global {
       }) => Promise<{ canceled: boolean; filePath?: string; error?: string }>;
       updater?: {
         check: (
-          useMirror?: boolean,
+          options?: boolean | { useMirror?: boolean; channel?: "stable" | "preview" },
         ) => Promise<{ success: boolean; result?: any; error?: string }>;
         download: (
-          useMirror?: boolean,
+          options?: boolean | { useMirror?: boolean; channel?: "stable" | "preview" },
         ) => Promise<{ success: boolean; error?: string }>;
         install: () => Promise<
           | {

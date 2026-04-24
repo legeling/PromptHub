@@ -128,6 +128,10 @@ const skillSchema = z.object({
   is_builtin: z.boolean().optional(),
   registry_slug: z.string().optional(),
   content_url: z.string().optional(),
+  installed_content_hash: z.string().optional(),
+  installed_version: z.string().optional(),
+  installed_at: z.number().int().nonnegative().optional(),
+  updated_from_store_at: z.number().int().nonnegative().optional(),
   prerequisites: z.array(z.string()).optional(),
   compatibility: z.array(z.string()).optional(),
   safetyReport: skillSafetyReportSchema.optional(),
@@ -166,6 +170,7 @@ const settingsSchema = z.object({
     masterPasswordConfigured: z.boolean(),
     unlocked: z.boolean(),
   }).optional(),
+  updateChannel: z.enum(['stable', 'preview']).optional(),
 });
 
 const backupPayloadSchema = z.object({

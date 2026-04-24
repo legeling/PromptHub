@@ -820,7 +820,19 @@
     "registrationClosed": "Öffentliche Registrierung deaktiviert",
     "signOut": "Abmelden",
     "webUpdatesManagedDesc": "Updates der selbst gehosteten Webversion werden über Ihren Deployment-Prozess verwaltet. Holen Sie die neue Version und deployen Sie den Dienst erneut, statt das Desktop-In-App-Update zu verwenden.",
-    "selfHostedSyncDesc": "Verwenden Sie Ihr bereitgestelltes PromptHub Web als authentifiziertes Backup-Ziel und Datenwiederherstellungsquelle für Desktop-Daten ohne WebDAV."
+    "selfHostedSyncDesc": "Verwenden Sie Ihr bereitgestelltes PromptHub Web als authentifiziertes Backup-Ziel und Datenwiederherstellungsquelle für Desktop-Daten ohne WebDAV.",
+    "webLoginPassword": "Anmeldepasswort",
+    "webLoginPasswordDesc": "Ändere das Passwort für die Anmeldung an diesem selbst gehosteten Web-Arbeitsbereich.",
+    "webPasswordTooShort": "Das neue Anmeldepasswort muss mindestens 8 Zeichen lang sein",
+    "webPasswordChangeSuccess": "Anmeldepasswort erfolgreich geändert",
+    "webPasswordChangeFailed": "Anmeldepasswort konnte nicht geändert werden",
+    "webNewLoginPasswordPlaceholder": "Neues Anmeldepasswort eingeben (mind. 8 Zeichen)",
+    "webConfirmLoginPasswordPlaceholder": "Neues Anmeldepasswort bestätigen",
+    "stableChannel": "Stabiler Kanal",
+    "previewChannel": "Preview-Kanal",
+    "joinPreviewChannel": "Preview-Versionen aktivieren",
+    "joinPreviewChannelDesc": "Nur nach Aktivierung werden prerelease Preview-Builds aus GitHub Releases bei der Update-Suche berücksichtigt.",
+    "previewChannelWarning": "Preview-Builds können instabil sein. Bitte sichern Sie Ihre Daten vor dem Update und nutzen Sie sie hauptsächlich zum Testen neuer Fixes."
   },
   "import": {
     "clipboardTitle": "Prompt aus Zwischenablage importieren",
@@ -1350,7 +1362,18 @@
       "persistence-file": "Repository contains workflow or persistence-related files",
       "high-risk-binary": "Repository contains high-risk executable artifacts",
       "script-file": "Repository contains executable scripts"
-    }
+    },
+    "updateAvailable": "Update verfügbar",
+    "updateConflict": "Lokale Änderungen stehen im Konflikt mit dem Store-Update",
+    "localModified": "Lokale Änderungen erkannt",
+    "upToDate": "Bereits aktuell",
+    "updateCheckFailed": "Updateprüfung fehlgeschlagen",
+    "updateSuccess": "Aktualisiert",
+    "checkingUpdate": "Prüfen...",
+    "checkUpdate": "Update prüfen",
+    "updating": "Aktualisieren...",
+    "update": "Aktualisieren",
+    "overwriteLocalChanges": "Lokale Änderungen überschreiben"
   },
   "error": {
     "sha512Desc": "SHA512 checksum mismatch.\nThis is usually caused by CDN cache inconsistencies or network issues.\nThe file may have been downloaded successfully. You can try to install it manually."

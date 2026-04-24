@@ -4,6 +4,7 @@ import { Prompt } from '@prompthub/shared/types';
 import { ImageIcon, FolderIcon, HashIcon, MoreHorizontalIcon, StarIcon, EditIcon, TrashIcon, CopyIcon, PlayIcon, HistoryIcon, VideoIcon } from 'lucide-react';
 import { useFolderStore } from '../../stores/folder.store';
 import { usePromptStore } from '../../stores/prompt.store';
+import { resolveLocalImageSrc, resolveLocalVideoSrc } from '../../utils/media-url';
 
 function escapeRegExp(str: string) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -69,8 +70,8 @@ const GalleryCard = memo(({
     // 确定媒体源：优先图片，其次视频
     const hasImage = prompt.images && prompt.images.length > 0 && !imageError;
     const hasVideo = prompt.videos && prompt.videos.length > 0 && !videoError;
-    const imageSrc = hasImage ? `local-image://${prompt.images![0]}` : null;
-    const videoSrc = hasVideo ? `local-video://${prompt.videos![0]}` : null;
+    const imageSrc = hasImage ? resolveLocalImageSrc(prompt.images![0]) : null;
+    const videoSrc = hasVideo ? resolveLocalVideoSrc(prompt.videos![0]) : null;
 
     return (
         <div

@@ -28,10 +28,13 @@ vi.mock('electron-updater', () => {
         autoUpdater: {
             on: vi.fn((event, handler) => { handlers[event] = handler; }),
             checkForUpdatesAndNotify: vi.fn(),
+            checkForUpdates: vi.fn(),
             downloadUpdate: vi.fn(),
             quitAndInstall: vi.fn(),
+            setFeedURL: vi.fn(),
             autoDownload: true, // initial default
             autoInstallOnAppQuit: false, // initial default
+            allowPrerelease: false,
             channel: 'latest',
             // Helper to trigger events for testing
             _trigger: (event: string, ...args: any[]) => {
@@ -41,7 +44,7 @@ vi.mock('electron-updater', () => {
     };
 });
 
-import { initUpdater } from '../../../src/main/updater';
+import { initUpdater, registerUpdaterIPC } from '../../../src/main/updater';
 
 describe('Updater Service (Main Process)', () => {
     let mockWindow: any;
@@ -58,6 +61,8 @@ describe('Updater Service (Main Process)', () => {
         autoUpdater.autoInstallOnAppQuit = false;
         // @ts-ignore
         autoUpdater.channel = 'latest';
+        // @ts-ignore
+        autoUpdater.allowPrerelease = false;
 
         mockWindow = {
             webContents: {
@@ -149,5 +154,36 @@ describe('Updater Service (Main Process)', () => {
                 progress: progressObj
             })
         );
+    });
+
+    it('uses the stable release feed by default when checking for updates', async () => {
+        registerUpdaterIPC();
+        const checkHandler = (vi.mocked((await import('electron')).ipcMain.handle).mock.calls.find(
+            ([channel]) => channel === 'updater:check',
+        )?.[1]) as (_event: unknown, options?: unknown) => Promise<unknown>;
+
+        await checkHandler({}, { useMirror: false, channel: 'stable' });
+
+        expect(autoUpdater.allowPrerelease).toBe(false);
+        expect(autoUpdater.channel).toBe('latest');
+        expect(autoUpdater.setFeedURL).toHaveBeenCalledWith(
+            expect.objectContaining({ provider: 'github', releaseType: 'release' }),
+        );
+    });
+
+    it('uses the preview prerelease feed only after joining preview channel', async () => {
+        registerUpdaterIPC();
+        const checkHandler = (vi.mocked((await import('electron')).ipcMain.handle).mock.calls.find(
+            ([channel]) => channel === 'updater:check',
+        )?.[1]) as (_event: unknown, options?: unknown) => Promise<unknown>;
+
+        await checkHandler({}, { useMirror: false, channel: 'preview' });
+
+        expect(autoUpdater.allowPrerelease).toBe(true);
+        expect(autoUpdater.channel).toBe('preview');
+        expect(autoUpdater.setFeedURL).toHaveBeenCalledWith({
+            provider: 'generic',
+            url: 'https://github.com/legeling/PromptHub/releases/download/preview',
+        });
     });
 });
