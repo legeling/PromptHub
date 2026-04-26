@@ -173,6 +173,16 @@ export const SKILL_PLATFORMS: SkillPlatform[] = [
     },
   },
   {
+    id: "hermes",
+    name: "Hermes Agent",
+    icon: "Bot",
+    skillsDir: {
+      darwin: "~/.hermes/skills",
+      win32: "%USERPROFILE%\\.hermes\\skills",
+      linux: "~/.hermes/skills",
+    },
+  },
+  {
     id: "codebuddy",
     name: "CodeBuddy",
     icon: "Code",

@@ -509,16 +509,39 @@ export class SkillInstaller {
         continue;
       }
 
-      try {
-        console.log(`Scanning path for skills: ${scanPath}`);
-        const entries = await fs.readdir(scanPath, { withFileTypes: true });
-        for (const entry of entries) {
-          if (entry.isDirectory()) {
-            const skillFolderPath = path.join(scanPath, entry.name);
-            const skillMdPath = path.join(skillFolderPath, "SKILL.md");
+        try {
+          console.log(`Scanning path for skills: ${scanPath}`);
+          const entries = await fs.readdir(scanPath, { withFileTypes: true });
+          const dirsToCheck: string[] = [];
+          for (const entry of entries) {
+            if (entry.isDirectory()) {
+              dirsToCheck.push(path.join(scanPath, entry.name));
+            }
+          }
 
-            if (await fileExists(skillMdPath)) {
-              let skillDisplayName = entry.name;
+          for (const baseDir of dirsToCheck) {
+            const skillDirs: string[] = [];
+            const directMd = path.join(baseDir, "SKILL.md");
+            if (await fileExists(directMd)) {
+              skillDirs.push(baseDir);
+            } else {
+              // Check subdirectories for category-nested structures (e.g., Hermes)
+              try {
+                const subEntries = await fs.readdir(baseDir, { withFileTypes: true });
+                for (const sub of subEntries) {
+                  if (sub.isDirectory()) {
+                    const nestedDir = path.join(baseDir, sub.name);
+                    if (await fileExists(path.join(nestedDir, "SKILL.md"))) {
+                      skillDirs.push(nestedDir);
+                    }
+                  }
+                }
+              } catch { /* ignore directory read errors */ }
+            }
+
+            for (const skillFolderPath of skillDirs) {
+              const skillMdPath = path.join(skillFolderPath, "SKILL.md");
+              let skillDisplayName = path.basename(skillFolderPath);
               try {
                 const instructions = await fs.readFile(skillMdPath, "utf-8");
                 const manifest = await this.readManifest(skillFolderPath);
@@ -529,11 +552,11 @@ export class SkillInstaller {
                 const sanitized = sanitizeImportedSkillDraft(
                   {
                     name: parsedSkill?.frontmatter.name,
-                    fallbackName: manifest.name || entry.name,
+                    fallbackName: manifest.name || path.basename(skillFolderPath),
                     description: parsedSkill?.frontmatter.description,
                     fallbackDescription:
                       manifest.description ||
-                      `Local skill found in ${entry.name}`,
+                      `Local skill found in ${path.basename(skillFolderPath)}`,
                     version: parsedSkill?.frontmatter.version,
                     fallbackVersion: manifest.version,
                     author: parsedSkill?.frontmatter.author,
@@ -548,7 +571,7 @@ export class SkillInstaller {
                 );
 
                 const name = sanitized.name;
-                skillDisplayName = name || entry.name;
+                skillDisplayName = name || path.basename(skillFolderPath);
 
                 if (!name || name.trim().length === 0) {
                   console.warn(
@@ -572,7 +595,7 @@ export class SkillInstaller {
                 });
                 count++;
                 console.log(
-                  `Discovered local skill via SKILL.md: ${name} in ${entry.name}`,
+                  `Discovered local skill via SKILL.md: ${name} in ${path.basename(skillFolderPath)}`,
                 );
               } catch (error: unknown) {
                 const msg = getErrorMessage(error);
@@ -592,8 +615,7 @@ export class SkillInstaller {
               }
             }
           }
-        }
-      } catch (e) {
+        } catch (e) {
         console.error(`Failed to scan path: ${scanPath}`, e);
       }
     }
@@ -647,13 +669,36 @@ export class SkillInstaller {
 
         try {
           const entries = await fs.readdir(scanPath, { withFileTypes: true });
+          const dirsToCheck: string[] = [];
           for (const entry of entries) {
             if (entry.isDirectory()) {
-              const skillFolderPath = path.join(scanPath, entry.name);
-              const skillMdPath = path.join(skillFolderPath, "SKILL.md");
+              dirsToCheck.push(path.join(scanPath, entry.name));
+            }
+          }
 
-              if (await fileExists(skillMdPath)) {
-                try {
+          for (const baseDir of dirsToCheck) {
+            const skillDirs: string[] = [];
+            const directMd = path.join(baseDir, "SKILL.md");
+            if (await fileExists(directMd)) {
+              skillDirs.push(baseDir);
+            } else {
+              // Check subdirectories for category-nested structures (e.g., Hermes)
+              try {
+                const subEntries = await fs.readdir(baseDir, { withFileTypes: true });
+                for (const sub of subEntries) {
+                  if (sub.isDirectory()) {
+                    const nestedDir = path.join(baseDir, sub.name);
+                    if (await fileExists(path.join(nestedDir, "SKILL.md"))) {
+                      skillDirs.push(nestedDir);
+                    }
+                  }
+                }
+              } catch { /* ignore directory read errors */ }
+            }
+
+            for (const skillFolderPath of skillDirs) {
+              const skillMdPath = path.join(skillFolderPath, "SKILL.md");
+              try {
                   const instructions = await fs.readFile(skillMdPath, "utf-8");
                   const manifest = await this.readManifest(skillFolderPath);
                   const parsedSkill = parseSkillMd(instructions);
@@ -661,7 +706,7 @@ export class SkillInstaller {
                   const name =
                     parsedSkill?.frontmatter.name ||
                     manifest.name ||
-                    entry.name;
+                    path.basename(skillFolderPath);
 
                   if (!name || name.trim().length === 0) {
                     console.warn(
@@ -682,11 +727,11 @@ export class SkillInstaller {
                     const sanitized = sanitizeImportedSkillDraft(
                       {
                         name: parsedSkill?.frontmatter.name,
-                        fallbackName: manifest.name || entry.name,
+                        fallbackName: manifest.name || path.basename(skillFolderPath),
                         description: parsedSkill?.frontmatter.description,
                         fallbackDescription:
                           manifest.description ||
-                          `Local skill found in ${entry.name}`,
+                          `Local skill found in ${path.basename(skillFolderPath)}`,
                         version: parsedSkill?.frontmatter.version,
                         fallbackVersion: manifest.version,
                         author: parsedSkill?.frontmatter.author,
@@ -703,7 +748,7 @@ export class SkillInstaller {
                       name: sanitized.name!,
                       description:
                         sanitized.description ||
-                        `Local skill found in ${entry.name}`,
+                        `Local skill found in ${path.basename(skillFolderPath)}`,
                       version: sanitized.version,
                       author: sanitized.author || "Local",
                       tags: sanitized.tags,
@@ -723,8 +768,7 @@ export class SkillInstaller {
                 }
               }
             }
-          }
-        } catch (e) {
+          } catch (e) {
           console.error(`Failed to scan path: ${scanPath}`, e);
         }
       }),
