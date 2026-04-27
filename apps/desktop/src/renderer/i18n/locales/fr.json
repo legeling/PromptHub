@@ -832,7 +832,15 @@
     "previewChannel": "Canal preview",
     "joinPreviewChannel": "Rejoindre les versions preview",
     "joinPreviewChannelDesc": "Une fois activé, la recherche de mises à jour inclut les builds preview / prerelease de GitHub Releases.",
-    "previewChannelWarning": "Les builds preview peuvent être instables. Sauvegardez vos données avant la mise à jour et utilisez-les surtout pour tester les correctifs."
+    "previewChannelWarning": "Les builds preview peuvent être instables. Sauvegardez vos données avant la mise à jour et utilisez-les surtout pour tester les correctifs.",
+    "previewChannelConfirmTitle": "Activer les mises à jour preview ?",
+    "previewChannelConfirmSubtitle": "Les builds preview sont optionnelles et servent à tester les correctifs à venir avant la version stable.",
+    "previewChannelConfirmRisk": "Les builds preview peuvent inclure des régressions, des comportements inachevés ou des cas de migration pas encore totalement validés.",
+    "previewChannelConfirmBackup": "Avant l’activation, créez une sauvegarde manuelle ou un export afin de pouvoir revenir en arrière en toute sécurité en cas de problème.",
+    "previewChannelConfirmConsent": "PromptHub reste sur le canal stable tant que vous n’avez pas explicitement confirmé ce changement.",
+    "previewChannelConfirmCancel": "Rester sur le canal stable",
+    "previewChannelConfirmEnable": "Activer les mises à jour preview",
+    "previewChannelActiveDesc": "Version : {{version}} · Canal preview activé"
   },
   "import": {
     "clipboardTitle": "Importer un Prompt depuis le presse-papiers",
@@ -1081,7 +1089,9 @@
     "loadingCommunityStore": "Chargement de la liste des compétences de la communauté skills.sh...",
     "loadingCustomStore": "Chargement du contenu de la boutique personnalisée...",
     "remoteStoreRetry": "Réessayer",
-    "remoteStoreRateLimitHint": "Limite de taux de l'API GitHub atteinte. Réessayez dans quelques minutes ou ajoutez un token GitHub dans les paramètres.",
+    "remoteStoreRateLimitHint": "Limite de taux de l'API GitHub atteinte. Réessayez dans quelques minutes ou changez de réseau avant de réessayer.",
+    "remoteStoreNetworkHint": "Impossible de joindre GitHub. Vérifiez votre connexion réseau ou changez de réseau puis réessayez.",
+    "remoteStoreInvalidRepoHint": "Dépôt introuvable ou URL invalide. Vérifiez l’adresse du dépôt GitHub puis réessayez.",
     "invalidGitRepo": "Veuillez saisir une URL de dépôt GitHub ou utiliser un chemin de répertoire local",
     "skillsCount": "compétences",
     "adding": "Ajout en cours...",

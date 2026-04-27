@@ -66,6 +66,7 @@
 - [快速开始](#quick-start)
 - [技术栈](#tech-stack)
 - [项目结构](#project-structure)
+- [变更文档工作流](#docs-workflow)
 - [Star History](#star-history)
 - [路线图](#roadmap)
 - [更新日志](#changelog)
@@ -210,6 +211,8 @@
 
 它不是 SaaS 云服务，而是一个适合个人或小规模自托管的浏览器版工作区。核心能力包括 Prompt、文件夹、Skill、导入导出、媒体文件、设置，以及作为桌面版的数据同步目标。
 
+更完整的部署、升级、备份、Docker 与开发说明见 [docs/web-self-hosted.md](./docs/web-self-hosted.md)。
+
 ### 适合什么场景
 
 - 想在浏览器里访问自己的 PromptHub 数据
@@ -238,8 +241,8 @@ docker compose up -d --build
   至少 32 位随机字符串，用于登录鉴权
 - `ALLOW_REGISTRATION=false`
   建议保持关闭，避免初始化后继续开放注册
-- `DATA_DIR`
-  默认是容器内 `/app/data`，实际通过 volume 挂载到宿主机
+- `DATA_ROOT`
+  PromptHub Web 的数据根目录；应用会在其下写入 `data/`、`config/`、`logs/`、`backups/`
 
 默认访问地址：
 
@@ -276,22 +279,25 @@ docker run -d \
 
 ### 数据存放与备份
 
-请备份整个数据目录，而不只是 SQLite 文件。默认 Compose 示例里需要备份的是：
+请备份整个数据根目录，而不只是 SQLite 文件。默认 Compose 示例里建议至少备份：
 
 ```bash
 apps/web/data
+apps/web/config
+apps/web/logs
 ```
 
-这里面会包含：
+其中会包含：
 
-- `prompthub.db`
-- `workspace/prompts/...`
-- `workspace/folders.json`
-- `workspace/skills/...`
-- `workspace/settings/...`
-- `workspace/assets/...`
+- `data/prompthub.db`
+- `data/prompts/...`
+- `data/skills/...`
+- `data/assets/...`
+- `config/settings/...`
+- `backups/...`
+- `logs/...`
 
-如果你只是想快速部署，上面的内容已经够用了；更细的工程说明、Compose 变体和开发命令仍然可以去看 `apps/web` 目录下的相关文件。
+如果你只是想快速部署，上面的内容已经够用了；更细的工程说明、Compose 变体和开发命令请看 [docs/web-self-hosted.md](./docs/web-self-hosted.md)。
 
 ### 下载
 
@@ -542,7 +548,51 @@ PromptHub/
 └── package.json
 ```
 
-代码结构与超长文件治理规范见 [docs/architecture/code-structure-guidelines.md](./docs/architecture/code-structure-guidelines.md)，回归检查清单见 [docs/architecture/refactor-regression-checklist.md](./docs/architecture/refactor-regression-checklist.md)。
+代码结构与超长文件治理规范见 [spec/architecture/code-structure-guidelines.md](./spec/architecture/code-structure-guidelines.md)，回归检查清单见 [spec/architecture/refactor-regression-checklist.md](./spec/architecture/refactor-regression-checklist.md)。
+
+<div id="docs-workflow"></div>
+
+## 变更文档工作流
+
+PromptHub 现在采用 `docs/` 与 `spec/` 双层文档职责：`docs/` 负责仓库/用户/贡献者可读说明，`spec/` 负责内部 SSD、稳定 specs、架构、问题追踪、归档。
+
+这套内部结构参考 OpenSpec：稳定事实进 `spec/specs/`，活跃增量进 `spec/changes/active/<change-key>/specs/<domain>/spec.md`，完成后归档到 `spec/changes/archive/`，并按迭代式工作流持续把实施结果同步回稳定层。
+
+相比上一版，这次补齐了此前缺失的稳定规格层、delta spec 层、archive 层、legacy 层与模板层，并从 git `HEAD` 恢复了被误删的内部文档原文，避免内容只剩历史记录可查。
+
+核心 SSD 闭环是：`需求 -> 规格 -> 设计 -> 任务 -> 实施 -> 同步 -> 归档`。
+
+### 文档分层
+
+- `docs/README.md`：外部说明区索引
+- `docs/`：部署、贡献、用户说明、多语言 README、图片资源
+- `spec/README.md`：内部 SSD 索引
+- `spec/specs/`：稳定的 source-of-truth specs
+- `spec/architecture/`：长期有效的内部架构与工程事实文档
+- `spec/changes/active/<change-key>/`：正在进行的内部变更
+- `spec/changes/archive/<date>-<change-key>/`：已完成或已废弃的变更归档
+- `spec/changes/legacy/`：历史平铺内部变更文档保留区
+- `spec/issues/active/`：尚未收敛为具体实现变更的问题与质量风险
+- `spec/changes/_templates/`：提案、delta spec、设计、任务、实施模板
+
+### 每个重要变更都应包含
+
+1. `proposal.md`：为什么做、范围、风险、回滚思路
+2. `specs/<domain>/spec.md`：行为变化本身，包含新增/修改/移除的要求与场景
+3. `design.md`：技术方案、受影响模块、数据/IPC/迁移影响
+4. `tasks.md`：实施清单与验证项
+5. `implementation.md`：实际做了什么、验证了什么、同步了哪些稳定文档
+
+### 使用原则
+
+- 小修小补可以直接改代码
+- 复杂功能、跨模块改动、重构、迁移和关键 bug 修复应先建立 `spec/changes/active/` 变更文件夹
+- 实施完成后，必须把最终落地情况写进 `implementation.md`
+- 变更完成后，把稳定行为同步回 `spec/specs/`，把长期有效的工程结论同步回 `spec/architecture/`
+- 对外可见契约变化再同步回 `docs/` 或根 `README.md`
+- 发布或放弃后，把变更目录移到 `spec/changes/archive/`
+
+完整规则见 [docs/README.md](./docs/README.md) 和 [spec/README.md](./spec/README.md)。
 
 <div id="star-history"></div>
 
@@ -651,13 +701,7 @@ PromptHub/
 
 ## 贡献
 
-欢迎贡献代码！请遵循以下步骤：
-
-1. Fork 本仓库
-2. 创建特性分支 (`git checkout -b feature/amazing-feature`)
-3. 提交更改 (`git commit -m 'Add amazing feature'`)
-4. 推送到分支 (`git push origin feature/amazing-feature`)
-5. 创建 Pull Request
+欢迎贡献代码。完整贡献规范、开发环境、测试门禁与 DOS/SSD 文档流程见 [docs/contributing.md](./docs/contributing.md)。
 
 <div id="license"></div>
 

@@ -47,8 +47,6 @@ Then desktop can:
 - automatically pull once on startup
 - periodically push updates in the background
 
-This is intended as a simpler alternative to WebDAV for single-user setups where you want one browser-accessible backup workspace.
-
 ## First-Run Bootstrap
 
 When a new deployment starts with an empty database:
@@ -56,8 +54,6 @@ When a new deployment starts with an empty database:
 1. The first visit goes to `/setup`, not the login page.
 2. The user creates the initial administrator account there.
 3. Public registration stays disabled after that first account is created.
-
-This behavior is intentional. `apps/web` is for self-hosted personal use, not for running a public multi-user signup flow.
 
 ## Configuration
 
@@ -107,7 +103,7 @@ Useful root-level commands:
 
 ## Docker
 
-`apps/web` already includes a production [Dockerfile](./Dockerfile) and a ready-to-use [docker-compose.yml](./docker-compose.yml).
+`apps/web` already includes a production `Dockerfile` and ready-to-use compose files.
 
 When a release tag is built in CI, PromptHub also publishes a container image to GHCR:
 
@@ -138,17 +134,9 @@ Default access URL:
 
 - `http://localhost:3871`
 
-The compose file mounts:
-
-- `./data -> /app/data` (prompt, skill, asset files)
-- `./config -> /app/config` (per-user settings, device registry)
-- `./logs -> /app/logs` (diagnostic logs)
-
-That means your SQLite database, workspace files, and uploaded media stay on disk outside the container.
+The compose file mounts PromptHub-managed data roots so your database, workspace files, and uploaded media stay outside the container.
 
 ### Deploy from the Published GHCR Image
-
-If you don't want to build locally, you can pull the published image directly:
 
 ```bash
 docker pull ghcr.io/legeling/prompthub-web:latest
@@ -161,30 +149,11 @@ docker run -d \
   ghcr.io/legeling/prompthub-web:latest
 ```
 
-You can also deploy directly from the published image with the included compose override:
-
-```bash
-cd apps/web
-cp .env.example .env
-docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d
-```
-
-### Quick Start with Plain Docker
-
-```bash
-docker build -f apps/web/Dockerfile -t prompthub-web .
-docker run -d \
-  --name prompthub-web \
-  -p 3871:3000 \
-  -e JWT_SECRET='replace-with-a-random-secret-at-least-32-chars' \
-  -e ALLOW_REGISTRATION=false \
-  -v "$(pwd)/apps/web/data:/app/data" \
-  prompthub-web
-```
+You can also deploy directly from the published image with the compose override in `apps/web`.
 
 ## Upgrade
 
-If you deploy with Docker Compose, upgrades are straightforward:
+If you deploy with Docker Compose:
 
 ```bash
 cd apps/web
@@ -192,44 +161,25 @@ docker compose down
 docker compose up -d --build
 ```
 
-Your data remains intact as long as you keep the same mounted `./data` directory.
-
-What is stored there:
-
-- `data/prompthub.db`
-- `data/prompts/<folder>/...`  (prompt `.md` files + per-folder `_folder.json`)
-- `data/prompts/.versions/<promptId>/...`  (version snapshots)
-- `data/skills/<skill-slug>__<skillId>/`
-- `data/assets/<userId>/images/...`
-- `data/assets/<userId>/videos/...`
-- `config/settings/<userId>.json`
-- `backups/`  (pre-upgrade snapshots)
-
-The database layer also creates a timestamped pre-migration backup before schema changes when possible.
+Your data remains intact as long as you keep the same mounted directories.
 
 ## Backup
 
-The safest backup strategy is to back up the entire `DATA_DIR`, not only the SQLite file.
+The safest backup strategy is to back up the entire `DATA_ROOT`, not only the SQLite file.
 
-For the compose example above, back up:
+Typical persisted paths include:
 
-```bash
-apps/web/data
-```
-
-That preserves:
-
-- the SQLite index (`data/prompthub.db`)
-- prompt and folder files (`data/prompts/`)
-- skill files and versions (`data/skills/`)
-- per-user settings (`config/settings/`)
-- uploaded media (`data/assets/`)
-- upgrade backups (`backups/`)
+- `data/prompthub.db`
+- `data/prompts/...`
+- `data/skills/...`
+- `data/assets/...`
+- `config/settings/...`
+- `backups/...`
+- `logs/...`
 
 ## Deployment Notes
 
-- Back up `DATA_ROOT` (or the mounted `./data` + `./config` directories) regularly.
+- Back up `DATA_ROOT` regularly.
 - Treat this app as a user-managed deployment artifact, not as a shared hosted service.
 - If you expose it to the public internet, use HTTPS and a reverse proxy in front of it.
-- CI validates the web app with lint, typecheck, tests, production build, Docker image build, and `docker compose config`.
-- Release tags publish a ready-to-run image to GHCR and keep a Docker image archive as a workflow artifact.
+- CI validates the web app with lint, typecheck, tests, production build, Docker image build, and compose validation.

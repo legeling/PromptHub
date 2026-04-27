@@ -477,7 +477,15 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
         registrySkills: BUILTIN_SKILL_REGISTRY,
         rateLimitMessage: t(
           "skill.remoteStoreRateLimitHint",
-          "GitHub API rate limit reached. Try again in a few minutes, or add a GitHub token in settings.",
+          "GitHub API rate limit reached. Try again in a few minutes, or switch to another network and retry.",
+        ),
+        networkMessage: t(
+          "skill.remoteStoreNetworkHint",
+          "Failed to reach GitHub. Check your network connection or switch to another network and retry.",
+        ),
+        invalidRepoMessage: t(
+          "skill.remoteStoreInvalidRepoHint",
+          "Repository not found or URL is invalid. Check the GitHub repository address and try again.",
         ),
       });
 

@@ -102,6 +102,58 @@ function isGitHubRateLimitError(error: unknown): boolean {
   return message.toLowerCase().includes("github api rate limit reached");
 }
 
+function isGitHubNotFoundError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("http 404") ||
+    normalized.includes("not found") ||
+    normalized.includes("repository not found")
+  );
+}
+
+function isRemoteNetworkError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("timed out") ||
+    normalized.includes("timeout") ||
+    normalized.includes("network") ||
+    normalized.includes("econn") ||
+    normalized.includes("enotfound") ||
+    normalized.includes("socket hang up") ||
+    normalized.includes("failed to fetch") ||
+    normalized.includes("fetch failed") ||
+    normalized.includes("unable to verify") ||
+    normalized.includes("certificate") ||
+    normalized.includes("internal network addresses") ||
+    normalized.includes("local network addresses")
+  );
+}
+
+export function mapGitHubStoreError(
+  error: unknown,
+  messages: {
+    rateLimit: string;
+    network: string;
+    invalidRepo: string;
+  },
+): Error {
+  if (isGitHubRateLimitError(error)) {
+    return new Error(messages.rateLimit);
+  }
+
+  if (isGitHubNotFoundError(error)) {
+    return new Error(messages.invalidRepo);
+  }
+
+  if (isRemoteNetworkError(error)) {
+    return new Error(messages.network);
+  }
+
+  return error instanceof Error ? error : new Error(String(error));
+}
+
 function isDefined<T>(value: T | null | undefined): value is T {
   return value !== null && value !== undefined;
 }
@@ -164,6 +216,8 @@ export async function loadGitHubSkillRepo(
     fetchRemoteContent: (url: string) => Promise<string>;
     registrySkills: RegistrySkill[];
     rateLimitMessage: string;
+    networkMessage: string;
+    invalidRepoMessage: string;
   },
 ): Promise<RegistrySkill[]> {
   const parsedRepo = parseGithubRepo(repoUrl);
@@ -177,10 +231,11 @@ export async function loadGitHubSkillRepo(
       `https://api.github.com/repos/${parsedRepo.owner}/${parsedRepo.repo}`,
     );
   } catch (error) {
-    if (isGitHubRateLimitError(error)) {
-      throw new Error(options.rateLimitMessage);
-    }
-    throw error;
+    throw mapGitHubStoreError(error, {
+      rateLimit: options.rateLimitMessage,
+      network: options.networkMessage,
+      invalidRepo: options.invalidRepoMessage,
+    });
   }
   const repoMeta = parseJson<GitHubRepoMetadata>(repoMetaRaw || "{}", {});
   const defaultBranch = repoMeta.default_branch || "main";
@@ -191,10 +246,11 @@ export async function loadGitHubSkillRepo(
       `https://api.github.com/repos/${parsedRepo.owner}/${parsedRepo.repo}/git/trees/${defaultBranch}?recursive=1`,
     );
   } catch (error) {
-    if (isGitHubRateLimitError(error)) {
-      throw new Error(options.rateLimitMessage);
-    }
-    throw error;
+    throw mapGitHubStoreError(error, {
+      rateLimit: options.rateLimitMessage,
+      network: options.networkMessage,
+      invalidRepo: options.invalidRepoMessage,
+    });
   }
   const treeData = parseJson<GitHubTreeResponse>(treeRaw || "{}", {});
   const treeEntries = Array.isArray(treeData.tree)
@@ -285,7 +341,16 @@ export async function loadGitHubSkillRepo(
     defaultBranch,
     readmeEntry.path,
   );
-  const content = await options.fetchRemoteContent(rawUrl);
+  let content: string;
+  try {
+    content = await options.fetchRemoteContent(rawUrl);
+  } catch (error) {
+    throw mapGitHubStoreError(error, {
+      rateLimit: options.rateLimitMessage,
+      network: options.networkMessage,
+      invalidRepo: options.invalidRepoMessage,
+    });
+  }
   const parsed = parseFrontmatter(content);
   const slug = slugify(parsed.name || parsedRepo.repo);
   const builtin = builtinBySlug.get(slug);

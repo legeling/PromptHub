@@ -33,6 +33,31 @@ export function usePromptMediaManager({
   const [imageUrl, setImageUrl] = useState("");
   const [isDownloadingImage, setIsDownloadingImage] = useState(false);
 
+  const showImageUrlError = useCallback(
+    (message?: string) => {
+      const normalized = message?.toLowerCase() ?? "";
+      if (normalized.includes("internal network addresses")) {
+        showToast(
+          translate(
+            "prompt.internalImageUrlBlocked",
+            "自部署网页默认不支持通过链接抓取局域网或内网图片，请先手动上传，或改用公网可访问地址。",
+          ),
+          "error",
+        );
+        return;
+      }
+
+      showToast(
+        translate(
+          "prompt.uploadFailed",
+          "图片下载失败，请检查链接是否有效",
+        ),
+        "error",
+      );
+    },
+    [showToast, translate],
+  );
+
   // Track previous initial values to avoid infinite re-render loops
   // caused by callers passing new array references with same content
   // 跟踪上一次的初始值，避免调用方传入相同内容但不同引用的数组导致无限重渲染
@@ -121,13 +146,7 @@ export function usePromptMediaManager({
             "success",
           );
         } else {
-          showToast(
-            translate(
-              "prompt.uploadFailed",
-              "图片下载失败，请检查链接是否有效",
-            ),
-            "error",
-          );
+          showImageUrlError();
         }
       } catch (error) {
         console.error("Failed to upload image from URL:", error);
@@ -140,19 +159,13 @@ export function usePromptMediaManager({
             "error",
           );
         } else {
-          showToast(
-            translate(
-              "prompt.uploadFailed",
-              "图片下载失败，请检查链接是否有效",
-            ),
-            "error",
-          );
+          showImageUrlError(error instanceof Error ? error.message : String(error));
         }
       } finally {
         setIsDownloadingImage(false);
       }
     },
-    [showToast, translate],
+    [showImageUrlError, showToast, translate],
   );
 
   useEffect(() => {

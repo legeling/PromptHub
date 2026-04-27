@@ -241,4 +241,41 @@ describe("CreateSkillModal GitHub import", () => {
     expect(footer.className).toContain("shrink-0");
     expect(view.getAllByText("Import Selected").length).toBeGreaterThan(0);
   });
+
+  it("shows invalid repository guidance when the GitHub repo does not exist", async () => {
+    const fetchRemoteContent = vi
+      .fn()
+      .mockRejectedValue(new Error("HTTP 404 fetching remote content"));
+
+    installWindowMocks({
+      api: {
+        skill: {
+          fetchRemoteContent,
+        },
+      },
+    });
+
+    const view = await renderWithI18n(
+      <CreateSkillModal isOpen={true} onClose={vi.fn()} />,
+      { language: "zh" },
+    );
+
+    await act(async () => {
+      fireEvent.click(view.getByText("从 GitHub 安装"));
+    });
+
+    fireEvent.change(view.getByPlaceholderText("https://github.com/owner/skill-repo"), {
+      target: { value: "https://github.com/demo/missing-repo" },
+    });
+
+    await act(async () => {
+      fireEvent.click(view.getByText("扫描仓库"));
+    });
+
+    await waitFor(() => {
+      expect(
+        view.getByText("仓库不存在，或仓库地址无效，请检查 GitHub 仓库地址后重试。"),
+      ).toBeTruthy();
+    });
+  });
 });

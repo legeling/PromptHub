@@ -841,7 +841,15 @@
     "previewChannel": "Preview channel",
     "joinPreviewChannel": "Join Preview Channel",
     "joinPreviewChannelDesc": "Only after joining, update checks will include prerelease preview builds from GitHub Releases.",
-    "previewChannelWarning": "Preview builds may be unstable. Please back up your data before updating and use them mainly for testing new fixes."
+    "previewChannelWarning": "Preview builds may be unstable. Please back up your data before updating and use them mainly for testing new fixes.",
+    "previewChannelConfirmTitle": "Enable preview updates?",
+    "previewChannelConfirmSubtitle": "Preview builds are opt-in and intended for testing upcoming fixes before the stable release.",
+    "previewChannelConfirmRisk": "Preview builds can include regressions, unfinished behavior, or migration edge cases that are not yet fully validated.",
+    "previewChannelConfirmBackup": "Before enabling this channel, create a manual backup or export so you can safely roll back if a preview build behaves unexpectedly.",
+    "previewChannelConfirmConsent": "PromptHub will stay on the stable channel unless you explicitly confirm this change.",
+    "previewChannelConfirmCancel": "Keep Stable Channel",
+    "previewChannelConfirmEnable": "Enable Preview Updates",
+    "previewChannelActiveDesc": "Version: {{version}} · Preview channel enabled"
   },
   "import": {
     "clipboardTitle": "Import Prompt from Clipboard",
@@ -1088,7 +1096,9 @@
     "loadingCustomStore": "Loading custom store content...",
     "remoteStoreLoadFailed": "Failed to load remote store",
     "remoteStoreRetry": "Retry",
-    "remoteStoreRateLimitHint": "GitHub API rate limit reached. Try again in a few minutes, or add a GitHub token in settings.",
+    "remoteStoreRateLimitHint": "GitHub API rate limit reached. Try again in a few minutes, or switch to another network and retry.",
+    "remoteStoreNetworkHint": "Failed to reach GitHub. Check your network connection or switch to another network and retry.",
+    "remoteStoreInvalidRepoHint": "Repository not found or URL is invalid. Check the GitHub repository address and try again.",
     "invalidGitRepo": "Please enter a GitHub repository URL, or use a local directory path instead",
     "skillsCount": "skills",
     "storeSourceAdded": "Store added",

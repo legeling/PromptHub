@@ -365,7 +365,15 @@ export function SkillStore() {
           registrySkills,
           rateLimitMessage: t(
             "skill.remoteStoreRateLimitHint",
-            "GitHub API rate limit reached. Try again in a few minutes, or add a GitHub token in settings.",
+            "GitHub API rate limit reached. Try again in a few minutes, or switch to another network and retry.",
+          ),
+          networkMessage: t(
+            "skill.remoteStoreNetworkHint",
+            "Failed to reach GitHub. Check your network connection or switch to another network and retry.",
+          ),
+          invalidRepoMessage: t(
+            "skill.remoteStoreInvalidRepoHint",
+            "Repository not found or URL is invalid. Check the GitHub repository address and try again.",
           ),
         });
       } catch (error) {
@@ -1108,24 +1116,27 @@ export function SkillStore() {
         )}
 
         {currentRemoteError && !shouldShowInitialLoading && (
-          <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive space-y-2">
-            <div>
-              <span className="font-medium">
-                {t(
-                  "skill.remoteStoreLoadFailed",
-                  "Failed to load remote store",
-                )}
-                :{" "}
-              </span>
-              {currentRemoteError}
+          <div className="rounded-2xl border border-destructive/25 bg-destructive/[0.04] px-4 py-3.5">
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div className="min-w-0 space-y-1.5">
+                <p className="text-sm font-medium text-destructive">
+                  {t(
+                    "skill.remoteStoreLoadFailed",
+                    "Failed to load remote store",
+                  )}
+                </p>
+                <p className="text-sm leading-6 text-destructive/90 break-words">
+                  {currentRemoteError}
+                </p>
+              </div>
+              <button
+                onClick={() => void loadStoreSource(selectedStoreSourceId, true)}
+                disabled={loadingSourceId === selectedStoreSourceId}
+                className="shrink-0 self-start rounded-lg bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/20 disabled:opacity-40"
+              >
+                {t("skill.remoteStoreRetry", "Retry")}
+              </button>
             </div>
-            <button
-              onClick={() => void loadStoreSource(selectedStoreSourceId, true)}
-              disabled={loadingSourceId === selectedStoreSourceId}
-              className="text-xs px-3 py-1.5 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive font-medium transition-colors disabled:opacity-40"
-            >
-              {t("skill.remoteStoreRetry", "Retry")}
-            </button>
           </div>
         )}
 

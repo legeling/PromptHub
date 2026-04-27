@@ -104,13 +104,26 @@ function bufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
+function createBrowserFileId(prefix: string): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `${prefix}-${crypto.randomUUID()}`;
+  }
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 function selectFiles(accept: string): Promise<File[]> {
   return new Promise((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = accept;
     input.multiple = true;
-    input.style.display = 'none';
+    input.style.position = 'fixed';
+    input.style.opacity = '0';
+    input.style.pointerEvents = 'none';
+    input.style.width = '1px';
+    input.style.height = '1px';
+    input.style.left = '-9999px';
+    input.style.top = '0';
 
     input.addEventListener('change', () => {
       const files = input.files ? Array.from(input.files) : [];
@@ -439,7 +452,7 @@ export function installDesktopBridge(): void {
     selectImage: async () => uploadSelectedMedia('images', 'image/*'),
     saveImage: async (paths: string[]) => paths,
     saveImageBuffer: async (buffer: ArrayBuffer) => {
-      const fileName = `${crypto.randomUUID()}.png`;
+      const fileName = `${createBrowserFileId('image')}.png`;
       await apiOk('/api/media/images/base64', 'POST', {
         fileName,
         base64Data: bufferToBase64(buffer),

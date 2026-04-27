@@ -106,7 +106,7 @@ Before merging a structural change, verify:
 - duplicated logic was removed, not copied
 - the new seam is reusable by the next feature
 
-Pair this with the regression checklist in `docs/architecture/refactor-regression-checklist.md` so extraction work stays behavior-safe.
+Pair this with the regression checklist in `spec/architecture/refactor-regression-checklist.md` so extraction work stays behavior-safe.
 
 ## Next Refactor Queue
 

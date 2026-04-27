@@ -832,7 +832,15 @@
     "previewChannel": "預覽版通道",
     "joinPreviewChannel": "加入預覽版本",
     "joinPreviewChannelDesc": "只有加入後，檢查更新才會包含 GitHub Releases 裡的預覽版 / prerelease。",
-    "previewChannelWarning": "預覽版可能不穩定，建議先備份資料，主要用於協助測試新修復。"
+    "previewChannelWarning": "預覽版可能不穩定，建議先備份資料，主要用於協助測試新修復。",
+    "previewChannelConfirmTitle": "要啟用預覽版更新嗎？",
+    "previewChannelConfirmSubtitle": "預覽版更新屬於自願加入，主要用於在穩定版發布前提前測試即將推出的修復。",
+    "previewChannelConfirmRisk": "預覽版可能包含回歸問題、尚未完全打磨的行為，或尚未充分驗證的資料遷移邊界情況。",
+    "previewChannelConfirmBackup": "啟用前，建議先手動備份或匯出目前資料，這樣即使預覽版出現異常，也能安全回退。",
+    "previewChannelConfirmConsent": "只有在你明確確認後，PromptHub 才會從穩定版通道切換到預覽版通道。",
+    "previewChannelConfirmCancel": "繼續使用穩定版",
+    "previewChannelConfirmEnable": "啟用預覽版更新",
+    "previewChannelActiveDesc": "版本：{{version}} · 目前已啟用預覽版通道"
   },
   "import": {
     "clipboardTitle": "從剪貼簿匯入 Prompt",
@@ -1081,7 +1089,9 @@
     "loadingCommunityStore": "正在載入 skills.sh 社群技能清單...",
     "loadingCustomStore": "正在載入自訂商店內容...",
     "remoteStoreRetry": "重試",
-    "remoteStoreRateLimitHint": "已達 GitHub API 請求限額，請幾分鐘後再試，或在設定中新增 GitHub Token。",
+    "remoteStoreRateLimitHint": "已達 GitHub API 請求限額，請幾分鐘後再試，或切換網路後再試。",
+    "remoteStoreNetworkHint": "無法連線到 GitHub，請檢查目前網路，或切換網路後再試。",
+    "remoteStoreInvalidRepoHint": "倉庫不存在，或倉庫位址無效，請檢查 GitHub 倉庫位址後重試。",
     "invalidGitRepo": "請輸入 GitHub 倉庫 URL，或改用本機目錄路徑",
     "skillsCount": "個技能",
     "adding": "新增中...",

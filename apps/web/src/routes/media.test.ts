@@ -351,4 +351,31 @@ describe('web media routes', () => {
       fs.rmSync(failureDir, { recursive: true, force: true });
     }
   }, TEST_TIMEOUT);
+
+  it('returns a blocked-internal-network error for LAN image URLs', async () => {
+    const failureDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-media-test-'));
+
+    try {
+      const failureApp = await createTestApp(failureDir, {
+        mockRemoteBufferedResult: new Error('Access to internal network addresses is not allowed'),
+      });
+      const { payload } = await registerUser(failureApp, 'medianetworkblock', 'debugpass001');
+
+      const failedDownloadResponse = await failureApp.request(
+        new Request('http://local/api/media/images/download', {
+          method: 'POST',
+          headers: authHeaders(payload.data.accessToken),
+          body: JSON.stringify({ url: 'http://192.168.1.20/demo.png' }),
+        }),
+      );
+      expect(failedDownloadResponse.status).toBe(400);
+      const failedDownloadPayload = (await failedDownloadResponse.json()) as { error: { code: string; message: string } };
+      expect(failedDownloadPayload.error).toEqual({
+        code: 'BAD_REQUEST',
+        message: 'Access to internal network addresses is not allowed',
+      });
+    } finally {
+      fs.rmSync(failureDir, { recursive: true, force: true });
+    }
+  }, TEST_TIMEOUT);
 });

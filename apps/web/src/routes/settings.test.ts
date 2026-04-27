@@ -95,6 +95,7 @@ describe('web settings routes', () => {
           theme: string;
           language: string;
           autoSave: boolean;
+          updateChannel: string;
           customSkillPlatformPaths: Record<string, string>;
           skillPlatformOrder: string[];
           sync: { enabled: boolean; provider: string; autoSync: boolean };
@@ -110,6 +111,7 @@ describe('web settings routes', () => {
         theme: 'system',
         language: 'zh',
         autoSave: true,
+        updateChannel: 'stable',
         customSkillPlatformPaths: {},
         skillPlatformOrder: [],
         sync: {
@@ -249,6 +251,7 @@ describe('web settings routes', () => {
           theme: string;
           language: string;
           autoSave: boolean;
+          updateChannel: string;
           customSkillPlatformPaths: Record<string, string>;
           skillPlatformOrder: string[];
           sync: { enabled: boolean; provider: string; autoSync: boolean };
@@ -264,6 +267,7 @@ describe('web settings routes', () => {
         theme: 'system',
         language: 'zh',
         autoSave: true,
+        updateChannel: 'stable',
         customSkillPlatformPaths: {},
         skillPlatformOrder: [],
         sync: {

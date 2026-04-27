@@ -93,7 +93,9 @@ describe("SkillStore remote loading", () => {
     await waitFor(() => {
       expect(
         useSkillStore.getState().remoteStoreEntries["claude-code"]?.error,
-      ).toContain("Access to internal network addresses is not allowed");
+      ).toContain(
+        "Failed to reach GitHub. Check your network connection or switch to another network and retry.",
+      );
     });
 
     await waitFor(() => {
@@ -102,6 +104,119 @@ describe("SkillStore remote loading", () => {
           url === "https://api.github.com/repos/anthropics/skills",
       );
       expect(claudeCodeRepoRequests).toHaveLength(1);
+    });
+  });
+
+  it("shows retry and network guidance for GitHub rate-limit failures", async () => {
+    const fetchRemoteContent = vi.fn().mockRejectedValue(
+      new Error(
+        "GitHub API rate limit reached. Try again in a few minutes, or switch to another network and retry.",
+      ),
+    );
+
+    installWindowMocks({
+      api: {
+        skill: {
+          fetchRemoteContent,
+          scanLocalPreview: vi.fn().mockResolvedValue([]),
+          scanSafety: vi.fn().mockResolvedValue({
+            level: "safe",
+            summary: "safe",
+            findings: [],
+            recommendedAction: "allow",
+            scannedAt: Date.now(),
+            checkedFileCount: 1,
+            scanMethod: "static",
+          }),
+        },
+      },
+    });
+
+    const { getByText, queryByText } = await renderWithI18n(<SkillStore />, {
+      language: "en",
+    });
+
+    await waitFor(() => {
+      expect(
+        getByText("Failed to load remote store"),
+      ).toBeInTheDocument();
+      expect(
+        getByText(
+          "GitHub API rate limit reached. Try again in a few minutes, or switch to another network and retry.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    expect(queryByText(/GitHub token in settings/i)).not.toBeInTheDocument();
+  });
+
+  it("shows network guidance when GitHub cannot be reached", async () => {
+    const fetchRemoteContent = vi
+      .fn()
+      .mockRejectedValue(new Error("Remote content request timed out"));
+
+    installWindowMocks({
+      api: {
+        skill: {
+          fetchRemoteContent,
+          scanLocalPreview: vi.fn().mockResolvedValue([]),
+          scanSafety: vi.fn().mockResolvedValue({
+            level: "safe",
+            summary: "safe",
+            findings: [],
+            recommendedAction: "allow",
+            scannedAt: Date.now(),
+            checkedFileCount: 1,
+            scanMethod: "static",
+          }),
+        },
+      },
+    });
+
+    const { getByText } = await renderWithI18n(<SkillStore />, {
+      language: "zh",
+    });
+
+    await waitFor(() => {
+      expect(getByText("拉取远程商店失败")).toBeInTheDocument();
+      expect(
+        getByText("无法连接到 GitHub，请检查当前网络，或切换网络后再试。"),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("shows invalid repository guidance when the GitHub repo is missing", async () => {
+    const fetchRemoteContent = vi
+      .fn()
+      .mockRejectedValue(new Error("HTTP 404 fetching remote content"));
+
+    installWindowMocks({
+      api: {
+        skill: {
+          fetchRemoteContent,
+          scanLocalPreview: vi.fn().mockResolvedValue([]),
+          scanSafety: vi.fn().mockResolvedValue({
+            level: "safe",
+            summary: "safe",
+            findings: [],
+            recommendedAction: "allow",
+            scannedAt: Date.now(),
+            checkedFileCount: 1,
+            scanMethod: "static",
+          }),
+        },
+      },
+    });
+
+    const { getByText } = await renderWithI18n(<SkillStore />, {
+      language: "zh",
+    });
+
+    await waitFor(() => {
+      expect(getByText("拉取远程商店失败")).toBeInTheDocument();
+      expect(
+        getByText("仓库不存在，或仓库地址无效，请检查 GitHub 仓库地址后重试。"),
+      ).toBeInTheDocument();
     });
   });
 

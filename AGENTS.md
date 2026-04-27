@@ -6,7 +6,7 @@
 
 - **Type:** Desktop Application (Electron)
 - **License:** AGPL-3.0
-- **Version:** 0.4.9
+- **Version:** 0.5.5
 
 ### Tech Stack
 
@@ -187,10 +187,74 @@ PromptHub/
 
 ## 6. Development Workflow
 
-1. **Modify:** Edit React components in `renderer` or backend logic in `main`.
-2. **IPC:** If adding new features requiring backend access, update `ipc-channels.ts`, implement handler in `main/ipc`, and expose via `preload`.
-3. **Test:** Run `pnpm test -- --run` to verify logic. Run `pnpm lint` to verify code quality.
-4. **Commit:** Use Conventional Commits (e.g., `feat: ...`, `fix: ...`, `refactor: ...`, `test: ...`).
+### 6.1 Documentation Operating System (DOS)
+
+PromptHub uses a project-native Documentation Operating System (DOS). Internal SSD assets live under `spec/`, while repository-facing docs stay under `docs/`.
+
+The structure is intentionally aligned with OpenSpec: stable specs live in `spec/specs/`, active delta specs live under `spec/changes/active/<change-key>/specs/<domain>/spec.md`, finished changes move to `spec/changes/archive/`, and the workflow is iterative rather than phase-locked.
+
+The expected SSD loop is:
+
+`requirements -> spec -> design -> tasks -> implementation -> sync -> archive`
+
+#### Document Roles
+
+- `spec/specs/`: long-lived source-of-truth specs for current system behavior by domain.
+- `spec/architecture/`: long-lived source-of-truth docs for stable internal architecture and accepted engineering constraints.
+- `spec/README.md`: the internal SSD entry point.
+- `spec/changes/active/<change-key>/`: active change folders for feature work, larger bug fixes, refactors, and migrations.
+- `spec/changes/archive/<date>-<change-key>/`: completed or superseded changes kept for history.
+- `spec/changes/legacy/`: recovered historical internal docs that are still useful but are not the current source of truth.
+- `spec/issues/active/`: ongoing defects, quality risks, and follow-up issues that are not yet a scoped implementation change.
+- `spec/changes/_templates/`: reusable templates for proposal, delta specs, design, tasks, and implementation artifacts.
+- `docs/README.md`: the repository-facing docs index for users and contributors.
+
+#### Required Artifacts For Non-Trivial Work
+
+For any non-trivial feature, refactor, migration, cross-process change, or multi-file bug fix, create or update one active change folder under `spec/changes/active/<change-key>/`.
+
+Each active change should contain:
+
+1. `proposal.md` — why the change exists, scope, risks, rollback thinking, and impacted user flows.
+2. `specs/<domain>/spec.md` — the intended behavior delta, including added, modified, and removed requirements or scenarios.
+3. `design.md` — technical approach, affected modules, data model / IPC / sync / migration impact, and tradeoffs.
+4. `tasks.md` — a concrete implementation checklist with verification items.
+5. `implementation.md` — what actually shipped, what changed during execution, what was verified, and which stable docs were synced.
+
+Use one or more domain spec files under `specs/` when the change spans multiple stable domains. Do not create a flat top-level `spec.md` file inside the change folder for new work.
+
+#### Workflow Expectations
+
+1. Start with the change folder before writing significant code.
+2. Refine `proposal.md`, `specs/<domain>/spec.md`, and `design.md` as understanding improves; the workflow is iterative, not phase-locked.
+3. Use `tasks.md` as the implementation checklist and mark items complete as work lands.
+4. Update `implementation.md` during or immediately after implementation so the executed work does not live only in git diff or chat history.
+5. When the change ships, sync current behavior back into `spec/specs/` and stable engineering guidance back into `spec/architecture/` where appropriate.
+6. After shipping or abandoning the work, move the change folder to `spec/changes/archive/` rather than deleting it.
+
+#### When To Update Existing Change vs Start New One
+
+- Update the existing change when the user problem and intended outcome stay the same, but execution details or scope boundaries evolve.
+- Start a new change when the objective materially changes, the original work can stand on its own, or the history would become confusing if kept in one folder.
+
+#### Implementation Discipline
+
+- Do not let requirements live only in chat history when the work is significant.
+- Do not edit `spec/specs/` or `spec/architecture/` as if they were scratchpads for active work; active deltas belong in `spec/changes/active/` first.
+- Do not treat `tasks.md` as optional for substantial changes; it is the execution contract.
+- Do not treat `implementation.md` as optional for substantial changes; it is the executed record of what really landed.
+- Do not close a change folder without updating its verification status and follow-up notes.
+- Repository-facing documentation should live under `docs/` unless it must remain at the repository root for tooling or platform conventions, such as `README.md`, `CHANGELOG.md`, or `AGENTS.md`. Internal SSD, specs, and architecture records belong in `spec/`.
+
+### 6.2 Engineering Flow
+
+1. **Plan:** For non-trivial work, create or update a change folder in `spec/changes/active/` using the templates.
+2. **Modify:** Edit React components in `renderer` or backend logic in `main`.
+3. **IPC:** If adding new features requiring backend access, update `ipc-channels.ts`, implement handler in `main/ipc`, and expose via `preload`.
+4. **Test:** Run `pnpm test -- --run` to verify logic. Run `pnpm lint` to verify code quality.
+5. **Record:** Update `implementation.md` with the actual execution path, verification, and follow-up notes.
+6. **Sync Docs:** Update `spec/specs/` when shipped behavior changed, update `spec/architecture/` when the shipped internal architecture contract changed, and update user-facing docs in `docs/` or `README.md` when the contributor/user contract changed.
+7. **Commit:** Use Conventional Commits (e.g., `feat: ...`, `fix: ...`, `refactor: ...`, `test: ...`).
 
 ## 7. Testing Standards
 

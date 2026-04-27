@@ -832,7 +832,15 @@
     "previewChannel": "Canal preview",
     "joinPreviewChannel": "Unirse a versiones preview",
     "joinPreviewChannelDesc": "Solo al activarlo, la búsqueda de actualizaciones incluirá builds preview / prerelease de GitHub Releases.",
-    "previewChannelWarning": "Las builds preview pueden ser inestables. Haz una copia de seguridad antes de actualizar y úsalas principalmente para probar correcciones."
+    "previewChannelWarning": "Las builds preview pueden ser inestables. Haz una copia de seguridad antes de actualizar y úsalas principalmente para probar correcciones.",
+    "previewChannelConfirmTitle": "¿Activar actualizaciones preview?",
+    "previewChannelConfirmSubtitle": "Las builds preview son opcionales y sirven para probar correcciones futuras antes de la versión estable.",
+    "previewChannelConfirmRisk": "Las builds preview pueden incluir regresiones, comportamientos incompletos o casos de migración que todavía no se han validado por completo.",
+    "previewChannelConfirmBackup": "Antes de activarlas, crea una copia de seguridad manual o una exportación para poder volver atrás con seguridad si algo falla.",
+    "previewChannelConfirmConsent": "PromptHub seguirá en el canal estable hasta que confirmes explícitamente este cambio.",
+    "previewChannelConfirmCancel": "Seguir con el canal estable",
+    "previewChannelConfirmEnable": "Activar actualizaciones preview",
+    "previewChannelActiveDesc": "Versión: {{version}} · Canal preview activo"
   },
   "import": {
     "clipboardTitle": "Importar Prompt desde el portapapeles",
@@ -1081,7 +1089,9 @@
     "loadingCommunityStore": "Cargando lista de habilidades de la comunidad skills.sh...",
     "loadingCustomStore": "Cargando contenido de la tienda personalizada...",
     "remoteStoreRetry": "Reintentar",
-    "remoteStoreRateLimitHint": "Se alcanzó el límite de tasa de la API de GitHub. Inténtelo de nuevo en unos minutos o agregue un token de GitHub en la configuración.",
+    "remoteStoreRateLimitHint": "Se alcanzó el límite de tasa de la API de GitHub. Inténtelo de nuevo en unos minutos o cambie de red y vuelva a intentarlo.",
+    "remoteStoreNetworkHint": "No se pudo conectar con GitHub. Compruebe su red actual o cambie de red y vuelva a intentarlo.",
+    "remoteStoreInvalidRepoHint": "No se encontró el repositorio o la URL no es válida. Revise la dirección del repositorio de GitHub y vuelva a intentarlo.",
     "invalidGitRepo": "Ingrese una URL de repositorio de GitHub o use una ruta de directorio local",
     "skillsCount": "habilidades",
     "adding": "Agregando...",

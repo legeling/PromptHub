@@ -4,7 +4,7 @@
 >
 > 范围约束：只搬新文件格式，**不搬**桌面端专属的 `.trash/`、冲突裁决、restore marker、四象限 bootstrap、EXDEV 降级。Web 进程独占 FS，数据安全由 Docker 卷 + `.phub.gz` 备份兜底。
 
-相关文档：`docs/architecture/data-layout-v0.5.5-zh.md`
+相关文档：`spec/architecture/data-layout-v0.5.5-zh.md`
 
 ## 约束与原则
 
@@ -37,7 +37,7 @@
     - `apps/web/src/services/settings.service.test.ts`
     - `apps/web/src/routes/media.test.ts`
 12. ❌ 更新 `README.md`（第 248–265 行）、`apps/web/README.md`（第 195–219 行）、`apps/web/docker-compose*.yml` 卷挂载（`./data:/app/data` → `DATA_ROOT` 新挂载点）
-13. ❌ 在 `docs/architecture/data-layout-v0.5.5-zh.md` 7.1 In Scope 给 Web 打钩
+13. ❌ 在 `spec/architecture/data-layout-v0.5.5-zh.md` 7.1 In Scope 给 Web 打钩
 14. ❌ `pnpm --filter @prompthub/web test` + 根 `pnpm lint`
 15. ❌ 等用户明确许可后再 commit
 

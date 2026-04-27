@@ -832,7 +832,15 @@
     "previewChannel": "Preview-Kanal",
     "joinPreviewChannel": "Preview-Versionen aktivieren",
     "joinPreviewChannelDesc": "Nur nach Aktivierung werden prerelease Preview-Builds aus GitHub Releases bei der Update-Suche berücksichtigt.",
-    "previewChannelWarning": "Preview-Builds können instabil sein. Bitte sichern Sie Ihre Daten vor dem Update und nutzen Sie sie hauptsächlich zum Testen neuer Fixes."
+    "previewChannelWarning": "Preview-Builds können instabil sein. Bitte sichern Sie Ihre Daten vor dem Update und nutzen Sie sie hauptsächlich zum Testen neuer Fixes.",
+    "previewChannelConfirmTitle": "Preview-Updates aktivieren?",
+    "previewChannelConfirmSubtitle": "Preview-Builds sind optional und dienen dazu, kommende Fehlerbehebungen vor dem stabilen Release zu testen.",
+    "previewChannelConfirmRisk": "Preview-Builds können Regressionen, unfertiges Verhalten oder noch nicht vollständig validierte Migrationsfälle enthalten.",
+    "previewChannelConfirmBackup": "Erstellen Sie vor dem Aktivieren ein manuelles Backup oder einen Export, damit Sie bei Problemen sicher zurückkehren können.",
+    "previewChannelConfirmConsent": "PromptHub bleibt im stabilen Kanal, bis Sie diese Änderung ausdrücklich bestätigen.",
+    "previewChannelConfirmCancel": "Beim stabilen Kanal bleiben",
+    "previewChannelConfirmEnable": "Preview-Updates aktivieren",
+    "previewChannelActiveDesc": "Version: {{version}} · Preview-Kanal aktiv"
   },
   "import": {
     "clipboardTitle": "Prompt aus Zwischenablage importieren",
@@ -1081,7 +1089,9 @@
     "loadingCommunityStore": "Lade skills.sh-Community-Skill-Liste...",
     "loadingCustomStore": "Lade benutzerdefinierten Store-Inhalt...",
     "remoteStoreRetry": "Erneut versuchen",
-    "remoteStoreRateLimitHint": "GitHub API-Ratenlimit erreicht. Versuchen Sie es in einigen Minuten erneut oder fügen Sie in den Einstellungen ein GitHub-Token hinzu.",
+    "remoteStoreRateLimitHint": "GitHub API-Ratenlimit erreicht. Versuchen Sie es in einigen Minuten erneut oder wechseln Sie das Netzwerk und versuchen Sie es dann noch einmal.",
+    "remoteStoreNetworkHint": "GitHub konnte nicht erreicht werden. Prüfen Sie Ihre Netzwerkverbindung oder wechseln Sie das Netzwerk und versuchen Sie es erneut.",
+    "remoteStoreInvalidRepoHint": "Repository nicht gefunden oder URL ungültig. Prüfen Sie die GitHub-Repository-Adresse und versuchen Sie es erneut.",
     "invalidGitRepo": "Bitte geben Sie eine GitHub-Repository-URL ein oder verwenden Sie stattdessen einen lokalen Verzeichnispfad",
     "skillsCount": "Skills",
     "adding": "Wird hinzugefügt...",

@@ -832,7 +832,15 @@
     "previewChannel": "プレビューチャンネル",
     "joinPreviewChannel": "プレビュー版に参加",
     "joinPreviewChannelDesc": "参加した場合のみ、GitHub Releases の prerelease プレビュー版も更新確認に含めます。",
-    "previewChannelWarning": "プレビュー版は不安定な場合があります。更新前にデータをバックアップし、新しい修正のテスト用途で利用してください。"
+    "previewChannelWarning": "プレビュー版は不安定な場合があります。更新前にデータをバックアップし、新しい修正のテスト用途で利用してください。",
+    "previewChannelConfirmTitle": "プレビュー更新を有効にしますか？",
+    "previewChannelConfirmSubtitle": "プレビュー更新は任意参加で、安定版リリース前の修正を先行テストするためのものです。",
+    "previewChannelConfirmRisk": "プレビュー版には回帰、不完全な挙動、まだ十分に検証されていない移行ケースが含まれる場合があります。",
+    "previewChannelConfirmBackup": "有効にする前に、手動バックアップまたはエクスポートを作成しておくと、問題が起きても安全に戻せます。",
+    "previewChannelConfirmConsent": "この変更を明示的に確認するまでは、PromptHub は安定版チャンネルのままです。",
+    "previewChannelConfirmCancel": "安定版のままにする",
+    "previewChannelConfirmEnable": "プレビュー更新を有効にする",
+    "previewChannelActiveDesc": "バージョン: {{version}} ・ 現在はプレビューチャンネルです"
   },
   "import": {
     "clipboardTitle": "クリップボードから Prompt をインポート",
@@ -1081,7 +1089,9 @@
     "loadingCommunityStore": "skills.sh コミュニティスキルリストを読み込み中...",
     "loadingCustomStore": "カスタムストアのコンテンツを読み込み中...",
     "remoteStoreRetry": "再試行",
-    "remoteStoreRateLimitHint": "GitHub API のレート制限に達しました。数分後に再試行するか、設定で GitHub トークンを追加してください。",
+    "remoteStoreRateLimitHint": "GitHub API のレート制限に達しました。数分後に再試行するか、ネットワークを切り替えてからもう一度お試しください。",
+    "remoteStoreNetworkHint": "GitHub に接続できませんでした。現在のネットワークを確認するか、別のネットワークに切り替えて再試行してください。",
+    "remoteStoreInvalidRepoHint": "リポジトリが見つからないか、URL が無効です。GitHub リポジトリの URL を確認して再試行してください。",
     "invalidGitRepo": "GitHub リポジトリの URL を入力するか、ローカルディレクトリパスを使用してください",
     "skillsCount": "個のスキル",
     "adding": "追加中...",
