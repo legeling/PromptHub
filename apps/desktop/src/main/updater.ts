@@ -9,7 +9,7 @@ import { createUpgradeDataSnapshot } from "./services/upgrade-backup";
 import {
   compareVersions,
   isPrereleaseVersion,
-} from "@/utils/version";
+} from "../utils/version";
 
 // Simplified update info type (for IPC transmission)
 // 简化的更新信息类型（用于 IPC 传输）

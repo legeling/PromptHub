@@ -3,7 +3,7 @@ import { persist } from "zustand/middleware";
 import i18n, { changeLanguage } from "../i18n";
 import type { Settings } from "@prompthub/shared/types";
 import type { UpdateChannel } from "@prompthub/shared/types";
-import { isPrereleaseVersion } from "@/utils/version";
+import { isPrereleaseVersion } from "../../utils/version";
 
 const SUPPORTED_LANGUAGES = [
   "zh",

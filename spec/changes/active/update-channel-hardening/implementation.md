@@ -10,11 +10,13 @@
 - Stabilized renderer update state in `apps/desktop/src/renderer/App.tsx` and `apps/desktop/src/renderer/components/UpdateDialog.tsx` so background `checking` events no longer override visible `available` / `downloaded` states and cause UI flicker.
 - Added regression coverage for downgrade filtering and dialog-state stability in `apps/desktop/tests/unit/main/updater.test.ts` and `apps/desktop/tests/unit/components/update-dialog.test.tsx`.
 - Updated release policy and public docs so `0.5.5-beta.1` is documented as a historical beta reissue that restores a machine-readable prerelease marker without replacing `0.5.5` as the current stable release.
+- Replaced the shared version-helper imports in `src/main/updater.ts` and `src/renderer/stores/settings.store.ts` with relative paths after CI showed that the main-process Vite sub-build did not resolve the top-level `@` alias consistently.
 
 ## Verification
 
 - `pnpm test -- --run tests/unit/main/updater.test.ts tests/unit/components/update-dialog.test.tsx tests/unit/components/about-settings.test.tsx tests/unit/main/updater-real-scenario.test.ts`
 - `pnpm lint`
+- `pnpm build`
 
 ## Synced Docs
 
