@@ -498,6 +498,57 @@ export class SkillInstaller {
    *
    * Note: This method only scans SKILL.md format skills, NOT MCP configurations.
    */
+  /**
+   * Discover skill directories under a scan path.
+   * Returns an array of directories that contain a SKILL.md file,
+   * supporting both flat and one-level nested structures.
+   */
+  private static async collectSkillDirs(
+    scanPath: string,
+  ): Promise<string[]> {
+    const result: string[] = [];
+
+    if (!(await fileExists(scanPath))) {
+      return result;
+    }
+
+    const entries = await fs.readdir(scanPath, { withFileTypes: true });
+    const dirsToCheck: string[] = [];
+
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        dirsToCheck.push(path.join(scanPath, entry.name));
+      }
+    }
+
+    for (const baseDir of dirsToCheck) {
+      const directMd = path.join(baseDir, "SKILL.md");
+      if (await fileExists(directMd)) {
+        result.push(baseDir);
+      } else {
+        // Check subdirectories for category-nested structures (e.g., Hermes)
+        try {
+          const subEntries = await fs.readdir(baseDir, { withFileTypes: true });
+          for (const sub of subEntries) {
+            if (sub.isDirectory()) {
+              const nestedDir = path.join(baseDir, sub.name);
+              if (await fileExists(path.join(nestedDir, "SKILL.md"))) {
+                result.push(nestedDir);
+              }
+            }
+          }
+        } catch (err) {
+          console.warn(
+            `Failed reading skill directory: ${baseDir}, skipping`,
+            err,
+          );
+        }
+      }
+    }
+
+    return result;
+  }
+
   static async scanLocal(db: SkillDB): Promise<ScanLocalResult> {
     let count = 0;
     const skipped: string[] = [];
@@ -509,37 +560,11 @@ export class SkillInstaller {
         continue;
       }
 
-        try {
-          console.log(`Scanning path for skills: ${scanPath}`);
-          const entries = await fs.readdir(scanPath, { withFileTypes: true });
-          const dirsToCheck: string[] = [];
-          for (const entry of entries) {
-            if (entry.isDirectory()) {
-              dirsToCheck.push(path.join(scanPath, entry.name));
-            }
-          }
+      try {
+        console.log(`Scanning path for skills: ${scanPath}`);
+        const skillDirs = await this.collectSkillDirs(scanPath);
 
-          for (const baseDir of dirsToCheck) {
-            const skillDirs: string[] = [];
-            const directMd = path.join(baseDir, "SKILL.md");
-            if (await fileExists(directMd)) {
-              skillDirs.push(baseDir);
-            } else {
-              // Check subdirectories for category-nested structures (e.g., Hermes)
-              try {
-                const subEntries = await fs.readdir(baseDir, { withFileTypes: true });
-                for (const sub of subEntries) {
-                  if (sub.isDirectory()) {
-                    const nestedDir = path.join(baseDir, sub.name);
-                    if (await fileExists(path.join(nestedDir, "SKILL.md"))) {
-                      skillDirs.push(nestedDir);
-                    }
-                  }
-                }
-              } catch { /* ignore directory read errors */ }
-            }
-
-            for (const skillFolderPath of skillDirs) {
+        for (const skillFolderPath of skillDirs) {
               const skillMdPath = path.join(skillFolderPath, "SKILL.md");
               let skillDisplayName = path.basename(skillFolderPath);
               try {
@@ -555,12 +580,11 @@ export class SkillInstaller {
                     fallbackName: manifest.name || path.basename(skillFolderPath),
                     description: parsedSkill?.frontmatter.description,
                     fallbackDescription:
-                      manifest.description ||
-                      `Local skill found in ${path.basename(skillFolderPath)}`,
+                      manifest.description || undefined,
                     version: parsedSkill?.frontmatter.version,
                     fallbackVersion: manifest.version,
                     author: parsedSkill?.frontmatter.author,
-                    fallbackAuthor: manifest.author || "Local",
+                    fallbackAuthor: manifest.author || undefined,
                     tags: parsedSkill?.frontmatter.tags,
                     fallbackTags: [],
                     instructions,
@@ -668,35 +692,9 @@ export class SkillInstaller {
         }
 
         try {
-          const entries = await fs.readdir(scanPath, { withFileTypes: true });
-          const dirsToCheck: string[] = [];
-          for (const entry of entries) {
-            if (entry.isDirectory()) {
-              dirsToCheck.push(path.join(scanPath, entry.name));
-            }
-          }
+          const skillDirs = await SkillInstaller.collectSkillDirs(scanPath);
 
-          for (const baseDir of dirsToCheck) {
-            const skillDirs: string[] = [];
-            const directMd = path.join(baseDir, "SKILL.md");
-            if (await fileExists(directMd)) {
-              skillDirs.push(baseDir);
-            } else {
-              // Check subdirectories for category-nested structures (e.g., Hermes)
-              try {
-                const subEntries = await fs.readdir(baseDir, { withFileTypes: true });
-                for (const sub of subEntries) {
-                  if (sub.isDirectory()) {
-                    const nestedDir = path.join(baseDir, sub.name);
-                    if (await fileExists(path.join(nestedDir, "SKILL.md"))) {
-                      skillDirs.push(nestedDir);
-                    }
-                  }
-                }
-              } catch { /* ignore directory read errors */ }
-            }
-
-            for (const skillFolderPath of skillDirs) {
+          for (const skillFolderPath of skillDirs) {
               const skillMdPath = path.join(skillFolderPath, "SKILL.md");
               try {
                   const instructions = await fs.readFile(skillMdPath, "utf-8");
@@ -730,12 +728,11 @@ export class SkillInstaller {
                         fallbackName: manifest.name || path.basename(skillFolderPath),
                         description: parsedSkill?.frontmatter.description,
                         fallbackDescription:
-                          manifest.description ||
-                          `Local skill found in ${path.basename(skillFolderPath)}`,
+                          manifest.description || undefined,
                         version: parsedSkill?.frontmatter.version,
                         fallbackVersion: manifest.version,
                         author: parsedSkill?.frontmatter.author,
-                        fallbackAuthor: manifest.author || "Local",
+                        fallbackAuthor: manifest.author || undefined,
                         tags: parsedSkill?.frontmatter.tags,
                         fallbackTags: [],
                         instructions,
@@ -748,9 +745,9 @@ export class SkillInstaller {
                       name: sanitized.name!,
                       description:
                         sanitized.description ||
-                        `Local skill found in ${path.basename(skillFolderPath)}`,
+                        manifest.description,
                       version: sanitized.version,
-                      author: sanitized.author || "Local",
+                      author: sanitized.author || manifest.author,
                       tags: sanitized.tags,
                       instructions: sanitized.instructions || instructions,
                       filePath: skillMdPath,
