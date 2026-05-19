@@ -168,5 +168,6 @@ describe("PromptGalleryView", () => {
     expect(spacer).not.toBeNull();
     expect(spacer?.style.paddingTop).toBe("20px");
     expect(spacer?.style.paddingBottom).toBe("96px");
+    expect(spacer?.style.boxSizing).toBe("border-box");
   });
 });

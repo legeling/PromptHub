@@ -6,9 +6,11 @@
 - 将“移动到...”实现为右键菜单右侧二级子菜单，固定高度并支持滚动。
 - 子菜单展示文件夹自身 icon，并保留层级缩进信息。
 - 子菜单增加 hover 容错窗口与桥接热区，避免鼠标从左侧菜单移向右侧子菜单时断触消失。
+- 后续微调子菜单桥接热区的位置，避免可见菜单盒子反向压住左侧主菜单边缘。
 - 支持将 Prompt 移出当前文件夹。
 - 为 `MainContent` 新增 issue #140 集成测试，并为 Vitest 补充 `@tanstack/react-virtual` stub alias。
 - 调整 Gallery 视图虚拟滚动区域的上下留白，恢复与其他视图一致的呼吸感。
+- 将 Gallery 上下留白落到外层滚动 spacer 的真实 padding / box-sizing 上，避免只改内部位移导致视觉上仍贴边。
 
 ## Verification
 

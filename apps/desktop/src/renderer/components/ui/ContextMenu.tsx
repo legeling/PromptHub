@@ -148,50 +148,58 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
                         {hasChildren && isSubmenuOpen ? (
                             <div
                                 className={clsx(
-                                    "absolute top-0 z-[100000] min-w-[220px] rounded-md border border-border bg-popover py-1 shadow-lg",
-                                    openSubmenu?.direction === 'left' ? "right-full pr-2 mr-[-8px]" : "left-full pl-2 ml-[-8px]",
-                                    item.childrenClassName,
+                                    "absolute top-0 z-[100000]",
+                                    openSubmenu?.direction === 'left'
+                                        ? "right-full mr-1 translate-x-2 pr-2"
+                                        : "left-full ml-1 -translate-x-2 pl-2",
                                 )}
                                 style={{ top: openSubmenu.top }}
                                 onMouseEnter={cancelScheduledSubmenuClose}
                                 onMouseLeave={() => scheduleSubmenuClose(index)}
                             >
-                                {item.children?.map((child, childIndex) => (
-                                    <button
-                                        key={`${index}-${childIndex}`}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (child.disabled) {
-                                                return;
-                                            }
+                                <div
+                                    className={clsx(
+                                        "min-w-[220px] rounded-md border border-border bg-popover py-1 shadow-lg",
+                                        item.childrenClassName,
+                                    )}
+                                >
+                                    {item.children?.map((child, childIndex) => (
+                                        <button
+                                            key={`${index}-${childIndex}`}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (child.disabled) {
+                                                    return;
+                                                }
 
-                                            child.onClick?.();
-                                            handleMenuClose();
-                                        }}
-                                        disabled={child.disabled}
-                                        style={child.insetLevel ? ({ paddingLeft: `${12 + child.insetLevel * 18}px` } as CSSProperties) : undefined}
-                                        className={clsx(
-                                            "w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors",
-                                            "hover:bg-accent hover:text-accent-foreground",
-                                            child.variant === 'destructive' && "text-destructive hover:text-destructive",
-                                            child.disabled && "opacity-50 cursor-not-allowed pointer-events-none",
-                                        )}
-                                    >
-                                        {child.insetLevel ? (
-                                            <CornerDownRightIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
-                                        ) : null}
-                                        {child.icon && <span className="w-4 h-4 shrink-0 flex items-center justify-center">{child.icon}</span>}
-                                        <span className="min-w-0 flex-1">
-                                            <span className="block truncate">{child.label}</span>
-                                            {child.description ? (
-                                                <span className="block truncate text-xs text-muted-foreground">
-                                                    {child.description}
-                                                </span>
+                                                child.onClick?.();
+                                                handleMenuClose();
+                                            }}
+                                            disabled={child.disabled}
+                                            style={child.insetLevel ? ({ paddingLeft: `${12 + child.insetLevel * 18}px` } as CSSProperties) : undefined}
+                                            className={clsx(
+                                                "w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors",
+                                                "hover:bg-accent hover:text-accent-foreground",
+                                                child.variant === 'destructive' && "text-destructive hover:text-destructive",
+                                                child.disabled && "opacity-50 cursor-not-allowed pointer-events-none",
+                                            )}
+                                        >
+                                            {child.insetLevel ? (
+                                                <CornerDownRightIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
                                             ) : null}
-                                        </span>
-                                        {child.shortcut && <span className="ml-2 text-xs text-muted-foreground">{child.shortcut}</span>}
-                                    </button>
-                                ))}
+                                            {child.icon && <span className="w-4 h-4 shrink-0 flex items-center justify-center">{child.icon}</span>}
+                                            <span className="min-w-0 flex-1">
+                                                <span className="block truncate">{child.label}</span>
+                                                {child.description ? (
+                                                    <span className="block truncate text-xs text-muted-foreground">
+                                                        {child.description}
+                                                    </span>
+                                                ) : null}
+                                            </span>
+                                            {child.shortcut && <span className="ml-2 text-xs text-muted-foreground">{child.shortcut}</span>}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         ) : null}
                     </div>
