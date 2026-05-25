@@ -162,9 +162,13 @@ function createSkillStoreState(overrides: Partial<Record<string, unknown>> = {})
 
 function createSettingsState(overrides: Partial<Record<string, unknown>> = {}) {
   return {
+    customAgents: [],
+    customAgentRootPaths: [],
     customSkillScanPaths: [],
     translationMode: "full",
     skillInstallMethod: "symlink",
+    skillProjects: [],
+    updateSkillProject: vi.fn(),
     ...overrides,
   };
 }
@@ -241,6 +245,8 @@ describe("skill i18n smoke", () => {
       batchInstall: vi.fn().mockResolvedValue({
         successCount: 0,
         totalCount: 0,
+        failures: [],
+        fallbacks: [],
       }),
       deselectAllPlatforms: vi.fn(),
       installProgress: null,
@@ -423,6 +429,45 @@ describe("skill i18n smoke", () => {
     expect(screen.queryByText("批量管理")).not.toBeInTheDocument();
   });
 
+  it("shows project deployment actions for normal library skills", async () => {
+    const syncedSkill = {
+      ...baseSkill,
+      description: "Write helper",
+      instructions: "---\ndescription: Write helper\n---\n\n# Write",
+      content: "---\ndescription: Write helper\n---\n\n# Write",
+    };
+    const skillStoreState = createSkillStoreState({
+      selectedSkillId: baseSkill.id,
+      syncSkillFromRepo: vi.fn().mockResolvedValue(syncedSkill),
+    });
+    const settingsState = createSettingsState({
+      skillProjects: [
+        {
+          id: "project-1",
+          name: "Workspace",
+          rootPath: "/tmp/workspace",
+          scanPaths: [],
+          deployTargets: ["/tmp/workspace/.agents/skills"],
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      ],
+    });
+
+    useSkillStoreMock.mockImplementation((selector) => selector(skillStoreState));
+    useSettingsStoreMock.mockImplementation((selector) => selector(settingsState));
+
+    await act(async () => {
+      render(<SkillFullDetailPage />);
+    });
+
+    expect(screen.getByText("Project Deployment")).toBeInTheDocument();
+    expect(screen.getByText("Workspace")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Deploy write to Selected Projects" }),
+    ).toBeInTheDocument();
+  });
+
   it("renders project skill preview without leaking raw SKILL.md into the preview sidebar", async () => {
     const projectSkill = {
       ...baseSkill,
@@ -462,6 +507,8 @@ describe("skill i18n smoke", () => {
           overrideSkill={projectSkill}
           projectContext={{
             projectName: "Demo Project",
+            projectRootPath: "/tmp/demo",
+            projectDeployTargets: ["/tmp/demo/.agents/skills"],
             scannedSkill: {
               name: "project-skill",
               description: "Project helper",
@@ -473,12 +520,15 @@ describe("skill i18n smoke", () => {
               platforms: [],
             }}
           }
-          projectActions={{ onImport }}
+          projectActions={{ onImport, onDeployToProjectTargets: vi.fn(), onAddDeployTarget: vi.fn() }}
         />,
       );
     });
 
     expect(screen.getByRole("button", { name: "Import to My Skills" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Deploy project-skill to Project Folders" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Project helper")).toBeInTheDocument();
     expect(screen.queryByText("SKILL.md Content")).not.toBeInTheDocument();
     expect(screen.queryByText("Metadata")).not.toBeInTheDocument();
@@ -658,6 +708,58 @@ describe("skill i18n smoke", () => {
       expect(showToast).toHaveBeenCalledWith(
         "The AI service timed out while translating. Please try again in a moment, or switch to a faster / more stable model endpoint.",
         "error",
+      );
+    });
+  });
+
+  it("warns when symlink install falls back to copy mode", async () => {
+    const showToast = vi.fn();
+    useToastMock.mockReturnValue({ showToast });
+
+    const skillStoreState = createSkillStoreState({
+      selectedSkillId: baseSkill.id,
+      syncSkillFromRepo: vi.fn().mockResolvedValue(baseSkill),
+    });
+    const settingsState = createSettingsState({ skillInstallMethod: "symlink" });
+
+    useSkillStoreMock.mockImplementation((selector) => selector(skillStoreState));
+    useSettingsStoreMock.mockImplementation((selector) => selector(settingsState));
+    useSkillPlatformMock.mockReturnValue({
+      availablePlatforms: [{ id: "claude", name: "Claude Code" }],
+      batchInstall: vi.fn().mockResolvedValue({
+        successCount: 1,
+        totalCount: 1,
+        failures: [],
+        fallbacks: [
+          {
+            platformId: "claude",
+            requestedMode: "symlink",
+            effectiveMode: "copy",
+            reason: "EPERM: operation not permitted",
+          },
+        ],
+      }),
+      deselectAllPlatforms: vi.fn(),
+      installProgress: null,
+      installStatus: {},
+      isBatchInstalling: false,
+      selectedPlatforms: new Set<string>(["claude"]),
+      selectAllPlatforms: vi.fn(),
+      togglePlatformSelection: vi.fn(),
+      uninstallFromPlatform: vi.fn().mockResolvedValue(undefined),
+      uninstalledPlatforms: [{ id: "claude", name: "Claude Code" }],
+    });
+
+    await act(async () => {
+      render(<SkillFullDetailPage />);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Install All" }));
+
+    await waitFor(() => {
+      expect(showToast).toHaveBeenCalledWith(
+        "Symlink was not available for some platforms. PromptHub used copy install instead.\nClaude Code: switched to copy install (EPERM: operation not permitted)",
+        "warning",
       );
     });
   });

@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Skill } from "@prompthub/shared/types";
+import type {
+  Skill,
+  SkillInstallMode,
+  SkillPlatformInstallResult,
+} from "@prompthub/shared/types";
 import {
   DEFAULT_SKILL_PLATFORM_ORDER,
   type SkillPlatform,
@@ -9,7 +13,14 @@ import { useSettingsStore } from "../../stores/settings.store";
 import { getRuntimeCapabilities } from "../../runtime";
 import { filterDetectedPlatforms } from "../../services/platform-visibility";
 
-export type SkillInstallMode = "copy" | "symlink";
+export type { SkillInstallMode } from "@prompthub/shared/types";
+
+export interface BatchInstallFallback {
+  platformId: string;
+  requestedMode: SkillInstallMode;
+  effectiveMode: SkillInstallMode;
+  reason: string;
+}
 
 export interface BatchInstallFailure {
   platformId: string;
@@ -28,6 +39,24 @@ export interface BatchInstallResult {
    * See #93.
    */
   failures: BatchInstallFailure[];
+  fallbacks: BatchInstallFallback[];
+}
+
+function isCopyFallback(
+  result: SkillPlatformInstallResult | void,
+): result is SkillPlatformInstallResult & {
+  requestedMode: "symlink";
+  effectiveMode: "copy";
+  fallbackReason: string;
+} {
+  return (
+    typeof result === "object" &&
+    result !== null &&
+    result.requestedMode === "symlink" &&
+    result.effectiveMode === "copy" &&
+    typeof result.fallbackReason === "string" &&
+    result.fallbackReason.length > 0
+  );
 }
 
 export function sortSkillPlatformsByPreference(
@@ -171,7 +200,7 @@ export function useSkillPlatform(
       !skill ||
       selectedPlatforms.size === 0
     ) {
-      return { successCount: 0, totalCount: 0, failures: [] };
+      return { successCount: 0, totalCount: 0, failures: [], fallbacks: [] };
     }
 
     setIsBatchInstalling(true);
@@ -182,6 +211,7 @@ export function useSkillPlatform(
       const skillMdContent = await window.api.skill.export(skill.id, "skillmd");
       let successCount = 0;
       const failures: BatchInstallFailure[] = [];
+      const fallbacks: BatchInstallFallback[] = [];
 
       for (let index = 0; index < platformIds.length; index++) {
         const platformId = platformIds[index];
@@ -189,11 +219,19 @@ export function useSkillPlatform(
 
         try {
           if (installMode === "symlink") {
-            await window.api.skill.installMdSymlink(
+            const result = await window.api.skill.installMdSymlink(
               skill.name,
               skillMdContent,
               platformId,
             );
+            if (isCopyFallback(result)) {
+              fallbacks.push({
+                platformId,
+                requestedMode: result.requestedMode,
+                effectiveMode: result.effectiveMode,
+                reason: result.fallbackReason,
+              });
+            }
           } else {
             await window.api.skill.installMd(skill.name, skillMdContent, platformId);
           }
@@ -212,7 +250,12 @@ export function useSkillPlatform(
       }
 
       await refreshInstallStatus();
-      return { successCount, totalCount: platformIds.length, failures };
+      return {
+        successCount,
+        totalCount: platformIds.length,
+        failures,
+        fallbacks,
+      };
     } finally {
       setIsBatchInstalling(false);
       setInstallProgress(null);

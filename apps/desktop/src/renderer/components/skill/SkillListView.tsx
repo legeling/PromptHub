@@ -15,6 +15,7 @@ import { SkillIcon } from "./SkillIcon";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useSkillStore } from "../../stores/skill.store";
+import { useSettingsStore } from "../../stores/settings.store";
 import { PlatformIcon } from "../ui/PlatformIcon";
 import { filterDetectedPlatforms } from "../../services/platform-visibility";
 import type { Skill, SkillSafetyLevel } from "@prompthub/shared/types";

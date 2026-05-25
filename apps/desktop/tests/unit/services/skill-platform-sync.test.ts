@@ -39,6 +39,7 @@ describe("syncSkillsToPlatforms", () => {
       successCount: 4,
       totalCount: 4,
       failures: [],
+      fallbacks: [],
     });
     expect(progress).toHaveBeenLastCalledWith({
       current: 4,
@@ -70,6 +71,40 @@ describe("syncSkillsToPlatforms", () => {
         reason: "permission denied",
       },
     ]);
+    expect(result.fallbacks).toEqual([]);
+  });
+
+  it("surfaces symlink fallback installs as warnings instead of silent success", async () => {
+    const installMdSymlink = vi
+      .fn()
+      .mockResolvedValueOnce({
+        requestedMode: "symlink",
+        effectiveMode: "copy",
+        fallbackReason: "EPERM: operation not permitted",
+      })
+      .mockResolvedValueOnce({
+        requestedMode: "symlink",
+        effectiveMode: "symlink",
+      });
+    (window as any).api.skill.installMdSymlink = installMdSymlink;
+
+    const result = await syncSkillsToPlatforms(
+      [{ id: "skill-1", name: "alpha" }] as any,
+      ["claude", "cursor"],
+      "symlink",
+    );
+
+    expect(result.successCount).toBe(2);
+    expect(result.failures).toEqual([]);
+    expect(result.fallbacks).toEqual([
+      {
+        skillName: "alpha",
+        platformId: "claude",
+        requestedMode: "symlink",
+        effectiveMode: "copy",
+        reason: "EPERM: operation not permitted",
+      },
+    ]);
   });
 
   it("uninstalls all selected skills from selected platforms", async () => {
@@ -83,6 +118,7 @@ describe("syncSkillsToPlatforms", () => {
       successCount: 2,
       totalCount: 2,
       failures: [],
+      fallbacks: [],
     });
   });
 });

@@ -23,6 +23,7 @@ import { SkillIcon } from "./SkillIcon";
 import { SkillCodePane } from "./SkillCodePane";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { SkillPlatformPanel } from "./SkillPlatformPanel";
+import { SkillProjectDeployPanel } from "./SkillProjectDeployPanel";
 import { ProjectSkillPreviewSidebar } from "./ProjectSkillPreviewSidebar";
 import { SkillPreviewPane } from "./SkillPreviewPane";
 import { normalizeLocalSkillDirectoryPath } from "../../services/skill-store-source";
@@ -64,7 +65,25 @@ import {
 } from "./safety-i18n";
 import { getRuntimeCapabilities } from "../../runtime";
 import type { Skill } from "@prompthub/shared/types";
+import type { SkillProject } from "@prompthub/shared/types";
 import type { ProjectDetailSkillContext } from "./project-detail-adapter";
+
+const OPEN_CREATE_SKILL_PROJECT_MODAL_EVENT = "open-create-skill-project-modal";
+
+function getProjectDeployTargets(project: SkillProject): string[] {
+  const configured = Array.isArray(project.deployTargets)
+    ? project.deployTargets.filter(
+        (entry) => typeof entry === "string" && entry.trim().length > 0,
+      )
+    : [];
+
+  if (configured.length > 0) {
+    return Array.from(new Set(configured));
+  }
+
+  const normalizedRoot = project.rootPath.replace(/[\\/]+$/, "");
+  return normalizedRoot ? [`${normalizedRoot}/.agents/skills`] : [];
+}
 
 /**
  * Full-width Skill Detail Page
@@ -77,6 +96,9 @@ interface SkillFullDetailPageProps {
   projectContext?: ProjectDetailSkillContext | null;
   projectActions?: {
     isImporting?: boolean;
+    isDeploying?: boolean;
+    onAddDeployTarget?: () => void | Promise<void>;
+    onDeployToProjectTargets?: (targetDirs: string[]) => void | Promise<void>;
     onImport?: () => void | Promise<void>;
   } | null;
   onBack?: () => void;
@@ -121,7 +143,9 @@ export function SkillFullDetailPage({
   const autoScanInstalledSkills = useSettingsStore(
     (state) => state.autoScanInstalledSkills,
   );
+  const skillProjects = useSettingsStore((state) => state.skillProjects);
   const aiModels = useSettingsStore((state) => state.aiModels);
+  const updateSkillProject = useSettingsStore((state) => state.updateSkillProject);
   const [installMode, setInstallMode] = useState<InstallMode>(
     () => skillInstallMethod,
   );
@@ -137,6 +161,7 @@ export function SkillFullDetailPage({
   );
   const [isSnapshotModalOpen, setIsSnapshotModalOpen] = useState(false);
   const [isCreatingSnapshot, setIsCreatingSnapshot] = useState(false);
+  const [isProjectDeploying, setIsProjectDeploying] = useState(false);
   const [snapshotNote, setSnapshotNote] = useState("");
   const [resolvedSkillMdContent, setResolvedSkillMdContent] = useState("");
   const [fileEditorHasUnsavedChanges, setFileEditorHasUnsavedChanges] =
@@ -156,6 +181,74 @@ export function SkillFullDetailPage({
       timestamp: new Date().toLocaleString(i18n.language || undefined),
       defaultValue: `Manual snapshot ${new Date().toLocaleString()}`,
     });
+
+  const openCreateProjectModal = () => {
+    useSkillStore.getState().setStoreView("projects");
+    document.dispatchEvent(new Event(OPEN_CREATE_SKILL_PROJECT_MODAL_EVENT));
+  };
+
+  const handleDeployToProjects = async (projectIds: string[]) => {
+    if (!selectedSkill || projectIds.length === 0) {
+      return;
+    }
+
+    const sourcePath = selectedSkill.local_repo_path || selectedSkill.source_url || "";
+    if (!sourcePath.trim()) {
+      showToast(
+        t("skill.projectDeployMissingSource", "Missing local skill source path."),
+        "error",
+      );
+      return;
+    }
+
+    const selectedProjects = skillProjects.filter((project) =>
+      projectIds.includes(project.id),
+    );
+    const targets = selectedProjects.flatMap((project) => getProjectDeployTargets(project));
+    if (targets.length === 0) {
+      showToast(
+        t(
+          "skill.projectDeployNoTargets",
+          "Selected projects do not have any deploy target folders yet.",
+        ),
+        "error",
+      );
+      return;
+    }
+
+    setIsProjectDeploying(true);
+    try {
+      await Promise.all(
+        targets.map((targetDir) =>
+          window.api.skill.copyRepoByPathToDirectory(
+            sourcePath,
+            selectedSkill.name,
+            targetDir,
+          ),
+        ),
+      );
+      selectedProjects.forEach((project) => {
+        updateSkillProject(project.id, { lastScannedAt: Date.now() });
+      });
+      showToast(
+        t("skill.projectDeploySuccess", {
+          count: targets.length,
+          defaultValue: "Deployed to {{count}} project folder(s).",
+        }),
+        "success",
+      );
+    } catch (error) {
+      showToast(
+        t("skill.projectDeployFailed", {
+          reason: error instanceof Error ? error.message : String(error),
+          defaultValue: "Failed to deploy project skill: {{reason}}",
+        }),
+        "error",
+      );
+    } finally {
+      setIsProjectDeploying(false);
+    }
+  };
 
   const targetLang = useMemo(() => {
     const lang = (i18n.language || "").toLowerCase();
@@ -461,6 +554,29 @@ export function SkillFullDetailPage({
         showToast(
           `${t("skill.installSuccess", "Installation successful")} (${modeLabel}) — ${result.successCount}/${result.totalCount}`,
           "success",
+        );
+      }
+      if (result.fallbacks.length > 0) {
+        const details = result.fallbacks
+          .map((fallback) => {
+            const platform = availablePlatforms.find(
+              (entry) => entry.id === fallback.platformId,
+            );
+            const label = platform?.name ?? fallback.platformId;
+            return t("skill.installFallbackRow", {
+              platform: label,
+              reason: fallback.reason,
+              defaultValue: "{{platform}}: switched to copy install ({{reason}})",
+            });
+          })
+          .join("\n");
+        showToast(
+          t("skill.installFallbackWarning", {
+            details,
+            defaultValue:
+              "Symlink was not available for some platforms. PromptHub used copy install instead.\n{{details}}",
+          }),
+          "warning",
         );
       }
       // Surface per-platform failures instead of swallowing them. Without
@@ -922,29 +1038,46 @@ export function SkillFullDetailPage({
                 />
 
                 {!isProjectDetail || projectContext?.importedSkill ? (
-                  <SkillPlatformPanel
-                    availablePlatforms={availablePlatforms}
-                    handleExport={handleExport}
-                    installMode={installMode}
-                    installProgress={installProgress}
-                    isBatchInstalling={isBatchInstalling}
-                    onBatchInstall={batchInstall}
-                    selectedPlatforms={selectedPlatforms}
-                    selectedSkill={selectedSkill}
-                    selectAllPlatforms={selectAllPlatforms}
-                    deselectAllPlatforms={deselectAllPlatforms}
-                    setInstallMode={setInstallMode}
-                    skillMdInstallStatus={skillMdInstallStatus}
-                    t={t}
-                    togglePlatformSelection={togglePlatformSelection}
-                    uninstallFromPlatform={uninstallFromPlatform}
-                    uninstalledPlatforms={uninstalledPlatforms}
-                  />
+                  <div className="space-y-6">
+                    <SkillPlatformPanel
+                      availablePlatforms={availablePlatforms}
+                      handleExport={handleExport}
+                      installMode={installMode}
+                      installProgress={installProgress}
+                      isBatchInstalling={isBatchInstalling}
+                      onBatchInstall={batchInstall}
+                      selectedPlatforms={selectedPlatforms}
+                      selectedSkill={selectedSkill}
+                      selectAllPlatforms={selectAllPlatforms}
+                      deselectAllPlatforms={deselectAllPlatforms}
+                      setInstallMode={setInstallMode}
+                      skillMdInstallStatus={skillMdInstallStatus}
+                      t={t}
+                      togglePlatformSelection={togglePlatformSelection}
+                      uninstallFromPlatform={uninstallFromPlatform}
+                      uninstalledPlatforms={uninstalledPlatforms}
+                    />
+
+                    <SkillProjectDeployPanel
+                      projects={skillProjects}
+                      getProjectDeployTargets={getProjectDeployTargets}
+                      isDeploying={isProjectDeploying}
+                      onCreateProject={openCreateProjectModal}
+                      onDeploy={handleDeployToProjects}
+                      selectedSkill={selectedSkill}
+                      t={t}
+                    />
+                  </div>
                 ) : (
                   <ProjectSkillPreviewSidebar
+                    deployTargets={projectContext?.projectDeployTargets ?? []}
+                    isDeploying={Boolean(projectActions?.isDeploying)}
                     isImporting={Boolean(projectActions?.isImporting)}
                     isImportAvailable={typeof projectActions?.onImport === "function"}
+                    onAddDeployTarget={projectActions?.onAddDeployTarget ?? (() => undefined)}
+                    onDeploy={projectActions?.onDeployToProjectTargets ?? (() => undefined)}
                     onImport={projectActions?.onImport ?? (() => undefined)}
+                    selectedSkill={selectedSkill}
                     sourcePath={selectedSkill.local_repo_path || selectedSkill.source_url || ""}
                     t={t}
                   />

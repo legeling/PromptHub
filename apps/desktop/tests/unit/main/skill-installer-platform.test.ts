@@ -35,6 +35,7 @@ const repoMocks = vi.hoisted(() => ({
 
 const utilsMocks = vi.hoisted(() => ({
   getPlatformSkillsDir: vi.fn(() => "/platform/skills"),
+  getCustomAgentPlatforms: vi.fn(() => []),
   validateMCPConfig: vi.fn(),
 }));
 
@@ -54,10 +55,12 @@ vi.mock("../../../src/main/services/skill-installer-repo", () => ({
 
 vi.mock("../../../src/main/services/skill-installer-utils", () => ({
   getPlatformSkillsDir: utilsMocks.getPlatformSkillsDir,
+  getCustomAgentPlatforms: utilsMocks.getCustomAgentPlatforms,
   validateMCPConfig: utilsMocks.validateMCPConfig,
 }));
 
 import {
+  getSupportedPlatforms,
   installSkillMd,
   installSkillMdSymlink,
 } from "../../../src/main/services/skill-installer-platform";
@@ -65,6 +68,7 @@ import {
 describe("skill-installer-platform symlink install", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    utilsMocks.getCustomAgentPlatforms.mockReturnValue([]);
     fsMocks.lstat.mockRejectedValue(Object.assign(new Error("missing"), { code: "ENOENT" }));
     fsMocks.mkdir.mockResolvedValue(undefined);
     fsMocks.cp.mockResolvedValue(undefined);
@@ -87,12 +91,51 @@ describe("skill-installer-platform symlink install", () => {
     );
   });
 
+  it("includes enabled custom agents in supported platforms", () => {
+    utilsMocks.getCustomAgentPlatforms.mockReturnValue([
+      {
+        id: "custom-agent-1",
+        name: "Team Agents",
+        icon: "Bot",
+        rootDir: { darwin: "~/.agents", win32: "~/.agents", linux: "~/.agents" },
+        skillsRelativePath: "skills",
+        isCustom: true,
+      },
+    ]);
+
+    expect(getSupportedPlatforms().some((platform) => platform.id === "custom-agent-1")).toBe(true);
+  });
+
+  it("allows symlink installs for custom agents", async () => {
+    utilsMocks.getCustomAgentPlatforms.mockReturnValue([
+      {
+        id: "custom-agent-1",
+        name: "Team Agents",
+        icon: "Bot",
+        rootDir: { darwin: "~/.agents", win32: "~/.agents", linux: "~/.agents" },
+        skillsRelativePath: "skills",
+        isCustom: true,
+      },
+    ]);
+
+    const result = await installSkillMdSymlink(
+      "demo-skill",
+      "# skill",
+      "custom-agent-1",
+    );
+
+    expect(result).toEqual({
+      requestedMode: "symlink",
+      effectiveMode: "symlink",
+    });
+  });
+
   it("falls back to copy install when symlink creation returns EPERM", async () => {
     fsMocks.symlink.mockRejectedValueOnce(
       Object.assign(new Error("operation not permitted"), { code: "EPERM" }),
     );
 
-    await installSkillMdSymlink("demo-skill", "# skill", "claude");
+    const result = await installSkillMdSymlink("demo-skill", "# skill", "claude");
 
     expect(fsMocks.symlink).toHaveBeenCalledWith(
       "/prompthub/skills/demo-skill",
@@ -104,10 +147,15 @@ describe("skill-installer-platform symlink install", () => {
       "/platform/skills/demo-skill",
       expect.objectContaining({ recursive: true, filter: expect.any(Function) }),
     );
+    expect(result).toEqual({
+      requestedMode: "symlink",
+      effectiveMode: "copy",
+      fallbackReason: "EPERM: operation not permitted",
+    });
   });
 
   it("symlinks the whole skill directory into the platform directory", async () => {
-    await installSkillMdSymlink("demo-skill", "# skill", "claude");
+    const result = await installSkillMdSymlink("demo-skill", "# skill", "claude");
 
     expect(fsMocks.mkdir).toHaveBeenCalledWith("/prompthub/skills/demo-skill", {
       recursive: true,
@@ -120,6 +168,10 @@ describe("skill-installer-platform symlink install", () => {
       "/platform/skills/demo-skill",
       "dir",
     );
+    expect(result).toEqual({
+      requestedMode: "symlink",
+      effectiveMode: "symlink",
+    });
   });
 
   it("falls back to copy install for UNKNOWN errors (Windows without Developer Mode)", async () => {
@@ -131,13 +183,18 @@ describe("skill-installer-platform symlink install", () => {
       Object.assign(new Error("unknown symlink failure"), { code: "UNKNOWN" }),
     );
 
-    await installSkillMdSymlink("demo-skill", "# skill", "claude");
+    const result = await installSkillMdSymlink("demo-skill", "# skill", "claude");
 
     expect(fsMocks.cp).toHaveBeenCalledWith(
       "/prompthub/skills/demo-skill",
       "/platform/skills/demo-skill",
       expect.objectContaining({ recursive: true, filter: expect.any(Function) }),
     );
+    expect(result).toEqual({
+      requestedMode: "symlink",
+      effectiveMode: "copy",
+      fallbackReason: "UNKNOWN: unknown symlink failure",
+    });
   });
 
   it("rethrows with an actionable error message when no fallback applies", async () => {

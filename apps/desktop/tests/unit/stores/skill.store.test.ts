@@ -138,14 +138,35 @@ describe("skill store", () => {
   });
 
   it("stores project scan errors and rethrows them to the caller", async () => {
+    const scanLocalPreview = vi.fn().mockRejectedValue(
+      new Error("Project scan failed"),
+    );
+    installWindowMocks({
+      api: {
+        skill: {
+          scanLocalPreview,
+        },
+      },
+    });
+
     useSkillStore.setState({
       error: null,
       projectScanState: {},
-      scanLocalPreview: vi.fn().mockImplementation(async () => {
-        useSkillStore.setState({ error: "Project scan failed" });
-        return [];
-      }),
     } as Partial<ReturnType<typeof useSkillStore.getState>>);
+    useSettingsStore.setState({
+      aiModels: [
+        {
+          id: "safety-chat",
+          type: "chat",
+          provider: "openai",
+          apiProtocol: "openai",
+          apiKey: "test-key",
+          apiUrl: "https://api.example.com/v1",
+          model: "gpt-4o-mini",
+          isDefault: true,
+        },
+      ],
+    });
 
     await expect(
       useSkillStore.getState().scanProjectSkills({
@@ -169,11 +190,17 @@ describe("skill store", () => {
 
   it("expands default project skill directories when scanning a project", async () => {
     const scanLocalPreview = vi.fn().mockResolvedValue([]);
+    installWindowMocks({
+      api: {
+        skill: {
+          scanLocalPreview,
+        },
+      },
+    });
 
     useSkillStore.setState({
       error: null,
       projectScanState: {},
-      scanLocalPreview,
     } as Partial<ReturnType<typeof useSkillStore.getState>>);
 
     await useSkillStore.getState().scanProjectSkills({
@@ -186,7 +213,6 @@ describe("skill store", () => {
     });
 
     expect(scanLocalPreview).toHaveBeenCalledWith([
-      "/tmp/workspace",
       "/tmp/workspace/.claude/skills",
       "/tmp/workspace/.agents/skills",
       "/tmp/workspace/skills",
@@ -195,7 +221,7 @@ describe("skill store", () => {
     ]);
   });
 
-  it("builds effective project scan paths from root plus default folders", () => {
+  it("builds effective project scan paths from default folders without scanning the whole project root", () => {
     expect(
       getProjectScanPaths({
         id: "project-1",
@@ -206,7 +232,6 @@ describe("skill store", () => {
         updatedAt: 1,
       }),
     ).toEqual([
-      "/tmp/workspace",
       "/tmp/workspace/.claude/skills",
       "/tmp/workspace/.agents/skills",
       "/tmp/workspace/skills",
@@ -226,7 +251,7 @@ describe("skill store", () => {
     expect(useSkillStore.getState().selectedSkillId).toBeNull();
   });
 
-  it("does not duplicate the project root when extra scan paths already include it", () => {
+  it("keeps the project root only when it is explicitly configured as an extra scan path", () => {
     expect(
       getProjectScanPaths({
         id: "project-1",
@@ -237,11 +262,11 @@ describe("skill store", () => {
         updatedAt: 1,
       }),
     ).toEqual([
-      "/tmp/workspace",
       "/tmp/workspace/.claude/skills",
       "/tmp/workspace/.agents/skills",
       "/tmp/workspace/skills",
       "/tmp/workspace/.gemini",
+      "/tmp/workspace",
       "/tmp/workspace/custom-skills",
     ]);
   });

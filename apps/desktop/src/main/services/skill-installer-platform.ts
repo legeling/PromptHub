@@ -9,6 +9,7 @@ import {
   SKILL_PLATFORMS,
   type SkillPlatform,
 } from "@prompthub/shared/constants/platforms";
+import type { SkillPlatformInstallResult } from "@prompthub/shared/types";
 import {
   fileExists,
   getErrorCode,
@@ -22,6 +23,7 @@ import {
 } from "./skill-installer-repo";
 import {
   getPlatformSkillsDir,
+  getCustomAgentPlatforms,
   validateMCPConfig,
 } from "./skill-installer-utils";
 
@@ -232,7 +234,7 @@ async function copySkillRepoToPlatform(
  * Get list of supported platforms.
  */
 export function getSupportedPlatforms(): SkillPlatform[] {
-  return SKILL_PLATFORMS;
+  return [...SKILL_PLATFORMS, ...getCustomAgentPlatforms()];
 }
 
 /**
@@ -241,7 +243,7 @@ export function getSupportedPlatforms(): SkillPlatform[] {
 export async function detectInstalledPlatforms(): Promise<string[]> {
   const installed: string[] = [];
 
-  for (const platform of SKILL_PLATFORMS) {
+  for (const platform of getSupportedPlatforms()) {
     const skillsDir = getPlatformSkillsDir(platform);
     // Check if the parent directory exists (e.g., ~/.claude means Claude Code is installed)
     const parentDir = path.dirname(skillsDir);
@@ -266,7 +268,7 @@ export async function installSkillMd(
   canonicalRepoPath?: string,
 ): Promise<void> {
   validateSkillName(skillName);
-  const platform = SKILL_PLATFORMS.find((p) => p.id === platformId);
+  const platform = getSupportedPlatforms().find((p) => p.id === platformId);
   if (!platform) {
     throw new Error(`Unknown platform: ${platformId}`);
   }
@@ -299,7 +301,7 @@ export async function uninstallSkillMd(
   platformId: string,
 ): Promise<void> {
   validateSkillName(skillName);
-  const platform = SKILL_PLATFORMS.find((p) => p.id === platformId);
+  const platform = getSupportedPlatforms().find((p) => p.id === platformId);
   if (!platform) {
     throw new Error(`Unknown platform: ${platformId}`);
   }
@@ -330,7 +332,7 @@ export async function getSkillMdInstallStatus(
   validateSkillName(skillName);
   const status: Record<string, boolean> = {};
 
-  for (const platform of SKILL_PLATFORMS) {
+  for (const platform of getSupportedPlatforms()) {
     const skillsDir = getPlatformSkillsDir(platform);
     const skillMdPath = path.join(skillsDir, skillName, "SKILL.md");
 
@@ -351,10 +353,10 @@ export async function installSkillMdSymlink(
   skillMdContent: string,
   platformId: string,
   canonicalRepoPath?: string,
-): Promise<void> {
+): Promise<SkillPlatformInstallResult> {
   const mainSkillsDir = getSkillsDirAccessor();
   validateSkillName(skillName);
-  const platform = SKILL_PLATFORMS.find((p) => p.id === platformId);
+  const platform = getSupportedPlatforms().find((p) => p.id === platformId);
   if (!platform) {
     throw new Error(`Unknown platform: ${platformId}`);
   }
@@ -371,11 +373,18 @@ export async function installSkillMdSymlink(
   // 2. Create a platform skill dir as a directory symlink to the managed repo
   const platformSkillsDir = getPlatformSkillsDir(platform);
   const platformSkillDir = path.join(platformSkillsDir, skillName);
-  const fallbackInstall = async (reason: string): Promise<void> => {
+  const fallbackInstall = async (
+    reason: string,
+  ): Promise<SkillPlatformInstallResult> => {
     console.warn(
       `Symlink install unsupported for "${skillName}" on ${platform.name}; falling back to copy install. Reason: ${reason}`,
     );
     await installSkillMd(skillName, skillMdContent, platformId);
+    return {
+      requestedMode: "symlink",
+      effectiveMode: "copy",
+      fallbackReason: reason,
+    };
   };
 
   try {
@@ -397,6 +406,10 @@ export async function installSkillMdSymlink(
     console.log(
       `Symlinked "${skillName}" repo directory → ${platform.name}: ${canonicalDir} → ${platformSkillDir}`,
     );
+    return {
+      requestedMode: "symlink",
+      effectiveMode: "symlink",
+    };
   } catch (error) {
     const code = getErrorCode(error);
     const message = error instanceof Error ? error.message : String(error);
@@ -412,8 +425,7 @@ export async function installSkillMdSymlink(
       code === "ENOTSUP" ||
       code === "UNKNOWN"
     ) {
-      await fallbackInstall(`${code}: ${message}`);
-      return;
+      return fallbackInstall(`${code}: ${message}`);
     }
 
     console.error(

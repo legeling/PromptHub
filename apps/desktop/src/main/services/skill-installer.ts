@@ -60,6 +60,7 @@ import {
 import {
   createLocalRepoDir,
   createLocalRepoDirByPath,
+  copyRepoByPathToDirectory,
   deleteAllLocalRepos,
   deleteLocalRepo,
   deleteLocalRepoFile,
@@ -138,6 +139,7 @@ export class SkillInstaller {
   static deleteLocalRepoFileByPath = deleteLocalRepoFileByPath;
   static createLocalRepoDir = createLocalRepoDir;
   static createLocalRepoDirByPath = createLocalRepoDirByPath;
+  static copyRepoByPathToDirectory = copyRepoByPathToDirectory;
   static renameLocalRepoPathByPath = renameLocalRepoPathByPath;
   static getLocalRepoPath = getLocalRepoPath;
   static renameManagedLocalRepo = renameManagedLocalRepo;
@@ -561,6 +563,22 @@ export class SkillInstaller {
     }
 
     return result;
+  }
+
+  private static async resolveSingleSkillDirFromRepo(repoDir: string): Promise<string> {
+    const skillDirs = await this.collectSkillDirs(repoDir);
+
+    if (skillDirs.length === 0) {
+      throw new Error("Repository does not contain a SKILL.md file.");
+    }
+
+    if (skillDirs.length > 1) {
+      throw new Error(
+        "Repository contains multiple skills. Import it as a local skill folder instead.",
+      );
+    }
+
+    return skillDirs[0];
   }
 
   static async scanLocal(db: SkillDB): Promise<ScanLocalResult> {

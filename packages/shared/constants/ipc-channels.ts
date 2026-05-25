@@ -128,6 +128,7 @@ export const IPC_CHANNELS = {
   SKILL_WRITE_LOCAL_FILE_BUFFER_BY_PATH: "skill:writeLocalFileBufferByPath",
   SKILL_DELETE_LOCAL_FILE_BY_PATH: "skill:deleteLocalFileByPath",
   SKILL_CREATE_LOCAL_DIR_BY_PATH: "skill:createLocalDirByPath",
+  SKILL_COPY_REPO_BY_PATH_TO_DIRECTORY: "skill:copyRepoByPathToDirectory",
   SKILL_SAVE_TO_REPO: "skill:saveToRepo",
   SKILL_GET_REPO_PATH: "skill:getRepoPath",
   SKILL_SYNC_FROM_REPO: "skill:syncFromRepo",

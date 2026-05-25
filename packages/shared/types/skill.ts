@@ -259,6 +259,14 @@ export interface SkillLocalFileTreeEntry {
   size?: number;
 }
 
+export type SkillInstallMode = "copy" | "symlink";
+
+export interface SkillPlatformInstallResult {
+  requestedMode: SkillInstallMode;
+  effectiveMode: SkillInstallMode;
+  fallbackReason?: string;
+}
+
 /**
  * Scanned local skill (not yet imported)
  * 扫描到的本地技能（尚未导入）
@@ -278,6 +286,7 @@ export interface SkillProject {
   name: string;
   rootPath: string;
   scanPaths: string[];
+  deployTargets?: string[];
   createdAt: number;
   updatedAt: number;
   lastScannedAt?: number;

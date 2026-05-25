@@ -1,21 +1,69 @@
-import { DownloadIcon, FolderOpenIcon, Loader2Icon } from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+  CheckIcon,
+  DownloadIcon,
+  FolderOpenIcon,
+  Loader2Icon,
+  PlusIcon,
+} from "lucide-react";
 import type { TFunction } from "i18next";
+import type { Skill } from "@prompthub/shared/types";
 
 interface ProjectSkillPreviewSidebarProps {
+  deployTargets: string[];
+  isDeploying: boolean;
   isImporting: boolean;
   isImportAvailable: boolean;
+  onAddDeployTarget: () => void | Promise<void>;
+  onDeploy: (targetDirs: string[]) => void | Promise<void>;
   onImport: () => void | Promise<void>;
+  selectedSkill: Skill;
   sourcePath: string;
   t: TFunction;
 }
 
 export function ProjectSkillPreviewSidebar({
+  deployTargets,
+  isDeploying,
   isImporting,
   isImportAvailable,
+  onAddDeployTarget,
+  onDeploy,
   onImport,
+  selectedSkill,
   sourcePath,
   t,
 }: ProjectSkillPreviewSidebarProps) {
+  const [selectedTargets, setSelectedTargets] = useState<Set<string>>(
+    () => new Set(deployTargets),
+  );
+
+  const sortedTargets = useMemo(
+    () => Array.from(new Set(deployTargets.filter((entry) => entry.trim().length > 0))),
+    [deployTargets],
+  );
+
+  const effectiveSelectedTargets = useMemo(() => {
+    if (selectedTargets.size === 0) {
+      return new Set(sortedTargets);
+    }
+    return new Set(
+      Array.from(selectedTargets).filter((entry) => sortedTargets.includes(entry)),
+    );
+  }, [selectedTargets, sortedTargets]);
+
+  const toggleTarget = (target: string) => {
+    setSelectedTargets((previous) => {
+      const next = new Set(previous);
+      if (next.has(target)) {
+        next.delete(target);
+      } else {
+        next.add(target);
+      }
+      return next;
+    });
+  };
+
   return (
     <div className="flex h-full min-h-0 flex-col space-y-6">
       <section className="space-y-4">
@@ -41,6 +89,92 @@ export function ProjectSkillPreviewSidebar({
               <DownloadIcon className="h-4 w-4" />
             )}
             {t("skill.addToLibrary", "Import to My Skills")}
+          </button>
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em]">
+          {t("skill.projectDeploy", "Project Deployment")}
+        </h3>
+        <div className="app-wallpaper-panel rounded-2xl border border-border p-5 space-y-4">
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            {t(
+              "skill.projectDeployHint",
+              "Deploy this skill directly into project-local agent folders. PromptHub defaults to .agents/skills and lets you add more target folders when needed.",
+            )}
+          </p>
+
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-xs text-muted-foreground">
+              {t("skill.projectDeploySelectedCount", {
+                count: effectiveSelectedTargets.size,
+                defaultValue: "{{count}} selected",
+              })}
+            </div>
+            <button
+              type="button"
+              onClick={() => void onAddDeployTarget()}
+              className="inline-flex items-center gap-2 rounded-xl border border-border app-wallpaper-surface px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-accent"
+            >
+              <PlusIcon className="h-3.5 w-3.5" />
+              {t("skill.addDeployTarget", "Add Folder")}
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            {sortedTargets.map((target) => {
+              const isSelected = effectiveSelectedTargets.has(target);
+              return (
+                <button
+                  key={target}
+                  type="button"
+                  onClick={() => toggleTarget(target)}
+                  className={`flex w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition-colors ${
+                    isSelected
+                      ? "border-primary/40 bg-primary/5"
+                      : "border-border bg-accent/40 hover:bg-accent"
+                  }`}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium text-foreground">
+                      {target.endsWith("/.agents/skills") || target.endsWith("\\.agents\\skills")
+                        ? t("skill.defaultProjectDeployTarget", "Default .agents target")
+                        : t("skill.customProjectDeployTarget", "Custom target")}
+                    </div>
+                    <div className="mt-1 break-all font-mono text-[11px] leading-relaxed text-muted-foreground">
+                      {target}
+                    </div>
+                  </div>
+                  <div
+                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 ${
+                      isSelected
+                        ? "border-primary bg-primary text-white"
+                        : "border-muted-foreground/30"
+                    }`}
+                  >
+                    {isSelected ? <CheckIcon className="h-3 w-3" /> : null}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => void onDeploy(Array.from(effectiveSelectedTargets))}
+            disabled={effectiveSelectedTargets.size === 0 || isDeploying}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
+          >
+            {isDeploying ? (
+              <Loader2Icon className="h-4 w-4 animate-spin" />
+            ) : (
+              <DownloadIcon className="h-4 w-4" />
+            )}
+            {t("skill.deployToProjectFolders", {
+              name: selectedSkill.name,
+              defaultValue: `Deploy ${selectedSkill.name} to Project Folders`,
+            })}
           </button>
         </div>
       </section>

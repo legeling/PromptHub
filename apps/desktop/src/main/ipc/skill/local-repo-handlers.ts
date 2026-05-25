@@ -422,6 +422,49 @@ export function registerSkillLocalRepoHandlers({ db }: SkillIPCContext): void {
   );
 
   ipcMain.handle(
+    IPC_CHANNELS.SKILL_COPY_REPO_BY_PATH_TO_DIRECTORY,
+    async (
+      _,
+      localPath: string,
+      skillName: string,
+      targetRootDir: string,
+      options?: { ifExists?: "overwrite" | "skip" | "error" },
+    ) => {
+      if (typeof localPath !== "string" || localPath.trim() === "") {
+        throw new Error(
+          "skill:copyRepoByPathToDirectory requires a non-empty localPath",
+        );
+      }
+      if (typeof skillName !== "string" || skillName.trim() === "") {
+        throw new Error(
+          "skill:copyRepoByPathToDirectory requires a non-empty skillName",
+        );
+      }
+      if (typeof targetRootDir !== "string" || targetRootDir.trim() === "") {
+        throw new Error(
+          "skill:copyRepoByPathToDirectory requires a non-empty targetRootDir",
+        );
+      }
+      if (
+        options !== undefined &&
+        (!options ||
+          typeof options !== "object" ||
+          !["overwrite", "skip", "error", undefined].includes(options.ifExists))
+      ) {
+        throw new Error(
+          "skill:copyRepoByPathToDirectory options.ifExists must be overwrite, skip, or error",
+        );
+      }
+      return SkillInstaller.copyRepoByPathToDirectory(
+        localPath,
+        skillName,
+        targetRootDir,
+        options,
+      );
+    },
+  );
+
+  ipcMain.handle(
     IPC_CHANNELS.SKILL_GET_REPO_PATH,
     async (_, skillId: string) => {
       if (typeof skillId !== "string" || skillId.trim() === "") {

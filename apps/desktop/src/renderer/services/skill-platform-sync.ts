@@ -1,6 +1,18 @@
-import type { Skill } from "@prompthub/shared/types";
+import type {
+  Skill,
+  SkillInstallMode,
+  SkillPlatformInstallResult,
+} from "@prompthub/shared/types";
 
-export type SkillInstallMode = "copy" | "symlink";
+export type { SkillInstallMode } from "@prompthub/shared/types";
+
+export interface BatchSkillSyncFallback {
+  skillName: string;
+  platformId: string;
+  requestedMode: SkillInstallMode;
+  effectiveMode: SkillInstallMode;
+  reason: string;
+}
 
 export interface BatchSkillSyncFailure {
   skillName: string;
@@ -19,6 +31,24 @@ export interface BatchSkillSyncResult {
   successCount: number;
   totalCount: number;
   failures: BatchSkillSyncFailure[];
+  fallbacks: BatchSkillSyncFallback[];
+}
+
+function isCopyFallback(
+  result: SkillPlatformInstallResult | void,
+): result is SkillPlatformInstallResult & {
+  requestedMode: "symlink";
+  effectiveMode: "copy";
+  fallbackReason: string;
+} {
+  return (
+    typeof result === "object" &&
+    result !== null &&
+    result.requestedMode === "symlink" &&
+    result.effectiveMode === "copy" &&
+    typeof result.fallbackReason === "string" &&
+    result.fallbackReason.length > 0
+  );
 }
 
 function getErrorMessage(error: unknown): string {
@@ -32,13 +62,14 @@ export async function syncSkillsToPlatforms(
   onProgress?: (progress: BatchSkillSyncProgress) => void,
 ): Promise<BatchSkillSyncResult> {
   if (skills.length === 0 || platformIds.length === 0) {
-    return { successCount: 0, totalCount: 0, failures: [] };
+    return { successCount: 0, totalCount: 0, failures: [], fallbacks: [] };
   }
 
   const totalCount = skills.length * platformIds.length;
   let current = 0;
   let successCount = 0;
   const failures: BatchSkillSyncFailure[] = [];
+  const fallbacks: BatchSkillSyncFallback[] = [];
 
   for (const skill of skills) {
     const skillMdContent = await window.api.skill.export(skill.id, "skillmd");
@@ -52,16 +83,25 @@ export async function syncSkillsToPlatforms(
         platformId,
       });
 
-      try {
-        if (installMode === "symlink") {
-          await window.api.skill.installMdSymlink(
-            skill.name,
-            skillMdContent,
-            platformId,
-          );
-        } else {
-          await window.api.skill.installMd(skill.name, skillMdContent, platformId);
-        }
+        try {
+          if (installMode === "symlink") {
+            const result = await window.api.skill.installMdSymlink(
+              skill.name,
+              skillMdContent,
+              platformId,
+            );
+            if (isCopyFallback(result)) {
+              fallbacks.push({
+                skillName: skill.name,
+                platformId,
+                requestedMode: result.requestedMode,
+                effectiveMode: result.effectiveMode,
+                reason: result.fallbackReason,
+              });
+            }
+          } else {
+            await window.api.skill.installMd(skill.name, skillMdContent, platformId);
+          }
         successCount += 1;
       } catch (error) {
         failures.push({
@@ -77,6 +117,7 @@ export async function syncSkillsToPlatforms(
     successCount,
     totalCount,
     failures,
+    fallbacks,
   };
 }
 
@@ -86,7 +127,7 @@ export async function unsyncSkillsFromPlatforms(
   onProgress?: (progress: BatchSkillSyncProgress) => void,
 ): Promise<BatchSkillSyncResult> {
   if (skills.length === 0 || platformIds.length === 0) {
-    return { successCount: 0, totalCount: 0, failures: [] };
+    return { successCount: 0, totalCount: 0, failures: [], fallbacks: [] };
   }
 
   const totalCount = skills.length * platformIds.length;
@@ -121,5 +162,6 @@ export async function unsyncSkillsFromPlatforms(
     successCount,
     totalCount,
     failures,
+    fallbacks: [],
   };
 }

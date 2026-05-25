@@ -214,7 +214,6 @@ export function getProjectScanPaths(project: SkillProject): string[] {
 
   return Array.from(
     new Set([
-      normalizedRootPath,
       ...DEFAULT_PROJECT_SCAN_SUBDIRECTORIES.map((subPath) =>
         joinProjectPath(normalizedRootPath, subPath),
       ),
@@ -1136,11 +1135,9 @@ export const useSkillStore = create<SkillState>()(
         }));
 
         try {
-          const scannedSkills = await get().scanLocalPreview(uniquePaths);
-          const scanError = get().error;
-          if (scanError) {
-            throw new Error(scanError);
-          }
+          const scannedSkills = await window.api.skill.scanLocalPreview(
+            uniquePaths,
+          );
           const nextState: ProjectSkillScanState = {
             scannedSkills,
             isScanning: false,

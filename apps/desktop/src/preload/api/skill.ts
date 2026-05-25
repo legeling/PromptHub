@@ -3,6 +3,7 @@ import { IPC_CHANNELS } from "@prompthub/shared/constants/ipc-channels";
 import type {
   CreateSkillParams,
   MCPServerConfig,
+  SkillPlatformInstallResult,
   SkillSafetyReport,
   SkillSafetyScanInput,
   SkillFileSnapshot,
@@ -89,7 +90,7 @@ export const skillApi = {
     skillName: string,
     skillMdContent: string,
     platformId: string,
-  ) =>
+  ): Promise<SkillPlatformInstallResult> =>
     ipcRenderer.invoke(
       IPC_CHANNELS.SKILL_INSTALL_MD_SYMLINK,
       skillName,
@@ -208,6 +209,19 @@ export const skillApi = {
       IPC_CHANNELS.SKILL_CREATE_LOCAL_DIR_BY_PATH,
       localPath,
       relativePath,
+    ),
+  copyRepoByPathToDirectory: (
+    localPath: string,
+    skillName: string,
+    targetRootDir: string,
+    options?: { ifExists?: "overwrite" | "skip" | "error" },
+  ) =>
+    ipcRenderer.invoke(
+      IPC_CHANNELS.SKILL_COPY_REPO_BY_PATH_TO_DIRECTORY,
+      localPath,
+      skillName,
+      targetRootDir,
+      options,
     ),
   getRepoPath: (skillId: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.SKILL_GET_REPO_PATH, skillId),

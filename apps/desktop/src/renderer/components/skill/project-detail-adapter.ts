@@ -4,6 +4,8 @@ export interface ProjectDetailSkillContext {
   scannedSkill: ScannedSkill;
   importedSkill?: Skill | null;
   projectName: string;
+  projectRootPath: string;
+  projectDeployTargets?: string[];
 }
 
 export function buildProjectDetailSkill(

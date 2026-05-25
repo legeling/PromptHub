@@ -106,6 +106,8 @@ function createSkillStoreState(overrides: Partial<Record<string, unknown>> = {})
 
 function createSettingsState(overrides: Partial<Record<string, unknown>> = {}) {
   return {
+    customAgents: [],
+    customAgentRootPaths: [],
     customSkillScanPaths: [],
     translationMode: "full",
     skillInstallMethod: "symlink",

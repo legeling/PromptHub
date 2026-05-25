@@ -180,6 +180,22 @@ export function SkillBatchDeployDialog({
         );
       }
 
+      if (result.fallbacks.length > 0) {
+        const preview = result.fallbacks
+          .slice(0, 2)
+          .map((item) => `${item.skillName} -> ${item.platformId}`)
+          .join(", ");
+        showToast(
+          t("skill.batchDeployFallback", {
+            count: result.fallbacks.length,
+            preview,
+            defaultValue:
+              `${result.fallbacks.length} target(s) used copy install because symlinks were unavailable: ${preview}`,
+          }),
+          "warning",
+        );
+      }
+
       if (result.failures.length > 0) {
         const preview = result.failures
           .slice(0, 2)
