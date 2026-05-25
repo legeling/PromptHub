@@ -1,5 +1,26 @@
 ## [Unreleased]
 
+## [0.5.7-beta.1] - 2026-05-26
+
+### 新功能 / Features
+
+- 🤖 **统一 Agent 配置模型**：built-in 与 custom agents 现在共用完整配置心智，`Skill Settings` 支持覆盖 `root / skills / rules / agents / commands / config` 路径，并新增 `Cline`、`Trae CN` 内置预设
+  - **Unified Agent Configuration Model**: Built-in and custom agents now share the same full configuration model. `Skill Settings` can override `root / skills / rules / agents / commands / config` paths, and PromptHub adds built-in `Cline` and `Trae CN` presets
+- 📁 **项目级 Skill 目录部署**：全局 Skill 和项目内 Skill 现在都可以直接分发到项目本地 agent 目录，支持多目标选择，并默认提供 `.agents/skills`
+  - **Project-Local Skill Deployment**: Library Skills and project-scoped Skills can now deploy directly into project-local agent directories, support multi-target selection, and default to `.agents/skills`
+
+### 问题修复 / Fixes
+
+- ✍️ **Prompt 详情内联编辑收口**：双击标题 / system prompt / user prompt 时会准确进入对应字段；编辑态尽量保持原页面结构，只禁用 Markdown 与多模型对比操作
+  - **Prompt Detail Inline Edit Refinement**: Double-clicking the title / system prompt / user prompt now opens the correct field, while the edit state stays visually close to the normal detail layout and only disables Markdown / comparison actions
+- ⚠️ **平台分发回退提示明确化**：当 symlink 安装因权限或文件系统限制回退到 copy 时，渲染层会收到结构化结果并向用户显示 warning，而不再伪装成普通成功
+  - **Explicit Install Fallback Feedback**: When symlink installs fall back to copy because of permissions or filesystem limits, the renderer now receives structured results and shows a warning instead of treating it as a plain success
+
+### 优化 / Improvements
+
+- 🔄 **Rules 与 Agent 设置同步更即时**：修改 custom agent、built-in agent override、平台启用状态或规则跟踪状态后，Rules 工作区会立即强制刷新，避免残留旧配置
+  - **Faster Rules and Agent Settings Sync**: Changing custom agents, built-in overrides, platform visibility, or rule tracking now forces an immediate Rules workspace refresh so stale configurations do not linger
+
 ## [0.5.6] - 2026-05-12
 
 ### 新功能 / Features

@@ -23,14 +23,14 @@ describe("CLISettings", () => {
           getStatus: vi.fn().mockResolvedValue({
             installed: true,
             command: "prompthub",
-            version: "0.5.6-beta.2",
+            version: "0.5.7-beta.1",
             packageManager: "pnpm",
             packageManagerVersion: "9.15.0",
-            releaseTag: "v0.5.6-beta.2",
+            releaseTag: "v0.5.7-beta.1",
             installCommand:
-              "pnpm add -g https://github.com/legeling/PromptHub/releases/download/v0.5.6-beta.2/prompthub-cli-0.5.6-beta.2.tgz",
+              "pnpm add -g https://github.com/legeling/PromptHub/releases/download/v0.5.7-beta.1/prompthub-cli-0.5.7-beta.1.tgz",
             installSource:
-              "https://github.com/legeling/PromptHub/releases/download/v0.5.6-beta.2/prompthub-cli-0.5.6-beta.2.tgz",
+              "https://github.com/legeling/PromptHub/releases/download/v0.5.7-beta.1/prompthub-cli-0.5.7-beta.1.tgz",
           }),
         },
       },
@@ -45,7 +45,7 @@ describe("CLISettings", () => {
     });
 
     expect(screen.getByText("Version")).toBeInTheDocument();
-    expect(screen.getByText("0.5.6-beta.2")).toBeInTheDocument();
+    expect(screen.getByText("0.5.7-beta.1")).toBeInTheDocument();
     expect(screen.getByText("Detected Package Manager")).toBeInTheDocument();
     expect(screen.getByText(/pnpm 9.15.0/)).toBeInTheDocument();
   });
@@ -55,7 +55,7 @@ describe("CLISettings", () => {
       success: true,
       method: "pnpm",
       command:
-        "pnpm add -g https://github.com/legeling/PromptHub/releases/download/v0.5.6-beta.2/prompthub-cli-0.5.6-beta.2.tgz",
+        "pnpm add -g https://github.com/legeling/PromptHub/releases/download/v0.5.7-beta.1/prompthub-cli-0.5.7-beta.1.tgz",
     });
     const getStatus = vi
       .fn()
@@ -65,23 +65,23 @@ describe("CLISettings", () => {
         version: null,
         packageManager: "pnpm",
         packageManagerVersion: "9.15.0",
-        releaseTag: "v0.5.6-beta.2",
+        releaseTag: "v0.5.7-beta.1",
         installCommand:
-          "pnpm add -g https://github.com/legeling/PromptHub/releases/download/v0.5.6-beta.2/prompthub-cli-0.5.6-beta.2.tgz",
+          "pnpm add -g https://github.com/legeling/PromptHub/releases/download/v0.5.7-beta.1/prompthub-cli-0.5.7-beta.1.tgz",
         installSource:
-          "https://github.com/legeling/PromptHub/releases/download/v0.5.6-beta.2/prompthub-cli-0.5.6-beta.2.tgz",
+          "https://github.com/legeling/PromptHub/releases/download/v0.5.7-beta.1/prompthub-cli-0.5.7-beta.1.tgz",
       })
       .mockResolvedValueOnce({
         installed: true,
         command: "prompthub",
-        version: "0.5.6-beta.2",
+        version: "0.5.7-beta.1",
         packageManager: "pnpm",
         packageManagerVersion: "9.15.0",
-        releaseTag: "v0.5.6-beta.2",
+        releaseTag: "v0.5.7-beta.1",
         installCommand:
-          "pnpm add -g https://github.com/legeling/PromptHub/releases/download/v0.5.6-beta.2/prompthub-cli-0.5.6-beta.2.tgz",
+          "pnpm add -g https://github.com/legeling/PromptHub/releases/download/v0.5.7-beta.1/prompthub-cli-0.5.7-beta.1.tgz",
         installSource:
-          "https://github.com/legeling/PromptHub/releases/download/v0.5.6-beta.2/prompthub-cli-0.5.6-beta.2.tgz",
+          "https://github.com/legeling/PromptHub/releases/download/v0.5.7-beta.1/prompthub-cli-0.5.7-beta.1.tgz",
       });
 
     installWindowMocks({

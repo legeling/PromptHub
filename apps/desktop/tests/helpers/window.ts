@@ -201,17 +201,17 @@ export function createWindowElectronMock(overrides?: DeepPartial<MockRecord>) {
           version: null,
           packageManager: "pnpm",
           packageManagerVersion: "9.15.0",
-          releaseTag: "v0.5.6-beta.2",
+          releaseTag: "v0.5.7-beta.1",
           installCommand:
-            "pnpm add -g https://github.com/legeling/PromptHub/releases/download/v0.5.6-beta.2/prompthub-cli-0.5.6-beta.2.tgz",
+            "pnpm add -g https://github.com/legeling/PromptHub/releases/download/v0.5.7-beta.1/prompthub-cli-0.5.7-beta.1.tgz",
           installSource:
-            "https://github.com/legeling/PromptHub/releases/download/v0.5.6-beta.2/prompthub-cli-0.5.6-beta.2.tgz",
+            "https://github.com/legeling/PromptHub/releases/download/v0.5.7-beta.1/prompthub-cli-0.5.7-beta.1.tgz",
         }),
         install: vi.fn().mockResolvedValue({
           success: true,
           method: "pnpm",
           command:
-            "pnpm add -g https://github.com/legeling/PromptHub/releases/download/v0.5.6-beta.2/prompthub-cli-0.5.6-beta.2.tgz",
+            "pnpm add -g https://github.com/legeling/PromptHub/releases/download/v0.5.7-beta.1/prompthub-cli-0.5.7-beta.1.tgz",
         }),
       },
       selectImage: vi.fn(),

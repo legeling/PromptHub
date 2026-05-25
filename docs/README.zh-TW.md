@@ -9,7 +9,7 @@
 
   [![GitHub Stars](https://img.shields.io/github/stars/legeling/PromptHub?style=for-the-badge&logo=github&color=yellow)](https://github.com/legeling/PromptHub/stargazers)
   [![Downloads](https://img.shields.io/github/downloads/legeling/PromptHub/total?style=for-the-badge&logo=github&color=blue)](https://github.com/legeling/PromptHub/releases)
-  [![Version](https://img.shields.io/badge/release-v0.5.6-22C55E?style=for-the-badge)](https://github.com/legeling/PromptHub/releases/latest)
+  [![Version](https://img.shields.io/badge/release-v0.5.6_stable-22C55E?style=for-the-badge)](https://github.com/legeling/PromptHub/releases/latest)
   [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](../LICENSE)
 
   <br/>
@@ -76,7 +76,7 @@ PromptHub 把你的 Prompt、SKILL.md 和專案級 AI 編程資產放進一個�
 | Windows | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.5.6-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.5.6-arm64.exe) | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.5.6-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.5.6-arm64.exe) |
 | macOS   | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.6-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.6-x64.dmg) | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.6-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.6-x64.dmg) |
 | Linux   | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.6-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.6-amd64.deb) | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.6-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.6-amd64.deb) |
-| 預覽版  | [![Preview Prereleases](https://img.shields.io/badge/Preview_Prereleases-8B5CF6?style=for-the-badge&logo=github&logoColor=white)](https://github.com/legeling/PromptHub/releases?q=prerelease%3Atrue) | 在應用內「設定 → 關於」打開「預覽版通道」開關後，自動檢查並升級 |
+| 預覽版  | [![Preview v0.5.7-beta.1](https://img.shields.io/badge/Preview-v0.5.7--beta.1-8B5CF6?style=for-the-badge&logo=github&logoColor=white)](https://github.com/legeling/PromptHub/releases/tag/v0.5.7-beta.1) | 目前預覽版：`v0.5.7-beta.1`。也可在應用內「設定 → 關於」打開「預覽版通道」後自動檢查並升級 |
 
 > **macOS 選哪個？** Apple Silicon（M1/M2/M3/M4）選 `arm64`，Intel Mac 選 `x64`。
 > **Windows 選哪個？** 絕大多數選 `x64`，只有 Surface Pro X 這類 ARM 裝置選 `arm64`。
@@ -112,7 +112,7 @@ sudo xattr -rd com.apple.quarantine /Applications/PromptHub.app
 
 ## 螢幕截圖
 
-> 下面這幾張展示了 0.5.6 的核心互動。
+> 下面這幾張展示了目前穩定版 0.5.6 的核心互動。
 
 <div align="center">
   <p><strong>主介面（雙欄首頁）</strong></p>
@@ -298,6 +298,14 @@ workspace export / import
 
 完整版本說明：**[CHANGELOG.md](../CHANGELOG.md)**
 
+### v0.5.7-beta.1（2026-05-26，預覽版）
+
+- 統一 built-in / custom agent 的完整配置模型，`Skill Settings` 可直接覆寫 `root / skills / rules / agents / commands / config` 路徑
+- 新增 `Cline`、`Trae CN` 內建平台預設，並讓 Rules 工作區在 agent 設定變更後立即刷新
+- 支援把 Skill 直接部署到專案本地 agent 目錄，預設 `.agents/skills`，並支援多目標選擇
+- 平台 symlink 安裝回退到 copy 時會明確顯示 warning，不再偽裝成普通成功
+- Prompt 詳情雙擊編輯進一步收口：雙擊哪塊就編輯哪塊，編輯態盡量保持原頁面結構
+
 ### v0.5.6（2026-05-12）
 
 **新功能**
@@ -326,6 +334,12 @@ workspace export / import
 <div id="roadmap"></div>
 
 ## 路線圖
+
+### v0.5.7-beta.1 ← 目前預覽版
+
+- 統一 agent 配置模型，支援 built-in agent 完整路徑覆寫
+- 專案級 Skill 直接部署到本地 agent 目錄
+- Prompt 詳情內聯編輯體驗進一步收口
 
 ### v0.5.6 ← 目前穩定版
 
