@@ -242,12 +242,28 @@ describe("MainContent inline edit integration", () => {
     expect(
       screen.getByRole("textbox", { name: "User Prompt" }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "User Prompt" })).toHaveFocus();
   });
 
   it("keeps inline editors visually unobtrusive", async () => {
     const promptState = createPromptState(createPrompt());
 
     usePromptStoreMock.mockImplementation((selector) => selector(promptState));
+    useSettingsStoreMock.mockImplementation((selector) =>
+      selector(
+        createSettingsState({
+          aiModels: [
+            {
+              id: "m1",
+              provider: "openai",
+              model: "gpt-4o",
+              enabled: true,
+              type: "chat",
+            },
+          ],
+        }),
+      ),
+    );
 
     await act(async () => {
       await renderWithI18n(<MainContent />, { language: "en" });
@@ -265,6 +281,11 @@ describe("MainContent inline edit integration", () => {
     expect(
       screen.getByRole("textbox", { name: "User Prompt" }).className,
     ).toContain("bg-transparent");
+    expect(
+      screen.getByRole("textbox", { name: "User Prompt" }).className,
+    ).not.toContain("font-mono");
+    expect(screen.getByRole("button", { name: "Show Plain Text" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Run Comparison/i })).toBeDisabled();
   });
 
   it("renders selected prompt tags without runtime icon errors", async () => {

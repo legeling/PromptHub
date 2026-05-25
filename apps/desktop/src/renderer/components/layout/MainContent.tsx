@@ -304,6 +304,8 @@ type DetailInlineEditDraft = {
   userPrompt: string;
 };
 
+type DetailInlineEditField = 'title' | 'systemPrompt' | 'userPrompt';
+
 function createDetailInlineEditDraft(
   prompt: Prompt,
   showEnglish: boolean,
@@ -1198,6 +1200,8 @@ function PromptSkillMainContent() {
   const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null);
   const [isDetailInlineEditing, setIsDetailInlineEditing] = useState(false);
   const [isDetailInlineSaving, setIsDetailInlineSaving] = useState(false);
+  const [detailInlineActiveField, setDetailInlineActiveField] =
+    useState<DetailInlineEditField>('title');
   const [detailInlineDraft, setDetailInlineDraft] = useState<DetailInlineEditDraft>({
     title: '',
     systemPrompt: '',
@@ -1242,6 +1246,7 @@ function PromptSkillMainContent() {
   useEffect(() => {
     setIsDetailInlineEditing(false);
     setIsDetailInlineSaving(false);
+    setDetailInlineActiveField('title');
     setInlineAiTestImages([]);
   }, [selectedPrompt?.id]);
 
@@ -1267,15 +1272,24 @@ function PromptSkillMainContent() {
     if (!isDetailInlineEditing) {
       return;
     }
+    if (detailInlineActiveField === 'systemPrompt') {
+      detailSystemPromptTextareaRef.current?.focus();
+      return;
+    }
+    if (detailInlineActiveField === 'userPrompt') {
+      detailUserPromptTextareaRef.current?.focus();
+      return;
+    }
     detailTitleInputRef.current?.focus();
     detailTitleInputRef.current?.select();
-  }, [isDetailInlineEditing]);
+  }, [detailInlineActiveField, isDetailInlineEditing]);
 
-  const openDetailInlineEdit = useCallback(() => {
+  const openDetailInlineEdit = useCallback((field: DetailInlineEditField = 'title') => {
     if (!selectedPrompt) {
       return;
     }
     setDetailInlineDraft(createDetailInlineEditDraft(selectedPrompt, showEnglish));
+    setDetailInlineActiveField(field);
     setIsDetailInlineEditing(true);
   }, [selectedPrompt, showEnglish]);
 
@@ -1285,6 +1299,7 @@ function PromptSkillMainContent() {
     } else {
       setDetailInlineDraft({ title: '', systemPrompt: '', userPrompt: '' });
     }
+    setDetailInlineActiveField('title');
     setIsDetailInlineEditing(false);
     setIsDetailInlineSaving(false);
   }, [selectedPrompt, showEnglish]);
@@ -1335,6 +1350,7 @@ function PromptSkillMainContent() {
     try {
       await updatePrompt(selectedPrompt.id, updateData);
       showToast(t('toast.saved'), 'success');
+      setDetailInlineActiveField('title');
       setIsDetailInlineEditing(false);
     } catch (error) {
       console.error('Failed to save inline prompt edits:', error);
@@ -1895,7 +1911,7 @@ function PromptSkillMainContent() {
                         />
                       ) : (
                         <h2
-                          onDoubleClick={openDetailInlineEdit}
+                          onDoubleClick={() => openDetailInlineEdit('title')}
                           className="text-xl font-bold text-foreground mb-1 cursor-text"
                         >
                           {selectedPrompt.title}
@@ -2096,9 +2112,9 @@ function PromptSkillMainContent() {
                         </span>
                       </div>
                       {isDetailInlineEditing ? (
-                        <div className="p-4 rounded-xl app-wallpaper-surface border border-border">
-                          <textarea
-                            ref={detailSystemPromptTextareaRef}
+                          <div className="p-4 rounded-xl app-wallpaper-surface border border-border">
+                            <textarea
+                              ref={detailSystemPromptTextareaRef}
                             aria-label={t('prompt.systemPromptLabel', 'System Prompt')}
                             value={detailInlineDraft.systemPrompt}
                             onChange={(event) => {
@@ -2127,21 +2143,21 @@ function PromptSkillMainContent() {
                               }
                               handleDetailInlineEditKeyDown(event);
                             }}
-                            className="w-full min-h-[120px] resize-none bg-transparent border-0 p-0 text-[15px] leading-relaxed font-mono text-foreground placeholder:text-muted-foreground focus:outline-none"
-                            rows={4}
-                            spellCheck={false}
-                          />
+                            className="w-full min-h-[120px] resize-none bg-transparent border-0 p-0 text-[15px] leading-relaxed text-foreground placeholder:text-muted-foreground focus:outline-none"
+                              rows={4}
+                              spellCheck={false}
+                            />
                         </div>
                       ) : (
                         <div
                           role="button"
                           tabIndex={0}
                           aria-label={t('prompt.inlineEditSystemPromptAria', 'Double-click to edit system prompt')}
-                          onDoubleClick={openDetailInlineEdit}
+                          onDoubleClick={() => openDetailInlineEdit('systemPrompt')}
                           onKeyDown={(event) => {
                             if (event.key === 'Enter' || event.key === ' ') {
                               event.preventDefault();
-                              openDetailInlineEdit();
+                              openDetailInlineEdit('systemPrompt');
                             }
                           }}
                           className="cursor-text rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
@@ -2159,15 +2175,14 @@ function PromptSkillMainContent() {
                         {t('prompt.userPromptLabel', 'User Prompt')}
                         {showEnglish && <span className="px-1 py-0.5 rounded bg-primary/10 text-primary text-[10px]">EN</span>}
                       </span>
-                      {!isDetailInlineEditing ? (
-                        <button
-                          type="button"
-                          onClick={toggleRenderMarkdown}
-                          className="text-[12px] px-3 py-1 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                        >
-                          {renderMarkdownEnabled ? t('prompt.viewRaw', 'Show Plain Text') : t('prompt.viewMarkdown', 'Markdown')}
-                        </button>
-                      ) : null}
+                      <button
+                        type="button"
+                        onClick={toggleRenderMarkdown}
+                        disabled={isDetailInlineEditing}
+                        className="text-[12px] px-3 py-1 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {renderMarkdownEnabled ? t('prompt.viewRaw', 'Show Plain Text') : t('prompt.viewMarkdown', 'Markdown')}
+                      </button>
                     </div>
                     {isDetailInlineEditing ? (
                       <div className="p-4 rounded-xl app-wallpaper-surface border border-border">
@@ -2201,7 +2216,7 @@ function PromptSkillMainContent() {
                             }
                             handleDetailInlineEditKeyDown(event);
                           }}
-                          className="w-full min-h-[280px] resize-none bg-transparent border-0 p-0 text-[15px] leading-relaxed font-mono text-foreground placeholder:text-muted-foreground focus:outline-none"
+                          className="w-full min-h-[280px] resize-none bg-transparent border-0 p-0 text-[15px] leading-relaxed text-foreground placeholder:text-muted-foreground focus:outline-none"
                           rows={12}
                           spellCheck={false}
                         />
@@ -2211,11 +2226,11 @@ function PromptSkillMainContent() {
                         role="button"
                         tabIndex={0}
                         aria-label={t('prompt.inlineEditUserPromptAria', 'Double-click to edit user prompt')}
-                        onDoubleClick={openDetailInlineEdit}
+                        onDoubleClick={() => openDetailInlineEdit('userPrompt')}
                         onKeyDown={(event) => {
                           if (event.key === 'Enter' || event.key === ' ') {
                             event.preventDefault();
-                            openDetailInlineEdit();
+                            openDetailInlineEdit('userPrompt');
                           }
                         }}
                         className="cursor-text rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
@@ -2227,7 +2242,7 @@ function PromptSkillMainContent() {
 
                   {/* Multi-model comparison */}
                   {/* 多模型对比区域 */}
-                  {selectedPrompt.promptType !== 'image' && compareModels.length > 0 && !isDetailInlineEditing && (
+                  {selectedPrompt.promptType !== 'image' && compareModels.length > 0 && (
                     <div className="mb-4 p-4 rounded-xl app-wallpaper-panel border border-border">
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2">
@@ -2237,6 +2252,7 @@ function PromptSkillMainContent() {
                         </div>
                         <button
                           onClick={() => handleAiTestFromTable(selectedPrompt, 'compare')}
+                          disabled={isDetailInlineEditing}
                           className="flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-xs font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
                         >
                           <GitCompareIcon className="w-3 h-3" />

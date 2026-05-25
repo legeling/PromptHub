@@ -95,14 +95,35 @@ let closeAction: "ask" | "minimize" | "exit" = "ask";
 let pendingCloseAction = false;
 let isDebugMode = false;
 
-function emitWindowVisibility(isVisible: boolean) {
+export function __setMainWindowForTests(windowRef: BrowserWindow | null) {
+  mainWindow = windowRef;
+}
+
+export function sendToMainWindow(channel: string, ...args: unknown[]) {
   if (
     mainWindow &&
     !mainWindow.isDestroyed() &&
-    !mainWindow.webContents.isDestroyed()
+    !mainWindow.webContents.isDestroyed() &&
+    mainWindow.webContents.mainFrame &&
+    !mainWindow.webContents.mainFrame.isDestroyed()
   ) {
-    mainWindow.webContents.send("window:visibility-changed", isVisible);
+    try {
+      mainWindow.webContents.send(channel, ...args);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (
+        message.includes("Render frame was disposed") ||
+        message.includes("WebFrameMain could be accessed")
+      ) {
+        return;
+      }
+      throw error;
+    }
   }
+}
+
+export function emitWindowVisibility(isVisible: boolean) {
+  sendToMainWindow("window:visibility-changed", isVisible);
 }
 
 // Register privileged schemes (must be called before app is ready)
@@ -280,22 +301,10 @@ async function createWindow() {
   // Notify renderer when OS fullscreen state changes
   // 当操作系统全屏状态变化时通知渲染进程
   mainWindow.on("enter-full-screen", () => {
-    if (
-      mainWindow &&
-      !mainWindow.isDestroyed() &&
-      !mainWindow.webContents.isDestroyed()
-    ) {
-      mainWindow.webContents.send("window:fullscreen-changed", true);
-    }
+    sendToMainWindow("window:fullscreen-changed", true);
   });
   mainWindow.on("leave-full-screen", () => {
-    if (
-      mainWindow &&
-      !mainWindow.isDestroyed() &&
-      !mainWindow.webContents.isDestroyed()
-    ) {
-      mainWindow.webContents.send("window:fullscreen-changed", false);
-    }
+    sendToMainWindow("window:fullscreen-changed", false);
   });
 
   // Load renderer page
