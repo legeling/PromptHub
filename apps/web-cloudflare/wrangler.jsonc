@@ -1,0 +1,33 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "prompthub-worker",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-05-26",
+  "workers_dev": true,
+  "preview_urls": true,
+  "assets": {
+    "directory": "../web/dist/client",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/health"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "prompthub_d1",
+      "database_id": "replace-with-your-d1-database-id",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "prompthub-media",
+      "preview_bucket_name": "prompthub-media-preview"
+    }
+  ],
+  "vars": {
+    "ALLOW_REGISTRATION": "false",
+    "ACCESS_TOKEN_TTL_SECONDS": "86400"
+  }
+}

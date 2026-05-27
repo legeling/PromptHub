@@ -68,6 +68,10 @@ pnpm-debug.log*
 .env
 .env.local
 .env.*.local
+.dev.vars
+apps/web-cloudflare/.dev.vars
+apps/web-cloudflare/.wrangler/
+apps/web-cloudflare/scripts/*.local.txt
 
 # ========================
 # Test / Coverage

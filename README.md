@@ -246,7 +246,18 @@ docker compose up -d --build
 
 桌面版接入这一份 Web：「设置 → 数据 → Self-Hosted PromptHub」，填 URL、用户名、密码。可以测连接、上传当前工作区、从 Web 拉回本地、启动时自动拉取、后台定时推送。
 
-更详细的部署、升级、备份、GHCR 镜像、开发说明在 [`docs/web-self-hosted.md`](./docs/web-self-hosted.md)。
+### Cloudflare Workers 版（分支实验）
+
+如果你希望把在线自部署版跑在 Cloudflare 边缘网络上，可以使用本分支的 `apps/web-cloudflare`。它把 API 运行在 Workers，账号和同步快照元数据存到 D1，图片 / 视频媒体存到 R2，同时继续保持桌面版「Self-Hosted PromptHub」同步协议：桌面客户端仍然可以测试连接、上传本地工作区、从在线版拉回数据。
+
+<div align="center">
+  <img src="./docs/imgs/cloudflare-login.png" width="70%" alt="PromptHub Cloudflare Workers 登录页"/>
+  <p><strong>Cloudflare Workers 在线自部署登录页</strong></p>
+</div>
+
+当前 Cloudflare 版优先覆盖数据同步、Prompt / Folder / Rules / Skills 数据展示与媒体同步。安装到 Claude / Codex 本地目录、扫描本机技能仓库这类本地文件系统能力仍由桌面端负责。
+
+更详细的 Docker / NAS / VPS 自部署说明在 [`docs/web-self-hosted.md`](./docs/web-self-hosted.md)，Cloudflare Workers + D1 + R2 部署说明在 [`docs/cloudflare-workers.md`](./docs/cloudflare-workers.md)。
 
 <div id="cli"></div>
 
