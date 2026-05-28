@@ -600,10 +600,6 @@ export class SkillInstaller {
       );
     }
 
-    if (parsedRepo.protocol !== "ssh") {
-      throw new Error("scanRemoteGithub only supports SSH repository URLs");
-    }
-
     const tempRoot = await fs.mkdtemp(path.join(this.skillsDir, ".remote-scan-"));
     const repoDir = path.join(tempRoot, `${parsedRepo.owner}-${parsedRepo.repo}`);
 

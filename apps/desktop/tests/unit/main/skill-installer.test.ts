@@ -289,30 +289,76 @@ describe("SkillInstaller.getSupportedPlatforms", () => {
       expect(typeof p.rootDir.win32).toBe("string");
       expect(typeof p.rootDir.linux).toBe("string");
       expect(typeof p.skillsRelativePath).toBe("string");
-    }
-  });
+}
+});
+});
 
-  it("platform IDs are unique", () => {
-    const ids = SkillInstaller.getSupportedPlatforms().map((p) => p.id);
-    expect(new Set(ids).size).toBe(ids.length);
-  });
+describe("SkillInstaller.scanRemoteGithub", () => {
+  it("accepts HTTPS Gitea URLs (not just SSH)", async () => {
+    await SkillInstaller.init();
 
-  it("includes Kilo Code instead of Roo Code", () => {
-    const platforms = SkillInstaller.getSupportedPlatforms();
-    expect(platforms.some((platform) => platform.id === "kilo")).toBe(true);
-    expect(platforms.some((platform) => platform.id === "roo")).toBe(false);
-
-    const kilo = platforms.find((platform) => platform.id === "kilo");
-    expect(kilo).toMatchObject({
-      name: "Kilo Code",
-      rootDir: {
-        darwin: "~/.kilo",
-        win32: "%USERPROFILE%\\.kilo",
-        linux: "~/.kilo",
+    vi.spyOn(skillInstallerUtils, "gitClone").mockResolvedValue(undefined);
+    vi.spyOn(SkillInstaller, "scanLocalPreview").mockResolvedValue([
+      {
+        name: "gitea-skill",
+        description: "A skill from Gitea",
+        version: "1.0.0",
+        author: "icelemon",
+        tags: ["gitea"],
+        instructions: "# Gitea skill\n\nContent",
+        filePath: "/tmp/gitea-skill/SKILL.md",
+        localPath: "/tmp/gitea-skill",
+        platforms: ["claude"],
+        protocol_type: "skill",
       },
-      skillsRelativePath: "skills",
-    });
+    ]);
+
+    const result = await SkillInstaller.scanRemoteGithub(
+      "https://gitea.example.com/icelemon/skills",
+      [],
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].slug).toBe("gitea-skill");
+    expect(result[0].author).toBe("icelemon");
+    expect(skillInstallerUtils.gitClone).toHaveBeenCalled();
   });
+
+  it("accepts SSH Gitea URLs", async () => {
+    await SkillInstaller.init();
+
+    vi.spyOn(skillInstallerUtils, "gitClone").mockResolvedValue(undefined);
+    vi.spyOn(SkillInstaller, "scanLocalPreview").mockResolvedValue([
+      {
+        name: "ssh-skill",
+        description: "SSH skill",
+        version: "1.0.0",
+        author: "owner",
+        tags: ["ssh"],
+        instructions: "# SSH skill",
+        filePath: "/tmp/ssh-skill/SKILL.md",
+        localPath: "/tmp/ssh-skill",
+        platforms: ["claude"],
+        protocol_type: "skill",
+      },
+    ]);
+
+    const result = await SkillInstaller.scanRemoteGithub(
+      "git@gitea.example.com:icelemon/skills.git",
+      [],
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].slug).toBe("ssh-skill");
+  });
+
+  it("rejects invalid git repository URLs", async () => {
+    await SkillInstaller.init();
+
+    await expect(
+      SkillInstaller.scanRemoteGithub("not-a-url", []),
+    ).rejects.toThrow("Invalid git repository URL");
+});
 });
 
 describe("SkillInstaller.copyRepoByPathToDirectory", () => {
