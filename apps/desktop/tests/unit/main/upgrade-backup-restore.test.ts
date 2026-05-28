@@ -6,7 +6,12 @@ import os from "os";
 import path from "path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createUpgradeDataSnapshot, getUpgradeBackupRoot } from "../../../src/main/services/upgrade-backup";
+import {
+  createUpgradeDataSnapshot,
+  getUpgradeBackupRoot,
+  listUpgradeBackups,
+  MAX_UPGRADE_BACKUP_SNAPSHOTS,
+} from "../../../src/main/services/upgrade-backup";
 import { restoreFromUpgradeBackupAsync } from "../../../src/main/services/upgrade-backup-restore";
 
 function makeTmpDir(prefix: string): string {
@@ -181,5 +186,35 @@ describe("upgrade-backup-restore", () => {
     expect(
       fs.readFileSync(path.join(userDataPath, "shortcut-mode.json"), "utf8"),
     ).toBe('{"mode":"new"}');
+  });
+
+  it("prunes old snapshots after restore while keeping source and insurance backups", async () => {
+    const userDataPath = path.join(tmpBase, "PromptHub");
+    fs.mkdirSync(userDataPath, { recursive: true });
+    fs.writeFileSync(path.join(userDataPath, "prompthub.db"), "seed-db");
+
+    const snapshots = [] as Array<{ backupId: string }>;
+    for (let index = 0; index < MAX_UPGRADE_BACKUP_SNAPSHOTS - 1; index += 1) {
+      const snapshot = await createUpgradeDataSnapshot(userDataPath, {
+        fromVersion: `0.5.${index}`,
+      });
+      snapshots.push(snapshot);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+
+    fs.writeFileSync(path.join(userDataPath, "prompthub.db"), "latest-db");
+
+    const restoreTarget = snapshots[0];
+    const result = await restoreFromUpgradeBackupAsync(userDataPath, restoreTarget.backupId);
+
+    expect(result.success).toBe(true);
+    const backups = await listUpgradeBackups(userDataPath);
+    expect(backups.length).toBeLessThanOrEqual(MAX_UPGRADE_BACKUP_SNAPSHOTS);
+    expect(backups.some((entry) => entry.backupId === restoreTarget.backupId)).toBe(true);
+    expect(
+      backups.some(
+        (entry) => entry.backupPath === result.currentStateBackupPath,
+      ),
+    ).toBe(true);
   });
 });

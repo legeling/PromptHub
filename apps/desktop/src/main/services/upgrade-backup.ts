@@ -49,9 +49,18 @@ const LEGACY_UPGRADE_BACKUP_ROOT_NAME = "PromptHub-upgrade-backups";
 const LEGACY_MIGRATION_MARKER = ".legacy-migrated";
 
 const MANIFEST_FILE_NAME = "backup-manifest.json";
+export const MAX_UPGRADE_BACKUP_SNAPSHOTS = 5;
 
 const MANIFEST_KIND = "prompthub-upgrade-backup";
 const MANIFEST_SCHEMA_VERSION = 2;
+
+const TRANSIENT_DATABASE_ENTRY_PATTERNS = [
+  /^prompthub\.db\.lock$/i,
+  /^prompthub\.db\.backup-.*$/i,
+  /^prompthub\.db\.pre-.*$/i,
+  /^prompthub\.db\.corrupt-.*$/i,
+  /^prompthub\.db-(wal|shm|journal)$/i,
+];
 
 export interface UpgradeBackupManifest {
   kind: typeof MANIFEST_KIND;
@@ -93,6 +102,13 @@ export interface CreateUpgradeDataSnapshotOptions {
   fromVersion: string;
   /** Version being upgraded to, if known. */
   toVersion?: string;
+  /** Skip automatic retention pruning for flows that need explicit protection. */
+  skipRetentionPrune?: boolean;
+}
+
+interface PruneUpgradeBackupOptions {
+  maxSnapshots?: number;
+  protectedBackupIds?: string[];
 }
 
 export interface MigrateLegacyResult {
@@ -147,6 +163,14 @@ function isValidBackupId(backupId: string): boolean {
   if (backupId === "." || backupId === "..") return false;
   if (backupId.startsWith(".")) return false;
   return true;
+}
+
+function isTransientDatabaseEntry(entryName: string): boolean {
+  return TRANSIENT_DATABASE_ENTRY_PATTERNS.some((pattern) => pattern.test(entryName));
+}
+
+function shouldCopySnapshotPath(sourcePath: string): boolean {
+  return !isTransientDatabaseEntry(path.basename(sourcePath));
 }
 
 function parseManifest(raw: unknown): UpgradeBackupManifest | null {
@@ -241,7 +265,9 @@ export async function createUpgradeDataSnapshot(
     // Skip the backup root itself so we don't recursively copy previous snapshots.
     .filter(
       (entryName) =>
-        entryName !== UPGRADE_BACKUP_ROOT_NAME && !RUNTIME_CACHE_ENTRIES.has(entryName),
+        entryName !== UPGRADE_BACKUP_ROOT_NAME &&
+        !RUNTIME_CACHE_ENTRIES.has(entryName) &&
+        !isTransientDatabaseEntry(entryName),
     );
 
   if (copiedItems.length === 0) {
@@ -265,6 +291,7 @@ export async function createUpgradeDataSnapshot(
       preserveTimestamps: true,
       errorOnExist: true,
       force: false,
+      filter: shouldCopySnapshotPath,
     });
   }
 
@@ -285,7 +312,47 @@ export async function createUpgradeDataSnapshot(
     "utf8",
   );
 
+  if (!options.skipRetentionPrune) {
+    try {
+      await pruneUpgradeBackups(resolvedUserDataPath, {
+        maxSnapshots: MAX_UPGRADE_BACKUP_SNAPSHOTS,
+        protectedBackupIds: [backupId],
+      });
+    } catch (error) {
+      console.warn("[upgrade-backup] Failed to prune old snapshots:", error);
+    }
+  }
+
   return { backupPath, backupId, manifest };
+}
+
+export async function pruneUpgradeBackups(
+  userDataPath: string,
+  options: PruneUpgradeBackupOptions = {},
+): Promise<void> {
+  const maxSnapshots = options.maxSnapshots ?? MAX_UPGRADE_BACKUP_SNAPSHOTS;
+  const protectedBackupIds = new Set(options.protectedBackupIds ?? []);
+
+  if (maxSnapshots < 1) {
+    throw new Error(`maxSnapshots must be at least 1, got ${maxSnapshots}`);
+  }
+
+  const backups = await listUpgradeBackups(userDataPath);
+  const keptBackupIds = new Set<string>();
+
+  for (const backup of backups) {
+    if (protectedBackupIds.has(backup.backupId)) {
+      keptBackupIds.add(backup.backupId);
+      continue;
+    }
+
+    if (keptBackupIds.size < maxSnapshots) {
+      keptBackupIds.add(backup.backupId);
+      continue;
+    }
+
+    await deleteUpgradeBackup(userDataPath, backup.backupId);
+  }
 }
 
 /**

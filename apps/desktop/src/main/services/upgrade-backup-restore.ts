@@ -7,6 +7,7 @@ import {
   createUpgradeDataSnapshot,
   getUpgradeBackup,
   getUpgradeBackupRoot,
+  pruneUpgradeBackups,
   RUNTIME_CACHE_ENTRIES,
 } from "./upgrade-backup";
 import { writeRestoreMarker } from "./prompt-workspace";
@@ -117,6 +118,7 @@ export async function restoreFromUpgradeBackupAsync(
     const insuranceBackup = await createUpgradeDataSnapshot(currentDataPath, {
       fromVersion: "pre-restore-current-state",
       toVersion: backupEntry.manifest.fromVersion,
+      skipRetentionPrune: true,
     });
 
     try {
@@ -147,6 +149,14 @@ export async function restoreFromUpgradeBackupAsync(
     }
 
     writeRestoreMarker(currentDataPath);
+
+    try {
+      await pruneUpgradeBackups(currentDataPath, {
+        protectedBackupIds: [backupId, insuranceBackup.backupId],
+      });
+    } catch (pruneError) {
+      console.warn("[upgrade-backup] Failed to prune snapshots after restore:", pruneError);
+    }
 
     return {
       success: true,

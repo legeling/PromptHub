@@ -10,6 +10,7 @@ import {
   getUpgradeBackup,
   getUpgradeBackupRoot,
   listUpgradeBackups,
+  MAX_UPGRADE_BACKUP_SNAPSHOTS,
   migrateLegacyUpgradeBackups,
 } from "../../../src/main/services/upgrade-backup";
 
@@ -20,6 +21,11 @@ function makeTmpDir(prefix: string): string {
 function seedUserData(userDataPath: string): void {
   fs.mkdirSync(userDataPath, { recursive: true });
   fs.writeFileSync(path.join(userDataPath, "prompthub.db"), "db-bytes");
+  fs.writeFileSync(
+    path.join(userDataPath, "prompthub.db.backup-2026-05-27T02-46-52-983Z"),
+    "db-backup",
+  );
+  fs.writeFileSync(path.join(userDataPath, "prompthub.db.lock"), "db-lock");
   fs.mkdirSync(path.join(userDataPath, "skills", "demo-skill"), {
     recursive: true,
   });
@@ -105,7 +111,22 @@ describe("upgrade-backup", () => {
         ]),
       );
       expect(snapshot.manifest.copiedItems).not.toContain("DawnGraphiteCache");
+      expect(snapshot.manifest.copiedItems).not.toContain(
+        "prompthub.db.backup-2026-05-27T02-46-52-983Z",
+      );
+      expect(snapshot.manifest.copiedItems).not.toContain("prompthub.db.lock");
       expect(fs.existsSync(path.join(snapshot.backupPath, "DawnGraphiteCache"))).toBe(false);
+      expect(
+        fs.existsSync(
+          path.join(
+            snapshot.backupPath,
+            "prompthub.db.backup-2026-05-27T02-46-52-983Z",
+          ),
+        ),
+      ).toBe(false);
+      expect(fs.existsSync(path.join(snapshot.backupPath, "prompthub.db.lock"))).toBe(
+        false,
+      );
       expect(
         fs.readFileSync(path.join(snapshot.backupPath, "prompthub.db"), "utf8"),
       ).toBe("db-bytes");
@@ -155,6 +176,32 @@ describe("upgrade-backup", () => {
       });
       expect(second.manifest.copiedItems).not.toContain("backups");
       expect(fs.existsSync(path.join(second.backupPath, "backups"))).toBe(false);
+    });
+
+    it("keeps only the latest five upgrade snapshots", async () => {
+      const userDataPath = path.join(tmpBase, "PromptHub");
+      seedUserData(userDataPath);
+
+      const createdIds: string[] = [];
+      for (let index = 0; index < MAX_UPGRADE_BACKUP_SNAPSHOTS + 2; index += 1) {
+        const snapshot = await createUpgradeDataSnapshot(userDataPath, {
+          fromVersion: `0.5.${index}`,
+        });
+        createdIds.push(snapshot.backupId);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+      }
+
+      const entries = await listUpgradeBackups(userDataPath);
+      expect(entries).toHaveLength(MAX_UPGRADE_BACKUP_SNAPSHOTS);
+      expect(entries.map((entry) => entry.backupId)).toEqual(
+        createdIds.slice(-MAX_UPGRADE_BACKUP_SNAPSHOTS).reverse(),
+      );
+      expect(
+        fs.existsSync(path.join(getUpgradeBackupRoot(userDataPath), createdIds[0])),
+      ).toBe(false);
+      expect(
+        fs.existsSync(path.join(getUpgradeBackupRoot(userDataPath), createdIds[1])),
+      ).toBe(false);
     });
 
     it("rejects an empty user data path", async () => {

@@ -6,4 +6,5 @@
 - [x] 为启动迁移、回退与恢复场景补充单元/集成测试
 - [x] 为 root DB / stale unified DB / unified-only 用户状态补充数据库选路回归测试
 - [x] 为包含 `skills` / `skill_versions` 的 legacy root DB 升级场景补充真实 SQLite 迁移回归测试
+- [x] 为 upgrade snapshot 增加自动保留上限与瞬时 DB 文件排除策略
 - [x] 更新 `implementation.md` 记录实际落地情况与验证结果
