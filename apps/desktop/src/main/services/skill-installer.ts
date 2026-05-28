@@ -428,6 +428,7 @@ export class SkillInstaller {
       name?: string;
       sourceUrl?: string;
       repoSourceDir?: string;
+      repoImportMode?: "copy" | "symlink";
     },
   ): Promise<string> {
     const parsed = parseSkillMd(skillContent);
@@ -473,7 +474,11 @@ export class SkillInstaller {
     // Save files first, then create DB record to avoid orphaned records
     let localRepoPath: string | undefined;
     if (options?.repoSourceDir) {
-      localRepoPath = await saveToLocalRepo(skillName, options.repoSourceDir);
+      localRepoPath = await saveToLocalRepo(
+        skillName,
+        options.repoSourceDir,
+        options.repoImportMode,
+      );
     } else {
       localRepoPath = await saveContentToLocalRepo(skillName, skillContent);
     }

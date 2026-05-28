@@ -97,9 +97,11 @@ interface SkillFullDetailPageProps {
   projectActions?: {
     isImporting?: boolean;
     isDeploying?: boolean;
+    isRemoving?: boolean;
     onAddDeployTarget?: () => void | Promise<void>;
     onDeployToProjectTargets?: (targetDirs: string[]) => void | Promise<void>;
     onImport?: () => void | Promise<void>;
+    onRemoveFromProject?: () => void | Promise<void>;
   } | null;
   onBack?: () => void;
 }
@@ -1037,7 +1039,7 @@ export function SkillFullDetailPage({
                   translationMode={translationMode}
                 />
 
-                {!isProjectDetail || projectContext?.importedSkill ? (
+                {!isProjectDetail ? (
                   <div className="space-y-6">
                     <SkillPlatformPanel
                       availablePlatforms={availablePlatforms}
@@ -1073,10 +1075,13 @@ export function SkillFullDetailPage({
                     deployTargets={projectContext?.projectDeployTargets ?? []}
                     isDeploying={Boolean(projectActions?.isDeploying)}
                     isImporting={Boolean(projectActions?.isImporting)}
+                    isImported={Boolean(projectContext?.importedSkill)}
+                    isRemoving={Boolean(projectActions?.isRemoving)}
                     isImportAvailable={typeof projectActions?.onImport === "function"}
                     onAddDeployTarget={projectActions?.onAddDeployTarget ?? (() => undefined)}
                     onDeploy={projectActions?.onDeployToProjectTargets ?? (() => undefined)}
                     onImport={projectActions?.onImport ?? (() => undefined)}
+                    onRemoveFromProject={projectActions?.onRemoveFromProject}
                     selectedSkill={selectedSkill}
                     sourcePath={selectedSkill.local_repo_path || selectedSkill.source_url || ""}
                     t={t}

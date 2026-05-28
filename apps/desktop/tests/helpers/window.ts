@@ -117,6 +117,7 @@ export function createWindowApiMock(overrides?: DeepPartial<MockRecord>) {
         writeLocalFile: vi.fn().mockResolvedValue(undefined),
         writeLocalFileBufferByPath: vi.fn().mockResolvedValue(undefined),
         deleteLocalFile: vi.fn().mockResolvedValue(undefined),
+        deleteLocalFileByPath: vi.fn().mockResolvedValue(undefined),
         createLocalDir: vi.fn().mockResolvedValue(undefined),
         copyRepoByPathToDirectory: vi.fn().mockResolvedValue(""),
         getRepoPath: vi.fn().mockResolvedValue(""),

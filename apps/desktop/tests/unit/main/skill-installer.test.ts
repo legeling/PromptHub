@@ -343,6 +343,26 @@ describe("SkillInstaller.copyRepoByPathToDirectory", () => {
     );
   });
 
+  it("supports symlink mode when importing a skill into a project target", async () => {
+    const sourceDir = path.join(tmpDir, "source-skill-symlink");
+    const targetRootDir = path.join(tmpDir, "project-symlink", ".agents", "skills");
+    await fs.mkdir(sourceDir, { recursive: true });
+    await fs.writeFile(path.join(sourceDir, "SKILL.md"), "# symlinked", "utf-8");
+
+    const targetDir = await SkillInstaller.copyRepoByPathToDirectory(
+      sourceDir,
+      "demo-skill",
+      targetRootDir,
+      { mode: "symlink" },
+    );
+
+    expect(targetDir).toBe(path.join(targetRootDir, "demo-skill"));
+    await expect(fs.lstat(targetDir)).resolves.toMatchObject({ isSymbolicLink: expect.any(Function) });
+    await expect(fs.readFile(path.join(targetDir, "SKILL.md"), "utf-8")).resolves.toBe(
+      "# symlinked",
+    );
+  });
+
   it("rejects project targets nested inside the source skill directory", async () => {
     const sourceDir = path.join(tmpDir, "source-skill");
     const nestedTargetRootDir = path.join(sourceDir, ".agents", "skills");

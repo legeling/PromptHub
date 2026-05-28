@@ -23,6 +23,9 @@
 - 为本地 Source 新增内容解析分流：当 `RegistrySkill.content_url` / `source_url` 指向本地路径时，安装与更新不再调用仅支持 `http/https` 的 `fetchRemoteContent(...)`，而是直接通过 `readLocalFileByPath(source_url, "SKILL.md")` 读取磁盘最新内容，避免 `invalid URL` / `only allows http/https` 报错。
 - 调整 `SkillStoreDetail` 的详情内容优先级：对于本地 Source，详情预览优先显示当前 source 扫描到的最新内容，而不是默认退回已安装副本中的旧 `instructions/content`，从而避免“重加 source 仍看到旧版本”的感知错乱。
 - 补充本地 Source 回归测试：新增 store 层测试覆盖“从 cached local source 安装”和“从 cached local source 更新时读取最新本地文件”；新增组件测试覆盖“本地 source 详情优先展示 source 内容而非已安装旧内容”。
+- 调整项目导入链路：`从我的技能导入` 弹窗的高级导入设置新增 `复制 / 软连接` 模式选择，并将该模式透传到 `copyRepoByPathToDirectory(...)`；项目内导入我的技能仍保持显式 `Copy Import / Symlink Import`，而 `导入到我的技能` 默认继续使用复制语义。
+- 扩展 `skill-installer-repo.copyRepoByPathToDirectory(...)`、preload API 与 IPC 校验，使项目目标目录支持目录软链接导入；同时补充项目页与主进程回归测试，锁住 `mode: "copy" | "symlink"` 的行为。
+- 为项目级“从我的技能导入”弹窗补充偏好记忆：全局记住最近一次 `copy / symlink` 选择，并按 `project.id` 记住目标目录与自定义目录；同时为该持久化链路增加幂等保护，避免关闭弹窗时把已保存偏好重置为空值。
 
 ## Verification
 
@@ -38,6 +41,10 @@
   - 结果：失败（受现有 `src/renderer/components/settings/AISettings.tsx` 与 `src/renderer/services/database-backup.ts` 的类型错误阻塞，非本次改动引入）
 - `pnpm --filter @prompthub/desktop build`
   - 结果：通过
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/skill-installer.test.ts`
+  - 结果：通过（141/141）
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/skill-projects-view.test.tsx`
+  - 结果：通过（15/15）
 - `pnpm --filter @prompthub/desktop test -- tests/unit/components/top-bar.test.tsx tests/unit/components/sidebar.test.tsx tests/unit/components/skill-store-remote.test.tsx tests/unit/services/skill-filter.test.ts --run`
   - 结果：通过（36/36）
 - `pnpm --filter @prompthub/desktop test -- tests/unit/stores/skill.store.test.ts tests/unit/components/skill-store-remote.test.tsx --run`

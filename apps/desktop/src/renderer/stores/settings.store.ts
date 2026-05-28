@@ -476,6 +476,19 @@ export type AIUsageScenario =
 
 export type ScenarioModelDefaults = Partial<Record<AIUsageScenario, string>>;
 
+interface ProjectSkillImportPreferences {
+  selectedTargetIds: string[];
+  customTargets: string[];
+}
+
+function areStringArraysEqual(left: string[], right: string[]): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return left.every((entry, index) => entry === right[index]);
+}
+
 interface SettingsState {
   creationMode: CreationMode;
   // Clipboard auto-import
@@ -609,6 +622,8 @@ interface SettingsState {
   customAgentRootPaths: string[];
   customSkillScanPaths: string[];
   skillProjects: SkillProject[];
+  projectSkillImportModePreference: "copy" | "symlink";
+  projectSkillImportPreferencesByProjectId: Record<string, ProjectSkillImportPreferences>;
 
   builtinAgentOverrides: Record<string, BuiltinAgentOverrideConfig>;
   customPlatformRootPaths: Record<string, string>;
@@ -737,6 +752,11 @@ interface SettingsState {
   setCustomSkillScanPaths: (paths: string[]) => void;
   addCustomSkillScanPath: (path: string) => void;
   removeCustomSkillScanPath: (path: string) => void;
+  setProjectSkillImportModePreference: (method: "copy" | "symlink") => void;
+  setProjectSkillImportPreferences: (
+    projectId: string,
+    preferences: ProjectSkillImportPreferences,
+  ) => void;
   addSkillProject: (input: {
     name: string;
     rootPath: string;
@@ -1013,6 +1033,8 @@ export const useSettingsStore = create<SettingsState>()(
         customAgentRootPaths: [],
         customSkillScanPaths: [],
         skillProjects: [],
+        projectSkillImportModePreference: "copy" as const,
+        projectSkillImportPreferencesByProjectId: {},
         builtinAgentOverrides: {},
         customPlatformRootPaths: {},
         disabledPlatformIds: [],
@@ -1685,6 +1707,54 @@ export const useSettingsStore = create<SettingsState>()(
           get()
             .customAgents.filter((agent) => agent.rootPath === normalizeAgentRootPath(path))
             .forEach((agent) => get().removeCustomAgent(agent.id)),
+        setProjectSkillImportModePreference: (method) => {
+          if (get().projectSkillImportModePreference === method) {
+            return;
+          }
+
+          setTouched({ projectSkillImportModePreference: method });
+        },
+        setProjectSkillImportPreferences: (projectId, preferences) => {
+          const normalizedProjectId = projectId.trim();
+          if (!normalizedProjectId) {
+            return;
+          }
+
+          const normalizePaths = (entries: string[]) =>
+            Array.from(
+              new Set(
+                entries
+                  .filter((entry): entry is string => typeof entry === "string")
+                  .map((entry) => entry.trim())
+                  .filter((entry) => entry.length > 0),
+              ),
+            );
+
+          const nextPreferences: ProjectSkillImportPreferences = {
+            selectedTargetIds: normalizePaths(preferences.selectedTargetIds),
+            customTargets: normalizePaths(preferences.customTargets),
+          };
+
+          const currentPreferences =
+            get().projectSkillImportPreferencesByProjectId[normalizedProjectId];
+          if (
+            currentPreferences &&
+            areStringArraysEqual(
+              currentPreferences.selectedTargetIds,
+              nextPreferences.selectedTargetIds,
+            ) &&
+            areStringArraysEqual(currentPreferences.customTargets, nextPreferences.customTargets)
+          ) {
+            return;
+          }
+
+          setTouched({
+            projectSkillImportPreferencesByProjectId: {
+              ...get().projectSkillImportPreferencesByProjectId,
+              [normalizedProjectId]: nextPreferences,
+            },
+          });
+        },
         addSkillProject: (input) => {
           const name = input.name.trim();
           const rootPath = normalizeProjectRecordPath(input.rootPath);
@@ -1779,7 +1849,14 @@ export const useSettingsStore = create<SettingsState>()(
           const nextProjects = get().skillProjects.filter(
             (project) => project.id !== projectId,
           );
-          setTouched({ skillProjects: nextProjects });
+          const nextImportPreferences = {
+            ...get().projectSkillImportPreferencesByProjectId,
+          };
+          delete nextImportPreferences[projectId];
+          setTouched({
+            skillProjects: nextProjects,
+            projectSkillImportPreferencesByProjectId: nextImportPreferences,
+          });
           syncSettingsToMain({ skillProjects: nextProjects });
         },
         updateBuiltinAgentOverride: (platformId, updates) => {

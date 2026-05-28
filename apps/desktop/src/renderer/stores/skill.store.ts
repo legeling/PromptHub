@@ -843,6 +843,7 @@ export const useSkillStore = create<SkillState>()(
       importScannedSkills: async (
         scannedSkills: ScannedSkill[],
         userTagsByPath?: Record<string, string[]>,
+        importMode: "copy" | "symlink" = "copy",
       ) => {
         set({ isLoading: true, error: null });
         try {
@@ -883,6 +884,7 @@ export const useSkillStore = create<SkillState>()(
                   const repoPath = await window.api.skill.saveToRepo(
                     scanned.name,
                     scanned.localPath,
+                    importMode,
                   );
                   // Write back the repo path so SkillFileEditor can find the files
                   if (repoPath && newSkill?.id) {

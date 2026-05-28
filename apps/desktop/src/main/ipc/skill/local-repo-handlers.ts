@@ -93,14 +93,22 @@ async function syncSkillFromRepo(
 export function registerSkillLocalRepoHandlers({ db }: SkillIPCContext): void {
   ipcMain.handle(
     IPC_CHANNELS.SKILL_SAVE_TO_REPO,
-    async (_, skillName: string, sourceDir: string) => {
+    async (
+      _,
+      skillName: string,
+      sourceDir: string,
+      mode?: "copy" | "symlink",
+    ) => {
       if (typeof skillName !== "string" || skillName.trim().length === 0) {
         throw new Error("skill:saveToRepo requires a non-empty skillName");
       }
       if (typeof sourceDir !== "string" || sourceDir.trim().length === 0) {
         throw new Error("skill:saveToRepo requires a non-empty sourceDir");
       }
-      return SkillInstaller.saveToLocalRepo(skillName, sourceDir);
+      if (mode && mode !== "copy" && mode !== "symlink") {
+        throw new Error("skill:saveToRepo mode must be copy or symlink");
+      }
+      return SkillInstaller.saveToLocalRepo(skillName, sourceDir, mode);
     },
   );
 
@@ -428,7 +436,10 @@ export function registerSkillLocalRepoHandlers({ db }: SkillIPCContext): void {
       localPath: string,
       skillName: string,
       targetRootDir: string,
-      options?: { ifExists?: "overwrite" | "skip" | "error" },
+      options?: {
+        ifExists?: "overwrite" | "skip" | "error";
+        mode?: "copy" | "symlink";
+      },
     ) => {
       if (typeof localPath !== "string" || localPath.trim() === "") {
         throw new Error(
@@ -449,10 +460,11 @@ export function registerSkillLocalRepoHandlers({ db }: SkillIPCContext): void {
         options !== undefined &&
         (!options ||
           typeof options !== "object" ||
-          !["overwrite", "skip", "error", undefined].includes(options.ifExists))
+          !["overwrite", "skip", "error", undefined].includes(options.ifExists) ||
+          !["copy", "symlink", undefined].includes(options.mode))
       ) {
         throw new Error(
-          "skill:copyRepoByPathToDirectory options.ifExists must be overwrite, skip, or error",
+          "skill:copyRepoByPathToDirectory options.ifExists must be overwrite, skip, or error; options.mode must be copy or symlink",
         );
       }
       return SkillInstaller.copyRepoByPathToDirectory(

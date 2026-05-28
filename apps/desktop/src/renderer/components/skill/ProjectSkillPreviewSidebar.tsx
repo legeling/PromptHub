@@ -5,6 +5,7 @@ import {
   FolderOpenIcon,
   Loader2Icon,
   PlusIcon,
+  TrashIcon,
 } from "lucide-react";
 import type { TFunction } from "i18next";
 import type { Skill } from "@prompthub/shared/types";
@@ -14,9 +15,12 @@ interface ProjectSkillPreviewSidebarProps {
   isDeploying: boolean;
   isImporting: boolean;
   isImportAvailable: boolean;
+  isImported?: boolean;
+  isRemoving?: boolean;
   onAddDeployTarget: () => void | Promise<void>;
   onDeploy: (targetDirs: string[]) => void | Promise<void>;
   onImport: () => void | Promise<void>;
+  onRemoveFromProject?: () => void | Promise<void>;
   selectedSkill: Skill;
   sourcePath: string;
   t: TFunction;
@@ -27,9 +31,12 @@ export function ProjectSkillPreviewSidebar({
   isDeploying,
   isImporting,
   isImportAvailable,
+  isImported = false,
+  isRemoving = false,
   onAddDeployTarget,
   onDeploy,
   onImport,
+  onRemoveFromProject,
   selectedSkill,
   sourcePath,
   t,
@@ -74,22 +81,48 @@ export function ProjectSkillPreviewSidebar({
           <p className="text-sm leading-relaxed text-muted-foreground">
             {t(
               "skill.projectImportHint",
-              "Import this project-local skill into My Skills first. After that, you can distribute it just like any normal PromptHub skill.",
+              "Import this project-local skill into My Skills first. Use copy import for isolated snapshots, or symlink import when you want one source of truth and easier maintenance.",
             )}
           </p>
-          <button
-            type="button"
-            onClick={() => void onImport()}
-            disabled={!isImportAvailable || isImporting}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
-          >
-            {isImporting ? (
-              <Loader2Icon className="h-4 w-4 animate-spin" />
-            ) : (
-              <DownloadIcon className="h-4 w-4" />
-            )}
-            {t("skill.addToLibrary", "Import to My Skills")}
-          </button>
+          {isImported ? (
+            <div className="space-y-3">
+              <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300">
+                {t(
+                  "skill.projectImportedHint",
+                  "This skill is already managed in My Skills. If the project copy changes, you can re-import to refresh it.",
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => void onRemoveFromProject?.()}
+                disabled={isRemoving}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-60"
+              >
+                {isRemoving ? (
+                  <Loader2Icon className="h-4 w-4 animate-spin" />
+                ) : (
+                  <TrashIcon className="h-4 w-4" />
+                )}
+                {t("skill.removeFromProject", "Remove from Project")}
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={() => void onImport()}
+                disabled={!isImportAvailable || isImporting}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
+              >
+                {isImporting ? (
+                  <Loader2Icon className="h-4 w-4 animate-spin" />
+                ) : (
+                  <DownloadIcon className="h-4 w-4" />
+                )}
+                {t("skill.addToLibrary", "Import to My Skills")}
+              </button>
+            </div>
+          )}
         </div>
       </section>
 

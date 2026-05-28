@@ -103,8 +103,12 @@ export const skillApi = {
     ipcRenderer.invoke(IPC_CHANNELS.SKILL_FETCH_REMOTE_CONTENT_BYTES, url),
   scanRemoteGithub: (repoUrl: string, registrySkills: unknown[]) =>
     ipcRenderer.invoke(IPC_CHANNELS.SKILL_SCAN_REMOTE_GITHUB, repoUrl, registrySkills),
-  saveToRepo: (skillName: string, sourceDir: string) =>
-    ipcRenderer.invoke(IPC_CHANNELS.SKILL_SAVE_TO_REPO, skillName, sourceDir),
+  saveToRepo: (
+    skillName: string,
+    sourceDir: string,
+    mode?: "copy" | "symlink",
+  ) =>
+    ipcRenderer.invoke(IPC_CHANNELS.SKILL_SAVE_TO_REPO, skillName, sourceDir, mode),
   listLocalFiles: (skillId: string): Promise<SkillLocalFileTreeEntry[]> =>
     ipcRenderer.invoke(IPC_CHANNELS.SKILL_LIST_LOCAL_FILES, skillId),
   readLocalFile: (
@@ -146,6 +150,12 @@ export const skillApi = {
     ipcRenderer.invoke(
       IPC_CHANNELS.SKILL_DELETE_LOCAL_FILE,
       skillId,
+      relativePath,
+    ),
+  deleteLocalFileByPath: (localPath: string, relativePath: string) =>
+    ipcRenderer.invoke(
+      IPC_CHANNELS.SKILL_DELETE_LOCAL_FILE_BY_PATH,
+      localPath,
       relativePath,
     ),
   createLocalDir: (skillId: string, relativePath: string) =>
@@ -200,12 +210,6 @@ export const skillApi = {
       relativePath,
       content,
     ),
-  deleteLocalFileByPath: (localPath: string, relativePath: string) =>
-    ipcRenderer.invoke(
-      IPC_CHANNELS.SKILL_DELETE_LOCAL_FILE_BY_PATH,
-      localPath,
-      relativePath,
-    ),
   createLocalDirByPath: (localPath: string, relativePath: string) =>
     ipcRenderer.invoke(
       IPC_CHANNELS.SKILL_CREATE_LOCAL_DIR_BY_PATH,
@@ -216,7 +220,10 @@ export const skillApi = {
     localPath: string,
     skillName: string,
     targetRootDir: string,
-    options?: { ifExists?: "overwrite" | "skip" | "error" },
+    options?: {
+      ifExists?: "overwrite" | "skip" | "error";
+      mode?: "copy" | "symlink";
+    },
   ) =>
     ipcRenderer.invoke(
       IPC_CHANNELS.SKILL_COPY_REPO_BY_PATH_TO_DIRECTORY,

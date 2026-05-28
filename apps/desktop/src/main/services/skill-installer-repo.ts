@@ -30,6 +30,7 @@ export interface SkillLocalFileBufferEntry {
 
 export interface CopyRepoByPathToDirectoryOptions {
   ifExists?: "overwrite" | "skip" | "error";
+  mode?: "copy" | "symlink";
 }
 
 // ==================== Constants ====================
@@ -200,6 +201,7 @@ export async function isManagedRepoPath(
 export async function saveToLocalRepo(
   skillName: string,
   sourceDir: string,
+  mode: "copy" | "symlink" = "copy",
 ): Promise<string> {
   const skillsDir = getSkillsDirAccessor();
   validateSkillName(skillName);
@@ -224,6 +226,12 @@ export async function saveToLocalRepo(
   // Remove existing destination if present
   if (await fileExists(destDir)) {
     await fs.rm(destDir, { recursive: true, force: true });
+  }
+
+  if (mode === "symlink") {
+    const canonicalSourceDir = await fs.realpath(sourceDir);
+    await fs.symlink(canonicalSourceDir, destDir, "dir");
+    return destDir;
   }
 
   // Filter out symlinks to prevent leaking files outside the source directory
@@ -286,6 +294,13 @@ export async function copyRepoByPathToDirectory(
     }
     await fs.rm(targetDir, { recursive: true, force: true });
   }
+
+  if (options.mode === "symlink") {
+    const canonicalSourceDir = await fs.realpath(resolvedSourceDir);
+    await fs.symlink(canonicalSourceDir, targetDir, "dir");
+    return targetDir;
+  }
+
   await fs.cp(resolvedSourceDir, targetDir, {
     recursive: true,
     filter: async (src: string) => {

@@ -154,7 +154,7 @@ describe("SkillProjectsView", () => {
     } as Partial<ReturnType<typeof useSkillStore.getState>>);
   });
 
-  it("shows project skill cards first and only opens full detail after click", async () => {
+  it("shows project skill cards first and opens project detail actions after click", async () => {
     await act(async () => {
       render(<SkillProjectsView />);
     });
@@ -183,7 +183,7 @@ describe("SkillProjectsView", () => {
           name: "novel-auditor",
           localPath: "/tmp/novel/.claude/skills/novel-auditor",
         }),
-      ]);
+      ], undefined, "copy");
     });
 
     fireEvent.click(screen.getByRole("button", { name: /back/i }));
@@ -303,7 +303,7 @@ describe("SkillProjectsView", () => {
     );
   });
 
-  it("shows imported card shortcuts and switches detail back to distribute mode", async () => {
+  it("shows imported card shortcuts and keeps project detail actions for imported skills", async () => {
     const selectSkill = vi.fn();
     const setStoreView = vi.fn();
 
@@ -350,6 +350,12 @@ describe("SkillProjectsView", () => {
 
     expect(screen.queryByRole("button", { name: "Import to My Skills" })).not.toBeInTheDocument();
     expect(await screen.findByText("Platform Integration")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove from Project" })).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "This skill is already managed in My Skills. If the project copy changes, you can re-import to refresh it.",
+      ),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Open in My Skills" })).not.toBeInTheDocument();
   });
 
@@ -393,11 +399,183 @@ describe("SkillProjectsView", () => {
     fireEvent.click(screen.getByRole("button", { name: /novel-auditor/i }));
 
     expect(await screen.findByText("Platform Integration")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Import to My Skills" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Import to My Skills" })).toBeInTheDocument();
     expect(setStoreView).not.toHaveBeenCalled();
     expect(selectSkill).not.toHaveBeenCalled();
+  });
+
+  it("imports project skills into my skills with copy mode", async () => {
+    const importScannedSkills = vi.fn().mockResolvedValue({
+      importedCount: 1,
+      importedSkills: [],
+      failed: [],
+      skipped: [],
+    });
+
+    useSkillStore.setState({
+      skills: [],
+      selectedSkillId: null,
+      searchQuery: "",
+      selectedProjectId: "project-1",
+      projectScanState: {
+        "project-1": {
+          scannedSkills: [
+            {
+              name: "novel-auditor",
+              description: "Audit long-form fiction structure",
+              author: "PromptHub",
+              tags: ["writing"],
+              instructions: "# novel-auditor\n\nHelp audit fiction.",
+              filePath: "/tmp/novel/.claude/skills/novel-auditor/SKILL.md",
+              localPath: "/tmp/novel/.claude/skills/novel-auditor",
+              platforms: ["claude"],
+            },
+          ],
+          isScanning: false,
+          error: null,
+        },
+      },
+      scanProjectSkills: vi.fn().mockResolvedValue([]),
+      selectProject: vi.fn(),
+      importScannedSkills,
+      loadDeployedStatus: vi.fn().mockResolvedValue(undefined),
+      translateContent: vi.fn().mockResolvedValue("# translated"),
+      getTranslationState: vi.fn().mockReturnValue({
+        value: null,
+        hasTranslation: false,
+        isStale: false,
+      }),
+      clearTranslation: vi.fn(),
+      toggleFavorite: vi.fn(),
+      deleteSkill: vi.fn(),
+      loadSkills: vi.fn().mockResolvedValue(undefined),
+      syncSkillFromRepo: vi.fn().mockResolvedValue(null),
+      saveSafetyReport: vi.fn().mockResolvedValue(undefined),
+      selectSkill: vi.fn(),
+    } as Partial<ReturnType<typeof useSkillStore.getState>>);
+
+    await act(async () => {
+      render(<SkillProjectsView />);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /novel-auditor/i }));
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Import to My Skills" }));
+    });
+
+    await waitFor(() => {
+      expect(importScannedSkills).toHaveBeenCalledWith(
+        [expect.objectContaining({ name: "novel-auditor" })],
+        undefined,
+        "copy",
+      );
+    });
+
+  });
+
+  it("shows remove from project for already imported project skills", async () => {
+    const deleteLocalFileByPath = vi.fn().mockResolvedValue(undefined);
+    const scanProjectSkills = vi.fn().mockResolvedValue([]);
+
+    installWindowMocks({
+      api: {
+        skill: {
+          readLocalFileByPath: vi.fn().mockResolvedValue({
+            content: "# novel-auditor\n\nHelp audit fiction.",
+          }),
+          listLocalFilesByPath: vi.fn().mockResolvedValue([]),
+          deleteLocalFileByPath,
+        },
+      },
+      electron: {
+        openPath: vi.fn(),
+      },
+    });
+
+    useSkillStore.setState({
+      skills: [
+        {
+          id: "skill-1",
+          name: "novel-auditor",
+          description: "Audit long-form fiction structure",
+          instructions: "# novel-auditor\n\nHelp audit fiction.",
+          content: "# novel-auditor\n\nHelp audit fiction.",
+          protocol_type: "skill",
+          author: "PromptHub",
+          local_repo_path: "/tmp/novel/.claude/skills/novel-auditor",
+          source_url: "/tmp/novel/.claude/skills/novel-auditor",
+          tags: ["writing"],
+          is_favorite: false,
+          currentVersion: 0,
+          created_at: 1,
+          updated_at: 1,
+        },
+      ],
+      selectedSkillId: null,
+      searchQuery: "",
+      selectedProjectId: "project-1",
+      projectScanState: {
+        "project-1": {
+          scannedSkills: [
+            {
+              name: "novel-auditor",
+              description: "Audit long-form fiction structure",
+              author: "PromptHub",
+              tags: ["writing"],
+              instructions: "# novel-auditor\n\nHelp audit fiction.",
+              filePath: "/tmp/novel/.claude/skills/novel-auditor/SKILL.md",
+              localPath: "/tmp/novel/.claude/skills/novel-auditor",
+              platforms: ["claude"],
+            },
+          ],
+          isScanning: false,
+          error: null,
+        },
+      },
+      scanProjectSkills,
+      selectProject: vi.fn(),
+      importScannedSkills: vi.fn().mockResolvedValue({
+        importedCount: 0,
+        importedSkills: [],
+        failed: [],
+        skipped: [],
+      }),
+      loadDeployedStatus: vi.fn().mockResolvedValue(undefined),
+      translateContent: vi.fn().mockResolvedValue("# translated"),
+      getTranslationState: vi.fn().mockReturnValue({
+        value: null,
+        hasTranslation: false,
+        isStale: false,
+      }),
+      clearTranslation: vi.fn(),
+      toggleFavorite: vi.fn(),
+      deleteSkill: vi.fn(),
+      loadSkills: vi.fn().mockResolvedValue(undefined),
+      syncSkillFromRepo: vi.fn().mockResolvedValue(null),
+      saveSafetyReport: vi.fn().mockResolvedValue(undefined),
+      selectSkill: vi.fn(),
+    } as Partial<ReturnType<typeof useSkillStore.getState>>);
+
+    await act(async () => {
+      render(<SkillProjectsView />);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /novel-auditor/i }));
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Remove from Project" }));
+    });
+
+    await waitFor(() => {
+      expect(deleteLocalFileByPath).toHaveBeenCalledWith(
+        "/tmp/novel/.claude/skills/novel-auditor",
+        ".",
+      );
+      expect(scanProjectSkills).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "project-1" }),
+      );
+    });
   });
 
   it("allows importing selected library skills from the project header", async () => {
@@ -467,7 +645,7 @@ describe("SkillProjectsView", () => {
         "/Users/demo/skills/library-skill",
         "library-skill",
         "/tmp/novel/.agents/skills",
-        { ifExists: "skip" },
+        { ifExists: "skip", mode: "copy" },
       );
     });
 
@@ -611,8 +789,8 @@ describe("SkillProjectsView", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Import from My Skills" }));
-    fireEvent.click(screen.getByRole("button", { name: /library-skill/i }));
     fireEvent.click(screen.getByRole("button", { name: /Advanced Import Settings/i }));
+    fireEvent.click(screen.getByRole("button", { name: /library-skill/i }));
     fireEvent.click(screen.getByRole("button", { name: /.claude\/skills/i }));
     fireEvent.click(screen.getByRole("button", { name: "Add Folder" }));
 
@@ -629,28 +807,165 @@ describe("SkillProjectsView", () => {
         "/Users/demo/skills/library-skill",
         "library-skill",
         "/tmp/novel/.agents/skills",
-        { ifExists: "skip" },
+        { ifExists: "skip", mode: "copy" },
       );
       expect(copyRepoByPathToDirectory).toHaveBeenCalledWith(
         "/Users/demo/skills/library-skill",
         "library-skill",
         "/tmp/novel/.claude/skills",
-        { ifExists: "skip" },
+        { ifExists: "skip", mode: "copy" },
       );
       expect(copyRepoByPathToDirectory).toHaveBeenCalledWith(
         "/Users/demo/skills/library-skill",
         "library-skill",
         "/tmp/novel/custom-targets",
-        { ifExists: "skip" },
+        { ifExists: "skip", mode: "copy" },
       );
     });
 
     await waitFor(() => {
       expect(showToastMock).toHaveBeenCalledWith(
-        "Imported {{count}} library skill(s) into this project ({{targets}}).",
+        "Imported {{count}} library skill(s) into this project via {{mode}} ({{targets}}).",
         "success",
       );
     });
+  });
+
+  it("supports symlink mode when importing my skills into a project", async () => {
+    const copyRepoByPathToDirectory = vi.fn().mockResolvedValue(
+      "/tmp/novel/.agents/skills/library-skill",
+    );
+    const getRepoPath = vi.fn().mockResolvedValue("/Users/demo/skills/library-skill");
+
+    installWindowMocks({
+      api: {
+        skill: {
+          readLocalFileByPath: vi.fn().mockResolvedValue({
+            content: "# novel-auditor\n\nHelp audit fiction.",
+          }),
+          listLocalFilesByPath: vi.fn().mockResolvedValue([]),
+          getRepoPath,
+          copyRepoByPathToDirectory,
+        },
+      },
+      electron: {
+        openPath: vi.fn(),
+      },
+    });
+
+    useSkillStore.setState({
+      skills: [
+        {
+          id: "skill-library-1",
+          name: "library-skill",
+          description: "From my skills",
+          instructions: "# library-skill",
+          content: "# library-skill",
+          protocol_type: "skill",
+          author: "PromptHub",
+          local_repo_path: "/Users/demo/skills/library-skill",
+          source_url: "/Users/demo/skills/library-skill",
+          tags: ["general"],
+          is_favorite: false,
+          currentVersion: 0,
+          created_at: 1,
+          updated_at: 1,
+        },
+      ],
+      selectedProjectId: "project-1",
+      projectScanState: {
+        "project-1": {
+          scannedSkills: [],
+          isScanning: false,
+          error: null,
+        },
+      },
+      scanProjectSkills: vi.fn().mockResolvedValue([]),
+    } as Partial<ReturnType<typeof useSkillStore.getState>>);
+
+    await act(async () => {
+      render(<SkillProjectsView />);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Import from My Skills" }));
+    fireEvent.click(screen.getByRole("button", { name: /Advanced Import Settings/i }));
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /Symlink.*Link the project folder to My Skills/i,
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /library-skill/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Import 1 selected skill(s)" }));
+
+    await waitFor(() => {
+      expect(copyRepoByPathToDirectory).toHaveBeenCalledWith(
+        "/Users/demo/skills/library-skill",
+        "library-skill",
+        "/tmp/novel/.agents/skills",
+        { ifExists: "skip", mode: "symlink" },
+      );
+    });
+  });
+
+  it("remembers project import preferences after reopening the modal", async () => {
+    const selectFolder = vi.fn().mockResolvedValue("/tmp/novel/custom-targets");
+
+    installWindowMocks({
+      api: {
+        skill: {
+          readLocalFileByPath: vi.fn().mockResolvedValue({
+            content: "# novel-auditor\n\nHelp audit fiction.",
+          }),
+          listLocalFilesByPath: vi.fn().mockResolvedValue([]),
+        },
+      },
+      electron: {
+        selectFolder,
+        openPath: vi.fn(),
+      },
+    });
+
+    useSettingsStore.setState({
+      ...useSettingsStore.getState(),
+      projectSkillImportModePreference: "copy",
+      projectSkillImportPreferencesByProjectId: {},
+    });
+
+    await act(async () => {
+      render(<SkillProjectsView />);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Import from My Skills" }));
+    fireEvent.click(screen.getByRole("button", { name: /Advanced Import Settings/i }));
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /Symlink.*Link the project folder to My Skills/i,
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /.claude\/skills/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Folder" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /Custom target.*\/tmp\/novel\/custom-targets/i }),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    fireEvent.click(screen.getByRole("button", { name: "Import from My Skills" }));
+    fireEvent.click(screen.getByRole("button", { name: /Advanced Import Settings/i }));
+
+    expect(
+      screen.getByRole("button", {
+        name: /Symlink.*Link the project folder to My Skills/i,
+      }),
+    ).toHaveClass("border-primary/40");
+    expect(screen.getByRole("button", { name: /.claude\/skills/i })).toHaveClass(
+      "border-primary/40",
+    );
+    expect(
+      screen.getByRole("button", { name: /Custom target.*\/tmp\/novel\/custom-targets/i }),
+    ).toBeInTheDocument();
   });
 
   it("warns when background rescan fails after a successful import", async () => {
