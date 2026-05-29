@@ -1,5 +1,34 @@
 ## [Unreleased]
 
+## [0.5.7] - 2026-05-29
+
+### 新功能 / Features
+
+- 🤖 **Prompt AI 快速编辑工作流**：除了编辑弹窗内嵌 AI 改写，Prompt 详情页、详情弹窗和右键菜单现在共享同一套 `AI 快速编辑` 弹窗，支持先生成草稿、预览后再选择 `应用并保存` 或 `继续编辑`
+  - **Prompt AI Quick Rewrite Workflow**: In addition to the editor-embedded AI rewrite flow, Prompt detail pages, detail modals, and context menus now share one `AI Quick Edit` dialog that generates a draft first, lets users preview it, and then choose either `Apply and Save` or `Continue Editing`
+- 🧩 **同名 Skill variant 正式落地**：PromptHub 现在允许同名但不同来源的 Skill 作为独立 variant 并存，为后续商店 / 本地 / 分支版本共存奠定统一身份模型
+  - **Same-Name Skill Variants Are Now First-Class**: PromptHub now supports Skills with the same logical name but different sources as independent variants, establishing a unified identity model for store, local, and branch-based variants to coexist
+
+### 问题修复 / Fixes
+
+- 🛟 **备份导入恢复链路加固**：导入备份时进一步收紧恢复边界与一致性，降低恢复后出现数据漂移或部分状态错位的风险
+  - **Backup Import Restore Hardened**: The backup import restore flow now has tighter recovery boundaries and better consistency guarantees, reducing the risk of drift or partially restored state after import
+- 🔗 **远程 Git 扫描支持 HTTPS 自托管仓库**：`scanRemoteGithub` 不再错误限制为 SSH-only，GitHub、Gitea 和自部署 Git 仓库的 HTTPS / SSH 地址现在都能一致扫描和导入
+  - **Remote Git Scanning Now Supports HTTPS Self-Hosted Repos**: `scanRemoteGithub` no longer incorrectly limits scanning to SSH-only repositories, so GitHub, Gitea, and self-hosted Git repos now work consistently with both HTTPS and SSH URLs
+- 🧱 **托管 Skill 容器结构统一**：托管 Skill repo 容器进一步统一，减少历史目录结构差异导致的后续维护和安装判定问题
+  - **Managed Skill Containers Unified Further**: Managed Skill repo containers now use a more consistent structure, reducing downstream maintenance issues and install-state ambiguity caused by historical layout differences
+- ✅ **AI Workbench 端点验证状态可持久回显**：`测试连接` 成功后的 `已验证 / Connected` 状态现在会写回模型配置，重新切换页面后不会错误回退成 `未验证`
+  - **AI Workbench Endpoint Verification Now Persists**: After `Test Connection` succeeds, the `Connected` state is now persisted back into the model config so switching away and back no longer incorrectly resets the endpoint to `Unverified`
+- ⚙️ **Kilo Code 规则扫描补齐**：内置平台规则扫描补齐 `Kilo Code`，避免新增平台后漏扫全局规则文件
+  - **Kilo Code Rule Scanning Added**: Built-in platform rule scanning now includes `Kilo Code`, avoiding gaps where its global rule files were skipped
+
+### 优化 / Improvements
+
+- 🪄 **Prompt AI 快速编辑交互收口**：快速 AI 编辑入口统一改为 icon-only trigger，复用到详情头部和右键菜单；弹窗固定底部操作区、移除 `notes` 并修复文本域与模板 chips 的重叠问题
+  - **Prompt AI Quick Rewrite UX Refined**: The quick rewrite entry is now a shared icon-only trigger reused in detail headers and context menus; the dialog keeps actions pinned in a fixed footer, removes `notes`, and fixes the textarea/chip overlap issue
+- 🌍 **0.5.7 发布文档与下载面同步**：正式版说明、README / 多语言 README、官网 release metadata 和 changelog 已统一收敛到 `0.5.7`
+  - **0.5.7 Release Docs and Download Surfaces Synced**: The final release notes, README/localized READMEs, website release metadata, and changelog are now aligned around `0.5.7`
+
 ## [0.5.7-beta.2] - 2026-05-28
 
 ### 新功能 / Features

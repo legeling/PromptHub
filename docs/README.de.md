@@ -9,7 +9,7 @@
 
   [![GitHub Stars](https://img.shields.io/github/stars/legeling/PromptHub?style=for-the-badge&logo=github&color=yellow)](https://github.com/legeling/PromptHub/stargazers)
   [![Downloads](https://img.shields.io/github/downloads/legeling/PromptHub/total?style=for-the-badge&logo=github&color=blue)](https://github.com/legeling/PromptHub/releases)
-  [![Version](https://img.shields.io/badge/release-v0.5.6_stable-22C55E?style=for-the-badge)](https://github.com/legeling/PromptHub/releases/latest)
+  [![Version](https://img.shields.io/badge/release-v0.5.7_stable-22C55E?style=for-the-badge)](https://github.com/legeling/PromptHub/releases/latest)
   [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](../LICENSE)
 
   <br/>
@@ -66,16 +66,16 @@ Deine Daten bleiben auf deiner Maschine.
 
 ## 📥 Download
 
-Aktuelle Stable: **v0.5.6**. Pro Plattform gibt es zwei Wege:
+Aktuelle Stable: **v0.5.7**. Pro Plattform gibt es zwei Wege:
 
-- **Direkt-Download** — feste Dateinamen, der Link bleibt über Releases hinweg gleich. Gut für langlebige Lesezeichen oder Skripte. (**Ab v0.5.7 läuft das über einen CDN-Mirror; diese Version fällt auf GitHub Releases zurück.**)
+- **Direkt-Download** — feste Dateinamen, der Link bleibt über Releases hinweg gleich. Gut für langlebige Lesezeichen oder Skripte. (Stable-Releases laufen jetzt über den CDN-Mirror.)
 - **GitHub Releases** — offizielle Release-Seite mit Versions-Archiv, Signaturen und vollständigen Release Notes.
 
 | Plattform | Direkt-Download | GitHub Releases |
 | --------- | --------------- | --------------- |
-| Windows   | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.5.6-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.5.6-arm64.exe) | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.5.6-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.5.6-arm64.exe) |
-| macOS     | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.6-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.6-x64.dmg) | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.6-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.6-x64.dmg) |
-| Linux     | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.6-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.6-amd64.deb) | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.6-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.6-amd64.deb) |
+| Windows   | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://pub-fff1cbc0121241d480624bd3de5a2735.r2.dev/latest/PromptHub-Setup-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://pub-fff1cbc0121241d480624bd3de5a2735.r2.dev/latest/PromptHub-Setup-arm64.exe) | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.5.7-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.5.7-arm64.exe) |
+| macOS     | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://pub-fff1cbc0121241d480624bd3de5a2735.r2.dev/latest/PromptHub-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://pub-fff1cbc0121241d480624bd3de5a2735.r2.dev/latest/PromptHub-x64.dmg) | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.7-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.7-x64.dmg) |
+| Linux     | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://pub-fff1cbc0121241d480624bd3de5a2735.r2.dev/latest/PromptHub-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://pub-fff1cbc0121241d480624bd3de5a2735.r2.dev/latest/PromptHub-amd64.deb) | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.7-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.7-amd64.deb) |
 | Vorschau  | [![Preview v0.5.7-beta.2](https://img.shields.io/badge/Preview-v0.5.7--beta.2-8B5CF6?style=for-the-badge&logo=github&logoColor=white)](https://github.com/legeling/PromptHub/releases/tag/v0.5.7-beta.2) | Aktuelle Vorschau: `v0.5.7-beta.2`. Alternativ den Vorschau-Kanal unter *Einstellungen → Über* aktivieren, damit die App automatisch prüft und aktualisiert. |
 
 > **Apple Silicon oder Intel?** M1/M2/M3/M4 → `arm64`. Intel-Macs → `x64`.
@@ -112,7 +112,7 @@ Nächste Entwicklungs-Vorschau testen? *Einstellungen → Über* öffnen und den
 
 ## Screenshots
 
-> Die folgenden Aufnahmen zeigen die wichtigsten Bereiche von v0.5.6.
+> Die folgenden Aufnahmen zeigen die wichtigsten Bereiche von v0.5.7.
 
 <div align="center">
   <p><strong>Zwei-Spalten-Home</strong></p>
@@ -298,6 +298,12 @@ Häufige globale Flags:
 
 Vollständiges Changelog: **[CHANGELOG.md](../CHANGELOG.md)**
 
+### v0.5.7 (2026-05-29)
+
+- Prompt AI Quick Rewrite ist jetzt als gemeinsamer Dialog in Detailseite, Detailmodal und Kontextmenü verfügbar
+- Gleichnamige Skill-Varianten werden jetzt als eigenständige Varianten mit gemeinsamer Identity- und Containerlogik unterstützt
+- Backup-Restore, Remote-Git-Scanning und persistente Verifizierungsanzeige im AI Workbench wurden weiter gehärtet
+
 ### v0.5.7-beta.2 (2026-05-28, Vorschau)
 
 - Git-Store-Quellen unterstützen jetzt `branch / directory`, Remote-Branch-Vorschläge sowie GitHub / SSH / selbst gehostete Git-Repositories
@@ -341,13 +347,17 @@ Vollständiges Changelog: **[CHANGELOG.md](../CHANGELOG.md)**
 
 ## Roadmap
 
-### v0.5.7-beta.2 ← aktuelle Vorschau
+### v0.5.7 ← aktuelle Stable
+
+- Prompt AI Quick Rewrite, gleichnamige Skill-Varianten und die zusätzliche Recovery-/Git-Härtung sind jetzt in der finalen Stable enthalten
+
+### v0.5.7-beta.2 ← letzte Vorschau
 
 - Git-Store-Quellen mit `branch / directory` und Remote-Branch-Vorschlägen
 - Projekt-Skill-Import mit erweiterten `copy / symlink`-Modi und projektbezogener Präferenzspeicherung
 - Eingebaute `Kilo Code`-Unterstützung ersetzt `Roo Code`
 
-### v0.5.6 ← aktuelle Stable
+### v0.5.6
 
 Siehe Changelog oben.
 
