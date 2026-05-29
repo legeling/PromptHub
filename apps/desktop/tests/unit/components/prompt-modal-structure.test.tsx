@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -32,6 +32,7 @@ const basePrompt: Prompt = {
 
 describe("Prompt modal structure", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     installWindowMocks();
 
     usePromptStore.setState({
@@ -67,13 +68,27 @@ describe("Prompt modal structure", () => {
 
     useSettingsStore.setState({
       sourceHistory: ["https://example.com/reference"],
-      aiModels: [],
+      aiModels: [
+        {
+          id: "translation-chat",
+          type: "chat",
+          name: "Translation Chat",
+          provider: "openai",
+          apiProtocol: "openai",
+          apiKey: "test-key",
+          apiUrl: "https://api.example.com",
+          model: "gpt-4.1-mini",
+          isDefault: true,
+        },
+      ],
       scenarioModelDefaults: {},
     } as Partial<ReturnType<typeof useSettingsStore.getState>>);
   });
 
-  it("keeps create modal first screen focused on type and prompt content", async () => {
-    const user = userEvent.setup();
+  it(
+    "keeps create modal first screen focused on type and prompt content",
+    async () => {
+      const user = userEvent.setup();
 
     await renderWithI18n(
       <ToastProvider>
@@ -101,13 +116,15 @@ describe("Prompt modal structure", () => {
       screen.queryByText("Test with image models (e.g., DALL-E). Generated images will be saved to preview."),
     ).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /More Settings/i }));
+      await user.click(screen.getByRole("button", { name: /More Settings/i }));
 
-    expect(screen.getByText("Description (Optional)")).toBeInTheDocument();
-    expect(screen.getByText("System Prompt (Optional)")).toBeInTheDocument();
-    expect(screen.getByText("Reference Media")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "More Settings" })).toBeInTheDocument();
-  });
+      expect(screen.getByText("Description (Optional)")).toBeInTheDocument();
+      expect(screen.getByText("System Prompt (Optional)")).toBeInTheDocument();
+      expect(screen.getByText("Reference Media")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "More Settings" })).toBeInTheDocument();
+    },
+    10000,
+  );
 
   it("keeps text prompt reference media inside more settings when editing", async () => {
     const user = userEvent.setup();
@@ -156,6 +173,143 @@ describe("Prompt modal structure", () => {
     expect(screen.getByText("Reference Media")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /More Settings/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("generates an AI rewrite draft and allows undoing it", async () => {
+    const user = userEvent.setup();
+    window.api.ai.request.mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      body: JSON.stringify({
+        choices: [
+          {
+            index: 0,
+            message: {
+              role: "assistant",
+              content: JSON.stringify({
+                summary: "Improved the output structure",
+                description: "Updated description",
+                userPrompt: "Return a structured answer with numbered steps.",
+                notes: "AI rewrote this draft.",
+              }),
+            },
+            finish_reason: "stop",
+          },
+        ],
+      }),
+      headers: { "content-type": "application/json" },
+    });
+
+    await renderWithI18n(
+      <ToastProvider>
+        <EditPromptModal isOpen onClose={vi.fn()} prompt={basePrompt} />
+      </ToastProvider>,
+      { language: "en" },
+    );
+
+    expect(screen.getByText("AI Rewrite")).toBeInTheDocument();
+
+    const rewriteInstruction = screen.getByPlaceholderText(
+      "Example: keep the original intent, but make the output more suitable for Claude and add clearer steps plus a final output format.",
+    );
+    await user.click(rewriteInstruction);
+    await user.paste("Make the output easier to scan.");
+    await user.click(screen.getByRole("button", { name: "Generate rewrite" }));
+
+    expect(await screen.findByText("Improved the output structure")).toBeInTheDocument();
+
+    const descriptionInput = screen.getByDisplayValue("Updated description");
+    expect(descriptionInput).toBeInTheDocument();
+
+    const userPromptTextarea = screen.getByDisplayValue(
+      "Return a structured answer with numbered steps.",
+    );
+    expect(userPromptTextarea).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /More Settings/i }));
+    expect(screen.getByDisplayValue("AI rewrote this draft.")).toBeInTheDocument();
+
+    expect(screen.getByRole("button", { name: "Undo AI rewrite" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Undo AI rewrite" }));
+
+    await waitFor(() => {
+      expect(screen.queryByText("Improved the output structure")).not.toBeInTheDocument();
+    });
+
+    expect(screen.getByDisplayValue(basePrompt.description ?? "")).toBeInTheDocument();
+    expect(screen.getByDisplayValue(basePrompt.userPrompt)).toBeInTheDocument();
+    expect(screen.queryByDisplayValue("AI rewrote this draft.")).not.toBeInTheDocument();
+
+    const toast = await screen.findByText(
+      "Restored the draft from before the AI rewrite",
+    );
+    expect(toast).toBeInTheDocument();
+  }, 10000);
+
+  it("shows an error toast when rewrite is requested without instructions", async () => {
+    const user = userEvent.setup();
+
+    await renderWithI18n(
+      <ToastProvider>
+        <EditPromptModal isOpen onClose={vi.fn()} prompt={basePrompt} />
+      </ToastProvider>,
+      { language: "en" },
+    );
+
+    const button = screen.getByRole("button", {
+      name: /Generate rewrite/i,
+    });
+    expect(button).toBeDisabled();
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Preserve intent, improve clarity",
+      }),
+    );
+
+    expect(button).toBeEnabled();
+  });
+
+  it("surfaces rewrite failures from the AI service", async () => {
+    const user = userEvent.setup();
+    window.api.ai.request.mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      body: JSON.stringify({
+        choices: [
+          {
+            index: 0,
+            message: {
+              role: "assistant",
+              content: "not valid json",
+            },
+            finish_reason: "stop",
+          },
+        ],
+      }),
+      headers: { "content-type": "application/json" },
+    });
+
+    await renderWithI18n(
+      <ToastProvider>
+        <EditPromptModal isOpen onClose={vi.fn()} prompt={basePrompt} />
+      </ToastProvider>,
+      { language: "en" },
+    );
+
+    const rewriteInstruction = screen.getByPlaceholderText(
+      "Example: keep the original intent, but make the output more suitable for Claude and add clearer steps plus a final output format.",
+    );
+    await user.click(rewriteInstruction);
+    await user.paste("Make it clearer.");
+    await user.click(screen.getByRole("button", { name: "Generate rewrite" }));
+
+    expect(
+      await screen.findByText("AI rewrite did not return valid JSON"),
     ).toBeInTheDocument();
   });
 });

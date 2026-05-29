@@ -3,6 +3,8 @@ import { StarIcon, HashIcon, ClockIcon, CopyIcon, CheckIcon, SparklesIcon, EditI
 import { Modal } from '../ui/Modal';
 import { ImagePreviewModal } from '../ui/ImagePreviewModal';
 import { LocalImage } from '../ui/LocalImage';
+import { PromptQuickRewriteDialog } from './PromptQuickRewriteDialog';
+import { PromptQuickRewriteTrigger } from './PromptQuickRewriteTrigger';
 import type { Prompt } from '@prompthub/shared/types';
 import { useEffect, useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
@@ -18,6 +20,7 @@ interface PromptDetailModalProps {
   prompt: Prompt | null;
   onCopy?: (prompt: Prompt) => void;
   onEdit?: (prompt: Prompt) => void;
+  onQuickRewriteEdit?: (prompt: Prompt) => void;
 }
 
 export function PromptDetailModal({
@@ -26,6 +29,7 @@ export function PromptDetailModal({
   prompt,
   onCopy,
   onEdit,
+  onQuickRewriteEdit,
 }: PromptDetailModalProps) {
   const { t, i18n } = useTranslation();
   const [copiedSystem, setCopiedSystem] = useState(false);
@@ -35,6 +39,7 @@ export function PromptDetailModal({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showEnglish, setShowEnglish] = useState(false);
   const [shared, setShared] = useState(false);
+  const [isQuickRewriteOpen, setIsQuickRewriteOpen] = useState(false);
 
 
   const preferEnglish = useMemo(() => {
@@ -225,6 +230,11 @@ export function PromptDetailModal({
       >
         {isFullscreen ? <Minimize2Icon className="w-4 h-4" /> : <Maximize2Icon className="w-4 h-4" />}
       </button>
+
+      <PromptQuickRewriteTrigger
+        onClick={() => setIsQuickRewriteOpen(true)}
+        className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+      />
 
       <button
         onClick={handleShare}
@@ -459,6 +469,13 @@ export function PromptDetailModal({
         isOpen={!!previewImage}
         onClose={() => setPreviewImage(null)}
         imageSrc={previewImage}
+      />
+
+      <PromptQuickRewriteDialog
+        isOpen={isQuickRewriteOpen}
+        onClose={() => setIsQuickRewriteOpen(false)}
+        prompt={prompt}
+        onContinueEditing={onQuickRewriteEdit ?? onEdit}
       />
     </Modal>
   );

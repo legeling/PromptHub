@@ -24,7 +24,7 @@ import { usePromptStore } from "../../stores/prompt.store";
 import { useFolderStore } from "../../stores/folder.store";
 import { useSettingsStore } from "../../stores/settings.store";
 import { resolveScenarioModel } from "../../services/ai-defaults";
-import { chatCompletion } from "../../services/ai";
+import { chatCompletion, rewritePromptDraft } from "../../services/ai";
 import { useTranslation } from "react-i18next";
 import { useToast } from "../ui/Toast";
 import type {
@@ -92,6 +92,15 @@ export function EditPromptModal({
   const [showEnglishVersion, setShowEnglishVersion] = useState(false);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
+  const [isRewritingPrompt, setIsRewritingPrompt] = useState(false);
+  const [rewriteInstruction, setRewriteInstruction] = useState("");
+  const [rewriteSummary, setRewriteSummary] = useState<string | null>(null);
+  const [rewriteSnapshot, setRewriteSnapshot] = useState<null | {
+    description: string;
+    systemPrompt: string;
+    userPrompt: string;
+    notes: string;
+  }>(null);
   const [source, setSource] = useState("");
   const [notes, setNotes] = useState("");
   const [showSourceSuggestions, setShowSourceSuggestions] = useState(false);
@@ -114,6 +123,8 @@ export function EditPromptModal({
     );
   }, [aiModels, scenarioModelDefaults]);
   const canTranslate = !!translationModel;
+  const rewriteModel = translationModel;
+  const canRewrite = !!rewriteModel;
 
   // Detect if main content is pure English (strict: no CJK allowed)
   // 检测主内容是否为纯英文（严格：不允许中日韩字符）
@@ -368,6 +379,9 @@ export function EditPromptModal({
       setSource(form.source);
       setNotes(form.notes);
       setShowEnglishVersion(!!(form.systemPromptEn || form.userPromptEn));
+      setRewriteInstruction("");
+      setRewriteSummary(null);
+      setRewriteSnapshot(null);
     }
   }, [prompt, initialData, isOpen]);
 
@@ -391,6 +405,112 @@ export function EditPromptModal({
     } catch (error) {
       console.error("Failed to save prompt:", error);
       showToast(t("common.error"), "error");
+    }
+  };
+
+  const handleApplyRewriteTemplate = (template: string) => {
+    setRewriteInstruction(template);
+  };
+
+  const handleUndoRewrite = () => {
+    if (!rewriteSnapshot) {
+      return;
+    }
+
+    setDescription(rewriteSnapshot.description);
+    setSystemPrompt(rewriteSnapshot.systemPrompt);
+    setUserPrompt(rewriteSnapshot.userPrompt);
+    setNotes(rewriteSnapshot.notes);
+    setRewriteSnapshot(null);
+    setRewriteSummary(null);
+    showToast(
+      t("prompt.aiRewriteUndoDone"),
+      "success",
+    );
+  };
+
+  const handleRewritePrompt = async () => {
+    if (!canRewrite || !rewriteModel) {
+      showToast(t("toast.configAI"), "error");
+      return;
+    }
+
+    if (!rewriteInstruction.trim()) {
+      showToast(
+        t("prompt.aiRewriteNeedsInstruction"),
+        "error",
+      );
+      return;
+    }
+
+    if (!userPrompt.trim()) {
+      showToast(
+        t("prompt.aiRewriteNeedsContent"),
+        "error",
+      );
+      return;
+    }
+
+    setIsRewritingPrompt(true);
+    try {
+      const previous = {
+        description,
+        systemPrompt,
+        userPrompt,
+        notes,
+      };
+
+      const rewritten = await rewritePromptDraft(
+        {
+          provider: rewriteModel.provider,
+          apiProtocol: rewriteModel.apiProtocol,
+          apiKey: rewriteModel.apiKey,
+          apiUrl: rewriteModel.apiUrl,
+          model: rewriteModel.model,
+        },
+        {
+          promptType,
+          title,
+          description,
+          systemPrompt,
+          userPrompt,
+          notes,
+          instruction: rewriteInstruction,
+        },
+      );
+
+      setRewriteSnapshot(previous);
+
+      if (rewritten.description !== undefined) {
+        setDescription(rewritten.description);
+      }
+      if (rewritten.systemPrompt !== undefined) {
+        setSystemPrompt(rewritten.systemPrompt);
+      }
+      if (rewritten.userPrompt !== undefined) {
+        setUserPrompt(rewritten.userPrompt);
+      }
+      if (rewritten.notes !== undefined) {
+        setNotes(rewritten.notes);
+      }
+
+      setRewriteSummary(
+        rewritten.summary ||
+          t("prompt.aiRewriteSummaryDefault"),
+      );
+      showToast(
+        t("prompt.aiRewriteDone"),
+        "success",
+      );
+    } catch (error) {
+      showToast(
+        error instanceof Error
+          ? error.message
+          : t("prompt.aiRewriteFailed"),
+        "error",
+      );
+    } finally {
+      setIsRewritingPrompt(false);
     }
   };
 
@@ -974,6 +1094,80 @@ export function EditPromptModal({
           </div>
 
           {promptType === "image" && renderReferenceMediaSection()}
+        </div>
+
+        <div className="space-y-3 border border-border/50 rounded-xl bg-muted/20 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <SparklesIcon className="w-4 h-4 text-primary" />
+                {t("prompt.aiRewriteTitle")}
+              </div>
+              <p className="text-xs leading-5 text-muted-foreground">
+                {t("prompt.aiRewriteHint")}
+              </p>
+            </div>
+            {rewriteSnapshot ? (
+              <Button variant="secondary" size="sm" onClick={handleUndoRewrite}>
+                {t("prompt.aiRewriteUndo")}
+              </Button>
+            ) : null}
+          </div>
+
+          {rewriteSummary ? (
+            <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-foreground/80">
+              {rewriteSummary}
+            </div>
+          ) : null}
+
+          <div className="flex flex-wrap gap-2">
+            {[
+              t("prompt.aiRewriteTemplateClarity"),
+              t("prompt.aiRewriteTemplateStructure"),
+              promptType === "image"
+                ? t("prompt.aiRewriteTemplateImage")
+                : t("prompt.aiRewriteTemplateConstraints"),
+            ].map((template) => (
+              <button
+                key={template}
+                type="button"
+                onClick={() => handleApplyRewriteTemplate(template)}
+                className="rounded-full border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                {template}
+              </button>
+            ))}
+          </div>
+
+          <Textarea
+            value={rewriteInstruction}
+            onChange={(event) => setRewriteInstruction(event.target.value)}
+            placeholder={t("prompt.aiRewritePlaceholder")}
+            className="min-h-[96px]"
+          />
+
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-xs text-muted-foreground">
+              {canRewrite
+                ? t("prompt.aiRewriteReady")
+                : t("prompt.aiRewriteNeedsModel")}
+            </div>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleRewritePrompt}
+              disabled={isRewritingPrompt || !canRewrite || !rewriteInstruction.trim()}
+            >
+              {isRewritingPrompt ? (
+                <Loader2Icon className="w-4 h-4 animate-spin" />
+              ) : (
+                <SparklesIcon className="w-4 h-4" />
+              )}
+              {isRewritingPrompt
+                ? t("prompt.aiRewriteWorking")
+                : t("prompt.aiRewriteAction")}
+            </Button>
+          </div>
         </div>
 
         {/* 可折叠的更多设置面板 */}

@@ -20,6 +20,7 @@ import type { OutputFormatConfig, VariableInputImageAttachment } from '../prompt
 const SkillManager = lazy(() => import('../skill/SkillManager').then(m => ({ default: m.SkillManager })));
 const RulesManager = lazy(() => import('../rules/RulesManager').then(m => ({ default: m.RulesManager })));
 const EditPromptModal = lazy(() => import('../prompt/EditPromptModal').then(m => ({ default: m.EditPromptModal })));
+const PromptQuickRewriteDialog = lazy(() => import('../prompt/PromptQuickRewriteDialog').then(m => ({ default: m.PromptQuickRewriteDialog })));
 const PromptTableView = lazy(() => import('../prompt/PromptTableView').then(m => ({ default: m.PromptTableView })));
 const PromptGalleryView = lazy(() => import('../prompt/PromptGalleryView').then(m => ({ default: m.PromptGalleryView })));
 const PromptKanbanView = lazy(() => import('../prompt/PromptKanbanView').then(m => ({ default: m.PromptKanbanView })));
@@ -55,6 +56,7 @@ import {
   hasUserDefinedPromptVariables,
   resolvePromptContentByLanguage,
 } from '../prompt/prompt-copy-utils';
+import { PromptQuickRewriteTrigger } from '../prompt/PromptQuickRewriteTrigger';
 import {
   filterVisiblePrompts,
   sortVisiblePrompts,
@@ -1212,6 +1214,7 @@ function PromptSkillMainContent() {
   // Editing prompt for table view
   // 用于表格视图的编辑 prompt
   const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null);
+  const [quickRewritePrompt, setQuickRewritePrompt] = useState<Prompt | null>(null);
   const [isDetailInlineEditing, setIsDetailInlineEditing] = useState(false);
   const [isDetailInlineSaving, setIsDetailInlineSaving] = useState(false);
   const [detailInlineActiveField, setDetailInlineActiveField] =
@@ -1718,6 +1721,11 @@ function PromptSkillMainContent() {
         onClick: () => setEditingPrompt(contextMenu.prompt),
       },
       {
+        label: t('prompt.quickRewriteOpen'),
+        icon: <SparklesIcon className="w-4 h-4" />,
+        onClick: () => setQuickRewritePrompt(contextMenu.prompt),
+      },
+      {
         label: t('prompt.copy'),
         icon: <CopyIcon className="w-4 h-4" />,
         onClick: () => handleCopyPrompt(contextMenu.prompt),
@@ -2024,6 +2032,10 @@ function PromptSkillMainContent() {
                       >
                         <StarIcon className={`w-5 h-5 ${selectedPrompt.isFavorite ? 'fill-current' : ''}`} />
                       </button>
+                      <PromptQuickRewriteTrigger
+                        onClick={() => setQuickRewritePrompt(selectedPrompt)}
+                        className="p-2.5 rounded-xl text-muted-foreground hover:bg-accent hover:text-primary transition-all duration-base active:scale-press-in"
+                      />
                       <button
                         onClick={() => handleSharePrompt(selectedPrompt)}
                         className={`p-2.5 rounded-xl transition-all duration-base ${shared ? 'text-green-500 bg-green-500/10' : 'text-muted-foreground hover:bg-accent hover:text-foreground'} active:scale-press-in`}
@@ -2589,6 +2601,20 @@ function PromptSkillMainContent() {
         </Suspense>
       )}
 
+      {quickRewritePrompt && (
+        <Suspense fallback={null}>
+          <PromptQuickRewriteDialog
+            isOpen={!!quickRewritePrompt}
+            onClose={() => setQuickRewritePrompt(null)}
+            prompt={quickRewritePrompt}
+            onContinueEditing={(prompt) => {
+              setQuickRewritePrompt(null);
+              setEditingPrompt(prompt);
+            }}
+          />
+        </Suspense>
+      )}
+
       {/* AI test modal (for List/Gallery view) */}
       {/* AI 测试弹窗 (用于 List/Gallery 视图) */}
       {isAiTestModalOpen && (
@@ -2632,6 +2658,7 @@ function PromptSkillMainContent() {
             prompt={detailPrompt}
             onCopy={handleCopyPrompt}
             onEdit={(prompt) => setEditingPrompt(prompt)}
+            onQuickRewriteEdit={(prompt) => setEditingPrompt(prompt)}
           />
         </Suspense>
       )}

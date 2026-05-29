@@ -5,7 +5,11 @@
  * These tests aim to find real bugs, not just validate happy paths
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { generateImage } from "../../../src/renderer/services/ai";
+import {
+  generateImage,
+  rewritePromptDraft,
+} from "../../../src/renderer/services/ai";
+import { installWindowMocks } from "../../helpers/window";
 
 // ============================================
 // 辅助函数：创建模拟的流式响应
@@ -106,6 +110,11 @@ async function parseSSEStream(
 // ============================================
 
 describe("AI Service - 边界条件测试 (Boundary Conditions)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    installWindowMocks();
+  });
+
   describe("空输入和极端情况", () => {
     it("should handle empty stream gracefully", async () => {
       const response = createMockStreamResponse(["data: [DONE]\n\n"]);
@@ -407,6 +416,194 @@ describe("AI Service - 错误处理测试 (Error Handling)", () => {
       // 如果这里抛错了，说明代码没有正确处理回调异常
       expect(e).toBeInstanceOf(Error);
     }
+  });
+});
+
+describe("AI Service - Prompt rewrite", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    installWindowMocks();
+  });
+
+  it("parses structured rewrite JSON and returns only editable fields", async () => {
+    window.api.ai.request.mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      body: JSON.stringify({
+        choices: [
+          {
+            index: 0,
+            message: {
+              role: "assistant",
+              content: JSON.stringify({
+                summary: "Clarified the instructions",
+                description: "Sharper task description",
+                userPrompt: "Return a numbered plan with risks.",
+              }),
+            },
+            finish_reason: "stop",
+          },
+        ],
+      }),
+      headers: { "content-type": "application/json" },
+    });
+
+    const result = await rewritePromptDraft(
+      {
+        provider: "openai",
+        apiProtocol: "openai",
+        apiKey: "test-key",
+        apiUrl: "https://api.example.com",
+        model: "gpt-4.1-mini",
+      },
+      {
+        promptType: "text",
+        title: "Draft",
+        description: "Old description",
+        systemPrompt: "You are helpful.",
+        userPrompt: "Write a plan.",
+        notes: "Keep concise",
+        instruction: "Make the output more structured.",
+      },
+    );
+
+    expect(result).toEqual({
+      summary: "Clarified the instructions",
+      description: "Sharper task description",
+      userPrompt: "Return a numbered plan with risks.",
+    });
+
+    const request = window.api.ai.request.mock.calls[0]?.[0];
+    expect(request).toBeDefined();
+    const body = JSON.parse(String(request?.body));
+    expect(body.messages).toHaveLength(2);
+    expect(body.messages[0]?.role).toBe("system");
+    expect(body.messages[0]?.content).toContain("Return STRICT JSON only");
+    expect(body.messages[1]?.content).toContain("Prompt type: text");
+    expect(body.messages[1]?.content).toContain("Make the output more structured.");
+    expect(body.messages[1]?.content).toContain("Focus on instruction clarity");
+  });
+
+  it("rejects rewrite responses without valid JSON", async () => {
+    window.api.ai.request.mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      body: JSON.stringify({
+        choices: [
+          {
+            index: 0,
+            message: {
+              role: "assistant",
+              content: "I improved the prompt but forgot JSON.",
+            },
+            finish_reason: "stop",
+          },
+        ],
+      }),
+      headers: { "content-type": "application/json" },
+    });
+
+    await expect(
+      rewritePromptDraft(
+        {
+          provider: "openai",
+          apiProtocol: "openai",
+          apiKey: "test-key",
+          apiUrl: "https://api.example.com",
+          model: "gpt-4.1-mini",
+        },
+        {
+          promptType: "image",
+          title: "Concept art",
+          userPrompt: "Draw a lighthouse.",
+          instruction: "Add more cinematic lighting.",
+        },
+      ),
+    ).rejects.toThrow("AI rewrite did not return valid JSON");
+  });
+
+  it("rejects rewrite responses that do not change editable fields", async () => {
+    window.api.ai.request.mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      body: JSON.stringify({
+        choices: [
+          {
+            index: 0,
+            message: {
+              role: "assistant",
+              content: JSON.stringify({
+                summary: "No editable changes",
+              }),
+            },
+            finish_reason: "stop",
+          },
+        ],
+      }),
+      headers: { "content-type": "application/json" },
+    });
+
+    await expect(
+      rewritePromptDraft(
+        {
+          provider: "openai",
+          apiProtocol: "openai",
+          apiKey: "test-key",
+          apiUrl: "https://api.example.com",
+          model: "gpt-4.1-mini",
+        },
+        {
+          promptType: "video",
+          title: "Trailer",
+          userPrompt: "Create a product trailer.",
+          instruction: "Make it feel more dynamic.",
+        },
+      ),
+    ).rejects.toThrow("AI rewrite did not return any editable fields");
+  });
+
+  it("rejects invalid editable field types", async () => {
+    window.api.ai.request.mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      body: JSON.stringify({
+        choices: [
+          {
+            index: 0,
+            message: {
+              role: "assistant",
+              content: JSON.stringify({
+                userPrompt: 42,
+              }),
+            },
+            finish_reason: "stop",
+          },
+        ],
+      }),
+      headers: { "content-type": "application/json" },
+    });
+
+    await expect(
+      rewritePromptDraft(
+        {
+          provider: "openai",
+          apiProtocol: "openai",
+          apiKey: "test-key",
+          apiUrl: "https://api.example.com",
+          model: "gpt-4.1-mini",
+        },
+        {
+          promptType: "text",
+          title: "Draft",
+          userPrompt: "Write a summary.",
+          instruction: "Make it more explicit.",
+        },
+      ),
+    ).rejects.toThrow("AI rewrite returned an invalid userPrompt field");
   });
 });
 

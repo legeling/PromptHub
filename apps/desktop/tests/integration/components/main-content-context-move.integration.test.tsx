@@ -53,6 +53,24 @@ vi.mock("../../../src/renderer/services/ai", () => ({
   multiModelCompare: vi.fn(),
 }));
 
+vi.mock(
+  "../../../src/renderer/components/prompt/PromptQuickRewriteDialog",
+  () => ({
+    PromptQuickRewriteDialog: ({
+      isOpen,
+      prompt,
+    }: {
+      isOpen: boolean;
+      prompt: { title: string } | null;
+    }) =>
+      isOpen ? (
+        <div data-testid="quick-rewrite-dialog">
+          Quick rewrite open: {prompt?.title}
+        </div>
+      ) : null,
+  }),
+);
+
 function createPrompt(overrides?: Partial<Prompt>): Prompt {
   return {
     id: "prompt-1",
@@ -162,6 +180,64 @@ describe("MainContent context move integration", () => {
       expect(updatePrompt).toHaveBeenCalledWith("prompt-1", { folderId: "folder-2" });
     });
     expect(showToast).toHaveBeenCalledWith("Moved to folder「Folder B」", "success");
+    },
+    30000,
+  );
+
+  it(
+    "opens the quick rewrite dialog from the context menu",
+    async () => {
+      const prompt = createPrompt({ title: "Rewrite me" });
+
+      usePromptStoreMock.mockImplementation((selector) =>
+        selector({
+          prompts: [prompt],
+          selectedId: prompt.id,
+          selectedIds: [prompt.id],
+          selectPrompt: vi.fn(),
+          setSelectedIds: vi.fn(),
+          createPrompt: vi.fn().mockResolvedValue(prompt),
+          toggleFavorite: vi.fn().mockResolvedValue(undefined),
+          togglePinned: vi.fn().mockResolvedValue(undefined),
+          deletePrompt: vi.fn().mockResolvedValue(undefined),
+          updatePrompt: vi.fn().mockResolvedValue(undefined),
+          searchQuery: "",
+          filterTags: [],
+          sortBy: "updatedAt",
+          sortOrder: "desc",
+          viewMode: "card",
+          incrementUsageCount: vi.fn().mockResolvedValue(undefined),
+          promptTypeFilter: "all",
+          setPromptTypeFilter: vi.fn(),
+          setViewMode: vi.fn(),
+        }),
+      );
+      useFolderStoreMock.mockImplementation((selector) =>
+        selector({
+          selectedFolderId: null,
+          unlockedFolderIds: new Set<string>(),
+          folders: [],
+        }),
+      );
+
+      await act(async () => {
+        await renderWithI18n(<MainContent />, { language: "en" });
+      });
+
+      fireEvent.contextMenu(screen.getAllByText("Rewrite me")[0]);
+
+      const quickRewriteLabel = await screen.findByText("AI Quick Edit");
+      const quickRewriteButton = quickRewriteLabel.closest("button");
+
+      if (!quickRewriteButton) {
+        throw new Error("Quick rewrite context menu action not found");
+      }
+
+      fireEvent.click(quickRewriteButton);
+
+      expect(await screen.findByTestId("quick-rewrite-dialog")).toHaveTextContent(
+        "Quick rewrite open: Rewrite me",
+      );
     },
     30000,
   );

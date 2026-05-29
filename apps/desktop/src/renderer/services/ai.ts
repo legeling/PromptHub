@@ -1,5 +1,4 @@
-import type { AITransportResponse } from "@prompthub/shared/types";
-import type { AIProtocol } from "@prompthub/shared/types";
+import type { AIProtocol, AITransportResponse, PromptType } from "@prompthub/shared/types";
 
 /**
  * AI Service - Call various AI model APIs
@@ -2021,6 +2020,164 @@ ${existingContent}`;
   });
 
   return result.content;
+}
+
+export interface PromptRewriteInput {
+  promptType: PromptType;
+  title: string;
+  description?: string | null;
+  systemPrompt?: string | null;
+  userPrompt: string;
+  notes?: string | null;
+  instruction: string;
+}
+
+export interface PromptRewriteResult {
+  summary?: string;
+  description?: string;
+  systemPrompt?: string;
+  userPrompt?: string;
+  notes?: string;
+}
+
+const PROMPT_REWRITE_SYSTEM_PROMPT = `You are an expert prompt editor working inside PromptHub.
+
+Your job is to improve an existing prompt draft according to the user's instruction while preserving the original task intent.
+
+Rules:
+1. Preserve the original goal, intent, placeholders, and important constraints unless the user explicitly asks to change them.
+2. Keep placeholders like {{variable}}, {{variable:example}}, template markers, markdown structure, and code fences intact unless the user explicitly asks to rewrite them.
+3. Improve clarity, structure, specificity, output constraints, and consistency when useful.
+4. Do NOT invent new product requirements, tools, or capabilities that were not implied by the current draft.
+5. Do NOT modify title, tags, folder, images, videos, or bilingual fields.
+6. Return STRICT JSON only. No markdown fences. No explanation outside JSON.
+7. Only include fields that should change. Omit fields that should stay unchanged.
+
+Return JSON with this shape only:
+{
+  "summary": "Short one-line summary of what changed",
+  "description": "Optional updated description",
+  "systemPrompt": "Optional updated system prompt",
+  "userPrompt": "Optional updated user prompt",
+  "notes": "Optional updated notes"
+}`;
+
+function extractJsonObject(responseContent: string): Record<string, unknown> | null {
+  const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
+
+  if (!jsonMatch) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(jsonMatch[0]);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return null;
+    }
+    return parsed as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+export async function rewritePromptDraft(
+  config: AIConfig,
+  input: PromptRewriteInput,
+): Promise<PromptRewriteResult> {
+  const promptTypeGuidance =
+    input.promptType === "image"
+      ? "Focus on visual clarity, subject detail, composition, style, lighting, and negative constraints when useful."
+      : input.promptType === "video"
+        ? "Focus on motion, shot progression, timing, pacing, camera movement, and temporal consistency when useful."
+        : "Focus on instruction clarity, role setup, context, step-by-step structure, and output formatting when useful.";
+
+  const userPrompt = `Please improve the following PromptHub draft according to the user's rewrite request.
+
+Prompt type: ${input.promptType}
+Prompt title: ${input.title}
+Rewrite request:
+${input.instruction}
+
+Prompt-type guidance:
+${promptTypeGuidance}
+
+Current draft JSON:
+${JSON.stringify(
+    {
+      description: input.description || "",
+      systemPrompt: input.systemPrompt || "",
+      userPrompt: input.userPrompt,
+      notes: input.notes || "",
+    },
+    null,
+    2,
+  )}`;
+
+  const result = await chatCompletion(
+    config,
+    [
+      { role: "system", content: PROMPT_REWRITE_SYSTEM_PROMPT },
+      { role: "user", content: userPrompt },
+    ],
+    {
+      temperature: 0.4,
+      maxTokens: 4096,
+    },
+  );
+
+  if (!result.content) {
+    throw new Error("AI rewrite returned empty content");
+  }
+
+  const parsed = extractJsonObject(result.content);
+  if (!parsed) {
+    throw new Error("AI rewrite did not return valid JSON");
+  }
+
+  const rewritten: PromptRewriteResult = {};
+
+  if (typeof parsed.summary === "string" && parsed.summary.trim()) {
+    rewritten.summary = parsed.summary.trim();
+  }
+
+  if ("description" in parsed) {
+    if (typeof parsed.description !== "string") {
+      throw new Error("AI rewrite returned an invalid description field");
+    }
+    rewritten.description = parsed.description;
+  }
+
+  if ("systemPrompt" in parsed) {
+    if (typeof parsed.systemPrompt !== "string") {
+      throw new Error("AI rewrite returned an invalid systemPrompt field");
+    }
+    rewritten.systemPrompt = parsed.systemPrompt;
+  }
+
+  if ("userPrompt" in parsed) {
+    if (typeof parsed.userPrompt !== "string") {
+      throw new Error("AI rewrite returned an invalid userPrompt field");
+    }
+    rewritten.userPrompt = parsed.userPrompt;
+  }
+
+  if ("notes" in parsed) {
+    if (typeof parsed.notes !== "string") {
+      throw new Error("AI rewrite returned an invalid notes field");
+    }
+    rewritten.notes = parsed.notes;
+  }
+
+  if (
+    rewritten.description === undefined &&
+    rewritten.systemPrompt === undefined &&
+    rewritten.userPrompt === undefined &&
+    rewritten.notes === undefined
+  ) {
+    throw new Error("AI rewrite did not return any editable fields");
+  }
+
+  return rewritten;
 }
 
 // ============ 多模型对比分析 ============
