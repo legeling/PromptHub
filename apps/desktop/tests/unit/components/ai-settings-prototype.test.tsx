@@ -48,6 +48,28 @@ function createSettingsState() {
   };
 }
 
+function createConfiguredModel(overrides: Partial<{
+  id: string;
+  provider: string;
+  apiProtocol: "openai" | "gemini" | "anthropic";
+  apiKey: string;
+  apiUrl: string;
+  model: string;
+  type: "chat" | "image";
+  lastVerifiedAt?: string;
+}> = {}) {
+  return {
+    id: "model-1",
+    provider: "custom",
+    apiProtocol: "openai" as const,
+    apiKey: "test-key",
+    apiUrl: "https://api.example.com/v1",
+    model: "gpt-4.1",
+    type: "chat" as const,
+    ...overrides,
+  };
+}
+
 describe("AISettingsPrototype", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -356,6 +378,51 @@ describe("AISettingsPrototype", () => {
         "error",
       );
     });
+  });
+
+  it("persists endpoint verification status across remounts", async () => {
+    const showToast = vi.fn();
+    useToastMock.mockReturnValue({ showToast });
+    const settingsState = createSettingsState();
+    settingsState.aiModels = [createConfiguredModel()];
+    settingsState.updateAiModel.mockImplementation((id, patch) => {
+      settingsState.aiModels = settingsState.aiModels.map((model: any) =>
+        model.id === id ? { ...model, ...patch } : model,
+      );
+    });
+    useSettingsStoreMock.mockImplementation(() => settingsState);
+    vi.mocked(testAIConnection).mockResolvedValue({
+      success: true,
+      response: "ok",
+      latency: 123,
+      provider: "custom",
+      model: "gpt-4.1",
+    });
+
+    const firstRender = await renderWithI18n(<AISettingsPrototype />, {
+      language: "en",
+    });
+
+    expect(screen.getByText("Unverified")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Test Connection" }));
+
+    await waitFor(() => {
+      expect(settingsState.updateAiModel).toHaveBeenCalledWith(
+        "model-1",
+        expect.objectContaining({
+          lastVerifiedAt: expect.any(String),
+        }),
+      );
+      expect(screen.getByText("Connected")).toBeInTheDocument();
+    });
+
+    firstRender.unmount();
+
+    await renderWithI18n(<AISettingsPrototype />, { language: "en" });
+
+    expect(screen.getByText("Connected")).toBeInTheDocument();
+    expect(screen.queryByText("Unverified")).not.toBeInTheDocument();
   });
 
   describe("batch model selection", () => {

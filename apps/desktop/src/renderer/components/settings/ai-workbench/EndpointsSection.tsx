@@ -81,7 +81,18 @@ export function EndpointsSection({
           {endpointGroups.map((group) => {
             const endpointStatus =
               endpointStatuses[group.key] ??
-              (group.models.some(isConfiguredModel)
+              (group.models.some((model) =>
+                typeof model.lastVerifiedAt === "string" &&
+                model.lastVerifiedAt.trim().length > 0,
+              )
+                ? {
+                    tone: "ready" as const,
+                    label: t("settings.aiWorkbenchConnected"),
+                    detail: t("settings.aiWorkbenchModelCount", {
+                      count: group.models.length,
+                    }),
+                  }
+                : group.models.some(isConfiguredModel)
                 ? {
                     tone: "warning" as const,
                     label: t("settings.aiWorkbenchUnverified"),

@@ -460,6 +460,7 @@ export interface AIModelConfig {
   apiUrl: string;
   model: string; // Model name, such as gpt-4o, dall-e-3
   isDefault?: boolean;
+  lastVerifiedAt?: string;
   // Custom parameters
   chatParams?: ChatModelParams;
   imageParams?: ImageModelParams;

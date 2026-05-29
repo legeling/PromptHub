@@ -53,6 +53,46 @@ import type {
   StatusCardData,
 } from "./ai-workbench/types";
 
+function buildVerifiedEndpointStatus(
+  group: EndpointGroup,
+  t: TFunction,
+): EndpointStatus | null {
+  const verifiedModels = group.models.filter(
+    (model) =>
+      typeof model.lastVerifiedAt === "string" &&
+      model.lastVerifiedAt.trim().length > 0,
+  );
+
+  if (verifiedModels.length === 0) {
+    return null;
+  }
+
+  const latestVerifiedAt = verifiedModels.reduce((latest, model) => {
+    const current = Date.parse(model.lastVerifiedAt || "");
+    if (!Number.isFinite(current)) {
+      return latest;
+    }
+    return latest === null || current > latest ? current : latest;
+  }, null as number | null);
+
+  const verifiedModel = verifiedModels[0];
+  const detailPrefix = verifiedModel?.model?.trim()
+    ? `${verifiedModel.model} · `
+    : "";
+  const detailSuffix =
+    latestVerifiedAt !== null
+      ? new Date(latestVerifiedAt).toLocaleString()
+      : t("settings.aiWorkbenchModelCount", {
+          count: group.models.length,
+        });
+
+  return {
+    tone: "ready",
+    label: t("settings.aiWorkbenchConnected"),
+    detail: `${detailPrefix}${detailSuffix}`,
+  };
+}
+
 function getFetchModelsFeedback(
   result: FetchModelsResult,
   t: TFunction,
@@ -617,6 +657,7 @@ export function AISettingsPrototype() {
     }
 
     setTestingEndpointKey(group.key);
+    const verifiedAt = new Date().toISOString();
     try {
       if ((targetModel.type ?? "chat") === "image") {
         const result = await testImageGeneration(
@@ -640,6 +681,9 @@ export function AISettingsPrototype() {
             detail: `${targetModel.model} · ${result.latency}ms`,
           },
         }));
+        for (const model of group.models) {
+          settings.updateAiModel(model.id, { lastVerifiedAt: verifiedAt });
+        }
         showToast(
           t("settings.aiWorkbenchEndpointConnected", {
             latency: result.latency,
@@ -665,6 +709,9 @@ export function AISettingsPrototype() {
             detail: `${targetModel.model} · ${result.latency}ms`,
           },
         }));
+        for (const model of group.models) {
+          settings.updateAiModel(model.id, { lastVerifiedAt: verifiedAt });
+        }
         showToast(
           t("settings.aiWorkbenchEndpointConnected", {
             latency: result.latency,
@@ -727,6 +774,7 @@ export function AISettingsPrototype() {
         apiProtocol: endpointDraft.apiProtocol,
         apiKey: endpointDraft.apiKey.trim(),
         apiUrl: normalizeApiUrlInput(endpointDraft.apiUrl),
+        lastVerifiedAt: undefined,
       });
     }
 
@@ -790,7 +838,25 @@ export function AISettingsPrototype() {
 
       <EndpointsSection
         endpointGroups={endpointGroups}
-        endpointStatuses={endpointStatuses}
+        endpointStatuses={Object.fromEntries(
+          endpointGroups
+            .map((group) => {
+              const runtimeStatus = endpointStatuses[group.key];
+              if (runtimeStatus) {
+                return [group.key, runtimeStatus] as const;
+              }
+
+              const persistedStatus = buildVerifiedEndpointStatus(group, t);
+              return persistedStatus
+                ? ([group.key, persistedStatus] as const)
+                : null;
+            })
+            .filter(
+              (
+                entry,
+              ): entry is readonly [string, EndpointStatus] => entry !== null,
+            ),
+        )}
         testingEndpointKey={testingEndpointKey}
         testingModelId={testingModelId}
         modelScenarioBadges={modelScenarioBadges}
