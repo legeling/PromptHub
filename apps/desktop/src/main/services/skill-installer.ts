@@ -22,6 +22,10 @@ import type {
   SkillManifest,
 } from "@prompthub/shared/types";
 import { parseGitRepo } from "@prompthub/shared/utils/git-repo";
+import {
+  buildSkillSourceId,
+  computeDirectoryFingerprint,
+} from "@prompthub/shared/utils/skill-identity";
 import { installSkillFromSource } from "../../../../../packages/core/src/skills/install-flow";
 import { initDatabase } from "@/main/database";
 import { SkillDB } from "@/main/database/skill";
@@ -70,6 +74,7 @@ import {
   deleteLocalRepoFileByPath,
   deleteRepoByPath,
   getLocalRepoPath,
+  getLocalRepoPathForSkillId,
   isManagedRepoPath,
   listLocalRepoFiles,
   listLocalRepoFilesByPath,
@@ -82,21 +87,27 @@ import {
   renameLocalRepoPathByPath,
   replaceLocalRepoFilesByPath,
   saveContentToLocalRepo,
+  saveContentToLocalRepoBySkillId,
   saveToLocalRepo,
+  saveToLocalRepoBySkillId,
   writeLocalRepoFile,
   writeLocalRepoFileBufferByPath,
   writeLocalRepoFileByPath,
 } from "./skill-installer-repo";
 import {
+  buildPlatformSkillInstallName,
   detectInstalledPlatforms,
+  getSkillMdInstallStatusForSkill,
   getPlatformStatus,
   getSkillMdInstallStatus,
   getSupportedPlatforms,
   installSkillMd,
+  installSkillMdForSkill,
   installSkillMdSymlink,
   installToPlatform,
   uninstallFromPlatform,
   uninstallSkillMd,
+  uninstallSkillMdForSkill,
 } from "./skill-installer-platform";
 import {
   exportAsJson,
@@ -128,7 +139,9 @@ export class SkillInstaller {
   // ---- Repo CRUD (delegated) ----
   static isManagedRepoPath = isManagedRepoPath;
   static saveToLocalRepo = saveToLocalRepo;
+  static saveToLocalRepoBySkillId = saveToLocalRepoBySkillId;
   static saveContentToLocalRepo = saveContentToLocalRepo;
+  static saveContentToLocalRepoBySkillId = saveContentToLocalRepoBySkillId;
   static readLocalRepoFiles = readLocalRepoFiles;
   static readLocalRepoFilesByPath = readLocalRepoFilesByPath;
   static readLocalRepoFileBuffersByPath = readLocalRepoFileBuffersByPath;
@@ -146,6 +159,7 @@ export class SkillInstaller {
   static copyRepoByPathToDirectory = copyRepoByPathToDirectory;
   static renameLocalRepoPathByPath = renameLocalRepoPathByPath;
   static getLocalRepoPath = getLocalRepoPath;
+  static getLocalRepoPathForSkillId = getLocalRepoPathForSkillId;
   static renameManagedLocalRepo = renameManagedLocalRepo;
   static deleteLocalRepo = deleteLocalRepo;
   static deleteRepoByPath = deleteRepoByPath;
@@ -156,11 +170,15 @@ export class SkillInstaller {
   static installToPlatform = installToPlatform;
   static uninstallFromPlatform = uninstallFromPlatform;
   static getPlatformStatus = getPlatformStatus;
+  static buildPlatformSkillInstallName = buildPlatformSkillInstallName;
   static getSupportedPlatforms = getSupportedPlatforms;
   static detectInstalledPlatforms = detectInstalledPlatforms;
   static installSkillMd = installSkillMd;
+  static installSkillMdForSkill = installSkillMdForSkill;
   static uninstallSkillMd = uninstallSkillMd;
+  static uninstallSkillMdForSkill = uninstallSkillMdForSkill;
   static getSkillMdInstallStatus = getSkillMdInstallStatus;
+  static getSkillMdInstallStatusForSkill = getSkillMdInstallStatusForSkill;
   static installSkillMdSymlink = installSkillMdSymlink;
 
   // ---- Export / import (delegated) ----
@@ -590,6 +608,8 @@ export class SkillInstaller {
   static async scanRemoteGithub(
     repoUrl: string,
     registrySkills: RegistrySkill[],
+    branch?: string,
+    directory?: string,
   ): Promise<RegistrySkill[]> {
     await this.init();
 
@@ -604,15 +624,33 @@ export class SkillInstaller {
     const repoDir = path.join(tempRoot, `${parsedRepo.owner}-${parsedRepo.repo}`);
 
     try {
-      await gitClone(parsedRepo.cloneUrl, repoDir);
-      const scannedSkills = await this.scanLocalPreview([repoDir]);
+      await gitClone(parsedRepo.cloneUrl, repoDir, branch);
+      const scanRoot = directory ? path.join(repoDir, directory) : repoDir;
+      const scannedSkills = await this.scanLocalPreview([scanRoot]);
 
       return scannedSkills.map((skill) => {
         const builtin = registrySkills.find((item) => item.slug === skill.name.toLowerCase());
+        const normalizedBranch = branch?.trim();
+        const normalizedDirectory = directory?.trim().replace(/^\/+|\/+$/g, "");
+        const sourceId = buildSkillSourceId({
+          sourceType: "git-repo",
+          sourceUrl: parsedRepo.repositoryUrl,
+          branch: normalizedBranch,
+          directory: normalizedDirectory,
+          skillPath: skill.filePath,
+        });
         return {
           slug: skill.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""),
           name: builtin?.name || skill.name,
           install_name: skill.name,
+          source_id: sourceId,
+          source_label: `${parsedRepo.owner}/${parsedRepo.repo}`,
+          source_branch: normalizedBranch,
+          source_directory: normalizedDirectory || undefined,
+          canonical_skill_path: skill.filePath,
+          directory_fingerprint: computeDirectoryFingerprint([
+            { path: "SKILL.md", content: skill.instructions, isDirectory: false },
+          ]),
           description: builtin?.description || skill.description || `${skill.name} skill`,
           category: builtin?.category || "general",
           icon_url: builtin?.icon_url,

@@ -18,7 +18,7 @@ export async function ensureLocalRepoPath(
   const skill = db.getById(skillId);
   if (!skill) return null;
 
-  const managedRepoPath = SkillInstaller.getLocalRepoPath(skill.name);
+  const managedRepoPath = SkillInstaller.getLocalRepoPathForSkillId(skill.id);
   const candidateRepoPath =
     skill.local_repo_path &&
     (await SkillInstaller.isManagedRepoPath(skill.local_repo_path))
@@ -44,8 +44,8 @@ export async function ensureLocalRepoPath(
     try {
       const externalRepoStat = await fs.stat(skill.local_repo_path);
       if (externalRepoStat.isDirectory()) {
-        const savedRepoPath = await SkillInstaller.saveToLocalRepo(
-          skill.name,
+        const savedRepoPath = await SkillInstaller.saveToLocalRepoBySkillId(
+          skill.id,
           skill.local_repo_path,
         );
         if (skill.local_repo_path !== savedRepoPath) {
@@ -63,8 +63,8 @@ export async function ensureLocalRepoPath(
     return null;
   }
 
-  const savedRepoPath = await SkillInstaller.saveContentToLocalRepo(
-    skill.name,
+  const savedRepoPath = await SkillInstaller.saveContentToLocalRepoBySkillId(
+    skill.id,
     repoContent,
   );
   if (skill.local_repo_path !== savedRepoPath) {
@@ -87,6 +87,17 @@ export async function ensureLocalRepoPathByName(
   }
 
   return ensureLocalRepoPath(db, skill.id);
+}
+
+export async function ensureLocalRepoPathBySkillId(
+  db: SkillDB,
+  skillId: string,
+): Promise<string | null> {
+  if (typeof skillId !== "string" || skillId.trim() === "") {
+    return null;
+  }
+
+  return ensureLocalRepoPath(db, skillId);
 }
 
 export async function readCurrentFilesSnapshot(
@@ -143,7 +154,7 @@ export async function resolveRepoPath(
     skill.local_repo_path &&
     (await SkillInstaller.isManagedRepoPath(skill.local_repo_path))
       ? skill.local_repo_path
-      : SkillInstaller.getLocalRepoPath(skill.name);
+      : SkillInstaller.getLocalRepoPathForSkillId(skill.id);
   try {
     const repoStat = await fs.stat(repoPath);
     if (repoStat.isDirectory()) {

@@ -7,7 +7,7 @@ import type {
 export type { SkillInstallMode } from "@prompthub/shared/types";
 
 export interface BatchSkillSyncFallback {
-  skillName: string;
+  skillId: string;
   platformId: string;
   requestedMode: SkillInstallMode;
   effectiveMode: SkillInstallMode;
@@ -15,7 +15,7 @@ export interface BatchSkillSyncFallback {
 }
 
 export interface BatchSkillSyncFailure {
-  skillName: string;
+  skillId: string;
   platformId: string;
   reason: string;
 }
@@ -23,7 +23,7 @@ export interface BatchSkillSyncFailure {
 export interface BatchSkillSyncProgress {
   current: number;
   total: number;
-  skillName: string;
+  skillId: string;
   platformId: string;
 }
 
@@ -79,20 +79,20 @@ export async function syncSkillsToPlatforms(
       onProgress?.({
         current,
         total: totalCount,
-        skillName: skill.name,
+        skillId: skill.id,
         platformId,
       });
 
         try {
           if (installMode === "symlink") {
             const result = await window.api.skill.installMdSymlink(
-              skill.name,
+              skill.id,
               skillMdContent,
               platformId,
             );
             if (isCopyFallback(result)) {
               fallbacks.push({
-                skillName: skill.name,
+                skillId: skill.id,
                 platformId,
                 requestedMode: result.requestedMode,
                 effectiveMode: result.effectiveMode,
@@ -100,12 +100,12 @@ export async function syncSkillsToPlatforms(
               });
             }
           } else {
-            await window.api.skill.installMd(skill.name, skillMdContent, platformId);
+            await window.api.skill.installMd(skill.id, skillMdContent, platformId);
           }
         successCount += 1;
       } catch (error) {
         failures.push({
-          skillName: skill.name,
+          skillId: skill.id,
           platformId,
           reason: getErrorMessage(error),
         });
@@ -141,16 +141,16 @@ export async function unsyncSkillsFromPlatforms(
       onProgress?.({
         current,
         total: totalCount,
-        skillName: skill.name,
+        skillId: skill.id,
         platformId,
       });
 
       try {
-        await window.api.skill.uninstallMd(skill.name, platformId);
+        await window.api.skill.uninstallMd(skill.id, platformId);
         successCount += 1;
       } catch (error) {
         failures.push({
-          skillName: skill.name,
+          skillId: skill.id,
           platformId,
           reason: getErrorMessage(error),
         });

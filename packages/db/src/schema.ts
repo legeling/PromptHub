@@ -88,6 +88,8 @@ CREATE TABLE IF NOT EXISTS skills (
   author TEXT,
   tags TEXT,
   is_favorite INTEGER DEFAULT 0,
+  source_id TEXT,
+  directory_fingerprint TEXT,
   installed_content_hash TEXT,
   installed_version TEXT,
   installed_at INTEGER,
@@ -184,7 +186,7 @@ CREATE INDEX IF NOT EXISTS idx_skills_updated ON skills(updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_skills_owner ON skills(owner_user_id);
 CREATE INDEX IF NOT EXISTS idx_skills_visibility ON skills(visibility);
 CREATE INDEX IF NOT EXISTS idx_skills_favorite ON skills(is_favorite);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_skills_name_lower ON skills(LOWER(name));
+CREATE UNIQUE INDEX IF NOT EXISTS idx_skills_source_id ON skills(source_id) WHERE source_id IS NOT NULL AND source_id != '';
 CREATE INDEX IF NOT EXISTS idx_skill_versions_skill ON skill_versions(skill_id);
 CREATE INDEX IF NOT EXISTS idx_rules_scope ON rules(scope);
 CREATE INDEX IF NOT EXISTS idx_rules_platform ON rules(platform_id);

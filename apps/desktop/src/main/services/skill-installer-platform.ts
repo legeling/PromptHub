@@ -9,7 +9,8 @@ import {
   SKILL_PLATFORMS,
   type SkillPlatform,
 } from "@prompthub/shared/constants/platforms";
-import type { SkillPlatformInstallResult } from "@prompthub/shared/types";
+import { computeStableTextHash } from "@prompthub/shared/utils/skill-identity";
+import type { Skill, SkillPlatformInstallResult } from "@prompthub/shared/types";
 import {
   fileExists,
   getErrorCode,
@@ -26,6 +27,59 @@ import {
   getCustomAgentPlatforms,
   validateMCPConfig,
 } from "./skill-installer-utils";
+
+interface SkillMdInstallOptions {
+  legacySkillNames?: string[];
+  platformSkillName?: string;
+}
+
+function normalizePlatformInstallSuffix(value: string): string {
+  const compact = value.toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (compact.length >= 8) {
+    return compact.slice(0, 12);
+  }
+  return computeStableTextHash(value).slice(0, 12);
+}
+
+export function buildPlatformSkillInstallName(
+  skill: Pick<Skill, "id" | "name" | "source_id">,
+): string {
+  const stableIdentity = skill.source_id?.trim() || skill.id.trim();
+  if (!stableIdentity) {
+    throw new Error(`Cannot build platform install name for skill: ${skill.name}`);
+  }
+
+  return `${skill.name}--${normalizePlatformInstallSuffix(stableIdentity)}`;
+}
+
+async function removePlatformSkillDir(
+  platform: SkillPlatform,
+  platformSkillName: string,
+): Promise<void> {
+  validateSkillName(platformSkillName);
+  const skillsDir = getPlatformSkillsDir(platform);
+  const skillDir = path.join(skillsDir, platformSkillName);
+  if (await fileExists(skillDir)) {
+    await fs.rm(skillDir, { recursive: true, force: true });
+  }
+}
+
+async function cleanupLegacyPlatformSkillDirs(
+  platform: SkillPlatform,
+  effectivePlatformSkillName: string,
+  legacySkillNames?: string[],
+): Promise<void> {
+  if (!legacySkillNames || legacySkillNames.length === 0) {
+    return;
+  }
+
+  for (const legacyName of legacySkillNames) {
+    if (!legacyName || legacyName === effectivePlatformSkillName) {
+      continue;
+    }
+    await removePlatformSkillDir(platform, legacyName);
+  }
+}
 
 // ==================== Config path resolution ====================
 
@@ -266,8 +320,12 @@ export async function installSkillMd(
   skillMdContent: string,
   platformId: string,
   canonicalRepoPath?: string,
+  options?: SkillMdInstallOptions,
 ): Promise<void> {
   validateSkillName(skillName);
+  const effectivePlatformSkillName =
+    options?.platformSkillName?.trim() || skillName;
+  validateSkillName(effectivePlatformSkillName);
   const platform = getSupportedPlatforms().find((p) => p.id === platformId);
   if (!platform) {
     throw new Error(`Unknown platform: ${platformId}`);
@@ -278,14 +336,19 @@ export async function installSkillMd(
     canonicalRepoPath ?? (await saveContentToLocalRepo(skillName, skillMdContent));
 
   const skillsDir = getPlatformSkillsDir(platform);
-  const skillDir = path.join(skillsDir, skillName);
+  const skillDir = path.join(skillsDir, effectivePlatformSkillName);
 
   try {
     await fs.mkdir(skillsDir, { recursive: true });
     await copySkillRepoToPlatform(canonicalDir, skillDir);
+    await cleanupLegacyPlatformSkillDirs(
+      platform,
+      effectivePlatformSkillName,
+      options?.legacySkillNames,
+    );
 
     console.log(
-      `Successfully installed skill directory for "${skillName}" to ${platform.name} at ${skillDir}`,
+      `Successfully installed skill directory for "${effectivePlatformSkillName}" to ${platform.name} at ${skillDir}`,
     );
   } catch (error) {
     console.error(`Failed to install skill directory to ${platform.name}:`, error);
@@ -299,24 +362,27 @@ export async function installSkillMd(
 export async function uninstallSkillMd(
   skillName: string,
   platformId: string,
+  options?: SkillMdInstallOptions,
 ): Promise<void> {
   validateSkillName(skillName);
+  const effectivePlatformSkillName =
+    options?.platformSkillName?.trim() || skillName;
+  validateSkillName(effectivePlatformSkillName);
   const platform = getSupportedPlatforms().find((p) => p.id === platformId);
   if (!platform) {
     throw new Error(`Unknown platform: ${platformId}`);
   }
 
-  const skillsDir = getPlatformSkillsDir(platform);
-  const skillDir = path.join(skillsDir, skillName);
-
   try {
-    // Check if skill directory exists
-    if (await fileExists(skillDir)) {
-      await fs.rm(skillDir, { recursive: true, force: true });
-      console.log(
-        `Successfully uninstalled SKILL.md for "${skillName}" from ${platform.name}`,
-      );
-    }
+    await removePlatformSkillDir(platform, effectivePlatformSkillName);
+    await cleanupLegacyPlatformSkillDirs(
+      platform,
+      effectivePlatformSkillName,
+      options?.legacySkillNames,
+    );
+    console.log(
+      `Successfully uninstalled SKILL.md for "${effectivePlatformSkillName}" from ${platform.name}`,
+    );
   } catch (error) {
     console.error(`Failed to uninstall SKILL.md from ${platform.name}:`, error);
     throw error;
@@ -328,15 +394,29 @@ export async function uninstallSkillMd(
  */
 export async function getSkillMdInstallStatus(
   skillName: string,
+  options?: SkillMdInstallOptions,
 ): Promise<Record<string, boolean>> {
   validateSkillName(skillName);
+  const effectivePlatformSkillName =
+    options?.platformSkillName?.trim() || skillName;
+  validateSkillName(effectivePlatformSkillName);
   const status: Record<string, boolean> = {};
 
   for (const platform of getSupportedPlatforms()) {
     const skillsDir = getPlatformSkillsDir(platform);
-    const skillMdPath = path.join(skillsDir, skillName, "SKILL.md");
+    const platformSkillNames = [
+      effectivePlatformSkillName,
+      ...(options?.legacySkillNames ?? []),
+    ].filter((value, index, list) => value && list.indexOf(value) === index);
 
-    status[platform.id] = await fileExists(skillMdPath);
+    status[platform.id] = false;
+    for (const platformSkillName of platformSkillNames) {
+      const skillMdPath = path.join(skillsDir, platformSkillName, "SKILL.md");
+      if (await fileExists(skillMdPath)) {
+        status[platform.id] = true;
+        break;
+      }
+    }
   }
 
   return status;
@@ -353,9 +433,13 @@ export async function installSkillMdSymlink(
   skillMdContent: string,
   platformId: string,
   canonicalRepoPath?: string,
+  options?: SkillMdInstallOptions,
 ): Promise<SkillPlatformInstallResult> {
   const mainSkillsDir = getSkillsDirAccessor();
   validateSkillName(skillName);
+  const effectivePlatformSkillName =
+    options?.platformSkillName?.trim() || skillName;
+  validateSkillName(effectivePlatformSkillName);
   const platform = getSupportedPlatforms().find((p) => p.id === platformId);
   if (!platform) {
     throw new Error(`Unknown platform: ${platformId}`);
@@ -372,14 +456,17 @@ export async function installSkillMdSymlink(
 
   // 2. Create a platform skill dir as a directory symlink to the managed repo
   const platformSkillsDir = getPlatformSkillsDir(platform);
-  const platformSkillDir = path.join(platformSkillsDir, skillName);
+  const platformSkillDir = path.join(platformSkillsDir, effectivePlatformSkillName);
   const fallbackInstall = async (
     reason: string,
   ): Promise<SkillPlatformInstallResult> => {
     console.warn(
-      `Symlink install unsupported for "${skillName}" on ${platform.name}; falling back to copy install. Reason: ${reason}`,
+      `Symlink install unsupported for "${effectivePlatformSkillName}" on ${platform.name}; falling back to copy install. Reason: ${reason}`,
     );
-    await installSkillMd(skillName, skillMdContent, platformId);
+    await installSkillMd(skillName, skillMdContent, platformId, canonicalDir, {
+      platformSkillName: effectivePlatformSkillName,
+      legacySkillNames: options?.legacySkillNames,
+    });
     return {
       requestedMode: "symlink",
       effectiveMode: "copy",
@@ -403,8 +490,13 @@ export async function installSkillMdSymlink(
 
     // Create directory symlink
     await fs.symlink(canonicalDir, platformSkillDir, "dir");
+    await cleanupLegacyPlatformSkillDirs(
+      platform,
+      effectivePlatformSkillName,
+      options?.legacySkillNames,
+    );
     console.log(
-      `Symlinked "${skillName}" repo directory → ${platform.name}: ${canonicalDir} → ${platformSkillDir}`,
+      `Symlinked "${effectivePlatformSkillName}" repo directory → ${platform.name}: ${canonicalDir} → ${platformSkillDir}`,
     );
     return {
       requestedMode: "symlink",
@@ -429,7 +521,7 @@ export async function installSkillMdSymlink(
     }
 
     console.error(
-      `Failed to create symlink for "${skillName}" to ${platform.name}:`,
+      `Failed to create symlink for "${effectivePlatformSkillName}" to ${platform.name}:`,
       error,
     );
     // Rethrow with a more actionable message so the renderer can show a
@@ -444,4 +536,38 @@ export async function installSkillMdSymlink(
     }
     throw formatted;
   }
+}
+
+export async function installSkillMdForSkill(
+  skill: Pick<Skill, "id" | "name" | "source_id">,
+  skillMdContent: string,
+  platformId: string,
+  canonicalRepoPath?: string,
+  legacySkillNames?: string[],
+): Promise<void> {
+  await installSkillMd(skill.name, skillMdContent, platformId, canonicalRepoPath, {
+    platformSkillName: buildPlatformSkillInstallName(skill),
+    legacySkillNames,
+  });
+}
+
+export async function uninstallSkillMdForSkill(
+  skill: Pick<Skill, "id" | "name" | "source_id">,
+  platformId: string,
+  legacySkillNames?: string[],
+): Promise<void> {
+  await uninstallSkillMd(skill.name, platformId, {
+    platformSkillName: buildPlatformSkillInstallName(skill),
+    legacySkillNames,
+  });
+}
+
+export async function getSkillMdInstallStatusForSkill(
+  skill: Pick<Skill, "id" | "name" | "source_id">,
+  legacySkillNames?: string[],
+): Promise<Record<string, boolean>> {
+  return getSkillMdInstallStatus(skill.name, {
+    platformSkillName: buildPlatformSkillInstallName(skill),
+    legacySkillNames,
+  });
 }

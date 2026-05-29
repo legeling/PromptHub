@@ -34,6 +34,10 @@ export function SkillBatchDeployDialog({
 }: SkillBatchDeployDialogProps) {
   const { t } = useTranslation();
   const { showToast } = useToast();
+  const skillNameById = useMemo(
+    () => new Map(skills.map((skill) => [skill.id, skill.name])),
+    [skills],
+  );
   const [actionMode, setActionMode] = useState<"deploy" | "undeploy">("deploy");
   const skillInstallMethod = useSettingsStore(
     (state) => state.skillInstallMethod,
@@ -53,12 +57,12 @@ export function SkillBatchDeployDialog({
   const [loadingPlatforms, setLoadingPlatforms] = useState(true);
   const [isDeploying, setIsDeploying] = useState(false);
   const [lastFailures, setLastFailures] = useState<
-    Array<{ skillName: string; platformId: string; reason: string }>
+    Array<{ skillId: string; platformId: string; reason: string }>
   >([]);
   const [progress, setProgress] = useState<{
     current: number;
     total: number;
-    skillName: string;
+    skillId: string;
     platformId: string;
   } | null>(null);
 
@@ -183,7 +187,10 @@ export function SkillBatchDeployDialog({
       if (result.fallbacks.length > 0) {
         const preview = result.fallbacks
           .slice(0, 2)
-          .map((item) => `${item.skillName} -> ${item.platformId}`)
+          .map((item) => {
+            const skillName = skillNameById.get(item.skillId) ?? item.skillId;
+            return `${skillName} -> ${item.platformId}`;
+          })
           .join(", ");
         showToast(
           t("skill.batchDeployFallback", {
@@ -199,7 +206,10 @@ export function SkillBatchDeployDialog({
       if (result.failures.length > 0) {
         const preview = result.failures
           .slice(0, 2)
-          .map((item) => `${item.skillName} -> ${item.platformId}`)
+          .map((item) => {
+            const skillName = skillNameById.get(item.skillId) ?? item.skillId;
+            return `${skillName} -> ${item.platformId}`;
+          })
           .join(", ");
         showToast(
           t("skill.batchDeployFailed", {
@@ -527,7 +537,7 @@ export function SkillBatchDeployDialog({
                     })}
                   </div>
                   <div className="mt-1 text-xs text-muted-foreground">
-                    {progress.skillName} {"->"} {progress.platformId}
+                    {skillNameById.get(progress.skillId) ?? progress.skillId} {"->"} {progress.platformId}
                   </div>
                   <div className="mt-3 h-2 overflow-hidden rounded-full bg-primary/10">
                     <div
@@ -550,8 +560,8 @@ export function SkillBatchDeployDialog({
                   </div>
                   <div className="mt-2 space-y-1 text-xs text-muted-foreground">
                     {lastFailures.slice(0, 6).map((failure) => (
-                      <div key={`${failure.skillName}-${failure.platformId}`}>
-                        {failure.skillName} {"->"} {failure.platformId}:{" "}
+                      <div key={`${failure.skillId}-${failure.platformId}`}>
+                        {skillNameById.get(failure.skillId) ?? failure.skillId} {"->"} {failure.platformId}:{" "}
                         {failure.reason}
                       </div>
                     ))}

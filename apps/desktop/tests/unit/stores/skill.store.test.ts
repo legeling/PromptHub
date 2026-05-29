@@ -86,7 +86,7 @@ describe("skill store", () => {
       ],
       filterType: "deployed",
       filterTags: ["team"],
-      deployedSkillNames: new Set(["alpha"]),
+      deployedSkillNames: new Set(["skill-1"]),
     });
 
     expect(
@@ -480,13 +480,16 @@ description: Use this skill for PDF tasks.
     }));
     const fetchRemoteContent = vi.fn().mockResolvedValue("# Writer\n\nOriginal\n");
     const writeLocalFile = vi.fn().mockResolvedValue(undefined);
+    const getAll = vi.fn().mockResolvedValue([]);
 
     (window as any).api.skill.create = create;
     (window as any).api.skill.fetchRemoteContent = fetchRemoteContent;
     (window as any).api.skill.writeLocalFile = writeLocalFile;
+    (window as any).api.skill.getAll = getAll;
 
     const installed = await useSkillStore.getState().installRegistrySkill({
       slug: "writer",
+      source_id: "source-writer-main",
       name: "Writer",
       description: "Write better",
       category: "general",
@@ -506,6 +509,59 @@ description: Use this skill for PDF tasks.
         installed_version: "1.0.0",
       }),
     );
+  });
+
+  it("treats same-name variants with different source ids as separately installable", () => {
+    useSkillStore.setState({
+      skills: [
+        createSkillFixture({
+          id: "installed-main-writer",
+          name: "writer",
+          source_id: "source-main-writer",
+          registry_slug: "writer",
+        }),
+      ],
+      registrySkills: [
+        {
+          slug: "writer",
+          name: "Writer",
+          install_name: "writer",
+          source_id: "source-main-writer",
+          description: "Stable writer",
+          category: "general",
+          author: "PromptHub",
+          source_url: "https://github.com/example/skills/tree/main/writer",
+          source_branch: "main",
+          tags: ["writing"],
+          version: "1.0.0",
+          content: "# Writer\n\nMain\n",
+        },
+        {
+          slug: "writer",
+          name: "Writer",
+          install_name: "writer",
+          source_id: "source-dev-writer",
+          description: "Dev writer",
+          category: "general",
+          author: "PromptHub",
+          source_url: "https://github.com/example/skills/tree/dev/writer",
+          source_branch: "dev",
+          tags: ["writing"],
+          version: "1.1.0-beta",
+          content: "# Writer\n\nDev\n",
+        },
+      ],
+    });
+
+    const { installed, recommended } =
+      useSkillStore.getState().getFilteredRegistrySkills();
+
+    expect(installed.map((skill) => skill.source_id)).toEqual([
+      "source-main-writer",
+    ]);
+    expect(recommended.map((skill) => skill.source_id)).toEqual([
+      "source-dev-writer",
+    ]);
   });
 
   it("syncs binary GitHub repo assets into the managed local repo", async () => {
@@ -599,6 +655,7 @@ description: Use this skill for PDF tasks.
         createSkillFixture({
           id: "skill-writer",
           name: "writer",
+          source_id: "source-writer-main",
           registry_slug: "writer",
           content: "# Writer\n\nOriginal\n",
           instructions: "# Writer\n\nOriginal\n",
@@ -609,6 +666,7 @@ description: Use this skill for PDF tasks.
       registrySkills: [
         {
           slug: "writer",
+          source_id: "source-writer-main",
           name: "Writer",
           description: "Write better",
           category: "general",
@@ -622,7 +680,9 @@ description: Use this skill for PDF tasks.
       ],
     });
 
-    const result = await useSkillStore.getState().updateRegistrySkill("writer");
+    const result = await useSkillStore
+      .getState()
+      .updateRegistrySkill("source-writer-main");
 
     expect(result?.status).toBe("updated");
     expect(versionCreate).toHaveBeenCalledWith(
@@ -664,6 +724,7 @@ description: Use this skill for PDF tasks.
         createSkillFixture({
           id: "skill-community-writer",
           name: "community-writer",
+          source_id: "source-community-writer",
           registry_slug: "community-writer",
           content: "# Community Writer\n\nOriginal\n",
           instructions: "# Community Writer\n\nOriginal\n",
@@ -679,6 +740,7 @@ description: Use this skill for PDF tasks.
           skills: [
             {
               slug: "community-writer",
+              source_id: "source-community-writer",
               name: "Community Writer",
               description: "Write better",
               category: "general",
@@ -697,7 +759,7 @@ description: Use this skill for PDF tasks.
 
     const result = await useSkillStore
       .getState()
-      .updateRegistrySkill("community-writer");
+      .updateRegistrySkill("source-community-writer");
 
     expect(result?.status).toBe("updated");
     expect(versionCreate).toHaveBeenCalledWith(
@@ -719,11 +781,14 @@ description: Use this skill for PDF tasks.
       createSkillFixture({
         id: "skill-local-writer",
         name: "local-writer",
+        source_id: "source-local-writer",
         registry_slug: "local-writer",
       }),
     );
+    const getAll = vi.fn().mockResolvedValue([]);
 
     (window as any).api.skill.create = create;
+    (window as any).api.skill.getAll = getAll;
     (window as any).api.skill.readLocalFileByPath = vi.fn().mockResolvedValue({
       content: "# Local Writer\n\nLatest local content\n",
     });
@@ -738,6 +803,7 @@ description: Use this skill for PDF tasks.
           skills: [
             {
               slug: "local-writer",
+              source_id: "source-local-writer",
               name: "Local Writer",
               description: "Local source skill",
               category: "general",
@@ -753,7 +819,7 @@ description: Use this skill for PDF tasks.
       },
     });
 
-    await useSkillStore.getState().installFromRegistry("local-writer");
+    await useSkillStore.getState().installFromRegistry("source-local-writer");
 
     expect((window as any).api.skill.readLocalFileByPath).toHaveBeenCalledWith(
       "/tmp/local-writer",
@@ -792,6 +858,7 @@ description: Use this skill for PDF tasks.
         createSkillFixture({
           id: "skill-local-writer",
           name: "local-writer",
+          source_id: "source-local-writer",
           registry_slug: "local-writer",
           content: "# Local Writer\n\nOriginal content\n",
           instructions: "# Local Writer\n\nOriginal content\n",
@@ -807,6 +874,7 @@ description: Use this skill for PDF tasks.
           skills: [
             {
               slug: "local-writer",
+              source_id: "source-local-writer",
               name: "Local Writer",
               description: "Local source skill",
               category: "general",
@@ -822,7 +890,9 @@ description: Use this skill for PDF tasks.
       },
     });
 
-    const result = await useSkillStore.getState().updateRegistrySkill("local-writer");
+    const result = await useSkillStore
+      .getState()
+      .updateRegistrySkill("source-local-writer");
 
     expect(result?.status).toBe("updated");
     expect((window as any).api.skill.readLocalFileByPath).toHaveBeenCalledWith(
@@ -867,6 +937,7 @@ description: Use this skill for PDF tasks.
         createSkillFixture({
           id: "skill-local-file",
           name: "local-writer",
+          source_id: "source-local-file",
           registry_slug: "local-writer",
           content: "# Local Writer\n\nOriginal content\n",
           instructions: "# Local Writer\n\nOriginal content\n",
@@ -882,6 +953,7 @@ description: Use this skill for PDF tasks.
           skills: [
             {
               slug: "local-writer",
+              source_id: "source-local-file",
               name: "Local Writer",
               description: "Local source skill",
               category: "general",
@@ -897,7 +969,9 @@ description: Use this skill for PDF tasks.
       },
     });
 
-    const result = await useSkillStore.getState().updateRegistrySkill("local-writer");
+    const result = await useSkillStore
+      .getState()
+      .updateRegistrySkill("source-local-file");
 
     expect(result?.status).toBe("updated");
     expect((window as any).api.skill.readLocalFileByPath).toHaveBeenCalledWith(
@@ -928,6 +1002,7 @@ description: Use this skill for PDF tasks.
         createSkillFixture({
           id: "skill-writer",
           name: "writer",
+          source_id: "source-writer-main",
           registry_slug: "writer",
           content: "# Writer\n\nLocal edits\n",
           instructions: "# Writer\n\nLocal edits\n",
@@ -938,6 +1013,7 @@ description: Use this skill for PDF tasks.
       registrySkills: [
         {
           slug: "writer",
+          source_id: "source-writer-main",
           name: "Writer",
           description: "Write better",
           category: "general",
@@ -951,7 +1027,9 @@ description: Use this skill for PDF tasks.
       ],
     });
 
-    const result = await useSkillStore.getState().updateRegistrySkill("writer");
+    const result = await useSkillStore
+      .getState()
+      .updateRegistrySkill("source-writer-main");
 
     expect(result?.status).toBe("conflict");
     expect(update).not.toHaveBeenCalled();

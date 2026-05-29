@@ -20,6 +20,7 @@ import {
   BUILTIN_SKILL_REGISTRY,
   SKILL_CATEGORIES,
 } from "@prompthub/shared/constants/skill-registry";
+import { buildSkillSourceId } from "@prompthub/shared/utils/skill-identity";
 import { chatCompletion } from "../services/ai";
 import { resolveScenarioAIConfig } from "../services/ai-defaults";
 import {
@@ -270,6 +271,21 @@ function getRegistrySkillCandidates(state: SkillState): RegistrySkill[] {
     (entry) => entry.skills,
   );
   return [...state.registrySkills, ...remoteSkills];
+}
+
+function ensureRegistrySkillSourceId(skill: RegistrySkill): RegistrySkill {
+  if (skill.source_id) {
+    return skill;
+  }
+
+  return {
+    ...skill,
+    source_id: buildSkillSourceId({
+      sourceType: "builtin-registry",
+      sourceUrl: skill.source_url,
+      skillPath: skill.content_url || skill.slug,
+    }),
+  };
 }
 
 function isLocalRegistrySkill(skill: Pick<RegistrySkill, "content_url" | "source_url">): boolean {
@@ -562,15 +578,15 @@ interface SkillState {
     skill: RegistrySkill,
   ) => Promise<RegistrySkillUpdateCheck>;
   updateRegistrySkill: (
-    slug: string,
+    sourceId: string,
     options?: { overwriteLocalChanges?: boolean },
   ) => Promise<RegistrySkillUpdateResult | null>;
   installRegistrySkill: (skill: RegistrySkill) => Promise<Skill | null>;
-  installFromRegistry: (slug: string) => Promise<Skill | null>;
-  uninstallRegistrySkill: (slug: string) => Promise<boolean>;
+  installFromRegistry: (sourceId: string) => Promise<Skill | null>;
+  uninstallRegistrySkill: (sourceId: string) => Promise<boolean>;
   setStoreCategory: (category: SkillCategory | "all") => void;
   setStoreSearchQuery: (query: string) => void;
-  selectRegistrySkill: (slug: string | null) => void;
+  selectRegistrySkill: (sourceId: string | null) => void;
   selectStoreSource: (id: string) => void;
   upsertRegistrySkills: (skills: RegistrySkill[]) => void;
   addCustomStoreSource: (
@@ -657,12 +673,12 @@ export const useSkillStore = create<SkillState>()(
         const { skills } = get();
         const deployed = new Set<string>();
         try {
-          const skillNames = skills.map((s) => s.name);
+          const skillIds = skills.map((s) => s.id);
           const results =
-            await window.api.skill.getMdInstallStatusBatch(skillNames);
-          for (const [name, status] of Object.entries(results)) {
+            await window.api.skill.getMdInstallStatusBatch(skillIds);
+          for (const [skillId, status] of Object.entries(results)) {
             if (Object.values(status).some(Boolean)) {
-              deployed.add(name);
+              deployed.add(skillId);
             }
           }
         } catch (error) {
@@ -885,7 +901,7 @@ export const useSkillStore = create<SkillState>()(
               if (scanned.localPath) {
                 try {
                   const repoPath = await window.api.skill.saveToRepo(
-                    scanned.name,
+                    newSkill.id,
                     scanned.localPath,
                     importMode,
                   );
@@ -1196,7 +1212,7 @@ export const useSkillStore = create<SkillState>()(
         set({ isLoadingRegistry: true });
         // Load built-in registry with embedded content
         // 加载内置注册表（使用嵌入内容）
-        const registry = [...BUILTIN_SKILL_REGISTRY];
+        const registry = BUILTIN_SKILL_REGISTRY.map(ensureRegistrySkillSourceId);
         set({ registrySkills: registry, isLoadingRegistry: false });
       },
 
@@ -1212,9 +1228,9 @@ export const useSkillStore = create<SkillState>()(
         );
       },
 
-      updateRegistrySkill: async (slug, options) => {
+      updateRegistrySkill: async (sourceId, options) => {
         const regSkill = getRegistrySkillCandidates(get()).find(
-          (skill) => skill.slug === slug,
+          (skill) => skill.source_id === sourceId,
         );
         if (!regSkill) return null;
 
@@ -1247,12 +1263,14 @@ export const useSkillStore = create<SkillState>()(
           version: regSkill.version,
           author: regSkill.author,
           source_url: regSkill.source_url,
+          source_id: regSkill.source_id,
           icon_url: regSkill.icon_url,
           icon_emoji: regSkill.icon_emoji,
           icon_background: regSkill.icon_background,
           category: regSkill.category,
           is_builtin: true,
           registry_slug: regSkill.slug,
+          directory_fingerprint: regSkill.directory_fingerprint,
           content_url: regSkill.content_url,
           original_tags: regSkill.tags,
           prerequisites: regSkill.prerequisites,
@@ -1297,6 +1315,7 @@ export const useSkillStore = create<SkillState>()(
             version: regSkill.version,
             author: regSkill.author,
             source_url: regSkill.source_url,
+            source_id: regSkill.source_id,
             tags: [],
             original_tags: regSkill.tags,
             is_favorite: false,
@@ -1305,6 +1324,7 @@ export const useSkillStore = create<SkillState>()(
             category: regSkill.category,
             is_builtin: true,
             registry_slug: regSkill.slug,
+            directory_fingerprint: regSkill.directory_fingerprint,
             content_url: regSkill.content_url,
             installed_content_hash: installedHash,
             installed_version: regSkill.version,
@@ -1340,16 +1360,18 @@ export const useSkillStore = create<SkillState>()(
         }
       },
 
-      installFromRegistry: async (slug) => {
+      installFromRegistry: async (sourceId) => {
         const { installRegistrySkill } = get();
-        const regSkill = getRegistrySkillCandidates(get()).find((s) => s.slug === slug);
+        const regSkill = getRegistrySkillCandidates(get()).find(
+          (s) => s.source_id === sourceId,
+        );
         if (!regSkill) return null;
         return installRegistrySkill(regSkill);
       },
 
-      uninstallRegistrySkill: async (slug) => {
+      uninstallRegistrySkill: async (sourceId) => {
         const { skills, loadSkills } = get();
-        const skill = skills.find((s) => s.registry_slug === slug);
+        const skill = skills.find((s) => s.source_id === sourceId);
         if (!skill) return false;
 
         try {
@@ -1373,8 +1395,8 @@ export const useSkillStore = create<SkillState>()(
         set({ storeSearchQuery: query });
       },
 
-      selectRegistrySkill: (slug) => {
-        set({ selectedRegistrySlug: slug });
+      selectRegistrySkill: (sourceId) => {
+        set({ selectedRegistrySlug: sourceId });
       },
 
       selectStoreSource: (id) => {
@@ -1384,16 +1406,16 @@ export const useSkillStore = create<SkillState>()(
       upsertRegistrySkills: (incomingSkills) => {
         set((state) => {
           const merged = [...state.registrySkills];
-          const indexBySlug = new Map(
-            merged.map((skill, index) => [skill.slug, index]),
+          const indexBySourceId = new Map(
+            merged.map((skill, index) => [skill.source_id, index]),
           );
 
           for (const incoming of incomingSkills) {
-            const index = indexBySlug.get(incoming.slug);
+            const index = indexBySourceId.get(incoming.source_id);
             if (index !== undefined) {
               merged[index] = { ...merged[index], ...incoming };
             } else {
-              indexBySlug.set(incoming.slug, merged.length);
+              indexBySourceId.set(incoming.source_id, merged.length);
               merged.push(incoming);
             }
           }
@@ -1479,14 +1501,14 @@ export const useSkillStore = create<SkillState>()(
 
       getInstalledSlugs: () => {
         return get()
-          .skills.filter((s) => s.registry_slug)
-          .map((s) => s.registry_slug!);
+          .skills.filter((s) => s.source_id)
+          .map((s) => s.source_id!);
       },
 
       getRecommendedSkills: () => {
         const installedSlugs = get().getInstalledSlugs();
         return get().registrySkills.filter(
-          (s) => !installedSlugs.includes(s.slug),
+          (s) => !installedSlugs.includes(s.source_id),
         );
       },
 
@@ -1494,8 +1516,8 @@ export const useSkillStore = create<SkillState>()(
         const { registrySkills, skills, storeCategory, storeSearchQuery } =
           get();
         const installedSlugs = skills
-          .filter((s) => s.registry_slug)
-          .map((s) => s.registry_slug!);
+          .filter((s) => s.source_id)
+          .map((s) => s.source_id!);
 
         let filtered = registrySkills;
 
@@ -1516,10 +1538,10 @@ export const useSkillStore = create<SkillState>()(
         }
 
         const installed = filtered.filter((s) =>
-          installedSlugs.includes(s.slug),
+          installedSlugs.includes(s.source_id),
         );
         const recommended = filtered.filter(
-          (s) => !installedSlugs.includes(s.slug),
+          (s) => !installedSlugs.includes(s.source_id),
         );
 
         return { installed, recommended };

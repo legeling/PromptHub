@@ -141,7 +141,7 @@ export function useSkillPlatform(
       setSelectedPlatforms(new Set());
       return;
     }
-    const status = await window.api.skill.getMdInstallStatus(skill.name);
+    const status = await window.api.skill.getMdInstallStatus(skill.id);
     setInstallStatus(status);
     setSelectedPlatforms(new Set());
     await loadDeployedStatus();
@@ -220,7 +220,7 @@ export function useSkillPlatform(
         try {
           if (installMode === "symlink") {
             const result = await window.api.skill.installMdSymlink(
-              skill.name,
+              skill.id,
               skillMdContent,
               platformId,
             );
@@ -233,7 +233,7 @@ export function useSkillPlatform(
               });
             }
           } else {
-            await window.api.skill.installMd(skill.name, skillMdContent, platformId);
+            await window.api.skill.installMd(skill.id, skillMdContent, platformId);
           }
           successCount++;
         } catch (error) {
@@ -271,7 +271,7 @@ export function useSkillPlatform(
   const uninstallFromPlatform = useCallback(
     async (platformId: string) => {
       if (!runtimeCapabilities.skillPlatformIntegration || !skill) return;
-      await window.api.skill.uninstallMd(skill.name, platformId);
+      await window.api.skill.uninstallMd(skill.id, platformId);
       await refreshInstallStatus();
     },
     [refreshInstallStatus, runtimeCapabilities.skillPlatformIntegration, skill],

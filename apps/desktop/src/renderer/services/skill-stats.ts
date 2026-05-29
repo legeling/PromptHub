@@ -42,7 +42,7 @@ export function buildSkillStats(
 
   for (const skill of skills) {
     if (skill.is_favorite) favoriteCount++;
-    if (deployedSkillNames.has(skill.name)) {
+    if (deployedSkillNames.has(skill.id)) {
       deployedCount++;
     }
 

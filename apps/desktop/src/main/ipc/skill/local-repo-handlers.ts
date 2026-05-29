@@ -95,12 +95,12 @@ export function registerSkillLocalRepoHandlers({ db }: SkillIPCContext): void {
     IPC_CHANNELS.SKILL_SAVE_TO_REPO,
     async (
       _,
-      skillName: string,
+      skillId: string,
       sourceDir: string,
       mode?: "copy" | "symlink",
     ) => {
-      if (typeof skillName !== "string" || skillName.trim().length === 0) {
-        throw new Error("skill:saveToRepo requires a non-empty skillName");
+      if (typeof skillId !== "string" || skillId.trim().length === 0) {
+        throw new Error("skill:saveToRepo requires a non-empty skillId");
       }
       if (typeof sourceDir !== "string" || sourceDir.trim().length === 0) {
         throw new Error("skill:saveToRepo requires a non-empty sourceDir");
@@ -108,7 +108,7 @@ export function registerSkillLocalRepoHandlers({ db }: SkillIPCContext): void {
       if (mode && mode !== "copy" && mode !== "symlink") {
         throw new Error("skill:saveToRepo mode must be copy or symlink");
       }
-      return SkillInstaller.saveToLocalRepo(skillName, sourceDir, mode);
+      return SkillInstaller.saveToLocalRepoBySkillId(skillId, sourceDir, mode);
     },
   );
 

@@ -10,7 +10,7 @@ interface SkillStoreCardProps {
   isInstalled: boolean;
   hasUpdate?: boolean;
   index: number;
-  installingSlug?: string | null;
+  installingSourceId?: string | null;
   onQuickInstall?: (skill: RegistrySkill, e: React.MouseEvent) => void;
   onClick: () => void;
 }
@@ -20,12 +20,12 @@ export function SkillStoreCard({
   isInstalled,
   hasUpdate = false,
   index,
-  installingSlug,
+  installingSourceId,
   onQuickInstall,
   onClick,
 }: SkillStoreCardProps) {
   const { t } = useTranslation();
-  const isInstallingThis = installingSlug === skill.slug;
+  const isInstallingThis = installingSourceId === skill.source_id;
 
   return (
     <div

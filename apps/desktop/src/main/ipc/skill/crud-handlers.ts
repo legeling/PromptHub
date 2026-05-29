@@ -89,8 +89,9 @@ export function registerSkillCrudHandlers({ db }: SkillIPCContext): void {
 
       if (isRenaming && nextName) {
         try {
-          const platformStatus = await SkillInstaller.getSkillMdInstallStatus(
-            existingSkill.name,
+          const platformStatus = await SkillInstaller.getSkillMdInstallStatusForSkill(
+            existingSkill,
+            [existingSkill.name],
           );
           deployedPlatforms = Object.entries(platformStatus)
             .filter(([, installed]) => installed)
@@ -161,15 +162,22 @@ export function registerSkillCrudHandlers({ db }: SkillIPCContext): void {
         await Promise.allSettled(
           deployedPlatforms.map(async (platformId) => {
             if (nextContent.trim()) {
-              await SkillInstaller.installSkillMd(
-                nextName,
+              await SkillInstaller.installSkillMdForSkill(
+                {
+                  id: updatedSkill.id,
+                  name: nextName,
+                  source_id: updatedSkill.source_id,
+                },
                 nextContent,
                 platformId,
+                updatedSkill.local_repo_path ?? undefined,
+                [existingSkill.name, nextName],
               );
             }
-            await SkillInstaller.uninstallSkillMd(
-              existingSkill.name,
+            await SkillInstaller.uninstallSkillMdForSkill(
+              existingSkill,
               platformId,
+              [existingSkill.name, nextName],
             );
           }),
         );
@@ -192,7 +200,9 @@ export function registerSkillCrudHandlers({ db }: SkillIPCContext): void {
         const platforms = SkillInstaller.getSupportedPlatforms();
         await Promise.allSettled(
           platforms.map((platform) =>
-            SkillInstaller.uninstallSkillMd(skill.name, platform.id),
+            SkillInstaller.uninstallSkillMdForSkill(skill, platform.id, [
+              skill.name,
+            ]),
           ),
         );
       } catch (error) {

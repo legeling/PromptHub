@@ -9,6 +9,10 @@ import {
   parseGitHubTreeLocation,
   parseGitRepo,
 } from "@prompthub/shared/utils/git-repo";
+import {
+  buildSkillSourceId,
+  computeStableTextHash,
+} from "@prompthub/shared/utils/skill-identity";
 
 function stripQuotes(value: string): string {
   return value.trim().replace(/^['"]|['"]$/g, "");
@@ -163,20 +167,14 @@ function isDefined<T>(value: T | null | undefined): value is T {
 }
 
 function dedupeRegistrySkills(skills: RegistrySkill[]): RegistrySkill[] {
-  const bySlug = new Map<string, RegistrySkill>();
-  const seenNames = new Set<string>();
+  const bySourceId = new Map<string, RegistrySkill>();
   for (const skill of skills) {
-    if (bySlug.has(skill.slug)) {
+    if (bySourceId.has(skill.source_id)) {
       continue;
     }
-    const normalizedName = (skill.install_name || skill.slug).toLowerCase();
-    if (seenNames.has(normalizedName)) {
-      continue;
-    }
-    bySlug.set(skill.slug, skill);
-    seenNames.add(normalizedName);
+    bySourceId.set(skill.source_id, skill);
   }
-  return Array.from(bySlug.values());
+  return Array.from(bySourceId.values());
 }
 
 function buildRawUrl(
@@ -296,11 +294,25 @@ export async function loadGitHubSkillRepo(
       const builtin = builtinBySlug.get(slug);
       const description =
         parsed.description || builtin?.description || `${toTitleCase(slug)} skill`;
+      const canonicalSkillPath = directoryPath || "SKILL.md";
+      const sourceId = buildSkillSourceId({
+        sourceType: "git-repo",
+        sourceUrl: parsedRepo.repositoryUrl,
+        branch: resolvedBranch,
+        directory: resolvedDirectory,
+        skillPath: canonicalSkillPath,
+      });
 
       return {
         slug,
         name: builtin?.name || parsed.name || toTitleCase(slug),
         install_name: parsed.name || undefined,
+        source_id: sourceId,
+        source_label: `${parsedRepo.owner}/${parsedRepo.repo}`,
+        source_branch: resolvedBranch,
+        source_directory: directoryPath || resolvedDirectory || undefined,
+        canonical_skill_path: canonicalSkillPath,
+        directory_fingerprint: computeStableTextHash(content),
         description,
         category: builtin?.category || inferCategory(slug, description),
         icon_url: builtin?.icon_url,
@@ -357,12 +369,25 @@ export async function loadGitHubSkillRepo(
   const builtin = builtinBySlug.get(slug);
   const description =
     parsed.description || builtin?.description || `${toTitleCase(slug)} skill`;
+  const sourceId = buildSkillSourceId({
+    sourceType: "git-repo",
+    sourceUrl: parsedRepo.repositoryUrl,
+    branch: resolvedBranch,
+    directory: resolvedDirectory,
+    skillPath: readmeEntry.path,
+  });
 
   return [
     {
       slug,
       name: builtin?.name || parsed.name || toTitleCase(parsedRepo.repo),
       install_name: parsed.name || undefined,
+      source_id: sourceId,
+      source_label: `${parsedRepo.owner}/${parsedRepo.repo}`,
+      source_branch: resolvedBranch,
+      source_directory: resolvedDirectory || undefined,
+      canonical_skill_path: readmeEntry.path,
+      directory_fingerprint: computeStableTextHash(content),
       description,
       category: builtin?.category || inferCategory(slug, description),
       icon_url: builtin?.icon_url,

@@ -135,7 +135,7 @@ export function SkillStore() {
       selectedStoreSourceId,
     });
 
-  const [installingSlug, setInstallingSlug] = useState<string | null>(null);
+  const [installingSourceId, setInstallingSourceId] = useState<string | null>(null);
   const [editingCustomSourceId, setEditingCustomSourceId] = useState<string | null>(null);
   const [sourceType, setSourceType] =
     useState<
@@ -155,15 +155,8 @@ export function SkillStore() {
   const aiModels = useSettingsStore((state) => state.aiModels);
   const installedSlugs = useMemo(() => {
     return skills
-      .filter((skill) => skill.registry_slug)
-      .map((skill) => skill.registry_slug!);
-  }, [skills]);
-
-  // Locally-imported skills won't have registry_slug but may share a name
-  // with a registry skill.  Build a lowercase name set so the UI can
-  // correctly mark them as "installed" even without a slug match.
-  const installedNamesLower = useMemo(() => {
-    return new Set(skills.map((skill) => skill.name.toLowerCase()));
+      .filter((skill) => skill.source_id)
+      .map((skill) => skill.source_id!);
   }, [skills]);
 
   const selectedCustomSource = useMemo(
@@ -213,22 +206,16 @@ export function SkillStore() {
     if (!selectedRegistrySlug) return null;
     return (
       sourceRegistrySkills.find(
-        (skill) => skill.slug === selectedRegistrySlug,
+        (skill) => skill.source_id === selectedRegistrySlug,
       ) || null
     );
   }, [selectedRegistrySlug, sourceRegistrySkills]);
 
   const isSkillInstalled = useCallback(
     (regSkill: RegistrySkill): boolean => {
-      if (installedSlugs.includes(regSkill.slug)) return true;
-      // Fall back to name-based matching for locally-imported skills
-      // that have no registry_slug
-      const installName = (
-        regSkill.install_name || regSkill.slug
-      ).toLowerCase();
-      return installedNamesLower.has(installName);
+      return installedSlugs.includes(regSkill.source_id);
     },
-    [installedSlugs, installedNamesLower],
+    [installedSlugs],
   );
 
   const hasPotentialUpdate = useCallback(
@@ -325,7 +312,7 @@ export function SkillStore() {
     e: React.MouseEvent,
   ) => {
     e.stopPropagation();
-    setInstallingSlug(skill.slug);
+    setInstallingSourceId(skill.source_id);
     try {
       if (autoScanBeforeInstall) {
         const report = await window.api.skill.scanSafety({
@@ -356,7 +343,7 @@ export function SkillStore() {
     } catch (error: unknown) {
       showToast(formatSkillSafetyScanError(error, t), "error");
     } finally {
-      setTimeout(() => setInstallingSlug(null), 500);
+      setTimeout(() => setInstallingSourceId(null), 500);
     }
   };
 
@@ -461,7 +448,7 @@ export function SkillStore() {
         title: selectedCustomSource.name,
         hint: formatStoreSourceHint(selectedCustomSource),
         count: sourceRegistrySkills.length,
-        showCatalog: false,
+        showCatalog: true,
         canRefresh: true,
       };
     }
@@ -646,12 +633,12 @@ export function SkillStore() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                   {installed.map((skill, index) => (
                     <SkillStoreCard
-                      key={skill.slug}
+                      key={skill.source_id}
                       skill={skill}
                       isInstalled={true}
                       hasUpdate={hasPotentialUpdate(skill)}
                       index={index}
-                      onClick={() => selectRegistrySkill(skill.slug)}
+                      onClick={() => selectRegistrySkill(skill.source_id)}
                     />
                   ))}
                 </div>
@@ -671,13 +658,13 @@ export function SkillStore() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                   {recommended.map((skill, index) => (
                     <SkillStoreCard
-                      key={skill.slug}
+                      key={skill.source_id}
                       skill={skill}
                       isInstalled={false}
                       index={index}
-                      installingSlug={installingSlug}
+                      installingSourceId={installingSourceId}
                       onQuickInstall={handleQuickInstall}
-                      onClick={() => selectRegistrySkill(skill.slug)}
+                      onClick={() => selectRegistrySkill(skill.source_id)}
                     />
                   ))}
                 </div>

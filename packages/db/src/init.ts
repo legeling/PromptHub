@@ -116,16 +116,17 @@ export function initDatabase(
     `);
 
     const hasMigration = (name: string): boolean => {
-      return !!db!
-        .prepare("SELECT 1 FROM schema_migrations WHERE name = ?")
-        .get(name);
+      return !!db!.get(
+        "SELECT 1 FROM schema_migrations WHERE name = ?",
+        name,
+      );
     };
     const markMigration = (name: string): void => {
-      db!
-        .prepare(
-          "INSERT OR IGNORE INTO schema_migrations (name, applied_at) VALUES (?, ?)",
-        )
-        .run(name, Date.now());
+      db!.run(
+        "INSERT OR IGNORE INTO schema_migrations (name, applied_at) VALUES (?, ?)",
+        name,
+        Date.now(),
+      );
     };
 
     // Migrations: prompts table (query column list once)
@@ -135,63 +136,59 @@ export function initDatabase(
 
     if (!promptCols.includes("images")) {
       console.log("Migrating: Adding images column to prompts table");
-      db!.prepare("ALTER TABLE prompts ADD COLUMN images TEXT").run();
+      db!.run("ALTER TABLE prompts ADD COLUMN images TEXT");
     }
 
     if (!promptCols.includes("is_pinned")) {
       console.log("Migrating: Adding is_pinned column to prompts table");
-      db!
-        .prepare("ALTER TABLE prompts ADD COLUMN is_pinned INTEGER DEFAULT 0")
-        .run();
+      db!.run("ALTER TABLE prompts ADD COLUMN is_pinned INTEGER DEFAULT 0");
     }
 
     if (!promptCols.includes("source")) {
       console.log("Migrating: Adding source column to prompts table");
-      db!.prepare("ALTER TABLE prompts ADD COLUMN source TEXT").run();
+      db!.run("ALTER TABLE prompts ADD COLUMN source TEXT");
     }
 
     if (!promptCols.includes("notes")) {
       console.log("Migrating: Adding notes column to prompts table");
-      db!.prepare("ALTER TABLE prompts ADD COLUMN notes TEXT").run();
+      db!.run("ALTER TABLE prompts ADD COLUMN notes TEXT");
     }
 
     if (!promptCols.includes("prompt_type")) {
       console.log("Migrating: Adding prompt_type column to prompts table");
-      db!
-        .prepare(
-          "ALTER TABLE prompts ADD COLUMN prompt_type TEXT DEFAULT 'text'",
-        )
-        .run();
+      db!.run("ALTER TABLE prompts ADD COLUMN prompt_type TEXT DEFAULT 'text'");
     }
 
     if (!promptCols.includes("system_prompt_en")) {
       console.log("Migrating: Adding system_prompt_en column to prompts table");
-      db!.prepare("ALTER TABLE prompts ADD COLUMN system_prompt_en TEXT").run();
+      db!.run("ALTER TABLE prompts ADD COLUMN system_prompt_en TEXT");
     }
 
     if (!promptCols.includes("user_prompt_en")) {
       console.log("Migrating: Adding user_prompt_en column to prompts table");
-      db!.prepare("ALTER TABLE prompts ADD COLUMN user_prompt_en TEXT").run();
+      db!.run("ALTER TABLE prompts ADD COLUMN user_prompt_en TEXT");
     }
 
     if (!promptCols.includes("videos")) {
       console.log("Migrating: Adding videos column to prompts table");
-      db!.prepare("ALTER TABLE prompts ADD COLUMN videos TEXT").run();
+      db!.run("ALTER TABLE prompts ADD COLUMN videos TEXT");
     }
 
     if (!promptCols.includes("last_ai_response")) {
       console.log("Migrating: Adding last_ai_response column to prompts table");
-      db!.prepare("ALTER TABLE prompts ADD COLUMN last_ai_response TEXT").run();
+      db!.run("ALTER TABLE prompts ADD COLUMN last_ai_response TEXT");
     }
 
     if (!promptCols.includes("owner_user_id")) {
       console.log("Migrating: Adding owner_user_id column to prompts table");
-      db!.prepare("ALTER TABLE prompts ADD COLUMN owner_user_id TEXT REFERENCES users(id) ON DELETE SET NULL").run();
+      db!.run(
+        "ALTER TABLE prompts ADD COLUMN owner_user_id TEXT REFERENCES users(id) ON DELETE SET NULL",
+      );
     }
 
     if (!promptCols.includes("visibility")) {
       console.log("Migrating: Adding visibility column to prompts table");
-      db!.prepare("ALTER TABLE prompts ADD COLUMN visibility TEXT NOT NULL DEFAULT 'private'").run();
+      db!.run("ALTER TABLE prompts ADD COLUMN visibility TEXT NOT NULL DEFAULT 'private'");
     }
 
     // Migrations: folders table (query column list once)
@@ -201,24 +198,24 @@ export function initDatabase(
 
     if (!folderCols.includes("is_private")) {
       console.log("Migrating: Adding is_private column to folders table");
-      db!
-        .prepare("ALTER TABLE folders ADD COLUMN is_private INTEGER DEFAULT 0")
-        .run();
+      db!.run("ALTER TABLE folders ADD COLUMN is_private INTEGER DEFAULT 0");
     }
 
     if (!folderCols.includes("updated_at")) {
       console.log("Migrating: Adding updated_at column to folders table");
-      db!.prepare("ALTER TABLE folders ADD COLUMN updated_at INTEGER").run();
+      db!.run("ALTER TABLE folders ADD COLUMN updated_at INTEGER");
     }
 
     if (!folderCols.includes("owner_user_id")) {
       console.log("Migrating: Adding owner_user_id column to folders table");
-      db!.prepare("ALTER TABLE folders ADD COLUMN owner_user_id TEXT REFERENCES users(id) ON DELETE SET NULL").run();
+      db!.run(
+        "ALTER TABLE folders ADD COLUMN owner_user_id TEXT REFERENCES users(id) ON DELETE SET NULL",
+      );
     }
 
     if (!folderCols.includes("visibility")) {
       console.log("Migrating: Adding visibility column to folders table");
-      db!.prepare("ALTER TABLE folders ADD COLUMN visibility TEXT NOT NULL DEFAULT 'private'").run();
+      db!.run("ALTER TABLE folders ADD COLUMN visibility TEXT NOT NULL DEFAULT 'private'");
     }
 
     // Migrations: skills table (query column list once)
@@ -228,6 +225,8 @@ export function initDatabase(
 
     const skillNewColumns: { name: string; type: string }[] = [
       { name: "source_url", type: "TEXT" },
+      { name: "source_id", type: "TEXT" },
+      { name: "directory_fingerprint", type: "TEXT" },
       { name: "icon_url", type: "TEXT" },
       { name: "icon_emoji", type: "TEXT" },
       { name: "icon_background", type: "TEXT" },
@@ -254,29 +253,28 @@ export function initDatabase(
     for (const col of skillNewColumns) {
       if (!skillCols.includes(col.name)) {
         console.log(`Migrating: Adding ${col.name} column to skills table`);
-        db!
-          .prepare(`ALTER TABLE skills ADD COLUMN ${col.name} ${col.type}`)
-          .run();
+        db!.run(`ALTER TABLE skills ADD COLUMN ${col.name} ${col.type}`);
       }
     }
 
     if (!skillCols.includes("owner_user_id")) {
       console.log("Migrating: Adding owner_user_id column to skills table");
-      db!.prepare("ALTER TABLE skills ADD COLUMN owner_user_id TEXT REFERENCES users(id) ON DELETE SET NULL").run();
+      db!.run(
+        "ALTER TABLE skills ADD COLUMN owner_user_id TEXT REFERENCES users(id) ON DELETE SET NULL",
+      );
     }
 
     if (!skillCols.includes("visibility")) {
       console.log("Migrating: Adding visibility column to skills table");
-      db!.prepare("ALTER TABLE skills ADD COLUMN visibility TEXT NOT NULL DEFAULT 'private'").run();
+      db!.run("ALTER TABLE skills ADD COLUMN visibility TEXT NOT NULL DEFAULT 'private'");
     }
 
     // Backfill: set original_tags = tags for existing skills that don't have original_tags yet
     if (!skillCols.includes("original_tags")) {
       db!
-        .prepare(
+        .run(
           "UPDATE skills SET original_tags = tags WHERE original_tags IS NULL",
-        )
-        .run();
+        );
       console.log("Migrated: Backfilled original_tags for existing skills");
     }
 
@@ -285,10 +283,9 @@ export function initDatabase(
       if (hooks?.resolveSkillRepoPath) {
         try {
           const skillsWithoutPath = db!
-            .prepare(
+            .all(
               "SELECT id, name, source_url FROM skills WHERE local_repo_path IS NULL OR local_repo_path = ''",
-            )
-            .all() as {
+            ) as {
             id: string;
             name: string;
             source_url: string | null;
@@ -298,8 +295,7 @@ export function initDatabase(
             const foundPath = hooks.resolveSkillRepoPath(skill);
             if (foundPath) {
               db!
-                .prepare("UPDATE skills SET local_repo_path = ? WHERE id = ?")
-                .run(foundPath, skill.id);
+                .run("UPDATE skills SET local_repo_path = ? WHERE id = ?", foundPath, skill.id);
               console.log(
                 `Migrated: Backfilled local_repo_path for skill "${skill.name}" → ${foundPath}`,
               );
@@ -320,28 +316,24 @@ export function initDatabase(
     if (!hasMigration("normalize_skill_version_tracking_v1")) {
       try {
         const skillsWithVersionStats = db!
-          .prepare(
+          .all(
             `SELECT
                s.id AS id,
                MAX(sv.version) AS max_version
              FROM skills s
              LEFT JOIN skill_versions sv ON sv.skill_id = s.id
              GROUP BY s.id`,
-          )
-          .all() as Array<{ id: string; max_version: number | null }>;
+          ) as Array<{ id: string; max_version: number | null }>;
 
         for (const skill of skillsWithVersionStats) {
           const hasTrackedVersions =
             typeof skill.max_version === "number" && skill.max_version > 0;
-          db!
-            .prepare(
-              "UPDATE skills SET current_version = ?, version_tracking_enabled = ? WHERE id = ?",
-            )
-            .run(
-              hasTrackedVersions ? skill.max_version : 0,
-              hasTrackedVersions ? 1 : 0,
-              skill.id,
-            );
+          db!.run(
+            "UPDATE skills SET current_version = ?, version_tracking_enabled = ? WHERE id = ?",
+            hasTrackedVersions ? skill.max_version : 0,
+            hasTrackedVersions ? 1 : 0,
+            skill.id,
+          );
         }
       } catch (error) {
         console.error(
@@ -389,14 +381,13 @@ export function initDatabase(
 
     if (!userCols.includes("role")) {
       console.log("Migrating: Adding role column to users table");
-      db!.prepare("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'").run();
+      db!.run("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'");
     }
 
     const userSettingsExists = db!
-      .prepare(
+      .get(
         "SELECT name FROM sqlite_master WHERE type='table' AND name='user_settings'",
-      )
-      .get();
+      );
 
     if (!userSettingsExists) {
       console.log("Migrating: Creating user_settings table");
@@ -413,10 +404,9 @@ export function initDatabase(
 
     // ── skill_versions table ────────────────────────────────────────────────
     const skillVersionsExists = db!
-      .prepare(
+      .get(
         "SELECT name FROM sqlite_master WHERE type='table' AND name='skill_versions'",
-      )
-      .get();
+      );
 
     if (!skillVersionsExists) {
       console.log("Migrating: Creating skill_versions table");
@@ -436,10 +426,9 @@ export function initDatabase(
     }
 
     const rulesExists = db!
-      .prepare(
+      .get(
         "SELECT name FROM sqlite_master WHERE type='table' AND name='rules'",
-      )
-      .get();
+      );
 
     if (!rulesExists) {
       console.log("Migrating: Creating rules table");
@@ -466,10 +455,9 @@ export function initDatabase(
     }
 
     const ruleVersionsExists = db!
-      .prepare(
+      .get(
         "SELECT name FROM sqlite_master WHERE type='table' AND name='rule_versions'",
-      )
-      .get();
+      );
 
     if (!ruleVersionsExists) {
       console.log("Migrating: Creating rule_versions table");
@@ -487,32 +475,14 @@ export function initDatabase(
       `);
     }
 
-    // ── deduplicate skill names (defensive, before UNIQUE index) ─────────
-    if (!hasMigration("dedupe_skill_names_v1")) {
-      const dupeRows = db!
-        .prepare(
-          `SELECT LOWER(name) AS lname, COUNT(*) AS cnt
-           FROM skills GROUP BY LOWER(name) HAVING cnt > 1`,
-        )
-        .all() as Array<{ lname: string; cnt: number }>;
-
-      if (dupeRows.length > 0) {
-        console.log(
-          `Migrating: Removing ${dupeRows.length} duplicate skill name group(s)`,
-        );
-        for (const row of dupeRows) {
-          db!
-            .prepare(
-              `DELETE FROM skills WHERE id NOT IN (
-                 SELECT id FROM skills
-                 WHERE LOWER(name) = ?
-                 ORDER BY updated_at DESC LIMIT 1
-               ) AND LOWER(name) = ?`,
-            )
-            .run(row.lname, row.lname);
-        }
+    if (!hasMigration("drop_skill_name_unique_v2")) {
+      try {
+        db!.run("DROP INDEX IF EXISTS idx_skills_name_lower");
+      } catch (error) {
+        console.error("Failed to drop idx_skills_name_lower:", error);
+        return;
       }
-      markMigration("dedupe_skill_names_v1");
+      markMigration("drop_skill_name_unique_v2");
     }
 
     const promptVersionCols = (
@@ -521,30 +491,30 @@ export function initDatabase(
 
     if (!promptVersionCols.includes("system_prompt_en")) {
       console.log("Migrating: Adding system_prompt_en column to prompt_versions table");
-      db!.prepare("ALTER TABLE prompt_versions ADD COLUMN system_prompt_en TEXT").run();
+      db!.run("ALTER TABLE prompt_versions ADD COLUMN system_prompt_en TEXT");
     }
 
     if (!promptVersionCols.includes("user_prompt_en")) {
       console.log("Migrating: Adding user_prompt_en column to prompt_versions table");
-      db!.prepare("ALTER TABLE prompt_versions ADD COLUMN user_prompt_en TEXT").run();
+      db!.run("ALTER TABLE prompt_versions ADD COLUMN user_prompt_en TEXT");
     }
 
     if (!promptVersionCols.includes("ai_response")) {
       console.log("Migrating: Adding ai_response column to prompt_versions table");
-      db!.prepare("ALTER TABLE prompt_versions ADD COLUMN ai_response TEXT").run();
+      db!.run("ALTER TABLE prompt_versions ADD COLUMN ai_response TEXT");
     }
 
     if (!hasMigration("fix_prompt_current_version_v1")) {
       console.log(
         "Migrating: Aligning prompt current_version with latest stored version",
       );
-      db!.prepare(
+      db!.run(
         `UPDATE prompts
          SET current_version = COALESCE(
            (SELECT MAX(version) FROM prompt_versions WHERE prompt_id = prompts.id),
            0
          )`,
-      ).run();
+      );
       markMigration("fix_prompt_current_version_v1");
     }
   });

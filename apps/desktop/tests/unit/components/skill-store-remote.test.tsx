@@ -655,6 +655,85 @@ describe("SkillStore remote loading", () => {
     );
   });
 
+  it("shows same-name variants from different source ids in the same store", async () => {
+    installWindowMocks({
+      api: {
+        skill: {
+          fetchRemoteContent: vi.fn(),
+          scanLocalPreview: vi.fn().mockResolvedValue([]),
+          scanSafety: vi.fn().mockResolvedValue({
+            level: "safe",
+            summary: "safe",
+            findings: [],
+            recommendedAction: "allow",
+            scannedAt: Date.now(),
+            checkedFileCount: 1,
+            scanMethod: "ai",
+          }),
+        },
+      },
+    });
+
+    useSkillStore.setState({
+      selectedStoreSourceId: "same-name-source",
+      registrySkills: [],
+      remoteStoreEntries: {
+        "same-name-source": {
+          loadedAt: Date.now(),
+          error: null,
+          skills: [
+            {
+              slug: "writer",
+              name: "Writer",
+              install_name: "writer",
+              source_id: "writer-main",
+              source_branch: "main",
+              description: "Stable writer",
+              category: "general",
+              author: "PromptHub",
+              source_url: "https://github.com/example/skills/tree/main/writer",
+              tags: ["writing"],
+              version: "1.0.0",
+              content: "# Writer\n\nMain\n",
+            },
+            {
+              slug: "writer",
+              name: "Writer",
+              install_name: "writer",
+              source_id: "writer-dev",
+              source_branch: "dev",
+              description: "Dev writer",
+              category: "general",
+              author: "PromptHub",
+              source_url: "https://github.com/example/skills/tree/dev/writer",
+              tags: ["writing"],
+              version: "1.1.0-beta",
+              content: "# Writer\n\nDev\n",
+            },
+          ],
+        },
+      },
+      customStoreSources: [
+        {
+          id: "same-name-source",
+          name: "Same Name Source",
+          type: "marketplace-json",
+          url: "https://example.com/same-name-store.json",
+          enabled: true,
+          createdAt: Date.now(),
+        },
+      ],
+    } as never);
+
+    await act(async () => {
+      await renderWithI18n(<SkillStore />, { language: "en" });
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Writer")).toHaveLength(2);
+    });
+  });
+
   it("loads git-repo store sources through SSH scan when given git@github.com URLs", async () => {
     const fetchRemoteContent = vi.fn();
     const scanRemoteGithub = vi.fn().mockResolvedValue([
@@ -662,6 +741,7 @@ describe("SkillStore remote loading", () => {
         slug: "superpowers",
         name: "superpowers",
         install_name: "superpowers",
+        source_id: "source-superpowers-ssh",
         description: "SSH scanned store skill",
         category: "dev",
         author: "obra",
@@ -720,6 +800,8 @@ describe("SkillStore remote loading", () => {
     expect(scanRemoteGithub).toHaveBeenCalledWith(
       "git@github.com:obra/superpowers.git",
       expect.any(Array),
+      undefined,
+      undefined,
     );
     expect(fetchRemoteContent).not.toHaveBeenCalled();
   });
@@ -731,6 +813,7 @@ describe("SkillStore remote loading", () => {
         slug: "icelemon-skill",
         name: "icelemon-skill",
         install_name: "icelemon-skill",
+        source_id: "source-icelemon-gitea",
         description: "Gitea scanned store skill",
         category: "dev",
         author: "icelemon",
@@ -789,6 +872,8 @@ describe("SkillStore remote loading", () => {
     expect(scanRemoteGithub).toHaveBeenCalledWith(
       "https://gitea.example.com/icelemon/skills",
       expect.any(Array),
+      undefined,
+      undefined,
     );
     expect(fetchRemoteContent).not.toHaveBeenCalled();
   });
@@ -817,6 +902,7 @@ describe("SkillStore remote loading", () => {
       registrySkills: [
         {
           slug: "pdf-skill",
+          source_id: "source-pdf-skill",
           name: "PDF Skill",
           description: "Use this whenever you work with PDFs",
           category: "office",
@@ -828,6 +914,7 @@ describe("SkillStore remote loading", () => {
         },
         {
           slug: "canvas-design",
+          source_id: "source-canvas-design",
           name: "Canvas Design",
           description: "Create beautiful visual layouts",
           category: "design",

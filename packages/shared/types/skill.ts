@@ -15,7 +15,9 @@ export interface Skill {
   version?: string;
   author?: string;
   source_url?: string; // GitHub URL or registry source
+  source_id?: string; // Stable source identity for same-name variants
   local_repo_path?: string; // Absolute path to the cloned/saved local repo directory
+  directory_fingerprint?: string; // Stable fingerprint of the full skill directory
   tags?: string[]; // stored as JSON string in DB, parsed array in runtime
   original_tags?: string[]; // tags at import time; user-added tags = tags - original_tags
   is_favorite: boolean;
@@ -175,6 +177,12 @@ export interface RegistrySkill {
   slug: string;
   name: string;
   install_name?: string;
+  source_id?: string;
+  source_label?: string;
+  source_branch?: string;
+  source_directory?: string;
+  canonical_skill_path?: string;
+  directory_fingerprint?: string;
   description: string;
   category: SkillCategory;
   icon_url?: string;

@@ -70,30 +70,30 @@ export const skillApi = {
     ipcRenderer.invoke(IPC_CHANNELS.SKILL_GET_SUPPORTED_PLATFORMS),
   detectPlatforms: () =>
     ipcRenderer.invoke(IPC_CHANNELS.SKILL_DETECT_PLATFORMS),
-  installMd: (skillName: string, skillMdContent: string, platformId: string) =>
+  installMd: (skillId: string, skillMdContent: string, platformId: string) =>
     ipcRenderer.invoke(
       IPC_CHANNELS.SKILL_INSTALL_MD,
-      skillName,
+      skillId,
       skillMdContent,
       platformId,
     ),
-  uninstallMd: (skillName: string, platformId: string) =>
-    ipcRenderer.invoke(IPC_CHANNELS.SKILL_UNINSTALL_MD, skillName, platformId),
-  getMdInstallStatus: (skillName: string) =>
-    ipcRenderer.invoke(IPC_CHANNELS.SKILL_GET_MD_INSTALL_STATUS, skillName),
-  getMdInstallStatusBatch: (skillNames: string[]) =>
+  uninstallMd: (skillId: string, platformId: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.SKILL_UNINSTALL_MD, skillId, platformId),
+  getMdInstallStatus: (skillId: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.SKILL_GET_MD_INSTALL_STATUS, skillId),
+  getMdInstallStatusBatch: (skillIds: string[]) =>
     ipcRenderer.invoke(
       IPC_CHANNELS.SKILL_GET_MD_INSTALL_STATUS_BATCH,
-      skillNames,
+      skillIds,
     ),
   installMdSymlink: (
-    skillName: string,
+    skillId: string,
     skillMdContent: string,
     platformId: string,
   ): Promise<SkillPlatformInstallResult> =>
     ipcRenderer.invoke(
       IPC_CHANNELS.SKILL_INSTALL_MD_SYMLINK,
-      skillName,
+      skillId,
       skillMdContent,
       platformId,
     ),
@@ -101,16 +101,27 @@ export const skillApi = {
     ipcRenderer.invoke(IPC_CHANNELS.SKILL_FETCH_REMOTE_CONTENT, url),
   fetchRemoteContentBytes: (url: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.SKILL_FETCH_REMOTE_CONTENT_BYTES, url),
-  scanRemoteGithub: (repoUrl: string, registrySkills: unknown[]) =>
-    ipcRenderer.invoke(IPC_CHANNELS.SKILL_SCAN_REMOTE_GITHUB, repoUrl, registrySkills),
+  scanRemoteGithub: (
+    repoUrl: string,
+    registrySkills: unknown[],
+    branch?: string,
+    directory?: string,
+  ) =>
+    ipcRenderer.invoke(
+      IPC_CHANNELS.SKILL_SCAN_REMOTE_GITHUB,
+      repoUrl,
+      registrySkills,
+      branch,
+      directory,
+    ),
   listRemoteBranches: (repoUrl: string): Promise<string[]> =>
     ipcRenderer.invoke(IPC_CHANNELS.SKILL_LIST_REMOTE_BRANCHES, repoUrl),
   saveToRepo: (
-    skillName: string,
+    skillId: string,
     sourceDir: string,
     mode?: "copy" | "symlink",
   ) =>
-    ipcRenderer.invoke(IPC_CHANNELS.SKILL_SAVE_TO_REPO, skillName, sourceDir, mode),
+    ipcRenderer.invoke(IPC_CHANNELS.SKILL_SAVE_TO_REPO, skillId, sourceDir, mode),
   listLocalFiles: (skillId: string): Promise<SkillLocalFileTreeEntry[]> =>
     ipcRenderer.invoke(IPC_CHANNELS.SKILL_LIST_LOCAL_FILES, skillId),
   readLocalFile: (

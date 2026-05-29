@@ -684,6 +684,71 @@ export function getLocalRepoPath(skillName: string): string {
   return path.join(skillsDir, skillName);
 }
 
+export function getLocalRepoPathForSkillId(skillId: string): string {
+  const skillsDir = getSkillsDirAccessor();
+  const normalizedSkillId = skillId.trim();
+  if (!normalizedSkillId) {
+    throw new Error("Skill id cannot be empty");
+  }
+  if (normalizedSkillId.includes("/") || normalizedSkillId.includes("\\")) {
+    throw new Error("Skill id must not contain path separators");
+  }
+  return path.join(skillsDir, normalizedSkillId);
+}
+
+export async function saveToLocalRepoBySkillId(
+  skillId: string,
+  sourceDir: string,
+  mode: "copy" | "symlink" = "copy",
+): Promise<string> {
+  const destDir = getLocalRepoPathForSkillId(skillId);
+  const sourceStat = await fs.stat(sourceDir).catch((error: unknown) => {
+    if (getErrorCode(error) === "ENOENT") {
+      throw new Error(`Invalid sourceDir: directory does not exist: ${sourceDir}`);
+    }
+    throw error;
+  });
+  if (!sourceStat.isDirectory()) {
+    throw new Error(`Invalid sourceDir: not a directory: ${sourceDir}`);
+  }
+
+  await initSkillsDir();
+  if (await fileExists(destDir)) {
+    await fs.rm(destDir, { recursive: true, force: true });
+  }
+
+  if (mode === "symlink") {
+    const canonicalSourceDir = await fs.realpath(sourceDir);
+    await fs.symlink(canonicalSourceDir, destDir, "dir");
+    return destDir;
+  }
+
+  await fs.cp(sourceDir, destDir, {
+    recursive: true,
+    filter: async (src: string) => {
+      try {
+        const stat = await fs.lstat(src);
+        return !stat.isSymbolicLink();
+      } catch {
+        return false;
+      }
+    },
+  });
+
+  return destDir;
+}
+
+export async function saveContentToLocalRepoBySkillId(
+  skillId: string,
+  content: string,
+): Promise<string> {
+  const destDir = getLocalRepoPathForSkillId(skillId);
+  await initSkillsDir();
+  await fs.mkdir(destDir, { recursive: true });
+  await fs.writeFile(path.join(destDir, "SKILL.md"), content, "utf-8");
+  return destDir;
+}
+
 export async function renameManagedLocalRepo(
   oldSkillName: string,
   newSkillName: string,

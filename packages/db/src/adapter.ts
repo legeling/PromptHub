@@ -94,11 +94,70 @@ class DatabaseAdapter {
       this._db.exec(`PRAGMA ${source}`);
       return undefined;
     }
-    return this._db.prepare(`PRAGMA ${source}`).all();
+    const stmt = this._db.prepare(`PRAGMA ${source}`);
+    try {
+      return stmt.all();
+    } finally {
+      stmt.finalize?.();
+    }
   }
 
   exec(sql: string): void {
     this._db.exec(sql);
+  }
+
+  private normalizeParams(params: unknown[]): unknown[] | unknown {
+    if (params.length === 0) {
+      return [];
+    }
+
+    if (params.length === 1) {
+      return params[0];
+    }
+
+    return params;
+  }
+
+  run(
+    sql: string,
+    ...params: unknown[]
+  ): { changes: number; lastInsertRowid: number | bigint } {
+    const stmt = this._db.prepare(sql);
+    const normalized = this.normalizeParams(params);
+
+    try {
+      return Array.isArray(normalized) && normalized.length === 0
+        ? stmt.run()
+        : stmt.run(normalized);
+    } finally {
+      stmt.finalize?.();
+    }
+  }
+
+  get(sql: string, ...params: unknown[]): unknown {
+    const stmt = this._db.prepare(sql);
+    const normalized = this.normalizeParams(params);
+
+    try {
+      return Array.isArray(normalized) && normalized.length === 0
+        ? stmt.get()
+        : stmt.get(normalized);
+    } finally {
+      stmt.finalize?.();
+    }
+  }
+
+  all(sql: string, ...params: unknown[]): unknown[] {
+    const stmt = this._db.prepare(sql);
+    const normalized = this.normalizeParams(params);
+
+    try {
+      return Array.isArray(normalized) && normalized.length === 0
+        ? stmt.all()
+        : stmt.all(normalized);
+    } finally {
+      stmt.finalize?.();
+    }
   }
 
   prepare(sql: string): Statement {

@@ -126,7 +126,7 @@ export function SkillStoreDetail({
   }, [i18n.language]);
 
   const installedSkill = skills.find(
-    (item) => item.registry_slug === skill.slug || item.name === skill.name,
+    (item) => item.source_id === skill.source_id,
   );
   const installedSkillMdContent =
     installedSkill?.instructions || installedSkill?.content || "";
@@ -184,7 +184,7 @@ export function SkillStoreDetail({
       setSafetyReport(report);
       // If already installed, persist to DB
       const installedSkill = skills.find(
-        (s) => s.registry_slug === skill.slug || s.name === skill.name,
+        (s) => s.source_id === skill.source_id,
       );
       if (installedSkill) {
         try {
@@ -401,7 +401,7 @@ export function SkillStoreDetail({
   const handleUninstall = async () => {
     setIsUninstalling(true);
     try {
-      const success = await uninstallRegistrySkill(skill.slug);
+      const success = await uninstallRegistrySkill(skill.source_id);
       if (success) {
         setJustUninstalled(true);
         showToast(
@@ -447,7 +447,9 @@ export function SkillStoreDetail({
   const handleUpdate = async (overwriteLocalChanges = false) => {
     setIsUpdating(true);
     try {
-      const result = await updateRegistrySkill(skill.slug, { overwriteLocalChanges });
+      const result = await updateRegistrySkill(skill.source_id, {
+        overwriteLocalChanges,
+      });
       if (!result) {
         showToast(t("skill.updateFailed", "Failed"), "error");
         return;

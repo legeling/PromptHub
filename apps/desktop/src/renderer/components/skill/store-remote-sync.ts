@@ -13,6 +13,10 @@ import type {
 
 import { BUILTIN_SKILL_REGISTRY } from "@prompthub/shared/constants/skill-registry";
 import { isGitHubHost, parseGitRepo } from "@prompthub/shared/utils/git-repo";
+import {
+  buildSkillSourceId,
+  computeStableTextHash,
+} from "@prompthub/shared/utils/skill-identity";
 import { loadGitHubSkillRepo, parseFrontmatter, toTitleCase } from "../../services/github-skill-store";
 import {
   parseSkillsShDetail,
@@ -96,16 +100,12 @@ function resolveUrl(baseUrl: string, value?: string | null) {
 }
 
 function dedupeRegistrySkills(skills: RegistrySkill[]) {
-  const bySlug = new Map<string, RegistrySkill>();
-  const seenNames = new Set<string>();
+  const bySourceId = new Map<string, RegistrySkill>();
   for (const skill of skills) {
-    if (bySlug.has(skill.slug)) continue;
-    const normalizedName = (skill.install_name || skill.slug).toLowerCase();
-    if (seenNames.has(normalizedName)) continue;
-    bySlug.set(skill.slug, skill);
-    seenNames.add(normalizedName);
+    if (bySourceId.has(skill.source_id)) continue;
+    bySourceId.set(skill.source_id, skill);
   }
-  return Array.from(bySlug.values());
+  return Array.from(bySourceId.values());
 }
 
 function parseJson<T>(raw: string, fallback: T): T {
@@ -233,7 +233,12 @@ export function useSkillStoreRemoteSync(
         }
 
         if (!isGitHubHost(parsedRepo.host) || parsedRepo.protocol === "ssh") {
-          return await window.api.skill.scanRemoteGithub(repoUrl, registrySkills);
+          return await window.api.skill.scanRemoteGithub(
+            repoUrl,
+            registrySkills,
+            source.branch,
+            source.directory,
+          );
         }
 
         return await loadGitHubSkillRepo(repoUrl, {
@@ -341,6 +346,11 @@ export function useSkillStoreRemoteSync(
             parsed.description ||
             builtin?.description ||
             `${toTitleCase(slug)} skill`;
+          const sourceId = buildSkillSourceId({
+            sourceType: "marketplace-json",
+            sourceUrl,
+            skillPath: contentUrl || slug,
+          });
 
           return {
             slug,
@@ -351,6 +361,10 @@ export function useSkillStoreRemoteSync(
               builtin?.name ||
               toTitleCase(slug),
             install_name: item.install_name || item.installName,
+            source_id: sourceId,
+            source_label: resolvedUrl,
+            canonical_skill_path: contentUrl || slug,
+            directory_fingerprint: computeStableTextHash(content),
             description,
             category:
               item.category || builtin?.category || inferCategory(slug, description),
@@ -411,6 +425,14 @@ export function useSkillStoreRemoteSync(
       const mapped = scannedSkills.map((skill) => ({
         slug: slugify(skill.name),
         name: skill.name,
+        source_id: buildSkillSourceId({
+          sourceType: "local-dir",
+          sourceUrl: skill.localPath || dirPath,
+          skillPath: skill.filePath,
+        }),
+        source_label: dirPath,
+        canonical_skill_path: skill.filePath,
+        directory_fingerprint: computeStableTextHash(skill.instructions),
         description: skill.description || `${skill.name} skill`,
         category: inferCategory(skill.name, skill.description || ""),
         author: skill.author || "Local",

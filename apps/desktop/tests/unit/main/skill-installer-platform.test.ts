@@ -60,9 +60,13 @@ vi.mock("../../../src/main/services/skill-installer-utils", () => ({
 }));
 
 import {
+  buildPlatformSkillInstallName,
   getSupportedPlatforms,
+  getSkillMdInstallStatusForSkill,
   installSkillMd,
+  installSkillMdForSkill,
   installSkillMdSymlink,
+  uninstallSkillMdForSkill,
 } from "../../../src/main/services/skill-installer-platform";
 
 describe("skill-installer-platform symlink install", () => {
@@ -206,5 +210,93 @@ describe("skill-installer-platform symlink install", () => {
     await expect(
       installSkillMdSymlink("demo-skill", "# skill", "claude"),
     ).rejects.toThrowError(/Symlink install failed for "demo-skill"/);
+  });
+
+  it("builds distinct platform install names for same-name variants", () => {
+    expect(
+      buildPlatformSkillInstallName({
+        id: "skill-a",
+        name: "writer",
+        source_id: "source-a",
+      }),
+    ).not.toBe(
+      buildPlatformSkillInstallName({
+        id: "skill-b",
+        name: "writer",
+        source_id: "source-b",
+      }),
+    );
+  });
+
+  it("installs same-name variants into distinct platform directories", async () => {
+    const platformSkillName = buildPlatformSkillInstallName({
+      id: "skill-a",
+      name: "writer",
+      source_id: "source-a",
+    });
+    internalMocks.fileExists.mockResolvedValue(true);
+
+    await installSkillMdForSkill(
+      { id: "skill-a", name: "writer", source_id: "source-a" },
+      "# writer a",
+      "claude",
+      "/prompthub/skills/skill-a",
+      ["writer"],
+    );
+
+    expect(fsMocks.cp).toHaveBeenCalledWith(
+      "/prompthub/skills/skill-a",
+      `/platform/skills/${platformSkillName}`,
+      expect.objectContaining({ recursive: true, filter: expect.any(Function) }),
+    );
+    expect(fsMocks.rm.mock.calls).toContainEqual([
+      "/platform/skills/writer",
+      { recursive: true, force: true },
+    ]);
+  });
+
+  it("checks install status using unique and legacy platform directories", async () => {
+    const platformSkillName = buildPlatformSkillInstallName({
+      id: "skill-a",
+      name: "writer",
+      source_id: "source-a",
+    });
+
+    internalMocks.fileExists.mockImplementation(async (target: string) =>
+      target === `/platform/skills/${platformSkillName}/SKILL.md` ||
+      target === "/platform/skills/writer/SKILL.md",
+    );
+
+    const status = await getSkillMdInstallStatusForSkill(
+      { id: "skill-a", name: "writer", source_id: "source-a" },
+      ["writer"],
+    );
+
+    expect(Object.values(status).every(Boolean)).toBe(true);
+  });
+
+  it("uninstalls unique and legacy platform directories together", async () => {
+    const platformSkillName = buildPlatformSkillInstallName({
+      id: "skill-a",
+      name: "writer",
+      source_id: "source-a",
+    });
+
+    internalMocks.fileExists.mockResolvedValue(true);
+
+    await uninstallSkillMdForSkill(
+      { id: "skill-a", name: "writer", source_id: "source-a" },
+      "claude",
+      ["writer"],
+    );
+
+    expect(fsMocks.rm).toHaveBeenCalledWith(
+      `/platform/skills/${platformSkillName}`,
+      { recursive: true, force: true },
+    );
+    expect(fsMocks.rm).toHaveBeenCalledWith(
+      "/platform/skills/writer",
+      { recursive: true, force: true },
+    );
   });
 });

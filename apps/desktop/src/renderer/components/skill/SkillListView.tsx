@@ -181,31 +181,31 @@ export function SkillListView({
       const nextStatuses = Object.fromEntries(
         skills.map((skill) => [
           skill.id,
-          skillPlatformStatusCache.get(skill.name) ?? {},
+          skillPlatformStatusCache.get(skill.id) ?? {},
         ]),
       );
       setPlatformStatuses(nextStatuses);
 
-      const missingNames = Array.from(
+      const missingSkillIds = Array.from(
         new Set(
           skills
-            .map((skill) => skill.name)
-            .filter((name) => !skillPlatformStatusCache.has(name)),
+            .map((skill) => skill.id)
+            .filter((skillId) => !skillPlatformStatusCache.has(skillId)),
         ),
       );
 
-      if (missingNames.length === 0) {
+      if (missingSkillIds.length === 0) {
         return;
       }
 
       try {
-        const statusByName = (await window.api.skill.getMdInstallStatusBatch(
-          missingNames,
+        const statusBySkillId = (await window.api.skill.getMdInstallStatusBatch(
+          missingSkillIds,
         )) as Record<string, unknown>;
 
-        for (const [name, status] of Object.entries(statusByName)) {
+        for (const [skillId, status] of Object.entries(statusBySkillId)) {
           skillPlatformStatusCache.set(
-            name,
+            skillId,
             normalizePlatformStatusMap(status),
           );
         }
@@ -214,7 +214,7 @@ export function SkillListView({
           Object.fromEntries(
             skills.map((skill) => [
               skill.id,
-              skillPlatformStatusCache.get(skill.name) ?? {},
+              skillPlatformStatusCache.get(skill.id) ?? {},
             ]),
           ),
         );

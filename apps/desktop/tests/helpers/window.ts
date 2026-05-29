@@ -111,6 +111,7 @@ export function createWindowApiMock(overrides?: DeepPartial<MockRecord>) {
         scanRemoteGithub: vi.fn().mockResolvedValue([]),
         saveToRepo: vi.fn(),
         listLocalFiles: vi.fn().mockResolvedValue([]),
+        readLocalFileByPath: vi.fn().mockResolvedValue(null),
         readLocalFile: vi.fn().mockResolvedValue(null),
         readLocalFiles: vi.fn().mockResolvedValue([]),
         renameLocalPath: vi.fn().mockResolvedValue(undefined),

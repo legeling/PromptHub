@@ -1,4 +1,5 @@
 import type { RegistrySkill, Skill } from "@prompthub/shared/types";
+import { computeStableTextHash } from "@prompthub/shared/utils/skill-identity";
 
 export type RegistrySkillUpdateStatus =
   | "not-installed"
@@ -17,17 +18,6 @@ export interface RegistrySkillUpdateCheck {
   remoteContent: string;
   localModified: boolean;
   remoteChanged: boolean;
-}
-
-function normalizeLineEndings(content: string): string {
-  return content.replace(/\r\n?/g, "\n");
-}
-
-function stripTrailingWhitespace(content: string): string {
-  return content
-    .split("\n")
-    .map((line) => line.replace(/[ \t]+$/g, ""))
-    .join("\n");
 }
 
 function normalizeFrontmatter(content: string): string {
@@ -55,28 +45,12 @@ function normalizeFrontmatter(content: string): string {
 }
 
 export function normalizeSkillContentForHash(content: string): string {
-  const normalized = stripTrailingWhitespace(normalizeLineEndings(content));
+  const normalized = content.replace(/\r\n?/g, "\n");
   return normalizeFrontmatter(normalized).trimEnd();
 }
 
-function fallbackHashHex(content: string): string {
-  let hash1 = 0x811c9dc5;
-  let hash2 = 0x01000193;
-  for (let index = 0; index < content.length; index += 1) {
-    const code = content.charCodeAt(index);
-    hash1 ^= code;
-    hash1 = Math.imul(hash1, 0x01000193);
-    hash2 ^= code + index;
-    hash2 = Math.imul(hash2, 0x811c9dc5);
-  }
-  const fragment = [hash1, hash2, hash1 ^ hash2, Math.imul(hash1, hash2)]
-    .map((value) => (value >>> 0).toString(16).padStart(8, "0"))
-    .join("");
-  return `${fragment}${fragment}`.slice(0, 64);
-}
-
 export function computeSkillContentFingerprint(content: string): string {
-  return fallbackHashHex(normalizeSkillContentForHash(content));
+  return computeStableTextHash(normalizeSkillContentForHash(content));
 }
 
 export async function computeSkillContentHash(content: string): Promise<string> {
@@ -91,7 +65,7 @@ export async function computeSkillContentHash(content: string): Promise<string> 
       .join("");
   }
 
-  return fallbackHashHex(normalized);
+  return computeStableTextHash(normalized);
 }
 
 export function findInstalledRegistrySkill(
@@ -99,11 +73,15 @@ export function findInstalledRegistrySkill(
   registrySkill: RegistrySkill,
 ): Skill | null {
   const slug = registrySkill.slug.toLowerCase();
+  const sourceId = registrySkill.source_id?.toLowerCase();
   const contentUrl = registrySkill.content_url?.toLowerCase();
   const sourceUrl = registrySkill.source_url?.toLowerCase();
   const installName = (registrySkill.install_name || registrySkill.slug).toLowerCase();
 
   return (
+    (sourceId
+      ? skills.find((skill) => skill.source_id?.toLowerCase() === sourceId)
+      : undefined) ||
     skills.find((skill) => skill.registry_slug?.toLowerCase() === slug) ||
     (contentUrl
       ? skills.find((skill) => skill.content_url?.toLowerCase() === contentUrl)

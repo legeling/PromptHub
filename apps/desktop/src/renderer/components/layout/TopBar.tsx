@@ -384,7 +384,7 @@ export function TopBar({
         if (isSkillStoreCatalogView) {
           const registryResults = storeSearchResults;
           if (registryResults[newIndex]) {
-            selectRegistrySkill(registryResults[newIndex].slug);
+            selectRegistrySkill(registryResults[newIndex].source_id);
           }
           return;
         }
@@ -484,7 +484,7 @@ export function TopBar({
       if (isSkillView) {
         if (isSkillStoreCatalogView) {
           if (storeSearchResults[currentResultIndex]) {
-            selectRegistrySkill(storeSearchResults[currentResultIndex].slug);
+            selectRegistrySkill(storeSearchResults[currentResultIndex].source_id);
           }
         } else if (skillSearchResults[currentResultIndex]) {
           selectSkill(skillSearchResults[currentResultIndex].id);

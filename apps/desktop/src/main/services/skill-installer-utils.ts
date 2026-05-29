@@ -109,7 +109,11 @@ function normalizeRemoteGitUrl(url: string): string {
   return parsedRepo?.cloneUrl ?? trimmed;
 }
 
-export function gitClone(url: string, destDir: string): Promise<void> {
+export function gitClone(
+  url: string,
+  destDir: string,
+  branch?: string,
+): Promise<void> {
   if (!url.trim()) {
     throw new Error("Git clone URL cannot be empty");
   }
@@ -131,7 +135,12 @@ export function gitClone(url: string, destDir: string): Promise<void> {
   }
 
   return new Promise((resolve, reject) => {
-    const proc = childProcess.spawn("git", ["clone", "--depth", "1", "--", normalizedUrl, destDir], {
+    const cloneArgs = ["clone", "--depth", "1"];
+    if (branch?.trim()) {
+      cloneArgs.push("--branch", branch.trim());
+    }
+    cloneArgs.push("--", normalizedUrl, destDir);
+    const proc = childProcess.spawn("git", cloneArgs, {
       stdio: ["ignore", "pipe", "pipe"],
     });
 
