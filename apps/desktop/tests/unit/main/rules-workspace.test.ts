@@ -323,6 +323,50 @@ describe("rules workspace storage", () => {
     expect(claude?.path).toContain(".claude-custom/CLAUDE.md");
   });
 
+  it("uses the overridden target file name for built-in global rule descriptors", async () => {
+    const homeDir = path.join(tempDir, "home");
+    const kiloRoot = path.join(homeDir, ".kilo");
+    const kiloRulePath = path.join(kiloRoot, "AGENTS.md");
+    fs.mkdirSync(kiloRoot, { recursive: true });
+    fs.writeFileSync(kiloRulePath, "# Kilo custom rule", "utf8");
+
+    const service = createRulesWorkspaceService({
+      getRulesDir,
+      createRuleDb: () => new RuleDB(initDatabase()),
+      getPlatformGlobalRulePath: (platform) => {
+        if (platform.id === "kilo") {
+          return kiloRulePath;
+        }
+        if (platform.id === "claude") {
+          return path.join(homeDir, ".claude", "CLAUDE.md");
+        }
+        return path.join(homeDir, platform.id, "AGENTS.md");
+      },
+      getPlatformRootDir: (platform) => {
+        if (platform.id === "kilo") {
+          return kiloRoot;
+        }
+        if (platform.id === "claude") {
+          return path.join(homeDir, ".claude");
+        }
+        return path.join(homeDir, platform.id);
+      },
+    });
+
+    const descriptors = await service.scanRuleDescriptors();
+    const kilo = descriptors.find((descriptor) => descriptor.id === "kilo-global");
+
+    expect(kilo).toEqual(
+      expect.objectContaining({
+        name: "AGENTS.md",
+        path: kiloRulePath,
+      }),
+    );
+
+    const content = await service.readRuleContent("kilo-global");
+    expect(content.name).toBe("AGENTS.md");
+  });
+
   it("supports custom agent global rule files", async () => {
     const homeDir = path.join(tempDir, "home");
     const customRoot = path.join(homeDir, ".agents");

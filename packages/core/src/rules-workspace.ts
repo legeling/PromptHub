@@ -147,6 +147,14 @@ function hasErrorCode(value: unknown): value is { code?: unknown } {
   return typeof value === "object" && value !== null && "code" in value;
 }
 
+function resolveDisplayedRuleFileName(
+  canonicalFileName: string,
+  targetPath: string,
+): string {
+  const targetFileName = path.basename(targetPath);
+  return targetFileName || canonicalFileName;
+}
+
 function getErrorCode(error: unknown): string | undefined {
   if (!hasErrorCode(error)) {
     return undefined;
@@ -498,7 +506,7 @@ export function createRulesWorkspaceService(
       platformName: meta.platformName,
       platformIcon: meta.platformIcon,
       platformDescription: meta.platformDescription,
-      name: meta.canonicalFileName,
+      name: resolveDisplayedRuleFileName(meta.canonicalFileName, meta.targetPath),
       description: meta.description,
       path: meta.targetPath,
       targetPath: meta.targetPath,
@@ -517,7 +525,7 @@ export function createRulesWorkspaceService(
       platformName: record.platformName,
       platformIcon: record.platformIcon,
       platformDescription: record.platformDescription,
-      name: record.canonicalFileName,
+      name: resolveDisplayedRuleFileName(record.canonicalFileName, record.targetPath),
       description: record.description,
       path: record.targetPath,
       targetPath: record.targetPath,
