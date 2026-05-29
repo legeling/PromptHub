@@ -305,6 +305,19 @@ function normalizeLocalRegistryDirectory(
   return candidates[0] ?? "";
 }
 
+async function syncLocalRegistrySkillRepo(
+  skillId: string,
+  regSkill: Pick<RegistrySkill, "content_url" | "source_url">,
+): Promise<void> {
+  const localDir = normalizeLocalRegistryDirectory(regSkill);
+  if (!localDir) {
+    return;
+  }
+
+  await window.api.skill.saveToRepo(skillId, localDir, "copy");
+  await window.api.skill.syncFromRepo(skillId);
+}
+
 async function resolveRegistrySkillContent(
   regSkill: RegistrySkill,
 ): Promise<string> {
@@ -1264,6 +1277,10 @@ export const useSkillStore = create<SkillState>()(
           author: regSkill.author,
           source_url: regSkill.source_url,
           source_id: regSkill.source_id,
+          source_label: regSkill.source_label,
+          source_branch: regSkill.source_branch,
+          source_directory: regSkill.source_directory,
+          canonical_skill_path: regSkill.canonical_skill_path,
           icon_url: regSkill.icon_url,
           icon_emoji: regSkill.icon_emoji,
           icon_background: regSkill.icon_background,
@@ -1283,6 +1300,11 @@ export const useSkillStore = create<SkillState>()(
         if (!updatedSkill) {
           return null;
         }
+
+        if (isLocalRegistrySkill(regSkill)) {
+          await syncLocalRegistrySkillRepo(installedSkill.id, regSkill);
+        }
+
         return { status: "updated", skill: updatedSkill, check };
       },
 
@@ -1316,6 +1338,10 @@ export const useSkillStore = create<SkillState>()(
             author: regSkill.author,
             source_url: regSkill.source_url,
             source_id: regSkill.source_id,
+            source_label: regSkill.source_label,
+            source_branch: regSkill.source_branch,
+            source_directory: regSkill.source_directory,
+            canonical_skill_path: regSkill.canonical_skill_path,
             tags: [],
             original_tags: regSkill.tags,
             is_favorite: false,
@@ -1335,16 +1361,20 @@ export const useSkillStore = create<SkillState>()(
           });
           if (newSkill) {
             try {
-              await window.api.skill.writeLocalFile(
-                newSkill.id,
-                "SKILL.md",
-                effectiveContent,
-              );
-              await syncRemoteGitHubSkillRepo(
-                newSkill.id,
-                regSkill.source_url,
-                regSkill.content_url,
-              );
+              if (isLocalRegistrySkill(regSkill)) {
+                await syncLocalRegistrySkillRepo(newSkill.id, regSkill);
+              } else {
+                await window.api.skill.writeLocalFile(
+                  newSkill.id,
+                  "SKILL.md",
+                  effectiveContent,
+                );
+                await syncRemoteGitHubSkillRepo(
+                  newSkill.id,
+                  regSkill.source_url,
+                  regSkill.content_url,
+                );
+              }
             } catch (repoError) {
               console.warn(
                 `Failed to create local repo for registry skill "${regSkill.slug}":`,

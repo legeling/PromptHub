@@ -12,6 +12,7 @@ import type {
   ScannedSkill,
   Skill,
   SkillFileSnapshot,
+  SkillLocalFileBufferEntry,
   SkillLocalFileEntry,
   SkillLocalFileTreeEntry,
   SkillManifest,
@@ -19,6 +20,7 @@ import type {
   SkillSafetyScanInput,
   SkillVersion,
 } from "@prompthub/shared/types";
+import { computeDirectoryFingerprint } from "@prompthub/shared/utils/skill-identity";
 
 import { getSkillsDir } from "../runtime-paths";
 import { installSkillFromSource } from "../skills/install-flow";
@@ -476,6 +478,9 @@ async function installFromSkillContent(
   const localRepoPath = options?.repoSourceDir
     ? await saveRepo(normalizedName, options.repoSourceDir)
     : await saveContent(normalizedName, skillContent);
+  const directoryFingerprint = await computeRepoDirectoryFingerprintByPath(
+    localRepoPath,
+  );
 
   return skillDb.create({
     name: normalizedName,
@@ -507,6 +512,7 @@ async function installFromSkillContent(
     is_favorite: false,
     source_url: options?.sourceUrl,
     local_repo_path: localRepoPath,
+    directory_fingerprint: directoryFingerprint,
   }).id;
 }
 
@@ -595,6 +601,7 @@ async function installFromGithub(
       protocol_type: "skill",
       source_url: sourceUrl,
       local_repo_path: skillDir,
+      directory_fingerprint: await computeRepoDirectoryFingerprintByPath(skillDir),
       is_favorite: false,
       tags: [],
       original_tags: manifest.tags || ["github"],
@@ -677,6 +684,41 @@ async function readFileContent(fullPath: string, fileName: string): Promise<stri
     return "[file too large]";
   }
   return fs.readFile(fullPath, "utf-8");
+}
+
+async function readRepoFileBuffers(
+  absoluteBasePath: string,
+): Promise<SkillLocalFileBufferEntry[]> {
+  const { resolvedBasePath, realBasePath } = await resolveRepoBasePath(
+    absoluteBasePath,
+    { allowOutsideSkillsDir: true },
+  );
+
+  if (!(await fileExists(resolvedBasePath))) {
+    return [];
+  }
+
+  return walkRepoDir<SkillLocalFileBufferEntry>({
+    baseDir: resolvedBasePath,
+    realBasePath,
+    onEntry: async ({ relativePath, fullPath, isDirectory }) => {
+      if (isDirectory) {
+        return null;
+      }
+
+      return {
+        path: relativePath,
+        data: await fs.readFile(fullPath),
+      };
+    },
+  });
+}
+
+async function computeRepoDirectoryFingerprintByPath(
+  absoluteBasePath: string,
+): Promise<string> {
+  const entries = await readRepoFileBuffers(absoluteBasePath);
+  return computeDirectoryFingerprint(entries);
 }
 
 async function walkRepoDir<T>(opts: {
@@ -950,8 +992,17 @@ export function createCliSkillService(
         const stat = await fs.stat(skill.local_repo_path);
         if (stat.isDirectory()) {
           const saved = await saveRepo(skill.name, skill.local_repo_path);
+          const directoryFingerprint =
+            await computeRepoDirectoryFingerprintByPath(saved);
           if (saved !== skill.local_repo_path) {
-            skillDb.update(skill.id, { local_repo_path: saved });
+            skillDb.update(skill.id, {
+              local_repo_path: saved,
+              directory_fingerprint: directoryFingerprint,
+            });
+          } else {
+            skillDb.update(skill.id, {
+              directory_fingerprint: directoryFingerprint,
+            });
           }
           return saved;
         }
@@ -966,8 +1017,16 @@ export function createCliSkillService(
     }
 
     const saved = await saveContent(skill.name, content);
+    const directoryFingerprint = await computeRepoDirectoryFingerprintByPath(saved);
     if (saved !== skill.local_repo_path) {
-      skillDb.update(skill.id, { local_repo_path: saved });
+      skillDb.update(skill.id, {
+        local_repo_path: saved,
+        directory_fingerprint: directoryFingerprint,
+      });
+    } else {
+      skillDb.update(skill.id, {
+        directory_fingerprint: directoryFingerprint,
+      });
     }
     return saved;
   }
@@ -1211,6 +1270,9 @@ export function createCliSkillService(
     if (parsed?.frontmatter.tags !== undefined) {
       update.tags = parsed.frontmatter.tags;
     }
+    update.directory_fingerprint = await computeRepoDirectoryFingerprintByPath(
+      repoPath,
+    );
     return skillDb.update(skill.id, update);
   }
 
@@ -1460,6 +1522,9 @@ export function createCliSkillService(
                   ) || "Local",
                 tags: sanitizeTags(parsed?.frontmatter.tags, manifest.tags),
                 instructions,
+                directory_fingerprint: await computeRepoDirectoryFingerprintByPath(
+                  skillFolderPath,
+                ),
                 filePath: skillMdPath,
                 localPath: skillFolderPath,
                 platforms: [platformName],

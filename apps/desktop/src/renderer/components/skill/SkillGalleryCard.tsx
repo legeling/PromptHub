@@ -11,6 +11,8 @@ import { useTranslation } from "react-i18next";
 import type { Skill } from "@prompthub/shared/types";
 import { SkillIcon } from "./SkillIcon";
 import { getRuntimeCapabilities } from "../../runtime";
+import { SkillVariantBadgeList } from "./SkillVariantBadgeList";
+import { buildSkillVariantBadges } from "../../services/skill-variant-badges";
 
 function normalizeStringArray(value: unknown): string[] {
   if (Array.isArray(value)) {
@@ -59,6 +61,7 @@ function SkillGalleryCardComponent({
   const { t } = useTranslation();
   const runtimeCapabilities = getRuntimeCapabilities();
   const visibleTags = normalizeStringArray(skill.tags).slice(0, 4);
+  const variantBadges = buildSkillVariantBadges(skill, t);
 
   return (
     <div
@@ -181,6 +184,7 @@ function SkillGalleryCardComponent({
         {skill.description ||
           t("skill.defaultDescription", "技能描述，帮助 AI 理解何时使用此技能")}
       </p>
+      <SkillVariantBadgeList badges={variantBadges} className="mb-3 flex flex-wrap gap-1.5" />
       {visibleTags.length > 0 ? (
         <div className="flex flex-wrap gap-1.5">
           {visibleTags.map((tag) => (

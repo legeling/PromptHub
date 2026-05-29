@@ -119,10 +119,7 @@ test.describe("E2E: local store source", () => {
       await page.locator('button:has-text("E2E Local Source"):visible').first().click();
 
       await expect(page.locator('h2:has-text("E2E Local Source"):visible').first()).toBeVisible();
-      await page
-        .locator('button:has-text("Refresh"):visible')
-        .first()
-        .click();
+      await page.locator('button[title="Refresh"]:visible').first().click();
 
       await expect(page.locator('h4:has-text("local-writer"):visible').first()).toBeVisible();
       await page.locator('h4:has-text("local-writer"):visible').first().click();
@@ -150,6 +147,7 @@ test.describe("E2E: local store source", () => {
             const skills = await window.api.skill.getAll();
             const installed = skills.find((skill) => skill.name === "local-writer");
             return {
+              id: installed?.id ?? null,
               content: installed?.content ?? null,
               installedCount: skills.length,
               installedNames: skills.map((skill) => skill.name),
@@ -159,9 +157,21 @@ test.describe("E2E: local store source", () => {
         )
         .toEqual(
           expect.objectContaining({
+            id: expect.any(String),
             content: expect.stringContaining("Fresh source content v1"),
           }),
         );
+
+      const installedSkill = await page.evaluate(async () => {
+        const skills = await window.api.skill.getAll();
+        return skills.find((skill) => skill.name === "local-writer") ?? null;
+      });
+      expect(installedSkill?.id).toBeTruthy();
+
+      const managedSkillDir = path.join(userDataDir, "data", "skills", installedSkill!.id);
+      expect(fs.existsSync(path.join(managedSkillDir, ".prompthub", "source.json"))).toBe(true);
+      expect(fs.existsSync(path.join(managedSkillDir, ".prompthub", "variant.json"))).toBe(true);
+      expect(fs.existsSync(path.join(managedSkillDir, "repo", "SKILL.md"))).toBe(true);
 
       const quickInstallModal = page.getByText("Install to Platforms");
       if (await quickInstallModal.isVisible().catch(() => false)) {
@@ -173,7 +183,7 @@ test.describe("E2E: local store source", () => {
       }
 
       await expect(detailModal.locator('button:has-text("Remove")')).toBeVisible();
-      await expect(detailModal.getByText(/^Imported$/)).toBeVisible();
+      await expect(detailModal.locator('button:has-text("Import to My Skills")')).toHaveCount(0);
 
       await detailModal.click({ position: { x: 8, y: 8 } });
       await expect(detailModal).toHaveCount(0);
@@ -196,10 +206,7 @@ test.describe("E2E: local store source", () => {
       );
 
       await page.locator('button:has-text("E2E Local Source"):visible').first().click();
-      await page
-        .locator('button:has-text("Refresh"):visible')
-        .first()
-        .click();
+      await page.locator('button[title="Refresh"]:visible').first().click();
       await page.locator('h4:has-text("local-writer"):visible').first().click();
       const updatedDetailModal = page.locator('div.fixed.inset-0.z-50').last();
       await expect(updatedDetailModal.locator('h2:has-text("local-writer")')).toBeVisible();

@@ -465,6 +465,57 @@ badge 建议：
 - directory
 - 作者
 
+### 6.1 本轮 UI 收口策略
+
+本轮先做最小但一致的可视化收口，不改动底层 identity 模型：
+
+- 新增一个共享的 variant badge 解析层，统一从 `RegistrySkill` / `Skill` 推导：
+  - 来源标签：`Official` / `Community` / `Local` / `Git`
+  - 变体标签：`Stable` / `Dev` / `Branch:<name>` / `Dir:<path>`
+  - 状态标签：`Installed` / `Update available`
+- badge 解析优先使用已有字段：
+  - `source_url`
+  - `source_label`
+  - `source_branch`
+  - `source_directory`
+  - `registry_slug`
+  - `is_builtin`
+- 组件复用策略：
+  - 商店卡片 `SkillStoreCard`
+  - 商店详情 `SkillStoreDetail`
+  - 我的技能 gallery `SkillGalleryCard`
+  - 我的技能 list `SkillListView`
+  - 以上四处共用一套 badge 数据与样式映射，避免每处单独判断
+- 本轮不做：
+  - “同名其它已安装变体列表” 的详情页增强
+  - “Duplicate content” 弱提示
+  - 统一列表替代 Installed/Available 双分区
+
+### 6.2 变体标签判定规则
+
+- 来源类型：
+  - `local-dir` 或本地路径 -> `Local`
+  - `skills.sh` / 社区 marketplace -> `Community`
+  - 内置 curated / 官方 registry -> `Official`
+  - 其他 git / marketplace / self-hosted repo -> `Git`
+- 分支标签：
+  - `main` / `master` / `stable` / `release` -> `Stable`
+  - `dev` / `develop` / `beta` / `next` / `canary` / `nightly` / `preview` / `alpha` -> `Dev`
+  - 其他 branch -> 直接显示 branch 名
+- 目录标签：
+  - 只有存在 `source_directory` 时展示
+  - 长目录只显示末段 + 保留完整 title
+
+### 6.3 我的技能来源回显策略
+
+导入后的 `Skill` 记录目前未持久化 `source_label` / `source_branch` / `source_directory`，因此本轮采用 best-effort 回显：
+
+- `is_builtin + source_url` 可识别为官方来源
+- `source_url` 若为本地路径，则识别为 `Local`
+- `source_url` 若包含 `skills.sh`，识别为 `Community`
+- `source_url` 若包含 `/tree/<branch>/...`，尝试从 URL 反推 branch / directory
+- 对无法准确推导的导入项，只显示稳定的来源类型标签，不伪造 branch / directory
+
 #### 详情页
 
 详情页需显示：

@@ -2,6 +2,8 @@ import { CheckIcon, DownloadIcon, Loader2Icon, PlusIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { RegistrySkill } from "@prompthub/shared/types";
 import { SkillIcon } from "./SkillIcon";
+import { SkillVariantBadgeList } from "./SkillVariantBadgeList";
+import { buildSkillVariantBadges } from "../../services/skill-variant-badges";
 
 const MAX_STAGGERED_STORE_CARDS = 12;
 
@@ -26,6 +28,10 @@ export function SkillStoreCard({
 }: SkillStoreCardProps) {
   const { t } = useTranslation();
   const isInstallingThis = installingSourceId === skill.source_id;
+  const badges = buildSkillVariantBadges(skill, t, {
+    hasUpdate,
+    isInstalled,
+  });
 
   return (
     <div
@@ -52,6 +58,7 @@ export function SkillStoreCard({
         <p className="text-[11px] text-muted-foreground truncate mt-0.5">
           {skill.description}
         </p>
+        <SkillVariantBadgeList badges={badges} className="mt-2 flex flex-wrap gap-1" />
         {skill.weekly_installs && (
           <div className="mt-1.5 inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
             {skill.weekly_installs}/wk

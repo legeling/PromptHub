@@ -73,6 +73,10 @@ export function exportAsJson(skill: {
   instructions?: string;
   protocol_type?: string;
   source_url?: string;
+  source_label?: string;
+  source_branch?: string;
+  source_directory?: string;
+  canonical_skill_path?: string;
   icon_url?: string;
   icon_emoji?: string;
   icon_background?: string;
@@ -86,6 +90,10 @@ export function exportAsJson(skill: {
     instructions: skill.instructions || "",
     protocol_type: skill.protocol_type || "skill",
     source_url: skill.source_url || "",
+    source_label: skill.source_label || "",
+    source_branch: skill.source_branch || "",
+    source_directory: skill.source_directory || "",
+    canonical_skill_path: skill.canonical_skill_path || "",
     icon_url: skill.icon_url || "",
     icon_emoji: skill.icon_emoji || "",
     icon_background: skill.icon_background || "",
@@ -121,6 +129,10 @@ export async function importFromJson(
         compatibility: data.compatibility,
         protocol_type: data.protocol_type,
         source_url: data.source_url,
+        source_label: data.source_label,
+        source_branch: data.source_branch,
+        source_directory: data.source_directory,
+        canonical_skill_path: data.canonical_skill_path,
       },
       { defaultTags: ["imported"] },
     );
@@ -146,6 +158,10 @@ export async function importFromJson(
       prerequisites: sanitized.prerequisites,
       compatibility: sanitized.compatibility,
       source_url: sanitized.source_url,
+      source_label: sanitized.source_label,
+      source_branch: sanitized.source_branch,
+      source_directory: sanitized.source_directory,
+      canonical_skill_path: sanitized.canonical_skill_path,
     });
 
     return skill.id;

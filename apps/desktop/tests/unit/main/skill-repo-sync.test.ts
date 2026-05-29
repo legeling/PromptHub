@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Skill } from "@prompthub/shared/types";
+import { computeDirectoryFingerprint } from "@prompthub/shared/utils/skill-identity";
 import {
   buildSkillSyncUpdateFromRepo,
+  computeRepoDirectoryFingerprint,
   hasMetadataChanges,
   syncFrontmatterToRepo,
 } from "../../../src/main/services/skill-repo-sync";
@@ -46,6 +48,7 @@ describe("buildSkillSyncUpdateFromRepo", () => {
         "",
         "Updated body.",
       ].join("\n"),
+      "repo-fingerprint-1",
     );
 
     expect(next).toMatchObject({
@@ -54,6 +57,7 @@ describe("buildSkillSyncUpdateFromRepo", () => {
       author: "Repo Author",
       tags: ["writing", "local"],
       compatibility: ["claude", "cursor"],
+      directory_fingerprint: "repo-fingerprint-1",
     });
     expect(next?.instructions).toContain("Updated body.");
     expect(next?.content).toContain("Updated body.");
@@ -63,6 +67,7 @@ describe("buildSkillSyncUpdateFromRepo", () => {
     const next = buildSkillSyncUpdateFromRepo(
       baseSkill,
       baseSkill.content || "",
+      baseSkill.directory_fingerprint,
     );
     expect(next).toBeNull();
   });
@@ -137,6 +142,66 @@ describe("buildSkillSyncUpdateFromRepo", () => {
     const next = buildSkillSyncUpdateFromRepo(skillWithTags, md);
     // No changes → null
     expect(next).toBeNull();
+  });
+
+  it("returns fingerprint-only update when repo files change outside SKILL.md", () => {
+    const next = buildSkillSyncUpdateFromRepo(
+      baseSkill,
+      baseSkill.content || "",
+      "new-directory-fingerprint",
+    );
+
+    expect(next).toEqual({
+      directory_fingerprint: "new-directory-fingerprint",
+    });
+  });
+});
+
+describe("computeRepoDirectoryFingerprint", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("computes a fingerprint from full repo file bytes", async () => {
+    vi.spyOn(SkillInstaller, "readLocalRepoFileBuffersByPath").mockResolvedValue([
+      {
+        path: "SKILL.md",
+        data: new Uint8Array([35, 32, 87, 114, 105, 116, 101, 114, 10]),
+      },
+      {
+        path: "assets/icon.png",
+        data: new Uint8Array([137, 80, 78, 71, 0, 1]),
+      },
+      {
+        path: ".prompthub/source.json",
+        data: new Uint8Array([123, 125]),
+      },
+    ]);
+
+    const fingerprint = await computeRepoDirectoryFingerprint("/repo/path");
+
+    expect(SkillInstaller.readLocalRepoFileBuffersByPath).toHaveBeenCalledWith(
+      "/repo/path",
+    );
+    expect(fingerprint).toBe(
+      computeDirectoryFingerprint([
+        {
+          path: "SKILL.md",
+          data: new Uint8Array([35, 32, 87, 114, 105, 116, 101, 114, 10]),
+          isDirectory: false,
+        },
+        {
+          path: "assets/icon.png",
+          data: new Uint8Array([137, 80, 78, 71, 0, 1]),
+          isDirectory: false,
+        },
+        {
+          path: ".prompthub/source.json",
+          data: new Uint8Array([123, 125]),
+          isDirectory: false,
+        },
+      ]),
+    );
   });
 });
 

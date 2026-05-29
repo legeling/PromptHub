@@ -1,4 +1,7 @@
-import type { SkillLocalFileEntry } from "../types/skill";
+import type {
+  SkillLocalFileBufferEntry,
+  SkillLocalFileEntry,
+} from "../types/skill";
 
 const DIRECTORY_FINGERPRINT_EXCLUDES = [
   ".git/",
@@ -41,6 +44,22 @@ export function computeStableTextHash(content: string): string {
   return fallbackHashHex(normalizeTextContent(content));
 }
 
+export function computeStableBinaryHash(data: Uint8Array): string {
+  let hash1 = 0x811c9dc5;
+  let hash2 = 0x01000193;
+  for (let index = 0; index < data.length; index += 1) {
+    const value = data[index] ?? 0;
+    hash1 ^= value;
+    hash1 = Math.imul(hash1, 0x01000193);
+    hash2 ^= value + index;
+    hash2 = Math.imul(hash2, 0x811c9dc5);
+  }
+  const fragment = [hash1, hash2, hash1 ^ hash2, Math.imul(hash1, hash2)]
+    .map((value) => (value >>> 0).toString(16).padStart(8, "0"))
+    .join("");
+  return `${fragment}${fragment}`.slice(0, 64);
+}
+
 function shouldIgnoreEntry(relativePath: string): boolean {
   const normalized = relativePath.replace(/\\/g, "/").replace(/^\.\//, "");
   if (!normalized || normalized === ".DS_Store") {
@@ -51,18 +70,70 @@ function shouldIgnoreEntry(relativePath: string): boolean {
   );
 }
 
+type TextDirectoryFingerprintEntry = Pick<
+  SkillLocalFileEntry,
+  "path" | "content" | "isDirectory"
+>;
+
+type BinaryDirectoryFingerprintEntry = Pick<SkillLocalFileBufferEntry, "path" | "data"> & {
+  isDirectory?: false;
+};
+
+type DirectoryFingerprintEntry =
+  | TextDirectoryFingerprintEntry
+  | BinaryDirectoryFingerprintEntry;
+
+function isBinaryDirectoryFingerprintEntry(
+  entry: DirectoryFingerprintEntry,
+): entry is BinaryDirectoryFingerprintEntry {
+  return "data" in entry;
+}
+
+function isTextDirectoryFingerprintEntry(
+  entry: DirectoryFingerprintEntry,
+): entry is TextDirectoryFingerprintEntry {
+  return "content" in entry;
+}
+
+function getEntryContentHash(entry: DirectoryFingerprintEntry): string {
+  if (isBinaryDirectoryFingerprintEntry(entry) && entry.data instanceof Uint8Array) {
+    return computeStableBinaryHash(entry.data);
+  }
+  if (!isTextDirectoryFingerprintEntry(entry)) {
+    return computeStableTextHash("");
+  }
+  return computeStableTextHash(entry.content);
+}
+
 export function computeDirectoryFingerprint(
-  entries: Array<Pick<SkillLocalFileEntry, "path" | "content" | "isDirectory">>,
+  entries: DirectoryFingerprintEntry[],
 ): string {
   const manifest = entries
     .filter((entry) => !entry.isDirectory)
     .map((entry) => ({
       path: entry.path.replace(/\\/g, "/").replace(/^\.\//, ""),
-      content: entry.content,
+      contentHash: getEntryContentHash(entry),
     }))
     .filter((entry) => !shouldIgnoreEntry(entry.path))
     .sort((left, right) => left.path.localeCompare(right.path))
-    .map((entry) => `${entry.path}:${computeStableTextHash(entry.content)}`)
+    .map((entry) => `${entry.path}:${entry.contentHash}`)
+    .join("\n");
+
+  return computeStableTextHash(manifest);
+}
+
+export function computeDirectoryFingerprintFromHashes(
+  entries: Array<{ path: string; contentHash: string; isDirectory?: boolean }>,
+): string {
+  const manifest = entries
+    .filter((entry) => !entry.isDirectory)
+    .map((entry) => ({
+      path: entry.path.replace(/\\/g, "/").replace(/^\.\//, ""),
+      contentHash: entry.contentHash,
+    }))
+    .filter((entry) => !shouldIgnoreEntry(entry.path))
+    .sort((left, right) => left.path.localeCompare(right.path))
+    .map((entry) => `${entry.path}:${entry.contentHash}`)
     .join("\n");
 
   return computeStableTextHash(manifest);

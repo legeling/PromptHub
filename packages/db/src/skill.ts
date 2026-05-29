@@ -21,14 +21,18 @@ interface SkillRow {
   tags: string | null;
   original_tags: string | null;
   is_favorite: number;
+  source_url: string | null;
   source_id: string | null;
+  source_label: string | null;
+  source_branch: string | null;
+  source_directory: string | null;
+  canonical_skill_path: string | null;
+  local_repo_path: string | null;
   directory_fingerprint: string | null;
   installed_content_hash: string | null;
   installed_version: string | null;
   installed_at: number | null;
   updated_from_store_at: number | null;
-  source_url: string | null;
-  local_repo_path: string | null;
   icon_url: string | null;
   icon_emoji: string | null;
   icon_background: string | null;
@@ -138,7 +142,7 @@ export class SkillDB {
       INSERT INTO skills (
         id, name, description, content, mcp_config,
         protocol_type, version, author, tags, original_tags, is_favorite,
-        source_url, source_id, local_repo_path, directory_fingerprint, icon_url, icon_emoji, icon_background, category, is_builtin,
+        source_url, source_id, source_label, source_branch, source_directory, canonical_skill_path, local_repo_path, directory_fingerprint, icon_url, icon_emoji, icon_background, category, is_builtin,
         registry_slug, content_url, installed_content_hash, installed_version, installed_at,
         updated_from_store_at, prerequisites, compatibility, current_version,
         version_tracking_enabled, safety_level, safety_score, safety_report, safety_scanned_at,
@@ -146,7 +150,7 @@ export class SkillDB {
       ) VALUES (
         @id, @name, @description, @content, @mcp_config,
         @protocol_type, @version, @author, @tags, @original_tags, @is_favorite,
-        @source_url, @source_id, @local_repo_path, @directory_fingerprint, @icon_url, @icon_emoji, @icon_background, @category, @is_builtin,
+        @source_url, @source_id, @source_label, @source_branch, @source_directory, @canonical_skill_path, @local_repo_path, @directory_fingerprint, @icon_url, @icon_emoji, @icon_background, @category, @is_builtin,
         @registry_slug, @content_url, @installed_content_hash, @installed_version, @installed_at,
         @updated_from_store_at, @prerequisites, @compatibility, @current_version,
         @version_tracking_enabled, @safety_level, @safety_score, @safety_report, @safety_scanned_at,
@@ -172,6 +176,10 @@ export class SkillDB {
       "@is_favorite": data.is_favorite ? 1 : 0,
       "@source_url": data.source_url || null,
       "@source_id": data.source_id || null,
+      "@source_label": data.source_label || null,
+      "@source_branch": data.source_branch || null,
+      "@source_directory": data.source_directory || null,
+      "@canonical_skill_path": data.canonical_skill_path || null,
       "@local_repo_path": data.local_repo_path || null,
       "@directory_fingerprint": data.directory_fingerprint || null,
       "@icon_url": data.icon_url || null,
@@ -237,20 +245,25 @@ export class SkillDB {
     const existingSkill = this.getById(id);
     if (!existingSkill) return null;
 
-    if (data.name !== undefined) {
-      const normalizedName = data.name.trim();
-      if (!normalizedName) {
-        throw new Error("Skill name cannot be empty");
-      }
+    const normalizedName = data.name?.trim();
+    if (data.name !== undefined && !normalizedName) {
+      throw new Error("Skill name cannot be empty");
+    }
 
-      const duplicateSkill = data.source_id
-        ? this.getBySourceId(data.source_id)
-        : this.getByName(normalizedName);
+    if (data.name !== undefined || data.source_id !== undefined) {
+      const effectiveName = normalizedName ?? existingSkill.name;
+      const effectiveSourceId =
+        data.source_id !== undefined
+          ? data.source_id.trim()
+          : existingSkill.source_id?.trim();
+      const duplicateSkill = effectiveSourceId
+        ? this.getBySourceId(effectiveSourceId)
+        : this.getByName(effectiveName);
       if (duplicateSkill && duplicateSkill.id !== id) {
         throw new Error(
-          data.source_id
-            ? `Skill source already exists: ${data.source_id}`
-            : `Skill already exists: ${normalizedName}`,
+          effectiveSourceId
+            ? `Skill source already exists: ${effectiveSourceId}`
+            : `Skill already exists: ${effectiveName}`,
         );
       }
     }
@@ -260,8 +273,11 @@ export class SkillDB {
     const values: Array<string | number | null> = [now];
 
     if (data.name !== undefined) {
+      if (normalizedName === undefined) {
+        throw new Error("Skill name cannot be empty");
+      }
       updates.push("name = ?");
-      values.push(data.name.trim());
+      values.push(normalizedName);
     }
     if (data.description !== undefined) {
       updates.push("description = ?");
@@ -307,6 +323,22 @@ export class SkillDB {
     if (data.source_id !== undefined) {
       updates.push("source_id = ?");
       values.push(data.source_id);
+    }
+    if (data.source_label !== undefined) {
+      updates.push("source_label = ?");
+      values.push(data.source_label);
+    }
+    if (data.source_branch !== undefined) {
+      updates.push("source_branch = ?");
+      values.push(data.source_branch);
+    }
+    if (data.source_directory !== undefined) {
+      updates.push("source_directory = ?");
+      values.push(data.source_directory);
+    }
+    if (data.canonical_skill_path !== undefined) {
+      updates.push("canonical_skill_path = ?");
+      values.push(data.canonical_skill_path);
     }
     if (data.local_repo_path !== undefined) {
       updates.push("local_repo_path = ?");
@@ -421,6 +453,16 @@ export class SkillDB {
       ...(data.is_favorite !== undefined && { is_favorite: data.is_favorite }),
       ...(data.source_url !== undefined && { source_url: data.source_url }),
       ...(data.source_id !== undefined && { source_id: data.source_id }),
+      ...(data.source_label !== undefined && { source_label: data.source_label }),
+      ...(data.source_branch !== undefined && {
+        source_branch: data.source_branch,
+      }),
+      ...(data.source_directory !== undefined && {
+        source_directory: data.source_directory,
+      }),
+      ...(data.canonical_skill_path !== undefined && {
+        canonical_skill_path: data.canonical_skill_path,
+      }),
       ...(data.local_repo_path !== undefined && {
         local_repo_path: data.local_repo_path,
       }),
@@ -634,7 +676,7 @@ export class SkillDB {
         `INSERT OR REPLACE INTO skills (
           id, name, description, content, mcp_config,
           protocol_type, version, author, tags, original_tags, is_favorite,
-          source_url, source_id, local_repo_path, directory_fingerprint, icon_url, icon_emoji, icon_background, category, is_builtin,
+          source_url, source_id, source_label, source_branch, source_directory, canonical_skill_path, local_repo_path, directory_fingerprint, icon_url, icon_emoji, icon_background, category, is_builtin,
           registry_slug, content_url, installed_content_hash, installed_version, installed_at,
           updated_from_store_at, prerequisites, compatibility, current_version,
           version_tracking_enabled, safety_level, safety_score, safety_report, safety_scanned_at,
@@ -642,7 +684,7 @@ export class SkillDB {
         ) VALUES (
           @id, @name, @description, @content, @mcp_config,
           @protocol_type, @version, @author, @tags, @original_tags, @is_favorite,
-          @source_url, @source_id, @local_repo_path, @directory_fingerprint, @icon_url, @icon_emoji, @icon_background, @category, @is_builtin,
+          @source_url, @source_id, @source_label, @source_branch, @source_directory, @canonical_skill_path, @local_repo_path, @directory_fingerprint, @icon_url, @icon_emoji, @icon_background, @category, @is_builtin,
           @registry_slug, @content_url, @installed_content_hash, @installed_version, @installed_at,
           @updated_from_store_at, @prerequisites, @compatibility, @current_version,
           @version_tracking_enabled, @safety_level, @safety_score, @safety_report, @safety_scanned_at,
@@ -663,6 +705,10 @@ export class SkillDB {
         "@is_favorite": skill.is_favorite ? 1 : 0,
         "@source_url": skill.source_url ?? null,
         "@source_id": skill.source_id ?? null,
+        "@source_label": skill.source_label ?? null,
+        "@source_branch": skill.source_branch ?? null,
+        "@source_directory": skill.source_directory ?? null,
+        "@canonical_skill_path": skill.canonical_skill_path ?? null,
         "@local_repo_path": skill.local_repo_path ?? null,
         "@directory_fingerprint": skill.directory_fingerprint ?? null,
         "@icon_url": skill.icon_url ?? null,
@@ -758,6 +804,10 @@ export class SkillDB {
       updated_at: row.updated_at,
       source_url: row.source_url || undefined,
       source_id: row.source_id || undefined,
+      source_label: row.source_label || undefined,
+      source_branch: row.source_branch || undefined,
+      source_directory: row.source_directory || undefined,
+      canonical_skill_path: row.canonical_skill_path || undefined,
       local_repo_path: row.local_repo_path || undefined,
       directory_fingerprint: row.directory_fingerprint || undefined,
       icon_url: row.icon_url || undefined,

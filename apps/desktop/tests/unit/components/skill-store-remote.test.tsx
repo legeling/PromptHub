@@ -732,6 +732,44 @@ describe("SkillStore remote loading", () => {
     await waitFor(() => {
       expect(screen.getAllByText("Writer")).toHaveLength(2);
     });
+
+    expect(screen.getByText("Stable")).toBeInTheDocument();
+    expect(screen.getByText("Dev")).toBeInTheDocument();
+  });
+
+  it("shows local source badges in store detail", async () => {
+    useSkillStore.setState({
+      getTranslationState: vi.fn().mockReturnValue({
+        value: null,
+        hasTranslation: false,
+        isStale: false,
+      }),
+    } as never);
+
+    const skill = {
+      slug: "writer",
+      name: "Writer",
+      source_id: "local-writer",
+      source_label: "/tmp/skills",
+      source_branch: "dev",
+      description: "Local writer",
+      category: "general",
+      tags: ["writing"],
+      version: "1.0.0",
+      content: "# Writer\n\nLocal",
+      source_url: "/tmp/skills/writer",
+      content_url: "/tmp/skills/writer/SKILL.md",
+      compatibility: ["claude"],
+      author: "Local",
+    } as never;
+
+    await renderWithI18n(
+      <SkillStoreDetail skill={skill} isInstalled={false} onClose={vi.fn()} />,
+      { language: "en" },
+    );
+
+    expect(screen.getAllByText("Local").length).toBeGreaterThan(0);
+    expect(screen.getByText("Dev")).toBeInTheDocument();
   });
 
   it("loads git-repo store sources through SSH scan when given git@github.com URLs", async () => {

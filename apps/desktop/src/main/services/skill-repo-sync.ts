@@ -1,4 +1,5 @@
 import type { Skill, UpdateSkillParams } from "@prompthub/shared/types";
+import { computeDirectoryFingerprint } from "@prompthub/shared/utils/skill-identity";
 import { sanitizeImportedSkillDraft } from "./skill-import-sanitize";
 import { parseSkillMd } from "./skill-validator";
 import { SkillInstaller } from "./skill-installer";
@@ -29,6 +30,7 @@ function normalizeCompatibility(compatibility?: string): string[] | undefined {
 export function buildSkillSyncUpdateFromRepo(
   skill: Skill,
   skillMdContent: string,
+  directoryFingerprint?: string,
 ): UpdateSkillParams | null {
   const parsed = parseSkillMd(skillMdContent);
   const sanitized = sanitizeImportedSkillDraft(
@@ -91,7 +93,19 @@ export function buildSkillSyncUpdateFromRepo(
     changed = true;
   }
 
+  if (directoryFingerprint !== undefined && directoryFingerprint !== skill.directory_fingerprint) {
+    update.directory_fingerprint = directoryFingerprint;
+    changed = true;
+  }
+
   return changed ? update : null;
+}
+
+export async function computeRepoDirectoryFingerprint(
+  repoPath: string,
+): Promise<string> {
+  const entries = await SkillInstaller.readLocalRepoFileBuffersByPath(repoPath);
+  return computeDirectoryFingerprint(entries);
 }
 
 /**

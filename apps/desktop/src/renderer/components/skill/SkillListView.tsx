@@ -21,6 +21,8 @@ import { filterDetectedPlatforms } from "../../services/platform-visibility";
 import type { Skill, SkillSafetyLevel } from "@prompthub/shared/types";
 import type { SkillPlatform } from "@prompthub/shared/constants/platforms";
 import { getRuntimeCapabilities } from "../../runtime";
+import { SkillVariantBadgeList } from "./SkillVariantBadgeList";
+import { buildSkillVariantBadges } from "../../services/skill-variant-badges";
 
 function normalizeStringArray(value: unknown): string[] {
   if (Array.isArray(value)) {
@@ -438,19 +440,23 @@ export function SkillListView({
                 <p className="text-xs text-muted-foreground truncate mt-0.5">
                   {skill.description || t("skill.defaultDescription")}
                 </p>
-                {visibleTags.length > 0 ? (
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {visibleTags.map((tag) => (
+                  {visibleTags.length > 0 ? (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {visibleTags.map((tag) => (
                       <span
                         key={tag}
                         className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary"
                       >
                         {tag}
                       </span>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
+                      ))}
+                    </div>
+                  ) : null}
+                  <SkillVariantBadgeList
+                    badges={buildSkillVariantBadges(skill, t)}
+                    className="mt-2 flex flex-wrap gap-1.5"
+                  />
+                </div>
 
               {/* Platform indicators */}
               {runtimeCapabilities.skillPlatformIntegration && totalPlatforms > 0 && (

@@ -15,7 +15,6 @@ import { BUILTIN_SKILL_REGISTRY } from "@prompthub/shared/constants/skill-regist
 import { isGitHubHost, parseGitRepo } from "@prompthub/shared/utils/git-repo";
 import {
   buildSkillSourceId,
-  computeStableTextHash,
 } from "@prompthub/shared/utils/skill-identity";
 import { loadGitHubSkillRepo, parseFrontmatter, toTitleCase } from "../../services/github-skill-store";
 import {
@@ -364,7 +363,6 @@ export function useSkillStoreRemoteSync(
             source_id: sourceId,
             source_label: resolvedUrl,
             canonical_skill_path: contentUrl || slug,
-            directory_fingerprint: computeStableTextHash(content),
             description,
             category:
               item.category || builtin?.category || inferCategory(slug, description),
@@ -432,7 +430,7 @@ export function useSkillStoreRemoteSync(
         }),
         source_label: dirPath,
         canonical_skill_path: skill.filePath,
-        directory_fingerprint: computeStableTextHash(skill.instructions),
+        directory_fingerprint: skill.directory_fingerprint,
         description: skill.description || `${skill.name} skill`,
         category: inferCategory(skill.name, skill.description || ""),
         author: skill.author || "Local",

@@ -694,6 +694,10 @@ export async function importDatabase(backup: DatabaseBackup): Promise<void> {
             is_favorite: createData.is_favorite ?? false,
             protocol_type: createData.protocol_type ?? "skill",
             currentVersion: createData.currentVersion,
+            source_label: createData.source_label,
+            source_branch: createData.source_branch,
+            source_directory: createData.source_directory,
+            canonical_skill_path: createData.canonical_skill_path,
           },
           { skipInitialVersion: true },
         );

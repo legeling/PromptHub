@@ -1,7 +1,10 @@
 import { ipcMain } from "electron";
 import { IPC_CHANNELS } from "@prompthub/shared/constants";
 import { SkillInstaller } from "../../services/skill-installer";
-import { buildSkillSyncUpdateFromRepo } from "../../services/skill-repo-sync";
+import {
+  buildSkillSyncUpdateFromRepo,
+  computeRepoDirectoryFingerprint,
+} from "../../services/skill-repo-sync";
 import type { SkillIPCContext } from "./shared";
 import { ensureLocalRepoPath, readCurrentFilesSnapshot } from "./shared";
 
@@ -82,7 +85,14 @@ async function syncSkillFromRepo(
     return skill;
   }
 
-  const nextUpdate = buildSkillSyncUpdateFromRepo(skill, skillMdFile.content);
+  const directoryFingerprint = await computeRepoDirectoryFingerprint(
+    resolvedRepoPath,
+  );
+  const nextUpdate = buildSkillSyncUpdateFromRepo(
+    skill,
+    skillMdFile.content,
+    directoryFingerprint,
+  );
   if (!nextUpdate) {
     return skill;
   }
@@ -301,9 +311,11 @@ export function registerSkillLocalRepoHandlers({ db }: SkillIPCContext): void {
         content,
       );
       if (relativePath.toLowerCase() === "skill.md") {
+        const nextFingerprint = await computeRepoDirectoryFingerprint(repoPath);
         db.update(skillId, {
           content,
           instructions: content,
+          directory_fingerprint: nextFingerprint,
         });
       }
       return result;

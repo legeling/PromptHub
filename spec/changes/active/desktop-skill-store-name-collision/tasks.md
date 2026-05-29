@@ -7,4 +7,7 @@
 - [x] 设计并实现数据库迁移：从 `LOWER(name)` 唯一约束迁移到来源实例唯一约束。
 - [x] 补充同名跨 source / 跨 branch / 同内容镜像 的测试。
 - [x] 设计并实现平台侧同名 skill 的唯一安装目录策略，避免按 `skill.name` 覆盖。
-- [ ] 设计 UI 标签与状态 badge，确保用户可区分 stable/dev/community/local 变体。
+- [x] 设计并实现统一的 variant badge 解析层，供 store 与 My Skills 复用。
+- [x] 在 `SkillStoreCard` / `SkillStoreDetail` 中展示来源标签与状态 badge。
+- [x] 在 `SkillGalleryCard` / `SkillListView` 中展示导入后来源标签与变体 badge。
+- [x] 补充组件测试覆盖 official/dev/community/local 等 badge 展示。

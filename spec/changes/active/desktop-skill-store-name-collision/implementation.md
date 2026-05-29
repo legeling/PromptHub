@@ -2,7 +2,7 @@
 
 ## Status
 
-实现进行中，核心身份模型、数据库约束、商店去重、安装态判定已落地并通过当前定向验证。长期目录结构与平台激活模型已定稿为“统一 variant 容器 + 平台按逻辑名单激活”，当前部分平台唯一目录实现视为过渡方案，后续会继续收敛。
+实现进行中，核心身份模型、数据库约束、商店去重、安装态判定已落地并通过当前定向验证与真实 Electron E2E。长期目录结构与平台激活模型已定稿为“统一 variant 容器 + 平台按逻辑名单激活”，当前剩余工作主要是 UI 区分标签与状态 badge 收口；`directory_fingerprint` 的生产链路也已从 `SKILL.md` 近似值收口为真正的整目录指纹，`local-dir` store 的整目录导入缺口也已补齐。
 
 ## Findings Captured Before Implementation
 
@@ -50,6 +50,117 @@
   - `apps/desktop/tests/unit/main/skill-installer-platform.test.ts`
   - `apps/desktop/tests/unit/main/skill-installer-repo.test.ts`
   - `apps/desktop/tests/unit/main/skill-installer.test.ts` 中 `installFromGithub` 相关用例
+  - `apps/desktop/tests/unit/services/skill-identity.test.ts`
+    - 直接验证 `buildSkillSourceId(...)` 在 source / branch / directory / skillPath 维度上的稳定性与区分度
+    - 直接验证 `computeDirectoryFingerprint(...)` 会忽略 `.prompthub/` / `.git/` / `node_modules/`，且对真实目录内容变化敏感
+  - `apps/desktop/tests/unit/services/github-skill-store.test.ts`
+    - 验证同 repo 同名 skill 在不同 branch 下生成不同 `source_id`
+    - 验证同 repo 同 branch 下不同目录/路径的同名 skill 会保留为不同变体
+    - 验证重复 tree entry 会按 `source_id` 去重
+  - `apps/desktop/tests/unit/main/skill-db-source-id.test.ts`
+    - 验证同名不同 `source_id` 可共存
+    - 验证相同 `source_id` 会被数据库/SkillDB 拒绝
+- 在补齐唯一性测试时发现并修复 `packages/db/src/skill.ts` 的更新路径缺陷：
+  - 之前 `SkillDB.update()` 只在更新 `name` 时检查重复
+  - 导致“仅更新 `source_id`”不会触发唯一性校验
+  - 现已改为：只要 `name` 或 `source_id` 任一变化，就按“优先 `source_id`，否则 `name`”执行重复校验
+- 已补充并通过真实 Electron E2E：
+  - `apps/desktop/tests/e2e/local-store-source.spec.ts`
+    - 验证本地目录导入进入 `skills/<id>/repo/`
+    - 验证 sidecar `skills/<id>/.prompthub/source.json`
+    - 验证 sidecar `skills/<id>/.prompthub/variant.json`
+  - `apps/desktop/tests/e2e/skill-create-structure.spec.ts`
+    - 验证 UI 手动新建 skill 进入 managed variant container
+    - 验证 `skills/<id>/repo/SKILL.md` 与 sidecar 文件落盘
+- 已完成 `directory_fingerprint` 生产链路收口：
+  - `packages/shared/utils/skill-identity.ts`
+    - 指纹算法现在同时支持文本文件与二进制文件字节级哈希
+    - 新增 `computeDirectoryFingerprintFromHashes(...)`，用于远端 Git tree 直接按 blob hash 组装目录指纹
+  - `apps/desktop/src/renderer/services/github-skill-store.ts`
+    - GitHub tree 扫描改为基于 `git/trees` 返回的 blob `sha` 计算真正的整目录指纹
+    - 不再把单个 `SKILL.md` 内容 hash 冒充目录指纹
+  - `apps/desktop/src/renderer/components/skill/store-remote-sync.ts`
+    - marketplace JSON 源在拿不到完整目录时不再伪造 `directory_fingerprint`
+    - local-dir 源改为透传主进程扫描得到的真实目录指纹
+  - `apps/desktop/src/main/services/skill-installer.ts`
+    - `installFromGithub` / `installFromSkillContent` / `scanLocalPreview` 均改为基于真实 repo 文件字节写入 `directory_fingerprint`
+  - `apps/desktop/src/main/services/skill-repo-sync.ts`
+    - 新增 `computeRepoDirectoryFingerprint(...)`
+    - `buildSkillSyncUpdateFromRepo(...)` 现在会在 repo 内容变更时同步回写目录指纹
+  - `apps/desktop/src/main/ipc/skill/local-repo-handlers.ts`
+    - `syncFromRepo` 以及直接编辑 `SKILL.md` 的写入路径都会刷新 `directory_fingerprint`
+  - `packages/core/src/cli/skill-cli-service.ts`
+    - CLI 的安装、repo 自举、扫描预览、`syncFromRepo` 也统一接入真实目录指纹
+- 已补充并通过 `directory_fingerprint` 回归测试：
+  - `apps/desktop/tests/unit/services/skill-identity.test.ts`
+    - 新增二进制文件变化会影响目录指纹的断言
+  - `apps/desktop/tests/unit/services/github-skill-store.test.ts`
+    - 验证远端 Git tree 目录指纹来自 blob hash，而非 `SKILL.md` 内容
+  - `apps/desktop/tests/unit/main/skill-repo-sync.test.ts`
+    - 验证 repo 同步会回写 `directory_fingerprint`
+  - `apps/desktop/tests/unit/main/skill-installer.test.ts`
+    - 验证 `scanRemoteGithub` 会透传真实 `directory_fingerprint`
+- 已修复 `local-dir` source 安装/更新链路中的真实目录内容丢失问题：
+  - 问题调用链：`SkillStore` 本地源安装/更新动作 -> `skill.store.ts` registry install/update 分支 -> 仅 `writeLocalFile("SKILL.md")` 写入 managed repo -> `syncFromRepo` 扫描到的目录只剩单文件 -> `directory_fingerprint` 错误塌缩
+  - 根因是 renderer 在 local source 场景下没有把完整 skill 目录 materialize 到 managed repo，而是只写了 `SKILL.md`
+  - 现已改为：
+    - local source 安装后直接 `saveToRepo(skillId, localDir, "copy")`
+    - 随后统一执行 `syncFromRepo(skillId)`
+    - local source 更新也走同一整目录同步链路
+  - 已补充 `apps/desktop/tests/unit/stores/skill.store.test.ts` 断言 local source 安装/更新会调用 `saveToRepo(...)` 与 `syncFromRepo(...)`
+  - 已补充并通过真实 Electron E2E：
+    - `apps/desktop/tests/e2e/local-store-same-name-variants.spec.ts`
+    - 验证同一 `local-dir` source 下，两份同名 skill 在 `SKILL.md` 完全相同、仅资源文件不同的情况下：
+      - 商店列表不会错误折叠
+      - 第一份导入后第二份仍可继续导入
+      - 导入到 `My Skills` 后两个实例的 `source_id` 与 `directory_fingerprint` 都保持区分
+- 已完成 UI 标签与状态 badge 收口：
+  - 新增共享 badge 解析层：
+    - `apps/desktop/src/renderer/services/skill-variant-badges.ts`
+    - 统一从 `source_url` / `source_label` / `source_branch` / `source_directory` / `is_builtin` 推导来源与变体标签
+  - 新增共享展示组件：
+    - `apps/desktop/src/renderer/components/skill/SkillVariantBadgeList.tsx`
+  - 已接入以下入口：
+    - `SkillStoreCard`
+    - `SkillStoreDetail`
+    - `SkillGalleryCard`
+    - `SkillListView`
+  - 当前可直观看到的 badge 包括：
+    - 来源：`Official` / `Community` / `Local` / `Git`
+    - 变体：`Stable` / `Dev` / 具体 branch / 目录路径摘要
+    - 状态：`Imported` / `Update available`
+  - 导入后 `My Skills` 视图采用 best-effort 回显：
+    - 优先使用现有字段
+    - 缺少持久化 `source_branch` / `source_directory` 时，从 `source_url` 尝试反推
+    - 无法可靠推导时只显示稳定来源类型，不伪造 branch / directory
+  - 已补充并通过组件测试：
+    - `apps/desktop/tests/unit/components/skill-view-tags.test.tsx`
+    - `apps/desktop/tests/unit/components/skill-store-remote.test.tsx`
+- 已完成 source 元数据持久化收口：
+  - `Skill` 现已正式持久化以下字段，而不是只存在于 `RegistrySkill` / renderer 内存态：
+    - `source_label`
+    - `source_branch`
+    - `source_directory`
+    - `canonical_skill_path`
+  - 已打通的层级：
+    - `packages/shared/types/skill.ts`
+    - `packages/db/src/schema.ts`
+    - `packages/db/src/init.ts`
+    - `packages/db/src/skill.ts`
+    - `apps/desktop/src/renderer/services/skill-normalize.ts`
+    - `apps/desktop/src/renderer/stores/skill.store.ts`
+    - `apps/desktop/src/main/services/skill-installer.ts`
+    - `apps/desktop/src/main/services/skill-installer-export.ts`
+    - `apps/desktop/src/main/services/skill-import-sanitize.ts`
+    - `apps/desktop/src/renderer/services/database-backup.ts`
+  - 结果：
+    - store 导入后的 `My Skills` 现在可以直接读取持久化来源元数据
+    - badge 展示不再依赖 URL 反推作为主路径，仅把反推保留为兼容 fallback
+    - JSON 导出 / 导入与 backup restore 也会保留这些来源字段
+  - 已补充并通过的持久化回归：
+    - `apps/desktop/tests/unit/main/skill-db.test.ts`
+    - `apps/desktop/tests/unit/main/skill-db-source-id.test.ts`
+    - `apps/desktop/tests/unit/main/skill-installer.test.ts`
 
 ## Expected Verification
 
@@ -63,6 +174,18 @@
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/skill-installer-platform.test.ts tests/unit/stores/skill.store.test.ts tests/unit/components/skill-store-remote.test.tsx`
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/skill-installer.test.ts --testNamePattern="SkillInstaller.installFromGithub"`
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/skill-installer-repo.test.ts tests/unit/main/skill-installer-platform.test.ts tests/unit/stores/skill.store.test.ts tests/unit/components/skill-store-remote.test.tsx`
+- `pnpm --filter @prompthub/desktop lint`
+- `pnpm --filter @prompthub/desktop typecheck`
+- `pnpm --filter @prompthub/desktop test:e2e -- tests/e2e/local-store-source.spec.ts`
+- `pnpm --filter @prompthub/desktop test:e2e -- tests/e2e/skill-create-structure.spec.ts`
+- `pnpm exec playwright test tests/e2e/local-store-source.spec.ts tests/e2e/skill-create-structure.spec.ts`
+- `pnpm exec vitest run tests/unit/services/skill-identity.test.ts tests/unit/services/github-skill-store.test.ts tests/unit/main/skill-db.test.ts tests/unit/main/skill-db-source-id.test.ts`
+- `pnpm exec vitest run tests/unit/stores/skill.store.test.ts tests/unit/components/skill-store-remote.test.tsx tests/unit/main/skill-installer-platform.test.ts tests/unit/main/skill-installer-repo.test.ts tests/unit/main/skill-installer.test.ts tests/unit/main/database-migration-locks.test.ts tests/unit/services/skill-identity.test.ts tests/unit/services/github-skill-store.test.ts tests/unit/main/skill-db.test.ts tests/unit/main/skill-db-source-id.test.ts`
+- `pnpm exec vitest run tests/unit/services/skill-identity.test.ts tests/unit/services/github-skill-store.test.ts tests/unit/main/skill-repo-sync.test.ts tests/unit/main/skill-installer.test.ts`
+- `pnpm exec vitest run tests/unit/stores/skill.store.test.ts`
+- `pnpm exec vitest run tests/unit/components/skill-view-tags.test.tsx tests/unit/components/skill-store-remote.test.tsx`
+- `pnpm exec vitest run tests/unit/main/skill-db.test.ts tests/unit/main/skill-db-source-id.test.ts tests/unit/main/skill-installer.test.ts`
+- `pnpm --filter @prompthub/desktop test:e2e -- tests/e2e/local-store-same-name-variants.spec.ts`
 - `pnpm --filter @prompthub/desktop lint`
 - `pnpm --filter @prompthub/desktop typecheck`
 

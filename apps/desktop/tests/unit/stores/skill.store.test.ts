@@ -793,6 +793,8 @@ description: Use this skill for PDF tasks.
       content: "# Local Writer\n\nLatest local content\n",
     });
     (window as any).api.skill.writeLocalFile = vi.fn().mockResolvedValue(undefined);
+    (window as any).api.skill.saveToRepo = vi.fn().mockResolvedValue(undefined);
+    (window as any).api.skill.syncFromRepo = vi.fn().mockResolvedValue(undefined);
 
     useSkillStore.setState({
       registrySkills: [],
@@ -832,6 +834,14 @@ description: Use this skill for PDF tasks.
         instructions: "# Local Writer\n\nLatest local content\n",
       }),
     );
+    expect((window as any).api.skill.saveToRepo).toHaveBeenCalledWith(
+      "skill-local-writer",
+      "/tmp/local-writer",
+      "copy",
+    );
+    expect((window as any).api.skill.syncFromRepo).toHaveBeenCalledWith(
+      "skill-local-writer",
+    );
   });
 
   it("updates a pristine skill from a cached local store source entry using the latest local file", async () => {
@@ -848,6 +858,8 @@ description: Use this skill for PDF tasks.
     (window as any).api.skill.readLocalFileByPath = vi.fn().mockResolvedValue({
       content: "# Local Writer\n\nLatest local content\n",
     });
+    (window as any).api.skill.saveToRepo = vi.fn().mockResolvedValue(undefined);
+    (window as any).api.skill.syncFromRepo = vi.fn().mockResolvedValue(undefined);
 
     const originalHash = await useSkillStore
       .getState()
@@ -910,6 +922,14 @@ description: Use this skill for PDF tasks.
         instructions: "# Local Writer\n\nLatest local content\n",
         installed_version: "1.1.0",
       }),
+    );
+    expect((window as any).api.skill.saveToRepo).toHaveBeenCalledWith(
+      "skill-local-writer",
+      "/tmp/local-writer",
+      "copy",
+    );
+    expect((window as any).api.skill.syncFromRepo).toHaveBeenCalledWith(
+      "skill-local-writer",
     );
   });
 

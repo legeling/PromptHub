@@ -226,6 +226,10 @@ export function initDatabase(
     const skillNewColumns: { name: string; type: string }[] = [
       { name: "source_url", type: "TEXT" },
       { name: "source_id", type: "TEXT" },
+      { name: "source_label", type: "TEXT" },
+      { name: "source_branch", type: "TEXT" },
+      { name: "source_directory", type: "TEXT" },
+      { name: "canonical_skill_path", type: "TEXT" },
       { name: "directory_fingerprint", type: "TEXT" },
       { name: "icon_url", type: "TEXT" },
       { name: "icon_emoji", type: "TEXT" },

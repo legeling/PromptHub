@@ -11,7 +11,7 @@ import {
 } from "@prompthub/shared/utils/git-repo";
 import {
   buildSkillSourceId,
-  computeStableTextHash,
+  computeDirectoryFingerprintFromHashes,
 } from "@prompthub/shared/utils/skill-identity";
 
 function stripQuotes(value: string): string {
@@ -194,6 +194,37 @@ function isRootReadmePath(filePath: string): boolean {
   return /^[^/]+$/u.test(filePath) && /^readme\.md$/i.test(filePath);
 }
 
+function getTreeBackedDirectoryFingerprint(
+  treeEntries: Array<GitHubTreeEntry & { path: string; type: string; sha?: string }>,
+  skillFilePath: string,
+): string | undefined {
+  const normalizedSkillPath = skillFilePath.replace(/^\/+|\/+$/g, "");
+  const normalizedLowerPath = normalizedSkillPath.toLowerCase();
+  const skillDir =
+    normalizedLowerPath === "skill.md" || normalizedLowerPath.endsWith("/skill.md")
+      ? normalizedSkillPath.includes("/")
+        ? normalizedSkillPath.slice(0, normalizedSkillPath.lastIndexOf("/"))
+        : ""
+      : normalizedSkillPath;
+  const prefix = skillDir ? `${skillDir}/` : "";
+  const scopedEntries = treeEntries
+    .filter((entry) => entry.type === "blob")
+    .filter((entry) =>
+      prefix ? entry.path.startsWith(prefix) : !entry.path.includes("/"),
+    )
+    .filter((entry) => typeof entry.sha === "string" && entry.sha.length > 0)
+    .map((entry) => ({
+      path: prefix ? entry.path.slice(prefix.length) : entry.path,
+      contentHash: entry.sha!,
+    }));
+
+  if (scopedEntries.length === 0) {
+    return undefined;
+  }
+
+  return computeDirectoryFingerprintFromHashes(scopedEntries);
+}
+
 export async function loadGitHubSkillRepo(
   repoUrl: string,
   options: {
@@ -312,7 +343,10 @@ export async function loadGitHubSkillRepo(
         source_branch: resolvedBranch,
         source_directory: directoryPath || resolvedDirectory || undefined,
         canonical_skill_path: canonicalSkillPath,
-        directory_fingerprint: computeStableTextHash(content),
+        directory_fingerprint: getTreeBackedDirectoryFingerprint(
+          treeEntries,
+          canonicalSkillPath,
+        ),
         description,
         category: builtin?.category || inferCategory(slug, description),
         icon_url: builtin?.icon_url,
@@ -387,7 +421,10 @@ export async function loadGitHubSkillRepo(
       source_branch: resolvedBranch,
       source_directory: resolvedDirectory || undefined,
       canonical_skill_path: readmeEntry.path,
-      directory_fingerprint: computeStableTextHash(content),
+      directory_fingerprint: getTreeBackedDirectoryFingerprint(
+        treeEntries,
+        readmeEntry.path,
+      ),
       description,
       category: builtin?.category || inferCategory(slug, description),
       icon_url: builtin?.icon_url,

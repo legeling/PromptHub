@@ -306,6 +306,7 @@ describe("SkillInstaller.scanRemoteGithub", () => {
         author: "icelemon",
         tags: ["gitea"],
         instructions: "# Gitea skill\n\nContent",
+        directory_fingerprint: "gitea-fingerprint",
         filePath: "/tmp/gitea-skill/SKILL.md",
         localPath: "/tmp/gitea-skill",
         platforms: ["claude"],
@@ -321,6 +322,7 @@ describe("SkillInstaller.scanRemoteGithub", () => {
     expect(result).toHaveLength(1);
     expect(result[0].slug).toBe("gitea-skill");
     expect(result[0].author).toBe("icelemon");
+    expect(result[0].directory_fingerprint).toBe("gitea-fingerprint");
     expect(skillInstallerUtils.gitClone).toHaveBeenCalled();
   });
 
@@ -336,6 +338,7 @@ describe("SkillInstaller.scanRemoteGithub", () => {
         author: "owner",
         tags: ["ssh"],
         instructions: "# SSH skill",
+        directory_fingerprint: "ssh-fingerprint",
         filePath: "/tmp/ssh-skill/SKILL.md",
         localPath: "/tmp/ssh-skill",
         platforms: ["claude"],
@@ -350,6 +353,7 @@ describe("SkillInstaller.scanRemoteGithub", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].slug).toBe("ssh-skill");
+    expect(result[0].directory_fingerprint).toBe("ssh-fingerprint");
   });
 
   it("rejects invalid git repository URLs", async () => {
@@ -1713,16 +1717,16 @@ describe("SkillInstaller.scanLocal (with real DB)", () => {
   });
 });
 
-// ---------- P3: UNIQUE index on skills.LOWER(name) ----------
+// ---------- P3: UNIQUE index on skills.source_id ----------
 
-describe("P3: skills table UNIQUE index on LOWER(name)", () => {
-  it("SCHEMA_INDEXES contains UNIQUE index on LOWER(name)", () => {
-    expect(SCHEMA_INDEXES).toContain("idx_skills_name_lower");
+describe("P3: skills table UNIQUE index on source_id", () => {
+  it("SCHEMA_INDEXES contains UNIQUE index on source_id", () => {
+    expect(SCHEMA_INDEXES).toContain("idx_skills_source_id");
     expect(SCHEMA_INDEXES).toContain("UNIQUE INDEX");
-    expect(SCHEMA_INDEXES).toContain("LOWER(name)");
+    expect(SCHEMA_INDEXES).toContain("skills(source_id)");
   });
 
-  it("prevents inserting two skills with same name (case-insensitive) at DB level", () => {
+  it("prevents inserting two skills with the same source_id at DB level", () => {
     const dbDir = fsSync.mkdtempSync(
       path.join(os.tmpdir(), "unique-idx-test-"),
     );
@@ -1735,17 +1739,17 @@ describe("P3: skills table UNIQUE index on LOWER(name)", () => {
       const now = Date.now();
       testDb
         .prepare(
-          `INSERT INTO skills (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)`,
+          `INSERT INTO skills (id, name, source_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
         )
-        .run("id-1", "My-Skill", now, now);
+        .run("id-1", "My-Skill", "source://same-variant", now, now);
 
-      // Same name, different case — should be rejected by UNIQUE index
+      // Same source_id should be rejected by the partial UNIQUE index
       expect(() => {
         testDb
           .prepare(
-            `INSERT INTO skills (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)`,
+            `INSERT INTO skills (id, name, source_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
           )
-          .run("id-2", "my-skill", now, now);
+          .run("id-2", "my-skill", "source://same-variant", now, now);
       }).toThrow(/UNIQUE constraint failed/);
     } finally {
       testDb.close();
@@ -1999,6 +2003,79 @@ describe("SkillInstaller.installFromGithub", () => {
 
 });
 
+describe("SkillInstaller.scanRemoteGithub", () => {
+  it("accepts HTTPS Gitea URLs and forwards the exact clone URL", async () => {
+    await SkillInstaller.init();
+
+    vi.spyOn(skillInstallerUtils, "gitClone").mockResolvedValue(undefined);
+    vi.spyOn(SkillInstaller, "scanLocalPreview").mockResolvedValue([
+      {
+        name: "gitea-skill",
+        description: "A skill from Gitea",
+        version: "1.0.0",
+        author: "icelemon",
+        tags: ["gitea"],
+        instructions: "# Gitea skill\n\nContent",
+        directory_fingerprint: "gitea-fingerprint",
+        filePath: "/tmp/gitea-skill/SKILL.md",
+        localPath: "/tmp/gitea-skill",
+        platforms: ["claude"],
+        protocol_type: "skill",
+      },
+    ]);
+
+    const result = await SkillInstaller.scanRemoteGithub(
+      "https://gitea.example.com/icelemon/skills",
+      [],
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].slug).toBe("gitea-skill");
+    expect(result[0].author).toBe("icelemon");
+    expect(result[0].directory_fingerprint).toBe("gitea-fingerprint");
+    expect(skillInstallerUtils.gitClone).toHaveBeenCalledWith(
+      "https://gitea.example.com/icelemon/skills",
+      expect.stringContaining("icelemon-skills"),
+      undefined,
+    );
+  });
+
+  it("accepts SSH Gitea URLs and forwards the exact clone URL", async () => {
+    await SkillInstaller.init();
+
+    vi.spyOn(skillInstallerUtils, "gitClone").mockResolvedValue(undefined);
+    vi.spyOn(SkillInstaller, "scanLocalPreview").mockResolvedValue([
+      {
+        name: "ssh-skill",
+        description: "SSH skill",
+        version: "1.0.0",
+        author: "owner",
+        tags: ["ssh"],
+        instructions: "# SSH skill",
+        directory_fingerprint: "ssh-fingerprint",
+        filePath: "/tmp/ssh-skill/SKILL.md",
+        localPath: "/tmp/ssh-skill",
+        platforms: ["claude"],
+        protocol_type: "skill",
+      },
+    ]);
+
+    const result = await SkillInstaller.scanRemoteGithub(
+      "git@gitea.example.com:icelemon/skills.git",
+      [],
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].slug).toBe("ssh-skill");
+    expect(result[0].directory_fingerprint).toBe("ssh-fingerprint");
+    expect(skillInstallerUtils.gitClone).toHaveBeenCalledWith(
+      "git@gitea.example.com:icelemon/skills.git",
+      expect.stringContaining("icelemon-skills"),
+      undefined,
+    );
+  });
+});
+
 // ---------- M6: scanLocalPreview with db param marks DB-existing names ----------
 
 describe("scanLocalPreview DB conflict detection (M6)", () => {
@@ -2114,9 +2191,17 @@ describe("L3: JSON export/import preserves source_url", () => {
     const json = SkillInstaller.exportAsJson({
       name: "url-skill",
       source_url: "https://github.com/owner/repo",
+      source_label: "owner/repo",
+      source_branch: "main",
+      source_directory: "skills/pdf",
+      canonical_skill_path: "skills/pdf/SKILL.md",
     });
     const parsed = JSON.parse(json) as Record<string, unknown>;
     expect(parsed.source_url).toBe("https://github.com/owner/repo");
+    expect(parsed.source_label).toBe("owner/repo");
+    expect(parsed.source_branch).toBe("main");
+    expect(parsed.source_directory).toBe("skills/pdf");
+    expect(parsed.canonical_skill_path).toBe("skills/pdf/SKILL.md");
   });
 
   it("exportAsJson defaults source_url to empty string when not provided", () => {
@@ -2139,6 +2224,10 @@ describe("L3: JSON export/import preserves source_url", () => {
         name: "roundtrip-url",
         description: "A skill with source URL",
         source_url: "https://github.com/test/roundtrip",
+        source_label: "test/roundtrip",
+        source_branch: "release",
+        source_directory: "skills/.curated/roundtrip",
+        canonical_skill_path: "skills/.curated/roundtrip/SKILL.md",
         instructions: "# Instructions\n\nDo things.",
       });
 
@@ -2151,6 +2240,12 @@ describe("L3: JSON export/import preserves source_url", () => {
       expect(imported).not.toBeNull();
       expect(imported!.name).toBe("roundtrip-url");
       expect(imported!.source_url).toBe("https://github.com/test/roundtrip");
+      expect(imported!.source_label).toBe("test/roundtrip");
+      expect(imported!.source_branch).toBe("release");
+      expect(imported!.source_directory).toBe("skills/.curated/roundtrip");
+      expect(imported!.canonical_skill_path).toBe(
+        "skills/.curated/roundtrip/SKILL.md",
+      );
     } finally {
       sqliteDb.close();
     }

@@ -16,6 +16,10 @@ export interface Skill {
   author?: string;
   source_url?: string; // GitHub URL or registry source
   source_id?: string; // Stable source identity for same-name variants
+  source_label?: string; // Human-readable source label for variants
+  source_branch?: string; // Source branch when imported from git-like stores
+  source_directory?: string; // Source directory when imported from nested stores
+  canonical_skill_path?: string; // Canonical skill path inside the source
   logical_name?: string; // Stable logical skill grouping name
   variant_key?: string; // Stable per-variant key within a logical skill
   local_repo_path?: string; // Absolute path to the cloned/saved local repo directory
@@ -261,6 +265,11 @@ export interface SkillLocalFileEntry {
   isDirectory: boolean;
 }
 
+export interface SkillLocalFileBufferEntry {
+  path: string;
+  data: Uint8Array;
+}
+
 /**
  * Local repo file tree entry metadata.
  * 本地仓库文件树元数据。
@@ -363,6 +372,7 @@ export interface ScannedSkill {
   author: string;
   tags: string[];
   instructions: string;
+  directory_fingerprint?: string;
   /** Absolute path to the SKILL.md file; used for dedup and installed-check */
   filePath: string;
   /** Parent directory of the SKILL.md file (skill folder path) */

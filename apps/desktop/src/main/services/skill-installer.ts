@@ -347,6 +347,8 @@ export class SkillInstaller {
 
       // Create Skill in DB first, then move the cloned repo into the managed
       // variant container so all My Skills entries share one disk layout.
+      const repoFiles = await this.readLocalRepoFileBuffersByPath(skillDir);
+      const sourceDirectory = path.relative(installDir, skillDir).replace(/\\/g, "/") || undefined;
       const skill = db.create({
         name: manifest.name || repoName,
         description: manifest.description || `Installed from ${url}`,
@@ -356,7 +358,11 @@ export class SkillInstaller {
         instructions: manifest.instructions || "",
         protocol_type: "skill",
         source_url: url,
+        source_label: `${userDir}/${repoName}`,
+        source_directory: sourceDirectory,
+        canonical_skill_path: sourceDirectory ? `${sourceDirectory}/SKILL.md` : "SKILL.md",
         local_repo_path: installDir,
+        directory_fingerprint: computeDirectoryFingerprint(repoFiles),
         is_favorite: false,
         tags: [],
         original_tags: manifest.tags || ["github"],
@@ -474,9 +480,9 @@ export class SkillInstaller {
       );
     }
 
-    const sanitized = sanitizeImportedSkillDraft(
-      {
-        name: skillName,
+      const sanitized = sanitizeImportedSkillDraft(
+        {
+          name: skillName,
         description: parsed?.frontmatter.description,
         fallbackDescription:
           manifest.description ||
@@ -494,6 +500,7 @@ export class SkillInstaller {
       },
       { defaultTags: [] },
     );
+    const canonicalSkillPath = options?.repoSourceDir ? "SKILL.md" : undefined;
 
     // Save files first, then create DB record to avoid orphaned records
     const createdSkill = db.create({
@@ -508,7 +515,9 @@ export class SkillInstaller {
       original_tags: sanitized.tags,
       is_favorite: false,
       source_url: sanitized.source_url,
+      source_label: options?.sourceUrl,
       local_repo_path: sanitized.local_repo_path,
+      canonical_skill_path: canonicalSkillPath,
     });
 
     let localRepoPath: string | undefined;
@@ -526,7 +535,16 @@ export class SkillInstaller {
     }
 
     if (localRepoPath && createdSkill.local_repo_path !== localRepoPath) {
-      db.update(createdSkill.id, { local_repo_path: localRepoPath });
+      const repoFiles = await this.readLocalRepoFileBuffersByPath(localRepoPath);
+      db.update(createdSkill.id, {
+        local_repo_path: localRepoPath,
+        directory_fingerprint: computeDirectoryFingerprint(repoFiles),
+      });
+    } else if (localRepoPath) {
+      const repoFiles = await this.readLocalRepoFileBuffersByPath(localRepoPath);
+      db.update(createdSkill.id, {
+        directory_fingerprint: computeDirectoryFingerprint(repoFiles),
+      });
     }
 
     return createdSkill.id;
@@ -659,9 +677,7 @@ export class SkillInstaller {
           source_branch: normalizedBranch,
           source_directory: normalizedDirectory || undefined,
           canonical_skill_path: skill.filePath,
-          directory_fingerprint: computeDirectoryFingerprint([
-            { path: "SKILL.md", content: skill.instructions, isDirectory: false },
-          ]),
+          directory_fingerprint: skill.directory_fingerprint,
           description: builtin?.description || skill.description || `${skill.name} skill`,
           category: builtin?.category || "general",
           icon_url: builtin?.icon_url,
@@ -873,6 +889,9 @@ export class SkillInstaller {
               );
 
               skillMap.set(skillFolderPath, {
+                directory_fingerprint: computeDirectoryFingerprint(
+                  await this.readLocalRepoFileBuffersByPath(skillFolderPath),
+                ),
                 name: sanitized.name!,
                 description: sanitized.description || manifest.description,
                 version: sanitized.version,

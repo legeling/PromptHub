@@ -49,6 +49,11 @@ import {
   getSkillSafetySummary,
 } from "./safety-i18n";
 import { SkillMarkdown } from "./SkillMarkdown";
+import { SkillVariantBadgeList } from "./SkillVariantBadgeList";
+import {
+  buildSkillVariantBadges,
+  inferSkillVariantSourceDebugLabel,
+} from "../../services/skill-variant-badges";
 
 interface SkillStoreDetailProps {
   skill: RegistrySkill;
@@ -168,6 +173,20 @@ export function SkillStoreDetail({
   const resolvedDescription = useMemo(
     () => resolveSkillDescription(effectiveSkillMdContent) || skill.description,
     [effectiveSkillMdContent, skill.description],
+  );
+  const installed = isInstalled || justInstalled;
+  const canShowUpdateActions = installed && Boolean(skill.content_url || skill.content);
+  const variantBadges = useMemo(
+    () =>
+      buildSkillVariantBadges(skill, t, {
+        hasUpdate: updateStatus === "update-available",
+        isInstalled: installed,
+      }),
+    [installed, skill, t, updateStatus],
+  );
+  const sourceDebugLabel = useMemo(
+    () => inferSkillVariantSourceDebugLabel(skill),
+    [skill],
   );
 
   const scanSafety = useCallback(async () => {
@@ -473,9 +492,6 @@ export function SkillStoreDetail({
     }
   };
 
-  const installed = isInstalled || justInstalled;
-  const canShowUpdateActions = installed && Boolean(skill.content_url || skill.content);
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
@@ -502,6 +518,7 @@ export function SkillStoreDetail({
             <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
               {resolvedDescription}
             </p>
+            <SkillVariantBadgeList badges={variantBadges} className="mt-2 flex flex-wrap gap-1.5" />
             <div className="flex items-center gap-3 mt-2">
               <span className="text-[11px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">
                 v{skill.version}
@@ -674,6 +691,11 @@ export function SkillStoreDetail({
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                   {t("skill.source", "Source")}
                 </span>
+                {sourceDebugLabel ? (
+                  <div className="mt-1 text-[11px] text-foreground truncate">
+                    {sourceDebugLabel}
+                  </div>
+                ) : null}
                 <a
                   href={skill.source_url}
                   target="_blank"

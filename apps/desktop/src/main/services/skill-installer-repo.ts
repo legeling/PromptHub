@@ -8,6 +8,7 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import type {
   Skill,
+  SkillLocalFileBufferEntry,
   SkillLocalFileEntry,
   SkillLocalFileTreeEntry,
 } from "@prompthub/shared/types";
@@ -24,11 +25,6 @@ import {
   validateRelativePath,
   validateSkillName,
 } from "./skill-installer-internal";
-
-export interface SkillLocalFileBufferEntry {
-  path: string;
-  data: Uint8Array;
-}
 
 export interface CopyRepoByPathToDirectoryOptions {
   ifExists?: "overwrite" | "skip" | "error";
