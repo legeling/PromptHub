@@ -20,6 +20,11 @@ In progress.
 - 为 Web 端新增 `apps/web/src/services/rule-workspace.ts`，将每个用户的 Rules 持久化到 `data/rules/<userId>/...`，避免多用户规则内容混存。
 - 扩展 Web 端 `BackupService`、`/api/sync/*`、`/api/import`、`/api/export`，让 Rules 可通过自托管同步和手工导入导出完整 round-trip。
 - 新增/更新回归测试：`self-hosted-sync.test.ts`、`webdav.test.ts`、`data-settings.test.tsx`、`sync.test.ts`、`import-export.test.ts`、`rule-workspace.test.ts`。
+- 修复 Rules 详情页打开位置按钮：renderer 现在传外部规则文件的父目录给 `shell:openPath`，不再把 `AGENTS.md` 文件路径直接传给只接受目录的主进程接口。
+- 扩展 Rules 冲突读取与解决链路：`rules:read` 在 `out-of-sync` 时返回外部 target content；新增 `rules:resolveConflict`，支持 `use-managed` 写回外部文件和 `use-target` 导入外部文件覆盖 PromptHub 托管副本。
+- Rules UI 在选中已冲突规则时展示 PromptHub 版本与外部文件版本，并要求用户显式选择同步方向，避免静默覆盖用户绕过 PromptHub 修改的 `AGENTS.md` / `CLAUDE.md`。
+- 优化 Rules 冲突弹窗文案：从“导入/覆盖”改为“保留哪个版本作为事实来源”，并在执行覆盖前增加二次确认。
+- 修复设置变更后的 Rules 刷新顺序：修改内置/custom agent 的 root path、`rulesRelativePath` 或启用状态时，先等待 settings 同步到 main/DB，再强制重扫 Rules，避免扫描读到旧的 `AGENTS.md` 路径。
 
 ## Verification
 
@@ -28,7 +33,11 @@ In progress.
 - 当前实现已新增 `rules` / `rule_versions` SQLite 索引层，并在 `rules-workspace.ts` 中同步维护。
 - 当前实现已为 Rules 建立 renderer/store/main/backup 的关键回归测试覆盖。
 - 当前实现已将 Rules 纳入桌面端 WebDAV、自托管同步，以及 Web 端 `/api/sync` / `/api/import` / `/api/export` 数据链路。
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/rules-workspace.test.ts tests/unit/main/rules-ipc.test.ts tests/unit/components/rules-manager.test.tsx tests/unit/stores/rules.store.test.ts` 通过。
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/rules-workspace.test.ts tests/unit/main/rules-ipc.test.ts tests/unit/components/rules-manager.test.tsx tests/unit/stores/rules.store.test.ts tests/unit/stores/settings-rules-sync.test.ts` 通过。
+- `pnpm --filter @prompthub/desktop typecheck` 通过。
 - `pnpm lint` 通过。
+- 尝试运行 `pnpm --filter @prompthub/desktop exec vitest run`；Rules 相关测试通过，但完整套件当前被其他未合并 Skill/TopBar 变更导致的既有失败阻断（例如 `skill-ui.integration.test.tsx`、`skill-filter*.test.ts`、`skill-platform-sync.test.ts`、`skill-db-versioning.test.ts`）。
 - `pnpm build` 通过。
 
 ## Synced Docs

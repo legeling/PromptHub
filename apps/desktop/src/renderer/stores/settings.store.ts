@@ -799,22 +799,28 @@ interface SettingsState {
   setGithubToken: (token: string) => void;
 }
 
-function syncSettingsToMain(settings: Partial<Settings>): void {
+function syncSettingsToMain(settings: Partial<Settings>): Promise<void> {
   if (typeof window === "undefined") {
-    return;
+    return Promise.resolve();
   }
 
-  void window.api?.settings
-    ?.set(settings)
-    .catch((error: unknown) =>
-      console.warn("Failed to sync settings to main process:", error),
-    );
+  return (
+    window.api?.settings
+      ?.set(settings)
+      .catch((error: unknown) =>
+        console.warn("Failed to sync settings to main process:", error),
+      ) ?? Promise.resolve()
+  );
 }
 
 function refreshRulesWorkspace(): void {
   void import("./rules.store").then(({ useRulesStore }) => {
     void useRulesStore.getState().loadFiles({ force: true });
   });
+}
+
+function syncSettingsToMainThenRefreshRules(settings: Partial<Settings>): void {
+  void syncSettingsToMain(settings).then(refreshRulesWorkspace);
 }
 
 function sanitizeGithubToken(token: string): string {
@@ -1632,11 +1638,10 @@ export const useSettingsStore = create<SettingsState>()(
             customAgentRootPaths: nextPaths,
             customSkillScanPaths: nextPaths,
           });
-          syncSettingsToMain({
+          syncSettingsToMainThenRefreshRules({
             customAgents: normalizedAgents,
             customAgentRootPaths: nextPaths,
           });
-          refreshRulesWorkspace();
         },
         addCustomAgent: (input) => {
           const nextAgent = normalizeCustomAgentDraft(input);
@@ -1876,11 +1881,10 @@ export const useSettingsStore = create<SettingsState>()(
             builtinAgentOverrides: normalizedOverrides,
             customPlatformRootPaths: nextLegacyRootPaths,
           });
-          syncSettingsToMain({
+          syncSettingsToMainThenRefreshRules({
             builtinAgentOverrides: normalizedOverrides,
             customPlatformRootPaths: nextLegacyRootPaths,
           });
-          refreshRulesWorkspace();
         },
         resetBuiltinAgentOverride: (platformId) => {
           const nextOverrides = { ...get().builtinAgentOverrides };
@@ -1893,11 +1897,10 @@ export const useSettingsStore = create<SettingsState>()(
             builtinAgentOverrides: normalizedOverrides,
             customPlatformRootPaths: nextLegacyRootPaths,
           });
-          syncSettingsToMain({
+          syncSettingsToMainThenRefreshRules({
             builtinAgentOverrides: normalizedOverrides,
             customPlatformRootPaths: nextLegacyRootPaths,
           });
-          refreshRulesWorkspace();
         },
         setCustomPlatformRootPath: (platformId, pathValue) => {
           get().updateBuiltinAgentOverride(platformId, { rootPath: pathValue });
@@ -1915,8 +1918,7 @@ export const useSettingsStore = create<SettingsState>()(
             ),
           );
           setTouched({ disabledPlatformIds: normalized });
-          syncSettingsToMain({ disabledPlatformIds: normalized });
-          refreshRulesWorkspace();
+          syncSettingsToMainThenRefreshRules({ disabledPlatformIds: normalized });
         },
         setRulePlatformTracked: (platformId, tracked) => {
           const disabledIds = new Set(get().disabledPlatformIds);
@@ -1927,8 +1929,7 @@ export const useSettingsStore = create<SettingsState>()(
           }
           const normalized = Array.from(disabledIds);
           setTouched({ disabledPlatformIds: normalized });
-          syncSettingsToMain({ disabledPlatformIds: normalized });
-          refreshRulesWorkspace();
+          syncSettingsToMainThenRefreshRules({ disabledPlatformIds: normalized });
         },
         setCustomSkillPlatformPath: (platformId, pathValue) => {
           get().setCustomPlatformRootPath(platformId, pathValue);
