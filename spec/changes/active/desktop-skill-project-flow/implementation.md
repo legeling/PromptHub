@@ -38,6 +38,8 @@
 - 修正全局 Skill 详情页默认分发入口：`SkillPlatformPanel` 在切换到新的 Skill 时会优先回到 `全局分发`，不再继承上一个 Skill 详情里停留的 `项目分发` tab。
 - 为全局 Skill 详情页的 `项目分发` 补齐高级设置：默认仍分发到项目根目录下的 `.agents/skills`，展开后可以选择 `copy / symlink`、额外勾选 `.claude/skills` / `.gemini/skills`，也可以添加自定义目标目录；分发时会按每个项目的高级目标选择透传到 `handleDeployToProjects(...)`。
 - 继续把全局详情页的项目分发与项目页“从我的技能导入”对齐：详情页现在复用 `projectSkillImportPreferencesByProjectId`，会读取并保存每个项目的目标目录偏好与自定义目录；没有历史偏好时默认选择 `.agents/skills`，而不是从项目配置中猜测其他目标。
+- 根据白盒审查修复两个交互边界：`projectDeployMode` 不再通过 effect 自动双向同步到全局偏好，而是在用户点击 `Copy / Symlink` 时显式写入；全局详情页项目分发也复用 `getDeployableProjectTargetDirs(...)`，当目标就是当前 Skill 源位置或位于源目录内部时给出 warning，不再走到主进程异常。
+- 清理 `SkillPlatformPanel.tsx` 中未使用的 `projectsWithTargets.targets` 结构，项目列表直接基于 `normalizedProjects` 渲染，避免后续维护误读目标目录来源。
 - 调整 `SkillStore.tsx` 的 `official` 源语义：不再把本地 `registrySkills`/curated 数据伪装成“官方商店”内容展示。当前官方商店改为纯占位态，标题与正文统一提示“后端真实数据源接入后开放，敬请期待”，避免用户误以为这些卡片来自真实官方后端。
 - 更新 `tests/unit/components/skill-i18n-smoke.test.tsx`，改为验证全局 Skill 详情页在同时存在平台安装与项目分发时，会出现 `项目分发` 切换并仍可触发原有分发入口。
 
@@ -70,9 +72,9 @@
 - `pnpm --filter @prompthub/desktop build`
   - 结果：通过（保留既有 Vite chunk warning，无新增错误）
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/skill-detail-project-distribution.test.tsx`
-  - 结果：通过（8/8）
+  - 结果：通过（9/9）
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/skill-detail-project-distribution.test.tsx tests/unit/components/skill-i18n-smoke.test.tsx`
-  - 结果：通过（25/25）
+  - 结果：通过（26/26）
 - `pnpm --filter @prompthub/desktop typecheck`
   - 结果：通过
 - `pnpm --filter @prompthub/desktop exec eslint src/renderer/components/skill/SkillPlatformPanel.tsx src/renderer/components/skill/SkillFullDetailPage.tsx tests/unit/components/skill-detail-project-distribution.test.tsx tests/unit/components/skill-i18n-smoke.test.tsx`

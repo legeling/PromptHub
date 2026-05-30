@@ -138,15 +138,6 @@ export function SkillPlatformPanel({
     setProjectCustomTargets({});
   }, [hasGlobalIntegration, selectedSkill.id]);
 
-  const projectsWithTargets = useMemo(
-    () =>
-      normalizedProjects.map((project) => ({
-        project,
-        targets: getProjectDeployTargets ? getProjectDeployTargets(project) : [],
-      })),
-    [getProjectDeployTargets, normalizedProjects],
-  );
-
   const effectiveSelectedProjectIds = useMemo(() => {
     const validProjectIds = new Set(normalizedProjects.map((project) => project.id));
     return new Set(
@@ -422,7 +413,7 @@ export function SkillPlatformPanel({
                   ) : null}
                 </div>
 
-                {projectsWithTargets.length === 0 ? (
+                {normalizedProjects.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-border bg-accent/30 px-4 py-5 text-sm text-muted-foreground">
                     <p className="font-medium text-foreground">
                       {t("skill.noProjects", "No projects yet")}
@@ -444,7 +435,7 @@ export function SkillPlatformPanel({
                     </div>
 
                     <div className="space-y-2">
-                      {projectsWithTargets.map(({ project }) => {
+                      {normalizedProjects.map((project) => {
                         const isSelected = effectiveSelectedProjectIds.has(project.id);
 
                         return (

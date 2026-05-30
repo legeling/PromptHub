@@ -93,4 +93,5 @@
 - When 用户把这个 Skill 分发到一个或多个项目
 - Then PromptHub 应先解析该 Skill 的真实 repo 路径再执行分发
 - And 应跳过已经存在于目标项目目录中的同名 Skill
+- And 当目标目录就是当前 Skill 的源位置或位于源目录内部时，应给出已在目标位置的提示，而不是尝试复制后报错
 - And 实际写入时应与项目页“从我的技能导入”保持相同的 `skip if exists + copy/symlink` 语义

@@ -58,6 +58,7 @@ import { useSkillPlatform } from "./use-skill-platform";
 import { SkillVersionHistoryModal } from "./SkillVersionHistoryModal";
 import type { SkillSafetyReport } from "@prompthub/shared/types";
 import {
+  getDeployableProjectTargetDirs,
   getMissingProjectTargetDirs,
 } from "../../services/project-skill-targets";
 import {
@@ -246,7 +247,28 @@ export function SkillFullDetailPage({
         return;
       }
 
-      const projectTargetJobs = selectedProjectTargets.flatMap(({ project, targetDirs }) => {
+      const deployableProjectTargets = selectedProjectTargets.map(
+        ({ project, targetDirs }) => ({
+          project,
+          targetDirs: getDeployableProjectTargetDirs(
+            repoPath,
+            selectedSkill.name,
+            targetDirs,
+          ),
+        }),
+      );
+      if (!deployableProjectTargets.some(({ targetDirs }) => targetDirs.length > 0)) {
+        showToast(
+          t(
+            "skill.projectDeployAlreadyAtTarget",
+            "This skill is already inside the selected project target folders.",
+          ),
+          "warning",
+        );
+        return;
+      }
+
+      const projectTargetJobs = deployableProjectTargets.flatMap(({ project, targetDirs }) => {
         const scannedSkills = projectScanState[project.id]?.scannedSkills ?? [];
         return getMissingProjectTargetDirs(
           scannedSkills,
@@ -317,9 +339,10 @@ export function SkillFullDetailPage({
     setProjectDeployMode(projectSkillImportModePreference);
   }, [projectSkillImportModePreference]);
 
-  useEffect(() => {
-    setProjectSkillImportModePreference(projectDeployMode);
-  }, [projectDeployMode, setProjectSkillImportModePreference]);
+  const handleSetProjectDeployMode = (mode: InstallMode) => {
+    setProjectDeployMode(mode);
+    setProjectSkillImportModePreference(mode);
+  };
 
   const targetLang = useMemo(() => {
     const lang = (i18n.language || "").toLowerCase();
@@ -1130,7 +1153,7 @@ export function SkillFullDetailPage({
                       selectAllPlatforms={selectAllPlatforms}
                       deselectAllPlatforms={deselectAllPlatforms}
                       setInstallMode={setInstallMode}
-                      setProjectDeployMode={setProjectDeployMode}
+                      setProjectDeployMode={handleSetProjectDeployMode}
                       setProjectSkillImportPreferences={setProjectSkillImportPreferences}
                       skillMdInstallStatus={skillMdInstallStatus}
                       t={t}

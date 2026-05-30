@@ -260,12 +260,18 @@ describe("Skill detail project distribution", () => {
   });
 
   it("defaults to global distribution when opening a skill detail", async () => {
-    await renderProjectDistribution({ skipProjectTabClick: true });
+    const setProjectSkillImportModePreference = vi.fn();
+
+    await renderProjectDistribution({
+      settingsState: createSettingsState({ setProjectSkillImportModePreference }),
+      skipProjectTabClick: true,
+    });
 
     expect(
       screen.getByRole("button", { name: "Global Distribution" }),
     ).toHaveAttribute("aria-pressed", "true");
     expect(screen.queryByText("Workspace")).not.toBeInTheDocument();
+    expect(setProjectSkillImportModePreference).not.toHaveBeenCalled();
   });
 
   it("uses repo path and skip semantics when distributing from detail page", async () => {
@@ -403,13 +409,40 @@ describe("Skill detail project distribution", () => {
     expect(copyRepoByPathToDirectory).not.toHaveBeenCalled();
   });
 
+  it("warns instead of copying when the selected target is the source location", async () => {
+    const copyRepoByPathToDirectory = vi.fn();
+    const showToast = vi.fn();
+
+    window.api.skill.getRepoPath = vi
+      .fn()
+      .mockResolvedValue("/tmp/workspace/.agents/skills/write");
+    window.api.skill.copyRepoByPathToDirectory = copyRepoByPathToDirectory;
+
+    await renderProjectDistribution({ showToast });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Deploy write to Selected Projects" }),
+    );
+
+    await waitFor(() => {
+      expect(showToast).toHaveBeenCalledWith(
+        "This skill is already inside the selected project target folders.",
+        "warning",
+      );
+    });
+    expect(copyRepoByPathToDirectory).not.toHaveBeenCalled();
+  });
+
   it("supports symlink mode with the same skip behavior", async () => {
     const copyRepoByPathToDirectory = vi.fn().mockResolvedValue(
       "/tmp/workspace/.agents/skills/write",
     );
+    const setProjectSkillImportModePreference = vi.fn();
     window.api.skill.copyRepoByPathToDirectory = copyRepoByPathToDirectory;
 
-    await renderProjectDistribution();
+    await renderProjectDistribution({
+      settingsState: createSettingsState({ setProjectSkillImportModePreference }),
+    });
 
     fireEvent.click(
       screen.getByRole("button", { name: /Advanced Import Settings/ }),
@@ -420,6 +453,7 @@ describe("Skill detail project distribution", () => {
     await waitFor(() => {
       expect(symlinkButton.className).toContain("bg-primary");
     });
+    expect(setProjectSkillImportModePreference).toHaveBeenCalledWith("symlink");
 
     fireEvent.click(
       screen.getByRole("button", { name: "Deploy write to Selected Projects" }),
