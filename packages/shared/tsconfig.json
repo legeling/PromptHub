@@ -12,5 +12,5 @@
     "noEmit": true,
     "isolatedModules": true
   },
-  "include": ["types/**/*", "constants/**/*"]
+  "include": ["types/**/*", "constants/**/*", "utils/**/*"]
 }

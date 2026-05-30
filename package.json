@@ -41,6 +41,8 @@
     "test:web": "pnpm --filter @prompthub/web test",
     "start:web": "pnpm --filter @prompthub/web start",
     "verify:web": "pnpm lint:web && pnpm typecheck:web && pnpm test:web -- --run && pnpm build:web",
+    "verify:release": "node --experimental-strip-types scripts/verify-release.mts",
+    "verify:release:quick": "node --experimental-strip-types scripts/verify-release.mts --profile quick",
     "docker:web:build": "docker build -f apps/web/Dockerfile -t prompthub-web:local ."
   }
 }

@@ -11,6 +11,9 @@
     "./constants/*": "./constants/*.ts",
     "./utils/*": "./utils/*.ts"
   },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
   "files": [
     "types",
     "constants",

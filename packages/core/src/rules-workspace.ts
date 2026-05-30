@@ -490,8 +490,9 @@ export function createRulesWorkspaceService(
     }
 
     try {
+      const managedExists = await fileExists(meta.managedPath);
       const [managedContent, targetContent] = await Promise.all([
-        fileExists(meta.managedPath) ? fsp.readFile(meta.managedPath, "utf-8") : Promise.resolve(""),
+        managedExists ? fsp.readFile(meta.managedPath, "utf-8") : Promise.resolve(""),
         fsp.readFile(meta.targetPath, "utf-8"),
       ]);
 

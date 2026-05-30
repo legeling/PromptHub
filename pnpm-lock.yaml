@@ -398,6 +398,10 @@ importers:
       '@prompthub/shared':
         specifier: workspace:*
         version: link:../shared
+    devDependencies:
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.12.4
 
   packages/db:
     dependencies:
@@ -411,6 +415,9 @@ importers:
         specifier: ^13.0.0
         version: 13.0.0
     devDependencies:
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.12.4
       '@types/uuid':
         specifier: ^10.0.0
         version: 10.0.0

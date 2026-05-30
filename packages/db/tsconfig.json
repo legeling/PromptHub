@@ -7,6 +7,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "noEmit": true,
+    "types": ["node"],
     "paths": {
       "@prompthub/shared": ["../shared/types/index.ts"],
       "@prompthub/shared/*": ["../shared/*/index.ts"]

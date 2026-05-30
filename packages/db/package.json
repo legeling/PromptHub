@@ -11,6 +11,9 @@
     ".": "./src/index.ts",
     "./*": "./src/*"
   },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "node-sqlite3-wasm": "^0.8.30",
     "uuid": "^13.0.0"
@@ -19,6 +22,7 @@
     "@prompthub/shared": "workspace:*"
   },
   "devDependencies": {
+    "@types/node": "^24.0.0",
     "@types/uuid": "^10.0.0"
   }
 }

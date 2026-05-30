@@ -7,8 +7,14 @@
     ".": "./src/index.ts",
     "./*": "./src/*"
   },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "@prompthub/db": "workspace:*",
     "@prompthub/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0"
   }
 }

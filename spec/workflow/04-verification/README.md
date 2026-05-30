@@ -24,3 +24,6 @@
 
 - Cloudflare worker / self-hosted 分支型实现如果进入仓库长期维护范围，至少需要具备独立的 `typecheck`、`lint`、`test` 和构建验证，而不能只依赖主应用验证结果。
 - 若变更影响 monorepo 内的 package export / workspace 接入，还必须补根级构建验证，确保真实调用链不会因 `exports` 缺失或 lockfile 未更新而在构建阶段失败。
+- 发布候选应优先运行根级 `pnpm verify:release` harness；本地快速排查可先运行 `pnpm verify:release:quick`，但 quick profile 不能替代发布准入。
+- 新增或修复线上 bug 时，应先把失败归类到最低有效验证层：shared package typecheck、app lint/typecheck、unit、integration、performance、bundle、E2E smoke 或 packaging。避免通过多个聚合脚本重复运行同一层来制造“已验证”的错觉。
+- Skill 相关发布风险必须先对照 `spec/knowledge/reference/skill-defect-taxonomy.md` 给问题定性，再对照 `spec/knowledge/reference/skill-regression-test-matrix.md` 说明哪些测试项已覆盖、哪些尚未覆盖。
