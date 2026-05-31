@@ -34,7 +34,10 @@ import {
   resolveSkillDescription,
   stripFrontmatter,
 } from "./detail-utils";
-import { computeSkillContentFingerprint } from "../../services/skill-store-update";
+import {
+  computeSkillContentFingerprint,
+  findInstalledRegistrySkill,
+} from "../../services/skill-store-update";
 import { isLikelyLocalSource } from "../../services/skill-store-source";
 import {
   isSkillTranslationStale,
@@ -137,12 +140,7 @@ export function SkillStoreDetail({
           : "English";
   }, [i18n.language]);
 
-  const installedSkill = skills.find(
-    (item) =>
-      item.source_id === skillSourceKey ||
-      item.registry_slug === skill.slug ||
-      item.name === skill.slug,
-  );
+  const installedSkill = findInstalledRegistrySkill(skills, skill);
   const installedSkillMdContent =
     installedSkill?.instructions || installedSkill?.content || "";
   const registrySkillMdContent =
@@ -238,20 +236,15 @@ export function SkillStoreDetail({
     try {
       const report = await window.api.skill.scanSafety({
         name: skill.name,
-        content: skill.content,
+        content: installedSkillMdContent || skill.content,
         sourceUrl: skill.source_url,
         contentUrl: skill.content_url,
+        localRepoPath: installedSkill?.local_repo_path,
         securityAudits: skill.security_audits,
         aiConfig: getSafetyScanAIConfig(aiModels),
       });
       setSafetyReport(report);
       // If already installed, persist to DB
-      const installedSkill = skills.find(
-        (s) =>
-          s.source_id === skillSourceKey ||
-          s.registry_slug === skill.slug ||
-          s.name === skill.slug,
-      );
       if (installedSkill) {
         try {
           await saveSafetyReport(installedSkill.id, report);
@@ -268,13 +261,14 @@ export function SkillStoreDetail({
     }
   }, [
     aiModels,
+    installedSkill,
+    installedSkillMdContent,
     saveSafetyReport,
     showToast,
     skill.content,
     skill.content_url,
     skill.name,
     skill.security_audits,
-    skills,
     skill.source_url,
     t,
   ]);

@@ -16,5 +16,7 @@
 - [x] Add built-in Skill guidance for authoring good package-style Skills.
 - [x] Add built-in PromptHub CLI operator Skill.
 - [x] Verify safety scan and file browser consume managed package directories after install.
+- [x] Fix installed custom Gitea safety scans so internal source provenance does not block managed local package scanning.
+- [x] Add safety scan regression tests for installed managed packages with internal Gitea source URLs and pre-install blocked source behavior.
 - [x] Strengthen project TDD and coverage rules to require 100% line/function/branch/condition coverage for new and changed production code.
 - [x] Sync final behavior back to stable docs after implementation.

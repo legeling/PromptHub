@@ -57,6 +57,11 @@ Regression coverage added:
 - Renderer store tests cover directory derivation from `canonical_skill_path`, GitHub raw-content single-file compatibility, and rollback when clone-backed package persistence fails.
 - Built-in registry test ensures `skill-creator` contains package guidance and `prompthub-cli-operator` contains key CLI operations and safety rules.
 - Create modal test ensures blank manual instructions generate a package-aware starter `SKILL.md`.
+- Safety scan now distinguishes remote/pre-install scans from installed package scans:
+  - Remote entries with internal or blocked source URLs still fail before AI when no managed local repo exists.
+  - Installed Skills with `local_repo_path` are scanned from the managed package directory even when their custom Gitea source URL is internal; the source issue is passed to AI as provenance context.
+  - Store detail safety scan now uses the installed Skill content and `local_repo_path` when the store entry is already imported, so nested package files participate in the AI scan.
+- Added safety scan regressions for installed internal-Gitea packages and for store detail passing the managed package path.
 
 ## Docs Synced
 

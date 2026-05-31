@@ -470,12 +470,14 @@ async function scanSourceUrls(
     try {
       await resolveAddress(host);
     } catch (error) {
+      const hasLocalPackage = Boolean(input.localRepoPath);
       addFinding(findings, {
         code: "internal-source",
-        severity: "high",
+        severity: hasLocalPackage ? "warn" : "high",
         title: "Source resolves to a blocked or internal address",
-        detail:
-          "The declared source host resolves to a local or internal address and should not be trusted for marketplace delivery.",
+        detail: hasLocalPackage
+          ? "The declared source host resolves to a local or internal address. The installed managed package can still be scanned locally, but provenance should be reviewed."
+          : "The declared source host resolves to a local or internal address and should not be trusted for marketplace delivery.",
         evidence: error instanceof Error ? error.message : String(error),
       });
     }
@@ -864,7 +866,10 @@ export async function scanSkillSafety(
   const preflightFindings: SkillSafetyFinding[] = [];
   await scanSourceUrls(input, preflightFindings, resolveAddress);
 
-  if (preflightFindings.some((finding) => finding.code === "internal-source")) {
+  if (
+    !input.localRepoPath &&
+    preflightFindings.some((finding) => finding.code === "internal-source")
+  ) {
     throw new Error(SAFETY_SCAN_BLOCKED_SOURCE_ERROR);
   }
 

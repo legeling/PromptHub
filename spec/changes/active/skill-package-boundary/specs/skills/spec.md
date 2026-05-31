@@ -42,6 +42,27 @@ When the user installs it
 Then PromptHub must resolve and persist the source package directory
 And a fallback to writing only `SKILL.md` must be treated as incomplete unless the source is explicitly single-file.
 
+### REQ-SKILL-PKG-004: Installed Package Safety Scan Uses Managed Files
+
+Safety scanning an installed Skill MUST scan the managed local package directory when it exists. Source URL validation MAY contribute provenance findings, but it MUST NOT prevent scanning an already-installed managed package.
+
+#### Scenario: Installed custom Gitea package has an internal source host
+
+Given a Skill was installed from a custom Gitea store
+And the Skill has a managed local repo path with `SKILL.md` and nested resource files
+And its `source_url` or `content_url` resolves to an internal or otherwise blocked address
+When the user runs safety scan from the installed Skill or store detail
+Then PromptHub scans the managed local package files with the configured AI model
+And the blocked/internal source is surfaced as provenance context for review
+And the scan does not fail with `SAFETY_SCAN_BLOCKED_SOURCE`.
+
+#### Scenario: Remote pre-install scan has an internal source host
+
+Given a store entry is not installed locally
+And no managed local repo path is available
+When its source URL resolves to an internal or otherwise blocked address
+Then PromptHub blocks the pre-install scan before calling AI.
+
 ## MODIFIED Requirements
 
 ### Existing Skill File Contract
@@ -55,3 +76,4 @@ The existing `SKILL.md` contract is narrowed to mean entrypoint file contract. I
 - Renderer store orchestration tests must prove package-capable registry entries use the package import API and do not finish by writing only `SKILL.md`.
 - For custom Git/Gitea sources, tests must cover non-GitHub clone-backed sources, not only GitHub raw file APIs.
 - Safety scan and file browser tests must verify downstream consumers read the managed repository path and nested package files.
+- Safety scan tests must distinguish remote pre-install source checks from installed managed-package scans.

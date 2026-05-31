@@ -280,6 +280,69 @@ describe("skill-safety-scan", () => {
     expect(aiChat).not.toHaveBeenCalled();
   });
 
+  it("scans an installed managed package even when its custom Gitea source is internal", async () => {
+    const repoFiles: SkillLocalFileEntry[] = [
+      {
+        path: "SKILL.md",
+        content: "# Internal Gitea Skill\n\nUse the bundled docs.",
+        isDirectory: false,
+      },
+      {
+        path: "docs/guide.md",
+        content: "Operator guide",
+        isDirectory: false,
+      },
+    ];
+    const aiChat = createAiChatMock(
+      createAiResponse({
+        level: "warn",
+        findings: [
+          {
+            code: "internal-source",
+            severity: "warn",
+            title: "Custom internal source",
+            detail:
+              "The source host is internal, but the installed managed package was scanned locally.",
+            evidence: "gitea.internal.example",
+          },
+        ],
+        summary: "The local package was scanned; source provenance needs review.",
+      }),
+    );
+
+    const report = await scanSkillSafety(
+      {
+        name: "internal-gitea-skill",
+        content: "# Internal Gitea Skill",
+        sourceUrl: "https://gitea.internal.example/team/skills",
+        contentUrl:
+          "https://gitea.internal.example/team/skills/raw/branch/main/SKILL.md",
+        localRepoPath: "/managed/internal-gitea-skill",
+        aiConfig,
+      },
+      {
+        aiChat,
+        readRepoFiles: vi.fn().mockResolvedValue(repoFiles),
+        resolveAddress: vi
+          .fn()
+          .mockRejectedValue(
+            new Error("Access to local network addresses is not allowed"),
+          ),
+      },
+    );
+
+    expect(report.level).toBe("warn");
+    expect(report.findings.map((finding) => finding.code)).toContain(
+      "internal-source",
+    );
+    expect(aiChat).toHaveBeenCalledTimes(1);
+    const userPrompt = aiChat.mock.calls[0]?.[1]?.[1]?.content;
+    expect(userPrompt).toContain("## Repository File Tree");
+    expect(userPrompt).toContain("docs/guide.md");
+    expect(userPrompt).toContain("## Preflight Validation Findings");
+    expect(userPrompt).toContain("code: internal-source");
+  });
+
   it("throws when AI config is missing", async () => {
     await expect(
       scanSkillSafety({

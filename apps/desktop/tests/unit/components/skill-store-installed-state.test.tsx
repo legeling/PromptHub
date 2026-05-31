@@ -1,7 +1,8 @@
-import { act, screen, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SkillStore } from "../../../src/renderer/components/skill/SkillStore";
+import { SkillStoreDetail } from "../../../src/renderer/components/skill/SkillStoreDetail";
 import { useSkillStore } from "../../../src/renderer/stores/skill.store";
 import { useSettingsStore } from "../../../src/renderer/stores/settings.store";
 import { createSkillFixture } from "../../fixtures/skills";
@@ -155,5 +156,95 @@ describe("SkillStore installed state", () => {
       ),
     ).toBeInTheDocument();
     expect(within(availableSection!).getByTitle("Import")).toBeInTheDocument();
+  });
+
+  it("scans an installed custom Gitea store skill from the managed package path", async () => {
+    const scanSafety = vi.fn().mockResolvedValue({
+      level: "safe",
+      summary: "full package scanned",
+      findings: [],
+      recommendedAction: "allow",
+      scannedAt: Date.now(),
+      checkedFileCount: 3,
+      scanMethod: "ai",
+    });
+    (window as any).api.skill.scanSafety = scanSafety;
+
+    useSettingsStore.setState({
+      aiModels: [
+        {
+          id: "fast-model",
+          name: "Fast Model",
+          provider: "openai",
+          apiProtocol: "openai",
+          apiKey: "test-key",
+          apiUrl: "https://api.example.com/v1/chat/completions",
+          model: "gpt-4.1-mini",
+          enabled: true,
+          useFor: ["chat"],
+        },
+      ],
+      scenarioModelDefaults: {
+        safetyScan: "fast-model",
+      },
+    } as never);
+
+    const installedSkill = createSkillFixture({
+      id: "skill-gitea-writer",
+      name: "writer",
+      registry_slug: "writer",
+      source_id: "source-gitea-writer",
+      source_url: "https://gitea.internal.example/team/skills",
+      content_url:
+        "https://gitea.internal.example/team/skills/raw/branch/main/skills/writer/SKILL.md",
+      local_repo_path: "/managed/skills/writer--abc123",
+      instructions: "# Writer\n\nInstalled content",
+      content: "# Writer\n\nInstalled content",
+    });
+    useSkillStore.setState({
+      skills: [installedSkill],
+      saveSafetyReport: vi.fn().mockResolvedValue(undefined),
+    } as never);
+
+    await act(async () => {
+      await renderWithI18n(
+        <SkillStoreDetail
+          skill={{
+            slug: "writer",
+            name: "Writer",
+            source_id: "source-gitea-writer",
+            description: "Custom Gitea writer",
+            category: "general",
+            author: "icelemon",
+            source_url: "https://gitea.internal.example/team/skills",
+            content_url:
+              "https://gitea.internal.example/team/skills/raw/branch/main/skills/writer/SKILL.md",
+            tags: ["writing"],
+            version: "1.0.0",
+            content: "# Writer\n\nRemote store content",
+          }}
+          isInstalled={true}
+          onClose={vi.fn()}
+        />,
+        { language: "en" },
+      );
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Run Scan" }));
+    });
+
+    await waitFor(() => {
+      expect(scanSafety).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "Writer",
+          sourceUrl: "https://gitea.internal.example/team/skills",
+          contentUrl:
+            "https://gitea.internal.example/team/skills/raw/branch/main/skills/writer/SKILL.md",
+          localRepoPath: "/managed/skills/writer--abc123",
+          content: "# Writer\n\nInstalled content",
+        }),
+      );
+    });
   });
 });
