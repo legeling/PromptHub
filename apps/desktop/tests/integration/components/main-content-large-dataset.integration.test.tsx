@@ -28,10 +28,16 @@ vi.mock("../../../src/renderer/stores/folder.store", async () => {
   };
 });
 
-vi.mock("../../../src/renderer/stores/settings.store", () => ({
-  useSettingsStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    useSettingsStoreMock(selector),
-}));
+vi.mock("../../../src/renderer/stores/settings.store", async () => {
+  const actual = await vi.importActual(
+    "../../../src/renderer/stores/settings.store",
+  );
+  return {
+    ...(actual as Record<string, unknown>),
+    useSettingsStore: (selector: (state: Record<string, unknown>) => unknown) =>
+      useSettingsStoreMock(selector),
+  };
+});
 
 vi.mock("../../../src/renderer/stores/ui.store", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../../src/renderer/stores/ui.store")>();

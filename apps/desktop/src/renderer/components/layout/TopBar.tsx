@@ -11,6 +11,7 @@ import {
   ChevronDownIcon,
   SparklesIcon,
   Wand2Icon,
+  ImageIcon,
   GlobeIcon,
   LogOutIcon,
 } from "lucide-react";
@@ -57,6 +58,11 @@ const QuickAddModal = lazy(() =>
     default: module.QuickAddModal,
   })),
 );
+const ImagePromptReverseModal = lazy(() =>
+  import("../prompt/ImagePromptReverseModal").then((module) => ({
+    default: module.ImagePromptReverseModal,
+  })),
+);
 const CreateSkillModal = lazy(() =>
   import("../skill/CreateSkillModal").then((module) => ({
     default: module.CreateSkillModal,
@@ -87,7 +93,9 @@ export function TopBar({
   // Skill store
   const skillSearchQuery = useSkillStore((state) => state.searchQuery);
   const setSkillSearchQuery = useSkillStore((state) => state.setSearchQuery);
-  const skillStoreSearchQuery = useSkillStore((state) => state.storeSearchQuery);
+  const skillStoreSearchQuery = useSkillStore(
+    (state) => state.storeSearchQuery,
+  );
   const setSkillStoreSearchQuery = useSkillStore(
     (state) => state.setStoreSearchQuery,
   );
@@ -97,7 +105,6 @@ export function TopBar({
   const deployedSkillNames = useSkillStore((state) => state.deployedSkillNames);
   const skillStoreView = useSkillStore((state) => state.storeView);
   const skillStoreCategory = useSkillStore((state) => state.storeCategory);
-  const registrySkills = useSkillStore((state) => state.registrySkills);
   const selectedStoreSourceId = useSkillStore(
     (state) => state.selectedStoreSourceId,
   );
@@ -105,7 +112,9 @@ export function TopBar({
   const selectedProjectId = useSkillStore((state) => state.selectedProjectId);
   const projectScanState = useSkillStore((state) => state.projectScanState);
   const selectSkill = useSkillStore((state) => state.selectSkill);
-  const selectRegistrySkill = useSkillStore((state) => state.selectRegistrySkill);
+  const selectRegistrySkill = useSkillStore(
+    (state) => state.selectRegistrySkill,
+  );
 
   const isDarkMode = useSettingsStore((state) => state.isDarkMode);
   const setDarkMode = useSettingsStore((state) => state.setDarkMode);
@@ -124,6 +133,7 @@ export function TopBar({
   const setSidebarCollapsed = useUIStore((state) => state.setSidebarCollapsed);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isQuickAddModalOpen, setIsQuickAddModalOpen] = useState(false);
+  const [isImageReverseModalOpen, setIsImageReverseModalOpen] = useState(false);
   const [quickAddInitialMode, setQuickAddInitialMode] = useState<
     "analyze" | "generate"
   >("analyze");
@@ -144,6 +154,7 @@ export function TopBar({
   const runtimeCapabilities = getRuntimeCapabilities();
   const isProjectSkillView =
     appModule === "skill" && skillStoreView === "projects";
+  const isAgentSkillView = appModule === "skill" && skillStoreView === "agents";
   const isSkillStoreCatalogView =
     appModule === "skill" && skillStoreView === "store";
   const isRulesView = appModule === "rules";
@@ -297,7 +308,7 @@ export function TopBar({
 
     const sourceSkills =
       selectedStoreSourceId === "official"
-        ? registrySkills
+        ? []
         : remoteStoreEntries[selectedStoreSourceId]?.skills || [];
 
     return filterRegistrySkills(sourceSkills, {
@@ -307,7 +318,6 @@ export function TopBar({
   }, [
     deferredSkillSearchQuery,
     isSkillStoreCatalogView,
-    registrySkills,
     remoteStoreEntries,
     selectedStoreSourceId,
     skillStoreCategory,
@@ -338,18 +348,18 @@ export function TopBar({
   }, [isRulesView, ruleFiles, rulesSearchQuery]);
 
   // 根据模式选择搜索结果
-  const searchResults =
-    isRulesView
-      ? ruleSearchResults
-      : isSkillView
-        ? isProjectSkillView
-          ? projectSearchResults
-          : isSkillStoreCatalogView
-            ? storeSearchResults
-            : skillSearchResults
+  const searchResults = isRulesView
+    ? ruleSearchResults
+    : isSkillView
+      ? isProjectSkillView
+        ? projectSearchResults
+        : isSkillStoreCatalogView
+          ? storeSearchResults
+          : skillSearchResults
       : promptSearchResults;
   const searchResultCount = searchResults.length;
   const showSearchNavigation = !isSkillView && !isProjectSkillView;
+  const showSearchResultCount = !isAgentSkillView;
 
   const updateCreateMenuPosition = useCallback(() => {
     if (!createMenuRef.current) {
@@ -405,21 +415,21 @@ export function TopBar({
       }
     },
     [
-        searchResultCount,
-        currentResultIndex,
-        isRulesView,
-        isProjectSkillView,
-        isSkillStoreCatalogView,
-        isSkillView,
-        selectRule,
-        selectPrompt,
-        selectRegistrySkill,
-        selectSkill,
-        ruleSearchResults,
-        storeSearchResults,
-        skillSearchResults,
-        promptSearchResults,
-      ],
+      searchResultCount,
+      currentResultIndex,
+      isRulesView,
+      isProjectSkillView,
+      isSkillStoreCatalogView,
+      isSkillView,
+      selectRule,
+      selectPrompt,
+      selectRegistrySkill,
+      selectSkill,
+      ruleSearchResults,
+      storeSearchResults,
+      skillSearchResults,
+      promptSearchResults,
+    ],
   );
 
   // 当搜索查询变化时重置索引。
@@ -484,7 +494,9 @@ export function TopBar({
       if (isSkillView) {
         if (isSkillStoreCatalogView) {
           if (storeSearchResults[currentResultIndex]) {
-            selectRegistrySkill(storeSearchResults[currentResultIndex].source_id);
+            selectRegistrySkill(
+              storeSearchResults[currentResultIndex].source_id,
+            );
           }
         } else if (skillSearchResults[currentResultIndex]) {
           selectSkill(skillSearchResults[currentResultIndex].id);
@@ -528,10 +540,7 @@ export function TopBar({
       const clickedDropdown =
         createMenuDropdownRef.current?.contains(target) ?? false;
 
-      if (
-        !clickedTrigger &&
-        !clickedDropdown
-      ) {
+      if (!clickedTrigger && !clickedDropdown) {
         setIsCreateMenuOpen(false);
       }
     }
@@ -679,24 +688,29 @@ export function TopBar({
             <input
               ref={searchInputRef}
               type="text"
-                placeholder={
-                  appModule === "skill"
-                    ? isProjectSkillView
-                      ? t("header.searchProjectSkills", "Search project skills...")
-                      : isSkillStoreCatalogView
-                        ? t("skill.searchStore", "Search skills...")
+              placeholder={
+                appModule === "skill"
+                  ? isProjectSkillView
+                    ? t(
+                        "header.searchProjectSkills",
+                        "Search project skills...",
+                      )
+                    : isAgentSkillView
+                      ? t("header.searchAgentSkills", "Search agent skills...")
+                    : isSkillStoreCatalogView
+                      ? t("skill.searchStore", "Search skills...")
                       : t("header.searchSkill", "Search skills...")
-                    : isRulesView
-                      ? t("rules.searchPlaceholder", "Search rule files...")
-                      : t("header.search")
-                }
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={handleKeyDown}
-                readOnly={false}
-                className="relative z-10 w-full h-9 pl-9 pr-32 rounded-lg border border-transparent bg-transparent text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
-                style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
-              />
+                  : isRulesView
+                    ? t("rules.searchPlaceholder", "Search rule files...")
+                    : t("header.search")
+              }
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={handleKeyDown}
+              readOnly={false}
+              className="relative z-10 w-full h-9 pl-9 pr-32 rounded-lg border border-transparent bg-transparent text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+              style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+            />
             {/* 右侧控件：结果计数 + 导航按钮 + 清除按钮 */}
             {searchQuery && (
               <div
@@ -704,16 +718,18 @@ export function TopBar({
                 style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
               >
                 {/* 结果计数 */}
-                <span className="text-xs text-muted-foreground tabular-nums px-1">
-                  {searchResultCount > 0
-                    ? showSearchNavigation
-                      ? `${currentResultIndex + 1}/${searchResultCount}`
-                      : t("header.resultsCount", {
-                          count: searchResultCount,
-                          defaultValue: `${searchResultCount} results`,
-                        })
-                    : t("header.noResults", "No results")}
-                </span>
+                {showSearchResultCount ? (
+                  <span className="text-xs text-muted-foreground tabular-nums px-1">
+                    {searchResultCount > 0
+                      ? showSearchNavigation
+                        ? `${currentResultIndex + 1}/${searchResultCount}`
+                        : t("header.resultsCount", {
+                            count: searchResultCount,
+                            defaultValue: `${searchResultCount} results`,
+                          })
+                      : t("header.noResults", "No results")}
+                  </span>
+                ) : null}
                 {/* 上下导航按钮 */}
                 {showSearchNavigation && searchResultCount > 1 && (
                   <>
@@ -736,7 +752,7 @@ export function TopBar({
                 {/* 清除按钮 */}
                 <button
                   onClick={() => setSearchQuery("")}
-                    className="p-1 rounded hover:bg-accent/60 transition-colors"
+                  className="p-1 rounded hover:bg-accent/60 transition-colors"
                   title={t("header.clearSearch", "清除搜索")}
                 >
                   <XIcon className="w-3.5 h-3.5 text-muted-foreground" />
@@ -752,23 +768,23 @@ export function TopBar({
           {runtimeCapabilities.appUpdate &&
             updateAvailable &&
             updateAvailable.status === "available" && (
-            <>
-              <button
-                onClick={onShowUpdateDialog}
-                className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-dashed border-primary/50 bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors"
-                style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
-                title={t("settings.updateAvailable")}
-              >
-                <DownloadIcon className="w-4 h-4" />
-                <span className="hidden sm:inline">
-                  {t("settings.newVersion", {
-                    version: updateAvailable.info?.version,
-                  })}
-                </span>
-              </button>
-              <div className="w-px h-5 bg-border mx-1" />
-            </>
-          )}
+              <>
+                <button
+                  onClick={onShowUpdateDialog}
+                  className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-dashed border-primary/50 bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors"
+                  style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+                  title={t("settings.updateAvailable")}
+                >
+                  <DownloadIcon className="w-4 h-4" />
+                  <span className="hidden sm:inline">
+                    {t("settings.newVersion", {
+                      version: updateAvailable.info?.version,
+                    })}
+                  </span>
+                </button>
+                <div className="w-px h-5 bg-border mx-1" />
+              </>
+            )}
 
           {/* Split Button for New Prompt / New Skill */}
           {!isRulesView && (
@@ -825,103 +841,131 @@ export function TopBar({
               </button>
 
               {appModule === "prompt" && (
-              <>
-                <button
-                  onClick={() => {
-                    if (!isCreateMenuOpen) {
-                      updateCreateMenuPosition();
-                    }
-                    setIsCreateMenuOpen(!isCreateMenuOpen);
-                  }}
-                  aria-haspopup="menu"
-                  aria-expanded={isCreateMenuOpen}
-                  className="flex items-center justify-center h-full px-1.5 hover:bg-black/10 transition-colors rounded-r-lg"
-                >
-                  <ChevronDownIcon className="w-3.5 h-3.5" />
-                </button>
+                <>
+                  <button
+                    onClick={() => {
+                      if (!isCreateMenuOpen) {
+                        updateCreateMenuPosition();
+                      }
+                      setIsCreateMenuOpen(!isCreateMenuOpen);
+                    }}
+                    aria-haspopup="menu"
+                    aria-expanded={isCreateMenuOpen}
+                    className="flex items-center justify-center h-full px-1.5 hover:bg-black/10 transition-colors rounded-r-lg"
+                  >
+                    <ChevronDownIcon className="w-3.5 h-3.5" />
+                  </button>
 
-                {isCreateMenuOpen &&
-                  typeof document !== "undefined" &&
-                  createPortal(
-                    <div
-                      ref={createMenuDropdownRef}
-                      role="menu"
-                      className="fixed mt-1 w-48 rounded-lg border border-border app-wallpaper-panel-strong p-1 z-[9999] animate-in fade-in zoom-in-95 duration-instant"
-                      style={{
-                        top: createMenuPosition.top,
-                        right: createMenuPosition.right,
-                        WebkitAppRegion: "no-drag",
-                      } as React.CSSProperties}
-                    >
-                      <button
-                        onClick={() => {
-                          useSettingsStore.getState().setCreationMode("manual");
-                          setIsCreateMenuOpen(false);
-                        }}
-                        className={clsx(
-                          "flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-accent text-left transition-colors rounded-md",
-                          creationMode === "manual" && "bg-accent",
-                        )}
+                  {isCreateMenuOpen &&
+                    typeof document !== "undefined" &&
+                    createPortal(
+                      <div
+                        ref={createMenuDropdownRef}
+                        role="menu"
+                        className="fixed mt-1 w-48 rounded-lg border border-border app-wallpaper-panel-strong p-1 z-[9999] animate-in fade-in zoom-in-95 duration-instant"
+                        style={
+                          {
+                            top: createMenuPosition.top,
+                            right: createMenuPosition.right,
+                            WebkitAppRegion: "no-drag",
+                          } as React.CSSProperties
+                        }
                       >
-                        <PlusIcon className="w-4 h-4 text-muted-foreground" />
-                        <div className="flex flex-col items-start gap-0.5">
-                          <span className="font-medium">{t("header.new")}</span>
-                          <span className="text-[10px] text-muted-foreground leading-none">
-                            {t("quickAdd.manualAddDesc")}
-                          </span>
-                        </div>
-                        {creationMode === "manual" && (
-                          <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
-                        )}
-                      </button>
-                      <div className="h-px bg-border my-1 mx-2 opacity-50" />
-                      <button
-                        onClick={() => {
-                          useSettingsStore.getState().setCreationMode("quick");
-                          setIsCreateMenuOpen(false);
-                        }}
-                        className={clsx(
-                          "flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-accent text-left transition-colors rounded-md",
-                          creationMode === "quick" && "bg-accent",
-                        )}
-                      >
-                        <SparklesIcon className="w-4 h-4 text-primary" />
-                        <div className="flex flex-col items-start gap-0.5">
-                          <span className="font-medium">
-                            {t("quickAdd.title")}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground leading-none">
-                            {t("quickAdd.desc")}
-                          </span>
-                        </div>
-                        {creationMode === "quick" && (
-                          <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
-                        )}
-                      </button>
-                      <div className="h-px bg-border my-1 mx-2 opacity-50" />
-                      <button
-                        onClick={() => {
-                          useSettingsStore.getState().setCreationMode("quick");
-                          setQuickAddInitialMode("generate");
-                          setIsQuickAddModalOpen(true);
-                          setIsCreateMenuOpen(false);
-                        }}
-                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-accent text-left transition-colors rounded-md"
-                      >
-                        <Wand2Icon className="w-4 h-4 text-primary" />
-                        <div className="flex flex-col items-start gap-0.5">
-                          <span className="font-medium">
-                            {t("quickAdd.generateEntry")}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground leading-none">
-                            {t("quickAdd.generateEntryDesc")}
-                          </span>
-                        </div>
-                      </button>
-                    </div>,
-                    document.body,
-                  )}
-              </>
+                        <button
+                          onClick={() => {
+                            useSettingsStore
+                              .getState()
+                              .setCreationMode("manual");
+                            setIsCreateMenuOpen(false);
+                          }}
+                          className={clsx(
+                            "flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-accent text-left transition-colors rounded-md",
+                            creationMode === "manual" && "bg-accent",
+                          )}
+                        >
+                          <PlusIcon className="w-4 h-4 text-muted-foreground" />
+                          <div className="flex flex-col items-start gap-0.5">
+                            <span className="font-medium">
+                              {t("header.new")}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground leading-none">
+                              {t("quickAdd.manualAddDesc")}
+                            </span>
+                          </div>
+                          {creationMode === "manual" && (
+                            <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
+                          )}
+                        </button>
+                        <div className="h-px bg-border my-1 mx-2 opacity-50" />
+                        <button
+                          onClick={() => {
+                            useSettingsStore
+                              .getState()
+                              .setCreationMode("quick");
+                            setIsCreateMenuOpen(false);
+                          }}
+                          className={clsx(
+                            "flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-accent text-left transition-colors rounded-md",
+                            creationMode === "quick" && "bg-accent",
+                          )}
+                        >
+                          <SparklesIcon className="w-4 h-4 text-primary" />
+                          <div className="flex flex-col items-start gap-0.5">
+                            <span className="font-medium">
+                              {t("quickAdd.title")}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground leading-none">
+                              {t("quickAdd.desc")}
+                            </span>
+                          </div>
+                          {creationMode === "quick" && (
+                            <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
+                          )}
+                        </button>
+                        <div className="h-px bg-border my-1 mx-2 opacity-50" />
+                        <button
+                          onClick={() => {
+                            useSettingsStore
+                              .getState()
+                              .setCreationMode("quick");
+                            setQuickAddInitialMode("generate");
+                            setIsQuickAddModalOpen(true);
+                            setIsCreateMenuOpen(false);
+                          }}
+                          className="flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-accent text-left transition-colors rounded-md"
+                        >
+                          <Wand2Icon className="w-4 h-4 text-primary" />
+                          <div className="flex flex-col items-start gap-0.5">
+                            <span className="font-medium">
+                              {t("quickAdd.generateEntry")}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground leading-none">
+                              {t("quickAdd.generateEntryDesc")}
+                            </span>
+                          </div>
+                        </button>
+                        <div className="h-px bg-border my-1 mx-2 opacity-50" />
+                        <button
+                          onClick={() => {
+                            setIsImageReverseModalOpen(true);
+                            setIsCreateMenuOpen(false);
+                          }}
+                          className="flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-accent text-left transition-colors rounded-md"
+                        >
+                          <ImageIcon className="w-4 h-4 text-primary" />
+                          <div className="flex flex-col items-start gap-0.5">
+                            <span className="font-medium">
+                              {t("imageReverse.title")}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground leading-none">
+                              {t("imageReverse.entryDesc")}
+                            </span>
+                          </div>
+                        </button>
+                      </div>,
+                      document.body,
+                    )}
+                </>
               )}
             </div>
           )}
@@ -970,6 +1014,13 @@ export function TopBar({
           onCreate={handleCreatePrompt}
           defaultPromptType={promptTypeFilter === "image" ? "image" : "text"}
           initialMode={quickAddInitialMode}
+        />
+
+        <ImagePromptReverseModal
+          isOpen={isImageReverseModalOpen}
+          onClose={() => setIsImageReverseModalOpen(false)}
+          onCreate={handleCreatePrompt}
+          defaultFolderId={selectedFolderId || undefined}
         />
 
         {/* 新建 Skill 弹窗 */}

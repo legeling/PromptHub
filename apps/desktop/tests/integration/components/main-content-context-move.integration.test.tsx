@@ -29,10 +29,16 @@ vi.mock("../../../src/renderer/stores/folder.store", async () => {
   };
 });
 
-vi.mock("../../../src/renderer/stores/settings.store", () => ({
-  useSettingsStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    useSettingsStoreMock(selector),
-}));
+vi.mock("../../../src/renderer/stores/settings.store", async () => {
+  const actual = await vi.importActual(
+    "../../../src/renderer/stores/settings.store",
+  );
+  return {
+    ...(actual as Record<string, unknown>),
+    useSettingsStore: (selector: (state: Record<string, unknown>) => unknown) =>
+      useSettingsStoreMock(selector),
+  };
+});
 
 vi.mock("../../../src/renderer/stores/ui.store", () => ({
   useUIStore: (selector: (state: Record<string, unknown>) => unknown) =>
@@ -173,7 +179,12 @@ describe("MainContent context move integration", () => {
     const moveButton = await screen.findByRole("button", { name: /Move to\.\.\./i });
     fireEvent.mouseEnter(moveButton.parentElement as HTMLElement);
 
-    const submenu = await screen.findByText("Folder B");
+    const submenu = (await screen.findAllByText("Folder B")).find(
+      (element) => element.tagName.toLowerCase() !== "option",
+    );
+    if (!submenu) {
+      throw new Error("Folder B context-menu item was not rendered");
+    }
     fireEvent.click(submenu);
 
     await waitFor(() => {

@@ -2184,7 +2184,7 @@ export function DataSettings({
                 <div className="text-xs text-muted-foreground mt-0.5">
                   {t(
                     "settings.fullBackupDesc",
-                    "用于迁移/跨设备恢复：包含 prompts、图片、AI 配置、系统设置、规则与技能",
+                    "用于迁移/跨设备恢复：包含 prompts、图片、AI 配置、系统设置、规则与 Skill",
                   )}
                 </div>
               </div>

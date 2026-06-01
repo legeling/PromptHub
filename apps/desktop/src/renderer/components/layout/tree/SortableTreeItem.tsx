@@ -17,6 +17,7 @@ export interface SortableTreeItemProps extends Omit<HTMLAttributes<HTMLLIElement
   isExpanded?: boolean;
   isActive?: boolean;
   isLocked?: boolean;
+  promptCount?: number;
   onSelect?: () => void;
   onEdit?: () => void;
   onToggleExpand?: () => void;
@@ -35,6 +36,7 @@ export const SortableTreeItem = forwardRef<HTMLLIElement, SortableTreeItemProps>
     isExpanded,
     isActive,
     isLocked,
+    promptCount = 0,
     onSelect,
     onEdit,
     onToggleExpand,
@@ -130,21 +132,31 @@ export const SortableTreeItem = forwardRef<HTMLLIElement, SortableTreeItemProps>
             )}
           </div>
 
-          {/* 3. Edit Button */}
+          {/* 3. Direct prompt count + edit button */}
           {!collapsed && (
-            <button
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => {
-                e.stopPropagation();
-                onEdit?.();
-              }}
-              className={`
-                p-1.5 rounded opacity-0 group-hover/folder:opacity-100 hover:bg-black/5 dark:hover:bg-white/5 transition-all mr-1 z-30
-                ${isActive ? 'opacity-60' : ''}
-              `}
-            >
-              <MoreHorizontalIcon className="w-4 h-4 text-sidebar-foreground/50" />
-            </button>
+            <div className="mr-1 flex shrink-0 items-center gap-0.5">
+              {promptCount > 0 && (
+                <span
+                  className="min-w-4 rounded-full px-1 text-center text-[10px] leading-4 text-sidebar-foreground/40"
+                  aria-label={`${promptCount}`}
+                >
+                  {promptCount}
+                </span>
+              )}
+              <button
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit?.();
+                }}
+                className={`
+                  p-1.5 rounded opacity-0 group-hover/folder:opacity-100 hover:bg-black/5 dark:hover:bg-white/5 transition-all z-30
+                  ${isActive ? 'opacity-60' : ''}
+                `}
+              >
+                <MoreHorizontalIcon className="w-4 h-4 text-sidebar-foreground/50" />
+              </button>
+            </div>
           )}
         </div>
       </li>

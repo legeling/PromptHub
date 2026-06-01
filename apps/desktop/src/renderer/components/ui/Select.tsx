@@ -16,6 +16,8 @@ export interface SelectProps {
   options: SelectOption[];
   placeholder?: string;
   className?: string;
+  ariaLabel?: string;
+  triggerClassName?: string;
   disabled?: boolean;
 }
 
@@ -25,6 +27,8 @@ export function Select({
   options,
   placeholder,
   className = '',
+  ariaLabel,
+  triggerClassName,
   disabled = false,
 }: SelectProps) {
   const { t } = useTranslation();
@@ -129,16 +133,20 @@ export function Select({
       {/* 触发按钮 */}
       <button
         type="button"
+        aria-label={ariaLabel}
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
-        className={`
-          w-full h-10 px-3 rounded-lg bg-muted border-0 text-sm text-left
-          flex items-center justify-between gap-2
-          focus:outline-none focus:ring-2 focus:ring-primary/30
-          transition-all duration-quick
-          ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-muted/80'}
-          ${isOpen ? 'ring-2 ring-primary/30' : ''}
-        `}
+        className={
+          triggerClassName ??
+          `
+            w-full h-10 px-3 rounded-lg bg-muted border-0 text-sm text-left
+            flex items-center justify-between gap-2
+            focus:outline-none focus:ring-2 focus:ring-primary/30
+            transition-all duration-quick
+            ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-muted/80'}
+            ${isOpen ? 'ring-2 ring-primary/30' : ''}
+          `
+        }
       >
         <span className={selectedOption ? 'text-foreground' : 'text-muted-foreground'}>
           {displayLabel}

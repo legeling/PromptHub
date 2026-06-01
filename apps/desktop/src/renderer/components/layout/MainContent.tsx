@@ -38,6 +38,7 @@ import { ContextMenu, ContextMenuItem } from '../ui/ContextMenu';
 import { ImagePreviewModal } from '../ui/ImagePreviewModal';
 import { LocalImage } from '../ui/LocalImage';
 import { Input } from '../ui/Input';
+import { Select } from '../ui/Select';
 import { handleMarkdownListKeyDown } from '../ui/Textarea';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { CollapsibleThinking } from '../ui/CollapsibleThinking';
@@ -303,11 +304,12 @@ const VirtualizedPromptList = memo(function VirtualizedPromptList({
 
 type DetailInlineEditDraft = {
   title: string;
+  description: string;
   systemPrompt: string;
   userPrompt: string;
 };
 
-type DetailInlineEditField = 'title' | 'systemPrompt' | 'userPrompt';
+type DetailInlineEditField = 'title' | 'description' | 'systemPrompt' | 'userPrompt';
 
 function createDetailInlineEditDraft(
   prompt: Prompt,
@@ -315,6 +317,7 @@ function createDetailInlineEditDraft(
 ): DetailInlineEditDraft {
   return {
     title: prompt.title,
+    description: prompt.description ?? '',
     systemPrompt: showEnglish ? (prompt.systemPromptEn || prompt.systemPrompt || '') : (prompt.systemPrompt || ''),
     userPrompt: showEnglish ? (prompt.userPromptEn || prompt.userPrompt) : prompt.userPrompt,
   };
@@ -597,15 +600,30 @@ function PromptSkillMainContent() {
   const aiModel = useSettingsStore((state) => state.aiModel);
   const aiModels = useSettingsStore((state) => state.aiModels);
   const scenarioModelDefaults = useSettingsStore((state) => state.scenarioModelDefaults);
+  const modelRouteDefaults = useSettingsStore((state) => state.modelRouteDefaults);
   const showCopyNotification = useSettingsStore((state) => state.showCopyNotification);
 
   const defaultChatModel = useMemo(() => {
-    return resolveScenarioModel(aiModels, scenarioModelDefaults, 'promptTest', 'chat');
-  }, [aiModels, scenarioModelDefaults]);
+    return resolveScenarioModel(
+      aiModels,
+      scenarioModelDefaults,
+      'promptTest',
+      'chat',
+      undefined,
+      modelRouteDefaults,
+    );
+  }, [aiModels, modelRouteDefaults, scenarioModelDefaults]);
 
   const defaultImageModel = useMemo(() => {
-    return resolveScenarioModel(aiModels, scenarioModelDefaults, 'imageTest', 'image');
-  }, [aiModels, scenarioModelDefaults]);
+    return resolveScenarioModel(
+      aiModels,
+      scenarioModelDefaults,
+      'imageTest',
+      'image',
+      undefined,
+      modelRouteDefaults,
+    );
+  }, [aiModels, modelRouteDefaults, scenarioModelDefaults]);
 
   const compareModels = useMemo(() => {
     const isImagePrompt = prompts.find((p) => p.id === selectedId)?.promptType === 'image';
@@ -1221,10 +1239,12 @@ function PromptSkillMainContent() {
     useState<DetailInlineEditField>('title');
   const [detailInlineDraft, setDetailInlineDraft] = useState<DetailInlineEditDraft>({
     title: '',
+    description: '',
     systemPrompt: '',
     userPrompt: '',
   });
   const detailTitleInputRef = useRef<HTMLInputElement>(null);
+  const detailDescriptionInputRef = useRef<HTMLInputElement>(null);
   const detailSystemPromptTextareaRef = useRef<HTMLTextAreaElement>(null);
   const detailUserPromptTextareaRef = useRef<HTMLTextAreaElement>(null);
   // AI test modal state
@@ -1269,7 +1289,7 @@ function PromptSkillMainContent() {
 
   useEffect(() => {
     if (!selectedPrompt) {
-      setDetailInlineDraft({ title: '', systemPrompt: '', userPrompt: '' });
+      setDetailInlineDraft({ title: '', description: '', systemPrompt: '', userPrompt: '' });
       return;
     }
     if (isDetailInlineEditing) {
@@ -1280,6 +1300,7 @@ function PromptSkillMainContent() {
     isDetailInlineEditing,
     selectedPrompt,
     selectedPrompt?.title,
+    selectedPrompt?.description,
     selectedPrompt?.userPrompt,
     selectedPrompt?.userPromptEn,
     showEnglish,
@@ -1295,6 +1316,11 @@ function PromptSkillMainContent() {
     }
     if (detailInlineActiveField === 'userPrompt') {
       detailUserPromptTextareaRef.current?.focus();
+      return;
+    }
+    if (detailInlineActiveField === 'description') {
+      detailDescriptionInputRef.current?.focus();
+      detailDescriptionInputRef.current?.select();
       return;
     }
     detailTitleInputRef.current?.focus();
@@ -1314,7 +1340,7 @@ function PromptSkillMainContent() {
     if (selectedPrompt) {
       setDetailInlineDraft(createDetailInlineEditDraft(selectedPrompt, showEnglish));
     } else {
-      setDetailInlineDraft({ title: '', systemPrompt: '', userPrompt: '' });
+      setDetailInlineDraft({ title: '', description: '', systemPrompt: '', userPrompt: '' });
     }
     setDetailInlineActiveField('title');
     setIsDetailInlineEditing(false);
@@ -1328,10 +1354,17 @@ function PromptSkillMainContent() {
 
     return (
       detailInlineDraft.title.trim() !== detailInlineCurrentValues.title.trim() ||
+      detailInlineDraft.description.trim() !== detailInlineCurrentValues.description.trim() ||
       detailInlineDraft.systemPrompt !== detailInlineCurrentValues.systemPrompt ||
       detailInlineDraft.userPrompt !== detailInlineCurrentValues.userPrompt
     );
-  }, [detailInlineCurrentValues, detailInlineDraft.title, detailInlineDraft.systemPrompt, detailInlineDraft.userPrompt]);
+  }, [
+    detailInlineCurrentValues,
+    detailInlineDraft.title,
+    detailInlineDraft.description,
+    detailInlineDraft.systemPrompt,
+    detailInlineDraft.userPrompt,
+  ]);
 
   const canSaveDetailInlineEdit = useMemo(() => {
     return (
@@ -1350,18 +1383,28 @@ function PromptSkillMainContent() {
   ]);
 
   const saveDetailInlineEdit = useCallback(async () => {
-    if (!selectedPrompt || !canSaveDetailInlineEdit) {
+    if (!selectedPrompt || !canSaveDetailInlineEdit || !detailInlineCurrentValues) {
       return;
     }
 
     const nextTitle = detailInlineDraft.title.trim();
+    const nextDescription = detailInlineDraft.description.trim();
     const nextSystemPrompt = detailInlineDraft.systemPrompt;
     const nextUserPrompt = detailInlineDraft.userPrompt;
-    const updateData: UpdatePromptDTO = {
-      title: nextTitle,
-    };
-    updateData[detailInlineSystemPromptField] = nextSystemPrompt;
-    updateData[detailInlineUserPromptField] = nextUserPrompt;
+    const updateData: UpdatePromptDTO = {};
+
+    if (nextTitle !== detailInlineCurrentValues.title.trim()) {
+      updateData.title = nextTitle;
+    }
+    if (nextDescription !== detailInlineCurrentValues.description.trim()) {
+      updateData.description = nextDescription;
+    }
+    if (nextSystemPrompt !== detailInlineCurrentValues.systemPrompt) {
+      updateData[detailInlineSystemPromptField] = nextSystemPrompt;
+    }
+    if (nextUserPrompt !== detailInlineCurrentValues.userPrompt) {
+      updateData[detailInlineUserPromptField] = nextUserPrompt;
+    }
 
     setIsDetailInlineSaving(true);
     try {
@@ -1377,7 +1420,9 @@ function PromptSkillMainContent() {
     }
   }, [
     canSaveDetailInlineEdit,
+    detailInlineCurrentValues,
     detailInlineDraft.title,
+    detailInlineDraft.description,
     detailInlineDraft.systemPrompt,
     detailInlineDraft.userPrompt,
     detailInlineSystemPromptField,
@@ -1393,6 +1438,12 @@ function PromptSkillMainContent() {
       if (event.key === 'Escape') {
         event.preventDefault();
         cancelDetailInlineEdit();
+        return;
+      }
+
+      if (event.key === 'Enter' && event.currentTarget.tagName === 'INPUT') {
+        event.preventDefault();
+        void saveDetailInlineEdit();
         return;
       }
 
@@ -1516,10 +1567,43 @@ function PromptSkillMainContent() {
 
     return pathMap;
   }, [folders, folderNameById]);
+  const detailFolderOptions = useMemo(
+    () => [
+      {
+        value: '',
+        label: (
+          <span className="flex min-w-0 items-center gap-2">
+            <FolderIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <span className="truncate">{t('prompt.noFolder')}</span>
+          </span>
+        ),
+        labelText: t('prompt.noFolder'),
+      },
+      ...flattenedFolders.map((folder) => {
+        const parentPath = folderPathById.get(folder.id);
+        const label = parentPath ? `${parentPath} / ${folder.name}` : folder.name;
 
-  const handleMovePrompt = useCallback(async (prompt: Prompt, folderId: string | undefined) => {
-    await updatePrompt(prompt.id, { folderId });
-    const folder = folderId ? folders.find((item) => item.id === folderId) : undefined;
+        return {
+          value: folder.id,
+          label: (
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+                {renderFolderIcon(folder.icon)}
+              </span>
+              <span className="truncate">{label}</span>
+            </span>
+          ),
+          labelText: label,
+        };
+      }),
+    ],
+    [flattenedFolders, folderPathById, t],
+  );
+
+  const handleMovePrompt = useCallback(async (prompt: Prompt, folderId: string | null | undefined) => {
+    const nextFolderId = folderId ?? null;
+    await updatePrompt(prompt.id, { folderId: nextFolderId });
+    const folder = nextFolderId ? folders.find((item) => item.id === nextFolderId) : undefined;
     showToast(
       folder
         ? `${t('toast.movedToFolder')}「${folder.name}」`
@@ -1985,11 +2069,12 @@ function PromptSkillMainContent() {
           {selectedPrompt ? (
             <div key={selectedPrompt.id} className="flex-1 flex flex-col overflow-hidden animate-in fade-in slide-in-from-right-3 duration-base">
               <div className="flex-1 overflow-y-auto">
-                <div className="max-w-5xl mx-auto px-6 py-4">
+                <div className="w-full px-8 py-4">
                   {/* Title section */}
                   {/* 标题区域 */}
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
+                  <div className="mb-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0 flex-1">
                       {isDetailInlineEditing ? (
                         <input
                           ref={detailTitleInputRef}
@@ -2004,7 +2089,7 @@ function PromptSkillMainContent() {
                           }}
                           onKeyDown={handleDetailInlineEditKeyDown}
                           placeholder={t('prompt.titlePlaceholder')}
-                          className="h-12 w-full bg-transparent border-0 p-0 text-xl font-bold text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
+                          className="h-10 w-full rounded-xl border border-border/70 bg-card px-3 text-xl font-bold text-foreground shadow-sm outline-none appearance-none placeholder:text-muted-foreground/60 focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
                         />
                       ) : (
                         <h2
@@ -2014,11 +2099,8 @@ function PromptSkillMainContent() {
                           {selectedPrompt.title}
                         </h2>
                       )}
-                      {selectedPrompt.description && (
-                        <p className="text-sm text-muted-foreground">{selectedPrompt.description}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1">
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1">
                       <button
                         onClick={() => toggleFavorite(selectedPrompt.id)}
                         className={`
@@ -2048,24 +2130,26 @@ function PromptSkillMainContent() {
                           <button
                             type="button"
                             onClick={cancelDetailInlineEdit}
+                            aria-label={t('common.cancel')}
+                            title={t('common.cancel')}
                             disabled={isDetailInlineSaving}
-                            className="flex items-center gap-2 h-10 px-3 rounded-xl app-wallpaper-surface-strong border border-border text-sm font-medium hover:bg-accent/60 disabled:opacity-50 transition-colors"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl app-wallpaper-surface-strong border border-border text-muted-foreground hover:bg-accent/60 hover:text-foreground disabled:opacity-50 transition-colors"
                           >
                             <XIcon className="w-4 h-4" />
-                            <span>{t('common.cancel')}</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => void saveDetailInlineEdit()}
+                            aria-label={t('common.save')}
+                            title={t('common.save')}
                             disabled={!canSaveDetailInlineEdit}
-                            className="flex items-center gap-2 h-10 px-3 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-white hover:bg-primary/90 disabled:opacity-50 transition-colors"
                           >
                             {isDetailInlineSaving ? (
                               <LoaderIcon className="w-4 h-4 animate-spin" />
                             ) : (
                               <SaveIcon className="w-4 h-4" />
                             )}
-                            <span>{t('common.save')}</span>
                           </button>
                         </>
                       ) : (
@@ -2079,12 +2163,71 @@ function PromptSkillMainContent() {
                           <EditIcon className="w-5 h-5" />
                         </button>
                       )}
+                      </div>
                     </div>
-                  </div>
+                    {isDetailInlineEditing ? (
+                      <input
+                        ref={detailDescriptionInputRef}
+                        aria-label={t('prompt.description')}
+                        value={detailInlineDraft.description}
+                        onChange={(event) => {
+                          const nextDescription = event.target.value;
+                          setDetailInlineDraft((prev) => ({
+                            ...prev,
+                            description: nextDescription,
+                          }));
+                        }}
+                        onKeyDown={handleDetailInlineEditKeyDown}
+                        placeholder={t('prompt.descriptionPlaceholder')}
+                        className="mt-2 h-9 w-full rounded-xl border border-border/70 bg-card px-3 text-sm text-foreground shadow-sm outline-none appearance-none placeholder:text-muted-foreground/50 focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => openDetailInlineEdit('description')}
+                        className={`mt-1 block w-full text-left text-sm transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded-md ${
+                          selectedPrompt.description
+                            ? 'text-muted-foreground'
+                            : 'text-muted-foreground/55'
+                        }`}
+                      >
+                        {selectedPrompt.description || t('prompt.addDescription')}
+                      </button>
+                    )}
+                    </div>
 
                   {/* Metadata */}
                   {/* 元信息 */}
-                  <div className="flex items-center gap-3 text-sm text-muted-foreground mb-4">
+                  <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ${
+                      (selectedPrompt.promptType || 'text') === 'image'
+                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
+                        : (selectedPrompt.promptType || 'text') === 'video'
+                          ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300'
+                          : 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
+                    }`}>
+                      {(selectedPrompt.promptType || 'text') === 'image' ? (
+                        <ImageIcon className="h-3 w-3" />
+                      ) : (
+                        <MessageSquareTextIcon className="h-3 w-3" />
+                      )}
+                      {(selectedPrompt.promptType || 'text') === 'image'
+                        ? t('prompt.typeImage')
+                        : (selectedPrompt.promptType || 'text') === 'video'
+                          ? t('prompt.videoLabel')
+                          : t('prompt.typeText')
+                      }
+                    </span>
+                    <Select
+                      ariaLabel={t('prompt.folderOptional')}
+                      value={selectedPrompt.folderId ?? ''}
+                      options={detailFolderOptions}
+                      onChange={(folderId) => {
+                        void handleMovePrompt(selectedPrompt, folderId || null);
+                      }}
+                      className="min-w-[12rem] max-w-[22rem]"
+                      triggerClassName="flex h-7 w-full cursor-pointer items-center justify-between gap-2 rounded-full border border-border bg-card px-3 text-left text-xs font-medium text-foreground shadow-sm transition-all duration-quick hover:bg-accent/40 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    />
                     <span className="flex items-center gap-1">
                       <ClockIcon className="w-3.5 h-3.5" />
                       {new Date(selectedPrompt.updatedAt).toLocaleString()}
@@ -2114,31 +2257,14 @@ function PromptSkillMainContent() {
                     </div>
                   )}
 
-                  {/* Prompt Type Badge / 类型标识 */}
-                  <div className="mb-4 space-y-2">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ${
-                        (selectedPrompt.promptType || 'text') === 'image'
-                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
-                          : 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
-                      }`}>
-                        {(selectedPrompt.promptType || 'text') === 'image'
-                          ? <ImageIcon className="h-3 w-3" />
-                          : <MessageSquareTextIcon className="h-3 w-3" />
-                        }
-                        {(selectedPrompt.promptType || 'text') === 'image'
-                          ? t('prompt.typeImage', '绘图')
-                          : t('prompt.typeText', '文本')
-                        }
-                      </span>
-                    </div>
-
+                  {/* Tags / 标签 */}
+                  <div className="mb-4">
                     <div
                       data-testid="prompt-detail-tags-dropzone"
                       onDragOver={handleDetailTagDragOver}
                       onDrop={handleDetailTagDrop}
                       onDragLeave={handleDetailTagDragLeave}
-                      className={`flex min-h-[2.75rem] flex-wrap items-center gap-1.5 rounded-xl border px-1.5 py-1.5 transition-[background-color,border-color,box-shadow] ${isTagDropActive
+                      className={`flex min-h-[2.75rem] flex-wrap items-center gap-1.5 rounded-xl border py-1.5 pr-1.5 transition-[background-color,border-color,box-shadow] ${isTagDropActive
                         ? 'border-primary/25 bg-primary/6 shadow-[0_0_0_1px_rgba(59,130,246,0.18)]'
                         : 'border-transparent'
                       }`}
@@ -2254,9 +2380,8 @@ function PromptSkillMainContent() {
                         </span>
                       </div>
                       {isDetailInlineEditing ? (
-                          <div className="p-4 rounded-xl app-wallpaper-surface border border-border">
-                            <textarea
-                              ref={detailSystemPromptTextareaRef}
+                        <textarea
+                          ref={detailSystemPromptTextareaRef}
                             aria-label={t('prompt.systemPromptLabel', 'System Prompt')}
                             value={detailInlineDraft.systemPrompt}
                             onChange={(event) => {
@@ -2285,11 +2410,10 @@ function PromptSkillMainContent() {
                               }
                               handleDetailInlineEditKeyDown(event);
                             }}
-                            className="w-full min-h-[120px] resize-none bg-transparent border-0 p-0 text-[15px] leading-relaxed text-foreground placeholder:text-muted-foreground focus:outline-none"
-                              rows={4}
-                              spellCheck={false}
-                            />
-                        </div>
+                          className="w-full min-h-[120px] resize-none rounded-xl border border-border/70 bg-card px-4 py-3 text-[15px] leading-relaxed text-foreground shadow-sm outline-none appearance-none placeholder:text-muted-foreground focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
+                          rows={4}
+                          spellCheck={false}
+                        />
                       ) : (
                         <div
                           role="button"
@@ -2327,42 +2451,40 @@ function PromptSkillMainContent() {
                       </button>
                     </div>
                     {isDetailInlineEditing ? (
-                      <div className="p-4 rounded-xl app-wallpaper-surface border border-border">
-                        <textarea
-                          ref={detailUserPromptTextareaRef}
-                          aria-label={t('prompt.userPromptLabel', 'User Prompt')}
-                          value={detailInlineDraft.userPrompt}
-                          onChange={(event) => {
-                            const nextUserPrompt = event.target.value;
-                            setDetailInlineDraft((prev) => ({
-                              ...prev,
-                              userPrompt: nextUserPrompt,
-                            }));
-                          }}
-                          onKeyDown={(event) => {
-                            const handled = handleMarkdownListKeyDown(
-                              event,
-                              detailInlineDraft.userPrompt,
-                              (newValue, cursorPos) => {
-                                setDetailInlineDraft((prev) => ({
-                                  ...prev,
-                                  userPrompt: newValue,
-                                }));
-                                requestAnimationFrame(() => {
-                                  detailUserPromptTextareaRef.current?.setSelectionRange(cursorPos, cursorPos);
-                                });
-                              },
-                            );
-                            if (handled) {
-                              return;
-                            }
-                            handleDetailInlineEditKeyDown(event);
-                          }}
-                          className="w-full min-h-[280px] resize-none bg-transparent border-0 p-0 text-[15px] leading-relaxed text-foreground placeholder:text-muted-foreground focus:outline-none"
-                          rows={12}
-                          spellCheck={false}
-                        />
-                      </div>
+                      <textarea
+                        ref={detailUserPromptTextareaRef}
+                        aria-label={t('prompt.userPromptLabel', 'User Prompt')}
+                        value={detailInlineDraft.userPrompt}
+                        onChange={(event) => {
+                          const nextUserPrompt = event.target.value;
+                          setDetailInlineDraft((prev) => ({
+                            ...prev,
+                            userPrompt: nextUserPrompt,
+                          }));
+                        }}
+                        onKeyDown={(event) => {
+                          const handled = handleMarkdownListKeyDown(
+                            event,
+                            detailInlineDraft.userPrompt,
+                            (newValue, cursorPos) => {
+                              setDetailInlineDraft((prev) => ({
+                                ...prev,
+                                userPrompt: newValue,
+                              }));
+                              requestAnimationFrame(() => {
+                                detailUserPromptTextareaRef.current?.setSelectionRange(cursorPos, cursorPos);
+                              });
+                            },
+                          );
+                          if (handled) {
+                            return;
+                          }
+                          handleDetailInlineEditKeyDown(event);
+                        }}
+                        className="w-full min-h-[280px] resize-none rounded-xl border border-border/70 bg-card px-4 py-3 text-[15px] leading-relaxed text-foreground shadow-sm outline-none appearance-none placeholder:text-muted-foreground focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
+                        rows={12}
+                        spellCheck={false}
+                      />
                     ) : (
                       <div
                         role="button"
@@ -2516,7 +2638,7 @@ function PromptSkillMainContent() {
               {/* Action buttons - sticky bottom */}
               {/* 操作按钮 - 固定底部 */}
               <div className="flex-shrink-0 border-t border-border app-wallpaper-panel-strong px-6 py-3">
-                <div className="max-w-5xl mx-auto flex items-center gap-3 flex-wrap">
+                <div className="w-full flex items-center gap-3 flex-wrap">
                   <button
                     onClick={async () => {
                       // Select content based on language mode

@@ -1,4 +1,10 @@
-import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Sidebar } from "../../../src/renderer/components/layout/Sidebar";
@@ -12,6 +18,7 @@ import { renderWithI18n } from "../../helpers/i18n";
 import { installWindowMocks } from "../../helpers/window";
 
 const showToastMock = vi.fn();
+const sortableTreeMock = vi.hoisted(() => vi.fn());
 
 vi.mock("../../../src/renderer/components/resources/ResourcesModal", () => ({
   ResourcesModal: () => null,
@@ -23,7 +30,22 @@ vi.mock("../../../src/renderer/components/folder", () => ({
 }));
 
 vi.mock("../../../src/renderer/components/layout/tree/SortableTree", () => ({
-  SortableTree: () => null,
+  SortableTree: (props: {
+    folderPromptCounts?: Map<string, number>;
+  }) => {
+    sortableTreeMock(props);
+    return (
+      <div data-testid="sortable-tree">
+        {Array.from(props.folderPromptCounts?.entries() ?? []).map(
+          ([folderId, count]) => (
+            <span key={folderId} data-testid={`folder-count-${folderId}`}>
+              {count}
+            </span>
+          ),
+        )}
+      </div>
+    );
+  },
 }));
 
 vi.mock("../../../src/renderer/components/ui/Toast", () => ({
@@ -33,8 +55,10 @@ vi.mock("../../../src/renderer/components/ui/Toast", () => ({
 describe("Sidebar", () => {
   beforeEach(() => {
     installWindowMocks();
-    delete (window as Window & { __PROMPTHUB_WEB__?: boolean }).__PROMPTHUB_WEB__;
+    delete (window as Window & { __PROMPTHUB_WEB__?: boolean })
+      .__PROMPTHUB_WEB__;
     showToastMock.mockReset();
+    sortableTreeMock.mockClear();
 
     useUIStore.setState({
       appModule: "skill",
@@ -77,8 +101,15 @@ describe("Sidebar", () => {
       skillTagsSectionHeight: 140,
       isSkillTagsSectionCollapsed: false,
       desktopHomeModules: ["prompt", "skill", "rules"],
-      skillPlatformOrder: ["claude", "codex", "gemini", "opencode", "windsurf", "custom:team-agents"],
-        skillProjects: [
+      skillPlatformOrder: [
+        "claude",
+        "codex",
+        "gemini",
+        "opencode",
+        "windsurf",
+        "custom:team-agents",
+      ],
+      skillProjects: [
         {
           id: "project-1",
           name: "Workspace",
@@ -87,11 +118,11 @@ describe("Sidebar", () => {
           createdAt: 1,
           updatedAt: 1,
         },
-        ],
-        promptTagCatalog: ["gamma"],
-        tagFilterMode: "multi",
-        disabledPlatformIds: [],
-      } as Partial<ReturnType<typeof useSettingsStore.getState>>);
+      ],
+      promptTagCatalog: ["gamma"],
+      tagFilterMode: "multi",
+      disabledPlatformIds: [],
+    } as Partial<ReturnType<typeof useSettingsStore.getState>>);
 
     useRulesStore.setState({
       files: [
@@ -199,7 +230,8 @@ describe("Sidebar", () => {
   });
 
   afterEach(() => {
-    delete (window as Window & { __PROMPTHUB_WEB__?: boolean }).__PROMPTHUB_WEB__;
+    delete (window as Window & { __PROMPTHUB_WEB__?: boolean })
+      .__PROMPTHUB_WEB__;
   });
 
   it("shows Project Skills as a first-level skill navigation entry on desktop", async () => {
@@ -214,6 +246,104 @@ describe("Sidebar", () => {
 
     expect(useSkillStore.getState().storeView).toBe("projects");
     expect(screen.getByText("Project Skills")).toBeInTheDocument();
+  });
+
+  it("passes direct prompt counts to the folder tree", async () => {
+    useUIStore.setState({
+      appModule: "prompt",
+      viewMode: "prompt",
+      isSidebarCollapsed: false,
+    });
+    useFolderStore.setState({
+      folders: [
+        { id: "folder-1", name: "Folder A", order: 0, icon: "", createdAt: "", updatedAt: "" },
+        { id: "folder-2", name: "Folder B", order: 1, icon: "", createdAt: "", updatedAt: "" },
+      ],
+      selectedFolderId: null,
+      expandedIds: new Set<string>(),
+      unlockedFolderIds: new Set<string>(),
+    } as Partial<ReturnType<typeof useFolderStore.getState>>);
+    usePromptStore.setState({
+      prompts: [
+        {
+          id: "prompt-1",
+          title: "Prompt One",
+          userPrompt: "Body",
+          tags: [],
+          promptType: "text",
+          folderId: "folder-1",
+          currentVersion: 1,
+          version: 1,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+          isFavorite: false,
+          isPinned: false,
+          usageCount: 0,
+          variables: [],
+        },
+        {
+          id: "prompt-2",
+          title: "Prompt Two",
+          userPrompt: "Body",
+          tags: [],
+          promptType: "text",
+          folderId: "folder-1",
+          currentVersion: 1,
+          version: 1,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+          isFavorite: false,
+          isPinned: false,
+          usageCount: 0,
+          variables: [],
+        },
+        {
+          id: "prompt-3",
+          title: "Prompt Three",
+          userPrompt: "Body",
+          tags: [],
+          promptType: "text",
+          folderId: "folder-2",
+          currentVersion: 1,
+          version: 1,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+          isFavorite: false,
+          isPinned: false,
+          usageCount: 0,
+          variables: [],
+        },
+      ],
+    } as Partial<ReturnType<typeof usePromptStore.getState>>);
+
+    await act(async () => {
+      await renderWithI18n(
+        <Sidebar currentPage="home" onNavigate={vi.fn()} />,
+        { language: "en" },
+      );
+    });
+
+    expect(screen.getByTestId("folder-count-folder-1")).toHaveTextContent("2");
+    expect(screen.getByTestId("folder-count-folder-2")).toHaveTextContent("1");
+    expect(sortableTreeMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        folderPromptCounts: expect.any(Map),
+      }),
+    );
+  });
+
+  it("shows Agent Skills as a first-level skill navigation entry on desktop", async () => {
+    await act(async () => {
+      await renderWithI18n(
+        <Sidebar currentPage="home" onNavigate={vi.fn()} />,
+        { language: "en" },
+      );
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Agent Skills/i }));
+
+    expect(useSkillStore.getState().storeView).toBe("agents");
+    expect(screen.getByText("Agent Skills")).toBeInTheDocument();
   });
 
   it("clears the selected skill when returning to my skills", async () => {
@@ -235,8 +365,48 @@ describe("Sidebar", () => {
     expect(useSkillStore.getState().selectedSkillId).toBeNull();
   });
 
+  it("shows the official store as an unopened zero-count source", async () => {
+    useSkillStore.setState({
+      storeView: "store",
+      selectedStoreSourceId: "official",
+      registrySkills: [
+        {
+          slug: "legacy-official-count",
+          name: "Legacy Official Count",
+          description: "Should not be counted while official store is closed",
+          category: "general",
+          author: "PromptHub",
+          source_url: "https://example.com/legacy",
+          tags: [],
+          version: "1.0.0",
+          content: "# Legacy",
+        },
+      ],
+      remoteStoreEntries: {
+        "claude-code": {
+          loadedAt: Date.now(),
+          error: null,
+          skills: [],
+        },
+      },
+    } as never);
+
+    await act(async () => {
+      await renderWithI18n(
+        <Sidebar currentPage="home" onNavigate={vi.fn()} />,
+        { language: "en" },
+      );
+    });
+
+    const officialButton = screen.getByRole("button", {
+      name: /Official Store/i,
+    });
+    expect(within(officialButton).getByText("0")).toBeInTheDocument();
+  });
+
   it("hides Projects in web runtime where local skill scanning is unavailable", async () => {
-    (window as Window & { __PROMPTHUB_WEB__?: boolean }).__PROMPTHUB_WEB__ = true;
+    (window as Window & { __PROMPTHUB_WEB__?: boolean }).__PROMPTHUB_WEB__ =
+      true;
 
     await act(async () => {
       await renderWithI18n(
@@ -277,24 +447,32 @@ describe("Sidebar", () => {
     expect(screen.getByText("Add Project Directory")).toBeInTheDocument();
 
     const claudeButton = screen.getByRole("button", { name: /Claude Code/i });
-    expect(within(claudeButton).getByAltText("claude icon")).toBeInTheDocument();
+    expect(
+      within(claudeButton).getByAltText("claude icon"),
+    ).toBeInTheDocument();
 
     const codexButton = screen.getByRole("button", { name: /Codex CLI/i });
     expect(within(codexButton).getByAltText("codex icon")).toBeInTheDocument();
 
     const geminiButton = screen.getByRole("button", { name: /Gemini CLI/i });
-    expect(within(geminiButton).getByAltText("gemini icon")).toBeInTheDocument();
+    expect(
+      within(geminiButton).getByAltText("gemini icon"),
+    ).toBeInTheDocument();
 
     const opencodeButton = screen.getByRole("button", { name: /OpenCode/i });
-    expect(within(opencodeButton).getByAltText("opencode icon")).toBeInTheDocument();
+    expect(
+      within(opencodeButton).getByAltText("opencode icon"),
+    ).toBeInTheDocument();
 
     const windsurfButton = screen.getByRole("button", { name: /Windsurf/i });
-    expect(within(windsurfButton).getByAltText("windsurf icon")).toBeInTheDocument();
+    expect(
+      within(windsurfButton).getByAltText("windsurf icon"),
+    ).toBeInTheDocument();
   });
 
-
   it("keeps Rules visible but hides project-directory actions in web runtime", async () => {
-    (window as Window & { __PROMPTHUB_WEB__?: boolean }).__PROMPTHUB_WEB__ = true;
+    (window as Window & { __PROMPTHUB_WEB__?: boolean }).__PROMPTHUB_WEB__ =
+      true;
     useUIStore.setState({
       appModule: "prompt",
       viewMode: "prompt",
@@ -344,7 +522,9 @@ describe("Sidebar", () => {
     });
 
     expect(selectRuleMock).toHaveBeenCalledWith("project:rule-project-1");
-    expect(useRulesStore.getState().selectedRuleId).toBe("project:rule-project-1");
+    expect(useRulesStore.getState().selectedRuleId).toBe(
+      "project:rule-project-1",
+    );
   });
 
   it("filters the rules sidebar using the shared rules search query", async () => {
@@ -551,8 +731,9 @@ describe("Sidebar", () => {
     const labels = screen
       .getAllByRole("button")
       .map((button) => button.textContent?.trim())
-      .filter((text): text is string =>
-        text === "Rules" || text === "Skills" || text === "Prompts",
+      .filter(
+        (text): text is string =>
+          text === "Rules" || text === "Skills" || text === "Prompts",
       );
 
     expect(labels.slice(0, 3)).toEqual(["Rules", "Skills", "Prompts"]);

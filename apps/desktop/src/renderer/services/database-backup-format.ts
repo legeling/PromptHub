@@ -30,8 +30,10 @@ export interface DatabaseBackup {
   images?: { [fileName: string]: string };
   videos?: { [fileName: string]: string };
   aiConfig?: {
+    aiProviders?: any[];
     aiModels?: any[];
     scenarioModelDefaults?: Record<string, string>;
+    modelRouteDefaults?: Record<string, string>;
     aiProvider?: string;
     aiApiProtocol?: string;
     aiApiKey?: string;

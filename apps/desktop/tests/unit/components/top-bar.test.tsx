@@ -19,6 +19,13 @@ vi.mock("../../../src/renderer/components/prompt/QuickAddModal", () => ({
   QuickAddModal: () => null,
 }));
 
+vi.mock(
+  "../../../src/renderer/components/prompt/ImagePromptReverseModal",
+  () => ({
+    ImagePromptReverseModal: () => null,
+  }),
+);
+
 vi.mock("../../../src/renderer/components/skill/CreateSkillModal", () => ({
   CreateSkillModal: () => null,
 }));
@@ -99,9 +106,17 @@ describe("TopBar", () => {
 
     expect(screen.getByRole("menu")).toBeInTheDocument();
     expect(screen.getByText("手动填写 Prompt 详细信息")).toBeInTheDocument();
-    expect(screen.getByText("粘贴内容由 AI 智能分析并分类")).toBeInTheDocument();
+    expect(
+      screen.getByText("粘贴内容由 AI 智能分析并分类"),
+    ).toBeInTheDocument();
     expect(screen.getByText("AI 生成")).toBeInTheDocument();
-    expect(screen.getByText("描述你的目标，让 AI 直接起草 Prompt")).toBeInTheDocument();
+    expect(
+      screen.getByText("描述你的目标，让 AI 直接起草 Prompt"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("图片反推")).toBeInTheDocument();
+    expect(
+      screen.getByText("从参考图生成结构化生图 Prompt"),
+    ).toBeInTheDocument();
   });
 
   it("closes the create mode dropdown when clicking outside", async () => {
@@ -348,13 +363,74 @@ describe("TopBar", () => {
 
     fireEvent.change(searchInput, { target: { value: "codex" } });
 
-    expect(usePromptStore.getState().searchQuery).toBe("existing prompt search");
+    expect(usePromptStore.getState().searchQuery).toBe(
+      "existing prompt search",
+    );
     expect(useRulesStore.getState().searchQuery).toBe("codex");
   });
 
   it("uses the store search query when searching in the skill store catalog", async () => {
     const selectRegistrySkill = vi.fn();
 
+    useUIStore.setState({
+      appModule: "skill",
+      viewMode: "skill",
+      isSidebarCollapsed: false,
+    });
+    useSkillStore.setState({
+      storeView: "store",
+      searchQuery: "",
+      storeSearchQuery: "",
+      storeCategory: "all",
+      selectedStoreSourceId: "claude-code",
+      registrySkills: [],
+      remoteStoreEntries: {
+        "claude-code": {
+          loadedAt: 1,
+          skills: [
+            {
+              slug: "pdf-skill",
+              name: "PDF Skill",
+              description: "Use this skill whenever you need PDF help",
+              category: "office",
+              author: "PromptHub",
+              source_url: "https://example.com/pdf-skill",
+              tags: ["pdf"],
+              version: "1.0.0",
+              content: "# PDF Skill",
+            },
+          ],
+        },
+      },
+      selectedRegistrySlug: null,
+      selectRegistrySkill,
+    } as Partial<ReturnType<typeof useSkillStore.getState>>);
+
+    await act(async () => {
+      await renderWithI18n(
+        <TopBar onOpenSettings={vi.fn()} updateAvailable={null} />,
+        { language: "en" },
+      );
+    });
+
+    const searchInput = screen.getByPlaceholderText("Search skills...");
+    fireEvent.change(searchInput, { target: { value: "pdf" } });
+
+    expect(useSkillStore.getState().storeSearchQuery).toBe("pdf");
+    expect(useSkillStore.getState().searchQuery).toBe("");
+
+    await waitFor(() => {
+      expect(screen.getByText("1 results")).toBeInTheDocument();
+    });
+    expect(screen.queryByTitle("Next (Tab)")).not.toBeInTheDocument();
+
+    fireEvent.keyDown(searchInput, { key: "Enter" });
+    fireEvent.keyDown(searchInput, { key: "Tab" });
+
+    expect(selectRegistrySkill).not.toHaveBeenCalled();
+  });
+
+  it("does not search unopened official store registry skills", async () => {
     useUIStore.setState({
       appModule: "skill",
       viewMode: "skill",
@@ -381,7 +457,6 @@ describe("TopBar", () => {
       ],
       remoteStoreEntries: {},
       selectedRegistrySlug: null,
-      selectRegistrySkill,
     } as Partial<ReturnType<typeof useSkillStore.getState>>);
 
     await act(async () => {
@@ -391,19 +466,14 @@ describe("TopBar", () => {
       );
     });
 
-    const searchInput = screen.getByPlaceholderText("Search skills...");
-    fireEvent.change(searchInput, { target: { value: "pdf" } });
+    fireEvent.change(screen.getByPlaceholderText("Search skills..."), {
+      target: { value: "pdf" },
+    });
 
     expect(useSkillStore.getState().storeSearchQuery).toBe("pdf");
-    expect(useSkillStore.getState().searchQuery).toBe("");
-
-    expect(screen.getByText("1 results")).toBeInTheDocument();
-    expect(screen.queryByTitle("Next (Tab)")).not.toBeInTheDocument();
-
-    fireEvent.keyDown(searchInput, { key: "Enter" });
-    fireEvent.keyDown(searchInput, { key: "Tab" });
-
-    expect(selectRegistrySkill).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.getByText("No results")).toBeInTheDocument();
+    });
   });
 
   it("uses the regular skill search query in the distribution view", async () => {
@@ -420,7 +490,7 @@ describe("TopBar", () => {
       storeSearchQuery: "",
       filterType: "all",
       filterTags: [],
-      deployedSkillNames: new Set(["pdf-writer"]),
+      deployedSkillNames: new Set(["skill-1"]),
       skills: [
         {
           id: "skill-1",
@@ -450,7 +520,9 @@ describe("TopBar", () => {
 
     expect(useSkillStore.getState().searchQuery).toBe("pdf");
     expect(useSkillStore.getState().storeSearchQuery).toBe("");
-    expect(screen.getByText("1 results")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("1 results")).toBeInTheDocument();
+    });
     expect(screen.queryByTitle("Next (Tab)")).not.toBeInTheDocument();
 
     fireEvent.keyDown(searchInput, { key: "Enter" });

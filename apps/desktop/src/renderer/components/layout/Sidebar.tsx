@@ -22,6 +22,7 @@ import {
   MessageSquareTextIcon,
   CommandIcon,
   CuboidIcon,
+  BotIcon,
   StoreIcon,
   GlobeIcon,
   Clock3Icon,
@@ -46,7 +47,6 @@ import { useSkillStore } from "../../stores/skill.store";
 import { FolderModal, PrivateFolderUnlockModal } from "../folder";
 import { useTranslation } from "react-i18next";
 import type { Folder } from "@prompthub/shared/types";
-import { BUILTIN_SKILL_REGISTRY } from "@prompthub/shared/constants/skill-registry";
 import { SortableTree } from "./tree/SortableTree";
 import type { FlattenedItem } from "./tree/utilities";
 import { buildPromptStats } from "../../services/prompt-filter";
@@ -278,6 +278,18 @@ export function Sidebar({
   );
   const [showAllSkillTags, setShowAllSkillTags] = useState(false);
   const promptStats = useMemo(() => buildPromptStats(prompts), [prompts]);
+  const folderPromptCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    for (const prompt of prompts) {
+      if (!prompt.folderId) {
+        continue;
+      }
+      counts.set(prompt.folderId, (counts.get(prompt.folderId) ?? 0) + 1);
+    }
+
+    return counts;
+  }, [prompts]);
   const skillStats = useMemo(
     () => buildSkillStats(skills, deployedSkillNames),
     [skills, deployedSkillNames],
@@ -974,6 +986,7 @@ export function Sidebar({
                   <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide px-3 pb-4">
                     <SortableTree
                       folders={folders}
+                      folderPromptCounts={folderPromptCounts}
                       selectedFolderId={selectedFolderId}
                       expandedIds={expandedIds}
                       unlockedFolderIds={unlockedFolderIds}
@@ -1223,21 +1236,37 @@ export function Sidebar({
                     }}
                   />
                   {runtimeCapabilities.skillLocalScan && (
-                    <NavItem
-                      icon={<FolderPlusIcon className="w-5 h-5" />}
-                      label={t("nav.projects", "Projects")}
-                      count={skillProjects.length}
-                      active={
-                        storeView === "projects" && currentPage === "home"
-                      }
-                      collapsed={isCollapsed}
-                      onClick={() => {
-                        if (!confirmLeaveDirtySkillEditor()) return;
-                        setStoreView("projects");
-                        selectSkill(null);
-                        if (currentPage !== "home") onNavigate("home");
-                      }}
-                    />
+                    <>
+                      <NavItem
+                        icon={<FolderPlusIcon className="w-5 h-5" />}
+                        label={t("nav.projects", "Projects")}
+                        count={skillProjects.length}
+                        active={
+                          storeView === "projects" && currentPage === "home"
+                        }
+                        collapsed={isCollapsed}
+                        onClick={() => {
+                          if (!confirmLeaveDirtySkillEditor()) return;
+                          setStoreView("projects");
+                          selectSkill(null);
+                          if (currentPage !== "home") onNavigate("home");
+                        }}
+                      />
+                      <NavItem
+                        icon={<BotIcon className="w-5 h-5" />}
+                        label={t("nav.agentSkills", "Agent Skills")}
+                        active={
+                          storeView === "agents" && currentPage === "home"
+                        }
+                        collapsed={isCollapsed}
+                        onClick={() => {
+                          if (!confirmLeaveDirtySkillEditor()) return;
+                          setStoreView("agents");
+                          selectSkill(null);
+                          if (currentPage !== "home") onNavigate("home");
+                        }}
+                      />
+                    </>
                   )}
                   <NavItem
                     icon={<StarIcon className="w-5 h-5" />}
@@ -1334,7 +1363,7 @@ export function Sidebar({
                             {t("skill.officialStore", "官方商店")}
                           </span>
                           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sidebar-accent/80 text-sidebar-foreground/50 border border-white/5">
-                            {BUILTIN_SKILL_REGISTRY.length}
+                            0
                           </span>
                         </button>
                         <button

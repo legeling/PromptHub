@@ -952,7 +952,7 @@ export function formatBackupImportError(error: unknown): string {
   }
 
   if (normalizedMessage.includes("file errors:")) {
-    return `导入部分完成，但有附件或技能文件恢复失败。${message}`;
+    return `导入部分完成，但有附件或 Skill 文件恢复失败。${message}`;
   }
 
   return message || "导入失败，请检查备份文件是否完整后重试。";

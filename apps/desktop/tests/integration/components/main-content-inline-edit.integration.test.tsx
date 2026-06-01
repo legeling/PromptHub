@@ -28,10 +28,16 @@ vi.mock("../../../src/renderer/stores/folder.store", async () => {
   };
 });
 
-vi.mock("../../../src/renderer/stores/settings.store", () => ({
-  useSettingsStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    useSettingsStoreMock(selector),
-}));
+vi.mock("../../../src/renderer/stores/settings.store", async () => {
+  const actual = await vi.importActual(
+    "../../../src/renderer/stores/settings.store",
+  );
+  return {
+    ...(actual as Record<string, unknown>),
+    useSettingsStore: (selector: (state: Record<string, unknown>) => unknown) =>
+      useSettingsStoreMock(selector),
+  };
+});
 
 vi.mock("../../../src/renderer/stores/ui.store", () => ({
   useUIStore: (selector: (state: Record<string, unknown>) => unknown) =>
@@ -186,13 +192,139 @@ describe("MainContent inline edit integration", () => {
 
     await waitFor(() => {
       expect(promptState.updatePrompt).toHaveBeenCalledWith("prompt-1", {
-        systemPrompt: "System text",
         title: "Updated Title",
         userPrompt: "Updated user prompt",
       });
     });
 
     expect(showToast).toHaveBeenCalledWith("Saved successfully", "success");
+  });
+
+  it("saves a changed title when Enter is pressed in the detail title field", async () => {
+    const promptState = createPromptState(createPrompt());
+
+    usePromptStoreMock.mockImplementation((selector) => selector(promptState));
+
+    await act(async () => {
+      await renderWithI18n(<MainContent />, { language: "en" });
+    });
+
+    fireEvent.doubleClick(
+      screen.getByRole("heading", { name: "Original Title", level: 2 }),
+    );
+
+    const titleInput = screen.getByRole("textbox", { name: "Title" });
+    fireEvent.change(titleInput, { target: { value: "Enter Saved Title" } });
+    fireEvent.keyDown(titleInput, { key: "Enter" });
+
+    await waitFor(() => {
+      expect(promptState.updatePrompt).toHaveBeenCalledWith("prompt-1", {
+        title: "Enter Saved Title",
+      });
+    });
+  });
+
+  it("adds a description from the empty detail description area and saves on Enter", async () => {
+    const promptState = createPromptState(
+      createPrompt({ description: undefined }),
+    );
+
+    usePromptStoreMock.mockImplementation((selector) => selector(promptState));
+
+    await act(async () => {
+      await renderWithI18n(<MainContent />, { language: "en" });
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Add description" }));
+
+    const descriptionInput = screen.getByRole("textbox", {
+      name: "Description",
+    });
+    fireEvent.change(descriptionInput, {
+      target: { value: "A searchable usage note" },
+    });
+    fireEvent.keyDown(descriptionInput, { key: "Enter" });
+
+    await waitFor(() => {
+      expect(promptState.updatePrompt).toHaveBeenCalledWith("prompt-1", {
+        description: "A searchable usage note",
+      });
+    });
+  });
+
+  it("changes the selected prompt folder from the detail metadata row", async () => {
+    const promptState = createPromptState(
+      createPrompt({ folderId: "folder-a" }),
+    );
+
+    usePromptStoreMock.mockImplementation((selector) => selector(promptState));
+    useFolderStoreMock.mockImplementation((selector) =>
+      selector({
+        selectedFolderId: null,
+        unlockedFolderIds: new Set<string>(),
+        folders: [
+          { id: "folder-a", name: "Folder A", order: 0, icon: "", createdAt: "", updatedAt: "" },
+          { id: "folder-b", name: "Folder B", order: 1, icon: "", createdAt: "", updatedAt: "" },
+        ],
+      }),
+    );
+
+    await act(async () => {
+      await renderWithI18n(<MainContent />, { language: "en" });
+    });
+
+    expect(
+      screen.queryByRole("combobox", { name: "Folder (Optional)" }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Folder (Optional)" }));
+    fireEvent.click(await screen.findByText("Folder B"));
+
+    await waitFor(() => {
+      expect(promptState.updatePrompt).toHaveBeenCalledWith("prompt-1", {
+        folderId: "folder-b",
+      });
+    });
+  });
+
+  it("allows changing the detail folder while inline editing", async () => {
+    const promptState = createPromptState(
+      createPrompt({ folderId: "folder-a" }),
+    );
+
+    usePromptStoreMock.mockImplementation((selector) => selector(promptState));
+    useFolderStoreMock.mockImplementation((selector) =>
+      selector({
+        selectedFolderId: null,
+        unlockedFolderIds: new Set<string>(),
+        folders: [
+          { id: "folder-a", name: "Folder A", order: 0, icon: "", createdAt: "", updatedAt: "" },
+          { id: "folder-b", name: "Folder B", order: 1, icon: "", createdAt: "", updatedAt: "" },
+        ],
+      }),
+    );
+
+    await act(async () => {
+      await renderWithI18n(<MainContent />, { language: "en" });
+    });
+
+    fireEvent.doubleClick(
+      screen.getByRole("heading", { name: "Original Title", level: 2 }),
+    );
+
+    expect(screen.getByRole("textbox", { name: "Title" })).toBeInTheDocument();
+
+    const folderButton = screen.getByRole("button", { name: "Folder (Optional)" });
+    expect(folderButton).not.toBeDisabled();
+
+    fireEvent.click(folderButton);
+    fireEvent.click(await screen.findByText("Folder B"));
+
+    await waitFor(() => {
+      expect(promptState.updatePrompt).toHaveBeenCalledWith("prompt-1", {
+        folderId: "folder-b",
+      });
+    });
   });
 
   it("discards inline draft changes on cancel", async () => {
@@ -276,11 +408,17 @@ describe("MainContent inline edit integration", () => {
     );
 
     expect(screen.getByRole("textbox", { name: "Title" }).className).toContain(
-      "bg-transparent",
+      "bg-card",
+    );
+    expect(screen.getByRole("textbox", { name: "Title" }).className).toContain(
+      "h-10",
     );
     expect(
       screen.getByRole("textbox", { name: "User Prompt" }).className,
-    ).toContain("bg-transparent");
+    ).toContain("bg-card");
+    expect(
+      screen.getByRole("textbox", { name: "User Prompt" }).className,
+    ).toContain("rounded-xl");
     expect(
       screen.getByRole("textbox", { name: "User Prompt" }).className,
     ).not.toContain("font-mono");
@@ -382,7 +520,8 @@ describe("MainContent inline edit integration", () => {
     };
 
     expect(dropzone.className).toContain("border-transparent");
-    expect(dropzone.className).toContain("px-1.5");
+    expect(dropzone.className).not.toContain("px-1.5");
+    expect(dropzone.className).toContain("pr-1.5");
     expect(dropzone.className).toContain("py-1.5");
 
     fireEvent.dragOver(dropzone, { dataTransfer });

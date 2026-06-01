@@ -296,7 +296,7 @@ export function DataRecoveryDialog({
                         {candidate.promptCount === 0 && candidate.skillCount > 0 && (
                           <div className="mt-2">
                             <span className="text-[11px] rounded-full border border-amber-400/40 bg-amber-400/10 px-2 py-0.5 text-amber-600 dark:text-amber-400">
-                              {t("recovery.skillsOnly", "仅含技能数据")}
+                              {t("recovery.skillsOnly", "仅含 Skill 数据")}
                             </span>
                           </div>
                         )}

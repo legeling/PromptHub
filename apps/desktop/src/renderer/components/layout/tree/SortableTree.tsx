@@ -41,6 +41,7 @@ const dropAnimationConfig: DropAnimation = {
 
 interface SortableTreeProps {
   folders: Folder[];
+  folderPromptCounts?: Map<string, number>;
   selectedFolderId: string | null;
   expandedIds: Set<string>;
   unlockedFolderIds: Set<string>;
@@ -56,6 +57,7 @@ const ITEM_HEIGHT = 33;
 
 export function SortableTree({
   folders,
+  folderPromptCounts,
   selectedFolderId,
   expandedIds,
   unlockedFolderIds,
@@ -283,6 +285,7 @@ export function SortableTree({
                 isExpanded={expandedIds.has(item.id)}
                 isActive={selectedFolderId === item.id && currentPage === 'home'}
                 isLocked={item.isPrivate && !unlockedFolderIds.has(item.id)}
+                promptCount={folderPromptCounts?.get(item.id) ?? 0}
                 onSelect={() => handleSelectFolder(item)}
                 onEdit={() => onEditFolder(item)}
                 onToggleExpand={() => onToggleExpand(item.id)}
@@ -328,6 +331,7 @@ export function SortableTree({
                 isExpanded={expandedIds.has(activeItem.id)}
                 isActive={selectedFolderId === activeItem.id && currentPage === 'home'}
                 isLocked={activeItem.isPrivate && !unlockedFolderIds.has(activeItem.id)}
+                promptCount={folderPromptCounts?.get(activeItem.id) ?? 0}
                 style={{
                   backgroundColor: 'var(--sidebar-accent)',
                   boxShadow: '0 8px 24px rgba(0,0,0,0.15)',

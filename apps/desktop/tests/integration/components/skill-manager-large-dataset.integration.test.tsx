@@ -16,10 +16,16 @@ vi.mock("../../../src/renderer/stores/skill.store", () => ({
     useSkillStoreMock(selector),
 }));
 
-vi.mock("../../../src/renderer/stores/settings.store", () => ({
-  useSettingsStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    useSettingsStoreMock(selector),
-}));
+vi.mock("../../../src/renderer/stores/settings.store", async () => {
+  const actual = await vi.importActual(
+    "../../../src/renderer/stores/settings.store",
+  );
+  return {
+    ...(actual as Record<string, unknown>),
+    useSettingsStore: (selector: (state: Record<string, unknown>) => unknown) =>
+      useSettingsStoreMock(selector),
+  };
+});
 
 vi.mock("../../../src/renderer/components/ui/Toast", () => ({
   useToast: () => useToastMock(),
@@ -116,7 +122,7 @@ describe("SkillManager large dataset integration", () => {
     vi.useRealTimers();
   });
 
-  it("renders only the initial chunk for 1000 skills in gallery mode", async () => {
+  it("renders only the first page for 1000 skills in gallery mode", async () => {
     const skills = Array.from({ length: 1000 }, (_, index) => createSkill(index));
     const skillStoreState = createSkillStoreState(skills);
     useSkillStoreMock.mockImplementation((selector) => selector(skillStoreState));
@@ -130,9 +136,7 @@ describe("SkillManager large dataset integration", () => {
 
     expect(screen.getByText("skill-0000")).toBeInTheDocument();
     expect(screen.queryByText("skill-0999")).not.toBeInTheDocument();
-    expect(screen.getAllByTestId("skill-card")).toHaveLength(120);
-    expect(
-      screen.getByText("Rendering 120/1000 in chunks"),
-    ).toBeInTheDocument();
+    expect(screen.getAllByTestId("skill-card")).toHaveLength(10);
+    expect(screen.getAllByText("1-10 / 1000")).toHaveLength(2);
   });
 });
