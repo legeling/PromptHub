@@ -75,15 +75,21 @@ description: |
   });
 
   it("localizes skill source labels through i18n keys", () => {
-    const t = vi.fn((key: string, fallback: string) => {
+    const t = vi.fn(
+      (key: string, fallback: string, options?: Record<string, unknown>) => {
       const map: Record<string, string> = {
         "skill.sourceGithubStore": "Imported via Store",
         "skill.sourceRemoteGitRepo": "Imported from Remote Git Repository",
         "skill.sourceLocalFolder": "Imported from Local Folder",
         "skill.sourceCursorLocalFolder": "Imported from Cursor Folder",
+        "skill.sourceAgentPlatformFolder": fallback.replace(
+          "{{platform}}",
+          String(options?.platform ?? ""),
+        ),
       };
       return map[key] || fallback;
-    });
+      },
+    );
 
     const github = getSkillSourceMeta(
       {
@@ -104,11 +110,20 @@ description: |
       } as any,
       t as any,
     );
+    const cherry = getSkillSourceMeta(
+      {
+        source_url:
+          "/Users/demo/Library/Application Support/CherryStudio/Data/Skills/skill-creator",
+      } as any,
+      t as any,
+    );
 
     expect(github?.sourceLabel).toBe("Imported via Store");
-    expect(local?.sourceLabel).toBe("Imported from Cursor Folder");
+    expect(local?.sourceLabel).toBe("Imported from Cursor Agent Skills");
     expect(localSourceUrl?.kind).toBe("local");
     expect(localSourceUrl?.sourceLabel).toBe("Imported from Local Folder");
+    expect(cherry?.kind).toBe("local");
+    expect(cherry?.sourceLabel).toBe("Imported from Cherry Studio Agent Skills");
   });
 
   it("treats self-hosted git URLs as remote git repositories instead of local folders", () => {

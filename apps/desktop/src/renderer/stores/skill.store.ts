@@ -1014,6 +1014,11 @@ export const useSkillStore = create<SkillState>()(
 
             try {
               const userTags = userTagsByPath?.[scanned.localPath] ?? [];
+              const scannedPlatformName =
+                "platformSkillPath" in scanned &&
+                typeof scanned.platforms?.[0] === "string"
+                  ? scanned.platforms[0]
+                  : undefined;
               const newSkill = await window.api.skill.create({
                 name: scanned.name,
                 description: scanned.description,
@@ -1026,6 +1031,7 @@ export const useSkillStore = create<SkillState>()(
                 original_tags: scanned.tags,
                 is_favorite: false,
                 source_url: scanned.localPath,
+                source_label: scannedPlatformName,
                 local_repo_path: scanned.localPath,
               });
 

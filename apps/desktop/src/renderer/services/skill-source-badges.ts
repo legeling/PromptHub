@@ -1,6 +1,7 @@
 import type { TFunction } from "i18next";
 import type { Skill } from "@prompthub/shared/types";
 import type { SkillVariantBadge } from "./skill-variant-badges";
+import { detectAgentPlatformSkillSource } from "./skill-agent-source";
 import { isLikelyLocalSource } from "./skill-store-source";
 import { detectRemoteSourceChannel } from "./skill-source-channel";
 
@@ -9,6 +10,7 @@ type SkillSourceBadgeInput = Pick<
   | "source_id"
   | "source_label"
   | "source_url"
+  | "local_repo_path"
   | "source_branch"
   | "registry_slug"
   | "is_builtin"
@@ -163,6 +165,27 @@ export function buildMySkillSourceBadges(
   const storeBadge = getStoreSourceBadge(skill, t);
   if (storeBadge) {
     return withBranchBadge([storeBadge], skill);
+  }
+
+  const agentSource = detectAgentPlatformSkillSource({
+    sourceLabel: skill.source_label,
+    sourceUrl: skill.source_url,
+    localRepoPath: skill.local_repo_path,
+  });
+  if (agentSource) {
+    return withBranchBadge(
+      [
+        {
+          key: `source-agent-${agentSource.platformId}`,
+          label: t("skill.sourceBadgeAgentPlatformImport", {
+            platform: agentSource.platformName,
+            defaultValue: "{{platform}} Import",
+          }),
+          tone: "local",
+        },
+      ],
+      skill,
+    );
   }
 
   if (isProjectSkillSourcePath(skill.source_url)) {

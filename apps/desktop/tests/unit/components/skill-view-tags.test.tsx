@@ -174,6 +174,77 @@ describe("skill view tags", () => {
     expect(screen.queryByText("Remote Import")).not.toBeInTheDocument();
   });
 
+  it("shows specific agent platform source badges instead of generic local import", () => {
+    render(
+      <>
+        <SkillGalleryCard
+          animationDelayMs={0}
+          isSelected={false}
+          isSelectionMode={false}
+          onDelete={vi.fn()}
+          onOpen={vi.fn()}
+          onQuickInstall={vi.fn()}
+          onToggleFavorite={vi.fn()}
+          onToggleSelection={vi.fn()}
+          skill={
+            {
+              ...baseSkill,
+              id: "cherry-agent",
+              source_url:
+                "/Users/demo/Library/Application Support/CherryStudio/Data/Skills/skill-creator",
+            } as any
+          }
+        />
+        <SkillGalleryCard
+          animationDelayMs={0}
+          isSelected={false}
+          isSelectionMode={false}
+          onDelete={vi.fn()}
+          onOpen={vi.fn()}
+          onQuickInstall={vi.fn()}
+          onToggleFavorite={vi.fn()}
+          onToggleSelection={vi.fn()}
+          skill={
+            {
+              ...baseSkill,
+              id: "claude-agent",
+              source_url: "/Users/demo/.claude/skills/alphafold-database",
+            } as any
+          }
+        />
+      </>,
+    );
+
+    expect(screen.getByText("Cherry Studio Import")).toBeInTheDocument();
+    expect(screen.getByText("Claude Code Import")).toBeInTheDocument();
+    expect(screen.queryByText("Local Import")).not.toBeInTheDocument();
+  });
+
+  it("keeps project skill folders distinct from global agent platform imports", () => {
+    render(
+      <SkillGalleryCard
+        animationDelayMs={0}
+        isSelected={false}
+        isSelectionMode={false}
+        onDelete={vi.fn()}
+        onOpen={vi.fn()}
+        onQuickInstall={vi.fn()}
+        onToggleFavorite={vi.fn()}
+        onToggleSelection={vi.fn()}
+        skill={
+          {
+            ...baseSkill,
+            source_url:
+              "/Users/demo/workspace/.claude/skills/alphafold-database",
+          } as any
+        }
+      />,
+    );
+
+    expect(screen.getByText("Project Import")).toBeInTheDocument();
+    expect(screen.queryByText("Claude Code Import")).not.toBeInTheDocument();
+  });
+
   it("uses custom store labels when they are user-readable", () => {
     render(
       <SkillGalleryCard

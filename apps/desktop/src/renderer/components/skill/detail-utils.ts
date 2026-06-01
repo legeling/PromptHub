@@ -8,6 +8,7 @@ import type {
 import type { SkillPlatform } from "@prompthub/shared/constants/platforms";
 import type { AIModelConfig } from "../../stores/settings.store";
 import { scheduleAllSaveSync } from "../../services/webdav-save-sync";
+import { detectAgentPlatformSkillSource } from "../../services/skill-agent-source";
 import { detectRemoteSourceChannel } from "../../services/skill-source-channel";
 
 export const SKILL_NAME_REGEX = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -262,10 +263,21 @@ export function getSkillSourceMeta(
       ? `.../${parts[parts.length - 2]}/${parts[parts.length - 1]}`
       : sourceValue;
   const lowerPath = normalized.toLowerCase();
+  const agentSource = detectAgentPlatformSkillSource({
+    sourceLabel: skill.source_label,
+    sourceUrl: skill.source_url,
+    localRepoPath: skill.local_repo_path,
+  });
   let sourceLabel =
     t?.("skill.sourceLocalFolder", "Imported from Local Folder") ||
     "Imported from Local Folder";
-  if (lowerPath.includes("/.claude/skills/")) {
+  if (agentSource) {
+    const fallback = `Imported from ${agentSource.platformName} Agent Skills`;
+    sourceLabel =
+      t?.("skill.sourceAgentPlatformFolder", fallback, {
+        platform: agentSource.platformName,
+      }) || fallback;
+  } else if (lowerPath.includes("/.claude/skills/")) {
     sourceLabel =
       t?.(
         "skill.sourceClaudeLocalFolder",
