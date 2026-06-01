@@ -85,12 +85,63 @@ function createCherryStudioSchema(database: DatabaseAdapter.Database): void {
   `);
 }
 
+function createModernCherryStudioSchema(database: DatabaseAdapter.Database): void {
+  database.exec(`
+    CREATE TABLE skills (
+      id text PRIMARY KEY NOT NULL,
+      name text NOT NULL,
+      description text,
+      folder_name text NOT NULL,
+      source text NOT NULL,
+      source_url text,
+      namespace text,
+      author text,
+      tags text,
+      content_hash text NOT NULL,
+      is_enabled integer DEFAULT true NOT NULL,
+      created_at integer NOT NULL,
+      updated_at integer NOT NULL
+    );
+    CREATE UNIQUE INDEX skills_folder_name_unique ON skills (folder_name);
+    CREATE TABLE agents (
+      id text PRIMARY KEY NOT NULL,
+      type text NOT NULL,
+      name text NOT NULL,
+      description text,
+      accessible_paths text,
+      instructions text,
+      model text NOT NULL,
+      plan_model text,
+      small_model text,
+      mcps text,
+      allowed_tools text,
+      configuration text,
+      created_at text NOT NULL,
+      updated_at text NOT NULL,
+      sort_order integer DEFAULT 0 NOT NULL,
+      deleted_at text
+    );
+    CREATE TABLE agent_skills (
+      agent_id text NOT NULL,
+      skill_id text NOT NULL,
+      is_enabled integer DEFAULT false NOT NULL,
+      created_at integer NOT NULL,
+      updated_at integer NOT NULL,
+      PRIMARY KEY (agent_id, skill_id)
+    );
+  `);
+}
+
 function options() {
   return { overrides: { "cherry-studio": tempRoot } };
 }
 
 function dbPath(): string {
   return path.join(tempRoot, "cherrystudio.sqlite");
+}
+
+function modernDbPath(): string {
+  return path.join(tempRoot, "Data", "agents.db");
 }
 
 async function writeSkillPackage(
@@ -207,6 +258,40 @@ describe("cherry-studio-skill-platform", () => {
     ).toBeTruthy();
     await expect(
       getCherryStudioSkillStatus(CHERRY_PLATFORM, "writer", options()),
+    ).resolves.toBe(true);
+  });
+
+  it("uses the current Cherry Studio Data/agents.db schema when present", async () => {
+    await fs.rm(dbPath(), { force: true });
+    await fs.mkdir(path.dirname(modernDbPath()), { recursive: true });
+    const database = new DatabaseAdapter(modernDbPath());
+    createModernCherryStudioSchema(database);
+    database.close();
+    const sourceDir = await writeSkillPackage(
+      "svg",
+      "---\nname: svg\ndescription: SVG helper\n---\ncontent",
+    );
+
+    await installCherryStudioSkill(CHERRY_PLATFORM, "svg", sourceDir, options());
+
+    const modernDb = new DatabaseAdapter(modernDbPath());
+    try {
+      expect(
+        modernDb.get("SELECT folder_name FROM skills WHERE folder_name = ?", "svg"),
+      ).toMatchObject({ folder_name: "svg" });
+      expect(
+        modernDb.get(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'agent_global_skill'",
+        ),
+      ).toBeNull();
+    } finally {
+      modernDb.close();
+    }
+    await expect(
+      fs.access(path.join(tempRoot, "Data", "Skills", "svg", "SKILL.md")),
+    ).resolves.toBeUndefined();
+    await expect(
+      getCherryStudioSkillStatus(CHERRY_PLATFORM, "svg", options()),
     ).resolves.toBe(true);
   });
 

@@ -130,6 +130,39 @@ describe("skill-installer-utils", () => {
       expect(resolvedPath).toContain(".cline/skills");
     });
 
+    it("resolves the built-in Cherry Studio macOS skills path under the production data directory", () => {
+      const originalPlatform = process.platform;
+      const originalHome = process.env.HOME;
+
+      Object.defineProperty(process, "platform", {
+        value: "darwin",
+        configurable: true,
+      });
+      process.env.HOME = "/Users/TestUser";
+      vi.mocked(initDatabase).mockReturnValue({
+        prepare: vi
+          .fn()
+          .mockReturnValue({ get: vi.fn().mockReturnValue(undefined) }),
+      } as unknown as ReturnType<typeof initDatabase>);
+      invalidateCustomPathsCache();
+
+      const platform = getPlatformById("cherry-studio");
+      expect(platform).toBeDefined();
+      expect(getPlatformRootDir(platform!)).toBe(
+        "/Users/TestUser/Library/Application Support/CherryStudio",
+      );
+      expect(getPlatformSkillsDir(platform!)).toBe(
+        "/Users/TestUser/Library/Application Support/CherryStudio/Data/Skills",
+      );
+
+      Object.defineProperty(process, "platform", {
+        value: originalPlatform,
+        configurable: true,
+      });
+      process.env.HOME = originalHome;
+      invalidateCustomPathsCache();
+    });
+
     it("resolves the built-in Cherry Studio Windows skills path under AppData", () => {
       const originalPlatform = process.platform;
       const originalHome = process.env.HOME;

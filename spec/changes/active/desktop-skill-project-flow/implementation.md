@@ -42,6 +42,19 @@
 - 清理 `SkillPlatformPanel.tsx` 中未使用的 `projectsWithTargets.targets` 结构，项目列表直接基于 `normalizedProjects` 渲染，避免后续维护误读目标目录来源。
 - 调整 `SkillStore.tsx` 的 `official` 源语义：不再把本地 `registrySkills`/curated 数据伪装成“官方商店”内容展示。当前官方商店改为纯占位态，标题与正文统一提示“后端真实数据源接入后开放，敬请期待”，避免用户误以为这些卡片来自真实官方后端。
 - 更新 `tests/unit/components/skill-i18n-smoke.test.tsx`，改为验证全局 Skill 详情页在同时存在平台安装与项目分发时，会出现 `项目分发` 切换并仍可触发原有分发入口。
+- 优化项目 Skill 结果区视觉层级：
+  - 结果区从 2/3 列大卡片改为紧凑单列列表，减少右侧大面积空白和不同卡片高度错位。
+  - 项目页头部高度从 `152px` 收窄到 `132px`，项目头像和添加按钮同步缩小一档。
+  - “打开文件夹 / 在我的 Skill 中打开 / 删除”等次要操作改为 icon-only，并通过 `aria-label` / `title` 保留可访问名称；“导入到我的 Skill / 分发”仍保留文字作为主动作。
+  - 新增组件回归断言，锁定项目 Skill 列表使用紧凑列表布局，并确认 `Open Folder` 不再作为可见按钮文字出现。
+- 修复 Cherry Studio 平台配置：
+  - macOS 默认根目录从开发版 `~/Library/Application Support/CherryStudioDev` 改为正式版 `~/Library/Application Support/CherryStudio`
+  - 保持 `Data/Skills` 作为 skills 相对目录，已在本机验证 `/Users/lingxiaotian/Library/Application Support/CherryStudio/Data/Skills` 存在
+  - 从已安装的 `/Applications/Cherry Studio.app/Contents/Resources/icon.icns` 提取真实平台图标并接入 `PlatformIcon`，不再回退为通用 Bot 图标
+- 修复 Cherry Studio 当前版本安装适配：
+  - 当前版本 Cherry Studio 的数据库位于 `Data/agents.db`，且表名为 `skills`、`agent_skills`、`agents`
+  - 适配层现在优先打开 `Data/agents.db` 并检测新表结构；如果不存在，则回退旧版 `cherrystudio.sqlite` 与 `agent_global_skill` / `agent_skill` / `agent` 表
+  - 安装、卸载、安装状态检测和已启用 Agent 软链接清理都通过同一 schema 检测结果选择表名
 
 ## Verification
 
@@ -78,6 +91,20 @@
 - `pnpm --filter @prompthub/desktop typecheck`
   - 结果：通过
 - `pnpm --filter @prompthub/desktop exec eslint src/renderer/components/skill/SkillPlatformPanel.tsx src/renderer/components/skill/SkillFullDetailPage.tsx tests/unit/components/skill-detail-project-distribution.test.tsx tests/unit/components/skill-i18n-smoke.test.tsx`
+  - 结果：通过
+- 项目 Skill 紧凑列表视觉调整后重新运行：
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/skill-projects-view.test.tsx`
+  - 结果：通过（16/16）
+- `pnpm --filter @prompthub/desktop exec eslint src/renderer/components/skill/SkillProjectsView.tsx tests/unit/components/skill-projects-view.test.tsx`
+  - 结果：通过
+- `pnpm --filter @prompthub/desktop typecheck`
+  - 结果：通过
+- Cherry Studio 路径与图标修复后重新运行：
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/cherry-studio-skill-platform.test.ts tests/unit/main/skill-installer-utils.test.ts tests/unit/components/platform-icon.test.tsx`
+  - 结果：通过（66/66）
+- `pnpm --filter @prompthub/desktop typecheck`
+  - 结果：通过
+- `git diff --check`
   - 结果：通过
 
 ## Notes

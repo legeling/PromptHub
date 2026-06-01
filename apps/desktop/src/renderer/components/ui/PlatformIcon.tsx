@@ -33,6 +33,7 @@ import qoderworkIcon from "../../assets/platforms/qoderwork.png";
 import codebuddyLightIcon from "../../assets/platforms/codebuddy-light.svg";
 import codebuddyDarkIcon from "../../assets/platforms/codebuddy-dark.svg";
 import hermesIcon from "../../assets/platforms/hermes.svg";
+import cherryStudioIcon from "../../assets/platforms/cherry-studio.png";
 
 type PlatformIconSource = string | { light: string; dark: string };
 
@@ -59,6 +60,7 @@ const PLATFORM_ICONS: Record<string, PlatformIconSource> = {
   openclaw: openclawIcon,
   qoder: qoderIcon,
   qoderwork: qoderworkIcon,
+  "cherry-studio": cherryStudioIcon,
   codebuddy: {
     light: codebuddyLightIcon,
     dark: codebuddyDarkIcon,

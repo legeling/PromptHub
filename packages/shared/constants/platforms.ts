@@ -160,7 +160,7 @@ export const SKILL_PLATFORMS: SkillPlatform[] = [
     name: "Cherry Studio",
     icon: "Bot",
     rootDir: {
-      darwin: "~/Library/Application Support/CherryStudioDev",
+      darwin: "~/Library/Application Support/CherryStudio",
       win32: "%APPDATA%\\CherryStudio",
       linux: "~/.config/CherryStudio",
     },

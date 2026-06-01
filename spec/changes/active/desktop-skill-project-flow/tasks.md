@@ -14,3 +14,6 @@
 - [x] 为全局 Skill 详情的“项目分发”补齐高级设置：复用 copy/symlink 语义，并支持 `.agents/skills` 默认目标和额外目标目录
 - [x] 让全局 Skill 详情的“项目分发”复用项目页导入偏好，包括已保存的目标目录与自定义目录
 - [x] 修复审查发现的问题：项目分发模式改为显式点击写入偏好，并为全局详情页补齐 self-target 防护
+- [x] 将项目 Skill 结果区从大卡片宫格收口为紧凑列表，并把次要动作改为 icon-only
+- [x] 修复 Cherry Studio 平台识别：macOS 默认路径从 `CherryStudioDev` 改为正式版 `CherryStudio`，并接入真实平台图标
+- [x] 修复 Cherry Studio 安装适配：优先使用当前版本 `Data/agents.db` 与 `skills` / `agent_skills` / `agents` 表，保留旧 `cherrystudio.sqlite` 兼容

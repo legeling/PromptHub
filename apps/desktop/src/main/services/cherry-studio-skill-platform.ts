@@ -20,12 +20,23 @@ interface CherryStudioAgentWorkspaceRow {
   accessible_paths: string;
 }
 
+type CherryStudioDbSchema = "modern" | "legacy";
+
+interface CherryStudioDbHandle {
+  db: DatabaseAdapter.Database;
+  schema: CherryStudioDbSchema;
+  path: string;
+}
+
 export interface CherryStudioPlatformOptions {
   overrides?: Record<string, string>;
 }
 
 const CHERRY_STUDIO_PLATFORM_ID = "cherry-studio";
-const CHERRY_STUDIO_DB_FILE = "cherrystudio.sqlite";
+const CHERRY_STUDIO_DB_CANDIDATES = [
+  path.join("Data", "agents.db"),
+  "cherrystudio.sqlite",
+] as const;
 const CHERRY_STUDIO_SOURCE = "local";
 const MAX_FOLDER_NAME_LENGTH = 80;
 
@@ -33,11 +44,14 @@ export function isCherryStudioPlatform(platformId: string): boolean {
   return platformId === CHERRY_STUDIO_PLATFORM_ID;
 }
 
-function getCherryStudioDbPath(
+function getCherryStudioDbPaths(
   platform: SkillPlatform,
   options?: CherryStudioPlatformOptions,
-): string {
-  return path.join(getCherryStudioRootDir(platform, options), CHERRY_STUDIO_DB_FILE);
+): string[] {
+  const rootDir = getCherryStudioRootDir(platform, options);
+  return CHERRY_STUDIO_DB_CANDIDATES.map((candidate) =>
+    path.join(rootDir, candidate),
+  );
 }
 
 function getCherryStudioRootDir(
@@ -119,48 +133,75 @@ function parseJsonStringArray(rawValue: string | null | undefined): string[] {
 async function openCherryStudioDb(
   platform: SkillPlatform,
   options?: CherryStudioPlatformOptions,
-): Promise<DatabaseAdapter.Database | null> {
-  const dbPath = getCherryStudioDbPath(platform, options);
-  if (!(await pathExists(dbPath))) {
-    return null;
+): Promise<CherryStudioDbHandle | null> {
+  for (const dbPath of getCherryStudioDbPaths(platform, options)) {
+    if (!(await pathExists(dbPath))) {
+      continue;
+    }
+
+    const db = new DatabaseAdapter(dbPath);
+    const modernTable = db.get(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'skills'",
+    );
+    if (modernTable) {
+      return { db, schema: "modern", path: dbPath };
+    }
+
+    const legacyTable = db.get(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'agent_global_skill'",
+    );
+    if (legacyTable) {
+      return { db, schema: "legacy", path: dbPath };
+    }
+
+    db.close();
+    throw new Error(
+      `Cherry Studio database is missing supported skills table: ${dbPath}`,
+    );
   }
 
-  const db = new DatabaseAdapter(dbPath);
-  const table = db.get(
-    "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'agent_global_skill'",
-  );
-  if (!table) {
-    db.close();
-    throw new Error("Cherry Studio database is missing agent_global_skill table");
-  }
-  return db;
+  return null;
 }
 
 async function requireCherryStudioDb(
   platform: SkillPlatform,
   options?: CherryStudioPlatformOptions,
-): Promise<DatabaseAdapter.Database> {
-  const db = await openCherryStudioDb(platform, options);
-  if (!db) {
+): Promise<CherryStudioDbHandle> {
+  const handle = await openCherryStudioDb(platform, options);
+  if (!handle) {
     throw new Error(
-      `Cherry Studio database not found: ${getCherryStudioDbPath(platform, options)}`,
+      `Cherry Studio database not found: ${getCherryStudioDbPaths(platform, options).join(", ")}`,
     );
   }
-  return db;
+  return handle;
+}
+
+function getSkillTable(schema: CherryStudioDbSchema): string {
+  return schema === "modern" ? "skills" : "agent_global_skill";
+}
+
+function getAgentSkillTable(schema: CherryStudioDbSchema): string {
+  return schema === "modern" ? "agent_skills" : "agent_skill";
+}
+
+function getAgentTable(schema: CherryStudioDbSchema): string {
+  return schema === "modern" ? "agents" : "agent";
 }
 
 function getExistingSkillRow(
   db: DatabaseAdapter.Database,
+  schema: CherryStudioDbSchema,
   folderName: string,
 ): CherryStudioSkillRow | undefined {
   return db.get(
-    "SELECT id, folder_name FROM agent_global_skill WHERE folder_name = ? LIMIT 1",
+    `SELECT id, folder_name FROM ${getSkillTable(schema)} WHERE folder_name = ? LIMIT 1`,
     folderName,
   ) as CherryStudioSkillRow | undefined;
 }
 
 function upsertCherryStudioSkillRow(
   db: DatabaseAdapter.Database,
+  schema: CherryStudioDbSchema,
   skillName: string,
   folderName: string,
   skillMdContent: string,
@@ -168,7 +209,7 @@ function upsertCherryStudioSkillRow(
   const parsed = parseSkillMd(skillMdContent);
   const metadata = parsed?.frontmatter;
   const now = Date.now();
-  const existing = getExistingSkillRow(db, folderName);
+  const existing = getExistingSkillRow(db, schema, folderName);
   const contentHash = crypto
     .createHash("sha256")
     .update(skillMdContent)
@@ -177,10 +218,11 @@ function upsertCherryStudioSkillRow(
   const description = metadata?.description?.trim() || null;
   const author = metadata?.author?.trim() || null;
   const tags = JSON.stringify(metadata?.tags ?? []);
+  const skillTable = getSkillTable(schema);
 
   if (existing) {
     db.run(
-      `UPDATE agent_global_skill
+      `UPDATE ${skillTable}
        SET name = ?, description = ?, author = ?, tags = ?, content_hash = ?, updated_at = ?
        WHERE id = ?`,
       name,
@@ -195,7 +237,7 @@ function upsertCherryStudioSkillRow(
   }
 
   db.run(
-    `INSERT INTO agent_global_skill
+    `INSERT INTO ${skillTable}
      (id, name, description, folder_name, source, source_url, namespace, author, tags, content_hash, is_enabled, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, 0, ?, ?)`,
     crypto.randomUUID(),
@@ -221,12 +263,12 @@ export async function installCherryStudioSkill(
   const skillsDir = getCherryStudioSkillsDir(platform, options);
   const targetDir = path.join(skillsDir, folderName);
   const skillMdContent = await readSkillMd(sourceDir);
-  const db = await requireCherryStudioDb(platform, options);
+  const { db, schema } = await requireCherryStudioDb(platform, options);
 
   try {
     await fs.mkdir(skillsDir, { recursive: true });
     await copySkillRepoToCherryStudio(sourceDir, targetDir);
-    upsertCherryStudioSkillRow(db, skillName, folderName, skillMdContent);
+    upsertCherryStudioSkillRow(db, schema, skillName, folderName, skillMdContent);
   } catch (error) {
     await fs.rm(targetDir, { recursive: true, force: true });
     throw error;
@@ -243,19 +285,20 @@ export async function uninstallCherryStudioSkill(
   const folderName = sanitizeCherryStudioFolderName(skillName);
   const skillsDir = getCherryStudioSkillsDir(platform, options);
   const targetDir = path.join(skillsDir, folderName);
-  const db = await openCherryStudioDb(platform, options);
+  const handle = await openCherryStudioDb(platform, options);
 
-  if (!db) {
+  if (!handle) {
     await fs.rm(targetDir, { recursive: true, force: true });
     return;
   }
 
+  const { db, schema } = handle;
   try {
-    const existing = getExistingSkillRow(db, folderName);
+    const existing = getExistingSkillRow(db, schema, folderName);
     if (existing) {
-      await removeEnabledAgentSymlinks(db, existing.id, folderName);
-      db.run("DELETE FROM agent_skill WHERE skill_id = ?", existing.id);
-      db.run("DELETE FROM agent_global_skill WHERE id = ?", existing.id);
+      await removeEnabledAgentSymlinks(db, schema, existing.id, folderName);
+      db.run(`DELETE FROM ${getAgentSkillTable(schema)} WHERE skill_id = ?`, existing.id);
+      db.run(`DELETE FROM ${getSkillTable(schema)} WHERE id = ?`, existing.id);
     }
     await fs.rm(targetDir, { recursive: true, force: true });
   } finally {
@@ -278,13 +321,14 @@ export async function getCherryStudioSkillStatus(
     return false;
   }
 
-  const db = await openCherryStudioDb(platform, options);
-  if (!db) {
+  const handle = await openCherryStudioDb(platform, options);
+  if (!handle) {
     return false;
   }
 
+  const { db, schema } = handle;
   try {
-    return Boolean(getExistingSkillRow(db, folderName));
+    return Boolean(getExistingSkillRow(db, schema, folderName));
   } finally {
     db.close();
   }
@@ -292,13 +336,14 @@ export async function getCherryStudioSkillStatus(
 
 async function removeEnabledAgentSymlinks(
   db: DatabaseAdapter.Database,
+  schema: CherryStudioDbSchema,
   skillId: string,
   folderName: string,
 ): Promise<void> {
   const rows = db.all(
     `SELECT agent.accessible_paths
-     FROM agent_skill
-     JOIN agent ON agent.id = agent_skill.agent_id
+     FROM ${getAgentSkillTable(schema)} AS agent_skill
+     JOIN ${getAgentTable(schema)} AS agent ON agent.id = agent_skill.agent_id
      WHERE agent_skill.skill_id = ? AND agent_skill.is_enabled = 1`,
     skillId,
   ) as CherryStudioAgentWorkspaceRow[];
