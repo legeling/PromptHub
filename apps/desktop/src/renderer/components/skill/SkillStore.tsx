@@ -143,9 +143,9 @@ export function SkillStore() {
       selectedStoreSourceId,
     });
 
-  const [installingSourceId, setInstallingSourceId] = useState<string | null>(
-    null,
-  );
+  const [installingSourceIds, setInstallingSourceIds] = useState<
+    Record<string, true>
+  >({});
   const [editingCustomSourceId, setEditingCustomSourceId] = useState<
     string | null
   >(null);
@@ -316,12 +316,37 @@ export function SkillStore() {
     [isSkillInstalled, sourceRegistrySkills],
   );
 
+  const setInstallPending = useCallback(
+    (skill: RegistrySkill, pending: boolean) => {
+      const pendingKey = getRegistrySkillPendingKey(skill);
+      setInstallingSourceIds((current) => {
+        if (pending) {
+          return current[pendingKey]
+            ? current
+            : { ...current, [pendingKey]: true };
+        }
+
+        if (!current[pendingKey]) {
+          return current;
+        }
+        const next = { ...current };
+        delete next[pendingKey];
+        return next;
+      });
+    },
+    [],
+  );
+
   const handleQuickInstall = async (
     skill: RegistrySkill,
     e: React.MouseEvent,
   ) => {
     e.stopPropagation();
-    setInstallingSourceId(getRegistrySkillPendingKey(skill));
+    const pendingKey = getRegistrySkillPendingKey(skill);
+    if (installingSourceIds[pendingKey] || isSkillInstalled(skill)) {
+      return;
+    }
+    setInstallPending(skill, true);
     try {
       if (autoScanBeforeInstall) {
         const report = await window.api.skill.scanSafety({
@@ -355,7 +380,7 @@ export function SkillStore() {
     } catch (error: unknown) {
       showToast(formatSkillSafetyScanError(error, t), "error");
     } finally {
-      setTimeout(() => setInstallingSourceId(null), 500);
+      setInstallPending(skill, false);
     }
   };
 
@@ -653,7 +678,7 @@ export function SkillStore() {
                       hasUpdate={hasPotentialUpdate(skill)}
                       index={index}
                       storeLabel={sourceMeta.title}
-                      installingSourceId={installingSourceId}
+                      installingSourceIds={installingSourceIds}
                       onClick={() =>
                         selectRegistrySkill(getRegistrySkillSelectionId(skill))
                       }
@@ -681,7 +706,7 @@ export function SkillStore() {
                       isInstalled={false}
                       index={index}
                       storeLabel={sourceMeta.title}
-                      installingSourceId={installingSourceId}
+                      installingSourceIds={installingSourceIds}
                       onQuickInstall={handleQuickInstall}
                       onClick={() =>
                         selectRegistrySkill(getRegistrySkillSelectionId(skill))
@@ -916,6 +941,12 @@ export function SkillStore() {
           skill={selectedDetailSkill}
           isInstalled={isSkillInstalled(selectedDetailSkill)}
           storeLabel={sourceMeta.title}
+          isInstalling={Boolean(
+            installingSourceIds[
+              getRegistrySkillPendingKey(selectedDetailSkill)
+            ],
+          )}
+          onInstallPendingChange={setInstallPending}
           onClose={() => selectRegistrySkill(null)}
         />
       )}

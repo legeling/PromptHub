@@ -17,7 +17,7 @@ interface SkillStoreCardProps {
   hasUpdate?: boolean;
   index: number;
   storeLabel?: string;
-  installingSourceId?: string | null;
+  installingSourceIds?: Record<string, true>;
   onQuickInstall?: (skill: RegistrySkill, e: React.MouseEvent) => void;
   onClick: () => void;
 }
@@ -28,14 +28,13 @@ export function SkillStoreCard({
   hasUpdate = false,
   index,
   storeLabel,
-  installingSourceId,
+  installingSourceIds,
   onQuickInstall,
   onClick,
 }: SkillStoreCardProps) {
   const { t } = useTranslation();
   const isInstallingThis = Boolean(
-    installingSourceId &&
-    installingSourceId === getRegistrySkillPendingKey(skill),
+    installingSourceIds?.[getRegistrySkillPendingKey(skill)],
   );
   const variantBadges = buildSkillVariantBadges(skill, t, {
     hasUpdate,

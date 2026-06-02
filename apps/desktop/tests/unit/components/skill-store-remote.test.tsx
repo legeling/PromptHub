@@ -40,6 +40,38 @@ const resetSkillStore = () => {
   });
 };
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve;
+    reject = promiseReject;
+  });
+  return { promise, resolve, reject };
+}
+
+function makeRegistrySkill(
+  slug: string,
+  overrides: Record<string, unknown> = {},
+) {
+  return {
+    slug,
+    source_id: `source-${slug}`,
+    name: slug
+      .split("-")
+      .map((part) => part[0]?.toUpperCase() + part.slice(1))
+      .join(" "),
+    description: `${slug} description`,
+    category: "general",
+    author: "PromptHub",
+    source_url: `https://example.com/${slug}`,
+    tags: [],
+    version: "1.0.0",
+    content: `# ${slug}`,
+    ...overrides,
+  } as never;
+}
+
 describe("SkillStore remote loading", () => {
   beforeEach(() => {
     showToast.mockReset();
@@ -1454,6 +1486,132 @@ describe("SkillStore remote loading", () => {
     expect(installRegistrySkill).toHaveBeenCalledWith(
       expect.objectContaining({ slug: "pdf" }),
     );
+  });
+
+  it("keeps each quick-install spinner active until that skill install resolves", async () => {
+    const firstInstall = createDeferred<{ id: string; name: string }>();
+    const secondInstall = createDeferred<{ id: string; name: string }>();
+    const installRegistrySkill = vi
+      .fn()
+      .mockReturnValueOnce(firstInstall.promise)
+      .mockReturnValueOnce(secondInstall.promise);
+
+    installWindowMocks({
+      api: {
+        skill: {
+          fetchRemoteContent: vi.fn().mockResolvedValue("{}"),
+          scanLocalPreview: vi.fn().mockResolvedValue([]),
+          scanSafety: vi.fn().mockResolvedValue({
+            level: "safe",
+            summary: "safe",
+            findings: [],
+            recommendedAction: "allow",
+            scannedAt: Date.now(),
+            checkedFileCount: 1,
+            scanMethod: "ai",
+          }),
+        },
+      },
+    });
+
+    useSkillStore.setState({
+      selectedStoreSourceId: "claude-code",
+      remoteStoreEntries: {
+        "claude-code": {
+          loadedAt: Date.now(),
+          error: null,
+          skills: [
+            makeRegistrySkill("first-skill"),
+            makeRegistrySkill("second-skill"),
+          ],
+        },
+      },
+      installRegistrySkill,
+    } as never);
+    useSettingsStore.setState({
+      autoScanStoreSkillsBeforeInstall: false,
+    } as never);
+
+    await act(async () => {
+      await renderWithI18n(<SkillStore />, { language: "en" });
+    });
+
+    const installButtons = screen.getAllByTitle("Import");
+    await act(async () => {
+      fireEvent.click(installButtons[0]);
+      fireEvent.click(installButtons[1]);
+    });
+
+    expect(installRegistrySkill).toHaveBeenCalledTimes(2);
+    expect(screen.getAllByTitle("Installing...")).toHaveLength(2);
+
+    await act(async () => {
+      firstInstall.resolve({ id: "first", name: "First Skill" });
+      secondInstall.resolve({ id: "second", name: "Second Skill" });
+      await firstInstall.promise;
+      await secondInstall.promise;
+    });
+  });
+
+  it("shows shared install pending state in store detail and blocks duplicate install", async () => {
+    const installRegistrySkill = vi.fn();
+    useSkillStore.setState({
+      installRegistrySkill,
+      getTranslationState: vi.fn().mockReturnValue({
+        value: null,
+        hasTranslation: false,
+        isStale: false,
+      }),
+    } as never);
+
+    await renderWithI18n(
+      <SkillStoreDetail
+        skill={makeRegistrySkill("pending-skill")}
+        isInstalled={false}
+        isInstalling
+        onClose={vi.fn()}
+      />,
+      { language: "en" },
+    );
+
+    const installingButton = screen.getByRole("button", {
+      name: /Adding/i,
+    });
+    expect(installingButton).toBeDisabled();
+
+    await act(async () => {
+      fireEvent.click(installingButton);
+    });
+
+    expect(installRegistrySkill).not.toHaveBeenCalled();
+  });
+
+  it("does not collapse store detail when the backdrop is clicked", async () => {
+    const onClose = vi.fn();
+    useSkillStore.setState({
+      getTranslationState: vi.fn().mockReturnValue({
+        value: null,
+        hasTranslation: false,
+        isStale: false,
+      }),
+    } as never);
+
+    const { container } = await renderWithI18n(
+      <SkillStoreDetail
+        skill={makeRegistrySkill("stable-detail")}
+        isInstalled={false}
+        onClose={onClose}
+      />,
+      { language: "en" },
+    );
+    const backdrop = container.querySelector(".absolute.inset-0");
+    expect(backdrop).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.click(backdrop!);
+    });
+
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it("defaults to saved translation in store detail and toggles back to original", async () => {

@@ -133,7 +133,7 @@ describe("SkillStoreCard", () => {
       <SkillStoreCard
         skill={makeSkill({ source_id: "busy" })}
         isInstalled={false}
-        installingSourceId="busy"
+        installingSourceIds={{ busy: true }}
         index={0}
         onQuickInstall={vi.fn()}
         onClick={vi.fn()}
@@ -154,7 +154,7 @@ describe("SkillStoreCard", () => {
           source_url: "https://example.com/store/skill",
         })}
         isInstalled={false}
-        installingSourceId="https://example.com/store/skill"
+        installingSourceIds={{ "https://example.com/store/skill": true }}
         index={0}
         onQuickInstall={vi.fn()}
         onClick={vi.fn()}
@@ -170,7 +170,7 @@ describe("SkillStoreCard", () => {
       <SkillStoreCard
         skill={makeSkill({ source_id: "busy" })}
         isInstalled
-        installingSourceId="busy"
+        installingSourceIds={{ busy: true }}
         index={0}
         onQuickInstall={vi.fn()}
         onClick={vi.fn()}
@@ -187,13 +187,29 @@ describe("SkillStoreCard", () => {
       <SkillStoreCard
         skill={makeSkill({ source_id: "skill-a" })}
         isInstalled={false}
-        installingSourceId="skill-b"
+        installingSourceIds={{ "skill-b": true }}
         index={0}
         onQuickInstall={vi.fn()}
         onClick={vi.fn()}
       />,
     );
     expect(screen.getByRole("button")).not.toBeDisabled();
+  });
+
+  it("keeps this card pending when multiple other skills are installing too", () => {
+    const { container } = render(
+      <SkillStoreCard
+        skill={makeSkill({ source_id: "skill-a" })}
+        isInstalled={false}
+        installingSourceIds={{ "skill-a": true, "skill-b": true }}
+        index={0}
+        onQuickInstall={vi.fn()}
+        onClick={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button")).toBeDisabled();
+    expect(container.querySelector(".animate-spin")).not.toBeNull();
   });
 
   it("renders the weekly install count badge when present", () => {

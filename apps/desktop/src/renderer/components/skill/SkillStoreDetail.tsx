@@ -62,6 +62,8 @@ interface SkillStoreDetailProps {
   skill: RegistrySkill;
   isInstalled: boolean;
   storeLabel?: string;
+  isInstalling?: boolean;
+  onInstallPendingChange?: (skill: RegistrySkill, pending: boolean) => void;
   onClose: () => void;
 }
 
@@ -73,13 +75,12 @@ export function SkillStoreDetail({
   skill,
   isInstalled,
   storeLabel,
+  isInstalling: externalIsInstalling = false,
+  onInstallPendingChange,
   onClose,
 }: SkillStoreDetailProps) {
   const { t, i18n } = useTranslation();
   const { showToast } = useToast();
-  const installFromRegistry = useSkillStore(
-    (state) => state.installFromRegistry,
-  );
   const installRegistrySkill = useSkillStore(
     (state) => state.installRegistrySkill,
   );
@@ -104,7 +105,7 @@ export function SkillStoreDetail({
     (state) => state.autoScanStoreSkillsBeforeInstall,
   );
   const aiModels = useSettingsStore((state) => state.aiModels);
-  const [isInstalling, setIsInstalling] = useState(false);
+  const [localIsInstalling, setLocalIsInstalling] = useState(false);
   const [isUninstalling, setIsUninstalling] = useState(false);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -188,6 +189,7 @@ export function SkillStoreDetail({
     [effectiveSkillMdContent, skill.description],
   );
   const installed = isInstalled || justInstalled;
+  const isInstalling = externalIsInstalling || localIsInstalling;
   const canShowUpdateActions =
     installed && Boolean(skill.content_url || skill.content);
   const installableSkill = useMemo(
@@ -226,6 +228,14 @@ export function SkillStoreDetail({
       ),
     ];
   }, [installed, skill, storeLabel, t, updateStatus]);
+
+  const setInstallPending = useCallback(
+    (pending: boolean) => {
+      setLocalIsInstalling(pending);
+      onInstallPendingChange?.(skill, pending);
+    },
+    [onInstallPendingChange, skill],
+  );
   const sourceDebugLabel = useMemo(
     () => inferSkillVariantSourceDebugLabel(skill),
     [skill],
@@ -416,7 +426,7 @@ export function SkillStoreDetail({
     if (isInstalling || installed) {
       return;
     }
-    setIsInstalling(true);
+    setInstallPending(true);
     try {
       const performInstall = async () => {
         const result = await installRegistrySkill(installableSkill);
@@ -454,7 +464,7 @@ export function SkillStoreDetail({
     } catch (e) {
       showToast(t("skill.updateFailed", "Failed") + `: ${e}`, "error");
     } finally {
-      setIsInstalling(false);
+      setInstallPending(false);
     }
   };
 
@@ -554,13 +564,18 @@ export function SkillStoreDetail({
     }
   };
 
+  const footerButtonBase =
+    "h-10 inline-flex items-center justify-center gap-2 rounded-xl border px-3 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 active:scale-press-in";
+  const footerButtonNeutral = `${footerButtonBase} border-border bg-background/70 text-foreground hover:bg-muted/70`;
+  const footerButtonPrimary = `${footerButtonBase} border-primary bg-primary text-primary-foreground shadow-sm shadow-primary/15 hover:bg-primary/90`;
+  const footerButtonDanger = `${footerButtonBase} border-destructive/25 bg-destructive/5 text-destructive hover:bg-destructive/10`;
+  const footerStatusImported =
+    "h-10 inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 text-sm font-semibold text-emerald-600 dark:text-emerald-400";
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
 
       {/* Modal */}
       <div className="relative w-full max-w-2xl max-h-[85vh] app-wallpaper-panel-strong border border-border rounded-2xl shadow-2xl flex flex-col animate-in fade-in zoom-in-95 duration-base">
@@ -916,7 +931,7 @@ export function SkillStoreDetail({
                     <button
                       onClick={handleCheckUpdate}
                       disabled={isCheckingUpdate || isUpdating}
-                      className="px-3 py-2 text-xs border border-border hover:bg-muted/60 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                      className={footerButtonNeutral}
                     >
                       {isCheckingUpdate ? (
                         <Loader2Icon className="w-3.5 h-3.5 animate-spin" />
@@ -928,7 +943,7 @@ export function SkillStoreDetail({
                     <button
                       onClick={() => handleUpdate(false)}
                       disabled={isCheckingUpdate || isUpdating}
-                      className="px-3 py-2 text-xs bg-primary text-white hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                      className={footerButtonPrimary}
                     >
                       {isUpdating ? (
                         <Loader2Icon className="w-3.5 h-3.5 animate-spin" />
@@ -942,7 +957,7 @@ export function SkillStoreDetail({
                       <button
                         onClick={() => handleUpdate(true)}
                         disabled={isUpdating}
-                        className="px-3 py-2 text-xs bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 rounded-lg transition-colors disabled:opacity-50"
+                        className={`${footerButtonBase} border-amber-500/25 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 dark:text-amber-300`}
                       >
                         {t(
                           "skill.overwriteLocalChanges",
@@ -955,7 +970,7 @@ export function SkillStoreDetail({
                 <button
                   onClick={handleUninstall}
                   disabled={isUninstalling}
-                  className="px-3 py-2 text-xs text-destructive hover:bg-destructive/10 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                  className={footerButtonDanger}
                 >
                   {isUninstalling ? (
                     <Loader2Icon className="w-3.5 h-3.5 animate-spin" />
@@ -964,7 +979,7 @@ export function SkillStoreDetail({
                   )}
                   {t("skill.removeFromLibrary", "Remove")}
                 </button>
-                <div className="px-4 py-2 bg-green-500/10 text-green-500 rounded-xl text-sm font-bold flex items-center gap-2">
+                <div className={footerStatusImported}>
                   <CheckIcon className="w-4 h-4" />
                   {t("skill.addedToLibrary", "Added")}
                 </div>
@@ -973,7 +988,7 @@ export function SkillStoreDetail({
               <button
                 onClick={handleInstall}
                 disabled={isInstalling}
-                className="px-6 py-2.5 bg-primary text-white rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:opacity-90 transition-all disabled:opacity-50 flex items-center gap-2 active:scale-press-in"
+                className={`${footerButtonPrimary} px-5`}
               >
                 {isInstalling ? (
                   <>
@@ -1007,7 +1022,7 @@ export function SkillStoreDetail({
           const run = async () => {
             if (!pendingHighRiskInstallReport) return;
             setPendingHighRiskInstallReport(null);
-            setIsInstalling(true);
+            setInstallPending(true);
             try {
               const result = await installRegistrySkill(installableSkill);
               if (result) {
@@ -1025,7 +1040,7 @@ export function SkillStoreDetail({
                 "error",
               );
             } finally {
-              setIsInstalling(false);
+              setInstallPending(false);
             }
           };
 
