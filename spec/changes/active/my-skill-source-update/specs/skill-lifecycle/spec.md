@@ -27,3 +27,17 @@ Source updates MUST create a version snapshot before applying remote content and
 - **Then** PromptHub creates a skill version snapshot
 - **And** updates the installed skill content and source metadata
 - **And** refreshes its managed local repo content.
+
+### Requirement: Store source labels remain stable across source updates
+
+Updating a skill from a private or custom store MUST NOT replace the user-facing store label with the underlying Git host label.
+
+#### Scenario: Private Gitea store skill updates
+
+- **Given** a skill was installed from a user-named private store
+- **And** its underlying source is a Gitea repository
+- **When** PromptHub checks the unchanged source content
+- **Then** the skill is reported as up to date
+- **When** the remote source later changes and the user applies the update
+- **Then** the installed skill keeps the private store label
+- **And** it is not relabeled as a generic Gitea import.

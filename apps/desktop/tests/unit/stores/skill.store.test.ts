@@ -964,6 +964,108 @@ description: Use this skill for PDF tasks.
     );
   });
 
+  it("keeps a private Gitea store install up to date and preserves the store label", async () => {
+    const remoteContent = "# clouddrive2-cli\n\nCloudDrive2 commands\n";
+    const fetchRemoteContent = vi.fn().mockResolvedValue(remoteContent);
+    const versionCreate = vi.fn().mockResolvedValue({ id: "version-gitea" });
+    const create = vi.fn().mockImplementation(async (data) => ({
+      id: "skill-clouddrive2-cli",
+      created_at: 1,
+      updated_at: 1,
+      ...data,
+    }));
+    const update = vi.fn().mockImplementation(async (_id, data) => ({
+      ...createSkillFixture({
+        id: "skill-clouddrive2-cli",
+        name: "clouddrive2-cli",
+      }),
+      ...data,
+      id: "skill-clouddrive2-cli",
+      updated_at: 2,
+    }));
+
+    (window as any).api.skill.create = create;
+    (window as any).api.skill.update = update;
+    (window as any).api.skill.versionCreate = versionCreate;
+    (window as any).api.skill.fetchRemoteContent = fetchRemoteContent;
+    (window as any).api.skill.getAll = vi.fn().mockResolvedValue([]);
+
+    const registrySkill = {
+      slug: "clouddrive2-cli",
+      source_id: "source-private-gitea-clouddrive2-cli",
+      name: "clouddrive2-cli",
+      description: "CloudDrive2 command-line skill",
+      category: "dev" as const,
+      author: "icelemon",
+      source_label: "Personal Store",
+      source_url:
+        "https://gitea.example.com/icelemon/skills/tree/main/clouddrive2-cli",
+      content_url:
+        "https://gitea.example.com/icelemon/skills/raw/branch/main/clouddrive2-cli/SKILL.md",
+      tags: ["cli"],
+      version: "1.0.0",
+      content: remoteContent,
+    };
+
+    const installed = await useSkillStore
+      .getState()
+      .installRegistrySkill(registrySkill);
+    const installedHash = installed?.installed_content_hash;
+
+    expect(installedHash).toMatch(/^[a-f0-9]{64}$/);
+
+    useSkillStore.setState({
+      skills: [
+        createSkillFixture({
+          id: "skill-clouddrive2-cli",
+          name: "clouddrive2-cli",
+          source_id: registrySkill.source_id,
+          source_label: "Personal Store",
+          source_url: registrySkill.source_url,
+          content_url: registrySkill.content_url,
+          content: remoteContent,
+          instructions: remoteContent,
+          installed_content_hash: installedHash,
+          installed_version: "1.0.0",
+        }),
+      ],
+      registrySkills: [],
+      remoteStoreEntries: {
+        "personal-store": {
+          loadedAt: 1,
+          error: null,
+          skills: [
+            {
+              ...registrySkill,
+              source_label: "icelemon/skills",
+              version: "1.0.0",
+            },
+          ],
+        },
+      },
+    });
+
+    const check = await useSkillStore
+      .getState()
+      .getRegistrySkillUpdateStatus(registrySkill);
+
+    expect(check.status).toBe("up-to-date");
+
+    fetchRemoteContent.mockResolvedValue("# clouddrive2-cli\n\nUpdated\n");
+
+    const result = await useSkillStore
+      .getState()
+      .updateRegistrySkill(registrySkill.source_id);
+
+    expect(result?.status).toBe("updated");
+    expect(update).toHaveBeenCalledWith(
+      "skill-clouddrive2-cli",
+      expect.objectContaining({
+        source_label: "Personal Store",
+      }),
+    );
+  });
+
   it("installs a skill from a cached local store source entry using the latest local file", async () => {
     const create = vi.fn().mockResolvedValue(
       createSkillFixture({

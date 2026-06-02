@@ -938,7 +938,7 @@ async function applyRegistrySkillUpdateToInstalledSkill(
     author: regSkill.author,
     source_url: regSkill.source_url,
     source_id: regSkill.source_id,
-    source_label: regSkill.source_label,
+    source_label: installedSkill.source_label || regSkill.source_label,
     source_branch: regSkill.source_branch,
     source_directory: regSkill.source_directory,
     canonical_skill_path: regSkill.canonical_skill_path,
