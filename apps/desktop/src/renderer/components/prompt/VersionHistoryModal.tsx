@@ -1,11 +1,21 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal } from '../ui';
-import { ClockIcon, RotateCcwIcon, GitCompareIcon, PlusIcon, MinusIcon, SparklesIcon, TrashIcon } from 'lucide-react';
+import {
+  ClockIcon,
+  RotateCcwIcon,
+  GitCompareIcon,
+  PlusIcon,
+  MinusIcon,
+  SparklesIcon,
+  TrashIcon,
+  FileTextIcon,
+  TableIcon,
+} from 'lucide-react';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { deletePromptVersion, getPromptVersions } from '../../services/database';
 import { scheduleAllSaveSync } from '../../services/webdav-save-sync';
-import type { Prompt, PromptVersion } from '@prompthub/shared/types';
+import type { Prompt, PromptVersion, Variable } from '@prompthub/shared/types';
 
 interface VersionHistoryModalProps {
   isOpen: boolean;
@@ -38,6 +48,119 @@ interface DiffLine {
   content: string;
   oldLineNum?: number;
   newLineNum?: number;
+}
+
+type PromptHistoryViewMode = 'detail' | 'diff' | 'table';
+type PromptVersionFieldKey =
+  | 'systemPrompt'
+  | 'userPrompt'
+  | 'variables'
+  | 'aiResponse'
+  | 'note';
+
+interface VersionFieldDefinition {
+  key: PromptVersionFieldKey;
+  label: string;
+  monospace: boolean;
+}
+
+interface TableFieldDiff {
+  field: VersionFieldDefinition;
+  from: PromptVersion;
+  to: PromptVersion;
+  oldText: string;
+  newText: string;
+}
+
+const VARIABLE_TOKEN_PATTERN = /\{\{([^}:]+)(?::([^}]*))?\}\}/g;
+
+function normalizeStoredVariables(value: unknown): Variable[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((variable): Variable | null => {
+      if (typeof variable === 'string') {
+        const name = variable.trim();
+        return name
+          ? { name, type: 'text', required: false }
+          : null;
+      }
+      if (!variable || typeof variable !== 'object') {
+        return null;
+      }
+      const candidate = variable as Partial<Variable>;
+      const name = typeof candidate.name === 'string' ? candidate.name.trim() : '';
+      return name
+        ? {
+            name,
+            type: candidate.type || 'text',
+            label: candidate.label,
+            defaultValue: candidate.defaultValue,
+            options: candidate.options,
+            required: candidate.required ?? false,
+          }
+        : null;
+    })
+    .filter((variable): variable is Variable => variable !== null);
+}
+
+function extractVariablesFromPromptText(version: PromptVersion): Variable[] {
+  const variables = new Map<string, Variable>();
+  const text = `${version.systemPrompt || ''}\n${version.userPrompt || ''}`;
+
+  for (const match of text.matchAll(VARIABLE_TOKEN_PATTERN)) {
+    const name = match[1]?.trim();
+    if (!name || variables.has(name)) {
+      continue;
+    }
+    variables.set(name, {
+      name,
+      type: 'text',
+      defaultValue: match[2],
+      required: false,
+    });
+  }
+
+  return Array.from(variables.values());
+}
+
+function getVersionVariables(version: PromptVersion): Variable[] {
+  const storedVariables = normalizeStoredVariables(version.variables);
+  return storedVariables.length > 0
+    ? storedVariables
+    : extractVariablesFromPromptText(version);
+}
+
+function normalizeVersionField(
+  version: PromptVersion,
+  field: PromptVersionFieldKey,
+): string {
+  if (field === 'variables') {
+    return JSON.stringify(getVersionVariables(version), null, 2);
+  }
+  return String(version[field] ?? '');
+}
+
+function summarizeVersionField(
+  version: PromptVersion,
+  field: PromptVersionFieldKey,
+  emptyLabel: string,
+): string {
+  if (field === 'variables') {
+    const variables = getVersionVariables(version);
+    if (variables.length === 0) {
+      return emptyLabel;
+    }
+    return variables
+      .map((variable) => variable.label || variable.name)
+      .filter(Boolean)
+      .join(', ');
+  }
+
+  const value = normalizeVersionField(version, field).trim();
+  return value.length > 0 ? value : emptyLabel;
 }
 
 // Generate git-style diff
@@ -186,15 +309,190 @@ function GitDiffView({
   );
 }
 
+function VersionMatrixView({
+  versions,
+  fields,
+  selectedVersion,
+  onSelectVersion,
+  onOpenFieldDiff,
+  emptyLabel,
+  tableLabel,
+  versionLabel,
+  timeLabel,
+}: {
+  versions: PromptVersion[];
+  fields: VersionFieldDefinition[];
+  selectedVersion: PromptVersion | null;
+  onSelectVersion: (version: PromptVersion) => void;
+  onOpenFieldDiff: (diff: TableFieldDiff) => void;
+  emptyLabel: string;
+  tableLabel: string;
+  versionLabel: string;
+  timeLabel: string;
+}) {
+  return (
+    <div className="min-h-0 overflow-hidden rounded-xl border border-border app-wallpaper-surface">
+      <div className="max-h-[460px] overflow-auto">
+        <table
+          aria-label={tableLabel}
+          className="min-w-[980px] w-full border-separate border-spacing-0 text-sm"
+        >
+          <thead className="sticky top-0 z-20 app-wallpaper-panel-strong">
+            <tr className="text-left text-xs uppercase text-muted-foreground">
+              <th className="sticky left-0 z-30 w-24 border-b border-r border-border app-wallpaper-panel-strong px-3 py-2 font-medium">
+                {versionLabel}
+              </th>
+              <th className="w-44 border-b border-r border-border px-3 py-2 font-medium">
+                {timeLabel}
+              </th>
+              {fields.map((field) => (
+                <th
+                  key={field.key}
+                  className="w-56 border-b border-r border-border px-3 py-2 font-medium last:border-r-0"
+                >
+                  {field.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {versions.map((version, index) => {
+              const previousVersion = versions[index + 1] ?? null;
+              const isSelected = selectedVersion?.id === version.id;
+              const rowId = version.id === 'current' ? 'current' : `v${version.version}`;
+
+              return (
+                <tr
+                  key={version.id}
+                  className={isSelected ? 'bg-primary/5' : 'bg-background/40'}
+                >
+                  <th
+                    scope="row"
+                    className="sticky left-0 z-10 border-b border-r border-border app-wallpaper-panel-strong px-3 py-3 align-top"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => onSelectVersion(version)}
+                      className={`rounded-lg px-2 py-1 text-sm font-semibold transition-colors ${
+                        isSelected
+                          ? 'bg-primary text-white'
+                          : 'text-foreground hover:bg-muted'
+                      }`}
+                    >
+                      v{version.version}
+                    </button>
+                  </th>
+                  <td className="border-b border-r border-border px-3 py-3 align-top text-xs text-muted-foreground">
+                    {new Date(version.createdAt).toLocaleString()}
+                  </td>
+                  {fields.map((field) => {
+                    const currentValue = normalizeVersionField(version, field.key);
+                    const previousValue = previousVersion
+                      ? normalizeVersionField(previousVersion, field.key)
+                      : null;
+                    const changeState = previousVersion
+                      ? currentValue === previousValue
+                        ? 'unchanged'
+                        : 'changed'
+                      : 'baseline';
+                    const cellClass =
+                      changeState === 'changed'
+                        ? 'border-primary/25 bg-primary/10 text-foreground hover:bg-primary/15'
+                        : changeState === 'baseline'
+                          ? 'bg-muted/20 text-muted-foreground'
+                          : 'text-muted-foreground hover:bg-muted/40';
+                    const content = summarizeVersionField(
+                      version,
+                      field.key,
+                      emptyLabel,
+                    );
+
+                    return (
+                      <td
+                        key={field.key}
+                        className={`border-b border-r border-border p-0 align-top last:border-r-0 ${cellClass}`}
+                        data-testid={`version-table-cell-${rowId}-${field.key}`}
+                        data-change-state={changeState}
+                      >
+                        <button
+                          type="button"
+                          disabled={!previousVersion}
+                          onClick={() => {
+                            onSelectVersion(version);
+                            if (!previousVersion) {
+                              return;
+                            }
+                            onOpenFieldDiff({
+                              field,
+                              from: previousVersion,
+                              to: version,
+                              oldText: previousValue ?? '',
+                              newText: currentValue,
+                            });
+                          }}
+                          className={`block h-full min-h-[76px] w-full px-3 py-3 text-left disabled:cursor-default ${
+                            field.monospace ? 'font-mono text-xs' : ''
+                          }`}
+                        >
+                          <span className="line-clamp-3 whitespace-pre-wrap break-words">
+                            {content}
+                          </span>
+                        </button>
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export function VersionHistoryModal({ isOpen, onClose, prompt, onRestore }: VersionHistoryModalProps) {
   const [versions, setVersions] = useState<PromptVersion[]>([]);
   const [selectedVersion, setSelectedVersion] = useState<PromptVersion | null>(null);
   const [compareVersion, setCompareVersion] = useState<PromptVersion | null>(null);
-  const [showDiff, setShowDiff] = useState(false);
+  const [viewMode, setViewMode] = useState<PromptHistoryViewMode>('detail');
+  const [tableFieldDiff, setTableFieldDiff] = useState<TableFieldDiff | null>(null);
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [versionToDelete, setVersionToDelete] = useState<PromptVersion | null>(null);
+  const isDiffView = viewMode === 'diff';
+  const isTableView = viewMode === 'table';
+  const versionFields = useMemo<VersionFieldDefinition[]>(
+    () => [
+      {
+        key: 'systemPrompt',
+        label: t('prompt.systemPromptLabel'),
+        monospace: true,
+      },
+      {
+        key: 'userPrompt',
+        label: t('prompt.userPromptLabel'),
+        monospace: true,
+      },
+      {
+        key: 'variables',
+        label: t('prompt.variables'),
+        monospace: true,
+      },
+      {
+        key: 'aiResponse',
+        label: t('prompt.aiResponse'),
+        monospace: false,
+      },
+      {
+        key: 'note',
+        label: t('prompt.changeNote'),
+        monospace: false,
+      },
+    ],
+    [t],
+  );
 
   useEffect(() => {
     if (isOpen && prompt) {
@@ -204,8 +502,9 @@ export function VersionHistoryModal({ isOpen, onClose, prompt, onRestore }: Vers
 
   const loadVersions = async () => {
     setIsLoading(true);
-    setShowDiff(false);
+    setViewMode('detail');
     setCompareVersion(null);
+    setTableFieldDiff(null);
     try {
       const historyVersions = await getPromptVersions(prompt.id);
       
@@ -272,7 +571,7 @@ export function VersionHistoryModal({ isOpen, onClose, prompt, onRestore }: Vers
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={t('prompt.history')} size="2xl">
+    <Modal isOpen={isOpen} onClose={onClose} title={t('prompt.history')} size="full">
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <div className="text-muted-foreground">{t('prompt.historyLoading')}</div>
@@ -286,25 +585,79 @@ export function VersionHistoryModal({ isOpen, onClose, prompt, onRestore }: Vers
           </p>
         </div>
       ) : (
-        <div className="flex gap-4 min-h-[400px]">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="inline-flex rounded-xl border border-border app-wallpaper-surface p-1">
+              {[
+                {
+                  mode: 'detail' as const,
+                  label: t('prompt.detailView', 'Detail'),
+                  icon: <FileTextIcon className="h-4 w-4" />,
+                },
+                {
+                  mode: 'diff' as const,
+                  label: t('prompt.versionCompare'),
+                  icon: <GitCompareIcon className="h-4 w-4" />,
+                },
+                {
+                  mode: 'table' as const,
+                  label: t('prompt.tableView', 'Table'),
+                  icon: <TableIcon className="h-4 w-4" />,
+                },
+              ].map((item) => (
+                <button
+                  key={item.mode}
+                  type="button"
+                  onClick={() => {
+                    setViewMode(item.mode);
+                    if (item.mode !== 'diff') {
+                      setCompareVersion(null);
+                    }
+                    if (item.mode !== 'table') {
+                      setTableFieldDiff(null);
+                    }
+                  }}
+                  className={`inline-flex h-8 items-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors ${
+                    viewMode === item.mode
+                      ? 'bg-primary text-white shadow-sm'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }`}
+                >
+                  {item.icon}
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            {isTableView && (
+              <div className="text-xs text-muted-foreground">
+                {t(
+                  'prompt.tableViewHint',
+                  'Changed cells compare each version with the next older version.',
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className={isTableView ? 'min-h-[400px]' : 'flex gap-4 min-h-[400px]'}>
           {/* Version list */}
           {/* 版本列表 */}
+          {!isTableView && (
           <div className="w-48 border-r border-border pr-4 space-y-1">
             <div className="text-xs text-muted-foreground mb-2 px-1">
-              {showDiff ? t('prompt.selectCompareVersion') : t('prompt.selectVersion')}
+              {isDiffView ? t('prompt.selectCompareVersion') : t('prompt.selectVersion')}
             </div>
             {versions.map((version, index) => (
               <button
                 key={version.id}
                 onClick={() => {
-                  if (showDiff) {
+                  if (isDiffView) {
                     setCompareVersion(version);
                   } else {
                     setSelectedVersion(version);
                   }
                 }}
                 className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                  showDiff 
+                  isDiffView 
                     ? compareVersion?.id === version.id
                       ? 'bg-green-500 text-white'
                       : selectedVersion?.id === version.id
@@ -317,7 +670,7 @@ export function VersionHistoryModal({ isOpen, onClose, prompt, onRestore }: Vers
               >
                 <div className="font-medium">v{version.version}</div>
                 <div className={`text-xs ${
-                  (showDiff ? (compareVersion?.id === version.id || selectedVersion?.id === version.id) : selectedVersion?.id === version.id)
+                  (isDiffView ? (compareVersion?.id === version.id || selectedVersion?.id === version.id) : selectedVersion?.id === version.id)
                     ? 'text-white/70' 
                     : 'text-muted-foreground'
                 }`}>
@@ -326,11 +679,12 @@ export function VersionHistoryModal({ isOpen, onClose, prompt, onRestore }: Vers
               </button>
             ))}
           </div>
+          )}
 
           {/* Version content / Diff comparison */}
           {/* 版本内容 / 差异对比 */}
-          <div className="flex-1 space-y-4">
-            {showDiff && selectedVersion && compareVersion ? (
+          <div className={isTableView ? 'space-y-4' : 'flex-1 space-y-4'}>
+            {isDiffView && selectedVersion && compareVersion ? (
               <>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4 p-2 rounded-lg bg-muted/30">
                   <span className="px-2 py-1 rounded bg-red-500/20 text-red-600 font-mono text-xs">v{selectedVersion.version}</span>
@@ -352,6 +706,40 @@ export function VersionHistoryModal({ isOpen, onClose, prompt, onRestore }: Vers
                   label={t('prompt.userPromptLabel')}
                   emptyLabel={t('prompt.noChanges')}
                 />
+              </>
+            ) : isTableView ? (
+              <>
+                <VersionMatrixView
+                  versions={versions}
+                  fields={versionFields}
+                  selectedVersion={selectedVersion}
+                  onSelectVersion={setSelectedVersion}
+                  onOpenFieldDiff={setTableFieldDiff}
+                  emptyLabel={t('prompt.noContent')}
+                  tableLabel={t('prompt.versionMatrix', 'Version matrix')}
+                  versionLabel={t('prompt.versionColumn', 'Version')}
+                  timeLabel={t('prompt.timeColumn', 'Time')}
+                />
+                {tableFieldDiff && (
+                  <div className="rounded-xl border border-border app-wallpaper-surface p-4">
+                    <div className="mb-3 flex items-center gap-2 text-sm font-medium text-foreground">
+                      <span>{tableFieldDiff.field.label} {t('prompt.fieldDiffSuffix', 'diff')}</span>
+                      <span className="ml-auto rounded bg-red-500/10 px-2 py-0.5 font-mono text-xs text-red-600">
+                        v{tableFieldDiff.from.version}
+                      </span>
+                      <span className="text-muted-foreground">→</span>
+                      <span className="rounded bg-green-500/10 px-2 py-0.5 font-mono text-xs text-green-600">
+                        v{tableFieldDiff.to.version}
+                      </span>
+                    </div>
+                    <GitDiffView
+                      oldText={tableFieldDiff.oldText}
+                      newText={tableFieldDiff.newText}
+                      label={tableFieldDiff.field.label}
+                      emptyLabel={t('prompt.noChanges')}
+                    />
+                  </div>
+                )}
               </>
             ) : selectedVersion && (
               <>
@@ -397,6 +785,7 @@ export function VersionHistoryModal({ isOpen, onClose, prompt, onRestore }: Vers
               </>
             )}
           </div>
+          </div>
         </div>
       )}
 
@@ -407,23 +796,26 @@ export function VersionHistoryModal({ isOpen, onClose, prompt, onRestore }: Vers
           <div className="flex gap-3">
             <button
               onClick={() => {
-                if (showDiff) {
-                  setShowDiff(false);
+                if (isDiffView) {
+                  setViewMode('detail');
                   setCompareVersion(null);
                 } else {
-                  setShowDiff(true);
+                  setViewMode('diff');
+                  setTableFieldDiff(null);
                 }
               }}
               className={`flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-medium transition-colors ${
-                showDiff 
+                isDiffView 
                   ? 'bg-primary text-white' 
                   : 'hover:bg-muted'
               }`}
             >
               <GitCompareIcon className="w-4 h-4" />
-              {showDiff ? t('prompt.exitCompare') : t('prompt.versionCompare')}
+              {isDiffView ? t('prompt.exitCompare') : t('prompt.versionCompare')}
             </button>
-            {!showDiff && selectedVersion.id !== 'current' && (
+            {!isDiffView &&
+              selectedVersion.id !== 'current' &&
+              selectedVersion.version > 1 && (
               <button
                 onClick={() => setVersionToDelete(selectedVersion)}
                 disabled={isDeleting}
@@ -441,7 +833,7 @@ export function VersionHistoryModal({ isOpen, onClose, prompt, onRestore }: Vers
             >
               {t('common.cancel')}
             </button>
-            {!showDiff && (
+            {!isDiffView && (
               <button
                 onClick={handleRestore}
                 className="flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"

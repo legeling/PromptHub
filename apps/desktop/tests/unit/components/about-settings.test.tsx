@@ -171,4 +171,29 @@ describe("AboutSettings", () => {
     ).toHaveAttribute("href", "https://github.com/legeling/PromptHub");
     expect(screen.getByText("Contact Author")).toBeInTheDocument();
   });
+
+  it("groups secondary information into a responsive wide-screen grid", async () => {
+    useSettingsStoreMock.mockReturnValue({
+      autoCheckUpdate: true,
+      useUpdateMirror: false,
+      updateChannel: "stable",
+      debugMode: false,
+      setAutoCheckUpdate: vi.fn(),
+      setUseUpdateMirror: vi.fn(),
+      setUpdateChannel: vi.fn(),
+      setDebugMode: vi.fn(),
+    });
+
+    await act(async () => {
+      await renderWithI18n(<AboutSettings />, { language: "en" });
+    });
+
+    const supportGrid = screen.getByTestId("about-support-grid");
+
+    expect(supportGrid).toHaveClass("xl:grid-cols-2");
+    expect(supportGrid).toHaveTextContent("Open Source");
+    expect(supportGrid).toHaveTextContent("Community");
+    expect(supportGrid).toHaveTextContent("Contact Author");
+    expect(supportGrid).toHaveTextContent("Developer");
+  });
 });

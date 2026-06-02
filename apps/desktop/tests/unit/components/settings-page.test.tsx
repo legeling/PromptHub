@@ -222,4 +222,26 @@ describe("SettingsPage", () => {
       screen.queryByRole("button", { name: "Model Routing" }),
     ).not.toBeInTheDocument();
   });
+
+  it("uses a wider adaptive content shell on large displays", async () => {
+    useSettingsStoreMock.mockReturnValue({
+      syncProvider: "manual",
+      webdavEnabled: false,
+      selfHostedSyncEnabled: false,
+      s3StorageEnabled: false,
+      desktopHomeModules: ["prompt", "skill", "rules"],
+    });
+
+    await act(async () => {
+      await renderWithI18n(<SettingsPage onBack={vi.fn()} />, {
+        language: "en",
+      });
+    });
+
+    const contentShell = screen.getByTestId("settings-content-shell");
+
+    expect(contentShell).not.toHaveClass("max-w-4xl");
+    expect(contentShell).toHaveClass("2xl:max-w-7xl");
+    expect(contentShell).toHaveClass("w-full");
+  });
 });

@@ -577,6 +577,49 @@ describe("Sidebar", () => {
     expect(within(officialButton).getByText("0")).toBeInTheDocument();
   });
 
+  it("keeps skill store sources expanded after switching to another skill section", async () => {
+    useSkillStore.setState({
+      storeView: "store",
+      selectedStoreSourceId: "claude-code",
+      remoteStoreEntries: {
+        "claude-code": {
+          loadedAt: Date.now(),
+          error: null,
+          skills: [],
+        },
+        "openai-codex": {
+          loadedAt: Date.now(),
+          error: null,
+          skills: [],
+        },
+      },
+    } as never);
+
+    await act(async () => {
+      await renderWithI18n(
+        <Sidebar currentPage="home" onNavigate={vi.fn()} />,
+        { language: "en" },
+      );
+    });
+
+    expect(
+      screen.getByRole("button", { name: /Claude Code Store/i }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /My Skills/i }));
+
+    expect(useSkillStore.getState().storeView).toBe("my-skills");
+    expect(
+      screen.getByRole("button", { name: /Claude Code Store/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /OpenAI Codex Store/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Add Store/i }),
+    ).toBeInTheDocument();
+  });
+
   it("hides Projects in web runtime where local skill scanning is unavailable", async () => {
     (window as Window & { __PROMPTHUB_WEB__?: boolean }).__PROMPTHUB_WEB__ =
       true;

@@ -265,6 +265,9 @@ export function Sidebar({
   const selectedStoreSourceId = useSkillStore(
     (state) => state.selectedStoreSourceId,
   );
+  const [isSkillStoreGroupExpanded, setIsSkillStoreGroupExpanded] = useState(
+    () => storeView === "store",
+  );
   const selectStoreSource = useSkillStore((state) => state.selectStoreSource);
   const customStoreSources = useSkillStore((state) => state.customStoreSources);
   const remoteStoreEntries = useSkillStore((state) => state.remoteStoreEntries);
@@ -323,6 +326,12 @@ export function Sidebar({
   const webRuntime = isWebRuntime();
   const canAddRuleProject = !webRuntime;
   const activeModule = appModule === "rules" ? "rules" : viewMode;
+
+  useEffect(() => {
+    if (storeView === "store") {
+      setIsSkillStoreGroupExpanded(true);
+    }
+  }, [storeView]);
 
   useEffect(() => {
     if (
@@ -1335,6 +1344,7 @@ export function Sidebar({
                         collapsed={isCollapsed}
                         onClick={() => {
                           if (!confirmLeaveDirtySkillEditor()) return;
+                          setIsSkillStoreGroupExpanded(true);
                           setStoreView("store");
                           selectSkill(null);
                           selectStoreSource(
@@ -1346,7 +1356,7 @@ export function Sidebar({
                     </>
                   )}
                   {runtimeCapabilities.skillStore &&
-                    storeView === "store" &&
+                    isSkillStoreGroupExpanded &&
                     !isCollapsed && (
                       <div className="ml-4 pl-3 mt-1 border-l border-sidebar-border/50 space-y-1">
                         <button

@@ -8,6 +8,9 @@
 - [x] 4. Add or update tests
 - [x] 5. Update implementation record
 - [x] 6. Classify remote GitHub store failures into rate-limit / network / invalid-repo guidance
+- [x] 7. Keep Skill Store source list expanded when switching to other Skill sections
+- [x] 8. Separate Skill Store detail update-check and update-apply actions
+- [x] 9. Link imported Skill Store detail status to the installed My Skills detail
 
 ## Verification
 

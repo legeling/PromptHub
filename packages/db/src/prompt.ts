@@ -457,6 +457,13 @@ export class PromptDB {
   }
 
   deleteVersion(versionId: string): boolean {
+    const versionRow = this.db
+      .prepare("SELECT version FROM prompt_versions WHERE id = ?")
+      .get(versionId) as { version: number } | undefined;
+    if (!versionRow || versionRow.version <= 1) {
+      return false;
+    }
+
     const stmt = this.db.prepare("DELETE FROM prompt_versions WHERE id = ?");
     const result = stmt.run(versionId);
     return result.changes > 0;

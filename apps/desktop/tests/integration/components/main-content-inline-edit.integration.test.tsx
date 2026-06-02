@@ -441,6 +441,23 @@ describe("MainContent inline edit integration", () => {
     expect(screen.getByText("tag-b")).toBeInTheDocument();
   });
 
+  it("shows a real empty-state hint when the selected prompt has no tags", async () => {
+    const promptState = createPromptState(createPrompt({ tags: [] }));
+
+    usePromptStoreMock.mockImplementation((selector) => selector(promptState));
+
+    await act(async () => {
+      await renderWithI18n(<MainContent />, { language: "en" });
+    });
+
+    expect(
+      screen.getByText(
+        "No tags yet. Edit this Prompt or drag tags from the sidebar.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Select existing tags:")).not.toBeInTheDocument();
+  });
+
   it(
     "removes a tag directly from the selected prompt detail",
     async () => {

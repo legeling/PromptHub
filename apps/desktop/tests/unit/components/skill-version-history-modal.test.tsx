@@ -52,4 +52,38 @@ describe("SkillVersionHistoryModal", () => {
       );
     });
   });
+
+  it("keeps the timeline and content panes independently scrollable", async () => {
+    const skill = createSkillFixture();
+    window.api.skill.versionGetAll = vi.fn().mockResolvedValue(
+      Array.from({ length: 12 }, (_, index) =>
+        createSkillVersionFixture({
+          id: `version-${index + 1}`,
+          version: index + 1,
+          note: `Before updating scripts/file-${index + 1}.ts`,
+        }),
+      ).reverse(),
+    );
+
+    await renderWithI18n(
+      <SkillVersionHistoryModal
+        isOpen
+        onClose={vi.fn()}
+        skill={skill}
+        currentContent={skill.content || ""}
+        onReload={vi.fn().mockResolvedValue(undefined)}
+      />,
+      { language: "en" },
+    );
+
+    const timelinePane = await screen.findByTestId(
+      "skill-version-timeline-pane",
+    );
+    const contentPane = screen.getByTestId("skill-version-content-pane");
+
+    expect(timelinePane).toHaveClass("sticky", "min-h-0");
+    expect(timelinePane.querySelector(".overflow-y-auto")).not.toBeNull();
+    expect(contentPane).toHaveClass("overflow-hidden", "min-h-0");
+    expect(contentPane.querySelector(".overflow-y-auto")).not.toBeNull();
+  });
 });

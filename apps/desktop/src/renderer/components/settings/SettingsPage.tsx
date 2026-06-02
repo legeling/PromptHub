@@ -327,12 +327,15 @@ export function SettingsPage({
         className={
           activeSection === "ai"
             ? "flex-1 overflow-hidden app-wallpaper-section"
-            : "flex-1 overflow-y-auto px-6 py-5 app-wallpaper-section"
+            : "flex-1 overflow-y-auto px-5 py-5 app-wallpaper-section sm:px-6 xl:px-8 2xl:px-10"
         }
       >
         <div
+          data-testid="settings-content-shell"
           className={
-            activeSection === "ai" ? "h-full max-w-none" : "max-w-4xl mx-auto"
+            activeSection === "ai"
+              ? "h-full max-w-none"
+              : "mx-auto w-full max-w-5xl xl:max-w-6xl 2xl:max-w-7xl"
           }
         >
           {activeSection === "ai" ? null : (

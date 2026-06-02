@@ -2311,7 +2311,12 @@ function PromptSkillMainContent() {
                       {selectedPrompt.tags.length === 0 && (
                         <div className="inline-flex items-center gap-1 rounded-full bg-accent px-3 py-1.5 text-xs text-muted-foreground">
                           <HashIcon className="h-3 w-3" />
-                          <span>{t('prompt.selectExistingTags', 'Select existing tags')}</span>
+                          <span>
+                            {t(
+                              'prompt.emptyDetailTagsHint',
+                              'No tags yet. Edit this Prompt or drag tags from the sidebar.',
+                            )}
+                          </span>
                         </div>
                       )}
                     </div>

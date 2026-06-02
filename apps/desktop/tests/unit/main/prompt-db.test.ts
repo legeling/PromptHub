@@ -450,6 +450,24 @@ describe("PromptDB (in-memory SQLite)", () => {
       expect(versions[1]?.version).toBe(2);
       expect(versions[2]?.version).toBe(1);
     });
+
+    it("does not delete the initial v1 snapshot", () => {
+      const p = db.create({ title: "Protected baseline", userPrompt: "v1" });
+      db.update(p.id, { userPrompt: "v2" });
+      const versions = db.getVersions(p.id);
+      const initial = versions.find((version) => version.version === 1)!;
+      const second = versions.find((version) => version.version === 2)!;
+
+      expect(db.deleteVersion(initial.id)).toBe(false);
+      expect(db.getVersions(p.id).some((version) => version.version === 1)).toBe(
+        true,
+      );
+
+      expect(db.deleteVersion(second.id)).toBe(true);
+      expect(db.getVersions(p.id).map((version) => version.version)).toEqual([
+        1,
+      ]);
+    });
   });
 
   // ─────────────────────────────────────────────
