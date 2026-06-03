@@ -719,6 +719,76 @@ describe("skill i18n smoke", () => {
     expect(screen.queryByText("批量管理")).not.toBeInTheDocument();
   });
 
+  it("saves personal skill notes to .prompthub/user.json without updating skill metadata", async () => {
+    const syncedSkill = {
+      ...baseSkill,
+      description: "Write helper",
+      instructions: "---\ndescription: Write helper\n---\n\n# Write",
+      content: "---\ndescription: Write helper\n---\n\n# Write",
+    };
+    const updateSkill = vi.fn().mockResolvedValue(undefined);
+    const skillStoreState = createSkillStoreState({
+      selectedSkillId: baseSkill.id,
+      syncSkillFromRepo: vi.fn().mockResolvedValue(syncedSkill),
+      updateSkill,
+    });
+    const settingsState = createSettingsState();
+    const writeLocalFile = vi.fn().mockResolvedValue(undefined);
+    const createLocalDir = vi.fn().mockResolvedValue(undefined);
+
+    useSkillStoreMock.mockImplementation(bindStoreSelector(skillStoreState));
+    useSettingsStoreMock.mockImplementation(bindStoreSelector(settingsState));
+    installWindowMocks({
+      api: {
+        skill: {
+          getRepoPath: vi.fn().mockResolvedValue(baseSkill.local_repo_path),
+          readLocalFile: vi.fn().mockResolvedValue(null),
+          createLocalDir,
+          writeLocalFile,
+        },
+      },
+    });
+
+    await act(async () => {
+      render(<SkillFullDetailPage />);
+    });
+
+    const notesSection = screen.getByText("Personal Notes").closest("section");
+    expect(notesSection).not.toBeNull();
+    fireEvent.click(
+      within(notesSection as HTMLElement).getByTitle("Edit notes"),
+    );
+    fireEvent.change(
+      within(notesSection as HTMLElement).getByPlaceholderText(
+        "Add private notes about how you use this skill...",
+      ),
+      {
+        target: {
+          value:
+            "Use for long-form writing.\n'; DROP TABLE skills; -- <b>safe</b> 📝",
+        },
+      },
+    );
+    fireEvent.click(within(notesSection as HTMLElement).getByTitle("Save"));
+
+    await waitFor(() => {
+      expect(createLocalDir).toHaveBeenCalledWith(
+        baseSkill.id,
+        ".prompthub",
+      );
+      expect(writeLocalFile).toHaveBeenCalledWith(
+        baseSkill.id,
+        ".prompthub/user.json",
+        expect.stringContaining("Use for long-form writing."),
+        { skipVersionSnapshot: true },
+      );
+    });
+    expect(updateSkill).not.toHaveBeenCalled();
+    expect(skillStoreState.syncSkillFromRepo).toHaveBeenCalledWith(
+      baseSkill.id,
+    );
+  });
+
   it("checks and applies source updates from installed GitHub skill detail", async () => {
     const githubSkill = {
       ...baseSkill,

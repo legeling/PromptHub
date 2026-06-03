@@ -19,6 +19,8 @@ import {
   InfoIcon,
   CheckCircleIcon,
   Loader2Icon,
+  StickyNoteIcon,
+  XIcon,
 } from "lucide-react";
 import { SkillIcon } from "./SkillIcon";
 import { SkillCodePane } from "./SkillCodePane";
@@ -57,6 +59,10 @@ import {
   writeSkillTranslationSidecar,
   type SkillTranslationSidecar,
 } from "../../services/skill-translation-sidecar";
+import {
+  readSkillUserSidecar,
+  writeSkillUserSidecar,
+} from "../../services/skill-user-sidecar";
 import { scheduleAllSaveSync } from "../../services/webdav-save-sync";
 import { useSkillPlatform } from "./use-skill-platform";
 import { SkillVersionHistoryModal } from "./SkillVersionHistoryModal";
@@ -174,6 +180,7 @@ export function SkillFullDetailPage({
   const isProjectDetail = Boolean(projectContext);
   const isAgentDetail = Boolean(agentContext);
   const isExternalDetail = isProjectDetail || isAgentDetail;
+  const selectedSkillRecordId = selectedSkill?.id ?? null;
 
   const [copyStatus, setCopyStatus] = useState<Record<string, boolean>>({});
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -225,6 +232,11 @@ export function SkillFullDetailPage({
   const [isCreatingSnapshot, setIsCreatingSnapshot] = useState(false);
   const [isCheckingSourceUpdate, setIsCheckingSourceUpdate] = useState(false);
   const [isUpdatingSource, setIsUpdatingSource] = useState(false);
+  const [skillUserNotes, setSkillUserNotes] = useState("");
+  const [draftSkillUserNotes, setDraftSkillUserNotes] = useState("");
+  const [isEditingUserNotes, setIsEditingUserNotes] = useState(false);
+  const [isLoadingUserNotes, setIsLoadingUserNotes] = useState(false);
+  const [isSavingUserNotes, setIsSavingUserNotes] = useState(false);
   const [sourceUpdateStatus, setSourceUpdateStatus] =
     useState<RegistrySkillUpdateStatus | null>(null);
   const [isProjectDeploying, setIsProjectDeploying] = useState(false);
@@ -665,6 +677,46 @@ export function SkillFullDetailPage({
     isExternalDetail,
     syncSkillFromRepo,
   ]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadUserNotes() {
+      if (!selectedSkillRecordId || isExternalDetail) {
+        setSkillUserNotes("");
+        setDraftSkillUserNotes("");
+        setIsEditingUserNotes(false);
+        return;
+      }
+
+      setIsLoadingUserNotes(true);
+      try {
+        const sidecar = await readSkillUserSidecar(selectedSkillRecordId);
+        if (!cancelled) {
+          const notes = sidecar?.notes ?? "";
+          setSkillUserNotes(notes);
+          setDraftSkillUserNotes(notes);
+          setIsEditingUserNotes(false);
+        }
+      } catch {
+        if (!cancelled) {
+          setSkillUserNotes("");
+          setDraftSkillUserNotes("");
+          setIsEditingUserNotes(false);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingUserNotes(false);
+        }
+      }
+    }
+
+    void loadUserNotes();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isExternalDetail, selectedSkillRecordId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1198,6 +1250,35 @@ export function SkillFullDetailPage({
     }
   };
 
+  const handleSaveUserNotes = async () => {
+    if (!selectedSkill || isExternalDetail) return;
+
+    setIsSavingUserNotes(true);
+    try {
+      const sidecar = await writeSkillUserSidecar({
+        skillId: selectedSkill.id,
+        notes: draftSkillUserNotes,
+      });
+      setSkillUserNotes(sidecar.notes);
+      setDraftSkillUserNotes(sidecar.notes);
+      setIsEditingUserNotes(false);
+      showToast(t("skill.userNotesSaved", "Notes saved"), "success");
+    } catch (error) {
+      console.error("Failed to save skill notes:", error);
+      showToast(
+        `${t("skill.updateFailed", "Update failed")}: ${getErrorMessage(error)}`,
+        "error",
+      );
+    } finally {
+      setIsSavingUserNotes(false);
+    }
+  };
+
+  const handleCancelUserNotes = () => {
+    setDraftSkillUserNotes(skillUserNotes);
+    setIsEditingUserNotes(false);
+  };
+
   const handleContentScroll = () => {
     const scrollTop = contentScrollRef.current?.scrollTop ?? 0;
     setShowBackToTop(scrollTop > 480);
@@ -1589,6 +1670,83 @@ export function SkillFullDetailPage({
 
                 {!isExternalDetail ? (
                   <div className="space-y-6">
+                    <section className="app-wallpaper-panel rounded-2xl border border-border p-4">
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <StickyNoteIcon className="h-4 w-4 shrink-0 text-primary" />
+                          <h3 className="truncate text-sm font-semibold text-foreground">
+                            {t("skill.userNotes", "Personal Notes")}
+                          </h3>
+                        </div>
+                        {isEditingUserNotes ? (
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => void handleSaveUserNotes()}
+                              disabled={isSavingUserNotes}
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
+                              title={t("common.save", "Save")}
+                            >
+                              {isSavingUserNotes ? (
+                                <Loader2Icon className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <SaveIcon className="h-4 w-4" />
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleCancelUserNotes}
+                              disabled={isSavingUserNotes}
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+                              title={t("common.cancel", "Cancel")}
+                            >
+                              <XIcon className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setIsEditingUserNotes(true)}
+                            disabled={isLoadingUserNotes}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-primary disabled:opacity-50"
+                            title={t("skill.editUserNotes", "Edit notes")}
+                          >
+                            {isLoadingUserNotes ? (
+                              <Loader2Icon className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <PencilIcon className="h-4 w-4" />
+                            )}
+                          </button>
+                        )}
+                      </div>
+
+                      {isEditingUserNotes ? (
+                        <Textarea
+                          value={draftSkillUserNotes}
+                          onChange={(event) =>
+                            setDraftSkillUserNotes(event.target.value)
+                          }
+                          placeholder={t(
+                            "skill.userNotesPlaceholder",
+                            "Add private notes for this skill...",
+                          )}
+                          rows={5}
+                          disabled={isSavingUserNotes}
+                          className="min-h-[120px] resize-y"
+                        />
+                      ) : skillUserNotes.trim() ? (
+                        <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/85">
+                          {skillUserNotes}
+                        </p>
+                      ) : (
+                        <p className="text-sm leading-relaxed text-muted-foreground">
+                          {t(
+                            "skill.userNotesEmpty",
+                            "No personal notes yet.",
+                          )}
+                        </p>
+                      )}
+                    </section>
                     <SkillPlatformPanel
                       availablePlatforms={availablePlatforms}
                       handleExport={handleExport}
