@@ -12,6 +12,7 @@
 - [x] Allow multiple desktop backup targets to stay enabled while constraining automatic sync to one explicit `syncProvider` at a time.
 - [x] Rename desktop cloud-backup submenu entries to provider-oriented labels and show enabled state directly in the menu.
 - [x] Add regression tests that catch invalid persisted `syncProvider` state and stale save-sync timers when the active provider changes.
+- [x] Add regression tests that catch periodic auto-sync timers not updating when users change sync settings after the app has already started.
 - [x] Add regression tests for JSON import/export, ZIP import payloads, media/settings consistency, and skill workspace file preservation.
 - [x] Align desktop full backup UI with the ZIP export contract while keeping restore compatible with legacy `.phub.gz` backups.
 - [x] Align the update-dialog manual backup action with the same desktop full ZIP backup contract instead of the legacy JSON-only backup flow.

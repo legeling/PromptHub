@@ -11,6 +11,7 @@ const fsMocks = vi.hoisted(() => ({
   lstat: vi.fn(),
   rm: vi.fn(),
   symlink: vi.fn(),
+  realpath: vi.fn(),
 }));
 
 const internalMocks = vi.hoisted(() => ({
@@ -101,6 +102,11 @@ describe("skill-installer-platform symlink install", () => {
     fsMocks.writeFile.mockResolvedValue(undefined);
     fsMocks.rm.mockResolvedValue(undefined);
     fsMocks.symlink.mockResolvedValue(undefined);
+    fsMocks.realpath.mockImplementation(async (targetPath: string) =>
+      targetPath === "/prompthub/skills/linked-demo"
+        ? "/external/skills/linked-demo"
+        : targetPath,
+    );
   });
 
   it("copies the managed skill directory into the platform directory", async () => {
@@ -113,6 +119,25 @@ describe("skill-installer-platform symlink install", () => {
     expect(fsMocks.cp).toHaveBeenCalledWith(
       expect.anything(),
       "/platform/skills/demo-skill",
+      expect.objectContaining({
+        recursive: true,
+        filter: expect.any(Function),
+      }),
+    );
+  });
+
+  it("dereferences a root symlink source when copy-installing to a platform", async () => {
+    await installSkillMd(
+      "linked-demo",
+      "# skill",
+      "claude",
+      "/prompthub/skills/linked-demo",
+    );
+
+    expect(fsMocks.symlink).not.toHaveBeenCalled();
+    expect(fsMocks.cp).toHaveBeenCalledWith(
+      "/external/skills/linked-demo",
+      "/platform/skills/linked-demo",
       expect.objectContaining({
         recursive: true,
         filter: expect.any(Function),

@@ -283,6 +283,45 @@ describe("cherry-studio-skill-platform", () => {
     ).resolves.toBe(true);
   });
 
+  it("copy mode dereferences a symlinked source directory", async () => {
+    const realSourceDir = await writeSkillPackage(
+      "linked-copy-source",
+      "---\nname: linked-copy-source\n---\ncontent",
+    );
+    const linkedSourceDir = path.join(tempRoot, "linked-source-root");
+    await fs.symlink(realSourceDir, linkedSourceDir, "dir");
+
+    await installCherryStudioSkill(
+      CHERRY_PLATFORM,
+      "linked-copy-source",
+      linkedSourceDir,
+      options(),
+    );
+
+    const targetDir = path.join(
+      tempRoot,
+      "Data",
+      "Skills",
+      "linked-copy-source",
+    );
+    expect((await fs.lstat(targetDir)).isSymbolicLink()).toBe(false);
+    await expect(
+      fs.readFile(
+        path.join(targetDir, "references", "nested", "example.txt"),
+        "utf-8",
+      ),
+    ).resolves.toBe("nested asset");
+
+    await fs.writeFile(
+      path.join(realSourceDir, "SKILL.md"),
+      "---\nname: linked-copy-source\n---\nchanged",
+      "utf-8",
+    );
+    await expect(
+      fs.readFile(path.join(targetDir, "SKILL.md"), "utf-8"),
+    ).resolves.toBe("---\nname: linked-copy-source\n---\ncontent");
+  });
+
   it("uses the current Cherry Studio Data/agents.db schema when present", async () => {
     await fs.rm(dbPath(), { force: true });
     await fs.mkdir(path.dirname(modernDbPath()), { recursive: true });

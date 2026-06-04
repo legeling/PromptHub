@@ -111,8 +111,9 @@ async function copySkillRepoToCherryStudio(
   sourceDir: string,
   targetDir: string,
 ): Promise<void> {
+  const canonicalSourceDir = await fs.realpath(sourceDir);
   await fs.rm(targetDir, { recursive: true, force: true });
-  await fs.cp(sourceDir, targetDir, {
+  await fs.cp(canonicalSourceDir, targetDir, {
     recursive: true,
     filter: async (_src, dest) => {
       const relativePath = path.relative(targetDir, dest);
