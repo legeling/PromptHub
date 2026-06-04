@@ -65,7 +65,7 @@ const downloadUrls =
         windowsX64: `${githubReleaseDownloadBase}/PromptHub-Setup-${version}-x64.exe`,
         windowsArm64: `${githubReleaseDownloadBase}/PromptHub-Setup-${version}-arm64.exe`,
         linuxAppImage: `${githubReleaseDownloadBase}/PromptHub-${version}-x64.AppImage`,
-        linuxDeb: `${githubReleaseDownloadBase}/prompthub_${version}_amd64.deb`,
+        linuxDeb: `${githubReleaseDownloadBase}/PromptHub-${version}-amd64.deb`,
       };
 
 const latestHeaderMatch = changelog.match(

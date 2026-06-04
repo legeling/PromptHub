@@ -1,5 +1,36 @@
 ## [Unreleased]
 
+## [0.5.8] - 2026-06-04
+
+### 新功能 / Features
+
+- 🖼️ **图片 Prompt 反推工作流稳定版**：新增独立图片反推入口，可通过视觉模型生成结构化生图 Prompt，支持先预览/复制再决定是否保存，并可选择把原图作为参考图一并保留
+  - **Image Prompt Reverse Workflow Stable Release**: Added a dedicated image reverse-prompt flow that uses vision-capable models to generate structured image-generation prompts, supports preview/copy before saving, and can keep the source image as a reference
+- 🧠 **AI 模型配置与路由收口**：模型配置改为供应商优先的三栏体验，明确区分供应商实例、模型能力和业务路由，支持视觉、生图、推理等能力标记以及批量获取模型
+  - **AI Model Configuration and Routing Consolidated**: Model settings now use a provider-first three-column flow that separates providers, model capabilities, and business routes, with vision/image/reasoning capability flags and batch model discovery
+- 🛒 **Skill 商店扩展**：内置接入 ClawHub 与 skill.sh，并支持远程商店搜索、分类、分页/滚动加载、缓存和完整 Skill 包安装
+  - **Skill Store Expansion**: Added built-in ClawHub and skill.sh sources with remote search, categories, paging/infinite loading, caching, and full Skill package installation
+
+### 问题修复 / Fixes
+
+- 🧩 **Skill 生命周期矩阵加固**：系统性补齐我的 Skill、项目 Skill、Agent Skill、平台安装、copy / symlink、内置 Skill、外部软链接和同名来源 variant 的识别、安装、卸载、删除与展示状态
+  - **Skill Lifecycle Matrix Hardened**: Systematically tightened My Skills, Project Skills, Agent Skills, platform installs, copy/symlink installs, built-in Skills, external symlinks, and same-name source variants across recognition, install, uninstall, delete, and display states
+- 🔄 **来源更新检查更准确**：GitHub / Gitea / 自托管 Git 来源现在可在“我的 Skill”详情页检查和应用更新，并忽略 `__pycache__` 等常见缓存文件，减少本地未修改却误报更新的问题
+  - **More Accurate Source Update Checks**: GitHub, Gitea, and self-hosted Git sourced Skills can now check and apply updates from My Skills detail, while common cache files such as `__pycache__` are ignored to reduce false local-modified reports
+- 🧱 **Agent / 平台卸载一致性**：Cherry Studio 等 Agent Skill 卸载现在同步文件系统与数据库状态，内置 Skill 会被保护，复制安装和软链接安装会给出不同的删除/保留语义
+  - **Agent and Platform Uninstall Consistency**: Agent Skill uninstall paths such as Cherry Studio now keep filesystem and database state in sync, protect built-in Skills, and distinguish copy vs symlink removal semantics
+- 🎨 **生图测试与错误展示修复**：生图请求改走桌面主进程代理以避开浏览器 CORS，超时策略按图片生成场景放宽，并在测试面板展示失败原因而不只依赖 toast
+  - **Image Generation Test and Error Display Fixes**: Image generation requests now go through the desktop main-process proxy to avoid browser CORS, use image-appropriate timeout limits, and show failure details in the test panel instead of only toast notifications
+
+### 优化 / Improvements
+
+- 🧑‍💻 **Skill 文件代码视图优化**：Skill 源码文件视图接入轻量代码编辑器，支持常见语法高亮、行号、自动换行和更准确的文件图标
+  - **Skill File Code View Refined**: Skill source files now use a lightweight code editor with common syntax highlighting, line numbers, soft wrapping, and richer file icons
+- 📜 **Prompt / Skill 版本历史表优化**：版本历史弹窗改为更适合检索和对比的表格化呈现，并补充数据库与 UI 回归测试
+  - **Prompt / Skill Version History Table Polish**: Version history dialogs now use a more scannable table-style presentation with additional database and UI regression coverage
+- ↔️ **Skill 管理动效与布局打磨**：Skill 列表、项目 Skill、Agent Skill、商店和详情页的切换、筛选、搜索、卡片密度和来源标签进一步统一
+  - **Skill Management Motion and Layout Polish**: Skill lists, Project Skills, Agent Skills, stores, and detail pages now have more consistent transitions, filters, search, card density, and source labels
+
 ## [0.5.8-beta.3] - 2026-06-02
 
 ### 新功能 / Features

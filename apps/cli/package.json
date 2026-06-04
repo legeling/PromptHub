@@ -1,6 +1,6 @@
 {
   "name": "@prompthub/cli",
-  "version": "0.5.8-beta.3",
+  "version": "0.5.8",
   "description": "PromptHub CLI - standalone command line product",
   "license": "AGPL-3.0",
   "type": "module",
