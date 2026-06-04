@@ -159,6 +159,29 @@ Regression coverage added:
 - Added ClawHub package metadata so parsed entries install from the official zip download URL.
 - Added `skill:saveRemoteZipToRepo` IPC/preload/main-service support, including zip extraction, path traversal rejection, ignored-file filtering, managed repo persistence, fingerprint update, and temp directory cleanup.
 - Added marketplace-json `package_url` / `zip_url` / `download_url` support for third-party registries that expose a full package archive.
+- Fixed GitHub install cleanup after managed repo migration:
+  - Successful `installFromGithub()` now removes the temporary clone directory after the full package has been copied into the managed repo.
+  - Post-create failures now clean the managed container, remove the temporary clone, and roll back the just-created DB row.
+  - Added regressions for clone cleanup and DB rollback after post-create persistence failure.
+- Fixed remote store inflight query races:
+  - Inflight load keys now include the active skills.sh filter / search query or ClawHub search query.
+  - Completed skills.sh / ClawHub loads compare their result query with the latest selected query before writing store state, so slower old requests cannot overwrite the active filter.
+  - Added a race test where the `All` skills.sh request remains pending while `Next.js` loads and the old request resolves last.
+
+Additional verification:
+
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/skill-installer.test.ts --testNamePattern "temporary clone|post-create persistence fails"`
+  - Passed: 1 file, 2 tests.
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/skill-store-remote.test.tsx --testNamePattern "does not merge inflight skills.sh loads"`
+  - Passed: 1 file, 1 test.
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/skill-installer.test.ts`
+  - Passed: 1 file, 174 tests.
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/skill-store-remote.test.tsx`
+  - Passed: 1 file, 51 tests.
+- `pnpm --filter @prompthub/desktop exec tsc --noEmit --pretty false`
+  - Passed.
+- `git diff --check`
+  - Passed.
 
 ## Docs Synced
 

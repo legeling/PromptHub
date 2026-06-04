@@ -517,6 +517,7 @@ export class SkillInstaller {
   private static async readManifest(dir: string): Promise<SkillManifest> {
     const manifestPath = path.join(dir, "manifest.json");
     let content: string;
+
     try {
       content = await fs.readFile(manifestPath, "utf-8");
     } catch (err: unknown) {
@@ -609,6 +610,17 @@ export class SkillInstaller {
       );
     }
 
+    let createdSkill:
+      | {
+          id: string;
+          name: string;
+          source_id?: string | null;
+          variant_key?: string | null;
+          local_repo_path?: string | null;
+        }
+      | null = null;
+    let managedRepoPath: string | null = null;
+
     try {
       console.log(`Cloning ${parsedRepo.cloneUrl} to ${installDir}`);
       await gitClone(parsedRepo.cloneUrl, installDir);
@@ -673,15 +685,38 @@ export class SkillInstaller {
         tags: [],
         original_tags: manifest.tags || ["github"],
       });
+      createdSkill = skill;
 
-      const managedRepoPath = await saveToLocalRepoBySkillId(skill, skillDir);
+      managedRepoPath = await saveToLocalRepoBySkillId(skill, skillDir);
       if (managedRepoPath !== skill.local_repo_path) {
         db.update(skill.id, { local_repo_path: managedRepoPath });
+      }
+
+      const managedRepoResolved = path.resolve(managedRepoPath);
+      if (
+        managedRepoResolved !== installDirResolved &&
+        !isPathWithin(installDirResolved, managedRepoResolved)
+      ) {
+        await fs.rm(installDir, { recursive: true, force: true }).catch((e) => {
+          console.error("Failed to clean up temporary clone directory:", e);
+        });
       }
 
       return skill.id;
     } catch (error) {
       console.error("Installation failed:", error);
+      if (createdSkill) {
+        try {
+          await deleteManagedVariantContainer(createdSkill);
+        } catch (cleanupError) {
+          console.error("Failed to clean up managed skill repo:", cleanupError);
+        }
+        try {
+          db.delete(createdSkill.id);
+        } catch (rollbackError) {
+          console.error("Failed to roll back created skill row:", rollbackError);
+        }
+      }
       // Clean up
       try {
         await fs.rm(installDir, { recursive: true, force: true });

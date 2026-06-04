@@ -42,3 +42,7 @@
 - [x] Add zip package IPC/service tests for full inventory copy, fingerprint persistence, traversal rejection, and temp cleanup.
 - [x] Strengthen project TDD and coverage rules to require 100% line/function/branch/condition coverage for new and changed production code.
 - [x] Sync final behavior back to stable docs after implementation.
+- [x] Add GitHub install cleanup and rollback regressions for managed repo migration.
+- [x] Fix GitHub install so successful managed migration removes the temporary clone and post-create failures roll back the DB row.
+- [x] Add remote store inflight filter-race regression coverage.
+- [x] Fix remote store inflight keys and stale-result guards so concurrent skills.sh / ClawHub queries cannot overwrite the active filter.

@@ -250,6 +250,8 @@ export function useSkillStoreRemoteSync(
     string | null
   >(null);
   const remoteStoreEntriesRef = useRef(remoteStoreEntries);
+  const storeCategoryRef = useRef(storeCategory);
+  const storeSearchQueryRef = useRef(storeSearchQuery);
   const inflightStoreLoadsRef = useRef(new Map<string, Promise<void>>());
   const loadRegistryRef = useRef(loadRegistry);
   const skillsShIndexCacheRef = useRef(new Map<string, SkillsShIndexCache>());
@@ -279,6 +281,14 @@ export function useSkillStoreRemoteSync(
   useEffect(() => {
     remoteStoreEntriesRef.current = remoteStoreEntries;
   }, [remoteStoreEntries]);
+
+  useEffect(() => {
+    storeCategoryRef.current = storeCategory;
+  }, [storeCategory]);
+
+  useEffect(() => {
+    storeSearchQueryRef.current = storeSearchQuery;
+  }, [storeSearchQuery]);
 
   useEffect(() => {
     loadRegistryRef.current = loadRegistry;
@@ -721,7 +731,26 @@ export function useSkillStoreRemoteSync(
         return;
       }
 
-      const loadKey = `${sourceId}:${
+      const normalizedSearchQuery = storeSearchQuery.trim();
+      const skillsShFilterKey = normalizeSkillsShFilterKey(
+        source.type === "skills-sh" ? String(storeCategory) : "all",
+      );
+      const expectedSkillsShQuery =
+        source.type === "skills-sh"
+          ? `${skillsShFilterKey}:${normalizedSearchQuery}`
+          : normalizedSearchQuery;
+      const expectedClawHubQuery =
+        source.type === "clawhub"
+          ? normalizedSearchQuery || CLAWHUB_BROWSE_SORT
+          : "";
+      const loadQueryKey =
+        source.type === "skills-sh"
+          ? expectedSkillsShQuery
+          : source.type === "clawhub"
+            ? expectedClawHubQuery
+            : normalizedSearchQuery;
+
+      const loadKey = `${sourceId}:${loadQueryKey}:${
         pageDirection
           ? `${pageDirection}:${pageCursor ?? "first"}`
           : forceRefresh
@@ -736,18 +765,6 @@ export function useSkillStoreRemoteSync(
 
       const hasCachedSkills = cachedEntry && cachedEntry.skills.length > 0;
       const hasCachedFailure = Boolean(cachedEntry?.error);
-      const normalizedSearchQuery = storeSearchQuery.trim();
-      const skillsShFilterKey = normalizeSkillsShFilterKey(
-        source.type === "skills-sh" ? String(storeCategory) : "all",
-      );
-      const expectedSkillsShQuery =
-        source.type === "skills-sh"
-          ? `${skillsShFilterKey}:${normalizedSearchQuery}`
-          : normalizedSearchQuery;
-      const expectedClawHubQuery =
-        source.type === "clawhub"
-          ? normalizedSearchQuery || CLAWHUB_BROWSE_SORT
-          : "";
       const hasStalePaginatedCache =
         (source.type === "skills-sh" &&
           (cachedEntry?.pageSize !== PRECONFIGURED_STORE_PAGE_SIZE ||
@@ -818,6 +835,20 @@ export function useSkillStoreRemoteSync(
                 ...result.skills,
               ])
             : dedupeRegistrySkills(result.skills);
+          const latestSearchQuery = storeSearchQueryRef.current.trim();
+          const latestStoreCategory = storeCategoryRef.current;
+          const latestExpectedQuery =
+            source.type === "skills-sh"
+              ? `${normalizeSkillsShFilterKey(String(latestStoreCategory))}:${latestSearchQuery}`
+              : source.type === "clawhub"
+                ? latestSearchQuery || CLAWHUB_BROWSE_SORT
+                : result.query;
+          if (
+            (source.type === "skills-sh" || source.type === "clawhub") &&
+            result.query !== latestExpectedQuery
+          ) {
+            return;
+          }
           setRemoteStoreEntry(sourceId, {
             loadedAt: Date.now(),
             currentCursor: result.currentCursor ?? null,

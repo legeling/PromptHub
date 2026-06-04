@@ -3108,6 +3108,100 @@ describe("SkillInstaller.installFromGithub", () => {
     );
   });
 
+  it("removes the temporary clone after moving a GitHub install into the managed repo", async () => {
+    await SkillInstaller.init();
+
+    const dbMock = {
+      getByName: vi.fn().mockReturnValue(null),
+      create: vi.fn().mockReturnValue({
+        id: "skill-cleanup",
+        name: "repo",
+        source_id: "source-repo-main",
+        local_repo_path: path.join(managedSkillsDir(), "owner-repo"),
+      }),
+      update: vi.fn(),
+      delete: vi.fn(),
+    };
+    const mockDb = dbMock as unknown as SkillDB;
+
+    vi.spyOn(skillInstallerUtils, "gitClone").mockImplementation(
+      async (_url, destDir) => {
+        await fs.mkdir(path.join(destDir, "docs"), { recursive: true });
+        await fs.writeFile(path.join(destDir, "SKILL.md"), "# Repo\n");
+        await fs.writeFile(path.join(destDir, "docs", "guide.md"), "Guide");
+      },
+    );
+    vi.spyOn(SkillInstaller, "resolveSingleSkillDirFromRepo").mockImplementation(
+      async (installDir) => installDir,
+    );
+    vi.spyOn(SkillInstaller, "readManifest").mockResolvedValue({
+      name: "repo",
+      description: "Repo",
+      version: "1.0.0",
+      author: "owner",
+      tags: ["github"],
+      instructions: "# Repo\n",
+    });
+
+    await expect(
+      SkillInstaller.installFromGithub("https://github.com/owner/repo", mockDb),
+    ).resolves.toBe("skill-cleanup");
+
+    expect(
+      fsSync.existsSync(path.join(managedSkillsDir(), "owner-repo")),
+    ).toBe(false);
+    const managedRepoPath = dbMock.update.mock.calls[0]?.[1]?.local_repo_path;
+    expect(typeof managedRepoPath).toBe("string");
+    expect(fsSync.existsSync(path.join(String(managedRepoPath), "SKILL.md"))).toBe(
+      true,
+    );
+  });
+
+  it("rolls back the created DB row when post-create persistence fails", async () => {
+    await SkillInstaller.init();
+
+    const dbMock = {
+      getByName: vi.fn().mockReturnValue(null),
+      create: vi.fn().mockReturnValue({
+        id: "skill-rollback",
+        name: "repo",
+        source_id: "source-repo-main",
+        local_repo_path: path.join(managedSkillsDir(), "owner-repo"),
+      }),
+      update: vi.fn().mockImplementation(() => {
+        throw new Error("update failed");
+      }),
+      delete: vi.fn(),
+    };
+    const mockDb = dbMock as unknown as SkillDB;
+
+    vi.spyOn(skillInstallerUtils, "gitClone").mockImplementation(
+      async (_url, destDir) => {
+        await fs.mkdir(destDir, { recursive: true });
+        await fs.writeFile(path.join(destDir, "SKILL.md"), "# Repo\n");
+      },
+    );
+    vi.spyOn(SkillInstaller, "resolveSingleSkillDirFromRepo").mockImplementation(
+      async (installDir) => installDir,
+    );
+    vi.spyOn(SkillInstaller, "readManifest").mockResolvedValue({
+      name: "repo",
+      description: "Repo",
+      version: "1.0.0",
+      author: "owner",
+      tags: ["github"],
+      instructions: "# Repo\n",
+    });
+    await expect(
+      SkillInstaller.installFromGithub("https://github.com/owner/repo", mockDb),
+    ).rejects.toThrow("update failed");
+
+    expect(dbMock.delete).toHaveBeenCalledWith("skill-rollback");
+    expect(
+      fsSync.existsSync(path.join(managedSkillsDir(), "owner-repo")),
+    ).toBe(false);
+  });
+
   it("rejects when a skill with the derived repo name already exists in DB", async () => {
     await SkillInstaller.init();
 

@@ -1431,6 +1431,113 @@ tags: [clawhub]
     );
   });
 
+  it("does not merge inflight skills.sh loads across different filters", async () => {
+    const allIndex = createDeferred<string>();
+    const topicIndex = createDeferred<string>();
+    const fetchRemoteContent = vi.fn(async (url: string) => {
+      if (url === "https://skills.sh") {
+        return allIndex.promise;
+      }
+
+      if (url === "https://skills.sh/topic/nextjs") {
+        return topicIndex.promise;
+      }
+
+      if (url === "https://skills.sh/vercel/skills/next-routing") {
+        return makeSkillsShDetail("next-routing");
+      }
+
+      const match = url.match(
+        /^https:\/\/skills\.sh\/demo\/skills\/(skill-\d+)$/,
+      );
+      if (match) {
+        return makeSkillsShDetail(match[1]);
+      }
+
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+
+    installWindowMocks({
+      api: {
+        settings: {
+          get: vi.fn().mockResolvedValue({
+            device: {
+              storeAutoSync: false,
+              storeSyncCadence: "manual",
+            },
+          }),
+        },
+        skill: {
+          fetchRemoteContent,
+          scanLocalPreview: vi.fn().mockResolvedValue([]),
+          scanSafety: vi.fn().mockResolvedValue({
+            level: "safe",
+            summary: "safe",
+            findings: [],
+            recommendedAction: "allow",
+            scannedAt: Date.now(),
+            checkedFileCount: 1,
+            scanMethod: "ai",
+          }),
+        },
+      },
+    });
+
+    useSkillStore.setState({
+      selectedStoreSourceId: "community",
+    });
+
+    await act(async () => {
+      await renderWithI18n(<SkillStore />, { language: "en" });
+    });
+
+    await waitFor(() => {
+      expect(fetchRemoteContent).toHaveBeenCalledWith("https://skills.sh");
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Next.js" }));
+    });
+
+    await waitFor(() => {
+      expect(fetchRemoteContent).toHaveBeenCalledWith(
+        "https://skills.sh/topic/nextjs",
+      );
+    });
+
+    await act(async () => {
+      topicIndex.resolve(`
+        <main>
+          <a href="/vercel/skills/next-routing"></a>
+        </main>
+      `);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("next-routing")).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      allIndex.resolve(makeSkillsShLeaderboard(30));
+    });
+
+    await waitFor(() => {
+      expect(
+        useSkillStore.getState().remoteStoreEntries.community,
+      ).toEqual(
+        expect.objectContaining({
+          query: "topic:nextjs:",
+          skills: [
+            expect.objectContaining({
+              store_url: "https://skills.sh/vercel/skills/next-routing",
+            }),
+          ],
+        }),
+      );
+    });
+    expect(screen.queryByText("skill-1")).toBeNull();
+  });
+
   it("uses skills.sh topic result count instead of the global total for topic filters", async () => {
     const fetchRemoteContent = vi.fn(async (url: string) => {
       if (url === "https://skills.sh") {
