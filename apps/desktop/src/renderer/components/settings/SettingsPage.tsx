@@ -335,7 +335,7 @@ export function SettingsPage({
           className={
             activeSection === "ai"
               ? "h-full max-w-none"
-              : "mx-auto w-full max-w-5xl xl:max-w-6xl 2xl:max-w-7xl"
+              : "w-full max-w-5xl xl:max-w-6xl 2xl:max-w-7xl"
           }
         >
           {activeSection === "ai" ? null : (

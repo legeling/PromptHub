@@ -21,6 +21,14 @@
 - Added `material-icon-theme` and replaced generated file-icon badges with real SVG assets from the VS Code Material Icon Theme package.
 - Added file-type-specific tree icon URLs for common formats such as Python, JavaScript, TypeScript, JSON, YAML, HTML, CSS, shell, Markdown, SVG, images, Dockerfile, XML, and license files.
 - Removed obsolete file-editor static `highlight.js` helper/tests and the transparent textarea overlay implementation.
+- Fixed a dirty-state regression where CodeMirror parent-driven `value` sync
+  was reported through `onChange` as if the user had edited the file. This made
+  multi-file imported Skills, especially custom Git/Gitea imports, show the
+  unsaved dot and prompt to save immediately when switching files.
+- Changed Skill Markdown preview highlighting to ignore unregistered fenced-code
+  languages instead of throwing. Real imported skills with languages such as
+  `powershell` now render the preview and show the code block as plain code if
+  the highlighter does not know that language.
 
 ## Verification
 
@@ -33,5 +41,7 @@
 - `pnpm --filter @prompthub/desktop typecheck`
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/skill-file-editor.test.tsx --testNamePattern "resource files"`
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/skill-file-editor.test.tsx`
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/skill-code-editor.test.tsx`
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/skill-preview-pane.test.tsx`
 - JSON parse validation for all desktop locales (`en`, `zh`, `zh-TW`, `ja`, `fr`, `de`, `es`)
 - `pnpm --filter @prompthub/desktop typecheck`

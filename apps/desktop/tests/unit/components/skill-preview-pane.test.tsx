@@ -104,4 +104,35 @@ describe("SkillPreviewPane", () => {
     expect(screen.queryByText("Dev")).not.toBeInTheDocument();
     expect(screen.queryByText("image")).not.toBeInTheDocument();
   });
+
+  it("renders unknown fenced code languages without showing the preview error", async () => {
+    const skill = createSkillFixture();
+    const t = ((key: string, defaultValue?: string) =>
+      defaultValue ?? key) as any;
+
+    await renderWithI18n(
+      <SkillPreviewPane
+        cachedInstructionsTranslation={null}
+        copyStatus={{ instr: false }}
+        handleCopy={vi.fn()}
+        handleTranslateSkill={vi.fn()}
+        hasStaleTranslation={false}
+        isTranslating={false}
+        resolvedDescription="Preview should survive unknown code languages"
+        selectedSkill={skill}
+        showTranslation={false}
+        skillContent={
+          "# CloudDrive2\n\n```powershell\n$paths = @(\"$HOME\\.config\")\n```\n"
+        }
+        t={t}
+        translationMode="full"
+      />,
+    );
+
+    expect(screen.getByText("CloudDrive2")).toBeInTheDocument();
+    expect(screen.getByText(/\$paths = @/)).toBeInTheDocument();
+    expect(
+      screen.queryByText("Skill 预览暂时无法渲染"),
+    ).not.toBeInTheDocument();
+  });
 });

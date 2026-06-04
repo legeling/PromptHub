@@ -711,6 +711,9 @@ describe("skill i18n smoke", () => {
     await waitFor(() => {
       expect(screen.getByText("Write helper")).toBeInTheDocument();
     });
+    const notesCard = screen.getByTestId("skill-user-notes-card");
+    expect(notesCard).toBeInTheDocument();
+    expect(within(notesCard).queryByText("Personal Notes")).toBeNull();
     expect(skillStoreState.syncSkillFromRepo).toHaveBeenCalledWith(
       baseSkill.id,
     );

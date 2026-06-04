@@ -252,7 +252,7 @@ export function AboutSettings() {
 
         <div
           data-testid="about-support-grid"
-          className="grid gap-6 xl:grid-cols-2"
+          className="grid grid-cols-1 gap-6"
         >
           <SettingSection title={t("settings.openSource")}>
             <SettingItem

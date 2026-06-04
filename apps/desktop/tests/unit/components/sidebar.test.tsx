@@ -577,6 +577,123 @@ describe("Sidebar", () => {
     expect(within(officialButton).getByText("0")).toBeInTheDocument();
   });
 
+  it("shows preconfigured community store sources in the skill store group", async () => {
+    useSkillStore.setState({
+      storeView: "store",
+      selectedStoreSourceId: "clawhub",
+      remoteStoreEntries: {
+        community: {
+          loadedAt: Date.now(),
+          error: null,
+          skills: [{ slug: "community-demo" } as never],
+        },
+        clawhub: {
+          loadedAt: Date.now(),
+          error: null,
+          nextCursor: "cursor-2",
+          skills: [
+            { slug: "clawhub-demo" } as never,
+            { slug: "clawhub-helper" } as never,
+          ],
+        },
+      },
+    } as never);
+
+    await act(async () => {
+      await renderWithI18n(
+        <Sidebar currentPage="home" onNavigate={vi.fn()} />,
+        { language: "en" },
+      );
+    });
+
+    const communityButton = screen.getByRole("button", {
+      name: /skills\.sh/i,
+    });
+    const clawHubButton = screen.getByRole("button", {
+      name: /ClawHub/i,
+    });
+
+    expect(within(communityButton).getByText("1")).toBeInTheDocument();
+    expect(within(clawHubButton).getByText("2+")).toBeInTheDocument();
+    expect(communityButton.querySelector(".lucide-store")).not.toBeNull();
+    expect(clawHubButton.querySelector(".lucide-store")).not.toBeNull();
+    expect(communityButton.querySelector(".lucide-boxes")).toBeNull();
+    expect(clawHubButton.querySelector(".lucide-globe")).toBeNull();
+  });
+
+  it("keeps many skill store sources inside an internal scroll region", async () => {
+    const customStoreSources = Array.from({ length: 36 }, (_, index) => ({
+      id: `team-store-${index}`,
+      name: `Team Store ${index}`,
+      type: "git-repo" as const,
+      url: `https://gitea.example.com/team/store-${index}`,
+      enabled: true,
+      order: index,
+    }));
+
+    useSkillStore.setState({
+      storeView: "store",
+      selectedStoreSourceId: "team-store-35",
+      customStoreSources,
+      remoteStoreEntries: {},
+    } as never);
+
+    await act(async () => {
+      await renderWithI18n(
+        <Sidebar currentPage="home" onNavigate={vi.fn()} />,
+        { language: "en" },
+      );
+    });
+
+    const sourceScroll = screen.getByTestId("skill-store-source-scroll");
+
+    expect(sourceScroll).toHaveClass("min-h-0", "flex-1", "overflow-y-auto");
+    expect(
+      within(sourceScroll).getByRole("button", { name: /Team Store 35/i }),
+    ).toBeInTheDocument();
+    expect(
+      within(sourceScroll).getByRole("button", { name: /Add Store/i }),
+    ).toBeInTheDocument();
+    expect(
+      within(sourceScroll).queryByRole("button", { name: /My Skills/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("collapses the expanded skill store source list from the first-level store entry", async () => {
+    useSkillStore.setState({
+      storeView: "store",
+      selectedStoreSourceId: "claude-code",
+      remoteStoreEntries: {
+        "claude-code": {
+          loadedAt: Date.now(),
+          error: null,
+          skills: [],
+        },
+      },
+    } as never);
+
+    await act(async () => {
+      await renderWithI18n(
+        <Sidebar currentPage="home" onNavigate={vi.fn()} />,
+        { language: "en" },
+      );
+    });
+
+    expect(screen.getByTestId("skill-store-source-scroll")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Skill Store/i }));
+
+    expect(
+      screen.queryByTestId("skill-store-source-scroll"),
+    ).not.toBeInTheDocument();
+    expect(useSkillStore.getState().storeView).toBe("store");
+
+    fireEvent.click(screen.getByRole("button", { name: /Skill Store/i }));
+
+    expect(screen.getByTestId("skill-store-source-scroll")).toBeInTheDocument();
+    expect(useSkillStore.getState().selectedStoreSourceId).toBe("claude-code");
+  });
+
   it("keeps skill store sources expanded after switching to another skill section", async () => {
     useSkillStore.setState({
       storeView: "store",
@@ -618,6 +735,49 @@ describe("Sidebar", () => {
     expect(
       screen.getByRole("button", { name: /Add Store/i }),
     ).toBeInTheDocument();
+  });
+
+  it("switches to the store view when a nested store source is clicked", async () => {
+    useSkillStore.setState({
+      storeView: "store",
+      selectedStoreSourceId: "official",
+      customStoreSources: [
+        {
+          id: "personal-store",
+          name: "Personal Store",
+          type: "git-repo",
+          url: "https://gitea.example.com/team/skills",
+          enabled: true,
+          order: 0,
+        },
+      ],
+      remoteStoreEntries: {
+        "personal-store": {
+          loadedAt: Date.now(),
+          error: null,
+          skills: [],
+        },
+      },
+    } as never);
+
+    await act(async () => {
+      await renderWithI18n(
+        <Sidebar currentPage="home" onNavigate={vi.fn()} />,
+        { language: "en" },
+      );
+    });
+
+    expect(
+      screen.getByRole("button", { name: /Personal Store/i }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /My Skills/i }));
+    expect(useSkillStore.getState().storeView).toBe("my-skills");
+    fireEvent.click(screen.getByRole("button", { name: /Personal Store/i }));
+
+    expect(useSkillStore.getState().selectedStoreSourceId).toBe(
+      "personal-store",
+    );
+    expect(useSkillStore.getState().storeView).toBe("store");
   });
 
   it("hides Projects in web runtime where local skill scanning is unavailable", async () => {

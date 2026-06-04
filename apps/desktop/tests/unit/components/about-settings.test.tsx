@@ -172,7 +172,7 @@ describe("AboutSettings", () => {
     expect(screen.getByText("Contact Author")).toBeInTheDocument();
   });
 
-  it("groups secondary information into a responsive wide-screen grid", async () => {
+  it("groups secondary information into a single-column stack", async () => {
     useSettingsStoreMock.mockReturnValue({
       autoCheckUpdate: true,
       useUpdateMirror: false,
@@ -190,7 +190,8 @@ describe("AboutSettings", () => {
 
     const supportGrid = screen.getByTestId("about-support-grid");
 
-    expect(supportGrid).toHaveClass("xl:grid-cols-2");
+    expect(supportGrid).toHaveClass("grid-cols-1");
+    expect(supportGrid.className).not.toContain("grid-cols-2");
     expect(supportGrid).toHaveTextContent("Open Source");
     expect(supportGrid).toHaveTextContent("Community");
     expect(supportGrid).toHaveTextContent("Contact Author");

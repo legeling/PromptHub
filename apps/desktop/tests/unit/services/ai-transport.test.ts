@@ -5,6 +5,7 @@ import {
   chatCompletion,
   fetchAvailableModels,
   generateImage,
+  testAIConnection,
 } from "../../../src/renderer/services/ai";
 import { installWindowMocks } from "../../helpers/window";
 
@@ -103,6 +104,60 @@ describe("ai transport", () => {
         { id: "gpt-4o", name: "gpt-4o", owned_by: undefined, created: undefined },
       ],
     });
+  });
+
+  it("uses a lightweight non-streaming probe for chat model connection tests", async () => {
+    window.api.ai.request.mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      body: JSON.stringify({
+        choices: [
+          {
+            index: 0,
+            message: { role: "assistant", content: "OK" },
+            finish_reason: "stop",
+          },
+        ],
+      }),
+      headers: { "content-type": "application/json" },
+    });
+
+    const result = await testAIConnection({
+      provider: "custom",
+      apiProtocol: "openai",
+      apiKey: "local-key",
+      apiUrl: "http://127.0.0.1:8000",
+      model: "Qwen3.5-9B-MLX-4bit",
+      chatParams: {
+        maxTokens: 4096,
+        stream: true,
+        enableThinking: true,
+        temperature: 0.9,
+      },
+    });
+
+    expect(result.success).toBe(true);
+    expect(window.api.ai.request).toHaveBeenCalledTimes(1);
+    expect(window.api.ai.requestStream).not.toHaveBeenCalled();
+
+    const request = window.api.ai.request.mock.calls[0]?.[0];
+    expect(request).toEqual(
+      expect.objectContaining({
+        method: "POST",
+        url: "http://127.0.0.1:8000/v1/chat/completions",
+        timeoutMs: 12_000,
+      }),
+    );
+
+    const body = JSON.parse(String(request?.body));
+    expect(body.messages).toEqual([
+      { role: "user", content: "Reply with exactly: OK" },
+    ]);
+    expect(body.max_tokens).toBe(8);
+    expect(body.stream).toBe(false);
+    expect(body.enable_thinking).toBe(false);
+    expect(body.temperature).toBe(0);
   });
 
   it("uses the main-process request transport for OpenAI-compatible image generation", async () => {

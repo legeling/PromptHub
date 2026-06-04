@@ -108,6 +108,15 @@ function createConfiguredModel(
   };
 }
 
+function withinModal(title: string) {
+  const heading = screen.getByRole("heading", { name: title });
+  const modal = heading.closest(".app-wallpaper-panel-strong");
+  if (!modal) {
+    throw new Error(`Unable to locate modal for ${title}`);
+  }
+  return within(modal as HTMLElement);
+}
+
 describe("AISettingsPrototype", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -163,6 +172,92 @@ describe("AISettingsPrototype", () => {
     expect(screen.getByText("Status Overview")).toBeInTheDocument();
   });
 
+  it("lets the endpoint detail panel fill the available model-service width", async () => {
+    const settingsState = createSettingsState();
+    settingsState.aiModels = [
+      createConfiguredModel({
+        id: "model-wide",
+        providerId: "provider-1",
+        name: "Wide Model",
+        model: "gpt-wide",
+      }),
+    ];
+    useSettingsStoreMock.mockReturnValue(settingsState);
+
+    await renderWithI18n(<AISettingsPrototype />, { language: "en" });
+
+    const detailPanel = screen.getByRole("heading", {
+      name: "Model Services",
+    }).parentElement;
+
+    expect(detailPanel).toHaveClass("w-full");
+    expect(detailPanel).not.toHaveClass("max-w-4xl");
+    expect(detailPanel).not.toHaveClass("mx-auto");
+  });
+
+  it("updates endpoint api key and url inline without opening the edit dialog", async () => {
+    const settingsState = createSettingsState();
+    settingsState.aiModels = [
+      createConfiguredModel({
+        id: "model-inline",
+        providerId: "provider-1",
+        provider: "openai",
+        apiKey: "old-key",
+        apiUrl: "https://api.example.com/v1",
+        model: "gpt-inline",
+      }),
+    ];
+    settingsState.aiProviders = [
+      {
+        id: "provider-1",
+        name: "Inline Provider",
+        provider: "openai",
+        apiProtocol: "openai" as const,
+        apiKey: "old-key",
+        apiUrl: "https://api.example.com/v1",
+      },
+    ];
+    useSettingsStoreMock.mockReturnValue(settingsState);
+
+    await renderWithI18n(<AISettingsPrototype />, { language: "en" });
+
+    expect(screen.queryByRole("heading", { name: "Edit Endpoint" }))
+      .not.toBeInTheDocument();
+
+    const endpointApiKeyInput = screen.getByLabelText("Endpoint API Key");
+    expect(endpointApiKeyInput).toHaveAttribute("type", "password");
+    fireEvent.click(screen.getByRole("button", { name: "Show" }));
+    expect(endpointApiKeyInput).toHaveAttribute("type", "text");
+
+    fireEvent.change(endpointApiKeyInput, {
+      target: { value: "new-key" },
+    });
+    fireEvent.change(screen.getByLabelText("Endpoint API URL"), {
+      target: { value: "https://api.changed.example/v1" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(settingsState.updateAiProvider).toHaveBeenCalledWith("provider-1", {
+      name: "Inline Provider",
+      provider: "openai",
+      apiProtocol: "openai",
+      apiKey: "new-key",
+      apiUrl: "https://api.changed.example/v1",
+      lastVerifiedAt: undefined,
+    });
+    expect(settingsState.updateAiModel).toHaveBeenCalledWith("model-inline", {
+      providerId: "provider-1",
+      name: "Inline Provider",
+      provider: "openai",
+      apiProtocol: "openai",
+      apiKey: "new-key",
+      apiUrl: "https://api.changed.example/v1",
+      lastVerifiedAt: undefined,
+    });
+    expect(screen.queryByRole("heading", { name: "Edit Endpoint" }))
+      .not.toBeInTheDocument();
+  });
+
   it("adds a provider endpoint without creating a model", async () => {
     const settingsState = createSettingsState();
     useSettingsStoreMock.mockReturnValue(settingsState);
@@ -173,15 +268,16 @@ describe("AISettingsPrototype", () => {
     expect(
       screen.getByRole("heading", { name: "Add Provider" }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText("Provider Name")).toHaveValue("OpenAI");
-    expect(screen.getByText("Provider Type")).toBeInTheDocument();
-    fireEvent.change(screen.getByPlaceholderText("Enter API Key"), {
+    const modal = withinModal("Add Provider");
+    expect(modal.getByLabelText("Provider Name")).toHaveValue("OpenAI");
+    expect(modal.getByText("Provider Type")).toBeInTheDocument();
+    fireEvent.change(modal.getByPlaceholderText("Enter API Key"), {
       target: { value: "provider-key" },
     });
-    fireEvent.change(screen.getByLabelText("API URL"), {
+    fireEvent.change(modal.getByLabelText("API URL"), {
       target: { value: "https://api.provider.test/v1" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+    fireEvent.click(modal.getByRole("button", { name: "Save Changes" }));
 
     expect(settingsState.addAiProvider).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -362,7 +458,7 @@ describe("AISettingsPrototype", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Add Provider" }));
 
-    const apiUrlInput = screen.getByLabelText("API URL");
+    const apiUrlInput = withinModal("Add Provider").getByLabelText("API URL");
     fireEvent.change(apiUrlInput, {
       target: { value: "https://api.example.com/v1/chat/completions" },
     });
@@ -647,7 +743,7 @@ describe("AISettingsPrototype", () => {
     expect(screen.getByText("claude-opus-4-6")).toBeInTheDocument();
     expect(screen.getByText("API Key")).toBeInTheDocument();
     expect(screen.getByText("API URL")).toBeInTheDocument();
-    expect(screen.getByText("Protocol")).toBeInTheDocument();
+    expect(screen.queryByText("Protocol")).not.toBeInTheDocument();
     expect(screen.getAllByText("Anthropic-compatible").length).toBeGreaterThan(
       0,
     );
@@ -749,10 +845,13 @@ describe("AISettingsPrototype", () => {
 
     fireEvent.click(screen.getAllByRole("button", { name: "Edit" }).at(-1)!);
 
-    expect(screen.queryByText("Provider Endpoint")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("API URL")).not.toBeInTheDocument();
+    const modal = withinModal("Edit Model");
+    expect(modal.queryByText("Provider Endpoint")).not.toBeInTheDocument();
     expect(
-      screen.queryByPlaceholderText("Enter API Key"),
+      modal.queryByLabelText("API URL"),
+    ).not.toBeInTheDocument();
+    expect(
+      modal.queryByPlaceholderText("Enter API Key"),
     ).not.toBeInTheDocument();
   });
 

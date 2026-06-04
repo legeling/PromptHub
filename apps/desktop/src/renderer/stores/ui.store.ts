@@ -41,6 +41,16 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
+function normalizeAppModule(value: unknown): AppModule {
+  return value === "skill" || value === "rules" || value === "prompt"
+    ? value
+    : "prompt";
+}
+
+function getViewModeForModule(module: AppModule): ViewMode {
+  return module === "skill" ? "skill" : "prompt";
+}
+
 interface UIState {
   viewMode: ViewMode;
   appModule: AppModule;
@@ -112,9 +122,12 @@ export const useUIStore = create<UIState>()(
     {
       name: "ui-storage",
       // Persist sidebar collapse state AND the user's chosen column widths
-      // so the layout survives across sessions (#119). viewMode still resets
-      // to 'prompt' on launch by design.
+      // so the layout survives across sessions (#119). The active home module
+      // is also persisted so reopening the app returns to the user's last
+      // Prompts / Skills / Rules workspace instead of forcing Prompts.
       partialize: (state) => ({
+        appModule: state.appModule,
+        viewMode: state.viewMode,
         isSidebarCollapsed: state.isSidebarCollapsed,
         sidebarPanelWidth: state.sidebarPanelWidth,
         promptListPaneWidth: state.promptListPaneWidth,
@@ -124,8 +137,11 @@ export const useUIStore = create<UIState>()(
       // a sane value instead of leaving the column in a broken state.
       merge: (persisted, current) => {
         const merged = { ...current, ...(persisted as Partial<UIState>) };
+        const appModule = normalizeAppModule(merged.appModule);
         return {
           ...merged,
+          appModule,
+          viewMode: getViewModeForModule(appModule),
           sidebarPanelWidth: clamp(
             merged.sidebarPanelWidth ?? SIDEBAR_PANEL_WIDTH_DEFAULT,
             SIDEBAR_PANEL_WIDTH_MIN,

@@ -369,9 +369,7 @@ describe("TopBar", () => {
     expect(useRulesStore.getState().searchQuery).toBe("codex");
   });
 
-  it("uses the store search query when searching in the skill store catalog", async () => {
-    const selectRegistrySkill = vi.fn();
-
+  it("hides the top search box in the skill store catalog", async () => {
     useUIStore.setState({
       appModule: "skill",
       viewMode: "skill",
@@ -379,31 +377,30 @@ describe("TopBar", () => {
     });
     useSkillStore.setState({
       storeView: "store",
-      searchQuery: "",
-      storeSearchQuery: "",
+      searchQuery: "local-skill-query",
+      storeSearchQuery: "store-query",
       storeCategory: "all",
-      selectedStoreSourceId: "claude-code",
+      selectedStoreSourceId: "community",
       registrySkills: [],
       remoteStoreEntries: {
-        "claude-code": {
+        community: {
           loadedAt: 1,
           skills: [
             {
-              slug: "pdf-skill",
-              name: "PDF Skill",
-              description: "Use this skill whenever you need PDF help",
-              category: "office",
-              author: "PromptHub",
-              source_url: "https://example.com/pdf-skill",
-              tags: ["pdf"],
+              slug: "web-design-guidelines",
+              name: "Web Design Guidelines",
+              description: "Audit UI code against web interface guidelines",
+              category: "dev",
+              author: "skills.sh",
+              source_url: "https://skills.sh/demo/skills/web-design",
+              tags: ["frontend"],
               version: "1.0.0",
-              content: "# PDF Skill",
+              content: "# Web Design Guidelines",
             },
           ],
         },
       },
       selectedRegistrySlug: null,
-      selectRegistrySkill,
     } as Partial<ReturnType<typeof useSkillStore.getState>>);
 
     await act(async () => {
@@ -413,67 +410,10 @@ describe("TopBar", () => {
       );
     });
 
-    const searchInput = screen.getByPlaceholderText("Search skills...");
-    fireEvent.change(searchInput, { target: { value: "pdf" } });
-
-    expect(useSkillStore.getState().storeSearchQuery).toBe("pdf");
-    expect(useSkillStore.getState().searchQuery).toBe("");
-
-    await waitFor(() => {
-      expect(screen.getByText("1 results")).toBeInTheDocument();
-    });
-    expect(screen.queryByTitle("Next (Tab)")).not.toBeInTheDocument();
-
-    fireEvent.keyDown(searchInput, { key: "Enter" });
-    fireEvent.keyDown(searchInput, { key: "Tab" });
-
-    expect(selectRegistrySkill).not.toHaveBeenCalled();
-  });
-
-  it("does not search unopened official store registry skills", async () => {
-    useUIStore.setState({
-      appModule: "skill",
-      viewMode: "skill",
-      isSidebarCollapsed: false,
-    });
-    useSkillStore.setState({
-      storeView: "store",
-      searchQuery: "",
-      storeSearchQuery: "",
-      storeCategory: "all",
-      selectedStoreSourceId: "official",
-      registrySkills: [
-        {
-          slug: "pdf-skill",
-          name: "PDF Skill",
-          description: "Use this skill whenever you need PDF help",
-          category: "office",
-          author: "PromptHub",
-          source_url: "https://example.com/pdf-skill",
-          tags: ["pdf"],
-          version: "1.0.0",
-          content: "# PDF Skill",
-        },
-      ],
-      remoteStoreEntries: {},
-      selectedRegistrySlug: null,
-    } as Partial<ReturnType<typeof useSkillStore.getState>>);
-
-    await act(async () => {
-      await renderWithI18n(
-        <TopBar onOpenSettings={vi.fn()} updateAvailable={null} />,
-        { language: "en" },
-      );
-    });
-
-    fireEvent.change(screen.getByPlaceholderText("Search skills..."), {
-      target: { value: "pdf" },
-    });
-
-    expect(useSkillStore.getState().storeSearchQuery).toBe("pdf");
-    await waitFor(() => {
-      expect(screen.getByText("No results")).toBeInTheDocument();
-    });
+    expect(screen.queryByPlaceholderText("Search skills...")).toBeNull();
+    expect(screen.queryByText(/results/i)).toBeNull();
+    expect(useSkillStore.getState().storeSearchQuery).toBe("store-query");
+    expect(useSkillStore.getState().searchQuery).toBe("local-skill-query");
   });
 
   it("uses the regular skill search query in the distribution view", async () => {

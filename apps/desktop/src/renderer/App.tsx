@@ -39,6 +39,7 @@ import {
   shouldRunStartupSelfHostedSync,
   shouldRunStartupWebDAVSync,
 } from "./services/app-background";
+import { registerPeriodicAutoSyncController } from "./services/periodic-auto-sync";
 import { useToast } from "./components/ui/Toast";
 import { DndContext, DragEndEvent, pointerWithin } from "@dnd-kit/core";
 import i18n from "./i18n";
@@ -599,11 +600,9 @@ function App() {
     // Initialize database, then load data
     // 初始化数据库，然后加载数据
     let startupSyncTimer: NodeJS.Timeout | null = null;
-    let intervalId: NodeJS.Timeout | null = null;
     let s3StartupSyncTimer: NodeJS.Timeout | null = null;
-    let s3IntervalId: NodeJS.Timeout | null = null;
     let selfHostedStartupSyncTimer: NodeJS.Timeout | null = null;
-    let selfHostedIntervalId: NodeJS.Timeout | null = null;
+    let disposePeriodicAutoSync: (() => void) | null = null;
     let disposed = false;
 
     interface PersistController {
@@ -988,50 +987,20 @@ function App() {
         return;
       }
 
-      // Periodic auto sync
-      // 定时自动同步
-      const settings = useSettingsStore.getState();
-      if (
-        settings.syncProvider === "webdav" &&
-        settings.webdavAutoSyncInterval > 0 &&
-        hasValidWebDAVConfig(settings)
-      ) {
-        const intervalMs = settings.webdavAutoSyncInterval * 60 * 1000;
-        console.log(
-          `🔄 Auto sync interval: ${settings.webdavAutoSyncInterval} minutes`,
-        );
-        intervalId = setInterval(() => {
+      disposePeriodicAutoSync = registerPeriodicAutoSyncController({
+        getSettings: useSettingsStore.getState,
+        subscribe: useSettingsStore.subscribe,
+        runWebDAV: () => {
           void runAutoSync("interval");
-        }, intervalMs);
-      }
-
-      if (
-        settings.syncProvider === "s3" &&
-        settings.s3AutoSyncInterval > 0 &&
-        hasValidS3Config(settings)
-      ) {
-        const intervalMs = settings.s3AutoSyncInterval * 60 * 1000;
-        console.log(
-          `🔄 S3 auto sync interval: ${settings.s3AutoSyncInterval} minutes`,
-        );
-        s3IntervalId = setInterval(() => {
+        },
+        runS3: () => {
           void runS3AutoSyncTask("interval");
-        }, intervalMs);
-      }
-
-      if (
-        settings.syncProvider === "self-hosted" &&
-        settings.selfHostedAutoSyncInterval > 0 &&
-        hasValidSelfHostedConfig(settings)
-      ) {
-        const intervalMs = settings.selfHostedAutoSyncInterval * 60 * 1000;
-        console.log(
-          `🔄 Self-hosted auto sync interval: ${settings.selfHostedAutoSyncInterval} minutes`,
-        );
-        selfHostedIntervalId = setInterval(() => {
+        },
+        runSelfHosted: () => {
           void runSelfHostedAutoSync("interval");
-        }, intervalMs);
-      }
+        },
+        log: (message) => console.log(`🔄 ${message}`),
+      }).dispose;
 
       document.addEventListener("visibilitychange", handleBackgroundTaskResume);
       window.api?.on?.("window:visibility-changed", handleBackgroundTaskResume);
@@ -1042,11 +1011,9 @@ function App() {
     return () => {
       disposed = true;
       if (startupSyncTimer) clearTimeout(startupSyncTimer);
-      if (intervalId) clearInterval(intervalId);
       if (s3StartupSyncTimer) clearTimeout(s3StartupSyncTimer);
-      if (s3IntervalId) clearInterval(s3IntervalId);
       if (selfHostedStartupSyncTimer) clearTimeout(selfHostedStartupSyncTimer);
-      if (selfHostedIntervalId) clearInterval(selfHostedIntervalId);
+      disposePeriodicAutoSync?.();
       document.removeEventListener(
         "visibilitychange",
         handleBackgroundTaskResume,

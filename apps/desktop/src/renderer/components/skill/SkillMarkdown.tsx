@@ -22,9 +22,10 @@ export function SkillMarkdown({
   enableHighlight = false,
 }: SkillMarkdownProps) {
   const markdownBase = resolveGitHubMarkdownBase(sourceUrl, contentUrl);
-  const rehypePlugins = enableHighlight
-    ? [rehypeHighlight, rehypeSanitize]
-    : [rehypeSanitize];
+  const rehypePlugins: ComponentProps<typeof ReactMarkdown>["rehypePlugins"] =
+    enableHighlight
+      ? [[rehypeHighlight, { ignoreMissing: true }], rehypeSanitize]
+      : [rehypeSanitize];
 
   return (
     <ReactMarkdown

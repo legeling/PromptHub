@@ -40,7 +40,6 @@ import {
   filterVisibleScannedSkills,
   filterVisibleSkills,
 } from "../../services/skill-filter";
-import { filterRegistrySkills } from "../../services/skill-store-search";
 import {
   getRuntimeCapabilities,
   getWebContext,
@@ -93,28 +92,14 @@ export function TopBar({
   // Skill store
   const skillSearchQuery = useSkillStore((state) => state.searchQuery);
   const setSkillSearchQuery = useSkillStore((state) => state.setSearchQuery);
-  const skillStoreSearchQuery = useSkillStore(
-    (state) => state.storeSearchQuery,
-  );
-  const setSkillStoreSearchQuery = useSkillStore(
-    (state) => state.setStoreSearchQuery,
-  );
   const skills = useSkillStore((state) => state.skills);
   const skillFilterType = useSkillStore((state) => state.filterType);
   const skillFilterTags = useSkillStore((state) => state.filterTags);
   const deployedSkillNames = useSkillStore((state) => state.deployedSkillNames);
   const skillStoreView = useSkillStore((state) => state.storeView);
-  const skillStoreCategory = useSkillStore((state) => state.storeCategory);
-  const selectedStoreSourceId = useSkillStore(
-    (state) => state.selectedStoreSourceId,
-  );
-  const remoteStoreEntries = useSkillStore((state) => state.remoteStoreEntries);
   const selectedProjectId = useSkillStore((state) => state.selectedProjectId);
   const projectScanState = useSkillStore((state) => state.projectScanState);
   const selectSkill = useSkillStore((state) => state.selectSkill);
-  const selectRegistrySkill = useSkillStore(
-    (state) => state.selectRegistrySkill,
-  );
 
   const isDarkMode = useSettingsStore((state) => state.isDarkMode);
   const setDarkMode = useSettingsStore((state) => state.setDarkMode);
@@ -160,24 +145,19 @@ export function TopBar({
   const isRulesView = appModule === "rules";
   const isSkillView = appModule === "skill";
   const isPromptView = appModule === "prompt";
+  const showTopBarSearch = !isSkillStoreCatalogView;
 
   // Unified search query based on mode
   const searchQuery = isSkillView
-    ? isSkillStoreCatalogView
-      ? skillStoreSearchQuery
-      : skillSearchQuery
+    ? skillSearchQuery
     : isPromptView
       ? promptSearchQuery
       : isRulesView
         ? rulesSearchQuery
         : "";
-  const deferredSkillSearchQuery = useDeferredValue(
-    isSkillStoreCatalogView ? skillStoreSearchQuery : skillSearchQuery,
-  );
+  const deferredSkillSearchQuery = useDeferredValue(skillSearchQuery);
   const setSearchQuery = isSkillView
-    ? isSkillStoreCatalogView
-      ? setSkillStoreSearchQuery
-      : setSkillSearchQuery
+    ? setSkillSearchQuery
     : isPromptView
       ? setPromptSearchQuery
       : isRulesView
@@ -303,26 +283,6 @@ export function TopBar({
     selectedProjectId,
   ]);
 
-  const storeSearchResults = useMemo(() => {
-    if (!isSkillStoreCatalogView) return [];
-
-    const sourceSkills =
-      selectedStoreSourceId === "official"
-        ? []
-        : remoteStoreEntries[selectedStoreSourceId]?.skills || [];
-
-    return filterRegistrySkills(sourceSkills, {
-      category: skillStoreCategory,
-      searchQuery: deferredSkillSearchQuery,
-    });
-  }, [
-    deferredSkillSearchQuery,
-    isSkillStoreCatalogView,
-    remoteStoreEntries,
-    selectedStoreSourceId,
-    skillStoreCategory,
-  ]);
-
   const ruleSearchResults = useMemo(() => {
     if (!isRulesView) return [];
 
@@ -354,7 +314,7 @@ export function TopBar({
       ? isProjectSkillView
         ? projectSearchResults
         : isSkillStoreCatalogView
-          ? storeSearchResults
+          ? []
           : skillSearchResults
       : promptSearchResults;
   const searchResultCount = searchResults.length;
@@ -391,13 +351,6 @@ export function TopBar({
         if (isProjectSkillView) {
           return;
         }
-        if (isSkillStoreCatalogView) {
-          const registryResults = storeSearchResults;
-          if (registryResults[newIndex]) {
-            selectRegistrySkill(registryResults[newIndex].source_id);
-          }
-          return;
-        }
         const skillResults = skillSearchResults;
         if (skillResults[newIndex]) {
           selectSkill(skillResults[newIndex].id);
@@ -423,10 +376,8 @@ export function TopBar({
       isSkillView,
       selectRule,
       selectPrompt,
-      selectRegistrySkill,
       selectSkill,
       ruleSearchResults,
-      storeSearchResults,
       skillSearchResults,
       promptSearchResults,
     ],
@@ -492,13 +443,7 @@ export function TopBar({
       }
       // Enter 确认选择当前结果
       if (isSkillView) {
-        if (isSkillStoreCatalogView) {
-          if (storeSearchResults[currentResultIndex]) {
-            selectRegistrySkill(
-              storeSearchResults[currentResultIndex].source_id,
-            );
-          }
-        } else if (skillSearchResults[currentResultIndex]) {
+        if (!isSkillStoreCatalogView && skillSearchResults[currentResultIndex]) {
           selectSkill(skillSearchResults[currentResultIndex].id);
         }
       } else if (isRulesView) {
@@ -682,84 +627,84 @@ export function TopBar({
 
         {/* 搜索框 - 居中，带清除按钮、结果计数和导航 */}
         <div className="flex-1 flex justify-center px-3">
-          <div className="w-full max-w-lg relative flex items-center">
-            <div className="app-wallpaper-search absolute inset-0 rounded-lg border pointer-events-none" />
-            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none z-10" />
-            <input
-              ref={searchInputRef}
-              type="text"
-              placeholder={
-                appModule === "skill"
-                  ? isProjectSkillView
-                    ? t(
-                        "header.searchProjectSkills",
-                        "Search project skills...",
-                      )
-                    : isAgentSkillView
-                      ? t("header.searchAgentSkills", "Search agent skills...")
-                    : isSkillStoreCatalogView
-                      ? t("skill.searchStore", "Search skills...")
-                      : t("header.searchSkill", "Search skills...")
-                  : isRulesView
-                    ? t("rules.searchPlaceholder", "Search rule files...")
-                    : t("header.search")
-              }
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={handleKeyDown}
-              readOnly={false}
-              className="relative z-10 w-full h-9 pl-9 pr-32 rounded-lg border border-transparent bg-transparent text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
-              style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
-            />
-            {/* 右侧控件：结果计数 + 导航按钮 + 清除按钮 */}
-            {searchQuery && (
-              <div
-                className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1"
+          {showTopBarSearch ? (
+            <div className="w-full max-w-lg relative flex items-center">
+              <div className="app-wallpaper-search absolute inset-0 rounded-lg border pointer-events-none" />
+              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none z-10" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder={
+                  appModule === "skill"
+                    ? isProjectSkillView
+                      ? t(
+                          "header.searchProjectSkills",
+                          "Search project skills...",
+                        )
+                      : isAgentSkillView
+                        ? t("header.searchAgentSkills", "Search agent skills...")
+                        : t("header.searchSkill", "Search skills...")
+                    : isRulesView
+                      ? t("rules.searchPlaceholder", "Search rule files...")
+                      : t("header.search")
+                }
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleKeyDown}
+                readOnly={false}
+                className="relative z-10 w-full h-9 pl-9 pr-32 rounded-lg border border-transparent bg-transparent text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
                 style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
-              >
-                {/* 结果计数 */}
-                {showSearchResultCount ? (
-                  <span className="text-xs text-muted-foreground tabular-nums px-1">
-                    {searchResultCount > 0
-                      ? showSearchNavigation
-                        ? `${currentResultIndex + 1}/${searchResultCount}`
-                        : t("header.resultsCount", {
-                            count: searchResultCount,
-                            defaultValue: `${searchResultCount} results`,
-                          })
-                      : t("header.noResults", "No results")}
-                  </span>
-                ) : null}
-                {/* 上下导航按钮 */}
-                {showSearchNavigation && searchResultCount > 1 && (
-                  <>
-                    <button
-                      onClick={() => navigateResult("prev")}
-                      className="p-1 rounded hover:bg-accent/60 transition-colors"
-                      title={t("header.prevResult", "上一个 (Shift+Tab)")}
-                    >
-                      <ChevronUpIcon className="w-3.5 h-3.5 text-muted-foreground" />
-                    </button>
-                    <button
-                      onClick={() => navigateResult("next")}
-                      className="p-1 rounded hover:bg-accent/60 transition-colors"
-                      title={t("header.nextResult", "下一个 (Tab)")}
-                    >
-                      <ChevronDownIcon className="w-3.5 h-3.5 text-muted-foreground" />
-                    </button>
-                  </>
-                )}
-                {/* 清除按钮 */}
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="p-1 rounded hover:bg-accent/60 transition-colors"
-                  title={t("header.clearSearch", "清除搜索")}
+              />
+              {/* 右侧控件：结果计数 + 导航按钮 + 清除按钮 */}
+              {searchQuery && (
+                <div
+                  className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1"
+                  style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
                 >
-                  <XIcon className="w-3.5 h-3.5 text-muted-foreground" />
-                </button>
-              </div>
-            )}
-          </div>
+                  {/* 结果计数 */}
+                  {showSearchResultCount ? (
+                    <span className="text-xs text-muted-foreground tabular-nums px-1">
+                      {searchResultCount > 0
+                        ? showSearchNavigation
+                          ? `${currentResultIndex + 1}/${searchResultCount}`
+                          : t("header.resultsCount", {
+                              count: searchResultCount,
+                              defaultValue: `${searchResultCount} results`,
+                            })
+                        : t("header.noResults", "No results")}
+                    </span>
+                  ) : null}
+                  {/* 上下导航按钮 */}
+                  {showSearchNavigation && searchResultCount > 1 && (
+                    <>
+                      <button
+                        onClick={() => navigateResult("prev")}
+                        className="p-1 rounded hover:bg-accent/60 transition-colors"
+                        title={t("header.prevResult", "上一个 (Shift+Tab)")}
+                      >
+                        <ChevronUpIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                      </button>
+                      <button
+                        onClick={() => navigateResult("next")}
+                        className="p-1 rounded hover:bg-accent/60 transition-colors"
+                        title={t("header.nextResult", "下一个 (Tab)")}
+                      >
+                        <ChevronDownIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                      </button>
+                    </>
+                  )}
+                  {/* 清除按钮 */}
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="p-1 rounded hover:bg-accent/60 transition-colors"
+                    title={t("header.clearSearch", "清除搜索")}
+                  >
+                    <XIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : null}
         </div>
 
         {/* 右侧操作按钮 - 只有按钮本身不可拖动 */}

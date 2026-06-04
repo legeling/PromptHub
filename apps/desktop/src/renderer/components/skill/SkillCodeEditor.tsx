@@ -28,7 +28,12 @@ import {
   syntaxHighlighting,
 } from "@codemirror/language";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
-import { Compartment, EditorState, Extension } from "@codemirror/state";
+import {
+  Annotation,
+  Compartment,
+  EditorState,
+  Extension,
+} from "@codemirror/state";
 import { tags } from "@lezer/highlight";
 import {
   crosshairCursor,
@@ -50,6 +55,7 @@ interface SkillCodeEditorProps {
 
 const editableCompartment = new Compartment();
 const languageCompartment = new Compartment();
+const parentValueSyncAnnotation = Annotation.define<boolean>();
 
 const skillHighlightStyle = HighlightStyle.define([
   { tag: tags.keyword, color: "var(--skill-code-keyword)" },
@@ -221,7 +227,10 @@ function buildExtensions(
       spellcheck: "false",
     }),
     EditorView.updateListener.of((update) => {
-      if (update.docChanged) {
+      const isParentValueSync = update.transactions.some((transaction) =>
+        transaction.annotation(parentValueSyncAnnotation),
+      );
+      if (update.docChanged && !isParentValueSync) {
         onChange(update.state.doc.toString());
       }
     }),
@@ -299,6 +308,7 @@ export function SkillCodeEditor({
     if (currentValue === value) return;
     view.dispatch({
       changes: { from: 0, to: currentValue.length, insert: value },
+      annotations: parentValueSyncAnnotation.of(true),
     });
   }, [value]);
 

@@ -20,3 +20,5 @@
 - [x] Stop creating automatic skill version snapshots for ordinary local file save / rename / delete / directory-create operations.
 - [x] Preview supported skill resource files such as images, audio, video, and PDF without bloating bulk file reads.
 - [x] Add zoom controls for image and SVG resource previews.
+- [x] Prevent CodeMirror parent value sync from marking files dirty before users edit them.
+- [x] Keep Skill Markdown preview rendering when fenced code uses an unregistered language such as `powershell`.

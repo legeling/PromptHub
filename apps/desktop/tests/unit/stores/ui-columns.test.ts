@@ -120,4 +120,75 @@ describe("useUIStore resizable columns (issue #119)", () => {
     expect(state.sidebarPanelWidth).toBe(mod.SIDEBAR_PANEL_WIDTH_MAX);
     expect(state.promptListPaneWidth).toBe(mod.PROMPT_LIST_PANE_WIDTH_MIN);
   });
+
+  it("restores the last active skill module from persisted UI state", async () => {
+    localStorage.setItem(
+      "ui-storage",
+      JSON.stringify({
+        state: {
+          appModule: "skill",
+          viewMode: "skill",
+          isSidebarCollapsed: false,
+        },
+        version: 0,
+      }),
+    );
+
+    const mod = await import("../../../src/renderer/stores/ui.store");
+    await Promise.resolve();
+
+    expect(mod.useUIStore.getState().appModule).toBe("skill");
+    expect(mod.useUIStore.getState().viewMode).toBe("skill");
+  });
+
+  it("persists the active module when the user switches modules", async () => {
+    const mod = await import("../../../src/renderer/stores/ui.store");
+
+    mod.useUIStore.getState().setAppModule("skill");
+    await Promise.resolve();
+
+    const persisted = JSON.parse(localStorage.getItem("ui-storage") ?? "{}");
+    expect(persisted.state.appModule).toBe("skill");
+    expect(persisted.state.viewMode).toBe("skill");
+  });
+
+  it("restores the rules module while keeping prompt as the compatible view mode", async () => {
+    localStorage.setItem(
+      "ui-storage",
+      JSON.stringify({
+        state: {
+          appModule: "rules",
+          viewMode: "prompt",
+          isSidebarCollapsed: false,
+        },
+        version: 0,
+      }),
+    );
+
+    const mod = await import("../../../src/renderer/stores/ui.store");
+    await Promise.resolve();
+
+    expect(mod.useUIStore.getState().appModule).toBe("rules");
+    expect(mod.useUIStore.getState().viewMode).toBe("prompt");
+  });
+
+  it("falls back to prompt when the persisted app module is invalid", async () => {
+    localStorage.setItem(
+      "ui-storage",
+      JSON.stringify({
+        state: {
+          appModule: "settings",
+          viewMode: "skill",
+          isSidebarCollapsed: false,
+        },
+        version: 0,
+      }),
+    );
+
+    const mod = await import("../../../src/renderer/stores/ui.store");
+    await Promise.resolve();
+
+    expect(mod.useUIStore.getState().appModule).toBe("prompt");
+    expect(mod.useUIStore.getState().viewMode).toBe("prompt");
+  });
 });

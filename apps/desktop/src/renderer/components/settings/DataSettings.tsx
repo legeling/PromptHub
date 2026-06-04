@@ -1214,7 +1214,7 @@ export function DataSettings({
                         className="h-8 px-4 rounded-lg bg-primary text-white text-sm hover:bg-primary/90 transition-colors flex items-center gap-2 disabled:opacity-50"
                     >
                       <UploadIcon className="w-4 h-4" />
-                      {t("settings.upload")}
+                      {t("settings.backupToRemote", "Back up to remote")}
                     </button>
                     <button
                       onClick={async () => {
@@ -1258,7 +1258,7 @@ export function DataSettings({
                         className="h-8 px-4 rounded-lg bg-muted text-sm hover:bg-muted/80 transition-colors flex items-center gap-2 disabled:opacity-50"
                     >
                       <DownloadIcon className="w-4 h-4" />
-                      {t("settings.download")}
+                      {t("settings.updateFromRemote", "Update from remote")}
                     </button>
                   </div>
 
@@ -1509,7 +1509,7 @@ export function DataSettings({
                     className="h-8 px-4 rounded-lg bg-primary text-white text-sm hover:bg-primary/90 transition-colors flex items-center gap-2 disabled:opacity-50"
                   >
                     <UploadIcon className="w-4 h-4" />
-                    {t("settings.upload")}
+                    {t("settings.backupToRemote", "Back up to remote")}
                   </button>
                   <button
                     onClick={async () => {
@@ -1551,7 +1551,7 @@ export function DataSettings({
                     className="h-8 px-4 rounded-lg bg-muted text-sm hover:bg-muted/80 transition-colors flex items-center gap-2 disabled:opacity-50"
                   >
                     <DownloadIcon className="w-4 h-4" />
-                    {t("settings.download")}
+                    {t("settings.updateFromRemote", "Update from remote")}
                   </button>
                 </div>
 
@@ -1914,7 +1914,7 @@ export function DataSettings({
                 className="h-8 px-4 rounded-lg bg-primary text-white text-sm hover:bg-primary/90 transition-colors flex items-center gap-2 disabled:opacity-50"
               >
                 <UploadIcon className="w-4 h-4" />
-                {t("settings.upload")}
+                {t("settings.backupToRemote", "Back up to remote")}
               </button>
               <button
                 onClick={async () => {
@@ -1955,7 +1955,7 @@ export function DataSettings({
                 className="h-8 px-4 rounded-lg bg-muted text-sm hover:bg-muted/80 transition-colors flex items-center gap-2 disabled:opacity-50"
               >
                 <DownloadIcon className="w-4 h-4" />
-                {t("settings.download")}
+                {t("settings.updateFromRemote", "Update from remote")}
               </button>
             </div>
 

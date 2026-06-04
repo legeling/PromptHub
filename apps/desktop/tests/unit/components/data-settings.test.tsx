@@ -899,8 +899,8 @@ describe("DataSettings", { timeout: 15_000 }, () => {
 
     expect(screen.getByPlaceholderText("https://s3.example.com")).not.toBeDisabled();
     expect(screen.getByRole("button", { name: "Test Connection" })).not.toBeDisabled();
-    expect(screen.getByRole("button", { name: "Upload" })).not.toBeDisabled();
-    expect(screen.getByRole("button", { name: "Download" })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: "Back up to remote" })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: "Update from remote" })).not.toBeDisabled();
   });
 
   it("runs S3 connection checks from the settings panel", async () => {
@@ -958,7 +958,7 @@ describe("DataSettings", { timeout: 15_000 }, () => {
       });
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+    fireEvent.click(screen.getByRole("button", { name: "Back up to remote" }));
 
     await waitFor(() => {
       expect(runS3Upload).toHaveBeenCalledWith({
@@ -1000,7 +1000,7 @@ describe("DataSettings", { timeout: 15_000 }, () => {
       });
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Download" }));
+    fireEvent.click(screen.getByRole("button", { name: "Update from remote" }));
 
     await waitFor(() => {
       expect(runS3Download).toHaveBeenCalledWith({

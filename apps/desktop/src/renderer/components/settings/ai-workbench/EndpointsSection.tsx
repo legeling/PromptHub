@@ -3,13 +3,14 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   AlertCircleIcon,
   BrainIcon,
+  CheckIcon,
   CheckCircle2Icon,
   EyeIcon,
+  EyeOffIcon,
   ImageIcon,
   KeyRoundIcon,
   LinkIcon,
   ListPlusIcon,
-  ListTreeIcon,
   Loader2Icon,
   PencilIcon,
   PlusIcon,
@@ -20,6 +21,7 @@ import {
   TestTubeIcon,
   Trash2Icon,
   TypeIcon,
+  XIcon,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -102,6 +104,7 @@ export function EndpointsSection({
   onTestDefault,
   onTestEndpoint,
   onEditEndpoint,
+  onUpdateEndpointCredentials,
   onAddProvider,
   onAddModel,
   onFetchModels,
@@ -121,6 +124,10 @@ export function EndpointsSection({
   onTestDefault: () => void;
   onTestEndpoint: (group: EndpointGroup) => void;
   onEditEndpoint: (group: EndpointGroup) => void;
+  onUpdateEndpointCredentials: (
+    group: EndpointGroup,
+    credentials: { apiKey: string; apiUrl: string },
+  ) => void;
   onAddProvider: () => void;
   onAddModel: (
     preset?: Partial<ModelFormState>,
@@ -161,6 +168,47 @@ export function EndpointsSection({
       null,
     [endpointGroups, selectedEndpointKey],
   );
+  const selectedApiKey = selectedGroup?.apiKey || selectedGroup?.models[0]?.apiKey || "";
+  const selectedApiUrl = selectedGroup?.apiUrl || "";
+  const [credentialDraft, setCredentialDraft] = useState({
+    groupKey: selectedGroup?.key ?? "",
+    apiKey: selectedApiKey,
+    apiUrl: selectedApiUrl,
+  });
+  const [showApiKey, setShowApiKey] = useState(false);
+
+  useEffect(() => {
+    setCredentialDraft({
+      groupKey: selectedGroup?.key ?? "",
+      apiKey: selectedApiKey,
+      apiUrl: selectedApiUrl,
+    });
+  }, [selectedApiKey, selectedApiUrl, selectedGroup?.key]);
+
+  const credentialsDirty =
+    credentialDraft.groupKey === selectedGroup?.key &&
+    (credentialDraft.apiKey !== selectedApiKey ||
+      credentialDraft.apiUrl !== selectedApiUrl);
+  const canSaveCredentials =
+    credentialsDirty && credentialDraft.apiUrl.trim().length > 0;
+
+  const saveCredentials = () => {
+    if (!selectedGroup || !canSaveCredentials) {
+      return;
+    }
+    onUpdateEndpointCredentials(selectedGroup, {
+      apiKey: credentialDraft.apiKey,
+      apiUrl: credentialDraft.apiUrl,
+    });
+  };
+
+  const resetCredentials = () => {
+    setCredentialDraft({
+      groupKey: selectedGroup?.key ?? "",
+      apiKey: selectedApiKey,
+      apiUrl: selectedApiUrl,
+    });
+  };
 
   const filteredEndpointGroups = useMemo(() => {
     const normalizedSearch = searchText.trim().toLowerCase();
@@ -301,7 +349,7 @@ export function EndpointsSection({
             </div>
           </aside>
           <div className="min-h-0 overflow-y-auto px-6 py-5">
-            <div className="mx-auto max-w-4xl">
+            <div className="w-full">
               <h1 className="mb-4 text-lg font-semibold">{t("settings.ai")}</h1>
               {activePanel === "routing" ? (
                 routingContent
@@ -452,14 +500,14 @@ export function EndpointsSection({
 
         {activePanel === "routing" || activePanel === "advanced" ? (
           <div className="min-w-0 overflow-y-auto px-6 py-5">
-            <div className="mx-auto max-w-4xl">
+            <div className="w-full">
               <h1 className="mb-4 text-lg font-semibold">{t("settings.ai")}</h1>
               {activePanel === "routing" ? routingContent : advancedContent}
             </div>
           </div>
         ) : (
           <div className="min-w-0 overflow-y-auto px-6 py-5">
-            <div className="mx-auto max-w-4xl">
+            <div className="w-full">
               <h1 className="mb-4 text-lg font-semibold">{t("settings.ai")}</h1>
               <div className="overflow-hidden rounded-xl border border-border bg-card">
                 <div className="flex flex-col gap-3 border-b border-border px-4 py-3 md:flex-row md:items-center md:justify-between">
@@ -535,48 +583,131 @@ export function EndpointsSection({
                   </div>
                 </div>
 
-                <div className="grid border-b border-border md:grid-cols-3">
-                  <div className="flex min-w-0 items-center gap-3 border-b border-border px-4 py-3 md:border-b-0 md:border-r">
-                    <KeyRoundIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <div className="min-w-0">
-                      <div className="text-xs text-muted-foreground">
-                        {t("settings.apiKey")}
+                <div className="px-4 py-3">
+                  <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
+                    <div className="mb-3 flex items-start justify-between gap-3">
+                      <div className="text-xs font-medium text-muted-foreground">
+                        {t("settings.aiWorkbenchEndpointCredentials", "Endpoint credentials")}
                       </div>
-                      <div className="truncate font-mono text-sm">
-                        {maskApiKey(
-                          selectedGroup.apiKey || firstModel?.apiKey || "",
-                        )}
-                      </div>
+                      {credentialsDirty ? (
+                        <div className="flex shrink-0 items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={saveCredentials}
+                            disabled={!canSaveCredentials}
+                            aria-label={t("common.save")}
+                            title={t("common.save")}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            <CheckIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={resetCredentials}
+                            aria-label={t("common.cancel")}
+                            title={t("common.cancel")}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                          >
+                            <XIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
-                  </div>
-                  <div className="flex min-w-0 items-center gap-3 border-b border-border px-4 py-3 md:border-b-0 md:border-r">
-                    <LinkIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <div className="min-w-0">
-                      <div className="text-xs text-muted-foreground">
-                        {t("settings.apiUrl")}
+                    <div className="space-y-2">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <LinkIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <label className="min-w-0 flex-1">
+                          <span className="mb-1 block text-xs text-muted-foreground">
+                            {t("settings.apiUrl")}
+                          </span>
+                          <input
+                            type="text"
+                            value={credentialDraft.apiUrl}
+                            onChange={(event) =>
+                              setCredentialDraft((draft) => ({
+                                ...draft,
+                                apiUrl: event.target.value,
+                              }))
+                            }
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") {
+                                saveCredentials();
+                              }
+                              if (event.key === "Escape") {
+                                resetCredentials();
+                              }
+                            }}
+                            aria-label={t(
+                              "settings.aiWorkbenchEndpointApiUrl",
+                              "Endpoint API URL",
+                            )}
+                            title={endpointHost}
+                            className="h-9 w-full rounded-md border border-border bg-background px-3 font-mono text-sm outline-none transition-colors focus:ring-2 focus:ring-primary/15"
+                          />
+                        </label>
                       </div>
-                      <div
-                        className="truncate font-mono text-sm"
-                        title={selectedGroup.apiUrl}
-                      >
-                        {endpointHost}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex min-w-0 items-center gap-3 px-4 py-3">
-                    <ListTreeIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <div className="min-w-0">
-                      <div className="text-xs text-muted-foreground">
-                        {t("settings.protocol")}
-                      </div>
-                      <div className="truncate text-sm">
-                        {getProtocolLabel(selectedGroup.apiProtocol)}
+                      <div className="flex min-w-0 items-center gap-3">
+                        <KeyRoundIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <label className="min-w-0 flex-1">
+                          <span className="mb-1 block text-xs text-muted-foreground">
+                            {t("settings.apiKey")}
+                          </span>
+                          <span className="relative block">
+                            <input
+                              type={showApiKey ? "text" : "password"}
+                              value={credentialDraft.apiKey}
+                              onChange={(event) =>
+                                setCredentialDraft((draft) => ({
+                                  ...draft,
+                                  apiKey: event.target.value,
+                                }))
+                              }
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                  saveCredentials();
+                                }
+                                if (event.key === "Escape") {
+                                  resetCredentials();
+                                }
+                              }}
+                              aria-label={t(
+                                "settings.aiWorkbenchEndpointApiKey",
+                                "Endpoint API Key",
+                              )}
+                              placeholder={maskApiKey(selectedApiKey)}
+                              className="h-9 w-full rounded-md border border-border bg-background px-3 pr-9 font-mono text-sm outline-none transition-colors placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/15"
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setShowApiKey((visible) => !visible)
+                              }
+                              aria-label={
+                                showApiKey
+                                  ? t("common.hide", "Hide")
+                                  : t("common.show", "Show")
+                              }
+                              title={
+                                showApiKey
+                                  ? t("common.hide", "Hide")
+                                  : t("common.show", "Show")
+                              }
+                              className="absolute right-1 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                            >
+                              {showApiKey ? (
+                                <EyeOffIcon className="h-4 w-4" />
+                              ) : (
+                                <EyeIcon className="h-4 w-4" />
+                              )}
+                            </button>
+                          </span>
+                        </label>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                <div className="flex items-center justify-between px-4 py-2.5">
                   <div className="text-sm font-semibold">
                     {t("settings.model")}
                   </div>

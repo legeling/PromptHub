@@ -24,7 +24,6 @@ import {
   CuboidIcon,
   BotIcon,
   StoreIcon,
-  GlobeIcon,
   FolderPlusIcon,
   BookOpenIcon,
   LinkIcon,
@@ -75,7 +74,7 @@ interface SidebarProps {
 interface NavItemProps {
   icon: React.ReactNode;
   label: string;
-  count?: number;
+  count?: number | string;
   active?: boolean;
   onClick: () => void;
   collapsed?: boolean;
@@ -283,6 +282,20 @@ export function Sidebar({
     () => remoteStoreEntries["openai-codex"]?.skills.length || 0,
     [remoteStoreEntries],
   );
+  const communityStoreCount = useMemo(
+    () =>
+      remoteStoreEntries.community?.totalCount ??
+      remoteStoreEntries.community?.skills.length ??
+      0,
+    [remoteStoreEntries],
+  );
+  const clawHubStoreCount = useMemo(() => {
+    const entry = remoteStoreEntries.clawhub;
+    if (!entry) return 0;
+    if (typeof entry.totalCount === "number") return entry.totalCount;
+    const loadedCount = entry.skills.length;
+    return entry.nextCursor ? `${loadedCount}+` : loadedCount;
+  }, [remoteStoreEntries]);
   const [showAllSkillTags, setShowAllSkillTags] = useState(false);
   const [detectedSkillAgentCount, setDetectedSkillAgentCount] = useState<
     number | null
@@ -526,6 +539,47 @@ export function Sidebar({
       ),
     );
   }, [t]);
+
+  const openSkillStoreSource = useCallback(
+    (sourceId: string) => {
+      if (!confirmLeaveDirtySkillEditor()) {
+        return;
+      }
+
+      setIsSkillStoreGroupExpanded(true);
+      setStoreView("store");
+      selectSkill(null);
+      selectStoreSource(sourceId);
+      if (currentPage !== "home") onNavigate("home");
+    },
+    [
+      confirmLeaveDirtySkillEditor,
+      currentPage,
+      onNavigate,
+      selectSkill,
+      selectStoreSource,
+      setStoreView,
+    ],
+  );
+
+  const handleSkillStoreNavClick = useCallback(() => {
+    if (
+      isSkillStoreGroupExpanded &&
+      storeView === "store" &&
+      currentPage === "home"
+    ) {
+      setIsSkillStoreGroupExpanded(false);
+      return;
+    }
+
+    openSkillStoreSource(selectedStoreSourceId || "official");
+  }, [
+    currentPage,
+    isSkillStoreGroupExpanded,
+    openSkillStoreSource,
+    selectedStoreSourceId,
+    storeView,
+  ]);
 
   // Skill tags section settings (mirrors prompt tags behavior)
   const skillTagsSectionHeight = useSettingsStore(
@@ -1342,134 +1396,161 @@ export function Sidebar({
                         label={t("nav.skillStore", "Skill 商店")}
                         active={storeView === "store" && currentPage === "home"}
                         collapsed={isCollapsed}
-                        onClick={() => {
-                          if (!confirmLeaveDirtySkillEditor()) return;
-                          setIsSkillStoreGroupExpanded(true);
-                          setStoreView("store");
-                          selectSkill(null);
-                          selectStoreSource(
-                            selectedStoreSourceId || "official",
-                          );
-                          if (currentPage !== "home") onNavigate("home");
-                        }}
+                        onClick={handleSkillStoreNavClick}
                       />
                     </>
                   )}
-                  {runtimeCapabilities.skillStore &&
-                    isSkillStoreGroupExpanded &&
-                    !isCollapsed && (
-                      <div className="ml-4 pl-3 mt-1 border-l border-sidebar-border/50 space-y-1">
-                        <button
-                          onClick={() => {
-                            selectStoreSource("official");
-                            if (currentPage !== "home") onNavigate("home");
-                          }}
-                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                            selectedStoreSourceId === "official"
-                              ? "bg-sidebar-accent text-sidebar-foreground"
-                              : "text-sidebar-foreground/60 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
-                          }`}
-                        >
-                          <StoreIcon className="w-4 h-4" />
-                          <span className="flex-1 text-left truncate">
-                            {t("skill.officialStore", "官方商店")}
-                          </span>
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sidebar-accent/80 text-sidebar-foreground/50 border border-white/5">
-                            0
-                          </span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            selectStoreSource("claude-code");
-                            if (currentPage !== "home") onNavigate("home");
-                          }}
-                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                            selectedStoreSourceId === "claude-code"
-                              ? "bg-sidebar-accent text-sidebar-foreground"
-                              : "text-sidebar-foreground/60 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
-                          }`}
-                        >
-                          <GlobeIcon className="w-4 h-4" />
-                          <span className="flex-1 text-left truncate">
-                            {t("skill.claudeCodeStore", "Claude Code 商店")}
-                          </span>
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sidebar-accent/80 text-sidebar-foreground/50 border border-white/5">
-                            {claudeCodeStoreCount}
-                          </span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            selectStoreSource("openai-codex");
-                            if (currentPage !== "home") onNavigate("home");
-                          }}
-                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                            selectedStoreSourceId === "openai-codex"
-                              ? "bg-sidebar-accent text-sidebar-foreground"
-                              : "text-sidebar-foreground/60 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
-                          }`}
-                        >
-                          <GlobeIcon className="w-4 h-4" />
-                          <span className="flex-1 text-left truncate">
-                            {t("skill.openaiCodexStore", "OpenAI Codex 商店")}
-                          </span>
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sidebar-accent/80 text-sidebar-foreground/50 border border-white/5">
-                            {openAiCodexStoreCount}
-                          </span>
-                        </button>
-                        {customStoreSources.map((source) => (
-                          <button
-                            key={source.id}
-                            onClick={() => {
-                              selectStoreSource(source.id);
-                              if (currentPage !== "home") onNavigate("home");
-                            }}
-                            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                              selectedStoreSourceId === source.id
-                                ? "bg-sidebar-accent text-sidebar-foreground"
-                                : "text-sidebar-foreground/60 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
-                            }`}
-                          >
-                            <LinkIcon className="w-4 h-4" />
-                            <span className="flex-1 text-left truncate">
-                              {source.name}
-                            </span>
-                            {remoteStoreEntries[source.id]?.skills.length ? (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sidebar-accent/80 text-sidebar-foreground/50 border border-white/5">
-                                {remoteStoreEntries[source.id]?.skills.length}
-                              </span>
-                            ) : null}
-                            {!source.enabled && (
-                              <span className="text-[10px] text-sidebar-foreground/40">
-                                {t("common.disabled", "停用")}
-                              </span>
-                            )}
-                          </button>
-                        ))}
-                        <button
-                          onClick={() => {
-                            selectStoreSource("new-custom");
-                            if (currentPage !== "home") onNavigate("home");
-                          }}
-                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed text-sm transition-colors ${
-                            selectedStoreSourceId === "new-custom"
-                              ? "border-primary text-primary bg-primary/5"
-                              : "border-sidebar-border/70 text-sidebar-foreground/50 hover:border-primary/50 hover:text-sidebar-foreground hover:bg-sidebar-accent/20"
-                          }`}
-                        >
-                          <PlusIcon className="w-4 h-4" />
-                          <span className="truncate">
-                            {t("skill.addStoreSource", "添加商店")}
-                          </span>
-                        </button>
-                      </div>
-                    )}
                 </div>
               </div>
 
-              {/* Skill Tags Section - Mirrors prompt tags behavior (resize, collapse, popover) */}
+              {/* Skill body area - store sources scroll above fixed/resizable tags */}
               <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-                {/* Spacer to push tags to bottom */}
-                <div className="flex-1" />
+                {runtimeCapabilities.skillStore &&
+                isSkillStoreGroupExpanded &&
+                !isCollapsed ? (
+                  <div
+                    data-testid="skill-store-source-scroll"
+                    className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide px-3 pb-3"
+                  >
+                    <div className="ml-4 mt-1 pl-3 pr-1 border-l border-sidebar-border/50 space-y-1">
+                      <button
+                        onClick={() => {
+                          openSkillStoreSource("official");
+                        }}
+                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                          selectedStoreSourceId === "official"
+                            ? "bg-sidebar-accent text-sidebar-foreground"
+                            : "text-sidebar-foreground/60 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
+                        }`}
+                      >
+                        <StoreIcon className="w-4 h-4" />
+                        <span className="flex-1 text-left truncate">
+                          {t("skill.officialStore", "官方商店")}
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sidebar-accent/80 text-sidebar-foreground/50 border border-white/5">
+                          0
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          openSkillStoreSource("claude-code");
+                        }}
+                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                          selectedStoreSourceId === "claude-code"
+                            ? "bg-sidebar-accent text-sidebar-foreground"
+                            : "text-sidebar-foreground/60 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
+                        }`}
+                      >
+                        <StoreIcon className="w-4 h-4" />
+                        <span className="flex-1 text-left truncate">
+                          {t("skill.claudeCodeStore", "Claude Code 商店")}
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sidebar-accent/80 text-sidebar-foreground/50 border border-white/5">
+                          {claudeCodeStoreCount}
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          openSkillStoreSource("openai-codex");
+                        }}
+                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                          selectedStoreSourceId === "openai-codex"
+                            ? "bg-sidebar-accent text-sidebar-foreground"
+                            : "text-sidebar-foreground/60 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
+                        }`}
+                      >
+                        <StoreIcon className="w-4 h-4" />
+                        <span className="flex-1 text-left truncate">
+                          {t("skill.openaiCodexStore", "OpenAI Codex 商店")}
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sidebar-accent/80 text-sidebar-foreground/50 border border-white/5">
+                          {openAiCodexStoreCount}
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          openSkillStoreSource("community");
+                        }}
+                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                          selectedStoreSourceId === "community"
+                            ? "bg-sidebar-accent text-sidebar-foreground"
+                            : "text-sidebar-foreground/60 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
+                        }`}
+                      >
+                        <StoreIcon className="w-4 h-4" />
+                        <span className="flex-1 text-left truncate">
+                          {t("skill.communityStore", "Community Store")}
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sidebar-accent/80 text-sidebar-foreground/50 border border-white/5">
+                          {communityStoreCount}
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          openSkillStoreSource("clawhub");
+                        }}
+                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                          selectedStoreSourceId === "clawhub"
+                            ? "bg-sidebar-accent text-sidebar-foreground"
+                            : "text-sidebar-foreground/60 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
+                        }`}
+                      >
+                        <StoreIcon className="w-4 h-4" />
+                        <span className="flex-1 text-left truncate">
+                          {t("skill.clawHubStore", "ClawHub 商店")}
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sidebar-accent/80 text-sidebar-foreground/50 border border-white/5">
+                          {clawHubStoreCount}
+                        </span>
+                      </button>
+                      {customStoreSources.map((source) => (
+                        <button
+                          key={source.id}
+                          onClick={() => {
+                            openSkillStoreSource(source.id);
+                          }}
+                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                            selectedStoreSourceId === source.id
+                              ? "bg-sidebar-accent text-sidebar-foreground"
+                              : "text-sidebar-foreground/60 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
+                          }`}
+                        >
+                          <LinkIcon className="w-4 h-4" />
+                          <span className="flex-1 text-left truncate">
+                            {source.name}
+                          </span>
+                          {remoteStoreEntries[source.id]?.skills.length ? (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sidebar-accent/80 text-sidebar-foreground/50 border border-white/5">
+                              {remoteStoreEntries[source.id]?.skills.length}
+                            </span>
+                          ) : null}
+                          {!source.enabled && (
+                            <span className="text-[10px] text-sidebar-foreground/40">
+                              {t("common.disabled", "停用")}
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => {
+                          openSkillStoreSource("new-custom");
+                        }}
+                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed text-sm transition-colors ${
+                          selectedStoreSourceId === "new-custom"
+                            ? "border-primary text-primary bg-primary/5"
+                            : "border-sidebar-border/70 text-sidebar-foreground/50 hover:border-primary/50 hover:text-sidebar-foreground hover:bg-sidebar-accent/20"
+                        }`}
+                      >
+                        <PlusIcon className="w-4 h-4" />
+                        <span className="truncate">
+                          {t("skill.addStoreSource", "添加商店")}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex-1" />
+                )}
 
                 {/* Resize Handle */}
                 {shouldShowSkillTags &&

@@ -43,4 +43,37 @@ describe("SkillCodeEditor", () => {
       "cm-lineWrapping",
     );
   });
+
+  it("does not report parent-driven value updates as user edits", async () => {
+    const onChange = vi.fn();
+    const { container, rerender } = render(
+      <SkillCodeEditor
+        path="scripts/main.py"
+        value=""
+        editable={true}
+        onChange={onChange}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(container.querySelector(".cm-editor")).not.toBeNull();
+    });
+
+    rerender(
+      <SkillCodeEditor
+        path="scripts/main.py"
+        value={"def run():\n    return 'ok'\n"}
+        editable={true}
+        onChange={onChange}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(container.querySelector(".cm-content")).toHaveTextContent(
+        "def run",
+      );
+    });
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
 });

@@ -218,12 +218,16 @@ describe("SettingsPage", () => {
     });
 
     expect(screen.getByText("ai-content")).toBeInTheDocument();
+    expect(screen.getByTestId("settings-content-shell")).toHaveClass(
+      "max-w-none",
+    );
+    expect(screen.getByTestId("settings-content-shell")).toHaveClass("h-full");
     expect(
       screen.queryByRole("button", { name: "Model Routing" }),
     ).not.toBeInTheDocument();
   });
 
-  it("uses a wider adaptive content shell on large displays", async () => {
+  it("uses a left-aligned adaptive content shell on large displays", async () => {
     useSettingsStoreMock.mockReturnValue({
       syncProvider: "manual",
       webdavEnabled: false,
@@ -241,6 +245,7 @@ describe("SettingsPage", () => {
     const contentShell = screen.getByTestId("settings-content-shell");
 
     expect(contentShell).not.toHaveClass("max-w-4xl");
+    expect(contentShell).not.toHaveClass("mx-auto");
     expect(contentShell).toHaveClass("2xl:max-w-7xl");
     expect(contentShell).toHaveClass("w-full");
   });

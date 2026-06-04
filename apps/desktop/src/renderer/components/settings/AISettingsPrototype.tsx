@@ -899,6 +899,35 @@ export function AISettingsPrototype() {
     setEndpointDraft(null);
   };
 
+  const updateEndpointConfig = (
+    targetGroup: EndpointGroup,
+    providerConfig: {
+      name: string;
+      provider: string;
+      apiProtocol: EndpointGroup["apiProtocol"];
+      apiKey: string;
+      apiUrl: string;
+      lastVerifiedAt?: string;
+    },
+  ) => {
+    if (targetGroup.providerConfigId) {
+      settings.updateAiProvider(targetGroup.providerConfigId, providerConfig);
+    }
+
+    for (const model of targetGroup.models) {
+      settings.updateAiModel(model.id, {
+        providerId: targetGroup.providerConfigId,
+        ...providerConfig,
+      });
+    }
+
+    setEndpointStatuses((prev) => {
+      const next = { ...prev };
+      delete next[targetGroup.key];
+      return next;
+    });
+  };
+
   const handleSaveEndpoint = () => {
     if (!endpointDraft) {
       return;
@@ -925,23 +954,23 @@ export function AISettingsPrototype() {
       return;
     }
 
-    if (targetGroup.providerConfigId) {
-      settings.updateAiProvider(targetGroup.providerConfigId, providerConfig);
-    }
-
-    for (const model of targetGroup.models) {
-      settings.updateAiModel(model.id, {
-        providerId: targetGroup.providerConfigId,
-        ...providerConfig,
-      });
-    }
-
-    setEndpointStatuses((prev) => {
-      const next = { ...prev };
-      delete next[endpointDraft.key];
-      return next;
-    });
+    updateEndpointConfig(targetGroup, providerConfig);
     closeEndpointForm();
+    showToast(t("settings.aiWorkbenchEndpointUpdated"), "success");
+  };
+
+  const handleUpdateEndpointCredentials = (
+    group: EndpointGroup,
+    credentials: { apiKey: string; apiUrl: string },
+  ) => {
+    updateEndpointConfig(group, {
+      name: group.name || getEndpointDisplayName(group),
+      provider: group.provider,
+      apiProtocol: group.apiProtocol,
+      apiKey: credentials.apiKey.trim(),
+      apiUrl: normalizeApiUrlInput(credentials.apiUrl),
+      lastVerifiedAt: undefined,
+    });
     showToast(t("settings.aiWorkbenchEndpointUpdated"), "success");
   };
 
@@ -1114,6 +1143,7 @@ export function AISettingsPrototype() {
         modelScenarioBadges={modelScenarioBadges}
         onTestEndpoint={(group) => void handleTestEndpoint(group)}
         onEditEndpoint={openEditEndpoint}
+        onUpdateEndpointCredentials={handleUpdateEndpointCredentials}
         onAddProvider={openAddEndpoint}
         onAddModel={openAddModel}
         onFetchModels={(preset) => void openFetchModels(preset)}

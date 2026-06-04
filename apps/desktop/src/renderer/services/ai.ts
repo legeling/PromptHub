@@ -194,6 +194,9 @@ interface StreamState {
 }
 
 const IMAGE_GENERATION_TIMEOUT_MS = 300_000;
+const AI_CONNECTION_TEST_MAX_TOKENS = 8;
+const AI_CONNECTION_TEST_TIMEOUT_MS = 12_000;
+const AI_CONNECTION_TEST_PROMPT = "Reply with exactly: OK";
 
 type ResolvedProtocol = {
   protocol: AIProtocol;
@@ -659,6 +662,7 @@ export async function chatCompletion(
         schema: Record<string, unknown>;
       };
     };
+    timeoutMs?: number;
   },
 ): Promise<ChatCompletionResult> {
   const { provider, apiKey, apiUrl, model, chatParams } = config;
@@ -754,6 +758,7 @@ export async function chatCompletion(
             url: endpoint,
             headers,
             body: requestBody,
+            timeoutMs: options?.timeoutMs,
           }),
         )
       : createFetchResponseLike(
@@ -874,6 +879,7 @@ export async function chatCompletion(
           url: endpoint,
           headers,
           body: requestBody,
+          timeoutMs: options?.timeoutMs,
         },
         {
           onChunk: (chunk) => {
@@ -920,6 +926,7 @@ export async function chatCompletion(
         url: endpoint,
         headers,
         body: requestBody,
+        timeoutMs: options?.timeoutMs,
       });
       return { response: createResponseLike(response) };
     }
@@ -1116,25 +1123,22 @@ export async function testAIConnection(
   streamCallbacks?: StreamCallbacks,
 ): Promise<AITestResult> {
   const startTime = Date.now();
-  const prompt = testPrompt || "Hello! Please respond with a brief greeting.";
+  const prompt = testPrompt || AI_CONNECTION_TEST_PROMPT;
 
-  // 使用配置中的参数，但限制 maxTokens 用于测试
-  // Use config parameters, but limit maxTokens for testing
-  const useStream =
-    resolveAIProtocol(config) === "anthropic"
-      ? false
-      : (config.chatParams?.stream ?? false);
-  const useThinking = config.chatParams?.enableThinking ?? false;
+  // 连接测试只验证端点和模型能否响应，不能继承长文本生成参数。
+  // A connection test is a lightweight probe, not a full generation benchmark.
 
   try {
     const result = await chatCompletion(
       config,
       [{ role: "user", content: prompt }],
       {
-        maxTokens: 2048,
-        stream: useStream,
-        enableThinking: useThinking,
+        temperature: 0,
+        maxTokens: AI_CONNECTION_TEST_MAX_TOKENS,
+        stream: false,
+        enableThinking: false,
         streamCallbacks,
+        timeoutMs: AI_CONNECTION_TEST_TIMEOUT_MS,
       },
     );
 

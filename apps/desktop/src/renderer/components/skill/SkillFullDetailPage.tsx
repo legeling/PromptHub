@@ -1670,11 +1670,11 @@ export function SkillFullDetailPage({
 
                 {!isExternalDetail ? (
                   <div className="space-y-6">
-                    <section className="app-wallpaper-panel rounded-2xl border border-border p-4">
-                      <div className="mb-3 flex items-center justify-between gap-3">
-                        <div className="flex min-w-0 items-center gap-2">
+                    <section className="space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-2 text-muted-foreground">
                           <StickyNoteIcon className="h-4 w-4 shrink-0 text-primary" />
-                          <h3 className="truncate text-sm font-semibold text-foreground">
+                          <h3 className="truncate text-xs font-semibold uppercase tracking-[0.3em]">
                             {t("skill.userNotes", "Personal Notes")}
                           </h3>
                         </div>
@@ -1720,32 +1720,37 @@ export function SkillFullDetailPage({
                         )}
                       </div>
 
-                      {isEditingUserNotes ? (
-                        <Textarea
-                          value={draftSkillUserNotes}
-                          onChange={(event) =>
-                            setDraftSkillUserNotes(event.target.value)
-                          }
-                          placeholder={t(
-                            "skill.userNotesPlaceholder",
-                            "Add private notes for this skill...",
-                          )}
-                          rows={5}
-                          disabled={isSavingUserNotes}
-                          className="min-h-[120px] resize-y"
-                        />
-                      ) : skillUserNotes.trim() ? (
-                        <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/85">
-                          {skillUserNotes}
-                        </p>
-                      ) : (
-                        <p className="text-sm leading-relaxed text-muted-foreground">
-                          {t(
-                            "skill.userNotesEmpty",
-                            "No personal notes yet.",
-                          )}
-                        </p>
-                      )}
+                      <div
+                        data-testid="skill-user-notes-card"
+                        className="app-wallpaper-panel rounded-2xl border border-border p-4"
+                      >
+                        {isEditingUserNotes ? (
+                          <Textarea
+                            value={draftSkillUserNotes}
+                            onChange={(event) =>
+                              setDraftSkillUserNotes(event.target.value)
+                            }
+                            placeholder={t(
+                              "skill.userNotesPlaceholder",
+                              "Add private notes for this skill...",
+                            )}
+                            rows={5}
+                            disabled={isSavingUserNotes}
+                            className="min-h-[120px] resize-y"
+                          />
+                        ) : skillUserNotes.trim() ? (
+                          <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/85">
+                            {skillUserNotes}
+                          </p>
+                        ) : (
+                          <p className="text-sm leading-relaxed text-muted-foreground">
+                            {t(
+                              "skill.userNotesEmpty",
+                              "No personal notes yet.",
+                            )}
+                          </p>
+                        )}
+                      </div>
                     </section>
                     <SkillPlatformPanel
                       availablePlatforms={availablePlatforms}
