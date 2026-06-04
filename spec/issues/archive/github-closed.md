@@ -3,9 +3,9 @@
 ## Source
 
 - Repository: `legeling/PromptHub`
-- Snapshot date: `2026-05-27`
+- Snapshot date: `2026-06-03`
 - Capture method: `gh issue list --state closed --limit 200 --json ...`
-- Closed issues captured: `106`
+- Closed issues captured: `120`
 
 ## Notes
 
@@ -16,14 +16,26 @@
 
 | # | 标题 | 标签 | 创建时间 | 关闭时间 | 链接 |
 |---|---|---|---|---|---|
+| #164 | [Bug]: Github API 触发请求限额，未找到设置项 | bug, version: 0.5.8-beta3 | 2026-06-03 | 2026-06-03 | https://github.com/legeling/PromptHub/issues/164 |
+| #156 | [Feature]: 增加对私有化部署gitea的支持 | enhancement, version: 0.5.6 | 2026-05-28 | 2026-05-30 | https://github.com/legeling/PromptHub/issues/156 |
+| #154 | [Feature]: 在 Agent 管理中增加 Kilo Code 内置支持 | version: 0.5.6 | 2026-05-27 | 2026-05-30 | https://github.com/legeling/PromptHub/issues/154 |
+| #153 | [Feature]: 在 Agent 管理中增加 Kilo Code 内置支持 |  | 2026-05-27 | 2026-05-27 | https://github.com/legeling/PromptHub/issues/153 |
+| #150 | [Feature]: 技能分发支持分发到项目技能中 | enhancement, version: 0.5.6 | 2026-05-27 | 2026-05-30 | https://github.com/legeling/PromptHub/issues/150 |
+| #149 | [Bug]: 技能商店添加本地文件夹无法显示skill | bug, version: 0.5.6 | 2026-05-27 | 2026-05-30 | https://github.com/legeling/PromptHub/issues/149 |
+| #148 | [Bug]: 软链接安装不正确 | bug, version: 0.5.6 | 2026-05-27 | 2026-05-30 | https://github.com/legeling/PromptHub/issues/148 |
+| #147 | [Bug]: OpenCode的rules路径不正确 | bug, version: 0.5.6 | 2026-05-27 | 2026-05-30 | https://github.com/legeling/PromptHub/issues/147 |
+| #146 | [Bug]: promptHub安装失败 | bug, version: master | 2026-05-26 | 2026-05-30 | https://github.com/legeling/PromptHub/issues/146 |
+| #144 | [Feature]: 建议简化标签的添加和删除操作 | enhancement, version: 0.5.6 | 2026-05-23 | 2026-05-27 | https://github.com/legeling/PromptHub/issues/144 |
 | #142 | [Feature]: 复制功能只复制了SKILL.md，缺失了其他文件 | enhancement, version: 0.5.6 | 2026-05-21 | 2026-05-26 | https://github.com/legeling/PromptHub/issues/142 |
 | #140 | [Feature]: 加入“移动到...”菜单项，点击列出当前所有文件夹，方便提示词整理 | enhancement, version: 0.5.6 | 2026-05-19 | 2026-05-26 | https://github.com/legeling/PromptHub/issues/140 |
+| #138 | [Feature]: 卡片模式下，能否统一显示模式和编辑模式的显示效果呢 | enhancement, version: 0.5.6 | 2026-05-19 | 2026-05-30 | https://github.com/legeling/PromptHub/issues/138 |
 | #137 | [Feature]: 建议增加创建副本功能 | enhancement, version: 0.5.6 | 2026-05-19 | 2026-05-26 | https://github.com/legeling/PromptHub/issues/137 |
 | #136 | [Feature]: 建议标签加入增删改管理功能 | enhancement, version: 0.5.6 | 2026-05-19 | 2026-05-26 | https://github.com/legeling/PromptHub/issues/136 |
 | #135 | [Feature]:建议增加快捷恢复备份 | enhancement, version: 0.5.5 | 2026-05-16 | 2026-05-26 | https://github.com/legeling/PromptHub/issues/135 |
 | #134 | [Feature]: 支持重命名自定义添加的 Skill 商店 | enhancement, version: 0.5.5 | 2026-05-13 | 2026-05-16 | https://github.com/legeling/PromptHub/issues/134 |
 | #133 | [Feature]: 在 Skill 视图面板中直接展示每个技能的标签信息 | enhancement, version: 0.5.5 | 2026-05-13 | 2026-05-16 | https://github.com/legeling/PromptHub/issues/133 |
 | #131 | [Bug]: 安装 Skill 导致 skill.md 头部 YAML 前置注释重复叠加 | bug, version: 0.5.5 | 2026-05-13 | 2026-05-16 | https://github.com/legeling/PromptHub/issues/131 |
+| #130 | [Feature]: 支持自定义添加 AI 编程工具 | enhancement, version: 0.5.5 | 2026-05-13 | 2026-05-30 | https://github.com/legeling/PromptHub/issues/130 |
 | #129 | [Bug]: 本地文件夹 Skill 的更新报错问题、重导入本地 skill源不读取最新 skill问题 | bug, version: 0.5.5 | 2026-05-12 | 2026-05-26 | https://github.com/legeling/PromptHub/issues/129 |
 | #127 | 界面很漂亮，我撸了款Skill完整的创作平台工具SkillNexus，欢迎legeling指点 | enhancement, version: 0.5.5 | 2026-05-10 | 2026-05-26 | https://github.com/legeling/PromptHub/issues/127 |
 | #120 | [Feature]: 希望增加个文件夹直接拖进来自动识别skill功能, | enhancement | 2026-05-09 | 2026-05-26 | https://github.com/legeling/PromptHub/issues/120 |
@@ -38,6 +50,7 @@
 | #109 | [Bug]: 无法更新到最新的版本 | bug | 2026-04-28 | 2026-04-28 | https://github.com/legeling/PromptHub/issues/109 |
 | #108 | 拉取远程商店失败: GitHub API 请求限额已达到，请几分钟后重试，或在设置中添加 GitHub Token。 |  | 2026-04-27 | 2026-05-10 | https://github.com/legeling/PromptHub/issues/108 |
 | #105 | 为什么一打开skill商店，就一直占用我的网速？ |  | 2026-04-21 | 2026-04-21 | https://github.com/legeling/PromptHub/issues/105 |
+| #104 | 一直显示在渲染 最新版本v0.5.3 |  | 2026-04-20 | 2026-05-30 | https://github.com/legeling/PromptHub/issues/104 |
 | #103 | 请求支持antigravity的skill |  | 2026-04-20 | 2026-04-21 | https://github.com/legeling/PromptHub/issues/103 |
 | #102 | 更新 Prompt 提示错误 |  | 2026-04-20 | 2026-05-04 | https://github.com/legeling/PromptHub/issues/102 |
 | #101 | [Bug] Docker 部署后 Web 界面 i18n 翻译键未解析，所有文本显示为键名 |  | 2026-04-18 | 2026-04-18 | https://github.com/legeling/PromptHub/issues/101 |
@@ -45,6 +58,7 @@
 | #99 | docker部署报错 |  | 2026-04-17 | 2026-04-21 | https://github.com/legeling/PromptHub/issues/99 |
 | #96 | Windows 11 更新之后无限重启 |  | 2026-04-16 | 2026-04-19 | https://github.com/legeling/PromptHub/issues/96 |
 | #93 | Symlink not working |  | 2026-04-13 | 2026-05-10 | https://github.com/legeling/PromptHub/issues/93 |
+| #91 | 【功能建议】能否增加载入已安装skilll功能 |  | 2026-04-10 | 2026-05-30 | https://github.com/legeling/PromptHub/issues/91 |
 | #90 | 更新后数据丢失了 |  | 2026-04-10 | 2026-04-10 | https://github.com/legeling/PromptHub/issues/90 |
 | #88 | skil商店经常会出现找不到技能的情况（实际上是可以看到的） |  | 2026-04-09 | 2026-05-10 | https://github.com/legeling/PromptHub/issues/88 |
 | #87 | 全局快捷键部分失效（显示/隐藏应用），只可显示，无法隐藏 |  | 2026-04-07 | 2026-04-08 | https://github.com/legeling/PromptHub/issues/87 |

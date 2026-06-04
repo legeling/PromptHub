@@ -53,6 +53,11 @@ The audited operation classes are:
   from the Agent UI or platform service.
 - Store imported state is source-identity based, with `source_id` checked before
   weaker source fields.
+- Directory fingerprinting now ignores runtime/tooling cache files such as
+  Python `__pycache__`, `.pyc`, `.pyo`, `.pytest_cache`, `.mypy_cache`,
+  `.ruff_cache`, `.tox`, `.nox`, `.coverage*`, front-end/tool cache
+  directories, package-manager caches, debug logs, editor temp files, and common
+  OS sidecars.
 - DB source identity is guarded by `idx_skills_source_id` and DB create/update
   duplicate checks.
 - Platform-local uninstall validates target containment before deleting the
@@ -81,6 +86,7 @@ the implementation or tests are not exhaustive enough to claim complete coverage
 - `apps/desktop/src/renderer/components/skill/SkillManager.tsx`
 - `apps/desktop/src/renderer/components/skill/store-remote-sync.ts`
 - `apps/desktop/src/renderer/services/skill-store-update.ts`
+- `packages/shared/utils/skill-identity.ts`
 - `apps/desktop/src/main/services/skill-installer.ts`
 - `apps/desktop/src/main/services/skill-installer-repo.ts`
 - `apps/desktop/src/main/services/cherry-studio-skill-platform.ts`
@@ -94,6 +100,7 @@ Current matrix-specific verification:
 ```bash
 pnpm --filter @prompthub/desktop exec vitest run \
   tests/unit/services/skill-scan-status.test.ts \
+  tests/unit/services/skill-identity.test.ts \
   tests/unit/components/skill-agents-view.test.tsx \
   tests/unit/components/skill-projects-view.test.tsx
 ```

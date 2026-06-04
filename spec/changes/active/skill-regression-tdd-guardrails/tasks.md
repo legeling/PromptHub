@@ -16,3 +16,6 @@
 - [x] Add source-origin by operation applicability matrix
 - [x] White-box audit matrix rows against current code and record partial coverage rows
 - [x] Correct Project/Agent scanned copy semantics so unmatched copied folders are external installs, not PromptHub copy installs
+- [x] Add runtime/tooling cache fingerprint regression for Python-generated files
+- [x] Add regression coverage for nested Store source navigation switching back to the Store view.
+- [x] Add regression coverage for custom Git/Gitea repo sync refreshing the installed content baseline after install.

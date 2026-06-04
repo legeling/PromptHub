@@ -20,6 +20,18 @@
   - platform built-ins;
   - import, install, remove, uninstall, delete, and refresh operations.
 - Added a shared scan-status helper and tests so Project and Agent pages no longer keep separate identity/status logic.
+- Added runtime/tooling cache regression coverage so generated files such as
+  Python `__pycache__`, `.pyc`, `.pyo`, `.pytest_cache`, `.mypy_cache`, and
+  `.ruff_cache`, front-end tool caches, coverage output, debug logs, editor temp
+  files, and package-manager caches do not change directory fingerprints or
+  scanned Skill status.
+- Fixed nested Store source navigation so clicking a child source such as a
+  custom personal store always switches the main Skill view back to Store,
+  clears the selected installed Skill, and keeps the dirty editor leave guard.
+- Fixed custom Git/Gitea install/update baseline handling: when PromptHub
+  clones or copies a Skill package and immediately syncs from the repo, the
+  synced `SKILL.md` content is now marked as the installed content baseline so
+  a freshly installed package is not treated as locally modified.
 - Added a source-origin by operation applicability matrix so every supported source type is explicitly marked as applicable, not applicable, imported-only, scanned-only, or platform-specific for each lifecycle operation.
 - Added a white-box implementation audit table and a dedicated audit record:
   - confirmed Project/Agent shared status logic, source-id Store identity, DB source uniqueness, external symlink labeling, and Cherry Studio built-in uninstall guards;
@@ -58,6 +70,15 @@
   - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/services/skill-scan-status.test.ts tests/unit/components/skill-agents-view.test.tsx tests/unit/components/skill-projects-view.test.tsx`
   - Result: 3 files passed, 46 tests passed.
   - Confirms unmanaged copied Project/Agent folders show `External install`; `Copy install` is reserved for My Skills-matched copy distributions.
+- Passed runtime-cache identity regression tests:
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/services/skill-identity.test.ts tests/unit/services/skill-scan-status.test.ts`
+  - Result: 2 files passed, 18 tests passed.
+  - Confirms Python, front-end/tooling, coverage, log, temp, and package-manager
+    caches are ignored for fingerprint and scanned status matching.
+- Passed nested Store navigation and custom Git baseline regressions:
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/sidebar.test.tsx`
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/stores/skill.store.test.ts`
+  - Result: 2 files passed, 73 tests passed.
 - Added documentation audit record:
   - `spec/changes/active/skill-regression-tdd-guardrails/whitebox-audit.md`
 
