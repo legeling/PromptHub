@@ -196,6 +196,38 @@ describe("SkillStoreCard", () => {
     expect(screen.getByRole("button")).not.toBeDisabled();
   });
 
+  it("renders icon-only batch selection and detail controls in batch mode", () => {
+    const onClick = vi.fn();
+    const onOpenDetail = vi.fn();
+    const onQuickInstall = vi.fn();
+    const skill = makeSkill();
+
+    render(
+      <SkillStoreCard
+        skill={skill}
+        isInstalled={false}
+        batchMode
+        isSelected
+        index={0}
+        onClick={onClick}
+        onOpenDetail={onOpenDetail}
+        onQuickInstall={onQuickInstall}
+      />,
+    );
+
+    const selectButton = screen.getByRole("button", {
+      name: "Unselect store skill",
+    });
+    expect(selectButton).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(selectButton);
+    expect(onClick).toHaveBeenCalledTimes(1);
+    expect(onQuickInstall).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "View detail" }));
+    expect(onOpenDetail).toHaveBeenCalledTimes(1);
+    expect(onOpenDetail.mock.calls[0][0]).toBe(skill);
+  });
+
   it("keeps this card pending when multiple other skills are installing too", () => {
     const { container } = render(
       <SkillStoreCard
@@ -255,6 +287,27 @@ describe("SkillStoreCard", () => {
     expect(screen.queryByText("Stable")).not.toBeInTheDocument();
     expect(screen.queryByText("main")).not.toBeInTheDocument();
     expect(screen.queryByText("skills/claude-api")).not.toBeInTheDocument();
+  });
+
+  it("uses the selected store tone for source badges", () => {
+    render(
+      <SkillStoreCard
+        skill={makeSkill({
+          store_url: "https://skills.sh/anthropics/skills/skill-creator",
+          source_label: "anthropics/skills",
+          source_url: "https://github.com/anthropics/skills",
+        })}
+        isInstalled={false}
+        index={0}
+        storeLabel="skills.sh Store"
+        storeTone="community"
+        onClick={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("skills.sh Store").className).toContain(
+      "text-fuchsia",
+    );
   });
 
   it("shows non-default branch names alongside the selected store name", () => {

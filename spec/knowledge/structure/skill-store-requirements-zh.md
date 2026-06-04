@@ -354,6 +354,24 @@ function SkillIcon({ iconUrl, iconEmoji, name, size = 'md', className }: SkillIc
                 用户确认 → 更新 SKILL.md 内容
 ```
 
+### 6.5 批量商店管理
+
+```
+用户进入 Skill 商店 → 点击批量管理图标 → 选择当前列表中的 Skill
+                                      ↓
+                        1. 批量安装未导入的 Skill
+                        2. 批量更新已有更新的 Skill
+                        3. 批量从我的 Skill 中移除已导入的 Skill
+```
+
+约束：
+
+- 批量管理只作用于商店条目与「我的 Skill」之间的导入、更新、移除关系。
+- 不在商店批量管理里处理项目 Skill 或 Agent Skill 分发。
+- “移除”只删除本地 My Skill 条目，不删除远程商店内容。
+- 每个 Skill 必须有独立的异步 pending 状态，列表和详情页共享同一个操作状态。
+- 批量选择必须使用稳定的商店 Skill 身份，不得按渲染行号或虚拟列表 index 保存。
+
 ---
 
 ## 7. 数据模型变更

@@ -1,4 +1,12 @@
-import { CheckIcon, DownloadIcon, Loader2Icon, PlusIcon } from "lucide-react";
+import {
+  CheckIcon,
+  CheckSquareIcon,
+  DownloadIcon,
+  EyeIcon,
+  Loader2Icon,
+  PlusIcon,
+  SquareIcon,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { RegistrySkill } from "@prompthub/shared/types";
 import { SkillIcon } from "./SkillIcon";
@@ -17,8 +25,12 @@ interface SkillStoreCardProps {
   hasUpdate?: boolean;
   index: number;
   storeLabel?: string;
+  storeTone?: "official" | "community" | "git" | "local";
+  batchMode?: boolean;
+  isSelected?: boolean;
   installingSourceIds?: Record<string, true>;
   onQuickInstall?: (skill: RegistrySkill, e: React.MouseEvent) => void;
+  onOpenDetail?: (skill: RegistrySkill, e: React.MouseEvent) => void;
   onClick: () => void;
 }
 
@@ -28,8 +40,12 @@ export function SkillStoreCard({
   hasUpdate = false,
   index,
   storeLabel,
+  storeTone,
+  batchMode = false,
+  isSelected = false,
   installingSourceIds,
   onQuickInstall,
+  onOpenDetail,
   onClick,
 }: SkillStoreCardProps) {
   const { t } = useTranslation();
@@ -55,7 +71,7 @@ export function SkillStoreCard({
           key: "store-source",
           label: storeLabel,
           title: skill.source_label || skill.source_url,
-          tone: variantBadges[0]?.tone || "git",
+          tone: storeTone || variantBadges[0]?.tone || "git",
         },
         ...branchBadges,
         ...statusBadges,
@@ -70,8 +86,40 @@ export function SkillStoreCard({
         contentVisibility: "auto",
         containIntrinsicSize: "86px",
       }}
-      className="group relative flex items-center gap-3 p-3.5 app-wallpaper-surface border border-border rounded-xl hover:border-primary/40 transition-all cursor-pointer animate-in fade-in slide-in-from-bottom-2 hover:shadow-md"
+      className={`group relative flex items-center gap-3 p-3.5 app-wallpaper-surface border rounded-xl hover:border-primary/40 transition-all cursor-pointer animate-in fade-in slide-in-from-bottom-2 hover:shadow-md ${
+        isSelected
+          ? "border-primary/70 ring-1 ring-primary/30"
+          : "border-border"
+      }`}
     >
+      {batchMode && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onClick();
+          }}
+          aria-pressed={isSelected}
+          aria-label={
+            isSelected
+              ? t("skill.unselectStoreSkill", "Unselect store skill")
+              : t("skill.selectStoreSkill", "Select store skill")
+          }
+          title={
+            isSelected
+              ? t("skill.unselectStoreSkill", "Unselect store skill")
+              : t("skill.selectStoreSkill", "Select store skill")
+          }
+          className="shrink-0 rounded-lg p-1 text-primary transition-colors hover:bg-primary/10"
+        >
+          {isSelected ? (
+            <CheckSquareIcon className="h-4 w-4" />
+          ) : (
+            <SquareIcon className="h-4 w-4" />
+          )}
+        </button>
+      )}
+
       <SkillIcon
         iconUrl={skill.icon_url}
         iconEmoji={skill.icon_emoji}
@@ -106,6 +154,19 @@ export function SkillStoreCard({
             title={t("skill.installing", "Installing...")}
           >
             <Loader2Icon className="w-4 h-4 animate-spin text-primary" />
+          </button>
+        ) : batchMode ? (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpenDetail?.(skill, event);
+            }}
+            className="rounded-lg p-1.5 text-muted-foreground transition-all hover:bg-accent hover:text-foreground active:scale-press-in"
+            aria-label={t("common.viewDetail", "View detail")}
+            title={t("common.viewDetail", "View detail")}
+          >
+            <EyeIcon className="h-4 w-4" />
           </button>
         ) : hasUpdate ? (
           <div

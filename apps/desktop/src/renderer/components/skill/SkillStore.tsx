@@ -1,10 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   Loader2Icon,
   Link2Icon,
+  CheckSquareIcon,
+  DownloadIcon,
+  ListChecksIcon,
+  PackagePlusIcon,
   SearchIcon,
   Settings2Icon,
+  Trash2Icon,
+  XIcon,
   LayoutGridIcon,
   CodeIcon,
   SparklesIcon,
@@ -22,12 +29,17 @@ import {
   RefreshCwIcon,
   StoreIcon,
 } from "lucide-react";
+import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { SkillStoreDetail } from "./SkillStoreDetail";
 import { SkillStoreCard } from "./SkillStoreCard";
 import { SkillStoreCustomSources } from "./SkillStoreCustomSources";
 import { SkillStoreSourceEditModal } from "./SkillStoreSourceEditModal";
 import { SkillStoreSourceForm } from "./SkillStoreSourceForm";
 import { parseFrontmatter } from "../../services/github-skill-store";
+import {
+  SKILLS_SH_FILTERS,
+  normalizeSkillsShFilterKey,
+} from "../../services/skills-sh-store";
 import { useSkillStore } from "../../stores/skill.store";
 import { useSettingsStore } from "../../stores/settings.store";
 import { useToast } from "../ui/Toast";
@@ -80,6 +92,78 @@ const CUSTOM_SOURCE_TYPE_OPTIONS: Array<{
   },
 ];
 
+const STORE_GRID_GAP_PX = 12;
+const STORE_GRID_ROW_HEIGHT_PX = 118;
+const STORE_GRID_HEADER_HEIGHT_PX = 36;
+const STORE_GRID_BOTTOM_GUTTER_PX = 24;
+const STORE_CATALOG_VIRTUALIZE_THRESHOLD = 240;
+const STORE_SEARCH_DEBOUNCE_MS = 300;
+
+type StoreBatchOperation = "install" | "update" | "remove";
+
+type StoreCatalogRow =
+  | {
+      type: "section";
+      key: string;
+      label: string;
+      count: number;
+      tone: "installed" | "available";
+    }
+  | {
+      type: "skills";
+      key: string;
+      skills: RegistrySkill[];
+      installed: boolean;
+      startIndex: number;
+    };
+
+function getStoreGridColumns(width: number): number {
+  if (width >= 1200) return 4;
+  if (width >= 760) return 3;
+  if (width >= 640) return 2;
+  return 1;
+}
+
+function buildStoreCatalogRows(options: {
+  availableLabel: string;
+  columns: number;
+  importedLabel: string;
+  installed: RegistrySkill[];
+  recommended: RegistrySkill[];
+}): StoreCatalogRow[] {
+  const rows: StoreCatalogRow[] = [];
+  const appendSection = (
+    key: string,
+    label: string,
+    skills: RegistrySkill[],
+    installed: boolean,
+  ) => {
+    if (skills.length === 0) return;
+    rows.push({
+      type: "section",
+      key: `${key}-header`,
+      label,
+      count: skills.length,
+      tone: installed ? "installed" : "available",
+    });
+
+    for (let index = 0; index < skills.length; index += options.columns) {
+      const rowSkills = skills.slice(index, index + options.columns);
+      rows.push({
+        type: "skills",
+        key: `${key}-${index}-${rowSkills.map(getRegistrySkillSelectionId).join("|")}`,
+        skills: rowSkills,
+        installed,
+        startIndex: index,
+      });
+    }
+  };
+
+  appendSection("installed", options.importedLabel, options.installed, true);
+  appendSection("available", options.availableLabel, options.recommended, false);
+  return rows;
+}
+
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -96,23 +180,287 @@ function formatStoreSourceHint(source: SkillStoreSource): string {
 }
 
 function getRegistrySkillSelectionId(skill: RegistrySkill): string {
-  return skill.source_id || skill.slug;
+  return skill.source_id || skill.slug || skill.source_url;
 }
 
 function getRegistrySkillPendingKey(skill: RegistrySkill): string {
   return skill.source_id || skill.source_url || skill.slug;
 }
 
+interface VirtualizedSkillStoreCatalogProps {
+  availableLabel: string;
+  batchMode: boolean;
+  hasPotentialUpdate: (skill: RegistrySkill) => boolean;
+  importedLabel: string;
+  installed: RegistrySkill[];
+  installingSourceIds: Record<string, true>;
+  isSkillInstalled: (skill: RegistrySkill) => boolean;
+  onOpenSkillDetail: (skill: RegistrySkill) => void;
+  onQuickInstall: (skill: RegistrySkill, e: React.MouseEvent) => void;
+  onSelectSkill: (sourceId: string) => void;
+  onToggleBatchSelection: (skill: RegistrySkill) => void;
+  recommended: RegistrySkill[];
+  scrollRef: React.RefObject<HTMLDivElement>;
+  selectedSourceIds: Set<string>;
+  storeLabel: string;
+  storeTone: "official" | "community" | "git" | "local";
+}
+
+function VirtualizedSkillStoreCatalog({
+  availableLabel,
+  batchMode,
+  hasPotentialUpdate,
+  importedLabel,
+  installed,
+  installingSourceIds,
+  isSkillInstalled,
+  onOpenSkillDetail,
+  onQuickInstall,
+  onSelectSkill,
+  onToggleBatchSelection,
+  recommended,
+  scrollRef,
+  selectedSourceIds,
+  storeLabel,
+  storeTone,
+}: VirtualizedSkillStoreCatalogProps) {
+  const catalogRef = useRef<HTMLDivElement | null>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [scrollMargin, setScrollMargin] = useState(0);
+
+  useEffect(() => {
+    const node = scrollRef.current;
+    if (!node) return;
+
+    const update = () => {
+      setContainerWidth(
+        Math.max(0, node.clientWidth || window.innerWidth || 1024),
+      );
+      setScrollMargin(catalogRef.current?.offsetTop ?? 0);
+    };
+    update();
+
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(update);
+    observer.observe(node);
+    return () => {
+      observer.disconnect();
+    };
+  }, [scrollRef]);
+
+  const columns = useMemo(
+    () => getStoreGridColumns(containerWidth || 1024),
+    [containerWidth],
+  );
+  const rows = useMemo(
+    () =>
+      buildStoreCatalogRows({
+        availableLabel,
+        columns,
+        importedLabel,
+        installed,
+        recommended,
+      }),
+    [availableLabel, columns, importedLabel, installed, recommended],
+  );
+  const totalSkillCount = installed.length + recommended.length;
+
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scrollRef.current,
+    scrollMargin,
+    estimateSize: (index) =>
+      rows[index]?.type === "section"
+        ? STORE_GRID_HEADER_HEIGHT_PX
+        : STORE_GRID_ROW_HEIGHT_PX + STORE_GRID_GAP_PX,
+    overscan: 5,
+    getItemKey: (index) => rows[index]?.key ?? `store-row-${index}`,
+  });
+
+  const virtualRows = rowVirtualizer.getVirtualItems();
+  const totalHeight = rowVirtualizer.getTotalSize();
+
+  if (totalSkillCount <= STORE_CATALOG_VIRTUALIZE_THRESHOLD) {
+    return (
+      <div className="space-y-8">
+        {installed.length > 0 && (
+          <section>
+            <div className="mb-4 flex items-center gap-2">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">
+                {importedLabel}
+              </h3>
+              <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-bold text-green-500">
+                {installed.length}
+              </span>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {installed.map((skill, index) => (
+                <SkillStoreCard
+                  key={getRegistrySkillSelectionId(skill)}
+                  skill={skill}
+                  isInstalled={true}
+                  hasUpdate={hasPotentialUpdate(skill)}
+                  index={index}
+                  batchMode={batchMode}
+                  isSelected={selectedSourceIds.has(
+                    getRegistrySkillSelectionId(skill),
+                  )}
+                  storeLabel={storeLabel}
+                  storeTone={storeTone}
+                  installingSourceIds={installingSourceIds}
+                  onOpenDetail={onOpenSkillDetail}
+                  onClick={() =>
+                    batchMode
+                      ? onToggleBatchSelection(skill)
+                      : onSelectSkill(getRegistrySkillSelectionId(skill))
+                  }
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {recommended.length > 0 && (
+          <section>
+            <div className="mb-4 flex items-center gap-2">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">
+                {availableLabel}
+              </h3>
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                {recommended.length}
+              </span>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {recommended.map((skill, index) => (
+                <SkillStoreCard
+                  key={getRegistrySkillSelectionId(skill)}
+                  skill={skill}
+                  isInstalled={isSkillInstalled(skill)}
+                  index={index}
+                  batchMode={batchMode}
+                  isSelected={selectedSourceIds.has(
+                    getRegistrySkillSelectionId(skill),
+                  )}
+                  storeLabel={storeLabel}
+                  storeTone={storeTone}
+                  installingSourceIds={installingSourceIds}
+                  onOpenDetail={onOpenSkillDetail}
+                  onQuickInstall={onQuickInstall}
+                  onClick={() =>
+                    batchMode
+                      ? onToggleBatchSelection(skill)
+                      : onSelectSkill(getRegistrySkillSelectionId(skill))
+                  }
+                />
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={catalogRef}
+      className="relative w-full"
+      data-testid="skill-store-virtual-catalog"
+      style={{ height: `${totalHeight + STORE_GRID_BOTTOM_GUTTER_PX}px` }}
+    >
+      {virtualRows.map((virtualRow) => {
+        const row = rows[virtualRow.index];
+        if (!row) return null;
+
+        return (
+          <div
+            key={virtualRow.key}
+            data-index={virtualRow.index}
+            data-testid="skill-store-virtual-row"
+            ref={rowVirtualizer.measureElement}
+            className="absolute left-0 right-0"
+            style={{
+              top: 0,
+              transform: `translateY(${virtualRow.start - scrollMargin}px)`,
+            }}
+          >
+            {row.type === "section" ? (
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">
+                  {row.label}
+                </h3>
+                <span
+                  className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                    row.tone === "installed"
+                      ? "bg-green-500/10 text-green-500"
+                      : "bg-primary/10 text-primary"
+                  }`}
+                >
+                  {row.count}
+                </span>
+              </div>
+            ) : (
+              <div
+                className="grid"
+                style={{
+                  gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+                  gap: `${STORE_GRID_GAP_PX}px`,
+                }}
+              >
+                {row.skills.map((skill, itemIndex) => (
+                  <SkillStoreCard
+                    key={getRegistrySkillSelectionId(skill)}
+                    skill={skill}
+                    isInstalled={row.installed || isSkillInstalled(skill)}
+                    hasUpdate={
+                      row.installed ? hasPotentialUpdate(skill) : undefined
+                    }
+                    index={row.startIndex + itemIndex}
+                    batchMode={batchMode}
+                    isSelected={selectedSourceIds.has(
+                      getRegistrySkillSelectionId(skill),
+                    )}
+                    storeLabel={storeLabel}
+                    storeTone={storeTone}
+                    installingSourceIds={installingSourceIds}
+                    onOpenDetail={onOpenSkillDetail}
+                    onQuickInstall={row.installed ? undefined : onQuickInstall}
+                    onClick={() =>
+                      batchMode
+                        ? onToggleBatchSelection(skill)
+                        : onSelectSkill(getRegistrySkillSelectionId(skill))
+                    }
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function SkillStore() {
   const { t, i18n } = useTranslation();
   const isZh = i18n.language?.startsWith("zh");
+  const storeScrollRef = useRef<HTMLDivElement | null>(null);
 
   const storeCategory = useSkillStore((state) => state.storeCategory) ?? "all";
   const setStoreCategory = useSkillStore((state) => state.setStoreCategory);
   const storeSearchQuery =
     useSkillStore((state) => state.storeSearchQuery) ?? "";
+  const setStoreSearchQuery = useSkillStore(
+    (state) => state.setStoreSearchQuery,
+  );
+  const [storeSearchDraft, setStoreSearchDraft] = useState(storeSearchQuery);
   const installRegistrySkill = useSkillStore(
     (state) => state.installRegistrySkill,
+  );
+  const updateRegistrySkill = useSkillStore(
+    (state) => state.updateRegistrySkill,
+  );
+  const uninstallRegistrySkill = useSkillStore(
+    (state) => state.uninstallRegistrySkill,
   );
   const scanLocalPreview = useSkillStore((state) => state.scanLocalPreview);
   const skills = useSkillStore((state) => state.skills);
@@ -137,15 +485,32 @@ export function SkillStore() {
   const toggleCustomStoreSource = useSkillStore(
     (state) => state.toggleCustomStoreSource,
   );
-  const { loadingSourceId, loadStoreSource, remoteStoreEntries } =
-    useSkillStoreRemoteSync({
-      eagerRemoteSources: "selected",
-      selectedStoreSourceId,
-    });
+  const {
+    loadingMoreSourceId,
+    loadingSourceId,
+    loadNextStorePage,
+    loadStoreSource,
+    remoteStoreEntries,
+  } = useSkillStoreRemoteSync({
+    eagerRemoteSources: "selected",
+    selectedStoreSourceId,
+    storeSearchQuery,
+  });
+
+  useEffect(() => {
+    setStoreSearchDraft(storeSearchQuery);
+  }, [selectedStoreSourceId, storeSearchQuery]);
 
   const [installingSourceIds, setInstallingSourceIds] = useState<
     Record<string, true>
   >({});
+  const [isStoreBatchMode, setIsStoreBatchMode] = useState(false);
+  const [selectedStoreSkillIds, setSelectedStoreSkillIds] = useState<
+    Set<string>
+  >(new Set());
+  const [batchRemoveConfirmOpen, setBatchRemoveConfirmOpen] = useState(false);
+  const [runningBatchOperation, setRunningBatchOperation] =
+    useState<StoreBatchOperation | null>(null);
   const [editingCustomSourceId, setEditingCustomSourceId] = useState<
     string | null
   >(null);
@@ -174,38 +539,100 @@ export function SkillStore() {
   );
 
   const selectedRemoteEntry = remoteStoreEntries[selectedStoreSourceId];
+  const activeSkillsShFilterKey =
+    selectedStoreSourceId === "community"
+      ? normalizeSkillsShFilterKey(String(storeCategory))
+      : "all";
+  const expectedSkillsShQuery = `${activeSkillsShFilterKey}:${storeSearchQuery.trim()}`;
+  const expectedClawHubQuery = storeSearchQuery.trim() || "recommended";
+  const isSelectedSkillsShEntryCurrent =
+    selectedStoreSourceId !== "community" ||
+    selectedRemoteEntry?.query === expectedSkillsShQuery;
+  const isSelectedClawHubEntryCurrent =
+    selectedStoreSourceId !== "clawhub" ||
+    selectedRemoteEntry?.query === expectedClawHubQuery;
+  const visibleRemoteEntry =
+    isSelectedSkillsShEntryCurrent && isSelectedClawHubEntryCurrent
+    ? selectedRemoteEntry
+    : undefined;
+  const selectedStoreTotalCount = visibleRemoteEntry?.totalCount;
+  const selectedStoreMatchedCount = visibleRemoteEntry?.matchedCount;
+  const selectedStoreLoadedCount = visibleRemoteEntry?.skills.length ?? 0;
+  const selectedStoreHasKnownTotal =
+    typeof selectedStoreMatchedCount === "number" ||
+    typeof selectedStoreTotalCount === "number";
+  const displayedStoreCount =
+    selectedStoreMatchedCount ??
+    selectedStoreTotalCount ??
+    selectedStoreLoadedCount;
+  const displayedStoreCountLabel =
+    selectedStoreHasKnownTotal || !visibleRemoteEntry
+      ? `${displayedStoreCount} ${t("skill.skillsCount", "skills")}`
+      : t("skill.storeLoadedCount", "Loaded {{count}}", {
+          count: selectedStoreLoadedCount,
+        });
   const isSelectedSourceRemote =
     selectedStoreSourceId === "claude-code" ||
     selectedStoreSourceId === "openai-codex" ||
     selectedStoreSourceId === "community" ||
+    selectedStoreSourceId === "clawhub" ||
     Boolean(selectedCustomSource);
+  const hasReliableStoreCategoryFilter =
+    selectedStoreSourceId !== "clawhub";
 
   useEffect(() => {
     if (!isSelectedSourceRemote) return;
     void loadStoreSource(selectedStoreSourceId);
   }, [isSelectedSourceRemote, loadStoreSource, selectedStoreSourceId]);
 
+  useEffect(() => {
+    if (selectedStoreSourceId !== "community" || !selectedRemoteEntry) {
+      return;
+    }
+    const normalizedQuery = storeSearchQuery.trim();
+    const expectedQuery = `${normalizeSkillsShFilterKey(String(storeCategory))}:${normalizedQuery}`;
+    if ((selectedRemoteEntry.query ?? "") === expectedQuery) {
+      return;
+    }
+    void loadStoreSource(selectedStoreSourceId);
+  }, [
+    loadStoreSource,
+    selectedRemoteEntry,
+    selectedStoreSourceId,
+    storeCategory,
+    storeSearchQuery,
+  ]);
+
   const sourceRegistrySkills = useMemo(() => {
     const baseSkills: RegistrySkill[] =
       selectedStoreSourceId === "official"
         ? []
-        : selectedRemoteEntry?.skills || [];
+        : visibleRemoteEntry?.skills || [];
 
     // Centralized filter — see `skill-store-search.ts`. The previous
     // inline implementation only matched name / description / tags with
     // a naive `.toLowerCase().includes(...)` and could not find skills
     // by slug, install_name, or author, nor when the user typed
     // "hello world" for a slug called "hello-world" (issue #88).
+    const searchQueryForLocalFilter =
+      selectedStoreSourceId === "clawhub" && storeSearchQuery.trim()
+        ? ""
+        : storeSearchQuery;
+
     return filterRegistrySkills(baseSkills, {
-      category: storeCategory,
-      searchQuery: storeSearchQuery,
+      category:
+        hasReliableStoreCategoryFilter && selectedStoreSourceId !== "community"
+          ? storeCategory
+          : "all",
+      searchQuery: searchQueryForLocalFilter,
     });
   }, [
+    hasReliableStoreCategoryFilter,
     registrySkills,
-    selectedRemoteEntry?.skills,
     selectedStoreSourceId,
     storeCategory,
     storeSearchQuery,
+    visibleRemoteEntry?.skills,
   ]);
 
   const selectedDetailSkill = useMemo(() => {
@@ -316,6 +743,49 @@ export function SkillStore() {
     [isSkillInstalled, sourceRegistrySkills],
   );
 
+  const selectedStoreSkills = useMemo(
+    () =>
+      sourceRegistrySkills.filter((skill) =>
+        selectedStoreSkillIds.has(getRegistrySkillSelectionId(skill)),
+      ),
+    [selectedStoreSkillIds, sourceRegistrySkills],
+  );
+
+  const selectedInstallTargets = useMemo(
+    () => selectedStoreSkills.filter((skill) => !isSkillInstalled(skill)),
+    [isSkillInstalled, selectedStoreSkills],
+  );
+
+  const selectedUpdateTargets = useMemo(
+    () =>
+      selectedStoreSkills.filter(
+        (skill) => isSkillInstalled(skill) && hasPotentialUpdate(skill),
+      ),
+    [hasPotentialUpdate, isSkillInstalled, selectedStoreSkills],
+  );
+
+  const selectedRemoveTargets = useMemo(
+    () =>
+      selectedStoreSkills.filter((skill) =>
+        Boolean(findInstalledRegistrySkill(skills, skill)),
+      ),
+    [selectedStoreSkills, skills],
+  );
+
+  useEffect(() => {
+    if (selectedStoreSkillIds.size === 0) return;
+    const visibleIds = new Set(sourceRegistrySkills.map(getRegistrySkillSelectionId));
+    setSelectedStoreSkillIds((current) => {
+      const next = new Set<string>();
+      current.forEach((id) => {
+        if (visibleIds.has(id)) {
+          next.add(id);
+        }
+      });
+      return next.size === current.size ? current : next;
+    });
+  }, [selectedStoreSkillIds.size, sourceRegistrySkills]);
+
   const setInstallPending = useCallback(
     (skill: RegistrySkill, pending: boolean) => {
       const pendingKey = getRegistrySkillPendingKey(skill);
@@ -337,6 +807,38 @@ export function SkillStore() {
     [],
   );
 
+  const scanStoreSkillBeforeInstall = useCallback(
+    async (skill: RegistrySkill): Promise<boolean> => {
+      if (!autoScanBeforeInstall) {
+        return true;
+      }
+
+      const report = await window.api.skill.scanSafety({
+        name: skill.name,
+        content: skill.content,
+        sourceUrl: skill.source_url,
+        contentUrl: skill.content_url,
+        securityAudits: skill.security_audits,
+        aiConfig: getSafetyScanAIConfig(aiModels),
+      });
+      const shouldBlockInstall =
+        report.level === "blocked" || report.level === "high-risk";
+      if (shouldBlockInstall) {
+        showToast(
+          t(
+            "skill.safetyScanBlockedInstall",
+            "This skill was flagged as high risk. Review the safety report before adding it.",
+          ),
+          "error",
+        );
+        return false;
+      }
+
+      return true;
+    },
+    [aiModels, autoScanBeforeInstall, showToast, t],
+  );
+
   const handleQuickInstall = async (
     skill: RegistrySkill,
     e: React.MouseEvent,
@@ -348,27 +850,9 @@ export function SkillStore() {
     }
     setInstallPending(skill, true);
     try {
-      if (autoScanBeforeInstall) {
-        const report = await window.api.skill.scanSafety({
-          name: skill.name,
-          content: skill.content,
-          sourceUrl: skill.source_url,
-          contentUrl: skill.content_url,
-          securityAudits: skill.security_audits,
-          aiConfig: getSafetyScanAIConfig(aiModels),
-        });
-        const shouldBlockInstall =
-          report.level === "blocked" || report.level === "high-risk";
-        if (shouldBlockInstall) {
-          showToast(
-            t(
-              "skill.safetyScanBlockedInstall",
-              "This skill was flagged as high risk. Review the safety report before adding it.",
-            ),
-            "error",
-          );
-          return;
-        }
+      const canInstall = await scanStoreSkillBeforeInstall(skill);
+      if (!canInstall) {
+        return;
       }
       const result = await installRegistrySkill({
         ...skill,
@@ -383,6 +867,187 @@ export function SkillStore() {
       setInstallPending(skill, false);
     }
   };
+
+  const handleToggleStoreBatchMode = useCallback(() => {
+    setIsStoreBatchMode((current) => {
+      if (current) {
+        setSelectedStoreSkillIds(new Set());
+      }
+      return !current;
+    });
+  }, []);
+
+  const handleToggleBatchSelection = useCallback((skill: RegistrySkill) => {
+    const selectionId = getRegistrySkillSelectionId(skill);
+    setSelectedStoreSkillIds((current) => {
+      const next = new Set(current);
+      if (next.has(selectionId)) {
+        next.delete(selectionId);
+      } else {
+        next.add(selectionId);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleSelectVisibleStoreSkills = useCallback(() => {
+    setSelectedStoreSkillIds(
+      new Set(sourceRegistrySkills.map(getRegistrySkillSelectionId)),
+    );
+  }, [sourceRegistrySkills]);
+
+  const handleClearStoreBatchSelection = useCallback(() => {
+    setSelectedStoreSkillIds(new Set());
+  }, []);
+
+  const handleOpenStoreSkillDetail = useCallback(
+    (skill: RegistrySkill) => {
+      selectRegistrySkill(getRegistrySkillSelectionId(skill));
+    },
+    [selectRegistrySkill],
+  );
+
+  const setBatchPending = useCallback(
+    (batchSkills: RegistrySkill[], pending: boolean) => {
+      batchSkills.forEach((skill) => setInstallPending(skill, pending));
+    },
+    [setInstallPending],
+  );
+
+  const showBatchResultToast = useCallback(
+    (
+      operation: StoreBatchOperation,
+      result: { failed: number; skipped: number; succeeded: number },
+    ) => {
+      const payload = {
+        failed: result.failed,
+        skipped: result.skipped,
+        succeeded: result.succeeded,
+      };
+      const message =
+        operation === "install"
+          ? t(
+              "skill.batchStoreInstallResult",
+              "Batch install finished: {{succeeded}} succeeded, {{skipped}} skipped, {{failed}} failed",
+              payload,
+            )
+          : operation === "update"
+            ? t(
+                "skill.batchStoreUpdateResult",
+                "Batch update finished: {{succeeded}} succeeded, {{skipped}} skipped, {{failed}} failed",
+                payload,
+              )
+            : t(
+                "skill.batchStoreRemoveResult",
+                "Batch remove finished: {{succeeded}} succeeded, {{skipped}} skipped, {{failed}} failed",
+                payload,
+              );
+      showToast(message, result.failed > 0 ? "error" : "success");
+    },
+    [showToast, t],
+  );
+
+  const runBatchStoreOperation = useCallback(
+    async (operation: StoreBatchOperation) => {
+      const targets =
+        operation === "install"
+          ? selectedInstallTargets
+          : operation === "update"
+            ? selectedUpdateTargets
+            : selectedRemoveTargets;
+      if (targets.length === 0) {
+        showToast(t("skill.batchStoreNoTargets", "No matching skills"), "info");
+        return;
+      }
+
+      setRunningBatchOperation(operation);
+      setBatchPending(targets, true);
+
+      const result = {
+        failed: 0,
+        skipped: selectedStoreSkills.length - targets.length,
+        succeeded: 0,
+      };
+
+      for (const skill of targets) {
+        try {
+          if (operation === "install") {
+            const canInstall = await scanStoreSkillBeforeInstall(skill);
+            if (!canInstall) {
+              result.skipped += 1;
+              continue;
+            }
+            const installedSkill = await installRegistrySkill({
+              ...skill,
+              source_label: selectedCustomSource?.name || skill.source_label,
+            });
+            if (installedSkill) {
+              result.succeeded += 1;
+            } else {
+              result.failed += 1;
+            }
+          } else if (operation === "update") {
+            const updated = await updateRegistrySkill(
+              getRegistrySkillSelectionId(skill),
+            );
+            if (updated) {
+              result.succeeded += 1;
+            } else {
+              result.failed += 1;
+            }
+          } else {
+            const removed = await uninstallRegistrySkill(
+              getRegistrySkillSelectionId(skill),
+            );
+            if (removed) {
+              result.succeeded += 1;
+            } else {
+              result.failed += 1;
+            }
+          }
+        } catch (error) {
+          console.error("Skill store batch operation failed:", error);
+          result.failed += 1;
+        } finally {
+          setInstallPending(skill, false);
+        }
+      }
+
+      setRunningBatchOperation(null);
+      showBatchResultToast(operation, result);
+      if (operation === "remove") {
+        setSelectedStoreSkillIds(new Set());
+      }
+    },
+    [
+      installRegistrySkill,
+      scanStoreSkillBeforeInstall,
+      selectedCustomSource?.name,
+      selectedInstallTargets,
+      selectedRemoveTargets,
+      selectedStoreSkills.length,
+      selectedUpdateTargets,
+      setBatchPending,
+      setInstallPending,
+      showBatchResultToast,
+      showToast,
+      t,
+      uninstallRegistrySkill,
+      updateRegistrySkill,
+    ],
+  );
+
+  const handleBatchInstallStoreSkills = useCallback(() => {
+    void runBatchStoreOperation("install");
+  }, [runBatchStoreOperation]);
+
+  const handleBatchUpdateStoreSkills = useCallback(() => {
+    void runBatchStoreOperation("update");
+  }, [runBatchStoreOperation]);
+
+  const handleBatchRemoveStoreSkills = useCallback(() => {
+    setBatchRemoveConfirmOpen(true);
+  }, []);
 
   const handleAddSource = async () => {
     if (!sourceName.trim() || !sourceUrl.trim()) {
@@ -435,7 +1100,8 @@ export function SkillStore() {
           "skill.communityStoreHint",
           "This area will aggregate third-party community skill sources. The entry is ready for connecting a community registry next.",
         ),
-        count: sourceRegistrySkills.length,
+        count: displayedStoreCount,
+        countLabel: displayedStoreCountLabel,
         showCatalog: true,
         canRefresh: true,
       };
@@ -448,7 +1114,8 @@ export function SkillStore() {
           "skill.claudeCodeStoreHint",
           "Built-in Claude Code source with first-class support for the official skills repo and common marketplace.json indexes.",
         ),
-        count: sourceRegistrySkills.length,
+        count: displayedStoreCount,
+        countLabel: displayedStoreCountLabel,
         showCatalog: true,
         canRefresh: true,
       };
@@ -461,7 +1128,22 @@ export function SkillStore() {
           "skill.openaiCodexStoreHint",
           "Built-in OpenAI Codex source with first-class support for the curated openai/skills catalog.",
         ),
-        count: sourceRegistrySkills.length,
+        count: displayedStoreCount,
+        countLabel: displayedStoreCountLabel,
+        showCatalog: true,
+        canRefresh: true,
+      };
+    }
+
+    if (selectedStoreSourceId === "clawhub") {
+      return {
+        title: t("skill.clawHubStore", "ClawHub Store"),
+        hint: t(
+          "skill.clawHubStoreHint",
+          "Built-in ClawHub source for browsing public community skills from clawhub.ai.",
+        ),
+        count: displayedStoreCount,
+        countLabel: displayedStoreCountLabel,
         showCatalog: true,
         canRefresh: true,
       };
@@ -475,6 +1157,7 @@ export function SkillStore() {
           "Add your own store endpoints here. A later step can connect remote manifests or registries.",
         ),
         count: customStoreSources.length,
+        countLabel: `${customStoreSources.length} ${t("skill.skillsCount", "skills")}`,
         showCatalog: false,
         canRefresh: false,
       };
@@ -484,7 +1167,8 @@ export function SkillStore() {
       return {
         title: selectedCustomSource.name,
         hint: formatStoreSourceHint(selectedCustomSource),
-        count: sourceRegistrySkills.length,
+        count: displayedStoreCount,
+        countLabel: displayedStoreCountLabel,
         showCatalog: true,
         canRefresh: true,
       };
@@ -497,26 +1181,143 @@ export function SkillStore() {
         "The official store is not open yet. You can import skills from Claude Code, OpenAI Codex, or a custom store for now.",
       ),
       count: 0,
+      countLabel: `0 ${t("skill.skillsCount", "skills")}`,
       showCatalog: false,
       canRefresh: false,
     };
   }, [
     customStoreSources.length,
+    displayedStoreCount,
+    displayedStoreCountLabel,
     selectedCustomSource,
     selectedStoreSourceId,
+    selectedStoreTotalCount,
     sourceRegistrySkills.length,
     t,
   ]);
 
-  const currentRemoteError = selectedRemoteEntry?.error || null;
+  const currentRemoteError = visibleRemoteEntry?.error || null;
+  const shouldShowGenericCategoryFilter =
+    sourceMeta.showCatalog &&
+    hasReliableStoreCategoryFilter &&
+    selectedStoreSourceId !== "community";
+  const shouldShowSkillsShFilter =
+    sourceMeta.showCatalog && selectedStoreSourceId === "community";
+  const shouldShowStoreSearch =
+    sourceMeta.showCatalog &&
+    (selectedStoreSourceId === "community" ||
+      selectedStoreSourceId === "clawhub");
+  const canLoadNextStorePage = Boolean(visibleRemoteEntry?.nextCursor);
+  const isLoadingMoreSelectedSource =
+    loadingMoreSourceId === selectedStoreSourceId;
+  const selectedStoreResultTotal =
+    selectedStoreMatchedCount ?? selectedStoreTotalCount;
+  const storeProgressLabel =
+    selectedStoreResultTotal && selectedStoreLoadedCount > 0
+      ? `${selectedStoreLoadedCount} / ${selectedStoreResultTotal}`
+      : null;
+  const showStoreContinuation =
+    sourceMeta.showCatalog &&
+    Boolean(visibleRemoteEntry?.pageSize) &&
+    (canLoadNextStorePage ||
+      Boolean(selectedStoreLoadedCount) ||
+      isLoadingMoreSelectedSource);
+  const selectedStoreTone =
+    selectedStoreSourceId === "community"
+      ? "community"
+      : selectedStoreSourceId === "claude-code" ||
+          selectedStoreSourceId === "openai-codex"
+        ? "official"
+        : selectedCustomSource?.type === "local-dir"
+          ? "local"
+          : "git";
+  const isSelectedSkillsShEntryStale =
+    selectedStoreSourceId === "community" &&
+    Boolean(selectedRemoteEntry) &&
+    !isSelectedSkillsShEntryCurrent;
+  const isSelectedClawHubEntryStale =
+    selectedStoreSourceId === "clawhub" &&
+    Boolean(selectedRemoteEntry) &&
+    !isSelectedClawHubEntryCurrent;
   const shouldShowInitialLoading =
     isSelectedSourceRemote &&
-    loadingSourceId === selectedStoreSourceId &&
-    (!selectedRemoteEntry || selectedRemoteEntry.skills.length === 0);
+    ((loadingSourceId === selectedStoreSourceId &&
+      (!visibleRemoteEntry || visibleRemoteEntry.skills.length === 0)) ||
+      isSelectedSkillsShEntryStale ||
+      isSelectedClawHubEntryStale);
+  const shouldShowCustomStoreEmpty =
+    Boolean(selectedCustomSource) &&
+    !shouldShowInitialLoading &&
+    !currentRemoteError &&
+    sourceRegistrySkills.length === 0;
   const isRefreshingCachedSource =
     isSelectedSourceRemote &&
     loadingSourceId === selectedStoreSourceId &&
-    Boolean(selectedRemoteEntry?.skills.length);
+    Boolean(visibleRemoteEntry?.skills.length);
+  const isStoreBatchBusy = runningBatchOperation !== null;
+  const handleStoreSearchSubmit = useCallback(
+    (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      const normalizedQuery = storeSearchDraft.trim();
+      setStoreSearchDraft(normalizedQuery);
+      setStoreSearchQuery(normalizedQuery);
+    },
+    [setStoreSearchQuery, storeSearchDraft],
+  );
+  const handleClearStoreSearch = useCallback(() => {
+    setStoreSearchDraft("");
+    setStoreSearchQuery("");
+  }, [setStoreSearchQuery]);
+  useEffect(() => {
+    if (!shouldShowStoreSearch) {
+      return;
+    }
+
+    const normalizedQuery = storeSearchDraft.trim();
+    if (normalizedQuery === storeSearchQuery) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setStoreSearchQuery(normalizedQuery);
+    }, STORE_SEARCH_DEBOUNCE_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [
+    setStoreSearchQuery,
+    shouldShowStoreSearch,
+    storeSearchDraft,
+    storeSearchQuery,
+  ]);
+  const handleStoreScroll = useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      if (
+        !canLoadNextStorePage ||
+        isLoadingMoreSelectedSource ||
+        loadingSourceId === selectedStoreSourceId ||
+        !sourceMeta.showCatalog
+      ) {
+        return;
+      }
+
+      const target = event.currentTarget;
+      const remaining =
+        target.scrollHeight - target.scrollTop - target.clientHeight;
+      if (remaining <= 480) {
+        void loadNextStorePage(selectedStoreSourceId);
+      }
+    },
+    [
+      canLoadNextStorePage,
+      isLoadingMoreSelectedSource,
+      loadNextStorePage,
+      loadingSourceId,
+      selectedStoreSourceId,
+      sourceMeta.showCatalog,
+    ],
+  );
 
   return (
     <div className="flex-1 flex flex-col h-full app-wallpaper-section overflow-hidden">
@@ -525,8 +1326,13 @@ export function SkillStore() {
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-semibold">{sourceMeta.title}</h2>
             <span className="shrink-0 rounded-full bg-accent/50 px-2 py-0.5 text-[11px] font-medium text-muted-foreground border border-white/5">
-              {sourceMeta.count} {t("skill.skillsCount", "skills")}
+              {sourceMeta.countLabel}
             </span>
+            {storeProgressLabel && (
+              <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground border border-border">
+                {storeProgressLabel}
+              </span>
+            )}
             {isRefreshingCachedSource && (
               <span className="shrink-0 inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
                 <Loader2Icon className="h-3 w-3 animate-spin" />
@@ -540,6 +1346,23 @@ export function SkillStore() {
         </div>
 
         <div className="flex items-center gap-2">
+          {sourceMeta.showCatalog && (
+            <button
+              type="button"
+              onClick={handleToggleStoreBatchMode}
+              disabled={isStoreBatchBusy}
+              aria-pressed={isStoreBatchMode}
+              aria-label={t("skill.batchStoreManage", "Batch manage store")}
+              title={t("skill.batchStoreManage", "Batch manage store")}
+              className={`rounded-lg p-2 transition-colors disabled:opacity-40 ${
+                isStoreBatchMode
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+              }`}
+            >
+              <ListChecksIcon className="h-4 w-4" />
+            </button>
+          )}
           {sourceMeta.canRefresh && (
             <button
               onClick={() => void loadStoreSource(selectedStoreSourceId, true)}
@@ -565,8 +1388,44 @@ export function SkillStore() {
         </div>
       </div>
 
-      <div className="px-6 py-3 border-b border-border app-wallpaper-section space-y-3">
-        {sourceMeta.showCatalog && (
+      {((shouldShowGenericCategoryFilter ||
+        shouldShowSkillsShFilter ||
+        shouldShowStoreSearch) ||
+        selectedStoreSourceId === "new-custom") && (
+        <div
+          className="px-6 py-3 border-b border-border app-wallpaper-section space-y-3"
+          data-testid="skill-store-filter-bar"
+        >
+          {shouldShowStoreSearch && (
+            <form
+              data-testid="skill-store-local-search-form"
+              onSubmit={handleStoreSearchSubmit}
+              className="flex w-full items-center gap-2 rounded-xl border border-border/70 bg-card/70 px-3 py-2 transition-colors focus-within:bg-background"
+            >
+              <SearchIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <input
+                type="text"
+                value={storeSearchDraft}
+                onChange={(event) => setStoreSearchDraft(event.target.value)}
+                placeholder={t("skill.searchStore", "Search skills...")}
+                aria-label={t("skill.searchStore", "Search skills...")}
+                className="h-6 min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-0 focus-visible:ring-0"
+              />
+              {storeSearchDraft ? (
+                <button
+                  type="button"
+                  onClick={handleClearStoreSearch}
+                  className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  aria-label={t("common.clearSearch", "Clear search")}
+                  title={t("common.clearSearch", "Clear search")}
+                >
+                  <XIcon className="h-3.5 w-3.5" />
+                </button>
+              ) : null}
+            </form>
+          )}
+
+          {shouldShowGenericCategoryFilter && (
           <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
             {categories.map((cat) => (
               <button
@@ -583,9 +1442,34 @@ export function SkillStore() {
               </button>
             ))}
           </div>
-        )}
+          )}
 
-        {selectedStoreSourceId === "new-custom" && (
+          {shouldShowSkillsShFilter && (
+            <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
+              {SKILLS_SH_FILTERS.map((filter) => {
+                const isActive =
+                  normalizeSkillsShFilterKey(String(storeCategory)) ===
+                  filter.key;
+                return (
+                  <button
+                    key={filter.key}
+                    onClick={() =>
+                      setStoreCategory(filter.key as SkillCategory | "all")
+                    }
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
+                      isActive
+                        ? "bg-primary text-white shadow-sm"
+                        : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                    }`}
+                  >
+                    {filter.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {selectedStoreSourceId === "new-custom" && (
           <SkillStoreSourceForm
             branch={sourceBranch}
             directory={sourceDirectory}
@@ -601,10 +1485,16 @@ export function SkillStore() {
             t={t}
             typeOptions={CUSTOM_SOURCE_TYPE_OPTIONS}
           />
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
-      <div className="flex-1 overflow-y-auto scrollbar-hide p-6 space-y-8">
+      <div
+        ref={storeScrollRef}
+        className="flex-1 overflow-y-auto scrollbar-hide p-6 space-y-8"
+        data-testid="skill-store-scroll"
+        onScroll={handleStoreScroll}
+      >
         {shouldShowInitialLoading && (
           <div className="rounded-2xl border border-border app-wallpaper-panel p-4 text-sm text-muted-foreground inline-flex items-center gap-2">
             <Loader2Icon className="w-4 h-4 animate-spin" />
@@ -623,10 +1513,15 @@ export function SkillStore() {
                       "skill.loadingCommunityStore",
                       "Loading skills.sh community skill list...",
                     )
-                  : t(
-                      "skill.loadingCustomStore",
-                      "Loading custom store content...",
-                    )}
+                  : selectedStoreSourceId === "clawhub"
+                    ? t(
+                        "skill.loadingClawHubStore",
+                        "Loading ClawHub public skill list...",
+                      )
+                    : t(
+                        "skill.loadingCustomStore",
+                        "Loading custom store content...",
+                      )}
           </div>
         )}
 
@@ -659,66 +1554,30 @@ export function SkillStore() {
 
         {sourceMeta.showCatalog && (
           <>
-            {installed.length > 0 && (
-              <section>
-                <div className="flex items-center gap-2 mb-4">
-                  <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">
-                    {t("skill.importedSection", "Imported")}
-                  </h3>
-                  <span className="text-[10px] bg-green-500/10 text-green-500 px-2 py-0.5 rounded-full font-bold">
-                    {installed.length}
-                  </span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                  {installed.map((skill, index) => (
-                    <SkillStoreCard
-                      key={getRegistrySkillSelectionId(skill)}
-                      skill={skill}
-                      isInstalled={true}
-                      hasUpdate={hasPotentialUpdate(skill)}
-                      index={index}
-                      storeLabel={sourceMeta.title}
-                      installingSourceIds={installingSourceIds}
-                      onClick={() =>
-                        selectRegistrySkill(getRegistrySkillSelectionId(skill))
-                      }
-                    />
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {recommended.length > 0 && (
-              <section>
-                <div className="flex items-center gap-2 mb-4">
-                  <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">
-                    {t("skill.availableSection", "Available")}
-                  </h3>
-                  <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">
-                    {recommended.length}
-                  </span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                  {recommended.map((skill, index) => (
-                    <SkillStoreCard
-                      key={getRegistrySkillSelectionId(skill)}
-                      skill={skill}
-                      isInstalled={false}
-                      index={index}
-                      storeLabel={sourceMeta.title}
-                      installingSourceIds={installingSourceIds}
-                      onQuickInstall={handleQuickInstall}
-                      onClick={() =>
-                        selectRegistrySkill(getRegistrySkillSelectionId(skill))
-                      }
-                    />
-                  ))}
-                </div>
-              </section>
-            )}
+            {installed.length > 0 || recommended.length > 0 ? (
+              <VirtualizedSkillStoreCatalog
+                availableLabel={t("skill.availableSection", "Available")}
+                batchMode={isStoreBatchMode}
+                hasPotentialUpdate={hasPotentialUpdate}
+                importedLabel={t("skill.importedSection", "Imported")}
+                installed={installed}
+                installingSourceIds={installingSourceIds}
+                isSkillInstalled={isSkillInstalled}
+                onOpenSkillDetail={handleOpenStoreSkillDetail}
+                onQuickInstall={handleQuickInstall}
+                onSelectSkill={selectRegistrySkill}
+                onToggleBatchSelection={handleToggleBatchSelection}
+                recommended={recommended}
+                scrollRef={storeScrollRef}
+                selectedSourceIds={selectedStoreSkillIds}
+                storeLabel={sourceMeta.title}
+                storeTone={selectedStoreTone}
+              />
+            ) : null}
 
             {installed.length === 0 &&
               recommended.length === 0 &&
+              !shouldShowCustomStoreEmpty &&
               !shouldShowInitialLoading && (
                 <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
                   <SearchIcon className="w-12 h-12 opacity-20 mb-4" />
@@ -733,6 +1592,26 @@ export function SkillStore() {
                   </p>
                 </div>
               )}
+
+            {showStoreContinuation && (
+              <div className="flex justify-center pt-2">
+                <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/80 px-3 py-1.5 text-xs text-muted-foreground">
+                  {isLoadingMoreSelectedSource ? (
+                    <>
+                      <Loader2Icon className="h-3.5 w-3.5 animate-spin" />
+                      {t("skill.storeLoadingMore", "Loading more...")}
+                    </>
+                  ) : canLoadNextStorePage ? (
+                    t(
+                      "skill.storeScrollLoadHint",
+                      "Scroll down to load more",
+                    )
+                  ) : (
+                    t("skill.storeEndOfResults", "End of results")
+                  )}
+                </div>
+              </div>
+            )}
           </>
         )}
 
@@ -867,6 +1746,48 @@ export function SkillStore() {
           </div>
         )}
 
+        {selectedStoreSourceId === "clawhub" && (
+          <div className="app-wallpaper-panel border border-border rounded-2xl p-6 space-y-4">
+            <div className="flex items-center gap-2 mb-3 text-foreground">
+              <GlobeIcon className="w-5 h-5 text-primary" />
+              <h3 className="text-base font-semibold">
+                {t("skill.clawHubStore", "ClawHub Store")}
+              </h3>
+            </div>
+            <p className="text-sm text-muted-foreground leading-6">
+              {t(
+                "skill.clawHubStoreHint",
+                "Built-in ClawHub source for browsing public community skills from clawhub.ai.",
+              )}
+            </p>
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="rounded-xl border border-border bg-muted/30 p-4">
+                <div className="text-sm font-medium text-foreground mb-1">
+                  {t("skill.supportedFormat", "Supported Formats")}
+                </div>
+                <div className="text-xs text-muted-foreground leading-6">
+                  {t(
+                    "skill.formatClawHubApi",
+                    "ClawHub public skill registry API",
+                  )}
+                  <br />
+                  {t("skill.formatSkillMdFile", "`SKILL.md` file endpoint")}
+                </div>
+              </div>
+              <div className="rounded-xl border border-border bg-muted/30 p-4">
+                <div className="text-sm font-medium text-foreground mb-1">
+                  {t("skill.exampleSources", "Built-in Reference Sources")}
+                </div>
+                <div className="text-xs text-muted-foreground leading-6 break-all">
+                  https://clawhub.ai/
+                  <br />
+                  https://clawhub.ai/api/v1/skills
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {selectedStoreSourceId === "official" && (
           <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/20 px-6 py-20 text-center text-muted-foreground">
             <StoreIcon className="mb-4 h-12 w-12 opacity-25" />
@@ -897,10 +1818,7 @@ export function SkillStore() {
               toggleCustomStoreSource={toggleCustomStoreSource}
             />
 
-            {selectedCustomSource &&
-            !shouldShowInitialLoading &&
-            !currentRemoteError &&
-            sourceRegistrySkills.length === 0 ? (
+            {selectedCustomSource && shouldShowCustomStoreEmpty ? (
               <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/20 px-6 py-20 text-center text-muted-foreground">
                 <Link2Icon className="mb-4 h-12 w-12 opacity-25" />
                 <h3 className="mb-1 text-lg font-semibold text-foreground">
@@ -921,6 +1839,108 @@ export function SkillStore() {
         )}
       </div>
 
+      {isStoreBatchMode && sourceMeta.showCatalog && (
+        <div className="shrink-0 border-t border-border app-wallpaper-panel-strong px-6 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <span className="rounded-full border border-border bg-card/80 px-3 py-1 text-xs font-medium text-muted-foreground">
+              {t("skill.selectedCount", "{{count}} selected", {
+                count: selectedStoreSkillIds.size,
+              })}
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={handleSelectVisibleStoreSkills}
+                disabled={isStoreBatchBusy || sourceRegistrySkills.length === 0}
+                className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40"
+                aria-label={t(
+                  "skill.batchStoreSelectVisible",
+                  "Select visible store skills",
+                )}
+                title={t(
+                  "skill.batchStoreSelectVisible",
+                  "Select visible store skills",
+                )}
+              >
+                <CheckSquareIcon className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={handleBatchInstallStoreSkills}
+                disabled={
+                  isStoreBatchBusy || selectedInstallTargets.length === 0
+                }
+                className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary disabled:opacity-40"
+                aria-label={t(
+                  "skill.batchStoreInstallSelected",
+                  "Install selected",
+                )}
+                title={t(
+                  "skill.batchStoreInstallSelected",
+                  "Install selected",
+                )}
+              >
+                {runningBatchOperation === "install" ? (
+                  <Loader2Icon className="h-4 w-4 animate-spin" />
+                ) : (
+                  <PackagePlusIcon className="h-4 w-4" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={handleBatchUpdateStoreSkills}
+                disabled={
+                  isStoreBatchBusy || selectedUpdateTargets.length === 0
+                }
+                className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-amber-500/10 hover:text-amber-500 disabled:opacity-40"
+                aria-label={t(
+                  "skill.batchStoreUpdateSelected",
+                  "Update selected",
+                )}
+                title={t(
+                  "skill.batchStoreUpdateSelected",
+                  "Update selected",
+                )}
+              >
+                {runningBatchOperation === "update" ? (
+                  <Loader2Icon className="h-4 w-4 animate-spin" />
+                ) : (
+                  <DownloadIcon className="h-4 w-4" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={handleBatchRemoveStoreSkills}
+                disabled={
+                  isStoreBatchBusy || selectedRemoveTargets.length === 0
+                }
+                className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
+                aria-label={t(
+                  "skill.batchStoreRemoveSelected",
+                  "Remove selected from My Skills",
+                )}
+                title={t(
+                  "skill.batchStoreRemoveSelected",
+                  "Remove selected from My Skills",
+                )}
+              >
+                <Trash2Icon className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={handleClearStoreBatchSelection}
+                disabled={isStoreBatchBusy || selectedStoreSkillIds.size === 0}
+                className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40"
+                aria-label={t("common.deselectAll", "Deselect All")}
+                title={t("common.deselectAll", "Deselect All")}
+              >
+                <XIcon className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <SkillStoreSourceEditModal
         isOpen={editingCustomSourceId !== null}
         onClose={() => setEditingCustomSourceId(null)}
@@ -934,6 +1954,25 @@ export function SkillStore() {
             (source) => source.id === editingCustomSourceId,
           ) ?? null
         }
+      />
+
+      <ConfirmDialog
+        isOpen={batchRemoveConfirmOpen}
+        onClose={() => setBatchRemoveConfirmOpen(false)}
+        onConfirm={() => {
+          setBatchRemoveConfirmOpen(false);
+          void runBatchStoreOperation("remove");
+        }}
+        title={t("skill.batchStoreRemoveTitle", "Remove selected Skills")}
+        message={t(
+          "skill.batchStoreRemoveMessage",
+          "Remove {{count}} selected imported Skills from My Skills? Remote store content will not be deleted.",
+          { count: selectedRemoveTargets.length },
+        )}
+        confirmText={t("skill.batchStoreRemoveSelected", "Remove selected")}
+        cancelText={t("common.cancel", "Cancel")}
+        variant="destructive"
+        isLoading={runningBatchOperation === "remove"}
       />
 
       {selectedDetailSkill && (
