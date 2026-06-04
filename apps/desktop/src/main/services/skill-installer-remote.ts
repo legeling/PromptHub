@@ -14,7 +14,7 @@ import * as nodeNet from "net";
 const REMOTE_FETCH_TIMEOUT_MS = 30_000;
 /** Total time allowed for reading the response body (protects against slowloris) */
 const REMOTE_FETCH_TRANSFER_TIMEOUT_MS = 60_000;
-const REMOTE_FETCH_MAX_BYTES = 5 * 1024 * 1024;
+const REMOTE_FETCH_MAX_BYTES = 10 * 1024 * 1024;
 const REMOTE_FETCH_MAX_REDIRECTS = 5;
 const REMOTE_FETCH_TRUSTED_HOSTS = new Set([
   "api.github.com",
@@ -22,6 +22,8 @@ const REMOTE_FETCH_TRUSTED_HOSTS = new Set([
   "raw.githubusercontent.com",
   "skills.sh",
   "www.skills.sh",
+  "clawhub.ai",
+  "www.clawhub.ai",
 ]);
 
 interface ResolvedAddress {
@@ -299,6 +301,11 @@ export function shouldAttachGithubAuth(hostname: string): boolean {
   return GITHUB_AUTH_HOSTS.has(hostname.toLowerCase());
 }
 
+export function getRemoteFetchMaxBytes(targetUrl: URL): number {
+  void targetUrl;
+  return REMOTE_FETCH_MAX_BYTES;
+}
+
 export interface FetchRemoteTextOptions {
   /**
    * Optional GitHub personal access token. Attached as `Authorization:
@@ -347,6 +354,7 @@ export async function fetchRemoteText(
     }
   }
   const requestModule = getRequestModule(parsedUrl.protocol);
+  const maxBytes = getRemoteFetchMaxBytes(parsedUrl);
 
   const baseHeaders: Record<string, string> = {
     Host: parsedUrl.host,
@@ -433,7 +441,7 @@ export async function fetchRemoteText(
           : Number.parseInt(contentLengthHeader ?? "", 10);
         if (
           Number.isFinite(contentLength) &&
-          contentLength > REMOTE_FETCH_MAX_BYTES
+          contentLength > maxBytes
         ) {
           response.resume();
           reject(new Error("Remote content exceeds size limit"));
@@ -454,7 +462,7 @@ export async function fetchRemoteText(
 
         response.on("data", (chunk: Buffer) => {
           receivedBytes += chunk.length;
-          if (receivedBytes > REMOTE_FETCH_MAX_BYTES) {
+          if (receivedBytes > maxBytes) {
             response.destroy(new Error("Remote content exceeds size limit"));
             return;
           }
@@ -504,6 +512,7 @@ export async function fetchRemoteBytes(
     }
   }
   const requestModule = getRequestModule(parsedUrl.protocol);
+  const maxBytes = getRemoteFetchMaxBytes(parsedUrl);
 
   const baseHeaders: Record<string, string> = {
     Host: parsedUrl.host,
@@ -587,7 +596,7 @@ export async function fetchRemoteBytes(
           : Number.parseInt(contentLengthHeader ?? "", 10);
         if (
           Number.isFinite(contentLength) &&
-          contentLength > REMOTE_FETCH_MAX_BYTES
+          contentLength > maxBytes
         ) {
           response.resume();
           reject(new Error("Remote content exceeds size limit"));
@@ -607,7 +616,7 @@ export async function fetchRemoteBytes(
 
         response.on("data", (chunk: Buffer) => {
           receivedBytes += chunk.length;
-          if (receivedBytes > REMOTE_FETCH_MAX_BYTES) {
+          if (receivedBytes > maxBytes) {
             response.destroy(new Error("Remote content exceeds size limit"));
             return;
           }

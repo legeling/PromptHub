@@ -50,6 +50,7 @@ import type {
 } from "@prompthub/shared/types";
 import { SKILL_CATEGORIES } from "@prompthub/shared/constants/skill-registry";
 import {
+  formatSkillInstallError,
   formatSkillSafetyScanError,
   getSafetyScanAIConfig,
 } from "./detail-utils";
@@ -750,6 +751,13 @@ export function SkillStore() {
       ),
     [selectedStoreSkillIds, sourceRegistrySkills],
   );
+  const visibleStoreSkillIds = useMemo(
+    () => sourceRegistrySkills.map(getRegistrySkillSelectionId),
+    [sourceRegistrySkills],
+  );
+  const areVisibleStoreSkillsSelected =
+    visibleStoreSkillIds.length > 0 &&
+    visibleStoreSkillIds.every((id) => selectedStoreSkillIds.has(id));
 
   const selectedInstallTargets = useMemo(
     () => selectedStoreSkills.filter((skill) => !isSkillInstalled(skill)),
@@ -862,7 +870,7 @@ export function SkillStore() {
         showToast(`${t("skill.addedToLibrary")}: ${skill.name}`, "success");
       }
     } catch (error: unknown) {
-      showToast(formatSkillSafetyScanError(error, t), "error");
+      showToast(formatSkillInstallError(error, t), "error");
     } finally {
       setInstallPending(skill, false);
     }
@@ -891,10 +899,25 @@ export function SkillStore() {
   }, []);
 
   const handleSelectVisibleStoreSkills = useCallback(() => {
-    setSelectedStoreSkillIds(
-      new Set(sourceRegistrySkills.map(getRegistrySkillSelectionId)),
-    );
-  }, [sourceRegistrySkills]);
+    setSelectedStoreSkillIds((current) => {
+      if (visibleStoreSkillIds.length === 0) {
+        return current;
+      }
+
+      const isAllVisibleSelected = visibleStoreSkillIds.every((id) =>
+        current.has(id),
+      );
+      const next = new Set(current);
+      visibleStoreSkillIds.forEach((id) => {
+        if (isAllVisibleSelected) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+      });
+      return next;
+    });
+  }, [visibleStoreSkillIds]);
 
   const handleClearStoreBatchSelection = useCallback(() => {
     setSelectedStoreSkillIds(new Set());
@@ -1255,6 +1278,9 @@ export function SkillStore() {
     loadingSourceId === selectedStoreSourceId &&
     Boolean(visibleRemoteEntry?.skills.length);
   const isStoreBatchBusy = runningBatchOperation !== null;
+  const selectVisibleStoreSkillsLabel = areVisibleStoreSkillsSelected
+    ? t("skill.batchStoreDeselectVisible", "Deselect visible store skills")
+    : t("skill.batchStoreSelectVisible", "Select visible store skills");
   const handleStoreSearchSubmit = useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -1852,15 +1878,13 @@ export function SkillStore() {
                 type="button"
                 onClick={handleSelectVisibleStoreSkills}
                 disabled={isStoreBatchBusy || sourceRegistrySkills.length === 0}
-                className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40"
-                aria-label={t(
-                  "skill.batchStoreSelectVisible",
-                  "Select visible store skills",
-                )}
-                title={t(
-                  "skill.batchStoreSelectVisible",
-                  "Select visible store skills",
-                )}
+                className={`rounded-lg p-2 transition-colors disabled:opacity-40 ${
+                  areVisibleStoreSkillsSelected
+                    ? "bg-primary/10 text-primary hover:bg-primary/15"
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                }`}
+                aria-label={selectVisibleStoreSkillsLabel}
+                title={selectVisibleStoreSkillsLabel}
               >
                 <CheckSquareIcon className="h-4 w-4" />
               </button>

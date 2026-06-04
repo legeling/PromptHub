@@ -123,10 +123,15 @@ export async function getRegistrySkillUpdateStatus(
   const localContent = installedSkill.content ?? installedSkill.instructions ?? "";
   const localHash = await computeSkillContentHash(localContent);
   const installedHash = installedSkill.installed_content_hash;
-  const localModified = Boolean(installedHash && localHash !== installedHash);
-  const remoteChanged = installedHash
-    ? remoteHash !== installedHash
-    : remoteHash !== localHash || registrySkill.version !== installedSkill.version;
+  const localMatchesRemote = localHash === remoteHash;
+  const localModified = localMatchesRemote
+    ? false
+    : Boolean(installedHash && localHash !== installedHash);
+  const remoteChanged = localMatchesRemote
+    ? false
+    : installedHash
+      ? remoteHash !== installedHash
+      : remoteHash !== localHash || registrySkill.version !== installedSkill.version;
 
   let status: RegistrySkillUpdateStatus = "up-to-date";
   if (localModified && remoteChanged) {

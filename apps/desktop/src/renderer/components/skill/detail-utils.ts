@@ -101,6 +101,11 @@ export function formatSkillSafetyScanError(
   return `${t("skill.safetyScanFailed", "Safety scan failed")}: ${rawMessage}`;
 }
 
+export function formatSkillInstallError(error: unknown, t: TFunction): string {
+  const rawMessage = getErrorMessage(error);
+  return `${t("skill.storeInstallFailed", "Install failed")}: ${rawMessage}`;
+}
+
 export interface SkillSourceMeta {
   kind: "github" | "remote" | "local";
   value: string;

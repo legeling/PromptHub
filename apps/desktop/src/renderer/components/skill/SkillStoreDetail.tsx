@@ -24,7 +24,9 @@ import type {
   Skill,
   SkillSafetyReport,
 } from "@prompthub/shared/types";
+import { SKILL_CATEGORIES } from "@prompthub/shared/constants/skill-registry";
 import {
+  formatSkillInstallError,
   formatSkillSafetyScanError,
   formatSkillTranslationError,
   getErrorMessage,
@@ -57,6 +59,31 @@ import {
   buildSkillVariantBadges,
   inferSkillVariantSourceDebugLabel,
 } from "../../services/skill-variant-badges";
+
+function humanizeCategory(value: string): string {
+  return value
+    .split(/[-_]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function hasUnreliableStoreCategory(
+  skill: RegistrySkill,
+  storeLabel?: string,
+): boolean {
+  const sourceText = [
+    storeLabel,
+    skill.source_label,
+    skill.source_url,
+    skill.store_url,
+    skill.content_url,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return sourceText.includes("skills.sh") || sourceText.includes("clawhub");
+}
 
 interface SkillStoreDetailProps {
   skill: RegistrySkill;
@@ -142,6 +169,18 @@ export function SkillStoreDetail({
           ? "한국어"
           : "English";
   }, [i18n.language]);
+  const isZh = i18n.language?.startsWith("zh");
+  const categoryLabel = useMemo(() => {
+    if (!skill.category || hasUnreliableStoreCategory(skill, storeLabel)) {
+      return null;
+    }
+    const category =
+      SKILL_CATEGORIES[skill.category as keyof typeof SKILL_CATEGORIES];
+    if (category) {
+      return isZh ? category.label : category.labelEn;
+    }
+    return humanizeCategory(String(skill.category));
+  }, [isZh, skill, skill.category, storeLabel]);
 
   const installedSkill = findInstalledRegistrySkill(skills, skill);
   const installedSkillMdContent =
@@ -467,7 +506,7 @@ export function SkillStoreDetail({
 
       await performInstall();
     } catch (e) {
-      showToast(t("skill.updateFailed", "Failed") + `: ${e}`, "error");
+      showToast(formatSkillInstallError(e, t), "error");
     } finally {
       setInstallPending(false);
     }
@@ -933,8 +972,8 @@ export function SkillStoreDetail({
         {/* Footer */}
         <div className="p-4 border-t border-border flex items-center justify-between shrink-0">
           <div className="text-xs text-muted-foreground">
-            {skill.category && (
-              <span className="capitalize">{skill.category}</span>
+            {categoryLabel && (
+              <span>{`${t("skill.category", "Category")}${isZh ? "：" : ": "}${categoryLabel}`}</span>
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -1068,10 +1107,7 @@ export function SkillStoreDetail({
                 setTimeout(() => setJustInstalled(false), 2000);
               }
             } catch (error) {
-              showToast(
-                t("skill.updateFailed", "Failed") + `: ${error}`,
-                "error",
-              );
+              showToast(formatSkillInstallError(error, t), "error");
             } finally {
               setInstallPending(false);
             }

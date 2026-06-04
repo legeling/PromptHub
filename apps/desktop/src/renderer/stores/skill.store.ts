@@ -22,7 +22,10 @@ import {
   SKILL_CATEGORIES,
 } from "@prompthub/shared/constants/skill-registry";
 import { isGitHubHost, parseGitRepo } from "@prompthub/shared/utils/git-repo";
-import { buildSkillSourceId } from "@prompthub/shared/utils/skill-identity";
+import {
+  buildSkillSourceId,
+  shouldIgnoreSkillDirectoryEntry,
+} from "@prompthub/shared/utils/skill-identity";
 import { chatCompletion } from "../services/ai";
 import { resolveScenarioAIConfig } from "../services/ai-defaults";
 import {
@@ -477,14 +480,15 @@ function normalizeLocalRegistryDirectory(
 async function syncLocalRegistrySkillRepo(
   skillId: string,
   regSkill: Pick<RegistrySkill, "content_url" | "source_url">,
-): Promise<void> {
+): Promise<Skill | null> {
   const localDir = normalizeLocalRegistryDirectory(regSkill);
   if (!localDir) {
-    return;
+    return null;
   }
 
   await window.api.skill.saveToRepo(skillId, localDir, "copy");
-  await window.api.skill.syncFromRepo(skillId);
+  const syncedSkill = await window.api.skill.syncFromRepo(skillId);
+  return refreshInstalledContentHashFromSyncedSkill(skillId, syncedSkill);
 }
 
 async function resolveRegistrySkillContent(
@@ -510,7 +514,7 @@ async function resolveRegistrySkillContent(
     const freshContent = await window.api.skill.fetchRemoteContent(
       regSkill.content_url,
     );
-    if (freshContent.trim()) {
+    if (typeof freshContent === "string" && freshContent.trim()) {
       remoteContent = freshContent;
     }
   }
@@ -585,9 +589,7 @@ function parseGitHubSkillLocation(
 }
 
 function shouldSkipRemoteRepoFile(relativePath: string): boolean {
-  return relativePath
-    .split("/")
-    .some((segment) => segment === ".git" || segment === ".prompthub");
+  return shouldIgnoreSkillDirectoryEntry(relativePath);
 }
 
 function getRegistrySkillDirectory(
@@ -617,11 +619,30 @@ function shouldCloneRegistrySkillPackage(
     RegistrySkill,
     | "source_url"
     | "content_url"
+    | "package_url"
+    | "store_url"
+    | "source_label"
     | "source_directory"
     | "canonical_skill_path"
     | "directory_fingerprint"
   >,
 ): boolean {
+  const publicDirectoryStoreValues = [
+    regSkill.store_url,
+    regSkill.content_url,
+    regSkill.source_label,
+  ]
+    .filter((value): value is string => typeof value === "string")
+    .map((value) => value.toLowerCase());
+  if (
+    publicDirectoryStoreValues.some(
+      (value) => value.includes("clawhub.ai"),
+    ) &&
+    !getRegistrySkillDirectory(regSkill)
+  ) {
+    return false;
+  }
+
   if (!regSkill.source_url || isLikelyLocalSource(regSkill.source_url)) {
     return false;
   }
@@ -629,6 +650,12 @@ function shouldCloneRegistrySkillPackage(
   const parsedRepo = parseGitRepo(regSkill.source_url);
   if (!parsedRepo) {
     return false;
+  }
+
+  if (
+    publicDirectoryStoreValues.some((value) => value.includes("skills.sh"))
+  ) {
+    return true;
   }
 
   if (regSkill.content_url && isGitHubHost(parsedRepo.host)) {
@@ -703,15 +730,23 @@ async function syncRemoteRegistrySkillRepo(
   skillId: string,
   regSkill: RegistrySkill,
   effectiveContent: string,
-): Promise<void> {
+): Promise<Skill | null> {
+  if (regSkill.package_url?.trim()) {
+    await window.api.skill.saveRemoteZipToRepo(skillId, {
+      zipUrl: regSkill.package_url,
+    });
+    const syncedSkill = await window.api.skill.syncFromRepo(skillId);
+    return refreshInstalledContentHashFromSyncedSkill(skillId, syncedSkill);
+  }
+
   if (shouldCloneRegistrySkillPackage(regSkill)) {
     await window.api.skill.saveRemoteGitToRepo(skillId, {
       repoUrl: regSkill.source_url,
       branch: regSkill.source_branch,
       directory: getRegistrySkillDirectory(regSkill),
     });
-    await window.api.skill.syncFromRepo(skillId);
-    return;
+    const syncedSkill = await window.api.skill.syncFromRepo(skillId);
+    return refreshInstalledContentHashFromSyncedSkill(skillId, syncedSkill);
   }
 
   await window.api.skill.writeLocalFile(skillId, "SKILL.md", effectiveContent, {
@@ -722,6 +757,22 @@ async function syncRemoteRegistrySkillRepo(
     regSkill.source_url,
     regSkill.content_url,
   );
+  return null;
+}
+
+async function refreshInstalledContentHashFromSyncedSkill(
+  skillId: string,
+  syncedSkill: Skill | null | undefined,
+): Promise<Skill | null> {
+  const syncedContent = syncedSkill?.content ?? syncedSkill?.instructions;
+  if (typeof syncedContent !== "string" || !syncedContent.trim()) {
+    return syncedSkill ?? null;
+  }
+
+  const installedContentHash = await computeSkillContentHash(syncedContent);
+  return window.api.skill.update(skillId, {
+    installed_content_hash: installedContentHash,
+  });
 }
 
 async function runWithConcurrency<T>(
@@ -776,8 +827,17 @@ interface SkillState {
     string,
     {
       loadedAt: number;
+      currentCursor?: string | null;
+      cursorHistory?: Array<string | null>;
       error?: string | null;
+      matchedCount?: number;
+      nextCursor?: string | null;
+      pageCount?: number;
+      pageIndex?: number;
+      pageSize?: number;
+      query?: string;
       skills: RegistrySkill[];
+      totalCount?: number;
     }
   >;
 
@@ -882,7 +942,20 @@ interface SkillState {
   toggleCustomStoreSource: (id: string) => void;
   setRemoteStoreEntry: (
     sourceId: string,
-    entry: { loadedAt: number; error?: string | null; skills: RegistrySkill[] },
+    entry: {
+      loadedAt: number;
+      currentCursor?: string | null;
+      cursorHistory?: Array<string | null>;
+      error?: string | null;
+      matchedCount?: number;
+      nextCursor?: string | null;
+      pageCount?: number;
+      pageIndex?: number;
+      pageSize?: number;
+      query?: string;
+      skills: RegistrySkill[];
+      totalCount?: number;
+    },
   ) => void;
   getInstalledSlugs: () => string[];
   getRecommendedSkills: () => RegistrySkill[];
@@ -962,17 +1035,15 @@ async function applyRegistrySkillUpdateToInstalledSkill(
     return null;
   }
 
-  if (isLocalRegistrySkill(regSkill)) {
-    await syncLocalRegistrySkillRepo(installedSkill.id, regSkill);
-  } else {
-    await syncRemoteRegistrySkillRepo(
+  const syncedSkill = isLocalRegistrySkill(regSkill)
+    ? await syncLocalRegistrySkillRepo(installedSkill.id, regSkill)
+    : await syncRemoteRegistrySkillRepo(
       installedSkill.id,
       regSkill,
       check.remoteContent,
     );
-  }
 
-  return updatedSkill;
+  return syncedSkill ?? updatedSkill;
 }
 
 export const useSkillStore = create<SkillState>()(
@@ -1726,6 +1797,11 @@ export const useSkillStore = create<SkillState>()(
         if (!updatedSkill) {
           return null;
         }
+        set((state) => ({
+          skills: state.skills.map((skill) =>
+            skill.id === updatedSkill.id ? normalizeSkill(updatedSkill) : skill,
+          ),
+        }));
 
         return { status: "updated", skill: updatedSkill, check };
       },
@@ -1761,6 +1837,11 @@ export const useSkillStore = create<SkillState>()(
         if (!updatedSkill) {
           return null;
         }
+        set((state) => ({
+          skills: state.skills.map((skill) =>
+            skill.id === updatedSkill.id ? normalizeSkill(updatedSkill) : skill,
+          ),
+        }));
 
         return { status: "updated", skill: updatedSkill, check };
       },

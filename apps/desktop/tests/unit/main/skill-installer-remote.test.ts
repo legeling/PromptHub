@@ -21,10 +21,39 @@ vi.mock("dns/promises", () => ({
 import * as dns from "dns/promises";
 import {
   fetchRemoteText,
+  getRemoteFetchMaxBytes,
   resolvePublicAddress,
 } from "../../../src/main/services/skill-installer-remote";
 
+const REMOTE_FETCH_MAX_BYTES = 10 * 1024 * 1024;
+
 describe("skill-installer-remote", () => {
+  it("allows the issue 165 GitHub tree payload under the global byte cap", () => {
+    const issue165TreePayloadBytes = 6_329_653;
+    const githubRecursiveTreeUrl = new URL(
+      "https://api.github.com/repos/sickn33/antigravity-awesome-skills/git/trees/main?recursive=1",
+    );
+
+    expect(getRemoteFetchMaxBytes(githubRecursiveTreeUrl)).toBe(
+      REMOTE_FETCH_MAX_BYTES,
+    );
+    expect(issue165TreePayloadBytes).toBeLessThanOrEqual(
+      getRemoteFetchMaxBytes(githubRecursiveTreeUrl),
+    );
+  });
+
+  it.each([
+    "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/README.md",
+    "https://api.github.com/repos/sickn33/antigravity-awesome-skills",
+    "https://api.github.com/repos/sickn33/antigravity-awesome-skills/git/trees/main",
+    "https://api.github.com/repos/sickn33/antigravity-awesome-skills/git/trees/main?recursive=true",
+    "https://example.com/repos/sickn33/antigravity-awesome-skills/git/trees/main?recursive=1",
+  ])("uses the same global byte cap for remote content %s", (targetUrl) => {
+    expect(getRemoteFetchMaxBytes(new URL(targetUrl))).toBe(
+      REMOTE_FETCH_MAX_BYTES,
+    );
+  });
+
   it("allows trusted remote hosts when DNS is mapped to 198.18.x.x compatibility addresses", async () => {
     vi.mocked(dns.lookup).mockResolvedValueOnce([
       { address: "198.18.0.195", family: 4 },
@@ -43,6 +72,28 @@ describe("skill-installer-remote", () => {
     await expect(
       resolvePublicAddress("raw.githubusercontent.com"),
     ).resolves.toEqual({ address: "::ffff:0:c612:c3", family: 6 });
+  });
+
+  it("allows ClawHub as a trusted preconfigured store host", async () => {
+    vi.mocked(dns.lookup).mockResolvedValueOnce([
+      { address: "198.18.0.195", family: 4 },
+    ]);
+
+    await expect(resolvePublicAddress("clawhub.ai")).resolves.toEqual({
+      address: "198.18.0.195",
+      family: 4,
+    });
+  });
+
+  it("allows the www ClawHub host used by redirects or canonical URLs", async () => {
+    vi.mocked(dns.lookup).mockResolvedValueOnce([
+      { address: "198.18.0.196", family: 4 },
+    ]);
+
+    await expect(resolvePublicAddress("www.clawhub.ai")).resolves.toEqual({
+      address: "198.18.0.196",
+      family: 4,
+    });
   });
 
   it("still blocks untrusted hosts that resolve to 198.18.x.x", async () => {

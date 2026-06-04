@@ -114,6 +114,33 @@ describe("skill store update detection", () => {
     expect(status.remoteChanged).toBe(true);
   });
 
+  it("does not report local-modified when local content already matches the remote source despite a stale install baseline", async () => {
+    const staleInstalledHash = await computeSkillContentHash(
+      "# Writer\n\nCached store summary\n",
+    );
+    const currentRemoteContent = "# Writer\n\nCurrent package content\n";
+    const localSkill = createSkillFixture({
+      id: "skill-writer",
+      name: "writer",
+      registry_slug: "writer",
+      content_url: registrySkill.content_url,
+      content: currentRemoteContent,
+      instructions: currentRemoteContent,
+      installed_content_hash: staleInstalledHash,
+      installed_version: "1.0.0",
+    });
+
+    const status = await getRegistrySkillUpdateStatus(
+      localSkill,
+      registrySkill,
+      currentRemoteContent,
+    );
+
+    expect(status.status).toBe("up-to-date");
+    expect(status.localModified).toBe(false);
+    expect(status.remoteChanged).toBe(false);
+  });
+
   it("reports conflict when both local and remote content changed", async () => {
     const installedHash = await computeSkillContentHash("# Writer\n\nOriginal\n");
     const localSkill = createSkillFixture({

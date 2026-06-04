@@ -1111,6 +1111,53 @@ describe("SkillInstaller.copyRepoByPathToDirectory", () => {
     ).resolves.toBe("guide");
   });
 
+  it("copy mode dereferences a symlinked source directory", async () => {
+    const realSourceDir = path.join(tmpDir, "real-source-skill");
+    const linkedSourceDir = path.join(tmpDir, "linked-source-skill");
+    const targetRootDir = path.join(
+      tmpDir,
+      "project-linked-copy",
+      ".agents",
+      "skills",
+    );
+    await fs.mkdir(path.join(realSourceDir, "assets"), { recursive: true });
+    await fs.writeFile(
+      path.join(realSourceDir, "SKILL.md"),
+      "# real source",
+      "utf-8",
+    );
+    await fs.writeFile(
+      path.join(realSourceDir, "assets", "note.txt"),
+      "asset",
+      "utf-8",
+    );
+    await fs.symlink(realSourceDir, linkedSourceDir, "dir");
+
+    const targetDir = await SkillInstaller.copyRepoByPathToDirectory(
+      linkedSourceDir,
+      "demo-skill",
+      targetRootDir,
+      { mode: "copy" },
+    );
+
+    expect((await fs.lstat(targetDir)).isSymbolicLink()).toBe(false);
+    await expect(
+      fs.readFile(path.join(targetDir, "SKILL.md"), "utf-8"),
+    ).resolves.toBe("# real source");
+    await expect(
+      fs.readFile(path.join(targetDir, "assets", "note.txt"), "utf-8"),
+    ).resolves.toBe("asset");
+
+    await fs.writeFile(
+      path.join(realSourceDir, "SKILL.md"),
+      "# changed source",
+      "utf-8",
+    );
+    await expect(
+      fs.readFile(path.join(targetDir, "SKILL.md"), "utf-8"),
+    ).resolves.toBe("# real source");
+  });
+
   it("skips an existing project target when requested", async () => {
     const sourceDir = path.join(tmpDir, "source-skill-skip");
     const targetRootDir = path.join(
@@ -1363,6 +1410,113 @@ describe("SkillInstaller.init", () => {
     await SkillInstaller.init();
     // Call again — should not throw
     await expect(SkillInstaller.init()).resolves.toBeUndefined();
+  });
+});
+
+describe("SkillInstaller.saveToLocalRepo", () => {
+  it("copy mode dereferences a symlinked source directory", async () => {
+    const realSourceDir = path.join(tmpDir, "real-library-source");
+    const linkedSourceDir = path.join(tmpDir, "linked-library-source");
+    await fs.mkdir(path.join(realSourceDir, "assets"), { recursive: true });
+    await fs.writeFile(
+      path.join(realSourceDir, "SKILL.md"),
+      "# library source",
+      "utf-8",
+    );
+    await fs.writeFile(
+      path.join(realSourceDir, "assets", "example.txt"),
+      "example",
+      "utf-8",
+    );
+    await fs.symlink(realSourceDir, linkedSourceDir, "dir");
+
+    const repoDir = await SkillInstaller.saveToLocalRepo(
+      "library-copy",
+      linkedSourceDir,
+      "copy",
+    );
+
+    expect((await fs.lstat(repoDir)).isSymbolicLink()).toBe(false);
+    await expect(
+      fs.readFile(path.join(repoDir, "SKILL.md"), "utf-8"),
+    ).resolves.toBe("# library source");
+    await expect(
+      fs.readFile(path.join(repoDir, "assets", "example.txt"), "utf-8"),
+    ).resolves.toBe("example");
+
+    await fs.writeFile(
+      path.join(realSourceDir, "SKILL.md"),
+      "# changed library source",
+      "utf-8",
+    );
+    await expect(
+      fs.readFile(path.join(repoDir, "SKILL.md"), "utf-8"),
+    ).resolves.toBe("# library source");
+  });
+
+  it("materializes requested symlink mode inside data Skills", async () => {
+    const realSourceDir = path.join(tmpDir, "real-library-symlink-request");
+    await fs.mkdir(realSourceDir, { recursive: true });
+    await fs.writeFile(
+      path.join(realSourceDir, "SKILL.md"),
+      "# symlink request source",
+      "utf-8",
+    );
+
+    const repoDir = await SkillInstaller.saveToLocalRepo(
+      "library-symlink-request",
+      realSourceDir,
+      "symlink",
+    );
+
+    expect((await fs.lstat(repoDir)).isSymbolicLink()).toBe(false);
+    await expect(
+      fs.readFile(path.join(repoDir, "SKILL.md"), "utf-8"),
+    ).resolves.toBe("# symlink request source");
+
+    await fs.writeFile(
+      path.join(realSourceDir, "SKILL.md"),
+      "# changed after import",
+      "utf-8",
+    );
+    await expect(
+      fs.readFile(path.join(repoDir, "SKILL.md"), "utf-8"),
+    ).resolves.toBe("# symlink request source");
+  });
+
+  it("materializes legacy managed repo symlinks in place", async () => {
+    const externalSourceDir = path.join(tmpDir, "external-legacy-source");
+    const managedRepoDir = path.join(
+      managedSkillsDir(),
+      "legacy-linked",
+      "repo",
+    );
+    await fs.mkdir(externalSourceDir, { recursive: true });
+    await fs.mkdir(path.dirname(managedRepoDir), { recursive: true });
+    await fs.writeFile(
+      path.join(externalSourceDir, "SKILL.md"),
+      "# legacy linked source",
+      "utf-8",
+    );
+    await fs.symlink(externalSourceDir, managedRepoDir, "dir");
+
+    await expect(
+      SkillInstaller.materializeManagedRepoSymlink(managedRepoDir),
+    ).resolves.toBe(true);
+
+    expect((await fs.lstat(managedRepoDir)).isSymbolicLink()).toBe(false);
+    await expect(
+      fs.readFile(path.join(managedRepoDir, "SKILL.md"), "utf-8"),
+    ).resolves.toBe("# legacy linked source");
+
+    await fs.writeFile(
+      path.join(externalSourceDir, "SKILL.md"),
+      "# changed legacy source",
+      "utf-8",
+    );
+    await expect(
+      fs.readFile(path.join(managedRepoDir, "SKILL.md"), "utf-8"),
+    ).resolves.toBe("# legacy linked source");
   });
 });
 

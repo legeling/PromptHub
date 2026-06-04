@@ -11,6 +11,7 @@ const fsMocks = vi.hoisted(() => ({
   lstat: vi.fn(),
   rm: vi.fn(),
   symlink: vi.fn(),
+  rename: vi.fn(),
   readdir: vi.fn(),
   realpath: vi.fn(async (value: string) => value),
 }));
@@ -74,6 +75,7 @@ describe("skill-installer-repo variant container", () => {
     fsMocks.writeFile.mockResolvedValue(undefined);
     fsMocks.rm.mockResolvedValue(undefined);
     fsMocks.symlink.mockResolvedValue(undefined);
+    fsMocks.rename.mockResolvedValue(undefined);
   });
 
   it("stores managed repos inside a stable variant container", () => {
@@ -152,7 +154,7 @@ describe("skill-installer-repo variant container", () => {
     );
   });
 
-  it("keeps metadata in the container while symlinking only the repo directory", async () => {
+  it("materializes requested symlink mode inside the managed data repo", async () => {
     await saveToLocalRepoBySkillId(
       {
         id: "skill-1",
@@ -163,14 +165,18 @@ describe("skill-installer-repo variant container", () => {
       "symlink",
     );
 
-    expect(fsMocks.symlink).toHaveBeenCalledWith(
+    expect(fsMocks.symlink).not.toHaveBeenCalled();
+    expect(fsMocks.cp).toHaveBeenCalledWith(
       "/external/writer",
       "/prompthub/skills/writer--7dc211f6/repo",
-      "dir",
+      expect.objectContaining({
+        recursive: true,
+        filter: expect.any(Function),
+      }),
     );
     expect(fsMocks.writeFile).toHaveBeenCalledWith(
       "/prompthub/skills/writer--7dc211f6/.prompthub/variant.json",
-      expect.stringContaining('"repoMode": "symlink"'),
+      expect.stringContaining('"repoMode": "copy"'),
       "utf-8",
     );
   });

@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SkillStore } from "../../../src/renderer/components/skill/SkillStore";
@@ -2394,8 +2394,11 @@ tags: [clawhub]
       expect(screen.getByText("icelemon-skill")).toBeInTheDocument();
     });
 
+    const card = screen.getByText("icelemon-skill").closest(".group");
+    expect(card).not.toBeNull();
+
     await act(async () => {
-      fireEvent.click(screen.getByTitle("Import"));
+      fireEvent.click(within(card as HTMLElement).getByTitle("Import"));
     });
 
     expect(installRegistrySkill).toHaveBeenCalledWith(
@@ -2407,6 +2410,87 @@ tags: [clawhub]
     await act(async () => {
       resolveInstall({ id: "installed", name: "icelemon-skill" });
     });
+  });
+
+  it("labels quick-install package persistence errors as install failures", async () => {
+    const installRegistrySkill = vi
+      .fn()
+      .mockRejectedValue(new Error("SKILL.md not found in directory: skills/demo"));
+    const scanRemoteGithub = vi.fn().mockResolvedValue([
+      {
+        slug: "demo",
+        name: "demo",
+        install_name: "demo",
+        source_label: "icelemon/skills",
+        source_id: "source-demo",
+        description: "Demo scanned store skill",
+        category: "general",
+        author: "icelemon",
+        source_url: "https://gitea.example.com/icelemon/skills",
+        source_directory: "skills/demo",
+        canonical_skill_path: "skills/demo/SKILL.md",
+        tags: [],
+        version: "1.0.0",
+        content: "# Demo",
+        compatibility: ["claude"],
+      },
+    ]);
+
+    installWindowMocks({
+      api: {
+        skill: {
+          fetchRemoteContent: vi.fn(),
+          scanRemoteGithub,
+          scanLocalPreview: vi.fn().mockResolvedValue([]),
+          scanSafety: vi.fn().mockResolvedValue({
+            level: "safe",
+            summary: "safe",
+            findings: [],
+            recommendedAction: "allow",
+            scannedAt: Date.now(),
+            checkedFileCount: 1,
+            scanMethod: "ai",
+          }),
+        },
+      },
+    });
+
+    useSkillStore.setState({
+      installRegistrySkill,
+      customStoreSources: [
+        {
+          id: "gitea-error-repo",
+          name: "Gitea Error Repo",
+          type: "git-repo",
+          url: "https://gitea.example.com/icelemon/skills",
+          enabled: true,
+          createdAt: Date.now(),
+        },
+      ],
+      selectedStoreSourceId: "gitea-error-repo",
+    } as never);
+
+    await renderWithI18n(<SkillStore />, { language: "en" });
+
+    await waitFor(() => {
+      expect(screen.getByText("demo")).toBeInTheDocument();
+    });
+
+    const card = screen.getByText("demo").closest(".group");
+    expect(card).not.toBeNull();
+
+    await act(async () => {
+      fireEvent.click(within(card as HTMLElement).getByTitle("Import"));
+    });
+
+    expect(showToast).toHaveBeenCalledWith(
+      expect.stringContaining("Install failed"),
+      "error",
+    );
+    expect(showToast).not.toHaveBeenCalledWith(
+      expect.stringContaining("Safety scan failed"),
+      "error",
+    );
   });
 
   it("keeps imported state after refreshing a self-hosted git source", async () => {
@@ -3223,6 +3307,60 @@ tags: [clawhub]
 
     fireEvent.click(screen.getByRole("button", { name: "View detail" }));
     expect(useSkillStore.getState().selectedRegistrySlug).toBe("source-alpha");
+  });
+
+  it("toggles select visible back to deselect visible in store batch mode", async () => {
+    installWindowMocks({
+      api: {
+        settings: {
+          get: vi.fn().mockResolvedValue({
+            device: { storeAutoSync: false, storeSyncCadence: "1d" },
+          }),
+        },
+        skill: {
+          fetchRemoteContent: vi.fn().mockResolvedValue(""),
+          scanLocalPreview: vi.fn().mockResolvedValue([]),
+          scanSafety: vi.fn().mockResolvedValue({
+            level: "safe",
+            summary: "safe",
+            findings: [],
+            recommendedAction: "allow",
+            scannedAt: Date.now(),
+            checkedFileCount: 1,
+            scanMethod: "ai",
+          }),
+        },
+      },
+    });
+
+    useSkillStore.setState({
+      selectedStoreSourceId: "claude-code",
+      remoteStoreEntries: {
+        "claude-code": {
+          loadedAt: Date.now(),
+          skills: [makeRegistrySkill("alpha"), makeRegistrySkill("beta")],
+        },
+      },
+    } as never);
+
+    await renderWithI18n(<SkillStore />, { language: "en" });
+    await screen.findByText("Beta");
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Batch manage store" }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Select visible store skills" }),
+    );
+    expect(screen.getByText("2 selected")).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Deselect visible store skills" }),
+    );
+    expect(screen.getByText("0 selected")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Install selected" }),
+    ).toBeDisabled();
   });
 
   it("batch installs only selected store skills that are not already imported", async () => {

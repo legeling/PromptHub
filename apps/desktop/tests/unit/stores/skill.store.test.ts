@@ -1197,6 +1197,81 @@ description: Use this skill for PDF tasks.
     );
   });
 
+  it("marks a cloned custom Git install as pristine after repo sync changes the content baseline", async () => {
+    const cachedContent = "# Writer\n\nCached registry content.\n";
+    const repoContent = "# Writer\n\nContent from cloned repo.\n";
+    const cachedHash = await useSkillStore
+      .getState()
+      .computeRegistrySkillHash(cachedContent);
+    const repoHash = await useSkillStore
+      .getState()
+      .computeRegistrySkillHash(repoContent);
+    const create = vi.fn().mockResolvedValue(
+      createSkillFixture({
+        id: "skill-gitea-writer",
+        name: "writer",
+        source_id: "source-gitea-writer",
+        registry_slug: "writer",
+        content: cachedContent,
+        instructions: cachedContent,
+        installed_content_hash: cachedHash,
+      }),
+    );
+    const syncedSkill = createSkillFixture({
+      id: "skill-gitea-writer",
+      name: "writer",
+      source_id: "source-gitea-writer",
+      registry_slug: "writer",
+      content: repoContent,
+      instructions: repoContent,
+      installed_content_hash: cachedHash,
+      local_repo_path: "/managed/writer/repo",
+    });
+    const update = vi.fn().mockImplementation(async (_id, data) => ({
+      ...syncedSkill,
+      ...data,
+    }));
+
+    (window as any).api.skill.create = create;
+    (window as any).api.skill.getAll = vi.fn().mockResolvedValue([
+      {
+        ...syncedSkill,
+        installed_content_hash: repoHash,
+      },
+    ]);
+    (window as any).api.skill.update = update;
+    (window as any).api.skill.saveRemoteGitToRepo = vi
+      .fn()
+      .mockResolvedValue("/managed/writer/repo");
+    (window as any).api.skill.syncFromRepo = vi
+      .fn()
+      .mockResolvedValue(syncedSkill);
+
+    await useSkillStore.getState().installRegistrySkill({
+      slug: "writer",
+      source_id: "source-gitea-writer",
+      name: "Writer",
+      description: "Custom Gitea writer",
+      category: "general",
+      author: "icelemon",
+      source_url: "https://gitea.example.com/team/skills",
+      source_branch: "main",
+      source_directory: "skills/writer",
+      canonical_skill_path: "skills/writer/SKILL.md",
+      directory_fingerprint: "full-tree-fingerprint",
+      tags: ["writing"],
+      version: "1.0.0",
+      content: cachedContent,
+    });
+
+    expect(update).toHaveBeenCalledWith(
+      "skill-gitea-writer",
+      expect.objectContaining({
+        installed_content_hash: repoHash,
+      }),
+    );
+  });
+
   it("derives the package directory from canonical_skill_path when source_directory is absent", async () => {
     const create = vi.fn().mockResolvedValue(
       createSkillFixture({
@@ -1290,6 +1365,184 @@ description: Use this skill for PDF tasks.
       { skipVersionSnapshot: true },
     );
     expect(saveRemoteGitToRepo).not.toHaveBeenCalled();
+  });
+
+  it("installs skills.sh skills by cloning the package directory instead of writing only SKILL.md", async () => {
+    const create = vi.fn().mockResolvedValue(
+      createSkillFixture({
+        id: "skill-write-a-skill",
+        name: "write-a-skill",
+        source_id: "skills-sh-write-a-skill",
+        registry_slug: "mattpocock-skills-write-a-skill",
+      }),
+    );
+    const writeLocalFile = vi.fn().mockResolvedValue(undefined);
+    const saveRemoteGitToRepo = vi
+      .fn()
+      .mockResolvedValue("/managed/write-a-skill/repo");
+    const syncFromRepo = vi.fn().mockResolvedValue(
+      createSkillFixture({
+        id: "skill-write-a-skill",
+        name: "write-a-skill",
+        local_repo_path: "/managed/write-a-skill/repo",
+      }),
+    );
+
+    (window as any).api.skill.create = create;
+    (window as any).api.skill.getAll = vi.fn().mockResolvedValue([]);
+    (window as any).api.skill.writeLocalFile = writeLocalFile;
+    (window as any).api.skill.saveRemoteGitToRepo = saveRemoteGitToRepo;
+    (window as any).api.skill.syncFromRepo = syncFromRepo;
+
+    await useSkillStore.getState().installRegistrySkill({
+      slug: "mattpocock-skills-write-a-skill",
+      source_id: "skills-sh-write-a-skill",
+      name: "Write A Skill",
+      install_name: "write-a-skill",
+      description: "Scaffold new agent skills.",
+      category: "dev",
+      author: "mattpocock",
+      source_url: "https://github.com/mattpocock/skills",
+      store_url: "https://skills.sh/mattpocock/skills/write-a-skill",
+      source_directory: "skills/write-a-skill",
+      canonical_skill_path: "skills/write-a-skill/SKILL.md",
+      tags: ["skills"],
+      version: "1.0.0",
+      content: "# Write A Skill\n\nScaffold new agent skills.\n",
+    });
+
+    expect(saveRemoteGitToRepo).toHaveBeenCalledWith(
+      "skill-write-a-skill",
+      {
+        repoUrl: "https://github.com/mattpocock/skills",
+        branch: undefined,
+        directory: "skills/write-a-skill",
+      },
+    );
+    expect(syncFromRepo).toHaveBeenCalledWith("skill-write-a-skill");
+    expect(writeLocalFile).not.toHaveBeenCalledWith(
+      "skill-write-a-skill",
+      "SKILL.md",
+      expect.any(String),
+      expect.anything(),
+    );
+  });
+
+  it("lets the main process locate skills.sh packages for non-standard repo layouts", async () => {
+    const create = vi.fn().mockResolvedValue(
+      createSkillFixture({
+        id: "skill-vercel-react",
+        name: "vercel-react-best-practices",
+        source_id: "skills-sh-vercel-react",
+        registry_slug:
+          "vercel-labs-agent-skills-vercel-react-best-practices",
+      }),
+    );
+    const writeLocalFile = vi.fn().mockResolvedValue(undefined);
+    const saveRemoteGitToRepo = vi
+      .fn()
+      .mockResolvedValue("/managed/vercel-react/repo");
+    const syncFromRepo = vi.fn().mockResolvedValue(
+      createSkillFixture({
+        id: "skill-vercel-react",
+        name: "vercel-react-best-practices",
+        local_repo_path: "/managed/vercel-react/repo",
+      }),
+    );
+
+    (window as any).api.skill.create = create;
+    (window as any).api.skill.getAll = vi.fn().mockResolvedValue([]);
+    (window as any).api.skill.writeLocalFile = writeLocalFile;
+    (window as any).api.skill.saveRemoteGitToRepo = saveRemoteGitToRepo;
+    (window as any).api.skill.syncFromRepo = syncFromRepo;
+
+    await useSkillStore.getState().installRegistrySkill({
+      slug: "vercel-labs-agent-skills-vercel-react-best-practices",
+      source_id: "skills-sh-vercel-react",
+      name: "vercel-react-best-practices",
+      install_name: "vercel-react-best-practices",
+      description: "Review React apps against Vercel guidance.",
+      category: "general",
+      author: "vercel-labs",
+      source_url: "https://github.com/vercel-labs/agent-skills",
+      store_url:
+        "https://skills.sh/vercel-labs/agent-skills/vercel-react-best-practices",
+      tags: ["react"],
+      version: "1.0.0",
+      content: "# React Best Practices\n\nReview React apps.\n",
+    });
+
+    expect(saveRemoteGitToRepo).toHaveBeenCalledWith("skill-vercel-react", {
+      repoUrl: "https://github.com/vercel-labs/agent-skills",
+      branch: undefined,
+      directory: undefined,
+    });
+    expect(syncFromRepo).toHaveBeenCalledWith("skill-vercel-react");
+    expect(writeLocalFile).not.toHaveBeenCalledWith(
+      "skill-vercel-react",
+      "SKILL.md",
+      expect.any(String),
+      expect.anything(),
+    );
+  });
+
+  it("installs ClawHub skills from the package download zip instead of only writing SKILL.md", async () => {
+    const create = vi.fn().mockResolvedValue(
+      createSkillFixture({
+        id: "skill-gifgrep",
+        name: "gifgrep",
+        source_id: "clawhub-gifgrep",
+        registry_slug: "clawhub-gifgrep",
+      }),
+    );
+    const writeLocalFile = vi.fn().mockResolvedValue(undefined);
+    const saveRemoteZipToRepo = vi
+      .fn()
+      .mockResolvedValue("/managed/gifgrep/repo");
+    const syncFromRepo = vi.fn().mockResolvedValue(
+      createSkillFixture({
+        id: "skill-gifgrep",
+        name: "gifgrep",
+        local_repo_path: "/managed/gifgrep/repo",
+      }),
+    );
+
+    (window as any).api.skill.create = create;
+    (window as any).api.skill.getAll = vi.fn().mockResolvedValue([]);
+    (window as any).api.skill.writeLocalFile = writeLocalFile;
+    (window as any).api.skill.saveRemoteZipToRepo = saveRemoteZipToRepo;
+    (window as any).api.skill.syncFromRepo = syncFromRepo;
+
+    await useSkillStore.getState().installRegistrySkill({
+      slug: "clawhub-gifgrep",
+      source_id: "clawhub-gifgrep",
+      name: "GifGrep",
+      install_name: "gifgrep",
+      description: "Search GIF providers.",
+      category: "general",
+      author: "clawhub",
+      source_url: "https://clawhub.ai/clawhub/gifgrep",
+      source_label: "ClawHub",
+      store_url: "https://clawhub.ai/clawhub/gifgrep",
+      canonical_skill_path: "SKILL.md",
+      tags: ["gif"],
+      version: "1.0.1",
+      content: "# GifGrep\n",
+      content_url:
+        "https://clawhub.ai/api/v1/skills/gifgrep/file?path=SKILL.md",
+      package_url: "https://clawhub.ai/api/v1/download?slug=gifgrep",
+    });
+
+    expect(saveRemoteZipToRepo).toHaveBeenCalledWith("skill-gifgrep", {
+      zipUrl: "https://clawhub.ai/api/v1/download?slug=gifgrep",
+    });
+    expect(syncFromRepo).toHaveBeenCalledWith("skill-gifgrep");
+    expect(writeLocalFile).not.toHaveBeenCalledWith(
+      "skill-gifgrep",
+      "SKILL.md",
+      expect.any(String),
+      expect.anything(),
+    );
   });
 
   it("rolls back a created package skill when remote package persistence fails", async () => {

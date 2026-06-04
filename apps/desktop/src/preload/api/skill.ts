@@ -155,6 +155,17 @@ export const skillApi = {
       skillId,
       options,
     ),
+  saveRemoteZipToRepo: (
+    skillId: string,
+    options: {
+      zipUrl: string;
+    },
+  ) =>
+    ipcRenderer.invoke(
+      IPC_CHANNELS.SKILL_SAVE_REMOTE_ZIP_TO_REPO,
+      skillId,
+      options,
+    ),
   listLocalFiles: (skillId: string): Promise<SkillLocalFileTreeEntry[]> =>
     ipcRenderer.invoke(IPC_CHANNELS.SKILL_LIST_LOCAL_FILES, skillId),
   readLocalFile: (

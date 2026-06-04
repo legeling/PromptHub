@@ -32,6 +32,7 @@ import {
   buildSkillSourceId,
   computeDirectoryFingerprint,
   computeDirectoryFingerprintFromHashes,
+  shouldIgnoreSkillDirectoryEntry,
 } from "@prompthub/shared/utils/skill-identity";
 import { installSkillFromSource } from "../../../../../packages/core/src/skills/install-flow";
 import { initDatabase } from "@/main/database";
@@ -75,6 +76,14 @@ function toTitleCase(value: string): string {
   return value
     .replace(/[-_]+/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function normalizeSkillLookupValue(value: string | null | undefined): string {
+  return (value || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 function encodePathSegments(value: string): string {
@@ -278,6 +287,7 @@ import {
   isManagedRepoPath,
   listLocalRepoFiles,
   listLocalRepoFilesByPath,
+  materializeManagedRepoSymlink,
   readLocalRepoFile,
   readLocalRepoFileByPath,
   readLocalRepoFileBuffersByPath,
@@ -367,6 +377,7 @@ export class SkillInstaller {
   static getPreferredLocalRepoContainerPathForSkill =
     getPreferredLocalRepoContainerPathForSkill;
   static getPreferredLocalRepoPathForSkill = getPreferredLocalRepoPathForSkill;
+  static materializeManagedRepoSymlink = materializeManagedRepoSymlink;
   static renameManagedLocalRepo = renameManagedLocalRepo;
   static deleteLocalRepo = deleteLocalRepo;
   static deleteManagedVariantContainer = deleteManagedVariantContainer;
@@ -904,9 +915,80 @@ export class SkillInstaller {
         }
         skillDir = candidateDir;
       } else {
-        skillDir = await this.resolveSingleSkillDirFromRepo(repoDir);
+        skillDir = await this.resolveSkillDirFromRepo(repoDir, skill);
       }
 
+      return await saveToLocalRepoBySkillId(skill, skillDir, "copy");
+    } finally {
+      await fs.rm(tempRoot, { recursive: true, force: true }).catch(() => {});
+    }
+  }
+
+  static async saveRemoteZipSkillToLocalRepoBySkillId(
+    skill: Pick<
+      Skill,
+      | "id"
+      | "name"
+      | "source_id"
+      | "source_url"
+      | "source_directory"
+      | "directory_fingerprint"
+      | "logical_name"
+      | "variant_key"
+    >,
+    options: {
+      zipUrl: string;
+    },
+  ): Promise<string> {
+    await this.init();
+
+    const zipUrl = options.zipUrl?.trim();
+    if (!zipUrl) {
+      throw new Error("Remote skill package URL is required");
+    }
+
+    const tempRoot = await fs.mkdtemp(path.join(this.skillsDir, ".remote-zip-"));
+    const extractDir = path.join(tempRoot, "package");
+
+    try {
+      const { unzipSync } = await import("fflate");
+      const archiveBytes = await this.fetchRemoteBytes(zipUrl);
+      const files = unzipSync(archiveBytes);
+      await fs.mkdir(extractDir, { recursive: true });
+
+      for (const [rawPath, content] of Object.entries(files)) {
+        const normalizedEntryPath = rawPath.replace(/\\/g, "/");
+        const entryParts = normalizedEntryPath.split("/").filter(Boolean);
+        if (
+          path.isAbsolute(normalizedEntryPath) ||
+          entryParts.some((part) => part === "..")
+        ) {
+          throw new Error(
+            "Path traversal detected: zip entry is outside package directory",
+          );
+        }
+
+        const relativePath = normalizedEntryPath.replace(/^\/+/g, "");
+        if (
+          !relativePath ||
+          relativePath.endsWith("/") ||
+          shouldIgnoreSkillDirectoryEntry(relativePath)
+        ) {
+          continue;
+        }
+
+        const targetPath = path.resolve(extractDir, relativePath);
+        if (!isPathWithin(extractDir, targetPath)) {
+          throw new Error(
+            "Path traversal detected: zip entry is outside package directory",
+          );
+        }
+
+        await fs.mkdir(path.dirname(targetPath), { recursive: true });
+        await fs.writeFile(targetPath, content);
+      }
+
+      const skillDir = await this.resolveSkillDirFromRepo(extractDir, skill);
       return await saveToLocalRepoBySkillId(skill, skillDir, "copy");
     } finally {
       await fs.rm(tempRoot, { recursive: true, force: true }).catch(() => {});
@@ -1047,6 +1129,53 @@ export class SkillInstaller {
     }
 
     return skillDirs[0];
+  }
+
+  private static async resolveSkillDirFromRepo(
+    repoDir: string,
+    skill: Pick<Skill, "name" | "logical_name" | "variant_key">,
+  ): Promise<string> {
+    const skillDirs = await this.collectSkillDirs(repoDir);
+
+    if (skillDirs.length <= 1) {
+      return this.resolveSingleSkillDirFromRepo(repoDir);
+    }
+
+    const targetNames = new Set(
+      [skill.name, skill.logical_name, skill.variant_key]
+        .map(normalizeSkillLookupValue)
+        .filter(Boolean),
+    );
+    const matches: string[] = [];
+
+    for (const skillDir of skillDirs) {
+      const skillMdPath = path.join(skillDir, "SKILL.md");
+      const content = await fs.readFile(skillMdPath, "utf-8").catch(() => "");
+      const parsedName = parseSkillMd(content)?.frontmatter.name;
+      const candidateNames = [
+        parsedName,
+        path.basename(skillDir),
+        path.basename(path.dirname(skillDir)),
+      ].map(normalizeSkillLookupValue);
+
+      if (candidateNames.some((name) => targetNames.has(name))) {
+        matches.push(skillDir);
+      }
+    }
+
+    if (matches.length === 1) {
+      return matches[0];
+    }
+
+    if (matches.length > 1) {
+      throw new Error(
+        `Repository contains multiple skills matching "${skill.name}". Specify a skill directory.`,
+      );
+    }
+
+    throw new Error(
+      `Repository contains multiple skills, but none matches "${skill.name}". Specify a skill directory.`,
+    );
   }
 
   static async scanRemoteGithub(

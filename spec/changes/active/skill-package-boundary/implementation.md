@@ -109,6 +109,18 @@ Read:
 - Type check:
   - `pnpm --filter @prompthub/desktop typecheck`
   - Passed.
+- Public store package fidelity regression:
+  - `pnpm test:run tests/unit/stores/skill.store.test.ts tests/unit/services/skills-sh-store.test.ts tests/unit/services/clawhub-store.test.ts tests/unit/main/skill-local-repo-ipc.test.ts tests/unit/main/skill-installer-remote-git-package.test.ts` from `apps/desktop`
+  - Passed: 5 files, 88 tests.
+- Non-standard `skills.sh` repo regression:
+  - `pnpm --filter @prompthub/desktop test:run tests/unit/services/skills-sh-store.test.ts tests/unit/stores/skill.store.test.ts tests/unit/main/skill-installer-remote-git-package.test.ts tests/unit/components/skill-store-remote.test.tsx`
+  - Passed: 4 files, 122 tests.
+- Source update stale-baseline and detail layout regression:
+  - `pnpm --filter @prompthub/desktop test:run tests/unit/services/skill-store-update.test.ts tests/unit/components/skill-i18n-smoke.test.tsx`
+  - Passed: 2 files, 31 tests.
+- Store update-check regression:
+  - `pnpm --filter @prompthub/desktop test:run tests/unit/stores/skill.store.test.ts`
+  - Passed: 1 file, 52 tests.
 
 Regression coverage added:
 
@@ -135,6 +147,18 @@ Regression coverage added:
 - Added TopBar regression coverage that remote store catalog search still works while official unopened registry skills are not searchable.
 - Added Skill list regression coverage that an already-rendered row refreshes stale platform install state after a later status read.
 - Added Skill file browser regression coverage that nested synthetic folders from package paths can be expanded to reveal files.
+- Added `skills.sh` package metadata so parsed entries install from the upstream GitHub `skills/<skill-name>` directory instead of only writing the parsed `SKILL.md`.
+- Corrected `skills.sh` package metadata for non-standard repositories:
+  - Repositories literally named `skills` still pass `skills/<skill-name>` as the package directory.
+  - Other repositories such as `vercel-labs/agent-skills` no longer guess `skills/<skill-name>` because the public skill name can differ from the folder name.
+  - Main-process remote Git install now resolves omitted package directories by scanning cloned `SKILL.md` files and matching target skill name / logical name / variant key against frontmatter name and directory names.
+  - Ambiguous or unmatched multi-skill repositories still fail and roll back rather than falling back to a single cached `SKILL.md`.
+- Fixed store quick-install error copy so package persistence failures are shown as install failures, not safety scan failures.
+- Fixed source update checks for package-installed Skills where the stored install baseline hash can be stale after zip/Git package sync: when local `SKILL.md` content already matches current remote content, update status is now `up-to-date` rather than `local-modified`.
+- Adjusted Skill detail right-column layout so the personal notes title is outside the notes card, matching the surrounding section title hierarchy.
+- Added ClawHub package metadata so parsed entries install from the official zip download URL.
+- Added `skill:saveRemoteZipToRepo` IPC/preload/main-service support, including zip extraction, path traversal rejection, ignored-file filtering, managed repo persistence, fingerprint update, and temp directory cleanup.
+- Added marketplace-json `package_url` / `zip_url` / `download_url` support for third-party registries that expose a full package archive.
 
 ## Docs Synced
 

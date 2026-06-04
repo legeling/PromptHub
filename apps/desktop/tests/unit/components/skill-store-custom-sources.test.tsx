@@ -43,7 +43,9 @@ describe("SkillStore custom sources", () => {
     installWindowMocks({
       api: {
         skill: {
-          fetchRemoteContent: vi.fn().mockResolvedValue(JSON.stringify({ skills: [] })),
+          fetchRemoteContent: vi
+            .fn()
+            .mockResolvedValue(JSON.stringify({ skills: [] })),
           listRemoteBranches: vi.fn().mockResolvedValue(["main", "release"]),
           scanLocalPreview: vi.fn().mockResolvedValue([]),
           scanSafety: vi.fn().mockResolvedValue({
@@ -108,7 +110,9 @@ describe("SkillStore custom sources", () => {
     installWindowMocks({
       api: {
         skill: {
-          fetchRemoteContent: vi.fn().mockResolvedValue(JSON.stringify({ skills: [] })),
+          fetchRemoteContent: vi
+            .fn()
+            .mockResolvedValue(JSON.stringify({ skills: [] })),
           listRemoteBranches,
           scanLocalPreview: vi.fn().mockResolvedValue([]),
           scanSafety: vi.fn().mockResolvedValue({
@@ -132,14 +136,11 @@ describe("SkillStore custom sources", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Git Repository/i }));
 
-    fireEvent.change(
-      screen.getByPlaceholderText("Store URL / manifest URL"),
-      {
-        target: {
-          value: "https://github.com/anthropics/skills/tree/main/skills/.curated",
-        },
+    fireEvent.change(screen.getByPlaceholderText("Store URL / manifest URL"), {
+      target: {
+        value: "https://github.com/anthropics/skills/tree/main/skills/.curated",
       },
-    );
+    });
 
     await waitFor(() => {
       expect(listRemoteBranches).toHaveBeenCalledWith(
@@ -149,27 +150,31 @@ describe("SkillStore custom sources", () => {
   });
 
   it("keeps main visible in branch suggestions when many branches exist", async () => {
-    const listRemoteBranches = vi.fn().mockResolvedValue([
-      "andibrae/create-top-level-namespace",
-      "klazuka/add-3p-notices",
-      "klazuka/add-cc-instructions",
-      "klazuka/add-cc-marketplace",
-      "klazuka/doc-skills",
-      "klazuka/export",
-      "klazuka/export-20260203",
-      "klazuka/frontend-design-skill",
-      "klazuka/pptx-cleanup",
-      "klazuka/spec",
-      "mahesh/add-to-readme",
-      "mahesh/clarify-claude-code-install",
-      "main",
-      "mattpic-ant/blog-small-fix",
-    ]);
+    const listRemoteBranches = vi
+      .fn()
+      .mockResolvedValue([
+        "andibrae/create-top-level-namespace",
+        "klazuka/add-3p-notices",
+        "klazuka/add-cc-instructions",
+        "klazuka/add-cc-marketplace",
+        "klazuka/doc-skills",
+        "klazuka/export",
+        "klazuka/export-20260203",
+        "klazuka/frontend-design-skill",
+        "klazuka/pptx-cleanup",
+        "klazuka/spec",
+        "mahesh/add-to-readme",
+        "mahesh/clarify-claude-code-install",
+        "main",
+        "mattpic-ant/blog-small-fix",
+      ]);
 
     installWindowMocks({
       api: {
         skill: {
-          fetchRemoteContent: vi.fn().mockResolvedValue(JSON.stringify({ skills: [] })),
+          fetchRemoteContent: vi
+            .fn()
+            .mockResolvedValue(JSON.stringify({ skills: [] })),
           listRemoteBranches,
           scanLocalPreview: vi.fn().mockResolvedValue([]),
           scanSafety: vi.fn().mockResolvedValue({
@@ -207,7 +212,9 @@ describe("SkillStore custom sources", () => {
     installWindowMocks({
       api: {
         skill: {
-          fetchRemoteContent: vi.fn().mockResolvedValue(JSON.stringify({ skills: [] })),
+          fetchRemoteContent: vi
+            .fn()
+            .mockResolvedValue(JSON.stringify({ skills: [] })),
           listRemoteBranches,
           scanLocalPreview: vi.fn().mockResolvedValue([]),
           scanSafety: vi.fn().mockResolvedValue({
@@ -250,7 +257,9 @@ describe("SkillStore custom sources", () => {
     installWindowMocks({
       api: {
         skill: {
-          fetchRemoteContent: vi.fn().mockResolvedValue(JSON.stringify({ skills: [] })),
+          fetchRemoteContent: vi
+            .fn()
+            .mockResolvedValue(JSON.stringify({ skills: [] })),
           listRemoteBranches,
           scanLocalPreview: vi.fn().mockResolvedValue([]),
           scanSafety: vi.fn().mockResolvedValue({
@@ -293,7 +302,9 @@ describe("SkillStore custom sources", () => {
     installWindowMocks({
       api: {
         skill: {
-          fetchRemoteContent: vi.fn().mockResolvedValue(JSON.stringify({ skills: [] })),
+          fetchRemoteContent: vi
+            .fn()
+            .mockResolvedValue(JSON.stringify({ skills: [] })),
           scanLocalPreview: vi.fn().mockResolvedValue([]),
           scanSafety: vi.fn().mockResolvedValue({
             level: "safe",
@@ -328,20 +339,34 @@ describe("SkillStore custom sources", () => {
       await renderWithI18n(<SkillStore />, { language: "en" });
     });
 
-    expect(screen.queryByRole("button", { name: "Disable" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Disable" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Delete" }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText("Enabled")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
-    expect(screen.getByText("No skills in this custom store yet")).toBeInTheDocument();
+    expect(
+      screen.getByText("No skills in this custom store yet"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("No skills found")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Try a different search or category"),
+    ).not.toBeInTheDocument();
     expect(screen.queryAllByText("Docs Store")).toHaveLength(1);
-    expect(screen.queryByPlaceholderText("Search skills...")).not.toBeInTheDocument();
+    expect(
+      screen.queryByPlaceholderText("Search skills..."),
+    ).not.toBeInTheDocument();
   });
 
-  it("renders the empty search state without crashing", async () => {
+  it("renders one custom store empty state even when a search query is active", async () => {
     installWindowMocks({
       api: {
         skill: {
-          fetchRemoteContent: vi.fn().mockResolvedValue(JSON.stringify({ skills: [] })),
+          fetchRemoteContent: vi
+            .fn()
+            .mockResolvedValue(JSON.stringify({ skills: [] })),
           scanLocalPreview: vi.fn().mockResolvedValue([]),
           scanSafety: vi.fn().mockResolvedValue({
             level: "safe",
@@ -384,10 +409,13 @@ describe("SkillStore custom sources", () => {
       await renderWithI18n(<SkillStore />, { language: "en" });
     });
 
-    expect(screen.getByText("No skills found")).toBeInTheDocument();
     expect(
-      screen.getByText("Try a different search or category"),
+      screen.getByText("No skills in this custom store yet"),
     ).toBeInTheDocument();
+    expect(screen.queryByText("No skills found")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Try a different search or category"),
+    ).not.toBeInTheDocument();
   });
 
   it("refreshes a local directory source from the latest SKILL.md on disk", async () => {
@@ -423,7 +451,9 @@ describe("SkillStore custom sources", () => {
     installWindowMocks({
       api: {
         skill: {
-          fetchRemoteContent: vi.fn().mockResolvedValue(JSON.stringify({ skills: [] })),
+          fetchRemoteContent: vi
+            .fn()
+            .mockResolvedValue(JSON.stringify({ skills: [] })),
           scanLocalPreview,
           scanSafety: vi.fn().mockResolvedValue({
             level: "safe",
@@ -460,7 +490,8 @@ describe("SkillStore custom sources", () => {
 
     await waitFor(() => {
       expect(
-        useSkillStore.getState().remoteStoreEntries["custom-local"]?.skills[0]?.content,
+        useSkillStore.getState().remoteStoreEntries["custom-local"]?.skills[0]
+          ?.content,
       ).toContain("Old content");
     });
 
@@ -470,11 +501,13 @@ describe("SkillStore custom sources", () => {
 
     await waitFor(() => {
       expect(
-        useSkillStore.getState().remoteStoreEntries["custom-local"]?.skills[0]?.content,
+        useSkillStore.getState().remoteStoreEntries["custom-local"]?.skills[0]
+          ?.content,
       ).toContain("New content");
     });
     expect(
-      useSkillStore.getState().remoteStoreEntries["custom-local"]?.skills[0]?.content,
+      useSkillStore.getState().remoteStoreEntries["custom-local"]?.skills[0]
+        ?.content,
     ).not.toContain("Old content");
     expect(scanLocalPreview).toHaveBeenNthCalledWith(
       1,

@@ -63,6 +63,11 @@ function buildSkillHaystack(skill: RegistrySkill): string {
   pushIfString(skill.slug);
   pushIfString(skill.description);
   pushIfString(skill.author);
+  pushIfString(skill.source_label);
+  pushIfString(skill.source_url);
+  pushIfString(skill.store_url);
+  pushIfString(skill.content_url);
+  pushIfString(skill.canonical_skill_path);
   if (Array.isArray(skill.tags)) {
     for (const tag of skill.tags) {
       pushIfString(tag);

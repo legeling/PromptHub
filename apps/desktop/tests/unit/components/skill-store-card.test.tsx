@@ -219,11 +219,20 @@ describe("SkillStoreCard", () => {
       name: "Unselect store skill",
     });
     expect(selectButton).toHaveAttribute("aria-pressed", "true");
+    expect(selectButton.className).toContain("h-6");
+    expect(selectButton.className).toContain("w-6");
+    expect(selectButton.className).toContain("rounded-lg");
+    expect(selectButton.className).toContain("bg-primary");
     fireEvent.click(selectButton);
     expect(onClick).toHaveBeenCalledTimes(1);
     expect(onQuickInstall).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole("button", { name: "View detail" }));
+    const detailButton = screen.getByRole("button", { name: "View detail" });
+    expect(detailButton.className).toContain("h-7");
+    expect(detailButton.className).toContain("w-7");
+    expect(detailButton.className).toContain("rounded-lg");
+    expect(detailButton.className).toContain("bg-card");
+    fireEvent.click(detailButton);
     expect(onOpenDetail).toHaveBeenCalledTimes(1);
     expect(onOpenDetail.mock.calls[0][0]).toBe(skill);
   });

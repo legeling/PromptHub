@@ -4,6 +4,9 @@ const handleMock = vi.fn();
 const saveRemoteGitSkillToLocalRepoBySkillIdMock = vi
   .fn()
   .mockResolvedValue("/managed/writer/repo");
+const saveRemoteZipSkillToLocalRepoBySkillIdMock = vi
+  .fn()
+  .mockResolvedValue("/managed/zip-skill/repo");
 const computeRepoDirectoryFingerprintMock = vi
   .fn()
   .mockResolvedValue("fingerprint-after-copy");
@@ -22,6 +25,8 @@ vi.mock("../../../src/main/services/skill-installer", () => ({
   SkillInstaller: {
     saveRemoteGitSkillToLocalRepoBySkillId:
       saveRemoteGitSkillToLocalRepoBySkillIdMock,
+    saveRemoteZipSkillToLocalRepoBySkillId:
+      saveRemoteZipSkillToLocalRepoBySkillIdMock,
     listLocalRepoFilesByPath: vi.fn().mockResolvedValue([]),
     readLocalRepoFileByPath: vi.fn().mockResolvedValue(null),
     readLocalRepoFilesByPath: vi.fn().mockResolvedValue([]),
@@ -30,6 +35,7 @@ vi.mock("../../../src/main/services/skill-installer", () => ({
     deleteLocalRepoFileByPath: deleteLocalRepoFileByPathMock,
     createLocalRepoDirByPath: createLocalRepoDirByPathMock,
     isManagedRepoPath: vi.fn().mockResolvedValue(true),
+    materializeManagedRepoSymlink: vi.fn().mockResolvedValue(undefined),
     getPreferredLocalRepoPathForSkill: vi.fn(
       (skill: { id: string }) => `/managed/${skill.id}/repo`,
     ),
@@ -63,6 +69,7 @@ async function setupSkillLocalRepoIpc() {
   vi.resetModules();
   handleMock.mockReset();
   saveRemoteGitSkillToLocalRepoBySkillIdMock.mockClear();
+  saveRemoteZipSkillToLocalRepoBySkillIdMock.mockClear();
   computeRepoDirectoryFingerprintMock.mockClear();
   renameLocalRepoPathByPathMock.mockClear();
   writeLocalRepoFileByPathMock.mockClear();
@@ -89,6 +96,7 @@ describe("skill local repo IPC", () => {
   beforeEach(() => {
     handleMock.mockReset();
     saveRemoteGitSkillToLocalRepoBySkillIdMock.mockClear();
+    saveRemoteZipSkillToLocalRepoBySkillIdMock.mockClear();
     computeRepoDirectoryFingerprintMock.mockClear();
     renameLocalRepoPathByPathMock.mockClear();
     writeLocalRepoFileByPathMock.mockClear();
@@ -135,6 +143,40 @@ describe("skill local repo IPC", () => {
     });
   });
 
+  it("saves a remote zip package to the managed repo and persists the fingerprint", async () => {
+    const { db, handlers, IPC_CHANNELS } = await setupSkillLocalRepoIpc();
+    const skill = {
+      id: "skill-gifgrep",
+      name: "gifgrep",
+      source_url: "https://clawhub.ai/clawhub/gifgrep",
+    };
+    db.getById.mockReturnValue(skill);
+
+    await expect(
+      handlers[IPC_CHANNELS.SKILL_SAVE_REMOTE_ZIP_TO_REPO](
+        null,
+        "skill-gifgrep",
+        {
+          zipUrl: "https://clawhub.ai/api/v1/download?slug=gifgrep",
+        },
+      ),
+    ).resolves.toBe("/managed/zip-skill/repo");
+
+    expect(saveRemoteZipSkillToLocalRepoBySkillIdMock).toHaveBeenCalledWith(
+      skill,
+      {
+        zipUrl: "https://clawhub.ai/api/v1/download?slug=gifgrep",
+      },
+    );
+    expect(computeRepoDirectoryFingerprintMock).toHaveBeenCalledWith(
+      "/managed/zip-skill/repo",
+    );
+    expect(db.update).toHaveBeenCalledWith("skill-gifgrep", {
+      local_repo_path: "/managed/zip-skill/repo",
+      directory_fingerprint: "fingerprint-after-copy",
+    });
+  });
+
   it.each([
     {
       name: "empty skill id",
@@ -166,6 +208,39 @@ describe("skill local repo IPC", () => {
     ).rejects.toThrow(input.expectedError);
 
     expect(saveRemoteGitSkillToLocalRepoBySkillIdMock).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      name: "empty skill id",
+      skillId: "",
+      options: { zipUrl: "https://clawhub.ai/api/v1/download?slug=gifgrep" },
+      expectedError: /requires a non-empty skillId/,
+    },
+    {
+      name: "missing zip URL",
+      skillId: "skill-gifgrep",
+      options: {},
+      expectedError: /requires a non-empty zipUrl/,
+    },
+    {
+      name: "blank zip URL",
+      skillId: "skill-gifgrep",
+      options: { zipUrl: " " },
+      expectedError: /requires a non-empty zipUrl/,
+    },
+  ])("rejects invalid saveRemoteZipToRepo input: $name", async (input) => {
+    const { handlers, IPC_CHANNELS } = await setupSkillLocalRepoIpc();
+
+    await expect(
+      handlers[IPC_CHANNELS.SKILL_SAVE_REMOTE_ZIP_TO_REPO](
+        null,
+        input.skillId,
+        input.options,
+      ),
+    ).rejects.toThrow(input.expectedError);
+
+    expect(saveRemoteZipSkillToLocalRepoBySkillIdMock).not.toHaveBeenCalled();
   });
 
   it("rejects saveRemoteGitToRepo when the skill does not exist", async () => {

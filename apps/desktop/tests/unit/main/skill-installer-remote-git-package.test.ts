@@ -23,6 +23,11 @@ import * as skillInstallerUtils from "../../../src/main/services/skill-installer
 
 let tmpDir: string;
 
+const CLAWHUB_FIXTURE_ZIP_BASE64 =
+  "UEsDBBQAAAAIABeExFzcZ6wxHgAAACEAAAAIAAAAU0tJTEwubWTT1dXlykvMTbVSSM9MSy9KLeACiXApK7hnprmDuABQSwMEFAAAAAgAF4TEXDWwbU4JAAAABwAAAA0AAABza2lsbC1jYXJkLm1kU1ZwTixK4QIAUEsDBBQAAAAIABeExFwbtNTNFgAAABQAAAAKAAAAX21ldGEuanNvbqtWKkstKs7Mz1OyUjLUM9AzVKrlAgBQSwMEFAAAAAgAF4TEXBqhbbAeAAAAHAAAABEAAABzY3JpcHRzL3NlYXJjaC50c0utKMgvKlFIzs8rLlEoTk0sSs5QsFUoKSpNteYCAFBLAQIUABQAAAAIABeExFzcZ6wxHgAAACEAAAAIAAAAAAAAAAAAAAAAAAAAAABTS0lMTC5tZFBLAQIUABQAAAAIABeExFw1sG1OCQAAAAcAAAANAAAAAAAAAAAAAAAAAEQAAABza2lsbC1jYXJkLm1kUEsBAhQAFAAAAAgAF4TEXBu01M0WAAAAFAAAAAoAAAAAAAAAAAAAAAAAeAAAAF9tZXRhLmpzb25QSwECFAAUAAAACAAXhMRcGqFtsB4AAAAcAAAAEQAAAAAAAAAAAAAAAAC2AAAAc2NyaXB0cy9zZWFyY2gudHNQSwUGAAAAAAQABADoAAAAAwEAAAAA";
+const UNSAFE_ZIP_BASE64 =
+  "UEsDBBQAAAAIABeExFwEQPI4CQAAAAcAAAAOAAAALi4vb3V0c2lkZS50eHRLLU5OLEjlAgBQSwMEFAAAAAgAF4TEXLOr/W4LAAAACQAAAAgAAABTS0lMTC5tZFNWCM0rTkxL5QIAUEsBAhQAFAAAAAgAF4TEXARA8jgJAAAABwAAAA4AAAAAAAAAAAAAAAAAAAAAAC4uL291dHNpZGUudHh0UEsBAhQAFAAAAAgAF4TEXLOr/W4LAAAACQAAAAgAAAAAAAAAAAAAAAAANQAAAFNLSUxMLm1kUEsFBgAAAAACAAIAcgAAAGYAAAAAAA==";
+
 async function listRelativeFiles(baseDir: string): Promise<string[]> {
   const files: string[] = [];
   const walk = async (dir: string): Promise<void> => {
@@ -83,6 +88,11 @@ async function createCommittedSkillRepo(
 async function listRemoteImportTempDirs(): Promise<string[]> {
   const entries = await fs.readdir(getSkillsDir()).catch(() => []);
   return entries.filter((entry) => entry.startsWith(".remote-import-")).sort();
+}
+
+async function listRemoteZipTempDirs(): Promise<string[]> {
+  const entries = await fs.readdir(getSkillsDir()).catch(() => []);
+  return entries.filter((entry) => entry.startsWith(".remote-zip-")).sort();
 }
 
 beforeEach(async () => {
@@ -313,6 +323,60 @@ describe("SkillInstaller.saveRemoteGitSkillToLocalRepoBySkillId", () => {
     expect(await listRemoteImportTempDirs()).toEqual([]);
   });
 
+  it("selects a matching skill by SKILL.md frontmatter when the package directory is omitted", async () => {
+    await SkillInstaller.init();
+
+    vi.spyOn(skillInstallerUtils, "gitClone").mockImplementation(
+      async (_url, destDir) => {
+        const reactDir = path.join(
+          destDir,
+          "skills",
+          "react-best-practices",
+        );
+        const nextDir = path.join(destDir, "skills", "next-best-practices");
+        await fs.mkdir(reactDir, { recursive: true });
+        await fs.mkdir(nextDir, { recursive: true });
+        await fs.writeFile(
+          path.join(reactDir, "SKILL.md"),
+          "---\nname: vercel-react-best-practices\n---\n\n# React\n",
+          "utf-8",
+        );
+        await fs.mkdir(path.join(reactDir, "scripts"), { recursive: true });
+        await fs.writeFile(
+          path.join(reactDir, "scripts", "check.ts"),
+          "export {}\n",
+          "utf-8",
+        );
+        await fs.writeFile(
+          path.join(nextDir, "SKILL.md"),
+          "---\nname: next-best-practices\n---\n\n# Next\n",
+          "utf-8",
+        );
+      },
+    );
+
+    const repoPath =
+      await SkillInstaller.saveRemoteGitSkillToLocalRepoBySkillId(
+        {
+          id: "skill-vercel-react",
+          name: "vercel-react-best-practices",
+          source_id: "skills-sh-vercel-react",
+          source_url: "https://github.com/vercel-labs/agent-skills",
+          directory_fingerprint: "remote-fingerprint",
+        },
+        {
+          repoUrl: "https://github.com/vercel-labs/agent-skills",
+          branch: "main",
+        },
+      );
+
+    await expect(listRelativeFiles(repoPath)).resolves.toEqual([
+      "SKILL.md",
+      "scripts/check.ts",
+    ]);
+    expect(await listRemoteImportTempDirs()).toEqual([]);
+  });
+
   it("copies a large package inventory without dropping nested files", async () => {
     await SkillInstaller.init();
 
@@ -365,5 +429,60 @@ describe("SkillInstaller.saveRemoteGitSkillToLocalRepoBySkillId", () => {
     expect(files).toContain("references/section-000.md");
     expect(files).toContain("references/section-299.md");
     expect(elapsedMs).toBeLessThan(5_000);
+  });
+
+  it("copies the full remote zip skill package into the managed repo", async () => {
+    await SkillInstaller.init();
+
+    const archive = Buffer.from(CLAWHUB_FIXTURE_ZIP_BASE64, "base64");
+    vi.spyOn(SkillInstaller, "fetchRemoteBytes").mockResolvedValue(archive);
+
+    const repoPath =
+      await SkillInstaller.saveRemoteZipSkillToLocalRepoBySkillId(
+        {
+          id: "skill-clawhub-gifgrep",
+          name: "gifgrep",
+          source_id: "source-clawhub-gifgrep",
+          source_url: "https://clawhub.ai/clawhub/gifgrep",
+          directory_fingerprint: "remote-fingerprint",
+        },
+        {
+          zipUrl: "https://clawhub.ai/api/v1/download?slug=gifgrep",
+        },
+      );
+
+    await expect(listRelativeFiles(repoPath)).resolves.toEqual([
+      "SKILL.md",
+      "_meta.json",
+      "scripts/search.ts",
+      "skill-card.md",
+    ]);
+    expect(SkillInstaller.fetchRemoteBytes).toHaveBeenCalledWith(
+      "https://clawhub.ai/api/v1/download?slug=gifgrep",
+    );
+    expect(await listRemoteZipTempDirs()).toEqual([]);
+  });
+
+  it("rejects unsafe remote zip packages and removes the temporary extract directory", async () => {
+    await SkillInstaller.init();
+
+    const archive = Buffer.from(UNSAFE_ZIP_BASE64, "base64");
+    vi.spyOn(SkillInstaller, "fetchRemoteBytes").mockResolvedValue(archive);
+
+    await expect(
+      SkillInstaller.saveRemoteZipSkillToLocalRepoBySkillId(
+        {
+          id: "skill-unsafe-zip",
+          name: "unsafe",
+          source_id: "source-unsafe-zip",
+          source_url: "https://clawhub.ai/unsafe/zip",
+          directory_fingerprint: "remote-fingerprint",
+        },
+        {
+          zipUrl: "https://clawhub.ai/api/v1/download?slug=unsafe",
+        },
+      ),
+    ).rejects.toThrow(/Path traversal detected/);
+    expect(await listRemoteZipTempDirs()).toEqual([]);
   });
 });

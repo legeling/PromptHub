@@ -26,6 +26,7 @@ export async function ensureLocalRepoPath(
       : managedRepoPath;
 
   try {
+    await SkillInstaller.materializeManagedRepoSymlink(candidateRepoPath);
     const candidateStat = await fs.stat(candidateRepoPath);
     if (candidateStat.isDirectory()) {
       if (skill.local_repo_path !== candidateRepoPath) {
@@ -156,6 +157,7 @@ export async function resolveRepoPath(
       ? skill.local_repo_path
       : SkillInstaller.getPreferredLocalRepoPathForSkill(skill);
   try {
+    await SkillInstaller.materializeManagedRepoSymlink(repoPath);
     const repoStat = await fs.stat(repoPath);
     if (repoStat.isDirectory()) {
       return repoPath;

@@ -139,6 +139,7 @@ export const IPC_CHANNELS = {
   SKILL_COPY_REPO_BY_PATH_TO_DIRECTORY: "skill:copyRepoByPathToDirectory",
   SKILL_SAVE_TO_REPO: "skill:saveToRepo",
   SKILL_SAVE_REMOTE_GIT_TO_REPO: "skill:saveRemoteGitToRepo",
+  SKILL_SAVE_REMOTE_ZIP_TO_REPO: "skill:saveRemoteZipToRepo",
   SKILL_GET_REPO_PATH: "skill:getRepoPath",
   SKILL_SYNC_FROM_REPO: "skill:syncFromRepo",
 

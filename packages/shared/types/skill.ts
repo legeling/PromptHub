@@ -152,6 +152,12 @@ export interface MarketplaceSkillEntry {
   skillUrl?: string;
   raw_url?: string;
   rawUrl?: string;
+  package_url?: string;
+  packageUrl?: string;
+  zip_url?: string;
+  zipUrl?: string;
+  download_url?: string;
+  downloadUrl?: string;
   content?: string;
   tags?: string[];
   version?: string | number;
@@ -202,6 +208,7 @@ export interface RegistrySkill {
   version: string;
   content: string; // Embedded SKILL.md content
   content_url?: string; // Remote SKILL.md URL (for updates)
+  package_url?: string; // Remote package archive URL (for full-directory installs)
   prerequisites?: string[];
   compatibility?: string[];
   weekly_installs?: string;

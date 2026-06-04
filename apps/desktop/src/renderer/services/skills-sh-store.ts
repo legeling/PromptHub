@@ -1,7 +1,29 @@
-import type { RegistrySkill, SkillCategory } from "@prompthub/shared/types";
+import type { RegistrySkill } from "@prompthub/shared/types";
 import { buildSkillSourceId } from "@prompthub/shared/utils/skill-identity";
 
 export const SKILLS_SH_BASE_URL = "https://skills.sh";
+
+export const SKILLS_SH_FILTERS = [
+  { key: "all", label: "All", path: "/" },
+  { key: "trending", label: "Trending", path: "/trending" },
+  { key: "hot", label: "Hot", path: "/hot" },
+  { key: "official", label: "Official", path: "/official" },
+  { key: "audits", label: "Audits", path: "/audits" },
+  { key: "topic:react", label: "React", path: "/topic/react" },
+  { key: "topic:nextjs", label: "Next.js", path: "/topic/nextjs" },
+  { key: "topic:design", label: "Design & UI", path: "/topic/design" },
+  { key: "topic:mobile", label: "Mobile", path: "/topic/mobile" },
+  {
+    key: "topic:agent-workflows",
+    label: "Agent Workflows",
+    path: "/topic/agent-workflows",
+  },
+  { key: "topic:databases", label: "Databases", path: "/topic/databases" },
+  { key: "topic:testing", label: "Testing", path: "/topic/testing" },
+  { key: "topic:marketing", label: "Marketing", path: "/topic/marketing" },
+] as const;
+
+export type SkillsShFilterKey = (typeof SKILLS_SH_FILTERS)[number]["key"];
 
 const DEFAULT_COMPATIBILITY = [
   "claude",
@@ -30,6 +52,32 @@ export interface SkillsShLeaderboardEntry {
   weeklyInstalls?: string;
 }
 
+export function normalizeSkillsShFilterKey(value?: string | null): SkillsShFilterKey {
+  return SKILLS_SH_FILTERS.some((filter) => filter.key === value)
+    ? (value as SkillsShFilterKey)
+    : "all";
+}
+
+export function getSkillsShIndexUrl(filterKey?: string | null): string {
+  const normalizedFilterKey = normalizeSkillsShFilterKey(filterKey);
+  if (normalizedFilterKey === "all") {
+    return SKILLS_SH_BASE_URL;
+  }
+  const filter =
+    SKILLS_SH_FILTERS.find((item) => item.key === normalizedFilterKey) ??
+    SKILLS_SH_FILTERS[0];
+  return new URL(filter.path, SKILLS_SH_BASE_URL).toString();
+}
+
+export function parseSkillsShTotalCount(html: string): number | undefined {
+  const match = html.match(/(?:\\?"totalSkills\\?")\s*:\s*(\d+)/);
+  if (!match) {
+    return undefined;
+  }
+  const count = Number.parseInt(match[1], 10);
+  return Number.isFinite(count) ? count : undefined;
+}
+
 function decodeHtmlEntities(input: string): string {
   return input.replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (entity, rawValue) => {
     const value = String(rawValue).toLowerCase();
@@ -47,6 +95,14 @@ function decodeHtmlEntities(input: string): string {
 
 function normalizeWhitespace(input: string): string {
   return input.replace(/\r/g, "").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+function normalizeSearchTerm(term: string): string {
+  return term
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .replace(/\s+/g, " ");
 }
 
 function stripTags(input: string): string {
@@ -92,17 +148,21 @@ function slugify(value: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-function inferCategory(slug: string, description: string): SkillCategory {
-  const text = `${slug} ${description}`.toLowerCase();
-  if (/(pdf|doc|ppt|sheet|spreadsheet|word|xlsx|docx)/.test(text)) return "office";
-  if (/(github|git|web|playwright|mcp|code|cli|dev|pr)/.test(text)) return "dev";
-  if (/(design|figma|css|ui|frontend|canvas|brand)/.test(text)) return "design";
-  if (/(deploy|vercel|docker|cloudflare|netlify)/.test(text)) return "deploy";
-  if (/(secure|security|audit|auth|secret)/.test(text)) return "security";
-  if (/(analy|data|sql|chart|research)/.test(text)) return "data";
-  if (/(manage|project|notion|linear)/.test(text)) return "management";
-  if (/(ai|generate|translation|speech|image|video|art)/.test(text)) return "ai";
-  return "general";
+function getStandardSkillsShPackageLocation(entry: SkillsShLeaderboardEntry):
+  | {
+      sourceDirectory: string;
+      canonicalSkillPath: string;
+    }
+  | undefined {
+  if (entry.repo !== "skills") {
+    return undefined;
+  }
+
+  const sourceDirectory = `skills/${entry.skillName}`;
+  return {
+    sourceDirectory,
+    canonicalSkillPath: `${sourceDirectory}/SKILL.md`,
+  };
 }
 
 function parseFrontmatter(content: string): {
@@ -181,10 +241,19 @@ export function parseSkillsShLeaderboard(
   const entries: SkillsShLeaderboardEntry[] = [];
   const seen = new Set<string>();
   const limit = options?.limit ?? 24;
+  const normalizedHtml = html.replace(/\\"/g, '"');
   const linkPattern = /<a[^>]+href="(\/[^"/?#]+\/[^"/?#]+\/[^"/?#]+\/?)"[^>]*>([\s\S]*?)<\/a>/gi;
 
+  const addEntry = (entry: SkillsShLeaderboardEntry) => {
+    if (seen.has(entry.detailPath) || entries.length >= limit) {
+      return;
+    }
+    seen.add(entry.detailPath);
+    entries.push(entry);
+  };
+
   let match: RegExpExecArray | null;
-  while ((match = linkPattern.exec(html)) !== null) {
+  while ((match = linkPattern.exec(normalizedHtml)) !== null) {
     const detailPath = match[1];
     if (seen.has(detailPath)) {
       continue;
@@ -197,17 +266,10 @@ export function parseSkillsShLeaderboard(
 
     const [, owner, repo, skillName] = parsed;
     const anchorText = stripTags(match[2]);
-    const lowerAnchorText = anchorText.toLowerCase();
-    const repoLabel = `${owner}/${repo}`.toLowerCase();
-    if (!lowerAnchorText.includes(repoLabel) && !lowerAnchorText.includes(skillName.toLowerCase())) {
-      continue;
-    }
-
     const rank = Number.parseInt(anchorText.match(/^(\d+)\b/)?.[1] ?? "", 10);
     const weeklyInstalls = anchorText.match(/(\d+(?:\.\d+)?[KMB]?)\s*$/i)?.[1];
 
-    seen.add(detailPath);
-    entries.push({
+    addEntry({
       owner,
       repo,
       skillName: decodeURIComponent(skillName),
@@ -222,7 +284,52 @@ export function parseSkillsShLeaderboard(
     }
   }
 
+  const dataPattern =
+    /"source":"([^"]+\/[^"]+)","skillId":"([^"]+)","name":"([^"]+)"/g;
+  while (entries.length < limit && (match = dataPattern.exec(normalizedHtml)) !== null) {
+    const [, source, skillId] = match;
+    const [owner, repo] = source.split("/");
+    if (!owner || !repo || !skillId) {
+      continue;
+    }
+    const detailPath = `/${owner}/${repo}/${skillId}`;
+    if (!DETAIL_PATH_PATTERN.test(detailPath)) {
+      continue;
+    }
+    addEntry({
+      owner,
+      repo,
+      skillName: decodeURIComponent(skillId),
+      detailPath,
+      detailUrl: new URL(detailPath, SKILLS_SH_BASE_URL).toString(),
+      weeklyInstalls: undefined,
+    });
+  }
+
   return entries;
+}
+
+export function filterSkillsShLeaderboardEntries(
+  entries: readonly SkillsShLeaderboardEntry[],
+  query: string,
+): SkillsShLeaderboardEntry[] {
+  const normalizedQuery = normalizeSearchTerm(query);
+  if (!normalizedQuery) {
+    return entries.slice();
+  }
+  const tokens = normalizedQuery.split(" ").filter(Boolean);
+  return entries.filter((entry) => {
+    const haystack = normalizeSearchTerm(
+      [
+        entry.owner,
+        entry.repo,
+        entry.skillName,
+        entry.detailPath,
+        entry.detailUrl,
+      ].join(" "),
+    );
+    return tokens.every((token) => haystack.includes(token));
+  });
 }
 
 export function parseSkillsShDetail(
@@ -287,6 +394,7 @@ export function parseSkillsShDetail(
             .filter(Boolean),
         ),
       );
+  const packageLocation = getStandardSkillsShPackageLocation(entry);
 
   return {
     slug: slugify(`${entry.owner}-${entry.repo}-${entry.skillName}`),
@@ -298,9 +406,10 @@ export function parseSkillsShDetail(
       skillPath: entry.detailPath,
     }),
     source_label: "skills.sh",
-    canonical_skill_path: entry.detailPath.replace(/^\/+/, ""),
+    source_directory: packageLocation?.sourceDirectory,
+    canonical_skill_path: packageLocation?.canonicalSkillPath,
     description,
-    category: inferCategory(entry.skillName, description),
+    category: "general",
     author: entry.owner,
     source_url: sourceUrl,
     store_url: entry.detailUrl,

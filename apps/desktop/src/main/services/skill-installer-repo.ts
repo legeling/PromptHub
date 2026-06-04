@@ -401,6 +401,60 @@ export async function isManagedRepoPath(
   return isPathWithin(normalizedSkillsDir, normalizedAbsolutePath);
 }
 
+async function copyMaterializedSkillDirectory(
+  sourceDir: string,
+  targetDir: string,
+): Promise<void> {
+  const canonicalSourceDir = await fs.realpath(sourceDir);
+  await fs.cp(canonicalSourceDir, targetDir, {
+    recursive: true,
+    filter: async (src: string) => {
+      const relativePath = path.relative(canonicalSourceDir, src);
+      if (relativePath && isInternalSkillRepoEntry(relativePath)) {
+        return false;
+      }
+      try {
+        const stat = await fs.lstat(src);
+        return !stat.isSymbolicLink();
+      } catch {
+        return false;
+      }
+    },
+  });
+}
+
+export async function materializeManagedRepoSymlink(
+  repoDir: string,
+): Promise<boolean> {
+  const resolvedRepoDir = path.resolve(repoDir);
+  const managedSkillsDir = path.resolve(getSkillsDirAccessor());
+  if (!isPathWithin(managedSkillsDir, resolvedRepoDir)) {
+    return false;
+  }
+
+  const repoStat = await fs.lstat(resolvedRepoDir).catch((error: unknown) => {
+    if (getErrorCode(error) === "ENOENT") {
+      return null;
+    }
+    throw error;
+  });
+  if (!repoStat?.isSymbolicLink()) {
+    return false;
+  }
+
+  const tempDir = `${resolvedRepoDir}.materialize-${process.pid}-${Date.now()}`;
+  await fs.rm(tempDir, { recursive: true, force: true });
+  try {
+    await copyMaterializedSkillDirectory(resolvedRepoDir, tempDir);
+    await fs.rm(resolvedRepoDir, { recursive: true, force: true });
+    await fs.rename(tempDir, resolvedRepoDir);
+    return true;
+  } catch (error) {
+    await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+    throw error;
+  }
+}
+
 // ==================== Save ====================
 
 /**
@@ -413,7 +467,7 @@ export async function isManagedRepoPath(
 export async function saveToLocalRepo(
   skillName: string,
   sourceDir: string,
-  mode: "copy" | "symlink" = "copy",
+  _mode: "copy" | "symlink" = "copy",
 ): Promise<string> {
   const skillsDir = getSkillsDirAccessor();
   validateSkillName(skillName);
@@ -440,24 +494,8 @@ export async function saveToLocalRepo(
     await fs.rm(destDir, { recursive: true, force: true });
   }
 
-  if (mode === "symlink") {
-    const canonicalSourceDir = await fs.realpath(sourceDir);
-    await fs.symlink(canonicalSourceDir, destDir, "dir");
-    return destDir;
-  }
-
   // Filter out symlinks to prevent leaking files outside the source directory
-  await fs.cp(sourceDir, destDir, {
-    recursive: true,
-    filter: async (src: string) => {
-      try {
-        const stat = await fs.lstat(src);
-        return !stat.isSymbolicLink();
-      } catch {
-        return false;
-      }
-    },
-  });
+  await copyMaterializedSkillDirectory(sourceDir, destDir);
 
   return destDir;
 }
@@ -490,12 +528,16 @@ export async function copyRepoByPathToDirectory(
   }
 
   const targetDir = path.join(resolvedTargetRootDir, skillName);
-  if (resolvedSourceDir === targetDir) {
+  const canonicalSourceDir = await fs.realpath(resolvedSourceDir);
+  if (canonicalSourceDir === targetDir || resolvedSourceDir === targetDir) {
     throw new Error(
       `Target skill directory must not equal the source skill directory: ${targetDir}`,
     );
   }
-  if (isPathWithin(resolvedSourceDir, resolvedTargetRootDir)) {
+  if (
+    isPathWithin(canonicalSourceDir, resolvedTargetRootDir) ||
+    isPathWithin(resolvedSourceDir, resolvedTargetRootDir)
+  ) {
     throw new Error(
       `Target directory must not be inside the source skill directory: ${resolvedTargetRootDir}`,
     );
@@ -514,15 +556,14 @@ export async function copyRepoByPathToDirectory(
   }
 
   if (options.mode === "symlink") {
-    const canonicalSourceDir = await fs.realpath(resolvedSourceDir);
     await fs.symlink(canonicalSourceDir, targetDir, "dir");
     return targetDir;
   }
 
-  await fs.cp(resolvedSourceDir, targetDir, {
+  await fs.cp(canonicalSourceDir, targetDir, {
     recursive: true,
     filter: async (src: string) => {
-      const relativePath = path.relative(resolvedSourceDir, src);
+      const relativePath = path.relative(canonicalSourceDir, src);
       if (!relativePath) {
         return true;
       }
@@ -980,7 +1021,7 @@ export async function ensureManagedVariantContainer(
     | "logical_name"
     | "variant_key"
   >,
-  mode: "copy" | "symlink",
+  _mode: "copy" | "symlink",
 ): Promise<{ containerDir: string; repoDir: string }> {
   const containerDir = await getManagedContainerPathForSkill(skill);
   const repoDir = path.join(containerDir, MANAGED_REPO_DIRNAME);
@@ -988,7 +1029,7 @@ export async function ensureManagedVariantContainer(
   await fs.mkdir(containerDir, { recursive: true });
   await writeVariantSidecarFiles(
     containerDir,
-    buildSkillVariantSourceMetadata(skill, mode),
+    buildSkillVariantSourceMetadata(skill, "copy"),
   );
   return { containerDir, repoDir };
 }
@@ -1092,31 +1133,11 @@ export async function saveToLocalRepoBySkillId(
     await fs.rm(repoDir, { recursive: true, force: true });
   }
 
-  if (mode === "symlink") {
-    const canonicalSourceDir = await fs.realpath(sourceDir);
-    await fs.symlink(canonicalSourceDir, repoDir, "dir");
-    return repoDir;
-  }
-
-  await fs.cp(sourceDir, repoDir, {
-    recursive: true,
-    filter: async (src: string) => {
-      const relativePath = path.relative(sourceDir, src);
-      if (relativePath && isInternalSkillRepoEntry(relativePath)) {
-        return false;
-      }
-      try {
-        const stat = await fs.lstat(src);
-        return !stat.isSymbolicLink();
-      } catch {
-        return false;
-      }
-    },
-  });
+  await copyMaterializedSkillDirectory(sourceDir, repoDir);
 
   await writeVariantSidecarFiles(
     containerDir,
-    buildSkillVariantSourceMetadata(skill, mode),
+    buildSkillVariantSourceMetadata(skill, "copy"),
   );
   return repoDir;
 }

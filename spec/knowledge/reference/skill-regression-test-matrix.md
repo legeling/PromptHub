@@ -14,6 +14,8 @@ The escaped bugs share these testing gaps:
 - Tests validated detail views without checking that list, detail, project, and platform status use the same source of truth.
 - Tests covered GitHub happy paths more than custom Git/Gitea paths.
 - Tests did not include recursive file-browser behavior.
+- Tests did not separate distributable Skill content from runtime/tooling cache
+  files generated after install.
 
 ## Required Regression Matrix
 
@@ -29,6 +31,7 @@ The escaped bugs share these testing gaps:
 | SR-008 | File browser cannot expand nested folders                                                               | Skill repo file browser must recursively load child directories                                                       | Component unit + IPC/service unit                      | Fixture tree includes nested folder; click folder, assert child files appear and read/list APIs receive normalized relative paths                          |
 | SR-009 | Project tab does not show skills installed into project by symlink                                      | Project scan must include symlinked and copied project skills                                                         | Main-process scan unit + component integration         | Project deploy target contains symlinked skill and copied skill; scan returns both with mode/source metadata; project tab renders both                     |
 | SR-010 | Missing agent-centric entry for all skills and project skills cannot tag/uninstall by copy/symlink mode | Agent/project skill inventory must expose copy/symlink mode, tag management, and uninstall actions                    | Requirement-level design + component integration + E2E | Given an agent/platform, list all copied and symlinked skills; tag each; uninstall each; assert status and tags update without affecting unrelated agents  |
+| SR-011 | Running a Skill script creates `__pycache__` and makes PromptHub think the Skill changed or is external | Directory fingerprint must represent distributable Skill content, not runtime/tooling cache files                     | Shared identity unit + scan-status unit                | Compute fingerprints from clean files and from the same files plus Python cache/tooling cache; assert they match and scanned status stays `In My Skills`   |
 
 ## Required Fixtures
 
@@ -39,6 +42,10 @@ Every future skill install/distribution regression suite should include:
 - `custom-gitea-source`: non-GitHub Git URL plus branch/directory metadata
 - `same-name-variant`: two skills with same `name` but different `source_id`
 - `copy-and-symlink-project`: one copied project skill and one symlinked project skill
+- `runtime-cache-skill`: `SKILL.md`, `scripts/run.py`, generated
+  `__pycache__/*.pyc`, `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`,
+  front-end cache directories, coverage output, debug logs, and editor temp
+  files
 
 ## Skill Lifecycle UI State Matrix
 
@@ -52,6 +59,18 @@ metadata, not from display name alone. The shared identity order is:
 
 `name` is display metadata only. Same-name Skills from different stores,
 projects, agents, or folders must not be treated as the same managed Skill.
+
+Directory fingerprints are package-content identities. They MUST ignore
+runtime/tooling byproducts that users commonly create after install, including
+Python bytecode caches (`__pycache__/`, `*.pyc`, `*.pyo`), Python analysis/test
+caches (`.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`, `.tox/`, `.nox/`,
+`.coverage*`), front-end/tool caches (`.cache/`, `.vite/`, `.vitest/`,
+`.parcel-cache/`, `.turbo/`, `.next/`, `.nuxt/`, `.svelte-kit/`,
+`.nyc_output/`, `.npm/`, `.pnpm-store/`, `.yarn/cache/`, `.sass-cache/`),
+temporary directories (`tmp/`, `temp/`, `.tmp/`), debug logs, editor swap or
+backup files, and OS sidecar files. They MUST NOT ignore lockfiles or broad
+build output directories such as `dist/` or `build/` unless a future requirement
+proves those directories are never valid Skill assets.
 
 ### Completeness Boundary
 
@@ -196,6 +215,8 @@ Legend:
 | SL-018 | My Skills     | installed to one or more project/agent dirs  | library source of truth is DB + repo | distribution status derived from scans | Open source repo, Distribute globally, Distribute to project/agent, Delete from My Skills                             | Deleting My Skills must not silently delete unrelated copied project/agent folders |
 | SL-019 | Store Skill   | remote entry source identity equals library  | matched by `source_id`               | Imported / installed                   | Open detail, open remote source URL, update/uninstall where applicable                                                | Refresh must not lose Imported due to temporary clone paths or same display name   |
 | SL-020 | Store Skill   | same display name, different source identity | no `source_id` match                 | not imported                           | Import remains available                                                                                              | Must not collapse variants by name                                                 |
+| SL-021 | Store Skill   | nested source selected from expanded sidebar  | selected source id                   | Store view active                      | Click child source such as personal store                                                                             | Must switch main view to Store even if user is currently on My Skills              |
+| SL-022 | Store Skill   | custom Git/Gitea cloned package install       | cloned repo `SKILL.md` content       | pristine installed baseline            | Install, enter detail, check update                                                                                   | Immediate update check must not report local modifications from install-time sync  |
 
 ### Operation Rows
 
@@ -208,6 +229,8 @@ Legend:
 | Uninstall from Agent              | Delete only the platform-local folder/symlink and refresh agent scan; built-ins are blocked                           | Main-process test for path/built-in guard plus component test for disabled built-in uninstall                               |
 | Delete from My Skills             | Remove managed PromptHub repo/DB row; prompt about distributed copies/links according to copy/symlink mode            | Service/UI test for copy preserve prompt, PromptHub symlink cleanup, and external symlink non-deletion                      |
 | Refresh Store                     | Recompute remote entries with stable source identity and preserve Imported state                                      | Source-id stability test with different clone roots plus component test for Imported after refresh                          |
+| Select Store Source               | Selecting a nested source changes both `selectedStoreSourceId` and the main Skill view to Store                       | Sidebar component test starting from My Skills with the Store source group already expanded                                 |
+| Install Git Package               | Clone/copy package, sync from repo, then set installed content hash from the synced `SKILL.md` baseline               | Store test where repo sync returns content different from cached registry content                                           |
 
 ### Shared Selector Rule
 

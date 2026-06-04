@@ -1,11 +1,9 @@
 import {
   CheckIcon,
-  CheckSquareIcon,
   DownloadIcon,
   EyeIcon,
   Loader2Icon,
   PlusIcon,
-  SquareIcon,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { RegistrySkill } from "@prompthub/shared/types";
@@ -110,12 +108,16 @@ export function SkillStoreCard({
               ? t("skill.unselectStoreSkill", "Unselect store skill")
               : t("skill.selectStoreSkill", "Select store skill")
           }
-          className="shrink-0 rounded-lg p-1 text-primary transition-colors hover:bg-primary/10"
+          className={`group/select grid h-6 w-6 shrink-0 place-items-center rounded-lg border transition-all active:scale-press-in ${
+            isSelected
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border bg-card/80 text-muted-foreground/70 hover:border-primary/45 hover:bg-primary/10 hover:text-primary"
+          }`}
         >
           {isSelected ? (
-            <CheckSquareIcon className="h-4 w-4" />
+            <CheckIcon className="h-3.5 w-3.5" />
           ) : (
-            <SquareIcon className="h-4 w-4" />
+            <span className="h-3 w-3 rounded-[4px] border border-current transition-colors group-hover/select:border-primary" />
           )}
         </button>
       )}
@@ -162,7 +164,7 @@ export function SkillStoreCard({
               event.stopPropagation();
               onOpenDetail?.(skill, event);
             }}
-            className="rounded-lg p-1.5 text-muted-foreground transition-all hover:bg-accent hover:text-foreground active:scale-press-in"
+            className="grid h-7 w-7 place-items-center rounded-lg border border-border/70 bg-card/80 text-muted-foreground transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary active:scale-press-in"
             aria-label={t("common.viewDetail", "View detail")}
             title={t("common.viewDetail", "View detail")}
           >

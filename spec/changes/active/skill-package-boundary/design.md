@@ -33,6 +33,10 @@ PromptHub's internal canonical Skill storage is always a package directory:
 - `packages/shared` owns cross-process Skill fields that identify package sources: `source_id`, `source_url`, `source_branch`, `source_directory`, `canonical_skill_path`, `local_repo_path`, `directory_fingerprint`.
 - Main-process services own filesystem persistence and must provide package-level import/sync APIs for Git/Gitea sources.
 - Renderer store may orchestrate user flows, but should not decide package fidelity by falling back to `writeLocalFile("SKILL.md")` when source metadata indicates a package.
+- Public store adapters must surface package-level sources when the upstream site exposes them:
+  - `skills.sh` entries are Git package installs. Standard repositories named `skills` may expose `skills/<skill-name>` directly; other repositories must not guess that layout and instead let the main-process installer clone the repo and match the target `SKILL.md` by frontmatter name / directory name.
+  - `ClawHub` entries use the official `/api/v1/download?slug=<slug>` zip package URL.
+  - Marketplace JSON entries may expose `package_url`, `zip_url`, or `download_url`; these must install as complete packages, not as `SKILL.md` only.
 
 ## Required TDD Before Code Fix
 
@@ -49,6 +53,11 @@ PromptHub's internal canonical Skill storage is always a package directory:
 3. Safety/file-browser coupling test:
    - after import, safety scan and file listing must see nested resource files
    - this prevents a later fix that copies files but leaves downstream consumers bound to `SKILL.md` only
+
+4. Public store package fidelity tests:
+   - `skills.sh` install must call Git package sync. Standard `owner/skills/<skill>` entries pass the derived directory; non-standard repositories omit the directory so the main process resolves the matching package after cloning.
+   - `ClawHub` install must download and extract the zip package into the managed repo.
+   - zip imports must reject path traversal and clean temporary extraction directories.
 
 ## Design Conflict To Avoid
 
