@@ -150,6 +150,33 @@ describe("PromptDetailModal", () => {
     expect(clearTimeoutSpy).toHaveBeenCalledTimes(2);
   });
 
+  it("delegates user prompt copy to parent flow when provided", async () => {
+    const onCopy = vi.fn();
+    const writeTextSpy = vi
+      .spyOn(navigator.clipboard, "writeText")
+      .mockResolvedValue(undefined);
+
+    await renderWithI18n(
+      <ToastProvider>
+        <PromptDetailModal
+          isOpen
+          onClose={vi.fn()}
+          prompt={prompt}
+          onCopy={onCopy}
+        />
+      </ToastProvider>,
+      { language: "en" },
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getAllByRole("button", { name: "Copy Prompt" }).at(-1)!);
+      await Promise.resolve();
+    });
+
+    expect(onCopy).toHaveBeenCalledWith(prompt);
+    expect(writeTextSpy).not.toHaveBeenCalled();
+  });
+
   it("clears share feedback timers when unmounted after sharing", async () => {
     vi.useFakeTimers();
     vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);

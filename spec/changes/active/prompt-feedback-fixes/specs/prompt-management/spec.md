@@ -27,6 +27,7 @@
 - Prompt detail variable summaries and shared JSON payloads MUST normalize `{{name:defaultValue}}` placeholders to the variable name only.
 - Prompt detail header and content action controls MUST expose explicit button semantics, localized accessible names where icon-only, and hidden decorative icons.
 - Prompt detail shared JSON controls MUST resolve their label from the prompt i18n namespace in every supported renderer locale.
+- Prompt detail user-prompt copy MUST delegate to the parent copy workflow when provided so variable filling, usage counting, and global copy feedback remain consistent with list, gallery, kanban, and table copy actions.
 
 ## Modified Requirements
 
@@ -65,3 +66,4 @@
 - Given the prompt detail modal shows variables containing default values, when the variable summary or shared JSON payload is produced, then each variable is listed once by name without the default-value suffix.
 - Given the prompt detail modal is open, when assistive technology inspects fullscreen, share JSON, edit, copy prompt, or copy response controls, then the controls expose stable button semantics and decorative icons are hidden.
 - Given the prompt detail modal is rendered in a non-Chinese locale, when the share JSON action is inspected, then it uses the localized prompt action label rather than the Chinese fallback string.
+- Given the prompt detail modal receives a parent copy handler, when the user clicks Copy Prompt, then the modal delegates to that handler instead of directly writing the clipboard.

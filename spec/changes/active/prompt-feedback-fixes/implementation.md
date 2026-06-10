@@ -18,6 +18,7 @@
 - `PromptDetailModal` edit handoff now calls the edit callback immediately after closing instead of leaving a delayed 200 ms callback behind after the detail modal unmounts.
 - `PromptDetailModal` variable summaries and shared JSON payloads now normalize `{{name:defaultValue}}` placeholders to `name`, avoiding duplicate or default-suffixed variable entries.
 - `PromptDetailModal` fullscreen, share JSON, edit, copy prompt, and copy response controls now expose explicit button semantics, icon-only action labels, and hidden decorative icons.
+- `PromptDetailModal` user-prompt copy now delegates back to the parent copy workflow when available, preserving variable filling, usage counting, and global copy feedback while still falling back to local clipboard writes when rendered standalone.
 - Added `prompt.shareJSON` translations across all renderer locales so the detail modal share action resolves localized labels from the prompt namespace instead of falling back to Chinese text.
 - `PromptDetailModal`, `PromptKanbanView`, and `PromptTableView` now derive variable badges/summaries/counts from the shared prompt variable parser, so detail, kanban, and table surfaces use the same `{{name}}` / `{{name:defaultValue}}` semantics as copy, AI test, version history, and image reverse flows.
 - `PromptListView` row action controls now expose explicit `type="button"` semantics while preserving localized action names and avoiding accidental row selection.
@@ -63,6 +64,7 @@
 - Passed: `pnpm --filter @prompthub/desktop test -- tests/unit/components/prompt-kanban-view.test.tsx --run` (4 tests)
 - Passed: `pnpm --filter @prompthub/desktop test -- tests/unit/components/prompt-quick-rewrite-trigger.test.tsx --run` (1 test)
 - Passed: `pnpm --filter @prompthub/desktop test -- tests/unit/components/image-prompt-reverse-modal.test.tsx --run` (18 tests)
+- Passed: `pnpm --filter @prompthub/desktop test -- tests/unit/components/prompt-detail-modal.test.tsx --run` (9 tests)
 - Passed: `pnpm --filter @prompthub/desktop typecheck`
 - Passed: `pnpm --filter @prompthub/desktop lint`
 - Passed: locale JSON parse check for all renderer locale files.

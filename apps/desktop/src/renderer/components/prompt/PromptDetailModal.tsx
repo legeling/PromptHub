@@ -21,7 +21,7 @@ interface PromptDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   prompt: Prompt | null;
-  onCopy?: (prompt: Prompt) => void;
+  onCopy?: (prompt: Prompt) => void | Promise<void>;
   onEdit?: (prompt: Prompt) => void;
   onQuickRewriteEdit?: (prompt: Prompt) => void;
 }
@@ -30,6 +30,7 @@ export function PromptDetailModal({
   isOpen,
   onClose,
   prompt,
+  onCopy,
   onEdit,
   onQuickRewriteEdit,
 }: PromptDetailModalProps) {
@@ -192,6 +193,11 @@ export function PromptDetailModal({
   };
 
   const handleCopyUser = async () => {
+    if (onCopy) {
+      await onCopy(prompt);
+      return;
+    }
+
     const content = showEnglish
       ? (prompt.userPromptEn || prompt.userPrompt)
       : prompt.userPrompt;
