@@ -24,6 +24,19 @@ vi.mock("../../../src/renderer/services/backup-orchestrator", () => ({
   runPreUpgradeBackup: (version: string) => runPreUpgradeBackupMock(version),
 }));
 
+function hasHiddenSvgAncestor(element: Element): boolean {
+  let current: Element | null = element;
+
+  while (current) {
+    if (current.getAttribute("aria-hidden") === "true") {
+      return true;
+    }
+    current = current.parentElement;
+  }
+
+  return false;
+}
+
 describe("UpdateDialog", () => {
   const availableStatus: UpdateStatus = {
     status: "available",
@@ -113,6 +126,86 @@ describe("UpdateDialog", () => {
     await waitFor(() => {
       expect(downloadButton).not.toBeDisabled();
     });
+  });
+
+  it("keeps rendered update actions from submitting surrounding forms", async () => {
+    const handleSubmit = vi.fn();
+
+    await act(async () => {
+      await renderWithI18n(
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            handleSubmit();
+          }}
+        >
+          <UpdateDialog
+            isOpen={true}
+            onClose={vi.fn()}
+            initialStatus={availableStatus}
+          />
+        </form>,
+        { language: "en" },
+      );
+    });
+
+    await screen.findByRole("button", { name: "Download Update" });
+
+    const buttons = Array.from(document.body.querySelectorAll("button"));
+    const implicitButtonMarkup = buttons
+      .filter((button) => button.getAttribute("type") !== "button")
+      .map((button) => button.outerHTML);
+    const exposedIconMarkup = buttons
+      .flatMap((button) => Array.from(button.querySelectorAll("svg")))
+      .filter((icon) => !hasHiddenSvgAncestor(icon))
+      .map((icon) => icon.outerHTML);
+
+    expect(implicitButtonMarkup, implicitButtonMarkup.join("\n")).toHaveLength(
+      0,
+    );
+    expect(exposedIconMarkup, exposedIconMarkup.join("\n")).toHaveLength(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "Later" }));
+
+    expect(handleSubmit).not.toHaveBeenCalled();
+  });
+
+  it("renders unsafe release-note markdown links as text", async () => {
+    const status: UpdateStatus = {
+      status: "available",
+      info: {
+        version: "0.5.3",
+        releaseNotes:
+          "[bad](javascript:alert(1)) [file](file:///etc/passwd) [ok](https://example.com/releases)",
+      },
+    };
+
+    installWindowMocks({
+      electron: {
+        updater: {
+          check: vi.fn().mockResolvedValue({ success: true }),
+          download: vi.fn().mockResolvedValue(undefined),
+          install: vi.fn().mockResolvedValue({ success: true }),
+          getVersion: vi.fn().mockResolvedValue("0.5.1"),
+          getPlatform: vi.fn().mockResolvedValue("win32"),
+          onStatus: vi.fn(() => vi.fn()),
+        },
+      },
+    });
+
+    await act(async () => {
+      await renderWithI18n(
+        <UpdateDialog isOpen={true} onClose={vi.fn()} initialStatus={status} />,
+        { language: "en" },
+      );
+    });
+
+    expect(screen.getByText("bad").closest("a")).toBeNull();
+    expect(screen.getByText("file").closest("a")).toBeNull();
+    expect(screen.getByRole("link", { name: "ok" })).toHaveAttribute(
+      "href",
+      "https://example.com/releases",
+    );
   });
 
   it("hides install backup gating for Homebrew-managed available updates", async () => {
@@ -253,6 +346,79 @@ describe("UpdateDialog", () => {
     expect(
       screen.queryByText("Checking for updates..."),
     ).not.toBeInTheDocument();
+  });
+
+  it("renders fallback content for malformed updater status payloads", async () => {
+    let statusHandler: ((status: UpdateStatus) => void) | undefined;
+
+    installWindowMocks({
+      electron: {
+        updater: {
+          check: vi.fn().mockResolvedValue({ success: true }),
+          getVersion: vi.fn().mockResolvedValue("0.5.1"),
+          getPlatform: vi.fn().mockResolvedValue("win32"),
+          onStatus: vi.fn((callback: (status: UpdateStatus) => void) => {
+            statusHandler = callback;
+            return vi.fn();
+          }),
+        },
+      },
+    });
+
+    await act(async () => {
+      await renderWithI18n(
+        <UpdateDialog
+          isOpen={true}
+          onClose={vi.fn()}
+          initialStatus={null}
+        />,
+        { language: "en" },
+      );
+    });
+
+    await act(async () => {
+      statusHandler?.({ status: "available" } as UpdateStatus);
+    });
+
+    expect(screen.getByText("Update Available")).toBeInTheDocument();
+    expect(screen.getAllByText("Version: 0.5.1").length).toBeGreaterThanOrEqual(
+      1,
+    );
+
+    await act(async () => {
+      statusHandler?.({ status: "downloaded" } as UpdateStatus);
+    });
+
+    expect(screen.getByText("Download Complete")).toBeInTheDocument();
+    expect(screen.getAllByText("Version: 0.5.1").length).toBeGreaterThanOrEqual(
+      1,
+    );
+
+    await act(async () => {
+      statusHandler?.(
+        { status: "error", error: undefined } as unknown as UpdateStatus,
+      );
+    });
+
+    expect(screen.getByText("Unknown error")).toBeInTheDocument();
+
+    await act(async () => {
+      statusHandler?.(
+        {
+          status: "downloading",
+          progress: {
+            percent: 150,
+            bytesPerSecond: 0,
+            total: 0,
+            transferred: 0,
+          },
+        } as UpdateStatus,
+      );
+    });
+
+    expect(screen.getAllByText(/100\.0%/).length).toBeGreaterThanOrEqual(
+      1,
+    );
   });
 
   // Regression guard for the flickering loop reported in #117/#118.

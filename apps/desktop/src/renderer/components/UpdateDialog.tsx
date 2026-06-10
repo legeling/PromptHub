@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type ComponentProps, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DownloadIcon, CheckCircleIcon, XIcon, Loader2Icon, RefreshCwIcon, FolderOpenIcon, ExternalLinkIcon, ZapIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -11,6 +11,7 @@ import {
   getManualBackupStatus,
 } from "../services/backup-status";
 import { runPreUpgradeBackup } from "../services/backup-orchestrator";
+import { resolvePromptMarkdownHref } from "./prompt/prompt-markdown-url";
 
 export interface UpdateInfo {
   version: string;
@@ -26,6 +27,32 @@ export interface ProgressInfo {
 }
 
 type MacInstallSource = 'direct' | 'homebrew' | 'unknown';
+
+const releaseNoteMarkdownComponents: ComponentProps<typeof ReactMarkdown>["components"] = {
+  a: ({
+    children,
+    href,
+    node: _node,
+    ...props
+  }: ComponentProps<"a"> & { children?: ReactNode; node?: unknown }) => {
+    const safeHref = resolvePromptMarkdownHref(href);
+
+    if (!safeHref) {
+      return <span {...props}>{children}</span>;
+    }
+
+    return (
+      <a
+        {...props}
+        href={safeHref}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        {children}
+      </a>
+    );
+  },
+};
 
 export type UpdateStatus =
   | { status: 'checking' }
@@ -196,7 +223,10 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
     // 如果检查更新返回错误（例如开发环境），设置错误状态
     if (result && !result.success) {
       setIsManualRefreshPending(false);
-      setUpdateStatus({ status: 'error', error: result.error || '检查更新失败' });
+      setUpdateStatus({
+        status: 'error',
+        error: result.error || t('settings.updateCheckFailed'),
+      });
     }
     // Note: success cases are handled via onStatus callback
     // 注意：成功的情况会通过 onStatus 回调处理
@@ -321,14 +351,15 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
           <button
+            type="button"
             onClick={handleBackupBeforeUpgrade}
             disabled={isCreatingBackup}
             className={secondaryButtonClass}
           >
             {isCreatingBackup ? (
-              <Loader2Icon className="h-4 w-4 animate-spin" />
+              <Loader2Icon aria-hidden="true" className="h-4 w-4 animate-spin" />
             ) : (
-              <DownloadIcon className="h-4 w-4" />
+              <DownloadIcon aria-hidden="true" className="h-4 w-4" />
             )}
             {t('settings.backupBeforeUpgrade')}
           </button>
@@ -356,13 +387,33 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
       </div>
       <div className="max-h-[360px] overflow-y-auto px-4 py-3 sm:max-h-[440px]">
         <div className="prose prose-sm dark:prose-invert max-w-none break-words prose-headings:text-foreground prose-h1:text-base prose-h1:font-semibold prose-h2:text-sm prose-h2:font-semibold prose-h3:text-sm prose-h3:font-medium prose-p:my-2 prose-p:text-[13px] prose-p:text-foreground/85 prose-li:text-[13px] prose-li:text-foreground/85 prose-pre:overflow-x-auto prose-pre:border prose-pre:border-border prose-pre:bg-background/80 prose-code:text-primary">
-          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]}>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            rehypePlugins={[rehypeSanitize]}
+            components={releaseNoteMarkdownComponents}
+          >
             {releaseNotes}
           </ReactMarkdown>
         </div>
       </div>
     </section>
   );
+
+  const getStatusVersion = (info?: UpdateInfo) =>
+    info?.version || currentVersion || '...';
+
+  const getStatusError = (error: unknown) =>
+    typeof error === 'string' && error.length > 0
+      ? error
+      : t('common.unknownError');
+
+  const getProgressPercent = (progress?: ProgressInfo) => {
+    if (typeof progress?.percent !== 'number' || !Number.isFinite(progress.percent)) {
+      return 0;
+    }
+
+    return Math.min(100, Math.max(0, progress.percent));
+  };
 
   const renderContent = () => {
     if (!updateStatus) {
@@ -372,10 +423,11 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
             {t('settings.version')}: {currentVersion || '...'}
           </p>
           <button
+            type="button"
             onClick={() => handleCheckUpdate(useUpdateMirror)}
             className={primaryButtonClass}
           >
-            <RefreshCwIcon className="w-4 h-4" />
+            <RefreshCwIcon aria-hidden="true" className="w-4 h-4" />
             {t('settings.checkUpdate')}
           </button>
         </div>
@@ -394,6 +446,7 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
         );
 
       case 'available':
+        const availableVersion = getStatusVersion(updateStatus.info);
         return (
           <div className="space-y-4">
             <div className="flex items-start gap-3 rounded-xl border border-border/60 bg-muted/20 p-4">
@@ -403,11 +456,11 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
               <div className="min-w-0">
                 <h3 className="font-semibold text-lg">{t('settings.updateAvailable')}</h3>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {t('settings.version')}: {updateStatus.info.version}
+                  {t('settings.version')}: {availableVersion}
                 </p>
               </div>
             </div>
-            {updateStatus.info.releaseNotes && (
+            {updateStatus.info?.releaseNotes && (
               renderReleaseNotes(updateStatus.info.releaseNotes)
             )}
             {isMacHomebrew && (
@@ -427,23 +480,25 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
               })}
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button
+                type="button"
                 onClick={isMacHomebrew ? () => window.electron?.updater?.openReleases() : handleDownload}
                 disabled={isCreatingBackup}
                 className={primaryButtonClass}
               >
                 {isMacHomebrew ? (
                   <>
-                    <ExternalLinkIcon className="w-4 h-4" />
+                    <ExternalLinkIcon aria-hidden="true" className="w-4 h-4" />
                     {t('settings.openReleasesPage')}
                   </>
                 ) : (
                   <>
-                    <DownloadIcon className="w-4 h-4" />
+                    <DownloadIcon aria-hidden="true" className="w-4 h-4" />
                     {t('settings.downloadUpdate')}
                   </>
                 )}
               </button>
               <button
+                type="button"
                 onClick={onClose}
                 className={mutedButtonClass}
               >
@@ -465,7 +520,7 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
         );
 
       case 'downloading':
-        const percent = updateStatus.progress?.percent || 0;
+        const percent = getProgressPercent(updateStatus.progress);
         return (
           <div className="flex min-h-[320px] flex-col items-center justify-center py-4">
             <div className="w-full max-w-md mb-4">
@@ -489,6 +544,7 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
       case 'downloaded':
         const isMac = platform === 'darwin';
         const isMacHomebrewDownloaded = isMac && installSource === 'homebrew';
+        const downloadedVersion = getStatusVersion(updateStatus.info);
         return (
           <div className="space-y-4">
             <div className="flex items-start gap-3 rounded-xl border border-border/60 bg-muted/20 p-4">
@@ -498,7 +554,7 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
               <div className="min-w-0">
                 <h3 className="font-semibold text-lg">{t('settings.downloadComplete')}</h3>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {t('settings.version')}: {updateStatus.info.version}
+                  {t('settings.version')}: {downloadedVersion}
                 </p>
               </div>
             </div>
@@ -522,6 +578,7 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
             <div className="flex flex-col gap-2">
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <button
+                  type="button"
                   onClick={
                     isMacHomebrewDownloaded
                       ? () => window.electron?.updater?.openReleases()
@@ -536,24 +593,25 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
                 >
                   {isMacHomebrewDownloaded ? (
                     <>
-                      <ExternalLinkIcon className="w-4 h-4" />
+                      <ExternalLinkIcon aria-hidden="true" className="w-4 h-4" />
                       {t('settings.openReleasesPage')}
                     </>
                   ) : isMac ? (
                     <>
-                      <FolderOpenIcon className="w-4 h-4" />
+                      <FolderOpenIcon aria-hidden="true" className="w-4 h-4" />
                       {t('settings.openDownloadFolder')}
                     </>
                   ) : (
                     <>
                       {isInstalling ? (
-                        <Loader2Icon className="w-4 h-4 animate-spin" />
+                        <Loader2Icon aria-hidden="true" className="w-4 h-4 animate-spin" />
                       ) : null}
                       {t('settings.installNow')}
                     </>
                   )}
                 </button>
                 <button
+                  type="button"
                   onClick={onClose}
                   className={mutedButtonClass}
                 >
@@ -562,10 +620,11 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
               </div>
               {!isMac && !isMacHomebrewDownloaded && (
                 <button
+                  type="button"
                   onClick={() => window.electron?.updater?.openDownloadedUpdate?.()}
                   className={secondaryButtonClass}
                 >
-                  <FolderOpenIcon className="w-4 h-4" />
+                  <FolderOpenIcon aria-hidden="true" className="w-4 h-4" />
                   {t('settings.openDownloadFolder')}
                 </button>
               )}
@@ -574,7 +633,8 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
         );
 
       case 'error':
-        const isHomebrewError = updateStatus.error === t('settings.homebrewUpdateRequired');
+        const errorText = getStatusError(updateStatus.error);
+        const isHomebrewError = errorText === t('settings.homebrewUpdateRequired');
         return (
           <div className="flex min-h-[320px] flex-col text-center">
             <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-red-500/10 flex items-center justify-center">
@@ -582,9 +642,9 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
             </div>
             <h3 className="font-semibold text-lg mb-1 text-red-500">{t('common.error')}</h3>
             <p className="text-sm text-muted-foreground break-all whitespace-pre-wrap max-h-24 overflow-y-auto mb-4 px-2">
-              {updateStatus.error.includes('SHA512') 
-                ? t('error.sha512Desc', updateStatus.error)
-                : updateStatus.error}
+              {errorText.includes('SHA512')
+                ? t('error.sha512Desc', errorText)
+                : errorText}
             </p>
 
             {isHomebrewError && (
@@ -599,13 +659,14 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
             )}
 
             {/* SHA512 error: show open folder button */}
-            {updateStatus.error.includes('SHA512') && (
+            {errorText.includes('SHA512') && (
               <div className="mb-4">
                 <button
+                  type="button"
                   onClick={() => window.electron?.updater?.openDownloadedUpdate?.()}
                   className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-green-700"
                 >
-                  <FolderOpenIcon className="w-4 h-4" />
+                  <FolderOpenIcon aria-hidden="true" className="w-4 h-4" />
                   {t('settings.openDownloadFolder')}
                 </button>
               </div>
@@ -615,10 +676,11 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
               <div className="p-4 rounded-xl bg-muted/30 border border-border/50 text-left">
                 <p className="text-xs text-muted-foreground mb-3">{t('settings.manualDownloadHint')}</p>
                 <button
+                  type="button"
                   onClick={() => window.electron?.updater?.openReleases()}
                   className={`${secondaryButtonClass} w-full`}
                 >
-                  <ExternalLinkIcon className="w-4 h-4 text-muted-foreground" />
+                  <ExternalLinkIcon aria-hidden="true" className="w-4 h-4 text-muted-foreground" />
                   {t('settings.manualDownload')}
                 </button>
               </div>
@@ -641,6 +703,7 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
             {channelLabel}
           </span>
           <button
+            type="button"
             onClick={() => void handleCheckUpdate(useUpdateMirror, {
               preserveVisibleStatus: isStableUpgradeState(updateStatus),
             })}
@@ -648,7 +711,7 @@ export function UpdateDialog({ isOpen, onClose, initialStatus }: UpdateDialogPro
             aria-label={t('settings.checkUpdate')}
             className="inline-flex items-center gap-1.5 rounded-xl border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground disabled:opacity-50"
           >
-            <RefreshCwIcon className={`h-3.5 w-3.5 ${isManualRefreshPending ? 'animate-spin' : ''}`} />
+            <RefreshCwIcon aria-hidden="true" className={`h-3.5 w-3.5 ${isManualRefreshPending ? 'animate-spin' : ''}`} />
             <span className="hidden sm:inline">{t('settings.checkUpdate')}</span>
           </button>
         </div>

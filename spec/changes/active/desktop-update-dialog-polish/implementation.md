@@ -8,11 +8,18 @@
 - 将升级确认勾选切换为统一的 `ui/Checkbox` 组件。
 - 将安装门槛改为仅依赖用户的已备份确认勾选，额外完整导出改为可选动作。
 - 扩大更新日志滚动区域高度，适配较长发布说明。
+- 为 updater IPC 运行时畸形状态载荷增加渲染兜底：`available/downloaded` 缺少
+  `info` 时回退当前版本，`error` 缺少字符串时显示通用未知错误，下载进度裁剪到
+  `0..100`。
+- 顶栏更新提示在可用更新状态缺少版本号时，回退到通用更新文案，避免显示
+  `v available` 这类不完整标签。
 
 ## Verification
 
 - `pnpm vitest --run tests/unit/components/update-dialog.test.tsx`
 - `pnpm lint`
+- `pnpm --filter @prompthub/desktop test -- --run tests/unit/components/update-dialog.test.tsx`
+- `pnpm --filter @prompthub/desktop test -- --run tests/unit/components/top-bar.test.tsx`
 
 ## Synced Docs
 
