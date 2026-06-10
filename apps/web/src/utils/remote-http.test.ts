@@ -255,6 +255,50 @@ describe('remote-http', () => {
     expect(httpsRequestMock).not.toHaveBeenCalled();
   });
 
+  it('strips hop-by-hop request headers before opening remote requests', async () => {
+    setLookupResult([{ address: '93.184.216.34', family: 4 }]);
+
+    const response = createResponse({
+      statusCode: 200,
+      statusMessage: 'OK',
+      headers: { 'content-type': 'text/plain' },
+    });
+
+    setRequestScenarios(httpsRequestMock, [
+      {
+        onEnd: (_request, callback) => {
+          callback(response);
+          queueMicrotask(() => response.end('ok'));
+        },
+      },
+    ]);
+
+    await requestRemoteBuffered({
+      url: 'https://example.com/header-check',
+      method: 'GET',
+      headers: {
+        Connection: 'keep-alive',
+        'Keep-Alive': 'timeout=5',
+        'Proxy-Authorization': 'Basic proxy-secret',
+        TE: 'trailers',
+        Trailer: 'X-Trailer',
+        'Transfer-Encoding': 'chunked',
+        Upgrade: 'websocket',
+        'X-Test': 'safe',
+      },
+    });
+
+    expect(httpsRequestMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        headers: {
+          Host: 'example.com',
+          'X-Test': 'safe',
+        },
+      }),
+      expect.any(Function),
+    );
+  });
+
   it('follows redirects until the final successful response', async () => {
     setLookupResult([{ address: '93.184.216.34', family: 4 }]);
 
@@ -293,6 +337,122 @@ describe('remote-http', () => {
     expect(result.finalUrl).toBe('https://example.com/next');
     expect(result.body.toString('utf-8')).toBe('{"ok":true}');
     expect(httpsRequestMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('preserves allowed protocol restrictions across redirects', async () => {
+    setLookupResult([{ address: '93.184.216.34', family: 4 }]);
+
+    const redirect = createResponse({
+      statusCode: 302,
+      statusMessage: 'Found',
+      headers: { location: 'http://example.com/insecure' },
+    });
+
+    setRequestScenarios(httpsRequestMock, [
+      {
+        onEnd: (_request, callback) => {
+          callback(redirect);
+          queueMicrotask(() => redirect.end());
+        },
+      },
+    ]);
+
+    await expect(
+      requestRemoteBuffered({
+        url: 'https://example.com/start',
+        method: 'GET',
+        allowedProtocols: ['https:'],
+      }),
+    ).rejects.toThrow('Unsupported protocol: http:');
+
+    expect(httpsRequestMock).toHaveBeenCalledTimes(1);
+    expect(httpRequestMock).not.toHaveBeenCalled();
+  });
+
+  it('strips sensitive headers when redirects cross origins', async () => {
+    dnsLookupMock
+      .mockResolvedValueOnce([{ address: '93.184.216.34', family: 4 }])
+      .mockResolvedValueOnce([{ address: '93.184.216.35', family: 4 }]);
+
+    const redirect = createResponse({
+      statusCode: 302,
+      statusMessage: 'Found',
+      headers: { location: 'https://cdn.example.net/final' },
+    });
+    const finalResponse = createResponse({
+      statusCode: 200,
+      statusMessage: 'OK',
+      headers: { 'content-type': 'text/plain' },
+    });
+
+    setRequestScenarios(httpsRequestMock, [
+      {
+        onEnd: (_request, callback) => {
+          callback(redirect);
+          queueMicrotask(() => redirect.end());
+        },
+      },
+      {
+        onEnd: (_request, callback) => {
+          callback(finalResponse);
+          queueMicrotask(() => finalResponse.end('ok'));
+        },
+      },
+    ]);
+
+    const result = await requestRemoteBuffered({
+      url: 'https://dav.example.com/start',
+      method: 'GET',
+      headers: {
+        Authorization: 'Basic secret',
+        Cookie: 'session=secret',
+        'X-Trace': 'safe',
+      },
+    });
+
+    expect(result.status).toBe(200);
+    expect(result.finalUrl).toBe('https://cdn.example.net/final');
+    expect(httpsRequestMock).toHaveBeenCalledTimes(2);
+    expect(httpsRequestMock).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        servername: 'cdn.example.net',
+        headers: {
+          Host: 'cdn.example.net',
+          'X-Trace': 'safe',
+        },
+      }),
+      expect.any(Function),
+    );
+  });
+
+  it('rejects cross-origin redirects that would replay request bodies', async () => {
+    dnsLookupMock.mockResolvedValueOnce([{ address: '93.184.216.34', family: 4 }]);
+
+    const redirect = createResponse({
+      statusCode: 302,
+      statusMessage: 'Found',
+      headers: { location: 'https://cdn.example.net/upload' },
+    });
+
+    setRequestScenarios(httpsRequestMock, [
+      {
+        onEnd: (_request, callback) => {
+          callback(redirect);
+          queueMicrotask(() => redirect.end());
+        },
+      },
+    ]);
+
+    await expect(
+      requestRemoteBuffered({
+        url: 'https://dav.example.com/upload',
+        method: 'PUT',
+        body: '{"backup":true}',
+      }),
+    ).rejects.toThrow('Refusing to redirect request body across origins');
+
+    expect(httpsRequestMock).toHaveBeenCalledTimes(1);
   });
 
   it('rejects when redirects exceed the configured maximum', async () => {
@@ -354,10 +514,7 @@ describe('remote-http', () => {
       {
         onEnd: (_request, callback) => {
           callback(response);
-          queueMicrotask(() => {
-            response.write(Buffer.from('abcd'));
-            response.write(Buffer.from('efgh'));
-          });
+          queueMicrotask(() => response.end('abcdefgh'));
         },
       },
     ]);
@@ -400,5 +557,45 @@ describe('remote-http', () => {
     expect(result.finalUrl).toBe('https://example.com/stream');
     expect(result.body).not.toBeNull();
     expect(await new Response(result.body ?? undefined).text()).toBe('data: hello\n\n');
+  });
+
+  it('errors streamed responses that exceed maxBytes while reading', async () => {
+    setLookupResult([{ address: '93.184.216.34', family: 4 }]);
+
+    const response = createResponse({
+      statusCode: 200,
+      statusMessage: 'OK',
+      headers: { 'content-type': 'text/event-stream' },
+    });
+
+    setRequestScenarios(httpsRequestMock, [
+      {
+        onEnd: (_request, callback) => {
+          callback(response);
+          queueMicrotask(() => {
+            response.write(Buffer.from('abcd'));
+            response.write(Buffer.from('efgh'));
+          });
+        },
+      },
+    ]);
+
+    const result = await requestRemoteStream({
+      url: 'https://example.com/stream',
+      method: 'GET',
+      maxBytes: 4,
+    });
+
+    const readText = new Response(result.body ?? undefined).text();
+    const readWithTimeout = Promise.race([
+      readText,
+      new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('stream read timed out')), 100);
+      }),
+    ]);
+
+    await expect(readWithTimeout).rejects.toThrow(
+      'Remote response exceeds size limit',
+    );
   });
 });

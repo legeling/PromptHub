@@ -1,12 +1,23 @@
 import * as dns from 'node:dns/promises';
 import * as http from 'node:http';
 import * as https from 'node:https';
-import { Readable } from 'node:stream';
 import ipaddr from 'ipaddr.js';
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const DEFAULT_MAX_REDIRECTS = 5;
 const DEFAULT_MAX_BYTES = 20 * 1024 * 1024;
+const BLOCKED_REQUEST_HEADERS = new Set([
+  'connection',
+  'content-length',
+  'keep-alive',
+  'host',
+  'proxy-authenticate',
+  'proxy-authorization',
+  'te',
+  'trailer',
+  'transfer-encoding',
+  'upgrade',
+]);
 
 interface ResolvedAddress {
   address: string;
@@ -178,6 +189,90 @@ function toHeadersObject(headers: http.IncomingHttpHeaders): Record<string, stri
   return result;
 }
 
+function toUint8Array(chunk: unknown): Uint8Array {
+  if (typeof chunk === 'string') {
+    return Buffer.from(chunk, 'utf8');
+  }
+  if (Buffer.isBuffer(chunk)) {
+    return chunk;
+  }
+  if (chunk instanceof Uint8Array) {
+    return chunk;
+  }
+  return Buffer.from(String(chunk), 'utf8');
+}
+
+function toLimitedWebStream(
+  response: http.IncomingMessage,
+  maxBytes: number,
+): ReadableStream<Uint8Array> {
+  let receivedBytes = 0;
+  let settled = false;
+
+  let onData: ((chunk: unknown) => void) | undefined;
+  let onEnd: (() => void) | undefined;
+  let onError: ((error: Error) => void) | undefined;
+
+  const cleanup = (): void => {
+    if (onData) response.off('data', onData);
+    if (onEnd) response.off('end', onEnd);
+    if (onError) response.off('error', onError);
+  };
+
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      const fail = (error: Error): void => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        cleanup();
+        controller.error(error);
+        response.destroy();
+      };
+
+      onData = (chunk: unknown): void => {
+        if (settled) {
+          return;
+        }
+
+        const payload = toUint8Array(chunk);
+        receivedBytes += payload.byteLength;
+        if (receivedBytes > maxBytes) {
+          fail(new Error('Remote response exceeds size limit'));
+          return;
+        }
+
+        controller.enqueue(payload);
+      };
+
+      onEnd = (): void => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        cleanup();
+        controller.close();
+      };
+
+      onError = (error: Error): void => {
+        fail(error);
+      };
+
+      response.on('data', onData);
+      response.on('end', onEnd);
+      response.on('error', onError);
+    },
+    cancel() {
+      if (!settled) {
+        settled = true;
+        cleanup();
+        response.destroy();
+      }
+    },
+  });
+}
+
 function getRequestModule(protocol: string): typeof http | typeof https {
   return protocol === 'https:' ? https : http;
 }
@@ -200,13 +295,40 @@ function normalizeHeaders(headers: Record<string, string> | undefined, host: str
       continue;
     }
     const lowerKey = key.toLowerCase();
-    if (lowerKey === 'host' || lowerKey === 'content-length') {
+    if (BLOCKED_REQUEST_HEADERS.has(lowerKey)) {
       continue;
     }
     nextHeaders[key] = value;
   }
   nextHeaders.Host = host;
   return nextHeaders;
+}
+
+function headersForRedirect(
+  headers: Record<string, string> | undefined,
+  fromUrl: URL,
+  toUrl: URL,
+): Record<string, string> | undefined {
+  if (fromUrl.origin === toUrl.origin) {
+    return headers;
+  }
+
+  const nextHeaders: Record<string, string> = {};
+  for (const [key, value] of Object.entries(headers ?? {})) {
+    const lowerKey = key.toLowerCase();
+    if (lowerKey === 'authorization' || lowerKey === 'proxy-authorization' || lowerKey === 'cookie') {
+      continue;
+    }
+    nextHeaders[key] = value;
+  }
+
+  return nextHeaders;
+}
+
+function assertRedirectBodyAllowed(options: RemoteRequestOptions, fromUrl: URL, toUrl: URL): void {
+  if (options.body && fromUrl.origin !== toUrl.origin) {
+    throw new Error('Refusing to redirect request body across origins');
+  }
 }
 
 async function openRemoteResponse(
@@ -246,8 +368,18 @@ async function openRemoteResponse(
 
         if (statusCode >= 300 && statusCode < 400 && typeof location === 'string') {
           response.resume();
-          const nextUrl = new URL(location, parsedUrl).toString();
-          void openRemoteResponse({ ...options, url: nextUrl }, redirectCount + 1).then(resolve).catch(reject);
+          const redirectUrl = new URL(location, parsedUrl);
+          try {
+            assertRedirectBodyAllowed(options, parsedUrl, redirectUrl);
+          } catch (redirectError) {
+            reject(redirectError);
+            return;
+          }
+          void openRemoteResponse({
+            ...options,
+            url: redirectUrl.toString(),
+            headers: headersForRedirect(options.headers, parsedUrl, redirectUrl),
+          }, redirectCount + 1).then(resolve).catch(reject);
           return;
         }
 
@@ -297,7 +429,7 @@ export async function requestRemoteBuffered(options: RemoteRequestOptions): Prom
 
 export async function requestRemoteStream(options: RemoteRequestOptions): Promise<RemoteStreamResponse> {
   const { response, finalUrl } = await openRemoteResponse(options);
-  const body = Readable.toWeb(response) as ReadableStream<Uint8Array>;
+  const body = toLimitedWebStream(response, options.maxBytes ?? DEFAULT_MAX_BYTES);
 
   return {
     status: response.statusCode ?? 0,
