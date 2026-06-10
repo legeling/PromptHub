@@ -552,7 +552,7 @@ function parseGitHubSkillLocation(
       const parsed = new URL(sourceUrl);
       if (parsed.hostname.toLowerCase() === "github.com") {
         const parts = parsed.pathname.split("/").filter(Boolean);
-        if (parts.length >= 5 && parts[2] === "tree") {
+        if (parts.length >= 4 && parts[2] === "tree") {
           return {
             owner: parts[0],
             repo: parts[1],
@@ -571,7 +571,7 @@ function parseGitHubSkillLocation(
       const parsed = new URL(contentUrl);
       if (parsed.hostname.toLowerCase() === "raw.githubusercontent.com") {
         const parts = parsed.pathname.split("/").filter(Boolean);
-        if (parts.length >= 5) {
+        if (parts.length >= 4) {
           return {
             owner: parts[0],
             repo: parts[1],
@@ -675,7 +675,7 @@ async function syncRemoteGitHubSkillRepo(
   contentUrl?: string,
 ): Promise<void> {
   const location = parseGitHubSkillLocation(sourceUrl, contentUrl);
-  if (!location || !location.directoryPath) {
+  if (!location) {
     return;
   }
 
@@ -685,13 +685,17 @@ async function syncRemoteGitHubSkillRepo(
   const treeData = parseJson<{
     tree?: Array<{ path?: string; type?: string }>;
   }>(treeRaw || "{}", {});
-  const directoryPrefix = `${location.directoryPath}/`;
+  const directoryPrefix = location.directoryPath
+    ? `${location.directoryPath}/`
+    : "";
   const files = Array.isArray(treeData.tree)
     ? treeData.tree.filter(
         (entry): entry is { path: string; type: string } =>
           isGitHubTreeEntry(entry) &&
           entry.type === "blob" &&
-          entry.path.startsWith(directoryPrefix),
+          (directoryPrefix
+            ? entry.path.startsWith(directoryPrefix)
+            : true),
       )
     : [];
 

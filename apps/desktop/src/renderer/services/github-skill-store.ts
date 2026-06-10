@@ -210,7 +210,7 @@ function getTreeBackedDirectoryFingerprint(
   const scopedEntries = treeEntries
     .filter((entry) => entry.type === "blob")
     .filter((entry) =>
-      prefix ? entry.path.startsWith(prefix) : !entry.path.includes("/"),
+      prefix ? entry.path.startsWith(prefix) : true,
     )
     .filter((entry) => typeof entry.sha === "string" && entry.sha.length > 0)
     .map((entry) => ({
@@ -325,12 +325,12 @@ export async function loadGitHubSkillRepo(
       const builtin = builtinBySlug.get(slug);
       const description =
         parsed.description || builtin?.description || `${toTitleCase(slug)} skill`;
-      const canonicalSkillPath = directoryPath || "SKILL.md";
+      const canonicalSkillPath = path;
       const sourceId = buildSkillSourceId({
         sourceType: "git-repo",
         sourceUrl: parsedRepo.repositoryUrl,
         branch: resolvedBranch,
-        directory: resolvedDirectory,
+        directory: directoryPath || resolvedDirectory || undefined,
         skillPath: canonicalSkillPath,
       });
 

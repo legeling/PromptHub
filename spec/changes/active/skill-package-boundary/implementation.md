@@ -167,6 +167,13 @@ Regression coverage added:
   - Inflight load keys now include the active skills.sh filter / search query or ClawHub search query.
   - Completed skills.sh / ClawHub loads compare their result query with the latest selected query before writing store state, so slower old requests cannot overwrite the active filter.
   - Added a race test where the `All` skills.sh request remains pending while `Next.js` loads and the old request resolves last.
+- Fixed GitHub issue #170 root-level package installs:
+  - Verified the reported repositories `lewislulu/html-ppt-skill` and `op7418/guizang-ppt-skill` both use a root `SKILL.md` with package resources under directories such as `assets/`, `references/`, and `scripts/`.
+  - The existing custom Git/Gitea clone-backed package path did not cover this case because public GitHub install falls back to raw-content sync when `content_url` is present.
+  - `syncRemoteGitHubSkillRepo()` now accepts root-level GitHub tree/raw URLs and syncs every non-ignored blob in the package, not only `SKILL.md`.
+  - `loadGitHubSkillRepo()` now records the true canonical skill path (`SKILL.md` or `<dir>/SKILL.md`) and fingerprints the full root package tree when the skill lives at repository root.
+  - Added renderer store regression coverage proving a root-level GitHub package writes `SKILL.md` and also persists `assets/`, `references/`, `scripts/`, and other package files.
+  - Added GitHub store metadata regression coverage for root `SKILL.md` canonical path and full package fingerprinting.
 
 Additional verification:
 
@@ -182,6 +189,9 @@ Additional verification:
   - Passed.
 - `git diff --check`
   - Passed.
+- GitHub issue #170 root package regression:
+  - `pnpm --dir apps/desktop exec vitest run tests/unit/stores/skill.store.test.ts tests/unit/services/github-skill-store.test.ts`
+  - Passed: 2 files, 58 tests.
 
 ## Docs Synced
 

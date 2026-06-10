@@ -720,6 +720,92 @@ description: Use this skill for PDF tasks.
     );
   });
 
+  it("syncs root GitHub skill packages instead of writing only SKILL.md", async () => {
+    const create = vi.fn().mockResolvedValue(
+      createSkillFixture({
+        id: "skill-html-ppt",
+        name: "html-ppt",
+        registry_slug: "html-ppt",
+      }),
+    );
+    const getAll = vi.fn().mockResolvedValue([]);
+    const fetchRemoteContent = vi.fn(async (url: string) => {
+      if (url.includes("/git/trees/")) {
+        return JSON.stringify({
+          tree: [
+            { path: "SKILL.md", type: "blob" },
+            { path: "assets/runtime.js", type: "blob" },
+            { path: "references/themes.md", type: "blob" },
+            { path: "scripts/render.sh", type: "blob" },
+            { path: ".github/workflows/ci.yml", type: "blob" },
+          ],
+        });
+      }
+
+      return "# HTML PPT\n\nCreate decks.\n";
+    });
+    const fetchRemoteContentBytes = vi
+      .fn()
+      .mockResolvedValueOnce(Uint8Array.from([1, 2, 3]))
+      .mockResolvedValueOnce(Uint8Array.from([4, 5, 6]))
+      .mockResolvedValueOnce(Uint8Array.from([7, 8, 9]))
+      .mockResolvedValueOnce(Uint8Array.from([10, 11, 12]));
+    const writeLocalFile = vi.fn().mockResolvedValue(undefined);
+    const writeLocalFileBufferByPath = vi.fn().mockResolvedValue(undefined);
+    const getRepoPath = vi.fn().mockResolvedValue("/tmp/managed/html-ppt");
+
+    (window as any).api.skill.create = create;
+    (window as any).api.skill.getAll = getAll;
+    (window as any).api.skill.fetchRemoteContent = fetchRemoteContent;
+    (window as any).api.skill.fetchRemoteContentBytes = fetchRemoteContentBytes;
+    (window as any).api.skill.writeLocalFile = writeLocalFile;
+    (window as any).api.skill.writeLocalFileBufferByPath =
+      writeLocalFileBufferByPath;
+    (window as any).api.skill.getRepoPath = getRepoPath;
+
+    await useSkillStore.getState().installRegistrySkill({
+      slug: "html-ppt",
+      name: "HTML PPT",
+      description: "Has root package assets",
+      category: "general",
+      author: "lewislulu",
+      source_url: "https://github.com/lewislulu/html-ppt-skill/tree/main",
+      content_url:
+        "https://raw.githubusercontent.com/lewislulu/html-ppt-skill/main/SKILL.md",
+      tags: ["ppt"],
+      version: "1.0.0",
+      content: "# HTML PPT\n\nCached\n",
+    });
+
+    expect(writeLocalFile).toHaveBeenCalledWith(
+      "skill-html-ppt",
+      "SKILL.md",
+      "# HTML PPT\n\nCreate decks.\n",
+      { skipVersionSnapshot: true },
+    );
+    expect(fetchRemoteContentBytes).toHaveBeenCalledTimes(4);
+    expect(writeLocalFileBufferByPath).toHaveBeenCalledWith(
+      "/tmp/managed/html-ppt",
+      "assets/runtime.js",
+      Uint8Array.from([1, 2, 3]),
+    );
+    expect(writeLocalFileBufferByPath).toHaveBeenCalledWith(
+      "/tmp/managed/html-ppt",
+      "references/themes.md",
+      Uint8Array.from([4, 5, 6]),
+    );
+    expect(writeLocalFileBufferByPath).toHaveBeenCalledWith(
+      "/tmp/managed/html-ppt",
+      "scripts/render.sh",
+      Uint8Array.from([7, 8, 9]),
+    );
+    expect(writeLocalFileBufferByPath).toHaveBeenCalledWith(
+      "/tmp/managed/html-ppt",
+      ".github/workflows/ci.yml",
+      Uint8Array.from([10, 11, 12]),
+    );
+  });
+
   it("updates a pristine registry skill after creating a version snapshot", async () => {
     const remoteContent = "# Writer\n\nRemote update\n";
     const fetchRemoteContent = vi.fn().mockResolvedValue(remoteContent);

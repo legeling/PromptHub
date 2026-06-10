@@ -46,3 +46,6 @@
 - [x] Fix GitHub install so successful managed migration removes the temporary clone and post-create failures roll back the DB row.
 - [x] Add remote store inflight filter-race regression coverage.
 - [x] Fix remote store inflight keys and stale-result guards so concurrent skills.sh / ClawHub queries cannot overwrite the active filter.
+- [x] Verify GitHub issue #170 against the reported root-level GitHub packages.
+- [x] Fix root-level GitHub package installs so `assets/`, `references/`, `scripts/`, and other package files sync instead of only `SKILL.md`.
+- [x] Add root-level GitHub package scan/install regressions using the reported `html-ppt-skill` layout.

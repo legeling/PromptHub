@@ -133,6 +133,88 @@ describe("github skill store identity", () => {
     expect(skills[0]?.source_id).toBeDefined();
   });
 
+  it("keeps the root SKILL.md path and fingerprints the whole root package", async () => {
+    const fetchRemoteContent = vi.fn(async (url: string) => {
+      if (url === "https://api.github.com/repos/lewislulu/html-ppt-skill") {
+        return JSON.stringify({
+          default_branch: "main",
+          owner: { login: "lewislulu" },
+        });
+      }
+
+      if (url === "https://api.github.com/repos/lewislulu/html-ppt-skill/git/trees/main?recursive=1") {
+        return JSON.stringify({
+          tree: [
+            {
+              path: "SKILL.md",
+              type: "blob",
+              sha: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            },
+            {
+              path: "assets/runtime.js",
+              type: "blob",
+              sha: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            },
+            {
+              path: "references/themes.md",
+              type: "blob",
+              sha: "cccccccccccccccccccccccccccccccccccccccc",
+            },
+            {
+              path: ".github/workflows/ci.yml",
+              type: "blob",
+              sha: "dddddddddddddddddddddddddddddddddddddddd",
+            },
+          ],
+        });
+      }
+
+      if (url === "https://raw.githubusercontent.com/lewislulu/html-ppt-skill/main/SKILL.md") {
+        return "---\nname: html-ppt\ndescription: HTML PPT Studio\n---\n\n# HTML PPT\n";
+      }
+
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+
+    const skills = await loadGitHubSkillRepo(
+      "https://github.com/lewislulu/html-ppt-skill",
+      {
+        ...storeMessages,
+        fetchRemoteContent,
+        registrySkills: [],
+      },
+    );
+
+    expect(skills).toHaveLength(1);
+    expect(skills[0]).toEqual(
+      expect.objectContaining({
+        source_directory: undefined,
+        canonical_skill_path: "SKILL.md",
+        source_url: "https://github.com/lewislulu/html-ppt-skill/tree/main",
+      }),
+    );
+    expect(skills[0]?.directory_fingerprint).toBe(
+      computeDirectoryFingerprintFromHashes([
+        {
+          path: "SKILL.md",
+          contentHash: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        },
+        {
+          path: "assets/runtime.js",
+          contentHash: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        },
+        {
+          path: "references/themes.md",
+          contentHash: "cccccccccccccccccccccccccccccccccccccccc",
+        },
+        {
+          path: ".github/workflows/ci.yml",
+          contentHash: "dddddddddddddddddddddddddddddddddddddddd",
+        },
+      ]),
+    );
+  });
+
   it("derives directory fingerprints from tree blob hashes", async () => {
     const fetchRemoteContent = vi.fn(async (url: string) => {
       if (url === "https://api.github.com/repos/example/skills") {
