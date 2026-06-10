@@ -1,4 +1,5 @@
 import type { MiddlewareHandler } from 'hono';
+import { isSecureRequest } from '../utils/secure-request.js';
 
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
@@ -13,18 +14,6 @@ const CONTENT_SECURITY_POLICY = [
   "style-src 'self' 'unsafe-inline'",
 ].join('; ');
 
-function isSecureRequest(requestUrl: string, forwardedProto?: string): boolean {
-  if (forwardedProto?.toLowerCase() === 'https') {
-    return true;
-  }
-
-  try {
-    return new URL(requestUrl).protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
-
 export function securityHeaders(): MiddlewareHandler {
   return async (c, next) => {
     await next();
@@ -37,7 +26,7 @@ export function securityHeaders(): MiddlewareHandler {
     c.header('X-Content-Type-Options', 'nosniff');
     c.header('X-Frame-Options', 'DENY');
 
-    if (isSecureRequest(c.req.url, c.req.header('x-forwarded-proto'))) {
+    if (isSecureRequest(c)) {
       c.header(
         'Strict-Transport-Security',
         'max-age=31536000; includeSubDomains',

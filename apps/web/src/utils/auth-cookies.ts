@@ -1,17 +1,16 @@
 import type { Context } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import { config } from '../config.js';
+import { isSecureRequest } from './secure-request.js';
 
 export const ACCESS_COOKIE_NAME = 'prompthub_access';
 export const REFRESH_COOKIE_NAME = 'prompthub_refresh';
 
 function getCookieOptions(c: Context, maxAge: number) {
-  const requestUrl = new URL(c.req.url);
-
   return {
     httpOnly: true,
     sameSite: 'Lax' as const,
-    secure: requestUrl.protocol === 'https:',
+    secure: isSecureRequest(c),
     path: '/',
     maxAge,
   };

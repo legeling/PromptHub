@@ -1,4 +1,5 @@
 import type { Context } from 'hono';
+import { config } from '../config.js';
 
 interface LimitPolicy {
   maxAttempts: number;
@@ -16,6 +17,7 @@ interface RateLimitResult {
 }
 
 const buckets = new Map<string, Bucket>();
+const MAX_CLIENT_IDENTIFIER_LENGTH = 128;
 
 function now(): number {
   return Date.now();
@@ -42,20 +44,33 @@ function toRetryAfterSeconds(resetAt: number): number {
 }
 
 export function getClientIdentifier(c: Context): string {
+  if (!config.trustProxyHeaders) {
+    return 'unknown';
+  }
+
   const forwardedFor = c.req.header('x-forwarded-for');
   if (forwardedFor) {
-    const first = forwardedFor.split(',')[0]?.trim();
+    const first = normalizeClientIdentifier(forwardedFor.split(',')[0]);
     if (first) {
       return first;
     }
   }
 
-  const realIp = c.req.header('x-real-ip')?.trim();
+  const realIp = normalizeClientIdentifier(c.req.header('x-real-ip'));
   if (realIp) {
     return realIp;
   }
 
   return 'unknown';
+}
+
+function normalizeClientIdentifier(value: string | undefined): string | null {
+  const normalized = value?.trim();
+  if (!normalized || normalized.length > MAX_CLIENT_IDENTIFIER_LENGTH || /[\u0000-\u001F\u007F]/u.test(normalized)) {
+    return null;
+  }
+
+  return normalized;
 }
 
 export function consumeRateLimit(

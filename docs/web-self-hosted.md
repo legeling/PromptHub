@@ -85,6 +85,7 @@ Important variables:
 - `JWT_SECRET`: required, at least 32 characters
 - `DATA_ROOT`: root directory for all PromptHub data (default: `./`). The app writes `data/`, `config/`, `logs/`, and `backups/` under this path.
 - `ALLOW_REGISTRATION=false`: keep this disabled; the first admin is created only through `/setup`
+- `TRUST_PROXY_HEADERS=false`: keep this disabled unless your reverse proxy strips client-supplied forwarding headers and writes trusted `X-Forwarded-For` / `X-Real-IP` values.
 
 ## Local Development
 
@@ -133,6 +134,7 @@ Then edit `.env` and set at least:
 ```env
 JWT_SECRET=replace-with-a-random-secret-at-least-32-chars
 ALLOW_REGISTRATION=false
+TRUST_PROXY_HEADERS=false
 ```
 
 Start the service:
@@ -156,6 +158,7 @@ docker run -d \
   -p 3871:3000 \
   -e JWT_SECRET='replace-with-a-random-secret-at-least-32-chars' \
   -e ALLOW_REGISTRATION=false \
+  -e TRUST_PROXY_HEADERS=false \
   -v "$(pwd)/apps/web/data:/app/data" \
   ghcr.io/legeling/prompthub-web:latest
 ```
@@ -193,4 +196,5 @@ Typical persisted paths include:
 - Back up `DATA_ROOT` regularly.
 - Treat this app as a user-managed deployment artifact, not as a shared hosted service.
 - If you expose it to the public internet, use HTTPS and a reverse proxy in front of it.
+- Only set `TRUST_PROXY_HEADERS=true` when that reverse proxy removes untrusted incoming forwarding headers; otherwise auth rate limits intentionally use a coarse fallback client bucket.
 - CI validates the web app with lint, typecheck, tests, production build, Docker image build, and compose validation.

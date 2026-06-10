@@ -19,10 +19,11 @@ import {
   setAuthCookies,
 } from '../utils/auth-cookies.js';
 import { error, ErrorCode, success } from '../utils/response.js';
-import { parseJsonBody } from '../utils/validation.js';
+import { parseJsonBody, readRequestTextBody } from '../utils/validation.js';
 
 const auth = new Hono();
 const authService = new AuthService();
+const MAX_OPTIONAL_AUTH_BODY_BYTES = 1024 * 1024;
 
 const usernameSchema = z
   .string()
@@ -78,7 +79,20 @@ async function parseOptionalAuthBody(
   | { success: true; data: z.infer<typeof refreshSchema> }
   | { success: false; response: Response }
 > {
-  const rawBody = await c.req.text();
+  const oversizedResponse = rejectOversizedOptionalAuthBody(c);
+  if (oversizedResponse) {
+    return { success: false, response: oversizedResponse };
+  }
+
+  const rawBodyResult = await readRequestTextBody(c, {
+    maxBytes: MAX_OPTIONAL_AUTH_BODY_BYTES,
+    maxBytesMessage: 'Auth request body exceeds size limit',
+  });
+  if (!rawBodyResult.success) {
+    return { success: false, response: rawBodyResult.response };
+  }
+
+  const rawBody = rawBodyResult.text;
   if (!rawBody.trim()) {
     return { success: true, data: {} };
   }
@@ -105,6 +119,42 @@ async function parseOptionalAuthBody(
   return { success: true, data: parsed.data };
 }
 
+function rejectOversizedOptionalAuthBody(c: Context): Response | null {
+  const contentLength = c.req.header('content-length');
+  if (!contentLength) {
+    return null;
+  }
+
+  const byteLength = Number(contentLength);
+  if (!Number.isFinite(byteLength) || byteLength < 0) {
+    return error(c, 400, ErrorCode.BAD_REQUEST, 'Invalid Content-Length header');
+  }
+
+  if (byteLength > MAX_OPTIONAL_AUTH_BODY_BYTES) {
+    return error(c, 400, ErrorCode.BAD_REQUEST, 'Auth request body exceeds size limit');
+  }
+
+  return null;
+}
+
+async function parseAuthJsonBody<T extends z.ZodTypeAny>(
+  c: Context,
+  schema: T,
+): Promise<
+  | { success: true; data: z.infer<T> }
+  | { success: false; response: Response }
+> {
+  const oversizedResponse = rejectOversizedOptionalAuthBody(c);
+  if (oversizedResponse) {
+    return { success: false, response: oversizedResponse };
+  }
+
+  return parseJsonBody(c, schema, {
+    maxBytes: MAX_OPTIONAL_AUTH_BODY_BYTES,
+    maxBytesMessage: 'Auth request body exceeds size limit',
+  });
+}
+
 auth.get('/bootstrap', async (c) => {
   try {
     return success(c, await authService.getBootstrapStatus());
@@ -122,7 +172,7 @@ auth.get('/captcha', (c) => {
 });
 
 auth.post('/register', async (c) => {
-  const parsed = await parseJsonBody(c, registerSchema);
+  const parsed = await parseAuthJsonBody(c, registerSchema);
   if (!parsed.success) {
     return parsed.response;
   }
@@ -157,7 +207,7 @@ auth.post('/register', async (c) => {
 });
 
 auth.post('/login', async (c) => {
-  const parsed = await parseJsonBody(c, loginSchema);
+  const parsed = await parseAuthJsonBody(c, loginSchema);
   if (!parsed.success) {
     return parsed.response;
   }
@@ -259,7 +309,7 @@ auth.get('/me', async (c) => {
 });
 
 auth.put('/password', async (c) => {
-  const parsed = await parseJsonBody(c, passwordChangeSchema);
+  const parsed = await parseAuthJsonBody(c, passwordChangeSchema);
   if (!parsed.success) {
     return parsed.response;
   }

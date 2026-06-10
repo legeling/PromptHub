@@ -15,6 +15,7 @@ const ENV_KEYS = [
   'DATA_ROOT',
   'ALLOW_REGISTRATION',
   'LOG_LEVEL',
+  'TRUST_PROXY_HEADERS',
 ] as const;
 
 const originalEnv = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]));
@@ -30,7 +31,10 @@ function getSetCookieHeaders(response: Response): string[] {
   return singleHeader ? [singleHeader] : [];
 }
 
-async function createTestApp(dataDir: string, options?: { allowRegistration?: boolean }) {
+async function createTestApp(
+  dataDir: string,
+  options?: { allowRegistration?: boolean; trustProxyHeaders?: boolean },
+) {
   process.env.PORT = '3997';
   process.env.HOST = '127.0.0.1';
   process.env.JWT_SECRET = 'test-secret-for-web-auth-flow-1234567890';
@@ -39,6 +43,7 @@ async function createTestApp(dataDir: string, options?: { allowRegistration?: bo
   process.env.DATA_ROOT = dataDir;
   process.env.ALLOW_REGISTRATION = options?.allowRegistration === false ? 'false' : 'true';
   process.env.LOG_LEVEL = 'debug';
+  process.env.TRUST_PROXY_HEADERS = options?.trustProxyHeaders ? 'true' : 'false';
 
   const [{ createApp }] = await Promise.all([
     import('../app'),
@@ -87,6 +92,23 @@ async function loginUser(app: Awaited<ReturnType<typeof createTestApp>>, usernam
   };
 
   return { response, payload };
+}
+
+function streamedJsonRequest(url: string, body: string, headers: HeadersInit = {}): Request {
+  return new Request(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...headers,
+    },
+    body: new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(body));
+        controller.close();
+      },
+    }),
+    duplex: 'half',
+  } as RequestInit & { duplex: 'half' });
 }
 
 describe('web auth routes', () => {
@@ -382,6 +404,95 @@ describe('web auth routes', () => {
     }
   }, TEST_TIMEOUT);
 
+  it('does not let spoofed forwarded headers bypass login rate limits', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-auth-test-'));
+
+    try {
+      const app = await createTestApp(dataDir);
+      await registerUser(app, 'spooflimituser', 'debugpass001');
+
+      for (let index = 0; index < 5; index++) {
+        const headers = { 'x-forwarded-for': `198.51.100.${index + 1}` };
+        const captcha = await issueSolvedCaptcha(app, { headers });
+        const response = await app.request(
+          new Request('http://local/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...headers },
+            body: JSON.stringify({ username: 'spooflimituser', password: 'wrongpass999', ...captcha }),
+          }),
+        );
+
+        expect(response.status).toBe(401);
+      }
+
+      const blockedHeaders = { 'x-forwarded-for': '198.51.100.250' };
+      const captcha = await issueSolvedCaptcha(app, { headers: blockedHeaders });
+      const blockedResponse = await app.request(
+        new Request('http://local/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...blockedHeaders },
+          body: JSON.stringify({ username: 'spooflimituser', password: 'wrongpass999', ...captcha }),
+        }),
+      );
+
+      expect(blockedResponse.status).toBe(429);
+      const payload = await blockedResponse.json() as { error: { code: string; message: string } };
+      expect(payload.error.code).toBe('RATE_LIMITED');
+      expect(payload.error.message).toContain('Too many login attempts');
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  }, TEST_TIMEOUT);
+
+  it('uses forwarded headers for auth rate limits only when trusted proxy mode is enabled', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-auth-test-'));
+
+    try {
+      const app = await createTestApp(dataDir, { trustProxyHeaders: true });
+      await registerUser(app, 'trustedproxyuser', 'debugpass001');
+
+      for (let index = 0; index < 5; index++) {
+        const headers = { 'x-forwarded-for': '198.51.100.10, 10.0.0.1' };
+        const captcha = await issueSolvedCaptcha(app, { headers });
+        const response = await app.request(
+          new Request('http://local/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...headers },
+            body: JSON.stringify({ username: 'trustedproxyuser', password: 'wrongpass999', ...captcha }),
+          }),
+        );
+
+        expect(response.status).toBe(401);
+      }
+
+      const sameClientCaptcha = await issueSolvedCaptcha(app, {
+        headers: { 'x-forwarded-for': '198.51.100.10, 10.0.0.1' },
+      });
+      const sameClientResponse = await app.request(
+        new Request('http://local/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-forwarded-for': '198.51.100.10, 10.0.0.1' },
+          body: JSON.stringify({ username: 'trustedproxyuser', password: 'wrongpass999', ...sameClientCaptcha }),
+        }),
+      );
+      expect(sameClientResponse.status).toBe(429);
+
+      const differentClientCaptcha = await issueSolvedCaptcha(app, {
+        headers: { 'x-forwarded-for': '198.51.100.11, 10.0.0.1' },
+      });
+      const differentClientResponse = await app.request(
+        new Request('http://local/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-forwarded-for': '198.51.100.11, 10.0.0.1' },
+          body: JSON.stringify({ username: 'trustedproxyuser', password: 'wrongpass999', ...differentClientCaptcha }),
+        }),
+      );
+      expect(differentClientResponse.status).toBe(401);
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  }, TEST_TIMEOUT);
+
   it('marks auth responses as no-store', async () => {
     const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-auth-test-'));
 
@@ -394,6 +505,30 @@ describe('web auth routes', () => {
       const cookies = getSetCookieHeaders(response).join('\n');
       expect(cookies).toContain('prompthub_access=');
       expect(cookies).toContain('prompthub_refresh=');
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  }, TEST_TIMEOUT);
+
+  it('marks auth cookies as secure for trusted proxy HTTPS requests', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-auth-proxy-cookie-test-'));
+
+    try {
+      const app = await createTestApp(dataDir, { trustProxyHeaders: true });
+      const proxyHeaders = { 'x-forwarded-proto': 'https, http' };
+      const captcha = await issueSolvedCaptcha(app, { headers: proxyHeaders });
+      const response = await app.request(
+        new Request('http://local/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...proxyHeaders },
+          body: JSON.stringify({ username: 'secureproxycookie', password: 'debugpass001', ...captcha }),
+        }),
+      );
+
+      expect(response.status).toBe(201);
+      const cookies = getSetCookieHeaders(response);
+      expect(cookies).toHaveLength(2);
+      expect(cookies.every((cookie) => /;\s*Secure(?:;|$)/i.test(cookie))).toBe(true);
     } finally {
       fs.rmSync(dataDir, { recursive: true, force: true });
     }
@@ -548,6 +683,154 @@ describe('web auth routes', () => {
       expect(reusedResponse.status).toBe(401);
       const reusedPayload = await reusedResponse.json() as { error: { code: string } };
       expect(reusedPayload.error.code).toBe('UNAUTHORIZED');
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  }, TEST_TIMEOUT);
+
+  it('rejects oversized optional auth bodies before refreshing tokens', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-auth-test-'));
+
+    try {
+      const app = await createTestApp(dataDir);
+      const { payload: registerPayload } = await registerUser(app, 'refreshoversize', 'debugpass001');
+
+      const oversizedResponse = await app.request(
+        new Request('http://local/api/auth/refresh', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': String(1024 * 1024 + 1),
+          },
+          body: JSON.stringify({ refreshToken: registerPayload.data.refreshToken }),
+        }),
+      );
+
+      expect(oversizedResponse.status).toBe(400);
+      const oversizedPayload = await oversizedResponse.json() as { error: { code: string; message: string } };
+      expect(oversizedPayload.error).toEqual({
+        code: 'BAD_REQUEST',
+        message: 'Auth request body exceeds size limit',
+      });
+
+      const invalidLengthResponse = await app.request(
+        new Request('http://local/api/auth/refresh', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': 'not-a-number',
+          },
+          body: JSON.stringify({ refreshToken: registerPayload.data.refreshToken }),
+        }),
+      );
+      expect(invalidLengthResponse.status).toBe(400);
+      const invalidLengthPayload = await invalidLengthResponse.json() as { error: { code: string; message: string } };
+      expect(invalidLengthPayload.error).toEqual({
+        code: 'BAD_REQUEST',
+        message: 'Invalid Content-Length header',
+      });
+
+      const streamedOversizedResponse = await app.request(
+        streamedJsonRequest(
+          'http://local/api/auth/refresh',
+          JSON.stringify({
+            refreshToken: registerPayload.data.refreshToken,
+            padding: 'x'.repeat(1024 * 1024 + 1),
+          }),
+        ),
+      );
+      expect(streamedOversizedResponse.status).toBe(400);
+      const streamedOversizedPayload = await streamedOversizedResponse.json() as {
+        error: { code: string; message: string };
+      };
+      expect(streamedOversizedPayload.error).toEqual({
+        code: 'BAD_REQUEST',
+        message: 'Auth request body exceeds size limit',
+      });
+
+      const refreshResponse = await app.request(
+        new Request('http://local/api/auth/refresh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken: registerPayload.data.refreshToken }),
+        }),
+      );
+      expect(refreshResponse.status).toBe(200);
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  }, TEST_TIMEOUT);
+
+  it('rejects oversized auth JSON bodies before parsing credentials', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-auth-test-'));
+
+    try {
+      const app = await createTestApp(dataDir);
+      const oversizedRegisterResponse = await app.request(
+        new Request('http://local/api/auth/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': String(1024 * 1024 + 1),
+          },
+          body: '{',
+        }),
+      );
+
+      expect(oversizedRegisterResponse.status).toBe(400);
+      const oversizedRegisterPayload = await oversizedRegisterResponse.json() as {
+        error: { code: string; message: string };
+      };
+      expect(oversizedRegisterPayload.error).toEqual({
+        code: 'BAD_REQUEST',
+        message: 'Auth request body exceeds size limit',
+      });
+
+      const streamedOversizedRegisterResponse = await app.request(
+        streamedJsonRequest(
+          'http://local/api/auth/register',
+          JSON.stringify({
+            username: 'streamedoversize',
+            password: 'debugpass001',
+            captchaId: '00000000-0000-0000-0000-000000000000',
+            captchaAnswer: 'abcd',
+            padding: 'x'.repeat(1024 * 1024 + 1),
+          }),
+        ),
+      );
+      expect(streamedOversizedRegisterResponse.status).toBe(400);
+      const streamedOversizedRegisterPayload = await streamedOversizedRegisterResponse.json() as {
+        error: { code: string; message: string };
+      };
+      expect(streamedOversizedRegisterPayload.error).toEqual({
+        code: 'BAD_REQUEST',
+        message: 'Auth request body exceeds size limit',
+      });
+
+      const { payload: registerPayload } = await registerUser(app, 'authbodysize', 'debugpass001');
+      const oversizedPasswordResponse = await app.request(
+        new Request('http://local/api/auth/password', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${registerPayload.data.accessToken}`,
+            'Content-Length': String(1024 * 1024 + 1),
+          },
+          body: '{',
+        }),
+      );
+
+      expect(oversizedPasswordResponse.status).toBe(400);
+      const oversizedPasswordPayload = await oversizedPasswordResponse.json() as {
+        error: { code: string; message: string };
+      };
+      expect(oversizedPasswordPayload.error).toEqual({
+        code: 'BAD_REQUEST',
+        message: 'Auth request body exceeds size limit',
+      });
+
+      const loginResponse = await loginUser(app, 'authbodysize', 'debugpass001');
+      expect(loginResponse.response.status).toBe(200);
     } finally {
       fs.rmSync(dataDir, { recursive: true, force: true });
     }

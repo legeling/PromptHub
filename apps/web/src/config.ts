@@ -24,6 +24,10 @@ const envSchema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((v) => v === 'true'),
+  TRUST_PROXY_HEADERS: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
 
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
 });
@@ -70,6 +74,7 @@ function loadConfig(): Config {
     dataDir: path.join(rootDir, 'data'),
 
     allowRegistration: env.ALLOW_REGISTRATION,
+    trustProxyHeaders: env.TRUST_PROXY_HEADERS,
     logLevel: env.LOG_LEVEL,
   };
 }
@@ -103,6 +108,7 @@ export interface Config {
   dataDir: string;
 
   allowRegistration: boolean;
+  trustProxyHeaders: boolean;
   logLevel: 'debug' | 'info' | 'warn' | 'error';
 }
 
