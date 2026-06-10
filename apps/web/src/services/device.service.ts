@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import { getDevicesDir } from '../runtime-paths.js';
+import { writeJsonFileAtomic } from './atomic-json-file.js';
 
 export type RegisteredDeviceType = 'desktop' | 'browser';
 
@@ -50,11 +51,7 @@ function readDevicesFile(userId: string): RegisteredDevice[] {
 
 function writeDevicesFile(userId: string, devices: RegisteredDevice[]): void {
   ensureDevicesDir();
-  fs.writeFileSync(
-    getDevicesFilePath(userId),
-    JSON.stringify(devices, null, 2),
-    'utf8',
-  );
+  writeJsonFileAtomic(getDevicesFilePath(userId), devices);
 }
 
 function normalizeString(value: string | undefined, fallback = ''): string {

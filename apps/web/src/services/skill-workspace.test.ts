@@ -368,6 +368,229 @@ describe('web skill workspace storage', () => {
   );
 
   it(
+    'rejects unsafe restored workspace file paths before writing files',
+    async () => {
+      const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-skill-workspace-test-'));
+
+      try {
+        configureTestEnv(dataDir);
+        const { db, skillDb, workspaceModule } = await loadWorkspaceContext();
+        const skill = skillDb.create({
+          name: 'Unsafe Restore',
+          content: 'Restore should not write unsafe files.',
+          protocol_type: 'skill',
+          is_favorite: false,
+        });
+
+        const invalidFiles = [
+          { relativePath: '..', content: 'escape' },
+          { relativePath: 'versions', content: 'reserved directory file' },
+          { relativePath: 'bad\u0000name.md', content: 'control char' },
+        ];
+        workspaceModule.syncSkillWorkspaceFromDatabase(db, skillDb);
+
+        const skillDir = path.join(
+          dataDir,
+          'data',
+          'skills',
+          `unsafe-restore__${skill.id}`,
+        );
+        const existingFile = path.join(skillDir, 'templates', 'keep.md');
+        fs.mkdirSync(path.dirname(existingFile), { recursive: true });
+        fs.writeFileSync(existingFile, '# Keep this file', 'utf8');
+
+        for (const file of invalidFiles) {
+          expect(() =>
+            workspaceModule.syncSkillWorkspaceFromDatabase(db, skillDb, {
+              [skill.id]: [file],
+            }),
+          ).toThrow(/Invalid skill file path|Reserved skill file path/u);
+          expect(fs.readFileSync(existingFile, 'utf8')).toBe('# Keep this file');
+        }
+
+        expect(fs.existsSync(path.join(dataDir, 'data', 'skills', 'bad\u0000name.md'))).toBe(false);
+        expect(fs.existsSync(path.join(skillDir, 'versions'))).toBe(false);
+      } finally {
+        fs.rmSync(dataDir, { recursive: true, force: true });
+      }
+    },
+    20000,
+  );
+
+  it(
+    'rejects over-long workspace paths before clearing existing files',
+    async () => {
+      const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-skill-workspace-test-'));
+
+      try {
+        configureTestEnv(dataDir);
+        const { db, skillDb, workspaceModule } = await loadWorkspaceContext();
+        const stableSkill = skillDb.create({
+          name: 'Stable Skill',
+          content: 'This skill should remain on disk after failed sync.',
+          protocol_type: 'skill',
+          is_favorite: false,
+        });
+
+        workspaceModule.syncSkillWorkspaceFromDatabase(db, skillDb);
+
+        const stableSkillFile = path.join(
+          dataDir,
+          'data',
+          'skills',
+          `stable-skill__${stableSkill.id}`,
+          'SKILL.md',
+        );
+        expect(fs.existsSync(stableSkillFile)).toBe(true);
+
+        skillDb.insertSkillDirect({
+          id: 'overlong-skill',
+          name: 'Skill '.repeat(70),
+          content: 'This skill cannot be represented safely on disk.',
+          instructions: 'This skill cannot be represented safely on disk.',
+          protocol_type: 'skill',
+          is_favorite: false,
+          created_at: Date.parse('2026-04-22T00:00:00.000Z'),
+          updated_at: Date.parse('2026-04-22T00:00:00.000Z'),
+        });
+
+        expect(() =>
+          workspaceModule.syncSkillWorkspaceFromDatabase(db, skillDb),
+        ).toThrow('skill workspace path segment is too long');
+        expect(fs.readFileSync(stableSkillFile, 'utf8')).toContain(
+          'This skill should remain on disk after failed sync.',
+        );
+      } finally {
+        fs.rmSync(dataDir, { recursive: true, force: true });
+      }
+    },
+    20000,
+  );
+
+  it(
+    'preserves the existing workspace when SKILL.md export is interrupted',
+    async () => {
+      const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-skill-workspace-test-'));
+
+      try {
+        configureTestEnv(dataDir);
+        const { db, skillDb, workspaceModule } = await loadWorkspaceContext();
+
+        const skill = skillDb.create({
+          name: 'Stable Skill',
+          content: 'This skill should survive an interrupted export.',
+          protocol_type: 'skill',
+          is_favorite: false,
+        });
+
+        workspaceModule.syncSkillWorkspaceFromDatabase(db, skillDb);
+
+        const skillDir = path.join(
+          dataDir,
+          'data',
+          'skills',
+          `stable-skill__${skill.id}`,
+        );
+        const skillFile = path.join(skillDir, 'SKILL.md');
+        const sidecarFile = path.join(skillDir, 'templates', 'keep.md');
+        fs.mkdirSync(path.dirname(sidecarFile), { recursive: true });
+        fs.writeFileSync(sidecarFile, '# Keep this sidecar', 'utf8');
+
+        const stableSkillContent = fs.readFileSync(skillFile, 'utf8');
+        const stableSidecarContent = fs.readFileSync(sidecarFile, 'utf8');
+
+        skillDb.update(skill.id, {
+          content: 'This newer skill should not replace the stable file.',
+        });
+
+        const originalWriteFileSync = fs.writeFileSync.bind(fs);
+        vi.spyOn(fs, 'writeFileSync').mockImplementation((file, data, options) => {
+          if (
+            typeof file === 'string' &&
+            file.endsWith(`${path.sep}SKILL.md`) &&
+            String(data).includes('newer skill')
+          ) {
+            throw new Error('simulated skill workspace write failure');
+          }
+          return originalWriteFileSync(file, data, options);
+        });
+
+        expect(() =>
+          workspaceModule.syncSkillWorkspaceFromDatabase(db, skillDb),
+        ).toThrow('simulated skill workspace write failure');
+
+        expect(fs.existsSync(skillFile)).toBe(true);
+        expect(fs.readFileSync(skillFile, 'utf8')).toBe(stableSkillContent);
+        expect(fs.existsSync(sidecarFile)).toBe(true);
+        expect(fs.readFileSync(sidecarFile, 'utf8')).toBe(stableSidecarContent);
+      } finally {
+        vi.restoreAllMocks();
+        fs.rmSync(dataDir, { recursive: true, force: true });
+      }
+    },
+    20000,
+  );
+
+  it(
+    'ignores interrupted export scratch directories during workspace import',
+    async () => {
+      const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-skill-workspace-test-'));
+
+      try {
+        configureTestEnv(dataDir);
+        const { db, skillDb, workspaceModule } = await loadWorkspaceContext();
+        const owner = await createOwnerUser();
+
+        const scratchDir = path.join(
+          dataDir,
+          'data',
+          'skills',
+          '.skills-staging-leftover',
+        );
+        fs.mkdirSync(scratchDir, { recursive: true });
+        fs.writeFileSync(
+          path.join(scratchDir, 'skill.json'),
+          JSON.stringify(
+            {
+              id: 'skill_scratch',
+              ownerUserId: owner.user.id,
+              visibility: 'shared',
+              name: 'Scratch Skill',
+              description: 'Partial scratch skill.',
+              protocol_type: 'skill',
+              tags: [],
+              original_tags: [],
+              is_favorite: false,
+              currentVersion: 0,
+              versionTrackingEnabled: true,
+              category: 'general',
+              is_builtin: false,
+              created_at: Date.parse('2026-04-13T00:00:00.000Z'),
+              updated_at: Date.parse('2026-04-13T00:00:00.000Z'),
+            },
+            null,
+            2,
+          ),
+          'utf8',
+        );
+        fs.writeFileSync(
+          path.join(scratchDir, 'SKILL.md'),
+          'Scratch content must not import.',
+          'utf8',
+        );
+
+        const imported = workspaceModule.importSkillWorkspaceIntoDatabase(db, skillDb);
+
+        expect(imported).toEqual({ skillCount: 0, versionCount: 0 });
+        expect(skillDb.getById('skill_scratch')).toBeNull();
+      } finally {
+        fs.rmSync(dataDir, { recursive: true, force: true });
+      }
+    },
+    20000,
+  );
+
+  it(
     'claims ownerless private skill workspace data for the first admin after bootstrap import',
     async () => {
       const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-skill-workspace-test-'));

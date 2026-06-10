@@ -10,6 +10,7 @@ vi.mock('../utils/remote-http.js', () => ({
 
 import {
   buildWebDavTargetUrl,
+  isHttpsWebDavEndpoint,
   pullWebDavFile,
   pushWebDavFile,
   testWebDavConnection,
@@ -28,6 +29,14 @@ describe('webdav.server', () => {
     requestRemoteBufferedMock.mockReset();
   });
 
+  it('accepts only HTTPS endpoint URLs for WebDAV config', () => {
+    expect(isHttpsWebDavEndpoint('https://dav.example.com/remote.php/dav/files/alice')).toBe(true);
+    expect(isHttpsWebDavEndpoint('http://dav.example.com/remote.php/dav/files/alice')).toBe(false);
+    expect(isHttpsWebDavEndpoint('https://dav.example.com/remote.php/dav/files/alice?token=abc')).toBe(false);
+    expect(isHttpsWebDavEndpoint('https://dav.example.com/remote.php/dav/files/alice#backups')).toBe(false);
+    expect(isHttpsWebDavEndpoint('not-a-url')).toBe(false);
+  });
+
   it('builds target URLs with trimmed slashes and encoded segments', () => {
     expect(buildWebDavTargetUrl(config, 'nested/report 1.json')).toBe(
       'https://dav.example.com/PromptHub%20backups/nested/report%201.json',
@@ -41,6 +50,58 @@ describe('webdav.server', () => {
         '报告 1.json',
       ),
     ).toBe('https://dav.example.com/root/%E6%8A%A5%E5%91%8A%201.json');
+  });
+
+  it('rejects unsafe remote paths before building target URLs', () => {
+    expect(() =>
+      buildWebDavTargetUrl(
+        {
+          endpoint: 'https://dav.example.com/root?token=abc',
+          remotePath: 'safe',
+        },
+        'backup.json',
+      ),
+    ).toThrow('Invalid WebDAV endpoint: query or fragment is not supported');
+
+    expect(() =>
+      buildWebDavTargetUrl(
+        {
+          endpoint: 'https://dav.example.com/root#backups',
+          remotePath: 'safe',
+        },
+        'backup.json',
+      ),
+    ).toThrow('Invalid WebDAV endpoint: query or fragment is not supported');
+
+    expect(() =>
+      buildWebDavTargetUrl(
+        {
+          endpoint: 'https://dav.example.com/root',
+          remotePath: '../other',
+        },
+        'backup.json',
+      ),
+    ).toThrow('Invalid WebDAV remote path: path traversal detected');
+
+    expect(() =>
+      buildWebDavTargetUrl(
+        {
+          endpoint: 'https://dav.example.com/root',
+          remotePath: 'safe',
+        },
+        'nested\\backup.json',
+      ),
+    ).toThrow('Invalid WebDAV file path: path separator detected');
+
+    expect(() =>
+      buildWebDavTargetUrl(
+        {
+          endpoint: 'https://dav.example.com/root',
+          remotePath: 'bad\u0000path',
+        },
+        'backup.json',
+      ),
+    ).toThrow('Invalid WebDAV remote path: unsupported control character detected');
   });
 
   it('tests WebDAV connectivity with PROPFIND and basic auth', async () => {
@@ -64,6 +125,15 @@ describe('webdav.server', () => {
       },
       allowedProtocols: ['https:'],
     });
+  });
+
+  it('rejects unsupported WebDAV endpoint shapes before testing connectivity', async () => {
+    await expect(
+      testWebDavConnection({
+        endpoint: 'https://dav.example.com/root?token=abc',
+      }),
+    ).rejects.toThrow('Invalid WebDAV endpoint: query or fragment is not supported');
+    expect(requestRemoteBufferedMock).not.toHaveBeenCalled();
   });
 
   it('pushes JSON payloads with PUT and the expected safety limits', async () => {

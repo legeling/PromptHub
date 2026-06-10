@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { useState } from 'react';
 import { AuthProvider, useAuth } from './AuthContext';
 import { getBootstrapStatus, getCaptcha, getMe, login, logout, refresh } from '../api/auth';
 import { clearStoredAuthSession, getStoredAccessToken, getStoredRefreshToken, storeAuthSession } from '../api/auth-session';
@@ -226,6 +227,57 @@ describe('AuthContext', () => {
 
     await waitFor(() => {
       expect(getCaptcha).toHaveBeenCalled();
+    });
+  });
+
+  it('rejects captcha responses with unsafe image data', async () => {
+    vi.mocked(getStoredAccessToken).mockReturnValue(null);
+    vi.mocked(getStoredRefreshToken).mockReturnValue(null);
+    vi.mocked(getMe).mockRejectedValueOnce(new Error('No session'));
+    vi.mocked(refresh).mockRejectedValueOnce(new Error('No refresh session'));
+    vi.mocked(getCaptcha).mockResolvedValueOnce({
+      data: {
+        captchaId: '550e8400-e29b-41d4-a716-446655440000',
+        expiresInSeconds: 300,
+        imageData: 'javascript:alert(1)',
+      },
+    });
+
+    function CaptchaProbe() {
+      const { getCaptcha } = useAuth();
+      const [result, setResult] = useState('idle');
+
+      return (
+        <div>
+          <div data-testid="captcha-result">{result}</div>
+          <button
+            data-testid="btn-load-captcha"
+            onClick={() => {
+              void getCaptcha()
+                .then((captcha) => setResult(captcha.imageData))
+                .catch((error: unknown) => {
+                  setResult(error instanceof Error ? error.message : 'unknown error');
+                });
+            }}
+          >
+            Load captcha
+          </button>
+        </div>
+      );
+    }
+
+    render(<AuthProvider><CaptchaProbe /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('captcha-result').textContent).toBe('idle');
+    });
+
+    fireEvent.click(screen.getByTestId('btn-load-captcha'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('captcha-result').textContent).toBe(
+        'Invalid captcha image payload',
+      );
     });
   });
 

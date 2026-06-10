@@ -12,6 +12,8 @@ import type {
   SyncSnapshot,
 } from '@prompthub/shared';
 import { DEFAULT_SETTINGS, isRuleFileId, isRulePlatformId } from '@prompthub/shared';
+import { importedSettingsSchema } from './settings-validation.js';
+import { isHttpUrl, isSafeSkillIconUrl } from './skill-url-validation.js';
 
 const ruleVersionSchema = z.object({
   id: z.string(),
@@ -57,6 +59,50 @@ const skillSafetyReportSchema = z.object({
     .union([z.literal('ai'), z.literal('static')])
     .transform(() => 'ai' as const),
   score: z.number().min(0).max(100).optional(),
+});
+
+function normalizeSkillFileRelativePath(relativePath: string): string | null {
+  if (/[\u0000-\u001F\u007F]/u.test(relativePath)) {
+    return null;
+  }
+
+  const normalized = relativePath.replace(/\\/g, '/');
+  const segments: string[] = [];
+
+  if (normalized.startsWith('/') || /^[a-zA-Z]:/u.test(relativePath)) {
+    return null;
+  }
+
+  for (const segment of normalized.split('/')) {
+    if (!segment || segment === '.') {
+      continue;
+    }
+    if (segment === '..') {
+      return null;
+    }
+    segments.push(segment);
+  }
+
+  if (segments.length === 0) {
+    return null;
+  }
+
+  return segments.join('/');
+}
+
+function isSafeSkillFileRelativePath(relativePath: string): boolean {
+  const normalized = normalizeSkillFileRelativePath(relativePath);
+  if (!normalized) {
+    return false;
+  }
+
+  const lower = normalized.toLowerCase();
+  return lower !== 'skill.json' && lower !== 'versions' && !lower.startsWith('versions/');
+}
+
+const skillFileSnapshotSchema = z.object({
+  relativePath: z.string().refine(isSafeSkillFileRelativePath, 'Invalid skill file path'),
+  content: z.string(),
 });
 
 const promptSchema = z.object({
@@ -140,7 +186,7 @@ const skillSchema = z.object({
   protocol_type: z.enum(['skill', 'mcp', 'claude-code']),
   version: z.string().optional(),
   author: z.string().optional(),
-  source_url: z.string().optional(),
+  source_url: z.string().refine(isHttpUrl, 'source_url must use HTTP(S)').optional(),
   local_repo_path: z.string().optional(),
   tags: z.array(z.string()).optional(),
   original_tags: z.array(z.string()).optional(),
@@ -149,13 +195,16 @@ const skillSchema = z.object({
   versionTrackingEnabled: z.boolean().optional(),
   created_at: z.number().int(),
   updated_at: z.number().int(),
-  icon_url: z.string().optional(),
+  icon_url: z.string().refine(
+    isSafeSkillIconUrl,
+    'icon_url must use HTTP(S) or a base64 image data URL',
+  ).optional(),
   icon_emoji: z.string().optional(),
   icon_background: z.string().optional(),
   category: z.enum(['general', 'office', 'dev', 'ai', 'data', 'management', 'deploy', 'design', 'security', 'meta']).optional(),
   is_builtin: z.boolean().optional(),
   registry_slug: z.string().optional(),
-  content_url: z.string().optional(),
+  content_url: z.string().refine(isHttpUrl, 'content_url must use HTTP(S)').optional(),
   installed_content_hash: z.string().optional(),
   installed_version: z.string().optional(),
   installed_at: z.number().int().nonnegative().optional(),
@@ -170,42 +219,9 @@ const skillVersionSchema = z.object({
   skillId: z.string(),
   version: z.number().int().nonnegative(),
   content: z.string().optional(),
-  filesSnapshot: z.array(z.object({
-    relativePath: z.string(),
-    content: z.string(),
-  })).optional(),
+  filesSnapshot: z.array(skillFileSnapshotSchema).optional(),
   note: z.string().optional(),
   createdAt: z.union([z.string(), z.number().int().nonnegative()]),
-});
-
-const skillFileSnapshotSchema = z.object({
-  relativePath: z.string(),
-  content: z.string(),
-});
-
-const settingsSchema = z.object({
-  theme: z.enum(['light', 'dark', 'system']),
-  language: z.enum(['en', 'zh', 'zh-TW', 'ja', 'fr', 'de', 'es']),
-  autoSave: z.boolean(),
-  defaultFolderId: z.string().optional(),
-  customPlatformRootPaths: z.record(z.string()).optional(),
-  disabledPlatformIds: z.array(z.string()).optional(),
-  customSkillPlatformPaths: z.record(z.string()).optional(),
-  sync: z.object({
-    enabled: z.boolean(),
-    provider: z.enum(['manual', 'webdav', 'self-hosted', 's3']),
-    endpoint: z.string().url().optional(),
-    username: z.string().optional(),
-    password: z.string().optional(),
-    remotePath: z.string().optional(),
-    autoSync: z.boolean().optional(),
-    lastSyncAt: z.string().optional(),
-  }).optional(),
-  security: z.object({
-    masterPasswordConfigured: z.boolean(),
-    unlocked: z.boolean(),
-  }).optional(),
-  updateChannel: z.enum(['stable', 'preview']).optional(),
 });
 
 export const syncSnapshotSchema = z.object({
@@ -219,7 +235,7 @@ export const syncSnapshotSchema = z.object({
   skills: z.array(skillSchema),
   skillVersions: z.array(skillVersionSchema).default([]),
   skillFiles: z.record(z.array(skillFileSnapshotSchema)).optional(),
-  settings: settingsSchema.optional(),
+  settings: importedSettingsSchema.optional(),
   settingsUpdatedAt: z.string().optional(),
   images: z.record(z.string()).optional(),
   videos: z.record(z.string()).optional(),
@@ -230,6 +246,12 @@ const promptHubEnvelopeSchema = z.object({
   exportedAt: z.string(),
   payload: z.unknown(),
 });
+
+const SUPPORTED_SYNC_SNAPSHOT_VERSIONS = new Set([
+  '1',
+  'desktop-backup-v1',
+  'web-backup-v2',
+]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -242,6 +264,29 @@ function unwrapPromptHubEnvelope(rawPayload: unknown): unknown {
   }
 
   return rawPayload;
+}
+
+function normalizeSnapshotVersion(version: unknown): string | null {
+  if (typeof version === 'number' && Number.isFinite(version)) {
+    return String(version);
+  }
+
+  if (typeof version === 'string' && version.trim()) {
+    return version;
+  }
+
+  return null;
+}
+
+function assertSupportedSnapshotVersion(payload: Record<string, unknown>): void {
+  const version = normalizeSnapshotVersion(payload.version);
+  if (!version) {
+    return;
+  }
+
+  if (!SUPPORTED_SYNC_SNAPSHOT_VERSIONS.has(version)) {
+    throw new Error(`Sync snapshot is invalid: unsupported backup version ${version}`);
+  }
 }
 
 function normalizeDesktopSettingsSnapshot(settings: unknown): Settings | undefined {
@@ -385,12 +430,51 @@ function normalizeDesktopSettingsSnapshot(settings: unknown): Settings | undefin
 }
 
 function normalizeImportedSettings(payload: Record<string, unknown>): Settings | undefined {
-  const directSettings = settingsSchema.safeParse(payload.settings);
+  const directSettings = importedSettingsSchema.safeParse(payload.settings);
   if (directSettings.success) {
     return directSettings.data;
   }
 
-  return normalizeDesktopSettingsSnapshot(payload.settings);
+  const desktopSettings = normalizeDesktopSettingsSnapshot(payload.settings);
+  if (!desktopSettings) {
+    return undefined;
+  }
+
+  const parsedDesktopSettings = importedSettingsSchema.safeParse(desktopSettings);
+  if (parsedDesktopSettings.success) {
+    return parsedDesktopSettings.data;
+  }
+
+  throw new Error(
+    `Sync snapshot is invalid: ${parsedDesktopSettings.error.issues
+      .map((issue) => {
+        const issuePath = ['settings', ...issue.path].join('.');
+        return `${issuePath}: ${issue.message}`;
+      })
+      .join(', ')}`,
+  );
+}
+
+function validateFolderHierarchy(folders: Folder[]): void {
+  const parentById = new Map(folders.map((folder) => [folder.id, folder.parentId]));
+
+  for (const folder of folders) {
+    const seen = new Set<string>();
+    let currentId: string | undefined = folder.id;
+
+    while (currentId) {
+      if (seen.has(currentId)) {
+        throw new Error(`Sync snapshot is invalid: folders contain a parent cycle at ${folder.id}`);
+      }
+
+      seen.add(currentId);
+      const parentId = parentById.get(currentId);
+      if (!parentId || !parentById.has(parentId)) {
+        break;
+      }
+      currentId = parentId;
+    }
+  }
 }
 
 function normalizeImportedSnapshot(rawPayload: unknown): z.infer<typeof syncSnapshotSchema> {
@@ -403,8 +487,10 @@ function normalizeImportedSnapshot(rawPayload: unknown): z.infer<typeof syncSnap
     ...unwrapped,
   };
 
-  if (typeof normalized.version === 'number' && Number.isFinite(normalized.version)) {
-    normalized.version = String(normalized.version);
+  assertSupportedSnapshotVersion(normalized);
+  const normalizedVersion = normalizeSnapshotVersion(normalized.version);
+  if (normalizedVersion) {
+    normalized.version = normalizedVersion;
   }
 
   if (!Array.isArray(normalized.prompts)) {
@@ -447,6 +533,8 @@ function normalizeImportedSnapshot(rawPayload: unknown): z.infer<typeof syncSnap
         .join(', ')}`,
     );
   }
+
+  validateFolderHierarchy(parsed.data.folders as Folder[]);
 
   return parsed.data;
 }

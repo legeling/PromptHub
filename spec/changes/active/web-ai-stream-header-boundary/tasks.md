@@ -1,0 +1,23 @@
+# Tasks
+
+- [x] 明确变更边界
+- [x] 完成 delta spec
+- [x] Add failing route regression for upstream `set-cookie` on AI streams.
+- [x] Strip upstream cookies and hop-by-hop headers in stream responses.
+- [x] Add failing route regression for non-HTTPS AI proxy URLs.
+- [x] Reject non-HTTPS AI proxy URLs before contacting upstream transports.
+- [x] Add failing route regression for oversized AI proxy envelopes and fields.
+- [x] Bound AI proxy request `Content-Length`, request id, URL, headers, and body before remote transport calls.
+- [x] Verify focused AI route tests, typecheck, lint, and diff check.
+- [x] Update implementation.md
+- [x] 同步稳定 specs / architecture / docs
+- [x] Add failing route regression for streaming transport error detail leakage.
+- [x] Return generic stream transport errors to clients.
+- [x] Rerun focused AI route tests, typecheck, lint, and diff check.
+- [x] Update implementation.md for stream error sanitization.
+- [x] Add failing regression for non-2xx AI stream response replay.
+- [x] Return non-2xx stream responses from the original upstream response instead of replaying through buffered transport.
+- [x] Rerun AI route tests, Web typecheck, Web lint, and diff check.
+- [x] Add failing route regression for buffered transport error detail leakage.
+- [x] Return generic buffered transport errors to clients.
+- [x] Rerun AI route tests, Web typecheck, Web lint, and diff check for buffered error sanitization.

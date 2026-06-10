@@ -29,5 +29,7 @@
 - [x] 保持 Web runtime 的 Skill 页面入口可见，不再被旧 capability 守卫强制降级到我的 Skill
 - [x] 运行 `lint` / `typecheck` / `test` / `build`
 - [x] 更新 implementation.md
-- [ ] 为旧 Web 读取新桌面备份快照补充未知字段 / 未知枚举兼容测试
-- [ ] 为桌面到 Web 的备份导入补 manifest 级兼容保护
+- [x] 为旧 Web 读取新桌面备份快照补充未知字段 / 未知枚举兼容测试
+- [x] 为桌面到 Web 的备份导入补 manifest 级兼容保护
+- [x] 修复 Web runtime `openPath` fallback，对不支持的本地路径和危险协议返回失败而不是假成功
+- [x] 修复 Web runtime 隐藏文件选择器 click 失败时的清理和空结果回退

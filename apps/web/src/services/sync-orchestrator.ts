@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { SyncSettings } from '@prompthub/shared';
 import type { WebBackupPayload } from './backup.service.js';
+import { decodeMediaBase64 } from './media-base64.js';
 import {
   buildSyncMediaBundle,
   normalizeSyncMediaFileName,
@@ -159,6 +160,33 @@ async function pushWebDavMediaFiles(
   }
 }
 
+function verifyDownloadedMedia(
+  fileName: string,
+  base64Data: string,
+  manifest: SyncMediaManifest[string],
+  kind: 'image' | 'video',
+): string {
+  const payload = base64Data.trim();
+  const content = decodeMediaBase64(payload, { label: fileName });
+  if (content.length !== manifest.size) {
+    throw new Error(`WebDAV ${kind} download failed for ${fileName}: size mismatch`);
+  }
+
+  const hash = createHash('sha256').update(payload).digest('hex');
+  if (hash !== manifest.hash) {
+    throw new Error(`WebDAV ${kind} download failed for ${fileName}: hash mismatch`);
+  }
+
+  return payload;
+}
+
+function verifyDownloadedData(body: string, manifest: WebDavRemoteManifest): void {
+  const hash = createHash('sha256').update(body).digest('hex');
+  if (hash !== manifest.dataHash) {
+    throw new Error('WebDAV data download failed: data hash mismatch');
+  }
+}
+
 async function downloadWebDavMediaFiles(
   settings: SyncSettings & { endpoint: string },
   remoteDir: string,
@@ -177,7 +205,7 @@ async function downloadWebDavMediaFiles(
     if (!pulled.ok) {
       throw new Error(`WebDAV ${kind} download failed for ${fileName} with HTTP ${pulled.status}`);
     }
-    mediaFiles[fileName] = pulled.body;
+    mediaFiles[fileName] = verifyDownloadedMedia(safeFileName, pulled.body, files[fileName], kind);
   }
 
   return mediaFiles;
@@ -200,13 +228,13 @@ export async function pushWebDavSnapshot(
   const dataHash = createHash('sha256').update(payloadString).digest('hex');
   const mediaBundle = buildSyncMediaBundle(userId, payload.prompts, syncedAt);
 
+  await pushWebDavMediaFiles(settings, REMOTE_IMAGES_DIR, mediaBundle.images, 'image');
+  await pushWebDavMediaFiles(settings, REMOTE_VIDEOS_DIR, mediaBundle.videos, 'video');
+
   const pushed = await pushWebDavFile(settings, REMOTE_BACKUP_DATA_FILE, payloadString);
   if (!pushed.ok) {
     throw new Error(`WebDAV upload failed with HTTP ${pushed.status}`);
   }
-
-  await pushWebDavMediaFiles(settings, REMOTE_IMAGES_DIR, mediaBundle.images, 'image');
-  await pushWebDavMediaFiles(settings, REMOTE_VIDEOS_DIR, mediaBundle.videos, 'video');
 
   const manifest: WebDavRemoteManifest = {
     version: '4.0',
@@ -245,6 +273,7 @@ export async function pullWebDavSnapshot(
     let images: SyncMediaFiles | undefined;
     let videos: SyncMediaFiles | undefined;
     const manifest = parseRemoteManifest(manifestResponse.body);
+    verifyDownloadedData(pulledPrimary.body, manifest);
     images = await downloadWebDavMediaFiles(settings, REMOTE_IMAGES_DIR, manifest.images, 'image');
     videos = await downloadWebDavMediaFiles(settings, REMOTE_VIDEOS_DIR, manifest.videos, 'video');
 

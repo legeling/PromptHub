@@ -8,6 +8,8 @@ import { parseJsonBody } from '../utils/validation.js';
 
 const folders = new Hono();
 const folderService = new FolderService();
+const MAX_FOLDER_REORDER_IDS = 500;
+const MAX_FOLDER_ID_LENGTH = 200;
 
 const createFolderSchema = z.object({
   name: z.string().trim().min(1, 'name is required').max(200, 'name is too long'),
@@ -31,11 +33,21 @@ const directFolderSchema = z.object({
 });
 
 const updateFolderSchema = createFolderSchema.partial().extend({
+  parentId: z.string().trim().min(1).nullable().optional(),
   order: z.number().int().nonnegative().optional(),
 });
 
 const reorderSchema = z.object({
-  ids: z.array(z.string().trim().min(1)).default([]),
+  ids: z
+    .array(
+      z
+        .string()
+        .trim()
+        .min(1)
+        .max(MAX_FOLDER_ID_LENGTH, `folder id must be at most ${MAX_FOLDER_ID_LENGTH} characters`),
+    )
+    .max(MAX_FOLDER_REORDER_IDS, `ids must contain at most ${MAX_FOLDER_REORDER_IDS} folder ids`)
+    .default([]),
 });
 
 const listQuerySchema = z.object({

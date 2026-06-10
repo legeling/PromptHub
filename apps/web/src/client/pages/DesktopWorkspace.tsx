@@ -3,19 +3,31 @@ import DesktopApp from '@desktop-renderer-app';
 import { ToastProvider } from '@desktop-toast-provider';
 import { installDesktopBridge } from '../desktop/install-bridge';
 import { useAuth } from '../contexts/AuthContext';
+import { fetchWithAuthRetry } from '../api/auth-session';
+
+const BROWSER_DEVICE_ID_STORAGE_KEY = 'prompthub-web-device-id';
+const MAX_BROWSER_DEVICE_ID_LENGTH = 128;
+
+function isValidBrowserDeviceId(value: string | null): value is string {
+  const normalized = value?.trim();
+  return Boolean(normalized && normalized.length <= MAX_BROWSER_DEVICE_ID_LENGTH);
+}
 
 function getOrCreateBrowserDeviceId(): string {
-  const storageKey = 'prompthub-web-device-id';
-  const existing = window.localStorage.getItem(storageKey);
-  if (existing) {
-    return existing;
+  const existing = window.localStorage.getItem(BROWSER_DEVICE_ID_STORAGE_KEY);
+  if (isValidBrowserDeviceId(existing)) {
+    const normalized = existing.trim();
+    if (normalized !== existing) {
+      window.localStorage.setItem(BROWSER_DEVICE_ID_STORAGE_KEY, normalized);
+    }
+    return normalized;
   }
 
   const nextId =
     typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
       ? crypto.randomUUID()
       : `browser-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-  window.localStorage.setItem(storageKey, nextId);
+  window.localStorage.setItem(BROWSER_DEVICE_ID_STORAGE_KEY, nextId);
   return nextId;
 }
 
@@ -48,7 +60,7 @@ export function DesktopWorkspacePage() {
       }
 
       const userAgent = navigator.userAgent;
-      await fetch('/api/devices/heartbeat', {
+      const response = await fetchWithAuthRetry('/api/devices/heartbeat', {
         method: 'POST',
         credentials: 'same-origin',
         headers: {
@@ -63,6 +75,10 @@ export function DesktopWorkspacePage() {
           userAgent,
         }),
       });
+
+      if (!response.ok) {
+        throw new Error(`Device heartbeat failed: ${response.status}`);
+      }
     };
 
     void heartbeat().catch((error) => {

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -36,6 +37,35 @@ function ensureTestMediaDir(dataDir: string, userId: string, kind: 'images' | 'v
   return dirPath;
 }
 
+function isSafeWebDavRemotePathMock(value: string): boolean {
+  const trimmed = value.trim().replace(/^\/+|\/+$/g, '');
+  if (trimmed.includes('\\') || /[\u0000-\u001F\u007F]/u.test(trimmed)) {
+    return false;
+  }
+  return !trimmed.split('/').some((segment) => segment === '.' || segment === '..');
+}
+
+function isHttpsWebDavEndpointMock(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && !url.search && !url.hash;
+  } catch {
+    return false;
+  }
+}
+
+function mediaManifestEntry(base64Data: string, uploadedAt: string) {
+  return {
+    hash: createHash('sha256').update(base64Data).digest('hex'),
+    size: Buffer.from(base64Data, 'base64').length,
+    uploadedAt,
+  };
+}
+
+function sha256(value: string): string {
+  return createHash('sha256').update(value).digest('hex');
+}
+
 async function createTestApp(dataDir: string, webDavMocks?: WebDavMockSet) {
   process.env.PORT = '3991';
   process.env.HOST = '127.0.0.1';
@@ -51,6 +81,8 @@ async function createTestApp(dataDir: string, webDavMocks?: WebDavMockSet) {
     pushWebDavFile: webDavMocks?.pushWebDavFile ?? vi.fn(async () => ({ ok: true, status: 201 })),
     pullWebDavFile: webDavMocks?.pullWebDavFile ?? vi.fn(async () => ({ ok: true, status: 200, body: '{}' })),
     mkcolWebDavDirectory: webDavMocks?.mkcolWebDavDirectory ?? vi.fn(async () => ({ ok: true, status: 201 })),
+    isHttpsWebDavEndpoint: isHttpsWebDavEndpointMock,
+    isSafeWebDavRemotePath: isSafeWebDavRemotePathMock,
   }));
 
   const [{ createApp }] = await Promise.all([import('../app')]);
@@ -242,6 +274,148 @@ function buildRemotePayload() {
   };
 }
 
+function buildDeepFolderPayload(folderCount: number) {
+  const folders = Array.from({ length: folderCount }, (_, index) => ({
+    id: `deep-folder-${index}`,
+    name: `Deep Folder ${index}`,
+    parentId: index === 0 ? undefined : `deep-folder-${index - 1}`,
+    order: index,
+    createdAt: '2026-04-22T00:00:00.000Z',
+    updatedAt: '2026-04-22T00:00:00.000Z',
+  })).reverse();
+
+  return {
+    version: 'web-backup-v2',
+    exportedAt: '2026-04-22T00:00:00.000Z',
+    prompts: [
+      {
+        id: 'deep-folder-prompt',
+        title: 'Should Not Import',
+        userPrompt: 'This prompt must not survive a rejected import',
+        variables: [],
+        tags: [],
+        images: ['deep-image.png'],
+        videos: [],
+        isFavorite: false,
+        isPinned: false,
+        version: 1,
+        currentVersion: 1,
+        usageCount: 0,
+        folderId: `deep-folder-${folderCount - 1}`,
+        createdAt: '2026-04-22T00:00:00.000Z',
+        updatedAt: '2026-04-22T00:00:00.000Z',
+      },
+    ],
+    promptVersions: [],
+    folders,
+    rules: [],
+    skills: [],
+    skillVersions: [],
+    images: {
+      'deep-image.png': Buffer.from('deep-image-binary').toString('base64'),
+    },
+    videos: {},
+    settings: DEFAULT_SETTINGS,
+  };
+}
+
+function buildDeepSkillPayload() {
+  return {
+    version: 'web-backup-v2',
+    exportedAt: '2026-04-22T00:00:00.000Z',
+    prompts: [
+      {
+        id: 'deep-skill-prompt',
+        title: 'Should Not Import',
+        userPrompt: 'This prompt must not survive a rejected import',
+        variables: [],
+        tags: [],
+        images: ['deep-skill-image.png'],
+        videos: [],
+        isFavorite: false,
+        isPinned: false,
+        version: 1,
+        currentVersion: 1,
+        usageCount: 0,
+        createdAt: '2026-04-22T00:00:00.000Z',
+        updatedAt: '2026-04-22T00:00:00.000Z',
+      },
+    ],
+    promptVersions: [],
+    folders: [],
+    rules: [],
+    skills: [
+      {
+        id: 'deep-skill',
+        name: 'Skill '.repeat(70),
+        content: 'echo too long',
+        instructions: 'echo too long',
+        protocol_type: 'skill',
+        is_favorite: false,
+        created_at: 1776816000000,
+        updated_at: 1776816000000,
+      },
+    ],
+    skillVersions: [],
+    images: {
+      'deep-skill-image.png': Buffer.from('deep-skill-image-binary').toString('base64'),
+    },
+    videos: {},
+    settings: DEFAULT_SETTINGS,
+  };
+}
+
+function buildUnsafeRulePayload() {
+  return {
+    version: 'web-backup-v2',
+    exportedAt: '2026-04-22T00:00:00.000Z',
+    prompts: [
+      {
+        id: 'unsafe-rule-prompt',
+        title: 'Should Not Import',
+        userPrompt: 'This prompt must not survive a rejected import',
+        variables: [],
+        tags: [],
+        images: ['unsafe-rule-image.png'],
+        videos: [],
+        isFavorite: false,
+        isPinned: false,
+        version: 1,
+        currentVersion: 1,
+        usageCount: 0,
+        createdAt: '2026-04-22T00:00:00.000Z',
+        updatedAt: '2026-04-22T00:00:00.000Z',
+      },
+    ],
+    promptVersions: [],
+    folders: [],
+    rules: [
+      {
+        id: 'project:../escape',
+        platformId: 'workspace',
+        platformName: 'Unsafe Rule',
+        platformIcon: 'FolderRoot',
+        platformDescription: 'Unsafe imported rule',
+        name: '../AGENTS.md',
+        description: 'Should be rejected',
+        path: '/unsafe/AGENTS.md',
+        targetPath: '/unsafe/AGENTS.md',
+        projectRootPath: '/unsafe',
+        syncStatus: 'synced',
+        content: '# Unsafe',
+        versions: [],
+      },
+    ],
+    skills: [],
+    skillVersions: [],
+    images: {
+      'unsafe-rule-image.png': Buffer.from('unsafe-rule-image-binary').toString('base64'),
+    },
+    videos: {},
+    settings: DEFAULT_SETTINGS,
+  };
+}
+
 describe('web sync routes', () => {
   const TEST_TIMEOUT = 20000;
 
@@ -293,6 +467,55 @@ describe('web sync routes', () => {
         }),
       );
       expect(invalidConfig.status).toBe(422);
+
+      const insecureEndpointConfig = await app.request(
+        new Request('http://local/api/sync/config', {
+          method: 'PUT',
+          headers: authHeaders(token),
+          body: JSON.stringify({
+            enabled: true,
+            provider: 'webdav',
+            endpoint: 'http://dav.example.com/remote.php/dav/files/sync',
+          }),
+        }),
+      );
+      expect(insecureEndpointConfig.status).toBe(422);
+      const insecureEndpointBody = await insecureEndpointConfig.json() as { error: { message: string } };
+      expect(insecureEndpointBody.error.message).toContain('endpoint');
+      expect(insecureEndpointBody.error.message).toContain('WebDAV endpoint must use HTTPS');
+
+      const queryEndpointConfig = await app.request(
+        new Request('http://local/api/sync/config', {
+          method: 'PUT',
+          headers: authHeaders(token),
+          body: JSON.stringify({
+            enabled: true,
+            provider: 'webdav',
+            endpoint: 'https://dav.example.com/remote.php/dav/files/sync?token=abc',
+          }),
+        }),
+      );
+      expect(queryEndpointConfig.status).toBe(422);
+      const queryEndpointBody = await queryEndpointConfig.json() as { error: { message: string } };
+      expect(queryEndpointBody.error.message).toContain('endpoint');
+      expect(queryEndpointBody.error.message).toContain('cannot include query or fragment');
+
+      const invalidRemotePathConfig = await app.request(
+        new Request('http://local/api/sync/config', {
+          method: 'PUT',
+          headers: authHeaders(token),
+          body: JSON.stringify({
+            enabled: true,
+            provider: 'webdav',
+            endpoint: 'https://dav.example.com/remote.php/dav/files/sync',
+            remotePath: '../escape',
+          }),
+        }),
+      );
+      expect(invalidRemotePathConfig.status).toBe(422);
+      const invalidRemotePathBody = await invalidRemotePathConfig.json() as { error: { message: string } };
+      expect(invalidRemotePathBody.error.message).toContain('remotePath');
+      expect(invalidRemotePathBody.error.message).toContain('Invalid WebDAV remote path');
 
       const manifestResponse = await app.request(
         new Request('http://local/api/sync/manifest', {
@@ -460,6 +683,138 @@ describe('web sync routes', () => {
       );
       expect(dataAfterImport.data.rules).toEqual([]);
       expect(dataAfterImport.data.settings.sync?.lastSyncAt).toBeTruthy();
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  }, TEST_TIMEOUT);
+
+  it('rejects oversized sync data content-length before importing records', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-sync-size-test-'));
+
+    try {
+      const app = await createTestApp(dataDir);
+      const { payload: registerPayload } = await registerUser(app, 'syncoversize', 'debugpass001');
+      const token = registerPayload.data.accessToken;
+
+      const promptResponse = await createPrompt(app, token, {
+        title: 'Keep Existing Sync Prompt',
+        userPrompt: 'This prompt must remain after a rejected oversized sync import',
+      });
+      expect(promptResponse.status).toBe(201);
+
+      const emptySnapshot = {
+        version: 'web-backup-v2',
+        exportedAt: '2026-06-09T00:00:00.000Z',
+        prompts: [],
+        promptVersions: [],
+        folders: [],
+        rules: [],
+        skills: [],
+        skillVersions: [],
+        settings: DEFAULT_SETTINGS,
+      };
+
+      const oversizedResponse = await app.request(
+        new Request('http://local/api/sync/data', {
+          method: 'PUT',
+          headers: {
+            ...authHeaders(token),
+            'Content-Length': String(51 * 1024 * 1024),
+          },
+          body: JSON.stringify({ payload: emptySnapshot }),
+        }),
+      );
+
+      expect(oversizedResponse.status).toBe(400);
+      const oversizedBody = await oversizedResponse.json() as { error: { code: string; message: string } };
+      expect(oversizedBody.error).toEqual({
+        code: 'BAD_REQUEST',
+        message: 'Sync data request body exceeds size limit',
+      });
+
+      const invalidLengthResponse = await app.request(
+        new Request('http://local/api/sync/data', {
+          method: 'PUT',
+          headers: {
+            ...authHeaders(token),
+            'Content-Length': '-1',
+          },
+          body: JSON.stringify({ payload: emptySnapshot }),
+        }),
+      );
+      expect(invalidLengthResponse.status).toBe(400);
+      const invalidLengthBody = await invalidLengthResponse.json() as { error: { code: string; message: string } };
+      expect(invalidLengthBody.error).toEqual({
+        code: 'BAD_REQUEST',
+        message: 'Invalid Content-Length header',
+      });
+
+      const dataResponse = await app.request(
+        new Request('http://local/api/sync/data', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      );
+      const dataBody = await dataResponse.json() as { data: { prompts: Array<{ title: string }> } };
+      expect(dataBody.data.prompts).toEqual([
+        expect.objectContaining({ title: 'Keep Existing Sync Prompt' }),
+      ]);
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  }, TEST_TIMEOUT);
+
+  it('rejects oversized sync config fields without persisting them', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-sync-config-boundary-'));
+
+    try {
+      const app = await createTestApp(dataDir);
+      const { payload: registerPayload } = await registerUser(app, 'syncconfigboundary', 'debugpass001');
+      const token = registerPayload.data.accessToken;
+
+      const oversizedConfigResponse = await app.request(
+        new Request('http://local/api/sync/config', {
+          method: 'PUT',
+          headers: authHeaders(token),
+          body: JSON.stringify({
+            enabled: true,
+            provider: 'webdav',
+            endpoint: `https://dav.example.com/${'a'.repeat(2050)}`,
+            username: 'u'.repeat(513),
+            password: 'p'.repeat(513),
+            remotePath: `/${'backup/'.repeat(180)}`,
+            autoSync: true,
+          }),
+        }),
+      );
+
+      expect(oversizedConfigResponse.status).toBe(422);
+      const oversizedConfigBody = await oversizedConfigResponse.json() as { error: { code: string; message: string } };
+      expect(oversizedConfigBody.error.code).toBe('VALIDATION_ERROR');
+      expect(oversizedConfigBody.error.message).toContain('endpoint');
+      expect(oversizedConfigBody.error.message).toContain('username');
+      expect(oversizedConfigBody.error.message).toContain('password');
+      expect(oversizedConfigBody.error.message).toContain('remotePath');
+
+      const configResponse = await app.request(
+        new Request('http://local/api/sync/config', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      );
+      expect(configResponse.status).toBe(200);
+      const configBody = await configResponse.json() as {
+        data: {
+          provider: string;
+          endpoint?: string;
+          username?: string;
+          password?: string;
+          remotePath?: string;
+        };
+      };
+      expect(configBody.data.provider).toBe('manual');
+      expect(configBody.data.endpoint).toBeUndefined();
+      expect(configBody.data.username).toBeUndefined();
+      expect(configBody.data.password).toBeUndefined();
+      expect(configBody.data.remotePath).toBeUndefined();
     } finally {
       fs.rmSync(dataDir, { recursive: true, force: true });
     }
@@ -671,6 +1026,256 @@ describe('web sync routes', () => {
     }
   }, TEST_TIMEOUT);
 
+  it('does not leave media files when direct sync import fails during later writes', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-sync-direct-media-rollback-'));
+
+    try {
+      vi.doMock('../services/rule-workspace.js', async () => {
+        const actual = await vi.importActual<typeof import('../services/rule-workspace.js')>('../services/rule-workspace.js');
+        return {
+          ...actual,
+          importRuleBackupRecords: vi.fn(() => {
+            throw new Error('Simulated sync rule import failure');
+          }),
+        };
+      });
+
+      const app = await createTestApp(dataDir);
+      const { payload: registerPayload } = await registerUser(app, 'mediarollbacksync', 'debugpass001');
+      const token = registerPayload.data.accessToken;
+
+      const importResponse = await app.request(
+        new Request('http://local/api/sync/data', {
+          method: 'PUT',
+          headers: authHeaders(token),
+          body: JSON.stringify({
+            payload: {
+              ...buildRemotePayload(),
+              images: {
+                'remote-image.png': Buffer.from('rollback-image-binary').toString('base64'),
+              },
+            },
+          }),
+        }),
+      );
+
+      expect(importResponse.status).toBe(422);
+      const importBody = await importResponse.json() as { error: { message: string } };
+      expect(importBody.error.message).toContain('Simulated sync rule import failure');
+      expect(fs.existsSync(path.join(ensureTestMediaDir(dataDir, registerPayload.data.user.id, 'images'), 'remote-image.png'))).toBe(false);
+
+      const dataResponse = await app.request(
+        new Request('http://local/api/sync/data', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      );
+      expect(dataResponse.status).toBe(200);
+      const dataBody = await dataResponse.json() as {
+        data: {
+          prompts: unknown[];
+          folders: unknown[];
+          rules?: unknown[];
+        };
+      };
+      expect(dataBody.data.prompts).toEqual([]);
+      expect(dataBody.data.folders).toEqual([]);
+      expect(dataBody.data.rules).toEqual([]);
+    } finally {
+      vi.doUnmock('../services/rule-workspace.js');
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  }, TEST_TIMEOUT);
+
+  it('rolls back direct sync import records when pulled media writing fails', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-sync-media-write-rollback-'));
+
+    try {
+      vi.doMock('../services/sync-media.js', async () => {
+        const actual = await vi.importActual<typeof import('../services/sync-media.js')>('../services/sync-media.js');
+        return {
+          ...actual,
+          writePulledSyncMedia: vi.fn(() => {
+            throw new Error('Simulated pulled media write failure');
+          }),
+        };
+      });
+
+      const app = await createTestApp(dataDir);
+      const { payload: registerPayload } = await registerUser(app, 'mediawriterollbacksync', 'debugpass001');
+      const token = registerPayload.data.accessToken;
+
+      const importResponse = await app.request(
+        new Request('http://local/api/sync/data', {
+          method: 'PUT',
+          headers: authHeaders(token),
+          body: JSON.stringify({
+            payload: {
+              ...buildRemotePayload(),
+              images: {
+                'remote-image.png': Buffer.from('write-failure-image').toString('base64'),
+              },
+            },
+          }),
+        }),
+      );
+
+      expect(importResponse.status).toBe(422);
+      const importBody = await importResponse.json() as { error: { message: string } };
+      expect(importBody.error.message).toContain('Simulated pulled media write failure');
+
+      const dataResponse = await app.request(
+        new Request('http://local/api/sync/data', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      );
+      expect(dataResponse.status).toBe(200);
+      const dataBody = await dataResponse.json() as {
+        data: {
+          prompts: unknown[];
+          folders: unknown[];
+          rules?: unknown[];
+          skills: unknown[];
+        };
+      };
+      expect(dataBody.data.prompts).toEqual([]);
+      expect(dataBody.data.folders).toEqual([]);
+      expect(dataBody.data.rules).toEqual([]);
+      expect(dataBody.data.skills).toEqual([]);
+    } finally {
+      vi.doUnmock('../services/sync-media.js');
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  }, TEST_TIMEOUT);
+
+  it('rejects sync imports that exceed prompt workspace path limits before writing media or records', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-sync-deep-folders-'));
+
+    try {
+      const app = await createTestApp(dataDir);
+      const { payload: registerPayload } = await registerUser(app, 'deepsync', 'debugpass001');
+      const token = registerPayload.data.accessToken;
+
+      const importResponse = await app.request(
+        new Request('http://local/api/sync/data', {
+          method: 'PUT',
+          headers: authHeaders(token),
+          body: JSON.stringify({
+            payload: buildDeepFolderPayload(180),
+          }),
+        }),
+      );
+
+      expect(importResponse.status).toBe(422);
+      const importBody = await importResponse.json() as { error: { code: string; message: string } };
+      expect(importBody.error.code).toBe('VALIDATION_ERROR');
+      expect(importBody.error.message).toContain('prompt workspace path is too long');
+      expect(fs.existsSync(path.join(ensureTestMediaDir(dataDir, registerPayload.data.user.id, 'images'), 'deep-image.png'))).toBe(false);
+
+      const dataResponse = await app.request(
+        new Request('http://local/api/sync/data', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      );
+      expect(dataResponse.status).toBe(200);
+      const dataBody = await dataResponse.json() as {
+        data: {
+          prompts: unknown[];
+          folders: unknown[];
+        };
+      };
+      expect(dataBody.data.prompts).toEqual([]);
+      expect(dataBody.data.folders).toEqual([]);
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  }, TEST_TIMEOUT);
+
+  it('rejects sync imports that exceed skill workspace path limits before writing media or records', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-sync-deep-skills-'));
+
+    try {
+      const app = await createTestApp(dataDir);
+      const { payload: registerPayload } = await registerUser(app, 'deepskillsync', 'debugpass001');
+      const token = registerPayload.data.accessToken;
+
+      const importResponse = await app.request(
+        new Request('http://local/api/sync/data', {
+          method: 'PUT',
+          headers: authHeaders(token),
+          body: JSON.stringify({
+            payload: buildDeepSkillPayload(),
+          }),
+        }),
+      );
+
+      expect(importResponse.status).toBe(422);
+      const importBody = await importResponse.json() as { error: { code: string; message: string } };
+      expect(importBody.error.code).toBe('VALIDATION_ERROR');
+      expect(importBody.error.message).toContain('skill workspace path segment is too long');
+      expect(fs.existsSync(path.join(ensureTestMediaDir(dataDir, registerPayload.data.user.id, 'images'), 'deep-skill-image.png'))).toBe(false);
+
+      const dataResponse = await app.request(
+        new Request('http://local/api/sync/data', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      );
+      expect(dataResponse.status).toBe(200);
+      const dataBody = await dataResponse.json() as {
+        data: {
+          prompts: unknown[];
+          skills: unknown[];
+        };
+      };
+      expect(dataBody.data.prompts).toEqual([]);
+      expect(dataBody.data.skills).toEqual([]);
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  }, TEST_TIMEOUT);
+
+  it('rejects sync imports with unsafe rule paths before writing media or records', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-sync-unsafe-rules-'));
+
+    try {
+      const app = await createTestApp(dataDir);
+      const { payload: registerPayload } = await registerUser(app, 'unsaferulesync', 'debugpass001');
+      const token = registerPayload.data.accessToken;
+
+      const importResponse = await app.request(
+        new Request('http://local/api/sync/data', {
+          method: 'PUT',
+          headers: authHeaders(token),
+          body: JSON.stringify({
+            payload: buildUnsafeRulePayload(),
+          }),
+        }),
+      );
+
+      expect(importResponse.status).toBe(422);
+      const importBody = await importResponse.json() as { error: { code: string; message: string } };
+      expect(importBody.error.code).toBe('VALIDATION_ERROR');
+      expect(importBody.error.message).toContain('rule path segment');
+      expect(fs.existsSync(path.join(ensureTestMediaDir(dataDir, registerPayload.data.user.id, 'images'), 'unsafe-rule-image.png'))).toBe(false);
+
+      const dataResponse = await app.request(
+        new Request('http://local/api/sync/data', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      );
+      expect(dataResponse.status).toBe(200);
+      const dataBody = await dataResponse.json() as {
+        data: {
+          prompts: unknown[];
+          rules?: unknown[];
+        };
+      };
+      expect(dataBody.data.prompts).toEqual([]);
+      expect(dataBody.data.rules).toEqual([]);
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  }, TEST_TIMEOUT);
+
   it('accepts PromptHub envelopes on sync data import and normalizes desktop settings snapshots', async () => {
     const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-sync-envelope-'));
 
@@ -831,6 +1436,182 @@ describe('web sync routes', () => {
     }
   }, TEST_TIMEOUT);
 
+  it('rejects sync imports with insecure WebDAV settings endpoints', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-sync-settings-boundary-'));
+
+    try {
+      const app = await createTestApp(dataDir);
+      const { payload: registerPayload } = await registerUser(app, 'syncinsecuresettings', 'debugpass001');
+      const token = registerPayload.data.accessToken;
+
+      const importResponse = await app.request(
+        new Request('http://local/api/sync/data', {
+          method: 'PUT',
+          headers: authHeaders(token),
+          body: JSON.stringify({
+            payload: {
+              version: 'web-backup-v2',
+              exportedAt: '2026-04-21T00:00:00.000Z',
+              prompts: [],
+              promptVersions: [],
+              folders: [],
+              skills: [],
+              skillVersions: [],
+              settings: {
+                ...DEFAULT_SETTINGS,
+                sync: {
+                  enabled: true,
+                  provider: 'webdav',
+                  endpoint: 'http://dav.example.com/remote.php/dav/files/sync-import',
+                },
+              },
+            },
+          }),
+        }),
+      );
+
+      expect(importResponse.status).toBe(422);
+      const importBody = await importResponse.json() as { error: { code: string; message: string } };
+      expect(importBody.error.code).toBe('VALIDATION_ERROR');
+      expect(importBody.error.message).toContain('settings.sync.endpoint');
+      expect(importBody.error.message).toContain('WebDAV endpoint must use HTTPS');
+
+      const dataResponse = await app.request(
+        new Request('http://local/api/sync/data', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      );
+      expect(dataResponse.status).toBe(200);
+      const dataBody = await dataResponse.json() as { data: { settings: { sync?: { endpoint?: string } } } };
+      expect(dataBody.data.settings.sync?.endpoint).toBeUndefined();
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  }, TEST_TIMEOUT);
+
+  it('rejects sync imports with oversized WebDAV settings fields', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-sync-settings-size-boundary-'));
+
+    try {
+      const app = await createTestApp(dataDir);
+      const { payload: registerPayload } = await registerUser(app, 'syncoversizedsettings', 'debugpass001');
+      const token = registerPayload.data.accessToken;
+
+      const importResponse = await app.request(
+        new Request('http://local/api/sync/data', {
+          method: 'PUT',
+          headers: authHeaders(token),
+          body: JSON.stringify({
+            payload: {
+              version: 'web-backup-v2',
+              exportedAt: '2026-04-21T00:00:00.000Z',
+              prompts: [],
+              promptVersions: [],
+              folders: [],
+              skills: [],
+              skillVersions: [],
+              settings: {
+                ...DEFAULT_SETTINGS,
+                sync: {
+                  enabled: true,
+                  provider: 'webdav',
+                  endpoint: `https://dav.example.com/${'a'.repeat(2050)}`,
+                  username: 'u'.repeat(513),
+                  password: 'p'.repeat(513),
+                  remotePath: `/${'backup/'.repeat(180)}`,
+                  autoSync: true,
+                  lastSyncAt: 'not-an-iso-date',
+                },
+              },
+            },
+          }),
+        }),
+      );
+
+      expect(importResponse.status).toBe(422);
+      const importBody = await importResponse.json() as { error: { code: string; message: string } };
+      expect(importBody.error.code).toBe('VALIDATION_ERROR');
+      expect(importBody.error.message).toContain('settings.sync.endpoint');
+      expect(importBody.error.message).toContain('settings.sync.username');
+      expect(importBody.error.message).toContain('settings.sync.password');
+      expect(importBody.error.message).toContain('settings.sync.remotePath');
+      expect(importBody.error.message).toContain('settings.sync.lastSyncAt');
+
+      const dataResponse = await app.request(
+        new Request('http://local/api/sync/data', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      );
+      expect(dataResponse.status).toBe(200);
+      const dataBody = await dataResponse.json() as { data: { settings: { sync?: { endpoint?: string } } } };
+      expect(dataBody.data.settings.sync?.endpoint).toBeUndefined();
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  }, TEST_TIMEOUT);
+
+  it('rejects sync imports with malformed persisted settings preference fields', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-sync-preference-boundary-'));
+
+    try {
+      const app = await createTestApp(dataDir);
+      const { payload: registerPayload } = await registerUser(app, 'syncmalformedsettings', 'debugpass001');
+      const token = registerPayload.data.accessToken;
+
+      const importResponse = await app.request(
+        new Request('http://local/api/sync/data', {
+          method: 'PUT',
+          headers: authHeaders(token),
+          body: JSON.stringify({
+            payload: {
+              version: 'web-backup-v2',
+              exportedAt: '2026-04-21T00:00:00.000Z',
+              prompts: [],
+              promptVersions: [],
+              folders: [],
+              skills: [],
+              skillVersions: [],
+              settings: {
+                ...DEFAULT_SETTINGS,
+                backgroundImageFileName: '../wallpaper.png',
+                lastManualBackupAt: 'not-an-iso-date',
+                lastManualBackupVersion: 'v'.repeat(121),
+              },
+            },
+          }),
+        }),
+      );
+
+      expect(importResponse.status).toBe(422);
+      const importBody = await importResponse.json() as { error: { code: string; message: string } };
+      expect(importBody.error.code).toBe('VALIDATION_ERROR');
+      expect(importBody.error.message).toContain('settings.backgroundImageFileName');
+      expect(importBody.error.message).toContain('settings.lastManualBackupAt');
+      expect(importBody.error.message).toContain('settings.lastManualBackupVersion');
+
+      const dataResponse = await app.request(
+        new Request('http://local/api/sync/data', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      );
+      expect(dataResponse.status).toBe(200);
+      const dataBody = await dataResponse.json() as {
+        data: {
+          settings: {
+            backgroundImageFileName?: string;
+            lastManualBackupAt?: string;
+            lastManualBackupVersion?: string;
+          };
+        };
+      };
+      expect(dataBody.data.settings.backgroundImageFileName).toBeUndefined();
+      expect(dataBody.data.settings.lastManualBackupAt).toBeUndefined();
+      expect(dataBody.data.settings.lastManualBackupVersion).toBeUndefined();
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  }, TEST_TIMEOUT);
+
   it('pushes backup data to WebDAV using only mocked server functions', async () => {
     const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-sync-test-'));
     const testWebDavConnection = vi.fn(async () => ({ ok: true, status: 207 }));
@@ -917,8 +1698,10 @@ describe('web sync routes', () => {
         skills: 0,
       });
       expect(testWebDavConnection).toHaveBeenCalledTimes(1);
-      expect(pushWebDavFile).toHaveBeenCalledTimes(4); // data.json + image + video + manifest.json
-      const pushCall = getMockCall(pushWebDavFile, 0);
+      expect(pushWebDavFile).toHaveBeenCalledTimes(4); // image + video + data.json + manifest.json
+      expect(getMockCall(pushWebDavFile, 0)[1]).toBe('prompthub-backup/images/push-image.png.base64');
+      expect(getMockCall(pushWebDavFile, 1)[1]).toBe('prompthub-backup/videos/push-video.mp4.base64');
+      const pushCall = getMockCall(pushWebDavFile, 2);
       expect(pushCall).toBeTruthy();
       expect(pushCall[1]).toBe('prompthub-backup/data.json');
 
@@ -928,8 +1711,6 @@ describe('web sync routes', () => {
       };
       expect(pushedPayload.prompts).toEqual([expect.objectContaining({ title: 'Push Prompt' })]);
       expect(pushedPayload.folders).toEqual([expect.objectContaining({ name: 'Push Folder' })]);
-      expect(getMockCall(pushWebDavFile, 1)[1]).toBe('prompthub-backup/images/push-image.png.base64');
-      expect(getMockCall(pushWebDavFile, 2)[1]).toBe('prompthub-backup/videos/push-video.mp4.base64');
       expect(getMockCall(pushWebDavFile, 3)[1]).toBe('prompthub-backup/manifest.json');
 
       const statusResponse = await app.request(
@@ -947,8 +1728,11 @@ describe('web sync routes', () => {
   it('pulls backup data from WebDAV and replaces local visible data', async () => {
     const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-sync-test-'));
     const remotePayload = buildRemotePayload();
+    const remotePayloadJson = JSON.stringify(remotePayload);
+    const remoteImageBase64 = Buffer.from('remote-image-binary').toString('base64');
+    const remoteVideoBase64 = Buffer.from('remote-video-binary').toString('base64');
     const pullWebDavFile = vi.fn()
-      .mockResolvedValueOnce({ ok: true, status: 200, body: JSON.stringify(remotePayload) })
+      .mockResolvedValueOnce({ ok: true, status: 200, body: remotePayloadJson })
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -956,26 +1740,18 @@ describe('web sync routes', () => {
           version: '4.0',
           createdAt: remotePayload.exportedAt,
           updatedAt: remotePayload.exportedAt,
-          dataHash: 'remote-hash',
+          dataHash: sha256(remotePayloadJson),
           encrypted: false,
           images: {
-            'remote-image.png': {
-              hash: 'img-hash',
-              size: 12,
-              uploadedAt: remotePayload.exportedAt,
-            },
+            'remote-image.png': mediaManifestEntry(remoteImageBase64, remotePayload.exportedAt),
           },
           videos: {
-            'remote-video.mp4': {
-              hash: 'vid-hash',
-              size: 12,
-              uploadedAt: remotePayload.exportedAt,
-            },
+            'remote-video.mp4': mediaManifestEntry(remoteVideoBase64, remotePayload.exportedAt),
           },
         }),
       })
-      .mockResolvedValueOnce({ ok: true, status: 200, body: Buffer.from('remote-image-binary').toString('base64') })
-      .mockResolvedValueOnce({ ok: true, status: 200, body: Buffer.from('remote-video-binary').toString('base64') });
+      .mockResolvedValueOnce({ ok: true, status: 200, body: remoteImageBase64 })
+      .mockResolvedValueOnce({ ok: true, status: 200, body: remoteVideoBase64 });
 
     try {
       const app = await createTestApp(dataDir, { pullWebDavFile });
@@ -1238,7 +2014,7 @@ describe('web sync routes', () => {
           body: JSON.stringify({
             enabled: true,
             provider: 'self-hosted',
-            endpoint: 'https://sync.example.com/workspace',
+            endpoint: 'http://sync.example.com/workspace',
             autoSync: true,
           }),
         }),
@@ -1261,6 +2037,21 @@ describe('web sync routes', () => {
       expect(selfHostedStatusBody.data.provider).toBe('self-hosted');
       expect(selfHostedStatusBody.data.message).toContain('Self-hosted sync');
       expect(selfHostedStatusBody.data.capabilities.autoSync).toBe(false);
+
+      const inheritedWebDavEndpointResponse = await app.request(
+        new Request('http://local/api/sync/config', {
+          method: 'PUT',
+          headers: authHeaders(token),
+          body: JSON.stringify({
+            enabled: true,
+            provider: 'webdav',
+          }),
+        }),
+      );
+      expect(inheritedWebDavEndpointResponse.status).toBe(422);
+      const inheritedWebDavEndpointBody = await inheritedWebDavEndpointResponse.json() as { error: { message: string } };
+      expect(inheritedWebDavEndpointBody.error.message).toContain('endpoint');
+      expect(inheritedWebDavEndpointBody.error.message).toContain('WebDAV endpoint must use HTTPS');
 
       const s3ConfigResponse = await app.request(
         new Request('http://local/api/sync/config', {

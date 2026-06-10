@@ -25,7 +25,9 @@ vi.mock('./App', () => ({
 
 vi.mock('./index.css', () => ({}));
 vi.mock('@desktop-renderer-globals-css', () => ({}));
-vi.mock('@desktop-renderer-i18n', () => ({}));
+vi.mock('@desktop-renderer-i18n', () => ({
+  i18nReady: Promise.resolve(),
+}));
 
 describe('client main bootstrap', () => {
   beforeEach(() => {
@@ -43,6 +45,7 @@ describe('client main bootstrap', () => {
     }
 
     await import('./main');
+    await Promise.resolve();
 
     expect(createRootMock).toHaveBeenCalledWith(rootElement);
     expect(renderMock).toHaveBeenCalledTimes(1);

@@ -47,11 +47,16 @@ function createAuthValue(isAuthenticated: boolean): AuthValue {
 function TestWrapper({
   isAuthenticated = false,
   initialEntries = ['/login'] as InitialEntries,
+  authOverrides,
 }: {
   isAuthenticated?: boolean;
   initialEntries?: InitialEntries;
+  authOverrides?: Partial<AuthValue>;
 }) {
-  vi.spyOn(AuthContext, 'useAuth').mockReturnValue(createAuthValue(isAuthenticated));
+  vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
+    ...createAuthValue(isAuthenticated),
+    ...authOverrides,
+  });
 
   return (
       <MemoryRouter initialEntries={initialEntries}>
@@ -164,6 +169,33 @@ describe('LoginPage', () => {
     expect(await screen.findByText('Bad credentials')).toBeTruthy();
   });
 
+  it('ignores duplicate submits while login is in flight', async () => {
+    render(<TestWrapper isAuthenticated={false} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('img', { name: 'auth.captchaImageAlt' })).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByLabelText('auth.username'), {
+      target: { value: 'user' },
+    });
+    fireEvent.change(screen.getByLabelText('auth.password'), {
+      target: { value: 'password123' },
+    });
+    fireEvent.change(screen.getByLabelText('auth.captchaLabel', { selector: 'input' }), {
+      target: { value: '7' },
+    });
+    loginMock.mockReturnValueOnce(new Promise(() => {}));
+
+    const submitButton = screen.getByRole('button', { name: 'auth.signIn' });
+    fireEvent.click(submitButton);
+    fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(loginMock).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it('does not expose public registration controls on the login page', () => {
     vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
       ...createAuthValue(false),
@@ -180,5 +212,20 @@ describe('LoginPage', () => {
 
     expect(screen.queryByRole('button', { name: 'auth.needAccount' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'auth.register' })).toBeNull();
+  });
+
+  it('does not render an empty captcha image when captcha loading fails', async () => {
+    render(
+      <TestWrapper
+        authOverrides={{
+          getCaptcha: vi.fn().mockRejectedValue(new Error('Captcha unavailable')),
+        }}
+      />,
+    );
+
+    expect(await screen.findByText('Captcha unavailable')).toBeTruthy();
+    expect(screen.queryByRole('img', { name: 'auth.captchaImageAlt' })).toBeNull();
+    expect(screen.getByText('common.requestFailed')).toBeTruthy();
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'auth.signIn' }).disabled).toBe(true);
   });
 });

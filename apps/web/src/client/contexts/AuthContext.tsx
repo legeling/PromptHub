@@ -17,6 +17,12 @@ interface User {
   role?: 'admin' | 'user';
 }
 
+interface CaptchaPayload {
+  captchaId: string;
+  expiresInSeconds: number;
+  imageData: string;
+}
+
 interface AuthContextType {
   user: User | null;
   token: string | null;
@@ -25,7 +31,7 @@ interface AuthContextType {
   isBootstrapLoading: boolean;
   isInitialized: boolean;
   registrationAllowed: boolean;
-  getCaptcha: () => Promise<{ captchaId: string; expiresInSeconds: number; imageData: string }>;
+  getCaptcha: () => Promise<CaptchaPayload>;
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (credentials: LoginCredentials) => Promise<void>;
   logout: () => void;
@@ -33,6 +39,19 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const CAPTCHA_IMAGE_DATA_PATTERN = /^data:image\/svg\+xml;base64,[A-Za-z0-9+/]+={0,2}$/u;
+
+function normalizeCaptchaPayload(captcha: CaptchaPayload): CaptchaPayload {
+  const imageData = captcha.imageData.trim();
+  if (!CAPTCHA_IMAGE_DATA_PATTERN.test(imageData)) {
+    throw new Error('Invalid captcha image payload');
+  }
+
+  return {
+    ...captcha,
+    imageData,
+  };
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -162,7 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const getCaptcha = async () => {
     const res = await apiGetCaptcha();
-    return res.data;
+    return normalizeCaptchaPayload(res.data);
   };
 
   const logout = async () => {

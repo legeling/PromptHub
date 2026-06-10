@@ -8,14 +8,20 @@ import { parseJsonBody } from '../utils/validation.js';
 const devices = new Hono();
 const deviceService = new DeviceService();
 
+const deviceIdSchema = z.string().trim().min(1, 'id is required').max(128, 'id must be at most 128 characters');
+const deviceLabelSchema = (field: string) =>
+  z.string().trim().min(1, `${field} is required`).max(120, `${field} must be at most 120 characters`);
+const optionalDeviceLabelSchema = (field: string) =>
+  z.string().trim().min(1).max(120, `${field} must be at most 120 characters`).optional();
+
 const heartbeatSchema = z.object({
-  id: z.string().trim().min(1, 'id is required'),
+  id: deviceIdSchema,
   type: z.enum(['desktop', 'browser']),
-  name: z.string().trim().min(1, 'name is required'),
-  platform: z.string().trim().min(1, 'platform is required'),
-  appVersion: z.string().trim().min(1).optional(),
-  clientVersion: z.string().trim().min(1).optional(),
-  userAgent: z.string().trim().min(1).optional(),
+  name: deviceLabelSchema('name'),
+  platform: deviceLabelSchema('platform'),
+  appVersion: optionalDeviceLabelSchema('appVersion'),
+  clientVersion: optionalDeviceLabelSchema('clientVersion'),
+  userAgent: z.string().trim().min(1).max(512, 'userAgent must be at most 512 characters').optional(),
 });
 
 devices.get('/', async (c) => {

@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { closeDatabase } from '@prompthub/db';
 
 const ENV_KEYS = [
@@ -67,6 +67,10 @@ describe('web settings workspace storage', () => {
         process.env[key] = value;
       }
     }
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('writes default settings into a per-user workspace file on first read', async () => {
@@ -146,6 +150,43 @@ describe('web settings workspace storage', () => {
       provider: 'webdav',
       endpoint: 'https://dav.example.com/backups',
     });
+  }, TEST_TIMEOUT);
+
+  it('removes cleared nullable settings from sqlite and workspace json', async () => {
+    const owner = await createUser('settings-owner-clear');
+    const [{ SettingsService }, { getServerDatabase }] = await Promise.all([
+      import('./settings.service'),
+      import('../database'),
+    ]);
+
+    const service = new SettingsService();
+    service.set(owner.user.id, {
+      defaultFolderId: 'folder-to-clear',
+    });
+
+    service.set(owner.user.id, {
+      defaultFolderId: null,
+    });
+
+    const settings = service.get(owner.user.id);
+    expect(settings.defaultFolderId).toBeUndefined();
+
+    const db = getServerDatabase();
+    const row = db
+      .prepare('SELECT value FROM user_settings WHERE user_id = ? AND key = ?')
+      .get(owner.user.id, 'defaultFolderId');
+    expect(row).toBeNull();
+
+    const settingsFile = path.join(
+      dataDir,
+      'config',
+      'settings',
+      `${owner.user.id}.json`,
+    );
+    const saved = JSON.parse(fs.readFileSync(settingsFile, 'utf8')) as {
+      defaultFolderId?: string;
+    };
+    expect(saved.defaultFolderId).toBeUndefined();
   }, TEST_TIMEOUT);
 
   it('hydrates sqlite from the workspace settings file when database rows are missing', async () => {
@@ -232,5 +273,42 @@ describe('web settings workspace storage', () => {
       language: 'fr',
       autoSave: false,
     });
+  }, TEST_TIMEOUT);
+
+  it('preserves the existing workspace file when a settings mirror write is interrupted', async () => {
+    const owner = await createUser('settings-owner-atomic');
+    const [{ SettingsService }] = await Promise.all([import('./settings.service')]);
+    const settingsDir = path.join(dataDir, 'config', 'settings');
+    const settingsFile = path.join(settingsDir, `${owner.user.id}.json`);
+    const existingSettings = {
+      theme: 'light',
+      language: 'en',
+      autoSave: true,
+    };
+    const existingContent = `${JSON.stringify(existingSettings, null, 2)}\n`;
+    fs.mkdirSync(settingsDir, { recursive: true });
+    fs.writeFileSync(settingsFile, existingContent, 'utf8');
+
+    const service = new SettingsService();
+    const originalWriteFileSync = fs.writeFileSync.bind(fs);
+    let interrupted = false;
+    vi.spyOn(fs, 'writeFileSync').mockImplementation((file, data, options) => {
+      const filePath = String(file);
+      if (!interrupted && filePath.startsWith(settingsDir)) {
+        interrupted = true;
+        originalWriteFileSync(file, '[', options as BufferEncoding);
+        throw new Error('simulated interrupted settings mirror write');
+      }
+
+      return originalWriteFileSync(file, data, options as BufferEncoding);
+    });
+
+    expect(() =>
+      service.set(owner.user.id, {
+        theme: 'dark',
+      }),
+    ).toThrow('simulated interrupted settings mirror write');
+
+    expect(fs.readFileSync(settingsFile, 'utf8')).toBe(existingContent);
   }, TEST_TIMEOUT);
 });

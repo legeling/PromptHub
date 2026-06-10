@@ -1,25 +1,46 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
-// Desktop locale files – provides all keys used by embedded desktop UI components
-import desktopEn from '../../../desktop/src/renderer/i18n/locales/en.json';
-import desktopZh from '../../../desktop/src/renderer/i18n/locales/zh.json';
-import desktopZhTW from '../../../desktop/src/renderer/i18n/locales/zh-TW.json';
-import desktopJa from '../../../desktop/src/renderer/i18n/locales/ja.json';
-import desktopFr from '../../../desktop/src/renderer/i18n/locales/fr.json';
-import desktopDe from '../../../desktop/src/renderer/i18n/locales/de.json';
-import desktopEs from '../../../desktop/src/renderer/i18n/locales/es.json';
-
-// Web-specific locale additions (auth, dashboard, sync, etc.)
-import webEn from './locales/en.json';
-import webZh from './locales/zh.json';
-import webZhTW from './locales/zh-TW.json';
-import webJa from './locales/ja.json';
-import webFr from './locales/fr.json';
-import webDe from './locales/de.json';
-import webEs from './locales/es.json';
-
 type LocaleObj = Record<string, unknown>;
+type SupportedLanguage = keyof typeof localeLoaders;
+
+const localeLoaders = {
+  en: () =>
+    Promise.all([
+      import('../../../desktop/src/renderer/i18n/locales/en.json'),
+      import('./locales/en.json'),
+    ]),
+  zh: () =>
+    Promise.all([
+      import('../../../desktop/src/renderer/i18n/locales/zh.json'),
+      import('./locales/zh.json'),
+    ]),
+  'zh-TW': () =>
+    Promise.all([
+      import('../../../desktop/src/renderer/i18n/locales/zh-TW.json'),
+      import('./locales/zh-TW.json'),
+    ]),
+  ja: () =>
+    Promise.all([
+      import('../../../desktop/src/renderer/i18n/locales/ja.json'),
+      import('./locales/ja.json'),
+    ]),
+  fr: () =>
+    Promise.all([
+      import('../../../desktop/src/renderer/i18n/locales/fr.json'),
+      import('./locales/fr.json'),
+    ]),
+  de: () =>
+    Promise.all([
+      import('../../../desktop/src/renderer/i18n/locales/de.json'),
+      import('./locales/de.json'),
+    ]),
+  es: () =>
+    Promise.all([
+      import('../../../desktop/src/renderer/i18n/locales/es.json'),
+      import('./locales/es.json'),
+    ]),
+} as const;
 
 function deepMerge(base: LocaleObj, override: LocaleObj): LocaleObj {
   const result: LocaleObj = { ...base };
@@ -38,15 +59,10 @@ function deepMerge(base: LocaleObj, override: LocaleObj): LocaleObj {
   return result;
 }
 
-const resources = {
-  en:     { translation: deepMerge(desktopEn as LocaleObj, webEn as LocaleObj) },
-  zh:     { translation: deepMerge(desktopZh as LocaleObj, webZh as LocaleObj) },
-  'zh-TW': { translation: deepMerge(desktopZhTW as LocaleObj, webZhTW as LocaleObj) },
-  ja:     { translation: deepMerge(desktopJa as LocaleObj, webJa as LocaleObj) },
-  fr:     { translation: deepMerge(desktopFr as LocaleObj, webFr as LocaleObj) },
-  de:     { translation: deepMerge(desktopDe as LocaleObj, webDe as LocaleObj) },
-  es:     { translation: deepMerge(desktopEs as LocaleObj, webEs as LocaleObj) },
-};
+async function loadLocale(lang: SupportedLanguage): Promise<LocaleObj> {
+  const [desktopLocale, webLocale] = await localeLoaders[lang]();
+  return deepMerge(desktopLocale.default as LocaleObj, webLocale.default as LocaleObj);
+}
 
 const browserLanguage = navigator.language.startsWith('zh-TW') || navigator.language.startsWith('zh-HK')
   ? 'zh-TW'
@@ -65,20 +81,56 @@ const savedLanguage = (() => {
   return null;
 })();
 
-const supportedLanguages = Object.keys(resources);
-const initialLanguage =
-  (savedLanguage && supportedLanguages.includes(savedLanguage) ? savedLanguage : null) ??
-  (supportedLanguages.includes(browserLanguage) ? browserLanguage : 'en');
+const supportedLanguages = Object.keys(localeLoaders);
+function normalizeLanguage(lang: string | null | undefined): SupportedLanguage {
+  if (lang && supportedLanguages.includes(lang)) {
+    return lang as SupportedLanguage;
+  }
+  if (lang?.startsWith('zh-TW') || lang?.startsWith('zh-HK')) {
+    return 'zh-TW';
+  }
+  if (lang?.startsWith('zh')) {
+    return 'zh';
+  }
+  const baseLanguage = lang?.split('-')[0];
+  return baseLanguage && supportedLanguages.includes(baseLanguage)
+    ? (baseLanguage as SupportedLanguage)
+    : 'en';
+}
 
-i18n
-  .use(initReactI18next)
-  .init({
-    resources,
+const initialLanguage =
+  savedLanguage ? normalizeLanguage(savedLanguage) : normalizeLanguage(browserLanguage);
+
+export const i18nReady = (async () => {
+  const initialResources: Record<string, { translation: LocaleObj }> = {
+    en: { translation: await loadLocale('en') },
+  };
+  if (initialLanguage !== 'en') {
+    initialResources[initialLanguage] = {
+      translation: await loadLocale(initialLanguage as SupportedLanguage),
+    };
+  }
+
+  await i18n.use(initReactI18next).init({
+    resources: initialResources,
     lng: initialLanguage,
     fallbackLng: 'en',
     interpolation: { escapeValue: false },
   });
+})();
 
-export const changeLanguage = (lang: string) => { i18n.changeLanguage(lang); };
+export const changeLanguage = async (lang: string) => {
+  const normalizedLanguage = normalizeLanguage(lang);
+  if (!i18n.hasResourceBundle(normalizedLanguage, 'translation')) {
+    i18n.addResourceBundle(
+      normalizedLanguage,
+      'translation',
+      await loadLocale(normalizedLanguage as SupportedLanguage),
+      true,
+      true,
+    );
+  }
+  await i18n.changeLanguage(normalizedLanguage);
+};
 
 export default i18n;

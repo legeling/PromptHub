@@ -7,6 +7,10 @@ import { getRulesDir } from '../runtime-paths.js';
 const RULE_VERSION_LIMIT = 20;
 const RULE_META_FILE_NAME = '_rule.json';
 const VERSION_INDEX_FILE_NAME = 'index.json';
+const MAX_WORKSPACE_PATH_BYTES = 900;
+const MAX_WORKSPACE_SEGMENT_BYTES = 240;
+const VERSION_STAGING_PREFIX = '.versions-staging-';
+const VERSION_BACKUP_PREFIX = '.versions-backup-';
 
 interface StoredRuleVersionIndexEntry {
   id: string;
@@ -30,6 +34,14 @@ interface StoredRuleMeta {
   syncStatus?: RuleBackupRecord['syncStatus'];
 }
 
+interface RuleImportSnapshot {
+  managedPath: string;
+  metaPath: string;
+  previousContent: string | null;
+  previousMeta: StoredRuleMeta | null;
+  previousVersions: RuleVersionSnapshot[];
+}
+
 function ensureDir(targetPath: string): void {
   fs.mkdirSync(targetPath, { recursive: true });
 }
@@ -46,6 +58,36 @@ function slugify(input: string | null | undefined): string {
 
 function encodeRuleId(ruleId: string): string {
   return encodeURIComponent(ruleId);
+}
+
+function assertSafeRulePathSegment(segment: string, label: string): void {
+  if (
+    segment === '' ||
+    segment === '.' ||
+    segment === '..' ||
+    segment.includes('/') ||
+    segment.includes('\\') ||
+    /^[a-zA-Z]:/u.test(segment) ||
+    /[\u0000-\u001F\u007F]/u.test(segment)
+  ) {
+    throw new Error(`Sync snapshot is invalid: unsafe rule path segment for ${label}`);
+  }
+
+  if (Buffer.byteLength(segment, 'utf8') > MAX_WORKSPACE_SEGMENT_BYTES) {
+    throw new Error(`Sync snapshot is invalid: rule path segment is too long for ${label}`);
+  }
+}
+
+function assertRuleWorkspacePathFits(targetPath: string, label: string): void {
+  if (Buffer.byteLength(targetPath, 'utf8') > MAX_WORKSPACE_PATH_BYTES) {
+    throw new Error(`Sync snapshot is invalid: rule workspace path is too long for ${label}`);
+  }
+
+  for (const segment of targetPath.split(path.sep)) {
+    if (Buffer.byteLength(segment, 'utf8') > MAX_WORKSPACE_SEGMENT_BYTES) {
+      throw new Error(`Sync snapshot is invalid: rule path segment is too long for ${label}`);
+    }
+  }
 }
 
 function getUserRulesRoot(userId: string): string {
@@ -80,6 +122,45 @@ function getManagedCopyPath(userId: string, record: RuleBackupRecord): string {
   }
 
   return path.join(getUserRulesGlobalRoot(userId), record.platformId, record.name);
+}
+
+export function validateRuleWorkspaceSnapshotPaths(
+  userId: string,
+  records: RuleBackupRecord[],
+): void {
+  assertSafeRulePathSegment(userId, 'user id');
+  const userRulesRoot = getUserRulesRoot(userId);
+  assertRuleWorkspacePathFits(userRulesRoot, 'user rules root');
+
+  for (const record of records) {
+    assertSafeRulePathSegment(record.name, `rule ${record.id} name`);
+
+    if (record.id.startsWith('project:')) {
+      const projectId = record.id.slice('project:'.length);
+      assertSafeRulePathSegment(projectId, `rule ${record.id} project id`);
+    } else {
+      assertSafeRulePathSegment(record.platformId, `rule ${record.id} platform id`);
+    }
+
+    const managedPath = getManagedCopyPath(userId, record);
+    assertRuleWorkspacePathFits(managedPath, `rule ${record.id}`);
+    assertRuleWorkspacePathFits(
+      path.join(path.dirname(managedPath), RULE_META_FILE_NAME),
+      `rule ${record.id} metadata`,
+    );
+    assertRuleWorkspacePathFits(
+      getRuleVersionIndexPath(userId, record.id),
+      `rule ${record.id} versions`,
+    );
+
+    for (const [index] of record.versions.entries()) {
+      const fileName = `${String(index + 1).padStart(4, '0')}.md`;
+      assertRuleWorkspacePathFits(
+        path.join(getRuleVersionsDir(userId, record.id), fileName),
+        `rule ${record.id} version ${index + 1}`,
+      );
+    }
+  }
 }
 
 function listMetaPaths(rootDir: string): string[] {
@@ -127,6 +208,48 @@ function writeJsonFile(filePath: string, value: unknown): void {
   fs.writeFileSync(filePath, JSON.stringify(value, null, 2), 'utf8');
 }
 
+function removeFileIfExists(filePath: string): void {
+  fs.rmSync(filePath, { force: true });
+}
+
+function removeDirectoryIfExists(targetPath: string): void {
+  fs.rmSync(targetPath, { recursive: true, force: true });
+}
+
+function tryRemoveDirectory(targetPath: string): void {
+  try {
+    removeDirectoryIfExists(targetPath);
+  } catch (error) {
+    console.warn(`[rule-workspace] failed to clean up ${targetPath}:`, error);
+  }
+}
+
+function createSiblingDirectory(targetDir: string, prefix: string): string {
+  ensureDir(path.dirname(targetDir));
+  return fs.mkdtempSync(path.join(path.dirname(targetDir), prefix));
+}
+
+function replaceDirectory(targetDir: string, stagingDir: string): void {
+  const backupDir = createSiblingDirectory(targetDir, VERSION_BACKUP_PREFIX);
+  removeDirectoryIfExists(backupDir);
+
+  let liveMoved = false;
+  try {
+    if (fs.existsSync(targetDir)) {
+      fs.renameSync(targetDir, backupDir);
+      liveMoved = true;
+    }
+
+    fs.renameSync(stagingDir, targetDir);
+    tryRemoveDirectory(backupDir);
+  } catch (error) {
+    if (!fs.existsSync(targetDir) && liveMoved && fs.existsSync(backupDir)) {
+      fs.renameSync(backupDir, targetDir);
+    }
+    throw error;
+  }
+}
+
 function readVersionIndex(userId: string, ruleId: string): StoredRuleVersionIndexEntry[] {
   return readJsonFile<StoredRuleVersionIndexEntry[]>(
     getRuleVersionIndexPath(userId, ruleId),
@@ -157,8 +280,7 @@ function writeRuleVersions(
   versions: RuleVersionSnapshot[],
 ): void {
   const versionDir = getRuleVersionsDir(userId, ruleId);
-  fs.rmSync(versionDir, { recursive: true, force: true });
-  ensureDir(versionDir);
+  const stagingDir = createSiblingDirectory(versionDir, VERSION_STAGING_PREFIX);
 
   const orderedVersions = [...versions]
     .sort(
@@ -167,19 +289,27 @@ function writeRuleVersions(
     )
     .slice(-RULE_VERSION_LIMIT);
 
-  const index: StoredRuleVersionIndexEntry[] = [];
-  for (const [position, version] of orderedVersions.entries()) {
-    const fileName = `${String(position + 1).padStart(4, '0')}.md`;
-    fs.writeFileSync(path.join(versionDir, fileName), version.content, 'utf8');
-    index.unshift({
-      id: version.id,
-      savedAt: version.savedAt,
-      source: version.source,
-      fileName,
-    });
-  }
+  try {
+    ensureDir(stagingDir);
 
-  writeJsonFile(getRuleVersionIndexPath(userId, ruleId), index);
+    const index: StoredRuleVersionIndexEntry[] = [];
+    for (const [position, version] of orderedVersions.entries()) {
+      const fileName = `${String(position + 1).padStart(4, '0')}.md`;
+      fs.writeFileSync(path.join(stagingDir, fileName), version.content, 'utf8');
+      index.unshift({
+        id: version.id,
+        savedAt: version.savedAt,
+        source: version.source,
+        fileName,
+      });
+    }
+
+    writeJsonFile(path.join(stagingDir, VERSION_INDEX_FILE_NAME), index);
+    replaceDirectory(versionDir, stagingDir);
+  } catch (error) {
+    tryRemoveDirectory(stagingDir);
+    throw error;
+  }
 }
 
 function toStoredRuleMeta(userId: string, record: RuleBackupRecord): StoredRuleMeta {
@@ -223,6 +353,60 @@ function toRuleBackupRecord(userId: string, meta: StoredRuleMeta): RuleBackupRec
   };
 }
 
+function createRuleImportSnapshot(userId: string, meta: StoredRuleMeta): RuleImportSnapshot {
+  const metaPath = path.join(path.dirname(meta.managedPath), RULE_META_FILE_NAME);
+  return {
+    managedPath: meta.managedPath,
+    metaPath,
+    previousContent: fs.existsSync(meta.managedPath)
+      ? fs.readFileSync(meta.managedPath, 'utf8')
+      : null,
+    previousMeta: readJsonFile<StoredRuleMeta>(metaPath),
+    previousVersions: readRuleVersions(userId, meta.id),
+  };
+}
+
+function restoreRuleImportSnapshot(
+  userId: string,
+  ruleId: string,
+  snapshot: RuleImportSnapshot,
+): void {
+  try {
+    if (snapshot.previousContent === null) {
+      removeFileIfExists(snapshot.managedPath);
+    } else {
+      ensureDir(path.dirname(snapshot.managedPath));
+      fs.writeFileSync(snapshot.managedPath, snapshot.previousContent, 'utf8');
+    }
+
+    if (snapshot.previousMeta === null) {
+      removeFileIfExists(snapshot.metaPath);
+    } else {
+      writeJsonFile(snapshot.metaPath, snapshot.previousMeta);
+    }
+
+    writeRuleVersions(userId, ruleId, snapshot.previousVersions);
+  } catch (error) {
+    console.warn(`[rule-workspace] failed to restore ${ruleId} after import failure:`, error);
+  }
+}
+
+function importRuleBackupRecord(userId: string, record: RuleBackupRecord): void {
+  const meta = toStoredRuleMeta(userId, record);
+  const metaPath = path.join(path.dirname(meta.managedPath), RULE_META_FILE_NAME);
+  const snapshot = createRuleImportSnapshot(userId, meta);
+
+  try {
+    ensureDir(path.dirname(meta.managedPath));
+    fs.writeFileSync(meta.managedPath, record.content, 'utf8');
+    writeJsonFile(metaPath, meta);
+    writeRuleVersions(userId, record.id, record.versions);
+  } catch (error) {
+    restoreRuleImportSnapshot(userId, record.id, snapshot);
+    throw error;
+  }
+}
+
 export function exportRuleBackupRecords(userId: string): RuleBackupRecord[] {
   return listAllMetaPaths(userId)
     .map((metaPath) => readJsonFile<StoredRuleMeta>(metaPath))
@@ -239,14 +423,11 @@ export function importRuleBackupRecords(
     return;
   }
 
+  validateRuleWorkspaceSnapshotPaths(userId, records);
   ensureDir(getUserRulesRoot(userId));
 
   for (const record of records) {
-    const meta = toStoredRuleMeta(userId, record);
-    ensureDir(path.dirname(meta.managedPath));
-    fs.writeFileSync(meta.managedPath, record.content, 'utf8');
-    writeJsonFile(path.join(path.dirname(meta.managedPath), RULE_META_FILE_NAME), meta);
-    writeRuleVersions(userId, record.id, record.versions);
+    importRuleBackupRecord(userId, record);
   }
 }
 

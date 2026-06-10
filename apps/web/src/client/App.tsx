@@ -1,18 +1,27 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { LoginPage } from './pages/Login';
 import { SetupPage } from './pages/Setup';
-import { DesktopWorkspacePage } from './pages/DesktopWorkspace';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+
+const DesktopWorkspacePage = lazy(() =>
+  import('./pages/DesktopWorkspace').then((module) => ({
+    default: module.DesktopWorkspacePage,
+  })),
+);
+
+function LoadingScreen() {
+  const { t } = useTranslation();
+  return <div className="loading-screen">{t('dashboard.loading')}</div>;
+}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading, isBootstrapLoading, isInitialized } = useAuth();
   const location = useLocation();
-  const { t } = useTranslation();
 
   if (isLoading || isBootstrapLoading) {
-    return <div className="loading-screen">{t('dashboard.loading')}</div>;
+    return <LoadingScreen />;
   }
 
   if (!isInitialized) {
@@ -28,10 +37,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function SetupRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isBootstrapLoading, isInitialized } = useAuth();
-  const { t } = useTranslation();
 
   if (isBootstrapLoading) {
-    return <div className="loading-screen">{t('dashboard.loading')}</div>;
+    return <LoadingScreen />;
   }
 
   if (isInitialized) {
@@ -48,8 +56,26 @@ export function App() {
         <Routes>
           <Route path="/setup" element={<SetupRoute><SetupPage /></SetupRoute>} />
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/" element={<ProtectedRoute><DesktopWorkspacePage /></ProtectedRoute>} />
-          <Route path="*" element={<ProtectedRoute><DesktopWorkspacePage /></ProtectedRoute>} />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Suspense fallback={<LoadingScreen />}>
+                  <DesktopWorkspacePage />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="*"
+            element={
+              <ProtectedRoute>
+                <Suspense fallback={<LoadingScreen />}>
+                  <DesktopWorkspacePage />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

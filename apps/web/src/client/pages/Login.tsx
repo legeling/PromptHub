@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,6 +12,8 @@ export function LoginPage() {
   const [captchaImageData, setCaptchaImageData] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [captchaLoading, setCaptchaLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
   const {
     getCaptcha,
     login,
@@ -24,6 +26,7 @@ export function LoginPage() {
 
   const state = location.state as { from?: { pathname?: string } } | null;
   const from = state?.from?.pathname || '/';
+  const canSubmit = !captchaLoading && Boolean(captchaId) && !isSubmitting;
 
   useEffect(() => {
     let cancelled = false;
@@ -39,6 +42,9 @@ export function LoginPage() {
         }
       } catch (captchaError: unknown) {
         if (!cancelled) {
+          setCaptchaId('');
+          setCaptchaImageData('');
+          setCaptchaAnswer('');
           setError(
             captchaError instanceof Error
               ? captchaError.message
@@ -66,6 +72,16 @@ export function LoginPage() {
       setCaptchaId(captcha.captchaId);
       setCaptchaImageData(captcha.imageData);
       setCaptchaAnswer('');
+      setError(null);
+    } catch (captchaError: unknown) {
+      setCaptchaId('');
+      setCaptchaImageData('');
+      setCaptchaAnswer('');
+      setError(
+        captchaError instanceof Error
+          ? captchaError.message
+          : t('common.requestFailed'),
+      );
     } finally {
       setCaptchaLoading(false);
     }
@@ -85,6 +101,12 @@ export function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmittingRef.current || !captchaId || captchaLoading) {
+      return;
+    }
+
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
     setError(null);
     try {
       await login({ username, password, captchaId, captchaAnswer });
@@ -100,6 +122,9 @@ export function LoginPage() {
       } else {
         setError(t('auth.loginError'));
       }
+    } finally {
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
     }
   };
 
@@ -152,12 +177,14 @@ export function LoginPage() {
               <div className="web-auth-captcha-prompt" aria-live="polite">
                 {captchaLoading ? (
                   <span>{t('auth.captchaLoading')}</span>
-                ) : (
+                ) : captchaImageData ? (
                   <img
                     src={captchaImageData}
                     alt={t('auth.captchaImageAlt')}
                     className="web-auth-captcha-image"
                   />
+                ) : (
+                  <span>{t('common.requestFailed')}</span>
                 )}
               </div>
               <button
@@ -183,7 +210,7 @@ export function LoginPage() {
             />
           </div>
 
-          <button type="submit" className="login-submit web-auth-submit" disabled={captchaLoading}>
+          <button type="submit" className="login-submit web-auth-submit" disabled={!canSubmit}>
             <span className="text-white">{t('auth.signIn')}</span>
           </button>
         </form>

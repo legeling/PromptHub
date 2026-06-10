@@ -122,9 +122,46 @@ describe('SetupPage', () => {
     expect(registerMock).not.toHaveBeenCalled();
   });
 
+  it('ignores duplicate submits while registration is in flight', async () => {
+    registerMock.mockReturnValueOnce(new Promise(() => {}));
+    renderSetup();
+
+    fireEvent.change(screen.getByLabelText('auth.username'), {
+      target: { value: 'owner' },
+    });
+    fireEvent.change(screen.getByLabelText('auth.password'), {
+      target: { value: 'debugpass001' },
+    });
+    fireEvent.change(screen.getByLabelText('auth.confirmPassword'), {
+      target: { value: 'debugpass001' },
+    });
+    fireEvent.change(await screen.findByLabelText('auth.captchaLabel', { selector: 'input' }), {
+      target: { value: '7' },
+    });
+
+    const submitButton = screen.getByRole('button', { name: 'auth.completeSetup' });
+    fireEvent.click(submitButton);
+    fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(registerMock).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it('redirects to login when the instance is already initialized', () => {
     renderSetup({ isInitialized: true });
 
     expect(screen.getByTestId('login')).toBeTruthy();
+  });
+
+  it('does not render an empty captcha image when captcha loading fails', async () => {
+    renderSetup({
+      getCaptcha: vi.fn().mockRejectedValue(new Error('Captcha unavailable')),
+    });
+
+    expect(await screen.findByText('Captcha unavailable')).toBeTruthy();
+    expect(screen.queryByRole('img', { name: 'auth.captchaImageAlt' })).toBeNull();
+    expect(screen.getByText('common.requestFailed')).toBeTruthy();
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'auth.completeSetup' }).disabled).toBe(true);
   });
 });

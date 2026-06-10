@@ -26,14 +26,19 @@ import { getPromptsDir } from '../runtime-paths.js';
  * 1. `ownerUserId` / `visibility` 写入 prompt frontmatter 和 `_folder.json`
  *    以保留多租户归属。
  * 2. `usageCount` / `lastAiResponse` 写入 prompt frontmatter（桌面端不持久化）。
- * 3. 同步采用推土机式 `rmSync(promptsDir) + 重写`——Web 服务进程独占数据目录，
- *    不需要 `.trash/`、同名冲突裁决、restore marker、四象限 bootstrap 等保护。
+ * 3. 同步采用 sibling staging directory 重写后替换 live 目录；Web 服务进程
+ *    独占数据目录，不需要桌面端 `.trash/`、同名冲突裁决、restore marker、
+ *    四象限 bootstrap 等保护。
  */
 
 const FOLDER_METADATA_FILE_NAME = '_folder.json';
 const VERSION_ROOT_DIR_NAME = '.versions';
 const SYSTEM_MARKER = '<!-- PROMPTHUB:SYSTEM -->';
 const USER_MARKER = '<!-- PROMPTHUB:USER -->';
+const MAX_WORKSPACE_PATH_BYTES = 900;
+const MAX_WORKSPACE_SEGMENT_BYTES = 240;
+const STAGING_DIR_PREFIX = '.prompts-staging-';
+const BACKUP_DIR_PREFIX = '.prompts-backup-';
 
 interface FrontmatterResult {
   metadata: Record<string, unknown>;
@@ -276,6 +281,56 @@ function getFolderMetadataPath(folderDir: string): string {
   return path.join(folderDir, FOLDER_METADATA_FILE_NAME);
 }
 
+function assertWorkspacePathFits(targetPath: string, label: string): void {
+  if (Buffer.byteLength(targetPath, 'utf8') > MAX_WORKSPACE_PATH_BYTES) {
+    throw new Error(`Sync snapshot is invalid: prompt workspace path is too long for ${label}`);
+  }
+
+  for (const segment of targetPath.split(path.sep)) {
+    if (Buffer.byteLength(segment, 'utf8') > MAX_WORKSPACE_SEGMENT_BYTES) {
+      throw new Error(`Sync snapshot is invalid: prompt workspace path segment is too long for ${label}`);
+    }
+  }
+}
+
+export function validatePromptWorkspaceSnapshotPaths(
+  folders: Folder[],
+  prompts: Prompt[],
+  promptVersions: PromptVersion[],
+): void {
+  const promptsDir = getPromptsDir();
+  const folderMap = new Map(folders.map((folder) => [folder.id, folder]));
+
+  for (const folder of folders) {
+    const folderDir = path.join(
+      promptsDir,
+      ...buildFolderSegments(folder.id, folderMap),
+    );
+    assertWorkspacePathFits(folderDir, `folder ${folder.id}`);
+    assertWorkspacePathFits(getFolderMetadataPath(folderDir), `folder ${folder.id}`);
+  }
+
+  const takenPromptPaths = new Set<string>();
+  for (const prompt of prompts) {
+    const promptPath = getPromptFilePath(
+      promptsDir,
+      folderMap,
+      prompt,
+      takenPromptPaths,
+    );
+    assertWorkspacePathFits(path.dirname(promptPath), `prompt ${prompt.id}`);
+    assertWorkspacePathFits(promptPath, `prompt ${prompt.id}`);
+  }
+
+  for (const version of promptVersions) {
+    const versionPath = path.join(
+      getPromptVersionDir(promptsDir, version.promptId),
+      `${padVersion(version.version)}.md`,
+    );
+    assertWorkspacePathFits(versionPath, `prompt version ${version.id}`);
+  }
+}
+
 function writeFolderMetadataFiles(
   promptsDir: string,
   folders: Folder[],
@@ -296,6 +351,98 @@ function writeFolderMetadataFiles(
   }
 }
 
+function createSiblingWorkspaceDir(promptsDir: string, prefix: string): string {
+  ensureDir(path.dirname(promptsDir));
+  return fs.mkdtempSync(path.join(path.dirname(promptsDir), prefix));
+}
+
+function removeDirectoryIfExists(targetPath: string): void {
+  fs.rmSync(targetPath, { recursive: true, force: true });
+}
+
+function tryRemoveDirectory(targetPath: string): void {
+  try {
+    removeDirectoryIfExists(targetPath);
+  } catch (error) {
+    console.warn(`[prompt-workspace] failed to clean up ${targetPath}:`, error);
+  }
+}
+
+function isWorkspaceScratchDirectory(name: string): boolean {
+  return (
+    name === VERSION_ROOT_DIR_NAME ||
+    name === 'versions' ||
+    name.startsWith(STAGING_DIR_PREFIX) ||
+    name.startsWith(BACKUP_DIR_PREFIX)
+  );
+}
+
+function replacePromptWorkspace(promptsDir: string, stagingDir: string): void {
+  const backupDir = createSiblingWorkspaceDir(promptsDir, BACKUP_DIR_PREFIX);
+  removeDirectoryIfExists(backupDir);
+
+  let liveMoved = false;
+  try {
+    if (fs.existsSync(promptsDir)) {
+      fs.renameSync(promptsDir, backupDir);
+      liveMoved = true;
+    }
+
+    fs.renameSync(stagingDir, promptsDir);
+    tryRemoveDirectory(backupDir);
+  } catch (error) {
+    if (!fs.existsSync(promptsDir) && liveMoved && fs.existsSync(backupDir)) {
+      fs.renameSync(backupDir, promptsDir);
+    }
+    throw error;
+  }
+}
+
+function writePromptWorkspaceSnapshot(
+  promptsDir: string,
+  folderMap: Map<string, Folder>,
+  prompts: Prompt[],
+  promptDb: PromptDB,
+): { versionCount: number } {
+  const takenPromptPaths = new Set<string>();
+  let versionCount = 0;
+
+  for (const prompt of prompts) {
+    const promptPath = getPromptFilePath(
+      promptsDir,
+      folderMap,
+      prompt,
+      takenPromptPaths,
+    );
+    ensureDir(path.dirname(promptPath));
+
+    fs.writeFileSync(
+      promptPath,
+      `${formatFrontmatter(promptFrontmatter(prompt))}${formatPromptBody(prompt.systemPrompt, prompt.userPrompt)}`,
+      'utf8',
+    );
+
+    const versions = promptDb
+      .getVersions(prompt.id)
+      .sort((left, right) => left.version - right.version);
+
+    if (versions.length > 0) {
+      const versionsDir = getPromptVersionDir(promptsDir, prompt.id);
+      ensureDir(versionsDir);
+      for (const version of versions) {
+        fs.writeFileSync(
+          path.join(versionsDir, `${padVersion(version.version)}.md`),
+          `${formatFrontmatter(versionFrontmatter(version))}${formatPromptBody(version.systemPrompt, version.userPrompt)}`,
+          'utf8',
+        );
+      }
+      versionCount += versions.length;
+    }
+  }
+
+  return { versionCount };
+}
+
 function collectPromptFiles(rootDir: string): string[] {
   if (!fs.existsSync(rootDir)) {
     return [];
@@ -308,8 +455,8 @@ function collectPromptFiles(rootDir: string): string[] {
       const absolutePath = path.join(dir, entry.name);
 
       if (entry.isDirectory()) {
-        // 跳过版本目录（.versions/ 与历史遗留 versions/）
-        if (entry.name === VERSION_ROOT_DIR_NAME || entry.name === 'versions') {
+        // Skip versions and interrupted export scratch directories.
+        if (isWorkspaceScratchDirectory(entry.name)) {
           continue;
         }
         walk(absolutePath);
@@ -340,7 +487,7 @@ function collectFolderMetadataFiles(rootDir: string): string[] {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const absolutePath = path.join(dir, entry.name);
       if (entry.isDirectory()) {
-        if (entry.name === VERSION_ROOT_DIR_NAME) continue;
+        if (isWorkspaceScratchDirectory(entry.name)) continue;
         walk(absolutePath);
         continue;
       }
@@ -563,10 +710,8 @@ function updatePromptOwnership(db: Database.Database, prompt: Prompt): void {
 }
 
 /**
- * 推土机式同步：清空 `<promptsDir>` 后按 DB 重写整棵文件树。
- *
- * 安全性：Web 服务进程独占数据卷、用户不会手动改文件，因此无需桌面端的
- * `.trash/` 软删除保护。数据安全由上层的 `.phub.gz` 备份机制兜底。
+ * 从 DB 导出整棵 Prompt workspace。先写入 sibling staging directory，
+ * 完成后替换 live 目录；如果 staging 写入失败，保留旧 workspace。
  */
 export function syncPromptWorkspaceFromDatabase(
   db: Database.Database,
@@ -576,54 +721,31 @@ export function syncPromptWorkspaceFromDatabase(
   const promptsDir = getPromptsDir();
   const folders = listAllFolders(db, folderDb);
   const prompts = listAllPrompts(db, promptDb);
+  const promptVersions = prompts.flatMap((prompt) => promptDb.getVersions(prompt.id));
+  validatePromptWorkspaceSnapshotPaths(folders, prompts, promptVersions);
+
   const folderMap = new Map(folders.map((folder) => [folder.id, folder]));
+  const stagingDir = createSiblingWorkspaceDir(promptsDir, STAGING_DIR_PREFIX);
 
-  fs.rmSync(promptsDir, { recursive: true, force: true });
-  ensureDir(promptsDir);
-
-  writeFolderMetadataFiles(promptsDir, folders, folderMap);
-
-  const takenPromptPaths = new Set<string>();
-  let versionCount = 0;
-
-  for (const prompt of prompts) {
-    const promptPath = getPromptFilePath(
-      promptsDir,
+  try {
+    writeFolderMetadataFiles(stagingDir, folders, folderMap);
+    const { versionCount } = writePromptWorkspaceSnapshot(
+      stagingDir,
       folderMap,
-      prompt,
-      takenPromptPaths,
+      prompts,
+      promptDb,
     );
-    ensureDir(path.dirname(promptPath));
+    replacePromptWorkspace(promptsDir, stagingDir);
 
-    fs.writeFileSync(
-      promptPath,
-      `${formatFrontmatter(promptFrontmatter(prompt))}${formatPromptBody(prompt.systemPrompt, prompt.userPrompt)}`,
-      'utf8',
-    );
-
-    const versions = promptDb
-      .getVersions(prompt.id)
-      .sort((left, right) => left.version - right.version);
-
-    if (versions.length > 0) {
-      const versionsDir = getPromptVersionDir(promptsDir, prompt.id);
-      ensureDir(versionsDir);
-      for (const version of versions) {
-        fs.writeFileSync(
-          path.join(versionsDir, `${padVersion(version.version)}.md`),
-          `${formatFrontmatter(versionFrontmatter(version))}${formatPromptBody(version.systemPrompt, version.userPrompt)}`,
-          'utf8',
-        );
-      }
-      versionCount += versions.length;
-    }
+    return {
+      promptCount: prompts.length,
+      folderCount: folders.length,
+      versionCount,
+    };
+  } catch (error) {
+    tryRemoveDirectory(stagingDir);
+    throw error;
   }
-
-  return {
-    promptCount: prompts.length,
-    folderCount: folders.length,
-    versionCount,
-  };
 }
 
 /**

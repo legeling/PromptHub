@@ -11,6 +11,7 @@ async function loadI18nFor(language: string) {
   vi.resetModules();
   setNavigatorLanguage(language);
   const module = await import('./i18n');
+  await module.i18nReady;
   return module.default;
 }
 
@@ -42,5 +43,16 @@ describe('client i18n initialization', () => {
     const i18n = await loadI18nFor('ko-KR');
 
     expect(i18n.language).toBe('en');
+  });
+
+  it('normalizes regional language codes when changing language', async () => {
+    const module = await import('./i18n');
+    await module.i18nReady;
+
+    await module.changeLanguage('zh-CN');
+    expect(module.default.language).toBe('zh');
+
+    await module.changeLanguage('zh-HK');
+    expect(module.default.language).toBe('zh-TW');
   });
 });

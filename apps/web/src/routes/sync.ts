@@ -3,6 +3,9 @@ import { z } from 'zod';
 import type { Settings, SyncProviderKind, SyncSettings, SyncSnapshot } from '@prompthub/shared';
 import { getAuthUser } from '../middleware/auth.js';
 import { BackupService } from '../services/backup.service.js';
+import { validatePromptWorkspaceSnapshotPaths } from '../services/prompt-workspace.js';
+import { validateRuleWorkspaceSnapshotPaths } from '../services/rule-workspace.js';
+import { validateSkillWorkspaceSnapshotPaths } from '../services/skill-workspace.js';
 import { SettingsService } from '../services/settings.service.js';
 import {
   buildImportedSyncSummary,
@@ -10,7 +13,11 @@ import {
   parseSyncSnapshot,
   withDefaultImportedSettings,
 } from '../services/sync-snapshot.js';
-import { writePulledSyncMedia } from '../services/sync-media.js';
+import {
+  syncConfigSchema,
+  validateSyncSettings,
+} from '../services/sync-settings-validation.js';
+import { validatePulledSyncMedia, writePulledSyncMedia } from '../services/sync-media.js';
 import {
   pullWebDavSnapshot,
   pushWebDavSnapshot,
@@ -21,19 +28,10 @@ import { parseJsonBody } from '../utils/validation.js';
 const sync = new Hono();
 const backupService = new BackupService();
 const settingsService = new SettingsService();
+const MAX_SYNC_DATA_REQUEST_BYTES = 50 * 1024 * 1024;
 
 const syncImportRequestSchema = z.object({
   payload: z.unknown(),
-});
-
-const syncConfigSchema = z.object({
-  enabled: z.boolean(),
-  provider: z.enum(['manual', 'webdav', 'self-hosted', 's3']),
-  endpoint: z.string().url().optional(),
-  username: z.string().optional(),
-  password: z.string().optional(),
-  remotePath: z.string().optional(),
-  autoSync: z.boolean().optional(),
 });
 
 function getSyncSettings(userId: string): SyncSettings {
@@ -49,6 +47,10 @@ function assertWebDavConfig(settings: SyncSettings): asserts settings is SyncSet
   if (settings.provider !== 'webdav' || !settings.endpoint) {
     throw new Error('WebDAV sync is not configured');
   }
+}
+
+function validateMergedSyncSettings(settings: SyncSettings): void {
+  validateSyncSettings(settings);
 }
 
 function buildSyncStatus(userId: string, payload: { exportedAt: string; prompts: unknown[]; folders: unknown[]; skills: unknown[] }): {
@@ -134,6 +136,24 @@ function buildSyncImportPayload(snapshot: SyncSnapshot) {
   return withDefaultImportedSettings(snapshot);
 }
 
+function rejectOversizedSyncDataRequest(c: Parameters<typeof success>[0]): Response | null {
+  const contentLength = c.req.header('content-length');
+  if (!contentLength) {
+    return null;
+  }
+
+  const byteLength = Number(contentLength);
+  if (!Number.isFinite(byteLength) || byteLength < 0) {
+    return error(c, 400, ErrorCode.BAD_REQUEST, 'Invalid Content-Length header');
+  }
+
+  if (byteLength > MAX_SYNC_DATA_REQUEST_BYTES) {
+    return error(c, 400, ErrorCode.BAD_REQUEST, 'Sync data request body exceeds size limit');
+  }
+
+  return null;
+}
+
 sync.get('/manifest', async (c) => {
   const actor = getAuthUser(c);
   const payload = backupService.export(actor);
@@ -160,7 +180,15 @@ sync.get('/data', async (c) => {
 });
 
 sync.put('/data', async (c) => {
-  const parsed = await parseJsonBody(c, syncImportRequestSchema);
+  const oversizedResponse = rejectOversizedSyncDataRequest(c);
+  if (oversizedResponse) {
+    return oversizedResponse;
+  }
+
+  const parsed = await parseJsonBody(c, syncImportRequestSchema, {
+    maxBytes: MAX_SYNC_DATA_REQUEST_BYTES,
+    maxBytesMessage: 'Sync data request body exceeds size limit',
+  });
   if (!parsed.success) {
     return parsed.response;
   }
@@ -173,17 +201,32 @@ sync.put('/data', async (c) => {
   }
 
   const actor = getAuthUser(c);
-  writePulledSyncMedia(actor.userId, {
-    images: snapshot.images,
-    videos: snapshot.videos,
-  });
-  const result = backupService.import(actor, buildSyncImportPayload(snapshot));
-  updateSyncLastSyncAt(actor.userId, getSyncSettings(actor.userId), new Date().toISOString());
-  return success(c, {
-    ok: true,
-    ...result,
-    summary: buildImportedSyncSummary(result),
-  });
+  try {
+    validatePromptWorkspaceSnapshotPaths(snapshot.folders, snapshot.prompts, snapshot.promptVersions);
+    validateSkillWorkspaceSnapshotPaths(snapshot.skills, snapshot.skillVersions, snapshot.skillFiles);
+    validateRuleWorkspaceSnapshotPaths(actor.userId, snapshot.rules ?? []);
+    const media = {
+      images: snapshot.images,
+      videos: snapshot.videos,
+    };
+    validatePulledSyncMedia(media);
+    const rollbackMedia = writePulledSyncMedia(actor.userId, media);
+    let result;
+    try {
+      result = backupService.import(actor, buildSyncImportPayload(snapshot));
+    } catch (importError) {
+      rollbackMedia();
+      throw importError;
+    }
+    updateSyncLastSyncAt(actor.userId, getSyncSettings(actor.userId), new Date().toISOString());
+    return success(c, {
+      ok: true,
+      ...result,
+      summary: buildImportedSyncSummary(result),
+    });
+  } catch (routeError) {
+    return toSyncValidationError(c, routeError, 'Sync payload is invalid');
+  }
 });
 
 sync.get('/config', async (c) => {
@@ -203,6 +246,16 @@ sync.put('/config', async (c) => {
     ...getSyncSettings(actor.userId),
     ...parsed.data,
   };
+  try {
+    validateMergedSyncSettings(nextSync);
+  } catch (routeError) {
+    return error(
+      c,
+      422,
+      ErrorCode.VALIDATION_ERROR,
+      routeError instanceof Error ? routeError.message : 'Sync config is invalid',
+    );
+  }
 
   const nextSettings: Partial<Settings> = {
     ...currentSettings,
@@ -247,15 +300,25 @@ sync.post('/pull', async (c) => {
     assertWebDavConfig(syncSettings);
     const pulled = await pullWebDavSnapshot(syncSettings);
     const remoteSnapshot = parseRemoteSyncSnapshot(pulled.body);
-    writePulledSyncMedia(actor.userId, {
+    validatePromptWorkspaceSnapshotPaths(remoteSnapshot.folders, remoteSnapshot.prompts, remoteSnapshot.promptVersions);
+    validateSkillWorkspaceSnapshotPaths(remoteSnapshot.skills, remoteSnapshot.skillVersions, remoteSnapshot.skillFiles);
+    validateRuleWorkspaceSnapshotPaths(actor.userId, remoteSnapshot.rules ?? []);
+    const media = {
       images: pulled.images ?? remoteSnapshot.images,
       videos: pulled.videos ?? remoteSnapshot.videos,
-    });
-
-    const imported = backupService.import(
-      actor,
-      buildSyncImportPayload(remoteSnapshot),
-    );
+    };
+    validatePulledSyncMedia(media);
+    const rollbackMedia = writePulledSyncMedia(actor.userId, media);
+    let imported;
+    try {
+      imported = backupService.import(
+        actor,
+        buildSyncImportPayload(remoteSnapshot),
+      );
+    } catch (importError) {
+      rollbackMedia();
+      throw importError;
+    }
     updateSyncLastSyncAt(actor.userId, syncSettings, pulled.syncedAt);
 
     return success(c, {

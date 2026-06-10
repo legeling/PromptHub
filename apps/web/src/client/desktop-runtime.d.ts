@@ -13,6 +13,7 @@ declare module '@desktop-toast-provider' {
 
 declare module '@desktop-renderer-i18n' {
   const desktopI18n: unknown;
+  export const i18nReady: Promise<void>;
   export default desktopI18n;
 }
 

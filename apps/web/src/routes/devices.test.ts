@@ -155,4 +155,48 @@ describe('web devices routes', () => {
       fs.rmSync(dataDir, { recursive: true, force: true });
     }
   }, TEST_TIMEOUT);
+
+  it('rejects oversized heartbeat metadata without writing a device record', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-devices-test-'));
+
+    try {
+      const app = await createTestApp(dataDir);
+      const token = await registerUser(app, 'deviceoversized', 'debugpass001');
+
+      const heartbeatResponse = await app.request(
+        new Request('http://local/api/devices/heartbeat', {
+          method: 'POST',
+          headers: authHeaders(token),
+          body: JSON.stringify({
+            id: 'browser-oversized',
+            type: 'browser',
+            name: 'PromptHub Web',
+            platform: 'Browser',
+            userAgent: 'A'.repeat(513),
+          }),
+        }),
+      );
+
+      expect(heartbeatResponse.status).toBe(422);
+      const heartbeatPayload = await heartbeatResponse.json() as {
+        error: { code: string; message: string };
+      };
+      expect(heartbeatPayload.error).toEqual({
+        code: 'VALIDATION_ERROR',
+        message: 'userAgent: userAgent must be at most 512 characters',
+      });
+
+      const listResponse = await app.request(
+        new Request('http://local/api/devices', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      );
+      expect(listResponse.status).toBe(200);
+      const listPayload = await listResponse.json() as { data: unknown[] };
+      expect(listPayload.data).toEqual([]);
+      expect(fs.existsSync(path.join(dataDir, 'config', 'devices'))).toBe(false);
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  }, TEST_TIMEOUT);
 });

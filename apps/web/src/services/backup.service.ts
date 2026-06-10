@@ -12,14 +12,19 @@ import type {
 } from '@prompthub/shared';
 import { getServerDatabase } from '../database.js';
 import { SettingsService } from './settings.service.js';
-import { syncPromptWorkspaceFromDatabase } from './prompt-workspace.js';
+import {
+  syncPromptWorkspaceFromDatabase,
+  validatePromptWorkspaceSnapshotPaths,
+} from './prompt-workspace.js';
 import {
   exportRuleBackupRecords,
   importRuleBackupRecords,
+  validateRuleWorkspaceSnapshotPaths,
 } from './rule-workspace.js';
 import {
   collectSkillWorkspaceFiles,
   syncSkillWorkspaceFromDatabase,
+  validateSkillWorkspaceSnapshotPaths,
 } from './skill-workspace.js';
 
 export interface BackupActor {
@@ -111,54 +116,62 @@ export class BackupService {
   }
 
   import(actor: BackupActor, payload: WebBackupPayload, options?: BackupImportOptions): BackupImportResult {
-    let promptsImported = 0;
-    let foldersImported = 0;
-    const rulesImported = payload.rules?.length ?? 0;
-    let skillsImported = 0;
+    const promptVersions = payload.promptVersions.length > 0 ? payload.promptVersions : (payload.versions ?? []);
+    validatePromptWorkspaceSnapshotPaths(payload.folders, payload.prompts, promptVersions);
+    validateSkillWorkspaceSnapshotPaths(payload.skills, payload.skillVersions, payload.skillFiles);
+    validateRuleWorkspaceSnapshotPaths(actor.userId, payload.rules ?? []);
 
-    const folders = [...payload.folders].sort((left, right) => {
-      const leftDepth = this.getFolderDepth(left, payload.folders);
-      const rightDepth = this.getFolderDepth(right, payload.folders);
-      return leftDepth - rightDepth;
-    });
+    const result = this.db.transaction(() => {
+      let promptsImported = 0;
+      let foldersImported = 0;
+      const rulesImported = payload.rules?.length ?? 0;
+      let skillsImported = 0;
 
-    for (const folder of folders) {
-      if (this.mergeFolder(actor, folder)) {
-        foldersImported += 1;
+      const folderDepths = this.buildFolderDepthMap(payload.folders);
+      const folders = [...payload.folders].sort((left, right) =>
+        (folderDepths.get(left.id) ?? 0) - (folderDepths.get(right.id) ?? 0),
+      );
+
+      for (const folder of folders) {
+        if (this.mergeFolder(actor, folder)) {
+          foldersImported += 1;
+        }
       }
-    }
 
-    for (const prompt of payload.prompts) {
-      if (this.mergePrompt(actor, prompt)) {
-        promptsImported += 1;
+      for (const prompt of payload.prompts) {
+        if (this.mergePrompt(actor, prompt)) {
+          promptsImported += 1;
+        }
       }
-    }
 
-    this.mergePromptVersions(payload);
+      this.mergePromptVersions(payload);
 
-    for (const skill of payload.skills) {
-      if (this.mergeSkill(actor, skill)) {
-        skillsImported += 1;
+      for (const skill of payload.skills) {
+        if (this.mergeSkill(actor, skill)) {
+          skillsImported += 1;
+        }
       }
-    }
 
-    this.mergeSkillVersions(payload);
-    this.applyImportedSkillFileContent(payload);
+      this.mergeSkillVersions(payload);
+      this.applyImportedSkillFileContent(payload);
 
-    importRuleBackupRecords(actor.userId, payload.rules ?? []);
+      importRuleBackupRecords(actor.userId, payload.rules ?? []);
 
-    const settingsUpdated = this.mergeSettings(actor, payload, options);
+      const settingsUpdated = this.mergeSettings(actor, payload, options);
+
+      return {
+        promptsImported,
+        foldersImported,
+        rulesImported,
+        skillsImported,
+        settingsUpdated,
+      };
+    })();
 
     syncPromptWorkspaceFromDatabase(this.db, this.promptDb, this.folderDb);
     syncSkillWorkspaceFromDatabase(this.db, this.skillDb, payload.skillFiles);
 
-    return {
-      promptsImported,
-      foldersImported,
-      rulesImported,
-      skillsImported,
-      settingsUpdated,
-    };
+    return result;
   }
 
   private listVisiblePrompts(actor: BackupActor): Prompt[] {
@@ -243,16 +256,36 @@ export class BackupService {
     return skills;
   }
 
-  private getFolderDepth(folder: Folder, allFolders: Folder[]): number {
-    let depth = 0;
-    let currentParentId = folder.parentId;
+  private buildFolderDepthMap(folders: Folder[]): Map<string, number> {
+    const folderById = new Map(folders.map((folder) => [folder.id, folder]));
+    const depths = new Map<string, number>();
+    const visiting = new Set<string>();
 
-    while (currentParentId) {
-      depth += 1;
-      currentParentId = allFolders.find((candidate) => candidate.id === currentParentId)?.parentId;
+    const getDepth = (folder: Folder): number => {
+      const cachedDepth = depths.get(folder.id);
+      if (cachedDepth !== undefined) {
+        return cachedDepth;
+      }
+      if (visiting.has(folder.id)) {
+        throw new Error(`Invalid folder hierarchy: parent cycle at ${folder.id}`);
+      }
+
+      visiting.add(folder.id);
+      try {
+        const parent = folder.parentId ? folderById.get(folder.parentId) : undefined;
+        const depth = parent ? getDepth(parent) + 1 : 0;
+        depths.set(folder.id, depth);
+        return depth;
+      } finally {
+        visiting.delete(folder.id);
+      }
+    };
+
+    for (const folder of folders) {
+      getDepth(folder);
     }
 
-    return depth;
+    return depths;
   }
 
   private resolveVisibility(

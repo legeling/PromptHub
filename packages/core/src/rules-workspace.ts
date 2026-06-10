@@ -33,6 +33,11 @@ import { getRulesDir } from "./runtime-paths";
 
 const RULE_VERSION_LIMIT = 20;
 const RULE_META_FILE_NAME = "_rule.json";
+const RULE_VERSION_INDEX_FILE_NAME = "index.json";
+const RULE_VERSION_STAGING_PREFIX = ".versions-staging-";
+const RULE_VERSION_BACKUP_PREFIX = ".versions-backup-";
+const LEGACY_RULE_HISTORY_DIR_NAME = "rule-history";
+const SAFE_PROJECT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/u;
 
 type ProjectRuleId = `project:${string}`;
 
@@ -126,6 +131,12 @@ function isCustomRuleFileId(ruleId: RuleFileId): ruleId is CustomRuleFileId {
   return ruleId.startsWith("custom:");
 }
 
+function assertSafeProjectId(projectId: string): void {
+  if (!SAFE_PROJECT_ID_PATTERN.test(projectId)) {
+    throw new Error("Invalid rule project id: project id contains unsafe characters");
+  }
+}
+
 function ensureDir(targetPath: string): void {
   fs.mkdirSync(targetPath, { recursive: true });
 }
@@ -169,6 +180,35 @@ function getErrorCode(error: unknown): string | undefined {
   return typeof code === "string" ? code : undefined;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function normalizeRuleVersionSource(value: unknown): RuleVersionSnapshot["source"] {
+  if (value === "create" || value === "manual-save" || value === "ai-rewrite") {
+    return value;
+  }
+
+  if (typeof value === "string" && value.toLowerCase().includes("rewrite")) {
+    return "ai-rewrite";
+  }
+
+  return "manual-save";
+}
+
+function normalizeLegacySavedAt(value: unknown): string | null {
+  if (typeof value === "string" && value.trim()) {
+    const time = Date.parse(value);
+    return Number.isFinite(time) ? new Date(time).toISOString() : null;
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return new Date(value).toISOString();
+  }
+
+  return null;
+}
+
 async function fileExists(filePath: string): Promise<boolean> {
   try {
     await fsp.access(filePath);
@@ -188,8 +228,57 @@ async function readJsonFile<T>(filePath: string): Promise<T | null> {
 }
 
 async function writeJsonFile(filePath: string, value: unknown): Promise<void> {
+  await writeTextFileAtomic(filePath, JSON.stringify(value, null, 2));
+}
+
+async function writeTextFileAtomic(filePath: string, content: string): Promise<void> {
   await fsp.mkdir(path.dirname(filePath), { recursive: true });
-  await fsp.writeFile(filePath, JSON.stringify(value, null, 2), "utf-8");
+  const tempPath = path.join(
+    path.dirname(filePath),
+    `.${path.basename(filePath)}.${process.pid}.${Date.now()}.${crypto.randomUUID()}.tmp`,
+  );
+
+  try {
+    await fsp.writeFile(tempPath, content, "utf-8");
+    await fsp.rename(tempPath, filePath);
+  } catch (error) {
+    try {
+      await fsp.rm(tempPath, { force: true });
+    } catch {
+      // Best-effort cleanup; preserving the original write error matters most.
+    }
+    throw error;
+  }
+}
+
+async function createSiblingTempDirectory(targetDir: string, prefix: string): Promise<string> {
+  await fsp.mkdir(path.dirname(targetDir), { recursive: true });
+  return fsp.mkdtemp(path.join(path.dirname(targetDir), prefix));
+}
+
+async function replaceDirectoryAtomic(targetDir: string, stagingDir: string): Promise<void> {
+  const backupDir = await createSiblingTempDirectory(targetDir, RULE_VERSION_BACKUP_PREFIX);
+  await fsp.rm(backupDir, { recursive: true, force: true });
+
+  let liveMoved = false;
+  try {
+    if (await fileExists(targetDir)) {
+      await fsp.rename(targetDir, backupDir);
+      liveMoved = true;
+    }
+
+    await fsp.rename(stagingDir, targetDir);
+    try {
+      await fsp.rm(backupDir, { recursive: true, force: true });
+    } catch {
+      // The replacement is already published; stale backup cleanup is best-effort.
+    }
+  } catch (error) {
+    if (!(await fileExists(targetDir)) && liveMoved && (await fileExists(backupDir))) {
+      await fsp.rename(backupDir, targetDir);
+    }
+    throw error;
+  }
 }
 
 function ruleGroupForKnownId(ruleId: RuleFileId): RuleFileGroup {
@@ -242,7 +331,26 @@ export function createRulesWorkspaceService(
   }
 
   function getRuleVersionIndexPath(ruleId: RuleFileId): string {
-    return path.join(getRuleVersionsDir(ruleId), "index.json");
+    return path.join(getRuleVersionsDir(ruleId), RULE_VERSION_INDEX_FILE_NAME);
+  }
+
+  function getLegacyRuleHistoryDir(): string {
+    return path.join(
+      path.dirname(path.dirname(deps.getRulesDir())),
+      LEGACY_RULE_HISTORY_DIR_NAME,
+    );
+  }
+
+  function getLegacyRuleHistoryCandidateFiles(ruleId: RuleFileId): string[] {
+    const legacyDir = getLegacyRuleHistoryDir();
+    const safeRuleId = ruleId.replace(/[^A-Za-z0-9._-]+/gu, "_");
+    return Array.from(
+      new Set([
+        path.join(legacyDir, `${ruleId}.json`),
+        path.join(legacyDir, `${encodeRuleId(ruleId)}.json`),
+        path.join(legacyDir, `${safeRuleId}.json`),
+      ]),
+    );
   }
 
   function getRuleMetaPath(managedPath: string): string {
@@ -387,6 +495,225 @@ export function createRulesWorkspaceService(
     return result;
   }
 
+  function collectLegacyHistoryValues(
+    value: unknown,
+    ruleId: RuleFileId,
+    allowUnscoped: boolean,
+  ): unknown[] {
+    if (Array.isArray(value)) {
+      return value.flatMap((entry) => collectLegacyHistoryValues(entry, ruleId, allowUnscoped));
+    }
+
+    if (!isRecord(value)) {
+      return [];
+    }
+
+    const scopedValue =
+      value[ruleId] ??
+      value[encodeRuleId(ruleId)] ??
+      value[ruleId.replace(/[^A-Za-z0-9._-]+/gu, "_")];
+    if (scopedValue !== undefined) {
+      return collectLegacyHistoryValues(scopedValue, ruleId, true);
+    }
+
+    const declaredRuleId =
+      typeof value.ruleId === "string"
+        ? value.ruleId
+        : typeof value.fileId === "string"
+          ? value.fileId
+          : typeof value.ruleFileId === "string"
+            ? value.ruleFileId
+            : undefined;
+    const scoped = declaredRuleId === ruleId;
+
+    if (Array.isArray(value.versions)) {
+      return allowUnscoped || scoped
+        ? value.versions.flatMap((entry) => collectLegacyHistoryValues(entry, ruleId, true))
+        : [];
+    }
+
+    if (typeof value.content === "string" && (allowUnscoped || scoped)) {
+      return [value];
+    }
+
+    return [];
+  }
+
+  function normalizeLegacyHistoryVersion(
+    ruleId: RuleFileId,
+    value: unknown,
+  ): RuleVersionSnapshot | null {
+    if (!isRecord(value) || typeof value.content !== "string") {
+      return null;
+    }
+
+    const savedAt =
+      normalizeLegacySavedAt(value.savedAt) ??
+      normalizeLegacySavedAt(value.createdAt) ??
+      normalizeLegacySavedAt(value.updatedAt) ??
+      normalizeLegacySavedAt(value.timestamp) ??
+      normalizeLegacySavedAt(value.date);
+    if (!savedAt) {
+      return null;
+    }
+
+    const id = typeof value.id === "string" && value.id.trim()
+      ? value.id
+      : `legacy-${hashContent(`${ruleId}\n${savedAt}\n${value.content}`).slice(0, 16)}`;
+
+    return {
+      id,
+      savedAt,
+      content: value.content,
+      source: normalizeRuleVersionSource(value.source),
+    };
+  }
+
+  async function readLegacyRuleHistoryVersions(ruleId: RuleFileId): Promise<RuleVersionSnapshot[]> {
+    const legacyDir = getLegacyRuleHistoryDir();
+    if (!(await fileExists(legacyDir))) {
+      return [];
+    }
+
+    const versions: RuleVersionSnapshot[] = [];
+    const seen = new Set<string>();
+    const addVersions = (raw: unknown[], targetRuleId: RuleFileId) => {
+      for (const item of raw) {
+        const version = normalizeLegacyHistoryVersion(targetRuleId, item);
+        if (!version) {
+          continue;
+        }
+        const key = `${version.savedAt}\n${version.content}`;
+        if (seen.has(key)) {
+          continue;
+        }
+        seen.add(key);
+        versions.push(version);
+      }
+    };
+
+    const candidateFiles = getLegacyRuleHistoryCandidateFiles(ruleId);
+    for (const filePath of candidateFiles) {
+      const payload = await readJsonFile<unknown>(filePath);
+      if (payload !== null) {
+        addVersions(collectLegacyHistoryValues(payload, ruleId, true), ruleId);
+      }
+    }
+
+    const candidateSet = new Set(candidateFiles.map((filePath) => path.resolve(filePath)));
+    const entries = await fsp.readdir(legacyDir, { withFileTypes: true }).catch(() => []);
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.toLowerCase().endsWith(".json")) {
+        continue;
+      }
+      const filePath = path.join(legacyDir, entry.name);
+      if (candidateSet.has(path.resolve(filePath))) {
+        continue;
+      }
+      const payload = await readJsonFile<unknown>(filePath);
+      if (payload !== null) {
+        addVersions(collectLegacyHistoryValues(payload, ruleId, false), ruleId);
+      }
+    }
+
+    return versions.sort(
+      (left, right) => new Date(right.savedAt).getTime() - new Date(left.savedAt).getTime(),
+    );
+  }
+
+  function mergeImportedContentWithLegacyVersions(
+    ruleId: RuleFileId,
+    importedContent: string | null,
+    legacyVersions: RuleVersionSnapshot[],
+  ): RuleVersionSnapshot[] {
+    const versions = [...legacyVersions];
+    if (
+      typeof importedContent === "string" &&
+      importedContent.trim() &&
+      !versions.some((version) => version.content === importedContent)
+    ) {
+      versions.push({
+        id: `${encodeRuleId(ruleId)}-initial-import`,
+        savedAt: new Date().toISOString(),
+        content: importedContent,
+        source: "create",
+      });
+    }
+
+    return versions;
+  }
+
+  async function replaceRuleVersions(
+    ruleId: RuleFileId,
+    versions: RuleVersionSnapshot[],
+  ): Promise<StoredRuleVersionIndexEntry[]> {
+    const versionDir = getRuleVersionsDir(ruleId);
+    const stagingDir = await createSiblingTempDirectory(versionDir, RULE_VERSION_STAGING_PREFIX);
+
+    const orderedVersions = [...versions]
+      .sort((left, right) => new Date(left.savedAt).getTime() - new Date(right.savedAt).getTime())
+      .slice(-RULE_VERSION_LIMIT);
+
+    try {
+      const index: StoredRuleVersionIndexEntry[] = [];
+      for (const [indexPosition, version] of orderedVersions.entries()) {
+        const fileName = `${String(indexPosition + 1).padStart(4, "0")}.md`;
+        await writeTextFileAtomic(path.join(stagingDir, fileName), version.content);
+        index.unshift({
+          id: version.id,
+          savedAt: version.savedAt,
+          source: version.source,
+          fileName,
+        });
+      }
+
+      await writeJsonFile(path.join(stagingDir, RULE_VERSION_INDEX_FILE_NAME), index);
+      await replaceDirectoryAtomic(versionDir, stagingDir);
+      return index;
+    } catch (error) {
+      await fsp.rm(stagingDir, { recursive: true, force: true });
+      throw error;
+    }
+  }
+
+  async function initializeRuleVersionsIfEmpty(
+    ruleId: RuleFileId,
+    versions: RuleVersionSnapshot[],
+  ): Promise<AppendRuleVersionResult> {
+    const previousWrite =
+      pendingRuleVersionWrites.get(ruleId) ??
+      Promise.resolve<AppendRuleVersionResult>({
+        index: [],
+        versions: [],
+      });
+
+    const nextWrite = previousWrite.then(async () => {
+      const existing = await readRuleVersions(ruleId);
+      if (existing.index.length > 0) {
+        return {
+          index: existing.index,
+          versions: existing.versions,
+        };
+      }
+
+      const index = await replaceRuleVersions(ruleId, versions);
+      const restored = await readRuleVersionsFromIndex(ruleId, index);
+      return {
+        index,
+        versions: restored.versions,
+      };
+    });
+
+    pendingRuleVersionWrites.set(ruleId, nextWrite);
+    try {
+      return await nextWrite;
+    } finally {
+      if (pendingRuleVersionWrites.get(ruleId) === nextWrite) {
+        pendingRuleVersionWrites.delete(ruleId);
+      }
+    }
+  }
+
   async function appendRuleVersion(
     ruleId: RuleFileId,
     content: string,
@@ -419,7 +746,7 @@ export function createRulesWorkspaceService(
         source,
       };
 
-      await fsp.writeFile(path.join(versionDir, fileName), content, "utf-8");
+      await writeTextFileAtomic(path.join(versionDir, fileName), content);
 
       const nextIndex: StoredRuleVersionIndexEntry[] = [
         {
@@ -462,8 +789,7 @@ export function createRulesWorkspaceService(
   }
 
   async function writeManagedRule(meta: StoredRuleMeta, content: string): Promise<void> {
-    await fsp.mkdir(path.dirname(meta.managedPath), { recursive: true });
-    await fsp.writeFile(meta.managedPath, content, "utf-8");
+    await writeTextFileAtomic(meta.managedPath, content);
   }
 
   async function writeTargetRule(meta: StoredRuleMeta, content: string): Promise<RuleSyncStatus> {
@@ -642,15 +968,29 @@ export function createRulesWorkspaceService(
 
     if (!(await fileExists(meta.managedPath))) {
       const targetExists = await fileExists(meta.targetPath);
+      const versionIndex = await readVersionIndex(ruleId);
       if (targetExists) {
         const importedContent = await fsp.readFile(meta.targetPath, "utf-8");
         await writeManagedRule(meta, importedContent);
-        // Defensive: only create an initial version if no versions exist yet.
-        // This prevents duplicate "create" versions if materialization runs
-        // more than once for the same rule (e.g., concurrent scans).
-        const versionIndex = await readVersionIndex(ruleId);
         if (versionIndex.length === 0) {
-          await appendRuleVersion(meta.id, importedContent, "create");
+          const legacyVersions = await readLegacyRuleHistoryVersions(ruleId);
+          const mergedVersions = mergeImportedContentWithLegacyVersions(
+            ruleId,
+            importedContent,
+            legacyVersions,
+          );
+          if (mergedVersions.length > 0) {
+            await initializeRuleVersionsIfEmpty(meta.id, mergedVersions);
+          } else {
+            await appendRuleVersion(meta.id, importedContent, "create");
+          }
+        }
+      } else if (versionIndex.length === 0) {
+        const legacyVersions = await readLegacyRuleHistoryVersions(ruleId);
+        if (legacyVersions.length > 0) {
+          const latestLegacyVersion = legacyVersions[0];
+          await writeManagedRule(meta, latestLegacyVersion.content);
+          await initializeRuleVersionsIfEmpty(meta.id, legacyVersions);
         }
       }
     }
@@ -974,6 +1314,7 @@ export function createRulesWorkspaceService(
     }
 
     const projectId = input.id ?? crypto.randomUUID();
+    assertSafeProjectId(projectId);
     const ruleId = `project:${projectId}` as RuleFileId;
     const dirName = `${slugify(name)}__${projectId}`;
     const managedPath = path.join(getRuleProjectsRoot(), dirName, "AGENTS.md");
@@ -1098,27 +1439,7 @@ export function createRulesWorkspaceService(
       const meta = await resolveRuleMeta(record.id);
       await writeManagedRule(meta, record.content);
       const restoredSyncStatus = await writeTargetRule(meta, record.content);
-      await fsp.rm(getRuleVersionsDir(record.id), { recursive: true, force: true });
-      const versionDir = getRuleVersionsDir(record.id);
-      ensureDir(versionDir);
-
-      const index: StoredRuleVersionIndexEntry[] = [];
-      const orderedVersions = [...record.versions]
-        .sort((left, right) => new Date(left.savedAt).getTime() - new Date(right.savedAt).getTime())
-        .slice(-RULE_VERSION_LIMIT);
-
-      for (const [indexPosition, version] of orderedVersions.entries()) {
-        const fileName = `${String(indexPosition + 1).padStart(4, "0")}.md`;
-        await fsp.writeFile(path.join(versionDir, fileName), version.content, "utf-8");
-        index.unshift({
-          id: version.id,
-          savedAt: version.savedAt,
-          source: version.source,
-          fileName,
-        });
-      }
-
-      await writeVersionIndex(record.id, index);
+      const index = await replaceRuleVersions(record.id, record.versions);
       const nextMeta: StoredRuleMeta = {
         ...meta,
         syncStatus: restoredSyncStatus,

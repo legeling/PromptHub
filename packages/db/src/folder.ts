@@ -135,7 +135,7 @@ export class FolderDB {
       updatedAt: new Date(now).toISOString(),
       ...(data.name !== undefined && { name: data.name }),
       ...(data.icon !== undefined && { icon: data.icon }),
-      ...(data.parentId !== undefined && { parentId: data.parentId }),
+      ...(data.parentId !== undefined && { parentId: data.parentId ?? undefined }),
       ...(data.order !== undefined && { order: data.order }),
       ...(data.isPrivate !== undefined && { isPrivate: data.isPrivate }),
     };

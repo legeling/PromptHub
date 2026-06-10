@@ -7,6 +7,10 @@ import { getSkillsDir } from '../runtime-paths.js';
 const SKILL_FILE_NAME = 'SKILL.md';
 const SKILL_META_FILE_NAME = 'skill.json';
 const VERSIONS_DIR_NAME = 'versions';
+const MAX_WORKSPACE_PATH_BYTES = 900;
+const MAX_WORKSPACE_SEGMENT_BYTES = 240;
+const STAGING_DIR_PREFIX = '.skills-staging-';
+const BACKUP_DIR_PREFIX = '.skills-backup-';
 
 interface SkillWorkspaceSyncResult {
   skillCount: number;
@@ -38,6 +42,48 @@ function ensureDir(targetPath: string): void {
   fs.mkdirSync(targetPath, { recursive: true });
 }
 
+function createSiblingWorkspaceDir(skillsDir: string, prefix: string): string {
+  ensureDir(path.dirname(skillsDir));
+  return fs.mkdtempSync(path.join(path.dirname(skillsDir), prefix));
+}
+
+function removeDirectoryIfExists(targetPath: string): void {
+  fs.rmSync(targetPath, { recursive: true, force: true });
+}
+
+function tryRemoveDirectory(targetPath: string): void {
+  try {
+    removeDirectoryIfExists(targetPath);
+  } catch (error) {
+    console.warn(`[skill-workspace] failed to clean up ${targetPath}:`, error);
+  }
+}
+
+function isWorkspaceScratchDirectory(name: string): boolean {
+  return name.startsWith(STAGING_DIR_PREFIX) || name.startsWith(BACKUP_DIR_PREFIX);
+}
+
+function replaceSkillWorkspace(skillsDir: string, stagingDir: string): void {
+  const backupDir = createSiblingWorkspaceDir(skillsDir, BACKUP_DIR_PREFIX);
+  removeDirectoryIfExists(backupDir);
+
+  let liveMoved = false;
+  try {
+    if (fs.existsSync(skillsDir)) {
+      fs.renameSync(skillsDir, backupDir);
+      liveMoved = true;
+    }
+
+    fs.renameSync(stagingDir, skillsDir);
+    tryRemoveDirectory(backupDir);
+  } catch (error) {
+    if (!fs.existsSync(skillsDir) && liveMoved && fs.existsSync(backupDir)) {
+      fs.renameSync(backupDir, skillsDir);
+    }
+    throw error;
+  }
+}
+
 function slugify(input: string | null | undefined): string {
   const normalized = (input ?? '')
     .trim()
@@ -56,12 +102,42 @@ function getSkillDirectory(skillsDir: string, skill: Skill): string {
   return path.join(skillsDir, `${slugify(skill.name)}__${skill.id}`);
 }
 
+function getSkillVersionPath(skillDir: string, version: SkillVersion): string {
+  return path.join(
+    skillDir,
+    VERSIONS_DIR_NAME,
+    `${padVersion(version.version)}.json`,
+  );
+}
+
+function assertWorkspacePathFits(targetPath: string, label: string): void {
+  if (Buffer.byteLength(targetPath, 'utf8') > MAX_WORKSPACE_PATH_BYTES) {
+    throw new Error(
+      `Sync snapshot is invalid: skill workspace path is too long for ${label}`,
+    );
+  }
+
+  for (const segment of targetPath.split(path.sep)) {
+    if (Buffer.byteLength(segment, 'utf8') > MAX_WORKSPACE_SEGMENT_BYTES) {
+      throw new Error(
+        `Sync snapshot is invalid: skill workspace path segment is too long for ${label}`,
+      );
+    }
+  }
+}
+
 function normalizeWorkspaceRelativePath(relativePath: string): string {
+  if (/[\u0000-\u001F\u007F]/u.test(relativePath)) {
+    throw new Error(`Invalid skill file path: ${relativePath}`);
+  }
+
   const normalized = path.posix.normalize(relativePath.replace(/\\/g, '/'));
   if (
     normalized === '' ||
     normalized === '.' ||
+    normalized === '..' ||
     path.posix.isAbsolute(normalized) ||
+    /^[a-zA-Z]:/u.test(relativePath) ||
     normalized.startsWith('../')
   ) {
     throw new Error(`Invalid skill file path: ${relativePath}`);
@@ -74,6 +150,7 @@ function isReservedWorkspaceFile(relativePath: string): boolean {
   const normalized = normalizeWorkspaceRelativePath(relativePath).toLowerCase();
   return (
     normalized === SKILL_META_FILE_NAME.toLowerCase() ||
+    normalized === VERSIONS_DIR_NAME.toLowerCase() ||
     normalized.startsWith(`${VERSIONS_DIR_NAME.toLowerCase()}/`)
   );
 }
@@ -139,6 +216,63 @@ function writeSkillFileSnapshots(skillDir: string, files: SkillFileSnapshot[]): 
     const targetPath = path.join(skillDir, relativePath);
     ensureDir(path.dirname(targetPath));
     fs.writeFileSync(targetPath, file.content, 'utf8');
+  }
+}
+
+export function validateSkillWorkspaceSnapshotPaths(
+  skills: Skill[],
+  skillVersions: SkillVersion[],
+  skillFilesById?: Record<string, SkillFileSnapshot[]>,
+): void {
+  const skillsDir = getSkillsDir();
+  const skillById = new Map(skills.map((skill) => [skill.id, skill]));
+
+  for (const skill of skills) {
+    const skillDir = getSkillDirectory(skillsDir, skill);
+    assertWorkspacePathFits(skillDir, `skill ${skill.id}`);
+    assertWorkspacePathFits(
+      path.join(skillDir, SKILL_META_FILE_NAME),
+      `skill ${skill.id}`,
+    );
+    assertWorkspacePathFits(
+      path.join(skillDir, SKILL_FILE_NAME),
+      `skill ${skill.id}`,
+    );
+
+    for (const file of skillFilesById?.[skill.id] ?? []) {
+      const relativePath = normalizeWorkspaceRelativePath(file.relativePath);
+      if (isReservedWorkspaceFile(relativePath)) {
+        throw new Error(`Reserved skill file path is not allowed: ${file.relativePath}`);
+      }
+      assertWorkspacePathFits(
+        path.join(skillDir, relativePath),
+        `skill file ${skill.id}:${relativePath}`,
+      );
+    }
+  }
+
+  for (const version of skillVersions) {
+    const skill = skillById.get(version.skillId);
+    if (!skill) {
+      continue;
+    }
+
+    const skillDir = getSkillDirectory(skillsDir, skill);
+    assertWorkspacePathFits(
+      getSkillVersionPath(skillDir, version),
+      `skill version ${version.id}`,
+    );
+
+    for (const file of version.filesSnapshot ?? []) {
+      const relativePath = normalizeWorkspaceRelativePath(file.relativePath);
+      if (isReservedWorkspaceFile(relativePath)) {
+        throw new Error(`Reserved skill file path is not allowed: ${file.relativePath}`);
+      }
+      assertWorkspacePathFits(
+        path.join(skillDir, relativePath),
+        `skill version file ${version.id}:${relativePath}`,
+      );
+    }
   }
 }
 
@@ -240,7 +374,7 @@ function collectSkillDirectories(skillsDir: string): string[] {
 
   return fs
     .readdirSync(skillsDir, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
+    .filter((entry) => entry.isDirectory() && !isWorkspaceScratchDirectory(entry.name))
     .map((entry) => path.join(skillsDir, entry.name))
     .filter((skillDir) =>
       fs.existsSync(path.join(skillDir, SKILL_META_FILE_NAME)),
@@ -293,53 +427,64 @@ export function syncSkillWorkspaceFromDatabase(
 ): SkillWorkspaceSyncResult {
   const skillsDir = getSkillsDir();
   const skills = listAllSkills(db, skillDb);
+  const skillVersions = skills.flatMap((skill) =>
+    skillDb.getVersions(skill.id),
+  );
+  validateSkillWorkspaceSnapshotPaths(skills, skillVersions, skillFilesById);
+
   const existingAdditionalFiles = skillFilesById
     ? new Map(Object.entries(skillFilesById))
     : readAdditionalSkillFileMap(skillsDir);
 
-  fs.rmSync(skillsDir, { recursive: true, force: true });
-  ensureDir(skillsDir);
+  const stagingDir = createSiblingWorkspaceDir(skillsDir, STAGING_DIR_PREFIX);
 
-  let versionCount = 0;
+  try {
+    let versionCount = 0;
 
-  for (const skill of skills) {
-    const skillDir = getSkillDirectory(skillsDir, skill);
-    ensureDir(skillDir);
+    for (const skill of skills) {
+      const skillDir = getSkillDirectory(stagingDir, skill);
+      ensureDir(skillDir);
 
-    fs.writeFileSync(
-      path.join(skillDir, SKILL_META_FILE_NAME),
-      JSON.stringify(toSkillMetadata(skill), null, 2),
-      'utf8',
-    );
-    fs.writeFileSync(
-      path.join(skillDir, SKILL_FILE_NAME),
-      skill.content ?? skill.instructions ?? '',
-      'utf8',
-    );
+      fs.writeFileSync(
+        path.join(skillDir, SKILL_META_FILE_NAME),
+        JSON.stringify(toSkillMetadata(skill), null, 2),
+        'utf8',
+      );
+      fs.writeFileSync(
+        path.join(skillDir, SKILL_FILE_NAME),
+        skill.content ?? skill.instructions ?? '',
+        'utf8',
+      );
 
-    const versions = skillDb.getVersions(skill.id).sort(
-      (left, right) => left.version - right.version,
-    );
-    if (versions.length > 0) {
-      const versionsDir = path.join(skillDir, VERSIONS_DIR_NAME);
-      ensureDir(versionsDir);
-      for (const version of versions) {
-        fs.writeFileSync(
-          path.join(versionsDir, `${padVersion(version.version)}.json`),
-          JSON.stringify(version, null, 2),
-          'utf8',
-        );
+      const versions = skillVersions
+        .filter((version) => version.skillId === skill.id)
+        .sort((left, right) => left.version - right.version);
+      if (versions.length > 0) {
+        const versionsDir = path.join(skillDir, VERSIONS_DIR_NAME);
+        ensureDir(versionsDir);
+        for (const version of versions) {
+          fs.writeFileSync(
+            getSkillVersionPath(skillDir, version),
+            JSON.stringify(version, null, 2),
+            'utf8',
+          );
+        }
+        versionCount += versions.length;
       }
-      versionCount += versions.length;
+
+      writeSkillFileSnapshots(skillDir, existingAdditionalFiles.get(skill.id) ?? []);
     }
 
-    writeSkillFileSnapshots(skillDir, existingAdditionalFiles.get(skill.id) ?? []);
-  }
+    replaceSkillWorkspace(skillsDir, stagingDir);
 
-  return {
-    skillCount: skills.length,
-    versionCount,
-  };
+    return {
+      skillCount: skills.length,
+      versionCount,
+    };
+  } catch (error) {
+    tryRemoveDirectory(stagingDir);
+    throw error;
+  }
 }
 
 export function importSkillWorkspaceIntoDatabase(

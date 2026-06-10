@@ -3,6 +3,7 @@ import type { Settings } from '@prompthub/shared';
 import { DEFAULT_SETTINGS } from '@prompthub/shared';
 import { getServerDatabase } from '../database.js';
 import { getSettingsDir } from '../runtime-paths.js';
+import { writeJsonFileAtomic } from './atomic-json-file.js';
 
 function getSettingsFilePath(userId: string): string {
   return `${getSettingsDir()}/${userId}.json`;
@@ -29,11 +30,35 @@ function readSettingsFile(userId: string): Settings | null {
 
 function writeSettingsFile(userId: string, settings: Settings): void {
   ensureSettingsDir();
-  fs.writeFileSync(
-    getSettingsFilePath(userId),
-    JSON.stringify(settings, null, 2),
-    'utf8',
-  );
+  writeJsonFileAtomic(getSettingsFilePath(userId), settings);
+}
+
+type BaseSettingsPatch = Partial<{
+  [Key in keyof Settings]: Settings[Key] | null;
+}>;
+
+type SettingsPatch = Omit<BaseSettingsPatch, 'sync' | 'device'> & {
+  sync?: Partial<NonNullable<Settings['sync']>> | null;
+  device?: Partial<NonNullable<Settings['device']>> | null;
+};
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function mergeNestedSettings(
+  key: string,
+  currentValue: unknown,
+  nextValue: unknown,
+): unknown {
+  if ((key !== 'sync' && key !== 'device') || !isPlainObject(currentValue) || !isPlainObject(nextValue)) {
+    return nextValue;
+  }
+
+  return {
+    ...currentValue,
+    ...nextValue,
+  };
 }
 
 export class SettingsService {
@@ -88,20 +113,41 @@ export class SettingsService {
     return new Date(updatedAt).toISOString();
   }
 
-  set(userId: string, newSettings: Partial<Settings>): boolean {
+  set(userId: string, newSettings: SettingsPatch): boolean {
     const fileSettings = !this.has(userId) ? readSettingsFile(userId) : null;
     const mergedSettings: Settings = {
       ...DEFAULT_SETTINGS,
       ...(fileSettings ?? this.loadFromDatabase(userId)),
-      ...newSettings,
     };
+    const clearedKeys = new Set<string>();
+
+    for (const [key, value] of Object.entries(newSettings)) {
+      if (value === null || value === undefined) {
+        delete (mergedSettings as unknown as Record<string, unknown>)[key];
+        clearedKeys.add(key);
+        continue;
+      }
+
+      Object.assign(mergedSettings, {
+        [key]: mergeNestedSettings(
+          key,
+          (mergedSettings as unknown as Record<string, unknown>)[key],
+          value,
+        ),
+      });
+    }
 
     const stmt = this.db.prepare(`
       INSERT OR REPLACE INTO user_settings (user_id, key, value, updated_at) VALUES (?, ?, ?, ?)
     `);
+    const deleteStmt = this.db.prepare('DELETE FROM user_settings WHERE user_id = ? AND key = ?');
 
     const now = Date.now();
     const transaction = this.db.transaction(() => {
+      for (const key of clearedKeys) {
+        deleteStmt.run(userId, key);
+      }
+
       for (const [key, value] of Object.entries(mergedSettings)) {
         if (value === undefined) {
           continue;

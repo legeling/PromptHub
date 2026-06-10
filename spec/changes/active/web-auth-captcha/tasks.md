@@ -12,3 +12,6 @@
 - [x] 兼容旧版自托管 Web 无公开 captcha 的登录链路
 - [x] 收敛截断 JSON 导入错误提示
 - [x] 移除 Web runtime bridge 的旧版本硬编码
+- [x] 验证 Web 客户端 captcha 图片 data URL 后再渲染
+- [x] 验证 Web auth 页面 captcha 加载失败时不渲染空图片且不可提交
+- [x] 防止 Web auth 页面重复提交同一个 captcha

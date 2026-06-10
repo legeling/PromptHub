@@ -19,6 +19,9 @@
 - 导入截断 JSON 时，错误提示从底层 `Unterminated string` / `Unexpected end of JSON input` 收敛为“备份文件可能被截断，请重新导出完整备份”。
 - Web runtime bridge 的 `updater.getVersion()` 不再硬编码 `0.5.5-web`，改为返回构建时注入的 monorepo 版本，例如 `0.5.7-web`。
 - Web `/health` 在没有 `APP_VERSION` 环境变量时，也会回退到 monorepo 版本，避免关于页显示未知或旧版本。
+- Web AuthContext 现在会在把 captcha `imageData` 返回给登录/初始化页面前校验格式，只接受 `data:image/svg+xml;base64,...`，拒绝不安全或畸形图片 URL。
+- Web 登录页和初始化页现在会在 captcha 加载失败时清空 captcha 状态、显示失败提示、不渲染空 `src` 图片，并在没有有效 `captchaId` 时禁用提交。
+- Web 登录页和初始化页现在用同步提交锁阻止重复提交同一个一次性 captcha，避免双击产生多次 login/register 请求。
 
 ## Verification
 
@@ -58,6 +61,30 @@
   - 结果：通过
 - `pnpm --filter @prompthub/web-cloudflare lint`
   - 结果：通过
+- `pnpm --filter @prompthub/web test -- --run src/client/contexts/AuthContext.test.tsx -t "unsafe image data"`
+  - 结果：先失败后通过
+- `pnpm --filter @prompthub/web test -- --run src/client/contexts/AuthContext.test.tsx`
+  - 结果：通过（9/9）
+- `pnpm --filter @prompthub/web test -- --run src/client/contexts/AuthContext.test.tsx src/client/pages/Login.test.tsx src/client/pages/Setup.test.tsx`
+  - 结果：通过（18/18）
+- `pnpm --filter @prompthub/web typecheck`
+  - 结果：通过
+- `pnpm --filter @prompthub/web lint`
+  - 结果：通过
+- `git diff --check -- apps/web/src/client/contexts/AuthContext.tsx apps/web/src/client/contexts/AuthContext.test.tsx spec/changes/active/web-auth-captcha spec/issues/active/quality.md`
+  - 结果：通过
+- `pnpm --filter @prompthub/web test -- --run src/client/pages/Login.test.tsx -t "captcha loading fails"`
+  - 结果：先失败后通过
+- `pnpm --filter @prompthub/web test -- --run src/client/pages/Setup.test.tsx -t "captcha loading fails"`
+  - 结果：先失败后通过
+- `pnpm --filter @prompthub/web test -- --run src/client/pages/Login.test.tsx src/client/pages/Setup.test.tsx`
+  - 结果：通过（11/11）
+- `pnpm --filter @prompthub/web test -- --run src/client/pages/Login.test.tsx -t "duplicate submits"`
+  - 结果：先失败后通过
+- `pnpm --filter @prompthub/web test -- --run src/client/pages/Setup.test.tsx -t "duplicate submits"`
+  - 结果：先失败后通过
+- `pnpm --filter @prompthub/web test -- --run src/client/contexts/AuthContext.test.tsx src/client/pages/Login.test.tsx src/client/pages/Setup.test.tsx`
+  - 结果：通过（22/22）
 
 ## Notes
 

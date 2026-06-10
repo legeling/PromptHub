@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
@@ -21,6 +21,9 @@ export function SetupPage() {
   const [captchaImageData, setCaptchaImageData] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [captchaLoading, setCaptchaLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
+  const canSubmit = !captchaLoading && Boolean(captchaId) && !isSubmitting;
 
   useEffect(() => {
     let cancelled = false;
@@ -36,6 +39,9 @@ export function SetupPage() {
         }
       } catch (captchaError: unknown) {
         if (!cancelled) {
+          setCaptchaId('');
+          setCaptchaImageData('');
+          setCaptchaAnswer('');
           setError(
             captchaError instanceof Error
               ? captchaError.message
@@ -63,6 +69,16 @@ export function SetupPage() {
       setCaptchaId(captcha.captchaId);
       setCaptchaImageData(captcha.imageData);
       setCaptchaAnswer('');
+      setError(null);
+    } catch (captchaError: unknown) {
+      setCaptchaId('');
+      setCaptchaImageData('');
+      setCaptchaAnswer('');
+      setError(
+        captchaError instanceof Error
+          ? captchaError.message
+          : t('common.requestFailed'),
+      );
     } finally {
       setCaptchaLoading(false);
     }
@@ -78,9 +94,17 @@ export function SetupPage() {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (isSubmittingRef.current || !captchaId || captchaLoading) {
+      return;
+    }
+
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
     setError(null);
 
     if (password !== confirmPassword) {
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
       setError(t('auth.setupPasswordMismatch'));
       return;
     }
@@ -99,6 +123,9 @@ export function SetupPage() {
       } else {
         setError(t('auth.setupError'));
       }
+    } finally {
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
     }
   };
 
@@ -175,12 +202,14 @@ export function SetupPage() {
               <div className="web-auth-captcha-prompt" aria-live="polite">
                 {captchaLoading ? (
                   <span>{t('auth.captchaLoading')}</span>
-                ) : (
+                ) : captchaImageData ? (
                   <img
                     src={captchaImageData}
                     alt={t('auth.captchaImageAlt')}
                     className="web-auth-captcha-image"
                   />
+                ) : (
+                  <span>{t('common.requestFailed')}</span>
                 )}
               </div>
               <button
@@ -206,7 +235,7 @@ export function SetupPage() {
             />
           </div>
 
-          <button type="submit" className="login-submit web-auth-submit" disabled={captchaLoading}>
+          <button type="submit" className="login-submit web-auth-submit" disabled={!canSubmit}>
             <span className="text-white">{t('auth.completeSetup')}</span>
           </button>
         </form>

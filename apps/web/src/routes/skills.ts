@@ -4,11 +4,63 @@ import type { SkillSafetyReport, SkillSafetyScanInput } from '@prompthub/shared'
 import type { Context } from 'hono';
 import { getAuthUser } from '../middleware/auth.js';
 import { SkillService, SkillServiceError } from '../services/skill.service.js';
+import { isHttpUrl, isSafeSkillIconUrl } from '../services/skill-url-validation.js';
 import { error, ErrorCode, success } from '../utils/response.js';
-import { parseJsonBody } from '../utils/validation.js';
+import { parseJsonBody, readRequestTextBody } from '../utils/validation.js';
 
 const skills = new Hono();
 const skillService = new SkillService();
+const MAX_SKILL_METADATA_TAGS = 100;
+const MAX_SKILL_METADATA_TAG_LENGTH = 100;
+const MAX_SKILL_METADATA_DETAILS = 50;
+const MAX_SKILL_METADATA_DETAIL_LENGTH = 500;
+const MAX_SKILL_SAFETY_FINDINGS = 100;
+const MAX_SKILL_SAFETY_SUMMARY_LENGTH = 2000;
+const MAX_SKILL_SAFETY_FIELD_LENGTH = 200;
+const MAX_SKILL_SAFETY_DETAIL_LENGTH = 5000;
+const MAX_SKILL_SAFETY_FILE_PATH_LENGTH = 500;
+const MAX_SKILL_SAFETY_SCAN_CONTENT_LENGTH = 200000;
+const MAX_SKILL_SAFETY_SCAN_PATH_LENGTH = 1000;
+const MAX_SKILL_SAFETY_SCAN_AUDITS = 50;
+const MAX_SKILL_SAFETY_SCAN_AI_CONFIG_LENGTH = 1000;
+
+const skillMetadataTagSchema = z
+  .string()
+  .trim()
+  .min(1, 'skill metadata tag must not be empty')
+  .max(
+    MAX_SKILL_METADATA_TAG_LENGTH,
+    `skill metadata tag must be at most ${MAX_SKILL_METADATA_TAG_LENGTH} characters`,
+  );
+
+const skillMetadataDetailSchema = z
+  .string()
+  .trim()
+  .min(1, 'skill metadata entry must not be empty')
+  .max(
+    MAX_SKILL_METADATA_DETAIL_LENGTH,
+    `skill metadata entry must be at most ${MAX_SKILL_METADATA_DETAIL_LENGTH} characters`,
+  );
+
+const skillMetadataTagsSchema = z
+  .array(skillMetadataTagSchema)
+  .max(
+    MAX_SKILL_METADATA_TAGS,
+    `skill metadata tags must contain at most ${MAX_SKILL_METADATA_TAGS} entries`,
+  );
+
+const skillMetadataDetailsSchema = z
+  .array(skillMetadataDetailSchema)
+  .max(
+    MAX_SKILL_METADATA_DETAILS,
+    `skill metadata details must contain at most ${MAX_SKILL_METADATA_DETAILS} entries`,
+  );
+
+const skillHttpUrlSchema = z.string().url().refine(isHttpUrl, 'must use HTTP(S)');
+const skillIconUrlSchema = z
+  .string()
+  .url()
+  .refine(isSafeSkillIconUrl, 'must use HTTP(S) or a base64 image data URL');
 
 const createSkillSchema = z.object({
   name: z.string().trim().min(1, 'name is required').max(120),
@@ -19,27 +71,39 @@ const createSkillSchema = z.object({
   protocol_type: z.enum(['skill', 'mcp', 'claude-code']).default('skill'),
   version: z.string().max(50).optional(),
   author: z.string().max(120).optional(),
-  source_url: z.string().url().optional(),
+  source_url: skillHttpUrlSchema.optional(),
   local_repo_path: z.string().max(1000).optional(),
-  tags: z.array(z.string()).optional(),
-  original_tags: z.array(z.string()).optional(),
+  tags: skillMetadataTagsSchema.optional(),
+  original_tags: skillMetadataTagsSchema.optional(),
   is_favorite: z.boolean().default(false),
-  icon_url: z.string().url().optional(),
+  icon_url: skillIconUrlSchema.optional(),
   icon_emoji: z.string().max(32).optional(),
   icon_background: z.string().max(50).optional(),
   category: z.enum(['general', 'office', 'dev', 'ai', 'data', 'management', 'deploy', 'design', 'security', 'meta']).optional(),
   is_builtin: z.boolean().optional(),
   registry_slug: z.string().max(200).optional(),
-  content_url: z.string().url().optional(),
-  prerequisites: z.array(z.string()).optional(),
-  compatibility: z.array(z.string()).optional(),
+  content_url: skillHttpUrlSchema.optional(),
+  prerequisites: skillMetadataDetailsSchema.optional(),
+  compatibility: skillMetadataDetailsSchema.optional(),
   visibility: z.enum(['private', 'shared']).optional(),
 });
 
 const updateSkillSchema = createSkillSchema.partial().extend({
-  currentVersion: z.number().int().nonnegative().optional(),
+  currentVersion: z
+    .any()
+    .optional()
+    .refine(
+      (value) => value === undefined,
+      'Version counters are managed by /api/skills/:id/versions',
+    ),
   versionTrackingEnabled: z.boolean().optional(),
-  safetyReport: z.any().optional(),
+  safetyReport: z
+    .any()
+    .optional()
+    .refine(
+      (value) => value === undefined,
+      'Use /api/skills/:id/safety-report to save safety reports',
+    ),
 });
 
 const versionSchema = z.object({
@@ -47,18 +111,20 @@ const versionSchema = z.object({
 });
 
 const safetyFindingSchema = z.object({
-  code: z.string(),
+  code: z.string().trim().min(1).max(MAX_SKILL_SAFETY_FIELD_LENGTH),
   severity: z.enum(['info', 'warn', 'high']),
-  title: z.string(),
-  detail: z.string(),
-  filePath: z.string().optional(),
-  evidence: z.string().optional(),
+  title: z.string().trim().min(1).max(MAX_SKILL_SAFETY_FIELD_LENGTH),
+  detail: z.string().max(MAX_SKILL_SAFETY_DETAIL_LENGTH),
+  filePath: z.string().max(MAX_SKILL_SAFETY_FILE_PATH_LENGTH).optional(),
+  evidence: z.string().max(MAX_SKILL_SAFETY_DETAIL_LENGTH).optional(),
 });
 
 const safetyReportSchema = z.object({
   level: z.enum(['safe', 'warn', 'high-risk', 'blocked']),
-  summary: z.string(),
-  findings: z.array(safetyFindingSchema),
+  summary: z.string().max(MAX_SKILL_SAFETY_SUMMARY_LENGTH),
+  findings: z
+    .array(safetyFindingSchema)
+    .max(MAX_SKILL_SAFETY_FINDINGS, `findings must contain at most ${MAX_SKILL_SAFETY_FINDINGS} entries`),
   recommendedAction: z.enum(['allow', 'review', 'block']),
   scannedAt: z.number().int().nonnegative(),
   checkedFileCount: z.number().int().nonnegative(),
@@ -67,25 +133,34 @@ const safetyReportSchema = z.object({
 });
 
 const safetyScanInputSchema = z.object({
-  name: z.string().optional(),
-  content: z.string().optional(),
-  sourceUrl: z.string().url().optional(),
-  contentUrl: z.string().url().optional(),
-  localRepoPath: z.string().optional(),
-  securityAudits: z.array(z.string()).optional(),
+  name: z.string().trim().min(1).max(120).optional(),
+  content: z.string().max(MAX_SKILL_SAFETY_SCAN_CONTENT_LENGTH).optional(),
+  sourceUrl: z.string().url().max(MAX_SKILL_SAFETY_SCAN_AI_CONFIG_LENGTH).optional(),
+  contentUrl: z.string().url().max(MAX_SKILL_SAFETY_SCAN_AI_CONFIG_LENGTH).optional(),
+  localRepoPath: z.string().max(MAX_SKILL_SAFETY_SCAN_PATH_LENGTH).optional(),
+  securityAudits: z
+    .array(
+      z
+        .string()
+        .trim()
+        .min(1)
+        .max(MAX_SKILL_METADATA_DETAIL_LENGTH),
+    )
+    .max(MAX_SKILL_SAFETY_SCAN_AUDITS, `securityAudits must contain at most ${MAX_SKILL_SAFETY_SCAN_AUDITS} entries`)
+    .optional(),
   aiConfig: z
     .object({
-      provider: z.string(),
+      provider: z.string().trim().min(1).max(MAX_SKILL_SAFETY_FIELD_LENGTH),
       apiProtocol: z.enum(['openai', 'gemini', 'anthropic']),
-      apiKey: z.string(),
-      apiUrl: z.string(),
-      model: z.string(),
+      apiKey: z.string().min(1).max(MAX_SKILL_SAFETY_SCAN_AI_CONFIG_LENGTH),
+      apiUrl: z.string().url().max(MAX_SKILL_SAFETY_SCAN_AI_CONFIG_LENGTH),
+      model: z.string().trim().min(1).max(MAX_SKILL_SAFETY_FIELD_LENGTH),
     })
     .optional(),
 });
 
 const fetchRemoteSchema = z.object({
-  url: z.string().url(),
+  url: z.string().url().refine((value) => new URL(value).protocol === 'https:', 'Remote skill URL must use HTTPS'),
   importToLibrary: z.boolean().optional(),
   name: z.string().trim().min(1).max(120).optional(),
   description: z.string().max(10000).optional(),
@@ -99,6 +174,30 @@ const deleteAllSchema = z.object({
 const listQuerySchema = z.object({
   scope: z.enum(['private', 'shared', 'all']).optional(),
 });
+
+async function parseOptionalJsonBody(c: Context): Promise<
+  | { success: true; data: unknown }
+  | { success: false; response: Response }
+> {
+  const textResult = await readRequestTextBody(c);
+  if (!textResult.success) {
+    return { success: false, response: textResult.response };
+  }
+
+  const text = textResult.text;
+  if (!text.trim()) {
+    return { success: true, data: {} };
+  }
+
+  try {
+    return { success: true, data: JSON.parse(text) };
+  } catch {
+    return {
+      success: false,
+      response: error(c, 400, ErrorCode.BAD_REQUEST, 'Invalid JSON request body'),
+    };
+  }
+}
 
 skills.post('/', async (c) => {
   const parsed = await parseJsonBody(c, createSkillSchema);
@@ -209,14 +308,12 @@ skills.post('/import', async (c) => {
 });
 
 skills.post('/:id/safety-scan', async (c) => {
-  let body: unknown = {};
-  try {
-    body = await c.req.json();
-  } catch {
-    body = {};
+  const body = await parseOptionalJsonBody(c);
+  if (!body.success) {
+    return body.response;
   }
 
-  const parsed = safetyScanInputSchema.partial().safeParse(body);
+  const parsed = safetyScanInputSchema.partial().safeParse(body.data);
   if (!parsed.success) {
     const message = parsed.error.issues
       .map((issue) => {

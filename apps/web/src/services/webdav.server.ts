@@ -12,8 +12,65 @@ function trimSlashes(value: string): string {
   return value.replace(/^\/+|\/+$/g, '');
 }
 
-function encodePathSegment(value: string): string {
-  return encodeURIComponent(value).replace(/%2F/gi, '/');
+function normalizeWebDavRelativePath(value: string, label: string): string[] {
+  const trimmed = trimSlashes(value.trim());
+  if (!trimmed) {
+    return [];
+  }
+
+  if (trimmed.includes('\\')) {
+    throw new Error(`Invalid WebDAV ${label}: path separator detected`);
+  }
+  if (/[\u0000-\u001F\u007F]/u.test(trimmed)) {
+    throw new Error(`Invalid WebDAV ${label}: unsupported control character detected`);
+  }
+
+  const segments = trimmed.split('/');
+  if (segments.some((segment) => segment === '.' || segment === '..')) {
+    throw new Error(`Invalid WebDAV ${label}: path traversal detected`);
+  }
+
+  return segments.filter(Boolean);
+}
+
+export function isSafeWebDavRemotePath(value: string): boolean {
+  try {
+    normalizeWebDavRelativePath(value, 'remote path');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function parseWebDavEndpoint(value: string): URL {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error('Invalid WebDAV endpoint: expected an absolute URL');
+  }
+
+  if (url.protocol !== 'https:') {
+    throw new Error('Invalid WebDAV endpoint: must use HTTPS');
+  }
+  if (url.search || url.hash) {
+    throw new Error('Invalid WebDAV endpoint: query or fragment is not supported');
+  }
+
+  return url;
+}
+
+export function isHttpsWebDavEndpoint(value: string): boolean {
+  try {
+    parseWebDavEndpoint(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function encodePathSegments(segments: string[]): string {
+  return segments.map((segment) => encodeURIComponent(segment)).join('/');
 }
 
 function getAuthHeader(config: WebDavConfig): Record<string, string> {
@@ -28,13 +85,19 @@ function getAuthHeader(config: WebDavConfig): Record<string, string> {
 }
 
 export function buildWebDavTargetUrl(config: WebDavConfig, fileName: string): string {
+  parseWebDavEndpoint(config.endpoint);
   const baseUrl = config.endpoint.replace(/\/$/, '');
-  const remotePath = config.remotePath ? trimSlashes(config.remotePath) : '';
-  const segments = [remotePath, trimSlashes(fileName)].filter(Boolean).map(encodePathSegment);
-  return segments.length > 0 ? `${baseUrl}/${segments.join('/')}` : `${baseUrl}/${encodePathSegment(fileName)}`;
+  const remotePath = config.remotePath
+    ? normalizeWebDavRelativePath(config.remotePath, 'remote path')
+    : [];
+  const filePath = normalizeWebDavRelativePath(fileName, 'file path');
+  const segments = [...remotePath, ...filePath];
+  return segments.length > 0 ? `${baseUrl}/${encodePathSegments(segments)}` : baseUrl;
 }
 
 export async function testWebDavConnection(config: WebDavConfig): Promise<{ ok: boolean; status: number }> {
+  parseWebDavEndpoint(config.endpoint);
+
   const response = await requestRemoteBuffered({
     url: config.endpoint,
     method: 'PROPFIND',

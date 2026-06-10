@@ -32,6 +32,7 @@ async function createTestApp(
   dataDir: string,
   options?: {
     mockRemoteResult?: MockRemoteBufferedResponse | Error;
+    mockRemoteRequest?: ReturnType<typeof vi.fn>;
   },
 ) {
   process.env.PORT = '3994';
@@ -44,7 +45,11 @@ async function createTestApp(
   process.env.LOG_LEVEL = 'debug';
 
   vi.doUnmock('../utils/remote-http.js');
-  if (options?.mockRemoteResult) {
+  if (options?.mockRemoteRequest) {
+    vi.doMock('../utils/remote-http.js', () => ({
+      requestRemoteBuffered: options.mockRemoteRequest,
+    }));
+  } else if (options?.mockRemoteResult) {
     const result = options.mockRemoteResult;
     vi.doMock('../utils/remote-http.js', () => ({
       requestRemoteBuffered: vi.fn(async () => {
@@ -390,6 +395,24 @@ describe('web skill routes', () => {
       };
       expect(missingAiConfigPayload.error.code).toBe('VALIDATION_ERROR');
       expect(missingAiConfigPayload.error.message).toBe('AI_NOT_CONFIGURED');
+      expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+
+      const malformedScanResponse = await app.request(
+        new Request(`http://local/api/skills/${skillId}/safety-scan`, {
+          method: 'POST',
+          headers: authHeaders(token),
+          body: '{"aiConfig":',
+        }),
+      );
+      expect(malformedScanResponse.status).toBe(400);
+      const malformedScanPayload = await malformedScanResponse.json() as {
+        error: { code: string; message: string };
+      };
+      expect(malformedScanPayload.error).toEqual({
+        code: 'BAD_REQUEST',
+        message: 'Invalid JSON request body',
+      });
+      expect(globalThis.fetch).toHaveBeenCalledTimes(2);
 
       const manualReport: SkillSafetyReport = {
         level: 'warn',
@@ -430,6 +453,263 @@ describe('web skill routes', () => {
       expect(getResponse.status).toBe(200);
       const getPayload = await getResponse.json() as { data: { safetyReport?: SkillSafetyReport } };
       expect(getPayload.data.safetyReport).toEqual(manualReport);
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  }, TEST_TIMEOUT);
+
+  it('rejects oversized safety scan inputs before calling the AI provider', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-skill-test-'));
+
+    try {
+      const app = await createTestApp(dataDir);
+      const { payload: registerPayload } = await registerUser(app, 'skillscanlimit', 'debugpass001');
+      const token = registerPayload.data.accessToken;
+
+      const created = await createSkill(app, token, {
+        name: 'scan-limit-skill',
+        content: 'echo scan limit',
+        visibility: 'private',
+      });
+      expect(created.response.status).toBe(201);
+
+      globalThis.fetch = vi.fn().mockImplementation(async () =>
+        new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({
+                    level: 'safe',
+                    findings: [],
+                    summary: 'No issue found.',
+                  }),
+                },
+              },
+            ],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      ) as typeof fetch;
+
+      const oversizedInput = {
+        name: 'n'.repeat(121),
+        content: 'c'.repeat(200001),
+        localRepoPath: 'p'.repeat(1001),
+        securityAudits: Array.from({ length: 51 }, (_, index) => `audit-${index}`),
+        aiConfig: {
+          provider: 'p'.repeat(201),
+          apiProtocol: 'openai',
+          apiKey: 'k'.repeat(1001),
+          apiUrl: 'https://api.example.com/v1',
+          model: 'm'.repeat(201),
+        },
+      };
+
+      const directResponse = await app.request(
+        new Request('http://local/api/skills/safety-scan', {
+          method: 'POST',
+          headers: authHeaders(token),
+          body: JSON.stringify(oversizedInput),
+        }),
+      );
+      expect(directResponse.status).toBe(422);
+      const directPayload = await directResponse.json() as { error: { code: string; message: string } };
+      expect(directPayload.error.code).toBe('VALIDATION_ERROR');
+      expect(directPayload.error.message).toContain('name');
+      expect(directPayload.error.message).toContain('content');
+      expect(directPayload.error.message).toContain('localRepoPath');
+      expect(directPayload.error.message).toContain('securityAudits');
+      expect(directPayload.error.message).toContain('aiConfig.provider');
+      expect(directPayload.error.message).toContain('aiConfig.apiKey');
+      expect(directPayload.error.message).toContain('aiConfig.model');
+
+      const legacyResponse = await app.request(
+        new Request(`http://local/api/skills/${created.payload.data!.id}/safety-scan`, {
+          method: 'POST',
+          headers: authHeaders(token),
+          body: JSON.stringify(oversizedInput),
+        }),
+      );
+      expect(legacyResponse.status).toBe(422);
+      const legacyPayload = await legacyResponse.json() as { error: { code: string; message: string } };
+      expect(legacyPayload.error.message).toContain('name');
+      expect(legacyPayload.error.message).toContain('content');
+
+      expect(globalThis.fetch).not.toHaveBeenCalled();
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  }, TEST_TIMEOUT);
+
+  it('rejects safety report writes through generic skill updates', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-skill-test-'));
+
+    try {
+      const app = await createTestApp(dataDir);
+      const { payload: registerPayload } = await registerUser(app, 'skillreportboundary', 'debugpass001');
+      const token = registerPayload.data.accessToken;
+
+      const created = await createSkill(app, token, {
+        name: 'generic-update-report-skill',
+        content: 'echo report boundary',
+        visibility: 'private',
+      });
+      expect(created.response.status).toBe(201);
+
+      const genericUpdateResponse = await app.request(
+        new Request(`http://local/api/skills/${created.payload.data!.id}`, {
+          method: 'PUT',
+          headers: authHeaders(token),
+          body: JSON.stringify({
+            safetyReport: {
+              level: 'safe',
+              summary: 'Forged report',
+              findings: [],
+              recommendedAction: 'allow',
+              scannedAt: 1,
+              checkedFileCount: 1,
+              scanMethod: 'ai',
+            },
+          }),
+        }),
+      );
+
+      expect(genericUpdateResponse.status).toBe(422);
+      const genericUpdatePayload = await genericUpdateResponse.json() as { error: { code: string; message: string } };
+      expect(genericUpdatePayload.error).toEqual({
+        code: 'VALIDATION_ERROR',
+        message: 'safetyReport: Use /api/skills/:id/safety-report to save safety reports',
+      });
+
+      const getResponse = await app.request(
+        new Request(`http://local/api/skills/${created.payload.data!.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      );
+      expect(getResponse.status).toBe(200);
+      const getPayload = await getResponse.json() as { data: { safetyReport?: SkillSafetyReport } };
+      expect(getPayload.data.safetyReport).toBeUndefined();
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  }, TEST_TIMEOUT);
+
+  it('rejects oversized safety reports without persisting them', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-skill-test-'));
+
+    try {
+      const app = await createTestApp(dataDir);
+      const { payload: registerPayload } = await registerUser(app, 'skillreportlimit', 'debugpass001');
+      const token = registerPayload.data.accessToken;
+
+      const created = await createSkill(app, token, {
+        name: 'oversized-report-skill',
+        content: 'echo report limit',
+        visibility: 'private',
+      });
+      expect(created.response.status).toBe(201);
+
+      const oversizedReport = {
+        level: 'warn',
+        summary: 's'.repeat(2001),
+        findings: Array.from({ length: 101 }, (_, index) => ({
+          code: `finding-${index}`,
+          severity: 'warn',
+          title: index === 0 ? 't'.repeat(201) : `Finding ${index}`,
+          detail: index === 0 ? 'd'.repeat(5001) : 'review this finding',
+          filePath: index === 0 ? 'f'.repeat(501) : `file-${index}.md`,
+          evidence: index === 0 ? 'e'.repeat(5001) : undefined,
+        })),
+        recommendedAction: 'review',
+        scannedAt: Date.parse('2026-04-13T12:00:00.000Z'),
+        checkedFileCount: 1,
+        scanMethod: 'ai',
+      };
+
+      const saveResponse = await app.request(
+        new Request(`http://local/api/skills/${created.payload.data!.id}/safety-report`, {
+          method: 'PUT',
+          headers: authHeaders(token),
+          body: JSON.stringify(oversizedReport),
+        }),
+      );
+
+      expect(saveResponse.status).toBe(422);
+      const savePayload = await saveResponse.json() as { error: { code: string; message: string } };
+      expect(savePayload.error.code).toBe('VALIDATION_ERROR');
+      expect(savePayload.error.message).toContain('summary');
+      expect(savePayload.error.message).toContain('findings');
+      expect(savePayload.error.message).toContain('title');
+      expect(savePayload.error.message).toContain('detail');
+      expect(savePayload.error.message).toContain('filePath');
+      expect(savePayload.error.message).toContain('evidence');
+
+      const getResponse = await app.request(
+        new Request(`http://local/api/skills/${created.payload.data!.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      );
+      expect(getResponse.status).toBe(200);
+      const getPayload = await getResponse.json() as { data: { safetyReport?: SkillSafetyReport } };
+      expect(getPayload.data.safetyReport).toBeUndefined();
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  }, TEST_TIMEOUT);
+
+  it('rejects version counter writes through generic skill updates', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-skill-test-'));
+
+    try {
+      const app = await createTestApp(dataDir);
+      const { payload: registerPayload } = await registerUser(app, 'skillversioncounter', 'debugpass001');
+      const token = registerPayload.data.accessToken;
+
+      const created = await createSkill(app, token, {
+        name: 'version-counter-skill',
+        content: 'version one',
+        visibility: 'private',
+      });
+      expect(created.response.status).toBe(201);
+      const skillId = created.payload.data!.id;
+
+      const firstVersionResponse = await app.request(
+        new Request(`http://local/api/skills/${skillId}/versions`, {
+          method: 'POST',
+          headers: authHeaders(token),
+          body: JSON.stringify({ note: 'Initial version' }),
+        }),
+      );
+      expect(firstVersionResponse.status).toBe(201);
+      const firstVersionPayload = await firstVersionResponse.json() as { data: { version: number } };
+      expect(firstVersionPayload.data.version).toBe(1);
+
+      const genericUpdateResponse = await app.request(
+        new Request(`http://local/api/skills/${skillId}`, {
+          method: 'PUT',
+          headers: authHeaders(token),
+          body: JSON.stringify({ currentVersion: 99 }),
+        }),
+      );
+
+      expect(genericUpdateResponse.status).toBe(422);
+      const genericUpdatePayload = await genericUpdateResponse.json() as { error: { code: string; message: string } };
+      expect(genericUpdatePayload.error).toEqual({
+        code: 'VALIDATION_ERROR',
+        message: 'currentVersion: Version counters are managed by /api/skills/:id/versions',
+      });
+
+      const secondVersionResponse = await app.request(
+        new Request(`http://local/api/skills/${skillId}/versions`, {
+          method: 'POST',
+          headers: authHeaders(token),
+          body: JSON.stringify({ note: 'Second version' }),
+        }),
+      );
+      expect(secondVersionResponse.status).toBe(201);
+      const secondVersionPayload = await secondVersionResponse.json() as { data: { version: number } };
+      expect(secondVersionPayload.data.version).toBe(2);
     } finally {
       fs.rmSync(dataDir, { recursive: true, force: true });
     }
@@ -612,6 +892,176 @@ describe('web skill routes', () => {
     }
   }, TEST_TIMEOUT);
 
+  it('rejects malformed skill metadata arrays without persisting them', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-skill-test-'));
+
+    try {
+      const app = await createTestApp(dataDir);
+      const { payload: registerPayload } = await registerUser(app, 'skillmetadatareject', 'debugpass001');
+      const token = registerPayload.data.accessToken;
+
+      const tooManyTags = await createSkill(app, token, {
+        name: 'too-many-tags-skill',
+        content: 'echo tags',
+        visibility: 'private',
+        tags: Array.from({ length: 101 }, (_, index) => `tag-${index}`),
+      });
+      expect(tooManyTags.response.status).toBe(422);
+      expect(tooManyTags.payload.error?.code).toBe('VALIDATION_ERROR');
+      expect(tooManyTags.payload.error?.message).toContain('tags');
+
+      const blankOriginalTag = await createSkill(app, token, {
+        name: 'blank-original-tag-skill',
+        content: 'echo original tags',
+        visibility: 'private',
+        original_tags: ['imported', '   '],
+      });
+      expect(blankOriginalTag.response.status).toBe(422);
+
+      const overlongPrerequisite = await createSkill(app, token, {
+        name: 'overlong-prerequisite-skill',
+        content: 'echo prerequisite',
+        visibility: 'private',
+        prerequisites: ['a'.repeat(501)],
+      });
+      expect(overlongPrerequisite.response.status).toBe(422);
+
+      const tooManyCompatibilityEntries = await createSkill(app, token, {
+        name: 'too-many-compatibility-skill',
+        content: 'echo compatibility',
+        visibility: 'private',
+        compatibility: Array.from({ length: 51 }, (_, index) => `runtime-${index}`),
+      });
+      expect(tooManyCompatibilityEntries.response.status).toBe(422);
+
+      const listResponse = await app.request(
+        new Request('http://local/api/skills?scope=private', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      );
+      expect(listResponse.status).toBe(200);
+      const listPayload = await listResponse.json() as { data: Array<{ name: string }> };
+      expect(listPayload.data).toEqual([]);
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  }, TEST_TIMEOUT);
+
+  it('persists valid skill metadata arrays through create and update routes', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-skill-test-'));
+
+    try {
+      const app = await createTestApp(dataDir);
+      const { payload: registerPayload } = await registerUser(app, 'skillmetadatavalid', 'debugpass001');
+      const token = registerPayload.data.accessToken;
+
+      const created = await createSkill(app, token, {
+        name: 'metadata-roundtrip-skill',
+        content: 'echo metadata',
+        visibility: 'private',
+        tags: ['docs', 'review'],
+        original_tags: ['registry'],
+        prerequisites: ['Node.js 20'],
+        compatibility: ['Codex CLI'],
+      });
+      expect(created.response.status).toBe(201);
+
+      const updateResponse = await app.request(
+        new Request(`http://local/api/skills/${created.payload.data!.id}`, {
+          method: 'PUT',
+          headers: authHeaders(token),
+          body: JSON.stringify({
+            tags: ['docs', 'security'],
+            prerequisites: ['Node.js 20', 'pnpm'],
+            compatibility: ['Codex CLI', 'Claude Code'],
+          }),
+        }),
+      );
+      expect(updateResponse.status).toBe(200);
+
+      const getResponse = await app.request(
+        new Request(`http://local/api/skills/${created.payload.data!.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      );
+      expect(getResponse.status).toBe(200);
+      const getPayload = await getResponse.json() as {
+        data: {
+          tags?: string[];
+          original_tags?: string[];
+          prerequisites?: string[];
+          compatibility?: string[];
+        };
+      };
+
+      expect(getPayload.data.tags).toEqual(['docs', 'security']);
+      expect(getPayload.data.original_tags).toEqual(['registry']);
+      expect(getPayload.data.prerequisites).toEqual(['Node.js 20', 'pnpm']);
+      expect(getPayload.data.compatibility).toEqual(['Codex CLI', 'Claude Code']);
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  }, TEST_TIMEOUT);
+
+  it('validates skill URL metadata protocols before persisting them', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-skill-url-test-'));
+
+    try {
+      const app = await createTestApp(dataDir);
+      const { payload: registerPayload } = await registerUser(app, 'skillurlmetadata', 'debugpass001');
+      const token = registerPayload.data.accessToken;
+
+      const unsafeSource = await createSkill(app, token, {
+        name: 'unsafe-source-url-skill',
+        content: 'echo unsafe',
+        visibility: 'private',
+        source_url: 'javascript:alert(1)',
+      });
+      expect(unsafeSource.response.status).toBe(422);
+      expect(unsafeSource.payload.error?.code).toBe('VALIDATION_ERROR');
+      expect(unsafeSource.payload.error?.message).toContain('source_url');
+
+      const unsafeIcon = await createSkill(app, token, {
+        name: 'unsafe-icon-url-skill',
+        content: 'echo unsafe icon',
+        visibility: 'private',
+        icon_url: 'file:///tmp/icon.svg',
+      });
+      expect(unsafeIcon.response.status).toBe(422);
+      expect(unsafeIcon.payload.error?.message).toContain('icon_url');
+
+      const safeIconUrl = 'data:image/png;base64,aWNvbg==';
+      const safeIcon = await createSkill(app, token, {
+        name: 'safe-icon-url-skill',
+        content: 'echo safe icon',
+        visibility: 'private',
+        icon_url: safeIconUrl,
+        source_url: 'https://example.com/skills/safe-icon-url-skill',
+        content_url: 'http://example.com/skills/safe-icon-url-skill/SKILL.md',
+      });
+      expect(safeIcon.response.status).toBe(201);
+
+      const getResponse = await app.request(
+        new Request(`http://local/api/skills/${safeIcon.payload.data!.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      );
+      expect(getResponse.status).toBe(200);
+      const getPayload = await getResponse.json() as {
+        data: {
+          icon_url?: string;
+          source_url?: string;
+          content_url?: string;
+        };
+      };
+      expect(getPayload.data.icon_url).toBe(safeIconUrl);
+      expect(getPayload.data.source_url).toBe('https://example.com/skills/safe-icon-url-skill');
+      expect(getPayload.data.content_url).toBe('http://example.com/skills/safe-icon-url-skill/SKILL.md');
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  }, TEST_TIMEOUT);
+
   it('fetches remote skill content and optionally imports it into the library', async () => {
     const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-skill-test-'));
 
@@ -692,6 +1142,110 @@ Use the helper.
     }
   }, TEST_TIMEOUT);
 
+  it('defaults normal user remote skill imports to private visibility', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-skill-remote-default-'));
+
+    try {
+      const app = await createTestApp(dataDir, {
+        mockRemoteResult: {
+          status: 200,
+          statusText: 'OK',
+          headers: { 'content-type': 'text/markdown' },
+          body: Buffer.from('---\nname: User Remote Helper\n---\n\nUse privately.', 'utf-8'),
+          finalUrl: 'https://example.com/skills/user-remote-helper.md',
+        },
+      });
+      await registerUser(app, 'skillremoteadmin', 'debugpass001');
+      const { payload: registerPayload } = await registerUser(app, 'skillremoteprivate', 'debugpass001');
+      expect(registerPayload.data.user.role).toBe('user');
+
+      const response = await app.request(
+        new Request('http://local/api/skills/fetch-remote', {
+          method: 'POST',
+          headers: authHeaders(registerPayload.data.accessToken),
+          body: JSON.stringify({
+            url: 'https://example.com/skills/user-remote-helper.md',
+            importToLibrary: true,
+          }),
+        }),
+      );
+
+      expect(response.status).toBe(201);
+      const payload = await response.json() as {
+        data: {
+          importedSkill?: {
+            id: string;
+            name: string;
+            visibility?: 'private' | 'shared';
+            ownerUserId?: string | null;
+          };
+        };
+      };
+      expect(payload.data.importedSkill).toEqual(expect.objectContaining({
+        name: 'user-remote-helper',
+        visibility: 'private',
+        ownerUserId: registerPayload.data.user.id,
+      }));
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  }, TEST_TIMEOUT);
+
+  it('rejects remote skill imports with malformed parsed metadata', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-skill-test-'));
+
+    try {
+      const remoteContent = `---
+name: Remote Oversized Metadata
+description: Parsed remote metadata should be bounded
+tags: [${'r'.repeat(101)}]
+---
+
+## Remote Body
+Use the helper.
+`;
+      const app = await createTestApp(dataDir, {
+        mockRemoteResult: {
+          status: 200,
+          statusText: 'OK',
+          headers: { 'content-type': 'text/markdown' },
+          body: Buffer.from(remoteContent, 'utf-8'),
+          finalUrl: 'https://example.com/skills/remote-oversized.md',
+        },
+      });
+      const { payload: registerPayload } = await registerUser(app, 'skillremotemetadata', 'debugpass001');
+      const token = registerPayload.data.accessToken;
+
+      const response = await app.request(
+        new Request('http://local/api/skills/fetch-remote', {
+          method: 'POST',
+          headers: authHeaders(token),
+          body: JSON.stringify({
+            url: 'https://example.com/skills/remote-oversized.md',
+            importToLibrary: true,
+            visibility: 'private',
+          }),
+        }),
+      );
+
+      expect(response.status).toBe(422);
+      const payload = await response.json() as { error: { code: string; message: string } };
+      expect(payload.error.code).toBe('VALIDATION_ERROR');
+      expect(payload.error.message).toContain('tags');
+
+      const listResponse = await app.request(
+        new Request('http://local/api/skills?scope=private', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      );
+      expect(listResponse.status).toBe(200);
+      const listPayload = await listResponse.json() as { data: Array<{ name: string }> };
+      expect(listPayload.data).toEqual([]);
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  }, TEST_TIMEOUT);
+
   it('returns a validation error when remote skill fetching fails upstream', async () => {
     const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-skill-test-'));
 
@@ -719,6 +1273,42 @@ Use the helper.
       const payload = await response.json() as { error: { code: string; message: string } };
       expect(payload.error.code).toBe('VALIDATION_ERROR');
       expect(payload.error.message).toBe('Remote fetch failed with HTTP 502');
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  }, TEST_TIMEOUT);
+
+  it('rejects non-HTTPS remote skill URLs before fetching upstream content', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-skill-test-'));
+
+    try {
+      const remoteFetch = vi.fn(async () => ({
+        status: 200,
+        statusText: 'OK',
+        headers: { 'content-type': 'text/markdown' },
+        body: Buffer.from('# Should not be fetched', 'utf-8'),
+        finalUrl: 'http://example.com/skills/insecure.md',
+      }));
+      const app = await createTestApp(dataDir, {
+        mockRemoteRequest: remoteFetch,
+      });
+      const { payload: registerPayload } = await registerUser(app, 'skillremotehttp', 'debugpass001');
+
+      const response = await app.request(
+        new Request('http://local/api/skills/fetch-remote', {
+          method: 'POST',
+          headers: authHeaders(registerPayload.data.accessToken),
+          body: JSON.stringify({ url: 'http://example.com/skills/insecure.md' }),
+        }),
+      );
+
+      expect(response.status).toBe(422);
+      const payload = await response.json() as { error: { code: string; message: string } };
+      expect(payload.error).toEqual({
+        code: 'VALIDATION_ERROR',
+        message: 'url: Remote skill URL must use HTTPS',
+      });
+      expect(remoteFetch).not.toHaveBeenCalled();
     } finally {
       fs.rmSync(dataDir, { recursive: true, force: true });
     }

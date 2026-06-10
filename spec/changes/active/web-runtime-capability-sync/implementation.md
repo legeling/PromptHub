@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress.
+Complete for the current active checklist.
 
 ## Shipped
 
@@ -58,6 +58,16 @@ In progress.
 - `apps/desktop/tests/unit/components/skill-agents-view.test.tsx` 已覆盖未托管 Agent Skill 可从卡片导入到我的 Skill，并断言导入使用扫描到的完整 Skill 文件夹路径和 copy 模式。
 - `apps/desktop/tests/unit/components/create-skill-modal.test.tsx` 已覆盖本地扫描入口必须先展示 Agent 导入 / 选择路径导入两种选择，Agent 导入会切到 Agent Skill，选择路径导入只扫描用户选择的目录。
 - `apps/desktop/tests/unit/components/skill-i18n-smoke.test.tsx` 已覆盖批量管理二次点击收起、旧工具栏本地扫描入口已移除、库刷新使用独立 loading 和 toast、我的 Skill 顶部已分发 / 待分发筛选、预览弹窗重扫超时后保留选择和当前 Web runtime 下 Skill 页面入口不再被强制切回我的 Skill。
+- `apps/web/src/services/sync-snapshot.ts` 已增加同步 / 导入快照版本兼容 guard：继续接受当前 `web-backup-v2`、历史 `desktop-backup-v1` 和旧数字 `1`，拒绝未来未声明兼容的版本，避免旧 Web 对新版桌面备份做破坏性“尽力导入”。
+- `apps/web/src/routes/import-export.test.ts` 已补充旧 Web 读取新桌面快照的前向兼容回归：未知字段会被忽略并导入可理解数据，未知枚举会被 422 拒绝且不污染现有数据；桌面 ZIP 中不支持的快照版本会在写入媒体和记录前被拒绝。
+- `apps/web/src/client/desktop/install-bridge.ts` 已修复 Web runtime
+  `electron.openPath` fallback：浏览器环境只对严格解析后的 `http:` /
+  `https:` 目标调用 `window.open(..., "noopener,noreferrer")` 并返回成功；
+  本地路径、`javascript:` 等不支持目标会返回明确失败，避免桌面复用页面误以为本地目录已经打开。
+- `apps/web/src/client/desktop/install-bridge.ts` 已修复 Web runtime
+  隐藏文件选择器在 `input.click()` 被浏览器或测试环境阻止时的失败边界：
+  `selectImage()` / `selectVideo()` 现在会移除临时 file input，并按用户取消处理为空数组，
+  不再把底层 click 异常泄漏到桌面兼容 bridge。
 
 ## Verification
 
@@ -90,16 +100,30 @@ In progress.
 - `git diff --check` passed.
 - `pnpm --dir apps/desktop exec vitest run tests/unit/components/skill-i18n-smoke.test.tsx` passed: 1 file, 21 tests.
 - `pnpm --dir apps/desktop exec vitest run tests/unit/components/create-skill-modal.test.tsx` passed: 1 file, 10 tests.
+- `pnpm --filter @prompthub/web test -- --run src/routes/import-export.test.ts` passed: 1 file, 21 tests.
+- `pnpm --filter @prompthub/web test -- --run src/routes/sync.test.ts` passed: 1 file, 20 tests.
+- Failure-first:
+  `pnpm --filter @prompthub/web test -- --run src/client/desktop/install-bridge.test.ts -t "unsupported openPath"`
+  initially failed because `openPath("/tmp/project")` returned `{ success: true }`
+  while opening nothing in the browser runtime.
+- `pnpm --filter @prompthub/web test -- --run src/client/desktop/install-bridge.test.ts` passed: 1 file, 8 tests.
+- `pnpm --filter @prompthub/web typecheck` passed.
+- Failure-first:
+  `pnpm --filter @prompthub/web test -- --run src/client/desktop/install-bridge.test.ts -t "cleans up hidden file inputs"`
+  initially failed because a blocked `input.click()` rejected `selectImage()`
+  instead of behaving like a canceled file picker and cleaning up the hidden
+  input.
+- `pnpm --filter @prompthub/web test -- --run src/client/desktop/install-bridge.test.ts` passed: 1 file, 9 tests.
 
 ## Boundary Update
 
 - Self-hosted Web is documented as a backup / temporary browsing workspace. It may expose Prompt, Skill, Rules, Agent, and settings data for visibility, but desktop-local platform writes, symlink management, local AI tool distribution, and replacement flows remain desktop responsibilities.
 - Desktop disaster recovery should treat the user data root as the durable snapshot boundary. The current unified data layout centers on `<userData>/data`, while legacy roots such as `prompthub.db`, `skills`, `workspace`, `images`, and `videos` still need compatibility handling.
-- Web sync snapshots remain schema payloads, not raw directory mirrors. Follow-up work is required for manifest-level compatibility guards and tests covering newer desktop snapshots imported by older Web deployments.
+- Web sync snapshots remain schema payloads, not raw directory mirrors. Cross-version imports are now bounded by explicit snapshot versions; unknown fields are tolerated by schema parsing, while unknown enums and unsupported future snapshot versions are rejected before media or record writes.
 
 ## Synced Docs
 
-- Pending.
+- None for this active checklist.
 
 ## Follow-ups
 

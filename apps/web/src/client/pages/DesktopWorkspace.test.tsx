@@ -1,14 +1,15 @@
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 
-const { authState } = vi.hoisted(() => ({
+const { authState, fetchWithAuthRetryMock } = vi.hoisted(() => ({
   authState: {
     user: { username: 'admin' },
     registrationAllowed: false,
     isInitialized: true,
     logout: vi.fn(),
   },
+  fetchWithAuthRetryMock: vi.fn(),
 }));
 
 vi.mock('@desktop-toast-provider', () => ({
@@ -27,6 +28,10 @@ vi.mock('../contexts/AuthContext', () => ({
   useAuth: () => authState,
 }));
 
+vi.mock('../api/auth-session', () => ({
+  fetchWithAuthRetry: fetchWithAuthRetryMock,
+}));
+
 import { DesktopWorkspacePage } from './DesktopWorkspace';
 
 describe('DesktopWorkspacePage', () => {
@@ -37,6 +42,8 @@ describe('DesktopWorkspacePage', () => {
     Reflect.deleteProperty(window, 'api');
     Reflect.deleteProperty(window, 'electron');
     window.localStorage.clear();
+    fetchWithAuthRetryMock.mockReset();
+    fetchWithAuthRetryMock.mockResolvedValue(new Response('{}', { status: 200 }));
     vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 200 })));
   });
 
@@ -51,5 +58,29 @@ describe('DesktopWorkspacePage', () => {
     expect(screen.getByText('desktop app web flag: true')).toBeTruthy();
     expect(Reflect.get(window, 'api')).toBeTruthy();
     expect(Reflect.get(window, 'electron')).toBeTruthy();
+  });
+
+  it('self-heals invalid stored browser device ids before authenticated heartbeat', async () => {
+    const invalidDeviceId = 'x'.repeat(129);
+    window.localStorage.setItem('prompthub-web-device-id', invalidDeviceId);
+
+    render(<DesktopWorkspacePage />);
+
+    await waitFor(() => {
+      expect(fetchWithAuthRetryMock).toHaveBeenCalledWith(
+        '/api/devices/heartbeat',
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+
+    const heartbeatInit = fetchWithAuthRetryMock.mock.calls[0]?.[1] as RequestInit;
+    const heartbeatBody = JSON.parse(String(heartbeatInit.body)) as { id: string };
+
+    expect(heartbeatBody.id).not.toBe(invalidDeviceId);
+    expect(heartbeatBody.id.trim()).toBe(heartbeatBody.id);
+    expect(heartbeatBody.id.length).toBeGreaterThan(0);
+    expect(heartbeatBody.id.length).toBeLessThanOrEqual(128);
+    expect(window.localStorage.getItem('prompthub-web-device-id')).toBe(heartbeatBody.id);
+    expect(fetch).not.toHaveBeenCalledWith('/api/devices/heartbeat', expect.anything());
   });
 });
