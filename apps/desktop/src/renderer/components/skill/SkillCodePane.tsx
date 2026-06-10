@@ -2,6 +2,7 @@ import { CheckIcon, CopyIcon, ChevronRightIcon } from "lucide-react";
 import type { TFunction } from "i18next";
 import type { Skill } from "@prompthub/shared/types";
 import { getProtocolDisplayLabel, getSkillSourceMeta } from "./detail-utils";
+import { useToast } from "../ui/Toast";
 
 interface SkillCodePaneProps {
   copyStatus: Record<string, boolean>;
@@ -18,7 +19,48 @@ export function SkillCodePane({
   skillContent,
   t,
 }: SkillCodePaneProps) {
+  const { showToast } = useToast();
   const sourceMeta = getSkillSourceMeta(selectedSkill, t);
+  const sourceCardClass =
+    "grid grid-cols-[auto,minmax(0,1fr)] items-center gap-3 rounded-2xl border border-border app-wallpaper-surface px-4 py-3 text-left transition-colors hover:bg-accent";
+  const sourceCardContent = sourceMeta ? (
+    <>
+      <div className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
+        {t("skill.source", "Source")}
+      </div>
+      <div className="min-w-0 grid grid-cols-[auto,minmax(0,1fr)] items-center gap-3">
+        <div className="truncate text-sm font-medium">{sourceMeta.sourceLabel}</div>
+        <div className="whitespace-normal break-words text-xs text-muted-foreground">
+          {sourceMeta.displayValue}
+        </div>
+      </div>
+    </>
+  ) : null;
+  const handleOpenLocalSource = async (path: string) => {
+    try {
+      const result = await window.electron?.openPath?.(path);
+      if (result && !result.success) {
+        showToast(
+          result.error ||
+            t(
+              "skill.openLocalSourceFailed",
+              "Failed to open local Skill folder",
+            ),
+          "error",
+        );
+      }
+    } catch (error) {
+      showToast(
+        error instanceof Error
+          ? error.message
+          : t(
+              "skill.openLocalSourceFailed",
+              "Failed to open local Skill folder",
+            ),
+        "error",
+      );
+    }
+  };
 
   return (
     <div className="w-full max-w-6xl mx-auto space-y-6">
@@ -35,7 +77,7 @@ export function SkillCodePane({
             <div>
               <div className="text-[11px] font-medium text-muted-foreground">{t("skill.protocol")}</div>
               <div className="mt-1 flex items-center gap-1.5 text-sm font-semibold text-primary">
-                <ChevronRightIcon className="w-4 h-4" />
+                <ChevronRightIcon aria-hidden="true" className="w-4 h-4" />
                 {getProtocolDisplayLabel(selectedSkill.protocol_type)}
               </div>
             </div>
@@ -51,29 +93,26 @@ export function SkillCodePane({
         </div>
       </section>
 
-      {sourceMeta ? (
-        <a
-          href={sourceMeta.kind === "local" ? undefined : sourceMeta.value}
-          onClick={(event) => {
-            if (sourceMeta.kind === "local") {
-              event.preventDefault();
-              window.electron?.openPath?.(sourceMeta.value);
-            }
+      {sourceMeta?.kind === "local" ? (
+        <button
+          type="button"
+          onClick={() => {
+            void handleOpenLocalSource(sourceMeta.value);
           }}
-          target={sourceMeta.kind === "local" ? undefined : "_blank"}
-          rel={sourceMeta.kind === "local" ? undefined : "noreferrer"}
-          className="grid grid-cols-[auto,minmax(0,1fr)] items-center gap-3 rounded-2xl border border-border app-wallpaper-surface px-4 py-3 text-left transition-colors hover:bg-accent"
+          className={sourceCardClass}
           title={sourceMeta.displayValue}
         >
-          <div className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
-            {t("skill.source", "Source")}
-          </div>
-          <div className="min-w-0 grid grid-cols-[auto,minmax(0,1fr)] items-center gap-3">
-            <div className="truncate text-sm font-medium">{sourceMeta.sourceLabel}</div>
-            <div className="whitespace-normal break-words text-xs text-muted-foreground">
-              {sourceMeta.displayValue}
-            </div>
-          </div>
+          {sourceCardContent}
+        </button>
+      ) : sourceMeta ? (
+        <a
+          href={sourceMeta.value}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={sourceCardClass}
+          title={sourceMeta.displayValue}
+        >
+          {sourceCardContent}
         </a>
       ) : null}
 
@@ -84,13 +123,17 @@ export function SkillCodePane({
           </h3>
           {skillContent.trim() && (
             <button
+              type="button"
               onClick={() => handleCopy(skillContent, "raw")}
               className="p-1 px-3 bg-accent/50 hover:bg-accent rounded-lg text-xs flex items-center gap-1.5 transition-colors"
             >
               {copyStatus.raw ? (
-                <CheckIcon className="w-3.5 h-3.5 text-green-500" />
+                <CheckIcon
+                  aria-hidden="true"
+                  className="w-3.5 h-3.5 text-green-500"
+                />
               ) : (
-                <CopyIcon className="w-3.5 h-3.5" />
+                <CopyIcon aria-hidden="true" className="w-3.5 h-3.5" />
               )}
               {copyStatus.raw ? t("skill.copied") : t("skill.copyMd")}
             </button>
