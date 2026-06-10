@@ -1,6 +1,6 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CreatePromptModal } from "../../../src/renderer/components/prompt/CreatePromptModal";
 import { EditPromptModal } from "../../../src/renderer/components/prompt/EditPromptModal";
@@ -29,6 +29,47 @@ const basePrompt: Prompt = {
   createdAt: new Date("2026-05-01T00:00:00.000Z").toISOString(),
   updatedAt: new Date("2026-05-01T00:00:00.000Z").toISOString(),
 };
+
+function createDeferredAiResponse() {
+  let resolve!: (response: {
+    ok: boolean;
+    status: number;
+    statusText: string;
+    body: string;
+    headers: Record<string, string>;
+  }) => void;
+  const promise = new Promise<{
+    ok: boolean;
+    status: number;
+    statusText: string;
+    body: string;
+    headers: Record<string, string>;
+  }>((innerResolve) => {
+    resolve = innerResolve;
+  });
+  return { promise, resolve };
+}
+
+function buildAiJsonResponse(content: unknown) {
+  return {
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    body: JSON.stringify({
+      choices: [
+        {
+          index: 0,
+          message: {
+            role: "assistant",
+            content: JSON.stringify(content),
+          },
+          finish_reason: "stop",
+        },
+      ],
+    }),
+    headers: { "content-type": "application/json" },
+  };
+}
 
 describe("Prompt modal structure", () => {
   beforeEach(() => {
@@ -85,6 +126,11 @@ describe("Prompt modal structure", () => {
     } as Partial<ReturnType<typeof useSettingsStore.getState>>);
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
   it(
     "keeps create modal first screen focused on type and prompt content",
     async () => {
@@ -125,6 +171,56 @@ describe("Prompt modal structure", () => {
     },
     10000,
   );
+
+  it("clears discarded create modal drafts before reopening", async () => {
+    const user = userEvent.setup();
+    const handleClose = vi.fn();
+
+    const { rerender } = await renderWithI18n(
+      <ToastProvider>
+        <CreatePromptModal
+          isOpen
+          onClose={handleClose}
+          onCreate={vi.fn()}
+        />
+      </ToastProvider>,
+      { language: "en" },
+    );
+
+    await user.type(screen.getByPlaceholderText("Name your Prompt"), "Discarded draft");
+    await user.type(
+      screen.getByPlaceholderText(/Enter your Prompt content/),
+      "This draft should not survive reopening.",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+
+    expect(handleClose).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <ToastProvider>
+        <CreatePromptModal
+          isOpen={false}
+          onClose={handleClose}
+          onCreate={vi.fn()}
+        />
+      </ToastProvider>,
+    );
+    rerender(
+      <ToastProvider>
+        <CreatePromptModal
+          isOpen
+          onClose={handleClose}
+          onCreate={vi.fn()}
+        />
+      </ToastProvider>,
+    );
+
+    expect(screen.queryByDisplayValue("Discarded draft")).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue("This draft should not survive reopening.")).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Name your Prompt")).toHaveValue("");
+  });
 
   it("keeps text prompt reference media inside more settings when editing", async () => {
     const user = userEvent.setup();
@@ -247,6 +343,208 @@ describe("Prompt modal structure", () => {
       "Restored the draft from before the AI rewrite",
     );
     expect(toast).toBeInTheDocument();
+  }, 60000);
+
+  it("ignores stale AI rewrite results after close and reopen", async () => {
+    const user = userEvent.setup();
+    let resolveRequest: (response: {
+      ok: boolean;
+      status: number;
+      statusText: string;
+      body: string;
+      headers: Record<string, string>;
+    }) => void = () => undefined;
+    window.api.ai.request.mockReturnValue(
+      new Promise((resolve) => {
+        resolveRequest = resolve;
+      }),
+    );
+
+    const handleClose = vi.fn();
+    const { rerender } = await renderWithI18n(
+      <ToastProvider>
+        <EditPromptModal isOpen onClose={handleClose} prompt={basePrompt} />
+      </ToastProvider>,
+      { language: "en" },
+    );
+
+    const rewriteInstruction = screen.getByPlaceholderText(
+      "Example: keep the original intent, but make the output more suitable for Claude and add clearer steps plus a final output format.",
+    );
+    await user.click(rewriteInstruction);
+    await user.paste("Make the output easier to scan.");
+    await user.click(screen.getByRole("button", { name: "Generate rewrite" }));
+
+    await waitFor(() => {
+      expect(window.api.ai.request).toHaveBeenCalledTimes(1);
+    });
+
+    rerender(
+      <ToastProvider>
+        <EditPromptModal isOpen={false} onClose={handleClose} prompt={basePrompt} />
+      </ToastProvider>,
+    );
+    rerender(
+      <ToastProvider>
+        <EditPromptModal isOpen onClose={handleClose} prompt={basePrompt} />
+      </ToastProvider>,
+    );
+
+    await act(async () => {
+      resolveRequest({
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        body: JSON.stringify({
+          choices: [
+            {
+              index: 0,
+              message: {
+                role: "assistant",
+                content: JSON.stringify({
+                  summary: "Stale rewrite summary",
+                  description: "Stale description",
+                  userPrompt: "Stale rewritten prompt.",
+                  notes: "Stale notes.",
+                }),
+              },
+              finish_reason: "stop",
+            },
+          ],
+        }),
+        headers: { "content-type": "application/json" },
+      });
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByText("Stale rewrite summary")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("AI draft ready. Review it before saving."),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue("Stale description")).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue("Stale rewritten prompt.")).not.toBeInTheDocument();
+    expect(screen.getByDisplayValue(basePrompt.description ?? "")).toBeInTheDocument();
+    expect(screen.getByDisplayValue(basePrompt.userPrompt)).toBeInTheDocument();
+  }, 10000);
+
+  it("ignores stale translate-to-English results after close and reopen", async () => {
+    const user = userEvent.setup();
+    const translationResponse = createDeferredAiResponse();
+    window.api.ai.request.mockReturnValue(translationResponse.promise);
+    const chinesePrompt: Prompt = {
+      ...basePrompt,
+      id: "prompt-translate-to-english",
+      systemPrompt: "你是一个严谨的助手。",
+      userPrompt: "请整理最终答案。",
+      systemPromptEn: "",
+      userPromptEn: "",
+    };
+
+    const { rerender } = await renderWithI18n(
+      <ToastProvider>
+        <EditPromptModal isOpen onClose={vi.fn()} prompt={chinesePrompt} />
+      </ToastProvider>,
+      { language: "zh" },
+    );
+
+    const translateToEnglishButton = screen.getByRole("button", {
+      name: "翻译为英文",
+    });
+    expect(translateToEnglishButton).toHaveAttribute(
+      "aria-label",
+      "翻译为英文",
+    );
+    await user.click(translateToEnglishButton);
+
+    await waitFor(() => {
+      expect(window.api.ai.request).toHaveBeenCalledTimes(1);
+    });
+
+    rerender(
+      <ToastProvider>
+        <EditPromptModal isOpen={false} onClose={vi.fn()} prompt={chinesePrompt} />
+      </ToastProvider>,
+    );
+    rerender(
+      <ToastProvider>
+        <EditPromptModal isOpen onClose={vi.fn()} prompt={chinesePrompt} />
+      </ToastProvider>,
+    );
+
+    await act(async () => {
+      translationResponse.resolve(
+        buildAiJsonResponse({
+          systemPromptEn: "Stale English system prompt.",
+          userPromptEn: "Stale English user prompt.",
+        }),
+      );
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByDisplayValue("Stale English system prompt.")).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue("Stale English user prompt.")).not.toBeInTheDocument();
+    expect(screen.queryByText("已生成英文版 Prompt")).not.toBeInTheDocument();
+  }, 10000);
+
+  it("ignores stale translate-from-English results after close and reopen", async () => {
+    const user = userEvent.setup();
+    const translationResponse = createDeferredAiResponse();
+    window.api.ai.request.mockReturnValue(translationResponse.promise);
+    const bilingualPrompt: Prompt = {
+      ...basePrompt,
+      id: "prompt-translate-from-english",
+      systemPrompt: "原始系统提示词。",
+      userPrompt: "原始用户提示词。",
+      systemPromptEn: "You are a careful assistant.",
+      userPromptEn: "Draft the final answer.",
+    };
+
+    const { rerender } = await renderWithI18n(
+      <ToastProvider>
+        <EditPromptModal isOpen onClose={vi.fn()} prompt={bilingualPrompt} />
+      </ToastProvider>,
+      { language: "zh" },
+    );
+
+    const translateFromEnglishButton = screen.getByRole("button", {
+      name: "从英文翻译",
+    });
+    expect(translateFromEnglishButton).toHaveAttribute(
+      "aria-label",
+      "从英文翻译",
+    );
+    await user.click(translateFromEnglishButton);
+
+    await waitFor(() => {
+      expect(window.api.ai.request).toHaveBeenCalledTimes(1);
+    });
+
+    rerender(
+      <ToastProvider>
+        <EditPromptModal isOpen={false} onClose={vi.fn()} prompt={bilingualPrompt} />
+      </ToastProvider>,
+    );
+    rerender(
+      <ToastProvider>
+        <EditPromptModal isOpen onClose={vi.fn()} prompt={bilingualPrompt} />
+      </ToastProvider>,
+    );
+
+    await act(async () => {
+      translationResponse.resolve(
+        buildAiJsonResponse({
+          systemPrompt: "过期系统提示词。",
+          userPrompt: "过期用户提示词。",
+        }),
+      );
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByDisplayValue("过期系统提示词。")).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue("过期用户提示词。")).not.toBeInTheDocument();
+    expect(screen.queryByText("已生成当前语言版本")).not.toBeInTheDocument();
+    expect(screen.getByDisplayValue("原始系统提示词。")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("原始用户提示词。")).toBeInTheDocument();
   }, 10000);
 
   it("shows an error toast when rewrite is requested without instructions", async () => {
@@ -311,5 +609,61 @@ describe("Prompt modal structure", () => {
     expect(
       await screen.findByText("AI rewrite did not return valid JSON"),
     ).toBeInTheDocument();
+  });
+
+  it("clears create modal source suggestion blur timer when unmounted", async () => {
+    const { unmount } = await renderWithI18n(
+      <ToastProvider>
+        <CreatePromptModal isOpen onClose={vi.fn()} onCreate={vi.fn()} />
+      </ToastProvider>,
+      { language: "en" },
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /More Settings/i }));
+    const sourceInput = screen.getByPlaceholderText(
+      "Where did you find this Prompt? e.g. URL, book, etc.",
+    );
+    vi.useFakeTimers();
+    const setTimeoutSpy = vi.spyOn(window, "setTimeout");
+    const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
+
+    fireEvent.focus(sourceInput);
+    expect(screen.getByText("https://example.com/reference")).toBeInTheDocument();
+
+    fireEvent.blur(sourceInput);
+    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 150);
+
+    clearTimeoutSpy.mockClear();
+    unmount();
+
+    expect(clearTimeoutSpy).toHaveBeenCalledWith(expect.anything());
+  });
+
+  it("clears edit modal source suggestion blur timer when unmounted", async () => {
+    const { unmount } = await renderWithI18n(
+      <ToastProvider>
+        <EditPromptModal isOpen onClose={vi.fn()} prompt={basePrompt} />
+      </ToastProvider>,
+      { language: "en" },
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /More Settings/i }));
+    const sourceInput = screen.getByPlaceholderText(
+      "Where did you find this Prompt? e.g. URL, book, etc.",
+    );
+    vi.useFakeTimers();
+    const setTimeoutSpy = vi.spyOn(window, "setTimeout");
+    const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
+
+    fireEvent.focus(sourceInput);
+    expect(screen.getByText("https://example.com/reference")).toBeInTheDocument();
+
+    fireEvent.blur(sourceInput);
+    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 150);
+
+    clearTimeoutSpy.mockClear();
+    unmount();
+
+    expect(clearTimeoutSpy).toHaveBeenCalledWith(expect.anything());
   });
 });

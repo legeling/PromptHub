@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, useId } from "react";
 import { Modal, Button, Input, Textarea, UnsavedChangesDialog } from "../ui";
 import { Select } from "../ui/Select";
 import {
@@ -62,6 +62,11 @@ export function CreatePromptModal({
 }: CreatePromptModalProps) {
   const { t, i18n } = useTranslation();
   const { showToast } = useToast();
+  const titleInputId = useId();
+  const systemPromptInputId = useId();
+  const systemPromptEnInputId = useId();
+  const userPromptInputId = useId();
+  const userPromptEnInputId = useId();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [promptType, setPromptType] = useState<"text" | "image">(
@@ -83,12 +88,39 @@ export function CreatePromptModal({
   const [userTab, setUserTab] = useState<"edit" | "preview">("edit");
   const [systemTab, setSystemTab] = useState<"edit" | "preview">("edit");
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const sourceSuggestionsCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const folders = useFolderStore((state) => state.folders);
   const prompts = usePromptStore((state) => state.prompts);
   const promptTagCatalog = useSettingsStore((state) => state.promptTagCatalog);
   const sourceHistory = useSettingsStore((state) => state.sourceHistory);
   const addSourceHistory = useSettingsStore((state) => state.addSourceHistory);
+
+  const clearSourceSuggestionsCloseTimer = useCallback(() => {
+    if (sourceSuggestionsCloseTimerRef.current) {
+      clearTimeout(sourceSuggestionsCloseTimerRef.current);
+      sourceSuggestionsCloseTimerRef.current = null;
+    }
+  }, []);
+
+  const handleSourceFocus = useCallback(() => {
+    clearSourceSuggestionsCloseTimer();
+    setShowSourceSuggestions(true);
+  }, [clearSourceSuggestionsCloseTimer]);
+
+  const handleSourceBlur = useCallback(() => {
+    clearSourceSuggestionsCloseTimer();
+    sourceSuggestionsCloseTimerRef.current = setTimeout(() => {
+      setShowSourceSuggestions(false);
+      sourceSuggestionsCloseTimerRef.current = null;
+    }, 150);
+  }, [clearSourceSuggestionsCloseTimer]);
+
+  useEffect(() => {
+    return () => {
+      clearSourceSuggestionsCloseTimer();
+    };
+  }, [clearSourceSuggestionsCloseTimer]);
 
   // 获取所有已存在的标签
   const existingTags = useMemo(
@@ -110,7 +142,11 @@ export function CreatePromptModal({
     handleRemoveVideo,
     handleSelectImage,
     handleSelectVideo,
+    handleMediaDragLeave,
+    handleMediaDragOver,
+    handleMediaDrop,
     handleUrlUpload,
+    isDraggingMedia,
   } = usePromptMediaManager({
     isOpen,
     translate: (key, fallback) => t(key, fallback),
@@ -228,6 +264,35 @@ export function CreatePromptModal({
     }
   }, [hasUnsavedChanges, onClose]);
 
+  const resetForm = useCallback(() => {
+    setTitle("");
+    setDescription("");
+    setPromptType(defaultPromptType || "text");
+    setSystemPrompt("");
+    setSystemPromptEn("");
+    setUserPrompt("");
+    setUserPromptEn("");
+    setTags([]);
+    setTagInput("");
+    setImages([]);
+    setVideos([]);
+    setFolderId(defaultFolderId || "");
+    setSource("");
+    setNotes("");
+    setShowEnglishVersion(false);
+    setShowAttributes(false);
+    setUserTab("edit");
+    setSystemTab("edit");
+    setShowUnsavedDialog(false);
+    clearSourceSuggestionsCloseTimer();
+  }, [
+    clearSourceSuggestionsCloseTimer,
+    defaultFolderId,
+    defaultPromptType,
+    setImages,
+    setVideos,
+  ]);
+
   const handleSubmit = useCallback(() => {
     if (!title.trim() || !userPrompt.trim()) return;
 
@@ -238,23 +303,14 @@ export function CreatePromptModal({
       addSourceHistory(source.trim());
     }
 
-    // 重置表单
-    setTitle("");
-    setDescription("");
-    setPromptType("text");
-    setSystemPrompt("");
-    setSystemPromptEn("");
-    setUserPrompt("");
-    setUserPromptEn("");
-    setTags([]);
-    setImages([]);
-    setVideos([]);
-    setFolderId("");
-    setSource("");
-    setNotes("");
-    setShowEnglishVersion(false);
+    resetForm();
     onClose();
-  }, [formState, onCreate, addSourceHistory, onClose, setImages, setVideos]);
+  }, [addSourceHistory, formState, onClose, onCreate, resetForm, source]);
+
+  const handleDiscardChanges = useCallback(() => {
+    resetForm();
+    onClose();
+  }, [onClose, resetForm]);
 
   const handleAddTag = () => {
     const tag = tagInput.trim();
@@ -303,7 +359,16 @@ export function CreatePromptModal({
   }, [isOpen, handleSubmit, isNativeFullscreen, exitNativeFullscreen]);
 
   const renderReferenceMediaSection = () => (
-    <div className="space-y-2">
+    <div
+      className={`space-y-2 rounded-xl border border-dashed p-3 transition-colors ${
+        isDraggingMedia
+          ? "border-primary bg-primary/5"
+          : "border-transparent"
+      }`}
+      onDragOver={handleMediaDragOver}
+      onDragLeave={handleMediaDragLeave}
+      onDrop={handleMediaDrop}
+    >
       <label className="block text-sm font-medium text-foreground">
         {t("prompt.referenceMedia")}
       </label>
@@ -319,10 +384,14 @@ export function CreatePromptModal({
               className="w-full h-full object-cover"
             />
             <button
+              type="button"
+              aria-label={t("prompt.removeReferenceImage", {
+                index: index + 1,
+              })}
               onClick={() => handleRemoveImage(index)}
               className="absolute top-1 right-1 p-1 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
             >
-              <XIcon className="w-3 h-3" />
+              <XIcon className="w-3 h-3" aria-hidden="true" />
             </button>
           </div>
         ))}
@@ -336,30 +405,37 @@ export function CreatePromptModal({
               className="w-full h-full object-cover opacity-70"
             />
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <PlayIcon className="w-6 h-6 text-white/80" />
+              <PlayIcon className="w-6 h-6 text-white/80" aria-hidden="true" />
             </div>
             <button
+              type="button"
+              aria-label={t("prompt.removeReferenceVideo", {
+                defaultValue: "Remove reference video {{index}}",
+                index: index + 1,
+              })}
               onClick={() => handleRemoveVideo(index)}
               className="absolute top-1 right-1 p-1 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
             >
-              <XIcon className="w-3 h-3" />
+              <XIcon className="w-3 h-3" aria-hidden="true" />
             </button>
           </div>
         ))}
         <button
+          type="button"
           onClick={handleSelectImage}
           className="w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 flex flex-col items-center justify-center text-muted-foreground hover:text-primary transition-colors text-center p-2"
         >
-          <ImageIcon className="w-6 h-6 mb-1" />
+          <ImageIcon className="w-6 h-6 mb-1" aria-hidden="true" />
           <span className="text-[10px] leading-tight">
             {t("prompt.uploadImage", "Upload/Add Link")}
           </span>
         </button>
         <button
+          type="button"
           onClick={handleSelectVideo}
           className="w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 flex flex-col items-center justify-center text-muted-foreground hover:text-primary transition-colors text-center p-2"
         >
-          <VideoIcon className="w-6 h-6 mb-1" />
+          <VideoIcon className="w-6 h-6 mb-1" aria-hidden="true" />
           <span className="text-[10px] leading-tight">
             {t("prompt.uploadVideo", "Upload Video")}
           </span>
@@ -370,6 +446,7 @@ export function CreatePromptModal({
       </p>
       {!showUrlInput ? (
         <button
+          type="button"
           onClick={() => setShowUrlInput(true)}
           className="text-xs text-primary hover:underline"
         >
@@ -396,6 +473,7 @@ export function CreatePromptModal({
             }}
           />
           <button
+            type="button"
             onClick={() => {
               if (imageUrl && !isDownloadingImage) {
                 handleUrlUpload(imageUrl);
@@ -411,6 +489,7 @@ export function CreatePromptModal({
               : t("common.confirm", "Confirm")}
           </button>
           <button
+            type="button"
             onClick={() => {
               setShowUrlInput(false);
               setImageUrl("");
@@ -438,10 +517,11 @@ export function CreatePromptModal({
           </div>
           <div className="flex items-center gap-3">
             <button
+              type="button"
               onClick={exitNativeFullscreen}
               className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-muted text-sm font-medium transition-colors"
             >
-              <Minimize2Icon className="w-4 h-4" />
+              <Minimize2Icon className="w-4 h-4" aria-hidden="true" />
               {t("common.exitFullscreen", "Exit Fullscreen")}
             </button>
             <Button variant="primary" onClick={exitNativeFullscreen}>
@@ -472,7 +552,13 @@ export function CreatePromptModal({
         headerActions={
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={() => setIsFullscreen(!isFullscreen)}
+              aria-label={
+                isFullscreen
+                  ? t("prompt.exitFullscreen", "Exit Fullscreen")
+                  : t("prompt.fullscreen", "Fullscreen")
+              }
               className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               title={
                 isFullscreen
@@ -481,9 +567,9 @@ export function CreatePromptModal({
               }
             >
               {isFullscreen ? (
-                <Minimize2Icon className="w-4 h-4" />
+                <Minimize2Icon className="w-4 h-4" aria-hidden="true" />
               ) : (
-                <Maximize2Icon className="w-4 h-4" />
+                <Maximize2Icon className="w-4 h-4" aria-hidden="true" />
               )}
             </button>
             <Button
@@ -492,7 +578,7 @@ export function CreatePromptModal({
               onClick={handleSubmit}
               disabled={!title.trim() || !userPrompt.trim()}
             >
-              <SaveIcon className="w-4 h-4" />
+              <SaveIcon className="w-4 h-4" aria-hidden="true" />
               {t("prompt.create")}
             </Button>
           </div>
@@ -501,11 +587,15 @@ export function CreatePromptModal({
         <div className="space-y-5">
           {/* 标题 */}
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-foreground">
+            <label
+              htmlFor={titleInputId}
+              className="block text-sm font-medium text-foreground"
+            >
               {t("prompt.titleLabel")}
               <span className="ml-1 text-destructive">*</span>
             </label>
             <input
+              id={titleInputId}
               type="text"
               placeholder={t("prompt.titlePlaceholder")}
               value={title}
@@ -522,6 +612,8 @@ export function CreatePromptModal({
               {(["text", "image"] as const).map((type) => (
                 <button
                   key={type}
+                  type="button"
+                  aria-pressed={promptType === type}
                   onClick={() => setPromptType(type)}
                   className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                     promptType === type
@@ -530,9 +622,14 @@ export function CreatePromptModal({
                   }`}
                 >
                   {type === "text" && (
-                    <MessageSquareTextIcon className="w-4 h-4" />
+                    <MessageSquareTextIcon
+                      className="w-4 h-4"
+                      aria-hidden="true"
+                    />
                   )}
-                  {type === "image" && <ImageIcon className="w-4 h-4" />}
+                  {type === "image" && (
+                    <ImageIcon className="w-4 h-4" aria-hidden="true" />
+                  )}
                   {type === "text" && t("prompt.typeText", "Text")}
                   {type === "image" && t("prompt.typeImage", "Image")}
                 </button>
@@ -543,13 +640,21 @@ export function CreatePromptModal({
           {/* 可折叠的更多设置面板 */}
           <div className="border border-border/50 rounded-xl bg-muted/20 overflow-hidden">
             <button
+              type="button"
+              aria-expanded={showAttributes}
               onClick={() => setShowAttributes(!showAttributes)}
               className="flex items-center gap-2 px-4 py-3 w-full text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
             >
               {showAttributes ? (
-                <ChevronDownIcon className="w-4 h-4 text-muted-foreground" />
+                <ChevronDownIcon
+                  className="w-4 h-4 text-muted-foreground"
+                  aria-hidden="true"
+                />
               ) : (
-                <ChevronRightIcon className="w-4 h-4 text-muted-foreground" />
+                <ChevronRightIcon
+                  className="w-4 h-4 text-muted-foreground"
+                  aria-hidden="true"
+                />
                 )}
               <span>{t("prompt.moreSettings", "More Settings")}</span>
               {!showAttributes && (
@@ -608,13 +713,18 @@ export function CreatePromptModal({
 
                 {!i18n.language.startsWith("en") && (
                   <div className="flex items-center justify-between p-3 rounded-xl bg-accent/30 border border-border">
-                    <div className="flex items-center gap-2">
-                      <GlobeIcon className="w-4 h-4 text-primary" />
+                  <div className="flex items-center gap-2">
+                      <GlobeIcon
+                        className="w-4 h-4 text-primary"
+                        aria-hidden="true"
+                      />
                       <div className="text-sm font-medium">
                         {t("prompt.bilingualHint")}
                       </div>
                     </div>
                     <button
+                      type="button"
+                      aria-pressed={showEnglishVersion}
                       onClick={() => setShowEnglishVersion(!showEnglishVersion)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                         showEnglishVersion
@@ -624,12 +734,15 @@ export function CreatePromptModal({
                     >
                       {showEnglishVersion ? (
                         <>
-                          <XIcon className="w-3.5 h-3.5" />
+                          <XIcon className="w-3.5 h-3.5" aria-hidden="true" />
                           {t("prompt.removeEnglishVersion")}
                         </>
                       ) : (
                         <>
-                          <PlusIcon className="w-3.5 h-3.5" />
+                          <PlusIcon
+                            className="w-3.5 h-3.5"
+                            aria-hidden="true"
+                          />
                           {t("prompt.addEnglishVersion")}
                         </>
                       )}
@@ -639,12 +752,17 @@ export function CreatePromptModal({
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="block text-sm font-medium text-foreground">
+                    <label
+                      htmlFor={systemPromptInputId}
+                      className="block text-sm font-medium text-foreground"
+                    >
                       {t("prompt.systemPromptOptional")}
                     </label>
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/50 p-1">
                         <button
+                          type="button"
+                          aria-pressed={systemTab === "edit"}
                           onClick={() => setSystemTab("edit")}
                           className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
                             systemTab === "edit"
@@ -655,6 +773,8 @@ export function CreatePromptModal({
                           {t("prompt.edit", "Edit")}
                         </button>
                         <button
+                          type="button"
+                          aria-pressed={systemTab === "preview"}
                           onClick={() => setSystemTab("preview")}
                           className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
                             systemTab === "preview"
@@ -666,16 +786,19 @@ export function CreatePromptModal({
                         </button>
                       </div>
                       <button
+                        type="button"
+                        aria-label={t("prompt.fullscreen", "Fullscreen Edit")}
                         onClick={() => enterNativeFullscreen("system")}
                         className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors border border-border"
                         title={t("prompt.fullscreen", "Fullscreen Edit")}
                       >
-                        <Maximize2Icon className="w-4 h-4" />
+                        <Maximize2Icon className="w-4 h-4" aria-hidden="true" />
                       </button>
                     </div>
                   </div>
                   {systemTab === "edit" ? (
                     <Textarea
+                      id={systemPromptInputId}
                       placeholder={t("prompt.systemPromptPlaceholder")}
                       value={systemPrompt}
                       onChange={(e) => setSystemPrompt(e.target.value)}
@@ -693,21 +816,30 @@ export function CreatePromptModal({
                   {showEnglishVersion && (
                     <div className="mt-2 pl-4 border-l-2 border-primary/20 space-y-2">
                       <div className="flex items-center gap-2">
-                        <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                        <label
+                          htmlFor={systemPromptEnInputId}
+                          className="text-xs font-medium text-muted-foreground flex items-center gap-1.5"
+                        >
                           <span className="bg-primary/10 text-primary px-1 rounded text-[10px]">
                             EN
                           </span>
                           {t("prompt.systemPromptEn")}
                         </label>
                         <button
+                          type="button"
+                          aria-label={t("prompt.fullscreen")}
                           onClick={() => enterNativeFullscreen("systemEn")}
                           className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                           title={t("prompt.fullscreen")}
                         >
-                          <Maximize2Icon className="w-3 h-3" />
+                          <Maximize2Icon
+                            className="w-3 h-3"
+                            aria-hidden="true"
+                          />
                         </button>
                       </div>
                       <Textarea
+                        id={systemPromptEnInputId}
                         placeholder={t("prompt.enterEnglishSystemPrompt")}
                         value={systemPromptEn}
                         onChange={(e) => setSystemPromptEn(e.target.value)}
@@ -730,13 +862,15 @@ export function CreatePromptModal({
                         key={tag}
                         className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-primary text-white"
                       >
-                        <HashIcon className="w-3 h-3" />
+                        <HashIcon className="w-3 h-3" aria-hidden="true" />
                         {tag}
                         <button
+                          type="button"
+                          aria-label={t("prompt.removeTag", { tag })}
                           onClick={() => handleRemoveTag(tag)}
                           className="ml-1 hover:text-white/70"
                         >
-                          <XIcon className="w-3 h-3" />
+                          <XIcon className="w-3 h-3" aria-hidden="true" />
                         </button>
                       </span>
                     ))}
@@ -756,7 +890,7 @@ export function CreatePromptModal({
                               onClick={() => setTags([...tags, tag])}
                               className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-muted hover:bg-accent transition-colors"
                             >
-                              <HashIcon className="w-3 h-3" />
+                              <HashIcon className="w-3 h-3" aria-hidden="true" />
                               {tag}
                             </button>
                           ))}
@@ -796,10 +930,8 @@ export function CreatePromptModal({
                       }
                       value={source}
                       onChange={(e) => setSource(e.target.value)}
-                      onFocus={() => setShowSourceSuggestions(true)}
-                      onBlur={() =>
-                        setTimeout(() => setShowSourceSuggestions(false), 150)
-                      }
+                      onFocus={handleSourceFocus}
+                      onBlur={handleSourceBlur}
                       className="w-full h-10 px-4 rounded-xl bg-muted/50 border-0 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:bg-background transition-all duration-base"
                     />
                     {showSourceSuggestions && sourceHistory.length > 0 && (
@@ -852,7 +984,10 @@ export function CreatePromptModal({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <label className="block text-sm font-medium text-foreground">
+                <label
+                  htmlFor={userPromptInputId}
+                  className="block text-sm font-medium text-foreground"
+                >
                   {t("prompt.userPromptLabel")}
                   <span className="ml-2 text-xs text-destructive">*</span>
                 </label>
@@ -863,6 +998,8 @@ export function CreatePromptModal({
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/50 p-1">
                   <button
+                    type="button"
+                    aria-pressed={userTab === "edit"}
                     onClick={() => setUserTab("edit")}
                     className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
                       userTab === "edit"
@@ -873,6 +1010,8 @@ export function CreatePromptModal({
                     {t("prompt.edit", "Edit")}
                   </button>
                   <button
+                    type="button"
+                    aria-pressed={userTab === "preview"}
                     onClick={() => setUserTab("preview")}
                     className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
                       userTab === "preview"
@@ -884,16 +1023,19 @@ export function CreatePromptModal({
                   </button>
                 </div>
                 <button
+                  type="button"
+                  aria-label={t("prompt.fullscreen", "Fullscreen Edit")}
                   onClick={() => enterNativeFullscreen("user")}
                   className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors border border-border"
                   title={t("prompt.fullscreen", "Fullscreen Edit")}
                 >
-                  <Maximize2Icon className="w-4 h-4" />
+                  <Maximize2Icon className="w-4 h-4" aria-hidden="true" />
                 </button>
               </div>
             </div>
             {userTab === "edit" ? (
               <Textarea
+                id={userPromptInputId}
                 placeholder={t("prompt.userPromptPlaceholder")}
                 value={userPrompt}
                 onChange={(e) => setUserPrompt(e.target.value)}
@@ -911,21 +1053,27 @@ export function CreatePromptModal({
             {showEnglishVersion && (
               <div className="mt-2 pl-4 border-l-2 border-primary/20 space-y-2">
                 <div className="flex items-center gap-2">
-                  <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                  <label
+                    htmlFor={userPromptEnInputId}
+                    className="text-xs font-medium text-muted-foreground flex items-center gap-1.5"
+                  >
                     <span className="bg-primary/10 text-primary px-1 rounded text-[10px]">
                       EN
                     </span>
                     {t("prompt.userPromptEn")}
                   </label>
                   <button
+                    type="button"
+                    aria-label={t("prompt.fullscreen")}
                     onClick={() => enterNativeFullscreen("userEn")}
                     className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                     title={t("prompt.fullscreen")}
                   >
-                    <Maximize2Icon className="w-3 h-3" />
+                    <Maximize2Icon className="w-3 h-3" aria-hidden="true" />
                   </button>
                 </div>
                 <Textarea
+                  id={userPromptEnInputId}
                   placeholder={t("prompt.enterEnglishUserPrompt")}
                   value={userPromptEn}
                   onChange={(e) => setUserPromptEn(e.target.value)}
@@ -945,8 +1093,7 @@ export function CreatePromptModal({
           handleSubmit();
         }}
         onDiscard={() => {
-          setShowUnsavedDialog(false);
-          onClose();
+          handleDiscardChanges();
         }}
       />
     </>

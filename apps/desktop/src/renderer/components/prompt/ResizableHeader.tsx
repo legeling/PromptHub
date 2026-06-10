@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type { ColumnConfig } from '../../hooks/useTableConfig';
 
 interface ResizableHeaderProps {
@@ -18,16 +18,28 @@ export function ResizableHeader({
   const [isHovering, setIsHovering] = useState(false);
   const startXRef = useRef(0);
   const startWidthRef = useRef(0);
+  const cleanupDragRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    return () => {
+      cleanupDragRef.current?.();
+      cleanupDragRef.current = null;
+    };
+  }, []);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (!column.resizable) return;
     
     e.preventDefault();
     e.stopPropagation();
+
+    cleanupDragRef.current?.();
     
     setIsResizing(true);
     startXRef.current = e.clientX;
     startWidthRef.current = column.width;
+    const previousCursor = document.body.style.cursor;
+    const previousUserSelect = document.body.style.userSelect;
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const diff = moveEvent.clientX - startXRef.current;
@@ -35,14 +47,20 @@ export function ResizableHeader({
       onResize(column.id, newWidth);
     };
 
-    const handleMouseUp = () => {
-      setIsResizing(false);
+    const cleanupDrag = () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
+      document.body.style.cursor = previousCursor;
+      document.body.style.userSelect = previousUserSelect;
+      cleanupDragRef.current = null;
     };
 
+    const handleMouseUp = () => {
+      cleanupDrag();
+      setIsResizing(false);
+    };
+
+    cleanupDragRef.current = cleanupDrag;
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
     document.body.style.cursor = 'col-resize';

@@ -53,6 +53,10 @@ export function PromptListHeader({ count }: PromptListHeaderProps) {
   // Click outside to close dropdown
   // 点击外部关闭下拉菜单
   useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node) &&
           buttonRef.current && !buttonRef.current.contains(event.target as Node)) {
@@ -61,7 +65,7 @@ export function PromptListHeader({ count }: PromptListHeaderProps) {
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [isOpen]);
 
   // Calculate dropdown position
   const updateMenuPosition = useCallback(() => {
@@ -107,22 +111,30 @@ export function PromptListHeader({ count }: PromptListHeaderProps) {
         <div className="relative">
           <button
             ref={buttonRef}
+            type="button"
             onClick={handleToggleMenu}
+            aria-label={`${t('prompt.sortBy')}: ${currentOption.label}`}
+            aria-haspopup="menu"
+            aria-expanded={isOpen}
             className="flex items-center gap-1 px-2 py-1 text-xs rounded-md hover:bg-accent transition-colors"
           >
             <span className="text-muted-foreground">{currentOption.label}</span>
-            <ChevronDownIcon className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            <ChevronDownIcon aria-hidden="true" className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
           </button>
 
           {isOpen && createPortal(
             <div
               ref={dropdownRef}
+              role="menu"
               className="prompt-list-sort-menu fixed w-32 py-1 rounded-lg bg-popover border border-border shadow-lg z-[9999]"
               style={{ top: menuPosition.top, right: menuPosition.right }}
             >
               {sortOptions.map((option) => (
                 <button
                   key={`${option.sortBy}-${option.sortOrder}`}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={option.sortBy === sortBy && option.sortOrder === sortOrder}
                   onClick={() => handleSelectSort(option)}
                   className={`w-full px-3 py-1.5 text-left text-xs hover:bg-accent transition-colors ${option.sortBy === sortBy && option.sortOrder === sortOrder
                     ? 'text-primary font-medium'
@@ -142,23 +154,32 @@ export function PromptListHeader({ count }: PromptListHeaderProps) {
         {viewMode === 'gallery' && (
           <div className="flex items-center border border-border rounded-md overflow-hidden mr-2">
             <button
+              type="button"
               onClick={() => setGalleryImageSize('small')}
+              aria-label={t('prompt.sizeSmall', 'Small thumbnails')}
+              aria-pressed={galleryImageSize === 'small'}
               className={`px-2 py-1 text-xs transition-colors ${galleryImageSize === 'small' ? 'bg-primary text-white' : 'hover:bg-accent text-muted-foreground'}`}
-              title={t('prompt.sizeSmall', '小图')}
+              title={t('prompt.sizeSmall', 'Small thumbnails')}
             >
               S
             </button>
             <button
+              type="button"
               onClick={() => setGalleryImageSize('medium')}
+              aria-label={t('prompt.sizeMedium', 'Medium thumbnails')}
+              aria-pressed={galleryImageSize === 'medium'}
               className={`px-2 py-1 text-xs transition-colors ${galleryImageSize === 'medium' ? 'bg-primary text-white' : 'hover:bg-accent text-muted-foreground'}`}
-              title={t('prompt.sizeMedium', '中图')}
+              title={t('prompt.sizeMedium', 'Medium thumbnails')}
             >
               M
             </button>
             <button
+              type="button"
               onClick={() => setGalleryImageSize('large')}
+              aria-label={t('prompt.sizeLarge', 'Large thumbnails')}
+              aria-pressed={galleryImageSize === 'large'}
               className={`px-2 py-1 text-xs transition-colors ${galleryImageSize === 'large' ? 'bg-primary text-white' : 'hover:bg-accent text-muted-foreground'}`}
-              title={t('prompt.sizeLarge', '大图')}
+              title={t('prompt.sizeLarge', 'Large thumbnails')}
             >
               L
             </button>
@@ -170,21 +191,30 @@ export function PromptListHeader({ count }: PromptListHeaderProps) {
         {viewMode === 'kanban' && (
           <div className="flex items-center border border-border rounded-md overflow-hidden mr-2">
             <button
+              type="button"
               onClick={() => setKanbanColumns(2)}
+              aria-label={t('prompt.columns2', '2 Columns')}
+              aria-pressed={kanbanColumns === 2}
               className={`px-2 py-1 text-xs transition-colors ${kanbanColumns === 2 ? 'bg-primary text-white' : 'hover:bg-accent text-muted-foreground'}`}
               title={t('prompt.columns2', '2 列')}
             >
               2
             </button>
             <button
+              type="button"
               onClick={() => setKanbanColumns(3)}
+              aria-label={t('prompt.columns3', '3 Columns')}
+              aria-pressed={kanbanColumns === 3}
               className={`px-2 py-1 text-xs transition-colors ${kanbanColumns === 3 ? 'bg-primary text-white' : 'hover:bg-accent text-muted-foreground'}`}
               title={t('prompt.columns3', '3 列')}
             >
               3
             </button>
             <button
+              type="button"
               onClick={() => setKanbanColumns(4)}
+              aria-label={t('prompt.columns4', '4 Columns')}
+              aria-pressed={kanbanColumns === 4}
               className={`px-2 py-1 text-xs transition-colors ${kanbanColumns === 4 ? 'bg-primary text-white' : 'hover:bg-accent text-muted-foreground'}`}
               title={t('prompt.columns4', '4 列')}
             >
@@ -209,44 +239,56 @@ export function PromptListHeader({ count }: PromptListHeaderProps) {
             }}
           />
           <button
+            type="button"
             onClick={() => setViewMode('card')}
+            aria-label={t('prompt.viewCard')}
+            aria-pressed={viewMode === 'card'}
             className={`relative z-10 p-1.5 transition-colors duration-base ${viewMode === 'card'
               ? 'text-white'
               : 'text-muted-foreground hover:text-foreground'
               }`}
             title={t('prompt.viewCard')}
           >
-            <LayoutGridIcon className="w-3.5 h-3.5" />
+            <LayoutGridIcon aria-hidden="true" className="w-3.5 h-3.5" />
           </button>
           <button
+            type="button"
             onClick={() => setViewMode('gallery')}
+            aria-label={t('prompt.viewGallery', 'Gallery View')}
+            aria-pressed={viewMode === 'gallery'}
             className={`relative z-10 p-1.5 transition-colors duration-base ${viewMode === 'gallery'
               ? 'text-white'
               : 'text-muted-foreground hover:text-foreground'
               }`}
             title={t('prompt.viewGallery', '图片视图')}
           >
-            <ImageIcon className="w-3.5 h-3.5" />
+            <ImageIcon aria-hidden="true" className="w-3.5 h-3.5" />
           </button>
           <button
+            type="button"
             onClick={() => setViewMode('kanban')}
+            aria-label={t('prompt.viewKanban', 'Kanban View')}
+            aria-pressed={viewMode === 'kanban'}
             className={`relative z-10 p-1.5 transition-colors duration-base ${viewMode === 'kanban'
               ? 'text-white'
               : 'text-muted-foreground hover:text-foreground'
               }`}
             title={t('prompt.viewKanban', '看板视图')}
           >
-            <KanbanIcon className="w-3.5 h-3.5" />
+            <KanbanIcon aria-hidden="true" className="w-3.5 h-3.5" />
           </button>
           <button
+            type="button"
             onClick={() => setViewMode('list')}
+            aria-label={t('prompt.viewList')}
+            aria-pressed={viewMode === 'list'}
             className={`relative z-10 p-1.5 transition-colors duration-base ${viewMode === 'list'
               ? 'text-white'
               : 'text-muted-foreground hover:text-foreground'
               }`}
             title={t('prompt.viewList')}
           >
-            <ListIcon className="w-3.5 h-3.5" />
+            <ListIcon aria-hidden="true" className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>

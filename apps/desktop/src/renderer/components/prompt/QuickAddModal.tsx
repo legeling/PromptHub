@@ -74,6 +74,10 @@ export function QuickAddModal({
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const focusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMountedRef = useRef(true);
+  const isOpenRef = useRef(isOpen);
+  const modalSessionRef = useRef(0);
 
   const analysisConfig = useMemo(
     () =>
@@ -113,16 +117,52 @@ export function QuickAddModal({
     }
   }, [hasUnsavedChanges, onClose]);
 
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      isOpenRef.current = false;
+      modalSessionRef.current += 1;
+    };
+  }, []);
+
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+    modalSessionRef.current += 1;
+  }, [isOpen]);
+
+  const canApplyAsyncResult = useCallback(
+    (session: number) =>
+      isMountedRef.current &&
+      isOpenRef.current &&
+      modalSessionRef.current === session,
+    [],
+  );
+
   // Reset state when modal opens
   useEffect(() => {
-    if (isOpen) {
-      setPromptText("");
-      setMode(initialMode);
-      setSelectedPromptType(defaultPromptType || "text");
-      setSelectedFolderId(undefined);
-      setIsSubmitting(false);
-      setTimeout(() => textareaRef.current?.focus(), 100);
+    if (!isOpen) {
+      return;
     }
+
+    setPromptText("");
+    setMode(initialMode);
+    setSelectedPromptType(defaultPromptType || "text");
+    setSelectedFolderId(undefined);
+    setIsSubmitting(false);
+    if (focusTimerRef.current) {
+      clearTimeout(focusTimerRef.current);
+    }
+    focusTimerRef.current = setTimeout(() => {
+      textareaRef.current?.focus();
+      focusTimerRef.current = null;
+    }, 100);
+
+    return () => {
+      if (focusTimerRef.current) {
+        clearTimeout(focusTimerRef.current);
+        focusTimerRef.current = null;
+      }
+    };
   }, [defaultPromptType, initialMode, isOpen]);
 
   // Handle create
@@ -164,6 +204,7 @@ export function QuickAddModal({
     }
 
     if (mode === "generate") {
+      const generateSession = modalSessionRef.current;
       try {
         const generationPrompt = buildQuickAddGeneratePrompt(
           promptText,
@@ -177,6 +218,10 @@ export function QuickAddModal({
           { temperature: 0.6 },
         );
 
+        if (!canApplyAsyncResult(generateSession)) {
+          return;
+        }
+
         const generatedDraft = parseQuickAddGeneratedDraft(
           aiResult.content,
           selectedPromptType,
@@ -184,8 +229,15 @@ export function QuickAddModal({
         );
 
         if (!generatedDraft) {
+          if (!canApplyAsyncResult(generateSession)) {
+            return;
+          }
           showToast(t("quickAdd.parseError"), "error");
           setIsSubmitting(false);
+          return;
+        }
+
+        if (!canApplyAsyncResult(generateSession)) {
           return;
         }
 
@@ -199,14 +251,23 @@ export function QuickAddModal({
           tags: generatedDraft.tags,
         });
 
+        if (!canApplyAsyncResult(generateSession)) {
+          return;
+        }
+
         if (createdPrompt) {
           onClose();
         }
       } catch (err) {
+        if (!canApplyAsyncResult(generateSession)) {
+          return;
+        }
         console.error("AI prompt generation failed:", err);
         showToast(t("quickAdd.analysisFailed"), "error");
       } finally {
-        setIsSubmitting(false);
+        if (canApplyAsyncResult(generateSession)) {
+          setIsSubmitting(false);
+        }
       }
 
       return;
@@ -277,6 +338,9 @@ export function QuickAddModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center animate-in fade-in duration-base ease-enter">
       <div
+        data-testid="quick-add-backdrop"
+        role="presentation"
+        aria-hidden="true"
         className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in duration-base ease-enter"
         onClick={handleCloseRequest}
       />
@@ -284,16 +348,18 @@ export function QuickAddModal({
       <div className="relative w-full max-w-2xl max-h-[min(760px,calc(100vh-32px))] mx-4 app-wallpaper-panel-strong rounded-2xl shadow-2xl border border-border overflow-hidden flex flex-col animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-base ease-enter">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div className="flex items-center gap-2">
-            <SparklesIcon className="w-5 h-5 text-primary" />
+            <SparklesIcon className="w-5 h-5 text-primary" aria-hidden="true" />
             <h2 className="text-lg font-semibold">
               {t("quickAdd.title") || "快速添加 Prompt"}
             </h2>
           </div>
           <button
+            type="button"
             onClick={handleCloseRequest}
+            aria-label={t("common.close", "Close")}
             className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           >
-            <XIcon className="w-5 h-5" />
+            <XIcon className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
@@ -381,9 +447,15 @@ export function QuickAddModal({
                       } disabled:cursor-not-allowed disabled:opacity-50`}
                     >
                       {type === "text" ? (
-                        <SparklesIcon className="w-4 h-4 shrink-0" />
+                        <SparklesIcon
+                          className="w-4 h-4 shrink-0"
+                          aria-hidden="true"
+                        />
                       ) : (
-                        <Wand2Icon className="w-4 h-4 shrink-0" />
+                        <Wand2Icon
+                          className="w-4 h-4 shrink-0"
+                          aria-hidden="true"
+                        />
                       )}
                       <span>
                         {type === "text"
@@ -409,7 +481,10 @@ export function QuickAddModal({
                     value: "",
                     label: (
                       <div className="flex items-center gap-2">
-                        <Wand2Icon className="w-4 h-4 shrink-0 text-primary" />
+                        <Wand2Icon
+                          className="w-4 h-4 shrink-0 text-primary"
+                          aria-hidden="true"
+                        />
                         <span>{t("quickAdd.smartFolder") || "AI 智能分类"}</span>
                       </div>
                     ),
@@ -419,7 +494,10 @@ export function QuickAddModal({
                     value: folder.id,
                     label: (
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="shrink-0 flex items-center justify-center w-4 h-4 text-muted-foreground">
+                        <span
+                          className="shrink-0 flex items-center justify-center w-4 h-4 text-muted-foreground"
+                          aria-hidden="true"
+                        >
                           {renderFolderIcon(folder.icon)}
                         </span>
                         <span className="truncate">{folder.name}</span>
@@ -435,17 +513,24 @@ export function QuickAddModal({
 
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border bg-muted/20">
           <button
+            type="button"
             onClick={handleCloseRequest}
             className="px-4 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           >
             {t("common.cancel") || "取消"}
           </button>
           <button
+            type="button"
             onClick={handleCreate}
             disabled={isSubmitting || !promptText.trim()}
             className="flex items-center gap-2 px-6 py-2 rounded-lg bg-primary text-white font-medium hover:bg-primary/90 transition-all disabled:opacity-50 active:scale-press-in shadow-lg shadow-primary/20"
           >
-            {isSubmitting && <Loader2Icon className="w-4 h-4 animate-spin" />}
+            {isSubmitting && (
+              <Loader2Icon
+                className="w-4 h-4 animate-spin"
+                aria-hidden="true"
+              />
+            )}
             {mode === "generate"
                 ? t("quickAdd.generateAndCreate") || "生成并创建"
                 : t("quickAdd.create") || "立即创建"}

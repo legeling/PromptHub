@@ -1,4 +1,4 @@
-import { useState, useCallback, memo, useEffect, useMemo, useRef } from 'react';
+import { useState, useCallback, memo, useEffect, useMemo, useRef, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Prompt } from '@prompthub/shared/types';
 import {
@@ -20,6 +20,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { useFolderStore } from '../../stores/folder.store';
 import { usePromptStore } from '../../stores/prompt.store';
 import { Reveal } from '../ui/motion';
+import { parsePromptVariables } from './prompt-modal-utils';
 
 interface PromptKanbanViewProps {
   prompts: Prompt[];
@@ -38,20 +39,6 @@ interface PromptKanbanViewProps {
 interface PinnedCard {
   promptId: string;
   isExpanded: boolean;
-}
-
-// Extract variables from prompt content
-function extractVariables(text: string): string[] {
-  const regex = /\{\{([^}]+)\}\}/g;
-  const matches: string[] = [];
-  let match;
-  while ((match = regex.exec(text)) !== null) {
-    const varName = match[1].split(':')[0].trim();
-    if (!matches.includes(varName)) {
-      matches.push(varName);
-    }
-  }
-  return matches;
 }
 
 // Kanban Card Component
@@ -85,28 +72,39 @@ const KanbanCard = memo(({
   folderName: string;
 }) => {
   const { t } = useTranslation();
-  
+  const expandLabel = isExpanded ? t('common.collapse', '收起') : t('common.expand', '展开');
+  const pinLabel = t('prompt.pin', '固定');
+  const unpinLabel = t('prompt.unpin', '取消固定');
+  const favoriteLabel = prompt.isFavorite
+    ? t('prompt.removeFromFavorites', 'Remove from Favorites')
+    : t('prompt.addToFavorites', 'Add to Favorites');
+  const copyLabel = t('prompt.copy', '复制');
+  const editLabel = t('prompt.edit', '编辑');
+  const aiTestLabel = t('prompt.aiTest', 'AI 测试');
+  const viewDetailLabel = t('prompt.viewDetail', '查看详情');
+
   const allVariables = [
-    ...extractVariables(prompt.systemPrompt || ''),
-    ...extractVariables(prompt.userPrompt),
-  ].filter((v, i, arr) => arr.indexOf(v) === i);
+    ...parsePromptVariables(prompt.systemPrompt || ''),
+    ...parsePromptVariables(prompt.userPrompt),
+  ].map((variable) => variable.name)
+    .filter((v, i, arr) => arr.indexOf(v) === i);
 
   // Fixed heights for alignment:
   // - Pinned expanded: 500px
   // - Pinned normal: 320px (fixed, not max-h, for alignment)
   // - Unpinned: 280px
-  const cardHeightClass = isExpanded 
-    ? 'h-[500px]' 
-    : isPinned 
-      ? 'h-[320px]' 
+  const cardHeightClass = isExpanded
+    ? 'h-[500px]'
+    : isPinned
+      ? 'h-[320px]'
       : 'h-[280px]';
 
   return (
     <div
       className={`
         group relative flex flex-col app-wallpaper-panel rounded-xl border transition-all duration-smooth
-        ${isPinned 
-          ? 'border-primary/50 shadow-lg shadow-primary/10 ring-2 ring-primary/20' 
+        ${isPinned
+          ? 'border-primary/50 shadow-lg shadow-primary/10 ring-2 ring-primary/20'
           : 'border-border hover:border-primary/30 hover:shadow-md'
         }
         ${cardHeightClass} overflow-hidden
@@ -116,14 +114,18 @@ const KanbanCard = memo(({
       <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border/50 app-wallpaper-surface flex-shrink-0">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           {/* Title */}
-          <h3 
-            className="font-semibold text-sm truncate cursor-pointer hover:text-primary transition-colors"
-            onClick={onViewDetail}
-            title={prompt.title}
-          >
-            {prompt.title}
+          <h3 className="min-w-0 text-sm font-semibold">
+            <button
+              type="button"
+              className="min-w-0 max-w-full truncate text-left hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 transition-colors"
+              onClick={onViewDetail}
+              title={prompt.title}
+              aria-label={`${viewDetailLabel}: ${prompt.title}`}
+            >
+              {prompt.title}
+            </button>
           </h3>
-          
+
           {/* Favorite star */}
           {prompt.isFavorite && (
             <StarIcon className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400 flex-shrink-0" />
@@ -135,27 +137,34 @@ const KanbanCard = memo(({
           {isPinned ? (
             <>
               <button
+                type="button"
                 onClick={isExpanded ? onCollapse : onExpand}
                 className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                title={isExpanded ? t('common.collapse', '收起') : t('common.expand', '展开')}
+                title={expandLabel}
+                aria-label={expandLabel}
+                aria-expanded={isExpanded}
               >
-                {isExpanded ? <MinimizeIcon className="w-3.5 h-3.5" /> : <MaximizeIcon className="w-3.5 h-3.5" />}
+                {isExpanded ? <MinimizeIcon aria-hidden="true" className="w-3.5 h-3.5" /> : <MaximizeIcon aria-hidden="true" className="w-3.5 h-3.5" />}
               </button>
               <button
+                type="button"
                 onClick={onUnpin}
                 className="p-1 rounded-md text-primary hover:text-primary/80 hover:bg-primary/10 transition-colors"
-                title={t('prompt.unpin', '取消固定')}
+                title={unpinLabel}
+                aria-label={unpinLabel}
               >
-                <XIcon className="w-3.5 h-3.5" />
+                <XIcon aria-hidden="true" className="w-3.5 h-3.5" />
               </button>
             </>
           ) : (
             <button
+              type="button"
               onClick={onPin}
               className="p-1 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors opacity-0 group-hover:opacity-100"
-              title={t('prompt.pin', '固定')}
+              title={pinLabel}
+              aria-label={pinLabel}
             >
-              <PinIcon className="w-3.5 h-3.5" />
+              <PinIcon aria-hidden="true" className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
@@ -238,36 +247,45 @@ const KanbanCard = memo(({
         {/* Quick actions */}
         <div className="flex items-center gap-1">
           <button
+            type="button"
             onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
             className={`p-1 rounded-md transition-colors ${
-              prompt.isFavorite 
-                ? 'text-yellow-400 hover:bg-yellow-400/10' 
+              prompt.isFavorite
+                ? 'text-yellow-400 hover:bg-yellow-400/10'
                 : 'text-muted-foreground hover:text-foreground hover:bg-accent'
             }`}
-            title={prompt.isFavorite ? t('prompt.unfavorite', '取消收藏') : t('prompt.favorite', '收藏')}
+            title={favoriteLabel}
+            aria-label={favoriteLabel}
+            aria-pressed={prompt.isFavorite}
           >
-            <StarIcon className={`w-3.5 h-3.5 ${prompt.isFavorite ? 'fill-current' : ''}`} />
+            <StarIcon aria-hidden="true" className={`w-3.5 h-3.5 ${prompt.isFavorite ? 'fill-current' : ''}`} />
           </button>
           <button
+            type="button"
             onClick={(e) => { e.stopPropagation(); onCopy(); }}
             className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            title={t('prompt.copy', '复制')}
+            title={copyLabel}
+            aria-label={copyLabel}
           >
-            <CopyIcon className="w-3.5 h-3.5" />
+            <CopyIcon aria-hidden="true" className="w-3.5 h-3.5" />
           </button>
           <button
+            type="button"
             onClick={(e) => { e.stopPropagation(); onEdit(); }}
             className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            title={t('prompt.edit', '编辑')}
+            title={editLabel}
+            aria-label={editLabel}
           >
-            <EditIcon className="w-3.5 h-3.5" />
+            <EditIcon aria-hidden="true" className="w-3.5 h-3.5" />
           </button>
           <button
+            type="button"
             onClick={(e) => { e.stopPropagation(); onAiTest(); }}
             className="p-1 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-            title={t('prompt.aiTest', 'AI 测试')}
+            title={aiTestLabel}
+            aria-label={aiTestLabel}
           >
-            <PlayIcon className="w-3.5 h-3.5" />
+            <PlayIcon aria-hidden="true" className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
@@ -289,10 +307,11 @@ export function PromptKanbanView({
   onContextMenu,
 }: PromptKanbanViewProps) {
   const { t } = useTranslation();
+  const pinnedSectionId = useId();
   const folders = useFolderStore(state => state.folders);
   const kanbanColumns = usePromptStore(state => state.kanbanColumns);
   const uncategorizedLabel = t('folder.uncategorized', '未分类');
-  
+
   // State for pinned cards
   const [pinnedCards, setPinnedCards] = useState<PinnedCard[]>([]);
   // State for collapsing the entire pinned section
@@ -330,13 +349,13 @@ export function PromptKanbanView({
   }, []);
 
   const handleExpand = useCallback((promptId: string) => {
-    setPinnedCards(prev => prev.map(p => 
+    setPinnedCards(prev => prev.map(p =>
       p.promptId === promptId ? { ...p, isExpanded: true } : p
     ));
   }, []);
 
   const handleCollapse = useCallback((promptId: string) => {
-    setPinnedCards(prev => prev.map(p => 
+    setPinnedCards(prev => prev.map(p =>
       p.promptId === promptId ? { ...p, isExpanded: false } : p
     ));
   }, []);
@@ -372,6 +391,10 @@ export function PromptKanbanView({
     () => pinnedCards.some((card) => card.isExpanded),
     [pinnedCards],
   );
+  const pinnedSectionLabel = t('prompt.pinnedPrompts', '固定的 Prompt');
+  const expandAllLabel = t('prompt.expandAll', '全部展开');
+  const collapseAllLabel = t('prompt.collapseAll', '全部收起');
+  const unpinAllLabel = t('prompt.unpinAll', '全部取消固定');
 
   if (prompts.length === 0) {
     return (
@@ -390,46 +413,53 @@ export function PromptKanbanView({
           {/* Header - always visible */}
           <div className="flex items-center justify-between px-4 py-2">
             <button
+              type="button"
               onClick={() => setIsPinnedSectionCollapsed(!isPinnedSectionCollapsed)}
               className="flex items-center gap-2 hover:text-primary transition-colors"
+              aria-expanded={!isPinnedSectionCollapsed}
+              aria-controls={pinnedSectionId}
             >
               {isPinnedSectionCollapsed ? (
-                <ChevronRightIcon className="w-4 h-4 text-muted-foreground" />
+                <ChevronRightIcon aria-hidden="true" className="w-4 h-4 text-muted-foreground" />
               ) : (
-                <ChevronDownIcon className="w-4 h-4 text-muted-foreground" />
+                <ChevronDownIcon aria-hidden="true" className="w-4 h-4 text-muted-foreground" />
               )}
-              <PinIcon className="w-4 h-4 text-primary" />
+              <PinIcon aria-hidden="true" className="w-4 h-4 text-primary" />
               <span className="text-sm font-medium text-foreground">
-                {t('prompt.pinnedPrompts', '固定的 Prompt')} ({pinnedPrompts.length})
+                {pinnedSectionLabel} ({pinnedPrompts.length})
               </span>
             </button>
             {/* Quick actions */}
             <div className="flex items-center gap-1">
               {!isPinnedSectionCollapsed && (
                 <button
+                  type="button"
                   onClick={hasExpandedCards ? handleCollapseAll : handleExpandAll}
                   className="px-2 py-1 text-xs rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                  title={hasExpandedCards ? t('prompt.collapseAll', '全部收起') : t('prompt.expandAll', '全部展开')}
+                  title={hasExpandedCards ? collapseAllLabel : expandAllLabel}
+                  aria-label={hasExpandedCards ? collapseAllLabel : expandAllLabel}
                 >
                   {hasExpandedCards ? (
-                    <><MinimizeIcon className="w-3 h-3 inline mr-1" />{t('prompt.collapseAll', '全部收起')}</>
+                    <><MinimizeIcon aria-hidden="true" className="w-3 h-3 inline mr-1" />{collapseAllLabel}</>
                   ) : (
-                    <><MaximizeIcon className="w-3 h-3 inline mr-1" />{t('prompt.expandAll', '全部展开')}</>
+                    <><MaximizeIcon aria-hidden="true" className="w-3 h-3 inline mr-1" />{expandAllLabel}</>
                   )}
                 </button>
               )}
               <button
+                type="button"
                 onClick={handleUnpinAll}
                 className="px-2 py-1 text-xs rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                title={t('prompt.unpinAll', '全部取消固定')}
+                title={unpinAllLabel}
+                aria-label={unpinAllLabel}
               >
-                <XIcon className="w-3 h-3 inline mr-1" />{t('prompt.unpinAll', '清空')}
+                <XIcon aria-hidden="true" className="w-3 h-3 inline mr-1" />{unpinAllLabel}
               </button>
             </div>
           </div>
           {/* Pinned cards - collapsible */}
           {!isPinnedSectionCollapsed && (
-            <div className="px-4 pb-4">
+            <div id={pinnedSectionId} className="px-4 pb-4">
               <div className={`grid gap-4 ${
                 pinnedPrompts.length === 1 ? 'grid-cols-1' :
                 pinnedPrompts.length === 2 ? 'grid-cols-1 sm:grid-cols-2' :
@@ -544,13 +574,18 @@ function UnpinnedKanbanGrid({
   onContextMenu,
 }: UnpinnedKanbanGridProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const containerWidthRef = useRef(0);
   const [containerWidth, setContainerWidth] = useState(0);
 
   useEffect(() => {
     const node = scrollRef.current;
     if (!node) return;
     const update = () => {
-      setContainerWidth(Math.max(0, node.clientWidth - KANBAN_PADDING_PX * 2));
+      const nextWidth = Math.max(0, node.clientWidth - KANBAN_PADDING_PX * 2);
+      if (containerWidthRef.current !== nextWidth) {
+        containerWidthRef.current = nextWidth;
+        setContainerWidth(nextWidth);
+      }
     };
     update();
     if (typeof ResizeObserver === 'undefined') return;

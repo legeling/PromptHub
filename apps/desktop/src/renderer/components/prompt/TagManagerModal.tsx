@@ -202,8 +202,12 @@ export function TagManagerModal({
     >
       <div className="flex h-[56vh] max-h-[620px] flex-col">
         <div className="relative mb-4 shrink-0">
-          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <SearchIcon
+            aria-hidden="true"
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
+          />
           <Input
+            aria-label={t('prompt.filterByTag', 'Filter by tag')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t('common.search', 'Search...')}
@@ -226,6 +230,7 @@ export function TagManagerModal({
                 </div>
               </div>
               <Select
+                ariaLabel={t('settings.tagFilterMode', 'Tag click mode')}
                 value={tagFilterMode}
                 onChange={(value) => setTagFilterMode(value as 'single' | 'multi')}
                 options={[
@@ -239,6 +244,7 @@ export function TagManagerModal({
             <div className="flex items-start gap-2">
               <div className="min-w-0 flex-1">
                 <Input
+                  aria-label={t('prompt.enterTagHint')}
                   value={newTagValue}
                   onChange={(e) => setNewTagValue(e.target.value)}
                   onKeyDown={(e) => {
@@ -283,6 +289,7 @@ export function TagManagerModal({
                     <div className="flex-1 min-w-0">
                       <Input
                         autoFocus
+                        aria-label={`${t('common.edit', 'Edit')} ${tag}`}
                         value={editValue}
                         onChange={(e) => setEditValue(e.target.value)}
                         onKeyDown={(e) => {

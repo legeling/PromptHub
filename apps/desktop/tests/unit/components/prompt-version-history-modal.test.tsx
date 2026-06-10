@@ -59,6 +59,19 @@ const middleVersion: PromptVersion = {
   createdAt: new Date("2026-04-07T09:30:00.000Z").toISOString(),
 };
 
+function hasHiddenSvgAncestor(element: Element): boolean {
+  let current: Element | null = element;
+
+  while (current) {
+    if (current.getAttribute("aria-hidden") === "true") {
+      return true;
+    }
+    current = current.parentElement;
+  }
+
+  return false;
+}
+
 describe("VersionHistoryModal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -126,7 +139,7 @@ describe("VersionHistoryModal", () => {
     15000,
   );
 
-  it("shows a table view with changed cells and opens a focused field diff", async () => {
+  it("keeps rendered version history actions non-submit with decorative icons", async () => {
     const user = userEvent.setup();
     getPromptVersionsMock.mockResolvedValue([middleVersion, historyVersion]);
 
@@ -135,47 +148,95 @@ describe("VersionHistoryModal", () => {
         <VersionHistoryModal
           isOpen
           onClose={vi.fn()}
-          prompt={{
-            ...prompt,
-            userPrompt: "Do the thing with citations.",
-            lastAiResponse: "Current response",
-          }}
+          prompt={prompt}
           onRestore={vi.fn()}
         />,
         { language: "en" },
       );
     });
 
-    await screen.findByText("Current Version");
-    await user.click(screen.getByRole("button", { name: "Table" }));
+    await user.click(await screen.findByRole("button", { name: /v2/i }));
 
-    expect(screen.getByRole("table", { name: /Version matrix/i })).toBeInTheDocument();
-    expect(screen.getByRole("columnheader", { name: "Version" })).toBeInTheDocument();
-    expect(screen.getByRole("columnheader", { name: "User Prompt" })).toBeInTheDocument();
-    expect(screen.getByRole("row", { name: /v3/i })).toHaveTextContent(
-      "Do the thing with citations.",
-    );
-    expect(screen.getByRole("row", { name: /v2/i })).toHaveTextContent(
-      "Do the older thing.",
-    );
+    const buttons = Array.from(document.body.querySelectorAll("button"));
+    const implicitButtonMarkup = buttons
+      .filter((button) => button.getAttribute("type") !== "button")
+      .map((button) => button.outerHTML);
+    const exposedIconMarkup = buttons
+      .flatMap((button) => Array.from(button.querySelectorAll("svg")))
+      .filter((icon) => !hasHiddenSvgAncestor(icon))
+      .map((icon) => icon.outerHTML);
 
-    const currentUserPromptCell = screen.getByTestId(
-      "version-table-cell-current-userPrompt",
+    expect(implicitButtonMarkup, implicitButtonMarkup.join("\n")).toHaveLength(
+      0,
     );
-    expect(currentUserPromptCell).toHaveAttribute("data-change-state", "changed");
-
-    await user.click(
-      currentUserPromptCell.querySelector("button") as HTMLButtonElement,
-    );
-
-    expect(await screen.findByText("User Prompt diff")).toBeInTheDocument();
-    expect(screen.getAllByText("v2").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("v3").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Do the older thing.").length).toBeGreaterThan(0);
-    expect(
-      screen.getAllByText("Do the thing with citations.").length,
-    ).toBeGreaterThan(0);
+    expect(exposedIconMarkup, exposedIconMarkup.join("\n")).toHaveLength(0);
   });
+
+  it(
+    "shows a table view with changed cells and opens a focused field diff",
+    async () => {
+      const user = userEvent.setup();
+      getPromptVersionsMock.mockResolvedValue([middleVersion, historyVersion]);
+
+      await act(async () => {
+        await renderWithI18n(
+          <VersionHistoryModal
+            isOpen
+            onClose={vi.fn()}
+            prompt={{
+              ...prompt,
+              userPrompt: "Do the thing with citations.",
+              lastAiResponse: "Current response",
+            }}
+            onRestore={vi.fn()}
+          />,
+          { language: "en" },
+        );
+      });
+
+      await screen.findByText("Current Version");
+      await user.click(screen.getByRole("button", { name: "Table" }));
+
+      expect(
+        screen.getByRole("table", { name: /Version matrix/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("columnheader", { name: "Version" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("columnheader", { name: "User Prompt" }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("row", { name: /v3/i })).toHaveTextContent(
+        "Do the thing with citations.",
+      );
+      expect(screen.getByRole("row", { name: /v2/i })).toHaveTextContent(
+        "Do the older thing.",
+      );
+
+      const currentUserPromptCell = screen.getByTestId(
+        "version-table-cell-current-userPrompt",
+      );
+      expect(currentUserPromptCell).toHaveAttribute(
+        "data-change-state",
+        "changed",
+      );
+
+      await user.click(
+        currentUserPromptCell.querySelector("button") as HTMLButtonElement,
+      );
+
+      expect(await screen.findByText("User Prompt diff")).toBeInTheDocument();
+      expect(screen.getAllByText("v2").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("v3").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Do the older thing.").length).toBeGreaterThan(
+        0,
+      );
+      expect(
+        screen.getAllByText("Do the thing with citations.").length,
+      ).toBeGreaterThan(0);
+    },
+    60_000,
+  );
 
   it("derives table variables from each version prompt text when the variable snapshot is empty", async () => {
     const user = userEvent.setup();
@@ -226,5 +287,57 @@ describe("VersionHistoryModal", () => {
       .toHaveTextContent("release_notes");
     expect(screen.getByTestId("version-table-cell-v1-variables"))
       .not.toHaveTextContent("无");
+  });
+
+  it("normalizes default-value variables when deriving version table snapshots", async () => {
+    const user = userEvent.setup();
+    getPromptVersionsMock.mockResolvedValue([
+      {
+        ...historyVersion,
+        id: "version-default-variable",
+        version: 2,
+        userPrompt: "Summarize {{ topic : release notes }} for {{audience:maintainers}}.",
+        variables: [],
+      },
+      {
+        ...historyVersion,
+        id: "version-default-baseline",
+        version: 1,
+        userPrompt: "Summarize without variables.",
+        variables: [],
+      },
+    ]);
+
+    await act(async () => {
+      await renderWithI18n(
+        <VersionHistoryModal
+          isOpen
+          onClose={vi.fn()}
+          prompt={{
+            ...prompt,
+            version: 3,
+            currentVersion: 3,
+            userPrompt: "Summarize {{topic}}.",
+            variables: [],
+          }}
+          onRestore={vi.fn()}
+        />,
+        { language: "en" },
+      );
+    });
+
+    await screen.findByText("Current Version");
+    await user.click(screen.getByRole("button", { name: "Table" }));
+
+    const variableCell = screen.getByTestId("version-table-cell-v2-variables");
+    expect(variableCell).toHaveTextContent("topic");
+    expect(variableCell).toHaveTextContent("audience");
+    expect(variableCell).not.toHaveTextContent("topic : release notes");
+
+    await user.click(variableCell.querySelector("button") as HTMLButtonElement);
+
+    expect(await screen.findByText("Variables diff")).toBeInTheDocument();
+    expect(screen.getByText(/"defaultValue": "release notes"/u)).toBeInTheDocument();
+    expect(screen.getByText(/"defaultValue": "maintainers"/u)).toBeInTheDocument();
   });
 });

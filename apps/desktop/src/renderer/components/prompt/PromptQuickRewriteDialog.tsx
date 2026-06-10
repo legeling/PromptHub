@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LoaderIcon, SparklesIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -70,6 +70,24 @@ export function PromptQuickRewriteDialog({
   const [isRewritingPrompt, setIsRewritingPrompt] = useState(false);
   const [isApplyingDraft, setIsApplyingDraft] = useState(false);
   const [rewriteDraft, setRewriteDraft] = useState<RewriteDraft | null>(null);
+  const isMountedRef = useRef(true);
+  const isOpenRef = useRef(isOpen);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      isOpenRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+  }, [isOpen]);
+
+  const canApplyAsyncResult = useCallback(
+    () => isMountedRef.current && isOpenRef.current,
+    [],
+  );
 
   useEffect(() => {
     if (!isOpen) {
@@ -144,6 +162,10 @@ export function PromptQuickRewriteDialog({
         instruction,
       });
 
+      if (!canApplyAsyncResult()) {
+        return;
+      }
+
       setRewriteDraft({
         description: rewritten.description,
         systemPrompt: rewritten.systemPrompt,
@@ -154,12 +176,17 @@ export function PromptQuickRewriteDialog({
       );
       showToast(t("prompt.aiRewriteDone"), "success");
     } catch (error) {
+      if (!canApplyAsyncResult()) {
+        return;
+      }
       showToast(
         error instanceof Error ? error.message : t("prompt.aiRewriteFailed"),
         "error",
       );
     } finally {
-      setIsRewritingPrompt(false);
+      if (canApplyAsyncResult()) {
+        setIsRewritingPrompt(false);
+      }
     }
   };
 
@@ -202,7 +229,7 @@ export function PromptQuickRewriteDialog({
             <div className="space-y-5">
               <div className="rounded-2xl border border-border bg-muted/20 p-4">
                 <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <SparklesIcon className="h-4 w-4 text-primary" />
+                  <SparklesIcon aria-hidden="true" className="h-4 w-4 text-primary" />
                   {t("prompt.quickRewriteHeading")}
                 </div>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
@@ -230,6 +257,7 @@ export function PromptQuickRewriteDialog({
                   <Textarea
                     value={rewriteInstruction}
                     onChange={(event) => setRewriteInstruction(event.target.value)}
+                    aria-label={t("prompt.aiRewriteTitle")}
                     placeholder={t("prompt.aiRewritePlaceholder")}
                     className="min-h-[120px]"
                   />
@@ -246,9 +274,9 @@ export function PromptQuickRewriteDialog({
                     disabled={!canRewrite || isRewritingPrompt || !rewriteInstruction.trim()}
                   >
                     {isRewritingPrompt ? (
-                      <LoaderIcon className="h-4 w-4 animate-spin" />
+                      <LoaderIcon aria-hidden="true" className="h-4 w-4 animate-spin" />
                     ) : (
-                      <SparklesIcon className="h-4 w-4" />
+                      <SparklesIcon aria-hidden="true" className="h-4 w-4" />
                     )}
                     {isRewritingPrompt
                       ? t("prompt.aiRewriteWorking")
@@ -325,7 +353,7 @@ export function PromptQuickRewriteDialog({
                 onClick={() => void handleSubmitDraft("save")}
               >
                 {isApplyingDraft ? (
-                  <LoaderIcon className="h-4 w-4 animate-spin" />
+                  <LoaderIcon aria-hidden="true" className="h-4 w-4 animate-spin" />
                 ) : null}
                 {t("prompt.quickRewriteApplyAndSave")}
               </Button>

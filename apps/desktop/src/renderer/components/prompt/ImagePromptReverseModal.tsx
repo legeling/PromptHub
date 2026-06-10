@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   CopyIcon,
@@ -30,6 +30,8 @@ import {
   type QuickAddGeneratedDraft,
   parseQuickAddGeneratedDraft,
 } from "./quick-add-utils";
+import { copyTextToClipboard } from "./prompt-copy-utils";
+import { parsePromptVariables } from "./prompt-modal-utils";
 
 interface ReverseImageInput {
   name: string;
@@ -38,6 +40,8 @@ interface ReverseImageInput {
   fileName: string;
   previewUrl: string;
 }
+
+const MAX_IMAGE_PROMPT_REVERSE_IMAGE_BYTES = 20 * 1024 * 1024;
 
 interface ImagePromptReverseModalProps {
   isOpen: boolean;
@@ -79,26 +83,22 @@ function getImageMimeType(fileName: string): string {
   return "image/png";
 }
 
-function extractPromptVariables(promptText: string): Variable[] {
-  const variables = new Map<string, Variable>();
-  const variablePattern = /\{\{([^}:]+)(?::([^}]*))?\}\}/g;
-
-  for (const match of promptText.matchAll(variablePattern)) {
-    const name = match[1]?.trim();
-    if (!name || variables.has(name)) {
-      continue;
-    }
-
-    const defaultValue = match[2]?.trim();
-    variables.set(name, {
-      name,
-      type: "text",
-      defaultValue: defaultValue || undefined,
-      required: false,
-    });
+function formatImageSize(bytes: number): string {
+  if (bytes < 1024 * 1024) {
+    return `${Math.ceil(bytes / 1024)} KB`;
   }
+  return `${Math.ceil(bytes / 1024 / 1024)} MB`;
+}
 
-  return Array.from(variables.values()).slice(0, 8);
+function extractPromptVariables(promptText: string): Variable[] {
+  return parsePromptVariables(promptText)
+    .map((variable): Variable => ({
+      name: variable.name,
+      type: "text",
+      defaultValue: variable.defaultValue || undefined,
+      required: false,
+    }))
+    .slice(0, 8);
 }
 
 export function ImagePromptReverseModal({
@@ -134,9 +134,14 @@ export function ImagePromptReverseModal({
     undefined,
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const [isDraggingImage, setIsDraggingImage] = useState(false);
   const [draft, setDraft] = useState<QuickAddGeneratedDraft | null>(null);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const isMountedRef = useRef(true);
+  const isOpenRef = useRef(isOpen);
+  const modalSessionRef = useRef(0);
+  const isCreatingRef = useRef(false);
 
   const reverseConfig = useMemo(
     () =>
@@ -163,13 +168,26 @@ export function ImagePromptReverseModal({
   );
 
   const setReverseImage = useCallback((nextImage: ReverseImageInput | null) => {
-    setImageInput((previous) => {
-      if (previous?.previewUrl.startsWith("blob:")) {
-        URL.revokeObjectURL(previous.previewUrl);
-      }
-      return nextImage;
-    });
+    setImageInput(nextImage);
   }, []);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      isOpenRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+    modalSessionRef.current += 1;
+  }, [isOpen]);
+
+  const canApplyAsyncResult = useCallback(
+    (sessionId = modalSessionRef.current) =>
+      isMountedRef.current && isOpenRef.current && sessionId === modalSessionRef.current,
+    [],
+  );
 
   const hasUnsavedChanges = useCallback(
     () => guidance.trim() !== "" || imageInput !== null || draft !== null,
@@ -192,14 +210,33 @@ export function ImagePromptReverseModal({
     setGuidance("");
     setSelectedFolderId(defaultFolderId);
     setIsSubmitting(false);
+    setIsCreating(false);
+    isCreatingRef.current = false;
     setIsDraggingImage(false);
     setDraft(null);
     setReverseImage(null);
   }, [defaultFolderId, isOpen, setReverseImage]);
 
   useEffect(() => {
+    if (isOpen) {
+      return;
+    }
+
+    setIsSubmitting(false);
+    setIsCreating(false);
+    isCreatingRef.current = false;
+    setIsDraggingImage(false);
+    setDraft(null);
+    setShowUnsavedDialog(false);
+    setReverseImage(null);
+  }, [isOpen, setReverseImage]);
+
+  useEffect(() => {
     return () => {
-      if (imageInput?.previewUrl.startsWith("blob:")) {
+      if (
+        typeof imageInput?.previewUrl === "string" &&
+        imageInput.previewUrl.startsWith("blob:")
+      ) {
         URL.revokeObjectURL(imageInput.previewUrl);
       }
     };
@@ -207,13 +244,37 @@ export function ImagePromptReverseModal({
 
   const handleImageFile = useCallback(
     async (file: File) => {
+      const imageSession = modalSessionRef.current;
+
       if (!file.type.startsWith("image/")) {
         showToast(t("imageReverse.unsupported", "Only image files are supported."), "error");
         return;
       }
 
+      if (file.size > MAX_IMAGE_PROMPT_REVERSE_IMAGE_BYTES) {
+        showToast(
+          t(
+            "imageReverse.tooLarge",
+            "Image must be {{size}} or smaller.",
+            {
+              size: formatImageSize(MAX_IMAGE_PROMPT_REVERSE_IMAGE_BYTES),
+            },
+          ),
+          "error",
+        );
+        return;
+      }
+
       const buffer = await file.arrayBuffer();
+      if (!canApplyAsyncResult(imageSession)) {
+        return;
+      }
+
       const fileName = await window.electron?.saveImageBuffer?.(buffer);
+      if (!canApplyAsyncResult(imageSession)) {
+        return;
+      }
+
       if (!fileName) {
         showToast(t("prompt.uploadFailed", "Image upload failed"), "error");
         return;
@@ -229,16 +290,26 @@ export function ImagePromptReverseModal({
       setDraft(null);
       showToast(t("imageReverse.imageReady", "Image added"), "success");
     },
-    [setReverseImage, showToast, t],
+    [canApplyAsyncResult, setReverseImage, showToast, t],
   );
 
   const handleSelectImage = useCallback(async () => {
+    const imageSession = modalSessionRef.current;
+
     const filePaths = await window.electron?.selectImage?.();
+    if (!canApplyAsyncResult(imageSession)) {
+      return;
+    }
+
     if (!filePaths || filePaths.length === 0) {
       return;
     }
 
     const savedImages = await window.electron?.saveImage?.([filePaths[0]]);
+    if (!canApplyAsyncResult(imageSession)) {
+      return;
+    }
+
     const fileName = savedImages?.[0];
     if (!fileName) {
       showToast(t("prompt.uploadFailed", "Image upload failed"), "error");
@@ -246,6 +317,10 @@ export function ImagePromptReverseModal({
     }
 
     const base64 = await window.electron?.readImageBase64?.(fileName);
+    if (!canApplyAsyncResult(imageSession)) {
+      return;
+    }
+
     if (!base64) {
       showToast(t("prompt.uploadFailed", "Image upload failed"), "error");
       return;
@@ -260,7 +335,7 @@ export function ImagePromptReverseModal({
     });
     setDraft(null);
     showToast(t("imageReverse.imageReady", "Image added"), "success");
-  }, [setReverseImage, showToast, t]);
+  }, [canApplyAsyncResult, setReverseImage, showToast, t]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -307,6 +382,8 @@ export function ImagePromptReverseModal({
   );
 
   const handleReverse = async () => {
+    const reverseSession = modalSessionRef.current;
+
     if (isSubmitting) {
       return;
     }
@@ -362,6 +439,10 @@ export function ImagePromptReverseModal({
         { temperature: 0.45, maxTokens: 2048 },
       );
 
+      if (!canApplyAsyncResult(reverseSession)) {
+        return;
+      }
+
       const generatedDraft = parseQuickAddGeneratedDraft(
         aiResult.content,
         "image",
@@ -370,17 +451,21 @@ export function ImagePromptReverseModal({
 
       if (!generatedDraft) {
         showToast(t("quickAdd.parseError"), "error");
-        setIsSubmitting(false);
         return;
       }
 
       setDraft(generatedDraft);
       showToast(t("imageReverse.draftReady", "Reverse draft is ready"), "success");
     } catch (error) {
+      if (!canApplyAsyncResult(reverseSession)) {
+        return;
+      }
       console.error("Image prompt reverse generation failed:", error);
       showToast(t("imageReverse.failed", "Image prompt reverse failed"), "error");
     } finally {
-      setIsSubmitting(false);
+      if (canApplyAsyncResult(reverseSession)) {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -390,20 +475,49 @@ export function ImagePromptReverseModal({
       return;
     }
 
-    const createdPrompt = await onCreate({
-      title: draft.title,
-      userPrompt: draft.userPrompt,
-      systemPrompt: draft.systemPrompt,
-      description: draft.description,
-      folderId: resolveMatchedFolderId(draft.suggestedFolder),
-      promptType: "image",
-      tags: draft.tags,
-      images: attachReferenceImage && imageInput ? [imageInput.fileName] : undefined,
-      variables: extractPromptVariables(draft.userPrompt),
-    });
+    if (isCreatingRef.current) {
+      return;
+    }
 
-    if (createdPrompt) {
-      onClose();
+    isCreatingRef.current = true;
+    setIsCreating(true);
+    const createSession = modalSessionRef.current;
+
+    try {
+      const createdPrompt = await onCreate({
+        title: draft.title,
+        userPrompt: draft.userPrompt,
+        systemPrompt: draft.systemPrompt,
+        description: draft.description,
+        folderId: resolveMatchedFolderId(draft.suggestedFolder),
+        promptType: "image",
+        tags: draft.tags,
+        images: attachReferenceImage && imageInput ? [imageInput.fileName] : undefined,
+        variables: extractPromptVariables(draft.userPrompt),
+      });
+
+      if (!canApplyAsyncResult(createSession)) {
+        return;
+      }
+
+      if (createdPrompt) {
+        onClose();
+      }
+    } catch (error) {
+      if (!canApplyAsyncResult(createSession)) {
+        return;
+      }
+      console.error("Image prompt reverse create failed:", error);
+      showToast(t("imageReverse.createFailed", "Prompt creation failed"), "error");
+    } finally {
+      if (modalSessionRef.current !== createSession) {
+        return;
+      }
+
+      isCreatingRef.current = false;
+      if (canApplyAsyncResult(createSession)) {
+        setIsCreating(false);
+      }
     }
   };
 
@@ -413,7 +527,7 @@ export function ImagePromptReverseModal({
     }
 
     try {
-      await navigator.clipboard.writeText(draft.userPrompt);
+      await copyTextToClipboard(draft.userPrompt);
       showToast(t("imageReverse.copied", "Prompt copied"), "success");
     } catch {
       showToast(t("prompt.copyFailed", "Copy failed"), "error");
@@ -427,6 +541,9 @@ export function ImagePromptReverseModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center animate-in fade-in duration-base ease-enter">
       <div
+        data-testid="image-prompt-reverse-backdrop"
+        role="presentation"
+        aria-hidden="true"
         className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in duration-base ease-enter"
         onClick={handleCloseRequest}
       />
@@ -434,16 +551,18 @@ export function ImagePromptReverseModal({
       <div className="relative mx-4 flex max-h-[min(760px,calc(100vh-32px))] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-border app-wallpaper-panel-strong shadow-2xl animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-base ease-enter">
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <div className="flex items-center gap-2">
-            <ImageIcon className="h-5 w-5 text-primary" />
+            <ImageIcon className="h-5 w-5 text-primary" aria-hidden="true" />
             <h2 className="text-lg font-semibold">
               {t("imageReverse.title", "Image Reverse")}
             </h2>
           </div>
           <button
+            type="button"
             onClick={handleCloseRequest}
+            aria-label={t("common.close", "Close")}
             className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
-            <XIcon className="h-5 w-5" />
+            <XIcon className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
 
@@ -526,7 +645,7 @@ export function ImagePromptReverseModal({
             ) : (
               <>
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                  <UploadIcon className="h-6 w-6" />
+                  <UploadIcon className="h-6 w-6" aria-hidden="true" />
                 </div>
                 <div className="mt-3 text-sm font-medium text-foreground">
                   {t(
@@ -541,7 +660,7 @@ export function ImagePromptReverseModal({
                   )}
                 </div>
                 <div className="mt-3 inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground">
-                  <ImageIcon className="h-3.5 w-3.5" />
+                  <ImageIcon className="h-3.5 w-3.5" aria-hidden="true" />
                   {t("imageReverse.selectImage", "Select image")}
                 </div>
               </>
@@ -570,7 +689,10 @@ export function ImagePromptReverseModal({
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-muted/15 px-4 py-3">
               <div className="inline-flex w-fit items-center gap-2 rounded-lg border border-primary/25 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                <Wand2Icon className="h-3.5 w-3.5 shrink-0" />
+                <Wand2Icon
+                  className="h-3.5 w-3.5 shrink-0"
+                  aria-hidden="true"
+                />
                 <span>{t("prompt.typeImage", "Image")}</span>
               </div>
               <Checkbox
@@ -602,7 +724,7 @@ export function ImagePromptReverseModal({
                     onClick={handleCopyDraft}
                     className="inline-flex items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                   >
-                    <CopyIcon className="h-4 w-4" />
+                    <CopyIcon className="h-4 w-4" aria-hidden="true" />
                     {t("imageReverse.copyPrompt", "Copy prompt")}
                   </button>
                 </div>
@@ -690,7 +812,10 @@ export function ImagePromptReverseModal({
                     value: "",
                     label: (
                       <div className="flex items-center gap-2">
-                        <SparklesIcon className="h-4 w-4 shrink-0 text-primary" />
+                        <SparklesIcon
+                          className="h-4 w-4 shrink-0 text-primary"
+                          aria-hidden="true"
+                        />
                         <span>{t("quickAdd.smartFolder", "AI Smart Auto-Folder")}</span>
                       </div>
                     ),
@@ -700,7 +825,10 @@ export function ImagePromptReverseModal({
                     value: folder.id,
                     label: (
                       <div className="flex min-w-0 items-center gap-2">
-                        <span className="flex h-4 w-4 shrink-0 items-center justify-center text-muted-foreground">
+                        <span
+                          className="flex h-4 w-4 shrink-0 items-center justify-center text-muted-foreground"
+                          aria-hidden="true"
+                        >
                           {renderFolderIcon(folder.icon)}
                         </span>
                         <span className="truncate">{folder.name}</span>
@@ -716,31 +844,47 @@ export function ImagePromptReverseModal({
 
         <div className="flex items-center justify-end gap-3 border-t border-border bg-muted/20 px-6 py-4">
           <button
+            type="button"
             onClick={handleCloseRequest}
             className="rounded-lg px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             {t("common.cancel", "Cancel")}
           </button>
           <button
+            type="button"
             onClick={handleReverse}
-            disabled={isSubmitting || !imageInput}
+            disabled={isSubmitting || isCreating || !imageInput}
             className={
               draft
                 ? "flex items-center gap-2 rounded-lg border border-border px-5 py-2 font-medium text-muted-foreground transition-all hover:bg-accent hover:text-foreground active:scale-press-in disabled:opacity-50"
                 : "flex items-center gap-2 rounded-lg bg-primary px-6 py-2 font-medium text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 active:scale-press-in disabled:opacity-50"
             }
           >
-            {isSubmitting && <Loader2Icon className="h-4 w-4 animate-spin" />}
+            {isSubmitting && (
+              <Loader2Icon
+                className="h-4 w-4 animate-spin"
+                aria-hidden="true"
+              />
+            )}
             {draft
               ? t("imageReverse.regenerate", "Regenerate")
               : t("imageReverse.reverse", "Reverse")}
           </button>
           {draft && (
             <button
+              type="button"
               onClick={handleCreate}
-              className="flex items-center gap-2 rounded-lg bg-primary px-6 py-2 font-medium text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 active:scale-press-in"
+              disabled={isCreating}
+              className="flex items-center gap-2 rounded-lg bg-primary px-6 py-2 font-medium text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 active:scale-press-in disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <SaveIcon className="h-4 w-4" />
+              {isCreating ? (
+                <Loader2Icon
+                  className="h-4 w-4 animate-spin"
+                  aria-hidden="true"
+                />
+              ) : (
+                <SaveIcon className="h-4 w-4" aria-hidden="true" />
+              )}
               {t("imageReverse.createPrompt", "Create prompt")}
             </button>
           )}

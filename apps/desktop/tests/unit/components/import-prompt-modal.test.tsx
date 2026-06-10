@@ -1,9 +1,37 @@
-import { screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { FormEvent } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ImportPromptModal } from "../../../src/renderer/components/prompt/ImportPromptModal";
 import { usePromptStore } from "../../../src/renderer/stores/prompt.store";
 import { renderWithI18n } from "../../helpers/i18n";
+
+function createDeferredPrompt() {
+  let resolve!: (value: {
+    id: string;
+    title: string;
+    userPrompt: string;
+  }) => void;
+  const promise = new Promise<{
+    id: string;
+    title: string;
+    userPrompt: string;
+  }>((innerResolve) => {
+    resolve = innerResolve;
+  });
+  return { promise, resolve };
+}
+
+function isHiddenFromAccessibility(element: Element): boolean {
+  let current: Element | null = element;
+  while (current) {
+    if (current.getAttribute("aria-hidden") === "true") {
+      return true;
+    }
+    current = current.parentElement;
+  }
+  return false;
+}
 
 describe("ImportPromptModal", () => {
   beforeEach(() => {
@@ -49,7 +77,6 @@ describe("ImportPromptModal", () => {
   });
 
   it("invokes createPrompt with mapped fields and closes on success", async () => {
-    const user = userEvent.setup();
     const onClose = vi.fn();
 
     await renderWithI18n(
@@ -66,7 +93,7 @@ describe("ImportPromptModal", () => {
     );
 
     const importButton = screen.getByRole("button", { name: /import/i });
-    await user.click(importButton);
+    fireEvent.click(importButton);
 
     await waitFor(() => {
       const createPromptSpy = usePromptStore.getState()
@@ -82,6 +109,48 @@ describe("ImportPromptModal", () => {
     await waitFor(() => {
       expect(onClose).toHaveBeenCalledTimes(1);
     });
+  }, 60_000);
+
+  it("keeps import actions non-submit with decorative icons hidden", async () => {
+    const onClose = vi.fn();
+    const onSubmit = vi.fn((event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+    });
+
+    await renderWithI18n(
+      <form onSubmit={onSubmit}>
+        <ImportPromptModal
+          isOpen
+          onClose={onClose}
+          data={{
+            name: "Imported Action Prompt",
+            userPrompt: "import this",
+          }}
+        />
+      </form>,
+      { language: "en" },
+    );
+
+    for (const button of screen.getAllByRole("button")) {
+      if (button.tagName === "BUTTON") {
+        expect(button).toHaveAttribute("type", "button");
+      }
+    }
+
+    for (const icon of document.querySelectorAll("button svg")) {
+      expect(isHiddenFromAccessibility(icon)).toBe(true);
+    }
+
+    fireEvent.click(screen.getByRole("button", { name: /import/i }));
+
+    await waitFor(() => {
+      expect(usePromptStore.getState().createPrompt).toHaveBeenCalledTimes(1);
+    });
+    expect(onSubmit).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
+    expect(onClose).toHaveBeenCalled();
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it("uses 'image' promptType when imported data is an image prompt", async () => {
@@ -136,5 +205,66 @@ describe("ImportPromptModal", () => {
     expect(onClose).not.toHaveBeenCalled();
 
     restore.mockRestore();
+  });
+
+  it("ignores stale import completions after close and reopen", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const importedPrompt = createDeferredPrompt();
+    usePromptStore.setState({
+      createPrompt: vi.fn().mockReturnValue(importedPrompt.promise),
+    });
+
+    const { rerender } = await renderWithI18n(
+      <ImportPromptModal
+        isOpen
+        onClose={onClose}
+        data={{
+          title: "Stale Import",
+          userPrompt: "do not close reopened modal",
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /import/i }));
+
+    await waitFor(() => {
+      const createPromptSpy = usePromptStore.getState()
+        .createPrompt as ReturnType<typeof vi.fn>;
+      expect(createPromptSpy).toHaveBeenCalledTimes(1);
+    });
+
+    rerender(
+      <ImportPromptModal
+        isOpen={false}
+        onClose={onClose}
+        data={{
+          title: "Stale Import",
+          userPrompt: "do not close reopened modal",
+        }}
+      />,
+    );
+    rerender(
+      <ImportPromptModal
+        isOpen
+        onClose={onClose}
+        data={{
+          title: "Fresh Import",
+          userPrompt: "keep reopened modal open",
+        }}
+      />,
+    );
+
+    await act(async () => {
+      importedPrompt.resolve({
+        id: "imported-late",
+        title: "Stale Import",
+        userPrompt: "do not close reopened modal",
+      });
+      await Promise.resolve();
+    });
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByText("Fresh Import")).toBeInTheDocument();
   });
 });

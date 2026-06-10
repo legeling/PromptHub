@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Modal } from "../ui/Modal";
 import { usePromptStore } from "../../stores/prompt.store";
-import { FileUpIcon, CheckIcon, XIcon, FileJsonIcon } from "lucide-react";
+import { FileUpIcon, FileJsonIcon } from "lucide-react";
 
 export interface ImportedPromptData {
   name?: string;
@@ -32,10 +32,39 @@ export function ImportPromptModal({
   const { t } = useTranslation();
   const createPrompt = usePromptStore((state) => state.createPrompt);
   const [loading, setLoading] = useState(false);
+  const isMountedRef = useRef(true);
+  const isOpenRef = useRef(isOpen);
+  const modalSessionRef = useRef(0);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      isOpenRef.current = false;
+      modalSessionRef.current += 1;
+    };
+  }, []);
+
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+    modalSessionRef.current += 1;
+
+    if (isOpen) {
+      setLoading(false);
+    }
+  }, [data?.name, data?.title, data?.userPrompt, isOpen]);
+
+  const canApplyAsyncResult = useCallback(
+    (session: number) =>
+      isMountedRef.current &&
+      isOpenRef.current &&
+      modalSessionRef.current === session,
+    [],
+  );
 
   if (!data) return null;
 
   const handleImport = async () => {
+    const importSession = modalSessionRef.current;
     setLoading(true);
     try {
       // Prioritize 'name' or 'title'
@@ -52,12 +81,18 @@ export function ImportPromptModal({
         tags: Array.isArray(data.tags) ? data.tags : [],
         source: data.source || "clipboard",
       });
-      onClose();
+      if (canApplyAsyncResult(importSession)) {
+        onClose();
+      }
     } catch (e) {
-      console.error(e);
+      if (canApplyAsyncResult(importSession)) {
+        console.error(e);
+      }
       // Ideally show toast here, but PromptStore usually handles errors or usage in component
     } finally {
-      setLoading(false);
+      if (canApplyAsyncResult(importSession)) {
+        setLoading(false);
+      }
     }
   };
 
@@ -71,7 +106,7 @@ export function ImportPromptModal({
       <div className="space-y-6">
         <div className="flex items-start gap-4 p-4 bg-muted/40 rounded-lg border border-border/50">
           <div className="p-2 bg-primary/10 rounded-lg text-primary">
-            <FileJsonIcon className="w-6 h-6" />
+            <FileJsonIcon className="w-6 h-6" aria-hidden="true" />
           </div>
           <div className="flex-1 space-y-1">
             <h3 className="font-medium text-foreground">
@@ -135,12 +170,14 @@ export function ImportPromptModal({
 
         <div className="flex justify-end gap-3 pt-2">
           <button
+            type="button"
             onClick={onClose}
             className="px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           >
             {t("common.cancel")}
           </button>
           <button
+            type="button"
             onClick={handleImport}
             disabled={loading}
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-medium transition-colors shadow-sm disabled:opacity-50"
@@ -149,7 +186,7 @@ export function ImportPromptModal({
               <span>{t("common.loading")}</span>
             ) : (
               <>
-                <FileUpIcon className="w-4 h-4" />
+                <FileUpIcon className="w-4 h-4" aria-hidden="true" />
                 <span>{t("common.import", "Import")}</span>
               </>
             )}

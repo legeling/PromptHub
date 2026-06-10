@@ -16,6 +16,7 @@ import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { deletePromptVersion, getPromptVersions } from '../../services/database';
 import { scheduleAllSaveSync } from '../../services/webdav-save-sync';
 import type { Prompt, PromptVersion, Variable } from '@prompthub/shared/types';
+import { parsePromptVariables } from './prompt-modal-utils';
 
 interface VersionHistoryModalProps {
   isOpen: boolean;
@@ -30,7 +31,7 @@ function computeLCS(a: string[], b: string[]): number[][] {
   const m = a.length;
   const n = b.length;
   const dp: number[][] = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
-  
+
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
       if (a[i - 1] === b[j - 1]) {
@@ -72,8 +73,6 @@ interface TableFieldDiff {
   newText: string;
 }
 
-const VARIABLE_TOKEN_PATTERN = /\{\{([^}:]+)(?::([^}]*))?\}\}/g;
-
 function normalizeStoredVariables(value: unknown): Variable[] {
   if (!Array.isArray(value)) {
     return [];
@@ -110,15 +109,15 @@ function extractVariablesFromPromptText(version: PromptVersion): Variable[] {
   const variables = new Map<string, Variable>();
   const text = `${version.systemPrompt || ''}\n${version.userPrompt || ''}`;
 
-  for (const match of text.matchAll(VARIABLE_TOKEN_PATTERN)) {
-    const name = match[1]?.trim();
+  for (const variable of parsePromptVariables(text)) {
+    const name = variable.name;
     if (!name || variables.has(name)) {
       continue;
     }
     variables.set(name, {
       name,
       type: 'text',
-      defaultValue: match[2],
+      defaultValue: variable.defaultValue,
       required: false,
     });
   }
@@ -168,7 +167,7 @@ function summarizeVersionField(
 function generateDiff(oldText: string, newText: string): DiffLine[] {
   const oldLines = (oldText || '').split('\n');
   const newLines = (newText || '').split('\n');
-  
+
   if (oldText === newText) {
     return oldLines.map((line, i) => ({
       type: 'unchanged' as const,
@@ -177,45 +176,45 @@ function generateDiff(oldText: string, newText: string): DiffLine[] {
       newLineNum: i + 1,
     }));
   }
-  
+
   const dp = computeLCS(oldLines, newLines);
   const diff: DiffLine[] = [];
-  
+
   let i = oldLines.length;
   let j = newLines.length;
   const stack: DiffLine[] = [];
-  
+
   while (i > 0 || j > 0) {
     if (i > 0 && j > 0 && oldLines[i - 1] === newLines[j - 1]) {
-      stack.push({ 
-        type: 'unchanged', 
-        content: oldLines[i - 1], 
-        oldLineNum: i, 
-        newLineNum: j 
+      stack.push({
+        type: 'unchanged',
+        content: oldLines[i - 1],
+        oldLineNum: i,
+        newLineNum: j
       });
       i--;
       j--;
     } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
-      stack.push({ 
-        type: 'add', 
-        content: newLines[j - 1], 
-        newLineNum: j 
+      stack.push({
+        type: 'add',
+        content: newLines[j - 1],
+        newLineNum: j
       });
       j--;
     } else if (i > 0) {
-      stack.push({ 
-        type: 'remove', 
-        content: oldLines[i - 1], 
-        oldLineNum: i 
+      stack.push({
+        type: 'remove',
+        content: oldLines[i - 1],
+        oldLineNum: i
       });
       i--;
     }
   }
-  
+
   while (stack.length > 0) {
     diff.push(stack.pop()!);
   }
-  
+
   return diff;
 }
 
@@ -233,15 +232,15 @@ function GitDiffView({
   emptyLabel: string;
 }) {
   const diff = useMemo(() => generateDiff(oldText, newText), [oldText, newText]);
-  
+
   const stats = useMemo(() => {
     const added = diff.filter(d => d.type === 'add').length;
     const removed = diff.filter(d => d.type === 'remove').length;
     return { added, removed };
   }, [diff]);
-  
+
   const isUnchanged = stats.added === 0 && stats.removed === 0;
-  
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
@@ -259,7 +258,7 @@ function GitDiffView({
           </div>
         )}
       </div>
-      
+
       {isUnchanged ? (
         <div className="text-sm text-muted-foreground italic p-3 bg-muted/30 rounded-lg">
           {emptyLabel}
@@ -271,10 +270,10 @@ function GitDiffView({
               <div
                 key={index}
                 className={`flex ${
-                  line.type === 'add' 
-                    ? 'bg-green-500/15 text-green-700 dark:text-green-300' 
-                    : line.type === 'remove' 
-                      ? 'bg-red-500/15 text-red-700 dark:text-red-300' 
+                  line.type === 'add'
+                    ? 'bg-green-500/15 text-green-700 dark:text-green-300'
+                    : line.type === 'remove'
+                      ? 'bg-red-500/15 text-red-700 dark:text-red-300'
                       : 'bg-transparent text-foreground/80'
                 }`}
               >
@@ -507,7 +506,7 @@ export function VersionHistoryModal({ isOpen, onClose, prompt, onRestore }: Vers
     setTableFieldDiff(null);
     try {
       const historyVersions = await getPromptVersions(prompt.id);
-      
+
       // Add current version to list (as latest version)
       // 将当前版本也加入列表（作为最新版本）
       const currentVersion: PromptVersion = {
@@ -521,10 +520,10 @@ export function VersionHistoryModal({ isOpen, onClose, prompt, onRestore }: Vers
         aiResponse: prompt.lastAiResponse, // Use current version's AI response
         createdAt: prompt.updatedAt,
       };
-      
+
       // Merge current version and history versions, sorted by version number descending
       const allVersions = [currentVersion, ...historyVersions.filter(v => v.version !== prompt.version)];
-      
+
       setVersions(allVersions);
       if (allVersions.length > 0) {
         setSelectedVersion(allVersions[0]);
@@ -592,17 +591,17 @@ export function VersionHistoryModal({ isOpen, onClose, prompt, onRestore }: Vers
                 {
                   mode: 'detail' as const,
                   label: t('prompt.detailView', 'Detail'),
-                  icon: <FileTextIcon className="h-4 w-4" />,
+                  icon: <FileTextIcon aria-hidden="true" className="h-4 w-4" />,
                 },
                 {
                   mode: 'diff' as const,
                   label: t('prompt.versionCompare'),
-                  icon: <GitCompareIcon className="h-4 w-4" />,
+                  icon: <GitCompareIcon aria-hidden="true" className="h-4 w-4" />,
                 },
                 {
                   mode: 'table' as const,
                   label: t('prompt.tableView', 'Table'),
-                  icon: <TableIcon className="h-4 w-4" />,
+                  icon: <TableIcon aria-hidden="true" className="h-4 w-4" />,
                 },
               ].map((item) => (
                 <button
@@ -617,6 +616,7 @@ export function VersionHistoryModal({ isOpen, onClose, prompt, onRestore }: Vers
                       setTableFieldDiff(null);
                     }
                   }}
+                  aria-pressed={viewMode === item.mode}
                   className={`inline-flex h-8 items-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors ${
                     viewMode === item.mode
                       ? 'bg-primary text-white shadow-sm'
@@ -649,6 +649,7 @@ export function VersionHistoryModal({ isOpen, onClose, prompt, onRestore }: Vers
             {versions.map((version, index) => (
               <button
                 key={version.id}
+                type="button"
                 onClick={() => {
                   if (isDiffView) {
                     setCompareVersion(version);
@@ -656,8 +657,14 @@ export function VersionHistoryModal({ isOpen, onClose, prompt, onRestore }: Vers
                     setSelectedVersion(version);
                   }
                 }}
+                aria-pressed={
+                  isDiffView
+                    ? compareVersion?.id === version.id ||
+                      selectedVersion?.id === version.id
+                    : selectedVersion?.id === version.id
+                }
                 className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                  isDiffView 
+                  isDiffView
                     ? compareVersion?.id === version.id
                       ? 'bg-green-500 text-white'
                       : selectedVersion?.id === version.id
@@ -671,7 +678,7 @@ export function VersionHistoryModal({ isOpen, onClose, prompt, onRestore }: Vers
                 <div className="font-medium">v{version.version}</div>
                 <div className={`text-xs ${
                   (isDiffView ? (compareVersion?.id === version.id || selectedVersion?.id === version.id) : selectedVersion?.id === version.id)
-                    ? 'text-white/70' 
+                    ? 'text-white/70'
                     : 'text-muted-foreground'
                 }`}>
                   {new Date(version.createdAt).toLocaleString()}
@@ -694,15 +701,15 @@ export function VersionHistoryModal({ isOpen, onClose, prompt, onRestore }: Vers
                     {new Date(selectedVersion.createdAt).toLocaleDateString()} → {new Date(compareVersion.createdAt).toLocaleDateString()}
                   </span>
                 </div>
-                <GitDiffView 
-                  oldText={selectedVersion.systemPrompt || ''} 
-                  newText={compareVersion.systemPrompt || ''} 
+                <GitDiffView
+                  oldText={selectedVersion.systemPrompt || ''}
+                  newText={compareVersion.systemPrompt || ''}
                   label={t('prompt.systemPromptLabel')}
                   emptyLabel={t('prompt.noChanges')}
                 />
-                <GitDiffView 
-                  oldText={selectedVersion.userPrompt} 
-                  newText={compareVersion.userPrompt} 
+                <GitDiffView
+                  oldText={selectedVersion.userPrompt}
+                  newText={compareVersion.userPrompt}
                   label={t('prompt.userPromptLabel')}
                   emptyLabel={t('prompt.noChanges')}
                 />
@@ -795,6 +802,7 @@ export function VersionHistoryModal({ isOpen, onClose, prompt, onRestore }: Vers
         <div className="flex justify-between mt-6 pt-4 border-t border-border">
           <div className="flex gap-3">
             <button
+              type="button"
               onClick={() => {
                 if (isDiffView) {
                   setViewMode('detail');
@@ -805,29 +813,31 @@ export function VersionHistoryModal({ isOpen, onClose, prompt, onRestore }: Vers
                 }
               }}
               className={`flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-medium transition-colors ${
-                isDiffView 
-                  ? 'bg-primary text-white' 
+                isDiffView
+                  ? 'bg-primary text-white'
                   : 'hover:bg-muted'
               }`}
             >
-              <GitCompareIcon className="w-4 h-4" />
+              <GitCompareIcon aria-hidden="true" className="w-4 h-4" />
               {isDiffView ? t('prompt.exitCompare') : t('prompt.versionCompare')}
             </button>
             {!isDiffView &&
               selectedVersion.id !== 'current' &&
               selectedVersion.version > 1 && (
               <button
+                type="button"
                 onClick={() => setVersionToDelete(selectedVersion)}
                 disabled={isDeleting}
                 className="flex items-center gap-2 h-9 px-4 rounded-lg border border-red-500/20 text-red-600 hover:bg-red-500/10 transition-colors disabled:opacity-50"
               >
-                <TrashIcon className="w-4 h-4" />
+                <TrashIcon aria-hidden="true" className="w-4 h-4" />
                 {t('common.delete', 'Delete')}
               </button>
             )}
           </div>
           <div className="flex gap-3">
             <button
+              type="button"
               onClick={onClose}
               className="h-9 px-4 rounded-lg text-sm font-medium hover:bg-muted transition-colors"
             >
@@ -835,10 +845,11 @@ export function VersionHistoryModal({ isOpen, onClose, prompt, onRestore }: Vers
             </button>
             {!isDiffView && (
               <button
+                type="button"
                 onClick={handleRestore}
                 className="flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
               >
-                <RotateCcwIcon className="w-4 h-4" />
+                <RotateCcwIcon aria-hidden="true" className="w-4 h-4" />
                 {t('prompt.restoreVersion')}
               </button>
             )}

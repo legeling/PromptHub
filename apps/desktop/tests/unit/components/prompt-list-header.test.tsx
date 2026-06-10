@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { PromptListHeader } from "../../../src/renderer/components/prompt/PromptListHeader";
 import { usePromptStore } from "../../../src/renderer/stores/prompt.store";
 
@@ -19,22 +19,64 @@ describe("PromptListHeader", () => {
     resetStore();
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("shows the prompt count", () => {
     render(<PromptListHeader count={42} />);
     // The count is interpolated through i18n; assert the number appears.
     expect(screen.getByText(/42/)).toBeInTheDocument();
   });
 
+  it("does not attach outside-click listeners while the sort menu is closed", () => {
+    const addListenerSpy = vi.spyOn(document, "addEventListener");
+
+    render(<PromptListHeader count={3} />);
+
+    const mousedownCalls = addListenerSpy.mock.calls.filter(
+      ([eventName]) => eventName === "mousedown",
+    );
+    expect(mousedownCalls).toHaveLength(0);
+  });
+
+  it("attaches the outside-click listener only while the sort menu is open", () => {
+    const addListenerSpy = vi.spyOn(document, "addEventListener");
+    const removeListenerSpy = vi.spyOn(document, "removeEventListener");
+
+    render(<PromptListHeader count={3} />);
+    const triggerButton = screen.getByRole("button", { name: "Sort: Newest" });
+    expect(triggerButton).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(triggerButton);
+    expect(triggerButton).toHaveAttribute("aria-expanded", "true");
+
+    const mousedownCalls = addListenerSpy.mock.calls.filter(
+      ([eventName]) => eventName === "mousedown",
+    );
+    expect(mousedownCalls).toHaveLength(1);
+
+    fireEvent.mouseDown(document.body);
+
+    expect(removeListenerSpy.mock.calls).toContainEqual([
+      "mousedown",
+      mousedownCalls[0][1],
+    ]);
+  });
+
   it("opens the sort menu and selects a different option", () => {
     render(<PromptListHeader count={3} />);
     // The summary button shows the currently-selected sort label.
-    const triggerButton = screen.getByText(/prompt\.sortNewest|最新|Newest|最近更新/i)
-      .closest("button");
-    expect(triggerButton).toBeTruthy();
-    fireEvent.click(triggerButton!);
+    const triggerButton = screen.getByRole("button", { name: "Sort: Newest" });
+    fireEvent.click(triggerButton);
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+    expect(screen.getByRole("menuitemradio", { name: "Newest" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
 
     // The "title asc" option should now be visible.
-    const titleAscOption = screen.getByText(/prompt\.sortTitleAsc|A-Z|标题/i);
+    const titleAscOption = screen.getByRole("menuitemradio", { name: "Title A-Z" });
     fireEvent.click(titleAscOption);
 
     expect(usePromptStore.getState().sortBy).toBe("title");
@@ -43,36 +85,52 @@ describe("PromptListHeader", () => {
 
   it("switches view mode to gallery and reveals the size picker", () => {
     render(<PromptListHeader count={1} />);
-    const galleryToggle = screen
-      .getAllByRole("button")
-      // Gallery has the Image lucide icon; we identify it by the gallery
-      // mode title text on hover.
-      .find((btn) => btn.getAttribute("title")?.match(/gallery|图片/i));
+    const cardToggle = screen.getByRole("button", { name: "Card View" });
+    const galleryToggle = screen.getByRole("button", { name: "Gallery View" });
 
-    expect(galleryToggle).toBeTruthy();
-    fireEvent.click(galleryToggle!);
+    expect(cardToggle).toHaveAttribute("aria-pressed", "true");
+    expect(galleryToggle).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(galleryToggle);
 
     expect(usePromptStore.getState().viewMode).toBe("gallery");
+    expect(galleryToggle).toHaveAttribute("aria-pressed", "true");
 
     // S / M / L size buttons appear when in gallery mode.
-    expect(screen.getByText("S")).toBeInTheDocument();
-    expect(screen.getByText("M")).toBeInTheDocument();
-    expect(screen.getByText("L")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Small thumbnails" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    expect(screen.getByRole("button", { name: "Medium thumbnails" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "Large thumbnails" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
   });
 
   it("switches view mode to kanban and reveals the column picker", () => {
     render(<PromptListHeader count={1} />);
-    const kanbanToggle = screen
-      .getAllByRole("button")
-      .find((btn) => btn.getAttribute("title")?.match(/kanban|看板/i));
+    const kanbanToggle = screen.getByRole("button", { name: "Kanban View" });
 
-    expect(kanbanToggle).toBeTruthy();
-    fireEvent.click(kanbanToggle!);
+    expect(kanbanToggle).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(kanbanToggle);
 
     expect(usePromptStore.getState().viewMode).toBe("kanban");
+    expect(kanbanToggle).toHaveAttribute("aria-pressed", "true");
 
-    expect(screen.getByText("2")).toBeInTheDocument();
-    expect(screen.getByText("3")).toBeInTheDocument();
-    expect(screen.getByText("4")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "2 Columns" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    expect(screen.getByRole("button", { name: "3 Columns" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "4 Columns" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
   });
 });

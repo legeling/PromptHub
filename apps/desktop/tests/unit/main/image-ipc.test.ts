@@ -246,6 +246,99 @@ describe("image IPC", () => {
     expect(copyFileMock).not.toHaveBeenCalled();
   });
 
+  it("reports image open failures returned by the OS shell", async () => {
+    const { handlers, IPC_CHANNELS } = await setupImageIpc();
+    openPathMock.mockResolvedValue("No application is associated with the file");
+
+    await expect(
+      handlers[IPC_CHANNELS.IMAGE_OPEN](null, "saved-image.png"),
+    ).resolves.toBe(false);
+
+    expect(openPathMock).toHaveBeenCalledWith(
+      "/tmp/prompthub-images/saved-image.png",
+    );
+  });
+
+  it("reports video open failures returned by the OS shell", async () => {
+    const { handlers, IPC_CHANNELS } = await setupImageIpc();
+    openPathMock.mockResolvedValue("No application is associated with the file");
+
+    await expect(
+      handlers[IPC_CHANNELS.VIDEO_OPEN](null, "saved-video.mp4"),
+    ).resolves.toBe(false);
+
+    expect(openPathMock).toHaveBeenCalledWith(
+      "/tmp/prompthub-videos/saved-video.mp4",
+    );
+  });
+
+  it("fails media path operations safely for unsafe file names", async () => {
+    const { handlers, IPC_CHANNELS } = await setupImageIpc();
+
+    for (const unsafeName of [
+      "../secret.mp4",
+      "nested/secret.mp4",
+      "nested\\secret.mp4",
+      "safe..mp4",
+      "video.mp4:ads",
+      "",
+    ]) {
+      await expect(
+        handlers[IPC_CHANNELS.VIDEO_GET_PATH](null, unsafeName),
+      ).resolves.toBeNull();
+      await expect(
+        handlers[IPC_CHANNELS.VIDEO_OPEN](null, unsafeName),
+      ).resolves.toBe(false);
+      await expect(
+        handlers[IPC_CHANNELS.VIDEO_EXISTS](null, unsafeName),
+      ).resolves.toBe(false);
+    }
+
+    expect(openPathMock).not.toHaveBeenCalled();
+    expect(accessMock).not.toHaveBeenCalled();
+
+    await expect(
+      handlers[IPC_CHANNELS.VIDEO_GET_PATH](null, "safe-video.mp4"),
+    ).resolves.toBe("/tmp/prompthub-videos/safe-video.mp4");
+  });
+
+  it("normalizes image ArrayBuffer saves and rejects oversized media content", async () => {
+    const { handlers, IPC_CHANNELS } = await setupImageIpc();
+    uuidMock.mockReturnValue("buffer-image");
+
+    const imageBytes = new Uint8Array([1, 2, 3]).buffer;
+    await expect(
+      handlers[IPC_CHANNELS.IMAGE_SAVE_BUFFER](null, imageBytes),
+    ).resolves.toBe("buffer-image.png");
+    expect(writeFileMock).toHaveBeenCalledWith(
+      "/tmp/prompthub-images/buffer-image.png",
+      Buffer.from([1, 2, 3]),
+    );
+
+    writeFileMock.mockClear();
+    await expect(
+      handlers[IPC_CHANNELS.IMAGE_SAVE_BUFFER](
+        null,
+        new Uint8Array(20 * 1024 * 1024 + 1),
+      ),
+    ).resolves.toBeNull();
+    expect(writeFileMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid and oversized base64 media saves before writing files", async () => {
+    const { handlers, IPC_CHANNELS } = await setupImageIpc();
+    accessMock.mockRejectedValue(new Error("missing"));
+
+    await expect(
+      handlers[IPC_CHANNELS.IMAGE_SAVE_BASE64](null, "image.png", "not-base64!"),
+    ).resolves.toBe(false);
+    await expect(
+      handlers[IPC_CHANNELS.VIDEO_SAVE_BASE64](null, "video.mp4", "A".repeat(27_962_028)),
+    ).resolves.toBe(false);
+
+    expect(writeFileMock).not.toHaveBeenCalled();
+  });
+
   it("blocks redirected downloads before writing files when the target host is not public", async () => {
     const { handlers, IPC_CHANNELS } = await setupImageIpc();
     uuidMock.mockReturnValue("downloaded-image");
@@ -278,5 +371,62 @@ describe("image IPC", () => {
       ["example.com", "example.com", "blocked.test"],
     );
     expect(writeFileMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects remote image downloads without an image extension or image content type", async () => {
+    const { handlers, IPC_CHANNELS } = await setupImageIpc();
+    uuidMock.mockReturnValue("downloaded-image");
+    resolvePublicAddressMock.mockResolvedValue({ address: "203.0.113.10", family: 4 });
+
+    httpsRequestMock.mockImplementation(
+      createRequestMock(
+        createResponse({
+          statusCode: 200,
+          headers: {},
+          chunks: [Buffer.from("<html>not an image</html>")],
+        }),
+      ),
+    );
+
+    await expect(
+      handlers[IPC_CHANNELS.IMAGE_DOWNLOAD](
+        null,
+        "https://example.com/render",
+      ),
+    ).resolves.toBeNull();
+
+    expect(writeFileMock).not.toHaveBeenCalled();
+  });
+
+  it("clears image files while ignoring entries that cannot be unlinked", async () => {
+    const { handlers, IPC_CHANNELS } = await setupImageIpc();
+    accessMock.mockResolvedValue(undefined);
+    readdirMock.mockResolvedValue(["safe.png", "nested"]);
+    unlinkMock.mockImplementation(async (targetPath: string) => {
+      if (targetPath.endsWith("/nested")) {
+        throw new Error("EISDIR");
+      }
+    });
+
+    await expect(handlers[IPC_CHANNELS.IMAGE_CLEAR](null)).resolves.toBe(true);
+
+    expect(unlinkMock).toHaveBeenCalledWith("/tmp/prompthub-images/safe.png");
+    expect(unlinkMock).toHaveBeenCalledWith("/tmp/prompthub-images/nested");
+  });
+
+  it("clears video files while ignoring entries that cannot be unlinked", async () => {
+    const { handlers, IPC_CHANNELS } = await setupImageIpc();
+    accessMock.mockResolvedValue(undefined);
+    readdirMock.mockResolvedValue(["safe.mp4", "nested"]);
+    unlinkMock.mockImplementation(async (targetPath: string) => {
+      if (targetPath.endsWith("/nested")) {
+        throw new Error("EISDIR");
+      }
+    });
+
+    await expect(handlers[IPC_CHANNELS.VIDEO_CLEAR](null)).resolves.toBe(true);
+
+    expect(unlinkMock).toHaveBeenCalledWith("/tmp/prompthub-videos/safe.mp4");
+    expect(unlinkMock).toHaveBeenCalledWith("/tmp/prompthub-videos/nested");
   });
 });

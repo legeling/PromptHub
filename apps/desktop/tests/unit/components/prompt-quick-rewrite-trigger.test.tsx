@@ -23,7 +23,7 @@ describe("PromptQuickRewriteTrigger", () => {
     expect(button).toHaveAttribute("title", "AI Quick Edit");
     expect(button).toHaveClass("test-trigger");
     expect(button.textContent).toBe("");
-    expect(button.querySelector("svg")).not.toBeNull();
+    expect(button.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
 
     await user.click(button);
 

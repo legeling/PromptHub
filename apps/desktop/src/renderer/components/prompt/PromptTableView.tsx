@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback, type MouseEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StarIcon, CopyIcon, PlayIcon, EditIcon, TrashIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, HistoryIcon, FolderIcon, Trash2Icon } from 'lucide-react';
 import type { Prompt } from '@prompthub/shared/types';
@@ -6,6 +6,7 @@ import { useFolderStore } from '../../stores/folder.store';
 import { useTableConfig, type ColumnConfig } from '../../hooks/useTableConfig';
 import { ResizableHeader } from './ResizableHeader';
 import { ColumnConfigMenu } from './ColumnConfigMenu';
+import { parsePromptVariables } from './prompt-modal-utils';
 
 function escapeRegExp(str: string) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -35,12 +36,33 @@ function renderHighlightedText(text: string, terms: string[], highlightClassName
   });
 }
 
+function handleRowActionClick(
+  event: MouseEvent<HTMLButtonElement>,
+  action: () => void,
+) {
+  event.stopPropagation();
+  action();
+}
+
 // Custom Checkbox component
 // 自定义 Checkbox 组件
-function Checkbox({ checked, onChange, className = '' }: { checked: boolean; onChange: () => void; className?: string }) {
+function Checkbox({
+  checked,
+  onChange,
+  ariaLabel,
+  className = '',
+}: {
+  checked: boolean;
+  onChange: () => void;
+  ariaLabel: string;
+  className?: string;
+}) {
   return (
     <button
       type="button"
+      role="checkbox"
+      aria-checked={checked}
+      aria-label={ariaLabel}
       onClick={(e) => { e.stopPropagation(); onChange(); }}
       className={`w-[18px] h-[18px] rounded border-2 flex items-center justify-center transition-all ${checked
         ? 'bg-primary border-primary text-white'
@@ -48,7 +70,7 @@ function Checkbox({ checked, onChange, className = '' }: { checked: boolean; onC
         } ${className}`}
     >
       {checked && (
-        <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
+        <svg aria-hidden="true" className="w-3 h-3" viewBox="0 0 12 12" fill="none">
           <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       )}
@@ -98,12 +120,15 @@ export function PromptTableView({
   const { t, i18n } = useTranslation();
   const highlightClassName = 'bg-primary/15 text-primary rounded px-0.5';
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMountedRef = useRef(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showFolderMenu, setShowFolderMenu] = useState(false);
   const folders = useFolderStore((state) => state.folders);
-  
+  const promptIds = useMemo(() => new Set(prompts.map((prompt) => prompt.id)), [prompts]);
+
   // Table column configuration
   // 表格列配置
   const {
@@ -118,6 +143,27 @@ export function PromptTableView({
     const lang = (i18n.language || '').toLowerCase();
     return !(lang.startsWith('zh'));
   }, [i18n.language]);
+  const copyLabel = t('prompt.copy');
+  const aiTestLabel = t('prompt.aiTest');
+  const historyLabel = t('prompt.history');
+  const editLabel = t('prompt.edit');
+  const deleteLabel = t('prompt.delete');
+
+  const clearCopyTimer = useCallback(() => {
+    if (copyTimerRef.current) {
+      clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+      clearCopyTimer();
+    };
+  }, [clearCopyTimer]);
 
   const renderTextPreview = (content?: string) => {
     if (!content) {
@@ -135,26 +181,33 @@ export function PromptTableView({
 
   // Pagination
   // 分页
-  const totalPages = Math.ceil(prompts.length / pageSize);
+  const totalPages = Math.max(1, Math.ceil(prompts.length / pageSize));
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
   const currentPrompts = prompts.slice(startIndex, endIndex);
+  const currentPageAllSelected =
+    currentPrompts.length > 0 && currentPrompts.every((prompt) => selectedIds.has(prompt.id));
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
+
+  useEffect(() => {
+    setSelectedIds((currentIds) => {
+      const visibleIds = new Set(Array.from(currentIds).filter((id) => promptIds.has(id)));
+      return visibleIds.size === currentIds.size ? currentIds : visibleIds;
+    });
+  }, [promptIds]);
 
   // Extract variable count
   // 提取变量数量
   const getVariableCount = (prompt: Prompt) => {
-    const regex = /\{\{([^}]+)\}\}/g;
-    const matches = new Set<string>();
-    let match;
     const text =
       (prompt.systemPrompt || '') +
       prompt.userPrompt +
       (prompt.systemPromptEn || '') +
       (prompt.userPromptEn || '');
-    while ((match = regex.exec(text)) !== null) {
-      matches.add(match[1]);
-    }
-    return matches.size;
+    return new Set(parsePromptVariables(text).map((variable) => variable.name)).size;
   };
 
   // Format date
@@ -174,8 +227,15 @@ export function PromptTableView({
   // 处理复制
   const handleCopy = async (prompt: Prompt) => {
     await onCopy(prompt);
+    if (!isMountedRef.current) {
+      return;
+    }
+    clearCopyTimer();
     setCopiedId(prompt.id);
-    setTimeout(() => setCopiedId(null), 2000);
+    copyTimerRef.current = setTimeout(() => {
+      setCopiedId(null);
+      copyTimerRef.current = null;
+    }, 2000);
   };
 
   // Change page
@@ -199,11 +259,16 @@ export function PromptTableView({
   };
 
   const toggleSelectAll = () => {
-    if (selectedIds.size === currentPrompts.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(currentPrompts.map(p => p.id)));
-    }
+    setSelectedIds((currentIds) => {
+      const nextIds = new Set(currentIds);
+      if (currentPageAllSelected) {
+        currentPrompts.forEach((prompt) => nextIds.delete(prompt.id));
+        return nextIds;
+      }
+
+      currentPrompts.forEach((prompt) => nextIds.add(prompt.id));
+      return nextIds;
+    });
   };
 
   const clearSelection = () => setSelectedIds(new Set());
@@ -247,24 +312,27 @@ export function PromptTableView({
           </span>
           <div className="flex items-center gap-2 ml-auto">
             <button
+              type="button"
               onClick={() => handleBatchFavorite(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-yellow-500/30 text-yellow-600 dark:text-yellow-500 hover:bg-yellow-500/10 transition-colors"
             >
-              <StarIcon className="w-4 h-4" />
+              <StarIcon aria-hidden="true" className="w-4 h-4" />
               {t('prompt.batchFavorite') || '批量收藏'}
             </button>
             <div className="relative">
               <button
+                type="button"
                 onClick={() => setShowFolderMenu(!showFolderMenu)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-primary/30 text-primary hover:bg-primary/10 transition-colors"
               >
-                <FolderIcon className="w-4 h-4" />
+                <FolderIcon aria-hidden="true" className="w-4 h-4" />
                 {t('prompt.batchMove') || '批量移动'}
               </button>
               {showFolderMenu && (
                 <div className="absolute top-full left-0 mt-1 w-48 bg-popover border border-border rounded-lg shadow-lg z-50">
                   <div className="py-1">
                     <button
+                      type="button"
                       onClick={() => handleBatchMove(undefined)}
                       className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors rounded-md"
                     >
@@ -273,6 +341,7 @@ export function PromptTableView({
                     {folders.map((folder) => (
                       <button
                         key={folder.id}
+                        type="button"
                         onClick={() => handleBatchMove(folder.id)}
                         className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center gap-2 rounded-md"
                       >
@@ -285,13 +354,15 @@ export function PromptTableView({
               )}
             </div>
             <button
+              type="button"
               onClick={handleBatchDelete}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-destructive/30 text-destructive hover:bg-destructive/10 transition-colors"
             >
-              <Trash2Icon className="w-4 h-4" />
+              <Trash2Icon aria-hidden="true" className="w-4 h-4" />
               {t('prompt.batchDelete') || '批量删除'}
             </button>
             <button
+              type="button"
               onClick={clearSelection}
               className="px-3 py-1.5 text-sm rounded-lg text-muted-foreground hover:bg-accent transition-colors"
             >
@@ -323,13 +394,14 @@ export function PromptTableView({
                     return (
                       <th key={column.id} className="px-4 py-3" style={{ width: column.width }}>
                         <Checkbox
-                          checked={currentPrompts.length > 0 && selectedIds.size === currentPrompts.length}
+                          checked={currentPageAllSelected}
                           onChange={toggleSelectAll}
+                          ariaLabel={t('prompt.selectAllPrompts', 'Select all prompts')}
                         />
                       </th>
                     );
                   }
-                  
+
                   if (column.id === 'actions') {
                     return (
                       <th
@@ -365,24 +437,35 @@ export function PromptTableView({
               {currentPrompts.map((prompt) => {
                 const isSelected = selectedIds.has(prompt.id);
                 const aiContent = prompt.lastAiResponse || aiResults[prompt.id] || '';
-                
+
                 // Helper to render cell content based on column id
                 // 根据列 ID 渲染单元格内容的辅助函数
                 const renderCell = (column: ColumnConfig) => {
                   const colWidth = { width: column.width, minWidth: column.minWidth };
-                  
+                  const favoriteLabel = prompt.isFavorite
+                    ? t('prompt.removeFromFavorites')
+                    : t('prompt.addToFavorites');
+
                   switch (column.id) {
                     case 'checkbox':
                       return (
                         <td key={column.id} className="px-4 py-3" style={colWidth}>
-                          <Checkbox checked={isSelected} onChange={() => toggleSelect(prompt.id)} />
+                          <Checkbox
+                            checked={isSelected}
+                            onChange={() => toggleSelect(prompt.id)}
+                            ariaLabel={t('prompt.selectPromptRow', {
+                              title: prompt.title,
+                              defaultValue: 'Select {{title}}',
+                            })}
+                          />
                         </td>
                       );
-                    
+
                     case 'title':
                       return (
                         <td key={column.id} className="px-4 py-3" style={colWidth}>
                           <button
+                            type="button"
                             onClick={() => onViewDetail(prompt)}
                             className="font-medium text-primary hover:text-primary/80 hover:underline truncate text-left block"
                             style={{ maxWidth: column.width - 32 }}
@@ -396,8 +479,8 @@ export function PromptTableView({
                     case 'description':
                       return (
                         <td key={column.id} className="px-4 py-3" style={colWidth}>
-                          <span 
-                            className="text-xs text-muted-foreground truncate block" 
+                          <span
+                            className="text-xs text-muted-foreground truncate block"
                             style={{ maxWidth: column.width - 32 }}
                             title={prompt.description}
                           >
@@ -409,8 +492,8 @@ export function PromptTableView({
                     case 'systemPrompt':
                       return (
                         <td key={column.id} className="px-4 py-3" style={colWidth}>
-                          <span 
-                            className="text-xs text-muted-foreground truncate block" 
+                          <span
+                            className="text-xs text-muted-foreground truncate block"
                             style={{ maxWidth: column.width - 32 }}
                             title={preferEnglish ? (prompt.systemPromptEn || prompt.systemPrompt) : prompt.systemPrompt}
                           >
@@ -418,12 +501,12 @@ export function PromptTableView({
                           </span>
                         </td>
                       );
-                    
+
                     case 'userPrompt':
                       return (
                         <td key={column.id} className="px-4 py-3" style={colWidth}>
-                          <span 
-                            className="text-xs text-muted-foreground truncate block" 
+                          <span
+                            className="text-xs text-muted-foreground truncate block"
                             style={{ maxWidth: column.width - 32 }}
                             title={preferEnglish ? (prompt.userPromptEn || prompt.userPrompt) : prompt.userPrompt}
                           >
@@ -431,12 +514,12 @@ export function PromptTableView({
                           </span>
                         </td>
                       );
-                    
+
                     case 'aiResponse':
                       return (
                         <td key={column.id} className="px-4 py-3" style={colWidth}>
-                          <span 
-                            className="text-xs text-muted-foreground truncate block" 
+                          <span
+                            className="text-xs text-muted-foreground truncate block"
                             style={{ maxWidth: column.width - 32 }}
                             title={aiContent}
                           >
@@ -444,7 +527,7 @@ export function PromptTableView({
                           </span>
                         </td>
                       );
-                    
+
                     case 'variables':
                       return (
                         <td key={column.id} className="px-4 py-3 text-center" style={colWidth}>
@@ -453,7 +536,7 @@ export function PromptTableView({
                           </span>
                         </td>
                       );
-                    
+
                     case 'usageCount':
                       return (
                         <td key={column.id} className="px-4 py-3 text-center text-muted-foreground text-xs" style={colWidth}>
@@ -489,83 +572,92 @@ export function PromptTableView({
                           </span>
                         </td>
                       );
-                    
+
                     case 'actions':
                       return (
-                        <td 
+                        <td
                           key={column.id}
                            className="sticky right-0 z-30 p-0 app-wallpaper-surface-strong shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.15)]"
                           style={colWidth}
                         >
                           {isSelected && <div className="absolute inset-0 bg-primary/5 pointer-events-none" />}
-                          <div
-                            className="relative flex items-center justify-center gap-0.5 px-2 py-3"
-                            onClick={(e) => e.stopPropagation()}
-                          >
+                          <div className="relative flex items-center justify-center gap-0.5 px-2 py-3">
                             {/* Copy */}
                             <button
-                              onClick={() => handleCopy(prompt)}
+                              type="button"
+                              onClick={(event) => handleRowActionClick(event, () => handleCopy(prompt))}
                               className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                              title={t('prompt.copy')}
+                              title={copyLabel}
+                              aria-label={copyLabel}
                             >
                               {copiedId === prompt.id ? (
-                                <CheckIcon className="w-4 h-4 text-green-500" />
+                                <CheckIcon aria-hidden="true" className="w-4 h-4 text-green-500" />
                               ) : (
-                                <CopyIcon className="w-4 h-4" />
+                                <CopyIcon aria-hidden="true" className="w-4 h-4" />
                               )}
                             </button>
 
                             {/* AI test */}
                             <button
-                              onClick={() => onAiTest(prompt)}
+                              type="button"
+                              onClick={(event) => handleRowActionClick(event, () => onAiTest(prompt))}
                               className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                              title={t('prompt.aiTest')}
+                              title={aiTestLabel}
+                              aria-label={aiTestLabel}
                             >
-                              <PlayIcon className="w-4 h-4" />
+                              <PlayIcon aria-hidden="true" className="w-4 h-4" />
                             </button>
 
                             {/* Version history */}
                             <button
-                              onClick={() => onVersionHistory(prompt)}
+                              type="button"
+                              onClick={(event) => handleRowActionClick(event, () => onVersionHistory(prompt))}
                               className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                              title={t('prompt.history')}
+                              title={historyLabel}
+                              aria-label={historyLabel}
                             >
-                              <HistoryIcon className="w-4 h-4" />
+                              <HistoryIcon aria-hidden="true" className="w-4 h-4" />
                             </button>
 
                             {/* Favorite */}
                             <button
-                              onClick={() => onToggleFavorite(prompt.id)}
+                              type="button"
+                              onClick={(event) => handleRowActionClick(event, () => onToggleFavorite(prompt.id))}
                               className={`p-1.5 rounded-lg transition-colors ${prompt.isFavorite
                                 ? 'text-yellow-500 hover:bg-yellow-500/10'
                                 : 'text-muted-foreground hover:text-yellow-500 hover:bg-accent'
                                 }`}
-                              title={prompt.isFavorite ? t('nav.favorites') : t('prompt.addToFavorites')}
+                              title={favoriteLabel}
+                              aria-label={favoriteLabel}
                             >
-                              <StarIcon className={`w-4 h-4 ${prompt.isFavorite ? 'fill-current' : ''}`} />
+                              <StarIcon aria-hidden="true" className={`w-4 h-4 ${prompt.isFavorite ? 'fill-current' : ''}`} />
                             </button>
 
                             {/* Edit */}
                             <button
-                              onClick={() => onEdit(prompt)}
+                              type="button"
+                              onClick={(event) => handleRowActionClick(event, () => onEdit(prompt))}
                               className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                              title={t('prompt.edit')}
+                              title={editLabel}
+                              aria-label={editLabel}
                             >
-                              <EditIcon className="w-4 h-4" />
+                              <EditIcon aria-hidden="true" className="w-4 h-4" />
                             </button>
 
                             {/* Delete */}
                             <button
-                              onClick={() => onDelete(prompt)}
+                              type="button"
+                              onClick={(event) => handleRowActionClick(event, () => onDelete(prompt))}
                               className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                              title={t('prompt.delete')}
+                              title={deleteLabel}
+                              aria-label={deleteLabel}
                             >
-                              <TrashIcon className="w-4 h-4" />
+                              <TrashIcon aria-hidden="true" className="w-4 h-4" />
                             </button>
                           </div>
                         </td>
                       );
-                    
+
                     default:
                       return null;
                   }
@@ -607,6 +699,7 @@ export function PromptTableView({
               <span className="text-muted-foreground">{t('prompt.pageSize') || '每页'}</span>
               <select
                 value={pageSize}
+                aria-label={t('prompt.pageSize', 'Per page')}
                 onChange={(e) => {
                   setPageSize(Number(e.target.value));
                   setCurrentPage(1);
@@ -622,12 +715,14 @@ export function PromptTableView({
             {/* Page navigation */}
             {/* 页码 */}
             <div className="flex items-center gap-1">
-              <button
-                onClick={() => goToPage(currentPage - 1)}
-                disabled={currentPage === 1}
+	              <button
+	                type="button"
+	                onClick={() => goToPage(currentPage - 1)}
+	                disabled={currentPage === 1}
+                aria-label={t('prompt.previousPage', 'Previous page')}
                 className="p-1.5 rounded-md hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                <ChevronLeftIcon className="w-4 h-4" />
+                <ChevronLeftIcon aria-hidden="true" className="w-4 h-4" />
               </button>
 
               <div className="flex items-center gap-1">
@@ -643,9 +738,15 @@ export function PromptTableView({
                     page = currentPage - 2 + i;
                   }
                   return (
-                    <button
-                      key={page}
-                      onClick={() => goToPage(page)}
+	                    <button
+	                      key={page}
+	                      type="button"
+	                      onClick={() => goToPage(page)}
+                      aria-label={t('prompt.pageNumber', {
+                        page,
+                        defaultValue: 'Page {{page}}',
+                      })}
+                      aria-current={currentPage === page ? 'page' : undefined}
                       className={`w-8 h-8 rounded-md text-sm transition-colors ${currentPage === page
                         ? 'bg-primary text-white'
                         : 'hover:bg-accent'
@@ -657,12 +758,14 @@ export function PromptTableView({
                 })}
               </div>
 
-              <button
-                onClick={() => goToPage(currentPage + 1)}
-                disabled={currentPage === totalPages}
+	              <button
+	                type="button"
+	                onClick={() => goToPage(currentPage + 1)}
+	                disabled={currentPage === totalPages}
+                aria-label={t('prompt.nextPage', 'Next page')}
                 className="p-1.5 rounded-md hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                <ChevronRightIcon className="w-4 h-4" />
+                <ChevronRightIcon aria-hidden="true" className="w-4 h-4" />
               </button>
             </div>
           </div>

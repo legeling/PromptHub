@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, useId } from "react";
 import { Modal, Button, Input, Textarea, UnsavedChangesDialog } from "../ui";
 import { handleMarkdownListKeyDown } from "../ui/Textarea";
 import { Select } from "../ui/Select";
@@ -50,6 +50,7 @@ import {
 } from "./prompt-modal-utils";
 import { usePromptMediaManager } from "./usePromptMediaManager";
 import { usePromptNativeFullscreen } from "./usePromptNativeFullscreen";
+import { resolvePromptMarkdownHref } from "./prompt-markdown-url";
 import { resolveLocalImageSrc, resolveLocalVideoSrc } from "../../utils/media-url";
 
 /* Existing code */
@@ -69,6 +70,11 @@ export function EditPromptModal({
 }: EditPromptModalProps) {
   const { t, i18n } = useTranslation();
   const { showToast } = useToast();
+  const titleInputId = useId();
+  const systemPromptInputId = useId();
+  const systemPromptEnInputId = useId();
+  const userPromptInputId = useId();
+  const userPromptEnInputId = useId();
   const updatePrompt = usePromptStore((state) => state.updatePrompt);
   const createPrompt = usePromptStore((state) => state.createPrompt);
   const prompts = usePromptStore((state) => state.prompts);
@@ -107,6 +113,10 @@ export function EditPromptModal({
   // 属性面板折叠状态
   const [showAttributes, setShowAttributes] = useState(false);
   const fullscreenTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const sourceSuggestionsCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMountedRef = useRef(true);
+  const isOpenRef = useRef(isOpen);
+  const modalSessionRef = useRef(0);
 
   // Only subscribe to the fields we need, not the entire store
   // 只订阅需要的字段，而不是整个 store
@@ -129,6 +139,48 @@ export function EditPromptModal({
   const rewriteModel = translationModel;
   const canRewrite = !!rewriteModel;
 
+  const clearSourceSuggestionsCloseTimer = useCallback(() => {
+    if (sourceSuggestionsCloseTimerRef.current) {
+      clearTimeout(sourceSuggestionsCloseTimerRef.current);
+      sourceSuggestionsCloseTimerRef.current = null;
+    }
+  }, []);
+
+  const handleSourceFocus = useCallback(() => {
+    clearSourceSuggestionsCloseTimer();
+    setShowSourceSuggestions(true);
+  }, [clearSourceSuggestionsCloseTimer]);
+
+  const handleSourceBlur = useCallback(() => {
+    clearSourceSuggestionsCloseTimer();
+    sourceSuggestionsCloseTimerRef.current = setTimeout(() => {
+      setShowSourceSuggestions(false);
+      sourceSuggestionsCloseTimerRef.current = null;
+    }, 150);
+  }, [clearSourceSuggestionsCloseTimer]);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      isOpenRef.current = false;
+      modalSessionRef.current += 1;
+      clearSourceSuggestionsCloseTimer();
+    };
+  }, [clearSourceSuggestionsCloseTimer]);
+
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+    modalSessionRef.current += 1;
+  }, [isOpen, prompt?.id]);
+
+  const canApplyAsyncResult = useCallback(
+    (session: number) =>
+      isMountedRef.current &&
+      isOpenRef.current &&
+      modalSessionRef.current === session,
+    [],
+  );
+
   // Detect if main content is pure English (strict: no CJK allowed)
   // 检测主内容是否为纯英文（严格：不允许中日韩字符）
   const isMainContentEnglish = useMemo(() => {
@@ -148,7 +200,11 @@ export function EditPromptModal({
     handleRemoveVideo,
     handleSelectImage,
     handleSelectVideo,
+    handleMediaDragLeave,
+    handleMediaDragOver,
+    handleMediaDrop,
     handleUrlUpload,
+    isDraggingMedia,
   } = usePromptMediaManager({
     isOpen,
     initialImages: prompt?.images || initialData?.images || [],
@@ -332,14 +388,23 @@ export function EditPromptModal({
         />
       ),
       hr: () => <hr className="my-4 border-border" />,
-      a: (props: any) => (
-        <a
-          className="text-primary hover:underline"
-          {...props}
-          target="_blank"
-          rel="noreferrer"
-        />
-      ),
+      a: ({ href, children, ...props }: any) => {
+        const safeHref = resolvePromptMarkdownHref(href);
+        if (!safeHref) {
+          return <span {...props}>{children}</span>;
+        }
+        return (
+          <a
+            className="text-primary hover:underline"
+            {...props}
+            href={safeHref}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {children}
+          </a>
+        );
+      },
     }),
     [],
   );
@@ -363,6 +428,10 @@ export function EditPromptModal({
     : !systemPromptEn && !userPromptEn && !isMainContentEnglish
       ? t("prompt.noEnglishContentToTranslate", "没有英文内容可翻译")
       : "";
+  const translateToEnglishLabel = t("prompt.translateToEnglish", "翻译为英文");
+  const translateFromEnglishLabel = isMainContentEnglish
+    ? t("prompt.translateDetectedEnglish", "检测到英文内容，翻译为当前语言")
+    : t("prompt.translateFromEnglish", "从英文翻译到当前语言");
 
   // 当 prompt 变化时更新表单
   useEffect(() => {
@@ -392,7 +461,9 @@ export function EditPromptModal({
     if (!title.trim() || !userPrompt.trim()) return;
 
     try {
-      const promptData = buildPromptPayload(formState);
+      const promptData = buildPromptPayload(formState, {
+        preserveEmptyOptionalFields: true,
+      });
 
       if (prompt) {
         await updatePrompt(prompt.id, promptData as UpdatePromptDTO);
@@ -454,6 +525,7 @@ export function EditPromptModal({
       return;
     }
 
+    const rewriteSession = modalSessionRef.current;
     setIsRewritingPrompt(true);
     try {
       const previous = {
@@ -482,6 +554,10 @@ export function EditPromptModal({
         },
       );
 
+      if (!canApplyAsyncResult(rewriteSession)) {
+        return;
+      }
+
       setRewriteSnapshot(previous);
 
       if (rewritten.description !== undefined) {
@@ -506,6 +582,9 @@ export function EditPromptModal({
         "success",
       );
     } catch (error) {
+      if (!canApplyAsyncResult(rewriteSession)) {
+        return;
+      }
       showToast(
         error instanceof Error
           ? error.message
@@ -513,7 +592,9 @@ export function EditPromptModal({
         "error",
       );
     } finally {
-      setIsRewritingPrompt(false);
+      if (canApplyAsyncResult(rewriteSession)) {
+        setIsRewritingPrompt(false);
+      }
     }
   };
 
@@ -527,6 +608,7 @@ export function EditPromptModal({
       return;
     }
 
+    const translateSession = modalSessionRef.current;
     setIsTranslating(true);
     try {
       const systemInstruction =
@@ -557,6 +639,10 @@ export function EditPromptModal({
         { temperature: 0.3, maxTokens: 8192 },
       );
 
+      if (!canApplyAsyncResult(translateSession)) {
+        return;
+      }
+
       if (!result.content) {
         throw new Error(t("common.error"));
       }
@@ -586,6 +672,9 @@ export function EditPromptModal({
       setShowEnglishVersion(true);
       showToast(t("prompt.englishGenerated"), "success");
     } catch (e) {
+      if (!canApplyAsyncResult(translateSession)) {
+        return;
+      }
       showToast(
         e instanceof Error
           ? e.message
@@ -593,7 +682,9 @@ export function EditPromptModal({
         "error",
       );
     } finally {
-      setIsTranslating(false);
+      if (canApplyAsyncResult(translateSession)) {
+        setIsTranslating(false);
+      }
     }
   };
 
@@ -620,6 +711,7 @@ export function EditPromptModal({
       return;
     }
 
+    const translateSession = modalSessionRef.current;
     setIsTranslating(true);
     try {
       // If main content is English and En fields are empty, copy main → En fields first
@@ -657,6 +749,10 @@ export function EditPromptModal({
         { temperature: 0.3, maxTokens: 8192 },
       );
 
+      if (!canApplyAsyncResult(translateSession)) {
+        return;
+      }
+
       if (!result.content) {
         throw new Error(t("common.error") || "翻译失败");
       }
@@ -689,6 +785,9 @@ export function EditPromptModal({
         "success",
       );
     } catch (e) {
+      if (!canApplyAsyncResult(translateSession)) {
+        return;
+      }
       showToast(
         e instanceof Error
           ? e.message
@@ -696,7 +795,9 @@ export function EditPromptModal({
         "error",
       );
     } finally {
-      setIsTranslating(false);
+      if (canApplyAsyncResult(translateSession)) {
+        setIsTranslating(false);
+      }
     }
   };
 
@@ -778,7 +879,16 @@ export function EditPromptModal({
   }, [isOpen, handleSubmit, isNativeFullscreen, exitNativeFullscreen]);
 
   const renderReferenceMediaSection = () => (
-    <div className="space-y-2">
+    <div
+      className={`space-y-2 rounded-xl border border-dashed p-3 transition-colors ${
+        isDraggingMedia
+          ? "border-primary bg-primary/5"
+          : "border-transparent"
+      }`}
+      onDragOver={handleMediaDragOver}
+      onDragLeave={handleMediaDragLeave}
+      onDrop={handleMediaDrop}
+    >
       <label className="block text-sm font-medium text-foreground">
         {t("prompt.referenceMedia")}
       </label>
@@ -794,10 +904,14 @@ export function EditPromptModal({
               className="w-full h-full object-cover"
             />
             <button
+              type="button"
+              aria-label={t("prompt.removeReferenceImage", {
+                index: index + 1,
+              })}
               onClick={() => handleRemoveImage(index)}
               className="absolute top-1 right-1 p-1 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
             >
-              <XIcon className="w-3 h-3" />
+              <XIcon className="w-3 h-3" aria-hidden="true" />
             </button>
           </div>
         ))}
@@ -811,30 +925,37 @@ export function EditPromptModal({
               className="w-full h-full object-cover opacity-70"
             />
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <PlayIcon className="w-6 h-6 text-white/80" />
+              <PlayIcon className="w-6 h-6 text-white/80" aria-hidden="true" />
             </div>
             <button
+              type="button"
+              aria-label={t("prompt.removeReferenceVideo", {
+                defaultValue: "Remove reference video {{index}}",
+                index: index + 1,
+              })}
               onClick={() => handleRemoveVideo(index)}
               className="absolute top-1 right-1 p-1 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
             >
-              <XIcon className="w-3 h-3" />
+              <XIcon className="w-3 h-3" aria-hidden="true" />
             </button>
           </div>
         ))}
         <button
+          type="button"
           onClick={handleSelectImage}
           className="w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 flex flex-col items-center justify-center text-muted-foreground hover:text-primary transition-colors text-center p-2"
         >
-          <ImageIcon className="w-6 h-6 mb-1" />
+          <ImageIcon className="w-6 h-6 mb-1" aria-hidden="true" />
           <span className="text-[10px] leading-tight">
             {t("prompt.uploadImage", "Upload/Add Link")}
           </span>
         </button>
         <button
+          type="button"
           onClick={handleSelectVideo}
           className="w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 flex flex-col items-center justify-center text-muted-foreground hover:text-primary transition-colors text-center p-2"
         >
-          <VideoIcon className="w-6 h-6 mb-1" />
+          <VideoIcon className="w-6 h-6 mb-1" aria-hidden="true" />
           <span className="text-[10px] leading-tight">
             {t("prompt.uploadVideo", "Upload Video")}
           </span>
@@ -845,6 +966,7 @@ export function EditPromptModal({
       </p>
       {!showUrlInput ? (
         <button
+          type="button"
           onClick={() => setShowUrlInput(true)}
           className="text-xs text-primary hover:underline"
         >
@@ -871,6 +993,7 @@ export function EditPromptModal({
             }}
           />
           <button
+            type="button"
             onClick={() => {
               if (imageUrl && !isDownloadingImage) {
                 handleUrlUpload(imageUrl);
@@ -886,6 +1009,7 @@ export function EditPromptModal({
               : t("common.confirm", "Confirm")}
           </button>
           <button
+            type="button"
             onClick={() => {
               setShowUrlInput(false);
               setImageUrl("");
@@ -937,10 +1061,11 @@ export function EditPromptModal({
           </div>
           <div className="flex items-center gap-3">
             <button
+              type="button"
               onClick={exitNativeFullscreen}
               className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-muted text-sm font-medium transition-colors"
             >
-              <Minimize2Icon className="w-4 h-4" />
+              <Minimize2Icon className="w-4 h-4" aria-hidden="true" />
               {t("common.exitFullscreen", "Exit Fullscreen")}
             </button>
             <Button variant="primary" onClick={exitNativeFullscreen}>
@@ -1002,7 +1127,13 @@ export function EditPromptModal({
       headerActions={
         <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={() => setIsFullscreen(!isFullscreen)}
+            aria-label={
+              isFullscreen
+                ? t("prompt.exitFullscreen", "Exit Fullscreen")
+                : t("prompt.fullscreen", "Fullscreen")
+            }
             className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             title={
               isFullscreen
@@ -1011,9 +1142,9 @@ export function EditPromptModal({
             }
           >
             {isFullscreen ? (
-              <Minimize2Icon className="w-4 h-4" />
+              <Minimize2Icon className="w-4 h-4" aria-hidden="true" />
             ) : (
-              <Maximize2Icon className="w-4 h-4" />
+              <Maximize2Icon className="w-4 h-4" aria-hidden="true" />
             )}
           </button>
           <Button
@@ -1022,7 +1153,7 @@ export function EditPromptModal({
             onClick={handleSubmit}
             disabled={!title.trim() || !userPrompt.trim()}
           >
-            <SaveIcon className="w-4 h-4" />
+            <SaveIcon className="w-4 h-4" aria-hidden="true" />
             {prompt ? t("prompt.save") : t("prompt.create")}
           </Button>
         </div>
@@ -1031,11 +1162,15 @@ export function EditPromptModal({
       <div className="space-y-5">
         {/* 标题 */}
         <div className="space-y-1.5">
-          <label className="block text-sm font-medium text-foreground">
+          <label
+            htmlFor={titleInputId}
+            className="block text-sm font-medium text-foreground"
+          >
             {t("prompt.titleLabel")}
             <span className="ml-1 text-destructive">*</span>
           </label>
           <input
+            id={titleInputId}
             type="text"
             placeholder={t("prompt.titlePlaceholder")}
             value={title}
@@ -1066,6 +1201,8 @@ export function EditPromptModal({
               {(["text", "image"] as const).map((type) => (
                 <button
                   key={type}
+                  type="button"
+                  aria-pressed={promptType === type}
                   onClick={() => setPromptType(type)}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                     promptType === type
@@ -1074,9 +1211,14 @@ export function EditPromptModal({
                   }`}
                 >
                   {type === "text" && (
-                    <MessageSquareTextIcon className="w-4 h-4" />
+                    <MessageSquareTextIcon
+                      className="w-4 h-4"
+                      aria-hidden="true"
+                    />
                   )}
-                  {type === "image" && <ImageIcon className="w-4 h-4" />}
+                  {type === "image" && (
+                    <ImageIcon className="w-4 h-4" aria-hidden="true" />
+                  )}
                   {type === "text" && t("prompt.typeText", "Text")}
                   {type === "image" && t("prompt.typeImage", "Image")}
                 </button>
@@ -1103,7 +1245,10 @@ export function EditPromptModal({
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                <SparklesIcon className="w-4 h-4 text-primary" />
+                <SparklesIcon
+                  className="w-4 h-4 text-primary"
+                  aria-hidden="true"
+                />
                 {t("prompt.aiRewriteTitle")}
               </div>
               <p className="text-xs leading-5 text-muted-foreground">
@@ -1143,6 +1288,7 @@ export function EditPromptModal({
           </div>
 
           <Textarea
+            aria-label={t("prompt.aiRewriteTitle")}
             value={rewriteInstruction}
             onChange={(event) => setRewriteInstruction(event.target.value)}
             placeholder={t("prompt.aiRewritePlaceholder")}
@@ -1162,9 +1308,12 @@ export function EditPromptModal({
               disabled={isRewritingPrompt || !canRewrite || !rewriteInstruction.trim()}
             >
               {isRewritingPrompt ? (
-                <Loader2Icon className="w-4 h-4 animate-spin" />
+                <Loader2Icon
+                  className="w-4 h-4 animate-spin"
+                  aria-hidden="true"
+                />
               ) : (
-                <SparklesIcon className="w-4 h-4" />
+                <SparklesIcon className="w-4 h-4" aria-hidden="true" />
               )}
               {isRewritingPrompt
                 ? t("prompt.aiRewriteWorking")
@@ -1176,13 +1325,21 @@ export function EditPromptModal({
         {/* 可折叠的更多设置面板 */}
         <div className="border border-border/50 rounded-xl bg-muted/20 overflow-hidden">
           <button
+            type="button"
+            aria-expanded={showAttributes}
             onClick={() => setShowAttributes(!showAttributes)}
             className="flex items-center gap-2 px-4 py-3 w-full text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
           >
             {showAttributes ? (
-              <ChevronDownIcon className="w-4 h-4 text-muted-foreground" />
+              <ChevronDownIcon
+                className="w-4 h-4 text-muted-foreground"
+                aria-hidden="true"
+              />
             ) : (
-              <ChevronRightIcon className="w-4 h-4 text-muted-foreground" />
+              <ChevronRightIcon
+                className="w-4 h-4 text-muted-foreground"
+                aria-hidden="true"
+              />
                 )}
             <span>{t("prompt.moreSettings", "More Settings")}</span>
             {!showAttributes && (
@@ -1242,13 +1399,15 @@ export function EditPromptModal({
                       key={tag}
                       className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-primary text-white"
                     >
-                      <HashIcon className="w-3 h-3" />
+                      <HashIcon className="w-3 h-3" aria-hidden="true" />
                       {tag}
                       <button
+                        type="button"
+                        aria-label={t("prompt.removeTag", { tag })}
                         onClick={() => handleRemoveTag(tag)}
                         className="ml-1 hover:text-white/70"
                       >
-                        <XIcon className="w-3 h-3" />
+                        <XIcon className="w-3 h-3" aria-hidden="true" />
                       </button>
                     </span>
                   ))}
@@ -1269,7 +1428,7 @@ export function EditPromptModal({
                             onClick={() => setTags([...tags, tag])}
                             className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-muted hover:bg-accent transition-colors"
                           >
-                            <HashIcon className="w-3 h-3" />
+                            <HashIcon className="w-3 h-3" aria-hidden="true" />
                             {tag}
                           </button>
                         ))}
@@ -1306,10 +1465,8 @@ export function EditPromptModal({
                     }
                     value={source}
                     onChange={(e) => setSource(e.target.value)}
-                    onFocus={() => setShowSourceSuggestions(true)}
-                    onBlur={() =>
-                      setTimeout(() => setShowSourceSuggestions(false), 150)
-                    }
+                    onFocus={handleSourceFocus}
+                    onBlur={handleSourceBlur}
                     className="w-full h-10 px-4 rounded-xl bg-muted/50 border-0 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:bg-background transition-all duration-base"
                   />
                   {showSourceSuggestions && sourceHistory.length > 0 && (
@@ -1364,7 +1521,7 @@ export function EditPromptModal({
         {!i18n.language.startsWith("en") && (
           <div className="flex items-center justify-between p-3 rounded-xl bg-accent/30 border border-border">
             <div className="flex items-center gap-2">
-              <GlobeIcon className="w-4 h-4 text-primary" />
+              <GlobeIcon className="w-4 h-4 text-primary" aria-hidden="true" />
               <div>
                 <div className="text-sm font-medium">
                   {t("prompt.bilingualHint")}
@@ -1375,6 +1532,7 @@ export function EditPromptModal({
               <div className="flex items-center gap-2">
                 {/* 当前语言 → 英文 (disabled when content is already English) */}
                 <button
+                  type="button"
                   onClick={handleTranslateToEnglish}
                   disabled={
                     isTranslating ||
@@ -1392,18 +1550,26 @@ export function EditPromptModal({
                   }`}
                   title={
                     translateToEnglishDisabledReason ||
-                    t("prompt.translateToEnglish", "一键翻译生成英文版")
+                    translateToEnglishLabel
                   }
+                  aria-label={translateToEnglishLabel}
                 >
                   {isTranslating ? (
-                    <Loader2Icon className="w-3.5 h-3.5 animate-spin" />
+                    <Loader2Icon
+                      className="w-3.5 h-3.5 animate-spin"
+                      aria-hidden="true"
+                    />
                   ) : (
-                    <SparklesIcon className="w-3.5 h-3.5" />
+                    <SparklesIcon
+                      className="w-3.5 h-3.5"
+                      aria-hidden="true"
+                    />
                   )}
                   → EN
                 </button>
                 {/* 英文 → 当前语言 (enabled when main content is English even if En fields are empty) */}
                 <button
+                  type="button"
                   onClick={handleTranslateFromEnglish}
                   disabled={
                     isTranslating ||
@@ -1419,22 +1585,26 @@ export function EditPromptModal({
                   }`}
                   title={
                     translateFromEnglishDisabledReason ||
-                    (isMainContentEnglish
-                      ? t(
-                          "prompt.translateDetectedEnglish",
-                          "检测到英文内容，翻译为当前语言",
-                        )
-                      : t("prompt.translateFromEnglish", "从英文翻译到当前语言"))
+                    translateFromEnglishLabel
                   }
+                  aria-label={translateFromEnglishLabel}
                 >
                   {isTranslating ? (
-                    <Loader2Icon className="w-3.5 h-3.5 animate-spin" />
+                    <Loader2Icon
+                      className="w-3.5 h-3.5 animate-spin"
+                      aria-hidden="true"
+                    />
                   ) : (
-                    <SparklesIcon className="w-3.5 h-3.5" />
+                    <SparklesIcon
+                      className="w-3.5 h-3.5"
+                      aria-hidden="true"
+                    />
                   )}
                   EN →
                 </button>
                 <button
+                  type="button"
+                  aria-pressed={showEnglishVersion}
                   onClick={handleToggleEnglishVersion}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                     showEnglishVersion
@@ -1444,17 +1614,17 @@ export function EditPromptModal({
                 >
                   {showEnglishVersion ? (
                     <>
-                      <XIcon className="w-3.5 h-3.5" />
+                      <XIcon className="w-3.5 h-3.5" aria-hidden="true" />
                       {t("prompt.removeEnglishVersion")}
                     </>
                   ) : isMainContentEnglish ? (
                     <>
-                      <PlusIcon className="w-3.5 h-3.5" />
+                      <PlusIcon className="w-3.5 h-3.5" aria-hidden="true" />
                       {t("prompt.addLocalizedVersion", "添加本地语言版本")}
                     </>
                   ) : (
                     <>
-                      <PlusIcon className="w-3.5 h-3.5" />
+                      <PlusIcon className="w-3.5 h-3.5" aria-hidden="true" />
                       {t("prompt.addEnglishVersion")}
                     </>
                   )}
@@ -1467,15 +1637,20 @@ export function EditPromptModal({
         {/* System Prompt */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <label className="block text-sm font-medium text-foreground">
+            <label
+              htmlFor={systemPromptInputId}
+              className="block text-sm font-medium text-foreground"
+            >
               {t("prompt.systemPromptOptional")}
             </label>
             <button
+              type="button"
+              aria-label={t("prompt.fullscreen", "Fullscreen Edit")}
               onClick={() => enterNativeFullscreen("system")}
               className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors border border-border"
               title={t("prompt.fullscreen", "全屏编辑")}
             >
-              <Maximize2Icon className="w-4 h-4" />
+              <Maximize2Icon className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
           {/* 分屏布局：左边编辑 + 右边预览 */}
@@ -1483,6 +1658,7 @@ export function EditPromptModal({
             {/* 左边：编辑区 */}
             <div className="w-1/2 border-r border-border flex flex-col">
               <Textarea
+                id={systemPromptInputId}
                 placeholder={t("prompt.systemPromptPlaceholder")}
                 value={systemPrompt}
                 onChange={(e) => setSystemPrompt(e.target.value)}
@@ -1518,21 +1694,27 @@ export function EditPromptModal({
           {showEnglishVersion && (
             <div className="mt-2 pl-4 border-l-2 border-primary/20 space-y-2">
               <div className="flex items-center gap-2">
-                <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                <label
+                  htmlFor={systemPromptEnInputId}
+                  className="text-xs font-medium text-muted-foreground flex items-center gap-1.5"
+                >
                   <span className="bg-primary/10 text-primary px-1 rounded text-[10px]">
                     EN
                   </span>
                   {t("prompt.systemPromptEn")}
                 </label>
                 <button
+                  type="button"
+                  aria-label={t("prompt.fullscreen")}
                   onClick={() => enterNativeFullscreen("systemEn")}
                   className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                   title={t("prompt.fullscreen")}
                 >
-                  <Maximize2Icon className="w-3 h-3" />
+                  <Maximize2Icon className="w-3 h-3" aria-hidden="true" />
                 </button>
               </div>
               <Textarea
+                id={systemPromptEnInputId}
                 placeholder="Enter English System Prompt..."
                 value={systemPromptEn}
                 onChange={(e) => setSystemPromptEn(e.target.value)}
@@ -1546,16 +1728,21 @@ export function EditPromptModal({
         {/* User Prompt */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <label className="block text-sm font-medium text-foreground">
+            <label
+              htmlFor={userPromptInputId}
+              className="block text-sm font-medium text-foreground"
+            >
               {t("prompt.userPromptLabel")}
               <span className="ml-2 text-xs text-destructive">*</span>
             </label>
             <button
+              type="button"
+              aria-label={t("prompt.fullscreen", "Fullscreen Edit")}
               onClick={() => enterNativeFullscreen("user")}
               className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors border border-border"
               title={t("prompt.fullscreen", "全屏编辑")}
             >
-              <Maximize2Icon className="w-4 h-4" />
+              <Maximize2Icon className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
           {/* 分屏布局：左边编辑 + 右边预览 */}
@@ -1563,6 +1750,7 @@ export function EditPromptModal({
             {/* 左边：编辑区 */}
             <div className="w-1/2 border-r border-border flex flex-col">
               <Textarea
+                id={userPromptInputId}
                 placeholder={t("prompt.userPromptPlaceholder")}
                 value={userPrompt}
                 onChange={(e) => setUserPrompt(e.target.value)}
@@ -1598,21 +1786,27 @@ export function EditPromptModal({
           {showEnglishVersion && (
             <div className="mt-2 pl-4 border-l-2 border-primary/20 space-y-2">
               <div className="flex items-center gap-2">
-                <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                <label
+                  htmlFor={userPromptEnInputId}
+                  className="text-xs font-medium text-muted-foreground flex items-center gap-1.5"
+                >
                   <span className="bg-primary/10 text-primary px-1 rounded text-[10px]">
                     EN
                   </span>
                   {t("prompt.userPromptEn")}
                 </label>
                 <button
+                  type="button"
+                  aria-label={t("prompt.fullscreen")}
                   onClick={() => enterNativeFullscreen("userEn")}
                   className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                   title={t("prompt.fullscreen")}
                 >
-                  <Maximize2Icon className="w-3 h-3" />
+                  <Maximize2Icon className="w-3 h-3" aria-hidden="true" />
                 </button>
               </div>
               <Textarea
+                id={userPromptEnInputId}
                 placeholder="Enter English User Prompt..."
                 value={userPromptEn}
                 onChange={(e) => setUserPromptEn(e.target.value)}

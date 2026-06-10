@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -237,5 +237,200 @@ describe("PromptQuickRewriteDialog", () => {
     expect(
       await screen.findByText("AI rewrite did not return valid JSON"),
     ).toBeInTheDocument();
+  });
+
+  it("exposes stable form and icon semantics for assistive technology", async () => {
+    await renderWithI18n(
+      <ToastProvider>
+        <PromptQuickRewriteDialog
+          isOpen
+          onClose={vi.fn()}
+          prompt={basePrompt}
+        />
+      </ToastProvider>,
+      { language: "en" },
+    );
+
+    expect(
+      screen.getByRole("textbox", { name: "AI Rewrite" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Generate draft" })).toHaveAttribute(
+      "type",
+      "button",
+    );
+    expect(screen.getByRole("button", { name: "Cancel" })).toHaveAttribute(
+      "type",
+      "button",
+    );
+    expect(
+      screen.getByRole("button", { name: "Continue editing" }),
+    ).toHaveAttribute("type", "button");
+    expect(screen.getByRole("button", { name: "Apply and save" })).toHaveAttribute(
+      "type",
+      "button",
+    );
+
+    const heading = screen.getByText("Edit this prompt with AI").parentElement;
+    expect(heading?.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+
+    const generateButton = screen.getByRole("button", { name: "Generate draft" });
+    expect(generateButton.querySelector("svg")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+  });
+
+  it("does not show generated drafts after the dialog closes before AI completes", async () => {
+    const user = userEvent.setup();
+    let resolveRequest: (response: {
+      ok: boolean;
+      status: number;
+      statusText: string;
+      body: string;
+      headers: Record<string, string>;
+    }) => void = () => undefined;
+    window.api.ai.request.mockReturnValue(
+      new Promise((resolve) => {
+        resolveRequest = resolve;
+      }),
+    );
+
+    const { rerender } = await renderWithI18n(
+      <ToastProvider>
+        <PromptQuickRewriteDialog
+          isOpen
+          onClose={vi.fn()}
+          prompt={basePrompt}
+        />
+      </ToastProvider>,
+      { language: "en" },
+    );
+
+    const instructionInput = screen.getByPlaceholderText(
+      "Example: keep the original intent, but make the output more suitable for Claude and add clearer steps plus a final output format.",
+    );
+    await user.click(instructionInput);
+    await user.paste("Make it easier to scan.");
+    await user.click(screen.getByRole("button", { name: "Generate draft" }));
+
+    await waitFor(() => {
+      expect(window.api.ai.request).toHaveBeenCalledTimes(1);
+    });
+
+    rerender(
+      <ToastProvider>
+        <PromptQuickRewriteDialog
+          isOpen={false}
+          onClose={vi.fn()}
+          prompt={basePrompt}
+        />
+      </ToastProvider>,
+    );
+
+    await act(async () => {
+      resolveRequest({
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        body: JSON.stringify({
+          choices: [
+            {
+              index: 0,
+              message: {
+                role: "assistant",
+                content: JSON.stringify({
+                  summary: "Late summary",
+                  description: "Late description",
+                  userPrompt: "Late rewritten prompt.",
+                }),
+              },
+              finish_reason: "stop",
+            },
+          ],
+        }),
+        headers: { "content-type": "application/json" },
+      });
+      await Promise.resolve();
+    });
+
+    expect(
+      screen.queryByText("AI draft ready. Review it before saving."),
+    ).not.toBeInTheDocument();
+
+    rerender(
+      <ToastProvider>
+        <PromptQuickRewriteDialog
+          isOpen
+          onClose={vi.fn()}
+          prompt={basePrompt}
+        />
+      </ToastProvider>,
+    );
+
+    expect(screen.queryByText("Late summary")).not.toBeInTheDocument();
+    expect(screen.queryByText("Late description")).not.toBeInTheDocument();
+    expect(screen.queryByText("Late rewritten prompt.")).not.toBeInTheDocument();
+  });
+
+  it("does not show rewrite errors after the dialog closes before AI rejects", async () => {
+    const user = userEvent.setup();
+    let resolveRequest: (response: {
+      ok: boolean;
+      status: number;
+      statusText: string;
+      body: string;
+      headers: Record<string, string>;
+    }) => void = () => undefined;
+    window.api.ai.request.mockReturnValue(
+      new Promise((resolve) => {
+        resolveRequest = resolve;
+      }),
+    );
+
+    const { rerender } = await renderWithI18n(
+      <ToastProvider>
+        <PromptQuickRewriteDialog
+          isOpen
+          onClose={vi.fn()}
+          prompt={basePrompt}
+        />
+      </ToastProvider>,
+      { language: "en" },
+    );
+
+    const instructionInput = screen.getByPlaceholderText(
+      "Example: keep the original intent, but make the output more suitable for Claude and add clearer steps plus a final output format.",
+    );
+    await user.click(instructionInput);
+    await user.paste("Make it easier to scan.");
+    await user.click(screen.getByRole("button", { name: "Generate draft" }));
+
+    await waitFor(() => {
+      expect(window.api.ai.request).toHaveBeenCalledTimes(1);
+    });
+
+    rerender(
+      <ToastProvider>
+        <PromptQuickRewriteDialog
+          isOpen={false}
+          onClose={vi.fn()}
+          prompt={basePrompt}
+        />
+      </ToastProvider>,
+    );
+
+    await act(async () => {
+      resolveRequest({
+        ok: false,
+        status: 500,
+        statusText: "Internal Server Error",
+        body: "late failure",
+        headers: { "content-type": "text/plain" },
+      });
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByText(/late failure/u)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Internal Server Error/u)).not.toBeInTheDocument();
   });
 });

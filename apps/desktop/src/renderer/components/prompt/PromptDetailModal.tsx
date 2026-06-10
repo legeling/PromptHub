@@ -6,13 +6,16 @@ import { LocalImage } from '../ui/LocalImage';
 import { PromptQuickRewriteDialog } from './PromptQuickRewriteDialog';
 import { PromptQuickRewriteTrigger } from './PromptQuickRewriteTrigger';
 import type { Prompt } from '@prompthub/shared/types';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize from 'rehype-sanitize';
 import rehypeHighlight from 'rehype-highlight';
 import { defaultSchema } from 'hast-util-sanitize';
 import { resolveLocalVideoSrc } from '../../utils/media-url';
+import { copyTextToClipboard } from './prompt-copy-utils';
+import { parsePromptVariables } from './prompt-modal-utils';
+import { resolvePromptMarkdownHref } from './prompt-markdown-url';
 
 interface PromptDetailModalProps {
   isOpen: boolean;
@@ -27,7 +30,6 @@ export function PromptDetailModal({
   isOpen,
   onClose,
   prompt,
-  onCopy,
   onEdit,
   onQuickRewriteEdit,
 }: PromptDetailModalProps) {
@@ -40,6 +42,29 @@ export function PromptDetailModal({
   const [showEnglish, setShowEnglish] = useState(false);
   const [shared, setShared] = useState(false);
   const [isQuickRewriteOpen, setIsQuickRewriteOpen] = useState(false);
+  const feedbackTimersRef = useRef<Record<string, ReturnType<typeof setTimeout> | null>>({});
+
+  const clearFeedbackTimer = (key: string) => {
+    const timer = feedbackTimersRef.current[key];
+    if (timer) {
+      clearTimeout(timer);
+      feedbackTimersRef.current[key] = null;
+    }
+  };
+
+  const scheduleFeedbackReset = (key: string, reset: () => void) => {
+    clearFeedbackTimer(key);
+    feedbackTimersRef.current[key] = setTimeout(() => {
+      reset();
+      feedbackTimersRef.current[key] = null;
+    }, 2000);
+  };
+
+  useEffect(() => {
+    return () => {
+      Object.keys(feedbackTimersRef.current).forEach(clearFeedbackTimer);
+    };
+  }, []);
 
 
   const preferEnglish = useMemo(() => {
@@ -105,7 +130,23 @@ export function PromptDetailModal({
     blockquote: (props: any) => (
       <blockquote className="border-l-4 border-border pl-3 text-muted-foreground italic mb-3" {...props} />
     ),
-    a: (props: any) => <a className="text-primary hover:underline" {...props} target="_blank" rel="noreferrer" />,
+    a: ({ href, children, ...props }: any) => {
+      const safeHref = resolvePromptMarkdownHref(href);
+      if (!safeHref) {
+        return <span {...props}>{children}</span>;
+      }
+      return (
+        <a
+          className="text-primary hover:underline"
+          {...props}
+          href={safeHref}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {children}
+        </a>
+      );
+    },
   }), []);
 
   const renderPromptContent = (content?: string) => {
@@ -126,59 +167,51 @@ export function PromptDetailModal({
   };
 
   if (!prompt) return null;
+  const promptSourceHref = resolvePromptMarkdownHref(prompt.source);
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     return date.toLocaleString();
   };
 
-  // 提取变量
-  const extractVariables = (text: string): string[] => {
-    const regex = /\{\{([^}]+)\}\}/g;
-    const matches: string[] = [];
-    let match;
-    while ((match = regex.exec(text)) !== null) {
-      if (!matches.includes(match[1])) {
-        matches.push(match[1]);
-      }
-    }
-    return matches;
-  };
-
   const allVariables = [
-    ...extractVariables(prompt.systemPrompt || ''),
-    ...extractVariables(prompt.userPrompt),
-  ].filter((v, i, arr) => arr.indexOf(v) === i);
+    ...parsePromptVariables(prompt.systemPrompt || ''),
+    ...parsePromptVariables(prompt.userPrompt),
+  ].map((variable) => variable.name)
+    .filter((v, i, arr) => arr.indexOf(v) === i);
 
   const handleCopySystem = async () => {
-    if (prompt.systemPrompt) {
-      await navigator.clipboard.writeText(prompt.systemPrompt);
+    const content = showEnglish
+      ? (prompt.systemPromptEn || prompt.systemPrompt)
+      : prompt.systemPrompt;
+    if (content) {
+      await copyTextToClipboard(content);
       setCopiedSystem(true);
-      setTimeout(() => setCopiedSystem(false), 2000);
+      scheduleFeedbackReset('system', () => setCopiedSystem(false));
     }
   };
 
   const handleCopyUser = async () => {
-    await navigator.clipboard.writeText(prompt.userPrompt);
+    const content = showEnglish
+      ? (prompt.userPromptEn || prompt.userPrompt)
+      : prompt.userPrompt;
+    await copyTextToClipboard(content);
     setCopiedUser(true);
-    setTimeout(() => setCopiedUser(false), 2000);
-    if (onCopy) {
-      onCopy(prompt);
-    }
+    scheduleFeedbackReset('user', () => setCopiedUser(false));
   };
 
   const handleCopyAi = async () => {
     if (prompt.lastAiResponse) {
-      await navigator.clipboard.writeText(prompt.lastAiResponse);
+      await copyTextToClipboard(prompt.lastAiResponse);
       setCopiedAi(true);
-      setTimeout(() => setCopiedAi(false), 2000);
+      scheduleFeedbackReset('ai', () => setCopiedAi(false));
     }
   };
 
 
   const handleShare = async () => {
     if (!prompt) return;
-    
+
     const data = {
       name: prompt.title,
       description: prompt.description,
@@ -191,16 +224,16 @@ export function PromptDetailModal({
       source: 'prompthub',
       version: '1.0'
     };
-    
+
     const jsonStr = JSON.stringify(data, null, 2);
-    await navigator.clipboard.writeText(jsonStr);
-    
+    await copyTextToClipboard(jsonStr);
+
     // Set a session flag to prevent the app from detecting its own copy as a new import
     const checksum = `${jsonStr.length}-${jsonStr.substring(0, 10)}`;
     sessionStorage.setItem('lastCopiedPromptSignature', checksum);
-    
+
     setShared(true);
-    setTimeout(() => setShared(false), 2000);
+    scheduleFeedbackReset('share', () => setShared(false));
   };
 
   const headerActions = (
@@ -208,27 +241,30 @@ export function PromptDetailModal({
       {/* 语言切换按钮 - 英文界面时隐藏 */}
       {(prompt.systemPromptEn || prompt.userPromptEn) && !i18n.language.startsWith('en') && (
         <button
+          type="button"
           onClick={() => setShowEnglish(!showEnglish)}
           className={`
             flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all
-            ${showEnglish 
-              ? 'bg-primary text-white' 
+            ${showEnglish
+              ? 'bg-primary text-white'
               : 'bg-muted hover:bg-accent text-foreground'
             }
           `}
           title={showEnglish ? t('prompt.showLocalized', '显示当前语言') : t('prompt.showEnglish')}
         >
-          <GlobeIcon className="w-3.5 h-3.5" />
+          <GlobeIcon aria-hidden="true" className="w-3.5 h-3.5" />
           {showEnglish ? 'EN' : uiLangTag}
         </button>
       )}
 
       <button
+        type="button"
         onClick={() => setIsFullscreen((v) => !v)}
         className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
         title={isFullscreen ? t('common.exitFullscreen', '退出全屏') : t('common.fullscreen', '全屏')}
+        aria-label={isFullscreen ? t('common.exitFullscreen', '退出全屏') : t('common.fullscreen', '全屏')}
       >
-        {isFullscreen ? <Minimize2Icon className="w-4 h-4" /> : <Maximize2Icon className="w-4 h-4" />}
+        {isFullscreen ? <Minimize2Icon aria-hidden="true" className="w-4 h-4" /> : <Maximize2Icon aria-hidden="true" className="w-4 h-4" />}
       </button>
 
       <PromptQuickRewriteTrigger
@@ -237,22 +273,24 @@ export function PromptDetailModal({
       />
 
       <button
+        type="button"
         onClick={handleShare}
         className={`p-2 rounded-lg transition-all ${shared ? 'text-green-500 bg-green-500/10' : 'text-muted-foreground hover:text-foreground hover:bg-accent'}`}
         title={t('prompt.shareJSON', '分享为 JSON')}
+        aria-label={t('prompt.shareJSON', '分享为 JSON')}
       >
-        {shared ? <CheckIcon className="w-4 h-4" /> : <Share2Icon className="w-4 h-4" />}
+        {shared ? <CheckIcon aria-hidden="true" className="w-4 h-4" /> : <Share2Icon aria-hidden="true" className="w-4 h-4" />}
       </button>
       {onEdit && (
         <button
+          type="button"
           onClick={() => {
             onClose();
-            // Delay to allow close animation to start before edit modal opens
-            setTimeout(() => onEdit(prompt), 200);
+            onEdit(prompt);
           }}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-sm font-medium"
         >
-          <EditIcon className="w-4 h-4" />
+          <EditIcon aria-hidden="true" className="w-4 h-4" />
           <span>{t('prompt.edit', '编辑')}</span>
         </button>
       )}
@@ -275,12 +313,12 @@ export function PromptDetailModal({
         <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
           {prompt.isFavorite && (
             <div className="flex items-center gap-1">
-              <StarIcon className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+              <StarIcon aria-hidden="true" className="w-4 h-4 fill-yellow-400 text-yellow-400" />
               <span>{t('nav.favorites')}</span>
             </div>
           )}
           <div className="flex items-center gap-1">
-            <ClockIcon className="w-4 h-4" />
+            <ClockIcon aria-hidden="true" className="w-4 h-4" />
             <span>{t('prompt.updatedAt')}: {formatDate(prompt.updatedAt)}</span>
           </div>
           <div className="flex items-center gap-1">
@@ -300,12 +338,12 @@ export function PromptDetailModal({
         {prompt.source && (
           <div>
             <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1">
-              <GlobeIcon className="w-3.5 h-3.5" />
+              <GlobeIcon aria-hidden="true" className="w-3.5 h-3.5" />
               {t('prompt.source')}
             </h4>
             <div className="text-sm bg-muted/30 rounded-lg p-3 break-all">
-              {prompt.source.startsWith('http') ? (
-                <a href={prompt.source} target="_blank" rel="noreferrer" className="text-primary hover:underline flex items-center gap-1 inline-flex">
+              {promptSourceHref ? (
+                <a href={promptSourceHref} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-1 inline-flex">
                   <span className="truncate max-w-full">{prompt.source}</span>
                 </a>
               ) : (
@@ -335,6 +373,7 @@ export function PromptDetailModal({
                   <LocalImage
                     src={img}
                     alt={`image-${index}`}
+                    aria-label={t('prompt.previewReferenceImage', { index: index + 1 })}
                     className="max-w-[200px] max-h-[200px] object-cover hover:scale-105 transition-transform duration-smooth cursor-pointer"
                     fallbackClassName="w-[200px] h-[150px]"
                     onClick={() => setPreviewImage(img)}
@@ -349,7 +388,7 @@ export function PromptDetailModal({
         {prompt.videos && prompt.videos.length > 0 && (
           <div>
             <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1">
-              <VideoIcon className="w-4 h-4" />
+              <VideoIcon aria-hidden="true" className="w-4 h-4" />
               {t('prompt.previewVideos', '预览视频')}
             </h4>
             <div className="flex flex-wrap gap-4">
@@ -377,7 +416,7 @@ export function PromptDetailModal({
                   key={tag}
                   className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs"
                 >
-                  <HashIcon className="w-3 h-3" />
+                  <HashIcon aria-hidden="true" className="w-3 h-3" />
                   {tag}
                 </span>
               ))}
@@ -389,7 +428,7 @@ export function PromptDetailModal({
         {allVariables.length > 0 && (
           <div>
             <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
-              <BracesIcon className="w-4 h-4" />
+              <BracesIcon aria-hidden="true" className="w-4 h-4" />
               {t('prompt.variables')} ({allVariables.length})
             </h4>
             <div className="flex flex-wrap gap-2">
@@ -414,10 +453,11 @@ export function PromptDetailModal({
                 {showEnglish && <span className="px-1 py-0.5 rounded bg-primary/10 text-primary text-[10px]">EN</span>}
               </h4>
               <button
+                type="button"
                 onClick={handleCopySystem}
                 className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
               >
-                {copiedSystem ? <CheckIcon className="w-3.5 h-3.5" /> : <CopyIcon className="w-3.5 h-3.5" />}
+                {copiedSystem ? <CheckIcon aria-hidden="true" className="w-3.5 h-3.5" /> : <CopyIcon aria-hidden="true" className="w-3.5 h-3.5" />}
                 {copiedSystem ? t('prompt.copied') : t('prompt.copy')}
               </button>
             </div>
@@ -433,10 +473,11 @@ export function PromptDetailModal({
               {showEnglish && <span className="px-1 py-0.5 rounded bg-primary/10 text-primary text-[10px]">EN</span>}
             </h4>
             <button
+              type="button"
               onClick={handleCopyUser}
               className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
             >
-              {copiedUser ? <CheckIcon className="w-3.5 h-3.5" /> : <CopyIcon className="w-3.5 h-3.5" />}
+              {copiedUser ? <CheckIcon aria-hidden="true" className="w-3.5 h-3.5" /> : <CopyIcon aria-hidden="true" className="w-3.5 h-3.5" />}
               {copiedUser ? t('prompt.copied') : t('prompt.copy')}
             </button>
           </div>
@@ -448,14 +489,15 @@ export function PromptDetailModal({
           <div>
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
-                <SparklesIcon className="w-4 h-4 text-primary" />
+                <SparklesIcon aria-hidden="true" className="w-4 h-4 text-primary" />
                 {t('prompt.aiResponse')}
               </h4>
               <button
+                type="button"
                 onClick={handleCopyAi}
                 className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
               >
-                {copiedAi ? <CheckIcon className="w-3.5 h-3.5" /> : <CopyIcon className="w-3.5 h-3.5" />}
+                {copiedAi ? <CheckIcon aria-hidden="true" className="w-3.5 h-3.5" /> : <CopyIcon aria-hidden="true" className="w-3.5 h-3.5" />}
                 {copiedAi ? t('prompt.copied') : t('prompt.copyResponse')}
               </button>
             </div>

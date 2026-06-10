@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Textarea, Input, Button } from '../ui';
 import { SaveIcon, XIcon, HashIcon, PlayIcon, CopyIcon, ImageIcon, Loader2Icon } from 'lucide-react';
@@ -12,11 +12,18 @@ import rehypeSanitize from 'rehype-sanitize';
 import rehypeHighlight from 'rehype-highlight';
 import { defaultSchema } from 'hast-util-sanitize';
 import { resolveLocalImageSrc } from '../../utils/media-url';
+import { copyTextToClipboard } from './prompt-copy-utils';
+import { resolvePromptMarkdownHref } from './prompt-markdown-url';
 
 interface PromptEditorProps {
   prompt: Prompt;
   onSave: (data: Partial<Prompt>) => void;
   onCancel: () => void;
+}
+
+interface PromptEditorVariable {
+  name: string;
+  defaultValue?: string;
 }
 
 export function PromptEditor({ prompt, onSave, onCancel }: PromptEditorProps) {
@@ -33,6 +40,8 @@ export function PromptEditor({ prompt, onSave, onCancel }: PromptEditorProps) {
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
   const [isDownloadingImage, setIsDownloadingImage] = useState(false);
+  const isMountedRef = useRef(true);
+  const userPromptInputId = useId();
   // Use useShallow for object selectors to prevent unnecessary re-renders
   // 使用 useShallow 来防止不必要的重新渲染
   const { editorMarkdownPreview, setEditorMarkdownPreview } = useSettingsStore(
@@ -43,16 +52,29 @@ export function PromptEditor({ prompt, onSave, onCancel }: PromptEditorProps) {
   );
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>(editorMarkdownPreview ? 'preview' : 'edit');
 
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const canApplyAsyncResult = useCallback(() => isMountedRef.current, []);
+
   // Extract variables
   // 提取变量
-  const extractVariables = useCallback((text: string): string[] => {
-    const regex = /\{\{(\w+)\}\}/g;
-    const matches = new Set<string>();
+  const extractVariables = useCallback((text: string): PromptEditorVariable[] => {
+    const regex = /\{\{([^}:]+)(?::([^}]*))?\}\}/g;
+    const matches = new Map<string, PromptEditorVariable>();
     let match;
     while ((match = regex.exec(text)) !== null) {
-      matches.add(match[1]);
+      const name = match[1].trim();
+      if (!name || matches.has(name)) continue;
+      matches.set(name, {
+        name,
+        defaultValue: match[2],
+      });
     }
-    return Array.from(matches);
+    return Array.from(matches.values());
   }, []);
 
   const variables = extractVariables(userPrompt + (systemPrompt || ''));
@@ -68,11 +90,14 @@ export function PromptEditor({ prompt, onSave, onCancel }: PromptEditorProps) {
   // Generate preview
   // 生成预览
   const generatePreview = useCallback(() => {
-    let preview = userPrompt;
-    for (const [key, value] of Object.entries(variableValues)) {
-      preview = preview.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value || `{{${key}}}`);
-    }
-    return preview;
+    return userPrompt.replace(
+      /\{\{([^}:]+)(?::([^}]*))?\}\}/g,
+      (match, rawName: string, defaultValue?: string) => {
+        const name = rawName.trim();
+        const value = variableValues[name];
+        return value || defaultValue || match;
+      },
+    );
   }, [userPrompt, variableValues]);
 
   const sanitizeSchema: any = useMemo(() => {
@@ -113,7 +138,23 @@ export function PromptEditor({ prompt, onSave, onCancel }: PromptEditorProps) {
       <th className="border border-border px-2 py-1 bg-muted text-left font-medium" {...props} />
     ),
     td: (props: any) => <td className="border border-border px-2 py-1" {...props} />,
-    a: (props: any) => <a className="text-primary hover:underline" {...props} target="_blank" rel="noreferrer" />,
+    a: ({ href, children, ...props }: any) => {
+      const safeHref = resolvePromptMarkdownHref(href);
+      if (!safeHref) {
+        return <span {...props}>{children}</span>;
+      }
+      return (
+        <a
+          className="text-primary hover:underline"
+          {...props}
+          href={safeHref}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {children}
+        </a>
+      );
+    },
     strong: (props: any) => <strong className="font-semibold text-foreground" {...props} />,
     em: (props: any) => <em className="italic text-foreground/90" {...props} />,
   };
@@ -121,8 +162,8 @@ export function PromptEditor({ prompt, onSave, onCancel }: PromptEditorProps) {
   const handleSave = () => {
     onSave({
       title,
-      description: description || undefined,
-      systemPrompt: systemPrompt || undefined,
+      description,
+      systemPrompt,
       userPrompt,
       tags,
       images,
@@ -142,16 +183,17 @@ export function PromptEditor({ prompt, onSave, onCancel }: PromptEditorProps) {
   };
 
   const handleCopyPreview = () => {
-    navigator.clipboard.writeText(generatePreview());
+    void copyTextToClipboard(generatePreview());
   };
 
   const handleSelectImage = async () => {
     try {
       const filePaths = await window.electron?.selectImage?.();
+      if (!canApplyAsyncResult()) return;
       if (filePaths && filePaths.length > 0) {
         const savedImages = await window.electron?.saveImage?.(filePaths);
-        if (savedImages) {
-          setImages([...images, ...savedImages]);
+        if (savedImages && canApplyAsyncResult()) {
+          setImages((prev) => [...prev, ...savedImages]);
         }
       }
     } catch (error) {
@@ -165,19 +207,21 @@ export function PromptEditor({ prompt, onSave, onCancel }: PromptEditorProps) {
 
   const handleUrlUpload = async (url: string) => {
     if (!url.trim()) return;
-    
+
     setIsDownloadingImage(true);
     showToast(t('prompt.downloadingImage'), 'info');
-    
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
     try {
       // 添加超时处理
       const timeoutPromise = new Promise<null>((_, reject) => {
-        setTimeout(() => reject(new Error('timeout')), 30000);
+        timeoutId = setTimeout(() => reject(new Error('timeout')), 30000);
       });
-      
+
       const downloadPromise = window.electron?.downloadImage?.(url);
       const fileName = await Promise.race([downloadPromise, timeoutPromise]);
-      
+      if (!canApplyAsyncResult()) return;
+
       if (fileName) {
         setImages(prev => [...prev, fileName]);
         showToast(t('prompt.uploadSuccess'), 'success');
@@ -185,6 +229,7 @@ export function PromptEditor({ prompt, onSave, onCancel }: PromptEditorProps) {
         showToast(t('prompt.uploadFailed'), 'error');
       }
     } catch (error) {
+      if (!canApplyAsyncResult()) return;
       console.error('Failed to upload image from URL:', error);
       if (error instanceof Error && error.message === 'timeout') {
         showToast(t('prompt.downloadTimeout'), 'error');
@@ -192,7 +237,12 @@ export function PromptEditor({ prompt, onSave, onCancel }: PromptEditorProps) {
         showToast(t('prompt.uploadFailed'), 'error');
       }
     } finally {
-      setIsDownloadingImage(false);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      if (canApplyAsyncResult()) {
+        setIsDownloadingImage(false);
+      }
     }
   };
 
@@ -207,8 +257,9 @@ export function PromptEditor({ prompt, onSave, onCancel }: PromptEditorProps) {
           const blob = item.getAsFile();
           if (blob) {
             const buffer = await blob.arrayBuffer();
+            if (!canApplyAsyncResult()) return;
             const fileName = await window.electron?.saveImageBuffer?.(buffer);
-            if (fileName) {
+            if (fileName && canApplyAsyncResult()) {
               setImages(prev => [...prev, fileName]);
             }
           }
@@ -220,7 +271,7 @@ export function PromptEditor({ prompt, onSave, onCancel }: PromptEditorProps) {
     return () => {
       window.removeEventListener('paste', handlePaste);
     };
-  }, []);
+  }, [canApplyAsyncResult]);
 
   return (
     <div className="h-full flex flex-col">
@@ -228,14 +279,14 @@ export function PromptEditor({ prompt, onSave, onCancel }: PromptEditorProps) {
       <div className="flex items-center justify-between px-6 py-4 border-b border-border app-wallpaper-surface">
         <h2 className="text-lg font-semibold">{t('prompt.editPrompt')}</h2>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={onCancel}>
-            <XIcon className="w-4 h-4" />
-            {t('common.cancel')}
-          </Button>
-          <Button variant="primary" size="sm" onClick={handleSave}>
-            <SaveIcon className="w-4 h-4" />
-            {t('common.save')}
-          </Button>
+	          <Button variant="ghost" size="sm" onClick={onCancel}>
+	            <XIcon aria-hidden="true" className="w-4 h-4" />
+	            {t('common.cancel')}
+	          </Button>
+	          <Button variant="primary" size="sm" onClick={handleSave}>
+	            <SaveIcon aria-hidden="true" className="w-4 h-4" />
+	            {t('common.save')}
+	          </Button>
         </div>
       </div>
 
@@ -268,23 +319,29 @@ export function PromptEditor({ prompt, onSave, onCancel }: PromptEditorProps) {
                     className="w-full h-full object-cover"
                   />
                   <button
+                    type="button"
                     onClick={() => handleRemoveImage(index)}
+                    aria-label={t("prompt.removeReferenceImage", {
+                      index: index + 1,
+                    })}
                     className="absolute top-1 right-1 p-1 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
                   >
-                    <XIcon className="w-3 h-3" />
+                    <XIcon className="w-3 h-3" aria-hidden="true" />
                   </button>
                 </div>
               ))}
               <button
+                type="button"
                 onClick={handleSelectImage}
                 className="w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 flex flex-col items-center justify-center text-muted-foreground hover:text-primary transition-colors text-center p-2"
               >
-                <ImageIcon className="w-6 h-6 mb-1" />
+                <ImageIcon className="w-6 h-6 mb-1" aria-hidden="true" />
                 <span className="text-[10px] leading-tight">{t('prompt.uploadImage', '上传/粘贴/链接')}</span>
               </button>
             </div>
             <div className="text-xs text-muted-foreground flex gap-2 mt-1">
               <button
+                type="button"
                 className="hover:text-primary underline"
                 onClick={() => setShowUrlInput(true)}
               >
@@ -299,6 +356,7 @@ export function PromptEditor({ prompt, onSave, onCancel }: PromptEditorProps) {
                   type="text"
                   value={imageUrl}
                   onChange={(e) => setImageUrl(e.target.value)}
+                  aria-label={t('prompt.enterImageUrl', '请输入图片链接 / Enter image URL')}
                   placeholder={t('prompt.enterImageUrl', '请输入图片链接 / Enter image URL')}
                   className="flex-1 h-8 px-3 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                   autoFocus
@@ -318,6 +376,7 @@ export function PromptEditor({ prompt, onSave, onCancel }: PromptEditorProps) {
                   }}
                 />
                 <button
+                  type="button"
                   onClick={() => {
                     if (imageUrl && !isDownloadingImage) {
                       handleUrlUpload(imageUrl);
@@ -328,16 +387,17 @@ export function PromptEditor({ prompt, onSave, onCancel }: PromptEditorProps) {
                   disabled={isDownloadingImage || !imageUrl}
                   className="h-8 px-3 rounded-lg bg-primary text-white text-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                 >
-                  {isDownloadingImage ? (
-                    <>
-                      <Loader2Icon className="w-3 h-3 animate-spin" />
-                      {t('common.loading', '加载中...')}
-                    </>
+	                  {isDownloadingImage ? (
+	                    <>
+	                      <Loader2Icon aria-hidden="true" className="w-3 h-3 animate-spin" />
+	                      {t('common.loading', '加载中...')}
+	                    </>
                   ) : (
                     t('common.confirm', '确定')
                   )}
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     if (!isDownloadingImage) {
                       setShowUrlInput(false);
@@ -364,13 +424,19 @@ export function PromptEditor({ prompt, onSave, onCancel }: PromptEditorProps) {
                 >
                   <HashIcon className="w-3 h-3" />
                   {tag}
-                  <button onClick={() => handleRemoveTag(tag)} className="ml-1 hover:text-destructive">
-                    <XIcon className="w-3 h-3" />
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveTag(tag)}
+                    aria-label={t("prompt.removeTag", { tag })}
+                    className="ml-1 hover:text-destructive"
+                  >
+                    <XIcon className="w-3 h-3" aria-hidden="true" />
                   </button>
                 </span>
               ))}
               <input
                 type="text"
+                aria-label={t('prompt.addTagPlaceholder')}
                 placeholder={t('prompt.addTagPlaceholder')}
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
@@ -392,10 +458,12 @@ export function PromptEditor({ prompt, onSave, onCancel }: PromptEditorProps) {
           {/* User Prompt */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="block text-sm font-medium text-foreground">{t('prompt.userPromptLabel')}</label>
+              <label htmlFor={userPromptInputId} className="block text-sm font-medium text-foreground">{t('prompt.userPromptLabel')}</label>
               <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/50 p-1">
                 <button
+                  type="button"
                   onClick={() => setActiveTab('edit')}
+                  aria-pressed={activeTab === 'edit'}
                   className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
                     activeTab === 'edit'
                       ? 'bg-background text-foreground shadow-sm'
@@ -405,7 +473,9 @@ export function PromptEditor({ prompt, onSave, onCancel }: PromptEditorProps) {
                   {t('common.edit')}
                 </button>
                 <button
+                  type="button"
                   onClick={() => setActiveTab('preview')}
+                  aria-pressed={activeTab === 'preview'}
                   className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
                     activeTab === 'preview'
                       ? 'bg-background text-foreground shadow-sm'
@@ -418,6 +488,7 @@ export function PromptEditor({ prompt, onSave, onCancel }: PromptEditorProps) {
             </div>
             {activeTab === 'edit' ? (
               <Textarea
+                id={userPromptInputId}
                 placeholder={t('prompt.typeYourPrompt')}
                 value={userPrompt}
                 onChange={(e) => setUserPrompt(e.target.value)}
@@ -447,21 +518,21 @@ export function PromptEditor({ prompt, onSave, onCancel }: PromptEditorProps) {
                 <h3 className="font-semibold text-foreground flex items-center gap-2">
                   <PlayIcon className="w-4 h-4 text-primary" />
                   {t('prompt.variablePreview')}
-                </h3>
-                <Button variant="ghost" size="sm" onClick={handleCopyPreview}>
-                  <CopyIcon className="w-4 h-4" />
-                  {t('prompt.copyResult')}
-                </Button>
+	                </h3>
+	                <Button variant="ghost" size="sm" onClick={handleCopyPreview}>
+	                  <CopyIcon aria-hidden="true" className="w-4 h-4" />
+	                  {t('prompt.copyResult')}
+	                </Button>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 {variables.map((variable) => (
                   <Input
-                    key={variable}
-                    label={variable}
-                    placeholder={t('prompt.inputVariable', { name: variable })}
-                    value={variableValues[variable] || ''}
-                    onChange={(e) => setVariableValues({ ...variableValues, [variable]: e.target.value })}
+                    key={variable.name}
+                    label={variable.name}
+                    placeholder={t('prompt.inputVariable', { name: variable.name })}
+                    value={variableValues[variable.name] || ''}
+                    onChange={(e) => setVariableValues({ ...variableValues, [variable.name]: e.target.value })}
                   />
                 ))}
               </div>

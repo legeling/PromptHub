@@ -1,4 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import type { KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Prompt } from '@prompthub/shared/types';
 import { ImageIcon, FolderIcon, StarIcon, PlayIcon, VideoIcon } from 'lucide-react';
@@ -65,9 +66,13 @@ const GalleryCard = memo(({
     videoLabel: string;
     titleClassName: string;
 }) => {
+    const { t } = useTranslation();
     const [imageError, setImageError] = useState(false);
     const [videoError, setVideoError] = useState(false);
     const highlightClassName = 'bg-primary/15 text-primary rounded px-0.5';
+    const favoriteLabel = prompt.isFavorite
+        ? t('prompt.removeFromFavorites', 'Remove from Favorites')
+        : t('prompt.addToFavorites', 'Add to Favorites');
 
     // Determine media source: prioritize image, then video
     // 确定媒体源：优先图片，其次视频
@@ -75,11 +80,23 @@ const GalleryCard = memo(({
     const hasVideo = prompt.videos && prompt.videos.length > 0 && !videoError;
     const imageSrc = hasImage ? resolveLocalImageSrc(prompt.images![0]) : null;
     const videoSrc = hasVideo ? resolveLocalVideoSrc(prompt.videos![0]) : null;
+    const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+        if (event.key !== 'Enter' && event.key !== ' ') {
+            return;
+        }
+
+        event.preventDefault();
+        onSelect();
+    };
 
     return (
         <div
+            role="button"
+            tabIndex={0}
+            aria-label={prompt.title}
             className="group relative flex flex-col app-wallpaper-panel rounded-xl overflow-hidden border border-border hover:shadow-lg transition-all duration-smooth hover:-translate-y-1 cursor-pointer h-full"
             onClick={onSelect}
+            onKeyDown={handleKeyDown}
         >
             {/* Image / Video / Placeholder Area */}
             {/* 图片 / 视频 / 占位区域 */}
@@ -104,16 +121,16 @@ const GalleryCard = memo(({
                             onError={() => setVideoError(true)}
                         />
                         {/* Play button overlay */}
-                        {/* 播放按钮覆盖层 */}
+                            {/* 播放按钮覆盖层 */}
                         <div className="absolute inset-0 flex items-center justify-center bg-black/20">
                             <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
-                                <PlayIcon className="w-6 h-6 text-primary fill-current ml-1" />
+                                <PlayIcon aria-hidden="true" className="w-6 h-6 text-primary fill-current ml-1" />
                             </div>
                         </div>
                     </>
                 ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground/30">
-                        <ImageIcon className="w-12 h-12 mb-2 opacity-50" />
+                        <ImageIcon aria-hidden="true" className="w-12 h-12 mb-2 opacity-50" />
                     </div>
                 )}
 
@@ -121,7 +138,7 @@ const GalleryCard = memo(({
                 {/* 视频指示器徽章（当同时有图片和视频时） */}
                 {hasImage && hasVideo && (
                         <div className="absolute bottom-2 left-2 flex items-center gap-1 px-2 py-1 rounded-full bg-black/60 text-white text-xs">
-                            <VideoIcon className="w-3 h-3" />
+                            <VideoIcon aria-hidden="true" className="w-3 h-3" />
                             <span>{videoLabel}</span>
                         </div>
                 )}
@@ -130,11 +147,14 @@ const GalleryCard = memo(({
                 {/* 快捷操作浮层 */}
                 <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-base">
                     <button
+                        type="button"
                         onClick={onToggleFavorite}
                         className={`p-1.5 rounded-full backdrop-blur-md bg-black/20 hover:bg-black/40 transition-colors ${prompt.isFavorite ? 'text-yellow-400' : 'text-white'
                             }`}
+                        title={favoriteLabel}
+                        aria-label={favoriteLabel}
                     >
-                        <StarIcon className={`w-4 h-4 ${prompt.isFavorite ? 'fill-current' : ''}`} />
+                        <StarIcon aria-hidden="true" className={`w-4 h-4 ${prompt.isFavorite ? 'fill-current' : ''}`} />
                     </button>
                 </div>
             </div>
@@ -166,7 +186,7 @@ const GalleryCard = memo(({
                 {/* 底部：文件夹与日期 */}
                 <div className="mt-auto flex items-center justify-between text-[10px] text-muted-foreground pt-2 border-t border-border/50">
                     <div className="flex items-center gap-1 truncate max-w-[70%]">
-                        <FolderIcon className="w-3 h-3 flex-shrink-0" />
+                        <FolderIcon aria-hidden="true" className="w-3 h-3 flex-shrink-0" />
                         <span className="truncate">{folderName || 'Uncategorized'}</span>
                     </div>
                     <span>{new Date(prompt.updatedAt).toLocaleDateString()}</span>

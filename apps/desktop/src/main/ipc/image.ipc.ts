@@ -14,6 +14,8 @@ import { getImagesDir, getVideosDir } from "../runtime-paths";
 const IMAGE_DOWNLOAD_TIMEOUT_MS = 30_000;
 const IMAGE_DOWNLOAD_MAX_BYTES = 10 * 1024 * 1024;
 const IMAGE_DOWNLOAD_MAX_REDIRECTS = 5;
+const MEDIA_SAVE_MAX_BYTES = 20 * 1024 * 1024;
+const BASE64_PATTERN = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u;
 const IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".gif", ".webp"]);
 const VIDEO_EXTENSIONS = new Set([".mp4", ".webm", ".mov", ".avi", ".mkv"]);
 
@@ -59,7 +61,7 @@ function getSingleHeaderValue(
   return Array.isArray(header) ? header[0] : header;
 }
 
-function inferImageExtension(url: string, contentType?: string): string {
+function inferImageExtension(url: string, contentType?: string): string | null {
   const fromUrl = path.extname(new URL(url).pathname).toLowerCase();
   if (IMAGE_EXTENSIONS.has(fromUrl)) {
     return fromUrl;
@@ -75,7 +77,7 @@ function inferImageExtension(url: string, contentType?: string): string {
     case "image/webp":
       return ".webp";
     default:
-      return ".png";
+      return null;
   }
 }
 
@@ -203,22 +205,75 @@ function isAllowedSelectedVideoPath(filePath: string): boolean {
  * Validate filename to prevent path traversal.
  */
 function validateFileName(fileName: string, baseDir: string): string {
-  // Only take the basename, removing any path components
-  const safeName = path.basename(fileName);
-
-  // Reject if filename differs from input or contains path traversal
-  if (safeName !== fileName || fileName.includes("..")) {
+  if (
+    typeof fileName !== "string" ||
+    fileName.length === 0 ||
+    fileName === "." ||
+    fileName === ".." ||
+    fileName.includes("..") ||
+    /[/\\:\u0000-\u001F\u007F]/u.test(fileName)
+  ) {
     throw new Error("Invalid filename: path traversal detected");
   }
 
-  const fullPath = path.join(baseDir, safeName);
+  const resolvedBase = path.resolve(baseDir);
+  const fullPath = path.resolve(resolvedBase, fileName);
+  const relative = path.relative(resolvedBase, fullPath);
 
-  // Double-check the resolved path is within the base directory
-  if (!fullPath.startsWith(baseDir + path.sep) && fullPath !== baseDir) {
+  if (relative === "" || relative.startsWith("..") || path.isAbsolute(relative)) {
     throw new Error("Invalid filename: path traversal detected");
   }
 
   return fullPath;
+}
+
+function assertBufferWithinMediaLimit(buffer: Buffer | Uint8Array): void {
+  if (buffer.byteLength === 0) {
+    throw new Error("Media content is empty");
+  }
+  if (buffer.byteLength > MEDIA_SAVE_MAX_BYTES) {
+    throw new Error("Media content exceeds size limit");
+  }
+}
+
+function toMediaBuffer(input: unknown): Buffer {
+  if (Buffer.isBuffer(input)) {
+    return input;
+  }
+  if (input instanceof ArrayBuffer) {
+    return Buffer.from(input);
+  }
+  if (ArrayBuffer.isView(input)) {
+    return Buffer.from(input.buffer, input.byteOffset, input.byteLength);
+  }
+
+  throw new Error("Invalid media buffer");
+}
+
+function decodedBase64Length(payload: string): number {
+  const padding = payload.endsWith("==") ? 2 : payload.endsWith("=") ? 1 : 0;
+  return (payload.length / 4) * 3 - padding;
+}
+
+function decodeMediaBase64(base64Data: string): Buffer {
+  if (typeof base64Data !== "string") {
+    throw new Error("Invalid base64 media payload");
+  }
+
+  const payload = base64Data.trim();
+  if (payload.length === 0 || payload.length % 4 !== 0) {
+    throw new Error("Invalid base64 media payload");
+  }
+  if (decodedBase64Length(payload) > MEDIA_SAVE_MAX_BYTES) {
+    throw new Error("Media content exceeds size limit");
+  }
+  if (!BASE64_PATTERN.test(payload)) {
+    throw new Error("Invalid base64 media payload");
+  }
+
+  const buffer = Buffer.from(payload, "base64");
+  assertBufferWithinMediaLimit(buffer);
+  return buffer;
 }
 
 /**
@@ -238,6 +293,39 @@ async function pathExists(filePath: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+async function clearMediaDirectory(
+  mediaDir: string,
+  label: "images" | "videos",
+): Promise<boolean> {
+  try {
+    if (!(await pathExists(mediaDir))) {
+      return true;
+    }
+
+    const files = await fs.readdir(mediaDir);
+    let removedCount = 0;
+    for (const file of files) {
+      try {
+        await fs.unlink(path.join(mediaDir, file));
+        removedCount++;
+      } catch (error) {
+        console.warn(`Skipped ${label} entry during clear: ${file}`, error);
+      }
+    }
+
+    console.log(`Cleared ${removedCount} ${label}`);
+    return true;
+  } catch (error) {
+    console.error(`Failed to clear ${label}:`, error);
+    return false;
+  }
+}
+
+async function openPathWithResult(filePath: string): Promise<boolean> {
+  const error = await shell.openPath(filePath);
+  return !(typeof error === "string" && error.trim().length > 0);
 }
 
 export function registerImageIPC(): void {
@@ -303,8 +391,7 @@ export function registerImageIPC(): void {
 
     try {
       const imagePath = validateFileName(fileName, imagesDir);
-      await shell.openPath(imagePath);
-      return true;
+      return await openPathWithResult(imagePath);
     } catch (error) {
       console.error(`Failed to open image ${fileName}:`, error);
       return false;
@@ -314,12 +401,14 @@ export function registerImageIPC(): void {
   // Save image buffer
   ipcMain.handle(
     IPC_CHANNELS.IMAGE_SAVE_BUFFER,
-    async (_event, buffer: Buffer) => {
+    async (_event, bufferInput: unknown) => {
       const imagesDir = getImagesDir();
 
       await ensureDir(imagesDir);
 
       try {
+        const buffer = toMediaBuffer(bufferInput);
+        assertBufferWithinMediaLimit(buffer);
         const fileName = `${uuidv4()}.png`;
         const destPath = path.join(imagesDir, fileName);
         await fs.writeFile(destPath, buffer);
@@ -346,6 +435,9 @@ export function registerImageIPC(): void {
     try {
       const { buffer, finalUrl, contentType } = await downloadImageBuffer(url);
       const ext = inferImageExtension(finalUrl, contentType);
+      if (!ext) {
+        throw new Error("Remote resource is not a supported image");
+      }
 
       const fileName = `${uuidv4()}${ext}`;
       const destPath = path.join(imagesDir, fileName);
@@ -428,7 +520,7 @@ export function registerImageIPC(): void {
         if (await pathExists(destPath)) {
           return true;
         }
-        const buffer = Buffer.from(base64Data, "base64");
+        const buffer = decodeMediaBase64(base64Data);
         await fs.writeFile(destPath, buffer);
         return true;
       } catch (error) {
@@ -454,20 +546,7 @@ export function registerImageIPC(): void {
 
   // Clear all images
   ipcMain.handle(IPC_CHANNELS.IMAGE_CLEAR, async () => {
-    try {
-      const imagesDir = getImagesDir();
-      if (await pathExists(imagesDir)) {
-        const files = await fs.readdir(imagesDir);
-        await Promise.all(
-          files.map((file) => fs.unlink(path.join(imagesDir, file))),
-        );
-        console.log(`Cleared ${files.length} images`);
-      }
-      return true;
-    } catch (error) {
-      console.error("Failed to clear images:", error);
-      return false;
-    }
+    return clearMediaDirectory(getImagesDir(), "images");
   });
 
   // ==================== Video Support ====================
@@ -534,8 +613,7 @@ export function registerImageIPC(): void {
 
     try {
       const videoPath = validateFileName(fileName, videosDir);
-      await shell.openPath(videoPath);
-      return true;
+      return await openPathWithResult(videoPath);
     } catch (error) {
       console.error(`Failed to open video ${fileName}:`, error);
       return false;
@@ -612,7 +690,7 @@ export function registerImageIPC(): void {
         if (await pathExists(destPath)) {
           return true;
         }
-        const buffer = Buffer.from(base64Data, "base64");
+        const buffer = decodeMediaBase64(base64Data);
         await fs.writeFile(destPath, buffer);
         return true;
       } catch (error) {
@@ -641,25 +719,16 @@ export function registerImageIPC(): void {
     IPC_CHANNELS.VIDEO_GET_PATH,
     async (_event, fileName: string) => {
       const videosDir = getVideosDir();
-      return validateFileName(fileName, videosDir);
+      try {
+        return validateFileName(fileName, videosDir);
+      } catch {
+        return null;
+      }
     },
   );
 
   // Clear all videos
   ipcMain.handle(IPC_CHANNELS.VIDEO_CLEAR, async () => {
-    try {
-      const videosDir = getVideosDir();
-      if (await pathExists(videosDir)) {
-        const files = await fs.readdir(videosDir);
-        await Promise.all(
-          files.map((file) => fs.unlink(path.join(videosDir, file))),
-        );
-        console.log(`Cleared ${files.length} videos`);
-      }
-      return true;
-    } catch (error) {
-      console.error("Failed to clear videos:", error);
-      return false;
-    }
+    return clearMediaDirectory(getVideosDir(), "videos");
   });
 }

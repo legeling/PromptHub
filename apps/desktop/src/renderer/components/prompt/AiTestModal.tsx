@@ -9,10 +9,15 @@ import { useSettingsStore, type AIModelConfig, type AIProviderConfig } from '../
 import { useToast } from '../ui/Toast';
 import { LocalImage } from '../ui/LocalImage';
 import type { Prompt } from '@prompthub/shared/types';
+import { copyTextToClipboard } from './prompt-copy-utils';
+import { parsePromptVariables, replacePromptVariables } from './prompt-modal-utils';
+import { resolvePromptMarkdownHref } from './prompt-markdown-url';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize from 'rehype-sanitize';
 import rehypeHighlight from 'rehype-highlight';
+import { resolveGeneratedImageUrl } from '../../utils/generated-image-url';
+import { downloadGeneratedImage } from '../../utils/download-generated-image';
 
 interface AiTestModalProps {
   isOpen: boolean;
@@ -43,7 +48,6 @@ const SUPPORTED_AI_TEST_IMAGE_MIME_TYPES = new Set([
   'image/webp',
   'image/gif',
 ]);
-
 function getProviderDisplayName(
   model: AIModelConfig | null,
   providers: AIProviderConfig[],
@@ -112,8 +116,40 @@ export function AiTestModal({
   const singleThinkingRafRef = useRef<number | null>(null);
   const compareBuffersRef = useRef<Record<string, { response: string; thinkingContent: string }>>({});
   const compareFlushRafRef = useRef<number | null>(null);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMountedRef = useRef(true);
+  const isOpenRef = useRef(isOpen);
+  const modalSessionRef = useRef(0);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const rehypePlugins = useMemo(() => [rehypeSanitize, rehypeHighlight], []);
+  const markdownComponents = useMemo(
+    () => ({
+      a: ({
+        children,
+        href,
+        node: _node,
+        ...props
+      }: React.ComponentProps<"a"> & { node?: unknown }) => {
+        const safeHref = resolvePromptMarkdownHref(href);
+
+        if (!safeHref) {
+          return <span {...props}>{children}</span>;
+        }
+
+        return (
+          <a
+            {...props}
+            href={safeHref}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {children}
+          </a>
+        );
+      },
+    }),
+    [],
+  );
   const [testImageAttachments, setTestImageAttachments] = useState<AiTestImageAttachment[]>([]);
   const [selectedReferenceImages, setSelectedReferenceImages] = useState<string[]>([]);
   const isImagePrompt = prompt?.promptType === 'image';
@@ -179,6 +215,42 @@ export function AiTestModal({
     return aiModels.filter((model) => (model.type ?? 'chat') === 'chat');
   }, [aiModels, isImagePrompt]);
 
+  const clearCopyTimer = useCallback(() => {
+    if (copyTimerRef.current) {
+      clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+      isOpenRef.current = false;
+      modalSessionRef.current += 1;
+      clearCopyTimer();
+    };
+  }, [clearCopyTimer]);
+
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+    modalSessionRef.current += 1;
+
+    if (!isOpen) {
+      clearCopyTimer();
+      setCopied(false);
+    }
+  }, [clearCopyTimer, isOpen, prompt?.id]);
+
+  const canApplyAsyncResult = useCallback(
+    (session: number) =>
+      isMountedRef.current &&
+      isOpenRef.current &&
+      modalSessionRef.current === session,
+    [],
+  );
+
   useEffect(() => {
     setSelectedModelIds((prev) =>
       prev.filter((id) => compareModels.some((model) => model.id === id))
@@ -231,25 +303,31 @@ export function AiTestModal({
     singleThinkingBufferRef.current = '';
   }, [cancelSingleStreamRafs]);
 
-  const scheduleSingleContentFlush = useCallback(() => {
+  const scheduleSingleContentFlush = useCallback((session?: number) => {
     if (singleContentRafRef.current !== null) return;
     singleContentRafRef.current = requestAnimationFrame(() => {
       singleContentRafRef.current = null;
+      if (session !== undefined && !canApplyAsyncResult(session)) {
+        return;
+      }
       flushSync(() => {
         setAiResponse(singleContentBufferRef.current);
       });
     });
-  }, []);
+  }, [canApplyAsyncResult]);
 
-  const scheduleSingleThinkingFlush = useCallback(() => {
+  const scheduleSingleThinkingFlush = useCallback((session?: number) => {
     if (singleThinkingRafRef.current !== null) return;
     singleThinkingRafRef.current = requestAnimationFrame(() => {
       singleThinkingRafRef.current = null;
+      if (session !== undefined && !canApplyAsyncResult(session)) {
+        return;
+      }
       flushSync(() => {
         setThinkingContent(singleThinkingBufferRef.current);
       });
     });
-  }, []);
+  }, [canApplyAsyncResult]);
 
   const flushCompareBuffers = useCallback(() => {
     setCompareResults((prev) => {
@@ -268,15 +346,18 @@ export function AiTestModal({
     });
   }, []);
 
-  const scheduleCompareFlush = useCallback(() => {
+  const scheduleCompareFlush = useCallback((session?: number) => {
     if (compareFlushRafRef.current !== null) return;
     compareFlushRafRef.current = requestAnimationFrame(() => {
       compareFlushRafRef.current = null;
+      if (session !== undefined && !canApplyAsyncResult(session)) {
+        return;
+      }
       flushSync(() => {
         flushCompareBuffers();
       });
     });
-  }, [flushCompareBuffers]);
+  }, [canApplyAsyncResult, flushCompareBuffers]);
 
   const resetCompareBuffers = useCallback(() => {
     if (compareFlushRafRef.current !== null) {
@@ -286,19 +367,12 @@ export function AiTestModal({
     compareBuffersRef.current = {};
   }, []);
 
-  // Extract variables
-  // 提取变量
-  const extractVariables = (text: string): string[] => {
-    const regex = /\{\{([^}]+)\}\}/g;
-    const matches: string[] = [];
-    let match;
-    while ((match = regex.exec(text)) !== null) {
-      if (!matches.includes(match[1])) {
-        matches.push(match[1]);
-      }
+  useEffect(() => {
+    if (!isOpen) {
+      resetSingleStreamBuffers();
+      resetCompareBuffers();
     }
-    return matches;
-  };
+  }, [isOpen, resetCompareBuffers, resetSingleStreamBuffers]);
 
   // Get all variables
   // 获取所有变量
@@ -306,9 +380,7 @@ export function AiTestModal({
     if (!prompt) return [];
     const sysText = preferEnglish ? (prompt.systemPromptEn || prompt.systemPrompt || '') : (prompt.systemPrompt || '');
     const userText = preferEnglish ? (prompt.userPromptEn || prompt.userPrompt) : prompt.userPrompt;
-    const sysVars = extractVariables(sysText);
-    const userVars = extractVariables(userText);
-    return [...new Set([...sysVars, ...userVars])];
+    return parsePromptVariables(`${sysText}\n${userText}`);
   }, [prompt, preferEnglish]);
 
   // Build single model configuration - must be called before all conditional returns
@@ -340,9 +412,7 @@ export function AiTestModal({
 
   // 替换变量
   const replaceVariables = useCallback((text: string): string => {
-    return text.replace(/\{\{([^}]+)\}\}/g, (match, varName) => {
-      return variableValues[varName] || match;
-    });
+    return replacePromptVariables(text, variableValues);
   }, [variableValues]);
 
   // 计算实际使用的 prompt 内容
@@ -500,6 +570,8 @@ export function AiTestModal({
       setCompareResults(null);
       setGeneratedImages([]);
       setImageGenerationError(null);
+      clearCopyTimer();
+      setCopied(false);
       setTestImageAttachments([]);
       setSelectedReferenceImages(isImagePrompt ? (prompt.images || []) : []);
       setIsSingleLoading(false);
@@ -508,11 +580,11 @@ export function AiTestModal({
       // 初始化变量值
       const initialValues: Record<string, string> = {};
       allVariables.forEach((v) => {
-        initialValues[v] = '';
+        initialValues[v.name] = v.defaultValue || '';
       });
       setVariableValues(initialValues);
     }
-  }, [allVariables, isImagePrompt, isOpen, prompt?.id, resetCompareBuffers, resetSingleStreamBuffers]);
+  }, [allVariables, clearCopyTimer, isImagePrompt, isOpen, prompt?.id, resetCompareBuffers, resetSingleStreamBuffers]);
 
   useEffect(() => {
     return () => {
@@ -529,6 +601,7 @@ export function AiTestModal({
     const config = buildSingleConfig();
     if (!config.apiKey || !config.apiUrl || !config.model) return;
 
+    const singleSession = modalSessionRef.current;
     setIsSingleLoading(true);
     setAiResponse(null);
     setThinkingContent(null);
@@ -541,6 +614,10 @@ export function AiTestModal({
 
     try {
       const imageAttachments = await buildChatAttachments();
+      if (!canApplyAsyncResult(singleSession)) {
+        return;
+      }
+
       const messages = buildMessagesFromPrompt(
         systemPrompt,
         userPrompt,
@@ -568,12 +645,14 @@ export function AiTestModal({
           streamCallbacks: useStream
             ? {
               onContent: (chunk) => {
+                if (!canApplyAsyncResult(singleSession)) return;
                 singleContentBufferRef.current += chunk;
-                scheduleSingleContentFlush();
+                scheduleSingleContentFlush(singleSession);
               },
               onThinking: (chunk) => {
+                if (!canApplyAsyncResult(singleSession)) return;
                 singleThinkingBufferRef.current += chunk;
-                scheduleSingleThinkingFlush();
+                scheduleSingleThinkingFlush(singleSession);
               },
             }
             : undefined,
@@ -596,6 +675,10 @@ export function AiTestModal({
         }
       );
 
+      if (!canApplyAsyncResult(singleSession)) {
+        return;
+      }
+
       // IMPORTANT: Don't overwrite streamed content in stream mode!
       // 重要：流式模式下不要覆盖已流式更新的内容！
       if (!useStream) {
@@ -612,10 +695,15 @@ export function AiTestModal({
         onSaveResponse(prompt.id, result.content);
       }
     } catch (error) {
+      if (!canApplyAsyncResult(singleSession)) {
+        return;
+      }
       cancelSingleStreamRafs();
       setAiResponse(`${t('common.error')}: ${error instanceof Error ? error.message : t('common.error')}`);
     } finally {
-      setIsSingleLoading(false);
+      if (canApplyAsyncResult(singleSession)) {
+        setIsSingleLoading(false);
+      }
     }
   };
 
@@ -623,6 +711,7 @@ export function AiTestModal({
   const runCompare = async () => {
     if (selectedModelIds.length < 2) return;
 
+    const compareSession = modalSessionRef.current;
     setIsCompareLoading(true);
     setCompareResults(null);
 
@@ -646,6 +735,10 @@ export function AiTestModal({
 
     try {
       const imageAttachments = await buildChatAttachments();
+      if (!canApplyAsyncResult(compareSession)) {
+        return;
+      }
+
       const messages = buildMessagesFromPrompt(
         systemPrompt,
         userPrompt,
@@ -679,16 +772,18 @@ export function AiTestModal({
         if (cfg.chatParams?.stream) {
           streamCallbacksMap.set(cfg.id, {
             onContent: (chunk: string) => {
+              if (!canApplyAsyncResult(compareSession)) return;
               const buffer = compareBuffersRef.current[cfg.id];
               if (!buffer) return;
               buffer.response += chunk;
-              scheduleCompareFlush();
+              scheduleCompareFlush(compareSession);
             },
             onThinking: (chunk: string) => {
+              if (!canApplyAsyncResult(compareSession)) return;
               const buffer = compareBuffersRef.current[cfg.id];
               if (!buffer) return;
               buffer.thinkingContent += chunk;
-              scheduleCompareFlush();
+              scheduleCompareFlush(compareSession);
             },
           });
         }
@@ -697,13 +792,22 @@ export function AiTestModal({
       const result = await multiModelCompare(selectedConfigs as any, messages, {
         streamCallbacksMap,
       });
+      if (!canApplyAsyncResult(compareSession)) {
+        return;
+      }
+
       flushCompareBuffers();
       setCompareResults(result.results);
     } catch (error) {
+      if (!canApplyAsyncResult(compareSession)) {
+        return;
+      }
       // Handle error
     } finally {
-      resetCompareBuffers();
-      setIsCompareLoading(false);
+      if (canApplyAsyncResult(compareSession)) {
+        resetCompareBuffers();
+        setIsCompareLoading(false);
+      }
     }
   };
 
@@ -718,9 +822,16 @@ export function AiTestModal({
 
   // 复制响应
   const handleCopy = async (text: string) => {
-    await navigator.clipboard.writeText(text);
+    await copyTextToClipboard(text);
+    if (!isMountedRef.current || !isOpenRef.current) {
+      return;
+    }
+    clearCopyTimer();
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    copyTimerRef.current = setTimeout(() => {
+      setCopied(false);
+      copyTimerRef.current = null;
+    }, 2000);
   };
 
   // 生图测试
@@ -730,6 +841,7 @@ export function AiTestModal({
       return;
     }
 
+    const imageSession = modalSessionRef.current;
     setIsImageLoading(true);
     setGeneratedImages([]);
     setImageGenerationError(null);
@@ -749,18 +861,33 @@ export function AiTestModal({
       };
 
       const referenceImages = await buildImageReferenceAttachments();
+      if (!canApplyAsyncResult(imageSession)) {
+        return;
+      }
+
       const result = await generateImage(config, userPrompt, {
         n: 1,
         referenceImages,
       });
+      if (!canApplyAsyncResult(imageSession)) {
+        return;
+      }
 
       const urls: string[] = [];
       for (const item of result.data) {
         if (item.url) {
-          urls.push(item.url);
+          const resolved = resolveGeneratedImageUrl(item.url);
+          if (resolved) {
+            urls.push(resolved.url);
+          }
         } else if (item.b64_json) {
           // 将 base64 转换为 data URL
-          urls.push(`data:image/png;base64,${item.b64_json}`);
+          const resolved = resolveGeneratedImageUrl(
+            `data:image/png;base64,${item.b64_json}`,
+          );
+          if (resolved) {
+            urls.push(resolved.url);
+          }
         }
       }
 
@@ -771,11 +898,16 @@ export function AiTestModal({
         setImageGenerationError(t('settings.imageGenEmptyResult'));
       }
     } catch (error) {
+      if (!canApplyAsyncResult(imageSession)) {
+        return;
+      }
       const message = error instanceof Error ? error.message : t('common.error');
       setImageGenerationError(message);
       showToast(`${t('common.error')}: ${message}`, 'error');
     } finally {
-      setIsImageLoading(false);
+      if (canApplyAsyncResult(imageSession)) {
+        setIsImageLoading(false);
+      }
     }
   };
 
@@ -789,6 +921,7 @@ export function AiTestModal({
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           rehypePlugins={rehypePlugins}
+          components={markdownComponents}
         >
           {content}
         </ReactMarkdown>
@@ -801,23 +934,34 @@ export function AiTestModal({
     if (!onAddImage) return;
 
     try {
+      const resolved = resolveGeneratedImageUrl(imageUrl);
+      if (!resolved) {
+        showToast(t('prompt.uploadFailed'), 'error');
+        return;
+      }
+
       // 如果是外部 URL，需要先下载到本地
-      if (imageUrl.startsWith('http')) {
-        const fileName = await window.electron?.downloadImage?.(imageUrl);
+      if (resolved.kind === 'remote') {
+        const fileName = await window.electron?.downloadImage?.(resolved.url);
         if (fileName) {
           onAddImage(fileName);
           showToast(t('prompt.imageAddedToPrompt'), 'success');
         } else {
           showToast(t('prompt.uploadFailed'), 'error');
         }
-      } else if (imageUrl.startsWith('data:')) {
+      } else {
         // base64 图片，需要保存到本地
-        // 提取 base64 数据（去掉 data:image/png;base64, 前缀）
-        const base64Data = imageUrl.split(',')[1];
         const fileName = `generated-${Date.now()}.png`;
-        await window.electron?.saveImageBase64?.(fileName, base64Data);
-        onAddImage(fileName);
-        showToast(t('prompt.imageAddedToPrompt'), 'success');
+        const saved = await window.electron?.saveImageBase64?.(
+          fileName,
+          resolved.base64,
+        );
+        if (saved) {
+          onAddImage(fileName);
+          showToast(t('prompt.imageAddedToPrompt'), 'success');
+        } else {
+          showToast(t('prompt.uploadFailed'), 'error');
+        }
       }
     } catch (error) {
       showToast(t('prompt.uploadFailed'), 'error');
@@ -827,12 +971,10 @@ export function AiTestModal({
   // 下载图片
   const handleDownloadImage = async (imageUrl: string, index: number) => {
     try {
-      const link = document.createElement('a');
-      link.href = imageUrl;
-      link.download = `generated-image-${index + 1}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      await downloadGeneratedImage({
+        imageUrl,
+        fileName: `generated-image-${index + 1}.png`,
+      });
       showToast(t('common.downloadSuccess'), 'success');
     } catch (error) {
       showToast(t('common.downloadFailed'), 'error');
@@ -864,18 +1006,24 @@ export function AiTestModal({
             <button
               type="button"
               onClick={() => setIsExpanded((prev) => !prev)}
+              aria-label={isExpanded ? t('common.collapse', 'Collapse') : t('common.expand', 'Expand')}
               className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground"
               title={isExpanded ? t('common.collapse', 'Collapse') : t('common.expand', 'Expand')}
             >
-              {isExpanded ? <Minimize2Icon className="w-4 h-4" /> : <Maximize2Icon className="w-4 h-4" />}
+              {isExpanded ? (
+                <Minimize2Icon className="w-4 h-4" aria-hidden="true" />
+              ) : (
+                <Maximize2Icon className="w-4 h-4" aria-hidden="true" />
+              )}
             </button>
             <button
               type="button"
               onClick={onClose}
+              aria-label={t('common.close')}
               className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground"
               title={t('common.close')}
             >
-              <XIcon className="w-4 h-4" />
+              <XIcon className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
         </header>
@@ -887,36 +1035,42 @@ export function AiTestModal({
           {!isImagePrompt && (
             <>
               <button
+                type="button"
+                aria-pressed={mode === 'single'}
                 onClick={() => setMode('single')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === 'single'
                   ? 'bg-primary text-white'
                   : 'bg-muted text-muted-foreground hover:bg-accent'
-                  }`}
+                }`}
               >
-                <PlayIcon className="w-4 h-4" />
+                <PlayIcon className="w-4 h-4" aria-hidden="true" />
                 {t('prompt.aiTest')}
               </button>
               <button
+                type="button"
+                aria-pressed={mode === 'compare'}
                 onClick={() => setMode('compare')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === 'compare'
                   ? 'bg-primary text-white'
                   : 'bg-muted text-muted-foreground hover:bg-accent'
-                  }`}
+                }`}
               >
-                <GitCompareIcon className="w-4 h-4" />
+                <GitCompareIcon className="w-4 h-4" aria-hidden="true" />
                 {t('settings.multiModelCompare')}
               </button>
             </>
           )}
           {isImagePrompt && (
             <button
+              type="button"
+              aria-pressed={mode === 'image'}
               onClick={() => setMode('image')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === 'image'
                 ? 'bg-primary text-white'
                 : 'bg-muted text-muted-foreground hover:bg-accent'
-                }`}
+              }`}
             >
-              <ImageIcon className="w-4 h-4" />
+              <ImageIcon className="w-4 h-4" aria-hidden="true" />
               {t('settings.testImage')}
             </button>
           )}
@@ -926,17 +1080,17 @@ export function AiTestModal({
         {allVariables.length > 0 && (
           <div className="space-y-3">
             <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
-              <BracesIcon className="w-4 h-4" />
+              <BracesIcon className="w-4 h-4" aria-hidden="true" />
               {t('prompt.fillVariables')}
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {allVariables.map((variable) => (
-                <div key={variable} className="space-y-1">
-                  <label className="text-xs text-muted-foreground font-mono">{`{{${variable}}}`}</label>
+                <div key={variable.name} className="space-y-1">
+                  <label className="text-xs text-muted-foreground font-mono">{`{{${variable.name}}}`}</label>
                   <input
                     type="text"
-                    value={variableValues[variable] || ''}
-                    onChange={(e) => setVariableValues((prev) => ({ ...prev, [variable]: e.target.value }))}
+                    value={variableValues[variable.name] || ''}
+                    onChange={(e) => setVariableValues((prev) => ({ ...prev, [variable.name]: e.target.value }))}
                     placeholder={t('prompt.enterValue')}
                     className="w-full px-3 py-1.5 text-sm bg-muted/50 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
                   />
@@ -958,7 +1112,7 @@ export function AiTestModal({
           <div className="flex items-center justify-between gap-3">
             <div className="space-y-1">
               <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
-                <PaperclipIcon className="w-4 h-4" />
+                <PaperclipIcon className="w-4 h-4" aria-hidden="true" />
                 {isImagePrompt
                   ? t('prompt.referenceImages')
                   : t('prompt.aiTestAttachments', '测试附件')}
@@ -978,12 +1132,13 @@ export function AiTestModal({
               disabled={testImageAttachments.length >= MAX_AI_TEST_IMAGES}
               className="flex shrink-0 items-center gap-2 px-3 py-2 rounded-lg border border-border bg-background text-sm font-medium hover:bg-accent disabled:opacity-50 transition-colors"
             >
-              <ImageIcon className="w-4 h-4" />
+              <ImageIcon className="w-4 h-4" aria-hidden="true" />
               {t('prompt.aiTestAddImages')}
             </button>
             <input
               ref={imageInputRef}
               type="file"
+              aria-label={t('prompt.aiTestAddImages')}
               accept="image/png,image/jpeg,image/webp,image/gif"
               multiple
               className="hidden"
@@ -1005,18 +1160,31 @@ export function AiTestModal({
                   return (
                     <button
                       type="button"
-                      key={imageName}
-                      onClick={() => toggleReferenceImage(imageName)}
-                      className={`relative overflow-hidden rounded-lg border text-left transition-colors ${selected
+	                      key={imageName}
+	                      onClick={() => toggleReferenceImage(imageName)}
+	                      aria-label={
+	                        selected
+	                          ? t('prompt.aiTestDeselectReferenceImage', {
+	                            name: imageName,
+	                            defaultValue: `Deselect reference image ${imageName}`,
+	                          })
+	                          : t('prompt.aiTestSelectReferenceImage', {
+	                            name: imageName,
+	                            defaultValue: `Select reference image ${imageName}`,
+	                          })
+	                      }
+	                      aria-pressed={selected}
+	                      className={`relative overflow-hidden rounded-lg border text-left transition-colors ${selected
                         ? 'border-primary ring-2 ring-primary/30'
                         : 'border-border hover:border-primary/50'
                         }`}
                     >
-                      <LocalImage
-                        src={imageName}
-                        alt={imageName}
-                        className="h-24 w-full object-cover"
-                        fallbackClassName="h-24 w-full"
+	                      <LocalImage
+	                        src={imageName}
+	                        alt=""
+	                        aria-hidden="true"
+	                        className="h-24 w-full object-cover"
+	                        fallbackClassName="h-24 w-full"
                       />
                       <div className="absolute left-1.5 top-1.5 rounded-md bg-background/90 px-1.5 py-0.5 text-[10px] font-medium">
                         {selected ? t('common.selected', 'Selected') : t('common.select', 'Select')}
@@ -1049,10 +1217,11 @@ export function AiTestModal({
                     <button
                       type="button"
                       onClick={() => removeTestImageAttachment(attachment.id)}
+                      aria-label={t('prompt.aiTestRemoveImage')}
                       className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-background/90 text-foreground shadow-sm hover:bg-background"
                       title={t('prompt.aiTestRemoveImage')}
                     >
-                      <XIcon className="w-3.5 h-3.5" />
+                      <XIcon className="w-3.5 h-3.5" aria-hidden="true" />
                     </button>
                     <div className="space-y-0.5 px-2 py-1.5">
                       <p className="truncate text-xs font-medium" title={attachment.name}>
@@ -1077,6 +1246,8 @@ export function AiTestModal({
               <h4 className="text-sm font-medium text-muted-foreground">{t('prompt.outputFormat')}</h4>
               <div className="flex flex-wrap gap-2">
                 <button
+                  type="button"
+                  aria-pressed={outputFormat === 'text'}
                   onClick={() => setOutputFormat('text')}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${outputFormat === 'text'
                     ? 'bg-primary text-white'
@@ -1086,6 +1257,8 @@ export function AiTestModal({
                   {t('prompt.outputFormatText')}
                 </button>
                 <button
+                  type="button"
+                  aria-pressed={outputFormat === 'json_object'}
                   onClick={() => setOutputFormat('json_object')}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${outputFormat === 'json_object'
                     ? 'bg-primary text-white'
@@ -1095,6 +1268,8 @@ export function AiTestModal({
                   {t('prompt.outputFormatJson')}
                 </button>
                 <button
+                  type="button"
+                  aria-pressed={outputFormat === 'json_schema'}
                   onClick={() => setOutputFormat('json_schema')}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${outputFormat === 'json_schema'
                     ? 'bg-primary text-white'
@@ -1138,14 +1313,15 @@ export function AiTestModal({
                 {t('settings.model')}: {aiModel || '-'}
               </span>
               <button
+                type="button"
                 onClick={runSingleTest}
                 disabled={isSingleLoading || !canRunSingleTest}
                 className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
                 {isSingleLoading ? (
-                  <LoaderIcon className="w-4 h-4 animate-spin" />
+                  <LoaderIcon className="w-4 h-4 animate-spin" aria-hidden="true" />
                 ) : (
-                  <PlayIcon className="w-4 h-4" />
+                  <PlayIcon className="w-4 h-4" aria-hidden="true" />
                 )}
                 {isSingleLoading ? t('prompt.testing') : t('prompt.aiTest')}
               </button>
@@ -1157,10 +1333,15 @@ export function AiTestModal({
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-medium text-muted-foreground">{t('prompt.aiResponse')}</h4>
                   <button
+                    type="button"
                     onClick={() => handleCopy(aiResponse)}
                     className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
                   >
-                    {copied ? <CheckIcon className="w-3.5 h-3.5" /> : <CopyIcon className="w-3.5 h-3.5" />}
+                    {copied ? (
+                      <CheckIcon className="w-3.5 h-3.5" aria-hidden="true" />
+                    ) : (
+                      <CopyIcon className="w-3.5 h-3.5" aria-hidden="true" />
+                    )}
                     {copied ? t('prompt.copied') : t('prompt.copyResponse')}
                   </button>
                 </div>
@@ -1189,8 +1370,10 @@ export function AiTestModal({
               <div className="flex flex-wrap gap-2">
                 {compareModels.map((model) => (
                   <button
+                    type="button"
                     key={model.id}
                     onClick={() => toggleModelSelection(model.id)}
+                    aria-pressed={selectedModelIds.includes(model.id)}
                     className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${selectedModelIds.includes(model.id)
                       ? 'bg-primary text-white'
                       : 'bg-muted text-muted-foreground hover:bg-accent'
@@ -1207,14 +1390,15 @@ export function AiTestModal({
                 {t('prompt.compareModels', { count: selectedModelIds.length })}
               </span>
               <button
+                type="button"
                 onClick={runCompare}
                 disabled={isCompareLoading || selectedModelIds.length < 2}
                 className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
                 {isCompareLoading ? (
-                  <LoaderIcon className="w-4 h-4 animate-spin" />
+                  <LoaderIcon className="w-4 h-4 animate-spin" aria-hidden="true" />
                 ) : (
-                  <GitCompareIcon className="w-4 h-4" />
+                  <GitCompareIcon className="w-4 h-4" aria-hidden="true" />
                 )}
                 {isCompareLoading ? t('prompt.comparing') : t('settings.runCompare')}
               </button>
@@ -1266,14 +1450,15 @@ export function AiTestModal({
                 )}
               </div>
               <button
+                type="button"
                 onClick={runImageTest}
                 disabled={isImageLoading || !defaultImageModel}
                 className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
                 {isImageLoading ? (
-                  <LoaderIcon className="w-4 h-4 animate-spin" />
+                  <LoaderIcon className="w-4 h-4 animate-spin" aria-hidden="true" />
                 ) : (
-                  <ImageIcon className="w-4 h-4" />
+                  <ImageIcon className="w-4 h-4" aria-hidden="true" />
                 )}
                 {isImageLoading ? t('prompt.generating', '生成中...') : t('settings.testImage')}
               </button>
@@ -1310,20 +1495,23 @@ export function AiTestModal({
                       <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                         {onAddImage && (
                           <button
+                            type="button"
                             onClick={() => handleAddImageToPrompt(imageUrl)}
                             className="flex items-center gap-1 px-3 py-2 rounded-lg bg-primary text-white text-xs font-medium hover:bg-primary/90"
                             title={t('prompt.addToPrompt', '添加到 Prompt')}
                           >
-                            <PlusIcon className="w-4 h-4" />
+                            <PlusIcon className="w-4 h-4" aria-hidden="true" />
                             {t('prompt.addToPrompt', '添加到 Prompt')}
                           </button>
                         )}
                         <button
+                          type="button"
                           onClick={() => handleDownloadImage(imageUrl, idx)}
+                          aria-label={t('common.download', '下载')}
                           className="flex items-center gap-1 px-3 py-2 rounded-lg bg-muted text-foreground text-xs font-medium hover:bg-muted/80"
                           title={t('common.download', '下载')}
                         >
-                          <DownloadIcon className="w-4 h-4" />
+                          <DownloadIcon className="w-4 h-4" aria-hidden="true" />
                         </button>
                       </div>
                     </div>
@@ -1335,7 +1523,7 @@ export function AiTestModal({
             {/* 无生图模型提示 */}
             {!defaultImageModel && (
               <div className="p-4 rounded-lg bg-muted/50 border border-border text-center">
-                <ImageIcon className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                <ImageIcon className="w-8 h-8 mx-auto mb-2 text-muted-foreground" aria-hidden="true" />
                 <p className="text-sm text-muted-foreground">
                   {t('settings.noImageModelHint', '请先在设置中配置生图模型')}
                 </p>

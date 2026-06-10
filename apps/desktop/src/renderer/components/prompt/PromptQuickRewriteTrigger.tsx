@@ -20,7 +20,7 @@ export function PromptQuickRewriteTrigger({
       title={t("prompt.quickRewriteOpen")}
       className={className}
     >
-      <SparklesIcon className="w-4 h-4" />
+      <SparklesIcon aria-hidden="true" className="w-4 h-4" />
     </button>
   );
 }

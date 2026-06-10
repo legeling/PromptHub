@@ -1,8 +1,15 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Modal, Button } from '../ui';
+import { useToast } from '../ui/Toast';
 import { useTranslation } from 'react-i18next';
 import { CopyIcon, CheckIcon, BracesIcon, HistoryIcon, CalendarIcon, ClockIcon, PlayIcon, Loader2Icon, ImageIcon, XIcon } from 'lucide-react';
 import type { ChatImageAttachment } from '../../services/ai';
+import {
+  parsePromptVariables,
+  replacePromptVariables,
+  type ParsedPromptVariable,
+} from './prompt-modal-utils';
+import { copyTextToClipboard } from './prompt-copy-utils';
 
 type ModalMode = 'copy' | 'aiTest';
 
@@ -54,16 +61,6 @@ const SUPPORTED_AI_TEST_IMAGE_MIME_TYPES = new Set([
 
 // Parse variables: supports {{name}} and {{name:defaultValue}} formats
 // 解析变量：支持 {{name}} 和 {{name:默认值}} 格式
-interface ParsedVariable {
-  fullMatch: string;
-  name: string;
-  defaultValue?: string;
-}
-
-// Extract variable regex - supports default values
-// 提取变量的正则表达式 - 支持默认值
-const VARIABLE_REGEX = /\{\{([^}:]+)(?::([^}]*))?\}\}/g;
-
 // System variables
 // 系统变量
 const SYSTEM_VARIABLES: Record<string, () => string> = {
@@ -109,8 +106,13 @@ export function VariableInputModal({
   isAiTesting = false,
 }: VariableInputModalProps) {
   const { t } = useTranslation();
+  const { showToast } = useToast();
   const [variables, setVariables] = useState<Record<string, string>>({});
   const [copied, setCopied] = useState(false);
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMountedRef = useRef(true);
+  const isOpenRef = useRef(isOpen);
+  const modalSessionRef = useRef(0);
   // Output format state (Issue #38)
   // 输出格式状态
   const [outputFormat, setOutputFormat] = useState<OutputFormatType>('text');
@@ -121,29 +123,21 @@ export function VariableInputModal({
   // Parse all variables (including default values)
   // 解析所有变量（包括默认值）
   const parsedVariables = useMemo(() => {
-    const combined = `${systemPrompt || ''}\n${userPrompt}`;
-    const matches = combined.matchAll(VARIABLE_REGEX);
-    const vars: ParsedVariable[] = [];
-    const seen = new Set<string>();
-
-    for (const match of matches) {
-      const name = match[1].trim();
-      if (!seen.has(name) && !SYSTEM_VARIABLES[name]) {
-        seen.add(name);
-        vars.push({
-          fullMatch: match[0],
-          name,
-          defaultValue: match[2]?.trim(),
-        });
-      }
-    }
-    return vars;
-  }, [systemPrompt, userPrompt]);
+    const combined =
+      mode === 'copy' ? userPrompt : `${systemPrompt || ''}\n${userPrompt}`;
+    return parsePromptVariables(combined).filter(
+      (variable: ParsedPromptVariable) => !SYSTEM_VARIABLES[variable.name],
+    );
+  }, [mode, systemPrompt, userPrompt]);
 
   // Initialize variable values (priority: history > default > empty)
   // 初始化变量值（优先级：历史值 > 默认值 > 空）
   useEffect(() => {
     if (isOpen) {
+      if (copiedTimerRef.current) {
+        clearTimeout(copiedTimerRef.current);
+        copiedTimerRef.current = null;
+      }
       const history = getVariableHistory(promptId);
       const initialVars: Record<string, string> = {};
 
@@ -156,6 +150,42 @@ export function VariableInputModal({
       setImageAttachments([]);
     }
   }, [isOpen, parsedVariables, promptId]);
+
+  const clearCopiedTimer = useCallback(() => {
+    if (copiedTimerRef.current) {
+      clearTimeout(copiedTimerRef.current);
+      copiedTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+      isOpenRef.current = false;
+      modalSessionRef.current += 1;
+      clearCopiedTimer();
+    };
+  }, [clearCopiedTimer]);
+
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+    modalSessionRef.current += 1;
+
+    if (!isOpen) {
+      clearCopiedTimer();
+      setCopied(false);
+    }
+  }, [clearCopiedTimer, isOpen, promptId]);
+
+  const canApplyAsyncResult = useCallback(
+    (session: number) =>
+      isMountedRef.current &&
+      isOpenRef.current &&
+      modalSessionRef.current === session,
+    [],
+  );
 
   const formatImageSize = (bytes: number): string => {
     if (bytes >= 1024 * 1024) {
@@ -198,17 +228,37 @@ export function VariableInputModal({
 
     const remainingSlots = MAX_AI_TEST_IMAGES - imageAttachments.length;
     if (remainingSlots <= 0) {
+      showToast(t('prompt.aiTestImageLimit', { count: MAX_AI_TEST_IMAGES }), 'error');
       return;
     }
 
-    const acceptedFiles = Array.from(files)
-      .slice(0, remainingSlots)
-      .filter((file) => SUPPORTED_AI_TEST_IMAGE_MIME_TYPES.has(file.type) && file.size <= MAX_AI_TEST_IMAGE_BYTES);
+    const selectedFiles = Array.from(files);
+    if (selectedFiles.length > remainingSlots) {
+      showToast(t('prompt.aiTestImageLimit', { count: MAX_AI_TEST_IMAGES }), 'error');
+    }
+
+    const acceptedFiles: File[] = [];
+    for (const file of selectedFiles.slice(0, remainingSlots)) {
+      if (!SUPPORTED_AI_TEST_IMAGE_MIME_TYPES.has(file.type)) {
+        showToast(t('prompt.aiTestImageUnsupported', { name: file.name }), 'error');
+        continue;
+      }
+      if (file.size > MAX_AI_TEST_IMAGE_BYTES) {
+        showToast(t('prompt.aiTestImageTooLarge', { name: file.name, size: formatImageSize(MAX_AI_TEST_IMAGE_BYTES) }), 'error');
+        continue;
+      }
+      acceptedFiles.push(file);
+    }
 
     if (acceptedFiles.length === 0) return;
 
+    const selectionSession = modalSessionRef.current;
+
     try {
       const nextAttachments = await Promise.all(acceptedFiles.map(readImageFileAsAttachment));
+      if (!canApplyAsyncResult(selectionSession)) {
+        return;
+      }
       setImageAttachments((prev) => [...prev, ...nextAttachments].slice(0, MAX_AI_TEST_IMAGES));
     } catch {
       // Ignore read failures here; the user can retry selecting the image.
@@ -219,17 +269,12 @@ export function VariableInputModal({
   // 替换变量生成最终文本
   const filledPrompt = useMemo(() => {
     let result = userPrompt;
-    if (systemPrompt) {
+    if (mode !== 'copy' && systemPrompt) {
       result = `[System]\n${systemPrompt}\n\n[User]\n${userPrompt}`;
     }
 
-    Object.entries(variables).forEach(([name, value]) => {
-      const regex = new RegExp(`\\{\\{\\s*${name}\\s*\\}\\}`, 'g');
-      result = result.replace(regex, value || `{{${name}}}`);
-    });
-
-    return result;
-  }, [systemPrompt, userPrompt, variables]);
+    return replacePromptVariables(result, variables);
+  }, [mode, systemPrompt, userPrompt, variables]);
 
   // Check if all variables are filled
   // 检查是否所有变量都已填写
@@ -249,35 +294,46 @@ export function VariableInputModal({
 
     // Replace user variables (including default value format)
     // 替换用户变量（包括带默认值的格式）
-    parsedVariables.forEach((v) => {
-      const value = variables[v.name] || '';
-      // Match both {{name}} and {{name:defaultValue}} formats
-      // 匹配 {{name}} 和 {{name:默认值}} 两种格式
-      const regex = new RegExp(`\\{\\{\\s*${v.name}(?::[^}]*)?\\s*\\}\\}`, 'g');
-      result = result.replace(regex, value || `{{${v.name}}}`);
-    });
+    result = replacePromptVariables(result, variables);
 
     return result;
   };
 
-  const handleCopy = () => {
+  const handleCopy = async () => {
     // Save variable history
     // 保存变量历史
     saveVariableHistory(promptId, variables);
 
-    // Replace variables (include both systemPrompt and userPrompt)
-    // 替换变量（包含 systemPrompt 和 userPrompt）
     const filledUserPrompt = replaceVariables(userPrompt);
-    let result = filledUserPrompt;
-    if (systemPrompt) {
-      const filledSystemPrompt = replaceVariables(systemPrompt);
-      result = `[System]\n${filledSystemPrompt}\n\n[User]\n${filledUserPrompt}`;
+    const result = filledUserPrompt;
+    const copySession = modalSessionRef.current;
+
+    try {
+      await copyTextToClipboard(result);
+    } catch {
+      return;
     }
 
-    navigator.clipboard.writeText(result);
-    onCopy?.(result);
+    if (!canApplyAsyncResult(copySession)) {
+      return;
+    }
+
+    try {
+      await onCopy?.(result);
+    } catch {
+      return;
+    }
+
+    if (!canApplyAsyncResult(copySession)) {
+      return;
+    }
+
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    clearCopiedTimer();
+    copiedTimerRef.current = setTimeout(() => {
+      setCopied(false);
+      copiedTimerRef.current = null;
+    }, 2000);
   };
 
   const handleAiTest = () => {
@@ -325,7 +381,7 @@ export function VariableInputModal({
           {/* Variable input / 变量输入 */}
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <BracesIcon className="w-4 h-4" />
+              <BracesIcon className="w-4 h-4" aria-hidden="true" />
               <span>{t('prompt.fillVariables')}</span>
             </div>
 
@@ -338,7 +394,7 @@ export function VariableInputModal({
                     </label>
                     {variables[v.name] && variables[v.name] !== v.defaultValue && (
                       <span className="flex items-center gap-1 text-xs text-green-600 shrink-0">
-                        <HistoryIcon className="w-3 h-3" />
+                        <HistoryIcon className="w-3 h-3" aria-hidden="true" />
                         {t('prompt.fromHistory')}
                       </span>
                     )}
@@ -392,10 +448,11 @@ export function VariableInputModal({
                   </p>
                 </div>
                 <label className="flex shrink-0 cursor-pointer items-center gap-2 px-3 py-2 rounded-lg border border-border bg-background text-sm font-medium hover:bg-accent transition-colors">
-                  <ImageIcon className="w-4 h-4" />
+                  <ImageIcon className="w-4 h-4" aria-hidden="true" />
                   {t('prompt.aiTestAddImages')}
                   <input
                     type="file"
+                    aria-label={t('prompt.aiTestAddImages')}
                     accept="image/png,image/jpeg,image/webp,image/gif"
                     multiple
                     className="hidden"
@@ -415,10 +472,11 @@ export function VariableInputModal({
                       <button
                         type="button"
                         onClick={() => setImageAttachments((prev) => prev.filter((item) => item.id !== attachment.id))}
+                        aria-label={t('prompt.aiTestRemoveImage')}
                         className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-background/90 text-foreground shadow-sm hover:bg-background"
                         title={t('prompt.aiTestRemoveImage')}
                       >
-                        <XIcon className="w-3.5 h-3.5" />
+                        <XIcon className="w-3.5 h-3.5" aria-hidden="true" />
                       </button>
                       <div className="px-2 py-1.5">
                         <p className="truncate text-xs font-medium" title={attachment.name}>{attachment.name}</p>
@@ -440,7 +498,9 @@ export function VariableInputModal({
               <span className="text-xs text-muted-foreground">{t('prompt.outputFormat')}:</span>
               <div className="flex gap-1">
                 <button
+                  type="button"
                   onClick={() => setOutputFormat('text')}
+                  aria-pressed={outputFormat === 'text'}
                   className={`px-2 py-1 rounded text-xs font-medium transition-colors ${outputFormat === 'text'
                     ? 'bg-primary text-white'
                     : 'bg-muted text-muted-foreground hover:bg-accent'
@@ -449,7 +509,9 @@ export function VariableInputModal({
                   {t('prompt.outputFormatText')}
                 </button>
                 <button
+                  type="button"
                   onClick={() => setOutputFormat('json_object')}
+                  aria-pressed={outputFormat === 'json_object'}
                   className={`px-2 py-1 rounded text-xs font-medium transition-colors ${outputFormat === 'json_object'
                     ? 'bg-primary text-white'
                     : 'bg-muted text-muted-foreground hover:bg-accent'
@@ -458,7 +520,9 @@ export function VariableInputModal({
                   JSON
                 </button>
                 <button
+                  type="button"
                   onClick={() => setOutputFormat('json_schema')}
+                  aria-pressed={outputFormat === 'json_schema'}
                   className={`px-2 py-1 rounded text-xs font-medium transition-colors ${outputFormat === 'json_schema'
                     ? 'bg-primary text-white'
                     : 'bg-muted text-muted-foreground hover:bg-accent'
@@ -479,17 +543,17 @@ export function VariableInputModal({
             {mode === 'copy' ? (
               <Button
                 variant="primary"
-                onClick={handleCopy}
+                onClick={() => void handleCopy()}
                 disabled={!allFilled}
               >
                 {copied ? (
                   <>
-                    <CheckIcon className="w-4 h-4 mr-1.5" />
+                    <CheckIcon className="w-4 h-4 mr-1.5" aria-hidden="true" />
                     {t('prompt.copied')}
                   </>
                 ) : (
                   <>
-                    <CopyIcon className="w-4 h-4 mr-1.5" />
+                    <CopyIcon className="w-4 h-4 mr-1.5" aria-hidden="true" />
                     {t('prompt.copyResult')}
                   </>
                 )}
@@ -503,12 +567,15 @@ export function VariableInputModal({
               >
                 {isAiTesting ? (
                   <>
-                    <Loader2Icon className="w-4 h-4 mr-1.5 animate-spin" />
+                    <Loader2Icon
+                      className="w-4 h-4 mr-1.5 animate-spin"
+                      aria-hidden="true"
+                    />
                     {t('prompt.testing')}
                   </>
                 ) : (
                   <>
-                    <PlayIcon className="w-4 h-4 mr-1.5" />
+                    <PlayIcon className="w-4 h-4 mr-1.5" aria-hidden="true" />
                     {t('prompt.aiTest')}
                   </>
                 )}

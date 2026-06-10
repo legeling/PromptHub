@@ -132,6 +132,102 @@ describe("PromptGalleryView", () => {
     expect(onViewDetail).toHaveBeenCalledWith(expect.objectContaining({ id: "prompt-1" }));
   });
 
+  it("lets keyboard users open a gallery card with Enter and Space", async () => {
+    usePromptStore.setState({ galleryImageSize: "medium" });
+    const onViewDetail = vi.fn();
+
+    await act(async () => {
+      await renderWithI18n(
+        <PromptGalleryView
+          prompts={[basePrompt]}
+          onSelect={vi.fn()}
+          onToggleFavorite={vi.fn()}
+          onCopy={vi.fn()}
+          onEdit={vi.fn()}
+          onDelete={vi.fn()}
+          onAiTest={vi.fn()}
+          onVersionHistory={vi.fn()}
+          onViewDetail={onViewDetail}
+          onContextMenu={vi.fn()}
+        />,
+        { language: "en" },
+      );
+    });
+
+    const card = screen.getByRole("button", { name: basePrompt.title });
+
+    fireEvent.keyDown(card, { key: "Enter" });
+    fireEvent.keyDown(card, { key: " " });
+
+    expect(onViewDetail).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ id: "prompt-1" }),
+    );
+    expect(onViewDetail).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ id: "prompt-1" }),
+    );
+  });
+
+  it("exposes favorite action labels without opening detail from the button", async () => {
+    usePromptStore.setState({ galleryImageSize: "medium" });
+    const onToggleFavorite = vi.fn();
+    const onViewDetail = vi.fn();
+
+    await act(async () => {
+      await renderWithI18n(
+        <PromptGalleryView
+          prompts={[basePrompt]}
+          onSelect={vi.fn()}
+          onToggleFavorite={onToggleFavorite}
+          onCopy={vi.fn()}
+          onEdit={vi.fn()}
+          onDelete={vi.fn()}
+          onAiTest={vi.fn()}
+          onVersionHistory={vi.fn()}
+          onViewDetail={onViewDetail}
+          onContextMenu={vi.fn()}
+        />,
+        { language: "en" },
+      );
+    });
+
+    const favoriteButton = screen.getByRole("button", { name: "Add to Favorites" });
+
+    fireEvent.click(favoriteButton);
+
+    expect(favoriteButton).toHaveAttribute("aria-label", "Add to Favorites");
+    expect(onToggleFavorite).toHaveBeenCalledWith("prompt-1");
+    expect(onViewDetail).not.toHaveBeenCalled();
+  });
+
+  it("uses an action label for removing gallery favorites", async () => {
+    usePromptStore.setState({ galleryImageSize: "medium" });
+
+    await act(async () => {
+      await renderWithI18n(
+        <PromptGalleryView
+          prompts={[{ ...basePrompt, isFavorite: true }]}
+          onSelect={vi.fn()}
+          onToggleFavorite={vi.fn()}
+          onCopy={vi.fn()}
+          onEdit={vi.fn()}
+          onDelete={vi.fn()}
+          onAiTest={vi.fn()}
+          onVersionHistory={vi.fn()}
+          onViewDetail={vi.fn()}
+          onContextMenu={vi.fn()}
+        />,
+        { language: "en" },
+      );
+    });
+
+    expect(screen.getByRole("button", { name: "Remove from Favorites" })).toHaveAttribute(
+      "aria-label",
+      "Remove from Favorites",
+    );
+  });
+
   it("preserves top and bottom gutters for the virtualized gallery scroller", async () => {
     usePromptStore.setState({ galleryImageSize: "medium" });
 
