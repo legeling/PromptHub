@@ -28,6 +28,74 @@ export interface PromptBilingualFields {
   userPromptEn: string;
 }
 
+export interface ParsedPromptVariable {
+  fullMatch: string;
+  name: string;
+  defaultValue?: string;
+}
+
+interface BuildPromptPayloadOptions {
+  preserveEmptyOptionalFields?: boolean;
+}
+
+function optionalPromptText(
+  value: string,
+  preserveEmptyOptionalFields: boolean,
+): string | undefined {
+  const trimmed = value.trim();
+  if (trimmed) return trimmed;
+  return preserveEmptyOptionalFields ? "" : undefined;
+}
+
+const PROMPT_VARIABLE_REGEX = /\{\{\s*([^}:]+?)\s*(?::\s*([^}]*?))?\s*\}\}/g;
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export function buildPromptVariablePlaceholderRegex(name: string): RegExp {
+  return new RegExp(
+    `\\{\\{\\s*${escapeRegExp(name)}\\s*(?::[^}]*)?\\s*\\}\\}`,
+    "g",
+  );
+}
+
+export function parsePromptVariables(text: string): ParsedPromptVariable[] {
+  const variables: ParsedPromptVariable[] = [];
+  const seen = new Set<string>();
+
+  for (const match of text.matchAll(PROMPT_VARIABLE_REGEX)) {
+    const name = match[1].trim();
+    if (!name || seen.has(name)) {
+      continue;
+    }
+
+    seen.add(name);
+    variables.push({
+      fullMatch: match[0],
+      name,
+      defaultValue: match[2]?.trim(),
+    });
+  }
+
+  return variables;
+}
+
+export function replacePromptVariables(
+  text: string,
+  values: Record<string, string>,
+): string {
+  return text.replace(
+    PROMPT_VARIABLE_REGEX,
+    (_match, rawName: string, rawDefaultValue?: string) => {
+      const name = rawName.trim();
+      const defaultValue = rawDefaultValue?.trim() || "";
+      const value = values[name] || defaultValue;
+      return value || `{{${name}}}`;
+    },
+  );
+}
+
 export function createPromptFormData(
   source?: Partial<Prompt> | Partial<CreatePromptDTO> | null,
   defaults?: Partial<PromptFormData>,
@@ -52,21 +120,36 @@ export function createPromptFormData(
 
 export function buildPromptPayload(
   form: PromptFormData,
+  options: BuildPromptPayloadOptions = {},
 ): CreatePromptDTO | UpdatePromptDTO {
+  const preserveEmptyOptionalFields = options.preserveEmptyOptionalFields === true;
+
   return {
     title: form.title.trim(),
-    description: form.description.trim() || undefined,
+    description: optionalPromptText(
+      form.description,
+      preserveEmptyOptionalFields,
+    ),
     promptType: form.promptType,
-    systemPrompt: form.systemPrompt.trim() || undefined,
-    systemPromptEn: form.systemPromptEn.trim() || undefined,
+    systemPrompt: optionalPromptText(
+      form.systemPrompt,
+      preserveEmptyOptionalFields,
+    ),
+    systemPromptEn: optionalPromptText(
+      form.systemPromptEn,
+      preserveEmptyOptionalFields,
+    ),
     userPrompt: form.userPrompt.trim(),
-    userPromptEn: form.userPromptEn.trim() || undefined,
+    userPromptEn: optionalPromptText(
+      form.userPromptEn,
+      preserveEmptyOptionalFields,
+    ),
     tags: [...form.tags],
     images: [...form.images],
     videos: [...form.videos],
     folderId: form.folderId || undefined,
-    source: form.source.trim() || undefined,
-    notes: form.notes.trim() || undefined,
+    source: optionalPromptText(form.source, preserveEmptyOptionalFields),
+    notes: optionalPromptText(form.notes, preserveEmptyOptionalFields),
   };
 }
 

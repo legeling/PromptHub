@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildPromptPayload,
   isPureEnglish,
+  parsePromptVariables,
   promoteMainEnglishToEnglishVersion,
+  replacePromptVariables,
 } from "../../../src/renderer/components/prompt/prompt-modal-utils";
 
 describe("prompt-modal-utils", () => {
@@ -45,5 +48,102 @@ describe("prompt-modal-utils", () => {
       userPrompt: "请重构这个模块。",
       userPromptEn: "Refactor this module.",
     });
+  });
+
+  it("omits blank optional fields for new prompts", () => {
+    expect(
+      buildPromptPayload({
+        title: "  New prompt  ",
+        description: "",
+        promptType: "text",
+        systemPrompt: "",
+        systemPromptEn: "",
+        userPrompt: "  User prompt  ",
+        userPromptEn: "",
+        tags: [],
+        images: [],
+        videos: [],
+        source: "",
+        notes: "",
+      }),
+    ).toMatchObject({
+      title: "New prompt",
+      systemPrompt: undefined,
+      userPrompt: "User prompt",
+      userPromptEn: undefined,
+    });
+  });
+
+  it("preserves blank optional fields for edits so existing values can be cleared", () => {
+    expect(
+      buildPromptPayload(
+        {
+          title: "Existing prompt",
+          description: "",
+          promptType: "text",
+          systemPrompt: "",
+          systemPromptEn: "",
+          userPrompt: "User prompt",
+          userPromptEn: "",
+          tags: [],
+          images: [],
+          videos: [],
+          source: "",
+          notes: "",
+        },
+        { preserveEmptyOptionalFields: true },
+      ),
+    ).toMatchObject({
+      description: "",
+      systemPrompt: "",
+      systemPromptEn: "",
+      userPromptEn: "",
+      source: "",
+      notes: "",
+    });
+  });
+
+  it("normalizes prompt variables with default values", () => {
+    expect(
+      parsePromptVariables(
+        "Write {{ topic : release notes }} in {{language:English}}. Then reuse {{topic}}.",
+      ),
+    ).toEqual([
+      {
+        fullMatch: "{{ topic : release notes }}",
+        name: "topic",
+        defaultValue: "release notes",
+      },
+      {
+        fullMatch: "{{language:English}}",
+        name: "language",
+        defaultValue: "English",
+      },
+    ]);
+  });
+
+  it("replaces default-value variables by name and keeps unresolved placeholders normalized", () => {
+    expect(
+      replacePromptVariables(
+        "Write {{ topic : release notes }} in {{language:English}} for {{target}}.",
+        {
+          topic: "upgrade guide",
+        },
+      ),
+    ).toBe("Write upgrade guide in English for {{target}}.");
+  });
+
+  it("applies each placeholder default independently when no user value is supplied", () => {
+    expect(
+      replacePromptVariables("Use {{topic:release notes}} then {{topic}}.", {}),
+    ).toBe("Use release notes then {{topic}}.");
+  });
+
+  it("escapes variable names before building replacement regexes", () => {
+    expect(
+      replacePromptVariables("Use {{file.name:README.md}} and {{fileXname}}.", {
+        "file.name": "CHANGELOG.md",
+      }),
+    ).toBe("Use CHANGELOG.md and {{fileXname}}.");
   });
 });

@@ -1,6 +1,7 @@
 import type { Prompt } from "@prompthub/shared/types";
+export { copyTextToClipboard } from "../../utils/clipboard";
+import { parsePromptVariables } from "./prompt-modal-utils";
 
-const VARIABLE_REGEX = /\{\{([^}:]+)(?::([^}]*))?\}\}/g;
 const SYSTEM_VARIABLES = new Set([
   "CURRENT_DATE",
   "CURRENT_TIME",
@@ -35,17 +36,13 @@ export function hasUserDefinedPromptVariables(
   userPrompt?: string,
 ): boolean {
   const combined = `${systemPrompt || ""}\n${userPrompt || ""}`;
-  const matches = [...combined.matchAll(VARIABLE_REGEX)];
-  return matches.some((match) => !SYSTEM_VARIABLES.has(match[1].trim()));
+  return parsePromptVariables(combined).some(
+    (variable) => !SYSTEM_VARIABLES.has(variable.name),
+  );
 }
 
 export function buildPromptCopyText({
-  systemPrompt,
   userPrompt,
 }: ResolvedPromptContent): string {
-  if (!systemPrompt) {
-    return userPrompt;
-  }
-
-  return `[System]\n${systemPrompt}\n\n[User]\n${userPrompt}`;
+  return userPrompt;
 }
