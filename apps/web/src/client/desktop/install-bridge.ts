@@ -41,6 +41,19 @@ const WEB_APP_VERSION = `${rootPackage.version}-web`;
 
 let installed = false;
 
+function isOpenableWebPathTarget(targetPath: string): boolean {
+  if (targetPath.trim() !== targetPath) {
+    return false;
+  }
+
+  try {
+    const url = new URL(targetPath);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 function getPlatform(): string {
   const ua = navigator.userAgent.toLowerCase();
   if (ua.includes('mac')) return 'darwin';
@@ -110,6 +123,10 @@ function encodeFileName(fileName: string): string {
   return encodeURIComponent(fileName);
 }
 
+function encodePathSegment(value: string): string {
+  return encodeURIComponent(value);
+}
+
 function bufferToBase64(buffer: ArrayBuffer): string {
   let binary = '';
   const bytes = new Uint8Array(buffer);
@@ -133,6 +150,16 @@ function createBrowserFileId(prefix: string): string {
 function selectFiles(accept: string): Promise<File[]> {
   return new Promise((resolve) => {
     const input = document.createElement('input');
+    let settled = false;
+    const finish = (files: File[]) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      input.remove();
+      resolve(files);
+    };
+
     input.type = 'file';
     input.accept = accept;
     input.multiple = true;
@@ -146,17 +173,19 @@ function selectFiles(accept: string): Promise<File[]> {
 
     input.addEventListener('change', () => {
       const files = input.files ? Array.from(input.files) : [];
-      input.remove();
-      resolve(files);
+      finish(files);
     }, { once: true });
 
     input.addEventListener('cancel', () => {
-      input.remove();
-      resolve([]);
+      finish([]);
     }, { once: true });
 
     document.body.appendChild(input);
-    input.click();
+    try {
+      input.click();
+    } catch {
+      finish([]);
+    }
   });
 }
 
@@ -245,7 +274,7 @@ export function installDesktopBridge(): void {
     prompt: {
       create: (data: CreatePromptDTO) =>
         apiJsonBody<Prompt>('/api/prompts', 'POST', data),
-      get: (id: string) => apiJson<Prompt>(`/api/prompts/${id}`),
+      get: (id: string) => apiJson<Prompt>(`/api/prompts/${encodePathSegment(id)}`),
       getAll: () => apiJson<Prompt[]>('/api/prompts?scope=all'),
       getAllTags: () => apiJson<string[]>('/api/prompts/meta/tags'),
       renameTag: (oldTag: string, newTag: string) =>
@@ -253,13 +282,17 @@ export function installDesktopBridge(): void {
       deleteTag: (tag: string) =>
         apiOk('/api/prompts/meta/tags/delete', 'POST', { tag }),
       update: (id: string, data: UpdatePromptDTO) =>
-        apiJsonBody<Prompt>(`/api/prompts/${id}`, 'PUT', data),
-      delete: (id: string) => apiOk(`/api/prompts/${id}`, 'DELETE'),
+        apiJsonBody<Prompt>(`/api/prompts/${encodePathSegment(id)}`, 'PUT', data),
+      delete: (id: string) => apiOk(`/api/prompts/${encodePathSegment(id)}`, 'DELETE'),
       search: (query: SearchQuery) => {
         const params = new URLSearchParams();
         params.set('scope', query.scope ?? 'all');
         if (query.keyword) params.set('keyword', query.keyword);
-        if (query.tags?.length) params.set('tags', query.tags.join(','));
+        if (query.tags?.length) {
+          for (const tag of query.tags) {
+            params.append('tag', tag);
+          }
+        }
         if (query.folderId) params.set('folderId', query.folderId);
         if (typeof query.isFavorite === 'boolean') {
           params.set('isFavorite', String(query.isFavorite));
@@ -270,7 +303,7 @@ export function installDesktopBridge(): void {
         if (typeof query.offset === 'number') params.set('offset', String(query.offset));
         return apiJson<Prompt[]>(`/api/prompts?${params.toString()}`);
       },
-      copy: (id: string) => apiJsonBody<Prompt>(`/api/prompts/${id}/copy`, 'POST'),
+      copy: (id: string) => apiJsonBody<Prompt>(`/api/prompts/${encodePathSegment(id)}/copy`, 'POST'),
       insertDirect: (prompt: Prompt) =>
         apiJsonBody<Prompt>('/api/prompts/direct-insert', 'POST', prompt).then(() => true),
       syncWorkspace: () => apiOk('/api/prompts/workspace/sync', 'POST'),
@@ -309,12 +342,12 @@ export function installDesktopBridge(): void {
     },
     version: {
       getAll: (promptId: string) =>
-        apiJson<PromptVersion[]>(`/api/prompts/${promptId}/versions`),
+        apiJson<PromptVersion[]>(`/api/prompts/${encodePathSegment(promptId)}/versions`),
       create: (promptId: string, note?: string) =>
-        apiJsonBody<PromptVersion>(`/api/prompts/${promptId}/versions`, 'POST', { note }),
+        apiJsonBody<PromptVersion>(`/api/prompts/${encodePathSegment(promptId)}/versions`, 'POST', { note }),
       rollback: (promptId: string, version: number) =>
-        apiJsonBody<Prompt>(`/api/prompts/${promptId}/versions/${version}/rollback`, 'POST'),
-      delete: (versionId: string) => apiOk(`/api/prompts/versions/${versionId}`, 'DELETE'),
+        apiJsonBody<Prompt>(`/api/prompts/${encodePathSegment(promptId)}/versions/${version}/rollback`, 'POST'),
+      delete: (versionId: string) => apiOk(`/api/prompts/versions/${encodePathSegment(versionId)}`, 'DELETE'),
       insertDirect: (version: PromptVersion) =>
         apiJsonBody<PromptVersion>('/api/prompts/versions/direct-insert', 'POST', version).then(() => true),
     },
@@ -323,8 +356,8 @@ export function installDesktopBridge(): void {
         apiJsonBody<Folder>('/api/folders', 'POST', data),
       getAll: () => apiJson<Folder[]>('/api/folders?scope=all'),
       update: (id: string, data: UpdateFolderDTO) =>
-        apiJsonBody<Folder>(`/api/folders/${id}`, 'PUT', data),
-      delete: (id: string) => apiOk(`/api/folders/${id}`, 'DELETE'),
+        apiJsonBody<Folder>(`/api/folders/${encodePathSegment(id)}`, 'PUT', data),
+      delete: (id: string) => apiOk(`/api/folders/${encodePathSegment(id)}`, 'DELETE'),
       reorder: (ids: string[]) =>
         apiOk('/api/folders/reorder', 'PUT', { ids }),
       insertDirect: (folder: Folder) =>
@@ -332,21 +365,21 @@ export function installDesktopBridge(): void {
     },
     skill: {
       getAll: () => apiJson<Skill[]>('/api/skills?scope=all'),
-      get: (id: string) => apiJson<Skill>(`/api/skills/${id}`),
+      get: (id: string) => apiJson<Skill>(`/api/skills/${encodePathSegment(id)}`),
       create: (data: CreateSkillParams) =>
         apiJsonBody<Skill>('/api/skills', 'POST', data),
       update: (id: string, data: UpdateSkillParams) =>
-        apiJsonBody<Skill>(`/api/skills/${id}`, 'PUT', data),
-      delete: (id: string) => apiOk(`/api/skills/${id}`, 'DELETE'),
+        apiJsonBody<Skill>(`/api/skills/${encodePathSegment(id)}`, 'PUT', data),
+      delete: (id: string) => apiOk(`/api/skills/${encodePathSegment(id)}`, 'DELETE'),
       deleteAll: () => apiOk('/api/skills?confirm=true', 'DELETE'),
       versionGetAll: (skillId: string) =>
-        apiJson<SkillVersion[]>(`/api/skills/${skillId}/versions`),
+        apiJson<SkillVersion[]>(`/api/skills/${encodePathSegment(skillId)}/versions`),
       versionCreate: (skillId: string, note?: string) =>
-        apiJsonBody<SkillVersion>(`/api/skills/${skillId}/versions`, 'POST', { note }),
+        apiJsonBody<SkillVersion>(`/api/skills/${encodePathSegment(skillId)}/versions`, 'POST', { note }),
       versionRollback: (skillId: string, version: number) =>
-        apiJsonBody<Skill>(`/api/skills/${skillId}/versions/${version}/rollback`, 'POST'),
+        apiJsonBody<Skill>(`/api/skills/${encodePathSegment(skillId)}/versions/${version}/rollback`, 'POST'),
       versionDelete: (skillId: string, versionId: string) =>
-        apiOk(`/api/skills/${skillId}/versions/${versionId}`, 'DELETE'),
+        apiOk(`/api/skills/${encodePathSegment(skillId)}/versions/${encodePathSegment(versionId)}`, 'DELETE'),
       insertVersionDirect: async (_version: SkillVersion) => {},
       readLocalFiles: async (_skillId: string) => [] as SkillLocalFileEntry[],
       listLocalFiles: async (_skillId: string) => [] as SkillLocalFileEntry[],
@@ -381,7 +414,7 @@ export function installDesktopBridge(): void {
       ) => ({ success: false, skipped: true, targetPath: null }),
       getRepoPath: async (_skillId: string) => null,
       saveToRepo: async (_skillId: string) => null,
-      syncFromRepo: async (id: string) => apiJson<Skill>(`/api/skills/${id}`),
+      syncFromRepo: async (id: string) => apiJson<Skill>(`/api/skills/${encodePathSegment(id)}`),
       scanLocal: async () => ({ imported: [], skipped: [], failed: [] }),
       scanLocalPreview: async (
         _customPaths?: string[],
@@ -390,10 +423,10 @@ export function installDesktopBridge(): void {
       scanSafety: (payload: SkillSafetyScanInput) =>
         apiJsonBody<SkillSafetyReport>('/api/skills/safety-scan', 'POST', payload),
       saveSafetyReport: (skillId: string, report: SkillSafetyReport) =>
-        apiJsonBody<Skill>(`/api/skills/${skillId}/safety-report`, 'PUT', report),
+        apiJsonBody<Skill>(`/api/skills/${encodePathSegment(skillId)}/safety-report`, 'PUT', report),
       export: async (skillId: string, _format: 'skillmd' | 'json') => {
         const result = await apiJsonBody<{ name: string; content: string }>(
-          `/api/skills/${skillId}/export`,
+          `/api/skills/${encodePathSegment(skillId)}/export`,
           'POST',
         );
         return result.content;
@@ -479,10 +512,15 @@ export function installDesktopBridge(): void {
     sendCloseDialogCancel: () => {},
     selectFolder: async () => null,
     openPath: async (targetPath: string) => {
-      if (/^https?:\/\//i.test(targetPath)) {
+      if (isOpenableWebPathTarget(targetPath)) {
         window.open(targetPath, '_blank', 'noopener,noreferrer');
+        return { success: true };
       }
-      return { success: true };
+
+      return {
+        success: false,
+        error: 'Opening local paths is not supported in the web runtime',
+      };
     },
     showNotification: async (title: string, body: string) => {
       if (!('Notification' in window)) {
@@ -552,7 +590,11 @@ export function installDesktopBridge(): void {
         body: JSON.stringify({ url }),
       }),
     openImage: async (fileName: string) => {
-      window.open(`/api/media/images/${encodeFileName(fileName)}`, '_blank');
+      window.open(
+        `/api/media/images/${encodeFileName(fileName)}`,
+        '_blank',
+        'noopener,noreferrer',
+      );
       return true;
     },
     listImages: () => apiJson<string[]>('/api/media/images'),
@@ -615,7 +657,11 @@ export function installDesktopBridge(): void {
     selectVideo: async () => uploadSelectedMedia('videos', 'video/*'),
     saveVideo: async (paths: string[]) => paths,
     openVideo: async (fileName: string) => {
-      window.open(`/api/media/videos/${encodeFileName(fileName)}`, '_blank');
+      window.open(
+        `/api/media/videos/${encodeFileName(fileName)}`,
+        '_blank',
+        'noopener,noreferrer',
+      );
       return true;
     },
     listVideos: () => apiJson<string[]>('/api/media/videos'),
