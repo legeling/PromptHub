@@ -1,5 +1,5 @@
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AboutSettings } from "../../../src/renderer/components/settings/AboutSettings";
 import { renderWithI18n } from "../../helpers/i18n";
@@ -18,9 +18,38 @@ vi.mock("../../../src/renderer/components/ui/Toast", () => ({
   }),
 }));
 
+function createSettingsState(overrides: Record<string, unknown> = {}) {
+  return {
+    autoCheckUpdate: true,
+    useUpdateMirror: false,
+    updateChannel: "stable",
+    debugMode: false,
+    setAutoCheckUpdate: vi.fn(),
+    setUseUpdateMirror: vi.fn(),
+    setUpdateChannel: vi.fn(),
+    setDebugMode: vi.fn(),
+    ...overrides,
+  };
+}
+
+function hasHiddenSvgAncestor(element: Element): boolean {
+  let current: Element | null = element;
+
+  while (current) {
+    if (current.getAttribute("aria-hidden") === "true") {
+      return true;
+    }
+    current = current.parentElement;
+  }
+
+  return false;
+}
+
 describe("AboutSettings", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    delete (window as Window & { __PROMPTHUB_WEB__?: boolean })
+      .__PROMPTHUB_WEB__;
     installWindowMocks({
       electron: {
         updater: {
@@ -30,18 +59,17 @@ describe("AboutSettings", () => {
     });
   });
 
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    delete (window as Window & { __PROMPTHUB_WEB__?: boolean })
+      .__PROMPTHUB_WEB__;
+  });
+
   it("requires explicit confirmation before enabling the preview update channel", async () => {
     const setUpdateChannel = vi.fn();
-    useSettingsStoreMock.mockReturnValue({
-      autoCheckUpdate: true,
-      useUpdateMirror: false,
-      updateChannel: "stable",
-      debugMode: false,
-      setAutoCheckUpdate: vi.fn(),
-      setUseUpdateMirror: vi.fn(),
+    useSettingsStoreMock.mockReturnValue(createSettingsState({
       setUpdateChannel,
-      setDebugMode: vi.fn(),
-    });
+    }));
 
     await act(async () => {
       await renderWithI18n(<AboutSettings />, { language: "en" });
@@ -75,16 +103,10 @@ describe("AboutSettings", () => {
 
   it("switches back to the stable channel immediately when preview is turned off", async () => {
     const setUpdateChannel = vi.fn();
-    useSettingsStoreMock.mockReturnValue({
-      autoCheckUpdate: true,
-      useUpdateMirror: false,
+    useSettingsStoreMock.mockReturnValue(createSettingsState({
       updateChannel: "preview",
-      debugMode: false,
-      setAutoCheckUpdate: vi.fn(),
-      setUseUpdateMirror: vi.fn(),
       setUpdateChannel,
-      setDebugMode: vi.fn(),
-    });
+    }));
 
     await act(async () => {
       await renderWithI18n(<AboutSettings />, { language: "en" });
@@ -109,16 +131,7 @@ describe("AboutSettings", () => {
   });
 
   it("shows the current copyright year in the footer", async () => {
-    useSettingsStoreMock.mockReturnValue({
-      autoCheckUpdate: true,
-      useUpdateMirror: false,
-      updateChannel: "stable",
-      debugMode: false,
-      setAutoCheckUpdate: vi.fn(),
-      setUseUpdateMirror: vi.fn(),
-      setUpdateChannel: vi.fn(),
-      setDebugMode: vi.fn(),
-    });
+    useSettingsStoreMock.mockReturnValue(createSettingsState());
 
     await act(async () => {
       await renderWithI18n(<AboutSettings />, { language: "en" });
@@ -130,16 +143,7 @@ describe("AboutSettings", () => {
   });
 
   it("renders community links for Discord and QQ", async () => {
-    useSettingsStoreMock.mockReturnValue({
-      autoCheckUpdate: true,
-      useUpdateMirror: false,
-      updateChannel: "stable",
-      debugMode: false,
-      setAutoCheckUpdate: vi.fn(),
-      setUseUpdateMirror: vi.fn(),
-      setUpdateChannel: vi.fn(),
-      setDebugMode: vi.fn(),
-    });
+    useSettingsStoreMock.mockReturnValue(createSettingsState());
 
     await act(async () => {
       await renderWithI18n(<AboutSettings />, { language: "en" });
@@ -173,16 +177,7 @@ describe("AboutSettings", () => {
   });
 
   it("groups secondary information into a single-column stack", async () => {
-    useSettingsStoreMock.mockReturnValue({
-      autoCheckUpdate: true,
-      useUpdateMirror: false,
-      updateChannel: "stable",
-      debugMode: false,
-      setAutoCheckUpdate: vi.fn(),
-      setUseUpdateMirror: vi.fn(),
-      setUpdateChannel: vi.fn(),
-      setDebugMode: vi.fn(),
-    });
+    useSettingsStoreMock.mockReturnValue(createSettingsState());
 
     await act(async () => {
       await renderWithI18n(<AboutSettings />, { language: "en" });
@@ -196,5 +191,133 @@ describe("AboutSettings", () => {
     expect(supportGrid).toHaveTextContent("Community");
     expect(supportGrid).toHaveTextContent("Contact Author");
     expect(supportGrid).toHaveTextContent("Developer");
+  });
+
+  it("reports web update check failures to the user", async () => {
+    (window as Window & { __PROMPTHUB_WEB__?: boolean }).__PROMPTHUB_WEB__ =
+      true;
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        json: vi.fn().mockResolvedValue({ version: "0.5.5" }),
+      })
+      .mockRejectedValueOnce(new Error("GitHub unavailable"));
+    vi.stubGlobal("fetch", fetchMock);
+    useSettingsStoreMock.mockReturnValue(createSettingsState());
+
+    await act(async () => {
+      await renderWithI18n(<AboutSettings />, { language: "en" });
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Check for Updates" }));
+
+    await waitFor(() => {
+      expect(showToastMock).toHaveBeenCalledWith(
+        "Update check failed",
+        "error",
+      );
+    });
+  });
+
+  it("reports malformed web update responses instead of treating them as latest", async () => {
+    (window as Window & { __PROMPTHUB_WEB__?: boolean }).__PROMPTHUB_WEB__ =
+      true;
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        json: vi.fn().mockResolvedValue({ version: "0.5.5" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({}),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+    useSettingsStoreMock.mockReturnValue(createSettingsState());
+
+    await act(async () => {
+      await renderWithI18n(<AboutSettings />, { language: "en" });
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Check for Updates" }));
+
+    await waitFor(() => {
+      expect(showToastMock).toHaveBeenCalledWith(
+        "Update check failed",
+        "error",
+      );
+    });
+    expect(
+      screen.queryByText("Current version 0.5.5 is the latest"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("reports web update checks when the current web version is unknown", async () => {
+    (window as Window & { __PROMPTHUB_WEB__?: boolean }).__PROMPTHUB_WEB__ =
+      true;
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        json: vi.fn().mockResolvedValue({}),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ tag_name: "v0.5.6" }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+    useSettingsStoreMock.mockReturnValue(createSettingsState());
+
+    await act(async () => {
+      await renderWithI18n(<AboutSettings />, { language: "en" });
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Check for Updates" }));
+
+    await waitFor(() => {
+      expect(showToastMock).toHaveBeenCalledWith(
+        "Update check failed",
+        "error",
+      );
+    });
+    expect(
+      screen.queryByText("Current version  is the latest"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps rendered about actions non-submit with decorative icons hidden", async () => {
+    const handleSubmit = vi.fn();
+    useSettingsStoreMock.mockReturnValue(createSettingsState());
+
+    await act(async () => {
+      await renderWithI18n(
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            handleSubmit();
+          }}
+        >
+          <AboutSettings />
+        </form>,
+        { language: "en" },
+      );
+    });
+
+    const buttons = Array.from(document.body.querySelectorAll("button"));
+    const implicitButtonMarkup = buttons
+      .filter((button) => button.getAttribute("type") !== "button")
+      .map((button) => button.outerHTML);
+    const exposedIconMarkup = buttons
+      .flatMap((button) => Array.from(button.querySelectorAll("svg")))
+      .filter((icon) => !hasHiddenSvgAncestor(icon))
+      .map((icon) => icon.outerHTML);
+
+    expect(implicitButtonMarkup, implicitButtonMarkup.join("\n")).toHaveLength(
+      0,
+    );
+    expect(exposedIconMarkup, exposedIconMarkup.join("\n")).toHaveLength(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "Check for Updates" }));
+    fireEvent.click(screen.getByRole("button", { name: "Copy ID" }));
+
+    expect(handleSubmit).not.toHaveBeenCalled();
   });
 });
