@@ -113,6 +113,13 @@ export interface AIResponsePayload {
   error?: string;
 }
 
+type SettingsUpdatePatch = Omit<Partial<{
+  [Key in keyof Settings]: Settings[Key] | null;
+}>, 'sync' | 'device'> & {
+  sync?: Partial<NonNullable<Settings['sync']>> | null;
+  device?: Partial<NonNullable<Settings['device']>> | null;
+};
+
 async function extractErrorMessage(response: Response, fallbackMessage: string): Promise<string> {
   try {
     const payload = (await response.json()) as ApiErrorPayload;
@@ -141,6 +148,10 @@ function getAuthHeaders(token: string, contentType?: string): HeadersInit {
   };
 }
 
+function encodePathSegment(value: string): string {
+  return encodeURIComponent(value);
+}
+
 export async function fetchFolders(token: string, scope: 'private' | 'shared' | 'all' = 'all'): Promise<ApiEnvelope<Folder[]>> {
   return requestJson<Folder[]>(
     `/api/folders?scope=${scope}`,
@@ -151,7 +162,7 @@ export async function fetchFolders(token: string, scope: 'private' | 'shared' | 
 
 export async function createFolder(
   token: string,
-  data: { name: string; icon?: string; visibility?: 'private' | 'shared' },
+  data: { name: string; icon?: string; parentId?: string; visibility?: 'private' | 'shared' },
 ): Promise<ApiEnvelope<Folder>> {
   return requestJson<Folder>(
     '/api/folders',
@@ -188,7 +199,7 @@ export async function createSkill(
 }
 
 export async function fetchSkillVersions(token: string, skillId: string): Promise<ApiEnvelope<SkillVersion[]>> {
-  return requestJson<SkillVersion[]>(`/api/skills/${skillId}/versions`, { headers: getAuthHeaders(token) }, 'Request failed');
+  return requestJson<SkillVersion[]>(`/api/skills/${encodePathSegment(skillId)}/versions`, { headers: getAuthHeaders(token) }, 'Request failed');
 }
 
 export async function scanSkillSafety(
@@ -212,7 +223,7 @@ export async function saveSkillSafetyReport(
   report: SkillSafetyReport,
 ): Promise<ApiEnvelope<Skill>> {
   return requestJson<Skill>(
-    `/api/skills/${skillId}/safety-report`,
+    `/api/skills/${encodePathSegment(skillId)}/safety-report`,
     {
       method: 'PUT',
       headers: getAuthHeaders(token, 'application/json'),
@@ -241,7 +252,7 @@ export async function fetchSettings(token: string): Promise<ApiEnvelope<Settings
   return requestJson<Settings>('/api/settings', { headers: getAuthHeaders(token) }, 'Request failed');
 }
 
-export async function updateSettings(token: string, data: Partial<Settings>): Promise<ApiEnvelope<{ ok: true }>> {
+export async function updateSettings(token: string, data: SettingsUpdatePatch): Promise<ApiEnvelope<{ ok: true }>> {
   return requestJson<{ ok: true }>(
     '/api/settings',
     {

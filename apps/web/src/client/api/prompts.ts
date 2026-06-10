@@ -41,6 +41,10 @@ function getHeaders(token: string, includeJson = false): HeadersInit {
   };
 }
 
+function encodePathSegment(value: string): string {
+  return encodeURIComponent(value);
+}
+
 async function requestJson<T>(url: string, options: RequestInit, fallbackMessage: string): Promise<ApiEnvelope<T>> {
   const response = await fetchWithAuthRetry(url, options);
   if (!response.ok) {
@@ -52,18 +56,30 @@ async function requestJson<T>(url: string, options: RequestInit, fallbackMessage
 export interface PromptListQuery {
   scope?: 'private' | 'shared' | 'all';
   keyword?: string;
+  tags?: string[];
+  folderId?: string;
   isFavorite?: boolean;
   sortBy?: 'title' | 'createdAt' | 'updatedAt' | 'usageCount';
   sortOrder?: 'asc' | 'desc';
+  limit?: number;
+  offset?: number;
 }
 
 function buildQueryString(query: PromptListQuery): string {
   const params = new URLSearchParams();
   if (query.scope) params.set('scope', query.scope);
   if (query.keyword) params.set('keyword', query.keyword);
+  if (query.tags?.length) {
+    for (const tag of query.tags) {
+      params.append('tag', tag);
+    }
+  }
+  if (query.folderId) params.set('folderId', query.folderId);
   if (query.isFavorite !== undefined) params.set('isFavorite', String(query.isFavorite));
   if (query.sortBy) params.set('sortBy', query.sortBy);
   if (query.sortOrder) params.set('sortOrder', query.sortOrder);
+  if (query.limit !== undefined) params.set('limit', String(query.limit));
+  if (query.offset !== undefined) params.set('offset', String(query.offset));
   const result = params.toString();
   return result ? `?${result}` : '';
 }
@@ -99,8 +115,9 @@ export async function createPrompt(token: string, data: CreatePromptDto): Promis
 }
 
 export async function updatePrompt(token: string, id: string, data: UpdatePromptDTO): Promise<ApiEnvelope<PromptData>> {
+  const promptId = encodePathSegment(id);
   return requestJson<PromptData>(
-    `/api/prompts/${id}`,
+    `/api/prompts/${promptId}`,
     {
       method: 'PUT',
       headers: getHeaders(token, true),
@@ -111,8 +128,9 @@ export async function updatePrompt(token: string, id: string, data: UpdatePrompt
 }
 
 export async function deletePrompt(token: string, id: string): Promise<ApiEnvelope<{ ok: true }>> {
+  const promptId = encodePathSegment(id);
   return requestJson<{ ok: true }>(
-    `/api/prompts/${id}`,
+    `/api/prompts/${promptId}`,
     {
       method: 'DELETE',
       headers: getHeaders(token),
@@ -122,8 +140,9 @@ export async function deletePrompt(token: string, id: string): Promise<ApiEnvelo
 }
 
 export async function copyPrompt(token: string, id: string): Promise<ApiEnvelope<PromptData>> {
+  const promptId = encodePathSegment(id);
   return requestJson<PromptData>(
-    `/api/prompts/${id}/copy`,
+    `/api/prompts/${promptId}/copy`,
     {
       method: 'POST',
       headers: getHeaders(token),
@@ -133,16 +152,18 @@ export async function copyPrompt(token: string, id: string): Promise<ApiEnvelope
 }
 
 export async function getPromptVersions(token: string, id: string): Promise<ApiEnvelope<PromptVersion[]>> {
+  const promptId = encodePathSegment(id);
   return requestJson<PromptVersion[]>(
-    `/api/prompts/${id}/versions`,
+    `/api/prompts/${promptId}/versions`,
     { headers: getHeaders(token) },
     'Request failed',
   );
 }
 
 export async function createPromptVersion(token: string, id: string, note?: string): Promise<ApiEnvelope<PromptVersion>> {
+  const promptId = encodePathSegment(id);
   return requestJson<PromptVersion>(
-    `/api/prompts/${id}/versions`,
+    `/api/prompts/${promptId}/versions`,
     {
       method: 'POST',
       headers: getHeaders(token, true),
@@ -153,8 +174,9 @@ export async function createPromptVersion(token: string, id: string, note?: stri
 }
 
 export async function rollbackPromptVersion(token: string, id: string, version: number): Promise<ApiEnvelope<PromptData>> {
+  const promptId = encodePathSegment(id);
   return requestJson<PromptData>(
-    `/api/prompts/${id}/versions/${version}/rollback`,
+    `/api/prompts/${promptId}/versions/${version}/rollback`,
     {
       method: 'POST',
       headers: getHeaders(token),
@@ -169,8 +191,9 @@ export async function getPromptVersionDiff(
   fromVersion: number,
   toVersion: number,
 ): Promise<ApiEnvelope<PromptDiffResult>> {
+  const promptId = encodePathSegment(id);
   return requestJson<PromptDiffResult>(
-    `/api/prompts/${id}/versions/diff?from=${fromVersion}&to=${toVersion}`,
+    `/api/prompts/${promptId}/versions/diff?from=${fromVersion}&to=${toVersion}`,
     { headers: getHeaders(token) },
     'Request failed',
   );

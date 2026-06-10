@@ -74,7 +74,11 @@ describe('client endpoints api', () => {
       .mockResolvedValueOnce(createJsonResponse(200, { data: { ok: true } }));
 
     expect((await fetchFolders('token-1', 'shared')).data[0]?.id).toBe('folder-1');
-    expect((await createFolder('token-1', { name: 'New Folder', visibility: 'private' })).data.id).toBe('folder-2');
+    expect((await createFolder('token-1', {
+      name: 'New Folder',
+      visibility: 'private',
+      parentId: 'folder-parent',
+    })).data.id).toBe('folder-2');
     expect((await fetchSkills('token-1', 'all')).data[0]?.id).toBe('skill-1');
     expect((await createSkill('token-1', { name: 'skill-a', content: 'echo hi' })).data.id).toBe('skill-2');
     expect((await fetchSkillVersions('token-1', 'skill-2')).data[0]?.id).toBe('version-1');
@@ -100,7 +104,12 @@ describe('client endpoints api', () => {
       scanMethod: 'ai',
     })).data.id).toBe('skill-2');
     expect((await fetchSettings('token-1')).data.theme).toBe('dark');
-    expect((await updateSettings('token-1', { theme: 'light' })).data.ok).toBe(true);
+    expect((await updateSettings('token-1', {
+      theme: 'light',
+      sync: {
+        lastSyncAt: '2026-04-13T10:00:00.000Z',
+      },
+    })).data.ok).toBe(true);
     expect(await exportData('token-1')).toEqual({ data: { exportedAt: '2026-04-13T00:00:00.000Z' } });
     expect((await importData('token-1', { payload: true })).data.promptsImported).toBe(1);
     expect((await fetchSyncStatus('token-1')).data.enabled).toBe(true);
@@ -122,7 +131,7 @@ describe('client endpoints api', () => {
     expect(fetchWithAuthRetryMock).toHaveBeenNthCalledWith(2, '/api/folders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer token-1' },
-      body: JSON.stringify({ name: 'New Folder', visibility: 'private' }),
+      body: JSON.stringify({ name: 'New Folder', visibility: 'private', parentId: 'folder-parent' }),
     });
     expect(fetchWithAuthRetryMock).toHaveBeenCalledWith('/api/ai/request', {
       method: 'POST',
@@ -141,11 +150,43 @@ describe('client endpoints api', () => {
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer token-1' },
       body: JSON.stringify({ payload: { prompts: [] } }),
     });
+    expect(fetchWithAuthRetryMock).toHaveBeenCalledWith('/api/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer token-1' },
+      body: JSON.stringify({
+        theme: 'light',
+        sync: {
+          lastSyncAt: '2026-04-13T10:00:00.000Z',
+        },
+      }),
+    });
   });
 
   it('extracts API error messages from failed endpoint responses', async () => {
     fetchWithAuthRetryMock.mockResolvedValueOnce(createJsonResponse(400, { error: { message: 'Bad AI request' } }));
 
     await expect(sendAiRequest('token-1', { method: 'POST', url: 'https://example.com', body: '{}' })).rejects.toThrow('Bad AI request');
+  });
+
+  it('encodes skill ids in path segments', async () => {
+    fetchWithAuthRetryMock
+      .mockResolvedValueOnce(createJsonResponse(200, { data: [{ id: 'version-1' }] }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { id: 'skill/a?b#c' } }));
+
+    await fetchSkillVersions('token-1', 'skill/a?b#c');
+    await saveSkillSafetyReport('token-1', 'skill/a?b#c', {
+      level: 'safe',
+      findings: [],
+      score: 100,
+      scannedAt: 1000,
+      summary: 'ok',
+      recommendedAction: 'allow',
+      checkedFileCount: 1,
+      scanMethod: 'ai',
+    });
+
+    const encodedId = 'skill%2Fa%3Fb%23c';
+    expect(fetchWithAuthRetryMock).toHaveBeenNthCalledWith(1, `/api/skills/${encodedId}/versions`, expect.any(Object));
+    expect(fetchWithAuthRetryMock).toHaveBeenNthCalledWith(2, `/api/skills/${encodedId}/safety-report`, expect.any(Object));
   });
 });
