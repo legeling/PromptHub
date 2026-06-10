@@ -166,6 +166,7 @@ function normalizeVariantLabel(value?: string | null): string {
 
 function buildVariantKeyFromSkill(
   skill: Pick<Skill, "id" | "name" | "source_id" | "variant_key">,
+  suffixLength = 8,
 ): string {
   if (skill.variant_key?.trim()) {
     return skill.variant_key.trim();
@@ -174,7 +175,7 @@ function buildVariantKeyFromSkill(
   const logicalName = normalizeLogicalSkillName(skill.name || skill.id);
   const stableSuffix = computeStableTextHash(
     skill.source_id?.trim() || skill.id.trim(),
-  ).slice(0, 8);
+  ).slice(0, suffixLength);
   return `${logicalName}--${stableSuffix}`;
 }
 
@@ -209,11 +210,12 @@ function buildSkillVariantSourceMetadata(
     | "variant_key"
   >,
   mode: "copy" | "symlink",
+  variantKeyOverride?: string,
 ): { source: SkillVariantSourceMetadata; variant: SkillVariantMetadata } {
   const logicalName =
     skill.logical_name?.trim() ||
     normalizeLogicalSkillName(skill.name || skill.id);
-  const variantKey = buildVariantKeyFromSkill(skill);
+  const variantKey = variantKeyOverride || buildVariantKeyFromSkill(skill);
   const timestamp = Date.now();
   return {
     source: {
@@ -258,6 +260,73 @@ async function writeVariantSidecarFiles(
     `${JSON.stringify(metadata.variant, null, 2)}\n`,
     "utf-8",
   );
+}
+
+async function readVariantSourceMetadata(
+  containerDir: string,
+): Promise<SkillVariantSourceMetadata | null> {
+  try {
+    const raw = await fs.readFile(
+      path.join(containerDir, INTERNAL_METADATA_DIRNAME, SOURCE_METADATA_FILE),
+      "utf-8",
+    );
+    const parsed = JSON.parse(raw) as Partial<SkillVariantSourceMetadata>;
+    if (!parsed || typeof parsed !== "object") {
+      return null;
+    }
+    return parsed as SkillVariantSourceMetadata;
+  } catch {
+    return null;
+  }
+}
+
+function isVariantSourceMetadataForSkill(
+  metadata: SkillVariantSourceMetadata | null,
+  skill: Pick<Skill, "id" | "name" | "source_id" | "variant_key">,
+): boolean | null {
+  if (!metadata) {
+    return null;
+  }
+
+  if (metadata.sourceId?.trim() && skill.source_id?.trim()) {
+    return metadata.sourceId === skill.source_id;
+  }
+
+  if (metadata.variantKey?.trim()) {
+    return metadata.variantKey === buildVariantKeyFromSkill(skill);
+  }
+
+  return null;
+}
+
+async function existingContainerBelongsToDifferentSkill(
+  containerDir: string,
+  skill: Pick<Skill, "id" | "name" | "source_id" | "variant_key">,
+): Promise<boolean> {
+  const metadata = await readVariantSourceMetadata(containerDir);
+  const matches = isVariantSourceMetadataForSkill(metadata, skill);
+  return matches === false;
+}
+
+async function getNonCollidingManagedContainerPath(
+  skill: Pick<Skill, "id" | "name" | "source_id" | "variant_key">,
+): Promise<string> {
+  for (const suffixLength of [12, 16, 24, 32, 48, 64]) {
+    const candidate = getManagedContainerPathFromInstanceKey(
+      buildVariantKeyFromSkill(skill, suffixLength),
+    );
+    if (!(await fileExists(candidate))) {
+      return candidate;
+    }
+    if (!(await existingContainerBelongsToDifferentSkill(candidate, skill))) {
+      return candidate;
+    }
+  }
+
+  const fallbackKey = `${buildVariantKeyFromSkill(skill, 64)}--${computeStableTextHash(
+    skill.id,
+  ).slice(0, 8)}`;
+  return getManagedContainerPathFromInstanceKey(fallbackKey);
 }
 
 async function resolveManagedRepoRoot(absolutePath: string): Promise<string> {
@@ -1025,11 +1094,12 @@ export async function ensureManagedVariantContainer(
 ): Promise<{ containerDir: string; repoDir: string }> {
   const containerDir = await getManagedContainerPathForSkill(skill);
   const repoDir = path.join(containerDir, MANAGED_REPO_DIRNAME);
+  const variantKey = path.basename(containerDir);
   await initSkillsDir();
   await fs.mkdir(containerDir, { recursive: true });
   await writeVariantSidecarFiles(
     containerDir,
-    buildSkillVariantSourceMetadata(skill, "copy"),
+    buildSkillVariantSourceMetadata(skill, "copy", variantKey),
   );
   return { containerDir, repoDir };
 }
@@ -1063,10 +1133,13 @@ export async function getManagedContainerPathForSkill(
     return existingManagedContainerFromLocalRepoPath;
   }
 
+  const preferredContainer = getPreferredLocalRepoContainerPathForSkill(skill);
+  const legacyContainer = getLegacyManagedContainerPath(skill.id);
+  let preferredContainerCollision = false;
   const candidateContainers = [
     existingManagedContainerFromLocalRepoPath,
-    getPreferredLocalRepoContainerPathForSkill(skill),
-    getLegacyManagedContainerPath(skill.id),
+    preferredContainer,
+    legacyContainer,
   ].filter(
     (value, index, array): value is string =>
       typeof value === "string" &&
@@ -1076,11 +1149,22 @@ export async function getManagedContainerPathForSkill(
 
   for (const candidate of candidateContainers) {
     if (await fileExists(candidate)) {
+      if (
+        candidate === preferredContainer &&
+        (await existingContainerBelongsToDifferentSkill(candidate, skill))
+      ) {
+        preferredContainerCollision = true;
+        continue;
+      }
       return candidate;
     }
   }
 
-  return getPreferredLocalRepoContainerPathForSkill(skill);
+  if (preferredContainerCollision) {
+    return getNonCollidingManagedContainerPath(skill);
+  }
+
+  return preferredContainer;
 }
 
 export async function deleteManagedVariantContainer(
@@ -1137,7 +1221,7 @@ export async function saveToLocalRepoBySkillId(
 
   await writeVariantSidecarFiles(
     containerDir,
-    buildSkillVariantSourceMetadata(skill, "copy"),
+    buildSkillVariantSourceMetadata(skill, "copy", path.basename(containerDir)),
   );
   return repoDir;
 }
@@ -1169,7 +1253,7 @@ export async function saveContentToLocalRepoBySkillId(
   await fs.writeFile(path.join(repoDir, "SKILL.md"), content, "utf-8");
   await writeVariantSidecarFiles(
     containerDir,
-    buildSkillVariantSourceMetadata(skill, "copy"),
+    buildSkillVariantSourceMetadata(skill, "copy", path.basename(containerDir)),
   );
   return repoDir;
 }
