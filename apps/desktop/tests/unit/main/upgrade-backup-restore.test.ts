@@ -188,6 +188,53 @@ describe("upgrade-backup-restore", () => {
     ).toBe('{"mode":"new"}');
   });
 
+  it("rejects symlinks inside a backup snapshot and rolls back current data", async () => {
+    const userDataPath = path.join(tmpBase, "PromptHub");
+    const backupId = "v0.5.1-2026-01-01T00-00-00-000Z";
+    const backupPath = path.join(getUpgradeBackupRoot(userDataPath), backupId);
+    const externalPath = path.join(tmpBase, "outside-restore-secret.txt");
+    fs.mkdirSync(path.join(userDataPath, "data"), { recursive: true });
+    fs.writeFileSync(path.join(userDataPath, "data", "prompthub.db"), "current-db");
+    fs.mkdirSync(path.join(userDataPath, "workspace"), { recursive: true });
+    fs.writeFileSync(
+      path.join(userDataPath, "workspace", "current.md"),
+      "current prompt",
+    );
+    fs.mkdirSync(path.join(backupPath, "workspace"), { recursive: true });
+    fs.writeFileSync(path.join(backupPath, "workspace", "safe.md"), "safe prompt");
+    fs.writeFileSync(externalPath, "external secret");
+    fs.symlinkSync(
+      externalPath,
+      path.join(backupPath, "workspace", "linked-secret.md"),
+      "file",
+    );
+    fs.writeFileSync(
+      path.join(backupPath, "backup-manifest.json"),
+      JSON.stringify({
+        kind: "prompthub-upgrade-backup",
+        schemaVersion: 2,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        fromVersion: "0.5.1",
+        sourcePath: userDataPath,
+        copiedItems: ["workspace"],
+        platform: process.platform,
+      }),
+      "utf8",
+    );
+
+    const result = await restoreFromUpgradeBackupAsync(userDataPath, backupId);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/symbolic link/i);
+    expect(
+      fs.readFileSync(path.join(userDataPath, "workspace", "current.md"), "utf8"),
+    ).toBe("current prompt");
+    expect(
+      fs.existsSync(path.join(userDataPath, "workspace", "linked-secret.md")),
+    ).toBe(false);
+    expect(fs.readFileSync(externalPath, "utf8")).toBe("external secret");
+  });
+
   it("prunes old snapshots after restore while keeping source and insurance backups", async () => {
     const userDataPath = path.join(tmpBase, "PromptHub");
     fs.mkdirSync(userDataPath, { recursive: true });

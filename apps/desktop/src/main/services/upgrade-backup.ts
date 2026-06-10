@@ -40,6 +40,9 @@ export const RUNTIME_CACHE_ENTRIES = new Set([
   "TransportSecurity",
   "Trust Tokens",
   "Trust Tokens-journal",
+  "SingletonCookie",
+  "SingletonLock",
+  "SingletonSocket",
 ]);
 
 /** Legacy backup root name (sibling of userData). Kept for one-time migration. */
@@ -170,7 +173,16 @@ function isTransientDatabaseEntry(entryName: string): boolean {
 }
 
 function shouldCopySnapshotPath(sourcePath: string): boolean {
-  return !isTransientDatabaseEntry(path.basename(sourcePath));
+  if (isTransientDatabaseEntry(path.basename(sourcePath))) {
+    return false;
+  }
+
+  const stats = fs.lstatSync(sourcePath);
+  if (stats.isSymbolicLink()) {
+    throw new Error(`Cannot copy upgrade backup path from symbolic link: ${sourcePath}`);
+  }
+
+  return true;
 }
 
 function parseManifest(raw: unknown): UpgradeBackupManifest | null {
@@ -283,34 +295,40 @@ export async function createUpgradeDataSnapshot(
 
   await fs.promises.mkdir(backupPath, { recursive: true });
 
-  for (const entryName of copiedItems) {
-    const sourcePath = path.join(resolvedUserDataPath, entryName);
-    const targetPath = path.join(backupPath, entryName);
-    await fs.promises.cp(sourcePath, targetPath, {
-      recursive: true,
-      preserveTimestamps: true,
-      errorOnExist: true,
-      force: false,
-      filter: shouldCopySnapshotPath,
-    });
+  let manifest: UpgradeBackupManifest;
+  try {
+    for (const entryName of copiedItems) {
+      const sourcePath = path.join(resolvedUserDataPath, entryName);
+      const targetPath = path.join(backupPath, entryName);
+      await fs.promises.cp(sourcePath, targetPath, {
+        recursive: true,
+        preserveTimestamps: true,
+        errorOnExist: true,
+        force: false,
+        filter: shouldCopySnapshotPath,
+      });
+    }
+
+    manifest = {
+      kind: MANIFEST_KIND,
+      schemaVersion: MANIFEST_SCHEMA_VERSION,
+      createdAt,
+      fromVersion: options.fromVersion,
+      toVersion: options.toVersion,
+      sourcePath: resolvedUserDataPath,
+      copiedItems,
+      platform: process.platform,
+    };
+
+    await fs.promises.writeFile(
+      path.join(backupPath, MANIFEST_FILE_NAME),
+      JSON.stringify(manifest, null, 2),
+      "utf8",
+    );
+  } catch (error) {
+    await fs.promises.rm(backupPath, { recursive: true, force: true });
+    throw error;
   }
-
-  const manifest: UpgradeBackupManifest = {
-    kind: MANIFEST_KIND,
-    schemaVersion: MANIFEST_SCHEMA_VERSION,
-    createdAt,
-    fromVersion: options.fromVersion,
-    toVersion: options.toVersion,
-    sourcePath: resolvedUserDataPath,
-    copiedItems,
-    platform: process.platform,
-  };
-
-  await fs.promises.writeFile(
-    path.join(backupPath, MANIFEST_FILE_NAME),
-    JSON.stringify(manifest, null, 2),
-    "utf8",
-  );
 
   if (!options.skipRetentionPrune) {
     try {
@@ -523,6 +541,7 @@ export async function migrateLegacyUpgradeBackups(
         preserveTimestamps: true,
         errorOnExist: true,
         force: false,
+        filter: shouldCopySnapshotPath,
       });
     } catch (error) {
       console.warn(

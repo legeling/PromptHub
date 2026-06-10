@@ -100,6 +100,42 @@ describe("recovery-candidates", () => {
     expect(candidate?.promptCount).toBe(1);
     expect(candidate?.folderCount).toBe(1);
     expect(candidate?.skillCount).toBe(1);
+    expect(candidate?.dataSources).toEqual([
+      "workspace",
+      "skills",
+      "legacy-layout",
+    ]);
+  });
+
+  it("marks skills-only residual candidates as skill data instead of workspace data", () => {
+    const userDataPath = fs.mkdtempSync(
+      path.join(os.tmpdir(), "prompthub-recovery-candidate-"),
+    );
+    tempDirs.push(userDataPath);
+
+    fs.writeFileSync(
+      path.join(userDataPath, ".data-layout-v0.5.5.json"),
+      JSON.stringify({
+        version: "0.5.5",
+        migratedAt: new Date().toISOString(),
+        movedEntries: [],
+      }),
+      "utf8",
+    );
+    fs.mkdirSync(path.join(userDataPath, "skills", "demo"), { recursive: true });
+    fs.writeFileSync(
+      path.join(userDataPath, "skills", "demo", "SKILL.md"),
+      "# skill",
+      "utf8",
+    );
+
+    const candidate = buildResidualLegacyRecoveryCandidate(userDataPath);
+
+    expect(candidate).not.toBeNull();
+    expect(candidate?.promptCount).toBe(0);
+    expect(candidate?.folderCount).toBe(0);
+    expect(candidate?.skillCount).toBe(1);
+    expect(candidate?.dataSources).toEqual(["skills", "legacy-layout"]);
   });
 
   it("lists standalone pre-upgrade database backup files newest first", () => {

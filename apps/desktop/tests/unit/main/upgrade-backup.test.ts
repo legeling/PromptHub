@@ -115,6 +115,7 @@ describe("upgrade-backup", () => {
         "prompthub.db.backup-2026-05-27T02-46-52-983Z",
       );
       expect(snapshot.manifest.copiedItems).not.toContain("prompthub.db.lock");
+      expect(snapshot.manifest.copiedItems).not.toContain("SingletonLock");
       expect(fs.existsSync(path.join(snapshot.backupPath, "DawnGraphiteCache"))).toBe(false);
       expect(
         fs.existsSync(
@@ -127,6 +128,7 @@ describe("upgrade-backup", () => {
       expect(fs.existsSync(path.join(snapshot.backupPath, "prompthub.db.lock"))).toBe(
         false,
       );
+      expect(fs.existsSync(path.join(snapshot.backupPath, "SingletonLock"))).toBe(false);
       expect(
         fs.readFileSync(path.join(snapshot.backupPath, "prompthub.db"), "utf8"),
       ).toBe("db-bytes");
@@ -160,6 +162,35 @@ describe("upgrade-backup", () => {
       expect(snapshot.manifest.toVersion).toBeUndefined();
     });
 
+    it("skips Electron singleton symlinks created in the user data root", async () => {
+      const userDataPath = path.join(tmpBase, "PromptHub");
+      seedUserData(userDataPath);
+      fs.symlinkSync("host-123", path.join(userDataPath, "SingletonLock"));
+      fs.symlinkSync(
+        path.join(os.tmpdir(), "prompthub-singleton.sock"),
+        path.join(userDataPath, "SingletonSocket"),
+      );
+
+      const snapshot = await createUpgradeDataSnapshot(userDataPath, {
+        fromVersion: "0.5.1",
+      });
+
+      expect(snapshot.manifest.copiedItems).not.toContain("SingletonLock");
+      expect(snapshot.manifest.copiedItems).not.toContain("SingletonSocket");
+      expect(fs.existsSync(path.join(snapshot.backupPath, "SingletonLock"))).toBe(
+        false,
+      );
+      expect(fs.existsSync(path.join(snapshot.backupPath, "SingletonSocket"))).toBe(
+        false,
+      );
+      expect(
+        fs.readFileSync(
+          path.join(snapshot.backupPath, "workspace", "prompt-1.md"),
+          "utf8",
+        ),
+      ).toBe("prompt body");
+    });
+
     it("does not recurse into the backup root when snapshotting", async () => {
       const userDataPath = path.join(tmpBase, "PromptHub");
       seedUserData(userDataPath);
@@ -176,6 +207,28 @@ describe("upgrade-backup", () => {
       });
       expect(second.manifest.copiedItems).not.toContain("backups");
       expect(fs.existsSync(path.join(second.backupPath, "backups"))).toBe(false);
+    });
+
+    it("rejects symlinked user data entries and cleans up the partial snapshot", async () => {
+      const userDataPath = path.join(tmpBase, "PromptHub");
+      const externalPath = path.join(tmpBase, "outside-user-data");
+      seedUserData(userDataPath);
+      fs.mkdirSync(externalPath, { recursive: true });
+      fs.writeFileSync(path.join(externalPath, "external.md"), "external prompt");
+      fs.symlinkSync(externalPath, path.join(userDataPath, "workspace", "linked"), "dir");
+
+      await expect(
+        createUpgradeDataSnapshot(userDataPath, { fromVersion: "0.5.1" }),
+      ).rejects.toThrow(/symbolic link/i);
+
+      const backupRoot = getUpgradeBackupRoot(userDataPath);
+      const backupEntries = fs.existsSync(backupRoot)
+        ? fs.readdirSync(backupRoot).filter((entry) => !entry.startsWith("."))
+        : [];
+      expect(backupEntries).toEqual([]);
+      expect(
+        fs.readFileSync(path.join(externalPath, "external.md"), "utf8"),
+      ).toBe("external prompt");
     });
 
     it("keeps only the latest five upgrade snapshots", async () => {
@@ -483,6 +536,51 @@ describe("upgrade-backup", () => {
       );
       // Legacy copy is preserved because we didn't overwrite.
       expect(fs.existsSync(legacyBackup)).toBe(true);
+    });
+
+    it("skips legacy snapshots containing symlinks and cleans up the partial copy", async () => {
+      const userDataPath = path.join(tmpBase, "PromptHub");
+      const externalPath = path.join(tmpBase, "outside-legacy-backup");
+      fs.mkdirSync(userDataPath, { recursive: true });
+      fs.mkdirSync(externalPath, { recursive: true });
+      fs.writeFileSync(path.join(externalPath, "external.md"), "external prompt");
+
+      const legacyRoot = getLegacyUpgradeBackupRoot(userDataPath);
+      const id = "v0.5.1-2025-04-04T00-00-00-000Z";
+      const legacyBackup = path.join(legacyRoot, id);
+      fs.mkdirSync(path.join(legacyBackup, "workspace"), { recursive: true });
+      fs.writeFileSync(path.join(legacyBackup, "workspace", "safe.md"), "safe prompt");
+      fs.symlinkSync(
+        externalPath,
+        path.join(legacyBackup, "workspace", "linked"),
+        "dir",
+      );
+      fs.writeFileSync(
+        path.join(legacyBackup, "backup-manifest.json"),
+        JSON.stringify({
+          kind: "prompthub-upgrade-backup",
+          createdAt: "2025-04-04T00:00:00.000Z",
+          version: "0.5.1",
+          sourcePath: userDataPath,
+          copiedItems: ["workspace"],
+          platform: "linux",
+        }),
+      );
+
+      const result = await migrateLegacyUpgradeBackups(userDataPath);
+
+      expect(result.migrated).toBe(0);
+      expect(result.skipped).toBe(1);
+      expect(fs.existsSync(legacyBackup)).toBe(true);
+      expect(fs.existsSync(path.join(getUpgradeBackupRoot(userDataPath), id))).toBe(
+        false,
+      );
+      expect(
+        fs.readFileSync(path.join(externalPath, "external.md"), "utf8"),
+      ).toBe("external prompt");
+      expect(
+        fs.existsSync(path.join(getUpgradeBackupRoot(userDataPath), ".legacy-migrated")),
+      ).toBe(true);
     });
   });
 });

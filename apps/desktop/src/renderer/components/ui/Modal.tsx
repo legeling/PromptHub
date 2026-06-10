@@ -1,7 +1,8 @@
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useId, useRef, useState } from "react";
 import { XIcon } from "lucide-react";
 import { clsx } from "clsx";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 
 interface ModalProps {
   isOpen: boolean;
@@ -47,6 +48,11 @@ export function Modal({
   closeOnBackdrop = true,
   closeOnEscape = true,
 }: ModalProps) {
+  const { t } = useTranslation();
+  const titleId = useId();
+  const subtitleId = useId();
+  const modalRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const [shouldRender, setShouldRender] = useState(false);
 
@@ -56,12 +62,22 @@ export function Modal({
       setShouldRender(true);
       // Double requestAnimationFrame ensures the browser hits the starting state (opacity 0)
       // before applying the entrance animation.
+      let isCancelled = false;
+      let innerRafId: number | null = null;
       const rafId = requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
+        if (isCancelled) return;
+        innerRafId = requestAnimationFrame(() => {
+          if (isCancelled) return;
           setIsAnimating(true);
         });
       });
-      return () => cancelAnimationFrame(rafId);
+      return () => {
+        isCancelled = true;
+        cancelAnimationFrame(rafId);
+        if (innerRafId !== null) {
+          cancelAnimationFrame(innerRafId);
+        }
+      };
     } else {
       setIsAnimating(false);
       const timer = setTimeout(() => {
@@ -73,20 +89,71 @@ export function Modal({
 
   // Handle ESC key close
   useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
-    if (isOpen && closeOnEscape) {
+    const previousOverflow = document.body.style.overflow;
+
+    if (closeOnEscape) {
       document.addEventListener("keydown", handleEsc);
     }
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    }
+    document.body.style.overflow = "hidden";
+
     return () => {
       document.removeEventListener("keydown", handleEsc);
-      document.body.style.overflow = "";
+      document.body.style.overflow = previousOverflow;
     };
   }, [isOpen, onClose, closeOnEscape]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    previousFocusRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+
+    return () => {
+      const previousFocus = previousFocusRef.current;
+      const modal = modalRef.current;
+      const activeElement = document.activeElement;
+      const focusIsInsideModal =
+        activeElement instanceof Node && modal?.contains(activeElement);
+
+      if (
+        previousFocus?.isConnected &&
+        (!modal || activeElement === document.body || focusIsInsideModal)
+      ) {
+        previousFocus.focus({ preventScroll: true });
+      }
+
+      previousFocusRef.current = null;
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !shouldRender) {
+      return;
+    }
+
+    const modal = modalRef.current;
+    if (!modal) {
+      return;
+    }
+
+    const activeElement = document.activeElement;
+    if (activeElement instanceof Node && modal.contains(activeElement)) {
+      return;
+    }
+
+    modal.focus({ preventScroll: true });
+  }, [isOpen, shouldRender]);
 
   if (!shouldRender) return null;
 
@@ -106,6 +173,9 @@ export function Modal({
     >
       {/* Backdrop */}
       <div
+        data-testid="modal-backdrop"
+        role="presentation"
+        aria-hidden="true"
         className={clsx(
           "absolute inset-0 bg-background/60 backdrop-blur-md transition-opacity",
           isAnimating ? "duration-base ease-enter opacity-100" : "duration-quick ease-exit opacity-0",
@@ -115,9 +185,16 @@ export function Modal({
 
       {/* Modal Container */}
       <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? titleId : undefined}
+        aria-describedby={title && subtitle ? subtitleId : undefined}
+        aria-label={title ? undefined : t("common.dialog", "Dialog")}
+        tabIndex={-1}
         className={clsx(
           "relative app-wallpaper-panel-strong shadow-[0_0_100px_-20px_rgba(0,0,0,0.6)] border border-border",
-          "overflow-hidden flex flex-col rounded-2xl",
+          "overflow-hidden flex flex-col rounded-2xl focus:outline-none",
           "transition-all",
           // Different timing for enter vs exit so the dialog snaps shut
           // a little faster than it eases open.
@@ -138,11 +215,17 @@ export function Modal({
         {title && (
           <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0 relative z-10 app-wallpaper-surface">
             <div className="flex-1 min-w-0">
-              <h2 className="text-xl font-bold tracking-tight text-foreground truncate">
+              <h2
+                id={titleId}
+                className="text-xl font-bold tracking-tight text-foreground truncate"
+              >
                 {title}
               </h2>
               {subtitle && (
-                <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
+                <p
+                  id={subtitleId}
+                  className="mt-0.5 text-xs text-muted-foreground line-clamp-2"
+                >
                   {subtitle}
                 </p>
               )}
@@ -153,10 +236,12 @@ export function Modal({
                 <>
                   <div className="w-[1px] h-4 bg-border mx-1" />
                   <button
+                    type="button"
                     onClick={onClose}
+                    aria-label={t("common.close", "Close")}
                     className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent transition-all duration-base"
                   >
-                    <XIcon className="w-5 h-5" />
+                    <XIcon aria-hidden="true" className="w-5 h-5" />
                   </button>
                 </>
               ) : null}

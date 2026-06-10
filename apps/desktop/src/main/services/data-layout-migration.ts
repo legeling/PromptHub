@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 
+import DatabaseAdapter from "../database/sqlite";
 import { createUpgradeDataSnapshot } from "./upgrade-backup";
 
 const LAYOUT_MIGRATION_MARKER = ".data-layout-v0.5.5.json";
@@ -63,6 +64,212 @@ function hasDataEntries(targetPath: string): boolean {
   }
 }
 
+function readTableCount(
+  database: DatabaseAdapter.Database,
+  tableName: string,
+): number | null {
+  try {
+    const row = database
+      .prepare(`SELECT COUNT(*) as count FROM ${tableName}`)
+      .get() as { count: number } | undefined;
+    return row?.count ?? 0;
+  } catch {
+    return null;
+  }
+}
+
+function quoteIdentifier(identifier: string): string {
+  return `"${identifier.replace(/"/g, '""')}"`;
+}
+
+function readTableColumns(
+  database: DatabaseAdapter.Database,
+  tableName: string,
+): Array<{ name: string; pk: number }> | null {
+  try {
+    return database
+      .prepare(`PRAGMA table_info(${quoteIdentifier(tableName)})`)
+      .all() as Array<{ name: string; pk: number }>;
+  } catch {
+    return null;
+  }
+}
+
+function stableRowString(row: Record<string, unknown>, columns: string[]): string {
+  return JSON.stringify(columns.map((column) => row[column] ?? null));
+}
+
+function readRows(
+  database: DatabaseAdapter.Database,
+  tableName: string,
+  columns: string[],
+): Array<Record<string, unknown>> | null {
+  try {
+    const selectedColumns = columns.map(quoteIdentifier).join(", ");
+    return database
+      .prepare(`SELECT ${selectedColumns} FROM ${quoteIdentifier(tableName)}`)
+      .all() as Array<Record<string, unknown>>;
+  } catch {
+    return null;
+  }
+}
+
+function targetTableContainsSourceRows(
+  sourceDatabase: DatabaseAdapter.Database,
+  targetDatabase: DatabaseAdapter.Database,
+  tableName: string,
+): boolean {
+  const sourceColumns = readTableColumns(sourceDatabase, tableName);
+  if (!sourceColumns || sourceColumns.length === 0) {
+    return true;
+  }
+
+  const targetColumns = readTableColumns(targetDatabase, tableName);
+  if (!targetColumns) {
+    return false;
+  }
+
+  const sourceColumnNames = sourceColumns.map((column) => column.name);
+  const targetColumnNames = targetColumns.map((column) => column.name);
+  const comparableColumns = sourceColumnNames.filter((column) =>
+    targetColumnNames.includes(column),
+  );
+  if (comparableColumns.length !== sourceColumnNames.length) {
+    return false;
+  }
+
+  const sourceRows = readRows(sourceDatabase, tableName, comparableColumns);
+  if (!sourceRows || sourceRows.length === 0) {
+    return true;
+  }
+
+  const primaryKeyColumns = sourceColumns
+    .filter((column) => column.pk > 0)
+    .sort((left, right) => left.pk - right.pk)
+    .map((column) => column.name);
+  const identityColumns =
+    primaryKeyColumns.length > 0 ? primaryKeyColumns : comparableColumns;
+
+  const targetRows = readRows(targetDatabase, tableName, identityColumns);
+  if (!targetRows) {
+    return false;
+  }
+
+  const targetRowSet = new Set(
+    targetRows.map((row) => stableRowString(row, identityColumns)),
+  );
+  return sourceRows.every((row) =>
+    targetRowSet.has(stableRowString(row, identityColumns)),
+  );
+}
+
+function isLegacyRootDatabaseSupersededByTarget(
+  sourcePath: string,
+  targetPath: string,
+): boolean {
+  if (!fs.existsSync(targetPath)) {
+    return false;
+  }
+
+  let sourceDatabase: DatabaseAdapter.Database | null = null;
+  let targetDatabase: DatabaseAdapter.Database | null = null;
+  try {
+    sourceDatabase = new DatabaseAdapter(sourcePath, { readOnly: true });
+    targetDatabase = new DatabaseAdapter(targetPath, { readOnly: true });
+    sourceDatabase.pragma("foreign_keys = OFF");
+    targetDatabase.pragma("foreign_keys = OFF");
+
+    const sourcePromptCount = readTableCount(sourceDatabase, "prompts");
+    const sourceFolderCount = readTableCount(sourceDatabase, "folders");
+    if (sourcePromptCount === null || sourceFolderCount === null) {
+      return false;
+    }
+
+    const userTables = [
+      "prompts",
+      "folders",
+      "skills",
+      "prompt_versions",
+      "skill_versions",
+      "rules",
+      "rule_versions",
+      "settings",
+      "user_settings",
+      "users",
+    ];
+
+    return userTables.every((tableName) => {
+      const contains = targetTableContainsSourceRows(
+        sourceDatabase!,
+        targetDatabase!,
+        tableName,
+      );
+      return contains;
+    });
+  } catch {
+    return false;
+  } finally {
+    try {
+      sourceDatabase?.close();
+    } catch {
+      // ignore close errors
+    }
+    try {
+      targetDatabase?.close();
+    } catch {
+      // ignore close errors
+    }
+  }
+}
+
+function isEmptyLegacyRootDatabase(dbPath: string): boolean {
+  const stats = readLinkSafeStats(dbPath);
+  if (!stats?.isFile() || stats.isSymbolicLink()) {
+    return false;
+  }
+
+  if (stats.size === 0) {
+    return true;
+  }
+
+  let database: DatabaseAdapter.Database | null = null;
+  try {
+    database = new DatabaseAdapter(dbPath, { readOnly: true });
+    database.pragma("foreign_keys = OFF");
+    const promptCount = readTableCount(database, "prompts");
+    const folderCount = readTableCount(database, "folders");
+    if (promptCount === null || folderCount === null) {
+      return false;
+    }
+
+    return (
+      promptCount === 0 &&
+      folderCount === 0 &&
+      (readTableCount(database, "skills") ?? 0) === 0 &&
+      (readTableCount(database, "settings") ?? 0) === 0 &&
+      (readTableCount(database, "user_settings") ?? 0) === 0
+    );
+  } catch {
+    return false;
+  } finally {
+    try {
+      database?.close();
+    } catch {
+      // ignore close errors
+    }
+  }
+}
+
+function isZeroByteRegularFile(filePath: string): boolean {
+  const stats = readLinkSafeStats(filePath);
+  return !!stats?.isFile() && !stats.isSymbolicLink() && stats.size === 0;
+}
+
+function hasLegacyDatabaseMigrationWork(userDataPath: string): boolean {
+  const sourcePath = path.join(userDataPath, "prompthub.db");
+  return hasDataEntries(sourcePath) || isEmptyLegacyRootDatabase(sourcePath);
+}
+
 function ensureDir(targetPath: string): void {
   fs.mkdirSync(targetPath, { recursive: true });
 }
@@ -78,6 +285,62 @@ function assertPathWithinRoot(rootPath: string, targetPath: string, label: strin
       `[data-layout-migration] Refusing to access ${label} outside userData root: ${resolvedTarget}`,
     );
   }
+}
+
+function readLinkSafeStats(targetPath: string): fs.Stats | null {
+  try {
+    return fs.lstatSync(targetPath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return null;
+    }
+    throw error;
+  }
+}
+
+function assertPathIsNotSymlink(targetPath: string, label: string): fs.Stats | null {
+  const stats = readLinkSafeStats(targetPath);
+  if (stats?.isSymbolicLink()) {
+    throw new Error(
+      `[data-layout-migration] Refusing to migrate ${label} symlink: ${targetPath}`,
+    );
+  }
+  return stats;
+}
+
+function assertDirectoryContainsNoSymlinks(rootPath: string): void {
+  const entries = fs.readdirSync(rootPath, { withFileTypes: true });
+  for (const entry of entries) {
+    const entryPath = path.join(rootPath, entry.name);
+    if (entry.isSymbolicLink()) {
+      throw new Error(
+        `[data-layout-migration] Refusing to migrate directory containing symlink: ${entryPath}`,
+      );
+    }
+    if (entry.isDirectory()) {
+      assertDirectoryContainsNoSymlinks(entryPath);
+    }
+  }
+}
+
+function assertMigratablePathTree(
+  sourcePath: string,
+  targetPath: string,
+): fs.Stats {
+  const sourceStats = assertPathIsNotSymlink(sourcePath, "source");
+  if (!sourceStats) {
+    throw new Error(`[data-layout-migration] Missing source path: ${sourcePath}`);
+  }
+
+  const targetStats = assertPathIsNotSymlink(targetPath, "target");
+  if (sourceStats.isDirectory()) {
+    assertDirectoryContainsNoSymlinks(sourcePath);
+  }
+  if (targetStats?.isDirectory()) {
+    assertDirectoryContainsNoSymlinks(targetPath);
+  }
+
+  return sourceStats;
 }
 
 function computeFileHash(filePath: string): string {
@@ -250,6 +513,11 @@ function moveDatabaseFile(sourcePath: string, targetPath: string): void {
 
   ensureDir(path.dirname(targetPath));
 
+  if (isZeroByteRegularFile(sourcePath)) {
+    fs.rmSync(sourcePath, { force: true });
+    return;
+  }
+
   if (!fs.existsSync(targetPath)) {
     try {
       fs.renameSync(sourcePath, targetPath);
@@ -262,13 +530,53 @@ function moveDatabaseFile(sourcePath: string, targetPath: string): void {
   // A pre-existing target DB is only safe when it is byte-identical to the
   // source DB we are migrating from. Otherwise keep the source in place and
   // surface a conflict so startup continues to read the legacy root DB.
+  if (isEmptyLegacyRootDatabase(sourcePath)) {
+    fs.rmSync(sourcePath, { force: true });
+    return;
+  }
+
+  if (isLegacyRootDatabaseSupersededByTarget(sourcePath, targetPath)) {
+    fs.rmSync(sourcePath, { force: true });
+    return;
+  }
+
   if (!areFilesByteIdentical(sourcePath, targetPath)) {
-    throw new Error(
-      `[data-layout-migration] Refusing to migrate database: target "${targetPath}" already exists with different content.`,
+    const backupPath = getLegacyDatabaseConflictBackupPath(sourcePath);
+    moveFile(sourcePath, backupPath);
+    console.warn(
+      `[data-layout-migration] Preserved conflicting legacy root database at "${backupPath}".`,
     );
+    return;
   }
 
   fs.rmSync(sourcePath, { force: true });
+}
+
+function getLegacyDatabaseConflictBackupPath(sourcePath: string): string {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const parsed = path.parse(sourcePath);
+  const basePath = path.join(
+    parsed.dir,
+    `${parsed.base}.legacy-conflict-${timestamp}.db`,
+  );
+
+  if (!fs.existsSync(basePath)) {
+    return basePath;
+  }
+
+  for (let index = 1; index < 1000; index += 1) {
+    const candidate = path.join(
+      parsed.dir,
+      `${parsed.base}.legacy-conflict-${timestamp}-${index}.db`,
+    );
+    if (!fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  throw new Error(
+    `[data-layout-migration] Unable to allocate conflict backup path for "${sourcePath}".`,
+  );
 }
 
 function getTargetPath(userDataPath: string, entryName: string): string {
@@ -310,7 +618,11 @@ function detectLegacyEntries(userDataPath: string): string[] {
   }
 
   for (const fileName of ROOT_TO_DATA_FILES) {
-    if (hasDataEntries(path.join(userDataPath, fileName))) {
+    if (
+      fileName === "prompthub.db"
+        ? hasLegacyDatabaseMigrationWork(userDataPath)
+        : hasDataEntries(path.join(userDataPath, fileName))
+    ) {
       entries.push(fileName);
     }
   }
@@ -359,6 +671,11 @@ function readMarker(userDataPath: string): Partial<LayoutMarkerRecord> | null {
   } catch {
     return null;
   }
+}
+
+function isSymlinkSnapshotFailure(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /symbolic link/i.test(message);
 }
 
 export function getDataLayoutMigrationMarkerPath(userDataPath: string): string {
@@ -411,7 +728,11 @@ export function detectResidualLegacyEntries(userDataPath: string): string[] {
   }
 
   for (const fileName of ROOT_TO_DATA_FILES) {
-    if (hasDataEntries(path.join(resolved, fileName))) {
+    if (
+      fileName === "prompthub.db"
+        ? hasLegacyDatabaseMigrationWork(resolved)
+        : hasDataEntries(path.join(resolved, fileName))
+    ) {
       residual.push(fileName);
     }
   }
@@ -474,10 +795,33 @@ export async function migrateLegacyDataLayout(
     };
   }
 
-  const snapshot = await createUpgradeDataSnapshot(resolvedUserDataPath, {
-    fromVersion: `${currentVersion}-pre-layout-migration`,
-    toVersion: currentVersion,
-  });
+  let snapshot: Awaited<ReturnType<typeof createUpgradeDataSnapshot>>;
+  try {
+    snapshot = await createUpgradeDataSnapshot(resolvedUserDataPath, {
+      fromVersion: `${currentVersion}-pre-layout-migration`,
+      toVersion: currentVersion,
+    });
+  } catch (error) {
+    if (!isSymlinkSnapshotFailure(error)) {
+      throw error;
+    }
+
+    const failedEntries = Array.from(new Set(legacyEntries));
+    const writtenMarkerPath = writeMarker(
+      resolvedUserDataPath,
+      previousMarker?.movedEntries ?? [],
+      failedEntries,
+      previousMarker?.backupId ?? null,
+    );
+
+    return {
+      status: "partial-failure",
+      backupId: previousMarker?.backupId ?? null,
+      movedEntries: previousMarker?.movedEntries ?? [],
+      failedEntries,
+      markerPath: writtenMarkerPath,
+    };
+  }
 
   const movedEntries: string[] = [];
   const failedEntries: string[] = [];
@@ -489,7 +833,7 @@ export async function migrateLegacyDataLayout(
     try {
       assertPathWithinRoot(resolvedUserDataPath, sourcePath, "source path");
       assertPathWithinRoot(resolvedUserDataPath, targetPath, "target path");
-      const stat = fs.statSync(sourcePath);
+      const stat = assertMigratablePathTree(sourcePath, targetPath);
       if (stat.isDirectory()) {
         moveDirectory(sourcePath, targetPath);
       } else if (entryName === "prompthub.db") {

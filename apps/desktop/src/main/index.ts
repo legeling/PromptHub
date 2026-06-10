@@ -42,8 +42,10 @@ import {
   shouldUseDevServer,
 } from "./testing/e2e";
 import {
+  copyDataPathItem,
   getHistoricalDefaultUserDataPath,
   inspectDataPath,
+  isLinkSafeDataPathRoot,
   readConfiguredDataPath,
   resolveInitialUserDataPath,
   writeConfiguredDataPath,
@@ -79,6 +81,8 @@ import { getRecoveryCandidatePaths } from "./services/recovery-paths";
 import { logStartupEvent, scrubPath } from "./startup-log";
 import { openDirectoryPath } from "./shell-open-path";
 import { shouldOpenStartupDevTools } from "./devtools-policy";
+import { handleExternalWindowOpen } from "./external-links";
+import { resolveLocalMediaProtocolPath } from "./local-media-protocol";
 
 // Disable GPU acceleration (optional; may be needed on some systems)
 // 禁用 GPU 加速（可选，某些系统上可能需要）
@@ -354,10 +358,7 @@ async function createWindow() {
 
   // Open external links in system browser
   // 处理外部链接
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
-    return { action: "deny" };
-  });
+  mainWindow.webContents.setWindowOpenHandler(handleExternalWindowOpen);
 
   // Close behavior: decide based on settings whether to minimize to tray or close
   // 关闭行为：根据设置决定是最小化到托盘还是关闭
@@ -991,6 +992,7 @@ ipcMain.handle("data:performRecovery", async (_event, sourcePath: string) => {
   // 直接原地重跑迁移，而不是把 DB 复制到自身。
   if (path.resolve(sourcePath) === path.resolve(currentPath)) {
     try {
+      closeDatabase();
       const migResult = await migrateLegacyDataLayout(currentPath, app.getVersion());
       const residualAfterRetry = detectResidualLegacyEntries(currentPath);
       logStartupEvent({
@@ -1364,63 +1366,6 @@ function scheduleAppRelaunch(delayMs = 0): void {
   relaunch();
 }
 
-function copyFileForDataPath(
-  sourcePath: string,
-  destPath: string,
-  overwrite: boolean,
-): void {
-  if (fs.existsSync(destPath)) {
-    if (!overwrite) {
-      throw new Error(`Target already contains ${path.basename(destPath)}`);
-    }
-    fs.rmSync(destPath, { recursive: true, force: true });
-  }
-
-  fs.mkdirSync(path.dirname(destPath), { recursive: true });
-  fs.copyFileSync(sourcePath, destPath);
-}
-
-function copyDirForDataPath(
-  sourcePath: string,
-  destPath: string,
-  overwrite: boolean,
-): void {
-  if (fs.existsSync(destPath)) {
-    if (!overwrite) {
-      throw new Error(`Target already contains ${path.basename(destPath)}`);
-    }
-    fs.rmSync(destPath, { recursive: true, force: true });
-  }
-
-  const entries = fs.readdirSync(sourcePath, { withFileTypes: true });
-  fs.mkdirSync(destPath, { recursive: true });
-
-  for (const entry of entries) {
-    const nextSourcePath = path.join(sourcePath, entry.name);
-    const nextDestPath = path.join(destPath, entry.name);
-
-    if (entry.isDirectory()) {
-      copyDirForDataPath(nextSourcePath, nextDestPath, false);
-    } else {
-      copyFileForDataPath(nextSourcePath, nextDestPath, false);
-    }
-  }
-}
-
-function copyDataPathItem(
-  sourcePath: string,
-  destPath: string,
-  overwrite: boolean,
-): void {
-  const sourceStat = fs.statSync(sourcePath);
-  if (sourceStat.isDirectory()) {
-    copyDirForDataPath(sourcePath, destPath, overwrite);
-    return;
-  }
-
-  copyFileForDataPath(sourcePath, destPath, overwrite);
-}
-
 async function applyDataPathChange(
   newPath: string,
   action: DataPathChangeAction,
@@ -1461,6 +1406,13 @@ async function applyDataPathChange(
     return {
       success: false,
       error: `Cannot use system directory as data directory: ${resolvedTargetPath}`,
+    };
+  }
+
+  if (fs.existsSync(resolvedTargetPath) && !isLinkSafeDataPathRoot(resolvedTargetPath)) {
+    return {
+      success: false,
+      error: `Cannot use symbolic link as data directory: ${resolvedTargetPath}`,
     };
   }
 
@@ -1524,8 +1476,9 @@ async function applyDataPathChange(
         continue;
       }
 
-      copyDataPathItem(sourcePath, destPath, action === "overwrite");
-      migratedCount++;
+      if (copyDataPathItem(sourcePath, destPath, action === "overwrite")) {
+        migratedCount++;
+      }
     }
 
     writeConfiguredDataPath(app.getPath("appData"), resolvedTargetPath);
@@ -1555,6 +1508,13 @@ ipcMain.handle("data:previewDataPathChange", async (_event, newPath: string) => 
 
   const currentPath = app.getPath("userData");
   const resolvedTargetPath = path.resolve(newPath);
+  if (fs.existsSync(resolvedTargetPath) && !isLinkSafeDataPathRoot(resolvedTargetPath)) {
+    return {
+      success: false,
+      error: `Cannot use symbolic link as data directory: ${resolvedTargetPath}`,
+    };
+  }
+
   const inspection = inspectDataPath(resolvedTargetPath);
   const isCurrentPath = path.resolve(currentPath) === resolvedTargetPath;
 
@@ -1670,37 +1630,17 @@ app.whenReady().then(async () => {
     session.defaultSession.protocol.registerFileProtocol(
       "local-image",
       (request, callback) => {
-        let url = request.url.replace("local-image://", "");
-        // Strip leading slashes to avoid absolute path interpretation
-        // 移除开头的斜杠（防止路径被解析为绝对路径）
-        url = url.replace(/^\/+/, "");
-        // Strip trailing slashes
-        // 移除结尾的斜杠
-        url = url.replace(/\/+$/, "");
-
-        try {
-          const decodedUrl = decodeURIComponent(url);
-          const baseDir = getImagesDir();
-          const normalized = path
-            .normalize(decodedUrl)
-            .replace(/^([\\/])+/g, "");
-          const imagePath = path.join(baseDir, normalized);
-
-          // Prevent path traversal
-          // 防止路径穿越
-          if (
-            !imagePath.startsWith(baseDir + path.sep) &&
-            imagePath !== baseDir
-          ) {
-            console.warn("Blocked local-image path traversal:", decodedUrl);
-            return callback({ path: "" });
-          }
-
+        const imagePath = resolveLocalMediaProtocolPath(
+          request.url,
+          "local-image",
+          getImagesDir(),
+        );
+        if (imagePath) {
           callback({ path: imagePath });
-        } catch (error) {
-          console.error("Failed to register protocol", error);
-          callback({ path: "" });
+          return;
         }
+        console.warn("Blocked local-image protocol path:", request.url);
+        callback({ path: "" });
       },
     );
 
@@ -1709,37 +1649,17 @@ app.whenReady().then(async () => {
     session.defaultSession.protocol.registerFileProtocol(
       "local-video",
       (request, callback) => {
-        let url = request.url.replace("local-video://", "");
-        // Strip leading slashes to avoid absolute path interpretation
-        // 移除开头的斜杠（防止路径被解析为绝对路径）
-        url = url.replace(/^\/+/, "");
-        // Strip trailing slashes
-        // 移除结尾的斜杠
-        url = url.replace(/\/+$/, "");
-
-        try {
-          const decodedUrl = decodeURIComponent(url);
-          const baseDir = getVideosDir();
-          const normalized = path
-            .normalize(decodedUrl)
-            .replace(/^([\/\\])+/g, "");
-          const videoPath = path.join(baseDir, normalized);
-
-          // Prevent path traversal
-          // 防止路径穿越
-          if (
-            !videoPath.startsWith(baseDir + path.sep) &&
-            videoPath !== baseDir
-          ) {
-            console.warn("Blocked local-video path traversal:", decodedUrl);
-            return callback({ path: "" });
-          }
-
+        const videoPath = resolveLocalMediaProtocolPath(
+          request.url,
+          "local-video",
+          getVideosDir(),
+        );
+        if (videoPath) {
           callback({ path: videoPath });
-        } catch (error) {
-          console.error("Failed to register local-video protocol", error);
-          callback({ path: "" });
+          return;
         }
+        console.warn("Blocked local-video protocol path:", request.url);
+        callback({ path: "" });
       },
     );
 

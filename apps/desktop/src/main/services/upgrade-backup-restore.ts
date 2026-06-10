@@ -48,15 +48,39 @@ function ensureLegacyDbCompatibility(currentDataPath: string): void {
   }
 }
 
+function readLinkSafeStats(targetPath: string): fs.Stats | null {
+  try {
+    return fs.lstatSync(targetPath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return null;
+    }
+    throw error;
+  }
+}
+
+function assertRestoreSourceIsNotSymlink(sourcePath: string): fs.Stats | null {
+  const stats = readLinkSafeStats(sourcePath);
+  if (stats?.isSymbolicLink()) {
+    throw new Error(`Cannot restore upgrade backup from symbolic link: ${sourcePath}`);
+  }
+  return stats;
+}
+
+function shouldCopyRestorePath(sourcePath: string): boolean {
+  assertRestoreSourceIsNotSymlink(sourcePath);
+  return true;
+}
+
 function removePathIfExists(targetPath: string): void {
-  if (!fs.existsSync(targetPath)) {
+  if (!readLinkSafeStats(targetPath)) {
     return;
   }
   fs.rmSync(targetPath, { recursive: true, force: true });
 }
 
 function restoreEntry(sourcePath: string, targetPath: string): void {
-  if (!fs.existsSync(sourcePath)) {
+  if (!assertRestoreSourceIsNotSymlink(sourcePath)) {
     removePathIfExists(targetPath);
     return;
   }
@@ -66,6 +90,7 @@ function restoreEntry(sourcePath: string, targetPath: string): void {
     preserveTimestamps: true,
     force: false,
     errorOnExist: true,
+    filter: shouldCopyRestorePath,
   });
 }
 

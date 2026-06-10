@@ -136,13 +136,114 @@ export function writeConfiguredDataPath(
   );
 }
 
+function readLinkSafeStats(targetPath: string): fs.Stats | null {
+  try {
+    return fs.lstatSync(targetPath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return null;
+    }
+    throw error;
+  }
+}
+
+function pathExistsLinkSafe(targetPath: string): boolean {
+  return readLinkSafeStats(targetPath) !== null;
+}
+
+export function isLinkSafeDataPathRoot(targetPath: string): boolean {
+  const stat = readLinkSafeStats(path.resolve(targetPath));
+  return stat?.isDirectory() === true && !stat.isSymbolicLink();
+}
+
+function copyFileForDataPath(
+  sourcePath: string,
+  destPath: string,
+  overwrite: boolean,
+): boolean {
+  const sourceStat = readLinkSafeStats(sourcePath);
+  if (!sourceStat?.isFile() || sourceStat.isSymbolicLink()) {
+    return false;
+  }
+
+  if (pathExistsLinkSafe(destPath)) {
+    if (!overwrite) {
+      throw new Error(`Target already contains ${path.basename(destPath)}`);
+    }
+    fs.rmSync(destPath, { recursive: true, force: true });
+  }
+
+  fs.mkdirSync(path.dirname(destPath), { recursive: true });
+  fs.copyFileSync(sourcePath, destPath);
+  return true;
+}
+
+function copyDirForDataPath(
+  sourcePath: string,
+  destPath: string,
+  overwrite: boolean,
+): boolean {
+  const sourceStat = readLinkSafeStats(sourcePath);
+  if (!sourceStat?.isDirectory() || sourceStat.isSymbolicLink()) {
+    return false;
+  }
+
+  if (pathExistsLinkSafe(destPath)) {
+    if (!overwrite) {
+      throw new Error(`Target already contains ${path.basename(destPath)}`);
+    }
+    fs.rmSync(destPath, { recursive: true, force: true });
+  }
+
+  const entries = fs.readdirSync(sourcePath, { withFileTypes: true });
+  fs.mkdirSync(destPath, { recursive: true });
+
+  let copied = false;
+  for (const entry of entries) {
+    if (entry.isSymbolicLink()) {
+      continue;
+    }
+
+    const nextSourcePath = path.join(sourcePath, entry.name);
+    const nextDestPath = path.join(destPath, entry.name);
+
+    if (entry.isDirectory()) {
+      copied =
+        copyDirForDataPath(nextSourcePath, nextDestPath, false) || copied;
+    } else if (entry.isFile()) {
+      copied =
+        copyFileForDataPath(nextSourcePath, nextDestPath, false) || copied;
+    }
+  }
+
+  return copied || entries.length === 0;
+}
+
+export function copyDataPathItem(
+  sourcePath: string,
+  destPath: string,
+  overwrite: boolean,
+): boolean {
+  const sourceStat = readLinkSafeStats(sourcePath);
+  if (!sourceStat || sourceStat.isSymbolicLink()) {
+    return false;
+  }
+
+  if (sourceStat.isDirectory()) {
+    return copyDirForDataPath(sourcePath, destPath, overwrite);
+  }
+
+  return copyFileForDataPath(sourcePath, destPath, overwrite);
+}
+
 export function hasExistingAppData(targetPath: string): boolean {
   return inspectDataPath(targetPath).hasPromptHubData;
 }
 
 export function inspectDataPath(targetPath: string): DataPathInspection {
   const resolvedTargetPath = path.resolve(targetPath);
-  if (!targetPath || !fs.existsSync(resolvedTargetPath)) {
+  const targetStat = targetPath ? readLinkSafeStats(resolvedTargetPath) : null;
+  if (!targetStat) {
     return {
       targetPath: resolvedTargetPath,
       exists: false,
@@ -151,45 +252,50 @@ export function inspectDataPath(targetPath: string): DataPathInspection {
     };
   }
 
+  if (targetStat.isSymbolicLink()) {
+    return {
+      targetPath: resolvedTargetPath,
+      exists: true,
+      hasPromptHubData: false,
+      markers: [],
+    };
+  }
+
   const markers = DATA_MARKERS.flatMap((marker): ExistingDataMarker[] => {
     const markerPath = path.join(resolvedTargetPath, marker);
-    if (!fs.existsSync(markerPath)) {
+    const stat = readLinkSafeStats(markerPath);
+    if (!stat || stat.isSymbolicLink()) {
       return [];
     }
 
-    try {
-      const stat = fs.statSync(markerPath);
-      return [
-        {
-          name: marker,
-          path: markerPath,
-          type: stat.isDirectory()
-            ? "directory"
-            : stat.isFile()
-              ? "file"
-              : "other",
-        },
-      ];
-    } catch {
-      return [
-        {
-          name: marker,
-          path: markerPath,
-          type: "other",
-        },
-      ];
-    }
+    return [
+      {
+        name: marker,
+        path: markerPath,
+        type: stat.isDirectory()
+          ? "directory"
+          : stat.isFile()
+            ? "file"
+            : "other",
+      },
+    ];
   });
 
   const legacyDbPath = path.join(resolvedTargetPath, "prompthub.db");
   const unifiedDbPath = path.join(resolvedTargetPath, "data", "prompthub.db");
-  if (fs.existsSync(unifiedDbPath)) {
+  const dataDirStat = readLinkSafeStats(path.join(resolvedTargetPath, "data"));
+  const unifiedDbStat =
+    dataDirStat?.isDirectory() === true && !dataDirStat.isSymbolicLink()
+      ? readLinkSafeStats(unifiedDbPath)
+      : null;
+  const legacyDbStat = readLinkSafeStats(legacyDbPath);
+  if (unifiedDbStat?.isFile() && !unifiedDbStat.isSymbolicLink()) {
     markers.push({
       name: "data/prompthub.db",
       path: unifiedDbPath,
       type: "file",
     });
-  } else if (fs.existsSync(legacyDbPath)) {
+  } else if (legacyDbStat?.isFile() && !legacyDbStat.isSymbolicLink()) {
     markers.push({
       name: "prompthub.db",
       path: legacyDbPath,

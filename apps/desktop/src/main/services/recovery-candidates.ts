@@ -164,6 +164,15 @@ export function buildResidualLegacyRecoveryCandidate(
     return null;
   }
 
+  const dataSources: RecoveryDataSource[] = [];
+  if (promptCount > 0 || folderCount > 0) {
+    dataSources.push("workspace");
+  }
+  if (skillCount > 0) {
+    dataSources.push("skills");
+  }
+  dataSources.push("legacy-layout");
+
   return {
     sourcePath: currentPath,
     sourceType: "current-residual",
@@ -175,11 +184,8 @@ export function buildResidualLegacyRecoveryCandidate(
     dbSizeBytes: 0,
     lastModified: latestModifiedIso(currentPath),
     previewAvailable: true,
-    dataSources: ["workspace", "legacy-layout"],
-    description: candidateDescription("current-residual", [
-      "workspace",
-      "legacy-layout",
-    ]),
+    dataSources,
+    description: candidateDescription("current-residual", dataSources),
   };
 }
 

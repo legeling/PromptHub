@@ -5,11 +5,6 @@ import fs from "fs";
 import { resolveInitialUserDataPath } from "./data-path";
 
 const DEFAULT_PRODUCT_NAME = "PromptHub";
-const LAYOUT_MIGRATION_MARKER = ".data-layout-v0.5.5.json";
-
-interface LayoutMarkerRecord {
-  dbLayoutVersion?: string;
-}
 
 export interface RuntimePathOverrides {
   appDataPath?: string;
@@ -88,19 +83,6 @@ function resolvePreferredPath(primaryPath: string, legacyPath?: string): string 
   return primaryPath;
 }
 
-function readLayoutMarker(userDataPath: string): LayoutMarkerRecord | null {
-  const markerPath = path.join(userDataPath, LAYOUT_MIGRATION_MARKER);
-  if (!fs.existsSync(markerPath)) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(fs.readFileSync(markerPath, "utf8")) as LayoutMarkerRecord;
-  } catch {
-    return null;
-  }
-}
-
 export function getDataDir(): string {
   return path.join(getUserDataPath(), "data");
 }
@@ -110,12 +92,10 @@ export function getLegacyDatabasePath(): string {
 }
 
 export function getDatabasePath(): string {
-  const userDataPath = getUserDataPath();
   const unifiedDbPath = path.join(getDataDir(), "prompthub.db");
   const legacyDbPath = getLegacyDatabasePath();
-  const marker = readLayoutMarker(userDataPath);
 
-  if (marker?.dbLayoutVersion === "0.5.7" && fs.existsSync(unifiedDbPath)) {
+  if (fs.existsSync(unifiedDbPath)) {
     return unifiedDbPath;
   }
 

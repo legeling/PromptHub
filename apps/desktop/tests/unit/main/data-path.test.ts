@@ -4,11 +4,13 @@ import path from "path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
+  copyDataPathItem,
   getHistoricalDefaultUserDataPath,
   getInstallScopedDataPath,
   hasExistingAppData,
   inspectDataPath,
   isDefaultPerUserInstallDir,
+  isLinkSafeDataPathRoot,
   isPathWritable,
   isProtectedInstallDir,
   readConfiguredDataPath,
@@ -270,6 +272,165 @@ describe("data path bootstrap", () => {
     expect(inspection.exists).toBe(false);
     expect(inspection.hasPromptHubData).toBe(false);
     expect(inspection.markers).toEqual([]);
+  });
+
+  it("does not report symlinked marker directories as existing app data", () => {
+    const userDataDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "prompthub-symlink-marker-"),
+    );
+    const externalDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "prompthub-external-marker-"),
+    );
+    tempDirs.push(userDataDir, externalDir);
+    fs.writeFileSync(path.join(externalDir, "secret.txt"), "secret", "utf8");
+    fs.symlinkSync(externalDir, path.join(userDataDir, "workspace"), "dir");
+
+    const inspection = inspectDataPath(userDataDir);
+
+    expect(inspection.exists).toBe(true);
+    expect(inspection.hasPromptHubData).toBe(false);
+    expect(inspection.markers).toEqual([]);
+  });
+
+  it("does not report symlinked database markers as existing app data", () => {
+    const userDataDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "prompthub-symlink-db-"),
+    );
+    const externalDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "prompthub-external-db-"),
+    );
+    tempDirs.push(userDataDir, externalDir);
+    fs.writeFileSync(path.join(externalDir, "prompthub.db"), "db", "utf8");
+    fs.symlinkSync(
+      path.join(externalDir, "prompthub.db"),
+      path.join(userDataDir, "prompthub.db"),
+      "file",
+    );
+
+    const inspection = inspectDataPath(userDataDir);
+
+    expect(inspection.exists).toBe(true);
+    expect(inspection.hasPromptHubData).toBe(false);
+    expect(inspection.markers).toEqual([]);
+  });
+
+  it("does not inspect through a symlinked data path root", () => {
+    const realDataRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "prompthub-real-data-root-"),
+    );
+    const parentDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "prompthub-linked-data-parent-"),
+    );
+    tempDirs.push(realDataRoot, parentDir);
+    fs.mkdirSync(path.join(realDataRoot, "workspace"), { recursive: true });
+    fs.writeFileSync(path.join(realDataRoot, "prompthub.db"), "db", "utf8");
+    const linkedDataRoot = path.join(parentDir, "PromptHub-linked");
+    fs.symlinkSync(realDataRoot, linkedDataRoot, "dir");
+
+    const inspection = inspectDataPath(linkedDataRoot);
+
+    expect(isLinkSafeDataPathRoot(linkedDataRoot)).toBe(false);
+    expect(inspection.exists).toBe(true);
+    expect(inspection.hasPromptHubData).toBe(false);
+    expect(inspection.markers).toEqual([]);
+  });
+
+  it("accepts regular directories as link-safe data path roots", () => {
+    const userDataDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "prompthub-regular-root-"),
+    );
+    tempDirs.push(userDataDir);
+
+    expect(isLinkSafeDataPathRoot(userDataDir)).toBe(true);
+  });
+
+  describe("copyDataPathItem", () => {
+    it("copies regular files and directories", () => {
+      const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), "prompthub-copy-"));
+      tempDirs.push(rootDir);
+      const sourceDir = path.join(rootDir, "source");
+      const targetDir = path.join(rootDir, "target");
+      fs.mkdirSync(path.join(sourceDir, "data", "skills", "writer"), {
+        recursive: true,
+      });
+      fs.writeFileSync(
+        path.join(sourceDir, "data", "skills", "writer", "SKILL.md"),
+        "# Writer",
+        "utf8",
+      );
+
+      expect(
+        copyDataPathItem(
+          path.join(sourceDir, "data"),
+          path.join(targetDir, "data"),
+          false,
+        ),
+      ).toBe(true);
+      expect(
+        fs.readFileSync(
+          path.join(targetDir, "data", "skills", "writer", "SKILL.md"),
+          "utf8",
+        ),
+      ).toBe("# Writer");
+    });
+
+    it("skips root symlink items instead of copying external content", () => {
+      const rootDir = fs.mkdtempSync(
+        path.join(os.tmpdir(), "prompthub-copy-root-link-"),
+      );
+      tempDirs.push(rootDir);
+      const externalDir = path.join(rootDir, "external");
+      const sourceDir = path.join(rootDir, "source");
+      const targetDir = path.join(rootDir, "target");
+      fs.mkdirSync(externalDir, { recursive: true });
+      fs.mkdirSync(sourceDir, { recursive: true });
+      fs.writeFileSync(path.join(externalDir, "secret.txt"), "secret", "utf8");
+      fs.symlinkSync(externalDir, path.join(sourceDir, "data"), "dir");
+
+      expect(
+        copyDataPathItem(
+          path.join(sourceDir, "data"),
+          path.join(targetDir, "data"),
+          false,
+        ),
+      ).toBe(false);
+      expect(fs.existsSync(path.join(targetDir, "data", "secret.txt"))).toBe(
+        false,
+      );
+    });
+
+    it("skips nested symlink entries while copying regular data", () => {
+      const rootDir = fs.mkdtempSync(
+        path.join(os.tmpdir(), "prompthub-copy-nested-link-"),
+      );
+      tempDirs.push(rootDir);
+      const externalFile = path.join(rootDir, "outside.txt");
+      const sourceDir = path.join(rootDir, "source");
+      const targetDir = path.join(rootDir, "target");
+      fs.mkdirSync(path.join(sourceDir, "data", "assets"), { recursive: true });
+      fs.writeFileSync(path.join(sourceDir, "data", "safe.txt"), "safe", "utf8");
+      fs.writeFileSync(externalFile, "secret", "utf8");
+      fs.symlinkSync(
+        externalFile,
+        path.join(sourceDir, "data", "assets", "linked.txt"),
+        "file",
+      );
+
+      expect(
+        copyDataPathItem(
+          path.join(sourceDir, "data"),
+          path.join(targetDir, "data"),
+          false,
+        ),
+      ).toBe(true);
+      expect(fs.readFileSync(path.join(targetDir, "data", "safe.txt"), "utf8")).toBe(
+        "safe",
+      );
+      expect(
+        fs.existsSync(path.join(targetDir, "data", "assets", "linked.txt")),
+      ).toBe(false);
+      expect(fs.readFileSync(externalFile, "utf8")).toBe("secret");
+    });
   });
 
   describe("isPathWritable", () => {

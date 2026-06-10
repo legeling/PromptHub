@@ -184,7 +184,12 @@ export function detectRecoverableDatabases(
       continue;
     }
 
-    const dbFile = getCanonicalDbPath(candidate);
+    const candidateStat = readLinkSafeStats(candidate);
+    if (!candidateStat?.isDirectory() || candidateStat.isSymbolicLink()) {
+      continue;
+    }
+
+    const dbFile = getExistingLinkSafeCanonicalDbPath(candidate);
     const browserStorageBytes = getBrowserStorageBytes(candidate);
     const fileStorageBytes = getFileStorageBytes(candidate);
     const workspaceStats = getWorkspaceRecoveryStats(candidate);
@@ -196,9 +201,12 @@ export function detectRecoverableDatabases(
     let skillCount = 0;
 
     let candidateDb: DatabaseAdapter.Database | null = null;
-    if (fs.existsSync(dbFile)) {
+    if (dbFile) {
       try {
-        const stat = fs.statSync(dbFile);
+        const stat = readLinkSafeStats(dbFile);
+        if (!stat?.isFile() || stat.isSymbolicLink()) {
+          continue;
+        }
         dbSizeBytes = stat.size;
 
         // Skip empty/tiny SQLite files unless there is renderer storage data.
@@ -290,14 +298,9 @@ export function detectRecoverableDatabaseFiles(
     if (normalizedCandidate === normalizedCurrentDb) {
       continue;
     }
-    if (!fs.existsSync(candidateFile)) {
-      continue;
-    }
 
-    let stat: fs.Stats;
-    try {
-      stat = fs.statSync(candidateFile);
-    } catch {
+    const stat = readLinkSafeStats(candidateFile);
+    if (!stat || stat.isSymbolicLink()) {
       continue;
     }
 
@@ -373,17 +376,21 @@ export function performDatabaseRecovery(
   sourcePath: string,
   currentDataPath: string,
 ): { success: boolean; error?: string; backupPath?: string } {
-  const sourceExists = fs.existsSync(sourcePath);
-  const sourceStat = sourceExists ? fs.statSync(sourcePath) : null;
+  const sourceStat = readLinkSafeStats(sourcePath);
+  const sourceExists = sourceStat !== null;
   const sourceIsDbFile =
-    sourceStat?.isFile() === true && path.extname(sourcePath).toLowerCase() === ".db";
-  const sourceDb = sourceIsDbFile ? sourcePath : getCanonicalDbPath(sourcePath);
+    sourceStat?.isFile() === true &&
+    !sourceStat.isSymbolicLink() &&
+    path.extname(sourcePath).toLowerCase() === ".db";
+  const sourceDb = sourceIsDbFile
+    ? sourcePath
+    : getExistingLinkSafeCanonicalDbPath(sourcePath);
   const targetDb = getCanonicalDbPath(currentDataPath);
 
   if (
-    !fs.existsSync(sourceDb) &&
+    !sourceDb &&
     (!sourceExists ||
-      sourceIsDbFile ||
+      !sourceStat?.isDirectory() ||
       (getBrowserStorageBytes(sourcePath) === 0 &&
         getFileStorageBytes(sourcePath) === 0))
   ) {
@@ -396,7 +403,7 @@ export function performDatabaseRecovery(
   try {
     // 1. Backup current database
     let backupPath: string | undefined;
-    if (fs.existsSync(sourceDb) && fs.existsSync(targetDb)) {
+    if (sourceDb && fs.existsSync(targetDb)) {
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       backupPath = `${targetDb}.pre-recovery-${timestamp}`;
       fs.copyFileSync(targetDb, backupPath);
@@ -404,7 +411,7 @@ export function performDatabaseRecovery(
     }
 
     // 2. Copy source database over current
-    if (fs.existsSync(sourceDb)) {
+    if (sourceDb) {
       fs.mkdirSync(path.dirname(targetDb), { recursive: true });
       fs.copyFileSync(sourceDb, targetDb);
       console.log(`[Recovery] Copied database from ${sourceDb} to ${targetDb}`);
@@ -424,7 +431,7 @@ export function performDatabaseRecovery(
           ? path.join(sourcePath, "data", dir)
           : path.join(sourcePath, dir);
         const targetDir = path.join(currentDataPath, dir);
-        if (fs.existsSync(sourceDir) && fs.statSync(sourceDir).isDirectory()) {
+        if (isRecoverableDirectory(sourceDir)) {
           copyDirMerge(sourceDir, targetDir);
           console.log(`[Recovery] Merged asset directory: ${dir}`);
         }
@@ -460,6 +467,11 @@ export function performDatabaseRecovery(
  * already exist in the target.
  */
 function copyDirMerge(src: string, dest: string): void {
+  const sourceStat = readLinkSafeStats(src);
+  if (!sourceStat?.isDirectory() || sourceStat.isSymbolicLink()) {
+    return;
+  }
+
   if (!fs.existsSync(dest)) {
     fs.mkdirSync(dest, { recursive: true });
   }
@@ -467,12 +479,30 @@ function copyDirMerge(src: string, dest: string): void {
   for (const entry of entries) {
     const srcPath = path.join(src, entry.name);
     const destPath = path.join(dest, entry.name);
+    if (entry.isSymbolicLink()) {
+      continue;
+    }
     if (entry.isDirectory()) {
       copyDirMerge(srcPath, destPath);
     } else if (!fs.existsSync(destPath)) {
       fs.copyFileSync(srcPath, destPath);
     }
   }
+}
+
+function readLinkSafeStats(targetPath: string): fs.Stats | null {
+  try {
+    return fs.lstatSync(targetPath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return null;
+    }
+    throw error;
+  }
+}
+
+function isRecoverableDirectory(targetPath: string): boolean {
+  return readLinkSafeStats(targetPath)?.isDirectory() === true;
 }
 
 function getBrowserStorageBytes(basePath: string): number {
@@ -509,14 +539,8 @@ function getWorkspaceRecoveryStats(basePath: string): {
 }
 
 function countWorkspacePromptFiles(targetPath: string): number {
-  if (!fs.existsSync(targetPath)) {
-    return 0;
-  }
-
-  let stat: fs.Stats;
-  try {
-    stat = fs.statSync(targetPath);
-  } catch {
+  const stat = readLinkSafeStats(targetPath);
+  if (!stat || stat.isSymbolicLink()) {
     return 0;
   }
 
@@ -547,14 +571,15 @@ function readWorkspaceFolderCount(foldersFile: string): number {
 }
 
 function countSkillDirectories(targetPath: string): number {
-  if (!fs.existsSync(targetPath)) {
+  const stat = readLinkSafeStats(targetPath);
+  if (!stat?.isDirectory() || stat.isSymbolicLink()) {
     return 0;
   }
 
   try {
     return fs
       .readdirSync(targetPath, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory()).length;
+      .filter((entry) => entry.isDirectory() && !entry.isSymbolicLink()).length;
   } catch {
     return 0;
   }
@@ -585,15 +610,53 @@ function getCanonicalDbPath(basePath: string): string {
   return unifiedDbPath;
 }
 
-function getDirectorySize(targetPath: string): number {
-  if (!fs.existsSync(targetPath)) {
-    return 0;
+function getExistingLinkSafeCanonicalDbPath(basePath: string): string | null {
+  const candidates = [
+    path.join(basePath, "data", "prompthub.db"),
+    path.join(basePath, "prompthub.db"),
+  ];
+
+  for (const candidate of candidates) {
+    const stat = readLinkSafeStatsWithin(basePath, candidate);
+    if (stat?.isFile() && !stat.isSymbolicLink()) {
+      return candidate;
+    }
   }
 
-  let stat: fs.Stats;
-  try {
-    stat = fs.statSync(targetPath);
-  } catch {
+  return null;
+}
+
+function readLinkSafeStatsWithin(
+  basePath: string,
+  targetPath: string,
+): fs.Stats | null {
+  const resolvedBase = path.resolve(basePath);
+  const resolvedTarget = path.resolve(targetPath);
+  const relative = path.relative(resolvedBase, resolvedTarget);
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+    return null;
+  }
+
+  let currentPath = resolvedBase;
+  let currentStat = readLinkSafeStats(currentPath);
+  if (!currentStat || currentStat.isSymbolicLink()) {
+    return null;
+  }
+
+  for (const segment of relative.split(path.sep).filter(Boolean)) {
+    currentPath = path.join(currentPath, segment);
+    currentStat = readLinkSafeStats(currentPath);
+    if (!currentStat || currentStat.isSymbolicLink()) {
+      return null;
+    }
+  }
+
+  return currentStat;
+}
+
+function getDirectorySize(targetPath: string): number {
+  const stat = readLinkSafeStats(targetPath);
+  if (!stat || stat.isSymbolicLink()) {
     return 0;
   }
 
