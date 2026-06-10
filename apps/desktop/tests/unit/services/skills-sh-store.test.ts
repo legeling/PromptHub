@@ -98,6 +98,11 @@ describe("skills-sh-store", () => {
     expect(parseSkillsShTotalCount('\\"totalSkills\\":9603')).toBe(9603);
   });
 
+  it("treats missing skills.sh index HTML as an empty result instead of throwing", () => {
+    expect(parseSkillsShTotalCount(undefined)).toBeUndefined();
+    expect(parseSkillsShLeaderboard(undefined, { limit: 10 })).toEqual([]);
+  });
+
   it("parses skills from the embedded skills.sh Next data index", () => {
     const html = `
       <script>
@@ -336,5 +341,17 @@ tags: [search, discovery]
       "opencode",
       "antigravity",
     ]);
+  });
+
+  it("ignores missing skills.sh detail HTML instead of throwing", () => {
+    expect(
+      parseSkillsShDetail(undefined, {
+        owner: "demo",
+        repo: "skills",
+        skillName: "missing-detail",
+        detailPath: "/demo/skills/missing-detail",
+        detailUrl: "https://skills.sh/demo/skills/missing-detail",
+      }),
+    ).toBeNull();
   });
 });

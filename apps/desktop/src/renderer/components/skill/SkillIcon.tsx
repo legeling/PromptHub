@@ -8,6 +8,8 @@ interface SkillIconProps {
   name: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
+  decorative?: boolean;
+  "aria-hidden"?: boolean | "true" | "false";
 }
 
 const SIZE_MAP = {
@@ -31,6 +33,30 @@ const COLORS = [
   'bg-teal-500/15 text-teal-500',
   'bg-rose-500/15 text-rose-500',
 ];
+
+const SAFE_ICON_DATA_URL_PATTERN =
+  /^data:image\/(?:png|jpeg|jpg|webp|gif|svg\+xml);base64,[A-Za-z0-9+/]+={0,2}$/i;
+const EXPLICIT_ICON_PROTOCOL_REGEX = /^[a-z][a-z0-9+.-]*:/i;
+
+export function resolveSkillIconUrl(iconUrl?: string | null): string {
+  const trimmed = iconUrl?.trim() ?? "";
+  if (!trimmed) {
+    return "";
+  }
+
+  if (SAFE_ICON_DATA_URL_PATTERN.test(trimmed)) {
+    return trimmed;
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.protocol === "http:" || parsed.protocol === "https:"
+      ? parsed.toString()
+      : "";
+  } catch {
+    return EXPLICIT_ICON_PROTOCOL_REGEX.test(trimmed) ? "" : trimmed;
+  }
+}
 
 function getColorFromName(name: string): string {
   let hash = 0;
@@ -66,10 +92,14 @@ export function SkillIcon({
   name,
   size = 'md',
   className = '',
+  decorative = false,
+  "aria-hidden": ariaHidden,
 }: SkillIconProps) {
   const [imgError, setImgError] = useState(false);
+  const isDecorative = decorative || ariaHidden === true || ariaHidden === "true";
   const sizeConfig = SIZE_MAP[size];
   const colorClass = useMemo(() => getColorFromName(name), [name]);
+  const safeIconUrl = useMemo(() => resolveSkillIconUrl(iconUrl), [iconUrl]);
   const initial = name.charAt(0).toUpperCase();
   const hasCustomBackground = Boolean(backgroundColor);
   const customForegroundColor = backgroundColor
@@ -83,15 +113,16 @@ export function SkillIcon({
     : undefined;
 
   // Priority 1: URL icon
-  if (iconUrl && !imgError) {
+  if (safeIconUrl && !imgError) {
     return (
       <div
         className={`${sizeConfig.container} rounded-xl overflow-hidden flex items-center justify-center ${containerClass} ${className}`}
         style={containerStyle}
       >
         <img
-          src={iconUrl}
-          alt={name}
+          src={safeIconUrl}
+          alt={isDecorative ? "" : name}
+          aria-hidden={isDecorative ? "true" : undefined}
           className={`${sizeConfig.icon} object-contain dark:invert`}
           onError={() => setImgError(true)}
           loading="lazy"
@@ -107,7 +138,12 @@ export function SkillIcon({
         className={`${sizeConfig.container} rounded-xl flex items-center justify-center ${containerClass} ${className}`}
         style={containerStyle}
       >
-        <span className={sizeConfig.emoji} role="img" aria-label={name}>
+        <span
+          className={sizeConfig.emoji}
+          role={isDecorative ? undefined : "img"}
+          aria-label={isDecorative ? undefined : name}
+          aria-hidden={isDecorative ? "true" : undefined}
+        >
           {iconEmoji}
         </span>
       </div>
@@ -121,7 +157,12 @@ export function SkillIcon({
         className={`${sizeConfig.container} rounded-xl flex items-center justify-center font-bold ${containerClass} ${className}`}
         style={containerStyle}
       >
-        <span className={sizeConfig.text}>{initial}</span>
+        <span
+          aria-hidden={isDecorative ? "true" : undefined}
+          className={sizeConfig.text}
+        >
+          {initial}
+        </span>
       </div>
     );
   }
@@ -132,7 +173,10 @@ export function SkillIcon({
         className={`${sizeConfig.container} rounded-xl flex items-center justify-center ${hasCustomBackground ? 'bg-transparent' : 'bg-primary/10 text-primary'} ${className}`}
         style={containerStyle}
       >
-      <CuboidIcon className={sizeConfig.icon} />
+      <CuboidIcon
+        aria-hidden={isDecorative ? "true" : undefined}
+        className={sizeConfig.icon}
+      />
     </div>
   );
 }

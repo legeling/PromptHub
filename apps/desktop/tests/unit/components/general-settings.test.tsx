@@ -37,17 +37,29 @@ describe("GeneralSettings", () => {
     expect(headingTexts.some((t) => /notifications/i.test(t))).toBe(true);
   });
 
+  it("exposes toggle switches by their setting labels", async () => {
+    await renderWithI18n(<GeneralSettings />, { language: "en" });
+
+    expect(
+      screen.getByRole("switch", { name: "Launch at Startup" }),
+    ).toHaveAttribute("aria-checked", "false");
+    expect(
+      screen.getByRole("switch", { name: "Auto Save" }),
+    ).toHaveAttribute("aria-checked", "false");
+    expect(
+      screen.getByRole("switch", { name: "Save Success Notification" }),
+    ).toHaveAttribute("aria-checked", "false");
+  });
+
   it("toggles launch-at-startup via the toggle switch", async () => {
     const user = userEvent.setup();
     await renderWithI18n(<GeneralSettings />, { language: "en" });
 
     expect(useSettingsStore.getState().launchAtStartup).toBe(false);
 
-    // The first toggle switch in the document corresponds to launchAtStartup.
-    // Toggle switches are rendered as buttons.
-    const toggles = screen.getAllByRole("button");
-    // The first button is the first toggle (launch at startup).
-    await user.click(toggles[0]);
+    await user.click(
+      screen.getByRole("switch", { name: "Launch at Startup" }),
+    );
 
     expect(useSettingsStore.getState().launchAtStartup).toBe(true);
   });
@@ -56,9 +68,9 @@ describe("GeneralSettings", () => {
     const user = userEvent.setup();
     await renderWithI18n(<GeneralSettings />, { language: "en" });
 
-    const toggles = screen.getAllByRole("button");
-    // Skip launch (idx 0). Idx 1 should be minimize-on-launch.
-    await user.click(toggles[1]);
+    await user.click(
+      screen.getByRole("switch", { name: "Minimize on Launch" }),
+    );
 
     expect(useSettingsStore.getState().minimizeOnLaunch).toBe(true);
   });
@@ -69,14 +81,7 @@ describe("GeneralSettings", () => {
 
     const beforeStartup = useSettingsStore.getState().launchAtStartup;
 
-    // The "auto save" toggle is the first one inside the editor section.
-    // Find it by walking through the toggle buttons. With 8 toggle switches in
-    // the form (3 startup + 2 editor + 3 notifications), index 3 is autoSave.
-    const toggles = screen
-      .getAllByRole("button")
-      .filter((btn) => btn.className.includes("w-12 h-7"));
-    expect(toggles.length).toBeGreaterThanOrEqual(8);
-    await user.click(toggles[3]);
+    await user.click(screen.getByRole("switch", { name: "Auto Save" }));
 
     expect(useSettingsStore.getState().autoSave).toBe(true);
     // Startup toggle did not change as a side-effect.
@@ -87,8 +92,8 @@ describe("GeneralSettings", () => {
     const user = userEvent.setup();
     await renderWithI18n(<GeneralSettings />, { language: "en" });
 
-    await user.click(screen.getByRole("button", { name: "Multi select" }));
-    await user.click(screen.getByRole("button", { name: "Single select" }));
+    await user.click(screen.getByRole("button", { name: "Tag click mode" }));
+    await user.click(screen.getByRole("option", { name: "Single select" }));
 
     expect(useSettingsStore.getState().tagFilterMode).toBe("single");
   });

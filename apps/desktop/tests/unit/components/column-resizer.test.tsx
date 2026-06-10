@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
 import { ColumnResizer } from "../../../src/renderer/components/ui/ColumnResizer";
@@ -33,6 +33,10 @@ function renderResizer(overrides: Partial<Parameters<typeof ColumnResizer>[0]> =
 }
 
 describe("ColumnResizer", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("resizes the column as the pointer moves while dragging", () => {
     const { handle, onResize } = renderResizer({ currentWidth: 300 });
 
@@ -44,6 +48,32 @@ describe("ColumnResizer", () => {
     expect(onResize).toHaveBeenLastCalledWith(240);
 
     fireEvent.pointerUp(handle, { pointerId: 1 });
+  });
+
+  it("keeps pointer-capture failures silent while preserving drag behavior", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const debugSpy = vi
+      .spyOn(console, "debug")
+      .mockImplementation(() => undefined);
+    const { handle, onResize } = renderResizer({ currentWidth: 300 });
+    handle.setPointerCapture = vi.fn(() => {
+      throw new Error("capture failed");
+    });
+    handle.releasePointerCapture = vi.fn(() => {
+      throw new Error("release failed");
+    });
+
+    fireEvent.pointerDown(handle, { button: 0, clientX: 100, pointerId: 1 });
+    fireEvent.pointerMove(handle, { clientX: 180, pointerId: 1 });
+    fireEvent.pointerUp(handle, { pointerId: 1 });
+    fireEvent.pointerMove(handle, { clientX: 220, pointerId: 1 });
+
+    expect(handle.setPointerCapture).toHaveBeenCalledWith(1);
+    expect(handle.releasePointerCapture).toHaveBeenCalledWith(1);
+    expect(onResize).toHaveBeenCalledTimes(1);
+    expect(onResize).toHaveBeenCalledWith(380);
+    expect(warnSpy).not.toHaveBeenCalled();
+    expect(debugSpy).not.toHaveBeenCalled();
   });
 
   it("clamps the width to [min, max] during a drag", () => {

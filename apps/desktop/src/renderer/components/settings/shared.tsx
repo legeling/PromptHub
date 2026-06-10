@@ -58,6 +58,7 @@ interface ToggleSwitchProps {
   onChange?: (checked: boolean) => void;
   defaultChecked?: boolean;
   disabled?: boolean;
+  ariaLabel?: string;
 }
 
 export function ToggleSwitch({
@@ -65,6 +66,7 @@ export function ToggleSwitch({
   onChange,
   defaultChecked = false,
   disabled = false,
+  ariaLabel,
 }: ToggleSwitchProps) {
   const [internalChecked, setInternalChecked] = useState(defaultChecked);
   const isControlled = checked !== undefined;
@@ -83,6 +85,10 @@ export function ToggleSwitch({
 
   return (
     <button
+      type="button"
+      role="switch"
+      aria-checked={isChecked}
+      aria-label={ariaLabel}
       onClick={handleClick}
       disabled={disabled}
       className={`relative w-12 h-7 rounded-full transition-all duration-base flex-shrink-0 border-2 ${
@@ -109,14 +115,18 @@ export const PasswordInput = memo(function PasswordInput({
   placeholder,
   className = "",
   disabled = false,
+  ariaLabel,
 }: {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  ariaLabel?: string;
 }) {
   const [show, setShow] = useState(false);
+  const { t } = useTranslation();
+
   return (
     <div className="relative">
       <input
@@ -125,18 +135,25 @@ export const PasswordInput = memo(function PasswordInput({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         disabled={disabled}
+        aria-label={ariaLabel}
         className={`w-full h-10 px-3 pr-10 rounded-lg app-settings-input text-sm placeholder:text-muted-foreground/60 ${className}`}
       />
       <button
         type="button"
+        aria-label={
+          show
+            ? t("common.hidePassword", "Hide password")
+            : t("common.showPassword", "Show password")
+        }
+        aria-pressed={show}
         onClick={() => setShow(!show)}
         disabled={disabled}
         className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
       >
         {show ? (
-          <EyeOffIcon className="w-4 h-4" />
+          <EyeOffIcon aria-hidden="true" className="w-4 h-4" />
         ) : (
-          <EyeIcon className="w-4 h-4" />
+          <EyeIcon aria-hidden="true" className="w-4 h-4" />
         )}
       </button>
     </div>
@@ -227,7 +244,7 @@ export const ShortcutItem = memo(function ShortcutItem({
         </div>
         {conflict && (
           <div className="text-xs text-red-500 mt-2 flex items-center gap-1.5 font-medium">
-            <AlertTriangleIcon className="w-3.5 h-3.5" />
+            <AlertTriangleIcon aria-hidden="true" className="w-3.5 h-3.5" />
             {t("settings.conflictWith", { key: conflict })}
           </div>
         )}
@@ -250,6 +267,7 @@ export const ShortcutItem = memo(function ShortcutItem({
           ref={inputRef}
           type="text"
           readOnly
+          aria-label={t("settings.shortcutInputLabel", { key: label })}
           value={
             recording
               ? tempKeys.length > 0
@@ -269,11 +287,13 @@ export const ShortcutItem = memo(function ShortcutItem({
         <div className="w-8 flex justify-center">
           {shortcut && (
             <button
+              type="button"
               onClick={onClear}
+              aria-label={t("settings.clearShortcutFor", { key: label })}
               className="p-2 rounded-full hover:bg-muted text-muted-foreground hover:text-destructive transition-colors"
-              title={t("settings.clearShortcut")}
+              title={t("settings.clearShortcutFor", { key: label })}
             >
-              <XIcon className="w-4 h-4" />
+              <XIcon className="w-4 h-4" aria-hidden="true" />
             </button>
           )}
         </div>

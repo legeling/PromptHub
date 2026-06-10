@@ -4,6 +4,7 @@ import type { SkillFileSnapshot, SkillVersion } from "@prompthub/shared/types";
 import type { SkillIPCContext } from "./shared";
 import { readCurrentFilesSnapshot, replaceRepoFiles } from "./shared";
 import { SkillInstaller } from "../../services/skill-installer";
+import { computeRepoDirectoryFingerprint } from "../../services/skill-repo-sync";
 
 function isValidSkillVersionCreatedAt(value: unknown): boolean {
   if (typeof value === "number") {
@@ -78,11 +79,22 @@ export function registerSkillVersionHandlers({ db }: SkillIPCContext): void {
         currentSkill,
       );
 
+      const restoredRepoPath = await replaceRepoFiles(
+        db,
+        skillId,
+        targetVersion.filesSnapshot,
+      );
+      const directoryFingerprint = restoredRepoPath
+        ? await computeRepoDirectoryFingerprint(restoredRepoPath)
+        : undefined;
+
       const updatedSkill = db.update(skillId, {
         content: targetVersion.content,
         instructions: targetVersion.content,
+        ...(directoryFingerprint !== undefined
+          ? { directory_fingerprint: directoryFingerprint }
+          : {}),
       });
-      await replaceRepoFiles(db, skillId, targetVersion.filesSnapshot);
       return updatedSkill;
     },
   );

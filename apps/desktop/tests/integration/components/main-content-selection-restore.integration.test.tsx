@@ -1,4 +1,5 @@
-import { act } from "@testing-library/react";
+import { act, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MainContent } from "../../../src/renderer/components/layout/MainContent";
@@ -212,5 +213,54 @@ describe("MainContent selection restore integration", () => {
     });
 
     expect(selectPrompt).not.toHaveBeenCalledWith("prompt-2");
+  });
+
+  it("exposes prompt cards as keyboard-activatable selection buttons", async () => {
+    const user = userEvent.setup();
+    const selectPrompt = vi.fn();
+    const prompt = createPrompt("prompt-keyboard", "folder-a");
+
+    usePromptStoreMock.mockImplementation((selector) =>
+      selector({
+        prompts: [prompt],
+        selectedId: null,
+        selectedIds: [],
+        lastSelectedId: null,
+        selectPrompt,
+        setSelectedIds: vi.fn(),
+        createPrompt: vi.fn(),
+        toggleFavorite: vi.fn(),
+        togglePinned: vi.fn(),
+        deletePrompt: vi.fn(),
+        updatePrompt: vi.fn(),
+        searchQuery: "",
+        filterTags: [],
+        toggleFilterTag: vi.fn(),
+        sortBy: "updatedAt",
+        sortOrder: "desc",
+        viewMode: "card",
+        incrementUsageCount: vi.fn(),
+        promptTypeFilter: "all",
+        setPromptTypeFilter: vi.fn(),
+      }),
+    );
+
+    await act(async () => {
+      await renderWithI18n(<MainContent />, { language: "en" });
+    });
+
+    const card = screen.getByRole("button", {
+      name: "Prompt prompt-keyboard",
+    });
+
+    expect(card).toHaveAttribute("type", "button");
+
+    selectPrompt.mockClear();
+    card.focus();
+    await user.keyboard("{Enter}");
+    await user.keyboard(" ");
+
+    expect(selectPrompt).toHaveBeenCalledTimes(2);
+    expect(selectPrompt).toHaveBeenCalledWith("prompt-keyboard");
   });
 });

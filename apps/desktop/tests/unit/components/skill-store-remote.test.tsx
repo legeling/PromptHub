@@ -1,4 +1,5 @@
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import type { FormEvent } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SkillStore } from "../../../src/renderer/components/skill/SkillStore";
@@ -210,9 +211,18 @@ describe("SkillStore remote loading", () => {
       },
     });
 
-    const { getByText, queryByText } = await renderWithI18n(<SkillStore />, {
-      language: "en",
+    const onSubmit = vi.fn((event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
     });
+
+    const { getByText, queryByText } = await renderWithI18n(
+      <form onSubmit={onSubmit}>
+        <SkillStore />
+      </form>,
+      {
+        language: "en",
+      },
+    );
 
     await waitFor(() => {
       expect(getByText("Failed to load remote store")).toBeInTheDocument();
@@ -223,6 +233,14 @@ describe("SkillStore remote loading", () => {
       ).toBeInTheDocument();
     });
 
+    const retry = screen.getByRole("button", { name: "Retry" });
+    expect(retry).toHaveAttribute("type", "button");
+
+    await act(async () => {
+      fireEvent.click(retry);
+    });
+
+    expect(onSubmit).not.toHaveBeenCalled();
     expect(queryByText(/GitHub token in settings/i)).not.toBeInTheDocument();
   });
 
@@ -2837,6 +2855,10 @@ tags: [clawhub]
     expect(skillsShSearchForm.className).not.toContain(
       "focus-within:border-primary",
     );
+    expect(skillsShSearchForm.querySelector("svg")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
 
     const skillsShSearchInput = screen.getByPlaceholderText("Search skills...");
     expect(skillsShSearchInput).toHaveAttribute("type", "text");
@@ -2848,6 +2870,9 @@ tags: [clawhub]
       });
     });
 
+    expect(
+      screen.getByRole("button", { name: "Clear search" }).querySelector("svg"),
+    ).toHaveAttribute("aria-hidden", "true");
     expect(useSkillStore.getState().storeSearchQuery).toBe("");
 
     await act(async () => {
@@ -2965,6 +2990,30 @@ tags: [clawhub]
     expect(screen.queryByText(/分类/)).not.toBeInTheDocument();
     expect(screen.queryByText(/通用|General/)).not.toBeInTheDocument();
     expect(screen.queryByText("Dev")).not.toBeInTheDocument();
+  });
+
+  it("does not render unsafe store detail source URLs as links", async () => {
+    useSkillStore.setState({
+      getTranslationState: vi.fn().mockReturnValue({
+        value: null,
+        hasTranslation: false,
+        isStale: false,
+      }),
+    } as never);
+
+    const skill = makeRegistrySkill("unsafe-source", {
+      source_url: "javascript:alert(1)",
+      store_url: "file:///tmp/store",
+      content: "# Unsafe Source",
+    });
+
+    await renderWithI18n(
+      <SkillStoreDetail skill={skill} isInstalled={false} onClose={vi.fn()} />,
+      { language: "en" },
+    );
+
+    expect(screen.getByText("javascript:alert(1)").closest("a")).toBeNull();
+    expect(screen.getByText("file:///tmp/store").closest("a")).toBeNull();
   });
 
   it("requires explicit confirmation before installing a high-risk skill", async () => {

@@ -202,7 +202,7 @@ export function SkillIconPicker({
               onClick={() => fileInputRef.current?.click()}
               className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-accent"
             >
-              <UploadIcon className="h-3.5 w-3.5" />
+              <UploadIcon aria-hidden="true" className="h-3.5 w-3.5" />
               {t("skill.uploadIcon", "上传图标")}
             </button>
             <button
@@ -216,13 +216,14 @@ export function SkillIconPicker({
               }
               className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
-              <XIcon className="h-3.5 w-3.5" />
+              <XIcon aria-hidden="true" className="h-3.5 w-3.5" />
               {t("common.clear", "清空")}
             </button>
           </div>
           <input
             ref={fileInputRef}
             type="file"
+            aria-label={t("skill.uploadIcon", "上传图标")}
             accept="image/png,image/jpeg,image/webp,image/svg+xml"
             className="hidden"
             onChange={handleUpload}
@@ -241,6 +242,11 @@ export function SkillIconPicker({
               <button
                 key={preset.id}
                 type="button"
+                aria-pressed={active}
+                aria-label={t("skill.selectPresetIcon", {
+                  name: preset.name,
+                  defaultValue: "Select {{name}} icon",
+                })}
                 onClick={() =>
                   onChange({
                     iconUrl: preset.iconUrl,
@@ -257,10 +263,12 @@ export function SkillIconPicker({
               >
                 <div className="flex items-center justify-center">
                   <SkillIcon
+                    aria-hidden="true"
                     iconUrl={preset.iconUrl}
                     backgroundColor={preset.background}
                     name={preset.name}
                     size="md"
+                    decorative
                   />
                 </div>
               </button>
@@ -268,6 +276,8 @@ export function SkillIconPicker({
           })}
           <button
             type="button"
+            aria-pressed={!iconUrl && !iconEmoji}
+            aria-label={t("skill.useDefaultIcon", "使用默认图标")}
             onClick={() =>
               onChange({
                 iconUrl: undefined,
@@ -283,7 +293,7 @@ export function SkillIconPicker({
             title={t("skill.useDefaultIcon", "使用默认图标")}
           >
             <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg bg-muted/80 dark:bg-muted/40 text-muted-foreground">
-              <ImageIcon className="h-4 w-4" />
+              <ImageIcon aria-hidden="true" className="h-4 w-4" />
             </div>
           </button>
         </div>
@@ -306,6 +316,11 @@ export function SkillIconPicker({
               <button
                 key={background}
                 type="button"
+                aria-pressed={active}
+                aria-label={t("skill.selectIconBackground", {
+                  color: background,
+                  defaultValue: "Select icon background {{color}}",
+                })}
                 onClick={() =>
                   onChange({
                     iconUrl,
@@ -325,6 +340,11 @@ export function SkillIconPicker({
           })}
           <button
             type="button"
+            aria-pressed={!iconBackground}
+            aria-label={t(
+              "skill.useDefaultIconBackground",
+              "Use default icon background",
+            )}
             onClick={() =>
               onChange({
                 iconUrl,

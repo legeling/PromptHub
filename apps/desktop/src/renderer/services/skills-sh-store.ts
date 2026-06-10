@@ -69,8 +69,12 @@ export function getSkillsShIndexUrl(filterKey?: string | null): string {
   return new URL(filter.path, SKILLS_SH_BASE_URL).toString();
 }
 
-export function parseSkillsShTotalCount(html: string): number | undefined {
-  const match = html.match(/(?:\\?"totalSkills\\?")\s*:\s*(\d+)/);
+function normalizeHtmlInput(html: string | null | undefined): string {
+  return html ?? "";
+}
+
+export function parseSkillsShTotalCount(html: string | null | undefined): number | undefined {
+  const match = normalizeHtmlInput(html).match(/(?:\\?"totalSkills\\?")\s*:\s*(\d+)/);
   if (!match) {
     return undefined;
   }
@@ -235,13 +239,13 @@ function extractSimpleMetric(text: string, heading: string): string | undefined 
 }
 
 export function parseSkillsShLeaderboard(
-  html: string,
+  html: string | null | undefined,
   options?: { limit?: number },
 ): SkillsShLeaderboardEntry[] {
   const entries: SkillsShLeaderboardEntry[] = [];
   const seen = new Set<string>();
   const limit = options?.limit ?? 24;
-  const normalizedHtml = html.replace(/\\"/g, '"');
+  const normalizedHtml = normalizeHtmlInput(html).replace(/\\"/g, '"');
   const linkPattern = /<a[^>]+href="(\/[^"/?#]+\/[^"/?#]+\/[^"/?#]+\/?)"[^>]*>([\s\S]*?)<\/a>/gi;
 
   const addEntry = (entry: SkillsShLeaderboardEntry) => {
@@ -333,10 +337,10 @@ export function filterSkillsShLeaderboardEntries(
 }
 
 export function parseSkillsShDetail(
-  html: string,
+  html: string | null | undefined,
   entry: SkillsShLeaderboardEntry,
 ): RegistrySkill | null {
-  const text = htmlToText(html);
+  const text = htmlToText(normalizeHtmlInput(html));
   const summary = normalizeSectionContent(
     getSectionLines(text, "Summary", [
       "SKILL.md",

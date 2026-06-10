@@ -1,4 +1,5 @@
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import type { FormEvent } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CLISettings } from "../../../src/renderer/components/settings/CLISettings";
@@ -6,6 +7,19 @@ import { renderWithI18n } from "../../helpers/i18n";
 import { installWindowMocks } from "../../helpers/window";
 
 const showToast = vi.fn();
+
+function hasHiddenSvgAncestor(element: Element): boolean {
+  let current: Element | null = element;
+
+  while (current) {
+    if (current.getAttribute("aria-hidden") === "true") {
+      return true;
+    }
+    current = current.parentElement;
+  }
+
+  return false;
+}
 
 vi.mock("../../../src/renderer/components/ui/Toast", () => ({
   useToast: () => ({ showToast }),
@@ -92,12 +106,42 @@ describe("CLISettings", () => {
         },
       },
     });
-
-    await act(async () => {
-      await renderWithI18n(<CLISettings />, { language: "en" });
+    const onSubmit = vi.fn((event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Install with pnpm" }));
+    await act(async () => {
+      await renderWithI18n(
+        <form onSubmit={onSubmit}>
+          <CLISettings />
+        </form>,
+        { language: "en" },
+      );
+    });
+
+    const installWithPnpm = await screen.findByRole("button", {
+      name: "Install with pnpm",
+    });
+    const installWithNpm = screen.getByRole("button", {
+      name: "Install with npm",
+    });
+    const refreshStatus = screen.getByRole("button", {
+      name: "Refresh Status",
+    });
+
+    for (const button of [installWithPnpm, installWithNpm, refreshStatus]) {
+      expect(button).toHaveAttribute("type", "button");
+    }
+
+    const exposedIconMarkup = Array.from(
+      document.body.querySelectorAll("button svg"),
+    )
+      .filter((icon) => !hasHiddenSvgAncestor(icon))
+      .map((icon) => icon.outerHTML);
+
+    expect(exposedIconMarkup, exposedIconMarkup.join("\n")).toHaveLength(0);
+
+    fireEvent.click(installWithPnpm);
 
     await waitFor(() => {
       expect(install).toHaveBeenCalledWith("pnpm");
@@ -106,5 +150,6 @@ describe("CLISettings", () => {
       "PromptHub CLI installed successfully",
       "success",
     );
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 });

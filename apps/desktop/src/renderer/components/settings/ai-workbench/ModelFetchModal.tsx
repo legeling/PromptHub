@@ -38,7 +38,7 @@ export function ModelFetchModal({
         {fetchingModels ? (
           <div className="flex min-h-[320px] items-center justify-center rounded-xl border border-border/60 bg-muted/20 text-sm text-muted-foreground">
             <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-            {t("settings.loading")}
+            {t("common.loading")}
           </div>
         ) : (
           <AvailableModelsList

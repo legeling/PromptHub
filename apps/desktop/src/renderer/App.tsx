@@ -21,7 +21,7 @@ import {
   initDatabase,
   migrateLegacyIndexedDbToMainProcess,
 } from "./services/database";
-import { ImportedPromptData } from "./components/prompt/ImportPromptModal";
+import type { ImportedPromptData } from "./components/prompt/ImportPromptModal";
 import {
   runS3AutoSync,
   runSelfHostedAutoSync as executeSelfHostedAutoSync,
@@ -41,15 +41,15 @@ import {
 } from "./services/app-background";
 import { registerPeriodicAutoSyncController } from "./services/periodic-auto-sync";
 import { useToast } from "./components/ui/Toast";
-import { DndContext, DragEndEvent, pointerWithin } from "@dnd-kit/core";
+import { DndContext, pointerWithin, type DragEndEvent } from "@dnd-kit/core";
 import i18n from "./i18n";
-import { UpdateDialog, UpdateStatus } from "./components/UpdateDialog";
-import { CloseDialog } from "./components/ui/CloseDialog";
-import { DataRecoveryDialog } from "./components/ui/DataRecoveryDialog";
+import { useTranslation } from "react-i18next";
+import type { UpdateStatus } from "./components/UpdateDialog";
 import { BackgroundImageBackdrop } from "./components/ui/BackgroundImageBackdrop";
-import { BackupImportConfirmDialog } from "./components/settings/BackupImportConfirmDialog";
+import { Spinner } from "./components/ui/Spinner";
 import { isWebRuntime } from "./runtime";
 import { useBackupImportController } from "./hooks/useBackupImportController";
+import { waitForPersistHydration } from "./utils/persist-hydration";
 
 // Lazy load heavy components for better initial load performance
 // 懒加载大型组件以提升初始加载性能
@@ -58,9 +58,29 @@ const SettingsPage = lazy(() =>
     default: m.SettingsPage,
   })),
 );
+const UpdateDialog = lazy(() =>
+  import("./components/UpdateDialog").then((m) => ({
+    default: m.UpdateDialog,
+  })),
+);
 const EditPromptModal = lazy(() =>
   import("./components/prompt/EditPromptModal").then((m) => ({
     default: m.EditPromptModal,
+  })),
+);
+const CloseDialog = lazy(() =>
+  import("./components/ui/CloseDialog").then((m) => ({
+    default: m.CloseDialog,
+  })),
+);
+const DataRecoveryDialog = lazy(() =>
+  import("./components/ui/DataRecoveryDialog").then((m) => ({
+    default: m.DataRecoveryDialog,
+  })),
+);
+const BackupImportConfirmDialog = lazy(() =>
+  import("./components/settings/BackupImportConfirmDialog").then((m) => ({
+    default: m.BackupImportConfirmDialog,
   })),
 );
 // Page type
@@ -68,6 +88,7 @@ const EditPromptModal = lazy(() =>
 type PageType = "home" | "settings";
 
 function App() {
+  const { t } = useTranslation();
   const fetchPrompts = usePromptStore((state) => state.fetchPrompts);
   const fetchFolders = useFolderStore((state) => state.fetchFolders);
   const folders = useFolderStore((state) => state.folders);
@@ -525,10 +546,14 @@ function App() {
       await movePrompts(promptsToMove, folderId);
 
       const count = promptsToMove.length;
+      const folderName = folder?.name || i18n.t("folder.uncategorized");
       showToast(
         count > 1
-          ? `已将 ${count} 个 Prompt 移动到「${folder?.name || "文件夹"}」`
-          : `已移动到「${folder?.name || "文件夹"}」`,
+          ? i18n.t("toast.movedPromptsToFolder", {
+              count,
+              folder: folderName,
+            })
+          : i18n.t("toast.movedPromptToFolder", { folder: folderName }),
         "success",
       );
     }
@@ -605,39 +630,20 @@ function App() {
     let disposePeriodicAutoSync: (() => void) | null = null;
     let disposed = false;
 
-    interface PersistController {
-      hasHydrated?: () => boolean;
-      onFinishHydration?: (callback: () => void) => () => void;
-    }
-
     const waitForSettingsHydration = async (): Promise<void> => {
       const persistController = (
         useSettingsStore as typeof useSettingsStore & {
-          persist?: PersistController;
+          persist?: Parameters<typeof waitForPersistHydration>[0];
         }
       ).persist;
 
-      if (!persistController || persistController.hasHydrated?.()) {
-        return;
+      await waitForPersistHydration(persistController);
+    };
+
+    const logWhenDebugEnabled = (...args: Parameters<typeof console.log>) => {
+      if (useSettingsStore.getState().debugMode) {
+        console.log(...args);
       }
-
-      await new Promise<void>((resolve) => {
-        let finished = false;
-        let unsubscribe: (() => void) | undefined;
-
-        const finish = () => {
-          if (finished) {
-            return;
-          }
-          finished = true;
-          unsubscribe?.();
-          clearTimeout(timeoutId);
-          resolve();
-        };
-
-        unsubscribe = persistController.onFinishHydration?.(finish);
-        const timeoutId = setTimeout(finish, 500);
-      });
     };
 
     const runAutoSync = async (
@@ -688,11 +694,11 @@ function App() {
         });
 
         if (!result.success) {
-          console.log(`⚠️ ${reason} sync failed:`, result.message);
+          console.error(`⚠️ ${reason} sync failed:`, result.message);
           return;
         }
 
-        console.log(`✅ ${reason} sync completed:`, result.message);
+        logWhenDebugEnabled(`✅ ${reason} sync completed:`, result.message);
         if (result.localChanged) {
           await Promise.all([fetchPrompts(), fetchFolders()]);
         }
@@ -785,7 +791,7 @@ function App() {
           return;
         }
 
-        console.log(`✅ S3 ${reason} sync completed:`, result.message);
+        logWhenDebugEnabled(`✅ S3 ${reason} sync completed:`, result.message);
         if (result.localChanged) {
           await Promise.all([fetchPrompts(), fetchFolders()]);
         }
@@ -837,7 +843,7 @@ function App() {
           return;
         }
 
-        console.log(`✅ ${result.message}`);
+        logWhenDebugEnabled(`✅ ${result.message}`);
         if (result.localChanged) {
           await Promise.all([fetchPrompts(), fetchFolders()]);
         }
@@ -861,14 +867,14 @@ function App() {
         if (!isWebRuntime()) {
           const migration = await migrateLegacyIndexedDbToMainProcess();
           if (migration.migrated) {
-            console.log(
+            logWhenDebugEnabled(
               `Migrated legacy IndexedDB data to SQLite (${migration.promptCount} prompts, ${migration.folderCount} folders, ${migration.versionCount} versions)`,
             );
           }
         }
         await fetchPrompts();
         await fetchFolders();
-        console.log("✅ App initialized");
+        logWhenDebugEnabled("✅ App initialized");
 
         // IMPORTANT: We MUST NOT auto-execute performRecovery here. Historically
         // this code auto-picked the best candidate and called performRecovery
@@ -900,7 +906,7 @@ function App() {
           error instanceof Error &&
           error.message.includes("timeout")
         ) {
-          console.log("🔄 Retrying database initialization...");
+          logWhenDebugEnabled("🔄 Retrying database initialization...");
           await new Promise((resolve) => setTimeout(resolve, 500));
           clearTimeout(maxLoadingTime);
           return init(retryCount + 1);
@@ -919,7 +925,7 @@ function App() {
         hasValidWebDAVConfig(settings)
       ) {
         const delay = (settings.webdavSyncOnStartupDelay ?? 10) * 1000;
-        console.log(`🔄 Will sync with WebDAV in ${delay / 1000}s...`);
+        logWhenDebugEnabled(`🔄 Will sync with WebDAV in ${delay / 1000}s...`);
         startupSyncTimer = setTimeout(() => {
           if (!isWindowVisibleRef.current || navigator.onLine === false) {
             pendingStartupSyncRef.current = true;
@@ -935,7 +941,7 @@ function App() {
         hasValidS3Config(settings)
       ) {
         const delay = (settings.s3SyncOnStartupDelay ?? 10) * 1000;
-        console.log(`🔄 Will sync with S3 in ${delay / 1000}s...`);
+        logWhenDebugEnabled(`🔄 Will sync with S3 in ${delay / 1000}s...`);
         s3StartupSyncTimer = setTimeout(() => {
           if (!isWindowVisibleRef.current || navigator.onLine === false) {
             pendingS3StartupSyncRef.current = true;
@@ -951,7 +957,7 @@ function App() {
         hasValidSelfHostedConfig(settings)
       ) {
         const delay = (settings.selfHostedSyncOnStartupDelay ?? 10) * 1000;
-        console.log(
+        logWhenDebugEnabled(
           `🔄 Will sync with self-hosted PromptHub in ${delay / 1000}s...`,
         );
         selfHostedStartupSyncTimer = setTimeout(() => {
@@ -999,7 +1005,7 @@ function App() {
         runSelfHosted: () => {
           void runSelfHostedAutoSync("interval");
         },
-        log: (message) => console.log(`🔄 ${message}`),
+        log: (message) => logWhenDebugEnabled(`🔄 ${message}`),
       }).dispose;
 
       document.addEventListener("visibilitychange", handleBackgroundTaskResume);
@@ -1031,8 +1037,10 @@ function App() {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <div className="text-muted-foreground text-sm">Loading...</div>
+          <Spinner size="lg" />
+          <div className="text-muted-foreground text-sm">
+            {t("common.loading")}
+          </div>
         </div>
       </div>
     );
@@ -1048,7 +1056,7 @@ function App() {
         {hasBackgroundImage ? (
           <BackgroundImageBackdrop
             src={normalizedBackgroundImageFileName!}
-            alt="App background"
+            alt=""
             opacity={renderedBackgroundImageOpacity}
             blur={renderedBackgroundBlur}
           />
@@ -1095,7 +1103,7 @@ function App() {
                     <Suspense
                       fallback={
                         <div className="flex-1 flex items-center justify-center">
-                          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                          <Spinner />
                         </div>
                       }
                     >
@@ -1110,34 +1118,50 @@ function App() {
             </div>
           </div>
 
-          <UpdateDialog
-            isOpen={showUpdateDialog}
-            onClose={() => setShowUpdateDialog(false)}
-            initialStatus={initialUpdateStatus}
-          />
+          {showUpdateDialog ? (
+            <Suspense fallback={null}>
+              <UpdateDialog
+                isOpen={showUpdateDialog}
+                onClose={() => setShowUpdateDialog(false)}
+                initialStatus={initialUpdateStatus}
+              />
+            </Suspense>
+          ) : null}
 
           {/* Windows close dialog */}
           {/* Windows 关闭对话框 */}
-          <CloseDialog
-            isOpen={showCloseDialog}
-            onClose={() => setShowCloseDialog(false)}
-          />
+          {showCloseDialog ? (
+            <Suspense fallback={null}>
+              <CloseDialog
+                isOpen={showCloseDialog}
+                onClose={() => setShowCloseDialog(false)}
+              />
+            </Suspense>
+          ) : null}
 
           {/* Data recovery dialog */}
-          <DataRecoveryDialog
-            isOpen={showRecoveryDialog}
-            onClose={() => setShowRecoveryDialog(false)}
-            databases={recoverableDatabases}
-          />
+          {showRecoveryDialog ? (
+            <Suspense fallback={null}>
+              <DataRecoveryDialog
+                isOpen={showRecoveryDialog}
+                onClose={() => setShowRecoveryDialog(false)}
+                databases={recoverableDatabases}
+              />
+            </Suspense>
+          ) : null}
 
-          <BackupImportConfirmDialog
-            importPreview={backupImportController.importPreview}
-            confirmingImport={backupImportController.confirmingImport}
-            onClose={backupImportController.closeImportPreview}
-            onConfirm={() => {
-              void backupImportController.confirmImport();
-            }}
-          />
+          {backupImportController.importPreview ? (
+            <Suspense fallback={null}>
+              <BackupImportConfirmDialog
+                importPreview={backupImportController.importPreview}
+                confirmingImport={backupImportController.confirmingImport}
+                onClose={backupImportController.closeImportPreview}
+                onConfirm={() => {
+                  void backupImportController.confirmImport();
+                }}
+              />
+            </Suspense>
+          ) : null}
 
           {/* Use EditPromptModal for importing, passing clipboard data as initialData */}
           {showImportModal && (

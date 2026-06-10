@@ -101,12 +101,75 @@
    - 影响：My Skills 可以分发到 project，project 又可以被扫描并导入 My Skills；如果 identity 和路径边界不清，会出现循环导入、重复实例或把 projection 误认为原始 source。
    - 结论：这是完整生命周期审计必须单独覆盖的边界，不能只用商店安装态测试替代。
 
+### Follow-up Closed: Persisted Remote Store Cache Identity
+
+- 发现：`remoteStoreEntries` 通过 Zustand persist 持久化，但同版本 hydrate
+  之前没有清洗缓存条目。修复 source identity 生成后，旧缓存中的错误
+  `source_id`、空 entry 或 stale error 仍会在用户首次 refresh 前进入 store，
+  继续影响 `Imported` 判断。
+- 处理：`skill.store.ts` 新增 remote store cache normalizer，并在 persist
+  `merge` 与 `partialize` 中复用。custom `git-repo` 缓存会基于 source 的
+  normalized URL / branch / directory 和 skill 的 canonical path 重算
+  `source_id`；`local-dir` 与 `marketplace-json` 也按各自 loader identity
+  规则重算；空或畸形 entry 不再恢复，stale error 不再持久化。
+- 验证：新增 same-version persisted custom git remote cache hydration 回归测试，
+  先失败于旧 `error/source_id` 原样恢复，修复后通过。整份
+  `skill.store.test.ts` 与 desktop typecheck 已通过。
+
+### Follow-up Closed: Managed Repo Rollback Fingerprint
+
+- 发现：managed repo 的文件编辑和 repo sync 已会在写入后刷新
+  `directory_fingerprint`，但版本回滚只恢复 `content/instructions` 并替换文件树，
+  没有按替换后的 repo 文件重新计算目录指纹。结果是回滚后 DB 仍可能保存旧
+  `directory_fingerprint`，后续本地变更判断和同内容 identity 逻辑会读到 stale 状态。
+- 处理：桌面 skill 版本回滚现在先替换目标版本的 managed repo 文件，再基于实际 repo
+  path 计算整目录 fingerprint，并只更新 `content`、`instructions` 与
+  `directory_fingerprint`，不写入 `source_id`。
+- 验证：新增 version rollback 回归测试，断言 rollback 前会创建当前快照版本、
+  文件替换后会计算 fingerprint、DB update 不包含 `source_id`，返回结果保留原
+  source identity 且带新 `directory_fingerprint`。同时复跑 local repo IPC、
+  repo sync 与 version IPC 三组测试。
+
+### Follow-up Closed: Direct Git Import Installed Matching
+
+- 发现：Store 列表与更新检查已统一使用 `findInstalledRegistrySkill()`，可以通过
+  `source_id`、`content_url`、`source_url + install_name` 和受限 legacy
+  `registry_slug` 判断已导入；但 direct Git import modal 仍维护自己的轻量判断，只看
+  `source_id/source_url`。如果用户已有旧安装记录只保存了 `content_url`，同一个 Git
+  skill 在 direct import 扫描后仍会显示为可导入。
+- 处理：`CreateSkillModal` 的 direct Git scan 结果和默认选中集合改为复用
+  `findInstalledRegistrySkill()`，让 direct Git import、persisted git store cache、
+  Store 列表和更新检查使用同一 installed 判定语义。
+- 验证：新增 direct Git scan 旧 `content_url` 匹配回归测试，先失败于未显示
+  `Already Imported` 且默认选中，修复后通过。已复跑整份
+  `create-skill-modal.test.tsx`，以及 `skill-store-update` / `skill.store` 中
+  installed matcher 与 remote cache 相关目标测试。
+
+### Follow-up Closed: Local Scan / Project Copy Loop Import
+
+- 发现：项目 Skills 分发会把 My Skills 的 managed repo 复制或 symlink 到项目 target
+  目录；项目副本再通过 Create Skill 的本地扫描入口扫描时，旧逻辑只比较 scanned
+  `localPath` 与已安装 skill 的 `source_url/local_repo_path`。对于 copy 分发，项目副本路径
+  与 managed repo 路径不同，因此会被误算为新的可导入来源，形成 deploy -> rescan ->
+  duplicate import 循环。
+- 处理：Create Skill 本地扫描入口改为复用 `matchScannedSkillToLibrary()`，与项目页扫描
+  状态使用同一套身份匹配：`localPath`、`symlinkTargetPath` 和
+  `directory_fingerprint` 都能匹配 My Skills。项目 target 副本只要目录指纹与库内 skill
+  一致，就显示为 `Already Imported` 且不进入默认导入集合。
+- 验证：新增本地扫描项目分发副本回归测试，先失败于 Importable/Selected 计数错误和缺少
+  `Already Imported`，修复后通过。复跑 `create-skill-modal.test.tsx` 与
+  `skill-scan-status.test.ts`。
+
 ### Medium Risks (Design Works, But Not Exhaustively Covered)
 
-1. **Managed container short suffix is stable, but not mathematically unique**
-   - 位置：`apps/desktop/src/main/services/skill-installer-repo.ts:132-139`
-   - 当前 `<short-id>` 取 `computeStableTextHash(...).slice(0, 8)`。
-   - 影响：目录名后缀在工程上足够稳定，但理论上存在碰撞可能；逻辑唯一性仍然依赖 `skill.id` / `source_id`，而不是短后缀本身。
+1. **Managed container short suffix has an explicit fallback, but remains display/storage naming**
+   - 位置：`apps/desktop/src/main/services/skill-installer-repo.ts`
+   - 默认 `<short-id>` 仍取 `computeStableTextHash(...).slice(0, 8)`，以保持目录名短且可读。
+   - 已补兜底：当 preferred 容器存在且 `.prompthub/source.json` 明确属于另一个
+     source / variant 时，新的 managed repo 会自动扩展到 12/16/24/32/48/64 位稳定后缀，
+     并把 sidecar `variantKey` 写成实际容器名。
+   - 边界：逻辑唯一性仍然依赖 `skill.id` / `source_id`，目录短后缀只作为人类可读的
+     storage key，不作为跨系统 identity。
 
 2. **Marketplace JSON source identity mainly relies on `sourceUrl + contentUrl/slug`**
    - 位置：`apps/desktop/src/renderer/components/skill/store-remote-sync.ts:348-365`
@@ -147,7 +210,10 @@
 5. **Platform install status has activation-state disambiguation**
    - 位置：`apps/desktop/src/main/services/skill-installer-platform.ts:86-121`、`apps/desktop/src/main/services/skill-installer-platform.ts:637-648`
    - 虽然平台目录按 `skill.name` 单激活，但状态判断会额外检查 activation state 的 `skillId`。
-   - 结论：同名变体不会因为平台目录存在同名 skill 就全部显示 installed；仍建议保留回归测试。
+   - 结论：同名变体不会因为平台目录存在同名 skill 就全部显示 installed。
+   - 验证补强：2026-06-10 已新增同名 inactive variant 负例，平台目录存在
+     `writer/SKILL.md` 且 activation 指向 `skill-a` 时，`skill-a` 显示 installed，
+     同名 `skill-b` 的 boolean status 与 detail status 均显示未安装。
 
 ## Additional Implementation Notes (This Round)
 
@@ -399,6 +465,66 @@
   - 已补充并通过集成测试：
     - `apps/desktop/tests/integration/components/skill-ui.integration.test.tsx`
     - 覆盖分页跳转、右键菜单查看详情、中文右键菜单本地化、拖拽标签赋值。
+
+- 已收敛 project deploy 同名变体的 target 语义：
+  - 新增 `getProjectTargetDirsRequiringDeployment()`，在判断 `My Skills -> Project`
+    部署目标时同时考虑 target 下的 logical name 与 skill identity。
+  - 同一 target 下已存在同 identity 的 skill 时继续显示 `Already Imported`，不重复部署。
+  - 同一 target 下存在同名但不同 `directory_fingerprint` / 源路径的变体时允许重新部署，
+    并将 copy/symlink 调用改为 `{ ifExists: "overwrite" }`，符合实际目录
+    `<targetDir>/<skill.name>` 的单激活关系。
+  - 已接入入口：
+    - `SkillProjectsView`
+    - `SkillLibraryImportModal`
+    - `SkillFullDetailPage`
+  - 已补充并通过的回归：
+    - `apps/desktop/tests/unit/services/project-skill-targets.test.ts`
+    - `apps/desktop/tests/unit/components/skill-projects-view.test.tsx`
+
+- 已收敛 managed 容器短后缀碰撞兜底：
+  - `getManagedContainerPathForSkill()` 现在会读取 preferred 容器的
+    `.prompthub/source.json`，只有 metadata 与当前 skill identity 匹配或无法确认时才复用。
+  - 如果 preferred `skill-name--8位后缀` 明确属于另一个 source / variant，则自动选择
+    更长的稳定后缀路径，例如 `writer--7dc211f6e9ce`。
+  - `ensureManagedVariantContainer()`、`saveToLocalRepoBySkillId()` 与
+    `saveContentToLocalRepoBySkillId()` 写入 sidecar 时使用实际容器 basename 作为
+    `variantKey`，避免 fallback 容器写入旧 8 位 key。
+  - 已补充并通过回归：
+    - `apps/desktop/tests/unit/main/skill-installer-repo.test.ts`
+
+- 已明确并实现本地路径 git-repo 的 branch-aware identity 边界：
+  - 设计结论：
+    - `local-dir` 继续表示普通本地目录来源，不读取 git 状态，`source_id` 不包含 branch。
+    - `git-repo` 即使 URL 是本地文件路径，也表示用户显式选择了 git source 语义；
+      `source_id` 必须包含配置的 `branch`、`directory` 与相对 repo root 的
+      `canonical_skill_path`。
+    - PromptHub 不隐式探测当前 checkout / detached HEAD / dirty working tree 来改变
+      `source_id`，避免用户切分支后已安装身份漂移；dirty 内容差异继续由
+      `directory_fingerprint`、本地文件读取和更新检测处理。
+  - 修复：
+    - persisted `remoteStoreEntries` hydration 现在对本地路径 `git-repo` 保留
+      `source_branch` / `source_directory`，并按 `git-repo + repo root + branch +
+      directory + skill path` 重算 `source_id`。
+    - custom source refresh 对本地路径 `git-repo` 会按配置的 `directory` 扫描子目录；
+      生成 registry entry 时保留 branch/directory badge metadata，`source_url` 仍指向
+      实际 skill 目录以保持本地文件读取和安装路径语义。
+  - 已补充并通过回归：
+    - `apps/desktop/tests/unit/stores/skill.store.test.ts`
+    - `apps/desktop/tests/unit/components/skill-store-custom-sources.test.tsx`
+
+- 已补齐 local-dir / 本地路径 git-repo 的组合测试：
+  - same-version persisted cache hydration 覆盖：
+    - `local-dir` 清理误缓存的 `source_branch` / `source_directory`
+    - 同一本地 git repo 的 `main` / `dev` 分支生成不同 `source_id`
+    - 不同 worktree 路径即使同为 `dev` 分支也生成不同 `source_id`
+    - detached/no-branch 本地 git source 保持 `git-repo` identity，但
+      `source_branch` 为 `undefined`
+  - custom source refresh 覆盖：
+    - dirty working tree 内容变化时，`directory_fingerprint` 与 `content` 更新
+    - `source_id` 保持稳定，不因未提交内容变化而漂移
+  - 已补充并通过回归：
+    - `apps/desktop/tests/unit/stores/skill.store.test.ts`
+    - `apps/desktop/tests/unit/components/skill-store-custom-sources.test.tsx`
 
 ## Expected Verification
 

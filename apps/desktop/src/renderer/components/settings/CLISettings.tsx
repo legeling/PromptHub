@@ -140,9 +140,12 @@ export function CLISettings() {
               className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isInstalling ? (
-                <Loader2Icon className="h-4 w-4 animate-spin" />
+                <Loader2Icon
+                  aria-hidden="true"
+                  className="h-4 w-4 animate-spin"
+                />
               ) : (
-                <DownloadIcon className="h-4 w-4" />
+                <DownloadIcon aria-hidden="true" className="h-4 w-4" />
               )}
               {t("settings.cliInstallWith", {
                 manager: primaryInstallMethod,
@@ -155,7 +158,7 @@ export function CLISettings() {
                 disabled={isInstalling || status.installed}
                 className="inline-flex h-10 items-center gap-2 rounded-xl border border-border bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <DownloadIcon className="h-4 w-4" />
+                <DownloadIcon aria-hidden="true" className="h-4 w-4" />
                 {t("settings.cliInstallWith", { manager: "npm" })}
               </button>
             ) : null}
@@ -165,7 +168,10 @@ export function CLISettings() {
               disabled={isLoading || isInstalling}
               className="inline-flex h-10 items-center gap-2 rounded-xl border border-border bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <RefreshCwIcon className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+              <RefreshCwIcon
+                aria-hidden="true"
+                className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+              />
               {t("settings.cliRefreshStatus")}
             </button>
           </div>

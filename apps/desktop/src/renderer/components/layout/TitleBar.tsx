@@ -27,7 +27,7 @@ export function TitleBar() {
 
   const handleMaximize = () => {
     window.electron?.maximize?.();
-    setIsMaximized(!isMaximized);
+    setIsMaximized((current) => !current);
   };
 
   const handleClose = () => {
@@ -45,25 +45,39 @@ export function TitleBar() {
       {/* 窗口控制按钮 */}
       <div className="flex h-full titlebar-no-drag">
         <button
+          type="button"
           onClick={handleMinimize}
           className="w-11 h-full flex items-center justify-center hover:bg-muted transition-colors"
-          title={t('common.minimize')}
+          aria-label={t('common.minimize', 'Minimize')}
+          title={t('common.minimize', 'Minimize')}
         >
-          <MinusIcon className="w-4 h-4 text-foreground/70" />
+          <MinusIcon className="w-4 h-4 text-foreground/70" aria-hidden="true" />
         </button>
         <button
+          type="button"
           onClick={handleMaximize}
           className="w-11 h-full flex items-center justify-center hover:bg-muted transition-colors"
-          title={isMaximized ? t('common.restore') : t('common.maximize')}
+          aria-label={
+            isMaximized
+              ? t('common.restore', 'Restore')
+              : t('common.maximize', 'Maximize')
+          }
+          title={
+            isMaximized
+              ? t('common.restore', 'Restore')
+              : t('common.maximize', 'Maximize')
+          }
         >
-          <SquareIcon className="w-3.5 h-3.5 text-foreground/70" />
+          <SquareIcon className="w-3.5 h-3.5 text-foreground/70" aria-hidden="true" />
         </button>
         <button
+          type="button"
           onClick={handleClose}
           className="w-11 h-full flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors"
-          title={t('common.close')}
+          aria-label={t('common.close', 'Close')}
+          title={t('common.close', 'Close')}
         >
-          <XIcon className="w-4 h-4 text-foreground/70 hover:text-white" />
+          <XIcon className="w-4 h-4 text-foreground/70 hover:text-white" aria-hidden="true" />
         </button>
       </div>
     </div>

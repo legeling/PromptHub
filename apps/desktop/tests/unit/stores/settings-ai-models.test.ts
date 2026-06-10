@@ -228,6 +228,115 @@ describe("settings ai model actions", () => {
     expect(useSettingsStore.getState().aiModels).toEqual([]);
   });
 
+  it("normalizes same-version persisted AI model and provider settings during hydration", async () => {
+    localStorage.setItem(
+      "prompthub-settings",
+      JSON.stringify({
+        state: {
+          aiApiProtocol: "unsupported",
+          aiProvider: "google",
+          aiApiUrl: "https://generativelanguage.googleapis.com/v1beta",
+          aiProviders: [
+            { id: "broken-provider", provider: "openai" },
+            {
+              id: "provider-gemini",
+              name: "  Team Gemini  ",
+              provider: "google",
+              apiProtocol: "unsupported",
+              apiKey: "gemini-key",
+              apiUrl: " https://generativelanguage.googleapis.com/v1beta ",
+            },
+          ],
+          aiModels: [
+            { id: "broken-model", provider: "openai", apiUrl: "https://api.openai.com/v1" },
+            {
+              id: "model-anthropic",
+              type: "chat",
+              provider: "custom",
+              apiProtocol: "unsupported",
+              apiKey: "anthropic-key",
+              apiUrl: "https://api.anthropic.com",
+              model: "claude-sonnet-4",
+              capabilities: { vision: true, embedding: true },
+            },
+          ],
+        },
+        version: 16,
+      }),
+    );
+
+    const { useSettingsStore } =
+      await import("../../../src/renderer/stores/settings.store");
+
+    expect(useSettingsStore.getState().aiApiProtocol).toBe("gemini");
+    expect(useSettingsStore.getState().aiProviders).toEqual([
+      expect.objectContaining({
+        id: "provider-gemini",
+        name: "Team Gemini",
+        provider: "google",
+        apiProtocol: "gemini",
+        apiKey: "gemini-key",
+        apiUrl: "https://generativelanguage.googleapis.com/v1beta",
+      }),
+    ]);
+    expect(useSettingsStore.getState().aiModels).toEqual([
+      expect.objectContaining({
+        id: "model-anthropic",
+        type: "chat",
+        provider: "custom",
+        apiProtocol: "anthropic",
+        apiKey: "anthropic-key",
+        apiUrl: "https://api.anthropic.com",
+        model: "claude-sonnet-4",
+        capabilities: {
+          chat: true,
+          vision: true,
+          imageGeneration: false,
+          reasoning: false,
+          toolUse: false,
+          webSearch: false,
+          embedding: true,
+          rerank: false,
+        },
+      }),
+    ]);
+  });
+
+  it("normalizes same-version persisted AI model route defaults during hydration", async () => {
+    localStorage.setItem(
+      "prompthub-settings",
+      JSON.stringify({
+        state: {
+          scenarioModelDefaults: {
+            quickAdd: "model-fast",
+            imageReverse: "model-vision",
+            unknownScenario: "model-unknown",
+            promptTest: "",
+            translation: 42,
+          },
+          modelRouteDefaults: {
+            invalidRoute: "model-invalid",
+            fastText: "",
+            visionText: 42,
+          },
+        },
+        version: 16,
+      }),
+    );
+
+    const { useSettingsStore } =
+      await import("../../../src/renderer/stores/settings.store");
+
+    expect(useSettingsStore.getState().scenarioModelDefaults).toEqual({
+      quickAdd: "model-fast",
+      imageReverse: "model-vision",
+    });
+    expect(useSettingsStore.getState().modelRouteDefaults).toEqual({
+      fastText: "model-fast",
+      visionText: "model-vision",
+    });
+  });
+
   it("keeps model records attached to their provider instance id", async () => {
     const { useSettingsStore } =
       await import("../../../src/renderer/stores/settings.store");
@@ -321,10 +430,106 @@ describe("settings ai model actions", () => {
     expect(useSettingsStore.getState().aiProviders).toEqual(
       mainSettings.aiProviders,
     );
-    expect(useSettingsStore.getState().aiModels).toEqual(mainSettings.aiModels);
+    expect(useSettingsStore.getState().aiModels).toEqual([
+      expect.objectContaining({
+        ...mainSettings.aiModels[0],
+        capabilities: {
+          chat: true,
+          vision: true,
+          imageGeneration: false,
+          reasoning: false,
+          toolUse: false,
+          webSearch: false,
+          embedding: false,
+          rerank: false,
+        },
+      }),
+    ]);
     expect(useSettingsStore.getState().modelRouteDefaults).toEqual({
       visionText: "model_cli_vision",
     });
     expect(useSettingsStore.getState().aiModel).toBe("gpt-4.1");
+  });
+
+  it("normalizes shared AI providers, models, and routes from main process settings", async () => {
+    const mainSettings = {
+      githubToken: "",
+      aiProvider: "google",
+      aiApiProtocol: "unsupported",
+      aiApiUrl: "https://generativelanguage.googleapis.com/v1beta",
+      aiProviders: [
+        { id: "broken-provider", provider: "openai" },
+        {
+          id: "provider-gemini",
+          name: "  Team Gemini  ",
+          provider: "google",
+          apiProtocol: "unsupported",
+          apiKey: "gemini-key",
+          apiUrl: " https://generativelanguage.googleapis.com/v1beta ",
+        },
+      ],
+      aiModels: [
+        { id: "broken-model", provider: "openai", apiUrl: "https://api.openai.com/v1" },
+        {
+          id: "model-gemini",
+          type: "chat",
+          provider: "google",
+          apiProtocol: "unsupported",
+          apiKey: "gemini-key",
+          apiUrl: " https://generativelanguage.googleapis.com/v1beta ",
+          model: " gemini-2.5-pro ",
+          capabilities: { vision: true, embedding: true },
+        },
+      ],
+      modelRouteDefaults: {
+        visionText: "model-gemini",
+        invalidRoute: "model-broken",
+      },
+    };
+    window.api = {
+      ...(window.api ?? {}),
+      settings: {
+        get: vi.fn().mockResolvedValue(mainSettings),
+        set: vi.fn().mockResolvedValue(undefined),
+      },
+    };
+    const { useSettingsStore, loadSettingsFromMainProcess } =
+      await import("../../../src/renderer/stores/settings.store");
+
+    await loadSettingsFromMainProcess();
+
+    expect(useSettingsStore.getState().aiApiProtocol).toBe("gemini");
+    expect(useSettingsStore.getState().aiProviders).toEqual([
+      expect.objectContaining({
+        id: "provider-gemini",
+        name: "Team Gemini",
+        provider: "google",
+        apiProtocol: "gemini",
+        apiUrl: "https://generativelanguage.googleapis.com/v1beta",
+      }),
+    ]);
+    expect(useSettingsStore.getState().aiModels).toEqual([
+      expect.objectContaining({
+        id: "model-gemini",
+        providerId: "provider-gemini",
+        provider: "google",
+        apiProtocol: "gemini",
+        apiUrl: "https://generativelanguage.googleapis.com/v1beta",
+        model: "gemini-2.5-pro",
+        capabilities: {
+          chat: true,
+          vision: true,
+          imageGeneration: false,
+          reasoning: false,
+          toolUse: false,
+          webSearch: false,
+          embedding: true,
+          rerank: false,
+        },
+      }),
+    ]);
+    expect(useSettingsStore.getState().modelRouteDefaults).toEqual({
+      visionText: "model-gemini",
+    });
   });
 });

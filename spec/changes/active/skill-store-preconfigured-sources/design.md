@@ -104,12 +104,57 @@ the committed value for index-first remote search inside the selected skills.sh
 filter. ClawHub uses its public `/api/v1/search?q=...` endpoint for committed
 queries and keeps `/api/v1/skills?sort=recommended` only for browse mode.
 
-The current skills.sh and ClawHub integrations install the `SKILL.md` content
-exposed by each public store entry. They do not yet download a full multi-file
-skill package with scripts/assets from the upstream repository. That is an
-explicit capability gap for script-backed skills and needs a separate package
-materialization design instead of being inferred from the single-file detail
-parser.
+## Multi-File Package Materialization
+
+Skill Store installation must treat public skills as directory packages when a
+trusted package source exists. The install pipeline uses this precedence:
+
+1. `package_url`: download the remote archive, extract it into a temporary
+   directory, locate a contained `SKILL.md`, then copy that full directory into
+   the managed local repo.
+2. Git package location: when `source_url` is a supported Git repository and the
+   entry provides `source_directory` / `canonical_skill_path` or a discoverable
+   `SKILL.md`, clone the repo and copy the resolved skill directory.
+3. Single-file fallback: only write `SKILL.md` when neither a package archive nor
+   a resolvable Git package location is available.
+
+This keeps script-backed skills from silently degrading to a markdown-only
+install when the registry exposes a package artifact. ClawHub entries currently
+provide `package_url` through `https://clawhub.ai/api/v1/download?slug=...`, so
+ClawHub install/update flows must use the ZIP path before any single-file
+fallback. skills.sh entries usually expose a GitHub repository; entries under
+the standard `owner/skills/<skillName>` layout provide `source_directory` and
+`canonical_skill_path`, while non-standard layouts deliberately let the main
+process locate the package after cloning instead of guessing a renderer-side
+path.
+
+Archive extraction is a main-process responsibility. The renderer may carry
+`package_url` metadata, but it must not parse or trust archive contents. The
+main process must:
+
+- fetch archive bytes through the existing remote-fetch boundary and byte cap;
+- reject path traversal, absolute paths, ignored skill repo entries, and entries
+  that resolve outside the temporary extraction directory;
+- copy only a directory that contains `SKILL.md`;
+- compute and persist `directory_fingerprint` after the managed repo is written;
+- remove temporary extraction directories on success or failure.
+
+Failure behavior must be atomic from the user's perspective. If a registry skill
+row is created but package materialization fails for a package-backed source,
+the created DB row must be rolled back instead of leaving an installed-looking
+skill with only stale summary content. Update flows use the same package
+materialization path and then `syncFromRepo()` so DB content, version snapshots,
+and local files are derived from the actual managed repo.
+
+The installed content hash remains based on resolved `SKILL.md` content, while
+`directory_fingerprint` records the full package tree. This lets PromptHub keep
+existing update checks for text changes and separately detect local package
+drift across scripts/assets.
+
+Safety scan remains pre-install and uses the exposed `SKILL.md` plus source
+metadata. Full archive safety review is a separate hardening layer; until that
+exists, package extraction must rely on strict path boundaries and the existing
+managed repo ignore rules.
 
 For non-`All` skills.sh filters, the visible total is the parsed result count
 from that source page. PromptHub must not reuse any global `totalSkills` value

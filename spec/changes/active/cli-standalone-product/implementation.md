@@ -115,6 +115,10 @@
   - CLI JSON 输出会遮蔽 `apiKey`，磁盘配置保留真实 key；删除模型只清理该模型的 route 引用，不删除 provider。
   - desktop `settings:get` 会读取 shared AI config 并合并到 settings payload；renderer `loadSettingsFromMainProcess()` 会把 providers / models / modelRouteDefaults 应用到 settings store。
   - README / 多语言 README 的 CLI 命令表同步加入 `ai` 资源。
+- 修正 `skill scan` 表格输出对部分 safety report 的容错：
+  - 输出层不再直接访问 `skill.safetyReport.findings.length`。
+  - 当扫描结果携带 legacy/partial safety report 且缺少 `findings` 数组时，表格输出把 findings 计为 `0`。
+  - `apps/cli/tests/run.test.ts` 新增回归，注入缺失 `findings` 的 safety report，覆盖 `prompthub --output table skill scan <path>` 不应以内部错误退出。
 
 ## Verification
 
@@ -158,6 +162,14 @@
 - `pnpm --filter @prompthub/cli typecheck`
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/stores/settings-ai-models.test.ts`
 - `pnpm --filter @prompthub/desktop typecheck`
+- skill scan partial safety report 修复后重新运行：
+- `pnpm --filter @prompthub/cli test -- tests/run.test.ts --run -t "renders skill scan table output"`
+- `pnpm --filter @prompthub/cli typecheck`
+- `pnpm --filter @prompthub/cli lint`
+- `pnpm --filter @prompthub/cli build`
+- `pnpm --filter @prompthub/cli test -- tests/run.test.ts --run -t "lists, reads, restores, and deletes rule versions"`（排查默认完整单文件运行中 5s timeout 夹带失败）
+- `pnpm --filter @prompthub/cli test -- tests/run.test.ts --run -t "rewrites a rule through explicit AI config"`（排查默认完整单文件运行中 timeout 后的夹带失败）
+- `pnpm --filter @prompthub/cli test -- tests/run.test.ts --run --testTimeout 10000`（41 条通过）
 
 说明：`pnpm --filter @prompthub/desktop test -- --run` 当前仍有与本次 CLI 拆分无关的历史失败项，本次改动已对 desktop 受影响范围做 lint/typecheck/定点 UI 测试与 build 验证。
 

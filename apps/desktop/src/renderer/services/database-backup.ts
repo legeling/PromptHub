@@ -330,12 +330,22 @@ function triggerBlobDownload(blob: Blob, fileName: string): void {
   a.download = fileName;
   a.rel = "noopener";
   document.body.appendChild(a);
-  a.click();
 
-  setTimeout(() => {
-    document.body.removeChild(a);
+  const cleanup = () => {
+    if (a.isConnected) {
+      document.body.removeChild(a);
+    }
     URL.revokeObjectURL(url);
-  }, 1000);
+  };
+
+  try {
+    a.click();
+  } catch (error) {
+    cleanup();
+    throw error;
+  }
+
+  setTimeout(cleanup, 1000);
 }
 
 async function gunzipToText(blob: Blob): Promise<string> {

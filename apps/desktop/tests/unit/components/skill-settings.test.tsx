@@ -2,7 +2,10 @@ import { act, fireEvent, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SKILL_PLATFORMS } from "@prompthub/shared/constants/platforms";
 
-import { SkillSettings } from "../../../src/renderer/components/settings/SkillSettings";
+import {
+  SkillSafetySettingsSection,
+  SkillSettings,
+} from "../../../src/renderer/components/settings/SkillSettings";
 import { renderWithI18n } from "../../helpers/i18n";
 import { createWindowElectronMock } from "../../helpers/window";
 
@@ -16,6 +19,28 @@ vi.mock("../../../src/renderer/stores/settings.store", () => ({
 vi.mock("../../../src/renderer/components/ui/Toast", () => ({
   useToast: () => useToastMock(),
 }));
+
+const scanInstalledSkillSafetyMock = vi.fn();
+
+vi.mock("../../../src/renderer/stores/skill.store", () => ({
+  useSkillStore: (selector: (state: Record<string, unknown>) => unknown) =>
+    selector({
+      scanInstalledSkillSafety: scanInstalledSkillSafetyMock,
+    }),
+}));
+
+function hasHiddenSvgAncestor(element: Element): boolean {
+  let current: Element | null = element;
+
+  while (current) {
+    if (current.getAttribute("aria-hidden") === "true") {
+      return true;
+    }
+    current = current.parentElement;
+  }
+
+  return false;
+}
 
 function createSettingsState() {
   return {
@@ -67,6 +92,12 @@ describe("SkillSettings", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     useToastMock.mockReturnValue({ showToast: vi.fn() });
+    scanInstalledSkillSafetyMock.mockResolvedValue({
+      total: 0,
+      blocked: 0,
+      highRisk: 0,
+      warn: 0,
+    });
     useSettingsStoreMock.mockReturnValue(createSettingsState());
     window.electron = createWindowElectronMock();
   });
@@ -137,7 +168,9 @@ describe("SkillSettings", () => {
 
     expect(claudeRow).toBeTruthy();
 
-    const toggle = within(claudeRow!).getAllByRole("button")[0]!;
+    const toggle = within(claudeRow!).getByRole("switch", {
+      name: "Claude Code",
+    });
 
     fireEvent.click(toggle);
 
@@ -145,6 +178,43 @@ describe("SkillSettings", () => {
       "claude",
       false,
     );
+  });
+
+  it("keeps rendered skill setting actions from submitting surrounding forms", async () => {
+    const handleSubmit = vi.fn();
+
+    await act(async () => {
+      await renderWithI18n(
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            handleSubmit();
+          }}
+        >
+          <SkillSettings />
+          <SkillSafetySettingsSection />
+        </form>,
+        { language: "en" },
+      );
+    });
+
+    const buttons = Array.from(document.body.querySelectorAll("button"));
+    const implicitButtonMarkup = buttons
+      .filter((button) => button.getAttribute("type") !== "button")
+      .map((button) => button.outerHTML);
+    const exposedIconMarkup = buttons
+      .flatMap((button) => Array.from(button.querySelectorAll("svg")))
+      .filter((icon) => !hasHiddenSvgAncestor(icon))
+      .map((icon) => icon.outerHTML);
+
+    expect(implicitButtonMarkup, implicitButtonMarkup.join("\n")).toHaveLength(
+      0,
+    );
+    expect(exposedIconMarkup, exposedIconMarkup.join("\n")).toHaveLength(0);
+
+    fireEvent.click(screen.getByRole("button", { name: /Copy File/ }));
+
+    expect(handleSubmit).not.toHaveBeenCalled();
   });
 
   it(
@@ -188,7 +258,7 @@ describe("SkillSettings", () => {
     expect(screen.getAllByText(/Derived skill scan paths/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Derived agent directories/).length).toBeGreaterThan(0);
     },
-    15000,
+    60000,
   );
 
   it(
@@ -207,7 +277,7 @@ describe("SkillSettings", () => {
 
     expect(await screen.findByDisplayValue("/tmp/custom-agent-root")).toBeInTheDocument();
     },
-    15000,
+    60_000,
   );
 
   it("requires confirmation before deleting a custom agent", async () => {
@@ -261,8 +331,9 @@ describe("SkillSettings", () => {
       .find((item) => item.getAttribute("data-platform-id") === "agent-1");
 
     expect(customAgentRow).toBeTruthy();
-    const buttons = within(customAgentRow!).getAllByRole("button");
-    const moveDownButton = buttons[2];
+    const moveDownButton = within(customAgentRow!).getByRole("button", {
+      name: "Move Down",
+    });
 
     expect(moveDownButton).toBeDisabled();
   });

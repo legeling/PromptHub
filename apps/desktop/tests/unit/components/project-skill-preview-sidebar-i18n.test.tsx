@@ -1,4 +1,5 @@
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import type { Skill } from "@prompthub/shared/types";
@@ -69,5 +70,104 @@ describe("ProjectSkillPreviewSidebar i18n", () => {
         name: "Deploy demo-skill to Project Folders",
       }),
     ).not.toBeInTheDocument();
+  });
+
+  it("allows every project deployment target to be deselected", async () => {
+    const user = userEvent.setup();
+    const i18n = await createTestI18n("en");
+
+    await renderWithI18n(
+      <ProjectSkillPreviewSidebar
+        deployTargets={[
+          "/tmp/demo/.agents/skills",
+          "/tmp/demo/custom-agent-skills",
+        ]}
+        isDeploying={false}
+        isImporting={false}
+        isImportAvailable={true}
+        onAddDeployTarget={vi.fn()}
+        onDeploy={vi.fn()}
+        onImport={vi.fn()}
+        selectedSkill={skill}
+        sourcePath="/tmp/demo/.agents/skills/demo-skill"
+        t={i18n.t.bind(i18n)}
+      />,
+      { language: "en" },
+    );
+
+    const defaultTarget = screen.getByText("Default .agents target").closest("button");
+    const customTarget = screen.getByText("Custom target").closest("button");
+    const deployButton = screen.getByRole("button", {
+      name: "Deploy demo-skill to Project Folders",
+    });
+
+    expect(defaultTarget).toHaveAttribute("aria-pressed", "true");
+    expect(customTarget).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("2 selected")).toBeInTheDocument();
+    expect(deployButton).toBeEnabled();
+
+    await user.click(defaultTarget as HTMLButtonElement);
+    expect(defaultTarget).toHaveAttribute("aria-pressed", "false");
+    expect(customTarget).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("1 selected")).toBeInTheDocument();
+
+    await user.click(customTarget as HTMLButtonElement);
+    expect(defaultTarget).toHaveAttribute("aria-pressed", "false");
+    expect(customTarget).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByText("0 selected")).toBeInTheDocument();
+    expect(deployButton).toBeDisabled();
+  });
+
+  it("selects newly added deploy targets without reselecting user-cleared targets", async () => {
+    const user = userEvent.setup();
+    const i18n = await createTestI18n("en");
+    const baseProps = {
+      isDeploying: false,
+      isImporting: false,
+      isImportAvailable: true,
+      onAddDeployTarget: vi.fn(),
+      onDeploy: vi.fn(),
+      onImport: vi.fn(),
+      selectedSkill: skill,
+      sourcePath: "/tmp/demo/.agents/skills/demo-skill",
+      t: i18n.t.bind(i18n),
+    };
+
+    const { rerender } = await renderWithI18n(
+      <ProjectSkillPreviewSidebar
+        {...baseProps}
+        deployTargets={[
+          "/tmp/demo/.agents/skills",
+          "/tmp/demo/custom-agent-skills",
+        ]}
+      />,
+      { language: "en" },
+    );
+
+    const customTarget = screen.getByText("Custom target").closest("button");
+    await user.click(customTarget as HTMLButtonElement);
+
+    expect(customTarget).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByText("1 selected")).toBeInTheDocument();
+
+    rerender(
+      <ProjectSkillPreviewSidebar
+        {...baseProps}
+        deployTargets={[
+          "/tmp/demo/.agents/skills",
+          "/tmp/demo/custom-agent-skills",
+          "/tmp/demo/new-agent-skills",
+        ]}
+      />,
+    );
+
+    const targetButtons = screen.getAllByRole("button", {
+      name: /target/,
+    });
+
+    expect(targetButtons[0]).toHaveAttribute("aria-pressed", "true");
+    expect(targetButtons[1]).toHaveAttribute("aria-pressed", "false");
+    expect(targetButtons[2]).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("2 selected")).toBeInTheDocument();
   });
 });

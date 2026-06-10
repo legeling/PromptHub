@@ -253,7 +253,13 @@ function SimpleDialog({
   if (!isOpen) return null;
   return createPortal(
     <div className="skill-file-editor__dialog-overlay">
-      <div className="skill-file-editor__dialog-backdrop" onClick={onClose} />
+      <div
+        data-testid="skill-file-editor-dialog-backdrop"
+        role="presentation"
+        aria-hidden="true"
+        className="skill-file-editor__dialog-backdrop"
+        onClick={onClose}
+      />
       <div className="skill-file-editor__dialog">
         <h3>{title}</h3>
         {children}
@@ -936,6 +942,7 @@ export function SkillFileEditor({
             }}
           >
             <ChevronRightIcon
+              aria-hidden="true"
               className="skill-file-editor__tree-item-icon"
               style={{
                 transform: isExpanded ? "rotate(90deg)" : "none",
@@ -953,14 +960,9 @@ export function SkillFileEditor({
     }
 
     return (
-      <button
+      <div
         key={node.path}
-        className={`skill-file-editor__tree-item ${depthClass} ${
-          isActive ? "skill-file-editor__tree-item--active" : ""
-        }`}
-        onClick={() => {
-          requestSelectFile(node.path);
-        }}
+        className="skill-file-editor__tree-file-row"
         onContextMenu={(event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -972,28 +974,34 @@ export function SkillFileEditor({
           });
         }}
       >
-        {getFileIcon(node.name, false, false)}
-        <span className="skill-file-editor__tree-item-name">{node.name}</span>
-        {modified && <span className="skill-file-editor__tree-item-dot" />}
-        <div
-          role="button"
-          tabIndex={0}
+        <button
+          type="button"
+          className={`skill-file-editor__tree-item ${depthClass} ${
+            isActive ? "skill-file-editor__tree-item--active" : ""
+          }`}
+          onClick={() => {
+            requestSelectFile(node.path);
+          }}
+        >
+          {getFileIcon(node.name, false, false)}
+          <span className="skill-file-editor__tree-item-name">{node.name}</span>
+          {modified && <span className="skill-file-editor__tree-item-dot" />}
+        </button>
+        <button
+          type="button"
           className="skill-file-editor__tree-item-delete"
-          onClick={(e) => {
-            e.stopPropagation();
+          onClick={() => {
             setDeleteDialogFile(node.path);
           }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.stopPropagation();
-              setDeleteDialogFile(node.path);
-            }
-          }}
           title={t("skill.deleteFile", "Delete File")}
+          aria-label={t("skill.deleteFile", "Delete File")}
         >
-          <Trash2Icon style={{ width: "0.75rem", height: "0.75rem" }} />
-        </div>
-      </button>
+          <Trash2Icon
+            aria-hidden="true"
+            style={{ width: "0.75rem", height: "0.75rem" }}
+          />
+        </button>
+      </div>
     );
   };
 
@@ -1009,6 +1017,7 @@ export function SkillFileEditor({
             </span>
             <div className="skill-file-editor__tree-actions">
               <button
+                type="button"
                 className="skill-file-editor__tree-btn"
                 onClick={() => {
                   setDialogInput("");
@@ -1018,10 +1027,12 @@ export function SkillFileEditor({
                 title={t("skill.newFile", "New File")}
               >
                 <FilePlusIcon
+                  aria-hidden="true"
                   style={{ width: "0.875rem", height: "0.875rem" }}
                 />
               </button>
               <button
+                type="button"
                 className="skill-file-editor__tree-btn"
                 onClick={() => {
                   setDialogInput("");
@@ -1031,6 +1042,7 @@ export function SkillFileEditor({
                 title={t("skill.newFolder", "New Folder")}
               >
                 <FolderPlusIcon
+                  aria-hidden="true"
                   style={{ width: "0.875rem", height: "0.875rem" }}
                 />
               </button>
@@ -1072,10 +1084,12 @@ export function SkillFileEditor({
 
           <div className="skill-file-editor__tree-footer">
             <button
+              type="button"
               className="skill-file-editor__open-explorer-btn"
               onClick={handleOpenInExplorer}
             >
               <ExternalLinkIcon
+                aria-hidden="true"
                 style={{ width: "0.75rem", height: "0.75rem" }}
               />
               {t("skill.openInExplorer", "Open in File Manager")}
@@ -1123,6 +1137,7 @@ export function SkillFileEditor({
                         aria-label={t("skill.zoomOut", "Zoom out")}
                       >
                         <MinusIcon
+                          aria-hidden="true"
                           style={{ width: "0.875rem", height: "0.875rem" }}
                         />
                       </button>
@@ -1135,6 +1150,7 @@ export function SkillFileEditor({
                         aria-label={t("skill.resetZoom", "Reset zoom")}
                       >
                         <Maximize2Icon
+                          aria-hidden="true"
                           style={{ width: "0.875rem", height: "0.875rem" }}
                         />
                         <span>{Math.round(resourceZoom * 100)}%</span>
@@ -1152,6 +1168,7 @@ export function SkillFileEditor({
                         aria-label={t("skill.zoomIn", "Zoom in")}
                       >
                         <PlusIcon
+                          aria-hidden="true"
                           style={{ width: "0.875rem", height: "0.875rem" }}
                         />
                       </button>
@@ -1182,11 +1199,13 @@ export function SkillFileEditor({
                     </div>
                   ) : !isEditingFileContent ? (
                     <button
+                      type="button"
                       className="skill-file-editor__editor-tab"
                       onClick={() => setIsEditingFileContent(true)}
                       title={t("prompt.edit", "Edit")}
                     >
                       <PencilIcon
+                        aria-hidden="true"
                         style={{ width: "0.875rem", height: "0.875rem" }}
                       />
                       <span>{t("prompt.edit", "Edit")}</span>
@@ -1200,6 +1219,7 @@ export function SkillFileEditor({
                         {t("skill.editing", "Editing")}
                       </div>
                       <button
+                        type="button"
                         className="skill-file-editor__editor-tab skill-file-editor__editor-tab--icon"
                         onClick={discardCurrentFileChanges}
                         disabled={!isModified(selectedFile)}
@@ -1213,22 +1233,26 @@ export function SkillFileEditor({
                         )}
                       >
                         <RotateCcwIcon
+                          aria-hidden="true"
                           style={{ width: "0.875rem", height: "0.875rem" }}
                         />
                       </button>
                       <button
+                        type="button"
                         className="skill-file-editor__editor-tab skill-file-editor__editor-tab--icon"
                         onClick={cancelCurrentFileEditing}
                         title={t("common.cancel", "Cancel")}
                         aria-label={t("common.cancel", "Cancel")}
                       >
                         <XIcon
+                          aria-hidden="true"
                           style={{ width: "0.875rem", height: "0.875rem" }}
                         />
                       </button>
                     </>
                   )}
                   <button
+                    type="button"
                     className="skill-file-editor__editor-tab skill-file-editor__editor-tab--icon"
                     onClick={saveCurrentFile}
                     disabled={isSaving || !isModified(selectedFile)}
@@ -1237,6 +1261,7 @@ export function SkillFileEditor({
                   >
                     {isSaving ? (
                       <Loader2Icon
+                        aria-hidden="true"
                         style={{
                           width: "0.875rem",
                           height: "0.875rem",
@@ -1245,6 +1270,7 @@ export function SkillFileEditor({
                       />
                     ) : (
                       <SaveIcon
+                        aria-hidden="true"
                         style={{ width: "0.875rem", height: "0.875rem" }}
                       />
                     )}
@@ -1316,6 +1342,7 @@ export function SkillFileEditor({
         <input
           type="text"
           className="skill-file-editor__dialog-input"
+          aria-label={t("skill.enterFileName", "Enter file name")}
           value={dialogInput}
           onChange={(e) => setDialogInput(e.target.value)}
           onKeyDown={(e) => {
@@ -1330,12 +1357,14 @@ export function SkillFileEditor({
         </p>
         <div className="skill-file-editor__dialog-actions">
           <button
+            type="button"
             className="skill-file-editor__dialog-btn skill-file-editor__dialog-btn--cancel"
             onClick={() => setNewFileDialogOpen(false)}
           >
             {t("common.cancel", "Cancel")}
           </button>
           <button
+            type="button"
             className="skill-file-editor__dialog-btn skill-file-editor__dialog-btn--primary"
             onClick={handleNewFile}
             disabled={!dialogInput.trim()}
@@ -1354,6 +1383,7 @@ export function SkillFileEditor({
         <input
           type="text"
           className="skill-file-editor__dialog-input"
+          aria-label={t("skill.enterFolderName", "Enter folder name")}
           value={dialogInput}
           onChange={(e) => setDialogInput(e.target.value)}
           onKeyDown={(e) => {
@@ -1365,12 +1395,14 @@ export function SkillFileEditor({
         />
         <div className="skill-file-editor__dialog-actions">
           <button
+            type="button"
             className="skill-file-editor__dialog-btn skill-file-editor__dialog-btn--cancel"
             onClick={() => setNewFolderDialogOpen(false)}
           >
             {t("common.cancel", "Cancel")}
           </button>
           <button
+            type="button"
             className="skill-file-editor__dialog-btn skill-file-editor__dialog-btn--primary"
             onClick={handleNewFolder}
             disabled={!dialogInput.trim()}
@@ -1411,12 +1443,14 @@ export function SkillFileEditor({
         </p>
         <div className="skill-file-editor__dialog-actions">
           <button
+            type="button"
             className="skill-file-editor__dialog-btn skill-file-editor__dialog-btn--cancel"
             onClick={() => setDeleteDialogFile(null)}
           >
             {t("common.cancel", "Cancel")}
           </button>
           <button
+            type="button"
             className="skill-file-editor__dialog-btn skill-file-editor__dialog-btn--destructive"
             onClick={handleDeleteFile}
           >
@@ -1433,6 +1467,7 @@ export function SkillFileEditor({
         <input
           type="text"
           className="skill-file-editor__dialog-input"
+          aria-label={t("folder.rename", "重命名")}
           value={dialogInput}
           onChange={(e) => setDialogInput(e.target.value)}
           onKeyDown={(e) => {
@@ -1444,12 +1479,14 @@ export function SkillFileEditor({
         />
         <div className="skill-file-editor__dialog-actions">
           <button
+            type="button"
             className="skill-file-editor__dialog-btn skill-file-editor__dialog-btn--cancel"
             onClick={() => setRenameDialogPath(null)}
           >
             {t("common.cancel", "Cancel")}
           </button>
           <button
+            type="button"
             className="skill-file-editor__dialog-btn skill-file-editor__dialog-btn--primary"
             onClick={handleRenamePath}
             disabled={!dialogInput.trim()}
@@ -1467,6 +1504,7 @@ export function SkillFileEditor({
           {contextMenu.path && !contextMenu.isDirectory && (
             <>
               <button
+                type="button"
                 className="skill-file-editor__context-item"
                 onClick={() => {
                   const currentName =
@@ -1478,22 +1516,24 @@ export function SkillFileEditor({
                   setContextMenu(null);
                 }}
               >
-                <PencilIcon className="w-4 h-4" />
+                <PencilIcon aria-hidden="true" className="w-4 h-4" />
                 {t("folder.rename", "重命名")}
               </button>
               <button
+                type="button"
                 className="skill-file-editor__context-item skill-file-editor__context-item--danger"
                 onClick={() => {
                   setDeleteDialogFile(contextMenu.path);
                   setContextMenu(null);
                 }}
               >
-                <Trash2Icon className="w-4 h-4" />
+                <Trash2Icon aria-hidden="true" className="w-4 h-4" />
                 {t("common.delete", "Delete")}
               </button>
             </>
           )}
           <button
+            type="button"
             className="skill-file-editor__context-item"
             onClick={() => {
               setDialogInput("");
@@ -1506,10 +1546,11 @@ export function SkillFileEditor({
               setContextMenu(null);
             }}
           >
-            <FilePlusIcon className="w-4 h-4" />
+            <FilePlusIcon aria-hidden="true" className="w-4 h-4" />
             {t("skill.newFile", "New File")}
           </button>
           <button
+            type="button"
             className="skill-file-editor__context-item"
             onClick={() => {
               setDialogInput("");
@@ -1522,12 +1563,13 @@ export function SkillFileEditor({
               setContextMenu(null);
             }}
           >
-            <FolderPlusIcon className="w-4 h-4" />
+            <FolderPlusIcon aria-hidden="true" className="w-4 h-4" />
             {t("skill.newFolder", "New Folder")}
           </button>
           {contextMenu.path && contextMenu.isDirectory && (
             <>
               <button
+                type="button"
                 className="skill-file-editor__context-item"
                 onClick={() => {
                   const currentName =
@@ -1539,17 +1581,18 @@ export function SkillFileEditor({
                   setContextMenu(null);
                 }}
               >
-                <PencilIcon className="w-4 h-4" />
+                <PencilIcon aria-hidden="true" className="w-4 h-4" />
                 {t("folder.rename", "重命名")}
               </button>
               <button
+                type="button"
                 className="skill-file-editor__context-item skill-file-editor__context-item--danger"
                 onClick={() => {
                   setDeleteDialogFile(contextMenu.path);
                   setContextMenu(null);
                 }}
               >
-                <Trash2Icon className="w-4 h-4" />
+                <Trash2Icon aria-hidden="true" className="w-4 h-4" />
                 {t("common.delete", "Delete")}
               </button>
             </>
@@ -1595,6 +1638,9 @@ export function SkillFileEditor({
     <div className="fixed inset-0 z-[100] flex items-center justify-center">
       {/* Backdrop */}
       <div
+        data-testid="skill-file-editor-backdrop"
+        role="presentation"
+        aria-hidden="true"
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={() => {
           runWithUnsavedChangesCheck(() => {
@@ -1626,6 +1672,8 @@ export function SkillFileEditor({
               </span>
             )}
             <button
+              type="button"
+              aria-label={t("common.close", "Close")}
               onClick={() => {
                 runWithUnsavedChangesCheck(() => {
                   onClose?.();
@@ -1633,7 +1681,7 @@ export function SkillFileEditor({
               }}
               className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
             >
-              <XIcon className="w-4 h-4" />
+              <XIcon aria-hidden="true" className="w-4 h-4" />
             </button>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ArrowRightIcon,
@@ -56,6 +56,7 @@ export function SkillBatchDeployDialog({
   );
   const [loadingPlatforms, setLoadingPlatforms] = useState(true);
   const [isDeploying, setIsDeploying] = useState(false);
+  const deployInFlightRef = useRef(false);
   const [lastFailures, setLastFailures] = useState<
     Array<{ skillId: string; platformId: string; reason: string }>
   >([]);
@@ -142,10 +143,16 @@ export function SkillBatchDeployDialog({
   };
 
   const handleDeploy = async () => {
-    if (skills.length === 0 || selectedPlatforms.size === 0) {
+    if (
+      skills.length === 0 ||
+      selectedPlatforms.size === 0 ||
+      isDeploying ||
+      deployInFlightRef.current
+    ) {
       return;
     }
 
+    deployInFlightRef.current = true;
     setIsDeploying(true);
     setLastFailures([]);
     try {
@@ -229,6 +236,7 @@ export function SkillBatchDeployDialog({
         "error",
       );
     } finally {
+      deployInFlightRef.current = false;
       setIsDeploying(false);
       setProgress(null);
     }
@@ -240,7 +248,7 @@ export function SkillBatchDeployDialog({
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <div>
             <div className="flex items-center gap-2">
-              <SendIcon className="h-5 w-5 text-primary" />
+              <SendIcon aria-hidden="true" className="h-5 w-5 text-primary" />
               <h2 className="text-lg font-semibold">
                 {t("skill.batchDeploy", "Batch Deploy")}
               </h2>
@@ -253,10 +261,12 @@ export function SkillBatchDeployDialog({
             </p>
           </div>
           <button
+            type="button"
+            aria-label={t("common.close", "Close")}
             onClick={onClose}
             className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
-            <XIcon className="h-5 w-5" />
+            <XIcon aria-hidden="true" className="h-5 w-5" />
           </button>
         </div>
 
@@ -282,6 +292,7 @@ export function SkillBatchDeployDialog({
                   <button
                     key={mode}
                     type="button"
+                    aria-pressed={actionMode === mode}
                     onClick={() => setActionMode(mode)}
                     className={`rounded-xl border px-4 py-3 text-left transition-colors ${
                       actionMode === mode
@@ -307,6 +318,7 @@ export function SkillBatchDeployDialog({
                     <button
                       key={mode}
                       type="button"
+                      aria-pressed={installMode === mode}
                       onClick={() => setInstallMode(mode)}
                       className={`rounded-xl border px-4 py-3 text-left transition-colors ${
                         installMode === mode
@@ -359,6 +371,7 @@ export function SkillBatchDeployDialog({
                   ) : null}
                   {availablePlatforms.length > 0 ? (
                     <button
+                      type="button"
                       onClick={handleToggleAll}
                       className="text-xs font-medium text-primary hover:underline"
                     >
@@ -372,7 +385,10 @@ export function SkillBatchDeployDialog({
 
               {loadingPlatforms ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2Icon className="h-4 w-4 animate-spin" />
+                  <Loader2Icon
+                    aria-hidden="true"
+                    className="h-4 w-4 animate-spin"
+                  />
                   {t("common.loading", "Loading...")}
                 </div>
               ) : availablePlatforms.length === 0 ? (
@@ -402,6 +418,7 @@ export function SkillBatchDeployDialog({
                         <button
                           key={platform.id}
                           type="button"
+                          aria-pressed={isSelected}
                           onClick={() => togglePlatform(platform.id)}
                           className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all ${
                             isSelected
@@ -409,8 +426,15 @@ export function SkillBatchDeployDialog({
                               : "border-border app-wallpaper-surface hover:border-primary/25"
                           }`}
                         >
-                          <div className="rounded-xl bg-accent p-2">
-                            <PlatformIcon platformId={platform.id} size={20} />
+                          <div
+                            aria-hidden="true"
+                            className="rounded-xl bg-accent p-2"
+                          >
+                            <PlatformIcon
+                              aria-hidden="true"
+                              platformId={platform.id}
+                              size={20}
+                            />
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="text-sm font-medium">
@@ -421,9 +445,15 @@ export function SkillBatchDeployDialog({
                             </div>
                           </div>
                           {isSelected ? (
-                            <CheckSquareIcon className="h-4 w-4 text-primary" />
+                            <CheckSquareIcon
+                              aria-hidden="true"
+                              className="h-4 w-4 text-primary"
+                            />
                           ) : (
-                            <SquareIcon className="h-4 w-4 text-muted-foreground" />
+                            <SquareIcon
+                              aria-hidden="true"
+                              className="h-4 w-4 text-muted-foreground"
+                            />
                           )}
                         </button>
                       );
@@ -512,7 +542,10 @@ export function SkillBatchDeployDialog({
                           "Batch Uninstall from Platforms",
                         )}
                   </span>
-                  <ArrowRightIcon className="h-4 w-4 text-muted-foreground" />
+                  <ArrowRightIcon
+                    aria-hidden="true"
+                    className="h-4 w-4 text-muted-foreground"
+                  />
                   <span className="truncate">
                     {selectedPlatforms.size > 0
                       ? availablePlatforms
@@ -529,7 +562,10 @@ export function SkillBatchDeployDialog({
               {progress ? (
                 <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-3">
                   <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                    <RefreshCwIcon className="h-4 w-4 animate-spin text-primary" />
+                    <RefreshCwIcon
+                      aria-hidden="true"
+                      className="h-4 w-4 animate-spin text-primary"
+                    />
                     {t("skill.syncingProgress", {
                       current: progress.current,
                       total: progress.total,
@@ -574,6 +610,7 @@ export function SkillBatchDeployDialog({
 
         <div className="flex items-center justify-end gap-3 border-t border-border px-6 py-4">
           <button
+            type="button"
             onClick={onClose}
             disabled={isDeploying}
             className="rounded-xl border border-border bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-muted disabled:opacity-50"
@@ -581,6 +618,7 @@ export function SkillBatchDeployDialog({
             {t("common.cancel", "Cancel")}
           </button>
           <button
+            type="button"
             onClick={handleDeploy}
             disabled={
               isDeploying ||
@@ -592,12 +630,15 @@ export function SkillBatchDeployDialog({
           >
             {isDeploying ? (
               <>
-                <Loader2Icon className="h-4 w-4 animate-spin" />
+                <Loader2Icon
+                  aria-hidden="true"
+                  className="h-4 w-4 animate-spin"
+                />
                 {t("skill.syncing", "Syncing")}
               </>
             ) : (
               <>
-                <SendIcon className="h-4 w-4" />
+                <SendIcon aria-hidden="true" className="h-4 w-4" />
                 {actionMode === "deploy"
                   ? t("skill.batchDeploy", "Batch Deploy")
                   : t("skill.batchUndeploy", "Batch Uninstall from Platforms")}

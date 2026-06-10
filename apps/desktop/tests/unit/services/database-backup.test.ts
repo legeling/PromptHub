@@ -151,6 +151,66 @@ describe("database-backup restore", () => {
     vi.useRealTimers();
   });
 
+  it("cleans up backup download URLs when the browser click fails", async () => {
+    const originalCreateElement = document.createElement.bind(document);
+    const originalCreateObjectURL = URL.createObjectURL;
+    const originalRevokeObjectURL = URL.revokeObjectURL;
+
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      writable: true,
+      value: vi.fn(),
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      writable: true,
+      value: vi.fn(),
+    });
+
+    const createObjectURL = vi
+      .spyOn(URL, "createObjectURL")
+      .mockReturnValue("blob:failed-download");
+    const revokeObjectURL = vi
+      .spyOn(URL, "revokeObjectURL")
+      .mockImplementation(() => {});
+
+    const anchor = originalCreateElement("a");
+    const clickError = new Error("download blocked");
+    const clickSpy = vi.spyOn(anchor, "click").mockImplementation(() => {
+      throw clickError;
+    });
+    const removeChild = vi.spyOn(document.body, "removeChild");
+    vi.spyOn(document, "createElement").mockImplementation((tagName: string) => {
+      if (tagName === "a") {
+        return anchor;
+      }
+      return originalCreateElement(tagName);
+    });
+
+    await expect(downloadBackup()).rejects.toThrow("download blocked");
+
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    expect(removeChild).toHaveBeenCalledWith(anchor);
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:failed-download");
+
+    removeChild.mockRestore();
+    createObjectURL.mockRestore();
+    revokeObjectURL.mockRestore();
+    clickSpy.mockRestore();
+    vi.restoreAllMocks();
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      writable: true,
+      value: originalCreateObjectURL,
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      writable: true,
+      value: originalRevokeObjectURL,
+    });
+  });
+
   it("still exports legacy compressed backups as .phub.gz for backward compatibility", async () => {
     vi.useFakeTimers();
     const originalBlobStream = Blob.prototype.stream;

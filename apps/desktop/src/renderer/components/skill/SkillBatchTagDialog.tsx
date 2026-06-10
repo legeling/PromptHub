@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Loader2Icon, TagsIcon } from "lucide-react";
 import { Modal } from "../ui";
@@ -21,6 +21,7 @@ export function SkillBatchTagDialog({
   onSubmit,
 }: SkillBatchTagDialogProps) {
   const { t } = useTranslation();
+  const tagInputId = useId();
   const [mode, setMode] = useState<SkillBatchTagMode>("add");
   const [tagInput, setTagInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -58,7 +59,7 @@ export function SkillBatchTagDialog({
       <div className="space-y-4">
         <div className="rounded-2xl border border-border bg-background/60 p-4">
           <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-            <TagsIcon className="h-4 w-4 text-primary" />
+            <TagsIcon aria-hidden="true" className="h-4 w-4 text-primary" />
             {t("skill.batchTagsHint", {
               count: skills.length,
               defaultValue: `Add or remove tags across ${skills.length} selected skills.`,
@@ -76,6 +77,7 @@ export function SkillBatchTagDialog({
             <button
               key={value}
               type="button"
+              aria-pressed={mode === value}
               onClick={() => setMode(value)}
               className={`rounded-xl border px-3 py-3 text-left transition-colors ${
                 mode === value
@@ -89,10 +91,14 @@ export function SkillBatchTagDialog({
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">
+          <label
+            htmlFor={tagInputId}
+            className="text-sm font-medium text-foreground"
+          >
             {t("skill.tag", "Tag")}
           </label>
           <input
+            id={tagInputId}
             type="text"
             value={tagInput}
             onChange={(event) => setTagInput(event.target.value)}
@@ -153,7 +159,10 @@ export function SkillBatchTagDialog({
           >
             {isSubmitting ? (
               <>
-                <Loader2Icon className="h-4 w-4 animate-spin" />
+                <Loader2Icon
+                  aria-hidden="true"
+                  className="h-4 w-4 animate-spin"
+                />
                 {t("common.saving", "Saving")}
               </>
             ) : mode === "add" ? (

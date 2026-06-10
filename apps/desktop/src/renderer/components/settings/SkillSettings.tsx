@@ -389,9 +389,9 @@ export function SkillSettings() {
               }
             >
               {isGithubTokenVisible ? (
-                <EyeOffIcon className="h-4 w-4" />
+                <EyeOffIcon aria-hidden="true" className="h-4 w-4" />
               ) : (
-                <EyeIcon className="h-4 w-4" />
+                <EyeIcon aria-hidden="true" className="h-4 w-4" />
               )}
             </button>
             {settings.githubToken.length > 0 ? (
@@ -434,7 +434,9 @@ export function SkillSettings() {
           </p>
           <div className="flex gap-3">
             <button
+              type="button"
               onClick={() => settings.setSkillInstallMethod("symlink")}
+              aria-pressed={settings.skillInstallMethod === "symlink"}
               className={`flex-1 p-3 rounded-xl border-2 transition-all text-left ${
                 settings.skillInstallMethod === "symlink"
                   ? "border-primary bg-primary/5"
@@ -452,7 +454,9 @@ export function SkillSettings() {
               </p>
             </button>
             <button
+              type="button"
               onClick={() => settings.setSkillInstallMethod("copy")}
+              aria-pressed={settings.skillInstallMethod === "copy"}
               className={`flex-1 p-3 rounded-xl border-2 transition-all text-left ${
                 settings.skillInstallMethod === "copy"
                   ? "border-primary bg-primary/5"
@@ -485,10 +489,11 @@ export function SkillSettings() {
               )}
             </p>
             <button
+              type="button"
               onClick={() => settings.resetSkillPlatformOrder()}
               className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
-              <RotateCcwIcon className="h-3.5 w-3.5" />
+              <RotateCcwIcon aria-hidden="true" className="h-3.5 w-3.5" />
               {t("settings.resetPlatformDisplayOrder", "Reset")}
             </button>
           </div>
@@ -558,6 +563,7 @@ export function SkillSettings() {
                 </div>
                 <div className="flex items-center gap-1">
                   <ToggleSwitch
+                    ariaLabel={platform.name}
                     checked={
                       platform.kind === "custom"
                         ? platform.customAgent?.enabled !== false
@@ -574,20 +580,24 @@ export function SkillSettings() {
                     }}
                   />
                   <button
+                    type="button"
                     onClick={() => movePlatformOrder(platform.id, "up")}
                     disabled={index === 0}
+                    aria-label={t("settings.movePlatformUp", "Move Up")}
                     className="rounded-lg border border-border p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
                     title={t("settings.movePlatformUp", "Move Up")}
                   >
-                    <ArrowUpIcon className="h-3.5 w-3.5" />
+                    <ArrowUpIcon aria-hidden="true" className="h-3.5 w-3.5" />
                   </button>
                   <button
+                    type="button"
                     onClick={() => movePlatformOrder(platform.id, "down")}
                     disabled={index === managedAgentEntries.length - 1}
+                    aria-label={t("settings.movePlatformDown", "Move Down")}
                     className="rounded-lg border border-border p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
                     title={t("settings.movePlatformDown", "Move Down")}
                   >
-                    <ArrowDownIcon className="h-3.5 w-3.5" />
+                    <ArrowDownIcon aria-hidden="true" className="h-3.5 w-3.5" />
                   </button>
                 </div>
               </div>
@@ -665,7 +675,7 @@ export function SkillSettings() {
                             onClick={() => saveBuiltinEdit(platform.id)}
                             className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary/90"
                           >
-                            <SaveIcon className="h-3.5 w-3.5" />
+                            <SaveIcon aria-hidden="true" className="h-3.5 w-3.5" />
                             {t("common.save", "Save")}
                           </button>
                           <button
@@ -673,7 +683,7 @@ export function SkillSettings() {
                             onClick={cancelBuiltinEdit}
                             className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-foreground transition-colors hover:bg-accent"
                           >
-                            <XIcon className="h-3.5 w-3.5" />
+                            <XIcon aria-hidden="true" className="h-3.5 w-3.5" />
                             {t("common.cancel", "Cancel")}
                           </button>
                           <button
@@ -682,7 +692,7 @@ export function SkillSettings() {
                             disabled={Object.keys(override).length === 0}
                             className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
                           >
-                            <RotateCcwIcon className="h-3.5 w-3.5" />
+                            <RotateCcwIcon aria-hidden="true" className="h-3.5 w-3.5" />
                             {t("settings.resetPlatformRootPath", "Reset")}
                           </button>
                         </>
@@ -692,7 +702,7 @@ export function SkillSettings() {
                           onClick={() => startBuiltinEdit(platform.id, effectiveConfig)}
                           className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-foreground transition-colors hover:bg-accent"
                         >
-                          <PencilIcon className="h-3.5 w-3.5" />
+                          <PencilIcon aria-hidden="true" className="h-3.5 w-3.5" />
                           {t("common.edit", "Edit")}
                         </button>
                       )}
@@ -861,7 +871,7 @@ export function SkillSettings() {
                 disabled={!newAgentName.trim() || !newAgentRootPath.trim()}
                 className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <PlusIcon className="h-4 w-4" />
+                <PlusIcon aria-hidden="true" className="h-4 w-4" />
                 {t("common.add", "Add")}
               </button>
             </div>
@@ -908,7 +918,7 @@ export function SkillSettings() {
                     onClick={() => void handlePickNewAgentRootPath()}
                     className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-border px-4 text-sm text-foreground transition-colors hover:bg-accent"
                   >
-                    <FolderOpenIcon className="h-4 w-4" />
+                    <FolderOpenIcon aria-hidden="true" className="h-4 w-4" />
                     {t("skill.browseFolder", "Browse")}
                   </button>
                 </div>
@@ -975,7 +985,7 @@ export function SkillSettings() {
                                 className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary/90"
                                 title={t("common.save", "Save")}
                               >
-                                <SaveIcon className="h-3.5 w-3.5" />
+                                <SaveIcon aria-hidden="true" className="h-3.5 w-3.5" />
                                 {t("common.save", "Save")}
                               </button>
                               <button
@@ -984,7 +994,7 @@ export function SkillSettings() {
                                 className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-foreground transition-colors hover:bg-accent"
                                 title={t("common.cancel", "Cancel")}
                               >
-                                <XIcon className="h-3.5 w-3.5" />
+                                <XIcon aria-hidden="true" className="h-3.5 w-3.5" />
                                 {t("common.cancel", "Cancel")}
                               </button>
                             </>
@@ -1012,7 +1022,7 @@ export function SkillSettings() {
                                 className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-foreground transition-colors hover:bg-accent"
                                 title={t("common.edit", "Edit")}
                               >
-                                <PencilIcon className="h-3.5 w-3.5" />
+                                <PencilIcon aria-hidden="true" className="h-3.5 w-3.5" />
                                 {t("common.edit", "Edit")}
                               </button>
                               <button
@@ -1021,7 +1031,7 @@ export function SkillSettings() {
                                 className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                                 title={t("common.delete", "Delete")}
                               >
-                                <TrashIcon className="h-3.5 w-3.5" />
+                                <TrashIcon aria-hidden="true" className="h-3.5 w-3.5" />
                                 {t("common.delete", "Delete")}
                               </button>
                             </>
@@ -1069,7 +1079,7 @@ export function SkillSettings() {
                                 onClick={() => void handlePickEditingAgentRootPath()}
                                 className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-border px-4 text-sm text-foreground transition-colors hover:bg-accent"
                               >
-                                <FolderOpenIcon className="h-4 w-4" />
+                                <FolderOpenIcon aria-hidden="true" className="h-4 w-4" />
                                 {t("skill.browseFolder", "Browse")}
                               </button>
                             </div>
@@ -1088,6 +1098,7 @@ export function SkillSettings() {
                               </div>
                             </div>
                             <ToggleSwitch
+                              ariaLabel={t("settings.platformEnabled", "Enabled")}
                               checked={editingAgentEnabled}
                               onChange={setEditingAgentEnabled}
                             />
@@ -1292,9 +1303,11 @@ export function SkillSafetySettingsSection() {
           )}
         </p>
         <button
+          type="button"
           onClick={() =>
             settings.setAutoScanInstalledSkills(!settings.autoScanInstalledSkills)
           }
+          aria-pressed={settings.autoScanInstalledSkills}
           className={`w-full p-3 rounded-xl border-2 transition-all text-left ${
             settings.autoScanInstalledSkills
               ? "border-primary bg-primary/5"
@@ -1312,11 +1325,13 @@ export function SkillSafetySettingsSection() {
           </p>
         </button>
         <button
+          type="button"
           onClick={() =>
             settings.setAutoScanStoreSkillsBeforeInstall(
               !settings.autoScanStoreSkillsBeforeInstall,
             )
           }
+          aria-pressed={settings.autoScanStoreSkillsBeforeInstall}
           className={`w-full p-3 rounded-xl border-2 transition-all text-left ${
             settings.autoScanStoreSkillsBeforeInstall
               ? "border-primary bg-primary/5"
@@ -1353,6 +1368,7 @@ export function SkillSafetySettingsSection() {
               </p>
             </div>
             <button
+              type="button"
               onClick={() => {
                 const run = async () => {
                   setIsBatchScanning(true);

@@ -679,7 +679,7 @@ declare global {
       readVideoBase64?: (fileName: string) => Promise<string | null>;
       saveVideoBase64?: (fileName: string, base64: string) => Promise<boolean>;
       videoExists?: (fileName: string) => Promise<boolean>;
-      getVideoPath?: (fileName: string) => Promise<string>;
+      getVideoPath?: (fileName: string) => Promise<string | null>;
       clearVideos?: () => Promise<boolean>;
     };
   }

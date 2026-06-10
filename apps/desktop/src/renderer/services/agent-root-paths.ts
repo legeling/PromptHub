@@ -31,7 +31,11 @@ function normalizeRelativePath(relativePath: string | undefined): string {
 }
 
 function uniqNonEmptyRelativePaths(values: string[] | undefined): string[] {
-  return uniqPaths((values ?? []).map((value) => normalizeRelativePath(value)));
+  return uniqPaths(
+    (values ?? [])
+      .filter((value): value is string => typeof value === "string")
+      .map((value) => normalizeRelativePath(value)),
+  );
 }
 
 function compactAgentAssetConfig<T extends AgentAssetConfig>(input: T): T {

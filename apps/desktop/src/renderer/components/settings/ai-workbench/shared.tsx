@@ -74,6 +74,7 @@ export function ScenarioRow({
       <div className="w-full md:w-[280px]">
         <Select
           value={value}
+          ariaLabel={label}
           onChange={onChange}
           disabled={disabled}
           options={[{ value: "", label: fallbackLabel }, ...options]}

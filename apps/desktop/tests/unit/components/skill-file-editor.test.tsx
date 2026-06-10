@@ -5,9 +5,23 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import type { FormEvent } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const showToastMock = vi.fn();
+
+function hasHiddenSvgAncestor(element: Element): boolean {
+  let current: Element | null = element;
+
+  while (current) {
+    if (current.getAttribute("aria-hidden") === "true") {
+      return true;
+    }
+    current = current.parentElement;
+  }
+
+  return false;
+}
 
 vi.mock("../../../src/renderer/services/webdav-save-sync", () => ({
   scheduleAllSaveSync: vi.fn(),
@@ -94,6 +108,33 @@ describe("SkillFileEditor", () => {
     });
   });
 
+  it("keeps the modal backdrop presentational while preserving click close", async () => {
+    const onClose = vi.fn();
+
+    await renderWithI18n(
+      <SkillFileEditor
+        skillId="skill-1"
+        skillName="writer"
+        isOpen={true}
+        mode="modal"
+        onClose={onClose}
+      />,
+      { language: "en" },
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByText("SKILL.md").length).toBeGreaterThan(0);
+    });
+
+    const backdrop = screen.getByTestId("skill-file-editor-backdrop");
+    expect(backdrop).toHaveAttribute("role", "presentation");
+    expect(backdrop).toHaveAttribute("aria-hidden", "true");
+
+    fireEvent.click(backdrop);
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it("hides internal repo directories from the visible file tree", async () => {
     const { container } = await renderWithI18n(
       <SkillFileEditor
@@ -169,6 +210,10 @@ describe("SkillFileEditor", () => {
       name: /docs/i,
     });
     expect(docsButton).toHaveAttribute("aria-expanded", "false");
+    expect(docsButton.querySelector("svg")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
     fireEvent.click(docsButton);
 
     const referenceButton = within(treeList as HTMLElement).getByRole(
@@ -184,6 +229,169 @@ describe("SkillFileEditor", () => {
       within(treeList as HTMLElement).getByText("guide.md"),
     ).toBeInTheDocument();
     expect(referenceButton).toHaveAttribute("aria-expanded", "true");
+    expect(referenceButton.querySelector("svg")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+  });
+
+  it("keeps file selection and file deletion as separate buttons", async () => {
+    const { container } = await renderWithI18n(
+      <SkillFileEditor
+        skillId="skill-1"
+        skillName="writer"
+        isOpen={true}
+        mode="inline"
+      />,
+      { language: "en" },
+    );
+
+    const treeList = container.querySelector(".skill-file-editor__tree-list");
+    expect(treeList).not.toBeNull();
+
+    const fileButton = await waitFor(() =>
+      within(treeList as HTMLElement).getByRole("button", {
+        name: /SKILL\.md/,
+      }),
+    );
+    const deleteButton = within(treeList as HTMLElement).getByRole("button", {
+      name: "Delete File",
+    });
+
+    expect(fileButton).not.toHaveAccessibleName(/Delete File/);
+    expect(deleteButton.tagName).toBe("BUTTON");
+    expect(deleteButton.querySelector("svg")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+  });
+
+  it("keeps file editor toolbar actions from submitting parent forms", async () => {
+    const onSubmit = vi.fn((event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+    });
+
+    await renderWithI18n(
+      <form onSubmit={onSubmit}>
+        <SkillFileEditor
+          skillId="skill-1"
+          skillName="writer"
+          isOpen={true}
+          mode="inline"
+        />
+      </form>,
+      { language: "en" },
+    );
+
+    const newFileButton = await screen.findByRole("button", {
+      name: "New File",
+    });
+    const newFolderButton = screen.getByRole("button", {
+      name: "New Folder",
+    });
+
+    expect(newFileButton).toHaveAttribute("type", "button");
+    expect(newFolderButton).toHaveAttribute("type", "button");
+    expect(newFileButton.querySelector("svg")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+    expect(newFolderButton.querySelector("svg")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+
+    fireEvent.click(newFileButton);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    fireEvent.click(newFolderButton);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    const editButton = await screen.findByRole("button", { name: "Edit" });
+    expect(editButton).toHaveAttribute("type", "button");
+    expect(editButton.querySelector("svg")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+
+    fireEvent.click(editButton);
+
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("gives file dialog textboxes explicit accessible names", async () => {
+    const { container } = await renderWithI18n(
+      <SkillFileEditor
+        skillId="skill-1"
+        skillName="writer"
+        isOpen={true}
+        mode="inline"
+      />,
+      { language: "en" },
+    );
+
+    const newFileButton = await screen.findByRole("button", {
+      name: "New File",
+    });
+    fireEvent.click(newFileButton);
+    expect(
+      screen.getByRole("textbox", { name: "Enter file name" }),
+    ).toHaveValue("");
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "New Folder" }));
+    expect(
+      screen.getByRole("textbox", { name: "Enter folder name" }),
+    ).toHaveValue("");
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    const treeList = container.querySelector(".skill-file-editor__tree-list");
+    expect(treeList).not.toBeNull();
+
+    const fileButton = await waitFor(() =>
+      within(treeList as HTMLElement).getByRole("button", {
+        name: /SKILL\.md/,
+      }),
+    );
+    fireEvent.contextMenu(fileButton);
+    fireEvent.click(screen.getByRole("button", { name: "Rename" }));
+
+    expect(screen.getByRole("textbox", { name: "Rename" })).toHaveValue(
+      "SKILL.md",
+    );
+  });
+
+  it("keeps the modal close action named and non-submit", async () => {
+    const onSubmit = vi.fn((event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+    });
+    const onClose = vi.fn();
+
+    await renderWithI18n(
+      <form onSubmit={onSubmit}>
+        <SkillFileEditor
+          skillId="skill-1"
+          skillName="writer"
+          isOpen={true}
+          onClose={onClose}
+        />
+      </form>,
+      { language: "en" },
+    );
+
+    await screen.findByRole("button", { name: /SKILL\.md/ });
+
+    const closeButton = screen.getByRole("button", { name: "Close" });
+
+    expect(closeButton).toHaveAttribute("type", "button");
+    expect(closeButton.querySelector("svg")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+
+    fireEvent.click(closeButton);
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it("normalizes Windows relative paths before building the file tree", async () => {
@@ -497,6 +705,14 @@ describe("SkillFileEditor", () => {
       expect.stringMatching(/^data:image\/svg\+xml;base64,/),
     );
     expect(preview).toHaveStyle({ transform: "scale(1)" });
+
+    const exposedIconMarkup = Array.from(
+      document.body.querySelectorAll("button svg"),
+    )
+      .filter((icon) => !hasHiddenSvgAncestor(icon))
+      .map((icon) => icon.outerHTML);
+
+    expect(exposedIconMarkup, exposedIconMarkup.join("\n")).toHaveLength(0);
 
     fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
     expect(preview).toHaveStyle({ transform: "scale(1.25)" });

@@ -16,8 +16,8 @@ Several primitives in `src/renderer/components/ui/` have **zero tests**:
 
 Several recently-touched prompt / skill / settings views are equally untested:
 
-- `PromptListView.tsx`, `PromptKanbanView.tsx`, `FolderTree.tsx`,
-  `SkillStoreCard.tsx`, `SkillBatchTagDialog.tsx`,
+- `PromptListView.tsx`, `PromptKanbanView.tsx`, `SkillStoreCard.tsx`,
+  `SkillBatchTagDialog.tsx`,
   `EditPromptModal.tsx`, `CreatePromptModal.tsx`, `ImportPromptModal.tsx`,
   `LanguageSettings.tsx`, `GeneralSettings.tsx`, `ShortcutsSettings.tsx`
 

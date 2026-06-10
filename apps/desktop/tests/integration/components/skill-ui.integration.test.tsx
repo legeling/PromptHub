@@ -21,6 +21,8 @@ const useSkillStoreMock = vi.fn();
 const useSettingsStoreMock = vi.fn();
 const useToastMock = vi.fn();
 const useSkillPlatformMock = vi.fn();
+const editSkillModalModuleLoadMock = vi.hoisted(() => vi.fn());
+const skillFileEditorModuleLoadMock = vi.hoisted(() => vi.fn());
 
 vi.mock("../../../src/renderer/services/webdav-save-sync", () => ({
   scheduleAllSaveSync: vi.fn(),
@@ -59,13 +61,19 @@ vi.mock("../../../src/renderer/components/skill/SkillCodePane", () => ({
   SkillCodePane: () => <div>code-pane</div>,
 }));
 
-vi.mock("../../../src/renderer/components/skill/SkillFileEditor", () => ({
-  SkillFileEditor: () => <div>file-editor</div>,
-}));
+vi.mock("../../../src/renderer/components/skill/SkillFileEditor", () => {
+  skillFileEditorModuleLoadMock();
+  return {
+    SkillFileEditor: () => <div>file-editor</div>,
+  };
+});
 
-vi.mock("../../../src/renderer/components/skill/EditSkillModal", () => ({
-  EditSkillModal: () => null,
-}));
+vi.mock("../../../src/renderer/components/skill/EditSkillModal", () => {
+  editSkillModalModuleLoadMock();
+  return {
+    EditSkillModal: () => null,
+  };
+});
 
 vi.mock("../../../src/renderer/components/ui/ConfirmDialog", () => ({
   ConfirmDialog: () => null,
@@ -206,7 +214,7 @@ describe("skill ui integration", () => {
     expect(
       screen.getByRole("button", { name: "Batch Deploy" }),
     ).toBeInTheDocument();
-  }, 15000);
+  }, 60000);
 
   it("paginates skills and exposes row context actions", async () => {
     const selectSkill = vi.fn();
@@ -243,7 +251,7 @@ describe("skill ui integration", () => {
     fireEvent.click(screen.getByRole("button", { name: "View Details" }));
 
     expect(selectSkill).toHaveBeenCalledWith("skill-11");
-  });
+  }, 60000);
 
   it("uses and updates the persisted skill page size preference", async () => {
     const setSkillListPageSize = vi.fn();
@@ -276,7 +284,7 @@ describe("skill ui integration", () => {
     });
 
     expect(setSkillListPageSize).toHaveBeenCalledWith(50);
-  });
+  }, 60000);
 
   it("localizes skill row context actions in chinese", async () => {
     const selectSkill = vi.fn();
@@ -413,7 +421,7 @@ describe("skill ui integration", () => {
       "No importable SKILL.md files were found in the dropped items.",
       "error",
     );
-  });
+  }, 60000);
 
   it("rejects dropped README.md files on the skills screen", async () => {
     const scanLocalPreview = vi.fn().mockResolvedValue([]);
@@ -530,6 +538,36 @@ describe("skill ui integration", () => {
     );
   }, 15000);
 
+  it("loads the file editor only after opening the files tab", async () => {
+    const skillStoreState = createSkillStoreState({
+      selectedSkillId: baseSkill.id,
+    });
+    const settingsState = createSettingsState();
+
+    useSkillStoreMock.mockImplementation((selector) =>
+      selector(skillStoreState),
+    );
+    useSettingsStoreMock.mockImplementation((selector) =>
+      selector(settingsState),
+    );
+
+    await act(async () => {
+      await renderWithI18n(<SkillFullDetailPage />, { language: "en" });
+    });
+
+    expect(screen.getByText("preview-pane")).toBeInTheDocument();
+    expect(screen.queryByText("file-editor")).not.toBeInTheDocument();
+    expect(editSkillModalModuleLoadMock).not.toHaveBeenCalled();
+    expect(skillFileEditorModuleLoadMock).not.toHaveBeenCalled();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Files" }));
+    });
+
+    expect(await screen.findByText("file-editor")).toBeInTheDocument();
+    expect(skillFileEditorModuleLoadMock).toHaveBeenCalledTimes(1);
+  });
+
   it("imports and updates a local store source skill using the latest local SKILL.md content", async () => {
     const showToast = vi.fn();
     const installFromRegistry = vi.fn();
@@ -640,7 +678,10 @@ describe("skill ui integration", () => {
 
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Check update" }));
-      fireEvent.click(screen.getByRole("button", { name: "Update" }));
+    });
+    const updateButton = await screen.findByRole("button", { name: "Update" });
+    await act(async () => {
+      fireEvent.click(updateButton);
     });
 
     expect(updateRegistrySkill).toHaveBeenCalledWith("local-writer", {

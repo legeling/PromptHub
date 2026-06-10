@@ -119,6 +119,33 @@ describe("SkillBatchTagDialog", () => {
     expect(submit).toBeDisabled();
   });
 
+  it("exposes the tag input and selected tag mode to assistive technology", async () => {
+    const user = userEvent.setup();
+
+    await renderWithI18n(
+      <SkillBatchTagDialog
+        skills={[makeSkill()]}
+        onClose={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("textbox", { name: "Tag" })).toBeInTheDocument();
+
+    const addMode = screen.getAllByRole("button", { name: "Add tag" })[0];
+    const removeMode = screen.getAllByRole("button", {
+      name: "Remove tag",
+    })[0];
+
+    expect(addMode).toHaveAttribute("aria-pressed", "true");
+    expect(removeMode).toHaveAttribute("aria-pressed", "false");
+
+    await user.click(removeMode);
+
+    expect(addMode).toHaveAttribute("aria-pressed", "false");
+    expect(removeMode).toHaveAttribute("aria-pressed", "true");
+  });
+
   it("clicking an existing-tag chip prefills the input", async () => {
     const user = userEvent.setup();
     await renderWithI18n(

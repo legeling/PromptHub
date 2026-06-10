@@ -21,13 +21,10 @@ import {
   CheckSquareIcon,
   SquareIcon,
 } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeSanitize from "rehype-sanitize";
-import rehypeHighlight from "rehype-highlight";
 import { useSkillStore } from "../../stores/skill.store";
 import { useSettingsStore } from "../../stores/settings.store";
 import { loadGitHubSkillRepo } from "../../services/github-skill-store";
+import { findInstalledRegistrySkill } from "../../services/skill-store-update";
 import { isGitHubHost, parseGitRepo } from "@prompthub/shared/utils/git-repo";
 import {
   generateSkillContent,
@@ -38,7 +35,9 @@ import { BUILTIN_SKILL_REGISTRY } from "@prompthub/shared/constants/skill-regist
 import { UnsavedChangesDialog } from "../ui/UnsavedChangesDialog";
 import { SkillIconPicker } from "./SkillIconPicker";
 import { CreateSkillScanSourceChooser } from "./CreateSkillScanSourceChooser";
+import { SkillMarkdown } from "./SkillMarkdown";
 import { getExistingSkillTags } from "./skill-modal-utils";
+import { matchScannedSkillToLibrary } from "../../services/skill-scan-status";
 import type {
   RegistrySkill,
   ScannedSkill,
@@ -60,17 +59,6 @@ function getRegistrySelectionKey(
   skill: Pick<RegistrySkill, "source_id" | "source_url" | "slug">,
 ): string {
   return skill.source_id || skill.source_url || skill.slug;
-}
-
-function isRegistrySkillInstalled(
-  skill: Pick<RegistrySkill, "source_id" | "source_url" | "slug">,
-  installedKeys: Set<string>,
-): boolean {
-  return Boolean(
-    (skill.source_id && installedKeys.has(skill.source_id)) ||
-    (skill.source_url && installedKeys.has(skill.source_url)) ||
-    installedKeys.has(getRegistrySelectionKey(skill)),
-  );
 }
 
 function yamlQuote(value: string): string {
@@ -187,23 +175,12 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
     {},
   );
 
-  const installedScanPaths = useMemo(() => {
-    return new Set(
-      existingSkills.flatMap((skill) =>
-        [skill.source_url, skill.local_repo_path].filter(
-          (value): value is string =>
-            typeof value === "string" && value.trim().length > 0,
-        ),
-      ),
-    );
-  }, [existingSkills]);
-
   const annotatedScanResults = useMemo(() => {
     return scanResults.map((skill) => ({
       ...skill,
-      isImported: installedScanPaths.has(skill.localPath),
+      isImported: Boolean(matchScannedSkillToLibrary(skill, existingSkills)),
     }));
-  }, [installedScanPaths, scanResults]);
+  }, [existingSkills, scanResults]);
 
   const selectableScanResults = useMemo(
     () => annotatedScanResults.filter((skill) => !skill.isImported),
@@ -236,22 +213,12 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
     () => getExistingSkillTags(existingSkills),
     [existingSkills],
   );
-  const installedGitHubSources = useMemo(() => {
-    return new Set(
-      existingSkills.flatMap((skill) =>
-        [skill.source_id, skill.source_url].filter(
-          (value): value is string =>
-            typeof value === "string" && value.trim().length > 0,
-        ),
-      ),
-    );
-  }, [existingSkills]);
   const annotatedGitHubResults = useMemo(() => {
     return githubScanResults.map((skill) => ({
       ...skill,
-      isImported: isRegistrySkillInstalled(skill, installedGitHubSources),
+      isImported: Boolean(findInstalledRegistrySkill(existingSkills, skill)),
     }));
-  }, [githubScanResults, installedGitHubSources]);
+  }, [existingSkills, githubScanResults]);
   const selectableGitHubResults = useMemo(
     () => annotatedGitHubResults.filter((skill) => !skill.isImported),
     [annotatedGitHubResults],
@@ -576,7 +543,7 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
           scannedSkills
             .filter(
               (skill) =>
-                !isRegistrySkillInstalled(skill, installedGitHubSources),
+                !findInstalledRegistrySkill(existingSkills, skill),
             )
             .map((skill) => getRegistrySelectionKey(skill)),
         ),
@@ -744,15 +711,15 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
     try {
       const allResults: ScannedSkill[] =
         await window.api.skill.scanLocalPreview(customPaths);
-      const installedCount = allResults.filter((skill) =>
-        installedScanPaths.has(skill.localPath),
-      ).length;
+      const isScannedSkillImported = (skill: ScannedSkill) =>
+        Boolean(matchScannedSkillToLibrary(skill, existingSkills));
+      const installedCount = allResults.filter(isScannedSkillImported).length;
 
       setScanResults(allResults);
       setSelectedScanItems(
         new Set(
           allResults
-            .filter((skill) => !installedScanPaths.has(skill.localPath))
+            .filter((skill) => !isScannedSkillImported(skill))
             .map((skill) => skill.filePath),
         ),
       );
@@ -923,20 +890,23 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
           </div>
           <div className="flex items-center gap-3">
             <button
+              type="button"
               onClick={() => fileInputRef.current?.click()}
               className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-muted text-sm font-medium transition-colors"
             >
-              <UploadIcon className="w-4 h-4" />
+              <UploadIcon className="w-4 h-4" aria-hidden="true" />
               {t("skill.uploadMd", "Upload .md")}
             </button>
             <button
+              type="button"
               onClick={handleExitNativeFullscreen}
               className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-muted text-sm font-medium transition-colors"
             >
-              <Minimize2Icon className="w-4 h-4" />
+              <Minimize2Icon className="w-4 h-4" aria-hidden="true" />
               {t("common.exitFullscreen", "Exit Fullscreen")}
             </button>
             <button
+              type="button"
               onClick={() => {
                 handleManualCreate();
                 handleExitNativeFullscreen();
@@ -944,7 +914,7 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
               disabled={isLoading || !name.trim()}
               className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
-              <SaveIcon className="w-4 h-4" />
+              <SaveIcon className="w-4 h-4" aria-hidden="true" />
               {t("skill.create", "Create")}
             </button>
           </div>
@@ -974,12 +944,7 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
             <div className="flex-1 overflow-auto p-6">
               <div className="prose prose-sm dark:prose-invert max-w-none">
                 {instructions ? (
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    rehypePlugins={[rehypeHighlight, rehypeSanitize]}
-                  >
-                    {instructions}
-                  </ReactMarkdown>
+                  <SkillMarkdown content={instructions} enableHighlight />
                 ) : (
                   <div className="text-muted-foreground text-sm italic">
                     {t("skill.noContent", "No content")}
@@ -993,6 +958,7 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
         <input
           ref={fileInputRef}
           type="file"
+          aria-label={t("skill.uploadMd", "Upload .md")}
           accept=".md,.markdown,.txt"
           className="hidden"
           onChange={handleFileUpload}
@@ -1011,6 +977,9 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
     <div className="fixed inset-0 z-[100] flex items-center justify-center">
       {/* Backdrop */}
       <div
+        data-testid="create-skill-backdrop"
+        role="presentation"
+        aria-hidden="true"
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={handleCloseRequest}
       />
@@ -1049,8 +1018,14 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
           <div className="flex items-center gap-2">
             {mode === "manual" && (
               <button
+                type="button"
                 onClick={() => setIsFullscreen(!isFullscreen)}
                 className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
+                aria-label={
+                  isFullscreen
+                    ? t("common.exitFullscreen", "Exit Fullscreen")
+                    : t("common.fullscreen", "Fullscreen")
+                }
                 title={
                   isFullscreen
                     ? t("common.exitFullscreen", "Exit Fullscreen")
@@ -1058,17 +1033,19 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
                 }
               >
                 {isFullscreen ? (
-                  <Minimize2Icon className="w-4 h-4" />
+                  <Minimize2Icon className="w-4 h-4" aria-hidden="true" />
                 ) : (
-                  <Maximize2Icon className="w-4 h-4" />
+                  <Maximize2Icon className="w-4 h-4" aria-hidden="true" />
                 )}
               </button>
             )}
             <button
+              type="button"
               onClick={handleCloseRequest}
               className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
+              aria-label={t("common.close", "Close")}
             >
-              <XIcon className="w-4 h-4" />
+              <XIcon className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -1100,11 +1077,12 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
 
               {/* AI Create Option */}
               <button
+                type="button"
                 onClick={() => setMode("ai")}
                 className="w-full flex items-center gap-4 p-4 bg-primary/5 hover:bg-primary/10 border border-primary/30 rounded-xl transition-colors group text-left"
               >
                 <div className="p-3 bg-primary rounded-lg">
-                  <BrainIcon className="w-6 h-6 text-white" />
+                  <BrainIcon className="w-6 h-6 text-white" aria-hidden="true" />
                 </div>
                 <div>
                   <h3 className="font-medium text-foreground flex items-center gap-2">
@@ -1124,11 +1102,15 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
 
               {/* GitHub Option */}
               <button
+                type="button"
                 onClick={() => setMode("github")}
                 className="w-full flex items-center gap-4 p-4 bg-accent/50 hover:bg-accent border border-border rounded-xl transition-colors group text-left"
               >
                 <div className="p-3 bg-background rounded-lg group-hover:bg-primary/10 transition-colors">
-                  <GithubIcon className="w-6 h-6 text-foreground" />
+                  <GithubIcon
+                    className="w-6 h-6 text-foreground"
+                    aria-hidden="true"
+                  />
                 </div>
                 <div>
                   <h3 className="font-medium text-foreground">
@@ -1148,11 +1130,15 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
 
               {/* Manual Option */}
               <button
+                type="button"
                 onClick={() => setMode("manual")}
                 className="w-full flex items-center gap-4 p-4 bg-accent/50 hover:bg-accent border border-border rounded-xl transition-colors group text-left"
               >
                 <div className="p-3 bg-background rounded-lg group-hover:bg-primary/10 transition-colors">
-                  <EditIcon className="w-6 h-6 text-foreground" />
+                  <EditIcon
+                    className="w-6 h-6 text-foreground"
+                    aria-hidden="true"
+                  />
                 </div>
                 <div>
                   <h3 className="font-medium text-foreground">
@@ -1166,11 +1152,15 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
 
               {runtimeCapabilities.skillLocalScan && (
                 <button
+                  type="button"
                   onClick={() => setMode("scan")}
                   className="w-full flex items-center gap-4 p-4 bg-accent/50 hover:bg-accent border border-border rounded-xl transition-colors group text-left"
                 >
                   <div className="p-3 bg-background rounded-lg group-hover:bg-primary/10 transition-colors">
-                    <FolderOpenIcon className="w-6 h-6 text-foreground" />
+                    <FolderOpenIcon
+                      className="w-6 h-6 text-foreground"
+                      aria-hidden="true"
+                    />
                   </div>
                   <div>
                     <h3 className="font-medium text-foreground">
@@ -1275,12 +1265,18 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
                         ),
                       ) ? (
                         <>
-                          <CheckSquareIcon className="w-3.5 h-3.5" />
+                          <CheckSquareIcon
+                            aria-hidden="true"
+                            className="w-3.5 h-3.5"
+                          />
                           {t("skill.deselectAll", "Deselect All")}
                         </>
                       ) : (
                         <>
-                          <SquareIcon className="w-3.5 h-3.5" />
+                          <SquareIcon
+                            aria-hidden="true"
+                            className="w-3.5 h-3.5"
+                          />
                           {t("skill.selectAll", "Select All")}
                         </>
                       )}
@@ -1321,7 +1317,10 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
                                     : "bg-primary/10 text-primary"
                                 }`}
                               >
-                                <FileTextIcon className="w-5 h-5" />
+                                <FileTextIcon
+                                  aria-hidden="true"
+                                  className="w-5 h-5"
+                                />
                               </div>
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-start justify-between gap-3">
@@ -1345,10 +1344,16 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
                                   </div>
                                   <div className="shrink-0 pt-0.5">
                                     {skill.isImported || isSelected ? (
-                                      <CheckSquareIcon className="w-4 h-4 text-primary" />
-                                    ) : (
-                                      <SquareIcon className="w-4 h-4 text-muted-foreground" />
-                                    )}
+                                  <CheckSquareIcon
+                                    aria-hidden="true"
+                                    className="w-4 h-4 text-primary"
+                                  />
+                                ) : (
+                                  <SquareIcon
+                                    aria-hidden="true"
+                                    className="w-4 h-4 text-muted-foreground"
+                                  />
+                                )}
                                   </div>
                                 </div>
                                 <p className="mt-3 text-xs leading-5 text-muted-foreground line-clamp-3">
@@ -1463,14 +1468,14 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
                       key={tag}
                       className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-primary text-white"
                     >
-                      <HashIcon className="w-3 h-3" />
+                      <HashIcon aria-hidden="true" className="w-3 h-3" />
                       {tag}
                       <button
                         type="button"
                         onClick={() => handleRemoveTag(tag)}
                         className="ml-1 hover:text-white/70"
                       >
-                        <XIcon className="w-3 h-3" />
+                        <XIcon aria-hidden="true" className="w-3 h-3" />
                       </button>
                     </span>
                   ))}
@@ -1490,7 +1495,7 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
                             onClick={() => setTags([...tags, existingTag])}
                             className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-muted hover:bg-accent transition-colors"
                           >
-                            <HashIcon className="w-3 h-3" />
+                            <HashIcon aria-hidden="true" className="w-3 h-3" />
                             {existingTag}
                           </button>
                         ))}
@@ -1529,14 +1534,16 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
                   <div className="flex items-center gap-2">
                     {/* Upload MD button */}
                     <button
+                      type="button"
                       onClick={() => fileInputRef.current?.click()}
                       className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-accent transition-colors"
                     >
-                      <UploadIcon className="w-3.5 h-3.5" />
+                      <UploadIcon className="w-3.5 h-3.5" aria-hidden="true" />
                       {t("skill.uploadMd", "Upload .md")}
                     </button>
                     {/* AI Polish Button */}
                     <button
+                      type="button"
                       onClick={handleAIPolish}
                       disabled={
                         isGenerating ||
@@ -1564,11 +1571,18 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
                                 "Polish content to SKILL.md standard format",
                               )
                       }
+                      aria-label={t("skill.aiPolish", "AI Polish")}
                     >
                       {isGenerating ? (
-                        <LoaderIcon className="w-3.5 h-3.5 animate-spin" />
+                        <LoaderIcon
+                          className="w-3.5 h-3.5 animate-spin"
+                          aria-hidden="true"
+                        />
                       ) : (
-                        <SparklesIcon className="w-3.5 h-3.5" />
+                        <SparklesIcon
+                          className="w-3.5 h-3.5"
+                          aria-hidden="true"
+                        />
                       )}
                       {isGenerating
                         ? t("skill.polishing", "Polishing...")
@@ -1577,6 +1591,7 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
                     {/* Edit/Preview tabs */}
                     <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/50 p-1">
                       <button
+                        type="button"
                         onClick={() => setInstrTab("edit")}
                         className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
                           instrTab === "edit"
@@ -1587,6 +1602,7 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
                         {t("prompt.edit", "Edit")}
                       </button>
                       <button
+                        type="button"
                         onClick={() => setInstrTab("preview")}
                         className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
                           instrTab === "preview"
@@ -1599,11 +1615,13 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
                     </div>
                     {/* Fullscreen button */}
                     <button
+                      type="button"
                       onClick={handleEnterNativeFullscreen}
                       className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors border border-border"
+                      aria-label={t("common.fullscreen", "Fullscreen Edit")}
                       title={t("common.fullscreen", "Fullscreen Edit")}
                     >
-                      <Maximize2Icon className="w-4 h-4" />
+                      <Maximize2Icon className="w-4 h-4" aria-hidden="true" />
                     </button>
                   </div>
                 </div>
@@ -1638,12 +1656,7 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
                   >
                     {instructions ? (
                       <div className="prose prose-sm dark:prose-invert max-w-none">
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          rehypePlugins={[rehypeHighlight, rehypeSanitize]}
-                        >
-                          {instructions}
-                        </ReactMarkdown>
+                        <SkillMarkdown content={instructions} enableHighlight />
                       </div>
                     ) : (
                       <div className="text-muted-foreground text-sm italic">
@@ -1664,6 +1677,7 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
               <input
                 ref={fileInputRef}
                 type="file"
+                aria-label={t("skill.uploadMd", "Upload .md")}
                 accept=".md,.markdown,.txt"
                 className="hidden"
                 onChange={handleFileUpload}
@@ -1734,12 +1748,14 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
 
               <div className="flex gap-2 pt-2">
                 <button
+                  type="button"
                   onClick={() => setMode("select")}
                   className="flex-1 px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
                 >
                   {t("common.back", "Back")}
                 </button>
                 <button
+                  type="button"
                   onClick={handleAICreate}
                   disabled={
                     isGenerating ||
@@ -1750,9 +1766,12 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
                 >
                   {isGenerating ? (
-                    <LoaderIcon className="w-4 h-4 animate-spin" />
+                    <LoaderIcon
+                      className="w-4 h-4 animate-spin"
+                      aria-hidden="true"
+                    />
                   ) : (
-                    <SparklesIcon className="w-4 h-4" />
+                    <SparklesIcon className="w-4 h-4" aria-hidden="true" />
                   )}
                   {isGenerating
                     ? t("skill.generating", "Generating...")
@@ -1842,7 +1861,7 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
                           : "border-border app-wallpaper-surface text-muted-foreground hover:text-foreground"
                       }`}
                     >
-                      <HashIcon className="h-4 w-4" />
+                      <HashIcon aria-hidden="true" className="h-4 w-4" />
                       {showScanOptionalTags
                         ? t("skill.hideOptionalTags", "隐藏可选标签")
                         : t("skill.showOptionalTags", "需要时再加标签")}
@@ -1859,6 +1878,7 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
                     </p>
                     {visibleSelectableScanResults.length > 0 && (
                       <button
+                        type="button"
                         onClick={toggleSelectAll}
                         className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"
                       >
@@ -1866,12 +1886,18 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
                           selectedScanItems.has(skill.filePath),
                         ) ? (
                           <>
-                            <CheckSquareIcon className="w-3.5 h-3.5" />{" "}
+                            <CheckSquareIcon
+                              className="w-3.5 h-3.5"
+                              aria-hidden="true"
+                            />{" "}
                             {t("skill.deselectAll", "Deselect All")}
                           </>
                         ) : (
                           <>
-                            <SquareIcon className="w-3.5 h-3.5" />{" "}
+                            <SquareIcon
+                              className="w-3.5 h-3.5"
+                              aria-hidden="true"
+                            />{" "}
                             {t("skill.selectAll", "Select All")}
                           </>
                         )}
@@ -1897,6 +1923,7 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
                         })();
                         return (
                           <button
+                            type="button"
                             key={skill.filePath}
                             onClick={() =>
                               !skill.isImported &&
@@ -1919,7 +1946,10 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
                                     : "bg-primary/10 text-primary"
                                 }`}
                               >
-                                <FileTextIcon className="w-5 h-5" />
+                                <FileTextIcon
+                                  aria-hidden="true"
+                                  className="w-5 h-5"
+                                />
                               </div>
 
                               <div className="min-w-0 flex-1">
@@ -1947,9 +1977,15 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
 
                                   <div className="shrink-0 pt-0.5">
                                     {skill.isImported || isSelected ? (
-                                      <CheckSquareIcon className="w-4 h-4 text-primary" />
+                                      <CheckSquareIcon
+                                        aria-hidden="true"
+                                        className="w-4 h-4 text-primary"
+                                      />
                                     ) : (
-                                      <SquareIcon className="w-4 h-4 text-muted-foreground" />
+                                      <SquareIcon
+                                        aria-hidden="true"
+                                        className="w-4 h-4 text-muted-foreground"
+                                      />
                                     )}
                                   </div>
                                 </div>
@@ -1989,7 +2025,10 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
                                             key={tag}
                                             className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-[11px] font-medium text-white"
                                           >
-                                            <HashIcon className="w-3 h-3" />
+                                            <HashIcon
+                                              aria-hidden="true"
+                                              className="w-3 h-3"
+                                            />
                                             {tag}
                                             <button
                                               type="button"
@@ -2002,7 +2041,10 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
                                               }}
                                               className="hover:text-white/70"
                                             >
-                                              <XIcon className="w-3 h-3" />
+                                              <XIcon
+                                                aria-hidden="true"
+                                                className="w-3 h-3"
+                                              />
                                             </button>
                                           </span>
                                         ))}
@@ -2059,7 +2101,10 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
                                   className="mt-4 flex items-center gap-1 text-[11px] text-muted-foreground/60 font-mono truncate"
                                   title={skill.localPath}
                                 >
-                                  <FolderOpenIcon className="w-3 h-3 shrink-0" />
+                                  <FolderOpenIcon
+                                    className="w-3 h-3 shrink-0"
+                                    aria-hidden="true"
+                                  />
                                   <span className="truncate">{shortPath}</span>
                                 </div>
                               </div>
@@ -2073,14 +2118,18 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
                   {/* Rescan button */}
                   <div className="flex justify-center">
                     <button
+                      type="button"
                       onClick={() => void handleScanLocal(scanRootPaths)}
                       disabled={isScanning}
                       className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"
                     >
                       {isScanning ? (
-                        <LoaderIcon className="w-3 h-3 animate-spin" />
+                        <LoaderIcon
+                          className="w-3 h-3 animate-spin"
+                          aria-hidden="true"
+                        />
                       ) : (
-                        <SearchIcon className="w-3 h-3" />
+                        <SearchIcon className="w-3 h-3" aria-hidden="true" />
                       )}
                       {t("skill.rescan", "Rescan")}
                     </button>
@@ -2099,14 +2148,21 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
                     )}
                   </p>
                   <button
+                    type="button"
                     onClick={() => void handleScanLocal(scanRootPaths)}
                     disabled={isScanning}
                     className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
                   >
                     {isScanning ? (
-                      <LoaderIcon className="w-3.5 h-3.5 animate-spin" />
+                      <LoaderIcon
+                        className="w-3.5 h-3.5 animate-spin"
+                        aria-hidden="true"
+                      />
                     ) : (
-                      <SearchIcon className="w-3.5 h-3.5" />
+                      <SearchIcon
+                        className="w-3.5 h-3.5"
+                        aria-hidden="true"
+                      />
                     )}
                     {t("skill.rescan", "Rescan")}
                   </button>
@@ -2123,12 +2179,14 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
             className="flex items-center justify-end gap-3 border-t border-border app-wallpaper-surface px-6 py-4 shrink-0"
           >
             <button
+              type="button"
               onClick={() => setMode("select")}
               className="px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
             >
               {t("common.back", "Back")}
             </button>
             <button
+              type="button"
               onClick={
                 githubScanDone
                   ? handleImportSelectedGitHubSkills
@@ -2140,9 +2198,12 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
               className="flex min-w-[12rem] items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
               {isLoading ? (
-                <LoaderIcon className="w-4 h-4 animate-spin" />
+                <LoaderIcon
+                  className="w-4 h-4 animate-spin"
+                  aria-hidden="true"
+                />
               ) : (
-                <CheckIcon className="w-4 h-4" />
+                <CheckIcon className="w-4 h-4" aria-hidden="true" />
               )}
               {githubScanDone
                 ? t("skill.importSelected", "Import Selected")
@@ -2163,19 +2224,23 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
               {t("skill.selected", "selected")}
             </span>
             <button
+              type="button"
               onClick={handleImportSelected}
               disabled={isLoading || selectedScanItems.size === 0}
               className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
               {isLoading ? (
                 <>
-                  <LoaderIcon className="w-4 h-4 animate-spin" />
+                  <LoaderIcon
+                    className="w-4 h-4 animate-spin"
+                    aria-hidden="true"
+                  />
                   {t("skill.importing", "Importing...")} ({importingCount}/
                   {selectedScanItems.size})
                 </>
               ) : (
                 <>
-                  <CheckIcon className="w-4 h-4" />
+                  <CheckIcon className="w-4 h-4" aria-hidden="true" />
                   {t("skill.importSelected", "Import Selected")} (
                   {selectedScanItems.size})
                 </>
@@ -2188,20 +2253,25 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
         {isManualMode && (
           <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border shrink-0 app-wallpaper-surface">
             <button
+              type="button"
               onClick={() => setMode("select")}
               className="px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
             >
               {t("common.back", "Back")}
             </button>
             <button
+              type="button"
               onClick={handleManualCreate}
               disabled={isLoading || isGenerating || !name.trim()}
               className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
               {isLoading ? (
-                <LoaderIcon className="w-4 h-4 animate-spin" />
+                <LoaderIcon
+                  className="w-4 h-4 animate-spin"
+                  aria-hidden="true"
+                />
               ) : (
-                <CheckIcon className="w-4 h-4" />
+                <CheckIcon className="w-4 h-4" aria-hidden="true" />
               )}
               {t("skill.create", "Create")}
             </button>

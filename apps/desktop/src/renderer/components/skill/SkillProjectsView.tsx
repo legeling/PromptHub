@@ -34,7 +34,7 @@ import { buildProjectDetailSkill } from "./project-detail-adapter";
 import { SkillLibraryImportModal } from "./SkillLibraryImportModal";
 import {
   getDeployableProjectTargetDirs,
-  getMissingProjectTargetDirs,
+  getProjectTargetDirsRequiringDeployment,
   normalizeProjectPathForComparison,
 } from "../../services/project-skill-targets";
 import {
@@ -142,11 +142,17 @@ function ProjectFormModal({
   const [scanPaths, setScanPaths] = useState<string[]>([]);
   const [isNameAutoDerived, setIsNameAutoDerived] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const isOpenRef = useRef(isOpen);
+  const formSessionRef = useRef(0);
+  const saveInFlightRef = useRef(false);
 
   useEffect(() => {
+    isOpenRef.current = isOpen;
     if (!isOpen) {
       return;
     }
+    formSessionRef.current += 1;
 
     setName(project?.name ?? "");
     setRootPath(project?.rootPath ?? "");
@@ -158,6 +164,8 @@ function ProjectFormModal({
     setScanPathInput("");
     setIsNameAutoDerived(!project);
     setError(null);
+    setIsSaving(false);
+    saveInFlightRef.current = false;
   }, [isOpen, project]);
 
   useEffect(() => {
@@ -199,6 +207,10 @@ function ProjectFormModal({
   };
 
   const handleSubmit = async () => {
+    if (saveInFlightRef.current) {
+      return;
+    }
+
     if (!name.trim() || !rootPath.trim()) {
       setError(
         t(
@@ -209,13 +221,27 @@ function ProjectFormModal({
       return;
     }
 
-    const didSave = await onSubmit({
-      name: name.trim(),
-      rootPath: rootPath.trim(),
-      scanPaths,
-    });
-    if (didSave) {
-      onClose();
+    saveInFlightRef.current = true;
+    setIsSaving(true);
+    const submitSession = formSessionRef.current;
+    try {
+      const didSave = await onSubmit({
+        name: name.trim(),
+        rootPath: rootPath.trim(),
+        scanPaths,
+      });
+      if (
+        didSave &&
+        isOpenRef.current &&
+        formSessionRef.current === submitSession
+      ) {
+        onClose();
+      }
+    } finally {
+      if (isOpenRef.current && formSessionRef.current === submitSession) {
+        saveInFlightRef.current = false;
+        setIsSaving(false);
+      }
     }
   };
 
@@ -250,6 +276,7 @@ function ProjectFormModal({
               className="min-w-0 flex-1"
             >
               <Input
+                aria-label={t("skill.projectRootPath", "Project Root Path")}
                 value={rootPath}
                 onChange={(event) => {
                   setRootPath(event.target.value);
@@ -265,7 +292,7 @@ function ProjectFormModal({
               onClick={() => void handlePickFolder("root")}
               className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border border-border app-wallpaper-surface px-4 text-sm text-foreground transition-colors hover:bg-accent"
             >
-              <FolderOpenIcon className="h-4 w-4" />
+              <FolderOpenIcon aria-hidden="true" className="h-4 w-4" />
               {t("skill.browseFolder", "Browse")}
             </button>
           </div>
@@ -295,6 +322,7 @@ function ProjectFormModal({
               className="min-w-0 flex-1"
             >
               <Input
+                aria-label={t("skill.projectScanPaths", "Scan Paths")}
                 value={scanPathInput}
                 onChange={(event) => setScanPathInput(event.target.value)}
                 onKeyDown={(event) => {
@@ -314,7 +342,7 @@ function ProjectFormModal({
               onClick={() => addScanPath()}
               className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border border-border app-wallpaper-surface px-4 text-sm text-foreground transition-colors hover:bg-accent"
             >
-              <PlusIcon className="h-4 w-4" />
+              <PlusIcon aria-hidden="true" className="h-4 w-4" />
               {t("common.add", "Add")}
             </button>
             <button
@@ -322,7 +350,7 @@ function ProjectFormModal({
               onClick={() => void handlePickFolder("scan")}
               className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border border-border app-wallpaper-surface px-4 text-sm text-foreground transition-colors hover:bg-accent"
             >
-              <FolderOpenIcon className="h-4 w-4" />
+              <FolderOpenIcon aria-hidden="true" className="h-4 w-4" />
               {t("skill.browseFolder", "Browse")}
             </button>
           </div>
@@ -355,7 +383,7 @@ function ProjectFormModal({
                     onClick={() => removeScanPath(scanPath)}
                     className="rounded-lg p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-destructive"
                   >
-                    <TrashIcon className="h-4 w-4" />
+                    <TrashIcon aria-hidden="true" className="h-4 w-4" />
                   </button>
                 </div>
               ))
@@ -374,8 +402,15 @@ function ProjectFormModal({
           <button
             type="button"
             onClick={handleSubmit}
-            className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+            disabled={isSaving}
+            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
           >
+            {isSaving ? (
+              <Loader2Icon
+                aria-hidden="true"
+                className="h-4 w-4 animate-spin"
+              />
+            ) : null}
             {project
               ? t("common.save", "Save")
               : t("skill.addProject", "Add Project")}
@@ -922,9 +957,9 @@ export function SkillProjectsView() {
 
         const scannedProjectSkills = currentProjectState?.scannedSkills ?? [];
         const copyJobs = ensuredRepoPaths.flatMap(({ skill, repoPath }) =>
-          getMissingProjectTargetDirs(
+          getProjectTargetDirsRequiringDeployment(
             scannedProjectSkills,
-            skill.name,
+            skill,
             targetDirs,
           ).map((targetDir) => ({
             repoPath,
@@ -950,7 +985,7 @@ export function SkillProjectsView() {
               repoPath,
               skill.name,
               targetDir,
-              { ifExists: "skip", mode: importMode },
+              { ifExists: "overwrite", mode: importMode },
             ),
           ),
         );
@@ -1082,9 +1117,10 @@ export function SkillProjectsView() {
                   type="button"
                   onClick={handleOpenCreate}
                   className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-white transition-colors hover:bg-primary/90"
+                  aria-label={t("skill.addProject", "Add Project")}
                   title={t("skill.addProject", "Add Project")}
                 >
-                  <FolderPlusIcon className="h-4 w-4" />
+                  <FolderPlusIcon aria-hidden="true" className="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -1133,7 +1169,10 @@ export function SkillProjectsView() {
                           </div>
                         </div>
                         {scanState?.isScanning ? (
-                          <Loader2Icon className="h-4 w-4 shrink-0 animate-spin text-primary" />
+                          <Loader2Icon
+                            aria-hidden="true"
+                            className="h-4 w-4 shrink-0 animate-spin text-primary"
+                          />
                         ) : null}
                       </div>
                       <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
@@ -1197,9 +1236,15 @@ export function SkillProjectsView() {
                           className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border app-wallpaper-surface text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-60"
                         >
                           {currentProjectState?.isScanning ? (
-                            <Loader2Icon className="h-4 w-4 animate-spin" />
+                            <Loader2Icon
+                              aria-hidden="true"
+                              className="h-4 w-4 animate-spin"
+                            />
                           ) : (
-                            <RefreshCwIcon className="h-4 w-4" />
+                            <RefreshCwIcon
+                              aria-hidden="true"
+                              className="h-4 w-4"
+                            />
                           )}
                         </button>
                         <button
@@ -1212,7 +1257,7 @@ export function SkillProjectsView() {
                           title={t("common.edit", "Edit")}
                           className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border app-wallpaper-surface text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                         >
-                          <PencilIcon className="h-4 w-4" />
+                          <PencilIcon aria-hidden="true" className="h-4 w-4" />
                         </button>
                         <button
                           type="button"
@@ -1229,7 +1274,7 @@ export function SkillProjectsView() {
                           )}
                           className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-destructive/20 bg-destructive/5 text-destructive transition-colors hover:border-destructive/30 hover:bg-destructive/10"
                         >
-                          <TrashIcon className="h-4 w-4" />
+                          <TrashIcon aria-hidden="true" className="h-4 w-4" />
                         </button>
                       </div>
                     </div>
@@ -1310,7 +1355,10 @@ export function SkillProjectsView() {
                                         ) : null}
                                         {isInMySkills ? (
                                           <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-300">
-                                            <CheckCircle2Icon className="h-3 w-3" />
+                                            <CheckCircle2Icon
+                                              aria-hidden="true"
+                                              className="h-3 w-3"
+                                            />
                                             {t(
                                               "skill.inMySkillsBadge",
                                               "In My Skills",
@@ -1374,7 +1422,10 @@ export function SkillProjectsView() {
                                     )}
                                     className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                                   >
-                                    <FolderOpenIcon className="h-4 w-4" />
+                                    <FolderOpenIcon
+                                      aria-hidden="true"
+                                      className="h-4 w-4"
+                                    />
                                   </button>
                                   {isInMySkills && importedSkill ? (
                                     <>
@@ -1394,7 +1445,10 @@ export function SkillProjectsView() {
                                         )}
                                         className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                                       >
-                                        <BookOpenIcon className="h-4 w-4" />
+                                        <BookOpenIcon
+                                          aria-hidden="true"
+                                          className="h-4 w-4"
+                                        />
                                       </button>
                                       <button
                                         type="button"
@@ -1411,7 +1465,10 @@ export function SkillProjectsView() {
                                         )}
                                         className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-white transition-colors hover:bg-primary/90"
                                       >
-                                        <SendIcon className="h-4 w-4" />
+                                        <SendIcon
+                                          aria-hidden="true"
+                                          className="h-4 w-4"
+                                        />
                                       </button>
                                     </>
                                   ) : (
@@ -1439,9 +1496,15 @@ export function SkillProjectsView() {
                                     >
                                       {isImportingPath ===
                                       scannedSkill.localPath ? (
-                                        <Loader2Icon className="h-4 w-4 animate-spin" />
+                                        <Loader2Icon
+                                          aria-hidden="true"
+                                          className="h-4 w-4 animate-spin"
+                                        />
                                       ) : (
-                                        <DownloadIcon className="h-4 w-4" />
+                                        <DownloadIcon
+                                          aria-hidden="true"
+                                          className="h-4 w-4"
+                                        />
                                       )}
                                     </button>
                                   )}
@@ -1464,9 +1527,15 @@ export function SkillProjectsView() {
                                   >
                                     {isRemovingPath ===
                                     scannedSkill.localPath ? (
-                                      <Loader2Icon className="h-4 w-4 animate-spin" />
+                                      <Loader2Icon
+                                        aria-hidden="true"
+                                        className="h-4 w-4 animate-spin"
+                                      />
                                     ) : (
-                                      <TrashIcon className="h-4 w-4" />
+                                      <TrashIcon
+                                        aria-hidden="true"
+                                        className="h-4 w-4"
+                                      />
                                     )}
                                   </button>
                                 </div>
@@ -1484,7 +1553,7 @@ export function SkillProjectsView() {
                       onClick={() => setIsLibraryImportModalOpen(true)}
                       className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
                     >
-                      <BookOpenIcon className="h-4 w-4" />
+                      <BookOpenIcon aria-hidden="true" className="h-4 w-4" />
                       {t("skill.importFromMySkills", "Import from My Skills")}
                     </button>
                   </div>

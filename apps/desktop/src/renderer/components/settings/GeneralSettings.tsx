@@ -25,6 +25,7 @@ export function GeneralSettings() {
           description={t("settings.launchAtStartupDesc")}
         >
           <ToggleSwitch
+            ariaLabel={t("settings.launchAtStartup")}
             checked={settings.launchAtStartup}
             onChange={settings.setLaunchAtStartup}
           />
@@ -34,6 +35,7 @@ export function GeneralSettings() {
           description={t("settings.minimizeOnLaunchDesc")}
         >
           <ToggleSwitch
+            ariaLabel={t("settings.minimizeOnLaunch")}
             checked={settings.minimizeOnLaunch}
             onChange={settings.setMinimizeOnLaunch}
           />
@@ -46,6 +48,7 @@ export function GeneralSettings() {
           )}
         >
           <ToggleSwitch
+            ariaLabel={t("settings.clipboardImport", "剪切板快速导入")}
             checked={settings.clipboardImportEnabled}
             onChange={settings.setClipboardImportEnabled}
           />
@@ -57,10 +60,11 @@ export function GeneralSettings() {
             label={t("settings.closeAction")}
             description={t("settings.closeActionDesc")}
           >
-            <Select
-              value={settings.closeAction}
-              onChange={(value) =>
-                settings.setCloseAction(value as "ask" | "minimize" | "exit")
+          <Select
+            ariaLabel={t("settings.closeAction")}
+            value={settings.closeAction}
+            onChange={(value) =>
+              settings.setCloseAction(value as "ask" | "minimize" | "exit")
               }
               options={[
                 { value: "ask", label: t("settings.askEveryTime") },
@@ -79,6 +83,7 @@ export function GeneralSettings() {
           description={t("settings.autoSaveDesc")}
         >
           <ToggleSwitch
+            ariaLabel={t("settings.autoSave")}
             checked={settings.autoSave}
             onChange={settings.setAutoSave}
           />
@@ -88,6 +93,7 @@ export function GeneralSettings() {
           description={t("settings.showLineNumbersDesc")}
         >
           <ToggleSwitch
+            ariaLabel={t("settings.showLineNumbers")}
             checked={settings.showLineNumbers}
             onChange={settings.setShowLineNumbers}
           />
@@ -100,6 +106,7 @@ export function GeneralSettings() {
           description={t("settings.selectLanguage")}
         >
           <Select
+            ariaLabel={t("settings.language")}
             value={settings.language}
             onChange={(value) => settings.setLanguage(value)}
             options={LANGUAGE_OPTIONS}
@@ -117,6 +124,7 @@ export function GeneralSettings() {
           )}
         >
           <Select
+            ariaLabel={t("settings.tagFilterMode", "标签点击模式")}
             value={settings.tagFilterMode}
             onChange={(value) =>
               settings.setTagFilterMode(value as "single" | "multi")
@@ -136,6 +144,7 @@ export function GeneralSettings() {
           description={t("settings.enableNotificationsDesc")}
         >
           <ToggleSwitch
+            ariaLabel={t("settings.enableNotifications")}
             checked={settings.enableNotifications}
             onChange={settings.setEnableNotifications}
           />
@@ -145,6 +154,7 @@ export function GeneralSettings() {
           description={t("settings.copyNotificationDesc")}
         >
           <ToggleSwitch
+            ariaLabel={t("settings.copyNotification")}
             checked={settings.showCopyNotification}
             onChange={settings.setShowCopyNotification}
           />
@@ -154,6 +164,7 @@ export function GeneralSettings() {
           description={t("settings.saveNotificationDesc")}
         >
           <ToggleSwitch
+            ariaLabel={t("settings.saveNotification")}
             checked={settings.showSaveNotification}
             onChange={settings.setShowSaveNotification}
           />

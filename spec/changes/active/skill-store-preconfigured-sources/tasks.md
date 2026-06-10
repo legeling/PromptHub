@@ -68,6 +68,6 @@
 - [x] Hide category metadata in Store detail for external stores without a
       reliable taxonomy.
 - [x] Use one consistent store icon for all built-in Skill Store sources.
-- [ ] Design full multi-file package materialization for script-backed
+- [x] Design full multi-file package materialization for script-backed
       skills.sh/ClawHub skills.
 - [x] Run targeted tests and typecheck.

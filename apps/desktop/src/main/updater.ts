@@ -486,6 +486,11 @@ function getHomebrewUpgradeMessage(): string {
   );
 }
 
+async function openPathOrError(targetPath: string): Promise<string | null> {
+  const error = await shell.openPath(targetPath);
+  return typeof error === "string" && error.trim().length > 0 ? error : null;
+}
+
 // macOS: track last detected update info for DMG download
 // macOS: 记录最近一次检测到的更新信息，用于 DMG 下载
 let lastUpdateInfo: ElectronUpdateInfo | null = null;
@@ -681,6 +686,29 @@ function findMacDmgUrl(
   return `${baseUrl}/${dmgFile.url}`;
 }
 
+export function resolveUpdaterDownloadUrl(
+  value: string,
+  baseUrl?: string,
+): string {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    throw new Error("Unsupported updater download URL: empty URL");
+  }
+
+  let parsed: URL;
+  try {
+    parsed = baseUrl ? new URL(trimmed, baseUrl) : new URL(trimmed);
+  } catch {
+    throw new Error(`Unsupported updater download URL: ${trimmed}`);
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error(`Unsupported updater download protocol: ${parsed.protocol}`);
+  }
+
+  return parsed.href;
+}
+
 /**
  * Download a file via HTTP(S) with redirect following and progress reporting.
  * 通过 HTTP(S) 下载文件，支持重定向跟踪和进度上报。
@@ -697,8 +725,16 @@ function downloadFile(
         return;
       }
 
-      const client = requestUrl.startsWith("https") ? https : http;
-      const req = client.get(requestUrl, (res) => {
+      let normalizedRequestUrl: string;
+      try {
+        normalizedRequestUrl = resolveUpdaterDownloadUrl(requestUrl);
+      } catch (error) {
+        reject(error);
+        return;
+      }
+
+      const client = new URL(normalizedRequestUrl).protocol === "https:" ? https : http;
+      const req = client.get(normalizedRequestUrl, (res) => {
         // Handle redirects (301, 302, 303, 307, 308)
         // 处理重定向
         if (
@@ -707,9 +743,17 @@ function downloadFile(
           res.statusCode < 400 &&
           res.headers.location
         ) {
-          const redirectUrl = res.headers.location.startsWith("http")
-            ? res.headers.location
-            : new URL(res.headers.location, requestUrl).href;
+          let redirectUrl: string;
+          try {
+            redirectUrl = resolveUpdaterDownloadUrl(
+              res.headers.location,
+              normalizedRequestUrl,
+            );
+          } catch (error) {
+            res.resume();
+            reject(error);
+            return;
+          }
           console.log(
             `[Updater/macDMG] Redirect ${res.statusCode} -> ${redirectUrl}`,
           );
@@ -1090,14 +1134,18 @@ export function registerUpdaterIPC() {
         }
         // macOS: open the downloaded DMG for manual installation
         // macOS: 打开已下载的 DMG 文件让用户手动安装
-        if (macDownloadedDmgPath && fs.existsSync(macDownloadedDmgPath)) {
-          // Open (mount) the DMG file directly
-          // 直接打开（挂载）DMG 文件
-          shell.openPath(macDownloadedDmgPath);
-        } else {
-          // Fallback: open Downloads folder
-          // 回退：打开下载文件夹
-          shell.openPath(app.getPath("downloads"));
+        const manualInstallerPath =
+          macDownloadedDmgPath && fs.existsSync(macDownloadedDmgPath)
+            ? macDownloadedDmgPath
+            : app.getPath("downloads");
+        const openError = await openPathOrError(manualInstallerPath);
+        if (openError) {
+          return {
+            success: false,
+            manual: true,
+            error: `Failed to open downloaded update: ${openError}`,
+            backupPath: backup.backupPath,
+          };
         }
         return {
           success: true,
@@ -1136,7 +1184,7 @@ export function registerUpdaterIPC() {
     shell.openExternal("https://github.com/legeling/PromptHub/releases");
   });
 
-  ipcMain.handle("updater:openDownloadedUpdate", () => {
+  ipcMain.handle("updater:openDownloadedUpdate", async () => {
     // macOS: show the downloaded DMG in Finder
     // macOS: 在 Finder 中显示已下载的 DMG
     if (isMac && macDownloadedDmgPath && fs.existsSync(macDownloadedDmgPath)) {
@@ -1148,13 +1196,22 @@ export function registerUpdaterIPC() {
     // Windows/Linux: 显示 electron-updater 下载的安装包
     const installerPath = (autoUpdater as unknown as { installerPath?: string })
       .installerPath;
-    if (installerPath) {
+    if (installerPath && fs.existsSync(installerPath)) {
       shell.showItemInFolder(installerPath);
       return { success: true, path: installerPath };
     }
 
     const downloadDir = app.getPath("downloads");
-    shell.openPath(downloadDir);
-    return { success: false, path: downloadDir };
+    const openError = await openPathOrError(downloadDir);
+    const baseError = installerPath
+      ? "Downloaded update file is missing"
+      : "No downloaded update file is available";
+    return {
+      success: false,
+      path: downloadDir,
+      error: openError
+        ? `${baseError}; failed to open Downloads folder: ${openError}`
+        : baseError,
+    };
   });
 }

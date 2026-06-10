@@ -269,7 +269,7 @@ export function SkillListView({
     return (
       <div className="h-full flex flex-col items-center justify-center text-muted-foreground animate-in fade-in zoom-in-95 duration-slow py-20">
         <div className="p-8 bg-accent/30 rounded-full mb-6 relative">
-          <CuboidIcon className="w-20 h-20 opacity-20" />
+          <CuboidIcon aria-hidden="true" className="w-20 h-20 opacity-20" />
           <div className="absolute inset-0 border-4 border-primary/10 rounded-full animate-pulse" />
         </div>
         <h3 className="text-xl font-semibold text-foreground mb-2">
@@ -319,19 +319,28 @@ export function SkillListView({
           const sourceBadges = buildMySkillSourceBadges(skill, t);
           const hasMetadata = sourceBadges.length > 0 || visibleTags.length > 0;
           const isFirstRow = virtualRow.index === 0;
+          const selectionLabel = isChecked
+            ? t("common.selected", "已选中")
+            : t("common.select", "选择");
+          const favoriteLabel = skill.is_favorite
+            ? t("skill.removeFavorite")
+            : t("skill.addFavorite");
+          const rowActionLabel = selectionMode
+            ? `${selectionLabel}: ${skill.name}`
+            : `${t("skill.viewDetail", "View Details")}: ${skill.name}`;
+          const handlePrimaryAction = () => {
+            if (selectionMode) {
+              onToggleSelection?.(skill.id);
+              return;
+            }
+            selectSkill(skill.id);
+          };
 
           return (
             <div
               key={virtualRow.key}
               data-index={virtualRow.index}
               ref={rowVirtualizer.measureElement}
-              onClick={() => {
-                if (selectionMode) {
-                  onToggleSelection?.(skill.id);
-                  return;
-                }
-                selectSkill(skill.id);
-              }}
               onContextMenu={(event) => onContextMenu?.(event, skill)}
               onDragOver={(event) => {
                 if (
@@ -374,185 +383,204 @@ export function SkillListView({
             >
               {selectionMode && (
                 <button
+                  type="button"
+                  aria-pressed={isChecked}
                   onClick={(e) => {
                     e.stopPropagation();
                     onToggleSelection?.(skill.id);
                   }}
+                  aria-label={selectionLabel}
                   className={`shrink-0 p-1 rounded-md transition-colors ${
                     isChecked
                       ? "text-primary bg-primary/10"
                       : "text-muted-foreground hover:text-foreground hover:bg-accent"
                   }`}
-                  title={
-                    isChecked
-                      ? t("common.selected", "已选中")
-                      : t("common.select", "选择")
-                  }
+                  title={selectionLabel}
                 >
                   {isChecked ? (
-                    <CheckSquareIcon className="w-4 h-4" />
+                    <CheckSquareIcon aria-hidden="true" className="w-4 h-4" />
                   ) : (
-                    <SquareIcon className="w-4 h-4" />
+                    <SquareIcon aria-hidden="true" className="w-4 h-4" />
                   )}
                 </button>
               )}
 
-              {/* Icon */}
-              <div className="shrink-0">
-                <SkillIcon
-                  iconUrl={skill.icon_url}
-                  iconEmoji={skill.icon_emoji}
-                  backgroundColor={skill.icon_background}
-                  name={skill.name}
-                  size="md"
-                  className={
-                    isSelected
-                      ? "ring-2 ring-primary shadow-lg shadow-primary/20"
-                      : ""
-                  }
-                />
-              </div>
-
-              {/* Info */}
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 min-w-0">
-                  <h3
-                    className={`truncate font-semibold leading-5 transition-colors ${isSelected ? "text-primary" : "text-foreground group-hover:text-primary"}`}
-                  >
-                    {skill.name}
-                  </h3>
-                  {hasStoreUpdate ? (
-                    <span
-                      className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-300"
-                      title={t("skill.updateAvailable", "Update available")}
-                    >
-                      <BellDotIcon className="h-3 w-3 animate-pulse" />
-                      {t("skill.updateAvailable", "Update available")}
-                    </span>
-                  ) : null}
-                  {/* Safety shield icon */}
-                  {skill.safetyReport ? (
-                    (() => {
-                      const { Icon, className, label } = getSafetyIconProps(
-                        skill.safetyReport.level,
-                      );
-                      return (
-                        <span
-                          title={`${t("skill.safetyLevelLabel", "Safety")}: ${label}`}
-                        >
-                          <Icon
-                            className={`w-3.5 h-3.5 shrink-0 ${className}`}
-                          />
-                        </span>
-                      );
-                    })()
-                  ) : (
-                    <span
-                      title={t(
-                        "skill.safetyAssessmentEmpty",
-                        "No safety scan run yet",
-                      )}
-                    >
-                      <ShieldIcon className="w-3.5 h-3.5 shrink-0 text-muted-foreground/30" />
-                    </span>
-                  )}
+              <button
+                type="button"
+                aria-label={rowActionLabel}
+                aria-pressed={selectionMode ? isChecked : undefined}
+                onClick={handlePrimaryAction}
+                className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              >
+                {/* Icon */}
+                <div className="shrink-0">
+                  <SkillIcon
+                    iconUrl={skill.icon_url}
+                    iconEmoji={skill.icon_emoji}
+                    backgroundColor={skill.icon_background}
+                    name={skill.name}
+                    size="md"
+                    decorative
+                    aria-hidden="true"
+                    className={
+                      isSelected
+                        ? "ring-2 ring-primary shadow-lg shadow-primary/20"
+                        : ""
+                    }
+                  />
                 </div>
-                <p className="text-xs text-muted-foreground truncate mt-0.5">
-                  {skill.description || t("skill.defaultDescription")}
-                </p>
-                {hasMetadata ? (
-                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                    <SkillVariantBadgeList
-                      badges={sourceBadges}
-                      className="contents"
-                    />
-                    {visibleTags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
 
-              {/* Platform indicators */}
-              {runtimeCapabilities.skillPlatformIntegration &&
-                totalPlatforms > 0 && (
-                  <div className="flex w-28 shrink-0 items-center justify-end gap-1">
-                    {availablePlatforms.slice(0, 3).map((platform) => {
-                      const isInstalled =
-                        platformStatuses[skill.id]?.[platform.id];
-                      return (
-                        <div
-                          key={platform.id}
-                          className="flex items-center justify-center"
-                          title={`${platform.name}: ${isInstalled ? t("skill.installed") : t("skill.notInstalled", "未安装")}`}
-                        >
-                          <PlatformIcon
-                            platformId={platform.id}
-                            size={16}
-                            className={
-                              isInstalled ? "opacity-100" : "opacity-40"
-                            }
-                          />
-                        </div>
-                      );
-                    })}
-                    <span className="ml-1 min-w-8 text-right text-[10px] font-medium text-primary">
-                      {installCount}/{totalPlatforms}
-                    </span>
+                {/* Info */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <h3
+                      className={`truncate font-semibold leading-5 transition-colors ${isSelected ? "text-primary" : "text-foreground group-hover:text-primary"}`}
+                    >
+                      {skill.name}
+                    </h3>
+                    {hasStoreUpdate ? (
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-300"
+                        title={t("skill.updateAvailable", "Update available")}
+                      >
+                        <BellDotIcon
+                          aria-hidden="true"
+                          className="h-3 w-3 animate-pulse"
+                        />
+                        {t("skill.updateAvailable", "Update available")}
+                      </span>
+                    ) : null}
+                    {/* Safety shield icon */}
+                    {skill.safetyReport ? (
+                      (() => {
+                        const { Icon, className, label } = getSafetyIconProps(
+                          skill.safetyReport.level,
+                        );
+                        return (
+                          <span
+                            title={`${t("skill.safetyLevelLabel", "Safety")}: ${label}`}
+                          >
+                            <Icon
+                              aria-hidden="true"
+                              className={`w-3.5 h-3.5 shrink-0 ${className}`}
+                            />
+                          </span>
+                        );
+                      })()
+                    ) : (
+                      <span
+                        title={t(
+                          "skill.safetyAssessmentEmpty",
+                          "No safety scan run yet",
+                        )}
+                      >
+                        <ShieldIcon
+                          aria-hidden="true"
+                          className="w-3.5 h-3.5 shrink-0 text-muted-foreground/30"
+                        />
+                      </span>
+                    )}
                   </div>
-                )}
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">
+                    {skill.description || t("skill.defaultDescription")}
+                  </p>
+                  {hasMetadata ? (
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      <SkillVariantBadgeList
+                        badges={sourceBadges}
+                        className="contents"
+                      />
+                      {visibleTags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+
+                {/* Platform indicators */}
+                {runtimeCapabilities.skillPlatformIntegration &&
+                  totalPlatforms > 0 && (
+                    <div className="flex w-28 shrink-0 items-center justify-end gap-1">
+                      {availablePlatforms.slice(0, 3).map((platform) => {
+                        const isInstalled =
+                          platformStatuses[skill.id]?.[platform.id];
+                        return (
+                          <div
+                            key={platform.id}
+                            className="flex items-center justify-center"
+                            title={`${platform.name}: ${isInstalled ? t("skill.installed") : t("skill.notInstalled", "未安装")}`}
+                          >
+                            <PlatformIcon
+                              platformId={platform.id}
+                              size={16}
+                              className={
+                                isInstalled ? "opacity-100" : "opacity-40"
+                              }
+                            />
+                          </div>
+                        );
+                      })}
+                      <span className="ml-1 min-w-8 text-right text-[10px] font-medium text-primary">
+                        {installCount}/{totalPlatforms}
+                      </span>
+                    </div>
+                  )}
+              </button>
 
               {/* Actions */}
               {!selectionMode && (
                 <div className="flex shrink-0 items-center gap-1">
                   {runtimeCapabilities.skillPlatformIntegration && (
                     <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         onQuickInstall(skill);
                       }}
+                      aria-label={t("skill.quickInstall", "快速安装")}
                       className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-all active:scale-press-in"
                       title={t("skill.quickInstall", "快速安装")}
                     >
-                      <DownloadIcon className="w-4 h-4" />
+                      <DownloadIcon aria-hidden="true" className="w-4 h-4" />
                     </button>
                   )}
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleFavorite(skill.id);
-                    }}
-                    className={`p-2 rounded-lg transition-all active:scale-press-in ${
-                      skill.is_favorite
-                        ? "text-yellow-500 hover:text-yellow-600"
+                    type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFavorite(skill.id);
+                      }}
+                      aria-label={favoriteLabel}
+                      className={`p-2 rounded-lg transition-all active:scale-press-in ${
+                        skill.is_favorite
+                          ? "text-yellow-500 hover:text-yellow-600"
                         : "text-muted-foreground hover:text-yellow-500 hover:bg-yellow-500/10"
                     }`}
-                    title={
-                      skill.is_favorite
-                        ? t("skill.removeFavorite")
-                        : t("skill.addFavorite")
-                    }
+                    title={favoriteLabel}
                   >
                     <StarIcon
+                      aria-hidden="true"
                       className={`w-4 h-4 ${skill.is_favorite ? "fill-current" : ""}`}
                     />
                   </button>
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       if (onRequestDelete) {
                         onRequestDelete(skill.id, skill.name);
                       }
                     }}
+                    aria-label={t("common.delete")}
                     className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-all active:scale-press-in"
                     title={t("common.delete")}
                   >
-                    <TrashIcon className="w-4 h-4" />
+                    <TrashIcon aria-hidden="true" className="w-4 h-4" />
                   </button>
                 </div>
               )}

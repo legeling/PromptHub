@@ -6,9 +6,11 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import type { FormEvent } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Sidebar } from "../../../src/renderer/components/layout/Sidebar";
+import "../../../src/renderer/components/layout/RulesSidebarPanel";
 import { useFolderStore } from "../../../src/renderer/stores/folder.store";
 import { usePromptStore } from "../../../src/renderer/stores/prompt.store";
 import { useRulesStore } from "../../../src/renderer/stores/rules.store";
@@ -246,6 +248,65 @@ describe("Sidebar", () => {
 
     expect(useSkillStore.getState().storeView).toBe("projects");
     expect(screen.getByText("Project Skills")).toBeInTheDocument();
+  });
+
+  it("keeps rendered sidebar actions non-submit with decorative icons hidden", async () => {
+    const onSubmit = vi.fn((event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+    });
+    useSkillStore.setState({
+      storeView: "store",
+      selectedStoreSourceId: "official",
+      customStoreSources: [
+        {
+          id: "team",
+          name: "Team Store",
+          type: "url",
+          url: "https://example.com/store.json",
+          enabled: false,
+        },
+      ],
+      remoteStoreEntries: {
+        community: {
+          loadedAt: Date.now(),
+          error: null,
+          skills: [{ slug: "community-demo" } as never],
+        },
+        team: {
+          loadedAt: Date.now(),
+          error: null,
+          skills: [{ slug: "team-demo" } as never],
+        },
+      },
+    } as never);
+
+    await act(async () => {
+      await renderWithI18n(
+        <form onSubmit={onSubmit}>
+          <Sidebar currentPage="home" onNavigate={vi.fn()} />
+        </form>,
+        { language: "en" },
+      );
+    });
+
+    const skillButtons = screen.getAllByRole("button");
+    expect(skillButtons.length).toBeGreaterThan(0);
+    for (const button of skillButtons) {
+      expect(button).toHaveAttribute("type", "button");
+      if (button.hasAttribute("title")) {
+        expect(button).toHaveAttribute("aria-label", button.title);
+      }
+      for (const icon of button.querySelectorAll("svg")) {
+        expect(
+          icon.getAttribute("aria-hidden") === "true" ||
+            Boolean(icon.closest("[aria-hidden='true']")),
+        ).toBe(true);
+      }
+    }
+
+    fireEvent.click(screen.getByRole("button", { name: /My Skills/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Official Store/i }));
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it("shows the detected agent count on the Agent Skills navigation entry", async () => {
@@ -621,6 +682,51 @@ describe("Sidebar", () => {
     expect(clawHubButton.querySelector(".lucide-globe")).toBeNull();
   });
 
+  it("tolerates legacy remote store cache entries without skills arrays", async () => {
+    useSkillStore.setState({
+      storeView: "store",
+      selectedStoreSourceId: "team-store",
+      customStoreSources: [
+        {
+          id: "team-store",
+          name: "Team Store",
+          type: "git-repo",
+          url: "https://gitea.example.com/team/store",
+          enabled: true,
+          order: 0,
+        },
+      ],
+      remoteStoreEntries: {
+        "claude-code": { loadedAt: Date.now(), error: null },
+        "openai-codex": { loadedAt: Date.now(), error: null },
+        community: { loadedAt: Date.now(), error: null },
+        clawhub: {
+          loadedAt: Date.now(),
+          error: null,
+          nextCursor: "cursor-2",
+        },
+        "team-store": { loadedAt: Date.now(), error: null },
+      },
+    } as never);
+
+    await act(async () => {
+      await renderWithI18n(
+        <Sidebar currentPage="home" onNavigate={vi.fn()} />,
+        { language: "en" },
+      );
+    });
+
+    const officialButton = screen.getByRole("button", {
+      name: /Official Store/i,
+    });
+    const clawHubButton = screen.getByRole("button", { name: /ClawHub/i });
+    const teamStoreButton = screen.getByRole("button", { name: /Team Store/i });
+
+    expect(within(officialButton).getByText("0")).toBeInTheDocument();
+    expect(within(clawHubButton).getByText("0+")).toBeInTheDocument();
+    expect(within(teamStoreButton).queryByText(/\d/)).not.toBeInTheDocument();
+  });
+
   it("keeps many skill store sources inside an internal scroll region", async () => {
     const customStoreSources = Array.from({ length: 36 }, (_, index) => ({
       id: `team-store-${index}`,
@@ -813,7 +919,7 @@ describe("Sidebar", () => {
     });
 
     expect(useUIStore.getState().appModule).toBe("rules");
-    expect(screen.getByText("Global Rules")).toBeInTheDocument();
+    expect(await screen.findByText("Global Rules")).toBeInTheDocument();
     expect(screen.getByText("Project Rules")).toBeInTheDocument();
     expect(screen.getByText("Docs Site")).toBeInTheDocument();
     expect(screen.getByText("Codex CLI")).toBeInTheDocument();
@@ -866,7 +972,7 @@ describe("Sidebar", () => {
       fireEvent.click(screen.getByRole("button", { name: /Rules/i }));
     });
 
-    expect(screen.getByText("Global Rules")).toBeInTheDocument();
+    expect(await screen.findByText("Global Rules")).toBeInTheDocument();
     expect(screen.getByText("Project Rules")).toBeInTheDocument();
     expect(screen.queryByText("Add Project Directory")).not.toBeInTheDocument();
   });
@@ -893,8 +999,12 @@ describe("Sidebar", () => {
       );
     });
 
+    const docsSiteButton = await screen.findByRole("button", {
+      name: /Docs Site/i,
+    });
+
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /Docs Site/i }));
+      fireEvent.click(docsSiteButton);
     });
 
     expect(selectRuleMock).toHaveBeenCalledWith("project:rule-project-1");
@@ -920,7 +1030,7 @@ describe("Sidebar", () => {
       );
     });
 
-    expect(screen.getByText("Codex CLI")).toBeInTheDocument();
+    expect(await screen.findByText("Codex CLI")).toBeInTheDocument();
     expect(screen.queryByText("Claude Code")).not.toBeInTheDocument();
     expect(screen.queryByText("Gemini CLI")).not.toBeInTheDocument();
     expect(screen.queryByText("Docs Site")).not.toBeInTheDocument();
@@ -1019,8 +1129,12 @@ describe("Sidebar", () => {
       );
     });
 
+    const geminiButton = await screen.findByRole("button", {
+      name: /Gemini CLI/i,
+    });
+
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /Gemini CLI/i }));
+      fireEvent.click(geminiButton);
     });
 
     await act(async () => {
@@ -1116,12 +1230,15 @@ describe("Sidebar", () => {
   });
 
   it("uses the combined shell width for the classic sidebar layout", async () => {
-    const { container } = await renderWithI18n(
-      <Sidebar currentPage="home" onNavigate={vi.fn()} layout="combined" />,
-      { language: "en" },
-    );
+    let view: RenderResult | undefined;
+    await act(async () => {
+      view = await renderWithI18n(
+        <Sidebar currentPage="home" onNavigate={vi.fn()} layout="combined" />,
+        { language: "en" },
+      );
+    });
 
-    expect(container.querySelector("aside")).toHaveClass("w-[23rem]");
+    expect(view?.container.querySelector("aside")).toHaveClass("w-[23rem]");
     expect(screen.getByText("Prompts")).toBeInTheDocument();
   });
 

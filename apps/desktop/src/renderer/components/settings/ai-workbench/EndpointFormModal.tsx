@@ -121,6 +121,7 @@ export function EndpointFormModal({
           </label>
           <Select
             value={endpointDraft.provider}
+            ariaLabel={t("settings.aiWorkbenchProviderType")}
             onChange={(value) => {
               const provider = getProviderInfo(value);
               setEndpointDraft((prev) =>
@@ -162,6 +163,7 @@ export function EndpointFormModal({
             </label>
             <Select
               value={endpointDraft.apiProtocol}
+              ariaLabel={t("settings.protocol")}
               onChange={(value) =>
                 setEndpointDraft((prev) =>
                   prev
@@ -195,6 +197,7 @@ export function EndpointFormModal({
           </label>
           <PasswordInput
             value={endpointDraft.apiKey}
+            ariaLabel={t("settings.apiKey")}
             placeholder={t("settings.apiKeyPlaceholder")}
             onChange={(value) =>
               setEndpointDraft((prev) =>

@@ -125,8 +125,8 @@ export async function replaceRepoFiles(
   db: SkillDB,
   skillId: string,
   filesSnapshot?: SkillFileSnapshot[],
-): Promise<void> {
-  if (!filesSnapshot) return;
+): Promise<string | null> {
+  if (!filesSnapshot) return null;
 
   const skill = db.getById(skillId);
   if (!skill) {
@@ -138,6 +138,7 @@ export async function replaceRepoFiles(
     throw new Error(`Unable to resolve local repo for skill: ${skillId}`);
   }
   await SkillInstaller.replaceLocalRepoFilesByPath(repoPath, filesSnapshot);
+  return repoPath;
 }
 
 export async function resolveRepoPath(

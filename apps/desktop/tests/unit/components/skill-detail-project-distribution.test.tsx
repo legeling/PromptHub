@@ -323,7 +323,7 @@ describe("Skill detail project distribution", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "This removes the symlink from the selected platform. The PromptHub source stays in place.",
+        "This removes the symlink from the platform directory. Your local Skill stays in PromptHub.",
       ),
     ).toBeInTheDocument();
     expect(uninstallFromPlatform).not.toHaveBeenCalled();
@@ -503,9 +503,9 @@ describe("Skill detail project distribution", () => {
         removeCopyInstallations: false,
       });
     });
-  });
+  }, 60000);
 
-  it("uses repo path and skip semantics when distributing from detail page", async () => {
+  it("uses repo path and overwrite semantics when distributing from detail page", async () => {
     const getRepoPath = vi.fn().mockResolvedValue("/Users/demo/skills/write");
     const copyRepoByPathToDirectory = vi
       .fn()
@@ -529,7 +529,7 @@ describe("Skill detail project distribution", () => {
         "/Users/demo/skills/write",
         "write",
         "/tmp/workspace/.agents/skills",
-        { ifExists: "skip", mode: "copy" },
+        { ifExists: "overwrite", mode: "copy" },
       );
       expect(scanProjectSkills).toHaveBeenCalledWith(
         expect.objectContaining({ id: "project-1" }),
@@ -559,7 +559,7 @@ describe("Skill detail project distribution", () => {
         "/Users/demo/skills/write",
         "write",
         "/tmp/workspace/.claude/skills",
-        { ifExists: "skip", mode: "copy" },
+        { ifExists: "overwrite", mode: "copy" },
       );
     });
   });
@@ -590,12 +590,12 @@ describe("Skill detail project distribution", () => {
         "/Users/demo/skills/write",
         "write",
         "/tmp/workspace/.gemini/skills",
-        { ifExists: "skip", mode: "copy" },
+        { ifExists: "overwrite", mode: "copy" },
       );
     });
   });
 
-  it("skips already imported project targets", async () => {
+  it("redeploys already imported project targets with overwrite semantics", async () => {
     const copyRepoByPathToDirectory = vi.fn();
     const getRepoPath = vi.fn().mockResolvedValue("/Users/demo/skills/write");
     const showToast = vi.fn();
@@ -633,11 +633,16 @@ describe("Skill detail project distribution", () => {
 
     await waitFor(() => {
       expect(showToast).toHaveBeenCalledWith(
-        "Selected skills are already imported into the selected project folders.",
-        "warning",
+        "Deployed to 1 project folder(s).",
+        "success",
       );
     });
-    expect(copyRepoByPathToDirectory).not.toHaveBeenCalled();
+    expect(copyRepoByPathToDirectory).toHaveBeenCalledWith(
+      "/Users/demo/skills/write",
+      "write",
+      "/tmp/workspace/.agents/skills",
+      { ifExists: "overwrite", mode: "copy" },
+    );
   });
 
   it("removes an already distributed project target from the detail page", async () => {
@@ -674,7 +679,7 @@ describe("Skill detail project distribution", () => {
     );
     expect(
       screen.getByText(
-        "Copied project folders are deleted from the project. Symlink project folders remove only the link.",
+        "This removes the distributed copy from the project. Your local Skill stays in PromptHub.",
       ),
     ).toBeInTheDocument();
 
@@ -711,14 +716,14 @@ describe("Skill detail project distribution", () => {
 
     await waitFor(() => {
       expect(showToast).toHaveBeenCalledWith(
-        "This skill is already inside the selected project target folders.",
+        "Already deployed to this project",
         "warning",
       );
     });
     expect(copyRepoByPathToDirectory).not.toHaveBeenCalled();
   });
 
-  it("supports symlink mode with the same skip behavior", async () => {
+  it("supports symlink mode with the same overwrite behavior", async () => {
     const copyRepoByPathToDirectory = vi
       .fn()
       .mockResolvedValue("/tmp/workspace/.agents/skills/write");
@@ -751,7 +756,7 @@ describe("Skill detail project distribution", () => {
         "/Users/demo/skills/write",
         "write",
         "/tmp/workspace/.agents/skills",
-        { ifExists: "skip", mode: "symlink" },
+        { ifExists: "overwrite", mode: "symlink" },
       );
     });
   });

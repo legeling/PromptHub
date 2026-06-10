@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, useRef, useLayoutEffect } from 'react';
+import { useMemo, useState, useCallback, useRef, useLayoutEffect, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
   DndContext,
@@ -76,6 +76,7 @@ export function SortableTree({
   const containerRef = useRef<HTMLDivElement>(null);
   const lastOverIdRef = useRef<string | null>(null);
   const justDraggedRef = useRef(false);
+  const resetTimerRef = useRef<number | null>(null);
   
   const sensors = useSensors(
     useSensor(PointerSensor, { 
@@ -157,18 +158,6 @@ export function SortableTree({
     }
   }, [itemsToRender.length, isCollapsed, itemHeight]);
 
-  const handleDragStart = useCallback((event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
-    setOverId(event.active.id as string);
-    lastOverIdRef.current = event.active.id as string;
-    justDraggedRef.current = true;
-    document.body.style.setProperty('cursor', 'grabbing');
-
-    if (containerRef.current) {
-      setMinHeight(containerRef.current.offsetHeight);
-    }
-  }, []);
-
   const handleDragMove = useCallback((event: DragMoveEvent) => {
     setOffsetLeft(event.delta.x);
   }, []);
@@ -185,17 +174,46 @@ export function SortableTree({
     }
   }, []);
 
+  const clearResetTimer = useCallback(() => {
+    if (resetTimerRef.current !== null) {
+      window.clearTimeout(resetTimerRef.current);
+      resetTimerRef.current = null;
+    }
+  }, []);
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    clearResetTimer();
+    setActiveId(event.active.id as string);
+    setOverId(event.active.id as string);
+    lastOverIdRef.current = event.active.id as string;
+    justDraggedRef.current = true;
+    document.body.style.setProperty('cursor', 'grabbing');
+
+    if (containerRef.current) {
+      setMinHeight(containerRef.current.offsetHeight);
+    }
+  }, [clearResetTimer]);
+
+  useEffect(() => {
+    return () => {
+      clearResetTimer();
+      document.body.style.removeProperty('cursor');
+    };
+  }, [clearResetTimer]);
+
   const resetState = useCallback(() => {
     setActiveId(null);
     setOverId(null);
     setOffsetLeft(0);
     setMinHeight(null);
     document.body.style.removeProperty('cursor');
-    window.setTimeout(() => {
+    clearResetTimer();
+    resetTimerRef.current = window.setTimeout(() => {
       justDraggedRef.current = false;
       lastOverIdRef.current = null;
+      resetTimerRef.current = null;
     }, 80);
-  }, []);
+  }, [clearResetTimer]);
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { over } = event;

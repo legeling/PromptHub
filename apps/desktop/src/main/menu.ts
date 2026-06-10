@@ -1,5 +1,8 @@
 import { Menu, app, shell, BrowserWindow } from 'electron';
 
+const PROMPTHUB_REPOSITORY_URL = 'https://github.com/legeling/PromptHub';
+const PROMPTHUB_ISSUES_URL = `${PROMPTHUB_REPOSITORY_URL}/issues`;
+
 /**
  * Create application menu
  * 创建应用菜单
@@ -109,13 +112,13 @@ export function createMenu(): void {
         {
           label: '文档',
           click: () => {
-            shell.openExternal('https://github.com/xxx/PromptHub');
+            shell.openExternal(PROMPTHUB_REPOSITORY_URL);
           },
         },
         {
           label: '报告问题',
           click: () => {
-            shell.openExternal('https://github.com/xxx/PromptHub/issues');
+            shell.openExternal(PROMPTHUB_ISSUES_URL);
           },
         },
       ],

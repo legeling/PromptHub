@@ -72,3 +72,15 @@ PromptHub CLI MUST expose the same stable AI configuration concepts used by the 
 - **THEN** the model is removed
 - **AND** routes referencing that model are cleared
 - **AND** the provider remains configured until explicitly deleted.
+
+### Requirement: CLI Skill Scan Table Output Must Tolerate Partial Safety Reports
+
+PromptHub CLI MUST render `skill scan` table output without crashing when a scanned skill carries a partial or legacy safety report.
+
+#### Scenario: Safety report has no findings array
+
+- **GIVEN** a scanned skill includes a safety report level but no `findings` array
+- **WHEN** the user runs `prompthub --output table skill scan <path>`
+- **THEN** the CLI renders the skill row
+- **AND** it reports the finding count as `0`
+- **AND** it does not exit with an internal error.

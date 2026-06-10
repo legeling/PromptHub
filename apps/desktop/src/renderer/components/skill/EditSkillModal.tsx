@@ -1,4 +1,12 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import {
+  lazy,
+  Suspense,
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import { useTranslation } from "react-i18next";
 import {
   XIcon,
@@ -13,7 +21,7 @@ import {
 import { useSkillStore } from "../../stores/skill.store";
 import type { Skill } from "@prompthub/shared/types";
 import { UnsavedChangesDialog } from "../ui/UnsavedChangesDialog";
-import { SkillFileEditor } from "./SkillFileEditor";
+import { Spinner } from "../ui";
 import { SkillIconPicker } from "./SkillIconPicker";
 import { SKILL_NAME_REGEX } from "./detail-utils";
 import {
@@ -21,6 +29,13 @@ import {
   getUserSkillTags,
   inferOriginalSkillTags,
 } from "./skill-modal-utils";
+
+const LazySkillFileEditor = lazy(() =>
+  import("./SkillFileEditor").then((module) => ({
+    default: module.SkillFileEditor,
+  })),
+);
+
 interface EditSkillModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -35,6 +50,12 @@ export function EditSkillModal({
   const { t } = useTranslation();
   const updateSkill = useSkillStore((state) => state.updateSkill);
   const existingSkills = useSkillStore((state) => state.skills);
+  const nameInputId = "edit-skill-name";
+  const nameHintId = "edit-skill-name-hint";
+  const nameErrorId = "edit-skill-name-error";
+  const descriptionInputId = "edit-skill-description";
+  const authorInputId = "edit-skill-author";
+  const tagInputId = "edit-skill-tag";
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
@@ -202,6 +223,9 @@ export function EditSkillModal({
     <div className="fixed inset-0 z-[100] flex items-center justify-center">
       {/* Backdrop */}
       <div
+        data-testid="edit-skill-backdrop"
+        role="presentation"
+        aria-hidden="true"
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={handleCloseRequest}
       />
@@ -219,6 +243,12 @@ export function EditSkillModal({
           </h2>
           <div className="flex items-center gap-2">
             <button
+              type="button"
+              aria-label={
+                isFullscreen
+                  ? t("common.exitFullscreen", "Exit Fullscreen")
+                  : t("common.fullscreen", "Fullscreen")
+              }
               onClick={() => setIsFullscreen(!isFullscreen)}
               className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
               title={
@@ -228,16 +258,18 @@ export function EditSkillModal({
               }
             >
               {isFullscreen ? (
-                <Minimize2Icon className="w-4 h-4" />
+                <Minimize2Icon aria-hidden="true" className="w-4 h-4" />
               ) : (
-                <Maximize2Icon className="w-4 h-4" />
+                <Maximize2Icon aria-hidden="true" className="w-4 h-4" />
               )}
             </button>
             <button
+              type="button"
+              aria-label={t("common.close", "Close")}
               onClick={handleCloseRequest}
               className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
             >
-              <XIcon className="w-4 h-4" />
+              <XIcon aria-hidden="true" className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -246,20 +278,29 @@ export function EditSkillModal({
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
           {error && (
             <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive flex items-center gap-2">
-              <AlertCircleIcon className="w-4 h-4 shrink-0" />
+              <AlertCircleIcon
+                aria-hidden="true"
+                className="w-4 h-4 shrink-0"
+              />
               {error}
             </div>
           )}
 
           {/* Name */}
           <div>
-            <label className="block text-sm font-medium mb-2">
+            <label
+              htmlFor={nameInputId}
+              className="block text-sm font-medium mb-2"
+            >
               {t("skill.skillName", "Skill Name")}{" "}
-              <span className="text-destructive">*</span>
+              <span aria-hidden="true" className="text-destructive">*</span>
             </label>
             <input
+              id={nameInputId}
               type="text"
               value={name}
+              aria-invalid={nameError ? "true" : undefined}
+              aria-describedby={nameError ? nameErrorId : nameHintId}
               onChange={(e) => {
                 const value = e.target.value
                   .toLowerCase()
@@ -273,12 +314,15 @@ export function EditSkillModal({
               }`}
             />
             {nameError && (
-              <p className="mt-1.5 text-xs text-destructive flex items-center gap-1">
-                <AlertCircleIcon className="w-3 h-3" />
+              <p
+                id={nameErrorId}
+                className="mt-1.5 text-xs text-destructive flex items-center gap-1"
+              >
+                <AlertCircleIcon aria-hidden="true" className="w-3 h-3" />
                 {nameError}
               </p>
             )}
-            <p className="mt-1.5 text-xs text-muted-foreground">
+            <p id={nameHintId} className="mt-1.5 text-xs text-muted-foreground">
               {t(
                 "skill.nameHint",
                 "Lowercase letters, numbers, and hyphens only, e.g. my-skill-name",
@@ -288,10 +332,14 @@ export function EditSkillModal({
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium mb-2">
+            <label
+              htmlFor={descriptionInputId}
+              className="block text-sm font-medium mb-2"
+            >
               {t("skill.skillDescription", "Description")}
             </label>
             <input
+              id={descriptionInputId}
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -320,10 +368,14 @@ export function EditSkillModal({
           />
 
           <div>
-            <label className="block text-sm font-medium mb-2">
+            <label
+              htmlFor={authorInputId}
+              className="block text-sm font-medium mb-2"
+            >
               {t("skill.author", "Author")}
             </label>
             <input
+              id={authorInputId}
               type="text"
               value={author}
               onChange={(e) => setAuthor(e.target.value)}
@@ -334,7 +386,10 @@ export function EditSkillModal({
 
           {/* Tags */}
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-foreground">
+            <label
+              htmlFor={tagInputId}
+              className="block text-sm font-medium text-foreground"
+            >
               {t("skill.tagsOptional", "Tags (Optional)")}
             </label>
             <div className="flex flex-wrap gap-2 mb-2">
@@ -343,14 +398,18 @@ export function EditSkillModal({
                   key={tag}
                   className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-primary text-white"
                 >
-                  <HashIcon className="w-3 h-3" />
+                  <HashIcon aria-hidden="true" className="w-3 h-3" />
                   {tag}
                   <button
                     type="button"
+                    aria-label={t("skill.removeTagWithName", {
+                      tag,
+                      defaultValue: "Remove tag {{tag}}",
+                    })}
                     onClick={() => handleRemoveTag(tag)}
                     className="ml-1 hover:text-white/70"
                   >
-                    <XIcon className="w-3 h-3" />
+                    <XIcon aria-hidden="true" className="w-3 h-3" />
                   </button>
                 </span>
               ))}
@@ -367,10 +426,14 @@ export function EditSkillModal({
                       <button
                         key={existingTag}
                         type="button"
+                        aria-label={t("skill.addExistingTag", {
+                          tag: existingTag,
+                          defaultValue: "Add existing tag {{tag}}",
+                        })}
                         onClick={() => setTags([...tags, existingTag])}
                         className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-muted hover:bg-accent transition-colors"
                       >
-                        <HashIcon className="w-3 h-3" />
+                        <HashIcon aria-hidden="true" className="w-3 h-3" />
                         {existingTag}
                       </button>
                     ))}
@@ -379,6 +442,7 @@ export function EditSkillModal({
             )}
             <div className="flex gap-2">
               <input
+                id={tagInputId}
                 type="text"
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
@@ -414,10 +478,11 @@ export function EditSkillModal({
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => setIsFileEditorOpen(true)}
                 className="shrink-0 inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors"
               >
-                <FolderOpenIcon className="w-4 h-4" />
+                <FolderOpenIcon aria-hidden="true" className="w-4 h-4" />
                 {t("skill.openFileEditor", "打开文件编辑器")}
               </button>
             </div>
@@ -427,20 +492,25 @@ export function EditSkillModal({
         {/* Footer */}
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border shrink-0 app-wallpaper-surface">
           <button
+            type="button"
             onClick={handleCloseRequest}
             className="px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
           >
             {t("common.cancel", "取消")}
           </button>
           <button
+            type="button"
             onClick={handleSave}
             disabled={isLoading || !!nameError}
             className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
           >
             {isLoading ? (
-              <LoaderIcon className="w-4 h-4 animate-spin" />
+              <LoaderIcon
+                aria-hidden="true"
+                className="w-4 h-4 animate-spin"
+              />
             ) : (
-              <SaveIcon className="w-4 h-4" />
+              <SaveIcon aria-hidden="true" className="w-4 h-4" />
             )}
             {t("common.save", "保存")}
           </button>
@@ -458,14 +528,27 @@ export function EditSkillModal({
           handleClose();
         }}
       />
-      {skill && (
-        <SkillFileEditor
-          skillId={skill.id}
-          skillName={skill.name}
-          isOpen={isFileEditorOpen}
-          onClose={() => setIsFileEditorOpen(false)}
-        />
-      )}
+      {skill && isFileEditorOpen ? (
+        <Suspense
+          fallback={
+            <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/30">
+              <Spinner
+                size="lg"
+                tone="current"
+                label={t("common.loading", "Loading...")}
+                className="text-white"
+              />
+            </div>
+          }
+        >
+          <LazySkillFileEditor
+            skillId={skill.id}
+            skillName={skill.name}
+            isOpen={isFileEditorOpen}
+            onClose={() => setIsFileEditorOpen(false)}
+          />
+        </Suspense>
+      ) : null}
     </div>
   );
 }

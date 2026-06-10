@@ -23,6 +23,7 @@ export function ImageParamsSection({
           </label>
           <Select
             value={modelForm.imageParams.size}
+            ariaLabel={t("settings.imageSize")}
             onChange={(value) =>
               setModelForm((prev) => ({
                 ...prev,
@@ -46,6 +47,7 @@ export function ImageParamsSection({
           </label>
           <Select
             value={modelForm.imageParams.quality}
+            ariaLabel={t("settings.imageQuality")}
             onChange={(value) =>
               setModelForm((prev) => ({
                 ...prev,
@@ -67,6 +69,7 @@ export function ImageParamsSection({
           </label>
           <Select
             value={modelForm.imageParams.style}
+            ariaLabel={t("settings.imageStyle")}
             onChange={(value) =>
               setModelForm((prev) => ({
                 ...prev,

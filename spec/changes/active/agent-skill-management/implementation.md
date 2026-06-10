@@ -63,6 +63,10 @@ Implemented.
   - Users can filter the selected Agent by all Skills, managed Skills, unmanaged Skills, PromptHub-managed copy installs, and PromptHub-managed symlink installs.
   - External installs are not counted as PromptHub copy/symlink installs, so the header numbers match the list badges.
   - Added `agentStatsUnmanaged` localization across all desktop locales.
+- Current-version persisted custom Agent settings are normalized during renderer settings hydration.
+  - Empty custom Agent entries and duplicate root paths are filtered before Agent Skill scanning consumes them.
+  - `customAgentRootPaths` and `customSkillScanPaths` are re-derived from normalized `customAgents` so stale legacy arrays do not create extra scan targets.
+  - Non-string `configRelativePaths` entries are filtered before relative path normalization.
 
 ## Verification
 
@@ -130,3 +134,14 @@ Implemented.
   - 3 files passed
   - 46 tests passed
   - Covers the shared lifecycle matrix, same-name identity separation, Agent/Project unmanaged copy labels, Agent status labels, and Project status labels.
+- Custom Agent settings hydration follow-up:
+- `pnpm --filter @prompthub/desktop test -- --run tests/unit/stores/settings-agent-roots.test.ts -t "same-version persisted custom agents"`
+  - Result: first reproduced the current-version hydrate gap, then passed after shared normalization.
+- `pnpm --filter @prompthub/desktop test -- --run tests/unit/stores/settings-agent-roots.test.ts`
+  - Result: passed (8/8).
+- `pnpm --filter @prompthub/desktop typecheck`
+  - Result: passed.
+- `pnpm --filter @prompthub/desktop lint`
+  - Result: passed.
+- `git diff --check -- apps/desktop/src/renderer/stores/settings.store.ts apps/desktop/src/renderer/services/agent-root-paths.ts apps/desktop/tests/unit/stores/settings-agent-roots.test.ts spec/changes/active/agent-skill-management spec/issues/active/quality.md`
+  - Result: passed.

@@ -6,3 +6,22 @@
 - [x] 完成验证
 - [x] 更新 implementation.md
 - [x] 同步稳定 specs / architecture / docs
+- [x] 加固旧版 remote skill store 缓存缺少 `skills` 数组时的 Sidebar/store 持久化回归。
+- [x] 将旧版 remote skill store 缓存容错扩展到 SkillStore 页面、SkillManager 更新提示和远程加载缓存判断。
+- [x] 收紧桌面媒体 IPC 文件名边界，并让 `video:getPath` 对非法文件名返回 `null` 而不是抛出 IPC 异常。
+- [x] 为桌面媒体 IPC buffer/base64 写入增加 20 MiB 内容上限和严格 base64 校验。
+- [x] 收紧桌面本地媒体协议边界，按 `local-image` / `local-video` 限制扩展名并拒绝危险路径片段。
+- [x] 收紧技能 markdown URL 解析边界，拒绝 `javascript:` / `file:` / `data:` 等不安全协议。
+- [x] 收紧 Prompt markdown 链接渲染边界，让不安全协议降级为不可点击文本。
+- [x] 收紧 Prompt source 字段链接边界，只让安全 URL 协议保持可点击。
+- [x] 收紧 AI 测试生成图 URL 边界，只渲染/下载/添加安全图片 URL。
+- [x] 收紧技能来源和技能商店详情 URL 边界，避免不安全协议被当作远端链接或本地来源打开。
+- [x] 将生成图 URL 边界抽为共享 helper，并覆盖 AI 设置生图测试弹窗和通用下载工具。
+- [x] 收紧技能图标 URL 边界，避免远端/导入 `icon_url` 的不安全协议进入 `<img src>`。
+- [x] 为图片反推拖拽/粘贴参考图增加 renderer 侧大小预检，避免超大图片先被完整读入内存。
+- [x] 为变量填充 AI 测试附件选择补齐格式/大小/数量提示，并避免无效文件触发 `FileReader`。
+- [x] 收紧技能变体来源徽标的 HTTP(S) 判断，避免 `http` 前缀字符串被误判为 Community 来源。
+- [x] 收紧 macOS updater 直接 DMG 下载和重定向 URL，只允许 HTTP(S) 协议。
+- [x] 统一桌面 renderer 外链 `target="_blank"` 的 `rel="noopener noreferrer"` 标记。
+- [x] 修复旧版 AI 设置页遇到非法模型 API URL 时的渲染崩溃。
+- [x] 收紧桌面远程图片下载类型边界，拒绝无图片扩展且无 image Content-Type 的响应。

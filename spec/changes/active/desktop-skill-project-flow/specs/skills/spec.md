@@ -18,6 +18,14 @@
 - When 用户确认添加项目
 - Then PromptHub 自动选中新项目并立即执行扫描
 
+#### Scenario: hydrate persisted project records safely
+
+- Given current-version renderer settings localStorage contains malformed or stale `skillProjects`
+- When the desktop settings store hydrates
+- Then PromptHub filters incomplete project records
+- And trims project names and paths
+- And removes duplicate or root-equivalent scan/deploy paths before project UI or filesystem actions consume them
+
 ### Requirement: Project views should provide a stable visual anchor
 
 `项目 Skills` 页面中的项目条目和项目头部应展示明确的项目标识，且头部边界需要在多栏布局中对齐。

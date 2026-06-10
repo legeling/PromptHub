@@ -6,7 +6,7 @@ import {
   Loader2Icon,
   CuboidIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSettingsStore } from "../../stores/settings.store";
 import { useToast } from "../ui/Toast";
 import type { Skill } from "@prompthub/shared/types";
@@ -30,6 +30,9 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
   );
   const { showToast } = useToast();
   const [isClosingSoon, setIsClosingSoon] = useState(false);
+  const [isInstallPending, setIsInstallPending] = useState(false);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const installPendingRef = useRef(false);
   const {
     availablePlatforms,
     batchInstall,
@@ -42,9 +45,31 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
     uninstalledPlatforms,
   } = useSkillPlatform(skill, skillInstallMethod);
 
-  const handleInstall = async () => {
-    if (selectedPlatforms.size === 0 || isClosingSoon) return;
+  const clearCloseTimer = useCallback(() => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  }, []);
 
+  useEffect(() => {
+    return () => {
+      clearCloseTimer();
+    };
+  }, [clearCloseTimer]);
+
+  const handleInstall = async () => {
+    if (
+      selectedPlatforms.size === 0 ||
+      isClosingSoon ||
+      isBatchInstalling ||
+      installPendingRef.current
+    ) {
+      return;
+    }
+
+    installPendingRef.current = true;
+    setIsInstallPending(true);
     try {
       const result = await batchInstall();
       if (result.successCount > 0) {
@@ -87,7 +112,9 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
         result.failures.length === 0
       ) {
         setIsClosingSoon(true);
-        setTimeout(() => {
+        clearCloseTimer();
+        closeTimerRef.current = setTimeout(() => {
+          closeTimerRef.current = null;
           onClose();
         }, 1000);
       }
@@ -97,12 +124,16 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
         `${t("skill.updateFailed")}: ${getErrorMessage(error)}`,
         "error",
       );
+    } finally {
+      installPendingRef.current = false;
+      setIsInstallPending(false);
     }
   };
 
   // All platforms installed
   const allInstalled =
     availablePlatforms.length > 0 && uninstalledPlatforms.length === 0;
+  const isInstalling = isBatchInstalling || isInstallPending;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-base">
@@ -111,7 +142,7 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
         <div className="flex items-center justify-between p-5 border-b border-border">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary/10 text-primary rounded-xl">
-              <CuboidIcon className="w-5 h-5" />
+              <CuboidIcon aria-hidden="true" className="w-5 h-5" />
             </div>
             <div>
               <h3 className="font-bold text-foreground">
@@ -123,10 +154,12 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
             </div>
           </div>
           <button
+            type="button"
+            aria-label={t("common.close", "Close")}
             onClick={onClose}
             className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
           >
-            <XIcon className="w-5 h-5" />
+            <XIcon aria-hidden="true" className="w-5 h-5" />
           </button>
         </div>
 
@@ -140,7 +173,10 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
             </div>
           ) : allInstalled ? (
             <div className="text-center py-8">
-              <CheckIcon className="w-12 h-12 text-green-500 mx-auto mb-3" />
+              <CheckIcon
+                aria-hidden="true"
+                className="w-12 h-12 text-green-500 mx-auto mb-3"
+              />
               <p className="text-foreground font-medium">
                 {t("skill.allPlatformsInstalled", "Installed on all platforms")}
               </p>
@@ -158,9 +194,10 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
                   {t("skill.selectPlatforms", "Select platforms to install")}
                 </p>
                 <button
+                  type="button"
                   onClick={selectAllPlatforms}
                   className="text-xs text-primary hover:underline"
-                  disabled={isBatchInstalling}
+                  disabled={isInstalling}
                 >
                   {t("skill.selectAll")}
                 </button>
@@ -172,24 +209,32 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
                   const isSelected = selectedPlatforms.has(platform.id);
 
                   return (
-                    <div
+                    <button
+                      type="button"
                       key={platform.id}
+                      aria-pressed={isInstalled ? undefined : isSelected}
+                      disabled={isInstalled || isInstalling}
                       onClick={() => {
-                        if (!isInstalled && !isBatchInstalling) {
-                          togglePlatformSelection(platform.id);
-                        }
+                        togglePlatformSelection(platform.id);
                       }}
-                      className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+                      className={`flex items-center justify-between p-3 rounded-xl border text-left transition-all ${
                         isInstalled
                           ? "bg-green-500/5 border-green-500/20 cursor-default"
                           : isSelected
                             ? "bg-primary/10 border-primary cursor-pointer"
                             : "bg-accent/30 border-border hover:bg-accent/50 cursor-pointer"
-                      } ${isBatchInstalling && !isInstalled ? "opacity-60 cursor-wait" : ""}`}
+                      } ${isInstalling && !isInstalled ? "opacity-60 cursor-wait" : ""}`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
-                          <PlatformIcon platformId={platform.id} size={26} />
+                        <div
+                          aria-hidden="true"
+                          className="w-8 h-8 flex items-center justify-center flex-shrink-0"
+                        >
+                          <PlatformIcon
+                            aria-hidden="true"
+                            platformId={platform.id}
+                            size={26}
+                          />
                         </div>
                         <span className="font-medium text-sm">
                           {platform.name}
@@ -197,7 +242,7 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
                       </div>
                       {isInstalled ? (
                         <div className="flex items-center gap-1 text-green-500">
-                          <CheckIcon className="w-4 h-4" />
+                          <CheckIcon aria-hidden="true" className="w-4 h-4" />
                           <span className="text-xs">
                             {t("skill.installed")}
                           </span>
@@ -211,11 +256,14 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
                           }`}
                         >
                           {isSelected && (
-                            <CheckIcon className="w-3 h-3 text-white" />
+                            <CheckIcon
+                              aria-hidden="true"
+                              className="w-3 h-3 text-white"
+                            />
                           )}
                         </div>
                       )}
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -227,20 +275,24 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
         {!allInstalled && availablePlatforms.length > 0 && (
           <div className="p-5 border-t border-border shrink-0">
             <button
+              type="button"
               onClick={handleInstall}
-              disabled={selectedPlatforms.size === 0 || isBatchInstalling}
+              disabled={selectedPlatforms.size === 0 || isInstalling}
               className="w-full py-3 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors hover:bg-primary/90"
             >
-              {isBatchInstalling ? (
+              {isInstalling ? (
                 <>
-                  <Loader2Icon className="w-4 h-4 animate-spin" />
+                  <Loader2Icon
+                    aria-hidden="true"
+                    className="w-4 h-4 animate-spin"
+                  />
                   {installProgress
                     ? `${installProgress.current}/${installProgress.total}`
                     : t("skill.installing")}
                 </>
               ) : (
                 <>
-                  <DownloadIcon className="w-4 h-4" />
+                  <DownloadIcon aria-hidden="true" className="w-4 h-4" />
                   {t("skill.installSelected", "Install Selected")}{" "}
                   {selectedPlatforms.size > 0 && `(${selectedPlatforms.size})`}
                 </>

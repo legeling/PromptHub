@@ -29,6 +29,7 @@ import {
   type AIModelRoute,
 } from "../../stores/settings.store";
 import { useToast } from "../ui/Toast";
+import { Spinner } from "../ui/Spinner";
 import { AdvancedSection } from "./ai-workbench/AdvancedSection";
 import { EMPTY_FORM, MODEL_ROUTE_DEFINITIONS } from "./ai-workbench/constants";
 import { EndpointFormModal } from "./ai-workbench/EndpointFormModal";
@@ -1030,9 +1031,12 @@ export function AISettingsPrototype() {
           className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border border-border bg-background px-4 text-sm font-medium leading-none shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
         >
           {testingDefault ? (
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+            <Spinner aria-hidden="true" size="sm" tone="muted" />
           ) : (
-            <TestTubeIcon className="h-4 w-4 text-muted-foreground" />
+            <TestTubeIcon
+              aria-hidden="true"
+              className="h-4 w-4 text-muted-foreground"
+            />
           )}
           {t("settings.aiWorkbenchTestDefault")}
         </button>

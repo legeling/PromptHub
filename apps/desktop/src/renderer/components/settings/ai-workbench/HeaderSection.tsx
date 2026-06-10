@@ -41,9 +41,15 @@ export function HeaderSection({
             className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border border-border bg-background px-4 text-sm font-medium leading-none shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
           >
             {testingDefault ? (
-              <Loader2Icon className="h-4 w-4 animate-spin text-muted-foreground" />
+              <Loader2Icon
+                aria-hidden="true"
+                className="h-4 w-4 animate-spin text-muted-foreground"
+              />
             ) : (
-              <TestTubeIcon className="h-4 w-4 text-muted-foreground" />
+              <TestTubeIcon
+                aria-hidden="true"
+                className="h-4 w-4 text-muted-foreground"
+              />
             )}
             {t("settings.aiWorkbenchTestDefault")}
           </button>
@@ -52,7 +58,7 @@ export function HeaderSection({
             onClick={onAddModel}
             className="inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg bg-primary px-4 text-sm font-medium leading-none text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
           >
-            <PlusIcon className="h-4 w-4" />
+            <PlusIcon aria-hidden="true" className="h-4 w-4" />
             {t("settings.addModel")}
           </button>
         </div>

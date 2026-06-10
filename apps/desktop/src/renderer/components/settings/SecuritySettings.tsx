@@ -135,7 +135,7 @@ export function SecuritySettings() {
       <SettingSection title={t("settings.security", "安全与主密码")}>
         <div className="p-4 space-y-3 bg-muted/30 rounded-xl border border-border/60">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <KeyIcon className="w-4 h-4" />
+            <KeyIcon aria-hidden="true" className="w-4 h-4" />
             <span>
               {t("settings.securityStatus", "Status")}:
               {securityStatus.configured
@@ -152,6 +152,10 @@ export function SecuritySettings() {
               <PasswordInput
                 value={newMasterPwd}
                 onChange={setNewMasterPwd}
+                ariaLabel={t(
+                  "settings.masterPlaceholder",
+                  "Enter master password",
+                )}
                 placeholder={t(
                   "settings.masterPlaceholder",
                   "Enter master password",
@@ -160,12 +164,17 @@ export function SecuritySettings() {
               <PasswordInput
                 value={newMasterPwdConfirm}
                 onChange={setNewMasterPwdConfirm}
+                ariaLabel={t(
+                  "settings.masterConfirmPlaceholder",
+                  "Confirm master password",
+                )}
                 placeholder={t(
                   "settings.masterConfirmPlaceholder",
                   "Confirm master password",
                 )}
               />
               <button
+                type="button"
                 onClick={handleSetMasterPassword}
                 className="h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
                 disabled={secLoading}
@@ -187,12 +196,17 @@ export function SecuritySettings() {
                   <PasswordInput
                     value={unlockPwd}
                     onChange={setUnlockPwd}
+                    ariaLabel={t(
+                      "settings.unlockPlaceholder",
+                      "Enter master password to unlock",
+                    )}
                     placeholder={t(
                       "settings.unlockPlaceholder",
                       "Enter master password to unlock",
                     )}
                   />
                   <button
+                    type="button"
                     onClick={handleUnlock}
                     className="h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
                     disabled={secLoading}
@@ -208,6 +222,7 @@ export function SecuritySettings() {
                     {t("settings.unlockSuccess", "Unlocked successfully")}
                   </div>
                   <button
+                    type="button"
                     onClick={handleLock}
                     className="h-9 px-3 rounded-lg border border-border text-sm font-medium hover:bg-muted/60 disabled:opacity-50"
                     disabled={secLoading}
@@ -224,7 +239,9 @@ export function SecuritySettings() {
                   {t("settings.changePwd", "Change Master Password")}
                 </div>
                 <button
+                  type="button"
                   onClick={() => setShowChangePwd(!showChangePwd)}
+                  aria-expanded={showChangePwd}
                   className="text-xs text-primary hover:underline"
                 >
                   {showChangePwd
@@ -237,6 +254,10 @@ export function SecuritySettings() {
                   <PasswordInput
                     value={oldPwd}
                     onChange={setOldPwd}
+                    ariaLabel={t(
+                      "settings.oldPwdPlaceholder",
+                      "Enter current master password",
+                    )}
                     placeholder={t(
                       "settings.oldPwdPlaceholder",
                       "Enter current master password",
@@ -245,6 +266,10 @@ export function SecuritySettings() {
                   <PasswordInput
                     value={newPwd}
                     onChange={setNewPwd}
+                    ariaLabel={t(
+                      "settings.newPwdPlaceholder",
+                      "Enter new master password (min 4 chars)",
+                    )}
                     placeholder={t(
                       "settings.newPwdPlaceholder",
                       "Enter new master password (min 4 chars)",
@@ -253,12 +278,17 @@ export function SecuritySettings() {
                   <PasswordInput
                     value={newPwdConfirm}
                     onChange={setNewPwdConfirm}
+                    ariaLabel={t(
+                      "settings.newPwdConfirmPlaceholder",
+                      "Confirm new master password",
+                    )}
                     placeholder={t(
                       "settings.newPwdConfirmPlaceholder",
                       "Confirm new master password",
                     )}
                   />
                   <button
+                    type="button"
                     onClick={handleChangeMasterPassword}
                     className="h-10 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
                     disabled={secLoading}

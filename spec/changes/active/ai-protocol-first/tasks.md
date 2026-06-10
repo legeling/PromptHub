@@ -45,3 +45,6 @@
 - [x] 为 AI 测试抽屉和自绘 Prompt 弹窗补齐进入动画，并补充 UI 回归断言
 - [x] 将 AI provider / model / route 配置收口为 `config/ai-models.json` 单一持久化源，desktop `settings.set` 不再把 AI 字段写入 SQLite settings
 - [x] 为模型配置补 `providerId`，避免多个同类型/同 URL 自定义供应商被合并成一个端点
+- [x] 修复同版本 renderer settings hydrate 不规范化 AI provider/model 协议字段和畸形记录的问题
+- [x] 修复同版本 renderer settings hydrate 不规范化 AI 模型路由默认值和旧场景默认值的问题
+- [x] 修复 main-process shared AI config overlay 不规范化 provider/model 记录的问题

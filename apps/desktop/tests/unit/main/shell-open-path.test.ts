@@ -2,7 +2,10 @@
  * @vitest-environment node
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { openDirectoryPath } from "../../../src/main/shell-open-path";
+import {
+  expandShellOpenPath,
+  openDirectoryPath,
+} from "../../../src/main/shell-open-path";
 
 function createDeps() {
   return {
@@ -14,6 +17,31 @@ function createDeps() {
     statSync: vi.fn(),
   };
 }
+
+const tokenPaths = {
+  appDataPath: "/Users/test/Library/Application Support",
+  homePath: "/Users/test",
+};
+
+describe("expandShellOpenPath", () => {
+  it("expands bare home tokens only when they represent the current user home", () => {
+    expect(expandShellOpenPath("~", tokenPaths)).toBe("/Users/test");
+    expect(expandShellOpenPath("~/skills", tokenPaths)).toBe("/Users/test/skills");
+    expect(expandShellOpenPath("~\\skills", tokenPaths)).toBe(
+      "/Users/test\\skills",
+    );
+    expect(expandShellOpenPath("~team/skills", tokenPaths)).toBe("~team/skills");
+  });
+
+  it("expands APPDATA tokens case-insensitively", () => {
+    expect(expandShellOpenPath("%APPDATA%\\PromptHub", tokenPaths)).toBe(
+      "/Users/test/Library/Application Support\\PromptHub",
+    );
+    expect(expandShellOpenPath("%appdata%\\PromptHub", tokenPaths)).toBe(
+      "/Users/test/Library/Application Support\\PromptHub",
+    );
+  });
+});
 
 describe("openDirectoryPath", () => {
   let deps: ReturnType<typeof createDeps>;
@@ -54,6 +82,30 @@ describe("openDirectoryPath", () => {
     await expect(openDirectoryPath("/tmp/file.txt", deps)).resolves.toEqual({
       success: false,
       error: "Only directories can be opened",
+    });
+    expect(deps.openPath).not.toHaveBeenCalled();
+  });
+
+  it("rejects missing paths before invoking the OS shell", async () => {
+    deps.lstatSync.mockImplementation(() => {
+      throw new Error("ENOENT");
+    });
+
+    await expect(openDirectoryPath("/tmp/missing-folder", deps)).resolves.toEqual({
+      success: false,
+      error: "Directory does not exist or cannot be accessed",
+    });
+    expect(deps.openPath).not.toHaveBeenCalled();
+  });
+
+  it("rejects URL-like input as a directory path", async () => {
+    deps.lstatSync.mockImplementation(() => {
+      throw new Error("ENOENT");
+    });
+
+    await expect(openDirectoryPath("https://example.com", deps)).resolves.toEqual({
+      success: false,
+      error: "Directory does not exist or cannot be accessed",
     });
     expect(deps.openPath).not.toHaveBeenCalled();
   });

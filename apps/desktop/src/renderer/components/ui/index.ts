@@ -13,3 +13,4 @@ export { getCategoryIcon } from './ModelIcons';
 export { Checkbox } from './Checkbox';
 export { LocalImage } from './LocalImage';
 export { PlatformIcon, getPlatformIconElement } from './PlatformIcon';
+export { Spinner } from './Spinner';

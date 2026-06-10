@@ -15,6 +15,7 @@ import {
   useSkillStore,
 } from "../../../src/renderer/stores/skill.store";
 import { useSettingsStore } from "../../../src/renderer/stores/settings.store";
+import { buildSkillSourceId } from "@prompthub/shared/utils/skill-identity";
 import { createSkillFixture } from "../../fixtures/skills";
 import { installWindowMocks } from "../../helpers/window";
 
@@ -126,14 +127,17 @@ describe("skill store", () => {
     expect(state.remoteStoreEntries["custom-1"]).toBeUndefined();
   });
 
-  it("loadRegistry does not prefetch remote content", () => {
+  it("loadRegistry loads the built-in registry asynchronously without prefetching remote content", async () => {
     const fetchRemoteContent = vi.fn();
     (window as any).api.skill.fetchRemoteContent = fetchRemoteContent;
 
-    useSkillStore.getState().loadRegistry();
+    const loadPromise = useSkillStore.getState().loadRegistry();
+    expect(useSkillStore.getState().isLoadingRegistry).toBe(true);
+    await loadPromise;
 
     const state = useSkillStore.getState();
     expect(state.registrySkills.length).toBeGreaterThan(0);
+    expect(state.isLoadingRegistry).toBe(false);
     expect(fetchRemoteContent).not.toHaveBeenCalled();
   });
 
@@ -2188,6 +2192,381 @@ description: Use this skill for PDF tasks.
 
       useSkillStore.getState().toggleCustomStoreSource("x");
       expect(useSkillStore.getState().customStoreSources[0].enabled).toBe(true);
+    });
+
+    it("normalizes same-version persisted custom git remote cache during hydration", async () => {
+      localStorage.setItem(
+        "skill-store",
+        JSON.stringify({
+          state: {
+            customStoreSources: [
+              {
+                id: "team-skills",
+                name: "Team Skills",
+                type: "git-repo",
+                url: "https://github.com/acme/skills",
+                branch: "release",
+                directory: "packs",
+                enabled: true,
+                createdAt: 1,
+              },
+            ],
+            remoteStoreEntries: {
+              "team-skills": {
+                loadedAt: 100,
+                error: "stale error",
+                skills: [
+                  {
+                    slug: "writer",
+                    name: "Writer",
+                    description: "Write release notes",
+                    category: "dev",
+                    author: "Acme",
+                    tags: ["writing"],
+                    version: "1.0.0",
+                    content: "# Writer",
+                    source_url: "https://github.com/acme/skills",
+                    source_id: "legacy-wrong-source-id",
+                    canonical_skill_path: "packs/writer",
+                    content_url:
+                      "https://raw.githubusercontent.com/acme/skills/release/packs/writer/SKILL.md",
+                  },
+                ],
+              },
+              empty: {
+                loadedAt: 101,
+                error: "network",
+                skills: [],
+              },
+            },
+          },
+          version: 0,
+        }),
+      );
+
+      await useSkillStore.persist.rehydrate();
+
+      const entry = useSkillStore.getState().remoteStoreEntries["team-skills"];
+      expect(entry).toBeDefined();
+      expect(entry!.error).toBeNull();
+      expect(entry!.skills[0]).toEqual(
+        expect.objectContaining({
+          source_id: buildSkillSourceId({
+            sourceType: "git-repo",
+            sourceUrl: "https://github.com/acme/skills",
+            branch: "release",
+            directory: "packs",
+            skillPath: "packs/writer",
+          }),
+          source_branch: "release",
+          source_directory: "packs",
+          canonical_skill_path: "packs/writer",
+        }),
+      );
+      expect(useSkillStore.getState().remoteStoreEntries.empty).toBeUndefined();
+    });
+
+    it("keeps branch identity for same-version persisted local-path git repo cache", async () => {
+      localStorage.setItem(
+        "skill-store",
+        JSON.stringify({
+          state: {
+            customStoreSources: [
+              {
+                id: "local-git-skills",
+                name: "Local Git Skills",
+                type: "git-repo",
+                url: "/Users/demo/repos/skills",
+                branch: "feature/writer",
+                directory: "packs",
+                enabled: true,
+                createdAt: 1,
+              },
+            ],
+            remoteStoreEntries: {
+              "local-git-skills": {
+                loadedAt: 100,
+                error: null,
+                skills: [
+                  {
+                    slug: "writer",
+                    name: "Writer",
+                    description: "Write from local branch",
+                    category: "dev",
+                    author: "Demo",
+                    tags: ["writing"],
+                    version: "1.0.0",
+                    content: "# Writer",
+                    source_url: "/Users/demo/repos/skills",
+                    source_id: "legacy-local-git-source-id",
+                    canonical_skill_path: "packs/writer/SKILL.md",
+                    content_url: "/Users/demo/repos/skills/packs/writer/SKILL.md",
+                  },
+                ],
+              },
+            },
+          },
+          version: 0,
+        }),
+      );
+
+      await useSkillStore.persist.rehydrate();
+
+      const skill =
+        useSkillStore.getState().remoteStoreEntries["local-git-skills"]
+          ?.skills[0];
+      expect(skill).toEqual(
+        expect.objectContaining({
+          source_id: buildSkillSourceId({
+            sourceType: "git-repo",
+            sourceUrl: "/Users/demo/repos/skills",
+            branch: "feature/writer",
+            directory: "packs",
+            skillPath: "packs/writer/SKILL.md",
+          }),
+          source_branch: "feature/writer",
+          source_directory: "packs",
+          canonical_skill_path: "packs/writer/SKILL.md",
+        }),
+      );
+    });
+
+    it("normalizes local-dir, branch, worktree, and detached local git identities independently", async () => {
+      localStorage.setItem(
+        "skill-store",
+        JSON.stringify({
+          state: {
+            customStoreSources: [
+              {
+                id: "plain-local",
+                name: "Plain Local",
+                type: "local-dir",
+                url: "/Users/demo/repos/skills/plain-writer",
+                enabled: true,
+                createdAt: 1,
+              },
+              {
+                id: "local-git-main",
+                name: "Local Git Main",
+                type: "git-repo",
+                url: "/Users/demo/repos/skills",
+                branch: "main",
+                directory: "packs",
+                enabled: true,
+                createdAt: 2,
+              },
+              {
+                id: "local-git-dev",
+                name: "Local Git Dev",
+                type: "git-repo",
+                url: "/Users/demo/repos/skills",
+                branch: "dev",
+                directory: "packs",
+                enabled: true,
+                createdAt: 3,
+              },
+              {
+                id: "local-git-worktree",
+                name: "Local Git Worktree",
+                type: "git-repo",
+                url: "/Users/demo/worktrees/skills-dev",
+                branch: "dev",
+                directory: "packs",
+                enabled: true,
+                createdAt: 4,
+              },
+              {
+                id: "local-git-detached",
+                name: "Local Git Detached",
+                type: "git-repo",
+                url: "/Users/demo/repos/skills-detached",
+                directory: "packs",
+                enabled: true,
+                createdAt: 5,
+              },
+            ],
+            remoteStoreEntries: {
+              "plain-local": {
+                loadedAt: 100,
+                error: null,
+                skills: [
+                  {
+                    slug: "writer",
+                    name: "Writer",
+                    description: "Plain local writer",
+                    category: "dev",
+                    author: "Demo",
+                    tags: ["writing"],
+                    version: "1.0.0",
+                    content: "# Writer",
+                    source_url: "/Users/demo/repos/skills/plain-writer",
+                    source_id: "legacy-plain-local",
+                    source_branch: "stale-branch",
+                    source_directory: "stale-directory",
+                    canonical_skill_path: "plain-writer/SKILL.md",
+                  },
+                ],
+              },
+              "local-git-main": {
+                loadedAt: 101,
+                error: null,
+                skills: [
+                  {
+                    slug: "writer",
+                    name: "Writer",
+                    description: "Main writer",
+                    category: "dev",
+                    author: "Demo",
+                    tags: ["writing"],
+                    version: "1.0.0",
+                    content: "# Writer main",
+                    source_url: "/Users/demo/repos/skills",
+                    source_id: "legacy-main",
+                    canonical_skill_path: "packs/writer/SKILL.md",
+                  },
+                ],
+              },
+              "local-git-dev": {
+                loadedAt: 102,
+                error: null,
+                skills: [
+                  {
+                    slug: "writer",
+                    name: "Writer",
+                    description: "Dev writer",
+                    category: "dev",
+                    author: "Demo",
+                    tags: ["writing"],
+                    version: "1.0.0",
+                    content: "# Writer dev",
+                    source_url: "/Users/demo/repos/skills",
+                    source_id: "legacy-dev",
+                    canonical_skill_path: "packs/writer/SKILL.md",
+                  },
+                ],
+              },
+              "local-git-worktree": {
+                loadedAt: 103,
+                error: null,
+                skills: [
+                  {
+                    slug: "writer",
+                    name: "Writer",
+                    description: "Worktree writer",
+                    category: "dev",
+                    author: "Demo",
+                    tags: ["writing"],
+                    version: "1.0.0",
+                    content: "# Writer worktree",
+                    source_url: "/Users/demo/worktrees/skills-dev",
+                    source_id: "legacy-worktree",
+                    canonical_skill_path: "packs/writer/SKILL.md",
+                  },
+                ],
+              },
+              "local-git-detached": {
+                loadedAt: 104,
+                error: null,
+                skills: [
+                  {
+                    slug: "writer",
+                    name: "Writer",
+                    description: "Detached checkout writer",
+                    category: "dev",
+                    author: "Demo",
+                    tags: ["writing"],
+                    version: "1.0.0",
+                    content: "# Writer detached",
+                    source_url: "/Users/demo/repos/skills-detached",
+                    source_id: "legacy-detached",
+                    canonical_skill_path: "packs/writer/SKILL.md",
+                  },
+                ],
+              },
+            },
+          },
+          version: 0,
+        }),
+      );
+
+      await useSkillStore.persist.rehydrate();
+
+      const entries = useSkillStore.getState().remoteStoreEntries;
+      const plainLocal = entries["plain-local"]?.skills[0];
+      const main = entries["local-git-main"]?.skills[0];
+      const dev = entries["local-git-dev"]?.skills[0];
+      const worktree = entries["local-git-worktree"]?.skills[0];
+      const detached = entries["local-git-detached"]?.skills[0];
+
+      expect(plainLocal).toEqual(
+        expect.objectContaining({
+          source_id: buildSkillSourceId({
+            sourceType: "local-dir",
+            sourceUrl: "/Users/demo/repos/skills/plain-writer",
+            skillPath: "plain-writer/SKILL.md",
+          }),
+          source_branch: undefined,
+          source_directory: undefined,
+        }),
+      );
+      expect(main).toEqual(
+        expect.objectContaining({
+          source_id: buildSkillSourceId({
+            sourceType: "git-repo",
+            sourceUrl: "/Users/demo/repos/skills",
+            branch: "main",
+            directory: "packs",
+            skillPath: "packs/writer/SKILL.md",
+          }),
+          source_branch: "main",
+          source_directory: "packs",
+        }),
+      );
+      expect(dev).toEqual(
+        expect.objectContaining({
+          source_id: buildSkillSourceId({
+            sourceType: "git-repo",
+            sourceUrl: "/Users/demo/repos/skills",
+            branch: "dev",
+            directory: "packs",
+            skillPath: "packs/writer/SKILL.md",
+          }),
+          source_branch: "dev",
+          source_directory: "packs",
+        }),
+      );
+      expect(worktree).toEqual(
+        expect.objectContaining({
+          source_id: buildSkillSourceId({
+            sourceType: "git-repo",
+            sourceUrl: "/Users/demo/worktrees/skills-dev",
+            branch: "dev",
+            directory: "packs",
+            skillPath: "packs/writer/SKILL.md",
+          }),
+          source_branch: "dev",
+          source_directory: "packs",
+        }),
+      );
+      expect(detached).toEqual(
+        expect.objectContaining({
+          source_id: buildSkillSourceId({
+            sourceType: "git-repo",
+            sourceUrl: "/Users/demo/repos/skills-detached",
+            directory: "packs",
+            skillPath: "packs/writer/SKILL.md",
+          }),
+          source_branch: undefined,
+          source_directory: "packs",
+        }),
+      );
+      expect(
+        new Set(
+          [plainLocal, main, dev, worktree, detached].map(
+            (skill) => skill?.source_id,
+          ),
+        ).size,
+      ).toBe(5);
     });
   });
 

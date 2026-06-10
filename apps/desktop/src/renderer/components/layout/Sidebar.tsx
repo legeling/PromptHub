@@ -4,6 +4,8 @@ import {
   useRef,
   useCallback,
   useMemo,
+  lazy,
+  Suspense,
   memo,
   type CSSProperties,
 } from "react";
@@ -28,8 +30,6 @@ import {
   BookOpenIcon,
   LinkIcon,
   FolderOpenIcon,
-  Trash2Icon,
-  RefreshCwIcon,
 } from "lucide-react";
 import { useFolderStore } from "../../stores/folder.store";
 import { usePromptStore } from "../../stores/prompt.store";
@@ -41,6 +41,7 @@ import {
   SIDEBAR_PANEL_WIDTH_MIN,
 } from "../../stores/ui.store";
 import { ColumnResizer } from "../ui/ColumnResizer";
+import { Spinner } from "../ui/Spinner";
 import { useSkillStore } from "../../stores/skill.store";
 import { FolderModal, PrivateFolderUnlockModal } from "../folder";
 import { useTranslation } from "react-i18next";
@@ -49,18 +50,21 @@ import { SortableTree } from "./tree/SortableTree";
 import type { FlattenedItem } from "./tree/utilities";
 import { buildPromptStats } from "../../services/prompt-filter";
 import { buildSkillStats } from "../../services/skill-stats";
+import { getRemoteStoreSkillCount } from "../../services/remote-store-entry";
 import { getRuntimeCapabilities, isWebRuntime } from "../../runtime";
-import { useRulesStore } from "../../stores/rules.store";
-import { PlatformIcon } from "../ui/PlatformIcon";
-import { useToast } from "../ui/Toast";
 import { TagManagerModal } from "../prompt/TagManagerModal";
 import { mergePromptTagCatalog } from "../prompt/prompt-modal-utils";
-import { getOrderedGlobalRuleFiles } from "../../services/rule-platform-order";
 import { filterDetectedPlatforms } from "../../services/platform-visibility";
 import {
   DESKTOP_HOME_MODULES,
   type DesktopHomeModule,
 } from "../../stores/settings.store";
+
+const RulesSidebarPanel = lazy(() =>
+  import("./RulesSidebarPanel").then((module) => ({
+    default: module.RulesSidebarPanel,
+  })),
+);
 
 type PageType = "home" | "settings";
 type SidebarLayout = "combined" | "rail" | "panel";
@@ -93,7 +97,9 @@ const NavItem = memo(function NavItem({
   return (
     <div className="w-full py-0.5">
       <button
+        type="button"
         onClick={onClick}
+        aria-label={label}
         title={label}
         className={`
           flex items-center rounded-lg transition-all duration-smooth relative group
@@ -106,6 +112,7 @@ const NavItem = memo(function NavItem({
         `}
       >
         <span
+          aria-hidden="true"
           className={`flex shrink-0 items-center justify-center transition-transform duration-smooth ${collapsed ? "w-5 h-5 group-hover:scale-110" : "w-4 h-4"}`}
         >
           {icon}
@@ -157,12 +164,6 @@ export function Sidebar({
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [passwordFolder, setPasswordFolder] = useState<Folder | null>(null);
   const [showAllTags, setShowAllTags] = useState(false);
-  const [collapsedRuleSections, setCollapsedRuleSections] = useState<
-    Record<"global" | "project", boolean>
-  >({
-    global: false,
-    project: false,
-  });
   const filterTags = usePromptStore((state) => state.filterTags);
   const toggleFilterTag = usePromptStore((state) => state.toggleFilterTag);
   const clearFilterTags = usePromptStore((state) => state.clearFilterTags);
@@ -207,27 +208,6 @@ export function Sidebar({
   const desktopHomeModules = useSettingsStore(
     (state) => state.desktopHomeModules,
   );
-  const addRuleProject = useRulesStore((state) => state.addProjectRule);
-  const removeRuleProject = useRulesStore((state) => state.removeProjectRule);
-  const ruleFiles = useRulesStore((state) => state.files);
-  const rulesSearchQuery = useRulesStore((state) => state.searchQuery);
-  const selectedRuleId = useRulesStore((state) => state.selectedRuleId);
-  const selectRule = useRulesStore((state) => state.selectRule);
-  const loadRuleFiles = useRulesStore((state) => state.loadFiles);
-  const isRulesLoading = useRulesStore((state) => state.isLoading);
-  const skillPlatformOrder = useSettingsStore(
-    (state) => state.skillPlatformOrder,
-  );
-  const { showToast } = useToast();
-
-  const handleRescanRules = useCallback(async () => {
-    try {
-      await loadRuleFiles({ force: true });
-      showToast(t("rules.rescanDone", "Rules rescanned"), "success");
-    } catch {
-      showToast(t("rules.rescanFailed", "Rescan failed"), "error");
-    }
-  }, [loadRuleFiles, showToast, t]);
 
   const handlePromptTagClick = useCallback(
     (tag: string) => {
@@ -275,25 +255,24 @@ export function Sidebar({
   const toggleSkillFilterTag = useSkillStore((state) => state.toggleFilterTag);
   const clearSkillFilterTags = useSkillStore((state) => state.clearFilterTags);
   const claudeCodeStoreCount = useMemo(
-    () => remoteStoreEntries["claude-code"]?.skills.length || 0,
+    () => getRemoteStoreSkillCount(remoteStoreEntries["claude-code"]),
     [remoteStoreEntries],
   );
   const openAiCodexStoreCount = useMemo(
-    () => remoteStoreEntries["openai-codex"]?.skills.length || 0,
+    () => getRemoteStoreSkillCount(remoteStoreEntries["openai-codex"]),
     [remoteStoreEntries],
   );
   const communityStoreCount = useMemo(
     () =>
       remoteStoreEntries.community?.totalCount ??
-      remoteStoreEntries.community?.skills.length ??
-      0,
+      getRemoteStoreSkillCount(remoteStoreEntries.community),
     [remoteStoreEntries],
   );
   const clawHubStoreCount = useMemo(() => {
     const entry = remoteStoreEntries.clawhub;
     if (!entry) return 0;
     if (typeof entry.totalCount === "number") return entry.totalCount;
-    const loadedCount = entry.skills.length;
+    const loadedCount = getRemoteStoreSkillCount(entry);
     return entry.nextCursor ? `${loadedCount}+` : loadedCount;
   }, [remoteStoreEntries]);
   const [showAllSkillTags, setShowAllSkillTags] = useState(false);
@@ -393,110 +372,6 @@ export function Sidebar({
   const isPromptModuleVisible = visibleDesktopModules.includes("prompt");
   const isSkillModuleVisible = visibleDesktopModules.includes("skill");
   const isRulesModuleVisible = visibleDesktopModules.includes("rules");
-  const ruleSidebarSections = useMemo(() => {
-    const normalizedQuery = rulesSearchQuery.trim().toLowerCase();
-    const matchesRuleSearch = (file: (typeof ruleFiles)[number]) => {
-      if (!normalizedQuery) {
-        return true;
-      }
-
-      const haystack = [
-        file.platformName,
-        file.platformDescription,
-        file.name,
-        file.description,
-        file.path,
-        file.projectRootPath || "",
-      ]
-        .join(" ")
-        .toLowerCase();
-
-      return haystack.includes(normalizedQuery);
-    };
-
-    const globalItems = getOrderedGlobalRuleFiles(ruleFiles, skillPlatformOrder)
-      .filter((file) => matchesRuleSearch(file))
-      .map((file) => ({
-        id: file.id,
-        type: "global" as const,
-        platformId: file.platformId,
-        file,
-        path: file.path,
-        exists: file.exists,
-        active: selectedRuleId === file.id,
-        canRemove: false,
-        projectId: null,
-        description: file.description,
-        icon: file.platformIcon,
-        badge: null,
-        name: file.platformName,
-      }));
-
-    const projectItems = ruleFiles
-      .filter(
-        (file) => file.id.startsWith("project:") && matchesRuleSearch(file),
-      )
-      .map((file) => ({
-        id: file.id,
-        type: "project" as const,
-        platformId: file.platformId,
-        file,
-        path: file.path,
-        exists: file.exists,
-        active: selectedRuleId === file.id,
-        canRemove: true,
-        projectId: file.id.slice("project:".length),
-        description: file.description,
-        icon: "FolderRoot",
-        badge: null,
-        name: file.platformName,
-      }));
-
-    return [
-      {
-        id: "global" as const,
-        title: "Global Rules",
-        items: globalItems,
-      },
-      {
-        id: "project" as const,
-        title: "Project Rules",
-        items: projectItems,
-      },
-    ];
-  }, [ruleFiles, rulesSearchQuery, selectedRuleId, skillPlatformOrder]);
-
-  const handleAddRuleProject = useCallback(async () => {
-    const selectedPath = await window.electron?.selectFolder?.();
-    if (!selectedPath) {
-      return;
-    }
-
-    const segments = selectedPath.split(/[\\/]/).filter(Boolean);
-    const fallbackName = segments.at(-1) || selectedPath;
-
-    try {
-      await addRuleProject({
-        name: fallbackName,
-        rootPath: selectedPath,
-      });
-    } catch (error) {
-      console.warn("Failed to add rule project:", error);
-    }
-  }, [addRuleProject]);
-
-  const handleRemoveRuleProject = useCallback(
-    async (projectId: string) => {
-      await removeRuleProject(projectId);
-    },
-    [removeRuleProject],
-  );
-  const toggleRuleSection = useCallback((sectionId: "global" | "project") => {
-    setCollapsedRuleSections((current) => ({
-      ...current,
-      [sectionId]: !current[sectionId],
-    }));
-  }, []);
   const showRail = layout !== "panel";
   const showPanel = layout !== "rail";
   const railWidthClass = "w-20";
@@ -646,16 +521,6 @@ export function Sidebar({
     setAppModule,
     visibleDesktopModules,
   ]);
-
-  useEffect(() => {
-    if (activeModule !== "rules") {
-      return;
-    }
-    if (ruleFiles.length > 0) {
-      return;
-    }
-    void loadRuleFiles();
-  }, [activeModule, loadRuleFiles, ruleFiles.length]);
 
   useEffect(() => {
     return () => {
@@ -891,8 +756,10 @@ export function Sidebar({
             <div className="flex flex-1 flex-col gap-2">
               {railNavItems.map((item) => (
                 <button
+                  type="button"
                   key={item.key}
                   onClick={item.onClick}
+                  aria-label={item.label}
                   title={item.label}
                   className={`flex flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-3 text-[11px] font-medium transition-colors titlebar-no-drag ${
                     item.active
@@ -901,6 +768,7 @@ export function Sidebar({
                   }`}
                 >
                   <span
+                    aria-hidden="true"
                     className={`flex h-9 w-9 items-center justify-center rounded-2xl ${item.active ? "bg-white/10" : "bg-transparent"}`}
                   >
                     {item.icon}
@@ -916,6 +784,7 @@ export function Sidebar({
               <div className="flex items-center justify-center titlebar-no-drag">
                 <button
                   type="button"
+                  aria-label={t("header.settings")}
                   title={t("header.settings")}
                   onClick={() => {
                     if (!confirmLeaveDirtySkillEditor()) {
@@ -929,7 +798,7 @@ export function Sidebar({
                       : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                   }`}
                 >
-                  <SettingsIcon className="h-5 w-5" />
+                  <SettingsIcon className="h-5 w-5" aria-hidden="true" />
                 </button>
               </div>
             </div>
@@ -949,11 +818,17 @@ export function Sidebar({
                     <div className="mb-2">
                       <div className="grid grid-cols-3 gap-1 p-1 bg-sidebar-accent/40 rounded-lg">
                         <button
+                          type="button"
                           onClick={() => {
                             setPromptTypeFilter("all");
                             selectFolder(null);
                             if (currentPage !== "home") onNavigate("home");
                           }}
+                          aria-pressed={
+                            selectedFolderId === null &&
+                            currentPage === "home" &&
+                            promptTypeFilter === "all"
+                          }
                           className={`flex flex-col items-center justify-center py-2 rounded-md transition-all duration-base ${
                             selectedFolderId === null &&
                             currentPage === "home" &&
@@ -963,17 +838,26 @@ export function Sidebar({
                           }`}
                           title={t("nav.allPrompts")}
                         >
-                          <LayoutGridIcon className="w-4 h-4 mb-1" />
+                          <LayoutGridIcon
+                            className="w-4 h-4 mb-1"
+                            aria-hidden="true"
+                          />
                           <span className="text-[10px] font-medium leading-none">
                             {t("filter.all", "全部")}
                           </span>
                         </button>
                         <button
+                          type="button"
                           onClick={() => {
                             setPromptTypeFilter("text");
                             selectFolder(null);
                             if (currentPage !== "home") onNavigate("home");
                           }}
+                          aria-pressed={
+                            selectedFolderId === null &&
+                            currentPage === "home" &&
+                            promptTypeFilter === "text"
+                          }
                           className={`flex flex-col items-center justify-center py-2 rounded-md transition-all duration-base ${
                             selectedFolderId === null &&
                             currentPage === "home" &&
@@ -983,17 +867,26 @@ export function Sidebar({
                           }`}
                           title={t("nav.textPrompts", "文本提示词")}
                         >
-                          <MessageSquareTextIcon className="w-4 h-4 mb-1" />
+                          <MessageSquareTextIcon
+                            className="w-4 h-4 mb-1"
+                            aria-hidden="true"
+                          />
                           <span className="text-[10px] font-medium leading-none">
                             {t("filter.text", "文本")}
                           </span>
                         </button>
                         <button
+                          type="button"
                           onClick={() => {
                             setPromptTypeFilter("image");
                             selectFolder(null);
                             if (currentPage !== "home") onNavigate("home");
                           }}
+                          aria-pressed={
+                            selectedFolderId === null &&
+                            currentPage === "home" &&
+                            promptTypeFilter === "image"
+                          }
                           className={`flex flex-col items-center justify-center py-2 rounded-md transition-all duration-base ${
                             selectedFolderId === null &&
                             currentPage === "home" &&
@@ -1003,7 +896,10 @@ export function Sidebar({
                           }`}
                           title={t("nav.imagePrompts", "绘图提示词")}
                         >
-                          <ImageIcon className="w-4 h-4 mb-1" />
+                          <ImageIcon
+                            className="w-4 h-4 mb-1"
+                            aria-hidden="true"
+                          />
                           <span className="text-[10px] font-medium leading-none">
                             {t("filter.image", "绘图")}
                           </span>
@@ -1088,13 +984,16 @@ export function Sidebar({
                         {t("nav.folders")}
                       </span>
                       <button
+                        type="button"
                         onClick={() => {
                           setEditingFolder(null);
                           setIsFolderModalOpen(true);
                         }}
                         className="p-1.5 rounded-lg hover:bg-sidebar-accent text-sidebar-foreground/50 hover:text-primary transition-colors"
+                        title={t("folder.create")}
+                        aria-label={t("folder.create")}
                       >
-                        <PlusIcon className="w-4 h-4" />
+                        <PlusIcon className="w-4 h-4" aria-hidden="true" />
                       </button>
                     </div>
                   )}
@@ -1160,28 +1059,41 @@ export function Sidebar({
                     {!isCollapsed && (
                       <div className="flex items-center justify-between px-6 py-2 border-t border-sidebar-border/50 shrink-0">
                         <button
+                          type="button"
                           onClick={() => setIsTagsCollapsed(!isTagsCollapsed)}
+                          aria-expanded={!isTagsCollapsed}
                           className="flex items-center gap-1 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider hover:text-sidebar-foreground/80 transition-colors"
                         >
                           {isTagsCollapsed ? (
-                            <ChevronUpIcon className="w-3 h-3" />
+                            <ChevronUpIcon
+                              className="w-3 h-3"
+                              aria-hidden="true"
+                            />
                           ) : (
-                            <ChevronDownIcon className="w-3 h-3" />
+                            <ChevronDownIcon
+                              className="w-3 h-3"
+                              aria-hidden="true"
+                            />
                           )}
                           {t("nav.tags")}
                         </button>
                         {!isTagsCollapsed && (
                           <div className="flex items-center gap-2">
                             <button
+                              type="button"
                               onClick={() => setTagManagerScope("prompt")}
                               className="text-sidebar-foreground/50 hover:text-sidebar-foreground/80 transition-colors"
                               title={t("common.edit", "Edit")}
                               aria-label={t("common.edit", "Edit")}
                             >
-                              <SettingsIcon className="w-3.5 h-3.5" />
+                              <SettingsIcon
+                                className="w-3.5 h-3.5"
+                                aria-hidden="true"
+                              />
                             </button>
                             {uniqueTags.length > 8 && (
                               <button
+                                type="button"
                                 onClick={() => setShowAllTags(!showAllTags)}
                                 className="text-xs text-primary hover:underline"
                               >
@@ -1204,6 +1116,7 @@ export function Sidebar({
                               : uniqueTags.slice(0, 8)
                             ).map((tag, index) => (
                               <button
+                                type="button"
                                 key={tag}
                                 draggable
                                 onDragStart={handlePromptTagDragStart(tag)}
@@ -1221,7 +1134,10 @@ export function Sidebar({
                                     : "bg-sidebar-accent text-sidebar-foreground/70 hover:bg-primary hover:text-white"
                                 }`}
                               >
-                                <HashIcon className="w-3 h-3" />
+                                <HashIcon
+                                  className="w-3 h-3"
+                                  aria-hidden="true"
+                                />
                                 {tag}
                               </button>
                             ))}
@@ -1231,6 +1147,7 @@ export function Sidebar({
                     ) : (
                       <div className="pt-2 border-t border-sidebar-border/50 flex flex-col items-center gap-2 pb-2">
                         <button
+                          type="button"
                           ref={tagButtonRef}
                           onClick={() => {
                             if (isTagPopoverOpen) {
@@ -1241,13 +1158,14 @@ export function Sidebar({
                             }
                           }}
                           title={t("nav.tags")}
+                          aria-expanded={isTagPopoverOpen}
                           className={`w-10 h-10 flex flex-col items-center justify-center rounded-lg transition-colors duration-base ${
                             filterTags.length > 0 && currentPage === "home"
                               ? "bg-primary text-white"
                               : "bg-sidebar-accent text-sidebar-foreground/70 hover:bg-primary hover:text-white"
                           }`}
                         >
-                          <HashIcon className="w-4 h-4" />
+                          <HashIcon className="w-4 h-4" aria-hidden="true" />
                           <span className="text-[10px] leading-none mt-0.5">
                             {filterTags.length > 0
                               ? filterTags.length
@@ -1284,6 +1202,7 @@ export function Sidebar({
                       <div className="flex items-center gap-2">
                         {filterTags.length > 0 && (
                           <button
+                            type="button"
                             onClick={() => {
                               clearFilterTags();
                               if (currentPage !== "home") onNavigate("home");
@@ -1294,10 +1213,12 @@ export function Sidebar({
                           </button>
                         )}
                         <button
+                          type="button"
                           onClick={closeTagPopover}
                           className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                          aria-label={t("common.close", "Close")}
                         >
-                          <XIcon className="w-4 h-4" />
+                          <XIcon className="w-4 h-4" aria-hidden="true" />
                         </button>
                       </div>
                     </div>
@@ -1308,6 +1229,7 @@ export function Sidebar({
                             filterTags.includes(tag) && currentPage === "home";
                           return (
                             <button
+                              type="button"
                               key={tag}
                               onClick={() => {
                                 handlePromptTagClick(tag);
@@ -1318,7 +1240,10 @@ export function Sidebar({
                                   : "app-wallpaper-surface text-foreground/80 hover:bg-primary hover:text-white"
                               }`}
                             >
-                              <HashIcon className="w-4 h-4" />
+                              <HashIcon
+                                className="w-4 h-4"
+                                aria-hidden="true"
+                              />
                               <span className="truncate max-w-[14rem]">
                                 {tag}
                               </span>
@@ -1414,6 +1339,7 @@ export function Sidebar({
                   >
                     <div className="ml-4 mt-1 pl-3 pr-1 border-l border-sidebar-border/50 space-y-1">
                       <button
+                        type="button"
                         onClick={() => {
                           openSkillStoreSource("official");
                         }}
@@ -1423,7 +1349,7 @@ export function Sidebar({
                             : "text-sidebar-foreground/60 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
                         }`}
                       >
-                        <StoreIcon className="w-4 h-4" />
+                        <StoreIcon className="w-4 h-4" aria-hidden="true" />
                         <span className="flex-1 text-left truncate">
                           {t("skill.officialStore", "官方商店")}
                         </span>
@@ -1432,6 +1358,7 @@ export function Sidebar({
                         </span>
                       </button>
                       <button
+                        type="button"
                         onClick={() => {
                           openSkillStoreSource("claude-code");
                         }}
@@ -1441,7 +1368,7 @@ export function Sidebar({
                             : "text-sidebar-foreground/60 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
                         }`}
                       >
-                        <StoreIcon className="w-4 h-4" />
+                        <StoreIcon className="w-4 h-4" aria-hidden="true" />
                         <span className="flex-1 text-left truncate">
                           {t("skill.claudeCodeStore", "Claude Code 商店")}
                         </span>
@@ -1450,6 +1377,7 @@ export function Sidebar({
                         </span>
                       </button>
                       <button
+                        type="button"
                         onClick={() => {
                           openSkillStoreSource("openai-codex");
                         }}
@@ -1459,7 +1387,7 @@ export function Sidebar({
                             : "text-sidebar-foreground/60 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
                         }`}
                       >
-                        <StoreIcon className="w-4 h-4" />
+                        <StoreIcon className="w-4 h-4" aria-hidden="true" />
                         <span className="flex-1 text-left truncate">
                           {t("skill.openaiCodexStore", "OpenAI Codex 商店")}
                         </span>
@@ -1468,6 +1396,7 @@ export function Sidebar({
                         </span>
                       </button>
                       <button
+                        type="button"
                         onClick={() => {
                           openSkillStoreSource("community");
                         }}
@@ -1477,7 +1406,7 @@ export function Sidebar({
                             : "text-sidebar-foreground/60 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
                         }`}
                       >
-                        <StoreIcon className="w-4 h-4" />
+                        <StoreIcon className="w-4 h-4" aria-hidden="true" />
                         <span className="flex-1 text-left truncate">
                           {t("skill.communityStore", "Community Store")}
                         </span>
@@ -1486,6 +1415,7 @@ export function Sidebar({
                         </span>
                       </button>
                       <button
+                        type="button"
                         onClick={() => {
                           openSkillStoreSource("clawhub");
                         }}
@@ -1495,7 +1425,7 @@ export function Sidebar({
                             : "text-sidebar-foreground/60 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
                         }`}
                       >
-                        <StoreIcon className="w-4 h-4" />
+                        <StoreIcon className="w-4 h-4" aria-hidden="true" />
                         <span className="flex-1 text-left truncate">
                           {t("skill.clawHubStore", "ClawHub 商店")}
                         </span>
@@ -1505,6 +1435,7 @@ export function Sidebar({
                       </button>
                       {customStoreSources.map((source) => (
                         <button
+                          type="button"
                           key={source.id}
                           onClick={() => {
                             openSkillStoreSource(source.id);
@@ -1515,13 +1446,13 @@ export function Sidebar({
                               : "text-sidebar-foreground/60 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
                           }`}
                         >
-                          <LinkIcon className="w-4 h-4" />
+                          <LinkIcon className="w-4 h-4" aria-hidden="true" />
                           <span className="flex-1 text-left truncate">
                             {source.name}
                           </span>
-                          {remoteStoreEntries[source.id]?.skills.length ? (
+                          {getRemoteStoreSkillCount(remoteStoreEntries[source.id]) ? (
                             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sidebar-accent/80 text-sidebar-foreground/50 border border-white/5">
-                              {remoteStoreEntries[source.id]?.skills.length}
+                              {getRemoteStoreSkillCount(remoteStoreEntries[source.id])}
                             </span>
                           ) : null}
                           {!source.enabled && (
@@ -1532,6 +1463,7 @@ export function Sidebar({
                         </button>
                       ))}
                       <button
+                        type="button"
                         onClick={() => {
                           openSkillStoreSource("new-custom");
                         }}
@@ -1541,7 +1473,7 @@ export function Sidebar({
                             : "border-sidebar-border/70 text-sidebar-foreground/50 hover:border-primary/50 hover:text-sidebar-foreground hover:bg-sidebar-accent/20"
                         }`}
                       >
-                        <PlusIcon className="w-4 h-4" />
+                        <PlusIcon className="w-4 h-4" aria-hidden="true" />
                         <span className="truncate">
                           {t("skill.addStoreSource", "添加商店")}
                         </span>
@@ -1576,30 +1508,43 @@ export function Sidebar({
                     {!isCollapsed && (
                       <div className="flex items-center justify-between px-6 py-2 border-t border-sidebar-border/50 shrink-0">
                         <button
+                          type="button"
                           onClick={() =>
                             setIsSkillTagsCollapsed(!isSkillTagsCollapsed)
                           }
+                          aria-expanded={!isSkillTagsCollapsed}
                           className="flex items-center gap-1 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider hover:text-sidebar-foreground/80 transition-colors"
                         >
                           {isSkillTagsCollapsed ? (
-                            <ChevronUpIcon className="w-3 h-3" />
+                            <ChevronUpIcon
+                              className="w-3 h-3"
+                              aria-hidden="true"
+                            />
                           ) : (
-                            <ChevronDownIcon className="w-3 h-3" />
+                            <ChevronDownIcon
+                              className="w-3 h-3"
+                              aria-hidden="true"
+                            />
                           )}
                           {t("nav.tags")}
                         </button>
                         {!isSkillTagsCollapsed && (
                           <div className="flex items-center gap-2">
                             <button
+                              type="button"
                               onClick={() => setTagManagerScope("skill")}
                               className="text-sidebar-foreground/50 hover:text-sidebar-foreground/80 transition-colors"
                               title={t("common.edit", "Edit")}
                               aria-label={t("common.edit", "Edit")}
                             >
-                              <SettingsIcon className="w-3.5 h-3.5" />
+                              <SettingsIcon
+                                className="w-3.5 h-3.5"
+                                aria-hidden="true"
+                              />
                             </button>
                             {skillFilterTags.length > 0 && (
                               <button
+                                type="button"
                                 onClick={() => clearSkillFilterTags()}
                                 className="text-xs text-primary hover:underline"
                               >
@@ -1608,6 +1553,7 @@ export function Sidebar({
                             )}
                             {uniqueSkillTags.length > 8 && (
                               <button
+                                type="button"
                                 onClick={() =>
                                   setShowAllSkillTags(!showAllSkillTags)
                                 }
@@ -1632,6 +1578,7 @@ export function Sidebar({
                               : uniqueSkillTags.slice(0, 8)
                             ).map((tag, index) => (
                               <button
+                                type="button"
                                 key={tag}
                                 draggable
                                 onDragStart={handlePromptTagDragStart(tag)}
@@ -1652,7 +1599,10 @@ export function Sidebar({
                                     : "bg-sidebar-accent text-sidebar-foreground/70 hover:bg-primary hover:text-white"
                                 }`}
                               >
-                                <HashIcon className="w-3 h-3" />
+                                <HashIcon
+                                  className="w-3 h-3"
+                                  aria-hidden="true"
+                                />
                                 {tag}
                               </button>
                             ))}
@@ -1662,6 +1612,7 @@ export function Sidebar({
                     ) : (
                       <div className="pt-2 border-t border-sidebar-border/50 flex flex-col items-center gap-2 pb-2">
                         <button
+                          type="button"
                           ref={tagButtonRef}
                           onClick={() => {
                             if (isTagPopoverOpen) {
@@ -1672,13 +1623,14 @@ export function Sidebar({
                             }
                           }}
                           title={t("nav.tags")}
+                          aria-expanded={isTagPopoverOpen}
                           className={`w-10 h-10 flex flex-col items-center justify-center rounded-lg transition-colors duration-base ${
                             skillFilterTags.length > 0 && currentPage === "home"
                               ? "bg-primary text-white"
                               : "bg-sidebar-accent text-sidebar-foreground/70 hover:bg-primary hover:text-white"
                           }`}
                         >
-                          <HashIcon className="w-4 h-4" />
+                          <HashIcon className="w-4 h-4" aria-hidden="true" />
                           <span className="text-[10px] leading-none mt-0.5">
                             {skillFilterTags.length > 0
                               ? skillFilterTags.length
@@ -1716,6 +1668,7 @@ export function Sidebar({
                       <div className="flex items-center gap-2">
                         {skillFilterTags.length > 0 && (
                           <button
+                            type="button"
                             onClick={() => {
                               clearSkillFilterTags();
                               if (currentPage !== "home") onNavigate("home");
@@ -1726,10 +1679,12 @@ export function Sidebar({
                           </button>
                         )}
                         <button
+                          type="button"
                           onClick={closeTagPopover}
                           className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                          aria-label={t("common.close", "Close")}
                         >
-                          <XIcon className="w-4 h-4" />
+                          <XIcon className="w-4 h-4" aria-hidden="true" />
                         </button>
                       </div>
                     </div>
@@ -1741,6 +1696,7 @@ export function Sidebar({
                             currentPage === "home";
                           return (
                             <button
+                              type="button"
                               key={tag}
                               draggable
                               onDragStart={handlePromptTagDragStart(tag)}
@@ -1755,7 +1711,10 @@ export function Sidebar({
                                   : "app-wallpaper-surface text-foreground/80 hover:bg-primary hover:text-white"
                               }`}
                             >
-                              <HashIcon className="w-4 h-4" />
+                              <HashIcon
+                                className="w-4 h-4"
+                                aria-hidden="true"
+                              />
                               <span className="truncate max-w-[14rem]">
                                 {tag}
                               </span>
@@ -1769,175 +1728,22 @@ export function Sidebar({
               )}
             </>
           ) : (
-            <>
-              <div className="flex-shrink-0 flex flex-col px-3 py-4">
-                <div className="px-2 pb-2">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                    {t("rules.title", "Rules")}
-                  </div>
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    <h3 className="text-base font-semibold text-foreground">
-                      {t("rules.platformSidebarTitle", "Platforms")}
-                    </h3>
-                    <button
-                      type="button"
-                      onClick={() => void handleRescanRules()}
-                      disabled={isRulesLoading}
-                      className="inline-flex items-center gap-1 rounded-lg border border-border bg-background/70 px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                      title={t("rules.rescanAction", "Rescan rules")}
-                    >
-                      <RefreshCwIcon
-                        className={`h-3.5 w-3.5 ${isRulesLoading ? "animate-spin" : ""}`}
-                      />
-                      {isRulesLoading
-                        ? t("rules.rescanWorking", "Scanning...")
-                        : t("rules.rescanShortAction", "Rescan")}
-                    </button>
-                  </div>
+            <Suspense
+              fallback={
+                <div className="flex flex-1 items-center justify-center px-3 py-4">
+                  <Spinner
+                    size="sm"
+                    tone="muted"
+                    label={t("rules.loadingSidebar", "Loading rules sidebar")}
+                  />
                 </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto px-3 pb-4">
-                <div className="space-y-5">
-                  {ruleSidebarSections.map((section) => (
-                    <div key={section.id}>
-                      <div className="mb-2 px-2">
-                        <button
-                          type="button"
-                          onClick={() => toggleRuleSection(section.id)}
-                          className="flex w-full items-center gap-1 text-left text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground"
-                        >
-                          {collapsedRuleSections[section.id] ? (
-                            <ChevronRightIcon className="h-3.5 w-3.5" />
-                          ) : (
-                            <ChevronDownIcon className="h-3.5 w-3.5" />
-                          )}
-                          <span>
-                            {section.id === "global"
-                              ? t("rules.globalSection", "Global Rules")
-                              : t("rules.projectSection", "Project Rules")}
-                          </span>
-                        </button>
-                      </div>
-
-                      {!collapsedRuleSections[section.id] ? (
-                        <div className="space-y-2">
-                          {section.items.map((item) => (
-                            <div
-                              key={item.id}
-                              className={`relative w-full rounded-2xl border px-3 py-3 text-left transition-colors ${
-                                item.active
-                                  ? "border-primary/40 bg-primary/10"
-                                  : "border-border bg-background/60 hover:bg-muted"
-                              }`}
-                            >
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  void selectRule(item.file.id);
-                                  if (currentPage !== "home")
-                                    onNavigate("home");
-                                }}
-                                className="w-full text-left"
-                              >
-                                <div className="flex items-center gap-3">
-                                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-                                    {item.type === "project" ? (
-                                      <FolderPlusIcon className="h-5 w-5" />
-                                    ) : (
-                                      <PlatformIcon
-                                        platformId={item.platformId}
-                                        size={20}
-                                        className="h-5 w-5"
-                                      />
-                                    )}
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-2">
-                                      <div className="truncate text-sm font-medium text-foreground">
-                                        {item.name}
-                                      </div>
-                                    </div>
-                                    <div className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">
-                                      {item.type === "project"
-                                        ? item.path
-                                        : item.file.name}
-                                    </div>
-                                  </div>
-                                </div>
-                              </button>
-
-                              {item.canRemove && item.projectId ? (
-                                <div className="mt-3 flex justify-end">
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      void handleRemoveRuleProject(
-                                        item.projectId!,
-                                      )
-                                    }
-                                    className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                                  >
-                                    <Trash2Icon className="h-3.5 w-3.5" />
-                                    {t("common.remove", "Remove")}
-                                  </button>
-                                </div>
-                              ) : null}
-                            </div>
-                          ))}
-
-                          {section.id === "project" && canAddRuleProject ? (
-                            <button
-                              type="button"
-                              onClick={() => void handleAddRuleProject()}
-                              className="w-full rounded-2xl border border-dashed border-border px-3 py-4 text-left transition-colors hover:bg-muted/40"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-                                  <FolderPlusIcon className="h-5 w-5" />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <div className="text-sm font-medium text-foreground">
-                                    {t(
-                                      "rules.addProjectRuleDirectory",
-                                      "Add Project Directory",
-                                    )}
-                                  </div>
-                                  <div className="mt-1 text-xs leading-5 text-muted-foreground">
-                                    {t(
-                                      "rules.addProjectRuleDirectoryHint",
-                                      "Pick a folder and PromptHub will manage its canonical AGENTS.md rule file here.",
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            </button>
-                          ) : null}
-                        </div>
-                      ) : section.id === "project" && canAddRuleProject ? (
-                        <button
-                          type="button"
-                          onClick={() => void handleAddRuleProject()}
-                          className="w-full rounded-2xl border border-dashed border-border px-3 py-3 text-left transition-colors hover:bg-muted/40"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-                              <PlusIcon className="h-4 w-4" />
-                            </div>
-                            <div className="min-w-0 flex-1 text-sm font-medium text-foreground">
-                              {t(
-                                "rules.addProjectRuleDirectory",
-                                "Add Project Directory",
-                              )}
-                            </div>
-                          </div>
-                        </button>
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </>
+              }
+            >
+              <RulesSidebarPanel
+                currentPage={currentPage}
+                onNavigate={onNavigate}
+              />
+            </Suspense>
           )}
         </div>
       ) : null}

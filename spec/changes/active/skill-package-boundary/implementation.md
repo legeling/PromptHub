@@ -192,6 +192,85 @@ Additional verification:
 - GitHub issue #170 root package regression:
   - `pnpm --dir apps/desktop exec vitest run tests/unit/stores/skill.store.test.ts tests/unit/services/github-skill-store.test.ts`
   - Passed: 2 files, 58 tests.
+- Package persistence boundary regression:
+  - `pnpm --dir apps/desktop exec vitest run tests/unit/main/skill-installer-remote-git-package.test.ts tests/unit/main/skill-local-repo-ipc.test.ts`
+  - Passed: 2 files, 23 tests.
+
+## SSH Git source link follow-up
+
+- A desktop source-link scan found that installed Skill details classify
+  `git@github.com:owner/repo.git` as a remote Git source but passed that SSH
+  clone URL directly to renderer `<a href>`, which is not a browser-openable
+  repository link.
+- `getSkillSourceMeta()` now reuses `parseGitRepo()` and converts SSH Git
+  sources to their browser-safe `https://host/owner/repo` repository URL for
+  clickable source cards, while preserving the original SSH value in the
+  displayed source text.
+- Verification:
+  - `pnpm --filter @prompthub/desktop test -- --run tests/unit/components/skill-detail-utils.test.ts -t "browser-safe repository URL"`:
+    failed first with the SSH URL still exposed as `value`, then passed after
+    the fix.
+  - `pnpm --filter @prompthub/desktop test -- --run tests/unit/components/skill-detail-utils.test.ts`:
+    **1 file / 15 tests**, passing.
+  - `pnpm --filter @prompthub/desktop typecheck`: passing.
+  - `git diff --check` for the touched detail utility and regression test:
+    clean.
+
+## Skill export object URL cleanup follow-up
+
+- An object URL lifecycle scan found that Skill export downloads revoked their
+  blob URLs on the normal path, but `anchor.click()` exceptions could skip both
+  DOM cleanup and `URL.revokeObjectURL()`.
+- `downloadSkillExport()` and `downloadSkillZipExport()` now wrap link clicks in
+  `try/finally`, removing the temporary anchor when still attached and revoking
+  the blob URL even when the browser blocks or throws during the click.
+- Verification:
+  - `pnpm --filter @prompthub/desktop test -- --run tests/unit/components/skill-detail-utils.test.ts -t "cleans up zip export"`:
+    failed first because the anchor and object URL were not cleaned up on click
+    failure, then passed after the fix.
+  - `pnpm --filter @prompthub/desktop test -- --run tests/unit/components/skill-detail-utils.test.ts`:
+    **1 file / 16 tests**, passing.
+  - `pnpm --filter @prompthub/desktop typecheck`: passing.
+  - `git diff --check` for the touched detail utility and regression test:
+    clean.
+
+## Skill Markdown unsafe-link follow-up
+
+- A renderer Markdown-link scan found that Prompt Markdown already downgrades
+  unsafe protocols to plain text, while Skill Markdown passed blocked URLs
+  through `resolveGitHubMarkdownUrl()` and still rendered an `<a>` with no
+  usable `href`.
+- `SkillMarkdown` now renders unsafe links as plain text instead of empty
+  clickable anchors, keeps safe absolute and GitHub-relative links clickable,
+  and strips the internal ReactMarkdown `node` prop from rendered anchors and
+  images.
+- Unsafe image URLs now render the image alt text when present, or nothing when
+  there is no safe image source.
+- Verification:
+  - `pnpm --filter @prompthub/desktop test -- --run tests/unit/components/skill-markdown.test.tsx`:
+    failed first because `javascript:` was still rendered inside an anchor,
+    then passed after the fix.
+  - `pnpm --filter @prompthub/desktop typecheck`: passing.
+
+## Manual Skill preview Markdown safety follow-up
+
+- Follow-up HTML/Markdown renderer scanning found that manual Skill creation
+  previews still used a direct `ReactMarkdown` instance instead of the shared
+  `SkillMarkdown` boundary.
+- The direct preview renderer exposed the same empty-anchor behavior for
+  blocked protocols that Skill detail had just fixed.
+- `CreateSkillModal` now uses `SkillMarkdown` for both fullscreen split preview
+  and inline manual preview, keeping new-Skill authoring previews aligned with
+  installed Skill rendering.
+- Verification:
+  - `pnpm --filter @prompthub/desktop test -- --run tests/unit/components/create-skill-modal.test.tsx -t "unsafe manual preview links"`:
+    failed first because `javascript:` remained inside an anchor, then passed
+    after `CreateSkillModal` reused `SkillMarkdown`.
+  - `pnpm --filter @prompthub/desktop test -- --run tests/unit/components/create-skill-modal.test.tsx`:
+    **1 file / 15 tests**, passing.
+  - `pnpm --filter @prompthub/desktop test -- --run tests/unit/components/skill-markdown.test.tsx`:
+    **1 file / 2 tests**, passing.
+  - `pnpm --filter @prompthub/desktop typecheck`: passing.
 
 ## Docs Synced
 

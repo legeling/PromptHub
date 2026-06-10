@@ -891,6 +891,7 @@ export function DataSettings({
                 <div className="flex-1">
                   <p className="text-sm font-medium">{t("settings.dataPath")}</p>
                   <button
+                    type="button"
                     onClick={() =>
                       currentDataPath && window.electron?.openPath?.(currentDataPath)
                     }
@@ -898,7 +899,7 @@ export function DataSettings({
                     title={t("settings.openFolder")}
                   >
                     {currentDataPath || t("common.loading", "Loading...")}
-                    <ExternalLinkIcon className="w-3 h-3" />
+                    <ExternalLinkIcon className="w-3 h-3" aria-hidden="true" />
                   </button>
                   {pendingDataPath && pendingDataPath !== currentDataPath ? (
                     <p className="mt-1 text-xs text-muted-foreground">
@@ -911,6 +912,7 @@ export function DataSettings({
                   ) : null}
                 </div>
                 <button
+                  type="button"
                   onClick={() => void handleChangeDataPath()}
                   disabled={dataPathActionLoading}
                   className="h-8 px-3 rounded-lg bg-muted text-sm hover:bg-muted/80 transition-colors"
@@ -940,12 +942,14 @@ export function DataSettings({
                   </div>
                 </div>
                 <button
+                  type="button"
                   onClick={() => void handleScanRecoverySources()}
                   disabled={scanningRecoverySources}
                   className="h-8 px-3 rounded-lg bg-primary text-white text-sm hover:bg-primary/90 transition-colors flex items-center gap-2 disabled:opacity-50"
                 >
                   <SearchIcon
                     className={`w-4 h-4 ${scanningRecoverySources ? "animate-pulse" : ""}`}
+                    aria-hidden="true"
                   />
                   {t("settings.recoveryScanAction", "Scan now")}
                 </button>
@@ -965,10 +969,11 @@ export function DataSettings({
                     </div>
                   </div>
                   <button
+                    type="button"
                     onClick={() => void handleAddManualRecoveryPath()}
                     className="h-8 px-3 rounded-lg bg-muted text-sm hover:bg-muted/80 transition-colors flex items-center gap-2"
                   >
-                    <PlusIcon className="w-4 h-4" />
+                    <PlusIcon className="w-4 h-4" aria-hidden="true" />
                     {t("settings.recoveryAddScanDir", "Add folder")}
                   </button>
                 </div>
@@ -976,6 +981,10 @@ export function DataSettings({
                 <div className="flex gap-2">
                   <input
                     type="text"
+                    aria-label={t(
+                      "settings.recoveryExtraPaths",
+                      "Extra scan directories",
+                    )}
                     value={manualPathInputValue}
                     onChange={(e) => setManualPathInputValue(e.target.value)}
                     onKeyDown={(e) => {
@@ -990,11 +999,12 @@ export function DataSettings({
                     className="flex-1 h-8 px-3 rounded-lg border border-border bg-background text-sm font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                   />
                   <button
+                    type="button"
                     onClick={handleAddManualRecoveryPathFromInput}
                     disabled={!manualPathInputValue.trim()}
                     className="h-8 px-3 rounded-lg bg-muted text-sm hover:bg-muted/80 transition-colors flex items-center gap-2 disabled:opacity-40"
                   >
-                    <PlusIcon className="w-4 h-4" />
+                    <PlusIcon className="w-4 h-4" aria-hidden="true" />
                     {t("settings.recoveryAddPathBtn", "Add")}
                   </button>
                 </div>
@@ -1026,7 +1036,7 @@ export function DataSettings({
                           className="h-7 w-7 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors shrink-0"
                           title={t("common.delete", "Delete")}
                         >
-                          <XIcon className="w-4 h-4 mx-auto" />
+                          <XIcon aria-hidden="true" className="w-4 h-4 mx-auto" />
                         </button>
                       </div>
                     ))}
@@ -1055,6 +1065,7 @@ export function DataSettings({
                   </div>
                   <div className="min-w-[220px]">
                     <Select
+                      ariaLabel={t("settings.syncProviderTitle", "Current sync source")}
                       value={settings.syncProvider}
                       onChange={(value) =>
                         settings.setSyncProvider(
@@ -1081,6 +1092,7 @@ export function DataSettings({
                   </p>
                 </div>
                 <ToggleSwitch
+                  ariaLabel={t("settings.selfHostedSyncMenu", "Self-Hosted PromptHub")}
                   checked={settings.selfHostedSyncEnabled}
                   onChange={settings.setSelfHostedSyncEnabled}
                 />
@@ -1097,6 +1109,10 @@ export function DataSettings({
                     </label>
                     <input
                       type="text"
+                      aria-label={t(
+                        "settings.selfHostedSyncServer",
+                        "Self-Hosted PromptHub URL",
+                      )}
                       placeholder="https://backup.example.com"
                       value={settings.selfHostedSyncUrl}
                       onChange={(e) =>
@@ -1111,6 +1127,7 @@ export function DataSettings({
                     </label>
                     <input
                       type="text"
+                      aria-label={`${t("settings.selfHostedSyncMenu", "Self-Hosted PromptHub")} ${t("settings.webdavUsername")}`}
                       placeholder={t("settings.webdavUsername")}
                       value={settings.selfHostedSyncUsername}
                       onChange={(e) =>
@@ -1124,6 +1141,7 @@ export function DataSettings({
                       {t("settings.webdavPassword")}
                     </label>
                     <PasswordInput
+                      ariaLabel={`${t("settings.selfHostedSyncMenu", "Self-Hosted PromptHub")} ${t("settings.webdavPassword")}`}
                       placeholder={t("settings.webdavPassword")}
                       value={settings.selfHostedSyncPassword}
                       onChange={settings.setSelfHostedSyncPassword}
@@ -1133,6 +1151,7 @@ export function DataSettings({
                   </div>
                   <div className="flex flex-wrap gap-2 pt-2">
                     <button
+                      type="button"
                       onClick={async () => {
                         if (
                           !settings.selfHostedSyncUrl ||
@@ -1172,10 +1191,12 @@ export function DataSettings({
                     >
                       <RefreshCwIcon
                         className={`w-4 h-4 ${selfHostedTesting ? "animate-spin" : ""}`}
+                        aria-hidden="true"
                       />
                       {t("settings.testConnection")}
                     </button>
                     <button
+                      type="button"
                       onClick={async () => {
                         if (
                           !settings.selfHostedSyncUrl ||
@@ -1213,10 +1234,11 @@ export function DataSettings({
                         disabled={selfHostedUploading || !selfHostedConfigComplete}
                         className="h-8 px-4 rounded-lg bg-primary text-white text-sm hover:bg-primary/90 transition-colors flex items-center gap-2 disabled:opacity-50"
                     >
-                      <UploadIcon className="w-4 h-4" />
+                      <UploadIcon className="w-4 h-4" aria-hidden="true" />
                       {t("settings.backupToRemote", "Back up to remote")}
                     </button>
                     <button
+                      type="button"
                       onClick={async () => {
                         if (
                           !settings.selfHostedSyncUrl ||
@@ -1257,7 +1279,7 @@ export function DataSettings({
                         disabled={selfHostedDownloading || !selfHostedConfigComplete}
                         className="h-8 px-4 rounded-lg bg-muted text-sm hover:bg-muted/80 transition-colors flex items-center gap-2 disabled:opacity-50"
                     >
-                      <DownloadIcon className="w-4 h-4" />
+                      <DownloadIcon className="w-4 h-4" aria-hidden="true" />
                       {t("settings.updateFromRemote", "Update from remote")}
                     </button>
                   </div>
@@ -1281,6 +1303,7 @@ export function DataSettings({
                     </div>
                     <div className="min-w-[140px]">
                       <Select
+                        ariaLabel={`${t("settings.selfHostedSyncMenu", "Self-Hosted PromptHub")} ${t("settings.selfHostedAutoRun", "Automatic Sync")}`}
                         value={String(settings.selfHostedAutoSyncInterval)}
                         onChange={(val) =>
                           settings.setSelfHostedAutoSyncInterval(Number(val))
@@ -1325,6 +1348,7 @@ export function DataSettings({
                     </div>
                     <div className="min-w-[180px]">
                       <Select
+                        ariaLabel={`${t("settings.selfHostedSyncMenu", "Self-Hosted PromptHub")} ${t("settings.selfHostedSyncOnStartup", "Run Once on Startup")}`}
                         value={String(
                           settings.selfHostedSyncOnStartup
                             ? settings.selfHostedSyncOnStartupDelay
@@ -1393,6 +1417,7 @@ export function DataSettings({
                 </p>
               </div>
               <ToggleSwitch
+                ariaLabel={t("settings.webdavSyncMenu", "WebDAV")}
                 checked={settings.webdavEnabled}
                 onChange={settings.setWebdavEnabled}
               />
@@ -1405,6 +1430,7 @@ export function DataSettings({
                   </label>
                   <input
                     type="text"
+                    aria-label={`${t("settings.webdavSyncMenu", "WebDAV")} ${t("settings.webdavUrl")}`}
                     placeholder="https://dav.example.com/path"
                     value={settings.webdavUrl}
                     onChange={(e) => settings.setWebdavUrl(e.target.value)}
@@ -1417,6 +1443,7 @@ export function DataSettings({
                   </label>
                   <input
                     type="text"
+                    aria-label={`${t("settings.webdavSyncMenu", "WebDAV")} ${t("settings.webdavUsername")}`}
                     placeholder={t("settings.webdavUsername")}
                     value={settings.webdavUsername}
                     onChange={(e) => settings.setWebdavUsername(e.target.value)}
@@ -1428,6 +1455,7 @@ export function DataSettings({
                     {t("settings.webdavPassword")}
                   </label>
                     <PasswordInput
+                      ariaLabel={`${t("settings.webdavSyncMenu", "WebDAV")} ${t("settings.webdavPassword")}`}
                       placeholder={t("settings.webdavPassword")}
                       value={settings.webdavPassword}
                       onChange={settings.setWebdavPassword}
@@ -1437,6 +1465,7 @@ export function DataSettings({
                 </div>
                 <div className="flex flex-wrap gap-2 pt-2">
                   <button
+                    type="button"
                     onClick={async () => {
                       if (
                         !settings.webdavUrl ||
@@ -1467,10 +1496,12 @@ export function DataSettings({
                   >
                     <RefreshCwIcon
                       className={`w-4 h-4 ${webdavTesting ? "animate-spin" : ""}`}
+                      aria-hidden="true"
                     />
                     {t("settings.testConnection")}
                   </button>
                   <button
+                    type="button"
                     onClick={async () => {
                       if (
                         !settings.webdavUrl ||
@@ -1508,10 +1539,11 @@ export function DataSettings({
                     disabled={webdavUploading || !webdavConfigComplete}
                     className="h-8 px-4 rounded-lg bg-primary text-white text-sm hover:bg-primary/90 transition-colors flex items-center gap-2 disabled:opacity-50"
                   >
-                    <UploadIcon className="w-4 h-4" />
+                    <UploadIcon className="w-4 h-4" aria-hidden="true" />
                     {t("settings.backupToRemote", "Back up to remote")}
                   </button>
                   <button
+                    type="button"
                     onClick={async () => {
                       if (
                         !settings.webdavUrl ||
@@ -1550,7 +1582,7 @@ export function DataSettings({
                     disabled={webdavDownloading || !webdavConfigComplete}
                     className="h-8 px-4 rounded-lg bg-muted text-sm hover:bg-muted/80 transition-colors flex items-center gap-2 disabled:opacity-50"
                   >
-                    <DownloadIcon className="w-4 h-4" />
+                    <DownloadIcon className="w-4 h-4" aria-hidden="true" />
                     {t("settings.updateFromRemote", "Update from remote")}
                   </button>
                 </div>
@@ -1572,6 +1604,7 @@ export function DataSettings({
                     </div>
                   <div className="min-w-[140px]">
                     <Select
+                      ariaLabel={`${t("settings.webdavSyncMenu", "WebDAV")} ${t("settings.webdavAutoRun", "Auto Run")}`}
                       value={String(settings.webdavAutoSyncInterval)}
                       onChange={(val) =>
                         settings.setWebdavAutoSyncInterval(Number(val))
@@ -1611,6 +1644,7 @@ export function DataSettings({
                   </div>
                   <div className="min-w-[180px]">
                     <Select
+                      ariaLabel={`${t("settings.webdavSyncMenu", "WebDAV")} ${t("settings.webdavSyncOnStartup", "Run Once on Startup")}`}
                       value={String(
                         settings.webdavSyncOnStartup
                           ? settings.webdavSyncOnStartupDelay
@@ -1673,6 +1707,7 @@ export function DataSettings({
                     </p>
                   </div>
                     <ToggleSwitch
+                      ariaLabel={t("settings.webdavSyncOnSave", "Sync on Save (Experimental)")}
                       checked={settings.webdavSyncOnSave}
                       onChange={settings.setWebdavSyncOnSave}
                       disabled={
@@ -1692,6 +1727,7 @@ export function DataSettings({
                     </p>
                   </div>
                     <ToggleSwitch
+                      ariaLabel={t("settings.webdavIncludeImages", "包含图片")}
                       checked={settings.webdavIncludeImages}
                       onChange={settings.setWebdavIncludeImages}
                       disabled={!settings.webdavEnabled}
@@ -1709,6 +1745,7 @@ export function DataSettings({
                     </p>
                   </div>
                     <ToggleSwitch
+                      ariaLabel={t("settings.webdavIncrementalSync", "增量同步")}
                       checked={settings.webdavIncrementalSync}
                       onChange={settings.setWebdavIncrementalSync}
                       disabled={!settings.webdavEnabled}
@@ -1726,6 +1763,7 @@ export function DataSettings({
                     </p>
                   </div>
                     <ToggleSwitch
+                      ariaLabel={t("settings.webdavEncryption", "加密备份（实验性）")}
                       checked={settings.webdavEncryptionEnabled}
                       onChange={settings.setWebdavEncryptionEnabled}
                       disabled={!settings.webdavEnabled}
@@ -1736,6 +1774,10 @@ export function DataSettings({
                 {settings.webdavEncryptionEnabled && (
                   <div className="pt-2">
                     <PasswordInput
+                      ariaLabel={t(
+                        "settings.webdavEncryptionPasswordPlaceholder",
+                        "输入加密密码（可选）",
+                      )}
                       placeholder={t(
                         "settings.webdavEncryptionPasswordPlaceholder",
                         "输入加密密码（可选）",
@@ -1769,6 +1811,7 @@ export function DataSettings({
                 </p>
               </div>
               <ToggleSwitch
+                ariaLabel={t("settings.s3SyncMenu", "S3 Compatible Storage")}
                 checked={settings.s3StorageEnabled}
                 onChange={settings.setS3StorageEnabled}
               />
@@ -1782,6 +1825,7 @@ export function DataSettings({
                 </label>
                 <input
                   type="url"
+                  aria-label={t("settings.s3Endpoint", "API endpoint")}
                   placeholder="https://s3.example.com"
                   value={settings.s3Endpoint}
                   onChange={(e) => settings.setS3Endpoint(e.target.value)}
@@ -1794,6 +1838,7 @@ export function DataSettings({
                 </label>
                 <input
                   type="text"
+                  aria-label={t("settings.s3Region", "Region")}
                   placeholder="us-east-1"
                   value={settings.s3Region}
                   onChange={(e) => settings.setS3Region(e.target.value)}
@@ -1806,6 +1851,7 @@ export function DataSettings({
                 </label>
                 <input
                   type="text"
+                  aria-label={t("settings.s3Bucket", "Bucket")}
                   placeholder="prompthub-backups"
                   value={settings.s3Bucket}
                   onChange={(e) => settings.setS3Bucket(e.target.value)}
@@ -1818,6 +1864,7 @@ export function DataSettings({
                 </label>
                 <input
                   type="text"
+                  aria-label={t("settings.s3AccessKeyId", "Access Key ID")}
                   placeholder={t("settings.s3AccessKeyId", "Access Key ID")}
                   value={settings.s3AccessKeyId}
                   onChange={(e) => settings.setS3AccessKeyId(e.target.value)}
@@ -1829,6 +1876,7 @@ export function DataSettings({
                   {t("settings.s3SecretAccessKey", "Secret Access Key")}
                 </label>
                 <PasswordInput
+                  ariaLabel={t("settings.s3SecretAccessKey", "Secret Access Key")}
                   placeholder={t("settings.s3SecretAccessKey", "Secret Access Key")}
                   value={settings.s3SecretAccessKey}
                   onChange={settings.setS3SecretAccessKey}
@@ -1842,6 +1890,10 @@ export function DataSettings({
                 </label>
                 <input
                   type="text"
+                  aria-label={t(
+                    "settings.s3BackupPrefix",
+                    "Backup directory (optional)",
+                  )}
                   placeholder="/prompthub"
                   value={settings.s3BackupPrefix}
                   onChange={(e) => settings.setS3BackupPrefix(e.target.value)}
@@ -1853,6 +1905,7 @@ export function DataSettings({
 
             <div className="flex flex-wrap gap-2 pt-2 border-t border-border">
               <button
+                type="button"
                 onClick={async () => {
                   if (!s3ConfigComplete) {
                     return;
@@ -1876,10 +1929,14 @@ export function DataSettings({
                 disabled={s3Testing || !s3ConfigComplete || !settings.s3StorageEnabled}
                 className="h-8 px-4 rounded-lg bg-muted text-sm hover:bg-muted/80 transition-colors flex items-center gap-2 disabled:opacity-50"
               >
-                <RefreshCwIcon className={`w-4 h-4 ${s3Testing ? "animate-spin" : ""}`} />
+                <RefreshCwIcon
+                  className={`w-4 h-4 ${s3Testing ? "animate-spin" : ""}`}
+                  aria-hidden="true"
+                />
                 {t("settings.testConnection")}
               </button>
               <button
+                type="button"
                 onClick={async () => {
                   if (!s3ConfigComplete) {
                     return;
@@ -1913,10 +1970,11 @@ export function DataSettings({
                 disabled={s3Uploading || !s3ConfigComplete || !settings.s3StorageEnabled}
                 className="h-8 px-4 rounded-lg bg-primary text-white text-sm hover:bg-primary/90 transition-colors flex items-center gap-2 disabled:opacity-50"
               >
-                <UploadIcon className="w-4 h-4" />
+                <UploadIcon className="w-4 h-4" aria-hidden="true" />
                 {t("settings.backupToRemote", "Back up to remote")}
               </button>
               <button
+                type="button"
                 onClick={async () => {
                   if (!s3ConfigComplete) {
                     return;
@@ -1954,7 +2012,7 @@ export function DataSettings({
                 disabled={s3Downloading || !s3ConfigComplete || !settings.s3StorageEnabled}
                 className="h-8 px-4 rounded-lg bg-muted text-sm hover:bg-muted/80 transition-colors flex items-center gap-2 disabled:opacity-50"
               >
-                <DownloadIcon className="w-4 h-4" />
+                <DownloadIcon className="w-4 h-4" aria-hidden="true" />
                 {t("settings.updateFromRemote", "Update from remote")}
               </button>
             </div>
@@ -1977,6 +2035,7 @@ export function DataSettings({
                   </div>
                 <div className="min-w-[140px]">
                   <Select
+                    ariaLabel={`${t("settings.s3SyncMenu", "S3 Compatible Storage")} ${t("settings.webdavAutoRun", "Auto Run")}`}
                     value={String(settings.s3AutoSyncInterval)}
                     onChange={(val) => settings.setS3AutoSyncInterval(Number(val))}
                     disabled={!settings.s3StorageEnabled}
@@ -2002,6 +2061,7 @@ export function DataSettings({
                 </div>
                 <div className="min-w-[180px]">
                   <Select
+                    ariaLabel={`${t("settings.s3SyncMenu", "S3 Compatible Storage")} ${t("settings.webdavSyncOnStartup", "Run Once on Startup")}`}
                     value={String(
                       settings.s3SyncOnStartup
                         ? settings.s3SyncOnStartupDelay
@@ -2038,6 +2098,7 @@ export function DataSettings({
                   </p>
                 </div>
                 <ToggleSwitch
+                  ariaLabel={t("settings.webdavSyncOnSave", "Sync on Save (Experimental)")}
                   checked={settings.s3SyncOnSave}
                   onChange={settings.setS3SyncOnSave}
                   disabled={!settings.s3StorageEnabled}
@@ -2054,6 +2115,7 @@ export function DataSettings({
                   </p>
                 </div>
                 <ToggleSwitch
+                  ariaLabel={t("settings.webdavIncludeImages", "Include Images")}
                   checked={settings.s3IncludeImages}
                   onChange={settings.setS3IncludeImages}
                   disabled={!settings.s3StorageEnabled}
@@ -2070,6 +2132,7 @@ export function DataSettings({
                   </p>
                 </div>
                 <ToggleSwitch
+                  ariaLabel={t("settings.webdavIncrementalSync", "Incremental Sync")}
                   checked={settings.s3IncrementalSync}
                   onChange={settings.setS3IncrementalSync}
                   disabled={!settings.s3StorageEnabled}
@@ -2086,6 +2149,7 @@ export function DataSettings({
                   </p>
                 </div>
                   <ToggleSwitch
+                    ariaLabel={t("settings.webdavEncryption", "Encrypt Backup (Experimental)")}
                     checked={settings.s3EncryptionEnabled}
                     onChange={settings.setS3EncryptionEnabled}
                     disabled={!settings.s3StorageEnabled}
@@ -2095,6 +2159,10 @@ export function DataSettings({
                 {settings.s3EncryptionEnabled ? (
                   <div className="pt-2">
                     <PasswordInput
+                      ariaLabel={t(
+                        "settings.webdavEncryptionPasswordPlaceholder",
+                        "Enter encryption password (optional, leave empty to skip)",
+                      )}
                       placeholder={t(
                         "settings.webdavEncryptionPasswordPlaceholder",
                         "Enter encryption password (optional, leave empty to skip)",
@@ -2129,6 +2197,7 @@ export function DataSettings({
                 </div>
               </div>
               <button
+                type="button"
                 onClick={handleSelectiveExport}
                 className="h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
               >
@@ -2140,35 +2209,43 @@ export function DataSettings({
               {exportScopeItems.map((item) => {
                 const checked = exportScope[item.key];
                 return (
-                  <div
-                    key={item.key}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg border transition-colors cursor-pointer select-none ${
-                      checked
-                        ? "border-primary/40 bg-primary/5"
-                        : "border-border/60 hover:bg-muted/40"
-                    }`}
-                    onClick={() =>
-                      setExportScope((prev) => {
-                        if (item.key === "images") {
-                          return {
-                            ...prev,
-                            images: !checked,
-                            videos: !checked,
-                          };
-                        }
+	                  <button
+	                    type="button"
+	                    key={item.key}
+	                    aria-pressed={checked}
+	                    onClick={() =>
+	                      setExportScope((prev) => {
+	                        if (item.key === "images") {
+	                          return {
+	                            ...prev,
+	                            images: !checked,
+	                            videos: !checked,
+	                          };
+	                        }
 
-                        return {
-                          ...prev,
-                          [item.key]: !checked,
-                        };
-                      })
-                    }
-                  >
-                    <div className="pointer-events-none">
-                      <Checkbox checked={checked} onChange={() => {}} />
-                    </div>
-                    <span className="text-sm">{item.label}</span>
-                  </div>
+	                        return {
+	                          ...prev,
+	                          [item.key]: !checked,
+	                        };
+	                      })
+	                    }
+	                    className={`flex items-center gap-3 px-3 py-2 rounded-lg border text-left transition-colors select-none outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
+	                      checked
+	                        ? "border-primary/40 bg-primary/5"
+	                        : "border-border/60 hover:bg-muted/40"
+	                    }`}
+	                  >
+	                    <div className="pointer-events-none">
+	                      <div aria-hidden="true">
+	                        <Checkbox
+	                          checked={checked}
+	                          onChange={() => {}}
+	                          ariaLabel={item.label}
+	                        />
+	                      </div>
+	                    </div>
+	                    <span className="text-sm">{item.label}</span>
+	                  </button>
                 );
               })}
             </div>
@@ -2190,6 +2267,7 @@ export function DataSettings({
               </div>
               <div className="flex items-center gap-2">
                 <button
+                  type="button"
                   onClick={() => handleFullBackup()}
                   className="h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
                   title={t("settings.fullBackupExport", "全量备份")}
@@ -2197,8 +2275,10 @@ export function DataSettings({
                   {t("settings.fullBackupExport", "全量备份")}
                 </button>
                 <button
+                  type="button"
                   onClick={handleImportBackup}
                   title={t("settings.import", "导入数据")}
+                  aria-label={t("settings.import", "导入数据")}
                   className="h-9 px-4 rounded-lg bg-muted text-foreground text-sm font-medium hover:bg-muted/80 transition-colors"
                 >
                   {t("settings.import", "导入数据")}
@@ -2284,12 +2364,14 @@ export function DataSettings({
                   </div>
                 </div>
                 <button
+                  type="button"
                   onClick={() => void refreshUpgradeBackups()}
                   disabled={loadingUpgradeBackups}
                   className="h-8 shrink-0 whitespace-nowrap px-3 rounded-lg bg-muted text-sm hover:bg-muted/80 transition-colors flex items-center gap-2 disabled:opacity-50"
                 >
                   <RefreshCwIcon
                     className={`w-4 h-4 shrink-0 ${loadingUpgradeBackups ? "animate-spin" : ""}`}
+                    aria-hidden="true"
                   />
                   {t("common.refresh", "Refresh")}
                 </button>
@@ -2336,15 +2418,22 @@ export function DataSettings({
                     {hiddenUpgradeBackupsCount > 0 ? (
                       <button
                         type="button"
+                        aria-expanded={showAllUpgradeBackups}
                         onClick={() =>
                           setShowAllUpgradeBackups((current) => !current)
                         }
                         className="h-8 px-3 rounded-lg bg-background text-sm hover:bg-accent transition-colors inline-flex items-center gap-2"
                       >
                         {showAllUpgradeBackups ? (
-                          <ChevronUpIcon className="w-4 h-4" />
+                          <ChevronUpIcon
+                            className="w-4 h-4"
+                            aria-hidden="true"
+                          />
                         ) : (
-                          <ChevronDownIcon className="w-4 h-4" />
+                          <ChevronDownIcon
+                            className="w-4 h-4"
+                            aria-hidden="true"
+                          />
                         )}
                         {showAllUpgradeBackups
                           ? t("common.collapse", "Collapse")
@@ -2408,6 +2497,7 @@ export function DataSettings({
 
                         <div className="flex items-center justify-end gap-2 pt-1">
                           <button
+                            type="button"
                             onClick={() => setDeleteCandidate(backup)}
                             disabled={busy}
                             className="h-8 px-3 rounded-lg bg-muted text-sm hover:bg-muted/80 transition-colors disabled:opacity-50"
@@ -2415,12 +2505,16 @@ export function DataSettings({
                             {t("common.delete", "Delete")}
                           </button>
                           <button
+                            type="button"
                             onClick={() => setRestoreCandidate(backup)}
                             disabled={busy}
                             className="h-8 px-3 rounded-lg bg-primary text-white text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
                           >
                             {busy ? (
-                              <Loader2Icon className="w-4 h-4 animate-spin" />
+                              <Loader2Icon
+                                className="w-4 h-4 animate-spin"
+                                aria-hidden="true"
+                              />
                             ) : null}
                             {t("settings.upgradeBackupRestoreAction", "回滚到此快照")}
                           </button>
@@ -2547,6 +2641,7 @@ export function DataSettings({
             description={t("settings.clearDesc")}
           >
             <button
+              type="button"
               onClick={handleClearData}
               className="h-9 px-4 rounded-lg bg-destructive text-white text-sm font-medium hover:bg-destructive/90 transition-colors"
             >
@@ -2609,6 +2704,7 @@ export function DataSettings({
 
             <div className="flex flex-col sm:flex-row gap-2">
               <button
+                type="button"
                 onClick={() => setPendingDataPathChange(null)}
                 disabled={dataPathActionLoading}
                 className="h-10 px-4 rounded-lg bg-muted hover:bg-muted/80 transition-colors text-sm font-medium disabled:opacity-50"
@@ -2616,6 +2712,7 @@ export function DataSettings({
                 {t("common.cancel", "Cancel")}
               </button>
               <button
+                type="button"
                 onClick={() =>
                   void applyDataPathChange(
                     pendingDataPathChange.targetPath || "",
@@ -2628,6 +2725,7 @@ export function DataSettings({
                 {t("settings.switchToExistingDataPath", "Switch to this directory")}
               </button>
               <button
+                type="button"
                 onClick={() => {
                   const confirmed = window.confirm(
                     t(
@@ -2677,6 +2775,9 @@ export function DataSettings({
               <PasswordInput
                 value={clearPwd}
                 onChange={setClearPwd}
+                ariaLabel={
+                  t("settings.masterPasswordPlaceholder") || "输入主密码"
+                }
                 placeholder={
                   t("settings.masterPasswordPlaceholder") || "输入主密码"
                 }
@@ -2685,6 +2786,7 @@ export function DataSettings({
 
             <div className="flex gap-2">
               <button
+                type="button"
                 onClick={() => {
                   setShowClearConfirm(false);
                   setClearPwd("");
@@ -2695,12 +2797,16 @@ export function DataSettings({
                 {t("common.cancel")}
               </button>
               <button
+                type="button"
                 onClick={handleConfirmClear}
                 disabled={clearLoading || !clearPwd}
                 className="flex-1 px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50"
               >
                 {clearLoading ? (
-                  <Loader2Icon className="w-4 h-4 animate-spin mx-auto" />
+                  <Loader2Icon
+                    className="w-4 h-4 animate-spin mx-auto"
+                    aria-hidden="true"
+                  />
                 ) : (
                   t("settings.confirmClear") || "确认清除"
                 )}

@@ -21,7 +21,7 @@ Focus on lifecycle and ARIA / keyboard semantics.
 | `input.test.tsx` | `ui/Input.tsx` | onChange propagates trimmed value where applicable, password type toggling, aria-invalid when error prop present |
 | `textarea.test.tsx` | `ui/Textarea.tsx` | onChange, autoResize behavior, no double-render on each keystroke |
 | `image-preview-modal.test.tsx` | `ui/ImagePreviewModal.tsx` | Renders image, close callback fires |
-| `background-image-backdrop.test.tsx` | `ui/BackgroundImageBackdrop.tsx` | Renders nothing when no image, renders img when path provided |
+| `background-image-backdrop.test.tsx` | `ui/BackgroundImageBackdrop.tsx` | Applies wallpaper opacity / blur / scale and renders image + blanket layers; no-image rendering is owned by callers |
 | `collapsible-thinking.test.tsx` | `ui/CollapsibleThinking.tsx` | Expand / collapse state, default collapsed |
 
 ### Wave 2 — Domain views & modals
@@ -31,7 +31,6 @@ interactions and critical edge cases.
 
 | File | Component | What we test |
 | ---- | --------- | ------------ |
-| `folder-tree.test.tsx` | `layout/FolderTree.tsx` | Renders nested folders, expand toggle, selection callback, basic keyboard nav |
 | `prompt-list-view.test.tsx` | `prompt/PromptListView.tsx` | Renders rows from store snapshot, double-click opens detail, virtualized when long |
 | `prompt-kanban-view.test.tsx` | `prompt/PromptKanbanView.tsx` | Renders columns by tag, drag handler attached, empty state |
 | `prompt-table-view.test.tsx` | `prompt/PromptTableView.tsx` | Sort by column, sticky header, column resize cooperates |

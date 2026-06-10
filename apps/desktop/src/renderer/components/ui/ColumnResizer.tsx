@@ -100,14 +100,9 @@ export function ColumnResizer({
         (event.currentTarget as HTMLDivElement).setPointerCapture?.(
           event.pointerId,
         );
-      } catch (error) {
-        // Pointer capture is a nice-to-have for sticky drags; log so the
-        // failure is not completely invisible, then continue — the drag
-        // still works without it.
-        console.warn(
-          "ColumnResizer: setPointerCapture not available",
-          error instanceof Error ? error.message : error,
-        );
+      } catch {
+        // Pointer capture is a nice-to-have for sticky drags; the drag still
+        // works without it.
       }
       setIsDragging(true);
     },
@@ -133,14 +128,9 @@ export function ColumnResizer({
         (event.currentTarget as HTMLDivElement).releasePointerCapture?.(
           state.pointerId,
         );
-      } catch (error) {
+      } catch {
         // releasePointerCapture can throw if capture was already lost
-        // (for example the pointer was canceled). That is expected, but
-        // we log at debug level so support traces are not blind.
-        console.debug(
-          "ColumnResizer: releasePointerCapture no-op",
-          error instanceof Error ? error.message : error,
-        );
+        // (for example the pointer was canceled). That is expected.
       }
       dragStateRef.current = null;
       setIsDragging(false);

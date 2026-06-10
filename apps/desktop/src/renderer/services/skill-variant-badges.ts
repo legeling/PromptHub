@@ -60,6 +60,20 @@ function isDevBranch(branch?: string): boolean {
   ].includes(normalized);
 }
 
+function isHttpUrl(value?: string): boolean {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return false;
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 function getOfficialRepoLabel(skill: BadgeSource): string | null {
   const candidates = [skill.source_label, skill.source_url]
     .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
@@ -88,8 +102,7 @@ function inferSourceTone(skill: BadgeSource): SkillVariantBadge["tone"] {
   }
 
   if (
-    typeof skill.source_label === "string" &&
-    skill.source_label.trim().startsWith("http") &&
+    isHttpUrl(skill.source_label) &&
     !skill.source_branch
   ) {
     return "community";

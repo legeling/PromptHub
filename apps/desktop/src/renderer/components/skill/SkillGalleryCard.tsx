@@ -72,16 +72,45 @@ function SkillGalleryCardComponent({
   const runtimeCapabilities = getRuntimeCapabilities();
   const visibleTags = normalizeStringArray(skill.tags).slice(0, 4);
   const sourceBadges = buildMySkillSourceBadges(skill, t);
+  const selectLabel = isSelected
+    ? t("common.clear", "清空")
+    : t("common.select", "选择");
+  const favoriteLabel = skill.is_favorite
+    ? t("skill.removeFavorite", "取消收藏")
+    : t("skill.addFavorite", "添加收藏");
+  const primaryActionLabel = isSelectionMode
+    ? `${selectLabel}: ${skill.name}`
+    : `${t("skill.viewDetail", "View Details")}: ${skill.name}`;
+
+  const handlePrimaryAction = () => {
+    if (isSelectionMode) {
+      onToggleSelection(skill.id);
+      return;
+    }
+    onOpen(skill.id);
+  };
+
+  const handleCardKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.currentTarget !== event.target) {
+      return;
+    }
+
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+
+    event.preventDefault();
+    handlePrimaryAction();
+  };
 
   return (
     <div
-      onClick={() => {
-        if (isSelectionMode) {
-          onToggleSelection(skill.id);
-          return;
-        }
-        onOpen(skill.id);
-      }}
+      role="button"
+      tabIndex={0}
+      aria-label={primaryActionLabel}
+      aria-pressed={isSelectionMode ? isSelected : undefined}
+      onClick={handlePrimaryAction}
+      onKeyDown={handleCardKeyDown}
       onContextMenu={(event) => onContextMenu?.(event, skill)}
       onDragOver={(event) => {
         if (!event.dataTransfer.types.includes("application/x-prompthub-tag")) {
@@ -117,29 +146,33 @@ function SkillGalleryCardComponent({
           className="absolute left-4 top-4 z-10 inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-1 text-[10px] font-medium text-amber-600 dark:text-amber-300"
           title={t("skill.updateAvailable", "Update available")}
         >
-          <BellDotIcon className="h-3.5 w-3.5 animate-pulse" />
+          <BellDotIcon
+            aria-hidden="true"
+            className="h-3.5 w-3.5 animate-pulse"
+          />
           {t("skill.updateAvailable", "Update available")}
         </div>
       ) : null}
       {isSelectionMode && (
         <button
+          type="button"
+          aria-pressed={isSelected}
           onClick={(event) => {
             event.stopPropagation();
             onToggleSelection(skill.id);
           }}
+          aria-label={selectLabel}
           className={`absolute right-4 top-4 z-10 p-2 rounded-lg border transition-colors ${
             isSelected
               ? "border-primary/40 bg-primary/15 text-primary"
               : "border-border bg-background/80 text-muted-foreground hover:text-foreground"
           }`}
-          title={
-            isSelected ? t("common.clear", "清空") : t("common.select", "选择")
-          }
+          title={selectLabel}
         >
           {isSelected ? (
-            <CheckSquareIcon className="w-4 h-4" />
+            <CheckSquareIcon aria-hidden="true" className="w-4 h-4" />
           ) : (
-            <SquareIcon className="w-4 h-4" />
+            <SquareIcon aria-hidden="true" className="w-4 h-4" />
           )}
         </button>
       )}
@@ -157,45 +190,48 @@ function SkillGalleryCardComponent({
           <div className="flex gap-1">
             {runtimeCapabilities.skillPlatformIntegration && (
               <button
+                type="button"
                 onClick={(event) => {
                   event.stopPropagation();
                   onQuickInstall(skill);
                 }}
+                aria-label={t("skill.quickInstall", "快速安装")}
                 className="opacity-0 group-hover:opacity-100 p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-all active:scale-press-in"
                 title={t("skill.quickInstall", "快速安装")}
               >
-                <DownloadIcon className="w-4 h-4" />
+                <DownloadIcon aria-hidden="true" className="w-4 h-4" />
               </button>
             )}
             <button
+              type="button"
               onClick={(event) => {
                 event.stopPropagation();
                 onToggleFavorite(skill.id);
               }}
+              aria-label={favoriteLabel}
               className={`p-2 rounded-lg transition-all active:scale-press-in ${
                 skill.is_favorite
                   ? "text-yellow-500 hover:text-yellow-600"
                   : "opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-yellow-500 hover:bg-yellow-500/10"
               }`}
-              title={
-                skill.is_favorite
-                  ? t("skill.removeFavorite", "取消收藏")
-                  : t("skill.addFavorite", "添加收藏")
-              }
+              title={favoriteLabel}
             >
               <StarIcon
+                aria-hidden="true"
                 className={`w-4 h-4 ${skill.is_favorite ? "fill-current" : ""}`}
               />
             </button>
             <button
+              type="button"
               onClick={(event) => {
                 event.stopPropagation();
                 onDelete(skill);
               }}
+              aria-label={t("skill.delete", "删除")}
               className="opacity-0 group-hover:opacity-100 p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-all active:scale-press-in"
               title={t("skill.delete", "删除")}
             >
-              <TrashIcon className="w-4 h-4" />
+              <TrashIcon aria-hidden="true" className="w-4 h-4" />
             </button>
           </div>
         )}

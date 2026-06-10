@@ -1,4 +1,5 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import type { FormEvent } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SkillBatchDeployDialog } from "../../../src/renderer/components/skill/SkillBatchDeployDialog";
@@ -39,6 +40,23 @@ function bindSettingsState(state: ReturnType<typeof createSettingsState>) {
 
 function getSubmitButton() {
   return screen.getAllByRole("button", { name: "Batch Deploy" }).at(-1)!;
+}
+
+function hasHiddenSvgAncestor(element: Element): boolean {
+  let current: Element | null = element;
+  while (current) {
+    if (current.getAttribute("aria-hidden") === "true") return true;
+    current = current.parentElement;
+  }
+  return false;
+}
+
+function getExposedButtonMedia(): string[] {
+  return Array.from(
+    document.body.querySelectorAll('button svg, button img, button [role="img"]'),
+  )
+    .filter((element) => !hasHiddenSvgAncestor(element))
+    .map((element) => element.outerHTML);
 }
 
 describe("SkillBatchDeployDialog install mode", () => {
@@ -126,5 +144,110 @@ describe("SkillBatchDeployDialog install mode", () => {
       );
     });
     expect(window.api.skill.installMdSymlink).not.toHaveBeenCalled();
+  });
+
+  it("ignores repeated deploy clicks while the first batch is pending", async () => {
+    let resolveInstall: (() => void) | undefined;
+    vi.mocked(window.api.skill.installMd).mockReturnValue(
+      new Promise<void>((resolve) => {
+        resolveInstall = resolve;
+      }),
+    );
+
+    await renderWithI18n(
+      <SkillBatchDeployDialog
+        skills={[createSkillFixture({ id: "skill-1", name: "Writer" })]}
+        onClose={vi.fn()}
+      />,
+      { language: "en" },
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Claude Code")).toBeInTheDocument();
+    });
+
+    const submitButton = getSubmitButton();
+    await act(async () => {
+      submitButton.click();
+      submitButton.click();
+      await Promise.resolve();
+    });
+
+    expect(window.api.skill.installMd).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveInstall?.();
+    });
+  });
+
+  it("exposes stable non-submit and pressed semantics for dialog controls", async () => {
+    const onClose = vi.fn();
+    const onSubmit = vi.fn((event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+    });
+
+    await renderWithI18n(
+      <form onSubmit={onSubmit}>
+        <SkillBatchDeployDialog
+          skills={[createSkillFixture({ id: "skill-1", name: "Writer" })]}
+          onClose={onClose}
+        />
+      </form>,
+      { language: "en" },
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Claude Code")).toBeInTheDocument();
+    });
+
+    const closeButton = screen.getByRole("button", { name: "Close" });
+    const copyButton = screen.getByRole("button", { name: /Copy/ });
+    const symlinkButton = screen.getByRole("button", { name: /Symlink/ });
+    const platformButton = screen.getByRole("button", { name: /Claude Code/ });
+    const toggleAllButton = screen.getByRole("button", {
+      name: "Deselect All",
+    });
+    const cancelButton = screen.getByRole("button", { name: "Cancel" });
+    const submitButton = getSubmitButton();
+
+    for (const button of [
+      closeButton,
+      copyButton,
+      symlinkButton,
+      platformButton,
+      toggleAllButton,
+      cancelButton,
+      submitButton,
+    ]) {
+      expect(button).toHaveAttribute("type", "button");
+    }
+
+    expect(copyButton).toHaveAttribute("aria-pressed", "true");
+    expect(symlinkButton).toHaveAttribute("aria-pressed", "false");
+    expect(platformButton).toHaveAttribute("aria-pressed", "true");
+    expect(closeButton.querySelector("svg")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+    expect(platformButton.querySelector("svg")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+    expect(submitButton.querySelector("svg")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+    expect(getExposedButtonMedia(), getExposedButtonMedia().join("\n"))
+      .toHaveLength(0);
+
+    fireEvent.click(symlinkButton);
+    fireEvent.click(toggleAllButton);
+    fireEvent.click(closeButton);
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(copyButton).toHaveAttribute("aria-pressed", "false");
+    expect(symlinkButton).toHaveAttribute("aria-pressed", "true");
+    expect(platformButton).toHaveAttribute("aria-pressed", "false");
   });
 });

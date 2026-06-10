@@ -135,6 +135,23 @@ describe("settings background image actions", () => {
     ).toBe('url("local-image://hero%20image.png")');
   });
 
+  it("normalizes encoded local-image protocol values before writing CSS vars", async () => {
+    const { useSettingsStore } = await import(
+      "../../../src/renderer/stores/settings.store"
+    );
+
+    useSettingsStore
+      .getState()
+      .setBackgroundImageFileName("local-image://hero%20image.png");
+
+    expect(useSettingsStore.getState().backgroundImageFileName).toBe(
+      "hero image.png"
+    );
+    expect(
+      document.documentElement.style.getPropertyValue("--app-background-image")
+    ).toBe('url("local-image://hero%20image.png")');
+  });
+
   it("does not bump settingsUpdatedAt when opacity is unchanged", async () => {
     const { useSettingsStore } = await import(
       "../../../src/renderer/stores/settings.store"
@@ -182,5 +199,31 @@ describe("settings background image actions", () => {
     expect(useSettingsStore.getState().backgroundImageFileName).toBe(
       "wallpaper.png"
     );
+  });
+
+  it("sanitizes same-version persisted background image state during hydration", async () => {
+    localStorage.setItem(
+      "prompthub-settings",
+      JSON.stringify({
+        state: {
+          backgroundImageEnabled: true,
+          backgroundImageFileName: "https://example.com/wallpaper.png",
+          backgroundImageOpacity: 2,
+          backgroundImageBlur: 100,
+        },
+        version: 16,
+      })
+    );
+
+    const { useSettingsStore } = await import(
+      "../../../src/renderer/stores/settings.store"
+    );
+
+    expect(useSettingsStore.getState().backgroundImageFileName).toBeUndefined();
+    expect(useSettingsStore.getState().backgroundImageOpacity).toBe(1);
+    expect(useSettingsStore.getState().backgroundImageBlur).toBe(50);
+    expect(
+      document.documentElement.style.getPropertyValue("--app-background-image")
+    ).toBe("none");
   });
 });

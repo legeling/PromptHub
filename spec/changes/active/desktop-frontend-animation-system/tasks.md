@@ -66,4 +66,5 @@
 
 - [x] 所有 commit 跑过 `pnpm --filter @prompthub/desktop typecheck && lint && test:unit && test:integration && build && bundle:budget`
 - [x] Skill 管理补齐横向页面/详情切换动画：My Skills / Store / Project Skills / Agent Skills 顶层切换，以及 Project/Agent 内部目标切换
+- [x] 手写 CSS spinner 收敛为共享 `<Spinner>`：App / MainContent / AI settings / DataRecoveryDialog / SkillManager 不再直接写 `border-t-transparent animate-spin`
 - [ ] PR 描述附 motionPreference 3 档体感对比（GIF / 视频）（PR 时补）

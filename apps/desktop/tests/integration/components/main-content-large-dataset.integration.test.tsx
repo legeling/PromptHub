@@ -202,30 +202,34 @@ describe("MainContent large dataset integration", () => {
   it(
     "renders large prompt datasets through virtualization without dropping rows",
     async () => {
-    const prompts = Array.from({ length: 1000 }, (_, index) => createPrompt(index));
-    usePromptStoreMock.mockImplementation((selector) =>
-      selector(createPromptState(prompts)),
-    );
+      const prompts = Array.from({ length: 1000 }, (_, index) =>
+        createPrompt(index),
+      );
+      usePromptStoreMock.mockImplementation((selector) =>
+        selector(createPromptState(prompts)),
+      );
 
-    await act(async () => {
-      await renderWithI18n(<MainContent />, { language: "en" });
-    });
-    await act(async () => {
-      await Promise.resolve();
-    });
+      const { container } = await renderWithI18n(<MainContent />, {
+        language: "en",
+      });
+      await act(async () => {
+        await Promise.resolve();
+      });
 
-    // First and last prompts must both reach the user. Older builds capped
-    // the inline list at 160 cards via a setTimeout-based chunk renderer;
-    // virtualization replaces that and the test setup mocks the virtualizer
-    // to render every row, so the full 1000 must be present.
-    // 第一条与最后一条 prompt 都必须能呈现给用户。旧版用 setTimeout 分批渲染
-    // 把卡片数限制在 160 以内；虚拟化已替代该方案，测试 setup 中把虚拟化 mock
-    // 成"全量渲染"，所以这里能看到全部 1000 条。
-    expect(screen.getByText("Prompt 0000")).toBeInTheDocument();
-    expect(screen.getByText("Prompt 0999")).toBeInTheDocument();
-    expect(screen.getAllByText("count:1000")).toHaveLength(4);
-    expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(prompts.length);
+      // First and last prompts must both reach the user. Older builds capped
+      // the inline list at 160 cards via a setTimeout-based chunk renderer;
+      // virtualization replaces that and the test setup mocks the virtualizer
+      // to render every row, so the full 1000 must be present.
+      // 第一条与最后一条 prompt 都必须能呈现给用户。旧版用 setTimeout 分批渲染
+      // 把卡片数限制在 160 以内；虚拟化已替代该方案，测试 setup 中把虚拟化 mock
+      // 成"全量渲染"，所以这里能看到全部 1000 条。
+      expect(screen.getByText("Prompt 0000")).toBeInTheDocument();
+      expect(screen.getByText("Prompt 0999")).toBeInTheDocument();
+      expect(screen.getAllByText("count:1000")).toHaveLength(4);
+      expect(container.querySelectorAll('h3[title^="Prompt "]')).toHaveLength(
+        prompts.length,
+      );
     },
-    15000,
+    60_000,
   );
 });

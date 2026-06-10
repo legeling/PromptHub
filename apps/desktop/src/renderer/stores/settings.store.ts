@@ -44,6 +44,12 @@ const normalizeLanguage = (lang: string): SupportedLanguage => {
   return "en";
 };
 
+const applyI18nLanguage = (lang: SupportedLanguage): void => {
+  void changeLanguage(lang).catch((error) => {
+    console.error("Failed to change language:", error);
+  });
+};
+
 // Theme colors - Morandi color palette + classic royal blue
 export const MORANDI_THEMES = [
   { id: "royal-blue", hue: 220, saturation: 70, name: "Royal Blue" },
@@ -69,6 +75,13 @@ const LEGACY_BACKGROUND_IMAGE_BLUR_DEFAULT = 14;
 const LOCAL_IMAGE_PROTOCOL_PREFIX = "local-image://";
 export const DESKTOP_HOME_MODULES = ["prompt", "skill", "rules"] as const;
 export type DesktopHomeModule = (typeof DESKTOP_HOME_MODULES)[number];
+type ShortcutMode = "global" | "local";
+const DEFAULT_SHORTCUT_MODES: Record<string, ShortcutMode> = {
+  showApp: "global",
+  newPrompt: "local",
+  search: "local",
+  settings: "local",
+};
 const createProjectRecordId = (): string =>
   `project_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 const normalizeProjectRecordPath = (value: string): string => value.trim();
@@ -98,6 +111,68 @@ function normalizeProjectDeployTargets(
   );
 }
 
+function normalizeSkillProjects(value: unknown): SkillProject[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter((project): project is Partial<SkillProject> => {
+      return Boolean(
+        project &&
+          typeof project === "object" &&
+          !Array.isArray(project) &&
+          typeof project.id === "string" &&
+          typeof project.name === "string" &&
+          typeof project.rootPath === "string",
+      );
+    })
+    .map((project) => {
+      const normalizedRootPath = project.rootPath!.trim();
+      const normalizedScanPaths = Array.from(
+        new Set(
+          (Array.isArray(project.scanPaths) ? project.scanPaths : [])
+            .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
+            .filter(
+              (entry) =>
+                entry.length > 0 &&
+                entry.toLowerCase() !== normalizedRootPath.toLowerCase(),
+            ),
+        ),
+      );
+
+      return {
+        ...project,
+        id: project.id!.trim(),
+        name: project.name!.trim(),
+        rootPath: normalizedRootPath,
+        scanPaths: normalizedScanPaths,
+        deployTargets: normalizeProjectDeployTargets(
+          Array.isArray(project.deployTargets)
+            ? project.deployTargets.filter(
+                (entry): entry is string => typeof entry === "string",
+              )
+            : undefined,
+          normalizedRootPath,
+        ),
+        createdAt:
+          typeof project.createdAt === "number" ? project.createdAt : Date.now(),
+        updatedAt:
+          typeof project.updatedAt === "number" ? project.updatedAt : Date.now(),
+        lastScannedAt:
+          typeof project.lastScannedAt === "number"
+            ? project.lastScannedAt
+            : undefined,
+      };
+    })
+    .filter(
+      (project) =>
+        project.id.length > 0 &&
+        project.name.length > 0 &&
+        project.rootPath.length > 0,
+    );
+}
+
 function normalizeAgentRootPaths(paths: string[] | undefined): string[] {
   return Array.from(
     new Set(
@@ -110,6 +185,97 @@ function normalizeAgentRootPaths(paths: string[] | undefined): string[] {
 
 function getCustomAgentRootPaths(agents: CustomAgentConfig[]): string[] {
   return normalizeAgentRootPaths(agents.map((agent) => agent.rootPath));
+}
+
+function normalizeCustomAgentSettings(
+  next: Pick<
+    SettingsState,
+    "customAgents" | "customAgentRootPaths" | "customSkillScanPaths"
+  >,
+  options: { migrateLegacyScanPaths: boolean },
+): void {
+  if (!Array.isArray(next.customAgents)) {
+    next.customAgents = [];
+  }
+  next.customAgents = normalizeCustomAgents(next.customAgents);
+
+  if (
+    !Array.isArray(next.customAgentRootPaths) ||
+    next.customAgentRootPaths.some((entry) => typeof entry !== "string")
+  ) {
+    next.customAgentRootPaths = [];
+  }
+  next.customAgentRootPaths = normalizeAgentRootPaths(
+    next.customAgentRootPaths,
+  );
+
+  if (
+    !Array.isArray(next.customSkillScanPaths) ||
+    next.customSkillScanPaths.some((entry) => typeof entry !== "string")
+  ) {
+    next.customSkillScanPaths = [];
+  }
+  next.customSkillScanPaths = normalizeAgentRootPaths(
+    next.customSkillScanPaths,
+  );
+
+  if (
+    options.migrateLegacyScanPaths &&
+    next.customAgents.length === 0 &&
+    next.customAgentRootPaths.length === 0 &&
+    next.customSkillScanPaths.length > 0
+  ) {
+    next.customAgentRootPaths = [...next.customSkillScanPaths];
+  }
+
+  if (next.customAgents.length === 0 && next.customAgentRootPaths.length > 0) {
+    next.customAgents = next.customAgentRootPaths.map((rootPath, index) =>
+      normalizeCustomAgentDraft({
+        id: `migrated_agent_${index}`,
+        name: `Custom Agent ${index + 1}`,
+        rootPath,
+      }),
+    );
+  }
+
+  next.customAgentRootPaths = getCustomAgentRootPaths(next.customAgents);
+  if (next.customAgentRootPaths.length > 0) {
+    next.customSkillScanPaths = [...next.customAgentRootPaths];
+  }
+}
+
+function normalizePlatformVisibilitySettings(
+  next: Pick<SettingsState, "disabledPlatformIds" | "skillPlatformOrder">,
+): void {
+  next.disabledPlatformIds = Array.isArray(next.disabledPlatformIds)
+    ? next.disabledPlatformIds.filter(
+        (platformId): platformId is string => typeof platformId === "string",
+      )
+    : [];
+  next.skillPlatformOrder = Array.isArray(next.skillPlatformOrder)
+    ? next.skillPlatformOrder.filter(
+        (platformId): platformId is string => typeof platformId === "string",
+      )
+    : [];
+}
+
+function normalizeShortcutModes(value: unknown): Record<string, ShortcutMode> {
+  const normalized: Record<string, ShortcutMode> = {
+    ...DEFAULT_SHORTCUT_MODES,
+  };
+
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return normalized;
+  }
+
+  for (const action of Object.keys(DEFAULT_SHORTCUT_MODES)) {
+    const mode = (value as Record<string, unknown>)[action];
+    if (mode === "global" || mode === "local") {
+      normalized[action] = mode;
+    }
+  }
+
+  return normalized;
 }
 
 function deriveLegacyCustomPlatformRootPaths(
@@ -211,6 +377,25 @@ function normalizeDesktopHomeModules(value: unknown): DesktopHomeModule[] {
   return deduped;
 }
 
+function normalizeTagFilterMode(value: unknown): TagFilterMode {
+  return value === "single" || value === "multi" ? value : "multi";
+}
+
+function normalizePromptTagCatalog(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(
+      value
+        .filter((tag): tag is string => typeof tag === "string")
+        .map((tag) => tag.trim())
+        .filter((tag) => tag.length > 0),
+    ),
+  ).sort((a, b) => a.localeCompare(b));
+}
+
 function inferAIProtocol(
   provider: string | undefined,
   apiUrl: string | undefined,
@@ -279,6 +464,94 @@ function normalizeAIModelCapabilities(
   };
 }
 
+function normalizeAIModelType(value: unknown): AIModelType {
+  return value === "image" ? "image" : "chat";
+}
+
+function normalizePersistedAIModels(value: unknown): AIModelConfig[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter((model): model is Partial<AIModelConfig> => {
+      return Boolean(
+        model &&
+          typeof model === "object" &&
+          !Array.isArray(model) &&
+          typeof model.id === "string" &&
+          model.id.trim().length > 0 &&
+          typeof model.provider === "string" &&
+          model.provider.trim().length > 0 &&
+          typeof model.apiUrl === "string" &&
+          model.apiUrl.trim().length > 0 &&
+          typeof model.model === "string" &&
+          model.model.trim().length > 0,
+      );
+    })
+    .map((model) => {
+      const type = normalizeAIModelType(model.type);
+      const provider = model.provider!.trim();
+      const apiUrl = model.apiUrl!.trim();
+      return {
+        ...model,
+        id: model.id!.trim(),
+        type,
+        providerId:
+          typeof model.providerId === "string" && model.providerId.trim()
+            ? model.providerId.trim()
+            : undefined,
+        provider,
+        apiProtocol: normalizeAIProtocol(model.apiProtocol, provider, apiUrl),
+        apiKey: typeof model.apiKey === "string" ? model.apiKey : "",
+        apiUrl,
+        model: model.model!.trim(),
+        capabilities: normalizeAIModelCapabilities(model.capabilities, type),
+      };
+    });
+}
+
+function normalizePersistedAIProviders(value: unknown): AIProviderConfig[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter((provider): provider is Partial<AIProviderConfig> => {
+      return Boolean(
+        provider &&
+          typeof provider === "object" &&
+          !Array.isArray(provider) &&
+          typeof provider.id === "string" &&
+          provider.id.trim().length > 0 &&
+          typeof provider.provider === "string" &&
+          provider.provider.trim().length > 0 &&
+          typeof provider.apiUrl === "string" &&
+          provider.apiUrl.trim().length > 0,
+      );
+    })
+    .map((provider) => {
+      const providerId = provider.provider!.trim();
+      const apiUrl = provider.apiUrl!.trim();
+      return {
+        ...provider,
+        id: provider.id!.trim(),
+        name:
+          typeof provider.name === "string"
+            ? provider.name.trim() || undefined
+            : undefined,
+        provider: providerId,
+        apiProtocol: normalizeAIProtocol(
+          provider.apiProtocol,
+          providerId,
+          apiUrl,
+        ),
+        apiKey: typeof provider.apiKey === "string" ? provider.apiKey : "",
+        apiUrl,
+      };
+    });
+}
+
 function normalizeModelRoute(value: unknown): AIModelRoute | null {
   return value === "mainText" ||
     value === "fastText" ||
@@ -286,6 +559,37 @@ function normalizeModelRoute(value: unknown): AIModelRoute | null {
     value === "imageGeneration"
     ? value
     : null;
+}
+
+function normalizeAIUsageScenario(value: unknown): AIUsageScenario | null {
+  return value === "quickAdd" ||
+    value === "imageReverse" ||
+    value === "promptTest" ||
+    value === "imageTest" ||
+    value === "translation"
+    ? value
+    : null;
+}
+
+function normalizeScenarioModelDefaults(
+  value: unknown,
+): ScenarioModelDefaults {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  return Object.entries(value).reduce<ScenarioModelDefaults>(
+    (acc, [scenario, modelId]) => {
+      const normalizedScenario = normalizeAIUsageScenario(scenario);
+      const normalizedModelId =
+        typeof modelId === "string" ? modelId.trim() : "";
+      if (normalizedScenario && normalizedModelId) {
+        acc[normalizedScenario] = normalizedModelId;
+      }
+      return acc;
+    },
+    {},
+  );
 }
 
 function normalizeModelRouteDefaults(value: unknown): ModelRouteDefaults {
@@ -296,8 +600,10 @@ function normalizeModelRouteDefaults(value: unknown): ModelRouteDefaults {
   return Object.entries(value).reduce<ModelRouteDefaults>(
     (acc, [route, modelId]) => {
       const normalizedRoute = normalizeModelRoute(route);
-      if (normalizedRoute && typeof modelId === "string" && modelId.trim()) {
-        acc[normalizedRoute] = modelId;
+      const normalizedModelId =
+        typeof modelId === "string" ? modelId.trim() : "";
+      if (normalizedRoute && normalizedModelId) {
+        acc[normalizedRoute] = normalizedModelId;
       }
       return acc;
     },
@@ -322,12 +628,90 @@ function deriveModelRouteDefaultsFromScenarios(
   return next;
 }
 
+function normalizeAIModelDefaults(
+  next: Pick<SettingsState, "scenarioModelDefaults" | "modelRouteDefaults">,
+): void {
+  next.scenarioModelDefaults = normalizeScenarioModelDefaults(
+    next.scenarioModelDefaults,
+  );
+  next.modelRouteDefaults = normalizeModelRouteDefaults(
+    next.modelRouteDefaults,
+  );
+  if (Object.keys(next.modelRouteDefaults).length === 0) {
+    next.modelRouteDefaults = deriveModelRouteDefaultsFromScenarios(
+      next.scenarioModelDefaults,
+    );
+  }
+}
+
 function normalizeSyncProvider(value: unknown): SyncProviderKind {
   if (value === "webdav" || value === "self-hosted" || value === "s3") {
     return value;
   }
 
   return "manual";
+}
+
+function normalizeNumberSetting(value: unknown, fallback: number): number {
+  const normalized = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(normalized) ? normalized : fallback;
+}
+
+function normalizeStartupSyncDelay(value: unknown): number {
+  const normalized = normalizeNumberSetting(value, 10);
+  return clamp(normalized, 0, 60);
+}
+
+function normalizeAutoSyncInterval(value: unknown): number {
+  const normalized = normalizeNumberSetting(value, 0);
+  return Math.max(0, normalized);
+}
+
+function normalizeTagsSectionHeight(value: unknown): number {
+  const normalized = normalizeNumberSetting(value, DEFAULT_TAGS_SECTION_HEIGHT);
+  return normalized >= DEFAULT_TAGS_SECTION_HEIGHT
+    ? normalized
+    : DEFAULT_TAGS_SECTION_HEIGHT;
+}
+
+function normalizeSidebarTagSectionHeights(
+  next: Pick<SettingsState, "tagsSectionHeight" | "skillTagsSectionHeight">,
+): void {
+  next.tagsSectionHeight = normalizeTagsSectionHeight(next.tagsSectionHeight);
+  next.skillTagsSectionHeight = normalizeTagsSectionHeight(
+    next.skillTagsSectionHeight,
+  );
+}
+
+function normalizeSyncTimingSettings(
+  next: Pick<
+    SettingsState,
+    | "webdavSyncOnStartupDelay"
+    | "selfHostedSyncOnStartupDelay"
+    | "s3SyncOnStartupDelay"
+    | "webdavAutoSyncInterval"
+    | "selfHostedAutoSyncInterval"
+    | "s3AutoSyncInterval"
+  >,
+): void {
+  next.webdavSyncOnStartupDelay = normalizeStartupSyncDelay(
+    next.webdavSyncOnStartupDelay,
+  );
+  next.selfHostedSyncOnStartupDelay = normalizeStartupSyncDelay(
+    next.selfHostedSyncOnStartupDelay,
+  );
+  next.s3SyncOnStartupDelay = normalizeStartupSyncDelay(
+    next.s3SyncOnStartupDelay,
+  );
+  next.webdavAutoSyncInterval = normalizeAutoSyncInterval(
+    next.webdavAutoSyncInterval,
+  );
+  next.selfHostedAutoSyncInterval = normalizeAutoSyncInterval(
+    next.selfHostedAutoSyncInterval,
+  );
+  next.s3AutoSyncInterval = normalizeAutoSyncInterval(
+    next.s3AutoSyncInterval,
+  );
 }
 
 function normalizeSkillListPageSize(value: unknown): number {
@@ -433,9 +817,13 @@ function normalizeBackgroundImageFileName(value: unknown): string | undefined {
     return undefined;
   }
 
-  const fileName = trimmed.startsWith(LOCAL_IMAGE_PROTOCOL_PREFIX)
+  const hasLocalImageProtocol = trimmed.startsWith(LOCAL_IMAGE_PROTOCOL_PREFIX);
+  const rawFileName = hasLocalImageProtocol
     ? trimmed.slice(LOCAL_IMAGE_PROTOCOL_PREFIX.length)
     : trimmed;
+  const fileName = hasLocalImageProtocol
+    ? decodeBackgroundImageFileName(rawFileName)
+    : rawFileName;
 
   if (
     !fileName ||
@@ -447,6 +835,14 @@ function normalizeBackgroundImageFileName(value: unknown): string | undefined {
   }
 
   return fileName;
+}
+
+function decodeBackgroundImageFileName(fileName: string): string {
+  try {
+    return decodeURIComponent(fileName);
+  } catch {
+    return fileName;
+  }
 }
 
 function normalizeBackgroundImageBlur(
@@ -546,6 +942,40 @@ const hexToHs = (hex: string): Hs => {
 // Theme mode
 export type ThemeMode = "light" | "dark" | "system";
 
+function normalizeThemeMode(value: unknown): ThemeMode {
+  return value === "light" || value === "dark" || value === "system"
+    ? value
+    : "system";
+}
+
+function normalizeFontSize(value: unknown): string {
+  return FONT_SIZES.some((fontSize) => fontSize.id === value)
+    ? (value as string)
+    : "medium";
+}
+
+function normalizeMotionPreference(
+  value: unknown,
+): "off" | "reduced" | "standard" {
+  return value === "off" || value === "reduced" || value === "standard"
+    ? value
+    : "standard";
+}
+
+function normalizeAppearanceSettings(
+  next: Pick<
+    SettingsState,
+    "themeMode" | "fontSize" | "motionPreference" | "language"
+  >,
+): void {
+  next.themeMode = normalizeThemeMode(next.themeMode);
+  next.fontSize = normalizeFontSize(next.fontSize);
+  next.motionPreference = normalizeMotionPreference(next.motionPreference);
+  next.language = normalizeLanguage(
+    typeof next.language === "string" ? next.language : "",
+  );
+}
+
 // AI model type
 export type AIModelType = "chat" | "image";
 
@@ -635,6 +1065,55 @@ export const AI_SCENARIO_MODEL_ROUTE: Record<AIUsageScenario, AIModelRoute> = {
   imageReverse: "visionText",
   imageTest: "imageGeneration",
 };
+
+function normalizeCreationMode(value: unknown): CreationMode {
+  return value === "manual" || value === "quick" ? value : "manual";
+}
+
+function normalizeTranslationMode(value: unknown): TranslationMode {
+  return value === "immersive" || value === "full" ? value : "immersive";
+}
+
+function normalizeCloseAction(value: unknown): "ask" | "minimize" | "exit" {
+  return value === "ask" || value === "minimize" || value === "exit"
+    ? value
+    : "ask";
+}
+
+function normalizeSourceHistory(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(
+      value
+        .filter((source): source is string => typeof source === "string")
+        .map((source) => source.trim())
+        .filter((source) => source.length > 0),
+    ),
+  ).slice(0, 20);
+}
+
+function normalizePromptWorkflowSettings(
+  next: Pick<
+    SettingsState,
+    | "creationMode"
+    | "translationMode"
+    | "imageReverseAttachReferenceByDefault"
+    | "closeAction"
+    | "sourceHistory"
+  >,
+): void {
+  next.creationMode = normalizeCreationMode(next.creationMode);
+  next.translationMode = normalizeTranslationMode(next.translationMode);
+  next.imageReverseAttachReferenceByDefault =
+    typeof next.imageReverseAttachReferenceByDefault === "boolean"
+      ? next.imageReverseAttachReferenceByDefault
+      : true;
+  next.closeAction = normalizeCloseAction(next.closeAction);
+  next.sourceHistory = normalizeSourceHistory(next.sourceHistory);
+}
 
 interface ProjectSkillImportPreferences {
   selectedTargetIds: string[];
@@ -976,12 +1455,13 @@ function syncSettingsToMain(settings: Partial<Settings>): Promise<void> {
     return Promise.resolve();
   }
 
-  return (
-    window.api?.settings
-      ?.set(settings)
-      .catch((error: unknown) =>
-        console.warn("Failed to sync settings to main process:", error),
-      ) ?? Promise.resolve()
+  const setSettings = window.api?.settings?.set;
+  if (typeof setSettings !== "function") {
+    return Promise.resolve();
+  }
+
+  return setSettings(settings).catch((error: unknown) =>
+    console.warn("Failed to sync settings to main process:", error),
   );
 }
 
@@ -1004,6 +1484,32 @@ type PersistedSettingsState = Omit<SettingsState, "githubToken">;
 function stripEphemeralSettings(state: SettingsState): PersistedSettingsState {
   const { githubToken: _githubToken, ...persistedState } = state;
   return persistedState;
+}
+
+function scrubPersistedGithubToken(): void {
+  if (typeof localStorage === "undefined") {
+    return;
+  }
+
+  try {
+    const raw = localStorage.getItem("prompthub-settings");
+    if (!raw) {
+      return;
+    }
+
+    const parsed = JSON.parse(raw) as {
+      state?: Record<string, unknown>;
+      version?: unknown;
+    };
+    if (!parsed.state || !("githubToken" in parsed.state)) {
+      return;
+    }
+
+    delete parsed.state.githubToken;
+    localStorage.setItem("prompthub-settings", JSON.stringify(parsed));
+  } catch {
+    // Ignore malformed legacy storage; Zustand will keep the in-memory token cleared.
+  }
 }
 
 function findMatchingAIProvider(
@@ -1121,16 +1627,17 @@ export async function loadSettingsFromMainProcess(): Promise<void> {
           state.customAgentRootPaths),
   );
   const aiProviders = Array.isArray(aiSettings.aiProviders)
-    ? aiSettings.aiProviders
+    ? normalizePersistedAIProviders(aiSettings.aiProviders)
     : state.aiProviders;
   const aiModels = Array.isArray(aiSettings.aiModels)
-    ? attachProviderIdsToAIModels(aiProviders, aiSettings.aiModels)
+    ? attachProviderIdsToAIModels(
+        aiProviders,
+        normalizePersistedAIModels(aiSettings.aiModels),
+      )
     : state.aiModels;
-  const modelRouteDefaults =
-    aiSettings.modelRouteDefaults &&
-    typeof aiSettings.modelRouteDefaults === "object"
-      ? aiSettings.modelRouteDefaults
-      : state.modelRouteDefaults;
+  const modelRouteDefaults = normalizeModelRouteDefaults(
+    aiSettings.modelRouteDefaults ?? state.modelRouteDefaults,
+  );
   const aiProvider =
     typeof aiSettings.aiProvider === "string"
       ? aiSettings.aiProvider
@@ -1244,12 +1751,7 @@ export const useSettingsStore = create<SettingsState>()(
         minimizeOnLaunch: true,
         debugMode: false,
         closeAction: "ask" as const, // Default to ask every time / 默认每次询问
-        shortcutModes: {
-          showApp: "global",
-          newPrompt: "local",
-          search: "local",
-          settings: "local",
-        },
+        shortcutModes: { ...DEFAULT_SHORTCUT_MODES },
         enableNotifications: true,
         showCopyNotification: true,
         showSaveNotification: true,
@@ -1332,29 +1834,35 @@ export const useSettingsStore = create<SettingsState>()(
         autoScanStoreSkillsBeforeInstall: false,
         githubToken: "",
 
-        setCreationMode: (mode) => setTouched({ creationMode: mode }),
-        setTranslationMode: (mode) => setTouched({ translationMode: mode }),
+        setCreationMode: (mode) =>
+          setTouched({ creationMode: normalizeCreationMode(mode) }),
+        setTranslationMode: (mode) =>
+          setTouched({ translationMode: normalizeTranslationMode(mode) }),
         setImageReverseAttachReferenceByDefault: (enabled) =>
-          setTouched({ imageReverseAttachReferenceByDefault: enabled }),
+          setTouched({
+            imageReverseAttachReferenceByDefault:
+              typeof enabled === "boolean" ? enabled : true,
+          }),
 
         addSourceHistory: (source) => {
           if (!source.trim()) return;
-          const history = get().sourceHistory;
+          const history = normalizeSourceHistory(get().sourceHistory);
           const filtered = history.filter((s) => s !== source.trim());
           const updated = [source.trim(), ...filtered].slice(0, 20);
           setTouched({ sourceHistory: updated });
         },
 
         setThemeMode: (mode) => {
-          if (mode === "system") {
+          const normalized = normalizeThemeMode(mode);
+          if (normalized === "system") {
             const prefersDark = window.matchMedia(
               "(prefers-color-scheme: dark)",
             ).matches;
-            setTouched({ themeMode: mode, isDarkMode: prefersDark });
+            setTouched({ themeMode: normalized, isDarkMode: prefersDark });
             document.documentElement.classList.toggle("dark", prefersDark);
           } else {
-            const isDark = mode === "dark";
-            setTouched({ themeMode: mode, isDarkMode: isDark });
+            const isDark = normalized === "dark";
+            setTouched({ themeMode: normalized, isDarkMode: isDark });
             document.documentElement.classList.toggle("dark", isDark);
           }
         },
@@ -1422,13 +1930,16 @@ export const useSettingsStore = create<SettingsState>()(
         },
         setRenderMarkdown: (enabled) => setTouched({ renderMarkdown: enabled }),
         setMotionPreference: (preference) =>
-          setTouched({ motionPreference: preference }),
+          setTouched({
+            motionPreference: normalizeMotionPreference(preference),
+          }),
         setEditorMarkdownPreview: (enabled) =>
           setTouched({ editorMarkdownPreview: enabled }),
 
         setFontSize: (size) => {
-          setTouched({ fontSize: size });
-          const fontConfig = FONT_SIZES.find((f) => f.id === size);
+          const normalized = normalizeFontSize(size);
+          setTouched({ fontSize: normalized });
+          const fontConfig = FONT_SIZES.find((f) => f.id === normalized);
           if (fontConfig) {
             document.documentElement.style.setProperty(
               "--base-font-size",
@@ -1531,8 +2042,9 @@ export const useSettingsStore = create<SettingsState>()(
           syncSettingsToMain({ minimizeOnLaunch: enabled });
         },
         setCloseAction: (action) => {
-          setTouched({ closeAction: action });
-          window.electron?.setCloseAction?.(action);
+          const normalized = normalizeCloseAction(action);
+          setTouched({ closeAction: normalized });
+          window.electron?.setCloseAction?.(normalized);
         },
         setDebugMode: (enabled) => {
           setTouched({ debugMode: enabled });
@@ -1598,7 +2110,7 @@ export const useSettingsStore = create<SettingsState>()(
         setLanguage: (lang) => {
           const normalized = normalizeLanguage(lang);
           setTouched({ language: normalized });
-          changeLanguage(normalized);
+          applyI18nLanguage(normalized);
         },
         setDataPath: (path) => setTouched({ dataPath: path }),
         setWebdavEnabled: (enabled) => {
@@ -1745,11 +2257,13 @@ export const useSettingsStore = create<SettingsState>()(
           setTouched({ updateChannel: inferredChannel });
         },
         setTagsSectionHeight: (height) =>
-          setTouched({ tagsSectionHeight: height }),
+          setTouched({ tagsSectionHeight: normalizeTagsSectionHeight(height) }),
         setIsTagsSectionCollapsed: (collapsed) =>
           setTouched({ isTagsSectionCollapsed: collapsed }),
         setSkillTagsSectionHeight: (height) =>
-          setTouched({ skillTagsSectionHeight: height }),
+          setTouched({
+            skillTagsSectionHeight: normalizeTagsSectionHeight(height),
+          }),
         setIsSkillTagsSectionCollapsed: (collapsed) =>
           setTouched({ isSkillTagsSectionCollapsed: collapsed }),
         setSkillListPageSize: (pageSize) =>
@@ -2473,7 +2987,7 @@ export const useSettingsStore = create<SettingsState>()(
           // Strip control characters (CR, LF, etc.) to prevent header
           // injection — the main process also validates, but defence in
           // depth is cheap here.
-          const sanitized = token.replace(/[\r\n\x00-\x1f\x7f]/g, "").trim();
+          const sanitized = sanitizeGithubToken(token);
           setTouched({ githubToken: sanitized });
           syncSettingsToMain({ githubToken: sanitized });
         },
@@ -2489,10 +3003,55 @@ export const useSettingsStore = create<SettingsState>()(
           ...(persistedState as Partial<SettingsState>),
         };
 
+        if (
+          persistedState &&
+          typeof persistedState === "object" &&
+          "githubToken" in persistedState
+        ) {
+          scrubPersistedGithubToken();
+        }
+        next.githubToken = "";
+        normalizeAppearanceSettings(next);
+        normalizePromptWorkflowSettings(next);
+        next.aiApiProtocol = normalizeAIProtocol(
+          next.aiApiProtocol,
+          next.aiProvider,
+          next.aiApiUrl,
+        );
+        next.aiProviders = normalizePersistedAIProviders(next.aiProviders);
+        next.aiModels = normalizePersistedAIModels(next.aiModels);
+        normalizeAIModelDefaults(next);
+        next.tagFilterMode = normalizeTagFilterMode(next.tagFilterMode);
+        next.promptTagCatalog = normalizePromptTagCatalog(
+          next.promptTagCatalog,
+        );
+        next.skillProjects = normalizeSkillProjects(next.skillProjects);
+        normalizeCustomAgentSettings(next, { migrateLegacyScanPaths: false });
+        normalizePlatformVisibilitySettings(next);
         migrateTraeCnPlatformState(next);
+        next.shortcutModes = normalizeShortcutModes(next.shortcutModes);
         next.skillListPageSize = normalizeSkillListPageSize(
           next.skillListPageSize,
         );
+        normalizeSidebarTagSectionHeights(next);
+        next.desktopHomeModules = normalizeDesktopHomeModules(
+          next.desktopHomeModules,
+        );
+        delete (next as Record<string, unknown>).desktopHomeLayout;
+        next.backgroundImageFileName = normalizeBackgroundImageFileName(
+          next.backgroundImageFileName,
+        );
+        next.backgroundImageOpacity = clampBackgroundImageOpacity(
+          typeof next.backgroundImageOpacity === "number"
+            ? next.backgroundImageOpacity
+            : DEFAULT_BACKGROUND_IMAGE_OPACITY,
+        );
+        next.backgroundImageBlur = clampBackgroundImageBlur(
+          typeof next.backgroundImageBlur === "number"
+            ? next.backgroundImageBlur
+            : DEFAULT_BACKGROUND_IMAGE_BLUR,
+        );
+        normalizeSyncTimingSettings(next);
 
         next.syncProvider = clampSyncProvider(
           normalizeSyncProvider(next.syncProvider),
@@ -2511,147 +3070,28 @@ export const useSettingsStore = create<SettingsState>()(
         }
         const next = { ...(state as SettingsState) };
         next.githubToken = "";
+        normalizeAppearanceSettings(next);
+        normalizePromptWorkflowSettings(next);
         next.aiApiProtocol = normalizeAIProtocol(
           next.aiApiProtocol,
           next.aiProvider,
           next.aiApiUrl,
         );
-        if (!Array.isArray(next.aiModels)) {
-          next.aiModels = [];
-        } else {
-          next.aiModels = next.aiModels
-            .filter((model): model is AIModelConfig => {
-              return Boolean(
-                model &&
-                typeof model.id === "string" &&
-                typeof model.provider === "string" &&
-                typeof model.apiUrl === "string" &&
-                typeof model.model === "string",
-              );
-            })
-            .map((model) => ({
-              ...model,
-              type: model.type ?? "chat",
-              providerId:
-                typeof model.providerId === "string" && model.providerId.trim()
-                  ? model.providerId.trim()
-                  : undefined,
-              apiProtocol: normalizeAIProtocol(
-                model.apiProtocol,
-                model.provider,
-                model.apiUrl,
-              ),
-              capabilities: normalizeAIModelCapabilities(
-                model.capabilities,
-                model.type ?? "chat",
-              ),
-            }));
-        }
-        if (!Array.isArray(next.aiProviders)) {
-          next.aiProviders = [];
-        } else {
-          next.aiProviders = next.aiProviders
-            .filter((provider): provider is AIProviderConfig => {
-              return Boolean(
-                provider &&
-                typeof provider.id === "string" &&
-                typeof provider.provider === "string" &&
-                typeof provider.apiUrl === "string",
-              );
-            })
-            .map((provider) => ({
-              ...provider,
-              name:
-                typeof provider.name === "string"
-                  ? provider.name.trim() || undefined
-                  : undefined,
-              provider: provider.provider.trim(),
-              apiProtocol: normalizeAIProtocol(
-                provider.apiProtocol,
-                provider.provider,
-                provider.apiUrl,
-              ),
-              apiKey:
-                typeof provider.apiKey === "string" ? provider.apiKey : "",
-              apiUrl: provider.apiUrl.trim(),
-            }));
-        }
-        if (
-          typeof next.tagsSectionHeight === "number" &&
-          next.tagsSectionHeight < DEFAULT_TAGS_SECTION_HEIGHT
-        ) {
-          next.tagsSectionHeight = DEFAULT_TAGS_SECTION_HEIGHT;
-        }
-        if (
-          !next.scenarioModelDefaults ||
-          typeof next.scenarioModelDefaults !== "object" ||
-          Array.isArray(next.scenarioModelDefaults)
-        ) {
-          next.scenarioModelDefaults = {};
-        }
-        next.modelRouteDefaults = normalizeModelRouteDefaults(
-          next.modelRouteDefaults,
+        next.aiModels = normalizePersistedAIModels(next.aiModels);
+        next.aiProviders = normalizePersistedAIProviders(next.aiProviders);
+        normalizeSidebarTagSectionHeights(next);
+        normalizeAIModelDefaults(next);
+        next.promptTagCatalog = normalizePromptTagCatalog(
+          next.promptTagCatalog,
         );
-        if (Object.keys(next.modelRouteDefaults).length === 0) {
-          next.modelRouteDefaults = deriveModelRouteDefaultsFromScenarios(
-            next.scenarioModelDefaults,
-          );
-        }
-        if (!Array.isArray(next.promptTagCatalog)) {
-          next.promptTagCatalog = [];
-        }
-        if (next.tagFilterMode !== "single" && next.tagFilterMode !== "multi") {
-          next.tagFilterMode = "multi";
-        }
+        next.tagFilterMode = normalizeTagFilterMode(next.tagFilterMode);
+        next.shortcutModes = normalizeShortcutModes(next.shortcutModes);
         next.skillListPageSize = normalizeSkillListPageSize(
           next.skillListPageSize,
         );
-        if (!Array.isArray(next.customAgents)) {
-          next.customAgents = [];
-        }
-        next.customAgents = normalizeCustomAgents(next.customAgents);
-        if (
-          !Array.isArray(next.customAgentRootPaths) ||
-          next.customAgentRootPaths.some((entry) => typeof entry !== "string")
-        ) {
-          next.customAgentRootPaths = [];
-        }
-        next.customAgentRootPaths = normalizeAgentRootPaths(
-          next.customAgentRootPaths,
-        );
-        if (
-          !Array.isArray(next.customSkillScanPaths) ||
-          next.customSkillScanPaths.some((entry) => typeof entry !== "string")
-        ) {
-          next.customSkillScanPaths = [];
-        }
-        next.customSkillScanPaths = normalizeAgentRootPaths(
-          next.customSkillScanPaths,
-        );
-        if (
-          version < 12 &&
-          next.customAgents.length === 0 &&
-          next.customAgentRootPaths.length === 0 &&
-          next.customSkillScanPaths.length > 0
-        ) {
-          next.customAgentRootPaths = [...next.customSkillScanPaths];
-        }
-        if (
-          next.customAgents.length === 0 &&
-          next.customAgentRootPaths.length > 0
-        ) {
-          next.customAgents = next.customAgentRootPaths.map((rootPath, index) =>
-            normalizeCustomAgentDraft({
-              id: `migrated_agent_${index}`,
-              name: `Custom Agent ${index + 1}`,
-              rootPath,
-            }),
-          );
-        }
-        next.customAgentRootPaths = getCustomAgentRootPaths(next.customAgents);
-        if (next.customAgentRootPaths.length > 0) {
-          next.customSkillScanPaths = [...next.customAgentRootPaths];
-        }
+        normalizeCustomAgentSettings(next, {
+          migrateLegacyScanPaths: version < 12,
+        });
         if (
           !next.builtinAgentOverrides ||
           typeof next.builtinAgentOverrides !== "object" ||
@@ -2675,17 +3115,9 @@ export const useSettingsStore = create<SettingsState>()(
         };
         const legacyDisabledPlatformIds =
           legacyPersistedState.trackedRulePlatformIds;
-        if (
-          !Array.isArray(next.disabledPlatformIds) ||
-          next.disabledPlatformIds.some(
-            (platformId) => typeof platformId !== "string",
-          )
-        ) {
+        if (!Array.isArray(next.disabledPlatformIds)) {
           next.disabledPlatformIds = Array.isArray(legacyDisabledPlatformIds)
-            ? legacyDisabledPlatformIds.filter(
-                (platformId): platformId is string =>
-                  typeof platformId === "string",
-              )
+            ? legacyDisabledPlatformIds
             : [];
         }
         delete legacyPersistedState.rulePlatformTrackingInitialized;
@@ -2729,87 +3161,14 @@ export const useSettingsStore = create<SettingsState>()(
           // so the Settings checkbox becomes the single source of truth.
           next.disabledPlatformIds = [];
         }
-        if (
-          !Array.isArray(next.skillPlatformOrder) ||
-          next.skillPlatformOrder.some(
-            (platformId) => typeof platformId !== "string",
-          )
-        ) {
-          next.skillPlatformOrder = [];
-        }
+        normalizePlatformVisibilitySettings(next);
         migrateTraeCnPlatformState(next);
-        if (!Array.isArray(next.skillProjects)) {
-          next.skillProjects = [];
-        } else {
-          next.skillProjects = next.skillProjects
-            .filter((project): project is SkillProject => {
-              return Boolean(
-                project &&
-                typeof project.id === "string" &&
-                typeof project.name === "string" &&
-                typeof project.rootPath === "string",
-              );
-            })
-            .map((project) => {
-              const normalizedRootPath =
-                typeof project.rootPath === "string"
-                  ? project.rootPath.trim()
-                  : "";
-              const normalizedScanPaths = Array.from(
-                new Set(
-                  (Array.isArray(project.scanPaths) ? project.scanPaths : [])
-                    .map((entry) =>
-                      typeof entry === "string" ? entry.trim() : "",
-                    )
-                    .filter(
-                      (entry) =>
-                        entry.length > 0 &&
-                        entry.toLowerCase() !==
-                          normalizedRootPath.toLowerCase(),
-                    ),
-                ),
-              );
-
-              return {
-                ...project,
-                name: project.name.trim(),
-                rootPath: normalizedRootPath,
-                scanPaths: normalizedScanPaths,
-                deployTargets: normalizeProjectDeployTargets(
-                  Array.isArray(project.deployTargets)
-                    ? project.deployTargets.filter(
-                        (entry): entry is string => typeof entry === "string",
-                      )
-                    : undefined,
-                  normalizedRootPath,
-                ),
-                createdAt:
-                  typeof project.createdAt === "number"
-                    ? project.createdAt
-                    : Date.now(),
-                updatedAt:
-                  typeof project.updatedAt === "number"
-                    ? project.updatedAt
-                    : Date.now(),
-                lastScannedAt:
-                  typeof project.lastScannedAt === "number"
-                    ? project.lastScannedAt
-                    : undefined,
-              };
-            })
-            .filter(
-              (project) =>
-                project.name.length > 0 && project.rootPath.length > 0,
-            );
-        }
+        next.skillProjects = normalizeSkillProjects(next.skillProjects);
         if (typeof next.autoScanInstalledSkills !== "boolean") {
           next.autoScanInstalledSkills = false;
         }
         if (typeof next.autoScanStoreSkillsBeforeInstall !== "boolean") {
           next.autoScanStoreSkillsBeforeInstall = false;
-        }
-        if (typeof next.imageReverseAttachReferenceByDefault !== "boolean") {
-          next.imageReverseAttachReferenceByDefault = true;
         }
         if (typeof next.backgroundImageEnabled !== "boolean") {
           next.backgroundImageEnabled = true;
@@ -2821,6 +3180,7 @@ export const useSettingsStore = create<SettingsState>()(
         if (typeof next.updateChannelExplicitlySet !== "boolean") {
           next.updateChannelExplicitlySet = false;
         }
+        normalizeSyncTimingSettings(next);
         if (version < 9) {
           next.syncProvider = inferLegacySyncProvider(next);
         } else {

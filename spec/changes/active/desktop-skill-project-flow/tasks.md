@@ -2,6 +2,7 @@
 - [x] 优化添加项目弹窗的路径优先与自动填充
 - [x] 添加项目后自动扫描项目 Skills
 - [x] 为项目列表/头部增加首字母标识
+- [x] 规范化同版本 persisted `skillProjects`，避免畸形项目路径进入项目 Skills UI 和文件操作
 - [x] 更新桌面端相关单元测试
 - [x] 运行桌面端 lint / typecheck / 定向测试
 - [x] 更新 implementation.md

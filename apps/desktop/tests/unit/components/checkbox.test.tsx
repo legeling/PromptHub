@@ -8,6 +8,17 @@ describe("Checkbox", () => {
     expect(screen.getByText("Enable sync")).toBeInTheDocument();
   });
 
+  it("supports an accessible name without a visible label", () => {
+    render(
+      <Checkbox
+        checked={false}
+        onChange={vi.fn()}
+        ariaLabel="Select export item"
+      />,
+    );
+    expect(screen.getByRole("checkbox", { name: "Select export item" })).toBeInTheDocument();
+  });
+
   it("toggles via the underlying label click and reports the new value", () => {
     const onChange = vi.fn();
     render(<Checkbox checked={false} onChange={onChange} label="Toggle" />);
@@ -32,6 +43,14 @@ describe("Checkbox", () => {
 
     rerender(<Checkbox checked onChange={vi.fn()} label="Sync" />);
     expect(input.checked).toBe(true);
+  });
+
+  it("does not double-toggle when the native input change event fires", () => {
+    const onChange = vi.fn();
+    render(<Checkbox checked={false} onChange={onChange} label="Native" />);
+    fireEvent.click(screen.getByRole("checkbox", { name: "Native" }));
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith(true);
   });
 
   it("ignores clicks when disabled", () => {

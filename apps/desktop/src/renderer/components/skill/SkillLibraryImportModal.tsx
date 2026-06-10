@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   CheckCircle2Icon,
@@ -15,7 +15,7 @@ import type {
   SkillProject,
 } from "@prompthub/shared/types";
 import { useSettingsStore } from "../../stores/settings.store";
-import { getMissingProjectTargetDirs } from "../../services/project-skill-targets";
+import { getProjectTargetDirsRequiringDeployment } from "../../services/project-skill-targets";
 import { Modal } from "../ui/Modal";
 import { Input } from "../ui/Input";
 
@@ -106,6 +106,11 @@ export function SkillLibraryImportModal({
   confirmLabel,
 }: SkillLibraryImportModalProps) {
   const { t } = useTranslation();
+  const advancedPanelId = useId();
+  const isOpenRef = useRef(isOpen);
+  const openSessionRef = useRef(0);
+  const confirmInFlightRef = useRef(false);
+  const targetPickerInFlightRef = useRef(false);
   const projectSkillImportModePreference = useSettingsStore(
     (state) => state.projectSkillImportModePreference,
   );
@@ -124,6 +129,8 @@ export function SkillLibraryImportModal({
   const [searchQuery, setSearchQuery] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [customTargets, setCustomTargets] = useState<string[]>([]);
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [isPickingCustomTarget, setIsPickingCustomTarget] = useState(false);
   const [importMode, setImportMode] = useState<"copy" | "symlink">(
     projectSkillImportModePreference,
   );
@@ -139,10 +146,18 @@ export function SkillLibraryImportModal({
   );
 
   useEffect(() => {
+    isOpenRef.current = isOpen;
+    if (isOpen) {
+      openSessionRef.current += 1;
+    }
     if (!isOpen) {
       setSelectedSkillIds(new Set());
       setSearchQuery("");
       setShowAdvanced(false);
+      confirmInFlightRef.current = false;
+      targetPickerInFlightRef.current = false;
+      setIsConfirming(false);
+      setIsPickingCustomTarget(false);
     }
   }, [isOpen]);
 
@@ -215,17 +230,33 @@ export function SkillLibraryImportModal({
   ]);
 
   useEffect(() => {
-    if (!project || !showTargetSettings) {
+    if (!isOpen || !project || !showTargetSettings) {
+      return;
+    }
+
+    const nextSelectedTargetIds = Array.from(selectedTargetIds);
+    const savedPreferences =
+      projectSkillImportPreferencesByProjectId[project.id];
+    const hasSavedTargetPreferences =
+      (savedPreferences?.selectedTargetIds.length ?? 0) > 0 ||
+      (savedPreferences?.customTargets.length ?? 0) > 0;
+    if (
+      hasSavedTargetPreferences &&
+      nextSelectedTargetIds.length === 0 &&
+      customTargets.length === 0
+    ) {
       return;
     }
 
     setProjectSkillImportPreferences(project.id, {
-      selectedTargetIds: Array.from(selectedTargetIds),
+      selectedTargetIds: nextSelectedTargetIds,
       customTargets,
     });
   }, [
     customTargets,
+    isOpen,
     project,
+    projectSkillImportPreferencesByProjectId,
     selectedTargetIds,
     setProjectSkillImportPreferences,
     showTargetSettings,
@@ -271,9 +302,9 @@ export function SkillLibraryImportModal({
             return false;
           }
           return (
-            getMissingProjectTargetDirs(
+            getProjectTargetDirsRequiringDeployment(
               scannedSkills,
-              skill.name,
+              skill,
               selectedTargetDirs,
             ).length > 0
           );
@@ -285,9 +316,9 @@ export function SkillLibraryImportModal({
   }, [scannedSkills, selectedTargetDirs, skills]);
 
   const toggleSkill = (skill: Skill) => {
-    const missingTargetDirs = getMissingProjectTargetDirs(
+    const missingTargetDirs = getProjectTargetDirsRequiringDeployment(
       scannedSkills,
-      skill.name,
+      skill,
       selectedTargetDirs,
     );
     if (missingTargetDirs.length === 0) {
@@ -318,18 +349,57 @@ export function SkillLibraryImportModal({
   };
 
   const handleAddCustomTarget = async () => {
-    if (!onPickCustomTarget) {
-      return;
-    }
-    const selectedPath = await onPickCustomTarget();
-    if (!selectedPath) {
+    if (!onPickCustomTarget || targetPickerInFlightRef.current) {
       return;
     }
 
-    setCustomTargets((previous) =>
-      previous.includes(selectedPath) ? previous : [...previous, selectedPath],
-    );
-    setSelectedTargetIds((previous) => new Set([...previous, selectedPath]));
+    targetPickerInFlightRef.current = true;
+    setIsPickingCustomTarget(true);
+    const pickerSession = openSessionRef.current;
+    try {
+      const selectedPath = await onPickCustomTarget();
+      if (
+        !selectedPath ||
+        !isOpenRef.current ||
+        openSessionRef.current !== pickerSession
+      ) {
+        return;
+      }
+
+      setCustomTargets((previous) =>
+        previous.includes(selectedPath) ? previous : [...previous, selectedPath],
+      );
+      setSelectedTargetIds((previous) => new Set([...previous, selectedPath]));
+    } finally {
+      if (isOpenRef.current && openSessionRef.current === pickerSession) {
+        targetPickerInFlightRef.current = false;
+        setIsPickingCustomTarget(false);
+      }
+    }
+  };
+
+  const handleConfirm = async () => {
+    if (
+      confirmInFlightRef.current ||
+      isDeploying ||
+      selectedSkillIds.size === 0 ||
+      selectedTargetDirs.length === 0
+    ) {
+      return;
+    }
+
+    confirmInFlightRef.current = true;
+    setIsConfirming(true);
+    try {
+      await onConfirm({
+        skillIds: Array.from(selectedSkillIds),
+        targetDirs: selectedTargetDirs,
+        importMode,
+      });
+    } finally {
+      confirmInFlightRef.current = false;
+      setIsConfirming(false);
+    }
   };
 
   const renderImportMode = () => (
@@ -340,6 +410,7 @@ export function SkillLibraryImportModal({
       <div className="grid grid-cols-2 gap-2">
         <button
           type="button"
+          aria-pressed={importMode === "copy"}
           onClick={() => setImportMode("copy")}
           className={`rounded-2xl border px-4 py-3 text-left transition-colors ${
             importMode === "copy"
@@ -359,6 +430,7 @@ export function SkillLibraryImportModal({
         </button>
         <button
           type="button"
+          aria-pressed={importMode === "symlink"}
           onClick={() => setImportMode("symlink")}
           className={`rounded-2xl border px-4 py-3 text-left transition-colors ${
             importMode === "symlink"
@@ -400,12 +472,14 @@ export function SkillLibraryImportModal({
           <div className="rounded-2xl border border-border app-wallpaper-surface p-4">
             <button
               type="button"
+              aria-controls={advancedPanelId}
+              aria-expanded={showAdvanced}
               onClick={() => setShowAdvanced((previous) => !previous)}
               className="flex w-full items-center justify-between gap-3 text-left"
             >
               <div>
                 <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                  <Settings2Icon className="h-4 w-4" />
+                  <Settings2Icon aria-hidden="true" className="h-4 w-4" />
                   {t(
                     "skill.advancedImportSettings",
                     "Advanced Import Settings",
@@ -419,6 +493,7 @@ export function SkillLibraryImportModal({
                 </div>
               </div>
               <ChevronDownIcon
+                aria-hidden="true"
                 className={`h-4 w-4 text-muted-foreground transition-transform ${
                   showAdvanced ? "rotate-180" : "rotate-0"
                 }`}
@@ -426,7 +501,7 @@ export function SkillLibraryImportModal({
             </button>
 
             {showAdvanced ? (
-              <div className="mt-4 space-y-4">
+              <div id={advancedPanelId} className="mt-4 space-y-4">
                 {renderImportMode()}
 
                 <div className="space-y-2">
@@ -440,6 +515,7 @@ export function SkillLibraryImportModal({
                         <button
                           key={target.id}
                           type="button"
+                          aria-pressed={isSelected}
                           onClick={() => toggleTarget(target.id)}
                           className={`rounded-2xl border px-4 py-3 text-left transition-colors ${
                             isSelected
@@ -466,6 +542,7 @@ export function SkillLibraryImportModal({
                           <button
                             key={target}
                             type="button"
+                            aria-pressed={isSelected}
                             onClick={() => toggleTarget(target)}
                             className={`w-full rounded-2xl border px-4 py-3 text-left transition-colors ${
                               isSelected
@@ -490,10 +567,11 @@ export function SkillLibraryImportModal({
 
                   <button
                     type="button"
+                    disabled={!onPickCustomTarget || isPickingCustomTarget}
                     onClick={() => void handleAddCustomTarget()}
-                    className="inline-flex items-center gap-2 rounded-xl border border-border app-wallpaper-surface px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
+                    className="inline-flex items-center gap-2 rounded-xl border border-border app-wallpaper-surface px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    <FolderPlusIcon className="h-4 w-4" />
+                    <FolderPlusIcon aria-hidden="true" className="h-4 w-4" />
                     {t("skill.addDeployTarget", "Add Folder")}
                   </button>
                 </div>
@@ -525,6 +603,7 @@ export function SkillLibraryImportModal({
               <Input
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
+                aria-label={t("skill.searchSkill", "Search skills...")}
                 placeholder={t("skill.searchSkill", "Search skills...")}
               />
             </div>
@@ -544,11 +623,12 @@ export function SkillLibraryImportModal({
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                   {visibleSkills.map((skill) => {
                     const isSelected = selectedSkillIds.has(skill.id);
-                    const missingTargetDirs = getMissingProjectTargetDirs(
-                      scannedSkills,
-                      skill.name,
-                      selectedTargetDirs,
-                    );
+                    const missingTargetDirs =
+                      getProjectTargetDirsRequiringDeployment(
+                        scannedSkills,
+                        skill,
+                        selectedTargetDirs,
+                      );
                     const deployedTargetCount =
                       selectedTargetDirs.length - missingTargetDirs.length;
                     const isFullyImported =
@@ -561,6 +641,7 @@ export function SkillLibraryImportModal({
                       <button
                         key={skill.id}
                         type="button"
+                        aria-pressed={isSelected}
                         onClick={() => toggleSkill(skill)}
                         disabled={isFullyImported}
                         className={`flex min-h-[148px] flex-col items-start justify-between gap-4 rounded-2xl border px-4 py-4 text-left transition-colors ${
@@ -578,7 +659,10 @@ export function SkillLibraryImportModal({
                             </div>
                             {isFullyImported ? (
                               <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-300">
-                                <CheckCircle2Icon className="h-3 w-3" />
+                                <CheckCircle2Icon
+                                  aria-hidden="true"
+                                  className="h-3 w-3"
+                                />
                                 {t("skill.importedBadge", "Already Imported")}
                               </span>
                             ) : isPartiallyImported ? (
@@ -602,6 +686,7 @@ export function SkillLibraryImportModal({
                             {(skill.tags || []).slice(0, 3).join(", ")}
                           </div>
                           <div
+                            aria-hidden="true"
                             className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 ${
                               isSelected
                                 ? "border-primary bg-primary text-white"
@@ -611,7 +696,7 @@ export function SkillLibraryImportModal({
                             }`}
                           >
                             {isSelected ? (
-                              <CheckIcon className="h-3 w-3" />
+                              <CheckIcon aria-hidden="true" className="h-3 w-3" />
                             ) : null}
                           </div>
                         </div>
@@ -634,22 +719,20 @@ export function SkillLibraryImportModal({
           </button>
           <button
             type="button"
-            onClick={() =>
-              void onConfirm({
-                skillIds: Array.from(selectedSkillIds),
-                targetDirs: selectedTargetDirs,
-                importMode,
-              })
-            }
+            onClick={() => void handleConfirm()}
             disabled={
               selectedSkillIds.size === 0 ||
               selectedTargetDirs.length === 0 ||
-              isDeploying
+              isDeploying ||
+              isConfirming
             }
             className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
           >
-            {isDeploying ? (
-              <Loader2Icon className="h-4 w-4 animate-spin" />
+            {isDeploying || isConfirming ? (
+              <Loader2Icon
+                aria-hidden="true"
+                className="h-4 w-4 animate-spin"
+              />
             ) : null}
             {confirmLabel
               ? confirmLabel(selectedSkillIds.size)

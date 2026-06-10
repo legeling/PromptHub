@@ -1,4 +1,5 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import type { FormEvent } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AISettingsPrototype } from "../../../src/renderer/components/settings/AISettingsPrototype";
@@ -117,6 +118,25 @@ function withinModal(title: string) {
   return within(modal as HTMLElement);
 }
 
+function getFetchedModelButton(modelId: string) {
+  return withinModal("Fetch Models").getByRole("button", {
+    name: `Select model ${modelId}`,
+  });
+}
+
+function hasHiddenSvgAncestor(element: Element): boolean {
+  let current: Element | null = element;
+
+  while (current) {
+    if (current.getAttribute("aria-hidden") === "true") {
+      return true;
+    }
+    current = current.parentElement;
+  }
+
+  return false;
+}
+
 describe("AISettingsPrototype", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -193,6 +213,43 @@ describe("AISettingsPrototype", () => {
     expect(detailPanel).toHaveClass("w-full");
     expect(detailPanel).not.toHaveClass("max-w-4xl");
     expect(detailPanel).not.toHaveClass("mx-auto");
+  });
+
+  it("keeps default test action non-submit with decorative icon hidden", async () => {
+    const onSubmit = vi.fn((event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+    });
+    const showToast = vi.fn();
+    useToastMock.mockReturnValue({ showToast });
+    useSettingsStoreMock.mockReturnValue(createSettingsState());
+
+    await renderWithI18n(
+      <form onSubmit={onSubmit}>
+        <AISettingsPrototype />
+      </form>,
+      { language: "en" },
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Model Routing" }));
+    const testDefaultButton = screen.getByRole("button", {
+      name: "Test Default Model",
+    });
+
+    expect(testDefaultButton).toHaveAttribute("type", "button");
+    const exposedIconMarkup = Array.from(testDefaultButton.querySelectorAll("svg"))
+      .filter((icon) => !hasHiddenSvgAncestor(icon))
+      .map((icon) => icon.outerHTML);
+    expect(exposedIconMarkup, exposedIconMarkup.join("\n")).toHaveLength(0);
+
+    fireEvent.click(testDefaultButton);
+
+    await waitFor(() => {
+      expect(showToast).toHaveBeenCalledWith(
+        "There is no default model available to test yet",
+        "error",
+      );
+    });
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it("updates endpoint api key and url inline without opening the edit dialog", async () => {
@@ -493,8 +550,8 @@ describe("AISettingsPrototype", () => {
       target: { value: "3" },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Standard" }));
-    fireEvent.click(screen.getByRole("button", { name: "HD" }));
+    fireEvent.click(screen.getByRole("button", { name: "Image Quality" }));
+    fireEvent.click(screen.getByRole("option", { name: "HD" }));
 
     fireEvent.click(
       screen.getAllByRole("button", { name: "Add Model" }).at(-1)!,
@@ -609,7 +666,7 @@ describe("AISettingsPrototype", () => {
         "error",
       );
     });
-  }, 15000);
+  });
 
   it("includes the model name in success toasts when testing a draft chat model", async () => {
     const showToast = vi.fn();
@@ -641,7 +698,7 @@ describe("AISettingsPrototype", () => {
         "success",
       );
     });
-  });
+  }, 60000);
 
   it("includes the model name in failure toasts when testing a draft chat model", async () => {
     const showToast = vi.fn();
@@ -871,9 +928,7 @@ describe("AISettingsPrototype", () => {
       expect(screen.getByText("gpt-image-2")).toBeInTheDocument();
     });
 
-    fireEvent.click(
-      screen.getByRole("button", { name: /^gpt-image-2openai$/ }),
-    );
+    fireEvent.click(getFetchedModelButton("gpt-image-2"));
     fireEvent.click(
       screen.getAllByRole("button", { name: "Add Model" }).at(-1)!,
     );
@@ -963,10 +1018,8 @@ describe("AISettingsPrototype", () => {
       expect(screen.getByText("gpt-4o-mini")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /^gpt-4\.1openai$/ }));
-    fireEvent.click(
-      screen.getByRole("button", { name: /^gpt-4o-miniopenai$/ }),
-    );
+    fireEvent.click(getFetchedModelButton("gpt-4.1"));
+    fireEvent.click(getFetchedModelButton("gpt-4o-mini"));
     fireEvent.click(screen.getByRole("button", { name: "Add 2 Models" }));
 
     expect(settingsState.addAiModel).toHaveBeenCalledTimes(2);
@@ -1018,10 +1071,8 @@ describe("AISettingsPrototype", () => {
       await openModalWithFetchedModels(settingsState);
 
       // Select two models from the list
-      fireEvent.click(screen.getByRole("button", { name: /^gpt-4\.1openai$/ }));
-      fireEvent.click(
-        screen.getByRole("button", { name: /^gpt-4o-miniopenai$/ }),
-      );
+      fireEvent.click(getFetchedModelButton("gpt-4.1"));
+      fireEvent.click(getFetchedModelButton("gpt-4o-mini"));
 
       // Button label should reflect multi-select count
       await waitFor(() => {
@@ -1047,7 +1098,7 @@ describe("AISettingsPrototype", () => {
           apiUrl: "https://api.example.com/v1",
         }),
       );
-    }, 15000);
+    });
 
     it("infers each selected model independently when batch-adding mixed model types", async () => {
       const settingsState = createSettingsState();
@@ -1068,10 +1119,8 @@ describe("AISettingsPrototype", () => {
         expect(screen.getByText("gpt-image-2")).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByRole("button", { name: /^gpt-4oopenai$/ }));
-      fireEvent.click(
-        screen.getByRole("button", { name: /^gpt-image-2openai$/ }),
-      );
+      fireEvent.click(getFetchedModelButton("gpt-4o"));
+      fireEvent.click(getFetchedModelButton("gpt-image-2"));
       fireEvent.click(screen.getByRole("button", { name: "Add 2 Models" }));
 
       expect(settingsState.addAiModel).toHaveBeenCalledWith(
@@ -1100,16 +1149,14 @@ describe("AISettingsPrototype", () => {
           imageParams: expect.any(Object),
         }),
       );
-    }, 15000);
+    });
 
     it("uses the single-add path when only one model is selected", async () => {
       const settingsState = createSettingsState();
       await openModalWithFetchedModels(settingsState);
 
       // Select only one model
-      fireEvent.click(
-        screen.getByRole("button", { name: /^gpt-4o-miniopenai$/ }),
-      );
+      fireEvent.click(getFetchedModelButton("gpt-4o-mini"));
 
       // Button should still say "Add Model" (not batch label)
       expect(
@@ -1149,7 +1196,7 @@ describe("AISettingsPrototype", () => {
       });
       expect(fetchAvailableModels).not.toHaveBeenCalled();
       expect(settingsState.addAiModel).not.toHaveBeenCalled();
-    }, 15000);
+    });
 
     it("batch-adds share the same provider, apiKey, and apiUrl from the form", async () => {
       const settingsState = createSettingsState();
@@ -1169,10 +1216,8 @@ describe("AISettingsPrototype", () => {
         expect(screen.getByText("gpt-4.1")).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByRole("button", { name: /^gpt-4\.1openai$/ }));
-      fireEvent.click(
-        screen.getByRole("button", { name: /^gpt-4o-miniopenai$/ }),
-      );
+      fireEvent.click(getFetchedModelButton("gpt-4.1"));
+      fireEvent.click(getFetchedModelButton("gpt-4o-mini"));
 
       await waitFor(() => {
         expect(
@@ -1191,6 +1236,6 @@ describe("AISettingsPrototype", () => {
         });
       }
       expect(settingsState.addAiModel).toHaveBeenCalledTimes(2);
-    }, 15000);
+    });
   });
 });

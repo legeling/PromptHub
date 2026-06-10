@@ -2,6 +2,7 @@ import { CSSProperties, HTMLAttributes, forwardRef } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { ChevronRightIcon, MoreHorizontalIcon, LockIcon } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { Folder } from '@prompthub/shared/types';
 import { renderFolderIcon } from '../folderIconHelper';
 import { indentationWidth } from './utilities';
@@ -43,6 +44,7 @@ export const SortableTreeItem = forwardRef<HTMLLIElement, SortableTreeItemProps>
     style: styleProp,
     ...props
   }, ref) => {
+    const { t } = useTranslation();
     const {
       attributes,
       listeners,
@@ -88,6 +90,9 @@ export const SortableTreeItem = forwardRef<HTMLLIElement, SortableTreeItemProps>
             <div className="flex items-center justify-center w-6 h-6 shrink-0 mr-0.5 relative z-30">
               {hasChildren && (
                 <button
+                  type="button"
+                  aria-label={isExpanded ? t('common.collapse', 'Collapse') : t('common.expand', 'Expand')}
+                  aria-expanded={isExpanded}
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -96,6 +101,7 @@ export const SortableTreeItem = forwardRef<HTMLLIElement, SortableTreeItemProps>
                   className="p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 cursor-pointer transition-colors"
                 >
                   <ChevronRightIcon
+                    aria-hidden="true"
                     className={`
                       w-4 h-4 transition-transform duration-base text-sidebar-foreground/40
                       ${isExpanded ? 'rotate-90' : ''}
@@ -107,14 +113,23 @@ export const SortableTreeItem = forwardRef<HTMLLIElement, SortableTreeItemProps>
           )}
 
           {/* 2. Folder Content */}
-          <div
-            onClick={onSelect}
+          <button
+            type="button"
+            aria-pressed={isActive}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect?.();
+            }}
             className={`
-              flex-1 flex items-center gap-2 py-1.5 rounded-lg text-sm select-none overflow-hidden
+              flex-1 flex items-center gap-2 py-1.5 rounded-lg text-left text-sm select-none overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-primary/40
               ${collapsed ? 'flex-col justify-center gap-1' : ''}
             `}
           >
-            <span className="text-base flex items-center justify-center w-5 h-5 shrink-0">
+            <span
+              aria-hidden="true"
+              className="text-base flex items-center justify-center w-5 h-5 shrink-0"
+            >
               {renderFolderIcon(folder.icon)}
             </span>
 
@@ -123,14 +138,14 @@ export const SortableTreeItem = forwardRef<HTMLLIElement, SortableTreeItemProps>
                 <span className="truncate font-normal tracking-tight">
                   {folder.name}
                 </span>
-                {isLocked && <LockIcon className="w-3 h-3 flex-shrink-0 text-muted-foreground/70" />}
+                {isLocked && <LockIcon aria-hidden="true" className="w-3 h-3 flex-shrink-0 text-muted-foreground/70" />}
               </div>
             ) : (
               <span className="text-[10px] leading-none text-sidebar-foreground/60 max-w-full truncate">
                 {folder.name.slice(0, 2)}
               </span>
             )}
-          </div>
+          </button>
 
           {/* 3. Direct prompt count + edit button */}
           {!collapsed && (
@@ -144,6 +159,8 @@ export const SortableTreeItem = forwardRef<HTMLLIElement, SortableTreeItemProps>
                 </span>
               )}
               <button
+                type="button"
+                aria-label={t('folder.edit', 'Edit Folder')}
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -154,7 +171,7 @@ export const SortableTreeItem = forwardRef<HTMLLIElement, SortableTreeItemProps>
                   ${isActive ? 'opacity-60' : ''}
                 `}
               >
-                <MoreHorizontalIcon className="w-4 h-4 text-sidebar-foreground/50" />
+                <MoreHorizontalIcon aria-hidden="true" className="w-4 h-4 text-sidebar-foreground/50" />
               </button>
             </div>
           )}

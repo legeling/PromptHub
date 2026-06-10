@@ -97,6 +97,7 @@ export function SkillStoreSourceForm({
       if (sourceType !== "git-repo") {
         setRemoteBranches([]);
         setBranchError(null);
+        setIsLoadingBranches(false);
         return;
       }
 
@@ -110,6 +111,7 @@ export function SkillStoreSourceForm({
       if (!shouldLoad) {
         setRemoteBranches([]);
         setBranchError(null);
+        setIsLoadingBranches(false);
         return;
       }
 
@@ -150,6 +152,7 @@ export function SkillStoreSourceForm({
       branch,
     ).slice(0, 12);
   }, [branch, remoteBranches]);
+  const canAddSource = Boolean(sourceName.trim() && sourceUrl.trim());
 
   return (
     <div className="space-y-4 app-wallpaper-surface border border-border rounded-2xl p-4">
@@ -186,6 +189,7 @@ export function SkillStoreSourceForm({
               <button
                 key={option.value}
                 type="button"
+                aria-pressed={active}
                 onClick={() => setSourceType(option.value)}
                 className={`text-left rounded-xl border px-4 py-3 transition-all ${
                   active
@@ -195,6 +199,7 @@ export function SkillStoreSourceForm({
               >
                 <div className="flex items-center gap-2 text-sm font-semibold">
                   <span
+                    aria-hidden="true"
                     className={
                       active ? "text-primary" : "text-muted-foreground"
                     }
@@ -215,6 +220,7 @@ export function SkillStoreSourceForm({
           type="text"
           value={sourceName}
           onChange={(event) => setSourceName(event.target.value)}
+          aria-label={t("skill.storeNamePlaceholder", "Store name")}
           placeholder={t("skill.storeNamePlaceholder", "Store name")}
           className="px-3 py-2 text-sm bg-accent/50 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50"
         />
@@ -222,6 +228,11 @@ export function SkillStoreSourceForm({
           type="text"
           value={sourceUrl}
           onChange={(event) => setSourceUrl(event.target.value)}
+          aria-label={
+            sourceType === "local-dir"
+              ? t("skill.storePathPlaceholder", "Local directory path")
+              : t("skill.storeUrlPlaceholder", "Store URL / manifest URL")
+          }
           placeholder={
             sourceType === "local-dir"
               ? t("skill.storePathPlaceholder", "Local directory path")
@@ -230,8 +241,15 @@ export function SkillStoreSourceForm({
           className="px-3 py-2 text-sm bg-accent/50 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50"
         />
         <button
-          onClick={handleAddSource}
-          className="px-4 py-2 text-sm rounded-lg bg-primary text-white hover:opacity-90 transition-opacity"
+          type="button"
+          disabled={!canAddSource}
+          onClick={() => {
+            if (!canAddSource) {
+              return;
+            }
+            handleAddSource();
+          }}
+          className="px-4 py-2 text-sm rounded-lg bg-primary text-white hover:opacity-90 transition-opacity disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:opacity-50"
         >
           {t("common.add", "Add")}
         </button>
@@ -244,6 +262,10 @@ export function SkillStoreSourceForm({
               type="text"
               value={branch}
               onChange={(event) => setBranch(event.target.value)}
+              aria-label={t(
+                "skill.storeBranchPlaceholder",
+                "Branch (optional, default branch if empty)",
+              )}
               placeholder={t(
                 "skill.storeBranchPlaceholder",
                 "Branch (optional, default branch if empty)",
@@ -287,6 +309,10 @@ export function SkillStoreSourceForm({
             type="text"
             value={directory}
             onChange={(event) => setDirectory(event.target.value)}
+            aria-label={t(
+              "skill.storeDirectoryPlaceholder",
+              "Directory (optional, e.g. skills/.curated)",
+            )}
             placeholder={t(
               "skill.storeDirectoryPlaceholder",
               "Directory (optional, e.g. skills/.curated)",

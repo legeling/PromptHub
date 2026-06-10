@@ -116,6 +116,7 @@ export function SkillStoreSourceEditModal({
       if (!isOpen || type !== "git-repo") {
         setRemoteBranches([]);
         setBranchError(null);
+        setIsLoadingBranches(false);
         return;
       }
 
@@ -129,6 +130,7 @@ export function SkillStoreSourceEditModal({
       if (!shouldLoad) {
         setRemoteBranches([]);
         setBranchError(null);
+        setIsLoadingBranches(false);
         return;
       }
 
@@ -174,6 +176,9 @@ export function SkillStoreSourceEditModal({
     return null;
   }
 
+  const isRefreshingSource = refreshingSourceId === source.id;
+  const canSave = Boolean(name.trim() && url.trim());
+
   return (
     <Modal
       isOpen={isOpen}
@@ -200,6 +205,7 @@ export function SkillStoreSourceEditModal({
               <button
                 key={option.value}
                 type="button"
+                aria-pressed={active}
                 onClick={() => setType(option.value)}
                 className={`rounded-xl border px-4 py-3 text-left transition-all ${
                   active
@@ -208,7 +214,10 @@ export function SkillStoreSourceEditModal({
                 }`}
               >
                 <div className="flex items-center gap-2 text-sm font-semibold">
-                  <span className={active ? "text-primary" : "text-muted-foreground"}>
+                  <span
+                    aria-hidden="true"
+                    className={active ? "text-primary" : "text-muted-foreground"}
+                  >
                     {option.icon}
                   </span>
                   {label}
@@ -223,6 +232,7 @@ export function SkillStoreSourceEditModal({
             type="text"
             value={name}
             onChange={(event) => setName(event.target.value)}
+            aria-label={t("skill.storeNamePlaceholder", "Store name")}
             placeholder={t("skill.storeNamePlaceholder", "Store name")}
             className="w-full rounded-lg border border-border bg-accent/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50"
           />
@@ -230,6 +240,11 @@ export function SkillStoreSourceEditModal({
             type="text"
             value={url}
             onChange={(event) => setUrl(event.target.value)}
+            aria-label={
+              type === "local-dir"
+                ? t("skill.storePathPlaceholder", "Local directory path")
+                : t("skill.storeUrlPlaceholder", "Store URL / manifest URL")
+            }
             placeholder={
               type === "local-dir"
                 ? t("skill.storePathPlaceholder", "Local directory path")
@@ -244,6 +259,10 @@ export function SkillStoreSourceEditModal({
                   type="text"
                   value={branch}
                   onChange={(event) => setBranch(event.target.value)}
+                  aria-label={t(
+                    "skill.storeBranchPlaceholder",
+                    "Branch (optional, default branch if empty)",
+                  )}
                   placeholder={t(
                     "skill.storeBranchPlaceholder",
                     "Branch (optional, default branch if empty)",
@@ -287,6 +306,10 @@ export function SkillStoreSourceEditModal({
                 type="text"
                 value={directory}
                 onChange={(event) => setDirectory(event.target.value)}
+                aria-label={t(
+                  "skill.storeDirectoryPlaceholder",
+                  "Directory (optional, e.g. skills/.curated)",
+                )}
                 placeholder={t(
                   "skill.storeDirectoryPlaceholder",
                   "Directory (optional, e.g. skills/.curated)",
@@ -313,10 +336,12 @@ export function SkillStoreSourceEditModal({
               type="button"
               variant="secondary"
               size="md"
+              disabled={isRefreshingSource}
               onClick={() => onRefresh(source.id)}
             >
               <DatabaseIcon
-                className={`w-4 h-4 ${refreshingSourceId === source.id ? "animate-spin" : ""}`}
+                aria-hidden="true"
+                className={`w-4 h-4 ${isRefreshingSource ? "animate-spin" : ""}`}
               />
               {t("common.refresh", "Refresh")}
             </Button>
@@ -341,7 +366,11 @@ export function SkillStoreSourceEditModal({
             type="button"
             variant="primary"
             size="md"
-            onClick={() =>
+            disabled={!canSave}
+            onClick={() => {
+              if (!canSave) {
+                return;
+              }
               onSave({
                 id: source.id,
                 name,
@@ -349,8 +378,8 @@ export function SkillStoreSourceEditModal({
                 url,
                 branch: branch.trim() || undefined,
                 directory: directory.trim() || undefined,
-              })
-            }
+              });
+            }}
           >
             {t("common.save", "Save")}
           </Button>

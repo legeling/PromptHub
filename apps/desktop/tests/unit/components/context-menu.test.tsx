@@ -29,9 +29,18 @@ describe("ContextMenu", () => {
     render(
       <ContextMenu x={50} y={80} items={makeItems()} onClose={vi.fn()} />,
     );
-    expect(screen.getByRole("button", { name: "Copy" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Disabled" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copy" })).toHaveAttribute(
+      "type",
+      "button",
+    );
+    expect(screen.getByRole("button", { name: "Delete" })).toHaveAttribute(
+      "type",
+      "button",
+    );
+    expect(screen.getByRole("button", { name: "Disabled" })).toHaveAttribute(
+      "type",
+      "button",
+    );
   });
 
   it("invokes the action and then closes when an item is clicked", () => {
@@ -84,6 +93,17 @@ describe("ContextMenu", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it("closes on Escape", () => {
+    const onClose = vi.fn();
+    render(
+      <ContextMenu x={0} y={0} items={makeItems()} onClose={onClose} />,
+    );
+
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it("renders a shortcut hint when provided", () => {
     render(
       <ContextMenu
@@ -113,11 +133,18 @@ describe("ContextMenu", () => {
 
     const moveButton = screen.getByRole("button", { name: /Move to\.\.\./i });
     const moveRow = moveButton.parentElement as HTMLElement;
+    expect(moveButton).toHaveAttribute("type", "button");
+    expect(moveButton).toHaveAttribute("aria-haspopup", "menu");
+    expect(moveButton).toHaveAttribute("aria-expanded", "false");
 
     act(() => {
       fireEvent.mouseEnter(moveRow);
     });
-    expect(screen.getByRole("button", { name: "Folder A" })).toBeInTheDocument();
+    expect(moveButton).toHaveAttribute("aria-expanded", "true");
+    const childButton = screen.getByRole("button", { name: "Folder A" });
+    expect(childButton).toHaveAttribute("type", "button");
+    expect(childButton).toBeInTheDocument();
+    expect(moveButton.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
 
     act(() => {
       fireEvent.mouseLeave(moveRow);
@@ -127,5 +154,67 @@ describe("ContextMenu", () => {
     });
 
     expect(screen.getByRole("button", { name: "Folder A" })).toBeInTheDocument();
+  });
+
+  it("hides inset child indicators from assistive technology", () => {
+    render(
+      <ContextMenu
+        x={0}
+        y={0}
+        items={[
+          {
+            label: "Move to...",
+            children: [{ label: "Nested folder", insetLevel: 1, onClick: vi.fn() }],
+          },
+        ]}
+        onClose={vi.fn()}
+      />,
+    );
+
+    const moveButton = screen.getByRole("button", { name: /Move to\.\.\./i });
+    fireEvent.mouseEnter(moveButton.parentElement as HTMLElement);
+
+    const childButton = screen.getByRole("button", { name: "Nested folder" });
+    expect(childButton.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("hides custom menu item icons from assistive technology", () => {
+    render(
+      <ContextMenu
+        x={0}
+        y={0}
+        items={[
+          {
+            label: "Copy",
+            icon: <svg data-testid="copy-icon" />,
+            onClick: vi.fn(),
+          },
+          {
+            label: "Move to...",
+            children: [
+              {
+                label: "Folder A",
+                icon: <svg data-testid="folder-icon" />,
+                onClick: vi.fn(),
+              },
+            ],
+          },
+        ]}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("copy-icon").closest("span")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+
+    const moveButton = screen.getByRole("button", { name: /Move to\.\.\./i });
+    fireEvent.mouseEnter(moveButton.parentElement as HTMLElement);
+
+    expect(screen.getByTestId("folder-icon").closest("span")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
   });
 });

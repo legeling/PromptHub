@@ -5,6 +5,7 @@
 - 每个桌面端 AI 模型配置必须持久化一个显式 `apiProtocol` 字段，可选值为 `openai`、`gemini`、`anthropic`。
 - legacy root AI 配置和 Safety Scan AI 配置也必须携带同一协议字段，以保证默认模型回退链路与主进程请求行为一致。
 - AI workbench 在新增/编辑模型和编辑端点时，必须允许用户显式选择请求协议，而不仅是选择 provider。
+- 同版本 renderer settings localStorage hydrate 时也必须过滤畸形 AI provider/model 记录，并补齐 `apiProtocol` 与模型能力字段，不能只依赖 zustand `migrate`。
 
 ## Modified
 
@@ -36,3 +37,7 @@
 
 - 当旧版本设置被迁移到新版本时：
 - 现有 AI 模型和 legacy root AI 配置必须获得稳定的默认协议值，不得因为缺失 `apiProtocol` 而丢失可用性。
+
+- 当 current-version settings 快照已包含无效或缺字段的 AI provider/model 记录时：
+- hydrate 后的 renderer state 只能包含满足 AI workbench 协议契约的 provider/model 记录。
+- 缺失或非法 `apiProtocol` 必须根据 provider 和 API URL 推断为稳定协议值。

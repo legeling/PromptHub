@@ -133,33 +133,33 @@ export function FolderModal({ isOpen, onClose, folder }: FolderModalProps) {
   // Build folder tree for parent selection
   // 构建文件夹树用于父级选择
   const folderTree = useMemo(() => buildFolderTree(folders), [folders]);
-  
+
   // Get available parent folders (exclude self and descendants in edit mode)
   // 获取可用的父级文件夹（编辑模式下排除自己和后代）
   const getAvailableParents = useMemo(() => {
     const result: { folder: Folder; depth: number }[] = [];
-    
+
     function traverse(nodes: FolderTreeNode[]) {
       nodes.forEach(node => {
         // In edit mode, exclude self and check if can be a valid parent
-        const isValidParent = !isEditMode || 
+        const isValidParent = !isEditMode ||
           (folder?.id !== node.id && canSetParent(folders, folder!.id, node.id));
-        
+
         // Check depth limit
         const canHaveChildren = canCreateInParent(folders, node.id);
-        
+
         if (isValidParent && canHaveChildren) {
           result.push({ folder: node, depth: node.depth });
         }
-        
+
         traverse(node.children);
       });
     }
-    
+
     traverse(folderTree);
     return result;
   }, [folders, folderTree, folder, isEditMode]);
-  
+
   // Get current parent folder name
   const currentParentName = useMemo(() => {
     if (!parentId) return null;
@@ -176,10 +176,10 @@ export function FolderModal({ isOpen, onClose, folder }: FolderModalProps) {
     // 检查文件夹名称是否重复（仅在创建或重命名时）
     if (!skipDuplicateCheck) {
       const trimmedName = name.trim();
-      const isDuplicate = folders.some(f => 
+      const isDuplicate = folders.some(f =>
         f.name === trimmedName && (!isEditMode || f.id !== folder?.id)
       );
-      
+
       if (isDuplicate) {
         setShowDuplicateConfirm(true);
         return;
@@ -243,11 +243,11 @@ export function FolderModal({ isOpen, onClose, folder }: FolderModalProps) {
 
   const handleDelete = async () => {
     if (!folder) return;
-    
+
     // 检查文件夹内是否有 prompt
     const count = prompts.filter(p => p.folderId === folder.id).length;
     setPromptsInFolder(count);
-    
+
     if (count > 0) {
       // 有内容，显示自定义删除选项弹窗
       setShowDeleteOptions(true);
@@ -270,20 +270,20 @@ export function FolderModal({ isOpen, onClose, folder }: FolderModalProps) {
 
   const handleDeleteWithOptions = async () => {
     if (!folder) return;
-    
+
     // 私密文件夹需要验证主密码
     if (folder.isPrivate && securityStatus.configured) {
       setShowDeleteOptions(false);
       setShowDeleteConfirm(true);
       return;
     }
-    
+
     await executeDelete();
   };
 
   const executeDelete = async () => {
     if (!folder) return;
-    
+
     try {
       if (deleteMode === 'all-content') {
         // 删除文件夹及所有内部 prompt
@@ -338,6 +338,9 @@ export function FolderModal({ isOpen, onClose, folder }: FolderModalProps) {
       <div className="fixed inset-0 z-50 flex items-center justify-center">
         {/* 背景遮罩 */}
         <div
+          data-testid="folder-modal-backdrop"
+          role="presentation"
+          aria-hidden="true"
           className="absolute inset-0 bg-black/50"
           onClick={onClose}
         />
@@ -350,10 +353,12 @@ export function FolderModal({ isOpen, onClose, folder }: FolderModalProps) {
             {isEditMode ? t('folder.edit', '编辑文件夹') : t('folder.new', '新建文件夹')}
           </h2>
           <button
+            type="button"
+            aria-label={t('common.close', '关闭')}
             onClick={onClose}
             className="p-1.5 rounded-lg hover:bg-muted transition-colors"
           >
-            <XIcon className="w-5 h-5 text-muted-foreground" />
+            <XIcon aria-hidden="true" className="w-5 h-5 text-muted-foreground" />
           </button>
         </div>
 
@@ -363,7 +368,7 @@ export function FolderModal({ isOpen, onClose, folder }: FolderModalProps) {
           {/* 图标选择 */}
           <div>
             <label className="block text-sm font-medium mb-2">{t('folder.icon', '图标')}</label>
-            
+
             {/* Tab 切换 */}
             <div className="flex gap-1 mb-3 p-1 bg-muted rounded-lg">
               <button
@@ -431,18 +436,23 @@ export function FolderModal({ isOpen, onClose, folder }: FolderModalProps) {
                     { name: 'trophy', Icon: Trophy }, { name: 'truck', Icon: Truck }, { name: 'tv', Icon: Tv }, { name: 'upload', Icon: Upload }, { name: 'users', Icon: Users }, { name: 'wallet', Icon: Wallet },
                     { name: 'watch', Icon: Watch }, { name: 'wrench', Icon: Wrench },
                   ].map(({ name, Icon }) => (
-                    <button
-                      key={name}
-                      type="button"
-                      onClick={() => setIcon(`icon:${name}`)}
-                      className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${
-                        icon === `icon:${name}`
-                          ? 'bg-primary text-white'
-                          : 'bg-muted hover:bg-muted/80 text-foreground'
-                      }`}
-                    >
-                      <Icon className="w-5 h-5" />
-                    </button>
+	                    <button
+	                      key={name}
+	                      type="button"
+	                      aria-label={t('folder.iconOption', {
+	                        defaultValue: `${name} icon`,
+	                        name,
+	                      })}
+	                      aria-pressed={icon === `icon:${name}`}
+	                      onClick={() => setIcon(`icon:${name}`)}
+	                      className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${
+	                        icon === `icon:${name}`
+	                          ? 'bg-primary text-white'
+	                          : 'bg-muted hover:bg-muted/80 text-foreground'
+	                      }`}
+	                    >
+	                      <Icon aria-hidden="true" className="w-5 h-5" />
+	                    </button>
                   ))}
                 </div>
               )}
@@ -468,15 +478,16 @@ export function FolderModal({ isOpen, onClose, folder }: FolderModalProps) {
             <div className="relative">
               <button
                 type="button"
+                aria-expanded={showParentSelect}
                 onClick={() => setShowParentSelect(!showParentSelect)}
                 className="w-full h-10 px-3 rounded-lg bg-muted border-0 text-sm text-left flex items-center justify-between hover:bg-muted/80 transition-colors"
               >
                 <span className={currentParentName ? 'text-foreground' : 'text-muted-foreground/50'}>
                   {currentParentName || t('folder.noParent', '无（根目录）')}
                 </span>
-                <ChevronRightIcon className={`w-4 h-4 text-muted-foreground transition-transform ${showParentSelect ? 'rotate-90' : ''}`} />
+                <ChevronRightIcon aria-hidden="true" className={`w-4 h-4 text-muted-foreground transition-transform ${showParentSelect ? 'rotate-90' : ''}`} />
               </button>
-              
+
               {showParentSelect && (
                 <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
                   {/* 根目录选项 */}
@@ -490,10 +501,10 @@ export function FolderModal({ isOpen, onClose, folder }: FolderModalProps) {
                       !parentId ? 'bg-primary/10 text-primary' : ''
                     }`}
                   >
-                    <FolderIconLucide className="w-4 h-4" />
+                    <FolderIconLucide aria-hidden="true" className="w-4 h-4" />
                     {t('folder.noParent', '无（根目录）')}
                   </button>
-                  
+
                   {/* 可用的父级文件夹 */}
                   {getAvailableParents.map(({ folder: f, depth }) => (
                     <button
@@ -514,7 +525,7 @@ export function FolderModal({ isOpen, onClose, folder }: FolderModalProps) {
                       <span className="truncate">{f.name}</span>
                     </button>
                   ))}
-                  
+
                   {getAvailableParents.length === 0 && (
                     <div className="px-3 py-2 text-sm text-muted-foreground">
                       {t('folder.noAvailableParents', '没有可用的父级文件夹')}
@@ -543,7 +554,7 @@ export function FolderModal({ isOpen, onClose, folder }: FolderModalProps) {
               className="w-full flex items-center justify-between rounded-lg border border-border bg-muted/60 hover:bg-muted px-3 py-2 transition-colors"
             >
               <span className="flex items-center gap-2 text-sm font-medium text-foreground">
-                <LockIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                <LockIcon aria-hidden="true" className="w-3.5 h-3.5 text-muted-foreground" />
                 {t('folder.setPrivate', '设为私密文件夹')}
               </span>
               <span
@@ -580,7 +591,7 @@ export function FolderModal({ isOpen, onClose, folder }: FolderModalProps) {
                 onClick={handleDelete}
                 className="flex items-center gap-2 h-10 px-4 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors text-sm"
               >
-                <TrashIcon className="w-4 h-4" />
+                <TrashIcon aria-hidden="true" className="w-4 h-4" />
                 {t('folder.delete', '删除')}
               </button>
             ) : (
@@ -610,7 +621,13 @@ export function FolderModal({ isOpen, onClose, folder }: FolderModalProps) {
     {/* 解锁主密码弹窗 */}
     {showUnlockModal && (
       <div className="fixed inset-0 z-[60] flex items-center justify-center">
-        <div className="absolute inset-0 bg-black/50" onClick={() => setShowUnlockModal(false)} />
+        <div
+          data-testid="folder-unlock-backdrop"
+          role="presentation"
+          aria-hidden="true"
+          className="absolute inset-0 bg-black/50"
+          onClick={() => setShowUnlockModal(false)}
+        />
         <div className="relative app-wallpaper-panel-strong rounded-xl w-full max-w-sm mx-4 p-5 border border-border space-y-4">
           <h3 className="text-base font-semibold">{t('folder.unlockTitle', '输入主密码')}</h3>
           <p className="text-xs text-muted-foreground">{t('folder.unlockDesc', '保存私密文件夹前需要先解锁主密码')}</p>
@@ -652,11 +669,17 @@ export function FolderModal({ isOpen, onClose, folder }: FolderModalProps) {
     {/* 删除选项弹窗 */}
     {showDeleteOptions && (
       <div className="fixed inset-0 z-[60] flex items-center justify-center">
-        <div className="absolute inset-0 bg-black/50" onClick={() => setShowDeleteOptions(false)} />
+        <div
+          data-testid="folder-delete-options-backdrop"
+          role="presentation"
+          aria-hidden="true"
+          className="absolute inset-0 bg-black/50"
+          onClick={() => setShowDeleteOptions(false)}
+        />
         <div className="relative app-wallpaper-panel-strong rounded-xl w-full max-w-md mx-4 p-5 border border-border space-y-4">
           <div className="flex items-start gap-3">
             <div className="p-2 rounded-lg bg-destructive/10">
-              <AlertTriangleIcon className="w-5 h-5 text-destructive" />
+              <AlertTriangleIcon aria-hidden="true" className="w-5 h-5 text-destructive" />
             </div>
             <div className="flex-1">
               <h3 className="text-base font-semibold">{t('folder.deleteTitle', '删除文件夹「{{name}}」', { name: folder?.name || '' })}</h3>
@@ -750,11 +773,17 @@ export function FolderModal({ isOpen, onClose, folder }: FolderModalProps) {
     {/* 重复名称确认弹窗 */}
     {showDuplicateConfirm && (
       <div className="fixed inset-0 z-[60] flex items-center justify-center">
-        <div className="absolute inset-0 bg-black/50" onClick={() => setShowDuplicateConfirm(false)} />
+        <div
+          data-testid="folder-duplicate-backdrop"
+          role="presentation"
+          aria-hidden="true"
+          className="absolute inset-0 bg-black/50"
+          onClick={() => setShowDuplicateConfirm(false)}
+        />
         <div className="relative app-wallpaper-panel-strong rounded-xl w-full max-w-sm mx-4 p-5 border border-border space-y-4">
           <div className="flex items-start gap-3">
             <div className="p-2 rounded-lg bg-primary/10">
-              <AlertTriangleIcon className="w-5 h-5 text-primary" />
+              <AlertTriangleIcon aria-hidden="true" className="w-5 h-5 text-primary" />
             </div>
             <div className="flex-1">
               <h3 className="text-base font-semibold">{t('folder.duplicateTitle', '文件夹名称已存在')}</h3>
@@ -786,7 +815,13 @@ export function FolderModal({ isOpen, onClose, folder }: FolderModalProps) {
     {/* 删除私密文件夹确认弹窗 */}
     {showDeleteConfirm && (
       <div className="fixed inset-0 z-[60] flex items-center justify-center">
-        <div className="absolute inset-0 bg-black/50" onClick={() => setShowDeleteConfirm(false)} />
+        <div
+          data-testid="folder-delete-private-backdrop"
+          role="presentation"
+          aria-hidden="true"
+          className="absolute inset-0 bg-black/50"
+          onClick={() => setShowDeleteConfirm(false)}
+        />
         <div className="relative app-wallpaper-panel-strong rounded-xl w-full max-w-sm mx-4 p-5 border border-border space-y-4">
           <h3 className="text-base font-semibold text-destructive">{t('folder.deletePrivateTitle', '删除私密文件夹')}</h3>
           <p className="text-xs text-muted-foreground">

@@ -177,6 +177,32 @@ describe("settings sync provider guards", () => {
     expect(useSettingsStore.getState().syncProvider).toBe("manual");
   });
 
+  it("normalizes same-version persisted sync timing values during hydration", async () => {
+    localStorage.setItem(
+      "prompthub-settings",
+      JSON.stringify({
+        state: {
+          webdavSyncOnStartupDelay: -20,
+          selfHostedSyncOnStartupDelay: "invalid",
+          s3SyncOnStartupDelay: 99,
+          webdavAutoSyncInterval: "15",
+          selfHostedAutoSyncInterval: "invalid",
+          s3AutoSyncInterval: -5,
+        },
+        version: 16,
+      }),
+    );
+
+    const { useSettingsStore } = await importStoreWithSettingsSpies();
+
+    expect(useSettingsStore.getState().webdavSyncOnStartupDelay).toBe(0);
+    expect(useSettingsStore.getState().selfHostedSyncOnStartupDelay).toBe(10);
+    expect(useSettingsStore.getState().s3SyncOnStartupDelay).toBe(60);
+    expect(useSettingsStore.getState().webdavAutoSyncInterval).toBe(15);
+    expect(useSettingsStore.getState().selfHostedAutoSyncInterval).toBe(0);
+    expect(useSettingsStore.getState().s3AutoSyncInterval).toBe(0);
+  });
+
   it("clamps a main-process sync provider to manual when that provider is disabled locally", async () => {
     const { useSettingsStore, setSpy, loadSettingsFromMainProcess } =
       await importStoreWithSettingsSpies({

@@ -135,4 +135,33 @@ describe("SkillPreviewPane", () => {
       screen.queryByText("Skill 预览暂时无法渲染"),
     ).not.toBeInTheDocument();
   });
+
+  it("keeps preview toolbar actions as non-submit buttons with decorative icons hidden", async () => {
+    const skill = createSkillFixture();
+    const t = ((key: string, defaultValue?: string) =>
+      defaultValue ?? key) as any;
+
+    await renderWithI18n(
+      <SkillPreviewPane
+        cachedInstructionsTranslation={"# Skill\n\nTranslated body"}
+        copyStatus={{ instr: false }}
+        handleCopy={vi.fn()}
+        handleTranslateSkill={vi.fn()}
+        hasStaleTranslation={false}
+        isTranslating={false}
+        resolvedDescription="Preview toolbar semantics"
+        selectedSkill={skill}
+        showTranslation={false}
+        skillContent={"# Skill\n\nOriginal body"}
+        t={t}
+        translationMode="full"
+      />,
+    );
+
+    for (const name of ["Translation", "Refresh Translation", "skill.copyMd"]) {
+      const action = screen.getByRole("button", { name });
+      expect(action).toHaveAttribute("type", "button");
+      expect(action.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+    }
+  });
 });

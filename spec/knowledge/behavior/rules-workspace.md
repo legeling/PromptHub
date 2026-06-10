@@ -84,6 +84,25 @@
 - 版本快照保存在 `data/rules/.versions/<rule-id>/`
 - `prompthub.db` 仅承担 Rules 的索引/状态缓存角色，业务正文不应只存在于数据库中
 - 旧版 settings 里的 `ruleProjects` 只作为迁移来源，不再是长期真相源
+- 旧版 user data 同级 `rule-history/*.json` 只作为首次 materialize 时的迁移来源：
+  - 目标文件存在时，目标内容成为当前托管正文，legacy history 合并为更早版本快照。
+  - 目标文件缺失时，最新 legacy history 恢复为托管正文，同步状态保持 `target-missing`，等待用户显式部署。
+  - 旧版来源值必须归一化到现有版本来源枚举：`create`、`manual-save`、`ai-rewrite`。
+- Shared Rules project ids supplied by callers or backup imports must be safe
+  single path segments before they are used in managed project directories.
+  Valid ids start with an alphanumeric character and may contain only letters,
+  numbers, dots, underscores, and hyphens.
+- Shared Rules workspace files under `data/rules/`, including managed rule
+  content, `_rule.json`, version snapshots, and version indexes, must use
+  same-directory temporary writes followed by rename so interrupted writes do
+  not replace the previous readable file with partial content.
+- Backup import version restoration must stage the replacement version
+  directory before publishing it; failed version writes must preserve the
+  previous readable version history.
+- Web rule workspace imports must preserve the previous readable rule record
+  when a rewrite fails: managed content, `_rule.json`, version files, and
+  `index.json` must not be left in a half-new/half-old state after an
+  interrupted version write.
 
 ### 10. Path Derivation Constraints
 

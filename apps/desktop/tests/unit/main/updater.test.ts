@@ -86,6 +86,7 @@ import {
     detectMacInstallSource,
     initUpdater,
     registerUpdaterIPC,
+    resolveUpdaterDownloadUrl,
 } from '../../../src/main/updater';
 
 describe('Updater Service (Main Process)', () => {
@@ -315,5 +316,36 @@ describe('Updater Service (Main Process)', () => {
         expect(
             detectMacInstallSource('/Applications/PromptHub.app/Contents/MacOS/PromptHub'),
         ).toBe('direct');
+    });
+
+    it('resolves updater download redirects only to HTTP(S) URLs', () => {
+        expect(
+            resolveUpdaterDownloadUrl(
+                '../PromptHub-1.1.0-arm64.dmg',
+                'https://github.com/legeling/PromptHub/releases/latest/download/latest-mac.yml',
+            ),
+        ).toBe(
+            'https://github.com/legeling/PromptHub/releases/latest/PromptHub-1.1.0-arm64.dmg',
+        );
+
+        expect(
+            resolveUpdaterDownloadUrl(
+                'https://github.com/legeling/PromptHub/releases/download/v1.1.0/PromptHub.dmg',
+            ),
+        ).toBe(
+            'https://github.com/legeling/PromptHub/releases/download/v1.1.0/PromptHub.dmg',
+        );
+
+        expect(() =>
+            resolveUpdaterDownloadUrl(
+                'file:///tmp/PromptHub.dmg',
+                'https://github.com/legeling/PromptHub/releases/latest/download/latest-mac.yml',
+            ),
+        ).toThrow('Unsupported updater download protocol');
+        expect(() =>
+            resolveUpdaterDownloadUrl(
+                'httpx://github.com/legeling/PromptHub/PromptHub.dmg',
+            ),
+        ).toThrow('Unsupported updater download protocol');
     });
 });

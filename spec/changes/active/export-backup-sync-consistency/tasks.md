@@ -6,6 +6,7 @@
 - [x] Preserve `skillFiles` across web import/export, sync pull/push, and desktop self-hosted sync flows.
 - [x] Make web `/api/sync/data` and `/api/sync/pull` reuse the canonical `parseSyncSnapshot()` path instead of maintaining a second schema/normalizer.
 - [x] Align missing imported settings fallback across web `/api/import` and `/api/sync/*` with the shared `DEFAULT_SETTINGS` contract.
+- [x] Preserve supported shared settings preferences across web export/import and sync snapshot parsing instead of stripping route-supported fields during import.
 - [x] Implement desktop S3-compatible storage connection, manual upload/download, startup sync, interval sync, and save-triggered sync.
 - [x] Refactor desktop WebDAV and S3 sync to share one provider-agnostic backup/sync core for legacy upload/download, incremental sync, and auto-sync timestamp decisions.
 - [x] Implement desktop WebDAV save-triggered sync as a debounced upload path wired only to real user save actions.
@@ -14,6 +15,34 @@
 - [x] Add regression tests that catch invalid persisted `syncProvider` state and stale save-sync timers when the active provider changes.
 - [x] Add regression tests that catch periodic auto-sync timers not updating when users change sync settings after the app has already started.
 - [x] Add regression tests for JSON import/export, ZIP import payloads, media/settings consistency, and skill workspace file preservation.
+- [x] Reject unsafe imported skill file snapshot paths during sync snapshot parsing before database import or workspace writes, including traversal, control characters, and reserved workspace paths.
+- [x] Reject imported folder parent cycles during sync snapshot parsing before media, database, rule, or workspace writes can begin.
+- [x] Replace repeated imported folder parent-chain scans with memoized depth ordering and cover reversed larger folder hierarchies.
+- [x] Preflight imported prompt workspace physical paths before media/database/workspace writes, rejecting over-deep folder trees before partial import state can be created.
+- [x] Preflight DB-derived prompt workspace physical paths before clearing `data/prompts`, preserving the last good workspace when rebuild cannot safely represent existing state.
+- [x] Preflight imported skill workspace physical paths before media/database/workspace writes, rejecting over-long skill directory paths before partial import state can be created.
+- [x] Preflight DB-derived skill workspace physical paths before clearing `data/skills`, preserving the last good workspace when rebuild cannot safely represent existing state.
+- [x] Reject unsafe imported rule workspace path segments before media/database/workspace writes, including traversal, separators, drive-letter-like segments, control characters, and over-long path segments.
+- [x] Keep web skill workspace restore writes defensive against unsafe file paths even when called directly with restored `skillFiles`.
+- [x] Prevalidate restored web skill workspace file paths before clearing the existing workspace, preserving the last good files on invalid restored payloads.
+- [x] Share web media filename and base64 validation across upload routes and sync media read/write paths, covering traversal, separators, control characters, malformed payloads, oversized payload prechecks, and pre-write batch validation.
+- [x] Move direct sync import and WebDAV pull media writes after successful database import so failed sync imports do not leave orphan media files.
+- [x] Verify WebDAV manifest data hash and media hash/size before accepting pulled data or media files.
+- [x] Upload WebDAV incremental media before replacing `data.json`, keeping `manifest.json` last so failed media uploads do not corrupt the current remote snapshot pair.
+- [x] Harden WebDAV remote URL construction against traversal, backslash separators, and control characters while preserving normal nested paths.
+- [x] Reject unsafe WebDAV `remotePath` values at web sync/settings configuration entry points.
+- [x] Reject non-HTTPS WebDAV endpoints at web sync/settings configuration entry points while leaving other sync providers on their existing endpoint contract.
+- [x] Keep WebDAV manifest media filename validation covered by real sync-media validation instead of an identity test mock.
+- [x] Cover HTTPS-only remote request protocol enforcement across redirects.
+- [x] Strip sensitive request headers when remote HTTP redirects cross origins.
+- [x] Reject cross-origin remote HTTP redirects that would replay a request body.
 - [x] Align desktop full backup UI with the ZIP export contract while keeping restore compatible with legacy `.phub.gz` backups.
 - [x] Align the update-dialog manual backup action with the same desktop full ZIP backup contract instead of the legacy JSON-only backup flow.
 - [x] Run relevant lint, typecheck, targeted tests, and build verification.
+- [x] Add failing regression for same-version persisted unsafe desktop background image settings.
+- [x] Sanitize background image persisted fields during settings store `merge`, not only version migration.
+- [x] Rerun focused desktop settings store tests, desktop typecheck/lint, and diff check.
+- [x] Add failing regression for same-version persisted desktop sync timing settings.
+- [x] Normalize startup delay and periodic interval values during settings store `merge` and migration.
+- [x] Add failing regression for desktop backup blob URL cleanup when browser download click fails.
+- [x] Clean up temporary backup download anchors and revoke blob URLs on both success and failure paths.

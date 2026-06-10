@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import type { ComponentType, SVGProps } from "react";
 import {
   SettingsIcon,
@@ -19,22 +19,11 @@ import {
   TerminalSquareIcon,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { GeneralSettings } from "./GeneralSettings";
-import { AppearanceSettings } from "./AppearanceSettings";
-import { LanguageSettings } from "./LanguageSettings";
-import { SecuritySettings } from "./SecuritySettings";
-import { ShortcutsSettings } from "./ShortcutsSettings";
-import { AboutSettings } from "./AboutSettings";
-import { CLISettings } from "./CLISettings";
-import { DataSettings } from "./DataSettings";
 import type { DataSettingsSubsectionId } from "./DataSettings";
-import { AISettingsPrototype } from "./AISettingsPrototype";
-import { SkillSettings } from "./SkillSettings";
-import { WebDeviceSettings } from "./WebDeviceSettings";
-import { WebWorkspaceSettings } from "./WebWorkspaceSettings";
 import { useSettingsStore } from "../../stores/settings.store";
 import { useUIStore, type SettingsSectionId } from "../../stores/ui.store";
 import { isWebRuntime } from "../../runtime";
+import { Spinner } from "../ui";
 
 interface BackupImportControllerLike {
   requestFileSelection: () => void;
@@ -69,6 +58,67 @@ const WEB_SETTINGS_MENU = [
   { id: "language", labelKey: "settings.language", icon: GlobeIcon },
   { id: "about", labelKey: "settings.about", icon: InfoIcon },
 ] as const;
+
+const GeneralSettings = lazy(() =>
+  import("./GeneralSettings").then((module) => ({
+    default: module.GeneralSettings,
+  })),
+);
+const AppearanceSettings = lazy(() =>
+  import("./AppearanceSettings").then((module) => ({
+    default: module.AppearanceSettings,
+  })),
+);
+const LanguageSettings = lazy(() =>
+  import("./LanguageSettings").then((module) => ({
+    default: module.LanguageSettings,
+  })),
+);
+const SecuritySettings = lazy(() =>
+  import("./SecuritySettings").then((module) => ({
+    default: module.SecuritySettings,
+  })),
+);
+const ShortcutsSettings = lazy(() =>
+  import("./ShortcutsSettings").then((module) => ({
+    default: module.ShortcutsSettings,
+  })),
+);
+const AboutSettings = lazy(() =>
+  import("./AboutSettings").then((module) => ({
+    default: module.AboutSettings,
+  })),
+);
+const CLISettings = lazy(() =>
+  import("./CLISettings").then((module) => ({
+    default: module.CLISettings,
+  })),
+);
+const DataSettings = lazy(() =>
+  import("./DataSettings").then((module) => ({
+    default: module.DataSettings,
+  })),
+);
+const AISettingsPrototype = lazy(() =>
+  import("./AISettingsPrototype").then((module) => ({
+    default: module.AISettingsPrototype,
+  })),
+);
+const SkillSettings = lazy(() =>
+  import("./SkillSettings").then((module) => ({
+    default: module.SkillSettings,
+  })),
+);
+const WebDeviceSettings = lazy(() =>
+  import("./WebDeviceSettings").then((module) => ({
+    default: module.WebDeviceSettings,
+  })),
+);
+const WebWorkspaceSettings = lazy(() =>
+  import("./WebWorkspaceSettings").then((module) => ({
+    default: module.WebWorkspaceSettings,
+  })),
+);
 
 interface SettingsSubmenuItem {
   id: string;
@@ -137,6 +187,14 @@ const DATA_SETTINGS_SUBMENU_GROUPS: Array<{
     ],
   },
 ];
+
+function SettingsContentFallback({ label }: { label: string }) {
+  return (
+    <div className="flex min-h-64 items-center justify-center">
+      <Spinner size="lg" tone="muted" label={label} />
+    </div>
+  );
+}
 
 export function SettingsPage({
   onBack,
@@ -235,10 +293,11 @@ export function SettingsPage({
         {/* 返回按钮 */}
         <div className="p-3 border-b border-border">
           <button
+            type="button"
             onClick={onBack}
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            <ArrowLeftIcon className="w-4 h-4" />
+            <ArrowLeftIcon className="w-4 h-4" aria-hidden="true" />
             <span>{t("common.back")}</span>
           </button>
         </div>
@@ -248,14 +307,16 @@ export function SettingsPage({
           {settingsMenu.map((item) => (
             <button
               key={item.id}
+              type="button"
               onClick={() => setActiveSection(item.id)}
+              aria-pressed={activeSection === item.id}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] transition-all duration-quick ${
                 activeSection === item.id
                   ? "bg-primary text-white shadow-sm"
                   : "text-foreground/80 hover:bg-muted/70"
               }`}
             >
-              <item.icon className="w-4 h-4" />
+              <item.icon className="w-4 h-4" aria-hidden="true" />
               <span>{t(item.labelKey)}</span>
             </button>
           ))}
@@ -276,7 +337,9 @@ export function SettingsPage({
                 {group.items.map((item) => (
                   <button
                     key={item.id}
+                    type="button"
                     onClick={() => activeSubmenu.onSelect(item.id)}
+                    aria-pressed={activeSubmenu.activeId === item.id}
                     aria-label={`${String(t(item.labelKey, item.fallback))}${
                       item.id in enabledSubsections &&
                       enabledSubsections[
@@ -291,7 +354,7 @@ export function SettingsPage({
                         : "text-foreground/80 hover:bg-muted/70"
                     }`}
                   >
-                    <item.icon className="w-4 h-4" />
+                    <item.icon className="w-4 h-4" aria-hidden="true" />
                     <span className="min-w-0 flex-1 text-left">
                       {String(t(item.labelKey, item.fallback))}
                     </span>
@@ -354,7 +417,15 @@ export function SettingsPage({
                 : "animate-in fade-in slide-in-from-bottom-2 duration-base"
             }
           >
-            {renderContent()}
+            <Suspense
+              fallback={
+                <SettingsContentFallback
+                  label={t("common.loading", "Loading...")}
+                />
+              }
+            >
+              {renderContent()}
+            </Suspense>
           </div>
         </div>
       </div>

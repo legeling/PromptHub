@@ -25,6 +25,7 @@ export function LanguageSettings() {
           description={t("settings.selectLanguage")}
         >
           <Select
+            ariaLabel={t("settings.language")}
             value={settings.language}
             onChange={(value) => settings.setLanguage(value)}
             options={LANGUAGE_OPTIONS}

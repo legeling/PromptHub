@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { closeDatabase } from "@prompthub/core";
 import { createCliSkillService, runCli } from "@prompthub/core";
+import type { SkillSafetyReport } from "@prompthub/shared/types";
 
 function makeTempRoot(tempDirs: string[]): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "prompthub-cli-app-"));
@@ -1012,6 +1013,40 @@ describe("standalone cli wiring", () => {
       status: "rejected",
       reason: "mock uninstall failure",
     });
+  });
+
+  it("renders skill scan table output when a safety report has no findings array", async () => {
+    const root = makeTempRoot(tempDirs);
+    const partialSafetyReport = {
+      level: "warn",
+    } as unknown as SkillSafetyReport;
+    const skillService = {
+      ...createCliSkillService(),
+      scanLocalPreview: vi.fn(async () => [
+        {
+          name: "partial-report-skill",
+          description: "Partial safety report fixture",
+          author: "CLI Test",
+          tags: [],
+          instructions: "# Partial Report Skill",
+          filePath: path.join(root, "partial-report-skill", "SKILL.md"),
+          localPath: path.join(root, "partial-report-skill"),
+          platforms: ["Custom"],
+          safetyReport: partialSafetyReport,
+        },
+      ]),
+    };
+
+    const result = await execCli(
+      [...withDataDir(root), "--output", "table", "skill", "scan", root],
+      skillService,
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.joinedStdout).toContain("partial-report-skill");
+    expect(result.joinedStdout).toContain("warn");
+    expect(result.joinedStdout).toContain("0");
+    expect(result.stderr).toEqual([]);
   });
 
   it("supports skill versions, repo operations, export, sync, safety scan, and rollback", async () => {

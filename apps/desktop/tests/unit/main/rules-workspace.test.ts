@@ -1,6 +1,7 @@
 import fs from "fs";
+import fsp from "fs/promises";
 import path from "path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createRulesWorkspaceService } from "@prompthub/core";
 import { getPlatformById } from "@prompthub/shared/constants/platforms";
 
@@ -32,6 +33,7 @@ describe("rules workspace storage", () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     closeDatabase();
     resetRuntimePaths();
     fs.rmSync(tempDir, { recursive: true, force: true });
@@ -88,6 +90,23 @@ describe("rules workspace storage", () => {
     );
   });
 
+  it("rejects unsafe project ids before creating managed project directories", async () => {
+    const projectRoot = path.join(tempDir, "unsafe-create");
+    fs.mkdirSync(projectRoot, { recursive: true });
+
+    await expect(
+      createProjectRule({
+        id: "../escape-create",
+        name: "Unsafe Create",
+        rootPath: projectRoot,
+      }),
+    ).rejects.toThrow("Invalid rule project id");
+
+    expect(fs.existsSync(path.join(getRulesDir(), "escape-create", "AGENTS.md"))).toBe(false);
+    const projectsDir = path.join(getRulesDir(), "projects");
+    expect(fs.existsSync(projectsDir) ? fs.readdirSync(projectsDir) : []).toEqual([]);
+  });
+
   it("saves managed content, writes versions, and updates rule index state", async () => {
     const projectRoot = path.join(tempDir, "docs-site");
     fs.mkdirSync(projectRoot, { recursive: true });
@@ -119,6 +138,31 @@ describe("rules workspace storage", () => {
     const content = await readRuleContent("project:docs-site");
     expect(content.versions).toHaveLength(1);
     expect(content.versions[0].content).toContain("Updated docs rule");
+  });
+
+  it("preserves previous managed content when a replacement write is interrupted", async () => {
+    const projectRoot = path.join(tempDir, "docs-site");
+    fs.mkdirSync(projectRoot, { recursive: true });
+
+    await createProjectRule({ id: "docs-site", name: "Docs Site", rootPath: projectRoot });
+    await saveRuleContent("project:docs-site", "# Stable docs rule");
+
+    const managedPath = path.join(getRulesDir(), "projects", "docs-site__docs-site", "AGENTS.md");
+    const originalWriteFile = fsp.writeFile.bind(fsp);
+    vi.spyOn(fsp, "writeFile").mockImplementation(async (file, data, options) => {
+      if (data === "# Interrupted update") {
+        await originalWriteFile(file, "partial-write", options);
+        throw new Error("simulated interrupted managed write");
+      }
+
+      return originalWriteFile(file, data, options);
+    });
+
+    await expect(
+      saveRuleContent("project:docs-site", "# Interrupted update"),
+    ).rejects.toThrow("simulated interrupted managed write");
+
+    expect(fs.readFileSync(managedPath, "utf8")).toBe("# Stable docs rule");
   });
 
   it("reports external target edits as out-of-sync with both file versions", async () => {
@@ -249,6 +293,100 @@ describe("rules workspace storage", () => {
       }),
     );
     expect(fs.readFileSync(path.join(projectRoot, "AGENTS.md"), "utf8")).toBe("# Imported rule");
+  });
+
+  it("rejects imported project ids that would escape the managed project root", async () => {
+    const projectRoot = path.join(tempDir, "unsafe-site");
+    fs.mkdirSync(projectRoot, { recursive: true });
+
+    await expect(
+      importRuleBackupRecords([
+        {
+          id: "project:../../../escaped-rules",
+          platformId: "workspace",
+          platformName: "Unsafe Site",
+          platformIcon: "FolderRoot",
+          platformDescription: "Unsafe project rules",
+          name: "AGENTS.md",
+          description: "Unsafe managed rule",
+          path: path.join(projectRoot, "AGENTS.md"),
+          managedPath: undefined,
+          targetPath: path.join(projectRoot, "AGENTS.md"),
+          projectRootPath: projectRoot,
+          syncStatus: "target-missing",
+          content: "# Unsafe rule",
+          versions: [],
+        },
+      ]),
+    ).rejects.toThrow("Invalid rule project id");
+
+    expect(fs.existsSync(path.join(getRulesDir(), "escaped-rules", "AGENTS.md"))).toBe(false);
+    expect(fs.readdirSync(path.join(getRulesDir(), "projects"))).toEqual([]);
+  });
+
+  it("preserves previous versions when backup import version writes fail", async () => {
+    const projectRoot = path.join(tempDir, "docs-site");
+    fs.mkdirSync(projectRoot, { recursive: true });
+
+    await createProjectRule({ id: "docs-site", name: "Docs Site", rootPath: projectRoot });
+    await saveRuleContent("project:docs-site", "# version-1");
+    await saveRuleContent("project:docs-site", "# version-2");
+
+    const before = await readRuleContent("project:docs-site");
+    expect(before.versions.map((version) => version.content)).toEqual([
+      "# version-2",
+      "# version-1",
+    ]);
+
+    const originalWriteFile = fsp.writeFile.bind(fsp);
+    vi.spyOn(fsp, "writeFile").mockImplementation(async (file, data, options) => {
+      if (data === "# imported version 2") {
+        await originalWriteFile(file, "partial-import-version", options);
+        throw new Error("simulated import version write failure");
+      }
+
+      return originalWriteFile(file, data, options);
+    });
+
+    await expect(
+      importRuleBackupRecords([
+        {
+          id: "project:docs-site",
+          platformId: "workspace",
+          platformName: "Docs Site",
+          platformIcon: "FolderRoot",
+          platformDescription: "Imported project rules",
+          name: "AGENTS.md",
+          description: "Imported managed rule",
+          path: path.join(projectRoot, "AGENTS.md"),
+          managedPath: undefined,
+          targetPath: path.join(projectRoot, "AGENTS.md"),
+          projectRootPath: projectRoot,
+          syncStatus: "synced",
+          content: "# imported content",
+          versions: [
+            {
+              id: "imported-version-1",
+              savedAt: "2026-05-09T00:00:00.000Z",
+              source: "create",
+              content: "# imported version 1",
+            },
+            {
+              id: "imported-version-2",
+              savedAt: "2026-05-10T00:00:00.000Z",
+              source: "manual-save",
+              content: "# imported version 2",
+            },
+          ],
+        },
+      ]),
+    ).rejects.toThrow("simulated import version write failure");
+
+    const after = await readRuleContent("project:docs-site");
+    expect(after.versions.map((version) => version.content)).toEqual([
+      "# version-2",
+      "# version-1",
+    ]);
   });
 
   it("removes project rules missing from a replace import", async () => {
@@ -595,5 +733,73 @@ describe("rules workspace storage", () => {
 
     const content = await service.readRuleContent("claude-global");
     expect(content.versions).toHaveLength(1);
+  });
+
+  it("migrates legacy rule-history JSON into managed rule versions", async () => {
+    const service = createGlobalRulesTestService();
+    const globalRulePath = path.join(tempDir, "home", ".claude", "CLAUDE.md");
+    fs.mkdirSync(path.dirname(globalRulePath), { recursive: true });
+    fs.writeFileSync(globalRulePath, "# Current Claude rule", "utf8");
+
+    const legacyHistoryDir = path.join(tempDir, "rule-history");
+    fs.mkdirSync(legacyHistoryDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(legacyHistoryDir, "claude-global.json"),
+      JSON.stringify({
+        versions: [
+          {
+            id: "legacy-1",
+            savedAt: "2026-05-01T00:00:00.000Z",
+            content: "# Legacy Claude rule",
+            source: "manual-save",
+          },
+        ],
+      }),
+      "utf8",
+    );
+
+    await service.listRuleDescriptors();
+    const content = await service.readRuleContent("claude-global");
+
+    expect(content.content).toBe("# Current Claude rule");
+    expect(content.versions.map((version) => version.content)).toEqual([
+      "# Current Claude rule",
+      "# Legacy Claude rule",
+    ]);
+    expect(fs.existsSync(path.join(getRulesDir(), ".versions", "claude-global", "index.json"))).toBe(true);
+  });
+
+  it("restores managed content from legacy rule-history when the target file is missing", async () => {
+    const service = createGlobalRulesTestService();
+    const legacyHistoryDir = path.join(tempDir, "rule-history");
+    fs.mkdirSync(legacyHistoryDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(legacyHistoryDir, "claude-global.json"),
+      JSON.stringify([
+        {
+          id: "legacy-old",
+          savedAt: "2026-05-01T00:00:00.000Z",
+          content: "# Older Claude rule",
+          source: "manual-save",
+        },
+        {
+          id: "legacy-new",
+          savedAt: "2026-05-02T00:00:00.000Z",
+          content: "# Latest Claude rule",
+          source: "manual-save",
+        },
+      ]),
+      "utf8",
+    );
+
+    await service.listRuleDescriptors();
+    const content = await service.readRuleContent("claude-global");
+
+    expect(content.content).toBe("# Latest Claude rule");
+    expect(content.syncStatus).toBe("target-missing");
+    expect(content.versions.map((version) => version.content)).toEqual([
+      "# Latest Claude rule",
+      "# Older Claude rule",
+    ]);
   });
 });

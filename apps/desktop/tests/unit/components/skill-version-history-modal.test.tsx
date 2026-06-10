@@ -2,7 +2,12 @@ import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SkillVersionHistoryModal } from "../../../src/renderer/components/skill/SkillVersionHistoryModal";
-import { createSkillFixture, createSkillLocalFileEntryFixture, createSkillVersionFixture } from "../../fixtures/skills";
+import {
+  createSkillFileSnapshotFixture,
+  createSkillFixture,
+  createSkillLocalFileEntryFixture,
+  createSkillVersionFixture,
+} from "../../fixtures/skills";
 import { renderWithI18n } from "../../helpers/i18n";
 import { installWindowMocks } from "../../helpers/window";
 
@@ -85,5 +90,73 @@ describe("SkillVersionHistoryModal", () => {
     expect(timelinePane.querySelector(".overflow-y-auto")).not.toBeNull();
     expect(contentPane).toHaveClass("overflow-hidden", "min-h-0");
     expect(contentPane.querySelector(".overflow-y-auto")).not.toBeNull();
+  });
+
+  it("exposes history selection state with decorative icons hidden", async () => {
+    const skill = createSkillFixture();
+    window.api.skill.versionGetAll = vi.fn().mockResolvedValue([
+      createSkillVersionFixture({
+        id: "version-2",
+        version: 2,
+        content: "# Write\n\nCurrent draft",
+        filesSnapshot: [
+          createSkillFileSnapshotFixture({
+            relativePath: "SKILL.md",
+            content: "# Write\n\nCurrent draft",
+          }),
+        ],
+      }),
+      createSkillVersionFixture({
+        id: "version-1",
+        version: 1,
+        content: "# Write\n\nOlder draft",
+        filesSnapshot: [
+          createSkillFileSnapshotFixture({
+            relativePath: "SKILL.md",
+            content: "# Write\n\nOlder draft",
+          }),
+        ],
+      }),
+    ]);
+    window.api.skill.readLocalFiles = vi.fn().mockResolvedValue([
+      createSkillLocalFileEntryFixture({
+        content: "# Write\n\nCurrent live content",
+      }),
+    ]);
+
+    const { container } = await renderWithI18n(
+      <SkillVersionHistoryModal
+        isOpen
+        onClose={vi.fn()}
+        skill={skill}
+        currentContent="# Write\n\nCurrent live content"
+        onReload={vi.fn().mockResolvedValue(undefined)}
+      />,
+      { language: "en" },
+    );
+
+    await screen.findByText("Restore to this version");
+
+    const selectedVersion = screen.getByRole("button", { name: /v2/ });
+    const olderVersion = screen.getByRole("button", { name: /v1/ });
+    const preview = screen.getByRole("button", { name: "Preview" });
+    const diff = screen.getByRole("button", { name: "Diff" });
+
+    expect(selectedVersion).toHaveAttribute("aria-pressed", "true");
+    expect(olderVersion).toHaveAttribute("aria-pressed", "false");
+    expect(preview).toHaveAttribute("aria-pressed", "true");
+    expect(diff).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(diff);
+
+    expect(preview).toHaveAttribute("aria-pressed", "false");
+    expect(diff).toHaveAttribute("aria-pressed", "true");
+
+    const skillFile = screen.getByRole("button", { name: /SKILL\.md/ });
+    expect(skillFile).toHaveAttribute("aria-expanded", "true");
+
+    for (const icon of container.querySelectorAll("svg")) {
+      expect(icon).toHaveAttribute("aria-hidden", "true");
+    }
   });
 });

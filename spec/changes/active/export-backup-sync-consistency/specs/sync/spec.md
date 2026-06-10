@@ -6,6 +6,7 @@
 - `import-with-prompthub.json` inside desktop ZIP exports must itself be importable without needing ZIP side-channel reconstruction.
 - Web `/api/import` must accept PromptHub backup/export envelopes and normalized sync snapshots with equivalent semantics.
 - When an imported snapshot omits `settings`, web import and sync routes must apply the shared web `DEFAULT_SETTINGS` contract rather than route-local fallback values.
+- Web import and sync snapshot parsing must preserve the same supported shared settings preferences that the live web settings API accepts, instead of silently stripping fields during restore.
 - Desktop sync settings must keep unavailable capabilities visible but clearly disabled when the backing feature is not implemented.
 - Desktop may keep multiple backup targets enabled for manual backup/restore, but automatic sync must execute against only one active sync source at a time.
 - Desktop cloud-backup navigation must use provider-oriented labels and expose whether each provider is enabled without requiring the user to open every panel.
@@ -33,6 +34,12 @@
   - When web `/api/import` or `/api/sync/data` imports it
   - Then the resulting settings use the shared web default settings contract instead of route-specific fallback values
 
+- Scenario: Import restores supported settings preferences
+  - Given a backup contains supported settings preferences such as tag filtering, background image tuning, platform paths, custom agents, skill projects, backup metadata, update channel, and startup behavior
+  - When web `/api/import` or `/api/sync/data` imports the snapshot over different local settings
+  - Then the imported supported preferences replace the local values
+  - And malformed values still fail validation before settings are mutated
+
 - Scenario: Desktop settings expose unfinished sync providers
   - Given a desktop sync capability is not wired to a real execution path yet
   - When the user opens the corresponding settings section
@@ -47,3 +54,22 @@
   - Given one or more desktop cloud backup providers are enabled
   - When the user opens the data settings submenu
   - Then the submenu labels use provider-oriented names and each enabled provider shows an enabled indicator directly in the menu
+
+- Scenario: Same-version desktop settings hydration sanitizes background image preferences
+  - Given renderer localStorage contains a current-version settings snapshot with
+    an unsafe background image file name or out-of-range background image
+    opacity/blur values
+  - When the desktop settings store hydrates
+  - Then the store state normalizes those fields before applying CSS variables
+  - And the unsafe background image source is not retained for later
+    persistence or sync
+
+- Scenario: Same-version desktop settings hydration sanitizes automatic sync timing
+  - Given renderer localStorage contains a current-version settings snapshot with
+    negative, malformed, or out-of-range startup sync delays or periodic sync
+    intervals
+  - When the desktop settings store hydrates
+  - Then startup sync delays are clamped to the same 0-60 second range as the
+    settings UI
+  - And malformed or negative periodic sync intervals are normalized before
+    startup sync or periodic auto-sync timers are registered

@@ -92,6 +92,16 @@
 }
 
 /* ── Tree item ── */
+.skill-file-editor__tree-file-row {
+  display: flex;
+  align-items: center;
+}
+
+.skill-file-editor__tree-file-row .skill-file-editor__tree-item {
+  flex: 1;
+  min-width: 0;
+}
+
 .skill-file-editor__tree-item {
   display: flex;
   align-items: center;
@@ -161,7 +171,8 @@
   flex-shrink: 0;
 }
 
-.skill-file-editor__tree-item:hover .skill-file-editor__tree-item-delete {
+.skill-file-editor__tree-file-row:hover .skill-file-editor__tree-item-delete,
+.skill-file-editor__tree-item-delete:focus-visible {
   opacity: 1;
 }
 

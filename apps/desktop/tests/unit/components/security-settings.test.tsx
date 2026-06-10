@@ -11,6 +11,35 @@ vi.mock("../../../src/renderer/components/ui/Toast", () => ({
   useToast: () => useToastMock(),
 }));
 
+function hasHiddenSvgAncestor(element: Element): boolean {
+  let current: Element | null = element;
+
+  while (current) {
+    if (current.getAttribute("aria-hidden") === "true") {
+      return true;
+    }
+    current = current.parentElement;
+  }
+
+  return false;
+}
+
+function expectRenderedButtonSemantics() {
+  const buttons = Array.from(document.body.querySelectorAll("button"));
+  const implicitButtonMarkup = buttons
+    .filter((button) => button.getAttribute("type") !== "button")
+    .map((button) => button.outerHTML);
+  const exposedIconMarkup = buttons
+    .flatMap((button) => Array.from(button.querySelectorAll("svg")))
+    .filter((icon) => !hasHiddenSvgAncestor(icon))
+    .map((icon) => icon.outerHTML);
+
+  expect(implicitButtonMarkup, implicitButtonMarkup.join("\n")).toHaveLength(
+    0,
+  );
+  expect(exposedIconMarkup, exposedIconMarkup.join("\n")).toHaveLength(0);
+}
+
 describe("SecuritySettings", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -67,6 +96,119 @@ describe("SecuritySettings", () => {
 
     expect(showToast).toHaveBeenCalledWith(expect.any(String), "error");
     expect(window.api.security.setMasterPassword).not.toHaveBeenCalled();
+  });
+
+  it("keeps rendered security actions from submitting surrounding forms", async () => {
+    const showToast = vi.fn();
+    const handleSubmit = vi.fn();
+    useToastMock.mockReturnValue({ showToast });
+
+    (window.api.security.status as ReturnType<typeof vi.fn>).mockResolvedValue({
+      configured: false,
+      unlocked: false,
+    });
+
+    let firstRender: Awaited<ReturnType<typeof renderWithI18n>>;
+
+    await act(async () => {
+      firstRender = await renderWithI18n(
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            handleSubmit();
+          }}
+        >
+          <SecuritySettings />
+        </form>,
+        { language: "en" },
+      );
+    });
+
+    await waitFor(() => {
+      expect(window.api.security.status).toHaveBeenCalled();
+    });
+    expectRenderedButtonSemantics();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /set master password/i }),
+    );
+
+    expect(handleSubmit).not.toHaveBeenCalled();
+    firstRender!.unmount();
+
+    vi.clearAllMocks();
+    useToastMock.mockReturnValue({ showToast });
+    (window.api.security.status as ReturnType<typeof vi.fn>).mockResolvedValue({
+      configured: true,
+      unlocked: false,
+    });
+
+    let secondRender: Awaited<ReturnType<typeof renderWithI18n>>;
+
+    await act(async () => {
+      secondRender = await renderWithI18n(
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            handleSubmit();
+          }}
+        >
+          <SecuritySettings />
+        </form>,
+        { language: "en" },
+      );
+    });
+
+    await waitFor(() => {
+      expect(window.api.security.status).toHaveBeenCalled();
+    });
+    expectRenderedButtonSemantics();
+
+    fireEvent.click(screen.getByRole("button", { name: /^unlock$/i }));
+
+    expect(handleSubmit).not.toHaveBeenCalled();
+    secondRender!.unmount();
+
+    vi.clearAllMocks();
+    useToastMock.mockReturnValue({ showToast });
+    (window.api.security.status as ReturnType<typeof vi.fn>).mockResolvedValue({
+      configured: true,
+      unlocked: true,
+    });
+
+    await act(async () => {
+      await renderWithI18n(
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            handleSubmit();
+          }}
+        >
+          <SecuritySettings />
+        </form>,
+        { language: "en" },
+      );
+    });
+
+    await waitFor(() => {
+      expect(window.api.security.status).toHaveBeenCalled();
+    });
+
+    const changePasswordButton = screen.getByRole("button", {
+      name: /change password/i,
+    });
+    expect(changePasswordButton).toHaveAttribute("aria-expanded", "false");
+
+    await act(async () => {
+      fireEvent.click(changePasswordButton);
+    });
+
+    expect(changePasswordButton).toHaveAttribute("aria-expanded", "true");
+    expectRenderedButtonSemantics();
+
+    fireEvent.click(screen.getByRole("button", { name: /confirm change/i }));
+
+    expect(handleSubmit).not.toHaveBeenCalled();
   });
 
   it("does not submit password change when new password confirmation mismatches", async () => {

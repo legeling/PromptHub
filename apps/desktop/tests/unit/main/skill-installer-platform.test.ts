@@ -440,6 +440,48 @@ describe("skill-installer-platform symlink install", () => {
     expect(Object.values(status).every(Boolean)).toBe(true);
   });
 
+  it("does not report same-name inactive variants as installed", async () => {
+    internalMocks.fileExists.mockImplementation(async (target: string) => {
+      if (target === "/platform/skills/writer/SKILL.md") {
+        return true;
+      }
+      if (target === "/platform/skills/.prompthub-platform-activations.json") {
+        return true;
+      }
+      return false;
+    });
+    fsMocks.readFile = vi.fn(async (target: string) => {
+      if (target === "/platform/skills/.prompthub-platform-activations.json") {
+        return JSON.stringify({
+          writer: {
+            skillId: "skill-a",
+            skillName: "writer",
+          },
+        });
+      }
+      return "# Writer\n";
+    }) as any;
+
+    const activeStatus = await getSkillMdInstallStatusForSkill(
+      { id: "skill-a", name: "writer", source_id: "source-a" },
+      ["writer"],
+    );
+    const inactiveStatus = await getSkillMdInstallStatusForSkill(
+      { id: "skill-b", name: "writer", source_id: "source-b" },
+      ["writer"],
+    );
+    const inactiveDetails = await getSkillMdInstallStatusDetailsForSkill(
+      { id: "skill-b", name: "writer", source_id: "source-b" },
+      ["writer"],
+    );
+
+    expect(Object.values(activeStatus).every(Boolean)).toBe(true);
+    expect(Object.values(inactiveStatus).some(Boolean)).toBe(false);
+    expect(
+      Object.values(inactiveDetails).some((entry) => entry.installed),
+    ).toBe(false);
+  });
+
   it("reports whether active platform installs are copies or symlinks", async () => {
     internalMocks.fileExists.mockImplementation(async (target: string) => {
       return (

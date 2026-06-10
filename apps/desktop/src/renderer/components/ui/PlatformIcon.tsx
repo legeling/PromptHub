@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type HTMLAttributes } from "react";
 import {
   SparklesIcon,
   TerminalIcon,
@@ -26,7 +26,6 @@ import opencodeIcon from "../../assets/platforms/opencode.png";
 import codexIcon from "../../assets/platforms/codex.png";
 import kiloLightIcon from "../../assets/platforms/kilo-light.svg";
 import kiloDarkIcon from "../../assets/platforms/kilo-dark.svg";
-import ampIcon from "../../assets/platforms/amp.png";
 import openclawIcon from "../../assets/platforms/openclaw.png";
 import qoderIcon from "../../assets/platforms/qoder.png";
 import qoderworkIcon from "../../assets/platforms/qoderwork.png";
@@ -56,7 +55,6 @@ const PLATFORM_ICONS: Record<string, PlatformIconSource> = {
     light: kiloLightIcon,
     dark: kiloDarkIcon,
   },
-  amp: ampIcon,
   openclaw: openclawIcon,
   qoder: qoderIcon,
   qoderwork: qoderworkIcon,
@@ -93,7 +91,7 @@ const FALLBACK_ICONS: Record<string, React.ReactNode> = {
   "cherry-studio": <BotIcon />,
 };
 
-interface PlatformIconProps {
+interface PlatformIconProps extends HTMLAttributes<HTMLSpanElement> {
   platformId: string;
   size?: number;
   className?: string;
@@ -107,6 +105,8 @@ export function PlatformIcon({
   platformId,
   size = 24,
   className = "",
+  style,
+  ...spanProps
 }: PlatformIconProps) {
   const [imageError, setImageError] = useState(false);
 
@@ -118,8 +118,9 @@ export function PlatformIcon({
   if (!iconSrc || imageError) {
     return (
       <span
+        {...spanProps}
         className={`inline-flex items-center justify-center ${className}`}
-        style={{ width: size, height: size }}
+        style={{ ...style, width: size, height: size }}
       >
         {/* Clone the icon element with proper size */}
         <span
@@ -134,12 +135,13 @@ export function PlatformIcon({
 
   return (
     <span
+      {...spanProps}
       className={`inline-flex items-center justify-center ${className} ${
         platformId === "copilot"
           ? "rounded-xl bg-slate-100 ring-1 ring-slate-200 dark:bg-slate-800/80 dark:ring-slate-700"
           : ""
       }`}
-      style={{ width: size, height: size }}
+      style={{ ...style, width: size, height: size }}
     >
       {typeof iconSrc === "string" ? (
         <img

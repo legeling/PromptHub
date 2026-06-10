@@ -95,6 +95,54 @@ describe("settings store agent roots", () => {
     ]);
   });
 
+  it("normalizes same-version persisted custom agents during hydration", async () => {
+    localStorage.setItem(
+      "prompthub-settings",
+      JSON.stringify({
+        state: {
+          customAgents: [
+            { id: "broken-agent", name: "", rootPath: "/tmp/broken" },
+            {
+              id: "team-agent",
+              name: "  Team Agent  ",
+              rootPath: " /tmp/team-agent/ ",
+              enabled: false,
+              skillsRelativePath: "/skills/",
+              configRelativePaths: [" config.json ", "config.json", 42],
+            },
+            {
+              id: "duplicate-agent",
+              name: "Duplicate Agent",
+              rootPath: "/tmp/team-agent",
+            },
+          ],
+          customAgentRootPaths: ["/tmp/stale-root", 42],
+          customSkillScanPaths: ["/tmp/stale-scan", 42],
+        },
+        version: 16,
+      }),
+    );
+
+    const { useSettingsStore } = await importStore();
+
+    expect(useSettingsStore.getState().customAgents).toEqual([
+      expect.objectContaining({
+        id: "team-agent",
+        name: "Team Agent",
+        rootPath: "/tmp/team-agent",
+        enabled: false,
+        skillsRelativePath: "skills",
+        configRelativePaths: ["config.json"],
+      }),
+    ]);
+    expect(useSettingsStore.getState().customAgentRootPaths).toEqual([
+      "/tmp/team-agent",
+    ]);
+    expect(useSettingsStore.getState().customSkillScanPaths).toEqual([
+      "/tmp/team-agent",
+    ]);
+  });
+
   it("adds default project deploy targets under .agents/skills", async () => {
     const { useSettingsStore } = await importStore();
 
@@ -107,6 +155,52 @@ describe("settings store agent roots", () => {
     expect(project.deployTargets).toEqual(["/tmp/workspace/.agents/skills"]);
     expect(useSettingsStore.getState().skillProjects[0]?.deployTargets).toEqual([
       "/tmp/workspace/.agents/skills",
+    ]);
+  });
+
+  it("normalizes same-version persisted skill projects during hydration", async () => {
+    localStorage.setItem(
+      "prompthub-settings",
+      JSON.stringify({
+        state: {
+          skillProjects: [
+            { id: "broken-project", name: "", rootPath: "/tmp/broken" },
+            {
+              id: "workspace-project",
+              name: "  Workspace  ",
+              rootPath: " /tmp/workspace/ ",
+              scanPaths: [
+                " /tmp/workspace/ ",
+                "/tmp/workspace/src",
+                "/tmp/workspace/src",
+                42,
+              ],
+              deployTargets: [
+                "",
+                " /tmp/workspace/.claude/skills ",
+                "/tmp/workspace/.claude/skills",
+                42,
+              ],
+              createdAt: "bad",
+            },
+          ],
+        },
+        version: 16,
+      }),
+    );
+
+    const { useSettingsStore } = await importStore();
+
+    expect(useSettingsStore.getState().skillProjects).toEqual([
+      expect.objectContaining({
+        id: "workspace-project",
+        name: "Workspace",
+        rootPath: "/tmp/workspace/",
+        scanPaths: ["/tmp/workspace/src"],
+        deployTargets: ["/tmp/workspace/.claude/skills"],
+        createdAt: expect.any(Number),
+        updatedAt: expect.any(Number),
+      }),
     ]);
   });
 
@@ -129,6 +223,39 @@ describe("settings store agent roots", () => {
       "trae-cn": "~/.trae-cn",
     });
     expect(useSettingsStore.getState().disabledPlatformIds).toEqual(["trae-cn"]);
+    expect(useSettingsStore.getState().skillPlatformOrder).toEqual([
+      "claude",
+      "trae-cn",
+      "codex",
+    ]);
+  });
+
+  it("normalizes same-version persisted platform visibility settings during hydration", async () => {
+    localStorage.setItem(
+      "prompthub-settings",
+      JSON.stringify({
+        state: {
+          builtinAgentOverrides: { trae: { rootPath: "~/.trae-cn" } },
+          customPlatformRootPaths: { trae: "~/.trae-cn" },
+          disabledPlatformIds: ["trae", 42, "codex"],
+          skillPlatformOrder: ["claude", "trae", 42, "codex"],
+        },
+        version: 16,
+      }),
+    );
+
+    const { useSettingsStore } = await importStore();
+
+    expect(useSettingsStore.getState().builtinAgentOverrides).toEqual({
+      "trae-cn": { rootPath: "~/.trae-cn" },
+    });
+    expect(useSettingsStore.getState().customPlatformRootPaths).toEqual({
+      "trae-cn": "~/.trae-cn",
+    });
+    expect(useSettingsStore.getState().disabledPlatformIds).toEqual([
+      "trae-cn",
+      "codex",
+    ]);
     expect(useSettingsStore.getState().skillPlatformOrder).toEqual([
       "claude",
       "trae-cn",

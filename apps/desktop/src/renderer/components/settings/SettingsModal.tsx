@@ -35,14 +35,16 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         {/* 外观 */}
         <div className="space-y-3">
           <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <SunIcon className="w-4 h-4 text-primary" />
+            <SunIcon aria-hidden="true" className="w-4 h-4 text-primary" />
             {t('settings.appearance')}
           </h3>
           <div className="grid grid-cols-3 gap-2">
             {themeOptions.map((option) => (
               <button
                 key={option.value}
+                type="button"
                 onClick={() => setTheme(option.value as Theme)}
+                aria-pressed={theme === option.value}
                 className={`
                   flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all
                   ${theme === option.value
@@ -51,7 +53,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   }
                 `}
               >
-                <option.icon className={`w-6 h-6 ${theme === option.value ? 'text-primary' : 'text-muted-foreground'}`} />
+                <option.icon aria-hidden="true" className={`w-6 h-6 ${theme === option.value ? 'text-primary' : 'text-muted-foreground'}`} />
                 <span className={`text-sm font-medium ${theme === option.value ? 'text-primary' : 'text-foreground'}`}>
                   {option.label}
                 </span>
@@ -64,14 +66,16 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         {/* 语言 */}
         <div className="space-y-3">
           <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <GlobeIcon className="w-4 h-4 text-primary" />
+            <GlobeIcon aria-hidden="true" className="w-4 h-4 text-primary" />
             {t('settings.language')}
           </h3>
           <div className="grid grid-cols-2 gap-2">
             {languageOptions.map((option) => (
               <button
                 key={option.value}
+                type="button"
                 onClick={() => setLanguage(option.value as Language)}
+                aria-pressed={language === option.value}
                 className={`
                   flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all
                   ${language === option.value
@@ -92,13 +96,17 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         {/* 数据 */}
         <div className="space-y-3">
           <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <DatabaseIcon className="w-4 h-4 text-primary" />
+            <DatabaseIcon aria-hidden="true" className="w-4 h-4 text-primary" />
             {t('settings.data')}
           </h3>
           <div className="space-y-2">
             <label className="flex items-center justify-between p-3 rounded-xl bg-muted/50">
               <span className="text-sm">{t('settings.autoSave')}</span>
               <button
+                type="button"
+                role="switch"
+                aria-checked={autoSave}
+                aria-label={t('settings.autoSave')}
                 onClick={() => setAutoSave(!autoSave)}
                 className={`
                   relative w-12 h-7 rounded-full transition-colors
@@ -113,11 +121,11 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 />
               </button>
             </label>
-            <button className="w-full flex items-center justify-between p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors">
+            <button type="button" className="w-full flex items-center justify-between p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors">
               <span className="text-sm">{t('settings.export')}</span>
               <span className="text-xs text-muted-foreground">{t('settings.exportDesc')}</span>
             </button>
-            <button className="w-full flex items-center justify-between p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors">
+            <button type="button" className="w-full flex items-center justify-between p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors">
               <span className="text-sm">{t('settings.import')}</span>
               <span className="text-xs text-muted-foreground">{t('settings.importDesc')}</span>
             </button>
@@ -128,7 +136,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         {/* 关于 */}
         <div className="space-y-3">
           <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <InfoIcon className="w-4 h-4 text-primary" />
+            <InfoIcon aria-hidden="true" className="w-4 h-4 text-primary" />
             {t('settings.about')}
           </h3>
           <div className="p-4 rounded-xl bg-muted/50 text-center">

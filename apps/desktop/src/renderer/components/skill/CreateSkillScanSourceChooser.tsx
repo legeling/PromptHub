@@ -34,7 +34,7 @@ export function CreateSkillScanSourceChooser({
         className="w-full flex items-center gap-4 p-4 bg-accent/50 hover:bg-accent border border-border rounded-xl transition-colors group text-left"
       >
         <div className="p-3 bg-background rounded-lg group-hover:bg-primary/10 transition-colors">
-          <BotIcon className="w-6 h-6 text-foreground" />
+          <BotIcon aria-hidden="true" className="w-6 h-6 text-foreground" />
         </div>
         <div>
           <h3 className="font-medium text-foreground">
@@ -57,9 +57,15 @@ export function CreateSkillScanSourceChooser({
       >
         <div className="p-3 bg-background rounded-lg group-hover:bg-primary/10 transition-colors">
           {isScanning ? (
-            <LoaderIcon className="w-6 h-6 animate-spin text-foreground" />
+            <LoaderIcon
+              aria-hidden="true"
+              className="w-6 h-6 animate-spin text-foreground"
+            />
           ) : (
-            <FolderOpenIcon className="w-6 h-6 text-foreground" />
+            <FolderOpenIcon
+              aria-hidden="true"
+              className="w-6 h-6 text-foreground"
+            />
           )}
         </div>
         <div>

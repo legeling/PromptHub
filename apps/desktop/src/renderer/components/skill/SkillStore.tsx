@@ -48,7 +48,7 @@ import type {
   SkillCategory,
   SkillStoreSource,
 } from "@prompthub/shared/types";
-import { SKILL_CATEGORIES } from "@prompthub/shared/constants/skill-registry";
+import { SKILL_CATEGORIES } from "@prompthub/shared/constants/skill-categories";
 import {
   formatSkillInstallError,
   formatSkillSafetyScanError,
@@ -58,18 +58,22 @@ import { findInstalledRegistrySkill } from "../../services/skill-store-update";
 import { filterRegistrySkills } from "../../services/skill-store-search";
 import { useSkillStoreRemoteSync } from "./store-remote-sync";
 import { normalizeGitStoreSourceInput } from "../../services/skill-store-source";
+import {
+  getRemoteStoreSkillCount,
+  getRemoteStoreSkills,
+} from "../../services/remote-store-entry";
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  all: <LayoutGridIcon className="w-3.5 h-3.5" />,
-  office: <FileSpreadsheetIcon className="w-3.5 h-3.5" />,
-  dev: <CodeIcon className="w-3.5 h-3.5" />,
-  ai: <SparklesIcon className="w-3.5 h-3.5" />,
-  data: <BarChartIcon className="w-3.5 h-3.5" />,
-  management: <BriefcaseIcon className="w-3.5 h-3.5" />,
-  deploy: <RocketIcon className="w-3.5 h-3.5" />,
-  design: <PaletteIcon className="w-3.5 h-3.5" />,
-  security: <ShieldIcon className="w-3.5 h-3.5" />,
-  meta: <WandIcon className="w-3.5 h-3.5" />,
+  all: <LayoutGridIcon aria-hidden="true" className="w-3.5 h-3.5" />,
+  office: <FileSpreadsheetIcon aria-hidden="true" className="w-3.5 h-3.5" />,
+  dev: <CodeIcon aria-hidden="true" className="w-3.5 h-3.5" />,
+  ai: <SparklesIcon aria-hidden="true" className="w-3.5 h-3.5" />,
+  data: <BarChartIcon aria-hidden="true" className="w-3.5 h-3.5" />,
+  management: <BriefcaseIcon aria-hidden="true" className="w-3.5 h-3.5" />,
+  deploy: <RocketIcon aria-hidden="true" className="w-3.5 h-3.5" />,
+  design: <PaletteIcon aria-hidden="true" className="w-3.5 h-3.5" />,
+  security: <ShieldIcon aria-hidden="true" className="w-3.5 h-3.5" />,
+  meta: <WandIcon aria-hidden="true" className="w-3.5 h-3.5" />,
 };
 
 const CUSTOM_SOURCE_TYPE_OPTIONS: Array<{
@@ -558,7 +562,7 @@ export function SkillStore() {
     : undefined;
   const selectedStoreTotalCount = visibleRemoteEntry?.totalCount;
   const selectedStoreMatchedCount = visibleRemoteEntry?.matchedCount;
-  const selectedStoreLoadedCount = visibleRemoteEntry?.skills.length ?? 0;
+  const selectedStoreLoadedCount = getRemoteStoreSkillCount(visibleRemoteEntry);
   const selectedStoreHasKnownTotal =
     typeof selectedStoreMatchedCount === "number" ||
     typeof selectedStoreTotalCount === "number";
@@ -608,7 +612,7 @@ export function SkillStore() {
     const baseSkills: RegistrySkill[] =
       selectedStoreSourceId === "official"
         ? []
-        : visibleRemoteEntry?.skills || [];
+        : getRemoteStoreSkills(visibleRemoteEntry);
 
     // Centralized filter — see `skill-store-search.ts`. The previous
     // inline implementation only matched name / description / tags with
@@ -633,7 +637,7 @@ export function SkillStore() {
     selectedStoreSourceId,
     storeCategory,
     storeSearchQuery,
-    visibleRemoteEntry?.skills,
+    visibleRemoteEntry,
   ]);
 
   const selectedDetailSkill = useMemo(() => {
@@ -1265,7 +1269,7 @@ export function SkillStore() {
   const shouldShowInitialLoading =
     isSelectedSourceRemote &&
     ((loadingSourceId === selectedStoreSourceId &&
-      (!visibleRemoteEntry || visibleRemoteEntry.skills.length === 0)) ||
+      (!visibleRemoteEntry || selectedStoreLoadedCount === 0)) ||
       isSelectedSkillsShEntryStale ||
       isSelectedClawHubEntryStale);
   const shouldShowCustomStoreEmpty =
@@ -1276,7 +1280,7 @@ export function SkillStore() {
   const isRefreshingCachedSource =
     isSelectedSourceRemote &&
     loadingSourceId === selectedStoreSourceId &&
-    Boolean(visibleRemoteEntry?.skills.length);
+    selectedStoreLoadedCount > 0;
   const isStoreBatchBusy = runningBatchOperation !== null;
   const selectVisibleStoreSkillsLabel = areVisibleStoreSkillsSelected
     ? t("skill.batchStoreDeselectVisible", "Deselect visible store skills")
@@ -1361,7 +1365,10 @@ export function SkillStore() {
             )}
             {isRefreshingCachedSource && (
               <span className="shrink-0 inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                <Loader2Icon className="h-3 w-3 animate-spin" />
+                <Loader2Icon
+                  aria-hidden="true"
+                  className="h-3 w-3 animate-spin"
+                />
                 {t("common.refreshing", "Refreshing")}
               </span>
             )}
@@ -1386,17 +1393,20 @@ export function SkillStore() {
                   : "text-muted-foreground hover:bg-accent hover:text-foreground"
               }`}
             >
-              <ListChecksIcon className="h-4 w-4" />
+              <ListChecksIcon aria-hidden="true" className="h-4 w-4" />
             </button>
           )}
           {sourceMeta.canRefresh && (
             <button
+              type="button"
               onClick={() => void loadStoreSource(selectedStoreSourceId, true)}
               disabled={loadingSourceId === selectedStoreSourceId}
+              aria-label={t("common.refresh", "Refresh")}
               className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40"
               title={t("common.refresh", "Refresh")}
             >
               <RefreshCwIcon
+                aria-hidden="true"
                 className={`w-4 h-4 ${loadingSourceId === selectedStoreSourceId ? "animate-spin" : ""}`}
               />
             </button>
@@ -1407,7 +1417,7 @@ export function SkillStore() {
               onClick={() => setEditingCustomSourceId(selectedCustomSource.id)}
               className="inline-flex items-center gap-2 rounded-lg border border-border bg-accent/50 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors"
             >
-              <Settings2Icon className="w-4 h-4" />
+              <Settings2Icon aria-hidden="true" className="w-4 h-4" />
               {t("common.edit", "Edit")}
             </button>
           ) : null}
@@ -1428,7 +1438,10 @@ export function SkillStore() {
               onSubmit={handleStoreSearchSubmit}
               className="flex w-full items-center gap-2 rounded-xl border border-border/70 bg-card/70 px-3 py-2 transition-colors focus-within:bg-background"
             >
-              <SearchIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <SearchIcon
+                aria-hidden="true"
+                className="h-4 w-4 shrink-0 text-muted-foreground"
+              />
               <input
                 type="text"
                 value={storeSearchDraft}
@@ -1445,7 +1458,7 @@ export function SkillStore() {
                   aria-label={t("common.clearSearch", "Clear search")}
                   title={t("common.clearSearch", "Clear search")}
                 >
-                  <XIcon className="h-3.5 w-3.5" />
+                  <XIcon aria-hidden="true" className="h-3.5 w-3.5" />
                 </button>
               ) : null}
             </form>
@@ -1453,20 +1466,25 @@ export function SkillStore() {
 
           {shouldShowGenericCategoryFilter && (
           <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
-            {categories.map((cat) => (
-              <button
-                key={cat.key}
-                onClick={() => setStoreCategory(cat.key)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
-                  storeCategory === cat.key
-                    ? "bg-primary text-white shadow-sm"
-                    : "bg-muted hover:bg-muted/80 text-muted-foreground"
-                }`}
-              >
-                {CATEGORY_ICONS[cat.key]}
-                {cat.label}
-              </button>
-            ))}
+            {categories.map((cat) => {
+              const isActive = storeCategory === cat.key;
+              return (
+                <button
+                  key={cat.key}
+                  type="button"
+                  aria-pressed={isActive}
+                  onClick={() => setStoreCategory(cat.key)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
+                    isActive
+                      ? "bg-primary text-white shadow-sm"
+                      : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                  }`}
+                >
+                  <span aria-hidden="true">{CATEGORY_ICONS[cat.key]}</span>
+                  {cat.label}
+                </button>
+              );
+            })}
           </div>
           )}
 
@@ -1479,6 +1497,8 @@ export function SkillStore() {
                 return (
                   <button
                     key={filter.key}
+                    type="button"
+                    aria-pressed={isActive}
                     onClick={() =>
                       setStoreCategory(filter.key as SkillCategory | "all")
                     }
@@ -1566,6 +1586,7 @@ export function SkillStore() {
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() =>
                   void loadStoreSource(selectedStoreSourceId, true)
                 }
@@ -1886,7 +1907,7 @@ export function SkillStore() {
                 aria-label={selectVisibleStoreSkillsLabel}
                 title={selectVisibleStoreSkillsLabel}
               >
-                <CheckSquareIcon className="h-4 w-4" />
+                <CheckSquareIcon aria-hidden="true" className="h-4 w-4" />
               </button>
               <button
                 type="button"
@@ -1905,9 +1926,12 @@ export function SkillStore() {
                 )}
               >
                 {runningBatchOperation === "install" ? (
-                  <Loader2Icon className="h-4 w-4 animate-spin" />
+                  <Loader2Icon
+                    aria-hidden="true"
+                    className="h-4 w-4 animate-spin"
+                  />
                 ) : (
-                  <PackagePlusIcon className="h-4 w-4" />
+                  <PackagePlusIcon aria-hidden="true" className="h-4 w-4" />
                 )}
               </button>
               <button
@@ -1927,9 +1951,12 @@ export function SkillStore() {
                 )}
               >
                 {runningBatchOperation === "update" ? (
-                  <Loader2Icon className="h-4 w-4 animate-spin" />
+                  <Loader2Icon
+                    aria-hidden="true"
+                    className="h-4 w-4 animate-spin"
+                  />
                 ) : (
-                  <DownloadIcon className="h-4 w-4" />
+                  <DownloadIcon aria-hidden="true" className="h-4 w-4" />
                 )}
               </button>
               <button
@@ -1948,7 +1975,7 @@ export function SkillStore() {
                   "Remove selected from My Skills",
                 )}
               >
-                <Trash2Icon className="h-4 w-4" />
+                <Trash2Icon aria-hidden="true" className="h-4 w-4" />
               </button>
               <button
                 type="button"
@@ -1958,7 +1985,7 @@ export function SkillStore() {
                 aria-label={t("common.deselectAll", "Deselect All")}
                 title={t("common.deselectAll", "Deselect All")}
               >
-                <XIcon className="h-4 w-4" />
+                <XIcon aria-hidden="true" className="h-4 w-4" />
               </button>
             </div>
           </div>

@@ -30,6 +30,12 @@ interface BudgetEntry {
   name: string;
   /** Glob-ish pattern relative to `out/renderer/`, e.g. `assets/index-*.js` */
   pattern: string;
+  /**
+   * How matching files are measured. Defaults to `sum`.
+   * Use `max` when a pattern intentionally matches a family of same-named
+   * chunks and the budget should guard the largest member.
+   */
+  aggregation?: "max" | "sum";
   /** Maximum allowed gzipped size in bytes */
   maxGzipBytes: number;
   /**
@@ -51,6 +57,11 @@ interface ResolvedMatch {
   filePath: string;
   relPath: string;
   gzipBytes: number;
+}
+
+interface EntryMeasurement {
+  gzipBytes: number;
+  matches: ResolvedMatch[];
 }
 
 const __filename = fileURLToPath(import.meta.url);
@@ -142,6 +153,30 @@ async function resolveEntry(
   return matches;
 }
 
+export function measureEntry(
+  entry: Pick<BudgetEntry, "aggregation">,
+  matches: ResolvedMatch[],
+): EntryMeasurement {
+  if (entry.aggregation === "max") {
+    const largest = matches.reduce<ResolvedMatch | null>(
+      (current, match) =>
+        current === null || match.gzipBytes > current.gzipBytes
+          ? match
+          : current,
+      null,
+    );
+    return {
+      gzipBytes: largest?.gzipBytes ?? 0,
+      matches: largest ? [largest] : [],
+    };
+  }
+
+  return {
+    gzipBytes: matches.reduce((sum, match) => sum + match.gzipBytes, 0),
+    matches,
+  };
+}
+
 async function main(): Promise<void> {
   const budget = await loadBudget();
   const rendererRoot = path.resolve(
@@ -189,15 +224,15 @@ async function main(): Promise<void> {
       continue;
     }
 
-    const totalGzip = matches.reduce((sum, m) => sum + m.gzipBytes, 0);
-    const overBudget = totalGzip > entry.maxGzipBytes;
+    const measurement = measureEntry(entry, matches);
+    const overBudget = measurement.gzipBytes > entry.maxGzipBytes;
     if (overBudget) hasFailure = true;
     const status = overBudget ? "✗" : "✓";
-    const fileList = matches.length === 1
-      ? matches[0].relPath
-      : matches.map((m) => m.relPath).join(", ");
+    const fileList = measurement.matches.length === 1
+      ? measurement.matches[0].relPath
+      : measurement.matches.map((m) => m.relPath).join(", ");
     console.log(
-      `  ${status} ${entry.name}: ${formatBytes(totalGzip)} gzip ` +
+      `  ${status} ${entry.name}: ${formatBytes(measurement.gzipBytes)} gzip ` +
         `(budget ${formatBytes(entry.maxGzipBytes)}) — ${fileList}`,
     );
   }
@@ -210,8 +245,11 @@ async function main(): Promise<void> {
   console.log("[bundle-budget] OK");
 }
 
-main().catch((err: unknown) => {
-  const message = err instanceof Error ? err.stack ?? err.message : String(err);
-  console.error(`[bundle-budget] unexpected error: ${message}`);
-  process.exit(2);
-});
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+  main().catch((err: unknown) => {
+    const message =
+      err instanceof Error ? err.stack ?? err.message : String(err);
+    console.error(`[bundle-budget] unexpected error: ${message}`);
+    process.exit(2);
+  });
+}

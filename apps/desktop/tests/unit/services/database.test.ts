@@ -5,6 +5,7 @@
  * Tests for IndexedDB operations including CRUD, initialization, backup/restore
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { installWindowMocks } from '../../helpers/window';
 
 // 由于 database.ts 直接使用 window.indexedDB，我们需要在 jsdom 环境下测试
 // 或者使用 fake-indexeddb polyfill
@@ -16,6 +17,8 @@ describe('Database Service', () => {
     let mockTransaction: any;
 
     beforeEach(() => {
+        vi.resetModules();
+
         mockObjectStore = {
             add: vi.fn().mockReturnValue({ onsuccess: null, onerror: null }),
             put: vi.fn().mockReturnValue({ onsuccess: null, onerror: null }),
@@ -33,12 +36,15 @@ describe('Database Service', () => {
             onabort: null,
         };
 
+        const objectStoreNames = ['prompts', 'versions', 'folders', 'settings'] as any;
+        objectStoreNames.contains = vi.fn((storeName: string) =>
+            objectStoreNames.includes(storeName),
+        );
+
         mockDB = {
             transaction: vi.fn().mockReturnValue(mockTransaction),
             createObjectStore: vi.fn().mockReturnValue(mockObjectStore),
-            objectStoreNames: {
-                contains: vi.fn().mockReturnValue(false),
-            },
+            objectStoreNames,
             close: vi.fn(),
         };
 
@@ -59,10 +65,29 @@ describe('Database Service', () => {
                 }, 0);
                 return mockOpenRequest;
             }),
+            deleteDatabase: vi.fn().mockImplementation(() => {
+                const request = {
+                    onsuccess: null as any,
+                    onerror: null as any,
+                    error: null,
+                };
+                setTimeout(() => {
+                    request.onsuccess?.({ target: request });
+                }, 0);
+                return request;
+            }),
+        });
+
+        installWindowMocks({
+            electron: {
+                clearImages: vi.fn().mockResolvedValue(true),
+                clearVideos: vi.fn().mockResolvedValue(true),
+            },
         });
     });
 
     afterEach(() => {
+        vi.restoreAllMocks();
         vi.unstubAllGlobals();
         vi.clearAllMocks();
     });
@@ -90,6 +115,38 @@ describe('Database Service', () => {
         it('should open database with correct name and version', async () => {
             // indexedDB.open 应该被调用
             expect(indexedDB.open).toBeDefined();
+        });
+
+        it('should not log normal database reset success', async () => {
+            const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+            const { resetDatabase } = await import('../../../src/renderer/services/database');
+
+            await resetDatabase();
+
+            expect(indexedDB.deleteDatabase).toHaveBeenCalledWith('PromptHubDB');
+            expect(logSpy).not.toHaveBeenCalled();
+        });
+
+        it('should not log normal clear success while clearing media stores', async () => {
+            const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+            mockDB.transaction.mockImplementation(() => {
+                setTimeout(() => {
+                    mockTransaction.oncomplete?.();
+                }, 0);
+                return mockTransaction;
+            });
+            const { clearDatabase } = await import('../../../src/renderer/services/database');
+
+            await clearDatabase();
+
+            expect(mockDB.transaction).toHaveBeenCalledWith(
+                ['prompts', 'folders', 'versions'],
+                'readwrite',
+            );
+            expect(mockObjectStore.clear).toHaveBeenCalledTimes(3);
+            expect(window.electron?.clearImages).toHaveBeenCalled();
+            expect(window.electron?.clearVideos).toHaveBeenCalled();
+            expect(logSpy).not.toHaveBeenCalled();
         });
     });
 

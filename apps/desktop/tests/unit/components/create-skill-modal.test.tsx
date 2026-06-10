@@ -1,4 +1,5 @@
-import { act, fireEvent, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import type { FormEvent } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CreateSkillModal } from "../../../src/renderer/components/skill/CreateSkillModal";
@@ -6,6 +7,19 @@ import { renderWithI18n } from "../../helpers/i18n";
 import { installWindowMocks } from "../../helpers/window";
 import { useSkillStore } from "../../../src/renderer/stores/skill.store";
 import { useSettingsStore } from "../../../src/renderer/stores/settings.store";
+
+function hasHiddenSvgAncestor(element: Element): boolean {
+  let current: Element | null = element;
+
+  while (current) {
+    if (current.getAttribute("aria-hidden") === "true") {
+      return true;
+    }
+    current = current.parentElement;
+  }
+
+  return false;
+}
 
 describe("CreateSkillModal GitHub import", () => {
   beforeEach(() => {
@@ -31,6 +45,94 @@ describe("CreateSkillModal GitHub import", () => {
       translationCache: {},
     });
     useSettingsStore.setState({ aiModels: [] } as never);
+  });
+
+  it("keeps the pointer backdrop presentational while preserving click close", async () => {
+    installWindowMocks();
+    const onClose = vi.fn();
+
+    await renderWithI18n(
+      <CreateSkillModal isOpen={true} onClose={onClose} />,
+      { language: "en" },
+    );
+
+    const backdrop = screen.getByTestId("create-skill-backdrop");
+    expect(backdrop).toHaveAttribute("role", "presentation");
+    expect(backdrop).toHaveAttribute("aria-hidden", "true");
+
+    fireEvent.click(backdrop);
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps chooser and manual actions non-submit with decorative icons hidden", async () => {
+    installWindowMocks();
+    const onSubmit = vi.fn((event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+    });
+
+    await renderWithI18n(
+      <form onSubmit={onSubmit}>
+        <CreateSkillModal isOpen={true} onClose={vi.fn()} />
+      </form>,
+      { language: "en" },
+    );
+
+    const chooserButtons = [
+      screen.getByRole("button", { name: /AI Draft/ }),
+      screen.getByRole("button", { name: /Install from Git Repository/ }),
+      screen.getByRole("button", { name: /Create Manually/ }),
+      screen.getByRole("button", { name: /Scan Local/ }),
+      screen.getByRole("button", { name: "Close" }),
+    ];
+
+    for (const button of chooserButtons) {
+      expect(button).toHaveAttribute("type", "button");
+      expect(button.querySelector("svg")).toHaveAttribute(
+        "aria-hidden",
+        "true",
+      );
+    }
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Create Manually/ }));
+    });
+
+    const fullscreenButtons = screen.getAllByRole("button", {
+      name: "Fullscreen",
+    });
+    expect(fullscreenButtons).toHaveLength(2);
+    const aiPolishButton = screen.getByRole("button", { name: "AI Polish" });
+    expect(aiPolishButton).toHaveAttribute("aria-label", "AI Polish");
+    expect(screen.getByLabelText("Upload .md")).toHaveAttribute(
+      "type",
+      "file",
+    );
+
+    const manualButtons = [
+      screen.getByRole("button", { name: "Upload .md" }),
+      aiPolishButton,
+      screen.getByRole("button", { name: "Edit" }),
+      screen.getByRole("button", { name: "Preview" }),
+      screen.getByRole("button", { name: "Back" }),
+      screen.getByRole("button", { name: "Create Skill" }),
+      ...fullscreenButtons,
+    ];
+
+    for (const button of manualButtons) {
+      expect(button).toHaveAttribute("type", "button");
+      const icon = button.querySelector("svg");
+      if (icon) {
+        expect(icon).toHaveAttribute("aria-hidden", "true");
+      }
+    }
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+      fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+    });
+
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it("creates a starter package SKILL.md when manual instructions are blank", async () => {
@@ -73,6 +175,39 @@ describe("CreateSkillModal GitHub import", () => {
     });
     expect(createSkill.mock.calls[0][0].instructions).toContain(
       "name: starterskill",
+    );
+  });
+
+  it("renders unsafe manual preview links as text", async () => {
+    installWindowMocks();
+
+    const view = await renderWithI18n(
+      <CreateSkillModal isOpen={true} onClose={vi.fn()} />,
+      { language: "en" },
+    );
+
+    await act(async () => {
+      fireEvent.click(view.getByText("Create Manually"));
+    });
+
+    const instructionsTextarea = view.container.querySelector("textarea");
+    expect(instructionsTextarea).toBeTruthy();
+    fireEvent.change(instructionsTextarea!, {
+      target: {
+        value:
+          "[bad](javascript:alert(1)) [file](file:///etc/passwd) [ok](https://example.com/docs)",
+      },
+    });
+
+    await act(async () => {
+      fireEvent.click(view.getByRole("button", { name: "Preview" }));
+    });
+
+    expect(screen.getByText("bad").closest("a")).toBeNull();
+    expect(screen.getByText("file").closest("a")).toBeNull();
+    expect(screen.getByRole("link", { name: "ok" })).toHaveAttribute(
+      "href",
+      "https://example.com/docs",
     );
   });
 
@@ -166,6 +301,76 @@ describe("CreateSkillModal GitHub import", () => {
       expect(scanLocalPreview).toHaveBeenCalledWith(["/Users/demo/skills"]);
       expect(view.getByText("local-one")).toBeTruthy();
     });
+
+    const exposedIconMarkup = Array.from(
+      document.body.querySelectorAll("button svg"),
+    )
+      .filter((icon) => !hasHiddenSvgAncestor(icon))
+      .map((icon) => icon.outerHTML);
+    expect(exposedIconMarkup, exposedIconMarkup.join("\n")).toHaveLength(0);
+  });
+
+  it("treats deployed project copies as imported when directory fingerprint matches My Skills", async () => {
+    const importScannedSkills = vi.fn();
+    const scanLocalPreview = vi.fn().mockResolvedValue([
+      {
+        name: "writer",
+        description: "Writer project copy",
+        author: "PromptHub",
+        tags: ["writing"],
+        instructions: "# Writer",
+        filePath: "/repo/.agents/skills/writer/SKILL.md",
+        localPath: "/repo/.agents/skills/writer",
+        platforms: ["Project"],
+        installMode: "copy",
+        directory_fingerprint: "fingerprint-writer",
+      },
+    ]);
+    useSkillStore.setState({
+      skills: [
+        {
+          id: "skill-writer",
+          name: "writer",
+          local_repo_path: "/prompthub/skills/writer--1234/repo",
+          directory_fingerprint: "fingerprint-writer",
+        },
+      ],
+      importScannedSkills,
+    } as never);
+    installWindowMocks({
+      api: {
+        skill: {
+          scanLocalPreview,
+        },
+      },
+      electron: {
+        selectFolder: vi.fn().mockResolvedValue("/repo/.agents/skills"),
+      },
+    });
+
+    const view = await renderWithI18n(
+      <CreateSkillModal isOpen={true} onClose={vi.fn()} />,
+      { language: "en" },
+    );
+
+    await act(async () => {
+      fireEvent.click(view.getByText("Scan Local"));
+    });
+    await act(async () => {
+      fireEvent.click(view.getByText("Choose Folder and Import"));
+    });
+
+    await waitFor(() => {
+      expect(view.getByText("Already Imported")).toBeTruthy();
+    });
+
+    expect(view.getByRole("button", { name: /Import Selected/ })).toBeDisabled();
+
+    await act(async () => {
+      fireEvent.click(view.getByRole("button", { name: /Import Selected/ }));
+    });
+
+    expect(importScannedSkills).not.toHaveBeenCalled();
   });
 
   it("scans a GitHub repo and lets users import multiple discovered skills", async () => {
@@ -272,6 +477,13 @@ describe("CreateSkillModal GitHub import", () => {
       ).toBeTruthy();
     });
 
+    const exposedIconMarkup = Array.from(
+      document.body.querySelectorAll("button svg"),
+    )
+      .filter((icon) => !hasHiddenSvgAncestor(icon))
+      .map((icon) => icon.outerHTML);
+    expect(exposedIconMarkup, exposedIconMarkup.join("\n")).toHaveLength(0);
+
     await act(async () => {
       fireEvent.click(view.getByText("Import Selected"));
     });
@@ -296,6 +508,95 @@ describe("CreateSkillModal GitHub import", () => {
       }),
     );
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("treats direct Git scan results as imported when only legacy content URL matches", async () => {
+    useSkillStore.setState({
+      skills: [
+        {
+          id: "skill-pdf",
+          name: "pdf",
+          content_url:
+            "https://raw.githubusercontent.com/anthropics/skills/main/skills/pdf/SKILL.md",
+        },
+      ],
+      installRegistrySkill: vi.fn(),
+    } as never);
+
+    const fetchRemoteContent = vi.fn(async (url: string) => {
+      if (url === "https://api.github.com/repos/anthropics/skills") {
+        return JSON.stringify({
+          default_branch: "main",
+          owner: { login: "anthropics" },
+        });
+      }
+
+      if (
+        url ===
+        "https://api.github.com/repos/anthropics/skills/git/trees/main?recursive=1"
+      ) {
+        return JSON.stringify({
+          tree: [{ path: "skills/pdf/SKILL.md", type: "blob" }],
+        });
+      }
+
+      if (
+        url ===
+        "https://raw.githubusercontent.com/anthropics/skills/main/skills/pdf/SKILL.md"
+      ) {
+        return [
+          "---",
+          "name: pdf",
+          "description: PDF helper",
+          "tags: [pdf]",
+          "---",
+          "",
+          "# PDF",
+        ].join("\n");
+      }
+
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+
+    installWindowMocks({
+      api: {
+        skill: {
+          fetchRemoteContent,
+        },
+      },
+    });
+
+    const view = await renderWithI18n(
+      <CreateSkillModal isOpen={true} onClose={vi.fn()} />,
+      { language: "en" },
+    );
+
+    await act(async () => {
+      fireEvent.click(view.getByText("Install from Git Repository"));
+    });
+
+    fireEvent.change(
+      view.getByPlaceholderText("https://github.com/owner/skill-repo"),
+      {
+        target: { value: "https://github.com/anthropics/skills" },
+      },
+    );
+
+    await act(async () => {
+      fireEvent.click(view.getByText("Scan Repository"));
+    });
+
+    await waitFor(() => {
+      expect(view.getByText("Already Imported")).toBeTruthy();
+    });
+
+    expect(view.getByRole("button", { name: /Import Selected/ })).toBeDisabled();
+
+    await act(async () => {
+      fireEvent.click(view.getByRole("button", { name: /Import Selected/ }));
+    });
+
+    expect(useSkillStore.getState().installRegistrySkill).not.toHaveBeenCalled();
   });
 
   it("keeps a fixed footer and scrollable results area after GitHub scan", async () => {

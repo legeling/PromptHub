@@ -16,6 +16,19 @@ import { installWindowMocks } from "../../helpers/window";
 
 const showToastMock = vi.fn();
 
+function hasHiddenSvgAncestor(element: Element): boolean {
+  let current: Element | null = element;
+
+  while (current) {
+    if (current.getAttribute("aria-hidden") === "true") {
+      return true;
+    }
+    current = current.parentElement;
+  }
+
+  return false;
+}
+
 vi.mock("react-i18next", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react-i18next")>();
 
@@ -311,6 +324,57 @@ describe("SkillProjectsView", () => {
     expect(screen.queryByText("Source / Content")).not.toBeInTheDocument();
     expect(screen.getByText("novel-auditor")).toBeInTheDocument();
     expect(screen.getByText("novel-builder")).toBeInTheDocument();
+  });
+
+  it("keeps project action icons decorative and actions non-submit", async () => {
+    const handleSubmit = vi.fn();
+
+    await act(async () => {
+      render(
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            handleSubmit();
+          }}
+        >
+          <SkillProjectsView />
+        </form>,
+      );
+    });
+
+    const addProjectButton = screen.getByRole("button", {
+      name: "Add Project",
+    });
+    expect(addProjectButton).toHaveAttribute("aria-label", "Add Project");
+
+    await act(async () => {
+      fireEvent.click(addProjectButton);
+    });
+
+    const buttons = Array.from(document.body.querySelectorAll("button"));
+    const implicitButtonMarkup = buttons
+      .filter((button) => button.getAttribute("type") !== "button")
+      .map((button) => button.outerHTML);
+    const exposedIconMarkup = buttons
+      .flatMap((button) => Array.from(button.querySelectorAll("svg")))
+      .filter((icon) => !hasHiddenSvgAncestor(icon))
+      .map((icon) => icon.outerHTML);
+
+    expect(implicitButtonMarkup, implicitButtonMarkup.join("\n")).toHaveLength(
+      0,
+    );
+    expect(exposedIconMarkup, exposedIconMarkup.join("\n")).toHaveLength(0);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    });
+    await act(async () => {
+      fireEvent.click(
+        screen.getAllByRole("button", { name: "Import to My Skills" })[0],
+      );
+    });
+
+    expect(handleSubmit).not.toHaveBeenCalled();
   });
 
   it("marks external symlink project skills distinctly from copied installs", async () => {
@@ -676,6 +740,9 @@ describe("SkillProjectsView", () => {
         name: "Browse",
       }),
     ).toHaveClass("h-10", "shrink-0");
+    expect(
+      screen.getByRole("textbox", { name: "Project Root Path" }),
+    ).toHaveValue("");
     expect(screen.getByTestId("project-scan-path-row")).toHaveClass(
       "w-full",
       "items-start",
@@ -694,6 +761,9 @@ describe("SkillProjectsView", () => {
         name: "Browse",
       }),
     ).toHaveClass("h-10", "shrink-0");
+    expect(screen.getByRole("textbox", { name: "Scan Paths" })).toHaveValue(
+      "",
+    );
 
     fireEvent.click(screen.getAllByRole("button", { name: "Browse" })[0]);
 
@@ -720,6 +790,204 @@ describe("SkillProjectsView", () => {
         rootPath: "/tmp/story-world",
       }),
     );
+  });
+
+  it("ignores repeated project creation clicks while the first save is pending", async () => {
+    const selectFolder = vi.fn().mockResolvedValue("/tmp/story-world");
+    const addSkillProject = vi.fn().mockReturnValue({
+      id: "project-2",
+      name: "story-world",
+      rootPath: "/tmp/story-world",
+      scanPaths: [],
+      deployTargets: ["/tmp/story-world/.agents/skills"],
+      createdAt: 2,
+      updatedAt: 2,
+    });
+    const scanProjectSkills = vi.fn(
+      () =>
+        new Promise<[]>((_resolve) => {
+          // Keep the first save pending so a repeated click can be observed.
+        }),
+    );
+    const selectProject = vi.fn();
+
+    installWindowMocks({
+      api: {
+        skill: {
+          readLocalFileByPath: vi.fn().mockResolvedValue({
+            content: "# novel-auditor\n\nHelp audit fiction.",
+          }),
+          listLocalFilesByPath: vi.fn().mockResolvedValue([]),
+        },
+      },
+      electron: {
+        selectFolder,
+        openPath: vi.fn(),
+      },
+    });
+
+    useSettingsStore.setState({
+      translationMode: "basic",
+      skillInstallMethod: "copy",
+      autoScanInstalledSkills: false,
+      aiModels: [],
+      skillProjects: [],
+      addSkillProject,
+      updateSkillProject: vi.fn(),
+      removeSkillProject: vi.fn(),
+    } as Partial<ReturnType<typeof useSettingsStore.getState>>);
+
+    useSkillStore.setState({
+      skills: [],
+      selectedSkillId: null,
+      searchQuery: "",
+      selectedProjectId: null,
+      projectScanState: {},
+      scanProjectSkills,
+      selectProject,
+      importScannedSkills: vi.fn().mockResolvedValue({
+        importedCount: 0,
+        importedSkills: [],
+        failed: [],
+        skipped: [],
+      }),
+      loadDeployedStatus: vi.fn().mockResolvedValue(undefined),
+      translateContent: vi.fn().mockResolvedValue("# translated"),
+      getTranslationState: vi.fn().mockReturnValue({
+        value: null,
+        hasTranslation: false,
+        isStale: false,
+      }),
+      clearTranslation: vi.fn(),
+      toggleFavorite: vi.fn(),
+      deleteSkill: vi.fn(),
+      loadSkills: vi.fn().mockResolvedValue(undefined),
+      syncSkillFromRepo: vi.fn().mockResolvedValue(null),
+      saveSafetyReport: vi.fn().mockResolvedValue(undefined),
+      selectSkill: vi.fn(),
+    } as Partial<ReturnType<typeof useSkillStore.getState>>);
+
+    await act(async () => {
+      render(<SkillProjectsView />);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Add Project" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Browse" })[0]);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("story-world")).toBeInTheDocument();
+    });
+
+    const createButton = screen.getAllByRole("button", {
+      name: "Add Project",
+    }).at(-1)!;
+
+    fireEvent.click(createButton);
+    fireEvent.click(createButton);
+
+    expect(addSkillProject).toHaveBeenCalledTimes(1);
+    expect(scanProjectSkills).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not close a reopened project form when an earlier save finishes", async () => {
+    const selectFolder = vi.fn().mockResolvedValue("/tmp/story-world");
+    const addSkillProject = vi.fn().mockReturnValue({
+      id: "project-2",
+      name: "story-world",
+      rootPath: "/tmp/story-world",
+      scanPaths: [],
+      deployTargets: ["/tmp/story-world/.agents/skills"],
+      createdAt: 2,
+      updatedAt: 2,
+    });
+    let resolveScan: (value: []) => void = () => undefined;
+    const scanProjectSkills = vi.fn(
+      () =>
+        new Promise<[]>((resolve) => {
+          resolveScan = resolve;
+        }),
+    );
+
+    installWindowMocks({
+      api: {
+        skill: {
+          readLocalFileByPath: vi.fn().mockResolvedValue({
+            content: "# novel-auditor\n\nHelp audit fiction.",
+          }),
+          listLocalFilesByPath: vi.fn().mockResolvedValue([]),
+        },
+      },
+      electron: {
+        selectFolder,
+        openPath: vi.fn(),
+      },
+    });
+
+    useSettingsStore.setState({
+      translationMode: "basic",
+      skillInstallMethod: "copy",
+      autoScanInstalledSkills: false,
+      aiModels: [],
+      skillProjects: [],
+      addSkillProject,
+      updateSkillProject: vi.fn(),
+      removeSkillProject: vi.fn(),
+    } as Partial<ReturnType<typeof useSettingsStore.getState>>);
+
+    useSkillStore.setState({
+      skills: [],
+      selectedSkillId: null,
+      searchQuery: "",
+      selectedProjectId: null,
+      projectScanState: {},
+      scanProjectSkills,
+      selectProject: vi.fn(),
+      importScannedSkills: vi.fn().mockResolvedValue({
+        importedCount: 0,
+        importedSkills: [],
+        failed: [],
+        skipped: [],
+      }),
+      loadDeployedStatus: vi.fn().mockResolvedValue(undefined),
+      translateContent: vi.fn().mockResolvedValue("# translated"),
+      getTranslationState: vi.fn().mockReturnValue({
+        value: null,
+        hasTranslation: false,
+        isStale: false,
+      }),
+      clearTranslation: vi.fn(),
+      toggleFavorite: vi.fn(),
+      deleteSkill: vi.fn(),
+      loadSkills: vi.fn().mockResolvedValue(undefined),
+      syncSkillFromRepo: vi.fn().mockResolvedValue(null),
+      saveSafetyReport: vi.fn().mockResolvedValue(undefined),
+      selectSkill: vi.fn(),
+    } as Partial<ReturnType<typeof useSkillStore.getState>>);
+
+    await act(async () => {
+      render(<SkillProjectsView />);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Add Project" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Browse" })[0]);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("story-world")).toBeInTheDocument();
+    });
+
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Add Project" }).at(-1)!,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Project" }));
+
+    expect(screen.getByText("Project Root Path")).toBeInTheDocument();
+
+    await act(async () => {
+      resolveScan([]);
+    });
+
+    expect(screen.getByText("Project Root Path")).toBeInTheDocument();
   });
 
   it("shows imported card shortcuts and keeps project detail actions for imported skills", async () => {
@@ -984,7 +1252,7 @@ describe("SkillProjectsView", () => {
         "copy",
       );
     });
-  });
+  }, 60000);
 
   it("shows remove from project for already imported project skills", async () => {
     const deleteLocalFileByPath = vi.fn().mockResolvedValue(undefined);
@@ -1129,6 +1397,7 @@ describe("SkillProjectsView", () => {
           author: "PromptHub",
           local_repo_path: "/Users/demo/skills/library-skill",
           source_url: "/Users/demo/skills/library-skill",
+          directory_fingerprint: "fingerprint-library-skill",
           tags: ["general"],
           is_favorite: false,
           currentVersion: 0,
@@ -1165,7 +1434,7 @@ describe("SkillProjectsView", () => {
         "/Users/demo/skills/library-skill",
         "library-skill",
         "/tmp/novel/.agents/skills",
-        { ifExists: "skip", mode: "copy" },
+        { ifExists: "overwrite", mode: "copy" },
       );
     });
 
@@ -1210,6 +1479,7 @@ describe("SkillProjectsView", () => {
           author: "PromptHub",
           local_repo_path: "/Users/demo/skills/library-skill",
           source_url: "/Users/demo/skills/library-skill",
+          directory_fingerprint: "fingerprint-library-skill",
           tags: ["general"],
           is_favorite: false,
           currentVersion: 0,
@@ -1229,6 +1499,7 @@ describe("SkillProjectsView", () => {
               instructions: "# library-skill",
               filePath: "/tmp/novel/.agents/skills/library-skill/SKILL.md",
               localPath: "/tmp/novel/.agents/skills/library-skill",
+              directory_fingerprint: "fingerprint-library-skill",
               platforms: ["Custom"],
             },
           ],
@@ -1252,6 +1523,97 @@ describe("SkillProjectsView", () => {
       screen.getByRole("button", { name: "Import 0 selected skill(s)" }),
     ).toBeDisabled();
     expect(copyRepoByPathToDirectory).not.toHaveBeenCalled();
+  });
+
+  it("replaces a same-name project target when importing a different library variant", async () => {
+    const copyRepoByPathToDirectory = vi
+      .fn()
+      .mockResolvedValue("/tmp/novel/.agents/skills/writer");
+    const getRepoPath = vi
+      .fn()
+      .mockResolvedValue("/Users/demo/skills/writer-dev");
+
+    installWindowMocks({
+      api: {
+        skill: {
+          readLocalFileByPath: vi.fn().mockResolvedValue({
+            content: "# writer\n\nHelp write.",
+          }),
+          listLocalFilesByPath: vi.fn().mockResolvedValue([]),
+          getRepoPath,
+          copyRepoByPathToDirectory,
+        },
+      },
+      electron: {
+        openPath: vi.fn(),
+      },
+    });
+
+    useSkillStore.setState({
+      skills: [
+        {
+          id: "skill-writer-dev",
+          name: "writer",
+          description: "Dev writer",
+          instructions: "# writer dev",
+          content: "# writer dev",
+          protocol_type: "skill",
+          author: "PromptHub",
+          local_repo_path: "/Users/demo/skills/writer-dev",
+          directory_fingerprint: "fingerprint-dev",
+          tags: ["general"],
+          is_favorite: false,
+          currentVersion: 0,
+          created_at: 1,
+          updated_at: 1,
+        },
+      ],
+      selectedProjectId: "project-1",
+      projectScanState: {
+        "project-1": {
+          scannedSkills: [
+            {
+              name: "writer",
+              description: "Stable writer",
+              author: "PromptHub",
+              tags: ["general"],
+              instructions: "# writer stable",
+              filePath: "/tmp/novel/.agents/skills/writer/SKILL.md",
+              localPath: "/tmp/novel/.agents/skills/writer",
+              directory_fingerprint: "fingerprint-stable",
+              platforms: ["Custom"],
+            },
+          ],
+          isScanning: false,
+          error: null,
+        },
+      },
+      scanProjectSkills: vi.fn().mockResolvedValue([]),
+    } as Partial<ReturnType<typeof useSkillStore.getState>>);
+
+    await act(async () => {
+      render(<SkillProjectsView />);
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Import from My Skills" }),
+    );
+    const devWriterButton = screen.getByText("Dev writer").closest("button");
+    expect(devWriterButton).not.toBeNull();
+    fireEvent.click(devWriterButton!);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Import 1 selected skill(s)" }),
+    );
+
+    await waitFor(() => {
+      expect(getRepoPath).toHaveBeenCalledWith("skill-writer-dev");
+      expect(copyRepoByPathToDirectory).toHaveBeenCalledWith(
+        "/Users/demo/skills/writer-dev",
+        "writer",
+        "/tmp/novel/.agents/skills",
+        { ifExists: "overwrite", mode: "copy" },
+      );
+    });
   });
 
   it("supports advanced import targets and custom folders", async () => {
@@ -1341,19 +1703,19 @@ describe("SkillProjectsView", () => {
         "/Users/demo/skills/library-skill",
         "library-skill",
         "/tmp/novel/.agents/skills",
-        { ifExists: "skip", mode: "copy" },
+        { ifExists: "overwrite", mode: "copy" },
       );
       expect(copyRepoByPathToDirectory).toHaveBeenCalledWith(
         "/Users/demo/skills/library-skill",
         "library-skill",
         "/tmp/novel/.claude/skills",
-        { ifExists: "skip", mode: "copy" },
+        { ifExists: "overwrite", mode: "copy" },
       );
       expect(copyRepoByPathToDirectory).toHaveBeenCalledWith(
         "/Users/demo/skills/library-skill",
         "library-skill",
         "/tmp/novel/custom-targets",
-        { ifExists: "skip", mode: "copy" },
+        { ifExists: "overwrite", mode: "copy" },
       );
     });
 
@@ -1363,7 +1725,7 @@ describe("SkillProjectsView", () => {
         "success",
       );
     });
-  }, 15000);
+  }, 60000);
 
   it("supports symlink mode when importing my skills into a project", async () => {
     const copyRepoByPathToDirectory = vi
@@ -1444,7 +1806,7 @@ describe("SkillProjectsView", () => {
         "/Users/demo/skills/library-skill",
         "library-skill",
         "/tmp/novel/.agents/skills",
-        { ifExists: "skip", mode: "symlink" },
+        { ifExists: "overwrite", mode: "symlink" },
       );
     });
   }, 15000);

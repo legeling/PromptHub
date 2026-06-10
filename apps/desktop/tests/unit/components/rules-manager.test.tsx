@@ -10,6 +10,19 @@ import { installWindowMocks } from "../../helpers/window";
 
 const showToast = vi.fn();
 
+function hasHiddenSvgAncestor(element: Element): boolean {
+  let current: Element | null = element;
+
+  while (current) {
+    if (current.getAttribute("aria-hidden") === "true") {
+      return true;
+    }
+    current = current.parentElement;
+  }
+
+  return false;
+}
+
 vi.mock("../../../src/renderer/components/ui/Toast", () => ({
   useToast: () => ({ showToast }),
 }));
@@ -162,6 +175,15 @@ describe("RulesManager", () => {
       expect(screen.getByText("# External edit")).toBeInTheDocument();
     });
 
+    const dismissConflictButton = screen.getByRole("button", {
+      name: "Dismiss rule conflict",
+    });
+    expect(dismissConflictButton).toHaveAttribute("type", "button");
+    expect(document.body.querySelector(".lucide-circle-alert")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+
     fireEvent.click(screen.getByRole("button", { name: "Keep external file version" }));
 
     expect(api.rules.resolveConflict).not.toHaveBeenCalled();
@@ -253,8 +275,12 @@ describe("RulesManager", () => {
       await renderWithI18n(<RulesManager />, { language: "en" });
     });
 
-    const instruction = await screen.findByPlaceholderText(
-      /add testing requirements, reorganize sections/i,
+    const instruction = await screen.findByRole("textbox", {
+      name: /Ask AI to improve/i,
+    });
+    expect(instruction).toHaveAttribute(
+      "placeholder",
+      expect.stringMatching(/add testing requirements, reorganize sections/i),
     );
 
     fireEvent.change(instruction, {
@@ -364,6 +390,106 @@ describe("RulesManager", () => {
     });
 
     expect(showToast).toHaveBeenCalledWith("Snapshot restored to draft", "success");
+  });
+
+  it("keeps rules manager actions non-submit with decorative button icons", async () => {
+    const handleSubmit = vi.fn();
+    const versions = Array.from({ length: 6 }, (_, index) => ({
+      id: `v${index + 1}`,
+      savedAt: `2026-05-08T12:0${index}:00.000Z`,
+      content:
+        index === 0
+          ? "# Current rules"
+          : `# Historical snapshot ${index + 1}`,
+      source: "manual-save" as const,
+    }));
+
+    installWindowMocks({
+      api: {
+        rules: {
+          list: vi.fn().mockResolvedValue([
+            {
+              id: "claude-global",
+              platformId: "claude",
+              platformName: "Claude Code",
+              platformIcon: "Bot",
+              platformDescription: "Claude rules",
+              name: "CLAUDE.md",
+              description: "Claude rules",
+              path: "/Users/test/.claude/CLAUDE.md",
+              exists: true,
+              group: "assistant",
+            },
+          ]),
+          read: vi.fn().mockResolvedValue({
+            id: "claude-global",
+            platformId: "claude",
+            platformName: "Claude Code",
+            platformIcon: "Bot",
+            platformDescription: "Claude rules",
+            name: "CLAUDE.md",
+            description: "Claude rules",
+            path: "/Users/test/.claude/CLAUDE.md",
+            exists: true,
+            group: "assistant",
+            content: "# Current rules",
+            versions,
+          }),
+        },
+      },
+      electron: {
+        openPath: vi.fn(),
+      },
+    });
+
+    await act(async () => {
+      await renderWithI18n(
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            handleSubmit();
+          }}
+        >
+          <RulesManager />
+        </form>,
+        { language: "en" },
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("# Current rules")).toBeInTheDocument();
+    });
+
+    const showMoreButton = screen.getByRole("button", { name: /Show/i });
+    expect(showMoreButton).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(showMoreButton);
+    expect(showMoreButton).toHaveAttribute("aria-expanded", "true");
+
+    fireEvent.click(screen.getByRole("button", { name: /snapshot 2/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Back to Draft" })).toBeInTheDocument();
+    });
+
+    const buttons = Array.from(document.body.querySelectorAll("button"));
+    const implicitButtonMarkup = buttons
+      .filter((button) => button.getAttribute("type") !== "button")
+      .map((button) => button.outerHTML);
+    const exposedIconMarkup = buttons
+      .flatMap((button) => Array.from(button.querySelectorAll("svg")))
+      .filter((icon) => !hasHiddenSvgAncestor(icon))
+      .map((icon) => icon.outerHTML);
+
+    expect(implicitButtonMarkup, implicitButtonMarkup.join("\n")).toHaveLength(
+      0,
+    );
+    expect(exposedIconMarkup, exposedIconMarkup.join("\n")).toHaveLength(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "Back to Draft" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open Location" }));
+
+    expect(handleSubmit).not.toHaveBeenCalled();
   });
 
   it("returns to the draft view when clicking the current saved snapshot card", async () => {
@@ -479,13 +605,12 @@ describe("RulesManager", () => {
       await renderWithI18n(<RulesManager />, { language: "en" });
     });
 
-    const textboxes = screen.getAllByRole("textbox");
-    const editor = textboxes.filter(
-      (node) => (node as HTMLTextAreaElement).value === "# Gemini rules",
-    );
+    const editor = await screen.findByRole("textbox", {
+      name: "Rule Content",
+    });
 
-    expect(editor).toHaveLength(1);
-    expect(editor[0]).not.toHaveAttribute("readonly");
+    expect(editor).toHaveValue("# Gemini rules");
+    expect(editor).not.toHaveAttribute("readonly");
   });
 
   it("keeps the selected rules item stable after saving the current draft", async () => {

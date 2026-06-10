@@ -106,9 +106,13 @@
   stores currently do not expose a stable native category taxonomy, so parsed
   entries use neutral `general` internally and Store detail hides category
   metadata for those source labels/URLs.
-- Documented that skills.sh and ClawHub currently materialize the exposed
-  `SKILL.md` only. Full scripts/assets package installation remains a separate
-  follow-up design item.
+- Documented full multi-file package materialization precedence and safety
+  boundaries. ClawHub entries with `package_url` use main-process ZIP package
+  materialization; skills.sh entries prefer resolvable Git package directories;
+  only entries without a package source fall back to writing `SKILL.md` alone.
+  The design records archive path traversal rejection, temporary extraction
+  cleanup, DB rollback on materialization failure, and `directory_fingerprint`
+  persistence for scripts/assets drift detection.
 
 ## Verification
 
@@ -157,3 +161,13 @@
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/sidebar.test.tsx --testNamePattern "preconfigured community|ClawHub|skills.sh"`
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/services/clawhub-store.test.ts tests/unit/services/skills-sh-store.test.ts tests/unit/services/skill-store-search.test.ts`
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/services/skills-sh-store.test.ts tests/unit/services/clawhub-store.test.ts tests/unit/services/skill-store-search.test.ts`
+- Existing verification for the package materialization boundary:
+  `skill.store.test.ts` covers ClawHub install choosing `saveRemoteZipToRepo`
+  instead of single-file `SKILL.md`; `skill-installer-remote-git-package.test.ts`
+  covers safe ZIP extraction, scripts/assets copying, traversal rejection, and
+  temporary directory cleanup; `skill-local-repo-ipc.test.ts` covers
+  fingerprint persistence after remote ZIP materialization.
+- 2026-06-10 focused re-check passed:
+  `pnpm --filter @prompthub/desktop exec vitest run tests/unit/stores/skill.store.test.ts --testNamePattern "package|ClawHub"`;
+  `pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/skill-installer-remote-git-package.test.ts --testNamePattern "remote zip"`;
+  `pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/skill-local-repo-ipc.test.ts --testNamePattern "remote zip"`.

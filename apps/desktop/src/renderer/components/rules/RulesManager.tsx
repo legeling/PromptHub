@@ -262,7 +262,7 @@ export function RulesManager() {
                   title={t("rules.openLocation", "Open Location")}
                   aria-label={t("rules.openLocation", "Open Location")}
                 >
-                  <FolderOpenIcon className="h-4 w-4" />
+                  <FolderOpenIcon aria-hidden="true" className="h-4 w-4" />
                 </button>
               ) : null}
             </div>
@@ -327,7 +327,7 @@ export function RulesManager() {
                   onClick={() => setSelectedVersionId(null)}
                   className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
                 >
-                  <ArrowLeftIcon className="h-4 w-4" />
+                  <ArrowLeftIcon aria-hidden="true" className="h-4 w-4" />
                   {t("rules.versionBackToDraft", "Back to Draft")}
                 </button>
                 <button
@@ -335,7 +335,7 @@ export function RulesManager() {
                   onClick={handleRestoreVersion}
                   className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-all hover:bg-primary/90"
                 >
-                  <RotateCcwIcon className="h-4 w-4" />
+                  <RotateCcwIcon aria-hidden="true" className="h-4 w-4" />
                   {t("rules.versionRestoreToDraft", "Restore to Draft")}
                 </button>
               </div>
@@ -356,7 +356,7 @@ export function RulesManager() {
                     <span className="relative inline-flex h-2 w-2 rounded-full bg-primary-foreground" />
                   </span>
                 ) : (
-                  <SaveIcon className="h-4 w-4" />
+                  <SaveIcon aria-hidden="true" className="h-4 w-4" />
                 )}
                 {isSaving ? t("common.saving", "Saving...") : t("rules.saveAndOverwrite", "Save and overwrite file")}
               </button>
@@ -376,6 +376,7 @@ export function RulesManager() {
                   {t("rules.aiRewriteHint", "Describe your desired changes and AI will generate a new draft for the current rules file.")}
                 </p>
                 <textarea
+                  aria-label={t("rules.aiRewriteTitle", "Ask AI to improve")}
                   value={aiInstruction}
                   onChange={(event) => setAiInstruction(event.target.value)}
                   className="mt-3 h-24 w-full resize-none rounded-xl border border-border bg-background p-3 text-sm text-foreground outline-none transition-colors focus:border-primary/40 focus:ring-1 focus:ring-primary/40"
@@ -401,7 +402,7 @@ export function RulesManager() {
                   }
                   className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <SparklesIcon className="h-4 w-4" />
+                  <SparklesIcon aria-hidden="true" className="h-4 w-4" />
                   {isRewriting
                     ? t("rules.aiRewriteWorking", "Generating draft...")
                     : t("rules.aiRewriteAction", "Improve with AI")}
@@ -503,7 +504,10 @@ export function RulesManager() {
                                     }}
                                     className="hidden rounded-md p-1 text-muted-foreground opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:flex group-hover:opacity-100"
                                   >
-                                    <Trash2Icon className="h-3 w-3" />
+                                    <Trash2Icon
+                                      aria-hidden="true"
+                                      className="h-3 w-3"
+                                    />
                                   </button>
                                 )}
                               </div>
@@ -514,17 +518,24 @@ export function RulesManager() {
                       {currentFile.versions.length > VISIBLE_SNAPSHOTS_LIMIT && (
                         <button
                           type="button"
+                          aria-expanded={showAllVersions}
                           onClick={() => setShowAllVersions((v) => !v)}
                           className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border py-2 text-xs text-muted-foreground transition-colors hover:border-border/80 hover:bg-muted/40 hover:text-foreground"
                         >
                           {showAllVersions ? (
                             <>
-                              <ChevronUpIcon className="h-3.5 w-3.5" />
+                              <ChevronUpIcon
+                                aria-hidden="true"
+                                className="h-3.5 w-3.5"
+                              />
                               {t("rules.versionShowLess")}
                             </>
                           ) : (
                             <>
-                              <ChevronDownIcon className="h-3.5 w-3.5" />
+                              <ChevronDownIcon
+                                aria-hidden="true"
+                                className="h-3.5 w-3.5"
+                              />
                               {t("rules.versionShowMore", {
                                 count: currentFile.versions.length - VISIBLE_SNAPSHOTS_LIMIT,
                               })}
@@ -660,6 +671,7 @@ export function RulesManager() {
                     </div>
                   </div>
                   <textarea
+                    aria-label={t("rules.editorCanvas", "Rule Content")}
                     value={editorContent}
                     onChange={(event) => setDraftContent(event.target.value)}
                     readOnly={isRewriting}
@@ -704,14 +716,17 @@ export function RulesManager() {
     />
     {syncConflictFile ? (
       <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
-        <div
+        <button
+          type="button"
+          aria-label={t("rules.conflictDismiss", "Dismiss rule conflict")}
           className="absolute inset-0 bg-background/60 backdrop-blur-sm"
           onClick={() => setDismissedConflictRuleId(syncConflictFile.id)}
+          disabled={isResolvingConflict}
         />
         <div className="relative w-full max-w-lg rounded-xl border border-border bg-card p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-base">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400">
-              <AlertCircleIcon className="h-5 w-5" />
+              <AlertCircleIcon aria-hidden="true" className="h-5 w-5" />
             </div>
             <div className="min-w-0">
               <h3 className="text-base font-semibold text-foreground">

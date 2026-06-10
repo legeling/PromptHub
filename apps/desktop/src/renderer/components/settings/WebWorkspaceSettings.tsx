@@ -102,7 +102,7 @@ export function WebWorkspaceSettings({
         <div className="divide-y divide-border/70">
           <div className="px-4 py-4">
             <div className="flex items-center gap-2 text-sm font-medium">
-              <GlobeIcon className="h-4 w-4 text-primary" />
+              <GlobeIcon className="h-4 w-4 text-primary" aria-hidden="true" />
               <span>{t("settings.webOrigin")}</span>
             </div>
             <p className="mt-1 break-all text-sm text-muted-foreground">
@@ -116,7 +116,7 @@ export function WebWorkspaceSettings({
           <div className="grid gap-3 p-4 md:grid-cols-2">
             <div className="rounded-2xl border border-border/70 bg-muted/20 px-4 py-4">
               <div className="flex items-center gap-2 text-sm font-medium">
-                <UserIcon className="h-4 w-4 text-primary" />
+                <UserIcon className="h-4 w-4 text-primary" aria-hidden="true" />
                 <span>{t("settings.currentUser")}</span>
               </div>
               <p className="mt-2 text-sm text-foreground">
@@ -125,7 +125,7 @@ export function WebWorkspaceSettings({
             </div>
             <div className="rounded-2xl border border-border/70 bg-muted/20 px-4 py-4">
               <div className="flex items-center gap-2 text-sm font-medium">
-                <LaptopIcon className="h-4 w-4 text-primary" />
+                <LaptopIcon className="h-4 w-4 text-primary" aria-hidden="true" />
                 <span>{t("settings.connectedClient")}</span>
               </div>
               <p className="mt-2 text-sm text-foreground">{clientLabel}</p>
@@ -134,6 +134,7 @@ export function WebWorkspaceSettings({
 
           <div className="grid gap-3 p-4 md:grid-cols-3">
             <button
+              type="button"
               onClick={() => onNavigate("devices")}
               className="flex items-center justify-between rounded-2xl border border-border/70 bg-muted/20 px-4 py-4 text-left transition-colors hover:bg-muted/40"
             >
@@ -145,9 +146,13 @@ export function WebWorkspaceSettings({
                   {t("settings.deviceManagementDesc")}
                 </p>
               </div>
-              <GlobeIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <GlobeIcon
+                className="h-4 w-4 shrink-0 text-muted-foreground"
+                aria-hidden="true"
+              />
             </button>
             <button
+              type="button"
               onClick={() => onNavigate("data")}
               className="flex items-center justify-between rounded-2xl border border-border/70 bg-muted/20 px-4 py-4 text-left transition-colors hover:bg-muted/40"
             >
@@ -157,16 +162,23 @@ export function WebWorkspaceSettings({
                   {t("settings.skillBackupHint")}
                 </p>
               </div>
-              <DatabaseIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <DatabaseIcon
+                className="h-4 w-4 shrink-0 text-muted-foreground"
+                aria-hidden="true"
+              />
             </button>
             <button
+              type="button"
               onClick={() => onNavigate("ai")}
               className="flex items-center justify-between rounded-2xl border border-border/70 bg-muted/20 px-4 py-4 text-left transition-colors hover:bg-muted/40"
             >
               <div>
                 <div className="text-sm font-medium">{t("settings.ai")}</div>
               </div>
-              <BrainIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <BrainIcon
+                className="h-4 w-4 shrink-0 text-muted-foreground"
+                aria-hidden="true"
+              />
             </button>
           </div>
 
@@ -174,7 +186,7 @@ export function WebWorkspaceSettings({
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2 text-sm font-medium">
-                  <KeyIcon className="h-4 w-4 text-primary" />
+                  <KeyIcon className="h-4 w-4 text-primary" aria-hidden="true" />
                   <span>{t("settings.webLoginPassword")}</span>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -195,16 +207,19 @@ export function WebWorkspaceSettings({
                 <PasswordInput
                   value={currentPassword}
                   onChange={setCurrentPassword}
+                  ariaLabel={t("settings.oldPwdPlaceholder")}
                   placeholder={t("settings.oldPwdPlaceholder")}
                 />
                 <PasswordInput
                   value={newPassword}
                   onChange={setNewPassword}
+                  ariaLabel={t("settings.webNewLoginPasswordPlaceholder")}
                   placeholder={t("settings.webNewLoginPasswordPlaceholder")}
                 />
                 <PasswordInput
                   value={confirmPassword}
                   onChange={setConfirmPassword}
+                  ariaLabel={t("settings.webConfirmLoginPasswordPlaceholder")}
                   placeholder={t("settings.webConfirmLoginPasswordPlaceholder")}
                 />
                 <button

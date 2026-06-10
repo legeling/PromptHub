@@ -1,7 +1,8 @@
-import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { screen, fireEvent } from "@testing-library/react";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import type { ColumnConfig } from "../../../src/renderer/hooks/useTableConfig";
 import { ColumnConfigMenu } from "../../../src/renderer/components/prompt/ColumnConfigMenu";
+import { renderWithI18n } from "../../helpers/i18n";
 
 function makeColumns(): ColumnConfig[] {
   return [
@@ -13,65 +14,134 @@ function makeColumns(): ColumnConfig[] {
 }
 
 describe("ColumnConfigMenu", () => {
-  it("renders the trigger button closed by default", () => {
-    render(
-      <ColumnConfigMenu
-        columns={makeColumns()}
-        onToggleVisibility={vi.fn()}
-        onReset={vi.fn()}
-      />,
-    );
-    // Trigger button is one button; menu is not in DOM yet.
-    const triggerButton = screen.getByRole("button");
-    expect(triggerButton).toBeInTheDocument();
-    expect(screen.queryByText("prompt.title")).not.toBeInTheDocument();
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
-  it("opens the menu and lists configurable columns (excluding checkbox / actions)", () => {
-    render(
+  it("renders the trigger button closed by default", async () => {
+    await renderWithI18n(
       <ColumnConfigMenu
         columns={makeColumns()}
         onToggleVisibility={vi.fn()}
         onReset={vi.fn()}
       />,
+      { language: "en" },
     );
-    fireEvent.click(screen.getByRole("button"));
+    // Trigger button is one button; menu is not in DOM yet.
+    const triggerButton = screen.getByRole("button", { name: "Column Settings" });
+    expect(triggerButton).toBeInTheDocument();
+    expect(triggerButton).toHaveAttribute("type", "button");
+    expect(triggerButton).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("Title")).not.toBeInTheDocument();
+  });
+
+  it("does not attach outside-click listeners while closed", async () => {
+    const addListenerSpy = vi.spyOn(document, "addEventListener");
+
+    await renderWithI18n(
+      <ColumnConfigMenu
+        columns={makeColumns()}
+        onToggleVisibility={vi.fn()}
+        onReset={vi.fn()}
+      />,
+      { language: "en" },
+    );
+
+    const mousedownCalls = addListenerSpy.mock.calls.filter(
+      ([eventName]) => eventName === "mousedown",
+    );
+    expect(mousedownCalls).toHaveLength(0);
+  });
+
+  it("attaches the outside-click listener only while open", async () => {
+    const addListenerSpy = vi.spyOn(document, "addEventListener");
+    const removeListenerSpy = vi.spyOn(document, "removeEventListener");
+
+    await renderWithI18n(
+      <ColumnConfigMenu
+        columns={makeColumns()}
+        onToggleVisibility={vi.fn()}
+        onReset={vi.fn()}
+      />,
+      { language: "en" },
+    );
+
+    const triggerButton = screen.getByRole("button", { name: "Column Settings" });
+    fireEvent.click(triggerButton);
+    expect(triggerButton).toHaveAttribute("aria-expanded", "true");
+
+    const mousedownCalls = addListenerSpy.mock.calls.filter(
+      ([eventName]) => eventName === "mousedown",
+    );
+    expect(mousedownCalls).toHaveLength(1);
+
+    fireEvent.mouseDown(document.body);
+
+    expect(removeListenerSpy.mock.calls).toContainEqual([
+      "mousedown",
+      mousedownCalls[0][1],
+    ]);
+  });
+
+  it("opens the menu and lists configurable columns (excluding checkbox / actions)", async () => {
+    await renderWithI18n(
+      <ColumnConfigMenu
+        columns={makeColumns()}
+        onToggleVisibility={vi.fn()}
+        onReset={vi.fn()}
+      />,
+      { language: "en" },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Column Settings" }));
     // 'title' and 'tags' should appear; 'Checkbox' and 'Actions' should not.
-    expect(screen.getByText("prompt.title")).toBeInTheDocument();
-    expect(screen.getByText("prompt.tags")).toBeInTheDocument();
+    expect(screen.getByText("Title")).toBeInTheDocument();
+    expect(screen.getByText("Tags")).toBeInTheDocument();
+    expect(screen.getByRole("menu", { name: "Column Settings" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitemcheckbox", { name: "Title" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(screen.getByRole("menuitemcheckbox", { name: "Tags" })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
     expect(screen.queryByText("Checkbox")).not.toBeInTheDocument();
     expect(screen.queryByText("Actions")).not.toBeInTheDocument();
   });
 
-  it("invokes onToggleVisibility with the column id", () => {
+  it("invokes onToggleVisibility with the column id", async () => {
     const onToggleVisibility = vi.fn();
-    render(
+    await renderWithI18n(
       <ColumnConfigMenu
         columns={makeColumns()}
         onToggleVisibility={onToggleVisibility}
         onReset={vi.fn()}
       />,
+      { language: "en" },
     );
-    fireEvent.click(screen.getByRole("button"));
-    fireEvent.click(screen.getByText("prompt.title"));
+    fireEvent.click(screen.getByRole("button", { name: "Column Settings" }));
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Title" }));
     expect(onToggleVisibility).toHaveBeenCalledWith("title");
   });
 
-  it("invokes onReset and closes the menu when reset is clicked", () => {
+  it("invokes onReset and closes the menu when reset is clicked", async () => {
     const onReset = vi.fn();
-    render(
+    await renderWithI18n(
       <ColumnConfigMenu
         columns={makeColumns()}
         onToggleVisibility={vi.fn()}
         onReset={onReset}
       />,
+      { language: "en" },
     );
-    fireEvent.click(screen.getByRole("button"));
+    fireEvent.click(screen.getByRole("button", { name: "Column Settings" }));
     // Reset button is the only button with the rotate-ccw icon; we identify
-    // by the i18n key 'common.reset'.
-    fireEvent.click(screen.getByText("common.reset"));
+    // by its localized label.
+    const resetButton = screen.getByRole("button", { name: "Reset" });
+    expect(resetButton).toHaveAttribute("type", "button");
+    fireEvent.click(resetButton);
     expect(onReset).toHaveBeenCalledTimes(1);
     // The menu should now be closed; configurable column entries gone.
-    expect(screen.queryByText("prompt.title")).not.toBeInTheDocument();
+    expect(screen.queryByText("Title")).not.toBeInTheDocument();
   });
 });

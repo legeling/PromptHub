@@ -62,7 +62,10 @@ export class SkillRenderBoundary extends React.Component<
         }`}
       >
         <div className="mb-4 rounded-full bg-red-500/10 p-3 text-red-500">
-          <AlertTriangleIcon className={compact ? "h-5 w-5" : "h-6 w-6"} />
+          <AlertTriangleIcon
+            aria-hidden="true"
+            className={compact ? "h-5 w-5" : "h-6 w-6"}
+          />
         </div>
         <div className="text-base font-semibold text-foreground">
           {this.props.title}
@@ -86,7 +89,7 @@ export class SkillRenderBoundary extends React.Component<
               onClick={() => this.resetBoundary(this.props.onSecondaryAction)}
               className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90"
             >
-              <RefreshCwIcon className="h-4 w-4" />
+              <RefreshCwIcon aria-hidden="true" className="h-4 w-4" />
               {this.props.secondaryActionLabel}
             </button>
           ) : null}

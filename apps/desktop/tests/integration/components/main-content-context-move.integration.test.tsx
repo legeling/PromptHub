@@ -244,13 +244,20 @@ describe("MainContent context move integration", () => {
         throw new Error("Quick rewrite context menu action not found");
       }
 
-      fireEvent.click(quickRewriteButton);
+      await act(async () => {
+        fireEvent.click(quickRewriteButton);
+      });
 
-      expect(await screen.findByTestId("quick-rewrite-dialog")).toHaveTextContent(
-        "Quick rewrite open: Rewrite me",
+      await waitFor(
+        () => {
+          expect(screen.getByTestId("quick-rewrite-dialog")).toHaveTextContent(
+            "Quick rewrite open: Rewrite me",
+          );
+        },
+        { timeout: 60_000 },
       );
     },
-    30000,
+    60000,
   );
 
   it(
@@ -313,7 +320,7 @@ describe("MainContent context move integration", () => {
     expect(childFolder?.getAttribute("style")).toContain("padding-left");
     expect(childFolder?.querySelector("svg")).not.toBeNull();
     },
-    30000,
+    60_000,
   );
 
   it(

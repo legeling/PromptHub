@@ -21,18 +21,21 @@ export function ImagePreviewModal({ isOpen, onClose, imageSrc }: ImagePreviewMod
     }, [imageSrc]);
 
     useEffect(() => {
+        if (!isOpen || !imageSrc) return;
+
+        const previousOverflow = document.body.style.overflow;
         const handleEsc = (e: KeyboardEvent) => {
             if (e.key === 'Escape') onClose();
         };
-        if (isOpen) {
-            window.addEventListener('keydown', handleEsc);
-            document.body.style.overflow = 'hidden';
-        }
+
+        window.addEventListener('keydown', handleEsc);
+        document.body.style.overflow = 'hidden';
+
         return () => {
             window.removeEventListener('keydown', handleEsc);
-            document.body.style.overflow = 'unset';
+            document.body.style.overflow = previousOverflow;
         };
-    }, [isOpen, onClose]);
+    }, [isOpen, imageSrc, onClose]);
 
     if (!isOpen || !imageSrc) return null;
 
@@ -40,20 +43,19 @@ export function ImagePreviewModal({ isOpen, onClose, imageSrc }: ImagePreviewMod
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-base">
             {/* Close button */}
             <button
+                type="button"
                 onClick={onClose}
+                aria-label={t('common.close', 'Close')}
                 className="absolute top-4 right-4 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
             >
-                <XIcon className="w-6 h-6" />
+                <XIcon aria-hidden="true" className="w-6 h-6" />
             </button>
 
             {/* Image container */}
-            <div
-                className="relative max-w-[90vw] max-h-[90vh] outline-none"
-                onClick={(e) => e.stopPropagation()}
-            >
+            <div className="relative max-w-[90vw] max-h-[90vh] outline-none">
                 {imageError ? (
                     <div className="flex flex-col items-center justify-center p-12 bg-muted/20 rounded-lg text-muted-foreground">
-                        <ImageIcon className="w-16 h-16 mb-4 opacity-50" />
+                        <ImageIcon aria-hidden="true" className="w-16 h-16 mb-4 opacity-50" />
                         <p className="text-sm">{t('common.imageLoadFailed')}</p>
                     </div>
                 ) : (
@@ -68,6 +70,9 @@ export function ImagePreviewModal({ isOpen, onClose, imageSrc }: ImagePreviewMod
 
             {/* Click outside to close */}
             <div
+                data-testid="image-preview-backdrop"
+                role="presentation"
+                aria-hidden="true"
                 className="absolute inset-0 -z-10"
                 onClick={onClose}
             />

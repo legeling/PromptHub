@@ -1,4 +1,5 @@
 import { render, screen, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
 import type { RegistrySkill } from "@prompthub/shared/types";
 import { SkillStoreCard } from "../../../src/renderer/components/skill/SkillStoreCard";
@@ -19,6 +20,23 @@ function makeSkill(overrides: Partial<RegistrySkill> = {}): RegistrySkill {
     content: "# Test\n",
   };
   return { ...base, ...overrides };
+}
+
+function hasHiddenSvgAncestor(element: Element): boolean {
+  let current: Element | null = element;
+  while (current) {
+    if (current.getAttribute("aria-hidden") === "true") return true;
+    current = current.parentElement;
+  }
+  return false;
+}
+
+function getExposedButtonMedia(): string[] {
+  return Array.from(
+    document.body.querySelectorAll('button svg, button img, button [role="img"]'),
+  )
+    .filter((element) => !hasHiddenSvgAncestor(element))
+    .map((element) => element.outerHTML);
 }
 
 /**
@@ -79,6 +97,78 @@ describe("SkillStoreCard", () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
+  it("exposes the card as a native non-submit keyboard control", async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+    render(
+      <form>
+        <SkillStoreCard
+          skill={makeSkill()}
+          isInstalled
+          index={0}
+          onClick={onClick}
+        />
+      </form>,
+    );
+
+    const card = screen.getByRole("button", { name: /Test Skill/ });
+    expect(card).toHaveAttribute("type", "button");
+    expect(card).not.toHaveAttribute("role");
+    expect(card).not.toHaveAttribute("tabindex");
+
+    card.focus();
+    await user.keyboard("{Enter}");
+    await user.keyboard(" ");
+
+    expect(onClick).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not expose the outer card wrapper as a hidden click target", () => {
+    const onClick = vi.fn();
+    const { container } = render(
+      <SkillStoreCard
+        skill={makeSkill()}
+        isInstalled={false}
+        index={0}
+        onClick={onClick}
+      />,
+    );
+
+    const wrapper = container.firstElementChild;
+    expect(wrapper).not.toBeNull();
+
+    fireEvent.click(wrapper!);
+
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it("keeps all button media decorative while preserving button names", () => {
+    render(
+      <SkillStoreCard
+        skill={makeSkill({
+          icon_emoji: undefined,
+          icon_url: "data:image/png;base64,abc",
+        })}
+        isInstalled={false}
+        batchMode
+        isSelected
+        index={0}
+        onClick={vi.fn()}
+        onOpenDetail={vi.fn()}
+        onQuickInstall={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: /Test Skill/u }))
+      .toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Unselect store skill" }))
+      .toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "View detail" }))
+      .toBeInTheDocument();
+    expect(getExposedButtonMedia(), getExposedButtonMedia().join("\n"))
+      .toHaveLength(0);
+  });
+
   it("renders the green check badge when isInstalled is true", () => {
     const { container } = render(
       <SkillStoreCard
@@ -91,7 +181,8 @@ describe("SkillStoreCard", () => {
     const badge = getStateBadge(container);
     expect(badge).not.toBeNull();
     expect(badge!.className).toContain("text-green-500");
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Install" }))
+      .not.toBeInTheDocument();
   });
 
   it("renders the amber update badge when hasUpdate is true (overrides installed)", () => {
@@ -107,7 +198,8 @@ describe("SkillStoreCard", () => {
     const badge = getStateBadge(container);
     expect(badge).not.toBeNull();
     expect(badge!.className).toContain("text-amber-500");
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Install" }))
+      .not.toBeInTheDocument();
   });
 
   it("renders the install button when not installed and triggers onQuickInstall", () => {
@@ -122,10 +214,31 @@ describe("SkillStoreCard", () => {
         onClick={vi.fn()}
       />,
     );
-    const button = screen.getByRole("button");
+    const button = screen.getByRole("button", { name: "Install" });
     fireEvent.click(button);
     expect(onQuickInstall).toHaveBeenCalledTimes(1);
     expect(onQuickInstall.mock.calls[0][0]).toBe(skill);
+  });
+
+  it("does not trigger the card click when quick install is clicked", () => {
+    const onClick = vi.fn();
+    const onQuickInstall = vi.fn();
+    const skill = makeSkill();
+
+    render(
+      <SkillStoreCard
+        skill={skill}
+        isInstalled={false}
+        index={0}
+        onQuickInstall={onQuickInstall}
+        onClick={onClick}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Install" }));
+
+    expect(onQuickInstall).toHaveBeenCalledTimes(1);
+    expect(onClick).not.toHaveBeenCalled();
   });
 
   it("disables the install button and shows a spinner while installing this skill", () => {
@@ -139,8 +252,9 @@ describe("SkillStoreCard", () => {
         onClick={vi.fn()}
       />,
     );
-    const button = screen.getByRole("button");
+    const button = screen.getByRole("button", { name: "Installing..." });
     expect(button).toBeDisabled();
+    expect(button).toHaveAttribute("type", "button");
     // The spinner adds animate-spin to the icon.
     const spinner = container.querySelector(".animate-spin");
     expect(spinner).not.toBeNull();
@@ -161,7 +275,8 @@ describe("SkillStoreCard", () => {
       />,
     );
 
-    expect(screen.getByRole("button")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Installing..." }))
+      .toBeDisabled();
     expect(container.querySelector(".animate-spin")).not.toBeNull();
   });
 
@@ -177,7 +292,8 @@ describe("SkillStoreCard", () => {
       />,
     );
 
-    expect(screen.getByRole("button")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Installing..." }))
+      .toBeDisabled();
     expect(container.querySelector(".animate-spin")).not.toBeNull();
     expect(container.querySelector(".text-green-500")).toBeNull();
   });
@@ -193,7 +309,8 @@ describe("SkillStoreCard", () => {
         onClick={vi.fn()}
       />,
     );
-    expect(screen.getByRole("button")).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: "Install" }))
+      .not.toBeDisabled();
   });
 
   it("renders icon-only batch selection and detail controls in batch mode", () => {
@@ -223,6 +340,10 @@ describe("SkillStoreCard", () => {
     expect(selectButton.className).toContain("w-6");
     expect(selectButton.className).toContain("rounded-lg");
     expect(selectButton.className).toContain("bg-primary");
+    expect(selectButton.querySelector("svg")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
     fireEvent.click(selectButton);
     expect(onClick).toHaveBeenCalledTimes(1);
     expect(onQuickInstall).not.toHaveBeenCalled();
@@ -249,7 +370,8 @@ describe("SkillStoreCard", () => {
       />,
     );
 
-    expect(screen.getByRole("button")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Installing..." }))
+      .toBeDisabled();
     expect(container.querySelector(".animate-spin")).not.toBeNull();
   });
 

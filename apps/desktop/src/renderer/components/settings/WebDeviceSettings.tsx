@@ -187,7 +187,10 @@ export function WebDeviceSettings() {
           description={t("settings.browserSessionDesc")}
         >
           <div className="flex items-center gap-2 rounded-full bg-muted px-3 py-1.5 text-sm">
-            <UserIcon className="h-4 w-4 text-muted-foreground" />
+            <UserIcon
+              aria-hidden="true"
+              className="h-4 w-4 text-muted-foreground"
+            />
             <span>{webContext?.username || "PromptHub User"}</span>
           </div>
         </SettingItem>
@@ -196,7 +199,10 @@ export function WebDeviceSettings() {
           description={t("settings.connectedClientDesc")}
         >
           <div className="flex items-center gap-2 rounded-full bg-muted px-3 py-1.5 text-sm text-foreground">
-            <LaptopIcon className="h-4 w-4 text-muted-foreground" />
+            <LaptopIcon
+              aria-hidden="true"
+              className="h-4 w-4 text-muted-foreground"
+            />
             <span>{clientLabel}</span>
           </div>
         </SettingItem>
@@ -209,10 +215,11 @@ export function WebDeviceSettings() {
               {t("settings.connectedDevicesDesc")}
             </p>
             <button
+              type="button"
               onClick={() => void loadDevices()}
               className="inline-flex h-8 items-center gap-2 rounded-lg border border-border px-3 text-sm text-foreground transition-colors hover:bg-muted"
             >
-              <RefreshCwIcon className="h-4 w-4" />
+              <RefreshCwIcon aria-hidden="true" className="h-4 w-4" />
               <span>{t("settings.refreshDevices")}</span>
             </button>
           </div>
@@ -238,9 +245,15 @@ export function WebDeviceSettings() {
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           {device.type === "desktop" ? (
-                            <LaptopIcon className="h-4 w-4 text-primary" />
+                            <LaptopIcon
+                              aria-hidden="true"
+                              className="h-4 w-4 text-primary"
+                            />
                           ) : (
-                            <GlobeIcon className="h-4 w-4 text-primary" />
+                            <GlobeIcon
+                              aria-hidden="true"
+                              className="h-4 w-4 text-primary"
+                            />
                           )}
                           <span className="truncate text-sm font-medium text-foreground">
                             {device.name}
@@ -290,6 +303,7 @@ export function WebDeviceSettings() {
         >
           <div className="w-44">
             <Select
+              ariaLabel={t("settings.deviceSyncCadence")}
               value={deviceSettings.syncCadence || "manual"}
               onChange={(value) =>
                 void updateDeviceSettings({
@@ -313,6 +327,7 @@ export function WebDeviceSettings() {
           description={t("settings.storeAutoSyncDesc")}
         >
           <ToggleSwitch
+            ariaLabel={t("settings.storeAutoSync")}
             checked={deviceSettings.storeAutoSync}
             onChange={(checked) =>
               void updateDeviceSettings({
@@ -327,6 +342,7 @@ export function WebDeviceSettings() {
         >
           <div className="w-44">
             <Select
+              ariaLabel={t("settings.storeSyncCadence")}
               value={deviceSettings.storeSyncCadence || "1d"}
               onChange={(value) =>
                 void updateDeviceSettings({
@@ -344,7 +360,10 @@ export function WebDeviceSettings() {
         </SettingItem>
         <div className="px-4 py-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-2 font-medium text-foreground">
-            <StoreIcon className="h-4 w-4 text-primary" />
+            <StoreIcon
+              aria-hidden="true"
+              className="h-4 w-4 text-primary"
+            />
             <span>{t("settings.storeSync")}</span>
           </div>
           <p className="mt-2">{t("settings.storeSyncHint")}</p>
@@ -357,10 +376,11 @@ export function WebDeviceSettings() {
           description={t("settings.browserSessionDesc")}
         >
           <button
+            type="button"
             onClick={() => void logoutWebSession()}
             className="inline-flex h-9 items-center gap-2 rounded-lg border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
           >
-            <LogOutIcon className="h-4 w-4" />
+            <LogOutIcon aria-hidden="true" className="h-4 w-4" />
             <span>{t("settings.signOut")}</span>
           </button>
         </SettingItem>

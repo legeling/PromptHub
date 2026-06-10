@@ -1,4 +1,4 @@
-import { cloneElement, useMemo, useState } from "react";
+import { cloneElement, useId, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import {
   DndContext,
@@ -40,6 +40,7 @@ import {
 import { SettingSection } from "./shared";
 import { isWebRuntime } from "../../runtime";
 import { BackgroundImageBackdrop } from "../ui/BackgroundImageBackdrop";
+import { useToast } from "../ui/Toast";
 
 interface BackgroundPreviewStageProps {
   backgroundImageFileName?: string;
@@ -95,7 +96,7 @@ function DesktopModuleItem({
         {...attributes}
         {...listeners}
       >
-        <GripVerticalIcon className="h-4 w-4" />
+        <GripVerticalIcon aria-hidden="true" className="h-4 w-4" />
       </button>
       <div className="min-w-0 flex-1">
         <div className="text-sm font-medium text-foreground">{label}</div>
@@ -127,7 +128,7 @@ function BackgroundPreviewStage({
   if (!backgroundImageFileName) {
     return (
       <div className="h-full w-full flex flex-col items-center justify-center gap-2 text-muted-foreground">
-        <ImageIcon className="w-8 h-8 opacity-50" />
+        <ImageIcon aria-hidden="true" className="w-8 h-8 opacity-50" />
         <span className="text-sm">{emptyLabel}</span>
       </div>
     );
@@ -187,8 +188,11 @@ function BackgroundPreviewStage({
 
 export function AppearanceSettings() {
   const { t } = useTranslation();
+  const { showToast } = useToast();
   const settings = useSettingsStore();
   const webRuntime = isWebRuntime();
+  const backgroundOpacityInputId = useId();
+  const backgroundBlurInputId = useId();
   const [isPickingBackground, setIsPickingBackground] = useState(false);
   const homeModules = settings.desktopHomeModules;
   const sensors = useSensors(
@@ -284,10 +288,26 @@ export function AppearanceSettings() {
         ? savedFileNames[0]
         : undefined;
       if (!fileName) {
+        showToast(
+          t(
+            "settings.backgroundImageSaveFailed",
+            "Could not save the selected background image. Please try another file.",
+          ),
+          "error",
+        );
         return;
       }
 
       settings.applyBackgroundImageSelection(fileName);
+    } catch (error) {
+      console.error("Failed to select background image:", error);
+      showToast(
+        t(
+          "settings.backgroundImageSaveFailed",
+          "Could not save the selected background image. Please try another file.",
+        ),
+        "error",
+      );
     } finally {
       setIsPickingBackground(false);
     }
@@ -305,17 +325,17 @@ export function AppearanceSettings() {
     {
       id: "light",
       labelKey: "settings.light",
-      icon: <SunIcon className="w-5 h-5" />,
+      icon: <SunIcon aria-hidden="true" className="w-5 h-5" />,
     },
     {
       id: "dark",
       labelKey: "settings.dark",
-      icon: <MoonIcon className="w-5 h-5" />,
+      icon: <MoonIcon aria-hidden="true" className="w-5 h-5" />,
     },
     {
       id: "system",
       labelKey: "settings.system",
-      icon: <MonitorIcon className="w-5 h-5" />,
+      icon: <MonitorIcon aria-hidden="true" className="w-5 h-5" />,
     },
   ];
 
@@ -330,7 +350,9 @@ export function AppearanceSettings() {
               return (
                 <button
                   key={mode.id}
+                  type="button"
                   onClick={() => settings.setThemeMode(mode.id)}
+                  aria-pressed={selected}
                   className={`relative flex-1 h-10 rounded-xl text-[13px] font-medium transition-all duration-base ${
                     selected
                       ? "app-settings-segment-active"
@@ -343,6 +365,7 @@ export function AppearanceSettings() {
                     >
                       {cloneElement(mode.icon as any, {
                         className: "w-4 h-4",
+                        "aria-hidden": "true",
                       })}
                     </span>
                     {t(mode.labelKey)}
@@ -385,7 +408,9 @@ export function AppearanceSettings() {
                   className="flex-1 flex justify-center min-w-0"
                 >
                   <button
+                    type="button"
                     onClick={() => settings.setThemeColor(theme.id)}
+                    aria-pressed={selected}
                     className={`relative h-10 w-10 flex-shrink-0 rounded-full transition-all duration-base ${
                       selected
                         ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
@@ -399,7 +424,7 @@ export function AppearanceSettings() {
                   >
                     {selected && (
                       <span className="absolute inset-0 grid place-items-center">
-                        <CheckIcon className="w-4 h-4 text-white drop-shadow" />
+                        <CheckIcon aria-hidden="true" className="w-4 h-4 text-white drop-shadow" />
                       </span>
                     )}
                   </button>
@@ -409,7 +434,9 @@ export function AppearanceSettings() {
             {/* 自定义颜色入口 */}
             <div className="flex-1 flex justify-center min-w-0">
               <button
+                type="button"
                 onClick={() => settings.setThemeColor("custom")}
+                aria-pressed={settings.themeColor === "custom"}
                 className={`relative h-10 w-10 flex-shrink-0 rounded-full transition-all duration-base ${
                   settings.themeColor === "custom"
                     ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
@@ -421,7 +448,7 @@ export function AppearanceSettings() {
               >
                 {settings.themeColor === "custom" && (
                   <span className="absolute inset-0 grid place-items-center">
-                    <CheckIcon className="w-4 h-4 text-white drop-shadow" />
+                    <CheckIcon aria-hidden="true" className="w-4 h-4 text-white drop-shadow" />
                   </span>
                 )}
               </button>
@@ -485,7 +512,10 @@ export function AppearanceSettings() {
             return (
               <button
                 key={size.id}
+                type="button"
                 onClick={() => settings.setFontSize(size.id)}
+                aria-pressed={settings.fontSize === size.id}
+                aria-label={`${t(sizeNameKey)}, ${size.value}px`}
                 className={`py-2.5 px-4 rounded-xl text-[13px] font-medium transition-all duration-base ${
                   settings.fontSize === size.id
                     ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
@@ -522,7 +552,9 @@ export function AppearanceSettings() {
               return (
                 <button
                   key={option.id}
+                  type="button"
                   onClick={() => settings.setMotionPreference(option.id)}
+                  aria-pressed={selected}
                   className={`py-2.5 px-4 rounded-xl text-[13px] font-medium transition-all duration-base ${
                     selected
                       ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
@@ -638,7 +670,7 @@ export function AppearanceSettings() {
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                  <ImageIcon className="w-4 h-4 text-muted-foreground" />
+                  <ImageIcon aria-hidden="true" className="w-4 h-4 text-muted-foreground" />
                   {t("settings.backgroundImageTitle", "Desktop background")}
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground leading-6">
@@ -706,13 +738,17 @@ export function AppearanceSettings() {
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                    <span className="inline-flex items-center gap-1.5">
-                      <ImageIcon className="w-3.5 h-3.5" />
+                    <label
+                      htmlFor={backgroundOpacityInputId}
+                      className="inline-flex items-center gap-1.5"
+                    >
+                      <ImageIcon aria-hidden="true" className="w-3.5 h-3.5" />
                       {t("settings.backgroundImageOpacity", "Background visibility")}
-                    </span>
+                    </label>
                     <span>{backgroundOpacityPercent}%</span>
                   </div>
                   <input
+                    id={backgroundOpacityInputId}
                     type="range"
                     min="0"
                     max="100"
@@ -729,13 +765,17 @@ export function AppearanceSettings() {
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                    <span className="inline-flex items-center gap-1.5">
-                      <SlidersHorizontalIcon className="w-3.5 h-3.5" />
+                    <label
+                      htmlFor={backgroundBlurInputId}
+                      className="inline-flex items-center gap-1.5"
+                    >
+                      <SlidersHorizontalIcon aria-hidden="true" className="w-3.5 h-3.5" />
                       {t("settings.backgroundImageBlur", "Blur strength")}
-                    </span>
+                    </label>
                     <span>{settings.backgroundImageBlur}px</span>
                   </div>
                   <input
+                    id={backgroundBlurInputId}
                     type="range"
                     min="0"
                     max="50"

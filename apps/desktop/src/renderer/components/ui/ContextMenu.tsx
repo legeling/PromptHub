@@ -37,6 +37,13 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
             }
         }
 
+        function handleKeyDown(event: KeyboardEvent) {
+            if (event.key === 'Escape') {
+                setOpenSubmenu(null);
+                onClose();
+            }
+        }
+
         // Adjust position if menu goes off screen
         if (menuRef.current) {
             const rect = menuRef.current.getBoundingClientRect();
@@ -49,6 +56,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
         }
 
         document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('keydown', handleKeyDown);
         window.addEventListener('resize', onClose);
 
         return () => {
@@ -56,6 +64,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
                 window.clearTimeout(closeSubmenuTimerRef.current);
             }
             document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('keydown', handleKeyDown);
             window.removeEventListener('resize', onClose);
         };
     }, [onClose, x, y]);
@@ -122,6 +131,9 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
                         }}
                     >
                         <button
+                            type="button"
+                            aria-haspopup={hasChildren ? "menu" : undefined}
+                            aria-expanded={hasChildren ? isSubmenuOpen : undefined}
                             onClick={(e) => {
                                 e.stopPropagation();
                                 if (item.disabled || hasChildren) {
@@ -139,10 +151,10 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
                                 item.disabled && "opacity-50 cursor-not-allowed pointer-events-none"
                             )}
                         >
-                            {item.icon && <span className="w-4 h-4 shrink-0">{item.icon}</span>}
+                            {item.icon && <span aria-hidden="true" className="w-4 h-4 shrink-0">{item.icon}</span>}
                             <span className="flex-1 truncate">{item.label}</span>
                             {item.shortcut && <span className="text-xs text-muted-foreground ml-2">{item.shortcut}</span>}
-                            {hasChildren && <ChevronRightIcon className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />}
+                            {hasChildren && <ChevronRightIcon aria-hidden="true" className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />}
                         </button>
 
                         {hasChildren && isSubmenuOpen ? (
@@ -165,6 +177,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
                                 >
                                     {item.children?.map((child, childIndex) => (
                                         <button
+                                            type="button"
                                             key={`${index}-${childIndex}`}
                                             onClick={(e) => {
                                                 e.stopPropagation();
@@ -185,9 +198,9 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
                                             )}
                                         >
                                             {child.insetLevel ? (
-                                                <CornerDownRightIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
+                                                <CornerDownRightIcon aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
                                             ) : null}
-                                            {child.icon && <span className="w-4 h-4 shrink-0 flex items-center justify-center">{child.icon}</span>}
+                                            {child.icon && <span aria-hidden="true" className="w-4 h-4 shrink-0 flex items-center justify-center">{child.icon}</span>}
                                             <span className="min-w-0 flex-1">
                                                 <span className="block truncate">{child.label}</span>
                                                 {child.description ? (

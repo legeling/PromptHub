@@ -70,9 +70,12 @@ export function AgentSkillPreviewSidebar({
               className="flex w-full items-center gap-3 rounded-2xl bg-primary px-4 py-4 text-left text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
             >
               {isImporting ? (
-                <Loader2Icon className="h-5 w-5 shrink-0 animate-spin" />
+                <Loader2Icon
+                  aria-hidden="true"
+                  className="h-5 w-5 shrink-0 animate-spin"
+                />
               ) : (
-                <DownloadIcon className="h-5 w-5 shrink-0" />
+                <DownloadIcon aria-hidden="true" className="h-5 w-5 shrink-0" />
               )}
               <span className="text-sm font-semibold">
                 {t("skill.addToLibrary", "Import to My Skills")}
@@ -85,7 +88,10 @@ export function AgentSkillPreviewSidebar({
             className="flex w-full items-center gap-3 rounded-2xl border border-border bg-accent/60 px-4 py-4 text-left transition-colors hover:bg-accent"
             title={sourcePath}
           >
-            <FolderOpenIcon className="h-5 w-5 shrink-0 text-primary" />
+            <FolderOpenIcon
+              aria-hidden="true"
+              className="h-5 w-5 shrink-0 text-primary"
+            />
             <div className="min-w-0">
               <div className="text-sm font-semibold text-foreground">
                 {shortcutTitle}
@@ -102,7 +108,10 @@ export function AgentSkillPreviewSidebar({
               className="flex w-full items-center gap-3 rounded-2xl border border-border bg-accent/60 px-4 py-4 text-left transition-colors hover:bg-accent"
               title={symlinkTargetPath}
             >
-              <FolderOpenIcon className="h-5 w-5 shrink-0 text-primary" />
+              <FolderOpenIcon
+                aria-hidden="true"
+                className="h-5 w-5 shrink-0 text-primary"
+              />
               <div className="min-w-0">
                 <div className="text-sm font-semibold text-foreground">
                   {t(

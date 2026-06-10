@@ -73,6 +73,65 @@
 - [x] 把 `pnpm --filter @prompthub/desktop bundle:budget` 接到 `.github/workflows/quality.yml` 中 `Build` 之后
 - [x] 跑全套：`pnpm lint && pnpm typecheck && pnpm build && pnpm bundle:budget`
 
+## P7 — 启动入口瘦身（2026-06-06 follow-up）
+
+- [x] 把 `MainContent.tsx` 的 prompt 详情 markdown 渲染抽到 `PromptMarkdownContent` 并通过 `React.lazy()` 按需加载
+- [x] 为 `PromptMarkdownContent` 补充 markdown 渲染、代码高亮、HTML sanitization 单测
+- [x] 将 `UpdateDialog` 改为按需加载，并清理 `UpdateStatus` / `ImportedPromptData` 的 runtime type import
+- [x] 将 renderer i18n locale JSON 改为动态 import；启动只加载当前语言 + English fallback
+- [x] 将 `main.tsx` 挂载延迟到 `i18nReady`，避免首屏渲染时翻译资源尚未初始化
+- [x] 为初始非 English locale chunk 加载失败增加 English fallback，避免 renderer 因 i18n 初始化失败无法挂载
+- [x] 将设置页语言切换的 async i18n 调用改为显式 fire-and-report，避免 locale chunk 加载失败产生未处理 rejection
+- [x] 为 i18n 初始语言、非初始语言动态加载、settings store 失败路径补充回归测试
+- [x] 把 Rules 专属搜索栏与侧栏面板抽到 lazy 组件，消除 `rules.store.ts` 在常驻 `TopBar` / `Sidebar` 中的静态 import
+- [x] 验证 Vite 不再提示 `rules.store.ts` 动态 import 同时被静态 import
+- [x] 复跑 `typecheck` / `build` / `bundle:budget`，记录主入口 gzip 变化
+
+## P8 — 技能详情冷路径拆分（2026-06-06 follow-up）
+
+- [x] 用 `build:analyze` 复核 P7 后剩余大 chunk，确认 `SkillFullDetailPage` 默认加载仍包含 CodeMirror / `SkillFileEditor`
+- [x] 将 `SkillFullDetailPage` 的 Files tab 改为 lazy 加载 `SkillFileEditor`
+- [x] 将 `SkillFullDetailPage` 的编辑弹窗改为 lazy 加载 `EditSkillModal`
+- [x] 将 `EditSkillModal` 内部的文件编辑器弹窗改为只在打开时 lazy 加载 `SkillFileEditor`
+- [x] 修复 project detail 在缺少 `projectContext.scannedSkill` 时读取 `installMode` 的空值崩溃
+- [x] 补充 integration 回归测试：默认技能详情页不加载 edit modal / file editor，打开 Files tab 后才加载 file editor
+- [x] 复跑 `test` / `lint` / `typecheck` / `build` / `bundle:budget` / `build:analyze`，记录技能详情 chunk 变化
+
+## P9 — 设置页 section 级冷路径拆分（2026-06-06 follow-up）
+
+- [x] 复核 `SettingsPage` chunk 接近预算且静态 import 所有设置 section 的问题
+- [x] 将 `SettingsPage` 的 section body 改为 `React.lazy()` + `Suspense`，保留设置侧栏/子菜单同步渲染
+- [x] 补充单测：默认 settings route 只加载当前 General section，不请求 Data / AI settings module
+- [x] 将 `bundle-budget.json` 的 Settings shell 预算收紧，并新增 Data / AI / Skill settings section chunk 预算
+- [x] 复跑 `settings-page.test.tsx` / `lint` / `typecheck` / `build` / `build:analyze` / `bundle:budget`，记录设置页 chunk 变化
+
+## P10 — 旧技能详情面板冷路径拆分（2026-06-10 follow-up）
+
+- [x] 复核 `SkillDetailView` 当前仅保留为旧详情面板/测试覆盖入口，没有主线直接渲染调用点
+- [x] 将 `SkillDetailView` 的 `EditSkillModal`、`SkillFileEditor` 和 markdown 渲染组件改为 `React.lazy()` 按需加载
+- [x] 补充单测：默认渲染不加载编辑器模块，点击编辑/文件编辑器按钮后才加载对应模块
+- [x] 复跑 `skill-detail-view-timers.test.tsx` / `lint` / `typecheck` / `build` / `bundle:budget`
+
+## P11 — 内置技能注册表冷路径拆分（2026-06-10 follow-up）
+
+- [x] 用 `build:analyze` 复核主入口 raw chunk 仍超过 Vite 500 kB warning limit
+- [x] 确认 `skill.store.ts` 静态 import `BUILTIN_SKILL_REGISTRY` 会把内置注册表和 base64 技能图标带进启动路径
+- [x] 将 `SKILL_CATEGORIES` 拆为轻量独立常量，保留 `skill-registry` 旧导出兼容
+- [x] 将 `loadRegistry()` 改为动态 import 内置注册表，并保持 store UI 的 loading 状态
+- [x] 补充单测：`loadRegistry()` 在注册表 chunk 加载期间保持 `isLoadingRegistry`
+- [x] 收紧 `bundle-budget.json` 主入口预算，锁住本次收益
+- [x] 复跑 `skill.store.test.ts` / 技能商店相关组件测试 / `typecheck` / `lint` / `build:analyze` / `bundle:budget`
+
+## P12 — CodeMirror 语言包按需加载（2026-06-10 follow-up）
+
+- [x] 用 `build:analyze` 确认 `SkillFileEditor` 仍超过 Vite 500 kB raw warning limit
+- [x] 将 `SkillCodeEditor` 的 CodeMirror language extensions 从静态 import 改为按文件类型动态 import
+- [x] 让编辑器先加载基础 CodeMirror surface，再异步 reconfigure language compartment
+- [x] 补充单测：语言扩展 loader 异步返回 extension，未知后缀回退 plaintext
+- [x] 修复 bundle budget 对多个 `index-*.js` 动态 chunk 的误累计，支持 `aggregation: "max"`
+- [x] 补充 bundle budget 聚合单测，并新增 `SkillFileEditor` chunk 预算
+- [x] 复跑 `skill-code-editor.test.tsx` / `check-bundle-budget.test.ts` / `typecheck` / `lint` / `build:analyze` / `bundle:budget`
+
 ## Cross-cutting
 
 - [x] 每完成一个阶段，更新 `implementation.md` 中对应小节，记录实际数据与偏差

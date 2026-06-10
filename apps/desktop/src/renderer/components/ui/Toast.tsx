@@ -76,7 +76,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     // Send system notification (if enabled and requested)
     // 发送系统通知（如果启用且请求）
     if (sendSystemNotification && enableNotifications && window.electron?.showNotification) {
-      const title = type === 'success' ? 'Success' : type === 'error' ? 'Error' : type === 'warning' ? 'Warning' : 'Info';
+      const title =
+        type === 'success'
+          ? t('common.success', 'Success')
+          : type === 'error'
+            ? t('common.error', 'Error')
+            : type === 'warning'
+              ? t('common.warning', 'Warning')
+              : t('common.info', 'Info');
       window.electron.showNotification(`PromptHub - ${title}`, message);
     }
 
@@ -87,7 +94,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       removeToast(id);
     }, 3000);
     autoDismissTimers.current.set(id, dismiss);
-  }, [enableNotifications, removeToast]);
+  }, [enableNotifications, removeToast, t]);
 
   // Clean up timers on unmount.
   useEffect(() => {
@@ -104,14 +111,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const getIcon = (type: ToastType) => {
     switch (type) {
       case 'success':
-        return <CheckCircleIcon className="w-5 h-5 text-green-500" />;
+        return <CheckCircleIcon aria-hidden="true" className="w-5 h-5 text-green-500" />;
       case 'error':
-        return <XCircleIcon className="w-5 h-5 text-red-500" />;
+        return <XCircleIcon aria-hidden="true" className="w-5 h-5 text-red-500" />;
       case 'warning':
-        return <AlertTriangleIcon className="w-5 h-5 text-yellow-500" />;
+        return <AlertTriangleIcon aria-hidden="true" className="w-5 h-5 text-yellow-500" />;
       case 'info':
       default:
-        return <InfoIcon className="w-5 h-5 text-blue-500" />;
+        return <InfoIcon aria-hidden="true" className="w-5 h-5 text-blue-500" />;
     }
   };
 
@@ -154,11 +161,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               {getIcon(toast.type)}
               <span className="text-sm font-semibold text-foreground">{toast.message}</span>
               <button
+                type="button"
                 onClick={() => removeToast(toast.id)}
                 className="ml-2 p-1.5 hover:bg-black/10 dark:hover:bg-white/10 rounded-lg transition-colors"
+                aria-label={t('common.close', 'Close')}
                 title={t('common.close') || 'Close'}
               >
-                <XIcon className="w-4 h-4 text-muted-foreground" />
+                <XIcon aria-hidden="true" className="w-4 h-4 text-muted-foreground" />
               </button>
             </div>
           ))}

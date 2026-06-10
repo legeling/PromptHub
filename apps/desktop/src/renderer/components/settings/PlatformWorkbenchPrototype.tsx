@@ -666,6 +666,7 @@ export function PlatformWorkbenchPrototype() {
                 <button
                   key={section.id}
                   type="button"
+                  aria-pressed={active}
                   onClick={() => {
                     setActiveSection(section.id);
                     setSelectedResourceId(section.resources[0]?.id ?? "");
@@ -684,7 +685,7 @@ export function PlatformWorkbenchPrototype() {
                           : "bg-background text-muted-foreground"
                       }`}
                     >
-                      <Icon className="h-4 w-4" />
+                      <Icon aria-hidden="true" className="h-4 w-4" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
@@ -734,8 +735,15 @@ export function PlatformWorkbenchPrototype() {
 
               <div className="flex w-full gap-2 lg:max-w-md">
                 <div className="relative flex-1">
-                  <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <SearchIcon
+                    aria-hidden="true"
+                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                  />
                   <Input
+                    aria-label={t(
+                      "settings.platformWorkbench.searchPlaceholder",
+                      "Search resources, capabilities or integrations...",
+                    )}
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
                     placeholder={t(
@@ -749,7 +757,7 @@ export function PlatformWorkbenchPrototype() {
                   type="button"
                   className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
                 >
-                  <ListFilterIcon className="h-4 w-4" />
+                  <ListFilterIcon aria-hidden="true" className="h-4 w-4" />
                   {t("settings.platformWorkbench.filter", "Filter")}
                 </button>
               </div>
@@ -798,6 +806,7 @@ export function PlatformWorkbenchPrototype() {
                 <button
                   key={resource.id}
                   type="button"
+                  aria-pressed={selected}
                   onClick={() => setSelectedResourceId(resource.id)}
                   className={`w-full rounded-2xl border px-4 py-4 text-left transition-all ${
                     selected
@@ -953,14 +962,14 @@ export function PlatformWorkbenchPrototype() {
                   type="button"
                   className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-medium text-primary-foreground transition hover:opacity-95"
                 >
-                  <ArrowUpRightIcon className="h-4 w-4" />
+                  <ArrowUpRightIcon aria-hidden="true" className="h-4 w-4" />
                   {selectedResource.actionLabel}
                 </button>
                 <button
                   type="button"
                   className="inline-flex items-center justify-center gap-2 rounded-2xl border border-border bg-background px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
                 >
-                  <DatabaseIcon className="h-4 w-4" />
+                  <DatabaseIcon aria-hidden="true" className="h-4 w-4" />
                   {t("settings.platformWorkbench.actionCompare", "Compare model")}
                 </button>
               </div>

@@ -1,4 +1,4 @@
-import { forwardRef, TextareaHTMLAttributes, useState, useEffect, useRef, useCallback } from 'react';
+import { forwardRef, TextareaHTMLAttributes, useState, useEffect, useRef, useCallback, useId } from 'react';
 import { clsx } from 'clsx';
 import { useSettingsStore } from '../../stores/settings.store';
 
@@ -137,11 +137,27 @@ export function handleMarkdownListKeyDown(
 }
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ className, label, error, value, onChange, enableMarkdownList, onKeyDown, ...props }, ref) => {
+  ({
+    className,
+    label,
+    error,
+    value,
+    onChange,
+    enableMarkdownList,
+    onKeyDown,
+    id,
+    'aria-describedby': ariaDescribedBy,
+    'aria-invalid': ariaInvalid,
+    ...props
+  }, ref) => {
     const showLineNumbers = useSettingsStore((state) => state.showLineNumbers);
     const [lineCount, setLineCount] = useState(1);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const lineNumbersRef = useRef<HTMLDivElement>(null);
+    const generatedId = useId();
+    const textareaId = id ?? generatedId;
+    const errorId = error ? `${textareaId}-error` : undefined;
+    const describedBy = [ariaDescribedBy, errorId].filter(Boolean).join(' ') || undefined;
 
     // Calculate line count
     // 计算行数
@@ -209,7 +225,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     return (
       <div className="space-y-1.5">
         {label && (
-          <label className="block text-sm font-medium text-foreground">
+          <label htmlFor={textareaId} className="block text-sm font-medium text-foreground">
             {label}
           </label>
         )}
@@ -237,10 +253,13 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           )}
           <textarea
             ref={setRefs}
+            id={textareaId}
             value={value}
             onChange={onChange}
             onScroll={handleScroll}
             onKeyDown={handleKeyDown}
+            aria-describedby={describedBy}
+            aria-invalid={error ? true : ariaInvalid}
             className={clsx(
               'flex-1 min-h-[120px] py-3 bg-transparent border-0',
               showLineNumbers ? 'pl-2 pr-4' : 'px-4',
@@ -255,7 +274,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           />
         </div>
         {error && (
-          <p className="text-xs text-destructive">{error}</p>
+          <p id={errorId} className="text-xs text-destructive">{error}</p>
         )}
       </div>
     );

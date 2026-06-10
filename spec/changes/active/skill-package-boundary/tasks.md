@@ -49,3 +49,5 @@
 - [x] Verify GitHub issue #170 against the reported root-level GitHub packages.
 - [x] Fix root-level GitHub package installs so `assets/`, `references/`, `scripts/`, and other package files sync instead of only `SKILL.md`.
 - [x] Add root-level GitHub package scan/install regressions using the reported `html-ppt-skill` layout.
+- [x] Fix Skill Markdown unsafe links so blocked protocols render as text instead of empty clickable anchors.
+- [x] Reuse the safe Skill Markdown renderer in manual Skill creation previews.

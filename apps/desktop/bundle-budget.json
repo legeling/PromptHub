@@ -5,8 +5,9 @@
     {
       "name": "main entry (index-*.js)",
       "pattern": "assets/index-*.js",
-      "maxGzipBytes": 393216,
-      "$baseline": "368 KB on 2026-05-16, post-Node-24 toolchain. P6 target: <= 250 KB."
+      "aggregation": "max",
+      "maxGzipBytes": 153600,
+      "$baseline": "122.95 KB after 2026-06-10 lazy loading of the built-in skill registry and embedded skill icons."
     },
     {
       "name": "markdown vendor",
@@ -18,8 +19,32 @@
     {
       "name": "settings page bundle",
       "pattern": "assets/SettingsPage-*.js",
-      "maxGzipBytes": 61440,
-      "$baseline": "50 KB on 2026-05-16. P2 should reduce this materially via second-level lazy loading."
+      "maxGzipBytes": 6144,
+      "$baseline": "2.59 KB after 2026-06-06 route-level settings section lazy loading."
+    },
+    {
+      "name": "settings data section",
+      "pattern": "assets/DataSettings-*.js",
+      "maxGzipBytes": 15360,
+      "$baseline": "11.84 KB after 2026-06-06 route-level settings section lazy loading."
+    },
+    {
+      "name": "settings ai section",
+      "pattern": "assets/AISettingsPrototype-*.js",
+      "maxGzipBytes": 32768,
+      "$baseline": "27.07 KB after 2026-06-06 route-level settings section lazy loading."
+    },
+    {
+      "name": "settings skill section",
+      "pattern": "assets/SkillSettings-*.js",
+      "maxGzipBytes": 10240,
+      "$baseline": "6.89 KB after 2026-06-06 route-level settings section lazy loading."
+    },
+    {
+      "name": "skill file editor",
+      "pattern": "assets/SkillFileEditor-*.js",
+      "maxGzipBytes": 153600,
+      "$baseline": "130.37 KB after 2026-06-10 CodeMirror language extension lazy loading."
     },
     {
       "name": "ui vendor (dnd-kit)",

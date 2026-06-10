@@ -17,16 +17,12 @@ import type {
   SkillSafetyReport,
   SafetyScanAIConfig,
 } from "@prompthub/shared/types";
-import {
-  BUILTIN_SKILL_REGISTRY,
-  SKILL_CATEGORIES,
-} from "@prompthub/shared/constants/skill-registry";
+import { SKILL_CATEGORIES } from "@prompthub/shared/constants/skill-categories";
 import { isGitHubHost, parseGitRepo } from "@prompthub/shared/utils/git-repo";
 import {
   buildSkillSourceId,
   shouldIgnoreSkillDirectoryEntry,
 } from "@prompthub/shared/utils/skill-identity";
-import { chatCompletion } from "../services/ai";
 import { resolveScenarioAIConfig } from "../services/ai-defaults";
 import {
   filterVisibleScannedSkills,
@@ -50,6 +46,10 @@ import {
 import { scheduleAllSaveSync } from "../services/webdav-save-sync";
 import { useSettingsStore } from "./settings.store";
 import { getSafetyScanAIConfig } from "../components/skill/detail-utils";
+import {
+  getRemoteStoreSkillCount,
+  getRemoteStoreSkills,
+} from "../services/remote-store-entry";
 
 export type SkillFilterType =
   | "all"
@@ -84,6 +84,25 @@ const DEPLOYED_STATUS_CACHE_TTL_MS = 30_000;
 
 let deployedStatusRefreshPromise: Promise<void> | null = null;
 let deployedStatusLoadedAt = 0;
+let skillTranslationAIPromise:
+  | Promise<{
+      chatCompletion: typeof import("../services/ai").chatCompletion;
+    }>
+  | null = null;
+
+function loadSkillTranslationAI() {
+  skillTranslationAIPromise ??= import("../services/ai").then((aiService) => ({
+    chatCompletion: aiService.chatCompletion,
+  }));
+  return skillTranslationAIPromise;
+}
+
+async function loadBuiltinSkillRegistry(): Promise<RegistrySkill[]> {
+  const { BUILTIN_SKILL_REGISTRY } = await import(
+    "@prompthub/shared/constants/skill-registry"
+  );
+  return BUILTIN_SKILL_REGISTRY.map(ensureRegistrySkillSourceId);
+}
 
 interface ParsedGitHubSkillLocation {
   owner: string;
@@ -332,7 +351,7 @@ function hasMeaningfulSkillBody(content?: string): boolean {
 
 function getRegistrySkillCandidates(state: SkillState): RegistrySkill[] {
   const remoteSkills = Object.values(state.remoteStoreEntries).flatMap(
-    (entry) => entry.skills,
+    (entry) => getRemoteStoreSkills(entry),
   );
   return [...state.registrySkills, ...remoteSkills];
 }
@@ -912,7 +931,7 @@ interface SkillState {
     projectId: string,
     options?: { searchQuery?: string },
   ) => ScannedSkill[];
-  loadRegistry: () => void;
+  loadRegistry: () => Promise<void>;
   computeRegistrySkillHash: (content: string) => Promise<string>;
   getRegistrySkillUpdateStatus: (
     skill: RegistrySkill,
@@ -988,6 +1007,126 @@ interface SkillState {
   ) => TranslationLookup;
   getTranslation: (cacheKey: string) => string | null;
   clearTranslation: (cacheKey: string) => void;
+}
+
+type RemoteStoreEntry = SkillState["remoteStoreEntries"][string];
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isRegistrySkillLike(value: unknown): value is RegistrySkill {
+  if (!isObjectRecord(value)) {
+    return false;
+  }
+
+  return (
+    typeof value.slug === "string" &&
+    typeof value.name === "string" &&
+    typeof value.description === "string" &&
+    typeof value.category === "string" &&
+    typeof value.author === "string" &&
+    typeof value.source_url === "string" &&
+    typeof value.version === "string" &&
+    typeof value.content === "string" &&
+    Array.isArray(value.tags)
+  );
+}
+
+function normalizeRemoteRegistrySkill(
+  sourceId: string,
+  skill: RegistrySkill,
+  customStoreSources: SkillStoreSource[],
+): RegistrySkill {
+  const source = customStoreSources.find((item) => item.id === sourceId);
+  const skillPath = skill.canonical_skill_path || skill.content_url || skill.slug;
+
+  if (source?.type === "git-repo") {
+    try {
+      const normalizedSource = normalizeGitStoreSourceInput(
+        source.url,
+        source.branch,
+        source.directory,
+      );
+      return {
+        ...skill,
+        source_id: buildSkillSourceId({
+          sourceType: "git-repo",
+          sourceUrl: normalizedSource.url,
+          branch: normalizedSource.branch,
+          directory: normalizedSource.directory,
+          skillPath,
+        }),
+        source_branch: normalizedSource.branch,
+        source_directory: normalizedSource.directory,
+        canonical_skill_path: skillPath,
+      };
+    } catch {
+      return skill;
+    }
+  }
+
+  if (source?.type === "local-dir" || isLocalRegistrySkill(skill)) {
+    return {
+      ...skill,
+      source_id: buildSkillSourceId({
+        sourceType: "local-dir",
+        sourceUrl: skill.source_url || source?.url,
+        skillPath,
+      }),
+      source_branch: undefined,
+      source_directory: undefined,
+      canonical_skill_path: skillPath,
+    };
+  }
+
+  if (source?.type === "marketplace-json") {
+    return {
+      ...skill,
+      source_id: buildSkillSourceId({
+        sourceType: "marketplace-json",
+        sourceUrl: skill.source_url || source.url,
+        skillPath,
+      }),
+      canonical_skill_path: skillPath,
+    };
+  }
+
+  return ensureRegistrySkillSourceId(skill);
+}
+
+function normalizeRemoteStoreEntries(
+  entries: unknown,
+  customStoreSources: SkillStoreSource[],
+): SkillState["remoteStoreEntries"] {
+  if (!isObjectRecord(entries)) {
+    return {};
+  }
+
+  const normalizedEntries: SkillState["remoteStoreEntries"] = {};
+  for (const [sourceId, entry] of Object.entries(entries)) {
+    if (!isObjectRecord(entry) || !Array.isArray(entry.skills)) {
+      continue;
+    }
+
+    const skills = entry.skills
+      .filter(isRegistrySkillLike)
+      .map((skill) =>
+        normalizeRemoteRegistrySkill(sourceId, skill, customStoreSources),
+      );
+    if (skills.length === 0) {
+      continue;
+    }
+
+    normalizedEntries[sourceId] = {
+      ...(entry as Partial<RemoteStoreEntry>),
+      loadedAt: typeof entry.loadedAt === "number" ? entry.loadedAt : 0,
+      error: null,
+      skills,
+    };
+  }
+
+  return normalizedEntries;
 }
 
 async function applyRegistrySkillUpdateToInstalledSkill(
@@ -1726,14 +1865,16 @@ export const useSkillStore = create<SkillState>()(
         );
       },
 
-      loadRegistry: () => {
+      loadRegistry: async () => {
         set({ isLoadingRegistry: true });
-        // Load built-in registry with embedded content
-        // 加载内置注册表（使用嵌入内容）
-        const registry = BUILTIN_SKILL_REGISTRY.map(
-          ensureRegistrySkillSourceId,
-        );
-        set({ registrySkills: registry, isLoadingRegistry: false });
+        try {
+          const registry = await loadBuiltinSkillRegistry();
+          set({ registrySkills: registry, isLoadingRegistry: false });
+        } catch (error) {
+          const message = getErrorMessage(error);
+          set({ isLoadingRegistry: false, error: message });
+          throw error instanceof Error ? error : new Error(message);
+        }
       },
 
       computeRegistrySkillHash: computeSkillContentHash,
@@ -2137,6 +2278,7 @@ export const useSkillStore = create<SkillState>()(
 
         // Get AI config from settings store
         const settingsState = useSettingsStore.getState();
+        const { chatCompletion } = await loadSkillTranslationAI();
         const config = resolveScenarioAIConfig({
           aiModels: settingsState.aiModels,
           scenarioModelDefaults: settingsState.scenarioModelDefaults,
@@ -2259,12 +2401,10 @@ Rules:
       partialize: (state) => {
         // Only persist remote store entries that have at least one skill.
         // This prevents caching empty/failed results across sessions.
-        const filteredEntries: typeof state.remoteStoreEntries = {};
-        for (const [key, entry] of Object.entries(state.remoteStoreEntries)) {
-          if (entry.skills.length > 0) {
-            filteredEntries[key] = { ...entry, error: null };
-          }
-        }
+        const filteredEntries = normalizeRemoteStoreEntries(
+          state.remoteStoreEntries,
+          state.customStoreSources,
+        );
         return {
           viewMode: state.viewMode,
           galleryColumns: state.galleryColumns,
@@ -2279,6 +2419,56 @@ Rules:
           selectedStoreSourceId: state.selectedStoreSourceId,
           remoteStoreEntries: filteredEntries,
           translationCache: pruneTranslationCache(state.translationCache),
+        };
+      },
+      merge: (persistedState, currentState) => {
+        if (!isObjectRecord(persistedState)) {
+          return currentState;
+        }
+
+        const persistedCustomStoreSources = Array.isArray(
+          persistedState.customStoreSources,
+        )
+          ? (persistedState.customStoreSources as SkillStoreSource[])
+          : currentState.customStoreSources;
+
+        const persistedProjectScanState = isObjectRecord(
+          persistedState.projectScanState,
+        )
+          ? (persistedState.projectScanState as Record<
+              string,
+              ProjectSkillScanState
+            >)
+          : currentState.projectScanState;
+        const persistedAgentScanState = isObjectRecord(
+          persistedState.agentScanState,
+        )
+          ? (persistedState.agentScanState as Record<string, AgentSkillScanState>)
+          : currentState.agentScanState;
+        const persistedTranslationCache = isObjectRecord(
+          persistedState.translationCache,
+        )
+          ? (persistedState.translationCache as Record<
+              string,
+              TranslationCacheEntry
+            >)
+          : currentState.translationCache;
+
+        return {
+          ...currentState,
+          ...persistedState,
+          customStoreSources: persistedCustomStoreSources,
+          projectScanState: sanitizePersistedProjectScanState(
+            persistedProjectScanState,
+          ),
+          agentScanState: sanitizePersistedAgentScanState(
+            persistedAgentScanState,
+          ),
+          remoteStoreEntries: normalizeRemoteStoreEntries(
+            persistedState.remoteStoreEntries,
+            persistedCustomStoreSources,
+          ),
+          translationCache: pruneTranslationCache(persistedTranslationCache),
         };
       },
     },

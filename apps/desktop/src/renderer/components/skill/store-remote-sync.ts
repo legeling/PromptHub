@@ -35,6 +35,7 @@ import {
   loadClawHubSkillsPage,
 } from "../../services/clawhub-store";
 import { isLikelyLocalSource } from "../../services/skill-store-source";
+import { getRemoteStoreSkillCount } from "../../services/remote-store-entry";
 import { useSkillStore } from "../../stores/skill.store";
 
 const MAX_REMOTE_STORE_DEPTH = 3;
@@ -131,6 +132,37 @@ function resolveUrl(baseUrl: string, value?: string | null) {
   } catch {
     return value;
   }
+}
+
+function normalizeLocalPathForComparison(value: string): string {
+  return value.replace(/\\/g, "/").replace(/\/+$/g, "");
+}
+
+function appendLocalSourceDirectory(sourceUrl: string, directory?: string) {
+  const trimmedDirectory = directory?.trim().replace(/^[\\/]+|[\\/]+$/g, "");
+  if (!trimmedDirectory) {
+    return sourceUrl;
+  }
+
+  const separator = sourceUrl.includes("\\") && !sourceUrl.includes("/")
+    ? "\\"
+    : "/";
+  const normalizedBase = sourceUrl.replace(/[\\/]+$/g, "");
+  const normalizedDirectory = trimmedDirectory.replace(/[\\/]+/g, separator);
+  return `${normalizedBase}${separator}${normalizedDirectory}`;
+}
+
+function getCanonicalLocalSkillPath(sourceUrl: string, skillFilePath: string) {
+  const normalizedSource = normalizeLocalPathForComparison(sourceUrl);
+  const normalizedFile = normalizeLocalPathForComparison(skillFilePath);
+  const normalizedSourceLower = normalizedSource.toLowerCase();
+  const normalizedFileLower = normalizedFile.toLowerCase();
+
+  if (normalizedFileLower.startsWith(`${normalizedSourceLower}/`)) {
+    return normalizedFile.slice(normalizedSource.length + 1);
+  }
+
+  return skillFilePath;
 }
 
 function dedupeRegistrySkills(skills: RegistrySkill[]) {
@@ -522,18 +554,44 @@ export function useSkillStoreRemoteSync(
   );
 
   const loadLocalDirectoryStore = useCallback(
-    async (dirPath: string): Promise<RegistrySkill[]> => {
-      const scannedSkills = await scanLocalPreview([dirPath]);
+    async (
+      dirPath: string,
+      options?: {
+        branch?: string;
+        directory?: string;
+        sourceType?: "git-repo" | "local-dir";
+        sourceUrl?: string;
+      },
+    ): Promise<RegistrySkill[]> => {
+      const sourceType = options?.sourceType ?? "local-dir";
+      const sourceUrl = options?.sourceUrl ?? dirPath;
+      const scanPath =
+        sourceType === "git-repo"
+          ? appendLocalSourceDirectory(sourceUrl, options?.directory)
+          : dirPath;
+      const scannedSkills = await scanLocalPreview([scanPath]);
       const mapped = scannedSkills.map((skill) => ({
         slug: slugify(skill.name),
         name: skill.name,
         source_id: buildSkillSourceId({
-          sourceType: "local-dir",
-          sourceUrl: skill.localPath || dirPath,
-          skillPath: skill.filePath,
+          sourceType,
+          sourceUrl:
+            sourceType === "git-repo" ? sourceUrl : skill.localPath || dirPath,
+          branch: sourceType === "git-repo" ? options?.branch : undefined,
+          directory: sourceType === "git-repo" ? options?.directory : undefined,
+          skillPath:
+            sourceType === "git-repo"
+              ? getCanonicalLocalSkillPath(sourceUrl, skill.filePath)
+              : skill.filePath,
         }),
-        source_label: dirPath,
-        canonical_skill_path: skill.filePath,
+        source_label: sourceType === "git-repo" ? sourceUrl : dirPath,
+        source_branch: sourceType === "git-repo" ? options?.branch : undefined,
+        source_directory:
+          sourceType === "git-repo" ? options?.directory : undefined,
+        canonical_skill_path:
+          sourceType === "git-repo"
+            ? getCanonicalLocalSkillPath(sourceUrl, skill.filePath)
+            : skill.filePath,
         directory_fingerprint: skill.directory_fingerprint,
         description: skill.description || `${skill.name} skill`,
         category: inferCategory(skill.name, skill.description || ""),
@@ -763,7 +821,7 @@ export function useSkillStoreRemoteSync(
         return;
       }
 
-      const hasCachedSkills = cachedEntry && cachedEntry.skills.length > 0;
+      const hasCachedSkills = getRemoteStoreSkillCount(cachedEntry) > 0;
       const hasCachedFailure = Boolean(cachedEntry?.error);
       const hasStalePaginatedCache =
         (source.type === "skills-sh" &&
@@ -796,7 +854,12 @@ export function useSkillStoreRemoteSync(
           if (source.type === "git-repo") {
             result = toStoreLoadResult(
               isLikelyLocalSource(source.url)
-                ? await loadLocalDirectoryStore(source.url)
+                ? await loadLocalDirectoryStore(source.url, {
+                    branch: source.branch,
+                    directory: source.directory,
+                    sourceType: "git-repo",
+                    sourceUrl: source.url,
+                  })
                 : await loadGitHubRepoSkills(source),
             );
           } else if (source.type === "skills-sh") {

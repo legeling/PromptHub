@@ -19,3 +19,4 @@
 
 - user disables Claude Code in Settings and it disappears from both the Rules sidebar and Skill platform integration surfaces
 - user sets a custom OpenCode root path and the Rules sidebar/detail reflect the new `AGENTS.md` target path after refresh
+- current-version persisted platform visibility settings are normalized during renderer hydration so non-string platform ids and legacy `trae` ids do not leak into Skills or Rules platform filtering/sorting

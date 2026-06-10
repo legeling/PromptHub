@@ -15,6 +15,20 @@ import { useUIStore } from "../../../src/renderer/stores/ui.store";
 import { installWindowMocks } from "../../helpers/window";
 
 const showToastMock = vi.fn();
+
+function hasHiddenSvgAncestor(element: Element): boolean {
+  let current: Element | null = element;
+
+  while (current) {
+    if (current.getAttribute("aria-hidden") === "true") {
+      return true;
+    }
+    current = current.parentElement;
+  }
+
+  return false;
+}
+
 const translate = (
   _key: string,
   fallback?: string | Record<string, unknown>,
@@ -360,6 +374,48 @@ describe("SkillAgentsView", () => {
       screen.getAllByRole("button", { name: /Uninstall from agent/i }).length,
     ).toBeGreaterThan(0);
     expect(screen.queryByText("# Copy Skill")).not.toBeInTheDocument();
+  });
+
+  it("keeps agent action icons decorative and actions non-submit", async () => {
+    const handleSubmit = vi.fn();
+
+    render(
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          handleSubmit();
+        }}
+      >
+        <SkillAgentsView />
+      </form>,
+    );
+
+    expect(await screen.findByText("copy-skill")).toBeInTheDocument();
+
+    const agentPlatformCard = (
+      await screen.findAllByRole("button", { name: /Claude Code/i })
+    ).find((button) => button.textContent?.includes("skills"));
+    expect(agentPlatformCard).toBeTruthy();
+    expect(agentPlatformCard).not.toHaveAccessibleName(/claude icon/i);
+
+    const buttons = Array.from(document.body.querySelectorAll("button"));
+    const implicitButtonMarkup = buttons
+      .filter((button) => button.getAttribute("type") !== "button")
+      .map((button) => button.outerHTML);
+    const exposedIconMarkup = buttons
+      .flatMap((button) => Array.from(button.querySelectorAll("svg")))
+      .filter((icon) => !hasHiddenSvgAncestor(icon))
+      .map((icon) => icon.outerHTML);
+
+    expect(implicitButtonMarkup, implicitButtonMarkup.join("\n")).toHaveLength(
+      0,
+    );
+    expect(exposedIconMarkup, exposedIconMarkup.join("\n")).toHaveLength(0);
+
+    fireEvent.click(screen.getByTestId("agent-manage-settings-button"));
+    fireEvent.click(screen.getAllByRole("button", { name: "Open Folder" })[0]);
+
+    expect(handleSubmit).not.toHaveBeenCalled();
   });
 
   it("shows a source-target action for external symlink agent skills", async () => {

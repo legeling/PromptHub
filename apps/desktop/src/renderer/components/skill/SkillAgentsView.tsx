@@ -627,7 +627,7 @@ export function SkillAgentsView() {
                     className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border app-wallpaper-surface text-muted-foreground transition-colors hover:text-primary disabled:opacity-60"
                     title={t("skill.manageAgents", "Manage Agents")}
                   >
-                    <SettingsIcon className="h-4 w-4" />
+                    <SettingsIcon aria-hidden="true" className="h-4 w-4" />
                   </button>
                   <button
                     type="button"
@@ -639,6 +639,7 @@ export function SkillAgentsView() {
                     title={t("common.refresh", "Refresh")}
                   >
                     <RefreshCwIcon
+                      aria-hidden="true"
                       className={`h-4 w-4 ${isLoadingPlatforms ? "animate-spin" : ""}`}
                     />
                   </button>
@@ -676,7 +677,11 @@ export function SkillAgentsView() {
                           data-testid="agent-platform-icon-shell"
                           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground"
                         >
-                          <PlatformIcon platformId={platform.id} size={20} />
+                          <PlatformIcon
+                            aria-hidden="true"
+                            platformId={platform.id}
+                            size={20}
+                          />
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-sm font-medium text-foreground">
@@ -687,7 +692,10 @@ export function SkillAgentsView() {
                           </div>
                         </div>
                         {platformScanState?.isScanning ? (
-                          <Loader2Icon className="h-4 w-4 shrink-0 animate-spin text-primary" />
+                          <Loader2Icon
+                            aria-hidden="true"
+                            className="h-4 w-4 shrink-0 animate-spin text-primary"
+                          />
                         ) : (
                           <span className="ml-2 shrink-0 rounded-full border border-border bg-background/70 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
                             {t("skill.agentStatsTotal", {
@@ -737,6 +745,7 @@ export function SkillAgentsView() {
                     title={t("common.refresh", "Refresh")}
                   >
                     <RefreshCwIcon
+                      aria-hidden="true"
                       className={`h-4 w-4 ${isScanning ? "animate-spin" : ""}`}
                     />
                   </button>
@@ -866,7 +875,10 @@ export function SkillAgentsView() {
                                   </div>
                                   {managedSkill ? (
                                     <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-300">
-                                      <CheckCircle2Icon className="h-3 w-3" />
+                                      <CheckCircle2Icon
+                                        aria-hidden="true"
+                                        className="h-3 w-3"
+                                      />
                                       {t("skill.inMySkills", "In My Skills")}
                                     </span>
                                   ) : null}
@@ -936,7 +948,10 @@ export function SkillAgentsView() {
                               title={t("skill.openSkillFolder", "Open Folder")}
                               className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                             >
-                              <FolderOpenIcon className="h-4 w-4" />
+                              <FolderOpenIcon
+                                aria-hidden="true"
+                                className="h-4 w-4"
+                              />
                             </button>
                             {managedSkill ? (
                               <button
@@ -954,7 +969,10 @@ export function SkillAgentsView() {
                                 )}
                                 className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                               >
-                                <BookOpenIcon className="h-4 w-4" />
+                                <BookOpenIcon
+                                  aria-hidden="true"
+                                  className="h-4 w-4"
+                                />
                               </button>
                             ) : (
                               <button
@@ -976,9 +994,15 @@ export function SkillAgentsView() {
                                 className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
                               >
                                 {importingAgentSkillPath === skill.localPath ? (
-                                  <Loader2Icon className="h-4 w-4 animate-spin" />
+                                  <Loader2Icon
+                                    aria-hidden="true"
+                                    className="h-4 w-4 animate-spin"
+                                  />
                                 ) : (
-                                  <DownloadIcon className="h-4 w-4" />
+                                  <DownloadIcon
+                                    aria-hidden="true"
+                                    className="h-4 w-4"
+                                  />
                                 )}
                               </button>
                             )}
@@ -1000,7 +1024,10 @@ export function SkillAgentsView() {
                               }
                               className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-destructive/20 bg-destructive/5 text-destructive transition-colors hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                              <TrashIcon className="h-4 w-4" />
+                              <TrashIcon
+                                aria-hidden="true"
+                                className="h-4 w-4"
+                              />
                             </button>
                           </div>
                         </div>
@@ -1018,7 +1045,7 @@ export function SkillAgentsView() {
                 disabled={!selectedPlatformId || skills.length === 0}
                 className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
               >
-                <DownloadIcon className="h-4 w-4" />
+                <DownloadIcon aria-hidden="true" className="h-4 w-4" />
                 {t("skill.installMySkillToAgent", "Install My Skill")}
               </button>
             </div>
@@ -1030,7 +1057,7 @@ export function SkillAgentsView() {
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         onConfirm={({ skillIds, importMode }) =>
-          void handleInstallLibrarySkills({ skillIds, importMode })
+          handleInstallLibrarySkills({ skillIds, importMode })
         }
         isDeploying={isImportingLibrarySkills || Boolean(importingJob)}
         scannedSkills={scanResult?.scannedSkills ?? []}

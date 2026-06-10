@@ -647,6 +647,22 @@ function makeOpenAIImageResponse(): Response {
   });
 }
 
+function makeGeminiOpenAICompatImageResponse(): Response {
+  const body = JSON.stringify({
+    choices: [
+      {
+        message: {
+          content: "https://sensitive.example.com/generated-image.png",
+        },
+      },
+    ],
+  });
+  return new Response(body, {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
 async function responseToTransport(response: Response) {
   return {
     ok: response.ok,
@@ -664,6 +680,10 @@ describe("generateImage - Gemini routing", () => {
     vi.clearAllMocks();
     installWindowMocks();
     requestSpy = window.api.ai.request;
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('routes to Gemini when provider is "google"', async () => {
@@ -684,6 +704,58 @@ describe("generateImage - Gemini routing", () => {
     expect(calledUrl).toContain(":generateContent");
     expect(result.data).toHaveLength(1);
     expect(result.data[0].b64_json).toBe("base64imagedata==");
+  });
+
+  it("does not log Gemini image payloads during successful generation", async () => {
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    requestSpy.mockResolvedValueOnce(await responseToTransport(makeGeminiResponse()));
+
+    const result = await generateImage(
+      {
+        apiKey: "key",
+        apiUrl: "https://api.example.com/v1beta",
+        model: "gemini-flash",
+        provider: "google",
+      },
+      "a private image prompt",
+    );
+
+    expect(result.data[0].b64_json).toBe("base64imagedata==");
+    expect(logSpy).not.toHaveBeenCalled();
+    expect(warnSpy).not.toHaveBeenCalled();
+    expect(errorSpy).not.toHaveBeenCalled();
+  });
+
+  it("does not log Gemini proxy image URLs during successful generation", async () => {
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    requestSpy.mockResolvedValueOnce(
+      await responseToTransport(makeGeminiOpenAICompatImageResponse()),
+    );
+
+    const result = await generateImage(
+      {
+        apiKey: "key",
+        apiUrl: "https://proxy.example.com",
+        model: "gemini-image",
+        provider: "google",
+      },
+      "a private image prompt",
+    );
+
+    expect(result.data[0].url).toBe(
+      "https://sensitive.example.com/generated-image.png",
+    );
+    expect(logSpy).not.toHaveBeenCalled();
+    expect(warnSpy).not.toHaveBeenCalled();
+    expect(errorSpy).not.toHaveBeenCalled();
   });
 
   it('routes to Gemini when provider is "gemini"', async () => {

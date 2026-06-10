@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useSettingsStore } from "../../stores/settings.store";
 import { useToast } from "../ui/Toast";
@@ -8,6 +8,7 @@ export function ShortcutsSettings() {
   const { t } = useTranslation();
   const { showToast } = useToast();
   const settings = useSettingsStore();
+  const mountedRef = useRef(true);
 
   // Shortcut state
   // 快捷键状态
@@ -24,12 +25,47 @@ export function ShortcutsSettings() {
   // Load shortcut settings
   // 加载快捷键设置
   useEffect(() => {
-    window.electron?.getShortcuts?.().then((savedShortcuts) => {
-      if (savedShortcuts) {
-        setShortcuts(savedShortcuts);
+    mountedRef.current = true;
+
+    async function loadShortcuts() {
+      try {
+        const savedShortcuts = await window.electron?.getShortcuts?.();
+        if (mountedRef.current && savedShortcuts) {
+          setShortcuts(savedShortcuts);
+        }
+      } catch {
+        if (mountedRef.current) {
+          showToast(t("settings.shortcutLoadFailed"), "error");
+        }
       }
-    });
-  }, []);
+    }
+
+    void loadShortcuts();
+
+    return () => {
+      mountedRef.current = false;
+    };
+  }, [showToast, t]);
+
+  const persistShortcuts = async (
+    newShortcuts: Record<string, string>,
+    successMessage: string,
+  ) => {
+    const previousShortcuts = shortcuts;
+    setShortcuts(newShortcuts);
+
+    try {
+      await window.electron?.setShortcuts?.(newShortcuts);
+      if (mountedRef.current) {
+        showToast(successMessage, "success");
+      }
+    } catch {
+      if (mountedRef.current) {
+        setShortcuts(previousShortcuts);
+        showToast(t("settings.shortcutSaveFailed"), "error");
+      }
+    }
+  };
 
   // Check shortcut conflicts
   // 检查快捷键冲突
@@ -63,19 +99,15 @@ export function ShortcutsSettings() {
     }
     setShortcutConflicts({ ...shortcutConflicts, [key]: undefined });
     const newShortcuts = { ...shortcuts, [key]: shortcut };
-    setShortcuts(newShortcuts);
-    await window.electron?.setShortcuts?.(newShortcuts);
-    showToast(t("settings.shortcutUpdated"), "success");
+    await persistShortcuts(newShortcuts, t("settings.shortcutUpdated"));
   };
 
   // Clear shortcut
   // 清除快捷键
   const handleShortcutClear = async (key: string) => {
     const newShortcuts = { ...shortcuts, [key]: "" };
-    setShortcuts(newShortcuts);
     setShortcutConflicts({ ...shortcutConflicts, [key]: undefined });
-    await window.electron?.setShortcuts?.(newShortcuts);
-    showToast(t("settings.shortcutCleared"), "success");
+    await persistShortcuts(newShortcuts, t("settings.shortcutCleared"));
   };
 
   return (

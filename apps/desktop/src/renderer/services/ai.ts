@@ -540,12 +540,6 @@ async function processStreamTextChunk(
         state.fullContent += delta.content;
         onStream?.(delta.content);
         streamCallbacks?.onContent?.(delta.content);
-        if (state.chunkCount === 1) {
-          console.log(
-            "[AI Stream] First content chunk received:",
-            delta.content.slice(0, 50),
-          );
-        }
       }
 
       if (options?.yieldToUi && deltasSinceYield >= 20) {
@@ -558,11 +552,6 @@ async function processStreamTextChunk(
   }
 
   if (options?.yieldToUi) {
-    if (state.chunkCount > 0 && state.chunkCount % 50 === 0) {
-      console.log(
-        `[AI Stream] Yielding at chunk ${state.chunkCount}, content length: ${state.fullContent.length}`,
-      );
-    }
     await yieldToEventLoop();
   }
 }
@@ -938,7 +927,6 @@ export async function chatCompletion(
     });
 
     if (mergedParams.stream) {
-      console.log("[AI Service] Starting stream response handling...");
       return {
         streamResult: await handleStreamResponse(
           response,
@@ -1017,15 +1005,6 @@ export async function chatCompletion(
       throw new Error("AI 返回结果为空");
     }
 
-    // 流式输出处理 / Streaming output handling
-    // Debug: Log streaming status / 调试：记录流式状态
-    console.log(
-      "[AI Service] Stream mode:",
-      mergedParams.stream,
-      "Callbacks provided:",
-      !!options?.streamCallbacks,
-    );
-
     // 非流式响应 / Non-streaming response
     const data: ChatCompletionResponse = await response.json();
 
@@ -1070,10 +1049,6 @@ async function handleStreamResponse(
     while (true) {
       const { done, value } = await reader.read();
       if (done) {
-        console.log(
-          "[AI Stream] Stream completed, total chunks:",
-          state.chunkCount,
-        );
         break;
       }
 
@@ -1398,29 +1373,16 @@ async function generateImageGemini(
 
   // Handle different response formats
   // 处理不同的响应格式
-  console.log(
-    "[generateImageGemini] Response received:",
-    JSON.stringify(result, null, 2).slice(0, 2000),
-  );
-
   if (result.candidates) {
     // Native Gemini format
     const candidate = result.candidates[0];
     const parts = candidate?.content?.parts || [];
-    console.log(
-      "[generateImageGemini] Gemini native format, parts count:",
-      parts.length,
-    );
 
     const imagePart = parts.find((p: any) =>
       p.inlineData?.mimeType?.startsWith("image/"),
     );
 
     if (imagePart?.inlineData) {
-      console.log(
-        "[generateImageGemini] Found image data, mimeType:",
-        imagePart.inlineData.mimeType,
-      );
       return {
         created: Date.now(),
         data: [
@@ -1434,20 +1396,14 @@ async function generateImageGemini(
     // Check if there's text response (might indicate an error or refusal)
     const textPart = parts.find((p: any) => p.text);
     if (textPart?.text) {
-      console.warn(
-        "[generateImageGemini] Got text instead of image:",
-        textPart.text,
-      );
+      console.warn("[generateImageGemini] Got text instead of image");
       throw new Error(
         `Model returned text instead of an image: ${textPart.text.slice(0, 200)}`,
       );
     }
 
     // No image in response
-    console.error(
-      "[generateImageGemini] No image data in candidates. Parts:",
-      parts,
-    );
+    console.error("[generateImageGemini] No image data in candidates");
     throw new Error(
       "Gemini response did not contain image data. Please ensure you are using a model that supports image generation.",
     );
@@ -1456,18 +1412,12 @@ async function generateImageGemini(
   if (result.choices) {
     // OpenAI-compatible format from proxy
     const content = result.choices[0]?.message?.content;
-    console.log(
-      "[generateImageGemini] OpenAI format, content type:",
-      typeof content,
-      typeof content === "string" ? content.slice(0, 200) : "(array or object)",
-    );
 
     // Check if content contains image URL or base64
     if (typeof content === "string") {
       // Try to extract URL if present
       const urlMatch = content.match(/https?:\/\/[^\s"'<>]+/i);
       if (urlMatch) {
-        console.log("[generateImageGemini] Found URL in content:", urlMatch[0]);
         return {
           created: Date.now(),
           data: [{ url: urlMatch[0] }],
@@ -1478,7 +1428,6 @@ async function generateImageGemini(
         content.startsWith("data:image/") ||
         content.match(/^[A-Za-z0-9+/=]{100,}/)
       ) {
-        console.log("[generateImageGemini] Found base64 in content");
         return {
           created: Date.now(),
           data: [
@@ -1488,10 +1437,7 @@ async function generateImageGemini(
       }
 
       // Content is text, not image - might be refusal or error
-      console.warn(
-        "[generateImageGemini] Content is text, not image:",
-        content.slice(0, 500),
-      );
+      console.warn("[generateImageGemini] Content is text, not image");
       throw new Error(
         `Model returned text instead of an image: ${content.slice(0, 300)}`,
       );
@@ -1499,17 +1445,10 @@ async function generateImageGemini(
 
     // Content might be array with image_url
     if (Array.isArray(result.choices[0]?.message?.content)) {
-      console.log(
-        "[generateImageGemini] Content is array, looking for image_url...",
-      );
       const imgContent = result.choices[0].message.content.find(
         (c: any) => c.type === "image_url",
       );
       if (imgContent?.image_url?.url) {
-        console.log(
-          "[generateImageGemini] Found image_url:",
-          imgContent.image_url.url.slice(0, 100),
-        );
         const url = imgContent.image_url.url;
         if (url.startsWith("data:image/")) {
           return {
@@ -1528,19 +1467,10 @@ async function generateImageGemini(
     // 检查 message.images 数组（某些代理使用此格式）
     const images = result.choices[0]?.message?.images;
     if (Array.isArray(images) && images.length > 0) {
-      console.log(
-        "[generateImageGemini] Found message.images array:",
-        images.length,
-        "images",
-      );
       const firstImage = images[0];
       const imageUrl = firstImage?.image_url?.url || firstImage?.url;
 
       if (imageUrl) {
-        console.log(
-          "[generateImageGemini] Extracted image URL:",
-          imageUrl.slice(0, 100),
-        );
         if (imageUrl.startsWith("data:image/")) {
           return {
             created: Date.now(),
@@ -1565,10 +1495,7 @@ async function generateImageGemini(
   }
 
   // If we got here, response format is unexpected
-  console.error(
-    "[generateImageGemini] Unexpected response format. Full response:",
-    JSON.stringify(result, null, 2),
-  );
+  console.error("[generateImageGemini] Unexpected response format");
   throw new Error(
     `Failed to extract image from response. Response format: ${JSON.stringify(result).slice(0, 500)}`,
   );

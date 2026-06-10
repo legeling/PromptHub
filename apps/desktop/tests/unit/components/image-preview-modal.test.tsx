@@ -1,10 +1,16 @@
-import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { screen, fireEvent } from "@testing-library/react";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import { ImagePreviewModal } from "../../../src/renderer/components/ui/ImagePreviewModal";
+import { renderWithI18n } from "../../helpers/i18n";
 
 describe("ImagePreviewModal", () => {
-  it("renders nothing when closed", () => {
-    render(
+  afterEach(() => {
+    vi.restoreAllMocks();
+    document.body.style.overflow = "";
+  });
+
+  it("renders nothing when closed", async () => {
+    await renderWithI18n(
       <ImagePreviewModal
         isOpen={false}
         onClose={vi.fn()}
@@ -14,35 +20,110 @@ describe("ImagePreviewModal", () => {
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
   });
 
-  it("renders nothing when imageSrc is null", () => {
-    render(<ImagePreviewModal isOpen onClose={vi.fn()} imageSrc={null} />);
+  it("renders nothing when imageSrc is null", async () => {
+    await renderWithI18n(
+      <ImagePreviewModal isOpen onClose={vi.fn()} imageSrc={null} />,
+    );
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
   });
 
-  it("renders the image when open with a src", () => {
-    render(
+  it("does not lock scroll or attach Escape handler when imageSrc is null", async () => {
+    const addListenerSpy = vi.spyOn(window, "addEventListener");
+    document.body.style.overflow = "auto";
+
+    await renderWithI18n(
+      <ImagePreviewModal isOpen onClose={vi.fn()} imageSrc={null} />,
+    );
+
+    expect(document.body.style.overflow).toBe("auto");
+    expect(addListenerSpy).not.toHaveBeenCalledWith(
+      "keydown",
+      expect.any(Function),
+    );
+  });
+
+  it("renders the image when open with a src", async () => {
+    await renderWithI18n(
       <ImagePreviewModal isOpen onClose={vi.fn()} imageSrc="https://example.com/x.png" />,
     );
     const img = screen.getByRole("img");
     expect(img).toBeInTheDocument();
   });
 
-  it("calls onClose on Escape", () => {
+  it("exposes explicit close-button semantics", async () => {
     const onClose = vi.fn();
-    render(
+    await renderWithI18n(
+      <ImagePreviewModal isOpen onClose={onClose} imageSrc="https://example.com/x.png" />,
+      { language: "en" },
+    );
+
+    const closeButton = screen.getByRole("button", { name: "Close" });
+    expect(closeButton).toHaveAttribute("type", "button");
+    expect(closeButton.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+
+    fireEvent.click(closeButton);
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls onClose on Escape", async () => {
+    const onClose = vi.fn();
+    await renderWithI18n(
       <ImagePreviewModal isOpen onClose={onClose} imageSrc="https://example.com/x.png" />,
     );
     fireEvent.keyDown(window, { key: "Escape" });
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("falls back to an error placeholder when the image fails to load", () => {
-    render(
+  it("keeps image clicks open while backdrop clicks close the preview", async () => {
+    const onClose = vi.fn();
+    await renderWithI18n(
+      <ImagePreviewModal isOpen onClose={onClose} imageSrc="https://example.com/x.png" />,
+    );
+
+    fireEvent.click(screen.getByRole("img"));
+
+    expect(onClose).not.toHaveBeenCalled();
+
+    const backdrop = screen.getByTestId("image-preview-backdrop");
+    expect(backdrop).toHaveAttribute("role", "presentation");
+    expect(backdrop).toHaveAttribute("aria-hidden", "true");
+
+    fireEvent.click(backdrop);
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("restores the previous body overflow when closed", async () => {
+    document.body.style.overflow = "scroll";
+    const { rerender } = await renderWithI18n(
+      <ImagePreviewModal isOpen onClose={vi.fn()} imageSrc="https://example.com/x.png" />,
+    );
+    expect(document.body.style.overflow).toBe("hidden");
+
+    rerender(
+      <ImagePreviewModal
+        isOpen={false}
+        onClose={vi.fn()}
+        imageSrc="https://example.com/x.png"
+      />,
+    );
+
+    expect(document.body.style.overflow).toBe("scroll");
+  });
+
+  it("falls back to an error placeholder when the image fails to load", async () => {
+    await renderWithI18n(
       <ImagePreviewModal isOpen onClose={vi.fn()} imageSrc="https://example.com/x.png" />,
     );
     const img = screen.getByRole("img");
     fireEvent.error(img);
     // After error, the img is unmounted in favor of the placeholder.
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
+    expect(screen.getByText("Image load failed")).toBeInTheDocument();
+    expect(document.body.querySelector(".lucide-image")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
   });
 });

@@ -18,13 +18,9 @@ export function expandShellOpenPath(
   folderPath: string,
   paths: { appDataPath: string; homePath: string },
 ): string {
-  if (folderPath.startsWith("~")) {
-    return folderPath.replace("~", paths.homePath);
-  }
-  if (folderPath.includes("%APPDATA%")) {
-    return folderPath.replace("%APPDATA%", paths.appDataPath);
-  }
-  return folderPath;
+  return folderPath
+    .replace(/^~(?=$|[/\\])/, paths.homePath)
+    .replace(/%APPDATA%/gi, paths.appDataPath);
 }
 
 export async function openDirectoryPath(
@@ -51,7 +47,10 @@ export async function openDirectoryPath(
       return { success: false, error: "Only directories can be opened" };
     }
   } catch {
-    // Path may not exist yet. Let Electron return the platform-specific error.
+    return {
+      success: false,
+      error: "Directory does not exist or cannot be accessed",
+    };
   }
 
   try {

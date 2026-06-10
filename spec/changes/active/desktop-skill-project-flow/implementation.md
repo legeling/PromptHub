@@ -7,6 +7,9 @@
 - 新增项目创建后的自动选择与自动扫描流程，创建成功后立即触发 `scanProjectSkills(...)`，减少手动刷新步骤。
 - 为项目列表卡片和项目详情头部增加首字母 avatar，在没有真实图标资源时仍能提供稳定识别。
 - 更新 `apps/desktop/src/renderer/stores/settings.store.ts`，归一化 `skillProjects.scanPaths`，避免把 `rootPath` 重复保存到额外扫描路径中。
+- `settings.store` 现在在 zustand `merge` 与 `migrate` 中复用同一套
+  `skillProjects` 规范化逻辑；current-version localStorage 中的畸形项目记录会被过滤，
+  项目名、根目录、额外扫描路径与部署目标会在 hydrate 时先 trim、去重并剔除 root 等价路径。
 - 更新 `apps/desktop/tests/unit/components/skill-projects-view.test.tsx` 与 `apps/desktop/tests/unit/stores/skill.store.test.ts`，覆盖自动填名、自动扫描与 scan path 归一化行为。
 - 同步补齐桌面端 7 个 locale 中与项目流程相关的新文案，避免仅 `en` / `zh` 生效。
 - 调整项目级 Skill 详情页：预览态右栏不再复用 `SkillCodePane` 显示 `SKILL.md` 原文，而是改为项目专用操作区；未收录时突出“导入到我的 Skills”，已收录时直接切回正常平台分发面板。
@@ -175,6 +178,17 @@
 - `pnpm --filter @prompthub/desktop typecheck`
   - 结果：通过
 - `git diff --check`
+  - 结果：通过
+- 同版本 `skillProjects` hydrate 规范化补充验证：
+- `pnpm --filter @prompthub/desktop test -- --run tests/unit/stores/settings-agent-roots.test.ts -t "same-version persisted skill projects"`
+  - 结果：先复现 current-version hydrate 缺口，修复后通过
+- `pnpm --filter @prompthub/desktop test -- --run tests/unit/stores/settings-agent-roots.test.ts`
+  - 结果：通过（7/7）
+- `pnpm --filter @prompthub/desktop typecheck`
+  - 结果：通过
+- `pnpm --filter @prompthub/desktop lint`
+  - 结果：通过
+- `git diff --check -- apps/desktop/src/renderer/stores/settings.store.ts apps/desktop/tests/unit/stores/settings-agent-roots.test.ts spec/changes/active/desktop-skill-project-flow spec/issues/active/quality.md`
   - 结果：通过
 
 ## Notes

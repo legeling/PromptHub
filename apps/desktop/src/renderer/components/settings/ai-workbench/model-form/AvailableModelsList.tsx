@@ -158,9 +158,13 @@ export function AvailableModelsList({
         </div>
         {/* Search */}
         <div className="relative">
-          <SearchIcon className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <SearchIcon
+            aria-hidden="true"
+            className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+          />
           <input
             type="text"
+            aria-label={t("settings.searchModels")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t("settings.searchModels")}
@@ -187,6 +191,24 @@ export function AvailableModelsList({
               const someInCategorySelected = models.some((m) =>
                 selectedSet.has(m.id),
               );
+              const categoryToggleLabel = isCollapsed
+                ? t("settings.expandModelCategory", {
+                    category: categoryLabel,
+                    defaultValue: "Expand {{category}} models",
+                  })
+                : t("settings.collapseModelCategory", {
+                    category: categoryLabel,
+                    defaultValue: "Collapse {{category}} models",
+                  });
+              const categorySelectAllLabel = allInCategorySelected
+                ? t("settings.deselectAllModelsInCategory", {
+                    category: categoryLabel,
+                    defaultValue: "Deselect all {{category}} models",
+                  })
+                : t("settings.selectAllModelsInCategory", {
+                    category: categoryLabel,
+                    defaultValue: "Select all {{category}} models",
+                  });
 
               return (
                 <div key={category}>
@@ -195,14 +217,22 @@ export function AvailableModelsList({
                     <button
                       type="button"
                       onClick={() => toggleCategory(category)}
+                      aria-label={categoryToggleLabel}
+                      aria-expanded={!isCollapsed}
                       className="flex flex-1 items-center gap-2 px-2 py-1.5 text-left"
                     >
                       {isCollapsed ? (
-                        <ChevronRightIcon className="h-3 w-3 shrink-0 text-muted-foreground" />
+                        <ChevronRightIcon
+                          aria-hidden="true"
+                          className="h-3 w-3 shrink-0 text-muted-foreground"
+                        />
                       ) : (
-                        <ChevronDownIcon className="h-3 w-3 shrink-0 text-muted-foreground" />
+                        <ChevronDownIcon
+                          aria-hidden="true"
+                          className="h-3 w-3 shrink-0 text-muted-foreground"
+                        />
                       )}
-                      <span className="shrink-0">
+                      <span aria-hidden="true" className="shrink-0">
                         {getCategoryIcon(category, 16)}
                       </span>
                       <span className="text-xs font-medium">
@@ -216,6 +246,7 @@ export function AvailableModelsList({
                     <button
                       type="button"
                       onClick={() => toggleAllInCategory(models)}
+                      aria-label={categorySelectAllLabel}
                       className={`mr-1.5 shrink-0 rounded px-2 py-0.5 text-[10px] transition-colors ${
                         allInCategorySelected
                           ? "bg-primary/15 text-primary"
@@ -235,10 +266,21 @@ export function AvailableModelsList({
                     <div className="ml-7 space-y-0.5">
                       {models.map((model) => {
                         const isSelected = selectedSet.has(model.id);
+                        const modelActionLabel = isSelected
+                          ? t("settings.deselectModel", {
+                              model: model.id,
+                              defaultValue: "Deselect model {{model}}",
+                            })
+                          : t("settings.selectModel", {
+                              model: model.id,
+                              defaultValue: "Select model {{model}}",
+                            });
                         return (
                           <button
                             key={model.id}
                             type="button"
+                            aria-label={modelActionLabel}
+                            aria-pressed={isSelected}
                             onClick={() => toggleModel(model.id)}
                             className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors ${
                               isSelected
@@ -248,6 +290,7 @@ export function AvailableModelsList({
                           >
                             {/* Checkbox indicator */}
                             <span
+                              aria-hidden="true"
                               className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border text-[9px] ${
                                 isSelected
                                   ? "border-primary bg-primary text-primary-foreground"

@@ -73,6 +73,7 @@ export function ModelFormModal({
               </div>
             </div>
             <ChevronDownIcon
+              aria-hidden="true"
               className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
                 showAdvancedParams ? "rotate-180" : ""
               }`}
@@ -106,9 +107,12 @@ export function ModelFormModal({
             className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-background px-4 text-sm"
           >
             {testingModelId === draftTestingKey ? (
-              <Loader2Icon className="h-4 w-4 animate-spin" />
+              <Loader2Icon
+                aria-hidden="true"
+                className="h-4 w-4 animate-spin"
+              />
             ) : (
-              <TestTubeIcon className="h-4 w-4" />
+              <TestTubeIcon aria-hidden="true" className="h-4 w-4" />
             )}
             {t("settings.aiWorkbenchTestDraft")}
           </button>

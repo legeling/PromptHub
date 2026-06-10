@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useId, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDownIcon, ChevronRightIcon, BrainIcon, Loader2Icon } from 'lucide-react';
+import { ChevronDownIcon, ChevronRightIcon, BrainIcon } from 'lucide-react';
+import { Spinner } from './Spinner';
 
 interface CollapsibleThinkingProps {
     content: string | null;
@@ -23,6 +24,7 @@ export function CollapsibleThinking({
     const [isExpanded, setIsExpanded] = useState(defaultExpanded);
     const contentRef = useRef<HTMLDivElement>(null);
     const prevContentLength = useRef(0);
+    const contentId = useId();
 
     // Auto-scroll to bottom when content updates during streaming / 流式输出时自动滚动到底部
     useEffect(() => {
@@ -47,24 +49,27 @@ export function CollapsibleThinking({
         <div className={`rounded-xl border border-border/50 bg-muted/20 overflow-hidden transition-all duration-base ${className}`}>
             {/* Header / 头部 */}
             <button
+                type="button"
                 onClick={() => setIsExpanded(!isExpanded)}
+                aria-expanded={isExpanded}
+                aria-controls={contentId}
                 className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition-colors group"
             >
                 {/* Expand/Collapse Icon / 展开/折叠图标 */}
                 <span className="text-muted-foreground transition-transform duration-base">
                     {isExpanded ? (
-                        <ChevronDownIcon className="w-4 h-4" />
+                        <ChevronDownIcon aria-hidden="true" className="w-4 h-4" />
                     ) : (
-                        <ChevronRightIcon className="w-4 h-4" />
+                        <ChevronRightIcon aria-hidden="true" className="w-4 h-4" />
                     )}
                 </span>
 
                 {/* Brain Icon with animation / 带动画的思考图标 */}
                 <span className={`relative ${isLoading ? 'text-primary' : 'text-muted-foreground'}`}>
-                    <BrainIcon className={`w-4 h-4 ${isLoading ? 'animate-pulse' : ''}`} />
+                    <BrainIcon aria-hidden="true" className={`w-4 h-4 ${isLoading ? 'animate-pulse' : ''}`} />
                     {isLoading && (
-                        <span className="absolute inset-0 flex items-center justify-center">
-                            <span className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                        <span aria-hidden="true" className="absolute inset-0 flex items-center justify-center">
+                            <Spinner aria-hidden="true" size="lg" tone="primary" className="h-6 w-6 text-primary/70" />
                         </span>
                     )}
                 </span>
@@ -76,7 +81,7 @@ export function CollapsibleThinking({
 
                 {/* Loading indicator / 加载指示器 */}
                 {isLoading && (
-                    <Loader2Icon className="w-3 h-3 text-primary animate-spin ml-1" />
+                    <Spinner aria-hidden="true" size="xs" tone="primary" className="ml-1" />
                 )}
 
                 {/* Character count / 字符数 */}
@@ -89,6 +94,8 @@ export function CollapsibleThinking({
 
             {/* Content / 内容 */}
             <div
+                id={contentId}
+                aria-hidden={!isExpanded}
                 className={`overflow-hidden transition-all duration-smooth ease-in-out ${isExpanded ? 'max-h-60 opacity-100' : 'max-h-0 opacity-0'
                     }`}
             >

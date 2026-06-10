@@ -4,6 +4,7 @@ import React, {
   useMemo,
   lazy,
   Suspense,
+  useId,
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
@@ -42,6 +43,7 @@ import { SkillQuickInstall } from "./SkillQuickInstall";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { ContextMenu, type ContextMenuItem } from "../ui/ContextMenu";
 import { Select, type SelectOption } from "../ui/Select";
+import { Spinner } from "../ui/Spinner";
 import { useToast } from "../ui/Toast";
 import type {
   Skill,
@@ -51,6 +53,7 @@ import type {
 import { updateSkillTags, type SkillBatchTagMode } from "./batch-utils";
 import { filterVisibleSkills } from "../../services/skill-filter";
 import { buildMySkillSourceBadges } from "../../services/skill-source-badges";
+import { getRemoteStoreSkills } from "../../services/remote-store-entry";
 import { getRuntimeCapabilities } from "../../runtime";
 import { useSkillStoreRemoteSync } from "./store-remote-sync";
 
@@ -238,6 +241,9 @@ function getPrimarySkillSourceBadge(
 export function SkillManager() {
   const { t } = useTranslation();
   const { showToast } = useToast();
+  const deleteCopyInstallationsInputId = useId();
+  const deleteCopyInstallationsLabelId = useId();
+  const deleteCopyInstallationsHelpId = useId();
   const skills = useSkillStore((state) => state.skills);
   const loadSkills = useSkillStore((state) => state.loadSkills);
   const deleteSkill = useSkillStore((state) => state.deleteSkill);
@@ -494,7 +500,7 @@ export function SkillManager() {
   const skillsWithStoreUpdates = useMemo(() => {
     const registrySkillBySlug = new Map(
       Object.values(remoteStoreEntries)
-        .flatMap((entry) => entry.skills)
+        .flatMap((entry) => getRemoteStoreSkills(entry))
         .map((skill) => [skill.slug, skill]),
     );
 
@@ -756,7 +762,7 @@ export function SkillManager() {
         <Suspense
           fallback={
             <div className="flex h-full items-center justify-center">
-              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              <Spinner />
             </div>
           }
         >
@@ -772,7 +778,7 @@ export function SkillManager() {
         <Suspense
           fallback={
             <div className="flex h-full items-center justify-center">
-              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              <Spinner />
             </div>
           }
         >
@@ -788,7 +794,7 @@ export function SkillManager() {
         <Suspense
           fallback={
             <div className="flex h-full items-center justify-center">
-              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              <Spinner />
             </div>
           }
         >
@@ -806,7 +812,7 @@ export function SkillManager() {
         <Suspense
           fallback={
             <div className="flex h-full items-center justify-center">
-              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              <Spinner />
             </div>
           }
         >
@@ -1264,6 +1270,7 @@ export function SkillManager() {
 
               <div className="flex items-center gap-2 self-start lg:self-center lg:justify-end">
                 <button
+                  type="button"
                   onClick={toggleSelectionMode}
                   aria-pressed={isSelectionMode}
                   className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-colors ${
@@ -1272,17 +1279,20 @@ export function SkillManager() {
                       : "border-border app-wallpaper-surface text-foreground hover:border-primary/25 hover:bg-accent"
                   }`}
                   title={t("skill.batchManage", "Batch Manage")}
+                  aria-label={t("skill.batchManage", "Batch Manage")}
                 >
                   {isSelectionMode ? (
-                    <XIcon className="w-4 h-4" />
+                    <XIcon aria-hidden="true" className="w-4 h-4" />
                   ) : (
-                    <CheckSquareIcon className="w-4 h-4" />
+                    <CheckSquareIcon aria-hidden="true" className="w-4 h-4" />
                   )}
                   {t("skill.batchManage", "Batch Manage")}
                 </button>
                 <div className="flex items-center bg-muted rounded-lg p-0.5">
                   <button
+                    type="button"
                     onClick={() => setViewMode("gallery")}
+                    aria-label={t("skill.galleryView", "Gallery View")}
                     className={`p-2 rounded-md transition-colors ${
                       viewMode === "gallery"
                         ? "app-wallpaper-surface text-foreground shadow-sm"
@@ -1290,10 +1300,12 @@ export function SkillManager() {
                     }`}
                     title={t("skill.galleryView", "Gallery View")}
                   >
-                    <LayoutGridIcon className="w-4 h-4" />
+                    <LayoutGridIcon aria-hidden="true" className="w-4 h-4" />
                   </button>
                   <button
+                    type="button"
                     onClick={() => setViewMode("list")}
+                    aria-label={t("skill.listView", "List View")}
                     className={`p-2 rounded-md transition-colors ${
                       viewMode === "list"
                         ? "app-wallpaper-surface text-foreground shadow-sm"
@@ -1301,7 +1313,7 @@ export function SkillManager() {
                     }`}
                     title={t("skill.listView", "List View")}
                   >
-                    <ListIcon className="w-4 h-4" />
+                    <ListIcon aria-hidden="true" className="w-4 h-4" />
                   </button>
                 </div>
                 {viewMode === "gallery" && (
@@ -1321,6 +1333,7 @@ export function SkillManager() {
                 )}
                 <div className="h-4 w-px bg-border" />
                 <button
+                  type="button"
                   onClick={async () => {
                     if (isRefreshingLibrary) {
                       return;
@@ -1353,12 +1366,17 @@ export function SkillManager() {
                   }}
                   disabled={isRefreshingLibrary}
                   className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-accent transition-colors"
+                  aria-label={`${t("settings.refresh")} - ${t(
+                    "skill.refreshLibraryHint",
+                    "Reload the PromptHub Skill library and platform distribution status.",
+                  )}`}
                   title={`${t("settings.refresh")} - ${t(
                     "skill.refreshLibraryHint",
                     "Reload the PromptHub Skill library and platform distribution status.",
                   )}`}
                 >
                   <RefreshCwIcon
+                    aria-hidden="true"
                     className={`w-4 h-4 ${isRefreshingLibrary ? "animate-spin" : ""}`}
                   />
                 </button>
@@ -1424,6 +1442,7 @@ export function SkillManager() {
                   </div>
                 </div>
                 <button
+                  type="button"
                   onClick={handleSelectAllVisible}
                   className="inline-flex items-center gap-2 rounded-xl border border-border app-wallpaper-surface px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/25 hover:bg-accent"
                   title={
@@ -1431,58 +1450,87 @@ export function SkillManager() {
                       ? t("common.clear", "Clear")
                       : t("common.selectAll", "Select All")
                   }
+                  aria-label={
+                    allVisibleSelected
+                      ? t("common.clear", "Clear")
+                      : t("common.selectAll", "Select All")
+                  }
                 >
                   {allVisibleSelected ? (
-                    <CheckSquareIcon className="w-4 h-4 text-primary" />
+                    <CheckSquareIcon
+                      aria-hidden="true"
+                      className="w-4 h-4 text-primary"
+                    />
                   ) : (
-                    <SquareIcon className="w-4 h-4 text-muted-foreground" />
+                    <SquareIcon
+                      aria-hidden="true"
+                      className="w-4 h-4 text-muted-foreground"
+                    />
                   )}
                   {allVisibleSelected
                     ? t("common.clear", "Clear")
                     : t("common.selectAll", "Select All")}
                 </button>
                 <button
-                  onClick={handleBatchFavorite}
-                  disabled={selectedSkillIds.size === 0}
-                  className="inline-flex items-center gap-2 rounded-xl border border-border app-wallpaper-surface px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/25 hover:bg-accent disabled:opacity-50"
-                  title={
-                    selectedSkills.every((skill) => skill.is_favorite)
-                      ? t("skill.removeFavorite", "Remove Favorite")
-                      : t("skill.addFavorite", "Add Favorite")
-                  }
+                  type="button"
+	                  onClick={handleBatchFavorite}
+	                  disabled={selectedSkillIds.size === 0}
+	                  className="inline-flex items-center gap-2 rounded-xl border border-border app-wallpaper-surface px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/25 hover:bg-accent disabled:opacity-50"
+	                  aria-label={
+	                    selectedSkills.every((skill) => skill.is_favorite)
+	                      ? t("skill.removeFavorite", "Remove Favorite")
+	                      : t("skill.addFavorite", "Add Favorite")
+	                  }
+	                  title={
+	                    selectedSkills.every((skill) => skill.is_favorite)
+	                      ? t("skill.removeFavorite", "Remove Favorite")
+	                      : t("skill.addFavorite", "Add Favorite")
+	                  }
                 >
-                  <StarIcon className="w-4 h-4 text-amber-500" />
+                  <StarIcon
+                    aria-hidden="true"
+                    className="w-4 h-4 text-amber-500"
+                  />
                   {selectedSkills.every((skill) => skill.is_favorite)
                     ? t("skill.removeFavorite", "Remove Favorite")
                     : t("skill.addFavorite", "Add Favorite")}
                 </button>
                 <button
+                  type="button"
                   onClick={handleBatchTags}
                   disabled={selectedSkillIds.size === 0}
                   className="inline-flex items-center gap-2 rounded-xl border border-border app-wallpaper-surface px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/25 hover:bg-accent disabled:opacity-50"
                   title={t("skill.batchTags", "Batch Tags")}
+                  aria-label={t("skill.batchTags", "Batch Tags")}
                 >
-                  <TagsIcon className="w-4 h-4 text-primary" />
+                  <TagsIcon
+                    aria-hidden="true"
+                    className="w-4 h-4 text-primary"
+                  />
                   {t("skill.batchTags", "Batch Tags")}
                 </button>
                 {runtimeCapabilities.skillDistribution && (
                   <button
+                    type="button"
                     onClick={handleBatchDeploy}
                     disabled={selectedSkillIds.size === 0}
                     className="inline-flex items-center gap-2 rounded-xl bg-primary px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
                     title={t("skill.batchDeploy", "Batch Deploy")}
+                    aria-label={t("skill.batchDeploy", "Batch Deploy")}
                   >
-                    <SendIcon className="w-4 h-4" />
+                    <SendIcon aria-hidden="true" className="w-4 h-4" />
                     {t("skill.batchDeploy", "Batch Deploy")}
                   </button>
                 )}
                 <button
+                  type="button"
                   onClick={handleBatchDelete}
                   disabled={selectedSkillIds.size === 0}
                   className="inline-flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/15 disabled:opacity-50"
                   title={t("common.delete", "Delete")}
+                  aria-label={t("common.delete", "Delete")}
                 >
-                  <TrashIcon className="w-4 h-4" />
+                  <TrashIcon aria-hidden="true" className="w-4 h-4" />
                   {t("common.delete", "Delete")}
                 </button>
               </div>
@@ -1504,7 +1552,7 @@ export function SkillManager() {
             <Suspense
               fallback={
                 <div className="flex items-center justify-center h-full">
-                  <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  <Spinner />
                 </div>
               }
             >
@@ -1613,17 +1661,21 @@ export function SkillManager() {
 
               <div className="flex items-center gap-1">
                 <button
+                  type="button"
                   onClick={() => goToPage(currentPage - 1)}
                   disabled={currentPage === 1}
+                  aria-label={t("common.previous", "Previous")}
                   className="rounded-md p-1.5 transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
                   title={t("common.previous", "Previous")}
                 >
-                  <ChevronLeftIcon className="h-4 w-4" />
+                  <ChevronLeftIcon aria-hidden="true" className="h-4 w-4" />
                 </button>
                 {visiblePageNumbers.map((page) => (
                   <button
                     key={page}
+                    type="button"
                     onClick={() => goToPage(page)}
+                    aria-current={currentPage === page ? "page" : undefined}
                     className={`h-8 w-8 rounded-md text-sm transition-colors ${
                       currentPage === page
                         ? "bg-primary text-white"
@@ -1634,12 +1686,14 @@ export function SkillManager() {
                   </button>
                 ))}
                 <button
+                  type="button"
                   onClick={() => goToPage(currentPage + 1)}
                   disabled={currentPage === totalPages}
+                  aria-label={t("common.next", "Next")}
                   className="rounded-md p-1.5 transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
                   title={t("common.next", "Next")}
                 >
-                  <ChevronRightIcon className="h-4 w-4" />
+                  <ChevronRightIcon aria-hidden="true" className="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -1750,9 +1804,15 @@ export function SkillManager() {
               </p>
             ) : null}
             {deleteConfirm.distributionSummary.hasCopy ? (
-              <label className="flex items-start gap-2 rounded-xl border border-border bg-accent/30 p-3 text-xs">
+              <label
+                htmlFor={deleteCopyInstallationsInputId}
+                className="flex items-start gap-2 rounded-xl border border-border bg-accent/30 p-3 text-xs"
+              >
                 <input
+                  id={deleteCopyInstallationsInputId}
                   type="checkbox"
+                  aria-labelledby={deleteCopyInstallationsLabelId}
+                  aria-describedby={deleteCopyInstallationsHelpId}
                   className="mt-0.5 h-4 w-4 accent-primary"
                   checked={deleteConfirm.removeCopyInstallations}
                   onChange={(event) =>
@@ -1763,13 +1823,19 @@ export function SkillManager() {
                   }
                 />
                 <span>
-                  <span className="block font-medium text-foreground">
+                  <span
+                    id={deleteCopyInstallationsLabelId}
+                    className="block font-medium text-foreground"
+                  >
                     {t(
                       "skill.deleteCopyInstallationsLabel",
                       "Also delete copied distributions",
                     )}
                   </span>
-                  <span className="mt-1 block text-muted-foreground">
+                  <span
+                    id={deleteCopyInstallationsHelpId}
+                    className="mt-1 block text-muted-foreground"
+                  >
                     {t(
                       "skill.deleteCopyInstallationsHelp",
                       "Leave unchecked to keep copied Agent or project folders as detached copies.",

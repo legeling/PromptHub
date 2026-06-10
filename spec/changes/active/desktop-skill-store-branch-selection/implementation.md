@@ -34,7 +34,10 @@
 - Passed: `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/skill-store-custom-sources.test.tsx`
 - Passed: `pnpm --filter @prompthub/desktop exec eslint src/renderer/components/skill/SkillStore.tsx src/renderer/components/skill/SkillStoreSourceForm.tsx src/renderer/components/skill/SkillStoreSourceEditModal.tsx src/renderer/components/skill/SkillStoreCustomSources.tsx src/renderer/components/skill/store-remote-sync.ts src/renderer/services/github-skill-store.ts src/renderer/services/skill-store-source.ts src/renderer/stores/skill.store.ts tests/unit/services/skill-store-source.test.ts tests/unit/components/skill-store-remote.test.tsx tests/unit/components/skill-store-custom-sources.test.tsx`
 - Passed: `pnpm --filter @prompthub/desktop exec eslint src/main/services/skill-installer-utils.ts src/main/services/skill-installer.ts src/main/ipc/skill/platform-handlers.ts src/preload/api/skill.ts src/renderer/components/skill/SkillStore.tsx src/renderer/components/skill/SkillStoreSourceForm.tsx src/renderer/components/skill/SkillStoreSourceEditModal.tsx src/renderer/components/skill/SkillStoreCustomSources.tsx src/renderer/components/skill/store-remote-sync.ts src/renderer/services/github-skill-store.ts src/renderer/services/skill-store-source.ts src/renderer/stores/skill.store.ts tests/unit/main/skill-installer-utils.test.ts tests/unit/components/skill-store-custom-sources.test.tsx tests/unit/components/skill-store-remote.test.tsx tests/unit/services/skill-store-source.test.ts tests/unit/stores/skill.store.test.ts`
-- `pnpm --filter @prompthub/desktop typecheck` still fails, but failures are pre-existing and unrelated to this change (current errors are in `settings/SkillSettings.tsx`, `settings.store.ts`, `SkillProjectsView.tsx`, and `rule-platform-order.ts`).
+- 2026-06-10 re-verification passed:
+  - `pnpm --filter @prompthub/desktop test -- --run tests/unit/services/skill-store-source.test.ts tests/unit/services/github-skill-store.test.ts tests/unit/components/skill-store-custom-sources.test.tsx tests/unit/components/skill-store-remote.test.tsx tests/unit/main/skill-installer-utils.test.ts`
+  - `pnpm --filter @prompthub/desktop typecheck`
+  - `pnpm --filter @prompthub/desktop lint`
 
 ## Notes
 

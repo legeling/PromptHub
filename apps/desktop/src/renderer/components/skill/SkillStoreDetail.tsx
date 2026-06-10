@@ -33,6 +33,7 @@ import {
   groupSkillSafetyFindings,
   getSafetyScanAIConfig,
   renderImmersiveSegments,
+  resolveSkillExternalUrl,
   resolveSkillDescription,
   stripFrontmatter,
 } from "./detail-utils";
@@ -155,9 +156,25 @@ export function SkillStoreDetail({
   const [showRetranslatePrompt, setShowRetranslatePrompt] = useState(false);
   const [deploySkill, setDeploySkill] = useState<Skill | null>(null);
   const stalePromptFingerprintRef = useRef<string | null>(null);
+  const installFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const uninstallCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const installInFlightRef = useRef(false);
+  const uninstallInFlightRef = useRef(false);
+  const updateCheckInFlightRef = useRef(false);
+  const updateInFlightRef = useRef(false);
+  const translationInFlightRef = useRef(false);
+  const safetyScanInFlightRef = useRef<Promise<SkillSafetyReport | null> | null>(
+    null,
+  );
   const [translationSidecar, setTranslationSidecar] =
     useState<SkillTranslationSidecar | null>(null);
   const skillSourceKey = skill.source_id || skill.slug || skill.source_url;
+  const safeSourceUrl = resolveSkillExternalUrl(skill.source_url);
+  const safeStoreUrl = resolveSkillExternalUrl(skill.store_url);
 
   const targetLang = useMemo(() => {
     const lang = (i18n.language || "").toLowerCase();
@@ -285,34 +302,46 @@ export function SkillStoreDetail({
     [skill],
   );
 
-  const scanSafety = useCallback(async () => {
-    setIsScanningSafety(true);
-    try {
-      const report = await window.api.skill.scanSafety({
-        name: skill.name,
-        content: installedSkillMdContent || skill.content,
-        sourceUrl: skill.source_url,
-        contentUrl: skill.content_url,
-        localRepoPath: installedSkill?.local_repo_path,
-        securityAudits: skill.security_audits,
-        aiConfig: getSafetyScanAIConfig(aiModels),
-      });
-      setSafetyReport(report);
-      // If already installed, persist to DB
-      if (installedSkill) {
-        try {
-          await saveSafetyReport(installedSkill.id, report);
-        } catch (err) {
-          console.warn("Failed to persist store safety report:", err);
+  const scanSafety = useCallback(() => {
+    if (safetyScanInFlightRef.current) {
+      return safetyScanInFlightRef.current;
+    }
+
+    let scanPromise: Promise<SkillSafetyReport | null>;
+    scanPromise = (async () => {
+      setIsScanningSafety(true);
+      try {
+        const report = await window.api.skill.scanSafety({
+          name: skill.name,
+          content: installedSkillMdContent || skill.content,
+          sourceUrl: skill.source_url,
+          contentUrl: skill.content_url,
+          localRepoPath: installedSkill?.local_repo_path,
+          securityAudits: skill.security_audits,
+          aiConfig: getSafetyScanAIConfig(aiModels),
+        });
+        setSafetyReport(report);
+        // If already installed, persist to DB
+        if (installedSkill) {
+          try {
+            await saveSafetyReport(installedSkill.id, report);
+          } catch (err) {
+            console.warn("Failed to persist store safety report:", err);
+          }
+        }
+        return report;
+      } catch (error: unknown) {
+        showToast(formatSkillSafetyScanError(error, t), "error");
+        return null;
+      } finally {
+        if (safetyScanInFlightRef.current === scanPromise) {
+          safetyScanInFlightRef.current = null;
+          setIsScanningSafety(false);
         }
       }
-      return report;
-    } catch (error: unknown) {
-      showToast(formatSkillSafetyScanError(error, t), "error");
-      return null;
-    } finally {
-      setIsScanningSafety(false);
-    }
+    })();
+    safetyScanInFlightRef.current = scanPromise;
+    return scanPromise;
   }, [
     aiModels,
     installedSkill,
@@ -332,6 +361,10 @@ export function SkillStoreDetail({
       setShowTranslation(!showTranslation);
       return;
     }
+    if (translationInFlightRef.current) {
+      return;
+    }
+    translationInFlightRef.current = true;
     setIsTranslating(true);
     try {
       const translated = await translateContent(
@@ -363,11 +396,16 @@ export function SkillStoreDetail({
     } catch (error: unknown) {
       showToast(formatSkillTranslationError(error, t), "error");
     } finally {
+      translationInFlightRef.current = false;
       setIsTranslating(false);
     }
   };
 
   const handleRefreshTranslation = async () => {
+    if (translationInFlightRef.current) {
+      return;
+    }
+    translationInFlightRef.current = true;
     setIsTranslating(true);
     try {
       clearTranslation(translationCacheKey);
@@ -405,6 +443,7 @@ export function SkillStoreDetail({
     } catch (error: unknown) {
       showToast(formatSkillTranslationError(error, t), "error");
     } finally {
+      translationInFlightRef.current = false;
       setIsTranslating(false);
     }
   };
@@ -447,6 +486,44 @@ export function SkillStoreDetail({
     };
   }, [installedSkill?.id, targetLang, translationMode]);
 
+  const clearInstallFeedbackTimer = useCallback(() => {
+    if (installFeedbackTimerRef.current) {
+      clearTimeout(installFeedbackTimerRef.current);
+      installFeedbackTimerRef.current = null;
+    }
+  }, []);
+
+  const clearUninstallCloseTimer = useCallback(() => {
+    if (uninstallCloseTimerRef.current) {
+      clearTimeout(uninstallCloseTimerRef.current);
+      uninstallCloseTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleInstallFeedbackReset = useCallback(() => {
+    clearInstallFeedbackTimer();
+    installFeedbackTimerRef.current = setTimeout(() => {
+      setJustInstalled(false);
+      installFeedbackTimerRef.current = null;
+    }, 2000);
+  }, [clearInstallFeedbackTimer]);
+
+  const scheduleUninstallClose = useCallback(() => {
+    clearUninstallCloseTimer();
+    uninstallCloseTimerRef.current = setTimeout(() => {
+      setJustUninstalled(false);
+      uninstallCloseTimerRef.current = null;
+      onClose();
+    }, 1000);
+  }, [clearUninstallCloseTimer, onClose]);
+
+  useEffect(() => {
+    return () => {
+      clearInstallFeedbackTimer();
+      clearUninstallCloseTimer();
+    };
+  }, [clearInstallFeedbackTimer, clearUninstallCloseTimer]);
+
   useEffect(() => {
     setShowTranslation(Boolean(cachedTranslation));
   }, [cachedTranslation]);
@@ -467,9 +544,10 @@ export function SkillStoreDetail({
   }, [hasStaleTranslation, translationFingerprint]);
 
   const handleInstall = async () => {
-    if (isInstalling || installed) {
+    if (isInstalling || installed || installInFlightRef.current) {
       return;
     }
+    installInFlightRef.current = true;
     setInstallPending(true);
     try {
       const performInstall = async () => {
@@ -481,7 +559,7 @@ export function SkillStoreDetail({
             "success",
           );
           setDeploySkill(result);
-          setTimeout(() => setJustInstalled(false), 2000);
+          scheduleInstallFeedbackReset();
         }
       };
 
@@ -508,11 +586,16 @@ export function SkillStoreDetail({
     } catch (e) {
       showToast(formatSkillInstallError(e, t), "error");
     } finally {
+      installInFlightRef.current = false;
       setInstallPending(false);
     }
   };
 
   const handleUninstall = async () => {
+    if (isUninstalling || uninstallInFlightRef.current) {
+      return;
+    }
+    uninstallInFlightRef.current = true;
     setIsUninstalling(true);
     try {
       const success = await uninstallRegistrySkill(skillSourceKey);
@@ -523,19 +606,21 @@ export function SkillStoreDetail({
             `: ${skill.name}`,
           "success",
         );
-        setTimeout(() => {
-          setJustUninstalled(false);
-          onClose();
-        }, 1000);
+        scheduleUninstallClose();
       }
     } catch (e) {
       showToast(t("skill.updateFailed", "Failed") + `: ${e}`, "error");
     } finally {
+      uninstallInFlightRef.current = false;
       setIsUninstalling(false);
     }
   };
 
   const handleCheckUpdate = async () => {
+    if (isCheckingUpdate || isUpdating || updateCheckInFlightRef.current) {
+      return;
+    }
+    updateCheckInFlightRef.current = true;
     setIsCheckingUpdate(true);
     try {
       const check = await getRegistrySkillUpdateStatus(skill);
@@ -563,11 +648,16 @@ export function SkillStoreDetail({
         "error",
       );
     } finally {
+      updateCheckInFlightRef.current = false;
       setIsCheckingUpdate(false);
     }
   };
 
   const handleUpdate = async (overwriteLocalChanges = false) => {
+    if (isUpdating || updateInFlightRef.current) {
+      return;
+    }
+    updateInFlightRef.current = true;
     setIsUpdating(true);
     try {
       const result = await updateRegistrySkill(skillSourceKey, {
@@ -604,6 +694,7 @@ export function SkillStoreDetail({
         "error",
       );
     } finally {
+      updateInFlightRef.current = false;
       setIsUpdating(false);
     }
   };
@@ -654,16 +745,19 @@ export function SkillStoreDetail({
             />
             <div className="flex items-center gap-3 mt-2">
               <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                <GlobeIcon className="w-3 h-3" />
+                <GlobeIcon aria-hidden="true" className="w-3 h-3" />
                 {skill.author}
               </div>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label={t("common.close", "Close")}
+            title={t("common.close", "Close")}
             className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors shrink-0"
           >
-            <XIcon className="w-5 h-5" />
+            <XIcon aria-hidden="true" className="w-5 h-5" />
           </button>
         </div>
 
@@ -673,6 +767,7 @@ export function SkillStoreDetail({
           <div className="flex items-center justify-end mb-3">
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={handleTranslate}
                 disabled={isTranslating}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
@@ -682,9 +777,12 @@ export function SkillStoreDetail({
                 } disabled:opacity-50`}
               >
                 {isTranslating ? (
-                  <Loader2Icon className="w-3.5 h-3.5 animate-spin" />
+                  <Loader2Icon
+                    aria-hidden="true"
+                    className="w-3.5 h-3.5 animate-spin"
+                  />
                 ) : (
-                  <LanguagesIcon className="w-3.5 h-3.5" />
+                  <LanguagesIcon aria-hidden="true" className="w-3.5 h-3.5" />
                 )}
                 {isTranslating
                   ? t("skill.translating", "Translating...")
@@ -696,12 +794,18 @@ export function SkillStoreDetail({
               </button>
               {cachedTranslation && (
                 <button
+                  type="button"
                   onClick={handleRefreshTranslation}
                   disabled={isTranslating}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-accent/50 hover:bg-accent text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
                   title={t("skill.refreshTranslation", "Refresh Translation")}
+                  aria-label={t(
+                    "skill.refreshTranslation",
+                    "Refresh Translation",
+                  )}
                 >
                   <RefreshCwIcon
+                    aria-hidden="true"
                     className={`w-3.5 h-3.5 ${isTranslating ? "animate-spin" : ""}`}
                   />
                   {t("skill.refreshTranslation", "Refresh Translation")}
@@ -828,14 +932,20 @@ export function SkillStoreDetail({
                     {sourceDebugLabel}
                   </div>
                 ) : null}
-                <a
-                  href={skill.source_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="block text-xs text-primary hover:underline mt-1 truncate"
-                >
-                  {skill.source_url.replace("https://github.com/", "")}
-                </a>
+                {safeSourceUrl ? (
+                  <a
+                    href={safeSourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block text-xs text-primary hover:underline mt-1 truncate"
+                  >
+                    {skill.source_url.replace("https://github.com/", "")}
+                  </a>
+                ) : (
+                  <div className="mt-1 truncate text-xs text-foreground">
+                    {skill.source_url}
+                  </div>
+                )}
               </div>
             )}
 
@@ -844,14 +954,20 @@ export function SkillStoreDetail({
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                   {t("skill.storePage", "Store Page")}
                 </span>
-                <a
-                  href={skill.store_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="block text-xs text-primary hover:underline mt-1 truncate"
-                >
-                  {skill.store_url.replace("https://", "")}
-                </a>
+                {safeStoreUrl ? (
+                  <a
+                    href={safeStoreUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block text-xs text-primary hover:underline mt-1 truncate"
+                  >
+                    {skill.store_url.replace("https://", "")}
+                  </a>
+                ) : (
+                  <div className="mt-1 truncate text-xs text-foreground">
+                    {skill.store_url}
+                  </div>
+                )}
               </div>
             )}
 
@@ -878,11 +994,20 @@ export function SkillStoreDetail({
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5 min-w-0">
                   {safetyReport?.level === "safe" ? (
-                    <ShieldCheckIcon className="w-3.5 h-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <ShieldCheckIcon
+                      aria-hidden="true"
+                      className="w-3.5 h-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
+                    />
                   ) : safetyReport ? (
-                    <ShieldAlertIcon className="w-3.5 h-3.5 shrink-0 text-amber-500" />
+                    <ShieldAlertIcon
+                      aria-hidden="true"
+                      className="w-3.5 h-3.5 shrink-0 text-amber-500"
+                    />
                   ) : (
-                    <ShieldAlertIcon className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                    <ShieldAlertIcon
+                      aria-hidden="true"
+                      className="w-3.5 h-3.5 shrink-0 text-muted-foreground"
+                    />
                   )}
                   <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                     {t("skill.safetyAssessment", "Safety")}
@@ -902,6 +1027,7 @@ export function SkillStoreDetail({
                   )}
                 </div>
                 <button
+                  type="button"
                   onClick={() => void scanSafety()}
                   disabled={isScanningSafety}
                   className="shrink-0 text-[10px] font-medium text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
@@ -982,14 +1108,21 @@ export function SkillStoreDetail({
                 {canShowUpdateActions && (
                   <>
                     <button
+                      type="button"
                       onClick={handleCheckUpdate}
                       disabled={isCheckingUpdate || isUpdating}
                       className={footerButtonNeutral}
                     >
                       {isCheckingUpdate ? (
-                        <Loader2Icon className="w-3.5 h-3.5 animate-spin" />
+                        <Loader2Icon
+                          aria-hidden="true"
+                          className="w-3.5 h-3.5 animate-spin"
+                        />
                       ) : (
-                        <RefreshCwIcon className="w-3.5 h-3.5" />
+                        <RefreshCwIcon
+                          aria-hidden="true"
+                          className="w-3.5 h-3.5"
+                        />
                       )}
                       {t(
                         updateStatus
@@ -1000,20 +1133,28 @@ export function SkillStoreDetail({
                     </button>
                     {canApplyStoreUpdate && (
                       <button
+                        type="button"
                         onClick={() => handleUpdate(false)}
                         disabled={isCheckingUpdate || isUpdating}
                         className={footerButtonPrimary}
                       >
                         {isUpdating ? (
-                          <Loader2Icon className="w-3.5 h-3.5 animate-spin" />
+                          <Loader2Icon
+                            aria-hidden="true"
+                            className="w-3.5 h-3.5 animate-spin"
+                          />
                         ) : (
-                          <DownloadIcon className="w-3.5 h-3.5" />
+                          <DownloadIcon
+                            aria-hidden="true"
+                            className="w-3.5 h-3.5"
+                          />
                         )}
                         {t("skill.update", "Update")}
                       </button>
                     )}
                     {canOverwriteLocalChanges && (
                       <button
+                        type="button"
                         onClick={() => handleUpdate(true)}
                         disabled={isUpdating}
                         className={`${footerButtonBase} border-amber-500/25 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 dark:text-amber-300`}
@@ -1027,14 +1168,18 @@ export function SkillStoreDetail({
                   </>
                 )}
                 <button
+                  type="button"
                   onClick={handleUninstall}
                   disabled={isUninstalling}
                   className={footerButtonDanger}
                 >
                   {isUninstalling ? (
-                    <Loader2Icon className="w-3.5 h-3.5 animate-spin" />
+                    <Loader2Icon
+                      aria-hidden="true"
+                      className="w-3.5 h-3.5 animate-spin"
+                    />
                   ) : (
-                    <TrashIcon className="w-3.5 h-3.5" />
+                    <TrashIcon aria-hidden="true" className="w-3.5 h-3.5" />
                   )}
                   {t("skill.removeFromLibrary", "Remove")}
                 </button>
@@ -1046,30 +1191,34 @@ export function SkillStoreDetail({
                     aria-label={t("skill.openInMySkills", "Open in My Skills")}
                     title={t("skill.openInMySkills", "Open in My Skills")}
                   >
-                    <CheckIcon className="w-4 h-4" />
+                    <CheckIcon aria-hidden="true" className="w-4 h-4" />
                     {t("skill.addedToLibrary", "Added")}
                   </button>
                 ) : (
                   <div className={footerStatusImported}>
-                    <CheckIcon className="w-4 h-4" />
+                    <CheckIcon aria-hidden="true" className="w-4 h-4" />
                     {t("skill.addedToLibrary", "Added")}
                   </div>
                 )}
               </>
             ) : (
               <button
+                type="button"
                 onClick={handleInstall}
                 disabled={isInstalling}
                 className={`${footerButtonPrimary} px-5`}
               >
                 {isInstalling ? (
                   <>
-                    <Loader2Icon className="w-4 h-4 animate-spin" />
+                    <Loader2Icon
+                      aria-hidden="true"
+                      className="w-4 h-4 animate-spin"
+                    />
                     {t("skill.adding", "Adding...")}
                   </>
                 ) : (
                   <>
-                    <DownloadIcon className="w-4 h-4" />
+                    <DownloadIcon aria-hidden="true" className="w-4 h-4" />
                     {t("skill.addToLibrary", "Add to Library")}
                   </>
                 )}
@@ -1092,8 +1241,15 @@ export function SkillStoreDetail({
         onClose={() => setPendingHighRiskInstallReport(null)}
         onConfirm={() => {
           const run = async () => {
-            if (!pendingHighRiskInstallReport) return;
+            if (
+              !pendingHighRiskInstallReport ||
+              installed ||
+              installInFlightRef.current
+            ) {
+              return;
+            }
             setPendingHighRiskInstallReport(null);
+            installInFlightRef.current = true;
             setInstallPending(true);
             try {
               const result = await installRegistrySkill(installableSkill);
@@ -1104,11 +1260,12 @@ export function SkillStoreDetail({
                   "success",
                 );
                 setDeploySkill(result);
-                setTimeout(() => setJustInstalled(false), 2000);
+                scheduleInstallFeedbackReset();
               }
             } catch (error) {
               showToast(formatSkillInstallError(error, t), "error");
             } finally {
+              installInFlightRef.current = false;
               setInstallPending(false);
             }
           };

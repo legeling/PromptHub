@@ -214,7 +214,7 @@ export function SkillScanPreview({
         {/* Header */}
         <div className="h-14 px-6 border-b border-border flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <FolderIcon className="w-5 h-5 text-primary" />
+            <FolderIcon aria-hidden="true" className="w-5 h-5 text-primary" />
             <h2 className="text-lg font-semibold">
               {t("skill.scanPreview", "Scan Preview")}
             </h2>
@@ -225,6 +225,8 @@ export function SkillScanPreview({
           <div className="flex items-center gap-1">
             {/* Toggle custom paths panel */}
             <button
+              type="button"
+              aria-expanded={showPathPanel}
               onClick={() => setShowPathPanel((v) => !v)}
               className={`p-2 rounded-lg transition-colors text-sm flex items-center gap-1.5 ${
                 showPathPanel
@@ -233,13 +235,14 @@ export function SkillScanPreview({
               }`}
               title={t("skill.customPaths", "Custom scan paths")}
             >
-              <PlusIcon className="w-4 h-4" />
+              <PlusIcon aria-hidden="true" className="w-4 h-4" />
               <span className="text-xs hidden sm:inline">
                 {t("skill.addPath", "Add path")}
               </span>
             </button>
             {/* Re-scan button */}
             <button
+              type="button"
               onClick={handleRescan}
               disabled={isRescanning}
               className="p-2 hover:bg-accent rounded-lg transition-colors text-muted-foreground hover:text-foreground disabled:opacity-50"
@@ -247,14 +250,20 @@ export function SkillScanPreview({
               title={t("skill.rescan", "Re-scan")}
             >
               <RefreshCwIcon
+                aria-hidden="true"
                 className={`w-4 h-4 ${isRescanning ? "animate-spin" : ""}`}
               />
             </button>
             <button
+              type="button"
+              aria-label={t("common.close", "Close")}
               onClick={onClose}
               className="p-2 hover:bg-accent rounded-lg transition-colors"
             >
-              <XIcon className="w-5 h-5 text-muted-foreground" />
+              <XIcon
+                aria-hidden="true"
+                className="w-5 h-5 text-muted-foreground"
+              />
             </button>
           </div>
         </div>
@@ -276,13 +285,18 @@ export function SkillScanPreview({
                     key={p}
                     className="flex items-center gap-2 text-xs app-wallpaper-surface border border-border rounded px-2 py-1"
                   >
-                    <FolderIcon className="w-3 h-3 text-primary shrink-0" />
+                    <FolderIcon
+                      aria-hidden="true"
+                      className="w-3 h-3 text-primary shrink-0"
+                    />
                     <span className="flex-1 truncate font-mono">{p}</span>
                     <button
+                      type="button"
+                      aria-label={t("common.remove", "Remove")}
                       onClick={() => handleRemovePath(p)}
                       className="text-muted-foreground hover:text-destructive transition-colors"
                     >
-                      <Trash2Icon className="w-3 h-3" />
+                      <Trash2Icon aria-hidden="true" className="w-3 h-3" />
                     </button>
                   </div>
                 ))}
@@ -299,6 +313,7 @@ export function SkillScanPreview({
                 className="flex-1 text-xs app-wallpaper-surface border border-border rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary/50 font-mono"
               />
               <button
+                type="button"
                 onClick={handleAddPath}
                 disabled={!newPathInput.trim()}
                 className="px-3 py-1.5 text-xs bg-primary text-white rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -315,7 +330,10 @@ export function SkillScanPreview({
             <div className="flex flex-col gap-3 rounded-2xl border border-border app-wallpaper-surface/60 p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <label className="relative block flex-1">
-                  <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <SearchIcon
+                    aria-hidden="true"
+                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                  />
                   <input
                     type="text"
                     value={searchQuery}
@@ -329,6 +347,7 @@ export function SkillScanPreview({
                 </label>
                 <button
                   type="button"
+                  aria-expanded={showOptionalTags}
                   onClick={() => setShowOptionalTags((prev) => !prev)}
                   className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-colors ${
                     showOptionalTags
@@ -336,7 +355,7 @@ export function SkillScanPreview({
                       : "border-border app-wallpaper-surface text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  <TagsIcon className="h-4 w-4" />
+                  <TagsIcon aria-hidden="true" className="h-4 w-4" />
                   {showOptionalTags
                     ? t("skill.hideOptionalTags", "Hide optional tags")
                     : t("skill.showOptionalTags", "Add tags when needed")}
@@ -387,6 +406,7 @@ export function SkillScanPreview({
                     {t("skill.selected", "selected")}
                   </span>
                   <button
+                    type="button"
                     onClick={handleSelectAll}
                     className="text-xs text-primary hover:underline"
                   >
@@ -413,174 +433,177 @@ export function SkillScanPreview({
                   })();
 
                   return (
-                    <button
+                    <div
                       key={skill.localPath}
-                      type="button"
-                      className={`text-left rounded-2xl border p-4 transition-all shadow-sm ${
+                      className={`rounded-2xl border p-4 transition-all shadow-sm ${
                         skill.isInstalled
                           ? "bg-muted/30 border-border opacity-70 cursor-default"
                           : isSelected
                             ? "bg-primary/5 border-primary/40 shadow-primary/10"
                             : "app-wallpaper-surface border-border hover:border-primary/30 hover:shadow-md"
                       }`}
-                      onClick={() =>
-                        !skill.isInstalled && handleToggleSkill(skill.localPath)
-                      }
                     >
                       <div className="flex items-start gap-3">
-                        <div
-                          className={`mt-0.5 flex h-10 w-10 items-center justify-center rounded-xl ${
-                            skill.isInstalled
-                              ? "bg-accent text-muted-foreground"
-                              : "bg-primary/10 text-primary"
-                          }`}
+                        <button
+                          type="button"
+                          aria-pressed={
+                            skill.isInstalled ? undefined : isSelected
+                          }
+                          disabled={skill.isInstalled}
+                          onClick={() => handleToggleSkill(skill.localPath)}
+                          className="flex min-w-0 flex-1 items-start gap-3 text-left disabled:cursor-default"
                         >
-                          <FileTextIcon className="w-5 h-5" />
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <h4 className="font-semibold text-sm truncate">
-                                  {skill.name}
-                                </h4>
-                                {skill.isInstalled && (
-                                  <span className="text-[10px] bg-accent text-muted-foreground px-2 py-0.5 rounded-full">
-                                    {t(
-                                      "skill.importedBadge",
-                                      "Already Imported",
-                                    )}
-                                  </span>
-                                )}
-                              </div>
-                              {skill.author && (
-                                <p className="mt-1 text-[11px] text-muted-foreground">
-                                  {skill.author}
-                                </p>
-                              )}
-                            </div>
-
-                            <div className="shrink-0 pt-0.5">
-                              {skill.isInstalled ? (
-                                <CheckCircle2Icon className="w-5 h-5 text-muted-foreground" />
-                              ) : (
-                                <input
-                                  type="checkbox"
-                                  checked={isSelected}
-                                  onChange={() =>
-                                    handleToggleSkill(skill.localPath)
-                                  }
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="w-4 h-4 rounded border-border text-primary focus:ring-primary/30"
-                                />
-                              )}
-                            </div>
-                          </div>
-
-                          {skill.description && (
-                            <p className="mt-3 text-xs leading-5 text-muted-foreground line-clamp-3">
-                              {skill.description}
-                            </p>
-                          )}
-
-                          <div className="mt-3 flex flex-wrap gap-1.5">
-                            {skill.platforms.map((platform) => (
-                              <span
-                                key={platform}
-                                className="text-[10px] bg-primary/8 text-primary/80 px-2 py-0.5 rounded-full"
-                              >
-                                {platform}
-                              </span>
-                            ))}
-                          </div>
-
-                          {!skill.isInstalled &&
-                            isSelected &&
-                            showOptionalTags && (
-                              <div className="mt-4 rounded-xl border border-border bg-accent/20 p-3 space-y-2">
-                                <div className="text-[11px] font-medium text-foreground">
-                                  {t(
-                                    "skill.importTagsOptional",
-                                    "Import tags (optional)",
-                                  )}
-                                </div>
-                                <div className="flex flex-wrap gap-1.5">
-                                  {(tagDrafts[skill.localPath] || []).map(
-                                    (tag) => (
-                                      <span
-                                        key={tag}
-                                        className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-[11px] font-medium text-white"
-                                      >
-                                        {tag}
-                                        <button
-                                          type="button"
-                                          onClick={(event) => {
-                                            event.stopPropagation();
-                                            handleRemoveTag(
-                                              skill.localPath,
-                                              tag,
-                                            );
-                                          }}
-                                          className="hover:text-white/70"
-                                        >
-                                          <XIcon className="w-3 h-3" />
-                                        </button>
-                                      </span>
-                                    ),
-                                  )}
-                                </div>
-                                <div className="flex gap-2">
-                                  <input
-                                    type="text"
-                                    value={tagInputs[skill.localPath] || ""}
-                                    onClick={(event) => event.stopPropagation()}
-                                    onChange={(event) =>
-                                      setTagInputs((prev) => ({
-                                        ...prev,
-                                        [skill.localPath]: event.target.value,
-                                      }))
-                                    }
-                                    onKeyDown={(event) => {
-                                      if (event.key === "Enter") {
-                                        event.preventDefault();
-                                        event.stopPropagation();
-                                        handleAddTag(skill.localPath);
-                                      }
-                                    }}
-                                    placeholder={t(
-                                      "skill.enterTagHint",
-                                      "Type a tag and press Enter",
-                                    )}
-                                    className="flex-1 h-9 rounded-xl border-0 app-wallpaper-surface px-3 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={(event) => {
-                                      event.stopPropagation();
-                                      handleAddTag(skill.localPath);
-                                    }}
-                                    disabled={
-                                      !tagInputs[skill.localPath]?.trim()
-                                    }
-                                    className="rounded-xl app-wallpaper-surface px-3 text-xs font-medium text-foreground transition-colors hover:app-wallpaper-surface disabled:opacity-50"
-                                  >
-                                    {t("skill.addTag", "Add tag")}
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-
                           <div
-                            className="mt-4 flex items-center gap-1 text-[11px] text-muted-foreground/60 font-mono truncate"
-                            title={skill.localPath}
+                            className={`mt-0.5 flex h-10 w-10 items-center justify-center rounded-xl ${
+                              skill.isInstalled
+                                ? "bg-accent text-muted-foreground"
+                                : "bg-primary/10 text-primary"
+                            }`}
                           >
-                            <FolderIcon className="w-3 h-3 shrink-0" />
-                            <span className="truncate">{shortPath}</span>
+                            <FileTextIcon
+                              aria-hidden="true"
+                              className="w-5 h-5"
+                            />
                           </div>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold text-sm truncate">
+                                {skill.name}
+                              </span>
+                              {skill.isInstalled && (
+                                <span className="text-[10px] bg-accent text-muted-foreground px-2 py-0.5 rounded-full">
+                                  {t(
+                                    "skill.importedBadge",
+                                    "Already Imported",
+                                  )}
+                                </span>
+                              )}
+                            </div>
+                            {skill.author && (
+                              <p className="mt-1 text-[11px] text-muted-foreground">
+                                {skill.author}
+                              </p>
+                            )}
+                            {skill.description && (
+                              <p className="mt-3 text-xs leading-5 text-muted-foreground line-clamp-3">
+                                {skill.description}
+                              </p>
+                            )}
+                            <div className="mt-3 flex flex-wrap gap-1.5">
+                              {skill.platforms.map((platform) => (
+                                <span
+                                  key={platform}
+                                  className="text-[10px] bg-primary/8 text-primary/80 px-2 py-0.5 rounded-full"
+                                >
+                                  {platform}
+                                </span>
+                              ))}
+                            </div>
+                            <div
+                              className="mt-4 flex items-center gap-1 text-[11px] text-muted-foreground/60 font-mono truncate"
+                              title={skill.localPath}
+                            >
+                              <FolderIcon
+                                aria-hidden="true"
+                                className="w-3 h-3 shrink-0"
+                              />
+                              <span className="truncate">{shortPath}</span>
+                            </div>
+                          </div>
+                        </button>
+                        <div className="shrink-0 pt-0.5">
+                          {skill.isInstalled ? (
+                            <CheckCircle2Icon
+                              aria-hidden="true"
+                              className="w-5 h-5 text-muted-foreground"
+                            />
+                          ) : (
+                            <input
+                              aria-label={t("skill.selectSkill", {
+                                name: skill.name,
+                                defaultValue: "Select {{name}}",
+                              })}
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() =>
+                                handleToggleSkill(skill.localPath)
+                              }
+                              className="w-4 h-4 rounded border-border text-primary focus:ring-primary/30"
+                            />
+                          )}
                         </div>
                       </div>
-                    </button>
+                      {!skill.isInstalled &&
+                        isSelected &&
+                        showOptionalTags && (
+                          <div className="mt-4 rounded-xl border border-border bg-accent/20 p-3 space-y-2">
+                            <div className="text-[11px] font-medium text-foreground">
+                              {t(
+                                "skill.importTagsOptional",
+                                "Import tags (optional)",
+                              )}
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {(tagDrafts[skill.localPath] || []).map((tag) => (
+                                <span
+                                  key={tag}
+                                  className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-[11px] font-medium text-white"
+                                >
+                                  {tag}
+                                  <button
+                                    type="button"
+                                    aria-label={t(
+                                      "common.remove",
+                                      "Remove",
+                                    )}
+                                    onClick={() =>
+                                      handleRemoveTag(skill.localPath, tag)
+                                    }
+                                    className="hover:text-white/70"
+                                  >
+                                    <XIcon
+                                      aria-hidden="true"
+                                      className="w-3 h-3"
+                                    />
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                value={tagInputs[skill.localPath] || ""}
+                                onChange={(event) =>
+                                  setTagInputs((prev) => ({
+                                    ...prev,
+                                    [skill.localPath]: event.target.value,
+                                  }))
+                                }
+                                onKeyDown={(event) => {
+                                  if (event.key === "Enter") {
+                                    event.preventDefault();
+                                    handleAddTag(skill.localPath);
+                                  }
+                                }}
+                                placeholder={t(
+                                  "skill.enterTagHint",
+                                  "Type a tag and press Enter",
+                                )}
+                                className="flex-1 h-9 rounded-xl border-0 app-wallpaper-surface px-3 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleAddTag(skill.localPath)}
+                                disabled={!tagInputs[skill.localPath]?.trim()}
+                                className="rounded-xl app-wallpaper-surface px-3 text-xs font-medium text-foreground transition-colors hover:app-wallpaper-surface disabled:opacity-50"
+                              >
+                                {t("skill.addTag", "Add tag")}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                    </div>
                   );
                 })}
               </div>
@@ -592,18 +615,22 @@ export function SkillScanPreview({
         {allSkills.length > 0 && (
           <div className="h-16 px-6 border-t border-border flex items-center justify-end gap-3 shrink-0 app-wallpaper-surface/50">
             <button
+              type="button"
               onClick={handleImport}
               disabled={selectedSkills.size === 0 || isImporting}
               className="px-6 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {isImporting ? (
                 <>
-                  <Loader2Icon className="w-4 h-4 animate-spin" />
+                  <Loader2Icon
+                    aria-hidden="true"
+                    className="w-4 h-4 animate-spin"
+                  />
                   {t("skill.importing", "Importing...")}
                 </>
               ) : (
                 <>
-                  <DownloadIcon className="w-4 h-4" />
+                  <DownloadIcon aria-hidden="true" className="w-4 h-4" />
                   {t("skill.importSelected", "Import")} ({selectedSkills.size})
                 </>
               )}

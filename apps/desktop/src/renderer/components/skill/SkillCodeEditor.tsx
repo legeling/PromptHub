@@ -10,21 +10,12 @@ import {
   historyKeymap,
   indentWithTab,
 } from "@codemirror/commands";
-import { css } from "@codemirror/lang-css";
-import { html } from "@codemirror/lang-html";
-import { javascript } from "@codemirror/lang-javascript";
-import { json } from "@codemirror/lang-json";
-import { markdown } from "@codemirror/lang-markdown";
-import { python } from "@codemirror/lang-python";
-import { sql } from "@codemirror/lang-sql";
-import { yaml } from "@codemirror/lang-yaml";
 import {
   bracketMatching,
   defaultHighlightStyle,
   foldGutter,
   HighlightStyle,
   indentOnInput,
-  LanguageSupport,
   syntaxHighlighting,
 } from "@codemirror/language";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
@@ -32,7 +23,7 @@ import {
   Annotation,
   Compartment,
   EditorState,
-  Extension,
+  type Extension,
 } from "@codemirror/state";
 import { tags } from "@lezer/highlight";
 import {
@@ -73,7 +64,9 @@ const skillHighlightStyle = HighlightStyle.define([
   { tag: tags.inserted, color: "var(--skill-code-inserted)" },
 ]);
 
-export function getSkillCodeEditorLanguage(path: string): Extension {
+export async function loadSkillCodeEditorLanguage(
+  path: string,
+): Promise<Extension> {
   const fileName = path.split("/").pop()?.toLowerCase() || "";
   const extension = fileName.includes(".") ? fileName.split(".").pop() : "";
 
@@ -82,31 +75,49 @@ export function getSkillCodeEditorLanguage(path: string): Extension {
   }
 
   switch (extension) {
-    case "css":
+    case "css": {
+      const { css } = await import("@codemirror/lang-css");
       return css();
+    }
     case "html":
     case "htm":
-    case "xml":
+    case "xml": {
+      const { html } = await import("@codemirror/lang-html");
       return html();
+    }
     case "js":
     case "jsx":
-    case "mjs":
+    case "mjs": {
+      const { javascript } = await import("@codemirror/lang-javascript");
       return javascript({ jsx: extension === "jsx" });
-    case "json":
+    }
+    case "json": {
+      const { json } = await import("@codemirror/lang-json");
       return json();
+    }
     case "md":
-    case "mdx":
+    case "mdx": {
+      const { markdown } = await import("@codemirror/lang-markdown");
       return markdown();
-    case "py":
+    }
+    case "py": {
+      const { python } = await import("@codemirror/lang-python");
       return python();
-    case "sql":
+    }
+    case "sql": {
+      const { sql } = await import("@codemirror/lang-sql");
       return sql();
+    }
     case "ts":
-    case "tsx":
+    case "tsx": {
+      const { javascript } = await import("@codemirror/lang-javascript");
       return javascript({ jsx: extension === "tsx", typescript: true });
+    }
     case "yaml":
-    case "yml":
+    case "yml": {
+      const { yaml } = await import("@codemirror/lang-yaml");
       return yaml();
+    }
     default:
       return [];
   }
@@ -193,11 +204,7 @@ function buildTheme() {
   });
 }
 
-function buildExtensions(
-  path: string,
-  editable: boolean,
-  onChange: (value: string) => void,
-): Extension[] {
+function buildExtensions(editable: boolean, onChange: (value: string) => void): Extension[] {
   return [
     lineNumbers(),
     foldGutter(),
@@ -216,7 +223,7 @@ function buildExtensions(
     syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
     buildTheme(),
     EditorView.lineWrapping,
-    languageCompartment.of(getSkillCodeEditorLanguage(path)),
+    languageCompartment.of([]),
     editableCompartment.of([
       EditorView.editable.of(editable),
       EditorState.readOnly.of(!editable),
@@ -270,7 +277,7 @@ export function SkillCodeEditor({
       parent: hostRef.current,
       state: EditorState.create({
         doc: value,
-        extensions: buildExtensions(path, editable, (nextValue) =>
+        extensions: buildExtensions(editable, (nextValue) =>
           onChangeRef.current(nextValue),
         ),
       }),
@@ -288,7 +295,6 @@ export function SkillCodeEditor({
     if (!view) return;
     view.dispatch({
       effects: [
-        languageCompartment.reconfigure(getSkillCodeEditorLanguage(path)),
         editableCompartment.reconfigure([
           EditorView.editable.of(editable),
           EditorState.readOnly.of(!editable),
@@ -299,7 +305,32 @@ export function SkillCodeEditor({
       "aria-label",
       editable ? "Code editor" : "Code viewer",
     );
-  }, [editable, path]);
+  }, [editable]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    loadSkillCodeEditorLanguage(path)
+      .then((languageExtension) => {
+        const view = viewRef.current;
+        if (!isActive || !view) return;
+        view.dispatch({
+          effects: languageCompartment.reconfigure(languageExtension),
+        });
+      })
+      .catch((error) => {
+        console.error("Failed to load CodeMirror language extension:", error);
+        const view = viewRef.current;
+        if (!isActive || !view) return;
+        view.dispatch({
+          effects: languageCompartment.reconfigure([]),
+        });
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [path]);
 
   useEffect(() => {
     const view = viewRef.current;

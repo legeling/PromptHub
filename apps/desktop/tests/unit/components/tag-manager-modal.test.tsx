@@ -50,6 +50,10 @@ describe('TagManagerModal', () => {
       expect(screen.getByText('alpha')).toBeInTheDocument();
       expect(screen.getByText('beta')).toBeInTheDocument();
     });
+
+    expect(
+      screen.getByRole('textbox', { name: 'Filter by tag' }),
+    ).toHaveValue('');
   });
 
   it('manages only user skill tags and renames matching skills', async () => {
@@ -118,7 +122,7 @@ describe('TagManagerModal', () => {
 
     fireEvent.click(screen.getByLabelText('Edit git'));
 
-    const input = screen.getByDisplayValue('git');
+    const input = screen.getByRole('textbox', { name: 'Edit git' });
     fireEvent.change(input, { target: { value: 'engineering' } });
     fireEvent.keyDown(input, { key: 'Enter' });
 
@@ -164,7 +168,7 @@ describe('TagManagerModal', () => {
       expect(screen.getByText('alpha')).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByPlaceholderText('Enter new tag and press Enter'), {
+    fireEvent.change(screen.getByRole('textbox', { name: 'Enter new tag and press Enter' }), {
       target: { value: 'beta' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
@@ -195,9 +199,11 @@ describe('TagManagerModal', () => {
       );
     });
 
-    expect(screen.getByText('Tag click mode')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Multi select' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Single select' }));
+    const modeSelect = screen.getByRole('button', { name: 'Tag click mode' });
+    fireEvent.click(modeSelect);
+
+    expect(screen.getByRole('listbox', { name: 'Tag click mode' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('option', { name: 'Single select' }));
 
     expect(useSettingsStore.getState().tagFilterMode).toBe('single');
   });

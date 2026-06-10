@@ -81,6 +81,25 @@ describe("settings store · setGithubToken (issue #108)", () => {
     expect(persistedState).not.toContain("ghp_OnlyInMemory");
   });
 
+  it("clears same-version persisted tokens during hydration", async () => {
+    localStorage.setItem(
+      "prompthub-settings",
+      JSON.stringify({
+        state: {
+          githubToken: "ghp_LeakedInRendererStorage",
+        },
+        version: 16,
+      }),
+    );
+
+    const { useSettingsStore } = await importStoreWithSpy();
+
+    expect(useSettingsStore.getState().githubToken).toBe("");
+    expect(localStorage.getItem("prompthub-settings") ?? "").not.toContain(
+      "ghp_LeakedInRendererStorage",
+    );
+  });
+
   it("loads the token from the main process on demand", async () => {
     const { useSettingsStore, getSpy } = await importStoreWithSpy();
     getSpy.mockResolvedValueOnce({ githubToken: "ghp_FromMain" });

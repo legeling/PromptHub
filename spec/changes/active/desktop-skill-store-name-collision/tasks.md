@@ -25,12 +25,12 @@
 - [x] 修复 direct Git import 的选择和已导入判断：从 `slug/source_url` 切换为 `source_id`，并覆盖同 repo 同 slug 不同目录场景。
 - [x] 修复 Claude Code Store 列表页安装态漂移：列表分组与 store selector 统一使用 canonical identity，而不是只看当前 `source_id`。
 - [x] 补充回归测试：历史导入记录仅能通过 `content_url` 匹配时，Claude Code Store 仍显示 `Imported`，同名不同来源仍显示可导入。
-- [ ] 补充组合测试：direct Git import 与 persisted git store source 的同名、同源、refresh、Imported 判断语义。
-- [ ] 补充组合测试：local scan / project scan 导入后再 deploy / rescan，不产生循环导入或错误 source identity。
-- [ ] 补充组合测试：managed repo 文件编辑、repo sync、version restore 后保留原 `source_id`，并正确刷新 `directory_fingerprint`。
-- [ ] 补充组合测试：project deploy 同名变体在同一 target 下是 logical-name 单激活/替换关系，而不是并存关系。
-- [ ] 补充组合测试：platform install status 对同名变体按 activation `skillId` 区分。
-- [ ] 设计并评审 `local-dir` / 本地路径 `git-repo` 的 git-branch-aware identity 方案：明确是否把当前 branch 纳入 `source_id`、UI badge 与 refresh 语义。
-- [ ] 补充组合测试：同一 `local-dir` 或本地路径 `git-repo` 在不同 git branch / worktree / detached HEAD / dirty working tree 下的身份与更新语义。
-- [ ] 评估并补充 persisted `remoteStoreEntries` 的旧 identity 缓存清洗策略，避免用户首次 refresh 前继续受到历史错误缓存影响。
-- [ ] 评估 managed 容器 `<short-id>` 的碰撞兜底策略（如 12 位后缀或冲突自动追加后缀）。
+- [x] 补充组合测试：direct Git import 与 persisted git store source 的同名、同源、refresh、Imported 判断语义。
+- [x] 补充组合测试：local scan / project scan 导入后再 deploy / rescan，不产生循环导入或错误 source identity。
+- [x] 补充组合测试：managed repo 文件编辑、repo sync、version restore 后保留原 `source_id`，并正确刷新 `directory_fingerprint`。
+- [x] 补充组合测试：project deploy 同名变体在同一 target 下是 logical-name 单激活/替换关系，而不是并存关系。
+- [x] 补充组合测试：platform install status 对同名变体按 activation `skillId` 区分。
+- [x] 设计并评审 `local-dir` / 本地路径 `git-repo` 的 git-branch-aware identity 方案：明确是否把当前 branch 纳入 `source_id`、UI badge 与 refresh 语义。
+- [x] 补充组合测试：同一 `local-dir` 或本地路径 `git-repo` 在不同 git branch / worktree / detached HEAD / dirty working tree 下的身份与更新语义。
+- [x] 评估并补充 persisted `remoteStoreEntries` 的旧 identity 缓存清洗策略，避免用户首次 refresh 前继续受到历史错误缓存影响。
+- [x] 评估 managed 容器 `<short-id>` 的碰撞兜底策略（如 12 位后缀或冲突自动追加后缀）。

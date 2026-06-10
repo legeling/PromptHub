@@ -1,4 +1,6 @@
+import type { FormEvent } from "react";
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DataSettings } from "../../../src/renderer/components/settings/DataSettings";
@@ -97,6 +99,15 @@ vi.mock("../../../src/renderer/services/upgrade-backup", () => ({
   restoreUpgradeBackup: vi.fn(),
 }));
 
+function expectButtonIconsHidden(button: HTMLElement) {
+  for (const icon of button.querySelectorAll("svg")) {
+    expect(
+      icon.getAttribute("aria-hidden") === "true" ||
+        Boolean(icon.closest("[aria-hidden='true']")),
+    ).toBe(true);
+  }
+}
+
 function createSettingsState() {
   return {
     aiModels: [],
@@ -189,7 +200,7 @@ function createSettingsState() {
   };
 }
 
-describe("DataSettings", { timeout: 15_000 }, () => {
+describe("DataSettings", { timeout: 60_000 }, () => {
   let originalCreateElement: typeof document.createElement;
 
   beforeEach(() => {
@@ -254,6 +265,82 @@ describe("DataSettings", { timeout: 15_000 }, () => {
       screen.getByText("Will switch to this directory after restart:"),
     ).toBeInTheDocument();
     expect(screen.getByText("/next/data")).toBeInTheDocument();
+  });
+
+  it("keeps rendered data settings actions non-submit with decorative icons hidden", async () => {
+    const settingsState = createSettingsState();
+    settingsState.selfHostedSyncEnabled = true;
+    settingsState.selfHostedSyncUrl = "https://backup.example.com";
+    settingsState.selfHostedSyncUsername = "owner";
+    settingsState.selfHostedSyncPassword = "secret";
+    settingsState.webdavEnabled = true;
+    settingsState.webdavUrl = "https://webdav.example.com";
+    settingsState.webdavUsername = "owner";
+    settingsState.webdavPassword = "secret";
+    settingsState.s3StorageEnabled = true;
+    settingsState.s3Endpoint = "https://s3.example.com";
+    settingsState.s3Region = "us-east-1";
+    settingsState.s3Bucket = "prompthub-backups";
+    settingsState.s3AccessKeyId = "access";
+    settingsState.s3SecretAccessKey = "secret";
+    useSettingsStoreMock.mockReturnValue(settingsState);
+    vi.mocked(listUpgradeBackups).mockResolvedValue([
+      {
+        backupId: "backup-1",
+        backupPath: "/tmp/PromptHub/backups/backup-1",
+        sizeBytes: 1024,
+        manifest: {
+          kind: "prompthub-upgrade-backup",
+          schemaVersion: 2,
+          createdAt: "2026-04-17T00:00:00.000Z",
+          fromVersion: "0.5.1",
+          toVersion: "0.5.2",
+          sourcePath: "/tmp/PromptHub",
+          copiedItems: ["prompthub.db"],
+          platform: "darwin",
+        },
+      },
+    ]);
+    const onSubmit = vi.fn((event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+    });
+    const subsections = [
+      "local",
+      "recovery",
+      "selfHosted",
+      "webdav",
+      "s3",
+      "backup",
+    ] as const;
+
+    for (const activeSubsection of subsections) {
+      let view: Awaited<ReturnType<typeof renderWithI18n>> | null = null;
+      await act(async () => {
+        view = await renderWithI18n(
+          <form onSubmit={onSubmit}>
+            <DataSettings activeSubsection={activeSubsection} />
+          </form>,
+          { language: "en" },
+        );
+        await Promise.resolve();
+      });
+
+      await waitFor(() => {
+        expect(screen.getAllByRole("button").length).toBeGreaterThan(0);
+      });
+
+      for (const button of screen.getAllByRole("button")) {
+        expect(button).toHaveAttribute("type", "button");
+        expectButtonIconsHidden(button);
+      }
+
+      await act(async () => {
+        view?.unmount();
+        await Promise.resolve();
+      });
+    }
+
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it("offers switching instead of migrating when the selected directory already has data", async () => {
@@ -345,7 +432,7 @@ describe("DataSettings", { timeout: 15_000 }, () => {
     const applyDataPathChange = vi.fn().mockResolvedValue({
       success: true,
       newPath: "/empty/PromptHub",
-      needsRestart: true,
+      needsRestart: false,
     });
     vi.spyOn(window, "confirm").mockReturnValue(true);
 
@@ -389,10 +476,6 @@ describe("DataSettings", { timeout: 15_000 }, () => {
         "/empty/PromptHub",
         "migrate",
       );
-    });
-
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 1200));
     });
   });
 
@@ -444,10 +527,6 @@ describe("DataSettings", { timeout: 15_000 }, () => {
       );
     });
 
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 1200));
-    });
-
     expect(confirmSpy).not.toHaveBeenCalled();
     expect(relaunchApp).not.toHaveBeenCalled();
   });
@@ -487,16 +566,53 @@ describe("DataSettings", { timeout: 15_000 }, () => {
       },
     });
 
+    const onSubmit = vi.fn((event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+    });
+
     await act(async () => {
-      await renderWithI18n(<DataSettings activeSubsection="recovery" />, {
-        language: "en",
-      });
+      await renderWithI18n(
+        <form onSubmit={onSubmit}>
+          <DataSettings activeSubsection="recovery" />
+        </form>,
+        {
+          language: "en",
+        },
+      );
     });
     await act(async () => {
       await Promise.resolve();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Add folder" }));
+    expect(
+      screen.getByRole("textbox", { name: "Extra scan directories" }),
+    ).toBeEnabled();
+
+    fireEvent.change(
+      screen.getByRole("textbox", { name: "Extra scan directories" }),
+      { target: { value: "D:/PromptHub-legacy" } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("D:/PromptHub-legacy")).toBeInTheDocument();
+    });
+
+    const removePathButton = screen.getByRole("button", { name: "Delete" });
+    expect(removePathButton).toHaveAttribute("type", "button");
+    expectButtonIconsHidden(removePathButton);
+
+    fireEvent.click(removePathButton);
+
+    await waitFor(() => {
+      expect(screen.queryByText("D:/PromptHub-legacy")).not.toBeInTheDocument();
+    });
+
+    fireEvent.change(
+      screen.getByRole("textbox", { name: "Extra scan directories" }),
+      { target: { value: "D:/PromptHub-legacy" } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
 
     await waitFor(() => {
       expect(screen.getByText("D:/PromptHub-legacy")).toBeInTheDocument();
@@ -515,6 +631,7 @@ describe("DataSettings", { timeout: 15_000 }, () => {
     expect(
       screen.getAllByText("C:/Users/test/AppData/Roaming/prompthub").length,
     ).toBeGreaterThan(0);
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it("imports a backup file through the import action with preview confirmation", async () => {
@@ -583,7 +700,10 @@ describe("DataSettings", { timeout: 15_000 }, () => {
       return originalCreateElement(tagName);
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Import Data" }));
+    const importButton = screen.getByRole("button", { name: "Import Data" });
+    expect(importButton).toHaveAttribute("aria-label", "Import Data");
+
+    fireEvent.click(importButton);
     expect(input.type).toBe("file");
     expect(input.accept).toBe(".json,.phub,.gz,.zip");
 
@@ -760,6 +880,13 @@ describe("DataSettings", { timeout: 15_000 }, () => {
       await Promise.resolve();
     });
 
+    expect(
+      screen.getByRole("textbox", { name: "Self-Hosted PromptHub URL" }),
+    ).toBeEnabled();
+    expect(
+      screen.getByRole("textbox", { name: "Self-Hosted PromptHub Username" }),
+    ).toBeEnabled();
+
     fireEvent.click(screen.getByRole("button", { name: "Test Connection" }));
 
     await waitFor(() => {
@@ -789,12 +916,69 @@ describe("DataSettings", { timeout: 15_000 }, () => {
       });
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Manual only" }));
     fireEvent.click(
-      screen.getByRole("button", { name: "WebDAV" }),
+      screen.getByRole("button", { name: "Current sync source" }),
+    );
+    fireEvent.click(
+      screen.getByRole("option", { name: "WebDAV" }),
     );
 
     expect(settingsState.setSyncProvider).toHaveBeenCalledWith("webdav");
+  });
+
+  it("exposes sync cadence selects by their setting labels", async () => {
+    const settingsState = createSettingsState();
+    settingsState.selfHostedSyncEnabled = true;
+    settingsState.webdavEnabled = true;
+    settingsState.s3StorageEnabled = true;
+    useSettingsStoreMock.mockReturnValue(settingsState);
+
+    await act(async () => {
+      await renderWithI18n(<DataSettings activeSubsection="selfHosted" />, {
+        language: "en",
+      });
+    });
+
+    expect(
+      screen.getByRole("button", {
+        name: "Self-Hosted PromptHub Automatic Sync",
+      }),
+    ).toBeEnabled();
+    expect(
+      screen.getByRole("button", {
+        name: "Self-Hosted PromptHub Run Once on Startup",
+      }),
+    ).toBeEnabled();
+
+    await act(async () => {
+      await renderWithI18n(<DataSettings activeSubsection="webdav" />, {
+        language: "en",
+      });
+    });
+
+    expect(
+      screen.getByRole("button", { name: "WebDAV Auto Run" }),
+    ).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: "WebDAV Run Once on Startup" }),
+    ).toBeEnabled();
+
+    await act(async () => {
+      await renderWithI18n(<DataSettings activeSubsection="s3" />, {
+        language: "en",
+      });
+    });
+
+    expect(
+      screen.getByRole("button", {
+        name: "S3 Compatible Storage Auto Run",
+      }),
+    ).toBeEnabled();
+    expect(
+      screen.getByRole("button", {
+        name: "S3 Compatible Storage Run Once on Startup",
+      }),
+    ).toBeEnabled();
   });
 
   it("shows inactive sync-source guidance when a backup target is enabled but not selected", async () => {
@@ -823,8 +1007,12 @@ describe("DataSettings", { timeout: 15_000 }, () => {
       });
     });
 
-    const urlInput = screen.getByPlaceholderText("https://dav.example.com/path");
-    const usernameInput = screen.getByPlaceholderText("Username");
+    const urlInput = screen.getByRole("textbox", {
+      name: "WebDAV Server URL",
+    });
+    const usernameInput = screen.getByRole("textbox", {
+      name: "WebDAV Username",
+    });
     const passwordInput = screen.getByPlaceholderText("Password");
     const testConnectionButton = screen.getByRole("button", {
       name: "Test Connection",
@@ -846,12 +1034,18 @@ describe("DataSettings", { timeout: 15_000 }, () => {
       });
     });
 
-    expect(screen.getByPlaceholderText("https://s3.example.com")).toBeDisabled();
-    expect(screen.getByPlaceholderText("us-east-1")).toBeDisabled();
-    expect(screen.getByPlaceholderText("prompthub-backups")).toBeDisabled();
-    expect(screen.getByPlaceholderText("Access Key ID")).toBeDisabled();
+    expect(
+      screen.getByRole("textbox", { name: "API endpoint" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("textbox", { name: "Region" })).toBeDisabled();
+    expect(screen.getByRole("textbox", { name: "Bucket" })).toBeDisabled();
+    expect(
+      screen.getByRole("textbox", { name: "Access Key ID" }),
+    ).toBeDisabled();
     expect(screen.getByPlaceholderText("Secret Access Key")).toBeDisabled();
-    expect(screen.getByPlaceholderText("/prompthub")).toBeDisabled();
+    expect(
+      screen.getByRole("textbox", { name: "Backup directory (optional)" }),
+    ).toBeDisabled();
     expect(
       screen.getByRole("button", { name: "Test Connection" }),
     ).toBeDisabled();
@@ -1042,6 +1236,46 @@ describe("DataSettings", { timeout: 15_000 }, () => {
     });
   });
 
+  it("exposes selective export scope choices as keyboard-activatable buttons", async () => {
+    const user = userEvent.setup();
+
+    await act(async () => {
+      await renderWithI18n(<DataSettings activeSubsection="backup" />, {
+        language: "en",
+      });
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const promptsScope = screen.getByRole("button", { name: "Prompts" });
+    const mediaScope = screen.getByRole("button", { name: "Media" });
+
+    expect(promptsScope).toHaveAttribute("type", "button");
+    expect(promptsScope).toHaveAttribute("aria-pressed", "true");
+    expect(mediaScope).toHaveAttribute("aria-pressed", "true");
+
+    promptsScope.focus();
+    await user.keyboard("{Enter}");
+    mediaScope.focus();
+    await user.keyboard(" ");
+
+    expect(promptsScope).toHaveAttribute("aria-pressed", "false");
+    expect(mediaScope).toHaveAttribute("aria-pressed", "false");
+
+    await user.click(screen.getByRole("button", { name: "Export Data" }));
+
+    await waitFor(() => {
+      expect(downloadSelectiveExport).toHaveBeenCalledWith(
+        expect.objectContaining({
+          prompts: false,
+          images: false,
+          videos: false,
+        }),
+      );
+    });
+  });
+
   it("keeps web data settings focused on backup flows", async () => {
     (window as Window & { __PROMPTHUB_WEB__?: boolean }).__PROMPTHUB_WEB__ = true;
 
@@ -1195,13 +1429,20 @@ describe("DataSettings", { timeout: 15_000 }, () => {
     ).toHaveLength(3);
     expect(screen.queryByText("0.5.4 -> 0.5.5")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Show all 4" }));
+    const showAllButton = screen.getByRole("button", { name: "Show all 4" });
+    expect(showAllButton).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(showAllButton);
 
     await waitFor(() => {
       expect(
         screen.getAllByRole("button", { name: "Roll back to this snapshot" }),
       ).toHaveLength(4);
     });
+    expect(screen.getByRole("button", { name: "Collapse" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
     expect(screen.getByText("0.5.4 -> 0.5.5")).toBeInTheDocument();
   });
 

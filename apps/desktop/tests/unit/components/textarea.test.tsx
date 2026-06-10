@@ -9,7 +9,12 @@ describe("Textarea", () => {
   it("renders the label and surfaces error", () => {
     render(<Textarea label="Body" error="Required" />);
     expect(screen.getByText("Body")).toBeInTheDocument();
-    expect(screen.getByText("Required")).toBeInTheDocument();
+    const textarea = screen.getByLabelText("Body");
+    const error = screen.getByText("Required");
+
+    expect(error).toBeInTheDocument();
+    expect(textarea).toHaveAccessibleDescription("Required");
+    expect(textarea).toHaveAttribute("aria-invalid", "true");
   });
 
   it("forwards onChange events", () => {

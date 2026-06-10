@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   SkillCodeEditor,
   getSkillCodeEditorLanguageName,
+  loadSkillCodeEditorLanguage,
 } from "../../../src/renderer/components/skill/SkillCodeEditor";
 
 describe("SkillCodeEditor", () => {
@@ -15,6 +16,16 @@ describe("SkillCodeEditor", () => {
     expect(getSkillCodeEditorLanguageName("config/openai.yaml")).toBe("yaml");
     expect(getSkillCodeEditorLanguageName("README.md")).toBe("markdown");
     expect(getSkillCodeEditorLanguageName("unknown.asset")).toBe("plaintext");
+  });
+
+  it("loads syntax language extensions asynchronously", async () => {
+    const typescriptLanguage = await loadSkillCodeEditorLanguage(
+      "scripts/main.ts",
+    );
+    expect(typescriptLanguage).toBeTruthy();
+    await expect(loadSkillCodeEditorLanguage("unknown.asset")).resolves.toEqual(
+      [],
+    );
   });
 
   it("renders a CodeMirror editor surface for code content", async () => {

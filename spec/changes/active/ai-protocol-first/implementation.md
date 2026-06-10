@@ -161,6 +161,13 @@
   - 模型记录新增 `providerId`，`provider` 继续表示供应商类型 / 协议预设
   - AI workbench 端点分组优先使用 provider 实例 id，不再只按 provider + protocol + URL 合并
   - 新增回归覆盖两个同类型、同 URL、同 API key 的自定义供应商仍可保持不同模型归属
+- 已修复同版本 renderer settings hydrate 的 AI 配置边界：
+  - `settings.store` 将 AI provider/model 规范化提成共享 helper，并在 zustand `merge`
+    与 `migrate` 中复用
+  - current-version localStorage 中的畸形 provider/model 记录会被过滤
+  - 缺失或非法 `apiProtocol` 会按 provider / API URL 重新推断，模型 capabilities 也会按类型补齐
+- 已修复 AI workbench 端点字段的可访问标签：各语言 `settings.aiWorkbenchEndpointApiUrl` / `settings.aiWorkbenchEndpointApiKey` 现在明确区分端点级 API URL / API Key，避免与通用模型字段混淆。
+- 已修复 `ModelFetchModal` 加载态误用不存在的 `settings.loading` 翻译 key，改为复用全局 `common.loading`，避免模型列表获取弹窗在运行时直接显示 key 文本。
 
 ## Verification
 
@@ -172,6 +179,11 @@
 - `pnpm test -- apps/desktop/tests/unit/services/ai-defaults.test.ts --run`
 - `pnpm test -- apps/desktop/tests/unit/services/settings-snapshot.test.ts --run`
 - `pnpm test -- apps/desktop/tests/unit/components/ai-settings-prototype.test.tsx --run`
+- `pnpm --filter @prompthub/desktop typecheck`
+- `pnpm --filter @prompthub/desktop test -- --run tests/unit/components/ai-workbench-model-form-modal.test.tsx tests/unit/components/available-models-list.test.tsx`
+  - 结果：2 个文件通过，6 个测试通过。
+- 桌面 renderer 静态 `t("...")` / `i18n.t("...")` key 扫描
+  - 结果：0 个缺失 key。
 - 后续补充验证（本次 timeout 修复）：
 - `pnpm --filter @prompthub/desktop exec eslint src/main/ipc/ai.ipc.ts src/renderer/services/ai.ts tests/unit/services/ai-transport.test.ts tests/unit/components/ai-settings-prototype.test.tsx`
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/ai-test-workbench.test.tsx`
@@ -218,6 +230,13 @@
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/available-models-list.test.tsx tests/unit/components/ai-workbench-base-fields.test.tsx tests/unit/components/ai-settings-prototype.test.tsx`
 - `pnpm --filter @prompthub/desktop exec eslint src/renderer/components/settings/ai-workbench/helpers.ts src/renderer/components/settings/ai-workbench/model-form/AvailableModelsList.tsx tests/unit/components/available-models-list.test.tsx`
 - `pnpm --filter @prompthub/desktop typecheck`
+- 同版本 AI settings hydrate 回归补充验证：
+- `pnpm --filter @prompthub/desktop test -- --run tests/unit/stores/settings-ai-models.test.ts -t "same-version persisted AI model"` first reproduced the hydrate gap, then passed after shared normalization.
+- `pnpm --filter @prompthub/desktop test -- --run tests/unit/stores/settings-ai-models.test.ts`
+- `pnpm --filter @prompthub/desktop typecheck`
+- `pnpm --filter @prompthub/desktop lint`
+- `git diff --check -- apps/desktop/src/renderer/stores/settings.store.ts apps/desktop/tests/unit/stores/settings-ai-models.test.ts spec/changes/active/ai-protocol-first spec/issues/active/quality.md`
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/ai-settings-prototype.test.tsx`
 - 主流模型族补充后重新运行：
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/available-models-list.test.tsx`
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/available-models-list.test.tsx tests/unit/components/ai-workbench-base-fields.test.tsx tests/unit/components/ai-settings-prototype.test.tsx`
@@ -302,3 +321,44 @@
 
 - 若后续需要 Claude 原生流式体验，补充 `Anthropic` SSE 事件解析并解除 UI 限制。
 - 稳定 specs / architecture / docs 仍需在该 change 收尾时同步。
+
+## 2026-06-10 same-version model route defaults hydration
+
+- 发现：旧版 `scenarioModelDefaults` 到新版 `modelRouteDefaults` 的兼容迁移只在
+  zustand `migrate` 中执行；current-version localStorage 快照不会触发 `migrate`，
+  因此非法场景 key、空模型 id、非字符串值和非法 route key 会进入 renderer state，
+  影响 AI workbench 路由解析和图片反推 / 快速任务等场景的默认模型选择。
+- 处理：
+  - 新增 `normalizeScenarioModelDefaults()` 与 `normalizeAIModelDefaults()`。
+  - `normalizeModelRouteDefaults()` 现在会 trim 模型 id，并过滤空值 / 非字符串值。
+  - `persist.merge` 与 `migrate` 复用同一默认值规范化路径：先清洗旧场景默认值，
+    再清洗模型路由默认值；若 route 默认值为空，则从清洗后的旧场景默认值派生。
+  - `syncSettingsToMain()` 在 preload `settings.set` 不存在时按 no-op 处理，避免测试或
+    bridge 未完整注入窗口中因可选 API 缺失而抛错。
+- 验证：
+  - `pnpm --filter @prompthub/desktop test -- --run tests/unit/stores/settings-ai-models.test.ts -t "route defaults"`
+  - `pnpm --filter @prompthub/desktop test -- --run tests/unit/stores/settings-ai-models.test.ts`
+  - `pnpm --filter @prompthub/desktop typecheck`
+  - `pnpm --filter @prompthub/desktop lint`
+  - `git diff --check -- apps/desktop/src/renderer/stores/settings.store.ts apps/desktop/tests/unit/stores/settings-ai-models.test.ts spec/changes/active/ai-protocol-first spec/issues/active/quality.md`
+
+## 2026-06-10 main-process AI config overlay normalization
+
+- 发现：`config/ai-models.json` 是 provider/model/route 的单一持久化源，desktop
+  `settings.get` 会把该 JSON overlay 到 renderer settings；此前 renderer 的
+  `loadSettingsFromMainProcess()` 只检查 `aiProviders` / `aiModels` 是否为数组，未复用
+  localStorage hydrate 的 provider/model normalizer。手工编辑或 CLI 写入的畸形记录、
+  非法协议、未补齐 capabilities 会直接进入 AI workbench state。
+- 处理：
+  - `loadSettingsFromMainProcess()` 现在对 main 返回的 `aiProviders` 复用
+    `normalizePersistedAIProviders()`。
+  - main 返回的 `aiModels` 先复用 `normalizePersistedAIModels()`，再按规范化后的
+    provider 列表补齐 `providerId`。
+  - 既有 main-process overlay 测试改为断言 normalized capabilities shape，并新增坏配置
+    回归测试覆盖畸形 provider/model 过滤、协议推断、capabilities 补齐和 route 过滤。
+- 验证：
+  - `pnpm --filter @prompthub/desktop test -- --run tests/unit/stores/settings-ai-models.test.ts -t "normalizes shared AI"`
+  - `pnpm --filter @prompthub/desktop test -- --run tests/unit/stores/settings-ai-models.test.ts`
+  - `pnpm --filter @prompthub/desktop typecheck`
+  - `pnpm --filter @prompthub/desktop lint`
+  - `git diff --check -- apps/desktop/src/renderer/stores/settings.store.ts apps/desktop/tests/unit/stores/settings-ai-models.test.ts spec/changes/active/ai-protocol-first spec/issues/active/quality.md`

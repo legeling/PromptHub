@@ -50,6 +50,10 @@ stagger:  tight 16ms · normal 32ms · loose 60ms
 - `<Collapsible open>`：CSS-only `grid-rows` 高度过渡
 - `<ViewTransition activeKey>`：cross-fade 视图切换
 
+加载指示器使用 `apps/desktop/src/renderer/components/ui/Spinner.tsx`。不要在业务组件里手写
+`border-* border-t-transparent rounded-full animate-spin`；需要加载图标时用 `<Spinner size tone label>`，
+让尺寸、颜色、reduced-motion 与可访问性行为保持一致。
+
 新增 modal / popover / dropdown / drawer 等覆盖类组件时，**优先使用这些包装**。如果包装确实不能覆盖（罕见），需要在 PR 描述中说明原因，并把动画细节限制在该组件内。
 
 ### 5. 用户偏好与 a11y
@@ -67,6 +71,7 @@ stagger:  tight 16ms · normal 32ms · loose 60ms
 - ❌ 裸缩放：`scale-95` / `scale-90` 等。统一用 `scale-press-in / scale-enter-from / scale-hover-lift / scale-media-zoom`
 - ❌ 在 `globals.css` 新增 `@keyframes`。统一用 `tailwindcss-animate` 提供的 `animate-in / animate-out` 系列，或 `<Reveal>` / `<Collapsible>`
 - ❌ 引入 `framer-motion`。本仓库已经卸载它；如果未来需要 layout 动画或 spring，先在 `spec/issues/active/` 立 issue 评估
+- ❌ 手写 CSS spinner：`border-2 border-t-transparent rounded-full animate-spin`。统一用 `<Spinner>`
 - ❌ 数据敏感场景做"渐变到新值"（数字、状态、success / error 计数）：用瞬切，避免误读
 - ❌ 在虚拟化的列表行上加 stagger 入场（`@tanstack/react-virtual` 的 mount/unmount 时机不可控）
 

@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mockRegister = vi.fn();
 const mockUnregisterAll = vi.fn();
 const mockGetAllWindows = vi.fn();
+const mockIpcHandle = vi.fn();
+const mockIpcOn = vi.fn();
 
 vi.mock("electron", () => ({
   globalShortcut: {
@@ -13,12 +15,16 @@ vi.mock("electron", () => ({
     getAllWindows: mockGetAllWindows,
   },
   ipcMain: {
-    handle: vi.fn(),
-    on: vi.fn(),
+    handle: mockIpcHandle,
+    on: mockIpcOn,
   },
   app: {
     getPath: vi.fn(() => "/tmp/prompthub-test"),
   },
+}));
+
+vi.mock("../../../src/main/runtime-paths", () => ({
+  getConfigDir: () => "/tmp/prompthub-test/config",
 }));
 
 describe("main shortcuts", () => {
@@ -27,6 +33,8 @@ describe("main shortcuts", () => {
     mockRegister.mockReset();
     mockUnregisterAll.mockReset();
     mockGetAllWindows.mockReset();
+    mockIpcHandle.mockReset();
+    mockIpcOn.mockReset();
   });
 
   it("toggles a visible window off for showApp", async () => {
@@ -95,6 +103,43 @@ describe("main shortcuts", () => {
     expect(win.webContents.send).toHaveBeenCalledWith(
       "shortcut:triggered",
       "showApp",
+    );
+  });
+
+  it("normalizes shortcut mode IPC payloads before saving and registering", async () => {
+    mockRegister.mockReturnValue(true);
+    const { registerShortcutsIPC, getShortcutModes } = await import(
+      "../../../src/main/shortcuts"
+    );
+
+    registerShortcutsIPC();
+
+    const setModeHandler = mockIpcOn.mock.calls.find(
+      ([channel]) => channel === "shortcuts:setMode",
+    )?.[1];
+    expect(setModeHandler).toBeTypeOf("function");
+
+    setModeHandler(undefined, {
+      showApp: "disabled",
+      newPrompt: "global",
+      search: null,
+      ghostAction: "global",
+    });
+
+    expect(getShortcutModes()).toEqual({
+      showApp: "global",
+      newPrompt: "global",
+      search: "local",
+      settings: "local",
+    });
+    expect(mockUnregisterAll).toHaveBeenCalledTimes(1);
+    expect(mockRegister).toHaveBeenCalledWith(
+      "Alt+Shift+P",
+      expect.any(Function),
+    );
+    expect(mockRegister).toHaveBeenCalledWith(
+      "Alt+Shift+N",
+      expect.any(Function),
     );
   });
 });

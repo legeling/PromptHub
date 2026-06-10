@@ -14,16 +14,12 @@ describe("LanguageSettings", () => {
     const user = userEvent.setup();
     await renderWithI18n(<LanguageSettings />, { language: "en" });
 
-    // The Select trigger is a button. Click it to open the portal-rendered list.
-    const trigger = screen.getByRole("button");
+    const trigger = screen.getByRole("button", { name: "Language" });
     await user.click(trigger);
 
-    // The portal panel uses role="option" entries; assert each language label
-    // appears at least once across the trigger + options.
     const labels = ["简体中文", "繁體中文", "English", "日本語", "Español", "Deutsch", "Français"];
     for (const label of labels) {
-      const matches = screen.getAllByText(label);
-      expect(matches.length).toBeGreaterThan(0);
+      expect(screen.getByRole("option", { name: label })).toBeInTheDocument();
     }
   });
 
@@ -37,8 +33,8 @@ describe("LanguageSettings", () => {
     const user = userEvent.setup();
     await renderWithI18n(<LanguageSettings />, { language: "en" });
 
-    await user.click(screen.getByRole("button"));
-    await user.click(await screen.findByText("Français"));
+    await user.click(screen.getByRole("button", { name: "Language" }));
+    await user.click(await screen.findByRole("option", { name: "Français" }));
 
     expect(useSettingsStore.getState().language).toBe("fr");
   });

@@ -68,11 +68,11 @@ function SkillDiffView({
         {!isUnchanged ? (
           <div className="flex items-center gap-3 text-xs">
             <span className="flex items-center gap-1 text-green-600 dark:text-green-300">
-              <PlusIcon className="h-3 w-3" />
+              <PlusIcon aria-hidden="true" className="h-3 w-3" />
               {stats.added}
             </span>
             <span className="flex items-center gap-1 text-red-600 dark:text-red-300">
-              <MinusIcon className="h-3 w-3" />
+              <MinusIcon aria-hidden="true" className="h-3 w-3" />
               {stats.removed}
             </span>
           </div>
@@ -322,12 +322,18 @@ export function SkillVersionHistoryModal({
     >
       {isLoading ? (
         <div className="flex items-center justify-center py-16 text-muted-foreground">
-          <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+          <Loader2Icon
+            aria-hidden="true"
+            className="mr-2 h-4 w-4 animate-spin"
+          />
           {t("common.loading", "Loading...")}
         </div>
       ) : versions.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <HistoryIcon className="mb-4 h-12 w-12 text-muted-foreground/40" />
+          <HistoryIcon
+            aria-hidden="true"
+            className="mb-4 h-12 w-12 text-muted-foreground/40"
+          />
           <div className="text-sm font-medium text-foreground">
             {t("skill.noVersionHistory", "No version history yet")}
           </div>
@@ -345,7 +351,7 @@ export function SkillVersionHistoryModal({
             data-testid="skill-version-timeline-pane"
           >
             <div className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              <Clock3Icon className="h-3.5 w-3.5" />
+              <Clock3Icon aria-hidden="true" className="h-3.5 w-3.5" />
               {t("skill.versionTimeline", "Timeline")}
             </div>
             <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
@@ -353,6 +359,7 @@ export function SkillVersionHistoryModal({
                 <button
                   key={version.id}
                   type="button"
+                  aria-pressed={version.id === selectedVersionId}
                   onClick={() => setSelectedVersionId(version.id)}
                   className={`w-full rounded-xl border px-3 py-2 text-left transition-colors ${
                     version.id === selectedVersionId
@@ -364,7 +371,10 @@ export function SkillVersionHistoryModal({
                     <span className="text-sm font-semibold text-foreground">
                       v{version.version}
                     </span>
-                    <GitBranchIcon className="h-3.5 w-3.5 text-primary" />
+                    <GitBranchIcon
+                      aria-hidden="true"
+                      className="h-3.5 w-3.5 text-primary"
+                    />
                   </div>
                   <div className="mt-1 text-[11px] text-muted-foreground">
                     {new Date(version.createdAt).toLocaleString()}
@@ -406,6 +416,7 @@ export function SkillVersionHistoryModal({
                   <div className="inline-flex rounded-xl border border-border app-wallpaper-surface p-1">
                     <button
                       type="button"
+                      aria-pressed={view === "preview"}
                       onClick={() => setView("preview")}
                       className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                         view === "preview"
@@ -417,6 +428,7 @@ export function SkillVersionHistoryModal({
                     </button>
                     <button
                       type="button"
+                      aria-pressed={view === "diff"}
                       onClick={() => setView("diff")}
                       className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                         view === "diff"
@@ -424,7 +436,7 @@ export function SkillVersionHistoryModal({
                           : "text-muted-foreground"
                       }`}
                     >
-                      <GitCompareIcon className="h-3.5 w-3.5" />
+                      <GitCompareIcon aria-hidden="true" className="h-3.5 w-3.5" />
                       {t("skill.diffView", "Diff")}
                     </button>
                   </div>
@@ -437,9 +449,12 @@ export function SkillVersionHistoryModal({
                     className="inline-flex items-center gap-2 rounded-xl border border-red-500/20 px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {isDeleting ? (
-                      <Loader2Icon className="h-4 w-4 animate-spin" />
+                      <Loader2Icon
+                        aria-hidden="true"
+                        className="h-4 w-4 animate-spin"
+                      />
                     ) : (
-                      <TrashIcon className="h-4 w-4" />
+                      <TrashIcon aria-hidden="true" className="h-4 w-4" />
                     )}
                     {t("common.delete", "Delete")}
                   </button>
@@ -451,12 +466,15 @@ export function SkillVersionHistoryModal({
                   >
                     {isRestoring ? (
                       <>
-                        <Loader2Icon className="h-4 w-4 animate-spin" />
+                        <Loader2Icon
+                          aria-hidden="true"
+                          className="h-4 w-4 animate-spin"
+                        />
                         {t("skill.restoring", "Restoring...")}
                       </>
                     ) : (
                       <>
-                        <RotateCcwIcon className="h-4 w-4" />
+                        <RotateCcwIcon aria-hidden="true" className="h-4 w-4" />
                         {t("skill.restore", "Restore")}
                       </>
                     )}
@@ -534,15 +552,22 @@ export function SkillVersionHistoryModal({
                         >
                           <button
                             type="button"
+                            aria-expanded={isExpanded}
                             onClick={() => toggleFileExpanded(entry.path)}
                             className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-accent/40"
                           >
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
                                 {isExpanded ? (
-                                  <ChevronDownIcon className="h-4 w-4 text-muted-foreground" />
+                                  <ChevronDownIcon
+                                    aria-hidden="true"
+                                    className="h-4 w-4 text-muted-foreground"
+                                  />
                                 ) : (
-                                  <ChevronRightIcon className="h-4 w-4 text-muted-foreground" />
+                                  <ChevronRightIcon
+                                    aria-hidden="true"
+                                    className="h-4 w-4 text-muted-foreground"
+                                  />
                                 )}
                                 <span className="truncate font-mono text-sm text-foreground">
                                   {entry.path}

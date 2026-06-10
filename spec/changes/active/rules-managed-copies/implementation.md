@@ -25,6 +25,9 @@ In progress.
 - Rules UI 在选中已冲突规则时展示 PromptHub 版本与外部文件版本，并要求用户显式选择同步方向，避免静默覆盖用户绕过 PromptHub 修改的 `AGENTS.md` / `CLAUDE.md`。
 - 优化 Rules 冲突弹窗文案：从“导入/覆盖”改为“保留哪个版本作为事实来源”，并在执行覆盖前增加二次确认。
 - 修复设置变更后的 Rules 刷新顺序：修改内置/custom agent 的 root path、`rulesRelativePath` 或启用状态时，先等待 settings 同步到 main/DB，再强制重扫 Rules，避免扫描读到旧的 `AGENTS.md` 路径。
+- 补齐旧版 `rule-history` 迁移：首次 materialize 规则时会读取旧版 user data 同级 `rule-history/*.json`，支持数组、`versions` 对象、按 rule id 分组的 map，以及声明 `ruleId` / `fileId` / `ruleFileId` 的散落 JSON；目标文件存在时合并为历史版本，目标文件缺失时用最新 legacy 版本恢复托管正文并保留 `target-missing`。
+- 收紧项目规则 id：新增和备份导入的 `project:<id>` 必须是安全单路径段，防止拼接 managed project 目录时路径逃逸。
+- 将 Rules 托管正文、元数据、版本正文和版本索引改为同目录临时文件 + rename 写入；备份导入替换版本目录时先写 staging，再发布，失败时保留旧版本目录。
 
 ## Verification
 
@@ -35,6 +38,8 @@ In progress.
 - 当前实现已将 Rules 纳入桌面端 WebDAV、自托管同步，以及 Web 端 `/api/sync` / `/api/import` / `/api/export` 数据链路。
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/rules-workspace.test.ts tests/unit/main/rules-ipc.test.ts tests/unit/components/rules-manager.test.tsx tests/unit/stores/rules.store.test.ts` 通过。
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/rules-workspace.test.ts tests/unit/main/rules-ipc.test.ts tests/unit/components/rules-manager.test.tsx tests/unit/stores/rules.store.test.ts tests/unit/stores/settings-rules-sync.test.ts` 通过。
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/rules-workspace.test.ts --testNamePattern "legacy rule-history"` 通过。
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/rules-workspace.test.ts` 通过。
 - `pnpm --filter @prompthub/desktop typecheck` 通过。
 - `pnpm lint` 通过。
 - 尝试运行 `pnpm --filter @prompthub/desktop exec vitest run`；Rules 相关测试通过，但完整套件当前被其他未合并 Skill/TopBar 变更导致的既有失败阻断（例如 `skill-ui.integration.test.tsx`、`skill-filter*.test.ts`、`skill-platform-sync.test.ts`、`skill-db-versioning.test.ts`）。
@@ -49,5 +54,4 @@ In progress.
 
 ## Follow-ups
 
-- 仍需补做旧 `~/.prompthub/rule-history` 到 `data/rules/.versions/` 的完整迁移。
 - 仍需补做规则同步状态和部署动作的更完整 UI 文案与测试。

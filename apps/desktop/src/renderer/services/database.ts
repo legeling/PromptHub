@@ -69,7 +69,6 @@ export async function initDatabase(): Promise<IDBDatabase> {
       // 监听版本变化事件，当其他标签页升级数据库时关闭连接
       // Listen for version change events, close connection when other tabs upgrade database
       db.onversionchange = () => {
-        console.log("Database version change detected, closing connection");
         db?.close();
         db = null;
       };
@@ -145,7 +144,6 @@ export async function resetDatabase(): Promise<void> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.deleteDatabase(DB_NAME);
     request.onsuccess = () => {
-      console.log("Database deleted successfully");
       resolve();
     };
     request.onerror = () => {
@@ -242,14 +240,17 @@ export async function updatePrompt(
   incrementVersion = true,
 ): Promise<Prompt> {
   if (window.api?.prompt?.update) {
+    const keepEmptyString = (value: string | null | undefined) =>
+      value === undefined || value === null ? undefined : value;
+
     const updated = await window.api.prompt.update(id, {
       title: data.title,
-      description: data.description ?? undefined,
+      description: keepEmptyString(data.description),
       promptType: data.promptType,
-      systemPrompt: data.systemPrompt ?? undefined,
-      systemPromptEn: data.systemPromptEn ?? undefined,
+      systemPrompt: keepEmptyString(data.systemPrompt),
+      systemPromptEn: keepEmptyString(data.systemPromptEn),
       userPrompt: data.userPrompt,
-      userPromptEn: data.userPromptEn ?? undefined,
+      userPromptEn: keepEmptyString(data.userPromptEn),
       variables: data.variables,
       tags: data.tags,
       folderId: data.folderId ?? undefined,
@@ -258,9 +259,9 @@ export async function updatePrompt(
       isFavorite: data.isFavorite,
       isPinned: data.isPinned,
       usageCount: data.usageCount,
-      source: data.source ?? undefined,
-      notes: data.notes ?? undefined,
-      lastAiResponse: data.lastAiResponse ?? undefined,
+      source: keepEmptyString(data.source),
+      notes: keepEmptyString(data.notes),
+      lastAiResponse: keepEmptyString(data.lastAiResponse),
     });
     if (!updated) {
       throw new Error(`Prompt not found: ${id}`);
@@ -652,7 +653,6 @@ export async function clearDatabase(): Promise<void> {
   // Clear image files
   try {
     await window.electron?.clearImages?.();
-    console.log("Images cleared");
   } catch (error) {
     console.warn("Failed to clear images:", error);
   }
@@ -661,7 +661,6 @@ export async function clearDatabase(): Promise<void> {
   // Clear video files
   try {
     await window.electron?.clearVideos?.();
-    console.log("Videos cleared");
   } catch (error) {
     console.warn("Failed to clear videos:", error);
   }

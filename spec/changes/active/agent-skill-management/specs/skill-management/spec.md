@@ -6,6 +6,13 @@
 
 PromptHub SHALL provide an Agent-dimension Skill management view that scans each detected Agent/platform Skill directory and lists both copied Skill folders and symlinked Skill folders.
 
+#### Scenario: Hydrate custom Agent roots safely
+
+- Given current-version renderer settings localStorage contains malformed or duplicate custom Agent records
+- When PromptHub hydrates settings
+- Then custom Agent entries SHALL be normalized before Agent Skill views consume them
+- And empty entries, duplicate roots, non-string config paths, and stale legacy root arrays SHALL NOT create invalid Agent scan targets.
+
 #### Scenario: Browse before opening detail
 
 - Given a detected Agent has one or more Skill folders

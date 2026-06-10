@@ -38,6 +38,7 @@ import { useToast } from "../ui/Toast";
 import { Select } from "../ui/Select";
 import { getCategoryIcon } from "../ui/ModelIcons";
 import { SettingSection, SettingItem, PasswordInput } from "./shared";
+import { resolveGeneratedImageUrl } from "../../utils/generated-image-url";
 
 // AI model providers - support dynamic model input
 // AI 模型提供商 - 支持动态模型输入
@@ -350,6 +351,14 @@ function getModelDisplayName(model: { name?: string; model?: string }): string {
   return model.name?.trim() || model.model?.trim() || "AI";
 }
 
+function getEndpointHost(apiUrl: string): string {
+  try {
+    return new URL(apiUrl).host;
+  } catch {
+    return apiUrl;
+  }
+}
+
 export function AISettings() {
   const { t } = useTranslation();
   const { showToast } = useToast();
@@ -455,6 +464,20 @@ export function AISettings() {
   // 生图测试结果弹窗
   const [imageTestModalResult, setImageTestModalResult] =
     useState<ImageTestResult | null>(null);
+  const safeImageTestUrl = useMemo(
+    () => resolveGeneratedImageUrl(imageTestModalResult?.imageUrl)?.url ?? "",
+    [imageTestModalResult?.imageUrl],
+  );
+  const safeImageTestBase64Url = useMemo(() => {
+    if (!imageTestModalResult?.imageBase64) {
+      return "";
+    }
+    return (
+      resolveGeneratedImageUrl(
+        `data:image/png;base64,${imageTestModalResult.imageBase64}`,
+      )?.url ?? ""
+    );
+  }, [imageTestModalResult?.imageBase64]);
 
   // Streaming output state
   // 流式输出状态
@@ -1020,18 +1043,26 @@ export function AISettings() {
                     >
                       {/* 供应商标题 */}
                       <button
+                        type="button"
                         onClick={() => toggleProviderCollapse(apiUrl)}
+                        aria-expanded={!isCollapsed}
                         className={`w-full flex items-center justify-between p-3 hover:bg-muted/50 transition-colors ${
                           hasDefault ? "bg-primary/5" : "bg-muted/30"
                         }`}
                       >
                         <div className="flex items-center gap-2">
                           {isCollapsed ? (
-                            <ChevronRightIcon className="w-4 h-4 text-muted-foreground" />
+                            <ChevronRightIcon
+                              className="w-4 h-4 text-muted-foreground"
+                              aria-hidden="true"
+                            />
                           ) : (
-                            <ChevronDownIcon className="w-4 h-4 text-muted-foreground" />
+                            <ChevronDownIcon
+                              className="w-4 h-4 text-muted-foreground"
+                              aria-hidden="true"
+                            />
                           )}
-                          <span className="flex-shrink-0">
+                          <span className="flex-shrink-0" aria-hidden="true">
                             {getCategoryIcon(
                               group.providerId === "custom" ||
                                 group.providerId === "azure" ||
@@ -1076,14 +1107,17 @@ export function AISettings() {
                             {group.models.length}
                           </span>
                           {hasDefault && (
-                            <StarIcon className="w-3.5 h-3.5 text-primary fill-primary" />
+                            <StarIcon
+                              className="w-3.5 h-3.5 text-primary fill-primary"
+                              aria-hidden="true"
+                            />
                           )}
                         </div>
                         <span
                           className="text-xs text-muted-foreground truncate max-w-[200px]"
                           title={apiUrl}
                         >
-                          {new URL(apiUrl).host}
+                          {getEndpointHost(apiUrl)}
                         </span>
                       </button>
 
@@ -1098,12 +1132,15 @@ export function AISettings() {
                               }`}
                             >
                               <div className="flex items-center gap-3">
-                                <div className="flex-shrink-0">
+                                <div className="flex-shrink-0" aria-hidden="true">
                                   {getCategoryIcon(getModelCategory(model), 20)}
                                 </div>
                                 <div className="flex items-center gap-2">
                                   {model.isDefault && (
-                                    <StarIcon className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                                    <StarIcon
+                                      className="w-4 h-4 text-yellow-500 fill-yellow-500"
+                                      aria-hidden="true"
+                                    />
                                   )}
                                   <div>
                                     <div className="font-medium text-sm">
@@ -1119,29 +1156,43 @@ export function AISettings() {
                               </div>
                               <div className="flex items-center gap-1">
                                 <button
+                                  type="button"
                                   onClick={() => handleTestModel(model)}
                                   disabled={testingModelId === model.id}
                                   className="p-1.5 rounded hover:bg-muted transition-colors disabled:opacity-50"
+                                  aria-label={t("settings.testConnection")}
                                   title={t("settings.testConnection")}
                                 >
                                   {testingModelId === model.id ? (
-                                    <Loader2Icon className="w-4 h-4 animate-spin text-muted-foreground" />
+                                    <Loader2Icon
+                                      className="w-4 h-4 animate-spin text-muted-foreground"
+                                      aria-hidden="true"
+                                    />
                                   ) : (
-                                    <TestTubeIcon className="w-4 h-4 text-muted-foreground" />
+                                    <TestTubeIcon
+                                      className="w-4 h-4 text-muted-foreground"
+                                      aria-hidden="true"
+                                    />
                                   )}
                                 </button>
                                 {!model.isDefault && (
                                   <button
+                                    type="button"
                                     onClick={() =>
                                       settings.setDefaultAiModel(model.id)
                                     }
                                     className="p-1.5 rounded hover:bg-muted transition-colors"
+                                    aria-label={t("settings.setDefault")}
                                     title={t("settings.setDefault")}
                                   >
-                                    <StarIcon className="w-4 h-4 text-muted-foreground" />
+                                    <StarIcon
+                                      className="w-4 h-4 text-muted-foreground"
+                                      aria-hidden="true"
+                                    />
                                   </button>
                                 )}
                                 <button
+                                  type="button"
                                   onClick={() => {
                                     setEditingModelId(model.id);
                                     setEditingModelType("chat");
@@ -1192,20 +1243,29 @@ export function AISettings() {
                                     setShowAddChatModel(true);
                                   }}
                                   className="p-1.5 rounded hover:bg-muted transition-colors"
+                                  aria-label={t("common.edit")}
                                   title={t("common.edit")}
                                 >
-                                  <EditIcon className="w-4 h-4 text-muted-foreground" />
+                                  <EditIcon
+                                    className="w-4 h-4 text-muted-foreground"
+                                    aria-hidden="true"
+                                  />
                                 </button>
                                 <button
+                                  type="button"
                                   onClick={() => {
                                     if (confirm(t("settings.confirmDelete"))) {
                                       settings.deleteAiModel(model.id);
                                     }
                                   }}
                                   className="p-1.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                                  aria-label={t("settings.deleteModel")}
                                   title={t("settings.deleteModel")}
                                 >
-                                  <TrashIcon className="w-4 h-4 text-red-500" />
+                                  <TrashIcon
+                                    className="w-4 h-4 text-red-500"
+                                    aria-hidden="true"
+                                  />
                                 </button>
                               </div>
                             </div>
@@ -1228,6 +1288,7 @@ export function AISettings() {
                       : t("settings.addChatModel")}
                   </span>
                   <button
+                    type="button"
                     onClick={() => {
                       setShowAddChatModel(false);
                       setEditingModelId(null);
@@ -1251,6 +1312,7 @@ export function AISettings() {
                   </label>
                   <input
                     type="text"
+                    aria-label={t("settings.customNameOptional")}
                     placeholder={t("settings.customNamePlaceholder")}
                     value={newModel.name}
                     onChange={(e) =>
@@ -1264,6 +1326,7 @@ export function AISettings() {
                     {t("settings.providerName")}
                   </label>
                   <Select
+                    ariaLabel={t("settings.providerName")}
                     value={newModel.provider}
                     onChange={(value) => {
                       const provider = AI_PROVIDERS.find((p) => p.id === value);
@@ -1291,6 +1354,7 @@ export function AISettings() {
                     {t("settings.apiKey")}
                   </label>
                   <PasswordInput
+                    ariaLabel={t("settings.apiKey")}
                     placeholder={t("settings.apiKeyPlaceholder")}
                     value={newModel.apiKey}
                     onChange={(v) => setNewModel({ ...newModel, apiKey: v })}
@@ -1306,6 +1370,7 @@ export function AISettings() {
                   </label>
                   <input
                     type="text"
+                    aria-label={t("settings.apiUrl")}
                     placeholder={t("settings.apiUrlPlaceholder")}
                     value={newModel.apiUrl}
                     onChange={(e) =>
@@ -1345,15 +1410,22 @@ export function AISettings() {
                       className="text-xs text-primary hover:underline disabled:opacity-50 disabled:no-underline flex items-center gap-1"
                     >
                       {fetchingModels ? (
-                        <Loader2Icon className="w-3 h-3 animate-spin" />
+                        <Loader2Icon
+                          aria-hidden="true"
+                          className="w-3 h-3 animate-spin"
+                        />
                       ) : (
-                        <RefreshCwIcon className="w-3 h-3" />
+                        <RefreshCwIcon
+                          aria-hidden="true"
+                          className="w-3 h-3"
+                        />
                       )}
                       {t("settings.fetchModels")}
                     </button>
                   </div>
                   <input
                     type="text"
+                    aria-label={t("settings.modelName")}
                     placeholder={t("settings.modelNamePlaceholder")}
                     value={newModel.model}
                     onChange={(e) =>
@@ -1367,6 +1439,7 @@ export function AISettings() {
                 <div className="border border-border rounded-lg overflow-hidden">
                   <button
                     type="button"
+                    aria-expanded={showAdvancedParams}
                     onClick={() => setShowAdvancedParams(!showAdvancedParams)}
                     className="w-full flex items-center justify-between p-3 bg-muted/30 hover:bg-muted/50 transition-colors"
                   >
@@ -1374,9 +1447,15 @@ export function AISettings() {
                       {t("settings.advancedParams")}
                     </span>
                     {showAdvancedParams ? (
-                      <ChevronDownIcon className="w-4 h-4 text-muted-foreground" />
+                      <ChevronDownIcon
+                        aria-hidden="true"
+                        className="w-4 h-4 text-muted-foreground"
+                      />
                     ) : (
-                      <ChevronRightIcon className="w-4 h-4 text-muted-foreground" />
+                      <ChevronRightIcon
+                        aria-hidden="true"
+                        className="w-4 h-4 text-muted-foreground"
+                      />
                     )}
                   </button>
 
@@ -1446,6 +1525,7 @@ export function AISettings() {
                         </div>
                         <input
                           type="range"
+                          aria-label={t("settings.temperature")}
                           min="0"
                           max="2"
                           step="0.1"
@@ -1475,6 +1555,7 @@ export function AISettings() {
                         </div>
                         <input
                           type="range"
+                          aria-label={t("settings.maxTokens")}
                           min="256"
                           max="32768"
                           step="256"
@@ -1504,6 +1585,7 @@ export function AISettings() {
                         </div>
                         <input
                           type="range"
+                          aria-label={t("settings.topP")}
                           min="0"
                           max="1"
                           step="0.05"
@@ -1533,6 +1615,7 @@ export function AISettings() {
                         </div>
                         <input
                           type="range"
+                          aria-label={t("settings.frequencyPenalty")}
                           min="-2"
                           max="2"
                           step="0.1"
@@ -1562,6 +1645,7 @@ export function AISettings() {
                         </div>
                         <input
                           type="range"
+                          aria-label={t("settings.presencePenalty")}
                           min="-2"
                           max="2"
                           step="0.1"
@@ -1685,7 +1769,10 @@ export function AISettings() {
                                   className="p-1.5 rounded hover:bg-destructive/10 text-destructive transition-colors"
                                   title={t("common.delete")}
                                 >
-                                  <TrashIcon className="w-4 h-4" />
+                                  <TrashIcon
+                                    aria-hidden="true"
+                                    className="w-4 h-4"
+                                  />
                                 </button>
                               </div>
                             ),
@@ -1697,6 +1784,7 @@ export function AISettings() {
                 </div>
 
                 <button
+                  type="button"
                   onClick={() => {
                     if (
                       !newModel.apiKey ||
@@ -1761,10 +1849,11 @@ export function AISettings() {
               </div>
             ) : (
               <button
+                type="button"
                 onClick={() => setShowAddChatModel(true)}
                 className="w-full h-10 rounded-lg border-2 border-dashed border-muted-foreground/30 text-muted-foreground text-sm font-medium hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2"
               >
-                <PlusIcon className="w-4 h-4" />
+                <PlusIcon className="w-4 h-4" aria-hidden="true" />
                 {t("settings.addChatModel")}
               </button>
             )}
@@ -1792,18 +1881,26 @@ export function AISettings() {
                     >
                       {/* 供应商标题 */}
                       <button
+                        type="button"
                         onClick={() =>
                           toggleProviderCollapse(`image-${apiUrl}`)
                         }
+                        aria-expanded={!isCollapsed}
                         className="w-full flex items-center justify-between p-3 bg-muted/30 hover:bg-muted/50 transition-colors"
                       >
                         <div className="flex items-center gap-2">
                           {isCollapsed ? (
-                            <ChevronRightIcon className="w-4 h-4 text-muted-foreground" />
+                            <ChevronRightIcon
+                              className="w-4 h-4 text-muted-foreground"
+                              aria-hidden="true"
+                            />
                           ) : (
-                            <ChevronDownIcon className="w-4 h-4 text-muted-foreground" />
+                            <ChevronDownIcon
+                              className="w-4 h-4 text-muted-foreground"
+                              aria-hidden="true"
+                            />
                           )}
-                          <span className="flex-shrink-0">
+                          <span className="flex-shrink-0" aria-hidden="true">
                             {getCategoryIcon(
                               group.providerId === "custom" ||
                                 group.providerId === "azure" ||
@@ -1852,13 +1949,7 @@ export function AISettings() {
                           className="text-xs text-muted-foreground truncate max-w-[200px]"
                           title={apiUrl}
                         >
-                          {(() => {
-                            try {
-                              return new URL(apiUrl).host;
-                            } catch {
-                              return apiUrl;
-                            }
-                          })()}
+                          {getEndpointHost(apiUrl)}
                         </span>
                       </button>
 
@@ -1871,7 +1962,7 @@ export function AISettings() {
                               className="flex items-center justify-between px-4 py-2.5 hover:bg-muted/30 transition-colors"
                             >
                               <div className="flex items-center gap-3">
-                                <div className="flex-shrink-0">
+                                <div className="flex-shrink-0" aria-hidden="true">
                                   {getCategoryIcon(
                                     model.type === "image" &&
                                       getModelCategory(model) === "Gemini"
@@ -1882,7 +1973,10 @@ export function AISettings() {
                                 </div>
                                 <div className="flex items-center gap-2">
                                   {model.isDefault && (
-                                    <StarIcon className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                                    <StarIcon
+                                      className="w-4 h-4 text-yellow-500 fill-yellow-500"
+                                      aria-hidden="true"
+                                    />
                                   )}
                                   <div>
                                     <div className="font-medium text-sm">
@@ -1898,29 +1992,43 @@ export function AISettings() {
                               </div>
                               <div className="flex items-center gap-1">
                                 <button
+                                  type="button"
                                   onClick={() => handleTestImageModel(model)}
                                   disabled={testingModelId === model.id}
                                   className="p-1.5 rounded hover:bg-muted transition-colors disabled:opacity-50"
+                                  aria-label={t("settings.testImage")}
                                   title={t("settings.testImage")}
                                 >
                                   {testingModelId === model.id ? (
-                                    <Loader2Icon className="w-4 h-4 text-primary animate-spin" />
+                                    <Loader2Icon
+                                      className="w-4 h-4 text-primary animate-spin"
+                                      aria-hidden="true"
+                                    />
                                   ) : (
-                                    <TestTubeIcon className="w-4 h-4 text-muted-foreground" />
+                                    <TestTubeIcon
+                                      className="w-4 h-4 text-muted-foreground"
+                                      aria-hidden="true"
+                                    />
                                   )}
                                 </button>
                                 {!model.isDefault && (
                                   <button
+                                    type="button"
                                     onClick={() =>
                                       settings.setDefaultAiModel(model.id)
                                     }
                                     className="p-1.5 rounded hover:bg-muted transition-colors"
+                                    aria-label={t("settings.setDefault")}
                                     title={t("settings.setDefault")}
                                   >
-                                    <StarIcon className="w-4 h-4 text-muted-foreground" />
+                                    <StarIcon
+                                      className="w-4 h-4 text-muted-foreground"
+                                      aria-hidden="true"
+                                    />
                                   </button>
                                 )}
                                 <button
+                                  type="button"
                                   onClick={() => {
                                     setEditingModelId(model.id);
                                     setEditingModelType("image");
@@ -1935,20 +2043,29 @@ export function AISettings() {
                                     setShowAddImageModel(true);
                                   }}
                                   className="p-1.5 rounded hover:bg-muted transition-colors"
+                                  aria-label={t("common.edit")}
                                   title={t("common.edit")}
                                 >
-                                  <EditIcon className="w-4 h-4 text-muted-foreground" />
+                                  <EditIcon
+                                    className="w-4 h-4 text-muted-foreground"
+                                    aria-hidden="true"
+                                  />
                                 </button>
                                 <button
+                                  type="button"
                                   onClick={() => {
                                     if (confirm(t("settings.confirmDelete"))) {
                                       settings.deleteAiModel(model.id);
                                     }
                                   }}
                                   className="p-1.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                                  aria-label={t("settings.deleteModel")}
                                   title={t("settings.deleteModel")}
                                 >
-                                  <TrashIcon className="w-4 h-4 text-red-500" />
+                                  <TrashIcon
+                                    className="w-4 h-4 text-red-500"
+                                    aria-hidden="true"
+                                  />
                                 </button>
                               </div>
                             </div>
@@ -1971,6 +2088,7 @@ export function AISettings() {
                       : t("settings.addImageModel")}
                   </span>
                   <button
+                    type="button"
                     onClick={() => {
                       setShowAddImageModel(false);
                       setEditingModelId(null);
@@ -1994,6 +2112,7 @@ export function AISettings() {
                   </label>
                   <input
                     type="text"
+                    aria-label={t("settings.customNameOptional")}
                     placeholder={t("settings.customNamePlaceholder")}
                     value={newModel.name}
                     onChange={(e) =>
@@ -2007,6 +2126,7 @@ export function AISettings() {
                     {t("settings.providerName")}
                   </label>
                   <Select
+                    ariaLabel={t("settings.providerName")}
                     value={newModel.provider}
                     onChange={(value) => {
                       const provider = AI_IMAGE_PROVIDERS.find(
@@ -2036,6 +2156,7 @@ export function AISettings() {
                     {t("settings.apiKey")}
                   </label>
                   <PasswordInput
+                    ariaLabel={t("settings.apiKey")}
                     placeholder={t("settings.apiKeyPlaceholder")}
                     value={newModel.apiKey}
                     onChange={(v) => setNewModel({ ...newModel, apiKey: v })}
@@ -2051,6 +2172,7 @@ export function AISettings() {
                   </label>
                   <input
                     type="text"
+                    aria-label={t("settings.apiUrl")}
                     placeholder={t("settings.apiUrlPlaceholder")}
                     value={newModel.apiUrl}
                     onChange={(e) =>
@@ -2092,15 +2214,22 @@ export function AISettings() {
                       className="text-xs text-primary hover:underline disabled:opacity-50 disabled:no-underline flex items-center gap-1"
                     >
                       {fetchingImageModels ? (
-                        <Loader2Icon className="w-3 h-3 animate-spin" />
+                        <Loader2Icon
+                          aria-hidden="true"
+                          className="w-3 h-3 animate-spin"
+                        />
                       ) : (
-                        <RefreshCwIcon className="w-3 h-3" />
+                        <RefreshCwIcon
+                          aria-hidden="true"
+                          className="w-3 h-3"
+                        />
                       )}
                       {t("settings.fetchModels")}
                     </button>
                   </div>
                   <input
                     type="text"
+                    aria-label={t("settings.modelName")}
                     placeholder={t("settings.modelNamePlaceholder")}
                     value={newModel.model}
                     onChange={(e) =>
@@ -2110,6 +2239,7 @@ export function AISettings() {
                   />
                 </div>
                 <button
+                  type="button"
                   onClick={() => {
                     if (
                       !newModel.apiKey ||
@@ -2150,10 +2280,11 @@ export function AISettings() {
               </div>
             ) : (
               <button
+                type="button"
                 onClick={() => setShowAddImageModel(true)}
                 className="w-full h-10 rounded-lg border-2 border-dashed border-muted-foreground/30 text-muted-foreground text-sm font-medium hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2"
               >
-                <PlusIcon className="w-4 h-4" />
+                <PlusIcon className="w-4 h-4" aria-hidden="true" />
                 {t("settings.addImageModel")}
               </button>
             )}
@@ -2178,7 +2309,9 @@ export function AISettings() {
             </p>
             <div className="flex gap-3">
               <button
+                type="button"
                 onClick={() => settings.setTranslationMode("immersive")}
+                aria-pressed={settings.translationMode === "immersive"}
                 className={`flex-1 p-3 rounded-xl border-2 transition-all text-left ${
                   settings.translationMode === "immersive"
                     ? "border-primary bg-primary/5"
@@ -2196,7 +2329,9 @@ export function AISettings() {
                 </p>
               </button>
               <button
+                type="button"
                 onClick={() => settings.setTranslationMode("full")}
+                aria-pressed={settings.translationMode === "full"}
                 className={`flex-1 p-3 rounded-xl border-2 transition-all text-left ${
                   settings.translationMode === "full"
                     ? "border-primary bg-primary/5"
@@ -2237,10 +2372,12 @@ export function AISettings() {
                 {t("settings.selectModels")}
               </h3>
               <button
+                type="button"
                 onClick={() => setShowModelPicker(false)}
                 className="p-2 rounded-lg hover:bg-muted transition-colors"
+                aria-label={t("common.close", "Close")}
               >
-                <XIcon className="w-5 h-5" />
+                <XIcon className="w-5 h-5" aria-hidden="true" />
               </button>
             </div>
 
@@ -2288,16 +2425,24 @@ export function AISettings() {
                       >
                         {/* 分类标题 */}
                         <button
+                          type="button"
                           onClick={() => toggleCategory(category)}
+                          aria-expanded={!isCollapsed}
                           className="w-full flex items-center justify-between p-3 bg-muted/30 hover:bg-muted/50 transition-colors"
                         >
                           <div className="flex items-center gap-2">
                             {isCollapsed ? (
-                              <ChevronRightIcon className="w-4 h-4 text-muted-foreground" />
+                              <ChevronRightIcon
+                                className="w-4 h-4 text-muted-foreground"
+                                aria-hidden="true"
+                              />
                             ) : (
-                              <ChevronDownIcon className="w-4 h-4 text-muted-foreground" />
+                              <ChevronDownIcon
+                                className="w-4 h-4 text-muted-foreground"
+                                aria-hidden="true"
+                              />
                             )}
-                            <span className="flex-shrink-0">
+                            <span className="flex-shrink-0" aria-hidden="true">
                               {getCategoryIcon(category, 18)}
                             </span>
                             <span className="font-medium text-sm">
@@ -2315,6 +2460,7 @@ export function AISettings() {
                             )}
                           </div>
                           <button
+                            type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               models.forEach((m) => {
@@ -2348,8 +2494,8 @@ export function AISettings() {
                                     isAdded ? "bg-primary/5" : ""
                                   }`}
                                 >
-                                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                                    <div className="flex-shrink-0">
+                                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                                    <div className="flex-shrink-0" aria-hidden="true">
                                       {getCategoryIcon(category, 18)}
                                     </div>
                                     <div className="flex-1 min-w-0">
@@ -2364,6 +2510,7 @@ export function AISettings() {
                                     </div>
                                   </div>
                                   <button
+                                    type="button"
                                     onClick={() => handleAddModel(model.id)}
                                     disabled={isAdded}
                                     className={`ml-3 p-1.5 rounded-lg transition-colors ${
@@ -2378,9 +2525,15 @@ export function AISettings() {
                                     }
                                   >
                                     {isAdded ? (
-                                      <CheckIcon className="w-4 h-4" />
+                                      <CheckIcon
+                                        className="w-4 h-4"
+                                        aria-hidden="true"
+                                      />
                                     ) : (
-                                      <PlusIcon className="w-4 h-4" />
+                                      <PlusIcon
+                                        className="w-4 h-4"
+                                        aria-hidden="true"
+                                      />
                                     )}
                                   </button>
                                 </div>
@@ -2398,6 +2551,7 @@ export function AISettings() {
             {/* 底部按钮 */}
             <div className="p-4 border-t border-border">
               <button
+                type="button"
                 onClick={() => setShowModelPicker(false)}
                 className="w-full h-10 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
               >
@@ -2418,10 +2572,12 @@ export function AISettings() {
                 {t("settings.selectImageModels", "选择生图模型")}
               </h3>
               <button
+                type="button"
                 onClick={() => setShowImageModelPicker(false)}
                 className="p-2 rounded-lg hover:bg-muted transition-colors"
+                aria-label={t("common.close", "Close")}
               >
-                <XIcon className="w-5 h-5" />
+                <XIcon className="w-5 h-5" aria-hidden="true" />
               </button>
             </div>
 
@@ -2473,16 +2629,24 @@ export function AISettings() {
                       >
                         {/* 分类标题 */}
                         <button
+                          type="button"
                           onClick={() => toggleImageCategory(category)}
+                          aria-expanded={!isCollapsed}
                           className="w-full flex items-center justify-between p-3 bg-muted/30 hover:bg-muted/50 transition-colors"
                         >
                           <div className="flex items-center gap-2">
                             {isCollapsed ? (
-                              <ChevronRightIcon className="w-4 h-4 text-muted-foreground" />
+                              <ChevronRightIcon
+                                className="w-4 h-4 text-muted-foreground"
+                                aria-hidden="true"
+                              />
                             ) : (
-                              <ChevronDownIcon className="w-4 h-4 text-muted-foreground" />
+                              <ChevronDownIcon
+                                className="w-4 h-4 text-muted-foreground"
+                                aria-hidden="true"
+                              />
                             )}
-                            <span className="flex-shrink-0">
+                            <span className="flex-shrink-0" aria-hidden="true">
                               {getCategoryIcon(category, 18)}
                             </span>
                             <span className="font-medium text-sm">
@@ -2500,6 +2664,7 @@ export function AISettings() {
                             )}
                           </div>
                           <button
+                            type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               models.forEach((m) => {
@@ -2536,7 +2701,7 @@ export function AISettings() {
                                   }`}
                                 >
                                   <div className="flex items-center gap-3 flex-1 min-w-0">
-                                    <div className="flex-shrink-0">
+                                    <div className="flex-shrink-0" aria-hidden="true">
                                       {getCategoryIcon(category, 18)}
                                     </div>
                                     <div className="flex-1 min-w-0">
@@ -2551,6 +2716,7 @@ export function AISettings() {
                                     </div>
                                   </div>
                                   <button
+                                    type="button"
                                     onClick={() =>
                                       handleAddImageModel(model.id)
                                     }
@@ -2567,9 +2733,15 @@ export function AISettings() {
                                     }
                                   >
                                     {isAdded ? (
-                                      <CheckIcon className="w-4 h-4" />
+                                      <CheckIcon
+                                        className="w-4 h-4"
+                                        aria-hidden="true"
+                                      />
                                     ) : (
-                                      <PlusIcon className="w-4 h-4" />
+                                      <PlusIcon
+                                        className="w-4 h-4"
+                                        aria-hidden="true"
+                                      />
                                     )}
                                   </button>
                                 </div>
@@ -2587,6 +2759,7 @@ export function AISettings() {
             {/* 底部按钮 */}
             <div className="p-4 border-t border-border">
               <button
+                type="button"
                 onClick={() => setShowImageModelPicker(false)}
                 className="w-full h-10 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
               >
@@ -2609,10 +2782,12 @@ export function AISettings() {
                   : t("settings.imageTestFailed", "生图测试失败")}
               </h3>
               <button
+                type="button"
                 onClick={() => setImageTestModalResult(null)}
                 className="p-2 rounded-lg hover:bg-muted transition-colors"
+                aria-label={t("common.close", "Close")}
               >
-                <XIcon className="w-5 h-5" />
+                <XIcon className="w-5 h-5" aria-hidden="true" />
               </button>
             </div>
 
@@ -2621,20 +2796,20 @@ export function AISettings() {
               {imageTestModalResult.success ? (
                 <div className="space-y-4">
                   {/* 生成的图片 */}
-                  {imageTestModalResult.imageUrl && (
+                  {safeImageTestUrl && (
                     <div className="rounded-lg overflow-hidden border border-border">
                       <img
-                        src={imageTestModalResult.imageUrl}
-                        alt="Generated"
+                        src={safeImageTestUrl}
+                        alt={t("settings.generatedImageAlt")}
                         className="w-full h-auto"
                       />
                     </div>
                   )}
-                  {imageTestModalResult.imageBase64 && (
+                  {safeImageTestBase64Url && (
                     <div className="rounded-lg overflow-hidden border border-border">
                       <img
-                        src={`data:image/png;base64,${imageTestModalResult.imageBase64}`}
-                        alt="Generated"
+                        src={safeImageTestBase64Url}
+                        alt={t("settings.generatedImageAlt")}
                         className="w-full h-auto"
                       />
                     </div>
@@ -2703,6 +2878,7 @@ export function AISettings() {
             {/* 底部按钮 */}
             <div className="p-4 border-t border-border">
               <button
+                type="button"
                 onClick={() => setImageTestModalResult(null)}
                 className="w-full h-10 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
               >

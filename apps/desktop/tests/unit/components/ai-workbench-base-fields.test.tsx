@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import type { FormEvent } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { BaseFields } from "../../../src/renderer/components/settings/ai-workbench/model-form/BaseFields";
@@ -8,6 +9,19 @@ import {
   hasDedicatedCategoryIcon,
 } from "../../../src/renderer/components/ui/ModelIcons";
 import { renderWithI18n } from "../../helpers/i18n";
+
+function hasHiddenSvgAncestor(element: Element): boolean {
+  let current: Element | null = element;
+
+  while (current) {
+    if (current.getAttribute("aria-hidden") === "true") {
+      return true;
+    }
+    current = current.parentElement;
+  }
+
+  return false;
+}
 
 function createModelForm(provider: string = "openai") {
   return {
@@ -127,17 +141,80 @@ describe("BaseFields", () => {
     expect(
       screen.getByText(/settings\.protocolOpenAICompatible|OpenAI-compatible/),
     ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /OpenAI-compatible/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Protocol" }));
     expect(
-      await screen.findByText(
-        /settings\.protocolGeminiCompatible|Gemini-compatible/,
-      ),
+      await screen.findByRole("option", {
+        name: /settings\.protocolGeminiCompatible|Gemini-compatible/,
+      }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(
-        /settings\.protocolAnthropicCompatible|Anthropic-compatible/,
-      ),
+      screen.getByRole("option", {
+        name: /settings\.protocolAnthropicCompatible|Anthropic-compatible/,
+      }),
     ).toBeInTheDocument();
+  });
+
+  it("exposes provider and protocol selects by field labels", async () => {
+    const setModelForm = vi.fn();
+
+    await renderWithI18n(
+      <BaseFields
+        modelForm={createModelForm("custom")}
+        setModelForm={setModelForm}
+        fetchingModels={false}
+        onFetchModels={() => undefined}
+      />,
+      { language: "en" },
+    );
+
+    expect(screen.getByRole("button", { name: "Provider" })).toHaveAttribute(
+      "aria-haspopup",
+      "listbox",
+    );
+    expect(screen.getByRole("button", { name: "Protocol" })).toHaveAttribute(
+      "aria-haspopup",
+      "listbox",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Provider" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Gemini" }));
+
+    expect(setModelForm).toHaveBeenCalled();
+  });
+
+  it("keeps fetch models action non-submit with decorative icons hidden", async () => {
+    const onSubmit = vi.fn((event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+    });
+    const onFetchModels = vi.fn();
+    const setModelForm = vi.fn();
+
+    await renderWithI18n(
+      <form onSubmit={onSubmit}>
+        <BaseFields
+          modelForm={createModelForm("openai")}
+          setModelForm={setModelForm}
+          fetchingModels={false}
+          onFetchModels={onFetchModels}
+        />
+      </form>,
+      { language: "en" },
+    );
+
+    const fetchButton = screen.getByRole("button", { name: "Fetch Models" });
+    expect(fetchButton).toHaveAttribute("type", "button");
+
+    const exposedIconMarkup = Array.from(
+      document.body.querySelectorAll("button svg"),
+    )
+      .filter((icon) => !hasHiddenSvgAncestor(icon))
+      .map((icon) => icon.outerHTML);
+    expect(exposedIconMarkup, exposedIconMarkup.join("\n")).toHaveLength(0);
+
+    fireEvent.click(fetchButton);
+
+    expect(onFetchModels).toHaveBeenCalledTimes(1);
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it("renders only the common model capability toggles", async () => {
@@ -191,8 +268,8 @@ describe("BaseFields", () => {
       { language: "en" },
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "自定义" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Gemini" }));
+    fireEvent.click(screen.getByRole("button", { name: "Provider" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Gemini" }));
 
     expect(setModelForm).toHaveBeenCalled();
   });
@@ -210,9 +287,9 @@ describe("BaseFields", () => {
       { language: "en" },
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "自定义" }));
+    fireEvent.click(screen.getByRole("button", { name: "Provider" }));
 
-    const options = await screen.findAllByRole("button");
+    const options = await screen.findAllByRole("option");
     expect(options.some((option) => option.textContent === "Overseas")).toBe(
       false,
     );
@@ -223,7 +300,7 @@ describe("BaseFields", () => {
       false,
     );
     expect(
-      screen.getAllByRole("button", { name: "自定义" }).length,
+      screen.getAllByRole("option", { name: "自定义" }).length,
     ).toBeGreaterThan(0);
     expect(screen.queryByText("International / 国际")).not.toBeInTheDocument();
     expect(screen.queryByText("Domestic / 国内")).not.toBeInTheDocument();

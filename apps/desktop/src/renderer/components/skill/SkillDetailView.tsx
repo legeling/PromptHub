@@ -20,19 +20,21 @@ import {
   FolderOpenIcon,
   LinkIcon,
 } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useSkillStore } from "../../stores/skill.store";
 import { useSettingsStore } from "../../stores/settings.store";
 import { useToast } from "../ui/Toast";
-import { EditSkillModal } from "./EditSkillModal";
-import { SkillFileEditor } from "./SkillFileEditor";
 import { UnsavedChangesDialog } from "../ui/UnsavedChangesDialog";
 import { PlatformIcon } from "../ui/PlatformIcon";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeHighlight from "rehype-highlight";
-import rehypeSanitize from "rehype-sanitize";
 import "highlight.js/styles/github-dark.css";
 import {
   downloadSkillExport,
@@ -41,6 +43,23 @@ import {
   getSkillSourceMeta,
 } from "./detail-utils";
 import { useSkillPlatform } from "./use-skill-platform";
+import { copyTextToClipboard } from "../../utils/clipboard";
+
+const LazyEditSkillModal = lazy(() =>
+  import("./EditSkillModal").then((module) => ({
+    default: module.EditSkillModal,
+  })),
+);
+const LazySkillFileEditor = lazy(() =>
+  import("./SkillFileEditor").then((module) => ({
+    default: module.SkillFileEditor,
+  })),
+);
+const LazySkillMarkdown = lazy(() =>
+  import("./SkillMarkdown").then((module) => ({
+    default: module.SkillMarkdown,
+  })),
+);
 
 export function SkillDetailView() {
   const { t } = useTranslation();
@@ -61,6 +80,8 @@ export function SkillDetailView() {
   );
 
   const [copyStatus, setCopyStatus] = useState<Record<string, boolean>>({});
+  const copyStatusTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const isMountedRef = useRef(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isFileEditorOpen, setIsFileEditorOpen] = useState(false);
@@ -84,9 +105,45 @@ export function SkillDetailView() {
 
   // Refresh status when skill selection changes
   useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+      Object.values(copyStatusTimersRef.current).forEach((timer) => {
+        clearTimeout(timer);
+      });
+      copyStatusTimersRef.current = {};
+    };
+  }, []);
+
+  const clearCopyStatusTimer = useCallback((key: string) => {
+    const timer = copyStatusTimersRef.current[key];
+    if (timer) {
+      clearTimeout(timer);
+      delete copyStatusTimersRef.current[key];
+    }
+  }, []);
+
+  const scheduleCopyStatusReset = useCallback((key: string) => {
+    clearCopyStatusTimer(key);
+    copyStatusTimersRef.current[key] = setTimeout(() => {
+      if (!isMountedRef.current) {
+        return;
+      }
+      setCopyStatus((current) => ({ ...current, [key]: false }));
+      delete copyStatusTimersRef.current[key];
+    }, 2000);
+  }, [clearCopyStatusTimer]);
+
+  useEffect(() => {
     if (selectedSkill) {
       setEditedInstructions(selectedSkill.instructions || "");
       setIsEditing(false);
+      setCopyStatus({});
+      Object.values(copyStatusTimersRef.current).forEach((timer) => {
+        clearTimeout(timer);
+      });
+      copyStatusTimersRef.current = {};
     }
   }, [selectedSkill?.id]);
   const {
@@ -174,12 +231,15 @@ export function SkillDetailView() {
   if (!selectedSkill) return null;
   const sourceMeta = getSkillSourceMeta(selectedSkill, t);
 
-  const handleCopy = (text: string, key: string) => {
-    navigator.clipboard.writeText(text);
-    setCopyStatus({ ...copyStatus, [key]: true });
-    setTimeout(() => {
-      setCopyStatus({ ...copyStatus, [key]: false });
-    }, 2000);
+  const handleCopy = async (text: string, key: string) => {
+    try {
+      await copyTextToClipboard(text);
+      setCopyStatus((current) => ({ ...current, [key]: true }));
+      scheduleCopyStatusReset(key);
+    } catch (error) {
+      console.error("Failed to copy skill content:", error);
+      showToast(t("common.copyFailed", "Copy failed"), "error");
+    }
   };
 
   const handleSaveInstructions = async () => {
@@ -209,10 +269,12 @@ export function SkillDetailView() {
         downloadSkillExport(content, selectedSkill.name, format);
       }
 
-      setCopyStatus({ ...copyStatus, [`export_${format}`]: true });
-      setTimeout(() => {
-        setCopyStatus({ ...copyStatus, [`export_${format}`]: false });
-      }, 2000);
+      if (!isMountedRef.current) {
+        return;
+      }
+      const statusKey = `export_${format}`;
+      setCopyStatus((current) => ({ ...current, [statusKey]: true }));
+      scheduleCopyStatusReset(statusKey);
     } catch (error) {
       showToast(
         `${t("skill.exportFailed", "Export failed")}: ${getErrorMessage(error)}`,
@@ -227,7 +289,7 @@ export function SkillDetailView() {
       <div className="flex items-center justify-between px-6 py-4 border-b border-border sticky top-0 app-wallpaper-surface z-10">
         <div className="flex items-center gap-4">
           <div className="p-3 bg-primary text-white rounded-2xl shadow-lg shadow-primary/20">
-            <CuboidIcon className="w-6 h-6" />
+            <CuboidIcon aria-hidden="true" className="w-6 h-6" />
           </div>
           <div>
             <h2 className="font-bold text-xl text-foreground leading-tight">
@@ -235,7 +297,7 @@ export function SkillDetailView() {
             </h2>
             <div className="flex items-center gap-3 mt-1.5">
               <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-medium">
-                <GlobeIcon className="w-3.5 h-3.5" />
+                <GlobeIcon aria-hidden="true" className="w-3.5 h-3.5" />
                 {selectedSkill.author || t("skill.localStorage")}
               </div>
             </div>
@@ -243,24 +305,28 @@ export function SkillDetailView() {
         </div>
         <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={() => setIsEditModalOpen(true)}
             className="p-2.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-full transition-all active:scale-press-in"
             title={t("skill.edit", "Edit Skill")}
           >
-            <PencilIcon className="w-5 h-5" />
+            <PencilIcon aria-hidden="true" className="w-5 h-5" />
           </button>
           <button
+            type="button"
             onClick={() => setIsFileEditorOpen(true)}
             className="p-2.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-full transition-all active:scale-press-in"
             title={t("skill.fileEditor", "File Editor")}
           >
-            <FolderOpenIcon className="w-5 h-5" />
+            <FolderOpenIcon aria-hidden="true" className="w-5 h-5" />
           </button>
           <button
+            type="button"
+            aria-label={t("common.close", "Close")}
             onClick={() => selectSkill(null)}
             className="p-2.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded-full transition-all active:scale-press-in"
           >
-            <XIcon className="w-6 h-6" />
+            <XIcon aria-hidden="true" className="w-6 h-6" />
           </button>
         </div>
       </div>
@@ -268,11 +334,12 @@ export function SkillDetailView() {
       {/* Tabs */}
       <div className="flex items-center px-6 gap-6 border-b border-border bg-accent/20">
         <button
+          type="button"
           onClick={() => setActiveTab("preview")}
           className={`py-3 text-sm font-semibold relative transition-colors ${activeTab === "preview" ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
         >
           <div className="flex items-center gap-2">
-            <BookOpenIcon className="w-4 h-4" />
+            <BookOpenIcon aria-hidden="true" className="w-4 h-4" />
             {t("common.preview", "Preview")}
           </div>
           {activeTab === "preview" && (
@@ -280,11 +347,12 @@ export function SkillDetailView() {
           )}
         </button>
         <button
+          type="button"
           onClick={() => setActiveTab("code")}
           className={`py-3 text-sm font-semibold relative transition-colors ${activeTab === "code" ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
         >
           <div className="flex items-center gap-2">
-            <CodeIcon className="w-4 h-4" />
+            <CodeIcon aria-hidden="true" className="w-4 h-4" />
             {t("common.content", "Source")}
           </div>
           {activeTab === "code" && (
@@ -328,6 +396,7 @@ export function SkillDetailView() {
                   <div className="flex items-center justify-between gap-2 p-3 bg-accent/30 rounded-xl border border-border">
                     <div className="flex items-center gap-2">
                       <button
+                        type="button"
                         onClick={
                           selectedPlatforms.size === uninstalledPlatforms.length
                             ? deselectAllPlatforms
@@ -339,12 +408,18 @@ export function SkillDetailView() {
                         {selectedPlatforms.size ===
                         uninstalledPlatforms.length ? (
                           <>
-                            <CheckSquareIcon className="w-4 h-4" />
+                            <CheckSquareIcon
+                              aria-hidden="true"
+                              className="w-4 h-4"
+                            />
                             {t("skill.deselectAll", "Deselect All")}
                           </>
                         ) : (
                           <>
-                            <SquareIcon className="w-4 h-4" />
+                            <SquareIcon
+                              aria-hidden="true"
+                              className="w-4 h-4"
+                            />
                             {t("skill.selectAll", "Select All")}
                           </>
                         )}
@@ -357,6 +432,7 @@ export function SkillDetailView() {
                       )}
                     </div>
                     <button
+                      type="button"
                       onClick={showInstallConfirm}
                       disabled={
                         selectedPlatforms.size === 0 || isBatchInstalling
@@ -365,14 +441,20 @@ export function SkillDetailView() {
                     >
                       {isBatchInstalling ? (
                         <>
-                          <Loader2Icon className="w-3.5 h-3.5 animate-spin" />
+                          <Loader2Icon
+                            aria-hidden="true"
+                            className="w-3.5 h-3.5 animate-spin"
+                          />
                           {installProgress
                             ? `${installProgress.current}/${installProgress.total}`
                             : t("skill.installing", "Installing...")}
                         </>
                       ) : (
                         <>
-                          <DownloadIcon className="w-3.5 h-3.5" />
+                          <DownloadIcon
+                            aria-hidden="true"
+                            className="w-3.5 h-3.5"
+                          />
                           {t("skill.batchInstall", "Install All")}
                         </>
                       )}
@@ -390,60 +472,80 @@ export function SkillDetailView() {
                     return (
                       <div
                         key={platform.id}
-                        onClick={() => {
-                          if (isInstalled) return; // Can't select installed platforms
-                          if (!isBatchInstalling) {
-                            togglePlatformSelection(platform.id);
-                          }
-                        }}
-                        className={`p-4 rounded-2xl border transition-all ${
+                        className={`relative rounded-2xl border transition-all ${
                           isInstalled
                             ? "bg-primary/5 border-primary shadow-sm cursor-default"
-                            : isSelected
+                          : isSelected
                               ? "bg-primary/10 border-primary cursor-pointer"
                               : "bg-sidebar-accent/30 border-border hover:bg-sidebar-accent/50 cursor-pointer"
                         } ${isBatchInstalling && !isInstalled ? "opacity-70 cursor-wait" : ""}`}
                       >
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
-                            <PlatformIcon platformId={platform.id} size={26} />
-                          </div>
-                          {isInstalled ? (
-                            <div className="flex items-center gap-2">
-                              <CheckIcon className="w-4 h-4 text-primary" />
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  showUninstallConfirm(platform.id);
-                                }}
-                                className="text-[10px] text-destructive hover:underline"
-                                title={t("skill.uninstall", "Uninstall")}
-                              >
-                                {t("skill.uninstall", "Uninstall")}
-                              </button>
-                            </div>
-                          ) : (
+                        <button
+                          type="button"
+                          aria-label={platform.name}
+                          aria-pressed={isInstalled ? undefined : isSelected}
+                          disabled={isInstalled || isBatchInstalling}
+                          onClick={() => togglePlatformSelection(platform.id)}
+                          className={`w-full p-4 text-left rounded-2xl disabled:cursor-default disabled:opacity-100 ${isInstalled ? "pr-24" : ""}`}
+                        >
+                          <div className="flex items-center justify-between mb-3">
                             <div
-                              className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                                isSelected
-                                  ? "bg-primary border-primary"
-                                  : "border-muted-foreground/30"
-                              }`}
+                              aria-hidden="true"
+                              className="w-8 h-8 flex items-center justify-center flex-shrink-0"
                             >
-                              {isSelected && (
-                                <CheckIcon className="w-3 h-3 text-white" />
-                              )}
+                              <PlatformIcon
+                                aria-hidden="true"
+                                platformId={platform.id}
+                                size={26}
+                              />
                             </div>
-                          )}
-                        </div>
-                        <h4 className="font-bold text-sm">{platform.name}</h4>
-                        <p className="text-[11px] text-muted-foreground mt-1">
-                          {isInstalled
-                            ? t("skill.installed")
-                            : isSelected
-                              ? t("skill.selectedForInstall", "Pending install")
-                              : t("skill.clickToSelect", "Click to select")}
-                        </p>
+                            {isInstalled ? (
+                              <CheckIcon
+                                aria-hidden="true"
+                                className="w-4 h-4 text-primary"
+                              />
+                            ) : (
+                              <div
+                                aria-hidden="true"
+                                className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                                  isSelected
+                                    ? "bg-primary border-primary"
+                                    : "border-muted-foreground/30"
+                                }`}
+                              >
+                                {isSelected && (
+                                  <CheckIcon
+                                    aria-hidden="true"
+                                    className="w-3 h-3 text-white"
+                                  />
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          <h4 className="font-bold text-sm">
+                            {platform.name}
+                          </h4>
+                          <p className="text-[11px] text-muted-foreground mt-1">
+                            {isInstalled
+                              ? t("skill.installed")
+                              : isSelected
+                                ? t(
+                                    "skill.selectedForInstall",
+                                    "Pending install",
+                                  )
+                                : t("skill.clickToSelect", "Click to select")}
+                          </p>
+                        </button>
+                        {isInstalled && (
+                          <button
+                            type="button"
+                            onClick={() => showUninstallConfirm(platform.id)}
+                            className="absolute top-4 right-4 text-[10px] text-destructive hover:underline"
+                            title={t("skill.uninstall", "Uninstall")}
+                          >
+                            {t("skill.uninstall", "Uninstall")}
+                          </button>
+                        )}
                       </div>
                     );
                   })}
@@ -462,25 +564,30 @@ export function SkillDetailView() {
                 </h3>
                 <div className="flex gap-2">
                   <button
+                    type="button"
                     onClick={() =>
-                      handleCopy(selectedSkill.instructions || "", "instr")
+                      void handleCopy(selectedSkill.instructions || "", "instr")
                     }
                     className="p-1 px-3 bg-accent/50 hover:bg-accent rounded-lg text-xs flex items-center gap-1.5 transition-colors"
                   >
                     {copyStatus["instr"] ? (
-                      <CheckIcon className="w-3.5 h-3.5 text-green-500" />
+                      <CheckIcon
+                        aria-hidden="true"
+                        className="w-3.5 h-3.5 text-green-500"
+                      />
                     ) : (
-                      <CopyIcon className="w-3.5 h-3.5" />
+                      <CopyIcon aria-hidden="true" className="w-3.5 h-3.5" />
                     )}
                     {copyStatus["instr"]
                       ? t("skill.copied")
                       : t("skill.copyMd")}
                   </button>
                   <button
+                    type="button"
                     onClick={() => setIsEditing(!isEditing)}
                     className={`p-1 px-3 rounded-lg text-xs flex items-center gap-1.5 transition-colors ${isEditing ? "bg-primary text-white" : "bg-accent/50 hover:bg-accent"}`}
                   >
-                    <Edit3Icon className="w-3.5 h-3.5" />
+                    <Edit3Icon aria-hidden="true" className="w-3.5 h-3.5" />
                     {isEditing ? t("skill.editing") : t("common.edit")}
                   </button>
                 </div>
@@ -497,6 +604,7 @@ export function SkillDetailView() {
                     />
                     <div className="p-3 bg-accent/30 border-t border-border flex justify-end gap-2">
                       <button
+                        type="button"
                         onClick={() => {
                           setIsEditing(false);
                           setEditedInstructions(
@@ -508,6 +616,7 @@ export function SkillDetailView() {
                         {t("skill.cancel")}
                       </button>
                       <button
+                        type="button"
                         onClick={handleSaveInstructions}
                         disabled={isSaving}
                         className="px-4 py-1.5 bg-primary text-white text-xs font-bold rounded-lg shadow-lg shadow-primary/20 disabled:opacity-50"
@@ -520,16 +629,27 @@ export function SkillDetailView() {
                   <div className="p-6 prose dark:prose-invert prose-sm max-w-none prose-pre:bg-muted prose-pre:border prose-pre:border-border text-[13px]">
                     {selectedSkill.instructions ? (
                       <div className="markdown-body">
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          rehypePlugins={[rehypeHighlight, rehypeSanitize]}
+                        <Suspense
+                          fallback={
+                            <div className="text-sm text-muted-foreground">
+                              {t("common.loading", "Loading...")}
+                            </div>
+                          }
                         >
-                          {selectedSkill.instructions}
-                        </ReactMarkdown>
+                          <LazySkillMarkdown
+                            content={selectedSkill.instructions}
+                            sourceUrl={selectedSkill.source_url}
+                            contentUrl={selectedSkill.content_url}
+                            enableHighlight
+                          />
+                        </Suspense>
                       </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center py-10 opacity-30">
-                        <BookOpenIcon className="w-12 h-12 mb-2" />
+                        <BookOpenIcon
+                          aria-hidden="true"
+                          className="w-12 h-12 mb-2"
+                        />
                         <p>{t("skill.noInstructions")}</p>
                       </div>
                     )}
@@ -557,7 +677,7 @@ export function SkillDetailView() {
                     {t("skill.protocol")}
                   </span>
                   <span className="font-bold uppercase tracking-tight flex items-center gap-1.5 text-primary">
-                    <ChevronRightIcon className="w-4 h-4" />
+                    <ChevronRightIcon aria-hidden="true" className="w-4 h-4" />
                     {selectedSkill.protocol_type}
                   </span>
                 </div>
@@ -584,19 +704,20 @@ export function SkillDetailView() {
               <section>
                 {sourceMeta.kind === "local" ? (
                   <button
+                    type="button"
                     onClick={() =>
                       window.electron?.openPath?.(sourceMeta.value)
                     }
                     className="w-full flex items-center justify-center gap-3 p-5 bg-accent/70 border border-border text-foreground rounded-2xl hover:bg-accent transition-colors font-bold shadow-lg"
                   >
-                    <FolderOpenIcon className="w-5 h-5" />
+                    <FolderOpenIcon aria-hidden="true" className="w-5 h-5" />
                     {t("skill.openLocalSource", "Open Local Skill Folder")}
                   </button>
                 ) : (
                   <a
                     href={sourceMeta.value}
                     target="_blank"
-                    rel="noreferrer"
+                    rel="noopener noreferrer"
                     className={`flex items-center justify-center gap-3 p-5 text-white rounded-2xl hover:opacity-90 transition-opacity font-bold shadow-lg ${
                       sourceMeta.kind === "github"
                         ? "bg-github"
@@ -604,9 +725,9 @@ export function SkillDetailView() {
                     }`}
                   >
                     {sourceMeta.kind === "github" ? (
-                      <GithubIcon className="w-5 h-5" />
+                      <GithubIcon aria-hidden="true" className="w-5 h-5" />
                     ) : (
-                      <LinkIcon className="w-5 h-5" />
+                      <LinkIcon aria-hidden="true" className="w-5 h-5" />
                     )}
                     {sourceMeta.kind === "github"
                       ? t("skill.visitRepo", "Visit Skill Repository")
@@ -623,10 +744,14 @@ export function SkillDetailView() {
               </h3>
               <div className="grid grid-cols-2 gap-3">
                 <button
+                  type="button"
                   onClick={() => handleExport("skillmd")}
                   className="flex items-center justify-center gap-2 p-4 bg-accent/50 hover:bg-accent border border-border rounded-xl transition-colors group"
                 >
-                  <FileTextIcon className="w-5 h-5 text-primary" />
+                  <FileTextIcon
+                    aria-hidden="true"
+                    className="w-5 h-5 text-primary"
+                  />
                   <div className="text-left">
                     <div className="font-medium text-sm">SKILL.md</div>
                     <div className="text-[10px] text-muted-foreground">
@@ -635,10 +760,14 @@ export function SkillDetailView() {
                   </div>
                 </button>
                 <button
+                  type="button"
                   onClick={() => handleExport("zip")}
                   className="flex items-center justify-center gap-2 p-4 bg-accent/50 hover:bg-accent border border-border rounded-xl transition-colors group"
                 >
-                  <PackageIcon className="w-5 h-5 text-primary" />
+                  <PackageIcon
+                    aria-hidden="true"
+                    className="w-5 h-5 text-primary"
+                  />
                   <div className="text-left">
                     <div className="font-medium text-sm">ZIP</div>
                     <div className="text-[10px] text-muted-foreground">
@@ -653,24 +782,32 @@ export function SkillDetailView() {
       </div>
 
       {/* Edit Modal */}
-      <EditSkillModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        skill={selectedSkill}
-      />
+      {isEditModalOpen && (
+        <Suspense fallback={null}>
+          <LazyEditSkillModal
+            isOpen={isEditModalOpen}
+            onClose={() => setIsEditModalOpen(false)}
+            skill={selectedSkill}
+          />
+        </Suspense>
+      )}
 
       {/* File Editor Modal */}
-      <SkillFileEditor
-        skillId={selectedSkill.id}
-        skillName={selectedSkill.name}
-        isOpen={isFileEditorOpen}
-        onClose={() => {
-          requestCloseFileEditor(() => {
-            setIsFileEditorOpen(false);
-          });
-        }}
-        onUnsavedChange={setFileEditorHasUnsavedChanges}
-      />
+      {isFileEditorOpen && (
+        <Suspense fallback={null}>
+          <LazySkillFileEditor
+            skillId={selectedSkill.id}
+            skillName={selectedSkill.name}
+            isOpen={isFileEditorOpen}
+            onClose={() => {
+              requestCloseFileEditor(() => {
+                setIsFileEditorOpen(false);
+              });
+            }}
+            onUnsavedChange={setFileEditorHasUnsavedChanges}
+          />
+        </Suspense>
+      )}
       <UnsavedChangesDialog
         isOpen={isUnsavedDialogOpen}
         onClose={() => {
@@ -713,7 +850,13 @@ export function SkillDetailView() {
                     key={platformId}
                     className="flex items-center gap-2 text-sm"
                   >
-                    <PlatformIcon platformId={platformId} size={16} />
+                    <span aria-hidden="true">
+                      <PlatformIcon
+                        aria-hidden="true"
+                        platformId={platformId}
+                        size={16}
+                      />
+                    </span>
                     <span>{platform.name}</span>
                   </li>
                 ) : null;

@@ -16,6 +16,40 @@ describe('Button Component', () => {
         expect(handleClick).toHaveBeenCalledTimes(1);
     });
 
+    it('defaults to a non-submit button inside forms', () => {
+        const handleSubmit = vi.fn((event: React.FormEvent<HTMLFormElement>) => {
+            event.preventDefault();
+        });
+        render(
+            <form onSubmit={handleSubmit}>
+                <Button>Do not submit</Button>
+            </form>,
+        );
+
+        const button = screen.getByRole('button', { name: 'Do not submit' });
+        expect(button).toHaveAttribute('type', 'button');
+        fireEvent.click(button);
+
+        expect(handleSubmit).not.toHaveBeenCalled();
+    });
+
+    it('preserves explicit submit behavior', () => {
+        const handleSubmit = vi.fn((event: React.FormEvent<HTMLFormElement>) => {
+            event.preventDefault();
+        });
+        render(
+            <form onSubmit={handleSubmit}>
+                <Button type="submit">Submit</Button>
+            </form>,
+        );
+
+        const button = screen.getByRole('button', { name: 'Submit' });
+        expect(button).toHaveAttribute('type', 'submit');
+        fireEvent.click(button);
+
+        expect(handleSubmit).toHaveBeenCalledTimes(1);
+    });
+
     it('renders disabled button', () => {
         render(<Button disabled>Disabled</Button>);
         expect(screen.getByText('Disabled')).toBeDisabled();

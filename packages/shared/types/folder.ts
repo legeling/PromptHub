@@ -29,7 +29,7 @@ export interface CreateFolderDTO {
 export interface UpdateFolderDTO {
   name?: string;
   icon?: string;
-  parentId?: string;
+  parentId?: string | null;
   order?: number;
   isPrivate?: boolean;
   visibility?: FolderVisibility;

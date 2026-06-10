@@ -5,6 +5,8 @@
 - 删除桌面首页旧版单栏切换，固定为新版双栏壳层。
 - `App` 与 `Sidebar` 已联动桌面首页模块可见性，并在当前模块被隐藏时自动回退到首个可见模块。
 - 修正 `Sidebar` 重新按常量顺序过滤模块导致的顺序回退问题，桌面首页 rail 现在会按用户拖拽后的顺序真实渲染。
+- `settings.store` 的 zustand `merge` 现在会规范化同版本 persisted `desktopHomeModules`，
+  避免未知模块、重复项或废弃 `desktopHomeLayout` 从 localStorage hydrate 回首页状态。
 - 设置页在 `AppearanceSettings` 中改为模块显隐 + 直接拖拽排序，不再提供上移 / 下移按钮。
 - 桌面背景图设置改为保留已选图片文件，并通过开启 / 关闭按钮控制桌面壳层是否实际应用背景图。
 - 自定义商店主区已移除重复的选中卡片，停用 / 刷新 / 删除操作已收回到右上角编辑弹窗。
@@ -26,6 +28,13 @@
 ## Verification
 
 - `pnpm --filter @prompthub/desktop test -- tests/unit/stores/settings-desktop-workspace.test.ts tests/unit/components/appearance-settings.test.tsx tests/unit/components/settings-page.test.tsx tests/unit/components/sidebar.test.tsx --run`
+- `pnpm --filter @prompthub/desktop test -- --run tests/unit/stores/settings-desktop-workspace.test.ts -t "same-version persisted desktop module"` first reproduced the hydrate leak, then passed after the merge normalization.
+- `pnpm --filter @prompthub/desktop test -- --run tests/unit/stores/settings-desktop-workspace.test.ts -t "sidebar tag section heights"` first reproduced the same-version height hydrate bug, then passed after normalization.
+- `pnpm --filter @prompthub/desktop test -- --run tests/unit/stores/settings-desktop-workspace.test.ts`
+- `pnpm --filter @prompthub/desktop test -- --run tests/unit/components/sidebar.test.tsx`
+- `pnpm --filter @prompthub/desktop typecheck`
+- `pnpm --filter @prompthub/desktop lint`
+- `git diff --check -- apps/desktop/src/renderer/stores/settings.store.ts apps/desktop/tests/unit/stores/settings-desktop-workspace.test.ts spec/changes/active/desktop-home-layout-controls spec/issues/active/quality.md`
 - `pnpm --filter @prompthub/desktop test -- tests/unit/stores/settings-background-image.test.ts tests/unit/components/appearance-settings.test.tsx --run`
 - `pnpm --filter @prompthub/desktop test -- tests/unit/components/skill-store-custom-sources.test.tsx --run`
 - `pnpm --filter @prompthub/desktop test -- tests/unit/components/skill-projects-view.test.tsx tests/unit/components/top-bar.test.tsx tests/unit/components/skill-store-custom-sources.test.tsx --run`
@@ -45,3 +54,22 @@
 
 - 继续观察是否需要把新版双栏桌面首页模块配置同步进稳定 `spec/knowledge/behavior/desktop.md`。
 - 继续清理非本轮范围内的其他历史英文残留，避免 locale 文件出现跨语言混排。
+
+## 2026-06-10 same-version sidebar tag height hydration
+
+- 发现：`Sidebar` 直接用 `tagsSectionHeight` / `skillTagsSectionHeight` 生成 CSS
+  pixel height；拖拽路径会按最小高度夹住，但 current-version localStorage hydrate 不会触发
+  旧 `migrate`，且旧迁移只修正了 prompt 标签区低值。坏快照中的负数、非数字或字符串会让
+  Prompt / Skill 标签区不可见或产生异常布局。
+- 处理：
+  - 新增 `normalizeTagsSectionHeight()` 与 `normalizeSidebarTagSectionHeights()`。
+  - `setTagsSectionHeight()` / `setSkillTagsSectionHeight()`、zustand `merge` 与 `migrate`
+    都复用同一最小高度规范化。
+  - 非有限、非数字或小于默认最小高度的值回退到 `DEFAULT_TAGS_SECTION_HEIGHT`。
+- 验证：
+  - `pnpm --filter @prompthub/desktop test -- --run tests/unit/stores/settings-desktop-workspace.test.ts -t "sidebar tag section heights"`
+  - `pnpm --filter @prompthub/desktop test -- --run tests/unit/stores/settings-desktop-workspace.test.ts`
+  - `pnpm --filter @prompthub/desktop test -- --run tests/unit/components/sidebar.test.tsx`
+  - `pnpm --filter @prompthub/desktop typecheck`
+  - `pnpm --filter @prompthub/desktop lint`
+  - `git diff --check -- apps/desktop/src/renderer/stores/settings.store.ts apps/desktop/tests/unit/stores/settings-desktop-workspace.test.ts apps/desktop/tests/unit/components/sidebar.test.tsx spec/changes/active/desktop-home-layout-controls spec/issues/active/quality.md`

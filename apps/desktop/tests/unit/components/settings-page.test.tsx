@@ -1,4 +1,5 @@
-import { act, screen } from "@testing-library/react";
+import { act, fireEvent, screen } from "@testing-library/react";
+import type { FormEvent } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SettingsPage } from "../../../src/renderer/components/settings/SettingsPage";
@@ -6,6 +7,9 @@ import { useUIStore } from "../../../src/renderer/stores/ui.store";
 import { renderWithI18n } from "../../helpers/i18n";
 
 const useSettingsStoreMock = vi.fn();
+const generalSettingsModuleLoadMock = vi.hoisted(() => vi.fn());
+const dataSettingsModuleLoadMock = vi.hoisted(() => vi.fn());
+const aiSettingsModuleLoadMock = vi.hoisted(() => vi.fn());
 
 vi.mock("../../../src/renderer/stores/settings.store", () => ({
   useSettingsStore: (selector?: (state: unknown) => unknown) => {
@@ -18,9 +22,12 @@ vi.mock("../../../src/renderer/runtime", () => ({
   isWebRuntime: () => false,
 }));
 
-vi.mock("../../../src/renderer/components/settings/GeneralSettings", () => ({
-  GeneralSettings: () => <div>general-content</div>,
-}));
+vi.mock("../../../src/renderer/components/settings/GeneralSettings", () => {
+  generalSettingsModuleLoadMock();
+  return {
+    GeneralSettings: () => <div>general-content</div>,
+  };
+});
 vi.mock("../../../src/renderer/components/settings/AppearanceSettings", () => ({
   AppearanceSettings: () => <div>appearance-content</div>,
 }));
@@ -45,18 +52,21 @@ vi.mock("../../../src/renderer/components/settings/AboutSettings", () => ({
 vi.mock("../../../src/renderer/components/settings/CLISettings", () => ({
   CLISettings: () => <div>cli-content</div>,
 }));
-vi.mock("../../../src/renderer/components/settings/DataSettings", () => ({
-  DataSettings: () => <div>data-content</div>,
-}));
+vi.mock("../../../src/renderer/components/settings/DataSettings", () => {
+  dataSettingsModuleLoadMock();
+  return {
+    DataSettings: () => <div>data-content</div>,
+  };
+});
 vi.mock("../../../src/renderer/components/settings/SkillSettings", () => ({
   SkillSettings: () => <div>skill-content</div>,
 }));
-vi.mock(
-  "../../../src/renderer/components/settings/AISettingsPrototype",
-  () => ({
+vi.mock("../../../src/renderer/components/settings/AISettingsPrototype", () => {
+  aiSettingsModuleLoadMock();
+  return {
     AISettingsPrototype: () => <div>ai-content</div>,
-  }),
-);
+  };
+});
 vi.mock("../../../src/renderer/components/settings/WebDeviceSettings", () => ({
   WebDeviceSettings: () => <div>web-device-content</div>,
 }));
@@ -67,9 +77,41 @@ vi.mock(
   }),
 );
 
+function isHiddenFromAccessibility(element: Element): boolean {
+  let current: Element | null = element;
+  while (current) {
+    if (current.getAttribute("aria-hidden") === "true") {
+      return true;
+    }
+    current = current.parentElement;
+  }
+  return false;
+}
+
 describe("SettingsPage", () => {
   beforeEach(() => {
     useUIStore.setState({ pendingSettingsSection: null });
+  });
+
+  it("loads only the active settings section on the default route", async () => {
+    useSettingsStoreMock.mockReturnValue({
+      syncProvider: "manual",
+      webdavEnabled: false,
+      selfHostedSyncEnabled: false,
+      s3StorageEnabled: false,
+      desktopHomeModules: ["prompt", "skill", "rules"],
+    });
+
+    await act(async () => {
+      await renderWithI18n(<SettingsPage onBack={vi.fn()} />, {
+        language: "en",
+      });
+    });
+
+    expect(screen.getByText("general-content")).toBeInTheDocument();
+    expect(generalSettingsModuleLoadMock).toHaveBeenCalledTimes(1);
+    expect(dataSettingsModuleLoadMock).not.toHaveBeenCalled();
+    expect(aiSettingsModuleLoadMock).not.toHaveBeenCalled();
   });
 
   it("shows enabled badge on active cloud backup targets in the data submenu", async () => {
@@ -100,6 +142,64 @@ describe("SettingsPage", () => {
     expect(
       screen.queryByRole("button", { name: /Self-Hosted PromptHub Enabled/ }),
     ).not.toBeInTheDocument();
+  });
+
+  it("keeps settings navigation actions non-submit with clear active state", async () => {
+    const onBack = vi.fn();
+    const onSubmit = vi.fn((event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+    });
+    useSettingsStoreMock.mockReturnValue({
+      syncProvider: "webdav",
+      webdavEnabled: true,
+      selfHostedSyncEnabled: false,
+      s3StorageEnabled: true,
+      desktopHomeModules: ["prompt", "skill", "rules"],
+    });
+
+    await act(async () => {
+      await renderWithI18n(
+        <form onSubmit={onSubmit}>
+          <SettingsPage onBack={onBack} />
+        </form>,
+        { language: "en" },
+      );
+    });
+
+    const generalButton = screen.getByRole("button", { name: "App Settings" });
+    const dataButton = screen.getByRole("button", { name: "Data & Sync" });
+
+    expect(generalButton).toHaveAttribute("aria-pressed", "true");
+    expect(dataButton).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(dataButton);
+
+    const webDavButton = await screen.findByRole("button", {
+      name: /WebDAV Enabled/,
+    });
+    const recoveryButton = screen.getByRole("button", { name: /recovery/i });
+
+    expect(dataButton).toHaveAttribute("aria-pressed", "true");
+    expect(webDavButton).toHaveAttribute("aria-pressed", "false");
+    expect(recoveryButton).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(webDavButton);
+    expect(webDavButton).toHaveAttribute("aria-pressed", "true");
+
+    for (const button of screen.getAllByRole("button")) {
+      if (button.tagName === "BUTTON") {
+        expect(button).toHaveAttribute("type", "button");
+      }
+    }
+
+    for (const icon of document.querySelectorAll("button svg")) {
+      expect(isHiddenFromAccessibility(icon)).toBe(true);
+    }
+
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+
+    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it("shows a standalone agent management entry in the desktop settings navigation", async () => {

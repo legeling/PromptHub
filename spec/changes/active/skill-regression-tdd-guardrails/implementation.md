@@ -42,6 +42,12 @@
   - batch platform sync tests now assert the current `skillId` contract used to disambiguate same-name variants;
   - SkillDB versioning test now uses the current schema without re-applying obsolete column migrations;
   - Agent Skills i18n keys were added for Japanese, French, German, and Spanish.
+- Fixed a Skill detail accessibility regression where the snapshot button showed
+  `Snapshot` visually but exposed `Create Snapshot` as its accessible name,
+  causing keyboard/test queries to disagree with the visible command.
+- Updated AI workbench endpoint accessibility labels across all desktop locales so endpoint-specific `API URL` and `API Key` controls expose endpoint-specific names.
+- Reconciled Skill project distribution tests with the current overwrite/redeploy contract and existing locale copy.
+- Hardened `skills.sh` Store parsing against missing remote HTML to avoid caught TypeError log noise during Store loading.
 
 ## Verification
 
@@ -79,8 +85,23 @@
   - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/sidebar.test.tsx`
   - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/stores/skill.store.test.ts`
   - Result: 2 files passed, 73 tests passed.
+- Passed the Skill UI / TopBar release-blocker rerun:
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/integration/components/skill-ui.integration.test.tsx`
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/top-bar.test.tsx tests/unit/components/top-bar-agent-search.test.tsx tests/unit/services/skill-filter.test.ts tests/unit/services/skill-platform-sync.test.ts tests/unit/main/skill-db-versioning.test.ts`
+  - Result: 6 files passed, 38 tests passed.
 - Added documentation audit record:
   - `spec/changes/active/skill-regression-tdd-guardrails/whitebox-audit.md`
+- Passed latest focused regression checks:
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/skill-full-detail-async-actions.test.tsx`
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/skill-i18n-smoke.test.tsx`
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/ai-settings-prototype.test.tsx`
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/skill-detail-project-distribution.test.tsx`
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/services/skills-sh-store.test.ts`
+- Passed the full current desktop Vitest suite:
+  - `pnpm --filter @prompthub/desktop test -- --run --reporter=json --outputFile=/tmp/prompthub-desktop-vitest.json`
+  - Result: 645 suites passed, 2330 tests passed.
+- Passed latest desktop typecheck:
+  - `pnpm --filter @prompthub/desktop typecheck`
 
 ## Synced Docs
 

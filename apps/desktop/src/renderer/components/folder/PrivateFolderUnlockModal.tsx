@@ -56,7 +56,13 @@ export function PrivateFolderUnlockModal({
     <div className="fixed inset-0 z-[60] flex items-center justify-center">
       {/* Backdrop */}
       {/* 背景遮罩 */}
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div
+        data-testid="private-folder-unlock-backdrop"
+        role="presentation"
+        aria-hidden="true"
+        className="absolute inset-0 bg-black/50"
+        onClick={onClose}
+      />
 
       {/* Modal content */}
       {/* 弹窗内容 */}
@@ -65,14 +71,16 @@ export function PrivateFolderUnlockModal({
         {/* 标题栏 */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div className="flex items-center gap-2">
-            <LockIcon className="w-5 h-5 text-primary" />
+            <LockIcon aria-hidden="true" className="w-5 h-5 text-primary" />
             <h2 className="text-base font-semibold">{t('folder.privateUnlockTitle')}</h2>
           </div>
           <button
+            type="button"
+            aria-label={t('common.close', '关闭')}
             onClick={onClose}
             className="p-1.5 rounded-lg hover:bg-muted transition-colors"
           >
-            <XIcon className="w-4 h-4 text-muted-foreground" />
+            <XIcon aria-hidden="true" className="w-4 h-4 text-muted-foreground" />
           </button>
         </div>
 

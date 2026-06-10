@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CheckIcon,
   DownloadIcon,
@@ -55,11 +55,38 @@ export function ProjectSkillPreviewSidebar({
     () => Array.from(new Set(deployTargets.filter((entry) => entry.trim().length > 0))),
     [deployTargets],
   );
+  const previousDeployTargetsRef = useRef<Set<string>>(new Set(sortedTargets));
+
+  useEffect(() => {
+    const previousTargets = previousDeployTargetsRef.current;
+    const currentTargets = new Set(sortedTargets);
+
+    setSelectedTargets((previousSelectedTargets) => {
+      let didChange = false;
+      const nextSelectedTargets = new Set<string>();
+
+      for (const target of previousSelectedTargets) {
+        if (currentTargets.has(target)) {
+          nextSelectedTargets.add(target);
+        } else {
+          didChange = true;
+        }
+      }
+
+      for (const target of sortedTargets) {
+        if (!previousTargets.has(target)) {
+          nextSelectedTargets.add(target);
+          didChange = true;
+        }
+      }
+
+      return didChange ? nextSelectedTargets : previousSelectedTargets;
+    });
+
+    previousDeployTargetsRef.current = currentTargets;
+  }, [sortedTargets]);
 
   const effectiveSelectedTargets = useMemo(() => {
-    if (selectedTargets.size === 0) {
-      return new Set(sortedTargets);
-    }
     return new Set(
       Array.from(selectedTargets).filter((entry) => sortedTargets.includes(entry)),
     );
@@ -105,9 +132,9 @@ export function ProjectSkillPreviewSidebar({
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-60"
               >
                 {isRemoving ? (
-                  <Loader2Icon className="h-4 w-4 animate-spin" />
+                  <Loader2Icon aria-hidden="true" className="h-4 w-4 animate-spin" />
                 ) : (
-                  <TrashIcon className="h-4 w-4" />
+                  <TrashIcon aria-hidden="true" className="h-4 w-4" />
                 )}
                 {t("skill.removeFromProject", "Remove from Project")}
               </button>
@@ -121,9 +148,9 @@ export function ProjectSkillPreviewSidebar({
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
               >
                 {isImporting ? (
-                  <Loader2Icon className="h-4 w-4 animate-spin" />
+                  <Loader2Icon aria-hidden="true" className="h-4 w-4 animate-spin" />
                 ) : (
-                  <DownloadIcon className="h-4 w-4" />
+                  <DownloadIcon aria-hidden="true" className="h-4 w-4" />
                 )}
                 {t("skill.addToLibrary", "Import to My Skills")}
               </button>
@@ -156,7 +183,7 @@ export function ProjectSkillPreviewSidebar({
               onClick={() => void onAddDeployTarget()}
               className="inline-flex items-center gap-2 rounded-xl border border-border app-wallpaper-surface px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-accent"
             >
-              <PlusIcon className="h-3.5 w-3.5" />
+              <PlusIcon aria-hidden="true" className="h-3.5 w-3.5" />
               {t("skill.addDeployTarget", "Add Folder")}
             </button>
           </div>
@@ -168,6 +195,7 @@ export function ProjectSkillPreviewSidebar({
                 <button
                   key={target}
                   type="button"
+                  aria-pressed={isSelected}
                   onClick={() => toggleTarget(target)}
                   className={`flex w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition-colors ${
                     isSelected
@@ -192,7 +220,9 @@ export function ProjectSkillPreviewSidebar({
                         : "border-muted-foreground/30"
                     }`}
                   >
-                    {isSelected ? <CheckIcon className="h-3 w-3" /> : null}
+                    {isSelected ? (
+                      <CheckIcon aria-hidden="true" className="h-3 w-3" />
+                    ) : null}
                   </div>
                 </button>
               );
@@ -206,9 +236,9 @@ export function ProjectSkillPreviewSidebar({
             className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
           >
             {isDeploying ? (
-              <Loader2Icon className="h-4 w-4 animate-spin" />
+              <Loader2Icon aria-hidden="true" className="h-4 w-4 animate-spin" />
             ) : (
-              <DownloadIcon className="h-4 w-4" />
+              <DownloadIcon aria-hidden="true" className="h-4 w-4" />
             )}
             {t("skill.deployToProjectFolders", {
               name: selectedSkill.name,
@@ -229,7 +259,7 @@ export function ProjectSkillPreviewSidebar({
             className="flex w-full items-center gap-3 rounded-2xl border border-border bg-accent/60 px-4 py-4 text-left transition-colors hover:bg-accent"
             title={sourcePath}
           >
-            <FolderOpenIcon className="h-5 w-5 shrink-0 text-primary" />
+            <FolderOpenIcon aria-hidden="true" className="h-5 w-5 shrink-0 text-primary" />
             <div className="min-w-0">
               <div className="text-sm font-semibold text-foreground">
                 {sourceTitle}
@@ -248,7 +278,7 @@ export function ProjectSkillPreviewSidebar({
               className="flex w-full items-center gap-3 rounded-2xl border border-border bg-accent/60 px-4 py-4 text-left transition-colors hover:bg-accent"
               title={symlinkTargetPath}
             >
-              <FolderOpenIcon className="h-5 w-5 shrink-0 text-primary" />
+              <FolderOpenIcon aria-hidden="true" className="h-5 w-5 shrink-0 text-primary" />
               <div className="min-w-0">
                 <div className="text-sm font-semibold text-foreground">
                   {t(

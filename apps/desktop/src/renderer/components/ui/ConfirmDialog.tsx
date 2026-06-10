@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useRef } from 'react';
+import { ReactNode, useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertTriangleIcon, Loader2 } from 'lucide-react';
 
@@ -27,20 +27,50 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const titleId = useId();
+  const messageId = useId();
 
   useEffect(() => {
-    if (isOpen) {
-      // Focus on cancel button to prevent accidental operations
-      // 聚焦到取消按钮，防止误操作
-      setTimeout(() => {
-        cancelButtonRef.current?.focus();
-      }, 50);
-    }
+    if (!isOpen) return;
+
+    previousFocusRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+
+    // Focus on cancel button to prevent accidental operations
+    // 聚焦到取消按钮，防止误操作
+    const timer = setTimeout(() => {
+      cancelButtonRef.current?.focus();
+    }, 50);
+
+    return () => {
+      clearTimeout(timer);
+
+      const previousFocus = previousFocusRef.current;
+      const dialog = dialogRef.current;
+      const activeElement = document.activeElement;
+      const focusIsInsideDialog =
+        activeElement instanceof Node && dialog?.contains(activeElement);
+
+      if (
+        previousFocus?.isConnected &&
+        (!dialog || activeElement === document.body || focusIsInsideDialog)
+      ) {
+        previousFocus.focus({ preventScroll: true });
+      }
+
+      previousFocusRef.current = null;
+    };
   }, [isOpen]);
 
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isOpen) return;
+      if (isLoading) return;
       if (e.key === 'Escape') {
         e.preventDefault();
         onClose();
@@ -52,7 +82,7 @@ export function ConfirmDialog({
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose, onConfirm]);
+  }, [isOpen, isLoading, onClose, onConfirm]);
 
   if (!isOpen) return null;
 
@@ -61,19 +91,30 @@ export function ConfirmDialog({
       {/* Background mask */}
       {/* 背景遮罩 */}
       <div
+        data-testid="confirm-dialog-backdrop"
+        role="presentation"
+        aria-hidden="true"
         className="absolute inset-0 bg-background/60 backdrop-blur-sm"
         onClick={onClose}
       />
 
       {/* Dialog */}
       {/* 对话框 */}
-      <div className="relative app-wallpaper-panel-strong rounded-xl shadow-2xl border border-border w-full max-w-sm p-6 animate-in fade-in zoom-in-95 duration-base">
+      <div
+        ref={dialogRef}
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby={title ? titleId : undefined}
+        aria-label={title ? undefined : confirmText}
+        aria-describedby={messageId}
+        className="relative app-wallpaper-panel-strong rounded-xl shadow-2xl border border-border w-full max-w-sm p-6 animate-in fade-in zoom-in-95 duration-base"
+      >
         {/* Icon */}
         {/* 图标 */}
         {variant === 'destructive' && (
           <div className="flex justify-center mb-4">
             <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-              <AlertTriangleIcon className="w-6 h-6 text-red-600 dark:text-red-400" />
+              <AlertTriangleIcon aria-hidden="true" className="w-6 h-6 text-red-600 dark:text-red-400" />
             </div>
           </div>
         )}
@@ -81,12 +122,12 @@ export function ConfirmDialog({
         {/* Title */}
         {/* 标题 */}
         {title && (
-          <h3 className="text-lg font-semibold text-center mb-2">{title}</h3>
+          <h3 id={titleId} className="text-lg font-semibold text-center mb-2">{title}</h3>
         )}
 
         {/* Message */}
         {/* 消息 */}
-        <div className="text-sm text-muted-foreground text-center mb-6">
+        <div id={messageId} className="text-sm text-muted-foreground text-center mb-6">
           {message}
         </div>
 
@@ -94,6 +135,7 @@ export function ConfirmDialog({
         {/* 按钮 */}
         <div className="flex gap-3">
           <button
+            type="button"
             ref={cancelButtonRef}
             onClick={onClose}
             disabled={isLoading}
@@ -102,6 +144,7 @@ export function ConfirmDialog({
             {cancelText}
           </button>
           <button
+            type="button"
             ref={confirmButtonRef}
             onClick={onConfirm}
             disabled={isLoading}
@@ -111,7 +154,7 @@ export function ConfirmDialog({
                 : 'bg-primary hover:bg-primary/90'
             }`}
           >
-            {isLoading && <Loader2 className="w-4 h-4 animate-spin shrink-0" />}
+            {isLoading && <Loader2 aria-hidden="true" className="w-4 h-4 animate-spin shrink-0" />}
             {confirmText}
           </button>
         </div>

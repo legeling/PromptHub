@@ -1,6 +1,7 @@
+import type { HTMLAttributes } from "react";
 import type { SkillVariantBadge } from "../../services/skill-variant-badges";
 
-interface SkillVariantBadgeListProps {
+interface SkillVariantBadgeListProps extends HTMLAttributes<HTMLDivElement> {
   badges: SkillVariantBadge[];
   className?: string;
 }
@@ -31,13 +32,14 @@ function toneClassName(tone: SkillVariantBadge["tone"]): string {
 export function SkillVariantBadgeList({
   badges,
   className = "mt-2 flex flex-wrap gap-1.5",
+  ...divProps
 }: SkillVariantBadgeListProps) {
   if (badges.length === 0) {
     return null;
   }
 
   return (
-    <div className={className}>
+    <div {...divProps} className={className}>
       {badges.map((badge) => (
         <span
           key={badge.key}

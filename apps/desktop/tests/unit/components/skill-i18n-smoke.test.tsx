@@ -6,6 +6,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import type { FormEvent } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { installWindowMocks } from "../../helpers/window";
 
@@ -329,19 +330,32 @@ describe("skill i18n smoke", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
     delete (window as Window & { __PROMPTHUB_WEB__?: boolean })
       .__PROMPTHUB_WEB__;
   });
 
   it("renders skill manager actions in english and updates selection summary", async () => {
-    const skillStoreState = createSkillStoreState();
+    const skillStoreState = createSkillStoreState({
+      deployedSkillNames: new Set([baseSkill.id]),
+    });
     const settingsState = createSettingsState();
+    const onSubmit = vi.fn((event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+    });
 
     useSkillStoreMock.mockImplementation(bindStoreSelector(skillStoreState));
     useSettingsStoreMock.mockImplementation(bindStoreSelector(settingsState));
+    window.api.skill.getMdInstallStatusDetails = vi.fn().mockResolvedValue({
+      claude: { installed: true, mode: "copy" },
+    });
 
-    render(<SkillManager />);
+    render(
+      <form onSubmit={onSubmit}>
+        <SkillManager />
+      </form>,
+    );
 
     expect(screen.getByTestId("skill-view-transition")).toHaveAttribute(
       "data-skill-view",
@@ -356,6 +370,26 @@ describe("skill i18n smoke", () => {
     expect(
       screen.getByRole("button", { name: "Batch Manage" }),
     ).toBeInTheDocument();
+    const batchManage = screen.getByRole("button", { name: "Batch Manage" });
+    expect(batchManage).toHaveAttribute("aria-label", "Batch Manage");
+    const galleryView = screen.getByTitle("Gallery View");
+    const listView = screen.getByTitle("List View");
+    const refreshLibrary = screen.getByTitle(
+      /Reload the PromptHub Skill library/i,
+    );
+
+    for (const button of [
+      batchManage,
+      galleryView,
+      listView,
+      refreshLibrary,
+    ]) {
+      expect(button).toHaveAttribute("type", "button");
+      expect(button.querySelector("svg")).toHaveAttribute(
+        "aria-hidden",
+        "true",
+      );
+    }
     expect(
       screen.getByText(
         "Manage all imported skills in one place, regardless of where they came from.",
@@ -370,13 +404,43 @@ describe("skill i18n smoke", () => {
       screen.getByRole("button", { name: "Batch Manage" }),
     ).toHaveAttribute("aria-pressed", "true");
 
-    fireEvent.click(screen.getByRole("button", { name: "Select All" }));
+    const selectAll = screen.getByRole("button", { name: "Select All" });
+    expect(selectAll).toHaveAttribute("aria-label", "Select All");
+    expect(selectAll).toHaveAttribute("type", "button");
+    expect(selectAll.querySelector("svg")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+    fireEvent.click(selectAll);
 
     await waitFor(() => {
       expect(screen.getByText("1 selected")).toBeInTheDocument();
     });
+    const batchDeleteAction = screen.getByRole("button", { name: "Delete" });
+    const batchActions = [
+      { button: screen.getByRole("button", { name: "Add to favorites" }), label: "Add to favorites" },
+      { button: screen.getByRole("button", { name: "Batch Tags" }), label: "Batch Tags" },
+      { button: screen.getByRole("button", { name: "Batch Deploy" }), label: "Batch Deploy" },
+      { button: batchDeleteAction, label: "Delete" },
+    ];
+    for (const { button, label } of batchActions) {
+      expect(button).toHaveAttribute("aria-label", label);
+      expect(button).toHaveAttribute("type", "button");
+      expect(button.querySelector("svg")).toHaveAttribute(
+        "aria-hidden",
+        "true",
+      );
+    }
+
+    await act(async () => {
+      fireEvent.click(batchDeleteAction);
+      await Promise.resolve();
+    });
+
     expect(
-      screen.getByRole("button", { name: "Batch Deploy" }),
+      screen.getByRole("checkbox", {
+        name: "Also delete copied distributions",
+      }),
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Batch Manage" }));
@@ -385,6 +449,7 @@ describe("skill i18n smoke", () => {
     expect(
       screen.queryByRole("button", { name: "Batch Deploy" }),
     ).not.toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it("removes legacy toolbar local scan and keeps refresh spinner scoped to refresh", async () => {
@@ -484,6 +549,78 @@ describe("skill i18n smoke", () => {
     }
   });
 
+  it("exposes scan preview actions with stable button and icon semantics", () => {
+    const scannedSkill: ScannedSkill = {
+      name: "local-helper",
+      description: "Local helper",
+      author: "Local",
+      tags: ["local"],
+      instructions: "# Local Helper",
+      filePath: "/Users/demo/skills/local-helper/SKILL.md",
+      localPath: "/Users/demo/skills/local-helper",
+      platforms: ["Claude"],
+    };
+
+    render(
+      <SkillScanPreview
+        scannedSkills={[scannedSkill]}
+        installedPaths={new Set()}
+        onImport={vi.fn().mockResolvedValue(0)}
+        onRescan={vi.fn().mockResolvedValue(true)}
+        onClose={vi.fn()}
+      />,
+    );
+
+    const pathToggle = screen.getByRole("button", { name: "Add path" });
+    expect(pathToggle).toHaveAttribute("type", "button");
+    expect(pathToggle).toHaveAttribute("aria-expanded", "false");
+    expect(pathToggle.querySelector("svg")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+
+    const rescan = screen.getByRole("button", { name: /Re-?scan/i });
+    expect(rescan).toHaveAttribute("type", "button");
+    expect(rescan.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+
+    const close = screen.getByRole("button", { name: "Close" });
+    expect(close).toHaveAttribute("type", "button");
+    expect(close.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+
+    const tagsToggle = screen.getByRole("button", {
+      name: "Add tags when needed",
+    });
+    expect(tagsToggle).toHaveAttribute("type", "button");
+    expect(tagsToggle).toHaveAttribute("aria-expanded", "false");
+    expect(tagsToggle.querySelector("svg")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+
+    const selectAll = screen.getByRole("button", { name: "Select All" });
+    expect(selectAll).toHaveAttribute("type", "button");
+
+    const importButton = screen.getByRole("button", {
+      name: "Import Selected (0)",
+    });
+    expect(importButton).toHaveAttribute("type", "button");
+    expect(importButton.querySelector("svg")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+
+    const skillToggle = screen.getByRole("button", { name: /local-helper/u });
+    expect(skillToggle).toHaveAttribute("type", "button");
+    expect(skillToggle.querySelector("input, button")).toBeNull();
+    expect(screen.getByRole("checkbox")).not.toBe(skillToggle);
+
+    fireEvent.click(pathToggle);
+
+    expect(pathToggle).toHaveAttribute("aria-expanded", "true");
+    const addPath = screen.getByRole("button", { name: "Add" });
+    expect(addPath).toHaveAttribute("type", "button");
+  });
+
   it("lets users choose the skill gallery card column count", async () => {
     const setGalleryColumns = vi.fn();
     const skillStoreState = createSkillStoreState({ setGalleryColumns });
@@ -495,7 +632,7 @@ describe("skill i18n smoke", () => {
     render(<SkillManager />);
 
     fireEvent.click(screen.getByRole("button", { name: "Skill card columns" }));
-    fireEvent.click(screen.getByRole("button", { name: "6 columns" }));
+    fireEvent.click(screen.getByRole("option", { name: "6 columns" }));
 
     expect(setGalleryColumns).toHaveBeenCalledWith("6");
   });
@@ -590,7 +727,7 @@ describe("skill i18n smoke", () => {
     expect(screen.getByText("agent-import-skill")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Skill source" }));
-    fireEvent.click(screen.getByRole("button", { name: /GitHub Import\s*1/i }));
+    fireEvent.click(screen.getByRole("option", { name: "GitHub Import" }));
 
     expect(screen.queryByText("claude-store-skill")).not.toBeInTheDocument();
     expect(screen.getByText("github-import-skill")).toBeInTheDocument();
@@ -598,7 +735,7 @@ describe("skill i18n smoke", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Skill source" }));
     fireEvent.click(
-      screen.getByRole("button", { name: /Claude Code Store\s*1/i }),
+      screen.getByRole("option", { name: "Claude Code Store" }),
     );
 
     expect(screen.getByText("claude-store-skill")).toBeInTheDocument();
@@ -636,6 +773,26 @@ describe("skill i18n smoke", () => {
     render(<SkillManager />);
 
     expect(screen.getAllByText("Update available").length).toBeGreaterThan(0);
+  });
+
+  it("ignores legacy remote store cache entries without skills arrays in the skill manager", async () => {
+    const skillStoreState = createSkillStoreState({
+      remoteStoreEntries: {
+        "claude-code": {
+          loadedAt: Date.now(),
+          error: null,
+        },
+      },
+    });
+    const settingsState = createSettingsState();
+
+    useSkillStoreMock.mockImplementation(bindStoreSelector(skillStoreState));
+    useSettingsStoreMock.mockImplementation(bindStoreSelector(settingsState));
+
+    render(<SkillManager />);
+
+    expect(screen.getByText("write")).toBeInTheDocument();
+    expect(screen.queryByText("Update available")).not.toBeInTheDocument();
   });
 
   it("does not show an update pulse for local-only skills", async () => {
@@ -697,9 +854,7 @@ describe("skill i18n smoke", () => {
       render(<SkillFullDetailPage />);
     });
 
-    expect(
-      screen.getByRole("button", { name: "Snapshot" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Snapshot" })).toBeInTheDocument();
     expect(screen.getByText("Current Version v0")).toBeInTheDocument();
     expect(screen.getByText("Preview")).toBeInTheDocument();
     expect(screen.getByText("Source")).toBeInTheDocument();
@@ -842,7 +997,9 @@ describe("skill i18n smoke", () => {
       render(<SkillFullDetailPage />);
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Check Updates" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Check Source Updates" }),
+    );
 
     await waitFor(() => {
       expect(getInstalledSkillSourceUpdateStatus).toHaveBeenCalledWith(
@@ -973,7 +1130,7 @@ describe("skill i18n smoke", () => {
         "/Users/demo/skills/write",
         "write",
         "/tmp/workspace/.agents/skills",
-        { ifExists: "skip", mode: "copy" },
+        { ifExists: "overwrite", mode: "copy" },
       );
       expect(scanProjectSkills).toHaveBeenCalledWith(
         expect.objectContaining({ id: "project-1" }),
@@ -1343,6 +1500,42 @@ describe("skill i18n smoke", () => {
     clickSpy.mockRestore();
   });
 
+  it("clears detail page copy feedback timers when unmounted after copying", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
+      const setTimeoutSpy = vi.spyOn(window, "setTimeout");
+      const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
+      const skillStoreState = createSkillStoreState({
+        selectedSkillId: baseSkill.id,
+        syncSkillFromRepo: vi.fn().mockResolvedValue(baseSkill),
+      });
+      const settingsState = createSettingsState();
+
+      useSkillStoreMock.mockImplementation(bindStoreSelector(skillStoreState));
+      useSettingsStoreMock.mockImplementation(bindStoreSelector(settingsState));
+
+      const { unmount } = render(<SkillFullDetailPage />);
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Copy MD" }));
+        await Promise.resolve();
+      });
+
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+        baseSkill.instructions,
+      );
+      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 2000);
+
+      clearTimeoutSpy.mockClear();
+      unmount();
+
+      expect(clearTimeoutSpy).toHaveBeenCalledWith(expect.anything());
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("renders zip as the primary archive export in the platform panel", () => {
     render(
       <SkillPlatformPanel
@@ -1378,7 +1571,7 @@ describe("skill i18n smoke", () => {
     expect(screen.queryByText("JSON")).not.toBeInTheDocument();
   });
 
-  it("keeps web runtime skill surfaces visible without forcing My Skills", async () => {
+  it("keeps web runtime store view visible without forcing My Skills", async () => {
     (window as Window & { __PROMPTHUB_WEB__?: boolean }).__PROMPTHUB_WEB__ =
       true;
 
@@ -1397,7 +1590,7 @@ describe("skill i18n smoke", () => {
     useSkillStoreMock.mockImplementation(bindStoreSelector(skillStoreState));
     useSettingsStoreMock.mockImplementation(bindStoreSelector(settingsState));
 
-    const { unmount } = render(<SkillManager />);
+    render(<SkillManager />);
 
     expect(setStoreView).not.toHaveBeenCalledWith("my-skills");
     expect(setFilterType).not.toHaveBeenCalledWith("all");
@@ -1411,12 +1604,22 @@ describe("skill i18n smoke", () => {
       "slide-in-from-right-3",
       "duration-smooth",
     );
-    expect(await screen.findByText("Official Store")).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Batch Deploy" }),
     ).not.toBeInTheDocument();
+  });
 
-    unmount();
+  it("keeps web runtime full detail file surfaces visible", async () => {
+    (window as Window & { __PROMPTHUB_WEB__?: boolean }).__PROMPTHUB_WEB__ =
+      true;
+    const skillStoreState = createSkillStoreState({
+      selectedSkillId: baseSkill.id,
+      syncSkillFromRepo: vi.fn().mockResolvedValue(baseSkill),
+    });
+    const settingsState = createSettingsState();
+
+    useSkillStoreMock.mockImplementation(bindStoreSelector(skillStoreState));
+    useSettingsStoreMock.mockImplementation(bindStoreSelector(settingsState));
 
     await act(async () => {
       render(<SkillFullDetailPage />);

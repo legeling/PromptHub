@@ -202,6 +202,7 @@ export function BaseFields({
               </label>
               <Select
                 value={modelForm.provider}
+                ariaLabel={t("settings.providerName")}
                 onChange={(value) => {
                   const provider = getProviderInfo(value);
                   setModelForm((prev) => ({
@@ -223,6 +224,7 @@ export function BaseFields({
                 </label>
                 <Select
                   value={modelForm.apiProtocol}
+                  ariaLabel={t("settings.protocol")}
                   disabled={lockEndpointFields}
                   onChange={(value) =>
                     setModelForm((prev) => ({
@@ -254,6 +256,7 @@ export function BaseFields({
               <PasswordInput
                 value={modelForm.apiKey}
                 disabled={lockEndpointFields}
+                ariaLabel={t("settings.apiKey")}
                 placeholder={t("settings.apiKeyPlaceholder")}
                 onChange={(value) =>
                   setModelForm((prev) => ({ ...prev, apiKey: value }))
@@ -346,9 +349,12 @@ export function BaseFields({
               className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-primary hover:bg-primary/10 disabled:opacity-50"
             >
               {fetchingModels ? (
-                <Loader2Icon className="h-3.5 w-3.5 animate-spin" />
+                <Loader2Icon
+                  aria-hidden="true"
+                  className="h-3.5 w-3.5 animate-spin"
+                />
               ) : (
-                <SparklesIcon className="h-3.5 w-3.5" />
+                <SparklesIcon aria-hidden="true" className="h-3.5 w-3.5" />
               )}
               {t("settings.fetchModels")}
             </button>

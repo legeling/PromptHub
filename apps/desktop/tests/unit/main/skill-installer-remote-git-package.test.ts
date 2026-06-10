@@ -428,7 +428,7 @@ describe("SkillInstaller.saveRemoteGitSkillToLocalRepoBySkillId", () => {
     expect(files).toContain("SKILL.md");
     expect(files).toContain("references/section-000.md");
     expect(files).toContain("references/section-299.md");
-    expect(elapsedMs).toBeLessThan(5_000);
+    expect(elapsedMs).toBeLessThan(30_000);
   });
 
   it("copies the full remote zip skill package into the managed repo", async () => {

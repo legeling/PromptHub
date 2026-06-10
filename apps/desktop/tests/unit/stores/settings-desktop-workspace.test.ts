@@ -82,6 +82,47 @@ describe("settings desktop workspace actions", () => {
     ]);
   });
 
+  it("normalizes same-version persisted desktop module settings during hydration", async () => {
+    localStorage.setItem(
+      "prompthub-settings",
+      JSON.stringify({
+        state: {
+          desktopHomeModules: ["skill", "ghost", "skill", "prompt"],
+        },
+        version: 16,
+      }),
+    );
+
+    const { useSettingsStore } = await import(
+      "../../../src/renderer/stores/settings.store"
+    );
+
+    expect(useSettingsStore.getState().desktopHomeModules).toEqual([
+      "skill",
+      "prompt",
+    ]);
+  });
+
+  it("normalizes same-version persisted sidebar tag section heights during hydration", async () => {
+    localStorage.setItem(
+      "prompthub-settings",
+      JSON.stringify({
+        state: {
+          tagsSectionHeight: -1,
+          skillTagsSectionHeight: "invalid",
+        },
+        version: 16,
+      }),
+    );
+
+    const { useSettingsStore } = await import(
+      "../../../src/renderer/stores/settings.store"
+    );
+
+    expect(useSettingsStore.getState().tagsSectionHeight).toBe(140);
+    expect(useSettingsStore.getState().skillTagsSectionHeight).toBe(140);
+  });
+
   it("persists and normalizes the skill list page size preference", async () => {
     const { useSettingsStore } = await import(
       "../../../src/renderer/stores/settings.store"

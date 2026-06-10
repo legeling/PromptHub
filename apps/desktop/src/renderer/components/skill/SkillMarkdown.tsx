@@ -32,30 +32,56 @@ export function SkillMarkdown({
       remarkPlugins={[remarkGfm]}
       rehypePlugins={rehypePlugins}
       components={{
-        a: ({ href, ...props }: ComponentProps<"a">) => (
-          <a
-            {...props}
-            href={
-              typeof href === "string"
-                ? resolveGitHubMarkdownUrl(href, markdownBase, "link")
-                : href
-            }
-            target="_blank"
-            rel="noreferrer"
-          />
-        ),
-        img: ({ src, alt, ...props }: ComponentProps<"img">) => (
-          <img
-            {...props}
-            src={
-              typeof src === "string"
-                ? resolveGitHubMarkdownUrl(src, markdownBase, "image")
-                : src
-            }
-            alt={alt || ""}
-            loading="lazy"
-          />
-        ),
+        a: ({
+          children,
+          href,
+          node: _node,
+          ...props
+        }: ComponentProps<"a"> & { node?: unknown }) => {
+          const safeHref =
+            typeof href === "string"
+              ? resolveGitHubMarkdownUrl(href, markdownBase, "link")
+              : href;
+
+          if (!safeHref) {
+            return <span {...props}>{children}</span>;
+          }
+
+          return (
+            <a
+              {...props}
+              href={safeHref}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {children}
+            </a>
+          );
+        },
+        img: ({
+          src,
+          alt,
+          node: _node,
+          ...props
+        }: ComponentProps<"img"> & { node?: unknown }) => {
+          const safeSrc =
+            typeof src === "string"
+              ? resolveGitHubMarkdownUrl(src, markdownBase, "image")
+              : src;
+
+          if (!safeSrc) {
+            return alt ? <span>{alt}</span> : null;
+          }
+
+          return (
+            <img
+              {...props}
+              src={safeSrc}
+              alt={alt || ""}
+              loading="lazy"
+            />
+          );
+        },
       }}
     >
       {content}

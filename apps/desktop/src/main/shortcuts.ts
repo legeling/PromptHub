@@ -37,6 +37,12 @@ const DEFAULT_SHORTCUTS: Record<string, string> = {
   settings: 'Alt+Shift+S',          // Open settings
                                    // 打开设置
 };
+const DEFAULT_SHORTCUT_MODES: Record<string, 'global' | 'local'> = {
+  showApp: 'global',
+  newPrompt: 'local',
+  search: 'local',
+  settings: 'local',
+};
 
 // Current shortcut configuration
 // 当前快捷键配置
@@ -47,10 +53,7 @@ let currentShortcuts: Record<string, string> = { ...DEFAULT_SHORTCUTS };
 // Default: showApp is global, others are local to avoid conflicts
 // 默认：showApp 为全局，其他为局部以避免冲突
 let shortcutModes: Record<string, 'global' | 'local'> = {
-  showApp: 'global',
-  newPrompt: 'local',
-  search: 'local',
-  settings: 'local',
+  ...DEFAULT_SHORTCUT_MODES,
 };
 
 type ShortcutWindow = Pick<
@@ -102,14 +105,32 @@ function loadShortcutModes(): Record<string, 'global' | 'local'> {
     if (fs.existsSync(modePath)) {
       const data = fs.readFileSync(modePath, 'utf-8');
       const parsed = JSON.parse(data);
-      if (parsed && typeof parsed === 'object') {
-        return { ...shortcutModes, ...parsed };
-      }
+      return normalizeShortcutModes(parsed);
     }
   } catch (error) {
     console.error('Failed to load shortcut modes:', error);
   }
-  return shortcutModes;
+  return { ...DEFAULT_SHORTCUT_MODES };
+}
+
+function normalizeShortcutModes(value: unknown): Record<string, 'global' | 'local'> {
+  const normalized: Record<string, 'global' | 'local'> = {
+    ...DEFAULT_SHORTCUT_MODES,
+  };
+
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return normalized;
+  }
+
+  const input = value as Record<string, unknown>;
+  for (const action of Object.keys(DEFAULT_SHORTCUT_MODES)) {
+    const mode = input[action];
+    if (mode === 'global' || mode === 'local') {
+      normalized[action] = mode;
+    }
+  }
+
+  return normalized;
 }
 
 /**
@@ -284,8 +305,8 @@ export function registerShortcutsIPC(): void {
   // Set shortcut modes
   // 设置快捷键模式
   ipcMain.on('shortcuts:setMode', (_event, modes: Record<string, 'global' | 'local'>) => {
-    shortcutModes = modes;
-    saveShortcutModes(modes);
+    shortcutModes = normalizeShortcutModes(modes);
+    saveShortcutModes(shortcutModes);
     
     // Re-register shortcuts based on mode
     // 根据模式重新注册快捷键

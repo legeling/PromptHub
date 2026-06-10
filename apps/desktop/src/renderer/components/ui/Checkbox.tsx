@@ -4,11 +4,19 @@ interface CheckboxProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
   label?: string;
+  ariaLabel?: string;
   className?: string;
   disabled?: boolean;
 }
 
-export function Checkbox({ checked, onChange, label, className = '', disabled = false }: CheckboxProps) {
+export function Checkbox({
+  checked,
+  onChange,
+  label,
+  ariaLabel,
+  className = '',
+  disabled = false,
+}: CheckboxProps) {
   return (
     <label 
       className={`flex items-center gap-2 cursor-pointer select-none ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
@@ -25,6 +33,7 @@ export function Checkbox({ checked, onChange, label, className = '', disabled = 
           checked={checked}
           readOnly
           disabled={disabled}
+          aria-label={label ? undefined : ariaLabel}
         />
         <span
           className={`
@@ -54,5 +63,4 @@ export function Checkbox({ checked, onChange, label, className = '', disabled = 
     </label>
   );
 }
-
 
