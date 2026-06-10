@@ -1,5 +1,5 @@
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TopBar } from "../../../src/renderer/components/layout/TopBar";
 import { usePromptStore } from "../../../src/renderer/stores/prompt.store";
@@ -29,6 +29,19 @@ vi.mock(
 vi.mock("../../../src/renderer/components/skill/CreateSkillModal", () => ({
   CreateSkillModal: () => null,
 }));
+
+function hasHiddenSvgAncestor(element: Element): boolean {
+  let current: Element | null = element;
+
+  while (current) {
+    if (current.getAttribute("aria-hidden") === "true") {
+      return true;
+    }
+    current = current.parentElement;
+  }
+
+  return false;
+}
 
 describe("TopBar", () => {
   beforeEach(() => {
@@ -85,6 +98,10 @@ describe("TopBar", () => {
       viewMode: "prompt",
       isSidebarCollapsed: false,
     });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("renders the create mode dropdown in a portal when the split button is opened", async () => {
@@ -144,6 +161,59 @@ describe("TopBar", () => {
     });
   });
 
+  it("does not attach the create-menu outside-click listener while closed", async () => {
+    const addListenerSpy = vi.spyOn(document, "addEventListener");
+
+    await act(async () => {
+      await renderWithI18n(
+        <TopBar onOpenSettings={vi.fn()} updateAvailable={null} />,
+        { language: "en" },
+      );
+    });
+
+    const mousedownCalls = addListenerSpy.mock.calls.filter(
+      ([eventName]) => eventName === "mousedown",
+    );
+    expect(mousedownCalls).toHaveLength(0);
+    expect(addListenerSpy).toHaveBeenCalledWith(
+      "open-create-skill-modal",
+      expect.any(Function),
+    );
+  });
+
+  it("attaches the create-menu outside-click listener only while open", async () => {
+    const addListenerSpy = vi.spyOn(document, "addEventListener");
+    const removeListenerSpy = vi.spyOn(document, "removeEventListener");
+
+    await act(async () => {
+      await renderWithI18n(
+        <TopBar onOpenSettings={vi.fn()} updateAvailable={null} />,
+        { language: "en" },
+      );
+    });
+
+    const toggleButton = screen
+      .getAllByRole("button")
+      .find((button) => button.getAttribute("aria-haspopup") === "menu");
+    expect(toggleButton).toBeDefined();
+
+    fireEvent.click(toggleButton!);
+    const mousedownCalls = addListenerSpy.mock.calls.filter(
+      ([eventName]) => eventName === "mousedown",
+    );
+    expect(mousedownCalls).toHaveLength(1);
+
+    fireEvent.mouseDown(document.body);
+
+    await waitFor(() => {
+      expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    });
+    expect(removeListenerSpy.mock.calls).toContainEqual([
+      "mousedown",
+      mousedownCalls[0][1],
+    ]);
+  });
+
   it("switches creation mode from the portal menu", async () => {
     useSettingsStore.setState({
       creationMode: "manual",
@@ -170,6 +240,87 @@ describe("TopBar", () => {
       expect(useSettingsStore.getState().creationMode).toBe("quick");
       expect(screen.queryByRole("menu")).not.toBeInTheDocument();
     });
+  });
+
+  it("keeps top bar actions from submitting surrounding forms", async () => {
+    const handleSubmit = vi.fn();
+    const showUpdateDialog = vi.fn();
+
+    await act(async () => {
+      await renderWithI18n(
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            handleSubmit();
+          }}
+        >
+          <TopBar
+            onOpenSettings={vi.fn()}
+            updateAvailable={{
+              status: "available",
+              info: { version: "0.5.9" },
+            }}
+            onShowUpdateDialog={showUpdateDialog}
+          />
+        </form>,
+        { language: "en" },
+      );
+    });
+
+    const toggleButton = screen
+      .getAllByRole("button")
+      .find((button) => button.getAttribute("aria-haspopup") === "menu");
+
+    expect(toggleButton).toBeDefined();
+
+    fireEvent.click(toggleButton!);
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+
+    const buttons = Array.from(document.body.querySelectorAll("button"));
+    const implicitButtonMarkup = buttons
+      .filter((button) => button.getAttribute("type") !== "button")
+      .map((button) => button.outerHTML);
+    const exposedIconMarkup = buttons
+      .flatMap((button) => Array.from(button.querySelectorAll("svg")))
+      .filter((icon) => !hasHiddenSvgAncestor(icon))
+      .map((icon) => icon.outerHTML);
+
+    expect(implicitButtonMarkup, implicitButtonMarkup.join("\n")).toHaveLength(
+      0,
+    );
+    expect(exposedIconMarkup, exposedIconMarkup.join("\n")).toHaveLength(0);
+
+    const updateButton = screen.getByRole("button", {
+      name: "Update Available",
+    });
+    expect(updateButton).toHaveAttribute("aria-label", "Update Available");
+
+    fireEvent.click(updateButton);
+
+    expect(showUpdateDialog).toHaveBeenCalledTimes(1);
+    expect(handleSubmit).not.toHaveBeenCalled();
+  });
+
+  it("falls back to a generic update label when updater status has no version", async () => {
+    await act(async () => {
+      await renderWithI18n(
+        <TopBar
+          onOpenSettings={vi.fn()}
+          updateAvailable={{
+            status: "available",
+          } as Parameters<typeof TopBar>[0]["updateAvailable"]}
+          onShowUpdateDialog={vi.fn()}
+        />,
+        { language: "en" },
+      );
+    });
+
+    const updateButton = screen.getByRole("button", {
+      name: "Update Available",
+    });
+
+    expect(updateButton).toHaveTextContent("Update Available");
+    expect(updateButton).not.toHaveTextContent("undefined");
   });
 
   it("uses project search and add-project action in the projects view", async () => {
@@ -234,7 +385,9 @@ describe("TopBar", () => {
         expect(screen.getByText("2 results")).toBeInTheDocument();
       });
 
-      expect(screen.queryByTitle("Next (Tab)")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Next (Tab)" }),
+      ).not.toBeInTheDocument();
 
       fireEvent.click(screen.getByRole("button", { name: "Add Project" }));
 
@@ -330,7 +483,9 @@ describe("TopBar", () => {
 
     expect(selectSkill).not.toHaveBeenCalled();
     expect(screen.getByText("1 results")).toBeInTheDocument();
-    expect(screen.queryByTitle("Next (Tab)")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Next (Tab)" }),
+    ).not.toBeInTheDocument();
   });
 
   it("filters rules via the top bar search without mutating prompt search state", async () => {
@@ -353,9 +508,9 @@ describe("TopBar", () => {
       );
     });
 
-    const searchInput = screen.getByPlaceholderText(
-      "Search rule files, platforms, or paths...",
-    );
+    const searchInput = await screen.findByRole("textbox", {
+      name: "Search rule files, platforms, or paths...",
+    });
 
     expect(
       screen.queryByRole("button", { name: "New" }),
@@ -367,6 +522,50 @@ describe("TopBar", () => {
       "existing prompt search",
     );
     expect(useRulesStore.getState().searchQuery).toBe("codex");
+  });
+
+  it("clears the active top bar search query when clicking the clear button", async () => {
+    useUIStore.setState({
+      appModule: "prompt",
+      viewMode: "prompt",
+      isSidebarCollapsed: false,
+    });
+    usePromptStore.setState({
+      searchQuery: "writer",
+      prompts: [
+        {
+          id: "prompt-1",
+          title: "Writer",
+          userPrompt: "Write something",
+          variables: [],
+          tags: [],
+          isFavorite: false,
+          isPinned: false,
+          version: 1,
+          currentVersion: 1,
+          usageCount: 0,
+          createdAt: new Date(0).toISOString(),
+          updatedAt: new Date(0).toISOString(),
+        },
+      ],
+    } as Partial<ReturnType<typeof usePromptStore.getState>>);
+
+    await act(async () => {
+      await renderWithI18n(
+        <TopBar onOpenSettings={vi.fn()} updateAvailable={null} />,
+        { language: "en" },
+      );
+    });
+
+    const searchInput = screen.getByRole("textbox");
+    expect(searchInput).toHaveValue("writer");
+
+    const clearSearch = screen.getByRole("button", { name: "Clear search" });
+    expect(clearSearch).toHaveAttribute("aria-label", "Clear search");
+    fireEvent.click(clearSearch);
+
+    expect(usePromptStore.getState().searchQuery).toBe("");
+    expect(searchInput).toHaveValue("");
   });
 
   it("hides the top search box in the skill store catalog", async () => {
@@ -463,7 +662,9 @@ describe("TopBar", () => {
     await waitFor(() => {
       expect(screen.getByText("1 results")).toBeInTheDocument();
     });
-    expect(screen.queryByTitle("Next (Tab)")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Next (Tab)" }),
+    ).not.toBeInTheDocument();
 
     fireEvent.keyDown(searchInput, { key: "Enter" });
     fireEvent.keyDown(searchInput, { key: "Tab" });
@@ -524,6 +725,11 @@ describe("TopBar", () => {
 
     const searchInput = screen.getByPlaceholderText("Search Prompt...");
     expect(screen.getByText("1/2")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Previous (Shift+Tab)" }),
+    ).toHaveAttribute("aria-label", "Previous (Shift+Tab)");
+    expect(screen.getByRole("button", { name: "Next (Tab)" }))
+      .toHaveAttribute("aria-label", "Next (Tab)");
 
     fireEvent.keyDown(searchInput, { key: "Tab" });
     expect(screen.getByText("2/2")).toBeInTheDocument();
@@ -591,12 +797,43 @@ describe("TopBar", () => {
       );
     });
 
-    const searchInput = screen.getByPlaceholderText(
-      "Search rule files, platforms, or paths...",
-    );
+    const searchInput = await screen.findByRole("textbox", {
+      name: "Search rule files, platforms, or paths...",
+    });
     expect(screen.getByText("1/2")).toBeInTheDocument();
 
+    const exposedIconMarkup = Array.from(
+      document.body.querySelectorAll("button svg"),
+    )
+      .filter((icon) => !hasHiddenSvgAncestor(icon))
+      .map((icon) => icon.outerHTML);
+    expect(exposedIconMarkup, exposedIconMarkup.join("\n")).toHaveLength(0);
+
     fireEvent.keyDown(searchInput, { key: "Tab" });
+    await waitFor(() => {
+      expect(screen.getByText("2/2")).toBeInTheDocument();
+    });
+    expect(selectRule).toHaveBeenLastCalledWith("openai-codex-global");
+
+    const previousResult = screen.getByRole("button", {
+      name: "Previous (Shift+Tab)",
+    });
+    const nextResult = screen.getByRole("button", { name: "Next (Tab)" });
+    const clearSearch = screen.getByRole("button", { name: "Clear search" });
+    expect(previousResult).toHaveAttribute(
+      "aria-label",
+      "Previous (Shift+Tab)",
+    );
+    expect(nextResult).toHaveAttribute("aria-label", "Next (Tab)");
+    expect(clearSearch).toHaveAttribute("aria-label", "Clear search");
+
+    fireEvent.click(previousResult);
+    await waitFor(() => {
+      expect(screen.getByText("1/2")).toBeInTheDocument();
+    });
+    expect(selectRule).toHaveBeenLastCalledWith("codex-global");
+
+    fireEvent.click(nextResult);
     await waitFor(() => {
       expect(screen.getByText("2/2")).toBeInTheDocument();
     });
@@ -606,6 +843,9 @@ describe("TopBar", () => {
     await waitFor(() => {
       expect(selectRule).toHaveBeenLastCalledWith("openai-codex-global");
     });
+
+    fireEvent.click(clearSearch);
+    expect(useRulesStore.getState().searchQuery).toBe("");
   });
 
   it("toggles the secondary menu visibility from the top bar", async () => {

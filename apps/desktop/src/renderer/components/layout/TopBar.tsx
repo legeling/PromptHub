@@ -16,7 +16,7 @@ import {
   LogOutIcon,
 } from "lucide-react";
 import { clsx } from "clsx";
-import { UpdateStatus } from "../UpdateDialog";
+import type { UpdateStatus } from "../UpdateDialog";
 import { usePromptStore } from "../../stores/prompt.store";
 import { useSettingsStore } from "../../stores/settings.store";
 import { useFolderStore } from "../../stores/folder.store";
@@ -34,7 +34,6 @@ import {
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { useUIStore } from "../../stores/ui.store";
-import { useRulesStore } from "../../stores/rules.store";
 import { collectPrivateFolderScopeIds } from "../../services/prompt-filter";
 import {
   filterVisibleScannedSkills,
@@ -65,6 +64,11 @@ const ImagePromptReverseModal = lazy(() =>
 const CreateSkillModal = lazy(() =>
   import("../skill/CreateSkillModal").then((module) => ({
     default: module.CreateSkillModal,
+  })),
+);
+const TopBarRulesSearch = lazy(() =>
+  import("./TopBarRulesSearch").then((module) => ({
+    default: module.TopBarRulesSearch,
   })),
 );
 
@@ -110,10 +114,6 @@ export function TopBar({
   const folders = useFolderStore((state) => state.folders);
   const promptTypeFilter = usePromptStore((state) => state.promptTypeFilter);
   const appModule = useUIStore((state) => state.appModule);
-  const rulesSearchQuery = useRulesStore((state) => state.searchQuery);
-  const setRulesSearchQuery = useRulesStore((state) => state.setSearchQuery);
-  const ruleFiles = useRulesStore((state) => state.files);
-  const selectRule = useRulesStore((state) => state.selectRule);
   const isSidebarCollapsed = useUIStore((state) => state.isSidebarCollapsed);
   const setSidebarCollapsed = useUIStore((state) => state.setSidebarCollapsed);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -152,17 +152,13 @@ export function TopBar({
     ? skillSearchQuery
     : isPromptView
       ? promptSearchQuery
-      : isRulesView
-        ? rulesSearchQuery
-        : "";
+      : "";
   const deferredSkillSearchQuery = useDeferredValue(skillSearchQuery);
   const setSearchQuery = isSkillView
     ? setSkillSearchQuery
     : isPromptView
       ? setPromptSearchQuery
-      : isRulesView
-        ? setRulesSearchQuery
-        : () => undefined;
+      : () => undefined;
 
   // Check if AI is configured
   const hasAiConfig =
@@ -283,42 +279,16 @@ export function TopBar({
     selectedProjectId,
   ]);
 
-  const ruleSearchResults = useMemo(() => {
-    if (!isRulesView) return [];
-
-    const query = rulesSearchQuery.trim().toLowerCase();
-    if (!query) {
-      return ruleFiles;
-    }
-
-    return ruleFiles.filter((file) => {
-      const haystack = [
-        file.platformName,
-        file.platformDescription,
-        file.name,
-        file.description,
-        file.path,
-        file.projectRootPath || "",
-      ]
-        .join(" ")
-        .toLowerCase();
-
-      return haystack.includes(query);
-    });
-  }, [isRulesView, ruleFiles, rulesSearchQuery]);
-
   // 根据模式选择搜索结果
-  const searchResults = isRulesView
-    ? ruleSearchResults
-    : isSkillView
-      ? isProjectSkillView
-        ? projectSearchResults
-        : isSkillStoreCatalogView
-          ? []
-          : skillSearchResults
-      : promptSearchResults;
+  const searchResults = isSkillView
+    ? isProjectSkillView
+      ? projectSearchResults
+      : isSkillStoreCatalogView
+        ? []
+        : skillSearchResults
+    : promptSearchResults;
   const searchResultCount = searchResults.length;
-  const showSearchNavigation = !isSkillView && !isProjectSkillView;
+  const showSearchNavigation = isPromptView;
   const showSearchResultCount = !isAgentSkillView;
 
   const updateCreateMenuPosition = useCallback(() => {
@@ -355,11 +325,6 @@ export function TopBar({
         if (skillResults[newIndex]) {
           selectSkill(skillResults[newIndex].id);
         }
-      } else if (isRulesView) {
-        const ruleResults = ruleSearchResults;
-        if (ruleResults[newIndex]) {
-          void selectRule(ruleResults[newIndex].id);
-        }
       } else {
         const promptResults = promptSearchResults;
         if (promptResults[newIndex]) {
@@ -370,14 +335,10 @@ export function TopBar({
     [
       searchResultCount,
       currentResultIndex,
-      isRulesView,
       isProjectSkillView,
-      isSkillStoreCatalogView,
       isSkillView,
-      selectRule,
       selectPrompt,
       selectSkill,
-      ruleSearchResults,
       skillSearchResults,
       promptSearchResults,
     ],
@@ -388,16 +349,6 @@ export function TopBar({
   useEffect(() => {
     setCurrentResultIndex(0);
     if (searchQuery.trim().length === 0) {
-      if (isRulesView && ruleSearchResults.length > 0) {
-        void selectRule(ruleSearchResults[0].id);
-      }
-      return;
-    }
-
-    if (isRulesView) {
-      if (ruleSearchResults.length > 0) {
-        void selectRule(ruleSearchResults[0].id);
-      }
       return;
     }
 
@@ -409,16 +360,11 @@ export function TopBar({
       selectPrompt(promptSearchResults[0].id);
     }
   }, [
-    isRulesView,
     isProjectSkillView,
     isSkillView,
     promptSearchResults,
-    ruleSearchResults,
     searchQuery,
-    selectRule,
     selectPrompt,
-    selectSkill,
-    skillSearchResults,
   ]);
 
   // 处理键盘事件
@@ -445,10 +391,6 @@ export function TopBar({
       if (isSkillView) {
         if (!isSkillStoreCatalogView && skillSearchResults[currentResultIndex]) {
           selectSkill(skillSearchResults[currentResultIndex].id);
-        }
-      } else if (isRulesView) {
-        if (ruleSearchResults[currentResultIndex]) {
-          void selectRule(ruleSearchResults[currentResultIndex].id);
         }
       } else {
         if (promptSearchResults[currentResultIndex]) {
@@ -477,8 +419,27 @@ export function TopBar({
     };
   }, []);
 
+  useEffect(() => {
+    function handleOpenSkillModal() {
+      setIsCreateSkillModalOpen(true);
+    }
+
+    document.addEventListener("open-create-skill-modal", handleOpenSkillModal);
+
+    return () => {
+      document.removeEventListener(
+        "open-create-skill-modal",
+        handleOpenSkillModal,
+      );
+    };
+  }, []);
+
   // Click outside to close create menu
   useEffect(() => {
+    if (!isCreateMenuOpen) {
+      return;
+    }
+
     function handleClickOutside(event: MouseEvent) {
       const target = event.target as Node;
       const clickedTrigger = createMenuRef.current?.contains(target) ?? false;
@@ -490,22 +451,11 @@ export function TopBar({
       }
     }
 
-    // Listen for open-create-skill-modal event
-    function handleOpenSkillModal() {
-      setIsCreateSkillModalOpen(true);
-    }
-
     document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("open-create-skill-modal", handleOpenSkillModal);
-
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener(
-        "open-create-skill-modal",
-        handleOpenSkillModal,
-      );
     };
-  }, []);
+  }, [isCreateMenuOpen]);
 
   useEffect(() => {
     if (!isCreateMenuOpen) {
@@ -582,6 +532,14 @@ export function TopBar({
     setDarkMode(!isDarkMode);
   };
 
+  const updateVersion =
+    updateAvailable?.status === "available"
+      ? updateAvailable.info?.version?.trim()
+      : "";
+  const updateButtonLabel = updateVersion
+    ? t("settings.newVersion", { version: updateVersion })
+    : t("settings.updateAvailable");
+
   return (
     <>
       <header
@@ -620,14 +578,22 @@ export function TopBar({
                   : t("common.collapse", "Collapse")
               }
             >
-              <PanelLeftIcon className="h-4 w-4" />
+              <PanelLeftIcon aria-hidden="true" className="h-4 w-4" />
             </button>
           )}
         </div>
 
         {/* 搜索框 - 居中，带清除按钮、结果计数和导航 */}
         <div className="flex-1 flex justify-center px-3">
-          {showTopBarSearch ? (
+          {isRulesView ? (
+            <Suspense
+              fallback={
+                <div className="h-9 w-full max-w-lg rounded-lg border border-transparent app-wallpaper-search" />
+              }
+            >
+              <TopBarRulesSearch searchInputRef={searchInputRef} />
+            </Suspense>
+          ) : showTopBarSearch ? (
             <div className="w-full max-w-lg relative flex items-center">
               <div className="app-wallpaper-search absolute inset-0 rounded-lg border pointer-events-none" />
               <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none z-10" />
@@ -644,9 +610,7 @@ export function TopBar({
                       : isAgentSkillView
                         ? t("header.searchAgentSkills", "Search agent skills...")
                         : t("header.searchSkill", "Search skills...")
-                    : isRulesView
-                      ? t("rules.searchPlaceholder", "Search rule files...")
-                      : t("header.search")
+                    : t("header.search")
                 }
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -658,7 +622,7 @@ export function TopBar({
               {/* 右侧控件：结果计数 + 导航按钮 + 清除按钮 */}
               {searchQuery && (
                 <div
-                  className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1"
+                  className="absolute right-2 top-1/2 z-20 -translate-y-1/2 flex items-center gap-1"
                   style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
                 >
                   {/* 结果计数 */}
@@ -678,28 +642,34 @@ export function TopBar({
                   {showSearchNavigation && searchResultCount > 1 && (
                     <>
                       <button
+                        type="button"
                         onClick={() => navigateResult("prev")}
                         className="p-1 rounded hover:bg-accent/60 transition-colors"
+                        aria-label={t("header.prevResult", "上一个 (Shift+Tab)")}
                         title={t("header.prevResult", "上一个 (Shift+Tab)")}
                       >
-                        <ChevronUpIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                        <ChevronUpIcon aria-hidden="true" className="w-3.5 h-3.5 text-muted-foreground" />
                       </button>
                       <button
+                        type="button"
                         onClick={() => navigateResult("next")}
                         className="p-1 rounded hover:bg-accent/60 transition-colors"
+                        aria-label={t("header.nextResult", "下一个 (Tab)")}
                         title={t("header.nextResult", "下一个 (Tab)")}
                       >
-                        <ChevronDownIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                        <ChevronDownIcon aria-hidden="true" className="w-3.5 h-3.5 text-muted-foreground" />
                       </button>
                     </>
                   )}
                   {/* 清除按钮 */}
                   <button
+                    type="button"
                     onClick={() => setSearchQuery("")}
                     className="p-1 rounded hover:bg-accent/60 transition-colors"
+                    aria-label={t("header.clearSearch", "清除搜索")}
                     title={t("header.clearSearch", "清除搜索")}
                   >
-                    <XIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                    <XIcon aria-hidden="true" className="w-3.5 h-3.5 text-muted-foreground" />
                   </button>
                 </div>
               )}
@@ -715,16 +685,16 @@ export function TopBar({
             updateAvailable.status === "available" && (
               <>
                 <button
+                  type="button"
                   onClick={onShowUpdateDialog}
                   className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-dashed border-primary/50 bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors"
                   style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+                  aria-label={t("settings.updateAvailable")}
                   title={t("settings.updateAvailable")}
                 >
-                  <DownloadIcon className="w-4 h-4" />
+                  <DownloadIcon aria-hidden="true" className="w-4 h-4" />
                   <span className="hidden sm:inline">
-                    {t("settings.newVersion", {
-                      version: updateAvailable.info?.version,
-                    })}
+                    {updateButtonLabel}
                   </span>
                 </button>
                 <div className="w-px h-5 bg-border mx-1" />
@@ -739,6 +709,7 @@ export function TopBar({
               style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
             >
               <button
+                type="button"
                 onClick={async () => {
                   if (appModule === "skill") {
                     if (isProjectSkillView) {
@@ -765,14 +736,14 @@ export function TopBar({
               >
                 {appModule === "skill" ? (
                   isProjectSkillView ? (
-                    <FolderPlusIcon className="w-4 h-4" />
+                    <FolderPlusIcon aria-hidden="true" className="w-4 h-4" />
                   ) : (
-                    <PlusIcon className="w-4 h-4" />
+                    <PlusIcon aria-hidden="true" className="w-4 h-4" />
                   )
                 ) : creationMode === "manual" ? (
-                  <PlusIcon className="w-4 h-4" />
+                  <PlusIcon aria-hidden="true" className="w-4 h-4" />
                 ) : (
-                  <SparklesIcon className="w-4 h-4" />
+                  <SparklesIcon aria-hidden="true" className="w-4 h-4" />
                 )}
                 <span>
                   {appModule === "skill"
@@ -788,6 +759,7 @@ export function TopBar({
               {appModule === "prompt" && (
                 <>
                   <button
+                    type="button"
                     onClick={() => {
                       if (!isCreateMenuOpen) {
                         updateCreateMenuPosition();
@@ -796,9 +768,11 @@ export function TopBar({
                     }}
                     aria-haspopup="menu"
                     aria-expanded={isCreateMenuOpen}
+                    aria-label={t("header.createMenu", "Creation mode")}
+                    title={t("header.createMenu", "Creation mode")}
                     className="flex items-center justify-center h-full px-1.5 hover:bg-black/10 transition-colors rounded-r-lg"
                   >
-                    <ChevronDownIcon className="w-3.5 h-3.5" />
+                    <ChevronDownIcon aria-hidden="true" className="w-3.5 h-3.5" />
                   </button>
 
                   {isCreateMenuOpen &&
@@ -817,6 +791,7 @@ export function TopBar({
                         }
                       >
                         <button
+                          type="button"
                           onClick={() => {
                             useSettingsStore
                               .getState()
@@ -828,7 +803,7 @@ export function TopBar({
                             creationMode === "manual" && "bg-accent",
                           )}
                         >
-                          <PlusIcon className="w-4 h-4 text-muted-foreground" />
+                          <PlusIcon aria-hidden="true" className="w-4 h-4 text-muted-foreground" />
                           <div className="flex flex-col items-start gap-0.5">
                             <span className="font-medium">
                               {t("header.new")}
@@ -843,6 +818,7 @@ export function TopBar({
                         </button>
                         <div className="h-px bg-border my-1 mx-2 opacity-50" />
                         <button
+                          type="button"
                           onClick={() => {
                             useSettingsStore
                               .getState()
@@ -854,7 +830,7 @@ export function TopBar({
                             creationMode === "quick" && "bg-accent",
                           )}
                         >
-                          <SparklesIcon className="w-4 h-4 text-primary" />
+                          <SparklesIcon aria-hidden="true" className="w-4 h-4 text-primary" />
                           <div className="flex flex-col items-start gap-0.5">
                             <span className="font-medium">
                               {t("quickAdd.title")}
@@ -869,6 +845,7 @@ export function TopBar({
                         </button>
                         <div className="h-px bg-border my-1 mx-2 opacity-50" />
                         <button
+                          type="button"
                           onClick={() => {
                             useSettingsStore
                               .getState()
@@ -879,7 +856,7 @@ export function TopBar({
                           }}
                           className="flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-accent text-left transition-colors rounded-md"
                         >
-                          <Wand2Icon className="w-4 h-4 text-primary" />
+                          <Wand2Icon aria-hidden="true" className="w-4 h-4 text-primary" />
                           <div className="flex flex-col items-start gap-0.5">
                             <span className="font-medium">
                               {t("quickAdd.generateEntry")}
@@ -891,13 +868,14 @@ export function TopBar({
                         </button>
                         <div className="h-px bg-border my-1 mx-2 opacity-50" />
                         <button
+                          type="button"
                           onClick={() => {
                             setIsImageReverseModalOpen(true);
                             setIsCreateMenuOpen(false);
                           }}
                           className="flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-accent text-left transition-colors rounded-md"
                         >
-                          <ImageIcon className="w-4 h-4 text-primary" />
+                          <ImageIcon aria-hidden="true" className="w-4 h-4 text-primary" />
                           <div className="flex flex-col items-start gap-0.5">
                             <span className="font-medium">
                               {t("imageReverse.title")}
@@ -917,25 +895,29 @@ export function TopBar({
 
           {/* 主题切换 */}
           <button
+            type="button"
             onClick={toggleTheme}
+            aria-label={t("settings.toggleTheme", "Toggle theme")}
+            title={t("settings.toggleTheme", "Toggle theme")}
             className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/60 transition-colors"
             style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
           >
             {isDarkMode ? (
-              <SunIcon className="w-4 h-4" />
+              <SunIcon aria-hidden="true" className="w-4 h-4" />
             ) : (
-              <MoonIcon className="w-4 h-4" />
+              <MoonIcon aria-hidden="true" className="w-4 h-4" />
             )}
           </button>
 
           {webRuntime && (
             <button
+              type="button"
               onClick={() => void logoutWebSession()}
               className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
               style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
               title={t("settings.signOut")}
             >
-              <LogOutIcon className="w-4 h-4" />
+              <LogOutIcon aria-hidden="true" className="w-4 h-4" />
               <span className="hidden sm:inline">{t("settings.signOut")}</span>
             </button>
           )}
