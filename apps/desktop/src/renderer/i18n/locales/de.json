@@ -1998,6 +1998,7 @@
     "zoomOut": "Verkleinern",
     "resetZoom": "Zoom zurücksetzen",
     "zoomIn": "Vergrößern",
+    "fullscreenPreview": "Vollbildvorschau",
     "fileSaved": "Datei gespeichert",
     "noFiles": "Keine lokalen Dateien für diesen Skill",
     "binaryFile": "Binärdatei kann nicht bearbeitet werden",

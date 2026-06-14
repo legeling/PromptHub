@@ -2016,6 +2016,7 @@
     "zoomOut": "Zoom out",
     "resetZoom": "Reset zoom",
     "zoomIn": "Zoom in",
+    "fullscreenPreview": "Fullscreen preview",
     "fileSaved": "File saved",
     "noFiles": "No local files for this skill",
     "binaryFile": "Binary file cannot be edited",

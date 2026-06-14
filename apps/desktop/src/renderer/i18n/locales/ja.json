@@ -1999,6 +1999,7 @@
     "zoomOut": "縮小",
     "resetZoom": "ズームをリセット",
     "zoomIn": "拡大",
+    "fullscreenPreview": "全画面プレビュー",
     "fileSaved": "ファイルを保存しました",
     "noFiles": "このスキルにはローカルファイルがありません",
     "binaryFile": "バイナリファイルは編集できません",

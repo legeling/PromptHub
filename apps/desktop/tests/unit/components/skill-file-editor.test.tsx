@@ -1,4 +1,5 @@
 import {
+  createEvent,
   fireEvent,
   render,
   screen,
@@ -699,12 +700,34 @@ describe("SkillFileEditor", () => {
     );
 
     const preview = await screen.findByAltText("assets/github-small.svg");
+    const previewRoot = preview.closest(
+      ".skill-file-editor__resource-preview--image",
+    );
+    const previewViewport = preview.closest(
+      ".skill-file-editor__resource-image-viewport",
+    );
+    const previewStage = preview.closest(
+      ".skill-file-editor__resource-image-stage",
+    );
+    const zoomControls = document.body.querySelector(
+      ".skill-file-editor__zoom-controls",
+    );
 
     expect(preview).toHaveAttribute(
       "src",
       expect.stringMatching(/^data:image\/svg\+xml;base64,/),
     );
-    expect(preview).toHaveStyle({ transform: "scale(1)" });
+    expect(previewRoot).not.toBeNull();
+    expect(previewViewport).not.toBeNull();
+    expect(previewStage).not.toBeNull();
+    expect(zoomControls).not.toBeNull();
+    expect(zoomControls?.parentElement).toBe(previewRoot);
+    expect(zoomControls?.parentElement).not.toBe(previewViewport);
+    expect(previewStage).toHaveStyle({ width: "100%", height: "100%" });
+
+    expect(
+      screen.queryByRole("button", { name: "Edit" }),
+    ).not.toBeInTheDocument();
 
     const exposedIconMarkup = Array.from(
       document.body.querySelectorAll("button svg"),
@@ -715,15 +738,78 @@ describe("SkillFileEditor", () => {
     expect(exposedIconMarkup, exposedIconMarkup.join("\n")).toHaveLength(0);
 
     fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
-    expect(preview).toHaveStyle({ transform: "scale(1.25)" });
+    expect(previewStage).toHaveStyle({ width: "125%", height: "125%" });
+
+    const wheelZoomIn = createEvent.wheel(previewViewport as HTMLElement, {
+      deltaY: -120,
+      cancelable: true,
+    });
+    const preventWheelDefault = vi.spyOn(wheelZoomIn, "preventDefault");
+    fireEvent(previewViewport as HTMLElement, wheelZoomIn);
+    expect(preventWheelDefault).toHaveBeenCalledTimes(1);
+    expect(previewStage).toHaveStyle({ width: "150%", height: "150%" });
+
+    const previewViewportElement = previewViewport as HTMLElement;
+    previewViewportElement.scrollLeft = 20;
+    previewViewportElement.scrollTop = 10;
+
+    const panStart = createEvent.pointerDown(previewViewportElement, {
+      pointerId: 1,
+      button: 0,
+      clientX: 100,
+      clientY: 100,
+    });
+    const preventPanDefault = vi.spyOn(panStart, "preventDefault");
+    fireEvent(previewViewportElement, panStart);
+    expect(preventPanDefault).toHaveBeenCalledTimes(1);
+    expect(previewViewportElement).toHaveClass(
+      "skill-file-editor__resource-image-viewport--panning",
+    );
+
+    fireEvent.pointerMove(previewViewportElement, {
+      pointerId: 1,
+      clientX: 60,
+      clientY: 80,
+    });
+    expect(previewViewportElement.scrollLeft).toBe(60);
+    expect(previewViewportElement.scrollTop).toBe(30);
+    expect(zoomControls?.parentElement).toBe(previewRoot);
+    expect(zoomControls?.parentElement).not.toBe(previewViewport);
+
+    fireEvent.pointerUp(previewViewportElement, { pointerId: 1 });
+    expect(previewViewportElement).not.toHaveClass(
+      "skill-file-editor__resource-image-viewport--panning",
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "Zoom out" }));
-    expect(preview).toHaveStyle({ transform: "scale(1)" });
+    expect(previewStage).toHaveStyle({ width: "125%", height: "125%" });
 
-    fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
-    fireEvent.click(screen.getByRole("button", { name: "Reset zoom" }));
-    expect(preview).toHaveStyle({ transform: "scale(1)" });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Fullscreen preview" }),
+    );
+    const fullscreenDialog = screen.getByRole("dialog", {
+      name: "Fullscreen preview",
+    });
+    const fullscreenImage = within(fullscreenDialog).getByAltText(
+      "assets/github-small.svg",
+    );
+    const fullscreenStage = fullscreenImage.closest(
+      ".skill-file-editor__resource-image-stage",
+    );
+    expect(fullscreenStage).toHaveStyle({ width: "125%", height: "125%" });
 
+    fireEvent.click(
+      within(fullscreenDialog).getByRole("button", { name: "Reset zoom" }),
+    );
+    expect(fullscreenStage).toHaveStyle({ width: "100%", height: "100%" });
+    expect(previewStage).toHaveStyle({ width: "100%", height: "100%" });
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(
+      screen.queryByRole("dialog", { name: "Fullscreen preview" }),
+    ).not.toBeInTheDocument();
+
+    expect(screen.queryByText("Preview")).not.toBeInTheDocument();
     expect(screen.queryByText("[binary file]")).not.toBeInTheDocument();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     expect(screen.getByText("image/svg+xml")).toBeInTheDocument();

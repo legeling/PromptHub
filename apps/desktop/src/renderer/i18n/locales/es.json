@@ -1998,6 +1998,7 @@
     "zoomOut": "Alejar",
     "resetZoom": "Restablecer zoom",
     "zoomIn": "Acercar",
+    "fullscreenPreview": "Vista previa en pantalla completa",
     "fileSaved": "Archivo guardado",
     "noFiles": "No hay archivos locales para esta habilidad",
     "binaryFile": "El archivo binario no se puede editar",

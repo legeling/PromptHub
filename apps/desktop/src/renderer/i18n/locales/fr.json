@@ -1999,6 +1999,7 @@
     "zoomOut": "Zoom arrière",
     "resetZoom": "Réinitialiser le zoom",
     "zoomIn": "Zoom avant",
+    "fullscreenPreview": "Aperçu plein écran",
     "fileSaved": "Fichier enregistré",
     "noFiles": "Aucun fichier local pour cette compétence",
     "binaryFile": "Le fichier binaire ne peut pas être édité",

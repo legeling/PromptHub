@@ -1,4 +1,13 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+  type ReactNode,
+  type PointerEvent,
+  type WheelEvent,
+} from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -14,9 +23,7 @@ import {
   ChevronRightIcon,
   PencilIcon,
   RotateCcwIcon,
-  ImageIcon,
   MusicIcon,
-  VideoIcon,
   MinusIcon,
   PlusIcon,
   Maximize2Icon,
@@ -79,6 +86,17 @@ interface ContextMenuState {
 }
 
 // ─── Helpers ────────────────────────────────────────────
+
+const MIN_RESOURCE_ZOOM = 0.25;
+const MAX_RESOURCE_ZOOM = 4;
+const RESOURCE_ZOOM_STEP = 0.25;
+
+function clampResourceZoom(value: number): number {
+  return Math.min(
+    MAX_RESOURCE_ZOOM,
+    Math.max(MIN_RESOURCE_ZOOM, Number(value.toFixed(2))),
+  );
+}
 
 function getFileIcon(name: string, isDirectory: boolean, isOpen: boolean) {
   return (
@@ -170,14 +188,326 @@ function isEditableFile(file: FileEntry | null): boolean {
   return file.encoding !== "data-url" && file.content !== "[binary file]";
 }
 
+type ResourceImageMode = "inline" | "fullscreen";
+
+interface ImageZoomControlsProps {
+  imageZoom: number;
+  mode: ResourceImageMode;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onResetZoom: () => void;
+  onOpenFullscreen?: () => void;
+  zoomOutLabel: string;
+  zoomInLabel: string;
+  resetZoomLabel: string;
+  fullscreenLabel: string;
+}
+
+interface ImageResourceCanvasProps
+  extends Omit<ImageZoomControlsProps, "mode"> {
+  file: FileEntry;
+  mode?: ResourceImageMode;
+  onImageWheelZoom: (event: WheelEvent<HTMLDivElement>) => void;
+}
+
+function ImageZoomControls({
+  imageZoom,
+  mode,
+  onZoomIn,
+  onZoomOut,
+  onResetZoom,
+  onOpenFullscreen,
+  zoomOutLabel,
+  zoomInLabel,
+  resetZoomLabel,
+  fullscreenLabel,
+}: ImageZoomControlsProps) {
+  const isFullscreenMode = mode === "fullscreen";
+  const centerLabel = isFullscreenMode ? resetZoomLabel : fullscreenLabel;
+
+  return (
+    <div className="skill-file-editor__zoom-controls">
+      <button
+        className="skill-file-editor__editor-tab skill-file-editor__editor-tab--icon"
+        type="button"
+        onClick={onZoomOut}
+        disabled={imageZoom <= MIN_RESOURCE_ZOOM}
+        title={zoomOutLabel}
+        aria-label={zoomOutLabel}
+      >
+        <MinusIcon
+          aria-hidden="true"
+          style={{ width: "0.875rem", height: "0.875rem" }}
+        />
+      </button>
+      <button
+        className="skill-file-editor__editor-tab"
+        type="button"
+        onClick={isFullscreenMode ? onResetZoom : onOpenFullscreen}
+        disabled={isFullscreenMode ? imageZoom === 1 : !onOpenFullscreen}
+        title={centerLabel}
+        aria-label={centerLabel}
+      >
+        {isFullscreenMode ? (
+          <RotateCcwIcon
+            aria-hidden="true"
+            style={{ width: "0.875rem", height: "0.875rem" }}
+          />
+        ) : (
+          <Maximize2Icon
+            aria-hidden="true"
+            style={{ width: "0.875rem", height: "0.875rem" }}
+          />
+        )}
+        <span>{Math.round(imageZoom * 100)}%</span>
+      </button>
+      <button
+        className="skill-file-editor__editor-tab skill-file-editor__editor-tab--icon"
+        type="button"
+        onClick={onZoomIn}
+        disabled={imageZoom >= MAX_RESOURCE_ZOOM}
+        title={zoomInLabel}
+        aria-label={zoomInLabel}
+      >
+        <PlusIcon
+          aria-hidden="true"
+          style={{ width: "0.875rem", height: "0.875rem" }}
+        />
+      </button>
+    </div>
+  );
+}
+
+function ImageResourceCanvas({
+  file,
+  imageZoom,
+  onImageWheelZoom,
+  onZoomIn,
+  onZoomOut,
+  onResetZoom,
+  onOpenFullscreen,
+  zoomOutLabel,
+  zoomInLabel,
+  resetZoomLabel,
+  fullscreenLabel,
+  mode = "inline",
+}: ImageResourceCanvasProps) {
+  const panStateRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    scrollLeft: number;
+    scrollTop: number;
+  } | null>(null);
+  const [isPanningImage, setIsPanningImage] = useState(false);
+
+  const handleImagePointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) {
+      return;
+    }
+
+    event.preventDefault();
+    panStateRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      scrollLeft: event.currentTarget.scrollLeft,
+      scrollTop: event.currentTarget.scrollTop,
+    };
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    setIsPanningImage(true);
+  };
+
+  const handleImagePointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const panState = panStateRef.current;
+    if (!panState || panState.pointerId !== event.pointerId) {
+      return;
+    }
+
+    event.currentTarget.scrollLeft =
+      panState.scrollLeft - (event.clientX - panState.startX);
+    event.currentTarget.scrollTop =
+      panState.scrollTop - (event.clientY - panState.startY);
+  };
+
+  const stopImagePan = (event: PointerEvent<HTMLDivElement>) => {
+    if (panStateRef.current?.pointerId !== event.pointerId) {
+      return;
+    }
+
+    panStateRef.current = null;
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    setIsPanningImage(false);
+  };
+
+  return (
+    <div
+      className={`skill-file-editor__resource-preview skill-file-editor__resource-preview--image skill-file-editor__resource-preview--image-${mode}`}
+      onWheel={onImageWheelZoom}
+    >
+      <div
+        className={`skill-file-editor__resource-image-viewport${
+          isPanningImage
+            ? " skill-file-editor__resource-image-viewport--panning"
+            : ""
+        }`}
+        onPointerDown={handleImagePointerDown}
+        onPointerMove={handleImagePointerMove}
+        onPointerUp={stopImagePan}
+        onPointerCancel={stopImagePan}
+      >
+        <div
+          className="skill-file-editor__resource-image-stage"
+          style={{
+            width: `${imageZoom * 100}%`,
+            height: `${imageZoom * 100}%`,
+          }}
+        >
+          <img
+            src={file.content}
+            alt={file.path}
+            className="skill-file-editor__resource-image"
+          />
+        </div>
+      </div>
+      <ImageZoomControls
+        imageZoom={imageZoom}
+        mode={mode}
+        onZoomIn={onZoomIn}
+        onZoomOut={onZoomOut}
+        onResetZoom={onResetZoom}
+        onOpenFullscreen={onOpenFullscreen}
+        zoomOutLabel={zoomOutLabel}
+        zoomInLabel={zoomInLabel}
+        resetZoomLabel={resetZoomLabel}
+        fullscreenLabel={fullscreenLabel}
+      />
+    </div>
+  );
+}
+
+function ResourceImageFullscreenPreview({
+  file,
+  isOpen,
+  imageZoom,
+  onClose,
+  onImageWheelZoom,
+  onZoomIn,
+  onZoomOut,
+  onResetZoom,
+  zoomOutLabel,
+  zoomInLabel,
+  resetZoomLabel,
+  fullscreenLabel,
+  closeLabel,
+}: {
+  file: FileEntry | null;
+  isOpen: boolean;
+  imageZoom: number;
+  onClose: () => void;
+  onImageWheelZoom: (event: WheelEvent<HTMLDivElement>) => void;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onResetZoom: () => void;
+  zoomOutLabel: string;
+  zoomInLabel: string;
+  resetZoomLabel: string;
+  fullscreenLabel: string;
+  closeLabel: string;
+}) {
+  useEffect(() => {
+    if (!isOpen || !file) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [file, isOpen, onClose]);
+
+  if (!isOpen || !file) {
+    return null;
+  }
+
+  return createPortal(
+    <div
+      className="skill-file-editor__fullscreen-preview"
+      role="dialog"
+      aria-modal="true"
+      aria-label={fullscreenLabel}
+    >
+      <div className="skill-file-editor__fullscreen-preview-header">
+        <span className="skill-file-editor__fullscreen-preview-title">
+          {file.path}
+        </span>
+        <button
+          className="skill-file-editor__fullscreen-preview-close"
+          type="button"
+          onClick={onClose}
+          title={closeLabel}
+          aria-label={closeLabel}
+        >
+          <XIcon
+            aria-hidden="true"
+            style={{ width: "1rem", height: "1rem" }}
+          />
+        </button>
+      </div>
+      <ImageResourceCanvas
+        file={file}
+        imageZoom={imageZoom}
+        onImageWheelZoom={onImageWheelZoom}
+        onZoomIn={onZoomIn}
+        onZoomOut={onZoomOut}
+        onResetZoom={onResetZoom}
+        zoomOutLabel={zoomOutLabel}
+        zoomInLabel={zoomInLabel}
+        resetZoomLabel={resetZoomLabel}
+        fullscreenLabel={fullscreenLabel}
+        mode="fullscreen"
+      />
+    </div>,
+    document.body,
+  );
+}
+
 function ResourcePreview({
   file,
   emptyLabel,
   imageZoom,
+  onImageWheelZoom,
+  onZoomIn,
+  onZoomOut,
+  onResetZoom,
+  onOpenFullscreen,
+  zoomOutLabel,
+  zoomInLabel,
+  resetZoomLabel,
+  fullscreenLabel,
 }: {
   file: FileEntry;
   emptyLabel: string;
   imageZoom: number;
+  onImageWheelZoom: (event: WheelEvent<HTMLDivElement>) => void;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onResetZoom: () => void;
+  onOpenFullscreen: () => void;
+  zoomOutLabel: string;
+  zoomInLabel: string;
+  resetZoomLabel: string;
+  fullscreenLabel: string;
 }) {
   if (file.encoding !== "data-url" || !file.previewKind) {
     return (
@@ -190,14 +520,19 @@ function ResourcePreview({
 
   if (file.previewKind === "image") {
     return (
-      <div className="skill-file-editor__resource-preview">
-        <img
-          src={file.content}
-          alt={file.path}
-          className="skill-file-editor__resource-image"
-          style={{ transform: `scale(${imageZoom})` }}
-        />
-      </div>
+      <ImageResourceCanvas
+        file={file}
+        imageZoom={imageZoom}
+        onImageWheelZoom={onImageWheelZoom}
+        onZoomIn={onZoomIn}
+        onZoomOut={onZoomOut}
+        onResetZoom={onResetZoom}
+        onOpenFullscreen={onOpenFullscreen}
+        zoomOutLabel={zoomOutLabel}
+        zoomInLabel={zoomInLabel}
+        resetZoomLabel={resetZoomLabel}
+        fullscreenLabel={fullscreenLabel}
+      />
     );
   }
 
@@ -247,7 +582,7 @@ function SimpleDialog({
 }: {
   isOpen: boolean;
   title: string;
-  children: React.ReactNode;
+  children: ReactNode;
   onClose: () => void;
 }) {
   if (!isOpen) return null;
@@ -308,6 +643,8 @@ export function SkillFileEditor({
   const [isUnsavedDialogOpen, setIsUnsavedDialogOpen] = useState(false);
   const [isEditingFileContent, setIsEditingFileContent] = useState(false);
   const [resourceZoom, setResourceZoom] = useState(1);
+  const [isResourceFullscreenOpen, setIsResourceFullscreenOpen] =
+    useState(false);
   const [pendingUnsavedAction, setPendingUnsavedAction] = useState<
     (() => void) | null
   >(null);
@@ -581,6 +918,7 @@ export function SkillFileEditor({
   useEffect(() => {
     setIsEditingFileContent(false);
     setResourceZoom(1);
+    setIsResourceFullscreenOpen(false);
   }, [selectedFile]);
 
   // Build tree
@@ -612,7 +950,10 @@ export function SkillFileEditor({
     [selectedFile],
   );
   const canEditCurrentFile = isEditableFile(currentFile);
-  const isImagePreview = currentFile?.previewKind === "image";
+  const fullscreenResourceFile =
+    currentFile?.encoding === "data-url" && currentFile.previewKind === "image"
+      ? currentFile
+      : null;
 
   useEffect(() => {
     if (!canEditCurrentFile) {
@@ -641,6 +982,24 @@ export function SkillFileEditor({
       }
     },
     [selectedFile, currentFile],
+  );
+
+  const zoomResourceBy = useCallback((delta: number) => {
+    setResourceZoom((current) => clampResourceZoom(current + delta));
+  }, []);
+
+  const handleImageWheelZoom = useCallback(
+    (event: WheelEvent<HTMLDivElement>) => {
+      if (event.deltaY === 0) {
+        return;
+      }
+
+      event.preventDefault();
+      zoomResourceBy(
+        event.deltaY < 0 ? RESOURCE_ZOOM_STEP : -RESOURCE_ZOOM_STEP,
+      );
+    },
+    [zoomResourceBy],
   );
 
   // Save current file
@@ -1005,6 +1364,24 @@ export function SkillFileEditor({
     );
   };
 
+  const fullscreenPreview = (
+    <ResourceImageFullscreenPreview
+      file={fullscreenResourceFile}
+      isOpen={isResourceFullscreenOpen}
+      imageZoom={resourceZoom}
+      onClose={() => setIsResourceFullscreenOpen(false)}
+      onImageWheelZoom={handleImageWheelZoom}
+      onZoomIn={() => zoomResourceBy(RESOURCE_ZOOM_STEP)}
+      onZoomOut={() => zoomResourceBy(-RESOURCE_ZOOM_STEP)}
+      onResetZoom={() => setResourceZoom(1)}
+      zoomOutLabel={t("skill.zoomOut", "Zoom out")}
+      zoomInLabel={t("skill.zoomIn", "Zoom in")}
+      resetZoomLabel={t("skill.resetZoom", "Reset zoom")}
+      fullscreenLabel={t("skill.fullscreenPreview", "Fullscreen preview")}
+      closeLabel={t("common.close", "Close")}
+    />
+  );
+
   // ─── Shared body (file tree + editor) ─────────────────
   const editorBody = (
     <>
@@ -1122,81 +1499,15 @@ export function SkillFileEditor({
                   )}
                 </div>
                 <div className="skill-file-editor__editor-tabs">
-                  {isImagePreview && (
-                    <div className="skill-file-editor__zoom-controls">
-                      <button
-                        className="skill-file-editor__editor-tab skill-file-editor__editor-tab--icon"
-                        type="button"
-                        onClick={() =>
-                          setResourceZoom((current) =>
-                            Math.max(0.25, Number((current - 0.25).toFixed(2))),
-                          )
-                        }
-                        disabled={resourceZoom <= 0.25}
-                        title={t("skill.zoomOut", "Zoom out")}
-                        aria-label={t("skill.zoomOut", "Zoom out")}
-                      >
-                        <MinusIcon
-                          aria-hidden="true"
-                          style={{ width: "0.875rem", height: "0.875rem" }}
-                        />
-                      </button>
-                      <button
-                        className="skill-file-editor__editor-tab"
-                        type="button"
-                        onClick={() => setResourceZoom(1)}
-                        disabled={resourceZoom === 1}
-                        title={t("skill.resetZoom", "Reset zoom")}
-                        aria-label={t("skill.resetZoom", "Reset zoom")}
-                      >
-                        <Maximize2Icon
-                          aria-hidden="true"
-                          style={{ width: "0.875rem", height: "0.875rem" }}
-                        />
-                        <span>{Math.round(resourceZoom * 100)}%</span>
-                      </button>
-                      <button
-                        className="skill-file-editor__editor-tab skill-file-editor__editor-tab--icon"
-                        type="button"
-                        onClick={() =>
-                          setResourceZoom((current) =>
-                            Math.min(4, Number((current + 0.25).toFixed(2))),
-                          )
-                        }
-                        disabled={resourceZoom >= 4}
-                        title={t("skill.zoomIn", "Zoom in")}
-                        aria-label={t("skill.zoomIn", "Zoom in")}
-                      >
-                        <PlusIcon
-                          aria-hidden="true"
-                          style={{ width: "0.875rem", height: "0.875rem" }}
-                        />
-                      </button>
-                    </div>
-                  )}
                   {!canEditCurrentFile ? (
-                    <div className="skill-file-editor__edit-state skill-file-editor__edit-state--readonly">
-                      {currentFile?.previewKind === "image" ? (
-                        <ImageIcon
-                          style={{ width: "0.875rem", height: "0.875rem" }}
-                        />
-                      ) : currentFile?.previewKind === "audio" ? (
-                        <MusicIcon
-                          style={{ width: "0.875rem", height: "0.875rem" }}
-                        />
-                      ) : currentFile?.previewKind === "video" ? (
-                        <VideoIcon
-                          style={{ width: "0.875rem", height: "0.875rem" }}
-                        />
-                      ) : (
+                    !currentFile?.previewKind ? (
+                      <div className="skill-file-editor__edit-state skill-file-editor__edit-state--readonly">
                         <FileIcon
                           style={{ width: "0.875rem", height: "0.875rem" }}
                         />
-                      )}
-                      {currentFile?.previewKind
-                        ? t("skill.resourcePreview", "Preview")
-                        : t("skill.binaryFile", "Binary file cannot be edited")}
-                    </div>
+                        {t("skill.binaryFile", "Binary file cannot be edited")}
+                      </div>
+                    ) : null
                   ) : !isEditingFileContent ? (
                     <button
                       type="button"
@@ -1291,6 +1602,18 @@ export function SkillFileEditor({
                   <ResourcePreview
                     file={currentFile}
                     imageZoom={resourceZoom}
+                    onImageWheelZoom={handleImageWheelZoom}
+                    onZoomIn={() => zoomResourceBy(RESOURCE_ZOOM_STEP)}
+                    onZoomOut={() => zoomResourceBy(-RESOURCE_ZOOM_STEP)}
+                    onResetZoom={() => setResourceZoom(1)}
+                    onOpenFullscreen={() => setIsResourceFullscreenOpen(true)}
+                    zoomOutLabel={t("skill.zoomOut", "Zoom out")}
+                    zoomInLabel={t("skill.zoomIn", "Zoom in")}
+                    resetZoomLabel={t("skill.resetZoom", "Reset zoom")}
+                    fullscreenLabel={t(
+                      "skill.fullscreenPreview",
+                      "Fullscreen preview",
+                    )}
                     emptyLabel={t(
                       "skill.binaryFile",
                       "Binary file cannot be edited",
@@ -1609,6 +1932,7 @@ export function SkillFileEditor({
         <div className="skill-file-editor skill-file-editor--inline">
           {editorBody}
         </div>
+        {fullscreenPreview}
         <UnsavedChangesDialog
           isOpen={isUnsavedDialogOpen}
           onClose={() => {
@@ -1695,6 +2019,7 @@ export function SkillFileEditor({
   return (
     <>
       {createPortal(modalContent, document.body)}
+      {fullscreenPreview}
       <UnsavedChangesDialog
         isOpen={isUnsavedDialogOpen}
         onClose={() => {

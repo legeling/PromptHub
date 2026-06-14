@@ -381,14 +381,60 @@
   text-align: center;
 }
 
+.skill-file-editor__resource-preview--image {
+  position: relative;
+  padding: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+.skill-file-editor__resource-image-viewport {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 1.5rem;
+  overflow: auto;
+  cursor: grab;
+  overscroll-behavior: contain;
+  background:
+    linear-gradient(45deg, hsl(var(--muted) / 0.18) 25%, transparent 25%),
+    linear-gradient(-45deg, hsl(var(--muted) / 0.18) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, hsl(var(--muted) / 0.18) 75%),
+    linear-gradient(-45deg, transparent 75%, hsl(var(--muted) / 0.18) 75%);
+  background-position:
+    0 0,
+    0 8px,
+    8px -8px,
+    -8px 0;
+  background-size: 16px 16px;
+}
+
+.skill-file-editor__resource-image-viewport--panning {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.skill-file-editor__resource-image-stage {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    width 0.12s ease,
+    height 0.12s ease;
+}
+
 .skill-file-editor__resource-image {
-  max-width: 100%;
-  max-height: 100%;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
-  border-radius: 0.75rem;
-  box-shadow: 0 12px 32px hsl(var(--foreground) / 0.12);
-  transform-origin: center;
-  transition: transform 0.12s ease;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 .skill-file-editor__zoom-controls {
@@ -398,7 +444,68 @@
   padding: 0.125rem;
   border: 1px solid hsl(var(--border));
   border-radius: 0.75rem;
-  background: hsl(var(--background) / 0.7);
+  background: hsl(var(--background) / 0.88);
+  box-shadow: 0 12px 32px hsl(var(--foreground) / 0.16);
+  position: absolute;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 2;
+  backdrop-filter: blur(12px);
+}
+
+.skill-file-editor__fullscreen-preview {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  background: hsl(var(--background));
+}
+
+.skill-file-editor__fullscreen-preview-header {
+  height: 3rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0 1rem;
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--background) / 0.96);
+}
+
+.skill-file-editor__fullscreen-preview-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.skill-file-editor__fullscreen-preview-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.625rem;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--background) / 0.86);
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.skill-file-editor__fullscreen-preview-close:hover {
+  color: hsl(var(--foreground));
+  background: hsl(var(--accent));
+}
+
+.skill-file-editor__fullscreen-preview .skill-file-editor__resource-preview {
+  flex: 1;
+  min-height: 0;
 }
 
 .skill-file-editor__resource-audio {
@@ -428,6 +535,8 @@
 }
 
 .skill-file-editor__tree-list,
+.skill-file-editor__resource-preview,
+.skill-file-editor__resource-image-viewport,
 .skill-file-editor__preview,
 .skill-code-editor .cm-scroller {
   scrollbar-width: thin;
@@ -435,6 +544,8 @@
 }
 
 .skill-file-editor__tree-list::-webkit-scrollbar,
+.skill-file-editor__resource-preview::-webkit-scrollbar,
+.skill-file-editor__resource-image-viewport::-webkit-scrollbar,
 .skill-file-editor__preview::-webkit-scrollbar,
 .skill-code-editor .cm-scroller::-webkit-scrollbar {
   width: 10px;
@@ -442,6 +553,8 @@
 }
 
 .skill-file-editor__tree-list::-webkit-scrollbar-thumb,
+.skill-file-editor__resource-preview::-webkit-scrollbar-thumb,
+.skill-file-editor__resource-image-viewport::-webkit-scrollbar-thumb,
 .skill-file-editor__preview::-webkit-scrollbar-thumb,
 .skill-code-editor .cm-scroller::-webkit-scrollbar-thumb {
   background: hsl(var(--border));

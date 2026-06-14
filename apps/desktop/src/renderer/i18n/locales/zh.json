@@ -2009,6 +2009,7 @@
     "zoomOut": "缩小",
     "resetZoom": "重置缩放",
     "zoomIn": "放大",
+    "fullscreenPreview": "全屏预览",
     "fileSaved": "文件已保存",
     "noFiles": "此 Skill 暂无本地文件",
     "binaryFile": "二进制文件无法编辑",
