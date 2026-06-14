@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback, type DragEvent as ReactDragEvent, type MouseEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StarIcon, CopyIcon, PlayIcon, EditIcon, TrashIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, HistoryIcon, FolderIcon, Trash2Icon, GripVerticalIcon } from 'lucide-react';
+import { StarIcon, CopyIcon, PlayIcon, EditIcon, TrashIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, HistoryIcon, FolderIcon, Trash2Icon, GripVerticalIcon, CornerDownRightIcon, GitBranchIcon } from 'lucide-react';
 import type { Prompt } from '@prompthub/shared/types';
 import { useFolderStore } from '../../stores/folder.store';
 import { useTableConfig, type ColumnConfig } from '../../hooks/useTableConfig';
@@ -9,6 +9,7 @@ import { ColumnConfigMenu } from './ColumnConfigMenu';
 import { parsePromptVariables } from './prompt-modal-utils';
 import {
   flattenPromptTree,
+  getPromptHierarchyMeta,
   getPromptDropPosition,
   getPromptMoveTarget,
   type PromptDropPosition,
@@ -148,6 +149,7 @@ export function PromptTableView({
     () => new Map(tablePromptNodes.map((node) => [node.prompt.id, node.depth])),
     [tablePromptNodes],
   );
+  const hierarchyMeta = useMemo(() => getPromptHierarchyMeta(prompts), [prompts]);
 
   // Table column configuration
   // 表格列配置
@@ -558,6 +560,9 @@ export function PromptTableView({
               {currentPrompts.map((prompt) => {
                 const isSelected = selectedIds.has(prompt.id);
                 const aiContent = prompt.lastAiResponse || aiResults[prompt.id] || '';
+                const promptDepth = nodeDepthById.get(prompt.id) ?? 0;
+                const promptChildCount = hierarchyMeta.childCountById.get(prompt.id) ?? 0;
+                const promptParentTitle = hierarchyMeta.parentTitleById.get(prompt.id);
 
                 // Helper to render cell content based on column id
                 // 根据列 ID 渲染单元格内容的辅助函数
@@ -584,15 +589,39 @@ export function PromptTableView({
 
                     case 'title':
                       return (
-                        <td key={column.id} className="px-4 py-3" style={colWidth}>
+                        <td
+                          key={column.id}
+                          className={`relative px-4 py-3 ${promptDepth > 0 ? 'bg-primary/[0.02]' : ''}`}
+                          style={colWidth}
+                        >
+                          {promptDepth > 0 && (
+                            <>
+                              <span
+                                aria-hidden="true"
+                                className="absolute bottom-3 top-3 w-px bg-primary/30"
+                                style={{ left: `${16 + (promptDepth - 1) * 16 + 6}px` }}
+                              />
+                              <span
+                                aria-hidden="true"
+                                className="absolute h-px w-3 bg-primary/30"
+                                style={{ left: `${16 + (promptDepth - 1) * 16 + 6}px`, top: '1.35rem' }}
+                              />
+                            </>
+                          )}
                           <div
                             className="flex min-w-0 items-center gap-2"
-                            style={{ paddingLeft: `${(nodeDepthById.get(prompt.id) ?? 0) * 16}px` }}
+                            style={{ paddingLeft: `${promptDepth * 16}px` }}
                           >
                             <GripVerticalIcon
                               aria-hidden="true"
                               className="h-3.5 w-3.5 shrink-0 cursor-grab text-muted-foreground/55"
                             />
+                            {promptDepth > 0 && (
+                              <CornerDownRightIcon
+                                aria-hidden="true"
+                                className="h-3.5 w-3.5 shrink-0 text-primary/70"
+                              />
+                            )}
                             <button
                               type="button"
                               onClick={() => onViewDetail(prompt)}
@@ -602,7 +631,26 @@ export function PromptTableView({
                             >
                               {renderHighlightedText(prompt.title, highlightTerms, highlightClassName)}
                             </button>
+                            {promptChildCount > 0 && (
+                              <span
+                                className="inline-flex shrink-0 items-center gap-1 rounded border border-border/70 bg-muted/40 px-1.5 py-0.5 text-[11px] leading-none text-muted-foreground"
+                                aria-label={t('prompt.childPromptCountShort', { count: promptChildCount })}
+                              >
+                                <GitBranchIcon aria-hidden="true" className="h-3 w-3" />
+                                {t('prompt.childPromptCountShort', { count: promptChildCount })}
+                              </span>
+                            )}
                           </div>
+                          {promptParentTitle && (
+                            <div
+                              className="mt-1 inline-flex max-w-full items-center gap-1 rounded border border-border/70 bg-muted/40 px-1.5 py-0.5 text-[11px] leading-none text-muted-foreground"
+                              style={{ marginLeft: `${promptDepth * 16 + 22}px` }}
+                            >
+                              <CornerDownRightIcon aria-hidden="true" className="h-3 w-3 shrink-0" />
+                              <span className="shrink-0">{t('prompt.parentPrompt')}</span>
+                              <span className="truncate">{promptParentTitle}</span>
+                            </div>
+                          )}
                         </td>
                       );
 

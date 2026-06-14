@@ -35,7 +35,7 @@ const loadingFallback = (
     <Spinner />
   </div>
 );
-import { StarIcon, CopyIcon, HistoryIcon, HashIcon, FolderIcon, SparklesIcon, EditIcon, TrashIcon, CheckIcon, PlayIcon, LoaderIcon, XIcon, GitCompareIcon, ClockIcon, GlobeIcon, PinIcon, MessageSquareTextIcon, ImageIcon, DownloadIcon, SaveIcon, ZoomInIcon, Share2Icon, PaperclipIcon, GripVerticalIcon } from 'lucide-react';
+import { StarIcon, CopyIcon, HistoryIcon, HashIcon, FolderIcon, SparklesIcon, EditIcon, TrashIcon, CheckIcon, PlayIcon, LoaderIcon, XIcon, GitCompareIcon, ClockIcon, GlobeIcon, PinIcon, MessageSquareTextIcon, ImageIcon, DownloadIcon, SaveIcon, ZoomInIcon, Share2Icon, PaperclipIcon, GripVerticalIcon, CornerDownRightIcon, GitBranchIcon } from 'lucide-react';
 import { ContextMenu, ContextMenuItem } from '../ui/ContextMenu';
 import { ImagePreviewModal } from '../ui/ImagePreviewModal';
 import { LocalImage } from '../ui/LocalImage';
@@ -64,6 +64,7 @@ import {
 } from '../../services/prompt-filter';
 import {
   flattenPromptTree,
+  getPromptHierarchyMeta,
   getPromptDropPosition,
   getPromptMoveTarget,
   type PromptDropPosition,
@@ -159,6 +160,8 @@ function renderHighlightedText(text: string, terms: string[], highlightClassName
 const PromptCard = memo(function PromptCard({
   prompt,
   depth,
+  childCount,
+  parentTitle,
   isSelected,
   isDragging,
   isDropTarget,
@@ -175,6 +178,8 @@ const PromptCard = memo(function PromptCard({
 }: {
   prompt: Prompt;
   depth: number;
+  childCount: number;
+  parentTitle?: string;
   isSelected: boolean;
   isDragging: boolean;
   isDropTarget: boolean;
@@ -189,9 +194,12 @@ const PromptCard = memo(function PromptCard({
   onDrop: (e: ReactDragEvent<HTMLButtonElement>) => void;
   highlightTerms: string[];
 }) {
+  const { t } = useTranslation();
   const highlightClassName = isSelected
     ? 'bg-white/20 text-white rounded px-0.5'
     : 'bg-primary/15 text-primary rounded px-0.5';
+  const hierarchyTone = isSelected ? 'text-white/75 border-white/20 bg-white/10' : 'text-muted-foreground border-border/70 bg-muted/40';
+  const showDropBadge = Boolean(isDropTarget && dropPosition);
 
   return (
     <button
@@ -220,15 +228,36 @@ const PromptCard = memo(function PromptCard({
         ${isDropTarget && dropPosition === 'inside' ? 'ring-2 ring-primary/40 ring-inset' : ''}
         ${isDropTarget && dropPosition === 'before' ? 'border-t-2 border-t-primary' : ''}
         ${isDropTarget && dropPosition === 'after' ? 'border-b-2 border-b-primary' : ''}
+        ${depth > 0 && !isSelected ? 'border-l-2 border-l-primary/30 bg-primary/[0.03]' : ''}
       `}
       style={{ paddingLeft: `${depth * 14 + 12}px` }}
     >
+      {depth > 0 && (
+        <>
+          <span
+            aria-hidden="true"
+            className={`absolute bottom-3 top-3 w-px ${isSelected ? 'bg-white/25' : 'bg-primary/30'}`}
+            style={{ left: `${12 + (depth - 1) * 14 + 5}px` }}
+          />
+          <span
+            aria-hidden="true"
+            className={`absolute h-px w-3 ${isSelected ? 'bg-white/25' : 'bg-primary/30'}`}
+            style={{ left: `${12 + (depth - 1) * 14 + 5}px`, top: '1.35rem' }}
+          />
+        </>
+      )}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0 flex-1">
           <GripVerticalIcon
             aria-hidden="true"
             className={`w-3.5 h-3.5 flex-shrink-0 cursor-grab ${isSelected ? 'text-white/65' : 'text-muted-foreground/55'}`}
           />
+          {depth > 0 && (
+            <CornerDownRightIcon
+              aria-hidden="true"
+              className={`w-3.5 h-3.5 flex-shrink-0 ${isSelected ? 'text-white/70' : 'text-primary/75'}`}
+            />
+          )}
           {prompt.isPinned && (
             <PinIcon
               aria-hidden="true"
@@ -249,14 +278,41 @@ const PromptCard = memo(function PromptCard({
             {renderHighlightedText(prompt.title, highlightTerms, highlightClassName)}
           </h3>
         </div>
-        {prompt.isFavorite && (
-          <StarIcon
-            aria-hidden="true"
-            className={`w-3.5 h-3.5 flex-shrink-0 ${isSelected ? 'fill-white text-white' : 'fill-yellow-400 text-yellow-400'
-              }`}
-          />
-        )}
+        <div className="flex flex-shrink-0 items-center gap-1">
+          {showDropBadge && (
+            <span className={`inline-flex items-center rounded border px-1.5 py-0.5 ${hierarchyTone}`}>
+              {dropPosition === 'inside' ? (
+                <CornerDownRightIcon aria-hidden="true" className="h-3 w-3" />
+              ) : (
+                <GitBranchIcon aria-hidden="true" className="h-3 w-3" />
+              )}
+            </span>
+          )}
+          {childCount > 0 && (
+            <span
+              className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[11px] leading-none ${hierarchyTone}`}
+              aria-label={t('prompt.childPromptCountShort', { count: childCount })}
+            >
+              <GitBranchIcon aria-hidden="true" className="h-3 w-3" />
+              {t('prompt.childPromptCountShort', { count: childCount })}
+            </span>
+          )}
+          {prompt.isFavorite && (
+            <StarIcon
+              aria-hidden="true"
+              className={`w-3.5 h-3.5 ${isSelected ? 'fill-white text-white' : 'fill-yellow-400 text-yellow-400'
+                }`}
+            />
+          )}
+        </div>
       </div>
+      {parentTitle && (
+        <div className={`mt-1 inline-flex max-w-full items-center gap-1 rounded border px-1.5 py-0.5 text-[11px] leading-none ${hierarchyTone}`}>
+          <CornerDownRightIcon aria-hidden="true" className="h-3 w-3 shrink-0" />
+          <span className="shrink-0">{t('prompt.parentPrompt')}</span>
+          <span className="truncate">{parentTitle}</span>
+        </div>
+      )}
       {prompt.description && (
         <p className={`text-xs line-clamp-2 break-words mt-0.5 ${isSelected ? 'text-white/70' : 'text-muted-foreground'
           }`}>
@@ -316,6 +372,7 @@ const VirtualizedPromptList = memo(function VirtualizedPromptList({
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<PromptDropPosition | null>(null);
   const treeItems = useMemo(() => flattenPromptTree(prompts), [prompts]);
+  const hierarchyMeta = useMemo(() => getPromptHierarchyMeta(prompts), [prompts]);
 
   const rowVirtualizer = useVirtualizer({
     count: treeItems.length,
@@ -463,6 +520,8 @@ const VirtualizedPromptList = memo(function VirtualizedPromptList({
               <PromptCard
                 prompt={prompt}
                 depth={depth}
+                childCount={hierarchyMeta.childCountById.get(prompt.id) ?? 0}
+                parentTitle={hierarchyMeta.parentTitleById.get(prompt.id)}
                 isSelected={selectedPromptIdSet.has(prompt.id)}
                 isDragging={draggingId === prompt.id}
                 isDropTarget={dropTargetId === prompt.id}
@@ -1342,6 +1401,27 @@ function PromptSkillMainContent() {
   }, [lastSelectedId, selectPrompt, selectedId, visiblePrompts]);
 
   const selectedPrompt = prompts.find((p) => p.id === selectedId);
+  const promptById = useMemo(() => new Map(prompts.map((prompt) => [prompt.id, prompt])), [prompts]);
+  const selectedParentPrompt = useMemo(() => {
+    if (!selectedPrompt?.parentId) {
+      return null;
+    }
+
+    return promptById.get(selectedPrompt.parentId) ?? null;
+  }, [promptById, selectedPrompt?.parentId]);
+  const selectedChildPrompts = useMemo(() => {
+    if (!selectedPrompt) {
+      return [];
+    }
+
+    return prompts
+      .filter((prompt) => prompt.parentId === selectedPrompt.id)
+      .sort((left, right) => {
+        const byOrder = (left.order ?? 0) - (right.order ?? 0);
+        if (byOrder !== 0) return byOrder;
+        return left.title.localeCompare(right.title);
+      });
+  }, [prompts, selectedPrompt]);
 
   // Auto-select prompt language based on UI language (if English version exists)
   // 根据界面语言自动选择 Prompt 语言（如果有英文版本）
@@ -2385,6 +2465,56 @@ function PromptSkillMainContent() {
                       v{selectedPrompt.version}
                     </span>
                   </div>
+
+                  {(selectedParentPrompt || selectedChildPrompts.length > 0) && (
+                    <div className="mb-4 flex flex-wrap items-center gap-2 border-l-2 border-primary/40 pl-3 text-xs">
+                      {selectedParentPrompt && (
+                        <button
+                          type="button"
+                          onClick={() => selectPrompt(selectedParentPrompt.id)}
+                          aria-label={t('prompt.openParentPrompt', {
+                            title: selectedParentPrompt.title,
+                          })}
+                          className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border/70 bg-card px-2.5 py-1 text-muted-foreground shadow-sm transition-colors hover:border-primary/40 hover:text-primary"
+                        >
+                          <CornerDownRightIcon aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+                          <span className="shrink-0">{t('prompt.parentPrompt')}</span>
+                          <span className="max-w-[16rem] truncate text-foreground">
+                            {selectedParentPrompt.title}
+                          </span>
+                        </button>
+                      )}
+
+                      {selectedChildPrompts.length > 0 && (
+                        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                          <span className="inline-flex items-center gap-1 text-muted-foreground">
+                            <GitBranchIcon aria-hidden="true" className="h-3.5 w-3.5" />
+                            {t('prompt.childPrompts')}
+                          </span>
+                          {selectedChildPrompts.slice(0, 4).map((childPrompt) => (
+                            <button
+                              key={childPrompt.id}
+                              type="button"
+                              onClick={() => selectPrompt(childPrompt.id)}
+                              aria-label={t('prompt.openChildPrompt', {
+                                title: childPrompt.title,
+                              })}
+                              className="max-w-[12rem] truncate rounded-full border border-border/70 bg-card px-2.5 py-1 text-foreground shadow-sm transition-colors hover:border-primary/40 hover:text-primary"
+                            >
+                              {childPrompt.title}
+                            </button>
+                          ))}
+                          {selectedChildPrompts.length > 4 && (
+                            <span className="rounded-full border border-border/70 bg-muted/40 px-2 py-1 text-muted-foreground">
+                              {t('prompt.moreChildPrompts', {
+                                count: selectedChildPrompts.length - 4,
+                              })}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Images */}
                   {/* 图片 */}

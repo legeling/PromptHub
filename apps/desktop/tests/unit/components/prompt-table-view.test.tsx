@@ -257,6 +257,23 @@ describe("PromptTableView", () => {
     );
   });
 
+  it("shows visible hierarchy cues for parent and child prompts", async () => {
+    const parent = createPrompt(1);
+    const child = {
+      ...createPrompt(2),
+      parentId: parent.id,
+      order: 0,
+    };
+
+    await renderTableView({ prompts: [parent, child] });
+
+    expect(screen.getByRole("button", { name: parent.title })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: child.title })).toBeInTheDocument();
+    expect(screen.getByText("Parent")).toBeInTheDocument();
+    expect(screen.getByText(parent.title, { selector: "span" })).toBeInTheDocument();
+    expect(screen.getByText("Children 1")).toBeInTheDocument();
+  });
+
   it("clamps the active page when the prompt list shrinks", async () => {
     const prompts = Array.from({ length: 11 }, (_, index) => createPrompt(index + 1));
     const { rerender } = await renderTableView({ prompts });

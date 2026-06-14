@@ -8,6 +8,7 @@
 - [x] Add prompt store actions for relations and hierarchy moves.
 - [x] Wire drag-and-drop into the existing card prompt list.
 - [x] Wire drag-and-drop into the existing prompt table.
+- [x] Make dragged hierarchy visible in card, table, and detail surfaces.
 - [x] Preserve hierarchy fields in prompt workspace frontmatter.
 - [x] Sanitize hierarchy fields during backup import.
 - [x] Add DB and UI regression tests.

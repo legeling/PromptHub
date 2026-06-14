@@ -12,6 +12,11 @@ export interface PromptMoveTarget {
   order: number;
 }
 
+export interface PromptHierarchyMeta {
+  childCountById: Map<string, number>;
+  parentTitleById: Map<string, string>;
+}
+
 export function getPromptDropPosition(
   clientY: number,
   rect: Pick<DOMRect, "top" | "height">,
@@ -117,6 +122,27 @@ export function getPromptMoveTarget(
 export function getPromptChildCount(prompts: Prompt[], promptId: string): number {
   const promptById = new Map(prompts.map((prompt) => [prompt.id, prompt]));
   return prompts.filter((prompt) => getVisibleParentId(prompt, promptById) === promptId).length;
+}
+
+export function getPromptHierarchyMeta(prompts: Prompt[]): PromptHierarchyMeta {
+  const promptById = new Map(prompts.map((prompt) => [prompt.id, prompt]));
+  const childCountById = new Map<string, number>();
+  const parentTitleById = new Map<string, string>();
+
+  for (const prompt of prompts) {
+    const parentId = getVisibleParentId(prompt, promptById);
+    if (!parentId) {
+      continue;
+    }
+
+    childCountById.set(parentId, (childCountById.get(parentId) ?? 0) + 1);
+    const parent = promptById.get(parentId);
+    if (parent) {
+      parentTitleById.set(prompt.id, parent.title);
+    }
+  }
+
+  return { childCountById, parentTitleById };
 }
 
 function buildChildrenByParent(
