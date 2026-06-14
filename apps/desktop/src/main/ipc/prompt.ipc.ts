@@ -51,6 +51,25 @@ export function registerPromptIPC(db: PromptDB, folderDb: FolderDB, rawDb: Datab
     return ordered;
   };
 
+  const assertPromptMoveInput = (
+    promptId: string,
+    newParentId: string | null,
+    newOrder: number,
+  ) => {
+    if (typeof promptId !== 'string' || promptId.trim().length === 0) {
+      throw new Error('Prompt id is required');
+    }
+    if (
+      newParentId !== null &&
+      (typeof newParentId !== 'string' || newParentId.trim().length === 0)
+    ) {
+      throw new Error('Parent prompt id must be null or a non-empty string');
+    }
+    if (!Number.isFinite(newOrder) || newOrder < 0) {
+      throw new Error('Prompt order must be a non-negative number');
+    }
+  };
+
   // Create Prompt
   // 创建 Prompt
   ipcMain.handle(IPC_CHANNELS.PROMPT_CREATE, async (_, data: CreatePromptDTO) => {
@@ -251,6 +270,7 @@ export function registerPromptIPC(db: PromptDB, folderDb: FolderDB, rawDb: Datab
   });
 
   ipcMain.handle(IPC_CHANNELS.PROMPT_MOVE, async (_, promptId: string, newParentId: string | null, newOrder: number) => {
+    assertPromptMoveInput(promptId, newParentId, newOrder);
     db.movePrompt(promptId, newParentId, newOrder);
     syncWorkspace();
     return true;

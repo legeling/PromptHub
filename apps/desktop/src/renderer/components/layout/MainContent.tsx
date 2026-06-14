@@ -21,7 +21,6 @@ const SkillManager = lazy(() => import('../skill/SkillManager').then(m => ({ def
 const RulesManager = lazy(() => import('../rules/RulesManager').then(m => ({ default: m.RulesManager })));
 const EditPromptModal = lazy(() => import('../prompt/EditPromptModal').then(m => ({ default: m.EditPromptModal })));
 const PromptQuickRewriteDialog = lazy(() => import('../prompt/PromptQuickRewriteDialog').then(m => ({ default: m.PromptQuickRewriteDialog })));
-const PromptTableView = lazy(() => import('../prompt/PromptTableView').then(m => ({ default: m.PromptTableView })));
 const PromptGalleryView = lazy(() => import('../prompt/PromptGalleryView').then(m => ({ default: m.PromptGalleryView })));
 const PromptKanbanView = lazy(() => import('../prompt/PromptKanbanView').then(m => ({ default: m.PromptKanbanView })));
 const PromptListView = lazy(() => import('../prompt/PromptListView').then(m => ({ default: m.PromptListView })));
@@ -1930,42 +1929,6 @@ function PromptSkillMainContent() {
         </Suspense>
       ) : (
       <>
-      {/* List view mode */}
-      {/* 列表视图模式 */}
-      <div
-        className={getViewClass('list')}
-      >
-
-
-        {/* Top: sort + view switch */}
-        {/* 顶部：排序 + 视图切换 */}
-        <PromptListHeader count={sortedPrompts.length} />
-
-        {/* Table view */}
-        {/* 表格视图 */}
-        <div className="flex-1 overflow-hidden">
-          <Suspense fallback={loadingFallback}>
-            <PromptTableView
-              prompts={sortedPrompts}
-              highlightTerms={highlightTerms}
-              onSelect={(id) => selectPrompt(id)}
-              onToggleFavorite={toggleFavorite}
-              onCopy={handleCopyPrompt}
-              onEdit={(prompt) => setEditingPrompt(prompt)}
-              onDelete={handleDeletePrompt}
-              onAiTest={handleAiTestFromTable}
-              onVersionHistory={handleVersionHistory}
-              onViewDetail={handleViewDetail}
-              aiResults={aiResponseCache}
-              onBatchFavorite={handleBatchFavorite}
-              onBatchMove={handleBatchMove}
-              onBatchDelete={handleBatchDelete}
-              onContextMenu={handleContextMenu}
-            />
-          </Suspense>
-        </div>
-      </div>
-
       {/* Gallery view */}
       {/* Gallery 视图 */}
       <div

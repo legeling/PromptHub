@@ -690,43 +690,119 @@ export class PromptDB {
    * 移动提示词到新的父节点或在同级中重新排序
    */
   movePrompt(promptId: string, newParentId: string | null, newOrder: number): void {
+    if (!Number.isFinite(newOrder) || newOrder < 0) {
+      throw new Error("Prompt order must be a non-negative number");
+    }
+    if (newParentId !== null && newParentId.trim().length === 0) {
+      throw new Error("Parent prompt id must be null or a non-empty string");
+    }
+
     const txn = this.db.transaction(() => {
-      // Get current parent and order
       const current = this.db
-        .prepare("SELECT parent_id, sort_order FROM prompts WHERE id = ?")
-        .get(promptId) as { parent_id: string | null; sort_order: number } | undefined;
+        .prepare("SELECT id, parent_id FROM prompts WHERE id = ?")
+        .get(promptId) as { id: string; parent_id: string | null } | undefined;
 
       if (!current) return;
 
+      if (newParentId === promptId) {
+        throw new Error("Cannot move a prompt under itself");
+      }
+
+      this.assertValidPromptParent(promptId, newParentId);
+
       const oldParentId = current.parent_id;
-      const oldOrder = current.sort_order;
+      const targetParentId = newParentId ?? null;
 
-      // Update the moved prompt
-      this.db
-        .prepare("UPDATE prompts SET parent_id = ?, sort_order = ?, updated_at = ? WHERE id = ?")
-        .run(newParentId, newOrder, Date.now(), promptId);
-
-      // If parent changed, adjust orders in old parent
-      if (oldParentId !== newParentId && oldParentId !== null) {
-        this.db
-          .prepare("UPDATE prompts SET sort_order = sort_order - 1 WHERE parent_id = ? AND sort_order > ?")
-          .run(oldParentId, oldOrder);
+      if (oldParentId !== targetParentId) {
+        this.rewritePromptSiblingOrder(
+          oldParentId,
+          this.getPromptSiblingIds(oldParentId).filter((id) => id !== promptId),
+        );
       }
 
-      // Adjust orders in new parent to make room
-      if (newParentId !== null) {
-        this.db
-          .prepare("UPDATE prompts SET sort_order = sort_order + 1 WHERE parent_id = ? AND sort_order >= ? AND id != ?")
-          .run(newParentId, newOrder, promptId);
-      } else {
-        // No parent (root level)
-        this.db
-          .prepare("UPDATE prompts SET sort_order = sort_order + 1 WHERE parent_id IS NULL AND sort_order >= ? AND id != ?")
-          .run(newOrder, promptId);
-      }
+      const targetSiblingIds = this.getPromptSiblingIds(targetParentId).filter(
+        (id) => id !== promptId,
+      );
+      const targetIndex = Math.min(Math.trunc(newOrder), targetSiblingIds.length);
+      targetSiblingIds.splice(targetIndex, 0, promptId);
+      this.rewritePromptSiblingOrder(
+        targetParentId,
+        targetSiblingIds,
+        promptId,
+        Date.now(),
+      );
     });
 
     txn();
+  }
+
+  private assertValidPromptParent(promptId: string, parentId: string | null): void {
+    if (parentId === null) {
+      return;
+    }
+
+    let currentParentId: string | null = parentId;
+    const visited = new Set<string>();
+
+    while (currentParentId) {
+      if (currentParentId === promptId) {
+        throw new Error("Cannot move a prompt under its descendant");
+      }
+      if (visited.has(currentParentId)) {
+        throw new Error("Cannot move prompt into a cyclic hierarchy");
+      }
+      visited.add(currentParentId);
+
+      const parent = this.db
+        .prepare("SELECT parent_id FROM prompts WHERE id = ?")
+        .get(currentParentId) as { parent_id: string | null } | undefined;
+
+      if (!parent) {
+        throw new Error("Parent prompt does not exist");
+      }
+
+      currentParentId = parent.parent_id;
+    }
+  }
+
+  private getPromptSiblingIds(parentId: string | null): string[] {
+    const stmt =
+      parentId === null
+        ? this.db.prepare(
+            "SELECT id FROM prompts WHERE parent_id IS NULL ORDER BY sort_order ASC, updated_at DESC, id ASC",
+          )
+        : this.db.prepare(
+            "SELECT id FROM prompts WHERE parent_id = ? ORDER BY sort_order ASC, updated_at DESC, id ASC",
+          );
+
+    const rows = (
+      parentId === null ? stmt.all() : stmt.all(parentId)
+    ) as Array<{ id: string }>;
+
+    return rows.map((row) => row.id);
+  }
+
+  private rewritePromptSiblingOrder(
+    parentId: string | null,
+    orderedIds: string[],
+    movedPromptId?: string,
+    movedAt?: number,
+  ): void {
+    const siblingStmt = this.db.prepare(
+      "UPDATE prompts SET parent_id = ?, sort_order = ? WHERE id = ?",
+    );
+    const movedStmt = this.db.prepare(
+      "UPDATE prompts SET parent_id = ?, sort_order = ?, updated_at = ? WHERE id = ?",
+    );
+
+    orderedIds.forEach((id, index) => {
+      if (id === movedPromptId) {
+        movedStmt.run(parentId, index, movedAt ?? Date.now(), id);
+        return;
+      }
+
+      siblingStmt.run(parentId, index, id);
+    });
   }
 
   /**

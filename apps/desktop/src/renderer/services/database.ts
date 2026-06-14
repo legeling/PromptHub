@@ -361,32 +361,139 @@ export async function movePrompt(
   newParentId: string | null,
   newOrder: number,
 ): Promise<void> {
+  if (!Number.isFinite(newOrder) || newOrder < 0) {
+    throw new Error("Prompt order must be a non-negative number");
+  }
+
   if (window.api?.prompt?.move) {
     await window.api.prompt.move(promptId, newParentId, newOrder);
     return;
   }
 
   const database = await getDatabase();
-  return new Promise((resolve, reject) => {
+  return new Promise<void>((resolve, reject) => {
     const transaction = database.transaction(STORES.PROMPTS, "readwrite");
     const store = transaction.objectStore(STORES.PROMPTS);
-    const getRequest = store.get(promptId);
+    const getAllRequest = store.getAll();
 
-    getRequest.onsuccess = () => {
-      const prompt = getRequest.result;
-      if (prompt) {
-        prompt.parentId = newParentId;
-        prompt.order = newOrder;
-        prompt.updatedAt = new Date().toISOString();
-        const putRequest = store.put(prompt);
-        putRequest.onsuccess = () => resolve();
-        putRequest.onerror = () => reject(putRequest.error);
-      } else {
+    getAllRequest.onsuccess = () => {
+      const prompts = getAllRequest.result as Prompt[];
+      const prompt = prompts.find((item) => item.id === promptId);
+      if (!prompt) {
         resolve();
+        return;
+      }
+
+      try {
+        const targetParentId = newParentId ?? null;
+        assertPromptMoveAllowed(prompts, promptId, targetParentId);
+        const reorderedPrompts = reorderPromptTree(
+          prompts,
+          promptId,
+          targetParentId,
+          newOrder,
+        );
+        const now = new Date().toISOString();
+
+        for (const item of reorderedPrompts) {
+          const putRequest = store.put({
+            ...item,
+            updatedAt: item.id === promptId ? now : item.updatedAt,
+          });
+          putRequest.onerror = () => reject(putRequest.error);
+        }
+
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
+      } catch (error) {
+        reject(error);
       }
     };
-    getRequest.onerror = () => reject(getRequest.error);
+    getAllRequest.onerror = () => reject(getAllRequest.error);
   });
+}
+
+function assertPromptMoveAllowed(
+  prompts: Prompt[],
+  promptId: string,
+  parentId: string | null,
+): void {
+  if (!parentId) {
+    return;
+  }
+
+  if (parentId === promptId) {
+    throw new Error("Cannot move a prompt under itself");
+  }
+
+  const promptById = new Map(prompts.map((prompt) => [prompt.id, prompt]));
+  let currentParentId: string | null | undefined = parentId;
+  const visited = new Set<string>();
+
+  while (currentParentId) {
+    if (currentParentId === promptId) {
+      throw new Error("Cannot move a prompt under its descendant");
+    }
+    if (visited.has(currentParentId)) {
+      throw new Error("Cannot move prompt into a cyclic hierarchy");
+    }
+
+    visited.add(currentParentId);
+    const parent = promptById.get(currentParentId);
+    if (!parent) {
+      throw new Error("Parent prompt does not exist");
+    }
+    currentParentId = parent.parentId;
+  }
+}
+
+function reorderPromptTree(
+  prompts: Prompt[],
+  promptId: string,
+  parentId: string | null,
+  order: number,
+): Prompt[] {
+  const prompt = prompts.find((item) => item.id === promptId);
+  if (!prompt) {
+    return prompts;
+  }
+
+  const oldParentId = prompt.parentId ?? null;
+  const nextPrompts = prompts.map((item) => ({ ...item }));
+  normalizePromptSiblings(nextPrompts, oldParentId, promptId);
+
+  const targetSiblings = nextPrompts
+    .filter((item) => (item.parentId ?? null) === parentId && item.id !== promptId)
+    .sort(comparePromptOrder);
+  const targetIndex = Math.min(Math.trunc(order), targetSiblings.length);
+  targetSiblings.splice(targetIndex, 0, prompt);
+
+  targetSiblings.forEach((item, index) => {
+    const target = nextPrompts.find((candidate) => candidate.id === item.id);
+    if (target) {
+      target.parentId = parentId;
+      target.order = index;
+    }
+  });
+
+  return nextPrompts;
+}
+
+function normalizePromptSiblings(
+  prompts: Prompt[],
+  parentId: string | null,
+  excludeId: string,
+): void {
+  prompts
+    .filter((prompt) => (prompt.parentId ?? null) === parentId && prompt.id !== excludeId)
+    .sort(comparePromptOrder)
+    .forEach((prompt, index) => {
+      prompt.order = index;
+    });
+}
+
+function comparePromptOrder(a: Prompt, b: Prompt): number {
+  return (a.order ?? 0) - (b.order ?? 0) || a.id.localeCompare(b.id);
 }
 
 // ==================== Version 操作 ====================

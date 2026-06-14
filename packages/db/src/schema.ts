@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS prompts (
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   FOREIGN KEY (folder_id) REFERENCES folders(id) ON DELETE SET NULL,
-  FOREIGN KEY (parent_id) REFERENCES prompts(id) ON DELETE CASCADE
+  FOREIGN KEY (parent_id) REFERENCES prompts(id) ON DELETE SET NULL
 );
 
 -- 版本表
