@@ -16,4 +16,10 @@
 - [x] Run desktop lint.
 - [x] Run desktop build.
 - [x] Run diff whitespace check.
+- [x] Add `prompt_relations` persistence for `related_to`, `variant_of`, `depends_on`, and `next_step`.
+- [x] Add relation IPC/preload/renderer service/store contracts.
+- [x] Add drag-center relation chooser in `PromptListView`.
+- [x] Render compact relation badges in list rows.
+- [x] Add graph relation backup export/import and sanitization.
+- [x] Add DB, UI, backup format, backup service, and filesystem backup regression tests for graph relations.
 - [ ] Commit and push PR branch.

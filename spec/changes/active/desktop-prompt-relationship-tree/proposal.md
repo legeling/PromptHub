@@ -9,25 +9,32 @@
 - 删除父 Prompt 会级联删除子 Prompt，容易误删用户内容。
 - 移动 Prompt 缺少自引用、后代循环和老数据库迁移防护。
 
+合并贡献者树结构后，用户继续要求补齐 Prompt 之间的关系表达。产品方向是保留拖拽作为主入口，但不能把所有关系都压成树状父子；Prompt 之间还需要关联、变体、依赖和流程顺序等逻辑关系。
+
 ## Scope
 
 - In scope:
 - 保留贡献者的拖拽树和键盘缩进交互。
 - 将 `parentId/order` 语义收敛为 V1 的 `grouped_under` 逻辑分组。
+- 增加 `prompt_relations` 持久表，承载 `related_to`、`variant_of`、`depends_on`、`next_step` 四类非树关系。
+- 将列表中间拖拽从“直接分组”调整为就地关系选择器；选 `grouped_under` 继续走树移动，选其它关系写入 `prompt_relations`。
+- 在列表项内显示已有图关系小标签，帮助用户直观看到 Prompt 之间的逻辑连接。
+- 将关系纳入桌面备份导出/恢复，避免关系只存在当前 SQLite 文件中。
 - 修复 list 视图重复渲染旧表格和新树列表的问题。
 - 为 SQLite fresh schema、existing-user migration、IPC、IndexedDB fallback 和 DB 层移动逻辑补安全边界。
 - 增加 DB 回归测试和迁移测试。
 
 - Out of scope:
 - 本轮不实现完整 Obsidian 式图谱视图。
-- 本轮不实现 `variant_of`、`depends_on`、`next_step`、`related_to` 的独立关系表和专门 UI。
+- 本轮不做自动语义推断、批量关系挖掘或单独的复杂关系编辑页。
 - 本轮不做 Prompt 内容继承、多态覆盖或自动组合执行。
 
 ## Risks
 
 - `parentId` 作为 V1 快速落地字段，不能被后续误解为内容所有权、继承关系或删除级联。
+- `prompt_relations` 与 `parentId` 是两类持久表达：前者是图关系，后者是树分组投影。后续 UI 必须继续避免把二者混为同一种数据。
 - 树状 list 视图替代原 list 表格后，批量工具条能力需要后续重新接入树列表或提供单独表格模式。
-- 后续若引入图谱关系表，需要明确 `parentId` 是兼容投影还是迁移到 `prompt_relations` 的派生字段。
+- 图关系如果未纳入备份、恢复和同步，会造成用户在迁移设备时丢失关系上下文；本轮先覆盖桌面备份，远端同步/图谱视图仍可独立演进。
 
 ## Rollback Thinking
 
