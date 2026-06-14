@@ -1019,46 +1019,32 @@ describe("SkillInstaller.scanRemoteGithub", () => {
     expect(cloneSpy).not.toHaveBeenCalled();
   });
 
-  it("accepts SSH GitHub store URLs without cloning the repository", async () => {
+  it("scans SSH GitHub store URLs by cloning through the local SSH transport", async () => {
     await SkillInstaller.init();
 
     const cloneSpy = vi.spyOn(skillInstallerUtils, "gitClone");
-    vi.spyOn(SkillInstaller, "fetchRemoteContent").mockImplementation(
-      async (url: string) => {
-        if (url === "https://api.github.com/repos/icelemon/skills") {
-          return JSON.stringify({ default_branch: "main" });
-        }
-        if (
-          url ===
-          "https://api.github.com/repos/icelemon/skills/git/trees/main?recursive=1"
-        ) {
-          return JSON.stringify({
-            tree: [
-              {
-                path: "github-skill/SKILL.md",
-                type: "blob",
-                sha: "github-sha",
-              },
-            ],
-          });
-        }
-        if (
-          url ===
-          "https://raw.githubusercontent.com/icelemon/skills/main/github-skill/SKILL.md"
-        ) {
-          return [
-            "---",
-            "name: github-skill",
-            "description: GitHub SSH skill",
-            "author: icelemon",
-            "tags: [github]",
-            "---",
-            "# GitHub skill",
-          ].join("\n");
-        }
-        throw new Error(`Unexpected URL: ${url}`);
-      },
-    );
+    const branchSpy = vi
+      .spyOn(skillInstallerUtils, "gitGetCurrentBranch")
+      .mockResolvedValue("main");
+    const fetchSpy = vi.spyOn(SkillInstaller, "fetchRemoteContent");
+    cloneSpy.mockImplementation(async (_url: string, destDir: string) => {
+      const skillDir = path.join(destDir, "github-skill");
+      await fs.mkdir(skillDir, { recursive: true });
+      await fs.writeFile(
+        path.join(skillDir, "SKILL.md"),
+        [
+          "---",
+          "name: github-skill",
+          "description: GitHub SSH skill",
+          "author: icelemon",
+          "tags: [github]",
+          "---",
+          "# GitHub skill",
+        ].join("\n"),
+        "utf-8",
+      );
+      await fs.writeFile(path.join(skillDir, "README.md"), "docs", "utf-8");
+    });
 
     const result = await SkillInstaller.scanRemoteGithub(
       "git@github.com:icelemon/skills.git",
@@ -1066,13 +1052,19 @@ describe("SkillInstaller.scanRemoteGithub", () => {
     );
 
     expect(result).toHaveLength(1);
+    expect(cloneSpy).toHaveBeenCalledWith(
+      "git@github.com:icelemon/skills.git",
+      expect.stringContaining("icelemon-skills"),
+      undefined,
+    );
+    expect(branchSpy).toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalled();
     expect(result[0].source_url).toBe(
       "https://github.com/icelemon/skills/tree/main/github-skill",
     );
     expect(result[0].content_url).toBe(
       "https://raw.githubusercontent.com/icelemon/skills/main/github-skill/SKILL.md",
     );
-    expect(cloneSpy).not.toHaveBeenCalled();
   });
 
   it("rejects invalid git repository URLs", async () => {

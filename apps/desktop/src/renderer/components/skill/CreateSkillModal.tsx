@@ -129,6 +129,7 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
     new Set(),
   );
   const [githubScanDone, setGithubScanDone] = useState(false);
+  const [lastScannedGithubUrl, setLastScannedGithubUrl] = useState("");
   const [githubImportNotice, setGithubImportNotice] = useState<string | null>(
     null,
   );
@@ -223,6 +224,12 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
     () => annotatedGitHubResults.filter((skill) => !skill.isImported),
     [annotatedGitHubResults],
   );
+  const normalizedGithubUrl = githubUrl.trim();
+  const githubScanNeedsRefresh = Boolean(
+    lastScannedGithubUrl &&
+      normalizedGithubUrl &&
+      normalizedGithubUrl !== lastScannedGithubUrl,
+  );
 
   // Get default chat model for AI generation
   // 获取默认对话模型用于 AI 生成
@@ -271,6 +278,23 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, isNativeFullscreen, handleExitNativeFullscreen]);
 
+  const resetGitHubImportState = useCallback(
+    (options?: { preserveUrl?: boolean; preserveLastScannedUrl?: boolean }) => {
+      setError(null);
+      setGithubScanResults([]);
+      setSelectedGitHubSkills(new Set());
+      setGithubScanDone(false);
+      setGithubImportNotice(null);
+      if (!options?.preserveUrl) {
+        setGithubUrl("");
+      }
+      if (!options?.preserveLastScannedUrl) {
+        setLastScannedGithubUrl("");
+      }
+    },
+    [],
+  );
+
   if (!isOpen) return null;
 
   const hasUnsavedChanges = () => {
@@ -296,11 +320,7 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
     setMode("select");
     setError(null);
     setShowUnsavedDialog(false);
-    setGithubUrl("");
-    setGithubScanResults([]);
-    setSelectedGitHubSkills(new Set());
-    setGithubScanDone(false);
-    setGithubImportNotice(null);
+    resetGitHubImportState();
     setName("");
     setDescription("");
     setInstructions("");
@@ -325,6 +345,11 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
     setScanTagDrafts({});
     setScanTagInputs({});
     onClose();
+  };
+
+  const enterGitHubMode = () => {
+    resetGitHubImportState();
+    setMode("github");
   };
 
   // MD file upload handler
@@ -486,7 +511,7 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
   };
 
   const handleGitHubInstall = async () => {
-    if (!githubUrl.trim()) {
+    if (!normalizedGithubUrl) {
       setError(t("skill.enterGithubUrl", "Please enter a Git repository URL"));
       return;
     }
@@ -494,8 +519,9 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
     setIsLoading(true);
     setError(null);
 
+    let parsedRepo: ReturnType<typeof parseGitRepo> | null = null;
     try {
-      const parsedRepo = parseGitRepo(githubUrl.trim());
+      parsedRepo = parseGitRepo(normalizedGithubUrl);
       if (!parsedRepo) {
         throw new Error(
           t("skill.invalidGithubUrl", "Invalid Git repository URL format"),
@@ -505,10 +531,10 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
       const scannedSkills =
         !isGitHubHost(parsedRepo.host) || parsedRepo.protocol === "ssh"
           ? await window.api.skill.scanRemoteGithub(
-              githubUrl.trim(),
+              normalizedGithubUrl,
               BUILTIN_SKILL_REGISTRY,
             )
-          : await loadGitHubSkillRepo(githubUrl.trim(), {
+          : await loadGitHubSkillRepo(normalizedGithubUrl, {
               branch: undefined,
               directory: undefined,
               fetchRemoteContent: (url) =>
@@ -516,7 +542,7 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
               registrySkills: BUILTIN_SKILL_REGISTRY,
               rateLimitMessage: t(
                 "skill.remoteStoreRateLimitHint",
-                "GitHub API rate limit reached. Try again in a few minutes, or switch to another network and retry.",
+                "GitHub API rate limit reached. Try again in a few minutes, or switch this repository URL to SSH to avoid the anonymous API limit.",
               ),
               networkMessage: t(
                 "skill.remoteStoreNetworkHint",
@@ -549,12 +575,21 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
         ),
       );
       setGithubScanDone(true);
+      setLastScannedGithubUrl(normalizedGithubUrl);
       setGithubImportNotice(null);
     } catch (err) {
-      setError(
+      const message =
         err instanceof Error
           ? err.message
-          : t("skill.installFailed", "Failed to install from GitHub"),
+          : t("skill.installFailed", "Failed to install from GitHub");
+      setError(
+        parsedRepo?.protocol !== "ssh" &&
+          message.includes("GitHub API rate limit reached")
+          ? t(
+              "skill.remoteStoreRateLimitHint",
+              "GitHub API rate limit reached. Try again in a few minutes, or switch this repository URL to SSH to avoid the anonymous API limit.",
+            )
+          : message,
       );
     } finally {
       setIsLoading(false);
@@ -993,7 +1028,7 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
               ? "w-[95vw] h-[95vh]"
               : "w-full max-w-2xl max-h-[90vh]"
             : isGitHubMode
-              ? "w-full max-w-4xl max-h-[90vh]"
+              ? "w-[min(92vw,1100px)] max-h-[92vh]"
               : isScanMode && hasScanResults
                 ? "w-[min(92vw,1100px)] max-h-[92vh]"
                 : "w-full max-w-lg max-h-[90vh]"
@@ -1103,7 +1138,7 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
               {/* GitHub Option */}
               <button
                 type="button"
-                onClick={() => setMode("github")}
+                onClick={enterGitHubMode}
                 className="w-full flex items-center gap-4 p-4 bg-accent/50 hover:bg-accent border border-border rounded-xl transition-colors group text-left"
               >
                 <div className="p-3 bg-background rounded-lg group-hover:bg-primary/10 transition-colors">
@@ -1180,41 +1215,91 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
 
           {isGitHubMode && (
             <div className="flex h-full min-h-0 flex-col gap-4">
-              <div>
+              <div
+                data-testid="github-mode-intro"
+                className="space-y-3"
+              >
                 <label className="block text-sm font-medium mb-2">
                   {t("skill.githubUrl", "Git Repository URL")}
                 </label>
-                <input
-                  type="text"
-                  value={githubUrl}
-                  onChange={(e) => setGithubUrl(e.target.value)}
-                  placeholder="https://github.com/owner/skill-repo"
-                  className="w-full px-4 py-2.5 bg-muted/50 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
+                <div className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    value={githubUrl}
+                    onChange={(e) => {
+                      const nextUrl = e.target.value;
+                      setGithubUrl(nextUrl);
+                      setError(null);
+                      if (githubScanDone || githubScanResults.length > 0) {
+                        setGithubScanResults([]);
+                        setSelectedGitHubSkills(new Set());
+                        setGithubScanDone(false);
+                        setGithubImportNotice(null);
+                      }
+                    }}
+                    placeholder="https://github.com/owner/skill-repo"
+                    className="w-full px-4 py-2.5 bg-muted/50 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handleGitHubInstall()}
+                    disabled={isLoading || !normalizedGithubUrl}
+                    className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-50"
+                  >
+                    {isLoading ? (
+                      <LoaderIcon
+                        className="w-4 h-4 animate-spin"
+                        aria-hidden="true"
+                      />
+                    ) : (
+                      <SearchIcon className="w-4 h-4" aria-hidden="true" />
+                    )}
+                    {githubScanNeedsRefresh
+                      ? t("skill.rescanRepository", "Rescan Repository")
+                      : t("skill.scanRepository", "Scan Repository")}
+                  </button>
+                </div>
                 <p className="mt-2 text-xs text-muted-foreground">
                   {t(
                     "skill.githubUrlHint",
                     "Use the repository root URL. PromptHub supports GitHub, Gitea, and other self-hosted Git repositories over HTTPS or SSH, then scans the repo for importable SKILL.md entries before you choose what to import.",
                   )}
                 </p>
-                <div className="mt-3 rounded-lg border border-border bg-muted/20 p-3 text-xs text-muted-foreground space-y-1.5">
-                  <p>
+                {githubScanNeedsRefresh && (
+                  <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
                     {t(
-                      "skill.githubConstraintHint",
-                      "Only repository root URLs are supported, such as https://github.com/owner/repo, https://gitea.example.com/owner/repo, or git@host:owner/repo.git",
+                      "skill.githubScanNeedsRefresh",
+                      "The repository URL changed. Scan again to refresh the import options.",
                     )}
-                  </p>
-                  <p>
+                  </div>
+                )}
+                {hasGitHubResults ? (
+                  <div className="rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
                     {t(
                       "skill.githubFallbackHint",
                       "PromptHub will scan the repository for multiple SKILL.md entries. If none exist, it will fall back to the root README.md as a single import option.",
                     )}
-                  </p>
-                </div>
+                  </div>
+                ) : (
+                  <div className="mt-3 rounded-lg border border-border bg-muted/20 p-3 text-xs text-muted-foreground space-y-1.5">
+                    <p>
+                      {t(
+                        "skill.githubConstraintHint",
+                        "Only repository root URLs are supported, such as https://github.com/owner/repo, https://gitea.example.com/owner/repo, or git@host:owner/repo.git",
+                      )}
+                    </p>
+                    <p>
+                      {t(
+                        "skill.githubFallbackHint",
+                        "PromptHub will scan the repository for multiple SKILL.md entries. If none exist, it will fall back to the root README.md as a single import option.",
+                      )}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {hasGitHubResults && (
-                <div className="flex min-h-0 flex-1 flex-col space-y-3 rounded-xl border border-border bg-background/60 p-4">
+                <div className="flex min-h-0 flex-1 flex-col space-y-3 overflow-hidden rounded-xl border border-border bg-background/60 p-4">
                   {githubImportNotice && (
                     <div className="rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-xs text-primary">
                       {githubImportNotice}
@@ -1285,7 +1370,7 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
 
                   <div
                     data-testid="github-results-scroll-area"
-                    className="min-h-0 flex-1 overflow-y-auto pr-1"
+                    className="min-h-[24rem] flex-1 overflow-y-auto pr-2"
                   >
                     <div className="grid grid-cols-1 gap-3">
                       {annotatedGitHubResults.map((skill) => {
@@ -1301,7 +1386,7 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
                               toggleGitHubSkill(selectionKey)
                             }
                             disabled={skill.isImported}
-                            className={`w-full rounded-2xl border p-4 text-left transition-all shadow-sm ${
+                            className={`w-full rounded-2xl border p-3.5 text-left transition-all shadow-sm ${
                               skill.isImported
                                 ? "border-border bg-muted/30 opacity-70 cursor-not-allowed"
                                 : isSelected
@@ -1311,7 +1396,7 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
                           >
                             <div className="flex items-start gap-3">
                               <div
-                                className={`mt-0.5 flex h-10 w-10 items-center justify-center rounded-xl ${
+                                className={`mt-0.5 flex h-9 w-9 items-center justify-center rounded-xl ${
                                   skill.isImported
                                     ? "bg-accent text-muted-foreground"
                                     : "bg-primary/10 text-primary"
@@ -1339,24 +1424,24 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
                                       )}
                                     </div>
                                     <p className="mt-1 text-[11px] text-muted-foreground break-all">
-                                      {skill.source_url}
-                                    </p>
+                                    {skill.source_url}
+                                  </p>
                                   </div>
                                   <div className="shrink-0 pt-0.5">
                                     {skill.isImported || isSelected ? (
-                                  <CheckSquareIcon
-                                    aria-hidden="true"
-                                    className="w-4 h-4 text-primary"
-                                  />
-                                ) : (
-                                  <SquareIcon
-                                    aria-hidden="true"
-                                    className="w-4 h-4 text-muted-foreground"
-                                  />
-                                )}
-                                  </div>
+                                      <CheckSquareIcon
+                                        aria-hidden="true"
+                                        className="w-4 h-4 text-primary"
+                                      />
+                                    ) : (
+                                      <SquareIcon
+                                        aria-hidden="true"
+                                        className="w-4 h-4 text-muted-foreground"
+                                      />
+                                    )}
+                                    </div>
                                 </div>
-                                <p className="mt-3 text-xs leading-5 text-muted-foreground line-clamp-3">
+                                <p className="mt-2.5 text-xs leading-5 text-muted-foreground line-clamp-2">
                                   {skill.description}
                                 </p>
                               </div>
@@ -2180,35 +2265,32 @@ export function CreateSkillModal({ isOpen, onClose }: CreateSkillModalProps) {
           >
             <button
               type="button"
-              onClick={() => setMode("select")}
+              onClick={() => {
+                resetGitHubImportState();
+                setMode("select");
+              }}
               className="px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
             >
               {t("common.back", "Back")}
             </button>
-            <button
-              type="button"
-              onClick={
-                githubScanDone
-                  ? handleImportSelectedGitHubSkills
-                  : handleGitHubInstall
-              }
-              disabled={
-                isLoading || (githubScanDone && selectedGitHubSkills.size === 0)
-              }
-              className="flex min-w-[12rem] items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
-            >
-              {isLoading ? (
-                <LoaderIcon
-                  className="w-4 h-4 animate-spin"
-                  aria-hidden="true"
-                />
-              ) : (
-                <CheckIcon className="w-4 h-4" aria-hidden="true" />
-              )}
-              {githubScanDone
-                ? t("skill.importSelected", "Import Selected")
-                : t("skill.scanRepository", "Scan Repository")}
-            </button>
+            {githubScanDone && (
+              <button
+                type="button"
+                onClick={handleImportSelectedGitHubSkills}
+                disabled={isLoading || selectedGitHubSkills.size === 0}
+                className="flex min-w-[12rem] items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              >
+                {isLoading ? (
+                  <LoaderIcon
+                    className="w-4 h-4 animate-spin"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <CheckIcon className="w-4 h-4" aria-hidden="true" />
+                )}
+                {t("skill.importSelected", "Import Selected")}
+              </button>
+            )}
           </div>
         )}
 

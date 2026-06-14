@@ -43,6 +43,7 @@ import { sanitizeImportedSkillDraft } from "./skill-import-sanitize";
 import {
   getPlatformSkillsDir,
   gitClone,
+  gitGetCurrentBranch,
   gitListRemoteBranches,
   resolvePlatformPath,
 } from "./skill-installer-utils";
@@ -1228,6 +1229,15 @@ export class SkillInstaller {
       );
     }
 
+    if (parsedRepo.protocol === "ssh" && isGitHubHost(parsedRepo.host)) {
+      return this.scanRemoteGitRepoViaClone(
+        parsedRepo,
+        registrySkills,
+        branch,
+        directory,
+      );
+    }
+
     const initialUrls = buildRemoteGitStoreUrls(
       parsedRepo,
       branch?.trim() || "main",
@@ -1356,6 +1366,124 @@ export class SkillInstaller {
     return scannedSkills.filter(
       (skill): skill is RegistrySkill => skill !== null,
     );
+  }
+
+  private static async scanRemoteGitRepoViaClone(
+    parsedRepo: ReturnType<typeof parseGitRepo> & {},
+    registrySkills: RegistrySkill[],
+    branch?: string,
+    directory?: string,
+  ): Promise<RegistrySkill[]> {
+    const tempRoot = await fs.mkdtemp(
+      path.join(this.skillsDir, ".remote-scan-"),
+    );
+    const repoDir = path.join(
+      tempRoot,
+      `${parsedRepo.owner}-${parsedRepo.repo}`,
+    );
+
+    try {
+      await gitClone(parsedRepo.cloneUrl, repoDir, branch);
+
+      const normalizedBranch =
+        branch?.trim() || (await gitGetCurrentBranch(repoDir)) || "main";
+      const normalizedDirectory = directory?.trim().replace(/^\/+|\/+$/g, "");
+      const searchRoot = normalizedDirectory
+        ? path.resolve(repoDir, normalizedDirectory)
+        : repoDir;
+
+      if (!isPathWithin(repoDir, searchRoot)) {
+        throw new Error(
+          "Path traversal detected: skill directory is outside repository",
+        );
+      }
+      if (!(await fileExists(searchRoot))) {
+        throw new Error(
+          `Skill directory does not exist in repository: ${normalizedDirectory}`,
+        );
+      }
+
+      const skillDirs = await this.collectSkillDirs(searchRoot);
+      const scannedSkills = await Promise.all(
+        skillDirs.map(async (skillDir): Promise<RegistrySkill | null> => {
+          const skillMdPath = path.join(skillDir, "SKILL.md");
+          const content = await fs.readFile(skillMdPath, "utf-8").catch(() => "");
+          if (!content.trim()) {
+            return null;
+          }
+
+          const parsedSkill = parseSkillMd(content);
+          const sourceDirectory = path.relative(repoDir, skillDir).replace(/\\/g, "/");
+          const canonicalSkillPath = path.posix.join(sourceDirectory, "SKILL.md");
+          const slug = slugifySkillName(
+            parsedSkill?.frontmatter.name || path.basename(skillDir) || parsedRepo.repo,
+          );
+          const builtin = registrySkills.find((item) => item.slug === slug);
+          const name =
+            builtin?.name ||
+            parsedSkill?.frontmatter.name ||
+            toTitleCase(slug || parsedRepo.repo);
+          const description =
+            builtin?.description ||
+            parsedSkill?.frontmatter.description ||
+            `${name} skill`;
+          const sourceUrl = `${parsedRepo.repositoryUrl}/tree/${encodeURIComponent(normalizedBranch)}/${sourceDirectory}`;
+          const sourceId = buildSkillSourceId({
+            sourceType: "git-repo",
+            sourceUrl: parsedRepo.repositoryUrl,
+            branch: normalizedBranch,
+            directory: sourceDirectory,
+            skillPath: canonicalSkillPath,
+          });
+          const rawUrl = buildRemoteGitStoreUrls(
+            parsedRepo,
+            normalizedBranch,
+            canonicalSkillPath,
+          ).rawUrl;
+
+          return {
+            slug,
+            name,
+            install_name: parsedSkill?.frontmatter.name || undefined,
+            source_id: sourceId,
+            source_label: `${parsedRepo.owner}/${parsedRepo.repo}`,
+            source_branch: normalizedBranch,
+            source_directory: sourceDirectory,
+            canonical_skill_path: canonicalSkillPath,
+            directory_fingerprint: computeDirectoryFingerprint(
+              await this.readLocalRepoFileBuffersByPath(skillDir),
+            ),
+            description,
+            category: builtin?.category || "general",
+            icon_url: builtin?.icon_url,
+            icon_background: builtin?.icon_background,
+            icon_emoji: builtin?.icon_emoji,
+            author:
+              builtin?.author ||
+              parsedSkill?.frontmatter.author ||
+              parsedRepo.owner,
+            source_url: sourceUrl,
+            tags: builtin?.tags?.length
+              ? builtin.tags
+              : parsedSkill?.frontmatter.tags?.length
+                ? parsedSkill.frontmatter.tags
+                : slug.split("-").filter(Boolean),
+            version:
+              builtin?.version || parsedSkill?.frontmatter.version || "1.0.0",
+            content,
+            content_url: rawUrl,
+            prerequisites: builtin?.prerequisites,
+            compatibility: builtin?.compatibility || ["claude", "cursor"],
+          } satisfies RegistrySkill;
+        }),
+      );
+
+      return scannedSkills.filter(
+        (skill): skill is RegistrySkill => skill !== null,
+      );
+    } finally {
+      await fs.rm(tempRoot, { recursive: true, force: true }).catch(() => {});
+    }
   }
 
   static async scanLocal(db: SkillDB): Promise<ScanLocalResult> {

@@ -679,11 +679,19 @@ describe("CreateSkillModal GitHub import", () => {
     });
 
     const modalContainer = view.getByTestId("create-skill-modal-container");
-    expect(modalContainer.className).toContain("max-w-4xl");
-    expect(modalContainer.className).toContain("max-h-[90vh]");
+    expect(modalContainer.className).toContain("w-[min(92vw,1100px)]");
+    expect(modalContainer.className).toContain("max-h-[92vh]");
+
+    const intro = view.getByTestId("github-mode-intro");
+    expect(intro.textContent).not.toContain(
+      "Only repository root URLs are supported",
+    );
+    expect(intro.textContent).toContain(
+      "If no SKILL.md files are found, PromptHub will fall back to the root README.md as a single import option.",
+    );
 
     const scrollArea = view.getByTestId("github-results-scroll-area");
-    expect(scrollArea.className).toContain("min-h-0");
+    expect(scrollArea.className).toContain("min-h-[24rem]");
     expect(scrollArea.className).toContain("flex-1");
     expect(scrollArea.className).toContain("overflow-y-auto");
 
@@ -791,6 +799,216 @@ describe("CreateSkillModal GitHub import", () => {
       );
       expect(fetchRemoteContent).not.toHaveBeenCalled();
       expect(view.getByText("Found 1 import option(s)")).toBeTruthy();
+    });
+  });
+
+  it("clears previous Git scan results after the repository URL changes and offers rescan", async () => {
+    const scanRemoteGithub = vi
+      .fn()
+      .mockResolvedValueOnce([
+        {
+          slug: "spec-init",
+          name: "spec-init",
+          install_name: "spec-init",
+          description: "Spec skill",
+          category: "dev",
+          author: "legeling",
+          source_url: "https://github.com/legeling/spec-init/tree/main/spec-init",
+          content_url:
+            "https://raw.githubusercontent.com/legeling/spec-init/main/spec-init/SKILL.md",
+          tags: ["spec"],
+          version: "1.0.0",
+          content: "# spec-init",
+          compatibility: ["claude"],
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          slug: "writer",
+          name: "writer",
+          install_name: "writer",
+          description: "Writer skill",
+          category: "writing",
+          author: "demo",
+          source_url: "https://github.com/demo/writer/tree/main/writer",
+          content_url:
+            "https://raw.githubusercontent.com/demo/writer/main/writer/SKILL.md",
+          tags: ["writer"],
+          version: "1.0.0",
+          content: "# writer",
+          compatibility: ["claude"],
+        },
+      ]);
+
+    installWindowMocks({
+      api: {
+        skill: {
+          fetchRemoteContent: vi.fn(),
+          scanRemoteGithub,
+        },
+      },
+    });
+
+    const view = await renderWithI18n(
+      <CreateSkillModal isOpen={true} onClose={vi.fn()} />,
+      { language: "en" },
+    );
+
+    await act(async () => {
+      fireEvent.click(view.getByText("Install from Git Repository"));
+    });
+
+    const urlInput = view.getByPlaceholderText(
+      "https://github.com/owner/skill-repo",
+    );
+
+    fireEvent.change(urlInput, {
+      target: { value: "https://gitea.example.com/demo/spec-init" },
+    });
+
+    await act(async () => {
+      fireEvent.click(view.getAllByText("Scan Repository")[0]);
+    });
+
+    await waitFor(() => {
+      expect(view.getByText("Found 1 import option(s)")).toBeTruthy();
+      expect(view.getByText("spec-init")).toBeTruthy();
+    });
+
+    fireEvent.change(urlInput, {
+      target: { value: "https://gitea.example.com/demo/writer" },
+    });
+
+    expect(
+      view.getByText(
+        "The repository URL changed. Scan again to refresh the import options.",
+      ),
+    ).toBeTruthy();
+    expect(view.getByText("Rescan Repository")).toBeTruthy();
+    expect(view.queryByText("Found 1 import option(s)")).toBeNull();
+    expect(view.queryByText("spec-init")).toBeNull();
+
+    await act(async () => {
+      fireEvent.click(view.getByText("Rescan Repository"));
+    });
+
+    await waitFor(() => {
+      expect(scanRemoteGithub).toHaveBeenNthCalledWith(
+        2,
+        "https://gitea.example.com/demo/writer",
+        expect.any(Array),
+      );
+      expect(view.getByText("writer")).toBeTruthy();
+    });
+  });
+
+  it("resets the Git import screen when leaving and reopening the mode", async () => {
+    const scanRemoteGithub = vi.fn().mockResolvedValue([
+      {
+        slug: "spec-init",
+        name: "spec-init",
+        install_name: "spec-init",
+        description: "Spec skill",
+        category: "dev",
+        author: "legeling",
+        source_url: "https://github.com/legeling/spec-init/tree/main/spec-init",
+        content_url:
+          "https://raw.githubusercontent.com/legeling/spec-init/main/spec-init/SKILL.md",
+        tags: ["spec"],
+        version: "1.0.0",
+        content: "# spec-init",
+        compatibility: ["claude"],
+      },
+    ]);
+
+    installWindowMocks({
+      api: {
+        skill: {
+          fetchRemoteContent: vi.fn(),
+          scanRemoteGithub,
+        },
+      },
+    });
+
+    const view = await renderWithI18n(
+      <CreateSkillModal isOpen={true} onClose={vi.fn()} />,
+      { language: "en" },
+    );
+
+    await act(async () => {
+      fireEvent.click(view.getByText("Install from Git Repository"));
+    });
+
+    fireEvent.change(
+      view.getByPlaceholderText("https://github.com/owner/skill-repo"),
+      {
+        target: { value: "https://gitea.example.com/demo/spec-init" },
+      },
+    );
+
+    await act(async () => {
+      fireEvent.click(view.getAllByText("Scan Repository")[0]);
+    });
+
+    await waitFor(() => {
+      expect(view.getByText("spec-init")).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.click(view.getByRole("button", { name: "Back" }));
+    });
+
+    await act(async () => {
+      fireEvent.click(view.getByText("Install from Git Repository"));
+    });
+
+    expect(view.queryByText("Found 1 import option(s)")).toBeNull();
+    expect(view.queryByText("spec-init")).toBeNull();
+    expect(
+      view.getByPlaceholderText("https://github.com/owner/skill-repo"),
+    ).toHaveValue("");
+  });
+
+  it("shows SSH guidance when GitHub HTTPS scan hits API rate limit", async () => {
+    const fetchRemoteContent = vi
+      .fn()
+      .mockRejectedValue(new Error("GitHub API rate limit reached"));
+
+    installWindowMocks({
+      api: {
+        skill: {
+          fetchRemoteContent,
+          scanRemoteGithub: vi.fn(),
+        },
+      },
+    });
+
+    const view = await renderWithI18n(
+      <CreateSkillModal isOpen={true} onClose={vi.fn()} />,
+      { language: "en" },
+    );
+
+    await act(async () => {
+      fireEvent.click(view.getByText("Install from Git Repository"));
+    });
+
+    fireEvent.change(
+      view.getByPlaceholderText("https://github.com/owner/skill-repo"),
+      {
+        target: { value: "https://github.com/legeling/spec-init" },
+      },
+    );
+
+    await act(async () => {
+      fireEvent.click(view.getAllByText("Scan Repository")[0]);
+    });
+
+    await waitFor(() => {
+      expect(
+        view.getByText(
+          "GitHub API rate limit reached. Try again in a few minutes, or switch this repository URL to SSH to avoid the anonymous API limit.",
+        ),
+      ).toBeTruthy();
     });
   });
 

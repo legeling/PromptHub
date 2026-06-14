@@ -291,6 +291,71 @@ export function gitListRemoteBranches(url: string): Promise<string[]> {
   );
 }
 
+export function gitGetCurrentBranch(repoDir: string): Promise<string | null> {
+  if (!repoDir.trim()) {
+    throw new Error("Git repository directory cannot be empty");
+  }
+
+  return new Promise((resolve, reject) => {
+    const proc = childProcess.spawn(
+      "git",
+      ["branch", "--show-current"],
+      {
+        cwd: repoDir,
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
+
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+
+    const timeout = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        proc.kill("SIGKILL");
+        reject(
+          new Error(
+            `Git current branch lookup timed out after ${GIT_REMOTE_TIMEOUT_MS / 1000}s in: ${repoDir}`,
+          ),
+        );
+      }
+    }, GIT_REMOTE_TIMEOUT_MS);
+
+    proc.stdout?.on("data", (data) => {
+      stdout += data.toString();
+    });
+
+    proc.stderr?.on("data", (data) => {
+      stderr += data.toString();
+    });
+
+    proc.on("close", (code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      if (code !== 0) {
+        reject(
+          new Error(
+            `Git current branch lookup failed with code ${code}: ${stderr}`,
+          ),
+        );
+        return;
+      }
+
+      const branch = stdout.trim();
+      resolve(branch || null);
+    });
+
+    proc.on("error", (error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      reject(new Error(`Git current branch lookup error: ${error.message}`));
+    });
+  });
+}
+
 export function resolvePlatformPath(template: string): string {
   const home = os.homedir();
   const appData = process.env.APPDATA || path.join(home, "AppData", "Roaming");
