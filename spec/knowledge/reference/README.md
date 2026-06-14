@@ -12,6 +12,13 @@
   - skills / agents / workflows / commands 资产面
   - 配置文件与证据级别
 
+### Codex 扩展面映射
+
+- `spec/knowledge/reference/codex-extension-surfaces.md`
+  - Skill / Plugin / MCP server / App 的概念边界
+  - PromptHub 对插件、子资产和 Agent Assistant 调用的建模规则
+  - 插件来源、静态扫描和安全基线
+
 ### 对外截图与公开素材
 
 - `docs/imgs/`

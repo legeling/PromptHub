@@ -158,11 +158,13 @@ spec/
 - 桌面端边界：`spec/knowledge/behavior/desktop.md`
 - Web 自部署与服务边界：`spec/knowledge/behavior/web.md`
 - Skill 体系规范：`spec/knowledge/behavior/skills.md`
+- Plugin 体系规范：`spec/knowledge/behavior/plugins.md`
 - 同步语义：`spec/knowledge/behavior/sync.md`
 - 数据恢复与迁移安全：`spec/knowledge/behavior/data-recovery.md`
 - Prompt 工作区：`spec/knowledge/behavior/prompt-workspace.md`
 - Rules 稳定逻辑：`spec/knowledge/behavior/rules-workspace.md`
 - Agent 平台固定资产：`spec/knowledge/reference/agent-platforms.md`
+- Codex 扩展面映射：`spec/knowledge/reference/codex-extension-surfaces.md`
 - 发布与文档同步：`spec/releases/release-rules.md`
 - Issue 跟踪入口：`spec/issues/README.md`
 - `spec-init` 项目级入口：`spec/workflow/`、`spec/knowledge/`、`spec/rules/`、`spec/releases/`、`spec/archive/`、`spec/adr/`
