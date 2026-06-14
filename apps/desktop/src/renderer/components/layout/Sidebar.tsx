@@ -1816,8 +1816,7 @@ export function Sidebar({
           onSuccess={() => {
             if (passwordFolder) {
               unlockFolder(passwordFolder.id);
-              selectFolder(passwordFolder.id);
-              if (currentPage !== "home") onNavigate("home");
+              openPromptFolder(passwordFolder.id);
             }
             setIsPasswordModalOpen(false);
             setPasswordFolder(null);
