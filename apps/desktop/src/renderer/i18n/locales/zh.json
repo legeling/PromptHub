@@ -13,6 +13,7 @@
     "textPrompts": "文本提示词",
     "imagePrompts": "绘图提示词",
     "favorites": "收藏",
+    "relationshipGraph": "关系图谱",
     "folders": "文件夹",
     "tags": "标签",
     "resources": "推荐资源",
@@ -28,8 +29,7 @@
     "libraryImported": "来自 Skill 库",
     "platformDeployed": "已部署",
     "distribution": "分发",
-    "skillStore": "Skill 商店",
-    "relationshipGraph": "关系图谱"
+    "skillStore": "Skill 商店"
   },
   "header": {
     "search": "搜索 Prompt...",
@@ -181,6 +181,43 @@
     "openParentPrompt": "打开父级 Prompt {{title}}",
     "openChildPrompt": "打开子项 Prompt {{title}}",
     "moreChildPrompts": "+{{count}} 个",
+    "relationships": {
+      "title": "Prompt 关系",
+      "openButton": "关系",
+      "openPanel": "打开 Prompt 关系",
+      "empty": "暂无语义关系。树状分组仍通过左侧列表拖拽控制。",
+      "typeLabel": "关系类型",
+      "targetLabel": "目标 Prompt",
+      "selectTarget": "选择 Prompt",
+      "add": "添加关系",
+      "added": "关系已添加",
+      "addFailed": "添加关系失败",
+      "removed": "关系已移除",
+      "removeFailed": "移除关系失败",
+      "openPrompt": "打开相关 Prompt {{title}}",
+      "removeRelation": "移除与 {{title}} 的关系",
+      "relatedTo": "相关",
+      "variantOf": "变体来源",
+      "hasVariant": "包含变体",
+      "dependsOn": "依赖",
+      "requiredBy": "被依赖",
+      "nextStep": "下一步",
+      "previousStep": "上一步",
+      "kind": {
+        "related_to": "相关",
+        "variant_of": "变体来源",
+        "depends_on": "依赖",
+        "next_step": "下一步"
+      }
+    },
+    "graph": {
+      "title": "关系图谱",
+      "promptCount": "{{count}} 个 Prompt",
+      "relationCount": "{{count}} 条关系",
+      "empty": "暂无可绘制的 Prompt",
+      "openPrompt": "打开图谱 Prompt {{title}}",
+      "groupedUnder": "归入"
+    },
     "tagsOptional": "标签（可选）",
     "selectExistingTags": "选择已有标签：",
     "emptyDetailTagsHint": "暂无标签，可以编辑或者从左侧拖拽标签过来",
@@ -345,44 +382,7 @@
     "batchFavorite": "批量收藏",
     "batchMove": "批量移动",
     "batchDelete": "批量删除",
-    "confirmBatchDelete": "确定要删除这 {{count}} 个 Prompt 吗？",
-    "relationships": {
-      "title": "Prompt 关系",
-      "empty": "暂无语义关系。树状分组仍通过左侧列表拖拽控制。",
-      "typeLabel": "关系类型",
-      "targetLabel": "目标 Prompt",
-      "selectTarget": "选择 Prompt",
-      "add": "添加关系",
-      "added": "关系已添加",
-      "addFailed": "添加关系失败",
-      "removed": "关系已移除",
-      "removeFailed": "移除关系失败",
-      "openPrompt": "打开相关 Prompt {{title}}",
-      "removeRelation": "移除与 {{title}} 的关系",
-      "relatedTo": "相关",
-      "variantOf": "变体来源",
-      "hasVariant": "包含变体",
-      "dependsOn": "依赖",
-      "requiredBy": "被依赖",
-      "nextStep": "下一步",
-      "previousStep": "上一步",
-      "kind": {
-        "related_to": "相关",
-        "variant_of": "变体来源",
-        "depends_on": "依赖",
-        "next_step": "下一步"
-      },
-      "openButton": "关系",
-      "openPanel": "打开提示词关系"
-    },
-    "graph": {
-      "title": "关系图谱",
-      "promptCount": "{{count}} 个提示词",
-      "relationCount": "{{count}} 个关系",
-      "empty": "暂无可映射的提示词",
-      "openPrompt": "打开图谱提示词 {{title}}",
-      "groupedUnder": "归属"
-    }
+    "confirmBatchDelete": "确定要删除这 {{count}} 个 Prompt 吗？"
   },
   "rules": {
     "title": "Rules",
@@ -1440,7 +1440,8 @@
       "whyOperations": "随着平台扩展，用户一定需要一块跨资源类型的运行、审计和发布状态面板。",
       "noteTitle": "原型说明",
       "noteDesc": "这个页面当前故意使用 mock 结构驱动。目标不是先接真实数据，而是先把未来可扩展的导航和工作区骨架看清楚，再决定如何迁移现有 Prompt / Skill 主界面。"
-    }
+    },
+    "desktopModuleMcpDesc": "MCP 服务、市场模板和 Agent 分发目标"
   },
   "import": {
     "clipboardTitle": "从剪切板导入 Prompt",
@@ -1482,6 +1483,7 @@
     "mcpQuickstartDesc": "面向工具、 Skill 与集成的协议快速入门"
   },
   "common": {
+    "install": "安装",
     "confirm": "确认",
     "cancel": "取消",
     "save": "保存",
@@ -1552,8 +1554,7 @@
     "disabled": "已停用",
     "enable": "启用",
     "disable": "停用",
-    "continueEditing": "继续编辑",
-    "install": "安装"
+    "continueEditing": "继续编辑"
   },
   "skill": {
     "title": "Skill",
@@ -1624,6 +1625,7 @@
     "notInstalled": "未安装",
     "imported": "已导入",
     "deployed": "已分发",
+    "notDistributed": "未分发",
     "noSkills": "暂无 Skill",
     "noSkillsHint": "从 Skill 商店添加、扫描本地环境或手动创建 Skill 开始使用",
     "noFavorites": "暂无收藏 Skill",
@@ -2287,8 +2289,7 @@
     "platformUninstallCopyHint": "这会删除平台目录中的复制文件，PromptHub 本地 Skill 不会被删除。",
     "searchSkill": "搜索 Skill...",
     "partiallyImportedBadge": "部分已导入",
-    "selectSkill": "选择 {{name}}",
-    "notDistributed": "未分发"
+    "selectSkill": "选择 {{name}}"
   },
   "error": {
     "sha512Desc": "SHA512 校验失败。\n这通常是由于 CDN 缓存不一致或网络劫持导致的。\n文件可能已下载完成，您可以尝试手动安装。"
@@ -2460,7 +2461,6 @@
   "sidebar": {
     "resizeAria": "调整文件夹侧边栏宽度"
   },
-  "home": {},
   "mcp": {
     "title": "MCP",
     "subtitle": "本地 MCP 配置库",

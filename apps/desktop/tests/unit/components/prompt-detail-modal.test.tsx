@@ -62,7 +62,9 @@ describe("PromptDetailModal", () => {
       { language: "en" },
     );
 
-    expect(screen.getByRole("button", { name: "AI Quick Edit" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "AI Quick Edit" }),
+    ).toBeInTheDocument();
   });
 
   it("opens prompt relationships from an explicit detail action", async () => {
@@ -88,12 +90,16 @@ describe("PromptDetailModal", () => {
 
     expect(screen.queryByText("Prompt relationships")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Open prompt relationships" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Open prompt relationships" }),
+    );
 
     expect(
       await screen.findByRole("dialog", { name: "Prompt relationships" }),
     ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Open related prompt Review rubric" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Open related prompt Review rubric" }),
+    );
 
     expect(onSelectPrompt).toHaveBeenCalledWith(relatedPrompt.id);
     expect(onClose).toHaveBeenCalledTimes(1);
@@ -147,8 +153,12 @@ describe("PromptDetailModal", () => {
     const fullscreenButton = screen.getByRole("button", { name: "Fullscreen" });
     const shareButton = screen.getByRole("button", { name: "Share as JSON" });
     const editButton = screen.getByRole("button", { name: "Edit" });
-    const copyPromptButtons = screen.getAllByRole("button", { name: "Copy Prompt" });
-    const copyResponseButton = screen.getByRole("button", { name: "Copy Response" });
+    const copyPromptButtons = screen.getAllByRole("button", {
+      name: "Copy Prompt",
+    });
+    const copyResponseButton = screen.getByRole("button", {
+      name: "Copy Response",
+    });
 
     expect(fullscreenButton).toHaveAttribute("type", "button");
     expect(shareButton).toHaveAttribute("type", "button");
@@ -165,7 +175,10 @@ describe("PromptDetailModal", () => {
       copyResponseButton,
       ...copyPromptButtons,
     ].forEach((button) => {
-      expect(button.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+      expect(button.querySelector("svg")).toHaveAttribute(
+        "aria-hidden",
+        "true",
+      );
     });
   });
 
@@ -221,7 +234,9 @@ describe("PromptDetailModal", () => {
     );
 
     await act(async () => {
-      fireEvent.click(screen.getAllByRole("button", { name: "Copy Prompt" }).at(-1)!);
+      fireEvent.click(
+        screen.getAllByRole("button", { name: "Copy Prompt" }).at(-1)!,
+      );
       await Promise.resolve();
     });
 
@@ -237,11 +252,7 @@ describe("PromptDetailModal", () => {
 
     const { unmount } = await renderWithI18n(
       <ToastProvider>
-        <PromptDetailModal
-          isOpen
-          onClose={vi.fn()}
-          prompt={prompt}
-        />
+        <PromptDetailModal isOpen onClose={vi.fn()} prompt={prompt} />
       </ToastProvider>,
       { language: "en" },
     );

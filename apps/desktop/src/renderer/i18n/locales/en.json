@@ -13,6 +13,7 @@
     "textPrompts": "Text Prompts",
     "imagePrompts": "Image Prompts",
     "favorites": "Favorites",
+    "relationshipGraph": "Relationship Graph",
     "folders": "Folders",
     "tags": "Tags",
     "resources": "Resources",
@@ -28,8 +29,7 @@
     "libraryImported": "From Library",
     "platformDeployed": "Deployed",
     "distribution": "Distribution",
-    "skillStore": "Skill Store",
-    "relationshipGraph": "Relationship Graph"
+    "skillStore": "Skill Store"
   },
   "header": {
     "search": "Search Prompt...",
@@ -181,6 +181,43 @@
     "openParentPrompt": "Open parent prompt {{title}}",
     "openChildPrompt": "Open child prompt {{title}}",
     "moreChildPrompts": "+{{count}} more",
+    "relationships": {
+      "title": "Prompt relationships",
+      "openButton": "Relationships",
+      "openPanel": "Open prompt relationships",
+      "empty": "No semantic relationships yet. Tree grouping is still controlled by drag-and-drop in the list.",
+      "typeLabel": "Relation type",
+      "targetLabel": "Target prompt",
+      "selectTarget": "Select a prompt",
+      "add": "Add relation",
+      "added": "Relation added",
+      "addFailed": "Failed to add relationship",
+      "removed": "Relation removed",
+      "removeFailed": "Failed to remove relationship",
+      "openPrompt": "Open related prompt {{title}}",
+      "removeRelation": "Remove relation to {{title}}",
+      "relatedTo": "Related",
+      "variantOf": "Variant of",
+      "hasVariant": "Has variant",
+      "dependsOn": "Depends on",
+      "requiredBy": "Required by",
+      "nextStep": "Next step",
+      "previousStep": "Previous step",
+      "kind": {
+        "related_to": "Related",
+        "variant_of": "Variant of",
+        "depends_on": "Depends on",
+        "next_step": "Next step"
+      }
+    },
+    "graph": {
+      "title": "Relationship Graph",
+      "promptCount": "{{count}} prompts",
+      "relationCount": "{{count}} relationships",
+      "empty": "No prompts to map yet",
+      "openPrompt": "Open graph prompt {{title}}",
+      "groupedUnder": "Grouped under"
+    },
     "tagsOptional": "Tags (Optional)",
     "selectExistingTags": "Select existing tags:",
     "emptyDetailTagsHint": "No tags yet. Edit this Prompt or drag tags from the sidebar.",
@@ -345,44 +382,7 @@
     "batchFavorite": "Batch Favorite",
     "batchMove": "Batch Move",
     "batchDelete": "Batch Delete",
-    "confirmBatchDelete": "Are you sure you want to delete these {{count}} prompts?",
-    "relationships": {
-      "title": "Prompt relationships",
-      "empty": "No semantic relationships yet. Tree grouping is still controlled by drag-and-drop in the list.",
-      "typeLabel": "Relation type",
-      "targetLabel": "Target prompt",
-      "selectTarget": "Select a prompt",
-      "add": "Add relation",
-      "added": "Relation added",
-      "addFailed": "Failed to add relationship",
-      "removed": "Relation removed",
-      "removeFailed": "Failed to remove relationship",
-      "openPrompt": "Open related prompt {{title}}",
-      "removeRelation": "Remove relation to {{title}}",
-      "relatedTo": "Related",
-      "variantOf": "Variant of",
-      "hasVariant": "Has variant",
-      "dependsOn": "Depends on",
-      "requiredBy": "Required by",
-      "nextStep": "Next step",
-      "previousStep": "Previous step",
-      "kind": {
-        "related_to": "Related",
-        "variant_of": "Variant of",
-        "depends_on": "Depends on",
-        "next_step": "Next step"
-      },
-      "openButton": "Relationships",
-      "openPanel": "Open prompt relationships"
-    },
-    "graph": {
-      "title": "Relationship Graph",
-      "promptCount": "{{count}} prompts",
-      "relationCount": "{{count}} relationships",
-      "empty": "No prompts to map yet",
-      "openPrompt": "Open graph prompt {{title}}",
-      "groupedUnder": "Grouped under"
-    }
+    "confirmBatchDelete": "Are you sure you want to delete these {{count}} prompts?"
   },
   "rules": {
     "title": "Rules",
@@ -1440,7 +1440,8 @@
       "whyOperations": "As the platform grows, users need a home for runs, audits and release status that cuts across every resource type.",
       "noteTitle": "Prototype note",
       "noteDesc": "This page is intentionally driven by mock structure. The goal is to preview a scalable navigation and workspace shape before migrating the real Prompt / Skill shell."
-    }
+    },
+    "desktopModuleMcpDesc": "MCP servers, market templates and agent targets"
   },
   "import": {
     "clipboardTitle": "Import Prompt from Clipboard",
@@ -1482,6 +1483,7 @@
     "mcpQuickstartDesc": "Protocol quickstart for tools, skills, and integrations"
   },
   "common": {
+    "install": "Install",
     "confirm": "Confirm",
     "cancel": "Cancel",
     "save": "Save",
@@ -1552,8 +1554,7 @@
     "disabled": "Disabled",
     "enable": "Enable",
     "disable": "Disable",
-    "continueEditing": "Continue editing",
-    "install": "Install"
+    "continueEditing": "Continue editing"
   },
   "skill": {
     "title": "Skill",
@@ -1624,6 +1625,7 @@
     "notInstalled": "Not installed",
     "imported": "Imported",
     "deployed": "Distributed",
+    "notDistributed": "Not distributed",
     "noSkills": "No skills yet",
     "noSkillsHint": "Import skills from Skill Store, scan local environments, or create one manually to get started",
     "noFavorites": "No favorite skills",
@@ -2287,8 +2289,7 @@
     "platformUninstallCopyHint": "This removes the copied Skill from the platform directory. Your local Skill stays in PromptHub.",
     "searchSkill": "Search skills...",
     "partiallyImportedBadge": "Partially imported",
-    "selectSkill": "Select {{name}}",
-    "notDistributed": "Not distributed"
+    "selectSkill": "Select {{name}}"
   },
   "error": {
     "sha512Desc": "SHA512 checksum mismatch.\nThis is usually caused by CDN cache inconsistencies or network issues.\nThe file may have been downloaded successfully. You can try to install it manually."
@@ -2460,7 +2461,6 @@
   "sidebar": {
     "resizeAria": "Resize folder sidebar"
   },
-  "home": {},
   "mcp": {
     "title": "MCP",
     "subtitle": "Local MCP configuration library",

@@ -13,6 +13,7 @@
     "textPrompts": "Prompts de texto",
     "imagePrompts": "Prompts de imagen",
     "favorites": "Favoritos",
+    "relationshipGraph": "Grafo de relaciones",
     "folders": "Carpetas",
     "tags": "Etiquetas",
     "resources": "Recursos recomendados",
@@ -27,8 +28,7 @@
     "libraryImported": "Desde la biblioteca",
     "platformDeployed": "Distribuidas en la plataforma",
     "distribution": "Distribución",
-    "skillStore": "Tienda de habilidades",
-    "relationshipGraph": "Grafo de relaciones"
+    "skillStore": "Tienda de habilidades"
   },
   "header": {
     "search": "Buscar Prompt...",
@@ -180,6 +180,43 @@
     "openParentPrompt": "Abrir prompt padre {{title}}",
     "openChildPrompt": "Abrir prompt hijo {{title}}",
     "moreChildPrompts": "+{{count}} más",
+    "relationships": {
+      "title": "Relaciones del Prompt",
+      "openButton": "Relaciones",
+      "openPanel": "Abrir relaciones del Prompt",
+      "empty": "Aún no hay relaciones semánticas. La agrupación en árbol se controla arrastrando en la lista.",
+      "typeLabel": "Tipo de relación",
+      "targetLabel": "Prompt destino",
+      "selectTarget": "Seleccionar Prompt",
+      "add": "Añadir relación",
+      "added": "Relación añadida",
+      "addFailed": "No se pudo añadir la relación",
+      "removed": "Relación eliminada",
+      "removeFailed": "No se pudo eliminar la relación",
+      "openPrompt": "Abrir Prompt relacionado {{title}}",
+      "removeRelation": "Eliminar relación con {{title}}",
+      "relatedTo": "Relacionado",
+      "variantOf": "Variante de",
+      "hasVariant": "Tiene variante",
+      "dependsOn": "Depende de",
+      "requiredBy": "Requerido por",
+      "nextStep": "Siguiente paso",
+      "previousStep": "Paso anterior",
+      "kind": {
+        "related_to": "Relacionado",
+        "variant_of": "Variante de",
+        "depends_on": "Depende de",
+        "next_step": "Siguiente paso"
+      }
+    },
+    "graph": {
+      "title": "Grafo de relaciones",
+      "promptCount": "{{count}} Prompts",
+      "relationCount": "{{count}} relaciones",
+      "empty": "Aún no hay Prompts para mapear",
+      "openPrompt": "Abrir Prompt del grafo {{title}}",
+      "groupedUnder": "Agrupado bajo"
+    },
     "tagsOptional": "Etiquetas (opcional)",
     "selectExistingTags": "Seleccionar etiquetas existentes:",
     "emptyDetailTagsHint": "Aún no hay etiquetas. Edita este Prompt o arrastra etiquetas desde la barra lateral.",
@@ -344,44 +381,7 @@
     "batchFavorite": "Favoritos en lote",
     "batchMove": "Mover en lote",
     "batchDelete": "Eliminar en lote",
-    "confirmBatchDelete": "¿Eliminar estos {{count}} Prompts?",
-    "relationships": {
-      "title": "Relaciones del Prompt",
-      "empty": "Aún no hay relaciones semánticas. La agrupación en árbol se controla arrastrando en la lista.",
-      "typeLabel": "Tipo de relación",
-      "targetLabel": "Prompt destino",
-      "selectTarget": "Seleccionar Prompt",
-      "add": "Añadir relación",
-      "added": "Relación añadida",
-      "addFailed": "No se pudo añadir la relación",
-      "removed": "Relación eliminada",
-      "removeFailed": "No se pudo eliminar la relación",
-      "openPrompt": "Abrir Prompt relacionado {{title}}",
-      "removeRelation": "Eliminar relación con {{title}}",
-      "relatedTo": "Relacionado",
-      "variantOf": "Variante de",
-      "hasVariant": "Tiene variante",
-      "dependsOn": "Depende de",
-      "requiredBy": "Requerido por",
-      "nextStep": "Siguiente paso",
-      "previousStep": "Paso anterior",
-      "kind": {
-        "related_to": "Relacionado",
-        "variant_of": "Variante de",
-        "depends_on": "Depende de",
-        "next_step": "Siguiente paso"
-      },
-      "openButton": "Relaciones",
-      "openPanel": "Abrir relaciones del prompt"
-    },
-    "graph": {
-      "title": "Grafo de relaciones",
-      "promptCount": "{{count}} prompts",
-      "relationCount": "{{count}} relaciones",
-      "empty": "No hay prompts para mapear",
-      "openPrompt": "Abrir prompt del grafo {{title}}",
-      "groupedUnder": "Agrupado bajo"
-    }
+    "confirmBatchDelete": "¿Eliminar estos {{count}} Prompts?"
   },
   "folder": {
     "new": "Nueva carpeta",
@@ -1429,7 +1429,8 @@
       "whyOperations": "As the platform grows, users need a home for runs, audits and release status that cuts across every resource type.",
       "noteTitle": "Prototype note",
       "noteDesc": "This page is intentionally driven by mock structure. The goal is to preview a scalable navigation and workspace shape before migrating the real Prompt / Skill shell."
-    }
+    },
+    "desktopModuleMcpDesc": "Servidores MCP, plantillas del mercado y destinos de agentes"
   },
   "import": {
     "clipboardTitle": "Importar Prompt desde el portapapeles",
@@ -1471,6 +1472,7 @@
     "mcpQuickstartDesc": "Inicio rápido del protocolo para tools, skills e integraciones"
   },
   "common": {
+    "install": "Instalar",
     "confirm": "Confirmar",
     "cancel": "Cancelar",
     "save": "Guardar",
@@ -1541,8 +1543,7 @@
     "disabled": "Desactivado",
     "enable": "Activar",
     "disable": "Desactivar",
-    "continueEditing": "Seguir editando",
-    "install": "Instalar"
+    "continueEditing": "Seguir editando"
   },
   "skill": {
     "title": "Habilidad",
@@ -1613,6 +1614,7 @@
     "notInstalled": "No instalado",
     "imported": "Importado",
     "deployed": "Distribuido",
+    "notDistributed": "No distribuido",
     "noSkills": "Aún no hay habilidades",
     "noSkillsHint": "Importa habilidades desde Skill Store, escanea entornos locales o crea una manualmente para empezar.",
     "noFavorites": "No hay habilidades favoritas",
@@ -2276,8 +2278,7 @@
     "platformUninstallCopyHint": "Elimina la copia del Skill del directorio de la plataforma. El Skill local permanece en PromptHub.",
     "searchSkill": "Buscar Skills...",
     "partiallyImportedBadge": "Importado parcialmente",
-    "selectSkill": "Seleccionar {{name}}",
-    "notDistributed": "No distribuido"
+    "selectSkill": "Seleccionar {{name}}"
   },
   "error": {
     "sha512Desc": "SHA512 checksum mismatch.\nThis is usually caused by CDN cache inconsistencies or network issues.\nThe file may have been downloaded successfully. You can try to install it manually."
@@ -2421,7 +2422,6 @@
   "sidebar": {
     "resizeAria": "Cambiar el ancho de la barra lateral de carpetas"
   },
-  "home": {},
   "mcp": {
     "title": "MCP",
     "subtitle": "Biblioteca local de configuración MCP",

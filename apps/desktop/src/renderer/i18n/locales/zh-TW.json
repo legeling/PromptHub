@@ -13,6 +13,7 @@
     "textPrompts": "文本提示詞",
     "imagePrompts": "繪圖提示詞",
     "favorites": "收藏",
+    "relationshipGraph": "關係圖譜",
     "folders": "資料夾",
     "tags": "標籤",
     "resources": "推薦資源",
@@ -27,8 +28,7 @@
     "libraryImported": "來自 Skill 庫",
     "platformDeployed": "已部署",
     "distribution": "分發",
-    "skillStore": "Skill 商店",
-    "relationshipGraph": "關係圖譜"
+    "skillStore": "Skill 商店"
   },
   "header": {
     "search": "搜尋 Prompt...",
@@ -180,6 +180,43 @@
     "openParentPrompt": "開啟父級 Prompt {{title}}",
     "openChildPrompt": "開啟子項 Prompt {{title}}",
     "moreChildPrompts": "+{{count}} 個",
+    "relationships": {
+      "title": "Prompt 關係",
+      "openButton": "關係",
+      "openPanel": "開啟 Prompt 關係",
+      "empty": "暫無語義關係。樹狀分組仍透過左側列表拖拽控制。",
+      "typeLabel": "關係類型",
+      "targetLabel": "目標 Prompt",
+      "selectTarget": "選擇 Prompt",
+      "add": "新增關係",
+      "added": "關係已新增",
+      "addFailed": "新增關係失敗",
+      "removed": "關係已移除",
+      "removeFailed": "移除關係失敗",
+      "openPrompt": "開啟相關 Prompt {{title}}",
+      "removeRelation": "移除與 {{title}} 的關係",
+      "relatedTo": "相關",
+      "variantOf": "變體來源",
+      "hasVariant": "包含變體",
+      "dependsOn": "依賴",
+      "requiredBy": "被依賴",
+      "nextStep": "下一步",
+      "previousStep": "上一步",
+      "kind": {
+        "related_to": "相關",
+        "variant_of": "變體來源",
+        "depends_on": "依賴",
+        "next_step": "下一步"
+      }
+    },
+    "graph": {
+      "title": "關係圖譜",
+      "promptCount": "{{count}} 個 Prompt",
+      "relationCount": "{{count}} 條關係",
+      "empty": "暫無可繪製的 Prompt",
+      "openPrompt": "開啟圖譜 Prompt {{title}}",
+      "groupedUnder": "歸入"
+    },
     "tagsOptional": "標籤（選填）",
     "selectExistingTags": "選擇已有標籤：",
     "emptyDetailTagsHint": "暫無標籤，可以編輯或從左側拖拽標籤過來",
@@ -344,44 +381,7 @@
     "batchFavorite": "批次收藏",
     "batchMove": "批次移動",
     "batchDelete": "批次刪除",
-    "confirmBatchDelete": "確定要刪除這 {{count}} 個 Prompt 嗎？",
-    "relationships": {
-      "title": "Prompt 關係",
-      "empty": "暫無語義關係。樹狀分組仍透過左側列表拖拽控制。",
-      "typeLabel": "關係類型",
-      "targetLabel": "目標 Prompt",
-      "selectTarget": "選擇 Prompt",
-      "add": "新增關係",
-      "added": "關係已新增",
-      "addFailed": "新增關係失敗",
-      "removed": "關係已移除",
-      "removeFailed": "移除關係失敗",
-      "openPrompt": "開啟相關 Prompt {{title}}",
-      "removeRelation": "移除與 {{title}} 的關係",
-      "relatedTo": "相關",
-      "variantOf": "變體來源",
-      "hasVariant": "包含變體",
-      "dependsOn": "依賴",
-      "requiredBy": "被依賴",
-      "nextStep": "下一步",
-      "previousStep": "上一步",
-      "kind": {
-        "related_to": "相關",
-        "variant_of": "變體來源",
-        "depends_on": "依賴",
-        "next_step": "下一步"
-      },
-      "openButton": "關係",
-      "openPanel": "開啟提示詞關係"
-    },
-    "graph": {
-      "title": "關係圖譜",
-      "promptCount": "{{count}} 個提示詞",
-      "relationCount": "{{count}} 個關係",
-      "empty": "暫無可映射的提示詞",
-      "openPrompt": "開啟圖譜提示詞 {{title}}",
-      "groupedUnder": "歸屬"
-    }
+    "confirmBatchDelete": "確定要刪除這 {{count}} 個 Prompt 嗎？"
   },
   "folder": {
     "new": "新增資料夾",
@@ -1430,7 +1430,8 @@
       "whyOperations": "As the platform grows, users need a home for runs, audits and release status that cuts across every resource type.",
       "noteTitle": "Prototype note",
       "noteDesc": "This page is intentionally driven by mock structure. The goal is to preview a scalable navigation and workspace shape before migrating the real Prompt / Skill shell."
-    }
+    },
+    "desktopModuleMcpDesc": "MCP 服務、市場範本和 Agent 分發目標"
   },
   "import": {
     "clipboardTitle": "從剪貼簿匯入 Prompt",
@@ -1472,6 +1473,7 @@
     "mcpQuickstartDesc": "面向工具、 Skill 與整合的協議快速入門"
   },
   "common": {
+    "install": "安裝",
     "confirm": "確認",
     "cancel": "取消",
     "save": "儲存",
@@ -1542,8 +1544,7 @@
     "disabled": "已停用",
     "enable": "啟用",
     "disable": "停用",
-    "continueEditing": "繼續編輯",
-    "install": "安裝"
+    "continueEditing": "繼續編輯"
   },
   "skill": {
     "title": "Skill",
@@ -1614,6 +1615,7 @@
     "notInstalled": "未安裝",
     "imported": "已匯入",
     "deployed": "已分發",
+    "notDistributed": "未分發",
     "noSkills": "暫無 Skill",
     "noSkillsHint": "從 Skill 商店新增、掃描本機環境或手動建立 Skill 開始使用",
     "noFavorites": "暫無收藏 Skill",
@@ -2277,8 +2279,7 @@
     "platformUninstallCopyHint": "這會刪除平台目錄中的複製檔案，PromptHub 本地 Skill 不會被刪除。",
     "searchSkill": "搜尋 Skill...",
     "partiallyImportedBadge": "部分已匯入",
-    "selectSkill": "選擇 {{name}}",
-    "notDistributed": "未分發"
+    "selectSkill": "選擇 {{name}}"
   },
   "error": {
     "sha512Desc": "SHA512 校验失败。\n这通常是由于 CDN 缓存不一致或网络劫持导致的。\n文件可能已下载完成，您可以尝试手动安装。"
@@ -2422,7 +2423,6 @@
   "sidebar": {
     "resizeAria": "調整資料夾側邊欄寬度"
   },
-  "home": {},
   "mcp": {
     "title": "MCP",
     "subtitle": "本機 MCP 設定庫",

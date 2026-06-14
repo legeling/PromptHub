@@ -13,6 +13,7 @@
     "textPrompts": "テキストプロンプト",
     "imagePrompts": "画像プロンプト",
     "favorites": "お気に入り",
+    "relationshipGraph": "関係グラフ",
     "folders": "フォルダ",
     "tags": "タグ",
     "resources": "おすすめリソース",
@@ -27,8 +28,7 @@
     "libraryImported": "ライブラリから導入",
     "platformDeployed": "プラットフォーム配布済み",
     "distribution": "配布",
-    "skillStore": "スキルストア",
-    "relationshipGraph": "関係グラフ"
+    "skillStore": "スキルストア"
   },
   "header": {
     "search": "Prompt を検索...",
@@ -180,6 +180,43 @@
     "openParentPrompt": "親 Prompt {{title}} を開く",
     "openChildPrompt": "子 Prompt {{title}} を開く",
     "moreChildPrompts": "+{{count}} 件",
+    "relationships": {
+      "title": "Prompt の関係",
+      "openButton": "関係",
+      "openPanel": "Prompt の関係を開く",
+      "empty": "意味的な関係はまだありません。ツリーのグループ化は左のリストでのドラッグ操作で管理します。",
+      "typeLabel": "関係タイプ",
+      "targetLabel": "対象 Prompt",
+      "selectTarget": "Prompt を選択",
+      "add": "関係を追加",
+      "added": "関係を追加しました",
+      "addFailed": "関係の追加に失敗しました",
+      "removed": "関係を削除しました",
+      "removeFailed": "関係の削除に失敗しました",
+      "openPrompt": "関連 Prompt {{title}} を開く",
+      "removeRelation": "{{title}} との関係を削除",
+      "relatedTo": "関連",
+      "variantOf": "派生元",
+      "hasVariant": "派生あり",
+      "dependsOn": "依存",
+      "requiredBy": "依存されています",
+      "nextStep": "次のステップ",
+      "previousStep": "前のステップ",
+      "kind": {
+        "related_to": "関連",
+        "variant_of": "派生元",
+        "depends_on": "依存",
+        "next_step": "次のステップ"
+      }
+    },
+    "graph": {
+      "title": "関係グラフ",
+      "promptCount": "{{count}} 件の Prompt",
+      "relationCount": "{{count}} 件の関係",
+      "empty": "マップできる Prompt はまだありません",
+      "openPrompt": "グラフの Prompt {{title}} を開く",
+      "groupedUnder": "配下"
+    },
     "tagsOptional": "タグ（任意）",
     "selectExistingTags": "既存のタグを選択：",
     "emptyDetailTagsHint": "タグはまだありません。Prompt を編集するか、左側からタグをドラッグしてください。",
@@ -344,44 +381,7 @@
     "batchFavorite": "一括お気に入り",
     "batchMove": "一括移動",
     "batchDelete": "一括削除",
-    "confirmBatchDelete": "これらの {{count}} 件の Prompt を削除してもよろしいですか？",
-    "relationships": {
-      "title": "Prompt の関係",
-      "empty": "意味的な関係はまだありません。ツリーのグループ化は左のリストでのドラッグ操作で管理します。",
-      "typeLabel": "関係タイプ",
-      "targetLabel": "対象 Prompt",
-      "selectTarget": "Prompt を選択",
-      "add": "関係を追加",
-      "added": "関係を追加しました",
-      "addFailed": "関係の追加に失敗しました",
-      "removed": "関係を削除しました",
-      "removeFailed": "関係の削除に失敗しました",
-      "openPrompt": "関連 Prompt {{title}} を開く",
-      "removeRelation": "{{title}} との関係を削除",
-      "relatedTo": "関連",
-      "variantOf": "派生元",
-      "hasVariant": "派生あり",
-      "dependsOn": "依存",
-      "requiredBy": "依存されています",
-      "nextStep": "次のステップ",
-      "previousStep": "前のステップ",
-      "kind": {
-        "related_to": "関連",
-        "variant_of": "派生元",
-        "depends_on": "依存",
-        "next_step": "次のステップ"
-      },
-      "openButton": "関係",
-      "openPanel": "プロンプト関係を開く"
-    },
-    "graph": {
-      "title": "関係グラフ",
-      "promptCount": "{{count}} 件のプロンプト",
-      "relationCount": "{{count}} 件の関係",
-      "empty": "マップするプロンプトがまだありません",
-      "openPrompt": "グラフのプロンプト {{title}} を開く",
-      "groupedUnder": "グループ元"
-    }
+    "confirmBatchDelete": "これらの {{count}} 件の Prompt を削除してもよろしいですか？"
   },
   "folder": {
     "new": "新規フォルダ",
@@ -1430,7 +1430,8 @@
       "whyOperations": "As the platform grows, users need a home for runs, audits and release status that cuts across every resource type.",
       "noteTitle": "Prototype note",
       "noteDesc": "This page is intentionally driven by mock structure. The goal is to preview a scalable navigation and workspace shape before migrating the real Prompt / Skill shell."
-    }
+    },
+    "desktopModuleMcpDesc": "MCP servers, market templates, and agent targets"
   },
   "import": {
     "clipboardTitle": "クリップボードから Prompt をインポート",
@@ -1472,6 +1473,7 @@
     "mcpQuickstartDesc": "ツール、スキル、統合向けのプロトコル入門"
   },
   "common": {
+    "install": "インストール",
     "confirm": "確認",
     "cancel": "キャンセル",
     "save": "保存",
@@ -1542,8 +1544,7 @@
     "disabled": "無効",
     "enable": "有効にする",
     "disable": "無効にする",
-    "continueEditing": "編集を続ける",
-    "install": "インストール"
+    "continueEditing": "編集を続ける"
   },
   "skill": {
     "title": "スキル",
@@ -1614,6 +1615,7 @@
     "notInstalled": "未インストール",
     "imported": "導入済み",
     "deployed": "配布済み",
+    "notDistributed": "未配布",
     "noSkills": "まだスキルがありません",
     "noSkillsHint": "スキルストアから追加するか、ローカルをスキャンするか、手動で作成して始めましょう",
     "noFavorites": "お気に入りのスキルはありません",
@@ -2277,8 +2279,7 @@
     "platformUninstallCopyHint": "プラットフォームディレクトリ内のコピーを削除します。PromptHub 内のローカル Skill は残ります。",
     "searchSkill": "Skill を検索...",
     "partiallyImportedBadge": "一部インポート済み",
-    "selectSkill": "{{name}} を選択",
-    "notDistributed": "未配布"
+    "selectSkill": "{{name}} を選択"
   },
   "error": {
     "sha512Desc": "SHA512 checksum mismatch.\nThis is usually caused by CDN cache inconsistencies or network issues.\nThe file may have been downloaded successfully. You can try to install it manually."
@@ -2422,7 +2423,6 @@
   "sidebar": {
     "resizeAria": "フォルダサイドバーの幅を変更"
   },
-  "home": {},
   "mcp": {
     "title": "MCP",
     "subtitle": "Local MCP configuration library",
