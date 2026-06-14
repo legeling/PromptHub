@@ -66,7 +66,7 @@ Tus datos se quedan en tu máquina.
 
 ## 📥 Descarga
 
-Última estable: **v0.5.8**. Cada plataforma tiene dos rutas:
+Última estable: **v0.5.8**; preview actual: **v0.5.9-beta.1**. Los enlaces directos estables siguen apuntando a v0.5.8; las builds preview están en GitHub Prereleases:
 
 - **Descarga directa** — nombres de archivo fijos, el enlace no cambia entre versiones. Útil para marcadores duraderos o scripts. (Las versiones estables ya usan el mirror CDN.)
 - **GitHub Releases** — página oficial con archivo histórico, firmas y notas de versión completas.
@@ -76,7 +76,7 @@ Tus datos se quedan en tu máquina.
 | Windows    | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://pub-fff1cbc0121241d480624bd3de5a2735.r2.dev/latest/PromptHub-Setup-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://pub-fff1cbc0121241d480624bd3de5a2735.r2.dev/latest/PromptHub-Setup-arm64.exe) | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.5.8-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.5.8-arm64.exe) |
 | macOS      | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://pub-fff1cbc0121241d480624bd3de5a2735.r2.dev/latest/PromptHub-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://pub-fff1cbc0121241d480624bd3de5a2735.r2.dev/latest/PromptHub-x64.dmg) | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.8-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.8-x64.dmg) |
 | Linux      | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://pub-fff1cbc0121241d480624bd3de5a2735.r2.dev/latest/PromptHub-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://pub-fff1cbc0121241d480624bd3de5a2735.r2.dev/latest/PromptHub-amd64.deb) | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.8-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.8-amd64.deb) |
-| Vista previa | [![Preview Channel](https://img.shields.io/badge/Preview-Channel-8B5CF6?style=for-the-badge&logo=github&logoColor=white)](https://github.com/legeling/PromptHub/releases) | No hay una compilación preview separada por ahora. Activa el canal preview en *Ajustes → Acerca de* si quieres probar builds tempranas. |
+| Vista previa | [![Preview v0.5.9-beta.1](https://img.shields.io/badge/Preview-0.5.9--beta.1-8B5CF6?style=for-the-badge&logo=github&logoColor=white)](https://github.com/legeling/PromptHub/releases/tag/v0.5.9-beta.1) | [GitHub Prerelease v0.5.9-beta.1](https://github.com/legeling/PromptHub/releases/tag/v0.5.9-beta.1) |
 
 > **Apple Silicon o Intel?** M1/M2/M3/M4 → `arm64`. Macs Intel → `x64`.
 > **Windows arch?** La mayoría → `x64`. Solo en hardware ARM tipo Surface Pro X → `arm64`.
@@ -112,7 +112,7 @@ Vuelve a abrir la app. Sustituye la ruta si la instalaste en otro sitio.
 
 ## Capturas
 
-> Las siguientes capturas muestran las superficies principales de la v0.5.8.
+> Las siguientes capturas muestran las superficies principales de la estable v0.5.8; v0.5.9 beta añade MCP, árbol de relaciones de Prompt y mejoras de importación/vista previa de Skill.
 
 <div align="center">
   <p><strong>Home en dos columnas</strong></p>
@@ -302,6 +302,14 @@ Flags globales habituales:
 
 Changelog completo: **[CHANGELOG.md](../CHANGELOG.md)**
 
+### v0.5.9-beta.1 (2026-06-14, vista previa)
+
+- Preview del workspace MCP: biblioteca MCP local, tienda oficial de plantillas, distribución a agentes, health checks, importación selectiva de .env y comandos MCP en CLI
+- Árbol de relaciones de Prompt y relaciones semánticas: agrupar por arrastre, expandir/contraer, etiquetas de padre, contador de hijos y navegación de relaciones en el detalle
+- Importación Git de Skills corregida: los escaneos SSH de GitHub clonan en local, los cambios de URL se pueden reescanear y los límites HTTPS recomiendan SSH
+- La vista previa de imágenes de Skill admite zoom con rueda, arrastre para desplazar, controles fijos abajo a la derecha y pantalla completa
+- Las versiones de Skill empiezan visualmente en v1 y hacer clic en el título del detalle copia el nombre del Skill
+
 ### v0.5.8 (2026-06-04)
 
 - Nuevo flujo dedicado para invertir prompts de imagen con modelos de visión, vista previa/copia antes de guardar y referencia de imagen opcional
@@ -365,6 +373,12 @@ Changelog completo: **[CHANGELOG.md](../CHANGELOG.md)**
 <div id="roadmap"></div>
 
 ## Hoja de ruta
+
+### v0.5.9-beta.1 ← preview actual
+
+- La gestión MCP entra en preview de escritorio con biblioteca, tienda de plantillas, distribución a agentes, health checks y comandos CLI
+- Árboles de relaciones de Prompt, paneles semánticos y agrupación por arrastre llegan al flujo existente de Prompts
+- Se pulen importación Git / SSH de Skills, navegación de repos grandes, vista previa de imágenes y copia de título
 
 ### v0.5.8 ← estable actual
 

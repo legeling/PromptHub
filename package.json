@@ -1,6 +1,6 @@
 {
   "name": "prompthub-monorepo",
-  "version": "0.5.8",
+  "version": "0.5.9-beta.1",
   "private": true,
   "description": "PromptHub monorepo - AI Prompt management platform",
   "license": "AGPL-3.0",

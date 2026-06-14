@@ -1,6 +1,6 @@
 {
   "name": "@prompthub/web",
-  "version": "0.5.8",
+  "version": "0.5.9-beta.1",
   "description": "PromptHub Web – self-hosted browser-based prompt management app",
   "license": "AGPL-3.0",
   "private": true,

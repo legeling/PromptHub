@@ -130,7 +130,7 @@ Design quality gates:
 
 - **Type:** Local-first monorepo with desktop, CLI, web, and worker distributions
 - **License:** AGPL-3.0
-- **Version:** 0.5.7
+- **Version:** 0.5.9-beta.1
 
 ### Tech Stack
 

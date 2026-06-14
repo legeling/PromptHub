@@ -1,5 +1,34 @@
 ## [Unreleased]
 
+## [0.5.9-beta.1] - 2026-06-14
+
+### 新功能 / Features
+
+- 🧰 **MCP 管理工作台预览版**：新增桌面端 MCP 入口，支持本地 MCP 库、官方模板商店、Agent 目标分发、静态健康检查、`.env` 按需导入、冲突保护和 CLI MCP 命令
+  - **MCP Management Workspace Preview**: Added a desktop MCP workspace with a local MCP library, official template store, agent-target distribution, static health checks, selective `.env` import, target conflict protection, and CLI MCP commands
+- 🌳 **Prompt 关系树与语义关系**：现有 Prompt 列表和表格支持拖拽成父子结构、展开/折叠、父级标签、子项计数，并在详情页提供关系导航与语义关系面板
+  - **Prompt Relationship Tree and Semantic Relations**: Existing prompt lists and tables now support drag-to-group parent/child trees, expand/collapse, parent labels, child counts, plus detail-page relationship navigation and semantic relation panels
+- 🤖 **Agent 助手需求边界**：记录了后续 Agent Assistant 的产品与技术边界，明确其应通过受限动作调用现有 Skill / Rules / MCP / Prompt 能力，而不是模拟 UI 点击
+  - **Agent Assistant Boundary Defined**: Documented the next Agent Assistant boundary: it should execute constrained actions through existing Skill / Rules / MCP / Prompt capabilities instead of simulating UI clicks
+
+### 问题修复 / Fixes
+
+- 🔐 **SSH GitHub Skill 扫描不再走匿名 API**：`git@github.com:owner/repo.git` 扫描阶段改为本地 `git clone --depth 1` 后解析 `SKILL.md`，避免 SSH 仓库仍触发 GitHub 匿名 API 限流
+  - **SSH GitHub Skill Scans No Longer Use Anonymous API**: `git@github.com:owner/repo.git` scans now clone locally with `git clone --depth 1` and parse `SKILL.md`, avoiding anonymous GitHub API rate limits for SSH repositories
+- 🔎 **Git 仓库导入交互修复**：仓库地址修改后会清空旧结果并提示重新扫描；再次进入导入模式会回到干净状态；HTTPS 限流错误会提示稍后重试或改用 SSH
+  - **Git Repository Import UX Fixed**: Changing the repository URL clears stale results and asks for a rescan; reopening import starts cleanly; HTTPS rate-limit errors now suggest retrying later or switching to SSH
+- 🔢 **Skill 版本展示从 v1 开始**：Skill 详情页不再把内部初始计数 `v0` 暴露给用户，初始版本统一展示为 `v1`
+  - **Skill Version Labels Start at v1**: Skill detail pages no longer expose the internal `v0` counter; initial versions now display as `v1`
+
+### 优化 / Improvements
+
+- 🖼️ **Skill 图片资源预览增强**：图片预览支持滚轮缩放、抓手拖拽平移、右下角固定缩放控件、全屏预览、Escape 退出，并移除额外阴影/框感
+  - **Skill Image Resource Preview Improved**: Image previews now support wheel zoom, grab-to-pan, fixed bottom-right zoom controls, fullscreen preview, Escape close, and no extra shadow or frame treatment
+- 📋 **Skill 标题点击复制**：Skill 详情标题保持普通光标和标题视觉，点击即可复制 Skill 名称并显示复制反馈
+  - **Click Skill Title to Copy**: Skill detail titles keep their normal cursor and visual style while clicking copies the Skill name with toast feedback
+- 📦 **大仓库 Skill 导入可读性优化**：Git 导入弹窗变宽变高，结果区域拥有更大的滚动空间，候选卡片更紧凑，便于查看包含大量 Skill 的仓库
+  - **Large Skill Repository Import Readability**: The Git import modal is wider and taller, results get a larger scroll area, and candidate cards are denser for repositories with many Skills
+
 ## [0.5.8] - 2026-06-04
 
 ### 新功能 / Features

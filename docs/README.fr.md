@@ -66,7 +66,7 @@ Vos données restent sur votre machine.
 
 ## 📥 Téléchargement
 
-Dernière version stable : **v0.5.8**. Deux voies de téléchargement par plateforme :
+Dernière version stable : **v0.5.8** ; aperçu actuel : **v0.5.9-beta.1**. Les liens directs stables pointent toujours vers v0.5.8 ; les builds aperçu sont disponibles dans GitHub Prereleases :
 
 - **Téléchargement direct** — noms de fichier fixes, le lien ne change pas d'une release à l'autre. Pratique pour les marque-pages durables ou les scripts. (Les releases stables passent désormais par le mirror CDN.)
 - **GitHub Releases** — page de release officielle avec versions archivées, signatures et release notes complètes.
@@ -76,7 +76,7 @@ Dernière version stable : **v0.5.8**. Deux voies de téléchargement par platef
 | Windows    | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://pub-fff1cbc0121241d480624bd3de5a2735.r2.dev/latest/PromptHub-Setup-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://pub-fff1cbc0121241d480624bd3de5a2735.r2.dev/latest/PromptHub-Setup-arm64.exe) | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.5.8-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.5.8-arm64.exe) |
 | macOS      | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://pub-fff1cbc0121241d480624bd3de5a2735.r2.dev/latest/PromptHub-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://pub-fff1cbc0121241d480624bd3de5a2735.r2.dev/latest/PromptHub-x64.dmg) | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.8-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.8-x64.dmg) |
 | Linux      | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://pub-fff1cbc0121241d480624bd3de5a2735.r2.dev/latest/PromptHub-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://pub-fff1cbc0121241d480624bd3de5a2735.r2.dev/latest/PromptHub-amd64.deb) | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.8-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.8-amd64.deb) |
-| Aperçu     | [![Preview Channel](https://img.shields.io/badge/Preview-Channel-8B5CF6?style=for-the-badge&logo=github&logoColor=white)](https://github.com/legeling/PromptHub/releases) | Aucune build aperçu séparée pour le moment. Activez le canal aperçu dans *Paramètres → À propos* pour tester les builds anticipées. |
+| Aperçu     | [![Preview v0.5.9-beta.1](https://img.shields.io/badge/Preview-0.5.9--beta.1-8B5CF6?style=for-the-badge&logo=github&logoColor=white)](https://github.com/legeling/PromptHub/releases/tag/v0.5.9-beta.1) | [GitHub Prerelease v0.5.9-beta.1](https://github.com/legeling/PromptHub/releases/tag/v0.5.9-beta.1) |
 
 > **Apple Silicon ou Intel ?** M1/M2/M3/M4 → `arm64`. Macs Intel → `x64`.
 > **Windows arch ?** La plupart des PC → `x64`. Seules les machines ARM type Surface Pro X → `arm64`.
@@ -112,7 +112,7 @@ Vous voulez tester la prochaine version d'aperçu ? Ouvrez *Paramètres → À p
 
 ## Captures
 
-> Les captures suivantes présentent les surfaces principales de la v0.5.8.
+> Les captures suivantes présentent les surfaces principales de la stable v0.5.8 ; v0.5.9 beta ajoute MCP, arbres de relations Prompt et améliorations import/aperçu Skill.
 
 <div align="center">
   <p><strong>Home en deux colonnes</strong></p>
@@ -302,6 +302,14 @@ Options globales courantes :
 
 Journal complet : **[CHANGELOG.md](../CHANGELOG.md)**
 
+### v0.5.9-beta.1 (2026-06-14, aperçu)
+
+- Aperçu du workspace MCP : bibliothèque MCP locale, store de modèles officiel, distribution vers agents, health checks, import .env sélectif et commandes MCP CLI
+- Arbre de relations Prompt et relations sémantiques : regroupement par glisser-déposer, ouverture/fermeture, libellés parent, compteur d'enfants et navigation relationnelle dans le détail
+- Import Git de Skills corrigé : les scans SSH GitHub clonent en local, les changements d'URL peuvent être rescannés et les limites HTTPS suggèrent SSH
+- L'aperçu image des Skills prend en charge zoom molette, déplacement à la main, contrôles fixes en bas à droite et plein écran
+- Les versions Skill commencent visuellement à v1 et cliquer le titre du détail copie le nom du Skill
+
 ### v0.5.8 (2026-06-04)
 
 - Nouveau flux dédié de reverse prompt d'image avec modèles vision, aperçu/copie avant sauvegarde et image de référence optionnelle
@@ -365,6 +373,12 @@ Journal complet : **[CHANGELOG.md](../CHANGELOG.md)**
 <div id="roadmap"></div>
 
 ## Feuille de route
+
+### v0.5.9-beta.1 ← aperçu actuel
+
+- La gestion MCP arrive en aperçu desktop avec bibliothèque, store de modèles, distribution agent, health checks et commandes CLI
+- Arbres de relations Prompt, panneaux de relations sémantiques et regroupement par glisser-déposer rejoignent le workflow Prompt existant
+- Import Git / SSH de Skills, navigation dans les grands dépôts, aperçu image et copie du titre continuent d'être affinés
 
 ### v0.5.8 ← stable actuelle
 
