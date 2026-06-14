@@ -27,7 +27,8 @@
     "libraryImported": "ライブラリから導入",
     "platformDeployed": "プラットフォーム配布済み",
     "distribution": "配布",
-    "skillStore": "スキルストア"
+    "skillStore": "スキルストア",
+    "relationshipGraph": "関係グラフ"
   },
   "header": {
     "search": "Prompt を検索...",
@@ -368,7 +369,17 @@
         "variant_of": "派生元",
         "depends_on": "依存",
         "next_step": "次のステップ"
-      }
+      },
+      "openButton": "関係",
+      "openPanel": "プロンプト関係を開く"
+    },
+    "graph": {
+      "title": "関係グラフ",
+      "promptCount": "{{count}} 件のプロンプト",
+      "relationCount": "{{count}} 件の関係",
+      "empty": "マップするプロンプトがまだありません",
+      "openPrompt": "グラフのプロンプト {{title}} を開く",
+      "groupedUnder": "グループ元"
     }
   },
   "folder": {

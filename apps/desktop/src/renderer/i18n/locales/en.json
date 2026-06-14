@@ -28,7 +28,8 @@
     "libraryImported": "From Library",
     "platformDeployed": "Deployed",
     "distribution": "Distribution",
-    "skillStore": "Skill Store"
+    "skillStore": "Skill Store",
+    "relationshipGraph": "Relationship Graph"
   },
   "header": {
     "search": "Search Prompt...",
@@ -369,7 +370,17 @@
         "variant_of": "Variant of",
         "depends_on": "Depends on",
         "next_step": "Next step"
-      }
+      },
+      "openButton": "Relationships",
+      "openPanel": "Open prompt relationships"
+    },
+    "graph": {
+      "title": "Relationship Graph",
+      "promptCount": "{{count}} prompts",
+      "relationCount": "{{count}} relationships",
+      "empty": "No prompts to map yet",
+      "openPrompt": "Open graph prompt {{title}}",
+      "groupedUnder": "Grouped under"
     }
   },
   "rules": {

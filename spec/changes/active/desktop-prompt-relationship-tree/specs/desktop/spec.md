@@ -76,15 +76,16 @@ relations as many-to-many semantic links.
 ### Requirement: Inline Semantic Relationship Editing
 
 The desktop app MUST allow users to manage non-tree prompt relationships from
-the existing prompt detail surfaces without opening a separate relationship
-workbench.
+the existing prompt detail surfaces without keeping a relationship workbench
+permanently visible.
 
 #### Scenario: Add A Semantic Relation
 
 - GIVEN prompt A is selected in the existing prompt detail area
-- WHEN the user chooses a relation kind and target prompt
+- WHEN the user opens the prompt relationship action
+- AND chooses a relation kind and target prompt
 - THEN PromptHub creates a `prompt_relations` row from prompt A to the target
-- AND the relation appears as an inline relation chip in the same detail area.
+- AND the relation appears in the relationship editor.
 
 #### Scenario: Navigate And Remove A Semantic Relation
 
@@ -94,3 +95,39 @@ workbench.
 - WHEN the user removes the relation chip
 - THEN PromptHub deletes only that graph relation
 - AND prompt A's tree `parentId` and child ordering are unchanged.
+
+### Requirement: All-Prompt Relationship Graph
+
+The desktop prompt sidebar MUST expose a relationship graph entry near the
+existing prompt collection filters, and the graph MUST show all prompts by
+default.
+
+#### Scenario: Open Relationship Graph From Sidebar
+
+- GIVEN the desktop prompt sidebar is visible
+- WHEN the user clicks Relationship Graph under Favorites
+- THEN PromptHub switches the prompt view mode to graph
+- AND clears folder ownership for the view
+- AND uses the all-prompt type filter
+- AND the graph view receives the full prompt collection, not the currently
+  filtered prompt list.
+
+#### Scenario: Return To Ordinary Prompt Collections
+
+- GIVEN the relationship graph is active
+- WHEN the user opens Favorites, a folder, a tag, or a prompt type collection
+- THEN PromptHub switches back to the ordinary card prompt view
+- AND applies the selected collection.
+
+### Requirement: Stable Hierarchy Card Alignment
+
+Prompt cards MUST keep hierarchy controls in a fixed rail so titles remain
+scannable as collapse controls, drag handles, type icons, favorite icons, and
+child counts appear or disappear.
+
+#### Scenario: Render Nested Prompt Card
+
+- GIVEN a nested prompt has children and optional metadata icons
+- WHEN PromptHub renders the prompt card
+- THEN the card title starts after a fixed control rail and bounded depth indent
+- AND optional controls do not add extra leading offset before the title.

@@ -11,3 +11,4 @@ export { AiTestModal } from './AiTestModal';
 export { PromptDetailModal } from './PromptDetailModal';
 export { PromptGalleryView } from './PromptGalleryView';
 export { PromptKanbanView } from './PromptKanbanView';
+export { PromptGraphView } from './PromptGraphView';

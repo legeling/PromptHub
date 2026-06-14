@@ -28,7 +28,8 @@
     "libraryImported": "来自 Skill 库",
     "platformDeployed": "已部署",
     "distribution": "分发",
-    "skillStore": "Skill 商店"
+    "skillStore": "Skill 商店",
+    "relationshipGraph": "关系图谱"
   },
   "header": {
     "search": "搜索 Prompt...",
@@ -369,7 +370,17 @@
         "variant_of": "变体来源",
         "depends_on": "依赖",
         "next_step": "下一步"
-      }
+      },
+      "openButton": "关系",
+      "openPanel": "打开提示词关系"
+    },
+    "graph": {
+      "title": "关系图谱",
+      "promptCount": "{{count}} 个提示词",
+      "relationCount": "{{count}} 个关系",
+      "empty": "暂无可映射的提示词",
+      "openPrompt": "打开图谱提示词 {{title}}",
+      "groupedUnder": "归属"
     }
   },
   "rules": {

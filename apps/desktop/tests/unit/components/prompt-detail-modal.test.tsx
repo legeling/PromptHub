@@ -65,7 +65,7 @@ describe("PromptDetailModal", () => {
     expect(screen.getByRole("button", { name: "AI Quick Edit" })).toBeInTheDocument();
   });
 
-  it("renders prompt relationships and supports navigation from the detail modal", async () => {
+  it("opens prompt relationships from an explicit detail action", async () => {
     const onClose = vi.fn();
     const onSelectPrompt = vi.fn();
     const onDeleteRelation = vi.fn().mockResolvedValue(undefined);
@@ -86,7 +86,13 @@ describe("PromptDetailModal", () => {
       { language: "en" },
     );
 
-    expect(screen.getByText("Prompt relationships")).toBeInTheDocument();
+    expect(screen.queryByText("Prompt relationships")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Open prompt relationships" }));
+
+    expect(
+      await screen.findByRole("dialog", { name: "Prompt relationships" }),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Open related prompt Review rubric" }));
 
     expect(onSelectPrompt).toHaveBeenCalledWith(relatedPrompt.id);

@@ -15,6 +15,7 @@ import { resolveScenarioModel } from '../../services/ai-defaults';
 import { PromptListHeader } from '../prompt/PromptListHeader';
 import type { OutputFormatConfig, VariableInputImageAttachment } from '../prompt/VariableInputModal';
 import { Spinner } from '../ui/Spinner';
+import { Modal } from '../ui/Modal';
 
 // Lazy load SkillManager for better initial load performance
 // 懒加载 SkillManager 以提升初始加载性能
@@ -25,6 +26,7 @@ const PromptQuickRewriteDialog = lazy(() => import('../prompt/PromptQuickRewrite
 const PromptTableView = lazy(() => import('../prompt/PromptTableView').then(m => ({ default: m.PromptTableView })));
 const PromptGalleryView = lazy(() => import('../prompt/PromptGalleryView').then(m => ({ default: m.PromptGalleryView })));
 const PromptKanbanView = lazy(() => import('../prompt/PromptKanbanView').then(m => ({ default: m.PromptKanbanView })));
+const PromptGraphView = lazy(() => import('../prompt/PromptGraphView').then(m => ({ default: m.PromptGraphView })));
 const AiTestModal = lazy(() => import('../prompt/AiTestModal').then(m => ({ default: m.AiTestModal })));
 const PromptDetailModal = lazy(() => import('../prompt/PromptDetailModal').then(m => ({ default: m.PromptDetailModal })));
 const VariableInputModal = lazy(() => import('../prompt/VariableInputModal').then(m => ({ default: m.VariableInputModal })));
@@ -158,7 +160,7 @@ function renderHighlightedText(text: string, terms: string[], highlightClassName
 
 // Prompt card component (compact version) - wrapped with React.memo for performance
 // Prompt 卡片组件（紧凑版本）- 使用 React.memo 包装以提升性能
-const PromptCard = memo(function PromptCard({
+export const PromptCard = memo(function PromptCard({
   prompt,
   depth,
   childCount,
@@ -206,6 +208,7 @@ const PromptCard = memo(function PromptCard({
   const hierarchyTone = isSelected ? 'text-white/75 border-white/20 bg-white/10' : 'text-muted-foreground border-border/70 bg-muted/40';
   const showDropBadge = Boolean(isDropTarget && dropPosition);
   const canCollapse = childCount > 0;
+  const depthIndent = Math.min(Math.max(depth, 0), 5) * 12;
 
   return (
     <div
@@ -230,7 +233,7 @@ const PromptCard = memo(function PromptCard({
       onDragLeave={onDragLeave}
       onDrop={onDrop}
       className={`
-        w-full text-left pr-3 py-2.5 rounded-lg cursor-pointer relative
+        w-full text-left px-3 py-2.5 rounded-lg cursor-pointer relative
         transition-all duration-base animate-in fade-in slide-in-from-left-2
         outline-none focus-visible:ring-2 focus-visible:ring-primary/40
         ${isSelected
@@ -245,80 +248,70 @@ const PromptCard = memo(function PromptCard({
         ${isDropTarget && dropPosition === 'after' ? 'border-b-2 border-b-primary' : ''}
         ${depth > 0 && !isSelected ? 'border-l-2 border-l-primary/30 bg-primary/[0.03]' : ''}
       `}
-      style={{ paddingLeft: `${depth * 14 + 12}px` }}
     >
       {depth > 0 && (
         <>
           <span
             aria-hidden="true"
             className={`absolute bottom-3 top-3 w-px ${isSelected ? 'bg-white/25' : 'bg-primary/30'}`}
-            style={{ left: `${12 + (depth - 1) * 14 + 5}px` }}
+            style={{ left: `${12 + depthIndent - 6}px` }}
           />
           <span
             aria-hidden="true"
             className={`absolute h-px w-3 ${isSelected ? 'bg-white/25' : 'bg-primary/30'}`}
-            style={{ left: `${12 + (depth - 1) * 14 + 5}px`, top: '1.35rem' }}
+            style={{ left: `${12 + depthIndent - 6}px`, top: '1.35rem' }}
           />
         </>
       )}
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 min-w-0 flex-1">
-          <button
-            type="button"
-            disabled={!canCollapse}
-            aria-label={t(isCollapsed ? 'prompt.expandPrompt' : 'prompt.collapsePrompt', {
-              title: prompt.title,
-            })}
-            title={t(isCollapsed ? 'prompt.expandPrompt' : 'prompt.collapsePrompt', {
-              title: prompt.title,
-            })}
-            onClick={(event) => {
-              event.stopPropagation();
-              if (canCollapse) {
-                onToggleCollapse();
-              }
-            }}
-            className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-colors ${
-              canCollapse
-                ? isSelected
-                  ? 'text-white/80 hover:bg-white/15'
-                  : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                : 'text-transparent'
-            }`}
+        <div
+          data-testid="prompt-card-title-row"
+          className="flex min-w-0 flex-1 items-center gap-2"
+          style={{ paddingLeft: `${depthIndent}px` }}
+        >
+          <div
+            data-testid="prompt-card-control-rail"
+            className="flex w-10 shrink-0 items-center justify-between"
           >
-            {canCollapse && (
-              isCollapsed ? (
-                <ChevronRightIcon aria-hidden="true" className="h-3.5 w-3.5" />
-              ) : (
-                <ChevronDownIcon aria-hidden="true" className="h-3.5 w-3.5" />
-              )
-            )}
-          </button>
-          <GripVerticalIcon
-            aria-hidden="true"
-            className={`w-3.5 h-3.5 flex-shrink-0 cursor-grab ${isSelected ? 'text-white/65' : 'text-muted-foreground/55'}`}
-          />
-          {depth > 0 && (
-            <CornerDownRightIcon
+            <button
+              type="button"
+              disabled={!canCollapse}
+              aria-label={t(isCollapsed ? 'prompt.expandPrompt' : 'prompt.collapsePrompt', {
+                title: prompt.title,
+              })}
+              title={t(isCollapsed ? 'prompt.expandPrompt' : 'prompt.collapsePrompt', {
+                title: prompt.title,
+              })}
+              onClick={(event) => {
+                event.stopPropagation();
+                if (canCollapse) {
+                  onToggleCollapse();
+                }
+              }}
+              className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-colors ${
+                canCollapse
+                  ? isSelected
+                    ? 'text-white/80 hover:bg-white/15'
+                    : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                  : 'text-transparent'
+              }`}
+            >
+              {canCollapse && (
+                isCollapsed ? (
+                  <ChevronRightIcon aria-hidden="true" className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronDownIcon aria-hidden="true" className="h-3.5 w-3.5" />
+                )
+              )}
+            </button>
+            <GripVerticalIcon
               aria-hidden="true"
-              className={`w-3.5 h-3.5 flex-shrink-0 ${isSelected ? 'text-white/70' : 'text-primary/75'}`}
+              className={`h-3.5 w-3.5 shrink-0 cursor-grab ${isSelected ? 'text-white/65' : 'text-muted-foreground/55'}`}
             />
-          )}
-          {prompt.isPinned && (
-            <PinIcon
-              aria-hidden="true"
-              className={`w-3 h-3 flex-shrink-0 ${isSelected ? 'text-white' : 'text-primary'}`}
-            />
-          )}
-          {/* Prompt type icon - only show for image/media type */}
-          {prompt.promptType === 'image' && (
-            <ImageIcon
-              aria-hidden="true"
-              className={`w-3 h-3 flex-shrink-0 ${isSelected ? 'text-white/70' : 'text-blue-500'}`}
-            />
-          )}
+          </div>
           <h3
-            className="font-medium text-sm leading-snug break-words line-clamp-2"
+            data-testid="prompt-card-title"
+            className="min-w-0 flex-1 break-words text-sm font-medium leading-snug line-clamp-2"
             title={prompt.title}
           >
             {renderHighlightedText(prompt.title, highlightTerms, highlightClassName)}
@@ -342,6 +335,18 @@ const PromptCard = memo(function PromptCard({
               <GitBranchIcon aria-hidden="true" className="h-3 w-3" />
               {t('prompt.childPromptCountShort', { count: childCount })}
             </span>
+          )}
+          {prompt.isPinned && (
+            <PinIcon
+              aria-hidden="true"
+              className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-primary'}`}
+            />
+          )}
+          {prompt.promptType === 'image' && (
+            <ImageIcon
+              aria-hidden="true"
+              className={`w-3.5 h-3.5 ${isSelected ? 'text-white/70' : 'text-blue-500'}`}
+            />
           )}
           {prompt.isFavorite && (
             <StarIcon
@@ -1534,6 +1539,7 @@ function PromptSkillMainContent() {
   const [quickRewritePrompt, setQuickRewritePrompt] = useState<Prompt | null>(null);
   const [isDetailInlineEditing, setIsDetailInlineEditing] = useState(false);
   const [isDetailInlineSaving, setIsDetailInlineSaving] = useState(false);
+  const [isDetailRelationshipsOpen, setIsDetailRelationshipsOpen] = useState(false);
   const [detailInlineActiveField, setDetailInlineActiveField] =
     useState<DetailInlineEditField>('title');
   const [detailInlineDraft, setDetailInlineDraft] = useState<DetailInlineEditDraft>({
@@ -1582,6 +1588,7 @@ function PromptSkillMainContent() {
   useEffect(() => {
     setIsDetailInlineEditing(false);
     setIsDetailInlineSaving(false);
+    setIsDetailRelationshipsOpen(false);
     setDetailInlineActiveField('title');
     setInlineAiTestImages([]);
   }, [selectedPrompt?.id]);
@@ -2263,6 +2270,27 @@ function PromptSkillMainContent() {
         </Suspense>
       ) : (
       <>
+      {/* Relationship graph view */}
+      <div className={getViewClass('graph')}>
+        {viewMode === 'graph' && (
+          <Suspense fallback={loadingFallback}>
+            <PromptGraphView
+              prompts={prompts}
+              relations={relations}
+              selectedPromptId={selectedId}
+              onSelectPrompt={(promptId) => {
+                const prompt = promptById.get(promptId);
+                selectPrompt(promptId);
+                if (prompt) {
+                  setDetailPrompt(prompt);
+                  setIsDetailModalOpen(true);
+                }
+              }}
+            />
+          </Suspense>
+        )}
+      </div>
+
       {/* List view mode */}
       {/* 列表视图模式 */}
       <div
@@ -2638,15 +2666,21 @@ function PromptSkillMainContent() {
                     </div>
                   )}
 
-                  <PromptRelationshipPanel
-                    currentPrompt={selectedPrompt}
-                    prompts={prompts}
-                    relations={selectedPromptRelations}
-                    onCreateRelation={handleCreatePromptRelation}
-                    onDeleteRelation={handleDeletePromptRelation}
-                    onSelectPrompt={selectPrompt}
-                    disabled={isDetailInlineEditing}
-                  />
+                  <div className="mb-4">
+                    <button
+                      type="button"
+                      onClick={() => setIsDetailRelationshipsOpen(true)}
+                      disabled={isDetailInlineEditing}
+                      aria-label={t('prompt.relationships.openPanel')}
+                      className="inline-flex items-center gap-2 rounded-xl border border-border app-wallpaper-surface-strong px-3 py-2 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-accent/60 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <GitBranchIcon aria-hidden="true" className="h-4 w-4 text-primary" />
+                      <span>{t('prompt.relationships.openButton')}</span>
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                        {selectedPromptRelations.length}
+                      </span>
+                    </button>
+                  </div>
 
                   {/* Images */}
                   {/* 图片 */}
@@ -3116,6 +3150,28 @@ function PromptSkillMainContent() {
 
       {/* Shared modals */}
       {/* 共享弹窗 */}
+      {selectedPrompt && (
+        <Modal
+          isOpen={isDetailRelationshipsOpen}
+          onClose={() => setIsDetailRelationshipsOpen(false)}
+          title={t('prompt.relationships.title')}
+          size="2xl"
+        >
+          <PromptRelationshipPanel
+            currentPrompt={selectedPrompt}
+            prompts={prompts}
+            relations={selectedPromptRelations}
+            onCreateRelation={handleCreatePromptRelation}
+            onDeleteRelation={handleDeletePromptRelation}
+            onSelectPrompt={(promptId) => {
+              selectPrompt(promptId);
+              setIsDetailRelationshipsOpen(false);
+            }}
+            disabled={isDetailInlineEditing}
+            className="mb-0"
+          />
+        </Modal>
+      )}
 
       {/* Edit modal */}
       {/* 编辑弹窗 */}

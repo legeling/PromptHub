@@ -27,7 +27,8 @@
     "libraryImported": "Desde la biblioteca",
     "platformDeployed": "Distribuidas en la plataforma",
     "distribution": "Distribución",
-    "skillStore": "Tienda de habilidades"
+    "skillStore": "Tienda de habilidades",
+    "relationshipGraph": "Grafo de relaciones"
   },
   "header": {
     "search": "Buscar Prompt...",
@@ -368,7 +369,17 @@
         "variant_of": "Variante de",
         "depends_on": "Depende de",
         "next_step": "Siguiente paso"
-      }
+      },
+      "openButton": "Relaciones",
+      "openPanel": "Abrir relaciones del prompt"
+    },
+    "graph": {
+      "title": "Grafo de relaciones",
+      "promptCount": "{{count}} prompts",
+      "relationCount": "{{count}} relaciones",
+      "empty": "No hay prompts para mapear",
+      "openPrompt": "Abrir prompt del grafo {{title}}",
+      "groupedUnder": "Agrupado bajo"
     }
   },
   "folder": {

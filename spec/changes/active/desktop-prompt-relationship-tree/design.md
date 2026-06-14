@@ -26,11 +26,18 @@ surfaces:
 
 - Card mode: drag a prompt card in the left prompt list.
 - List mode: drag a prompt table row.
-- Detail mode: a compact relation block in the existing prompt detail area
-  shows incoming/outgoing links, lets users add a relation, jump to the linked
-  prompt, and delete a relation inline.
-- Detail modal: the same compact relation block is reused so list/gallery users
-  get the same behavior without a second workbench.
+- Detail mode: the existing prompt detail area exposes a compact relationship
+  action with a count. The full relation editor opens in a modal so the detail
+  view does not permanently reserve space for relationship management.
+- Detail modal: the same relationship action is available in the modal header;
+  the editor remains reusable and opens only when the user asks for it.
+- Sidebar: the prompt navigation adds a `Relationship Graph` entry directly
+  under Favorites. This switches the main prompt workspace to a graph view.
+- Graph view: shows all prompts by default, independent of the active folder,
+  favorite, search, tag, or type filters. It renders tree parent edges from
+  `parentId` and semantic graph edges from `prompt_relations`. Selecting a
+  graph node opens the existing prompt detail modal rather than introducing a
+  second detail surface.
 
 Drop behavior:
 
@@ -39,8 +46,9 @@ Drop behavior:
 - Bottom third: place after the target within the target's parent.
 
 Rows/cards show the existing UI styling plus a small drag handle and drop
-highlight. Parent rows/cards expose an inline expand/collapse control. No new
-workbench or graph canvas is introduced.
+highlight. Parent rows/cards expose an inline expand/collapse control. The card
+title row uses a fixed control rail so collapse, drag, type, favorite, and child
+count controls do not push titles progressively to the right.
 
 The tree is not the whole relationship model. Graph-style relationships can
 point to many prompts and should be surfaced as lightweight relation chips or

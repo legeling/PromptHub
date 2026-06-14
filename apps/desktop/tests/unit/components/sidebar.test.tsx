@@ -87,6 +87,8 @@ describe("Sidebar", () => {
       ],
       filterTags: [],
       promptTypeFilter: "all",
+      relations: [],
+      viewMode: "card",
     } as Partial<ReturnType<typeof usePromptStore.getState>>);
 
     useFolderStore.setState({
@@ -486,6 +488,60 @@ describe("Sidebar", () => {
         folderPromptCounts: expect.any(Map),
       }),
     );
+  });
+
+  it("opens the all-prompts relationship graph from the prompt sidebar", async () => {
+    useUIStore.setState({
+      appModule: "prompt",
+      viewMode: "prompt",
+      isSidebarCollapsed: false,
+    });
+    usePromptStore.setState({
+      promptTypeFilter: "image",
+      viewMode: "card",
+    } as Partial<ReturnType<typeof usePromptStore.getState>>);
+    useFolderStore.setState({
+      selectedFolderId: "favorites",
+    } as Partial<ReturnType<typeof useFolderStore.getState>>);
+    const onNavigate = vi.fn();
+
+    await act(async () => {
+      await renderWithI18n(
+        <Sidebar currentPage="settings" onNavigate={onNavigate} />,
+        { language: "en" },
+      );
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Relationship Graph" }));
+
+    expect(usePromptStore.getState().viewMode).toBe("graph");
+    expect(usePromptStore.getState().promptTypeFilter).toBe("all");
+    expect(useFolderStore.getState().selectedFolderId).toBeNull();
+    expect(onNavigate).toHaveBeenCalledWith("home");
+  });
+
+  it("returns to card mode when opening ordinary prompt collections", async () => {
+    useUIStore.setState({
+      appModule: "prompt",
+      viewMode: "prompt",
+      isSidebarCollapsed: false,
+    });
+    usePromptStore.setState({
+      promptTypeFilter: "all",
+      viewMode: "graph",
+    } as Partial<ReturnType<typeof usePromptStore.getState>>);
+
+    await act(async () => {
+      await renderWithI18n(
+        <Sidebar currentPage="home" onNavigate={vi.fn()} />,
+        { language: "en" },
+      );
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Favorites" }));
+
+    expect(usePromptStore.getState().viewMode).toBe("card");
+    expect(useFolderStore.getState().selectedFolderId).toBe("favorites");
   });
 
   it("shows Agent Skills as a first-level skill navigation entry on desktop", async () => {

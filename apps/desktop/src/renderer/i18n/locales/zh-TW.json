@@ -27,7 +27,8 @@
     "libraryImported": "來自 Skill 庫",
     "platformDeployed": "已部署",
     "distribution": "分發",
-    "skillStore": "Skill 商店"
+    "skillStore": "Skill 商店",
+    "relationshipGraph": "關係圖譜"
   },
   "header": {
     "search": "搜尋 Prompt...",
@@ -368,7 +369,17 @@
         "variant_of": "變體來源",
         "depends_on": "依賴",
         "next_step": "下一步"
-      }
+      },
+      "openButton": "關係",
+      "openPanel": "開啟提示詞關係"
+    },
+    "graph": {
+      "title": "關係圖譜",
+      "promptCount": "{{count}} 個提示詞",
+      "relationCount": "{{count}} 個關係",
+      "empty": "暫無可映射的提示詞",
+      "openPrompt": "開啟圖譜提示詞 {{title}}",
+      "groupedUnder": "歸屬"
     }
   },
   "folder": {

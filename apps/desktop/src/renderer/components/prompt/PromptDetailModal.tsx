@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { StarIcon, HashIcon, ClockIcon, CopyIcon, CheckIcon, SparklesIcon, EditIcon, Maximize2Icon, Minimize2Icon, GlobeIcon, PlayIcon, VideoIcon, BracesIcon, Share2Icon } from 'lucide-react';
+import { StarIcon, HashIcon, ClockIcon, CopyIcon, CheckIcon, SparklesIcon, EditIcon, Maximize2Icon, Minimize2Icon, GlobeIcon, PlayIcon, VideoIcon, BracesIcon, Share2Icon, GitBranchIcon } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { ImagePreviewModal } from '../ui/ImagePreviewModal';
 import { LocalImage } from '../ui/LocalImage';
@@ -54,6 +54,7 @@ export function PromptDetailModal({
   const [showEnglish, setShowEnglish] = useState(false);
   const [shared, setShared] = useState(false);
   const [isQuickRewriteOpen, setIsQuickRewriteOpen] = useState(false);
+  const [isRelationshipModalOpen, setIsRelationshipModalOpen] = useState(false);
   const feedbackTimersRef = useRef<Record<string, ReturnType<typeof setTimeout> | null>>({});
 
   const clearFeedbackTimer = (key: string) => {
@@ -110,6 +111,10 @@ export function PromptDetailModal({
     }
     setShowEnglish(preferEnglish);
   }, [prompt?.id, prompt?.systemPromptEn, prompt?.userPromptEn, preferEnglish]);
+
+  useEffect(() => {
+    setIsRelationshipModalOpen(false);
+  }, [isOpen, prompt?.id]);
 
   const sanitizeSchema: any = useMemo(() => {
     const schema = { ...defaultSchema, attributes: { ...defaultSchema.attributes } };
@@ -296,6 +301,22 @@ export function PromptDetailModal({
         className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
       />
 
+      {canEditRelations && (
+        <button
+          type="button"
+          onClick={() => setIsRelationshipModalOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors text-sm font-medium"
+          title={t('prompt.relationships.openPanel')}
+          aria-label={t('prompt.relationships.openPanel')}
+        >
+          <GitBranchIcon aria-hidden="true" className="w-4 h-4" />
+          <span>{t('prompt.relationships.openButton')}</span>
+          <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+            {modalRelations.length}
+          </span>
+        </button>
+      )}
+
       <button
         type="button"
         onClick={handleShare}
@@ -468,21 +489,6 @@ export function PromptDetailModal({
           </div>
         )}
 
-        {canEditRelations && (
-          <PromptRelationshipPanel
-            currentPrompt={prompt}
-            prompts={prompts}
-            relations={modalRelations}
-            onCreateRelation={onCreateRelation!}
-            onDeleteRelation={onDeleteRelation!}
-            onSelectPrompt={(promptId) => {
-              onSelectPrompt!(promptId);
-              onClose();
-            }}
-            className="mb-0"
-          />
-        )}
-
         {/* System Prompt */}
         {(showEnglish ? prompt.systemPromptEn : prompt.systemPrompt) && (
           <div>
@@ -558,6 +564,29 @@ export function PromptDetailModal({
         prompt={prompt}
         onContinueEditing={onQuickRewriteEdit ?? onEdit}
       />
+
+      {canEditRelations && (
+        <Modal
+          isOpen={isRelationshipModalOpen}
+          onClose={() => setIsRelationshipModalOpen(false)}
+          title={t('prompt.relationships.title')}
+          size="2xl"
+        >
+          <PromptRelationshipPanel
+            currentPrompt={prompt}
+            prompts={prompts}
+            relations={modalRelations}
+            onCreateRelation={onCreateRelation!}
+            onDeleteRelation={onDeleteRelation!}
+            onSelectPrompt={(promptId) => {
+              onSelectPrompt!(promptId);
+              setIsRelationshipModalOpen(false);
+              onClose();
+            }}
+            className="mb-0"
+          />
+        </Modal>
+      )}
     </Modal>
   );
 }

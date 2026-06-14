@@ -17,8 +17,14 @@ export type SortBy = "updatedAt" | "createdAt" | "title" | "usageCount";
 export type SortOrder = "desc" | "asc";
 // View mode
 // 视图模式
-export type ViewMode = "card" | "list" | "gallery" | "kanban";
-const VIEW_MODES: readonly ViewMode[] = ["card", "list", "gallery", "kanban"];
+export type ViewMode = "card" | "list" | "gallery" | "kanban" | "graph";
+const VIEW_MODES: readonly ViewMode[] = [
+  "card",
+  "list",
+  "gallery",
+  "kanban",
+  "graph",
+];
 export type GalleryImageSize = "small" | "medium" | "large";
 export type KanbanColumns = 2 | 3 | 4;
 

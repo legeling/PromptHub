@@ -30,6 +30,7 @@ import {
   BookOpenIcon,
   LinkIcon,
   FolderOpenIcon,
+  GitBranchIcon,
 } from "lucide-react";
 import { useFolderStore } from "../../stores/folder.store";
 import { usePromptStore } from "../../stores/prompt.store";
@@ -150,6 +151,8 @@ export function Sidebar({
   const toggleExpand = useFolderStore((state) => state.toggleExpand);
   const updateFolder = useFolderStore((state) => state.updateFolder);
   const prompts = usePromptStore((state) => state.prompts);
+  const promptViewMode = usePromptStore((state) => state.viewMode);
+  const setPromptViewMode = usePromptStore((state) => state.setViewMode);
   const promptTypeFilter = usePromptStore((state) => state.promptTypeFilter);
   const setPromptTypeFilter = usePromptStore(
     (state) => state.setPromptTypeFilter,
@@ -218,9 +221,17 @@ export function Sidebar({
         toggleFilterTag(tag);
       }
 
+      setPromptViewMode("card");
       if (currentPage !== "home") onNavigate("home");
     },
-    [currentPage, filterTags, onNavigate, tagFilterMode, toggleFilterTag],
+    [
+      currentPage,
+      filterTags,
+      onNavigate,
+      setPromptViewMode,
+      tagFilterMode,
+      toggleFilterTag,
+    ],
   );
 
   const handlePromptTagDragStart = useCallback(
@@ -318,6 +329,44 @@ export function Sidebar({
   const webRuntime = isWebRuntime();
   const canAddRuleProject = !webRuntime;
   const activeModule = appModule === "rules" ? "rules" : viewMode;
+
+  const openPromptTypeFilter = useCallback(
+    (filter: "all" | "text" | "image") => {
+      setPromptViewMode("card");
+      setPromptTypeFilter(filter);
+      selectFolder(null);
+      if (currentPage !== "home") onNavigate("home");
+    },
+    [
+      currentPage,
+      onNavigate,
+      selectFolder,
+      setPromptTypeFilter,
+      setPromptViewMode,
+    ],
+  );
+
+  const openPromptFolder = useCallback(
+    (folderId: string) => {
+      setPromptViewMode("card");
+      selectFolder(folderId);
+      if (currentPage !== "home") onNavigate("home");
+    },
+    [currentPage, onNavigate, selectFolder, setPromptViewMode],
+  );
+
+  const openRelationshipGraph = useCallback(() => {
+    setPromptTypeFilter("all");
+    selectFolder(null);
+    setPromptViewMode("graph");
+    if (currentPage !== "home") onNavigate("home");
+  }, [
+    currentPage,
+    onNavigate,
+    selectFolder,
+    setPromptTypeFilter,
+    setPromptViewMode,
+  ]);
 
   useEffect(() => {
     if (storeView === "store") {
@@ -819,20 +868,18 @@ export function Sidebar({
                       <div className="grid grid-cols-3 gap-1 p-1 bg-sidebar-accent/40 rounded-lg">
                         <button
                           type="button"
-                          onClick={() => {
-                            setPromptTypeFilter("all");
-                            selectFolder(null);
-                            if (currentPage !== "home") onNavigate("home");
-                          }}
+                          onClick={() => openPromptTypeFilter("all")}
                           aria-pressed={
                             selectedFolderId === null &&
                             currentPage === "home" &&
-                            promptTypeFilter === "all"
+                            promptTypeFilter === "all" &&
+                            promptViewMode !== "graph"
                           }
                           className={`flex flex-col items-center justify-center py-2 rounded-md transition-all duration-base ${
                             selectedFolderId === null &&
                             currentPage === "home" &&
-                            promptTypeFilter === "all"
+                            promptTypeFilter === "all" &&
+                            promptViewMode !== "graph"
                               ? "app-wallpaper-surface-strong shadow-sm text-primary"
                               : "text-muted-foreground hover:bg-sidebar-accent app-background-mode-image:hover:bg-foreground/10 hover:text-foreground"
                           }`}
@@ -848,20 +895,18 @@ export function Sidebar({
                         </button>
                         <button
                           type="button"
-                          onClick={() => {
-                            setPromptTypeFilter("text");
-                            selectFolder(null);
-                            if (currentPage !== "home") onNavigate("home");
-                          }}
+                          onClick={() => openPromptTypeFilter("text")}
                           aria-pressed={
                             selectedFolderId === null &&
                             currentPage === "home" &&
-                            promptTypeFilter === "text"
+                            promptTypeFilter === "text" &&
+                            promptViewMode !== "graph"
                           }
                           className={`flex flex-col items-center justify-center py-2 rounded-md transition-all duration-base ${
                             selectedFolderId === null &&
                             currentPage === "home" &&
-                            promptTypeFilter === "text"
+                            promptTypeFilter === "text" &&
+                            promptViewMode !== "graph"
                               ? "app-wallpaper-surface-strong shadow-sm text-primary"
                               : "text-muted-foreground hover:bg-sidebar-accent app-background-mode-image:hover:bg-foreground/10 hover:text-foreground"
                           }`}
@@ -877,20 +922,18 @@ export function Sidebar({
                         </button>
                         <button
                           type="button"
-                          onClick={() => {
-                            setPromptTypeFilter("image");
-                            selectFolder(null);
-                            if (currentPage !== "home") onNavigate("home");
-                          }}
+                          onClick={() => openPromptTypeFilter("image")}
                           aria-pressed={
                             selectedFolderId === null &&
                             currentPage === "home" &&
-                            promptTypeFilter === "image"
+                            promptTypeFilter === "image" &&
+                            promptViewMode !== "graph"
                           }
                           className={`flex flex-col items-center justify-center py-2 rounded-md transition-all duration-base ${
                             selectedFolderId === null &&
                             currentPage === "home" &&
-                            promptTypeFilter === "image"
+                            promptTypeFilter === "image" &&
+                            promptViewMode !== "graph"
                               ? "app-wallpaper-surface-strong shadow-sm text-primary"
                               : "text-muted-foreground hover:bg-sidebar-accent app-background-mode-image:hover:bg-foreground/10 hover:text-foreground"
                           }`}
@@ -915,14 +958,11 @@ export function Sidebar({
                         active={
                           selectedFolderId === null &&
                           currentPage === "home" &&
-                          promptTypeFilter === "all"
+                          promptTypeFilter === "all" &&
+                          promptViewMode !== "graph"
                         }
                         collapsed={true}
-                        onClick={() => {
-                          setPromptTypeFilter("all");
-                          selectFolder(null);
-                          if (currentPage !== "home") onNavigate("home");
-                        }}
+                        onClick={() => openPromptTypeFilter("all")}
                       />
                       <NavItem
                         icon={<MessageSquareTextIcon className="w-5 h-5" />}
@@ -930,15 +970,12 @@ export function Sidebar({
                         count={promptStats.textCount}
                         active={
                           promptTypeFilter === "text" &&
+                          promptViewMode !== "graph" &&
                           selectedFolderId === null &&
                           currentPage === "home"
                         }
                         collapsed={true}
-                        onClick={() => {
-                          setPromptTypeFilter("text");
-                          selectFolder(null);
-                          if (currentPage !== "home") onNavigate("home");
-                        }}
+                        onClick={() => openPromptTypeFilter("text")}
                       />
                       <NavItem
                         icon={<ImageIcon className="w-5 h-5" />}
@@ -946,15 +983,12 @@ export function Sidebar({
                         count={promptStats.imageCount}
                         active={
                           promptTypeFilter === "image" &&
+                          promptViewMode !== "graph" &&
                           selectedFolderId === null &&
                           currentPage === "home"
                         }
                         collapsed={true}
-                        onClick={() => {
-                          setPromptTypeFilter("image");
-                          selectFolder(null);
-                          if (currentPage !== "home") onNavigate("home");
-                        }}
+                        onClick={() => openPromptTypeFilter("image")}
                       />
                     </div>
                   )}
@@ -963,13 +997,22 @@ export function Sidebar({
                     label={t("nav.favorites")}
                     count={favoriteCount}
                     active={
-                      selectedFolderId === "favorites" && currentPage === "home"
+                      selectedFolderId === "favorites" &&
+                      currentPage === "home" &&
+                      promptViewMode !== "graph"
                     }
                     collapsed={isCollapsed}
-                    onClick={() => {
-                      selectFolder("favorites");
-                      if (currentPage !== "home") onNavigate("home");
-                    }}
+                    onClick={() => openPromptFolder("favorites")}
+                  />
+                  <NavItem
+                    icon={<GitBranchIcon className="w-5 h-5" />}
+                    label={t("nav.relationshipGraph")}
+                    count={promptStats.totalCount}
+                    active={
+                      promptViewMode === "graph" && currentPage === "home"
+                    }
+                    collapsed={isCollapsed}
+                    onClick={openRelationshipGraph}
                   />
                 </div>
               </div>
@@ -1018,8 +1061,7 @@ export function Sidebar({
                           setPasswordFolder(folder);
                           setIsPasswordModalOpen(true);
                         } else {
-                          selectFolder(folder.id);
-                          if (currentPage !== "home") onNavigate("home");
+                          openPromptFolder(folder.id);
                         }
                       }}
                       onEditFolder={(folder) => {
@@ -1205,6 +1247,7 @@ export function Sidebar({
                             type="button"
                             onClick={() => {
                               clearFilterTags();
+                              setPromptViewMode("card");
                               if (currentPage !== "home") onNavigate("home");
                             }}
                             className="text-xs text-primary hover:underline"

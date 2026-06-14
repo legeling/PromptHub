@@ -1,5 +1,26 @@
 # Implementation
 
+## 2026-06-15 Follow-up
+
+- Replaced always-visible prompt relationship panels in the inline detail view
+  and detail modal with explicit relationship buttons that open the existing
+  `PromptRelationshipPanel` in a modal.
+- Added `graph` to the desktop prompt view mode and wired a Relationship Graph
+  sidebar entry directly under Favorites. The entry resets folder/type state to
+  all prompts and renders a full-prompt graph.
+- Added `PromptGraphView`, which renders prompt nodes, hierarchy edges from
+  `parentId`, and semantic edges from `prompt_relations`. Clicking a node opens
+  the existing prompt detail modal.
+- Adjusted prompt card hierarchy layout so collapse and drag controls live in a
+  fixed rail and depth indentation is bounded.
+- Added component regressions for the detail relationship action, sidebar graph
+  navigation, graph rendering, and prompt card title alignment.
+
+Verification:
+
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/prompt-detail-modal.test.tsx tests/unit/components/sidebar.test.tsx tests/unit/components/prompt-graph-view.test.tsx tests/unit/components/prompt-card-layout.test.tsx --run`
+- `pnpm --filter @prompthub/desktop typecheck`
+
 ## Shipped
 
 - Removed the separate prompt relationship prototype/workbench from the desktop
