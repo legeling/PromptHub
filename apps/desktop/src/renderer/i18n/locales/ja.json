@@ -173,6 +173,8 @@
     "parentPrompt": "親",
     "childPrompts": "子",
     "childPromptCountShort": "子 {{count}}",
+    "collapsePrompt": "{{title}} を折りたたむ",
+    "expandPrompt": "{{title}} を展開",
     "openParentPrompt": "親 Prompt {{title}} を開く",
     "openChildPrompt": "子 Prompt {{title}} を開く",
     "moreChildPrompts": "+{{count}} 件",

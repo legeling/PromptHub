@@ -173,6 +173,8 @@
     "parentPrompt": "Übergeordnet",
     "childPrompts": "Unterpunkte",
     "childPromptCountShort": "Unterpunkte {{count}}",
+    "collapsePrompt": "{{title}} einklappen",
+    "expandPrompt": "{{title}} ausklappen",
     "openParentPrompt": "Übergeordneten Prompt {{title}} öffnen",
     "openChildPrompt": "Untergeordneten Prompt {{title}} öffnen",
     "moreChildPrompts": "+{{count}} weitere",

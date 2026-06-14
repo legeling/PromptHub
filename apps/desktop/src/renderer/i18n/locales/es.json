@@ -173,6 +173,8 @@
     "parentPrompt": "Padre",
     "childPrompts": "Hijos",
     "childPromptCountShort": "Hijos {{count}}",
+    "collapsePrompt": "Contraer {{title}}",
+    "expandPrompt": "Expandir {{title}}",
     "openParentPrompt": "Abrir prompt padre {{title}}",
     "openChildPrompt": "Abrir prompt hijo {{title}}",
     "moreChildPrompts": "+{{count}} más",

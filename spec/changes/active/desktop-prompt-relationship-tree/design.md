@@ -3,7 +3,9 @@
 ## Data
 
 `prompts.parent_id` and `prompts.sort_order` own the tree-style relationship.
-This is the primary interaction users get through drag-and-drop.
+This is the primary interaction users get through drag-and-drop. A prompt has
+at most one tree parent so ordering, indentation, and collapse state stay
+deterministic.
 
 `prompt_relations` stores graph-style relationships:
 
@@ -30,7 +32,12 @@ Drop behavior:
 - Bottom third: place after the target within the target's parent.
 
 Rows/cards show the existing UI styling plus a small drag handle and drop
-highlight. No new workbench or graph canvas is introduced.
+highlight. Parent rows/cards expose an inline expand/collapse control. No new
+workbench or graph canvas is introduced.
+
+The tree is not the whole relationship model. Graph-style relationships can
+point to many prompts and should be surfaced as lightweight relation chips or
+detail-header affordances rather than as extra parents in the tree.
 
 ## Contracts
 

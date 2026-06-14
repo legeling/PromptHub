@@ -12,6 +12,8 @@
   page.
 - Added compact parent/child navigation to the existing prompt detail header so
   a dragged relationship has an immediate workflow use.
+- Added inline expand/collapse controls in the card list and table view for
+  parent prompts.
 - Added workspace frontmatter support for `parentId` and `order`.
 - Added backup-import sanitation for missing or self-referential prompt parents.
 
@@ -20,7 +22,7 @@
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/prompt-db.test.ts tests/unit/main/prompt-relation-db.test.ts --run`: 62 tests passed.
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/prompt-table-view.test.tsx --run`: 11 tests passed.
 - `pnpm --filter @prompthub/desktop typecheck`: passed.
-- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/prompt-table-view.test.tsx tests/unit/components/prompt-drag-utils.test.ts --run`: 13 tests passed.
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/prompt-table-view.test.tsx tests/unit/components/prompt-drag-utils.test.ts --run`: 15 tests passed.
 - `pnpm --filter @prompthub/desktop typecheck`: passed.
 
 ## Notes

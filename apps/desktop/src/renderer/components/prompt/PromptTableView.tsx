@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback, type DragEvent as ReactDragEvent, type MouseEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StarIcon, CopyIcon, PlayIcon, EditIcon, TrashIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, HistoryIcon, FolderIcon, Trash2Icon, GripVerticalIcon, CornerDownRightIcon, GitBranchIcon } from 'lucide-react';
+import { StarIcon, CopyIcon, PlayIcon, EditIcon, TrashIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon, HistoryIcon, FolderIcon, Trash2Icon, GripVerticalIcon, CornerDownRightIcon, GitBranchIcon } from 'lucide-react';
 import type { Prompt } from '@prompthub/shared/types';
 import { useFolderStore } from '../../stores/folder.store';
 import { useTableConfig, type ColumnConfig } from '../../hooks/useTableConfig';
@@ -142,9 +142,17 @@ export function PromptTableView({
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<PromptDropPosition | null>(null);
+  const [collapsedPromptIds, setCollapsedPromptIds] = useState<Set<string>>(() => new Set());
   const folders = useFolderStore((state) => state.folders);
   const promptIds = useMemo(() => new Set(prompts.map((prompt) => prompt.id)), [prompts]);
-  const tablePromptNodes = useMemo(() => flattenPromptTree(prompts), [prompts]);
+  const effectiveCollapsedPromptIds = useMemo(
+    () => (highlightTerms.length > 0 ? new Set<string>() : collapsedPromptIds),
+    [collapsedPromptIds, highlightTerms.length],
+  );
+  const tablePromptNodes = useMemo(
+    () => flattenPromptTree(prompts, effectiveCollapsedPromptIds),
+    [effectiveCollapsedPromptIds, prompts],
+  );
   const nodeDepthById = useMemo(
     () => new Map(tablePromptNodes.map((node) => [node.prompt.id, node.depth])),
     [tablePromptNodes],
@@ -223,6 +231,13 @@ export function PromptTableView({
     });
   }, [promptIds]);
 
+  useEffect(() => {
+    setCollapsedPromptIds((currentIds) => {
+      const visibleIds = new Set(Array.from(currentIds).filter((id) => promptIds.has(id)));
+      return visibleIds.size === currentIds.size ? currentIds : visibleIds;
+    });
+  }, [promptIds]);
+
   // Extract variable count
   // 提取变量数量
   const getVariableCount = (prompt: Prompt) => {
@@ -280,6 +295,18 @@ export function PromptTableView({
       newSelected.add(id);
     }
     setSelectedIds(newSelected);
+  };
+
+  const togglePromptCollapse = (promptId: string) => {
+    setCollapsedPromptIds((currentIds) => {
+      const nextIds = new Set(currentIds);
+      if (nextIds.has(promptId)) {
+        nextIds.delete(promptId);
+      } else {
+        nextIds.add(promptId);
+      }
+      return nextIds;
+    });
   };
 
   const toggleSelectAll = () => {
@@ -563,6 +590,7 @@ export function PromptTableView({
                 const promptDepth = nodeDepthById.get(prompt.id) ?? 0;
                 const promptChildCount = hierarchyMeta.childCountById.get(prompt.id) ?? 0;
                 const promptParentTitle = hierarchyMeta.parentTitleById.get(prompt.id);
+                const isPromptCollapsed = effectiveCollapsedPromptIds.has(prompt.id);
 
                 // Helper to render cell content based on column id
                 // 根据列 ID 渲染单元格内容的辅助函数
@@ -612,6 +640,30 @@ export function PromptTableView({
                             className="flex min-w-0 items-center gap-2"
                             style={{ paddingLeft: `${promptDepth * 16}px` }}
                           >
+                            {promptChildCount > 0 ? (
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  togglePromptCollapse(prompt.id);
+                                }}
+                                aria-label={t(isPromptCollapsed ? 'prompt.expandPrompt' : 'prompt.collapsePrompt', {
+                                  title: prompt.title,
+                                })}
+                                title={t(isPromptCollapsed ? 'prompt.expandPrompt' : 'prompt.collapsePrompt', {
+                                  title: prompt.title,
+                                })}
+                                className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                              >
+                                {isPromptCollapsed ? (
+                                  <ChevronRightIcon aria-hidden="true" className="h-3.5 w-3.5" />
+                                ) : (
+                                  <ChevronDownIcon aria-hidden="true" className="h-3.5 w-3.5" />
+                                )}
+                              </button>
+                            ) : (
+                              <span aria-hidden="true" className="h-5 w-5 shrink-0" />
+                            )}
                             <GripVerticalIcon
                               aria-hidden="true"
                               className="h-3.5 w-3.5 shrink-0 cursor-grab text-muted-foreground/55"

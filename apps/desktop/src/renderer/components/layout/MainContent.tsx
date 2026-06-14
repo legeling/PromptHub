@@ -35,7 +35,7 @@ const loadingFallback = (
     <Spinner />
   </div>
 );
-import { StarIcon, CopyIcon, HistoryIcon, HashIcon, FolderIcon, SparklesIcon, EditIcon, TrashIcon, CheckIcon, PlayIcon, LoaderIcon, XIcon, GitCompareIcon, ClockIcon, GlobeIcon, PinIcon, MessageSquareTextIcon, ImageIcon, DownloadIcon, SaveIcon, ZoomInIcon, Share2Icon, PaperclipIcon, GripVerticalIcon, CornerDownRightIcon, GitBranchIcon } from 'lucide-react';
+import { StarIcon, CopyIcon, HistoryIcon, HashIcon, FolderIcon, SparklesIcon, EditIcon, TrashIcon, CheckIcon, PlayIcon, LoaderIcon, XIcon, GitCompareIcon, ClockIcon, GlobeIcon, PinIcon, MessageSquareTextIcon, ImageIcon, DownloadIcon, SaveIcon, ZoomInIcon, Share2Icon, PaperclipIcon, GripVerticalIcon, CornerDownRightIcon, GitBranchIcon, ChevronDownIcon, ChevronRightIcon } from 'lucide-react';
 import { ContextMenu, ContextMenuItem } from '../ui/ContextMenu';
 import { ImagePreviewModal } from '../ui/ImagePreviewModal';
 import { LocalImage } from '../ui/LocalImage';
@@ -162,6 +162,7 @@ const PromptCard = memo(function PromptCard({
   depth,
   childCount,
   parentTitle,
+  isCollapsed,
   isSelected,
   isDragging,
   isDropTarget,
@@ -174,24 +175,27 @@ const PromptCard = memo(function PromptCard({
   onDragEnter,
   onDragLeave,
   onDrop,
+  onToggleCollapse,
   highlightTerms
 }: {
   prompt: Prompt;
   depth: number;
   childCount: number;
   parentTitle?: string;
+  isCollapsed: boolean;
   isSelected: boolean;
   isDragging: boolean;
   isDropTarget: boolean;
   dropPosition: PromptDropPosition | null;
   onSelect: (e: React.MouseEvent) => void;
   onContextMenu: (e: React.MouseEvent) => void;
-  onDragStart: (e: ReactDragEvent<HTMLButtonElement>) => void;
-  onDragEnd: (e: ReactDragEvent<HTMLButtonElement>) => void;
-  onDragOver: (e: ReactDragEvent<HTMLButtonElement>) => void;
-  onDragEnter: (e: ReactDragEvent<HTMLButtonElement>) => void;
-  onDragLeave: (e: ReactDragEvent<HTMLButtonElement>) => void;
-  onDrop: (e: ReactDragEvent<HTMLButtonElement>) => void;
+  onDragStart: (e: ReactDragEvent<HTMLDivElement>) => void;
+  onDragEnd: (e: ReactDragEvent<HTMLDivElement>) => void;
+  onDragOver: (e: ReactDragEvent<HTMLDivElement>) => void;
+  onDragEnter: (e: ReactDragEvent<HTMLDivElement>) => void;
+  onDragLeave: (e: ReactDragEvent<HTMLDivElement>) => void;
+  onDrop: (e: ReactDragEvent<HTMLDivElement>) => void;
+  onToggleCollapse: () => void;
   highlightTerms: string[];
 }) {
   const { t } = useTranslation();
@@ -200,13 +204,23 @@ const PromptCard = memo(function PromptCard({
     : 'bg-primary/15 text-primary rounded px-0.5';
   const hierarchyTone = isSelected ? 'text-white/75 border-white/20 bg-white/10' : 'text-muted-foreground border-border/70 bg-muted/40';
   const showDropBadge = Boolean(isDropTarget && dropPosition);
+  const canCollapse = childCount > 0;
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       draggable
       aria-pressed={isSelected}
       onClick={onSelect}
+      onKeyDown={(event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') {
+          return;
+        }
+
+        event.preventDefault();
+        onSelect(event as unknown as React.MouseEvent);
+      }}
       onContextMenu={onContextMenu}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
@@ -248,6 +262,37 @@ const PromptCard = memo(function PromptCard({
       )}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0 flex-1">
+          <button
+            type="button"
+            disabled={!canCollapse}
+            aria-label={t(isCollapsed ? 'prompt.expandPrompt' : 'prompt.collapsePrompt', {
+              title: prompt.title,
+            })}
+            title={t(isCollapsed ? 'prompt.expandPrompt' : 'prompt.collapsePrompt', {
+              title: prompt.title,
+            })}
+            onClick={(event) => {
+              event.stopPropagation();
+              if (canCollapse) {
+                onToggleCollapse();
+              }
+            }}
+            className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-colors ${
+              canCollapse
+                ? isSelected
+                  ? 'text-white/80 hover:bg-white/15'
+                  : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                : 'text-transparent'
+            }`}
+          >
+            {canCollapse && (
+              isCollapsed ? (
+                <ChevronRightIcon aria-hidden="true" className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronDownIcon aria-hidden="true" className="h-3.5 w-3.5" />
+              )
+            )}
+          </button>
           <GripVerticalIcon
             aria-hidden="true"
             className={`w-3.5 h-3.5 flex-shrink-0 cursor-grab ${isSelected ? 'text-white/65' : 'text-muted-foreground/55'}`}
@@ -319,7 +364,7 @@ const PromptCard = memo(function PromptCard({
           {renderHighlightedText(prompt.description, highlightTerms, highlightClassName)}
         </p>
       )}
-    </button>
+    </div>
   );
 });
 
@@ -371,7 +416,15 @@ const VirtualizedPromptList = memo(function VirtualizedPromptList({
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<PromptDropPosition | null>(null);
-  const treeItems = useMemo(() => flattenPromptTree(prompts), [prompts]);
+  const [collapsedPromptIds, setCollapsedPromptIds] = useState<Set<string>>(() => new Set());
+  const effectiveCollapsedPromptIds = useMemo(
+    () => (highlightTerms.length > 0 ? new Set<string>() : collapsedPromptIds),
+    [collapsedPromptIds, highlightTerms.length],
+  );
+  const treeItems = useMemo(
+    () => flattenPromptTree(prompts, effectiveCollapsedPromptIds),
+    [effectiveCollapsedPromptIds, prompts],
+  );
   const hierarchyMeta = useMemo(() => getPromptHierarchyMeta(prompts), [prompts]);
 
   const rowVirtualizer = useVirtualizer({
@@ -401,8 +454,28 @@ const VirtualizedPromptList = memo(function VirtualizedPromptList({
     setDropPosition(null);
   }, []);
 
+  const togglePromptCollapse = useCallback((promptId: string) => {
+    setCollapsedPromptIds((current) => {
+      const next = new Set(current);
+      if (next.has(promptId)) {
+        next.delete(promptId);
+      } else {
+        next.add(promptId);
+      }
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    const promptIds = new Set(prompts.map((prompt) => prompt.id));
+    setCollapsedPromptIds((current) => {
+      const next = new Set([...current].filter((promptId) => promptIds.has(promptId)));
+      return next.size === current.size ? current : next;
+    });
+  }, [prompts]);
+
   const handleDragStart = useCallback(
-    (event: ReactDragEvent<HTMLButtonElement>, promptId: string) => {
+    (event: ReactDragEvent<HTMLDivElement>, promptId: string) => {
       setDraggingId(promptId);
       setDropTargetId(null);
       setDropPosition(null);
@@ -414,7 +487,7 @@ const VirtualizedPromptList = memo(function VirtualizedPromptList({
   );
 
   const updateDropTarget = useCallback(
-    (event: ReactDragEvent<HTMLButtonElement>, targetPromptId: string) => {
+    (event: ReactDragEvent<HTMLDivElement>, targetPromptId: string) => {
       event.preventDefault();
       event.dataTransfer.dropEffect = 'move';
 
@@ -451,7 +524,7 @@ const VirtualizedPromptList = memo(function VirtualizedPromptList({
     [draggingId, prompts],
   );
 
-  const handleDragLeave = useCallback((event: ReactDragEvent<HTMLButtonElement>) => {
+  const handleDragLeave = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
     const nextTarget = event.relatedTarget;
     if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) {
       return;
@@ -462,7 +535,7 @@ const VirtualizedPromptList = memo(function VirtualizedPromptList({
   }, []);
 
   const handleDrop = useCallback(
-    async (event: ReactDragEvent<HTMLButtonElement>, targetPromptId: string) => {
+    async (event: ReactDragEvent<HTMLDivElement>, targetPromptId: string) => {
       event.preventDefault();
 
       const sourcePromptId =
@@ -522,6 +595,7 @@ const VirtualizedPromptList = memo(function VirtualizedPromptList({
                 depth={depth}
                 childCount={hierarchyMeta.childCountById.get(prompt.id) ?? 0}
                 parentTitle={hierarchyMeta.parentTitleById.get(prompt.id)}
+                isCollapsed={effectiveCollapsedPromptIds.has(prompt.id)}
                 isSelected={selectedPromptIdSet.has(prompt.id)}
                 isDragging={draggingId === prompt.id}
                 isDropTarget={dropTargetId === prompt.id}
@@ -534,6 +608,7 @@ const VirtualizedPromptList = memo(function VirtualizedPromptList({
                 onDragEnter={(event) => updateDropTarget(event, prompt.id)}
                 onDragLeave={handleDragLeave}
                 onDrop={(event) => handleDrop(event, prompt.id)}
+                onToggleCollapse={() => togglePromptCollapse(prompt.id)}
                 highlightTerms={highlightTerms}
               />
             </div>

@@ -174,6 +174,8 @@
     "parentPrompt": "Parent",
     "childPrompts": "Children",
     "childPromptCountShort": "Children {{count}}",
+    "collapsePrompt": "Collapse {{title}}",
+    "expandPrompt": "Expand {{title}}",
     "openParentPrompt": "Open parent prompt {{title}}",
     "openChildPrompt": "Open child prompt {{title}}",
     "moreChildPrompts": "+{{count}} more",

@@ -274,6 +274,26 @@ describe("PromptTableView", () => {
     expect(screen.getByText("Children 1")).toBeInTheDocument();
   });
 
+  it("collapses and expands child prompt rows from the hierarchy control", async () => {
+    const parent = createPrompt(1);
+    const child = {
+      ...createPrompt(2),
+      parentId: parent.id,
+      order: 0,
+    };
+
+    await renderTableView({ prompts: [parent, child] });
+
+    fireEvent.click(screen.getByRole("button", { name: "Collapse Prompt 1" }));
+
+    expect(screen.getByRole("button", { name: parent.title })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: child.title })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand Prompt 1" }));
+
+    expect(screen.getByRole("button", { name: child.title })).toBeInTheDocument();
+  });
+
   it("clamps the active page when the prompt list shrinks", async () => {
     const prompts = Array.from({ length: 11 }, (_, index) => createPrompt(index + 1));
     const { rerender } = await renderTableView({ prompts });

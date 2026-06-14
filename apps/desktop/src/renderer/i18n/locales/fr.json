@@ -173,6 +173,8 @@
     "parentPrompt": "Parent",
     "childPrompts": "Enfants",
     "childPromptCountShort": "Enfants {{count}}",
+    "collapsePrompt": "Replier {{title}}",
+    "expandPrompt": "Déplier {{title}}",
     "openParentPrompt": "Ouvrir le prompt parent {{title}}",
     "openChildPrompt": "Ouvrir le prompt enfant {{title}}",
     "moreChildPrompts": "+{{count}} de plus",

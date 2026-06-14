@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { Prompt } from "@prompthub/shared/types";
 
-import { getPromptHierarchyMeta } from "../../../src/renderer/components/prompt/prompt-drag-utils";
+import {
+  flattenPromptTree,
+  getPromptHierarchyMeta,
+} from "../../../src/renderer/components/prompt/prompt-drag-utils";
 
 const basePrompt: Prompt = {
   id: "prompt-1",
@@ -45,5 +48,19 @@ describe("prompt drag hierarchy utils", () => {
     expect(meta.parentTitleById.get(secondChild.id)).toBe(parent.title);
     expect(meta.childCountById.has("missing-parent")).toBe(false);
     expect(meta.parentTitleById.has(orphan.id)).toBe(false);
+  });
+
+  it("omits descendants of collapsed prompts while preserving the collapsed parent", () => {
+    const parent = createPrompt("parent");
+    const child = createPrompt("child", { parentId: parent.id });
+    const grandchild = createPrompt("grandchild", { parentId: child.id });
+    const sibling = createPrompt("sibling");
+
+    const flattened = flattenPromptTree(
+      [parent, child, grandchild, sibling],
+      new Set([parent.id]),
+    );
+
+    expect(flattened.map((node) => node.prompt.id)).toEqual([parent.id, sibling.id]);
   });
 });

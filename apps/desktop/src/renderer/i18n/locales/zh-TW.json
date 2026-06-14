@@ -173,6 +173,8 @@
     "parentPrompt": "父級",
     "childPrompts": "子項",
     "childPromptCountShort": "子項 {{count}}",
+    "collapsePrompt": "摺疊 {{title}}",
+    "expandPrompt": "展開 {{title}}",
     "openParentPrompt": "開啟父級 Prompt {{title}}",
     "openChildPrompt": "開啟子項 Prompt {{title}}",
     "moreChildPrompts": "+{{count}} 個",

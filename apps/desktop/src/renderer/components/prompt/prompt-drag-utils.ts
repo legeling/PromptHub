@@ -34,12 +34,26 @@ export function getPromptDropPosition(
   return "inside";
 }
 
-export function flattenPromptTree(prompts: Prompt[]): FlattenedPromptNode[] {
+export function flattenPromptTree(
+  prompts: Prompt[],
+  collapsedPromptIds: ReadonlySet<string> = new Set(),
+): FlattenedPromptNode[] {
   const promptById = new Map(prompts.map((prompt) => [prompt.id, prompt]));
   const inputIndexById = new Map(prompts.map((prompt, index) => [prompt.id, index]));
   const childrenByParent = buildChildrenByParent(prompts, promptById, inputIndexById);
   const result: FlattenedPromptNode[] = [];
   const attachedIds = new Set<string>();
+
+  const markDescendantsAttached = (prompt: Prompt, ancestors: Set<string>) => {
+    for (const child of childrenByParent.get(prompt.id) ?? []) {
+      if (ancestors.has(child.id)) {
+        continue;
+      }
+
+      attachedIds.add(child.id);
+      markDescendantsAttached(child, new Set(ancestors).add(child.id));
+    }
+  };
 
   const visit = (prompt: Prompt, depth: number, ancestors: Set<string>) => {
     if (ancestors.has(prompt.id)) {
@@ -50,6 +64,11 @@ export function flattenPromptTree(prompts: Prompt[]): FlattenedPromptNode[] {
     attachedIds.add(prompt.id);
 
     const nextAncestors = new Set(ancestors).add(prompt.id);
+    if (collapsedPromptIds.has(prompt.id)) {
+      markDescendantsAttached(prompt, nextAncestors);
+      return;
+    }
+
     for (const child of childrenByParent.get(prompt.id) ?? []) {
       visit(child, depth + 1, nextAncestors);
     }

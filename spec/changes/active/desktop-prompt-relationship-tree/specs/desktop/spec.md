@@ -47,3 +47,28 @@ import.
 - THEN the prompt frontmatter includes `parentId` and `order`
 - WHEN PromptHub parses those files again
 - THEN the same hierarchy fields are restored.
+
+### Requirement: Collapsible Prompt Tree
+
+Prompt hierarchy controls MUST allow users to hide and reveal child prompts
+without leaving the existing list or table surface.
+
+#### Scenario: Collapse And Expand Prompt Children
+
+- GIVEN prompt A has child prompt B
+- WHEN the user clicks A's collapse control
+- THEN B is hidden from the visible prompt list/table
+- WHEN the user clicks A's expand control
+- THEN B is visible again under A.
+
+### Requirement: Separate Tree Parent From Graph Relations
+
+PromptHub MUST treat the tree parent as a single primary hierarchy and graph
+relations as many-to-many semantic links.
+
+#### Scenario: Preserve Deterministic Tree Ownership
+
+- GIVEN prompt A is related to multiple prompts through graph relations
+- THEN A still has at most one `parentId`
+- AND non-tree relations are represented through `prompt_relations`, not by
+  assigning multiple tree parents.
