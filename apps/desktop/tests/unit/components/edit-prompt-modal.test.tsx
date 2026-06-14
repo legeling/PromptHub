@@ -28,8 +28,13 @@ const basePrompt: Prompt = {
   updatedAt: new Date("2026-05-01T00:00:00.000Z").toISOString(),
 };
 
+let updatePromptMock = vi.fn();
+let createPromptMock = vi.fn();
+
 function resetStores() {
   installWindowMocks();
+  updatePromptMock = vi.fn().mockResolvedValue(undefined);
+  createPromptMock = vi.fn().mockResolvedValue(undefined);
   useFolderStore.setState({
     folders: [],
     selectedFolderId: null,
@@ -40,8 +45,8 @@ function resetStores() {
     prompts: [basePrompt],
     selectedId: basePrompt.id,
     selectedIds: [],
-    updatePrompt: vi.fn().mockResolvedValue(undefined),
-    createPrompt: vi.fn().mockResolvedValue(undefined),
+    updatePrompt: updatePromptMock,
+    createPrompt: createPromptMock,
   } as Partial<ReturnType<typeof usePromptStore.getState>>);
   useSettingsStore.setState({
     promptTagCatalog: [],
@@ -129,5 +134,25 @@ describe("EditPromptModal", () => {
     fireEvent.click(screen.getByRole("button", { name: "Text" }));
 
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("preserves an empty system prompt when saving edits", async () => {
+    await renderEditPromptModal();
+
+    fireEvent.click(screen.getByRole("button", { name: /More Settings/ }));
+
+    fireEvent.change(
+      screen.getByRole("textbox", { name: "System Prompt (Optional)" }),
+      { target: { value: "" } },
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(updatePromptMock).toHaveBeenCalledWith(
+      basePrompt.id,
+      expect.objectContaining({
+        systemPrompt: "",
+      }),
+    );
   });
 });
