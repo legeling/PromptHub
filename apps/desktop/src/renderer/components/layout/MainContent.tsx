@@ -49,7 +49,7 @@ import { useToast } from '../ui/Toast';
 import { useTemporaryFlag } from '../../hooks/useTemporaryFlag';
 import type { AITestResult, StreamCallbacks } from '../../services/ai';
 import { useTranslation } from 'react-i18next';
-import type { Prompt, PromptVersion, UpdatePromptDTO } from '@prompthub/shared/types';
+import type { CreatePromptRelationDTO, Prompt, PromptVersion, UpdatePromptDTO } from '@prompthub/shared/types';
 import {
   buildPromptCopyText,
   copyTextToClipboard,
@@ -58,6 +58,7 @@ import {
 } from '../prompt/prompt-copy-utils';
 import { resolvePromptMarkdownHref } from '../prompt/prompt-markdown-url';
 import { PromptQuickRewriteTrigger } from '../prompt/PromptQuickRewriteTrigger';
+import { PromptRelationshipPanel } from '../prompt/PromptRelationshipPanel';
 import {
   filterVisiblePrompts,
   sortVisiblePrompts,
@@ -670,12 +671,15 @@ function PromptSkillMainContent() {
   const selectedId = usePromptStore((state) => state.selectedId);
   const selectedIds = usePromptStore((state) => state.selectedIds);
   const lastSelectedId = usePromptStore((state) => state.lastSelectedId);
+  const relations = usePromptStore((state) => state.relations);
   const selectPrompt = usePromptStore((state) => state.selectPrompt);
   const setSelectedIds = usePromptStore((state) => state.setSelectedIds);
   const createPrompt = usePromptStore((state) => state.createPrompt);
+  const createRelation = usePromptStore((state) => state.createRelation);
   const toggleFavorite = usePromptStore((state) => state.toggleFavorite);
   const togglePinned = usePromptStore((state) => state.togglePinned);
   const deletePrompt = usePromptStore((state) => state.deletePrompt);
+  const deleteRelation = usePromptStore((state) => state.deleteRelation);
   const updatePrompt = usePromptStore((state) => state.updatePrompt);
   const movePrompt = usePromptStore((state) => state.movePrompt);
   const searchQuery = usePromptStore((state) => state.searchQuery);
@@ -1477,6 +1481,17 @@ function PromptSkillMainContent() {
 
   const selectedPrompt = prompts.find((p) => p.id === selectedId);
   const promptById = useMemo(() => new Map(prompts.map((prompt) => [prompt.id, prompt])), [prompts]);
+  const selectedPromptRelations = useMemo(() => {
+    if (!selectedPrompt) {
+      return [];
+    }
+
+    return relations.filter(
+      (relation) =>
+        relation.sourcePromptId === selectedPrompt.id ||
+        relation.targetPromptId === selectedPrompt.id,
+    );
+  }, [relations, selectedPrompt]);
   const selectedParentPrompt = useMemo(() => {
     if (!selectedPrompt?.parentId) {
       return null;
@@ -1888,6 +1903,38 @@ function PromptSkillMainContent() {
       'success',
     );
   }, [folders, showToast, t, updatePrompt]);
+
+  const handleCreatePromptRelation = useCallback(async (data: CreatePromptRelationDTO) => {
+    try {
+      await createRelation(data);
+      showToast(
+        t('prompt.relationships.added', 'Relation added'),
+        'success',
+      );
+    } catch (error) {
+      console.error('Failed to create prompt relation:', error);
+      showToast(
+        t('prompt.relationships.addFailed', 'Failed to add relationship'),
+        'error',
+      );
+    }
+  }, [createRelation, showToast, t]);
+
+  const handleDeletePromptRelation = useCallback(async (relationId: string) => {
+    try {
+      await deleteRelation(relationId);
+      showToast(
+        t('prompt.relationships.removed', 'Relation removed'),
+        'success',
+      );
+    } catch (error) {
+      console.error('Failed to delete prompt relation:', error);
+      showToast(
+        t('prompt.relationships.removeFailed', 'Failed to remove relationship'),
+        'error',
+      );
+    }
+  }, [deleteRelation, showToast, t]);
 
   // View details - show modal
   // 查看详情 - 弹窗显示
@@ -2591,6 +2638,16 @@ function PromptSkillMainContent() {
                     </div>
                   )}
 
+                  <PromptRelationshipPanel
+                    currentPrompt={selectedPrompt}
+                    prompts={prompts}
+                    relations={selectedPromptRelations}
+                    onCreateRelation={handleCreatePromptRelation}
+                    onDeleteRelation={handleDeletePromptRelation}
+                    onSelectPrompt={selectPrompt}
+                    disabled={isDetailInlineEditing}
+                  />
+
                   {/* Images */}
                   {/* 图片 */}
                   {selectedPrompt.images && selectedPrompt.images.length > 0 && (
@@ -3130,6 +3187,11 @@ function PromptSkillMainContent() {
             onCopy={handleCopyPrompt}
             onEdit={(prompt) => setEditingPrompt(prompt)}
             onQuickRewriteEdit={(prompt) => setEditingPrompt(prompt)}
+            prompts={prompts}
+            relations={relations}
+            onCreateRelation={handleCreatePromptRelation}
+            onDeleteRelation={handleDeletePromptRelation}
+            onSelectPrompt={(promptId) => selectPrompt(promptId)}
           />
         </Suspense>
       )}

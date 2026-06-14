@@ -72,3 +72,25 @@ relations as many-to-many semantic links.
 - THEN A still has at most one `parentId`
 - AND non-tree relations are represented through `prompt_relations`, not by
   assigning multiple tree parents.
+
+### Requirement: Inline Semantic Relationship Editing
+
+The desktop app MUST allow users to manage non-tree prompt relationships from
+the existing prompt detail surfaces without opening a separate relationship
+workbench.
+
+#### Scenario: Add A Semantic Relation
+
+- GIVEN prompt A is selected in the existing prompt detail area
+- WHEN the user chooses a relation kind and target prompt
+- THEN PromptHub creates a `prompt_relations` row from prompt A to the target
+- AND the relation appears as an inline relation chip in the same detail area.
+
+#### Scenario: Navigate And Remove A Semantic Relation
+
+- GIVEN prompt A has an incoming or outgoing semantic relation
+- WHEN the user clicks the related prompt chip
+- THEN PromptHub selects that related prompt in the current prompt UI
+- WHEN the user removes the relation chip
+- THEN PromptHub deletes only that graph relation
+- AND prompt A's tree `parentId` and child ordering are unchanged.

@@ -12,6 +12,9 @@
   page.
 - Added compact parent/child navigation to the existing prompt detail header so
   a dragged relationship has an immediate workflow use.
+- Added an inline semantic relationship panel to the existing prompt detail
+  area and reused it in the detail modal so users can create, open, and delete
+  graph relations without a separate page.
 - Added inline expand/collapse controls in the card list and table view for
   parent prompts.
 - Added workspace frontmatter support for `parentId` and `order`.
@@ -23,6 +26,8 @@
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/prompt-table-view.test.tsx --run`: 11 tests passed.
 - `pnpm --filter @prompthub/desktop typecheck`: passed.
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/prompt-table-view.test.tsx tests/unit/components/prompt-drag-utils.test.ts --run`: 15 tests passed.
+- `pnpm --filter @prompthub/desktop typecheck`: passed.
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/prompt-relationship-panel.test.tsx tests/unit/components/prompt-detail-modal.test.tsx --run`: 13 tests passed.
 - `pnpm --filter @prompthub/desktop typecheck`: passed.
 
 ## Notes

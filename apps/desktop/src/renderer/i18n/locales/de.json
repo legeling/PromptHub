@@ -342,7 +342,34 @@
     "batchFavorite": "Stapel-Favoriten",
     "batchMove": "Stapel-Verschieben",
     "batchDelete": "Stapel-Löschen",
-    "confirmBatchDelete": "Diese {{count}} Prompts löschen?"
+    "confirmBatchDelete": "Diese {{count}} Prompts löschen?",
+    "relationships": {
+      "title": "Prompt-Beziehungen",
+      "empty": "Noch keine semantischen Beziehungen. Die Baumgruppierung wird weiterhin per Drag-and-drop in der Liste gesteuert.",
+      "typeLabel": "Beziehungstyp",
+      "targetLabel": "Ziel-Prompt",
+      "selectTarget": "Prompt auswählen",
+      "add": "Beziehung hinzufügen",
+      "added": "Beziehung hinzugefügt",
+      "addFailed": "Beziehung konnte nicht hinzugefügt werden",
+      "removed": "Beziehung entfernt",
+      "removeFailed": "Beziehung konnte nicht entfernt werden",
+      "openPrompt": "Verknüpften Prompt {{title}} öffnen",
+      "removeRelation": "Beziehung zu {{title}} entfernen",
+      "relatedTo": "Verwandt",
+      "variantOf": "Variante von",
+      "hasVariant": "Hat Variante",
+      "dependsOn": "Hängt ab von",
+      "requiredBy": "Benötigt von",
+      "nextStep": "Nächster Schritt",
+      "previousStep": "Vorheriger Schritt",
+      "kind": {
+        "related_to": "Verwandt",
+        "variant_of": "Variante von",
+        "depends_on": "Hängt ab von",
+        "next_step": "Nächster Schritt"
+      }
+    }
   },
   "folder": {
     "new": "Neuer Ordner",

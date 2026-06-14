@@ -343,7 +343,34 @@
     "batchFavorite": "Batch Favorite",
     "batchMove": "Batch Move",
     "batchDelete": "Batch Delete",
-    "confirmBatchDelete": "Are you sure you want to delete these {{count}} prompts?"
+    "confirmBatchDelete": "Are you sure you want to delete these {{count}} prompts?",
+    "relationships": {
+      "title": "Prompt relationships",
+      "empty": "No semantic relationships yet. Tree grouping is still controlled by drag-and-drop in the list.",
+      "typeLabel": "Relation type",
+      "targetLabel": "Target prompt",
+      "selectTarget": "Select a prompt",
+      "add": "Add relation",
+      "added": "Relation added",
+      "addFailed": "Failed to add relationship",
+      "removed": "Relation removed",
+      "removeFailed": "Failed to remove relationship",
+      "openPrompt": "Open related prompt {{title}}",
+      "removeRelation": "Remove relation to {{title}}",
+      "relatedTo": "Related",
+      "variantOf": "Variant of",
+      "hasVariant": "Has variant",
+      "dependsOn": "Depends on",
+      "requiredBy": "Required by",
+      "nextStep": "Next step",
+      "previousStep": "Previous step",
+      "kind": {
+        "related_to": "Related",
+        "variant_of": "Variant of",
+        "depends_on": "Depends on",
+        "next_step": "Next step"
+      }
+    }
   },
   "rules": {
     "title": "Rules",

@@ -10,6 +10,7 @@
 - [x] Wire drag-and-drop into the existing prompt table.
 - [x] Make dragged hierarchy visible in card, table, and detail surfaces.
 - [x] Add inline expand/collapse controls for prompt hierarchy rows.
+- [x] Add inline semantic relation chips and creation/removal controls to the existing prompt detail surfaces.
 - [x] Preserve hierarchy fields in prompt workspace frontmatter.
 - [x] Sanitize hierarchy fields during backup import.
 - [x] Add DB and UI regression tests.

@@ -342,7 +342,34 @@
     "batchFavorite": "批次收藏",
     "batchMove": "批次移動",
     "batchDelete": "批次刪除",
-    "confirmBatchDelete": "確定要刪除這 {{count}} 個 Prompt 嗎？"
+    "confirmBatchDelete": "確定要刪除這 {{count}} 個 Prompt 嗎？",
+    "relationships": {
+      "title": "Prompt 關係",
+      "empty": "暫無語義關係。樹狀分組仍透過左側列表拖拽控制。",
+      "typeLabel": "關係類型",
+      "targetLabel": "目標 Prompt",
+      "selectTarget": "選擇 Prompt",
+      "add": "新增關係",
+      "added": "關係已新增",
+      "addFailed": "新增關係失敗",
+      "removed": "關係已移除",
+      "removeFailed": "移除關係失敗",
+      "openPrompt": "開啟相關 Prompt {{title}}",
+      "removeRelation": "移除與 {{title}} 的關係",
+      "relatedTo": "相關",
+      "variantOf": "變體來源",
+      "hasVariant": "包含變體",
+      "dependsOn": "依賴",
+      "requiredBy": "被依賴",
+      "nextStep": "下一步",
+      "previousStep": "上一步",
+      "kind": {
+        "related_to": "相關",
+        "variant_of": "變體來源",
+        "depends_on": "依賴",
+        "next_step": "下一步"
+      }
+    }
   },
   "folder": {
     "new": "新增資料夾",

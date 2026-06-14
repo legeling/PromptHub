@@ -342,7 +342,34 @@
     "batchFavorite": "一括お気に入り",
     "batchMove": "一括移動",
     "batchDelete": "一括削除",
-    "confirmBatchDelete": "これらの {{count}} 件の Prompt を削除してもよろしいですか？"
+    "confirmBatchDelete": "これらの {{count}} 件の Prompt を削除してもよろしいですか？",
+    "relationships": {
+      "title": "Prompt の関係",
+      "empty": "意味的な関係はまだありません。ツリーのグループ化は左のリストでのドラッグ操作で管理します。",
+      "typeLabel": "関係タイプ",
+      "targetLabel": "対象 Prompt",
+      "selectTarget": "Prompt を選択",
+      "add": "関係を追加",
+      "added": "関係を追加しました",
+      "addFailed": "関係の追加に失敗しました",
+      "removed": "関係を削除しました",
+      "removeFailed": "関係の削除に失敗しました",
+      "openPrompt": "関連 Prompt {{title}} を開く",
+      "removeRelation": "{{title}} との関係を削除",
+      "relatedTo": "関連",
+      "variantOf": "派生元",
+      "hasVariant": "派生あり",
+      "dependsOn": "依存",
+      "requiredBy": "依存されています",
+      "nextStep": "次のステップ",
+      "previousStep": "前のステップ",
+      "kind": {
+        "related_to": "関連",
+        "variant_of": "派生元",
+        "depends_on": "依存",
+        "next_step": "次のステップ"
+      }
+    }
   },
   "folder": {
     "new": "新規フォルダ",

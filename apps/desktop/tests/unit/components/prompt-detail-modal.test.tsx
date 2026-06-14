@@ -1,5 +1,6 @@
 import { act, fireEvent, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { Prompt, PromptRelation } from "@prompthub/shared/types";
 
 import { PromptDetailModal } from "../../../src/renderer/components/prompt/PromptDetailModal";
 import { ToastProvider } from "../../../src/renderer/components/ui/Toast";
@@ -20,6 +21,23 @@ const prompt = {
   currentVersion: 1,
   usageCount: 0,
   notes: "Old notes",
+  createdAt: "2026-05-29T00:00:00.000Z",
+  updatedAt: "2026-05-29T00:00:00.000Z",
+};
+
+const relatedPrompt: Prompt = {
+  ...prompt,
+  id: "prompt-2",
+  title: "Review rubric",
+  userPrompt: "Review the result.",
+};
+
+const relation: PromptRelation = {
+  id: "relation-1",
+  sourcePromptId: prompt.id,
+  targetPromptId: relatedPrompt.id,
+  kind: "depends_on",
+  note: null,
   createdAt: "2026-05-29T00:00:00.000Z",
   updatedAt: "2026-05-29T00:00:00.000Z",
 };
@@ -45,6 +63,34 @@ describe("PromptDetailModal", () => {
     );
 
     expect(screen.getByRole("button", { name: "AI Quick Edit" })).toBeInTheDocument();
+  });
+
+  it("renders prompt relationships and supports navigation from the detail modal", async () => {
+    const onClose = vi.fn();
+    const onSelectPrompt = vi.fn();
+    const onDeleteRelation = vi.fn().mockResolvedValue(undefined);
+
+    await renderWithI18n(
+      <ToastProvider>
+        <PromptDetailModal
+          isOpen
+          onClose={onClose}
+          prompt={prompt}
+          prompts={[prompt, relatedPrompt]}
+          relations={[relation]}
+          onSelectPrompt={onSelectPrompt}
+          onDeleteRelation={onDeleteRelation}
+          onCreateRelation={vi.fn()}
+        />
+      </ToastProvider>,
+      { language: "en" },
+    );
+
+    expect(screen.getByText("Prompt relationships")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Open related prompt Review rubric" }));
+
+    expect(onSelectPrompt).toHaveBeenCalledWith(relatedPrompt.id);
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it("does not render unsafe source URLs as links", async () => {

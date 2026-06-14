@@ -342,7 +342,34 @@
     "batchFavorite": "Favoris en lot",
     "batchMove": "Déplacer en lot",
     "batchDelete": "Supprimer en lot",
-    "confirmBatchDelete": "Supprimer ces {{count}} Prompts ?"
+    "confirmBatchDelete": "Supprimer ces {{count}} Prompts ?",
+    "relationships": {
+      "title": "Relations du Prompt",
+      "empty": "Aucune relation sémantique pour le moment. Le regroupement en arbre reste géré par le glisser-déposer dans la liste.",
+      "typeLabel": "Type de relation",
+      "targetLabel": "Prompt cible",
+      "selectTarget": "Sélectionner un Prompt",
+      "add": "Ajouter une relation",
+      "added": "Relation ajoutée",
+      "addFailed": "Échec de l'ajout de la relation",
+      "removed": "Relation supprimée",
+      "removeFailed": "Échec de la suppression de la relation",
+      "openPrompt": "Ouvrir le Prompt lié {{title}}",
+      "removeRelation": "Supprimer la relation avec {{title}}",
+      "relatedTo": "Lié",
+      "variantOf": "Variante de",
+      "hasVariant": "A une variante",
+      "dependsOn": "Dépend de",
+      "requiredBy": "Requis par",
+      "nextStep": "Étape suivante",
+      "previousStep": "Étape précédente",
+      "kind": {
+        "related_to": "Lié",
+        "variant_of": "Variante de",
+        "depends_on": "Dépend de",
+        "next_step": "Étape suivante"
+      }
+    }
   },
   "folder": {
     "new": "Nouveau dossier",

@@ -16,6 +16,8 @@ deterministic.
 
 The tree relation `grouped_under` is intentionally not duplicated in
 `prompt_relations`; it is represented by `parent_id` and `sort_order`.
+Graph relations are therefore a separate many-to-many layer and should not be
+used to infer tree indentation, collapse state, or sibling order.
 
 ## UI
 
@@ -24,6 +26,11 @@ surfaces:
 
 - Card mode: drag a prompt card in the left prompt list.
 - List mode: drag a prompt table row.
+- Detail mode: a compact relation block in the existing prompt detail area
+  shows incoming/outgoing links, lets users add a relation, jump to the linked
+  prompt, and delete a relation inline.
+- Detail modal: the same compact relation block is reused so list/gallery users
+  get the same behavior without a second workbench.
 
 Drop behavior:
 
@@ -37,7 +44,9 @@ workbench or graph canvas is introduced.
 
 The tree is not the whole relationship model. Graph-style relationships can
 point to many prompts and should be surfaced as lightweight relation chips or
-detail-header affordances rather than as extra parents in the tree.
+detail-header affordances rather than as extra parents in the tree. The UI
+should make that separation explicit so users do not infer a hidden multi-parent
+tree.
 
 ## Contracts
 

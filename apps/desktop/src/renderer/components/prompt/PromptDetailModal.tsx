@@ -5,7 +5,8 @@ import { ImagePreviewModal } from '../ui/ImagePreviewModal';
 import { LocalImage } from '../ui/LocalImage';
 import { PromptQuickRewriteDialog } from './PromptQuickRewriteDialog';
 import { PromptQuickRewriteTrigger } from './PromptQuickRewriteTrigger';
-import type { Prompt } from '@prompthub/shared/types';
+import { PromptRelationshipPanel } from './PromptRelationshipPanel';
+import type { CreatePromptRelationDTO, Prompt, PromptRelation } from '@prompthub/shared/types';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -24,6 +25,11 @@ interface PromptDetailModalProps {
   onCopy?: (prompt: Prompt) => void | Promise<void>;
   onEdit?: (prompt: Prompt) => void;
   onQuickRewriteEdit?: (prompt: Prompt) => void;
+  prompts?: Prompt[];
+  relations?: PromptRelation[];
+  onCreateRelation?: (data: CreatePromptRelationDTO) => Promise<void> | void;
+  onDeleteRelation?: (id: string) => Promise<void> | void;
+  onSelectPrompt?: (promptId: string) => void;
 }
 
 export function PromptDetailModal({
@@ -33,6 +39,11 @@ export function PromptDetailModal({
   onCopy,
   onEdit,
   onQuickRewriteEdit,
+  prompts = [],
+  relations = [],
+  onCreateRelation,
+  onDeleteRelation,
+  onSelectPrompt,
 }: PromptDetailModalProps) {
   const { t, i18n } = useTranslation();
   const [copiedSystem, setCopiedSystem] = useState(false);
@@ -169,6 +180,13 @@ export function PromptDetailModal({
 
   if (!prompt) return null;
   const promptSourceHref = resolvePromptMarkdownHref(prompt.source);
+  const modalRelations = relations.filter(
+    (relation) =>
+      relation.sourcePromptId === prompt.id || relation.targetPromptId === prompt.id,
+  );
+  const canEditRelations = Boolean(
+    onCreateRelation && onDeleteRelation && onSelectPrompt,
+  );
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -448,6 +466,21 @@ export function PromptDetailModal({
               ))}
             </div>
           </div>
+        )}
+
+        {canEditRelations && (
+          <PromptRelationshipPanel
+            currentPrompt={prompt}
+            prompts={prompts}
+            relations={modalRelations}
+            onCreateRelation={onCreateRelation!}
+            onDeleteRelation={onDeleteRelation!}
+            onSelectPrompt={(promptId) => {
+              onSelectPrompt!(promptId);
+              onClose();
+            }}
+            className="mb-0"
+          />
         )}
 
         {/* System Prompt */}

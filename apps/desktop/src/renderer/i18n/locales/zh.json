@@ -343,7 +343,34 @@
     "batchFavorite": "批量收藏",
     "batchMove": "批量移动",
     "batchDelete": "批量删除",
-    "confirmBatchDelete": "确定要删除这 {{count}} 个 Prompt 吗？"
+    "confirmBatchDelete": "确定要删除这 {{count}} 个 Prompt 吗？",
+    "relationships": {
+      "title": "Prompt 关系",
+      "empty": "暂无语义关系。树状分组仍通过左侧列表拖拽控制。",
+      "typeLabel": "关系类型",
+      "targetLabel": "目标 Prompt",
+      "selectTarget": "选择 Prompt",
+      "add": "添加关系",
+      "added": "关系已添加",
+      "addFailed": "添加关系失败",
+      "removed": "关系已移除",
+      "removeFailed": "移除关系失败",
+      "openPrompt": "打开相关 Prompt {{title}}",
+      "removeRelation": "移除与 {{title}} 的关系",
+      "relatedTo": "相关",
+      "variantOf": "变体来源",
+      "hasVariant": "包含变体",
+      "dependsOn": "依赖",
+      "requiredBy": "被依赖",
+      "nextStep": "下一步",
+      "previousStep": "上一步",
+      "kind": {
+        "related_to": "相关",
+        "variant_of": "变体来源",
+        "depends_on": "依赖",
+        "next_step": "下一步"
+      }
+    }
   },
   "rules": {
     "title": "Rules",
