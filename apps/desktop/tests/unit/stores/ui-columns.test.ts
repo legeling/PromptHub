@@ -172,6 +172,26 @@ describe("useUIStore resizable columns (issue #119)", () => {
     expect(mod.useUIStore.getState().viewMode).toBe("prompt");
   });
 
+  it("restores the mcp module while keeping prompt as the compatible view mode", async () => {
+    localStorage.setItem(
+      "ui-storage",
+      JSON.stringify({
+        state: {
+          appModule: "mcp",
+          viewMode: "prompt",
+          isSidebarCollapsed: false,
+        },
+        version: 0,
+      }),
+    );
+
+    const mod = await import("../../../src/renderer/stores/ui.store");
+    await Promise.resolve();
+
+    expect(mod.useUIStore.getState().appModule).toBe("mcp");
+    expect(mod.useUIStore.getState().viewMode).toBe("prompt");
+  });
+
   it("falls back to prompt when the persisted app module is invalid", async () => {
     localStorage.setItem(
       "ui-storage",

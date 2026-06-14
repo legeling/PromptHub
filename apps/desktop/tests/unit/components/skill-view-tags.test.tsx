@@ -7,7 +7,17 @@ import { renderWithI18n } from "../../helpers/i18n";
 import { installWindowMocks } from "../../helpers/window";
 
 vi.mock("../../../src/renderer/components/ui/PlatformIcon", () => ({
-  PlatformIcon: () => null,
+  PlatformIcon: ({
+    platformId,
+    title,
+  }: {
+    platformId: string;
+    title?: string;
+  }) => (
+    <span data-testid="platform-icon" title={title ?? platformId}>
+      {platformId}
+    </span>
+  ),
 }));
 
 const baseSkill = {
@@ -72,6 +82,30 @@ describe("skill view tags", () => {
     expect(screen.queryByText("Dev")).not.toBeInTheDocument();
     expect(screen.queryByText(".../.curated/writer")).not.toBeInTheDocument();
     expect(screen.getAllByText("Update available").length).toBeGreaterThan(0);
+  });
+
+  it("shows distributed agent targets in gallery cards", () => {
+    render(
+      <SkillGalleryCard
+        animationDelayMs={0}
+        distributedPlatforms={[
+          { id: "codex", name: "Codex CLI" },
+          { id: "claude", name: "Claude Code" },
+        ] as any}
+        isSelected={false}
+        isSelectionMode={false}
+        onDelete={vi.fn()}
+        onOpen={vi.fn()}
+        onQuickInstall={vi.fn()}
+        onToggleFavorite={vi.fn()}
+        onToggleSelection={vi.fn()}
+        skill={baseSkill as any}
+      />,
+    );
+
+    expect(screen.getByTitle("Codex CLI")).toHaveTextContent("codex");
+    expect(screen.getByTitle("Claude Code")).toHaveTextContent("claude");
+    expect(screen.queryByText("Not distributed")).not.toBeInTheDocument();
   });
 
   it("does not expose repo labels as source badges", () => {

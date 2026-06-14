@@ -12,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Sidebar } from "../../../src/renderer/components/layout/Sidebar";
 import "../../../src/renderer/components/layout/RulesSidebarPanel";
 import { useFolderStore } from "../../../src/renderer/stores/folder.store";
+import { useMcpStore } from "../../../src/renderer/stores/mcp.store";
 import { usePromptStore } from "../../../src/renderer/stores/prompt.store";
 import { useRulesStore } from "../../../src/renderer/stores/rules.store";
 import { useSettingsStore } from "../../../src/renderer/stores/settings.store";
@@ -217,6 +218,19 @@ describe("Sidebar", () => {
       selectedRuleId: "claude-global",
       searchQuery: "",
     } as Partial<ReturnType<typeof useRulesStore.getState>>);
+
+    useMcpStore.setState({
+      library: {
+        kind: "prompthub-mcp-library",
+        version: 1,
+        updatedAt: "2026-01-01T00:00:00.000Z",
+        servers: [],
+        bindings: [],
+      },
+      marketTemplates: [],
+      targetPresets: [],
+      selectedTab: "library",
+    } as Partial<ReturnType<typeof useMcpStore.getState>>);
 
     useSkillStore.setState({
       skills: [],
@@ -1233,10 +1247,93 @@ describe("Sidebar", () => {
     expect(container.querySelector("aside")).toHaveClass("w-20");
     expect(screen.getByText("Prompts")).toBeInTheDocument();
     expect(screen.getByText("Skills")).toBeInTheDocument();
+    expect(screen.getByText("MCP")).toBeInTheDocument();
     expect(screen.getByText("Rules")).toBeInTheDocument();
     expect(screen.queryByText("Resources")).not.toBeInTheDocument();
     expect(screen.queryByText("Account")).not.toBeInTheDocument();
     expect(screen.queryByText("PH")).not.toBeInTheDocument();
+  });
+
+  it("shows MCP in the rail for legacy users with the old default module set", async () => {
+    useSettingsStore.setState({
+      desktopHomeModules: ["skill", "mcp", "prompt", "rules"],
+    } as Partial<ReturnType<typeof useSettingsStore.getState>>);
+    useUIStore.setState({
+      appModule: "rules",
+      viewMode: "prompt",
+      isSidebarCollapsed: false,
+    });
+
+    await act(async () => {
+      await renderWithI18n(
+        <Sidebar currentPage="home" onNavigate={vi.fn()} />,
+        { language: "en" },
+      );
+    });
+
+    expect(screen.getByRole("button", { name: "MCP" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "MCP" }));
+    expect(useUIStore.getState().appModule).toBe("mcp");
+  });
+
+  it("uses Skill-style MCP secondary navigation labels and ordering", async () => {
+    useSettingsStore.setState({
+      desktopHomeModules: ["skill", "mcp", "prompt", "rules"],
+    } as Partial<ReturnType<typeof useSettingsStore.getState>>);
+    useUIStore.setState({
+      appModule: "mcp",
+      viewMode: "prompt",
+      isSidebarCollapsed: false,
+    });
+    useUIStore.getState().setSidebarCollapsed(false);
+    useMcpStore.setState({
+      library: {
+        kind: "prompthub-mcp-library",
+        version: 1,
+        updatedAt: "2026-01-01T00:00:00.000Z",
+        servers: [],
+        bindings: [],
+      },
+      marketTemplates: [],
+      targetPresets: [],
+      selectedTab: "library",
+    } as Partial<ReturnType<typeof useMcpStore.getState>>);
+
+    await act(async () => {
+      await renderWithI18n(
+        <Sidebar currentPage="home" onNavigate={vi.fn()} layout="panel" />,
+        { language: "en" },
+      );
+    });
+
+    const labels = ["My MCP", "Agent MCP", "MCP Store"].map((label) =>
+      screen.getByRole("button", { name: label }),
+    );
+
+    expect(labels[0].compareDocumentPosition(labels[1])).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(labels[1].compareDocumentPosition(labels[2])).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(screen.queryByTestId("mcp-store-source-scroll")).toBeNull();
+
+    fireEvent.click(labels[1]);
+    expect(useMcpStore.getState().selectedTab).toBe("targets");
+
+    fireEvent.click(labels[2]);
+    expect(useMcpStore.getState().selectedTab).toBe("market");
+    const sourceScroll = screen.getByTestId("mcp-store-source-scroll");
+    const officialStoreButton = within(sourceScroll).getByRole("button", {
+      name: /Official MCP Store/i,
+    });
+    expect(within(officialStoreButton).getByText("0")).toBeInTheDocument();
+
+    fireEvent.click(labels[2]);
+    expect(screen.queryByTestId("mcp-store-source-scroll")).toBeNull();
+
+    fireEvent.click(labels[2]);
+    expect(screen.getByTestId("mcp-store-source-scroll")).toBeInTheDocument();
   });
 
   it("hides disabled home modules from the rail", async () => {
@@ -1279,10 +1376,13 @@ describe("Sidebar", () => {
       .map((button) => button.textContent?.trim())
       .filter(
         (text): text is string =>
-          text === "Rules" || text === "Skills" || text === "Prompts",
+          text === "Rules" ||
+          text === "Skills" ||
+          text === "MCP" ||
+          text === "Prompts",
       );
 
-    expect(labels.slice(0, 3)).toEqual(["Rules", "Skills", "Prompts"]);
+    expect(labels.slice(0, 4)).toEqual(["Rules", "Skills", "MCP", "Prompts"]);
   });
 
   it("uses the combined shell width for the classic sidebar layout", async () => {

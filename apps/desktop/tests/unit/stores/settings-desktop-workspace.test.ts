@@ -26,7 +26,7 @@ describe("settings desktop workspace actions", () => {
 
     useSettingsStore.getState().toggleDesktopHomeModule("prompt");
     useSettingsStore.getState().toggleDesktopHomeModule("skill");
-    useSettingsStore.getState().toggleDesktopHomeModule("rules");
+    useSettingsStore.getState().toggleDesktopHomeModule("mcp");
 
     expect(useSettingsStore.getState().desktopHomeModules).toEqual(["rules"]);
 
@@ -69,6 +69,67 @@ describe("settings desktop workspace actions", () => {
           desktopHomeModules: ["skill", "ghost", "skill", "prompt"],
         },
         version: 9,
+      }),
+    );
+
+    const { useSettingsStore } = await import(
+      "../../../src/renderer/stores/settings.store"
+    );
+
+    expect(useSettingsStore.getState().desktopHomeModules).toEqual([
+      "skill",
+      "prompt",
+    ]);
+  });
+
+  it("adds MCP to old persisted default desktop modules during hydration", async () => {
+    localStorage.setItem(
+      "prompthub-settings",
+      JSON.stringify({
+        state: {
+          desktopHomeModules: ["skill", "prompt", "rules"],
+        },
+        version: 16,
+      }),
+    );
+
+    const { useSettingsStore } = await import(
+      "../../../src/renderer/stores/settings.store"
+    );
+
+    expect(useSettingsStore.getState().desktopHomeModules).toEqual([
+      "skill",
+      "mcp",
+      "prompt",
+      "rules",
+    ]);
+  });
+
+  it("lets users hide MCP after it has been introduced", async () => {
+    const { useSettingsStore } = await import(
+      "../../../src/renderer/stores/settings.store"
+    );
+
+    useSettingsStore.setState({
+      desktopHomeModules: ["prompt", "skill", "mcp", "rules"],
+    });
+    useSettingsStore.getState().toggleDesktopHomeModule("mcp");
+
+    expect(useSettingsStore.getState().desktopHomeModules).toEqual([
+      "prompt",
+      "skill",
+      "rules",
+    ]);
+  });
+
+  it("does not add MCP to custom legacy module subsets", async () => {
+    localStorage.setItem(
+      "prompthub-settings",
+      JSON.stringify({
+        state: {
+          desktopHomeModules: ["skill", "prompt"],
+        },
+        version: 16,
       }),
     );
 

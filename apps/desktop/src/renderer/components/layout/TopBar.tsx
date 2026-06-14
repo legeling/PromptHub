@@ -21,6 +21,7 @@ import { usePromptStore } from "../../stores/prompt.store";
 import { useSettingsStore } from "../../stores/settings.store";
 import { useFolderStore } from "../../stores/folder.store";
 import { useSkillStore } from "../../stores/skill.store";
+import { useMcpStore } from "../../stores/mcp.store";
 import {
   useState,
   useEffect,
@@ -73,6 +74,7 @@ const TopBarRulesSearch = lazy(() =>
 );
 
 const OPEN_CREATE_SKILL_PROJECT_MODAL_EVENT = "open-create-skill-project-modal";
+const OPEN_CREATE_MCP_MODAL_EVENT = "open-create-mcp-modal";
 
 interface TopBarProps {
   onOpenSettings: () => void;
@@ -104,6 +106,10 @@ export function TopBar({
   const selectedProjectId = useSkillStore((state) => state.selectedProjectId);
   const projectScanState = useSkillStore((state) => state.projectScanState);
   const selectSkill = useSkillStore((state) => state.selectSkill);
+  const mcpSearchQuery = useMcpStore((state) => state.searchQuery);
+  const setMcpSearchQuery = useMcpStore((state) => state.setSearchQuery);
+  const mcpLibrary = useMcpStore((state) => state.library);
+  const mcpSelectedTab = useMcpStore((state) => state.selectedTab);
 
   const isDarkMode = useSettingsStore((state) => state.isDarkMode);
   const setDarkMode = useSettingsStore((state) => state.setDarkMode);
@@ -143,6 +149,7 @@ export function TopBar({
   const isSkillStoreCatalogView =
     appModule === "skill" && skillStoreView === "store";
   const isRulesView = appModule === "rules";
+  const isMcpView = appModule === "mcp";
   const isSkillView = appModule === "skill";
   const isPromptView = appModule === "prompt";
   const showTopBarSearch = !isSkillStoreCatalogView;
@@ -150,12 +157,17 @@ export function TopBar({
   // Unified search query based on mode
   const searchQuery = isSkillView
     ? skillSearchQuery
+    : isMcpView
+      ? mcpSearchQuery
     : isPromptView
       ? promptSearchQuery
       : "";
   const deferredSkillSearchQuery = useDeferredValue(skillSearchQuery);
+  const deferredMcpSearchQuery = useDeferredValue(mcpSearchQuery);
   const setSearchQuery = isSkillView
     ? setSkillSearchQuery
+    : isMcpView
+      ? setMcpSearchQuery
     : isPromptView
       ? setPromptSearchQuery
       : () => undefined;
@@ -279,6 +291,36 @@ export function TopBar({
     selectedProjectId,
   ]);
 
+  const mcpSearchResults = useMemo(() => {
+    if (!isMcpView || mcpSelectedTab !== "library") {
+      return [];
+    }
+
+    const query = deferredMcpSearchQuery.trim().toLowerCase();
+    const servers = mcpLibrary?.servers ?? [];
+    if (!query) {
+      return servers;
+    }
+
+    return servers.filter((server) =>
+      [
+        server.name,
+        server.displayName,
+        server.description ?? "",
+        server.transport,
+        server.command ?? "",
+        server.url ?? "",
+        server.cwd ?? "",
+        server.source.label ?? "",
+        ...(server.args ?? []),
+        ...(server.tags ?? []),
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(query),
+    );
+  }, [deferredMcpSearchQuery, isMcpView, mcpLibrary?.servers, mcpSelectedTab]);
+
   // 根据模式选择搜索结果
   const searchResults = isSkillView
     ? isProjectSkillView
@@ -286,6 +328,8 @@ export function TopBar({
       : isSkillStoreCatalogView
         ? []
         : skillSearchResults
+    : isMcpView
+      ? mcpSearchResults
     : promptSearchResults;
   const searchResultCount = searchResults.length;
   const showSearchNavigation = isPromptView;
@@ -610,6 +654,8 @@ export function TopBar({
                       : isAgentSkillView
                         ? t("header.searchAgentSkills", "Search agent skills...")
                         : t("header.searchSkill", "Search skills...")
+                    : appModule === "mcp"
+                      ? t("header.searchMcp", "Search MCP...")
                     : t("header.search")
                 }
                 value={searchQuery}
@@ -701,7 +747,7 @@ export function TopBar({
               </>
             )}
 
-          {/* Split Button for New Prompt / New Skill */}
+          {/* Split Button for New Prompt / New Skill / New MCP */}
           {!isRulesView && (
             <div
               ref={createMenuRef}
@@ -719,6 +765,10 @@ export function TopBar({
                     } else {
                       setIsCreateSkillModalOpen(true);
                     }
+                  } else if (appModule === "mcp") {
+                    document.dispatchEvent(
+                      new CustomEvent(OPEN_CREATE_MCP_MODAL_EVENT),
+                    );
                   } else {
                     const mode = useSettingsStore.getState().creationMode;
                     if (mode === "manual") setIsCreateModalOpen(true);
@@ -740,6 +790,8 @@ export function TopBar({
                   ) : (
                     <PlusIcon aria-hidden="true" className="w-4 h-4" />
                   )
+                ) : appModule === "mcp" ? (
+                  <PlusIcon aria-hidden="true" className="w-4 h-4" />
                 ) : creationMode === "manual" ? (
                   <PlusIcon aria-hidden="true" className="w-4 h-4" />
                 ) : (
@@ -750,6 +802,8 @@ export function TopBar({
                     ? isProjectSkillView
                       ? t("skill.addProject", "Add Project")
                       : t("header.new")
+                    : appModule === "mcp"
+                      ? t("header.new")
                     : creationMode === "manual"
                       ? t("header.new")
                       : t("quickAdd.title")}

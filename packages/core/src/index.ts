@@ -8,3 +8,4 @@ export * from "./rules-workspace";
 export * from "./ai-client";
 export * from "./ai-config";
 export * from "./rules-rewrite";
+export * from "./mcp-library";

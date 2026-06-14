@@ -1,0 +1,996 @@
+/**
+ * @vitest-environment node
+ */
+import fs from "fs";
+import os from "os";
+import path from "path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+  CoreMcpLibraryService,
+  configureRuntimePaths,
+  getMcpLibraryFilePath,
+  getMcpTargetPresets,
+  resetRuntimePaths,
+} from "@prompthub/core";
+
+describe("CoreMcpLibraryService", () => {
+  let userDataPath: string;
+
+  beforeEach(() => {
+    userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), "mcp-library-"));
+    configureRuntimePaths({ userDataPath });
+  });
+
+  afterEach(() => {
+    resetRuntimePaths();
+    fs.rmSync(userDataPath, { recursive: true, force: true });
+  });
+
+  it("persists created servers in the PromptHub config directory", () => {
+    const service = new CoreMcpLibraryService();
+
+    const server = service.createServer({
+      name: "Playwright",
+      displayName: "Playwright",
+      transport: "stdio",
+      command: "npx",
+      args: ["@playwright/mcp@latest"],
+    });
+
+    expect(server.name).toBe("playwright");
+    expect(getMcpLibraryFilePath()).toBe(
+      path.join(userDataPath, "config", "mcp-library.json"),
+    );
+    expect(service.read().servers).toHaveLength(1);
+  });
+
+  it("updates and deletes library servers without mutating unrelated records", () => {
+    const service = new CoreMcpLibraryService();
+    const fetch = service.createServer({
+      name: "fetch",
+      displayName: "Fetch",
+      transport: "stdio",
+      command: "uvx",
+      args: ["mcp-server-fetch"],
+    });
+    const memory = service.createServer({
+      name: "memory",
+      displayName: "Memory",
+      transport: "stdio",
+      command: "npx",
+      args: ["-y", "@modelcontextprotocol/server-memory"],
+    });
+    const beforeFailedUpdate = service.read();
+
+    expect(() =>
+      service.updateServer(memory.id, {
+        name: "fetch",
+        displayName: "Duplicate Fetch",
+        transport: "stdio",
+        command: "npx",
+      }),
+    ).toThrow(/已存在/);
+    expect(service.read()).toEqual(beforeFailedUpdate);
+
+    const updated = service.updateServer(fetch.id, {
+      displayName: "Fetch Updated",
+      transport: "stdio",
+      command: "uvx",
+      args: ["mcp-server-fetch", "--ignore-robots-txt"],
+      tags: ["web", "research"],
+    });
+    expect(updated).toMatchObject({
+      id: fetch.id,
+      name: "fetch",
+      displayName: "Fetch Updated",
+      args: ["mcp-server-fetch", "--ignore-robots-txt"],
+      tags: ["web", "research"],
+    });
+
+    const afterDelete = service.deleteServer(memory.id);
+    expect(afterDelete.servers.map((server) => server.id)).toEqual([fetch.id]);
+    expect(afterDelete.servers[0]).toMatchObject({
+      displayName: "Fetch Updated",
+      args: ["mcp-server-fetch", "--ignore-robots-txt"],
+    });
+  });
+
+  it("persists MCP favorite state through reads and updates", () => {
+    const service = new CoreMcpLibraryService();
+    const server = service.createServer({
+      name: "fetch",
+      displayName: "Fetch",
+      transport: "stdio",
+      command: "uvx",
+      args: ["mcp-server-fetch"],
+    });
+
+    expect(
+      service.updateServer(server.id, { isFavorite: true } as any),
+    ).toMatchObject({ id: server.id, isFavorite: true });
+    expect(service.read().servers[0]).toMatchObject({
+      id: server.id,
+      isFavorite: true,
+    });
+
+    expect(
+      service.updateServer(server.id, { isFavorite: false } as any).isFavorite,
+    ).toBe(false);
+    expect(service.read().servers[0].isFavorite).toBe(false);
+  });
+
+  it("installs market templates once and leaves the library unchanged on duplicates", () => {
+    const service = new CoreMcpLibraryService();
+
+    const installed = service.installTemplate("context7");
+    const beforeDuplicate = service.read();
+
+    expect(installed).toMatchObject({
+      name: "context7",
+      source: {
+        type: "market",
+        id: "context7",
+      },
+    });
+    expect(() => service.installTemplate("context7")).toThrow(/已存在/);
+    expect(service.read()).toEqual(beforeDuplicate);
+  });
+
+  it("applies JSON targets with a backup and preserves unrelated keys", () => {
+    const service = new CoreMcpLibraryService();
+    const server = service.createServer({
+      name: "fetch",
+      displayName: "Fetch",
+      transport: "stdio",
+      command: "uvx",
+      args: ["mcp-server-fetch"],
+    });
+    const targetPath = path.join(userDataPath, "target", "mcp.json");
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+    fs.writeFileSync(
+      targetPath,
+      JSON.stringify({ keep: true, mcpServers: { old: { command: "node" } } }),
+      "utf8",
+    );
+
+    const result = service.apply({
+      target: "claude",
+      scope: "custom",
+      path: targetPath,
+      serverIds: [server.id],
+    });
+    const written = JSON.parse(fs.readFileSync(targetPath, "utf8"));
+
+    expect(result.backupPath).toBeTruthy();
+    expect(fs.existsSync(result.backupPath!)).toBe(true);
+    expect(written.keep).toBe(true);
+    expect(written.mcpServers.old.command).toBe("node");
+    expect(written.mcpServers.fetch.command).toBe("uvx");
+  });
+
+  it("does not write target files or bindings when applying only disabled servers", () => {
+    const service = new CoreMcpLibraryService();
+    const server = service.createServer({
+      name: "disabled-fetch",
+      displayName: "Disabled Fetch",
+      transport: "stdio",
+      command: "uvx",
+      args: ["mcp-server-fetch"],
+      enabled: false,
+    });
+    const targetPath = path.join(userDataPath, "target", "disabled.json");
+
+    expect(() =>
+      service.apply({
+        target: "claude",
+        scope: "custom",
+        path: targetPath,
+        serverIds: [server.id],
+      }),
+    ).toThrow(/没有已启用/);
+    expect(fs.existsSync(targetPath)).toBe(false);
+    expect(service.read().bindings).toEqual([]);
+  });
+
+  it("does not modify an invalid JSON target when apply validation fails", () => {
+    const service = new CoreMcpLibraryService();
+    const server = service.createServer({
+      name: "fetch",
+      displayName: "Fetch",
+      transport: "stdio",
+      command: "uvx",
+      args: ["mcp-server-fetch"],
+    });
+    const targetPath = path.join(userDataPath, "target", "broken.json");
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+    fs.writeFileSync(targetPath, "{not-json", "utf8");
+
+    expect(() =>
+      service.apply({
+        target: "claude",
+        scope: "custom",
+        path: targetPath,
+        serverIds: [server.id],
+      }),
+    ).toThrow();
+    expect(fs.readFileSync(targetPath, "utf8")).toBe("{not-json");
+    expect(fs.readdirSync(path.dirname(targetPath))).toEqual(["broken.json"]);
+    expect(service.read().bindings).toEqual([]);
+  });
+
+  it("rejects same-name external target conflicts unless force is set", () => {
+    const service = new CoreMcpLibraryService();
+    const server = service.createServer({
+      name: "fetch",
+      displayName: "Fetch",
+      transport: "stdio",
+      command: "uvx",
+      args: ["mcp-server-fetch"],
+    });
+    const targetPath = path.join(userDataPath, "target", "mcp.json");
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+    fs.writeFileSync(
+      targetPath,
+      JSON.stringify({ mcpServers: { fetch: { command: "node" } } }),
+      "utf8",
+    );
+
+    expect(() =>
+      service.apply({
+        target: "claude",
+        scope: "custom",
+        path: targetPath,
+        serverIds: [server.id],
+      }),
+    ).toThrow(/同名 MCP 服务/);
+    expect(JSON.parse(fs.readFileSync(targetPath, "utf8")).mcpServers.fetch).toEqual({
+      command: "node",
+    });
+    expect(fs.readdirSync(path.dirname(targetPath))).toEqual(["mcp.json"]);
+
+    const result = service.apply({
+      target: "claude",
+      scope: "custom",
+      path: targetPath,
+      serverIds: [server.id],
+      force: true,
+    });
+    const written = JSON.parse(fs.readFileSync(targetPath, "utf8"));
+
+    expect(result.overwrittenServerNames).toEqual(["fetch"]);
+    expect(result.backupPath).toBeTruthy();
+    expect(fs.existsSync(result.backupPath!)).toBe(true);
+    expect(written.mcpServers.fetch.command).toBe("uvx");
+    expect(
+      fs
+        .readdirSync(path.dirname(targetPath))
+        .filter((entry) => entry.includes(".tmp-")),
+    ).toEqual([]);
+  });
+
+  it("allows reapplying PromptHub-managed target entries without force", () => {
+    const service = new CoreMcpLibraryService();
+    const server = service.createServer({
+      name: "fetch",
+      displayName: "Fetch",
+      transport: "stdio",
+      command: "uvx",
+      args: ["mcp-server-fetch"],
+    });
+    const targetPath = path.join(userDataPath, "target", "mcp.json");
+
+    service.apply({
+      target: "claude",
+      scope: "custom",
+      path: targetPath,
+      serverIds: [server.id],
+    });
+    const result = service.apply({
+      target: "claude",
+      scope: "custom",
+      path: targetPath,
+      serverIds: [server.id],
+    });
+
+    expect(result.overwrittenServerNames).toEqual(["fetch"]);
+    expect(service.read().bindings[0].serverIds).toEqual([server.id]);
+  });
+
+  it("writes and removes OpenCode MCP entries without touching unrelated user config", () => {
+    const service = new CoreMcpLibraryService();
+    const server = service.createServer({
+      name: "memory",
+      displayName: "Memory",
+      transport: "stdio",
+      command: "npx",
+      args: ["-y", "@modelcontextprotocol/server-memory"],
+      env: {
+        MEMORY_FILE_PATH: "/tmp/memory.json",
+      },
+    });
+    const targetPath = path.join(userDataPath, ".config", "opencode", "opencode.json");
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+    fs.writeFileSync(
+      targetPath,
+      JSON.stringify(
+        {
+          provider: {
+            openai: {
+              npm: "@ai-sdk/openai",
+            },
+          },
+          mcp: {
+            external: {
+              type: "remote",
+              url: "https://example.com/mcp",
+              enabled: true,
+            },
+          },
+        },
+        null,
+        2,
+      ),
+      "utf8",
+    );
+
+    service.apply({
+      target: "opencode",
+      scope: "custom",
+      path: targetPath,
+      serverIds: [server.id],
+    });
+    const afterApply = JSON.parse(fs.readFileSync(targetPath, "utf8"));
+    expect(afterApply.provider.openai.npm).toBe("@ai-sdk/openai");
+    expect(afterApply.mcp.external.url).toBe("https://example.com/mcp");
+    expect(afterApply.mcp.memory).toEqual({
+      type: "local",
+      command: ["npx", "-y", "@modelcontextprotocol/server-memory"],
+      environment: {
+        MEMORY_FILE_PATH: "/tmp/memory.json",
+      },
+      enabled: true,
+    });
+
+    const result = service.removeFromTarget({
+      target: "opencode",
+      scope: "custom",
+      path: targetPath,
+      serverIds: [server.id],
+    });
+    const afterRemove = JSON.parse(fs.readFileSync(targetPath, "utf8"));
+
+    expect(result.backupPath).toBeTruthy();
+    expect(afterRemove.provider.openai.npm).toBe("@ai-sdk/openai");
+    expect(afterRemove.mcp.external.url).toBe("https://example.com/mcp");
+    expect(afterRemove.mcp.memory).toBeUndefined();
+    expect(service.read().bindings).toEqual([]);
+  });
+
+  it("removes external target MCP entries by server name without requiring library records", () => {
+    const service = new CoreMcpLibraryService();
+    const targetPath = path.join(userDataPath, "target", "external.json");
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+    fs.writeFileSync(
+      targetPath,
+      JSON.stringify(
+        {
+          keep: true,
+          mcpServers: {
+            external: {
+              command: "npx",
+              args: ["external-mcp"],
+            },
+            keep: {
+              command: "uvx",
+            },
+          },
+        },
+        null,
+        2,
+      ),
+      "utf8",
+    );
+
+    const result = service.removeNamesFromTarget({
+      target: "claude",
+      scope: "custom",
+      path: targetPath,
+      serverNames: ["external"],
+    });
+    const written = JSON.parse(fs.readFileSync(targetPath, "utf8"));
+
+    expect(result.removedServerNames).toEqual(["external"]);
+    expect(result.backupPath).toBeTruthy();
+    expect(fs.existsSync(result.backupPath!)).toBe(true);
+    expect(written.keep).toBe(true);
+    expect(written.mcpServers.external).toBeUndefined();
+    expect(written.mcpServers.keep.command).toBe("uvx");
+    expect(service.read().bindings).toEqual([]);
+  });
+
+  it("force-overwrites same-name external Codex TOML sections without duplicating them", () => {
+    const service = new CoreMcpLibraryService();
+    const server = service.createServer({
+      name: "filesystem",
+      displayName: "Filesystem",
+      transport: "stdio",
+      command: "npx",
+      args: ["@modelcontextprotocol/server-filesystem", "/tmp"],
+    });
+    const targetPath = path.join(userDataPath, ".codex", "config.toml");
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+    fs.writeFileSync(
+      targetPath,
+      [
+        'model = "gpt-5"',
+        "",
+        "[mcp_servers.filesystem]",
+        'command = "node"',
+        "",
+        "[mcp_servers.keep]",
+        'command = "uvx"',
+      ].join("\n"),
+      "utf8",
+    );
+
+    const result = service.apply({
+      target: "codex",
+      scope: "custom",
+      path: targetPath,
+      serverIds: [server.id],
+      force: true,
+    });
+    const written = fs.readFileSync(targetPath, "utf8");
+
+    expect(result.overwrittenServerNames).toEqual(["filesystem"]);
+    expect(written.match(/\[mcp_servers\.filesystem\]/g)).toHaveLength(1);
+    expect(written).toContain("[mcp_servers.keep]");
+    expect(written).toContain('command = "npx"');
+    expect(written).not.toContain('command = "node"');
+  });
+
+  it("imports Codex TOML MCP servers", () => {
+    const service = new CoreMcpLibraryService();
+    const importPath = path.join(userDataPath, "config.toml");
+    fs.writeFileSync(
+      importPath,
+      [
+        "[mcp_servers.filesystem]",
+        'command = "npx"',
+        'args = ["@modelcontextprotocol/server-filesystem", "/tmp"]',
+        'env = { TOKEN = "abc" }',
+      ].join("\n"),
+      "utf8",
+    );
+
+    const result = service.importFromFile(importPath);
+    const imported = result.imported[0];
+
+    expect(result.skipped).toEqual([]);
+    expect(imported.name).toBe("filesystem");
+    expect(imported.command).toBe("npx");
+    expect(imported.args).toEqual([
+      "@modelcontextprotocol/server-filesystem",
+      "/tmp",
+    ]);
+    expect(imported.env).toEqual({ TOKEN: "abc" });
+  });
+
+  it("imports JSON mcpServers and VS Code servers configs", () => {
+    const service = new CoreMcpLibraryService();
+    const mcpServersPath = path.join(userDataPath, "mcp.json");
+    const vscodePath = path.join(userDataPath, "vscode-mcp.json");
+    fs.writeFileSync(
+      mcpServersPath,
+      JSON.stringify({
+        mcpServers: {
+          fetch: {
+            command: "uvx",
+            args: ["mcp-server-fetch"],
+          },
+        },
+      }),
+      "utf8",
+    );
+    fs.writeFileSync(
+      vscodePath,
+      JSON.stringify({
+        servers: {
+          docs: {
+            url: "https://example.com/mcp",
+          },
+        },
+      }),
+      "utf8",
+    );
+
+    const first = service.importFromFile(mcpServersPath);
+    const second = service.importFromFile(vscodePath);
+
+    expect(first.imported[0]).toMatchObject({
+      name: "fetch",
+      command: "uvx",
+      args: ["mcp-server-fetch"],
+      transport: "stdio",
+    });
+    expect(second.imported[0]).toMatchObject({
+      name: "docs",
+      url: "https://example.com/mcp",
+      transport: "streamable-http",
+    });
+    expect(service.read().servers.map((server) => server.name)).toEqual([
+      "docs",
+      "fetch",
+    ]);
+  });
+
+  it("creates MCP servers from command lines, URLs, GitHub repos, and local projects", () => {
+    const service = new CoreMcpLibraryService();
+    const projectPath = path.join(userDataPath, "sources", "node-mcp");
+    fs.mkdirSync(projectPath, { recursive: true });
+    fs.writeFileSync(
+      path.join(projectPath, "package.json"),
+      JSON.stringify({
+        name: "@acme/node-mcp",
+        description: "Local Node MCP",
+        scripts: { mcp: "node server.js" },
+      }),
+      "utf8",
+    );
+
+    const commandResult = service.createFromSource({
+      input: 'npx -y "@modelcontextprotocol/server-memory"',
+      kind: "command",
+    });
+    const githubResult = service.createFromSource({
+      input: "https://github.com/acme/custom-mcp",
+    });
+    const remoteResult = service.createFromSource({
+      input: "https://example.com/mcp",
+    });
+    const localResult = service.createFromSource({
+      input: projectPath,
+      kind: "path",
+    });
+
+    expect(commandResult.detectedKind).toBe("command");
+    expect(commandResult.imported[0]).toMatchObject({
+      name: "modelcontextprotocol-server-memory",
+      command: "npx",
+      args: ["-y", "@modelcontextprotocol/server-memory"],
+    });
+    expect(githubResult).toMatchObject({
+      detectedKind: "github",
+      warnings: expect.arrayContaining([expect.stringContaining("npx")]),
+    });
+    expect(githubResult.imported[0]).toMatchObject({
+      name: "custom-mcp",
+      command: "npx",
+      args: ["-y", "github:acme/custom-mcp"],
+      source: {
+        type: "import",
+        label: "GitHub repository",
+        url: "https://github.com/acme/custom-mcp",
+      },
+    });
+    expect(remoteResult.imported[0]).toMatchObject({
+      name: "example-com",
+      transport: "streamable-http",
+      url: "https://example.com/mcp",
+    });
+    expect(localResult.imported[0]).toMatchObject({
+      name: "acme-node-mcp",
+      command: "npm",
+      args: ["run", "mcp"],
+      cwd: projectPath,
+      source: { label: "Local Node project" },
+    });
+  });
+
+  it("selectively imports only required env keys for a server", () => {
+    const service = new CoreMcpLibraryService();
+    const server = service.createServer({
+      name: "github",
+      displayName: "GitHub",
+      transport: "stdio",
+      command: process.execPath,
+      args: ["server.js", "--token", "${GITHUB_PERSONAL_ACCESS_TOKEN}"],
+      env: {
+        GITHUB_PERSONAL_ACCESS_TOKEN: "",
+      },
+    });
+    const envPath = path.join(userDataPath, ".env");
+    fs.writeFileSync(
+      envPath,
+      [
+        "GITHUB_PERSONAL_ACCESS_TOKEN=ghp_test",
+        "UNRELATED_SECRET=do-not-import",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const result = service.importEnvForServer(server.id, envPath);
+    const updated = service.read().servers[0];
+
+    expect(result.importedKeys).toEqual(["GITHUB_PERSONAL_ACCESS_TOKEN"]);
+    expect(result.skippedKeys).toEqual([]);
+    expect(result.missingKeys).toEqual([]);
+    expect(updated.env).toEqual({
+      GITHUB_PERSONAL_ACCESS_TOKEN: "ghp_test",
+    });
+  });
+
+  it("toggles a server enabled state by id or name", () => {
+    const service = new CoreMcpLibraryService();
+    const server = service.createServer({
+      name: "fetch",
+      displayName: "Fetch",
+      transport: "stdio",
+      command: process.execPath,
+    });
+
+    expect(service.setServerEnabled(server.id, false)).toMatchObject({
+      id: server.id,
+      name: "fetch",
+      enabled: false,
+    });
+    expect(service.setServerEnabled("fetch", true)).toMatchObject({
+      id: server.id,
+      name: "fetch",
+      enabled: true,
+    });
+  });
+
+  it("checks MCP health without starting unknown server processes", () => {
+    const service = new CoreMcpLibraryService();
+    const healthy = service.createServer({
+      name: "healthy",
+      displayName: "Healthy",
+      transport: "stdio",
+      command: process.execPath,
+      args: ["server.js"],
+    });
+    const missingEnv = service.createServer({
+      name: "github",
+      displayName: "GitHub",
+      transport: "stdio",
+      command: "definitely-missing-prompthub-command",
+      env: {
+        GITHUB_PERSONAL_ACCESS_TOKEN: "",
+      },
+    });
+
+    expect(service.checkServer(healthy.id)).toMatchObject({
+      serverName: "healthy",
+      status: "ok",
+      issues: [],
+    });
+    expect(service.checkServer("github")).toMatchObject({
+      serverId: missingEnv.id,
+      status: "error",
+      issues: expect.arrayContaining([
+        expect.objectContaining({ code: "COMMAND_NOT_FOUND" }),
+        expect.objectContaining({
+          code: "MISSING_ENV",
+          field: "GITHUB_PERSONAL_ACCESS_TOKEN",
+        }),
+      ]),
+    });
+    expect(service.checkAllServers()).toHaveLength(2);
+  });
+
+  it("applies Codex TOML targets with a backup and managed block", () => {
+    const service = new CoreMcpLibraryService();
+    const server = service.createServer({
+      name: "filesystem",
+      displayName: "Filesystem",
+      transport: "stdio",
+      command: "npx",
+      args: ["@modelcontextprotocol/server-filesystem", "/tmp"],
+    });
+    const targetPath = path.join(userDataPath, ".codex", "config.toml");
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+    fs.writeFileSync(targetPath, 'model = "gpt-5"\n', "utf8");
+
+    const result = service.apply({
+      target: "codex",
+      scope: "custom",
+      path: targetPath,
+      serverIds: [server.id],
+    });
+    const written = fs.readFileSync(targetPath, "utf8");
+
+    expect(result.backupPath).toBeTruthy();
+    expect(fs.existsSync(result.backupPath!)).toBe(true);
+    expect(written).toContain('model = "gpt-5"');
+    expect(written).toContain("# >>> PromptHub MCP managed block >>>");
+    expect(written).toContain("[mcp_servers.filesystem]");
+    expect(service.read().bindings[0]).toMatchObject({
+      target: "codex",
+      path: targetPath,
+      serverIds: [server.id],
+    });
+  });
+
+  it("removes empty target bindings when a distributed server is deleted", () => {
+    const service = new CoreMcpLibraryService();
+    const server = service.createServer({
+      name: "fetch",
+      displayName: "Fetch",
+      transport: "stdio",
+      command: "uvx",
+      args: ["mcp-server-fetch"],
+    });
+    const targetPath = path.join(userDataPath, "target", "mcp.json");
+    service.apply({
+      target: "claude",
+      scope: "custom",
+      path: targetPath,
+      serverIds: [server.id],
+    });
+
+    const library = service.deleteServer(server.id);
+
+    expect(library.servers).toHaveLength(0);
+    expect(library.bindings).toEqual([]);
+  });
+
+  it("merges binding serverIds when re-applying to the same target", () => {
+    const service = new CoreMcpLibraryService();
+    const first = service.createServer({
+      name: "fetch",
+      displayName: "Fetch",
+      transport: "stdio",
+      command: "uvx",
+      args: ["mcp-server-fetch"],
+    });
+    const second = service.createServer({
+      name: "memory",
+      displayName: "Memory",
+      transport: "stdio",
+      command: "npx",
+      args: ["-y", "@modelcontextprotocol/server-memory"],
+    });
+    const targetPath = path.join(userDataPath, "target", "mcp.json");
+
+    service.apply({
+      target: "claude",
+      scope: "custom",
+      path: targetPath,
+      serverIds: [first.id],
+    });
+    service.apply({
+      target: "claude",
+      scope: "custom",
+      path: targetPath,
+      serverIds: [second.id],
+    });
+
+    const binding = service.read().bindings[0];
+    expect(binding.serverIds.sort()).toEqual([first.id, second.id].sort());
+  });
+
+  it("removes a server from a JSON target with a backup and keeps other entries", () => {
+    const service = new CoreMcpLibraryService();
+    const fetchServer = service.createServer({
+      name: "fetch",
+      displayName: "Fetch",
+      transport: "stdio",
+      command: "uvx",
+      args: ["mcp-server-fetch"],
+    });
+    const memoryServer = service.createServer({
+      name: "memory",
+      displayName: "Memory",
+      transport: "stdio",
+      command: "npx",
+      args: ["-y", "@modelcontextprotocol/server-memory"],
+    });
+    const targetPath = path.join(userDataPath, "target", "mcp.json");
+    service.apply({
+      target: "claude",
+      scope: "custom",
+      path: targetPath,
+      serverIds: [fetchServer.id, memoryServer.id],
+    });
+
+    const result = service.removeFromTarget({
+      target: "claude",
+      scope: "custom",
+      path: targetPath,
+      serverIds: [fetchServer.id],
+    });
+    const written = JSON.parse(fs.readFileSync(targetPath, "utf8"));
+
+    expect(result.removedServerNames).toEqual(["fetch"]);
+    expect(result.backupPath).toBeTruthy();
+    expect(fs.existsSync(result.backupPath!)).toBe(true);
+    expect(written.mcpServers.fetch).toBeUndefined();
+    expect(written.mcpServers.memory.command).toBe("npx");
+    const binding = service.read().bindings[0];
+    expect(binding.serverIds).toEqual([memoryServer.id]);
+
+    service.removeFromTarget({
+      target: "claude",
+      scope: "custom",
+      path: targetPath,
+      serverIds: [memoryServer.id],
+    });
+    expect(service.read().bindings).toEqual([]);
+  });
+
+  it("removes a server section from a Codex TOML target", () => {
+    const service = new CoreMcpLibraryService();
+    const server = service.createServer({
+      name: "filesystem",
+      displayName: "Filesystem",
+      transport: "stdio",
+      command: "npx",
+      args: ["@modelcontextprotocol/server-filesystem", "/tmp"],
+    });
+    const targetPath = path.join(userDataPath, ".codex", "config.toml");
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+    fs.writeFileSync(targetPath, 'model = "gpt-5"\n', "utf8");
+    service.apply({
+      target: "codex",
+      scope: "custom",
+      path: targetPath,
+      serverIds: [server.id],
+    });
+
+    const result = service.removeFromTarget({
+      target: "codex",
+      scope: "custom",
+      path: targetPath,
+      serverIds: [server.id],
+    });
+    const written = fs.readFileSync(targetPath, "utf8");
+
+    expect(result.removedServerNames).toEqual(["filesystem"]);
+    expect(written).toContain('model = "gpt-5"');
+    expect(written).not.toContain("[mcp_servers.filesystem]");
+  });
+
+  it("rejects removal when the target file does not exist", () => {
+    const service = new CoreMcpLibraryService();
+    const server = service.createServer({
+      name: "fetch",
+      displayName: "Fetch",
+      transport: "stdio",
+      command: "uvx",
+      args: ["mcp-server-fetch"],
+    });
+
+    expect(() =>
+      service.removeFromTarget({
+        target: "claude",
+        scope: "custom",
+        path: path.join(userDataPath, "missing.json"),
+        serverIds: [server.id],
+      }),
+    ).toThrow(/不存在/);
+  });
+
+  it("reports real per-target distribution status from config files", () => {
+    const service = new CoreMcpLibraryService();
+    const jsonPath = path.join(userDataPath, "status", "mcp.json");
+    fs.mkdirSync(path.dirname(jsonPath), { recursive: true });
+    fs.writeFileSync(
+      jsonPath,
+      JSON.stringify({ mcpServers: { fetch: { command: "uvx" } } }),
+      "utf8",
+    );
+    const tomlPath = path.join(userDataPath, "status", "config.toml");
+    fs.writeFileSync(
+      tomlPath,
+      '[mcp_servers.filesystem]\ncommand = "npx"\n',
+      "utf8",
+    );
+    const invalidPath = path.join(userDataPath, "status", "broken.json");
+    fs.writeFileSync(invalidPath, "{not-json", "utf8");
+
+    const status = service.getTargetStatus([
+      {
+        id: "claude",
+        target: "claude",
+        scope: "global",
+        label: "Claude Code",
+        path: jsonPath,
+      },
+      {
+        id: "codex",
+        target: "codex",
+        scope: "global",
+        label: "Codex CLI",
+        path: tomlPath,
+      },
+      {
+        id: "missing",
+        target: "cursor",
+        scope: "global",
+        label: "Cursor",
+        path: path.join(userDataPath, "status", "missing.json"),
+      },
+      {
+        id: "broken",
+        target: "claude",
+        scope: "global",
+        label: "Broken",
+        path: invalidPath,
+      },
+    ]);
+
+    expect(status).toEqual([
+      {
+        presetId: "claude",
+        path: jsonPath,
+        exists: true,
+        serverNames: ["fetch"],
+        servers: [
+          expect.objectContaining({
+            name: "fetch",
+            command: "uvx",
+            source: { type: "import", id: "claude", label: "Claude Code" },
+          }),
+        ],
+      },
+      {
+        presetId: "codex",
+        path: tomlPath,
+        exists: true,
+        serverNames: ["filesystem"],
+        servers: [
+          expect.objectContaining({
+            name: "filesystem",
+            command: "npx",
+            source: { type: "import", id: "codex", label: "Codex CLI" },
+          }),
+        ],
+      },
+      {
+        presetId: "missing",
+        path: path.join(userDataPath, "status", "missing.json"),
+        exists: false,
+        serverNames: [],
+      },
+      {
+        presetId: "broken",
+        path: invalidPath,
+        exists: true,
+        serverNames: [],
+      },
+    ]);
+  });
+
+  it("exposes platform-scoped global target presets", () => {
+    const presets = getMcpTargetPresets("/Users/test", "darwin");
+    const byId = Object.fromEntries(
+      presets.map((preset) => [preset.id, preset]),
+    );
+
+    expect(byId.claude.path).toBe("/Users/test/.claude.json");
+    expect(byId.codex.path).toBe("/Users/test/.codex/config.toml");
+    expect(byId.gemini.path).toBe("/Users/test/.gemini/settings.json");
+    expect(byId.opencode.path).toBe(
+      "/Users/test/.config/opencode/opencode.json",
+    );
+    expect(byId.windsurf.path).toBe(
+      "/Users/test/.codeium/windsurf/mcp_config.json",
+    );
+    expect(byId.kiro.path).toBe("/Users/test/.kiro/settings/mcp.json");
+    expect(byId["claude-desktop"].path).toBe(
+      "/Users/test/Library/Application Support/Claude/claude_desktop_config.json",
+    );
+    expect(byId.vscode.path).toBe(
+      "/Users/test/Library/Application Support/Code/User/mcp.json",
+    );
+    expect(presets.every((preset) => preset.scope === "global")).toBe(true);
+    expect(presets.every((preset) => Boolean(preset.platformId))).toBe(true);
+
+    const winPresets = getMcpTargetPresets("C:\\Users\\test", "win32");
+    const winById = Object.fromEntries(
+      winPresets.map((preset) => [preset.id, preset]),
+    );
+    expect(winById["claude-desktop"].path).toContain("AppData");
+  });
+});

@@ -73,7 +73,7 @@ const DEFAULT_BACKGROUND_IMAGE_OPACITY = 1;
 const DEFAULT_BACKGROUND_IMAGE_BLUR = 0;
 const LEGACY_BACKGROUND_IMAGE_BLUR_DEFAULT = 14;
 const LOCAL_IMAGE_PROTOCOL_PREFIX = "local-image://";
-export const DESKTOP_HOME_MODULES = ["prompt", "skill", "rules"] as const;
+export const DESKTOP_HOME_MODULES = ["prompt", "skill", "mcp", "rules"] as const;
 export type DesktopHomeModule = (typeof DESKTOP_HOME_MODULES)[number];
 type ShortcutMode = "global" | "local";
 const DEFAULT_SHORTCUT_MODES: Record<string, ShortcutMode> = {
@@ -360,7 +360,27 @@ function normalizeDesktopHomeModule(value: unknown): DesktopHomeModule | null {
     : null;
 }
 
-function normalizeDesktopHomeModules(value: unknown): DesktopHomeModule[] {
+function addNewDefaultDesktopModules(
+  modules: DesktopHomeModule[],
+): DesktopHomeModule[] {
+  const hasLegacyDefaultModules =
+    modules.includes("prompt") &&
+    modules.includes("skill") &&
+    modules.includes("rules");
+  if (!hasLegacyDefaultModules || modules.includes("mcp")) {
+    return modules;
+  }
+
+  const next = [...modules];
+  const skillIndex = next.indexOf("skill");
+  next.splice(skillIndex === -1 ? next.length : skillIndex + 1, 0, "mcp");
+  return next;
+}
+
+function normalizeDesktopHomeModules(
+  value: unknown,
+  options: { includeNewDefaults?: boolean } = {},
+): DesktopHomeModule[] {
   if (!Array.isArray(value)) {
     return [...DESKTOP_HOME_MODULES];
   }
@@ -374,7 +394,7 @@ function normalizeDesktopHomeModules(value: unknown): DesktopHomeModule[] {
     return [...DESKTOP_HOME_MODULES];
   }
 
-  return deduped;
+  return options.includeNewDefaults ? addNewDefaultDesktopModules(deduped) : deduped;
 }
 
 function normalizeTagFilterMode(value: unknown): TagFilterMode {
@@ -2283,7 +2303,9 @@ export const useSettingsStore = create<SettingsState>()(
             ? currentModules.filter((item) => item !== moduleId)
             : [...currentModules, moduleId];
 
-          const normalized = normalizeDesktopHomeModules(nextModules);
+          const normalized = normalizeDesktopHomeModules(nextModules, {
+            includeNewDefaults: false,
+          });
           if (
             normalized.length === currentModules.length &&
             normalized.every((item, index) => item === currentModules[index])
@@ -2294,7 +2316,9 @@ export const useSettingsStore = create<SettingsState>()(
           setTouched({ desktopHomeModules: normalized });
         },
         reorderDesktopHomeModules: (modules) => {
-          const normalized = normalizeDesktopHomeModules(modules);
+          const normalized = normalizeDesktopHomeModules(modules, {
+            includeNewDefaults: false,
+          });
           const currentModules = get().desktopHomeModules;
           if (
             normalized.length === currentModules.length &&
@@ -3036,6 +3060,7 @@ export const useSettingsStore = create<SettingsState>()(
         normalizeSidebarTagSectionHeights(next);
         next.desktopHomeModules = normalizeDesktopHomeModules(
           next.desktopHomeModules,
+          { includeNewDefaults: true },
         );
         delete (next as Record<string, unknown>).desktopHomeLayout;
         next.backgroundImageFileName = normalizeBackgroundImageFileName(
@@ -3175,6 +3200,7 @@ export const useSettingsStore = create<SettingsState>()(
         }
         next.desktopHomeModules = normalizeDesktopHomeModules(
           next.desktopHomeModules,
+          { includeNewDefaults: true },
         );
         delete (next as Record<string, unknown>).desktopHomeLayout;
         if (typeof next.updateChannelExplicitlySet !== "boolean") {

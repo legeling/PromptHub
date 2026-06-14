@@ -13,6 +13,7 @@ import { SkillDB } from '../database/skill';
 import { registerSecurityIPC } from './security.ipc';
 import { registerBackupIPC } from './backup.ipc';
 import { registerCliIPC } from './cli.ipc';
+import { registerMcpIPC } from './mcp.ipc';
 import { IPC_CHANNELS } from '@prompthub/shared/constants/ipc-channels';
 
 const REBINDABLE_DB_CHANNELS = [
@@ -109,6 +110,18 @@ const REBINDABLE_DB_CHANNELS = [
   IPC_CHANNELS.SKILL_VERSION_DELETE,
   IPC_CHANNELS.SKILL_DELETE_ALL,
   IPC_CHANNELS.SKILL_INSERT_VERSION_DIRECT,
+  IPC_CHANNELS.MCP_LIBRARY_GET,
+  IPC_CHANNELS.MCP_MARKET_LIST,
+  IPC_CHANNELS.MCP_TARGET_PRESETS,
+  IPC_CHANNELS.MCP_SERVER_CREATE,
+  IPC_CHANNELS.MCP_SERVER_UPDATE,
+  IPC_CHANNELS.MCP_SERVER_DELETE,
+  IPC_CHANNELS.MCP_TEMPLATE_INSTALL,
+  IPC_CHANNELS.MCP_PREVIEW,
+  IPC_CHANNELS.MCP_APPLY,
+  IPC_CHANNELS.MCP_REMOVE,
+  IPC_CHANNELS.MCP_TARGET_STATUS,
+  IPC_CHANNELS.MCP_IMPORT_FILE,
   IPC_CHANNELS.UPGRADE_BACKUP_LIST,
   IPC_CHANNELS.UPGRADE_BACKUP_CREATE,
   IPC_CHANNELS.UPGRADE_BACKUP_RESTORE,
@@ -154,6 +167,7 @@ export function registerAllIPC(
   );
   registerIpcGroup("cli", () => registerCliIPC());
   registerIpcGroup("skill", () => registerSkillIPC(skillDB));
+  registerIpcGroup("mcp", () => registerMcpIPC());
   registerIpcGroup("image", () => registerImageIPC());
   registerIpcGroup("ai", () => registerAIIPC());
 }

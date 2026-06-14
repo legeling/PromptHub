@@ -50,12 +50,14 @@ import type {
   ScannedSkill,
   SkillPlatformInstallStatusMap,
 } from "@prompthub/shared/types";
+import type { SkillPlatform } from "@prompthub/shared/constants/platforms";
 import { updateSkillTags, type SkillBatchTagMode } from "./batch-utils";
 import { filterVisibleSkills } from "../../services/skill-filter";
 import { buildMySkillSourceBadges } from "../../services/skill-source-badges";
 import { getRemoteStoreSkills } from "../../services/remote-store-entry";
 import { getRuntimeCapabilities } from "../../runtime";
 import { useSkillStoreRemoteSync } from "./store-remote-sync";
+import { filterDetectedPlatforms } from "../../services/platform-visibility";
 
 const MAX_STAGGERED_CARDS = 10;
 const CARD_STAGGER_MS = 50;
@@ -216,6 +218,19 @@ function summarizeInstallDetails(
   };
 }
 
+function normalizePlatformStatusMap(value: unknown): Record<string, boolean> {
+  if (!value || typeof value !== "object") {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).filter((entry): entry is [string, boolean] => {
+      const [, installed] = entry;
+      return typeof installed === "boolean";
+    }),
+  );
+}
+
 function mergeDeleteDistributionSummaries(
   summaries: DeleteDistributionSummary[],
 ): DeleteDistributionSummary {
@@ -269,12 +284,21 @@ export function SkillManager() {
   const setSkillListPageSize = useSettingsStore(
     (state) => state.setSkillListPageSize,
   );
+  const disabledPlatformIds =
+    useSettingsStore((state) => state.disabledPlatformIds) ?? [];
   const pageSize = SKILL_LIST_PAGE_SIZE_OPTIONS.includes(
     storedSkillListPageSize as (typeof SKILL_LIST_PAGE_SIZE_OPTIONS)[number],
   )
     ? storedSkillListPageSize
     : DEFAULT_SKILL_LIST_PAGE_SIZE;
   const runtimeCapabilities = getRuntimeCapabilities();
+  const [supportedPlatforms, setSupportedPlatforms] = useState<SkillPlatform[]>(
+    [],
+  );
+  const [detectedPlatforms, setDetectedPlatforms] = useState<string[]>([]);
+  const [skillPlatformStatuses, setSkillPlatformStatuses] = useState<
+    Record<string, Record<string, boolean>>
+  >({});
   const galleryColumnOptions = useMemo<SelectOption[]>(
     () =>
       SKILL_GALLERY_COLUMNS.map((columns) => ({
@@ -293,6 +317,30 @@ export function SkillManager() {
     () => getSkillGalleryGridStyle(galleryColumns ?? "auto"),
     [galleryColumns],
   );
+  const availableSkillPlatforms = useMemo(
+    () =>
+      filterDetectedPlatforms(
+        supportedPlatforms,
+        detectedPlatforms,
+        disabledPlatformIds,
+      ),
+    [detectedPlatforms, disabledPlatformIds, supportedPlatforms],
+  );
+  const distributedPlatformsBySkillId = useMemo(() => {
+    const next = new Map<string, Array<Pick<SkillPlatform, "id" | "name">>>();
+
+    for (const skill of skills) {
+      const status = skillPlatformStatuses[skill.id] ?? {};
+      next.set(
+        skill.id,
+        availableSkillPlatforms
+          .filter((platform) => status[platform.id])
+          .map((platform) => ({ id: platform.id, name: platform.name })),
+      );
+    }
+
+    return next;
+  }, [availableSkillPlatforms, skillPlatformStatuses, skills]);
   const webSkillLibraryMode =
     !runtimeCapabilities.skillDistribution && !runtimeCapabilities.skillStore;
   const legacyDistributionView = storeView === "distribution";
@@ -722,6 +770,90 @@ export function SkillManager() {
       }
     };
   }, [loadSkills, loadDeployedStatus, runtimeCapabilities.skillDistribution]);
+
+  useEffect(() => {
+    if (!runtimeCapabilities.skillPlatformIntegration) {
+      setSupportedPlatforms([]);
+      setDetectedPlatforms([]);
+      return;
+    }
+
+    let disposed = false;
+    void Promise.all([
+      window.api.skill.getSupportedPlatforms(),
+      window.api.skill.detectPlatforms(),
+    ])
+      .then(([platforms, detected]) => {
+        if (disposed) {
+          return;
+        }
+        setSupportedPlatforms((current) =>
+          platforms.length === 0 && current.length === 0 ? current : platforms,
+        );
+        setDetectedPlatforms((current) =>
+          detected.length === 0 && current.length === 0 ? current : detected,
+        );
+      })
+      .catch((error) => {
+        if (disposed) {
+          return;
+        }
+        console.error("Failed to load skill platforms:", error);
+        setSupportedPlatforms([]);
+        setDetectedPlatforms([]);
+      });
+
+    return () => {
+      disposed = true;
+    };
+  }, [runtimeCapabilities.skillPlatformIntegration]);
+
+  useEffect(() => {
+    if (
+      !runtimeCapabilities.skillPlatformIntegration ||
+      skills.length === 0 ||
+      availableSkillPlatforms.length === 0
+    ) {
+      setSkillPlatformStatuses((current) =>
+        Object.keys(current).length === 0 ? current : {},
+      );
+      return;
+    }
+
+    let disposed = false;
+    void window.api.skill
+      .getMdInstallStatusBatch(Array.from(new Set(skills.map((skill) => skill.id))))
+      .then((statusBySkillId) => {
+        if (disposed) {
+          return;
+        }
+        setSkillPlatformStatuses(
+          Object.fromEntries(
+            Object.entries(statusBySkillId as Record<string, unknown>).map(
+              ([skillId, status]) => [
+                skillId,
+                normalizePlatformStatusMap(status),
+              ],
+            ),
+          ),
+        );
+      })
+      .catch((error) => {
+        if (disposed) {
+          return;
+        }
+        console.error("Failed to load skill install status:", error);
+        setSkillPlatformStatuses({});
+      });
+
+    return () => {
+      disposed = true;
+    };
+  }, [
+    availableSkillPlatforms.length,
+    runtimeCapabilities.skillPlatformIntegration,
+    skills,
+  ]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -1597,6 +1729,9 @@ export function SkillManager() {
                         key={skill.id}
                         animationDelayMs={
                           Math.min(index, MAX_STAGGERED_CARDS) * CARD_STAGGER_MS
+                        }
+                        distributedPlatforms={
+                          distributedPlatformsBySkillId.get(skill.id) ?? []
                         }
                         hasStoreUpdate={skillsWithStoreUpdates.has(skill.id)}
                         isSelected={isSelected}

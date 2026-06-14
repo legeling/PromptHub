@@ -7,6 +7,7 @@ import { useSettingsStore } from "../../../src/renderer/stores/settings.store";
 import { useFolderStore } from "../../../src/renderer/stores/folder.store";
 import { useRulesStore } from "../../../src/renderer/stores/rules.store";
 import { useSkillStore } from "../../../src/renderer/stores/skill.store";
+import { useMcpStore } from "../../../src/renderer/stores/mcp.store";
 import { useUIStore } from "../../../src/renderer/stores/ui.store";
 import { renderWithI18n } from "../../helpers/i18n";
 import { installWindowMocks } from "../../helpers/window";
@@ -92,6 +93,12 @@ describe("TopBar", () => {
       selectedProjectId: null,
       projectScanState: {},
     } as Partial<ReturnType<typeof useSkillStore.getState>>);
+
+    useMcpStore.setState({
+      library: null,
+      selectedTab: "library",
+      searchQuery: "",
+    } as Partial<ReturnType<typeof useMcpStore.getState>>);
 
     useUIStore.setState({
       appModule: "prompt",
@@ -522,6 +529,78 @@ describe("TopBar", () => {
       "existing prompt search",
     );
     expect(useRulesStore.getState().searchQuery).toBe("codex");
+  });
+
+  it("uses the top bar New button to open MCP creation", async () => {
+    const mcpCreateListener = vi.fn();
+    document.addEventListener("open-create-mcp-modal", mcpCreateListener);
+
+    useUIStore.setState({
+      appModule: "mcp",
+      viewMode: "prompt",
+      isSidebarCollapsed: false,
+    });
+
+    await act(async () => {
+      await renderWithI18n(
+        <TopBar onOpenSettings={vi.fn()} updateAvailable={null} />,
+        { language: "en" },
+      );
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "New" }));
+
+    expect(mcpCreateListener).toHaveBeenCalledTimes(1);
+    document.removeEventListener("open-create-mcp-modal", mcpCreateListener);
+  });
+
+  it("uses the MCP search query in the top bar", async () => {
+    usePromptStore.setState({ searchQuery: "prompt query" });
+    useMcpStore.setState({
+      library: {
+        kind: "prompthub-mcp-library",
+        version: 1,
+        updatedAt: "2026-01-01T00:00:00.000Z",
+        bindings: [],
+        servers: [
+          {
+            id: "mcp_filesystem",
+            name: "filesystem",
+            displayName: "Filesystem",
+            description: "Read local files",
+            transport: "stdio",
+            command: "npx",
+            args: ["@modelcontextprotocol/server-filesystem"],
+            enabled: true,
+            tags: ["files"],
+            source: { type: "manual" },
+            createdAt: 1,
+            updatedAt: 1,
+          },
+        ],
+      },
+      selectedTab: "library",
+      searchQuery: "",
+    } as Partial<ReturnType<typeof useMcpStore.getState>>);
+    useUIStore.setState({
+      appModule: "mcp",
+      viewMode: "prompt",
+      isSidebarCollapsed: false,
+    });
+
+    await act(async () => {
+      await renderWithI18n(
+        <TopBar onOpenSettings={vi.fn()} updateAvailable={null} />,
+        { language: "en" },
+      );
+    });
+
+    const searchInput = screen.getByPlaceholderText("Search MCP...");
+    fireEvent.change(searchInput, { target: { value: "filesystem" } });
+
+    expect(useMcpStore.getState().searchQuery).toBe("filesystem");
+    expect(usePromptStore.getState().searchQuery).toBe("prompt query");
+    expect(screen.getByText("1 results")).toBeInTheDocument();
   });
 
   it("clears the active top bar search query when clicking the clear button", async () => {

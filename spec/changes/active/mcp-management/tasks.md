@@ -1,0 +1,50 @@
+# Tasks
+
+- [x] Create active change docs for MCP management.
+- [x] Add shared MCP types and projection/merge helpers with focused tests.
+- [x] Add core MCP library persistence with atomic writes and backup-aware target apply.
+- [x] Add desktop IPC/preload API for MCP management.
+- [x] Add renderer MCP store, manager UI, and left navigation entry.
+- [x] Align MCP Library UI with Skill-style list/detail/distribution workflow.
+- [x] Move MCP creation into the shared TopBar New action so My MCP stays a Skill-style card gallery.
+- [x] Open MCP details from card selection instead of keeping a persistent right-side create/detail form in My MCP.
+- [x] Reuse the Skill Store sidebar interaction for MCP Store, including a nested store-source list.
+- [x] Make MCP Store cards open a Skill Store-style detail modal before install, with correct card/action icons.
+- [x] Add MCP Store template overview, usage, configuration requirements, environment variable explanations, and official links to the detail modal.
+- [x] Rework Agent MCP to match the Agent Skills two-column platform/detail layout.
+- [x] Recheck MCP UI against Skill source code and align the MCP store/agent view shells, refresh controls, and agent card sizing with the Skill implementations.
+- [x] Add Skill-style My MCP search, distribution/source filters, card columns, refresh control, and inspectable MCP detail metadata.
+- [x] Replace the MCP detail modal with a Skill-style full-page detail view with back navigation.
+- [x] Rework MCP detail from a form-first page into the SkillFullDetailPage structure: header actions, preview/source/files tabs, content pane, and right platform panel.
+- [x] Remove the unnecessary MCP detail Files tab and confusing platform-row preview/copy buttons; show runtime and package/script details instead.
+- [x] Enrich MCP template/server metadata with market source, documentation/repository links, runtime, package/script, and required env details.
+- [x] Add high-quality MCP market source metadata for official/verified/community discovery sources.
+- [x] Add selective `.env` import for MCP servers without importing unrelated secrets.
+- [x] Add manual required-env value editing in MCP detail; `.env` import is only a bulk-fill helper.
+- [x] Add New MCP source import for command lines, URLs, GitHub repositories, local source folders, config files, and dragged files/folders.
+- [x] Add static MCP health checks for command availability, URL validity, cwd, missing env, and placeholder values without starting unknown MCP processes.
+- [x] Add CLI MCP commands for list/get/market/sources/install/import/check/env-import against the shared MCP library.
+- [x] Add CLI MCP enable/disable plus export/apply/remove commands for target config distribution.
+- [x] Surface MCP health status on My MCP cards.
+- [x] Add MCP Store source filtering so official/verified/community sources can be inspected separately.
+- [x] Add desktop file-picker import entry for JSON and Codex TOML configs.
+- [x] Add curated MCP marketplace templates.
+- [x] Add regression tests for module normalization, projections, safe config merge, import, create, disabled-state distribution guard, bulk enabled-only apply, detail distribution, and marketplace install.
+- [x] Add MCP distribution conflict protection, force overwrite, target atomic writes, and CLI/UI regression tests.
+- [x] Add MCP CRUD/install/apply/remove safety regressions for duplicate rollback, invalid target rollback, disabled-server apply guards, OpenCode projection/removal, and timestamp-stable reads.
+- [x] Add Agent MCP card actions so external target entries can be imported into My MCP and managed target entries can open My MCP detail.
+- [x] Align Agent MCP server cards with Agent Skill cards by making the card body itself clickable in addition to the action buttons.
+- [x] Make Agent MCP card body clicks open an Agent MCP detail page first, so import/open My MCP remains an explicit user action.
+- [x] Make the whole Agent MCP entry card surface open the Agent MCP detail page while action buttons remain the only import/open shortcuts.
+- [x] Extract a Skill-style Agent MCP detail action strip so external and managed target entries use the same pill-button layout as Agent Skills.
+- [x] Restore the Skill-style Agent MCP card action shortcut while keeping card/body clicks detail-only: external entries show explicit Import to My MCP, managed entries show Open in My MCP.
+- [x] Refine Agent MCP card metadata and actions so cards show MCP runtime information instead of repeating paths, and action buttons no longer duplicate folder/open affordances.
+- [x] Add a Skill-style Agent MCP source sidebar in the entry detail page with platform source, managed state, import/open My MCP, and open agent config actions.
+- [x] Replace Agent MCP target-entry removal `window.confirm` with a Skill-style in-app confirmation dialog and MCP-specific localized copy.
+- [x] Remove Agent MCP bottom preview/bulk-apply actions and replace them with a single Add MCP entry point into the shared New MCP modal.
+- [x] Align Agent MCP card action icon buttons to a shared size/border style.
+- [x] Add My Skill gallery card distribution indicators so cards quickly show which agent platforms already have the Skill installed.
+- [x] Add My MCP Skill-style batch management, gallery/list switching, pagination, favorite toggles, and card/list delete actions.
+- [x] Persist MCP favorite state in the local MCP library normalization/update flow.
+- [x] Verify MCP UI is visible in a browser render with the left entry, library list, detail panel, distribution panel, and generated preview.
+- [x] Run focused tests and record verification.

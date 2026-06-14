@@ -30,6 +30,7 @@ import {
   BookOpenIcon,
   LinkIcon,
   FolderOpenIcon,
+  ServerIcon,
   GitBranchIcon,
 } from "lucide-react";
 import { useFolderStore } from "../../stores/folder.store";
@@ -44,6 +45,7 @@ import {
 import { ColumnResizer } from "../ui/ColumnResizer";
 import { Spinner } from "../ui/Spinner";
 import { useSkillStore } from "../../stores/skill.store";
+import { useMcpStore } from "../../stores/mcp.store";
 import { FolderModal, PrivateFolderUnlockModal } from "../folder";
 import { useTranslation } from "react-i18next";
 import type { Folder } from "@prompthub/shared/types";
@@ -265,6 +267,14 @@ export function Sidebar({
   const skillFilterTags = useSkillStore((state) => state.filterTags);
   const toggleSkillFilterTag = useSkillStore((state) => state.toggleFilterTag);
   const clearSkillFilterTags = useSkillStore((state) => state.clearFilterTags);
+  const mcpLibrary = useMcpStore((state) => state.library);
+  const mcpMarketTemplates = useMcpStore((state) => state.marketTemplates);
+  const mcpTargetPresets = useMcpStore((state) => state.targetPresets);
+  const mcpSelectedTab = useMcpStore((state) => state.selectedTab);
+  const setMcpSelectedTab = useMcpStore((state) => state.setSelectedTab);
+  const [isMcpStoreGroupExpanded, setIsMcpStoreGroupExpanded] = useState(
+    () => mcpSelectedTab === "market",
+  );
   const claudeCodeStoreCount = useMemo(
     () => getRemoteStoreSkillCount(remoteStoreEntries["claude-code"]),
     [remoteStoreEntries],
@@ -328,7 +338,7 @@ export function Sidebar({
   const runtimeCapabilities = getRuntimeCapabilities();
   const webRuntime = isWebRuntime();
   const canAddRuleProject = !webRuntime;
-  const activeModule = appModule === "rules" ? "rules" : viewMode;
+  const activeModule = appModule;
 
   const openPromptTypeFilter = useCallback(
     (filter: "all" | "text" | "image") => {
@@ -375,6 +385,12 @@ export function Sidebar({
   }, [storeView]);
 
   useEffect(() => {
+    if (mcpSelectedTab === "market") {
+      setIsMcpStoreGroupExpanded(true);
+    }
+  }, [mcpSelectedTab]);
+
+  useEffect(() => {
     if (
       activeModule !== "skill" ||
       !runtimeCapabilities.skillLocalScan ||
@@ -410,16 +426,27 @@ export function Sidebar({
       disposed = true;
     };
   }, [activeModule, disabledPlatformIds, runtimeCapabilities.skillLocalScan]);
-  const visibleDesktopModules = useMemo(
-    () =>
-      desktopHomeModules.filter((moduleId) =>
-        DESKTOP_HOME_MODULES.includes(moduleId),
-      ),
-    [desktopHomeModules],
-  );
+  const visibleDesktopModules = useMemo(() => {
+    const normalized = desktopHomeModules.filter((moduleId) =>
+      DESKTOP_HOME_MODULES.includes(moduleId),
+    );
+    const isLegacyDefault =
+      normalized.includes("prompt") &&
+      normalized.includes("skill") &&
+      normalized.includes("rules") &&
+      !normalized.includes("mcp");
+    if (!isLegacyDefault) {
+      return normalized;
+    }
+    const next = [...normalized];
+    const skillIndex = next.indexOf("skill");
+    next.splice(skillIndex === -1 ? next.length : skillIndex + 1, 0, "mcp");
+    return next;
+  }, [desktopHomeModules]);
   const hasVisibleModule = visibleDesktopModules.length > 0;
   const isPromptModuleVisible = visibleDesktopModules.includes("prompt");
   const isSkillModuleVisible = visibleDesktopModules.includes("skill");
+  const isMcpModuleVisible = visibleDesktopModules.includes("mcp");
   const isRulesModuleVisible = visibleDesktopModules.includes("rules");
   const showRail = layout !== "panel";
   const showPanel = layout !== "rail";
@@ -505,6 +532,30 @@ export function Sidebar({
     storeView,
   ]);
 
+  const openMcpStoreSource = useCallback(() => {
+    setIsMcpStoreGroupExpanded(true);
+    setMcpSelectedTab("market");
+    if (currentPage !== "home") onNavigate("home");
+  }, [currentPage, onNavigate, setMcpSelectedTab]);
+
+  const handleMcpStoreNavClick = useCallback(() => {
+    if (
+      isMcpStoreGroupExpanded &&
+      mcpSelectedTab === "market" &&
+      currentPage === "home"
+    ) {
+      setIsMcpStoreGroupExpanded(false);
+      return;
+    }
+
+    openMcpStoreSource();
+  }, [
+    currentPage,
+    isMcpStoreGroupExpanded,
+    mcpSelectedTab,
+    openMcpStoreSource,
+  ]);
+
   // Skill tags section settings (mirrors prompt tags behavior)
   const skillTagsSectionHeight = useSettingsStore(
     (state) => state.skillTagsSectionHeight,
@@ -553,6 +604,10 @@ export function Sidebar({
       return;
     }
 
+    if (activeModule === "mcp" && isMcpModuleVisible) {
+      return;
+    }
+
     if (activeModule === "rules" && isRulesModuleVisible) {
       return;
     }
@@ -565,6 +620,7 @@ export function Sidebar({
     activeModule,
     hasVisibleModule,
     isPromptModuleVisible,
+    isMcpModuleVisible,
     isRulesModuleVisible,
     isSkillModuleVisible,
     setAppModule,
@@ -625,6 +681,20 @@ export function Sidebar({
             active: activeModule === "skill",
             onClick: () => {
               setAppModule("skill");
+              closeTagPopover();
+              if (currentPage !== "home") onNavigate("home");
+            },
+          };
+        }
+
+        if (moduleId === "mcp") {
+          return {
+            key: moduleId,
+            label: t("mcp.title", "MCP"),
+            icon: <ServerIcon className="h-5 w-5" />,
+            active: activeModule === "mcp",
+            onClick: () => {
+              setAppModule("mcp");
               closeTagPopover();
               if (currentPage !== "home") onNavigate("home");
             },
@@ -970,9 +1040,9 @@ export function Sidebar({
                         count={promptStats.textCount}
                         active={
                           promptTypeFilter === "text" &&
-                          promptViewMode !== "graph" &&
                           selectedFolderId === null &&
-                          currentPage === "home"
+                          currentPage === "home" &&
+                          promptViewMode !== "graph"
                         }
                         collapsed={true}
                         onClick={() => openPromptTypeFilter("text")}
@@ -983,9 +1053,9 @@ export function Sidebar({
                         count={promptStats.imageCount}
                         active={
                           promptTypeFilter === "image" &&
-                          promptViewMode !== "graph" &&
                           selectedFolderId === null &&
-                          currentPage === "home"
+                          currentPage === "home" &&
+                          promptViewMode !== "graph"
                         }
                         collapsed={true}
                         onClick={() => openPromptTypeFilter("image")}
@@ -1493,9 +1563,13 @@ export function Sidebar({
                           <span className="flex-1 text-left truncate">
                             {source.name}
                           </span>
-                          {getRemoteStoreSkillCount(remoteStoreEntries[source.id]) ? (
+                          {getRemoteStoreSkillCount(
+                            remoteStoreEntries[source.id],
+                          ) ? (
                             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sidebar-accent/80 text-sidebar-foreground/50 border border-white/5">
-                              {getRemoteStoreSkillCount(remoteStoreEntries[source.id])}
+                              {getRemoteStoreSkillCount(
+                                remoteStoreEntries[source.id],
+                              )}
                             </span>
                           ) : null}
                           {!source.enabled && (
@@ -1769,6 +1843,75 @@ export function Sidebar({
                   </div>
                 </div>
               )}
+            </>
+          ) : activeModule === "mcp" ? (
+            <>
+              <div className="flex-shrink-0 flex flex-col px-3 py-2">
+                <div className="space-y-1 shrink-0">
+                  <NavItem
+                    icon={<ServerIcon className="w-5 h-5" />}
+                    label={t("mcp.myMcp", "My MCP")}
+                    count={mcpLibrary?.servers.length ?? 0}
+                    active={mcpSelectedTab === "library"}
+                    collapsed={isCollapsed}
+                    onClick={() => {
+                      setMcpSelectedTab("library");
+                      if (currentPage !== "home") onNavigate("home");
+                    }}
+                  />
+                  <NavItem
+                    icon={<BotIcon className="w-5 h-5" />}
+                    label={t("mcp.agentMcp", "Agent MCP")}
+                    count={mcpTargetPresets.length}
+                    active={mcpSelectedTab === "targets"}
+                    collapsed={isCollapsed}
+                    onClick={() => {
+                      setMcpSelectedTab("targets");
+                      if (currentPage !== "home") onNavigate("home");
+                    }}
+                  />
+                  <div className="h-px app-wallpaper-panel-strong-border/50 my-2" />
+                  <NavItem
+                    icon={<StoreIcon className="w-5 h-5" />}
+                    label={t("mcp.mcpStore", "MCP Store")}
+                    count={mcpMarketTemplates.length}
+                    active={mcpSelectedTab === "market"}
+                    collapsed={isCollapsed}
+                    onClick={handleMcpStoreNavClick}
+                  />
+                </div>
+              </div>
+
+              <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                {isMcpStoreGroupExpanded && !isCollapsed ? (
+                  <div
+                    data-testid="mcp-store-source-scroll"
+                    className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide px-3 pb-3"
+                  >
+                    <div className="ml-4 mt-1 pl-3 pr-1 border-l border-sidebar-border/50 space-y-1">
+                      <button
+                        type="button"
+                        onClick={openMcpStoreSource}
+                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                          mcpSelectedTab === "market"
+                            ? "bg-sidebar-accent text-sidebar-foreground"
+                            : "text-sidebar-foreground/60 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
+                        }`}
+                      >
+                        <StoreIcon className="w-4 h-4" aria-hidden="true" />
+                        <span className="flex-1 text-left truncate">
+                          {t("mcp.officialMcpStore", "Official MCP Store")}
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sidebar-accent/80 text-sidebar-foreground/50 border border-white/5">
+                          {mcpMarketTemplates.length}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex-1" />
+                )}
+              </div>
             </>
           ) : (
             <Suspense

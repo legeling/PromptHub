@@ -3,7 +3,7 @@ import { persist } from "zustand/middleware";
 
 type ViewMode = "prompt" | "skill";
 
-export type AppModule = ViewMode | "rules";
+export type AppModule = ViewMode | "rules" | "mcp";
 export type SettingsSectionId =
   | "web"
   | "devices"
@@ -42,7 +42,10 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 function normalizeAppModule(value: unknown): AppModule {
-  return value === "skill" || value === "rules" || value === "prompt"
+  return value === "skill" ||
+    value === "rules" ||
+    value === "mcp" ||
+    value === "prompt"
     ? value
     : "prompt";
 }
@@ -80,7 +83,7 @@ export const useUIStore = create<UIState>()(
       setAppModule: (mode) =>
         set({
           appModule: mode,
-          viewMode: mode === "rules" ? "prompt" : mode,
+          viewMode: mode === "skill" ? "skill" : "prompt",
         }),
       isSidebarCollapsed: false,
       toggleSidebar: () =>

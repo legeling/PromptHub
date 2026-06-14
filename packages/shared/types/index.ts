@@ -8,3 +8,4 @@ export * from './sync';
 export * from './upgrade-backup';
 export * from './recovery';
 export * from './cli';
+export * from './mcp';

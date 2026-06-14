@@ -65,6 +65,36 @@ export function createWindowApiMock(overrides?: DeepPartial<MockRecord>) {
         rewrite: vi.fn(),
       },
       io: {},
+      mcp: {
+        getLibrary: vi.fn().mockResolvedValue({
+          kind: "prompthub-mcp-library",
+          version: 1,
+          updatedAt: "2026-01-01T00:00:00.000Z",
+          servers: [],
+          bindings: [],
+        }),
+        listMarket: vi.fn().mockResolvedValue([]),
+        listMarketSources: vi.fn().mockResolvedValue([]),
+        getTargetPresets: vi.fn().mockResolvedValue([]),
+        createServer: vi.fn(),
+        createFromSource: vi.fn().mockResolvedValue({
+          imported: [],
+          skipped: [],
+          detectedKind: "command",
+          warnings: [],
+        }),
+        updateServer: vi.fn(),
+        deleteServer: vi.fn(),
+        installTemplate: vi.fn(),
+        preview: vi.fn().mockResolvedValue(""),
+        apply: vi.fn(),
+        remove: vi.fn(),
+        removeNames: vi.fn(),
+        importFile: vi.fn(),
+        checkServer: vi.fn(),
+        checkAllServers: vi.fn().mockResolvedValue([]),
+        importEnv: vi.fn(),
+      },
       ai: {
         request: vi.fn(),
         requestStream: vi.fn(),
@@ -88,7 +118,8 @@ export function createWindowApiMock(overrides?: DeepPartial<MockRecord>) {
         scanLocalPreview: vi.fn().mockResolvedValue([]),
         scanSafety: vi.fn().mockResolvedValue({
           level: "safe",
-          summary: "No obvious malicious patterns were detected across 1 scanned files.",
+          summary:
+            "No obvious malicious patterns were detected across 1 scanned files.",
           findings: [],
           recommendedAction: "allow",
           scannedAt: Date.now(),
@@ -129,7 +160,9 @@ export function createWindowApiMock(overrides?: DeepPartial<MockRecord>) {
         writeLocalFileBufferByPath: vi.fn().mockResolvedValue(undefined),
         deleteLocalFile: vi.fn().mockResolvedValue(undefined),
         deleteLocalFileByPath: vi.fn().mockResolvedValue(undefined),
-        getLocalPathStatus: vi.fn().mockResolvedValue({ exists: true, mode: "copy" }),
+        getLocalPathStatus: vi
+          .fn()
+          .mockResolvedValue({ exists: true, mode: "copy" }),
         createLocalDir: vi.fn().mockResolvedValue(undefined),
         copyRepoByPathToDirectory: vi.fn().mockResolvedValue(""),
         getRepoPath: vi.fn().mockResolvedValue(""),
@@ -175,7 +208,11 @@ export function createWindowElectronMock(overrides?: DeepPartial<MockRecord>) {
       sendCloseDialogResult: vi.fn(),
       sendCloseDialogCancel: vi.fn(),
       selectFolder: vi.fn(),
-      getPathForFile: vi.fn((file: File & { path?: string }) => file.path ?? ""),
+      selectMcpSourceFolder: vi.fn(),
+      selectMcpConfigFile: vi.fn(),
+      getPathForFile: vi.fn(
+        (file: File & { path?: string }) => file.path ?? "",
+      ),
       openPath: vi.fn(),
       showNotification: vi.fn(),
       getDataPath: vi.fn(),
@@ -195,7 +232,12 @@ export function createWindowElectronMock(overrides?: DeepPartial<MockRecord>) {
       }),
       performRecovery: vi.fn(),
       dismissRecovery: vi.fn(),
-      exportZip: vi.fn().mockResolvedValue({ canceled: false, filePath: "/tmp/prompthub-export.zip" }),
+      exportZip: vi
+        .fn()
+        .mockResolvedValue({
+          canceled: false,
+          filePath: "/tmp/prompthub-export.zip",
+        }),
       updater: {
         check: vi.fn(),
         download: vi.fn(),

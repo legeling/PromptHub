@@ -37,6 +37,17 @@ async function execCli(
 
   const joinedStdout = stdout.join("\n");
   const joinedStderr = stderr.join("\n");
+  const parseMaybeJson = (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+      return undefined;
+    }
+    try {
+      return JSON.parse(text);
+    } catch {
+      return undefined;
+    }
+  };
 
   return {
     exitCode,
@@ -44,14 +55,8 @@ async function execCli(
     stderr,
     joinedStdout,
     joinedStderr,
-    errorJson:
-      joinedStderr.trim().startsWith("{") || joinedStderr.trim().startsWith("[")
-        ? JSON.parse(joinedStderr)
-        : undefined,
-    json:
-      joinedStdout.trim().startsWith("{") || joinedStdout.trim().startsWith("[")
-        ? JSON.parse(joinedStdout)
-        : undefined,
+    errorJson: parseMaybeJson(joinedStderr),
+    json: parseMaybeJson(joinedStdout),
   };
 }
 
@@ -114,6 +119,193 @@ describe("standalone cli wiring", () => {
     expect(listRes.exitCode).toBe(0);
     expect(listRes.json).toHaveLength(1);
     expect(listRes.json[0].title).toBe("CLI Prompt");
+  });
+
+  it("supports MCP market, import, env import, and health check in the shared library", async () => {
+    const root = makeTempRoot(tempDirs);
+    const mcpConfigPath = path.join(root, "mcp.json");
+    const envPath = path.join(root, ".env");
+    fs.writeFileSync(
+      mcpConfigPath,
+      JSON.stringify({
+        mcpServers: {
+          docs: {
+            command: process.execPath,
+            args: ["server.js", "${API_TOKEN}"],
+            env: { API_TOKEN: "" },
+          },
+        },
+      }),
+      "utf8",
+    );
+    fs.writeFileSync(
+      envPath,
+      ["API_TOKEN=token-from-env", "UNRELATED_SECRET=skip-me"].join("\n"),
+      "utf8",
+    );
+
+    const marketRes = await execCli([...withDataDir(root), "mcp", "market"]);
+    expect(marketRes.exitCode).toBe(0);
+    expect(
+      marketRes.json.some((item: { id: string }) => item.id === "context7"),
+    ).toBe(true);
+
+    const importRes = await execCli([
+      ...withDataDir(root),
+      "mcp",
+      "import",
+      mcpConfigPath,
+    ]);
+    expect(importRes.exitCode).toBe(0);
+    expect(importRes.json.imported[0].name).toBe("docs");
+
+    const checkBefore = await execCli([
+      ...withDataDir(root),
+      "mcp",
+      "check",
+      "docs",
+    ]);
+    expect(checkBefore.exitCode).toBe(0);
+    expect(checkBefore.json.status).toBe("error");
+    expect(
+      checkBefore.json.issues.some(
+        (issue: { code: string; field?: string }) =>
+          issue.code === "MISSING_ENV" && issue.field === "API_TOKEN",
+      ),
+    ).toBe(true);
+
+    const envImportRes = await execCli([
+      ...withDataDir(root),
+      "mcp",
+      "env-import",
+      "docs",
+      "--file",
+      envPath,
+    ]);
+    expect(envImportRes.exitCode).toBe(0);
+    expect(envImportRes.json.importedKeys).toEqual(["API_TOKEN"]);
+    expect(envImportRes.json.server.env).toEqual({
+      API_TOKEN: "token-from-env",
+    });
+
+    const listRes = await execCli([...withDataDir(root), "mcp", "list"]);
+    expect(listRes.exitCode).toBe(0);
+    expect(listRes.json[0]).toMatchObject({
+      name: "docs",
+      env: { API_TOKEN: "token-from-env" },
+    });
+
+    const exportRes = await execCli([
+      ...withDataDir(root),
+      "mcp",
+      "export",
+      "--target",
+      "codex",
+      "--servers",
+      "docs",
+    ]);
+    expect(exportRes.exitCode).toBe(0);
+    expect(exportRes.joinedStdout).toContain("[mcp_servers.docs]");
+    expect(exportRes.joinedStdout).toContain(
+      `command = ${JSON.stringify(process.execPath)}`,
+    );
+
+    const disableRes = await execCli([
+      ...withDataDir(root),
+      "mcp",
+      "disable",
+      "docs",
+    ]);
+    expect(disableRes.exitCode).toBe(0);
+    expect(disableRes.json.enabled).toBe(false);
+
+    const enableRes = await execCli([
+      ...withDataDir(root),
+      "mcp",
+      "enable",
+      "docs",
+    ]);
+    expect(enableRes.exitCode).toBe(0);
+    expect(enableRes.json.enabled).toBe(true);
+
+    const jsonTargetPath = path.join(root, "target-mcp.json");
+    fs.writeFileSync(
+      jsonTargetPath,
+      JSON.stringify({
+        mcpServers: {
+          docs: { command: "node", args: ["external.js"] },
+        },
+      }),
+      "utf8",
+    );
+    const conflictRes = await execCli([
+      ...withDataDir(root),
+      "mcp",
+      "apply",
+      "--target",
+      "claude",
+      "--path",
+      jsonTargetPath,
+      "--servers",
+      "docs",
+    ]);
+    expect(conflictRes.exitCode).toBe(4);
+    expect(conflictRes.errorJson.error.code).toBe("TARGET_CONFLICT");
+    expect(
+      JSON.parse(fs.readFileSync(jsonTargetPath, "utf8")).mcpServers.docs
+        .command,
+    ).toBe("node");
+
+    const forcedJsonApplyRes = await execCli([
+      ...withDataDir(root),
+      "mcp",
+      "apply",
+      "--target",
+      "claude",
+      "--path",
+      jsonTargetPath,
+      "--servers",
+      "docs",
+      "--force",
+    ]);
+    expect(forcedJsonApplyRes.exitCode).toBe(0);
+    expect(forcedJsonApplyRes.json.overwrittenServerNames).toEqual(["docs"]);
+    expect(
+      JSON.parse(fs.readFileSync(jsonTargetPath, "utf8")).mcpServers.docs
+        .command,
+    ).toBe(process.execPath);
+
+    const targetPath = path.join(root, "codex-config.toml");
+    const applyRes = await execCli([
+      ...withDataDir(root),
+      "mcp",
+      "apply",
+      "--target",
+      "codex",
+      "--path",
+      targetPath,
+      "--servers",
+      "docs",
+    ]);
+    expect(applyRes.exitCode).toBe(0);
+    expect(fs.readFileSync(targetPath, "utf8")).toContain("[mcp_servers.docs]");
+
+    const removeRes = await execCli([
+      ...withDataDir(root),
+      "mcp",
+      "remove",
+      "--target",
+      "codex",
+      "--path",
+      targetPath,
+      "--servers",
+      "docs",
+    ]);
+    expect(removeRes.exitCode).toBe(0);
+    expect(removeRes.json.removedServerNames).toEqual(["docs"]);
+    expect(fs.readFileSync(targetPath, "utf8")).not.toContain(
+      "[mcp_servers.docs]",
+    );
   });
 
   it("normalizes CSV tags by trimming whitespace and dropping empty items", async () => {

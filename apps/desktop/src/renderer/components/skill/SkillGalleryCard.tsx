@@ -9,10 +9,12 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Skill } from "@prompthub/shared/types";
+import type { SkillPlatform } from "@prompthub/shared/constants/platforms";
 import { SkillIcon } from "./SkillIcon";
 import { getRuntimeCapabilities } from "../../runtime";
 import { SkillVariantBadgeList } from "./SkillVariantBadgeList";
 import { buildMySkillSourceBadges } from "../../services/skill-source-badges";
+import { PlatformIcon } from "../ui/PlatformIcon";
 
 function normalizeStringArray(value: unknown): string[] {
   if (Array.isArray(value)) {
@@ -41,6 +43,7 @@ function normalizeStringArray(value: unknown): string[] {
 
 interface SkillGalleryCardProps {
   animationDelayMs: number;
+  distributedPlatforms?: Array<Pick<SkillPlatform, "id" | "name">>;
   hasStoreUpdate?: boolean;
   isSelected: boolean;
   isSelectionMode: boolean;
@@ -56,6 +59,7 @@ interface SkillGalleryCardProps {
 
 function SkillGalleryCardComponent({
   animationDelayMs,
+  distributedPlatforms,
   hasStoreUpdate = false,
   isSelected,
   isSelectionMode,
@@ -72,6 +76,11 @@ function SkillGalleryCardComponent({
   const runtimeCapabilities = getRuntimeCapabilities();
   const visibleTags = normalizeStringArray(skill.tags).slice(0, 4);
   const sourceBadges = buildMySkillSourceBadges(skill, t);
+  const showDistribution =
+    runtimeCapabilities.skillPlatformIntegration &&
+    !isSelectionMode &&
+    distributedPlatforms !== undefined;
+  const visibleDistributedPlatforms = (distributedPlatforms ?? []).slice(0, 6);
   const selectLabel = isSelected
     ? t("common.clear", "清空")
     : t("common.select", "选择");
@@ -187,52 +196,80 @@ function SkillGalleryCardComponent({
           className="transition-transform group-hover:scale-110 group-hover:shadow-lg"
         />
         {!isSelectionMode && (
-          <div className="flex gap-1">
-            {runtimeCapabilities.skillPlatformIntegration && (
+          <div className="flex min-h-8 items-center gap-1.5">
+            {showDistribution ? (
+              <div
+                className="flex min-h-8 items-center gap-1.5"
+                data-testid="skill-distributed-targets"
+              >
+                {visibleDistributedPlatforms.length > 0 ? (
+                  visibleDistributedPlatforms.map((platform) => (
+                    <PlatformIcon
+                      key={platform.id}
+                      platformId={platform.id}
+                      size={18}
+                      title={platform.name}
+                    />
+                  ))
+                ) : (
+                  <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-medium text-muted-foreground">
+                    {t("skill.notDistributed", "Not distributed")}
+                  </span>
+                )}
+                {(distributedPlatforms?.length ?? 0) > 6 ? (
+                  <span className="text-[10px] text-muted-foreground">
+                    +{(distributedPlatforms?.length ?? 0) - 6}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+            <div className="flex gap-1">
+              {runtimeCapabilities.skillPlatformIntegration && (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onQuickInstall(skill);
+                  }}
+                  aria-label={t("skill.quickInstall", "快速安装")}
+                  className="opacity-0 group-hover:opacity-100 p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-all active:scale-press-in"
+                  title={t("skill.quickInstall", "快速安装")}
+                >
+                  <DownloadIcon aria-hidden="true" className="w-4 h-4" />
+                </button>
+              )}
               <button
                 type="button"
                 onClick={(event) => {
                   event.stopPropagation();
-                  onQuickInstall(skill);
+                  onToggleFavorite(skill.id);
                 }}
-                aria-label={t("skill.quickInstall", "快速安装")}
-                className="opacity-0 group-hover:opacity-100 p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-all active:scale-press-in"
-                title={t("skill.quickInstall", "快速安装")}
+                aria-label={favoriteLabel}
+                className={`p-2 rounded-lg transition-all active:scale-press-in ${
+                  skill.is_favorite
+                    ? "text-yellow-500 hover:text-yellow-600"
+                    : "opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-yellow-500 hover:bg-yellow-500/10"
+                }`}
+                title={favoriteLabel}
               >
-                <DownloadIcon aria-hidden="true" className="w-4 h-4" />
+                <StarIcon
+                  aria-hidden="true"
+                  className={`w-4 h-4 ${skill.is_favorite ? "fill-current" : ""}`}
+                />
               </button>
-            )}
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                onToggleFavorite(skill.id);
-              }}
-              aria-label={favoriteLabel}
-              className={`p-2 rounded-lg transition-all active:scale-press-in ${
-                skill.is_favorite
-                  ? "text-yellow-500 hover:text-yellow-600"
-                  : "opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-yellow-500 hover:bg-yellow-500/10"
-              }`}
-              title={favoriteLabel}
-            >
-              <StarIcon
-                aria-hidden="true"
-                className={`w-4 h-4 ${skill.is_favorite ? "fill-current" : ""}`}
-              />
-            </button>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                onDelete(skill);
-              }}
-              aria-label={t("skill.delete", "删除")}
-              className="opacity-0 group-hover:opacity-100 p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-all active:scale-press-in"
-              title={t("skill.delete", "删除")}
-            >
-              <TrashIcon aria-hidden="true" className="w-4 h-4" />
-            </button>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onDelete(skill);
+                }}
+                aria-label={t("skill.delete", "删除")}
+                className="opacity-0 group-hover:opacity-100 p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-all active:scale-press-in"
+                title={t("skill.delete", "删除")}
+              >
+                <TrashIcon aria-hidden="true" className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         )}
       </div>

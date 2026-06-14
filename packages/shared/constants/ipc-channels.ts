@@ -157,6 +157,26 @@ export const IPC_CHANNELS = {
   SKILL_DELETE_ALL: "skill:deleteAll",
   SKILL_INSERT_VERSION_DIRECT: "skill:version:insertDirect",
 
+  // MCP
+  MCP_LIBRARY_GET: "mcp:library:get",
+  MCP_MARKET_LIST: "mcp:market:list",
+  MCP_MARKET_SOURCES: "mcp:market:sources",
+  MCP_TARGET_PRESETS: "mcp:target:presets",
+  MCP_SERVER_CREATE: "mcp:server:create",
+  MCP_SERVER_CREATE_FROM_SOURCE: "mcp:server:createFromSource",
+  MCP_SERVER_UPDATE: "mcp:server:update",
+  MCP_SERVER_DELETE: "mcp:server:delete",
+  MCP_TEMPLATE_INSTALL: "mcp:template:install",
+  MCP_PREVIEW: "mcp:preview",
+  MCP_APPLY: "mcp:apply",
+  MCP_REMOVE: "mcp:remove",
+  MCP_REMOVE_NAMES: "mcp:remove:names",
+  MCP_TARGET_STATUS: "mcp:target:status",
+  MCP_IMPORT_FILE: "mcp:importFile",
+  MCP_HEALTH_CHECK: "mcp:health:check",
+  MCP_HEALTH_CHECK_ALL: "mcp:health:checkAll",
+  MCP_ENV_IMPORT: "mcp:env:import",
+
   // Data Recovery
   DATA_CHECK_RECOVERY: "data:checkRecovery",
   DATA_PREVIEW_RECOVERY: "data:previewRecovery",

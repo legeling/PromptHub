@@ -749,6 +749,32 @@ ipcMain.handle("dialog:selectFolder", async () => {
   return null;
 });
 
+ipcMain.handle("dialog:selectMcpConfigFile", async () => {
+  const result = await dialog.showOpenDialog(mainWindow!, {
+    properties: ["openFile"],
+    title: "选择 MCP 配置文件",
+    filters: [
+      { name: "MCP Config", extensions: ["json", "toml"] },
+      { name: "All Files", extensions: ["*"] },
+    ],
+  });
+  if (!result.canceled && result.filePaths.length > 0) {
+    return result.filePaths[0];
+  }
+  return null;
+});
+
+ipcMain.handle("dialog:selectMcpSourceFolder", async () => {
+  const result = await dialog.showOpenDialog(mainWindow!, {
+    properties: ["openDirectory"],
+    title: "选择 MCP 源码目录",
+  });
+  if (!result.canceled && result.filePaths.length > 0) {
+    return result.filePaths[0];
+  }
+  return null;
+});
+
 // Get current data directory
 // 获取当前数据目录
 ipcMain.handle("data:getPath", () => {

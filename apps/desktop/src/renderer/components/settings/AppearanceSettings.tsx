@@ -243,6 +243,13 @@ export function AppearanceSettings() {
         "My Skills, projects and store workflows",
       ),
     },
+    mcp: {
+      label: t("mcp.title", "MCP"),
+      description: t(
+        "settings.desktopModuleMcpDesc",
+        "MCP servers, market templates and agent targets",
+      ),
+    },
     rules: {
       label: t("rules.title", "Rules"),
       description: t(

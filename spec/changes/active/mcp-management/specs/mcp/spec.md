@@ -1,0 +1,261 @@
+# MCP Management Spec
+
+## Added Requirements
+
+### Requirement: Local MCP Library
+
+PromptHub MUST maintain a local MCP library containing normalized server definitions. The library is the source of truth for the MCP management UI.
+
+#### Scenario: Create a stdio MCP server
+
+- **GIVEN** the user enters a name and command
+- **WHEN** the server is saved
+- **THEN** PromptHub stores a normalized stdio MCP server with string args/env values and generated timestamps
+
+#### Scenario: Read MCP library without mutation
+
+- **GIVEN** the local MCP library already contains server timestamps
+- **WHEN** PromptHub reads or normalizes the library
+- **THEN** existing `createdAt` and `updatedAt` values remain unchanged unless the user performs a real mutation
+
+### Requirement: Target-Specific Projection
+
+PromptHub MUST project normalized MCP servers into the target agent's config shape.
+
+#### Scenario: Project to Codex
+
+- **GIVEN** a stdio MCP server named `playwright`
+- **WHEN** the user previews Codex config
+- **THEN** PromptHub returns TOML under `[mcp_servers.playwright]`
+
+#### Scenario: Project to mcpServers JSON
+
+- **GIVEN** enabled MCP servers
+- **WHEN** the user previews Claude, Cursor, Cline, or Roo style config
+- **THEN** PromptHub returns a JSON object with `mcpServers`
+
+#### Scenario: Project to VS Code
+
+- **GIVEN** enabled MCP servers
+- **WHEN** the user previews VS Code config
+- **THEN** PromptHub returns a JSON object with `servers`
+
+### Requirement: Safe Apply
+
+PromptHub MUST apply MCP config by merging only the managed server entries into the selected target file and preserving unrelated settings.
+
+#### Scenario: Existing user config
+
+- **GIVEN** a target config file already contains unrelated keys
+- **WHEN** the user applies one MCP server
+- **THEN** unrelated keys remain and a backup file is created before the write
+
+#### Scenario: Same-name external target config conflict
+
+- **GIVEN** a target config file already contains a same-name MCP entry that PromptHub has not recorded as distributed to that target
+- **WHEN** the user applies a PromptHub MCP server with that name
+- **THEN** PromptHub rejects the write by default and leaves the target file unchanged
+
+#### Scenario: Confirmed overwrite
+
+- **GIVEN** the user explicitly confirms overwrite in the UI or passes `--force` in the CLI
+- **WHEN** PromptHub applies a same-name MCP server
+- **THEN** PromptHub creates a backup, atomically replaces the target file, and reports which server names were overwritten
+
+#### Scenario: Reapply managed entry
+
+- **GIVEN** PromptHub previously recorded a server binding for the same target path
+- **WHEN** the user reapplies the same MCP server to that target
+- **THEN** PromptHub may replace the managed entry without requiring force
+
+#### Scenario: Disabled server apply guard
+
+- **GIVEN** the selected MCP servers are all disabled
+- **WHEN** the user or API attempts to apply them to an agent target
+- **THEN** PromptHub rejects the write, leaves the target file unchanged, and does not record a target binding
+
+#### Scenario: Invalid target config parse failure
+
+- **GIVEN** an existing target config file cannot be parsed
+- **WHEN** PromptHub attempts to apply MCP servers to that target
+- **THEN** PromptHub rejects the write before creating a backup or modifying any target file or binding
+
+### Requirement: MCP Environment Scope
+
+PromptHub MUST treat MCP environment variables as server-level configuration values stored on the local MCP server record.
+
+#### Scenario: Reuse across agent targets
+
+- **GIVEN** one PromptHub MCP server has env values configured
+- **WHEN** the user distributes it to multiple agent targets
+- **THEN** the same server-level env values are projected into each selected target config
+
+#### Scenario: No global process mutation
+
+- **GIVEN** the user edits or imports MCP env values in PromptHub
+- **WHEN** PromptHub saves those values
+- **THEN** PromptHub must update only the MCP library record and must not mutate the operating system environment
+
+### Requirement: My MCP Library Management
+
+PromptHub MUST expose My MCP as a Skill-style manageable library, not only a passive card gallery.
+
+#### Scenario: Switch library density
+
+- **GIVEN** the user is viewing My MCP
+- **WHEN** the user switches between Gallery View and List View
+- **THEN** PromptHub renders the same filtered MCP servers in the selected view mode with card or row detail entry actions
+
+#### Scenario: Paginate large MCP libraries
+
+- **GIVEN** the filtered My MCP result has more entries than the current page size
+- **WHEN** the My MCP page renders
+- **THEN** PromptHub shows the current item range, total count, page-size selector, and previous/next pagination controls
+- **AND** only the current page entries are rendered in the gallery or list body
+
+#### Scenario: Favorite MCP servers
+
+- **GIVEN** a saved MCP server is visible in My MCP
+- **WHEN** the user toggles its favorite action from the card, list row, or batch toolbar
+- **THEN** PromptHub persists `isFavorite` on that MCP server in the local MCP library
+- **AND** the Favorites filter reflects the persisted value after reload
+
+#### Scenario: Delete MCP servers from cards or batches
+
+- **GIVEN** one or more MCP servers are selected or visible on a card/list row
+- **WHEN** the user requests deletion
+- **THEN** PromptHub shows an in-app destructive confirmation dialog
+- **AND** confirming deletes the selected MCP servers through the same local library delete flow used by MCP detail pages
+
+### Requirement: Marketplace Templates
+
+PromptHub MUST provide a curated MCP template list that can install into the local MCP library.
+
+#### Scenario: Install a market template
+
+- **GIVEN** the user chooses a marketplace template
+- **WHEN** the template is installed
+- **THEN** the library contains an editable MCP server copied from the template
+
+### Requirement: Custom MCP Source Creation
+
+PromptHub MUST let users add custom MCP servers from commands, remote URLs, GitHub repositories, local source folders, and existing MCP config files.
+
+#### Scenario: Add from a command line
+
+- **GIVEN** the user pastes a command such as `npx -y @modelcontextprotocol/server-memory`
+- **WHEN** PromptHub creates an MCP from that source
+- **THEN** PromptHub stores a stdio MCP server with the command and args split into editable fields
+
+#### Scenario: Add from a GitHub repository URL
+
+- **GIVEN** the user pastes a GitHub repository URL
+- **WHEN** PromptHub creates an MCP from that source
+- **THEN** PromptHub stores an editable stdio MCP server with GitHub source metadata and warns that the generated command may need adjustment for non-Node projects
+
+#### Scenario: Add from a remote MCP URL
+
+- **GIVEN** the user pastes a non-repository HTTP URL
+- **WHEN** PromptHub creates an MCP from that source
+- **THEN** PromptHub stores a streamable HTTP MCP server with the URL
+
+#### Scenario: Add from local source folder
+
+- **GIVEN** the user selects or drops a local source folder
+- **WHEN** the folder contains `package.json`, `pyproject.toml`, or `Dockerfile`
+- **THEN** PromptHub infers an editable stdio MCP command without installing dependencies or executing project code
+
+#### Scenario: Add by dropping config file
+
+- **GIVEN** the user drops an MCP JSON or Codex TOML config file into the New MCP modal
+- **WHEN** PromptHub reads the dropped path
+- **THEN** PromptHub imports the MCP server entries from that file into the local MCP library
+
+### Requirement: Agent MCP Entry Actions
+
+PromptHub MUST make MCP entries discovered in agent target configs actionable from the Agent MCP view.
+
+#### Scenario: Inspect external target entry before import
+
+- **GIVEN** an agent target config contains an MCP server name that is not in the PromptHub MCP library
+- **WHEN** the user clicks the entry card or card body outside the explicit action buttons
+- **THEN** PromptHub opens an Agent MCP detail page showing the target config entry without importing it
+
+#### Scenario: Show runtime information on Agent MCP cards
+
+- **GIVEN** an agent target config contains MCP server entries
+- **WHEN** PromptHub renders the Agent MCP entry cards
+- **THEN** each card shows MCP-specific runtime information such as command line, URL, transport, canonical server name when distinct, and enabled state
+- **AND** the selected agent config path remains in the agent header and detail/source panels instead of being repeated as the primary card content
+- **AND** status badges are rendered with metadata, not between card action buttons
+
+#### Scenario: Import external target entry from detail or shortcut
+
+- **GIVEN** the user is viewing an external Agent MCP entry
+- **WHEN** the user clicks the entry's import action from the detail page or card action area
+- **THEN** PromptHub imports MCP entries from that selected target config into My MCP and opens the imported same-name MCP detail when available
+
+#### Scenario: Inspect managed target entry before opening My MCP
+
+- **GIVEN** an agent target config contains an MCP server that already exists in the PromptHub MCP library
+- **WHEN** the user clicks the entry card or card body outside the explicit action buttons
+- **THEN** PromptHub opens an Agent MCP detail page for that target config entry without re-importing the target config
+
+#### Scenario: Open managed target entry from detail or shortcut
+
+- **GIVEN** the user is viewing a managed Agent MCP entry
+- **WHEN** the user clicks the entry's open action from the detail page or card action area
+- **THEN** PromptHub opens that MCP in the My MCP full detail view without re-importing the target config
+
+#### Scenario: Detail actions match Skill agent action layout
+
+- **GIVEN** the user is viewing an Agent MCP detail page
+- **WHEN** the page renders its action strip
+- **THEN** PromptHub shows the same pill-style action group pattern used by the Skill agent detail view, including explicit import/open/config/uninstall controls as applicable
+
+#### Scenario: Agent overview bottom action opens MCP creation
+
+- **GIVEN** the user is browsing Agent MCP target entries
+- **WHEN** the Agent MCP detail pane footer is shown
+- **THEN** PromptHub shows one primary Add MCP action that opens the shared New MCP modal
+- **AND** the footer does not expose preview or bulk-apply actions that can write enabled MCP servers into the selected agent config
+
+#### Scenario: Agent overview card action icons stay consistent
+
+- **GIVEN** an Agent MCP target entry card is rendered
+- **WHEN** the card shows config, import/open, and uninstall shortcut icons
+- **THEN** the shortcuts use one consistent icon-button size, radius, border treatment, and hover behavior, with only semantic color variants for primary and destructive actions
+
+#### Scenario: Remove target entry with explicit confirmation
+
+- **GIVEN** the user is viewing an Agent MCP entry from a target config
+- **WHEN** the user clicks the uninstall action
+- **THEN** PromptHub shows an in-app confirmation dialog before removing the entry from the selected agent config
+
+#### Scenario: Cancel target entry removal
+
+- **GIVEN** the uninstall confirmation dialog is open for an Agent MCP entry
+- **WHEN** the user cancels the dialog
+- **THEN** PromptHub leaves the selected agent config unchanged
+
+## Modified Requirements
+
+### Desktop Home Modules
+
+The desktop home module set MUST include MCP beside prompt, skill, and rules, and persisted module visibility/order MUST normalize legacy settings safely.
+
+### Skill Library Cards
+
+My Skill gallery cards SHOULD expose quick distribution indicators for the agent platforms where each Skill is already installed, matching the My MCP card pattern.
+
+#### Scenario: Show distributed agents on Skill cards
+
+- **GIVEN** a Skill is installed into one or more detected agent platforms
+- **WHEN** PromptHub renders that Skill in the My Skill gallery
+- **THEN** the card shows the installed agent platform icons in the card header
+
+#### Scenario: Show pending distribution on Skill cards
+
+- **GIVEN** a Skill is not installed into any detected agent platform
+- **WHEN** PromptHub renders that Skill in the My Skill gallery
+- **THEN** the card shows a compact not-distributed state instead of leaving the distribution area ambiguous
