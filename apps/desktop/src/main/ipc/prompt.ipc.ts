@@ -249,4 +249,10 @@ export function registerPromptIPC(db: PromptDB, folderDb: FolderDB, rawDb: Datab
     db.insertVersionDirect(version);
     return true;
   });
+
+  ipcMain.handle(IPC_CHANNELS.PROMPT_MOVE, async (_, promptId: string, newParentId: string | null, newOrder: number) => {
+    db.movePrompt(promptId, newParentId, newOrder);
+    syncWorkspace();
+    return true;
+  });
 }

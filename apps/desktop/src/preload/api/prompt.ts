@@ -40,4 +40,6 @@ export const promptApi = {
     prompts: Prompt[];
     versions: PromptVersion[];
   }) => ipcRenderer.invoke(IPC_CHANNELS.PROMPT_MIGRATE_IDB_BATCH, payload),
+  move: (promptId: string, newParentId: string | null, newOrder: number) =>
+    ipcRenderer.invoke(IPC_CHANNELS.PROMPT_MOVE, promptId, newParentId, newOrder),
 };

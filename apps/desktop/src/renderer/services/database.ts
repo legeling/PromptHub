@@ -356,6 +356,39 @@ export async function movePrompts(
   }
 }
 
+export async function movePrompt(
+  promptId: string,
+  newParentId: string | null,
+  newOrder: number,
+): Promise<void> {
+  if (window.api?.prompt?.move) {
+    await window.api.prompt.move(promptId, newParentId, newOrder);
+    return;
+  }
+
+  const database = await getDatabase();
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction(STORES.PROMPTS, "readwrite");
+    const store = transaction.objectStore(STORES.PROMPTS);
+    const getRequest = store.get(promptId);
+
+    getRequest.onsuccess = () => {
+      const prompt = getRequest.result;
+      if (prompt) {
+        prompt.parentId = newParentId;
+        prompt.order = newOrder;
+        prompt.updatedAt = new Date().toISOString();
+        const putRequest = store.put(prompt);
+        putRequest.onsuccess = () => resolve();
+        putRequest.onerror = () => reject(putRequest.error);
+      } else {
+        resolve();
+      }
+    };
+    getRequest.onerror = () => reject(getRequest.error);
+  });
+}
+
 // ==================== Version 操作 ====================
 // ==================== Version Operations ====================
 

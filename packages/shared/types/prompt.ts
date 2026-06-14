@@ -21,6 +21,8 @@ export interface Prompt {
   variables: Variable[];
   tags: string[];
   folderId?: string | null;
+  parentId?: string | null; // Parent prompt ID for hierarchical structure
+  order?: number; // Sort order within the same parent
   images?: string[];
   videos?: string[]; // Video file names for preview / 视频预览文件名
   isFavorite: boolean;
@@ -91,6 +93,8 @@ export interface UpdatePromptDTO {
   variables?: Variable[];
   tags?: string[];
   folderId?: string | null;
+  parentId?: string | null;
+  order?: number;
   images?: string[];
   videos?: string[];
   isFavorite?: boolean;
