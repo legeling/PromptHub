@@ -69,6 +69,8 @@ const REQUIRED_COLUMNS: Record<string, string[]> = {
     "last_ai_response",
     "owner_user_id",
     "visibility",
+    "parent_id",
+    "sort_order",
   ],
   folders: ["is_private", "updated_at", "owner_user_id", "visibility"],
   skills: [
@@ -330,6 +332,18 @@ export function initDatabase(
     if (!promptCols.includes("visibility")) {
       console.log("Migrating: Adding visibility column to prompts table");
       db!.run("ALTER TABLE prompts ADD COLUMN visibility TEXT NOT NULL DEFAULT 'private'");
+    }
+
+    if (!promptCols.includes("parent_id")) {
+      console.log("Migrating: Adding parent_id column to prompts table");
+      db!.run(
+        "ALTER TABLE prompts ADD COLUMN parent_id TEXT REFERENCES prompts(id) ON DELETE SET NULL",
+      );
+    }
+
+    if (!promptCols.includes("sort_order")) {
+      console.log("Migrating: Adding sort_order column to prompts table");
+      db!.run("ALTER TABLE prompts ADD COLUMN sort_order INTEGER DEFAULT 0");
     }
 
     // Migrations: folders table (query column list once)

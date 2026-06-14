@@ -21,9 +21,9 @@ const SkillManager = lazy(() => import('../skill/SkillManager').then(m => ({ def
 const RulesManager = lazy(() => import('../rules/RulesManager').then(m => ({ default: m.RulesManager })));
 const EditPromptModal = lazy(() => import('../prompt/EditPromptModal').then(m => ({ default: m.EditPromptModal })));
 const PromptQuickRewriteDialog = lazy(() => import('../prompt/PromptQuickRewriteDialog').then(m => ({ default: m.PromptQuickRewriteDialog })));
-const PromptTableView = lazy(() => import('../prompt/PromptTableView').then(m => ({ default: m.PromptTableView })));
 const PromptGalleryView = lazy(() => import('../prompt/PromptGalleryView').then(m => ({ default: m.PromptGalleryView })));
 const PromptKanbanView = lazy(() => import('../prompt/PromptKanbanView').then(m => ({ default: m.PromptKanbanView })));
+const PromptListView = lazy(() => import('../prompt/PromptListView').then(m => ({ default: m.PromptListView })));
 const AiTestModal = lazy(() => import('../prompt/AiTestModal').then(m => ({ default: m.AiTestModal })));
 const PromptDetailModal = lazy(() => import('../prompt/PromptDetailModal').then(m => ({ default: m.PromptDetailModal })));
 const VariableInputModal = lazy(() => import('../prompt/VariableInputModal').then(m => ({ default: m.VariableInputModal })));
@@ -367,6 +367,7 @@ function PromptSkillMainContent() {
   const sortOrder = usePromptStore((state) => state.sortOrder);
   const viewMode = usePromptStore((state) => state.viewMode);
   const incrementUsageCount = usePromptStore((state) => state.incrementUsageCount);
+  const movePrompt = usePromptStore((state) => state.movePrompt);
   // Resizable prompt-list pane width (#119)
   const promptListPaneWidth = useUIStore((state) => state.promptListPaneWidth);
   const setPromptListPaneWidth = useUIStore(
@@ -1928,42 +1929,6 @@ function PromptSkillMainContent() {
         </Suspense>
       ) : (
       <>
-      {/* List view mode */}
-      {/* 列表视图模式 */}
-      <div
-        className={getViewClass('list')}
-      >
-
-
-        {/* Top: sort + view switch */}
-        {/* 顶部：排序 + 视图切换 */}
-        <PromptListHeader count={sortedPrompts.length} />
-
-        {/* Table view */}
-        {/* 表格视图 */}
-        <div className="flex-1 overflow-hidden">
-          <Suspense fallback={loadingFallback}>
-            <PromptTableView
-              prompts={sortedPrompts}
-              highlightTerms={highlightTerms}
-              onSelect={(id) => selectPrompt(id)}
-              onToggleFavorite={toggleFavorite}
-              onCopy={handleCopyPrompt}
-              onEdit={(prompt) => setEditingPrompt(prompt)}
-              onDelete={handleDeletePrompt}
-              onAiTest={handleAiTestFromTable}
-              onVersionHistory={handleVersionHistory}
-              onViewDetail={handleViewDetail}
-              aiResults={aiResponseCache}
-              onBatchFavorite={handleBatchFavorite}
-              onBatchMove={handleBatchMove}
-              onBatchDelete={handleBatchDelete}
-              onContextMenu={handleContextMenu}
-            />
-          </Suspense>
-        </div>
-      </div>
-
       {/* Gallery view */}
       {/* Gallery 视图 */}
       <div
@@ -2009,6 +1974,28 @@ function PromptSkillMainContent() {
               onVersionHistory={handleVersionHistory}
               onViewDetail={handleViewDetail}
               onContextMenu={handleContextMenu}
+            />
+          </Suspense>
+        )}
+      </div>
+
+      {/* List view mode: hierarchical list with drag-and-drop */}
+      {/* 列表视图模式：分层列表支持拖拽 */}
+      <div
+        className={getViewClass('list')}
+      >
+        <PromptListHeader count={sortedPrompts.length} />
+        {viewMode === 'list' && (
+          <Suspense fallback={loadingFallback}>
+            <PromptListView
+              prompts={visiblePrompts}
+              selectedId={selectedId}
+              selectedIds={selectedIds}
+              onSelect={(id) => selectPrompt(id)}
+              onToggleFavorite={toggleFavorite}
+              onCopy={handleCopyPrompt}
+              onContextMenu={handleContextMenu}
+              onMovePrompt={movePrompt}
             />
           </Suspense>
         )}

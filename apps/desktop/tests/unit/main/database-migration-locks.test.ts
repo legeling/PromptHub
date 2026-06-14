@@ -34,6 +34,29 @@ function createLegacySkillSchema(dbPath: string): DatabaseAdapter.Database {
   return db;
 }
 
+function createLegacyPromptSchema(dbPath: string): DatabaseAdapter.Database {
+  const db = new DatabaseAdapter(dbPath);
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS prompts (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT,
+      system_prompt TEXT,
+      user_prompt TEXT NOT NULL,
+      variables TEXT,
+      tags TEXT,
+      folder_id TEXT,
+      images TEXT,
+      is_favorite INTEGER DEFAULT 0,
+      current_version INTEGER DEFAULT 0,
+      usage_count INTEGER DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+  `);
+  return db;
+}
+
 describe("database migration locking regression", () => {
   const tempDirs: string[] = [];
 
@@ -116,6 +139,49 @@ describe("database migration locking regression", () => {
       .filter((entry) => entry.startsWith("prompthub.db.backup-"));
 
     expect(backupFiles).toEqual([]);
+  });
+
+  it("adds prompt hierarchy columns when migrating an older prompts table", () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "prompthub-db-prompt-tree-"));
+    tempDirs.push(tempDir);
+
+    const dbPath = path.join(tempDir, "prompthub.db");
+    const legacyDb = createLegacyPromptSchema(dbPath);
+    const now = Date.now();
+    legacyDb.run(
+      "INSERT INTO prompts (id, title, user_prompt, variables, tags, images, is_favorite, current_version, usage_count, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "prompt-1",
+      "Legacy Prompt",
+      "content",
+      "[]",
+      "[]",
+      "[]",
+      0,
+      1,
+      0,
+      now,
+      now,
+    );
+    legacyDb.close();
+
+    const migratedDb = initSharedDatabase(dbPath);
+
+    const promptColumns = migratedDb.pragma("table_info(prompts)") as Array<{
+      name: string;
+    }>;
+    const promptRow = migratedDb.get(
+      "SELECT id, parent_id, sort_order FROM prompts WHERE id = ?",
+      "prompt-1",
+    );
+
+    expect(promptColumns.map((column) => column.name)).toEqual(
+      expect.arrayContaining(["parent_id", "sort_order"]),
+    );
+    expect(promptRow).toEqual({
+      id: "prompt-1",
+      parent_id: null,
+      sort_order: 0,
+    });
   });
 
   it("does not report clearing a stale lock when no lock exists", () => {

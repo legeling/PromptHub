@@ -22,6 +22,8 @@ CREATE TABLE IF NOT EXISTS prompts (
   variables TEXT,
   tags TEXT,
   folder_id TEXT,
+  parent_id TEXT,
+  sort_order INTEGER DEFAULT 0,
   images TEXT,
   videos TEXT,
   is_favorite INTEGER DEFAULT 0,
@@ -33,7 +35,8 @@ CREATE TABLE IF NOT EXISTS prompts (
   last_ai_response TEXT,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
-  FOREIGN KEY (folder_id) REFERENCES folders(id) ON DELETE SET NULL
+  FOREIGN KEY (folder_id) REFERENCES folders(id) ON DELETE SET NULL,
+  FOREIGN KEY (parent_id) REFERENCES prompts(id) ON DELETE SET NULL
 );
 
 -- 版本表
@@ -226,6 +229,8 @@ CREATE INDEX IF NOT EXISTS idx_folders_sort ON folders(sort_order);
 
 CREATE INDEX IF NOT EXISTS idx_prompts_folder_favorite ON prompts(folder_id, is_favorite);
 CREATE INDEX IF NOT EXISTS idx_prompts_folder_updated ON prompts(folder_id, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_prompts_parent ON prompts(parent_id);
+CREATE INDEX IF NOT EXISTS idx_prompts_sort_order ON prompts(sort_order);
 
 -- 全文搜索 (FTS5)
 CREATE VIRTUAL TABLE IF NOT EXISTS prompts_fts USING fts5(

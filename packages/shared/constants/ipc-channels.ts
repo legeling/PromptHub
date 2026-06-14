@@ -26,6 +26,7 @@ export const IPC_CHANNELS = {
    * 若 SQLite 已有数据则直接返回 { imported: false }（防止覆盖）。
    */
   PROMPT_MIGRATE_IDB_BATCH: "prompt:migrateIdbBatch",
+  PROMPT_MOVE: "prompt:move",
 
   // Version
   VERSION_GET_ALL: "version:getAll",

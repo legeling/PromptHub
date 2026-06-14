@@ -60,6 +60,7 @@ interface PromptState {
   setGalleryImageSize: (size: GalleryImageSize) => void;
   setKanbanColumns: (columns: KanbanColumns) => void;
   incrementUsageCount: (id: string) => Promise<void>;
+  movePrompt: (promptId: string, newParentId: string | null, newOrder: number) => Promise<void>;
 }
 
 export const usePromptStore = create<PromptState>()(
@@ -227,6 +228,12 @@ export const usePromptStore = create<PromptState>()(
             prompts: state.prompts.map((p) => (p.id === id ? updated : p)),
           }));
         }
+      },
+
+      movePrompt: async (promptId, newParentId, newOrder) => {
+        await db.movePrompt(promptId, newParentId, newOrder);
+        await get().fetchPrompts();
+        scheduleAllSaveSync("prompt:move");
       },
     }),
     {
