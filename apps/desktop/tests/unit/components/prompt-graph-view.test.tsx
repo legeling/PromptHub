@@ -69,7 +69,7 @@ describe("PromptGraphView", () => {
     expect(screen.getByText("Parent prompt")).toBeInTheDocument();
     expect(screen.getByText("Child prompt")).toBeInTheDocument();
     expect(screen.getByText("Related prompt")).toBeInTheDocument();
-    expect(screen.getByText("Grouped under")).toBeInTheDocument();
+    expect(screen.getAllByText("Grouped under").length).toBeGreaterThan(0);
     expect(screen.getByText("Depends on")).toBeInTheDocument();
 
     fireEvent.click(
@@ -77,6 +77,82 @@ describe("PromptGraphView", () => {
     );
 
     expect(onSelectPrompt).toHaveBeenCalledWith(childPrompt.id);
+  });
+
+  it("supports zoom controls without leaving the graph workspace", async () => {
+    await renderWithI18n(
+      <PromptGraphView
+        prompts={[parentPrompt, childPrompt, relatedPrompt]}
+        relations={[relation]}
+        selectedPromptId={childPrompt.id}
+        onSelectPrompt={vi.fn()}
+      />,
+      { language: "en" },
+    );
+
+    expect(screen.getByText("100%")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Zoom in graph" }));
+    expect(screen.getByText("120%")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Zoom out graph" }));
+    expect(screen.getByText("100%")).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("button", { name: "Fit graph to screen" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Reset graph view" }),
+    ).toBeInTheDocument();
+  });
+
+  it("pans the graph canvas by dragging the workspace background", async () => {
+    await renderWithI18n(
+      <PromptGraphView
+        prompts={[parentPrompt, childPrompt, relatedPrompt]}
+        relations={[relation]}
+        selectedPromptId={childPrompt.id}
+        onSelectPrompt={vi.fn()}
+      />,
+      { language: "en" },
+    );
+
+    const canvas = screen.getByLabelText("Prompt relationship graph canvas");
+    const graphContent = screen.getByTestId("prompt-graph-content");
+    const initialTransform = graphContent.getAttribute("transform");
+
+    fireEvent.pointerDown(canvas, { clientX: 320, clientY: 240, pointerId: 1 });
+    fireEvent.pointerMove(canvas, { clientX: 420, clientY: 300, pointerId: 1 });
+    fireEvent.pointerUp(canvas, { clientX: 420, clientY: 300, pointerId: 1 });
+
+    expect(graphContent.getAttribute("transform")).not.toBe(initialTransform);
+  });
+
+  it("keeps large sparse graphs readable by hiding isolated labels until zoomed", async () => {
+    const isolatedPrompts = Array.from({ length: 70 }, (_, index) =>
+      createPrompt(`isolated-${index}`, `Isolated ${index}`),
+    );
+
+    await renderWithI18n(
+      <PromptGraphView
+        prompts={[parentPrompt, childPrompt, relatedPrompt, ...isolatedPrompts]}
+        relations={[relation]}
+        selectedPromptId={childPrompt.id}
+        onSelectPrompt={vi.fn()}
+      />,
+      { language: "en" },
+    );
+
+    expect(screen.getByText("Child prompt")).toBeInTheDocument();
+    expect(screen.getByText("Related prompt")).toBeInTheDocument();
+    expect(screen.queryByText("Isolated 42")).not.toBeInTheDocument();
+
+    const zoomIn = screen.getByRole("button", { name: "Zoom in graph" });
+    fireEvent.click(zoomIn);
+    fireEvent.click(zoomIn);
+    fireEvent.click(zoomIn);
+
+    expect(screen.getByText("Isolated 42")).toBeInTheDocument();
   });
 
   it("shows an empty graph state without relying on filters", async () => {

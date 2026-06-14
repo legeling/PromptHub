@@ -35,9 +35,12 @@ surfaces:
   under Favorites. This switches the main prompt workspace to a graph view.
 - Graph view: shows all prompts by default, independent of the active folder,
   favorite, search, tag, or type filters. It renders tree parent edges from
-  `parentId` and semantic graph edges from `prompt_relations`. Selecting a
-  graph node opens the existing prompt detail modal rather than introducing a
-  second detail surface.
+  `parentId` and semantic graph edges from `prompt_relations`. It uses an
+  Obsidian-like SVG graph surface with force-positioned dot nodes, wheel/button
+  zoom, canvas panning, fit/reset controls, draggable in-session node
+  repositioning, and label density rules so large sparse libraries do not turn
+  into a ring of overlapping cards. Selecting a graph node opens the existing
+  prompt detail modal rather than introducing a second detail surface.
 
 Drop behavior:
 

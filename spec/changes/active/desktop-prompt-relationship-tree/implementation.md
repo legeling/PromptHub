@@ -16,6 +16,25 @@
 - Added component regressions for the detail relationship action, sidebar graph
   navigation, graph rendering, and prompt card title alignment.
 
+## 2026-06-15 Graph Usability Follow-up
+
+- Replaced the fixed circular graph layout and large absolute-positioned prompt
+  cards with a force-positioned SVG dot graph so large prompt libraries remain
+  scannable.
+- Added graph viewport controls for zoom in, zoom out, fit to screen, and reset;
+  the SVG surface also supports wheel zoom and drag-to-pan.
+- Added in-session node dragging for local graph arrangement without changing
+  durable prompt relationships.
+- Added label-density behavior: connected/selected nodes remain labeled, while
+  isolated nodes in large sparse graphs show labels only after zooming in.
+- Split graph layout and viewport math into `prompt-graph-layout.ts` to keep the
+  React view focused on rendering and interactions.
+
+Verification:
+
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/prompt-graph-view.test.tsx --run`
+- `pnpm --filter @prompthub/desktop typecheck`
+
 Verification:
 
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/prompt-detail-modal.test.tsx tests/unit/components/sidebar.test.tsx tests/unit/components/prompt-graph-view.test.tsx tests/unit/components/prompt-card-layout.test.tsx --run`

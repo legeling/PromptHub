@@ -14,6 +14,7 @@
 - [x] Move semantic relation editing behind explicit relationship actions in detail surfaces.
 - [x] Add an all-prompts relationship graph entry under Favorites in the prompt sidebar.
 - [x] Add a graph view that renders prompt hierarchy edges and semantic relation edges together.
+- [x] Replace the dense ring/card graph with a zoomable, pannable dot graph that keeps large sparse libraries readable.
 - [x] Fix prompt card hierarchy control alignment so titles are not pushed right by optional controls.
 - [x] Preserve hierarchy fields in prompt workspace frontmatter.
 - [x] Sanitize hierarchy fields during backup import.
