@@ -240,6 +240,88 @@ describe("PromptDB (in-memory SQLite)", () => {
   });
 
   // ─────────────────────────────────────────────
+  // hierarchical grouping
+  // ─────────────────────────────────────────────
+  describe("hierarchical grouping", () => {
+    it("moves prompts under a logical parent and keeps sibling order contiguous", () => {
+      const parent = db.create({ title: "Parent", userPrompt: "p" });
+      const first = db.create({ title: "First", userPrompt: "p" });
+      const second = db.create({ title: "Second", userPrompt: "p" });
+      const third = db.create({ title: "Third", userPrompt: "p" });
+
+      db.movePrompt(first.id, parent.id, 0);
+      db.movePrompt(second.id, parent.id, 1);
+      db.movePrompt(third.id, parent.id, 2);
+      db.movePrompt(third.id, parent.id, 0);
+
+      expect(db.getChildren(parent.id).map((prompt) => prompt.id)).toEqual([
+        third.id,
+        first.id,
+        second.id,
+      ]);
+      expect(db.getChildren(parent.id).map((prompt) => prompt.order)).toEqual([
+        0,
+        1,
+        2,
+      ]);
+    });
+
+    it("rejects moving a prompt under itself", () => {
+      const prompt = db.create({ title: "Self", userPrompt: "p" });
+
+      expect(() => db.movePrompt(prompt.id, prompt.id, 0)).toThrow(
+        "Cannot move a prompt under itself",
+      );
+      expect(db.getById(prompt.id)?.parentId).toBeNull();
+    });
+
+    it("rejects invalid parent and order inputs", () => {
+      const prompt = db.create({ title: "Invalid Move", userPrompt: "p" });
+
+      expect(() => db.movePrompt(prompt.id, "", 0)).toThrow(
+        "Parent prompt id must be null or a non-empty string",
+      );
+      expect(() => db.movePrompt(prompt.id, null, -1)).toThrow(
+        "Prompt order must be a non-negative number",
+      );
+      expect(() => db.movePrompt(prompt.id, "missing-parent", 0)).toThrow(
+        "Parent prompt does not exist",
+      );
+      expect(db.getById(prompt.id)?.parentId).toBeNull();
+    });
+
+    it("rejects moving a prompt under one of its descendants", () => {
+      const root = db.create({ title: "Root", userPrompt: "p" });
+      const child = db.create({ title: "Child", userPrompt: "p" });
+      const grandchild = db.create({ title: "Grandchild", userPrompt: "p" });
+
+      db.movePrompt(child.id, root.id, 0);
+      db.movePrompt(grandchild.id, child.id, 0);
+
+      expect(() => db.movePrompt(root.id, grandchild.id, 0)).toThrow(
+        "Cannot move a prompt under its descendant",
+      );
+      expect(db.getById(root.id)?.parentId).toBeNull();
+      expect(db.getById(child.id)?.parentId).toBe(root.id);
+      expect(db.getById(grandchild.id)?.parentId).toBe(child.id);
+    });
+
+    it("clears child parentId instead of deleting children when a parent prompt is deleted", () => {
+      const parent = db.create({ title: "Parent", userPrompt: "p" });
+      const child = db.create({ title: "Child", userPrompt: "p" });
+
+      db.movePrompt(child.id, parent.id, 0);
+      expect(db.getById(child.id)?.parentId).toBe(parent.id);
+
+      expect(db.delete(parent.id)).toBe(true);
+
+      const remainingChild = db.getById(child.id);
+      expect(remainingChild).not.toBeNull();
+      expect(remainingChild?.parentId).toBeNull();
+    });
+  });
+
+  // ─────────────────────────────────────────────
   // search
   // ─────────────────────────────────────────────
   describe("search", () => {

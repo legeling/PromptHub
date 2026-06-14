@@ -1,12 +1,18 @@
-import { useEffect, useMemo, useRef, useState, useCallback, type MouseEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback, type DragEvent as ReactDragEvent, type MouseEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StarIcon, CopyIcon, PlayIcon, EditIcon, TrashIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, HistoryIcon, FolderIcon, Trash2Icon } from 'lucide-react';
+import { StarIcon, CopyIcon, PlayIcon, EditIcon, TrashIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, HistoryIcon, FolderIcon, Trash2Icon, GripVerticalIcon } from 'lucide-react';
 import type { Prompt } from '@prompthub/shared/types';
 import { useFolderStore } from '../../stores/folder.store';
 import { useTableConfig, type ColumnConfig } from '../../hooks/useTableConfig';
 import { ResizableHeader } from './ResizableHeader';
 import { ColumnConfigMenu } from './ColumnConfigMenu';
 import { parsePromptVariables } from './prompt-modal-utils';
+import {
+  flattenPromptTree,
+  getPromptDropPosition,
+  getPromptMoveTarget,
+  type PromptDropPosition,
+} from './prompt-drag-utils';
 
 function escapeRegExp(str: string) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -96,6 +102,11 @@ interface PromptTableViewProps {
   onBatchMove?: (ids: string[], folderId: string | undefined) => void;
   onBatchDelete?: (ids: string[]) => void;
   onContextMenu: (e: React.MouseEvent, prompt: Prompt) => void;
+  onMovePrompt?: (
+    promptId: string,
+    newParentId: string | null,
+    newOrder: number,
+  ) => Promise<void> | void;
 }
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
@@ -116,6 +127,7 @@ export function PromptTableView({
   onBatchMove,
   onBatchDelete,
   onContextMenu,
+  onMovePrompt,
 }: PromptTableViewProps) {
   const { t, i18n } = useTranslation();
   const highlightClassName = 'bg-primary/15 text-primary rounded px-0.5';
@@ -126,8 +138,16 @@ export function PromptTableView({
   const [pageSize, setPageSize] = useState(10);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showFolderMenu, setShowFolderMenu] = useState(false);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const [dropPosition, setDropPosition] = useState<PromptDropPosition | null>(null);
   const folders = useFolderStore((state) => state.folders);
   const promptIds = useMemo(() => new Set(prompts.map((prompt) => prompt.id)), [prompts]);
+  const tablePromptNodes = useMemo(() => flattenPromptTree(prompts), [prompts]);
+  const nodeDepthById = useMemo(
+    () => new Map(tablePromptNodes.map((node) => [node.prompt.id, node.depth])),
+    [tablePromptNodes],
+  );
 
   // Table column configuration
   // 表格列配置
@@ -181,10 +201,12 @@ export function PromptTableView({
 
   // Pagination
   // 分页
-  const totalPages = Math.max(1, Math.ceil(prompts.length / pageSize));
+  const totalPages = Math.max(1, Math.ceil(tablePromptNodes.length / pageSize));
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
-  const currentPrompts = prompts.slice(startIndex, endIndex);
+  const currentPrompts = tablePromptNodes
+    .slice(startIndex, endIndex)
+    .map((node) => node.prompt);
   const currentPageAllSelected =
     currentPrompts.length > 0 && currentPrompts.every((prompt) => selectedIds.has(prompt.id));
 
@@ -296,6 +318,105 @@ export function PromptTableView({
       clearSelection();
     }
   };
+
+  const resetDropState = useCallback(() => {
+    setDraggingId(null);
+    setDropTargetId(null);
+    setDropPosition(null);
+  }, []);
+
+  const handleDragStart = useCallback(
+    (event: ReactDragEvent<HTMLTableRowElement>, promptId: string) => {
+      if (!onMovePrompt) return;
+      setDraggingId(promptId);
+      setDropTargetId(null);
+      setDropPosition(null);
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('application/x-prompthub-prompt-id', promptId);
+      event.dataTransfer.setData('text/plain', promptId);
+    },
+    [onMovePrompt],
+  );
+
+  const updateDropTarget = useCallback(
+    (event: ReactDragEvent<HTMLTableRowElement>, targetPromptId: string) => {
+      if (!onMovePrompt) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+
+      const sourcePromptId =
+        draggingId ||
+        event.dataTransfer.getData('application/x-prompthub-prompt-id') ||
+        event.dataTransfer.getData('text/plain');
+      if (!sourcePromptId || sourcePromptId === targetPromptId) {
+        setDropTargetId(null);
+        setDropPosition(null);
+        return;
+      }
+
+      const nextDropPosition = getPromptDropPosition(
+        event.clientY,
+        event.currentTarget.getBoundingClientRect(),
+      );
+      const moveTarget = getPromptMoveTarget(
+        prompts,
+        sourcePromptId,
+        targetPromptId,
+        nextDropPosition,
+      );
+
+      if (!moveTarget) {
+        setDropTargetId(null);
+        setDropPosition(null);
+        return;
+      }
+
+      setDropTargetId(targetPromptId);
+      setDropPosition(nextDropPosition);
+    },
+    [draggingId, onMovePrompt, prompts],
+  );
+
+  const handleDragLeave = useCallback((event: ReactDragEvent<HTMLTableRowElement>) => {
+    const nextTarget = event.relatedTarget;
+    if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) {
+      return;
+    }
+
+    setDropTargetId(null);
+    setDropPosition(null);
+  }, []);
+
+  const handleDrop = useCallback(
+    async (event: ReactDragEvent<HTMLTableRowElement>, targetPromptId: string) => {
+      if (!onMovePrompt) return;
+      event.preventDefault();
+
+      const sourcePromptId =
+        draggingId ||
+        event.dataTransfer.getData('application/x-prompthub-prompt-id') ||
+        event.dataTransfer.getData('text/plain');
+      if (!sourcePromptId || sourcePromptId === targetPromptId || !dropPosition) {
+        resetDropState();
+        return;
+      }
+
+      const moveTarget = getPromptMoveTarget(
+        prompts,
+        sourcePromptId,
+        targetPromptId,
+        dropPosition,
+      );
+      resetDropState();
+
+      if (!moveTarget) {
+        return;
+      }
+
+      await onMovePrompt(sourcePromptId, moveTarget.parentId, moveTarget.order);
+    },
+    [draggingId, dropPosition, onMovePrompt, prompts, resetDropState],
+  );
 
   // Whether there are selected items
   // 是否有选中项
@@ -464,15 +585,24 @@ export function PromptTableView({
                     case 'title':
                       return (
                         <td key={column.id} className="px-4 py-3" style={colWidth}>
-                          <button
-                            type="button"
-                            onClick={() => onViewDetail(prompt)}
-                            className="font-medium text-primary hover:text-primary/80 hover:underline truncate text-left block"
-                            style={{ maxWidth: column.width - 32 }}
-                            title={prompt.title}
+                          <div
+                            className="flex min-w-0 items-center gap-2"
+                            style={{ paddingLeft: `${(nodeDepthById.get(prompt.id) ?? 0) * 16}px` }}
                           >
-                            {renderHighlightedText(prompt.title, highlightTerms, highlightClassName)}
-                          </button>
+                            <GripVerticalIcon
+                              aria-hidden="true"
+                              className="h-3.5 w-3.5 shrink-0 cursor-grab text-muted-foreground/55"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => onViewDetail(prompt)}
+                              className="font-medium text-primary hover:text-primary/80 hover:underline truncate text-left block"
+                              style={{ maxWidth: column.width - 56 }}
+                              title={prompt.title}
+                            >
+                              {renderHighlightedText(prompt.title, highlightTerms, highlightClassName)}
+                            </button>
+                          </div>
                         </td>
                       );
 
@@ -666,8 +796,31 @@ export function PromptTableView({
                 return (
                   <tr
                     key={prompt.id}
+                    draggable={Boolean(onMovePrompt)}
+                    onDragStart={(event) => handleDragStart(event, prompt.id)}
+                    onDragEnd={resetDropState}
+                    onDragOver={(event) => updateDropTarget(event, prompt.id)}
+                    onDragEnter={(event) => updateDropTarget(event, prompt.id)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(event) => handleDrop(event, prompt.id)}
                     onContextMenu={(e) => onContextMenu(e, prompt)}
-                    className={`border-b border-border/50 last:border-b-0 hover:bg-accent/50 dark:hover:bg-accent/20 transition-colors ${isSelected ? 'bg-primary/5' : ''}`}
+                    className={`border-b border-border/50 last:border-b-0 hover:bg-accent/50 dark:hover:bg-accent/20 transition-colors ${
+                      isSelected ? 'bg-primary/5' : ''
+                    } ${
+                      draggingId === prompt.id ? 'opacity-50' : ''
+                    } ${
+                      dropTargetId === prompt.id && dropPosition === 'inside'
+                        ? 'bg-primary/10 outline outline-2 outline-primary/30 outline-offset-[-2px]'
+                        : ''
+                    } ${
+                      dropTargetId === prompt.id && dropPosition === 'before'
+                        ? 'border-t-2 border-t-primary'
+                        : ''
+                    } ${
+                      dropTargetId === prompt.id && dropPosition === 'after'
+                        ? 'border-b-2 border-b-primary'
+                        : ''
+                    }`}
                   >
                     {getVisibleColumns().map(renderCell)}
                   </tr>

@@ -22,6 +22,8 @@ CREATE TABLE IF NOT EXISTS prompts (
   variables TEXT,
   tags TEXT,
   folder_id TEXT,
+  parent_id TEXT,
+  sort_order INTEGER DEFAULT 0,
   images TEXT,
   videos TEXT,
   is_favorite INTEGER DEFAULT 0,
@@ -33,7 +35,8 @@ CREATE TABLE IF NOT EXISTS prompts (
   last_ai_response TEXT,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
-  FOREIGN KEY (folder_id) REFERENCES folders(id) ON DELETE SET NULL
+  FOREIGN KEY (folder_id) REFERENCES folders(id) ON DELETE SET NULL,
+  FOREIGN KEY (parent_id) REFERENCES prompts(id) ON DELETE SET NULL
 );
 
 -- 版本表
@@ -51,6 +54,22 @@ CREATE TABLE IF NOT EXISTS prompt_versions (
   created_at INTEGER NOT NULL,
   FOREIGN KEY (prompt_id) REFERENCES prompts(id) ON DELETE CASCADE,
   UNIQUE(prompt_id, version)
+);
+
+-- Prompt relationships. The tree/grouping relationship is stored on
+-- prompts.parent_id + prompts.sort_order; this table stores graph-style links.
+CREATE TABLE IF NOT EXISTS prompt_relations (
+  id TEXT PRIMARY KEY,
+  source_prompt_id TEXT NOT NULL,
+  target_prompt_id TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK(kind IN ('related_to', 'variant_of', 'depends_on', 'next_step')),
+  note TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  FOREIGN KEY (source_prompt_id) REFERENCES prompts(id) ON DELETE CASCADE,
+  FOREIGN KEY (target_prompt_id) REFERENCES prompts(id) ON DELETE CASCADE,
+  CHECK(source_prompt_id != target_prompt_id),
+  UNIQUE(source_prompt_id, target_prompt_id, kind)
 );
 
 -- 文件夹表
@@ -199,6 +218,9 @@ CREATE INDEX IF NOT EXISTS idx_prompts_visibility ON prompts(visibility);
 CREATE INDEX IF NOT EXISTS idx_prompts_updated ON prompts(updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_prompts_favorite ON prompts(is_favorite);
 CREATE INDEX IF NOT EXISTS idx_versions_prompt ON prompt_versions(prompt_id);
+CREATE INDEX IF NOT EXISTS idx_prompt_relations_source ON prompt_relations(source_prompt_id);
+CREATE INDEX IF NOT EXISTS idx_prompt_relations_target ON prompt_relations(target_prompt_id);
+CREATE INDEX IF NOT EXISTS idx_prompt_relations_kind ON prompt_relations(kind);
 CREATE INDEX IF NOT EXISTS idx_folders_parent ON folders(parent_id);
 CREATE INDEX IF NOT EXISTS idx_folders_owner ON folders(owner_user_id);
 CREATE INDEX IF NOT EXISTS idx_folders_visibility ON folders(visibility);
@@ -226,6 +248,8 @@ CREATE INDEX IF NOT EXISTS idx_folders_sort ON folders(sort_order);
 
 CREATE INDEX IF NOT EXISTS idx_prompts_folder_favorite ON prompts(folder_id, is_favorite);
 CREATE INDEX IF NOT EXISTS idx_prompts_folder_updated ON prompts(folder_id, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_prompts_parent ON prompts(parent_id);
+CREATE INDEX IF NOT EXISTS idx_prompts_sort_order ON prompts(sort_order);
 
 -- 全文搜索 (FTS5)
 CREATE VIRTUAL TABLE IF NOT EXISTS prompts_fts USING fts5(

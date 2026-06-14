@@ -35,7 +35,7 @@ const loadingFallback = (
     <Spinner />
   </div>
 );
-import { StarIcon, CopyIcon, HistoryIcon, HashIcon, FolderIcon, SparklesIcon, EditIcon, TrashIcon, CheckIcon, PlayIcon, LoaderIcon, XIcon, GitCompareIcon, ClockIcon, GlobeIcon, PinIcon, MessageSquareTextIcon, ImageIcon, DownloadIcon, SaveIcon, ZoomInIcon, Share2Icon, PaperclipIcon } from 'lucide-react';
+import { StarIcon, CopyIcon, HistoryIcon, HashIcon, FolderIcon, SparklesIcon, EditIcon, TrashIcon, CheckIcon, PlayIcon, LoaderIcon, XIcon, GitCompareIcon, ClockIcon, GlobeIcon, PinIcon, MessageSquareTextIcon, ImageIcon, DownloadIcon, SaveIcon, ZoomInIcon, Share2Icon, PaperclipIcon, GripVerticalIcon } from 'lucide-react';
 import { ContextMenu, ContextMenuItem } from '../ui/ContextMenu';
 import { ImagePreviewModal } from '../ui/ImagePreviewModal';
 import { LocalImage } from '../ui/LocalImage';
@@ -62,6 +62,12 @@ import {
   filterVisiblePrompts,
   sortVisiblePrompts,
 } from '../../services/prompt-filter';
+import {
+  flattenPromptTree,
+  getPromptDropPosition,
+  getPromptMoveTarget,
+  type PromptDropPosition,
+} from '../prompt/prompt-drag-utils';
 import { getFlattenedTree } from './tree/utilities';
 import { renderFolderIcon } from './folderIconHelper';
 
@@ -152,15 +158,35 @@ function renderHighlightedText(text: string, terms: string[], highlightClassName
 // Prompt 卡片组件（紧凑版本）- 使用 React.memo 包装以提升性能
 const PromptCard = memo(function PromptCard({
   prompt,
+  depth,
   isSelected,
+  isDragging,
+  isDropTarget,
+  dropPosition,
   onSelect,
   onContextMenu,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDragEnter,
+  onDragLeave,
+  onDrop,
   highlightTerms
 }: {
   prompt: Prompt;
+  depth: number;
   isSelected: boolean;
+  isDragging: boolean;
+  isDropTarget: boolean;
+  dropPosition: PromptDropPosition | null;
   onSelect: (e: React.MouseEvent) => void;
   onContextMenu: (e: React.MouseEvent) => void;
+  onDragStart: (e: ReactDragEvent<HTMLButtonElement>) => void;
+  onDragEnd: (e: ReactDragEvent<HTMLButtonElement>) => void;
+  onDragOver: (e: ReactDragEvent<HTMLButtonElement>) => void;
+  onDragEnter: (e: ReactDragEvent<HTMLButtonElement>) => void;
+  onDragLeave: (e: ReactDragEvent<HTMLButtonElement>) => void;
+  onDrop: (e: ReactDragEvent<HTMLButtonElement>) => void;
   highlightTerms: string[];
 }) {
   const highlightClassName = isSelected
@@ -170,21 +196,39 @@ const PromptCard = memo(function PromptCard({
   return (
     <button
       type="button"
+      draggable
       aria-pressed={isSelected}
       onClick={onSelect}
       onContextMenu={onContextMenu}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onDragOver={onDragOver}
+      onDragEnter={onDragEnter}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
       className={`
-        w-full text-left px-3 py-2.5 rounded-lg cursor-pointer
+        w-full text-left pr-3 py-2.5 rounded-lg cursor-pointer relative
         transition-all duration-base animate-in fade-in slide-in-from-left-2
         outline-none focus-visible:ring-2 focus-visible:ring-primary/40
         ${isSelected
           ? 'bg-primary text-white'
-          : 'prompt-list-card bg-card hover:bg-accent'
+          : isDropTarget && dropPosition === 'inside'
+            ? 'prompt-list-card bg-primary/10'
+            : 'prompt-list-card bg-card hover:bg-accent'
         }
+        ${isDragging ? 'opacity-50' : ''}
+        ${isDropTarget && dropPosition === 'inside' ? 'ring-2 ring-primary/40 ring-inset' : ''}
+        ${isDropTarget && dropPosition === 'before' ? 'border-t-2 border-t-primary' : ''}
+        ${isDropTarget && dropPosition === 'after' ? 'border-b-2 border-b-primary' : ''}
       `}
+      style={{ paddingLeft: `${depth * 14 + 12}px` }}
     >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0 flex-1">
+          <GripVerticalIcon
+            aria-hidden="true"
+            className={`w-3.5 h-3.5 flex-shrink-0 cursor-grab ${isSelected ? 'text-white/65' : 'text-muted-foreground/55'}`}
+          />
           {prompt.isPinned && (
             <PinIcon
               aria-hidden="true"
@@ -229,6 +273,11 @@ interface VirtualizedPromptListProps {
   highlightTerms: string[];
   onSelect: (prompt: Prompt, event: React.MouseEvent) => void;
   onContextMenu: (event: React.MouseEvent, prompt: Prompt) => void;
+  onMovePrompt: (
+    promptId: string,
+    newParentId: string | null,
+    newOrder: number,
+  ) => Promise<void> | void;
 }
 
 /**
@@ -260,15 +309,20 @@ const VirtualizedPromptList = memo(function VirtualizedPromptList({
   highlightTerms,
   onSelect,
   onContextMenu,
+  onMovePrompt,
 }: VirtualizedPromptListProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const [dropPosition, setDropPosition] = useState<PromptDropPosition | null>(null);
+  const treeItems = useMemo(() => flattenPromptTree(prompts), [prompts]);
 
   const rowVirtualizer = useVirtualizer({
-    count: prompts.length,
+    count: treeItems.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => PROMPT_CARD_ESTIMATED_HEIGHT,
     overscan: 8,
-    getItemKey: (index) => prompts[index]?.id ?? `__missing-${index}`,
+    getItemKey: (index) => treeItems[index]?.prompt.id ?? `__missing-${index}`,
   });
 
   const virtualItems = rowVirtualizer.getVirtualItems();
@@ -284,6 +338,102 @@ const VirtualizedPromptList = memo(function VirtualizedPromptList({
   const LIST_PADDING_TOP = 12;
   const LIST_PADDING_BOTTOM = 12;
 
+  const resetDropState = useCallback(() => {
+    setDraggingId(null);
+    setDropTargetId(null);
+    setDropPosition(null);
+  }, []);
+
+  const handleDragStart = useCallback(
+    (event: ReactDragEvent<HTMLButtonElement>, promptId: string) => {
+      setDraggingId(promptId);
+      setDropTargetId(null);
+      setDropPosition(null);
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('application/x-prompthub-prompt-id', promptId);
+      event.dataTransfer.setData('text/plain', promptId);
+    },
+    [],
+  );
+
+  const updateDropTarget = useCallback(
+    (event: ReactDragEvent<HTMLButtonElement>, targetPromptId: string) => {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+
+      const sourcePromptId =
+        draggingId ||
+        event.dataTransfer.getData('application/x-prompthub-prompt-id') ||
+        event.dataTransfer.getData('text/plain');
+      if (!sourcePromptId || sourcePromptId === targetPromptId) {
+        setDropTargetId(null);
+        setDropPosition(null);
+        return;
+      }
+
+      const nextDropPosition = getPromptDropPosition(
+        event.clientY,
+        event.currentTarget.getBoundingClientRect(),
+      );
+      const moveTarget = getPromptMoveTarget(
+        prompts,
+        sourcePromptId,
+        targetPromptId,
+        nextDropPosition,
+      );
+
+      if (!moveTarget) {
+        setDropTargetId(null);
+        setDropPosition(null);
+        return;
+      }
+
+      setDropTargetId(targetPromptId);
+      setDropPosition(nextDropPosition);
+    },
+    [draggingId, prompts],
+  );
+
+  const handleDragLeave = useCallback((event: ReactDragEvent<HTMLButtonElement>) => {
+    const nextTarget = event.relatedTarget;
+    if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) {
+      return;
+    }
+
+    setDropTargetId(null);
+    setDropPosition(null);
+  }, []);
+
+  const handleDrop = useCallback(
+    async (event: ReactDragEvent<HTMLButtonElement>, targetPromptId: string) => {
+      event.preventDefault();
+
+      const sourcePromptId =
+        draggingId ||
+        event.dataTransfer.getData('application/x-prompthub-prompt-id') ||
+        event.dataTransfer.getData('text/plain');
+      if (!sourcePromptId || sourcePromptId === targetPromptId || !dropPosition) {
+        resetDropState();
+        return;
+      }
+
+      const moveTarget = getPromptMoveTarget(
+        prompts,
+        sourcePromptId,
+        targetPromptId,
+        dropPosition,
+      );
+      resetDropState();
+
+      if (!moveTarget) {
+        return;
+      }
+
+      await onMovePrompt(sourcePromptId, moveTarget.parentId, moveTarget.order);
+    },
+    [draggingId, dropPosition, onMovePrompt, prompts, resetDropState],
+  );
+
   return (
     <div ref={scrollRef} className="flex-1 overflow-y-auto">
       <div
@@ -293,8 +443,9 @@ const VirtualizedPromptList = memo(function VirtualizedPromptList({
         }}
       >
         {virtualItems.map((virtualRow) => {
-          const prompt = prompts[virtualRow.index];
-          if (!prompt) return null;
+          const item = treeItems[virtualRow.index];
+          if (!item) return null;
+          const { prompt, depth } = item;
           return (
             <div
               key={virtualRow.key}
@@ -311,9 +462,19 @@ const VirtualizedPromptList = memo(function VirtualizedPromptList({
             >
               <PromptCard
                 prompt={prompt}
+                depth={depth}
                 isSelected={selectedPromptIdSet.has(prompt.id)}
+                isDragging={draggingId === prompt.id}
+                isDropTarget={dropTargetId === prompt.id}
+                dropPosition={dropTargetId === prompt.id ? dropPosition : null}
                 onSelect={(e) => onSelect(prompt, e)}
                 onContextMenu={(e) => onContextMenu(e, prompt)}
+                onDragStart={(event) => handleDragStart(event, prompt.id)}
+                onDragEnd={resetDropState}
+                onDragOver={(event) => updateDropTarget(event, prompt.id)}
+                onDragEnter={(event) => updateDropTarget(event, prompt.id)}
+                onDragLeave={handleDragLeave}
+                onDrop={(event) => handleDrop(event, prompt.id)}
                 highlightTerms={highlightTerms}
               />
             </div>
@@ -382,6 +543,7 @@ function PromptSkillMainContent() {
   const togglePinned = usePromptStore((state) => state.togglePinned);
   const deletePrompt = usePromptStore((state) => state.deletePrompt);
   const updatePrompt = usePromptStore((state) => state.updatePrompt);
+  const movePrompt = usePromptStore((state) => state.movePrompt);
   const searchQuery = usePromptStore((state) => state.searchQuery);
   const filterTags = usePromptStore((state) => state.filterTags);
   const toggleFilterTag = usePromptStore((state) => state.toggleFilterTag);
@@ -1866,6 +2028,18 @@ function PromptSkillMainContent() {
     showToast(t('toast.batchDeleted'), 'success');
   };
 
+  const handleMovePromptInTree = useCallback(
+    async (promptId: string, newParentId: string | null, newOrder: number) => {
+      try {
+        await movePrompt(promptId, newParentId, newOrder);
+      } catch (error) {
+        console.error('Failed to move prompt in tree:', error);
+        showToast(t('prompt.relationships.moveFailed', 'Failed to move prompt'), 'error');
+      }
+    },
+    [movePrompt, showToast, t],
+  );
+
   // Memoize getViewClass to avoid re-creating the function on every render
   // 使用 useCallback 缓存 getViewClass，避免每次渲染都重新创建函数
   const getViewClass = useCallback((mode: ViewMode, layout: 'col' | 'row' = 'col') => {
@@ -1918,6 +2092,7 @@ function PromptSkillMainContent() {
               onBatchMove={handleBatchMove}
               onBatchDelete={handleBatchDelete}
               onContextMenu={handleContextMenu}
+              onMovePrompt={handleMovePromptInTree}
             />
           </Suspense>
         </div>
@@ -2006,6 +2181,7 @@ function PromptSkillMainContent() {
               highlightTerms={highlightTerms}
               onSelect={handleSelectPrompt}
               onContextMenu={handleContextMenu}
+              onMovePrompt={handleMovePromptInTree}
             />
           )}
           {/* Drag-to-resize handle for the prompt list pane (#119) */}

@@ -40,6 +40,7 @@ function renderTableView({
   onToggleFavorite = vi.fn<(promptId: string) => void>(),
   onEdit = vi.fn<(editedPrompt: Prompt) => void>(),
   onDelete = vi.fn<(deletedPrompt: Prompt) => void>(),
+  onMovePrompt,
   prompts = [prompt],
 }: {
   onCopy?: (copiedPrompt: Prompt) => void;
@@ -48,6 +49,11 @@ function renderTableView({
   onToggleFavorite?: (promptId: string) => void;
   onEdit?: (editedPrompt: Prompt) => void;
   onDelete?: (deletedPrompt: Prompt) => void;
+  onMovePrompt?: (
+    promptId: string,
+    newParentId: string | null,
+    newOrder: number,
+  ) => Promise<void> | void;
   prompts?: Prompt[];
 } = {}) {
   return renderWithI18n(
@@ -62,9 +68,22 @@ function renderTableView({
       onVersionHistory={onVersionHistory}
       onViewDetail={vi.fn()}
       onContextMenu={vi.fn()}
+      onMovePrompt={onMovePrompt}
     />,
     { language: "en" },
   );
+}
+
+function createDataTransfer() {
+  const store = new Map<string, string>();
+  return {
+    effectAllowed: "",
+    dropEffect: "",
+    setData: vi.fn((type: string, value: string) => {
+      store.set(type, value);
+    }),
+    getData: vi.fn((type: string) => store.get(type) ?? ""),
+  };
 }
 
 async function clickCopyButton() {
@@ -213,6 +232,29 @@ describe("PromptTableView", () => {
     expect(onEdit).toHaveBeenCalledWith(prompt);
     expect(onDelete).toHaveBeenCalledWith(prompt);
     expect(handleAncestorClick).not.toHaveBeenCalled();
+  });
+
+  it("moves a dragged prompt under the dropped table row", async () => {
+    const onMovePrompt = vi.fn();
+    const prompts = [createPrompt(1), createPrompt(2)];
+
+    await renderTableView({ prompts, onMovePrompt });
+
+    const sourceRow = screen.getByText("Prompt 1").closest("tr");
+    const targetRow = screen.getByText("Prompt 2").closest("tr");
+    expect(sourceRow).not.toBeNull();
+    expect(targetRow).not.toBeNull();
+
+    const dataTransfer = createDataTransfer();
+    fireEvent.dragStart(sourceRow!, { dataTransfer });
+    fireEvent.dragEnter(targetRow!, { clientY: 0, dataTransfer });
+    fireEvent.drop(targetRow!, { clientY: 0, dataTransfer });
+
+    expect(onMovePrompt).toHaveBeenCalledWith(
+      "prompt-table-1",
+      "prompt-table-2",
+      0,
+    );
   });
 
   it("clamps the active page when the prompt list shrinks", async () => {

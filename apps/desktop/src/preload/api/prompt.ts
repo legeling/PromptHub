@@ -1,11 +1,14 @@
 import { ipcRenderer } from "electron";
 import { IPC_CHANNELS } from "@prompthub/shared/constants/ipc-channels";
 import type {
+  CreatePromptRelationDTO,
   CreatePromptDTO,
   Folder,
   Prompt,
+  PromptRelationQuery,
   PromptVersion,
   SearchQuery,
+  UpdatePromptRelationDTO,
   UpdatePromptDTO,
 } from "@prompthub/shared/types";
 
@@ -40,4 +43,14 @@ export const promptApi = {
     prompts: Prompt[];
     versions: PromptVersion[];
   }) => ipcRenderer.invoke(IPC_CHANNELS.PROMPT_MIGRATE_IDB_BATCH, payload),
+  move: (promptId: string, newParentId: string | null, newOrder: number) =>
+    ipcRenderer.invoke(IPC_CHANNELS.PROMPT_MOVE, promptId, newParentId, newOrder),
+  createRelation: (data: CreatePromptRelationDTO) =>
+    ipcRenderer.invoke(IPC_CHANNELS.PROMPT_RELATION_CREATE, data),
+  listRelations: (query?: PromptRelationQuery) =>
+    ipcRenderer.invoke(IPC_CHANNELS.PROMPT_RELATION_LIST, query),
+  updateRelation: (id: string, data: UpdatePromptRelationDTO) =>
+    ipcRenderer.invoke(IPC_CHANNELS.PROMPT_RELATION_UPDATE, id, data),
+  deleteRelation: (id: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.PROMPT_RELATION_DELETE, id),
 };

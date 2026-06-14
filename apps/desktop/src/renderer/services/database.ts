@@ -4,7 +4,15 @@
  * Store data using IndexedDB, support backup, restore and migration
  */
 
-import type { Prompt, PromptVersion, Folder } from "@prompthub/shared/types";
+import type {
+  CreatePromptRelationDTO,
+  Folder,
+  Prompt,
+  PromptRelation,
+  PromptRelationQuery,
+  PromptVersion,
+  UpdatePromptRelationDTO,
+} from "@prompthub/shared/types";
 import { DB_BACKUP_VERSION } from "./database-backup-format";
 
 const DB_NAME = "PromptHubDB";
@@ -207,6 +215,8 @@ export async function createPrompt(
       variables: data.variables,
       tags: data.tags,
       folderId: data.folderId ?? undefined,
+      parentId: data.parentId,
+      order: data.order,
       images: data.images,
       videos: data.videos,
       source: data.source ?? undefined,
@@ -355,6 +365,185 @@ export async function movePrompts(
       getRequest.onerror = () => reject(getRequest.error);
     });
   }
+}
+
+export async function movePrompt(
+  promptId: string,
+  newParentId: string | null,
+  newOrder: number,
+): Promise<void> {
+  if (!Number.isFinite(newOrder) || newOrder < 0) {
+    throw new Error("Prompt order must be a non-negative number");
+  }
+
+  if (window.api?.prompt?.move) {
+    await window.api.prompt.move(promptId, newParentId, newOrder);
+    return;
+  }
+
+  const database = await getDatabase();
+  return new Promise<void>((resolve, reject) => {
+    const transaction = database.transaction(STORES.PROMPTS, "readwrite");
+    const store = transaction.objectStore(STORES.PROMPTS);
+    const getAllRequest = store.getAll();
+
+    getAllRequest.onsuccess = () => {
+      const prompts = getAllRequest.result as Prompt[];
+      const prompt = prompts.find((item) => item.id === promptId);
+      if (!prompt) {
+        resolve();
+        return;
+      }
+
+      try {
+        const targetParentId = newParentId ?? null;
+        assertPromptMoveAllowed(prompts, promptId, targetParentId);
+        const reorderedPrompts = reorderPromptTree(
+          prompts,
+          promptId,
+          targetParentId,
+          newOrder,
+        );
+        const now = new Date().toISOString();
+
+        for (const item of reorderedPrompts) {
+          const putRequest = store.put({
+            ...item,
+            updatedAt: item.id === promptId ? now : item.updatedAt,
+          });
+          putRequest.onerror = () => reject(putRequest.error);
+        }
+
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
+      } catch (error) {
+        reject(error);
+      }
+    };
+    getAllRequest.onerror = () => reject(getAllRequest.error);
+  });
+}
+
+export async function createPromptRelation(
+  data: CreatePromptRelationDTO,
+): Promise<PromptRelation> {
+  if (!window.api?.prompt?.createRelation) {
+    throw new Error("Prompt relationships require the desktop database API");
+  }
+
+  return window.api.prompt.createRelation(data);
+}
+
+export async function listPromptRelations(
+  query?: PromptRelationQuery,
+): Promise<PromptRelation[]> {
+  if (!window.api?.prompt?.listRelations) {
+    return [];
+  }
+
+  return (await window.api.prompt.listRelations(query)) ?? [];
+}
+
+export async function updatePromptRelation(
+  id: string,
+  data: UpdatePromptRelationDTO,
+): Promise<PromptRelation | null> {
+  if (!window.api?.prompt?.updateRelation) {
+    throw new Error("Prompt relationships require the desktop database API");
+  }
+
+  return window.api.prompt.updateRelation(id, data);
+}
+
+export async function deletePromptRelation(id: string): Promise<boolean> {
+  if (!window.api?.prompt?.deleteRelation) {
+    return false;
+  }
+
+  return window.api.prompt.deleteRelation(id);
+}
+
+function assertPromptMoveAllowed(
+  prompts: Prompt[],
+  promptId: string,
+  parentId: string | null,
+): void {
+  if (!parentId) {
+    return;
+  }
+
+  if (parentId === promptId) {
+    throw new Error("Cannot move a prompt under itself");
+  }
+
+  const promptById = new Map(prompts.map((prompt) => [prompt.id, prompt]));
+  let currentParentId: string | null | undefined = parentId;
+  const visited = new Set<string>();
+
+  while (currentParentId) {
+    if (currentParentId === promptId) {
+      throw new Error("Cannot move a prompt under its descendant");
+    }
+    if (visited.has(currentParentId)) {
+      throw new Error("Cannot move prompt into a cyclic hierarchy");
+    }
+
+    visited.add(currentParentId);
+    const parent = promptById.get(currentParentId);
+    if (!parent) {
+      throw new Error("Parent prompt does not exist");
+    }
+    currentParentId = parent.parentId;
+  }
+}
+
+function reorderPromptTree(
+  prompts: Prompt[],
+  promptId: string,
+  parentId: string | null,
+  order: number,
+): Prompt[] {
+  const prompt = prompts.find((item) => item.id === promptId);
+  if (!prompt) {
+    return prompts;
+  }
+
+  const oldParentId = prompt.parentId ?? null;
+  const nextPrompts = prompts.map((item) => ({ ...item }));
+  normalizePromptSiblings(nextPrompts, oldParentId, promptId);
+
+  const targetSiblings = nextPrompts
+    .filter((item) => (item.parentId ?? null) === parentId && item.id !== promptId)
+    .sort(comparePromptOrder);
+  const targetIndex = Math.min(Math.trunc(order), targetSiblings.length);
+  targetSiblings.splice(targetIndex, 0, prompt);
+
+  targetSiblings.forEach((item, index) => {
+    const target = nextPrompts.find((candidate) => candidate.id === item.id);
+    if (target) {
+      target.parentId = parentId;
+      target.order = index;
+    }
+  });
+
+  return nextPrompts;
+}
+
+function normalizePromptSiblings(
+  prompts: Prompt[],
+  parentId: string | null,
+  excludeId: string,
+): void {
+  prompts
+    .filter((prompt) => (prompt.parentId ?? null) === parentId && prompt.id !== excludeId)
+    .sort(comparePromptOrder)
+    .forEach((prompt, index) => {
+      prompt.order = index;
+    });
+}
+
+function comparePromptOrder(a: Prompt, b: Prompt): number {
+  return (a.order ?? 0) - (b.order ?? 0) || a.id.localeCompare(b.id);
 }
 
 // ==================== Version 操作 ====================

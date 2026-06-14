@@ -17,6 +17,7 @@ export type { InitDatabaseHooks } from "./init";
 
 // DB classes
 export { PromptDB } from "./prompt";
+export { PromptRelationDB } from "./prompt-relation";
 export { FolderDB } from "./folder";
 export { SkillDB } from "./skill";
 export { RuleDB } from "./rule";

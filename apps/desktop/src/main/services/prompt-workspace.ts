@@ -251,6 +251,8 @@ function promptFrontmatter(prompt: Prompt): Record<string, unknown> {
     variables: prompt.variables ?? [],
     tags: prompt.tags ?? [],
     folderId: prompt.folderId ?? null,
+    parentId: prompt.parentId ?? null,
+    order: prompt.order ?? 0,
     images: prompt.images ?? [],
     videos: prompt.videos ?? [],
     isFavorite: prompt.isFavorite,
@@ -657,6 +659,11 @@ function parsePromptFile(filePath: string): Prompt {
       : [],
     tags: Array.isArray(metadata.tags) ? (metadata.tags as string[]) : [],
     folderId: typeof metadata.folderId === "string" ? metadata.folderId : null,
+    parentId: typeof metadata.parentId === "string" ? metadata.parentId : null,
+    order:
+      typeof metadata.order === "number" && Number.isFinite(metadata.order)
+        ? metadata.order
+        : 0,
     images: Array.isArray(metadata.images) ? (metadata.images as string[]) : [],
     videos: Array.isArray(metadata.videos) ? (metadata.videos as string[]) : [],
     isFavorite: metadata.isFavorite === true,

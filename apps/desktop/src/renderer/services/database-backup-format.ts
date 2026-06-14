@@ -381,20 +381,43 @@ export function sanitizeImportedBackup(
   const normalizedFolderIds = new Set(validFolders.map((folder) => folder.id));
 
   const originalPromptsLen = raw.prompts.length;
-  const validPrompts = raw.prompts
-    .filter(hasPromptShape)
-    .map((prompt) => {
-      if (prompt.folderId && !normalizedFolderIds.has(prompt.folderId)) {
-        skipped.prompts += 1;
-        return {
-          ...prompt,
-          folderId: null,
-        };
-      }
+  const structurallyValidPrompts = raw.prompts.filter(hasPromptShape);
+  skipped.prompts += originalPromptsLen - structurallyValidPrompts.length;
+  const structurallyValidPromptIds = new Set(
+    structurallyValidPrompts.map((prompt) => prompt.id),
+  );
+  const validPrompts = structurallyValidPrompts.map((prompt) => {
+    let normalizedPrompt = prompt;
 
-      return prompt;
-    });
-  skipped.prompts += originalPromptsLen - validPrompts.length;
+    if (normalizedPrompt.folderId && !normalizedFolderIds.has(normalizedPrompt.folderId)) {
+      skipped.prompts += 1;
+      normalizedPrompt = {
+        ...normalizedPrompt,
+        folderId: null,
+      };
+    }
+
+    if (
+      normalizedPrompt.parentId &&
+      (normalizedPrompt.parentId === normalizedPrompt.id ||
+        !structurallyValidPromptIds.has(normalizedPrompt.parentId))
+    ) {
+      skipped.prompts += 1;
+      normalizedPrompt = {
+        ...normalizedPrompt,
+        parentId: null,
+      };
+    }
+
+    return {
+      ...normalizedPrompt,
+      order:
+        typeof normalizedPrompt.order === "number" &&
+        Number.isFinite(normalizedPrompt.order)
+          ? normalizedPrompt.order
+          : 0,
+    };
+  });
   const validPromptIds = new Set(validPrompts.map((p) => p.id));
 
   const originalVersionsLen = raw.versions.length;

@@ -24,6 +24,8 @@ interface PromptRow {
   variables: string | null;
   tags: string | null;
   folder_id: string | null;
+  parent_id: string | null;
+  sort_order: number;
   images: string | null;
   videos: string | null;
   is_favorite: number;
@@ -65,9 +67,9 @@ export class PromptDB {
     const stmt = this.db.prepare(`
       INSERT INTO prompts (
         id, visibility, title, description, prompt_type, system_prompt, system_prompt_en, user_prompt,
-        user_prompt_en, variables, tags, folder_id, images, videos, source, notes,
+        user_prompt_en, variables, tags, folder_id, parent_id, sort_order, images, videos, source, notes,
         last_ai_response, is_favorite, current_version, usage_count, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
@@ -83,6 +85,8 @@ export class PromptDB {
       JSON.stringify(data.variables || []),
       JSON.stringify(data.tags || []),
       data.folderId || null,
+      data.parentId || null,
+      data.order ?? 0,
       JSON.stringify(data.images || []),
       JSON.stringify(data.videos || []),
       data.source || null,
@@ -183,6 +187,14 @@ export class PromptDB {
       updates.push("folder_id = ?");
       values.push(data.folderId);
     }
+    if (data.parentId !== undefined) {
+      updates.push("parent_id = ?");
+      values.push(data.parentId);
+    }
+    if (data.order !== undefined) {
+      updates.push("sort_order = ?");
+      values.push(data.order);
+    }
     if (data.images !== undefined) {
       updates.push("images = ?");
       values.push(JSON.stringify(data.images));
@@ -260,6 +272,8 @@ export class PromptDB {
       ...(data.variables !== undefined && { variables: data.variables }),
       ...(data.tags !== undefined && { tags: data.tags }),
       ...(data.folderId !== undefined && { folderId: data.folderId }),
+      ...(data.parentId !== undefined && { parentId: data.parentId }),
+      ...(data.order !== undefined && { order: data.order }),
       ...(data.images !== undefined && { images: data.images }),
       ...(data.videos !== undefined && { videos: data.videos }),
       ...(data.isFavorite !== undefined && { isFavorite: data.isFavorite }),
@@ -506,11 +520,11 @@ export class PromptDB {
       .prepare(
         `INSERT OR REPLACE INTO prompts (
           id, visibility, title, description, prompt_type, system_prompt, system_prompt_en, user_prompt,
-          user_prompt_en, variables, tags, folder_id, images, videos, is_favorite, is_pinned,
+          user_prompt_en, variables, tags, folder_id, parent_id, sort_order, images, videos, is_favorite, is_pinned,
           current_version, usage_count, source, notes, last_ai_response, created_at, updated_at
         ) VALUES (
           @id, @visibility, @title, @description, @prompt_type, @system_prompt, @system_prompt_en, @user_prompt,
-          @user_prompt_en, @variables, @tags, @folder_id, @images, @videos, @is_favorite, @is_pinned,
+          @user_prompt_en, @variables, @tags, @folder_id, @parent_id, @sort_order, @images, @videos, @is_favorite, @is_pinned,
           @current_version, @usage_count, @source, @notes, @last_ai_response, @created_at, @updated_at
         )`,
       )
@@ -527,6 +541,8 @@ export class PromptDB {
         "@variables": JSON.stringify(prompt.variables ?? []),
         "@tags": JSON.stringify(prompt.tags ?? []),
         "@folder_id": prompt.folderId ?? null,
+        "@parent_id": prompt.parentId ?? null,
+        "@sort_order": prompt.order ?? 0,
         "@images": JSON.stringify(prompt.images ?? []),
         "@videos": JSON.stringify(prompt.videos ?? []),
         "@is_favorite": prompt.isFavorite ? 1 : 0,
@@ -670,6 +686,143 @@ export class PromptDB {
   }
 
   /**
+   * Move a prompt under another prompt, or reorder it within the same level.
+   */
+  movePrompt(promptId: string, newParentId: string | null, newOrder: number): void {
+    if (!Number.isFinite(newOrder) || newOrder < 0) {
+      throw new Error("Prompt order must be a non-negative number");
+    }
+    if (newParentId !== null && newParentId.trim().length === 0) {
+      throw new Error("Parent prompt id must be null or a non-empty string");
+    }
+
+    const txn = this.db.transaction(() => {
+      const current = this.db
+        .prepare("SELECT id, parent_id FROM prompts WHERE id = ?")
+        .get(promptId) as { id: string; parent_id: string | null } | undefined;
+
+      if (!current) return;
+
+      if (newParentId === promptId) {
+        throw new Error("Cannot move a prompt under itself");
+      }
+
+      this.assertValidPromptParent(promptId, newParentId);
+
+      const oldParentId = current.parent_id;
+      const targetParentId = newParentId ?? null;
+
+      if (oldParentId !== targetParentId) {
+        this.rewritePromptSiblingOrder(
+          oldParentId,
+          this.getPromptSiblingIds(oldParentId).filter((id) => id !== promptId),
+        );
+      }
+
+      const targetSiblingIds = this.getPromptSiblingIds(targetParentId).filter(
+        (id) => id !== promptId,
+      );
+      const targetIndex = Math.min(Math.trunc(newOrder), targetSiblingIds.length);
+      targetSiblingIds.splice(targetIndex, 0, promptId);
+      this.rewritePromptSiblingOrder(
+        targetParentId,
+        targetSiblingIds,
+        promptId,
+        Date.now(),
+      );
+    });
+
+    txn();
+  }
+
+  private assertValidPromptParent(promptId: string, parentId: string | null): void {
+    if (parentId === null) {
+      return;
+    }
+
+    let currentParentId: string | null = parentId;
+    const visited = new Set<string>();
+
+    while (currentParentId) {
+      if (currentParentId === promptId) {
+        throw new Error("Cannot move a prompt under its descendant");
+      }
+      if (visited.has(currentParentId)) {
+        throw new Error("Cannot move prompt into a cyclic hierarchy");
+      }
+      visited.add(currentParentId);
+
+      const parent = this.db
+        .prepare("SELECT parent_id FROM prompts WHERE id = ?")
+        .get(currentParentId) as { parent_id: string | null } | undefined;
+
+      if (!parent) {
+        throw new Error("Parent prompt does not exist");
+      }
+
+      currentParentId = parent.parent_id;
+    }
+  }
+
+  private getPromptSiblingIds(parentId: string | null): string[] {
+    const stmt =
+      parentId === null
+        ? this.db.prepare(
+            "SELECT id FROM prompts WHERE parent_id IS NULL ORDER BY sort_order ASC, updated_at DESC, id ASC",
+          )
+        : this.db.prepare(
+            "SELECT id FROM prompts WHERE parent_id = ? ORDER BY sort_order ASC, updated_at DESC, id ASC",
+          );
+
+    const rows = (
+      parentId === null ? stmt.all() : stmt.all(parentId)
+    ) as Array<{ id: string }>;
+
+    return rows.map((row) => row.id);
+  }
+
+  private rewritePromptSiblingOrder(
+    parentId: string | null,
+    orderedIds: string[],
+    movedPromptId?: string,
+    movedAt?: number,
+  ): void {
+    const siblingStmt = this.db.prepare(
+      "UPDATE prompts SET parent_id = ?, sort_order = ? WHERE id = ?",
+    );
+    const movedStmt = this.db.prepare(
+      "UPDATE prompts SET parent_id = ?, sort_order = ?, updated_at = ? WHERE id = ?",
+    );
+
+    orderedIds.forEach((id, index) => {
+      if (id === movedPromptId) {
+        movedStmt.run(parentId, index, movedAt ?? Date.now(), id);
+        return;
+      }
+
+      siblingStmt.run(parentId, index, id);
+    });
+  }
+
+  /**
+   * Get children of a prompt in stored sibling order.
+   */
+  getChildren(parentId: string | null): Prompt[] {
+    const stmt =
+      parentId === null
+        ? this.db.prepare(
+            "SELECT * FROM prompts WHERE parent_id IS NULL ORDER BY sort_order ASC, updated_at DESC, id ASC",
+          )
+        : this.db.prepare(
+            "SELECT * FROM prompts WHERE parent_id = ? ORDER BY sort_order ASC, updated_at DESC, id ASC",
+          );
+    const rows = (
+      parentId === null ? stmt.all() : stmt.all(parentId)
+    ) as PromptRow[];
+    return rows.map((row) => this.rowToPrompt(row));
+  }
+
+  /**
    * Convert database row to Prompt object
 
    * 数据库行转 Prompt 对象
@@ -689,6 +842,8 @@ export class PromptDB {
       variables: JSON.parse(row.variables || "[]"),
       tags: JSON.parse(row.tags || "[]"),
       folderId: row.folder_id,
+      parentId: row.parent_id,
+      order: row.sort_order,
       images: JSON.parse(row.images || "[]"),
       videos: JSON.parse(row.videos || "[]"),
       isFavorite: row.is_favorite === 1,
