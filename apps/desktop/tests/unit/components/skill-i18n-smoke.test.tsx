@@ -855,7 +855,7 @@ describe("skill i18n smoke", () => {
     });
 
     expect(screen.getByRole("button", { name: "Snapshot" })).toBeInTheDocument();
-    expect(screen.getByText("Current Version v0")).toBeInTheDocument();
+    expect(screen.getByText("Current Version v1")).toBeInTheDocument();
     expect(screen.getByText("Preview")).toBeInTheDocument();
     expect(screen.getByText("Source")).toBeInTheDocument();
     expect(screen.getByText("Files")).toBeInTheDocument();
@@ -875,6 +875,37 @@ describe("skill i18n smoke", () => {
     expect(screen.getByText("Imported from Local Folder")).toBeInTheDocument();
     expect(screen.queryByText("源码/内容")).not.toBeInTheDocument();
     expect(screen.queryByText("批量管理")).not.toBeInTheDocument();
+  });
+
+  it("copies the skill title when the detail header title is clicked", async () => {
+    const writeText = vi
+      .spyOn(navigator.clipboard, "writeText")
+      .mockResolvedValue(undefined);
+    const showToast = vi.fn();
+    useToastMock.mockReturnValue({ showToast });
+    const skillStoreState = createSkillStoreState({
+      selectedSkillId: baseSkill.id,
+      syncSkillFromRepo: vi.fn().mockResolvedValue(baseSkill),
+    });
+    const settingsState = createSettingsState();
+
+    useSkillStoreMock.mockImplementation(bindStoreSelector(skillStoreState));
+    useSettingsStoreMock.mockImplementation(bindStoreSelector(settingsState));
+
+    render(<SkillFullDetailPage />);
+
+    const titleButton = await screen.findByRole("button", {
+      name: "Copy title: write",
+    });
+    expect(titleButton).toHaveClass("cursor-default");
+    expect(titleButton).not.toHaveClass("cursor-copy");
+
+    fireEvent.click(titleButton);
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith("write");
+    });
+    expect(showToast).toHaveBeenCalledWith("Copied", "success");
   });
 
   it("saves personal skill notes to .prompthub/user.json without updating skill metadata", async () => {

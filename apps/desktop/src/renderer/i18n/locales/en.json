@@ -1554,6 +1554,7 @@
     "copyMd": "Copy MD",
     "copyRaw": "Copy Raw",
     "copied": "Copied",
+    "copyTitle": "Copy title: {{name}}",
     "visitRepo": "Visit Skill Repository",
     "updateFailed": "Update failed",
     "allSkills": "All Skills",

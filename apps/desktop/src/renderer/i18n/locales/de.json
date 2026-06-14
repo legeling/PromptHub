@@ -1543,6 +1543,7 @@
     "copyMd": "MD kopieren",
     "copyRaw": "Original kopieren",
     "copied": "Kopiert",
+    "copyTitle": "Titel kopieren: {{name}}",
     "visitRepo": "Skill-Repository offnen",
     "updateFailed": "Aktualisierung fehlgeschlagen",
     "allSkills": "Alle Skills",

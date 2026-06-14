@@ -35,7 +35,7 @@ test.describe("E2E: Skill smoke", () => {
 
       await skillRow.click();
       await expect(page.getByRole("button", { name: "Snapshot" })).toBeVisible();
-      await expect(page.getByText("Current Version v0")).toBeVisible();
+      await expect(page.getByText("Current Version v1")).toBeVisible();
 
       await page.getByRole("button", { name: "Snapshot" }).click();
       await expect(page.getByRole("heading", { name: "Create Snapshot" })).toBeVisible();

@@ -1544,6 +1544,7 @@
     "copyMd": "MD をコピー",
     "copyRaw": "原文をコピー",
     "copied": "コピー済み",
+    "copyTitle": "タイトルをコピー: {{name}}",
     "visitRepo": "スキルリポジトリを開く",
     "updateFailed": "更新に失敗しました",
     "allSkills": "すべてのスキル",

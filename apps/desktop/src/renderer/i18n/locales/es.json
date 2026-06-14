@@ -1543,6 +1543,7 @@
     "copyMd": "Copy MD",
     "copyRaw": "Copy Raw",
     "copied": "Copied",
+    "copyTitle": "Copiar título: {{name}}",
     "visitRepo": "Visit Skill Repository",
     "updateFailed": "Update failed",
     "allSkills": "All Skills",

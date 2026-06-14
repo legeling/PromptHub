@@ -196,6 +196,7 @@ export function SkillFullDetailPage({
     }
     return skills.find((s) => s.id === selectedSkillId);
   }, [overrideSkill, skills, selectedSkillId]);
+  const displayCurrentVersion = Math.max(selectedSkill?.currentVersion ?? 0, 1);
   const isProjectDetail = Boolean(projectContext);
   const isAgentDetail = Boolean(agentContext);
   const isExternalDetail = isProjectDetail || isAgentDetail;
@@ -1263,6 +1264,20 @@ export function SkillFullDetailPage({
     }
   };
 
+  const handleCopySkillTitle = useCallback(async () => {
+    if (!selectedSkill?.name) {
+      return;
+    }
+
+    try {
+      await copyTextToClipboard(selectedSkill.name);
+      showToast(t("common.copied", "Copied"), "success");
+    } catch (error) {
+      console.error("Failed to copy skill title:", error);
+      showToast(t("common.copyFailed", "Copy failed"), "error");
+    }
+  }, [selectedSkill?.name, showToast, t]);
+
   const handleExport = async (format: "skillmd" | "zip") => {
     if (!selectedSkill) return;
     try {
@@ -1522,8 +1537,22 @@ export function SkillFullDetailPage({
             size="lg"
           />
           <div>
-            <h2 className="font-bold text-xl text-foreground leading-tight">
-              {selectedSkill.name}
+            <h2 className="leading-tight">
+              <button
+                type="button"
+                className="block max-w-full cursor-default rounded-md text-left text-xl font-bold text-foreground transition-colors hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                onClick={() => void handleCopySkillTitle()}
+                title={t("skill.copyTitle", {
+                  name: selectedSkill.name,
+                  defaultValue: "Copy title: {{name}}",
+                })}
+                aria-label={t("skill.copyTitle", {
+                  name: selectedSkill.name,
+                  defaultValue: "Copy title: {{name}}",
+                })}
+              >
+                {selectedSkill.name}
+              </button>
             </h2>
             <div className="mt-1 flex items-center gap-3 flex-wrap">
               <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-medium">
@@ -1533,7 +1562,7 @@ export function SkillFullDetailPage({
               {!isExternalDetail ? (
                 <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
                   {t("skill.currentVersion", "Version")} v
-                  {selectedSkill.currentVersion || 0}
+                  {displayCurrentVersion}
                 </span>
               ) : null}
               {agentContext ? (
