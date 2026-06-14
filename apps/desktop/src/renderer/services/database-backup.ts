@@ -10,6 +10,7 @@ import {
   getAllFolders,
   getAllPrompts,
   getDatabase,
+  listPromptRelations,
 } from "./database";
 import {
   DB_BACKUP_VERSION,
@@ -348,6 +349,7 @@ export interface ImportPreviewSummary {
   exportedAt: string;
   counts: {
     prompts: number;
+    promptRelations: number;
     folders: number;
     versions: number;
     rules: number;
@@ -405,6 +407,7 @@ export async function previewImportFile(
     exportedAt: backup.exportedAt,
     counts: {
       prompts: backup.prompts.length,
+      promptRelations: backup.promptRelations?.length ?? 0,
       folders: backup.folders.length,
       versions: backup.versions.length,
       rules: backup.rules?.length ?? 0,
@@ -474,10 +477,13 @@ function sortFoldersForRestore(folders: DatabaseBackup["folders"]): DatabaseBack
 async function importDatabaseViaMainProcess(
   normalizedBackup: DatabaseBackup,
 ): Promise<boolean> {
+  const shouldRestoreRelations =
+    (normalizedBackup.promptRelations?.length ?? 0) > 0;
   if (
     !window.api?.prompt?.getAll ||
     !window.api?.prompt?.delete ||
     !window.api?.prompt?.insertDirect ||
+    (shouldRestoreRelations && !window.api?.prompt?.createRelation) ||
     !window.api?.folder?.getAll ||
     !window.api?.folder?.delete ||
     !window.api?.folder?.insertDirect ||
@@ -508,6 +514,15 @@ async function importDatabaseViaMainProcess(
     await window.api.version.insertDirect(version);
   }
 
+  for (const relation of normalizedBackup.promptRelations ?? []) {
+    await window.api.prompt.createRelation?.({
+      sourcePromptId: relation.sourcePromptId,
+      targetPromptId: relation.targetPromptId,
+      kind: relation.kind,
+      note: relation.note ?? null,
+    });
+  }
+
   await window.api.prompt.syncWorkspace?.();
   return true;
 }
@@ -516,10 +531,11 @@ export async function exportDatabase(options?: {
   skipVideoContent?: boolean;
   limitMedia?: boolean;
 }): Promise<DatabaseBackup> {
-  const [prompts, folders, versions] = await Promise.all([
+  const [prompts, folders, versions, promptRelations] = await Promise.all([
     getAllPrompts(),
     getAllFolders(),
     getAllPromptVersions(),
+    listPromptRelations(),
   ]);
 
   const imageLimits = options?.limitMedia
@@ -552,6 +568,8 @@ export async function exportDatabase(options?: {
     version: DB_VERSION,
     exportedAt: new Date().toISOString(),
     prompts,
+    promptRelations:
+      promptRelations.length > 0 ? promptRelations : undefined,
     folders,
     versions,
     images,
@@ -595,6 +613,12 @@ export async function importDatabase(backup: DatabaseBackup): Promise<void> {
     await importDatabaseViaMainProcess(normalizedBackup);
 
   if (!restoredViaMainProcess) {
+    if ((normalizedBackup.promptRelations?.length ?? 0) > 0) {
+      throw new Error(
+        "Prompt relationships require the desktop database API to restore.",
+      );
+    }
+
     const database = await getDatabase();
 
     await clearDatabase();
@@ -845,11 +869,22 @@ export async function downloadSelectiveExport(
   const fullBackup = await exportDatabase({
     skipVideoContent: !normalized.videos,
   });
+  const exportedPromptIds = new Set(
+    normalized.prompts ? fullBackup.prompts.map((prompt) => prompt.id) : [],
+  );
+  const promptRelations = normalized.prompts
+    ? (fullBackup.promptRelations ?? []).filter(
+        (relation) =>
+          exportedPromptIds.has(relation.sourcePromptId) &&
+          exportedPromptIds.has(relation.targetPromptId),
+      )
+    : [];
 
   const payload: Partial<DatabaseBackup> = {
     version: DB_VERSION,
     exportedAt: fullBackup.exportedAt,
     prompts: normalized.prompts ? fullBackup.prompts : [],
+    promptRelations,
     folders: normalized.folders ? fullBackup.folders : [],
     versions: normalized.versions ? fullBackup.versions : [],
     images: normalized.images ? fullBackup.images : undefined,
@@ -956,6 +991,10 @@ export function formatBackupImportError(error: unknown): string {
 
   if (normalizedMessage.includes("foreign key constraint failed")) {
     return "备份中的文件夹或 Prompt 引用关系不完整，PromptHub 无法安全导入。建议重新导出一份新备份后再试。";
+  }
+
+  if (normalizedMessage.includes("prompt relationships require")) {
+    return "该备份包含 Prompt 关系数据，需要在桌面版中导入。";
   }
 
   if (normalizedMessage.includes("file errors:")) {

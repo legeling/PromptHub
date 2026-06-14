@@ -6,6 +6,16 @@
 // Prompt 类型：文本对话 / 图片生成 / 视频生成
 export type PromptType = "text" | "image" | "video";
 export type ResourceVisibility = 'private' | 'shared';
+export type PromptRelationKind =
+  | "grouped_under"
+  | "related_to"
+  | "variant_of"
+  | "depends_on"
+  | "next_step";
+export type PromptGraphRelationKind = Exclude<
+  PromptRelationKind,
+  "grouped_under"
+>;
 
 export interface Prompt {
   id: string;
@@ -62,6 +72,16 @@ export interface PromptVersion {
   createdAt: string; // ISO 8601 format / ISO 8601 格式
 }
 
+export interface PromptRelation {
+  id: string;
+  sourcePromptId: string;
+  targetPromptId: string;
+  kind: PromptGraphRelationKind;
+  note?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // DTO Types
 export interface CreatePromptDTO {
   visibility?: ResourceVisibility;
@@ -103,6 +123,24 @@ export interface UpdatePromptDTO {
   source?: string;
   notes?: string;
   lastAiResponse?: string;
+}
+
+export interface CreatePromptRelationDTO {
+  sourcePromptId: string;
+  targetPromptId: string;
+  kind: PromptGraphRelationKind;
+  note?: string | null;
+}
+
+export interface UpdatePromptRelationDTO {
+  kind?: PromptGraphRelationKind;
+  note?: string | null;
+}
+
+export interface PromptRelationQuery {
+  promptId?: string;
+  kind?: PromptGraphRelationKind;
+  direction?: "outgoing" | "incoming" | "both";
 }
 
 export interface SearchQuery {

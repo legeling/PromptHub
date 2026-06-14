@@ -1,14 +1,18 @@
 import { ipcMain } from 'electron';
 import { IPC_CHANNELS } from '@prompthub/shared/constants';
 import { PromptDB } from '../database/prompt';
+import { PromptRelationDB } from '../database';
 import { FolderDB } from '../database/folder';
 import type Database from '../database/sqlite';
 import type {
+  CreatePromptRelationDTO,
   CreatePromptDTO,
   Folder,
   Prompt,
+  PromptRelationQuery,
   PromptVersion,
   SearchQuery,
+  UpdatePromptRelationDTO,
   UpdatePromptDTO,
 } from '@prompthub/shared/types';
 import { syncPromptWorkspaceFromDatabase } from "../services/prompt-workspace";
@@ -18,6 +22,7 @@ import { syncPromptWorkspaceFromDatabase } from "../services/prompt-workspace";
  * 注册 Prompt 相关 IPC 处理器
  */
 export function registerPromptIPC(db: PromptDB, folderDb: FolderDB, rawDb: Database.Database): void {
+  const relationDb = new PromptRelationDB(rawDb);
   const syncWorkspace = () => {
     syncPromptWorkspaceFromDatabase(db, folderDb);
   };
@@ -274,5 +279,31 @@ export function registerPromptIPC(db: PromptDB, folderDb: FolderDB, rawDb: Datab
     db.movePrompt(promptId, newParentId, newOrder);
     syncWorkspace();
     return true;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.PROMPT_RELATION_CREATE, async (_, data: CreatePromptRelationDTO) => {
+    const relation = relationDb.create(data);
+    syncWorkspace();
+    return relation;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.PROMPT_RELATION_LIST, async (_, query?: PromptRelationQuery) => {
+    return relationDb.list(query);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.PROMPT_RELATION_UPDATE, async (_, id: string, data: UpdatePromptRelationDTO) => {
+    const relation = relationDb.update(id, data);
+    if (relation) {
+      syncWorkspace();
+    }
+    return relation;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.PROMPT_RELATION_DELETE, async (_, id: string) => {
+    const deleted = relationDb.delete(id);
+    if (deleted) {
+      syncWorkspace();
+    }
+    return deleted;
   });
 }

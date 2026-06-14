@@ -56,6 +56,21 @@ CREATE TABLE IF NOT EXISTS prompt_versions (
   UNIQUE(prompt_id, version)
 );
 
+-- Prompt 关系表：保存非树状关系；grouped_under 由 prompts.parent_id/sort_order 表达
+CREATE TABLE IF NOT EXISTS prompt_relations (
+  id TEXT PRIMARY KEY,
+  source_prompt_id TEXT NOT NULL,
+  target_prompt_id TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK(kind IN ('related_to', 'variant_of', 'depends_on', 'next_step')),
+  note TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  FOREIGN KEY (source_prompt_id) REFERENCES prompts(id) ON DELETE CASCADE,
+  FOREIGN KEY (target_prompt_id) REFERENCES prompts(id) ON DELETE CASCADE,
+  CHECK(source_prompt_id != target_prompt_id),
+  UNIQUE(source_prompt_id, target_prompt_id, kind)
+);
+
 -- 文件夹表
 CREATE TABLE IF NOT EXISTS folders (
   id TEXT PRIMARY KEY,
@@ -202,6 +217,9 @@ CREATE INDEX IF NOT EXISTS idx_prompts_visibility ON prompts(visibility);
 CREATE INDEX IF NOT EXISTS idx_prompts_updated ON prompts(updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_prompts_favorite ON prompts(is_favorite);
 CREATE INDEX IF NOT EXISTS idx_versions_prompt ON prompt_versions(prompt_id);
+CREATE INDEX IF NOT EXISTS idx_prompt_relations_source ON prompt_relations(source_prompt_id);
+CREATE INDEX IF NOT EXISTS idx_prompt_relations_target ON prompt_relations(target_prompt_id);
+CREATE INDEX IF NOT EXISTS idx_prompt_relations_kind ON prompt_relations(kind);
 CREATE INDEX IF NOT EXISTS idx_folders_parent ON folders(parent_id);
 CREATE INDEX IF NOT EXISTS idx_folders_owner ON folders(owner_user_id);
 CREATE INDEX IF NOT EXISTS idx_folders_visibility ON folders(visibility);

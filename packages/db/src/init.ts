@@ -51,6 +51,7 @@ const REQUIRED_TABLES = [
   "users",
   "refresh_tokens",
   "user_settings",
+  "prompt_relations",
   "skill_versions",
   "rules",
   "rule_versions",

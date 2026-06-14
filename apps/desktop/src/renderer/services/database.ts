@@ -4,7 +4,15 @@
  * Store data using IndexedDB, support backup, restore and migration
  */
 
-import type { Prompt, PromptVersion, Folder } from "@prompthub/shared/types";
+import type {
+  CreatePromptRelationDTO,
+  Folder,
+  Prompt,
+  PromptRelation,
+  PromptRelationQuery,
+  PromptVersion,
+  UpdatePromptRelationDTO,
+} from "@prompthub/shared/types";
 import { DB_BACKUP_VERSION } from "./database-backup-format";
 
 const DB_NAME = "PromptHubDB";
@@ -411,6 +419,45 @@ export async function movePrompt(
     };
     getAllRequest.onerror = () => reject(getAllRequest.error);
   });
+}
+
+export async function createPromptRelation(
+  data: CreatePromptRelationDTO,
+): Promise<PromptRelation> {
+  if (!window.api?.prompt?.createRelation) {
+    throw new Error("Prompt relationships require the desktop database API");
+  }
+
+  return window.api.prompt.createRelation(data);
+}
+
+export async function listPromptRelations(
+  query?: PromptRelationQuery,
+): Promise<PromptRelation[]> {
+  if (!window.api?.prompt?.listRelations) {
+    return [];
+  }
+
+  return (await window.api.prompt.listRelations(query)) ?? [];
+}
+
+export async function updatePromptRelation(
+  id: string,
+  data: UpdatePromptRelationDTO,
+): Promise<PromptRelation | null> {
+  if (!window.api?.prompt?.updateRelation) {
+    throw new Error("Prompt relationships require the desktop database API");
+  }
+
+  return window.api.prompt.updateRelation(id, data);
+}
+
+export async function deletePromptRelation(id: string): Promise<boolean> {
+  if (!window.api?.prompt?.deleteRelation) {
+    return false;
+  }
+
+  return window.api.prompt.deleteRelation(id);
 }
 
 function assertPromptMoveAllowed(

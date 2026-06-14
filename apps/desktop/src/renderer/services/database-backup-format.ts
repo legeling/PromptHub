@@ -1,4 +1,10 @@
-import type { Folder, Prompt, PromptVersion, RuleBackupRecord } from "@prompthub/shared/types";
+import type {
+  Folder,
+  Prompt,
+  PromptRelation,
+  PromptVersion,
+  RuleBackupRecord,
+} from "@prompthub/shared/types";
 import type {
   Skill,
   SkillFileSnapshot,
@@ -25,6 +31,7 @@ export interface DatabaseBackup {
   version: number;
   exportedAt: string;
   prompts: Prompt[];
+  promptRelations?: PromptRelation[];
   folders: Folder[];
   versions: PromptVersion[];
   images?: { [fileName: string]: string };
@@ -93,6 +100,11 @@ export function normalizeImportedBackup(
         ? backup.exportedAt
         : new Date().toISOString(),
     prompts: Array.isArray(backup?.prompts) ? backup.prompts : [],
+    promptRelations: Array.isArray(backup?.promptRelations)
+      ? backup.promptRelations
+      : Array.isArray((backup as any)?.relations)
+        ? (backup as any).relations
+        : [],
     folders: Array.isArray(backup?.folders) ? backup.folders : [],
     versions,
     images:
@@ -162,6 +174,28 @@ function hasPromptVersionShape(value: unknown): boolean {
     typeof value.version === "number" &&
     typeof value.userPrompt === "string" &&
     typeof value.createdAt === "string"
+  );
+}
+
+function hasPromptRelationShape(value: unknown): boolean {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    typeof value.id === "string" &&
+    typeof value.sourcePromptId === "string" &&
+    typeof value.targetPromptId === "string" &&
+    value.sourcePromptId !== value.targetPromptId &&
+    (value.kind === "related_to" ||
+      value.kind === "variant_of" ||
+      value.kind === "depends_on" ||
+      value.kind === "next_step") &&
+    typeof value.createdAt === "string" &&
+    typeof value.updatedAt === "string" &&
+    (value.note === undefined ||
+      value.note === null ||
+      typeof value.note === "string")
   );
 }
 
@@ -249,6 +283,7 @@ function hasRuleShape(value: unknown): boolean {
  */
 export interface ImportSkippedStats {
   prompts: number;
+  promptRelations: number;
   folders: number;
   versions: number;
   rules: number;
@@ -265,6 +300,7 @@ export interface ParsedBackup {
 export function hasMeaningfulBackupContent(backup: DatabaseBackup): boolean {
   return (
     backup.prompts.length > 0 ||
+    (backup.promptRelations?.length ?? 0) > 0 ||
     backup.folders.length > 0 ||
     backup.versions.length > 0 ||
     (backup.rules?.length ?? 0) > 0 ||
@@ -281,6 +317,7 @@ export function hasMeaningfulBackupContent(backup: DatabaseBackup): boolean {
 export function createEmptySkippedStats(): ImportSkippedStats {
   return {
     prompts: 0,
+    promptRelations: 0,
     folders: 0,
     versions: 0,
     rules: 0,
@@ -293,6 +330,7 @@ export function createEmptySkippedStats(): ImportSkippedStats {
 export function hasAnySkipped(stats: ImportSkippedStats): boolean {
   return (
     stats.prompts > 0 ||
+    stats.promptRelations > 0 ||
     stats.folders > 0 ||
     stats.versions > 0 ||
     stats.rules > 0 ||
@@ -310,6 +348,7 @@ function validateImportedBackupShape(backup: DatabaseBackup): void {
   if (!backup.prompts.every(hasPromptShape)) {
     throw new Error("Invalid PromptHub backup: prompts payload is malformed.");
   }
+  const backupPromptIds = new Set(backup.prompts.map((prompt) => prompt.id));
 
   if (!backup.folders.every(hasFolderShape)) {
     throw new Error("Invalid PromptHub backup: folders payload is malformed.");
@@ -317,6 +356,18 @@ function validateImportedBackupShape(backup: DatabaseBackup): void {
 
   if (!backup.versions.every(hasPromptVersionShape)) {
     throw new Error("Invalid PromptHub backup: versions payload is malformed.");
+  }
+
+  if (
+    backup.promptRelations &&
+    (!backup.promptRelations.every(hasPromptRelationShape) ||
+      !backup.promptRelations.every(
+        (relation) =>
+          backupPromptIds.has(relation.sourcePromptId) &&
+          backupPromptIds.has(relation.targetPromptId),
+      ))
+  ) {
+    throw new Error("Invalid PromptHub backup: prompt relations payload is malformed.");
   }
 
   if (backup.rules && !backup.rules.every(hasRuleShape)) {
@@ -404,6 +455,17 @@ export function sanitizeImportedBackup(
   );
   skipped.versions = originalVersionsLen - validVersions.length;
 
+  const originalPromptRelationsLen = raw.promptRelations?.length ?? 0;
+  const structurallyValidPromptRelations =
+    raw.promptRelations?.filter(hasPromptRelationShape) ?? [];
+  const validPromptRelations = structurallyValidPromptRelations.filter(
+    (relation) =>
+      validPromptIds.has(relation.sourcePromptId) &&
+      validPromptIds.has(relation.targetPromptId),
+  );
+  skipped.promptRelations =
+    originalPromptRelationsLen - validPromptRelations.length;
+
   let validRules = raw.rules;
   if (raw.rules) {
     const originalRulesLen = raw.rules.length;
@@ -459,6 +521,7 @@ export function sanitizeImportedBackup(
     backup: {
       ...raw,
       prompts: validPrompts,
+      promptRelations: validPromptRelations,
       folders: validFolders,
       versions: validVersions,
       rules: validRules,
@@ -483,6 +546,7 @@ function parseEnvelope(text: string): DatabaseBackup {
 
   const hasKnownRootFields =
     "prompts" in parsed ||
+    "promptRelations" in parsed ||
     "folders" in parsed ||
     "versions" in parsed ||
     "skills" in parsed ||

@@ -82,6 +82,15 @@
     "variables": "变量",
     "preview": "预览",
     "copy": "复制 Prompt",
+    "relationships": {
+      "menuLabel": "选择关系",
+      "grouped_under": "设为分组",
+      "related_to": "关联",
+      "variant_of": "变体",
+      "depends_on": "依赖",
+      "next_step": "下一步",
+      "cancel": "取消关系操作"
+    },
     "duplicate": "创建副本",
     "duplicateSuffix": "副本",
     "filterByTag": "按标签筛选",

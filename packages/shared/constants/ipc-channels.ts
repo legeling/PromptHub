@@ -27,6 +27,10 @@ export const IPC_CHANNELS = {
    */
   PROMPT_MIGRATE_IDB_BATCH: "prompt:migrateIdbBatch",
   PROMPT_MOVE: "prompt:move",
+  PROMPT_RELATION_CREATE: "promptRelation:create",
+  PROMPT_RELATION_LIST: "promptRelation:list",
+  PROMPT_RELATION_UPDATE: "promptRelation:update",
+  PROMPT_RELATION_DELETE: "promptRelation:delete",
 
   // Version
   VERSION_GET_ALL: "version:getAll",

@@ -12,6 +12,7 @@ import { installWindowMocks } from "../../helpers/window";
 const state = vi.hoisted(() => ({
   folders: [] as any[],
   prompts: [] as any[],
+  promptRelations: [] as any[],
   promptVersions: new Map<string, any[]>(),
   skills: [] as any[],
   skillVersions: new Map<string, any[]>(),
@@ -23,6 +24,7 @@ vi.mock("../../../src/renderer/services/database", () => ({
   clearDatabase: async () => undefined,
   getAllFolders: async () => state.folders,
   getAllPrompts: async () => state.prompts,
+  listPromptRelations: async () => state.promptRelations,
   getDatabase: async () => {
     throw new Error("IndexedDB fallback should not be used in filesystem integration test");
   },
@@ -124,6 +126,37 @@ describe("database-backup filesystem integration", () => {
         createdAt: "2026-04-16T00:00:00.000Z",
         updatedAt: "2026-04-16T00:00:00.000Z",
       },
+      {
+        id: "prompt-2",
+        title: "Integration Context",
+        description: "Relation target",
+        promptType: "text",
+        systemPrompt: "",
+        userPrompt: "Context prompt.",
+        variables: [],
+        tags: ["backup"],
+        folderId: "folder-1",
+        images: [],
+        videos: [],
+        isFavorite: false,
+        isPinned: false,
+        version: 1,
+        currentVersion: 1,
+        usageCount: 0,
+        createdAt: "2026-04-16T00:00:00.000Z",
+        updatedAt: "2026-04-16T00:00:00.000Z",
+      },
+    ];
+    state.promptRelations = [
+      {
+        id: "relation-1",
+        sourcePromptId: "prompt-1",
+        targetPromptId: "prompt-2",
+        kind: "related_to",
+        note: "Shared context",
+        createdAt: "2026-04-16T00:00:00.000Z",
+        updatedAt: "2026-04-16T00:00:00.000Z",
+      },
     ];
     state.promptVersions = new Map([
       [
@@ -213,10 +246,23 @@ describe("database-backup filesystem integration", () => {
           delete: vi.fn(async (promptId: string) => {
             state.prompts = state.prompts.filter((prompt) => prompt.id !== promptId);
             state.promptVersions.delete(promptId);
+            state.promptRelations = state.promptRelations.filter(
+              (relation) =>
+                relation.sourcePromptId !== promptId &&
+                relation.targetPromptId !== promptId,
+            );
             return true;
           }),
           insertDirect: vi.fn(async (prompt: any) => {
             state.prompts.push(prompt);
+          }),
+          createRelation: vi.fn(async (relation: any) => {
+            state.promptRelations.push({
+              id: `restored-${state.promptRelations.length + 1}`,
+              createdAt: "2026-04-16T00:00:00.000Z",
+              updatedAt: "2026-04-16T00:00:00.000Z",
+              ...relation,
+            });
           }),
           syncWorkspace: vi.fn(async () => undefined),
         },
@@ -336,6 +382,13 @@ describe("database-backup filesystem integration", () => {
         note: "Initial snapshot",
       }),
     ]);
+    expect(backup.promptRelations).toEqual([
+      expect.objectContaining({
+        sourcePromptId: "prompt-1",
+        targetPromptId: "prompt-2",
+        kind: "related_to",
+      }),
+    ]);
     expect(backup.images).toEqual({
       "integration-image.png": Buffer.from("integration-image-bytes").toString("base64"),
     });
@@ -356,6 +409,7 @@ describe("database-backup filesystem integration", () => {
 
     state.prompts = [];
     state.folders = [];
+    state.promptRelations = [];
     state.promptVersions.clear();
     state.skills = [];
     state.skillVersions.clear();
@@ -366,10 +420,22 @@ describe("database-backup filesystem integration", () => {
 
     await restoreFromBackup(backup);
 
-    expect(state.prompts).toEqual([
+    expect(state.prompts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: "Integration Prompt",
+          notes: "Filesystem backup note",
+        }),
+        expect.objectContaining({
+          title: "Integration Context",
+        }),
+      ]),
+    );
+    expect(state.promptRelations).toEqual([
       expect.objectContaining({
-        title: "Integration Prompt",
-        notes: "Filesystem backup note",
+        sourcePromptId: "prompt-1",
+        targetPromptId: "prompt-2",
+        kind: "related_to",
       }),
     ]);
     expect(state.folders).toEqual([

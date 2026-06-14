@@ -69,6 +69,68 @@ describe("database-backup-format", () => {
     expect(backup.versions).toEqual([]);
   });
 
+  it("parses prompt relations in strict mode", () => {
+    const backup = parsePromptHubBackupFileContent(
+      JSON.stringify({
+        exportedAt: "2026-04-07T00:00:00.000Z",
+        kind: "prompthub-backup",
+        payload: {
+          exportedAt: "2026-04-07T00:00:00.000Z",
+          version: 1,
+          prompts: [
+            {
+              id: "prompt-1",
+              title: "Source",
+              userPrompt: "Source body",
+              variables: [],
+              tags: [],
+              isFavorite: false,
+              isPinned: false,
+              version: 1,
+              currentVersion: 1,
+              usageCount: 0,
+              createdAt: "2026-04-07T00:00:00.000Z",
+              updatedAt: "2026-04-07T00:00:00.000Z",
+            },
+            {
+              id: "prompt-2",
+              title: "Target",
+              userPrompt: "Target body",
+              variables: [],
+              tags: [],
+              isFavorite: false,
+              isPinned: false,
+              version: 1,
+              currentVersion: 1,
+              usageCount: 0,
+              createdAt: "2026-04-07T00:00:00.000Z",
+              updatedAt: "2026-04-07T00:00:00.000Z",
+            },
+          ],
+          folders: [],
+          versions: [],
+          promptRelations: [
+            {
+              id: "relation-1",
+              sourcePromptId: "prompt-1",
+              targetPromptId: "prompt-2",
+              kind: "related_to",
+              createdAt: "2026-04-07T00:00:00.000Z",
+              updatedAt: "2026-04-07T00:00:00.000Z",
+            },
+          ],
+        },
+      }),
+    );
+
+    expect(backup.promptRelations).toEqual([
+      expect.objectContaining({
+        id: "relation-1",
+        kind: "related_to",
+      }),
+    ]);
+  });
+
   it("normalizes a legacy raw backup object with missing optional collections", () => {
     const backup = parsePromptHubBackupFileContent(
       JSON.stringify({
@@ -193,6 +255,59 @@ describe("database-backup-format", () => {
     expect(backup.versions[0]?.id).toBe("version-keep");
     expect(skipped.prompts).toBe(1);
     expect(skipped.versions).toBe(1); // orphan dropped
+  });
+
+  it("lenient parser drops prompt relations that reference dropped prompts", () => {
+    const keptPrompt = {
+      id: "prompt-keep",
+      title: "Keep",
+      userPrompt: "Body",
+      variables: [],
+      tags: [],
+      isFavorite: false,
+      isPinned: false,
+      version: 1,
+      currentVersion: 1,
+      usageCount: 0,
+      createdAt: "2026-04-07T00:00:00.000Z",
+      updatedAt: "2026-04-07T00:00:00.000Z",
+    };
+
+    const { backup, skipped } = parsePromptHubBackupFile(
+      JSON.stringify({
+        kind: "prompthub-backup",
+        exportedAt: "2026-04-07T00:00:00.000Z",
+        payload: {
+          exportedAt: "2026-04-07T00:00:00.000Z",
+          version: 1,
+          prompts: [keptPrompt, { id: "prompt-drop" }],
+          folders: [],
+          versions: [],
+          promptRelations: [
+            {
+              id: "relation-keep",
+              sourcePromptId: "prompt-keep",
+              targetPromptId: "prompt-keep-2",
+              kind: "related_to",
+              createdAt: "2026-04-07T00:00:00.000Z",
+              updatedAt: "2026-04-07T00:00:00.000Z",
+            },
+            {
+              id: "relation-drop",
+              sourcePromptId: "prompt-keep",
+              targetPromptId: "prompt-drop",
+              kind: "related_to",
+              createdAt: "2026-04-07T00:00:00.000Z",
+              updatedAt: "2026-04-07T00:00:00.000Z",
+            },
+          ],
+        },
+      }),
+    );
+
+    expect(backup.promptRelations).toEqual([]);
+    expect(skipped.prompts).toBe(1);
+    expect(skipped.promptRelations).toBe(2);
   });
 
   it("lenient parser returns all-zero skipped counts when the payload is fully valid", () => {

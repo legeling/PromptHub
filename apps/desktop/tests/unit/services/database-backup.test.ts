@@ -15,6 +15,7 @@ const clearDatabaseMock = vi.fn().mockResolvedValue(undefined);
 const getDatabaseMock = vi.fn();
 const getAllFoldersMock = vi.fn();
 const getAllPromptsMock = vi.fn();
+const listPromptRelationsMock = vi.fn();
 const restoreAiConfigSnapshotMock = vi.fn();
 const restoreSettingsStateSnapshotMock = vi.fn();
 const getAiConfigSnapshotMock = vi.fn();
@@ -25,6 +26,7 @@ vi.mock("../../../src/renderer/services/database", () => ({
   getAllFolders: () => getAllFoldersMock(),
   getAllPrompts: () => getAllPromptsMock(),
   getDatabase: () => getDatabaseMock(),
+  listPromptRelations: () => listPromptRelationsMock(),
 }));
 
 vi.mock("../../../src/renderer/services/settings-snapshot", () => ({
@@ -78,6 +80,7 @@ describe("database-backup restore", () => {
     vi.clearAllMocks();
     getAllFoldersMock.mockResolvedValue([]);
     getAllPromptsMock.mockResolvedValue([]);
+    listPromptRelationsMock.mockResolvedValue([]);
     getAiConfigSnapshotMock.mockReturnValue(undefined);
     getSettingsStateSnapshotMock.mockReturnValue(undefined);
     getDatabaseMock.mockResolvedValue({
@@ -521,6 +524,22 @@ describe("database-backup restore", () => {
       images: ["image-1.png"],
       videos: ["video-1.mp4"],
     };
+    const relatedPrompt = {
+      ...prompt,
+      id: "prompt-2",
+      title: "Related Prompt",
+      images: [],
+      videos: [],
+    };
+    const promptRelation = {
+      id: "relation-1",
+      sourcePromptId: "prompt-1",
+      targetPromptId: "prompt-2",
+      kind: "depends_on",
+      note: "Prompt 1 needs Prompt 2",
+      createdAt: "2026-04-07T00:00:00.000Z",
+      updatedAt: "2026-04-07T00:00:00.000Z",
+    };
     const folder = {
       id: "folder-1",
       name: "Folder 1",
@@ -561,8 +580,9 @@ describe("database-backup restore", () => {
       source: "manual",
     };
 
-    getAllPromptsMock.mockResolvedValue([prompt]);
+    getAllPromptsMock.mockResolvedValue([prompt, relatedPrompt]);
     getAllFoldersMock.mockResolvedValue([folder]);
+    listPromptRelationsMock.mockResolvedValue([promptRelation]);
     getDatabaseMock.mockResolvedValue({
       transaction: () => createTransactionMock([version]),
     });
@@ -578,9 +598,10 @@ describe("database-backup restore", () => {
     installWindowMocks({
       api: {
         prompt: {
-          getAll: vi.fn().mockResolvedValue([prompt]),
+          getAll: vi.fn().mockResolvedValue([prompt, relatedPrompt]),
           delete: vi.fn().mockResolvedValue(true),
           insertDirect: vi.fn().mockResolvedValue(undefined),
+          createRelation: vi.fn().mockResolvedValue(promptRelation),
           syncWorkspace: vi.fn().mockResolvedValue(undefined),
         },
         folder: {
@@ -620,7 +641,8 @@ describe("database-backup restore", () => {
 
     const backup = await exportDatabase();
 
-    expect(backup.prompts).toEqual([prompt]);
+    expect(backup.prompts).toEqual([prompt, relatedPrompt]);
+    expect(backup.promptRelations).toEqual([promptRelation]);
     expect(backup.folders).toEqual([folder]);
     expect(backup.versions).toEqual([version]);
     expect(backup.images).toEqual({ "image-1.png": "base64-image" });
@@ -645,9 +667,17 @@ describe("database-backup restore", () => {
 
     expect(window.api.folder.delete).toHaveBeenCalledWith("folder-1");
     expect(window.api.prompt.delete).toHaveBeenCalledWith("prompt-1");
+    expect(window.api.prompt.delete).toHaveBeenCalledWith("prompt-2");
     expect(window.api.folder.insertDirect).toHaveBeenCalledWith(folder);
     expect(window.api.prompt.insertDirect).toHaveBeenCalledWith(prompt);
+    expect(window.api.prompt.insertDirect).toHaveBeenCalledWith(relatedPrompt);
     expect(window.api.version.insertDirect).toHaveBeenCalledWith(version);
+    expect(window.api.prompt.createRelation).toHaveBeenCalledWith({
+      sourcePromptId: "prompt-1",
+      targetPromptId: "prompt-2",
+      kind: "depends_on",
+      note: "Prompt 1 needs Prompt 2",
+    });
     expect(window.api.prompt.syncWorkspace).toHaveBeenCalledTimes(1);
     expect(window.electron.saveImageBase64).toHaveBeenCalledWith(
       "image-1.png",

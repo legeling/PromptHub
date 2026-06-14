@@ -81,6 +81,15 @@
     "variables": "變數",
     "preview": "預覽",
     "copy": "複製 Prompt",
+    "relationships": {
+      "menuLabel": "選擇關係",
+      "grouped_under": "設為分組",
+      "related_to": "關聯",
+      "variant_of": "變體",
+      "depends_on": "依賴",
+      "next_step": "下一步",
+      "cancel": "取消關係操作"
+    },
     "duplicate": "建立副本",
     "duplicateSuffix": "副本",
     "filterByTag": "依標籤篩選",

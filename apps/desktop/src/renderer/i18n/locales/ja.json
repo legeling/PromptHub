@@ -81,6 +81,15 @@
     "variables": "変数",
     "preview": "プレビュー",
     "copy": "Prompt をコピー",
+    "relationships": {
+      "menuLabel": "関係を選択",
+      "grouped_under": "グループ化",
+      "related_to": "関連",
+      "variant_of": "バリアント",
+      "depends_on": "依存",
+      "next_step": "次のステップ",
+      "cancel": "関係操作をキャンセル"
+    },
     "duplicate": "複製を作成",
     "duplicateSuffix": "複製",
     "filterByTag": "タグで絞り込む",

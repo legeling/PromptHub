@@ -1,9 +1,12 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type {
-  Prompt,
   CreatePromptDTO,
+  CreatePromptRelationDTO,
+  Prompt,
+  PromptRelation,
   UpdatePromptDTO,
+  UpdatePromptRelationDTO,
 } from "@prompthub/shared/types";
 import * as db from "../services/database";
 import { scheduleAllSaveSync } from "../services/webdav-save-sync";
@@ -20,6 +23,7 @@ export type KanbanColumns = 2 | 3 | 4;
 
 interface PromptState {
   prompts: Prompt[];
+  relations: PromptRelation[];
   selectedId: string | null;
   selectedIds: string[];
   lastSelectedId: string | null;
@@ -42,6 +46,10 @@ interface PromptState {
   fetchPrompts: () => Promise<void>;
   createPrompt: (data: CreatePromptDTO) => Promise<Prompt>;
   updatePrompt: (id: string, data: UpdatePromptDTO) => Promise<void>;
+  fetchRelations: () => Promise<void>;
+  createRelation: (data: CreatePromptRelationDTO) => Promise<PromptRelation>;
+  updateRelation: (id: string, data: UpdatePromptRelationDTO) => Promise<void>;
+  deleteRelation: (id: string) => Promise<void>;
   movePrompts: (ids: string[], folderId: string) => Promise<void>;
   deletePrompt: (id: string) => Promise<void>;
   selectPrompt: (id: string | null) => void;
@@ -67,6 +75,7 @@ export const usePromptStore = create<PromptState>()(
   persist(
     (set, get) => ({
       prompts: [],
+      relations: [],
       selectedId: null,
       selectedIds: [],
       lastSelectedId: null,
@@ -84,8 +93,11 @@ export const usePromptStore = create<PromptState>()(
         set({ isLoading: true });
         try {
           // Get data from IndexedDB
-          const prompts = await db.getAllPrompts();
-          set({ prompts });
+          const [prompts, relations] = await Promise.all([
+            db.getAllPrompts(),
+            db.listPromptRelations(),
+          ]);
+          set({ prompts, relations });
         } catch (error) {
           console.error("Failed to fetch prompts:", error);
         } finally {
@@ -123,6 +135,43 @@ export const usePromptStore = create<PromptState>()(
         }
       },
 
+      fetchRelations: async () => {
+        const relations = await db.listPromptRelations();
+        set({ relations });
+      },
+
+      createRelation: async (data) => {
+        const relation = await db.createPromptRelation(data);
+        set((state) => ({
+          relations: [
+            relation,
+            ...state.relations.filter((item) => item.id !== relation.id),
+          ],
+        }));
+        scheduleAllSaveSync("prompt:relation:create");
+        return relation;
+      },
+
+      updateRelation: async (id, data) => {
+        const relation = await db.updatePromptRelation(id, data);
+        if (!relation) return;
+        set((state) => ({
+          relations: state.relations.map((item) =>
+            item.id === id ? relation : item,
+          ),
+        }));
+        scheduleAllSaveSync("prompt:relation:update");
+      },
+
+      deleteRelation: async (id) => {
+        const deleted = await db.deletePromptRelation(id);
+        if (!deleted) return;
+        set((state) => ({
+          relations: state.relations.filter((item) => item.id !== id),
+        }));
+        scheduleAllSaveSync("prompt:relation:delete");
+      },
+
       movePrompts: async (ids, folderId) => {
         await db.movePrompts(ids, folderId);
         set((state) => ({
@@ -139,6 +188,10 @@ export const usePromptStore = create<PromptState>()(
         await db.deletePrompt(id);
         set((state) => ({
           prompts: state.prompts.filter((p) => p.id !== id),
+          relations: state.relations.filter(
+            (relation) =>
+              relation.sourcePromptId !== id && relation.targetPromptId !== id,
+          ),
           selectedId: state.selectedId === id ? null : state.selectedId,
           selectedIds: state.selectedIds.filter(
             (selectedId) => selectedId !== id,

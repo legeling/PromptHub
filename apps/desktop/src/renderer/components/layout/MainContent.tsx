@@ -350,6 +350,7 @@ export function MainContent() {
 function PromptSkillMainContent() {
   const { t, i18n } = useTranslation();
   const prompts = usePromptStore((state) => state.prompts);
+  const relations = usePromptStore((state) => state.relations);
   const selectedId = usePromptStore((state) => state.selectedId);
   const selectedIds = usePromptStore((state) => state.selectedIds);
   const lastSelectedId = usePromptStore((state) => state.lastSelectedId);
@@ -360,6 +361,7 @@ function PromptSkillMainContent() {
   const togglePinned = usePromptStore((state) => state.togglePinned);
   const deletePrompt = usePromptStore((state) => state.deletePrompt);
   const updatePrompt = usePromptStore((state) => state.updatePrompt);
+  const createRelation = usePromptStore((state) => state.createRelation);
   const searchQuery = usePromptStore((state) => state.searchQuery);
   const filterTags = usePromptStore((state) => state.filterTags);
   const toggleFilterTag = usePromptStore((state) => state.toggleFilterTag);
@@ -1989,6 +1991,7 @@ function PromptSkillMainContent() {
           <Suspense fallback={loadingFallback}>
             <PromptListView
               prompts={visiblePrompts}
+              relations={relations}
               selectedId={selectedId}
               selectedIds={selectedIds}
               onSelect={(id) => selectPrompt(id)}
@@ -1996,6 +1999,7 @@ function PromptSkillMainContent() {
               onCopy={handleCopyPrompt}
               onContextMenu={handleContextMenu}
               onMovePrompt={movePrompt}
+              onCreateRelation={createRelation}
             />
           </Suspense>
         )}

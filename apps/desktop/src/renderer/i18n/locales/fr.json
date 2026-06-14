@@ -81,6 +81,15 @@
     "variables": "Variables",
     "preview": "Aperçu",
     "copy": "Copier le Prompt",
+    "relationships": {
+      "menuLabel": "Choisir la relation",
+      "grouped_under": "Grouper sous",
+      "related_to": "Lié",
+      "variant_of": "Variante",
+      "depends_on": "Dépend de",
+      "next_step": "Étape suivante",
+      "cancel": "Annuler l'action de relation"
+    },
     "duplicate": "Créer un doublon",
     "duplicateSuffix": "Copie",
     "filterByTag": "Filtrer par tag",
