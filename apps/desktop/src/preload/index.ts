@@ -5,6 +5,7 @@ import { cliApi } from "./api/cli";
 import { folderApi } from "./api/folder";
 import { ioApi } from "./api/io";
 import { mcpApi } from "./api/mcp";
+import { pluginApi } from "./api/plugin";
 import { promptApi } from "./api/prompt";
 import { rulesApi } from "./api/rules";
 import { settingsApi } from "./api/settings";
@@ -111,6 +112,7 @@ const api = {
   ai: aiApi,
   cli: cliApi,
   mcp: mcpApi,
+  plugin: pluginApi,
 
   // Listen to main process events (with whitelist)
   // 监听主进程事件（使用白名单）

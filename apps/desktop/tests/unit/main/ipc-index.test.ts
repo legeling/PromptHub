@@ -14,6 +14,8 @@ const registerSkillIPCMock = vi.fn();
 const registerAIIPCMock = vi.fn();
 const registerSecurityIPCMock = vi.fn();
 const registerBackupIPCMock = vi.fn();
+const registerMcpIPCMock = vi.fn();
+const registerPluginIPCMock = vi.fn();
 
 vi.mock("electron", () => ({
   ipcMain: {
@@ -31,6 +33,8 @@ vi.mock("../../../src/main/ipc/skill.ipc", () => ({ registerSkillIPC: registerSk
 vi.mock("../../../src/main/ipc/ai.ipc", () => ({ registerAIIPC: registerAIIPCMock }));
 vi.mock("../../../src/main/ipc/security.ipc", () => ({ registerSecurityIPC: registerSecurityIPCMock }));
 vi.mock("../../../src/main/ipc/backup.ipc", () => ({ registerBackupIPC: registerBackupIPCMock }));
+vi.mock("../../../src/main/ipc/mcp.ipc", () => ({ registerMcpIPC: registerMcpIPCMock }));
+vi.mock("../../../src/main/ipc/plugin.ipc", () => ({ registerPluginIPC: registerPluginIPCMock }));
 
 describe("ipc index registration order", () => {
   beforeEach(() => {

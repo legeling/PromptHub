@@ -73,7 +73,7 @@ const DEFAULT_BACKGROUND_IMAGE_OPACITY = 1;
 const DEFAULT_BACKGROUND_IMAGE_BLUR = 0;
 const LEGACY_BACKGROUND_IMAGE_BLUR_DEFAULT = 14;
 const LOCAL_IMAGE_PROTOCOL_PREFIX = "local-image://";
-export const DESKTOP_HOME_MODULES = ["prompt", "skill", "mcp", "rules"] as const;
+export const DESKTOP_HOME_MODULES = ["prompt", "skill", "mcp", "plugin", "rules"] as const;
 export type DesktopHomeModule = (typeof DESKTOP_HOME_MODULES)[number];
 type ShortcutMode = "global" | "local";
 const DEFAULT_SHORTCUT_MODES: Record<string, ShortcutMode> = {
@@ -367,13 +367,19 @@ function addNewDefaultDesktopModules(
     modules.includes("prompt") &&
     modules.includes("skill") &&
     modules.includes("rules");
-  if (!hasLegacyDefaultModules || modules.includes("mcp")) {
+  if (!hasLegacyDefaultModules) {
     return modules;
   }
 
   const next = [...modules];
-  const skillIndex = next.indexOf("skill");
-  next.splice(skillIndex === -1 ? next.length : skillIndex + 1, 0, "mcp");
+  if (!next.includes("mcp")) {
+    const skillIndex = next.indexOf("skill");
+    next.splice(skillIndex === -1 ? next.length : skillIndex + 1, 0, "mcp");
+  }
+  if (!next.includes("plugin")) {
+    const mcpIndex = next.indexOf("mcp");
+    next.splice(mcpIndex === -1 ? next.length : mcpIndex + 1, 0, "plugin");
+  }
   return next;
 }
 

@@ -250,6 +250,13 @@ export function AppearanceSettings() {
         "MCP servers, market templates and agent targets",
       ),
     },
+    plugin: {
+      label: t("plugin.title", "Plugins"),
+      description: t(
+        "settings.desktopModulePluginsDesc",
+        "Plugin bundles, store sources and compatible agent targets",
+      ),
+    },
     rules: {
       label: t("rules.title", "Rules"),
       description: t(

@@ -27,6 +27,7 @@ describe("settings desktop workspace actions", () => {
     useSettingsStore.getState().toggleDesktopHomeModule("prompt");
     useSettingsStore.getState().toggleDesktopHomeModule("skill");
     useSettingsStore.getState().toggleDesktopHomeModule("mcp");
+    useSettingsStore.getState().toggleDesktopHomeModule("plugin");
 
     expect(useSettingsStore.getState().desktopHomeModules).toEqual(["rules"]);
 
@@ -82,7 +83,7 @@ describe("settings desktop workspace actions", () => {
     ]);
   });
 
-  it("adds MCP to old persisted default desktop modules during hydration", async () => {
+  it("adds MCP and Plugin to old persisted default desktop modules during hydration", async () => {
     localStorage.setItem(
       "prompthub-settings",
       JSON.stringify({
@@ -100,6 +101,7 @@ describe("settings desktop workspace actions", () => {
     expect(useSettingsStore.getState().desktopHomeModules).toEqual([
       "skill",
       "mcp",
+      "plugin",
       "prompt",
       "rules",
     ]);
@@ -111,13 +113,14 @@ describe("settings desktop workspace actions", () => {
     );
 
     useSettingsStore.setState({
-      desktopHomeModules: ["prompt", "skill", "mcp", "rules"],
+      desktopHomeModules: ["prompt", "skill", "mcp", "plugin", "rules"],
     });
     useSettingsStore.getState().toggleDesktopHomeModule("mcp");
 
     expect(useSettingsStore.getState().desktopHomeModules).toEqual([
       "prompt",
       "skill",
+      "plugin",
       "rules",
     ]);
   });

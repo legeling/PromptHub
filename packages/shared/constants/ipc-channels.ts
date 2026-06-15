@@ -177,6 +177,15 @@ export const IPC_CHANNELS = {
   MCP_HEALTH_CHECK_ALL: "mcp:health:checkAll",
   MCP_ENV_IMPORT: "mcp:env:import",
 
+  // Plugins
+  PLUGIN_LIBRARY_GET: "plugin:library:get",
+  PLUGIN_MARKET_LIST: "plugin:market:list",
+  PLUGIN_MARKET_SOURCES: "plugin:market:sources",
+  PLUGIN_MARKET_PREVIEW: "plugin:market:preview",
+  PLUGIN_MARKET_INSTALL: "plugin:market:install",
+  PLUGIN_DELETE: "plugin:delete",
+  PLUGIN_TARGET_MATRIX: "plugin:target:matrix",
+
   // Data Recovery
   DATA_CHECK_RECOVERY: "data:checkRecovery",
   DATA_PREVIEW_RECOVERY: "data:previewRecovery",

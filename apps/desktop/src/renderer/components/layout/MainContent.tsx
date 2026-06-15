@@ -22,6 +22,7 @@ import { Modal } from '../ui/Modal';
 const SkillManager = lazy(() => import('../skill/SkillManager').then(m => ({ default: m.SkillManager })));
 const RulesManager = lazy(() => import('../rules/RulesManager').then(m => ({ default: m.RulesManager })));
 const McpManager = lazy(() => import('../mcp/McpManager').then(m => ({ default: m.McpManager })));
+const PluginManager = lazy(() => import('../plugin/PluginManager').then(m => ({ default: m.PluginManager })));
 const EditPromptModal = lazy(() => import('../prompt/EditPromptModal').then(m => ({ default: m.EditPromptModal })));
 const PromptQuickRewriteDialog = lazy(() => import('../prompt/PromptQuickRewriteDialog').then(m => ({ default: m.PromptQuickRewriteDialog })));
 const PromptTableView = lazy(() => import('../prompt/PromptTableView').then(m => ({ default: m.PromptTableView })));
@@ -670,6 +671,10 @@ export function MainContent() {
 
   if (appModule === 'mcp') {
     return <Suspense fallback={loadingFallback}><McpManager /></Suspense>;
+  }
+
+  if (appModule === 'plugin') {
+    return <Suspense fallback={loadingFallback}><PluginManager /></Suspense>;
   }
 
   return <PromptSkillMainContent />;

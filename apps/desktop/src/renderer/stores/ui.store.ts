@@ -3,7 +3,7 @@ import { persist } from "zustand/middleware";
 
 type ViewMode = "prompt" | "skill";
 
-export type AppModule = ViewMode | "rules" | "mcp";
+export type AppModule = ViewMode | "rules" | "mcp" | "plugin";
 export type SettingsSectionId =
   | "web"
   | "devices"
@@ -45,6 +45,7 @@ function normalizeAppModule(value: unknown): AppModule {
   return value === "skill" ||
     value === "rules" ||
     value === "mcp" ||
+    value === "plugin" ||
     value === "prompt"
     ? value
     : "prompt";

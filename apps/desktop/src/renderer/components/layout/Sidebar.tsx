@@ -32,6 +32,7 @@ import {
   FolderOpenIcon,
   ServerIcon,
   GitBranchIcon,
+  PackageIcon,
 } from "lucide-react";
 import { useFolderStore } from "../../stores/folder.store";
 import { usePromptStore } from "../../stores/prompt.store";
@@ -46,6 +47,7 @@ import { ColumnResizer } from "../ui/ColumnResizer";
 import { Spinner } from "../ui/Spinner";
 import { useSkillStore } from "../../stores/skill.store";
 import { useMcpStore } from "../../stores/mcp.store";
+import { usePluginStore } from "../../stores/plugin.store";
 import { FolderModal, PrivateFolderUnlockModal } from "../folder";
 import { useTranslation } from "react-i18next";
 import type { Folder } from "@prompthub/shared/types";
@@ -275,6 +277,15 @@ export function Sidebar({
   const [isMcpStoreGroupExpanded, setIsMcpStoreGroupExpanded] = useState(
     () => mcpSelectedTab === "market",
   );
+  const pluginLibrary = usePluginStore((state) => state.library);
+  const pluginMarketEntries = usePluginStore((state) => state.marketEntries);
+  const pluginMarketSources = usePluginStore((state) => state.marketSources);
+  const pluginTargetMatrix = usePluginStore((state) => state.targetMatrix);
+  const pluginSelectedTab = usePluginStore((state) => state.selectedTab);
+  const setPluginSelectedTab = usePluginStore((state) => state.setSelectedTab);
+  const [isPluginStoreGroupExpanded, setIsPluginStoreGroupExpanded] = useState(
+    () => pluginSelectedTab === "market",
+  );
   const claudeCodeStoreCount = useMemo(
     () => getRemoteStoreSkillCount(remoteStoreEntries["claude-code"]),
     [remoteStoreEntries],
@@ -391,6 +402,12 @@ export function Sidebar({
   }, [mcpSelectedTab]);
 
   useEffect(() => {
+    if (pluginSelectedTab === "market") {
+      setIsPluginStoreGroupExpanded(true);
+    }
+  }, [pluginSelectedTab]);
+
+  useEffect(() => {
     if (
       activeModule !== "skill" ||
       !runtimeCapabilities.skillLocalScan ||
@@ -434,19 +451,26 @@ export function Sidebar({
       normalized.includes("prompt") &&
       normalized.includes("skill") &&
       normalized.includes("rules") &&
-      !normalized.includes("mcp");
+      (!normalized.includes("mcp") || !normalized.includes("plugin"));
     if (!isLegacyDefault) {
       return normalized;
     }
     const next = [...normalized];
-    const skillIndex = next.indexOf("skill");
-    next.splice(skillIndex === -1 ? next.length : skillIndex + 1, 0, "mcp");
+    if (!next.includes("mcp")) {
+      const skillIndex = next.indexOf("skill");
+      next.splice(skillIndex === -1 ? next.length : skillIndex + 1, 0, "mcp");
+    }
+    if (!next.includes("plugin")) {
+      const mcpIndex = next.indexOf("mcp");
+      next.splice(mcpIndex === -1 ? next.length : mcpIndex + 1, 0, "plugin");
+    }
     return next;
   }, [desktopHomeModules]);
   const hasVisibleModule = visibleDesktopModules.length > 0;
   const isPromptModuleVisible = visibleDesktopModules.includes("prompt");
   const isSkillModuleVisible = visibleDesktopModules.includes("skill");
   const isMcpModuleVisible = visibleDesktopModules.includes("mcp");
+  const isPluginModuleVisible = visibleDesktopModules.includes("plugin");
   const isRulesModuleVisible = visibleDesktopModules.includes("rules");
   const showRail = layout !== "panel";
   const showPanel = layout !== "rail";
@@ -556,6 +580,30 @@ export function Sidebar({
     openMcpStoreSource,
   ]);
 
+  const openPluginStoreSource = useCallback(() => {
+    setIsPluginStoreGroupExpanded(true);
+    setPluginSelectedTab("market");
+    if (currentPage !== "home") onNavigate("home");
+  }, [currentPage, onNavigate, setPluginSelectedTab]);
+
+  const handlePluginStoreNavClick = useCallback(() => {
+    if (
+      isPluginStoreGroupExpanded &&
+      pluginSelectedTab === "market" &&
+      currentPage === "home"
+    ) {
+      setIsPluginStoreGroupExpanded(false);
+      return;
+    }
+
+    openPluginStoreSource();
+  }, [
+    currentPage,
+    isPluginStoreGroupExpanded,
+    openPluginStoreSource,
+    pluginSelectedTab,
+  ]);
+
   // Skill tags section settings (mirrors prompt tags behavior)
   const skillTagsSectionHeight = useSettingsStore(
     (state) => state.skillTagsSectionHeight,
@@ -608,6 +656,10 @@ export function Sidebar({
       return;
     }
 
+    if (activeModule === "plugin" && isPluginModuleVisible) {
+      return;
+    }
+
     if (activeModule === "rules" && isRulesModuleVisible) {
       return;
     }
@@ -621,6 +673,7 @@ export function Sidebar({
     hasVisibleModule,
     isPromptModuleVisible,
     isMcpModuleVisible,
+    isPluginModuleVisible,
     isRulesModuleVisible,
     isSkillModuleVisible,
     setAppModule,
@@ -695,6 +748,20 @@ export function Sidebar({
             active: activeModule === "mcp",
             onClick: () => {
               setAppModule("mcp");
+              closeTagPopover();
+              if (currentPage !== "home") onNavigate("home");
+            },
+          };
+        }
+
+        if (moduleId === "plugin") {
+          return {
+            key: moduleId,
+            label: t("plugin.title", "Plugins"),
+            icon: <PackageIcon className="h-5 w-5" />,
+            active: activeModule === "plugin",
+            onClick: () => {
+              setAppModule("plugin");
               closeTagPopover();
               if (currentPage !== "home") onNavigate("home");
             },
@@ -1906,6 +1973,72 @@ export function Sidebar({
                           {mcpMarketTemplates.length}
                         </span>
                       </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex-1" />
+                )}
+              </div>
+            </>
+          ) : activeModule === "plugin" ? (
+            <>
+              <div className="flex-shrink-0 flex flex-col px-3 py-2">
+                <div className="space-y-1 shrink-0">
+                  <NavItem
+                    icon={<PackageIcon className="w-5 h-5" />}
+                    label={t("plugin.myPlugins", "My Plugins")}
+                    count={pluginLibrary?.plugins.length ?? 0}
+                    active={pluginSelectedTab === "library"}
+                    collapsed={isCollapsed}
+                    onClick={() => {
+                      setPluginSelectedTab("library");
+                      if (currentPage !== "home") onNavigate("home");
+                    }}
+                  />
+                  <NavItem
+                    icon={<BotIcon className="w-5 h-5" />}
+                    label={t("plugin.pluginTargets", "Plugin Targets")}
+                    count={pluginTargetMatrix.length}
+                    active={pluginSelectedTab === "targets"}
+                    collapsed={isCollapsed}
+                    onClick={() => {
+                      setPluginSelectedTab("targets");
+                      if (currentPage !== "home") onNavigate("home");
+                    }}
+                  />
+                  <div className="h-px app-wallpaper-panel-strong-border/50 my-2" />
+                  <NavItem
+                    icon={<StoreIcon className="w-5 h-5" />}
+                    label={t("plugin.pluginStore", "Plugin Store")}
+                    count={pluginMarketEntries.length}
+                    active={pluginSelectedTab === "market"}
+                    collapsed={isCollapsed}
+                    onClick={handlePluginStoreNavClick}
+                  />
+                </div>
+              </div>
+
+              <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                {isPluginStoreGroupExpanded && !isCollapsed ? (
+                  <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide px-3 pb-3">
+                    <div className="ml-4 mt-1 pl-3 pr-1 border-l border-sidebar-border/50 space-y-1">
+                      {pluginMarketSources.map((source) => (
+                        <button
+                          key={source.id}
+                          type="button"
+                          onClick={openPluginStoreSource}
+                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                            pluginSelectedTab === "market"
+                              ? "bg-sidebar-accent text-sidebar-foreground"
+                              : "text-sidebar-foreground/60 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
+                          }`}
+                        >
+                          <StoreIcon className="w-4 h-4" aria-hidden="true" />
+                          <span className="flex-1 text-left truncate">
+                            {source.displayName}
+                          </span>
+                        </button>
+                      ))}
                     </div>
                   </div>
                 ) : (
