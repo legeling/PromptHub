@@ -165,6 +165,7 @@ spec/
 - Rules 稳定逻辑：`spec/knowledge/behavior/rules-workspace.md`
 - Agent 平台固定资产：`spec/knowledge/reference/agent-platforms.md`
 - Codex 扩展面映射：`spec/knowledge/reference/codex-extension-surfaces.md`
+- Plugin Agent 适配矩阵：`spec/knowledge/reference/plugin-agent-adapter-matrix.md`
 - 发布与文档同步：`spec/releases/release-rules.md`
 - Issue 跟踪入口：`spec/issues/README.md`
 - `spec-init` 项目级入口：`spec/workflow/`、`spec/knowledge/`、`spec/rules/`、`spec/releases/`、`spec/archive/`、`spec/adr/`

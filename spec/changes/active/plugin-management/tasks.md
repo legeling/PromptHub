@@ -4,23 +4,42 @@
 - [x] Add delta spec for Plugin as a first-class distribution surface.
 - [x] Add stable knowledge docs for Plugin behavior and Codex extension surface mapping.
 - [x] Sync Plugin references into the spec index and Agent platform asset reference.
-- [ ] Decide Plugin source of truth: JSON library, SQLite, or hybrid DB metadata plus repo directory.
-- [ ] Define shared plugin contracts in `packages/shared`.
-- [ ] Implement static plugin source scan in `packages/core` with no code execution.
-- [ ] Implement install/update/uninstall rollback semantics.
-- [ ] Add desktop IPC/preload API for plugin management.
-- [ ] Build Plugin module UI: My Plugins, Plugin Store, Plugin Detail, Agent Plugins.
+- [x] Define built-in OpenAI curated and PromptHub official marketplace source URLs.
+- [x] Add PromptHub official marketplace JSON entry point at `.agents/plugins/marketplace.json`.
+- [x] Define Agent bundle adapter matrix across Codex, Claude Code, Cursor, Gemini CLI, Kiro, GitHub Copilot / VS Code Agent Plugins, runtime-only OpenCode/Cline, Windsurf/Devin, Roo, Cherry Studio, and pending targets.
+- [x] Add detailed Plugin Agent Adapter reference with target package markers, install surfaces, adapter outputs, disabled targets, and evidence sources.
+- [x] Tighten Plugin semantic gate so single-skill packages and runtime hook modules are not treated as full Plugin bundles.
+- [x] Decide Plugin source of truth for MVP: `config/plugin-library.json`, with later SQLite/hybrid migration left open for child bindings and sync.
+- [x] Define shared plugin contracts in `packages/shared`.
+- [x] Implement marketplace manifest parsing and semantic bundle classification in `packages/core` with no code execution.
+- [x] Implement install/delete metadata persistence for marketplace plugins.
+- [x] Add lazy Codex marketplace manifest preview with version, author, inventory, semantic classification, manifest URL, package path, policy metadata, and Codex deep link.
+- [x] Make the Plugin Store default to the Codex official `openai-curated` source while keeping an all-sources filter.
+- [x] Download marketplace plugins into PromptHub's managed `data/plugins` workspace during desktop install using Git transport, with installed records pointing at managed/local package paths.
+- [x] Clean PromptHub-managed plugin package files on uninstall without deleting external child assets or user-owned paths.
+- [x] Add desktop IPC/preload API for plugin management.
+- [x] Build Plugin module UI: My Plugins, Plugin Store, Plugin Targets.
+- [x] Add Plugin module to desktop home navigation and home-module settings.
+- [x] Add i18n coverage for Plugin UI across all supported desktop locales.
 - [ ] Reuse Skill/MCP distribution flows for child assets.
 - [ ] Add Agent Assistant callable action contract for plugin install/distribute.
-- [ ] Add regression tests for manifest parsing, path traversal, symlink escape, duplicate identity, rollback, large inventories, SSH source scanning, and no execution during scan.
+- [ ] Add full regression coverage for path traversal, symlink escape, duplicate identity, rollback, large inventories, SSH source scanning, and no execution during scan.
+
+## MVP Verification Completed
+
+- [x] Core Plugin library tests cover marketplace parsing, manifest inventory extraction, semantic bundle classification, single-skill rejection, runtime-module rejection, JSON library persistence, and target matrix disabled states.
+- [x] Settings desktop workspace tests cover adding Plugin into legacy default home modules and preserving user-hidden modules.
+- [x] Sidebar and appearance settings tests pass with Plugin added to the home module set.
+- [x] Desktop typecheck passes with new IPC/preload/renderer contracts.
 
 ## Traceability
 
 - `T-PLUGIN-001`: Define Plugin shared types and package/source/inventory model. Covers `FR-PLUGIN-001`, `DES-PLUGIN-001`, `TEST-PLUGIN-001`.
 - `T-PLUGIN-002`: Implement static source intake for store, Git HTTPS, Git SSH, HTTP(S), and local folder. Covers `FR-PLUGIN-003`, `DES-PLUGIN-004`, `TEST-PLUGIN-002`.
-- `T-PLUGIN-003`: Implement manifest and inventory scan with no code execution. Covers `FR-PLUGIN-004`, `FR-PLUGIN-005`, `DES-PLUGIN-005`, `TEST-PLUGIN-003`.
+- `T-PLUGIN-003`: Implement manifest and inventory scan with no code execution and semantic bundle classification. Covers `FR-PLUGIN-001`, `FR-PLUGIN-004`, `FR-PLUGIN-005`, `DES-PLUGIN-005`, `TEST-PLUGIN-003`, `TEST-PLUGIN-007`.
 - `T-PLUGIN-004`: Implement install/update/uninstall and child asset distribution rollback. Covers `FR-PLUGIN-006`, `DES-PLUGIN-002`, `DES-PLUGIN-004`, `TEST-PLUGIN-004`.
 - `T-PLUGIN-005`: Expose Assistant-callable scan/install/distribute actions behind the same confirmations as UI. Covers `FR-PLUGIN-008`, `DES-PLUGIN-001`, `TEST-PLUGIN-005`.
+- `T-PLUGIN-006`: Implement Plugin Targets compatibility UI with `Native`, `Adapter`, `RuntimeOnly`, and `Composite` target statuses. Covers `FR-PLUGIN-009`, `DES-PLUGIN-006`, `TEST-PLUGIN-006`.
 
 ## Verification Plan
 
@@ -29,3 +48,5 @@
 - `TEST-PLUGIN-003`: Malicious fixture with scripts, path traversal, null byte, and symlink escape is rejected without executing code.
 - `TEST-PLUGIN-004`: Partial install failure leaves no half-written plugin metadata, repo files, or child bindings.
 - `TEST-PLUGIN-005`: Assistant action tests prove install/distribute requests call the same API and preserve confirmation gates.
+- `TEST-PLUGIN-006`: Compatibility matrix tests prove Codex appears as native; Claude Code/Cursor/Gemini/Kiro/GitHub Copilot appear as adapter candidates; OpenCode/Cline appear as runtime-only disabled targets; Windsurf/Roo/Cherry Studio appear as composite or lower-priority targets; and evidence-limited targets remain pending/disabled.
+- `TEST-PLUGIN-007`: Semantic gate tests prove single `SKILL.md` sources and single JS/TS hook modules are not rendered as full Plugin bundles.

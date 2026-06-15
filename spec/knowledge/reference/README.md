@@ -19,6 +19,14 @@
   - PromptHub 对插件、子资产和 Agent Assistant 调用的建模规则
   - 插件来源、静态扫描和安全基线
 
+### Plugin Agent 适配矩阵
+
+- `spec/knowledge/reference/plugin-agent-adapter-matrix.md`
+  - Native / Adapter / RuntimeOnly / Composite / Pending 分类
+  - 各 Agent 的插件包 marker、安装入口和 PromptHub 需要生成的目标格式
+  - 首版启用与置灰规则
+  - 官方文档和官方仓库证据链接
+
 ### 对外截图与公开素材
 
 - `docs/imgs/`

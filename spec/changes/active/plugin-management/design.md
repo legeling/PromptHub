@@ -33,7 +33,8 @@ The UI should avoid saying “install Skill” when the package contains multipl
 
 - Data model:
   - New shared plugin types in `packages/shared` for manifest, source, inventory, scan result, install result, conflict, and target distribution summary.
-  - `[待确认]` Durable source of truth can start as a local library file similar to MCP, then migrate to SQLite if plugin history, sync, or multi-user ownership requires it.
+  - Durable source of truth starts as a local JSON library file similar to MCP: `<userData>/config/plugin-library.json`.
+  - SQLite remains a later migration option if plugin history, sync, or multi-user ownership requires relational metadata.
 - Core workflows:
   - Shared scan/install/update/uninstall logic should live in `packages/core`.
   - Source cloning and static inventory parsing should reuse the Skill Git/source lessons: SSH uses local git, HTTP can use anonymous fetch but must explain rate limits.
@@ -42,7 +43,7 @@ The UI should avoid saying “install Skill” when the package contains multipl
   - IPC must validate source URLs, file paths, manifest shape, and write targets.
 - Renderer UI:
   - Add a Plugins module beside Prompts, Skills, MCP, and Rules.
-  - Recommended views: My Plugins, Plugin Store, Agent Plugins, and Plugin Detail.
+  - Recommended views: My Plugins, Plugin Store, Plugin Detail, and Plugin Targets.
   - Detail view should show an inventory table/grouped panels for child capability types.
 - Agent Assistant:
   - Later Assistant actions should call the same plugin APIs, not duplicate install logic in the chat UI.
@@ -59,7 +60,7 @@ Recommended first implementation:
   - option B: SQLite `plugins`, `plugin_sources`, `plugin_assets`, `plugin_bindings`
   - option C: hybrid SQLite metadata plus plugin repo directory
 
-Recommendation: use option C if implementation includes update history, child asset binding, sync, and Agent Assistant actions in the first real implementation. Use option A only for a smaller local-only MVP that mirrors MCP's current `config/mcp-library.json` pattern.
+Decision for the first implementation: use option A, `<userData>/config/plugin-library.json`, because the shipped MVP stores installed Plugin metadata, source provenance, inventory summary, and target matrix state only. It does not yet persist child asset bindings, update history, or sync ownership. If those relationships ship later, migrate to option C with a compatibility reader for the JSON file.
 
 No durable business rule should live only in React state. The renderer only chooses filters, selected rows, and confirmation state.
 
@@ -76,6 +77,95 @@ Plugin Store should support multiple provenance levels:
 
 Store entries should not be considered installed by display name alone. Matching should use stable source identity, manifest id, source URL, and revision/version where available.
 
+## Built-in Marketplace Sources
+
+PromptHub should ship with these default Plugin Store sources:
+
+| Source ID            | Display Name       | Repository                              | Marketplace File                   | Raw JSON                                                                                     |
+| -------------------- | ------------------ | --------------------------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------- |
+| `openai-curated`     | Codex official     | `https://github.com/openai/plugins`     | `.agents/plugins/marketplace.json` | `https://raw.githubusercontent.com/openai/plugins/main/.agents/plugins/marketplace.json`     |
+| `prompthub-official` | PromptHub Official | `https://github.com/legeling/PromptHub` | `.agents/plugins/marketplace.json` | `https://raw.githubusercontent.com/legeling/PromptHub/main/.agents/plugins/marketplace.json` |
+
+Implementation notes:
+
+- The OpenAI source is public Git content, not a private API. PromptHub can clone/read it directly for catalog browsing and package download.
+- If Codex CLI is available, PromptHub may also call `codex plugin marketplace add openai/plugins --ref main` or read `codex plugin list --marketplace openai-curated --available --json`.
+- PromptHub must not depend on Codex CLI for the basic browsing path. API-only users should still be able to download public plugin packages into PromptHub's Plugin Library.
+- PromptHub's own marketplace starts at `.agents/plugins/marketplace.json` in this repository. It may begin with an empty `plugins` array and later add official PromptHub plugin packages.
+- If PromptHub later splits official plugins into a dedicated repository, the app should keep the current source as a compatibility alias or migration source.
+
+## Codex Official Store Experience
+
+`DES-PLUGIN-007`
+
+The OpenAI `openai-curated` marketplace is the primary first-version store, not just another anonymous custom source.
+
+Product behavior:
+
+- Plugin Store should default to the Codex official source when it is available, while still exposing an "all sources" view.
+- Store list loading should read only marketplace JSON first. It must not fetch every plugin manifest eagerly because the official store can contain many entries.
+- Each store card should expose a lazy manifest preview action. Preview reads `.codex-plugin/plugin.json`, enriches the card with version, author, manifest URL, package path, inventory chips, and semantic classification.
+- Marketplace policy metadata such as `installation: AVAILABLE` and `authentication: ON_INSTALL` should remain visible so users understand whether setup or app auth is expected.
+- OpenAI curated entries should expose a Codex detail deep link such as `codex://plugins/openai-developers@openai-curated` for users who also run Codex.
+- PromptHub install must not require the Codex CLI. Desktop install should download the plugin package into PromptHub's managed plugin directory with Git transport, then record the library metadata.
+- Git transport should avoid the GitHub REST API path for package download. SSH marketplace/repo sources should use the user's local Git/SSH configuration and keys.
+- Preview/install still must not execute plugin code, install dependencies, start MCP servers, or authorize Apps/connectors.
+
+Implementation boundary:
+
+- Installed plugin metadata remains in `<userData>/config/plugin-library.json`.
+- Downloaded plugin package files live under `<userData>/data/plugins/<plugin-id>/repo`.
+- The installed record stores the managed root, local repository path, and local package path so uninstall can clean only PromptHub-owned files.
+- Child asset import/distribution remains a later explicit action; installing a Codex official plugin does not automatically add child Skills/MCP into their libraries.
+
+## Agent Bundle Adapter Matrix
+
+`DES-PLUGIN-006`
+
+PromptHub must treat Plugin support as adapter work. A target can be supported when it has a native bundle/extension/package mechanism that PromptHub can generate or install into, even if that mechanism is not Codex-compatible. The product question is not "does the agent read `.codex-plugin` directly"; it is "does the agent have a first-class integrated package concept we can map PromptHub Plugins onto."
+
+This must pass a strict semantic gate. A supported Plugin target must model a bundle, not merely a runtime function or a single asset. It should be able to carry or point to multiple child capability classes such as skills, agents, commands, hooks, MCP servers, LSP servers, scripts, assets, or package-level docs. Single-skill packages and single JS/TS hook modules should not be presented as full PromptHub Plugins.
+
+Current adapter matrix:
+
+| Platform                              | Native bundle concept                                                         | Native marker / install surface                                                               | PromptHub stance                      |
+| ------------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------- |
+| Codex CLI / Codex app                 | Codex plugin marketplace and plugin package                                   | `.codex-plugin/plugin.json`, `.agents/plugins/marketplace.json`, `codex plugin ...`           | Supported native target               |
+| Claude Code                           | Claude Code plugin marketplace and plugin package                             | `.claude-plugin/plugin.json`, `/plugin`, `claude plugin ...`, `--plugin-dir`, `--plugin-url`  | High-priority adapter target          |
+| Cursor                                | Cursor plugin marketplace and plugin package                                  | `.cursor-plugin/plugin.json`, `.cursor-plugin/marketplace.json`                               | High-priority adapter target          |
+| Gemini CLI                            | Gemini extension package                                                      | `gemini-extension.json`, `gemini extensions install`                                          | High-priority adapter target          |
+| Kiro                                  | Kiro power package                                                            | `POWER.md` plus bundled MCP configuration and steering                                        | Adapter target                        |
+| GitHub Copilot CLI / VS Code Agent UI | Copilot / VS Code agent plugin package                                        | root `plugin.json`, `.plugin/plugin.json`, `.github/plugin/plugin.json`, `copilot plugin ...` | Adapter target                        |
+| OpenCode                              | Runtime JS/TS or npm plugin module, not bundle inventory                      | `.opencode/plugins/`, `~/.config/opencode/plugins/`, `opencode.json` `plugin`                 | Runtime-only / disabled               |
+| Cline SDK / CLI / Kanban              | Runtime AgentPlugin entrypoint package, not bundle inventory                  | `cline plugin install`, `package.json` `cline.plugins`, `.ts`/`.js` `AgentPlugin` entrypoints | Runtime-only / disabled               |
+| Windsurf / Devin                      | No single agent plugin bundle confirmed; has IDE plugins plus separate assets | Windsurf Plugins, Cascade skills/workflows/hooks/MCP                                          | Composite adapter, not package-native |
+| Roo Code                              | No current single plugin package confirmed                                    | skills, rules, commands, MCP-like config surfaces                                             | Composite adapter / disabled          |
+| Cherry Studio                         | No plugin package confirmed                                                   | local skill and agent registries                                                              | Composite adapter / disabled          |
+| Amp and other targets                 | Public evidence insufficient for a stable plugin package claim                | none confirmed                                                                                | Pending / disabled                    |
+
+Product rule:
+
+- Plugin Targets should show four statuses: `Native`, `Adapter`, `RuntimeOnly`, and `Composite`; evidence-limited targets can remain `Pending`.
+- `Native` means PromptHub can install the source package format directly or with only manifest/source-path normalization.
+- `Adapter` means PromptHub can generate a target-native package from the PromptHub Plugin inventory.
+- `RuntimeOnly` means the target has a plugin runtime, but it is a hook/module/function surface rather than a bundle package; first implementation keeps it disabled and labels it unsupported for PromptHub Plugin bundles.
+- `Composite` means the target has no single bundle mechanism; PromptHub must install the plugin's parts into multiple target-native surfaces and show that this is a decomposition.
+- First implementation should enable only `Native` and bundle-semantics `Adapter` targets. `RuntimeOnly`, `Composite`, and `Pending` targets remain visible but disabled/greyed out, with explicit "not supported for Plugin bundles" copy, until dedicated wrapper/composite designs or new evidence exist.
+- UI copy must avoid saying non-Codex agents "support Codex plugins"; it should say PromptHub can "adapt this plugin to Claude Code", "adapt this plugin to Gemini CLI", and so on.
+
+Evidence references:
+
+- Detailed adapter matrix: `spec/knowledge/reference/plugin-agent-adapter-matrix.md`
+- Claude Code plugins: `https://code.claude.com/docs/en/plugins-reference`
+- Cursor plugins: `https://cursor.com/docs/plugins` and `https://github.com/cursor/plugins`
+- Gemini CLI extensions: `https://geminicli.com/docs/extensions/reference/`
+- Kiro powers: `https://kiro.dev/docs/powers/create/`
+- GitHub Copilot CLI plugins: `https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference`
+- VS Code Agent Plugins: `https://code.visualstudio.com/docs/agent-customization/agent-plugins`
+- OpenCode plugins: `https://opencode.ai/docs/plugins/`
+- Cline plugins: `https://docs.cline.bot/customization/plugins`
+- Windsurf / Devin Cascade separate assets: `https://docs.devin.ai/desktop/cascade/skills` and `https://docs.devin.ai/desktop/cascade/hooks`
+
 ## Installation Flow
 
 `DES-PLUGIN-004`
@@ -84,7 +174,7 @@ Store entries should not be considered installed by display name alone. Matching
 2. PromptHub performs a static scan.
 3. PromptHub shows manifest and inventory preview.
 4. User confirms install.
-5. PromptHub copies/clones into a temp install directory.
+5. PromptHub copies/clones into a temp install directory. For Git-backed Codex marketplace entries, PromptHub uses Git transport and sparse checkout instead of GitHub REST API package download.
 6. PromptHub validates paths, symlinks, manifest identity, and child inventory.
 7. PromptHub commits metadata and repo/files atomically as much as the chosen storage allows.
 8. PromptHub shows next actions for child capabilities instead of auto-distributing them.
@@ -118,3 +208,4 @@ Uninstall should remove the PromptHub-managed plugin record and managed plugin r
 - `FR-PLUGIN-004` / `FR-PLUGIN-005` -> `DES-PLUGIN-005` -> `TEST-PLUGIN-003` -> `T-PLUGIN-003`
 - `FR-PLUGIN-006` -> `DES-PLUGIN-002` / `DES-PLUGIN-004` -> `TEST-PLUGIN-004` -> `T-PLUGIN-004`
 - `FR-PLUGIN-008` -> `DES-PLUGIN-001` -> `TEST-PLUGIN-005` -> `T-PLUGIN-005`
+- `FR-PLUGIN-009` -> `DES-PLUGIN-006` -> `TEST-PLUGIN-006` -> `T-PLUGIN-006`

@@ -13,13 +13,26 @@ Plugin is a higher-level installable bundle. It may contain one or more Skills, 
 - **GIVEN** a package contains multiple Skills plus MCP configuration
 - **WHEN** PromptHub scans the package
 - **THEN** PromptHub classifies it as a Plugin package with child assets
-- **AND** it does not collapse the whole package into one Skill unless the manifest explicitly declares a single Skill-only package
+- **AND** it does not collapse the whole package into one Skill
 
 #### Scenario: HyperFrames-style package
 
 - **GIVEN** a package provides a coordinated feature set rather than one task workflow
 - **WHEN** users view it in PromptHub
 - **THEN** PromptHub presents it as a Plugin with an inventory of included capabilities
+
+#### Scenario: Single-skill package is not a plugin bundle
+
+- **GIVEN** a source contains only one `SKILL.md` and no package-level inventory, scripts, MCP config, commands, hooks, app/connectors, assets, or other child capability groups
+- **WHEN** PromptHub scans the source
+- **THEN** PromptHub classifies it as a Skill package rather than a Plugin bundle
+- **AND** Plugin Store does not present it as a full Plugin
+
+#### Scenario: Runtime hook module is not a plugin bundle
+
+- **GIVEN** a target calls a single JS/TS function, hook module, or entrypoint a plugin
+- **WHEN** the target format cannot declare or carry multiple child capability groups as one installable bundle
+- **THEN** PromptHub marks that target as runtime-only instead of an enabled Plugin adapter
 
 ### Requirement: FR-PLUGIN-002 Official Codex Concept Mapping
 
@@ -99,11 +112,42 @@ PromptHub MUST separate plugin installation from child capability distribution.
 
 PromptHub MUST provide a Plugin Store model that can represent official, verified, community, Git, and local plugin sources.
 
+#### Scenario: Built-in OpenAI curated source
+
+- **GIVEN** PromptHub initializes Plugin Store sources
+- **WHEN** the user opens Plugin Store
+- **THEN** PromptHub includes the public OpenAI curated marketplace source named `openai-curated`
+- **AND** the source points to `https://github.com/openai/plugins` with marketplace file `.agents/plugins/marketplace.json`
+- **AND** the Plugin Store defaults to the Codex official source when it is available
+
+#### Scenario: Built-in PromptHub official source
+
+- **GIVEN** PromptHub initializes Plugin Store sources
+- **WHEN** the user opens Plugin Store
+- **THEN** PromptHub includes the PromptHub official marketplace source named `prompthub-official`
+- **AND** the source points to `https://github.com/legeling/PromptHub` with marketplace file `.agents/plugins/marketplace.json`
+
 #### Scenario: Store source provenance
 
 - **GIVEN** a plugin appears in a store list
 - **WHEN** PromptHub renders the entry
 - **THEN** the entry shows source/provenance and does not imply community entries are first-party
+
+#### Scenario: Preview Codex marketplace manifest
+
+- **GIVEN** a plugin appears in the Codex official marketplace
+- **WHEN** the user previews the store entry
+- **THEN** PromptHub reads the entry's `.codex-plugin/plugin.json` without executing plugin code
+- **AND** it shows version, author, category, package path, manifest URL, policy metadata, child inventory, semantic classification, and Codex detail link
+- **AND** unsupported single-skill or runtime-module packages are labeled before install
+
+#### Scenario: Install Codex marketplace package
+
+- **GIVEN** a Codex official marketplace entry passes the Plugin semantic gate
+- **WHEN** the user installs it in the desktop app
+- **THEN** PromptHub downloads the package into its managed plugin workspace using Git transport
+- **AND** it records managed path, local repository path, local package path, source identity, inventory, and version in the Plugin library
+- **AND** it does not require Codex CLI, GitHub REST API metadata, child asset distribution, MCP startup, dependency install, or App authorization
 
 ### Requirement: FR-PLUGIN-008 Agent Assistant Integration Contract
 
@@ -116,9 +160,44 @@ PromptHub SHOULD expose plugin installation and distribution as callable interna
 - **THEN** it calls the same scan, preview, install, and distribution APIs used by the Plugin UI
 - **AND** any destructive write, config overwrite, MCP enablement, or App authorization remains confirmation-gated
 
+### Requirement: FR-PLUGIN-009 Agent Plugin Adapter Support
+
+PromptHub MUST model Plugin support as an adapter matrix across agent-native bundle formats.
+
+#### Scenario: Codex is a native package target
+
+- **GIVEN** PromptHub renders Plugin target compatibility
+- **WHEN** Codex CLI or Codex app is available
+- **THEN** PromptHub marks Codex as a native package target
+- **AND** it may use Codex marketplace and plugin commands where available
+
+#### Scenario: Agents with bundle concepts are adapter targets
+
+- **GIVEN** an agent has its own bundle package concept such as Claude Code plugins, Cursor plugins, Gemini CLI extensions, Kiro powers, or GitHub Copilot / VS Code Agent Plugins
+- **WHEN** PromptHub renders Plugin target compatibility
+- **THEN** PromptHub marks the agent as an adapter target, not as a Codex-native target
+- **AND** the install flow explains that PromptHub will generate or install the target-native package format
+
+#### Scenario: Runtime-only plugin mechanisms are disabled
+
+- **GIVEN** an agent has a plugin mechanism that primarily loads hook modules, function entrypoints, or runtime tools rather than a bundle inventory
+- **WHEN** PromptHub renders Plugin target compatibility
+- **THEN** PromptHub marks the agent as runtime-only
+- **AND** the target remains visible but disabled/greyed out in the first implementation
+- **AND** OpenCode and Cline SDK / CLI / Kanban are runtime-only until PromptHub designs a separate wrapper installer
+
+#### Scenario: Agents without a bundle concept use composite installation
+
+- **GIVEN** an agent only exposes separate customization surfaces
+- **WHEN** PromptHub adapts a Plugin to that agent
+- **THEN** PromptHub labels the target as composite
+- **AND** first implementation keeps the target disabled/greyed out
+- **AND** any future enabled composite install must show which target-native surfaces will be written before applying changes
+
 ## Open Decisions
 
-- `[待确认]` Plugin local source of truth: filesystem-backed `config/plugin-library.json`, SQLite tables, or hybrid DB metadata plus repo directory.
+- First implementation source of truth is decided: filesystem-backed `config/plugin-library.json`, matching MCP's current local-library pattern. `[待确认]` remains only for a later migration to SQLite or hybrid metadata if child bindings, sync, and update history require it.
 - `[待确认]` Whether PromptHub should mirror a curated OpenAI-compatible Plugin Store index or let users add arbitrary official/community store sources first.
 - `[待确认]` Whether App/connector entries should be managed as PromptHub-local metadata first, or only as links to Codex/ChatGPT app authorization flows.
 - `[待确认]` Whether plugin updates should be versioned independently of child Skill versions.
+- `[待确认]` First adapter implementation order after Codex: Claude Code, Cursor, Gemini CLI, GitHub Copilot, or Kiro.
