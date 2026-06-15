@@ -25,6 +25,8 @@
 - Added desktop Plugin UI module with `My Plugins`, `Plugin Store`, and `Plugin Targets` views.
   - The Plugin Store defaults to the Codex official `openai-curated` source and keeps an all-sources filter.
   - Store cards can preview manifest details lazily and copy Codex deep links.
+- Updated the visible UI terminology so the product surface uses `Plugins`, `My Plugins`, `Official Store`, and `Agent Plugin` instead of localized "插件/插件目标" labels.
+- Hid the global Prompt quick-add/search controls on the Plugins page because the page owns its own Plugin search and install flow.
 - Added Plugin navigation to the desktop home rail/sidebar and the Appearance settings home-module list.
 - Added Plugin i18n keys across all seven desktop locales.
 

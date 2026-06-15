@@ -150,27 +150,29 @@ export function TopBar({
     appModule === "skill" && skillStoreView === "store";
   const isRulesView = appModule === "rules";
   const isMcpView = appModule === "mcp";
+  const isPluginView = appModule === "plugin";
   const isSkillView = appModule === "skill";
   const isPromptView = appModule === "prompt";
-  const showTopBarSearch = !isSkillStoreCatalogView;
+  const showTopBarSearch = !isSkillStoreCatalogView && !isPluginView;
+  const showCreateButton = isPromptView || isSkillView || isMcpView;
 
   // Unified search query based on mode
   const searchQuery = isSkillView
     ? skillSearchQuery
     : isMcpView
       ? mcpSearchQuery
-    : isPromptView
-      ? promptSearchQuery
-      : "";
+      : isPromptView
+        ? promptSearchQuery
+        : "";
   const deferredSkillSearchQuery = useDeferredValue(skillSearchQuery);
   const deferredMcpSearchQuery = useDeferredValue(mcpSearchQuery);
   const setSearchQuery = isSkillView
     ? setSkillSearchQuery
     : isMcpView
       ? setMcpSearchQuery
-    : isPromptView
-      ? setPromptSearchQuery
-      : () => undefined;
+      : isPromptView
+        ? setPromptSearchQuery
+        : () => undefined;
 
   // Check if AI is configured
   const hasAiConfig =
@@ -330,7 +332,7 @@ export function TopBar({
         : skillSearchResults
     : isMcpView
       ? mcpSearchResults
-    : promptSearchResults;
+      : promptSearchResults;
   const searchResultCount = searchResults.length;
   const showSearchNavigation = isPromptView;
   const showSearchResultCount = !isAgentSkillView;
@@ -433,7 +435,10 @@ export function TopBar({
       }
       // Enter 确认选择当前结果
       if (isSkillView) {
-        if (!isSkillStoreCatalogView && skillSearchResults[currentResultIndex]) {
+        if (
+          !isSkillStoreCatalogView &&
+          skillSearchResults[currentResultIndex]
+        ) {
           selectSkill(skillSearchResults[currentResultIndex].id);
         }
       } else {
@@ -652,11 +657,14 @@ export function TopBar({
                           "Search project skills...",
                         )
                       : isAgentSkillView
-                        ? t("header.searchAgentSkills", "Search agent skills...")
+                        ? t(
+                            "header.searchAgentSkills",
+                            "Search agent skills...",
+                          )
                         : t("header.searchSkill", "Search skills...")
                     : appModule === "mcp"
                       ? t("header.searchMcp", "Search MCP...")
-                    : t("header.search")
+                      : t("header.search")
                 }
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -691,10 +699,16 @@ export function TopBar({
                         type="button"
                         onClick={() => navigateResult("prev")}
                         className="p-1 rounded hover:bg-accent/60 transition-colors"
-                        aria-label={t("header.prevResult", "上一个 (Shift+Tab)")}
+                        aria-label={t(
+                          "header.prevResult",
+                          "上一个 (Shift+Tab)",
+                        )}
                         title={t("header.prevResult", "上一个 (Shift+Tab)")}
                       >
-                        <ChevronUpIcon aria-hidden="true" className="w-3.5 h-3.5 text-muted-foreground" />
+                        <ChevronUpIcon
+                          aria-hidden="true"
+                          className="w-3.5 h-3.5 text-muted-foreground"
+                        />
                       </button>
                       <button
                         type="button"
@@ -703,7 +717,10 @@ export function TopBar({
                         aria-label={t("header.nextResult", "下一个 (Tab)")}
                         title={t("header.nextResult", "下一个 (Tab)")}
                       >
-                        <ChevronDownIcon aria-hidden="true" className="w-3.5 h-3.5 text-muted-foreground" />
+                        <ChevronDownIcon
+                          aria-hidden="true"
+                          className="w-3.5 h-3.5 text-muted-foreground"
+                        />
                       </button>
                     </>
                   )}
@@ -715,7 +732,10 @@ export function TopBar({
                     aria-label={t("header.clearSearch", "清除搜索")}
                     title={t("header.clearSearch", "清除搜索")}
                   >
-                    <XIcon aria-hidden="true" className="w-3.5 h-3.5 text-muted-foreground" />
+                    <XIcon
+                      aria-hidden="true"
+                      className="w-3.5 h-3.5 text-muted-foreground"
+                    />
                   </button>
                 </div>
               )}
@@ -739,16 +759,14 @@ export function TopBar({
                   title={t("settings.updateAvailable")}
                 >
                   <DownloadIcon aria-hidden="true" className="w-4 h-4" />
-                  <span className="hidden sm:inline">
-                    {updateButtonLabel}
-                  </span>
+                  <span className="hidden sm:inline">{updateButtonLabel}</span>
                 </button>
                 <div className="w-px h-5 bg-border mx-1" />
               </>
             )}
 
           {/* Split Button for New Prompt / New Skill / New MCP */}
-          {!isRulesView && (
+          {showCreateButton && (
             <div
               ref={createMenuRef}
               className="flex items-center rounded-lg bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 transition-all ml-4 relative h-8"
@@ -804,9 +822,9 @@ export function TopBar({
                       : t("header.new")
                     : appModule === "mcp"
                       ? t("header.new")
-                    : creationMode === "manual"
-                      ? t("header.new")
-                      : t("quickAdd.title")}
+                      : creationMode === "manual"
+                        ? t("header.new")
+                        : t("quickAdd.title")}
                 </span>
               </button>
 
@@ -826,7 +844,10 @@ export function TopBar({
                     title={t("header.createMenu", "Creation mode")}
                     className="flex items-center justify-center h-full px-1.5 hover:bg-black/10 transition-colors rounded-r-lg"
                   >
-                    <ChevronDownIcon aria-hidden="true" className="w-3.5 h-3.5" />
+                    <ChevronDownIcon
+                      aria-hidden="true"
+                      className="w-3.5 h-3.5"
+                    />
                   </button>
 
                   {isCreateMenuOpen &&
@@ -857,7 +878,10 @@ export function TopBar({
                             creationMode === "manual" && "bg-accent",
                           )}
                         >
-                          <PlusIcon aria-hidden="true" className="w-4 h-4 text-muted-foreground" />
+                          <PlusIcon
+                            aria-hidden="true"
+                            className="w-4 h-4 text-muted-foreground"
+                          />
                           <div className="flex flex-col items-start gap-0.5">
                             <span className="font-medium">
                               {t("header.new")}
@@ -884,7 +908,10 @@ export function TopBar({
                             creationMode === "quick" && "bg-accent",
                           )}
                         >
-                          <SparklesIcon aria-hidden="true" className="w-4 h-4 text-primary" />
+                          <SparklesIcon
+                            aria-hidden="true"
+                            className="w-4 h-4 text-primary"
+                          />
                           <div className="flex flex-col items-start gap-0.5">
                             <span className="font-medium">
                               {t("quickAdd.title")}
@@ -910,7 +937,10 @@ export function TopBar({
                           }}
                           className="flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-accent text-left transition-colors rounded-md"
                         >
-                          <Wand2Icon aria-hidden="true" className="w-4 h-4 text-primary" />
+                          <Wand2Icon
+                            aria-hidden="true"
+                            className="w-4 h-4 text-primary"
+                          />
                           <div className="flex flex-col items-start gap-0.5">
                             <span className="font-medium">
                               {t("quickAdd.generateEntry")}
@@ -929,7 +959,10 @@ export function TopBar({
                           }}
                           className="flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-accent text-left transition-colors rounded-md"
                         >
-                          <ImageIcon aria-hidden="true" className="w-4 h-4 text-primary" />
+                          <ImageIcon
+                            aria-hidden="true"
+                            className="w-4 h-4 text-primary"
+                          />
                           <div className="flex flex-col items-start gap-0.5">
                             <span className="font-medium">
                               {t("imageReverse.title")}

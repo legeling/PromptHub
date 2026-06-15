@@ -2035,7 +2035,17 @@ export function Sidebar({
                         >
                           <StoreIcon className="w-4 h-4" aria-hidden="true" />
                           <span className="flex-1 text-left truncate">
-                            {source.displayName}
+                            {source.id === "openai-curated"
+                              ? t(
+                                  "plugin.sources.codexOfficial",
+                                  "Codex Plugin Store",
+                                )
+                              : source.id === "prompthub-official"
+                                ? t(
+                                    "plugin.sources.promptHubOfficial",
+                                    "Official Store",
+                                  )
+                                : source.displayName}
                           </span>
                         </button>
                       ))}

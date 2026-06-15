@@ -596,7 +596,7 @@
     "homeModulesReorderHint": "Drag enabled modules to reorder the desktop home rail.",
     "desktopModulePromptsDesc": "Prompt editing, folders, tags and search",
     "desktopModuleSkillsDesc": "My Skills, projects and store workflows",
-    "desktopModulePluginsDesc": "Plugin bundles, store sources and compatible agent targets",
+    "desktopModulePluginsDesc": "Plugin bundles, Official Store sources and Agent Plugin targets",
     "desktopModuleRulesDesc": "Global and project rule workspaces",
     "backgroundImage": "Background Image",
     "backgroundImageTitle": "Desktop background",
@@ -2649,10 +2649,14 @@
   },
   "plugin": {
     "title": "Plugins",
-    "subtitle": "Manage complete capability bundles and their agent targets.",
+    "subtitle": "Manage complete Plugin bundles and their Agent Plugin targets.",
     "myPlugins": "My Plugins",
-    "pluginStore": "Plugin Store",
-    "pluginTargets": "Plugin Targets",
+    "pluginStore": "Official Store",
+    "pluginTargets": "Agent Plugin",
+    "sources": {
+      "codexOfficial": "Codex Plugin Store",
+      "promptHubOfficial": "Official Store"
+    },
     "inventory": {
       "skills": "Skills",
       "mcpServers": "MCP servers",
@@ -2668,7 +2672,7 @@
     "inventoryEmpty": "Inventory will be validated on install",
     "marketInventoryDeferred": "Plugin inventory is checked before install.",
     "noDescription": "No description provided",
-    "deletePlugin": "Delete plugin",
+    "deletePlugin": "Delete Plugin",
     "installedAt": "Installed {{date}}",
     "installed": "Installed",
     "install": "Install",
@@ -2698,17 +2702,17 @@
     "nativeMarker": "Native marker",
     "installSurface": "Install surface",
     "unsupportedReason": "Why disabled",
-    "searchPlaceholder": "Search plugins",
+    "searchPlaceholder": "Search Plugins",
     "statsInstalled": "{{count}} installed",
     "statsInventory": "{{count}} assets",
-    "statsTargets": "{{count}} enabled targets",
-    "emptyLibraryTitle": "No plugins installed",
-    "emptyLibraryDesc": "Install complete plugin bundles from the store, then decide which child assets go to each agent.",
+    "statsTargets": "{{count}} Agent Plugin targets",
+    "emptyLibraryTitle": "No Plugins installed",
+    "emptyLibraryDesc": "Install complete Plugin bundles from the Official Store, then decide which child assets go to each Agent.",
     "emptyMarketTitle": "No store entries",
     "emptyMarketDesc": "Check the network connection or refresh the plugin store sources.",
     "installSuccess": "Installed {{name}}",
     "deleteSuccess": "Deleted {{name}}",
-    "deleteConfirmTitle": "Delete plugin",
+    "deleteConfirmTitle": "Delete Plugin",
     "deleteConfirmMessage": "Delete {{name}} from My Plugins? Child assets already copied elsewhere are not removed."
   }
 }

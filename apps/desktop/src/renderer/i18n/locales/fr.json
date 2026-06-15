@@ -594,7 +594,7 @@
     "homeModulesReorderHint": "Faites glisser les modules actifs pour réorganiser le rail de l'accueil bureau.",
     "desktopModulePromptsDesc": "Edition des prompts, dossiers, tags et recherche",
     "desktopModuleSkillsDesc": "My Skills, projets et parcours du store",
-    "desktopModulePluginsDesc": "Bundles de plugins, sources du store et cibles d'agents compatibles",
+    "desktopModulePluginsDesc": "Plugin bundles, Official Store sources and Agent Plugin targets",
     "desktopModuleRulesDesc": "Espaces de travail des règles globales et projet",
     "backgroundImage": "Image d'arrière-plan",
     "backgroundImageTitle": "Fond du bureau",
@@ -2613,8 +2613,12 @@
     "title": "Plugins",
     "subtitle": "Gérer les bundles de capacités complets et leurs cibles d'agents.",
     "myPlugins": "Mes plugins",
-    "pluginStore": "Store de plugins",
-    "pluginTargets": "Cibles de plugins",
+    "pluginStore": "Official Store",
+    "pluginTargets": "Agent Plugin",
+    "sources": {
+      "codexOfficial": "Codex Plugin Store",
+      "promptHubOfficial": "Official Store"
+    },
     "inventory": {
       "skills": "Skills",
       "mcpServers": "Serveurs MCP",

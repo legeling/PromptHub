@@ -122,6 +122,20 @@ function getClassificationLabel(
   return t("plugin.classification.pending", "Pending scan");
 }
 
+function getMarketSourceLabel(
+  sourceId: string,
+  displayName: string,
+  t: ReturnType<typeof useTranslation>["t"],
+): string {
+  if (sourceId === "openai-curated") {
+    return t("plugin.sources.codexOfficial", "Codex Plugin Store");
+  }
+  if (sourceId === "prompthub-official") {
+    return t("plugin.sources.promptHubOfficial", "Official Store");
+  }
+  return displayName;
+}
+
 function PluginCard({
   plugin,
   onDelete,
@@ -258,7 +272,11 @@ function MarketCard({
 
       <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
         <span className="rounded-full bg-primary/10 px-2 py-1 text-primary">
-          {entry.source.label || entry.marketplaceId}
+          {getMarketSourceLabel(
+            entry.marketplaceId,
+            entry.source.label || entry.marketplaceId,
+            t,
+          )}
         </span>
         {entry.category ? <span>{entry.category}</span> : null}
         <span>{entry.trustLevel}</span>
@@ -780,7 +798,7 @@ export function PluginManager() {
                       : "border-border bg-muted/40 text-muted-foreground hover:bg-accent hover:text-foreground"
                   }`}
                 >
-                  {source.displayName} ·{" "}
+                  {getMarketSourceLabel(source.id, source.displayName, t)} ·{" "}
                   {marketSourceCounts.get(source.id) ?? 0}
                 </button>
               ))}

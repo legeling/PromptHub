@@ -594,7 +594,7 @@
     "homeModulesReorderHint": "拖動已啟用模組即可調整桌面首頁側邊欄順序。",
     "desktopModulePromptsDesc": "提示詞編輯、資料夾、標籤與搜尋",
     "desktopModuleSkillsDesc": "我的 Skills、專案掃描與商店流程",
-    "desktopModulePluginsDesc": "插件能力包、商店來源和相容的 Agent 目標",
+    "desktopModulePluginsDesc": "Plugin 能力包、官方商店來源和相容的 Agent Plugin 目標",
     "desktopModuleRulesDesc": "全域與專案規則工作區",
     "backgroundImage": "背景圖",
     "backgroundImageTitle": "桌面背景",
@@ -2610,11 +2610,15 @@
     "envValue": "環境變數值"
   },
   "plugin": {
-    "title": "插件",
-    "subtitle": "管理完整能力包及其 Agent 目標。",
-    "myPlugins": "我的插件",
-    "pluginStore": "插件商店",
-    "pluginTargets": "插件目標",
+    "title": "Plugins",
+    "subtitle": "管理完整 Plugin 能力包及其 Agent Plugin 目標。",
+    "myPlugins": "My Plugins",
+    "pluginStore": "官方商店",
+    "pluginTargets": "Agent Plugin",
+    "sources": {
+      "codexOfficial": "Codex Plugin Store",
+      "promptHubOfficial": "官方商店"
+    },
     "inventory": {
       "skills": "Skills",
       "mcpServers": "MCP 服務",
@@ -2627,10 +2631,10 @@
       "lspServers": "LSP 服務",
       "scripts": "腳本"
     },
-    "inventoryEmpty": "安裝時會驗證插件清單",
-    "marketInventoryDeferred": "安裝前會檢查插件清單。",
+    "inventoryEmpty": "安裝時會驗證 Plugin manifest",
+    "marketInventoryDeferred": "安裝前會檢查 Plugin inventory。",
     "noDescription": "暫無描述",
-    "deletePlugin": "刪除插件",
+    "deletePlugin": "刪除 Plugin",
     "installedAt": "已於 {{date}} 安裝",
     "installed": "已安裝",
     "install": "安裝",
@@ -2660,17 +2664,17 @@
     "nativeMarker": "原生標記",
     "installSurface": "安裝入口",
     "unsupportedReason": "不可用原因",
-    "searchPlaceholder": "搜尋插件",
+    "searchPlaceholder": "搜尋 Plugins",
     "statsInstalled": "{{count}} 個已安裝",
     "statsInventory": "{{count}} 個資產",
-    "statsTargets": "{{count}} 個啟用目標",
-    "emptyLibraryTitle": "暫無已安裝插件",
-    "emptyLibraryDesc": "從商店安裝完整插件能力包後，再決定哪些子資產分發到哪些 Agent。",
-    "emptyMarketTitle": "暫無商店條目",
-    "emptyMarketDesc": "請檢查網路連線或重新整理插件商店來源。",
+    "statsTargets": "{{count}} 個 Agent Plugin",
+    "emptyLibraryTitle": "暫無已安裝 Plugins",
+    "emptyLibraryDesc": "從官方商店安裝完整 Plugin 能力包後，再決定哪些子資產分發到哪些 Agent。",
+    "emptyMarketTitle": "暫無官方商店條目",
+    "emptyMarketDesc": "請檢查網路連線或重新整理官方商店來源。",
     "installSuccess": "已安裝 {{name}}",
     "deleteSuccess": "已刪除 {{name}}",
-    "deleteConfirmTitle": "刪除插件",
-    "deleteConfirmMessage": "從我的插件中刪除 {{name}}？已經複製到其他位置的子資產不會被移除。"
+    "deleteConfirmTitle": "刪除 Plugin",
+    "deleteConfirmMessage": "從 My Plugins 中刪除 {{name}}？已經複製到其他位置的子資產不會被移除。"
   }
 }

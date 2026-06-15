@@ -143,6 +143,25 @@ describe("TopBar", () => {
     ).toBeInTheDocument();
   });
 
+  it("hides prompt search and quick add controls on the Plugins module", async () => {
+    useUIStore.setState({
+      appModule: "plugin",
+      viewMode: "prompt",
+      isSidebarCollapsed: false,
+    });
+
+    await act(async () => {
+      await renderWithI18n(
+        <TopBar onOpenSettings={vi.fn()} updateAvailable={null} />,
+        { language: "en" },
+      );
+    });
+
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    expect(screen.queryByText("Quick Add")).not.toBeInTheDocument();
+    expect(screen.queryByText("New")).not.toBeInTheDocument();
+  });
+
   it("closes the create mode dropdown when clicking outside", async () => {
     await act(async () => {
       await renderWithI18n(
@@ -313,9 +332,11 @@ describe("TopBar", () => {
       await renderWithI18n(
         <TopBar
           onOpenSettings={vi.fn()}
-          updateAvailable={{
-            status: "available",
-          } as Parameters<typeof TopBar>[0]["updateAvailable"]}
+          updateAvailable={
+            {
+              status: "available",
+            } as Parameters<typeof TopBar>[0]["updateAvailable"]
+          }
           onShowUpdateDialog={vi.fn()}
         />,
         { language: "en" },
@@ -807,8 +828,10 @@ describe("TopBar", () => {
     expect(
       screen.getByRole("button", { name: "Previous (Shift+Tab)" }),
     ).toHaveAttribute("aria-label", "Previous (Shift+Tab)");
-    expect(screen.getByRole("button", { name: "Next (Tab)" }))
-      .toHaveAttribute("aria-label", "Next (Tab)");
+    expect(screen.getByRole("button", { name: "Next (Tab)" })).toHaveAttribute(
+      "aria-label",
+      "Next (Tab)",
+    );
 
     fireEvent.keyDown(searchInput, { key: "Tab" });
     expect(screen.getByText("2/2")).toBeInTheDocument();

@@ -594,7 +594,7 @@
     "homeModulesReorderHint": "Arrastra los módulos habilitados para reordenar la barra lateral del inicio de escritorio.",
     "desktopModulePromptsDesc": "Edición de prompts, carpetas, etiquetas y búsqueda",
     "desktopModuleSkillsDesc": "My Skills, proyectos y flujos del store",
-    "desktopModulePluginsDesc": "Paquetes de plugins, fuentes de la tienda y destinos de agentes compatibles",
+    "desktopModulePluginsDesc": "Plugin bundles, Official Store sources and Agent Plugin targets",
     "desktopModuleRulesDesc": "Espacios de reglas globales y de proyecto",
     "backgroundImage": "Imagen de fondo",
     "backgroundImageTitle": "Fondo del escritorio",
@@ -2612,8 +2612,12 @@
     "title": "Plugins",
     "subtitle": "Gestiona paquetes completos de capacidades y sus destinos de agentes.",
     "myPlugins": "Mis plugins",
-    "pluginStore": "Tienda de plugins",
-    "pluginTargets": "Destinos de plugins",
+    "pluginStore": "Official Store",
+    "pluginTargets": "Agent Plugin",
+    "sources": {
+      "codexOfficial": "Codex Plugin Store",
+      "promptHubOfficial": "Official Store"
+    },
     "inventory": {
       "skills": "Skills",
       "mcpServers": "Servidores MCP",
