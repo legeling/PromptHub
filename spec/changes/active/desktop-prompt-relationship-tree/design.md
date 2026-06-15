@@ -36,11 +36,14 @@ surfaces:
 - Graph view: shows all prompts by default, independent of the active folder,
   favorite, search, tag, or type filters. It renders tree parent edges from
   `parentId` and semantic graph edges from `prompt_relations`. It uses an
-  Obsidian-like SVG graph surface with force-positioned dot nodes, wheel/button
-  zoom, canvas panning, fit/reset controls, draggable in-session node
-  repositioning, and label density rules so large sparse libraries do not turn
-  into a ring of overlapping cards. Selecting a graph node opens the existing
-  prompt detail modal rather than introducing a second detail surface.
+  Obsidian-like SVG graph surface with live force-positioned dot nodes,
+  wheel/button zoom, canvas panning, fit/reset controls, draggable in-session
+  node repositioning, and label density rules so large sparse libraries do not
+  turn into a ring of overlapping cards. Dragging a node pins that node under
+  the pointer, reheats the graph simulation, pulls connected nodes through edge
+  springs, and lets the graph settle after release. Selecting a graph node opens
+  the existing prompt detail modal rather than introducing a second detail
+  surface.
 
 Drop behavior:
 

@@ -3,6 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 import type { Prompt, PromptRelation } from "@prompthub/shared/types";
 
 import { PromptGraphView } from "../../../src/renderer/components/prompt/PromptGraphView";
+import {
+  createPromptGraphEdges,
+  createPromptGraphNodes,
+  tickPromptGraph,
+} from "../../../src/renderer/components/prompt/prompt-graph-layout";
 import { renderWithI18n } from "../../helpers/i18n";
 
 const basePrompt: Prompt = {
@@ -69,8 +74,12 @@ describe("PromptGraphView", () => {
     expect(screen.getByText("Parent prompt")).toBeInTheDocument();
     expect(screen.getByText("Child prompt")).toBeInTheDocument();
     expect(screen.getByText("Related prompt")).toBeInTheDocument();
-    expect(screen.getAllByText("Grouped under").length).toBeGreaterThan(0);
-    expect(screen.getByText("Depends on")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Grouped under relationship"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Depends on relationship"),
+    ).toBeInTheDocument();
 
     fireEvent.click(
       screen.getByRole("button", { name: "Open graph prompt Child prompt" }),
@@ -126,6 +135,74 @@ describe("PromptGraphView", () => {
     fireEvent.pointerUp(canvas, { clientX: 420, clientY: 300, pointerId: 1 });
 
     expect(graphContent.getAttribute("transform")).not.toBe(initialTransform);
+  });
+
+  it("drags graph nodes without opening the prompt detail", async () => {
+    const onSelectPrompt = vi.fn();
+
+    await renderWithI18n(
+      <PromptGraphView
+        prompts={[parentPrompt, childPrompt, relatedPrompt]}
+        relations={[relation]}
+        selectedPromptId={childPrompt.id}
+        onSelectPrompt={onSelectPrompt}
+      />,
+      { language: "en" },
+    );
+
+    const canvas = screen.getByLabelText("Prompt relationship graph canvas");
+    const childNode = screen.getByRole("button", {
+      name: "Open graph prompt Child prompt",
+    });
+    const initialTransform = childNode.getAttribute("transform");
+
+    fireEvent.pointerDown(childNode, {
+      button: 0,
+      clientX: 320,
+      clientY: 240,
+      pointerId: 2,
+    });
+    fireEvent.pointerMove(canvas, {
+      buttons: 1,
+      clientX: 470,
+      clientY: 320,
+      pointerId: 2,
+    });
+    fireEvent.pointerUp(canvas, {
+      clientX: 470,
+      clientY: 320,
+      pointerId: 2,
+    });
+    fireEvent.click(childNode);
+
+    expect(childNode.getAttribute("transform")).not.toBe(initialTransform);
+    expect(onSelectPrompt).not.toHaveBeenCalled();
+  });
+
+  it("pulls connected nodes while a dragged node is pinned in the force graph", () => {
+    const prompts = [parentPrompt, childPrompt, relatedPrompt];
+    const edges = createPromptGraphEdges(prompts, [relation]);
+    const nodes = createPromptGraphNodes(prompts, edges, childPrompt.id);
+    const parentNode = nodes.find((node) => node.prompt.id === parentPrompt.id);
+    const childNode = nodes.find((node) => node.prompt.id === childPrompt.id);
+
+    if (!parentNode || !childNode) {
+      throw new Error("Expected graph nodes to be created");
+    }
+
+    const parentStartX = parentNode.x;
+    const parentStartY = parentNode.y;
+    childNode.x += 220;
+    childNode.y += 120;
+
+    tickPromptGraph(nodes, edges, {
+      alpha: 1,
+      selectedPromptId: childPrompt.id,
+      pinnedNodeId: childPrompt.id,
+    });
+
+    expect(Math.abs(parentNode.x - parentStartX)).toBeGreaterThan(0.01);
+    expect(Math.abs(parentNode.y - parentStartY)).toBeGreaterThan(0.01);
   });
 
   it("keeps large sparse graphs readable by hiding isolated labels until zoomed", async () => {

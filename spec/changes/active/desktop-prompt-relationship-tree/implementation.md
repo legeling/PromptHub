@@ -35,6 +35,26 @@ Verification:
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/prompt-graph-view.test.tsx --run`
 - `pnpm --filter @prompthub/desktop typecheck`
 
+## 2026-06-15 Animated Graph Follow-up
+
+- Reworked the graph from a one-time layout into a live force simulation with
+  node velocity, edge springs, center/home gravity, soft collision, and damping.
+- Made node dragging behave like an Obsidian-style graph interaction: the
+  dragged node is pinned under the pointer, connected nodes keep reacting during
+  the drag, and the graph continues settling after release.
+- Simplified graph edges to quiet star-map lines without visible labels or
+  arrowheads. Relation types remain available through node and edge accessible
+  labels, while the canvas stays visually focused on the node network.
+- Added a component regression that drags a rendered graph node and verifies the
+  drag does not also open the prompt detail.
+
+Verification:
+
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/prompt-graph-view.test.tsx --run`
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/prompt-graph-view.test.tsx tests/unit/components/sidebar.test.tsx tests/unit/components/prompt-detail-modal.test.tsx tests/unit/components/prompt-card-layout.test.tsx tests/unit/components/prompt-list-header.test.tsx --run`
+- `pnpm --filter @prompthub/desktop typecheck`
+- `pnpm --dir apps/desktop exec eslint src/renderer/components/prompt/PromptGraphView.tsx src/renderer/components/prompt/prompt-graph-layout.ts tests/unit/components/prompt-graph-view.test.tsx --max-warnings 0`
+
 Verification:
 
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/prompt-detail-modal.test.tsx tests/unit/components/sidebar.test.tsx tests/unit/components/prompt-graph-view.test.tsx tests/unit/components/prompt-card-layout.test.tsx --run`

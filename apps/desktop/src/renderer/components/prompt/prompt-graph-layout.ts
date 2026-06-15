@@ -6,16 +6,13 @@ export interface GraphNode {
   prompt: Prompt;
   x: number;
   y: number;
-  degree: number;
-  hasHierarchy: boolean;
-  hasSemanticRelation: boolean;
-}
-
-interface LayoutNode extends GraphNode {
   vx: number;
   vy: number;
   homeX: number;
   homeY: number;
+  degree: number;
+  hasHierarchy: boolean;
+  hasSemanticRelation: boolean;
 }
 
 export interface GraphEdge {
@@ -41,6 +38,12 @@ interface NodeMetrics {
   degree: number;
   hasHierarchy: boolean;
   hasSemanticRelation: boolean;
+}
+
+export interface GraphSimulationOptions {
+  alpha: number;
+  selectedPromptId: string | null;
+  pinnedNodeId: string | null;
 }
 
 export const GRAPH_WIDTH = 1200;
@@ -114,16 +117,8 @@ export function createPromptGraphNodes(
     metrics,
     selectedPromptId,
   );
-  return runForceLayout(layoutNodes, edges).map(
-    ({ prompt, x, y, degree, hasHierarchy, hasSemanticRelation }) => ({
-      prompt,
-      x,
-      y,
-      degree,
-      hasHierarchy,
-      hasSemanticRelation,
-    }),
-  );
+  prewarmForceLayout(layoutNodes, edges, selectedPromptId);
+  return layoutNodes;
 }
 
 function createNodeMetrics(prompts: Prompt[], edges: GraphEdge[]) {
@@ -157,7 +152,7 @@ function createInitialLayoutNodes(
   prompts: Prompt[],
   metrics: Map<string, NodeMetrics>,
   selectedPromptId: string | null,
-): LayoutNode[] {
+): GraphNode[] {
   const centerX = GRAPH_WIDTH / 2;
   const centerY = GRAPH_HEIGHT / 2;
   let connectedIndex = 0;
@@ -196,31 +191,50 @@ function createInitialLayoutNodes(
   });
 }
 
-function runForceLayout(nodes: LayoutNode[], edges: GraphEdge[]) {
+function prewarmForceLayout(
+  nodes: GraphNode[],
+  edges: GraphEdge[],
+  selectedPromptId: string | null,
+) {
   if (nodes.length <= 1) {
-    return nodes;
+    return;
   }
 
-  const nodeById = new Map(nodes.map((node) => [node.prompt.id, node]));
-  const iterations = nodes.length > 180 ? 82 : 132;
-  const enableFullRepulsion = nodes.length <= 240;
+  const iterations = nodes.length > 180 ? 46 : 72;
 
   for (let step = 0; step < iterations; step += 1) {
     const alpha = 1 - step / iterations;
-
-    if (enableFullRepulsion) {
-      applyNodeRepulsion(nodes, alpha);
-    }
-
-    applyEdgeSprings(edges, nodeById, alpha);
-    applyCenterGravity(nodes, alpha);
-    settleNodes(nodes);
+    tickPromptGraph(nodes, edges, {
+      alpha,
+      selectedPromptId,
+      pinnedNodeId: null,
+    });
   }
-
-  return nodes;
 }
 
-function applyNodeRepulsion(nodes: LayoutNode[], alpha: number) {
+export function tickPromptGraph(
+  nodes: GraphNode[],
+  edges: GraphEdge[],
+  options: GraphSimulationOptions,
+) {
+  if (nodes.length === 0) {
+    return 0;
+  }
+
+  const nodeById = new Map(nodes.map((node) => [node.prompt.id, node]));
+  const enableFullRepulsion = nodes.length <= 260;
+
+  if (enableFullRepulsion) {
+    applyNodeRepulsion(nodes, options.alpha);
+  }
+
+  applyEdgeSprings(edges, nodeById, options.alpha);
+  applyCenterGravity(nodes, options);
+  applySoftCollision(nodes, options.alpha);
+  return settleNodes(nodes, options.pinnedNodeId);
+}
+
+function applyNodeRepulsion(nodes: GraphNode[], alpha: number) {
   for (let index = 0; index < nodes.length; index += 1) {
     const source = nodes[index];
     for (let nextIndex = index + 1; nextIndex < nodes.length; nextIndex += 1) {
@@ -230,7 +244,7 @@ function applyNodeRepulsion(nodes: LayoutNode[], alpha: number) {
       const distanceSquared = Math.max(dx * dx + dy * dy, 64);
       const distance = Math.sqrt(distanceSquared);
       const force =
-        ((source.degree > 0 || target.degree > 0 ? 780 : 390) /
+        ((source.degree > 0 || target.degree > 0 ? 980 : 460) /
           distanceSquared) *
         alpha;
       const offsetX = (dx / distance) * force;
@@ -246,7 +260,7 @@ function applyNodeRepulsion(nodes: LayoutNode[], alpha: number) {
 
 function applyEdgeSprings(
   edges: GraphEdge[],
-  nodeById: Map<string, LayoutNode>,
+  nodeById: Map<string, GraphNode>,
   alpha: number,
 ) {
   for (const edge of edges) {
@@ -259,8 +273,8 @@ function applyEdgeSprings(
     const dx = target.x - source.x || 0.01;
     const dy = target.y - source.y || 0.01;
     const distance = Math.sqrt(dx * dx + dy * dy);
-    const targetDistance = edge.isHierarchy ? 150 : 128;
-    const force = ((distance - targetDistance) / distance) * 0.034 * alpha;
+    const targetDistance = edge.isHierarchy ? 148 : 120;
+    const force = ((distance - targetDistance) / distance) * 0.052 * alpha;
     const offsetX = dx * force;
     const offsetY = dy * force;
 
@@ -271,13 +285,25 @@ function applyEdgeSprings(
   }
 }
 
-function applyCenterGravity(nodes: LayoutNode[], alpha: number) {
+function applyCenterGravity(
+  nodes: GraphNode[],
+  { alpha, selectedPromptId, pinnedNodeId }: GraphSimulationOptions,
+) {
   const centerX = GRAPH_WIDTH / 2;
   const centerY = GRAPH_HEIGHT / 2;
 
   for (const node of nodes) {
-    const connectedGravity = node.degree > 0 ? 0.008 : 0.002;
-    const homeGravity = node.degree > 0 ? 0.0015 : 0.006;
+    if (node.prompt.id === pinnedNodeId) {
+      continue;
+    }
+
+    const isSelected = node.prompt.id === selectedPromptId;
+    const connectedGravity = isSelected
+      ? 0.03
+      : node.degree > 0
+        ? 0.005
+        : 0.001;
+    const homeGravity = isSelected ? 0 : node.degree > 0 ? 0.0008 : 0.0045;
 
     node.vx += (centerX - node.x) * connectedGravity * alpha;
     node.vy += (centerY - node.y) * connectedGravity * alpha;
@@ -286,8 +312,47 @@ function applyCenterGravity(nodes: LayoutNode[], alpha: number) {
   }
 }
 
-function settleNodes(nodes: LayoutNode[]) {
+function applySoftCollision(nodes: GraphNode[], alpha: number) {
+  if (nodes.length > 260) {
+    return;
+  }
+
+  for (let index = 0; index < nodes.length; index += 1) {
+    const source = nodes[index];
+    const sourceRadius = source.degree > 0 ? 24 : 16;
+    for (let nextIndex = index + 1; nextIndex < nodes.length; nextIndex += 1) {
+      const target = nodes[nextIndex];
+      const targetRadius = target.degree > 0 ? 24 : 16;
+      const minDistance = sourceRadius + targetRadius;
+      const dx = target.x - source.x || 0.01;
+      const dy = target.y - source.y || 0.01;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      if (distance >= minDistance) {
+        continue;
+      }
+
+      const push = ((minDistance - distance) / distance) * 0.08 * alpha;
+      const offsetX = dx * push;
+      const offsetY = dy * push;
+      source.vx -= offsetX;
+      source.vy -= offsetY;
+      target.vx += offsetX;
+      target.vy += offsetY;
+    }
+  }
+}
+
+function settleNodes(nodes: GraphNode[], pinnedNodeId: string | null) {
+  let maxVelocity = 0;
+
   for (const node of nodes) {
+    if (node.prompt.id === pinnedNodeId) {
+      node.vx = 0;
+      node.vy = 0;
+      continue;
+    }
+
     node.x = clamp(
       node.x + node.vx,
       GRAPH_PADDING,
@@ -298,9 +363,12 @@ function settleNodes(nodes: LayoutNode[]) {
       GRAPH_PADDING,
       GRAPH_HEIGHT - GRAPH_PADDING,
     );
-    node.vx *= 0.72;
-    node.vy *= 0.72;
+    maxVelocity = Math.max(maxVelocity, Math.abs(node.vx) + Math.abs(node.vy));
+    node.vx *= 0.86;
+    node.vy *= 0.86;
   }
+
+  return maxVelocity;
 }
 
 export function getSvgPoint(

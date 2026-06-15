@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -8,9 +9,7 @@ import {
   type WheelEvent as ReactWheelEvent,
 } from "react";
 import {
-  GitBranchIcon,
   ImageIcon,
-  Link2Icon,
   Maximize2Icon,
   MessageSquareTextIcon,
   MinusIcon,
@@ -27,17 +26,15 @@ import {
   createPromptGraphEdges,
   createPromptGraphNodes,
   fitViewportToNodes,
-  getNodePosition,
   getNodeRadius,
   getSvgDelta,
   getSvgPoint,
-  shouldShowEdgeLabel,
   shouldShowNodeLabel,
+  tickPromptGraph,
   zoomViewport,
   type GraphEdge,
   type GraphEdgeKind,
   type GraphNode,
-  type GraphPoint,
   type GraphViewport,
 } from "./prompt-graph-layout";
 
@@ -54,9 +51,14 @@ interface DragState {
   startClientX: number;
   startClientY: number;
   startViewport: GraphViewport;
+  startNodeX?: number;
+  startNodeY?: number;
   nodeId?: string;
-  startNode?: GraphPoint;
   moved: boolean;
+}
+
+function cloneGraphNode(node: GraphNode): GraphNode {
+  return { ...node };
 }
 
 function getGraphEdgeLabel(
@@ -68,6 +70,16 @@ function getGraphEdgeLabel(
   }
 
   return t(`prompt.relationships.kind.${kind}`);
+}
+
+function getGraphEdgeAriaLabel(
+  t: ReturnType<typeof useTranslation>["t"],
+  kind: GraphEdgeKind,
+) {
+  return t("prompt.graph.edgeAriaLabel", {
+    defaultValue: "{{relation}} relationship",
+    relation: getGraphEdgeLabel(t, kind),
+  });
 }
 
 function getNodeColorClass(node: GraphNode, isSelected: boolean) {
@@ -106,7 +118,7 @@ function GraphControls({
   onReset: () => void;
 }) {
   return (
-    <div className="absolute right-4 top-4 z-10 flex items-center gap-1 rounded-lg border border-border bg-card/95 p-1 text-xs text-muted-foreground shadow-sm backdrop-blur">
+    <div className="absolute right-5 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-2 rounded-xl bg-[#1f1f1f]/35 p-1.5 text-xs text-zinc-400 backdrop-blur">
       <GraphControlButton
         label={t("prompt.graph.fitView", "Fit graph to screen")}
         onClick={onFit}
@@ -119,7 +131,7 @@ function GraphControls({
       >
         <MinusIcon aria-hidden="true" className="h-3.5 w-3.5" />
       </GraphControlButton>
-      <span className="min-w-12 px-1 text-center font-medium tabular-nums text-foreground">
+      <span className="min-w-10 rounded-md px-1 py-0.5 text-center font-medium tabular-nums text-zinc-500">
         {zoomPercent}
       </span>
       <GraphControlButton
@@ -153,29 +165,10 @@ function GraphControlButton({
       aria-label={label}
       title={label}
       onClick={onClick}
-      className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-white/10 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
     >
       {children}
     </button>
-  );
-}
-
-function GraphLegend({ t }: { t: ReturnType<typeof useTranslation>["t"] }) {
-  return (
-    <div className="absolute bottom-4 left-4 z-10 flex items-center gap-2 rounded-lg border border-border bg-card/90 px-2.5 py-1.5 text-xs text-muted-foreground shadow-sm backdrop-blur">
-      <span className="inline-flex items-center gap-1">
-        <GitBranchIcon
-          aria-hidden="true"
-          className="h-3.5 w-3.5 text-primary"
-        />
-        {t("prompt.graph.groupedUnder")}
-      </span>
-      <span className="h-3 w-px bg-border" aria-hidden="true" />
-      <span className="inline-flex items-center gap-1">
-        <Link2Icon aria-hidden="true" className="h-3.5 w-3.5 text-amber-500" />
-        {t("prompt.relationships.kind.related_to")}
-      </span>
-    </div>
   );
 }
 
@@ -197,10 +190,14 @@ export function PromptGraphView({
   const svgRef = useRef<SVGSVGElement | null>(null);
   const dragStateRef = useRef<DragState | null>(null);
   const suppressClickRef = useRef(false);
+  const animationFrameRef = useRef<number | null>(null);
+  const alphaRef = useRef(0.85);
+  const nodesRef = useRef<GraphNode[]>([]);
+  const edgesRef = useRef<GraphEdge[]>([]);
+  const selectedPromptIdRef = useRef(selectedPromptId);
+  const pinnedNodeIdRef = useRef<string | null>(null);
   const [viewport, setViewport] = useState<GraphViewport>(DEFAULT_VIEWPORT);
-  const [nodeOverrides, setNodeOverrides] = useState<Map<string, GraphPoint>>(
-    () => new Map(),
-  );
+  const [animatedNodes, setAnimatedNodes] = useState<GraphNode[]>([]);
 
   const edges = useMemo(
     () => createPromptGraphEdges(prompts, relations),
@@ -211,10 +208,84 @@ export function PromptGraphView({
     [edges, prompts, selectedPromptId],
   );
   const nodeById = useMemo(
-    () => new Map(baseNodes.map((node) => [node.prompt.id, node])),
-    [baseNodes],
+    () => new Map(animatedNodes.map((node) => [node.prompt.id, node])),
+    [animatedNodes],
   );
   const zoomPercent = `${Math.round(viewport.scale * 100)}%`;
+
+  const startGraphAnimation = useCallback((nextAlpha = 0.75) => {
+    alphaRef.current = Math.max(alphaRef.current, nextAlpha);
+    if (animationFrameRef.current !== null) {
+      return;
+    }
+
+    const step = () => {
+      const maxVelocity = tickPromptGraph(nodesRef.current, edgesRef.current, {
+        alpha: alphaRef.current,
+        selectedPromptId: selectedPromptIdRef.current,
+        pinnedNodeId: pinnedNodeIdRef.current,
+      });
+
+      setAnimatedNodes(nodesRef.current.map(cloneGraphNode));
+      alphaRef.current *= pinnedNodeIdRef.current ? 0.985 : 0.94;
+
+      if (
+        pinnedNodeIdRef.current ||
+        alphaRef.current > 0.014 ||
+        maxVelocity > 0.03
+      ) {
+        animationFrameRef.current = window.requestAnimationFrame(step);
+        return;
+      }
+
+      animationFrameRef.current = null;
+    };
+
+    animationFrameRef.current = window.requestAnimationFrame(step);
+  }, []);
+
+  useEffect(() => {
+    edgesRef.current = edges;
+  }, [edges]);
+
+  useEffect(() => {
+    selectedPromptIdRef.current = selectedPromptId;
+    alphaRef.current = Math.max(alphaRef.current, 0.52);
+    startGraphAnimation(0.52);
+  }, [selectedPromptId, startGraphAnimation]);
+
+  useEffect(() => {
+    const previousById = new Map(
+      nodesRef.current.map((node) => [node.prompt.id, node]),
+    );
+    const nextNodes = baseNodes.map((node) => {
+      const previous = previousById.get(node.prompt.id);
+      if (!previous) {
+        return cloneGraphNode(node);
+      }
+
+      return {
+        ...node,
+        x: previous.x,
+        y: previous.y,
+        vx: previous.vx,
+        vy: previous.vy,
+      };
+    });
+
+    nodesRef.current = nextNodes;
+    setAnimatedNodes(nextNodes.map(cloneGraphNode));
+    startGraphAnimation(0.85);
+  }, [baseNodes, startGraphAnimation]);
+
+  useEffect(
+    () => () => {
+      if (animationFrameRef.current !== null) {
+        window.cancelAnimationFrame(animationFrameRef.current);
+      }
+    },
+    [],
+  );
 
   const zoomAtCenter = useCallback((nextScale: number) => {
     setViewport((current) =>
@@ -231,8 +302,12 @@ export function PromptGraphView({
 
   const resetGraph = useCallback(() => {
     setViewport(DEFAULT_VIEWPORT);
-    setNodeOverrides(new Map());
-  }, []);
+    const nextNodes = baseNodes.map(cloneGraphNode);
+    nodesRef.current = nextNodes;
+    setAnimatedNodes(nextNodes.map(cloneGraphNode));
+    pinnedNodeIdRef.current = null;
+    startGraphAnimation(0.9);
+  }, [baseNodes, startGraphAnimation]);
 
   const handleWheel = useCallback((event: ReactWheelEvent<SVGSVGElement>) => {
     event.preventDefault();
@@ -269,8 +344,9 @@ export function PromptGraphView({
       }
 
       event.stopPropagation();
-      const position = getNodePosition(node, nodeOverrides);
       event.currentTarget.setPointerCapture?.(event.pointerId);
+      pinnedNodeIdRef.current = node.prompt.id;
+      alphaRef.current = 0.95;
       dragStateRef.current = {
         mode: "node",
         pointerId: event.pointerId,
@@ -278,11 +354,13 @@ export function PromptGraphView({
         startClientY: event.clientY,
         startViewport: viewport,
         nodeId: node.prompt.id,
-        startNode: position,
+        startNodeX: node.x,
+        startNodeY: node.y,
         moved: false,
       };
+      startGraphAnimation(0.95);
     },
-    [nodeOverrides, viewport],
+    [startGraphAnimation, viewport],
   );
 
   const handlePointerMove = useCallback(
@@ -308,23 +386,34 @@ export function PromptGraphView({
         return;
       }
 
-      if (!dragState.nodeId || !dragState.startNode) {
+      if (
+        !dragState.nodeId ||
+        dragState.startNodeX === undefined ||
+        dragState.startNodeY === undefined
+      ) {
         return;
       }
 
       const nodeId = dragState.nodeId;
-      const startNode = dragState.startNode;
       const startScale = dragState.startViewport.scale;
-      setNodeOverrides((current) => {
-        const next = new Map(current);
-        next.set(nodeId, {
-          x: startNode.x + delta.x / startScale,
-          y: startNode.y + delta.y / startScale,
-        });
-        return next;
-      });
+      const nextX = dragState.startNodeX + delta.x / startScale;
+      const nextY = dragState.startNodeY + delta.y / startScale;
+      const draggedNode = nodesRef.current.find(
+        (node) => node.prompt.id === nodeId,
+      );
+      if (!draggedNode) {
+        return;
+      }
+
+      draggedNode.x = nextX;
+      draggedNode.y = nextY;
+      draggedNode.vx = 0;
+      draggedNode.vy = 0;
+      alphaRef.current = 0.95;
+      setAnimatedNodes(nodesRef.current.map(cloneGraphNode));
+      startGraphAnimation(0.95);
     },
-    [],
+    [startGraphAnimation],
   );
 
   const handlePointerUp = useCallback(
@@ -334,10 +423,16 @@ export function PromptGraphView({
         return;
       }
 
+      if (dragState.mode === "node") {
+        pinnedNodeIdRef.current = null;
+        alphaRef.current = Math.max(alphaRef.current, 0.62);
+        startGraphAnimation(0.62);
+      }
+
       suppressClickRef.current = dragState.mode === "node" && dragState.moved;
       dragStateRef.current = null;
     },
-    [],
+    [startGraphAnimation],
   );
 
   const handleNodeClick = useCallback(
@@ -365,28 +460,17 @@ export function PromptGraphView({
   );
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-background">
-      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border app-wallpaper-toolbar px-5 py-3">
-        <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-foreground">
-            {t("prompt.graph.title")}
-          </h2>
-        </div>
-        <div className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
-          <span className="rounded-full border border-border bg-card px-2.5 py-1">
-            {t("prompt.graph.promptCount", { count: prompts.length })}
-          </span>
-          <span className="rounded-full border border-border bg-card px-2.5 py-1">
-            {t("prompt.graph.relationCount", { count: edges.length })}
-          </span>
-        </div>
-      </div>
-
+    <div className="flex h-full min-h-0 flex-col bg-[#1f1f1f]">
       <div className="relative min-h-0 flex-1 overflow-hidden">
-        {baseNodes.length === 0 ? (
+        {animatedNodes.length === 0 ? (
           <EmptyGraph t={t} />
         ) : (
-          <div className="relative h-full min-h-[420px] overflow-hidden bg-muted/20">
+          <div className="relative h-full min-h-[420px] overflow-hidden bg-[#1f1f1f]">
+            <div className="pointer-events-none absolute inset-x-0 top-5 z-10 flex justify-center">
+              <h2 className="rounded-full bg-[#1f1f1f]/65 px-3 py-1 text-sm font-semibold text-zinc-100 backdrop-blur">
+                {t("prompt.graph.title")}
+              </h2>
+            </div>
             <GraphControls
               zoomPercent={zoomPercent}
               t={t}
@@ -395,7 +479,6 @@ export function PromptGraphView({
               onFit={fitGraph}
               onReset={resetGraph}
             />
-            <GraphLegend t={t} />
             <svg
               ref={svgRef}
               aria-label={t(
@@ -412,38 +495,21 @@ export function PromptGraphView({
               onPointerCancel={handlePointerUp}
             >
               <defs>
-                <pattern
-                  id="prompt-graph-grid"
-                  width="48"
-                  height="48"
-                  patternUnits="userSpaceOnUse"
+                <radialGradient
+                  id="prompt-graph-backdrop"
+                  cx="50%"
+                  cy="48%"
+                  r="72%"
                 >
-                  <path
-                    d="M 48 0 L 0 0 0 48"
-                    className="stroke-border/60"
-                    fill="none"
-                    strokeWidth="1"
-                  />
-                </pattern>
-                <marker
-                  id="prompt-graph-arrow"
-                  viewBox="0 0 10 10"
-                  refX="8"
-                  refY="5"
-                  markerWidth="5"
-                  markerHeight="5"
-                  orient="auto-start-reverse"
-                >
-                  <path
-                    d="M 0 0 L 10 5 L 0 10 z"
-                    className="fill-muted-foreground/55"
-                  />
-                </marker>
+                  <stop offset="0%" stopColor="#242424" />
+                  <stop offset="60%" stopColor="#1f1f1f" />
+                  <stop offset="100%" stopColor="#191919" />
+                </radialGradient>
               </defs>
               <rect
                 width={GRAPH_WIDTH}
                 height={GRAPH_HEIGHT}
-                fill="url(#prompt-graph-grid)"
+                fill="url(#prompt-graph-backdrop)"
               />
               <g
                 data-testid="prompt-graph-content"
@@ -451,16 +517,12 @@ export function PromptGraphView({
               >
                 <GraphEdges
                   edges={edges}
-                  edgeCount={edges.length}
                   nodeById={nodeById}
-                  nodeOverrides={nodeOverrides}
                   selectedPromptId={selectedPromptId}
-                  scale={viewport.scale}
                   t={t}
                 />
                 <GraphNodes
-                  nodes={baseNodes}
-                  nodeOverrides={nodeOverrides}
+                  nodes={animatedNodes}
                   promptCount={prompts.length}
                   selectedPromptId={selectedPromptId}
                   scale={viewport.scale}
@@ -480,19 +542,13 @@ export function PromptGraphView({
 
 function GraphEdges({
   edges,
-  edgeCount,
   nodeById,
-  nodeOverrides,
   selectedPromptId,
-  scale,
   t,
 }: {
   edges: GraphEdge[];
-  edgeCount: number;
   nodeById: Map<string, GraphNode>;
-  nodeOverrides: Map<string, GraphPoint>;
   selectedPromptId: string | null;
-  scale: number;
   t: ReturnType<typeof useTranslation>["t"];
 }) {
   return (
@@ -504,42 +560,29 @@ function GraphEdges({
           return null;
         }
 
-        const sourcePoint = getNodePosition(source, nodeOverrides);
-        const targetPoint = getNodePosition(target, nodeOverrides);
-        const labelX = (sourcePoint.x + targetPoint.x) / 2;
-        const labelY = (sourcePoint.y + targetPoint.y) / 2 - 8;
-        const showLabel = shouldShowEdgeLabel(
-          edge,
-          edgeCount,
-          selectedPromptId,
-          scale,
+        const isFocused = Boolean(
+          selectedPromptId &&
+          (edge.sourceId === selectedPromptId ||
+            edge.targetId === selectedPromptId),
         );
-
         return (
           <g key={edge.id}>
             <line
-              x1={sourcePoint.x}
-              y1={sourcePoint.y}
-              x2={targetPoint.x}
-              y2={targetPoint.y}
+              aria-label={getGraphEdgeAriaLabel(t, edge.kind)}
+              x1={source.x}
+              y1={source.y}
+              x2={target.x}
+              y2={target.y}
               className={
-                edge.isHierarchy ? "stroke-primary/70" : "stroke-amber-500/60"
+                isFocused
+                  ? "stroke-sky-400/90"
+                  : edge.isHierarchy
+                    ? "stroke-sky-400/18"
+                    : "stroke-zinc-500/16"
               }
-              strokeWidth={edge.isHierarchy ? 2.25 : 1.65}
-              strokeDasharray={edge.isHierarchy ? undefined : "6 7"}
-              markerEnd="url(#prompt-graph-arrow)"
+              strokeWidth={isFocused ? 2.2 : 1.15}
+              strokeDasharray={edge.isHierarchy ? undefined : "4 8"}
             />
-            {showLabel && (
-              <text
-                x={labelX}
-                y={labelY}
-                textAnchor="middle"
-                paintOrder="stroke"
-                className="fill-muted-foreground stroke-background stroke-[4px] text-[11px]"
-              >
-                {getGraphEdgeLabel(t, edge.kind)}
-              </text>
-            )}
           </g>
         );
       })}
@@ -549,7 +592,6 @@ function GraphEdges({
 
 function GraphNodes({
   nodes,
-  nodeOverrides,
   promptCount,
   selectedPromptId,
   scale,
@@ -559,7 +601,6 @@ function GraphNodes({
   onNodePointerDown,
 }: {
   nodes: GraphNode[];
-  nodeOverrides: Map<string, GraphPoint>;
   promptCount: number;
   selectedPromptId: string | null;
   scale: number;
@@ -577,7 +618,6 @@ function GraphNodes({
   return (
     <g>
       {nodes.map((node) => {
-        const point = getNodePosition(node, nodeOverrides);
         const isSelected = node.prompt.id === selectedPromptId;
         const radius = getNodeRadius(node, isSelected);
         const showLabel = shouldShowNodeLabel(
@@ -595,8 +635,8 @@ function GraphNodes({
             aria-label={t("prompt.graph.openPrompt", {
               title: node.prompt.title,
             })}
-            className="cursor-pointer outline-none"
-            transform={`translate(${point.x} ${point.y})`}
+            className="cursor-grab outline-none active:cursor-grabbing"
+            transform={`translate(${node.x} ${node.y})`}
             onClick={() => onNodeClick(node.prompt.id)}
             onKeyDown={(event) => onNodeKeyDown(node.prompt.id, event)}
             onPointerDown={(event) => onNodePointerDown(node, event)}
