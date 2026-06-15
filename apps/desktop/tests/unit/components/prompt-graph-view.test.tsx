@@ -1,14 +1,48 @@
 import { fireEvent, screen } from "@testing-library/react";
+import { forwardRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { Prompt, PromptRelation } from "@prompthub/shared/types";
 
 import { PromptGraphView } from "../../../src/renderer/components/prompt/PromptGraphView";
 import {
-  createPromptGraphEdges,
-  createPromptGraphNodes,
-  tickPromptGraph,
+  buildPromptGraphData,
+  createPromptGraphLinks,
+  getNodeVal,
+  shouldShowNodeLabel,
+  type PromptGraphNode,
 } from "../../../src/renderer/components/prompt/prompt-graph-layout";
 import { renderWithI18n } from "../../helpers/i18n";
+
+// react-force-graph-2d renders to a real <canvas> via an internal WebGL/2D
+// kapsule that jsdom cannot drive. We replace it with a DOM stub that captures
+// the props we hand it, so the tests can assert the data contract and the React
+// glue (selection callback, node count) without a live canvas.
+const graphProps = vi.hoisted(() => ({ current: null as any }));
+
+vi.mock("react-force-graph-2d", () => ({
+  __esModule: true,
+  default: forwardRef((props: any, _ref) => {
+    graphProps.current = props;
+    return (
+      <div
+        data-testid="force-graph-mock"
+        data-node-count={props.graphData.nodes.length}
+        data-link-count={props.graphData.links.length}
+      >
+        {props.graphData.nodes.map((node: PromptGraphNode) => (
+          <button
+            key={node.id}
+            type="button"
+            data-testid={`graph-node-${node.id}`}
+            onClick={() => props.onNodeClick?.(node)}
+          >
+            {node.title}
+          </button>
+        ))}
+      </div>
+    );
+  }),
+}));
 
 const basePrompt: Prompt = {
   id: "prompt-parent",
@@ -30,20 +64,11 @@ const basePrompt: Prompt = {
 };
 
 function createPrompt(id: string, title: string, parentId?: string): Prompt {
-  return {
-    ...basePrompt,
-    id,
-    title,
-    parentId,
-  };
+  return { ...basePrompt, id, title, parentId };
 }
 
 const parentPrompt = basePrompt;
-const childPrompt = createPrompt(
-  "prompt-child",
-  "Child prompt",
-  parentPrompt.id,
-);
+const childPrompt = createPrompt("prompt-child", "Child prompt", parentPrompt.id);
 const relatedPrompt = createPrompt("prompt-related", "Related prompt");
 
 const relation: PromptRelation = {
@@ -57,7 +82,7 @@ const relation: PromptRelation = {
 };
 
 describe("PromptGraphView", () => {
-  it("renders all prompt nodes with hierarchy and semantic relation edges", async () => {
+  it("feeds every prompt and both relation kinds into the force graph", async () => {
     const onSelectPrompt = vi.fn();
 
     await renderWithI18n(
@@ -70,27 +95,16 @@ describe("PromptGraphView", () => {
       { language: "en" },
     );
 
-    expect(screen.getByText("Relationship Graph")).toBeInTheDocument();
-    expect(screen.getByText("Parent prompt")).toBeInTheDocument();
-    expect(screen.getByText("Child prompt")).toBeInTheDocument();
-    expect(screen.getByText("Related prompt")).toBeInTheDocument();
-    expect(screen.getByText("Child prompt").closest("g")?.querySelector("rect"))
-      .toBeNull();
-    expect(
-      screen.getByLabelText("Grouped under relationship"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByLabelText("Depends on relationship"),
-    ).toBeInTheDocument();
+    const mock = screen.getByTestId("force-graph-mock");
+    expect(mock.getAttribute("data-node-count")).toBe("3");
+    // 1 hierarchy link (parent → child) + 1 semantic link (child → related).
+    expect(mock.getAttribute("data-link-count")).toBe("2");
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Open graph prompt Child prompt" }),
-    );
-
+    fireEvent.click(screen.getByTestId("graph-node-prompt-child"));
     expect(onSelectPrompt).toHaveBeenCalledWith(childPrompt.id);
   });
 
-  it("supports zoom controls without leaving the graph workspace", async () => {
+  it("exposes zoom and view controls in the graph workspace", async () => {
     await renderWithI18n(
       <PromptGraphView
         prompts={[parentPrompt, childPrompt, relatedPrompt]}
@@ -101,14 +115,12 @@ describe("PromptGraphView", () => {
       { language: "en" },
     );
 
-    expect(screen.getByText("100%")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Zoom in graph" }));
-    expect(screen.getByText("120%")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Zoom out graph" }));
-    expect(screen.getByText("100%")).toBeInTheDocument();
-
+    expect(
+      screen.getByRole("button", { name: "Zoom in graph" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Zoom out graph" }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Fit graph to screen" }),
     ).toBeInTheDocument();
@@ -117,124 +129,7 @@ describe("PromptGraphView", () => {
     ).toBeInTheDocument();
   });
 
-  it("pans the graph canvas by dragging the workspace background", async () => {
-    await renderWithI18n(
-      <PromptGraphView
-        prompts={[parentPrompt, childPrompt, relatedPrompt]}
-        relations={[relation]}
-        selectedPromptId={childPrompt.id}
-        onSelectPrompt={vi.fn()}
-      />,
-      { language: "en" },
-    );
-
-    const canvas = screen.getByLabelText("Prompt relationship graph canvas");
-    const graphContent = screen.getByTestId("prompt-graph-content");
-    const initialTransform = graphContent.getAttribute("transform");
-
-    fireEvent.pointerDown(canvas, { clientX: 320, clientY: 240, pointerId: 1 });
-    fireEvent.pointerMove(canvas, { clientX: 420, clientY: 300, pointerId: 1 });
-    fireEvent.pointerUp(canvas, { clientX: 420, clientY: 300, pointerId: 1 });
-
-    expect(graphContent.getAttribute("transform")).not.toBe(initialTransform);
-  });
-
-  it("drags graph nodes without opening the prompt detail", async () => {
-    const onSelectPrompt = vi.fn();
-
-    await renderWithI18n(
-      <PromptGraphView
-        prompts={[parentPrompt, childPrompt, relatedPrompt]}
-        relations={[relation]}
-        selectedPromptId={childPrompt.id}
-        onSelectPrompt={onSelectPrompt}
-      />,
-      { language: "en" },
-    );
-
-    const canvas = screen.getByLabelText("Prompt relationship graph canvas");
-    const childNode = screen.getByRole("button", {
-      name: "Open graph prompt Child prompt",
-    });
-    const initialTransform = childNode.getAttribute("transform");
-
-    fireEvent.pointerDown(childNode, {
-      button: 0,
-      clientX: 320,
-      clientY: 240,
-      pointerId: 2,
-    });
-    fireEvent.pointerMove(canvas, {
-      buttons: 1,
-      clientX: 470,
-      clientY: 320,
-      pointerId: 2,
-    });
-    fireEvent.pointerUp(canvas, {
-      clientX: 470,
-      clientY: 320,
-      pointerId: 2,
-    });
-    fireEvent.click(childNode);
-
-    expect(childNode.getAttribute("transform")).not.toBe(initialTransform);
-    expect(onSelectPrompt).not.toHaveBeenCalled();
-  });
-
-  it("pulls connected nodes while a dragged node is pinned in the force graph", () => {
-    const prompts = [parentPrompt, childPrompt, relatedPrompt];
-    const edges = createPromptGraphEdges(prompts, [relation]);
-    const nodes = createPromptGraphNodes(prompts, edges, childPrompt.id);
-    const parentNode = nodes.find((node) => node.prompt.id === parentPrompt.id);
-    const childNode = nodes.find((node) => node.prompt.id === childPrompt.id);
-
-    if (!parentNode || !childNode) {
-      throw new Error("Expected graph nodes to be created");
-    }
-
-    const parentStartX = parentNode.x;
-    const parentStartY = parentNode.y;
-    childNode.x += 220;
-    childNode.y += 120;
-
-    tickPromptGraph(nodes, edges, {
-      alpha: 1,
-      selectedPromptId: childPrompt.id,
-      pinnedNodeId: childPrompt.id,
-    });
-
-    expect(Math.abs(parentNode.x - parentStartX)).toBeGreaterThan(0.01);
-    expect(Math.abs(parentNode.y - parentStartY)).toBeGreaterThan(0.01);
-  });
-
-  it("keeps large sparse graphs readable by hiding isolated labels until zoomed", async () => {
-    const isolatedPrompts = Array.from({ length: 70 }, (_, index) =>
-      createPrompt(`isolated-${index}`, `Isolated ${index}`),
-    );
-
-    await renderWithI18n(
-      <PromptGraphView
-        prompts={[parentPrompt, childPrompt, relatedPrompt, ...isolatedPrompts]}
-        relations={[relation]}
-        selectedPromptId={childPrompt.id}
-        onSelectPrompt={vi.fn()}
-      />,
-      { language: "en" },
-    );
-
-    expect(screen.getByText("Child prompt")).toBeInTheDocument();
-    expect(screen.getByText("Related prompt")).toBeInTheDocument();
-    expect(screen.queryByText("Isolated 42")).not.toBeInTheDocument();
-
-    const zoomIn = screen.getByRole("button", { name: "Zoom in graph" });
-    fireEvent.click(zoomIn);
-    fireEvent.click(zoomIn);
-    fireEvent.click(zoomIn);
-
-    expect(screen.getByText("Isolated 42")).toBeInTheDocument();
-  });
-
-  it("shows an empty graph state without relying on filters", async () => {
+  it("shows an empty state without relying on filters", async () => {
     await renderWithI18n(
       <PromptGraphView
         prompts={[]}
@@ -246,5 +141,85 @@ describe("PromptGraphView", () => {
     );
 
     expect(screen.getByText("No prompts to map yet")).toBeInTheDocument();
+  });
+});
+
+describe("prompt graph data model", () => {
+  it("creates hierarchy and semantic links between matching prompts", () => {
+    const links = createPromptGraphLinks(
+      [parentPrompt, childPrompt, relatedPrompt],
+      [relation],
+    );
+
+    const hierarchy = links.find((link) => link.isHierarchy);
+    const semantic = links.find((link) => !link.isHierarchy);
+
+    expect(hierarchy).toMatchObject({
+      source: parentPrompt.id,
+      target: childPrompt.id,
+      kind: "grouped_under",
+    });
+    expect(semantic).toMatchObject({
+      source: childPrompt.id,
+      target: relatedPrompt.id,
+      kind: "depends_on",
+    });
+  });
+
+  it("counts node degree so hubs render larger", () => {
+    const { nodes } = buildPromptGraphData(
+      [parentPrompt, childPrompt, relatedPrompt],
+      [relation],
+    );
+
+    const child = nodes.find((node) => node.id === childPrompt.id);
+    const related = nodes.find((node) => node.id === relatedPrompt.id);
+
+    // Child has two connections (parent hierarchy + related semantic).
+    expect(child?.degree).toBe(2);
+    expect(related?.degree).toBe(1);
+    expect(getNodeVal(child!)).toBeGreaterThan(getNodeVal(related!));
+  });
+
+  it("hides isolated labels until zoomed in on dense graphs", () => {
+    const isolated: PromptGraphNode = {
+      id: "isolated",
+      title: "Isolated",
+      promptType: "text",
+      degree: 0,
+      hasHierarchy: false,
+      hasSemanticRelation: false,
+    };
+
+    // Below the isolated-label zoom threshold, dense-graph isolated labels hide.
+    expect(shouldShowNodeLabel(isolated, 80, null, new Set(), 1)).toBe(false);
+    // Once zoomed past the threshold they appear.
+    expect(shouldShowNodeLabel(isolated, 80, null, new Set(), 3)).toBe(true);
+    // Always visible on small graphs regardless of zoom.
+    expect(shouldShowNodeLabel(isolated, 10, null, new Set(), 0.3)).toBe(true);
+  });
+
+  it("always shows labels for the highlighted node and its neighbours", () => {
+    const connected: PromptGraphNode = {
+      id: "connected",
+      title: "Connected",
+      promptType: "text",
+      degree: 3,
+      hasHierarchy: false,
+      hasSemanticRelation: true,
+    };
+
+    expect(
+      shouldShowNodeLabel(connected, 200, "connected", new Set(), 0.4),
+    ).toBe(true);
+    expect(
+      shouldShowNodeLabel(
+        connected,
+        200,
+        "other",
+        new Set(["connected"]),
+        0.4,
+      ),
+    ).toBe(true);
   });
 });

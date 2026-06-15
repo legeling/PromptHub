@@ -2,36 +2,37 @@ import type { Prompt, PromptRelation } from "@prompthub/shared/types";
 
 export type GraphEdgeKind = PromptRelation["kind"] | "grouped_under";
 
-export interface GraphNode {
-  prompt: Prompt;
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  homeX: number;
-  homeY: number;
+// Node shape handed to react-force-graph-2d. The library mutates x/y/vx/vy and
+// fx/fy in place while running its internal d3-force simulation, so those are
+// optional and owned by the library — we never set them by hand.
+export interface PromptGraphNode {
+  id: string;
+  title: string;
+  promptType: Prompt["promptType"];
   degree: number;
   hasHierarchy: boolean;
   hasSemanticRelation: boolean;
+  x?: number;
+  y?: number;
+  vx?: number;
+  vy?: number;
+  fx?: number | null;
+  fy?: number | null;
 }
 
-export interface GraphEdge {
+export interface PromptGraphLink {
   id: string;
-  sourceId: string;
-  targetId: string;
+  // react-force-graph resolves string ids to node references in place, so after
+  // the first tick source/target become PromptGraphNode objects.
+  source: string | PromptGraphNode;
+  target: string | PromptGraphNode;
   kind: GraphEdgeKind;
   isHierarchy: boolean;
 }
 
-export interface GraphViewport {
-  x: number;
-  y: number;
-  scale: number;
-}
-
-export interface GraphPoint {
-  x: number;
-  y: number;
+export interface PromptGraphData {
+  nodes: PromptGraphNode[];
+  links: PromptGraphLink[];
 }
 
 interface NodeMetrics {
@@ -40,90 +41,25 @@ interface NodeMetrics {
   hasSemanticRelation: boolean;
 }
 
-export interface GraphSimulationOptions {
-  alpha: number;
-  selectedPromptId: string | null;
-  pinnedNodeId: string | null;
+const NODE_BASE_VAL = 1.2;
+const NODE_DEGREE_VAL_STEP = 0.7;
+const NODE_MAX_DEGREE = 16;
+const DENSE_GRAPH_THRESHOLD = 32;
+// On dense graphs labels stay hidden until you zoom in, so the default view is
+// clean dots. Connected nodes reveal their label earlier than isolated ones.
+const CONNECTED_LABEL_ZOOM = 2;
+const ISOLATED_LABEL_ZOOM = 2.8;
+
+function linkEndpointId(endpoint: string | PromptGraphNode): string {
+  return typeof endpoint === "string" ? endpoint : endpoint.id;
 }
 
-export const GRAPH_WIDTH = 1600;
-export const GRAPH_HEIGHT = 1000;
-export const GRAPH_PADDING = 96;
-export const DEFAULT_VIEWPORT: GraphViewport = { x: 0, y: 0, scale: 1 };
-export const ZOOM_STEP = 1.2;
-
-const MIN_ZOOM = 0.35;
-const MAX_ZOOM = 2.8;
-const LABEL_DENSE_GRAPH_THRESHOLD = 32;
-const CONNECTED_LABEL_ZOOM = 1.08;
-const ISOLATED_LABEL_ZOOM = 1.7;
-const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
-}
-
-export function createPromptGraphEdges(
+function createNodeMetrics(
   prompts: Prompt[],
   relations: PromptRelation[],
-): GraphEdge[] {
-  const promptIds = new Set(prompts.map((prompt) => prompt.id));
-  const hierarchyEdges = prompts.flatMap((prompt): GraphEdge[] => {
-    if (!prompt.parentId || !promptIds.has(prompt.parentId)) {
-      return [];
-    }
-
-    return [
-      {
-        id: `hierarchy:${prompt.parentId}:${prompt.id}`,
-        sourceId: prompt.parentId,
-        targetId: prompt.id,
-        kind: "grouped_under",
-        isHierarchy: true,
-      },
-    ];
-  });
-
-  const semanticEdges = relations
-    .filter(
-      (relation) =>
-        promptIds.has(relation.sourcePromptId) &&
-        promptIds.has(relation.targetPromptId),
-    )
-    .map(
-      (relation): GraphEdge => ({
-        id: relation.id,
-        sourceId: relation.sourcePromptId,
-        targetId: relation.targetPromptId,
-        kind: relation.kind,
-        isHierarchy: false,
-      }),
-    );
-
-  return [...hierarchyEdges, ...semanticEdges];
-}
-
-export function createPromptGraphNodes(
-  prompts: Prompt[],
-  edges: GraphEdge[],
-  selectedPromptId: string | null,
-): GraphNode[] {
-  if (prompts.length === 0) {
-    return [];
-  }
-
-  const metrics = createNodeMetrics(prompts, edges);
-  const layoutNodes = createInitialLayoutNodes(
-    prompts,
-    metrics,
-    selectedPromptId,
-  );
-  prewarmForceLayout(layoutNodes, edges, selectedPromptId);
-  return layoutNodes;
-}
-
-function createNodeMetrics(prompts: Prompt[], edges: GraphEdge[]) {
+): Map<string, NodeMetrics> {
   const metrics = new Map<string, NodeMetrics>();
+  const promptIds = new Set(prompts.map((prompt) => prompt.id));
 
   for (const prompt of prompts) {
     metrics.set(prompt.id, {
@@ -133,378 +69,156 @@ function createNodeMetrics(prompts: Prompt[], edges: GraphEdge[]) {
     });
   }
 
-  for (const edge of edges) {
-    for (const id of [edge.sourceId, edge.targetId]) {
-      const metric = metrics.get(id);
-      if (!metric) {
-        continue;
-      }
+  const bump = (id: string, hierarchy: boolean) => {
+    const metric = metrics.get(id);
+    if (!metric) {
+      return;
+    }
+    metric.degree += 1;
+    metric.hasHierarchy ||= hierarchy;
+    metric.hasSemanticRelation ||= !hierarchy;
+  };
 
-      metric.degree += 1;
-      metric.hasHierarchy ||= edge.isHierarchy;
-      metric.hasSemanticRelation ||= !edge.isHierarchy;
+  for (const prompt of prompts) {
+    if (prompt.parentId && promptIds.has(prompt.parentId)) {
+      bump(prompt.id, true);
+      bump(prompt.parentId, true);
+    }
+  }
+
+  for (const relation of relations) {
+    if (
+      promptIds.has(relation.sourcePromptId) &&
+      promptIds.has(relation.targetPromptId)
+    ) {
+      bump(relation.sourcePromptId, false);
+      bump(relation.targetPromptId, false);
     }
   }
 
   return metrics;
 }
 
-function createInitialLayoutNodes(
+export function createPromptGraphLinks(
   prompts: Prompt[],
-  metrics: Map<string, NodeMetrics>,
-  selectedPromptId: string | null,
-): GraphNode[] {
-  const centerX = GRAPH_WIDTH / 2;
-  const centerY = GRAPH_HEIGHT / 2;
-  let connectedIndex = 0;
-  let isolatedIndex = 0;
+  relations: PromptRelation[],
+): PromptGraphLink[] {
+  const promptIds = new Set(prompts.map((prompt) => prompt.id));
 
-  return prompts.map((prompt, index) => {
+  const hierarchyLinks = prompts.flatMap((prompt): PromptGraphLink[] => {
+    if (!prompt.parentId || !promptIds.has(prompt.parentId)) {
+      return [];
+    }
+
+    return [
+      {
+        id: `hierarchy:${prompt.parentId}:${prompt.id}`,
+        source: prompt.parentId,
+        target: prompt.id,
+        kind: "grouped_under",
+        isHierarchy: true,
+      },
+    ];
+  });
+
+  const semanticLinks = relations
+    .filter(
+      (relation) =>
+        promptIds.has(relation.sourcePromptId) &&
+        promptIds.has(relation.targetPromptId),
+    )
+    .map(
+      (relation): PromptGraphLink => ({
+        id: relation.id,
+        source: relation.sourcePromptId,
+        target: relation.targetPromptId,
+        kind: relation.kind,
+        isHierarchy: false,
+      }),
+    );
+
+  return [...hierarchyLinks, ...semanticLinks];
+}
+
+export function buildPromptGraphData(
+  prompts: Prompt[],
+  relations: PromptRelation[],
+): PromptGraphData {
+  if (prompts.length === 0) {
+    return { nodes: [], links: [] };
+  }
+
+  const metrics = createNodeMetrics(prompts, relations);
+  const nodes: PromptGraphNode[] = prompts.map((prompt) => {
     const metric = metrics.get(prompt.id) ?? {
       degree: 0,
       hasHierarchy: false,
       hasSemanticRelation: false,
     };
-    const isSelected = prompt.id === selectedPromptId;
-    const isConnected = metric.degree > 0;
-    const rank = isConnected ? connectedIndex++ : isolatedIndex++;
-    const angle = (index + 1) * GOLDEN_ANGLE - Math.PI / 2;
-    const radius = isSelected
-      ? 0
-      : isConnected
-        ? 132 + Math.sqrt(rank) * 88
-        : 360 + Math.sqrt(rank) * 56;
-    const x = centerX + Math.cos(angle) * radius;
-    const y = centerY + Math.sin(angle) * radius * 0.72;
 
     return {
-      prompt,
-      x,
-      y,
-      vx: 0,
-      vy: 0,
-      homeX: x,
-      homeY: y,
+      id: prompt.id,
+      title: prompt.title,
+      promptType: prompt.promptType,
       degree: metric.degree,
       hasHierarchy: metric.hasHierarchy,
       hasSemanticRelation: metric.hasSemanticRelation,
     };
   });
+
+  return { nodes, links: createPromptGraphLinks(prompts, relations) };
 }
 
-function prewarmForceLayout(
-  nodes: GraphNode[],
-  edges: GraphEdge[],
-  selectedPromptId: string | null,
-) {
-  if (nodes.length <= 1) {
-    return;
-  }
-
-  const iterations = nodes.length > 180 ? 58 : 96;
-
-  for (let step = 0; step < iterations; step += 1) {
-    const alpha = 1 - step / iterations;
-    tickPromptGraph(nodes, edges, {
-      alpha,
-      selectedPromptId,
-      pinnedNodeId: null,
-    });
-  }
-}
-
-export function tickPromptGraph(
-  nodes: GraphNode[],
-  edges: GraphEdge[],
-  options: GraphSimulationOptions,
-) {
-  if (nodes.length === 0) {
-    return 0;
-  }
-
-  const nodeById = new Map(nodes.map((node) => [node.prompt.id, node]));
-  const enableFullRepulsion = nodes.length <= 260;
-
-  if (enableFullRepulsion) {
-    applyNodeRepulsion(nodes, options.alpha);
-  }
-
-  applyEdgeSprings(edges, nodeById, options.alpha);
-  applyCenterGravity(nodes, options);
-  applySoftCollision(nodes, options.alpha);
-  return settleNodes(nodes, options.pinnedNodeId);
-}
-
-function applyNodeRepulsion(nodes: GraphNode[], alpha: number) {
-  for (let index = 0; index < nodes.length; index += 1) {
-    const source = nodes[index];
-    for (let nextIndex = index + 1; nextIndex < nodes.length; nextIndex += 1) {
-      const target = nodes[nextIndex];
-      const dx = source.x - target.x || 0.01;
-      const dy = source.y - target.y || 0.01;
-      const distanceSquared = Math.max(dx * dx + dy * dy, 64);
-      const distance = Math.sqrt(distanceSquared);
-      const force =
-        ((source.degree > 0 || target.degree > 0 ? 2100 : 780) /
-          distanceSquared) *
-        alpha;
-      const offsetX = (dx / distance) * force;
-      const offsetY = (dy / distance) * force;
-
-      source.vx += offsetX;
-      source.vy += offsetY;
-      target.vx -= offsetX;
-      target.vy -= offsetY;
-    }
-  }
-}
-
-function applyEdgeSprings(
-  edges: GraphEdge[],
-  nodeById: Map<string, GraphNode>,
-  alpha: number,
-) {
-  for (const edge of edges) {
-    const source = nodeById.get(edge.sourceId);
-    const target = nodeById.get(edge.targetId);
-    if (!source || !target) {
-      continue;
-    }
-
-    const dx = target.x - source.x || 0.01;
-    const dy = target.y - source.y || 0.01;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    const targetDistance = edge.isHierarchy ? 186 : 150;
-    const force = ((distance - targetDistance) / distance) * 0.046 * alpha;
-    const offsetX = dx * force;
-    const offsetY = dy * force;
-
-    source.vx += offsetX;
-    source.vy += offsetY;
-    target.vx -= offsetX;
-    target.vy -= offsetY;
-  }
-}
-
-function applyCenterGravity(
-  nodes: GraphNode[],
-  { alpha, selectedPromptId, pinnedNodeId }: GraphSimulationOptions,
-) {
-  const centerX = GRAPH_WIDTH / 2;
-  const centerY = GRAPH_HEIGHT / 2;
-
-  for (const node of nodes) {
-    if (node.prompt.id === pinnedNodeId) {
-      continue;
-    }
-
-    const isSelected = node.prompt.id === selectedPromptId;
-    const connectedGravity = isSelected
-      ? 0.02
-      : node.degree > 0
-        ? 0.0035
-        : 0.0008;
-    const homeGravity = isSelected ? 0 : node.degree > 0 ? 0.0008 : 0.0045;
-
-    node.vx += (centerX - node.x) * connectedGravity * alpha;
-    node.vy += (centerY - node.y) * connectedGravity * alpha;
-    node.vx += (node.homeX - node.x) * homeGravity * alpha;
-    node.vy += (node.homeY - node.y) * homeGravity * alpha;
-  }
-}
-
-function applySoftCollision(nodes: GraphNode[], alpha: number) {
-  if (nodes.length > 260) {
-    return;
-  }
-
-  for (let index = 0; index < nodes.length; index += 1) {
-    const source = nodes[index];
-    const sourceRadius = source.degree > 0 ? 24 : 16;
-    for (let nextIndex = index + 1; nextIndex < nodes.length; nextIndex += 1) {
-      const target = nodes[nextIndex];
-      const targetRadius = target.degree > 0 ? 24 : 16;
-      const minDistance = sourceRadius + targetRadius;
-      const dx = target.x - source.x || 0.01;
-      const dy = target.y - source.y || 0.01;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-
-      if (distance >= minDistance) {
-        continue;
-      }
-
-      const push = ((minDistance - distance) / distance) * 0.08 * alpha;
-      const offsetX = dx * push;
-      const offsetY = dy * push;
-      source.vx -= offsetX;
-      source.vy -= offsetY;
-      target.vx += offsetX;
-      target.vy += offsetY;
-    }
-  }
-}
-
-function settleNodes(nodes: GraphNode[], pinnedNodeId: string | null) {
-  let maxVelocity = 0;
-
-  for (const node of nodes) {
-    if (node.prompt.id === pinnedNodeId) {
-      node.vx = 0;
-      node.vy = 0;
-      continue;
-    }
-
-    node.x = clamp(
-      node.x + node.vx,
-      GRAPH_PADDING,
-      GRAPH_WIDTH - GRAPH_PADDING,
-    );
-    node.y = clamp(
-      node.y + node.vy,
-      GRAPH_PADDING,
-      GRAPH_HEIGHT - GRAPH_PADDING,
-    );
-    maxVelocity = Math.max(maxVelocity, Math.abs(node.vx) + Math.abs(node.vy));
-    node.vx *= 0.86;
-    node.vy *= 0.86;
-  }
-
-  return maxVelocity;
-}
-
-export function getSvgPoint(
-  svg: SVGSVGElement | null,
-  clientX: number,
-  clientY: number,
-): GraphPoint {
-  const rect = svg?.getBoundingClientRect();
-  const width = rect?.width || GRAPH_WIDTH;
-  const height = rect?.height || GRAPH_HEIGHT;
-  const left = rect?.left || 0;
-  const top = rect?.top || 0;
-
-  return {
-    x: ((clientX - left) / width) * GRAPH_WIDTH,
-    y: ((clientY - top) / height) * GRAPH_HEIGHT,
-  };
-}
-
-export function getSvgDelta(
-  svg: SVGSVGElement | null,
-  dx: number,
-  dy: number,
-): GraphPoint {
-  const rect = svg?.getBoundingClientRect();
-  const width = rect?.width || GRAPH_WIDTH;
-  const height = rect?.height || GRAPH_HEIGHT;
-
-  return {
-    x: (dx / width) * GRAPH_WIDTH,
-    y: (dy / height) * GRAPH_HEIGHT,
-  };
-}
-
-export function zoomViewport(
-  viewport: GraphViewport,
-  nextScale: number,
-  anchor: GraphPoint,
-): GraphViewport {
-  const scale = clamp(nextScale, MIN_ZOOM, MAX_ZOOM);
-  const contentX = (anchor.x - viewport.x) / viewport.scale;
-  const contentY = (anchor.y - viewport.y) / viewport.scale;
-
-  return {
-    x: anchor.x - contentX * scale,
-    y: anchor.y - contentY * scale,
-    scale,
-  };
-}
-
-export function fitViewportToNodes(nodes: GraphNode[]): GraphViewport {
-  if (nodes.length === 0) {
-    return DEFAULT_VIEWPORT;
-  }
-
-  const bounds = nodes.reduce(
-    (current, node) => ({
-      minX: Math.min(current.minX, node.x),
-      minY: Math.min(current.minY, node.y),
-      maxX: Math.max(current.maxX, node.x),
-      maxY: Math.max(current.maxY, node.y),
-    }),
-    {
-      minX: Number.POSITIVE_INFINITY,
-      minY: Number.POSITIVE_INFINITY,
-      maxX: Number.NEGATIVE_INFINITY,
-      maxY: Number.NEGATIVE_INFINITY,
-    },
+// nodeVal feeds the library's area-based sizing (radius ≈ sqrt(val) * relSize),
+// so a hub with many links renders noticeably larger, like Obsidian.
+export function getNodeVal(node: PromptGraphNode): number {
+  return (
+    NODE_BASE_VAL +
+    Math.min(node.degree, NODE_MAX_DEGREE) * NODE_DEGREE_VAL_STEP
   );
-  const width = Math.max(bounds.maxX - bounds.minX, 1);
-  const height = Math.max(bounds.maxY - bounds.minY, 1);
-  const scale = clamp(
-    Math.min(
-      (GRAPH_WIDTH - GRAPH_PADDING * 2) / width,
-      (GRAPH_HEIGHT - GRAPH_PADDING * 2) / height,
-    ),
-    MIN_ZOOM,
-    1.5,
-  );
-
-  return {
-    x: GRAPH_WIDTH / 2 - ((bounds.minX + bounds.maxX) / 2) * scale,
-    y: GRAPH_HEIGHT / 2 - ((bounds.minY + bounds.maxY) / 2) * scale,
-    scale,
-  };
 }
 
-export function getNodeRadius(node: GraphNode, isSelected: boolean) {
-  if (isSelected) {
-    return 8.5;
+export function buildNeighborIndex(links: PromptGraphLink[]): Map<string, Set<string>> {
+  const index = new Map<string, Set<string>>();
+
+  const connect = (a: string, b: string) => {
+    const set = index.get(a) ?? new Set<string>();
+    set.add(b);
+    index.set(a, set);
+  };
+
+  for (const link of links) {
+    const source = linkEndpointId(link.source);
+    const target = linkEndpointId(link.target);
+    connect(source, target);
+    connect(target, source);
   }
 
-  if (node.degree > 0) {
-    return 6.25;
-  }
+  return index;
+}
 
-  return node.prompt.promptType === "image" ? 5.4 : 4.6;
+export function getLinkEndpointId(endpoint: string | PromptGraphNode): string {
+  return linkEndpointId(endpoint);
 }
 
 export function shouldShowNodeLabel(
-  node: GraphNode,
+  node: PromptGraphNode,
   promptCount: number,
-  selectedPromptId: string | null,
-  scale: number,
-  activeNodeIds: Set<string> = new Set(),
-) {
-  if (activeNodeIds.has(node.prompt.id)) {
+  highlightedId: string | null,
+  activeNodeIds: Set<string>,
+  globalScale: number,
+): boolean {
+  if (node.id === highlightedId || activeNodeIds.has(node.id)) {
     return true;
   }
 
-  return (
-    promptCount <= LABEL_DENSE_GRAPH_THRESHOLD ||
-    node.prompt.id === selectedPromptId ||
-    (node.degree > 0 && scale >= CONNECTED_LABEL_ZOOM) ||
-    scale >= ISOLATED_LABEL_ZOOM
-  );
-}
+  if (promptCount <= DENSE_GRAPH_THRESHOLD) {
+    return true;
+  }
 
-export function shouldShowEdgeLabel(
-  edge: GraphEdge,
-  edgeCount: number,
-  selectedPromptId: string | null,
-  scale: number,
-) {
-  return (
-    edgeCount <= 16 ||
-    scale >= 1.15 ||
-    edge.sourceId === selectedPromptId ||
-    edge.targetId === selectedPromptId
-  );
-}
+  if (node.degree > 0) {
+    return globalScale >= CONNECTED_LABEL_ZOOM;
+  }
 
-export function getNodePosition(
-  node: GraphNode,
-  overrides: Map<string, GraphPoint>,
-): GraphPoint {
-  return overrides.get(node.prompt.id) ?? node;
+  return globalScale >= ISOLATED_LABEL_ZOOM;
 }

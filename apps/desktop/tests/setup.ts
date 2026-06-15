@@ -97,6 +97,15 @@ vi.mock('@tanstack/react-virtual', async () => {
 if (typeof window !== 'undefined') {
     installWindowMocks();
 
+    // jsdom lacks ResizeObserver, used by canvas-sizing hooks.
+    if (typeof globalThis.ResizeObserver === 'undefined') {
+        globalThis.ResizeObserver = class {
+            observe() {}
+            unobserve() {}
+            disconnect() {}
+        } as unknown as typeof ResizeObserver;
+    }
+
     Object.defineProperty(window.navigator, 'clipboard', {
         configurable: true,
         value: {
