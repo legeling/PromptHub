@@ -46,15 +46,16 @@ export interface GraphSimulationOptions {
   pinnedNodeId: string | null;
 }
 
-export const GRAPH_WIDTH = 1200;
-export const GRAPH_HEIGHT = 760;
-export const GRAPH_PADDING = 72;
+export const GRAPH_WIDTH = 1600;
+export const GRAPH_HEIGHT = 1000;
+export const GRAPH_PADDING = 96;
 export const DEFAULT_VIEWPORT: GraphViewport = { x: 0, y: 0, scale: 1 };
 export const ZOOM_STEP = 1.2;
 
 const MIN_ZOOM = 0.35;
 const MAX_ZOOM = 2.8;
-const LABEL_DENSE_GRAPH_THRESHOLD = 48;
+const LABEL_DENSE_GRAPH_THRESHOLD = 32;
+const CONNECTED_LABEL_ZOOM = 1.08;
 const ISOLATED_LABEL_ZOOM = 1.7;
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
 
@@ -171,8 +172,8 @@ function createInitialLayoutNodes(
     const radius = isSelected
       ? 0
       : isConnected
-        ? 88 + Math.sqrt(rank) * 64
-        : 220 + Math.sqrt(rank) * 35;
+        ? 132 + Math.sqrt(rank) * 88
+        : 360 + Math.sqrt(rank) * 56;
     const x = centerX + Math.cos(angle) * radius;
     const y = centerY + Math.sin(angle) * radius * 0.72;
 
@@ -200,7 +201,7 @@ function prewarmForceLayout(
     return;
   }
 
-  const iterations = nodes.length > 180 ? 46 : 72;
+  const iterations = nodes.length > 180 ? 58 : 96;
 
   for (let step = 0; step < iterations; step += 1) {
     const alpha = 1 - step / iterations;
@@ -244,7 +245,7 @@ function applyNodeRepulsion(nodes: GraphNode[], alpha: number) {
       const distanceSquared = Math.max(dx * dx + dy * dy, 64);
       const distance = Math.sqrt(distanceSquared);
       const force =
-        ((source.degree > 0 || target.degree > 0 ? 980 : 460) /
+        ((source.degree > 0 || target.degree > 0 ? 2100 : 780) /
           distanceSquared) *
         alpha;
       const offsetX = (dx / distance) * force;
@@ -273,8 +274,8 @@ function applyEdgeSprings(
     const dx = target.x - source.x || 0.01;
     const dy = target.y - source.y || 0.01;
     const distance = Math.sqrt(dx * dx + dy * dy);
-    const targetDistance = edge.isHierarchy ? 148 : 120;
-    const force = ((distance - targetDistance) / distance) * 0.052 * alpha;
+    const targetDistance = edge.isHierarchy ? 186 : 150;
+    const force = ((distance - targetDistance) / distance) * 0.046 * alpha;
     const offsetX = dx * force;
     const offsetY = dy * force;
 
@@ -299,10 +300,10 @@ function applyCenterGravity(
 
     const isSelected = node.prompt.id === selectedPromptId;
     const connectedGravity = isSelected
-      ? 0.03
+      ? 0.02
       : node.degree > 0
-        ? 0.005
-        : 0.001;
+        ? 0.0035
+        : 0.0008;
     const homeGravity = isSelected ? 0 : node.degree > 0 ? 0.0008 : 0.0045;
 
     node.vx += (centerX - node.x) * connectedGravity * alpha;
@@ -458,14 +459,14 @@ export function fitViewportToNodes(nodes: GraphNode[]): GraphViewport {
 
 export function getNodeRadius(node: GraphNode, isSelected: boolean) {
   if (isSelected) {
-    return 10;
+    return 8.5;
   }
 
   if (node.degree > 0) {
-    return 8;
+    return 6.25;
   }
 
-  return node.prompt.promptType === "image" ? 6 : 5.25;
+  return node.prompt.promptType === "image" ? 5.4 : 4.6;
 }
 
 export function shouldShowNodeLabel(
@@ -473,11 +474,16 @@ export function shouldShowNodeLabel(
   promptCount: number,
   selectedPromptId: string | null,
   scale: number,
+  activeNodeIds: Set<string> = new Set(),
 ) {
+  if (activeNodeIds.has(node.prompt.id)) {
+    return true;
+  }
+
   return (
     promptCount <= LABEL_DENSE_GRAPH_THRESHOLD ||
     node.prompt.id === selectedPromptId ||
-    node.degree > 0 ||
+    (node.degree > 0 && scale >= CONNECTED_LABEL_ZOOM) ||
     scale >= ISOLATED_LABEL_ZOOM
   );
 }

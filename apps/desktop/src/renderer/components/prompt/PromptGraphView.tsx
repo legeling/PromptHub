@@ -9,9 +9,7 @@ import {
   type WheelEvent as ReactWheelEvent,
 } from "react";
 import {
-  ImageIcon,
   Maximize2Icon,
-  MessageSquareTextIcon,
   MinusIcon,
   PlusIcon,
   RotateCcwIcon,
@@ -82,24 +80,56 @@ function getGraphEdgeAriaLabel(
   });
 }
 
-function getNodeColorClass(node: GraphNode, isSelected: boolean) {
+function getNodeColorClass(
+  node: GraphNode,
+  isSelected: boolean,
+  isActive: boolean,
+) {
   if (isSelected) {
-    return "fill-primary stroke-primary";
+    return "fill-sky-300 stroke-sky-100";
+  }
+
+  if (isActive) {
+    return "fill-sky-400 stroke-sky-100/90";
   }
 
   if (node.hasSemanticRelation) {
-    return "fill-amber-500/90 stroke-amber-600/70";
+    return "fill-blue-400/80 stroke-blue-200/50";
   }
 
   if (node.hasHierarchy) {
-    return "fill-blue-500/90 stroke-primary/70";
+    return "fill-indigo-300/75 stroke-indigo-100/45";
   }
 
   if (node.prompt.promptType === "image") {
-    return "fill-sky-400/70 stroke-sky-500/50";
+    return "fill-cyan-300/60 stroke-cyan-100/35";
   }
 
-  return "fill-muted-foreground/45 stroke-muted-foreground/40";
+  return "fill-zinc-500/55 stroke-zinc-300/25";
+}
+
+function createActiveNodeIds(
+  edges: GraphEdge[],
+  highlightedPromptId: string | null,
+) {
+  const activeNodeIds = new Set<string>();
+
+  if (!highlightedPromptId) {
+    return activeNodeIds;
+  }
+
+  activeNodeIds.add(highlightedPromptId);
+  for (const edge of edges) {
+    if (edge.sourceId === highlightedPromptId) {
+      activeNodeIds.add(edge.targetId);
+    }
+
+    if (edge.targetId === highlightedPromptId) {
+      activeNodeIds.add(edge.sourceId);
+    }
+  }
+
+  return activeNodeIds;
 }
 
 function GraphControls({
@@ -198,6 +228,7 @@ export function PromptGraphView({
   const pinnedNodeIdRef = useRef<string | null>(null);
   const [viewport, setViewport] = useState<GraphViewport>(DEFAULT_VIEWPORT);
   const [animatedNodes, setAnimatedNodes] = useState<GraphNode[]>([]);
+  const [hoveredPromptId, setHoveredPromptId] = useState<string | null>(null);
 
   const edges = useMemo(
     () => createPromptGraphEdges(prompts, relations),
@@ -210,6 +241,11 @@ export function PromptGraphView({
   const nodeById = useMemo(
     () => new Map(animatedNodes.map((node) => [node.prompt.id, node])),
     [animatedNodes],
+  );
+  const highlightedPromptId = hoveredPromptId ?? selectedPromptId;
+  const activeNodeIds = useMemo(
+    () => createActiveNodeIds(edges, highlightedPromptId),
+    [edges, highlightedPromptId],
   );
   const zoomPercent = `${Math.round(viewport.scale * 100)}%`;
 
@@ -346,6 +382,7 @@ export function PromptGraphView({
       event.stopPropagation();
       event.currentTarget.setPointerCapture?.(event.pointerId);
       pinnedNodeIdRef.current = node.prompt.id;
+      setHoveredPromptId(node.prompt.id);
       alphaRef.current = 0.95;
       dragStateRef.current = {
         mode: "node",
@@ -425,6 +462,7 @@ export function PromptGraphView({
 
       if (dragState.mode === "node") {
         pinnedNodeIdRef.current = null;
+        setHoveredPromptId(null);
         alphaRef.current = Math.max(alphaRef.current, 0.62);
         startGraphAnimation(0.62);
       }
@@ -518,10 +556,12 @@ export function PromptGraphView({
                 <GraphEdges
                   edges={edges}
                   nodeById={nodeById}
+                  highlightedPromptId={highlightedPromptId}
                   selectedPromptId={selectedPromptId}
                   t={t}
                 />
                 <GraphNodes
+                  activeNodeIds={activeNodeIds}
                   nodes={animatedNodes}
                   promptCount={prompts.length}
                   selectedPromptId={selectedPromptId}
@@ -530,6 +570,8 @@ export function PromptGraphView({
                   onNodeClick={handleNodeClick}
                   onNodeKeyDown={handleNodeKeyDown}
                   onNodePointerDown={handleNodePointerDown}
+                  onNodePointerEnter={setHoveredPromptId}
+                  onNodePointerLeave={() => setHoveredPromptId(null)}
                 />
               </g>
             </svg>
@@ -543,11 +585,13 @@ export function PromptGraphView({
 function GraphEdges({
   edges,
   nodeById,
+  highlightedPromptId,
   selectedPromptId,
   t,
 }: {
   edges: GraphEdge[];
   nodeById: Map<string, GraphNode>;
+  highlightedPromptId: string | null;
   selectedPromptId: string | null;
   t: ReturnType<typeof useTranslation>["t"];
 }) {
@@ -561,9 +605,14 @@ function GraphEdges({
         }
 
         const isFocused = Boolean(
+          highlightedPromptId &&
+            (edge.sourceId === highlightedPromptId ||
+              edge.targetId === highlightedPromptId),
+        );
+        const isSelectedEdge = Boolean(
           selectedPromptId &&
-          (edge.sourceId === selectedPromptId ||
-            edge.targetId === selectedPromptId),
+            (edge.sourceId === selectedPromptId ||
+              edge.targetId === selectedPromptId),
         );
         return (
           <g key={edge.id}>
@@ -575,12 +624,15 @@ function GraphEdges({
               y2={target.y}
               className={
                 isFocused
-                  ? "stroke-sky-400/90"
+                  ? "stroke-sky-300/85"
+                  : isSelectedEdge
+                    ? "stroke-sky-400/42"
                   : edge.isHierarchy
-                    ? "stroke-sky-400/18"
-                    : "stroke-zinc-500/16"
+                    ? "stroke-sky-300/18"
+                    : "stroke-zinc-500/14"
               }
-              strokeWidth={isFocused ? 2.2 : 1.15}
+              strokeLinecap="round"
+              strokeWidth={isFocused ? 1.9 : 0.95}
               strokeDasharray={edge.isHierarchy ? undefined : "4 8"}
             />
           </g>
@@ -591,6 +643,7 @@ function GraphEdges({
 }
 
 function GraphNodes({
+  activeNodeIds,
   nodes,
   promptCount,
   selectedPromptId,
@@ -599,7 +652,10 @@ function GraphNodes({
   onNodeClick,
   onNodeKeyDown,
   onNodePointerDown,
+  onNodePointerEnter,
+  onNodePointerLeave,
 }: {
+  activeNodeIds: Set<string>;
   nodes: GraphNode[];
   promptCount: number;
   selectedPromptId: string | null;
@@ -614,17 +670,22 @@ function GraphNodes({
     node: GraphNode,
     event: ReactPointerEvent<SVGGElement>,
   ) => void;
+  onNodePointerEnter: (promptId: string) => void;
+  onNodePointerLeave: () => void;
 }) {
   return (
     <g>
       {nodes.map((node) => {
         const isSelected = node.prompt.id === selectedPromptId;
+        const isActive = activeNodeIds.has(node.prompt.id);
+        const isDimmed = activeNodeIds.size > 0 && !isActive;
         const radius = getNodeRadius(node, isSelected);
         const showLabel = shouldShowNodeLabel(
           node,
           promptCount,
           selectedPromptId,
           scale,
+          activeNodeIds,
         );
 
         return (
@@ -635,41 +696,51 @@ function GraphNodes({
             aria-label={t("prompt.graph.openPrompt", {
               title: node.prompt.title,
             })}
-            className="cursor-grab outline-none active:cursor-grabbing"
+            className={`cursor-grab outline-none transition-opacity active:cursor-grabbing ${
+              isDimmed ? "opacity-30" : "opacity-100"
+            }`}
             transform={`translate(${node.x} ${node.y})`}
             onClick={() => onNodeClick(node.prompt.id)}
             onKeyDown={(event) => onNodeKeyDown(node.prompt.id, event)}
             onPointerDown={(event) => onNodePointerDown(node, event)}
+            onPointerEnter={() => onNodePointerEnter(node.prompt.id)}
+            onPointerLeave={onNodePointerLeave}
           >
             <circle
-              r={radius + 5}
-              className={isSelected ? "fill-primary/15" : "fill-transparent"}
+              r={radius + 12}
+              className={isActive ? "fill-sky-400/8" : "fill-transparent"}
             />
-            <circle
-              r={radius}
-              className={`${getNodeColorClass(node, isSelected)} transition-colors`}
-              strokeWidth={isSelected ? 3 : 1.5}
-            />
-            {node.prompt.promptType === "image" && (
-              <ImageIcon
-                aria-hidden="true"
-                className="pointer-events-none text-background"
-                x={-4}
-                y={-4}
-                width={8}
-                height={8}
-                strokeWidth={2.8}
+            {isActive && (
+              <circle
+                r={radius + 6.5}
+                className="fill-none stroke-sky-300/25"
+                strokeWidth="1.2"
               />
             )}
+            <circle
+              r={radius}
+              className={`${getNodeColorClass(
+                node,
+                isSelected,
+                isActive,
+              )} transition-colors`}
+              strokeWidth={isSelected || isActive ? 1.8 : 1.1}
+            />
             {node.degree > 0 && (
               <circle
-                r={radius + 3.5}
-                className="fill-none stroke-foreground/10"
-                strokeWidth="1"
+                r={radius + 3.2}
+                className="fill-none stroke-zinc-200/12"
+                strokeWidth="0.9"
               />
             )}
             {showLabel && (
-              <GraphNodeLabel node={node} isSelected={isSelected} />
+              <GraphNodeLabel
+                node={node}
+                isActive={isActive}
+                isSelected={isSelected}
+                radius={radius}
+                scale={scale}
+              />
             )}
           </g>
         );
@@ -680,57 +751,43 @@ function GraphNodes({
 
 function GraphNodeLabel({
   node,
+  isActive,
   isSelected,
+  radius,
+  scale,
 }: {
   node: GraphNode;
+  isActive: boolean;
   isSelected: boolean;
+  radius: number;
+  scale: number;
 }) {
+  const labelScale = Math.min(1.15, Math.max(0.48, 1 / scale));
+  const label = node.prompt.title.length > 28
+    ? `${node.prompt.title.slice(0, 27)}...`
+    : node.prompt.title;
+
   return (
-    <g transform="translate(12 -13)" className="pointer-events-none">
-      <rect
+    <g
+      transform={`translate(${radius + 7} 3) scale(${labelScale})`}
+      className="pointer-events-none"
+    >
+      <text
         x="0"
         y="0"
-        width={Math.min(178, Math.max(56, node.prompt.title.length * 7 + 34))}
-        height="26"
-        rx="7"
+        paintOrder="stroke"
+        stroke="#111318"
+        strokeLinejoin="round"
+        strokeWidth={isSelected || isActive ? 4 : 3}
         className={
           isSelected
-            ? "fill-primary stroke-primary"
-            : "fill-card/95 stroke-border"
-        }
-        strokeWidth="1"
-      />
-      {node.prompt.promptType === "image" ? (
-        <ImageIcon
-          aria-hidden="true"
-          className={isSelected ? "text-white/85" : "text-blue-500"}
-          x="8"
-          y="7"
-          width="12"
-          height="12"
-        />
-      ) : (
-        <MessageSquareTextIcon
-          aria-hidden="true"
-          className={isSelected ? "text-white/85" : "text-primary"}
-          x="8"
-          y="7"
-          width="12"
-          height="12"
-        />
-      )}
-      <text
-        x="26"
-        y="17"
-        className={
-          isSelected
-            ? "fill-white text-[12px] font-medium"
-            : "fill-foreground text-[12px] font-medium"
+            ? "fill-sky-50 text-[11px] font-semibold"
+            : isActive
+              ? "fill-sky-100 text-[10.5px] font-medium"
+              : "fill-zinc-300/85 text-[10px] font-medium"
         }
       >
-        {node.prompt.title.length > 21
-          ? `${node.prompt.title.slice(0, 20)}...`
-          : node.prompt.title}
+        {label}
       </text>
     </g>
   );

@@ -74,6 +74,8 @@ describe("PromptGraphView", () => {
     expect(screen.getByText("Parent prompt")).toBeInTheDocument();
     expect(screen.getByText("Child prompt")).toBeInTheDocument();
     expect(screen.getByText("Related prompt")).toBeInTheDocument();
+    expect(screen.getByText("Child prompt").closest("g")?.querySelector("rect"))
+      .toBeNull();
     expect(
       screen.getByLabelText("Grouped under relationship"),
     ).toBeInTheDocument();

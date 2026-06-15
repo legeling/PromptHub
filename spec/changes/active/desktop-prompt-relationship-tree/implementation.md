@@ -55,6 +55,29 @@ Verification:
 - `pnpm --filter @prompthub/desktop typecheck`
 - `pnpm --dir apps/desktop exec eslint src/renderer/components/prompt/PromptGraphView.tsx src/renderer/components/prompt/prompt-graph-layout.ts tests/unit/components/prompt-graph-view.test.tsx --max-warnings 0`
 
+## 2026-06-15 Obsidian Graph Visual Follow-up
+
+- Removed the remaining card-like node labels from the graph. Labels now render
+  as transparent SVG text beside small graph nodes instead of white prompt
+  cards.
+- Expanded the graph coordinate space and tuned force constants so large prompt
+  libraries spread out more like a star map instead of stacking in the viewport.
+- Added hover/drag cluster highlighting: the active node and one-hop neighbors
+  brighten while unrelated nodes dim, making the force movement easier to read.
+- Tightened dense-graph label rules so selected, hovered, and nearby nodes stay
+  identifiable while isolated nodes only reveal labels after zooming in.
+- Added a regression that prevents prompt graph labels from returning to
+  rectangular card containers.
+
+Verification:
+
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/prompt-graph-view.test.tsx --run`
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/prompt-graph-view.test.tsx tests/unit/components/sidebar.test.tsx tests/unit/components/prompt-detail-modal.test.tsx tests/unit/components/prompt-card-layout.test.tsx tests/unit/components/prompt-list-header.test.tsx --run`
+- `pnpm --dir apps/desktop exec eslint src/renderer/components/prompt/PromptGraphView.tsx src/renderer/components/prompt/prompt-graph-layout.ts tests/unit/components/prompt-graph-view.test.tsx --max-warnings 0`
+- `pnpm --filter @prompthub/desktop typecheck` is currently blocked by an
+  unrelated dirty MCP change in `src/renderer/components/mcp/McpManager.tsx`
+  (`Property 'trim' does not exist on type 'never'`).
+
 Verification:
 
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/prompt-detail-modal.test.tsx tests/unit/components/sidebar.test.tsx tests/unit/components/prompt-graph-view.test.tsx tests/unit/components/prompt-card-layout.test.tsx --run`
