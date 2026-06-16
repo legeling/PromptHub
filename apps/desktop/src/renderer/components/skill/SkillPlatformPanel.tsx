@@ -3,7 +3,6 @@ import {
   CheckIcon,
   CheckSquareIcon,
   CopyPlusIcon,
-  DownloadIcon,
   FileTextIcon,
   FolderPlusIcon,
   PackageIcon,
@@ -11,6 +10,7 @@ import {
   GithubIcon,
   LinkIcon,
   Loader2Icon,
+  SendIcon,
   SquareIcon,
   ChevronDownIcon,
   ChevronRightIcon,
@@ -627,7 +627,7 @@ export function SkillPlatformPanel({
                           className="h-4 w-4 animate-spin"
                         />
                       ) : (
-                        <DownloadIcon aria-hidden="true" className="h-4 w-4" />
+                        <SendIcon aria-hidden="true" className="h-4 w-4" />
                       )}
                       {t("skill.deployToProjects", {
                         name: selectedSkill.name,
@@ -741,7 +741,7 @@ export function SkillPlatformPanel({
                         </>
                       ) : (
                         <>
-                          <DownloadIcon
+                          <SendIcon
                             aria-hidden="true"
                             className="w-3.5 h-3.5"
                           />

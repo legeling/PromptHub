@@ -5,6 +5,7 @@ import {
   FolderOpenIcon,
   Loader2Icon,
   PlusIcon,
+  SendIcon,
   TrashIcon,
 } from "lucide-react";
 import type { TFunction } from "i18next";
@@ -52,7 +53,10 @@ export function ProjectSkillPreviewSidebar({
     : t("skill.openLocalSource", "Open Local Skill Folder");
 
   const sortedTargets = useMemo(
-    () => Array.from(new Set(deployTargets.filter((entry) => entry.trim().length > 0))),
+    () =>
+      Array.from(
+        new Set(deployTargets.filter((entry) => entry.trim().length > 0)),
+      ),
     [deployTargets],
   );
   const previousDeployTargetsRef = useRef<Set<string>>(new Set(sortedTargets));
@@ -88,7 +92,9 @@ export function ProjectSkillPreviewSidebar({
 
   const effectiveSelectedTargets = useMemo(() => {
     return new Set(
-      Array.from(selectedTargets).filter((entry) => sortedTargets.includes(entry)),
+      Array.from(selectedTargets).filter((entry) =>
+        sortedTargets.includes(entry),
+      ),
     );
   }, [selectedTargets, sortedTargets]);
 
@@ -132,7 +138,10 @@ export function ProjectSkillPreviewSidebar({
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-60"
               >
                 {isRemoving ? (
-                  <Loader2Icon aria-hidden="true" className="h-4 w-4 animate-spin" />
+                  <Loader2Icon
+                    aria-hidden="true"
+                    className="h-4 w-4 animate-spin"
+                  />
                 ) : (
                   <TrashIcon aria-hidden="true" className="h-4 w-4" />
                 )}
@@ -148,7 +157,10 @@ export function ProjectSkillPreviewSidebar({
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
               >
                 {isImporting ? (
-                  <Loader2Icon aria-hidden="true" className="h-4 w-4 animate-spin" />
+                  <Loader2Icon
+                    aria-hidden="true"
+                    className="h-4 w-4 animate-spin"
+                  />
                 ) : (
                   <DownloadIcon aria-hidden="true" className="h-4 w-4" />
                 )}
@@ -205,8 +217,12 @@ export function ProjectSkillPreviewSidebar({
                 >
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-medium text-foreground">
-                      {target.endsWith("/.agents/skills") || target.endsWith("\\.agents\\skills")
-                        ? t("skill.defaultProjectDeployTarget", "Default .agents target")
+                      {target.endsWith("/.agents/skills") ||
+                      target.endsWith("\\.agents\\skills")
+                        ? t(
+                            "skill.defaultProjectDeployTarget",
+                            "Default .agents target",
+                          )
                         : t("skill.customProjectDeployTarget", "Custom target")}
                     </div>
                     <div className="mt-1 break-all font-mono text-[11px] leading-relaxed text-muted-foreground">
@@ -236,9 +252,12 @@ export function ProjectSkillPreviewSidebar({
             className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
           >
             {isDeploying ? (
-              <Loader2Icon aria-hidden="true" className="h-4 w-4 animate-spin" />
+              <Loader2Icon
+                aria-hidden="true"
+                className="h-4 w-4 animate-spin"
+              />
             ) : (
-              <DownloadIcon aria-hidden="true" className="h-4 w-4" />
+              <SendIcon aria-hidden="true" className="h-4 w-4" />
             )}
             {t("skill.deployToProjectFolders", {
               name: selectedSkill.name,
@@ -259,7 +278,10 @@ export function ProjectSkillPreviewSidebar({
             className="flex w-full items-center gap-3 rounded-2xl border border-border bg-accent/60 px-4 py-4 text-left transition-colors hover:bg-accent"
             title={sourcePath}
           >
-            <FolderOpenIcon aria-hidden="true" className="h-5 w-5 shrink-0 text-primary" />
+            <FolderOpenIcon
+              aria-hidden="true"
+              className="h-5 w-5 shrink-0 text-primary"
+            />
             <div className="min-w-0">
               <div className="text-sm font-semibold text-foreground">
                 {sourceTitle}
@@ -278,13 +300,13 @@ export function ProjectSkillPreviewSidebar({
               className="flex w-full items-center gap-3 rounded-2xl border border-border bg-accent/60 px-4 py-4 text-left transition-colors hover:bg-accent"
               title={symlinkTargetPath}
             >
-              <FolderOpenIcon aria-hidden="true" className="h-5 w-5 shrink-0 text-primary" />
+              <FolderOpenIcon
+                aria-hidden="true"
+                className="h-5 w-5 shrink-0 text-primary"
+              />
               <div className="min-w-0">
                 <div className="text-sm font-semibold text-foreground">
-                  {t(
-                    "skill.openSourceSkillFolder",
-                    "Open source Skill folder",
-                  )}
+                  {t("skill.openSourceSkillFolder", "Open source Skill folder")}
                 </div>
                 <div className="mt-1 break-words text-xs leading-relaxed text-muted-foreground">
                   {symlinkTargetPath}

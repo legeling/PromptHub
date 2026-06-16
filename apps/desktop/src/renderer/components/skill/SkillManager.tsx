@@ -25,7 +25,6 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   EyeIcon,
-  DownloadIcon,
 } from "lucide-react";
 import { SkillGalleryCard } from "./SkillGalleryCard";
 import { SkillRenderBoundary } from "./SkillRenderBoundary";
@@ -822,7 +821,9 @@ export function SkillManager() {
 
     let disposed = false;
     void window.api.skill
-      .getMdInstallStatusBatch(Array.from(new Set(skills.map((skill) => skill.id))))
+      .getMdInstallStatusBatch(
+        Array.from(new Set(skills.map((skill) => skill.id))),
+      )
       .then((statusBySkillId) => {
         if (disposed) {
           return;
@@ -1308,7 +1309,7 @@ export function SkillManager() {
         ? [
             {
               label: t("skill.quickInstall", "Quick Install"),
-              icon: <DownloadIcon className="w-4 h-4" />,
+              icon: <SendIcon className="w-4 h-4" />,
               onClick: () => setQuickInstallSkill(skill),
             } satisfies ContextMenuItem,
           ]
@@ -1605,19 +1606,19 @@ export function SkillManager() {
                 </button>
                 <button
                   type="button"
-	                  onClick={handleBatchFavorite}
-	                  disabled={selectedSkillIds.size === 0}
-	                  className="inline-flex items-center gap-2 rounded-xl border border-border app-wallpaper-surface px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/25 hover:bg-accent disabled:opacity-50"
-	                  aria-label={
-	                    selectedSkills.every((skill) => skill.is_favorite)
-	                      ? t("skill.removeFavorite", "Remove Favorite")
-	                      : t("skill.addFavorite", "Add Favorite")
-	                  }
-	                  title={
-	                    selectedSkills.every((skill) => skill.is_favorite)
-	                      ? t("skill.removeFavorite", "Remove Favorite")
-	                      : t("skill.addFavorite", "Add Favorite")
-	                  }
+                  onClick={handleBatchFavorite}
+                  disabled={selectedSkillIds.size === 0}
+                  className="inline-flex items-center gap-2 rounded-xl border border-border app-wallpaper-surface px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/25 hover:bg-accent disabled:opacity-50"
+                  aria-label={
+                    selectedSkills.every((skill) => skill.is_favorite)
+                      ? t("skill.removeFavorite", "Remove Favorite")
+                      : t("skill.addFavorite", "Add Favorite")
+                  }
+                  title={
+                    selectedSkills.every((skill) => skill.is_favorite)
+                      ? t("skill.removeFavorite", "Remove Favorite")
+                      : t("skill.addFavorite", "Add Favorite")
+                  }
                 >
                   <StarIcon
                     aria-hidden="true"

@@ -3,7 +3,7 @@ import {
   CuboidIcon,
   StarIcon,
   TrashIcon,
-  DownloadIcon,
+  SendIcon,
   BellDotIcon,
   CheckSquareIcon,
   SquareIcon,
@@ -546,19 +546,19 @@ export function SkillListView({
                       className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-all active:scale-press-in"
                       title={t("skill.quickInstall", "快速安装")}
                     >
-                      <DownloadIcon aria-hidden="true" className="w-4 h-4" />
+                      <SendIcon aria-hidden="true" className="w-4 h-4" />
                     </button>
                   )}
                   <button
                     type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleFavorite(skill.id);
-                      }}
-                      aria-label={favoriteLabel}
-                      className={`p-2 rounded-lg transition-all active:scale-press-in ${
-                        skill.is_favorite
-                          ? "text-yellow-500 hover:text-yellow-600"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleFavorite(skill.id);
+                    }}
+                    aria-label={favoriteLabel}
+                    className={`p-2 rounded-lg transition-all active:scale-press-in ${
+                      skill.is_favorite
+                        ? "text-yellow-500 hover:text-yellow-600"
                         : "text-muted-foreground hover:text-yellow-500 hover:bg-yellow-500/10"
                     }`}
                     title={favoriteLabel}

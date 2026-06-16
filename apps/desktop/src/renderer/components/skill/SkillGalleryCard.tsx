@@ -2,7 +2,7 @@ import React from "react";
 import {
   BellDotIcon,
   CheckSquareIcon,
-  DownloadIcon,
+  SendIcon,
   SquareIcon,
   StarIcon,
   TrashIcon,
@@ -241,7 +241,7 @@ function SkillGalleryCardComponent({
                   className="opacity-0 group-hover:opacity-100 p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-all active:scale-press-in"
                   title={t("skill.quickInstall", "快速安装")}
                 >
-                  <DownloadIcon aria-hidden="true" className="w-4 h-4" />
+                  <SendIcon aria-hidden="true" className="w-4 h-4" />
                 </button>
               )}
               <button

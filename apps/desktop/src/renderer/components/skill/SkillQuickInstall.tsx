@@ -2,9 +2,9 @@ import { useTranslation } from "react-i18next";
 import {
   XIcon,
   CheckIcon,
-  DownloadIcon,
   Loader2Icon,
   CuboidIcon,
+  SendIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSettingsStore } from "../../stores/settings.store";
@@ -99,18 +99,14 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
         showToast(
           t("skill.installPartialFailure", {
             details,
-            defaultValue:
-              "Some platforms could not be installed\n{{details}}",
+            defaultValue: "Some platforms could not be installed\n{{details}}",
           }),
           "error",
         );
       }
       // Only auto-close when every selected platform succeeded. Otherwise
       // keep the modal open so the user can retry or inspect the failures.
-      if (
-        result.successCount > 0 &&
-        result.failures.length === 0
-      ) {
+      if (result.successCount > 0 && result.failures.length === 0) {
         setIsClosingSoon(true);
         clearCloseTimer();
         closeTimerRef.current = setTimeout(() => {
@@ -292,7 +288,7 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
                 </>
               ) : (
                 <>
-                  <DownloadIcon aria-hidden="true" className="w-4 h-4" />
+                  <SendIcon aria-hidden="true" className="w-4 h-4" />
                   {t("skill.installSelected", "Install Selected")}{" "}
                   {selectedPlatforms.size > 0 && `(${selectedPlatforms.size})`}
                 </>

@@ -8,6 +8,7 @@ import {
   FolderOpenIcon,
   Loader2Icon,
   RefreshCwIcon,
+  SendIcon,
   SettingsIcon,
   TrashIcon,
 } from "lucide-react";
@@ -1045,7 +1046,7 @@ export function SkillAgentsView() {
                 disabled={!selectedPlatformId || skills.length === 0}
                 className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
               >
-                <DownloadIcon aria-hidden="true" className="h-4 w-4" />
+                <SendIcon aria-hidden="true" className="h-4 w-4" />
                 {t("skill.installMySkillToAgent", "Install My Skill")}
               </button>
             </div>

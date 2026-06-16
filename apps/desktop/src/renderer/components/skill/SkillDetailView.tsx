@@ -6,6 +6,7 @@ import {
   CopyIcon,
   CheckIcon,
   DownloadIcon,
+  SendIcon,
   GlobeIcon,
   Edit3Icon,
   BookOpenIcon,
@@ -80,7 +81,9 @@ export function SkillDetailView() {
   );
 
   const [copyStatus, setCopyStatus] = useState<Record<string, boolean>>({});
-  const copyStatusTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const copyStatusTimersRef = useRef<
+    Record<string, ReturnType<typeof setTimeout>>
+  >({});
   const isMountedRef = useRef(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -124,16 +127,19 @@ export function SkillDetailView() {
     }
   }, []);
 
-  const scheduleCopyStatusReset = useCallback((key: string) => {
-    clearCopyStatusTimer(key);
-    copyStatusTimersRef.current[key] = setTimeout(() => {
-      if (!isMountedRef.current) {
-        return;
-      }
-      setCopyStatus((current) => ({ ...current, [key]: false }));
-      delete copyStatusTimersRef.current[key];
-    }, 2000);
-  }, [clearCopyStatusTimer]);
+  const scheduleCopyStatusReset = useCallback(
+    (key: string) => {
+      clearCopyStatusTimer(key);
+      copyStatusTimersRef.current[key] = setTimeout(() => {
+        if (!isMountedRef.current) {
+          return;
+        }
+        setCopyStatus((current) => ({ ...current, [key]: false }));
+        delete copyStatusTimersRef.current[key];
+      }, 2000);
+    },
+    [clearCopyStatusTimer],
+  );
 
   useEffect(() => {
     if (selectedSkill) {
@@ -451,7 +457,7 @@ export function SkillDetailView() {
                         </>
                       ) : (
                         <>
-                          <DownloadIcon
+                          <SendIcon
                             aria-hidden="true"
                             className="w-3.5 h-3.5"
                           />
@@ -475,7 +481,7 @@ export function SkillDetailView() {
                         className={`relative rounded-2xl border transition-all ${
                           isInstalled
                             ? "bg-primary/5 border-primary shadow-sm cursor-default"
-                          : isSelected
+                            : isSelected
                               ? "bg-primary/10 border-primary cursor-pointer"
                               : "bg-sidebar-accent/30 border-border hover:bg-sidebar-accent/50 cursor-pointer"
                         } ${isBatchInstalling && !isInstalled ? "opacity-70 cursor-wait" : ""}`}
@@ -522,9 +528,7 @@ export function SkillDetailView() {
                               </div>
                             )}
                           </div>
-                          <h4 className="font-bold text-sm">
-                            {platform.name}
-                          </h4>
+                          <h4 className="font-bold text-sm">{platform.name}</h4>
                           <p className="text-[11px] text-muted-foreground mt-1">
                             {isInstalled
                               ? t("skill.installed")
