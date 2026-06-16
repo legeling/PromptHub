@@ -133,6 +133,16 @@ PromptHub MUST provide a Plugin Store model that can represent official, verifie
 - **WHEN** PromptHub renders the entry
 - **THEN** the entry shows source/provenance and does not imply community entries are first-party
 
+#### Scenario: Plugin Store uses app-shell search and card-level detail
+
+- **GIVEN** the user opens the Plugins module
+- **WHEN** PromptHub renders My Plugins or Official Store
+- **THEN** Plugin search appears in the global app top bar, not inside the Plugin Store content area
+- **AND** the Plugin Store content area does not render category chips above the list
+- **AND** store source selection is driven by the Plugin navigation/sidebar state rather than duplicated above the list
+- **AND** list cards use the whole card as the detail entry point without separate right-side view/install/delete buttons
+- **AND** install/delete actions remain available from the detail modal or batch action toolbar
+
 #### Scenario: Preview Codex marketplace manifest
 
 - **GIVEN** a plugin appears in the Codex official marketplace

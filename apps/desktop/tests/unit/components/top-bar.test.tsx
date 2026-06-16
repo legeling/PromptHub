@@ -8,6 +8,7 @@ import { useFolderStore } from "../../../src/renderer/stores/folder.store";
 import { useRulesStore } from "../../../src/renderer/stores/rules.store";
 import { useSkillStore } from "../../../src/renderer/stores/skill.store";
 import { useMcpStore } from "../../../src/renderer/stores/mcp.store";
+import { usePluginStore } from "../../../src/renderer/stores/plugin.store";
 import { useUIStore } from "../../../src/renderer/stores/ui.store";
 import { renderWithI18n } from "../../helpers/i18n";
 import { installWindowMocks } from "../../helpers/window";
@@ -100,6 +101,19 @@ describe("TopBar", () => {
       searchQuery: "",
     } as Partial<ReturnType<typeof useMcpStore.getState>>);
 
+    usePluginStore.setState({
+      library: null,
+      marketEntries: [],
+      marketPreviews: {},
+      marketSources: [],
+      targetMatrix: [],
+      selectedTab: "market",
+      selectedMarketSourceId: "openai-curated",
+      searchQuery: "",
+      isLoading: false,
+      error: null,
+    } as Partial<ReturnType<typeof usePluginStore.getState>>);
+
     useUIStore.setState({
       appModule: "prompt",
       viewMode: "prompt",
@@ -143,7 +157,8 @@ describe("TopBar", () => {
     ).toBeInTheDocument();
   });
 
-  it("hides prompt search and quick add controls on the Plugins module", async () => {
+  it("uses plugin search and hides quick add controls on the Plugins module", async () => {
+    usePromptStore.setState({ searchQuery: "prompt query" });
     useUIStore.setState({
       appModule: "plugin",
       viewMode: "prompt",
@@ -157,9 +172,14 @@ describe("TopBar", () => {
       );
     });
 
-    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    const searchInput = screen.getByPlaceholderText("Search Plugins");
+    fireEvent.change(searchInput, { target: { value: "linear" } });
+
+    expect(usePluginStore.getState().searchQuery).toBe("linear");
+    expect(usePromptStore.getState().searchQuery).toBe("prompt query");
     expect(screen.queryByText("Quick Add")).not.toBeInTheDocument();
     expect(screen.queryByText("New")).not.toBeInTheDocument();
+    expect(screen.queryByText(/results/i)).not.toBeInTheDocument();
   });
 
   it("closes the create mode dropdown when clicking outside", async () => {

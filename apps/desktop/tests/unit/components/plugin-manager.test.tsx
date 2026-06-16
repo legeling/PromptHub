@@ -116,6 +116,7 @@ function resetPluginStore() {
     marketSources: [],
     targetMatrix: [],
     selectedTab: "market",
+    selectedMarketSourceId: "openai-curated",
     searchQuery: "",
     isLoading: false,
     error: null,
@@ -159,28 +160,36 @@ describe("PluginManager", () => {
     installPluginApiMock();
   });
 
-  it("renders the plugin store with Skill Store style search, category chips, and batch controls", async () => {
+  it("renders the plugin store without in-page search, category chips, or card action buttons", async () => {
     await renderPluginManager();
 
     expect(await screen.findByText("linear")).toBeInTheDocument();
-    expect(screen.getByTestId("plugin-store-search-form")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("plugin-store-filter-bar"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("plugin-store-search-form"),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "My Plugins" }),
     ).not.toBeInTheDocument();
-    expect(screen.getByText("Productivity · 1")).toBeInTheDocument();
-    expect(screen.getByText("Communication · 1")).toBeInTheDocument();
+    expect(screen.queryByText("Productivity · 1")).not.toBeInTheDocument();
+    expect(screen.queryByText("Communication · 1")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "View detail" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Install" }),
+    ).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Batch manage plugins" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Batch manage plugins" }),
+    );
 
     expect(screen.getByText("0 selected")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Install selected" }),
     ).toBeDisabled();
-
-    fireEvent.click(screen.getByText("Communication · 1"));
-
-    expect(screen.queryByText("linear")).not.toBeInTheDocument();
-    expect(screen.getByText("slack")).toBeInTheDocument();
   });
 
   it("opens store details before install and lazy-loads the manifest preview", async () => {
@@ -192,7 +201,9 @@ describe("PluginManager", () => {
       }),
     );
 
-    expect(window.api.plugin.previewMarketPlugin).toHaveBeenCalledWith("linear");
+    expect(window.api.plugin.previewMarketPlugin).toHaveBeenCalledWith(
+      "linear",
+    );
     const dialog = await screen.findByRole("dialog", { name: "linear" });
     expect(dialog).toBeInTheDocument();
     expect(screen.getByText("Inventory")).toBeInTheDocument();
@@ -206,12 +217,18 @@ describe("PluginManager", () => {
   it("installs selected store plugins from batch mode", async () => {
     await renderPluginManager();
 
-    fireEvent.click(await screen.findByRole("button", { name: "Batch manage plugins" }));
-    fireEvent.click(screen.getAllByRole("button", { name: "Select store plugin" })[0]);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Batch manage plugins" }),
+    );
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Select store plugin" })[0],
+    );
     fireEvent.click(screen.getByRole("button", { name: "Install selected" }));
 
     await waitFor(() => {
-      expect(window.api.plugin.installMarketPlugin).toHaveBeenCalledWith("linear");
+      expect(window.api.plugin.installMarketPlugin).toHaveBeenCalledWith(
+        "linear",
+      );
     });
   });
 });

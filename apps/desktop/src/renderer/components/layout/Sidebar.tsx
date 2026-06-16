@@ -282,7 +282,13 @@ export function Sidebar({
   const pluginMarketSources = usePluginStore((state) => state.marketSources);
   const pluginTargetMatrix = usePluginStore((state) => state.targetMatrix);
   const pluginSelectedTab = usePluginStore((state) => state.selectedTab);
+  const pluginSelectedMarketSourceId = usePluginStore(
+    (state) => state.selectedMarketSourceId,
+  );
   const setPluginSelectedTab = usePluginStore((state) => state.setSelectedTab);
+  const setPluginSelectedMarketSourceId = usePluginStore(
+    (state) => state.setSelectedMarketSourceId,
+  );
   const [isPluginStoreGroupExpanded, setIsPluginStoreGroupExpanded] = useState(
     () => pluginSelectedTab === "market",
   );
@@ -580,11 +586,22 @@ export function Sidebar({
     openMcpStoreSource,
   ]);
 
-  const openPluginStoreSource = useCallback(() => {
-    setIsPluginStoreGroupExpanded(true);
-    setPluginSelectedTab("market");
-    if (currentPage !== "home") onNavigate("home");
-  }, [currentPage, onNavigate, setPluginSelectedTab]);
+  const openPluginStoreSource = useCallback(
+    (sourceId?: string) => {
+      if (sourceId) {
+        setPluginSelectedMarketSourceId(sourceId);
+      }
+      setIsPluginStoreGroupExpanded(true);
+      setPluginSelectedTab("market");
+      if (currentPage !== "home") onNavigate("home");
+    },
+    [
+      currentPage,
+      onNavigate,
+      setPluginSelectedMarketSourceId,
+      setPluginSelectedTab,
+    ],
+  );
 
   const handlePluginStoreNavClick = useCallback(() => {
     if (
@@ -2026,9 +2043,10 @@ export function Sidebar({
                         <button
                           key={source.id}
                           type="button"
-                          onClick={openPluginStoreSource}
+                          onClick={() => openPluginStoreSource(source.id)}
                           className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                            pluginSelectedTab === "market"
+                            pluginSelectedTab === "market" &&
+                            pluginSelectedMarketSourceId === source.id
                               ? "bg-sidebar-accent text-sidebar-foreground"
                               : "text-sidebar-foreground/60 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
                           }`}

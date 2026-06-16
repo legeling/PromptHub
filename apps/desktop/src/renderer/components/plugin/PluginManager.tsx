@@ -6,7 +6,6 @@ import {
   CheckSquareIcon,
   CopyIcon,
   DownloadIcon,
-  EyeIcon,
   FolderOpenIcon,
   InfoIcon,
   ListChecksIcon,
@@ -14,7 +13,6 @@ import {
   PackageIcon,
   PackagePlusIcon,
   RefreshCwIcon,
-  SearchIcon,
   StoreIcon,
   TrashIcon,
   XCircleIcon,
@@ -151,23 +149,6 @@ function getPluginEntryId(entry: PluginLibraryEntry | PluginMarketEntry) {
   return entry.id;
 }
 
-function getPluginCategoryKey(entry: PluginLibraryEntry | PluginMarketEntry) {
-  return entry.category?.trim() || "uncategorized";
-}
-
-function getPluginCategoryLabel(
-  categoryKey: string,
-  t: ReturnType<typeof useTranslation>["t"],
-) {
-  if (categoryKey === "all") {
-    return t("common.showAll", "All");
-  }
-  if (categoryKey === "uncategorized") {
-    return t("plugin.uncategorized", "Uncategorized");
-  }
-  return categoryKey;
-}
-
 function getPluginInitial(name: string) {
   return name.trim().charAt(0).toUpperCase() || "?";
 }
@@ -200,14 +181,12 @@ function PluginCard({
   plugin,
   onOpenDetail,
   onToggleSelection,
-  onDelete,
 }: {
   batchMode?: boolean;
   isSelected?: boolean;
   plugin: PluginLibraryEntry;
   onOpenDetail: (plugin: PluginLibraryEntry) => void;
   onToggleSelection: (plugin: PluginLibraryEntry) => void;
-  onDelete: (plugin: PluginLibraryEntry) => void;
 }) {
   const { t } = useTranslation();
   const cardLabel = plugin.description
@@ -289,33 +268,6 @@ function PluginCard({
           </div>
         </div>
       </button>
-
-      <div className="flex shrink-0 items-center gap-1">
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            onOpenDetail(plugin);
-          }}
-          className="grid h-8 w-8 place-items-center rounded-lg border border-border/70 bg-card/80 text-muted-foreground transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary active:scale-press-in"
-          aria-label={t("common.viewDetail", "View detail")}
-          title={t("common.viewDetail", "View detail")}
-        >
-          <EyeIcon aria-hidden="true" className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            onDelete(plugin);
-          }}
-          aria-label={t("plugin.deletePlugin", "Delete plugin")}
-          title={t("plugin.deletePlugin", "Delete plugin")}
-          className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-600"
-        >
-          <TrashIcon className="h-4 w-4" />
-        </button>
-      </div>
     </article>
   );
 }
@@ -325,26 +277,20 @@ function MarketCard({
   entry,
   isSelected = false,
   installed,
-  installing,
   preview,
   onOpenDetail,
   onToggleSelection,
-  onInstall,
 }: {
   batchMode?: boolean;
   entry: PluginMarketEntry;
   isSelected?: boolean;
   installed: boolean;
-  installing: boolean;
   preview?: PluginMarketPreview;
   onOpenDetail: (entry: PluginMarketEntry) => void;
   onToggleSelection: (entry: PluginMarketEntry) => void;
-  onInstall: (entry: PluginMarketEntry) => void;
 }) {
   const { t } = useTranslation();
   const activeInventory = preview?.inventory ?? entry.inventory;
-  const installDisabled =
-    installed || installing || preview?.canInstall === false;
   const cardLabel = entry.description
     ? `${entry.displayName}. ${entry.description}`
     : entry.displayName;
@@ -444,48 +390,6 @@ function MarketCard({
           ) : null}
         </div>
       </button>
-
-      <div className="flex shrink-0 items-center gap-1">
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            onOpenDetail(entry);
-          }}
-          className="grid h-8 w-8 place-items-center rounded-lg border border-border/70 bg-card/80 text-muted-foreground transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary active:scale-press-in"
-          aria-label={t("common.viewDetail", "View detail")}
-          title={t("common.viewDetail", "View detail")}
-        >
-          <EyeIcon aria-hidden="true" className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          disabled={installDisabled}
-          onClick={(event) => {
-            event.stopPropagation();
-            onInstall(entry);
-          }}
-          aria-label={
-            installed
-              ? t("plugin.installed", "Installed")
-              : t("plugin.install", "Install")
-          }
-          title={
-            installed
-              ? t("plugin.installed", "Installed")
-              : t("plugin.install", "Install")
-          }
-          className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground transition-all hover:bg-primary/10 hover:text-primary active:scale-press-in disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {installing ? (
-            <Loader2Icon className="h-4 w-4 animate-spin" />
-          ) : installed ? (
-            <CheckCircleIcon className="h-4 w-4 text-emerald-500" />
-          ) : (
-            <PackagePlusIcon className="h-4 w-4" />
-          )}
-        </button>
-      </div>
     </article>
   );
 }
@@ -1165,10 +1069,6 @@ export function PluginManager() {
     useState<PluginMarketEntry | null>(null);
   const [detailLibraryPlugin, setDetailLibraryPlugin] =
     useState<PluginLibraryEntry | null>(null);
-  const [selectedMarketSourceId, setSelectedMarketSourceId] =
-    useState("openai-curated");
-  const [selectedMarketCategoryId, setSelectedMarketCategoryId] =
-    useState("all");
   const [isBatchMode, setIsBatchMode] = useState(false);
   const [selectedMarketEntryIds, setSelectedMarketEntryIds] = useState<
     Set<string>
@@ -1189,12 +1089,13 @@ export function PluginManager() {
     marketSources,
     targetMatrix,
     selectedTab,
+    selectedMarketSourceId,
     searchQuery,
     isLoading,
     error,
     load,
     setSelectedTab,
-    setSearchQuery,
+    setSelectedMarketSourceId,
     previewMarketPlugin,
     installMarketPlugin,
     deletePlugin,
@@ -1205,18 +1106,17 @@ export function PluginManager() {
   }, [load]);
 
   useEffect(() => {
-    if (
-      selectedMarketSourceId !== "all" &&
-      marketSources.length > 0 &&
-      !marketSources.some((source) => source.id === selectedMarketSourceId)
-    ) {
-      setSelectedMarketSourceId("all");
+    if (selectedMarketSourceId === "all" || marketSources.length === 0) {
+      return;
     }
-  }, [marketSources, selectedMarketSourceId]);
-
-  useEffect(() => {
-    setSelectedMarketCategoryId("all");
-  }, [selectedMarketSourceId]);
+    if (marketSources.some((source) => source.id === selectedMarketSourceId)) {
+      return;
+    }
+    const fallback =
+      marketSources.find((source) => source.id === "openai-curated") ??
+      marketSources[0];
+    setSelectedMarketSourceId(fallback.id);
+  }, [marketSources, selectedMarketSourceId, setSelectedMarketSourceId]);
 
   const installedPlugins = useMemo(
     () => library?.plugins ?? [],
@@ -1234,16 +1134,6 @@ export function PluginManager() {
       ),
     [installedPlugins, normalizedSearchQuery],
   );
-  const marketSourceCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const entry of marketEntries) {
-      counts.set(
-        entry.marketplaceId,
-        (counts.get(entry.marketplaceId) ?? 0) + 1,
-      );
-    }
-    return counts;
-  }, [marketEntries]);
   const sourceFilteredMarketEntries = useMemo(
     () =>
       marketEntries.filter(
@@ -1253,40 +1143,12 @@ export function PluginManager() {
       ),
     [marketEntries, selectedMarketSourceId],
   );
-  const marketCategoryOptions = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const entry of sourceFilteredMarketEntries) {
-      const key = getPluginCategoryKey(entry);
-      counts.set(key, (counts.get(key) ?? 0) + 1);
-    }
-    return [
-      {
-        key: "all",
-        label: getPluginCategoryLabel("all", t),
-        count: sourceFilteredMarketEntries.length,
-      },
-      ...Array.from(counts.entries())
-        .sort(([left], [right]) => left.localeCompare(right))
-        .map(([key, count]) => ({
-          key,
-          label: getPluginCategoryLabel(key, t),
-          count,
-        })),
-    ];
-  }, [sourceFilteredMarketEntries, t]);
   const visibleMarketEntries = useMemo(
     () =>
-      sourceFilteredMarketEntries.filter(
-        (entry) =>
-          (selectedMarketCategoryId === "all" ||
-            getPluginCategoryKey(entry) === selectedMarketCategoryId) &&
-          matchesPluginSearch(entry, normalizedSearchQuery),
+      sourceFilteredMarketEntries.filter((entry) =>
+        matchesPluginSearch(entry, normalizedSearchQuery),
       ),
-    [
-      normalizedSearchQuery,
-      selectedMarketCategoryId,
-      sourceFilteredMarketEntries,
-    ],
+    [normalizedSearchQuery, sourceFilteredMarketEntries],
   );
   const installedMarketEntries = useMemo(
     () => visibleMarketEntries.filter((entry) => installedIds.has(entry.id)),
@@ -1700,91 +1562,6 @@ export function PluginManager() {
         </div>
       </header>
 
-      <div
-        className="shrink-0 space-y-3 border-b border-border px-6 py-3 app-wallpaper-section"
-        data-testid="plugin-store-filter-bar"
-      >
-        <form
-          data-testid="plugin-store-search-form"
-          className="flex w-full items-center gap-2 rounded-xl border border-border/70 bg-card/70 px-3 py-2 transition-colors focus-within:bg-background"
-          onSubmit={(event) => event.preventDefault()}
-        >
-          <SearchIcon
-            aria-hidden="true"
-            className="h-4 w-4 shrink-0 text-muted-foreground"
-          />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder={t("plugin.searchPlaceholder", "Search plugins")}
-            aria-label={t("plugin.searchPlaceholder", "Search plugins")}
-            className="h-6 min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-0 focus-visible:ring-0"
-          />
-          {searchQuery ? (
-            <button
-              type="button"
-              onClick={() => setSearchQuery("")}
-              className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              aria-label={t("common.clearSearch", "Clear search")}
-              title={t("common.clearSearch", "Clear search")}
-            >
-              <XIcon aria-hidden="true" className="h-3.5 w-3.5" />
-            </button>
-          ) : null}
-        </form>
-
-        {selectedTab === "market" ? (
-          <>
-            <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
-              <button
-                type="button"
-                onClick={() => setSelectedMarketSourceId("all")}
-                className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                  selectedMarketSourceId === "all"
-                    ? "bg-primary text-white shadow-sm"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                }`}
-              >
-                {t("plugin.allSources", "All sources")} · {marketEntries.length}
-              </button>
-              {marketSources.map((source) => (
-                <button
-                  key={source.id}
-                  type="button"
-                  onClick={() => setSelectedMarketSourceId(source.id)}
-                  className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                    selectedMarketSourceId === source.id
-                      ? "bg-primary text-white shadow-sm"
-                      : "bg-muted text-muted-foreground hover:bg-muted/80"
-                  }`}
-                >
-                  {getMarketSourceLabel(source.id, source.displayName, t)} ·{" "}
-                  {marketSourceCounts.get(source.id) ?? 0}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
-              {marketCategoryOptions.map((category) => (
-                <button
-                  key={category.key}
-                  type="button"
-                  onClick={() => setSelectedMarketCategoryId(category.key)}
-                  className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                    selectedMarketCategoryId === category.key
-                      ? "bg-primary text-white shadow-sm"
-                      : "bg-muted text-muted-foreground hover:bg-muted/80"
-                  }`}
-                >
-                  {category.label} · {category.count}
-                </button>
-              ))}
-            </div>
-          </>
-        ) : null}
-      </div>
-
       <main className="min-h-0 flex-1 overflow-y-auto p-6">
         {error ? (
           <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-600">
@@ -1807,7 +1584,6 @@ export function PluginManager() {
                   plugin={plugin}
                   onOpenDetail={setDetailLibraryPlugin}
                   onToggleSelection={handleToggleLibrarySelection}
-                  onDelete={setDeleteTarget}
                 />
               ))}
             </div>
@@ -1847,11 +1623,9 @@ export function PluginManager() {
                           entry={entry}
                           isSelected={selectedMarketEntryIds.has(entry.id)}
                           installed
-                          installing={installingId === entry.id}
                           preview={marketPreviews[entry.id]}
                           onOpenDetail={handleOpenMarketDetail}
                           onToggleSelection={handleToggleMarketSelection}
-                          onInstall={handleInstall}
                         />
                       ))}
                     </div>
@@ -1876,11 +1650,9 @@ export function PluginManager() {
                           entry={entry}
                           isSelected={selectedMarketEntryIds.has(entry.id)}
                           installed={false}
-                          installing={installingId === entry.id}
                           preview={marketPreviews[entry.id]}
                           onOpenDetail={handleOpenMarketDetail}
                           onToggleSelection={handleToggleMarketSelection}
-                          onInstall={handleInstall}
                         />
                       ))}
                     </div>

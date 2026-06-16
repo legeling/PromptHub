@@ -22,6 +22,7 @@ import { useSettingsStore } from "../../stores/settings.store";
 import { useFolderStore } from "../../stores/folder.store";
 import { useSkillStore } from "../../stores/skill.store";
 import { useMcpStore } from "../../stores/mcp.store";
+import { usePluginStore } from "../../stores/plugin.store";
 import {
   useState,
   useEffect,
@@ -110,6 +111,8 @@ export function TopBar({
   const setMcpSearchQuery = useMcpStore((state) => state.setSearchQuery);
   const mcpLibrary = useMcpStore((state) => state.library);
   const mcpSelectedTab = useMcpStore((state) => state.selectedTab);
+  const pluginSearchQuery = usePluginStore((state) => state.searchQuery);
+  const setPluginSearchQuery = usePluginStore((state) => state.setSearchQuery);
 
   const isDarkMode = useSettingsStore((state) => state.isDarkMode);
   const setDarkMode = useSettingsStore((state) => state.setDarkMode);
@@ -153,7 +156,7 @@ export function TopBar({
   const isPluginView = appModule === "plugin";
   const isSkillView = appModule === "skill";
   const isPromptView = appModule === "prompt";
-  const showTopBarSearch = !isSkillStoreCatalogView && !isPluginView;
+  const showTopBarSearch = !isSkillStoreCatalogView;
   const showCreateButton = isPromptView || isSkillView || isMcpView;
 
   // Unified search query based on mode
@@ -161,18 +164,22 @@ export function TopBar({
     ? skillSearchQuery
     : isMcpView
       ? mcpSearchQuery
-      : isPromptView
-        ? promptSearchQuery
-        : "";
+      : isPluginView
+        ? pluginSearchQuery
+        : isPromptView
+          ? promptSearchQuery
+          : "";
   const deferredSkillSearchQuery = useDeferredValue(skillSearchQuery);
   const deferredMcpSearchQuery = useDeferredValue(mcpSearchQuery);
   const setSearchQuery = isSkillView
     ? setSkillSearchQuery
     : isMcpView
       ? setMcpSearchQuery
-      : isPromptView
-        ? setPromptSearchQuery
-        : () => undefined;
+      : isPluginView
+        ? setPluginSearchQuery
+        : isPromptView
+          ? setPromptSearchQuery
+          : () => undefined;
 
   // Check if AI is configured
   const hasAiConfig =
@@ -332,10 +339,12 @@ export function TopBar({
         : skillSearchResults
     : isMcpView
       ? mcpSearchResults
-      : promptSearchResults;
+      : isPromptView
+        ? promptSearchResults
+        : [];
   const searchResultCount = searchResults.length;
   const showSearchNavigation = isPromptView;
-  const showSearchResultCount = !isAgentSkillView;
+  const showSearchResultCount = !isAgentSkillView && !isPluginView;
 
   const updateCreateMenuPosition = useCallback(() => {
     if (!createMenuRef.current) {
@@ -664,7 +673,9 @@ export function TopBar({
                         : t("header.searchSkill", "Search skills...")
                     : appModule === "mcp"
                       ? t("header.searchMcp", "Search MCP...")
-                      : t("header.search")
+                      : appModule === "plugin"
+                        ? t("plugin.searchPlaceholder", "Search Plugins")
+                        : t("header.search")
                 }
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}

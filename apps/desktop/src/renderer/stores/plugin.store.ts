@@ -15,11 +15,13 @@ interface PluginState {
   marketSources: PluginMarketSource[];
   targetMatrix: PluginTargetCompatibility[];
   selectedTab: "library" | "market" | "targets";
+  selectedMarketSourceId: string;
   searchQuery: string;
   isLoading: boolean;
   error: string | null;
   load: () => Promise<void>;
   setSelectedTab: (tab: PluginState["selectedTab"]) => void;
+  setSelectedMarketSourceId: (sourceId: string) => void;
   setSearchQuery: (query: string) => void;
   previewMarketPlugin: (entryId: string) => Promise<PluginMarketPreview>;
   installMarketPlugin: (entryId: string) => Promise<PluginInstallResult>;
@@ -58,6 +60,7 @@ export const usePluginStore = create<PluginState>((set, get) => ({
   marketSources: [],
   targetMatrix: [],
   selectedTab: "market",
+  selectedMarketSourceId: "openai-curated",
   searchQuery: "",
   isLoading: false,
   error: null,
@@ -73,6 +76,8 @@ export const usePluginStore = create<PluginState>((set, get) => ({
   },
 
   setSelectedTab: (tab) => set({ selectedTab: tab }),
+  setSelectedMarketSourceId: (sourceId) =>
+    set({ selectedMarketSourceId: sourceId }),
   setSearchQuery: (query) => set({ searchQuery: query }),
 
   previewMarketPlugin: async (entryId) => {
