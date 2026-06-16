@@ -10,6 +10,10 @@ import type {
 } from "@prompthub/shared/types";
 import * as db from "../services/database";
 import { scheduleAllSaveSync } from "../services/webdav-save-sync";
+import {
+  reconcileDescriptionRelations,
+  MENTION_RELATION_NOTE,
+} from "../components/prompt/prompt-description-relation-sync";
 
 // Sort method
 // 排序方式
@@ -136,6 +140,35 @@ export const usePromptStore = create<PromptState>()(
         set((state) => ({
           prompts: state.prompts.map((p) => (p.id === id ? updated : p)),
         }));
+
+        // Derive related_to relations from [[id]] mentions in the description,
+        // so @-mentions made anywhere (inline edit, edit modal) stay in sync.
+        if (data.description !== undefined) {
+          const { prompts, relations } = get();
+          const { toCreate, toDelete } = reconcileDescriptionRelations(
+            id,
+            data.description,
+            prompts,
+            relations,
+          );
+          if (toCreate.length > 0 || toDelete.length > 0) {
+            try {
+              await Promise.all([
+                ...toCreate.map((targetPromptId) =>
+                  get().createRelation({
+                    sourcePromptId: id,
+                    targetPromptId,
+                    kind: "related_to",
+                    note: MENTION_RELATION_NOTE,
+                  }),
+                ),
+                ...toDelete.map((relationId) => get().deleteRelation(relationId)),
+              ]);
+            } catch (error) {
+              console.error("Failed to sync description relations:", error);
+            }
+          }
+        }
 
         if (
           data.usageCount === undefined &&
