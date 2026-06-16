@@ -2695,7 +2695,7 @@
     "pluginStore": "官方商店",
     "pluginTargets": "Agent Plugin",
     "sources": {
-      "codexOfficial": "Codex Plugin Store",
+      "codexOfficial": "Codex 官方商店",
       "promptHubOfficial": "官方商店"
     },
     "inventory": {
@@ -2710,8 +2710,8 @@
       "lspServers": "LSP 服务",
       "scripts": "脚本"
     },
-    "inventoryEmpty": "安装时会验证 Plugin manifest",
-    "marketInventoryDeferred": "安装前会检查 Plugin inventory。",
+    "inventoryEmpty": "",
+    "marketInventoryDeferred": "",
     "noDescription": "暂无描述",
     "deletePlugin": "删除 Plugin",
     "installedAt": "已于 {{date}} 安装",
@@ -2770,6 +2770,55 @@
     "installSuccess": "已安装 {{name}}",
     "deleteSuccess": "已删除 {{name}}",
     "deleteConfirmTitle": "删除 Plugin",
-    "deleteConfirmMessage": "从 My Plugins 中删除 {{name}}？已经复制到其他位置的子资产不会被移除。"
+    "deleteConfirmMessage": "从 My Plugins 中删除 {{name}}？已经复制到其他位置的子资产不会被移除。",
+    "myPluginsHint": "已安装的 Plugin 能力包会保留在 PromptHub，分发子资产前不会自动写入 Agent。",
+    "pluginStoreHint": "浏览 Plugin 能力包，查看包含的能力后再安装或批量安装。",
+    "statsStoreEntries": "{{count}} 个商店条目",
+    "installedSection": "已安装",
+    "availableSection": "可安装",
+    "openPluginDetail": "打开 Plugin 详情 {{name}}",
+    "selectPlugin": "选择 Plugin",
+    "unselectPlugin": "取消选择 Plugin",
+    "selectStorePlugin": "选择商店 Plugin",
+    "unselectStorePlugin": "取消选择商店 Plugin",
+    "loadingPreview": "正在加载 manifest 预览",
+    "inventoryTitle": "能力清单",
+    "localPackagePath": "本地包",
+    "installedAtLabel": "安装时间",
+    "classificationLabel": "分类结果",
+    "batchManage": "批量管理 Plugins",
+    "batchNoInstallTargets": "没有可安装的 Plugin",
+    "batchInstallSelected": "安装已选",
+    "batchDeleteSelected": "删除已选 Plugins",
+    "selectVisiblePlugins": "选择当前可见 Plugins",
+    "batchInstallResult": "批量安装完成：成功 {{succeeded}} 个，失败 {{failed}} 个",
+    "batchDeleteResult": "批量删除完成：成功 {{succeeded}} 个，失败 {{failed}} 个",
+    "batchDeleteTitle": "删除已选 Plugins",
+    "batchDeleteMessage": "从 My Plugins 删除已选 {{count}} 个 Plugin？已复制到其他位置的子资产不会被移除。",
+    "trust": {
+      "official": "官方",
+      "verified": "已验证",
+      "community": "社区",
+      "custom": "自定义"
+    },
+    "categories": {
+      "Productivity": "效率",
+      "Communication": "沟通",
+      "Creativity": "创意",
+      "Developer Tools": "开发工具",
+      "Data": "数据",
+      "Education": "教育",
+      "Finance": "金融",
+      "Other": "其他"
+    },
+    "policy": {
+      "installation": {
+        "AVAILABLE": "可安装"
+      },
+      "authentication": {
+        "ON_INSTALL": "安装时认证",
+        "NOT_REQUIRED": "无需认证"
+      }
+    }
   }
 }

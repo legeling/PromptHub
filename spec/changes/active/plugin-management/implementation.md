@@ -34,6 +34,11 @@
 - Removed the Plugin Store content area's in-page search form and category chips; store source selection now comes from the Plugin navigation/sidebar state instead of duplicated list-top filters.
 - Simplified My Plugins and Official Store cards so the whole card opens detail and the list no longer renders separate right-side view/install/delete action buttons.
 - Fixed Plugin Store detail previews to use manifest-enriched display name and short description, and added an Overview section for the manifest `interface.longDescription`.
+- Extended Plugin preview metadata with official manifest presentation fields:
+  - `interface.composerIcon` and `interface.logo` are resolved to raw source URLs when they are HTTP(S) URLs or safe package-local relative asset paths.
+  - `interface.brandColor` is persisted as a validated hex color.
+  - Official Store cards and Plugin detail modals render the resolved icon/logo instead of a letter placeholder when available.
+  - Store cards show two-line manifest descriptions and background-enrich the first visible batch of missing entries without fetching the entire marketplace at once.
 - Added Plugin navigation to the desktop home rail/sidebar and the Appearance settings home-module list.
 - Added Plugin i18n keys across all seven desktop locales.
 

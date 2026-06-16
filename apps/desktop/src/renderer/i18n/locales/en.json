@@ -2710,8 +2710,8 @@
       "lspServers": "LSP servers",
       "scripts": "Scripts"
     },
-    "inventoryEmpty": "Inventory will be validated on install",
-    "marketInventoryDeferred": "Plugin inventory is checked before install.",
+    "inventoryEmpty": "",
+    "marketInventoryDeferred": "",
     "noDescription": "No description provided",
     "deletePlugin": "Delete Plugin",
     "installedAt": "Installed {{date}}",
@@ -2770,6 +2770,55 @@
     "installSuccess": "Installed {{name}}",
     "deleteSuccess": "Deleted {{name}}",
     "deleteConfirmTitle": "Delete Plugin",
-    "deleteConfirmMessage": "Delete {{name}} from My Plugins? Child assets already copied elsewhere are not removed."
+    "deleteConfirmMessage": "Delete {{name}} from My Plugins? Child assets already copied elsewhere are not removed.",
+    "myPluginsHint": "Installed Plugin bundles stay in PromptHub until you distribute their child assets.",
+    "pluginStoreHint": "Browse Plugin bundles, inspect what they include, then install or batch install selected entries.",
+    "statsStoreEntries": "{{count}} store entries",
+    "installedSection": "Installed",
+    "availableSection": "Available",
+    "openPluginDetail": "Open Plugin details {{name}}",
+    "selectPlugin": "Select Plugin",
+    "unselectPlugin": "Unselect Plugin",
+    "selectStorePlugin": "Select store Plugin",
+    "unselectStorePlugin": "Unselect store Plugin",
+    "loadingPreview": "Loading manifest preview",
+    "inventoryTitle": "Inventory",
+    "localPackagePath": "Local package",
+    "installedAtLabel": "Installed at",
+    "classificationLabel": "Classification",
+    "batchManage": "Batch manage Plugins",
+    "batchNoInstallTargets": "No Plugins to install",
+    "batchInstallSelected": "Install selected",
+    "batchDeleteSelected": "Delete selected Plugins",
+    "selectVisiblePlugins": "Select visible Plugins",
+    "batchInstallResult": "Batch install finished: {{succeeded}} succeeded, {{failed}} failed",
+    "batchDeleteResult": "Batch delete finished: {{succeeded}} succeeded, {{failed}} failed",
+    "batchDeleteTitle": "Delete selected Plugins",
+    "batchDeleteMessage": "Delete {{count}} selected Plugins from My Plugins? Child assets copied elsewhere are not removed.",
+    "trust": {
+      "official": "Official",
+      "verified": "Verified",
+      "community": "Community",
+      "custom": "Custom"
+    },
+    "categories": {
+      "Productivity": "Productivity",
+      "Communication": "Communication",
+      "Creativity": "Creativity",
+      "Developer Tools": "Developer Tools",
+      "Data": "Data",
+      "Education": "Education",
+      "Finance": "Finance",
+      "Other": "Other"
+    },
+    "policy": {
+      "installation": {
+        "AVAILABLE": "Available"
+      },
+      "authentication": {
+        "ON_INSTALL": "On install",
+        "NOT_REQUIRED": "Not required"
+      }
+    }
   }
 }

@@ -165,6 +165,29 @@ function safeString(value: unknown): string | undefined {
     : undefined;
 }
 
+function safePluginBrandColor(value: unknown): string | undefined {
+  const color = safeString(value);
+  if (!color) {
+    return undefined;
+  }
+  return /^#[0-9a-f]{3}(?:[0-9a-f]{3})?(?:[0-9a-f]{2})?$/i.test(color)
+    ? color
+    : undefined;
+}
+
+function isAbsoluteHttpUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function hasExplicitUrlProtocol(value: string): boolean {
+  return /^[a-z][a-z0-9+.-]*:/i.test(value);
+}
+
 function safeStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) {
     return [];
@@ -331,6 +354,9 @@ function normalizeLibrary(raw: Partial<PluginLibraryFile>): PluginLibraryFile {
             name: plugin.name!,
             displayName: plugin.displayName || plugin.name!,
             description: plugin.description,
+            iconUrl: plugin.iconUrl,
+            logoUrl: plugin.logoUrl,
+            brandColor: safePluginBrandColor(plugin.brandColor),
             version: plugin.version,
             author: normalizeAuthor(plugin.author),
             category: plugin.category,
@@ -410,6 +436,50 @@ function buildRawPluginFileUrl(
   }
   const baseUrl = source.rawJsonUrl.slice(0, -safeMarketplacePath.length);
   return new URL(safeRelativePath, baseUrl).toString();
+}
+
+function resolveManifestAssetUrl(
+  source: PluginMarketSource,
+  entry: PluginMarketEntry,
+  value: unknown,
+): string | undefined {
+  const assetPath = safeString(value);
+  if (!assetPath) {
+    return undefined;
+  }
+  if (isAbsoluteHttpUrl(assetPath)) {
+    return assetPath;
+  }
+  if (hasExplicitUrlProtocol(assetPath)) {
+    return undefined;
+  }
+
+  try {
+    const packagePath = entry.source.packagePath
+      ? normalizeRelativePosixPath(entry.source.packagePath)
+      : entry.source.manifestPath
+        ? normalizeRelativePosixPath(
+            path.posix.dirname(entry.source.manifestPath),
+          )
+        : undefined;
+    if (!packagePath) {
+      return undefined;
+    }
+
+    const safeAssetPath = normalizeRelativePosixPath(assetPath);
+    const resolvedPath = normalizeRelativePosixPath(
+      path.posix.join(packagePath, safeAssetPath),
+    );
+    if (
+      resolvedPath !== packagePath &&
+      !resolvedPath.startsWith(`${packagePath}/`)
+    ) {
+      return undefined;
+    }
+    return buildRawPluginFileUrl(source, resolvedPath);
+  } catch {
+    return undefined;
+  }
 }
 
 function buildCodexPluginDetailUrl(
@@ -559,6 +629,9 @@ function normalizeMarketEntry(
     safeString(rawInterface.displayName) ||
     safeString(record.displayName) ||
     name;
+  const iconUrl =
+    safeString(rawInterface.composerIcon) || safeString(rawInterface.icon);
+  const logoUrl = safeString(rawInterface.logo);
 
   return {
     id: createPluginId(source.id, name),
@@ -568,6 +641,9 @@ function normalizeMarketEntry(
     description:
       safeString(rawInterface.shortDescription) ||
       safeString(record.description),
+    iconUrl: iconUrl && isAbsoluteHttpUrl(iconUrl) ? iconUrl : undefined,
+    logoUrl: logoUrl && isAbsoluteHttpUrl(logoUrl) ? logoUrl : undefined,
+    brandColor: safePluginBrandColor(rawInterface.brandColor),
     category: safeString(record.category) || safeString(rawInterface.category),
     trustLevel: source.trustLevel,
     source: {
@@ -820,6 +896,9 @@ export class CorePluginLibraryService {
       name,
       displayName: preview.displayName,
       description: preview.description,
+      iconUrl: preview.iconUrl,
+      logoUrl: preview.logoUrl,
+      brandColor: preview.brandColor,
       version: preview.version,
       author: preview.author,
       category: preview.category,
@@ -882,11 +961,36 @@ export class CorePluginLibraryService {
     const longDescription = safeString(interfaceRecord.longDescription);
     const description = shortDescription || longDescription;
     const manifestUrl = this.getManifestUrlForEntry(entry);
+    const marketSource = this.marketSources.find(
+      (source) => source.id === entry.marketplaceId,
+    );
+    if (!marketSource) {
+      throw new CorePluginError(
+        "MISSING_SOURCE",
+        `${entry.displayName} 的 marketplace source 不存在`,
+      );
+    }
+    const iconUrl =
+      resolveManifestAssetUrl(
+        marketSource,
+        entry,
+        interfaceRecord.composerIcon,
+      ) ||
+      resolveManifestAssetUrl(marketSource, entry, interfaceRecord.icon) ||
+      entry.iconUrl;
+    const logoUrl =
+      resolveManifestAssetUrl(marketSource, entry, interfaceRecord.logo) ||
+      entry.logoUrl;
+    const brandColor =
+      safePluginBrandColor(interfaceRecord.brandColor) ?? entry.brandColor;
     const enrichedEntry: PluginMarketEntry = {
       ...entry,
       name,
       displayName,
       description,
+      iconUrl: iconUrl ?? logoUrl,
+      logoUrl,
+      brandColor,
       version: safeString(manifest.version) ?? entry.version,
       author: normalizeAuthor(manifest.author) ?? entry.author,
       category: entry.category ?? safeString(interfaceRecord.category),
@@ -898,6 +1002,9 @@ export class CorePluginLibraryService {
       displayName,
       description,
       longDescription,
+      iconUrl: enrichedEntry.iconUrl,
+      logoUrl,
+      brandColor,
       version: enrichedEntry.version,
       author: enrichedEntry.author,
       category: enrichedEntry.category,

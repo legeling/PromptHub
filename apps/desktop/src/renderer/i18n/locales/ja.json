@@ -2657,8 +2657,8 @@
     "pluginStore": "Official Store",
     "pluginTargets": "Agent Plugin",
     "sources": {
-      "codexOfficial": "Codex Plugin Store",
-      "promptHubOfficial": "Official Store"
+      "codexOfficial": "Codex 公式ストア",
+      "promptHubOfficial": "公式ストア"
     },
     "inventory": {
       "skills": "Skills",
@@ -2672,8 +2672,8 @@
       "lspServers": "LSP servers",
       "scripts": "Scripts"
     },
-    "inventoryEmpty": "インストール時にインベントリを検証します",
-    "marketInventoryDeferred": "インストール前にプラグインのインベントリを確認します。",
+    "inventoryEmpty": "",
+    "marketInventoryDeferred": "",
     "noDescription": "説明はありません",
     "deletePlugin": "プラグインを削除",
     "installedAt": "{{date}} にインストール",
@@ -2732,6 +2732,55 @@
     "installSuccess": "{{name}} をインストールしました",
     "deleteSuccess": "{{name}} を削除しました",
     "deleteConfirmTitle": "プラグインを削除",
-    "deleteConfirmMessage": "My Plugins から {{name}} を削除しますか？他の場所にコピー済みの子アセットは削除されません。"
+    "deleteConfirmMessage": "My Plugins から {{name}} を削除しますか？他の場所にコピー済みの子アセットは削除されません。",
+    "myPluginsHint": "インストール済みの Plugin バンドルは PromptHub に保持され、子アセットは明示的に配布するまで Agent に書き込まれません。",
+    "pluginStoreHint": "Plugin バンドルを確認し、含まれる機能を見てからインストールまたは一括インストールします。",
+    "statsStoreEntries": "{{count}} 件のストア項目",
+    "installedSection": "インストール済み",
+    "availableSection": "インストール可能",
+    "openPluginDetail": "Plugin 詳細を開く {{name}}",
+    "selectPlugin": "Plugin を選択",
+    "unselectPlugin": "Plugin の選択を解除",
+    "selectStorePlugin": "ストア Plugin を選択",
+    "unselectStorePlugin": "ストア Plugin の選択を解除",
+    "loadingPreview": "manifest プレビューを読み込み中",
+    "inventoryTitle": "インベントリ",
+    "localPackagePath": "ローカルパッケージ",
+    "installedAtLabel": "インストール日時",
+    "classificationLabel": "分類",
+    "batchManage": "Plugins を一括管理",
+    "batchNoInstallTargets": "インストール可能な Plugin がありません",
+    "batchInstallSelected": "選択項目をインストール",
+    "batchDeleteSelected": "選択した Plugins を削除",
+    "selectVisiblePlugins": "表示中の Plugins を選択",
+    "batchInstallResult": "一括インストール完了：成功 {{succeeded}}、失敗 {{failed}}",
+    "batchDeleteResult": "一括削除完了：成功 {{succeeded}}、失敗 {{failed}}",
+    "batchDeleteTitle": "選択した Plugins を削除",
+    "batchDeleteMessage": "My Plugins から選択した {{count}} 個の Plugin を削除しますか？他の場所にコピー済みの子アセットは削除されません。",
+    "trust": {
+      "official": "公式",
+      "verified": "検証済み",
+      "community": "コミュニティ",
+      "custom": "カスタム"
+    },
+    "categories": {
+      "Productivity": "生産性",
+      "Communication": "コミュニケーション",
+      "Creativity": "クリエイティブ",
+      "Developer Tools": "開発ツール",
+      "Data": "データ",
+      "Education": "教育",
+      "Finance": "金融",
+      "Other": "その他"
+    },
+    "policy": {
+      "installation": {
+        "AVAILABLE": "インストール可能"
+      },
+      "authentication": {
+        "ON_INSTALL": "インストール時に認証",
+        "NOT_REQUIRED": "認証不要"
+      }
+    }
   }
 }

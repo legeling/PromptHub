@@ -105,6 +105,8 @@ Product behavior:
 - Plugin Store should default to the Codex official source when it is available, while still exposing an "all sources" view.
 - Store list loading should read only marketplace JSON first. It must not fetch every plugin manifest eagerly because the official store can contain many entries.
 - Each store card should expose a lazy manifest preview action. Preview reads `.codex-plugin/plugin.json`, enriches the card with version, author, manifest URL, package path, inventory chips, and semantic classification.
+- Store cards may background-enrich the currently visible first batch of entries so the Official Store does not appear as sparse marketplace JSON. This enrichment still uses the same safe manifest preview path and should be capped rather than fetching the whole store at once.
+- Manifest presentation metadata should be parsed from `interface.displayName`, `interface.shortDescription`, `interface.longDescription`, `interface.composerIcon`, `interface.logo`, and `interface.brandColor`. Relative icon/logo paths are resolved against the plugin package path and converted to the source raw file URL only when they remain inside the package.
 - Marketplace policy metadata such as `installation: AVAILABLE` and `authentication: ON_INSTALL` should remain visible so users understand whether setup or app auth is expected.
 - OpenAI curated entries should expose a Codex detail deep link such as `codex://plugins/openai-developers@openai-curated` for users who also run Codex.
 - PromptHub install must not require the Codex CLI. Desktop install should download the plugin package into PromptHub's managed plugin directory with Git transport, then record the library metadata.

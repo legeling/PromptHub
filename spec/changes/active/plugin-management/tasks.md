@@ -22,6 +22,7 @@
 - [x] Align Agent Plugin with Agent Skill's workbench pattern instead of a detached compatibility-card grid.
 - [x] Move Plugin search into the global top bar, remove in-page category filters, and simplify Plugin cards to whole-card detail entry.
 - [x] Render Plugin manifest display name, short description, and long overview in the store detail modal after preview loads.
+- [x] Render Plugin manifest official icons/logos, brand color, and richer card descriptions from preview metadata, with capped background enrichment for the first visible Official Store entries.
 - [x] Add Plugin module to desktop home navigation and home-module settings.
 - [x] Add i18n coverage for Plugin UI across all supported desktop locales.
 - [ ] Reuse Skill/MCP distribution flows for child assets.

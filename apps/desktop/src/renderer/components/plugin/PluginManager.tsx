@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import {
   BotIcon,
   CheckIcon,
@@ -40,6 +47,9 @@ type PluginTab = "library" | "market" | "targets";
 const tabIconClassName = "h-4 w-4";
 const AGENT_PLUGIN_HEADER_CLASS =
   "h-[132px] border-b border-border app-wallpaper-panel-strong";
+const MARKET_PREVIEW_PREFETCH_LIMIT = 24;
+const SAFE_PLUGIN_ICON_DATA_URL_PATTERN =
+  /^data:image\/(?:png|jpeg|jpg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/i;
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -77,11 +87,7 @@ function InventoryChips({ inventory }: { inventory: PluginInventorySummary }) {
   })).filter((item) => item.count > 0);
 
   if (chips.length === 0) {
-    return (
-      <span className="text-xs text-muted-foreground">
-        {t("plugin.inventoryEmpty", "Inventory will be validated on install")}
-      </span>
-    );
+    return null;
   }
 
   return (
@@ -145,12 +151,112 @@ function getMarketSourceLabel(
   return displayName;
 }
 
+function getPluginCategoryLabel(
+  category: string,
+  t: ReturnType<typeof useTranslation>["t"],
+): string {
+  return t(`plugin.categories.${category}`, category);
+}
+
+function getPluginTrustLabel(
+  trustLevel: PluginMarketEntry["trustLevel"],
+  t: ReturnType<typeof useTranslation>["t"],
+): string {
+  return t(`plugin.trust.${trustLevel}`, trustLevel);
+}
+
+function getPluginPolicyValueLabel(
+  scope: "installation" | "authentication",
+  value: string,
+  t: ReturnType<typeof useTranslation>["t"],
+): string {
+  return t(`plugin.policy.${scope}.${value}`, value);
+}
+
 function getPluginEntryId(entry: PluginLibraryEntry | PluginMarketEntry) {
   return entry.id;
 }
 
 function getPluginInitial(name: string) {
   return name.trim().charAt(0).toUpperCase() || "?";
+}
+
+function resolvePluginIconUrl(iconUrl?: string | null): string {
+  const trimmed = iconUrl?.trim() ?? "";
+  if (!trimmed) {
+    return "";
+  }
+  if (SAFE_PLUGIN_ICON_DATA_URL_PATTERN.test(trimmed)) {
+    return trimmed;
+  }
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.protocol === "http:" || parsed.protocol === "https:"
+      ? parsed.toString()
+      : "";
+  } catch {
+    return "";
+  }
+}
+
+function getPluginBrandStyle(brandColor?: string): CSSProperties | undefined {
+  if (!brandColor || !/^#[0-9a-f]{6}$/i.test(brandColor)) {
+    return undefined;
+  }
+  return {
+    backgroundColor: `${brandColor}1A`,
+    color: brandColor,
+  };
+}
+
+function PluginAvatar({
+  entry,
+  size = "md",
+}: {
+  entry: Pick<
+    PluginLibraryEntry | PluginMarketEntry,
+    "displayName" | "iconUrl" | "logoUrl" | "brandColor"
+  >;
+  size?: "sm" | "md" | "lg";
+}) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const iconUrl = resolvePluginIconUrl(entry.iconUrl || entry.logoUrl);
+  const sizeClass =
+    size === "lg"
+      ? "h-16 w-16 rounded-2xl text-2xl"
+      : size === "sm"
+        ? "h-10 w-10 rounded-xl text-sm"
+        : "h-12 w-12 rounded-xl text-base";
+  const imageClass = size === "lg" ? "h-11 w-11" : "h-8 w-8";
+  const brandStyle = getPluginBrandStyle(entry.brandColor);
+
+  if (iconUrl && !imageFailed) {
+    return (
+      <div
+        className={`grid shrink-0 place-items-center overflow-hidden border border-border/60 bg-background ${sizeClass}`}
+        style={brandStyle}
+      >
+        <img
+          data-testid="plugin-avatar-image"
+          src={iconUrl}
+          alt=""
+          aria-hidden="true"
+          loading="lazy"
+          className={`${imageClass} object-contain`}
+          onError={() => setImageFailed(true)}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`grid shrink-0 place-items-center bg-primary/10 font-semibold text-primary ${sizeClass}`}
+      style={brandStyle}
+    >
+      {getPluginInitial(entry.displayName)}
+    </div>
+  );
 }
 
 function getTargetPlatformIconId(targetId: string): string {
@@ -241,14 +347,12 @@ function PluginCard({
         }
         className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
       >
-        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-primary/10 text-base font-semibold text-primary">
-          {getPluginInitial(plugin.displayName)}
-        </div>
+        <PluginAvatar entry={plugin} />
         <div className="min-w-0 flex-1">
           <h3 className="truncate text-sm font-semibold text-foreground transition-colors group-hover:text-primary">
             {plugin.displayName}
           </h3>
-          <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+          <p className="mt-0.5 line-clamp-2 min-h-8 text-xs leading-4 text-muted-foreground">
             {plugin.description ||
               plugin.author?.name ||
               t("plugin.noDescription", "No description provided")}
@@ -258,11 +362,11 @@ function PluginCard({
               {t("plugin.installed", "Installed")}
             </span>
             <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-              {plugin.trustLevel}
+              {getPluginTrustLabel(plugin.trustLevel, t)}
             </span>
             {plugin.category ? (
               <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                {plugin.category}
+                {getPluginCategoryLabel(plugin.category, t)}
               </span>
             ) : null}
           </div>
@@ -290,10 +394,12 @@ function MarketCard({
   onToggleSelection: (entry: PluginMarketEntry) => void;
 }) {
   const { t } = useTranslation();
+  const activeEntry = preview?.entry ?? entry;
   const activeInventory = preview?.inventory ?? entry.inventory;
-  const cardLabel = entry.description
-    ? `${entry.displayName}. ${entry.description}`
-    : entry.displayName;
+  const cardDescription = activeEntry.description || preview?.longDescription;
+  const cardLabel = cardDescription
+    ? `${activeEntry.displayName}. ${cardDescription}`
+    : activeEntry.displayName;
 
   return (
     <article
@@ -308,7 +414,7 @@ function MarketCard({
           type="button"
           onClick={(event) => {
             event.stopPropagation();
-            onToggleSelection(entry);
+            onToggleSelection(activeEntry);
           }}
           aria-pressed={isSelected}
           aria-label={
@@ -339,43 +445,39 @@ function MarketCard({
         type="button"
         aria-label={t("plugin.openPluginDetail", {
           defaultValue: "Open plugin details {{name}}",
-          name: entry.displayName,
+          name: activeEntry.displayName,
         })}
         title={cardLabel}
         onClick={() =>
-          batchMode ? onToggleSelection(entry) : onOpenDetail(entry)
+          batchMode ? onToggleSelection(activeEntry) : onOpenDetail(activeEntry)
         }
         className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
       >
-        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-primary/10 text-base font-semibold text-primary">
-          {getPluginInitial(entry.displayName)}
-        </div>
+        <PluginAvatar entry={activeEntry} />
         <div className="min-w-0 flex-1">
           <h3 className="truncate text-sm font-semibold text-foreground transition-colors group-hover:text-primary">
-            {entry.displayName}
+            {activeEntry.displayName}
           </h3>
-          <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-            {entry.description ||
-              t(
-                "plugin.marketInventoryDeferred",
-                "Plugin inventory is checked before install.",
-              )}
-          </p>
+          {cardDescription ? (
+            <p className="mt-0.5 line-clamp-2 min-h-8 text-xs leading-4 text-muted-foreground">
+              {cardDescription}
+            </p>
+          ) : null}
           <div className="mt-2 flex flex-wrap gap-1">
             <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
               {getMarketSourceLabel(
-                entry.marketplaceId,
-                entry.source.label || entry.marketplaceId,
+                activeEntry.marketplaceId,
+                activeEntry.source.label || activeEntry.marketplaceId,
                 t,
               )}
             </span>
-            {entry.category ? (
+            {activeEntry.category ? (
               <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                {entry.category}
+                {getPluginCategoryLabel(activeEntry.category, t)}
               </span>
             ) : null}
             <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-              {entry.trustLevel}
+              {getPluginTrustLabel(activeEntry.trustLevel, t)}
             </span>
             {installed ? (
               <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-300">
@@ -401,6 +503,8 @@ function PluginDetailBadges({
   entry: PluginLibraryEntry | PluginMarketEntry;
   sourceLabel: string;
 }) {
+  const { t } = useTranslation();
+
   return (
     <div className="flex flex-wrap gap-2 text-xs">
       <span className="rounded-full bg-primary/10 px-2.5 py-1 font-medium text-primary">
@@ -408,11 +512,11 @@ function PluginDetailBadges({
       </span>
       {entry.category ? (
         <span className="rounded-full bg-muted px-2.5 py-1 font-medium text-muted-foreground">
-          {entry.category}
+          {getPluginCategoryLabel(entry.category, t)}
         </span>
       ) : null}
       <span className="rounded-full bg-muted px-2.5 py-1 font-medium text-muted-foreground">
-        {entry.trustLevel}
+        {getPluginTrustLabel(entry.trustLevel, t)}
       </span>
       {entry.version ? (
         <span className="rounded-full bg-muted px-2.5 py-1 font-medium text-muted-foreground">
@@ -469,20 +573,12 @@ function PluginStoreDetailModal({
       size="xl"
       showCloseButton
       title={displayName}
-      subtitle={
-        summaryDescription ||
-        t(
-          "plugin.marketInventoryDeferred",
-          "Plugin inventory is checked before install.",
-        )
-      }
+      subtitle={summaryDescription}
     >
       <div className="flex min-h-0 flex-col">
         <div className="space-y-4 px-6 py-5">
           <div className="flex items-start gap-4">
-            <div className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-primary/10 text-2xl font-semibold text-primary">
-              {getPluginInitial(displayName)}
-            </div>
+            <PluginAvatar entry={activeEntry} size="lg" />
             <div className="min-w-0 flex-1 space-y-3">
               <PluginDetailBadges
                 entry={activeEntry}
@@ -548,7 +644,11 @@ function PluginStoreDetailModal({
                   {t("plugin.policyInstallation", "Install")}
                 </dt>
                 <dd className="mt-1 text-foreground">
-                  {activeEntry.policy.installation}
+                  {getPluginPolicyValueLabel(
+                    "installation",
+                    activeEntry.policy.installation,
+                    t,
+                  )}
                 </dd>
               </div>
             ) : null}
@@ -558,7 +658,11 @@ function PluginStoreDetailModal({
                   {t("plugin.policyAuth", "Auth")}
                 </dt>
                 <dd className="mt-1 text-foreground">
-                  {activeEntry.policy.authentication}
+                  {getPluginPolicyValueLabel(
+                    "authentication",
+                    activeEntry.policy.authentication,
+                    t,
+                  )}
                 </dd>
               </div>
             ) : null}
@@ -654,9 +758,7 @@ function PluginLibraryDetailModal({
     >
       <div className="space-y-4 px-6 py-5">
         <div className="flex items-start gap-4">
-          <div className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-primary/10 text-2xl font-semibold text-primary">
-            {getPluginInitial(plugin.displayName)}
-          </div>
+          <PluginAvatar entry={plugin} size="lg" />
           <div className="min-w-0 flex-1 space-y-3">
             <PluginDetailBadges
               entry={plugin}
@@ -721,9 +823,7 @@ function PluginLibraryRow({ plugin }: { plugin: PluginLibraryEntry }) {
       <div className="grid min-h-[124px] grid-cols-[minmax(0,1fr)_8rem] items-stretch gap-4 px-4 py-4 max-[760px]:grid-cols-1 max-[760px]:items-start">
         <div className="min-w-0 text-left">
           <div className="flex min-w-0 items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm font-semibold text-primary">
-              {plugin.displayName.trim().charAt(0).toUpperCase() || "?"}
-            </div>
+            <PluginAvatar entry={plugin} size="sm" />
             <div className="min-w-0 flex-1">
               <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <div className="truncate text-base font-semibold text-foreground">
@@ -1100,6 +1200,7 @@ export function PluginManager() {
     null,
   );
   const [isDeleting, setIsDeleting] = useState(false);
+  const marketPreviewPrefetchAttemptedRef = useRef<Set<string>>(new Set());
   const {
     library,
     marketEntries,
@@ -1167,6 +1268,16 @@ export function PluginManager() {
         matchesPluginSearch(entry, normalizedSearchQuery),
       ),
     [normalizedSearchQuery, sourceFilteredMarketEntries],
+  );
+  const marketPreviewPrefetchEntries = useMemo(
+    () =>
+      visibleMarketEntries
+        .filter(
+          (entry) =>
+            !marketPreviews[entry.id] && (!entry.description || !entry.iconUrl),
+        )
+        .slice(0, MARKET_PREVIEW_PREFETCH_LIMIT),
+    [marketPreviews, visibleMarketEntries],
   );
   const installedMarketEntries = useMemo(
     () => visibleMarketEntries.filter((entry) => installedIds.has(entry.id)),
@@ -1306,6 +1417,50 @@ export function PluginManager() {
       return next.size === current.size ? current : next;
     });
   }, [selectedLibraryPluginIds.size, visibleLibraryPluginIds]);
+
+  useEffect(() => {
+    if (
+      selectedTab !== "market" ||
+      isLoading ||
+      marketPreviewPrefetchEntries.length === 0
+    ) {
+      return;
+    }
+
+    const entriesToPreview = marketPreviewPrefetchEntries.filter((entry) => {
+      if (marketPreviewPrefetchAttemptedRef.current.has(entry.id)) {
+        return false;
+      }
+      marketPreviewPrefetchAttemptedRef.current.add(entry.id);
+      return true;
+    });
+    if (entriesToPreview.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      for (const entry of entriesToPreview) {
+        if (cancelled) {
+          return;
+        }
+        try {
+          await previewMarketPlugin(entry.id);
+        } catch (previewError) {
+          console.warn("Plugin market preview prefetch failed:", previewError);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isLoading,
+    marketPreviewPrefetchEntries,
+    previewMarketPlugin,
+    selectedTab,
+  ]);
 
   const handleInstall = async (entry: PluginMarketEntry) => {
     setInstallingId(entry.id);

@@ -143,12 +143,20 @@ PromptHub MUST provide a Plugin Store model that can represent official, verifie
 - **AND** list cards use the whole card as the detail entry point without separate right-side view/install/delete buttons
 - **AND** install/delete actions remain available from the detail modal or batch action toolbar
 
+#### Scenario: Plugin Store cards use manifest presentation metadata
+
+- **GIVEN** a marketplace entry has a `.codex-plugin/plugin.json` with `interface.displayName`, `interface.shortDescription`, `interface.longDescription`, `interface.composerIcon`, `interface.logo`, or `interface.brandColor`
+- **WHEN** PromptHub previews the store entry or background-enriches the visible Official Store list
+- **THEN** the card uses the manifest display name, richer description, official icon/logo, brand color, inventory, and semantic classification when available
+- **AND** the card falls back to the marketplace entry only when manifest preview metadata is not available yet
+- **AND** invalid, unsafe, non-HTTP, or package-escaping icon/logo paths are not rendered
+
 #### Scenario: Preview Codex marketplace manifest
 
 - **GIVEN** a plugin appears in the Codex official marketplace
 - **WHEN** the user previews the store entry
 - **THEN** PromptHub reads the entry's `.codex-plugin/plugin.json` without executing plugin code
-- **AND** it shows manifest display name, short description, long overview/introduction, version, author, category, package path, manifest URL, policy metadata, child inventory, semantic classification, and Codex detail link
+- **AND** it shows manifest display name, short description, long overview/introduction, official icon/logo, brand color, version, author, category, package path, manifest URL, policy metadata, child inventory, semantic classification, and Codex detail link
 - **AND** unsupported single-skill or runtime-module packages are labeled before install
 
 #### Scenario: Install Codex marketplace package

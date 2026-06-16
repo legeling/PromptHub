@@ -52,7 +52,6 @@ const marketEntries: PluginMarketEntry[] = [
     marketplaceId: "openai-curated",
     name: "linear",
     displayName: "linear",
-    description: "Plan issues and inspect project work.",
     category: "Productivity",
     trustLevel: "official",
     source: {
@@ -70,7 +69,6 @@ const marketEntries: PluginMarketEntry[] = [
     marketplaceId: "openai-curated",
     name: "slack",
     displayName: "slack",
-    description: "Work with messages and channels.",
     category: "Communication",
     trustLevel: "official",
     source: {
@@ -98,11 +96,21 @@ const linearPreview: PluginMarketPreview = {
     ...marketEntries[0],
     displayName: "Linear",
     description: "Track issues and project work.",
+    iconUrl:
+      "https://raw.githubusercontent.com/openai/plugins/main/plugins/linear/assets/icon.png",
+    logoUrl:
+      "https://raw.githubusercontent.com/openai/plugins/main/plugins/linear/assets/logo.png",
+    brandColor: "#5E6AD2",
   },
   displayName: "Linear",
   description: "Track issues and project work.",
   longDescription:
     "Use Linear to triage issues, inspect projects, and coordinate engineering work directly from task prompts.",
+  iconUrl:
+    "https://raw.githubusercontent.com/openai/plugins/main/plugins/linear/assets/icon.png",
+  logoUrl:
+    "https://raw.githubusercontent.com/openai/plugins/main/plugins/linear/assets/logo.png",
+  brandColor: "#5E6AD2",
   category: "Productivity",
   inventory: { ...emptyInventory, skills: 2, apps: 1 },
   classification: "bundle",
@@ -110,6 +118,36 @@ const linearPreview: PluginMarketPreview = {
   codexDetailUrl: "codex://plugins/linear@openai-curated",
   manifestUrl:
     "https://raw.githubusercontent.com/openai/plugins/main/plugins/linear/.codex-plugin/plugin.json",
+  canInstall: true,
+  warnings: [],
+};
+
+const slackPreview: PluginMarketPreview = {
+  entry: {
+    ...marketEntries[1],
+    displayName: "Slack",
+    description: "Search and summarize Slack conversations.",
+    iconUrl:
+      "https://raw.githubusercontent.com/openai/plugins/main/plugins/slack/assets/icon.png",
+    logoUrl:
+      "https://raw.githubusercontent.com/openai/plugins/main/plugins/slack/assets/logo.png",
+    brandColor: "#4A154B",
+  },
+  displayName: "Slack",
+  description: "Search and summarize Slack conversations.",
+  longDescription:
+    "Use Slack to inspect conversations, find message context, and coordinate work across channels.",
+  iconUrl:
+    "https://raw.githubusercontent.com/openai/plugins/main/plugins/slack/assets/icon.png",
+  logoUrl:
+    "https://raw.githubusercontent.com/openai/plugins/main/plugins/slack/assets/logo.png",
+  brandColor: "#4A154B",
+  category: "Communication",
+  inventory: { ...emptyInventory, skills: 1, apps: 1 },
+  classification: "bundle",
+  tags: [],
+  manifestUrl:
+    "https://raw.githubusercontent.com/openai/plugins/main/plugins/slack/.codex-plugin/plugin.json",
   canInstall: true,
   warnings: [],
 };
@@ -135,7 +173,11 @@ function installPluginApiMock() {
     listMarket: vi.fn().mockResolvedValue(marketEntries),
     listMarketSources: vi.fn().mockResolvedValue(marketSources),
     getTargetMatrix: vi.fn().mockResolvedValue(targetMatrix),
-    previewMarketPlugin: vi.fn().mockResolvedValue(linearPreview),
+    previewMarketPlugin: vi
+      .fn()
+      .mockImplementation(async (entryId: string) =>
+        entryId === "slack" ? slackPreview : linearPreview,
+      ),
     installMarketPlugin: vi.fn().mockResolvedValue({
       plugin: {
         ...marketEntries[0],
@@ -151,12 +193,12 @@ function installPluginApiMock() {
   };
 }
 
-async function renderPluginManager() {
+async function renderPluginManager(language: "en" | "zh" = "en") {
   return renderWithI18n(
     <ToastProvider>
       <PluginManager />
     </ToastProvider>,
-    { language: "en" },
+    { language },
   );
 }
 
@@ -169,7 +211,16 @@ describe("PluginManager", () => {
   it("renders the plugin store without in-page search, category chips, or card action buttons", async () => {
     await renderPluginManager();
 
-    expect(await screen.findByText("linear")).toBeInTheDocument();
+    expect(await screen.findByText("Linear")).toBeInTheDocument();
+    expect(
+      screen.getByText("Track issues and project work."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Plugin inventory is checked before install."),
+    ).not.toBeInTheDocument();
+    expect(screen.getAllByTestId("plugin-avatar-image").length).toBeGreaterThan(
+      0,
+    );
     expect(
       screen.queryByTestId("plugin-store-filter-bar"),
     ).not.toBeInTheDocument();
@@ -189,7 +240,7 @@ describe("PluginManager", () => {
     ).not.toBeInTheDocument();
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Batch manage plugins" }),
+      screen.getByRole("button", { name: "Batch manage Plugins" }),
     );
 
     expect(screen.getByText("0 selected")).toBeInTheDocument();
@@ -198,12 +249,33 @@ describe("PluginManager", () => {
     ).toBeDisabled();
   });
 
+  it("renders the plugin store chrome and badges with Chinese translations", async () => {
+    await renderPluginManager("zh");
+
+    expect(await screen.findByText("官方商店")).toBeInTheDocument();
+    expect(screen.getByText("2 个商店条目")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "浏览 Plugin 能力包，查看包含的能力后再安装或批量安装。",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "可安装" })).toBeInTheDocument();
+    expect(screen.getAllByText("Codex 官方商店").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("效率").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("官方").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Available")).not.toBeInTheDocument();
+    expect(screen.queryByText("official")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("安装前会检查 Plugin inventory。"),
+    ).not.toBeInTheDocument();
+  });
+
   it("opens store details before install and lazy-loads the manifest preview", async () => {
     await renderPluginManager();
 
     fireEvent.click(
       await screen.findByRole("button", {
-        name: "Open plugin details linear",
+        name: "Open Plugin details Linear",
       }),
     );
 
@@ -215,14 +287,18 @@ describe("PluginManager", () => {
     expect(
       within(dialog).getByText("Track issues and project work."),
     ).toBeInTheDocument();
+    expect(within(dialog).getByTestId("plugin-avatar-image")).toHaveAttribute(
+      "src",
+      linearPreview.iconUrl,
+    );
     expect(
       within(dialog).getByText(
         "Use Linear to triage issues, inspect projects, and coordinate engineering work directly from task prompts.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText("Inventory")).toBeInTheDocument();
-    expect(screen.getByText("AVAILABLE")).toBeInTheDocument();
-    expect(screen.getByText("ON_INSTALL")).toBeInTheDocument();
+    expect(within(dialog).getByText("Inventory")).toBeInTheDocument();
+    expect(within(dialog).getByText("Available")).toBeInTheDocument();
+    expect(within(dialog).getByText("On install")).toBeInTheDocument();
     expect(
       within(dialog).getByRole("button", { name: "Install" }),
     ).toBeInTheDocument();
@@ -232,10 +308,10 @@ describe("PluginManager", () => {
     await renderPluginManager();
 
     fireEvent.click(
-      await screen.findByRole("button", { name: "Batch manage plugins" }),
+      await screen.findByRole("button", { name: "Batch manage Plugins" }),
     );
     fireEvent.click(
-      screen.getAllByRole("button", { name: "Select store plugin" })[0],
+      screen.getAllByRole("button", { name: "Select store Plugin" })[0],
     );
     fireEvent.click(screen.getByRole("button", { name: "Install selected" }));
 

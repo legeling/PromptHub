@@ -2656,8 +2656,8 @@
     "pluginStore": "Official Store",
     "pluginTargets": "Agent Plugin",
     "sources": {
-      "codexOfficial": "Codex Plugin Store",
-      "promptHubOfficial": "Official Store"
+      "codexOfficial": "Tienda oficial de Codex",
+      "promptHubOfficial": "Tienda oficial"
     },
     "inventory": {
       "skills": "Skills",
@@ -2671,8 +2671,8 @@
       "lspServers": "Servidores LSP",
       "scripts": "Scripts"
     },
-    "inventoryEmpty": "El inventario se validará al instalar",
-    "marketInventoryDeferred": "El inventario del plugin se revisa antes de instalar.",
+    "inventoryEmpty": "",
+    "marketInventoryDeferred": "",
     "noDescription": "Sin descripción",
     "deletePlugin": "Eliminar plugin",
     "installedAt": "Instalado el {{date}}",
@@ -2731,6 +2731,55 @@
     "installSuccess": "{{name}} instalado",
     "deleteSuccess": "{{name}} eliminado",
     "deleteConfirmTitle": "Eliminar plugin",
-    "deleteConfirmMessage": "¿Eliminar {{name}} de Mis plugins? Los assets hijos ya copiados en otros lugares no se eliminarán."
+    "deleteConfirmMessage": "¿Eliminar {{name}} de Mis plugins? Los assets hijos ya copiados en otros lugares no se eliminarán.",
+    "myPluginsHint": "Los bundles Plugin instalados permanecen en PromptHub hasta que distribuyas explícitamente sus recursos hijos a los agentes.",
+    "pluginStoreHint": "Explora bundles Plugin, revisa qué incluyen y luego instala entradas seleccionadas de forma individual o por lotes.",
+    "statsStoreEntries": "{{count}} entradas de tienda",
+    "installedSection": "Instalados",
+    "availableSection": "Disponibles",
+    "openPluginDetail": "Abrir detalles del Plugin {{name}}",
+    "selectPlugin": "Seleccionar Plugin",
+    "unselectPlugin": "Deseleccionar Plugin",
+    "selectStorePlugin": "Seleccionar Plugin de la tienda",
+    "unselectStorePlugin": "Deseleccionar Plugin de la tienda",
+    "loadingPreview": "Cargando vista previa del manifest",
+    "inventoryTitle": "Inventario",
+    "localPackagePath": "Paquete local",
+    "installedAtLabel": "Instalado el",
+    "classificationLabel": "Clasificación",
+    "batchManage": "Gestionar Plugins por lotes",
+    "batchNoInstallTargets": "No hay Plugins para instalar",
+    "batchInstallSelected": "Instalar seleccionados",
+    "batchDeleteSelected": "Eliminar Plugins seleccionados",
+    "selectVisiblePlugins": "Seleccionar Plugins visibles",
+    "batchInstallResult": "Instalación por lotes finalizada: {{succeeded}} correctas, {{failed}} fallidas",
+    "batchDeleteResult": "Eliminación por lotes finalizada: {{succeeded}} correctas, {{failed}} fallidas",
+    "batchDeleteTitle": "Eliminar Plugins seleccionados",
+    "batchDeleteMessage": "¿Eliminar {{count}} Plugins seleccionados de My Plugins? Los recursos hijos copiados en otro lugar no se eliminarán.",
+    "trust": {
+      "official": "Oficial",
+      "verified": "Verificado",
+      "community": "Comunidad",
+      "custom": "Personalizado"
+    },
+    "categories": {
+      "Productivity": "Productividad",
+      "Communication": "Comunicación",
+      "Creativity": "Creatividad",
+      "Developer Tools": "Herramientas de desarrollo",
+      "Data": "Datos",
+      "Education": "Educación",
+      "Finance": "Finanzas",
+      "Other": "Otro"
+    },
+    "policy": {
+      "installation": {
+        "AVAILABLE": "Disponible"
+      },
+      "authentication": {
+        "ON_INSTALL": "Al instalar",
+        "NOT_REQUIRED": "No requerido"
+      }
+    }
   }
 }

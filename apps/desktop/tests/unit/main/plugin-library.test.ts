@@ -20,6 +20,10 @@ const marketplaceUrl =
   "https://raw.example.test/plugins/.agents/plugins/marketplace.json";
 const bundleManifestUrl =
   "https://raw.example.test/plugins/plugins/bundle/.codex-plugin/plugin.json";
+const bundleIconUrl =
+  "https://raw.example.test/plugins/plugins/bundle/assets/icon.png";
+const bundleLogoUrl =
+  "https://raw.example.test/plugins/plugins/bundle/assets/logo.png";
 const singleSkillManifestUrl =
   "https://raw.example.test/plugins/plugins/single-skill/.codex-plugin/plugin.json";
 const runtimeManifestUrl =
@@ -98,6 +102,9 @@ describe("CorePluginLibraryService", () => {
         interface: {
           displayName: "Bundle Plugin",
           category: "Productivity",
+          composerIcon: "./assets/icon.png",
+          logo: "./assets/logo.png",
+          brandColor: "#4285F4",
         },
       }),
     });
@@ -129,6 +136,9 @@ describe("CorePluginLibraryService", () => {
     expect(result.plugin).toMatchObject({
       id: "test-market:bundle",
       displayName: "Bundle Plugin",
+      iconUrl: bundleIconUrl,
+      logoUrl: bundleLogoUrl,
+      brandColor: "#4285F4",
       classification: "bundle",
       inventory: {
         skills: 1,
@@ -154,6 +164,9 @@ describe("CorePluginLibraryService", () => {
             shortDescription: "Short preview description",
             longDescription: "Long preview introduction",
             category: "Developer Tools",
+            composerIcon: "./assets/icon.png",
+            logo: "./assets/logo.png",
+            brandColor: "#4285F4",
           },
         }),
       }),
@@ -166,6 +179,9 @@ describe("CorePluginLibraryService", () => {
       displayName: "Preview Bundle",
       description: "Short preview description",
       longDescription: "Long preview introduction",
+      iconUrl: bundleIconUrl,
+      logoUrl: bundleLogoUrl,
+      brandColor: "#4285F4",
       version: "1.2.3",
       category: "Productivity",
       classification: "bundle",
@@ -179,6 +195,9 @@ describe("CorePluginLibraryService", () => {
     });
     expect(preview.entry).toMatchObject({
       description: "Short preview description",
+      iconUrl: bundleIconUrl,
+      logoUrl: bundleLogoUrl,
+      brandColor: "#4285F4",
       inventory: { skills: 1, apps: 1 },
     });
     expect(service.read().plugins).toEqual([]);

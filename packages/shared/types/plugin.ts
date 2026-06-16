@@ -73,6 +73,9 @@ export interface PluginMarketEntry {
   name: string;
   displayName: string;
   description?: string;
+  iconUrl?: string;
+  logoUrl?: string;
+  brandColor?: string;
   version?: string;
   author?: PluginAuthor;
   category?: string;
@@ -89,6 +92,9 @@ export interface PluginLibraryEntry {
   name: string;
   displayName: string;
   description?: string;
+  iconUrl?: string;
+  logoUrl?: string;
+  brandColor?: string;
   version?: string;
   author?: PluginAuthor;
   category?: string;
@@ -136,6 +142,9 @@ export interface PluginMarketPreview {
   displayName: string;
   description?: string;
   longDescription?: string;
+  iconUrl?: string;
+  logoUrl?: string;
+  brandColor?: string;
   version?: string;
   author?: PluginAuthor;
   category?: string;
