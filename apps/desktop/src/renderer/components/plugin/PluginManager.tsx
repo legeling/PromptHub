@@ -41,6 +41,7 @@ import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { Modal } from "../ui/Modal";
 import { PlatformIcon } from "../ui/PlatformIcon";
 import { useToast } from "../ui/Toast";
+import { PluginFullDetailPage } from "./PluginFullDetailPage";
 
 type PluginTab = "library" | "market" | "targets";
 
@@ -811,90 +812,6 @@ function PluginStoreDetailModal({
   );
 }
 
-function PluginLibraryDetailModal({
-  plugin,
-  onClose,
-  onDelete,
-}: {
-  plugin: PluginLibraryEntry | null;
-  onClose: () => void;
-  onDelete: (plugin: PluginLibraryEntry) => void;
-}) {
-  const { t } = useTranslation();
-
-  if (!plugin) {
-    return null;
-  }
-
-  return (
-    <Modal
-      isOpen={Boolean(plugin)}
-      onClose={onClose}
-      size="xl"
-      showCloseButton
-      title={plugin.displayName}
-      subtitle={
-        plugin.description ||
-        plugin.author?.name ||
-        t("plugin.noDescription", "No description provided")
-      }
-    >
-      <div className="space-y-4 px-6 py-5">
-        <div className="flex items-start gap-4">
-          <PluginAvatar entry={plugin} size="lg" />
-          <div className="min-w-0 flex-1 space-y-3">
-            <PluginDetailBadges
-              entry={plugin}
-              sourceLabel={t("plugin.myPlugins", "My Plugins")}
-            />
-            <InventoryChips inventory={plugin.inventory} />
-          </div>
-        </div>
-
-        <dl className="grid gap-3 text-sm md:grid-cols-2">
-          {plugin.localPackagePath || plugin.managedPath ? (
-            <div className="rounded-xl border border-border bg-background/60 p-3 md:col-span-2">
-              <dt className="text-xs font-medium text-muted-foreground">
-                {t("plugin.localPackagePath", "Local package")}
-              </dt>
-              <dd className="mt-1 break-all font-mono text-xs text-foreground">
-                {plugin.localPackagePath ?? plugin.managedPath}
-              </dd>
-            </div>
-          ) : null}
-          <div className="rounded-xl border border-border bg-background/60 p-3">
-            <dt className="text-xs font-medium text-muted-foreground">
-              {t("plugin.installedAtLabel", "Installed at")}
-            </dt>
-            <dd className="mt-1 text-foreground">
-              {new Date(plugin.installedAt).toLocaleString()}
-            </dd>
-          </div>
-          <div className="rounded-xl border border-border bg-background/60 p-3">
-            <dt className="text-xs font-medium text-muted-foreground">
-              {t("plugin.classificationLabel", "Classification")}
-            </dt>
-            <dd className="mt-1 text-foreground">
-              {getClassificationLabel(plugin.classification, t)}
-            </dd>
-          </div>
-        </dl>
-
-        <div className="flex justify-end border-t border-border pt-4">
-          <button
-            type="button"
-            onClick={() => onDelete(plugin)}
-            className="inline-flex h-10 items-center gap-2 rounded-lg border border-red-500/25 bg-red-500/10 px-4 text-sm font-medium text-red-600 transition-colors hover:bg-red-500/15"
-          >
-            <TrashIcon className="h-4 w-4" />
-            {t("plugin.deletePlugin", "Delete plugin")}
-          </button>
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
 function PluginLibraryRow({ plugin }: { plugin: PluginLibraryEntry }) {
   const { t } = useTranslation();
 
@@ -957,6 +874,7 @@ function PluginLibraryRow({ plugin }: { plugin: PluginLibraryEntry }) {
 }
 
 function AgentPluginView({
+  initialSelectedTargetId,
   targets,
   installedPlugins,
   installedInventoryCount,
@@ -964,6 +882,7 @@ function AgentPluginView({
   onRefresh,
   onOpenStore,
 }: {
+  initialSelectedTargetId?: string | null;
   targets: PluginTargetCompatibility[];
   installedPlugins: PluginLibraryEntry[];
   installedInventoryCount: number;
@@ -976,6 +895,12 @@ function AgentPluginView({
 
   useEffect(() => {
     setSelectedTargetId((current) => {
+      if (
+        initialSelectedTargetId &&
+        targets.some((target) => target.id === initialSelectedTargetId)
+      ) {
+        return initialSelectedTargetId;
+      }
       if (current && targets.some((target) => target.id === current)) {
         return current;
       }
@@ -983,7 +908,7 @@ function AgentPluginView({
         targets.find((target) => target.enabled)?.id ?? targets[0]?.id ?? null
       );
     });
-  }, [targets]);
+  }, [initialSelectedTargetId, targets]);
 
   const selectedTarget = useMemo(
     () =>
@@ -1282,6 +1207,9 @@ export function PluginManager() {
   const [deleteTarget, setDeleteTarget] = useState<PluginLibraryEntry | null>(
     null,
   );
+  const [initialAgentPluginTargetId, setInitialAgentPluginTargetId] = useState<
+    string | null
+  >(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const marketPreviewPrefetchInFlightRef = useRef<Set<string>>(new Set());
   const {
@@ -1324,6 +1252,15 @@ export function PluginManager() {
     () => library?.plugins ?? [],
     [library?.plugins],
   );
+  const selectedLibraryDetailPlugin = useMemo(() => {
+    if (!detailLibraryPlugin) {
+      return null;
+    }
+    return (
+      installedPlugins.find((plugin) => plugin.id === detailLibraryPlugin.id) ??
+      detailLibraryPlugin
+    );
+  }, [detailLibraryPlugin, installedPlugins]);
   const installedIds = useMemo(
     () => new Set(installedPlugins.map((plugin) => plugin.id)),
     [installedPlugins],
@@ -1554,6 +1491,12 @@ export function PluginManager() {
     selectedTab,
   ]);
 
+  useEffect(() => {
+    if (selectedTab !== "library" && detailLibraryPlugin) {
+      setDetailLibraryPlugin(null);
+    }
+  }, [detailLibraryPlugin, selectedTab]);
+
   const handleInstall = async (entry: PluginMarketEntry) => {
     setInstallingId(entry.id);
     try {
@@ -1761,15 +1704,60 @@ export function PluginManager() {
     }
   };
 
+  if (selectedTab === "library" && selectedLibraryDetailPlugin) {
+    return (
+      <>
+        <PluginFullDetailPage
+          plugin={selectedLibraryDetailPlugin}
+          targetMatrix={targetMatrix}
+          onBack={() => setDetailLibraryPlugin(null)}
+          onDelete={(plugin) => setDeleteTarget(plugin)}
+          onOpenAgentTargets={(targetIds) => {
+            setInitialAgentPluginTargetId(targetIds[0] ?? null);
+            setDetailLibraryPlugin(null);
+            setSelectedTab("targets");
+          }}
+          onOpenStore={() => {
+            setDetailLibraryPlugin(null);
+            setSelectedTab("market");
+          }}
+        />
+        <ConfirmDialog
+          isOpen={Boolean(deleteTarget)}
+          onClose={() => {
+            if (!isDeleting) {
+              setDeleteTarget(null);
+            }
+          }}
+          onConfirm={handleDelete}
+          title={t("plugin.deleteConfirmTitle", "Delete plugin")}
+          message={t("plugin.deleteConfirmMessage", {
+            defaultValue:
+              "Delete {{name}} from My Plugins? Child assets already copied elsewhere are not removed.",
+            name: deleteTarget?.displayName ?? "",
+          })}
+          confirmText={t("common.delete", "Delete")}
+          cancelText={t("common.cancel", "Cancel")}
+          variant="destructive"
+          isLoading={isDeleting}
+        />
+      </>
+    );
+  }
+
   if (selectedTab === "targets") {
     return (
       <AgentPluginView
+        initialSelectedTargetId={initialAgentPluginTargetId}
         targets={targetMatrix}
         installedPlugins={installedPlugins}
         installedInventoryCount={installedInventoryCount}
         isLoading={isLoading}
         onRefresh={() => void load()}
-        onOpenStore={() => setSelectedTab("market")}
+        onOpenStore={() => {
+          setInitialAgentPluginTargetId(null);
+          setSelectedTab("market");
+        }}
       />
     );
   }
@@ -2092,14 +2080,6 @@ export function PluginManager() {
         onClose={() => setDetailMarketEntry(null)}
         onCopyCodexLink={handleCopyCodexLink}
         onInstall={handleInstall}
-      />
-      <PluginLibraryDetailModal
-        plugin={detailLibraryPlugin}
-        onClose={() => setDetailLibraryPlugin(null)}
-        onDelete={(plugin) => {
-          setDetailLibraryPlugin(null);
-          setDeleteTarget(plugin);
-        }}
       />
     </div>
   );

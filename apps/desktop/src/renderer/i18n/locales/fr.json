@@ -2702,7 +2702,7 @@
       "scriptsOther": "scripts"
     },
     "inventoryChip": "Inclut {{count}} {{label}}",
-    "inventoryEmpty": "",
+    "inventoryEmpty": "Aucun sous-asset détecté.",
     "marketInventoryDeferred": "",
     "noDescription": "Aucune description fournie",
     "deletePlugin": "Supprimer le plugin",
@@ -2811,6 +2811,22 @@
         "ON_INSTALL": "À l’installation",
         "NOT_REQUIRED": "Non requis"
       }
-    }
+    },
+    "descriptionTitle": "Description du Plugin",
+    "agentDistributionTitle": "Distribution Agent Plugin",
+    "agentDistributionDesc": "Sélectionnez les agents compatibles Plugin. Les écritures de cible restent confirmées et pilotées par adaptateur.",
+    "openSelectedAgentDistribution": "Ouvrir Agent Plugin pour {{count}} cible(s)",
+    "selectAgentTargets": "Sélectionner des cibles Agent",
+    "localPackageMissingHint": "Ce Plugin n’a pas encore de dossier de package local, les fichiers et sorties d’adaptateur ne peuvent donc pas être générés.",
+    "metadata": "Métadonnées du Plugin",
+    "id": "ID du Plugin",
+    "source": "Source",
+    "sourceManifest": "Source / Manifest",
+    "localPackageMissing": "Indisponible",
+    "noLocalFilesTitle": "Aucun fichier Plugin local",
+    "noLocalFilesDesc": "Installez ou matérialisez le package Plugin avant de parcourir les fichiers.",
+    "openPluginFolderFailed": "Impossible d’ouvrir le dossier du Plugin",
+    "copyLocalPackagePath": "Copier le chemin du Plugin",
+    "localPathCopied": "Chemin du Plugin copié"
   }
 }

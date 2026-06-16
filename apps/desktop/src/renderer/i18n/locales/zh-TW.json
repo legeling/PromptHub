@@ -2702,7 +2702,7 @@
       "scriptsOther": "腳本"
     },
     "inventoryChip": "包含 {{count}} 個 {{label}}",
-    "inventoryEmpty": "",
+    "inventoryEmpty": "未偵測到子資產。",
     "marketInventoryDeferred": "",
     "noDescription": "暫無描述",
     "deletePlugin": "刪除 Plugin",
@@ -2811,6 +2811,22 @@
         "ON_INSTALL": "安裝時認證",
         "NOT_REQUIRED": "無需認證"
       }
-    }
+    },
+    "descriptionTitle": "Plugin 描述",
+    "agentDistributionTitle": "Agent Plugin 分發",
+    "agentDistributionDesc": "選擇支援 Plugin 的 Agent。目標寫入仍需要確認，並由適配器執行。",
+    "openSelectedAgentDistribution": "開啟 {{count}} 個目標的 Agent Plugin",
+    "selectAgentTargets": "選擇 Agent 目標",
+    "localPackageMissingHint": "這個 Plugin 還沒有本機套件目錄，暫時不能查看檔案或產生適配輸出。",
+    "metadata": "Plugin 中繼資料",
+    "id": "Plugin ID",
+    "source": "來源",
+    "sourceManifest": "來源 / Manifest",
+    "localPackageMissing": "不可用",
+    "noLocalFilesTitle": "暫無本機 Plugin 檔案",
+    "noLocalFilesDesc": "安裝或產生 Plugin 套件後才能瀏覽檔案。",
+    "openPluginFolderFailed": "開啟 Plugin 資料夾失敗",
+    "copyLocalPackagePath": "複製 Plugin 路徑",
+    "localPathCopied": "Plugin 路徑已複製"
   }
 }

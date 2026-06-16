@@ -83,6 +83,7 @@ Official references:
 - Plugin Store defaults to the Codex official `openai-curated` source when it is available, while keeping an all-sources filter.
 - Marketplace preview lazily reads the selected package manifest, shows inventory/classification/policy/source links, and does not execute plugin code.
 - Marketplace install validates the selected package manifest and downloads Git-backed packages into PromptHub's managed plugin directory before writing My Plugins metadata.
+- My Plugins entries open as full detail pages rather than modal dialogs. The detail page shows Plugin description, inventory, source metadata, local package path, source/manifest content, a Files tab backed by the installed local package path, and an Agent Plugin target-selection entry point.
 - Uninstall removes only PromptHub-managed plugin package files and My Plugins metadata; it does not delete child Skills/MCP entries or user-owned external paths.
 - Single-skill packages and single runtime hook/module packages fail the Plugin semantic gate and are not installed as Plugin bundles.
 - Plugin Targets render enabled `Native` / `Adapter` targets and disabled `RuntimeOnly` / `Composite` / `Pending` targets. Disabled targets remain visible with an explicit reason.

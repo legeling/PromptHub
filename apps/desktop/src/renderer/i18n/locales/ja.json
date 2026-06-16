@@ -2702,7 +2702,7 @@
       "scriptsOther": "script"
     },
     "inventoryChip": "{{label}} {{count}} 件を含む",
-    "inventoryEmpty": "",
+    "inventoryEmpty": "子アセットは検出されていません。",
     "marketInventoryDeferred": "",
     "noDescription": "説明はありません",
     "deletePlugin": "プラグインを削除",
@@ -2811,6 +2811,22 @@
         "ON_INSTALL": "インストール時に認証",
         "NOT_REQUIRED": "認証不要"
       }
-    }
+    },
+    "descriptionTitle": "Plugin の説明",
+    "agentDistributionTitle": "Agent Plugin の配布",
+    "agentDistributionDesc": "Plugin 対応 Agent を選択します。ターゲットへの書き込みは確認付きで、アダプター経由で実行されます。",
+    "openSelectedAgentDistribution": "{{count}} 個のターゲットで Agent Plugin を開く",
+    "selectAgentTargets": "Agent ターゲットを選択",
+    "localPackageMissingHint": "この Plugin にはまだローカルパッケージフォルダーがないため、ファイル表示やアダプター出力を生成できません。",
+    "metadata": "Plugin メタデータ",
+    "id": "Plugin ID",
+    "source": "ソース",
+    "sourceManifest": "ソース / Manifest",
+    "localPackageMissing": "利用不可",
+    "noLocalFilesTitle": "ローカル Plugin ファイルがありません",
+    "noLocalFilesDesc": "ファイルを参照する前に Plugin パッケージをインストールまたは生成してください。",
+    "openPluginFolderFailed": "Plugin フォルダーを開けませんでした",
+    "copyLocalPackagePath": "Plugin パスをコピー",
+    "localPathCopied": "Plugin パスをコピーしました"
   }
 }

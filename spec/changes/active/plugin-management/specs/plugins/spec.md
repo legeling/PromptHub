@@ -101,6 +101,15 @@ PromptHub MUST separate plugin installation from child capability distribution.
 - **AND** it does not automatically distribute MCP config to agent targets
 - **AND** it does not authorize external Apps/connectors without explicit user action
 
+#### Scenario: Inspect installed plugin as a full detail page
+
+- **GIVEN** a plugin is installed in My Plugins
+- **WHEN** the user opens the installed plugin from the My Plugins list
+- **THEN** PromptHub renders a full Plugin detail page instead of a modal dialog
+- **AND** the detail page shows Plugin identity, description, child inventory, source metadata, local package path, and source/manifest content
+- **AND** the detail page exposes a Files tab that reuses the existing Skill file browser/editor against the installed Plugin local package path
+- **AND** the detail page includes an Agent Plugin distribution panel for supported targets, but does not write target Agent config until an adapter-backed confirmation-gated distribution flow is executed
+
 #### Scenario: Distribute selected child assets
 
 - **GIVEN** a plugin is installed
@@ -146,7 +155,8 @@ PromptHub MUST provide a Plugin Store model that can represent official, verifie
 - **AND** store source selection is driven by the Plugin navigation/sidebar state rather than duplicated above the list
 - **AND** the first-level `Plugins Store` sidebar entry follows the Skill Store sidebar pattern and does not show marketplace item-count pills
 - **AND** list cards use the whole card as the detail entry point without separate right-side view/install/delete buttons
-- **AND** install/delete actions remain available from the detail modal or batch action toolbar
+- **AND** store install actions remain available from the store detail modal or batch action toolbar
+- **AND** installed Plugin delete actions remain available from the full installed Plugin detail page or batch action toolbar
 
 #### Scenario: Plugin Store cards use manifest presentation metadata
 

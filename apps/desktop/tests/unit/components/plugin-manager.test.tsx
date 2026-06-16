@@ -2,6 +2,7 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   PluginInventorySummary,
+  PluginLibraryEntry,
   PluginLibraryFile,
   PluginMarketEntry,
   PluginMarketPreview,
@@ -13,6 +14,12 @@ import { PluginManager } from "../../../src/renderer/components/plugin/PluginMan
 import { usePluginStore } from "../../../src/renderer/stores/plugin.store";
 import { ToastProvider } from "../../../src/renderer/components/ui/Toast";
 import { renderWithI18n } from "../../helpers/i18n";
+
+vi.mock("../../../src/renderer/components/skill/SkillFileEditor", () => ({
+  SkillFileEditor: ({ localPath }: { localPath?: string }) => (
+    <div data-testid="plugin-file-editor">plugin-file-editor:{localPath}</div>
+  ),
+}));
 
 const emptyInventory: PluginInventorySummary = {
   skills: 0,
@@ -32,6 +39,37 @@ const library: PluginLibraryFile = {
   version: 1,
   updatedAt: "2026-06-16T00:00:00.000Z",
   plugins: [],
+};
+
+const installedGmailPlugin: PluginLibraryEntry = {
+  id: "gmail",
+  name: "gmail",
+  displayName: "Gmail",
+  description: "Read and manage Gmail",
+  iconUrl:
+    "https://raw.githubusercontent.com/openai/plugins/main/plugins/gmail/assets/icon.png",
+  brandColor: "#EA4335",
+  category: "Communication",
+  trustLevel: "official",
+  inventory: { ...emptyInventory, skills: 4, mcpServers: 1, commands: 2 },
+  classification: "bundle",
+  source: {
+    kind: "market",
+    label: "Codex Plugin Store",
+    repository: "https://github.com/openai/plugins",
+    packagePath: "plugins/gmail",
+    localPackagePath: "/tmp/prompthub/plugins/gmail/repo/plugins/gmail",
+  },
+  managedPath: "/tmp/prompthub/plugins/gmail",
+  localRepositoryPath: "/tmp/prompthub/plugins/gmail/repo",
+  localPackagePath: "/tmp/prompthub/plugins/gmail/repo/plugins/gmail",
+  installedAt: Date.parse("2026-06-16T00:00:00.000Z"),
+  updatedAt: Date.parse("2026-06-16T00:00:00.000Z"),
+};
+
+const installedLibrary: PluginLibraryFile = {
+  ...library,
+  plugins: [installedGmailPlugin],
 };
 
 const marketSources: PluginMarketSource[] = [
@@ -88,6 +126,14 @@ const targetMatrix: PluginTargetCompatibility[] = [
     displayName: "Codex",
     status: "native",
     enabled: true,
+    adapterOutput: "Install as a Codex Plugin bundle.",
+  },
+  {
+    id: "opencode",
+    displayName: "OpenCode",
+    status: "runtime-only",
+    enabled: false,
+    unsupportedReason: "Runtime hook plugins are not Plugin bundles.",
   },
 ];
 
@@ -208,9 +254,9 @@ function resetPluginStore() {
   });
 }
 
-function installPluginApiMock() {
+function installPluginApiMock(libraryOverride: PluginLibraryFile = library) {
   window.api.plugin = {
-    getLibrary: vi.fn().mockResolvedValue(library),
+    getLibrary: vi.fn().mockResolvedValue(libraryOverride),
     listMarket: vi.fn().mockResolvedValue(marketEntries),
     listMarketSources: vi.fn().mockResolvedValue(marketSources),
     getTargetMatrix: vi.fn().mockResolvedValue(targetMatrix),
@@ -227,7 +273,7 @@ function installPluginApiMock() {
         installedAt: Date.now(),
         updatedAt: Date.now(),
       },
-      library,
+      library: libraryOverride,
       warnings: [],
     }),
     deletePlugin: vi.fn().mockResolvedValue(library),
@@ -247,6 +293,87 @@ describe("PluginManager", () => {
   beforeEach(() => {
     resetPluginStore();
     installPluginApiMock();
+  });
+
+  it("opens installed plugins as a full detail page with files and Agent targets", async () => {
+    installPluginApiMock(installedLibrary);
+    usePluginStore.setState({ selectedTab: "library" });
+
+    await renderPluginManager();
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Gmail. Read and manage Gmail",
+      }),
+    );
+
+    expect(screen.getByTestId("plugin-full-detail-page")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Gmail" })).toBeInTheDocument();
+    expect(screen.getByText("Agent Plugin Distribution")).toBeInTheDocument();
+    expect(screen.getByText("Codex")).toBeInTheDocument();
+    expect(screen.getByText("OpenCode")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Files" }));
+
+    expect(await screen.findByTestId("plugin-file-editor")).toHaveTextContent(
+      "plugin-file-editor:/tmp/prompthub/plugins/gmail/repo/plugins/gmail",
+    );
+  });
+
+  it("routes installed plugin detail targets into the Agent Plugin workbench", async () => {
+    installPluginApiMock(installedLibrary);
+    usePluginStore.setState({ selectedTab: "library" });
+
+    await renderPluginManager();
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Gmail. Read and manage Gmail",
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Codex.*Native/ }));
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Open Agent Plugin for 1 target(s)",
+      }),
+    );
+
+    expect(
+      screen.queryByTestId("plugin-full-detail-page"),
+    ).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId("agent-plugin-detail-shell")).toHaveAttribute(
+        "data-agent-id",
+        "codex",
+      );
+    });
+  });
+
+  it("keeps delete confirmation available from the installed plugin detail page", async () => {
+    installPluginApiMock(installedLibrary);
+    usePluginStore.setState({ selectedTab: "library" });
+
+    await renderPluginManager();
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Gmail. Read and manage Gmail",
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Delete Plugin" }));
+
+    expect(
+      await screen.findByText(
+        "Delete Gmail from My Plugins? Child assets already copied elsewhere are not removed.",
+      ),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+
+    await waitFor(() => {
+      expect(window.api.plugin.deletePlugin).toHaveBeenCalledWith("gmail");
+    });
   });
 
   it("renders the plugin store without in-page search, category chips, or card action buttons", async () => {
