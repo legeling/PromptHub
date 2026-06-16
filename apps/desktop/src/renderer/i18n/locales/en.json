@@ -2724,6 +2724,7 @@
     "installSurface": "Install surface",
     "unsupportedReason": "Why disabled",
     "searchPlaceholder": "Search Plugins",
+    "overviewTitle": "Overview",
     "statsInstalled": "{{count}} installed",
     "statsInventory": "{{count}} assets",
     "statsTargets": "{{count}} Agent Plugin targets",

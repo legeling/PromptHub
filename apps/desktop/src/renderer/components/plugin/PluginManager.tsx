@@ -448,13 +448,17 @@ function PluginStoreDetailModal({
     return null;
   }
 
+  const activeEntry = preview?.entry ?? entry;
+  const displayName = preview?.displayName ?? activeEntry.displayName;
+  const summaryDescription = preview?.description ?? activeEntry.description;
+  const overviewDescription = preview?.longDescription;
   const sourceLabel = getMarketSourceLabel(
-    entry.marketplaceId,
-    entry.source.label || entry.marketplaceId,
+    activeEntry.marketplaceId,
+    activeEntry.source.label || activeEntry.marketplaceId,
     t,
   );
-  const activeInventory = preview?.inventory ?? entry.inventory;
-  const codexLink = preview?.codexDetailUrl ?? entry.codexDetailUrl;
+  const activeInventory = preview?.inventory ?? activeEntry.inventory;
+  const codexLink = preview?.codexDetailUrl ?? activeEntry.codexDetailUrl;
   const installDisabled =
     installed || installing || preview?.canInstall === false;
 
@@ -464,9 +468,9 @@ function PluginStoreDetailModal({
       onClose={onClose}
       size="xl"
       showCloseButton
-      title={entry.displayName}
+      title={displayName}
       subtitle={
-        entry.description ||
+        summaryDescription ||
         t(
           "plugin.marketInventoryDeferred",
           "Plugin inventory is checked before install.",
@@ -477,10 +481,13 @@ function PluginStoreDetailModal({
         <div className="space-y-4 px-6 py-5">
           <div className="flex items-start gap-4">
             <div className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-primary/10 text-2xl font-semibold text-primary">
-              {getPluginInitial(entry.displayName)}
+              {getPluginInitial(displayName)}
             </div>
             <div className="min-w-0 flex-1 space-y-3">
-              <PluginDetailBadges entry={entry} sourceLabel={sourceLabel} />
+              <PluginDetailBadges
+                entry={activeEntry}
+                sourceLabel={sourceLabel}
+              />
               {previewing ? (
                 <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground">
                   <Loader2Icon className="h-3.5 w-3.5 animate-spin" />
@@ -508,6 +515,17 @@ function PluginStoreDetailModal({
             </div>
           </div>
 
+          {overviewDescription ? (
+            <section className="rounded-2xl border border-border bg-background/60 p-4">
+              <h3 className="text-sm font-medium text-foreground">
+                {t("plugin.overviewTitle", "Overview")}
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                {overviewDescription}
+              </p>
+            </section>
+          ) : null}
+
           {activeInventory ? (
             <div className="rounded-2xl border border-border bg-muted/20 p-4">
               <div className="mb-3 text-sm font-medium text-foreground">
@@ -524,23 +542,23 @@ function PluginStoreDetailModal({
           ) : null}
 
           <dl className="grid gap-3 text-sm md:grid-cols-2">
-            {entry.policy?.installation ? (
+            {activeEntry.policy?.installation ? (
               <div className="rounded-xl border border-border bg-background/60 p-3">
                 <dt className="text-xs font-medium text-muted-foreground">
                   {t("plugin.policyInstallation", "Install")}
                 </dt>
                 <dd className="mt-1 text-foreground">
-                  {entry.policy.installation}
+                  {activeEntry.policy.installation}
                 </dd>
               </div>
             ) : null}
-            {entry.policy?.authentication ? (
+            {activeEntry.policy?.authentication ? (
               <div className="rounded-xl border border-border bg-background/60 p-3">
                 <dt className="text-xs font-medium text-muted-foreground">
                   {t("plugin.policyAuth", "Auth")}
                 </dt>
                 <dd className="mt-1 text-foreground">
-                  {entry.policy.authentication}
+                  {activeEntry.policy.authentication}
                 </dd>
               </div>
             ) : null}
@@ -554,13 +572,13 @@ function PluginStoreDetailModal({
                 </dd>
               </div>
             ) : null}
-            {entry.source.packagePath ? (
+            {activeEntry.source.packagePath ? (
               <div className="rounded-xl border border-border bg-background/60 p-3 md:col-span-2">
                 <dt className="text-xs font-medium text-muted-foreground">
                   {t("plugin.packagePath", "Package path")}
                 </dt>
                 <dd className="mt-1 break-all font-mono text-xs text-foreground">
-                  {entry.source.packagePath}
+                  {activeEntry.source.packagePath}
                 </dd>
               </div>
             ) : null}
@@ -575,7 +593,7 @@ function PluginStoreDetailModal({
             {codexLink ? (
               <button
                 type="button"
-                onClick={() => onCopyCodexLink(entry)}
+                onClick={() => onCopyCodexLink(activeEntry)}
                 className="inline-flex h-10 items-center gap-2 rounded-lg border border-border bg-background px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               >
                 <CopyIcon className="h-4 w-4" />
@@ -585,7 +603,7 @@ function PluginStoreDetailModal({
             <button
               type="button"
               disabled={installDisabled}
-              onClick={() => onInstall(entry)}
+              onClick={() => onInstall(activeEntry)}
               className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
             >
               {installing ? (

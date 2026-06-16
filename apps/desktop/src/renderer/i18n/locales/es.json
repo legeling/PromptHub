@@ -2685,6 +2685,7 @@
     "installSurface": "Superficie de instalación",
     "unsupportedReason": "Motivo de desactivación",
     "searchPlaceholder": "Buscar plugins",
+    "overviewTitle": "Resumen",
     "statsInstalled": "{{count}} instalados",
     "statsInventory": "{{count}} assets",
     "statsTargets": "{{count}} destinos habilitados",

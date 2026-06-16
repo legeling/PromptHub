@@ -33,6 +33,7 @@
 - Moved Plugin search into the global app top bar while keeping Prompt quick-add/new controls hidden on the Plugins page.
 - Removed the Plugin Store content area's in-page search form and category chips; store source selection now comes from the Plugin navigation/sidebar state instead of duplicated list-top filters.
 - Simplified My Plugins and Official Store cards so the whole card opens detail and the list no longer renders separate right-side view/install/delete action buttons.
+- Fixed Plugin Store detail previews to use manifest-enriched display name and short description, and added an Overview section for the manifest `interface.longDescription`.
 - Added Plugin navigation to the desktop home rail/sidebar and the Appearance settings home-module list.
 - Added Plugin i18n keys across all seven desktop locales.
 
@@ -43,6 +44,7 @@
 - `pnpm --filter @prompthub/desktop typecheck`
 - `pnpm --filter @prompthub/desktop test:run tests/unit/components/sidebar.test.tsx tests/unit/components/appearance-settings.test.tsx -- --runInBand`
 - `pnpm --filter @prompthub/desktop test:run tests/unit/components/plugin-manager.test.tsx tests/unit/components/top-bar.test.tsx -- --runInBand`
+- `pnpm --filter @prompthub/desktop test:run tests/unit/main/plugin-library.test.ts tests/unit/components/plugin-manager.test.tsx -- --runInBand`
 - `pnpm --filter @prompthub/desktop test:run tests/unit/components/plugin-manager.test.tsx -- --runInBand`
 - `pnpm --filter @prompthub/desktop build`
 - `pnpm exec prettier --check apps/desktop/src/renderer/stores/plugin.store.ts apps/desktop/src/renderer/components/layout/Sidebar.tsx apps/desktop/src/renderer/components/layout/TopBar.tsx apps/desktop/src/renderer/components/plugin/PluginManager.tsx apps/desktop/tests/unit/components/plugin-manager.test.tsx apps/desktop/tests/unit/components/top-bar.test.tsx spec/changes/active/plugin-management/specs/plugins/spec.md spec/changes/active/plugin-management/tasks.md spec/changes/active/plugin-management/implementation.md`

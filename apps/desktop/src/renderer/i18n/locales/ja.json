@@ -2686,6 +2686,7 @@
     "installSurface": "インストール先",
     "unsupportedReason": "無効な理由",
     "searchPlaceholder": "プラグインを検索",
+    "overviewTitle": "概要",
     "statsInstalled": "{{count}} installed",
     "statsInventory": "{{count}} assets",
     "statsTargets": "{{count}} enabled targets",

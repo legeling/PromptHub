@@ -2685,6 +2685,7 @@
     "installSurface": "Installationsfläche",
     "unsupportedReason": "Grund für Deaktivierung",
     "searchPlaceholder": "Plugins suchen",
+    "overviewTitle": "Übersicht",
     "statsInstalled": "{{count}} installiert",
     "statsInventory": "{{count}} Assets",
     "statsTargets": "{{count}} aktivierte Ziele",

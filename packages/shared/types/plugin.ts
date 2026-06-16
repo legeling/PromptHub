@@ -135,6 +135,7 @@ export interface PluginMarketPreview {
   entry: PluginMarketEntry;
   displayName: string;
   description?: string;
+  longDescription?: string;
   version?: string;
   author?: PluginAuthor;
   category?: string;

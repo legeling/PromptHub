@@ -875,11 +875,12 @@ export class CorePluginLibraryService {
       safeString(manifest.displayName) ||
       entry.displayName ||
       name;
-    const description =
-      safeString(manifest.description) ||
-      safeString(interfaceRecord.longDescription) ||
+    const shortDescription =
       safeString(interfaceRecord.shortDescription) ||
+      safeString(manifest.description) ||
       entry.description;
+    const longDescription = safeString(interfaceRecord.longDescription);
+    const description = shortDescription || longDescription;
     const manifestUrl = this.getManifestUrlForEntry(entry);
     const enrichedEntry: PluginMarketEntry = {
       ...entry,
@@ -896,6 +897,7 @@ export class CorePluginLibraryService {
       entry: enrichedEntry,
       displayName,
       description,
+      longDescription,
       version: enrichedEntry.version,
       author: enrichedEntry.author,
       category: enrichedEntry.category,

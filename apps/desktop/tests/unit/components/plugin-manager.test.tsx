@@ -94,9 +94,15 @@ const targetMatrix: PluginTargetCompatibility[] = [
 ];
 
 const linearPreview: PluginMarketPreview = {
-  entry: marketEntries[0],
-  displayName: "linear",
-  description: "Plan issues and inspect project work.",
+  entry: {
+    ...marketEntries[0],
+    displayName: "Linear",
+    description: "Track issues and project work.",
+  },
+  displayName: "Linear",
+  description: "Track issues and project work.",
+  longDescription:
+    "Use Linear to triage issues, inspect projects, and coordinate engineering work directly from task prompts.",
   category: "Productivity",
   inventory: { ...emptyInventory, skills: 2, apps: 1 },
   classification: "bundle",
@@ -204,8 +210,16 @@ describe("PluginManager", () => {
     expect(window.api.plugin.previewMarketPlugin).toHaveBeenCalledWith(
       "linear",
     );
-    const dialog = await screen.findByRole("dialog", { name: "linear" });
+    const dialog = await screen.findByRole("dialog", { name: "Linear" });
     expect(dialog).toBeInTheDocument();
+    expect(
+      within(dialog).getByText("Track issues and project work."),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        "Use Linear to triage issues, inspect projects, and coordinate engineering work directly from task prompts.",
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText("Inventory")).toBeInTheDocument();
     expect(screen.getByText("AVAILABLE")).toBeInTheDocument();
     expect(screen.getByText("ON_INSTALL")).toBeInTheDocument();

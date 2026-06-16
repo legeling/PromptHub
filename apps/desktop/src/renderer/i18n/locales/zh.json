@@ -2724,6 +2724,7 @@
     "installSurface": "安装入口",
     "unsupportedReason": "不可用原因",
     "searchPlaceholder": "搜索 Plugins",
+    "overviewTitle": "介绍",
     "statsInstalled": "{{count}} 个已安装",
     "statsInventory": "{{count}} 个资产",
     "statsTargets": "{{count}} 个 Agent Plugin",

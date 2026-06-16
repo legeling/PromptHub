@@ -148,7 +148,7 @@ PromptHub MUST provide a Plugin Store model that can represent official, verifie
 - **GIVEN** a plugin appears in the Codex official marketplace
 - **WHEN** the user previews the store entry
 - **THEN** PromptHub reads the entry's `.codex-plugin/plugin.json` without executing plugin code
-- **AND** it shows version, author, category, package path, manifest URL, policy metadata, child inventory, semantic classification, and Codex detail link
+- **AND** it shows manifest display name, short description, long overview/introduction, version, author, category, package path, manifest URL, policy metadata, child inventory, semantic classification, and Codex detail link
 - **AND** unsupported single-skill or runtime-module packages are labeled before install
 
 #### Scenario: Install Codex marketplace package

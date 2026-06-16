@@ -151,6 +151,8 @@ describe("CorePluginLibraryService", () => {
           apps: "./.app.json",
           interface: {
             displayName: "Preview Bundle",
+            shortDescription: "Short preview description",
+            longDescription: "Long preview introduction",
             category: "Developer Tools",
           },
         }),
@@ -162,6 +164,8 @@ describe("CorePluginLibraryService", () => {
 
     expect(preview).toMatchObject({
       displayName: "Preview Bundle",
+      description: "Short preview description",
+      longDescription: "Long preview introduction",
       version: "1.2.3",
       category: "Productivity",
       classification: "bundle",
@@ -173,7 +177,10 @@ describe("CorePluginLibraryService", () => {
         apps: 1,
       },
     });
-    expect(preview.entry.inventory).toMatchObject({ skills: 1, apps: 1 });
+    expect(preview.entry).toMatchObject({
+      description: "Short preview description",
+      inventory: { skills: 1, apps: 1 },
+    });
     expect(service.read().plugins).toEqual([]);
   });
 
