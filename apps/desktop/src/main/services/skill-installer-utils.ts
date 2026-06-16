@@ -297,14 +297,10 @@ export function gitGetCurrentBranch(repoDir: string): Promise<string | null> {
   }
 
   return new Promise((resolve, reject) => {
-    const proc = childProcess.spawn(
-      "git",
-      ["branch", "--show-current"],
-      {
-        cwd: repoDir,
-        stdio: ["ignore", "pipe", "pipe"],
-      },
-    );
+    const proc = childProcess.spawn("git", ["branch", "--show-current"], {
+      cwd: repoDir,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
 
     let stdout = "";
     let stderr = "";
@@ -399,6 +395,16 @@ function normalizeBuiltinAgentOverrides(
         record.skillsRelativePath.trim().length > 0
           ? record.skillsRelativePath.trim().replace(/^[\\/]+|[\\/]+$/g, "")
           : undefined,
+      mcpRelativePath:
+        typeof record.mcpRelativePath === "string" &&
+        record.mcpRelativePath.trim().length > 0
+          ? record.mcpRelativePath.trim().replace(/^[\\/]+|[\\/]+$/g, "")
+          : undefined,
+      pluginsRelativePath:
+        typeof record.pluginsRelativePath === "string" &&
+        record.pluginsRelativePath.trim().length > 0
+          ? record.pluginsRelativePath.trim().replace(/^[\\/]+|[\\/]+$/g, "")
+          : undefined,
       rulesRelativePath:
         typeof record.rulesRelativePath === "string" &&
         record.rulesRelativePath.trim().length > 0
@@ -427,6 +433,33 @@ function normalizeBuiltinAgentOverrides(
 
 function joinRootRelativePath(rootDir: string, relativePath: string): string {
   return path.join(rootDir, ...relativePath.split(/[\\/]+/).filter(Boolean));
+}
+
+export function getDefaultMcpRelativePath(platformId?: string): string {
+  const paths: Record<string, string> = {
+    claude: "../.claude.json",
+    codex: "config.toml",
+    gemini: "settings.json",
+    opencode: "opencode.json",
+    cursor: "mcp.json",
+    cline: "cline_mcp_settings.json",
+    windsurf: "mcp_config.json",
+    kiro: "settings/mcp.json",
+    copilot: "mcp.json",
+  };
+  return platformId ? paths[platformId] || "mcp.json" : "mcp.json";
+}
+
+export function getDefaultPluginsRelativePath(platformId?: string): string {
+  const paths: Record<string, string> = {
+    claude: "plugins/cache/prompthub",
+    codex: "plugins/cache/prompthub",
+    cursor: "plugins/cache/prompthub",
+    gemini: "config/plugins",
+    kiro: "powers",
+    copilot: "plugins",
+  };
+  return platformId ? paths[platformId] || "plugins" : "plugins";
 }
 
 function deriveLegacyRootPathMap(
@@ -660,6 +693,18 @@ export function getPlatformGlobalRulePath(
   }
 
   const rootDir = getPlatformRootDir(platform, overrides);
+  return joinRootRelativePath(rootDir, relativePath);
+}
+
+export function getPlatformPluginDir(
+  platform: SkillPlatform,
+  overrides?: Record<string, string>,
+): string {
+  const rootDir = getPlatformRootDir(platform, overrides);
+  const relativePath =
+    getBuiltinAgentOverride(platform.id)?.pluginsRelativePath ||
+    getDefaultPluginsRelativePath(platform.id);
+
   return joinRootRelativePath(rootDir, relativePath);
 }
 

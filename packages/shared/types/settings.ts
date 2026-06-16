@@ -7,6 +7,8 @@ import type { SkillProject } from './skill';
 export interface AgentAssetConfig {
   rootPath?: string;
   skillsRelativePath?: string;
+  mcpRelativePath?: string;
+  pluginsRelativePath?: string;
   rulesRelativePath?: string;
   agentsRelativePath?: string;
   commandsRelativePath?: string;
@@ -21,6 +23,8 @@ export interface CustomAgentConfig {
   rootPath: string;
   enabled?: boolean;
   skillsRelativePath?: string;
+  mcpRelativePath?: string;
+  pluginsRelativePath?: string;
   rulesRelativePath?: string;
   agentsRelativePath?: string;
   commandsRelativePath?: string;

@@ -49,6 +49,8 @@ interface ManagedAgentEntry {
   customAgent?: CustomAgentConfig;
   builtinOverride?: BuiltinAgentOverrideConfig;
   skillsRelativePath?: string;
+  mcpRelativePath?: string;
+  pluginsRelativePath?: string;
   rulesRelativePath?: string;
   agentsRelativePath?: string;
   commandsRelativePath?: string;
@@ -79,36 +81,42 @@ function useManagedAgentEntries() {
   const currentPlatformKey = getCurrentPlatformKey();
 
   return useMemo<ManagedAgentEntry[]>(() => {
-    const builtinEntries: ManagedAgentEntry[] = orderedPlatforms.map((platform) => {
-      const effectiveConfig = getEffectiveBuiltinAgentConfig(
-        platform,
-        getPlatformRootTemplate(platform, currentPlatformKey),
-        settings.builtinAgentOverrides[platform.id],
-      );
+    const builtinEntries: ManagedAgentEntry[] = orderedPlatforms.map(
+      (platform) => {
+        const effectiveConfig = getEffectiveBuiltinAgentConfig(
+          platform,
+          getPlatformRootTemplate(platform, currentPlatformKey),
+          settings.builtinAgentOverrides[platform.id],
+        );
 
-      return {
-        id: platform.id,
-        name: platform.name,
-        rootPath: effectiveConfig.rootPath || "",
-        kind: "builtin",
-        iconPlatformId: platform.id,
-        platform,
-        builtinOverride: settings.builtinAgentOverrides[platform.id],
-        skillsRelativePath: effectiveConfig.skillsRelativePath,
-        rulesRelativePath: effectiveConfig.rulesRelativePath,
-        agentsRelativePath: effectiveConfig.agentsRelativePath,
-        commandsRelativePath: effectiveConfig.commandsRelativePath,
-        configRelativePaths: effectiveConfig.configRelativePaths,
-      };
-    });
+        return {
+          id: platform.id,
+          name: platform.name,
+          rootPath: effectiveConfig.rootPath || "",
+          kind: "builtin",
+          iconPlatformId: platform.id,
+          platform,
+          builtinOverride: settings.builtinAgentOverrides[platform.id],
+          skillsRelativePath: effectiveConfig.skillsRelativePath,
+          mcpRelativePath: effectiveConfig.mcpRelativePath,
+          pluginsRelativePath: effectiveConfig.pluginsRelativePath,
+          rulesRelativePath: effectiveConfig.rulesRelativePath,
+          agentsRelativePath: effectiveConfig.agentsRelativePath,
+          commandsRelativePath: effectiveConfig.commandsRelativePath,
+          configRelativePaths: effectiveConfig.configRelativePaths,
+        };
+      },
+    );
 
-    const customEntries: ManagedAgentEntry[] = settings.customAgents.map((agent) => ({
-      id: agent.id,
-      name: agent.name,
-      rootPath: agent.rootPath,
-      kind: "custom",
-      customAgent: agent,
-    }));
+    const customEntries: ManagedAgentEntry[] = settings.customAgents.map(
+      (agent) => ({
+        id: agent.id,
+        name: agent.name,
+        rootPath: agent.rootPath,
+        kind: "custom",
+        customAgent: agent,
+      }),
+    );
 
     const preferredOrder = settings.skillPlatformOrder ?? [];
     const allEntries = [...builtinEntries, ...customEntries];
@@ -117,7 +125,8 @@ function useManagedAgentEntries() {
     return [...allEntries].sort((left, right) => {
       const leftIndex = orderIndex.get(left.id);
       const rightIndex = orderIndex.get(right.id);
-      if (leftIndex != null && rightIndex != null) return leftIndex - rightIndex;
+      if (leftIndex != null && rightIndex != null)
+        return leftIndex - rightIndex;
       if (leftIndex != null) return -1;
       if (rightIndex != null) return 1;
       if (left.kind !== right.kind) return left.kind === "builtin" ? -1 : 1;
@@ -172,20 +181,29 @@ export function SkillSettings() {
   const [editingAgentName, setEditingAgentName] = useState("");
   const [editingAgentRootPath, setEditingAgentRootPath] = useState("");
   const [editingAgentSkillsPath, setEditingAgentSkillsPath] = useState("");
+  const [editingAgentMcpPath, setEditingAgentMcpPath] = useState("");
+  const [editingAgentPluginsPath, setEditingAgentPluginsPath] = useState("");
   const [editingAgentRulesPath, setEditingAgentRulesPath] = useState("");
-  const [editingAgentAgentsPath, setEditingAgentAgentsPath] = useState("agents");
-  const [editingAgentCommandsPath, setEditingAgentCommandsPath] = useState("commands");
+  const [editingAgentAgentsPath, setEditingAgentAgentsPath] =
+    useState("agents");
+  const [editingAgentCommandsPath, setEditingAgentCommandsPath] =
+    useState("commands");
   const [editingAgentConfigPaths, setEditingAgentConfigPaths] = useState("");
   const [editingAgentEnabled, setEditingAgentEnabled] = useState(true);
-  const [editingBuiltinAgentId, setEditingBuiltinAgentId] = useState<string | null>(
-    null,
-  );
+  const [editingBuiltinAgentId, setEditingBuiltinAgentId] = useState<
+    string | null
+  >(null);
   const [editingBuiltinRootPath, setEditingBuiltinRootPath] = useState("");
   const [editingBuiltinSkillsPath, setEditingBuiltinSkillsPath] = useState("");
+  const [editingBuiltinMcpPath, setEditingBuiltinMcpPath] = useState("");
+  const [editingBuiltinPluginsPath, setEditingBuiltinPluginsPath] =
+    useState("");
   const [editingBuiltinRulesPath, setEditingBuiltinRulesPath] = useState("");
   const [editingBuiltinAgentsPath, setEditingBuiltinAgentsPath] = useState("");
-  const [editingBuiltinCommandsPath, setEditingBuiltinCommandsPath] = useState("");
-  const [editingBuiltinConfigPaths, setEditingBuiltinConfigPaths] = useState("");
+  const [editingBuiltinCommandsPath, setEditingBuiltinCommandsPath] =
+    useState("");
+  const [editingBuiltinConfigPaths, setEditingBuiltinConfigPaths] =
+    useState("");
   const [draggingPlatformId, setDraggingPlatformId] = useState<string | null>(
     null,
   );
@@ -194,9 +212,8 @@ export function SkillSettings() {
     position: "before" | "after";
   } | null>(null);
   const [isGithubTokenVisible, setIsGithubTokenVisible] = useState(false);
-  const [pendingDeleteAgent, setPendingDeleteAgent] = useState<CustomAgentConfig | null>(
-    null,
-  );
+  const [pendingDeleteAgent, setPendingDeleteAgent] =
+    useState<CustomAgentConfig | null>(null);
 
   const movePlatformOrder = (platformId: string, direction: "up" | "down") => {
     const nextOrder = managedAgentEntries.map((platform) => platform.id);
@@ -205,7 +222,8 @@ export function SkillSettings() {
       return;
     }
 
-    const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    const targetIndex =
+      direction === "up" ? currentIndex - 1 : currentIndex + 1;
     if (targetIndex < 0 || targetIndex >= nextOrder.length) {
       return;
     }
@@ -251,7 +269,8 @@ export function SkillSettings() {
       event.dataTransfer.dropEffect = "move";
       const rect = event.currentTarget.getBoundingClientRect();
       const midpointY = rect.top + rect.height / 2;
-      const position = rect.height > 0 && event.clientY > midpointY ? "after" : "before";
+      const position =
+        rect.height > 0 && event.clientY > midpointY ? "after" : "before";
       setDropIndicator({ platformId, position });
     };
 
@@ -311,6 +330,8 @@ export function SkillSettings() {
     setEditingBuiltinAgentId(platformId);
     setEditingBuiltinRootPath(config.rootPath || "");
     setEditingBuiltinSkillsPath(config.skillsRelativePath || "");
+    setEditingBuiltinMcpPath(config.mcpRelativePath || "");
+    setEditingBuiltinPluginsPath(config.pluginsRelativePath || "");
     setEditingBuiltinRulesPath(config.rulesRelativePath || "");
     setEditingBuiltinAgentsPath(config.agentsRelativePath || "");
     setEditingBuiltinCommandsPath(config.commandsRelativePath || "");
@@ -321,21 +342,47 @@ export function SkillSettings() {
     setEditingBuiltinAgentId(null);
     setEditingBuiltinRootPath("");
     setEditingBuiltinSkillsPath("");
+    setEditingBuiltinMcpPath("");
+    setEditingBuiltinPluginsPath("");
     setEditingBuiltinRulesPath("");
     setEditingBuiltinAgentsPath("");
     setEditingBuiltinCommandsPath("");
     setEditingBuiltinConfigPaths("");
   };
 
-  const resetBuiltinEditForm = (platformId: string, platform: SkillPlatform, defaultRootPath: string) => {
-    const defaultConfig = getEffectiveBuiltinAgentConfig(platform, defaultRootPath, undefined);
+  const resetBuiltinEditForm = (
+    platformId: string,
+    platform: SkillPlatform,
+    defaultRootPath: string,
+  ) => {
+    const defaultConfig = getEffectiveBuiltinAgentConfig(
+      platform,
+      defaultRootPath,
+      undefined,
+    );
     startBuiltinEdit(platformId, defaultConfig);
+  };
+
+  const cancelCustomAgentEdit = () => {
+    setEditingAgentId(null);
+    setEditingAgentName("");
+    setEditingAgentRootPath("");
+    setEditingAgentSkillsPath("");
+    setEditingAgentMcpPath("");
+    setEditingAgentPluginsPath("");
+    setEditingAgentRulesPath("");
+    setEditingAgentAgentsPath("agents");
+    setEditingAgentCommandsPath("commands");
+    setEditingAgentConfigPaths("");
+    setEditingAgentEnabled(true);
   };
 
   const saveBuiltinEdit = (platformId: string) => {
     settings.updateBuiltinAgentOverride(platformId, {
       rootPath: editingBuiltinRootPath,
       skillsRelativePath: editingBuiltinSkillsPath,
+      mcpRelativePath: editingBuiltinMcpPath,
+      pluginsRelativePath: editingBuiltinPluginsPath,
       rulesRelativePath: editingBuiltinRulesPath,
       agentsRelativePath: editingBuiltinAgentsPath,
       commandsRelativePath: editingBuiltinCommandsPath,
@@ -411,7 +458,10 @@ export function SkillSettings() {
             className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
           >
             <ExternalLinkIcon className="h-3 w-3" />
-            {t("settings.githubTokenLearnMore", "Create a personal access token")}
+            {t(
+              "settings.githubTokenLearnMore",
+              "Create a personal access token",
+            )}
           </a>
           <p className="text-[11px] text-muted-foreground/80">
             {t(
@@ -499,7 +549,10 @@ export function SkillSettings() {
           </div>
           <div
             role="list"
-            aria-label={t("settings.platformDisplayOrder", "Platform Display Order")}
+            aria-label={t(
+              "settings.platformDisplayOrder",
+              "Platform Display Order",
+            )}
             className="space-y-2 rounded-xl border border-border/70 app-wallpaper-surface p-3"
           >
             {managedAgentEntries.map((platform, index) => (
@@ -549,9 +602,11 @@ export function SkillSettings() {
                           : t("settings.builtinAgentBadge", "Built-in")}
                       </span>
                       <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
-                        {(platform.kind === "custom"
-                          ? platform.customAgent?.enabled === false
-                          : settings.disabledPlatformIds.includes(platform.id))
+                        {(
+                          platform.kind === "custom"
+                            ? platform.customAgent?.enabled === false
+                            : settings.disabledPlatformIds.includes(platform.id)
+                        )
                           ? t("settings.platformDisabled", "Disabled")
                           : t("settings.platformEnabled", "Enabled")}
                       </span>
@@ -622,12 +677,15 @@ export function SkillSettings() {
                 platform,
                 currentPlatformKey,
               );
-              const override = settings.builtinAgentOverrides[platform.id] || {};
+              const override =
+                settings.builtinAgentOverrides[platform.id] || {};
               const isEditingBuiltin = editingBuiltinAgentId === platform.id;
               const activeOverride = isEditingBuiltin
                 ? {
                     rootPath: editingBuiltinRootPath,
                     skillsRelativePath: editingBuiltinSkillsPath,
+                    mcpRelativePath: editingBuiltinMcpPath,
+                    pluginsRelativePath: editingBuiltinPluginsPath,
                     rulesRelativePath: editingBuiltinRulesPath,
                     agentsRelativePath: editingBuiltinAgentsPath,
                     commandsRelativePath: editingBuiltinCommandsPath,
@@ -645,6 +703,8 @@ export function SkillSettings() {
               const preview = buildAgentRootAssetPreview({
                 rootPath: effectiveConfig.rootPath || "",
                 skillsRelativePath: effectiveConfig.skillsRelativePath,
+                mcpRelativePath: effectiveConfig.mcpRelativePath,
+                pluginsRelativePath: effectiveConfig.pluginsRelativePath,
                 rulesRelativePath: effectiveConfig.rulesRelativePath,
                 agentsRelativePath: effectiveConfig.agentsRelativePath,
                 commandsRelativePath: effectiveConfig.commandsRelativePath,
@@ -675,7 +735,10 @@ export function SkillSettings() {
                             onClick={() => saveBuiltinEdit(platform.id)}
                             className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary/90"
                           >
-                            <SaveIcon aria-hidden="true" className="h-3.5 w-3.5" />
+                            <SaveIcon
+                              aria-hidden="true"
+                              className="h-3.5 w-3.5"
+                            />
                             {t("common.save", "Save")}
                           </button>
                           <button
@@ -688,21 +751,35 @@ export function SkillSettings() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => resetBuiltinEditForm(platform.id, platform, defaultRootPath)}
+                            onClick={() =>
+                              resetBuiltinEditForm(
+                                platform.id,
+                                platform,
+                                defaultRootPath,
+                              )
+                            }
                             disabled={Object.keys(override).length === 0}
                             className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
                           >
-                            <RotateCcwIcon aria-hidden="true" className="h-3.5 w-3.5" />
+                            <RotateCcwIcon
+                              aria-hidden="true"
+                              className="h-3.5 w-3.5"
+                            />
                             {t("settings.resetPlatformRootPath", "Reset")}
                           </button>
                         </>
                       ) : (
                         <button
                           type="button"
-                          onClick={() => startBuiltinEdit(platform.id, effectiveConfig)}
+                          onClick={() =>
+                            startBuiltinEdit(platform.id, effectiveConfig)
+                          }
                           className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-foreground transition-colors hover:bg-accent"
                         >
-                          <PencilIcon aria-hidden="true" className="h-3.5 w-3.5" />
+                          <PencilIcon
+                            aria-hidden="true"
+                            className="h-3.5 w-3.5"
+                          />
                           {t("common.edit", "Edit")}
                         </button>
                       )}
@@ -710,26 +787,37 @@ export function SkillSettings() {
                   </div>
                   <div className="text-[11px] text-muted-foreground">
                     {t("settings.defaultPathLabel", "Default path")}:
-                    <span className="ml-1 font-mono">
-                      {defaultRootPath}
-                    </span>
+                    <span className="ml-1 font-mono">{defaultRootPath}</span>
                   </div>
                   <div className="grid gap-2 rounded-lg bg-muted/30 p-3 text-[11px] text-muted-foreground">
                     <div>
-                      {t("settings.platformDerivedSkillPath", "Derived skills path")}
+                      {t(
+                        "settings.platformDerivedSkillPath",
+                        "Derived skills path",
+                      )}
                       :
-                      <span className="ml-1 font-mono">{preview.skillScanPaths.join(", ")}</span>
+                      <span className="ml-1 font-mono">
+                        {preview.skillScanPaths.join(", ")}
+                      </span>
                     </div>
                     {preview.ruleCandidates.length > 0 ? (
                       <div>
-                        {t("settings.platformDerivedRulesPath", "Derived rules path")}
+                        {t(
+                          "settings.platformDerivedRulesPath",
+                          "Derived rules path",
+                        )}
                         :
-                        <span className="ml-1 font-mono">{preview.ruleCandidates.join(", ")}</span>
+                        <span className="ml-1 font-mono">
+                          {preview.ruleCandidates.join(", ")}
+                        </span>
                       </div>
                     ) : null}
                     {preview.configCandidates.length > 0 ? (
                       <div>
-                        {t("settings.platformDerivedConfigPath", "Derived config files")}
+                        {t(
+                          "settings.platformDerivedConfigPath",
+                          "Derived config files",
+                        )}
                         :
                         <span className="ml-1 font-mono">
                           {preview.configCandidates.join(", ")}
@@ -737,14 +825,44 @@ export function SkillSettings() {
                       </div>
                     ) : null}
                     <div>
-                      {t("settings.agentDerivedAgentDirs", "Derived agent directories")}
+                      {t(
+                        "settings.agentDerivedMcpConfigPaths",
+                        "Derived MCP config paths",
+                      )}
                       :
-                      <span className="ml-1 font-mono">{preview.agentDirectories.join(", ")}</span>
+                      <span className="ml-1 font-mono">
+                        {preview.mcpConfigPaths.join(", ")}
+                      </span>
                     </div>
                     <div>
-                      {t("settings.agentDerivedCommandDirs", "Derived command directories")}
+                      {t(
+                        "settings.agentDerivedPluginDirs",
+                        "Derived Plugin directories",
+                      )}
                       :
-                      <span className="ml-1 font-mono">{preview.commandDirectories.join(", ")}</span>
+                      <span className="ml-1 font-mono">
+                        {preview.pluginDirectories.join(", ")}
+                      </span>
+                    </div>
+                    <div>
+                      {t(
+                        "settings.agentDerivedAgentDirs",
+                        "Derived agent directories",
+                      )}
+                      :
+                      <span className="ml-1 font-mono">
+                        {preview.agentDirectories.join(", ")}
+                      </span>
+                    </div>
+                    <div>
+                      {t(
+                        "settings.agentDerivedCommandDirs",
+                        "Derived command directories",
+                      )}
+                      :
+                      <span className="ml-1 font-mono">
+                        {preview.commandDirectories.join(", ")}
+                      </span>
                     </div>
                     <div className="text-[10px] text-muted-foreground/80">
                       {t(
@@ -759,7 +877,9 @@ export function SkillSettings() {
                         <input
                           type="text"
                           value={editingBuiltinRootPath}
-                          onChange={(e) => setEditingBuiltinRootPath(e.target.value)}
+                          onChange={(e) =>
+                            setEditingBuiltinRootPath(e.target.value)
+                          }
                           placeholder={t(
                             "settings.platformRootPathPlaceholder",
                             "Leave empty to use the default root, e.g. ~/.trae-cn",
@@ -775,7 +895,9 @@ export function SkillSettings() {
                           <input
                             type="text"
                             value={editingBuiltinSkillsPath}
-                            onChange={(e) => setEditingBuiltinSkillsPath(e.target.value)}
+                            onChange={(e) =>
+                              setEditingBuiltinSkillsPath(e.target.value)
+                            }
                             placeholder={t(
                               "settings.customAgentSkillsPathPlaceholder",
                               "skills relative path (optional)",
@@ -790,10 +912,46 @@ export function SkillSettings() {
                           <input
                             type="text"
                             value={editingBuiltinRulesPath}
-                            onChange={(e) => setEditingBuiltinRulesPath(e.target.value)}
+                            onChange={(e) =>
+                              setEditingBuiltinRulesPath(e.target.value)
+                            }
                             placeholder={t(
                               "settings.customAgentRulesPathPlaceholder",
                               "rules file path (optional)",
+                            )}
+                            className="h-9 w-full rounded-md bg-muted px-3 text-sm font-mono"
+                          />
+                        </div>
+                        <div className="grid gap-1">
+                          <label className="text-xs font-medium text-muted-foreground">
+                            {t("settings.agentMcpLabel", "MCP")}
+                          </label>
+                          <input
+                            type="text"
+                            value={editingBuiltinMcpPath}
+                            onChange={(e) =>
+                              setEditingBuiltinMcpPath(e.target.value)
+                            }
+                            placeholder={t(
+                              "settings.customAgentMcpPathPlaceholder",
+                              "MCP config relative path",
+                            )}
+                            className="h-9 w-full rounded-md bg-muted px-3 text-sm font-mono"
+                          />
+                        </div>
+                        <div className="grid gap-1">
+                          <label className="text-xs font-medium text-muted-foreground">
+                            {t("settings.agentPluginsLabel", "Plugins")}
+                          </label>
+                          <input
+                            type="text"
+                            value={editingBuiltinPluginsPath}
+                            onChange={(e) =>
+                              setEditingBuiltinPluginsPath(e.target.value)
+                            }
+                            placeholder={t(
+                              "settings.customAgentPluginsPathPlaceholder",
+                              "Plugin directory relative path",
                             )}
                             className="h-9 w-full rounded-md bg-muted px-3 text-sm font-mono"
                           />
@@ -805,7 +963,9 @@ export function SkillSettings() {
                           <input
                             type="text"
                             value={editingBuiltinAgentsPath}
-                            onChange={(e) => setEditingBuiltinAgentsPath(e.target.value)}
+                            onChange={(e) =>
+                              setEditingBuiltinAgentsPath(e.target.value)
+                            }
                             placeholder={t(
                               "settings.customAgentAgentsPathPlaceholder",
                               "agents relative path",
@@ -820,7 +980,9 @@ export function SkillSettings() {
                           <input
                             type="text"
                             value={editingBuiltinCommandsPath}
-                            onChange={(e) => setEditingBuiltinCommandsPath(e.target.value)}
+                            onChange={(e) =>
+                              setEditingBuiltinCommandsPath(e.target.value)
+                            }
                             placeholder={t(
                               "settings.customAgentCommandsPathPlaceholder",
                               "commands relative path",
@@ -836,7 +998,9 @@ export function SkillSettings() {
                         <input
                           type="text"
                           value={editingBuiltinConfigPaths}
-                          onChange={(e) => setEditingBuiltinConfigPaths(e.target.value)}
+                          onChange={(e) =>
+                            setEditingBuiltinConfigPaths(e.target.value)
+                          }
                           placeholder={t(
                             "settings.customAgentConfigPathsPlaceholder",
                             "config files, comma separated",
@@ -853,9 +1017,7 @@ export function SkillSettings() {
         </div>
       </SettingSection>
 
-      <SettingSection
-        title={t("settings.customAgents", "Custom Agents")}
-      >
+      <SettingSection title={t("settings.customAgents", "Custom Agents")}>
         <div className="p-4 space-y-3">
           <div className="rounded-xl border border-border/70 app-wallpaper-surface p-4 space-y-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -967,17 +1129,24 @@ export function SkillSettings() {
                                     settings.updateCustomAgent(agent.id, {
                                       name: editingAgentName,
                                       rootPath: editingAgentRootPath,
-                                      skillsRelativePath: editingAgentSkillsPath,
+                                      skillsRelativePath:
+                                        editingAgentSkillsPath,
+                                      mcpRelativePath: editingAgentMcpPath,
+                                      pluginsRelativePath:
+                                        editingAgentPluginsPath,
                                       rulesRelativePath: editingAgentRulesPath,
-                                      agentsRelativePath: editingAgentAgentsPath,
-                                      commandsRelativePath: editingAgentCommandsPath,
+                                      agentsRelativePath:
+                                        editingAgentAgentsPath,
+                                      commandsRelativePath:
+                                        editingAgentCommandsPath,
                                       enabled: editingAgentEnabled,
-                                      configRelativePaths: editingAgentConfigPaths
-                                        .split(",")
-                                        .map((entry) => entry.trim())
-                                        .filter((entry) => entry.length > 0),
+                                      configRelativePaths:
+                                        editingAgentConfigPaths
+                                          .split(",")
+                                          .map((entry) => entry.trim())
+                                          .filter((entry) => entry.length > 0),
                                     });
-                                    setEditingAgentId(null);
+                                    cancelCustomAgentEdit();
                                   } catch (error) {
                                     showToast(String(error), "error");
                                   }
@@ -985,16 +1154,22 @@ export function SkillSettings() {
                                 className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-white transition-colors hover:bg-primary/90"
                                 title={t("common.save", "Save")}
                               >
-                                <SaveIcon aria-hidden="true" className="h-3.5 w-3.5" />
+                                <SaveIcon
+                                  aria-hidden="true"
+                                  className="h-3.5 w-3.5"
+                                />
                                 {t("common.save", "Save")}
                               </button>
                               <button
                                 type="button"
-                                onClick={() => setEditingAgentId(null)}
+                                onClick={cancelCustomAgentEdit}
                                 className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-foreground transition-colors hover:bg-accent"
                                 title={t("common.cancel", "Cancel")}
                               >
-                                <XIcon aria-hidden="true" className="h-3.5 w-3.5" />
+                                <XIcon
+                                  aria-hidden="true"
+                                  className="h-3.5 w-3.5"
+                                />
                                 {t("common.cancel", "Cancel")}
                               </button>
                             </>
@@ -1006,23 +1181,40 @@ export function SkillSettings() {
                                   setEditingAgentId(agent.id);
                                   setEditingAgentName(agent.name);
                                   setEditingAgentRootPath(agent.rootPath);
-                                  setEditingAgentSkillsPath(agent.skillsRelativePath || "");
-                                  setEditingAgentRulesPath(agent.rulesRelativePath || "");
+                                  setEditingAgentSkillsPath(
+                                    agent.skillsRelativePath || "",
+                                  );
+                                  setEditingAgentMcpPath(
+                                    agent.mcpRelativePath || "mcp.json",
+                                  );
+                                  setEditingAgentPluginsPath(
+                                    agent.pluginsRelativePath || "plugins",
+                                  );
+                                  setEditingAgentRulesPath(
+                                    agent.rulesRelativePath || "",
+                                  );
                                   setEditingAgentAgentsPath(
                                     agent.agentsRelativePath || "agents",
                                   );
                                   setEditingAgentCommandsPath(
                                     agent.commandsRelativePath || "commands",
                                   );
-                                  setEditingAgentEnabled(agent.enabled !== false);
+                                  setEditingAgentEnabled(
+                                    agent.enabled !== false,
+                                  );
                                   setEditingAgentConfigPaths(
-                                    (agent.configRelativePaths || []).join(", "),
+                                    (agent.configRelativePaths || []).join(
+                                      ", ",
+                                    ),
                                   );
                                 }}
                                 className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-foreground transition-colors hover:bg-accent"
                                 title={t("common.edit", "Edit")}
                               >
-                                <PencilIcon aria-hidden="true" className="h-3.5 w-3.5" />
+                                <PencilIcon
+                                  aria-hidden="true"
+                                  className="h-3.5 w-3.5"
+                                />
                                 {t("common.edit", "Edit")}
                               </button>
                               <button
@@ -1031,7 +1223,10 @@ export function SkillSettings() {
                                 className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                                 title={t("common.delete", "Delete")}
                               >
-                                <TrashIcon aria-hidden="true" className="h-3.5 w-3.5" />
+                                <TrashIcon
+                                  aria-hidden="true"
+                                  className="h-3.5 w-3.5"
+                                />
                                 {t("common.delete", "Delete")}
                               </button>
                             </>
@@ -1048,7 +1243,9 @@ export function SkillSettings() {
                             <input
                               type="text"
                               value={editingAgentName}
-                              onChange={(event) => setEditingAgentName(event.target.value)}
+                              onChange={(event) =>
+                                setEditingAgentName(event.target.value)
+                              }
                               className="h-10 w-full rounded-md bg-muted px-3 text-sm"
                               placeholder={t(
                                 "settings.customAgentNamePlaceholder",
@@ -1059,7 +1256,10 @@ export function SkillSettings() {
 
                           <div className="grid gap-1">
                             <label className="text-xs font-medium text-muted-foreground">
-                              {t("settings.agentRootPathLabel", "Root directory")}
+                              {t(
+                                "settings.agentRootPathLabel",
+                                "Root directory",
+                              )}
                             </label>
                             <div className="flex items-center gap-2">
                               <input
@@ -1076,10 +1276,15 @@ export function SkillSettings() {
                               />
                               <button
                                 type="button"
-                                onClick={() => void handlePickEditingAgentRootPath()}
+                                onClick={() =>
+                                  void handlePickEditingAgentRootPath()
+                                }
                                 className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-border px-4 text-sm text-foreground transition-colors hover:bg-accent"
                               >
-                                <FolderOpenIcon aria-hidden="true" className="h-4 w-4" />
+                                <FolderOpenIcon
+                                  aria-hidden="true"
+                                  className="h-4 w-4"
+                                />
                                 {t("skill.browseFolder", "Browse")}
                               </button>
                             </div>
@@ -1098,7 +1303,10 @@ export function SkillSettings() {
                               </div>
                             </div>
                             <ToggleSwitch
-                              ariaLabel={t("settings.platformEnabled", "Enabled")}
+                              ariaLabel={t(
+                                "settings.platformEnabled",
+                                "Enabled",
+                              )}
                               checked={editingAgentEnabled}
                               onChange={setEditingAgentEnabled}
                             />
@@ -1141,6 +1349,40 @@ export function SkillSettings() {
                             </div>
                             <div className="grid gap-1">
                               <label className="text-xs font-medium text-muted-foreground">
+                                {t("settings.agentMcpLabel", "MCP")}
+                              </label>
+                              <input
+                                type="text"
+                                value={editingAgentMcpPath}
+                                onChange={(event) =>
+                                  setEditingAgentMcpPath(event.target.value)
+                                }
+                                placeholder={t(
+                                  "settings.customAgentMcpPathPlaceholder",
+                                  "MCP config relative path",
+                                )}
+                                className="h-10 w-full rounded-md bg-muted px-3 text-sm font-mono"
+                              />
+                            </div>
+                            <div className="grid gap-1">
+                              <label className="text-xs font-medium text-muted-foreground">
+                                {t("settings.agentPluginsLabel", "Plugins")}
+                              </label>
+                              <input
+                                type="text"
+                                value={editingAgentPluginsPath}
+                                onChange={(event) =>
+                                  setEditingAgentPluginsPath(event.target.value)
+                                }
+                                placeholder={t(
+                                  "settings.customAgentPluginsPathPlaceholder",
+                                  "Plugin directory relative path",
+                                )}
+                                className="h-10 w-full rounded-md bg-muted px-3 text-sm font-mono"
+                              />
+                            </div>
+                            <div className="grid gap-1">
+                              <label className="text-xs font-medium text-muted-foreground">
                                 {t("settings.agentAgentsLabel", "Agents")}
                               </label>
                               <input
@@ -1164,7 +1406,9 @@ export function SkillSettings() {
                                 type="text"
                                 value={editingAgentCommandsPath}
                                 onChange={(event) =>
-                                  setEditingAgentCommandsPath(event.target.value)
+                                  setEditingAgentCommandsPath(
+                                    event.target.value,
+                                  )
                                 }
                                 placeholder={t(
                                   "settings.customAgentCommandsPathPlaceholder",
@@ -1196,7 +1440,10 @@ export function SkillSettings() {
 
                       <div className="grid gap-2 rounded-lg bg-muted/30 p-3 text-[11px] text-muted-foreground">
                         <div>
-                          {t("settings.agentDerivedSkillScanPaths", "Derived skill scan paths")}
+                          {t(
+                            "settings.agentDerivedSkillScanPaths",
+                            "Derived skill scan paths",
+                          )}
                           :
                           <span className="ml-1 font-mono break-all">
                             {preview.skillScanPaths.join(", ")}
@@ -1204,7 +1451,10 @@ export function SkillSettings() {
                         </div>
                         {preview.ruleCandidates.length > 0 ? (
                           <div>
-                            {t("settings.agentDerivedRulePaths", "Derived rule files")}
+                            {t(
+                              "settings.agentDerivedRulePaths",
+                              "Derived rule files",
+                            )}
                             :
                             <span className="ml-1 font-mono break-all">
                               {preview.ruleCandidates.join(", ")}
@@ -1212,7 +1462,30 @@ export function SkillSettings() {
                           </div>
                         ) : null}
                         <div>
-                          {t("settings.agentDerivedAgentDirs", "Derived agent directories")}
+                          {t(
+                            "settings.agentDerivedMcpConfigPaths",
+                            "Derived MCP config paths",
+                          )}
+                          :
+                          <span className="ml-1 font-mono break-all">
+                            {preview.mcpConfigPaths.join(", ")}
+                          </span>
+                        </div>
+                        <div>
+                          {t(
+                            "settings.agentDerivedPluginDirs",
+                            "Derived Plugin directories",
+                          )}
+                          :
+                          <span className="ml-1 font-mono break-all">
+                            {preview.pluginDirectories.join(", ")}
+                          </span>
+                        </div>
+                        <div>
+                          {t(
+                            "settings.agentDerivedAgentDirs",
+                            "Derived agent directories",
+                          )}
                           :
                           <span className="ml-1 font-mono break-all">
                             {preview.agentDirectories.join(", ")}
@@ -1230,7 +1503,10 @@ export function SkillSettings() {
                         </div>
                         {preview.configCandidates.length > 0 ? (
                           <div>
-                            {t("settings.agentDerivedConfigPaths", "Derived config files")}
+                            {t(
+                              "settings.agentDerivedConfigPaths",
+                              "Derived config files",
+                            )}
                             :
                             <span className="ml-1 font-mono break-all">
                               {preview.configCandidates.join(", ")}
@@ -1268,7 +1544,10 @@ export function SkillSettings() {
           setPendingDeleteAgent(null);
         }}
         variant="destructive"
-        title={t("settings.confirmDeleteCustomAgentTitle", "Delete Custom Agent")}
+        title={t(
+          "settings.confirmDeleteCustomAgentTitle",
+          "Delete Custom Agent",
+        )}
         message={t("settings.confirmDeleteCustomAgentMessage", {
           name: pendingDeleteAgent?.name ?? "",
           defaultValue:
@@ -1305,7 +1584,9 @@ export function SkillSafetySettingsSection() {
         <button
           type="button"
           onClick={() =>
-            settings.setAutoScanInstalledSkills(!settings.autoScanInstalledSkills)
+            settings.setAutoScanInstalledSkills(
+              !settings.autoScanInstalledSkills,
+            )
           }
           aria-pressed={settings.autoScanInstalledSkills}
           className={`w-full p-3 rounded-xl border-2 transition-all text-left ${
@@ -1315,7 +1596,10 @@ export function SkillSafetySettingsSection() {
           }`}
         >
           <div className="text-sm font-semibold">
-            {t("settings.autoScanInstalledSkills", "Auto-scan Installed Skills")}
+            {t(
+              "settings.autoScanInstalledSkills",
+              "Auto-scan Installed Skills",
+            )}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             {t(

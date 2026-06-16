@@ -1420,6 +1420,8 @@ interface SettingsState {
         | "rootPath"
         | "enabled"
         | "skillsRelativePath"
+        | "mcpRelativePath"
+        | "pluginsRelativePath"
         | "rulesRelativePath"
         | "agentsRelativePath"
         | "commandsRelativePath"
@@ -2678,6 +2680,10 @@ export const useSettingsStore = create<SettingsState>()(
             enabled: updates.enabled ?? currentAgent.enabled,
             skillsRelativePath:
               updates.skillsRelativePath ?? currentAgent.skillsRelativePath,
+            mcpRelativePath:
+              updates.mcpRelativePath ?? currentAgent.mcpRelativePath,
+            pluginsRelativePath:
+              updates.pluginsRelativePath ?? currentAgent.pluginsRelativePath,
             rulesRelativePath:
               updates.rulesRelativePath ?? currentAgent.rulesRelativePath,
             agentsRelativePath:
