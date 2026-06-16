@@ -24,10 +24,6 @@ const McpManager = lazy(() => import('../mcp/McpManager').then(m => ({ default: 
 const PluginManager = lazy(() => import('../plugin/PluginManager').then(m => ({ default: m.PluginManager })));
 const EditPromptModal = lazy(() => import('../prompt/EditPromptModal').then(m => ({ default: m.EditPromptModal })));
 const PromptQuickRewriteDialog = lazy(() => import('../prompt/PromptQuickRewriteDialog').then(m => ({ default: m.PromptQuickRewriteDialog })));
-const PromptTableView = lazy(() => import('../prompt/PromptTableView').then(m => ({ default: m.PromptTableView })));
-const PromptGalleryView = lazy(() => import('../prompt/PromptGalleryView').then(m => ({ default: m.PromptGalleryView })));
-const PromptKanbanView = lazy(() => import('../prompt/PromptKanbanView').then(m => ({ default: m.PromptKanbanView })));
-const PromptGraphView = lazy(() => import('../prompt/PromptGraphView').then(m => ({ default: m.PromptGraphView })));
 const AiTestModal = lazy(() => import('../prompt/AiTestModal').then(m => ({ default: m.AiTestModal })));
 const PromptDetailModal = lazy(() => import('../prompt/PromptDetailModal').then(m => ({ default: m.PromptDetailModal })));
 const VariableInputModal = lazy(() => import('../prompt/VariableInputModal').then(m => ({ default: m.VariableInputModal })));
@@ -61,6 +57,7 @@ import { PromptQuickRewriteTrigger } from '../prompt/PromptQuickRewriteTrigger';
 import { PromptRelationshipPanel } from '../prompt/PromptRelationshipPanel';
 import { PromptAiResponsePanel } from '../prompt/PromptAiResponsePanel';
 import { PromptDetailMetadata } from '../prompt/PromptDetailMetadata';
+import { PromptViewContainers } from '../prompt/PromptViewContainers';
 import {
   filterVisiblePrompts,
   sortVisiblePrompts,
@@ -2186,113 +2183,42 @@ function PromptSkillMainContent() {
         </Suspense>
       ) : (
       <>
-      {/* Relationship graph view */}
-      <div className={getViewClass('graph')}>
-        {viewMode === 'graph' && (
-          <Suspense fallback={loadingFallback}>
-            <PromptGraphView
-              prompts={prompts}
-              relations={relations}
-              selectedPromptId={selectedId}
-              onSelectPrompt={(promptId) => {
-                const prompt = promptById.get(promptId);
-                selectPrompt(promptId);
-                if (prompt) {
-                  setDetailPrompt(prompt);
-                  setIsDetailModalOpen(true);
-                }
-              }}
-            />
-          </Suspense>
-        )}
-      </div>
-
-      {/* List view mode */}
-      {/* 列表视图模式 */}
-      <div
-        className={getViewClass('list')}
-      >
-
-
-        {/* Top: sort + view switch */}
-        {/* 顶部：排序 + 视图切换 */}
-        <PromptListHeader count={sortedPrompts.length} />
-
-        {/* Table view */}
-        {/* 表格视图 */}
-        <div className="flex-1 overflow-hidden">
-          <Suspense fallback={loadingFallback}>
-            <PromptTableView
-              prompts={sortedPrompts}
-              highlightTerms={highlightTerms}
-              onSelect={(id) => selectPrompt(id)}
-              onToggleFavorite={toggleFavorite}
-              onCopy={handleCopyPrompt}
-              onEdit={(prompt) => setEditingPrompt(prompt)}
-              onDelete={handleDeletePrompt}
-              onAiTest={handleAiTestFromTable}
-              onVersionHistory={handleVersionHistory}
-              onViewDetail={handleViewDetail}
-              aiResults={aiResponseCache}
-              onBatchFavorite={handleBatchFavorite}
-              onBatchMove={handleBatchMove}
-              onBatchDelete={handleBatchDelete}
-              onContextMenu={handleContextMenu}
-              onMovePrompt={handleMovePromptInTree}
-            />
-          </Suspense>
-        </div>
-      </div>
-
-      {/* Gallery view */}
-      {/* Gallery 视图 */}
-      <div
-        className={getViewClass('gallery')}
-      >
-        <PromptListHeader count={sortedPrompts.length} />
-        {viewMode === 'gallery' && (
-          <Suspense fallback={loadingFallback}>
-            <PromptGalleryView
-              prompts={visiblePrompts}
-              highlightTerms={highlightTerms}
-              onSelect={(id) => selectPrompt(id)}
-              onToggleFavorite={toggleFavorite}
-              onCopy={handleCopyPrompt}
-              onEdit={(prompt) => setEditingPrompt(prompt)}
-              onDelete={handleDeletePrompt}
-              onAiTest={handleAiTestFromTable}
-              onVersionHistory={handleVersionHistory}
-              onViewDetail={handleViewDetail}
-              onContextMenu={handleContextMenu}
-            />
-          </Suspense>
-        )}
-      </div>
-
-      {/* Kanban view */}
-      {/* 看板视图 */}
-      <div
-        className={getViewClass('kanban')}
-      >
-        <PromptListHeader count={sortedPrompts.length} />
-        {viewMode === 'kanban' && (
-          <Suspense fallback={loadingFallback}>
-            <PromptKanbanView
-              prompts={visiblePrompts}
-              highlightTerms={highlightTerms}
-              onSelect={(id) => selectPrompt(id)}
-              onToggleFavorite={toggleFavorite}
-              onCopy={handleCopyPrompt}
-              onEdit={(prompt) => setEditingPrompt(prompt)}
-              onDelete={handleDeletePrompt}
-              onAiTest={handleAiTestFromTable}
-              onVersionHistory={handleVersionHistory}
-              onViewDetail={handleViewDetail}
-              onContextMenu={handleContextMenu}
-            />
-          </Suspense>
-        )}
-      </div>
+      <PromptViewContainers
+        viewMode={viewMode}
+        getViewClass={getViewClass}
+        prompts={prompts}
+        relations={relations}
+        selectedId={selectedId}
+        onGraphSelectPrompt={(promptId) => {
+          const prompt = promptById.get(promptId);
+          selectPrompt(promptId);
+          if (prompt) {
+            setDetailPrompt(prompt);
+            setIsDetailModalOpen(true);
+          }
+        }}
+        sortedPrompts={sortedPrompts}
+        visiblePrompts={visiblePrompts}
+        highlightTerms={highlightTerms}
+        cardActions={{
+          onSelect: (id) => selectPrompt(id),
+          onToggleFavorite: toggleFavorite,
+          onCopy: handleCopyPrompt,
+          onEdit: (prompt) => setEditingPrompt(prompt),
+          onDelete: handleDeletePrompt,
+          onAiTest: handleAiTestFromTable,
+          onVersionHistory: handleVersionHistory,
+          onViewDetail: handleViewDetail,
+          onContextMenu: handleContextMenu,
+        }}
+        tableActions={{
+          aiResults: aiResponseCache,
+          onBatchFavorite: handleBatchFavorite,
+          onBatchMove: handleBatchMove,
+          onBatchDelete: handleBatchDelete,
+          onMovePrompt: handleMovePromptInTree,
+        }}
+      />
 
       {/* Card view mode: two-column layout */}
       {/* 卡片视图模式：左右分栏 */}
