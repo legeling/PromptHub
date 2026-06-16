@@ -27,6 +27,7 @@ interface McpState {
   healthChecks: McpHealthCheckResult[];
   selectedServerId: string | null;
   selectedTab: "library" | "market" | "targets";
+  selectedMarketSourceId: string;
   selectedTargetId: string | null;
   searchQuery: string;
   preview: string;
@@ -37,6 +38,7 @@ interface McpState {
   selectServer: (id: string | null) => void;
   setSearchQuery: (query: string) => void;
   setSelectedTab: (tab: McpState["selectedTab"]) => void;
+  setSelectedMarketSourceId: (sourceId: string) => void;
   setSelectedTargetId: (id: string | null) => void;
   createServer: (draft: McpServerDraft) => Promise<McpServerConfig>;
   createFromSource: (
@@ -59,9 +61,7 @@ interface McpState {
   ) => Promise<string>;
   applyTarget: (target: McpApplyTarget) => Promise<McpApplyResult>;
   removeTarget: (target: McpApplyTarget) => Promise<McpRemoveResult>;
-  removeTargetNames: (
-    target: McpRemoveTargetNames,
-  ) => Promise<McpRemoveResult>;
+  removeTargetNames: (target: McpRemoveTargetNames) => Promise<McpRemoveResult>;
 }
 
 function getErrorMessage(error: unknown): string {
@@ -110,6 +110,7 @@ export const useMcpStore = create<McpState>((set, get) => ({
   healthChecks: [],
   selectedServerId: null,
   selectedTab: "library",
+  selectedMarketSourceId: "all",
   selectedTargetId: null,
   searchQuery: "",
   preview: "",
@@ -120,8 +121,17 @@ export const useMcpStore = create<McpState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const snapshot = await loadMcpSnapshot();
+      const selectedMarketSourceId = get().selectedMarketSourceId;
+      const hasSelectedMarketSource =
+        selectedMarketSourceId === "all" ||
+        snapshot.marketSources.some(
+          (source) => source.id === selectedMarketSourceId,
+        );
       set({
         ...snapshot,
+        selectedMarketSourceId: hasSelectedMarketSource
+          ? selectedMarketSourceId
+          : "all",
         selectedTargetId:
           get().selectedTargetId ?? snapshot.targetPresets[0]?.id ?? null,
         selectedServerId:
@@ -141,6 +151,8 @@ export const useMcpStore = create<McpState>((set, get) => ({
   selectServer: (id) => set({ selectedServerId: id }),
   setSearchQuery: (query) => set({ searchQuery: query }),
   setSelectedTab: (tab) => set({ selectedTab: tab }),
+  setSelectedMarketSourceId: (sourceId) =>
+    set({ selectedMarketSourceId: sourceId }),
   setSelectedTargetId: (id) => set({ selectedTargetId: id }),
 
   createServer: async (draft) => {

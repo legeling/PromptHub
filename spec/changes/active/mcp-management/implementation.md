@@ -8,7 +8,7 @@ Implemented first MCP management slice.
 
 - Added normalized MCP types, built-in market templates, projection helpers, and safe JSON/TOML merge helpers.
 - Added `CoreMcpLibraryService`, storing the local MCP library at `config/mcp-library.json`.
-- Added target presets for Codex, Claude Code, Cursor, VS Code, Cline, Roo Code, and custom JSON/TOML targets.
+- Added target presets for Codex, Claude Code, Cursor, VS Code, Cline, Gemini, Windsurf, Kiro, OpenCode, and custom JSON/TOML targets.
 - Added desktop MCP IPC and preload API for library read, market listing, target presets, CRUD, template install, preview, apply, JSON import, and Codex TOML import.
 - Added a desktop file-picker bridge for MCP config import.
 - Added renderer MCP store and `McpManager` with Library, Market, and Targets tabs.
@@ -28,7 +28,7 @@ Implemented first MCP management slice.
 - Added Skill-style My MCP library controls: TopBar MCP search, all/distributed/pending filters, source filter dropdown, card column selector, refresh control, filtered counts, and card-grid sizing that matches the Skill gallery behavior.
 - Expanded the MCP detail view so the source/details section exposes the inspectable server metadata up front: server id, source type, transport, command or URL, working directory, environment, headers, and timestamps before the editable fields.
 - Replaced the MCP detail modal with a Skill-style full-page detail route inside the MCP content area. Card selection now switches to `detail-<serverId>` with a back button, persistent top bar/search, and no modal backdrop.
-- Added the selected-MCP distribution panel inside the detail view, with built-in/custom targets, preview, selected-server apply, applied-target summary, and backup-aware writes.
+- Added the selected-MCP distribution panel inside the detail view, with built-in target cards, preview, selected-server apply, applied-target summary, and backup-aware writes.
 - Added import, new MCP, market install, selected-MCP apply, disabled-state guard, and bulk enabled-only apply paths to the renderer UI tests.
 - Removed empty target bindings when a distributed MCP server is deleted.
 - Synced MCP target format/path notes into `spec/knowledge/reference/agent-platforms.md`.
@@ -117,6 +117,16 @@ Implemented first MCP management slice.
   - My MCP now has Skill-style batch management, all/favorites/distributed/pending filters, gallery/list switching, page-size selector, page-range summary, and previous/next pagination.
   - My MCP cards and list rows now expose favorite and delete actions; batch mode supports selecting current-page entries, batch favorite/unfavorite, and destructive delete confirmation.
   - Detail-page, card, row, and batch deletes now share the same in-app confirmation dialog before calling the MCP library delete flow.
+- Fixed crowded gallery-card headers for both My MCP and My Skill. Distributed agent/platform icons now live in a wrapping header meta row, while quick sync/install, favorite, and delete actions live in a separate right-aligned row so large platform sets cannot overflow the card boundary.
+- Fixed Agent MCP import semantics. Importing an external entry from Agent MCP now creates a single MCP server from the selected parsed target entry instead of importing the entire agent config file, and the created server keeps Agent source metadata such as `Codex CLI`.
+- Added visible success/error feedback for the Agent MCP config-file shortcut so the file icon action no longer appears to do nothing when it opens the selected agent config path.
+- Updated the desktop shell open-path bridge so file paths are revealed in the system file manager while directories continue to open directly. This lets Agent MCP config-file shortcuts work with real config files such as `~/.codex/config.toml`.
+- Aligned the Agent MCP Add from My MCP dialog with the existing Skill install/import dialog: the saved MCP list now renders as selectable cards in a responsive grid, the target/search area follows the Skill selection-section structure, and the header no longer repeats the selection hint.
+- Moved MCP Store template installation out of the right-side detail column and into a bottom footer action matching the Skill install modal. The right column now stays focused on official links, documentation/repository links, source URL, and trust metadata.
+- Reworked MCP Store template details again after visual review: removed the remaining two-column detail grid, folded official/documentation/repository/source/trust metadata into a normal single-column source section, and added localized `common.installed` copy for every desktop locale so installed badges/buttons no longer fall back to English.
+- Removed the legacy Roo Code MCP target preset. Shared `McpTargetKind`, CLI target validation, JSON target handling, and core target presets no longer include `roo`, and MCP library reads filter old `roo` bindings so stale local data cannot reintroduce the target in UI state.
+- Tightened MCP static health checks for environment variables. Known provider fields such as Slack, GitHub, Google Maps, Brave, AMap, and Firecrawl keys now emit `INVALID_ENV_VALUE` warnings when filled with obviously invalid token/id shapes, and the detail UI shows those fields as "Check format" instead of healthy/filled.
+- Removed the redundant custom target path form from the My MCP detail platform panel. The detail sidebar now has one distribution path: select built-in agent platform cards and use the single Apply to selected platforms action. Custom target config writes remain available through CLI/API-level target commands, not as a second button in the detail sidebar.
 - Earlier browser render using Vite web config + Playwright and injected MCP fixture data verified the Skill-style MCP detail page shell has no dialog and uses `detail-mcp_filesystem`. Screenshot: `apps/desktop/output/playwright/mcp-detail-skill-style-page.png`.
 - `git diff --check`
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/services/mcp-config.test.ts tests/unit/main/mcp-library.test.ts tests/unit/components/mcp-manager.test.tsx`
@@ -131,6 +141,32 @@ Implemented first MCP management slice.
   - Result: 10 tests passed after adding manual required-env editing.
 - `pnpm --filter @prompthub/desktop exec tsc --noEmit --pretty false`
   - Result: passed after adding manual required-env editing.
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/mcp-library.test.ts`
+  - Result: 30 tests passed after adding known MCP env value format warnings and legacy Roo target filtering.
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx`
+  - Result: 40 tests passed after showing invalid env values as health warnings in the MCP detail UI.
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-i18n-smoke.test.ts`
+  - Result: 3 tests passed after adding health-check toast and invalid-env locale keys.
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/plugin-library.test.ts tests/unit/components/plugin-manager.test.tsx`
+  - Result: 10 tests passed after removing the remaining runtime Roo Code plugin target references.
+- `pnpm --filter @prompthub/desktop exec eslint src/renderer/components/mcp/McpManager.tsx src/renderer/components/mcp/McpFullDetailPage.tsx tests/unit/components/mcp-manager.test.tsx tests/unit/main/mcp-library.test.ts --max-warnings 0`
+  - Result: passed.
+- `pnpm --filter @prompthub/desktop exec eslint src/renderer/components/plugin/PluginManager.tsx tests/unit/components/plugin-manager.test.tsx tests/unit/main/plugin-library.test.ts --max-warnings 0`
+  - Result: passed.
+- `pnpm --filter @prompthub/desktop exec tsc --noEmit --pretty false`
+  - Result: passed.
+- `git diff --check`
+  - Result: passed.
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx`
+  - Result: 40 tests passed after removing the redundant custom target form from the My MCP detail platform panel.
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-i18n-smoke.test.ts`
+  - Result: 3 tests passed after deleting the unused `mcp.customTarget` / `mcp.customPath` locale keys.
+- `pnpm --filter @prompthub/desktop exec eslint src/renderer/components/mcp/McpPlatformPanel.tsx tests/unit/components/mcp-manager.test.tsx --max-warnings 0`
+  - Result: passed.
+- `pnpm --filter @prompthub/desktop exec tsc --noEmit --pretty false`
+  - Result: blocked by an unrelated untracked file, `apps/desktop/src/renderer/components/prompt/PromptContentField.tsx`, where `PromptContentFieldProps` does not declare `t`.
+- `git diff --check`
+  - Result: passed.
 - `pnpm --filter @prompthub/desktop exec eslint src/renderer/components/mcp/McpFullDetailPage.tsx tests/unit/components/mcp-manager.test.tsx --max-warnings 0`
   - Result: passed after adding manual required-env editing.
 - `pnpm --filter @prompthub/cli exec vitest run tests/run.test.ts`
@@ -175,6 +211,8 @@ Implemented first MCP management slice.
   - Result: 14 tests passed after service-layer enabled-server apply guard.
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx`
   - Result: 16 tests passed after adding Agent MCP import/open card actions.
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx --testNamePattern "market MCP details|adds MCP to an Agent target"`
+  - Result: failed before implementation because the MCP Store footer and Add from My MCP card grid test IDs/layout were missing; passed after aligning both dialogs with the Skill install/import layout.
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx`
   - Result: 18 tests passed after making Agent MCP card bodies clickable.
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/services/mcp-config.test.ts tests/unit/main/mcp-library.test.ts tests/unit/components/mcp-manager.test.tsx`
@@ -303,3 +341,157 @@ Implemented first MCP management slice.
   - Result: passed after the Agent MCP card UI refinement.
 - `git diff --check -- apps/desktop/src/renderer/components/mcp/McpAgentsView.tsx apps/desktop/src/renderer/components/mcp/AgentMcpPreviewSidebar.tsx apps/desktop/src/renderer/components/mcp/AgentMcpDetailActions.tsx apps/desktop/tests/unit/components/mcp-manager.test.tsx spec/changes/active/mcp-management/tasks.md spec/changes/active/mcp-management/implementation.md`
   - Result: passed after the Agent MCP card UI refinement.
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx tests/unit/components/mcp-i18n-smoke.test.ts`
+  - Result: failed before the My MCP batch parity pass because the MCP toolbar still fell back to English in Chinese, lacked batch tag/sync actions, and the batch tag dialog had duplicate accessible action names; passed after adding localized batch manage labels, Skill-style batch tag management, and Skill-style batch sync to agent platforms.
+- `pnpm --filter @prompthub/desktop exec tsc --noEmit --pretty false`
+  - Result: passed after the My MCP batch parity pass.
+- `pnpm --dir apps/desktop exec eslint src/renderer/components/mcp/McpManager.tsx src/renderer/components/mcp/McpBatchTagDialog.tsx src/renderer/components/mcp/McpBatchDeployDialog.tsx src/renderer/components/mcp/batch-utils.ts tests/unit/components/mcp-manager.test.tsx tests/unit/components/mcp-i18n-smoke.test.ts --max-warnings 0`
+  - Result: passed after the My MCP batch parity pass.
+- `git diff --check -- apps/desktop/src/renderer/components/mcp/McpManager.tsx apps/desktop/src/renderer/components/mcp/McpBatchTagDialog.tsx apps/desktop/src/renderer/components/mcp/McpBatchDeployDialog.tsx apps/desktop/src/renderer/components/mcp/batch-utils.ts apps/desktop/tests/unit/components/mcp-manager.test.tsx apps/desktop/tests/unit/components/mcp-i18n-smoke.test.ts apps/desktop/src/renderer/i18n/locales/en.json apps/desktop/src/renderer/i18n/locales/zh.json apps/desktop/src/renderer/i18n/locales/zh-TW.json apps/desktop/src/renderer/i18n/locales/ja.json apps/desktop/src/renderer/i18n/locales/fr.json apps/desktop/src/renderer/i18n/locales/de.json apps/desktop/src/renderer/i18n/locales/es.json`
+  - Result: passed after the My MCP batch parity pass.
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx --testNamePattern "single-server distribution|Skill-style row distribution"`
+  - Result: failed before the My MCP card/list quick-sync refinement because cards and list rows had no single-MCP distribution button and List View was wrapped in a rounded card container; passed after adding the quick sync action and Skill-style row layout with target progress.
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx tests/unit/components/mcp-i18n-smoke.test.ts`
+  - Result: 35 tests passed after the My MCP card/list quick-sync refinement.
+- `pnpm --filter @prompthub/desktop exec tsc --noEmit --pretty false`
+  - Result: passed after the My MCP card/list quick-sync refinement.
+- `pnpm --dir apps/desktop exec eslint src/renderer/components/mcp/McpManager.tsx src/renderer/components/mcp/McpServerList.tsx src/renderer/components/mcp/McpBatchTagDialog.tsx src/renderer/components/mcp/McpBatchDeployDialog.tsx src/renderer/components/mcp/batch-utils.ts tests/unit/components/mcp-manager.test.tsx tests/unit/components/mcp-i18n-smoke.test.ts --max-warnings 0`
+  - Result: passed after the My MCP card/list quick-sync refinement.
+- `git diff --check -- apps/desktop/src/renderer/components/mcp/McpManager.tsx apps/desktop/src/renderer/components/mcp/McpServerList.tsx apps/desktop/src/renderer/components/mcp/McpBatchTagDialog.tsx apps/desktop/src/renderer/components/mcp/McpBatchDeployDialog.tsx apps/desktop/src/renderer/components/mcp/batch-utils.ts apps/desktop/tests/unit/components/mcp-manager.test.tsx apps/desktop/tests/unit/components/mcp-i18n-smoke.test.ts apps/desktop/src/renderer/i18n/locales/en.json apps/desktop/src/renderer/i18n/locales/zh.json apps/desktop/src/renderer/i18n/locales/zh-TW.json apps/desktop/src/renderer/i18n/locales/ja.json apps/desktop/src/renderer/i18n/locales/fr.json apps/desktop/src/renderer/i18n/locales/de.json apps/desktop/src/renderer/i18n/locales/es.json`
+  - Result: passed after the My MCP card/list quick-sync refinement.
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/skill-gallery-card.test.tsx tests/unit/components/mcp-manager.test.tsx --testNamePattern "wraps.*card"`
+  - Result: 2 matching tests passed after separating wrapping distribution indicators from card action rows.
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx tests/unit/components/mcp-i18n-smoke.test.ts tests/unit/components/skill-gallery-card.test.tsx`
+  - Result: 40 tests passed after the My MCP/My Skill card overflow fix.
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx --testNamePattern "imports an external agent MCP entry|opens external agent MCP detail from the card body|keeps external Agent MCP card import explicit"`
+  - Result: failed before the fix because Agent MCP import still called whole-file import; passed after switching to single-entry `createServer`.
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx --testNamePattern "opens the selected agent config"`
+  - Result: passed after adding visible Agent config open feedback.
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/shell-open-path.test.ts --testNamePattern "reveals existing file paths"`
+  - Result: failed before the shell bridge fix because existing file paths were rejected as non-directories; passed after revealing files with `showItemInFolder`.
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx tests/unit/components/mcp-i18n-smoke.test.ts tests/unit/components/skill-gallery-card.test.tsx tests/unit/main/shell-open-path.test.ts`
+  - Result: 47 tests passed after the Agent MCP single-entry import and config-file open fixes.
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/renderer-i18n-smoke.test.tsx tests/unit/components/skill-i18n-smoke.test.tsx tests/unit/components/mcp-i18n-smoke.test.ts -t "keeps|locale"`
+  - Result: 7 matching locale-alignment tests passed.
+- `pnpm --filter @prompthub/desktop exec tsc --noEmit --pretty false`
+  - Result: passed.
+- `pnpm --filter @prompthub/core typecheck`
+  - Result: passed after correcting an existing plugin-library type predicate that blocked desktop typecheck.
+- `pnpm --dir apps/desktop exec eslint src/renderer/components/mcp/McpManager.tsx src/renderer/components/mcp/McpAgentsView.tsx src/renderer/components/mcp/McpFullDetailPage.tsx src/renderer/components/mcp/McpServerForm.tsx src/renderer/components/mcp/McpServerList.tsx src/renderer/components/mcp/McpBatchTagDialog.tsx src/renderer/components/mcp/McpBatchDeployDialog.tsx src/renderer/components/mcp/batch-utils.ts src/renderer/components/skill/SkillGalleryCard.tsx src/main/shell-open-path.ts tests/unit/components/mcp-manager.test.tsx tests/unit/components/mcp-i18n-smoke.test.ts tests/unit/components/skill-gallery-card.test.tsx tests/unit/main/shell-open-path.test.ts --max-warnings 0`
+  - Result: passed.
+- My MCP detail right-sidebar parity pass:
+  - Updated `McpPlatformPanel` to use the Skill-style right-sidebar header/card treatment, keep MCP-specific target config paths visible, and make non-distributed platform cards fully clickable with platform-name accessible labels.
+  - Added `notes` to `McpServerConfig` normalization so personal MCP notes persist in the local MCP library record while target projection helpers continue to output only runtime MCP config fields.
+  - Added a Skill-style Personal Notes card above the MCP platform integration panel and routed notes-only saves through `updateServer` with a notes-specific success toast.
+  - Added regressions for whole-card target selection and MCP detail personal notes editing/saving.
+- Verification for the My MCP detail right-sidebar parity pass:
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx tests/unit/services/mcp-config.test.ts tests/unit/components/mcp-i18n-smoke.test.ts tests/unit/components/skill-gallery-card.test.tsx tests/unit/main/shell-open-path.test.ts`
+    - Result: 63 tests passed.
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/renderer-i18n-smoke.test.tsx tests/unit/components/skill-i18n-smoke.test.tsx tests/unit/components/mcp-i18n-smoke.test.ts -t "keeps|locale"`
+    - Result: 7 matching locale-alignment tests passed.
+  - `pnpm --filter @prompthub/desktop exec tsc --noEmit --pretty false`
+    - Result: passed.
+  - `pnpm --filter @prompthub/core typecheck`
+    - Result: passed.
+  - `pnpm --filter @prompthub/shared typecheck`
+    - Result: passed.
+  - `pnpm --dir apps/desktop exec eslint src/renderer/components/mcp/McpPlatformPanel.tsx src/renderer/components/mcp/McpFullDetailPage.tsx src/renderer/components/mcp/McpManager.tsx tests/unit/components/mcp-manager.test.tsx tests/unit/services/mcp-config.test.ts --max-warnings 0`
+    - Result: passed.
+  - `git diff --check -- apps/desktop/src/renderer/components/mcp/McpPlatformPanel.tsx apps/desktop/src/renderer/components/mcp/McpFullDetailPage.tsx apps/desktop/src/renderer/components/mcp/McpManager.tsx apps/desktop/tests/unit/components/mcp-manager.test.tsx apps/desktop/tests/unit/services/mcp-config.test.ts packages/shared/types/mcp.ts packages/shared/utils/mcp-config.ts apps/desktop/src/renderer/i18n/locales/en.json apps/desktop/src/renderer/i18n/locales/zh.json apps/desktop/src/renderer/i18n/locales/zh-TW.json apps/desktop/src/renderer/i18n/locales/ja.json apps/desktop/src/renderer/i18n/locales/fr.json apps/desktop/src/renderer/i18n/locales/de.json apps/desktop/src/renderer/i18n/locales/es.json spec/changes/active/mcp-management/tasks.md spec/changes/active/mcp-management/specs/mcp/spec.md spec/changes/active/mcp-management/implementation.md`
+    - Result: passed.
+  - `pnpm exec eslint ... packages/shared/... --max-warnings 0`
+    - Result: not used as a verification gate because the desktop ESLint config ignores files outside `apps/desktop`; shared package coverage for this change is `@prompthub/shared typecheck` plus the `mcp-config` unit test.
+- Agent MCP Add MCP source correction:
+  - Replaced the Agent MCP footer Add MCP behavior so it opens a My MCP selection dialog for the currently selected Agent target instead of the New MCP source/manual creation modal.
+  - Added `McpLibraryDeployDialog`, which lists saved My MCP servers, disables already-distributed or disabled servers, and applies only the explicitly selected server IDs to the selected Agent target through the existing safe apply/conflict-confirmation flow.
+  - Updated the Agent MCP regression so clicking Add MCP selects `Fetch` from My MCP and applies only `mcp_fetch` to the selected `Codex CLI` target.
+  - Added localized copy for the My MCP selection dialog across all desktop locales.
+- Verification for the Agent MCP Add MCP source correction:
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx --testNamePattern "adds MCP to an Agent target"`
+    - Result: 1 matching test passed.
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx`
+    - Result: 36 tests passed.
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/renderer-i18n-smoke.test.tsx tests/unit/components/skill-i18n-smoke.test.tsx tests/unit/components/mcp-i18n-smoke.test.ts -t "keeps|locale"`
+    - Result: 7 matching locale-alignment tests passed.
+  - `pnpm --dir apps/desktop exec eslint src/renderer/components/mcp/McpLibraryDeployDialog.tsx src/renderer/components/mcp/McpAgentsView.tsx src/renderer/components/mcp/McpManager.tsx tests/unit/components/mcp-manager.test.tsx --max-warnings 0`
+    - Result: passed.
+  - `git diff --check -- apps/desktop/src/renderer/components/mcp/McpLibraryDeployDialog.tsx apps/desktop/src/renderer/components/mcp/McpAgentsView.tsx apps/desktop/src/renderer/components/mcp/McpManager.tsx apps/desktop/tests/unit/components/mcp-manager.test.tsx apps/desktop/src/renderer/i18n/locales/en.json apps/desktop/src/renderer/i18n/locales/zh.json apps/desktop/src/renderer/i18n/locales/zh-TW.json apps/desktop/src/renderer/i18n/locales/ja.json apps/desktop/src/renderer/i18n/locales/fr.json apps/desktop/src/renderer/i18n/locales/de.json apps/desktop/src/renderer/i18n/locales/es.json spec/changes/active/mcp-management/tasks.md spec/changes/active/mcp-management/specs/mcp/spec.md spec/changes/active/mcp-management/implementation.md`
+    - Result: passed.
+  - `pnpm --filter @prompthub/desktop exec tsc --noEmit --pretty false`
+    - Result: blocked by unrelated existing plugin UI errors in `src/renderer/components/plugin/PluginManager.tsx` for missing `tabIconClassName`; MCP manager/component tests still compile and pass.
+- Verification for the MCP dialog layout parity correction:
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx --testNamePattern "market MCP details|adds MCP to an Agent target"`
+    - Result: failed before implementation because the MCP Store detail modal had no bottom install footer and Add from My MCP had no Skill-style MCP card grid; passed after the layout correction.
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx`
+    - Result: 38 tests passed.
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-i18n-smoke.test.ts`
+    - Result: 2 tests passed after adding `mcp.selectMcpServers` across all desktop locales.
+  - `pnpm --dir apps/desktop exec eslint src/renderer/components/mcp/McpLibraryDeployDialog.tsx src/renderer/components/mcp/McpMarketDetailModal.tsx tests/unit/components/mcp-manager.test.tsx --max-warnings 0`
+    - Result: passed.
+  - `git diff --check -- apps/desktop/src/renderer/components/mcp/McpLibraryDeployDialog.tsx apps/desktop/src/renderer/components/mcp/McpMarketDetailModal.tsx apps/desktop/tests/unit/components/mcp-manager.test.tsx apps/desktop/src/renderer/i18n/locales/en.json apps/desktop/src/renderer/i18n/locales/zh.json apps/desktop/src/renderer/i18n/locales/zh-TW.json apps/desktop/src/renderer/i18n/locales/ja.json apps/desktop/src/renderer/i18n/locales/fr.json apps/desktop/src/renderer/i18n/locales/de.json apps/desktop/src/renderer/i18n/locales/es.json spec/changes/active/mcp-management/tasks.md spec/changes/active/mcp-management/specs/mcp/spec.md spec/changes/active/mcp-management/implementation.md`
+    - Result: passed.
+  - `pnpm --filter @prompthub/desktop exec tsc --noEmit --pretty false`
+    - Result: blocked by unrelated existing plugin UI errors in `src/renderer/components/plugin/PluginManager.tsx` for missing `getPluginCategoryKey`, `getPluginCategoryLabel`, `selectedMarketCategoryId`, `SearchIcon`, `setSearchQuery`, `setSelectedMarketCategoryId`, and stale `PluginLibraryCard` / `PluginMarketCard` props.
+- Verification for the MCP Store one-column detail correction:
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx --testNamePattern "market MCP details|localizes the installed state"`
+    - Result: failed before implementation because the MCP Store detail still used a two-column content grid and installed-state copy fell back to English; passed after the single-column layout and locale fix.
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx`
+    - Result: 39 tests passed.
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-i18n-smoke.test.ts`
+    - Result: 3 tests passed.
+  - `pnpm --dir apps/desktop exec eslint src/renderer/components/mcp/McpMarketDetailModal.tsx tests/unit/components/mcp-manager.test.tsx tests/unit/components/mcp-i18n-smoke.test.ts --max-warnings 0`
+    - Result: passed.
+  - `pnpm --filter @prompthub/desktop exec tsc --noEmit --pretty false`
+    - Result: passed.
+  - `git diff --check -- apps/desktop/src/renderer/components/mcp/McpMarketDetailModal.tsx apps/desktop/tests/unit/components/mcp-manager.test.tsx apps/desktop/tests/unit/components/mcp-i18n-smoke.test.ts apps/desktop/src/renderer/i18n/locales/en.json apps/desktop/src/renderer/i18n/locales/zh.json apps/desktop/src/renderer/i18n/locales/zh-TW.json apps/desktop/src/renderer/i18n/locales/ja.json apps/desktop/src/renderer/i18n/locales/fr.json apps/desktop/src/renderer/i18n/locales/de.json apps/desktop/src/renderer/i18n/locales/es.json spec/changes/active/mcp-management/tasks.md spec/changes/active/mcp-management/specs/mcp/spec.md spec/changes/active/mcp-management/implementation.md`
+    - Result: passed.
+- New MCP creation chooser and raw config import:
+  - Reworked `McpCreateModal` from a top segmented source/manual switch into a Skill-style method chooser with separate cards for source import, pasted config import, and manual setup.
+  - Kept source import controls behind the source card, including command/URL/path input, config file picker, source folder picker, and drag/drop import.
+  - Added a raw config subflow that accepts pasted MCP JSON or Codex TOML and calls `createFromSource` with `kind: "config"`.
+  - Extended the shared MCP source contract with `config` input and `config-content` detection, parsing pasted JSON/TOML through the same normalization and duplicate-skip logic used by file imports.
+  - Updated the modal form reuse so manual setup is no longer nested under a duplicate outer New MCP header; the form now exposes modal back/close controls.
+  - Added locale keys for the New MCP method chooser, source import, pasted config import, and duplicate/empty import feedback across all desktop locales.
+- Verification for the New MCP creation chooser and raw config import:
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx tests/unit/main/mcp-library.test.ts --testNamePattern "method cards|pasted MCP JSON|new MCP server from the modal|pasted JSON config"`
+    - Result: failed before implementation because the modal opened directly into the source/manual segmented UI and `kind: "config"` was unsupported; passed after the chooser/raw-config implementation.
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx tests/unit/main/mcp-library.test.ts tests/unit/components/mcp-i18n-smoke.test.ts`
+    - Result: 68 tests passed.
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/renderer-i18n-smoke.test.tsx tests/unit/components/skill-i18n-smoke.test.tsx tests/unit/components/mcp-i18n-smoke.test.ts -t "keeps|locale"`
+    - Result: 7 matching locale-alignment tests passed.
+  - `pnpm --dir apps/desktop exec eslint src/renderer/components/mcp/McpCreateModal.tsx src/renderer/components/mcp/McpServerForm.tsx tests/unit/components/mcp-manager.test.tsx tests/unit/main/mcp-library.test.ts --max-warnings 0`
+    - Result: passed.
+  - `pnpm --filter @prompthub/core typecheck`
+    - Result: passed.
+  - `pnpm --filter @prompthub/shared typecheck`
+    - Result: passed.
+  - `pnpm --filter @prompthub/desktop exec tsc --noEmit --pretty false`
+    - Result: passed.
+  - `git diff --check -- apps/desktop/src/renderer/components/mcp/McpCreateModal.tsx apps/desktop/src/renderer/components/mcp/McpServerForm.tsx apps/desktop/tests/unit/components/mcp-manager.test.tsx apps/desktop/tests/unit/main/mcp-library.test.ts packages/core/src/mcp-library.ts packages/shared/types/mcp.ts apps/desktop/src/renderer/i18n/locales/en.json apps/desktop/src/renderer/i18n/locales/zh.json apps/desktop/src/renderer/i18n/locales/zh-TW.json apps/desktop/src/renderer/i18n/locales/ja.json apps/desktop/src/renderer/i18n/locales/fr.json apps/desktop/src/renderer/i18n/locales/de.json apps/desktop/src/renderer/i18n/locales/es.json spec/changes/active/mcp-management/specs/mcp/spec.md spec/changes/active/mcp-management/tasks.md spec/changes/active/mcp-management/implementation.md`
+    - Result: passed.
+
+- MCP Store usable built-in sources:
+  - Corrected the MCP Store preset model so built-in sources are real installable stores, not external directory links with `0` templates.
+  - Reduced the default left-sidebar MCP Store sources to three usable groups: `Official MCP Registry`, `PromptHub Curated MCP`, and `PromptHub Community MCP`.
+  - Assigned every built-in MCP template to one of those sources so each sidebar source has visible installable cards and no default source renders the external-directory panel.
+  - Kept the right-content source chip/filter bar removed; source selection remains in the left sidebar like Skill Store.
+  - Added regressions proving `getMarketSources()` returns only usable template stores, every returned source has at least one template, and the sidebar does not show zero-count external directory presets such as Smithery/Postman.
+- Verification for MCP Store usable built-in sources:
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/mcp-library.test.ts --testNamePattern "preconfigures only usable MCP stores"`
+    - Result: failed before implementation because `getMarketSources()` returned fifteen directory/source entries including many with `0` templates; passed after reducing sources to the three usable built-in stores and assigning templates to all of them.
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx --testNamePattern "keeps preconfigured MCP Store sources"`
+    - Result: passed after confirming a selected preconfigured source shows installable template cards instead of the external-directory panel.
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/sidebar.test.tsx --testNamePattern "MCP secondary navigation"`
+    - Result: passed after confirming the nested MCP Store source list shows only non-zero usable store sources in the fixture.
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx`
+    - Result: 41 tests passed.
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-i18n-smoke.test.ts`
+    - Result: 3 tests passed.
+  - `pnpm --dir apps/desktop exec eslint src/renderer/components/mcp/McpMarketView.tsx tests/unit/components/mcp-manager.test.tsx tests/unit/components/mcp-i18n-smoke.test.ts --max-warnings 0`
+    - Result: passed.
+  - `pnpm --filter @prompthub/shared typecheck`
+    - Result: passed.
+  - `pnpm --filter @prompthub/desktop exec tsc --noEmit --pretty false`
+    - Result: passed.
+  - `git diff --check -- packages/shared/constants/mcp-market.ts apps/desktop/src/renderer/components/mcp/McpMarketView.tsx apps/desktop/tests/unit/components/mcp-manager.test.tsx apps/desktop/tests/unit/components/mcp-i18n-smoke.test.ts apps/desktop/src/renderer/i18n/locales/en.json apps/desktop/src/renderer/i18n/locales/zh.json apps/desktop/src/renderer/i18n/locales/zh-TW.json apps/desktop/src/renderer/i18n/locales/ja.json apps/desktop/src/renderer/i18n/locales/fr.json apps/desktop/src/renderer/i18n/locales/de.json apps/desktop/src/renderer/i18n/locales/es.json spec/changes/active/mcp-management/specs/mcp/spec.md spec/changes/active/mcp-management/tasks.md spec/changes/active/mcp-management/implementation.md`
+    - Result: passed.

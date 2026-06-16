@@ -26,7 +26,7 @@ interface McpAgentsViewProps {
   servers: McpServerConfig[];
   targetPresets: McpTargetPreset[];
   targetStatus: McpTargetStatusEntry[];
-  onAddMcp: () => void;
+  onAddMcp: (preset: McpTargetPreset) => void;
   onImportExternal: (
     preset: McpTargetPreset,
     serverName: string,
@@ -281,7 +281,8 @@ export function McpAgentsView({
     const handleOpenSelectedManagedServer = selectedManagedServer
       ? () => onOpenManaged(selectedManagedServer)
       : undefined;
-    const handleOpenSelectedAgentConfig = () => onOpenAgentConfig(selectedPreset);
+    const handleOpenSelectedAgentConfig = () =>
+      onOpenAgentConfig(selectedPreset);
     const handleRemoveSelectedAgentServer = () =>
       handleServerAction(serverActionKey, () =>
         onRemoveAgentEntry(selectedPreset, selectedServerName),
@@ -714,7 +715,10 @@ export function McpAgentsView({
                       <button
                         type="button"
                         onClick={() => void onOpenAgentConfig(selectedPreset)}
-                        aria-label={t("mcp.openAgentConfig", "Open agent config")}
+                        aria-label={t(
+                          "mcp.openAgentConfig",
+                          "Open agent config",
+                        )}
                         title={t("mcp.openAgentConfig", "Open agent config")}
                         className={`${MCP_AGENT_CARD_ICON_BUTTON_CLASS} border-border app-wallpaper-surface hover:bg-accent hover:text-foreground`}
                       >
@@ -729,14 +733,14 @@ export function McpAgentsView({
                                 onOpenManaged(managedServer),
                               )
                             }
-                            aria-label={t(
-                              "mcp.openInMyMcp",
-                              "Open in My MCP",
-                            )}
+                            aria-label={t("mcp.openInMyMcp", "Open in My MCP")}
                             title={t("mcp.openInMyMcp", "Open in My MCP")}
                             className={`${MCP_AGENT_CARD_ICON_BUTTON_CLASS} border-border app-wallpaper-surface hover:bg-accent hover:text-foreground`}
                           >
-                            <ServerIcon aria-hidden="true" className="h-4 w-4" />
+                            <ServerIcon
+                              aria-hidden="true"
+                              className="h-4 w-4"
+                            />
                           </button>
                         </>
                       ) : (
@@ -752,10 +756,7 @@ export function McpAgentsView({
                             "mcp.importToMyMcp",
                             "Import to My MCP",
                           )}
-                          title={t(
-                            "mcp.importToMyMcp",
-                            "Import to My MCP",
-                          )}
+                          title={t("mcp.importToMyMcp", "Import to My MCP")}
                           className={`${MCP_AGENT_CARD_ICON_BUTTON_CLASS} border-primary bg-primary text-white hover:bg-primary/90`}
                         >
                           {isServerBusy ? (
@@ -809,8 +810,9 @@ export function McpAgentsView({
         <div className="border-t border-border p-3">
           <button
             type="button"
-            onClick={onAddMcp}
-            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+            onClick={() => selectedPreset && onAddMcp(selectedPreset)}
+            disabled={!selectedPreset}
+            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
           >
             <DownloadIcon className="h-4 w-4" aria-hidden="true" />
             {t("mcp.addMcp", "Add MCP")}

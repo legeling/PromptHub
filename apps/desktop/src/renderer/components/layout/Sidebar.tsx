@@ -271,9 +271,16 @@ export function Sidebar({
   const clearSkillFilterTags = useSkillStore((state) => state.clearFilterTags);
   const mcpLibrary = useMcpStore((state) => state.library);
   const mcpMarketTemplates = useMcpStore((state) => state.marketTemplates);
+  const mcpMarketSources = useMcpStore((state) => state.marketSources);
   const mcpTargetPresets = useMcpStore((state) => state.targetPresets);
   const mcpSelectedTab = useMcpStore((state) => state.selectedTab);
+  const mcpSelectedMarketSourceId = useMcpStore(
+    (state) => state.selectedMarketSourceId,
+  );
   const setMcpSelectedTab = useMcpStore((state) => state.setSelectedTab);
+  const setMcpSelectedMarketSourceId = useMcpStore(
+    (state) => state.setSelectedMarketSourceId,
+  );
   const [isMcpStoreGroupExpanded, setIsMcpStoreGroupExpanded] = useState(
     () => mcpSelectedTab === "market",
   );
@@ -313,6 +320,17 @@ export function Sidebar({
     const loadedCount = getRemoteStoreSkillCount(entry);
     return entry.nextCursor ? `${loadedCount}+` : loadedCount;
   }, [remoteStoreEntries]);
+  const mcpMarketSourceCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const template of mcpMarketTemplates) {
+      const sourceId = template.source?.id;
+      if (!sourceId) {
+        continue;
+      }
+      counts.set(sourceId, (counts.get(sourceId) ?? 0) + 1);
+    }
+    return counts;
+  }, [mcpMarketTemplates]);
   const [showAllSkillTags, setShowAllSkillTags] = useState(false);
   const [detectedSkillAgentCount, setDetectedSkillAgentCount] = useState<
     number | null
@@ -562,11 +580,15 @@ export function Sidebar({
     storeView,
   ]);
 
-  const openMcpStoreSource = useCallback(() => {
-    setIsMcpStoreGroupExpanded(true);
-    setMcpSelectedTab("market");
-    if (currentPage !== "home") onNavigate("home");
-  }, [currentPage, onNavigate, setMcpSelectedTab]);
+  const openMcpStoreSource = useCallback(
+    (sourceId = "all") => {
+      setIsMcpStoreGroupExpanded(true);
+      setMcpSelectedMarketSourceId(sourceId);
+      setMcpSelectedTab("market");
+      if (currentPage !== "home") onNavigate("home");
+    },
+    [currentPage, onNavigate, setMcpSelectedMarketSourceId, setMcpSelectedTab],
+  );
 
   const handleMcpStoreNavClick = useCallback(() => {
     if (
@@ -578,7 +600,7 @@ export function Sidebar({
       return;
     }
 
-    openMcpStoreSource();
+    openMcpStoreSource("all");
   }, [
     currentPage,
     isMcpStoreGroupExpanded,
@@ -1975,21 +1997,43 @@ export function Sidebar({
                     <div className="ml-4 mt-1 pl-3 pr-1 border-l border-sidebar-border/50 space-y-1">
                       <button
                         type="button"
-                        onClick={openMcpStoreSource}
+                        onClick={() => openMcpStoreSource("all")}
                         className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                          mcpSelectedTab === "market"
+                          mcpSelectedTab === "market" &&
+                          mcpSelectedMarketSourceId === "all"
                             ? "bg-sidebar-accent text-sidebar-foreground"
                             : "text-sidebar-foreground/60 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
                         }`}
                       >
                         <StoreIcon className="w-4 h-4" aria-hidden="true" />
                         <span className="flex-1 text-left truncate">
-                          {t("mcp.officialMcpStore", "Official MCP Store")}
+                          {t("mcp.allSources", "All Sources")}
                         </span>
                         <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sidebar-accent/80 text-sidebar-foreground/50 border border-white/5">
                           {mcpMarketTemplates.length}
                         </span>
                       </button>
+                      {mcpMarketSources.map((source) => (
+                        <button
+                          key={source.id}
+                          type="button"
+                          onClick={() => openMcpStoreSource(source.id)}
+                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                            mcpSelectedTab === "market" &&
+                            mcpSelectedMarketSourceId === source.id
+                              ? "bg-sidebar-accent text-sidebar-foreground"
+                              : "text-sidebar-foreground/60 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
+                          }`}
+                        >
+                          <StoreIcon className="w-4 h-4" aria-hidden="true" />
+                          <span className="flex-1 text-left truncate">
+                            {source.label}
+                          </span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sidebar-accent/80 text-sidebar-foreground/50 border border-white/5">
+                            {mcpMarketSourceCounts.get(source.id) ?? 0}
+                          </span>
+                        </button>
+                      ))}
                     </div>
                   </div>
                 ) : (

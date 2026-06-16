@@ -1,19 +1,28 @@
 export type McpTransport = "stdio" | "streamable-http" | "sse";
 
-export type McpTargetKind =
-  | "codex"
-  | "claude"
-  | "claude-desktop"
-  | "cursor"
-  | "vscode"
-  | "cline"
-  | "roo"
-  | "gemini"
-  | "windsurf"
-  | "kiro"
-  | "opencode"
-  | "custom-json"
-  | "custom-toml";
+export const MCP_TARGET_KINDS = [
+  "codex",
+  "claude",
+  "claude-desktop",
+  "cursor",
+  "vscode",
+  "cline",
+  "gemini",
+  "windsurf",
+  "kiro",
+  "opencode",
+  "custom-json",
+  "custom-toml",
+] as const;
+
+export type McpTargetKind = (typeof MCP_TARGET_KINDS)[number];
+
+export function isMcpTargetKind(value: unknown): value is McpTargetKind {
+  return (
+    typeof value === "string" &&
+    (MCP_TARGET_KINDS as readonly string[]).includes(value)
+  );
+}
 
 export type McpTargetScope = "global" | "workspace" | "custom";
 
@@ -29,6 +38,7 @@ export interface McpServerConfig {
   name: string;
   displayName: string;
   description?: string;
+  notes?: string;
   transport: McpTransport;
   command?: string;
   args?: string[];
@@ -152,10 +162,16 @@ export interface McpImportResult {
   skipped: string[];
 }
 
-export type McpCreateSourceKind = "auto" | "command" | "path" | "url";
+export type McpCreateSourceKind =
+  | "auto"
+  | "command"
+  | "config"
+  | "path"
+  | "url";
 
 export type McpDetectedSourceKind =
   | "command"
+  | "config-content"
   | "config-file"
   | "github"
   | "local-project"
@@ -195,6 +211,7 @@ export interface McpHealthIssue {
     | "COMMAND_NOT_FOUND"
     | "INVALID_URL"
     | "MISSING_ENV"
+    | "INVALID_ENV_VALUE"
     | "PLACEHOLDER_VALUE"
     | "MISSING_CWD";
   severity: McpHealthStatus;

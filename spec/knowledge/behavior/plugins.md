@@ -62,7 +62,7 @@ Official references:
 - Claude Code、Cursor、Gemini CLI、Kiro、GitHub Copilot / VS Code Agent Plugins 应建模为 adapter target，因为它们存在自己的插件、扩展、power 或 agent plugin bundle 机制。
 - OpenCode 和 Cline SDK / CLI / Kanban 当前应建模为 runtime-only target，因为它们的官方插件语义主要是 JS/TS hook module、npm plugin、`AgentPlugin` entrypoint、tools/hooks/commands runtime，而不是多子资产 bundle inventory。
 - Cline runtime-only target 需要标注适用范围：官方插件机制当前适用于 Cline SDK / CLI / Kanban，不适用于 VSCode / JetBrains 扩展运行时。
-- Windsurf / Devin、Roo Code、Cherry Studio 当前应建模为 composite target 或 lower-priority target，因为它们没有确认的单一 Agent 插件包格式，需要把 PromptHub Plugin 拆到多个目标资产面。
+- Windsurf / Devin、Cherry Studio 当前应建模为 composite target 或 lower-priority target，因为它们没有确认的单一 Agent 插件包格式，需要把 PromptHub Plugin 拆到多个目标资产面。
 - Amp 和其他证据不足的平台应保持 pending/disabled，直到官方文档或源码能证明单一插件包机制。
 - UI 必须明确区分 `Native`、`Adapter`、`RuntimeOnly`、`Composite`，不能把适配后的效果伪装成目标 Agent 原生支持 Codex 插件。
 - 第一版只启用 `Native` 和满足 bundle 语义的 `Adapter`；`RuntimeOnly`、`Composite`、`Pending` 目标可见但置灰，并明确显示“不支持 PromptHub 插件整合包”，等后续设计 wrapper/composite installer 或有新证据后再重新评估。

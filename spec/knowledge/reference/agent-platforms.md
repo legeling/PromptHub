@@ -30,22 +30,22 @@
 
 PromptHub MCP 管理第一版建模为“配置库 + 目标文件投影”，不运行 MCP 网关、代理或统一 endpoint。
 
-| Target      | PromptHub Target ID | Default Scope Paths                                                | Config Shape                        | Evidence / Notes                                      |
-| ----------- | ------------------- | ------------------------------------------------------------------ | ----------------------------------- | ----------------------------------------------------- |
-| Codex       | `codex`             | `~/.codex/config.toml`; project `.codex/config.toml`               | TOML `[mcp_servers.<name>]`         | Officially documented                                 |
-| Claude Code | `claude`            | `~/.claude.json`; project `.mcp.json`                              | JSON `mcpServers`                   | Officially documented; scopes include user/project    |
-| Cursor      | `cursor`            | `~/.cursor/mcp.json`; project `.cursor/mcp.json`                   | JSON `mcpServers`                   | Officially documented                                 |
-| VS Code     | `vscode`            | project `.vscode/mcp.json`; user profile path varies by VS Code UI | JSON `servers`                      | Officially documented                                 |
-| Cline       | `cline`             | `~/.cline/cline_mcp_settings.json`                                 | JSON `mcpServers`-style settings    | Officially documented                                 |
-| Roo Code    | `roo`               | `~/.roo/mcp_settings.json`                                         | JSON `mcpServers`-style settings    | Officially documented / compatible with Cline lineage |
-| Custom JSON | `custom-json`       | user-selected file path                                            | JSON `mcpServers`                   | PromptHub generic projection                          |
-| Custom TOML | `custom-toml`       | user-selected file path                                            | Codex-compatible managed TOML block | PromptHub generic projection                          |
+| Target      | PromptHub Target ID | Default Scope Paths                                                | Config Shape                        | Evidence / Notes                                   |
+| ----------- | ------------------- | ------------------------------------------------------------------ | ----------------------------------- | -------------------------------------------------- |
+| Codex       | `codex`             | `~/.codex/config.toml`; project `.codex/config.toml`               | TOML `[mcp_servers.<name>]`         | Officially documented                              |
+| Claude Code | `claude`            | `~/.claude.json`; project `.mcp.json`                              | JSON `mcpServers`                   | Officially documented; scopes include user/project |
+| Cursor      | `cursor`            | `~/.cursor/mcp.json`; project `.cursor/mcp.json`                   | JSON `mcpServers`                   | Officially documented                              |
+| VS Code     | `vscode`            | project `.vscode/mcp.json`; user profile path varies by VS Code UI | JSON `servers`                      | Officially documented                              |
+| Cline       | `cline`             | `~/.cline/cline_mcp_settings.json`                                 | JSON `mcpServers`-style settings    | Officially documented                              |
+| Custom JSON | `custom-json`       | user-selected file path                                            | JSON `mcpServers`                   | PromptHub generic projection                       |
+| Custom TOML | `custom-toml`       | user-selected file path                                            | Codex-compatible managed TOML block | PromptHub generic projection                       |
 
 Stable product rule:
 
 - PromptHub's internal MCP source of truth is a normalized local library, not any one agent config file.
 - Applying MCP config must preserve unrelated target config and create a backup before overwriting an existing file.
 - MCP entries are configuration records, not Skill directory packages; they do not participate in Skill versioning, safety scanning, or rating flows.
+- Roo Code remains documented below as an external Agent asset, but PromptHub no longer exposes it as a built-in MCP target preset.
 
 ## Evidence Levels
 

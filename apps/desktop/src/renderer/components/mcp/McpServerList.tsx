@@ -2,6 +2,7 @@ import type { CSSProperties, KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import {
   CheckSquareIcon,
+  DownloadIcon,
   ServerIcon,
   SquareIcon,
   StarIcon,
@@ -31,6 +32,7 @@ interface McpServerListProps {
   onSelect: (id: string) => void;
   onToggleSelection?: (id: string) => void;
   onToggleFavorite?: (server: McpServerConfig) => void | Promise<void>;
+  onQuickDeploy?: (server: McpServerConfig) => void;
   onDelete?: (server: McpServerConfig) => void;
 }
 
@@ -39,11 +41,14 @@ interface McpServerItemProps {
   selectedServerId: string | null;
   healthCheck?: McpHealthCheckResult;
   distributedPresets: McpTargetPreset[];
+  targetPresets: McpTargetPreset[];
+  isFirstRow?: boolean;
   selectionMode: boolean;
   selectedServerIds: Set<string>;
   onSelect: (id: string) => void;
   onToggleSelection?: (id: string) => void;
   onToggleFavorite?: (server: McpServerConfig) => void | Promise<void>;
+  onQuickDeploy?: (server: McpServerConfig) => void;
   onDelete?: (server: McpServerConfig) => void;
 }
 
@@ -121,12 +126,19 @@ function ServerIconBlock({ server }: { server: McpServerConfig }) {
 
 function DistributionIndicators({
   distributedPresets,
+  className = "",
+  testId,
 }: {
   distributedPresets: McpTargetPreset[];
+  className?: string;
+  testId?: string;
 }) {
   const { t } = useTranslation();
   return (
-    <div className="flex min-h-8 items-center gap-1.5">
+    <div
+      data-testid={testId}
+      className={`flex min-h-8 items-center gap-1.5 ${className}`}
+    >
       {distributedPresets.length > 0 ? (
         distributedPresets
           .slice(0, 6)
@@ -148,6 +160,50 @@ function DistributionIndicators({
           +{distributedPresets.length - 6}
         </span>
       ) : null}
+    </div>
+  );
+}
+
+function ListDistributionIndicators({
+  distributedPresets,
+  targetPresets,
+}: {
+  distributedPresets: McpTargetPreset[];
+  targetPresets: McpTargetPreset[];
+}) {
+  const distributedPresetIds = new Set(
+    distributedPresets.map((preset) => preset.id),
+  );
+
+  if (targetPresets.length === 0) {
+    return (
+      <span className="min-w-8 text-right text-[10px] font-medium text-muted-foreground">
+        0/0
+      </span>
+    );
+  }
+
+  return (
+    <div className="flex w-28 shrink-0 items-center justify-end gap-1">
+      {targetPresets.slice(0, 3).map((preset) => {
+        const isDistributed = distributedPresetIds.has(preset.id);
+        return (
+          <div
+            key={preset.id}
+            className="flex items-center justify-center"
+            title={preset.label}
+          >
+            <PlatformIcon
+              platformId={preset.platformId ?? preset.id}
+              size={16}
+              className={isDistributed ? "opacity-100" : "opacity-40"}
+            />
+          </div>
+        );
+      })}
+      <span className="ml-1 min-w-8 text-right text-[10px] font-medium text-primary">
+        {distributedPresets.length}/{targetPresets.length}
+      </span>
     </div>
   );
 }
@@ -193,20 +249,41 @@ function ServerActions({
   server,
   favoriteLabel,
   onToggleFavorite,
+  onQuickDeploy,
   onDelete,
   variant = "row",
 }: {
   server: McpServerConfig;
   favoriteLabel: string;
   onToggleFavorite?: (server: McpServerConfig) => void | Promise<void>;
+  onQuickDeploy?: (server: McpServerConfig) => void;
   onDelete?: (server: McpServerConfig) => void;
   variant?: "card" | "row";
 }) {
   const { t } = useTranslation();
   const hiddenCardAction =
     variant === "card" ? "opacity-0 group-hover:opacity-100" : "";
+  const actionsClass =
+    variant === "card"
+      ? "flex w-full shrink-0 items-center justify-end gap-1"
+      : "flex shrink-0 items-center gap-1";
   return (
-    <div className="flex shrink-0 items-center gap-1">
+    <div
+      data-testid={variant === "card" ? "mcp-card-actions" : undefined}
+      className={actionsClass}
+    >
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          onQuickDeploy?.(server);
+        }}
+        aria-label={t("mcp.quickDeploy", "Quick Sync")}
+        className={`${hiddenCardAction} p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-all active:scale-press-in`}
+        title={t("mcp.quickDeploy", "Quick Sync")}
+      >
+        <DownloadIcon aria-hidden="true" className="w-4 h-4" />
+      </button>
       <button
         type="button"
         onClick={(event) => {
@@ -252,6 +329,7 @@ function McpServerCard({
   onSelect,
   onToggleSelection,
   onToggleFavorite,
+  onQuickDeploy,
   onDelete,
 }: McpServerItemProps) {
   const { t } = useTranslation();
@@ -321,15 +399,23 @@ function McpServerCard({
         </button>
       ) : null}
 
-      <div className="flex items-start justify-between mb-4">
+      <div className="flex items-start justify-between gap-3 mb-4">
         <ServerIconBlock server={server} />
         {!selectionMode ? (
-          <div className="flex min-h-8 items-center gap-1.5">
-            <DistributionIndicators distributedPresets={distributedPresets} />
+          <div
+            data-testid="mcp-card-header-meta"
+            className="flex min-w-0 flex-1 flex-col items-end gap-2"
+          >
+            <DistributionIndicators
+              distributedPresets={distributedPresets}
+              testId="mcp-distributed-targets"
+              className="max-w-full flex-wrap justify-end"
+            />
             <ServerActions
               server={server}
               favoriteLabel={favoriteLabel}
               onToggleFavorite={onToggleFavorite}
+              onQuickDeploy={onQuickDeploy}
               onDelete={onDelete}
               variant="card"
             />
@@ -370,11 +456,14 @@ function McpServerRow({
   selectedServerId,
   healthCheck,
   distributedPresets,
+  targetPresets,
+  isFirstRow = false,
   selectionMode,
   selectedServerIds,
   onSelect,
   onToggleSelection,
   onToggleFavorite,
+  onQuickDeploy,
   onDelete,
 }: McpServerItemProps) {
   const { t } = useTranslation();
@@ -395,7 +484,9 @@ function McpServerRow({
   return (
     <div
       data-testid={`mcp-server-row-${server.id}`}
-      className={`group flex min-h-[78px] items-center gap-3 px-5 py-3 transition-colors ${
+      className={`group flex min-h-[72px] items-center gap-3 px-5 py-3 cursor-pointer transition-colors ${
+        isFirstRow ? "" : "border-t border-border"
+      } ${
         isChecked && selectionMode
           ? "bg-primary/8"
           : isActive
@@ -441,7 +532,9 @@ function McpServerRow({
           <div className="flex items-center gap-2 min-w-0">
             <h3
               className={`truncate font-semibold leading-5 transition-colors ${
-                isActive ? "text-primary" : "text-foreground group-hover:text-primary"
+                isActive
+                  ? "text-primary"
+                  : "text-foreground group-hover:text-primary"
               }`}
             >
               {displayName}
@@ -461,9 +554,10 @@ function McpServerRow({
           ) : null}
         </div>
         {!selectionMode ? (
-          <div className="flex w-32 shrink-0 items-center justify-end">
-            <DistributionIndicators distributedPresets={distributedPresets} />
-          </div>
+          <ListDistributionIndicators
+            distributedPresets={distributedPresets}
+            targetPresets={targetPresets}
+          />
         ) : null}
         <span
           className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-medium ${getHealthBadgeClass(
@@ -481,6 +575,7 @@ function McpServerRow({
           server={server}
           favoriteLabel={favoriteLabel}
           onToggleFavorite={onToggleFavorite}
+          onQuickDeploy={onQuickDeploy}
           onDelete={onDelete}
         />
       ) : null}
@@ -505,6 +600,7 @@ export function McpServerList({
   onSelect,
   onToggleSelection,
   onToggleFavorite,
+  onQuickDeploy,
   onDelete,
 }: McpServerListProps) {
   const { t } = useTranslation();
@@ -543,26 +639,25 @@ export function McpServerList({
     return (
       <div
         data-testid="mcp-server-list-view"
-        className="overflow-hidden rounded-2xl border border-border app-wallpaper-panel"
+        className="h-full overflow-y-auto"
       >
         {items.map((item, index) => (
-          <div
+          <McpServerRow
             key={item.server.id}
-            className={index === 0 ? "" : "border-t border-border"}
-          >
-            <McpServerRow
-              server={item.server}
-              selectedServerId={selectedServerId}
-              healthCheck={item.healthCheck}
-              distributedPresets={item.distributedPresets}
-              selectionMode={selectionMode}
-              selectedServerIds={selectedServerIds}
-              onSelect={onSelect}
-              onToggleSelection={onToggleSelection}
-              onToggleFavorite={onToggleFavorite}
-              onDelete={onDelete}
-            />
-          </div>
+            server={item.server}
+            selectedServerId={selectedServerId}
+            healthCheck={item.healthCheck}
+            distributedPresets={item.distributedPresets}
+            targetPresets={targetPresets}
+            isFirstRow={index === 0}
+            selectionMode={selectionMode}
+            selectedServerIds={selectedServerIds}
+            onSelect={onSelect}
+            onToggleSelection={onToggleSelection}
+            onToggleFavorite={onToggleFavorite}
+            onQuickDeploy={onQuickDeploy}
+            onDelete={onDelete}
+          />
         ))}
       </div>
     );
@@ -585,11 +680,13 @@ export function McpServerList({
           selectedServerId={selectedServerId}
           healthCheck={item.healthCheck}
           distributedPresets={item.distributedPresets}
+          targetPresets={targetPresets}
           selectionMode={selectionMode}
           selectedServerIds={selectedServerIds}
           onSelect={onSelect}
           onToggleSelection={onToggleSelection}
           onToggleFavorite={onToggleFavorite}
+          onQuickDeploy={onQuickDeploy}
           onDelete={onDelete}
         />
       ))}

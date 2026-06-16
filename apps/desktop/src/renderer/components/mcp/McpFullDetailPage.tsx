@@ -16,9 +16,11 @@ import {
   CopyIcon,
   ExternalLinkIcon,
   GlobeIcon,
+  Loader2Icon,
   PencilIcon,
   RefreshCwIcon,
   ServerIcon,
+  StickyNoteIcon,
   UploadIcon,
   SaveIcon,
   TrashIcon,
@@ -32,6 +34,7 @@ import type {
 } from "@prompthub/shared/types/mcp";
 import { inferMcpEnvRequirements } from "@prompthub/shared/utils/mcp-config";
 import { copyTextToClipboard } from "../../utils/clipboard";
+import { Textarea } from "../ui";
 import { McpServerForm } from "./McpServerForm";
 
 type McpDetailTab = "preview" | "code";
@@ -122,8 +125,15 @@ function getSourceSummary(
     };
   }
   if (server.source.type === "import") {
+    const isAgentImport = Boolean(server.source.id || server.source.label);
+    const labelKey = isAgentImport
+      ? "mcp.sourceAgentImport"
+      : "mcp.sourceImport";
+    const fallback = isAgentImport
+      ? "Imported from Agent"
+      : "Imported from config file";
     return {
-      label: t("mcp.sourceImport", "Imported from config file"),
+      label: t(labelKey, fallback),
       value: server.source.label || server.source.id || server.name,
       url: server.source.url,
     };
@@ -252,12 +262,29 @@ export function McpFullDetailPage({
   const [isSavingEnv, setIsSavingEnv] = useState(false);
   const [envDraft, setEnvDraft] = useState<Record<string, string>>({});
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const [draftNotes, setDraftNotes] = useState(server.notes ?? "");
   const sourceSummary = useMemo(() => getSourceSummary(server, t), [server, t]);
   const configContent = useMemo(() => buildMcpConfigContent(server), [server]);
   const runtimeDetails = useMemo(() => getRuntimeDetails(server), [server]);
   const envRequirements = useMemo(
     () => inferMcpEnvRequirements(server),
     [server],
+  );
+  const envIssueByField = useMemo(
+    () =>
+      new Map(
+        (healthCheck?.issues ?? [])
+          .filter(
+            (issue) =>
+              (issue.code === "MISSING_ENV" ||
+                issue.code === "INVALID_ENV_VALUE") &&
+              Boolean(issue.field),
+          )
+          .map((issue) => [issue.field as string, issue]),
+      ),
+    [healthCheck?.issues],
   );
   const displayName = server.displayName || server.name;
 
@@ -271,6 +298,11 @@ export function McpFullDetailPage({
       ),
     );
   }, [envRequirements, server.env]);
+
+  useEffect(() => {
+    setDraftNotes(server.notes ?? "");
+    setIsEditingNotes(false);
+  }, [server.id, server.notes]);
 
   const handleCopy = async (text: string, key: string) => {
     await copyTextToClipboard(text);
@@ -333,6 +365,21 @@ export function McpFullDetailPage({
     } finally {
       setIsSavingEnv(false);
     }
+  };
+
+  const handleSaveNotes = async () => {
+    setIsSavingNotes(true);
+    try {
+      await onSave(server.id, { notes: draftNotes });
+      setIsEditingNotes(false);
+    } finally {
+      setIsSavingNotes(false);
+    }
+  };
+
+  const handleCancelNotes = () => {
+    setDraftNotes(server.notes ?? "");
+    setIsEditingNotes(false);
   };
 
   return (
@@ -607,6 +654,9 @@ export function McpFullDetailPage({
                         const missing =
                           requirement.required &&
                           (!value || /^<[^>]+>$/.test(value.trim()));
+                        const envIssue = envIssueByField.get(requirement.name);
+                        const invalid =
+                          !missing && envIssue?.code === "INVALID_ENV_VALUE";
                         return (
                           <div
                             key={requirement.name}
@@ -623,12 +673,16 @@ export function McpFullDetailPage({
                                 className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
                                   missing
                                     ? "bg-destructive/10 text-destructive"
-                                    : "bg-emerald-500/10 text-emerald-600"
+                                    : invalid
+                                      ? "bg-amber-500/10 text-amber-600"
+                                      : "bg-emerald-500/10 text-emerald-600"
                                 }`}
                               >
                                 {missing
                                   ? t("mcp.missing", "Missing")
-                                  : t("mcp.filled", "Filled")}
+                                  : invalid
+                                    ? t("mcp.invalidEnvValue", "Check format")
+                                    : t("mcp.filled", "Filled")}
                               </span>
                             </div>
                             <input
@@ -647,6 +701,11 @@ export function McpFullDetailPage({
                               className="h-9 w-full rounded-lg border border-input bg-background px-3 font-mono text-xs text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                               placeholder={t("mcp.envValue", "env value")}
                             />
+                            {invalid && envIssue?.message ? (
+                              <p className="mt-2 text-xs leading-relaxed text-amber-600">
+                                {envIssue.message}
+                              </p>
+                            ) : null}
                           </div>
                         );
                       })}
@@ -724,7 +783,88 @@ export function McpFullDetailPage({
                   </div>
                 </section>
               </div>
-              <div className="space-y-6">{platformPanel}</div>
+              <div className="space-y-6">
+                <section className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-2 text-muted-foreground">
+                      <StickyNoteIcon className="h-4 w-4 shrink-0 text-primary" />
+                      <h3 className="truncate text-xs font-semibold uppercase tracking-[0.3em]">
+                        {t("mcp.userNotes", "Personal Notes")}
+                      </h3>
+                    </div>
+                    {isEditingNotes ? (
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => void handleSaveNotes()}
+                          disabled={isSavingNotes}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
+                          aria-label={t("common.save", "Save")}
+                          title={t("common.save", "Save")}
+                        >
+                          {isSavingNotes ? (
+                            <Loader2Icon
+                              aria-hidden="true"
+                              className="h-4 w-4 animate-spin"
+                            />
+                          ) : (
+                            <SaveIcon aria-hidden="true" className="h-4 w-4" />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCancelNotes}
+                          disabled={isSavingNotes}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+                          aria-label={t("common.cancel", "Cancel")}
+                          title={t("common.cancel", "Cancel")}
+                        >
+                          <XIcon aria-hidden="true" className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingNotes(true)}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
+                        aria-label={t("mcp.editUserNotes", "Edit notes")}
+                        title={t("mcp.editUserNotes", "Edit notes")}
+                      >
+                        <PencilIcon aria-hidden="true" className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div
+                    data-testid="mcp-user-notes-card"
+                    className="app-wallpaper-panel rounded-2xl border border-border p-4"
+                  >
+                    {isEditingNotes ? (
+                      <Textarea
+                        aria-label={t("mcp.userNotes", "Personal Notes")}
+                        value={draftNotes}
+                        onChange={(event) => setDraftNotes(event.target.value)}
+                        placeholder={t(
+                          "mcp.userNotesPlaceholder",
+                          "Add private notes about how you use this MCP...",
+                        )}
+                        rows={5}
+                        disabled={isSavingNotes}
+                        className="min-h-[120px] resize-y"
+                      />
+                    ) : server.notes?.trim() ? (
+                      <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/85">
+                        {server.notes}
+                      </p>
+                    ) : (
+                      <p className="text-sm leading-relaxed text-muted-foreground">
+                        {t("mcp.userNotesEmpty", "No personal notes yet.")}
+                      </p>
+                    )}
+                  </div>
+                </section>
+                {platformPanel}
+              </div>
             </div>
           ) : (
             <div className="w-full max-w-6xl mx-auto space-y-6">

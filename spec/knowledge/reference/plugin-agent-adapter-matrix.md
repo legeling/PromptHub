@@ -49,7 +49,6 @@ These do not qualify as first-version Plugin targets:
 | OpenCode                 | `RuntimeOnly` | Official docs define a plugin as a JS/TS module or npm package that exports hook functions. It is useful, but not a bundle inventory format.             |
 | Cline SDK / CLI / Kanban | `RuntimeOnly` | Official docs define plugin entrypoints through `package.json` `cline.plugins` and `AgentPlugin` files for tools/hooks/commands, not a bundle inventory. |
 | Windsurf / Devin         | `Composite`   | Public docs describe separate Cascade skills, workflows, hooks, MCP, and IDE/plugin surfaces, but not one confirmed Agent plugin bundle format.          |
-| Roo Code                 | `Composite`   | Existing public surfaces are skills, rules, commands, MCP-like config, and extension settings; no confirmed single plugin package is modeled.            |
 | Cherry Studio            | `Composite`   | PromptHub can inspect local skill/agent registries, but no confirmed single plugin package or marketplace format is modeled.                             |
 | Amp                      | `Pending`     | Public manual access is insufficient for a stable plugin package claim in the current pass.                                                              |
 | Other Agent targets      | `Pending`     | Default to greyed out until official docs or source code prove an integrated package mechanism and PromptHub defines an adapter.                         |

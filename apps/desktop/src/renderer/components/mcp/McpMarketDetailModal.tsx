@@ -285,269 +285,287 @@ export function McpMarketDetailModal({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-6">
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
-            <div className="min-w-0 space-y-5">
-              <section className="space-y-3">
-                <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
-                  <BookOpenIcon className="h-4 w-4" aria-hidden="true" />
-                  {t("mcp.overview", "Overview")}
-                </h3>
-                <div className="rounded-2xl border border-border app-wallpaper-surface p-4">
-                  <div className="space-y-4">
-                    <div>
-                      <div className="text-[11px] font-medium text-muted-foreground">
-                        {t("mcp.whatItDoes", "What it does")}
-                      </div>
-                      <p className="mt-1 text-sm leading-6 text-foreground/85">
-                        {template.description}
-                      </p>
+          <div data-testid="mcp-market-detail-content" className="space-y-5">
+            <section className="space-y-3">
+              <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
+                <BookOpenIcon className="h-4 w-4" aria-hidden="true" />
+                {t("mcp.overview", "Overview")}
+              </h3>
+              <div className="rounded-2xl border border-border app-wallpaper-surface p-4">
+                <div className="space-y-4">
+                  <div>
+                    <div className="text-[11px] font-medium text-muted-foreground">
+                      {t("mcp.whatItDoes", "What it does")}
                     </div>
+                    <p className="mt-1 text-sm leading-6 text-foreground/85">
+                      {template.description}
+                    </p>
+                  </div>
+                  <div>
+                    <div className="text-[11px] font-medium text-muted-foreground">
+                      {t("mcp.useCases", "Use cases")}
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {template.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  {installCommand ? (
                     <div>
                       <div className="text-[11px] font-medium text-muted-foreground">
-                        {t("mcp.useCases", "Use cases")}
+                        {t("mcp.installCommand", "Install command")}
                       </div>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {template.tags.map((tag) => (
-                          <span
-                            key={tag}
-                            className="rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground"
+                      <div className="mt-1 break-words rounded-xl bg-muted/50 px-3 py-2 font-mono text-xs text-foreground">
+                        {installCommand}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </section>
+
+            <section className="space-y-3">
+              <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
+                <KeyRoundIcon className="h-4 w-4" aria-hidden="true" />
+                {t("mcp.configuration", "Configuration")}
+              </h3>
+              <div className="rounded-2xl border border-border app-wallpaper-surface p-4">
+                {hasConfigRequirements ? (
+                  <div className="space-y-4">
+                    {requiredEnvEntries.length > 0 ? (
+                      <div className="space-y-2">
+                        <div className="text-[11px] font-medium text-muted-foreground">
+                          {t(
+                            "mcp.requiredVariables",
+                            "Required environment variables",
+                          )}
+                        </div>
+                        {requiredEnvEntries.map((entry) => (
+                          <div
+                            key={entry.name}
+                            className="rounded-xl border border-border bg-background px-3 py-2"
                           >
-                            {tag}
-                          </span>
+                            <div className="font-mono text-xs font-semibold text-foreground">
+                              {entry.name}
+                            </div>
+                            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                              {entry.description}
+                            </p>
+                          </div>
                         ))}
                       </div>
-                    </div>
-                    {installCommand ? (
-                      <div>
+                    ) : null}
+                    {placeholderEntries.length > 0 ? (
+                      <div className="space-y-2">
                         <div className="text-[11px] font-medium text-muted-foreground">
-                          {t("mcp.installCommand", "Install command")}
+                          {t("mcp.requiredValues", "Required values")}
                         </div>
-                        <div className="mt-1 break-words rounded-xl bg-muted/50 px-3 py-2 font-mono text-xs text-foreground">
-                          {installCommand}
-                        </div>
+                        {placeholderEntries.map((entry) => (
+                          <div
+                            key={entry.name}
+                            className="rounded-xl border border-border bg-background px-3 py-2"
+                          >
+                            <div className="font-mono text-xs font-semibold text-foreground">
+                              {entry.name}
+                            </div>
+                            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                              {entry.description}
+                            </p>
+                          </div>
+                        ))}
                       </div>
                     ) : null}
                   </div>
-                </div>
-              </section>
+                ) : (
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    {t(
+                      "mcp.noExtraConfigRequired",
+                      "No API key or extra value is required for this template. Install it, then adjust paths or permissions if the target platform asks for them.",
+                    )}
+                  </p>
+                )}
+              </div>
+            </section>
 
-              <section className="space-y-3">
-                <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
-                  <KeyRoundIcon className="h-4 w-4" aria-hidden="true" />
-                  {t("mcp.configuration", "Configuration")}
-                </h3>
-                <div className="rounded-2xl border border-border app-wallpaper-surface p-4">
-                  {hasConfigRequirements ? (
-                    <div className="space-y-4">
-                      {requiredEnvEntries.length > 0 ? (
-                        <div className="space-y-2">
-                          <div className="text-[11px] font-medium text-muted-foreground">
-                            {t(
-                              "mcp.requiredVariables",
-                              "Required environment variables",
-                            )}
-                          </div>
-                          {requiredEnvEntries.map((entry) => (
-                            <div
-                              key={entry.name}
-                              className="rounded-xl border border-border bg-background px-3 py-2"
-                            >
-                              <div className="font-mono text-xs font-semibold text-foreground">
-                                {entry.name}
-                              </div>
-                              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                                {entry.description}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      ) : null}
-                      {placeholderEntries.length > 0 ? (
-                        <div className="space-y-2">
-                          <div className="text-[11px] font-medium text-muted-foreground">
-                            {t("mcp.requiredValues", "Required values")}
-                          </div>
-                          {placeholderEntries.map((entry) => (
-                            <div
-                              key={entry.name}
-                              className="rounded-xl border border-border bg-background px-3 py-2"
-                            >
-                              <div className="font-mono text-xs font-semibold text-foreground">
-                                {entry.name}
-                              </div>
-                              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                                {entry.description}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : (
-                    <p className="text-sm leading-6 text-muted-foreground">
-                      {t(
-                        "mcp.noExtraConfigRequired",
-                        "No API key or extra value is required for this template. Install it, then adjust paths or permissions if the target platform asks for them.",
-                      )}
-                    </p>
-                  )}
-                </div>
-              </section>
-
-              <section className="space-y-3">
-                <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
-                  {t("skill.metadata", "Metadata")}
-                </h3>
+            <section
+              data-testid="mcp-market-source-section"
+              className="space-y-3"
+            >
+              <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
+                {t("mcp.sourceMarket", "Imported from MCP Store")}
+              </h3>
+              <div className="rounded-2xl border border-border app-wallpaper-surface p-4">
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <DetailRow
-                    label={t("mcp.name", "Name")}
-                    value={template.name}
-                  />
-                  <DetailRow
-                    label={t("mcp.transport", "Transport")}
-                    value={template.transport}
-                  />
-                  <DetailRow
-                    label={t("mcp.source", "Source")}
-                    value={template.source?.label}
-                  />
-                  <DetailRow
-                    label={t("mcp.runtime", "Runtime")}
-                    value={template.runtime}
-                  />
-                  <DetailRow
-                    label={t("mcp.packageOrScript", "Package / Script")}
-                    value={template.packageName}
-                  />
-                  <DetailRow
-                    label={t("mcp.command", "Command")}
-                    value={
-                      template.transport === "stdio"
-                        ? [template.command, ...(template.args ?? [])]
-                            .filter(Boolean)
-                            .join(" ")
-                        : template.url
-                    }
-                  />
-                  <DetailRow
-                    label={t("mcp.env", "Environment")}
-                    value={envKeys}
-                  />
-                  <DetailRow
-                    label={t("mcp.headers", "Headers")}
-                    value={headerKeys}
-                  />
-                </div>
-              </section>
-
-              <section className="space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
-                    {t("common.content", "Source")}
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={() => void handleCopy()}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-accent/50 px-3 py-1.5 text-xs transition-colors hover:bg-accent"
-                  >
-                    {copyStatus ? (
-                      <CheckIcon
-                        className="h-3.5 w-3.5 text-green-500"
+                  {template.homepage ? (
+                    <a
+                      href={template.homepage}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    >
+                      <ExternalLinkIcon
+                        className="h-4 w-4"
                         aria-hidden="true"
                       />
-                    ) : (
-                      <CopyIcon className="h-3.5 w-3.5" aria-hidden="true" />
-                    )}
-                    {copyStatus
-                      ? t("skill.copied", "Copied")
-                      : t("mcp.copyConfig", "Copy config")}
-                  </button>
+                      {t("mcp.officialLink", "Official link")}
+                    </a>
+                  ) : null}
+
+                  {template.documentationUrl &&
+                  template.documentationUrl !== template.homepage ? (
+                    <a
+                      href={template.documentationUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    >
+                      <ExternalLinkIcon
+                        className="h-4 w-4"
+                        aria-hidden="true"
+                      />
+                      {t("mcp.documentation", "Documentation")}
+                    </a>
+                  ) : null}
+
+                  {template.repository &&
+                  template.repository !== template.homepage ? (
+                    <a
+                      href={template.repository}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    >
+                      <ExternalLinkIcon
+                        className="h-4 w-4"
+                        aria-hidden="true"
+                      />
+                      {t("mcp.repository", "Repository")}
+                    </a>
+                  ) : null}
                 </div>
-                <div className="overflow-hidden rounded-2xl border border-border app-wallpaper-panel">
-                  <pre className="max-h-[44vh] overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-5 text-foreground/80">
-                    {configContent}
-                  </pre>
-                </div>
-              </section>
-            </div>
-
-            <aside className="space-y-3">
-              <button
-                type="button"
-                onClick={() => void handleInstall()}
-                disabled={isInstalled || isInstalling}
-                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
-              >
-                {isInstalling ? (
-                  <Loader2Icon
-                    className="h-4 w-4 animate-spin"
-                    aria-hidden="true"
-                  />
-                ) : isInstalled ? (
-                  <CheckIcon className="h-4 w-4" aria-hidden="true" />
-                ) : (
-                  <PlusIcon className="h-4 w-4" aria-hidden="true" />
-                )}
-                {isInstalled
-                  ? t("common.installed", "Installed")
-                  : isInstalling
-                    ? t("skill.installing", "Installing...")
-                    : t("common.install", "Install")}
-              </button>
-
-              {template.homepage ? (
-                <a
-                  href={template.homepage}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-border text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                >
-                  <ExternalLinkIcon className="h-4 w-4" aria-hidden="true" />
-                  {t("mcp.officialLink", "Official link")}
-                </a>
-              ) : null}
-
-              {template.documentationUrl &&
-              template.documentationUrl !== template.homepage ? (
-                <a
-                  href={template.documentationUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-border text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                >
-                  <ExternalLinkIcon className="h-4 w-4" aria-hidden="true" />
-                  {t("mcp.documentation", "Documentation")}
-                </a>
-              ) : null}
-
-              {template.repository &&
-              template.repository !== template.homepage ? (
-                <a
-                  href={template.repository}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-border text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                >
-                  <ExternalLinkIcon className="h-4 w-4" aria-hidden="true" />
-                  {t("mcp.repository", "Repository")}
-                </a>
-              ) : null}
-
-              <div className="rounded-2xl border border-border app-wallpaper-surface p-4">
-                <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  {t("mcp.sourceMarket", "Imported from MCP Store")}
-                </div>
-                <div className="mt-2 break-words font-mono text-xs text-foreground/80">
-                  {template.source?.url || template.homepage || template.id}
-                </div>
-                {template.source?.trustLevel ? (
-                  <div className="mt-2 inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-                    {template.source.trustLevel}
+                <div className="mt-3 rounded-xl border border-border bg-background px-3 py-2">
+                  <div className="break-words font-mono text-xs text-foreground/80">
+                    {template.source?.url || template.homepage || template.id}
                   </div>
-                ) : null}
+                  {template.source?.trustLevel ? (
+                    <div className="mt-2 inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                      {template.source.trustLevel}
+                    </div>
+                  ) : null}
+                </div>
               </div>
-            </aside>
+            </section>
+
+            <section className="space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
+                {t("skill.metadata", "Metadata")}
+              </h3>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <DetailRow
+                  label={t("mcp.name", "Name")}
+                  value={template.name}
+                />
+                <DetailRow
+                  label={t("mcp.transport", "Transport")}
+                  value={template.transport}
+                />
+                <DetailRow
+                  label={t("mcp.source", "Source")}
+                  value={template.source?.label}
+                />
+                <DetailRow
+                  label={t("mcp.runtime", "Runtime")}
+                  value={template.runtime}
+                />
+                <DetailRow
+                  label={t("mcp.packageOrScript", "Package / Script")}
+                  value={template.packageName}
+                />
+                <DetailRow
+                  label={t("mcp.command", "Command")}
+                  value={
+                    template.transport === "stdio"
+                      ? [template.command, ...(template.args ?? [])]
+                          .filter(Boolean)
+                          .join(" ")
+                      : template.url
+                  }
+                />
+                <DetailRow
+                  label={t("mcp.env", "Environment")}
+                  value={envKeys}
+                />
+                <DetailRow
+                  label={t("mcp.headers", "Headers")}
+                  value={headerKeys}
+                />
+              </div>
+            </section>
+
+            <section className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
+                  {t("common.content", "Source")}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => void handleCopy()}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-accent/50 px-3 py-1.5 text-xs transition-colors hover:bg-accent"
+                >
+                  {copyStatus ? (
+                    <CheckIcon
+                      className="h-3.5 w-3.5 text-green-500"
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <CopyIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                  )}
+                  {copyStatus
+                    ? t("skill.copied", "Copied")
+                    : t("mcp.copyConfig", "Copy config")}
+                </button>
+              </div>
+              <div className="overflow-hidden rounded-2xl border border-border app-wallpaper-panel">
+                <pre className="max-h-[44vh] overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-5 text-foreground/80">
+                  {configContent}
+                </pre>
+              </div>
+            </section>
           </div>
+        </div>
+
+        <div
+          data-testid="mcp-market-install-footer"
+          className="shrink-0 border-t border-border p-5"
+        >
+          <button
+            type="button"
+            onClick={() => void handleInstall()}
+            disabled={isInstalled || isInstalling}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isInstalling ? (
+              <Loader2Icon
+                className="h-4 w-4 animate-spin"
+                aria-hidden="true"
+              />
+            ) : isInstalled ? (
+              <CheckIcon className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <PlusIcon className="h-4 w-4" aria-hidden="true" />
+            )}
+            {isInstalled
+              ? t("common.installed", "Installed")
+              : isInstalling
+                ? t("skill.installing", "Installing...")
+                : t("common.install", "Install")}
+          </button>
         </div>
       </div>
     </div>

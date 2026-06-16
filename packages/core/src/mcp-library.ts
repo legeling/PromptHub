@@ -6,27 +6,28 @@ import {
   BUILTIN_MCP_MARKET_SOURCES,
   BUILTIN_MCP_MARKET_TEMPLATES,
 } from "@prompthub/shared/constants/mcp-market";
-import type {
-  McpEnvImportResult,
-  McpCreateFromSourceRequest,
-  McpCreateFromSourceResult,
-  McpHealthCheckResult,
-  McpHealthIssue,
-  McpHealthStatus,
-  McpApplyResult,
-  McpApplyTarget,
-  McpImportResult,
-  McpLibraryFile,
-  McpMarketTemplate,
-  McpMarketSource,
-  McpRemoveResult,
-  McpRemoveTargetNames,
-  McpServerConfig,
-  McpServerDraft,
-  McpTargetBinding,
-  McpTargetKind,
-  McpTargetScope,
-  McpTargetStatusEntry,
+import {
+  isMcpTargetKind,
+  type McpEnvImportResult,
+  type McpCreateFromSourceRequest,
+  type McpCreateFromSourceResult,
+  type McpHealthCheckResult,
+  type McpHealthIssue,
+  type McpHealthStatus,
+  type McpApplyResult,
+  type McpApplyTarget,
+  type McpImportResult,
+  type McpLibraryFile,
+  type McpMarketTemplate,
+  type McpMarketSource,
+  type McpRemoveResult,
+  type McpRemoveTargetNames,
+  type McpServerConfig,
+  type McpServerDraft,
+  type McpTargetBinding,
+  type McpTargetKind,
+  type McpTargetScope,
+  type McpTargetStatusEntry,
 } from "@prompthub/shared/types/mcp";
 import {
   buildMcpConfigPreview,
@@ -201,14 +202,6 @@ export function getMcpTargetPresets(
       path: path.join(homeDir, ".cline", "cline_mcp_settings.json"),
       platformId: "cline",
     },
-    {
-      id: "roo",
-      target: "roo",
-      scope: "global",
-      label: "Roo Code",
-      path: path.join(homeDir, ".roo", "mcp_settings.json"),
-      platformId: "roo",
-    },
   ];
 }
 
@@ -255,6 +248,7 @@ function normalizeLibrary(raw: Partial<McpLibraryFile>): McpLibraryFile {
               binding &&
               typeof binding === "object" &&
               typeof binding.id === "string" &&
+              isMcpTargetKind(binding.target) &&
               typeof binding.path === "string" &&
               Array.isArray(binding.serverIds),
             ),
@@ -409,6 +403,49 @@ function getHealthStatus(issues: McpHealthIssue[]): McpHealthStatus {
   return "ok";
 }
 
+function validateKnownEnvValue(name: string, value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const validators: Record<string, { pattern: RegExp; example: string }> = {
+    AMAP_MAPS_API_KEY: {
+      pattern: /^[A-Za-z0-9]{16,64}$/,
+      example: "a 16-64 character AMap key",
+    },
+    BRAVE_API_KEY: {
+      pattern: /^BSA[0-9A-Za-z_-]{20,}$/,
+      example: "a Brave key starting with BSA",
+    },
+    FIRECRAWL_API_KEY: {
+      pattern: /^fc-[0-9A-Za-z_-]{20,}$/,
+      example: "a Firecrawl key starting with fc-",
+    },
+    GITHUB_PERSONAL_ACCESS_TOKEN: {
+      pattern: /^(ghp|github_pat|gho|ghu|ghs|ghr)_[0-9A-Za-z_]{20,}$/,
+      example: "a GitHub token such as ghp_... or github_pat_...",
+    },
+    GOOGLE_MAPS_API_KEY: {
+      pattern: /^AIza[0-9A-Za-z_-]{20,}$/,
+      example: "a Google Maps key starting with AIza",
+    },
+    SLACK_BOT_TOKEN: {
+      pattern: /^xoxb-[0-9A-Za-z-]{20,}$/,
+      example: "a Slack bot token starting with xoxb-",
+    },
+    SLACK_TEAM_ID: {
+      pattern: /^T[A-Z0-9]{8,}$/,
+      example: "a Slack workspace/team id such as T01234567",
+    },
+  };
+  const validator = validators[name];
+  if (!validator || validator.pattern.test(trimmed)) {
+    return null;
+  }
+  return `${name} 格式看起来不正确，应填写 ${validator.example}`;
+}
+
 function createHealthResult(server: McpServerConfig): McpHealthCheckResult {
   const issues: McpHealthIssue[] = [];
   if (server.transport === "stdio") {
@@ -460,6 +497,18 @@ function createHealthResult(server: McpServerConfig): McpHealthCheckResult {
         field: requirement.name,
         message: `缺少环境变量: ${requirement.name}`,
       });
+      continue;
+    }
+    if (value) {
+      const invalidMessage = validateKnownEnvValue(requirement.name, value);
+      if (invalidMessage) {
+        issues.push({
+          code: "INVALID_ENV_VALUE",
+          severity: "warning",
+          field: requirement.name,
+          message: invalidMessage,
+        });
+      }
     }
   }
 
@@ -491,12 +540,23 @@ function importServerEntry(
     return null;
   }
   const record = entry as Record<string, unknown>;
+  const commandParts = Array.isArray(record.command)
+    ? record.command.filter((item): item is string => typeof item === "string")
+    : [];
   const command =
-    typeof record.command === "string" ? record.command : undefined;
+    typeof record.command === "string" ? record.command : commandParts[0];
   const url = typeof record.url === "string" ? record.url : undefined;
   if (!command && !url) {
     return null;
   }
+  const args =
+    commandParts.length > 0
+      ? commandParts.slice(1)
+      : Array.isArray(record.args)
+        ? record.args.filter((item): item is string => typeof item === "string")
+        : undefined;
+  const envRecord = record.env ?? record.environment;
+  const headersRecord = record.headers ?? record.http_headers;
 
   return normalizeMcpServerDraft(
     {
@@ -510,22 +570,18 @@ function importServerEntry(
           ? "sse"
           : "streamable-http",
       command,
-      args: Array.isArray(record.args)
-        ? record.args.filter((item): item is string => typeof item === "string")
-        : undefined,
+      args,
       cwd: typeof record.cwd === "string" ? record.cwd : undefined,
       env:
-        record.env &&
-        typeof record.env === "object" &&
-        !Array.isArray(record.env)
-          ? (record.env as Record<string, string>)
+        envRecord && typeof envRecord === "object" && !Array.isArray(envRecord)
+          ? (envRecord as Record<string, string>)
           : undefined,
       url,
       headers:
-        record.headers &&
-        typeof record.headers === "object" &&
-        !Array.isArray(record.headers)
-          ? (record.headers as Record<string, string>)
+        headersRecord &&
+        typeof headersRecord === "object" &&
+        !Array.isArray(headersRecord)
+          ? (headersRecord as Record<string, string>)
           : undefined,
       source: { type: "import" },
     },
@@ -631,21 +687,82 @@ function parseCodexTomlServers(
   return servers;
 }
 
-function readImportServers(filePath: string, now: number): McpServerConfig[] {
-  const content = fs.readFileSync(filePath, "utf8");
-  if (path.extname(filePath).toLowerCase() === ".toml") {
-    return parseCodexTomlServers(content, now);
-  }
+function parseJsonImportServers(
+  content: string,
+  now: number,
+): McpServerConfig[] {
   const raw = JSON.parse(content) as Record<string, unknown>;
   const source =
     raw.mcpServers && typeof raw.mcpServers === "object"
       ? raw.mcpServers
       : raw.servers && typeof raw.servers === "object"
         ? raw.servers
-        : {};
+        : raw.mcp && typeof raw.mcp === "object"
+          ? raw.mcp
+          : {};
   return Object.entries(source)
     .map(([name, entry]) => importServerEntry(name, entry, now))
     .filter((server): server is McpServerConfig => Boolean(server));
+}
+
+function readImportServersFromContent(
+  content: string,
+  now: number,
+  format?: "json" | "toml",
+): McpServerConfig[] {
+  const trimmed = content.trim();
+  if (!trimmed) {
+    return [];
+  }
+  if (format === "toml") {
+    return parseCodexTomlServers(trimmed, now);
+  }
+  if (format === "json") {
+    return parseJsonImportServers(trimmed, now);
+  }
+  try {
+    return parseJsonImportServers(trimmed, now);
+  } catch {
+    const servers = parseCodexTomlServers(trimmed, now);
+    if (servers.length > 0) {
+      return servers;
+    }
+    throw new Error("Invalid MCP config content");
+  }
+}
+
+function readImportServers(filePath: string, now: number): McpServerConfig[] {
+  const content = fs.readFileSync(filePath, "utf8");
+  const format =
+    path.extname(filePath).toLowerCase() === ".toml" ? "toml" : "json";
+  return readImportServersFromContent(content, now, format);
+}
+
+function mergeImportedServers(
+  library: McpLibraryFile,
+  sourceServers: McpServerConfig[],
+): McpImportResult & { library: McpLibraryFile } {
+  const imported: McpServerConfig[] = [];
+  const skipped: string[] = [];
+  const existingNames = new Set(library.servers.map((server) => server.name));
+
+  for (const server of sourceServers) {
+    if (existingNames.has(server.name)) {
+      skipped.push(server.name);
+      continue;
+    }
+    imported.push(server);
+    existingNames.add(server.name);
+  }
+
+  return {
+    imported,
+    skipped,
+    library:
+      imported.length > 0
+        ? { ...library, servers: [...imported, ...library.servers] }
+        : library,
+  };
 }
 
 function readTargetServers(
@@ -819,7 +936,10 @@ export class CoreMcpLibraryService {
       (server) => server.enabled,
     );
     if (servers.length === 0) {
-      throw new CoreMcpError("NO_ENABLED_SERVERS", "没有已启用的 MCP 服务可分发");
+      throw new CoreMcpError(
+        "NO_ENABLED_SERVERS",
+        "没有已启用的 MCP 服务可分发",
+      );
     }
     const existingContent = fs.existsSync(target.path)
       ? fs.readFileSync(target.path, "utf8")
@@ -1084,32 +1204,34 @@ export class CoreMcpLibraryService {
     const library = this.read();
     const now = nowMs();
     const sourceServers = readImportServers(filePath, now);
-    const imported: McpServerConfig[] = [];
-    const skipped: string[] = [];
-    const existingNames = new Set(library.servers.map((server) => server.name));
-
-    for (const server of sourceServers) {
-      if (existingNames.has(server.name)) {
-        skipped.push(server.name);
-        continue;
-      }
-      imported.push(server);
-      existingNames.add(server.name);
+    const result = mergeImportedServers(library, sourceServers);
+    if (result.imported.length > 0) {
+      this.write(result.library);
     }
 
-    if (imported.length > 0) {
-      this.write({
-        ...library,
-        servers: [...imported, ...library.servers],
-      });
-    }
-
-    return { imported, skipped };
+    return { imported: result.imported, skipped: result.skipped };
   }
 
   createFromSource(
     request: McpCreateFromSourceRequest,
   ): McpCreateFromSourceResult {
+    if (request.kind === "config") {
+      const library = this.read();
+      const now = nowMs();
+      const sourceServers = readImportServersFromContent(request.input, now);
+      const result = mergeImportedServers(library, sourceServers);
+      if (result.imported.length > 0) {
+        this.write(result.library);
+      }
+
+      return {
+        imported: result.imported,
+        skipped: result.skipped,
+        detectedKind: "config-content",
+        warnings: [],
+      };
+    }
+
     const inference = inferMcpSource(request.input, request.kind);
     if (inference.detectedKind === "config-file") {
       const result = this.importFromFile(path.resolve(request.input));

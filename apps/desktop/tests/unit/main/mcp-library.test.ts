@@ -44,6 +44,86 @@ describe("CoreMcpLibraryService", () => {
     expect(service.read().servers).toHaveLength(1);
   });
 
+  it("preconfigures only usable MCP stores with installable templates", () => {
+    const service = new CoreMcpLibraryService();
+
+    const sources = service.getMarketSources();
+    const templates = service.getMarketTemplates();
+    const templateCounts = new Map<string, number>();
+    for (const template of templates) {
+      const sourceId = template.source?.id;
+      if (sourceId) {
+        templateCounts.set(sourceId, (templateCounts.get(sourceId) ?? 0) + 1);
+      }
+    }
+
+    expect(sources.map((source) => source.id)).toEqual([
+      "modelcontextprotocol",
+      "prompthub-curated",
+      "prompthub-community",
+    ]);
+    for (const source of sources) {
+      expect(templateCounts.get(source.id) ?? 0).toBeGreaterThan(0);
+    }
+    expect([...templateCounts.keys()].sort()).toEqual(
+      sources.map((source) => source.id).sort(),
+    );
+  });
+
+  it("drops legacy Roo target bindings when reading the MCP library", () => {
+    const service = new CoreMcpLibraryService();
+    const server = service.createServer({
+      name: "filesystem",
+      displayName: "Filesystem",
+      transport: "stdio",
+      command: "npx",
+      args: ["@modelcontextprotocol/server-filesystem"],
+    });
+    const filePath = getMcpLibraryFilePath();
+    const current = service.read();
+
+    fs.writeFileSync(
+      filePath,
+      `${JSON.stringify(
+        {
+          ...current,
+          bindings: [
+            {
+              id: "codex:global:/Users/test/.codex/config.toml",
+              target: "codex",
+              scope: "global",
+              path: "/Users/test/.codex/config.toml",
+              serverIds: [server.id],
+              enabled: true,
+              createdAt: 1,
+              updatedAt: 1,
+            },
+            {
+              id: "roo:global:/Users/test/.roo/mcp_settings.json",
+              target: "roo",
+              scope: "global",
+              path: "/Users/test/.roo/mcp_settings.json",
+              serverIds: [server.id],
+              enabled: true,
+              createdAt: 1,
+              updatedAt: 1,
+            },
+          ],
+        },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
+
+    expect(service.read().bindings).toEqual([
+      expect.objectContaining({
+        id: "codex:global:/Users/test/.codex/config.toml",
+        target: "codex",
+      }),
+    ]);
+  });
+
   it("updates and deletes library servers without mutating unrelated records", () => {
     const service = new CoreMcpLibraryService();
     const fetch = service.createServer({
@@ -243,7 +323,9 @@ describe("CoreMcpLibraryService", () => {
         serverIds: [server.id],
       }),
     ).toThrow(/同名 MCP 服务/);
-    expect(JSON.parse(fs.readFileSync(targetPath, "utf8")).mcpServers.fetch).toEqual({
+    expect(
+      JSON.parse(fs.readFileSync(targetPath, "utf8")).mcpServers.fetch,
+    ).toEqual({
       command: "node",
     });
     expect(fs.readdirSync(path.dirname(targetPath))).toEqual(["mcp.json"]);
@@ -308,7 +390,12 @@ describe("CoreMcpLibraryService", () => {
         MEMORY_FILE_PATH: "/tmp/memory.json",
       },
     });
-    const targetPath = path.join(userDataPath, ".config", "opencode", "opencode.json");
+    const targetPath = path.join(
+      userDataPath,
+      ".config",
+      "opencode",
+      "opencode.json",
+    );
     fs.mkdirSync(path.dirname(targetPath), { recursive: true });
     fs.writeFileSync(
       targetPath,
@@ -587,6 +674,62 @@ describe("CoreMcpLibraryService", () => {
     });
   });
 
+  it("creates MCP servers from pasted JSON config content", () => {
+    const service = new CoreMcpLibraryService();
+
+    const result = service.createFromSource({
+      kind: "config",
+      input: JSON.stringify({
+        mcpServers: {
+          memory: {
+            command: "npx",
+            args: ["-y", "@modelcontextprotocol/server-memory"],
+            env: { MEMORY_FILE_PATH: "/tmp/memory.json" },
+          },
+        },
+      }),
+    });
+
+    expect(result).toMatchObject({
+      detectedKind: "config-content",
+      warnings: [],
+      skipped: [],
+    });
+    expect(result.imported[0]).toMatchObject({
+      name: "memory",
+      command: "npx",
+      args: ["-y", "@modelcontextprotocol/server-memory"],
+      env: { MEMORY_FILE_PATH: "/tmp/memory.json" },
+      source: { type: "import" },
+    });
+    expect(service.read().servers.map((server) => server.name)).toEqual([
+      "memory",
+    ]);
+  });
+
+  it("creates MCP servers from pasted Codex TOML config content", () => {
+    const service = new CoreMcpLibraryService();
+
+    const result = service.createFromSource({
+      kind: "config",
+      input: [
+        "[mcp_servers.filesystem]",
+        'command = "npx"',
+        'args = ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]',
+      ].join("\n"),
+    });
+
+    expect(result).toMatchObject({
+      detectedKind: "config-content",
+      skipped: [],
+    });
+    expect(result.imported[0]).toMatchObject({
+      name: "filesystem",
+      command: "npx",
+      args: ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+    });
+  });
+
   it("selectively imports only required env keys for a server", () => {
     const service = new CoreMcpLibraryService();
     const server = service.createServer({
@@ -677,6 +820,38 @@ describe("CoreMcpLibraryService", () => {
       ]),
     });
     expect(service.checkAllServers()).toHaveLength(2);
+  });
+
+  it("warns when known MCP env values do not match expected token formats", () => {
+    const service = new CoreMcpLibraryService();
+    const slack = service.createServer({
+      name: "slack",
+      displayName: "Slack",
+      transport: "stdio",
+      command: process.execPath,
+      args: ["@modelcontextprotocol/server-slack"],
+      env: {
+        SLACK_BOT_TOKEN: "123",
+        SLACK_TEAM_ID: "123",
+      },
+    });
+
+    expect(service.checkServer(slack.id)).toMatchObject({
+      serverId: slack.id,
+      status: "warning",
+      issues: expect.arrayContaining([
+        expect.objectContaining({
+          code: "INVALID_ENV_VALUE",
+          severity: "warning",
+          field: "SLACK_BOT_TOKEN",
+        }),
+        expect.objectContaining({
+          code: "INVALID_ENV_VALUE",
+          severity: "warning",
+          field: "SLACK_TEAM_ID",
+        }),
+      ]),
+    });
   });
 
   it("applies Codex TOML targets with a backup and managed block", () => {
@@ -968,6 +1143,7 @@ describe("CoreMcpLibraryService", () => {
       presets.map((preset) => [preset.id, preset]),
     );
 
+    expect(byId.roo).toBeUndefined();
     expect(byId.claude.path).toBe("/Users/test/.claude.json");
     expect(byId.codex.path).toBe("/Users/test/.codex/config.toml");
     expect(byId.gemini.path).toBe("/Users/test/.gemini/settings.json");

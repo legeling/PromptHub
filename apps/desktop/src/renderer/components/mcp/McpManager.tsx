@@ -18,6 +18,7 @@ import {
   ServerIcon,
   SquareIcon,
   StarIcon,
+  TagsIcon,
   TrashIcon,
   XIcon,
 } from "lucide-react";
@@ -27,6 +28,7 @@ import type {
   McpApplyTarget,
   McpServerConfig,
   McpServerDraft,
+  McpTargetStatusEntry,
 } from "@prompthub/shared/types/mcp";
 import { useMcpStore } from "../../stores/mcp.store";
 import { Spinner } from "../ui/Spinner";
@@ -34,14 +36,15 @@ import { Select, type SelectOption } from "../ui/Select";
 import { useToast } from "../ui/Toast";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { McpAgentsView } from "./McpAgentsView";
+import { McpBatchDeployDialog } from "./McpBatchDeployDialog";
+import { McpBatchTagDialog } from "./McpBatchTagDialog";
 import { McpCreateModal } from "./McpCreateModal";
 import { McpFullDetailPage } from "./McpFullDetailPage";
+import { McpLibraryDeployDialog } from "./McpLibraryDeployDialog";
 import { McpMarketView } from "./McpMarketView";
 import { McpPlatformPanel } from "./McpPlatformPanel";
-import {
-  McpServerList,
-  type McpServerViewMode,
-} from "./McpServerList";
+import { McpServerList, type McpServerViewMode } from "./McpServerList";
+import { updateMcpTags, type McpBatchTagMode } from "./batch-utils";
 import { isServerOnPreset } from "./mcp-form-utils";
 
 const OPEN_CREATE_MCP_MODAL_EVENT = "open-create-mcp-modal";
@@ -147,6 +150,43 @@ function matchesMcpSearch(server: McpServerConfig, query: string): boolean {
     .includes(query);
 }
 
+function findAgentMcpServer(
+  targetStatus: McpTargetStatusEntry[],
+  presetId: string,
+  serverName: string,
+): McpServerConfig | null {
+  return (
+    targetStatus
+      .find((entry) => entry.presetId === presetId)
+      ?.servers?.find((server) => server.name === serverName) ?? null
+  );
+}
+
+function buildAgentMcpImportDraft(
+  server: McpServerConfig,
+  preset: McpTargetPreset,
+): McpServerDraft {
+  return {
+    name: server.name,
+    displayName: server.displayName || server.name,
+    description: server.description,
+    transport: server.transport,
+    command: server.command,
+    args: server.args,
+    cwd: server.cwd,
+    env: server.env,
+    url: server.url,
+    headers: server.headers,
+    enabled: server.enabled,
+    tags: server.tags,
+    source: {
+      type: "import",
+      id: preset.id,
+      label: preset.label,
+    },
+  };
+}
+
 /**
  * MCP module orchestrator. Library tab shows the Skill-style list/detail
  * layout with the platform integration panel; Agent tab shows the platform
@@ -170,6 +210,13 @@ export function McpManager() {
   const [pageSize, setPageSize] = useState(DEFAULT_MCP_LIST_PAGE_SIZE);
   const [currentPage, setCurrentPage] = useState(1);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [showBatchDeployDialog, setShowBatchDeployDialog] = useState(false);
+  const [showBatchTagDialog, setShowBatchTagDialog] = useState(false);
+  const [quickDeployServerId, setQuickDeployServerId] = useState<string | null>(
+    null,
+  );
+  const [agentDeployPreset, setAgentDeployPreset] =
+    useState<McpTargetPreset | null>(null);
   const [selectedServerIds, setSelectedServerIds] = useState<Set<string>>(
     new Set(),
   );
@@ -192,6 +239,7 @@ export function McpManager() {
     targetPresets,
     targetStatus,
     selectedTab,
+    selectedMarketSourceId,
     searchQuery,
     isLoading,
     error,
@@ -203,7 +251,6 @@ export function McpManager() {
     updateServer,
     deleteServer,
     installTemplate,
-    importFile,
     importEnv,
     checkServer,
     applyTarget,
@@ -424,12 +471,27 @@ export function McpManager() {
     () => servers.filter((server) => selectedServerIds.has(server.id)),
     [selectedServerIds, servers],
   );
+  const quickDeployServer = useMemo(
+    () =>
+      quickDeployServerId
+        ? (servers.find((server) => server.id === quickDeployServerId) ?? null)
+        : null,
+    [quickDeployServerId, servers],
+  );
+  const deployDialogServers = showBatchDeployDialog
+    ? selectedServers
+    : quickDeployServer
+      ? [quickDeployServer]
+      : [];
   const allVisibleSelected = useMemo(
     () =>
       visibleServers.length > 0 &&
       visibleServers.every((server) => selectedServerIds.has(server.id)),
     [selectedServerIds, visibleServers],
   );
+  const selectedServersAllFavorite =
+    selectedServers.length > 0 &&
+    selectedServers.every((server) => server.isFavorite);
 
   useEffect(() => {
     if (
@@ -470,8 +532,7 @@ export function McpManager() {
     const message =
       applyError instanceof Error ? applyError.message : String(applyError);
     return (
-      message.includes("TARGET_CONFLICT") ||
-      message.includes("同名 MCP 服务")
+      message.includes("TARGET_CONFLICT") || message.includes("同名 MCP 服务")
     );
   };
 
@@ -562,6 +623,85 @@ export function McpManager() {
     }
   };
 
+  const handleBatchTags = () => {
+    if (selectedServers.length === 0) {
+      return;
+    }
+    setShowBatchTagDialog(true);
+  };
+
+  const handleBatchDeploy = () => {
+    if (selectedServers.length === 0) {
+      return;
+    }
+    setQuickDeployServerId(null);
+    setShowBatchDeployDialog(true);
+  };
+
+  const handleQuickDeploy = (server: McpServerConfig) => {
+    setShowBatchDeployDialog(false);
+    setQuickDeployServerId(server.id);
+  };
+
+  const closeDeployDialog = () => {
+    setShowBatchDeployDialog(false);
+    setQuickDeployServerId(null);
+  };
+
+  const handleOpenAgentDeployDialog = (preset: McpTargetPreset) => {
+    setAgentDeployPreset(preset);
+  };
+
+  const handleAgentDeployFromLibrary = async (serverIds: string[]) => {
+    if (!agentDeployPreset) {
+      return;
+    }
+    await applyPresetsToServers([agentDeployPreset], serverIds);
+    setAgentDeployPreset(null);
+  };
+
+  const handleBatchTagSubmit = async (tag: string, mode: McpBatchTagMode) => {
+    const results = await Promise.allSettled(
+      selectedServers.map(async (server) => {
+        const nextTags = updateMcpTags(server.tags, tag, mode);
+        const previousTags = server.tags || [];
+
+        if (JSON.stringify(nextTags) === JSON.stringify(previousTags)) {
+          return { updated: false };
+        }
+
+        await updateServer(server.id, { tags: nextTags });
+        return { updated: true };
+      }),
+    );
+    const updatedCount = results.filter(
+      (result) => result.status === "fulfilled" && result.value.updated,
+    ).length;
+    const failedCount = results.filter(
+      (result) => result.status === "rejected",
+    ).length;
+
+    showToast(
+      failedCount > 0
+        ? t("mcp.batchTagPartialFailure", {
+            updated: updatedCount,
+            failed: failedCount,
+            defaultValue: `MCP tag update finished: ${updatedCount} updated, ${failedCount} failed`,
+          })
+        : mode === "add"
+          ? t("mcp.batchTagAddSuccess", {
+              count: updatedCount,
+              defaultValue: `Added tag to ${updatedCount} MCP server(s)`,
+            })
+          : t("mcp.batchTagRemoveSuccess", {
+              count: updatedCount,
+              defaultValue: `Removed tag from ${updatedCount} MCP server(s)`,
+            }),
+      failedCount > 0 ? "error" : "success",
+    );
+    setSelectedServerIds(new Set());
+  };
+
   const openDeleteConfirm = (
     serverIds: string[],
     serverNames: string[],
@@ -603,10 +743,7 @@ export function McpManager() {
       for (const serverId of deleteConfirm.serverIds) {
         await deleteServer(serverId);
       }
-      if (
-        detailServerId &&
-        deleteConfirm.serverIds.includes(detailServerId)
-      ) {
+      if (detailServerId && deleteConfirm.serverIds.includes(detailServerId)) {
         setDetailServerId(null);
         selectServer(null);
       }
@@ -643,6 +780,21 @@ export function McpManager() {
     }
   };
 
+  const applyPresetsToServers = async (
+    presets: McpTargetPreset[],
+    serverIds: string[],
+  ) => {
+    await applyTargetsWithConflictConfirmation(
+      presets.map((preset) => ({
+        target: preset.target,
+        scope: preset.scope,
+        path: preset.path,
+        serverIds,
+      })),
+    );
+    showToast(t("mcp.applied", "MCP applied"), "success");
+  };
+
   const handleSave = async (serverId: string | null, draft: McpServerDraft) => {
     try {
       if (serverId) {
@@ -650,7 +802,15 @@ export function McpManager() {
       } else {
         await createServer(draft);
       }
-      showToast(t("mcp.saved", "MCP saved"), "success");
+      const isNotesOnlySave =
+        Object.keys(draft).length === 1 &&
+        Object.prototype.hasOwnProperty.call(draft, "notes");
+      showToast(
+        isNotesOnlySave
+          ? t("mcp.userNotesSaved", "Notes saved")
+          : t("mcp.saved", "MCP saved"),
+        "success",
+      );
     } catch (saveError) {
       reportError(saveError);
     }
@@ -701,18 +861,24 @@ export function McpManager() {
     serverName: string,
   ) => {
     try {
-      await importFile(preset.path);
-      const importedServer =
-        useMcpStore
-          .getState()
-          .library?.servers.find((server) => server.name === serverName) ??
-        null;
-
-      if (importedServer) {
-        openServerDetail(importedServer);
-      } else {
-        setSelectedTab("library");
+      const agentServer = findAgentMcpServer(
+        targetStatus,
+        preset.id,
+        serverName,
+      );
+      if (!agentServer) {
+        throw new Error(
+          t(
+            "mcp.agentEntryUnavailable",
+            "Agent MCP entry details are unavailable. Refresh Agent MCP and try again.",
+          ),
+        );
       }
+
+      const importedServer = await createServer(
+        buildAgentMcpImportDraft(agentServer, preset),
+      );
+      openServerDetail(importedServer);
       showToast(t("mcp.imported", "MCP imported"), "success");
     } catch (importError) {
       reportError(importError);
@@ -721,7 +887,11 @@ export function McpManager() {
 
   const handleOpenAgentConfig = async (preset: McpTargetPreset) => {
     try {
-      await window.electron?.openPath?.(preset.path);
+      const result = await window.electron?.openPath?.(preset.path);
+      if (result && !result.success) {
+        throw new Error(result.error || "Failed to open agent config");
+      }
+      showToast(t("mcp.agentConfigOpened", "Agent config opened"), "success");
     } catch (openError) {
       reportError(openError);
     }
@@ -760,7 +930,20 @@ export function McpManager() {
   const handleCheckServer = async (serverId: string) => {
     try {
       const result = await checkServer(serverId);
-      showToast(t("mcp.healthChecked", "MCP health checked"), "success");
+      const toastType =
+        result.status === "ok"
+          ? "success"
+          : result.status === "warning"
+            ? "warning"
+            : "error";
+      showToast(
+        result.status === "ok"
+          ? t("mcp.healthCheckedOk", "MCP static check passed")
+          : result.status === "warning"
+            ? t("mcp.healthCheckedWarning", "MCP static check found warnings")
+            : t("mcp.healthCheckedError", "MCP static check found errors"),
+        toastType,
+      );
       return result;
     } catch (healthError) {
       reportError(healthError);
@@ -794,18 +977,26 @@ export function McpManager() {
     serverIds: string[],
   ) => {
     try {
-      await applyTargetsWithConflictConfirmation(
-        presets.map((preset) => ({
-          target: preset.target,
-          scope: preset.scope,
-          path: preset.path,
-          serverIds,
-        })),
-      );
-      showToast(t("mcp.applied", "MCP applied"), "success");
+      await applyPresetsToServers(presets, serverIds);
     } catch (applyError) {
       reportError(applyError);
     }
+  };
+
+  const handleBatchApplyPresets = async (
+    presets: McpTargetPreset[],
+    serverIds: string[],
+  ) => {
+    await applyPresetsToServers(presets, serverIds);
+    setSelectedServerIds(new Set());
+    setIsSelectionMode(false);
+  };
+
+  const handleQuickApplyPresets = async (
+    presets: McpTargetPreset[],
+    serverIds: string[],
+  ) => {
+    await applyPresetsToServers(presets, serverIds);
   };
 
   const handleRemovePreset = async (
@@ -892,6 +1083,7 @@ export function McpManager() {
         <McpMarketView
           templates={marketTemplates}
           sources={marketSources}
+          selectedSourceId={selectedMarketSourceId}
           installedNames={installedNames}
           onInstall={async (templateId) => {
             try {
@@ -909,11 +1101,7 @@ export function McpManager() {
           servers={servers}
           targetPresets={targetPresets}
           targetStatus={targetStatus}
-          onAddMcp={() => {
-            selectServer(null);
-            setDetailServerId(null);
-            setIsCreateModalOpen(true);
-          }}
+          onAddMcp={handleOpenAgentDeployDialog}
           onImportExternal={handleImportAgentMcp}
           onOpenManaged={openServerDetail}
           onOpenAgentConfig={handleOpenAgentConfig}
@@ -985,10 +1173,7 @@ export function McpManager() {
                     {isSelectionMode ? (
                       <XIcon aria-hidden="true" className="w-4 h-4" />
                     ) : (
-                      <CheckSquareIcon
-                        aria-hidden="true"
-                        className="w-4 h-4"
-                      />
+                      <CheckSquareIcon aria-hidden="true" className="w-4 h-4" />
                     )}
                     {t("mcp.batchManage", "Batch Manage")}
                   </button>
@@ -1004,10 +1189,7 @@ export function McpManager() {
                       }`}
                       title={t("mcp.galleryView", "Gallery View")}
                     >
-                      <LayoutGridIcon
-                        aria-hidden="true"
-                        className="w-4 h-4"
-                      />
+                      <LayoutGridIcon aria-hidden="true" className="w-4 h-4" />
                     </button>
                     <button
                       type="button"
@@ -1147,12 +1329,12 @@ export function McpManager() {
                     disabled={selectedServerIds.size === 0}
                     className="inline-flex items-center gap-2 rounded-xl border border-border app-wallpaper-surface px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/25 hover:bg-accent disabled:opacity-50"
                     title={
-                      selectedServers.every((server) => server.isFavorite)
+                      selectedServersAllFavorite
                         ? t("mcp.removeFavorite", "Remove Favorite")
                         : t("mcp.addFavorite", "Add Favorite")
                     }
                     aria-label={
-                      selectedServers.every((server) => server.isFavorite)
+                      selectedServersAllFavorite
                         ? t("mcp.removeFavorite", "Remove Favorite")
                         : t("mcp.addFavorite", "Add Favorite")
                     }
@@ -1161,9 +1343,34 @@ export function McpManager() {
                       aria-hidden="true"
                       className="w-4 h-4 text-amber-500"
                     />
-                    {selectedServers.every((server) => server.isFavorite)
+                    {selectedServersAllFavorite
                       ? t("mcp.removeFavorite", "Remove Favorite")
                       : t("mcp.addFavorite", "Add Favorite")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleBatchTags}
+                    disabled={selectedServerIds.size === 0}
+                    className="inline-flex items-center gap-2 rounded-xl border border-border app-wallpaper-surface px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/25 hover:bg-accent disabled:opacity-50"
+                    title={t("mcp.batchTags", "Batch Tags")}
+                    aria-label={t("mcp.batchTags", "Batch Tags")}
+                  >
+                    <TagsIcon
+                      aria-hidden="true"
+                      className="w-4 h-4 text-primary"
+                    />
+                    {t("mcp.batchTags", "Batch Tags")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleBatchDeploy}
+                    disabled={selectedServerIds.size === 0}
+                    className="inline-flex items-center gap-2 rounded-xl bg-primary px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+                    title={t("mcp.batchDeploy", "Batch Deploy")}
+                    aria-label={t("mcp.batchDeploy", "Batch Deploy")}
+                  >
+                    <SendIcon aria-hidden="true" className="w-4 h-4" />
+                    {t("mcp.batchDeploy", "Batch Deploy")}
                   </button>
                   <button
                     type="button"
@@ -1186,8 +1393,8 @@ export function McpManager() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto scrollbar-hide">
-            <div className="p-6">
+          <div className="flex-1 min-h-0 overflow-hidden">
+            {viewMode === "list" ? (
               <McpServerList
                 servers={visibleServers}
                 selectedServerId={detailServerId}
@@ -1204,6 +1411,7 @@ export function McpManager() {
                 }}
                 onToggleSelection={toggleServerSelection}
                 onToggleFavorite={handleToggleFavorite}
+                onQuickDeploy={handleQuickDeploy}
                 onDelete={(server) =>
                   openDeleteConfirm(
                     [server.id],
@@ -1211,7 +1419,36 @@ export function McpManager() {
                   )
                 }
               />
-            </div>
+            ) : (
+              <div className="h-full overflow-y-auto scrollbar-hide">
+                <div className="p-6">
+                  <McpServerList
+                    servers={visibleServers}
+                    selectedServerId={detailServerId}
+                    healthChecks={healthChecks}
+                    targetPresets={targetPresets}
+                    targetStatus={targetStatus}
+                    gridStyle={mcpGalleryGridStyle}
+                    viewMode={viewMode}
+                    selectionMode={isSelectionMode}
+                    selectedServerIds={selectedServerIds}
+                    onSelect={(serverId) => {
+                      selectServer(serverId);
+                      setDetailServerId(serverId);
+                    }}
+                    onToggleSelection={toggleServerSelection}
+                    onToggleFavorite={handleToggleFavorite}
+                    onQuickDeploy={handleQuickDeploy}
+                    onDelete={(server) =>
+                      openDeleteConfirm(
+                        [server.id],
+                        [server.displayName || server.name],
+                      )
+                    }
+                  />
+                </div>
+              </div>
+            )}
           </div>
           {filteredServers.length > 0 ? (
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border app-wallpaper-panel-strong px-4 py-3">
@@ -1302,6 +1539,38 @@ export function McpManager() {
             onClose={() => setIsCreateModalOpen(false)}
             onManualSave={(draft) => handleCreate(null, draft)}
             onCreateFromSource={handleCreateFromSource}
+          />
+        ) : null}
+
+        {showBatchTagDialog ? (
+          <McpBatchTagDialog
+            servers={selectedServers}
+            onClose={() => setShowBatchTagDialog(false)}
+            onSubmit={handleBatchTagSubmit}
+          />
+        ) : null}
+
+        {deployDialogServers.length > 0 ? (
+          <McpBatchDeployDialog
+            servers={deployDialogServers}
+            targetPresets={targetPresets}
+            targetStatus={targetStatus}
+            onClose={closeDeployDialog}
+            onApply={
+              showBatchDeployDialog
+                ? handleBatchApplyPresets
+                : handleQuickApplyPresets
+            }
+          />
+        ) : null}
+
+        {agentDeployPreset ? (
+          <McpLibraryDeployDialog
+            preset={agentDeployPreset}
+            servers={servers}
+            targetStatus={targetStatus}
+            onClose={() => setAgentDeployPreset(null)}
+            onApply={handleAgentDeployFromLibrary}
           />
         ) : null}
       </div>

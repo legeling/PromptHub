@@ -26,11 +26,15 @@ const tokenPaths = {
 describe("expandShellOpenPath", () => {
   it("expands bare home tokens only when they represent the current user home", () => {
     expect(expandShellOpenPath("~", tokenPaths)).toBe("/Users/test");
-    expect(expandShellOpenPath("~/skills", tokenPaths)).toBe("/Users/test/skills");
+    expect(expandShellOpenPath("~/skills", tokenPaths)).toBe(
+      "/Users/test/skills",
+    );
     expect(expandShellOpenPath("~\\skills", tokenPaths)).toBe(
       "/Users/test\\skills",
     );
-    expect(expandShellOpenPath("~team/skills", tokenPaths)).toBe("~team/skills");
+    expect(expandShellOpenPath("~team/skills", tokenPaths)).toBe(
+      "~team/skills",
+    );
   });
 
   it("expands APPDATA tokens case-insensitively", () => {
@@ -75,14 +79,14 @@ describe("openDirectoryPath", () => {
     expect(deps.openPath).toHaveBeenCalledWith("/Users/test/skills");
   });
 
-  it("rejects existing non-directory paths", async () => {
+  it("reveals existing file paths in the system file manager", async () => {
     deps.lstatSync.mockReturnValue({ isSymbolicLink: () => false });
     deps.statSync.mockReturnValue({ isDirectory: () => false });
 
     await expect(openDirectoryPath("/tmp/file.txt", deps)).resolves.toEqual({
-      success: false,
-      error: "Only directories can be opened",
+      success: true,
     });
+    expect(deps.showItemInFolder).toHaveBeenCalledWith("/tmp/file.txt");
     expect(deps.openPath).not.toHaveBeenCalled();
   });
 
@@ -91,7 +95,9 @@ describe("openDirectoryPath", () => {
       throw new Error("ENOENT");
     });
 
-    await expect(openDirectoryPath("/tmp/missing-folder", deps)).resolves.toEqual({
+    await expect(
+      openDirectoryPath("/tmp/missing-folder", deps),
+    ).resolves.toEqual({
       success: false,
       error: "Directory does not exist or cannot be accessed",
     });
@@ -103,7 +109,9 @@ describe("openDirectoryPath", () => {
       throw new Error("ENOENT");
     });
 
-    await expect(openDirectoryPath("https://example.com", deps)).resolves.toEqual({
+    await expect(
+      openDirectoryPath("https://example.com", deps),
+    ).resolves.toEqual({
       success: false,
       error: "Directory does not exist or cannot be accessed",
     });

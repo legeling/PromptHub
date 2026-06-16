@@ -186,7 +186,7 @@ function SkillGalleryCardComponent({
         </button>
       )}
 
-      <div className="flex items-start justify-between mb-4">
+      <div className="flex items-start justify-between gap-3 mb-4">
         <SkillIcon
           iconUrl={skill.icon_url}
           iconEmoji={skill.icon_emoji}
@@ -196,11 +196,14 @@ function SkillGalleryCardComponent({
           className="transition-transform group-hover:scale-110 group-hover:shadow-lg"
         />
         {!isSelectionMode && (
-          <div className="flex min-h-8 items-center gap-1.5">
+          <div
+            data-testid="skill-card-header-meta"
+            className="flex min-w-0 flex-1 flex-col items-end gap-2"
+          >
             {showDistribution ? (
               <div
-                className="flex min-h-8 items-center gap-1.5"
                 data-testid="skill-distributed-targets"
+                className="flex min-h-8 max-w-full flex-wrap items-center justify-end gap-1.5"
               >
                 {visibleDistributedPlatforms.length > 0 ? (
                   visibleDistributedPlatforms.map((platform) => (
@@ -223,7 +226,10 @@ function SkillGalleryCardComponent({
                 ) : null}
               </div>
             ) : null}
-            <div className="flex gap-1">
+            <div
+              data-testid="skill-card-actions"
+              className="flex w-full justify-end gap-1"
+            >
               {runtimeCapabilities.skillPlatformIntegration && (
                 <button
                   type="button"
@@ -282,7 +288,10 @@ function SkillGalleryCardComponent({
       </h3>
       <p className="text-sm text-muted-foreground line-clamp-2 h-10 mb-4 leading-relaxed italic opacity-80">
         {skill.description ||
-          t("skill.defaultDescription", "Skill 描述，帮助 AI 理解何时使用此 Skill")}
+          t(
+            "skill.defaultDescription",
+            "Skill 描述，帮助 AI 理解何时使用此 Skill",
+          )}
       </p>
       <SkillVariantBadgeList
         badges={sourceBadges}

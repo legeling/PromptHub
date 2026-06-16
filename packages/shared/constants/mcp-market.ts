@@ -3,44 +3,25 @@ import type { McpMarketSource, McpMarketTemplate } from "../types/mcp";
 export const BUILTIN_MCP_MARKET_SOURCES: McpMarketSource[] = [
   {
     id: "modelcontextprotocol",
-    label: "Model Context Protocol",
+    label: "Official MCP Registry",
+    url: "https://registry.modelcontextprotocol.io",
+    description:
+      "PromptHub-packaged templates from the official Model Context Protocol server ecosystem.",
+    trustLevel: "official",
+  },
+  {
+    id: "prompthub-curated",
+    label: "PromptHub Curated MCP",
     url: "https://github.com/modelcontextprotocol/servers",
-    description: "Official reference MCP server collection.",
-    trustLevel: "official",
-  },
-  {
-    id: "context7",
-    label: "Context7",
-    url: "https://github.com/upstash/context7",
-    description: "Upstash-maintained documentation MCP server.",
+    description: "PromptHub-curated MCP templates for common agent workflows.",
     trustLevel: "verified",
   },
   {
-    id: "playwright",
-    label: "Microsoft Playwright",
-    url: "https://github.com/microsoft/playwright-mcp",
-    description: "Microsoft-maintained browser automation MCP server.",
-    trustLevel: "official",
-  },
-  {
-    id: "deepwiki",
-    label: "DeepWiki",
-    url: "https://deepwiki.com",
-    description: "Hosted DeepWiki MCP endpoint for public repositories.",
-    trustLevel: "verified",
-  },
-  {
-    id: "mcp-so",
-    label: "MCP.so",
-    url: "https://mcp.so",
-    description: "Community MCP discovery marketplace.",
-    trustLevel: "community",
-  },
-  {
-    id: "smithery",
-    label: "Smithery",
-    url: "https://smithery.ai",
-    description: "Community MCP registry and install catalog.",
+    id: "prompthub-community",
+    label: "PromptHub Community MCP",
+    url: "https://github.com/punkpeye/awesome-mcp-servers",
+    description:
+      "PromptHub-packaged community MCP templates that can be installed directly.",
     trustLevel: "community",
   },
 ];
@@ -80,18 +61,21 @@ function enrichTemplate(
 }
 
 const RAW_BUILTIN_MCP_MARKET_TEMPLATES: McpMarketTemplate[] = [
-  {
-    id: "context7",
-    name: "context7",
-    displayName: "Context7",
-    description:
-      "Fetch up-to-date library documentation inside agent sessions.",
-    transport: "stdio",
-    command: "npx",
-    args: ["-y", "@upstash/context7-mcp"],
-    tags: ["docs", "developer"],
-    homepage: "https://github.com/upstash/context7",
-  },
+  enrichTemplate(
+    {
+      id: "context7",
+      name: "context7",
+      displayName: "Context7",
+      description:
+        "Fetch up-to-date library documentation inside agent sessions.",
+      transport: "stdio",
+      command: "npx",
+      args: ["-y", "@upstash/context7-mcp"],
+      tags: ["docs", "developer"],
+      homepage: "https://github.com/upstash/context7",
+    },
+    "prompthub-curated",
+  ),
   enrichTemplate(
     {
       id: "playwright",
@@ -104,7 +88,7 @@ const RAW_BUILTIN_MCP_MARKET_TEMPLATES: McpMarketTemplate[] = [
       tags: ["browser", "test"],
       homepage: "https://github.com/microsoft/playwright-mcp",
     },
-    "playwright",
+    "prompthub-curated",
   ),
   {
     id: "github",
@@ -292,51 +276,61 @@ const RAW_BUILTIN_MCP_MARKET_TEMPLATES: McpMarketTemplate[] = [
     tags: ["scraping", "web"],
     homepage: "https://github.com/mendableai/firecrawl-mcp-server",
   },
-  {
-    id: "kubernetes",
-    name: "kubernetes",
-    displayName: "Kubernetes",
-    description: "Manage Kubernetes clusters, pods, deployments, and services.",
-    transport: "stdio",
-    command: "npx",
-    args: ["-y", "mcp-server-kubernetes"],
-    tags: ["devops", "kubernetes"],
-    homepage: "https://github.com/Flux159/mcp-server-kubernetes",
-  },
-  {
-    id: "mysql",
-    name: "mysql",
-    displayName: "MySQL",
-    description: "Query MySQL databases with secure, configurable access.",
-    transport: "stdio",
-    command: "uvx",
-    args: ["mysql_mcp_server"],
-    env: {
-      MYSQL_HOST: "",
-      MYSQL_PORT: "3306",
-      MYSQL_USER: "",
-      MYSQL_PASSWORD: "",
-      MYSQL_DATABASE: "",
+  enrichTemplate(
+    {
+      id: "kubernetes",
+      name: "kubernetes",
+      displayName: "Kubernetes",
+      description:
+        "Manage Kubernetes clusters, pods, deployments, and services.",
+      transport: "stdio",
+      command: "npx",
+      args: ["-y", "mcp-server-kubernetes"],
+      tags: ["devops", "kubernetes"],
+      homepage: "https://github.com/Flux159/mcp-server-kubernetes",
     },
-    tags: ["database", "sql"],
-    homepage: "https://github.com/designcomputer/mysql_mcp_server",
-  },
-  {
-    id: "figma",
-    name: "figma",
-    displayName: "Figma",
-    description: "Read Figma file layout and design data for design-to-code.",
-    transport: "stdio",
-    command: "npx",
-    args: [
-      "-y",
-      "figma-developer-mcp",
-      "--figma-api-key=<figma-api-key>",
-      "--stdio",
-    ],
-    tags: ["design", "frontend"],
-    homepage: "https://github.com/GLips/Figma-Context-MCP",
-  },
+    "prompthub-community",
+  ),
+  enrichTemplate(
+    {
+      id: "mysql",
+      name: "mysql",
+      displayName: "MySQL",
+      description: "Query MySQL databases with secure, configurable access.",
+      transport: "stdio",
+      command: "uvx",
+      args: ["mysql_mcp_server"],
+      env: {
+        MYSQL_HOST: "",
+        MYSQL_PORT: "3306",
+        MYSQL_USER: "",
+        MYSQL_PASSWORD: "",
+        MYSQL_DATABASE: "",
+      },
+      tags: ["database", "sql"],
+      homepage: "https://github.com/designcomputer/mysql_mcp_server",
+    },
+    "prompthub-community",
+  ),
+  enrichTemplate(
+    {
+      id: "figma",
+      name: "figma",
+      displayName: "Figma",
+      description: "Read Figma file layout and design data for design-to-code.",
+      transport: "stdio",
+      command: "npx",
+      args: [
+        "-y",
+        "figma-developer-mcp",
+        "--figma-api-key=<figma-api-key>",
+        "--stdio",
+      ],
+      tags: ["design", "frontend"],
+      homepage: "https://github.com/GLips/Figma-Context-MCP",
+    },
+    "prompthub-community",
+  ),
   enrichTemplate(
     {
       id: "deepwiki",
@@ -349,7 +343,7 @@ const RAW_BUILTIN_MCP_MARKET_TEMPLATES: McpMarketTemplate[] = [
       tags: ["docs", "github"],
       homepage: "https://deepwiki.com",
     },
-    "deepwiki",
+    "prompthub-curated",
   ),
 ];
 

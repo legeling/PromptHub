@@ -74,6 +74,38 @@ describe("mcp-config", () => {
     });
   });
 
+  it("keeps personal notes in the library record and out of target projections", () => {
+    const normalized = normalizeMcpServerDraft({
+      ...baseServer,
+      notes: "  Use only for local browser tests.  ",
+    });
+    const serverWithNotes: McpServerConfig = {
+      ...normalized,
+      notes: "Use only for local browser tests.",
+    };
+
+    expect(normalized.notes).toBe("Use only for local browser tests.");
+    expect(
+      buildMcpServersJson([serverWithNotes]).mcpServers.playwright,
+    ).toEqual({
+      command: "npx",
+      args: ["@playwright/mcp@latest", "--headless"],
+      env: { CI: "1" },
+    });
+    expect(
+      buildVsCodeMcpJson([serverWithNotes]).servers.playwright,
+    ).not.toHaveProperty("notes");
+    expect(buildMcpTargetJson("opencode", [serverWithNotes]).mcp).toEqual({
+      playwright: {
+        type: "local",
+        command: ["npx", "@playwright/mcp@latest", "--headless"],
+        environment: { CI: "1" },
+        enabled: true,
+      },
+    });
+    expect(buildCodexMcpToml([serverWithNotes])).not.toContain("notes");
+  });
+
   it("projects Codex TOML and replaces only the managed block", () => {
     const snippet = buildCodexMcpToml([baseServer]);
 

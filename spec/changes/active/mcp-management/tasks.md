@@ -41,10 +41,28 @@
 - [x] Refine Agent MCP card metadata and actions so cards show MCP runtime information instead of repeating paths, and action buttons no longer duplicate folder/open affordances.
 - [x] Add a Skill-style Agent MCP source sidebar in the entry detail page with platform source, managed state, import/open My MCP, and open agent config actions.
 - [x] Replace Agent MCP target-entry removal `window.confirm` with a Skill-style in-app confirmation dialog and MCP-specific localized copy.
-- [x] Remove Agent MCP bottom preview/bulk-apply actions and replace them with a single Add MCP entry point into the shared New MCP modal.
+- [x] Remove Agent MCP bottom preview/bulk-apply actions and replace them with a single Add MCP entry point that selects saved servers from My MCP for the current Agent target.
 - [x] Align Agent MCP card action icon buttons to a shared size/border style.
 - [x] Add My Skill gallery card distribution indicators so cards quickly show which agent platforms already have the Skill installed.
 - [x] Add My MCP Skill-style batch management, gallery/list switching, pagination, favorite toggles, and card/list delete actions.
 - [x] Persist MCP favorite state in the local MCP library normalization/update flow.
+- [x] Add My MCP Skill-style batch tag management through the MCP library update flow.
+- [x] Add My MCP Skill-style batch sync to agent platforms through the safe MCP apply flow.
+- [x] Add My MCP card/list quick sync actions for single MCP distribution.
+- [x] Align My MCP List View with My Skill List View row structure and distribution progress.
+- [x] Add MCP locale parity coverage for the My MCP batch toolbar and dialogs across all supported desktop locales.
+- [x] Wrap My MCP and My Skill gallery-card distribution indicators so crowded agent icons do not overflow action buttons or card bounds.
+- [x] Fix Agent MCP import so explicit import actions create only the selected target entry and preserve Agent source metadata.
+- [x] Add visible feedback when opening the selected Agent config file from Agent MCP shortcut buttons.
+- [x] Align the My MCP detail platform integration panel with the Skill right-sidebar style and make non-distributed platform cards fully clickable.
+- [x] Add My MCP detail personal notes stored on the local MCP library server record.
+- [x] Rework New MCP into a Skill-style method chooser before source/manual/raw config subflows.
+- [x] Add pasted MCP JSON/Codex TOML config import through the shared MCP library source creation path.
+- [x] Align Agent MCP Add from My MCP and MCP Store install dialogs with the existing Skill install modal layout.
+- [x] Rework MCP Store detail into a single-column layout and localize installed-state labels.
+- [x] Remove the legacy Roo Code MCP target preset and filter old `roo` MCP bindings from the local library on read.
+- [x] Make MCP health checks warn on known invalid environment variable formats instead of treating any non-empty value as healthy.
+- [x] Remove the redundant custom target form from the My MCP detail platform panel so distribution uses one selected-platform apply flow.
+- [x] Preconfigure 1-3 usable MCP Store sources whose left-sidebar entries all contain installable templates.
 - [x] Verify MCP UI is visible in a browser render with the left entry, library list, detail panel, distribution panel, and generated preview.
 - [x] Run focused tests and record verification.

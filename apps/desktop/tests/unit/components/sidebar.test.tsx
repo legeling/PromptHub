@@ -228,8 +228,10 @@ describe("Sidebar", () => {
         bindings: [],
       },
       marketTemplates: [],
+      marketSources: [],
       targetPresets: [],
       selectedTab: "library",
+      selectedMarketSourceId: "all",
     } as Partial<ReturnType<typeof useMcpStore.getState>>);
 
     useSkillStore.setState({
@@ -1294,9 +1296,49 @@ describe("Sidebar", () => {
         servers: [],
         bindings: [],
       },
-      marketTemplates: [],
+      marketTemplates: [
+        {
+          id: "github",
+          name: "github",
+          displayName: "GitHub",
+          description: "GitHub MCP",
+          transport: "stdio",
+          tags: ["code"],
+          source: {
+            id: "modelcontextprotocol",
+            label: "Official MCP Registry",
+          },
+        },
+        {
+          id: "playwright",
+          name: "playwright",
+          displayName: "Playwright",
+          description: "Browser automation",
+          transport: "stdio",
+          tags: ["browser"],
+          source: {
+            id: "prompthub-curated",
+            label: "PromptHub Curated MCP",
+          },
+        },
+      ],
+      marketSources: [
+        {
+          id: "modelcontextprotocol",
+          label: "Official MCP Registry",
+          url: "https://registry.modelcontextprotocol.io",
+          trustLevel: "official",
+        },
+        {
+          id: "prompthub-curated",
+          label: "PromptHub Curated MCP",
+          url: "https://github.com/modelcontextprotocol/servers",
+          trustLevel: "verified",
+        },
+      ],
       targetPresets: [],
       selectedTab: "library",
+      selectedMarketSourceId: "all",
     } as Partial<ReturnType<typeof useMcpStore.getState>>);
 
     await act(async () => {
@@ -1324,10 +1366,27 @@ describe("Sidebar", () => {
     fireEvent.click(labels[2]);
     expect(useMcpStore.getState().selectedTab).toBe("market");
     const sourceScroll = screen.getByTestId("mcp-store-source-scroll");
-    const officialStoreButton = within(sourceScroll).getByRole("button", {
-      name: /Official MCP Store/i,
+    expect(
+      within(sourceScroll).getByRole("button", { name: /All Sources\s*2/ }),
+    ).toBeInTheDocument();
+    expect(
+      within(sourceScroll).getByRole("button", {
+        name: /Official MCP Registry\s*1/,
+      }),
+    ).toBeInTheDocument();
+    const curatedButton = within(sourceScroll).getByRole("button", {
+      name: /PromptHub Curated MCP\s*1/,
     });
-    expect(within(officialStoreButton).getByText("0")).toBeInTheDocument();
+    expect(curatedButton).toBeInTheDocument();
+    expect(
+      within(sourceScroll).queryByRole("button", { name: /Smithery|Postman/ }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(curatedButton);
+    expect(useMcpStore.getState().selectedTab).toBe("market");
+    expect(useMcpStore.getState().selectedMarketSourceId).toBe(
+      "prompthub-curated",
+    );
 
     fireEvent.click(labels[2]);
     expect(screen.queryByTestId("mcp-store-source-scroll")).toBeNull();

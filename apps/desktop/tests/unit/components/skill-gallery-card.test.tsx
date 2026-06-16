@@ -115,6 +115,44 @@ describe("SkillGalleryCard", () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
+  it("wraps distributed platform icons separately from card actions", async () => {
+    const skill = makeSkill();
+
+    await renderWithI18n(
+      <SkillGalleryCard
+        animationDelayMs={0}
+        distributedPlatforms={[
+          { id: "codex", name: "Codex CLI" },
+          { id: "claude", name: "Claude Code" },
+          { id: "cursor", name: "Cursor" },
+          { id: "vscode", name: "VS Code" },
+          { id: "cline", name: "Cline" },
+          { id: "gemini", name: "Gemini CLI" },
+          { id: "opencode", name: "OpenCode" },
+        ]}
+        isSelected={false}
+        isSelectionMode={false}
+        onDelete={vi.fn()}
+        onOpen={vi.fn()}
+        onQuickInstall={vi.fn()}
+        onToggleFavorite={vi.fn()}
+        onToggleSelection={vi.fn()}
+        skill={skill}
+      />,
+      { language: "en" },
+    );
+
+    const headerMeta = screen.getByTestId("skill-card-header-meta");
+    const distribution = screen.getByTestId("skill-distributed-targets");
+    const actions = screen.getByTestId("skill-card-actions");
+
+    expect(headerMeta).toHaveClass("min-w-0", "flex-1", "items-end");
+    expect(distribution).toHaveClass("max-w-full", "flex-wrap", "justify-end");
+    expect(actions).toHaveClass("w-full", "justify-end");
+    expect(actions.contains(distribution)).toBe(false);
+    expect(screen.getByText("+1")).toBeInTheDocument();
+  });
+
   it("exposes the selection toggle as a non-submit pressed control", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn((event: FormEvent<HTMLFormElement>) => {

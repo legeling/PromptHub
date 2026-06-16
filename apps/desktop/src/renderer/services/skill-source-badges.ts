@@ -113,7 +113,7 @@ function isProjectSkillSourcePath(sourceUrl?: string): boolean {
     return false;
   }
 
-  return /(^|\/)(\.agents|\.claude|\.gemini|\.kiro|\.cursor|\.roo|\.windsurf)\/skills\//.test(
+  return /(^|\/)(\.agents|\.claude|\.gemini|\.kiro|\.cursor|\.windsurf)\/skills\//.test(
     normalized,
   );
 }

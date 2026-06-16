@@ -1,6 +1,12 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { CheckIcon, PlusIcon, ServerIcon, StoreIcon } from "lucide-react";
+import {
+  CheckIcon,
+  ExternalLinkIcon,
+  PlusIcon,
+  ServerIcon,
+  StoreIcon,
+} from "lucide-react";
 import type {
   McpMarketSource,
   McpMarketTemplate,
@@ -10,6 +16,7 @@ import { McpMarketDetailModal } from "./McpMarketDetailModal";
 interface McpMarketViewProps {
   templates: McpMarketTemplate[];
   sources: McpMarketSource[];
+  selectedSourceId: string;
   installedNames: Set<string>;
   onInstall: (templateId: string) => Promise<void>;
 }
@@ -23,21 +30,13 @@ const ALL_MARKET_SOURCES = "all";
 export function McpMarketView({
   templates,
   sources,
+  selectedSourceId,
   installedNames,
   onInstall,
 }: McpMarketViewProps) {
   const { t } = useTranslation();
   const [selectedTemplate, setSelectedTemplate] =
     useState<McpMarketTemplate | null>(null);
-  const [selectedSourceId, setSelectedSourceId] = useState(ALL_MARKET_SOURCES);
-  const sourceCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const template of templates) {
-      const sourceId = template.source?.id ?? ALL_MARKET_SOURCES;
-      counts.set(sourceId, (counts.get(sourceId) ?? 0) + 1);
-    }
-    return counts;
-  }, [templates]);
   const visibleTemplates = useMemo(() => {
     if (selectedSourceId === ALL_MARKET_SOURCES) {
       return templates;
@@ -46,6 +45,15 @@ export function McpMarketView({
       (template) => template.source?.id === selectedSourceId,
     );
   }, [selectedSourceId, templates]);
+  const selectedSource = useMemo(
+    () =>
+      selectedSourceId === ALL_MARKET_SOURCES
+        ? null
+        : (sources.find((source) => source.id === selectedSourceId) ?? null),
+    [selectedSourceId, sources],
+  );
+  const selectedSourceHasTemplates =
+    selectedSource !== null && visibleTemplates.length > 0;
 
   return (
     <div className="flex-1 flex flex-col h-full app-wallpaper-section overflow-hidden">
@@ -67,37 +75,59 @@ export function McpMarketView({
       </div>
 
       <div className="flex-1 overflow-y-auto scrollbar-hide p-6 space-y-8">
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setSelectedSourceId(ALL_MARKET_SOURCES)}
-            className={`rounded-xl border px-3 py-1.5 text-xs font-medium transition-colors ${
-              selectedSourceId === ALL_MARKET_SOURCES
-                ? "border-primary/30 bg-primary/10 text-primary"
-                : "border-border app-wallpaper-surface text-muted-foreground hover:bg-accent hover:text-foreground"
-            }`}
-          >
-            {t("mcp.allSources", "All Sources")} · {templates.length}
-          </button>
-          {sources
-            .filter((source) => sourceCounts.has(source.id))
-            .map((source) => (
-              <button
-                key={source.id}
-                type="button"
-                onClick={() => setSelectedSourceId(source.id)}
-                className={`rounded-xl border px-3 py-1.5 text-xs font-medium transition-colors ${
-                  selectedSourceId === source.id
-                    ? "border-primary/30 bg-primary/10 text-primary"
-                    : "border-border app-wallpaper-surface text-muted-foreground hover:bg-accent hover:text-foreground"
-                }`}
-              >
-                {source.label} · {sourceCounts.get(source.id)}
-              </button>
-            ))}
-        </div>
+        {selectedSource && !selectedSourceHasTemplates ? (
+          <div className="app-wallpaper-panel mx-auto flex w-full max-w-2xl flex-col gap-5 rounded-2xl border border-border p-6 text-left">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <StoreIcon className="h-6 w-6" aria-hidden="true" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <h3 className="text-lg font-semibold text-foreground">
+                    {t("mcp.externalCatalog", "External MCP directory")}
+                  </h3>
+                  <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    {t(
+                      `mcp.trust.${selectedSource.trustLevel}`,
+                      selectedSource.trustLevel,
+                    )}
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {selectedSource.description ??
+                    t(
+                      "mcp.externalCatalogFallback",
+                      "Browse this external MCP directory for more servers.",
+                    )}
+                </p>
+              </div>
+            </div>
 
-        {visibleTemplates.length === 0 ? (
+            <div className="rounded-xl border border-border bg-muted/20 p-4">
+              <p className="text-sm text-foreground">
+                {t(
+                  "mcp.externalCatalogHint",
+                  "This source is a browsable MCP directory, not a built-in PromptHub template list yet. Open it, choose a server, then import its command, JSON config, URL, or local source folder back into My MCP.",
+                )}
+              </p>
+              <p className="mt-2 break-all text-xs text-muted-foreground">
+                {selectedSource.url}
+              </p>
+            </div>
+
+            <div className="flex justify-end">
+              <a
+                href={selectedSource.url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                {t("mcp.openMcpDirectory", "Open MCP directory")}
+                <ExternalLinkIcon className="h-4 w-4" aria-hidden="true" />
+              </a>
+            </div>
+          </div>
+        ) : visibleTemplates.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/20 px-6 py-20 text-center text-muted-foreground">
             <StoreIcon className="mb-4 h-12 w-12 opacity-25" />
             <h3 className="mb-2 text-lg font-semibold text-foreground">

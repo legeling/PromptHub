@@ -44,7 +44,8 @@ export async function openDirectoryPath(
     }
 
     if (!deps.statSync(realPath).isDirectory()) {
-      return { success: false, error: "Only directories can be opened" };
+      deps.showItemInFolder(realPath);
+      return { success: true };
     }
   } catch {
     return {

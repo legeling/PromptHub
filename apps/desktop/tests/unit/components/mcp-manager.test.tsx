@@ -10,6 +10,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { McpManager } from "../../../src/renderer/components/mcp/McpManager";
 import { useMcpStore } from "../../../src/renderer/stores/mcp.store";
+import type { McpTargetPreset } from "@prompthub/core";
 import type { McpServerConfig } from "@prompthub/shared/types/mcp";
 import { renderWithI18n } from "../../helpers/i18n";
 import { installWindowMocks } from "../../helpers/window";
@@ -169,6 +170,7 @@ function resetMcpStore() {
     healthChecks: [],
     selectedServerId: null,
     selectedTab: "library",
+    selectedMarketSourceId: "all",
     selectedTargetId: null,
     searchQuery: "",
     preview: "",
@@ -189,6 +191,8 @@ interface McpMockOptions {
     servers?: McpServerConfig[];
   }>;
   marketTemplates?: Array<Record<string, unknown>>;
+  marketSources?: Array<Record<string, unknown>>;
+  targetPresets?: McpTargetPreset[];
 }
 
 function installMcpMocks(options: McpMockOptions = {}) {
@@ -231,23 +235,27 @@ function installMcpMocks(options: McpMockOptions = {}) {
             },
           ],
         ),
-        listMarketSources: vi.fn().mockResolvedValue([
-          {
-            id: "modelcontextprotocol",
-            label: "Model Context Protocol",
-            url: "https://github.com/modelcontextprotocol/servers",
-            trustLevel: "official",
-          },
-          {
-            id: "playwright",
-            label: "Microsoft Playwright",
-            url: "https://github.com/microsoft/playwright-mcp",
-            trustLevel: "official",
-          },
-        ]),
+        listMarketSources: vi.fn().mockResolvedValue(
+          options.marketSources ?? [
+            {
+              id: "modelcontextprotocol",
+              label: "Model Context Protocol",
+              url: "https://github.com/modelcontextprotocol/servers",
+              trustLevel: "official",
+            },
+            {
+              id: "playwright",
+              label: "Microsoft Playwright",
+              url: "https://github.com/microsoft/playwright-mcp",
+              trustLevel: "official",
+            },
+          ],
+        ),
         getTargetPresets: vi
           .fn()
-          .mockResolvedValue([codexTarget, claudeTarget]),
+          .mockResolvedValue(
+            options.targetPresets ?? [codexTarget, claudeTarget],
+          ),
         getTargetStatus: vi.fn().mockResolvedValue(targetStatus),
         createServer: vi.fn().mockResolvedValue({
           ...filesystemServer,
@@ -378,6 +386,15 @@ describe("McpManager", () => {
         within(detailPage).getByText("Platform Integration"),
       ).toBeInTheDocument();
       expect(
+        within(detailPage).queryByText("Custom target"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(detailPage).queryByPlaceholderText("Config file path"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(detailPage).queryByText("Codex TOML"),
+      ).not.toBeInTheDocument();
+      expect(
         within(detailPage).getByText("Source and details"),
       ).toBeInTheDocument();
       expect(within(detailPage).getByText("Runtime")).toBeInTheDocument();
@@ -446,12 +463,77 @@ describe("McpManager", () => {
     });
   });
 
+  it("selects an MCP distribution target when clicking the whole platform card", async () => {
+    const user = userEvent.setup();
+    const { api } = installMcpMocks();
+
+    await act(async () => {
+      await renderWithI18n(<McpManager />, { language: "en" });
+    });
+
+    const detailPage = await openFilesystemDetail(user);
+
+    await user.click(
+      within(detailPage).getByRole("button", { name: "Claude Code" }),
+    );
+    await user.click(
+      within(detailPage).getByRole("button", { name: /Apply to 1 platform/ }),
+    );
+
+    await waitFor(() => {
+      expect(api.mcp.apply).toHaveBeenCalledTimes(1);
+      expect(api.mcp.apply).toHaveBeenCalledWith({
+        target: "claude",
+        scope: "global",
+        path: claudeTarget.path,
+        serverIds: ["mcp_filesystem"],
+      });
+    });
+  });
+
+  it("shows and saves personal MCP notes from the detail sidebar", async () => {
+    const user = userEvent.setup();
+    const { api } = installMcpMocks();
+
+    await act(async () => {
+      await renderWithI18n(<McpManager />, { language: "en" });
+    });
+
+    const detailPage = await openFilesystemDetail(user);
+    const notesCard = within(detailPage).getByTestId("mcp-user-notes-card");
+
+    expect(
+      within(notesCard).getByText("No personal notes yet."),
+    ).toBeInTheDocument();
+
+    await user.click(
+      within(detailPage).getByRole("button", { name: "Edit notes" }),
+    );
+    await user.type(
+      within(notesCard).getByLabelText("Personal Notes"),
+      "Use with local workspace MCP config only.",
+    );
+    await user.click(within(detailPage).getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(api.mcp.updateServer).toHaveBeenCalledWith(
+        "mcp_filesystem",
+        expect.objectContaining({
+          notes: "Use with local workspace MCP config only.",
+        }),
+      );
+      expect(showToast).toHaveBeenCalledWith("Notes saved", "success");
+    });
+  });
+
   it("confirms before force-overwriting conflicting target MCP entries", async () => {
     const user = userEvent.setup();
     const { api } = installMcpMocks();
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
     api.mcp.apply
-      .mockRejectedValueOnce(new Error("目标配置已存在同名 MCP 服务: filesystem"))
+      .mockRejectedValueOnce(
+        new Error("目标配置已存在同名 MCP 服务: filesystem"),
+      )
       .mockResolvedValueOnce({
         path: codexTarget.path,
         target: "codex",
@@ -594,6 +676,98 @@ describe("McpManager", () => {
     });
   });
 
+  it("shows invalid MCP env values as health warnings instead of healthy filled state", async () => {
+    const user = userEvent.setup();
+    const invalidSlack = {
+      ...slackServer,
+      env: {
+        SLACK_BOT_TOKEN: "123",
+        SLACK_TEAM_ID: "123",
+      },
+    };
+    const { api } = installMcpMocks({
+      servers: [invalidSlack],
+      healthChecks: [
+        {
+          serverId: "mcp_slack",
+          serverName: "slack",
+          status: "warning",
+          checkedAt: "2026-01-01T00:00:00.000Z",
+          issues: [
+            {
+              code: "INVALID_ENV_VALUE",
+              severity: "warning",
+              field: "SLACK_BOT_TOKEN",
+              message:
+                "SLACK_BOT_TOKEN format looks invalid. Expected xoxb-...",
+            },
+            {
+              code: "INVALID_ENV_VALUE",
+              severity: "warning",
+              field: "SLACK_TEAM_ID",
+              message: "SLACK_TEAM_ID format looks invalid. Expected T...",
+            },
+          ],
+        },
+      ],
+    });
+    api.mcp.checkServer.mockResolvedValue({
+      serverId: "mcp_slack",
+      serverName: "slack",
+      status: "warning",
+      checkedAt: "2026-01-01T00:00:01.000Z",
+      issues: [
+        {
+          code: "INVALID_ENV_VALUE",
+          severity: "warning",
+          field: "SLACK_BOT_TOKEN",
+          message: "SLACK_BOT_TOKEN format looks invalid. Expected xoxb-...",
+        },
+        {
+          code: "INVALID_ENV_VALUE",
+          severity: "warning",
+          field: "SLACK_TEAM_ID",
+          message: "SLACK_TEAM_ID format looks invalid. Expected T...",
+        },
+      ],
+    });
+
+    await act(async () => {
+      await renderWithI18n(<McpManager />, { language: "en" });
+    });
+
+    await user.click(screen.getByRole("button", { name: "MCP Detail: Slack" }));
+    const detailPage = await screen.findByTestId("mcp-full-detail-page");
+
+    expect(within(detailPage).getAllByText("Check format")).toHaveLength(2);
+    expect(
+      within(detailPage).getAllByText(/SLACK_BOT_TOKEN format looks invalid/)
+        .length,
+    ).toBeGreaterThan(0);
+    expect(within(detailPage).queryAllByText("Filled").length).toBeLessThan(2);
+
+    await user.click(
+      within(detailPage).getByRole("button", { name: "Save env" }),
+    );
+
+    await waitFor(() => {
+      expect(api.mcp.updateServer).toHaveBeenCalledWith(
+        "mcp_slack",
+        expect.objectContaining({
+          env: {
+            SLACK_BOT_TOKEN: "123",
+            SLACK_TEAM_ID: "123",
+          },
+        }),
+      );
+      expect(api.mcp.checkServer).toHaveBeenCalledWith("mcp_slack");
+      expect(showToast).toHaveBeenCalledWith(
+        "MCP static check found warnings",
+        "warning",
+      );
+    });
+  });
+
   it("opens market MCP details before installing", async () => {
     const user = userEvent.setup();
     const { api } = installMcpMocks({
@@ -614,6 +788,15 @@ describe("McpManager", () => {
     );
 
     const dialog = await screen.findByRole("dialog", { name: "GitHub" });
+    const content = within(dialog).getByTestId("mcp-market-detail-content");
+    const sourceSection = within(dialog).getByTestId(
+      "mcp-market-source-section",
+    );
+    const installFooter = within(dialog).getByTestId(
+      "mcp-market-install-footer",
+    );
+    expect(content).toHaveClass("space-y-5");
+    expect(content).not.toHaveClass("grid");
     expect(
       within(dialog).getAllByText("Access GitHub repositories and issues")
         .length,
@@ -630,9 +813,17 @@ describe("McpManager", () => {
     ).toBeInTheDocument();
     expect(within(dialog).getByText("Official link")).toBeInTheDocument();
     expect(within(dialog).getByText(/mcpServers/)).toBeInTheDocument();
+    expect(
+      within(sourceSection).queryByRole("button", { name: "Install" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(installFooter).getByRole("button", { name: "Install" }),
+    ).toBeInTheDocument();
     expect(api.mcp.installTemplate).not.toHaveBeenCalled();
 
-    await user.click(within(dialog).getByRole("button", { name: "Install" }));
+    await user.click(
+      within(installFooter).getByRole("button", { name: "Install" }),
+    );
 
     await waitFor(() => {
       expect(api.mcp.installTemplate).toHaveBeenCalledWith("github");
@@ -640,8 +831,33 @@ describe("McpManager", () => {
     });
   });
 
-  it("filters MCP Store templates by market source", async () => {
+  it("localizes the installed state in the MCP Store detail modal", async () => {
     const user = userEvent.setup();
+    installMcpMocks({
+      servers: [
+        {
+          ...filesystemServer,
+          id: "mcp_github",
+          name: "github",
+          displayName: "GitHub",
+        },
+      ],
+      marketTemplates: [githubTemplate],
+    });
+    useMcpStore.setState({ selectedTab: "market" });
+
+    await act(async () => {
+      await renderWithI18n(<McpManager />, { language: "zh" });
+    });
+
+    await user.click(screen.getByRole("button", { name: "查看详情: GitHub" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "GitHub" });
+    expect(within(dialog).getAllByText("已安装").length).toBeGreaterThan(0);
+    expect(within(dialog).queryByText("Installed")).not.toBeInTheDocument();
+  });
+
+  it("filters MCP Store templates by market source", async () => {
     installMcpMocks({
       marketTemplates: [githubTemplate, playwrightTemplate],
     });
@@ -656,12 +872,67 @@ describe("McpManager", () => {
       expect(screen.getByText("Playwright")).toBeInTheDocument();
     });
 
-    await user.click(
-      screen.getByRole("button", { name: /Microsoft Playwright/ }),
-    );
+    expect(
+      within(screen.getByTestId("mcp-view-transition")).queryByRole("button", {
+        name: /Microsoft Playwright/,
+      }),
+    ).not.toBeInTheDocument();
 
-    expect(screen.queryByText("GitHub")).not.toBeInTheDocument();
-    expect(screen.getByText("Playwright")).toBeInTheDocument();
+    act(() => {
+      useMcpStore.getState().setSelectedMarketSourceId("playwright");
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText("GitHub")).not.toBeInTheDocument();
+      expect(screen.getByText("Playwright")).toBeInTheDocument();
+    });
+  });
+
+  it("keeps preconfigured MCP Store sources installable instead of showing zero-template directories", async () => {
+    installMcpMocks({
+      marketTemplates: [githubTemplate, playwrightTemplate],
+      marketSources: [
+        {
+          id: "modelcontextprotocol",
+          label: "Official MCP Registry",
+          url: "https://registry.modelcontextprotocol.io",
+          description: "Official MCP Registry.",
+          trustLevel: "official",
+        },
+        {
+          id: "playwright",
+          label: "Microsoft Playwright",
+          url: "https://github.com/microsoft/playwright-mcp",
+          description: "Microsoft-maintained browser automation MCP server.",
+          trustLevel: "official",
+        },
+      ],
+    });
+    useMcpStore.setState({ selectedTab: "market" });
+
+    await act(async () => {
+      await renderWithI18n(<McpManager />, { language: "en" });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("GitHub")).toBeInTheDocument();
+      expect(screen.getByText("Playwright")).toBeInTheDocument();
+    });
+
+    act(() => {
+      useMcpStore.getState().setSelectedMarketSourceId("playwright");
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText("GitHub")).not.toBeInTheDocument();
+      expect(screen.getByText("Playwright")).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByText("External MCP directory"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /Open MCP directory/ }),
+    ).not.toBeInTheDocument();
   });
 
   it("filters My MCP by distribution, source, and search query", async () => {
@@ -846,6 +1117,322 @@ describe("McpManager", () => {
     });
   });
 
+  it("renders localized My MCP batch actions in Chinese", async () => {
+    const user = userEvent.setup();
+    installMcpMocks({
+      servers: [filesystemServer, fetchServer],
+    });
+
+    await act(async () => {
+      await renderWithI18n(<McpManager />, { language: "zh" });
+    });
+
+    await user.click(screen.getByRole("button", { name: "批量管理" }));
+
+    expect(
+      screen.queryByRole("button", { name: "Batch Manage" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("批量模式")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "添加收藏" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "批量管理标签" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "批量同步到平台" }),
+    ).toBeInTheDocument();
+  });
+
+  it("batch updates MCP tags from the My MCP selection toolbar", async () => {
+    const user = userEvent.setup();
+    const { api } = installMcpMocks({
+      servers: [filesystemServer, fetchServer],
+    });
+
+    await act(async () => {
+      await renderWithI18n(<McpManager />, { language: "en" });
+    });
+
+    await user.click(screen.getByRole("button", { name: "Batch Manage" }));
+    await user.click(
+      within(
+        await screen.findByTestId("mcp-server-card-mcp_filesystem"),
+      ).getByRole("button", { name: "Select: Filesystem" }),
+    );
+    await user.click(
+      within(await screen.findByTestId("mcp-server-card-mcp_fetch")).getByRole(
+        "button",
+        { name: "Select: Fetch" },
+      ),
+    );
+    await user.click(screen.getByRole("button", { name: "Batch Tags" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Batch Tags" });
+    await user.type(within(dialog).getByLabelText("Tag"), "Team");
+    await user.click(within(dialog).getByRole("button", { name: "Add tag" }));
+
+    await waitFor(() => {
+      expect(api.mcp.updateServer).toHaveBeenCalledWith(
+        "mcp_filesystem",
+        expect.objectContaining({ tags: ["files", "team"] }),
+      );
+      expect(api.mcp.updateServer).toHaveBeenCalledWith(
+        "mcp_fetch",
+        expect.objectContaining({ tags: ["web", "team"] }),
+      );
+      expect(showToast).toHaveBeenCalledWith(
+        "Added tag to 2 MCP server(s)",
+        "success",
+      );
+    });
+  });
+
+  it("batch syncs selected MCP servers to selected agent targets", async () => {
+    const user = userEvent.setup();
+    const { api } = installMcpMocks({
+      servers: [filesystemServer, fetchServer],
+    });
+
+    await act(async () => {
+      await renderWithI18n(<McpManager />, { language: "en" });
+    });
+
+    await user.click(screen.getByRole("button", { name: "Batch Manage" }));
+    await user.click(
+      within(
+        await screen.findByTestId("mcp-server-card-mcp_filesystem"),
+      ).getByRole("button", { name: "Select: Filesystem" }),
+    );
+    await user.click(
+      within(await screen.findByTestId("mcp-server-card-mcp_fetch")).getByRole(
+        "button",
+        { name: "Select: Fetch" },
+      ),
+    );
+    await user.click(screen.getByRole("button", { name: "Batch Deploy" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Batch Deploy" });
+    await user.click(
+      within(dialog).getByRole("button", { name: "Batch Deploy" }),
+    );
+
+    await waitFor(() => {
+      expect(api.mcp.apply).toHaveBeenCalledWith({
+        target: "codex",
+        scope: "global",
+        path: codexTarget.path,
+        serverIds: ["mcp_filesystem", "mcp_fetch"],
+      });
+      expect(api.mcp.apply).toHaveBeenCalledWith({
+        target: "claude",
+        scope: "global",
+        path: claudeTarget.path,
+        serverIds: ["mcp_filesystem", "mcp_fetch"],
+      });
+      expect(showToast).toHaveBeenCalledWith("MCP applied", "success");
+    });
+  });
+
+  it("opens single-server distribution from a My MCP card action", async () => {
+    const user = userEvent.setup();
+    const { api } = installMcpMocks({
+      servers: [filesystemServer, fetchServer],
+    });
+
+    await act(async () => {
+      await renderWithI18n(<McpManager />, { language: "en" });
+    });
+
+    const filesystemCard = await screen.findByTestId(
+      "mcp-server-card-mcp_filesystem",
+    );
+    await user.click(
+      within(filesystemCard).getByRole("button", { name: "Quick Sync" }),
+    );
+
+    const dialog = await screen.findByRole("dialog", { name: "Batch Deploy" });
+    expect(within(dialog).getByText("Filesystem")).toBeInTheDocument();
+    expect(within(dialog).queryByText("Fetch")).not.toBeInTheDocument();
+
+    await user.click(
+      within(dialog).getByRole("button", { name: "Batch Deploy" }),
+    );
+
+    await waitFor(() => {
+      expect(api.mcp.apply).toHaveBeenCalledWith({
+        target: "codex",
+        scope: "global",
+        path: codexTarget.path,
+        serverIds: ["mcp_filesystem"],
+      });
+      expect(api.mcp.apply).toHaveBeenCalledWith({
+        target: "claude",
+        scope: "global",
+        path: claudeTarget.path,
+        serverIds: ["mcp_filesystem"],
+      });
+    });
+  });
+
+  it("wraps MCP card distributed agent icons separately from card actions", async () => {
+    installMcpMocks({
+      servers: [filesystemServer],
+      targetPresets: [
+        codexTarget,
+        claudeTarget,
+        {
+          id: "cursor",
+          target: "cursor",
+          scope: "global",
+          label: "Cursor",
+          path: "/Users/test/.cursor/mcp.json",
+          platformId: "cursor",
+        },
+        {
+          id: "vscode",
+          target: "vscode",
+          scope: "global",
+          label: "VS Code",
+          path: "/Users/test/Library/Application Support/Code/User/mcp.json",
+          platformId: "vscode",
+        },
+        {
+          id: "cline",
+          target: "cline",
+          scope: "global",
+          label: "Cline",
+          path: "/Users/test/.cline/mcp.json",
+          platformId: "cline",
+        },
+        {
+          id: "gemini",
+          target: "gemini",
+          scope: "global",
+          label: "Gemini CLI",
+          path: "/Users/test/.gemini/settings.json",
+          platformId: "gemini",
+        },
+        {
+          id: "opencode",
+          target: "opencode",
+          scope: "global",
+          label: "OpenCode",
+          path: "/Users/test/.config/opencode/mcp.json",
+          platformId: "opencode",
+        },
+      ],
+      targetStatus: [
+        {
+          presetId: codexTarget.id,
+          path: codexTarget.path,
+          exists: true,
+          serverNames: ["filesystem"],
+        },
+        {
+          presetId: claudeTarget.id,
+          path: claudeTarget.path,
+          exists: true,
+          serverNames: ["filesystem"],
+        },
+        {
+          presetId: "cursor",
+          path: "/Users/test/.cursor/mcp.json",
+          exists: true,
+          serverNames: ["filesystem"],
+        },
+        {
+          presetId: "vscode",
+          path: "/Users/test/Library/Application Support/Code/User/mcp.json",
+          exists: true,
+          serverNames: ["filesystem"],
+        },
+        {
+          presetId: "cline",
+          path: "/Users/test/.cline/mcp.json",
+          exists: true,
+          serverNames: ["filesystem"],
+        },
+        {
+          presetId: "gemini",
+          path: "/Users/test/.gemini/settings.json",
+          exists: true,
+          serverNames: ["filesystem"],
+        },
+        {
+          presetId: "opencode",
+          path: "/Users/test/.config/opencode/mcp.json",
+          exists: true,
+          serverNames: ["filesystem"],
+        },
+      ],
+    });
+
+    await act(async () => {
+      await renderWithI18n(<McpManager />, { language: "en" });
+    });
+
+    const filesystemCard = await screen.findByTestId(
+      "mcp-server-card-mcp_filesystem",
+    );
+    const headerMeta = within(filesystemCard).getByTestId(
+      "mcp-card-header-meta",
+    );
+    const distribution = within(filesystemCard).getByTestId(
+      "mcp-distributed-targets",
+    );
+    const actions = within(filesystemCard).getByTestId("mcp-card-actions");
+
+    expect(headerMeta).toHaveClass("min-w-0", "flex-1", "items-end");
+    expect(distribution).toHaveClass("max-w-full", "flex-wrap", "justify-end");
+    expect(actions).toHaveClass("w-full", "justify-end");
+    expect(actions.contains(distribution)).toBe(false);
+    expect(within(filesystemCard).getByText("+1")).toBeInTheDocument();
+  });
+
+  it("renders MCP list view with Skill-style row distribution actions", async () => {
+    const user = userEvent.setup();
+    installMcpMocks({
+      servers: [filesystemServer, fetchServer],
+      targetStatus: [
+        {
+          presetId: codexTarget.id,
+          path: codexTarget.path,
+          exists: true,
+          serverNames: ["filesystem"],
+        },
+        {
+          presetId: claudeTarget.id,
+          path: claudeTarget.path,
+          exists: false,
+          serverNames: [],
+        },
+      ],
+    });
+
+    await act(async () => {
+      await renderWithI18n(<McpManager />, { language: "en" });
+    });
+
+    await user.click(screen.getByRole("button", { name: "List View" }));
+
+    const listView = await screen.findByTestId("mcp-server-list-view");
+    expect(listView).toHaveClass("h-full");
+    expect(listView).toHaveClass("overflow-y-auto");
+    expect(listView).not.toHaveClass("rounded-2xl");
+
+    const filesystemRow = within(listView).getByTestId(
+      "mcp-server-row-mcp_filesystem",
+    );
+    expect(
+      within(filesystemRow).getByRole("button", { name: "Quick Sync" }),
+    ).toBeInTheDocument();
+    expect(within(filesystemRow).getByText("1/2")).toBeInTheDocument();
+
+    const fetchRow = within(listView).getByTestId("mcp-server-row-mcp_fetch");
+    expect(within(fetchRow).getByText("0/2")).toBeInTheDocument();
+  });
+
   it("creates a new MCP server from the modal opened by the header action", async () => {
     const user = userEvent.setup();
     const { api } = installMcpMocks({ servers: [] });
@@ -863,8 +1450,16 @@ describe("McpManager", () => {
       document.dispatchEvent(new CustomEvent("open-create-mcp-modal"));
     });
     const dialog = screen.getByRole("dialog", { name: "New MCP" });
+    expect(
+      within(dialog).getByTestId("mcp-create-method-chooser"),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).queryByLabelText("Command, URL, or path"),
+    ).not.toBeInTheDocument();
+    expect(within(dialog).queryByLabelText("Name")).not.toBeInTheDocument();
+
     await user.click(
-      within(dialog).getByRole("button", { name: "Manual setup" }),
+      within(dialog).getByRole("button", { name: /Manual setup/ }),
     );
 
     await user.type(within(dialog).getByLabelText("Name"), "Created MCP");
@@ -889,6 +1484,55 @@ describe("McpManager", () => {
         screen.queryByRole("dialog", { name: "New MCP" }),
       ).not.toBeInTheDocument();
     });
+  });
+
+  it("keeps source and raw config creation behind Skill-style method cards", async () => {
+    const user = userEvent.setup();
+    installMcpMocks({ servers: [] });
+
+    await act(async () => {
+      await renderWithI18n(<McpManager />, { language: "en" });
+    });
+
+    act(() => {
+      document.dispatchEvent(new CustomEvent("open-create-mcp-modal"));
+    });
+    const dialog = screen.getByRole("dialog", { name: "New MCP" });
+    const chooser = within(dialog).getByTestId("mcp-create-method-chooser");
+
+    expect(
+      within(chooser).getByRole("button", { name: /Add from source/ }),
+    ).toBeInTheDocument();
+    expect(
+      within(chooser).getByRole("button", { name: /Paste config/ }),
+    ).toBeInTheDocument();
+    expect(
+      within(chooser).getByRole("button", { name: /Manual setup/ }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).queryByTestId("mcp-source-dropzone"),
+    ).not.toBeInTheDocument();
+    expect(
+      within(dialog).queryByLabelText("MCP config JSON or TOML"),
+    ).not.toBeInTheDocument();
+
+    await user.click(
+      within(chooser).getByRole("button", { name: /Add from source/ }),
+    );
+    expect(
+      within(dialog).getByTestId("mcp-source-dropzone"),
+    ).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole("button", { name: "Back" }));
+    await user.click(
+      within(dialog).getByRole("button", { name: /Paste config/ }),
+    );
+    expect(
+      within(dialog).getByLabelText("MCP config JSON or TOML"),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).queryByTestId("mcp-source-dropzone"),
+    ).not.toBeInTheDocument();
   });
 
   it("adds a custom MCP from a pasted GitHub URL", async () => {
@@ -918,6 +1562,9 @@ describe("McpManager", () => {
       document.dispatchEvent(new CustomEvent("open-create-mcp-modal"));
     });
     const dialog = screen.getByRole("dialog", { name: "New MCP" });
+    await user.click(
+      within(dialog).getByRole("button", { name: /Add from source/ }),
+    );
 
     await user.click(within(dialog).getByLabelText("Command, URL, or path"));
     await user.type(
@@ -948,6 +1595,7 @@ describe("McpManager", () => {
   });
 
   it("imports a dropped MCP config file from the create modal", async () => {
+    const user = userEvent.setup();
     const { api, electron } = installMcpMocks({ servers: [] });
     api.mcp.createFromSource.mockResolvedValue({
       imported: [{ ...filesystemServer, id: "mcp_dropped" }],
@@ -965,6 +1613,9 @@ describe("McpManager", () => {
       document.dispatchEvent(new CustomEvent("open-create-mcp-modal"));
     });
     const dialog = screen.getByRole("dialog", { name: "New MCP" });
+    await user.click(
+      within(dialog).getByRole("button", { name: /Add from source/ }),
+    );
     const dropzone = within(dialog).getByTestId("mcp-source-dropzone");
     const file = new File(["{}"], "mcp.json", { type: "application/json" });
 
@@ -1003,6 +1654,9 @@ describe("McpManager", () => {
     });
     const dialog = screen.getByRole("dialog", { name: "New MCP" });
     await user.click(
+      within(dialog).getByRole("button", { name: /Add from source/ }),
+    );
+    await user.click(
       within(dialog).getByRole("button", { name: "Choose source folder" }),
     );
 
@@ -1012,6 +1666,65 @@ describe("McpManager", () => {
         input: "/tmp/local-mcp",
         kind: "path",
       });
+    });
+  });
+
+  it("imports a pasted MCP JSON config from the create modal", async () => {
+    const user = userEvent.setup();
+    const { api } = installMcpMocks({ servers: [] });
+    api.mcp.createFromSource.mockResolvedValue({
+      imported: [
+        {
+          ...filesystemServer,
+          id: "mcp_pasted",
+          name: "memory",
+          displayName: "memory",
+        },
+      ],
+      skipped: [],
+      detectedKind: "config-content",
+      warnings: [],
+    });
+
+    await act(async () => {
+      await renderWithI18n(<McpManager />, { language: "en" });
+    });
+
+    act(() => {
+      document.dispatchEvent(new CustomEvent("open-create-mcp-modal"));
+    });
+    const dialog = screen.getByRole("dialog", { name: "New MCP" });
+    await user.click(
+      within(dialog).getByRole("button", { name: /Paste config/ }),
+    );
+
+    const rawConfig = JSON.stringify({
+      mcpServers: {
+        memory: {
+          command: "npx",
+          args: ["-y", "@modelcontextprotocol/server-memory"],
+        },
+      },
+    });
+    fireEvent.change(within(dialog).getByLabelText("MCP config JSON or TOML"), {
+      target: { value: rawConfig },
+    });
+    await user.click(
+      within(dialog).getByRole("button", { name: "Import config" }),
+    );
+
+    await waitFor(() => {
+      expect(api.mcp.createFromSource).toHaveBeenCalledWith({
+        input: rawConfig,
+        kind: "config",
+      });
+      expect(showToast).toHaveBeenCalledWith(
+        "1 MCP source(s) added",
+        "success",
+      );
+      expect(
+        screen.queryByRole("dialog", { name: "New MCP" }),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -1041,7 +1754,7 @@ describe("McpManager", () => {
     expect(api.mcp.apply).not.toHaveBeenCalled();
   });
 
-  it("agent overview bottom action opens the New MCP import flow instead of bulk applying", async () => {
+  it("adds MCP to an Agent target from existing My MCP servers", async () => {
     const user = userEvent.setup();
     const disabledServer = {
       ...filesystemServer,
@@ -1051,7 +1764,7 @@ describe("McpManager", () => {
       enabled: false,
     };
     const { api } = installMcpMocks({
-      servers: [filesystemServer, disabledServer],
+      servers: [filesystemServer, fetchServer, disabledServer],
       targetStatus: [
         {
           presetId: codexTarget.id,
@@ -1085,8 +1798,31 @@ describe("McpManager", () => {
 
     await user.click(screen.getByRole("button", { name: "Add MCP" }));
 
-    expect(screen.getByRole("dialog", { name: "New MCP" })).toBeInTheDocument();
-    expect(api.mcp.apply).not.toHaveBeenCalled();
+    const dialog = screen.getByRole("dialog", { name: "Add from My MCP" });
+    const libraryGrid = within(dialog).getByTestId("mcp-library-deploy-grid");
+    expect(within(dialog).queryByText("Manual setup")).not.toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        "Select saved MCP servers and add them to Codex CLI.",
+      ),
+    ).toBeInTheDocument();
+    expect(libraryGrid).toHaveClass("grid");
+    expect(libraryGrid).toHaveClass("sm:grid-cols-2");
+
+    await user.click(within(dialog).getByRole("button", { name: "Fetch" }));
+    await user.click(
+      within(dialog).getByRole("button", { name: "Add 1 MCP to Agent" }),
+    );
+
+    await waitFor(() => {
+      expect(api.mcp.apply).toHaveBeenCalledWith({
+        target: "codex",
+        scope: "global",
+        path: codexTarget.path,
+        serverIds: ["mcp_fetch"],
+      });
+      expect(showToast).toHaveBeenCalledWith("MCP applied", "success");
+    });
   });
 
   it("imports an external agent MCP entry into My MCP from the detail action", async () => {
@@ -1098,7 +1834,31 @@ describe("McpManager", () => {
           presetId: codexTarget.id,
           path: codexTarget.path,
           exists: true,
-          serverNames: ["external-server"],
+          serverNames: ["external-server", "second-server"],
+          servers: [
+            {
+              ...externalServer,
+              id: "agent_external",
+              displayName: "External Server",
+              source: {
+                type: "import" as const,
+                id: codexTarget.id,
+                label: codexTarget.label,
+              },
+            },
+            {
+              ...externalServer,
+              id: "agent_second",
+              name: "second-server",
+              displayName: "Second Server",
+              args: ["second-mcp"],
+              source: {
+                type: "import" as const,
+                id: codexTarget.id,
+                label: codexTarget.label,
+              },
+            },
+          ],
         },
         {
           presetId: claudeTarget.id,
@@ -1123,9 +1883,13 @@ describe("McpManager", () => {
         servers: [filesystemServer, externalServer],
         bindings: [],
       });
-    api.mcp.importFile.mockResolvedValue({
-      imported: [externalServer],
-      skipped: [],
+    api.mcp.createServer.mockResolvedValue({
+      ...externalServer,
+      source: {
+        type: "import" as const,
+        id: codexTarget.id,
+        label: codexTarget.label,
+      },
     });
     useMcpStore.setState({ selectedTab: "targets" });
 
@@ -1137,11 +1901,9 @@ describe("McpManager", () => {
       expect(screen.getAllByText("external-server").length).toBeGreaterThan(0);
     });
 
-    const externalCard = (await screen.findAllByTestId(
-      "mcp-agent-server-card",
-    )).find(
-      (card) => within(card).queryAllByText("external-server").length > 0,
-    );
+    const externalCard = (
+      await screen.findAllByTestId("mcp-agent-server-card")
+    ).find((card) => within(card).queryAllByText("external-server").length > 0);
     expect(externalCard).toBeTruthy();
 
     await user.click(externalCard!);
@@ -1155,9 +1917,25 @@ describe("McpManager", () => {
     );
 
     await waitFor(() => {
-      expect(api.mcp.importFile).toHaveBeenCalledWith(codexTarget.path);
+      expect(api.mcp.createServer).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "external-server",
+          displayName: "External Server",
+          command: "npx",
+          args: ["external-mcp"],
+          source: {
+            type: "import",
+            id: codexTarget.id,
+            label: codexTarget.label,
+          },
+        }),
+      );
+      expect(api.mcp.createServer).toHaveBeenCalledTimes(1);
+      expect(api.mcp.importFile).not.toHaveBeenCalled();
       expect(screen.getByTestId("mcp-full-detail-page")).toBeInTheDocument();
       expect(screen.getAllByText("External Server").length).toBeGreaterThan(0);
+      expect(screen.getByText("Imported from Agent")).toBeInTheDocument();
+      expect(screen.getAllByText("Codex CLI").length).toBeGreaterThan(0);
       expect(useMcpStore.getState().selectedTab).toBe("library");
       expect(useMcpStore.getState().selectedServerId).toBe("mcp_external");
       expect(showToast).toHaveBeenCalledWith("MCP imported", "success");
@@ -1210,9 +1988,13 @@ describe("McpManager", () => {
         servers: [filesystemServer, externalServer],
         bindings: [],
       });
-    api.mcp.importFile.mockResolvedValue({
-      imported: [externalServer],
-      skipped: [],
+    api.mcp.createServer.mockResolvedValue({
+      ...externalServer,
+      source: {
+        type: "import" as const,
+        id: codexTarget.id,
+        label: codexTarget.label,
+      },
     });
     useMcpStore.setState({ selectedTab: "targets" });
 
@@ -1220,11 +2002,9 @@ describe("McpManager", () => {
       await renderWithI18n(<McpManager />, { language: "en" });
     });
 
-    const externalCard = (await screen.findAllByTestId(
-      "mcp-agent-server-card",
-    )).find(
-      (card) => within(card).queryAllByText("external-server").length > 0,
-    );
+    const externalCard = (
+      await screen.findAllByTestId("mcp-agent-server-card")
+    ).find((card) => within(card).queryAllByText("external-server").length > 0);
     expect(externalCard).toBeTruthy();
 
     await user.click(
@@ -1255,7 +2035,17 @@ describe("McpManager", () => {
     await user.click(importButton);
 
     await waitFor(() => {
-      expect(api.mcp.importFile).toHaveBeenCalledWith(codexTarget.path);
+      expect(api.mcp.createServer).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "external-server",
+          source: {
+            type: "import",
+            id: codexTarget.id,
+            label: codexTarget.label,
+          },
+        }),
+      );
+      expect(api.mcp.importFile).not.toHaveBeenCalled();
       expect(screen.getByTestId("mcp-full-detail-page")).toBeInTheDocument();
       expect(useMcpStore.getState().selectedServerId).toBe("mcp_external");
     });
@@ -1298,11 +2088,9 @@ describe("McpManager", () => {
       await renderWithI18n(<McpManager />, { language: "en" });
     });
 
-    const externalCard = (await screen.findAllByTestId(
-      "mcp-agent-server-card",
-    )).find(
-      (card) => within(card).queryAllByText("external-server").length > 0,
-    );
+    const externalCard = (
+      await screen.findAllByTestId("mcp-agent-server-card")
+    ).find((card) => within(card).queryAllByText("external-server").length > 0);
     expect(externalCard).toBeTruthy();
 
     await user.click(externalCard!);
@@ -1349,23 +2137,31 @@ describe("McpManager", () => {
         },
       ],
     });
+    api.mcp.createServer.mockResolvedValue({
+      ...externalServer,
+      source: {
+        type: "import" as const,
+        id: codexTarget.id,
+        label: codexTarget.label,
+      },
+    });
     useMcpStore.setState({ selectedTab: "targets" });
 
     await act(async () => {
       await renderWithI18n(<McpManager />, { language: "en" });
     });
 
-    const externalCard = (await screen.findAllByTestId(
-      "mcp-agent-server-card",
-    )).find(
-      (card) => within(card).queryAllByText("external-server").length > 0,
-    );
+    const externalCard = (
+      await screen.findAllByTestId("mcp-agent-server-card")
+    ).find((card) => within(card).queryAllByText("external-server").length > 0);
     expect(externalCard).toBeTruthy();
 
     const cardActions = within(externalCard!).getByTestId(
       "mcp-agent-server-actions",
     );
-    expect(within(externalCard!).getByText("npx external-mcp")).toBeInTheDocument();
+    expect(
+      within(externalCard!).getByText("npx external-mcp"),
+    ).toBeInTheDocument();
     expect(within(externalCard!).getByText("stdio")).toBeInTheDocument();
     expect(within(cardActions).queryByText("Enabled")).not.toBeInTheDocument();
     expect(
@@ -1387,11 +2183,9 @@ describe("McpManager", () => {
     expect(api.mcp.importFile).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole("button", { name: "Back" }));
-    const externalCardAfterBack = (await screen.findAllByTestId(
-      "mcp-agent-server-card",
-    )).find(
-      (card) => within(card).queryAllByText("external-server").length > 0,
-    );
+    const externalCardAfterBack = (
+      await screen.findAllByTestId("mcp-agent-server-card")
+    ).find((card) => within(card).queryAllByText("external-server").length > 0);
     expect(externalCardAfterBack).toBeTruthy();
 
     await user.click(
@@ -1401,7 +2195,17 @@ describe("McpManager", () => {
     );
 
     await waitFor(() => {
-      expect(api.mcp.importFile).toHaveBeenCalledWith(codexTarget.path);
+      expect(api.mcp.createServer).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "external-server",
+          source: {
+            type: "import",
+            id: codexTarget.id,
+            label: codexTarget.label,
+          },
+        }),
+      );
+      expect(api.mcp.importFile).not.toHaveBeenCalled();
       expect(useMcpStore.getState().selectedTab).toBe("library");
     });
   });
@@ -1443,11 +2247,9 @@ describe("McpManager", () => {
       await renderWithI18n(<McpManager />, { language: "en" });
     });
 
-    const externalCard = (await screen.findAllByTestId(
-      "mcp-agent-server-card",
-    )).find(
-      (card) => within(card).queryAllByText("external-server").length > 0,
-    );
+    const externalCard = (
+      await screen.findAllByTestId("mcp-agent-server-card")
+    ).find((card) => within(card).queryAllByText("external-server").length > 0);
     expect(externalCard).toBeTruthy();
 
     await user.click(externalCard!);
@@ -1493,9 +2295,9 @@ describe("McpManager", () => {
       await renderWithI18n(<McpManager />, { language: "en" });
     });
 
-    const managedCard = (await screen.findAllByTestId(
-      "mcp-agent-server-card",
-    )).find((card) => within(card).queryAllByText("Filesystem").length > 0);
+    const managedCard = (
+      await screen.findAllByTestId("mcp-agent-server-card")
+    ).find((card) => within(card).queryAllByText("Filesystem").length > 0);
     expect(managedCard).toBeTruthy();
     const managedCardActions = within(managedCard!).getByTestId(
       "mcp-agent-server-actions",
@@ -1569,11 +2371,9 @@ describe("McpManager", () => {
       await renderWithI18n(<McpManager />, { language: "en" });
     });
 
-    const externalCard = (await screen.findAllByTestId(
-      "mcp-agent-server-card",
-    )).find(
-      (card) => within(card).queryAllByText("external-server").length > 0,
-    );
+    const externalCard = (
+      await screen.findAllByTestId("mcp-agent-server-card")
+    ).find((card) => within(card).queryAllByText("external-server").length > 0);
     expect(externalCard).toBeTruthy();
 
     await user.click(externalCard!);
@@ -1615,11 +2415,9 @@ describe("McpManager", () => {
       await renderWithI18n(<McpManager />, { language: "en" });
     });
 
-    const externalCard = (await screen.findAllByTestId(
-      "mcp-agent-server-card",
-    )).find(
-      (card) => within(card).queryAllByText("external-server").length > 0,
-    );
+    const externalCard = (
+      await screen.findAllByTestId("mcp-agent-server-card")
+    ).find((card) => within(card).queryAllByText("external-server").length > 0);
     expect(externalCard).toBeTruthy();
 
     await user.click(
@@ -1629,6 +2427,7 @@ describe("McpManager", () => {
     );
 
     expect(electron.openPath).toHaveBeenCalledWith(codexTarget.path);
+    expect(showToast).toHaveBeenCalledWith("Agent config opened", "success");
     expect(api.mcp.importFile).not.toHaveBeenCalled();
     expect(api.mcp.removeNames).not.toHaveBeenCalled();
   });
@@ -1670,11 +2469,9 @@ describe("McpManager", () => {
       await renderWithI18n(<McpManager />, { language: "en" });
     });
 
-    const externalCard = (await screen.findAllByTestId(
-      "mcp-agent-server-card",
-    )).find(
-      (card) => within(card).queryAllByText("external-server").length > 0,
-    );
+    const externalCard = (
+      await screen.findAllByTestId("mcp-agent-server-card")
+    ).find((card) => within(card).queryAllByText("external-server").length > 0);
     expect(externalCard).toBeTruthy();
 
     await user.click(externalCard!);
@@ -1776,9 +2573,9 @@ describe("McpManager", () => {
       await renderWithI18n(<McpManager />, { language: "en" });
     });
 
-    const managedCard = (await screen.findAllByTestId(
-      "mcp-agent-server-card",
-    )).find((card) => within(card).queryAllByText("Filesystem").length > 0);
+    const managedCard = (
+      await screen.findAllByTestId("mcp-agent-server-card")
+    ).find((card) => within(card).queryAllByText("Filesystem").length > 0);
     expect(managedCard).toBeTruthy();
 
     await user.click(

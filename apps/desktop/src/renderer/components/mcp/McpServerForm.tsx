@@ -7,6 +7,7 @@ import {
   SaveIcon,
   ServerIcon,
   TrashIcon,
+  XIcon,
 } from "lucide-react";
 import type {
   McpServerConfig,
@@ -87,8 +88,15 @@ function getSourceSummary(
     };
   }
   if (server.source.type === "import") {
+    const isAgentImport = Boolean(server.source.id || server.source.label);
+    const labelKey = isAgentImport
+      ? "mcp.sourceAgentImport"
+      : "mcp.sourceImport";
+    const fallback = isAgentImport
+      ? "Imported from Agent"
+      : "Imported from config file";
     return {
-      label: t("mcp.sourceImport", "Imported from config file"),
+      label: t(labelKey, fallback),
       value: server.source.label || server.source.id || server.name,
       url: server.source.url,
     };
@@ -106,6 +114,7 @@ interface McpServerFormProps {
   platformPanel?: ReactNode;
   variant?: "detail" | "modal";
   onBack?: () => void;
+  onClose?: () => void;
   onSave: (serverId: string | null, draft: McpServerDraft) => Promise<void>;
   onDelete: (serverId: string) => Promise<void>;
 }
@@ -123,6 +132,7 @@ export function McpServerForm({
   platformPanel,
   variant = "detail",
   onBack,
+  onClose,
   onSave,
   onDelete,
 }: McpServerFormProps) {
@@ -172,7 +182,7 @@ export function McpServerForm({
         }
       >
         <div className="flex min-w-0 items-center gap-4">
-          {isDetailPage ? (
+          {isDetailPage || onBack ? (
             <button
               type="button"
               onClick={onBack}
@@ -223,6 +233,17 @@ export function McpServerForm({
             >
               <TrashIcon className="h-4 w-4" aria-hidden="true" />
               {t("common.delete", "Delete")}
+            </button>
+          ) : null}
+          {onClose ? (
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+              aria-label={t("common.close", "Close")}
+              title={t("common.close", "Close")}
+            >
+              <XIcon className="h-4 w-4" aria-hidden="true" />
             </button>
           ) : null}
           <button

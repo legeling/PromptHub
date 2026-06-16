@@ -2,7 +2,7 @@
 
 ## Problem
 
-PromptHub can distribute Skills, Rules, and prompts, but MCP server setup is still fragmented across Codex, Claude, Cursor, VS Code, Cline, Roo Code, and similar agent tools. Users need one place to manage reusable MCP server definitions and apply them to multiple agents without running a gateway or copying JSON/TOML by hand.
+PromptHub can distribute Skills, Rules, and prompts, but MCP server setup is still fragmented across Codex, Claude, Cursor, VS Code, Cline, and similar agent tools. Users need one place to manage reusable MCP server definitions and apply them to multiple agents without running a gateway or copying JSON/TOML by hand.
 
 ## Scope
 

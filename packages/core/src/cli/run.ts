@@ -21,9 +21,10 @@ import {
   getMcpTargetPresets,
 } from "../mcp-library";
 import type { SkillPlatform } from "@prompthub/shared/constants/platforms";
-import type {
-  McpApplyTarget,
-  McpTargetKind,
+import {
+  MCP_TARGET_KINDS,
+  type McpApplyTarget,
+  type McpTargetKind,
 } from "@prompthub/shared/types/mcp";
 import type {
   CreateFolderDTO,
@@ -1707,24 +1708,8 @@ function mcpTemplateTableRows(
   }));
 }
 
-const MCP_TARGET_KINDS: McpTargetKind[] = [
-  "codex",
-  "claude",
-  "claude-desktop",
-  "cursor",
-  "vscode",
-  "cline",
-  "roo",
-  "gemini",
-  "windsurf",
-  "kiro",
-  "opencode",
-  "custom-json",
-  "custom-toml",
-];
-
 function parseMcpTargetKind(value: string | undefined): McpTargetKind {
-  if (!value || !MCP_TARGET_KINDS.includes(value as McpTargetKind)) {
+  if (!value || !(MCP_TARGET_KINDS as readonly string[]).includes(value)) {
     throw new CliError(
       "USAGE_ERROR",
       `--target 必须是: ${MCP_TARGET_KINDS.join("|")}`,
@@ -3150,11 +3135,11 @@ export async function runCli(
         ? error
         : error instanceof CoreMcpError
           ? mapCoreMcpError(error)
-        : new CliError(
-            "INTERNAL_ERROR",
-            error instanceof Error ? error.message : String(error),
-            EXIT_CODES.INTERNAL,
-          );
+          : new CliError(
+              "INTERNAL_ERROR",
+              error instanceof Error ? error.message : String(error),
+              EXIT_CODES.INTERNAL,
+            );
     emitError({ io, output: "json", skills: skillService }, cliError);
     return cliError.exitCode;
   } finally {
