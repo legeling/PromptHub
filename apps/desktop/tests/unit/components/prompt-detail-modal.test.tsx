@@ -95,7 +95,7 @@ describe("PromptDetailModal", () => {
     );
 
     expect(
-      await screen.findByRole("dialog", { name: "Prompt relationships" }),
+      await screen.findByText("Prompt relationships"),
     ).toBeInTheDocument();
     fireEvent.click(
       screen.getByRole("button", { name: "Open related prompt Review rubric" }),

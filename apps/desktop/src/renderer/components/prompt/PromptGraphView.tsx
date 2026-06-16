@@ -423,6 +423,9 @@ export function PromptGraphView({
             nodeLabel={() => ""}
             linkColor={linkColor}
             linkWidth={linkWidth}
+            linkLineDash={(link: PromptGraphLink) =>
+              link.isHierarchy ? null : [4, 4]
+            }
             warmupTicks={motionConfig.warmupTicks}
             cooldownTicks={motionConfig.cooldownTicks}
             d3AlphaDecay={motionConfig.alphaDecay}

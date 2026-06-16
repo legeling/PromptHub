@@ -15,7 +15,6 @@ import { resolveScenarioModel } from '../../services/ai-defaults';
 import { PromptListHeader } from '../prompt/PromptListHeader';
 import type { OutputFormatConfig, VariableInputImageAttachment } from '../prompt/VariableInputModal';
 import { Spinner } from '../ui/Spinner';
-import { Modal } from '../ui/Modal';
 
 // Lazy load SkillManager for better initial load performance
 // 懒加载 SkillManager 以提升初始加载性能
@@ -39,11 +38,10 @@ const loadingFallback = (
     <Spinner />
   </div>
 );
-import { StarIcon, CopyIcon, HistoryIcon, HashIcon, FolderIcon, SparklesIcon, EditIcon, TrashIcon, CheckIcon, PlayIcon, LoaderIcon, XIcon, GitCompareIcon, ClockIcon, GlobeIcon, PinIcon, MessageSquareTextIcon, ImageIcon, DownloadIcon, SaveIcon, ZoomInIcon, Share2Icon, PaperclipIcon, GripVerticalIcon, CornerDownRightIcon, GitBranchIcon, ChevronDownIcon, ChevronRightIcon } from 'lucide-react';
+import { StarIcon, CopyIcon, HistoryIcon, HashIcon, FolderIcon, SparklesIcon, EditIcon, TrashIcon, CheckIcon, PlayIcon, LoaderIcon, XIcon, GitCompareIcon, ClockIcon, GlobeIcon, PinIcon, MessageSquareTextIcon, ImageIcon, DownloadIcon, SaveIcon, ZoomInIcon, Share2Icon, GripVerticalIcon, CornerDownRightIcon, GitBranchIcon, ChevronDownIcon, ChevronRightIcon } from 'lucide-react';
 import { ContextMenu, ContextMenuItem } from '../ui/ContextMenu';
 import { ImagePreviewModal } from '../ui/ImagePreviewModal';
 import { LocalImage } from '../ui/LocalImage';
-import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 import { handleMarkdownListKeyDown } from '../ui/Textarea';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
@@ -78,15 +76,6 @@ import { getFlattenedTree } from './tree/utilities';
 import { renderFolderIcon } from './folderIconHelper';
 
 const PROMPT_CARD_ESTIMATED_HEIGHT = 76;
-const MAX_AI_TEST_IMAGES = 8;
-const MAX_AI_TEST_IMAGE_BYTES = 10 * 1024 * 1024;
-const SUPPORTED_AI_TEST_IMAGE_MIME_TYPES = new Set([
-  'image/png',
-  'image/jpeg',
-  'image/jpg',
-  'image/webp',
-  'image/gif',
-]);
 
 let aiServicePromise: Promise<typeof import('../../services/ai')> | null = null;
 
@@ -732,7 +721,6 @@ function PromptSkillMainContent() {
   const [showEnglish, setShowEnglish] = useState(false);
   const [isTagDropActive, setIsTagDropActive] = useState(false);
   const promptTypeFilter = usePromptStore((state) => state.promptTypeFilter);
-  const setPromptTypeFilter = usePromptStore((state) => state.setPromptTypeFilter);
   const tagFilterMode = useSettingsStore((state) => state.tagFilterMode);
   const uiViewMode = useUIStore((state) => state.viewMode);
   const { showToast } = useToast();
@@ -832,8 +820,6 @@ function PromptSkillMainContent() {
   const currentState = selectedId ? promptTestStates[selectedId] : null;
   const isTestingAI = currentState?.isTestingAI || false;
   const isComparingModels = currentState?.isComparingModels || false;
-  const compareResults = currentState?.compareResults || null;
-  const compareError = currentState?.compareError || null;
 
   // Separate streaming state for real-time display (bypasses complex state updates)
   // 独立的流式状态，用于实时显示（绕过复杂的状态更新）
@@ -1079,84 +1065,6 @@ function PromptSkillMainContent() {
     const next = !renderMarkdownEnabled;
     setRenderMarkdownEnabled(next);
     setRenderMarkdownPref(next);
-  };
-
-  const handleRestoreVersion = async (version: PromptVersion) => {
-    if (selectedPrompt) {
-      await updatePrompt(selectedPrompt.id, {
-        systemPrompt: version.systemPrompt,
-        userPrompt: version.userPrompt,
-      });
-      showToast(t('toast.restored'), 'success');
-    }
-  };
-
-  const formatAiTestImageSize = (bytes: number): string => {
-    if (bytes >= 1024 * 1024) {
-      return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-    }
-    return `${Math.max(1, Math.round(bytes / 1024))} KB`;
-  };
-
-  const readInlineAiTestImage = (file: File): Promise<VariableInputImageAttachment> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result !== 'string') {
-          reject(new Error(t('prompt.aiTestImageReadFailed')));
-          return;
-        }
-
-        const commaIndex = reader.result.indexOf(',');
-        if (commaIndex === -1) {
-          reject(new Error(t('prompt.aiTestImageReadFailed')));
-          return;
-        }
-
-        resolve({
-          id: `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2, 8)}`,
-          name: file.name,
-          mimeType: file.type,
-          size: file.size,
-          dataUrl: reader.result,
-          base64: reader.result.slice(commaIndex + 1),
-        });
-      };
-      reader.onerror = () => reject(new Error(t('prompt.aiTestImageReadFailed')));
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const handleInlineAiTestImageSelection = async (files: FileList | null) => {
-    if (!files || files.length === 0) return;
-
-    const remainingSlots = MAX_AI_TEST_IMAGES - inlineAiTestImages.length;
-    if (remainingSlots <= 0) {
-      showToast(t('prompt.aiTestImageLimit', { count: MAX_AI_TEST_IMAGES }), 'error');
-      return;
-    }
-
-    const acceptedFiles: File[] = [];
-    for (const file of Array.from(files).slice(0, remainingSlots)) {
-      if (!SUPPORTED_AI_TEST_IMAGE_MIME_TYPES.has(file.type)) {
-        showToast(t('prompt.aiTestImageUnsupported', { name: file.name }), 'error');
-        continue;
-      }
-      if (file.size > MAX_AI_TEST_IMAGE_BYTES) {
-        showToast(t('prompt.aiTestImageTooLarge', { name: file.name, size: formatAiTestImageSize(MAX_AI_TEST_IMAGE_BYTES) }), 'error');
-        continue;
-      }
-      acceptedFiles.push(file);
-    }
-
-    if (acceptedFiles.length === 0) return;
-
-    try {
-      const attachments = await Promise.all(acceptedFiles.map(readInlineAiTestImage));
-      setInlineAiTestImages((prev) => [...prev, ...attachments].slice(0, MAX_AI_TEST_IMAGES));
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : t('prompt.aiTestImageReadFailed'), 'error');
-    }
   };
 
   const runAiTest = async (
@@ -1568,11 +1476,9 @@ function PromptSkillMainContent() {
   const [aiTestPrompt, setAiTestPrompt] = useState<Prompt | null>(null);
   const [aiTestInitialMode, setAiTestInitialMode] = useState<'single' | 'compare' | 'image'>('single');
   const [inlineAiTestImages, setInlineAiTestImages] = useState<VariableInputImageAttachment[]>([]);
-  const inlineAiTestImageInputRef = useRef<HTMLInputElement | null>(null);
   // AI response cache (for list view preview)
   // AI 响应缓存（用于列表视图预览）
   const [aiResponseCache, setAiResponseCache] = useState<Record<string, string>>({});
-  const setViewMode = usePromptStore((state) => state.setViewMode);
 
   const detailInlineCurrentValues = useMemo(() => {
     if (!selectedPrompt) {
@@ -2679,8 +2585,9 @@ function PromptSkillMainContent() {
                   <div className="mb-4">
                     <button
                       type="button"
-                      onClick={() => setIsDetailRelationshipsOpen(true)}
+                      onClick={() => setIsDetailRelationshipsOpen((open) => !open)}
                       disabled={isDetailInlineEditing}
+                      aria-expanded={isDetailRelationshipsOpen}
                       aria-label={t('prompt.relationships.openPanel')}
                       className="inline-flex items-center gap-2 rounded-xl border border-border app-wallpaper-surface-strong px-3 py-2 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-accent/60 disabled:cursor-not-allowed disabled:opacity-50"
                     >
@@ -2689,7 +2596,26 @@ function PromptSkillMainContent() {
                       <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                         {selectedPromptRelations.length}
                       </span>
+                      <ChevronDownIcon
+                        aria-hidden="true"
+                        className={`h-4 w-4 text-muted-foreground transition-transform ${
+                          isDetailRelationshipsOpen ? 'rotate-180' : ''
+                        }`}
+                      />
                     </button>
+
+                    {isDetailRelationshipsOpen && (
+                      <PromptRelationshipPanel
+                        currentPrompt={selectedPrompt}
+                        prompts={prompts}
+                        relations={selectedPromptRelations}
+                        onCreateRelation={handleCreatePromptRelation}
+                        onDeleteRelation={handleDeletePromptRelation}
+                        onSelectPrompt={(promptId) => selectPrompt(promptId)}
+                        disabled={isDetailInlineEditing}
+                        className="mt-3 mb-0"
+                      />
+                    )}
                   </div>
 
                   {/* Images */}
@@ -3157,31 +3083,6 @@ function PromptSkillMainContent() {
           )}
         </div>
       </div>
-
-      {/* Shared modals */}
-      {/* 共享弹窗 */}
-      {selectedPrompt && (
-        <Modal
-          isOpen={isDetailRelationshipsOpen}
-          onClose={() => setIsDetailRelationshipsOpen(false)}
-          title={t('prompt.relationships.title')}
-          size="2xl"
-        >
-          <PromptRelationshipPanel
-            currentPrompt={selectedPrompt}
-            prompts={prompts}
-            relations={selectedPromptRelations}
-            onCreateRelation={handleCreatePromptRelation}
-            onDeleteRelation={handleDeletePromptRelation}
-            onSelectPrompt={(promptId) => {
-              selectPrompt(promptId);
-              setIsDetailRelationshipsOpen(false);
-            }}
-            disabled={isDetailInlineEditing}
-            className="mb-0"
-          />
-        </Modal>
-      )}
 
       {/* Edit modal */}
       {/* 编辑弹窗 */}

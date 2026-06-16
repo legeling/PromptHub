@@ -379,7 +379,8 @@ export function PromptDetailModal({
       {canEditRelations && (
         <button
           type="button"
-          onClick={() => setIsRelationshipModalOpen(true)}
+          onClick={() => setIsRelationshipModalOpen((open) => !open)}
+          aria-expanded={isRelationshipModalOpen}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors text-sm font-medium"
           title={t("prompt.relationships.openPanel")}
           aria-label={t("prompt.relationships.openPanel")}
@@ -578,6 +579,23 @@ export function PromptDetailModal({
           </div>
         )}
 
+        {/* 关系（内联展开） */}
+        {canEditRelations && isRelationshipModalOpen && (
+          <PromptRelationshipPanel
+            currentPrompt={prompt}
+            prompts={prompts}
+            relations={modalRelations}
+            onCreateRelation={onCreateRelation!}
+            onDeleteRelation={onDeleteRelation!}
+            onSelectPrompt={(promptId) => {
+              onSelectPrompt!(promptId);
+              setIsRelationshipModalOpen(false);
+              onClose();
+            }}
+            className="mb-0"
+          />
+        )}
+
         {/* 变量 */}
         {allVariables.length > 0 && (
           <div>
@@ -704,29 +722,6 @@ export function PromptDetailModal({
         prompt={prompt}
         onContinueEditing={onQuickRewriteEdit ?? onEdit}
       />
-
-      {canEditRelations && (
-        <Modal
-          isOpen={isRelationshipModalOpen}
-          onClose={() => setIsRelationshipModalOpen(false)}
-          title={t("prompt.relationships.title")}
-          size="2xl"
-        >
-          <PromptRelationshipPanel
-            currentPrompt={prompt}
-            prompts={prompts}
-            relations={modalRelations}
-            onCreateRelation={onCreateRelation!}
-            onDeleteRelation={onDeleteRelation!}
-            onSelectPrompt={(promptId) => {
-              onSelectPrompt!(promptId);
-              setIsRelationshipModalOpen(false);
-              onClose();
-            }}
-            className="mb-0"
-          />
-        </Modal>
-      )}
     </Modal>
   );
 }

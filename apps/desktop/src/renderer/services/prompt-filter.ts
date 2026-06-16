@@ -46,7 +46,7 @@ export function collectPrivateFolderScopeIds(folders: Folder[]): Set<string> {
   );
 }
 
-function isSubsequence(needle: string, haystack: string) {
+export function isSubsequence(needle: string, haystack: string) {
   if (!needle) return true;
   if (needle.length > haystack.length) return false;
   let i = 0;

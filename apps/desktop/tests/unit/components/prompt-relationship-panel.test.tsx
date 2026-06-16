@@ -24,18 +24,23 @@ const basePrompt: Prompt = {
   updatedAt: "2026-06-01T00:00:00.000Z",
 };
 
-function createPrompt(id: string, title: string): Prompt {
-  return {
-    ...basePrompt,
-    id,
-    title,
-  };
+function createPrompt(
+  id: string,
+  title: string,
+  overrides: Partial<Prompt> = {},
+): Prompt {
+  return { ...basePrompt, id, title, ...overrides };
 }
 
-const currentPrompt = basePrompt;
+const currentPrompt = createPrompt("prompt-current", "Launch brief", {
+  tags: ["marketing"],
+});
 const rubricPrompt = createPrompt("prompt-rubric", "Review rubric");
 const outlinePrompt = createPrompt("prompt-outline", "Outline step");
 const relatedPrompt = createPrompt("prompt-related", "Shared context");
+const taggedPrompt = createPrompt("prompt-tagged", "Campaign copy", {
+  tags: ["marketing"],
+});
 
 function createRelation(
   id: string,
@@ -59,6 +64,13 @@ async function renderPanel({
   onCreateRelation = vi.fn(),
   onDeleteRelation = vi.fn(),
   onSelectPrompt = vi.fn(),
+  prompts = [
+    currentPrompt,
+    rubricPrompt,
+    outlinePrompt,
+    relatedPrompt,
+    taggedPrompt,
+  ],
 }: {
   relations?: PromptRelation[];
   onCreateRelation?: Parameters<
@@ -70,11 +82,12 @@ async function renderPanel({
   onSelectPrompt?: Parameters<
     typeof PromptRelationshipPanel
   >[0]["onSelectPrompt"];
+  prompts?: Prompt[];
 } = {}) {
   await renderWithI18n(
     <PromptRelationshipPanel
       currentPrompt={currentPrompt}
-      prompts={[currentPrompt, rubricPrompt, outlinePrompt, relatedPrompt]}
+      prompts={prompts}
       relations={relations}
       onCreateRelation={onCreateRelation}
       onDeleteRelation={onDeleteRelation}
@@ -85,7 +98,7 @@ async function renderPanel({
 }
 
 describe("PromptRelationshipPanel", () => {
-  it("shows outgoing, incoming, and neutral prompt relations", async () => {
+  it("renders existing relations including legacy directional kinds", async () => {
     const onSelectPrompt = vi.fn();
 
     await renderPanel({
@@ -95,12 +108,6 @@ describe("PromptRelationshipPanel", () => {
           currentPrompt.id,
           rubricPrompt.id,
           "depends_on",
-        ),
-        createRelation(
-          "relation-previous",
-          outlinePrompt.id,
-          currentPrompt.id,
-          "next_step",
         ),
         createRelation(
           "relation-related",
@@ -117,9 +124,6 @@ describe("PromptRelationshipPanel", () => {
       screen.getByRole("button", { name: "Open related prompt Review rubric" }),
     ).toHaveTextContent("Depends on");
     expect(
-      screen.getByRole("button", { name: "Open related prompt Outline step" }),
-    ).toHaveTextContent("Previous step");
-    expect(
       screen.getByRole("button", {
         name: "Open related prompt Shared context",
       }),
@@ -128,31 +132,67 @@ describe("PromptRelationshipPanel", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Open related prompt Review rubric" }),
     );
-
     expect(onSelectPrompt).toHaveBeenCalledWith(rubricPrompt.id);
   });
 
-  it("creates a semantic relation from the current prompt to the selected target", async () => {
+  it("creates a related_to relation by searching and picking a prompt", async () => {
     const onCreateRelation = vi.fn().mockResolvedValue(undefined);
 
     await renderPanel({ onCreateRelation });
 
-    fireEvent.change(screen.getByLabelText("Relation type"), {
-      target: { value: "variant_of" },
-    });
-    fireEvent.change(screen.getByLabelText("Target prompt"), {
-      target: { value: rubricPrompt.id },
+    fireEvent.change(screen.getByLabelText("Search prompts to link…"), {
+      target: { value: "rubric" },
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Add relation" }));
+      fireEvent.click(screen.getByRole("button", { name: /Review rubric/ }));
       await Promise.resolve();
     });
 
     expect(onCreateRelation).toHaveBeenCalledWith({
       sourcePromptId: currentPrompt.id,
       targetPromptId: rubricPrompt.id,
-      kind: "variant_of",
+      kind: "related_to",
+    });
+  });
+
+  it("does not surface already-linked prompts in search results", async () => {
+    await renderPanel({
+      relations: [
+        createRelation(
+          "relation-existing",
+          currentPrompt.id,
+          rubricPrompt.id,
+          "related_to",
+        ),
+      ],
+    });
+
+    fireEvent.change(screen.getByLabelText("Search prompts to link…"), {
+      target: { value: "rubric" },
+    });
+
+    expect(screen.getByText("No matching prompts")).toBeInTheDocument();
+  });
+
+  it("suggests prompts that share a tag and links them on click", async () => {
+    const onCreateRelation = vi.fn().mockResolvedValue(undefined);
+
+    await renderPanel({ onCreateRelation });
+
+    expect(screen.getByText("Suggested links")).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "Link Campaign copy" }),
+      );
+      await Promise.resolve();
+    });
+
+    expect(onCreateRelation).toHaveBeenCalledWith({
+      sourcePromptId: currentPrompt.id,
+      targetPromptId: taggedPrompt.id,
+      kind: "related_to",
     });
   });
 

@@ -1,10 +1,12 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   ArrowDownLeftIcon,
   ArrowUpRightIcon,
   GitBranchIcon,
   Link2Icon,
   PlusIcon,
+  SearchIcon,
+  SparklesIcon,
   Trash2Icon,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -14,13 +16,11 @@ import type {
   PromptGraphRelationKind,
   PromptRelation,
 } from "@prompthub/shared/types";
-
-const RELATION_KINDS: PromptGraphRelationKind[] = [
-  "related_to",
-  "variant_of",
-  "depends_on",
-  "next_step",
-];
+import {
+  buildRelationSuggestions,
+  searchRelationCandidates,
+  type RelationSuggestion,
+} from "./prompt-relation-suggestions";
 
 type RelationViewItem = {
   relation: PromptRelation;
@@ -48,6 +48,8 @@ const RELATED_LABEL: RelationLabel = {
   direction: "neutral",
 };
 
+// Existing relations may still carry the older directional kinds, so we keep
+// rendering their labels. New relations are always created as `related_to`.
 const DIRECTIONAL_RELATION_LABELS: Record<
   Exclude<PromptGraphRelationKind, "related_to">,
   DirectionalLabel
@@ -99,46 +101,6 @@ export interface PromptRelationshipPanelProps {
   onSelectPrompt: (promptId: string) => void;
   disabled?: boolean;
   className?: string;
-}
-
-interface PromptRelationshipPanelViewProps {
-  relationItems: RelationViewItem[];
-  candidatePrompts: Prompt[];
-  relationKind: PromptGraphRelationKind;
-  targetPromptId: string;
-  canCreate: boolean;
-  isSaving: boolean;
-  deletingId: string | null;
-  disabled: boolean;
-  className: string;
-  t: ReturnType<typeof useTranslation>["t"];
-  onKindChange: (kind: PromptGraphRelationKind) => void;
-  onTargetChange: (promptId: string) => void;
-  onCreate: () => void;
-  onDelete: (relation: PromptRelation) => void;
-  onSelectPrompt: (promptId: string) => void;
-}
-
-interface RelationChipProps {
-  item: RelationViewItem;
-  disabled: boolean;
-  isDeleting: boolean;
-  onDelete: (relation: PromptRelation) => void;
-  onSelectPrompt: (promptId: string) => void;
-  t: ReturnType<typeof useTranslation>["t"];
-}
-
-interface RelationFormProps {
-  relationKind: PromptGraphRelationKind;
-  targetPromptId: string;
-  candidatePrompts: Prompt[];
-  canCreate: boolean;
-  isSaving: boolean;
-  disabled: boolean;
-  onKindChange: (kind: PromptGraphRelationKind) => void;
-  onTargetChange: (promptId: string) => void;
-  onCreate: () => void;
-  t: ReturnType<typeof useTranslation>["t"];
 }
 
 function getRelationLabel(
@@ -202,39 +164,64 @@ function usePromptRelationshipPanelState({
   | "onDeleteRelation"
 >) {
   const { t } = useTranslation();
-  const [relationKind, setRelationKind] =
-    useState<PromptGraphRelationKind>("related_to");
-  const [targetPromptId, setTargetPromptId] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
+  const [query, setQuery] = useState("");
+  const [savingTargetId, setSavingTargetId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
   const relationItems = useMemo(
     () => createRelationItems(currentPrompt, prompts, relations),
     [currentPrompt, prompts, relations],
   );
-  const candidatePrompts = useMemo(
-    () =>
-      prompts
-        .filter((prompt) => prompt.id !== currentPrompt.id)
-        .sort((left, right) => left.title.localeCompare(right.title)),
-    [currentPrompt.id, prompts],
-  );
-  const canCreate = Boolean(targetPromptId) && !isSaving;
 
-  const handleCreate = async () => {
-    if (!canCreate) {
+  // Prompts already connected (semantic or tree) are excluded from search and
+  // suggestions so we never offer a duplicate link.
+  const excludedIds = useMemo(() => {
+    const ids = new Set<string>();
+    ids.add(currentPrompt.id);
+    for (const item of relationItems) {
+      ids.add(item.targetPrompt.id);
+    }
+    if (currentPrompt.parentId) {
+      ids.add(currentPrompt.parentId);
+    }
+    for (const prompt of prompts) {
+      if (prompt.parentId === currentPrompt.id) {
+        ids.add(prompt.id);
+      }
+    }
+    return ids;
+  }, [currentPrompt.id, currentPrompt.parentId, prompts, relationItems]);
+
+  const candidatePrompts = useMemo(
+    () => prompts.filter((prompt) => !excludedIds.has(prompt.id)),
+    [excludedIds, prompts],
+  );
+
+  const searchResults = useMemo(
+    () => searchRelationCandidates(query, candidatePrompts),
+    [candidatePrompts, query],
+  );
+
+  const suggestions = useMemo(
+    () => buildRelationSuggestions(currentPrompt, prompts, excludedIds),
+    [currentPrompt, excludedIds, prompts],
+  );
+
+  const handleAddRelation = async (targetPromptId: string) => {
+    if (savingTargetId) {
       return;
     }
 
-    setIsSaving(true);
+    setSavingTargetId(targetPromptId);
     try {
       await onCreateRelation({
         sourcePromptId: currentPrompt.id,
         targetPromptId,
-        kind: relationKind,
+        kind: "related_to",
       });
-      setTargetPromptId("");
+      setQuery("");
     } finally {
-      setIsSaving(false);
+      setSavingTargetId(null);
     }
   };
 
@@ -253,274 +240,16 @@ function usePromptRelationshipPanelState({
 
   return {
     t,
+    query,
+    setQuery,
     relationItems,
-    candidatePrompts,
-    relationKind,
-    targetPromptId,
-    canCreate,
-    isSaving,
+    searchResults,
+    suggestions,
+    savingTargetId,
     deletingId,
-    setRelationKind,
-    setTargetPromptId,
-    handleCreate,
+    handleAddRelation,
     handleDelete,
   };
-}
-
-function RelationChip({
-  item,
-  disabled,
-  isDeleting,
-  onDelete,
-  onSelectPrompt,
-  t,
-}: RelationChipProps) {
-  return (
-    <RelationChipActions
-      item={item}
-      disabled={disabled}
-      isDeleting={isDeleting}
-      onDelete={onDelete}
-      onSelectPrompt={onSelectPrompt}
-      t={t}
-    />
-  );
-}
-
-function RelationKindSelect({
-  relationKind,
-  disabled,
-  isSaving,
-  onKindChange,
-  t,
-}: Pick<
-  RelationFormProps,
-  "relationKind" | "disabled" | "isSaving" | "onKindChange" | "t"
->) {
-  return (
-    <>
-      <label className="sr-only" htmlFor="prompt-relation-kind">
-        {t("prompt.relationships.typeLabel", "Relation type")}
-      </label>
-      <select
-        id="prompt-relation-kind"
-        aria-label={t("prompt.relationships.typeLabel", "Relation type")}
-        value={relationKind}
-        disabled={disabled || isSaving}
-        onChange={(event) => {
-          onKindChange(event.target.value as PromptGraphRelationKind);
-        }}
-        className="h-8 rounded-lg border border-border bg-card px-2 text-xs text-foreground outline-none transition-colors focus:border-primary/40 focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
-      >
-        {RELATION_KINDS.map((kind) => (
-          <option key={kind} value={kind}>
-            {t(`prompt.relationships.kind.${kind}`, kind)}
-          </option>
-        ))}
-      </select>
-    </>
-  );
-}
-
-function RelationTargetSelect({
-  targetPromptId,
-  candidatePrompts,
-  disabled,
-  isSaving,
-  onTargetChange,
-  t,
-}: Pick<
-  RelationFormProps,
-  | "targetPromptId"
-  | "candidatePrompts"
-  | "disabled"
-  | "isSaving"
-  | "onTargetChange"
-  | "t"
->) {
-  return (
-    <>
-      <label className="sr-only" htmlFor="prompt-relation-target">
-        {t("prompt.relationships.targetLabel", "Target prompt")}
-      </label>
-      <select
-        id="prompt-relation-target"
-        aria-label={t("prompt.relationships.targetLabel", "Target prompt")}
-        value={targetPromptId}
-        disabled={disabled || isSaving || candidatePrompts.length === 0}
-        onChange={(event) => onTargetChange(event.target.value)}
-        className="h-8 min-w-0 rounded-lg border border-border bg-card px-2 text-xs text-foreground outline-none transition-colors focus:border-primary/40 focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
-      >
-        <option value="">
-          {t("prompt.relationships.selectTarget", "Select a prompt")}
-        </option>
-        {candidatePrompts.map((prompt) => (
-          <option key={prompt.id} value={prompt.id}>
-            {prompt.title}
-          </option>
-        ))}
-      </select>
-    </>
-  );
-}
-
-function RelationAddButton({
-  canCreate,
-  onCreate,
-  t,
-}: Pick<RelationFormProps, "canCreate" | "onCreate" | "t">) {
-  return (
-    <button
-      type="button"
-      disabled={!canCreate}
-      onClick={onCreate}
-      className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-    >
-      <PlusIcon aria-hidden="true" className="h-3.5 w-3.5" />
-      {t("prompt.relationships.add", "Add relation")}
-    </button>
-  );
-}
-
-function RelationChipButton({
-  item,
-  Icon,
-  onSelectPrompt,
-  t,
-}: {
-  item: RelationViewItem;
-  Icon: RelationIcon;
-  onSelectPrompt: (promptId: string) => void;
-  t: ReturnType<typeof useTranslation>["t"];
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => onSelectPrompt(item.targetPrompt.id)}
-      aria-label={t("prompt.relationships.openPrompt", {
-        title: item.targetPrompt.title,
-        defaultValue: `Open related prompt ${item.targetPrompt.title}`,
-      })}
-      className="inline-flex min-w-0 items-center gap-1.5 px-2.5 py-1 text-left text-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-    >
-      <Icon aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-primary" />
-      <span className="shrink-0 text-muted-foreground">
-        {t(item.labelKey, item.fallbackLabel)}
-      </span>
-      <span className="max-w-[12rem] truncate">{item.targetPrompt.title}</span>
-    </button>
-  );
-}
-
-function RelationChipDeleteButton({
-  disabled,
-  isDeleting,
-  removeLabel,
-  onDelete,
-  relation,
-}: {
-  disabled: boolean;
-  isDeleting: boolean;
-  removeLabel: string;
-  onDelete: (relation: PromptRelation) => void;
-  relation: PromptRelation;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled || isDeleting}
-      onClick={() => onDelete(relation)}
-      aria-label={removeLabel}
-      title={removeLabel}
-      className="inline-flex w-7 items-center justify-center border-l border-border/70 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50"
-    >
-      <Trash2Icon aria-hidden="true" className="h-3.5 w-3.5" />
-    </button>
-  );
-}
-
-function RelationChipFrame({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <span className="inline-flex max-w-full items-stretch overflow-hidden rounded-full border border-border/70 bg-card text-xs shadow-sm">
-      {children}
-    </span>
-  );
-}
-
-function RelationChipActions({
-  disabled,
-  isDeleting,
-  item,
-  onDelete,
-  onSelectPrompt,
-  t,
-}: RelationChipProps) {
-  const Icon: RelationIcon =
-    item.direction === "incoming"
-      ? ArrowDownLeftIcon
-      : item.direction === "outgoing"
-        ? ArrowUpRightIcon
-        : Link2Icon;
-  const removeLabel = t("prompt.relationships.removeRelation", {
-    title: item.targetPrompt.title,
-    defaultValue: `Remove relation to ${item.targetPrompt.title}`,
-  });
-
-  return (
-    <RelationChipFrame>
-      <RelationChipButton
-        item={item}
-        Icon={Icon}
-        onSelectPrompt={onSelectPrompt}
-        t={t}
-      />
-      <RelationChipDeleteButton
-        disabled={disabled}
-        isDeleting={isDeleting}
-        removeLabel={removeLabel}
-        onDelete={onDelete}
-        relation={item.relation}
-      />
-    </RelationChipFrame>
-  );
-}
-
-function RelationForm({
-  relationKind,
-  targetPromptId,
-  candidatePrompts,
-  canCreate,
-  isSaving,
-  disabled,
-  onKindChange,
-  onTargetChange,
-  onCreate,
-  t,
-}: RelationFormProps) {
-  return (
-    <div className="grid gap-2 md:grid-cols-[minmax(8rem,0.75fr)_minmax(12rem,1.25fr)_auto]">
-      <RelationKindSelect
-        relationKind={relationKind}
-        disabled={disabled}
-        isSaving={isSaving}
-        onKindChange={onKindChange}
-        t={t}
-      />
-      <RelationTargetSelect
-        targetPromptId={targetPromptId}
-        candidatePrompts={candidatePrompts}
-        disabled={disabled}
-        isSaving={isSaving}
-        onTargetChange={onTargetChange}
-        t={t}
-      />
-      <RelationAddButton canCreate={canCreate} onCreate={onCreate} t={t} />
-    </div>
-  );
 }
 
 function PanelHeader({
@@ -545,6 +274,137 @@ function PanelHeader({
   );
 }
 
+function RelationSearch({
+  query,
+  searchResults,
+  savingTargetId,
+  disabled,
+  onQueryChange,
+  onAdd,
+  t,
+}: {
+  query: string;
+  searchResults: Prompt[];
+  savingTargetId: string | null;
+  disabled: boolean;
+  onQueryChange: (value: string) => void;
+  onAdd: (promptId: string) => void;
+  t: ReturnType<typeof useTranslation>["t"];
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const showResults = query.trim().length > 0;
+
+  return (
+    <div className="relative mb-3">
+      <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-2.5 focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/20">
+        <SearchIcon
+          aria-hidden="true"
+          className="h-4 w-4 shrink-0 text-muted-foreground"
+        />
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          disabled={disabled}
+          onChange={(event) => onQueryChange(event.target.value)}
+          placeholder={t(
+            "prompt.relationships.searchPlaceholder",
+            "Search prompts to link…",
+          )}
+          aria-label={t(
+            "prompt.relationships.searchPlaceholder",
+            "Search prompts to link…",
+          )}
+          className="h-9 min-w-0 flex-1 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground disabled:opacity-50"
+        />
+      </div>
+
+      {showResults && (
+        <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-border bg-popover p-1 shadow-lg">
+          {searchResults.length === 0 ? (
+            <p className="px-2 py-2 text-xs text-muted-foreground">
+              {t("prompt.relationships.noMatches", "No matching prompts")}
+            </p>
+          ) : (
+            searchResults.map((prompt) => (
+              <button
+                key={prompt.id}
+                type="button"
+                disabled={savingTargetId !== null}
+                onClick={() => onAdd(prompt.id)}
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-foreground transition-colors hover:bg-accent/60 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <PlusIcon
+                  aria-hidden="true"
+                  className="h-3.5 w-3.5 shrink-0 text-primary"
+                />
+                <span className="truncate">{prompt.title}</span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RelationChip({
+  item,
+  disabled,
+  isDeleting,
+  onDelete,
+  onSelectPrompt,
+  t,
+}: {
+  item: RelationViewItem;
+  disabled: boolean;
+  isDeleting: boolean;
+  onDelete: (relation: PromptRelation) => void;
+  onSelectPrompt: (promptId: string) => void;
+  t: ReturnType<typeof useTranslation>["t"];
+}) {
+  const Icon: RelationIcon =
+    item.direction === "incoming"
+      ? ArrowDownLeftIcon
+      : item.direction === "outgoing"
+        ? ArrowUpRightIcon
+        : Link2Icon;
+  const removeLabel = t("prompt.relationships.removeRelation", {
+    title: item.targetPrompt.title,
+    defaultValue: `Remove relation to ${item.targetPrompt.title}`,
+  });
+
+  return (
+    <span className="inline-flex max-w-full items-stretch overflow-hidden rounded-full border border-border/70 bg-card text-xs shadow-sm">
+      <button
+        type="button"
+        onClick={() => onSelectPrompt(item.targetPrompt.id)}
+        aria-label={t("prompt.relationships.openPrompt", {
+          title: item.targetPrompt.title,
+          defaultValue: `Open related prompt ${item.targetPrompt.title}`,
+        })}
+        className="inline-flex min-w-0 items-center gap-1.5 px-2.5 py-1 text-left text-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+      >
+        <Icon aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-primary" />
+        <span className="shrink-0 text-muted-foreground">
+          {t(item.labelKey, item.fallbackLabel)}
+        </span>
+        <span className="max-w-[12rem] truncate">{item.targetPrompt.title}</span>
+      </button>
+      <button
+        type="button"
+        disabled={disabled || isDeleting}
+        onClick={() => onDelete(item.relation)}
+        aria-label={removeLabel}
+        title={removeLabel}
+        className="inline-flex w-7 items-center justify-center border-l border-border/70 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <Trash2Icon aria-hidden="true" className="h-3.5 w-3.5" />
+      </button>
+    </span>
+  );
+}
+
 function RelationList({
   relationItems,
   deletingId,
@@ -552,15 +412,14 @@ function RelationList({
   t,
   onDelete,
   onSelectPrompt,
-}: Pick<
-  PromptRelationshipPanelViewProps,
-  | "relationItems"
-  | "deletingId"
-  | "disabled"
-  | "t"
-  | "onDelete"
-  | "onSelectPrompt"
->) {
+}: {
+  relationItems: RelationViewItem[];
+  deletingId: string | null;
+  disabled: boolean;
+  t: ReturnType<typeof useTranslation>["t"];
+  onDelete: (relation: PromptRelation) => void;
+  onSelectPrompt: (promptId: string) => void;
+}) {
   if (relationItems.length === 0) {
     return (
       <p className="mb-3 text-xs text-muted-foreground">
@@ -580,7 +439,7 @@ function RelationList({
           item={item}
           disabled={disabled}
           isDeleting={deletingId === item.relation.id}
-          onDelete={(relation) => void onDelete(relation)}
+          onDelete={onDelete}
           onSelectPrompt={onSelectPrompt}
           t={t}
         />
@@ -589,49 +448,72 @@ function RelationList({
   );
 }
 
-function PromptRelationshipPanelView({
-  relationItems,
-  candidatePrompts,
-  relationKind,
-  targetPromptId,
-  canCreate,
-  isSaving,
-  deletingId,
+function getSuggestionReasonLabel(
+  suggestion: RelationSuggestion,
+  t: ReturnType<typeof useTranslation>["t"],
+): string {
+  if (suggestion.reason === "same_tag") {
+    return t("prompt.relationships.reasonSameTag", {
+      tag: suggestion.sharedTag,
+      defaultValue: `#${suggestion.sharedTag}`,
+    });
+  }
+  if (suggestion.reason === "same_folder") {
+    return t("prompt.relationships.reasonSameFolder", "Same folder");
+  }
+  return t("prompt.relationships.reasonSimilarTitle", "Similar title");
+}
+
+function RelationSuggestions({
+  suggestions,
+  savingTargetId,
   disabled,
-  className,
   t,
-  onKindChange,
-  onTargetChange,
-  onCreate,
-  onDelete,
-  onSelectPrompt,
-}: PromptRelationshipPanelViewProps) {
+  onAdd,
+}: {
+  suggestions: RelationSuggestion[];
+  savingTargetId: string | null;
+  disabled: boolean;
+  t: ReturnType<typeof useTranslation>["t"];
+  onAdd: (promptId: string) => void;
+}) {
+  if (suggestions.length === 0) {
+    return null;
+  }
+
   return (
-    <section
-      className={`mb-4 rounded-xl border border-border app-wallpaper-surface p-3 ${className}`}
-    >
-      <PanelHeader count={relationItems.length} t={t} />
-      <RelationList
-        relationItems={relationItems}
-        deletingId={deletingId}
-        disabled={disabled}
-        t={t}
-        onDelete={onDelete}
-        onSelectPrompt={onSelectPrompt}
-      />
-      <RelationForm
-        relationKind={relationKind}
-        targetPromptId={targetPromptId}
-        candidatePrompts={candidatePrompts}
-        canCreate={canCreate && !disabled}
-        isSaving={isSaving}
-        disabled={disabled}
-        onKindChange={onKindChange}
-        onTargetChange={onTargetChange}
-        onCreate={() => void onCreate()}
-        t={t}
-      />
-    </section>
+    <div>
+      <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        <SparklesIcon aria-hidden="true" className="h-3.5 w-3.5 text-primary" />
+        {t("prompt.relationships.suggestionsTitle", "Suggested links")}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {suggestions.map((suggestion) => (
+          <button
+            key={suggestion.prompt.id}
+            type="button"
+            disabled={disabled || savingTargetId !== null}
+            onClick={() => onAdd(suggestion.prompt.id)}
+            aria-label={t("prompt.relationships.addSuggestion", {
+              title: suggestion.prompt.title,
+              defaultValue: `Link ${suggestion.prompt.title}`,
+            })}
+            className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-dashed border-border/70 bg-card px-2.5 py-1 text-xs text-foreground shadow-sm transition-colors hover:border-primary/50 hover:bg-accent/50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <PlusIcon
+              aria-hidden="true"
+              className="h-3.5 w-3.5 shrink-0 text-primary"
+            />
+            <span className="max-w-[12rem] truncate">
+              {suggestion.prompt.title}
+            </span>
+            <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+              {getSuggestionReasonLabel(suggestion, t)}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -654,22 +536,34 @@ export function PromptRelationshipPanel({
   });
 
   return (
-    <PromptRelationshipPanelView
-      relationItems={state.relationItems}
-      candidatePrompts={state.candidatePrompts}
-      relationKind={state.relationKind}
-      targetPromptId={state.targetPromptId}
-      canCreate={state.canCreate}
-      isSaving={state.isSaving}
-      deletingId={state.deletingId}
-      disabled={disabled}
-      className={className}
-      t={state.t}
-      onKindChange={state.setRelationKind}
-      onTargetChange={state.setTargetPromptId}
-      onCreate={state.handleCreate}
-      onDelete={state.handleDelete}
-      onSelectPrompt={onSelectPrompt}
-    />
+    <section
+      className={`mb-4 rounded-xl border border-border app-wallpaper-surface p-3 ${className}`}
+    >
+      <PanelHeader count={state.relationItems.length} t={state.t} />
+      <RelationSearch
+        query={state.query}
+        searchResults={state.searchResults}
+        savingTargetId={state.savingTargetId}
+        disabled={disabled}
+        onQueryChange={state.setQuery}
+        onAdd={(promptId) => void state.handleAddRelation(promptId)}
+        t={state.t}
+      />
+      <RelationList
+        relationItems={state.relationItems}
+        deletingId={state.deletingId}
+        disabled={disabled}
+        t={state.t}
+        onDelete={(relation) => void state.handleDelete(relation)}
+        onSelectPrompt={onSelectPrompt}
+      />
+      <RelationSuggestions
+        suggestions={state.suggestions}
+        savingTargetId={state.savingTargetId}
+        disabled={disabled}
+        t={state.t}
+        onAdd={(promptId) => void state.handleAddRelation(promptId)}
+      />
+    </section>
   );
 }
