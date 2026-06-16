@@ -450,7 +450,9 @@ export function getDefaultMcpRelativePath(platformId?: string): string {
   return platformId ? paths[platformId] || "mcp.json" : "mcp.json";
 }
 
-export function getDefaultPluginsRelativePath(platformId?: string): string {
+export function getDefaultPluginsRelativePath(
+  platformId?: string,
+): string | undefined {
   const paths: Record<string, string> = {
     claude: "plugins/cache/prompthub",
     codex: "plugins/cache/prompthub",
@@ -459,7 +461,7 @@ export function getDefaultPluginsRelativePath(platformId?: string): string {
     kiro: "powers",
     copilot: "plugins",
   };
-  return platformId ? paths[platformId] || "plugins" : "plugins";
+  return platformId ? paths[platformId] : undefined;
 }
 
 function deriveLegacyRootPathMap(
@@ -704,6 +706,10 @@ export function getPlatformPluginDir(
   const relativePath =
     getBuiltinAgentOverride(platform.id)?.pluginsRelativePath ||
     getDefaultPluginsRelativePath(platform.id);
+
+  if (!relativePath) {
+    throw new Error(`${platform.name} does not support Agent Plugin packages`);
+  }
 
   return joinRootRelativePath(rootDir, relativePath);
 }

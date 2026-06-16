@@ -199,7 +199,9 @@ function getDefaultMcpRelativePath(platformId?: string): string {
   return platformId ? paths[platformId] || "mcp.json" : "mcp.json";
 }
 
-function getDefaultPluginsRelativePath(platformId?: string): string {
+export function getDefaultPluginsRelativePath(
+  platformId?: string,
+): string | undefined {
   const paths: Record<string, string> = {
     claude: "plugins/cache/prompthub",
     codex: "plugins/cache/prompthub",
@@ -208,7 +210,7 @@ function getDefaultPluginsRelativePath(platformId?: string): string {
     kiro: "powers",
     copilot: "plugins",
   };
-  return platformId ? paths[platformId] || "plugins" : "plugins";
+  return platformId ? paths[platformId] : undefined;
 }
 
 export interface AgentRootAssetPreview {
@@ -218,7 +220,6 @@ export interface AgentRootAssetPreview {
   pluginDirectories: string[];
   ruleCandidates: string[];
   agentDirectories: string[];
-  commandDirectories: string[];
   configCandidates: string[];
 }
 
@@ -346,17 +347,11 @@ export function buildAgentRootAssetPreview(
   const mcpConfigPaths = agent.mcpRelativePath
     ? [joinRootPath(normalizedRoot, agent.mcpRelativePath)]
     : [joinRootPath(normalizedRoot, getDefaultMcpRelativePath() || "mcp.json")];
-  const pluginDirectories = [
-    joinRootPath(
-      normalizedRoot,
-      agent.pluginsRelativePath || getDefaultPluginsRelativePath() || "plugins",
-    ),
-  ];
+  const pluginDirectories = agent.pluginsRelativePath
+    ? [joinRootPath(normalizedRoot, agent.pluginsRelativePath)]
+    : [];
   const agentDirectories = [
     joinRootPath(normalizedRoot, agent.agentsRelativePath || "agents"),
-  ];
-  const commandDirectories = [
-    joinRootPath(normalizedRoot, agent.commandsRelativePath || "commands"),
   ];
   const configCandidates =
     agent.configRelativePaths && agent.configRelativePaths.length > 0
@@ -378,7 +373,6 @@ export function buildAgentRootAssetPreview(
     pluginDirectories: uniqPaths(pluginDirectories),
     ruleCandidates: uniqPaths(ruleCandidates),
     agentDirectories: uniqPaths(agentDirectories),
-    commandDirectories: uniqPaths(commandDirectories),
     configCandidates: uniqPaths(configCandidates),
   };
 }

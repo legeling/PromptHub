@@ -31,6 +31,7 @@ import { useSkillStore } from "../../stores/skill.store";
 import {
   buildAgentRootAssetPreview,
   getEffectiveBuiltinAgentConfig,
+  getDefaultPluginsRelativePath,
 } from "../../services/agent-root-paths";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { PlatformIcon } from "../ui/PlatformIcon";
@@ -53,7 +54,6 @@ interface ManagedAgentEntry {
   pluginsRelativePath?: string;
   rulesRelativePath?: string;
   agentsRelativePath?: string;
-  commandsRelativePath?: string;
   configRelativePaths?: string[];
 }
 
@@ -102,7 +102,6 @@ function useManagedAgentEntries() {
           pluginsRelativePath: effectiveConfig.pluginsRelativePath,
           rulesRelativePath: effectiveConfig.rulesRelativePath,
           agentsRelativePath: effectiveConfig.agentsRelativePath,
-          commandsRelativePath: effectiveConfig.commandsRelativePath,
           configRelativePaths: effectiveConfig.configRelativePaths,
         };
       },
@@ -186,8 +185,6 @@ export function SkillSettings() {
   const [editingAgentRulesPath, setEditingAgentRulesPath] = useState("");
   const [editingAgentAgentsPath, setEditingAgentAgentsPath] =
     useState("agents");
-  const [editingAgentCommandsPath, setEditingAgentCommandsPath] =
-    useState("commands");
   const [editingAgentConfigPaths, setEditingAgentConfigPaths] = useState("");
   const [editingAgentEnabled, setEditingAgentEnabled] = useState(true);
   const [editingBuiltinAgentId, setEditingBuiltinAgentId] = useState<
@@ -200,8 +197,6 @@ export function SkillSettings() {
     useState("");
   const [editingBuiltinRulesPath, setEditingBuiltinRulesPath] = useState("");
   const [editingBuiltinAgentsPath, setEditingBuiltinAgentsPath] = useState("");
-  const [editingBuiltinCommandsPath, setEditingBuiltinCommandsPath] =
-    useState("");
   const [editingBuiltinConfigPaths, setEditingBuiltinConfigPaths] =
     useState("");
   const [draggingPlatformId, setDraggingPlatformId] = useState<string | null>(
@@ -334,7 +329,6 @@ export function SkillSettings() {
     setEditingBuiltinPluginsPath(config.pluginsRelativePath || "");
     setEditingBuiltinRulesPath(config.rulesRelativePath || "");
     setEditingBuiltinAgentsPath(config.agentsRelativePath || "");
-    setEditingBuiltinCommandsPath(config.commandsRelativePath || "");
     setEditingBuiltinConfigPaths((config.configRelativePaths || []).join(", "));
   };
 
@@ -346,7 +340,6 @@ export function SkillSettings() {
     setEditingBuiltinPluginsPath("");
     setEditingBuiltinRulesPath("");
     setEditingBuiltinAgentsPath("");
-    setEditingBuiltinCommandsPath("");
     setEditingBuiltinConfigPaths("");
   };
 
@@ -372,7 +365,6 @@ export function SkillSettings() {
     setEditingAgentPluginsPath("");
     setEditingAgentRulesPath("");
     setEditingAgentAgentsPath("agents");
-    setEditingAgentCommandsPath("commands");
     setEditingAgentConfigPaths("");
     setEditingAgentEnabled(true);
   };
@@ -385,7 +377,6 @@ export function SkillSettings() {
       pluginsRelativePath: editingBuiltinPluginsPath,
       rulesRelativePath: editingBuiltinRulesPath,
       agentsRelativePath: editingBuiltinAgentsPath,
-      commandsRelativePath: editingBuiltinCommandsPath,
       configRelativePaths: editingBuiltinConfigPaths
         .split(",")
         .map((entry) => entry.trim())
@@ -668,7 +659,7 @@ export function SkillSettings() {
           <p className="text-xs text-muted-foreground">
             {t(
               "settings.agentConfigurationsDesc",
-              "Manage built-in and custom agent roots plus derived asset paths in one place. Skills, Rules, Agents, Commands, and config files all derive from these settings.",
+              "Manage built-in and custom agent roots plus derived asset paths in one place. Skills, Rules, Agents, MCP, Plugins, and config files all derive from these settings.",
             )}
           </p>
           <div className="rounded-lg border border-border overflow-hidden">
@@ -680,15 +671,19 @@ export function SkillSettings() {
               const override =
                 settings.builtinAgentOverrides[platform.id] || {};
               const isEditingBuiltin = editingBuiltinAgentId === platform.id;
+              const supportsPluginPackages =
+                Boolean(getDefaultPluginsRelativePath(platform.id)) ||
+                Boolean(override.pluginsRelativePath);
               const activeOverride = isEditingBuiltin
                 ? {
                     rootPath: editingBuiltinRootPath,
                     skillsRelativePath: editingBuiltinSkillsPath,
                     mcpRelativePath: editingBuiltinMcpPath,
-                    pluginsRelativePath: editingBuiltinPluginsPath,
+                    pluginsRelativePath: supportsPluginPackages
+                      ? editingBuiltinPluginsPath
+                      : undefined,
                     rulesRelativePath: editingBuiltinRulesPath,
                     agentsRelativePath: editingBuiltinAgentsPath,
-                    commandsRelativePath: editingBuiltinCommandsPath,
                     configRelativePaths: editingBuiltinConfigPaths
                       .split(",")
                       .map((entry) => entry.trim())
@@ -707,7 +702,6 @@ export function SkillSettings() {
                 pluginsRelativePath: effectiveConfig.pluginsRelativePath,
                 rulesRelativePath: effectiveConfig.rulesRelativePath,
                 agentsRelativePath: effectiveConfig.agentsRelativePath,
-                commandsRelativePath: effectiveConfig.commandsRelativePath,
                 configRelativePaths: effectiveConfig.configRelativePaths,
               });
 
@@ -834,16 +828,18 @@ export function SkillSettings() {
                         {preview.mcpConfigPaths.join(", ")}
                       </span>
                     </div>
-                    <div>
-                      {t(
-                        "settings.agentDerivedPluginDirs",
-                        "Derived Plugin directories",
-                      )}
-                      :
-                      <span className="ml-1 font-mono">
-                        {preview.pluginDirectories.join(", ")}
-                      </span>
-                    </div>
+                    {preview.pluginDirectories.length > 0 ? (
+                      <div>
+                        {t(
+                          "settings.agentDerivedPluginDirs",
+                          "Derived Plugin directories",
+                        )}
+                        :
+                        <span className="ml-1 font-mono">
+                          {preview.pluginDirectories.join(", ")}
+                        </span>
+                      </div>
+                    ) : null}
                     <div>
                       {t(
                         "settings.agentDerivedAgentDirs",
@@ -852,16 +848,6 @@ export function SkillSettings() {
                       :
                       <span className="ml-1 font-mono">
                         {preview.agentDirectories.join(", ")}
-                      </span>
-                    </div>
-                    <div>
-                      {t(
-                        "settings.agentDerivedCommandDirs",
-                        "Derived command directories",
-                      )}
-                      :
-                      <span className="ml-1 font-mono">
-                        {preview.commandDirectories.join(", ")}
                       </span>
                     </div>
                     <div className="text-[10px] text-muted-foreground/80">
@@ -939,23 +925,25 @@ export function SkillSettings() {
                             className="h-9 w-full rounded-md bg-muted px-3 text-sm font-mono"
                           />
                         </div>
-                        <div className="grid gap-1">
-                          <label className="text-xs font-medium text-muted-foreground">
-                            {t("settings.agentPluginsLabel", "Plugins")}
-                          </label>
-                          <input
-                            type="text"
-                            value={editingBuiltinPluginsPath}
-                            onChange={(e) =>
-                              setEditingBuiltinPluginsPath(e.target.value)
-                            }
-                            placeholder={t(
-                              "settings.customAgentPluginsPathPlaceholder",
-                              "Plugin directory relative path",
-                            )}
-                            className="h-9 w-full rounded-md bg-muted px-3 text-sm font-mono"
-                          />
-                        </div>
+                        {supportsPluginPackages ? (
+                          <div className="grid gap-1">
+                            <label className="text-xs font-medium text-muted-foreground">
+                              {t("settings.agentPluginsLabel", "Plugins")}
+                            </label>
+                            <input
+                              type="text"
+                              value={editingBuiltinPluginsPath}
+                              onChange={(e) =>
+                                setEditingBuiltinPluginsPath(e.target.value)
+                              }
+                              placeholder={t(
+                                "settings.customAgentPluginsPathPlaceholder",
+                                "Plugin directory relative path",
+                              )}
+                              className="h-9 w-full rounded-md bg-muted px-3 text-sm font-mono"
+                            />
+                          </div>
+                        ) : null}
                         <div className="grid gap-1">
                           <label className="text-xs font-medium text-muted-foreground">
                             {t("settings.agentAgentsLabel", "Agents")}
@@ -969,23 +957,6 @@ export function SkillSettings() {
                             placeholder={t(
                               "settings.customAgentAgentsPathPlaceholder",
                               "agents relative path",
-                            )}
-                            className="h-9 w-full rounded-md bg-muted px-3 text-sm font-mono"
-                          />
-                        </div>
-                        <div className="grid gap-1">
-                          <label className="text-xs font-medium text-muted-foreground">
-                            {t("settings.agentCommandsLabel", "Commands")}
-                          </label>
-                          <input
-                            type="text"
-                            value={editingBuiltinCommandsPath}
-                            onChange={(e) =>
-                              setEditingBuiltinCommandsPath(e.target.value)
-                            }
-                            placeholder={t(
-                              "settings.customAgentCommandsPathPlaceholder",
-                              "commands relative path",
                             )}
                             className="h-9 w-full rounded-md bg-muted px-3 text-sm font-mono"
                           />
@@ -1137,8 +1108,6 @@ export function SkillSettings() {
                                       rulesRelativePath: editingAgentRulesPath,
                                       agentsRelativePath:
                                         editingAgentAgentsPath,
-                                      commandsRelativePath:
-                                        editingAgentCommandsPath,
                                       enabled: editingAgentEnabled,
                                       configRelativePaths:
                                         editingAgentConfigPaths
@@ -1188,16 +1157,13 @@ export function SkillSettings() {
                                     agent.mcpRelativePath || "mcp.json",
                                   );
                                   setEditingAgentPluginsPath(
-                                    agent.pluginsRelativePath || "plugins",
+                                    agent.pluginsRelativePath || "",
                                   );
                                   setEditingAgentRulesPath(
                                     agent.rulesRelativePath || "",
                                   );
                                   setEditingAgentAgentsPath(
                                     agent.agentsRelativePath || "agents",
-                                  );
-                                  setEditingAgentCommandsPath(
-                                    agent.commandsRelativePath || "commands",
                                   );
                                   setEditingAgentEnabled(
                                     agent.enabled !== false,
@@ -1400,25 +1366,6 @@ export function SkillSettings() {
                             </div>
                             <div className="grid gap-1">
                               <label className="text-xs font-medium text-muted-foreground">
-                                {t("settings.agentCommandsLabel", "Commands")}
-                              </label>
-                              <input
-                                type="text"
-                                value={editingAgentCommandsPath}
-                                onChange={(event) =>
-                                  setEditingAgentCommandsPath(
-                                    event.target.value,
-                                  )
-                                }
-                                placeholder={t(
-                                  "settings.customAgentCommandsPathPlaceholder",
-                                  "commands relative path",
-                                )}
-                                className="h-10 w-full rounded-md bg-muted px-3 text-sm font-mono"
-                              />
-                            </div>
-                            <div className="grid gap-1">
-                              <label className="text-xs font-medium text-muted-foreground">
                                 {t("settings.agentConfigLabel", "Config")}
                               </label>
                               <input
@@ -1471,16 +1418,18 @@ export function SkillSettings() {
                             {preview.mcpConfigPaths.join(", ")}
                           </span>
                         </div>
-                        <div>
-                          {t(
-                            "settings.agentDerivedPluginDirs",
-                            "Derived Plugin directories",
-                          )}
-                          :
-                          <span className="ml-1 font-mono break-all">
-                            {preview.pluginDirectories.join(", ")}
-                          </span>
-                        </div>
+                        {preview.pluginDirectories.length > 0 ? (
+                          <div>
+                            {t(
+                              "settings.agentDerivedPluginDirs",
+                              "Derived Plugin directories",
+                            )}
+                            :
+                            <span className="ml-1 font-mono break-all">
+                              {preview.pluginDirectories.join(", ")}
+                            </span>
+                          </div>
+                        ) : null}
                         <div>
                           {t(
                             "settings.agentDerivedAgentDirs",
@@ -1489,16 +1438,6 @@ export function SkillSettings() {
                           :
                           <span className="ml-1 font-mono break-all">
                             {preview.agentDirectories.join(", ")}
-                          </span>
-                        </div>
-                        <div>
-                          {t(
-                            "settings.agentDerivedCommandDirs",
-                            "Derived command directories",
-                          )}
-                          :
-                          <span className="ml-1 font-mono break-all">
-                            {preview.commandDirectories.join(", ")}
                           </span>
                         </div>
                         {preview.configCandidates.length > 0 ? (
