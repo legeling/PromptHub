@@ -381,13 +381,13 @@ export function PromptDetailModal({
           type="button"
           onClick={() => setIsRelationshipModalOpen((open) => !open)}
           aria-expanded={isRelationshipModalOpen}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors text-sm font-medium"
+          className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/45 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
           title={t("prompt.relationships.openPanel")}
           aria-label={t("prompt.relationships.openPanel")}
         >
-          <GitBranchIcon aria-hidden="true" className="w-4 h-4" />
+          <GitBranchIcon aria-hidden="true" className="h-3.5 w-3.5" />
           <span>{t("prompt.relationships.openButton")}</span>
-          <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+          <span className="text-[11px] text-muted-foreground/75">
             {modalRelations.length}
           </span>
         </button>

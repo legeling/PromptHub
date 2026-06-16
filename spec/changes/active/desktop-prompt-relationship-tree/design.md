@@ -7,17 +7,23 @@ This is the primary interaction users get through drag-and-drop. A prompt has
 at most one tree parent so ordering, indentation, and collapse state stay
 deterministic.
 
-`prompt_relations` stores graph-style relationships:
+`prompt_relations` stores graph-style related links. The product surface exposes
+one non-tree relationship kind, `related_to`, so users only need to distinguish
+between two concepts:
 
-- `related_to`
-- `variant_of`
-- `depends_on`
-- `next_step`
+- parent-child hierarchy: drag-and-drop grouping, stored on `prompts.parent_id`
+  and `prompts.sort_order`
+- related prompts: lightweight many-to-many links, stored as `related_to` rows
+  in `prompt_relations`
+
+Older databases may still contain legacy graph kinds such as `variant_of`,
+`depends_on`, and `next_step`. PromptHub can render those labels for
+compatibility, but new UI-created relations should be saved as `related_to`.
 
 The tree relation `grouped_under` is intentionally not duplicated in
 `prompt_relations`; it is represented by `parent_id` and `sort_order`.
-Graph relations are therefore a separate many-to-many layer and should not be
-used to infer tree indentation, collapse state, or sibling order.
+Related links are therefore a separate many-to-many layer and should not be used
+to infer tree indentation, collapse state, or sibling order.
 
 ## UI
 
@@ -26,11 +32,11 @@ surfaces:
 
 - Card mode: drag a prompt card in the left prompt list.
 - List mode: drag a prompt table row.
-- Detail mode: the existing prompt detail area exposes a compact relationship
-  action with a count. The full relation editor opens in a modal so the detail
-  view does not permanently reserve space for relationship management.
-- Detail modal: the same relationship action is available in the modal header;
-  the editor remains reusable and opens only when the user asks for it.
+- Detail mode: the existing prompt detail area exposes a quiet related-prompts
+  action with a count. The editor expands only when requested so relationship
+  management remains secondary to reading and using the prompt.
+- Detail modal: the same quiet related-prompts action is available in the modal
+  header; the editor remains reusable and opens only when the user asks for it.
 - Sidebar: the prompt navigation adds a `Relationship Graph` entry directly
   under Favorites. This switches the main prompt workspace to a graph view.
 - Graph view: shows all prompts by default, independent of the active folder,
@@ -58,11 +64,10 @@ highlight. Parent rows/cards expose an inline expand/collapse control. The card
 title row uses a fixed control rail so collapse, drag, type, favorite, and child
 count controls do not push titles progressively to the right.
 
-The tree is not the whole relationship model. Graph-style relationships can
-point to many prompts and should be surfaced as lightweight relation chips or
-detail-header affordances rather than as extra parents in the tree. The UI
-should make that separation explicit so users do not infer a hidden multi-parent
-tree.
+The tree is not the whole relationship model. Related links can point to many
+prompts and should be surfaced as lightweight chips or quiet detail-header
+affordances rather than as extra parents in the tree. The UI should make that
+separation explicit so users do not infer a hidden multi-parent tree.
 
 ## Contracts
 

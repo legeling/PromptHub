@@ -34,6 +34,26 @@ Verification:
 - `pnpm --dir apps/desktop exec eslint src/renderer/components/layout/MainContent.tsx tests/unit/components/prompt-card-layout.test.tsx --max-warnings 0`
 - `pnpm --filter @prompthub/desktop typecheck`
 
+## 2026-06-16 Relationship Action Polish Follow-up
+
+- Downgraded the inline detail and detail-modal related-prompts action from a
+  prominent bordered button to a quiet secondary control with muted icon,
+  smaller label, and lightweight count.
+- Updated relationship copy from broad "Prompt relationships" language to
+  "Related prompts" so the UI reflects the current visible model:
+  parent-child hierarchy through drag-and-drop plus regular related links.
+- Synced the active change docs to clarify that UI-created non-tree links are
+  `related_to` only. Legacy directional relation kinds remain supported for
+  compatibility with existing stored data, but are not exposed as primary
+  product relationship categories.
+
+Verification:
+
+- `node -e 'for (const f of ["en","zh","zh-TW","ja","fr","de","es"]) JSON.parse(require("fs").readFileSync("apps/desktop/src/renderer/i18n/locales/"+f+".json","utf8")); console.log("locales ok")'`
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/prompt-detail-modal.test.tsx tests/unit/components/prompt-relationship-panel.test.tsx --run`
+- `pnpm --dir apps/desktop exec eslint src/renderer/components/layout/MainContent.tsx src/renderer/components/prompt/PromptDetailModal.tsx src/renderer/components/prompt/PromptRelationshipPanel.tsx tests/unit/components/prompt-detail-modal.test.tsx tests/unit/components/prompt-relationship-panel.test.tsx --max-warnings 0`
+- `pnpm --filter @prompthub/desktop typecheck`
+
 ## 2026-06-15 Graph Usability Follow-up
 
 - Replaced the fixed circular graph layout and large absolute-positioned prompt

@@ -2413,16 +2413,16 @@ function PromptSkillMainContent() {
                       disabled={isDetailInlineEditing}
                       aria-expanded={isDetailRelationshipsOpen}
                       aria-label={t('prompt.relationships.openPanel')}
-                      className="inline-flex items-center gap-2 rounded-xl border border-border app-wallpaper-surface-strong px-3 py-2 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-accent/60 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/45 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      <GitBranchIcon aria-hidden="true" className="h-4 w-4 text-primary" />
+                      <GitBranchIcon aria-hidden="true" className="h-3.5 w-3.5 text-muted-foreground/75" />
                       <span>{t('prompt.relationships.openButton')}</span>
-                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                      <span className="text-[11px] text-muted-foreground/75">
                         {selectedPromptRelations.length}
                       </span>
                       <ChevronDownIcon
                         aria-hidden="true"
-                        className={`h-4 w-4 text-muted-foreground transition-transform ${
+                        className={`h-3.5 w-3.5 text-muted-foreground/70 transition-transform ${
                           isDetailRelationshipsOpen ? 'rotate-180' : ''
                         }`}
                       />

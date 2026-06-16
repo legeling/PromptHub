@@ -61,39 +61,40 @@ without leaving the existing list or table surface.
 - WHEN the user clicks A's expand control
 - THEN B is visible again under A.
 
-### Requirement: Separate Tree Parent From Graph Relations
+### Requirement: Separate Tree Parent From Related Prompt Links
 
-PromptHub MUST treat the tree parent as a single primary hierarchy and graph
-relations as many-to-many semantic links.
+PromptHub MUST treat the tree parent as a single primary hierarchy and related
+prompt links as many-to-many lightweight associations.
 
 #### Scenario: Preserve Deterministic Tree Ownership
 
-- GIVEN prompt A is related to multiple prompts through graph relations
+- GIVEN prompt A is related to multiple prompts through related prompt links
 - THEN A still has at most one `parentId`
-- AND non-tree relations are represented through `prompt_relations`, not by
-  assigning multiple tree parents.
+- AND non-tree links are represented as `related_to` rows through
+  `prompt_relations`, not by assigning multiple tree parents.
 
-### Requirement: Inline Semantic Relationship Editing
+### Requirement: Inline Related Prompt Editing
 
-The desktop app MUST allow users to manage non-tree prompt relationships from
-the existing prompt detail surfaces without keeping a relationship workbench
-permanently visible.
+The desktop app MUST allow users to manage non-tree related prompt links from
+the existing prompt detail surfaces without making the relationship editor a
+dominant action.
 
-#### Scenario: Add A Semantic Relation
+#### Scenario: Add A Related Prompt Link
 
 - GIVEN prompt A is selected in the existing prompt detail area
-- WHEN the user opens the prompt relationship action
-- AND chooses a relation kind and target prompt
-- THEN PromptHub creates a `prompt_relations` row from prompt A to the target
-- AND the relation appears in the relationship editor.
+- WHEN the user opens the quiet related-prompts action
+- AND chooses a target prompt
+- THEN PromptHub creates a `related_to` `prompt_relations` row from prompt A to
+  the target
+- AND the link appears in the related prompts editor.
 
-#### Scenario: Navigate And Remove A Semantic Relation
+#### Scenario: Navigate And Remove A Related Prompt Link
 
-- GIVEN prompt A has an incoming or outgoing semantic relation
+- GIVEN prompt A has a related prompt link
 - WHEN the user clicks the related prompt chip
 - THEN PromptHub selects that related prompt in the current prompt UI
-- WHEN the user removes the relation chip
-- THEN PromptHub deletes only that graph relation
+- WHEN the user removes the related prompt chip
+- THEN PromptHub deletes only that related prompt link
 - AND prompt A's tree `parentId` and child ordering are unchanged.
 
 ### Requirement: All-Prompt Relationship Graph

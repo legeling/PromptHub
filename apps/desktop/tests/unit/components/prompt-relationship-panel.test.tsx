@@ -119,7 +119,7 @@ describe("PromptRelationshipPanel", () => {
       onSelectPrompt,
     });
 
-    expect(screen.getByText("Prompt relationships")).toBeInTheDocument();
+    expect(screen.getByText("Related prompts")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Open related prompt Review rubric" }),
     ).toHaveTextContent("Depends on");
