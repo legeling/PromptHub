@@ -188,6 +188,40 @@ Evidence references:
 
 Uninstall should remove the PromptHub-managed plugin record and managed plugin repo. It should not silently delete child Skills/MCP entries that were already copied into My Skills/My MCP or distributed to external agent directories unless those child entries are explicitly recorded as plugin-managed and the user confirms.
 
+## Agent Plugin Package Distribution
+
+`DES-PLUGIN-008`
+
+Installed Plugin package distribution is distinct from child Skill/MCP decomposition:
+
+- Package distribution copies or symlinks the installed Plugin package directory into an enabled Agent Plugin target directory.
+- Child asset decomposition into My Skills, My MCP, or agent-native child surfaces remains a later explicit workflow.
+- The renderer must not fake distribution. It calls the same desktop IPC/core service used by future Assistant actions.
+- Successful writes update the installed library entry's `distributedTargetIds`; card badges and filters derive from that field.
+- Disabled targets in the adapter matrix remain visible but cannot be selected or written.
+
+Target ID mapping:
+
+| Plugin Target ID | Agent platform ID | Default Plugin base directory               |
+| ---------------- | ----------------- | ------------------------------------------- |
+| `codex`          | `codex`           | `plugins/cache/prompthub` under Codex root  |
+| `claude-code`    | `claude`          | `plugins/cache/prompthub` under Claude root |
+| `cursor`         | `cursor`          | `plugins/cache/prompthub` under Cursor root |
+| `gemini-cli`     | `gemini`          | `config/plugins` under Gemini root          |
+| `kiro`           | `kiro`            | `powers` under Kiro root                    |
+| `github-copilot` | `copilot`         | `plugins` under Copilot root                |
+
+The Agent Configuration settings own the root and relative path configuration for these surfaces. Built-in and custom agents expose:
+
+- Skill relative path.
+- MCP config relative path.
+- Plugin directory relative path.
+- Rules, Agents, Commands, and config file relative paths.
+
+The final package write path is:
+
+`<agent plugin base>/<safe plugin name>/<safe version-or-id>`
+
 ## Security Rules
 
 `DES-PLUGIN-005`

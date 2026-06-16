@@ -31,6 +31,15 @@
 - [x] Expand directory-based Codex manifest `skills` fields through the GitHub repository tree so official plugins with multiple nested `SKILL.md` files do not display as one Skill.
 - [x] Align the first-level Plugin Store sidebar entry with Skill Store by removing marketplace item-count pills from that navigation row.
 - [x] Replace installed Plugin detail modal with a full My Plugins detail page, including preview/source/files tabs and Agent Plugin target selection entry.
+- [x] Align installed Plugin detail Files tab height with the Skill inline file editor layout so the editor fills the available page area after sidebar resize/collapse.
+- [x] Align installed Plugin detail distribution panel with the Skill platform integration panel and persist manifest long descriptions for the detail preview.
+- [x] Align My Plugins installed cards with the large My Skill gallery card scale instead of compact list cards.
+- [x] Align My Plugins list controls and card hover behavior with My Skills: distribution-status/source filters, text batch-manage button, distributed target badges, and quick open/distribute/folder/delete actions.
+- [x] Make My Plugins distribute actions use the paper-plane icon and open a direct Agent target picker instead of routing users to the Agent Plugin workbench.
+- [x] Move My Plugins distribution/source filters into the header panel and remove the redundant card detail-eye action so installed Plugin cards match My Skills interaction density.
+- [x] Replace placeholder Plugin target selection with real Plugin package distribution through core/main IPC, supporting copy and symlink modes.
+- [x] Resolve enabled Agent Plugin targets to configured Agent plugin directories and record successful `distributedTargetIds`.
+- [x] Extend Agent Configuration settings with MCP config and Plugin directory relative paths, including derived path previews for built-in and custom agents.
 - [x] Add Plugin module to desktop home navigation and home-module settings.
 - [x] Add i18n coverage for Plugin UI across all supported desktop locales.
 - [ ] Reuse Skill/MCP distribution flows for child assets.
@@ -44,6 +53,11 @@
 - [x] Settings desktop workspace tests cover adding Plugin into legacy default home modules and preserving user-hidden modules.
 - [x] Sidebar and appearance settings tests pass with Plugin added to the home module set.
 - [x] PluginManager component tests cover the Agent Plugin split layout, My Plugins inventory list, disabled-target detail state, Plugins Store naming, official provenance badges, and card-level inventory chips.
+- [x] PluginManager component tests cover Skill-style My Plugins filters, large installed-card hover target badges, and hover quick actions.
+- [x] PluginManager component tests cover direct Agent target selection from both installed Plugin detail and My Plugins card paper-plane actions.
+- [x] PluginManager component tests cover My Plugins header-mounted filters and absence of a separate detail-eye quick action.
+- [x] Core Plugin library tests cover package copy distribution to resolved Agent Plugin paths, unsupported target rejection, and `distributedTargetIds` persistence.
+- [x] Skill Settings tests pass after adding derived MCP config and Plugin directory path previews.
 - [x] Desktop typecheck passes with new IPC/preload/renderer contracts.
 
 ## Traceability

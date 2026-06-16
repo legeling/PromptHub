@@ -11,15 +11,16 @@ import {
   CheckIcon,
   CheckCircleIcon,
   CheckSquareIcon,
+  Clock3Icon,
   CopyIcon,
   DownloadIcon,
   FolderOpenIcon,
   InfoIcon,
-  ListChecksIcon,
   Loader2Icon,
   PackageIcon,
   PackagePlusIcon,
   RefreshCwIcon,
+  SendIcon,
   StoreIcon,
   TrashIcon,
   XCircleIcon,
@@ -27,6 +28,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type {
+  PluginDistributeMode,
   PluginInventorySummary,
   PluginLibraryEntry,
   PluginMarketEntry,
@@ -40,10 +42,13 @@ import { Spinner } from "../ui/Spinner";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { Modal } from "../ui/Modal";
 import { PlatformIcon } from "../ui/PlatformIcon";
+import { Select, type SelectOption } from "../ui/Select";
 import { useToast } from "../ui/Toast";
+import { PluginAgentTargetPicker } from "./PluginAgentTargetPicker";
 import { PluginFullDetailPage } from "./PluginFullDetailPage";
 
 type PluginTab = "library" | "market" | "targets";
+type PluginLibraryFilter = "all" | "distributed" | "pending";
 
 const tabIconClassName = "h-4 w-4";
 const AGENT_PLUGIN_HEADER_CLASS =
@@ -236,6 +241,57 @@ function getPluginTrustLabel(
   return t(`plugin.trust.${trustLevel}`, trustLevel);
 }
 
+function getPluginLibraryFilterLabel(
+  filter: PluginLibraryFilter,
+  t: ReturnType<typeof useTranslation>["t"],
+): string {
+  if (filter === "all") {
+    return t("plugin.allPlugins", "All Plugins");
+  }
+  if (filter === "distributed") {
+    return t("plugin.distributed", "Distributed");
+  }
+  return t("plugin.pendingDistribution", "Pending");
+}
+
+function getPluginLibrarySourceKey(plugin: PluginLibraryEntry): string {
+  return [
+    plugin.source.sourceId,
+    plugin.source.label,
+    plugin.source.repository,
+    plugin.source.localPackagePath,
+    plugin.source.localRepositoryPath,
+    plugin.managedPath,
+    plugin.localPackagePath,
+    plugin.localRepositoryPath,
+    plugin.source.kind,
+  ]
+    .filter((value): value is string => Boolean(value?.trim()))
+    .join("|");
+}
+
+function getPluginLibrarySourceLabel(
+  plugin: PluginLibraryEntry,
+  t: ReturnType<typeof useTranslation>["t"],
+): string {
+  if (plugin.source.sourceId === "openai-curated") {
+    return t("plugin.sources.codexOfficial", "Codex Official Store");
+  }
+  if (plugin.source.sourceId === "prompthub-official") {
+    return t("plugin.sources.promptHubOfficial", "Official Store");
+  }
+  if (plugin.source.label) {
+    return plugin.source.label;
+  }
+  if (plugin.source.repository) {
+    return plugin.source.repository;
+  }
+  if (plugin.source.kind === "local") {
+    return t("plugin.localSource", "Local source");
+  }
+  return t("plugin.unknownSource", "Unknown source");
+}
+
 function shouldShowMarketTrustBadge(entry: PluginMarketEntry): boolean {
   if (
     entry.trustLevel === "official" &&
@@ -294,12 +350,14 @@ function getPluginBrandStyle(brandColor?: string): CSSProperties | undefined {
 function PluginAvatar({
   entry,
   size = "md",
+  testId,
 }: {
   entry: Pick<
     PluginLibraryEntry | PluginMarketEntry,
     "displayName" | "iconUrl" | "logoUrl" | "brandColor"
   >;
   size?: "sm" | "md" | "lg";
+  testId?: string;
 }) {
   const [imageFailed, setImageFailed] = useState(false);
   const iconUrl = resolvePluginIconUrl(entry.iconUrl || entry.logoUrl);
@@ -315,6 +373,7 @@ function PluginAvatar({
   if (iconUrl && !imageFailed) {
     return (
       <div
+        data-testid={testId}
         className={`grid shrink-0 place-items-center overflow-hidden border border-border/60 bg-background ${sizeClass}`}
         style={brandStyle}
       >
@@ -333,6 +392,7 @@ function PluginAvatar({
 
   return (
     <div
+      data-testid={testId}
       className={`grid shrink-0 place-items-center bg-primary/10 font-semibold text-primary ${sizeClass}`}
       style={brandStyle}
     >
@@ -367,26 +427,67 @@ function PluginCard({
   batchMode = false,
   isSelected = false,
   plugin,
+  targetMatrix,
+  onDelete,
+  onOpenAgentTargets,
   onOpenDetail,
+  onOpenFolder,
   onToggleSelection,
 }: {
   batchMode?: boolean;
   isSelected?: boolean;
   plugin: PluginLibraryEntry;
+  targetMatrix: PluginTargetCompatibility[];
+  onDelete: (plugin: PluginLibraryEntry) => void;
+  onOpenAgentTargets: (plugin: PluginLibraryEntry) => void;
   onOpenDetail: (plugin: PluginLibraryEntry) => void;
+  onOpenFolder: (plugin: PluginLibraryEntry) => void;
   onToggleSelection: (plugin: PluginLibraryEntry) => void;
 }) {
   const { t } = useTranslation();
   const cardLabel = plugin.description
     ? `${plugin.displayName}. ${plugin.description}`
     : plugin.displayName;
+  const distributedTargets = (plugin.distributedTargetIds ?? [])
+    .map((targetId) => targetMatrix.find((target) => target.id === targetId))
+    .filter((target): target is PluginTargetCompatibility => Boolean(target));
+  const visibleDistributedTargets = distributedTargets.slice(0, 6);
+  const hasLocalPackage = Boolean(
+    plugin.localPackagePath ||
+    plugin.source.localPackagePath ||
+    plugin.managedPath ||
+    plugin.localRepositoryPath ||
+    plugin.source.localRepositoryPath,
+  );
 
   return (
     <article
-      className={`group relative flex items-center gap-3 rounded-xl border app-wallpaper-surface p-3.5 transition-all hover:border-primary/40 hover:shadow-md ${
+      data-testid={`plugin-library-card-${plugin.id}`}
+      role="button"
+      tabIndex={0}
+      aria-label={cardLabel}
+      aria-pressed={batchMode ? isSelected : undefined}
+      onClick={() =>
+        batchMode ? onToggleSelection(plugin) : onOpenDetail(plugin)
+      }
+      onKeyDown={(event) => {
+        if (event.currentTarget !== event.target) {
+          return;
+        }
+        if (event.key !== "Enter" && event.key !== " ") {
+          return;
+        }
+        event.preventDefault();
+        if (batchMode) {
+          onToggleSelection(plugin);
+        } else {
+          onOpenDetail(plugin);
+        }
+      }}
+      className={`group relative min-h-[220px] cursor-pointer rounded-2xl border app-wallpaper-panel p-5 transition-all ${
         isSelected
-          ? "border-primary/70 ring-1 ring-primary/30"
-          : "border-border"
+          ? "border-primary bg-primary/5 shadow-lg shadow-primary/10"
+          : "border-border hover:-translate-y-1 hover:border-primary/50 hover:shadow-xl"
       }`}
     >
       {batchMode ? (
@@ -407,7 +508,7 @@ function PluginCard({
               ? t("plugin.unselectPlugin", "Unselect plugin")
               : t("plugin.selectPlugin", "Select plugin")
           }
-          className={`grid h-6 w-6 shrink-0 place-items-center rounded-lg border transition-all active:scale-press-in ${
+          className={`absolute right-4 top-4 z-10 grid h-9 w-9 shrink-0 place-items-center rounded-lg border transition-all active:scale-press-in ${
             isSelected
               ? "border-primary bg-primary text-primary-foreground"
               : "border-border bg-card/80 text-muted-foreground/70 hover:border-primary/45 hover:bg-primary/10 hover:text-primary"
@@ -421,25 +522,111 @@ function PluginCard({
         </button>
       ) : null}
 
-      <button
-        type="button"
-        aria-label={cardLabel}
-        onClick={() =>
-          batchMode ? onToggleSelection(plugin) : onOpenDetail(plugin)
-        }
-        className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-      >
-        <PluginAvatar entry={plugin} />
+      <div className="flex h-full w-full flex-col items-start rounded-lg text-left">
+        <div className="mb-4 flex w-full items-start justify-between gap-3">
+          <PluginAvatar
+            entry={plugin}
+            size="lg"
+            testId={`plugin-library-card-icon-${plugin.id}`}
+          />
+          {!batchMode ? (
+            <div className="flex min-w-0 flex-1 flex-col items-end gap-2">
+              <div
+                data-testid={`plugin-card-agent-targets-${plugin.id}`}
+                className="flex min-h-8 max-w-full flex-wrap items-center justify-end gap-1.5"
+                title={t(
+                  "plugin.distributedAgentTargets",
+                  "Distributed Agent targets",
+                )}
+              >
+                {visibleDistributedTargets.length > 0 ? (
+                  visibleDistributedTargets.map((target) => (
+                    <PlatformIcon
+                      key={target.id}
+                      platformId={getTargetPlatformIconId(target.id)}
+                      size={18}
+                      title={target.displayName}
+                    />
+                  ))
+                ) : (
+                  <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-medium text-muted-foreground">
+                    {t("plugin.notDistributed", "Not distributed")}
+                  </span>
+                )}
+                {distributedTargets.length >
+                visibleDistributedTargets.length ? (
+                  <span className="text-[10px] text-muted-foreground">
+                    +
+                    {distributedTargets.length -
+                      visibleDistributedTargets.length}
+                  </span>
+                ) : null}
+              </div>
+              <div
+                data-testid={`plugin-card-actions-${plugin.id}`}
+                className="flex w-full justify-end gap-1"
+              >
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onOpenAgentTargets(plugin);
+                  }}
+                  aria-label={t("plugin.selectAgentTargetsForPlugin", {
+                    defaultValue: "Select Agent targets for {{name}}",
+                    name: plugin.displayName,
+                  })}
+                  className="rounded-lg p-2 text-muted-foreground opacity-0 transition-all hover:bg-primary/10 hover:text-primary group-hover:opacity-100 active:scale-press-in"
+                  title={t("plugin.selectAgentTargets", "Select Agent targets")}
+                >
+                  <SendIcon aria-hidden="true" className="h-4 w-4" />
+                </button>
+                {hasLocalPackage ? (
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onOpenFolder(plugin);
+                    }}
+                    aria-label={t(
+                      "plugin.openPluginFolder",
+                      "Open Plugin folder",
+                    )}
+                    className="rounded-lg p-2 text-muted-foreground opacity-0 transition-all hover:bg-accent hover:text-foreground group-hover:opacity-100 active:scale-press-in"
+                    title={t("plugin.openPluginFolder", "Open Plugin folder")}
+                  >
+                    <FolderOpenIcon aria-hidden="true" className="h-4 w-4" />
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onDelete(plugin);
+                  }}
+                  aria-label={t("plugin.deletePlugin", "Delete Plugin")}
+                  className="rounded-lg p-2 text-muted-foreground opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 active:scale-press-in"
+                  title={t("plugin.deletePlugin", "Delete Plugin")}
+                >
+                  <TrashIcon aria-hidden="true" className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </div>
         <div className="min-w-0 flex-1">
-          <h3 className="truncate text-sm font-semibold text-foreground transition-colors group-hover:text-primary">
+          <h3
+            className="mb-2 line-clamp-1 text-lg font-bold text-foreground transition-colors group-hover:text-primary"
+            title={plugin.displayName}
+          >
             {plugin.displayName}
           </h3>
-          <p className="mt-0.5 line-clamp-2 min-h-8 text-xs leading-4 text-muted-foreground">
+          <p className="mb-4 line-clamp-2 h-10 text-sm italic leading-relaxed text-muted-foreground opacity-80">
             {plugin.description ||
               plugin.author?.name ||
               t("plugin.noDescription", "No description provided")}
           </p>
-          <div className="mt-2 flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1.5">
             <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-300">
               {t("plugin.installed", "Installed")}
             </span>
@@ -453,7 +640,7 @@ function PluginCard({
             ) : null}
           </div>
         </div>
-      </button>
+      </div>
     </article>
   );
 }
@@ -1207,6 +1394,10 @@ export function PluginManager() {
   const [deleteTarget, setDeleteTarget] = useState<PluginLibraryEntry | null>(
     null,
   );
+  const [agentTargetPicker, setAgentTargetPicker] = useState<{
+    plugin: PluginLibraryEntry;
+    targetIds: string[];
+  } | null>(null);
   const [initialAgentPluginTargetId, setInitialAgentPluginTargetId] = useState<
     string | null
   >(null);
@@ -1228,6 +1419,7 @@ export function PluginManager() {
     setSelectedMarketSourceId,
     previewMarketPlugin,
     installMarketPlugin,
+    distributePlugin,
     deletePlugin,
   } = usePluginStore();
 
@@ -1252,6 +1444,9 @@ export function PluginManager() {
     () => library?.plugins ?? [],
     [library?.plugins],
   );
+  const [libraryFilter, setLibraryFilter] =
+    useState<PluginLibraryFilter>("all");
+  const [librarySourceFilter, setLibrarySourceFilter] = useState("all");
   const selectedLibraryDetailPlugin = useMemo(() => {
     if (!detailLibraryPlugin) {
       return null;
@@ -1266,13 +1461,122 @@ export function PluginManager() {
     [installedPlugins],
   );
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
-  const visiblePlugins = useMemo(
+  const baseVisiblePlugins = useMemo(
     () =>
-      installedPlugins.filter((plugin) =>
-        matchesPluginSearch(plugin, normalizedSearchQuery),
+      installedPlugins.filter(
+        (plugin) =>
+          matchesPluginSearch(plugin, normalizedSearchQuery) &&
+          (libraryFilter === "all" ||
+            (libraryFilter === "distributed"
+              ? (plugin.distributedTargetIds?.length ?? 0) > 0
+              : (plugin.distributedTargetIds?.length ?? 0) === 0)),
       ),
-    [installedPlugins, normalizedSearchQuery],
+    [installedPlugins, libraryFilter, normalizedSearchQuery],
   );
+  const libraryFilterCounts = useMemo(() => {
+    const counts: Record<PluginLibraryFilter, number> = {
+      all: installedPlugins.length,
+      distributed: 0,
+      pending: 0,
+    };
+
+    for (const plugin of installedPlugins) {
+      if ((plugin.distributedTargetIds?.length ?? 0) > 0) {
+        counts.distributed += 1;
+      } else {
+        counts.pending += 1;
+      }
+    }
+
+    return counts;
+  }, [installedPlugins]);
+  const libraryFilterOptions = useMemo(
+    () =>
+      [
+        {
+          icon: <PackageIcon className="h-3.5 w-3.5" />,
+          value: "all",
+          label: getPluginLibraryFilterLabel("all", t),
+          count: libraryFilterCounts.all,
+        },
+        {
+          icon: <SendIcon className="h-3.5 w-3.5" />,
+          value: "distributed",
+          label: getPluginLibraryFilterLabel("distributed", t),
+          count: libraryFilterCounts.distributed,
+        },
+        {
+          icon: <Clock3Icon className="h-3.5 w-3.5" />,
+          value: "pending",
+          label: getPluginLibraryFilterLabel("pending", t),
+          count: libraryFilterCounts.pending,
+        },
+      ] satisfies Array<{
+        icon: ReactNode;
+        value: PluginLibraryFilter;
+        label: string;
+        count: number;
+      }>,
+    [libraryFilterCounts, t],
+  );
+  const librarySourceEntries = useMemo(() => {
+    const entries = new Map<string, { label: string; count: number }>();
+
+    for (const plugin of baseVisiblePlugins) {
+      const key = getPluginLibrarySourceKey(plugin);
+      const current = entries.get(key);
+      entries.set(key, {
+        label: getPluginLibrarySourceLabel(plugin, t),
+        count: (current?.count ?? 0) + 1,
+      });
+    }
+
+    return Array.from(entries.entries())
+      .map(([value, entry]) => ({ value, ...entry }))
+      .sort((left, right) => left.label.localeCompare(right.label));
+  }, [baseVisiblePlugins, t]);
+  const hasActiveLibrarySourceFilter = librarySourceFilter !== "all";
+  const activeLibrarySourceFilter = librarySourceEntries.some(
+    (entry) => entry.value === librarySourceFilter,
+  )
+    ? librarySourceFilter
+    : "all";
+  const librarySourceOptions = useMemo<SelectOption[]>(
+    () => [
+      {
+        value: "all",
+        label: (
+          <span className="flex w-full items-center justify-between gap-2">
+            <span>{t("plugin.allSources", "All sources")}</span>
+            <span className="text-xs text-muted-foreground">
+              {baseVisiblePlugins.length}
+            </span>
+          </span>
+        ),
+        labelText: t("plugin.allSources", "All sources"),
+      },
+      ...librarySourceEntries.map((entry) => ({
+        value: entry.value,
+        label: (
+          <span className="flex w-full items-center justify-between gap-2">
+            <span className="truncate">{entry.label}</span>
+            <span className="text-xs text-muted-foreground">{entry.count}</span>
+          </span>
+        ),
+        labelText: entry.label,
+      })),
+    ],
+    [baseVisiblePlugins.length, librarySourceEntries, t],
+  );
+  const visiblePlugins = useMemo(() => {
+    if (activeLibrarySourceFilter === "all") {
+      return baseVisiblePlugins;
+    }
+    return baseVisiblePlugins.filter(
+      (plugin) =>
+        getPluginLibrarySourceKey(plugin) === activeLibrarySourceFilter,
+    );
+  }, [activeLibrarySourceFilter, baseVisiblePlugins]);
   const sourceFilteredMarketEntries = useMemo(
     () =>
       marketEntries.filter(
@@ -1682,6 +1986,45 @@ export function PluginManager() {
     }
   };
 
+  const handleOpenLibraryAgentTargets = (plugin: PluginLibraryEntry) => {
+    setAgentTargetPicker({ plugin, targetIds: [] });
+  };
+
+  const handleDistributePlugin = async (
+    plugin: PluginLibraryEntry,
+    targetIds: string[],
+    mode: PluginDistributeMode,
+  ) => {
+    const result = await distributePlugin(plugin.id, targetIds, mode);
+    const distributedPlugin = result.library.plugins.find(
+      (entry) => entry.id === plugin.id,
+    );
+    if (distributedPlugin) {
+      setDetailLibraryPlugin((current) =>
+        current?.id === distributedPlugin.id ? distributedPlugin : current,
+      );
+      setAgentTargetPicker((current) =>
+        current?.plugin.id === distributedPlugin.id
+          ? { ...current, plugin: distributedPlugin }
+          : current,
+      );
+    }
+  };
+
+  const handleOpenLibraryFolder = (plugin: PluginLibraryEntry) => {
+    const localPath =
+      plugin.localPackagePath ||
+      plugin.source.localPackagePath ||
+      plugin.managedPath ||
+      plugin.localRepositoryPath ||
+      plugin.source.localRepositoryPath ||
+      "";
+    if (!localPath) {
+      return;
+    }
+    void window.electron?.openPath?.(localPath);
+  };
+
   const handleDelete = async () => {
     if (!deleteTarget) {
       return;
@@ -1712,11 +2055,9 @@ export function PluginManager() {
           targetMatrix={targetMatrix}
           onBack={() => setDetailLibraryPlugin(null)}
           onDelete={(plugin) => setDeleteTarget(plugin)}
-          onOpenAgentTargets={(targetIds) => {
-            setInitialAgentPluginTargetId(targetIds[0] ?? null);
-            setDetailLibraryPlugin(null);
-            setSelectedTab("targets");
-          }}
+          onDistribute={(targetIds, mode) =>
+            handleDistributePlugin(selectedLibraryDetailPlugin, targetIds, mode)
+          }
           onOpenStore={() => {
             setDetailLibraryPlugin(null);
             setSelectedTab("market");
@@ -1741,6 +2082,14 @@ export function PluginManager() {
           variant="destructive"
           isLoading={isDeleting}
         />
+        <PluginAgentTargetPicker
+          isOpen={Boolean(agentTargetPicker)}
+          onClose={() => setAgentTargetPicker(null)}
+          onDistribute={handleDistributePlugin}
+          plugin={agentTargetPicker?.plugin ?? null}
+          targetMatrix={targetMatrix}
+          initialTargetIds={agentTargetPicker?.targetIds ?? []}
+        />
       </>
     );
   }
@@ -1764,54 +2113,114 @@ export function PluginManager() {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden app-wallpaper-section">
-      <header className="shrink-0 border-b border-border app-wallpaper-panel-strong px-6 py-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0 space-y-1">
-            <div className="flex items-center gap-2">
-              {selectedTab === "library" ? (
-                <PackageIcon className="h-5 w-5 text-primary" />
-              ) : (
-                <StoreIcon className="h-5 w-5 text-primary" />
-              )}
-              <h1 className="text-lg font-semibold text-foreground">
-                {currentViewTitle}
-              </h1>
-              <span className="shrink-0 rounded-full border border-white/5 bg-accent/50 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                {currentViewCountLabel}
-              </span>
+      <header className="shrink-0 border-b border-border app-wallpaper-panel-strong px-4 py-4 z-10 sm:px-6">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2">
+                  {selectedTab === "library" ? (
+                    <PackageIcon className="h-5 w-5 text-primary" />
+                  ) : (
+                    <StoreIcon className="h-5 w-5 text-primary" />
+                  )}
+                  <h1 className="text-lg font-semibold text-foreground">
+                    {currentViewTitle}
+                  </h1>
+                </div>
+                <span className="inline-flex items-center rounded-full border border-white/5 bg-accent/50 px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                  {currentViewCountLabel}
+                </span>
+              </div>
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                {currentViewHint}
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground">{currentViewHint}</p>
+
+            <div className="flex shrink-0 items-center gap-2 self-start lg:self-center lg:justify-end">
+              <button
+                type="button"
+                onClick={handleToggleBatchMode}
+                aria-pressed={isBatchMode}
+                aria-label={t("plugin.batchManage", "Batch manage plugins")}
+                title={t("plugin.batchManage", "Batch manage plugins")}
+                className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-colors ${
+                  isBatchMode
+                    ? "border-primary/30 bg-primary/10 text-primary hover:bg-primary/15"
+                    : "border-border app-wallpaper-surface text-foreground hover:border-primary/25 hover:bg-accent"
+                }`}
+              >
+                {isBatchMode ? (
+                  <XIcon aria-hidden="true" className="h-4 w-4" />
+                ) : (
+                  <CheckSquareIcon aria-hidden="true" className="h-4 w-4" />
+                )}
+                {t("plugin.batchManage", "Batch manage plugins")}
+              </button>
+              <button
+                type="button"
+                onClick={() => void load()}
+                disabled={isLoading}
+                aria-label={t("common.refresh", "Refresh")}
+                title={t("common.refresh", "Refresh")}
+                className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+              >
+                <RefreshCwIcon
+                  aria-hidden="true"
+                  className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+                />
+              </button>
+            </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              onClick={handleToggleBatchMode}
-              aria-pressed={isBatchMode}
-              aria-label={t("plugin.batchManage", "Batch manage plugins")}
-              title={t("plugin.batchManage", "Batch manage plugins")}
-              className={`rounded-lg p-2 transition-colors ${
-                isBatchMode
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-              }`}
+          {selectedTab === "library" ? (
+            <div
+              data-testid="plugin-library-filter-bar"
+              className="flex flex-wrap items-center gap-2"
             >
-              <ListChecksIcon aria-hidden="true" className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => void load()}
-              disabled={isLoading}
-              aria-label={t("common.refresh", "Refresh")}
-              title={t("common.refresh", "Refresh")}
-              className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
-            >
-              <RefreshCwIcon
-                aria-hidden="true"
-                className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+              {libraryFilterOptions.map((option) => {
+                const isActive = libraryFilter === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setLibraryFilter(option.value)}
+                    aria-label={option.label}
+                    aria-pressed={isActive}
+                    className={`inline-flex h-9 min-w-[8rem] items-center justify-center gap-2 rounded-xl border px-4 text-sm font-medium transition-colors ${
+                      isActive
+                        ? "border-primary/30 bg-primary/10 text-primary"
+                        : "border-border app-wallpaper-surface text-muted-foreground hover:border-primary/25 hover:bg-accent hover:text-foreground"
+                    }`}
+                  >
+                    {option.icon}
+                    <span>{option.label}</span>
+                    <span
+                      className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] ${
+                        isActive
+                          ? "bg-primary/15 text-primary"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {option.count}
+                    </span>
+                  </button>
+                );
+              })}
+              <Select
+                ariaLabel={t("plugin.sourceFilterLabel", "Plugin source")}
+                value={activeLibrarySourceFilter}
+                onChange={(value) => setLibrarySourceFilter(value)}
+                options={librarySourceOptions}
+                className="min-w-[13rem] flex-1 sm:flex-none"
+                triggerClassName={`h-9 w-full rounded-xl border px-3 text-sm font-medium shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30 flex items-center justify-between gap-2 ${
+                  hasActiveLibrarySourceFilter
+                    ? "border-primary/30 bg-primary/10 text-primary"
+                    : "border-border app-wallpaper-surface text-muted-foreground hover:border-primary/25 hover:bg-accent hover:text-foreground"
+                }`}
               />
-            </button>
-          </div>
+            </div>
+          ) : null}
         </div>
       </header>
 
@@ -1827,33 +2236,42 @@ export function PluginManager() {
             <Spinner />
           </div>
         ) : selectedTab === "library" ? (
-          visiblePlugins.length > 0 ? (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {visiblePlugins.map((plugin) => (
-                <PluginCard
-                  key={plugin.id}
-                  batchMode={isBatchMode}
-                  isSelected={selectedLibraryPluginIds.has(plugin.id)}
-                  plugin={plugin}
-                  onOpenDetail={setDetailLibraryPlugin}
-                  onToggleSelection={handleToggleLibrarySelection}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="flex min-h-[320px] flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 px-6 text-center">
-              <PackageIcon className="h-10 w-10 text-muted-foreground/50" />
-              <h2 className="mt-3 text-base font-semibold text-foreground">
-                {t("plugin.emptyLibraryTitle", "No plugins installed")}
-              </h2>
-              <p className="mt-1 max-w-md text-sm text-muted-foreground">
-                {t(
-                  "plugin.emptyLibraryDesc",
-                  "Install complete plugin bundles from the store, then decide which child assets go to each agent.",
-                )}
-              </p>
-            </div>
-          )
+          <div className="space-y-4">
+            {visiblePlugins.length > 0 ? (
+              <div
+                data-testid="plugin-library-grid"
+                className="grid grid-cols-1 gap-6 lg:grid-cols-2"
+              >
+                {visiblePlugins.map((plugin) => (
+                  <PluginCard
+                    key={plugin.id}
+                    batchMode={isBatchMode}
+                    isSelected={selectedLibraryPluginIds.has(plugin.id)}
+                    plugin={plugin}
+                    targetMatrix={targetMatrix}
+                    onDelete={setDeleteTarget}
+                    onOpenAgentTargets={handleOpenLibraryAgentTargets}
+                    onOpenDetail={setDetailLibraryPlugin}
+                    onOpenFolder={handleOpenLibraryFolder}
+                    onToggleSelection={handleToggleLibrarySelection}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="flex min-h-[320px] flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 px-6 text-center">
+                <PackageIcon className="h-10 w-10 text-muted-foreground/50" />
+                <h2 className="mt-3 text-base font-semibold text-foreground">
+                  {t("plugin.emptyLibraryTitle", "No plugins installed")}
+                </h2>
+                <p className="mt-1 max-w-md text-sm text-muted-foreground">
+                  {t(
+                    "plugin.emptyLibraryDesc",
+                    "Install complete plugin bundles from the store, then decide which child assets go to each agent.",
+                  )}
+                </p>
+              </div>
+            )}
+          </div>
         ) : selectedTab === "market" ? (
           <div className="space-y-8">
             {visibleMarketEntries.length > 0 ? (
@@ -2080,6 +2498,14 @@ export function PluginManager() {
         onClose={() => setDetailMarketEntry(null)}
         onCopyCodexLink={handleCopyCodexLink}
         onInstall={handleInstall}
+      />
+      <PluginAgentTargetPicker
+        isOpen={Boolean(agentTargetPicker)}
+        onClose={() => setAgentTargetPicker(null)}
+        onDistribute={handleDistributePlugin}
+        plugin={agentTargetPicker?.plugin ?? null}
+        targetMatrix={targetMatrix}
+        initialTargetIds={agentTargetPicker?.targetIds ?? []}
       />
     </div>
   );

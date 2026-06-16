@@ -1,5 +1,7 @@
 import { create } from "zustand";
 import type {
+  PluginDistributeMode,
+  PluginDistributeResult,
   PluginInstallResult,
   PluginLibraryFile,
   PluginMarketEntry,
@@ -25,6 +27,11 @@ interface PluginState {
   setSearchQuery: (query: string) => void;
   previewMarketPlugin: (entryId: string) => Promise<PluginMarketPreview>;
   installMarketPlugin: (entryId: string) => Promise<PluginInstallResult>;
+  distributePlugin: (
+    pluginId: string,
+    targetIds: string[],
+    mode: PluginDistributeMode,
+  ) => Promise<PluginDistributeResult>;
   deletePlugin: (id: string) => Promise<void>;
 }
 
@@ -102,6 +109,16 @@ export const usePluginStore = create<PluginState>((set, get) => ({
     const result = await window.api.plugin.installMarketPlugin(entryId);
     await get().load();
     set({ selectedTab: "library" });
+    return result;
+  },
+
+  distributePlugin: async (pluginId, targetIds, mode) => {
+    const result = await window.api.plugin.distributePlugin({
+      pluginId,
+      targetIds,
+      mode,
+    });
+    set({ library: result.library });
     return result;
   },
 

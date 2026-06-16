@@ -46,6 +46,8 @@ const installedGmailPlugin: PluginLibraryEntry = {
   name: "gmail",
   displayName: "Gmail",
   description: "Read and manage Gmail",
+  longDescription:
+    "Use Gmail to triage inbox work, inspect thread context, and prepare response drafts through the bundled Plugin assets.",
   iconUrl:
     "https://raw.githubusercontent.com/openai/plugins/main/plugins/gmail/assets/icon.png",
   brandColor: "#EA4335",
@@ -60,6 +62,7 @@ const installedGmailPlugin: PluginLibraryEntry = {
     packagePath: "plugins/gmail",
     localPackagePath: "/tmp/prompthub/plugins/gmail/repo/plugins/gmail",
   },
+  distributedTargetIds: ["codex", "claude-code"],
   managedPath: "/tmp/prompthub/plugins/gmail",
   localRepositoryPath: "/tmp/prompthub/plugins/gmail/repo",
   localPackagePath: "/tmp/prompthub/plugins/gmail/repo/plugins/gmail",
@@ -127,6 +130,13 @@ const targetMatrix: PluginTargetCompatibility[] = [
     status: "native",
     enabled: true,
     adapterOutput: "Install as a Codex Plugin bundle.",
+  },
+  {
+    id: "claude-code",
+    displayName: "Claude Code",
+    status: "adapter",
+    enabled: true,
+    adapterOutput: "Generate a Claude Code Plugin bundle.",
   },
   {
     id: "opencode",
@@ -276,6 +286,27 @@ function installPluginApiMock(libraryOverride: PluginLibraryFile = library) {
       library: libraryOverride,
       warnings: [],
     }),
+    distributePlugin: vi
+      .fn()
+      .mockImplementation(async ({ pluginId, targetIds }) => {
+        const nextLibrary = {
+          ...libraryOverride,
+          plugins: libraryOverride.plugins.map((plugin) =>
+            plugin.id === pluginId
+              ? { ...plugin, distributedTargetIds: targetIds }
+              : plugin,
+          ),
+        };
+        return {
+          plugin: nextLibrary.plugins.find((plugin) => plugin.id === pluginId),
+          library: nextLibrary,
+          targets: targetIds.map((targetId: string) => ({
+            targetId,
+            path: `/tmp/${targetId}/plugins/gmail`,
+            mode: "copy",
+          })),
+        };
+      }),
     deletePlugin: vi.fn().mockResolvedValue(library),
   };
 }
@@ -295,6 +326,98 @@ describe("PluginManager", () => {
     installPluginApiMock();
   });
 
+  it("renders installed My Plugins as large gallery cards", async () => {
+    installPluginApiMock(installedLibrary);
+    usePluginStore.setState({ selectedTab: "library" });
+
+    await renderPluginManager();
+
+    const filterBar = await screen.findByTestId("plugin-library-filter-bar");
+    expect(filterBar).toBeInTheDocument();
+    expect(filterBar.closest("header")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "All Plugins" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(
+      screen.getByRole("button", { name: "Distributed" }),
+    ).toHaveTextContent("1");
+    expect(screen.getByRole("button", { name: "Pending" })).toHaveTextContent(
+      "0",
+    );
+    expect(
+      screen.getByRole("button", { name: "Batch manage Plugins" }),
+    ).toHaveTextContent("Batch manage Plugins");
+
+    const grid = await screen.findByTestId("plugin-library-grid");
+    expect(grid).toHaveClass("lg:grid-cols-2");
+    expect(grid).not.toHaveClass("xl:grid-cols-4");
+
+    const card = screen.getByTestId("plugin-library-card-gmail");
+    expect(card).toHaveClass("rounded-2xl", "p-5");
+    expect(card).not.toHaveClass("p-3.5");
+    expect(screen.getByTestId("plugin-library-card-icon-gmail")).toHaveClass(
+      "h-16",
+      "w-16",
+    );
+    const distributedTargets = screen.getByTestId(
+      "plugin-card-agent-targets-gmail",
+    );
+    expect(
+      within(distributedTargets).getByAltText("codex icon"),
+    ).toBeInTheDocument();
+    expect(
+      within(distributedTargets).getByAltText("claude icon"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "Select Agent targets for Gmail",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Open Plugin details Gmail" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Open Plugin folder" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Delete Plugin" }),
+    ).toBeInTheDocument();
+  });
+
+  it("filters My Plugins with Skill-style distribution and source controls", async () => {
+    const customPlugin: PluginLibraryEntry = {
+      ...installedGmailPlugin,
+      id: "local-helper",
+      name: "local-helper",
+      displayName: "Local Helper",
+      description: "Custom local plugin",
+      trustLevel: "custom",
+      distributedTargetIds: [],
+      source: {
+        kind: "local",
+        label: "Local Folder",
+        localPackagePath: "/tmp/prompthub/plugins/local-helper",
+      },
+      localPackagePath: "/tmp/prompthub/plugins/local-helper",
+    };
+    installPluginApiMock({
+      ...installedLibrary,
+      plugins: [installedGmailPlugin, customPlugin],
+    });
+    usePluginStore.setState({ selectedTab: "library" });
+
+    await renderPluginManager();
+
+    expect(await screen.findByText("Gmail")).toBeInTheDocument();
+    expect(screen.getByText("Local Helper")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Pending" }));
+
+    expect(screen.queryByText("Gmail")).not.toBeInTheDocument();
+    expect(screen.getByText("Local Helper")).toBeInTheDocument();
+  });
+
   it("opens installed plugins as a full detail page with files and Agent targets", async () => {
     installPluginApiMock(installedLibrary);
     usePluginStore.setState({ selectedTab: "library" });
@@ -310,18 +433,36 @@ describe("PluginManager", () => {
     expect(screen.getByTestId("plugin-full-detail-page")).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Gmail" })).toBeInTheDocument();
-    expect(screen.getByText("Agent Plugin Distribution")).toBeInTheDocument();
+    expect(screen.getByText("Platform Integration")).toBeInTheDocument();
+    expect(screen.getByText("Plugin Content")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Use Gmail to triage inbox work, inspect thread context, and prepare response drafts through the bundled Plugin assets.",
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText("Codex")).toBeInTheDocument();
     expect(screen.getByText("OpenCode")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Files" }));
 
-    expect(await screen.findByTestId("plugin-file-editor")).toHaveTextContent(
+    const detailMain = screen
+      .getByTestId("plugin-full-detail-page")
+      .querySelector("main");
+    expect(detailMain).toHaveClass("flex", "flex-col", "overflow-hidden");
+
+    const fileEditor = await screen.findByTestId("plugin-file-editor");
+    expect(fileEditor.parentElement).toHaveClass(
+      "h-full",
+      "min-h-0",
+      "flex-1",
+      "overflow-hidden",
+    );
+    expect(fileEditor).toHaveTextContent(
       "plugin-file-editor:/tmp/prompthub/plugins/gmail/repo/plugins/gmail",
     );
   });
 
-  it("routes installed plugin detail targets into the Agent Plugin workbench", async () => {
+  it("distributes directly from the installed plugin detail after selecting Agents", async () => {
     installPluginApiMock(installedLibrary);
     usePluginStore.setState({ selectedTab: "library" });
 
@@ -332,22 +473,42 @@ describe("PluginManager", () => {
         name: "Gmail. Read and manage Gmail",
       }),
     );
-    fireEvent.click(screen.getByRole("button", { name: /Codex.*Native/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Codex" }));
     fireEvent.click(
-      screen.getByRole("button", {
-        name: "Open Agent Plugin for 1 target(s)",
+      screen.getByRole("button", { name: "Distribute to selected Agents" }),
+    );
+
+    await waitFor(() => {
+      expect(window.api.plugin.distributePlugin).toHaveBeenCalledWith({
+        pluginId: "gmail",
+        targetIds: ["codex"],
+        mode: "copy",
+      });
+    });
+  });
+
+  it("opens Agent selection directly from the plugin card distribute button", async () => {
+    installPluginApiMock(installedLibrary);
+    usePluginStore.setState({ selectedTab: "library" });
+
+    await renderPluginManager();
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Select Agent targets for Gmail",
       }),
     );
 
-    expect(
-      screen.queryByTestId("plugin-full-detail-page"),
-    ).not.toBeInTheDocument();
-    await waitFor(() => {
-      expect(screen.getByTestId("agent-plugin-detail-shell")).toHaveAttribute(
-        "data-agent-id",
-        "codex",
-      );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Select Agent targets",
     });
+    expect(within(dialog).getAllByText("Gmail").length).toBeGreaterThan(0);
+    expect(
+      within(dialog).getByRole("button", { name: "Codex" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("agent-plugin-detail-shell"),
+    ).not.toBeInTheDocument();
   });
 
   it("keeps delete confirmation available from the installed plugin detail page", async () => {

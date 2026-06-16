@@ -8,25 +8,30 @@ import {
 } from "react";
 import {
   ArrowLeftIcon,
-  CheckCircleIcon,
+  CheckIcon,
+  CheckSquareIcon,
   CodeIcon,
   CopyIcon,
+  CopyPlusIcon,
   ExternalLinkIcon,
   FolderOpenIcon,
   InfoIcon,
+  LinkIcon,
   SendIcon,
+  SquareIcon,
   StoreIcon,
   TrashIcon,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type {
+  PluginDistributeMode,
   PluginInventorySummary,
   PluginLibraryEntry,
   PluginTargetCompatibility,
-  PluginTargetStatus,
 } from "@prompthub/shared/types/plugin";
 import { PLUGIN_INVENTORY_KEYS } from "@prompthub/shared/types/plugin";
 import { Spinner } from "../ui/Spinner";
+import { PlatformIcon } from "../ui/PlatformIcon";
 import { useToast } from "../ui/Toast";
 
 const LazySkillFileEditor = lazy(() =>
@@ -45,7 +50,10 @@ interface PluginFullDetailPageProps {
   targetMatrix: PluginTargetCompatibility[];
   onBack: () => void;
   onDelete: (plugin: PluginLibraryEntry) => void;
-  onOpenAgentTargets: (targetIds: string[]) => void;
+  onDistribute: (
+    targetIds: string[],
+    mode: PluginDistributeMode,
+  ) => Promise<void>;
   onOpenStore: () => void;
 }
 
@@ -170,20 +178,6 @@ function InventorySummary({
   );
 }
 
-function getStatusLabel(
-  status: PluginTargetStatus,
-  t: ReturnType<typeof useTranslation>["t"],
-): string {
-  const labels: Record<PluginTargetStatus, string> = {
-    native: t("plugin.targetStatus.native", "Native"),
-    adapter: t("plugin.targetStatus.adapter", "Adapter"),
-    "runtime-only": t("plugin.targetStatus.runtimeOnly", "Runtime only"),
-    composite: t("plugin.targetStatus.composite", "Composite"),
-    pending: t("plugin.targetStatus.pending", "Pending"),
-  };
-  return labels[status];
-}
-
 function getPluginLocalPackagePath(plugin: PluginLibraryEntry): string {
   return (
     plugin.localPackagePath ||
@@ -225,16 +219,56 @@ function DetailTabButton({
   );
 }
 
-function PluginTargetSelector({
+function getPluginTargetPlatformId(targetId: string): string {
+  const iconIds: Record<string, string> = {
+    "claude-code": "claude",
+    "gemini-cli": "gemini",
+    "github-copilot": "copilot",
+    "roo-code": "kilo",
+  };
+  return iconIds[targetId] ?? targetId;
+}
+
+function getPluginTargetDescription(
+  target: PluginTargetCompatibility,
+  t: ReturnType<typeof useTranslation>["t"],
+): string {
+  if (!target.enabled) {
+    return (
+      target.unsupportedReason ||
+      t(
+        "plugin.targetUnsupportedForBundle",
+        "This target does not support PromptHub Plugin bundles yet.",
+      )
+    );
+  }
+  return (
+    target.adapterOutput ||
+    target.installSurface ||
+    target.description ||
+    t(
+      "plugin.targetAdapterReady",
+      "Ready for adapter-backed Plugin distribution.",
+    )
+  );
+}
+
+function PluginPlatformPanel({
   localPackagePath,
-  onOpenAgentTargets,
+  onDistribute,
   targetMatrix,
 }: {
   localPackagePath: string;
-  onOpenAgentTargets: (targetIds: string[]) => void;
+  onDistribute: (
+    targetIds: string[],
+    mode: PluginDistributeMode,
+  ) => Promise<void>;
   targetMatrix: PluginTargetCompatibility[];
 }) {
   const { t } = useTranslation();
+  const { showToast } = useToast();
+  const [installMode, setInstallMode] = useState<"copy" | "symlink">("copy");
+  const [isDistributing, setIsDistributing] = useState(false);
   const [selectedTargetIds, setSelectedTargetIds] = useState<Set<string>>(
     new Set(),
   );
@@ -251,110 +285,280 @@ function PluginTargetSelector({
     });
   };
 
-  return (
-    <section className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
-            {t("plugin.agentDistributionTitle", "Agent Plugin Distribution")}
-          </h3>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            {t(
-              "plugin.agentDistributionDesc",
-              "Select Plugin-capable agents. Target writes stay confirmation-gated and adapter-backed.",
-            )}
-          </p>
-        </div>
-        <span className="rounded-full border border-border bg-background/70 px-2.5 py-1 text-xs text-muted-foreground">
-          {supportedTargets.length}/{targetMatrix.length}
-        </span>
-      </div>
+  const selectAllTargets = () => {
+    setSelectedTargetIds(new Set(supportedTargets.map((target) => target.id)));
+  };
 
-      <div className="space-y-2">
-        {targetMatrix.map((target) => {
-          const selected = selectedTargetIds.has(target.id);
-          return (
+  const deselectAllTargets = () => {
+    setSelectedTargetIds(new Set());
+  };
+
+  const selectedAll =
+    supportedTargets.length > 0 && selectedCount === supportedTargets.length;
+
+  const distributeToSelectedTargets = async () => {
+    if (!localPackagePath || selectedCount === 0 || isDistributing) {
+      return;
+    }
+    setIsDistributing(true);
+    try {
+      await onDistribute(Array.from(selectedTargetIds), installMode);
+      showToast(
+        t("plugin.distributionSuccess", {
+          count: selectedCount,
+          defaultValue: "Distributed Plugin to {{count}} Agent target(s).",
+        }),
+        "success",
+      );
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : String(error),
+        "error",
+      );
+    } finally {
+      setIsDistributing(false);
+    }
+  };
+
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="space-y-6">
+        <h3 className="flex items-center justify-between text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
+          <span>{t("skill.platformIntegration", "Platform Integration")}</span>
+          <span className="text-[10px]">PLUGIN</span>
+        </h3>
+
+        <section className="space-y-4 rounded-2xl border border-border app-wallpaper-panel p-5">
+          <div className="flex items-center gap-1 rounded-lg bg-accent/50 p-1">
             <button
-              key={target.id}
               type="button"
-              disabled={!target.enabled}
-              onClick={() => toggleTarget(target)}
-              className={`w-full rounded-2xl border px-3 py-3 text-left transition-colors ${
-                selected
-                  ? "border-primary/45 bg-primary/10"
-                  : target.enabled
-                    ? "border-border bg-background/70 hover:bg-accent"
-                    : "border-border/70 bg-muted/30 opacity-65"
+              aria-pressed={installMode === "copy"}
+              onClick={() => setInstallMode("copy")}
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[10px] font-medium transition-colors ${
+                installMode === "copy"
+                  ? "bg-primary text-white shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <div className="flex items-center gap-3">
-                <span
-                  className={`grid h-5 w-5 shrink-0 place-items-center rounded-md border ${
-                    selected
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-background/70 text-transparent"
+              <CopyPlusIcon aria-hidden="true" className="h-3 w-3" />
+              {t("skill.copyMode", "Copy")}
+            </button>
+            <button
+              type="button"
+              aria-pressed={installMode === "symlink"}
+              onClick={() => setInstallMode("symlink")}
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[10px] font-medium transition-colors ${
+                installMode === "symlink"
+                  ? "bg-primary text-white shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <LinkIcon aria-hidden="true" className="h-3 w-3" />
+              {t("skill.symlink", "Symlink")}
+            </button>
+          </div>
+
+          <p className="text-[10px] leading-relaxed text-muted-foreground">
+            {installMode === "copy"
+              ? t(
+                  "plugin.copyModeDesc",
+                  "Copy: write this Plugin package into each selected Agent's configured Plugin directory.",
+                )
+              : t(
+                  "plugin.symlinkModeDesc",
+                  "Symlink: link each selected Agent's Plugin directory back to this managed package.",
+                )}
+          </p>
+
+          <div className="flex flex-col gap-2 rounded-xl border border-border bg-accent/30 p-3">
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={selectedAll ? deselectAllTargets : selectAllTargets}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {selectedAll ? (
+                  <>
+                    <CheckSquareIcon aria-hidden="true" className="h-4 w-4" />
+                    {t("skill.deselectAll", "Deselect All")}
+                  </>
+                ) : (
+                  <>
+                    <SquareIcon aria-hidden="true" className="h-4 w-4" />
+                    {t("skill.selectAll", "Select All")}
+                  </>
+                )}
+              </button>
+              {selectedCount > 0 ? (
+                <span className="text-xs text-muted-foreground">
+                  {selectedCount} {t("skill.selected", "selected")}
+                </span>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              onClick={() => void distributeToSelectedTargets()}
+              disabled={
+                !localPackagePath || selectedCount === 0 || isDistributing
+              }
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-white shadow-lg shadow-primary/20 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <SendIcon aria-hidden="true" className="h-3.5 w-3.5" />
+              {isDistributing
+                ? t("plugin.distributing", "Distributing...")
+                : t(
+                    "plugin.distributeToSelectedAgents",
+                    "Distribute to selected Agents",
+                  )}
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            {targetMatrix.map((target) => {
+              const selected = selectedTargetIds.has(target.id);
+              const description = getPluginTargetDescription(target, t);
+              return (
+                <button
+                  key={target.id}
+                  type="button"
+                  disabled={!target.enabled}
+                  aria-label={target.enabled ? target.displayName : undefined}
+                  aria-pressed={target.enabled ? selected : undefined}
+                  onClick={() => toggleTarget(target)}
+                  className={`flex w-full items-center justify-between rounded-xl border p-3 text-left transition-all ${
+                    !target.enabled
+                      ? "cursor-not-allowed border-border bg-accent/20 opacity-55"
+                      : selected
+                        ? "cursor-pointer border-primary bg-primary/10"
+                        : "cursor-pointer border-border bg-accent/30 hover:bg-accent/50"
                   }`}
                 >
-                  <CheckCircleIcon aria-hidden="true" className="h-3.5 w-3.5" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium text-foreground">
-                    {target.displayName}
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div
+                      aria-hidden="true"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center"
+                    >
+                      <PlatformIcon
+                        platformId={getPluginTargetPlatformId(target.id)}
+                        size={28}
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="truncate text-sm font-medium text-foreground">
+                        {target.displayName}
+                      </h4>
+                      <p className="line-clamp-2 text-[10px] leading-relaxed text-muted-foreground">
+                        {selected
+                          ? t(
+                              "plugin.selectedForDistribution",
+                              "Selected for Plugin distribution",
+                            )
+                          : target.enabled
+                            ? t("skill.clickToSelect", "Click to select")
+                            : description}
+                      </p>
+                    </div>
                   </div>
-                  <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                    {target.adapterOutput ||
-                      target.unsupportedReason ||
-                      target.installSurface ||
-                      t(
-                        "plugin.targetPendingDesc",
-                        "Adapter evidence is pending.",
-                      )}
+                  <div
+                    aria-hidden="true"
+                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
+                      selected
+                        ? "border-primary bg-primary"
+                        : "border-muted-foreground/30"
+                    }`}
+                  >
+                    {selected ? (
+                      <CheckIcon className="h-3 w-3 text-white" />
+                    ) : null}
                   </div>
-                </div>
-                <span className="shrink-0 rounded-full border border-border bg-background/70 px-2 py-0.5 text-[11px] text-muted-foreground">
-                  {getStatusLabel(target.status, t)}
-                </span>
-              </div>
-            </button>
-          );
-        })}
+                </button>
+              );
+            })}
+          </div>
+
+          {!localPackagePath ? (
+            <p className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+              {t(
+                "plugin.localPackageMissingHint",
+                "This Plugin has no local package folder yet, so files and adapter output cannot be generated.",
+              )}
+            </p>
+          ) : null}
+        </section>
       </div>
+    </div>
+  );
+}
 
-      <button
-        type="button"
-        onClick={() => onOpenAgentTargets(Array.from(selectedTargetIds))}
-        disabled={!localPackagePath || selectedCount === 0}
-        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
-      >
-        <SendIcon aria-hidden="true" className="h-4 w-4" />
-        {selectedCount > 0
-          ? t("plugin.openSelectedAgentDistribution", {
-              count: selectedCount,
-              defaultValue: "Open Agent Plugin for {{count}} target(s)",
-            })
-          : t("plugin.selectAgentTargets", "Select Agent targets")}
-      </button>
+function PluginContentPreview({
+  localPackagePath,
+  plugin,
+}: {
+  localPackagePath: string;
+  plugin: PluginLibraryEntry;
+}) {
+  const { t } = useTranslation();
+  const contentBlocks = [
+    plugin.longDescription,
+    plugin.homepage
+      ? `${t("plugin.homepage", "Homepage")}: ${plugin.homepage}`
+      : "",
+    plugin.repository || plugin.source.repository
+      ? `${t("plugin.repository", "Repository")}: ${
+          plugin.repository || plugin.source.repository
+        }`
+      : "",
+    localPackagePath
+      ? `${t("plugin.localPackagePath", "Local package")}: ${localPackagePath}`
+      : "",
+  ].filter((value): value is string => Boolean(value?.trim()));
 
-      {!localPackagePath ? (
-        <p className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
-          {t(
-            "plugin.localPackageMissingHint",
-            "This Plugin has no local package folder yet, so files and adapter output cannot be generated.",
-          )}
-        </p>
-      ) : null}
+  return (
+    <section className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
+          {t("plugin.contentTitle", "Plugin Content")}
+        </h3>
+        <span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+          MANIFEST
+        </span>
+      </div>
+      <div className="rounded-2xl border border-border app-wallpaper-panel p-5">
+        {contentBlocks.length > 0 ? (
+          <div className="space-y-4">
+            {contentBlocks.map((block, index) => (
+              <p
+                key={`${index}-${block.slice(0, 24)}`}
+                className="whitespace-pre-wrap break-words text-sm leading-7 text-foreground/90"
+              >
+                {block}
+              </p>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm leading-7 text-muted-foreground">
+            {t(
+              "plugin.contentEmpty",
+              "No extended Plugin content is available yet. Open the Files tab to inspect the package files.",
+            )}
+          </p>
+        )}
+      </div>
     </section>
   );
 }
 
 function PluginOverview({
   localPackagePath,
-  onOpenAgentTargets,
+  onDistribute,
   plugin,
   targetMatrix,
 }: {
   localPackagePath: string;
-  onOpenAgentTargets: (targetIds: string[]) => void;
+  onDistribute: (
+    targetIds: string[],
+    mode: PluginDistributeMode,
+  ) => Promise<void>;
   plugin: PluginLibraryEntry;
   targetMatrix: PluginTargetCompatibility[];
 }) {
@@ -383,12 +587,17 @@ function PluginOverview({
             <InventorySummary inventory={plugin.inventory} />
           </div>
         </section>
+
+        <PluginContentPreview
+          localPackagePath={localPackagePath}
+          plugin={plugin}
+        />
       </div>
 
       <div className="space-y-6">
-        <PluginTargetSelector
+        <PluginPlatformPanel
           localPackagePath={localPackagePath}
-          onOpenAgentTargets={onOpenAgentTargets}
+          onDistribute={onDistribute}
           targetMatrix={targetMatrix}
         />
       </div>
@@ -504,7 +713,7 @@ function PluginFilesPanel({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden app-wallpaper-panel">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden app-wallpaper-panel">
       <Suspense
         fallback={
           <div className="flex flex-1 items-center justify-center">
@@ -533,7 +742,7 @@ export function PluginFullDetailPage({
   targetMatrix,
   onBack,
   onDelete,
-  onOpenAgentTargets,
+  onDistribute,
   onOpenStore,
 }: PluginFullDetailPageProps) {
   const { t } = useTranslation();
@@ -680,14 +889,14 @@ export function PluginFullDetailPage({
       </div>
 
       <main
-        className={`min-h-0 flex-1 ${
+        className={`flex min-h-0 flex-1 flex-col ${
           activeTab === "files" ? "overflow-hidden" : "overflow-y-auto p-6"
         }`}
       >
         {activeTab === "overview" ? (
           <PluginOverview
             localPackagePath={localPackagePath}
-            onOpenAgentTargets={onOpenAgentTargets}
+            onDistribute={onDistribute}
             plugin={plugin}
             targetMatrix={targetMatrix}
           />

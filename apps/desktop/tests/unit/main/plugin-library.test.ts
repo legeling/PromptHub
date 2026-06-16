@@ -15,7 +15,11 @@ import {
   getPluginMarketCacheFilePath,
   resetRuntimePaths,
 } from "@prompthub/core";
-import type { PluginMarketSource } from "@prompthub/shared/types/plugin";
+import type {
+  PluginLibraryEntry,
+  PluginLibraryFile,
+  PluginMarketSource,
+} from "@prompthub/shared/types/plugin";
 
 const marketplaceUrl =
   "https://raw.example.test/plugins/.agents/plugins/marketplace.json";
@@ -78,6 +82,57 @@ function createMarketplaceFixture() {
   });
 }
 
+function createInstalledPluginLibrary(userDataPath: string): {
+  library: PluginLibraryFile;
+  plugin: PluginLibraryEntry;
+  packagePath: string;
+} {
+  const packagePath = path.join(
+    userDataPath,
+    "data",
+    "plugins",
+    "bundle",
+    "repo",
+  );
+  fs.mkdirSync(path.join(packagePath, ".codex-plugin"), { recursive: true });
+  fs.writeFileSync(
+    path.join(packagePath, ".codex-plugin", "plugin.json"),
+    JSON.stringify({ name: "bundle" }),
+    "utf8",
+  );
+  fs.writeFileSync(path.join(packagePath, "README.md"), "hello", "utf8");
+
+  const plugin: PluginLibraryEntry = {
+    id: "test-market:bundle",
+    name: "bundle",
+    displayName: "Bundle Plugin",
+    trustLevel: "official",
+    inventory: { ...emptyPluginInventory(), skills: 1, apps: 1 },
+    classification: "bundle",
+    source: {
+      kind: "market",
+      localPackagePath: packagePath,
+    },
+    distributedTargetIds: [],
+    localPackagePath: packagePath,
+    installedAt: Date.parse("2026-06-16T00:00:00.000Z"),
+    updatedAt: Date.parse("2026-06-16T00:00:00.000Z"),
+  };
+  const library: PluginLibraryFile = {
+    kind: "prompthub-plugin-library",
+    version: 1,
+    updatedAt: "2026-06-16T00:00:00.000Z",
+    plugins: [plugin],
+  };
+  fs.mkdirSync(path.dirname(getPluginLibraryFilePath()), { recursive: true });
+  fs.writeFileSync(
+    getPluginLibraryFilePath(),
+    `${JSON.stringify(library, null, 2)}\n`,
+    "utf8",
+  );
+  return { library, plugin, packagePath };
+}
+
 describe("CorePluginLibraryService", () => {
   let userDataPath: string;
 
@@ -104,6 +159,7 @@ describe("CorePluginLibraryService", () => {
         keywords: ["bundle"],
         interface: {
           displayName: "Bundle Plugin",
+          longDescription: "Long bundle introduction",
           category: "Productivity",
           composerIcon: "./assets/icon.png",
           logo: "./assets/logo.png",
@@ -139,6 +195,7 @@ describe("CorePluginLibraryService", () => {
     expect(result.plugin).toMatchObject({
       id: "test-market:bundle",
       displayName: "Bundle Plugin",
+      longDescription: "Long bundle introduction",
       iconUrl: bundleIconUrl,
       logoUrl: bundleLogoUrl,
       brandColor: "#4285F4",
@@ -148,7 +205,12 @@ describe("CorePluginLibraryService", () => {
         apps: 1,
       },
     });
-    expect(service.read().plugins).toHaveLength(1);
+    expect(service.read().plugins).toMatchObject([
+      {
+        id: "test-market:bundle",
+        longDescription: "Long bundle introduction",
+      },
+    ]);
     expect(fetchFn).toHaveBeenCalledWith(bundleManifestUrl, expect.any(Object));
   });
 
@@ -345,6 +407,58 @@ describe("CorePluginLibraryService", () => {
     service.deletePlugin(result.plugin.id);
 
     expect(fs.existsSync(managedPath)).toBe(false);
+  });
+
+  it("copies installed plugin packages to resolved Agent Plugin targets", () => {
+    const { plugin } = createInstalledPluginLibrary(userDataPath);
+    const targetPath = path.join(
+      userDataPath,
+      "agent-targets",
+      "codex",
+      "bundle",
+    );
+    const service = new CorePluginLibraryService({
+      fetchFn: createFetchMock({}),
+      marketSources: [marketSource],
+      resolvePluginTargetPath: (targetId) =>
+        targetId === "codex" ? targetPath : undefined,
+    });
+
+    const result = service.distributePlugin({
+      pluginId: plugin.id,
+      targetIds: ["codex"],
+      mode: "copy",
+    });
+
+    expect(
+      fs.existsSync(path.join(targetPath, ".codex-plugin", "plugin.json")),
+    ).toBe(true);
+    expect(fs.readFileSync(path.join(targetPath, "README.md"), "utf8")).toBe(
+      "hello",
+    );
+    expect(result.targets).toEqual([
+      { targetId: "codex", path: targetPath, mode: "copy" },
+    ]);
+    expect(result.plugin.distributedTargetIds).toEqual(["codex"]);
+    expect(service.read().plugins[0]?.distributedTargetIds).toEqual(["codex"]);
+  });
+
+  it("rejects unsupported plugin distribution targets without mutating the library", () => {
+    const { plugin } = createInstalledPluginLibrary(userDataPath);
+    const service = new CorePluginLibraryService({
+      fetchFn: createFetchMock({}),
+      marketSources: [marketSource],
+      resolvePluginTargetPath: () => path.join(userDataPath, "unsupported"),
+    });
+
+    expect(() =>
+      service.distributePlugin({
+        pluginId: plugin.id,
+        targetIds: ["opencode"],
+        mode: "copy",
+      }),
+    ).toThrow(/Runtime JS\/TS plugin modules/);
+    expect(service.read().plugins[0]?.distributedTargetIds).toEqual([]);
   });
 
   it("keeps listing healthy marketplaces when another source fails", async () => {

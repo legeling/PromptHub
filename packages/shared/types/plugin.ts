@@ -92,6 +92,7 @@ export interface PluginLibraryEntry {
   name: string;
   displayName: string;
   description?: string;
+  longDescription?: string;
   iconUrl?: string;
   logoUrl?: string;
   brandColor?: string;
@@ -105,6 +106,7 @@ export interface PluginLibraryEntry {
   tags?: string[];
   homepage?: string;
   repository?: string;
+  distributedTargetIds?: string[];
   managedPath?: string;
   localRepositoryPath?: string;
   localPackagePath?: string;
@@ -135,6 +137,26 @@ export interface PluginInstallResult {
   plugin: PluginLibraryEntry;
   library: PluginLibraryFile;
   warnings: string[];
+}
+
+export type PluginDistributeMode = "copy" | "symlink";
+
+export interface PluginDistributeRequest {
+  pluginId: string;
+  targetIds: string[];
+  mode: PluginDistributeMode;
+}
+
+export interface PluginDistributedTarget {
+  targetId: string;
+  path: string;
+  mode: PluginDistributeMode;
+}
+
+export interface PluginDistributeResult {
+  plugin: PluginLibraryEntry;
+  library: PluginLibraryFile;
+  targets: PluginDistributedTarget[];
 }
 
 export interface PluginMarketPreview {

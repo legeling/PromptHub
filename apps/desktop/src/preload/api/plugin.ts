@@ -1,6 +1,8 @@
 import { ipcRenderer } from "electron";
 import { IPC_CHANNELS } from "@prompthub/shared/constants/ipc-channels";
 import type {
+  PluginDistributeRequest,
+  PluginDistributeResult,
   PluginInstallResult,
   PluginLibraryFile,
   PluginMarketEntry,
@@ -20,6 +22,10 @@ export const pluginApi = {
     ipcRenderer.invoke(IPC_CHANNELS.PLUGIN_MARKET_PREVIEW, entryId),
   installMarketPlugin: (entryId: string): Promise<PluginInstallResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.PLUGIN_MARKET_INSTALL, entryId),
+  distributePlugin: (
+    request: PluginDistributeRequest,
+  ): Promise<PluginDistributeResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PLUGIN_DISTRIBUTE, request),
   deletePlugin: (id: string): Promise<PluginLibraryFile> =>
     ipcRenderer.invoke(IPC_CHANNELS.PLUGIN_DELETE, id),
   getTargetMatrix: (): Promise<PluginTargetCompatibility[]> =>

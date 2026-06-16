@@ -4,6 +4,9 @@ import * as childProcess from "child_process";
 
 import type {
   PluginAuthor,
+  PluginDistributeMode,
+  PluginDistributeRequest,
+  PluginDistributeResult,
   PluginInstallResult,
   PluginInventorySummary,
   PluginLibraryEntry,
@@ -41,6 +44,7 @@ interface CorePluginLibraryServiceOptions {
   marketSources?: PluginMarketSource[];
   materializePackages?: boolean;
   materializePackageFn?: PackageMaterializer;
+  resolvePluginTargetPath?: PluginTargetPathResolver;
 }
 
 type RawRecord = Record<string, unknown>;
@@ -87,6 +91,11 @@ type PackageMaterializer = (
   entry: PluginMarketEntry,
   pluginId: string,
 ) => Promise<MaterializedPluginPackage>;
+
+type PluginTargetPathResolver = (
+  targetId: string,
+  plugin: PluginLibraryEntry,
+) => string | undefined;
 
 interface GitHubRepositoryRef {
   owner: string;
@@ -191,6 +200,89 @@ function createPluginId(sourceId: string | undefined, name: string): string {
   const normalizedSource = normalizeSlug(sourceId || "custom") || "custom";
   const normalizedName = normalizeSlug(name) || "plugin";
   return `${normalizedSource}:${normalizedName}`;
+}
+
+function getPluginLocalPackagePath(plugin: PluginLibraryEntry): string {
+  return (
+    plugin.localPackagePath ||
+    plugin.source.localPackagePath ||
+    plugin.managedPath ||
+    plugin.localRepositoryPath ||
+    plugin.source.localRepositoryPath ||
+    ""
+  );
+}
+
+function normalizeDistributedTargetIds(targetIds: string[]): string[] {
+  return Array.from(
+    new Set(
+      targetIds
+        .filter((targetId): targetId is string => typeof targetId === "string")
+        .map((targetId) => targetId.trim())
+        .filter((targetId) => targetId.length > 0),
+    ),
+  );
+}
+
+function assertSupportedPluginTargets(targetIds: string[]): void {
+  const targetMatrix = getPluginTargetMatrix();
+  const targetsById = new Map(
+    targetMatrix.map((target) => [target.id, target]),
+  );
+  for (const targetId of targetIds) {
+    const target = targetsById.get(targetId);
+    if (!target) {
+      throw new CorePluginError(
+        "UNSUPPORTED_TARGET",
+        `Plugin 目标不存在: ${targetId}`,
+      );
+    }
+    if (!target.enabled) {
+      throw new CorePluginError(
+        "UNSUPPORTED_TARGET",
+        target.unsupportedReason ||
+          `${target.displayName} 暂不支持 Plugin 分发`,
+      );
+    }
+  }
+}
+
+function assertReadableDirectory(directoryPath: string, label: string): void {
+  if (!directoryPath.trim()) {
+    throw new CorePluginError("MISSING_SOURCE", `${label} 路径为空`);
+  }
+  const stat = fs.existsSync(directoryPath) ? fs.statSync(directoryPath) : null;
+  if (!stat?.isDirectory()) {
+    throw new CorePluginError(
+      "MISSING_SOURCE",
+      `${label} 不存在或不是目录: ${directoryPath}`,
+    );
+  }
+}
+
+function writePluginPackageToTarget(
+  sourcePath: string,
+  targetPath: string,
+  mode: PluginDistributeMode,
+): void {
+  if (!targetPath.trim()) {
+    throw new CorePluginError("MISSING_TARGET_PATH", "Plugin 目标目录为空");
+  }
+  fs.rmSync(targetPath, { recursive: true, force: true });
+  fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+  if (mode === "symlink") {
+    fs.symlinkSync(
+      sourcePath,
+      targetPath,
+      process.platform === "win32" ? "junction" : "dir",
+    );
+    return;
+  }
+  fs.cpSync(sourcePath, targetPath, {
+    recursive: true,
+    force: true,
+    dereference: false,
+  });
 }
 
 function normalizeRelativePosixPath(value: string): string {
@@ -653,6 +745,7 @@ function normalizeLibrary(raw: Partial<PluginLibraryFile>): PluginLibraryFile {
             name: plugin.name!,
             displayName: plugin.displayName || plugin.name!,
             description: plugin.description,
+            longDescription: plugin.longDescription,
             iconUrl: plugin.iconUrl,
             logoUrl: plugin.logoUrl,
             brandColor: safePluginBrandColor(plugin.brandColor),
@@ -683,6 +776,7 @@ function normalizeLibrary(raw: Partial<PluginLibraryFile>): PluginLibraryFile {
             tags: safeStringArray(plugin.tags),
             homepage: plugin.homepage,
             repository: plugin.repository,
+            distributedTargetIds: safeStringArray(plugin.distributedTargetIds),
             managedPath: plugin.managedPath,
             localRepositoryPath: plugin.localRepositoryPath,
             localPackagePath: plugin.localPackagePath,
@@ -1093,6 +1187,7 @@ export class CorePluginLibraryService {
   private marketSources: PluginMarketSource[];
   private materializePackages: boolean;
   private materializePackageFn: PackageMaterializer;
+  private resolvePluginTargetPath?: PluginTargetPathResolver;
   private githubTreePathCache = new Map<string, Promise<string[]>>();
 
   constructor(options: CorePluginLibraryServiceOptions = {}) {
@@ -1109,6 +1204,7 @@ export class CorePluginLibraryService {
     this.materializePackages = options.materializePackages ?? false;
     this.materializePackageFn =
       options.materializePackageFn ?? materializeGitPackage;
+    this.resolvePluginTargetPath = options.resolvePluginTargetPath;
   }
 
   read(): PluginLibraryFile {
@@ -1211,6 +1307,7 @@ export class CorePluginLibraryService {
       name,
       displayName: preview.displayName,
       description: preview.description,
+      longDescription: preview.longDescription,
       iconUrl: preview.iconUrl,
       logoUrl: preview.logoUrl,
       brandColor: preview.brandColor,
@@ -1224,6 +1321,7 @@ export class CorePluginLibraryService {
       tags: preview.tags,
       homepage: preview.homepage,
       repository: preview.repository,
+      distributedTargetIds: [],
       managedPath: materialized?.managedPath,
       localRepositoryPath: materialized?.localRepositoryPath,
       localPackagePath: materialized?.localPackagePath,
@@ -1250,6 +1348,78 @@ export class CorePluginLibraryService {
       plugin,
       library: nextLibrary,
       warnings: preview.warnings,
+    };
+  }
+
+  distributePlugin(request: PluginDistributeRequest): PluginDistributeResult {
+    const targetIds = normalizeDistributedTargetIds(request.targetIds);
+    if (targetIds.length === 0) {
+      throw new CorePluginError(
+        "MISSING_TARGET",
+        "请选择至少一个 Agent Plugin 目标",
+      );
+    }
+    if (request.mode !== "copy" && request.mode !== "symlink") {
+      throw new CorePluginError(
+        "INVALID_MODE",
+        `不支持的 Plugin 分发模式: ${request.mode}`,
+      );
+    }
+    assertSupportedPluginTargets(targetIds);
+
+    const library = this.read();
+    const plugin = library.plugins.find(
+      (entry) => entry.id === request.pluginId,
+    );
+    if (!plugin) {
+      throw new CorePluginError(
+        "NOT_FOUND",
+        `Plugin 不存在: ${request.pluginId}`,
+      );
+    }
+
+    const sourcePath = getPluginLocalPackagePath(plugin);
+    assertReadableDirectory(sourcePath, `${plugin.displayName} 本地 Plugin 包`);
+
+    if (!this.resolvePluginTargetPath) {
+      throw new CorePluginError(
+        "MISSING_TARGET_RESOLVER",
+        "当前环境没有配置 Agent Plugin 目标路径解析器",
+      );
+    }
+
+    const targets = targetIds.map((targetId) => {
+      const targetPath = this.resolvePluginTargetPath?.(targetId, plugin);
+      if (!targetPath) {
+        throw new CorePluginError(
+          "MISSING_TARGET_PATH",
+          `无法解析 Agent Plugin 目标路径: ${targetId}`,
+        );
+      }
+      writePluginPackageToTarget(sourcePath, targetPath, request.mode);
+      return { targetId, path: targetPath, mode: request.mode };
+    });
+
+    const nextPlugin: PluginLibraryEntry = {
+      ...plugin,
+      distributedTargetIds: normalizeDistributedTargetIds([
+        ...(plugin.distributedTargetIds ?? []),
+        ...targets.map((target) => target.targetId),
+      ]),
+      updatedAt: nowMs(),
+    };
+    const nextLibrary: PluginLibraryFile = {
+      ...library,
+      updatedAt: nowIso(),
+      plugins: library.plugins.map((entry) =>
+        entry.id === plugin.id ? nextPlugin : entry,
+      ),
+    };
+    writeJsonFileAtomic(getPluginLibraryFilePath(), nextLibrary);
+    return {
+      plugin: nextPlugin,
+      library: nextLibrary,
+      targets,
     };
   }
 

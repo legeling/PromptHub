@@ -186,6 +186,7 @@ export const IPC_CHANNELS = {
   PLUGIN_MARKET_PREVIEW: "plugin:market:preview",
   PLUGIN_MARKET_INSTALL: "plugin:market:install",
   PLUGIN_DELETE: "plugin:delete",
+  PLUGIN_DISTRIBUTE: "plugin:distribute",
   PLUGIN_TARGET_MATRIX: "plugin:target:matrix",
 
   // Data Recovery
