@@ -40,6 +40,8 @@
   - Official Store cards and Plugin detail modals render the resolved icon/logo instead of a letter placeholder when available.
   - Store cards show two-line manifest descriptions and background-enrich the first visible batch of missing entries without fetching the entire marketplace at once.
   - Fixed the background-enrichment effect so React cleanup after the first preview no longer cancels the rest of the visible batch. Visible Official Store cards now dispatch preview requests concurrently and clear only the in-flight marker after each request settles.
+  - Added `config/plugin-market-cache.json` for manifest presentation metadata. Preview/background enrichment now persists icons, descriptions, inventory, classification, and related manifest fields; later marketplace listings merge cached metadata before reaching the renderer.
+  - Changed store background enrichment to cover the current visible filtered result set with bounded concurrency instead of relying only on detail-modal previews.
 - Added Plugin navigation to the desktop home rail/sidebar and the Appearance settings home-module list.
 - Added Plugin i18n keys across all seven desktop locales.
 

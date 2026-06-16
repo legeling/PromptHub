@@ -152,6 +152,47 @@ const slackPreview: PluginMarketPreview = {
   warnings: [],
 };
 
+function createGeneratedMarketEntry(index: number): PluginMarketEntry {
+  const name = `plugin-${index}`;
+  return {
+    id: name,
+    marketplaceId: "openai-curated",
+    name,
+    displayName: name,
+    category: index % 2 === 0 ? "Communication" : "Productivity",
+    trustLevel: "official",
+    source: {
+      kind: "market",
+      label: "Codex Plugin Store",
+      packagePath: `plugins/${name}`,
+    },
+    policy: { installation: "AVAILABLE", authentication: "ON_INSTALL" },
+  };
+}
+
+function createGeneratedPreview(entry: PluginMarketEntry): PluginMarketPreview {
+  return {
+    entry: {
+      ...entry,
+      displayName: `Plugin ${entry.name.replace("plugin-", "")}`,
+      description: `Manifest description for ${entry.name}`,
+      iconUrl: `https://raw.example.test/${entry.name}/icon.png`,
+      logoUrl: `https://raw.example.test/${entry.name}/logo.png`,
+      inventory: { ...emptyInventory, skills: 1, apps: 1 },
+      classification: "bundle",
+    },
+    displayName: `Plugin ${entry.name.replace("plugin-", "")}`,
+    description: `Manifest description for ${entry.name}`,
+    iconUrl: `https://raw.example.test/${entry.name}/icon.png`,
+    logoUrl: `https://raw.example.test/${entry.name}/logo.png`,
+    inventory: { ...emptyInventory, skills: 1, apps: 1 },
+    classification: "bundle",
+    tags: [],
+    canInstall: true,
+    warnings: [],
+  };
+}
+
 function resetPluginStore() {
   usePluginStore.setState({
     library: null,
@@ -298,6 +339,30 @@ describe("PluginManager", () => {
     expect(iconSources).toEqual(
       expect.arrayContaining([linearPreview.iconUrl, slackPreview.iconUrl]),
     );
+  });
+
+  it("prefetches visible store entries beyond the first small batch", async () => {
+    const generatedEntries = Array.from({ length: 30 }, (_, index) =>
+      createGeneratedMarketEntry(index + 1),
+    );
+    vi.mocked(window.api.plugin.listMarket).mockResolvedValue(generatedEntries);
+    vi.mocked(window.api.plugin.previewMarketPlugin).mockImplementation(
+      async (entryId: string) => {
+        const entry = generatedEntries.find((item) => item.id === entryId);
+        if (!entry) {
+          throw new Error(`Missing test entry ${entryId}`);
+        }
+        return createGeneratedPreview(entry);
+      },
+    );
+
+    await renderPluginManager();
+
+    await waitFor(() => {
+      expect(window.api.plugin.previewMarketPlugin).toHaveBeenCalledWith(
+        "plugin-30",
+      );
+    });
   });
 
   it("opens store details before install and lazy-loads the manifest preview", async () => {

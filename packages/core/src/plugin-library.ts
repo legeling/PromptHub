@@ -22,6 +22,7 @@ import { PLUGIN_INVENTORY_KEYS } from "@prompthub/shared/types/plugin";
 import { getConfigDir, getDataDir } from "./runtime-paths";
 
 const PLUGIN_LIBRARY_FILE_NAME = "plugin-library.json";
+const PLUGIN_MARKET_CACHE_FILE_NAME = "plugin-market-cache.json";
 const PLUGIN_MARKETPLACE_FILE = ".agents/plugins/marketplace.json";
 const CODEX_PLUGIN_MANIFEST_FILE = ".codex-plugin/plugin.json";
 
@@ -43,6 +44,38 @@ interface CorePluginLibraryServiceOptions {
 }
 
 type RawRecord = Record<string, unknown>;
+
+interface PluginMarketCacheFile {
+  kind: "prompthub-plugin-market-cache";
+  version: 1;
+  updatedAt: string;
+  entries: Record<string, PluginMarketPreviewCacheEntry>;
+}
+
+interface PluginMarketPreviewCacheEntry {
+  id: string;
+  marketplaceId: string;
+  name: string;
+  displayName: string;
+  description?: string;
+  longDescription?: string;
+  iconUrl?: string;
+  logoUrl?: string;
+  brandColor?: string;
+  version?: string;
+  author?: PluginAuthor;
+  category?: string;
+  inventory: PluginInventorySummary;
+  classification: PluginSemanticClassification;
+  tags: string[];
+  homepage?: string;
+  repository?: string;
+  codexDetailUrl?: string;
+  manifestUrl?: string;
+  canInstall: boolean;
+  unsupportedReason?: string;
+  cachedAt: string;
+}
 
 interface MaterializedPluginPackage {
   managedPath: string;
@@ -92,6 +125,10 @@ export function getPluginLibraryFilePath(): string {
   return path.join(getConfigDir(), PLUGIN_LIBRARY_FILE_NAME);
 }
 
+export function getPluginMarketCacheFilePath(): string {
+  return path.join(getConfigDir(), PLUGIN_MARKET_CACHE_FILE_NAME);
+}
+
 function getManagedPluginsDir(): string {
   return path.join(getDataDir(), "plugins");
 }
@@ -116,6 +153,15 @@ function defaultLibrary(): PluginLibraryFile {
     version: 1,
     updatedAt: nowIso(),
     plugins: [],
+  };
+}
+
+function defaultMarketCache(): PluginMarketCacheFile {
+  return {
+    kind: "prompthub-plugin-market-cache",
+    version: 1,
+    updatedAt: nowIso(),
+    entries: {},
   };
 }
 
@@ -244,6 +290,117 @@ function normalizeInventory(raw: unknown): PluginInventorySummary {
     inventory[key] = typeof value === "number" && value > 0 ? value : 0;
   }
   return inventory;
+}
+
+function normalizeMarketCache(
+  raw: Partial<PluginMarketCacheFile>,
+): PluginMarketCacheFile {
+  const cache = defaultMarketCache();
+  const rawEntries =
+    raw.entries && typeof raw.entries === "object" && !Array.isArray(raw.entries)
+      ? raw.entries
+      : {};
+  for (const [id, value] of Object.entries(rawEntries)) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      continue;
+    }
+    const record = value as Partial<PluginMarketPreviewCacheEntry>;
+    const marketplaceId = safeString(record.marketplaceId);
+    const name = safeString(record.name);
+    const displayName = safeString(record.displayName);
+    if (!marketplaceId || !name || !displayName) {
+      continue;
+    }
+    cache.entries[id] = {
+      id,
+      marketplaceId,
+      name,
+      displayName,
+      description: safeString(record.description),
+      longDescription: safeString(record.longDescription),
+      iconUrl: safeString(record.iconUrl),
+      logoUrl: safeString(record.logoUrl),
+      brandColor: safePluginBrandColor(record.brandColor),
+      version: safeString(record.version),
+      author: normalizeAuthor(record.author),
+      category: safeString(record.category),
+      inventory: normalizeInventory(record.inventory),
+      classification:
+        record.classification === "single-skill" ||
+        record.classification === "runtime-module" ||
+        record.classification === "invalid"
+          ? record.classification
+          : "bundle",
+      tags: safeStringArray(record.tags),
+      homepage: safeString(record.homepage),
+      repository: safeString(record.repository),
+      codexDetailUrl: safeString(record.codexDetailUrl),
+      manifestUrl: safeString(record.manifestUrl),
+      canInstall: record.canInstall !== false,
+      unsupportedReason: safeString(record.unsupportedReason),
+      cachedAt: safeString(record.cachedAt) ?? nowIso(),
+    };
+  }
+  return {
+    ...cache,
+    updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : nowIso(),
+  };
+}
+
+function buildPreviewCacheEntry(
+  preview: PluginMarketPreview,
+): PluginMarketPreviewCacheEntry {
+  return {
+    id: preview.entry.id,
+    marketplaceId: preview.entry.marketplaceId,
+    name: preview.entry.name,
+    displayName: preview.displayName,
+    description: preview.description,
+    longDescription: preview.longDescription,
+    iconUrl: preview.iconUrl,
+    logoUrl: preview.logoUrl,
+    brandColor: safePluginBrandColor(preview.brandColor),
+    version: preview.version,
+    author: normalizeAuthor(preview.author),
+    category: preview.category,
+    inventory: preview.inventory,
+    classification: preview.classification,
+    tags: preview.tags,
+    homepage: preview.homepage,
+    repository: preview.repository,
+    codexDetailUrl: preview.codexDetailUrl,
+    manifestUrl: preview.manifestUrl,
+    canInstall: preview.canInstall,
+    unsupportedReason: preview.unsupportedReason,
+    cachedAt: nowIso(),
+  };
+}
+
+function applyPreviewCacheToEntry(
+  entry: PluginMarketEntry,
+  cached: PluginMarketPreviewCacheEntry | undefined,
+): PluginMarketEntry {
+  if (
+    !cached ||
+    cached.marketplaceId !== entry.marketplaceId ||
+    cached.name !== entry.name
+  ) {
+    return entry;
+  }
+  return {
+    ...entry,
+    displayName: cached.displayName || entry.displayName,
+    description: cached.description ?? entry.description,
+    iconUrl: cached.iconUrl ?? entry.iconUrl,
+    logoUrl: cached.logoUrl ?? entry.logoUrl,
+    brandColor: cached.brandColor ?? entry.brandColor,
+    version: cached.version ?? entry.version,
+    author: cached.author ?? entry.author,
+    category: entry.category ?? cached.category,
+    inventory: cached.inventory,
+    classification: cached.classification,
+    codexDetailUrl: cached.codexDetailUrl ?? entry.codexDetailUrl,
+  };
 }
 
 function countManifestField(value: unknown): number {
@@ -824,6 +981,19 @@ export class CorePluginLibraryService {
     return normalizeLibrary(raw);
   }
 
+  readMarketCache(): PluginMarketCacheFile {
+    const filePath = getPluginMarketCacheFilePath();
+    if (!fs.existsSync(filePath)) {
+      return defaultMarketCache();
+    }
+
+    const raw = parseJsonObject(
+      fs.readFileSync(filePath, "utf8"),
+      "Plugin market cache",
+    );
+    return normalizeMarketCache(raw);
+  }
+
   getMarketSources(): PluginMarketSource[] {
     return [...this.marketSources];
   }
@@ -850,7 +1020,9 @@ export class CorePluginLibraryService {
 
   async previewMarketPlugin(entryId: string): Promise<PluginMarketPreview> {
     const entry = await this.findMarketEntry(entryId);
-    return this.buildPreviewForEntry(entry);
+    const preview = await this.buildPreviewForEntry(entry);
+    this.writeMarketPreviewCache(preview);
+    return preview;
   }
 
   private async findMarketEntry(entryId: string): Promise<PluginMarketEntry> {
@@ -1022,6 +1194,20 @@ export class CorePluginLibraryService {
     };
   }
 
+  private writeMarketPreviewCache(preview: PluginMarketPreview): void {
+    const cache = this.readMarketCache();
+    const entry = buildPreviewCacheEntry(preview);
+    const nextCache: PluginMarketCacheFile = {
+      ...cache,
+      updatedAt: nowIso(),
+      entries: {
+        ...cache.entries,
+        [entry.id]: entry,
+      },
+    };
+    writeJsonFileAtomic(getPluginMarketCacheFilePath(), nextCache);
+  }
+
   deletePlugin(id: string): PluginLibraryFile {
     const library = this.read();
     const deletedPlugin = library.plugins.find((plugin) => plugin.id === id);
@@ -1069,11 +1255,13 @@ export class CorePluginLibraryService {
     const plugins = Array.isArray(marketplace.plugins)
       ? marketplace.plugins
       : [];
+    const cache = this.readMarketCache();
     return plugins
       .map((plugin) =>
         normalizeMarketEntry(plugin, source, marketplaceDisplayName),
       )
-      .filter((plugin): plugin is PluginMarketEntry => plugin !== null);
+      .filter((plugin): plugin is PluginMarketEntry => plugin !== null)
+      .map((entry) => applyPreviewCacheToEntry(entry, cache.entries[entry.id]));
   }
 
   private async readManifestForEntry(

@@ -12,6 +12,7 @@ import {
   emptyPluginInventory,
   extractPluginInventoryFromManifest,
   getPluginLibraryFilePath,
+  getPluginMarketCacheFilePath,
   resetRuntimePaths,
 } from "@prompthub/core";
 import type { PluginMarketSource } from "@prompthub/shared/types/plugin";
@@ -201,6 +202,61 @@ describe("CorePluginLibraryService", () => {
       inventory: { skills: 1, apps: 1 },
     });
     expect(service.read().plugins).toEqual([]);
+  });
+
+  it("caches marketplace preview metadata for later store listings", async () => {
+    const fetchFn = createFetchMock({
+      [marketplaceUrl]: createMarketplaceFixture(),
+      [bundleManifestUrl]: JSON.stringify({
+        name: "bundle",
+        version: "1.2.3",
+        skills: "./skills",
+        apps: "./.app.json",
+        interface: {
+          displayName: "Cached Bundle",
+          shortDescription: "Cached preview description",
+          composerIcon: "./assets/icon.png",
+          logo: "./assets/logo.png",
+          brandColor: "#4285F4",
+        },
+      }),
+    });
+    const service = new CorePluginLibraryService({
+      fetchFn,
+      marketSources: [marketSource],
+    });
+
+    await service.previewMarketPlugin("test-market:bundle");
+
+    expect(getPluginMarketCacheFilePath()).toBe(
+      path.join(userDataPath, "config", "plugin-market-cache.json"),
+    );
+    expect(fs.existsSync(getPluginMarketCacheFilePath())).toBe(true);
+
+    const cachedFetchFn = createFetchMock({
+      [marketplaceUrl]: createMarketplaceFixture(),
+    });
+    const reloadedService = new CorePluginLibraryService({
+      fetchFn: cachedFetchFn,
+      marketSources: [marketSource],
+    });
+
+    const entries = await reloadedService.getMarketEntries();
+
+    expect(entries[0]).toMatchObject({
+      displayName: "Cached Bundle",
+      description: "Cached preview description",
+      iconUrl: bundleIconUrl,
+      logoUrl: bundleLogoUrl,
+      brandColor: "#4285F4",
+      inventory: { skills: 1, apps: 1 },
+      classification: "bundle",
+    });
+    expect(cachedFetchFn).toHaveBeenCalledTimes(1);
+    expect(cachedFetchFn).toHaveBeenCalledWith(
+      marketplaceUrl,
+      expect.any(Object),
+    );
   });
 
   it("records materialized package paths and removes only the managed plugin directory", async () => {

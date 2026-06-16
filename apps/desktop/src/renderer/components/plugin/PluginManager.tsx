@@ -47,7 +47,7 @@ type PluginTab = "library" | "market" | "targets";
 const tabIconClassName = "h-4 w-4";
 const AGENT_PLUGIN_HEADER_CLASS =
   "h-[132px] border-b border-border app-wallpaper-panel-strong";
-const MARKET_PREVIEW_PREFETCH_LIMIT = 24;
+const MARKET_PREVIEW_PREFETCH_CONCURRENCY = 6;
 const SAFE_PLUGIN_ICON_DATA_URL_PATTERN =
   /^data:image\/(?:png|jpeg|jpg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/i;
 
@@ -1271,12 +1271,10 @@ export function PluginManager() {
   );
   const marketPreviewPrefetchEntries = useMemo(
     () =>
-      visibleMarketEntries
-        .filter(
-          (entry) =>
-            !marketPreviews[entry.id] && (!entry.description || !entry.iconUrl),
-        )
-        .slice(0, MARKET_PREVIEW_PREFETCH_LIMIT),
+      visibleMarketEntries.filter(
+        (entry) =>
+          !marketPreviews[entry.id] && (!entry.description || !entry.iconUrl),
+      ),
     [marketPreviews, visibleMarketEntries],
   );
   const installedMarketEntries = useMemo(
@@ -1438,16 +1436,33 @@ export function PluginManager() {
       return;
     }
 
+    let cursor = 0;
+    const runNextPreview = async (): Promise<void> => {
+      const entry = entriesToPreview[cursor];
+      cursor += 1;
+      if (!entry) {
+        return;
+      }
+      try {
+        await previewMarketPlugin(entry.id);
+      } catch (previewError) {
+        console.warn("Plugin market preview prefetch failed:", previewError);
+      } finally {
+        marketPreviewPrefetchInFlightRef.current.delete(entry.id);
+      }
+      await runNextPreview();
+    };
+
     void Promise.all(
-      entriesToPreview.map(async (entry) => {
-        try {
-          await previewMarketPlugin(entry.id);
-        } catch (previewError) {
-          console.warn("Plugin market preview prefetch failed:", previewError);
-        } finally {
-          marketPreviewPrefetchInFlightRef.current.delete(entry.id);
-        }
-      }),
+      Array.from(
+        {
+          length: Math.min(
+            MARKET_PREVIEW_PREFETCH_CONCURRENCY,
+            entriesToPreview.length,
+          ),
+        },
+        () => runNextPreview(),
+      ),
     );
   }, [
     isLoading,

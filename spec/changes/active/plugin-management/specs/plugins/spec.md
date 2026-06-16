@@ -151,6 +151,14 @@ PromptHub MUST provide a Plugin Store model that can represent official, verifie
 - **AND** the card falls back to the marketplace entry only when manifest preview metadata is not available yet
 - **AND** invalid, unsafe, non-HTTP, or package-escaping icon/logo paths are not rendered
 
+#### Scenario: Plugin Store reuses cached manifest presentation metadata
+
+- **GIVEN** PromptHub has previously previewed or background-enriched a marketplace Plugin manifest
+- **WHEN** the user reopens the Plugin Store or reloads marketplace entries
+- **THEN** PromptHub reads cached manifest presentation metadata from local config and shows the official icon, description, inventory, and semantic classification immediately
+- **AND** PromptHub does not refetch that manifest only because the user reopened the store
+- **AND** missing cache entries are background-enriched with bounded concurrency and persisted for later sessions
+
 #### Scenario: Preview Codex marketplace manifest
 
 - **GIVEN** a plugin appears in the Codex official marketplace
