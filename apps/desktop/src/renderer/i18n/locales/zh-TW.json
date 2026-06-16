@@ -214,7 +214,8 @@
       "reasonSameTag": "#{{tag}}",
       "reasonSameFolder": "同資料夾",
       "reasonSimilarTitle": "標題相似",
-      "addSuggestion": "關聯 {{title}}"
+      "addSuggestion": "關聯 {{title}}",
+      "mentionHint": "關聯一個 Prompt"
     },
     "graph": {
       "title": "關係圖譜",

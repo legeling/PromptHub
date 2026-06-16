@@ -215,7 +215,8 @@
       "reasonSameTag": "#{{tag}}",
       "reasonSameFolder": "同文件夹",
       "reasonSimilarTitle": "标题相似",
-      "addSuggestion": "关联 {{title}}"
+      "addSuggestion": "关联 {{title}}",
+      "mentionHint": "关联一个 Prompt"
     },
     "graph": {
       "title": "关系图谱",

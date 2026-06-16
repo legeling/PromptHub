@@ -214,7 +214,8 @@
       "reasonSameTag": "#{{tag}}",
       "reasonSameFolder": "Gleicher Ordner",
       "reasonSimilarTitle": "Ähnlicher Titel",
-      "addSuggestion": "{{title}} verknüpfen"
+      "addSuggestion": "{{title}} verknüpfen",
+      "mentionHint": "Prompt verknüpfen"
     },
     "graph": {
       "title": "Beziehungsgraph",

@@ -215,7 +215,8 @@
       "reasonSameTag": "#{{tag}}",
       "reasonSameFolder": "Same folder",
       "reasonSimilarTitle": "Similar title",
-      "addSuggestion": "Link {{title}}"
+      "addSuggestion": "Link {{title}}",
+      "mentionHint": "Link a prompt"
     },
     "graph": {
       "title": "Relationship Graph",

@@ -214,7 +214,8 @@
       "reasonSameTag": "#{{tag}}",
       "reasonSameFolder": "Misma carpeta",
       "reasonSimilarTitle": "Título similar",
-      "addSuggestion": "Vincular {{title}}"
+      "addSuggestion": "Vincular {{title}}",
+      "mentionHint": "Vincular un prompt"
     },
     "graph": {
       "title": "Grafo de relaciones",

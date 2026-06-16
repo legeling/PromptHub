@@ -214,7 +214,8 @@
       "reasonSameTag": "#{{tag}}",
       "reasonSameFolder": "Même dossier",
       "reasonSimilarTitle": "Titre similaire",
-      "addSuggestion": "Lier {{title}}"
+      "addSuggestion": "Lier {{title}}",
+      "mentionHint": "Lier un prompt"
     },
     "graph": {
       "title": "Graphe de relations",

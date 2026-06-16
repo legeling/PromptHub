@@ -214,7 +214,8 @@
       "reasonSameTag": "#{{tag}}",
       "reasonSameFolder": "同じフォルダ",
       "reasonSimilarTitle": "似たタイトル",
-      "addSuggestion": "{{title}} を関連付け"
+      "addSuggestion": "{{title}} を関連付け",
+      "mentionHint": "Prompt を関連付け"
     },
     "graph": {
       "title": "関係グラフ",

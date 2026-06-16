@@ -58,6 +58,7 @@ import { PromptAiResponsePanel } from '../prompt/PromptAiResponsePanel';
 import { PromptDetailMetadata } from '../prompt/PromptDetailMetadata';
 import { PromptViewContainers } from '../prompt/PromptViewContainers';
 import { PromptContentField } from '../prompt/PromptContentField';
+import { PromptDescriptionInput } from '../prompt/PromptDescriptionInput';
 import {
   filterVisiblePrompts,
   sortVisiblePrompts,
@@ -2382,20 +2383,21 @@ function PromptSkillMainContent() {
                       </div>
                     </div>
                     {isDetailInlineEditing ? (
-                      <input
-                        ref={detailDescriptionInputRef}
-                        aria-label={t('prompt.description')}
+                      <PromptDescriptionInput
                         value={detailInlineDraft.description}
-                        onChange={(event) => {
-                          const nextDescription = event.target.value;
+                        onChange={(nextDescription) =>
                           setDetailInlineDraft((prev) => ({
                             ...prev,
                             description: nextDescription,
-                          }));
-                        }}
-                        onKeyDown={handleDetailInlineEditKeyDown}
+                          }))
+                        }
+                        inputRef={detailDescriptionInputRef}
+                        onEditKeyDown={handleDetailInlineEditKeyDown}
+                        prompts={prompts}
+                        currentPromptId={selectedPrompt.id}
                         placeholder={t('prompt.descriptionPlaceholder')}
-                        className="mt-2 h-9 w-full rounded-xl border border-border/70 bg-card px-3 text-sm text-foreground shadow-sm outline-none appearance-none placeholder:text-muted-foreground/50 focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
+                        ariaLabel={t('prompt.description')}
+                        t={t}
                       />
                     ) : (
                       <button
