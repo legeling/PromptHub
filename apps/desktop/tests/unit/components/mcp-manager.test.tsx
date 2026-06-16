@@ -124,7 +124,7 @@ const githubTemplate = {
 };
 
 const playwrightTemplate = {
-  id: "playwright",
+  id: "glama-playwright",
   name: "playwright",
   displayName: "Playwright",
   description: "Browser automation",
@@ -135,10 +135,29 @@ const playwrightTemplate = {
   runtime: "npx",
   packageName: "@playwright/mcp@latest",
   source: {
-    id: "playwright",
-    label: "Microsoft Playwright",
+    id: "glama",
+    label: "Glama MCP Directory",
     url: "https://github.com/microsoft/playwright-mcp",
-    trustLevel: "official",
+    trustLevel: "community",
+  },
+};
+
+const smitheryTemplate = {
+  id: "smithery-sequential-thinking",
+  name: "sequential-thinking",
+  displayName: "Sequential Thinking",
+  description: "Structured reasoning tool",
+  transport: "stdio",
+  command: "npx",
+  args: ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+  tags: ["reasoning"],
+  runtime: "npx",
+  packageName: "@modelcontextprotocol/server-sequential-thinking",
+  source: {
+    id: "smithery",
+    label: "Smithery",
+    url: "https://smithery.ai",
+    trustLevel: "verified",
   },
 };
 
@@ -165,12 +184,15 @@ function resetMcpStore() {
     library: null,
     marketTemplates: [],
     marketSources: [],
+    remoteMarketEntries: {},
+    loadingMarketSourceId: null,
+    marketError: null,
     targetPresets: [],
     targetStatus: [],
     healthChecks: [],
     selectedServerId: null,
     selectedTab: "library",
-    selectedMarketSourceId: "all",
+    selectedMarketSourceId: "modelcontextprotocol",
     selectedTargetId: null,
     searchQuery: "",
     preview: "",
@@ -244,10 +266,16 @@ function installMcpMocks(options: McpMockOptions = {}) {
               trustLevel: "official",
             },
             {
-              id: "playwright",
-              label: "Microsoft Playwright",
-              url: "https://github.com/microsoft/playwright-mcp",
-              trustLevel: "official",
+              id: "smithery",
+              label: "Smithery",
+              url: "https://smithery.ai",
+              trustLevel: "verified",
+            },
+            {
+              id: "glama",
+              label: "Glama MCP Directory",
+              url: "https://glama.ai/mcp/servers",
+              trustLevel: "community",
             },
           ],
         ),
@@ -276,6 +304,13 @@ function installMcpMocks(options: McpMockOptions = {}) {
           name: "fetch",
           displayName: "Fetch",
         }),
+        installMarketTemplate: vi.fn().mockResolvedValue({
+          ...filesystemServer,
+          id: "mcp_github",
+          name: "github",
+          displayName: "GitHub",
+        }),
+        fetchRemoteContent: vi.fn().mockRejectedValue(new Error("offline")),
         preview: vi
           .fn()
           .mockResolvedValue('[mcp_servers.filesystem]\ncommand = "npx"\n'),
@@ -772,6 +807,26 @@ describe("McpManager", () => {
     const user = userEvent.setup();
     const { api } = installMcpMocks({
       marketTemplates: [githubTemplate],
+      marketSources: [
+        {
+          id: "modelcontextprotocol",
+          label: "Official MCP Registry",
+          url: "https://registry.modelcontextprotocol.io",
+          trustLevel: "official",
+        },
+        {
+          id: "smithery",
+          label: "Smithery",
+          url: "https://smithery.ai",
+          trustLevel: "verified",
+        },
+        {
+          id: "glama",
+          label: "Glama MCP Directory",
+          url: "https://glama.ai/mcp/servers",
+          trustLevel: "community",
+        },
+      ],
     });
     useMcpStore.setState({ selectedTab: "market" });
 
@@ -819,15 +874,103 @@ describe("McpManager", () => {
     expect(
       within(installFooter).getByRole("button", { name: "Install" }),
     ).toBeInTheDocument();
-    expect(api.mcp.installTemplate).not.toHaveBeenCalled();
+    expect(api.mcp.installMarketTemplate).not.toHaveBeenCalled();
 
     await user.click(
       within(installFooter).getByRole("button", { name: "Install" }),
     );
 
     await waitFor(() => {
-      expect(api.mcp.installTemplate).toHaveBeenCalledWith("github");
+      expect(api.mcp.installMarketTemplate).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "github", name: "github" }),
+      );
       expect(useMcpStore.getState().selectedTab).toBe("library");
+    });
+  });
+
+  it("searches the selected remote MCP store and installs the remote result", async () => {
+    const user = userEvent.setup();
+    const { api } = installMcpMocks({
+      marketTemplates: [githubTemplate],
+      marketSources: [
+        {
+          id: "modelcontextprotocol",
+          label: "Official MCP Registry",
+          url: "https://registry.modelcontextprotocol.io",
+          trustLevel: "official",
+        },
+        {
+          id: "smithery",
+          label: "Smithery",
+          url: "https://smithery.ai",
+          trustLevel: "verified",
+        },
+        {
+          id: "glama",
+          label: "Glama MCP Directory",
+          url: "https://glama.ai/mcp/servers",
+          trustLevel: "community",
+        },
+      ],
+    });
+    api.mcp.fetchRemoteContent.mockResolvedValueOnce(
+      JSON.stringify({
+        servers: [
+          {
+            server: {
+              name: "ai.adeu/adeu",
+              title: "ADeu",
+              description: "Automated DOCX redlining.",
+              packages: [
+                {
+                  registryType: "pypi",
+                  identifier: "adeu",
+                  transport: { type: "stdio" },
+                },
+              ],
+            },
+            _meta: {
+              "io.modelcontextprotocol.registry/official": {
+                status: "active",
+                isLatest: true,
+              },
+            },
+          },
+        ],
+        metadata: { count: 1 },
+      }),
+    );
+    useMcpStore.setState({ selectedTab: "market", searchQuery: "adeu" });
+
+    await act(async () => {
+      await renderWithI18n(<McpManager />, { language: "en" });
+    });
+
+    await waitFor(() => {
+      expect(api.mcp.fetchRemoteContent).toHaveBeenCalledWith(
+        "https://registry.modelcontextprotocol.io/v0/servers",
+      );
+      expect(screen.getByText("ADeu")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("GitHub")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "View detail: ADeu" }));
+    const dialog = await screen.findByRole("dialog", { name: "ADeu" });
+    await user.click(
+      within(within(dialog).getByTestId("mcp-market-install-footer")).getByRole(
+        "button",
+        { name: "Install" },
+      ),
+    );
+
+    await waitFor(() => {
+      expect(api.mcp.installMarketTemplate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: "modelcontextprotocol:ai-adeu-adeu",
+          command: "uvx",
+          args: ["adeu"],
+        }),
+      );
     });
   });
 
@@ -857,40 +1000,51 @@ describe("McpManager", () => {
     expect(within(dialog).queryByText("Installed")).not.toBeInTheDocument();
   });
 
-  it("filters MCP Store templates by market source", async () => {
+  it("renders MCP Store as channel-specific stores instead of an all-source category", async () => {
     installMcpMocks({
       marketTemplates: [githubTemplate, playwrightTemplate],
     });
-    useMcpStore.setState({ selectedTab: "market" });
+    useMcpStore.setState({
+      selectedTab: "market",
+      selectedMarketSourceId: "modelcontextprotocol",
+    });
 
     await act(async () => {
       await renderWithI18n(<McpManager />, { language: "en" });
     });
 
     await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: "Model Context Protocol" }),
+      ).toBeInTheDocument();
       expect(screen.getByText("GitHub")).toBeInTheDocument();
-      expect(screen.getByText("Playwright")).toBeInTheDocument();
     });
+    expect(screen.queryByText("Playwright")).not.toBeInTheDocument();
+    expect(screen.queryByText("All Sources")).not.toBeInTheDocument();
+    expect(screen.queryByText(/1 \/ 2/)).not.toBeInTheDocument();
 
     expect(
       within(screen.getByTestId("mcp-view-transition")).queryByRole("button", {
-        name: /Microsoft Playwright/,
+        name: /Playwright/,
       }),
     ).not.toBeInTheDocument();
 
     act(() => {
-      useMcpStore.getState().setSelectedMarketSourceId("playwright");
+      useMcpStore.getState().setSelectedMarketSourceId("glama");
     });
 
     await waitFor(() => {
       expect(screen.queryByText("GitHub")).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "Glama MCP Directory" }),
+      ).toBeInTheDocument();
       expect(screen.getByText("Playwright")).toBeInTheDocument();
     });
   });
 
   it("keeps preconfigured MCP Store sources installable instead of showing zero-template directories", async () => {
     installMcpMocks({
-      marketTemplates: [githubTemplate, playwrightTemplate],
+      marketTemplates: [githubTemplate, smitheryTemplate, playwrightTemplate],
       marketSources: [
         {
           id: "modelcontextprotocol",
@@ -900,11 +1054,18 @@ describe("McpManager", () => {
           trustLevel: "official",
         },
         {
-          id: "playwright",
-          label: "Microsoft Playwright",
-          url: "https://github.com/microsoft/playwright-mcp",
-          description: "Microsoft-maintained browser automation MCP server.",
-          trustLevel: "official",
+          id: "smithery",
+          label: "Smithery",
+          url: "https://smithery.ai",
+          description: "Smithery MCP channel.",
+          trustLevel: "verified",
+        },
+        {
+          id: "glama",
+          label: "Glama MCP Directory",
+          url: "https://glama.ai/mcp/servers",
+          description: "Glama MCP channel.",
+          trustLevel: "community",
         },
       ],
     });
@@ -916,16 +1077,22 @@ describe("McpManager", () => {
 
     await waitFor(() => {
       expect(screen.getByText("GitHub")).toBeInTheDocument();
-      expect(screen.getByText("Playwright")).toBeInTheDocument();
     });
+    expect(
+      screen.getByRole("heading", { name: "Official MCP Registry" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Glama MCP Directory")).not.toBeInTheDocument();
 
     act(() => {
-      useMcpStore.getState().setSelectedMarketSourceId("playwright");
+      useMcpStore.getState().setSelectedMarketSourceId("smithery");
     });
 
     await waitFor(() => {
       expect(screen.queryByText("GitHub")).not.toBeInTheDocument();
-      expect(screen.getByText("Playwright")).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "Smithery" }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Sequential Thinking")).toBeInTheDocument();
     });
     expect(
       screen.queryByText("External MCP directory"),

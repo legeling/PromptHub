@@ -161,6 +161,8 @@ export const IPC_CHANNELS = {
   MCP_LIBRARY_GET: "mcp:library:get",
   MCP_MARKET_LIST: "mcp:market:list",
   MCP_MARKET_SOURCES: "mcp:market:sources",
+  MCP_MARKET_INSTALL_TEMPLATE: "mcp:market:installTemplate",
+  MCP_FETCH_REMOTE_CONTENT: "mcp:fetchRemoteContent",
   MCP_TARGET_PRESETS: "mcp:target:presets",
   MCP_SERVER_CREATE: "mcp:server:create",
   MCP_SERVER_CREATE_FROM_SOURCE: "mcp:server:createFromSource",

@@ -18,7 +18,7 @@ interface McpMarketDetailModalProps {
   isInstalled: boolean;
   template: McpMarketTemplate;
   onClose: () => void;
-  onInstall: (templateId: string) => Promise<void>;
+  onInstall: (template: McpMarketTemplate | string) => Promise<void>;
 }
 
 function buildTemplateConfig(template: McpMarketTemplate): string {
@@ -62,6 +62,17 @@ function formatInstallCommand(template: McpMarketTemplate): string {
   }
 
   return [template.command, ...(template.args ?? [])].filter(Boolean).join(" ");
+}
+
+function getInstallLabel(
+  template: McpMarketTemplate,
+  t: ReturnType<typeof useTranslation>["t"],
+): string {
+  if (template.transport !== "stdio") {
+    return t("mcp.remoteEndpoint", "Remote endpoint");
+  }
+
+  return t("mcp.installCommand", "Install command");
 }
 
 function getEnvDescription(
@@ -181,6 +192,7 @@ export function McpMarketDetailModal({
     () => formatInstallCommand(template),
     [template],
   );
+  const installLabel = getInstallLabel(template, t);
   const envKeys = Object.keys(template.env ?? {}).join("\n");
   const headerKeys = Object.keys(template.headers ?? {}).join("\n");
   const requiredEnvEntries = useMemo(
@@ -213,7 +225,7 @@ export function McpMarketDetailModal({
 
     setIsInstalling(true);
     try {
-      await onInstall(template.id);
+      await onInstall(template);
     } finally {
       setIsInstalling(false);
     }
@@ -319,11 +331,17 @@ export function McpMarketDetailModal({
                   {installCommand ? (
                     <div>
                       <div className="text-[11px] font-medium text-muted-foreground">
-                        {t("mcp.installCommand", "Install command")}
+                        {installLabel}
                       </div>
                       <div className="mt-1 break-words rounded-xl bg-muted/50 px-3 py-2 font-mono text-xs text-foreground">
                         {installCommand}
                       </div>
+                      <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                        {t(
+                          "mcp.installExplanation",
+                          "PromptHub imports this template into My MCP, then distributes the generated MCP JSON/TOML to selected agent platforms.",
+                        )}
+                      </p>
                     </div>
                   ) : null}
                 </div>

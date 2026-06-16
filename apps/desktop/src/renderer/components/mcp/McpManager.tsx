@@ -235,6 +235,9 @@ export function McpManager() {
     library,
     marketTemplates,
     marketSources,
+    remoteMarketEntries,
+    loadingMarketSourceId,
+    marketError,
     healthChecks,
     targetPresets,
     targetStatus,
@@ -244,6 +247,7 @@ export function McpManager() {
     isLoading,
     error,
     load,
+    loadMarketSource,
     selectServer,
     setSelectedTab,
     createServer,
@@ -262,6 +266,19 @@ export function McpManager() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (selectedTab !== "market" || marketSources.length === 0) {
+      return;
+    }
+    void loadMarketSource(selectedMarketSourceId);
+  }, [
+    loadMarketSource,
+    marketSources.length,
+    searchQuery,
+    selectedMarketSourceId,
+    selectedTab,
+  ]);
 
   useEffect(() => {
     const openCreateModal = () => {
@@ -306,6 +323,10 @@ export function McpManager() {
     [servers],
   );
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const selectedMarketEntry =
+    remoteMarketEntries[
+      `${selectedMarketSourceId}:${searchQuery.trim().toLowerCase()}`
+    ];
   const galleryColumnOptions = useMemo<SelectOption[]>(
     () =>
       MCP_GALLERY_COLUMNS.map((columns) => ({
@@ -1082,9 +1103,16 @@ export function McpManager() {
       <McpViewTransition viewKey="store">
         <McpMarketView
           templates={marketTemplates}
+          remoteTemplates={selectedMarketEntry?.templates ?? []}
           sources={marketSources}
           selectedSourceId={selectedMarketSourceId}
+          searchQuery={searchQuery}
+          isLoading={loadingMarketSourceId === selectedMarketSourceId}
+          error={selectedMarketEntry?.error ?? marketError}
+          totalCount={selectedMarketEntry?.totalCount}
           installedNames={installedNames}
+          onRefresh={() => loadMarketSource(selectedMarketSourceId, true)}
+          onSearchChange={setSearchQuery}
           onInstall={async (templateId) => {
             try {
               await installTemplate(templateId);

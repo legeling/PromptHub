@@ -64,5 +64,8 @@
 - [x] Make MCP health checks warn on known invalid environment variable formats instead of treating any non-empty value as healthy.
 - [x] Remove the redundant custom target form from the My MCP detail platform panel so distribution uses one selected-platform apply flow.
 - [x] Preconfigure 1-3 usable MCP Store sources whose left-sidebar entries all contain installable templates.
+- [x] Align MCP Store with Skill Store's channel model: no top-level count, no `All Sources` pseudo-channel, and selected channel owns the right-side catalog.
+- [x] Replace static-only MCP Store catalogs with Skill Store-style remote source loading, search, parsing, caching, and built-in fallback templates.
+- [x] Add remote MCP Store install flow so catalog results can be installed by template payload, not only by built-in template id.
 - [x] Verify MCP UI is visible in a browser render with the left entry, library list, detail panel, distribution panel, and generated preview.
 - [x] Run focused tests and record verification.

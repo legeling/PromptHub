@@ -59,15 +59,82 @@ describe("CoreMcpLibraryService", () => {
 
     expect(sources.map((source) => source.id)).toEqual([
       "modelcontextprotocol",
-      "prompthub-curated",
-      "prompthub-community",
+      "smithery",
+      "glama",
     ]);
     for (const source of sources) {
-      expect(templateCounts.get(source.id) ?? 0).toBeGreaterThan(0);
+      expect(templateCounts.get(source.id) ?? 0).toBeGreaterThanOrEqual(8);
+      expect(source.url).toMatch(/^https:\/\//);
+      expect(source.description).toBeTruthy();
     }
     expect([...templateCounts.keys()].sort()).toEqual(
       sources.map((source) => source.id).sort(),
     );
+    expect(templates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "context7",
+          documentationUrl: expect.stringContaining("github.com/upstash"),
+          repository: expect.stringContaining("github.com/upstash"),
+        }),
+        expect.objectContaining({
+          id: "smithery-sequential-thinking",
+          source: expect.objectContaining({ id: "smithery" }),
+          command: "npx",
+        }),
+        expect.objectContaining({
+          id: "glama-playwright",
+          source: expect.objectContaining({ id: "glama" }),
+          packageName: "@playwright/mcp@latest",
+        }),
+        expect.objectContaining({
+          id: "smithery-firecrawl",
+          source: expect.objectContaining({ id: "smithery" }),
+          env: expect.objectContaining({ FIRECRAWL_API_KEY: "" }),
+        }),
+        expect.objectContaining({
+          id: "glama-browserbase",
+          source: expect.objectContaining({ id: "glama" }),
+          env: expect.objectContaining({ BROWSERBASE_API_KEY: "" }),
+        }),
+      ]),
+    );
+  });
+
+  it("installs remote MCP store templates by value instead of requiring a built-in id", () => {
+    const service = new CoreMcpLibraryService();
+
+    const server = service.installMarketTemplate({
+      id: "modelcontextprotocol:ai-adeu-adeu",
+      name: "ai-adeu-adeu",
+      displayName: "ADeu",
+      description: "Automated DOCX redlining.",
+      transport: "stdio",
+      command: "uvx",
+      args: ["adeu"],
+      tags: ["docx"],
+      packageName: "adeu",
+      source: {
+        id: "modelcontextprotocol",
+        label: "Official MCP Registry",
+        url: "https://registry.modelcontextprotocol.io",
+        trustLevel: "official",
+      },
+    });
+
+    expect(server).toMatchObject({
+      name: "ai-adeu-adeu",
+      displayName: "ADeu",
+      command: "uvx",
+      args: ["adeu"],
+      source: {
+        type: "market",
+        id: "modelcontextprotocol:ai-adeu-adeu",
+        label: "Official MCP Registry",
+        url: "https://registry.modelcontextprotocol.io",
+      },
+    });
+    expect(service.read().servers).toHaveLength(1);
   });
 
   it("drops legacy Roo target bindings when reading the MCP library", () => {

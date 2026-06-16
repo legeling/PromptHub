@@ -27,6 +27,8 @@ export const mcpApi = {
     ipcRenderer.invoke(IPC_CHANNELS.MCP_MARKET_LIST),
   listMarketSources: (): Promise<McpMarketSource[]> =>
     ipcRenderer.invoke(IPC_CHANNELS.MCP_MARKET_SOURCES),
+  fetchRemoteContent: (url: string): Promise<string> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MCP_FETCH_REMOTE_CONTENT, url),
   getTargetPresets: (): Promise<McpTargetPreset[]> =>
     ipcRenderer.invoke(IPC_CHANNELS.MCP_TARGET_PRESETS),
   createServer: (draft: McpServerDraft): Promise<McpServerConfig> =>
@@ -41,6 +43,10 @@ export const mcpApi = {
     ipcRenderer.invoke(IPC_CHANNELS.MCP_SERVER_DELETE, id),
   installTemplate: (templateId: string): Promise<McpServerConfig> =>
     ipcRenderer.invoke(IPC_CHANNELS.MCP_TEMPLATE_INSTALL, templateId),
+  installMarketTemplate: (
+    template: McpMarketTemplate,
+  ): Promise<McpServerConfig> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MCP_MARKET_INSTALL_TEMPLATE, template),
   preview: (target: McpTargetKind, serverIds: string[]): Promise<string> =>
     ipcRenderer.invoke(IPC_CHANNELS.MCP_PREVIEW, target, serverIds),
   apply: (target: McpApplyTarget): Promise<McpApplyResult> =>

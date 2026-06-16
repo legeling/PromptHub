@@ -925,6 +925,17 @@ export class CoreMcpLibraryService {
     return server;
   }
 
+  installMarketTemplate(template: McpMarketTemplate): McpServerConfig {
+    const library = this.read();
+    const server = installMcpTemplate(template);
+    assertUniqueName(library.servers, server.name);
+    this.write({
+      ...library,
+      servers: [server, ...library.servers],
+    });
+    return server;
+  }
+
   preview(target: McpTargetKind, serverIds: string[]): string {
     const library = this.read();
     return buildMcpConfigPreview(target, selectServers(library, serverIds));

@@ -17,11 +17,25 @@ import type {
   McpTargetKind,
   McpTargetStatusEntry,
 } from "@prompthub/shared/types/mcp";
+import {
+  loadMcpRemoteStore,
+  type McpRemoteStoreResult,
+} from "../services/mcp-remote-store";
+
+interface McpMarketEntry extends McpRemoteStoreResult {
+  error?: string | null;
+  loadedAt?: number;
+  loading?: boolean;
+  sourceId: string;
+}
 
 interface McpState {
   library: McpLibraryFile | null;
   marketTemplates: McpMarketTemplate[];
   marketSources: McpMarketSource[];
+  remoteMarketEntries: Record<string, McpMarketEntry>;
+  loadingMarketSourceId: string | null;
+  marketError: string | null;
   targetPresets: McpTargetPreset[];
   targetStatus: McpTargetStatusEntry[];
   healthChecks: McpHealthCheckResult[];
@@ -34,6 +48,7 @@ interface McpState {
   isLoading: boolean;
   error: string | null;
   load: () => Promise<void>;
+  loadMarketSource: (sourceId?: string, force?: boolean) => Promise<void>;
   refreshTargetStatus: () => Promise<void>;
   selectServer: (id: string | null) => void;
   setSearchQuery: (query: string) => void;
@@ -46,7 +61,9 @@ interface McpState {
   ) => Promise<McpCreateFromSourceResult>;
   updateServer: (id: string, draft: McpServerDraft) => Promise<McpServerConfig>;
   deleteServer: (id: string) => Promise<void>;
-  installTemplate: (templateId: string) => Promise<McpServerConfig>;
+  installTemplate: (
+    templateOrId: McpMarketTemplate | string,
+  ) => Promise<McpServerConfig>;
   importFile: (filePath: string) => Promise<void>;
   importEnv: (
     identifier: string,
@@ -64,8 +81,25 @@ interface McpState {
   removeTargetNames: (target: McpRemoveTargetNames) => Promise<McpRemoveResult>;
 }
 
+const DEFAULT_MCP_MARKET_SOURCE_ID = "modelcontextprotocol";
+const REMOTE_MARKET_STALE_MS = 10 * 60 * 1000;
+
+function getMarketEntryKey(sourceId: string, query: string): string {
+  return `${sourceId}:${query.trim().toLowerCase()}`;
+}
+
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function resolveMarketSourceId(
+  selectedSourceId: string,
+  sources: McpMarketSource[],
+): string {
+  if (sources.some((source) => source.id === selectedSourceId)) {
+    return selectedSourceId;
+  }
+  return sources[0]?.id ?? DEFAULT_MCP_MARKET_SOURCE_ID;
 }
 
 async function loadMcpSnapshot(): Promise<{
@@ -105,12 +139,15 @@ export const useMcpStore = create<McpState>((set, get) => ({
   library: null,
   marketTemplates: [],
   marketSources: [],
+  remoteMarketEntries: {},
+  loadingMarketSourceId: null,
+  marketError: null,
   targetPresets: [],
   targetStatus: [],
   healthChecks: [],
   selectedServerId: null,
   selectedTab: "library",
-  selectedMarketSourceId: "all",
+  selectedMarketSourceId: DEFAULT_MCP_MARKET_SOURCE_ID,
   selectedTargetId: null,
   searchQuery: "",
   preview: "",
@@ -121,17 +158,14 @@ export const useMcpStore = create<McpState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const snapshot = await loadMcpSnapshot();
-      const selectedMarketSourceId = get().selectedMarketSourceId;
-      const hasSelectedMarketSource =
-        selectedMarketSourceId === "all" ||
-        snapshot.marketSources.some(
-          (source) => source.id === selectedMarketSourceId,
-        );
+      const selectedMarketSourceId = resolveMarketSourceId(
+        get().selectedMarketSourceId,
+        snapshot.marketSources,
+      );
       set({
         ...snapshot,
-        selectedMarketSourceId: hasSelectedMarketSource
-          ? selectedMarketSourceId
-          : "all",
+        marketError: null,
+        selectedMarketSourceId,
         selectedTargetId:
           get().selectedTargetId ?? snapshot.targetPresets[0]?.id ?? null,
         selectedServerId:
@@ -188,8 +222,96 @@ export const useMcpStore = create<McpState>((set, get) => ({
     });
   },
 
-  installTemplate: async (templateId) => {
-    const server = await window.api.mcp.installTemplate(templateId);
+  loadMarketSource: async (sourceId, force = false) => {
+    const state = get();
+    const selectedSourceId = sourceId ?? state.selectedMarketSourceId;
+    const source = state.marketSources.find(
+      (item) => item.id === selectedSourceId,
+    );
+    if (!source || typeof window.api.mcp.fetchRemoteContent !== "function") {
+      return;
+    }
+
+    const query = state.searchQuery.trim();
+    const entryKey = getMarketEntryKey(source.id, query);
+    const existing = state.remoteMarketEntries[entryKey];
+    if (
+      !force &&
+      existing?.loadedAt &&
+      Date.now() - existing.loadedAt < REMOTE_MARKET_STALE_MS
+    ) {
+      return;
+    }
+
+    set((current) => ({
+      loadingMarketSourceId: source.id,
+      marketError: null,
+      remoteMarketEntries: {
+        ...current.remoteMarketEntries,
+        [entryKey]: {
+          ...(current.remoteMarketEntries[entryKey] ?? {
+            sourceId: source.id,
+            templates: [],
+          }),
+          loading: true,
+          error: null,
+          query,
+        },
+      },
+    }));
+
+    try {
+      const result = await loadMcpRemoteStore({
+        source,
+        query,
+        fetchRemoteContent: (url) => window.api.mcp.fetchRemoteContent(url),
+      });
+      const latest = get();
+      if (
+        latest.selectedMarketSourceId !== source.id ||
+        latest.searchQuery.trim() !== query
+      ) {
+        return;
+      }
+      set((current) => ({
+        loadingMarketSourceId: null,
+        remoteMarketEntries: {
+          ...current.remoteMarketEntries,
+          [entryKey]: {
+            ...result,
+            sourceId: source.id,
+            error: null,
+            loadedAt: Date.now(),
+            loading: false,
+          },
+        },
+      }));
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set((current) => ({
+        loadingMarketSourceId: null,
+        marketError: message,
+        remoteMarketEntries: {
+          ...current.remoteMarketEntries,
+          [entryKey]: {
+            ...(current.remoteMarketEntries[entryKey] ?? {
+              sourceId: source.id,
+              templates: [],
+            }),
+            error: message,
+            loading: false,
+            query,
+          },
+        },
+      }));
+    }
+  },
+
+  installTemplate: async (templateOrId) => {
+    const server =
+      typeof templateOrId === "string"
+        ? await window.api.mcp.installTemplate(templateOrId)
+        : await window.api.mcp.installMarketTemplate(templateOrId);
     await get().load();
     set({ selectedServerId: server.id, selectedTab: "library" });
     return server;

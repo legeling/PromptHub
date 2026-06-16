@@ -1,9 +1,11 @@
 import { ipcMain } from "electron";
 import { CoreMcpLibraryService, getMcpTargetPresets } from "@prompthub/core";
 import { IPC_CHANNELS } from "@prompthub/shared/constants/ipc-channels";
+import { SkillInstaller } from "../services/skill-installer";
 import type {
   McpApplyTarget,
   McpCreateFromSourceRequest,
+  McpMarketTemplate,
   McpRemoveTargetNames,
   McpServerDraft,
   McpTargetKind,
@@ -40,6 +42,29 @@ export function registerMcpIPC(service = new CoreMcpLibraryService()): void {
   ipcMain.handle(
     IPC_CHANNELS.MCP_TEMPLATE_INSTALL,
     async (_event, templateId: string) => service.installTemplate(templateId),
+  );
+  ipcMain.handle(
+    IPC_CHANNELS.MCP_MARKET_INSTALL_TEMPLATE,
+    async (_event, template: McpMarketTemplate) =>
+      service.installMarketTemplate(template),
+  );
+  ipcMain.handle(
+    IPC_CHANNELS.MCP_FETCH_REMOTE_CONTENT,
+    async (_event, url: string) => {
+      if (typeof url !== "string" || url.trim().length === 0) {
+        throw new Error("mcp:fetchRemoteContent requires a non-empty url");
+      }
+      let parsed: URL;
+      try {
+        parsed = new URL(url);
+      } catch {
+        throw new Error("mcp:fetchRemoteContent received an invalid URL");
+      }
+      if (!["http:", "https:"].includes(parsed.protocol)) {
+        throw new Error("mcp:fetchRemoteContent only allows http/https URLs");
+      }
+      return await SkillInstaller.fetchRemoteContent(url);
+    },
   );
   ipcMain.handle(
     IPC_CHANNELS.MCP_PREVIEW,

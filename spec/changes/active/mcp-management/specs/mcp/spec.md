@@ -244,12 +244,30 @@ PromptHub MUST provide a curated MCP template list that can install into the loc
 
 #### Scenario: Select an MCP Store source from the left sidebar
 
-- **GIVEN** PromptHub has preconfigured official, curated, and community MCP stores
+- **GIVEN** PromptHub has preconfigured Official MCP Registry, Smithery, and Glama MCP Directory stores
 - **WHEN** the user opens MCP Store
-- **THEN** the left sidebar shows `All Sources` plus each preconfigured source with its template count
+- **THEN** the top-level MCP Store menu does not show a template count badge
+- **AND** the left sidebar shows each preconfigured store channel directly without an `All Sources` pseudo-channel
 - **AND** each preconfigured source count is greater than zero
-- **AND** the right content area renders only the selected source's installable MCP templates
+- **AND** the right content area title, description, and cards are scoped to the selected store channel
 - **AND** the right content area does not render a duplicate market-source chip/button filter bar
+
+#### Scenario: Load real remote MCP store catalogs
+
+- **GIVEN** the user opens a preconfigured MCP Store source
+- **WHEN** PromptHub loads the source catalog
+- **THEN** PromptHub fetches and parses the selected source's remote catalog instead of relying only on the built-in fallback templates
+- **AND** Official MCP Registry entries are loaded from the registry JSON API and mapped from `packages` or `remotes` into installable MCP templates
+- **AND** Glama and Smithery entries can be parsed from page HTML, embedded JSON, or Next/RSC-style serialized data
+- **AND** search queries are applied to the selected source catalog
+- **AND** built-in templates are used only as an offline/error fallback when the remote catalog has no usable results
+
+#### Scenario: Install a remote MCP store result
+
+- **GIVEN** an MCP Store card came from a remote catalog response rather than the built-in template list
+- **WHEN** the user installs that card from the detail modal
+- **THEN** PromptHub installs the full template payload into the local MCP library
+- **AND** the install flow does not require the remote result id to exist in the built-in static template registry
 
 ### Requirement: Custom MCP Source Creation
 

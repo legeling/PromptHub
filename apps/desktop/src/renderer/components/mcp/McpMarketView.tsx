@@ -1,12 +1,15 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   CheckIcon,
-  ExternalLinkIcon,
+  Loader2Icon,
   PlusIcon,
+  RefreshCwIcon,
+  SearchIcon,
   ServerIcon,
   StoreIcon,
 } from "lucide-react";
+import type { FormEvent } from "react";
 import type {
   McpMarketSource,
   McpMarketTemplate,
@@ -14,46 +17,88 @@ import type {
 import { McpMarketDetailModal } from "./McpMarketDetailModal";
 
 interface McpMarketViewProps {
+  error?: string | null;
+  isLoading?: boolean;
+  remoteTemplates?: McpMarketTemplate[];
+  searchQuery?: string;
   templates: McpMarketTemplate[];
   sources: McpMarketSource[];
   selectedSourceId: string;
   installedNames: Set<string>;
-  onInstall: (templateId: string) => Promise<void>;
+  totalCount?: number;
+  onInstall: (template: McpMarketTemplate | string) => Promise<void>;
+  onRefresh?: () => void;
+  onSearchChange?: (query: string) => void;
 }
-
-const ALL_MARKET_SOURCES = "all";
 
 /**
  * Curated MCP template gallery, styled after the Skill Store cards.
  * 内置 MCP 模板市场，样式对齐 Skill Store 卡片。
  */
 export function McpMarketView({
+  error,
+  isLoading = false,
+  remoteTemplates = [],
+  searchQuery = "",
   templates,
   sources,
   selectedSourceId,
   installedNames,
+  totalCount,
   onInstall,
+  onRefresh,
+  onSearchChange,
 }: McpMarketViewProps) {
   const { t } = useTranslation();
   const [selectedTemplate, setSelectedTemplate] =
     useState<McpMarketTemplate | null>(null);
-  const visibleTemplates = useMemo(() => {
-    if (selectedSourceId === ALL_MARKET_SOURCES) {
+  const [searchDraft, setSearchDraft] = useState(searchQuery);
+
+  useEffect(() => {
+    setSearchDraft(searchQuery);
+  }, [searchQuery]);
+
+  const selectedSource = useMemo(
+    () =>
+      sources.find((source) => source.id === selectedSourceId) ??
+      sources[0] ??
+      null,
+    [selectedSourceId, sources],
+  );
+  const fallbackTemplates = useMemo(() => {
+    if (!selectedSource) {
       return templates;
     }
     return templates.filter(
-      (template) => template.source?.id === selectedSourceId,
+      (template) => template.source?.id === selectedSource.id,
     );
-  }, [selectedSourceId, templates]);
-  const selectedSource = useMemo(
-    () =>
-      selectedSourceId === ALL_MARKET_SOURCES
-        ? null
-        : (sources.find((source) => source.id === selectedSourceId) ?? null),
-    [selectedSourceId, sources],
-  );
-  const selectedSourceHasTemplates =
-    selectedSource !== null && visibleTemplates.length > 0;
+  }, [selectedSource, templates]);
+  const visibleTemplates =
+    remoteTemplates.length > 0 ? remoteTemplates : fallbackTemplates;
+  const storeTitle =
+    selectedSource?.label ?? t("mcp.mcpStore", "MCP Store");
+  const storeSubtitle =
+    selectedSource?.description ??
+    t(
+      "mcp.mcpStoreSubtitle",
+      "Install ready-to-use MCP templates from the selected channel.",
+    );
+  const countLabel =
+    typeof totalCount === "number" && totalCount > visibleTemplates.length
+      ? `${visibleTemplates.length} / ${totalCount}`
+      : `${visibleTemplates.length}`;
+  const countTitle =
+    typeof totalCount === "number" && totalCount > visibleTemplates.length
+      ? countLabel
+      : t("mcp.remoteStoreCount", "{{count}} MCP servers", {
+          count: visibleTemplates.length,
+        });
+  const isUsingFallback = remoteTemplates.length === 0 && fallbackTemplates.length > 0;
+
+  const submitSearch = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    onSearchChange?.(searchDraft.trim());
+  };
 
   return (
     <div className="flex-1 flex flex-col h-full app-wallpaper-section overflow-hidden">
@@ -61,73 +106,73 @@ export function McpMarketView({
         <div className="min-w-0 space-y-1">
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-semibold">
-              {t("mcp.officialMcpStore", "Official MCP Store")}
+              {storeTitle}
             </h2>
-            <span className="shrink-0 rounded-full bg-accent/50 px-2 py-0.5 text-[11px] font-medium text-muted-foreground border border-white/5">
-              {visibleTemplates.length} / {templates.length}{" "}
-              {t("mcp.templatesCount", "templates")}
-            </span>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {t("mcp.mcpStoreSubtitle", "Install curated MCP templates")}
+            {storeSubtitle}
           </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+            {isLoading ? (
+              <span className="inline-flex items-center gap-1">
+                <Loader2Icon className="h-3 w-3 animate-spin" />
+                {t("mcp.loadingRemoteStore", "Loading remote catalog...")}
+              </span>
+            ) : (
+              <span>{countTitle}</span>
+            )}
+            {isUsingFallback ? (
+              <span className="rounded-full border border-border bg-muted/30 px-2 py-0.5">
+                {t("mcp.remoteStoreFallback", "Showing built-in fallback")}
+              </span>
+            ) : null}
+            {error ? (
+              <span className="text-destructive">
+                {t("mcp.remoteStoreLoadFailed", "Remote catalog failed to load")}
+              </span>
+            ) : null}
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <form onSubmit={submitSearch} className="relative w-64 max-w-[32vw]">
+            <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={searchDraft}
+              onChange={(event) => setSearchDraft(event.target.value)}
+              placeholder={t("mcp.searchStore", "Search MCP servers...")}
+              aria-label={t("mcp.searchStore", "Search MCP servers...")}
+              className="h-9 w-full rounded-xl border border-border bg-background/60 pl-9 pr-9 text-sm outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/10"
+            />
+            {searchDraft ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchDraft("");
+                  onSearchChange?.("");
+                }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md px-1.5 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+                aria-label={t("common.clear", "Clear")}
+              >
+                ×
+              </button>
+            ) : null}
+          </form>
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={isLoading}
+            className="inline-flex h-9 items-center gap-2 rounded-xl border border-border bg-background/60 px-3 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:text-primary disabled:opacity-50"
+          >
+            <RefreshCwIcon
+              className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+            />
+            {t("common.refresh", "Refresh")}
+          </button>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto scrollbar-hide p-6 space-y-8">
-        {selectedSource && !selectedSourceHasTemplates ? (
-          <div className="app-wallpaper-panel mx-auto flex w-full max-w-2xl flex-col gap-5 rounded-2xl border border-border p-6 text-left">
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                <StoreIcon className="h-6 w-6" aria-hidden="true" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <h3 className="text-lg font-semibold text-foreground">
-                    {t("mcp.externalCatalog", "External MCP directory")}
-                  </h3>
-                  <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                    {t(
-                      `mcp.trust.${selectedSource.trustLevel}`,
-                      selectedSource.trustLevel,
-                    )}
-                  </span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {selectedSource.description ??
-                    t(
-                      "mcp.externalCatalogFallback",
-                      "Browse this external MCP directory for more servers.",
-                    )}
-                </p>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-border bg-muted/20 p-4">
-              <p className="text-sm text-foreground">
-                {t(
-                  "mcp.externalCatalogHint",
-                  "This source is a browsable MCP directory, not a built-in PromptHub template list yet. Open it, choose a server, then import its command, JSON config, URL, or local source folder back into My MCP.",
-                )}
-              </p>
-              <p className="mt-2 break-all text-xs text-muted-foreground">
-                {selectedSource.url}
-              </p>
-            </div>
-
-            <div className="flex justify-end">
-              <a
-                href={selectedSource.url}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-              >
-                {t("mcp.openMcpDirectory", "Open MCP directory")}
-                <ExternalLinkIcon className="h-4 w-4" aria-hidden="true" />
-              </a>
-            </div>
-          </div>
-        ) : visibleTemplates.length === 0 ? (
+        {visibleTemplates.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/20 px-6 py-20 text-center text-muted-foreground">
             <StoreIcon className="mb-4 h-12 w-12 opacity-25" />
             <h3 className="mb-2 text-lg font-semibold text-foreground">
@@ -169,6 +214,9 @@ export function McpMarketView({
                       </h4>
                       <p className="text-[11px] text-muted-foreground truncate mt-0.5">
                         {template.description}
+                      </p>
+                      <p className="mt-1 text-[10px] text-muted-foreground/80 truncate">
+                        {template.source?.label ?? selectedSource?.label}
                       </p>
                       <div
                         aria-hidden="true"
@@ -220,9 +268,9 @@ export function McpMarketView({
       </div>
 
       {selectedTemplate ? (
-        <McpMarketDetailModal
-          template={selectedTemplate}
-          isInstalled={installedNames.has(selectedTemplate.name)}
+          <McpMarketDetailModal
+            template={selectedTemplate}
+            isInstalled={installedNames.has(selectedTemplate.name)}
           onInstall={onInstall}
           onClose={() => setSelectedTemplate(null)}
         />

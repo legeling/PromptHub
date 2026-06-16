@@ -6,22 +6,23 @@ export const BUILTIN_MCP_MARKET_SOURCES: McpMarketSource[] = [
     label: "Official MCP Registry",
     url: "https://registry.modelcontextprotocol.io",
     description:
-      "PromptHub-packaged templates from the official Model Context Protocol server ecosystem.",
+      "Official Model Context Protocol registry channel with PromptHub-packaged templates that can be installed into your local MCP library.",
     trustLevel: "official",
   },
   {
-    id: "prompthub-curated",
-    label: "PromptHub Curated MCP",
-    url: "https://github.com/modelcontextprotocol/servers",
-    description: "PromptHub-curated MCP templates for common agent workflows.",
+    id: "smithery",
+    label: "Smithery",
+    url: "https://smithery.ai",
+    description:
+      "Installable MCP templates adapted from Smithery's MCP discovery and installation ecosystem.",
     trustLevel: "verified",
   },
   {
-    id: "prompthub-community",
-    label: "PromptHub Community MCP",
-    url: "https://github.com/punkpeye/awesome-mcp-servers",
+    id: "glama",
+    label: "Glama MCP Directory",
+    url: "https://glama.ai/mcp/servers",
     description:
-      "PromptHub-packaged community MCP templates that can be installed directly.",
+      "Community MCP directory channel with PromptHub-packaged templates, descriptions, and install metadata.",
     trustLevel: "community",
   },
 ];
@@ -73,12 +74,14 @@ const RAW_BUILTIN_MCP_MARKET_TEMPLATES: McpMarketTemplate[] = [
       args: ["-y", "@upstash/context7-mcp"],
       tags: ["docs", "developer"],
       homepage: "https://github.com/upstash/context7",
+      documentationUrl: "https://github.com/upstash/context7",
+      repository: "https://github.com/upstash/context7",
     },
-    "prompthub-curated",
+    "modelcontextprotocol",
   ),
   enrichTemplate(
     {
-      id: "playwright",
+      id: "glama-playwright",
       name: "playwright",
       displayName: "Playwright",
       description: "Browser automation for inspecting and testing web apps.",
@@ -87,8 +90,10 @@ const RAW_BUILTIN_MCP_MARKET_TEMPLATES: McpMarketTemplate[] = [
       args: ["@playwright/mcp@latest", "--headless"],
       tags: ["browser", "test"],
       homepage: "https://github.com/microsoft/playwright-mcp",
+      documentationUrl: "https://github.com/microsoft/playwright-mcp",
+      repository: "https://github.com/microsoft/playwright-mcp",
     },
-    "prompthub-curated",
+    "glama",
   ),
   {
     id: "github",
@@ -104,6 +109,9 @@ const RAW_BUILTIN_MCP_MARKET_TEMPLATES: McpMarketTemplate[] = [
     },
     tags: ["code", "github"],
     homepage: "https://github.com/modelcontextprotocol/servers",
+    documentationUrl:
+      "https://github.com/modelcontextprotocol/servers/tree/main/src/github",
+    repository: "https://github.com/modelcontextprotocol/servers",
   },
   {
     id: "filesystem",
@@ -115,6 +123,9 @@ const RAW_BUILTIN_MCP_MARKET_TEMPLATES: McpMarketTemplate[] = [
     args: ["-y", "@modelcontextprotocol/server-filesystem", "<allowed-path>"],
     tags: ["files", "local"],
     homepage: "https://github.com/modelcontextprotocol/servers",
+    documentationUrl:
+      "https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem",
+    repository: "https://github.com/modelcontextprotocol/servers",
   },
   {
     id: "fetch",
@@ -126,6 +137,9 @@ const RAW_BUILTIN_MCP_MARKET_TEMPLATES: McpMarketTemplate[] = [
     args: ["mcp-server-fetch"],
     tags: ["web", "research"],
     homepage: "https://github.com/modelcontextprotocol/servers",
+    documentationUrl:
+      "https://github.com/modelcontextprotocol/servers/tree/main/src/fetch",
+    repository: "https://github.com/modelcontextprotocol/servers",
   },
   {
     id: "slack",
@@ -141,6 +155,9 @@ const RAW_BUILTIN_MCP_MARKET_TEMPLATES: McpMarketTemplate[] = [
     },
     tags: ["communication", "team"],
     homepage: "https://github.com/modelcontextprotocol/servers",
+    documentationUrl:
+      "https://github.com/modelcontextprotocol/servers/tree/main/src/slack",
+    repository: "https://github.com/modelcontextprotocol/servers",
   },
   {
     id: "amap",
@@ -155,6 +172,8 @@ const RAW_BUILTIN_MCP_MARKET_TEMPLATES: McpMarketTemplate[] = [
     },
     tags: ["maps", "china"],
     homepage: "https://github.com/amap/amap-maps-mcp-server",
+    documentationUrl: "https://github.com/amap/amap-maps-mcp-server",
+    repository: "https://github.com/amap/amap-maps-mcp-server",
   },
   {
     id: "memory",
@@ -168,7 +187,116 @@ const RAW_BUILTIN_MCP_MARKET_TEMPLATES: McpMarketTemplate[] = [
     tags: ["memory", "knowledge"],
     homepage:
       "https://github.com/modelcontextprotocol/servers/blob/main/src/memory",
+    repository: "https://github.com/modelcontextprotocol/servers",
   },
+  enrichTemplate(
+    {
+      id: "smithery-sequential-thinking",
+      name: "sequential-thinking",
+      displayName: "Sequential Thinking",
+      description:
+        "Structured step-by-step reasoning tool for breaking down complex problems.",
+      transport: "stdio",
+      command: "npx",
+      args: ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      tags: ["reasoning", "planning"],
+      homepage:
+        "https://github.com/modelcontextprotocol/servers/blob/main/src/sequentialthinking",
+      repository: "https://github.com/modelcontextprotocol/servers",
+    },
+    "smithery",
+  ),
+  enrichTemplate(
+    {
+      id: "smithery-context7",
+      name: "context7-smithery",
+      displayName: "Context7",
+      description:
+        "Bring fresh framework and library documentation into agent conversations.",
+      transport: "stdio",
+      command: "npx",
+      args: ["-y", "@upstash/context7-mcp"],
+      tags: ["docs", "developer"],
+      homepage: "https://github.com/upstash/context7",
+      documentationUrl: "https://github.com/upstash/context7",
+      repository: "https://github.com/upstash/context7",
+    },
+    "smithery",
+  ),
+  enrichTemplate(
+    {
+      id: "smithery-playwright",
+      name: "playwright-smithery",
+      displayName: "Playwright",
+      description:
+        "Inspect pages, automate browser actions, and test web flows from an agent.",
+      transport: "stdio",
+      command: "npx",
+      args: ["@playwright/mcp@latest", "--headless"],
+      tags: ["browser", "test"],
+      homepage: "https://github.com/microsoft/playwright-mcp",
+      documentationUrl: "https://github.com/microsoft/playwright-mcp",
+      repository: "https://github.com/microsoft/playwright-mcp",
+    },
+    "smithery",
+  ),
+  enrichTemplate(
+    {
+      id: "smithery-firecrawl",
+      name: "firecrawl-smithery",
+      displayName: "Firecrawl",
+      description:
+        "Scrape, crawl, and extract web pages with Firecrawl's hosted API.",
+      transport: "stdio",
+      command: "npx",
+      args: ["-y", "firecrawl-mcp"],
+      env: {
+        FIRECRAWL_API_KEY: "",
+      },
+      tags: ["scraping", "web"],
+      homepage: "https://github.com/mendableai/firecrawl-mcp-server",
+      documentationUrl: "https://github.com/mendableai/firecrawl-mcp-server",
+      repository: "https://github.com/mendableai/firecrawl-mcp-server",
+    },
+    "smithery",
+  ),
+  enrichTemplate(
+    {
+      id: "smithery-filesystem",
+      name: "filesystem-smithery",
+      displayName: "Filesystem",
+      description:
+        "Read and write files from explicitly selected local directories.",
+      transport: "stdio",
+      command: "npx",
+      args: ["-y", "@modelcontextprotocol/server-filesystem", "<allowed-path>"],
+      tags: ["files", "local"],
+      homepage:
+        "https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem",
+      repository: "https://github.com/modelcontextprotocol/servers",
+    },
+    "smithery",
+  ),
+  enrichTemplate(
+    {
+      id: "smithery-github",
+      name: "github-smithery",
+      displayName: "GitHub",
+      description:
+        "Search and manage repositories, issues, pull requests, and code.",
+      transport: "stdio",
+      command: "npx",
+      args: ["-y", "@modelcontextprotocol/server-github"],
+      env: {
+        GITHUB_PERSONAL_ACCESS_TOKEN: "",
+      },
+      tags: ["code", "github"],
+      homepage:
+        "https://github.com/modelcontextprotocol/servers/tree/main/src/github",
+      repository: "https://github.com/modelcontextprotocol/servers",
+    },
+    "smithery",
+  ),
   {
     id: "sequential-thinking",
     name: "sequential-thinking",
@@ -181,6 +309,7 @@ const RAW_BUILTIN_MCP_MARKET_TEMPLATES: McpMarketTemplate[] = [
     tags: ["reasoning", "planning"],
     homepage:
       "https://github.com/modelcontextprotocol/servers/blob/main/src/sequentialthinking",
+    repository: "https://github.com/modelcontextprotocol/servers",
   },
   {
     id: "brave-search",
@@ -196,6 +325,7 @@ const RAW_BUILTIN_MCP_MARKET_TEMPLATES: McpMarketTemplate[] = [
     tags: ["search", "web"],
     homepage:
       "https://github.com/modelcontextprotocol/servers/blob/main/src/brave-search",
+    repository: "https://github.com/modelcontextprotocol/servers",
   },
   {
     id: "google-maps",
@@ -211,6 +341,7 @@ const RAW_BUILTIN_MCP_MARKET_TEMPLATES: McpMarketTemplate[] = [
     tags: ["maps", "location"],
     homepage:
       "https://github.com/modelcontextprotocol/servers/blob/main/src/google-maps",
+    repository: "https://github.com/modelcontextprotocol/servers",
   },
   {
     id: "git",
@@ -223,6 +354,7 @@ const RAW_BUILTIN_MCP_MARKET_TEMPLATES: McpMarketTemplate[] = [
     tags: ["git", "developer"],
     homepage:
       "https://github.com/modelcontextprotocol/servers/blob/main/src/git",
+    repository: "https://github.com/modelcontextprotocol/servers",
   },
   {
     id: "time",
@@ -235,6 +367,7 @@ const RAW_BUILTIN_MCP_MARKET_TEMPLATES: McpMarketTemplate[] = [
     tags: ["time", "utility"],
     homepage:
       "https://github.com/modelcontextprotocol/servers/tree/main/src/time",
+    repository: "https://github.com/modelcontextprotocol/servers",
   },
   {
     id: "everything",
@@ -248,6 +381,7 @@ const RAW_BUILTIN_MCP_MARKET_TEMPLATES: McpMarketTemplate[] = [
     tags: ["test", "reference"],
     homepage:
       "https://github.com/modelcontextprotocol/servers/tree/main/src/everything",
+    repository: "https://github.com/modelcontextprotocol/servers",
   },
   {
     id: "sentry",
@@ -260,6 +394,7 @@ const RAW_BUILTIN_MCP_MARKET_TEMPLATES: McpMarketTemplate[] = [
     tags: ["monitoring", "errors"],
     homepage:
       "https://github.com/modelcontextprotocol/servers/blob/main/src/sentry",
+    repository: "https://github.com/modelcontextprotocol/servers",
   },
   {
     id: "firecrawl",
@@ -275,6 +410,8 @@ const RAW_BUILTIN_MCP_MARKET_TEMPLATES: McpMarketTemplate[] = [
     },
     tags: ["scraping", "web"],
     homepage: "https://github.com/mendableai/firecrawl-mcp-server",
+    documentationUrl: "https://github.com/mendableai/firecrawl-mcp-server",
+    repository: "https://github.com/mendableai/firecrawl-mcp-server",
   },
   enrichTemplate(
     {
@@ -288,12 +425,14 @@ const RAW_BUILTIN_MCP_MARKET_TEMPLATES: McpMarketTemplate[] = [
       args: ["-y", "mcp-server-kubernetes"],
       tags: ["devops", "kubernetes"],
       homepage: "https://github.com/Flux159/mcp-server-kubernetes",
+      documentationUrl: "https://github.com/Flux159/mcp-server-kubernetes",
+      repository: "https://github.com/Flux159/mcp-server-kubernetes",
     },
-    "prompthub-community",
+    "glama",
   ),
   enrichTemplate(
     {
-      id: "mysql",
+      id: "smithery-mysql",
       name: "mysql",
       displayName: "MySQL",
       description: "Query MySQL databases with secure, configurable access.",
@@ -309,12 +448,138 @@ const RAW_BUILTIN_MCP_MARKET_TEMPLATES: McpMarketTemplate[] = [
       },
       tags: ["database", "sql"],
       homepage: "https://github.com/designcomputer/mysql_mcp_server",
+      documentationUrl: "https://github.com/designcomputer/mysql_mcp_server",
+      repository: "https://github.com/designcomputer/mysql_mcp_server",
     },
-    "prompthub-community",
+    "smithery",
   ),
   enrichTemplate(
     {
-      id: "figma",
+      id: "smithery-postgres",
+      name: "postgres",
+      displayName: "PostgreSQL",
+      description:
+        "Query PostgreSQL databases through a configurable read/write MCP server.",
+      transport: "stdio",
+      command: "npx",
+      args: ["-y", "@modelcontextprotocol/server-postgres", "<database-url>"],
+      tags: ["database", "sql"],
+      homepage:
+        "https://github.com/modelcontextprotocol/servers/tree/main/src/postgres",
+      repository: "https://github.com/modelcontextprotocol/servers",
+    },
+    "smithery",
+  ),
+  enrichTemplate(
+    {
+      id: "smithery-puppeteer",
+      name: "puppeteer",
+      displayName: "Puppeteer",
+      description:
+        "Control Chromium with Puppeteer for page capture, screenshots, and automation.",
+      transport: "stdio",
+      command: "npx",
+      args: ["-y", "@modelcontextprotocol/server-puppeteer"],
+      tags: ["browser", "automation"],
+      homepage:
+        "https://github.com/modelcontextprotocol/servers/tree/main/src/puppeteer",
+      repository: "https://github.com/modelcontextprotocol/servers",
+    },
+    "smithery",
+  ),
+  enrichTemplate(
+    {
+      id: "glama-context7",
+      name: "context7-glama",
+      displayName: "Context7",
+      description:
+        "Search current package documentation for coding assistants.",
+      transport: "stdio",
+      command: "npx",
+      args: ["-y", "@upstash/context7-mcp"],
+      tags: ["docs", "developer"],
+      homepage: "https://github.com/upstash/context7",
+      documentationUrl: "https://github.com/upstash/context7",
+      repository: "https://github.com/upstash/context7",
+    },
+    "glama",
+  ),
+  enrichTemplate(
+    {
+      id: "glama-deepwiki",
+      name: "deepwiki-glama",
+      displayName: "DeepWiki",
+      description:
+        "Ask questions about public GitHub repositories through a hosted MCP endpoint.",
+      transport: "streamable-http",
+      url: "https://mcp.deepwiki.com/mcp",
+      tags: ["docs", "github"],
+      homepage: "https://deepwiki.com",
+      documentationUrl: "https://deepwiki.com",
+    },
+    "glama",
+  ),
+  enrichTemplate(
+    {
+      id: "glama-firecrawl",
+      name: "firecrawl-glama",
+      displayName: "Firecrawl",
+      description:
+        "Crawl and extract structured web content for research and automation agents.",
+      transport: "stdio",
+      command: "npx",
+      args: ["-y", "firecrawl-mcp"],
+      env: {
+        FIRECRAWL_API_KEY: "",
+      },
+      tags: ["scraping", "web"],
+      homepage: "https://github.com/mendableai/firecrawl-mcp-server",
+      documentationUrl: "https://github.com/mendableai/firecrawl-mcp-server",
+      repository: "https://github.com/mendableai/firecrawl-mcp-server",
+    },
+    "glama",
+  ),
+  enrichTemplate(
+    {
+      id: "glama-browserbase",
+      name: "browserbase",
+      displayName: "Browserbase",
+      description:
+        "Run cloud browser sessions for web navigation, screenshots, and automation.",
+      transport: "stdio",
+      command: "npx",
+      args: ["-y", "@browserbasehq/mcp-server-browserbase"],
+      env: {
+        BROWSERBASE_API_KEY: "",
+        BROWSERBASE_PROJECT_ID: "",
+      },
+      tags: ["browser", "cloud"],
+      homepage: "https://github.com/browserbase/mcp-server-browserbase",
+      documentationUrl: "https://github.com/browserbase/mcp-server-browserbase",
+      repository: "https://github.com/browserbase/mcp-server-browserbase",
+    },
+    "glama",
+  ),
+  enrichTemplate(
+    {
+      id: "glama-git",
+      name: "git-glama",
+      displayName: "Git",
+      description:
+        "Inspect local Git repositories, history, diffs, and working tree state.",
+      transport: "stdio",
+      command: "uvx",
+      args: ["mcp-server-git", "--repository", "<repo-path>"],
+      tags: ["git", "developer"],
+      homepage:
+        "https://github.com/modelcontextprotocol/servers/tree/main/src/git",
+      repository: "https://github.com/modelcontextprotocol/servers",
+    },
+    "glama",
+  ),
+  enrichTemplate(
+    {
+      id: "glama-figma",
       name: "figma",
       displayName: "Figma",
       description: "Read Figma file layout and design data for design-to-code.",
@@ -328,8 +593,30 @@ const RAW_BUILTIN_MCP_MARKET_TEMPLATES: McpMarketTemplate[] = [
       ],
       tags: ["design", "frontend"],
       homepage: "https://github.com/GLips/Figma-Context-MCP",
+      documentationUrl: "https://github.com/GLips/Figma-Context-MCP",
+      repository: "https://github.com/GLips/Figma-Context-MCP",
     },
-    "prompthub-community",
+    "glama",
+  ),
+  enrichTemplate(
+    {
+      id: "glama-amap",
+      name: "amap-glama",
+      displayName: "AMap",
+      description:
+        "Use AMap/Gaode maps, location lookup, and routing tools from agents.",
+      transport: "stdio",
+      command: "npx",
+      args: ["-y", "@amap/amap-maps-mcp-server"],
+      env: {
+        AMAP_MAPS_API_KEY: "",
+      },
+      tags: ["maps", "china"],
+      homepage: "https://github.com/amap/amap-maps-mcp-server",
+      documentationUrl: "https://github.com/amap/amap-maps-mcp-server",
+      repository: "https://github.com/amap/amap-maps-mcp-server",
+    },
+    "glama",
   ),
   enrichTemplate(
     {
@@ -342,8 +629,9 @@ const RAW_BUILTIN_MCP_MARKET_TEMPLATES: McpMarketTemplate[] = [
       url: "https://mcp.deepwiki.com/mcp",
       tags: ["docs", "github"],
       homepage: "https://deepwiki.com",
+      documentationUrl: "https://deepwiki.com",
     },
-    "prompthub-curated",
+    "smithery",
   ),
 ];
 

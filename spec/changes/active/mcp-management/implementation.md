@@ -495,3 +495,50 @@ Implemented first MCP management slice.
     - Result: passed.
   - `git diff --check -- packages/shared/constants/mcp-market.ts apps/desktop/src/renderer/components/mcp/McpMarketView.tsx apps/desktop/tests/unit/components/mcp-manager.test.tsx apps/desktop/tests/unit/components/mcp-i18n-smoke.test.ts apps/desktop/src/renderer/i18n/locales/en.json apps/desktop/src/renderer/i18n/locales/zh.json apps/desktop/src/renderer/i18n/locales/zh-TW.json apps/desktop/src/renderer/i18n/locales/ja.json apps/desktop/src/renderer/i18n/locales/fr.json apps/desktop/src/renderer/i18n/locales/de.json apps/desktop/src/renderer/i18n/locales/es.json spec/changes/active/mcp-management/specs/mcp/spec.md spec/changes/active/mcp-management/tasks.md spec/changes/active/mcp-management/implementation.md`
     - Result: passed.
+
+- MCP Store channel model correction:
+  - Reworked MCP Store navigation from an `All Sources` aggregate/filter model into the Skill Store channel model. The top-level MCP Store nav item no longer shows a template count badge, and its nested entries are the real store channels only.
+  - Changed MCP Store default selection and stale `all` state recovery to select the first real market source, currently `modelcontextprotocol`, rather than preserving an aggregate pseudo-channel.
+  - Updated the right-side MCP Store header to render the selected channel label/description and the selected channel's template count, and removed the remaining external-directory fallback panel from the built-in store view path.
+  - Updated the MCP active spec to state that store channels own the right-side catalog and that `All Sources` is not part of the MCP Store sidebar.
+- Verification for MCP Store channel model correction:
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/sidebar.test.tsx --testNamePattern "MCP secondary"`
+    - Result: failed before implementation because opening MCP Store still selected `all` and rendered `All Sources`; passed after switching to real-channel selection.
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx --testNamePattern "channel-specific"`
+    - Result: failed before implementation because the store header was fixed to `Official MCP Store` and showed `1 / 2 templates`; passed after rendering the selected channel title and channel-scoped cards.
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx tests/unit/components/sidebar.test.tsx tests/unit/components/mcp-i18n-smoke.test.ts`
+    - Result: 78 tests passed.
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/mcp-library.test.ts --testNamePattern "preconfigures"`
+    - Result: 1 matching test passed.
+
+- MCP Store community source refresh:
+  - Replaced the placeholder MCP Store channel labels with three real channels: `Official MCP Registry`, `Smithery`, and `Glama MCP Directory`.
+  - Kept the built-in market as PromptHub-packaged installable templates rather than live directory scraping, but updated each template/source record with clearer repository/documentation links and source provenance.
+  - Updated the MCP Store detail modal to describe installation as a prompt/template import flow, surface a clearer install label for remote endpoints, and show the template's channel label in the card preview.
+  - Expanded Smithery and Glama from a few sample cards into usable preset catalogs with at least eight installable templates per channel, including developer docs, browser automation, scraping, database, Git, maps, Figma, and cloud browser use cases.
+- Verification for MCP Store community source refresh:
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/mcp-library.test.ts --testNamePattern "preconfigures"`
+    - Result: passed after confirming the built-in sources are `modelcontextprotocol`, `smithery`, and `glama`.
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx --testNamePattern "MCP Store"`
+    - Result: passed after confirming the channel-specific store header and per-channel cards render correctly.
+  - `pnpm --filter @prompthub/shared typecheck`
+    - Result: passed after expanding MCP Store templates.
+  - `npm view @browserbasehq/mcp-server-browserbase name version && npm view @modelcontextprotocol/server-postgres name version && npm view @modelcontextprotocol/server-puppeteer name version && npm view firecrawl-mcp name version`
+    - Result: passed, confirming the new npm package names resolve.
+
+- MCP Store remote catalog loading:
+  - Replaced the static-only MCP Store behavior with Skill Store-style remote catalog loading for each selected channel.
+  - Added a renderer `mcp-remote-store` service that parses Official MCP Registry JSON (`servers` plus `metadata.nextCursor`), maps registry `packages` and `remotes` into installable templates, and extracts Glama/Smithery entries from page HTML, embedded JSON, and Next/RSC-style serialized data.
+  - Added MCP-specific remote fetch IPC/preload methods using the existing safe HTTP/HTTPS fetch implementation.
+  - Added remote market state keyed by selected source and search query, with loading/error metadata, staleness caching, refresh, remote search, and built-in template fallback when a remote catalog fails or returns no usable entries.
+  - Added `installMarketTemplate` in core/IPC/preload so remote results install by full template payload rather than requiring a static built-in template id.
+  - Updated MCP Store UI to show remote loading/count/fallback status, channel-scoped remote results, search, refresh, and detail-modal installation for remote templates.
+- Verification for MCP Store remote catalog loading:
+  - `pnpm --filter @prompthub/desktop test -- tests/unit/services/mcp-remote-store.test.ts --run`
+    - Result: 5 tests passed after adding Official Registry, Glama, Smithery, URL-builder, and remote fetch parser coverage.
+  - `pnpm --filter @prompthub/desktop test -- tests/unit/main/mcp-library.test.ts --run`
+    - Result: 32 tests passed after adding remote template payload installation.
+  - `pnpm --filter @prompthub/desktop test -- tests/unit/components/mcp-manager.test.tsx --run`
+    - Result: 42 tests passed after wiring remote MCP Store search, render, and install into the UI.
+  - `pnpm run typecheck`
+    - Result: passed after remote MCP Store IPC, store, UI, and parser integration.
