@@ -13,6 +13,7 @@ import { Sidebar } from "../../../src/renderer/components/layout/Sidebar";
 import "../../../src/renderer/components/layout/RulesSidebarPanel";
 import { useFolderStore } from "../../../src/renderer/stores/folder.store";
 import { useMcpStore } from "../../../src/renderer/stores/mcp.store";
+import { usePluginStore } from "../../../src/renderer/stores/plugin.store";
 import { usePromptStore } from "../../../src/renderer/stores/prompt.store";
 import { useRulesStore } from "../../../src/renderer/stores/rules.store";
 import { useSettingsStore } from "../../../src/renderer/stores/settings.store";
@@ -233,6 +234,24 @@ describe("Sidebar", () => {
       selectedTab: "library",
       selectedMarketSourceId: "all",
     } as Partial<ReturnType<typeof useMcpStore.getState>>);
+
+    usePluginStore.setState({
+      library: {
+        kind: "prompthub-plugin-library",
+        version: 1,
+        updatedAt: "2026-01-01T00:00:00.000Z",
+        plugins: [],
+      },
+      marketEntries: [],
+      marketPreviews: {},
+      marketSources: [],
+      targetMatrix: [],
+      selectedTab: "market",
+      selectedMarketSourceId: "openai-curated",
+      searchQuery: "",
+      isLoading: false,
+      error: null,
+    } as Partial<ReturnType<typeof usePluginStore.getState>>);
 
     useSkillStore.setState({
       skills: [],
@@ -1022,6 +1041,51 @@ describe("Sidebar", () => {
     expect(
       within(windsurfButton).getByAltText("windsurf icon"),
     ).toBeInTheDocument();
+  });
+
+  it("does not show plugin market entry count on the first-level Plugins Store nav item", async () => {
+    useUIStore.setState({
+      appModule: "plugin",
+      viewMode: "plugin",
+      isSidebarCollapsed: false,
+    });
+    usePluginStore.setState({
+      marketEntries: Array.from({ length: 173 }, (_, index) => ({
+        id: `plugin-${index}`,
+        marketplaceId: "openai-curated",
+        name: `plugin-${index}`,
+        displayName: `Plugin ${index}`,
+        trustLevel: "official",
+        source: {
+          kind: "market",
+          label: "Codex Official Store",
+        },
+      })),
+      marketSources: [
+        {
+          id: "openai-curated",
+          displayName: "Codex Official Store",
+          repository: "https://github.com/openai/plugins",
+          marketplaceFile: ".agents/plugins/marketplace.json",
+          trustLevel: "official",
+        },
+      ],
+      selectedTab: "market",
+      selectedMarketSourceId: "openai-curated",
+    } as Partial<ReturnType<typeof usePluginStore.getState>>);
+
+    await act(async () => {
+      await renderWithI18n(
+        <Sidebar currentPage="home" onNavigate={vi.fn()} />,
+        { language: "en" },
+      );
+    });
+
+    const pluginsStoreButton = screen.getByRole("button", {
+      name: /Plugins Store/i,
+    });
+
+    expect(within(pluginsStoreButton).queryByText("173")).toBeNull();
   });
 
   it("keeps Rules visible but hides project-directory actions in web runtime", async () => {

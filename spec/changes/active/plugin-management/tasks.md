@@ -29,6 +29,7 @@
 - [x] Rename the store surface to `Plugins Store` / `Plugins 商店` while keeping concrete source provenance as `Codex Official Store` / `Codex 官方商店`.
 - [x] Keep card inventory focused on user-facing capabilities and omit `Apps` connector chips from store cards while preserving full inventory in detail.
 - [x] Expand directory-based Codex manifest `skills` fields through the GitHub repository tree so official plugins with multiple nested `SKILL.md` files do not display as one Skill.
+- [x] Align the first-level Plugin Store sidebar entry with Skill Store by removing marketplace item-count pills from that navigation row.
 - [x] Add Plugin module to desktop home navigation and home-module settings.
 - [x] Add i18n coverage for Plugin UI across all supported desktop locales.
 - [ ] Reuse Skill/MCP distribution flows for child assets.

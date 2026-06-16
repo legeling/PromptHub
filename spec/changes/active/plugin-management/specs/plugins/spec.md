@@ -144,6 +144,7 @@ PromptHub MUST provide a Plugin Store model that can represent official, verifie
 - **THEN** Plugin search appears in the global app top bar, not inside the Plugin Store content area
 - **AND** the Plugin Store content area does not render category chips above the list
 - **AND** store source selection is driven by the Plugin navigation/sidebar state rather than duplicated above the list
+- **AND** the first-level `Plugins Store` sidebar entry follows the Skill Store sidebar pattern and does not show marketplace item-count pills
 - **AND** list cards use the whole card as the detail entry point without separate right-side view/install/delete buttons
 - **AND** install/delete actions remain available from the detail modal or batch action toolbar
 

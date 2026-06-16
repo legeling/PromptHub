@@ -285,7 +285,6 @@ export function Sidebar({
     () => mcpSelectedTab === "market",
   );
   const pluginLibrary = usePluginStore((state) => state.library);
-  const pluginMarketEntries = usePluginStore((state) => state.marketEntries);
   const pluginMarketSources = usePluginStore((state) => state.marketSources);
   const pluginTargetMatrix = usePluginStore((state) => state.targetMatrix);
   const pluginSelectedTab = usePluginStore((state) => state.selectedTab);
@@ -2071,7 +2070,6 @@ export function Sidebar({
                   <NavItem
                     icon={<StoreIcon className="w-5 h-5" />}
                     label={t("plugin.pluginStore", "Plugin Store")}
-                    count={pluginMarketEntries.length}
                     active={pluginSelectedTab === "market"}
                     collapsed={isCollapsed}
                     onClick={handlePluginStoreNavClick}
