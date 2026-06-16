@@ -130,4 +130,14 @@ child counts appear or disappear.
 - GIVEN a nested prompt has children and optional metadata icons
 - WHEN PromptHub renders the prompt card
 - THEN the card title starts after a fixed control rail and bounded depth indent
-- AND optional controls do not add extra leading offset before the title.
+- AND optional controls do not add extra leading offset before the title
+- AND the collapse affordance is attached to the child-count control rather than
+  occupying hidden space before the title.
+
+#### Scenario: Render Leaf Child Prompt Card
+
+- GIVEN a nested prompt has a tree parent but no children
+- WHEN PromptHub renders the prompt card
+- THEN PromptHub does not render an empty collapse affordance before the title
+- AND hierarchy decoration does not draw over the parent prompt label or prompt
+  content.

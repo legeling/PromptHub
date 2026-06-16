@@ -198,6 +198,7 @@ export const PromptCard = memo(function PromptCard({
   const showDropBadge = Boolean(isDropTarget && dropPosition);
   const canCollapse = childCount > 0;
   const depthIndent = Math.min(Math.max(depth, 0), 5) * 12;
+  const parentChipIndent = depthIndent + 18;
 
   return (
     <div
@@ -238,20 +239,6 @@ export const PromptCard = memo(function PromptCard({
         ${depth > 0 && !isSelected ? 'bg-primary/[0.03]' : ''}
       `}
     >
-      {depth > 0 && (
-        <>
-          <span
-            aria-hidden="true"
-            className={`absolute bottom-3 top-3 w-px ${isSelected ? 'bg-white/25' : 'bg-primary/30'}`}
-            style={{ left: `${12 + depthIndent - 6}px` }}
-          />
-          <span
-            aria-hidden="true"
-            className={`absolute h-px w-3 ${isSelected ? 'bg-white/25' : 'bg-primary/30'}`}
-            style={{ left: `${12 + depthIndent - 6}px`, top: '1.35rem' }}
-          />
-        </>
-      )}
       <div className="flex items-center justify-between gap-2">
         <div
           data-testid="prompt-card-title-row"
@@ -262,37 +249,6 @@ export const PromptCard = memo(function PromptCard({
             aria-hidden="true"
             className={`h-3.5 w-3.5 shrink-0 cursor-grab ${isSelected ? 'text-white/65' : 'text-muted-foreground/55'}`}
           />
-          <button
-            type="button"
-            disabled={!canCollapse}
-            aria-label={t(isCollapsed ? 'prompt.expandPrompt' : 'prompt.collapsePrompt', {
-              title: prompt.title,
-            })}
-            title={t(isCollapsed ? 'prompt.expandPrompt' : 'prompt.collapsePrompt', {
-              title: prompt.title,
-            })}
-            onClick={(event) => {
-              event.stopPropagation();
-              if (canCollapse) {
-                onToggleCollapse();
-              }
-            }}
-            className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-colors ${
-              canCollapse
-                ? isSelected
-                  ? 'text-white/80 hover:bg-white/15'
-                  : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                : 'text-transparent'
-            }`}
-          >
-            {canCollapse && (
-              isCollapsed ? (
-                <ChevronRightIcon aria-hidden="true" className="h-3.5 w-3.5" />
-              ) : (
-                <ChevronDownIcon aria-hidden="true" className="h-3.5 w-3.5" />
-              )
-            )}
-          </button>
           <h3
             data-testid="prompt-card-title"
             className="min-w-0 flex-1 break-words text-sm font-medium leading-snug line-clamp-2"
@@ -312,13 +268,31 @@ export const PromptCard = memo(function PromptCard({
             </span>
           )}
           {childCount > 0 && (
-            <span
-              className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[11px] leading-none ${hierarchyTone}`}
-              aria-label={t('prompt.childPromptCountShort', { count: childCount })}
+            <button
+              type="button"
+              data-testid="prompt-card-collapse-toggle"
+              aria-label={t(isCollapsed ? 'prompt.expandPrompt' : 'prompt.collapsePrompt', {
+                title: prompt.title,
+              })}
+              title={t(isCollapsed ? 'prompt.expandPrompt' : 'prompt.collapsePrompt', {
+                title: prompt.title,
+              })}
+              onClick={(event) => {
+                event.stopPropagation();
+                onToggleCollapse();
+              }}
+              className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[11px] leading-none transition-colors ${hierarchyTone} ${
+                isSelected ? 'hover:bg-white/15' : 'hover:bg-accent hover:text-foreground'
+              }`}
             >
+              {isCollapsed ? (
+                <ChevronRightIcon aria-hidden="true" className="h-3 w-3" />
+              ) : (
+                <ChevronDownIcon aria-hidden="true" className="h-3 w-3" />
+              )}
               <GitBranchIcon aria-hidden="true" className="h-3 w-3" />
               {t('prompt.childPromptCountShort', { count: childCount })}
-            </span>
+            </button>
           )}
           {prompt.isPinned && (
             <PinIcon
@@ -342,7 +316,11 @@ export const PromptCard = memo(function PromptCard({
         </div>
       </div>
       {parentTitle && (
-        <div className={`mt-1 inline-flex max-w-full items-center gap-1 rounded border px-1.5 py-0.5 text-[11px] leading-none ${hierarchyTone}`}>
+        <div
+          data-testid="prompt-card-parent-chip"
+          className={`mt-1 inline-flex max-w-full items-center gap-1 rounded border px-1.5 py-0.5 text-[11px] leading-none ${hierarchyTone}`}
+          style={{ marginLeft: `${parentChipIndent}px` }}
+        >
           <CornerDownRightIcon aria-hidden="true" className="h-3 w-3 shrink-0" />
           <span className="shrink-0">{t('prompt.parentPrompt')}</span>
           <span className="truncate">{parentTitle}</span>

@@ -16,6 +16,7 @@
 - [x] Add a graph view that renders prompt hierarchy edges and semantic relation edges together.
 - [x] Replace the dense ring/card graph with a zoomable, pannable dot graph that keeps large sparse libraries readable.
 - [x] Fix prompt card hierarchy control alignment so titles are not pushed right by optional controls.
+- [x] Remove leaf-card collapse placeholders and hierarchy guide lines that overlap parent labels.
 - [x] Preserve hierarchy fields in prompt workspace frontmatter.
 - [x] Sanitize hierarchy fields during backup import.
 - [x] Add DB and UI regression tests.

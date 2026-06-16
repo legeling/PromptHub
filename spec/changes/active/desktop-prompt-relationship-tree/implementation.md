@@ -16,6 +16,24 @@
 - Added component regressions for the detail relationship action, sidebar graph
   navigation, graph rendering, and prompt card title alignment.
 
+## 2026-06-16 Prompt Card Polish Follow-up
+
+- Removed the hidden leaf-card collapse placeholder that made prompt titles look
+  indented even when a prompt had no children.
+- Moved the card collapse affordance into the child-count control so only parent
+  prompts show an expand/collapse target.
+- Removed the absolute hierarchy guide lines from prompt cards because they
+  overlapped the parent prompt label and prompt content in nested lists.
+- Added a regression that leaf child cards do not render empty collapse controls
+  or content-covering hierarchy guide lines.
+
+Verification:
+
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/prompt-card-layout.test.tsx --run`
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/prompt-card-layout.test.tsx tests/unit/components/prompt-table-view.test.tsx tests/unit/components/prompt-drag-utils.test.ts --run`
+- `pnpm --dir apps/desktop exec eslint src/renderer/components/layout/MainContent.tsx tests/unit/components/prompt-card-layout.test.tsx --max-warnings 0`
+- `pnpm --filter @prompthub/desktop typecheck`
+
 ## 2026-06-15 Graph Usability Follow-up
 
 - Replaced the fixed circular graph layout and large absolute-positioned prompt

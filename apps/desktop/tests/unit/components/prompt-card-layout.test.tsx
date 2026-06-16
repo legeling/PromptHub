@@ -58,4 +58,41 @@ describe("PromptCard layout", () => {
     });
     expect(screen.getByTestId("prompt-card-title")).toHaveClass("min-w-0");
   });
+
+  it("does not reserve collapse space or draw a line over leaf child content", async () => {
+    const { container } = await renderWithI18n(
+      <PromptCard
+        prompt={prompt}
+        depth={1}
+        childCount={0}
+        parentTitle="Parent prompt"
+        isCollapsed={false}
+        isSelected={false}
+        isDragging={false}
+        isDropTarget={false}
+        dropPosition={null}
+        onSelect={vi.fn()}
+        onContextMenu={vi.fn()}
+        onDragStart={vi.fn()}
+        onDragEnd={vi.fn()}
+        onDragOver={vi.fn()}
+        onDragEnter={vi.fn()}
+        onDragLeave={vi.fn()}
+        onDrop={vi.fn()}
+        onToggleCollapse={vi.fn()}
+        highlightTerms={[]}
+      />,
+      { language: "en" },
+    );
+
+    expect(
+      screen.queryByTestId("prompt-card-collapse-toggle"),
+    ).not.toBeInTheDocument();
+    expect(
+      container.querySelector(".absolute.bottom-3.top-3.w-px"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("prompt-card-parent-chip")).toHaveStyle({
+      marginLeft: "30px",
+    });
+  });
 });
