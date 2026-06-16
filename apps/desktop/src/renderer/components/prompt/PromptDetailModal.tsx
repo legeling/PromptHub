@@ -246,6 +246,10 @@ export function PromptDetailModal({
       relation.sourcePromptId === prompt.id ||
       relation.targetPromptId === prompt.id,
   );
+  const modalRelationshipCount =
+    modalRelations.length +
+    (prompt.parentId ? 1 : 0) +
+    prompts.filter((candidate) => candidate.parentId === prompt.id).length;
   const canEditRelations = Boolean(
     onCreateRelation && onDeleteRelation && onSelectPrompt,
   );
@@ -388,7 +392,7 @@ export function PromptDetailModal({
           <GitBranchIcon aria-hidden="true" className="h-3.5 w-3.5" />
           <span>{t("prompt.relationships.openButton")}</span>
           <span className="text-[11px] text-muted-foreground/75">
-            {modalRelations.length}
+            {modalRelationshipCount}
           </span>
         </button>
       )}
@@ -585,6 +589,7 @@ export function PromptDetailModal({
             currentPrompt={prompt}
             prompts={prompts}
             relations={modalRelations}
+            relationshipCount={modalRelationshipCount}
             onCreateRelation={onCreateRelation!}
             onDeleteRelation={onDeleteRelation!}
             onSelectPrompt={(promptId) => {

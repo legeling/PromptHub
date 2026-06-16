@@ -34,8 +34,11 @@ surfaces:
 - List mode: drag a prompt table row.
 - Detail mode: the existing prompt detail area exposes a quiet related-prompts
   action with a count inside the same metadata row as parent/child navigation.
-  The editor expands below that row only when requested so relationship
-  management remains secondary to reading and using the prompt.
+  The count reflects all visible relationships for the current prompt, including
+  tree parent/child links and semantic related links, so the entry never reads
+  as "0" when only hierarchy exists. The editor expands below that row only when
+  requested so relationship management remains secondary to reading and using
+  the prompt.
 - Detail modal: the same quiet related-prompts action is available in the modal
   header; the editor remains reusable and opens only when the user asks for it.
 - Sidebar: the prompt navigation adds a `Relationship Graph` entry directly

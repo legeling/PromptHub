@@ -42,9 +42,12 @@ Verification:
 - Moved the inline detail related-prompts action into the parent/child
   relationship metadata row so it no longer creates a standalone row above
   prompt images or content.
-- Updated relationship copy from broad "Prompt relationships" language to
-  "Related prompts" so the UI reflects the current visible model:
-  parent-child hierarchy through drag-and-drop plus regular related links.
+- Changed the relationship entry copy to "Prompt relationships" so the UI
+  matches the combined model users see: parent-child hierarchy plus regular
+  related links.
+- The relationship count shown in detail surfaces now includes parent, child,
+  and semantic related links, so prompts with hierarchy no longer display a
+  misleading zero.
 - Synced the active change docs to clarify that UI-created non-tree links are
   `related_to` only. Legacy directional relation kinds remain supported for
   compatibility with existing stored data, but are not exposed as primary

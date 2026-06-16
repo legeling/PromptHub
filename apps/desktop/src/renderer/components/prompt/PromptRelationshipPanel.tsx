@@ -23,11 +23,13 @@ import {
 } from "./prompt-relation-suggestions";
 
 type RelationViewItem = {
-  relation: PromptRelation;
+  key: string;
+  relation: PromptRelation | null;
   targetPrompt: Prompt;
   labelKey: string;
   fallbackLabel: string;
   direction: "outgoing" | "incoming" | "neutral";
+  isTreeRelation?: boolean;
 };
 
 type RelationLabel = Pick<
@@ -96,6 +98,7 @@ export interface PromptRelationshipPanelProps {
   currentPrompt: Prompt;
   prompts: Prompt[];
   relations: PromptRelation[];
+  relationshipCount?: number;
   onCreateRelation: (data: CreatePromptRelationDTO) => Promise<void> | void;
   onDeleteRelation: (id: string) => Promise<void> | void;
   onSelectPrompt: (promptId: string) => void;
@@ -122,8 +125,38 @@ function createRelationItems(
   relations: PromptRelation[],
 ): RelationViewItem[] {
   const promptById = new Map(prompts.map((prompt) => [prompt.id, prompt]));
+  const parentPrompt = currentPrompt.parentId
+    ? promptById.get(currentPrompt.parentId)
+    : null;
+  const treeItems: RelationViewItem[] = [];
 
-  return relations
+  if (parentPrompt) {
+    treeItems.push({
+      key: `parent:${parentPrompt.id}`,
+      relation: null,
+      targetPrompt: parentPrompt,
+      labelKey: "prompt.parentPrompt",
+      fallbackLabel: "Parent",
+      direction: "incoming",
+      isTreeRelation: true,
+    });
+  }
+
+  for (const prompt of prompts) {
+    if (prompt.parentId === currentPrompt.id) {
+      treeItems.push({
+        key: `child:${prompt.id}`,
+        relation: null,
+        targetPrompt: prompt,
+        labelKey: "prompt.childPrompts",
+        fallbackLabel: "Child",
+        direction: "outgoing",
+        isTreeRelation: true,
+      });
+    }
+  }
+
+  const graphItems: Array<RelationViewItem | null> = relations
     .filter(
       (relation) =>
         relation.sourcePromptId === currentPrompt.id ||
@@ -141,18 +174,22 @@ function createRelationItems(
       }
 
       return {
+        key: `relation:${relation.id}`,
         relation,
         targetPrompt,
         ...getRelationLabel(relation, currentPrompt.id),
       };
     })
     .filter((item): item is RelationViewItem => item !== null);
+
+  return [...treeItems, ...graphItems];
 }
 
 function usePromptRelationshipPanelState({
   currentPrompt,
   prompts,
   relations,
+  relationshipCount,
   onCreateRelation,
   onDeleteRelation,
 }: Pick<
@@ -160,6 +197,7 @@ function usePromptRelationshipPanelState({
   | "currentPrompt"
   | "prompts"
   | "relations"
+  | "relationshipCount"
   | "onCreateRelation"
   | "onDeleteRelation"
 >) {
@@ -172,6 +210,7 @@ function usePromptRelationshipPanelState({
     () => createRelationItems(currentPrompt, prompts, relations),
     [currentPrompt, prompts, relations],
   );
+  const effectiveRelationshipCount = relationshipCount ?? relationItems.length;
 
   // Prompts already connected (semantic or tree) are excluded from search and
   // suggestions so we never offer a duplicate link.
@@ -243,6 +282,7 @@ function usePromptRelationshipPanelState({
     query,
     setQuery,
     relationItems,
+    relationshipCount: effectiveRelationshipCount,
     searchResults,
     suggestions,
     savingTargetId,
@@ -373,6 +413,7 @@ function RelationChip({
     title: item.targetPrompt.title,
     defaultValue: `Remove relation to ${item.targetPrompt.title}`,
   });
+  const canDelete = item.relation !== null && !item.isTreeRelation;
 
   return (
     <span className="inline-flex max-w-full items-stretch overflow-hidden rounded-full border border-border/70 bg-card text-xs shadow-sm">
@@ -391,16 +432,18 @@ function RelationChip({
         </span>
         <span className="max-w-[12rem] truncate">{item.targetPrompt.title}</span>
       </button>
-      <button
-        type="button"
-        disabled={disabled || isDeleting}
-        onClick={() => onDelete(item.relation)}
-        aria-label={removeLabel}
-        title={removeLabel}
-        className="inline-flex w-7 items-center justify-center border-l border-border/70 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        <Trash2Icon aria-hidden="true" className="h-3.5 w-3.5" />
-      </button>
+      {canDelete && item.relation && (
+        <button
+          type="button"
+          disabled={disabled || isDeleting}
+          onClick={() => onDelete(item.relation)}
+          aria-label={removeLabel}
+          title={removeLabel}
+          className="inline-flex w-7 items-center justify-center border-l border-border/70 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Trash2Icon aria-hidden="true" className="h-3.5 w-3.5" />
+        </button>
+      )}
     </span>
   );
 }
@@ -435,10 +478,10 @@ function RelationList({
     <div className="mb-3 flex flex-wrap gap-1.5">
       {relationItems.map((item) => (
         <RelationChip
-          key={item.relation.id}
+          key={item.key}
           item={item}
           disabled={disabled}
-          isDeleting={deletingId === item.relation.id}
+          isDeleting={deletingId === item.relation?.id}
           onDelete={onDelete}
           onSelectPrompt={onSelectPrompt}
           t={t}
@@ -521,6 +564,7 @@ export function PromptRelationshipPanel({
   currentPrompt,
   prompts,
   relations,
+  relationshipCount,
   onCreateRelation,
   onDeleteRelation,
   onSelectPrompt,
@@ -531,6 +575,7 @@ export function PromptRelationshipPanel({
     currentPrompt,
     prompts,
     relations,
+    relationshipCount,
     onCreateRelation,
     onDeleteRelation,
   });
@@ -539,7 +584,7 @@ export function PromptRelationshipPanel({
     <section
       className={`mb-4 rounded-xl border border-border app-wallpaper-surface p-3 ${className}`}
     >
-      <PanelHeader count={state.relationItems.length} t={state.t} />
+      <PanelHeader count={state.relationshipCount} t={state.t} />
       <RelationSearch
         query={state.query}
         searchResults={state.searchResults}

@@ -35,6 +35,10 @@ function createPrompt(
 const currentPrompt = createPrompt("prompt-current", "Launch brief", {
   tags: ["marketing"],
 });
+const parentPrompt = createPrompt("prompt-parent", "Campaign system");
+const childPrompt = createPrompt("prompt-child", "Launch variant", {
+  parentId: currentPrompt.id,
+});
 const rubricPrompt = createPrompt("prompt-rubric", "Review rubric");
 const outlinePrompt = createPrompt("prompt-outline", "Outline step");
 const relatedPrompt = createPrompt("prompt-related", "Shared context");
@@ -60,19 +64,25 @@ function createRelation(
 }
 
 async function renderPanel({
+  currentPrompt: panelPrompt = currentPrompt,
   relations = [],
+  relationshipCount,
   onCreateRelation = vi.fn(),
   onDeleteRelation = vi.fn(),
   onSelectPrompt = vi.fn(),
   prompts = [
     currentPrompt,
+    parentPrompt,
+    childPrompt,
     rubricPrompt,
     outlinePrompt,
     relatedPrompt,
     taggedPrompt,
   ],
 }: {
+  currentPrompt?: Prompt;
   relations?: PromptRelation[];
+  relationshipCount?: number;
   onCreateRelation?: Parameters<
     typeof PromptRelationshipPanel
   >[0]["onCreateRelation"];
@@ -86,9 +96,10 @@ async function renderPanel({
 } = {}) {
   await renderWithI18n(
     <PromptRelationshipPanel
-      currentPrompt={currentPrompt}
+      currentPrompt={panelPrompt}
       prompts={prompts}
       relations={relations}
+      relationshipCount={relationshipCount}
       onCreateRelation={onCreateRelation}
       onDeleteRelation={onDeleteRelation}
       onSelectPrompt={onSelectPrompt}
@@ -119,7 +130,7 @@ describe("PromptRelationshipPanel", () => {
       onSelectPrompt,
     });
 
-    expect(screen.getByText("Related prompts")).toBeInTheDocument();
+    expect(screen.getByText("Prompt relationships")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Open related prompt Review rubric" }),
     ).toHaveTextContent("Depends on");
@@ -133,6 +144,48 @@ describe("PromptRelationshipPanel", () => {
       screen.getByRole("button", { name: "Open related prompt Review rubric" }),
     );
     expect(onSelectPrompt).toHaveBeenCalledWith(rubricPrompt.id);
+  });
+
+  it("counts parent and child hierarchy as prompt relationships", async () => {
+    const promptWithParent = { ...currentPrompt, parentId: parentPrompt.id };
+
+    await renderPanel({
+      currentPrompt: promptWithParent,
+      prompts: [
+        promptWithParent,
+        parentPrompt,
+        childPrompt,
+        rubricPrompt,
+      ],
+      relations: [
+        createRelation(
+          "relation-related",
+          currentPrompt.id,
+          rubricPrompt.id,
+          "related_to",
+        ),
+      ],
+      relationshipCount: 3,
+    });
+
+    expect(screen.getByText("Prompt relationships")).toBeInTheDocument();
+    expect(screen.getByText("3")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Open related prompt Campaign system" }),
+    ).toHaveTextContent("Parent");
+    expect(
+      screen.getByRole("button", { name: "Open related prompt Launch variant" }),
+    ).toHaveTextContent("Children");
+    expect(
+      screen.queryByRole("button", {
+        name: "Remove relation to Campaign system",
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: "Remove relation to Launch variant",
+      }),
+    ).not.toBeInTheDocument();
   });
 
   it("creates a related_to relation by searching and picking a prompt", async () => {

@@ -15,7 +15,7 @@ interface PromptDetailMetadataProps {
   parentPrompt: Prompt | null;
   childPrompts: Prompt[];
   folderOptions: SelectOption[];
-  relatedPromptCount?: number;
+  relationshipCount?: number;
   isRelatedPromptsOpen?: boolean;
   isRelatedPromptsDisabled?: boolean;
   t: ReturnType<typeof useTranslation>["t"];
@@ -31,7 +31,7 @@ export function PromptDetailMetadata({
   parentPrompt,
   childPrompts,
   folderOptions,
-  relatedPromptCount = 0,
+  relationshipCount = 0,
   isRelatedPromptsOpen = false,
   isRelatedPromptsDisabled = false,
   t,
@@ -62,7 +62,7 @@ export function PromptDetailMetadata({
         />
         <span>{t("prompt.relationships.openButton")}</span>
         <span className="text-[11px] text-muted-foreground/75">
-          {relatedPromptCount}
+          {relationshipCount}
         </span>
         <ChevronDownIcon
           aria-hidden="true"

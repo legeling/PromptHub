@@ -1406,6 +1406,10 @@ function PromptSkillMainContent() {
         return left.title.localeCompare(right.title);
       });
   }, [prompts, selectedPrompt]);
+  const selectedRelationshipCount =
+    selectedPromptRelations.length +
+    (selectedParentPrompt ? 1 : 0) +
+    selectedChildPrompts.length;
 
   // Auto-select prompt language based on UI language (if English version exists)
   // 根据界面语言自动选择 Prompt 语言（如果有英文版本）
@@ -2399,7 +2403,7 @@ function PromptSkillMainContent() {
                     parentPrompt={selectedParentPrompt}
                     childPrompts={selectedChildPrompts}
                     folderOptions={detailFolderOptions}
-                    relatedPromptCount={selectedPromptRelations.length}
+                    relationshipCount={selectedRelationshipCount}
                     isRelatedPromptsOpen={isDetailRelationshipsOpen}
                     isRelatedPromptsDisabled={isDetailInlineEditing}
                     t={t}
@@ -2417,6 +2421,7 @@ function PromptSkillMainContent() {
                       currentPrompt={selectedPrompt}
                       prompts={prompts}
                       relations={selectedPromptRelations}
+                      relationshipCount={selectedRelationshipCount}
                       onCreateRelation={handleCreatePromptRelation}
                       onDeleteRelation={handleDeletePromptRelation}
                       onSelectPrompt={(promptId) => selectPrompt(promptId)}

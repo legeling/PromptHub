@@ -27,7 +27,7 @@ const prompt: Prompt = {
 };
 
 describe("PromptDetailMetadata", () => {
-  it("keeps the related prompts action inside the relationship metadata row", async () => {
+  it("keeps the relationships action inside the relationship metadata row", async () => {
     const onToggleRelatedPrompts = vi.fn();
 
     await renderWithI18n(
@@ -36,15 +36,15 @@ describe("PromptDetailMetadata", () => {
         parentPrompt={null}
         childPrompts={[{ ...prompt, id: "child-1", title: "Child prompt" }]}
         folderOptions={[]}
-        relatedPromptCount={2}
+        relationshipCount={3}
         isRelatedPromptsOpen={false}
         t={(key: string, options?: { title?: string }) =>
           key === "prompt.childPrompts"
             ? "Children"
             : key === "prompt.relationships.openButton"
-              ? "Related"
+              ? "Relations"
               : key === "prompt.relationships.openPanel"
-                ? "Open related prompts"
+                ? "Open prompt relationships"
                 : key === "prompt.openChildPrompt"
                   ? `Open child prompt ${options?.title ?? ""}`
                   : key
@@ -57,11 +57,12 @@ describe("PromptDetailMetadata", () => {
     );
 
     const row = screen.getByTestId("prompt-detail-relationship-row");
-    expect(within(row).getByRole("button", { name: "Open related prompts" }))
-      .toHaveTextContent("Related2");
+    expect(
+      within(row).getByRole("button", { name: "Open prompt relationships" }),
+    ).toHaveTextContent("Relations3");
 
     fireEvent.click(
-      within(row).getByRole("button", { name: "Open related prompts" }),
+      within(row).getByRole("button", { name: "Open prompt relationships" }),
     );
 
     expect(onToggleRelatedPrompts).toHaveBeenCalledTimes(1);

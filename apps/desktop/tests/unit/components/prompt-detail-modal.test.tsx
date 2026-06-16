@@ -67,7 +67,7 @@ describe("PromptDetailModal", () => {
     ).toBeInTheDocument();
   });
 
-  it("opens related prompts from a quiet detail action", async () => {
+  it("opens prompt relationships from a quiet detail action", async () => {
     const onClose = vi.fn();
     const onSelectPrompt = vi.fn();
     const onDeleteRelation = vi.fn().mockResolvedValue(undefined);
@@ -88,13 +88,13 @@ describe("PromptDetailModal", () => {
       { language: "en" },
     );
 
-    expect(screen.queryByText("Related prompts")).not.toBeInTheDocument();
+    expect(screen.queryByText("Prompt relationships")).not.toBeInTheDocument();
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Open related prompts" }),
+      screen.getByRole("button", { name: "Open prompt relationships" }),
     );
 
-    expect(await screen.findByText("Related prompts")).toBeInTheDocument();
+    expect(await screen.findByText("Prompt relationships")).toBeInTheDocument();
     fireEvent.click(
       screen.getByRole("button", { name: "Open related prompt Review rubric" }),
     );
