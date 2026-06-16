@@ -38,14 +38,13 @@ const loadingFallback = (
     <Spinner />
   </div>
 );
-import { StarIcon, CopyIcon, HistoryIcon, HashIcon, FolderIcon, SparklesIcon, EditIcon, TrashIcon, CheckIcon, PlayIcon, LoaderIcon, XIcon, GitCompareIcon, ClockIcon, GlobeIcon, PinIcon, MessageSquareTextIcon, ImageIcon, DownloadIcon, SaveIcon, ZoomInIcon, Share2Icon, GripVerticalIcon, CornerDownRightIcon, GitBranchIcon, ChevronDownIcon, ChevronRightIcon } from 'lucide-react';
+import { StarIcon, CopyIcon, HistoryIcon, HashIcon, FolderIcon, SparklesIcon, EditIcon, TrashIcon, CheckIcon, PlayIcon, LoaderIcon, XIcon, GitCompareIcon, ClockIcon, GlobeIcon, PinIcon, MessageSquareTextIcon, ImageIcon, SaveIcon, Share2Icon, GripVerticalIcon, CornerDownRightIcon, GitBranchIcon, ChevronDownIcon, ChevronRightIcon } from 'lucide-react';
 import { ContextMenu, ContextMenuItem } from '../ui/ContextMenu';
 import { ImagePreviewModal } from '../ui/ImagePreviewModal';
 import { LocalImage } from '../ui/LocalImage';
 import { Select } from '../ui/Select';
 import { handleMarkdownListKeyDown } from '../ui/Textarea';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
-import { CollapsibleThinking } from '../ui/CollapsibleThinking';
 import { ColumnResizer } from '../ui/ColumnResizer';
 import { useToast } from '../ui/Toast';
 import { useTemporaryFlag } from '../../hooks/useTemporaryFlag';
@@ -61,6 +60,7 @@ import {
 import { resolvePromptMarkdownHref } from '../prompt/prompt-markdown-url';
 import { PromptQuickRewriteTrigger } from '../prompt/PromptQuickRewriteTrigger';
 import { PromptRelationshipPanel } from '../prompt/PromptRelationshipPanel';
+import { PromptAiResponsePanel } from '../prompt/PromptAiResponsePanel';
 import {
   filterVisiblePrompts,
   sortVisiblePrompts,
@@ -2912,106 +2912,21 @@ function PromptSkillMainContent() {
 
                   {/* AI response panel */}
                   {/* AI 测试响应区域 */}
-                  {(isTestingAI || aiResponse) && (
-                    <div className="mb-4 p-4 rounded-xl app-wallpaper-panel border border-border">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <SparklesIcon className="w-4 h-4 text-primary" />
-                          <span className="text-sm font-medium">{t('prompt.aiResponse', 'AI 响应')}</span>
-                          <span className="text-xs text-muted-foreground">({(selectedPrompt?.promptType === 'image' || isAiResponseImage) ? (defaultImageModel?.model || aiModel) : aiModel})</span>
-                        </div>
-                        {aiResponse && (
-	                          <button
-	                            type="button"
-	                            onClick={async () => {
-	                              await copyTextToClipboard(aiResponse);
-	                              showToast(t('toast.copied'), 'success');
-	                            }}
-	                            className="p-1.5 rounded hover:bg-muted transition-colors"
-	                            aria-label={t('prompt.copy')}
-	                            title={t('prompt.copy')}
-	                          >
-	                            <CopyIcon aria-hidden="true" className="w-4 h-4 text-muted-foreground" />
-	                          </button>
-                        )}
-                      </div>
-                      {isTestingAI && !aiResponse ? (
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <LoaderIcon className="w-4 h-4 animate-spin" />
-                          <span className="text-sm">{t('prompt.testing', '测试中...')}</span>
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          {isTestingAI ? (
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <LoaderIcon className="w-3 h-3 animate-spin" />
-                              <span>{t('prompt.testing', '测试中...')}</span>
-                            </div>
-                          ) : null}
-                          {/* Collapsible thinking process / 可折叠的思考过程 */}
-                          <CollapsibleThinking
-                            content={aiThinking}
-                            isLoading={isTestingAI}
-                          />
-                          <div className="text-sm leading-relaxed max-h-80 overflow-y-auto">
-                            {isAiResponseImage && aiResponse ? (
-                              <div className="relative group">
-                                <button
-                                  type="button"
-                                  className="block max-w-full rounded-lg bg-transparent p-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                                  aria-label={t('settings.generatedImageAlt')}
-                                  onClick={() => setPreviewImage(aiResponse)}
-                                >
-                                  <img
-                                    src={aiResponse}
-                                    className="max-w-full rounded-lg shadow-sm bg-black/5 hover:opacity-90 transition-opacity"
-                                    alt=""
-                                    aria-hidden="true"
-                                  />
-                                </button>
-                                {/* Image action buttons */}
-                                <div className="absolute bottom-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-	                                  <button
-	                                    type="button"
-	                                    onClick={() => setPreviewImage(aiResponse)}
-	                                    className="p-1.5 rounded-lg bg-black/60 text-white hover:bg-black/80 transition-colors"
-	                                    aria-label={t('common.preview', '放大预览')}
-	                                    title={t('common.preview', '放大预览')}
-	                                  >
-	                                    <ZoomInIcon aria-hidden="true" className="w-4 h-4" />
-	                                  </button>
-	                                  <button
-	                                      type="button"
-	                                      onClick={async () => {
-	                                        try {
-                                              const { downloadGeneratedImage } =
-                                                await import('../../utils/download-generated-image');
-	                                          await downloadGeneratedImage({
-                                            imageUrl: aiResponse,
-                                            fileName: `ai-generated-${Date.now()}.png`,
-                                          });
-                                          showToast(t('common.downloadSuccess'), 'success');
-                                        } catch (err) {
-                                          console.error('Failed to download image:', err);
-                                          showToast(t('common.downloadFailed'), 'error');
-                                        }
-	                                      }}
-	                                      className="p-1.5 rounded-lg bg-black/60 text-white hover:bg-black/80 transition-colors"
-	                                      aria-label={t('common.download', '下载图片')}
-	                                      title={t('common.download', '下载图片')}
-	                                    >
-	                                      <DownloadIcon aria-hidden="true" className="w-4 h-4" />
-	                                    </button>
-                                </div>
-                              </div>
-                            ) : (
-                              renderInlineMarkdownContent(aiResponse)
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  <PromptAiResponsePanel
+                    isTestingAI={isTestingAI}
+                    aiResponse={aiResponse}
+                    aiThinking={aiThinking}
+                    isImage={selectedPrompt?.promptType === 'image' || isAiResponseImage}
+                    modelLabel={
+                      selectedPrompt?.promptType === 'image' || isAiResponseImage
+                        ? defaultImageModel?.model || aiModel
+                        : aiModel
+                    }
+                    t={t}
+                    showToast={showToast}
+                    onPreviewImage={setPreviewImage}
+                    renderMarkdown={renderInlineMarkdownContent}
+                  />
                 </div>
               </div>
               {/* Action buttons - sticky bottom */}
