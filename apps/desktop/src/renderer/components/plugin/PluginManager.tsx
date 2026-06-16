@@ -78,11 +78,44 @@ function getInventoryLabel(
   return labels[key];
 }
 
+function getInventoryUnitLabel(
+  key: keyof PluginInventorySummary,
+  count: number,
+  t: ReturnType<typeof useTranslation>["t"],
+): string {
+  const suffix = count === 1 ? "One" : "Other";
+  const labels: Record<keyof PluginInventorySummary, string> = {
+    skills: t(`plugin.inventoryUnit.skills${suffix}`, "Skill"),
+    mcpServers: t(`plugin.inventoryUnit.mcpServers${suffix}`, "MCP server"),
+    apps: t(`plugin.inventoryUnit.apps${suffix}`, "App"),
+    commands: t(`plugin.inventoryUnit.commands${suffix}`, "command"),
+    hooks: t(`plugin.inventoryUnit.hooks${suffix}`, "hook"),
+    agents: t(`plugin.inventoryUnit.agents${suffix}`, "agent"),
+    assets: t(`plugin.inventoryUnit.assets${suffix}`, "asset"),
+    docs: t(`plugin.inventoryUnit.docs${suffix}`, "doc"),
+    lspServers: t(`plugin.inventoryUnit.lspServers${suffix}`, "LSP server"),
+    scripts: t(`plugin.inventoryUnit.scripts${suffix}`, "script"),
+  };
+  return labels[key];
+}
+
+function getInventoryChipLabel(
+  key: keyof PluginInventorySummary,
+  count: number,
+  t: ReturnType<typeof useTranslation>["t"],
+): string {
+  return t("plugin.inventoryChip", {
+    defaultValue: "Includes {{count}} {{label}}",
+    count,
+    label: getInventoryUnitLabel(key, count, t),
+  });
+}
+
 function InventoryChips({ inventory }: { inventory: PluginInventorySummary }) {
   const { t } = useTranslation();
   const chips = PLUGIN_INVENTORY_KEYS.map((key) => ({
     key,
-    label: getInventoryLabel(key, t),
+    label: getInventoryChipLabel(key, inventory[key], t),
     count: inventory[key],
   })).filter((item) => item.count > 0);
 
@@ -97,7 +130,7 @@ function InventoryChips({ inventory }: { inventory: PluginInventorySummary }) {
           key={chip.key}
           className="rounded-full border border-border bg-muted/50 px-2 py-1 text-xs text-muted-foreground"
         >
-          {chip.label} · {chip.count}
+          {chip.label}
         </span>
       ))}
     </div>
@@ -143,7 +176,7 @@ function getMarketSourceLabel(
   t: ReturnType<typeof useTranslation>["t"],
 ): string {
   if (sourceId === "openai-curated") {
-    return t("plugin.sources.codexOfficial", "Codex Plugin Store");
+    return t("plugin.sources.codexOfficial", "Codex Official Store");
   }
   if (sourceId === "prompthub-official") {
     return t("plugin.sources.promptHubOfficial", "Official Store");
@@ -163,6 +196,17 @@ function getPluginTrustLabel(
   t: ReturnType<typeof useTranslation>["t"],
 ): string {
   return t(`plugin.trust.${trustLevel}`, trustLevel);
+}
+
+function shouldShowMarketTrustBadge(entry: PluginMarketEntry): boolean {
+  if (
+    entry.trustLevel === "official" &&
+    (entry.marketplaceId === "openai-curated" ||
+      entry.marketplaceId === "prompthub-official")
+  ) {
+    return false;
+  }
+  return true;
 }
 
 function getPluginPolicyValueLabel(
@@ -476,9 +520,11 @@ function MarketCard({
                 {getPluginCategoryLabel(activeEntry.category, t)}
               </span>
             ) : null}
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-              {getPluginTrustLabel(activeEntry.trustLevel, t)}
-            </span>
+            {shouldShowMarketTrustBadge(activeEntry) ? (
+              <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                {getPluginTrustLabel(activeEntry.trustLevel, t)}
+              </span>
+            ) : null}
             {installed ? (
               <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-300">
                 {t("plugin.installed", "Installed")}

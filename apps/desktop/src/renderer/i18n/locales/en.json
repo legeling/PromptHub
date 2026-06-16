@@ -2695,7 +2695,7 @@
     "pluginStore": "Official Store",
     "pluginTargets": "Agent Plugin",
     "sources": {
-      "codexOfficial": "Codex Plugin Store",
+      "codexOfficial": "Codex Official Store",
       "promptHubOfficial": "Official Store"
     },
     "inventory": {
@@ -2710,6 +2710,29 @@
       "lspServers": "LSP servers",
       "scripts": "Scripts"
     },
+    "inventoryUnit": {
+      "skillsOne": "Skill",
+      "skillsOther": "Skills",
+      "mcpServersOne": "MCP server",
+      "mcpServersOther": "MCP servers",
+      "appsOne": "App",
+      "appsOther": "Apps",
+      "commandsOne": "command",
+      "commandsOther": "commands",
+      "hooksOne": "hook",
+      "hooksOther": "hooks",
+      "agentsOne": "agent",
+      "agentsOther": "agents",
+      "assetsOne": "asset",
+      "assetsOther": "assets",
+      "docsOne": "doc",
+      "docsOther": "docs",
+      "lspServersOne": "LSP server",
+      "lspServersOther": "LSP servers",
+      "scriptsOne": "script",
+      "scriptsOther": "scripts"
+    },
+    "inventoryChip": "Includes {{count}} {{label}}",
     "inventoryEmpty": "",
     "marketInventoryDeferred": "",
     "noDescription": "No description provided",

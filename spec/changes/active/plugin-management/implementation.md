@@ -42,6 +42,9 @@
   - Fixed the background-enrichment effect so React cleanup after the first preview no longer cancels the rest of the visible batch. Visible Official Store cards now dispatch preview requests concurrently and clear only the in-flight marker after each request settles.
   - Added `config/plugin-market-cache.json` for manifest presentation metadata. Preview/background enrichment now persists icons, descriptions, inventory, classification, and related manifest fields; later marketplace listings merge cached metadata before reaching the renderer.
   - Changed store background enrichment to cover the current visible filtered result set with bounded concurrency instead of relying only on detail-modal previews.
+- Simplified Official Store card metadata:
+  - Built-in official-source cards no longer render a redundant standalone `Official` trust chip when the source chip already says `Codex official store` or `Official Store`.
+  - Inventory chips now render human-readable included capability counts, such as `Includes 1 Skill` / `包含 1 个 Skill`, instead of raw key/count notation like `Skills · 1`.
 - Added Plugin navigation to the desktop home rail/sidebar and the Appearance settings home-module list.
 - Added Plugin i18n keys across all seven desktop locales.
 

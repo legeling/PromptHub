@@ -279,6 +279,13 @@ describe("PluginManager", () => {
     expect(
       screen.queryByRole("button", { name: "Install" }),
     ).not.toBeInTheDocument();
+    expect(screen.getAllByText("Codex Official Store").length).toBeGreaterThan(
+      0,
+    );
+    expect(screen.getByText("Includes 2 Skills")).toBeInTheDocument();
+    expect(screen.getAllByText("Includes 1 App").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Official")).not.toBeInTheDocument();
+    expect(screen.queryByText("Skills · 2")).not.toBeInTheDocument();
 
     fireEvent.click(
       screen.getByRole("button", { name: "Batch manage Plugins" }),
@@ -303,7 +310,11 @@ describe("PluginManager", () => {
     expect(screen.getByRole("heading", { name: "可安装" })).toBeInTheDocument();
     expect(screen.getAllByText("Codex 官方商店").length).toBeGreaterThan(0);
     expect(screen.getAllByText("效率").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("官方").length).toBeGreaterThan(0);
+    expect(screen.queryByText("官方")).not.toBeInTheDocument();
+    expect(screen.getByText("包含 2 个 Skill")).toBeInTheDocument();
+    expect(screen.getAllByText("包含 1 个 App").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Skills · 2")).not.toBeInTheDocument();
+    expect(screen.queryByText("Apps · 1")).not.toBeInTheDocument();
     expect(screen.queryByText("Available")).not.toBeInTheDocument();
     expect(screen.queryByText("official")).not.toBeInTheDocument();
     expect(

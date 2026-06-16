@@ -132,6 +132,8 @@ PromptHub MUST provide a Plugin Store model that can represent official, verifie
 - **GIVEN** a plugin appears in a store list
 - **WHEN** PromptHub renders the entry
 - **THEN** the entry shows source/provenance and does not imply community entries are first-party
+- **AND** official-source cards do not render a second standalone official trust badge when the source label already communicates the official source
+- **AND** child inventory chips use human-readable capability counts instead of raw inventory key/count notation
 
 #### Scenario: Plugin Store uses app-shell search and card-level detail
 
