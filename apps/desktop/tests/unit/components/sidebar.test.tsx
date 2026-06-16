@@ -232,7 +232,7 @@ describe("Sidebar", () => {
       marketSources: [],
       targetPresets: [],
       selectedTab: "library",
-      selectedMarketSourceId: "all",
+      selectedMarketSourceId: "modelcontextprotocol",
     } as Partial<ReturnType<typeof useMcpStore.getState>>);
 
     usePluginStore.setState({
@@ -1381,8 +1381,8 @@ describe("Sidebar", () => {
           transport: "stdio",
           tags: ["browser"],
           source: {
-            id: "prompthub-curated",
-            label: "PromptHub Curated MCP",
+            id: "smithery",
+            label: "Smithery",
           },
         },
       ],
@@ -1394,9 +1394,9 @@ describe("Sidebar", () => {
           trustLevel: "official",
         },
         {
-          id: "prompthub-curated",
-          label: "PromptHub Curated MCP",
-          url: "https://github.com/modelcontextprotocol/servers",
+          id: "smithery",
+          label: "Smithery",
+          url: "https://smithery.ai",
           trustLevel: "verified",
         },
       ],
@@ -1429,27 +1429,31 @@ describe("Sidebar", () => {
 
     fireEvent.click(labels[2]);
     expect(useMcpStore.getState().selectedTab).toBe("market");
+    expect(useMcpStore.getState().selectedMarketSourceId).toBe(
+      "modelcontextprotocol",
+    );
+    expect(within(labels[2]).queryByText("2")).not.toBeInTheDocument();
     const sourceScroll = screen.getByTestId("mcp-store-source-scroll");
     expect(
-      within(sourceScroll).getByRole("button", { name: /All Sources\s*2/ }),
-    ).toBeInTheDocument();
+      within(sourceScroll).queryByRole("button", { name: /All Sources/ }),
+    ).not.toBeInTheDocument();
     expect(
       within(sourceScroll).getByRole("button", {
         name: /Official MCP Registry\s*1/,
       }),
     ).toBeInTheDocument();
     const curatedButton = within(sourceScroll).getByRole("button", {
-      name: /PromptHub Curated MCP\s*1/,
+      name: /Smithery\s*1/,
     });
     expect(curatedButton).toBeInTheDocument();
     expect(
-      within(sourceScroll).queryByRole("button", { name: /Smithery|Postman/ }),
+      within(sourceScroll).queryByRole("button", { name: /Postman/ }),
     ).not.toBeInTheDocument();
 
     fireEvent.click(curatedButton);
     expect(useMcpStore.getState().selectedTab).toBe("market");
     expect(useMcpStore.getState().selectedMarketSourceId).toBe(
-      "prompthub-curated",
+      "smithery",
     );
 
     fireEvent.click(labels[2]);

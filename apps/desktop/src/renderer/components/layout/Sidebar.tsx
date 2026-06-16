@@ -580,13 +580,19 @@ export function Sidebar({
   ]);
 
   const openMcpStoreSource = useCallback(
-    (sourceId = "all") => {
+    (sourceId = mcpMarketSources[0]?.id ?? "modelcontextprotocol") => {
       setIsMcpStoreGroupExpanded(true);
       setMcpSelectedMarketSourceId(sourceId);
       setMcpSelectedTab("market");
       if (currentPage !== "home") onNavigate("home");
     },
-    [currentPage, onNavigate, setMcpSelectedMarketSourceId, setMcpSelectedTab],
+    [
+      currentPage,
+      mcpMarketSources,
+      onNavigate,
+      setMcpSelectedMarketSourceId,
+      setMcpSelectedTab,
+    ],
   );
 
   const handleMcpStoreNavClick = useCallback(() => {
@@ -599,10 +605,18 @@ export function Sidebar({
       return;
     }
 
-    openMcpStoreSource("all");
+    openMcpStoreSource(
+      mcpMarketSources.some(
+        (source) => source.id === mcpSelectedMarketSourceId,
+      )
+        ? mcpSelectedMarketSourceId
+        : mcpMarketSources[0]?.id,
+    );
   }, [
     currentPage,
     isMcpStoreGroupExpanded,
+    mcpMarketSources,
+    mcpSelectedMarketSourceId,
     mcpSelectedTab,
     openMcpStoreSource,
   ]);
@@ -1979,7 +1993,6 @@ export function Sidebar({
                   <NavItem
                     icon={<StoreIcon className="w-5 h-5" />}
                     label={t("mcp.mcpStore", "MCP Store")}
-                    count={mcpMarketTemplates.length}
                     active={mcpSelectedTab === "market"}
                     collapsed={isCollapsed}
                     onClick={handleMcpStoreNavClick}
@@ -1994,24 +2007,6 @@ export function Sidebar({
                     className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide px-3 pb-3"
                   >
                     <div className="ml-4 mt-1 pl-3 pr-1 border-l border-sidebar-border/50 space-y-1">
-                      <button
-                        type="button"
-                        onClick={() => openMcpStoreSource("all")}
-                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                          mcpSelectedTab === "market" &&
-                          mcpSelectedMarketSourceId === "all"
-                            ? "bg-sidebar-accent text-sidebar-foreground"
-                            : "text-sidebar-foreground/60 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
-                        }`}
-                      >
-                        <StoreIcon className="w-4 h-4" aria-hidden="true" />
-                        <span className="flex-1 text-left truncate">
-                          {t("mcp.allSources", "All Sources")}
-                        </span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sidebar-accent/80 text-sidebar-foreground/50 border border-white/5">
-                          {mcpMarketTemplates.length}
-                        </span>
-                      </button>
                       {mcpMarketSources.map((source) => (
                         <button
                           key={source.id}

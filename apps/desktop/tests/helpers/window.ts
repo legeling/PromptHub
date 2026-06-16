@@ -86,6 +86,8 @@ export function createWindowApiMock(overrides?: DeepPartial<MockRecord>) {
         updateServer: vi.fn(),
         deleteServer: vi.fn(),
         installTemplate: vi.fn(),
+        installMarketTemplate: vi.fn(),
+        fetchRemoteContent: vi.fn(),
         preview: vi.fn().mockResolvedValue(""),
         apply: vi.fn(),
         remove: vi.fn(),
