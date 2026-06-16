@@ -38,7 +38,6 @@ import { StarIcon, CopyIcon, HistoryIcon, HashIcon, FolderIcon, SparklesIcon, Ed
 import { ContextMenu, ContextMenuItem } from '../ui/ContextMenu';
 import { ImagePreviewModal } from '../ui/ImagePreviewModal';
 import { LocalImage } from '../ui/LocalImage';
-import { handleMarkdownListKeyDown } from '../ui/Textarea';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { ColumnResizer } from '../ui/ColumnResizer';
 import { useToast } from '../ui/Toast';
@@ -58,6 +57,7 @@ import { PromptRelationshipPanel } from '../prompt/PromptRelationshipPanel';
 import { PromptAiResponsePanel } from '../prompt/PromptAiResponsePanel';
 import { PromptDetailMetadata } from '../prompt/PromptDetailMetadata';
 import { PromptViewContainers } from '../prompt/PromptViewContainers';
+import { PromptContentField } from '../prompt/PromptContentField';
 import {
   filterVisiblePrompts,
   sortVisiblePrompts,
@@ -2604,75 +2604,45 @@ function PromptSkillMainContent() {
 
                   {/* System Prompt */}
                   {((showEnglish ? selectedPrompt.systemPromptEn : selectedPrompt.systemPrompt) || isDetailInlineEditing) && (
-                    <div className="mb-4">
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                          {t('prompt.systemPromptLabel', 'System Prompt')}
-                          {showEnglish && <span className="px-1 py-0.5 rounded bg-primary/10 text-primary text-[10px]">EN</span>}
-                        </span>
-                      </div>
-                      {isDetailInlineEditing ? (
-                        <textarea
-                          ref={detailSystemPromptTextareaRef}
-                            aria-label={t('prompt.systemPromptLabel', 'System Prompt')}
-                            value={detailInlineDraft.systemPrompt}
-                            onChange={(event) => {
-                              const nextSystemPrompt = event.target.value;
-                              setDetailInlineDraft((prev) => ({
-                                ...prev,
-                                systemPrompt: nextSystemPrompt,
-                              }));
-                            }}
-                            onKeyDown={(event) => {
-                              const handled = handleMarkdownListKeyDown(
-                                event,
-                                detailInlineDraft.systemPrompt,
-                                (newValue, cursorPos) => {
-                                  setDetailInlineDraft((prev) => ({
-                                    ...prev,
-                                    systemPrompt: newValue,
-                                  }));
-                                  requestAnimationFrame(() => {
-                                    detailSystemPromptTextareaRef.current?.setSelectionRange(cursorPos, cursorPos);
-                                  });
-                                },
-                              );
-                              if (handled) {
-                                return;
-                              }
-                              handleDetailInlineEditKeyDown(event);
-                            }}
-                          className="w-full min-h-[120px] resize-none rounded-xl border border-border/70 bg-card px-4 py-3 text-[15px] leading-relaxed text-foreground shadow-sm outline-none appearance-none placeholder:text-muted-foreground focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
-                          rows={4}
-                          spellCheck={false}
-                        />
-                      ) : (
-                        <div
-                          role="button"
-                          tabIndex={0}
-                          aria-label={t('prompt.inlineEditSystemPromptAria', 'Double-click to edit system prompt')}
-                          onDoubleClick={() => openDetailInlineEdit('systemPrompt')}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter' || event.key === ' ') {
-                              event.preventDefault();
-                              openDetailInlineEdit('systemPrompt');
-                            }
-                          }}
-                          className="cursor-text rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                        >
-                          {renderPromptContent(showEnglish ? (selectedPrompt.systemPromptEn || '') : (selectedPrompt.systemPrompt || ''))}
-                        </div>
+                    <PromptContentField
+                      label={t('prompt.systemPromptLabel', 'System Prompt')}
+                      showEnglishBadge={showEnglish}
+                      isEditing={isDetailInlineEditing}
+                      value={detailInlineDraft.systemPrompt}
+                      onChange={(next) =>
+                        setDetailInlineDraft((prev) => ({ ...prev, systemPrompt: next }))
+                      }
+                      textareaRef={detailSystemPromptTextareaRef}
+                      onEditKeyDown={handleDetailInlineEditKeyDown}
+                      onStartEdit={() => openDetailInlineEdit('systemPrompt')}
+                      renderedContent={renderPromptContent(
+                        showEnglish ? (selectedPrompt.systemPromptEn || '') : (selectedPrompt.systemPrompt || ''),
                       )}
-                    </div>
+                      editAriaLabel={t('prompt.inlineEditSystemPromptAria', 'Double-click to edit system prompt')}
+                      textareaClassName="w-full min-h-[120px] resize-none rounded-xl border border-border/70 bg-card px-4 py-3 text-[15px] leading-relaxed text-foreground shadow-sm outline-none appearance-none placeholder:text-muted-foreground focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
+                      rows={4}
+                    />
                   )}
 
                   {/* User Prompt */}
-                  <div className="mb-4">
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                        {t('prompt.userPromptLabel', 'User Prompt')}
-                        {showEnglish && <span className="px-1 py-0.5 rounded bg-primary/10 text-primary text-[10px]">EN</span>}
-                      </span>
+                  <PromptContentField
+                    label={t('prompt.userPromptLabel', 'User Prompt')}
+                    showEnglishBadge={showEnglish}
+                    isEditing={isDetailInlineEditing}
+                    value={detailInlineDraft.userPrompt}
+                    onChange={(next) =>
+                      setDetailInlineDraft((prev) => ({ ...prev, userPrompt: next }))
+                    }
+                    textareaRef={detailUserPromptTextareaRef}
+                    onEditKeyDown={handleDetailInlineEditKeyDown}
+                    onStartEdit={() => openDetailInlineEdit('userPrompt')}
+                    renderedContent={renderPromptContent(
+                      showEnglish ? (selectedPrompt.userPromptEn || selectedPrompt.userPrompt) : selectedPrompt.userPrompt,
+                    )}
+                    editAriaLabel={t('prompt.inlineEditUserPromptAria', 'Double-click to edit user prompt')}
+                    textareaClassName="w-full min-h-[280px] resize-none rounded-xl border border-border/70 bg-card px-4 py-3 text-[15px] leading-relaxed text-foreground shadow-sm outline-none appearance-none placeholder:text-muted-foreground focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
+                    rows={12}
+                    headerAction={
                       <button
                         type="button"
                         onClick={toggleRenderMarkdown}
@@ -2681,60 +2651,8 @@ function PromptSkillMainContent() {
                       >
                         {renderMarkdownEnabled ? t('prompt.viewRaw', 'Show Plain Text') : t('prompt.viewMarkdown', 'Markdown')}
                       </button>
-                    </div>
-                    {isDetailInlineEditing ? (
-                      <textarea
-                        ref={detailUserPromptTextareaRef}
-                        aria-label={t('prompt.userPromptLabel', 'User Prompt')}
-                        value={detailInlineDraft.userPrompt}
-                        onChange={(event) => {
-                          const nextUserPrompt = event.target.value;
-                          setDetailInlineDraft((prev) => ({
-                            ...prev,
-                            userPrompt: nextUserPrompt,
-                          }));
-                        }}
-                        onKeyDown={(event) => {
-                          const handled = handleMarkdownListKeyDown(
-                            event,
-                            detailInlineDraft.userPrompt,
-                            (newValue, cursorPos) => {
-                              setDetailInlineDraft((prev) => ({
-                                ...prev,
-                                userPrompt: newValue,
-                              }));
-                              requestAnimationFrame(() => {
-                                detailUserPromptTextareaRef.current?.setSelectionRange(cursorPos, cursorPos);
-                              });
-                            },
-                          );
-                          if (handled) {
-                            return;
-                          }
-                          handleDetailInlineEditKeyDown(event);
-                        }}
-                        className="w-full min-h-[280px] resize-none rounded-xl border border-border/70 bg-card px-4 py-3 text-[15px] leading-relaxed text-foreground shadow-sm outline-none appearance-none placeholder:text-muted-foreground focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
-                        rows={12}
-                        spellCheck={false}
-                      />
-                    ) : (
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        aria-label={t('prompt.inlineEditUserPromptAria', 'Double-click to edit user prompt')}
-                        onDoubleClick={() => openDetailInlineEdit('userPrompt')}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault();
-                            openDetailInlineEdit('userPrompt');
-                          }
-                        }}
-                        className="cursor-text rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                      >
-                        {renderPromptContent(showEnglish ? (selectedPrompt.userPromptEn || selectedPrompt.userPrompt) : selectedPrompt.userPrompt)}
-                      </div>
-                    )}
-                  </div>
+                    }
+                  />
 
                   {/* Multi-model comparison */}
                   {/* 多模型对比区域 */}
