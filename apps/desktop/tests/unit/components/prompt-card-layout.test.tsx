@@ -27,7 +27,7 @@ const prompt: Prompt = {
 };
 
 describe("PromptCard layout", () => {
-  it("keeps hierarchy controls in a fixed rail so the title is not pushed by optional controls", async () => {
+  it("indents nested cards by depth and keeps the title flexible", async () => {
     await renderWithI18n(
       <PromptCard
         prompt={prompt}
@@ -56,7 +56,6 @@ describe("PromptCard layout", () => {
     expect(screen.getByTestId("prompt-card-title-row")).toHaveStyle({
       paddingLeft: "36px",
     });
-    expect(screen.getByTestId("prompt-card-control-rail")).toHaveClass("w-10");
     expect(screen.getByTestId("prompt-card-title")).toHaveClass("min-w-0");
   });
 });

@@ -234,7 +234,7 @@ export const PromptCard = memo(function PromptCard({
         ${isDropTarget && dropPosition === 'inside' ? 'ring-2 ring-primary/40 ring-inset' : ''}
         ${isDropTarget && dropPosition === 'before' ? 'border-t-2 border-t-primary' : ''}
         ${isDropTarget && dropPosition === 'after' ? 'border-b-2 border-b-primary' : ''}
-        ${depth > 0 && !isSelected ? 'border-l-2 border-l-primary/30 bg-primary/[0.03]' : ''}
+        ${depth > 0 && !isSelected ? 'bg-primary/[0.03]' : ''}
       `}
     >
       {depth > 0 && (
@@ -254,49 +254,44 @@ export const PromptCard = memo(function PromptCard({
       <div className="flex items-center justify-between gap-2">
         <div
           data-testid="prompt-card-title-row"
-          className="flex min-w-0 flex-1 items-center gap-2"
+          className="flex min-w-0 flex-1 items-center gap-1"
           style={{ paddingLeft: `${depthIndent}px` }}
         >
-          <div
-            data-testid="prompt-card-control-rail"
-            className="flex w-10 shrink-0 items-center justify-between"
+          <GripVerticalIcon
+            aria-hidden="true"
+            className={`h-3.5 w-3.5 shrink-0 cursor-grab ${isSelected ? 'text-white/65' : 'text-muted-foreground/55'}`}
+          />
+          <button
+            type="button"
+            disabled={!canCollapse}
+            aria-label={t(isCollapsed ? 'prompt.expandPrompt' : 'prompt.collapsePrompt', {
+              title: prompt.title,
+            })}
+            title={t(isCollapsed ? 'prompt.expandPrompt' : 'prompt.collapsePrompt', {
+              title: prompt.title,
+            })}
+            onClick={(event) => {
+              event.stopPropagation();
+              if (canCollapse) {
+                onToggleCollapse();
+              }
+            }}
+            className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-colors ${
+              canCollapse
+                ? isSelected
+                  ? 'text-white/80 hover:bg-white/15'
+                  : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                : 'text-transparent'
+            }`}
           >
-            <button
-              type="button"
-              disabled={!canCollapse}
-              aria-label={t(isCollapsed ? 'prompt.expandPrompt' : 'prompt.collapsePrompt', {
-                title: prompt.title,
-              })}
-              title={t(isCollapsed ? 'prompt.expandPrompt' : 'prompt.collapsePrompt', {
-                title: prompt.title,
-              })}
-              onClick={(event) => {
-                event.stopPropagation();
-                if (canCollapse) {
-                  onToggleCollapse();
-                }
-              }}
-              className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-colors ${
-                canCollapse
-                  ? isSelected
-                    ? 'text-white/80 hover:bg-white/15'
-                    : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                  : 'text-transparent'
-              }`}
-            >
-              {canCollapse && (
-                isCollapsed ? (
-                  <ChevronRightIcon aria-hidden="true" className="h-3.5 w-3.5" />
-                ) : (
-                  <ChevronDownIcon aria-hidden="true" className="h-3.5 w-3.5" />
-                )
-              )}
-            </button>
-            <GripVerticalIcon
-              aria-hidden="true"
-              className={`h-3.5 w-3.5 shrink-0 cursor-grab ${isSelected ? 'text-white/65' : 'text-muted-foreground/55'}`}
-            />
-          </div>
+            {canCollapse && (
+              isCollapsed ? (
+                <ChevronRightIcon aria-hidden="true" className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronDownIcon aria-hidden="true" className="h-3.5 w-3.5" />
+              )
+            )}
+          </button>
           <h3
             data-testid="prompt-card-title"
             className="min-w-0 flex-1 break-words text-sm font-medium leading-snug line-clamp-2"
