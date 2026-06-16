@@ -446,7 +446,9 @@ let mainWindow: BrowserWindow | null = null;
 let lastPercent = 0; // Track last progress to prevent regression
 // 跟踪上次进度，防止进度回退
 
-const isMac = process.platform === "darwin";
+function isMacPlatform(): boolean {
+  return process.platform === "darwin";
+}
 
 function normalizeRealPath(inputPath: string): string {
   try {
@@ -457,7 +459,7 @@ function normalizeRealPath(inputPath: string): string {
 }
 
 export function detectMacInstallSource(executablePath: string = process.execPath): MacInstallSource {
-  if (!isMac) {
+  if (!isMacPlatform()) {
     return "unknown";
   }
 
@@ -593,7 +595,7 @@ export function initUpdater(win: BrowserWindow) {
     console.info("Update available:", info.version);
     // macOS: store update info for later DMG download
     // macOS: 保存更新信息，供后续 DMG 下载使用
-    if (isMac) {
+    if (isMacPlatform()) {
       lastUpdateInfo = info;
       console.log(
         `[Updater/macDMG] Stored update info: v${info.version}, files:`,
@@ -962,7 +964,7 @@ export function registerUpdaterIPC() {
   });
 
   ipcMain.handle("updater:installSource", () => {
-    return isMac ? getMacInstallSource() : "unknown";
+    return isMacPlatform() ? getMacInstallSource() : "unknown";
   });
 
   // 检查更新
@@ -1055,7 +1057,7 @@ export function registerUpdaterIPC() {
 
     // macOS: bypass Squirrel, download DMG directly to ~/Downloads
     // macOS: 绕过 Squirrel，直接下载 DMG 到 ~/Downloads
-    if (isMac) {
+    if (isMacPlatform()) {
       if (getMacInstallSource() === "homebrew") {
         return {
           success: false,
@@ -1122,7 +1124,7 @@ export function registerUpdaterIPC() {
         fromVersion: app.getVersion(),
       });
 
-      if (isMac) {
+      if (isMacPlatform()) {
         if (getMacInstallSource() === "homebrew") {
           return {
             success: false,
@@ -1187,7 +1189,7 @@ export function registerUpdaterIPC() {
   ipcMain.handle("updater:openDownloadedUpdate", async () => {
     // macOS: show the downloaded DMG in Finder
     // macOS: 在 Finder 中显示已下载的 DMG
-    if (isMac && macDownloadedDmgPath && fs.existsSync(macDownloadedDmgPath)) {
+    if (isMacPlatform() && macDownloadedDmgPath && fs.existsSync(macDownloadedDmgPath)) {
       shell.showItemInFolder(macDownloadedDmgPath);
       return { success: true, path: macDownloadedDmgPath };
     }

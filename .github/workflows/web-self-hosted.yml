@@ -50,6 +50,8 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Verify self-hosted web
+        env:
+          JWT_SECRET: test-secret-for-web-ci-verify-1234567890
         run: pnpm verify:web
 
       - name: Validate Docker Compose

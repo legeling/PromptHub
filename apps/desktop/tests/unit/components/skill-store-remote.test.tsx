@@ -228,7 +228,7 @@ describe("SkillStore remote loading", () => {
       expect(getByText("Failed to load remote store")).toBeInTheDocument();
       expect(
         getByText(
-          "GitHub API rate limit reached. Try again in a few minutes, or switch to another network and retry.",
+          "GitHub API rate limit reached. Try again in a few minutes, or switch this repository URL to SSH to avoid the anonymous API limit.",
         ),
       ).toBeInTheDocument();
     });
