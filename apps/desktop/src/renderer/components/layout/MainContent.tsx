@@ -38,11 +38,10 @@ const loadingFallback = (
     <Spinner />
   </div>
 );
-import { StarIcon, CopyIcon, HistoryIcon, HashIcon, FolderIcon, SparklesIcon, EditIcon, TrashIcon, CheckIcon, PlayIcon, LoaderIcon, XIcon, GitCompareIcon, ClockIcon, GlobeIcon, PinIcon, MessageSquareTextIcon, ImageIcon, SaveIcon, Share2Icon, GripVerticalIcon, CornerDownRightIcon, GitBranchIcon, ChevronDownIcon, ChevronRightIcon } from 'lucide-react';
+import { StarIcon, CopyIcon, HistoryIcon, HashIcon, FolderIcon, SparklesIcon, EditIcon, TrashIcon, CheckIcon, PlayIcon, LoaderIcon, XIcon, GitCompareIcon, GlobeIcon, PinIcon, ImageIcon, SaveIcon, Share2Icon, GripVerticalIcon, CornerDownRightIcon, GitBranchIcon, ChevronDownIcon, ChevronRightIcon } from 'lucide-react';
 import { ContextMenu, ContextMenuItem } from '../ui/ContextMenu';
 import { ImagePreviewModal } from '../ui/ImagePreviewModal';
 import { LocalImage } from '../ui/LocalImage';
-import { Select } from '../ui/Select';
 import { handleMarkdownListKeyDown } from '../ui/Textarea';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { ColumnResizer } from '../ui/ColumnResizer';
@@ -61,6 +60,7 @@ import { resolvePromptMarkdownHref } from '../prompt/prompt-markdown-url';
 import { PromptQuickRewriteTrigger } from '../prompt/PromptQuickRewriteTrigger';
 import { PromptRelationshipPanel } from '../prompt/PromptRelationshipPanel';
 import { PromptAiResponsePanel } from '../prompt/PromptAiResponsePanel';
+import { PromptDetailMetadata } from '../prompt/PromptDetailMetadata';
 import {
   filterVisiblePrompts,
   sortVisiblePrompts,
@@ -2491,96 +2491,19 @@ function PromptSkillMainContent() {
                     )}
                     </div>
 
-                  {/* Metadata */}
-                  {/* 元信息 */}
-                  <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ${
-                      (selectedPrompt.promptType || 'text') === 'image'
-                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
-                        : (selectedPrompt.promptType || 'text') === 'video'
-                          ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300'
-                          : 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
-                    }`}>
-                      {(selectedPrompt.promptType || 'text') === 'image' ? (
-                        <ImageIcon className="h-3 w-3" />
-                      ) : (
-                        <MessageSquareTextIcon className="h-3 w-3" />
-                      )}
-                      {(selectedPrompt.promptType || 'text') === 'image'
-                        ? t('prompt.typeImage')
-                        : (selectedPrompt.promptType || 'text') === 'video'
-                          ? t('prompt.videoLabel')
-                          : t('prompt.typeText')
-                      }
-                    </span>
-                    <Select
-                      ariaLabel={t('prompt.folderOptional')}
-                      value={selectedPrompt.folderId ?? ''}
-                      options={detailFolderOptions}
-                      onChange={(folderId) => {
-                        void handleMovePrompt(selectedPrompt, folderId || null);
-                      }}
-                      className="min-w-[12rem] max-w-[22rem]"
-                      triggerClassName="flex h-7 w-full cursor-pointer items-center justify-between gap-2 rounded-full border border-border bg-card px-3 text-left text-xs font-medium text-foreground shadow-sm transition-all duration-quick hover:bg-accent/40 focus:outline-none focus:ring-2 focus:ring-primary/30"
-                    />
-                    <span className="flex items-center gap-1">
-                      <ClockIcon className="w-3.5 h-3.5" />
-                      {new Date(selectedPrompt.updatedAt).toLocaleString()}
-                    </span>
-                    <span className="px-2 py-0.5 rounded-md bg-accent text-accent-foreground text-xs font-medium">
-                      v{selectedPrompt.version}
-                    </span>
-                  </div>
-
-                  {(selectedParentPrompt || selectedChildPrompts.length > 0) && (
-                    <div className="mb-4 flex flex-wrap items-center gap-2 border-l-2 border-primary/40 pl-3 text-xs">
-                      {selectedParentPrompt && (
-                        <button
-                          type="button"
-                          onClick={() => selectPrompt(selectedParentPrompt.id)}
-                          aria-label={t('prompt.openParentPrompt', {
-                            title: selectedParentPrompt.title,
-                          })}
-                          className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border/70 bg-card px-2.5 py-1 text-muted-foreground shadow-sm transition-colors hover:border-primary/40 hover:text-primary"
-                        >
-                          <CornerDownRightIcon aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
-                          <span className="shrink-0">{t('prompt.parentPrompt')}</span>
-                          <span className="max-w-[16rem] truncate text-foreground">
-                            {selectedParentPrompt.title}
-                          </span>
-                        </button>
-                      )}
-
-                      {selectedChildPrompts.length > 0 && (
-                        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                          <span className="inline-flex items-center gap-1 text-muted-foreground">
-                            <GitBranchIcon aria-hidden="true" className="h-3.5 w-3.5" />
-                            {t('prompt.childPrompts')}
-                          </span>
-                          {selectedChildPrompts.slice(0, 4).map((childPrompt) => (
-                            <button
-                              key={childPrompt.id}
-                              type="button"
-                              onClick={() => selectPrompt(childPrompt.id)}
-                              aria-label={t('prompt.openChildPrompt', {
-                                title: childPrompt.title,
-                              })}
-                              className="max-w-[12rem] truncate rounded-full border border-border/70 bg-card px-2.5 py-1 text-foreground shadow-sm transition-colors hover:border-primary/40 hover:text-primary"
-                            >
-                              {childPrompt.title}
-                            </button>
-                          ))}
-                          {selectedChildPrompts.length > 4 && (
-                            <span className="rounded-full border border-border/70 bg-muted/40 px-2 py-1 text-muted-foreground">
-                              {t('prompt.moreChildPrompts', {
-                                count: selectedChildPrompts.length - 4,
-                              })}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  {/* Metadata + parent/child navigation */}
+                  {/* 元信息 + 父子导航 */}
+                  <PromptDetailMetadata
+                    prompt={selectedPrompt}
+                    parentPrompt={selectedParentPrompt}
+                    childPrompts={selectedChildPrompts}
+                    folderOptions={detailFolderOptions}
+                    t={t}
+                    onMoveToFolder={(prompt, folderId) => {
+                      void handleMovePrompt(prompt, folderId);
+                    }}
+                    onSelectPrompt={selectPrompt}
+                  />
 
                   <div className="mb-4">
                     <button
