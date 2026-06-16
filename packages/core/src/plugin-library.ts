@@ -115,16 +115,6 @@ export class CorePluginError extends Error {
 
 export const BUILTIN_PLUGIN_MARKET_SOURCES: PluginMarketSource[] = [
   {
-    id: "openai-curated",
-    displayName: "Codex official",
-    repository: "https://github.com/openai/plugins",
-    marketplaceFile: PLUGIN_MARKETPLACE_FILE,
-    rawJsonUrl:
-      "https://raw.githubusercontent.com/openai/plugins/main/.agents/plugins/marketplace.json",
-    trustLevel: "official",
-    description: "OpenAI curated Codex plugin marketplace.",
-  },
-  {
     id: "prompthub-official",
     displayName: "PromptHub Official",
     repository: "https://github.com/legeling/PromptHub",
@@ -133,6 +123,16 @@ export const BUILTIN_PLUGIN_MARKET_SOURCES: PluginMarketSource[] = [
       "https://raw.githubusercontent.com/legeling/PromptHub/main/.agents/plugins/marketplace.json",
     trustLevel: "official",
     description: "PromptHub official plugin marketplace.",
+  },
+  {
+    id: "openai-curated",
+    displayName: "Codex official",
+    repository: "https://github.com/openai/plugins",
+    marketplaceFile: PLUGIN_MARKETPLACE_FILE,
+    rawJsonUrl:
+      "https://raw.githubusercontent.com/openai/plugins/main/.agents/plugins/marketplace.json",
+    trustLevel: "official",
+    description: "OpenAI curated Codex plugin marketplace.",
   },
 ];
 

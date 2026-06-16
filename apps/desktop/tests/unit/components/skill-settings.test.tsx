@@ -376,6 +376,42 @@ describe("SkillSettings", () => {
     );
   });
 
+  it("shows Plugin directories only for Agent Plugin package targets", async () => {
+    useSettingsStoreMock.mockReturnValue(createSettingsState());
+
+    await act(async () => {
+      await renderWithI18n(<SkillSettings />, { language: "en" });
+    });
+
+    const configSection = screen
+      .getByText("Agent Configurations")
+      .closest("section, div");
+    expect(configSection).toBeTruthy();
+
+    const codexCard = within(configSection as HTMLElement)
+      .getAllByText("Codex CLI")[0]
+      .closest("[data-platform-config-id]");
+    expect(codexCard).toBeTruthy();
+    expect(
+      within(codexCard as HTMLElement).getByText(/Derived Plugin directories/),
+    ).toBeInTheDocument();
+    expect(
+      within(codexCard as HTMLElement).getByText(
+        /plugins[\\/]cache[\\/]prompthub/,
+      ),
+    ).toBeInTheDocument();
+
+    const clineCard = within(configSection as HTMLElement)
+      .getAllByText("Cline")[0]
+      .closest("[data-platform-config-id]");
+    expect(clineCard).toBeTruthy();
+    expect(
+      within(clineCard as HTMLElement).queryByText(
+        /Derived Plugin directories/,
+      ),
+    ).not.toBeInTheDocument();
+  });
+
   it("resets built-in edit form without persisting until save", async () => {
     const settingsState = createSettingsState();
     useSettingsStoreMock.mockReturnValue({

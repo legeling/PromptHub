@@ -1435,7 +1435,7 @@ export function PluginManager() {
       return;
     }
     const fallback =
-      marketSources.find((source) => source.id === "openai-curated") ??
+      marketSources.find((source) => source.id === "prompthub-official") ??
       marketSources[0];
     setSelectedMarketSourceId(fallback.id);
   }, [marketSources, selectedMarketSourceId, setSelectedMarketSourceId]);

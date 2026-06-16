@@ -1063,6 +1063,13 @@ describe("Sidebar", () => {
       })),
       marketSources: [
         {
+          id: "prompthub-official",
+          displayName: "PromptHub Official Store",
+          repository: "https://github.com/legeling/PromptHub",
+          marketplaceFile: ".agents/plugins/marketplace.json",
+          trustLevel: "official",
+        },
+        {
           id: "openai-curated",
           displayName: "Codex Official Store",
           repository: "https://github.com/openai/plugins",
@@ -1071,21 +1078,28 @@ describe("Sidebar", () => {
         },
       ],
       selectedTab: "market",
-      selectedMarketSourceId: "openai-curated",
+      selectedMarketSourceId: "prompthub-official",
     } as Partial<ReturnType<typeof usePluginStore.getState>>);
 
     await act(async () => {
       await renderWithI18n(
         <Sidebar currentPage="home" onNavigate={vi.fn()} />,
-        { language: "en" },
+        { language: "zh" },
       );
     });
 
     const pluginsStoreButton = screen.getByRole("button", {
-      name: /Plugins Store/i,
+      name: /Plugins 商店/i,
     });
 
     expect(within(pluginsStoreButton).queryByText("173")).toBeNull();
+    expect(
+      screen
+        .getByRole("button", { name: /PromptHub 官方商店/i })
+        .compareDocumentPosition(
+          screen.getByRole("button", { name: /Codex 官方商店/i }),
+        ),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
   it("keeps Rules visible but hides project-directory actions in web runtime", async () => {

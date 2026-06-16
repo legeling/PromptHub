@@ -67,7 +67,7 @@ export const usePluginStore = create<PluginState>((set, get) => ({
   marketSources: [],
   targetMatrix: [],
   selectedTab: "market",
-  selectedMarketSourceId: "openai-curated",
+  selectedMarketSourceId: "prompthub-official",
   searchQuery: "",
   isLoading: false,
   error: null,
