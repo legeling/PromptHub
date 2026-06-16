@@ -21,6 +21,8 @@ const marketplaceUrl =
   "https://raw.example.test/plugins/.agents/plugins/marketplace.json";
 const bundleManifestUrl =
   "https://raw.example.test/plugins/plugins/bundle/.codex-plugin/plugin.json";
+const githubTreeUrl =
+  "https://api.github.com/repos/example/plugins/git/trees/main?recursive=1";
 const bundleIconUrl =
   "https://raw.example.test/plugins/plugins/bundle/assets/icon.png";
 const bundleLogoUrl =
@@ -202,6 +204,42 @@ describe("CorePluginLibraryService", () => {
       inventory: { skills: 1, apps: 1 },
     });
     expect(service.read().plugins).toEqual([]);
+  });
+
+  it("expands directory-based manifest skills from the GitHub repository tree", async () => {
+    const fetchFn = createFetchMock({
+      [marketplaceUrl]: createMarketplaceFixture(),
+      [bundleManifestUrl]: JSON.stringify({
+        name: "bundle",
+        version: "1.2.3",
+        description: "Directory based skills",
+        skills: "./skills/",
+        apps: "./.app.json",
+      }),
+      [githubTreeUrl]: JSON.stringify({
+        tree: [
+          { path: "plugins/bundle/skills/triage/SKILL.md", type: "blob" },
+          { path: "plugins/bundle/skills/summarize/SKILL.md", type: "blob" },
+          { path: "plugins/bundle/skills/release/SKILL.md", type: "blob" },
+          { path: "plugins/bundle/skills/release/README.md", type: "blob" },
+          {
+            path: "plugins/other/skills/not-this-plugin/SKILL.md",
+            type: "blob",
+          },
+        ],
+      }),
+    });
+    const service = new CorePluginLibraryService({
+      fetchFn,
+      marketSources: [marketSource],
+    });
+
+    const preview = await service.previewMarketPlugin("test-market:bundle");
+
+    expect(fetchFn).toHaveBeenCalledWith(githubTreeUrl, expect.any(Object));
+    expect(preview.inventory).toMatchObject({ skills: 3, apps: 1 });
+    expect(preview.entry.inventory).toMatchObject({ skills: 3, apps: 1 });
+    expect(preview.classification).toBe("bundle");
   });
 
   it("caches marketplace preview metadata for later store listings", async () => {

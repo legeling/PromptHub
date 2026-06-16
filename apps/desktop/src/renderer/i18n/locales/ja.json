@@ -2654,11 +2654,11 @@
     "title": "プラグイン",
     "subtitle": "完全な能力バンドルとエージェントターゲットを管理します。",
     "myPlugins": "マイプラグイン",
-    "pluginStore": "Official Store",
+    "pluginStore": "Plugins ストア",
     "pluginTargets": "Agent Plugin",
     "sources": {
       "codexOfficial": "Codex 公式ストア",
-      "promptHubOfficial": "公式ストア"
+      "promptHubOfficial": "PromptHub 公式ストア"
     },
     "inventory": {
       "skills": "Skills",
@@ -2737,7 +2737,7 @@
     "targetDisabledDesc": "This agent does not expose a complete Plugin bundle surface yet.",
     "noMyPluginsForAgent": "No My Plugins yet",
     "noMyPluginsForAgentDesc": "Install Plugin bundles from the Official Store before distributing assets to this agent target.",
-    "openOfficialStore": "Open Official Store",
+    "openOfficialStore": "Plugins ストアを開く",
     "inMyPlugins": "In My Plugins",
     "openPluginFolder": "Open Plugin folder",
     "nativeMarker": "ネイティブマーカー",

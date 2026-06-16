@@ -45,6 +45,11 @@
 - Simplified Official Store card metadata:
   - Built-in official-source cards no longer render a redundant standalone `Official` trust chip when the source chip already says `Codex official store` or `Official Store`.
   - Inventory chips now render human-readable included capability counts, such as `Includes 1 Skill` / `包含 1 个 Skill`, instead of raw key/count notation like `Skills · 1`.
+- Clarified Plugin Store naming and card inventory semantics:
+  - The store surface is now labeled `Plugins Store` / `Plugins 商店`, while concrete source provenance remains `Codex Official Store` / `Codex 官方商店` or `PromptHub Official Store` / `PromptHub 官方商店`.
+  - Store cards use a compact user-facing inventory summary and no longer render `Apps` connector/auth chips as primary card metadata; the full inventory is still shown in detail modals.
+  - Official GitHub/Codex manifests that declare `skills` as a directory are expanded against the repository tree so nested `SKILL.md` files are counted instead of treating `./skills/` as one Skill.
+  - GitHub tree responses are cached in memory per source URL during preview/background enrichment to avoid one tree request per visible card; failed tree lookups fall back to manifest-field counts.
 - Added Plugin navigation to the desktop home rail/sidebar and the Appearance settings home-module list.
 - Added Plugin i18n keys across all seven desktop locales.
 
@@ -57,6 +62,7 @@
 - `pnpm --filter @prompthub/desktop test:run tests/unit/components/plugin-manager.test.tsx tests/unit/components/top-bar.test.tsx -- --runInBand`
 - `pnpm --filter @prompthub/desktop test:run tests/unit/main/plugin-library.test.ts tests/unit/components/plugin-manager.test.tsx -- --runInBand`
 - `pnpm --filter @prompthub/desktop test:run tests/unit/components/plugin-manager.test.tsx -- --runInBand`
+- `pnpm --filter @prompthub/desktop test:run tests/unit/components/plugin-manager.test.tsx tests/unit/main/plugin-library.test.ts -- --runInBand`
 - `pnpm --filter @prompthub/desktop build`
 - `pnpm exec prettier --check apps/desktop/src/renderer/stores/plugin.store.ts apps/desktop/src/renderer/components/layout/Sidebar.tsx apps/desktop/src/renderer/components/layout/TopBar.tsx apps/desktop/src/renderer/components/plugin/PluginManager.tsx apps/desktop/tests/unit/components/plugin-manager.test.tsx apps/desktop/tests/unit/components/top-bar.test.tsx spec/changes/active/plugin-management/specs/plugins/spec.md spec/changes/active/plugin-management/tasks.md spec/changes/active/plugin-management/implementation.md`
 - `pnpm exec prettier --check packages/shared/types/plugin.ts packages/core/src/plugin-library.ts apps/desktop/src/main/ipc/plugin.ipc.ts apps/desktop/src/preload/api/plugin.ts apps/desktop/src/renderer/stores/plugin.store.ts apps/desktop/src/renderer/components/plugin/PluginManager.tsx apps/desktop/tests/unit/main/plugin-library.test.ts apps/desktop/src/renderer/i18n/locales/en.json apps/desktop/src/renderer/i18n/locales/zh.json apps/desktop/src/renderer/i18n/locales/zh-TW.json apps/desktop/src/renderer/i18n/locales/ja.json apps/desktop/src/renderer/i18n/locales/fr.json apps/desktop/src/renderer/i18n/locales/de.json apps/desktop/src/renderer/i18n/locales/es.json spec/changes/active/plugin-management/proposal.md spec/changes/active/plugin-management/design.md spec/changes/active/plugin-management/specs/plugins/spec.md spec/changes/active/plugin-management/tasks.md spec/changes/active/plugin-management/implementation.md spec/knowledge/behavior/plugins.md .agents/plugins/marketplace.json`

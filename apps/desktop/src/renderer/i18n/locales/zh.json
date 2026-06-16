@@ -2692,11 +2692,11 @@
     "title": "Plugins",
     "subtitle": "管理完整 Plugin 能力包及其 Agent Plugin 目标。",
     "myPlugins": "My Plugins",
-    "pluginStore": "官方商店",
+    "pluginStore": "Plugins 商店",
     "pluginTargets": "Agent Plugin",
     "sources": {
       "codexOfficial": "Codex 官方商店",
-      "promptHubOfficial": "官方商店"
+      "promptHubOfficial": "PromptHub 官方商店"
     },
     "inventory": {
       "skills": "Skills",
@@ -2775,7 +2775,7 @@
     "targetDisabledDesc": "该 Agent 还没有暴露完整 Plugin 能力包入口。",
     "noMyPluginsForAgent": "暂无 My Plugins",
     "noMyPluginsForAgentDesc": "先从官方商店安装 Plugin 能力包，再把子资产分发到这个 Agent 目标。",
-    "openOfficialStore": "打开官方商店",
+    "openOfficialStore": "打开 Plugins 商店",
     "inMyPlugins": "已在 My Plugins 中",
     "openPluginFolder": "打开 Plugin 文件夹",
     "nativeMarker": "原生标记",

@@ -48,6 +48,13 @@ const tabIconClassName = "h-4 w-4";
 const AGENT_PLUGIN_HEADER_CLASS =
   "h-[132px] border-b border-border app-wallpaper-panel-strong";
 const MARKET_PREVIEW_PREFETCH_CONCURRENCY = 6;
+const MARKET_CARD_INVENTORY_KEYS: Array<keyof PluginInventorySummary> = [
+  "skills",
+  "mcpServers",
+  "commands",
+  "agents",
+  "lspServers",
+];
 const SAFE_PLUGIN_ICON_DATA_URL_PATTERN =
   /^data:image\/(?:png|jpeg|jpg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/i;
 
@@ -114,6 +121,36 @@ function getInventoryChipLabel(
 function InventoryChips({ inventory }: { inventory: PluginInventorySummary }) {
   const { t } = useTranslation();
   const chips = PLUGIN_INVENTORY_KEYS.map((key) => ({
+    key,
+    label: getInventoryChipLabel(key, inventory[key], t),
+    count: inventory[key],
+  })).filter((item) => item.count > 0);
+
+  if (chips.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {chips.map((chip) => (
+        <span
+          key={chip.key}
+          className="rounded-full border border-border bg-muted/50 px-2 py-1 text-xs text-muted-foreground"
+        >
+          {chip.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function MarketCardInventoryChips({
+  inventory,
+}: {
+  inventory: PluginInventorySummary;
+}) {
+  const { t } = useTranslation();
+  const chips = MARKET_CARD_INVENTORY_KEYS.map((key) => ({
     key,
     label: getInventoryChipLabel(key, inventory[key], t),
     count: inventory[key],
@@ -533,7 +570,7 @@ function MarketCard({
           </div>
           {activeInventory ? (
             <div className="mt-2">
-              <InventoryChips inventory={activeInventory} />
+              <MarketCardInventoryChips inventory={activeInventory} />
             </div>
           ) : null}
         </div>

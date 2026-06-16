@@ -133,7 +133,9 @@ PromptHub MUST provide a Plugin Store model that can represent official, verifie
 - **WHEN** PromptHub renders the entry
 - **THEN** the entry shows source/provenance and does not imply community entries are first-party
 - **AND** official-source cards do not render a second standalone official trust badge when the source label already communicates the official source
-- **AND** child inventory chips use human-readable capability counts instead of raw inventory key/count notation
+- **AND** the store page title uses the Plugin surface name, such as `Plugins Store` or `Plugins 商店`, while individual sources use provenance labels such as `Codex Official Store` or `Codex 官方商店`
+- **AND** card-level child inventory chips use human-readable user-facing capability counts instead of raw inventory key/count notation
+- **AND** card-level inventory does not surface connector/auth implementation details such as `Apps` as a primary card chip; the full inventory remains visible in detail
 
 #### Scenario: Plugin Store uses app-shell search and card-level detail
 
@@ -152,6 +154,7 @@ PromptHub MUST provide a Plugin Store model that can represent official, verifie
 - **THEN** the card uses the manifest display name, richer description, official icon/logo, brand color, inventory, and semantic classification when available
 - **AND** the card falls back to the marketplace entry only when manifest preview metadata is not available yet
 - **AND** invalid, unsafe, non-HTTP, or package-escaping icon/logo paths are not rendered
+- **AND** when an official GitHub manifest declares `skills` as a directory path, PromptHub expands the repository tree and counts nested `SKILL.md` files instead of treating the directory string as one Skill
 
 #### Scenario: Plugin Store reuses cached manifest presentation metadata
 

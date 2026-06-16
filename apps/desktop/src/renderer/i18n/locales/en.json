@@ -2692,11 +2692,11 @@
     "title": "Plugins",
     "subtitle": "Manage complete Plugin bundles and their Agent Plugin targets.",
     "myPlugins": "My Plugins",
-    "pluginStore": "Official Store",
+    "pluginStore": "Plugins Store",
     "pluginTargets": "Agent Plugin",
     "sources": {
       "codexOfficial": "Codex Official Store",
-      "promptHubOfficial": "Official Store"
+      "promptHubOfficial": "PromptHub Official Store"
     },
     "inventory": {
       "skills": "Skills",
@@ -2775,7 +2775,7 @@
     "targetDisabledDesc": "This agent does not expose a complete Plugin bundle surface yet.",
     "noMyPluginsForAgent": "No My Plugins yet",
     "noMyPluginsForAgentDesc": "Install Plugin bundles from the Official Store before distributing assets to this agent target.",
-    "openOfficialStore": "Open Official Store",
+    "openOfficialStore": "Open Plugins Store",
     "inMyPlugins": "In My Plugins",
     "openPluginFolder": "Open Plugin folder",
     "nativeMarker": "Native marker",

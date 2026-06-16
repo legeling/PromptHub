@@ -88,6 +88,12 @@ type PackageMaterializer = (
   pluginId: string,
 ) => Promise<MaterializedPluginPackage>;
 
+interface GitHubRepositoryRef {
+  owner: string;
+  repo: string;
+  branch: string;
+}
+
 export class CorePluginError extends Error {
   code: string;
 
@@ -297,7 +303,9 @@ function normalizeMarketCache(
 ): PluginMarketCacheFile {
   const cache = defaultMarketCache();
   const rawEntries =
-    raw.entries && typeof raw.entries === "object" && !Array.isArray(raw.entries)
+    raw.entries &&
+    typeof raw.entries === "object" &&
+    !Array.isArray(raw.entries)
       ? raw.entries
       : {};
   for (const [id, value] of Object.entries(rawEntries)) {
@@ -414,6 +422,140 @@ function countManifestField(value: unknown): number {
     return Object.keys(value).length;
   }
   return 0;
+}
+
+function manifestFieldStrings(value: unknown): string[] {
+  if (typeof value === "string") {
+    return value.trim() ? [value.trim()] : [];
+  }
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => (typeof item === "string" ? item.trim() : ""))
+      .filter((item) => item.length > 0);
+  }
+  if (value && typeof value === "object") {
+    return Object.values(value as RawRecord)
+      .map((item) => (typeof item === "string" ? item.trim() : ""))
+      .filter((item) => item.length > 0);
+  }
+  return [];
+}
+
+function looksLikeDirectoryManifestPath(value: string): boolean {
+  const normalized = value.trim().replace(/\\/g, "/");
+  if (!normalized) {
+    return false;
+  }
+  if (normalized.endsWith("/")) {
+    return true;
+  }
+  return !path.posix.basename(normalized).includes(".");
+}
+
+function parseGitHubRepositoryRef(
+  repository: string | undefined,
+  rawJsonUrl?: string,
+): GitHubRepositoryRef | null {
+  const rawRepositoryRef = parseGitHubRawUrlRepositoryRef(rawJsonUrl);
+  if (rawRepositoryRef) {
+    return rawRepositoryRef;
+  }
+
+  if (!repository) {
+    return null;
+  }
+
+  const trimmed = repository.trim();
+  const sshMatch = /^git@github\.com:([^/]+)\/([^/]+?)(?:\.git)?$/i.exec(
+    trimmed,
+  );
+  if (sshMatch) {
+    return { owner: sshMatch[1], repo: sshMatch[2], branch: "main" };
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.hostname.toLowerCase() !== "github.com") {
+      return null;
+    }
+    const parts = parsed.pathname
+      .replace(/\/+$/g, "")
+      .split("/")
+      .filter(Boolean);
+    if (parts.length < 2) {
+      return null;
+    }
+    return {
+      owner: parts[0],
+      repo: parts[1].replace(/\.git$/i, ""),
+      branch: "main",
+    };
+  } catch {
+    return null;
+  }
+}
+
+function parseGitHubRawUrlRepositoryRef(
+  rawJsonUrl: string | undefined,
+): GitHubRepositoryRef | null {
+  if (!rawJsonUrl) {
+    return null;
+  }
+  try {
+    const parsed = new URL(rawJsonUrl);
+    if (parsed.hostname.toLowerCase() !== "raw.githubusercontent.com") {
+      return null;
+    }
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    if (parts.length < 3) {
+      return null;
+    }
+    return { owner: parts[0], repo: parts[1], branch: parts[2] };
+  } catch {
+    return null;
+  }
+}
+
+function buildGitHubTreeUrl(ref: GitHubRepositoryRef): string {
+  return `https://api.github.com/repos/${encodeURIComponent(
+    ref.owner,
+  )}/${encodeURIComponent(ref.repo)}/git/trees/${encodeURIComponent(
+    ref.branch,
+  )}?recursive=1`;
+}
+
+function extractGitHubTreePaths(tree: RawRecord): string[] {
+  const entries = Array.isArray(tree.tree) ? tree.tree : [];
+  return entries
+    .map((entry) => {
+      if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+        return undefined;
+      }
+      const record = entry as RawRecord;
+      if (record.type !== "blob") {
+        return undefined;
+      }
+      return safeString(record.path);
+    })
+    .filter((entry): entry is string => Boolean(entry));
+}
+
+function withoutTrailingPosixSlash(value: string): string {
+  return value.replace(/\/+$/g, "");
+}
+
+function isSkillFileUnderDirectory(
+  filePath: string,
+  skillDirectory: string,
+): boolean {
+  const safeFilePath = normalizeRelativePosixPath(filePath);
+  const safeSkillDirectory = withoutTrailingPosixSlash(
+    normalizeRelativePosixPath(skillDirectory),
+  );
+  return (
+    safeFilePath.startsWith(`${safeSkillDirectory}/`) &&
+    path.posix.basename(safeFilePath) === "SKILL.md"
+  );
 }
 
 export function extractPluginInventoryFromManifest(
@@ -951,6 +1093,7 @@ export class CorePluginLibraryService {
   private marketSources: PluginMarketSource[];
   private materializePackages: boolean;
   private materializePackageFn: PackageMaterializer;
+  private githubTreePathCache = new Map<string, Promise<string[]>>();
 
   constructor(options: CorePluginLibraryServiceOptions = {}) {
     this.fetchFn =
@@ -1114,7 +1257,20 @@ export class CorePluginLibraryService {
     entry: PluginMarketEntry,
   ): Promise<PluginMarketPreview> {
     const manifest = await this.readManifestForEntry(entry);
-    const inventory = extractPluginInventoryFromManifest(manifest);
+    const marketSource = this.marketSources.find(
+      (source) => source.id === entry.marketplaceId,
+    );
+    if (!marketSource) {
+      throw new CorePluginError(
+        "MISSING_SOURCE",
+        `${entry.displayName} 的 marketplace source 不存在`,
+      );
+    }
+    const inventory = await this.resolveInventoryForEntry(
+      entry,
+      manifest,
+      marketSource,
+    );
     const classification = classifyPluginInventory(inventory);
     const name = safeString(manifest.name) ?? entry.name;
     const interfaceRecord =
@@ -1133,15 +1289,6 @@ export class CorePluginLibraryService {
     const longDescription = safeString(interfaceRecord.longDescription);
     const description = shortDescription || longDescription;
     const manifestUrl = this.getManifestUrlForEntry(entry);
-    const marketSource = this.marketSources.find(
-      (source) => source.id === entry.marketplaceId,
-    );
-    if (!marketSource) {
-      throw new CorePluginError(
-        "MISSING_SOURCE",
-        `${entry.displayName} 的 marketplace source 不存在`,
-      );
-    }
     const iconUrl =
       resolveManifestAssetUrl(
         marketSource,
@@ -1192,6 +1339,111 @@ export class CorePluginLibraryService {
       unsupportedReason: getPluginSemanticUnsupportedReason(classification),
       warnings: [],
     };
+  }
+
+  private async resolveInventoryForEntry(
+    entry: PluginMarketEntry,
+    manifest: RawRecord,
+    source: PluginMarketSource,
+  ): Promise<PluginInventorySummary> {
+    const inventory = extractPluginInventoryFromManifest(manifest);
+    const expandedSkills = await this.resolveDirectoryBasedSkillCount(
+      entry,
+      manifest,
+      source,
+    );
+    if (expandedSkills !== undefined) {
+      inventory.skills = expandedSkills;
+    }
+    return inventory;
+  }
+
+  private async resolveDirectoryBasedSkillCount(
+    entry: PluginMarketEntry,
+    manifest: RawRecord,
+    source: PluginMarketSource,
+  ): Promise<number | undefined> {
+    const skillPaths = manifestFieldStrings(manifest.skills);
+    if (
+      skillPaths.length === 0 ||
+      !skillPaths.some(looksLikeDirectoryManifestPath)
+    ) {
+      return undefined;
+    }
+
+    let total = 0;
+    let expandedAnyDirectory = false;
+    for (const skillPath of skillPaths) {
+      if (!looksLikeDirectoryManifestPath(skillPath)) {
+        total += 1;
+        continue;
+      }
+      const count = await this.countRepositorySkillFiles(
+        entry,
+        source,
+        skillPath,
+      );
+      if (count === undefined) {
+        return undefined;
+      }
+      total += count;
+      expandedAnyDirectory = true;
+    }
+
+    return expandedAnyDirectory && total > 0 ? total : undefined;
+  }
+
+  private async countRepositorySkillFiles(
+    entry: PluginMarketEntry,
+    source: PluginMarketSource,
+    rawSkillPath: string,
+  ): Promise<number | undefined> {
+    if (!entry.source.packagePath) {
+      return undefined;
+    }
+
+    const repositoryRef = parseGitHubRepositoryRef(
+      source.repository,
+      source.rawJsonUrl,
+    );
+    if (!repositoryRef) {
+      return undefined;
+    }
+
+    try {
+      const packagePath = normalizeRelativePosixPath(entry.source.packagePath);
+      const skillPath = normalizeRelativePosixPath(rawSkillPath);
+      const skillDirectory = normalizeRelativePosixPath(
+        path.posix.join(packagePath, skillPath),
+      );
+      const treePaths = await this.getGitHubTreePaths(repositoryRef);
+      return treePaths.filter((treePath) =>
+        isSkillFileUnderDirectory(treePath, skillDirectory),
+      ).length;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private async getGitHubTreePaths(
+    repositoryRef: GitHubRepositoryRef,
+  ): Promise<string[]> {
+    const treeUrl = buildGitHubTreeUrl(repositoryRef);
+    const cached = this.githubTreePathCache.get(treeUrl);
+    if (cached) {
+      return cached;
+    }
+
+    const treePromise = this.fetchText(treeUrl)
+      .then((content) =>
+        extractGitHubTreePaths(parseJsonObject(content, "GitHub tree")),
+      )
+      .catch((error) => {
+        this.githubTreePathCache.delete(treeUrl);
+        throw error;
+      });
+    this.githubTreePathCache.set(treeUrl, treePromise);
+    return treePromise;
   }
 
   private writeMarketPreviewCache(preview: PluginMarketPreview): void {

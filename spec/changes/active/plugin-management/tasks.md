@@ -26,6 +26,9 @@
 - [x] Fix Official Store preview prefetch so the visible batch enriches every card instead of only the first card after React effect cleanup.
 - [x] Persist Plugin Store manifest preview metadata in a local cache so reopening the store shows official icons/descriptions without refetching every manifest.
 - [x] Simplify Official Store card badges by removing redundant official trust chips from official-source cards and making inventory counts human-readable.
+- [x] Rename the store surface to `Plugins Store` / `Plugins 商店` while keeping concrete source provenance as `Codex Official Store` / `Codex 官方商店`.
+- [x] Keep card inventory focused on user-facing capabilities and omit `Apps` connector chips from store cards while preserving full inventory in detail.
+- [x] Expand directory-based Codex manifest `skills` fields through the GitHub repository tree so official plugins with multiple nested `SKILL.md` files do not display as one Skill.
 - [x] Add Plugin module to desktop home navigation and home-module settings.
 - [x] Add i18n coverage for Plugin UI across all supported desktop locales.
 - [ ] Reuse Skill/MCP distribution flows for child assets.
@@ -35,9 +38,10 @@
 ## MVP Verification Completed
 
 - [x] Core Plugin library tests cover marketplace parsing, manifest inventory extraction, semantic bundle classification, single-skill rejection, runtime-module rejection, JSON library persistence, and target matrix disabled states.
+- [x] Core Plugin library tests cover directory-based official Skill inventory expansion through GitHub tree fixtures.
 - [x] Settings desktop workspace tests cover adding Plugin into legacy default home modules and preserving user-hidden modules.
 - [x] Sidebar and appearance settings tests pass with Plugin added to the home module set.
-- [x] PluginManager component tests cover the Agent Plugin split layout, My Plugins inventory list, and disabled-target detail state.
+- [x] PluginManager component tests cover the Agent Plugin split layout, My Plugins inventory list, disabled-target detail state, Plugins Store naming, official provenance badges, and card-level inventory chips.
 - [x] Desktop typecheck passes with new IPC/preload/renderer contracts.
 
 ## Traceability

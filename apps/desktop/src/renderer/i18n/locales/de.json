@@ -2653,11 +2653,11 @@
     "title": "Plugins",
     "subtitle": "Vollständige Fähigkeitspakete und ihre Agent-Ziele verwalten.",
     "myPlugins": "Meine Plugins",
-    "pluginStore": "Official Store",
+    "pluginStore": "Plugins Store",
     "pluginTargets": "Agent Plugin",
     "sources": {
       "codexOfficial": "Offizieller Codex Store",
-      "promptHubOfficial": "Offizieller Store"
+      "promptHubOfficial": "Offizieller PromptHub Store"
     },
     "inventory": {
       "skills": "Skills",
@@ -2736,7 +2736,7 @@
     "targetDisabledDesc": "This agent does not expose a complete Plugin bundle surface yet.",
     "noMyPluginsForAgent": "No My Plugins yet",
     "noMyPluginsForAgentDesc": "Install Plugin bundles from the Official Store before distributing assets to this agent target.",
-    "openOfficialStore": "Open Official Store",
+    "openOfficialStore": "Plugins Store öffnen",
     "inMyPlugins": "In My Plugins",
     "openPluginFolder": "Open Plugin folder",
     "nativeMarker": "Nativer Marker",
