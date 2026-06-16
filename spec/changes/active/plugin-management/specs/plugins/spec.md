@@ -194,6 +194,14 @@ PromptHub MUST model Plugin support as an adapter matrix across agent-native bun
 - **AND** first implementation keeps the target disabled/greyed out
 - **AND** any future enabled composite install must show which target-native surfaces will be written before applying changes
 
+#### Scenario: Agent Plugin uses the Agent Skill workspace pattern
+
+- **GIVEN** the user opens the Agent Plugin page
+- **WHEN** PromptHub renders Plugin target compatibility
+- **THEN** the page uses the same workbench pattern as Agent Skill: a left agent target list, a right selected-target detail header, target status chips, and a scrollable My Plugins inventory list
+- **AND** it does not render the target matrix as detached compatibility cards
+- **AND** disabled targets remain visible and greyed out with the unsupported reason available in the detail pane
+
 ## Open Decisions
 
 - First implementation source of truth is decided: filesystem-backed `config/plugin-library.json`, matching MCP's current local-library pattern. `[待确认]` remains only for a later migration to SQLite or hybrid metadata if child bindings, sync, and update history require it.

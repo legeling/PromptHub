@@ -19,6 +19,7 @@
 - [x] Clean PromptHub-managed plugin package files on uninstall without deleting external child assets or user-owned paths.
 - [x] Add desktop IPC/preload API for plugin management.
 - [x] Build Plugin module UI: My Plugins, Plugin Store, Plugin Targets.
+- [x] Align Agent Plugin with Agent Skill's workbench pattern instead of a detached compatibility-card grid.
 - [x] Add Plugin module to desktop home navigation and home-module settings.
 - [x] Add i18n coverage for Plugin UI across all supported desktop locales.
 - [ ] Reuse Skill/MCP distribution flows for child assets.
@@ -30,6 +31,7 @@
 - [x] Core Plugin library tests cover marketplace parsing, manifest inventory extraction, semantic bundle classification, single-skill rejection, runtime-module rejection, JSON library persistence, and target matrix disabled states.
 - [x] Settings desktop workspace tests cover adding Plugin into legacy default home modules and preserving user-hidden modules.
 - [x] Sidebar and appearance settings tests pass with Plugin added to the home module set.
+- [x] PluginManager component tests cover the Agent Plugin split layout, My Plugins inventory list, and disabled-target detail state.
 - [x] Desktop typecheck passes with new IPC/preload/renderer contracts.
 
 ## Traceability

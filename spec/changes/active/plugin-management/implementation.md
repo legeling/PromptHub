@@ -25,6 +25,10 @@
 - Added desktop Plugin UI module with `My Plugins`, `Plugin Store`, and `Plugin Targets` views.
   - The Plugin Store defaults to the Codex official `openai-curated` source and keeps an all-sources filter.
   - Store cards can preview manifest details lazily and copy Codex deep links.
+- Reworked the `Agent Plugin` view to match the existing `Agent Skill` workspace pattern:
+  - Agent Plugin now renders as a left agent target list and right selected-target detail panel instead of a compatibility-card grid.
+  - Enabled native/adapter targets remain selectable; runtime-only/composite/pending targets remain visible and greyed out with their unsupported reason in the detail panel.
+  - The right panel shows My Plugins inventory cards for the selected supported target and routes users to the Official Store when no Plugin bundle is installed yet.
 - Updated the visible UI terminology so the product surface uses `Plugins`, `My Plugins`, `Official Store`, and `Agent Plugin` instead of localized "插件/插件目标" labels.
 - Hid the global Prompt quick-add/search controls on the Plugins page because the page owns its own Plugin search and install flow.
 - Added Plugin navigation to the desktop home rail/sidebar and the Appearance settings home-module list.
@@ -36,6 +40,7 @@
 - `pnpm --filter @prompthub/desktop test:run tests/unit/main/ipc-index.test.ts -- --runInBand`
 - `pnpm --filter @prompthub/desktop typecheck`
 - `pnpm --filter @prompthub/desktop test:run tests/unit/components/sidebar.test.tsx tests/unit/components/appearance-settings.test.tsx -- --runInBand`
+- `pnpm --filter @prompthub/desktop test:run tests/unit/components/plugin-manager.test.tsx -- --runInBand`
 - `pnpm --filter @prompthub/desktop build`
 - `pnpm exec prettier --check packages/shared/types/plugin.ts packages/core/src/plugin-library.ts apps/desktop/src/main/ipc/plugin.ipc.ts apps/desktop/src/preload/api/plugin.ts apps/desktop/src/renderer/stores/plugin.store.ts apps/desktop/src/renderer/components/plugin/PluginManager.tsx apps/desktop/tests/unit/main/plugin-library.test.ts apps/desktop/src/renderer/i18n/locales/en.json apps/desktop/src/renderer/i18n/locales/zh.json apps/desktop/src/renderer/i18n/locales/zh-TW.json apps/desktop/src/renderer/i18n/locales/ja.json apps/desktop/src/renderer/i18n/locales/fr.json apps/desktop/src/renderer/i18n/locales/de.json apps/desktop/src/renderer/i18n/locales/es.json spec/changes/active/plugin-management/proposal.md spec/changes/active/plugin-management/design.md spec/changes/active/plugin-management/specs/plugins/spec.md spec/changes/active/plugin-management/tasks.md spec/changes/active/plugin-management/implementation.md spec/knowledge/behavior/plugins.md .agents/plugins/marketplace.json`
 - `node -e 'for (const f of ["en","zh","zh-TW","ja","fr","de","es"]) JSON.parse(require("fs").readFileSync("apps/desktop/src/renderer/i18n/locales/"+f+".json","utf8")); console.log("locales ok")'`
