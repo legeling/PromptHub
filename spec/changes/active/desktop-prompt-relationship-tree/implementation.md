@@ -39,6 +39,9 @@ Verification:
 - Downgraded the inline detail and detail-modal related-prompts action from a
   prominent bordered button to a quiet secondary control with muted icon,
   smaller label, and lightweight count.
+- Moved the inline detail related-prompts action into the parent/child
+  relationship metadata row so it no longer creates a standalone row above
+  prompt images or content.
 - Updated relationship copy from broad "Prompt relationships" language to
   "Related prompts" so the UI reflects the current visible model:
   parent-child hierarchy through drag-and-drop plus regular related links.
@@ -51,6 +54,7 @@ Verification:
 
 - `node -e 'for (const f of ["en","zh","zh-TW","ja","fr","de","es"]) JSON.parse(require("fs").readFileSync("apps/desktop/src/renderer/i18n/locales/"+f+".json","utf8")); console.log("locales ok")'`
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/prompt-detail-modal.test.tsx tests/unit/components/prompt-relationship-panel.test.tsx --run`
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/prompt-detail-metadata.test.tsx --run`
 - `pnpm --dir apps/desktop exec eslint src/renderer/components/layout/MainContent.tsx src/renderer/components/prompt/PromptDetailModal.tsx src/renderer/components/prompt/PromptRelationshipPanel.tsx tests/unit/components/prompt-detail-modal.test.tsx tests/unit/components/prompt-relationship-panel.test.tsx --max-warnings 0`
 - `pnpm --filter @prompthub/desktop typecheck`
 

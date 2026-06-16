@@ -1,4 +1,5 @@
 import {
+  ChevronDownIcon,
   ClockIcon,
   CornerDownRightIcon,
   GitBranchIcon,
@@ -14,9 +15,13 @@ interface PromptDetailMetadataProps {
   parentPrompt: Prompt | null;
   childPrompts: Prompt[];
   folderOptions: SelectOption[];
+  relatedPromptCount?: number;
+  isRelatedPromptsOpen?: boolean;
+  isRelatedPromptsDisabled?: boolean;
   t: ReturnType<typeof useTranslation>["t"];
   onMoveToFolder: (prompt: Prompt, folderId: string | null) => void;
   onSelectPrompt: (promptId: string) => void;
+  onToggleRelatedPrompts?: () => void;
 }
 
 const MAX_VISIBLE_CHILDREN = 4;
@@ -26,11 +31,48 @@ export function PromptDetailMetadata({
   parentPrompt,
   childPrompts,
   folderOptions,
+  relatedPromptCount = 0,
+  isRelatedPromptsOpen = false,
+  isRelatedPromptsDisabled = false,
   t,
   onMoveToFolder,
   onSelectPrompt,
+  onToggleRelatedPrompts,
 }: PromptDetailMetadataProps) {
   const promptType = prompt.promptType || "text";
+  const showRelationshipRow =
+    parentPrompt || childPrompts.length > 0 || onToggleRelatedPrompts;
+  const renderRelatedPromptsButton = () => {
+    if (!onToggleRelatedPrompts) {
+      return null;
+    }
+
+    return (
+      <button
+        type="button"
+        onClick={onToggleRelatedPrompts}
+        disabled={isRelatedPromptsDisabled}
+        aria-expanded={isRelatedPromptsOpen}
+        aria-label={t("prompt.relationships.openPanel")}
+        className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-muted-foreground transition-colors hover:bg-accent/45 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <GitBranchIcon
+          aria-hidden="true"
+          className="h-3.5 w-3.5 shrink-0 text-muted-foreground/75"
+        />
+        <span>{t("prompt.relationships.openButton")}</span>
+        <span className="text-[11px] text-muted-foreground/75">
+          {relatedPromptCount}
+        </span>
+        <ChevronDownIcon
+          aria-hidden="true"
+          className={`h-3.5 w-3.5 text-muted-foreground/70 transition-transform ${
+            isRelatedPromptsOpen ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+    );
+  };
 
   return (
     <>
@@ -75,8 +117,11 @@ export function PromptDetailMetadata({
         </span>
       </div>
 
-      {(parentPrompt || childPrompts.length > 0) && (
-        <div className="mb-4 flex flex-wrap items-center gap-2 border-l-2 border-primary/40 pl-3 text-xs">
+      {showRelationshipRow && (
+        <div
+          data-testid="prompt-detail-relationship-row"
+          className="mb-4 flex flex-wrap items-center gap-2 text-xs"
+        >
           {parentPrompt && (
             <button
               type="button"
@@ -100,6 +145,7 @@ export function PromptDetailMetadata({
                 <GitBranchIcon aria-hidden="true" className="h-3.5 w-3.5" />
                 {t("prompt.childPrompts")}
               </span>
+              {renderRelatedPromptsButton()}
               {childPrompts.slice(0, MAX_VISIBLE_CHILDREN).map((childPrompt) => (
                 <button
                   key={childPrompt.id}
@@ -122,6 +168,8 @@ export function PromptDetailMetadata({
               )}
             </div>
           )}
+
+          {childPrompts.length === 0 && renderRelatedPromptsButton()}
         </div>
       )}
     </>

@@ -18,6 +18,7 @@
 - [x] Fix prompt card hierarchy control alignment so titles are not pushed right by optional controls.
 - [x] Remove leaf-card collapse placeholders and hierarchy guide lines that overlap parent labels.
 - [x] Downgrade the detail related-prompts action to a quiet secondary control.
+- [x] Place the related-prompts action inside the parent/child relationship metadata row.
 - [x] Align relationship docs with the two visible concepts: parent-child hierarchy and related prompt links.
 - [x] Preserve hierarchy fields in prompt workspace frontmatter.
 - [x] Sanitize hierarchy fields during backup import.

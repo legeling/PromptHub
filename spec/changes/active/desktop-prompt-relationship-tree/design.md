@@ -33,7 +33,8 @@ surfaces:
 - Card mode: drag a prompt card in the left prompt list.
 - List mode: drag a prompt table row.
 - Detail mode: the existing prompt detail area exposes a quiet related-prompts
-  action with a count. The editor expands only when requested so relationship
+  action with a count inside the same metadata row as parent/child navigation.
+  The editor expands below that row only when requested so relationship
   management remains secondary to reading and using the prompt.
 - Detail modal: the same quiet related-prompts action is available in the modal
   header; the editor remains reusable and opens only when the user asks for it.

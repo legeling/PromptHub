@@ -2399,48 +2399,31 @@ function PromptSkillMainContent() {
                     parentPrompt={selectedParentPrompt}
                     childPrompts={selectedChildPrompts}
                     folderOptions={detailFolderOptions}
+                    relatedPromptCount={selectedPromptRelations.length}
+                    isRelatedPromptsOpen={isDetailRelationshipsOpen}
+                    isRelatedPromptsDisabled={isDetailInlineEditing}
                     t={t}
                     onMoveToFolder={(prompt, folderId) => {
                       void handleMovePrompt(prompt, folderId);
                     }}
                     onSelectPrompt={selectPrompt}
+                    onToggleRelatedPrompts={() =>
+                      setIsDetailRelationshipsOpen((open) => !open)
+                    }
                   />
 
-                  <div className="mb-4">
-                    <button
-                      type="button"
-                      onClick={() => setIsDetailRelationshipsOpen((open) => !open)}
+                  {isDetailRelationshipsOpen && (
+                    <PromptRelationshipPanel
+                      currentPrompt={selectedPrompt}
+                      prompts={prompts}
+                      relations={selectedPromptRelations}
+                      onCreateRelation={handleCreatePromptRelation}
+                      onDeleteRelation={handleDeletePromptRelation}
+                      onSelectPrompt={(promptId) => selectPrompt(promptId)}
                       disabled={isDetailInlineEditing}
-                      aria-expanded={isDetailRelationshipsOpen}
-                      aria-label={t('prompt.relationships.openPanel')}
-                      className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/45 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <GitBranchIcon aria-hidden="true" className="h-3.5 w-3.5 text-muted-foreground/75" />
-                      <span>{t('prompt.relationships.openButton')}</span>
-                      <span className="text-[11px] text-muted-foreground/75">
-                        {selectedPromptRelations.length}
-                      </span>
-                      <ChevronDownIcon
-                        aria-hidden="true"
-                        className={`h-3.5 w-3.5 text-muted-foreground/70 transition-transform ${
-                          isDetailRelationshipsOpen ? 'rotate-180' : ''
-                        }`}
-                      />
-                    </button>
-
-                    {isDetailRelationshipsOpen && (
-                      <PromptRelationshipPanel
-                        currentPrompt={selectedPrompt}
-                        prompts={prompts}
-                        relations={selectedPromptRelations}
-                        onCreateRelation={handleCreatePromptRelation}
-                        onDeleteRelation={handleDeletePromptRelation}
-                        onSelectPrompt={(promptId) => selectPrompt(promptId)}
-                        disabled={isDetailInlineEditing}
-                        className="mt-3 mb-0"
-                      />
-                    )}
-                  </div>
+                      className="mb-4"
+                    />
+                  )}
 
                   {/* Images */}
                   {/* 图片 */}
