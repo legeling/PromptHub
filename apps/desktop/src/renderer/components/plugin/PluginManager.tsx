@@ -1200,7 +1200,7 @@ export function PluginManager() {
     null,
   );
   const [isDeleting, setIsDeleting] = useState(false);
-  const marketPreviewPrefetchAttemptedRef = useRef<Set<string>>(new Set());
+  const marketPreviewPrefetchInFlightRef = useRef<Set<string>>(new Set());
   const {
     library,
     marketEntries,
@@ -1428,33 +1428,27 @@ export function PluginManager() {
     }
 
     const entriesToPreview = marketPreviewPrefetchEntries.filter((entry) => {
-      if (marketPreviewPrefetchAttemptedRef.current.has(entry.id)) {
+      if (marketPreviewPrefetchInFlightRef.current.has(entry.id)) {
         return false;
       }
-      marketPreviewPrefetchAttemptedRef.current.add(entry.id);
+      marketPreviewPrefetchInFlightRef.current.add(entry.id);
       return true;
     });
     if (entriesToPreview.length === 0) {
       return;
     }
 
-    let cancelled = false;
-    void (async () => {
-      for (const entry of entriesToPreview) {
-        if (cancelled) {
-          return;
-        }
+    void Promise.all(
+      entriesToPreview.map(async (entry) => {
         try {
           await previewMarketPlugin(entry.id);
         } catch (previewError) {
           console.warn("Plugin market preview prefetch failed:", previewError);
+        } finally {
+          marketPreviewPrefetchInFlightRef.current.delete(entry.id);
         }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
+      }),
+    );
   }, [
     isLoading,
     marketPreviewPrefetchEntries,

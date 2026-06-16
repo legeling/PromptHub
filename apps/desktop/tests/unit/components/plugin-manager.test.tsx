@@ -270,6 +270,36 @@ describe("PluginManager", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("prefetches manifest icons and descriptions for every visible store card", async () => {
+    vi.mocked(window.api.plugin.previewMarketPlugin).mockImplementation(
+      async (entryId: string) => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        return entryId === "slack" ? slackPreview : linearPreview;
+      },
+    );
+
+    await renderPluginManager();
+
+    await waitFor(() => {
+      expect(window.api.plugin.previewMarketPlugin).toHaveBeenCalledWith(
+        "linear",
+      );
+      expect(window.api.plugin.previewMarketPlugin).toHaveBeenCalledWith(
+        "slack",
+      );
+    });
+    expect(await screen.findByText("Slack")).toBeInTheDocument();
+    expect(
+      screen.getByText("Search and summarize Slack conversations."),
+    ).toBeInTheDocument();
+    const iconSources = screen
+      .getAllByTestId("plugin-avatar-image")
+      .map((icon) => icon.getAttribute("src"));
+    expect(iconSources).toEqual(
+      expect.arrayContaining([linearPreview.iconUrl, slackPreview.iconUrl]),
+    );
+  });
+
   it("opens store details before install and lazy-loads the manifest preview", async () => {
     await renderPluginManager();
 
