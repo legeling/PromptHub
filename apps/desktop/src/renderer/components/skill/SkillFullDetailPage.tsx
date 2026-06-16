@@ -1264,7 +1264,7 @@ export function SkillFullDetailPage({
     }
   };
 
-  const handleCopySkillTitle = useCallback(async () => {
+  const handleCopySkillTitle = async () => {
     if (!selectedSkill?.name) {
       return;
     }
@@ -1276,7 +1276,7 @@ export function SkillFullDetailPage({
       console.error("Failed to copy skill title:", error);
       showToast(t("common.copyFailed", "Copy failed"), "error");
     }
-  }, [selectedSkill?.name, showToast, t]);
+  };
 
   const handleExport = async (format: "skillmd" | "zip") => {
     if (!selectedSkill) return;
