@@ -3,7 +3,10 @@ import path from "path";
 import { CorePluginLibraryService } from "@prompthub/core";
 import { IPC_CHANNELS } from "@prompthub/shared/constants/ipc-channels";
 import { getPlatformById } from "@prompthub/shared/constants/platforms";
-import type { PluginLibraryEntry } from "@prompthub/shared/types/plugin";
+import type {
+  PluginLibraryEntry,
+  PluginMarketSource,
+} from "@prompthub/shared/types/plugin";
 import { getPlatformPluginDir } from "../services/skill-installer-utils";
 
 const PLUGIN_TARGET_PLATFORM_IDS: Record<string, string> = {
@@ -56,19 +59,23 @@ export function registerPluginIPC(
   }),
 ): void {
   ipcMain.handle(IPC_CHANNELS.PLUGIN_LIBRARY_GET, async () => service.read());
-  ipcMain.handle(IPC_CHANNELS.PLUGIN_MARKET_LIST, async () =>
-    service.getMarketEntries(),
+  ipcMain.handle(
+    IPC_CHANNELS.PLUGIN_MARKET_LIST,
+    async (_event, sources?: PluginMarketSource[]) =>
+      service.getMarketEntries(sources),
   );
   ipcMain.handle(IPC_CHANNELS.PLUGIN_MARKET_SOURCES, async () =>
     service.getMarketSources(),
   );
   ipcMain.handle(
     IPC_CHANNELS.PLUGIN_MARKET_PREVIEW,
-    async (_event, entryId: string) => service.previewMarketPlugin(entryId),
+    async (_event, entryId: string, sources?: PluginMarketSource[]) =>
+      service.previewMarketPlugin(entryId, sources),
   );
   ipcMain.handle(
     IPC_CHANNELS.PLUGIN_MARKET_INSTALL,
-    async (_event, entryId: string) => service.installMarketPlugin(entryId),
+    async (_event, entryId: string, sources?: PluginMarketSource[]) =>
+      service.installMarketPlugin(entryId, sources),
   );
   ipcMain.handle(IPC_CHANNELS.PLUGIN_DELETE, async (_event, id: string) =>
     service.deletePlugin(id),

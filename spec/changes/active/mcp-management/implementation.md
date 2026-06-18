@@ -20,7 +20,7 @@ Implemented first MCP management slice.
 - Reworked My MCP from a row list with persistent right-side form into Skill-gallery-style MCP cards using the same rounded panel surface, icon block, title/description, source badge, status badge, and hover behavior.
 - Changed MCP details to open from card selection in a modal, preserving source/details and platform distribution without occupying the My MCP gallery by default.
 - Hardened the MCP detail form field layout so labels and inputs stay full-width inside cards and modal dialogs instead of collapsing into vertical text.
-- Reused the Skill Store sidebar pattern for MCP Store: the first-level MCP Store item opens/collapses a nested source list, and the real built-in source is shown as `Official MCP Store` with template count.
+- Reused the Skill Store sidebar pattern for MCP Store: the first-level MCP Store item opens/collapses a nested source list, and the real built-in source is shown as `Official Store` with template count.
 - Added a Skill Store-style MCP Store detail modal. MCP Store cards now open details first instead of directly installing, the modal shows template metadata/config/source actions, and install is an explicit modal action. The store card action icon now matches Skill Store's plus/install affordance, and MCP sidebar icons use a server glyph instead of a generic link glyph.
 - Expanded the MCP Store detail modal with user-facing overview and configuration guidance: what the MCP does, use-case tags, install command, required environment variables, placeholder values, variable explanations, and a clearer official-link action.
 - Reworked Agent MCP from a platform card grid into the Agent Skills-style two-column layout: left platform list, right selected-platform detail, real target-file server names, managed/external counts, preview, and bulk apply of enabled MCP servers.
@@ -472,7 +472,7 @@ Implemented first MCP management slice.
 
 - MCP Store usable built-in sources:
   - Corrected the MCP Store preset model so built-in sources are real installable stores, not external directory links with `0` templates.
-  - Reduced the default left-sidebar MCP Store sources to three usable groups: `Official MCP Registry`, `PromptHub Curated MCP`, and `PromptHub Community MCP`.
+  - Reduced the default left-sidebar MCP Store sources to three usable groups: `Official Store`, `PromptHub Curated MCP`, and `PromptHub Community MCP`.
   - Assigned every built-in MCP template to one of those sources so each sidebar source has visible installable cards and no default source renders the external-directory panel.
   - Kept the right-content source chip/filter bar removed; source selection remains in the left sidebar like Skill Store.
   - Added regressions proving `getMarketSources()` returns only usable template stores, every returned source has at least one template, and the sidebar does not show zero-count external directory presets such as Smithery/Postman.
@@ -505,17 +505,20 @@ Implemented first MCP management slice.
   - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/sidebar.test.tsx --testNamePattern "MCP secondary"`
     - Result: failed before implementation because opening MCP Store still selected `all` and rendered `All Sources`; passed after switching to real-channel selection.
   - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx --testNamePattern "channel-specific"`
-    - Result: failed before implementation because the store header was fixed to `Official MCP Store` and showed `1 / 2 templates`; passed after rendering the selected channel title and channel-scoped cards.
+    - Result: failed before implementation because the store header was fixed to `Official Store` and showed `1 / 2 templates`; passed after rendering the selected channel title and channel-scoped cards.
   - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx tests/unit/components/sidebar.test.tsx tests/unit/components/mcp-i18n-smoke.test.ts`
     - Result: 78 tests passed.
   - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/mcp-library.test.ts --testNamePattern "preconfigures"`
     - Result: 1 matching test passed.
 
 - MCP Store community source refresh:
-  - Replaced the placeholder MCP Store channel labels with three real channels: `Official MCP Registry`, `Smithery`, and `Glama MCP Directory`.
+  - Replaced the placeholder MCP Store channel labels with three real channels: `Official Store`, `Smithery`, and `Glama MCP Directory`.
   - Kept the built-in market as PromptHub-packaged installable templates rather than live directory scraping, but updated each template/source record with clearer repository/documentation links and source provenance.
   - Updated the MCP Store detail modal to describe installation as a prompt/template import flow, surface a clearer install label for remote endpoints, and show the template's channel label in the card preview.
   - Expanded Smithery and Glama from a few sample cards into usable preset catalogs with at least eight installable templates per channel, including developer docs, browser automation, scraping, database, Git, maps, Figma, and cloud browser use cases.
+- MCP Store official source naming:
+  - Renamed the PromptHub-preconfigured MCP source from `Official MCP Registry` to `Official Store` / `官方商店`, matching the Skill and Plugin store naming rule.
+  - Kept the underlying source id as `modelcontextprotocol` and the source description as the official Model Context Protocol registry channel, so implementation still distinguishes provenance from the UI store label.
 - Verification for MCP Store community source refresh:
   - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/mcp-library.test.ts --testNamePattern "preconfigures"`
     - Result: passed after confirming the built-in sources are `modelcontextprotocol`, `smithery`, and `glama`.

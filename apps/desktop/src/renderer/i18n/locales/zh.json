@@ -2480,7 +2480,8 @@
     "myMcp": "我的 MCP",
     "agentMcp": "Agent MCP",
     "mcpStore": "MCP 商店",
-    "officialMcpStore": "官方 MCP 商店",
+    "officialMcpStore": "官方商店",
+    "officialMcpStoreDesc": "由 PromptHub 自己维护的 MCP 精选目录。当前桌面端先内置这批可安装模板，后续会与 PromptHub 官方 MCP 网站同步。",
     "templatesCount": "模板",
     "emptyStore": "暂无 MCP 模板",
     "emptyStoreHint": "可安装的精选 MCP 模板会显示在这里。",
@@ -2706,7 +2707,7 @@
     "pluginTargets": "Agent Plugin",
     "sources": {
       "codexOfficial": "Codex 官方商店",
-      "promptHubOfficial": "PromptHub 官方商店"
+      "promptHubOfficial": "官方商店"
     },
     "inventory": {
       "skills": "Skills",
@@ -2832,6 +2833,7 @@
     "myPluginsHint": "已安装的 Plugin 能力包会保留在 PromptHub，分发子资产前不会自动写入 Agent。",
     "pluginStoreHint": "浏览 Plugin 能力包，查看包含的能力后再安装或批量安装。",
     "statsStoreEntries": "{{count}} 个商店条目",
+    "loadedStoreEntries": "已加载 {{count}}",
     "installedSection": "已安装",
     "availableSection": "可安装",
     "openPluginDetail": "打开 Plugin 详情 {{name}}",

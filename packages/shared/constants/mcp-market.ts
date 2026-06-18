@@ -1,12 +1,15 @@
 import type { McpMarketSource, McpMarketTemplate } from "../types/mcp";
 
+export const MCP_OFFICIAL_MARKET_SOURCE_ID = "prompthub-official";
+export const MCP_REGISTRY_MARKET_SOURCE_ID = "modelcontextprotocol";
+
 export const BUILTIN_MCP_MARKET_SOURCES: McpMarketSource[] = [
   {
-    id: "modelcontextprotocol",
-    label: "Official MCP Registry",
-    url: "https://registry.modelcontextprotocol.io",
+    id: MCP_OFFICIAL_MARKET_SOURCE_ID,
+    label: "Official Store",
+    url: "https://github.com/legeling/PromptHub",
     description:
-      "Official Model Context Protocol registry channel with PromptHub-packaged templates that can be installed into your local MCP library.",
+      "PromptHub-maintained MCP catalog. The current desktop build ships curated installable MCP templates here, and the source will later sync with the official PromptHub MCP website.",
     trustLevel: "official",
   },
   {
@@ -33,9 +36,10 @@ const SOURCE_BY_ID = Object.fromEntries(
 
 function enrichTemplate(
   template: McpMarketTemplate,
-  sourceId: keyof typeof SOURCE_BY_ID = "modelcontextprotocol",
+  sourceId: keyof typeof SOURCE_BY_ID = MCP_OFFICIAL_MARKET_SOURCE_ID,
 ): McpMarketTemplate {
-  const source = SOURCE_BY_ID[sourceId] ?? SOURCE_BY_ID.modelcontextprotocol;
+  const source =
+    SOURCE_BY_ID[sourceId] ?? SOURCE_BY_ID[MCP_OFFICIAL_MARKET_SOURCE_ID];
   const packageName =
     template.packageName ??
     template.args?.find(
@@ -77,7 +81,7 @@ const RAW_BUILTIN_MCP_MARKET_TEMPLATES: McpMarketTemplate[] = [
       documentationUrl: "https://github.com/upstash/context7",
       repository: "https://github.com/upstash/context7",
     },
-    "modelcontextprotocol",
+    MCP_OFFICIAL_MARKET_SOURCE_ID,
   ),
   enrichTemplate(
     {

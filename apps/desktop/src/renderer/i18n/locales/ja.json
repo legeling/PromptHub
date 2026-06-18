@@ -2442,7 +2442,8 @@
     "myMcp": "My MCP",
     "agentMcp": "Agent MCP",
     "mcpStore": "MCP Store",
-    "officialMcpStore": "公式 MCP ストア",
+    "officialMcpStore": "公式ストア",
+    "officialMcpStoreDesc": "PromptHub 自身が管理する MCP カタログです。現在のデスクトップ版ではこの厳選テンプレートを内蔵し、今後 PromptHub 公式 MCP サイトと同期する予定です。",
     "templatesCount": "テンプレート",
     "emptyStore": "MCP テンプレートがありません",
     "emptyStoreHint": "利用可能な厳選 MCP テンプレートがここに表示されます。",
@@ -2668,7 +2669,7 @@
     "pluginTargets": "Agent Plugin",
     "sources": {
       "codexOfficial": "Codex 公式ストア",
-      "promptHubOfficial": "PromptHub 公式ストア"
+      "promptHubOfficial": "公式ストア"
     },
     "inventory": {
       "skills": "Skills",
@@ -2778,6 +2779,7 @@
     "myPluginsHint": "インストール済みの Plugin バンドルは PromptHub に保持され、子アセットは明示的に配布するまで Agent に書き込まれません。",
     "pluginStoreHint": "Plugin バンドルを確認し、含まれる機能を見てからインストールまたは一括インストールします。",
     "statsStoreEntries": "{{count}} 件のストア項目",
+    "loadedStoreEntries": "{{count}} 件読み込み済み",
     "installedSection": "インストール済み",
     "availableSection": "インストール可能",
     "openPluginDetail": "Plugin 詳細を開く {{name}}",

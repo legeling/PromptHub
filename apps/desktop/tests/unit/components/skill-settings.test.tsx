@@ -115,8 +115,12 @@ describe("SkillSettings", () => {
     expect(platformIds).toContain("claude");
     expect(platformIds).toContain("codex");
     expect(platformIds).toContain("cursor");
-    expect(platformIds.indexOf("claude")).toBeLessThan(platformIds.indexOf("cursor"));
-    expect(platformIds.indexOf("codex")).toBeLessThan(platformIds.indexOf("cursor"));
+    expect(platformIds.indexOf("claude")).toBeLessThan(
+      platformIds.indexOf("cursor"),
+    );
+    expect(platformIds.indexOf("codex")).toBeLessThan(
+      platformIds.indexOf("cursor"),
+    );
   });
 
   it("reorders platforms through drag and drop", async () => {
@@ -146,8 +150,11 @@ describe("SkillSettings", () => {
     fireEvent.drop(codexRow!, { dataTransfer });
 
     expect(settingsState.setSkillPlatformOrder).toHaveBeenCalledTimes(1);
-    const nextOrder = settingsState.setSkillPlatformOrder.mock.calls[0][0] as string[];
-    expect(nextOrder.indexOf("cursor")).toBeLessThan(nextOrder.indexOf("codex"));
+    const nextOrder = settingsState.setSkillPlatformOrder.mock
+      .calls[0][0] as string[];
+    expect(nextOrder.indexOf("cursor")).toBeLessThan(
+      nextOrder.indexOf("codex"),
+    );
     expect(nextOrder).toContain("claude");
     expect(nextOrder).toContain("cursor");
     expect(nextOrder).toContain("codex");
@@ -217,9 +224,7 @@ describe("SkillSettings", () => {
     expect(handleSubmit).not.toHaveBeenCalled();
   });
 
-  it(
-    "adds a custom agent root and shows derived asset previews",
-    async () => {
+  it("adds a custom agent root and shows derived asset previews", async () => {
     const settingsState = createSettingsState();
     useSettingsStoreMock.mockReturnValue(settingsState);
 
@@ -227,9 +232,12 @@ describe("SkillSettings", () => {
       await renderWithI18n(<SkillSettings />, { language: "en" });
     });
 
-    fireEvent.change(screen.getByPlaceholderText("Agent name, e.g. Team Agents"), {
-      target: { value: "Team Agents" },
-    });
+    fireEvent.change(
+      screen.getByPlaceholderText("Agent name, e.g. Team Agents"),
+      {
+        target: { value: "Team Agents" },
+      },
+    );
     fireEvent.change(
       screen.getByPlaceholderText(
         "Enter agent root, e.g. ~/.agents or ~/workspace/.opencode",
@@ -255,15 +263,15 @@ describe("SkillSettings", () => {
     });
 
     expect(screen.getAllByText("Team Agents").length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Derived skill scan paths/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Derived agent directories/).length).toBeGreaterThan(0);
-    },
-    60000,
-  );
+    expect(
+      screen.getAllByText(/Derived skill scan paths/).length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(/Derived agent directories/).length,
+    ).toBeGreaterThan(0);
+  }, 60000);
 
-  it(
-    "fills the custom agent root path from folder picker",
-    async () => {
+  it("fills the custom agent root path from folder picker", async () => {
     window.electron = createWindowElectronMock({
       selectFolder: vi.fn().mockResolvedValue("/tmp/custom-agent-root"),
     });
@@ -275,10 +283,10 @@ describe("SkillSettings", () => {
     const browseButtons = screen.getAllByRole("button", { name: "Browse" });
     fireEvent.click(browseButtons[0]!);
 
-    expect(await screen.findByDisplayValue("/tmp/custom-agent-root")).toBeInTheDocument();
-    },
-    60_000,
-  );
+    expect(
+      await screen.findByDisplayValue("/tmp/custom-agent-root"),
+    ).toBeInTheDocument();
+  }, 60_000);
 
   it("requires confirmation before deleting a custom agent", async () => {
     const settingsState = createSettingsState();
@@ -318,7 +326,10 @@ describe("SkillSettings", () => {
       customAgents: [
         { id: "agent-1", name: "Team Agents", rootPath: "~/.agents" },
       ],
-      skillPlatformOrder: [...SKILL_PLATFORMS.map((platform) => platform.id), "agent-1"],
+      skillPlatformOrder: [
+        ...SKILL_PLATFORMS.map((platform) => platform.id),
+        "agent-1",
+      ],
     });
 
     await act(async () => {
@@ -346,7 +357,9 @@ describe("SkillSettings", () => {
       await renderWithI18n(<SkillSettings />, { language: "en" });
     });
 
-    const configSection = screen.getByText("Agent Configurations").closest("section, div");
+    const configSection = screen
+      .getByText("Agent Configurations")
+      .closest("section, div");
     expect(configSection).toBeTruthy();
 
     expect(
@@ -355,7 +368,9 @@ describe("SkillSettings", () => {
       ),
     ).not.toBeInTheDocument();
 
-    const platformCards = within(configSection as HTMLElement).getAllByText("Edit");
+    const platformCards = within(configSection as HTMLElement).getAllByText(
+      "Edit",
+    );
     fireEvent.click(platformCards[0]!);
 
     const rootInput = within(configSection as HTMLElement).getByPlaceholderText(
@@ -387,6 +402,9 @@ describe("SkillSettings", () => {
       .getByText("Agent Configurations")
       .closest("section, div");
     expect(configSection).toBeTruthy();
+    expect(
+      within(configSection as HTMLElement).queryByText(/Derived Command/i),
+    ).not.toBeInTheDocument();
 
     const codexCard = within(configSection as HTMLElement)
       .getAllByText("Codex CLI")[0]
@@ -400,6 +418,15 @@ describe("SkillSettings", () => {
         /plugins[\\/]cache[\\/]prompthub/,
       ),
     ).toBeInTheDocument();
+    fireEvent.click(
+      within(codexCard as HTMLElement).getByRole("button", { name: "Edit" }),
+    );
+    expect(
+      within(codexCard as HTMLElement).queryByText("Commands"),
+    ).not.toBeInTheDocument();
+    fireEvent.click(
+      within(codexCard as HTMLElement).getByRole("button", { name: "Cancel" }),
+    );
 
     const clineCard = within(configSection as HTMLElement)
       .getAllByText("Cline")[0]
@@ -428,7 +455,9 @@ describe("SkillSettings", () => {
       await renderWithI18n(<SkillSettings />, { language: "en" });
     });
 
-    const configSection = screen.getByText("Agent Configurations").closest("section, div");
+    const configSection = screen
+      .getByText("Agent Configurations")
+      .closest("section, div");
     expect(configSection).toBeTruthy();
 
     const claudeCard = within(configSection as HTMLElement)
@@ -436,7 +465,9 @@ describe("SkillSettings", () => {
       .closest("[data-platform-config-id]");
     expect(claudeCard).toBeTruthy();
 
-    fireEvent.click(within(claudeCard as HTMLElement).getByRole("button", { name: "Edit" }));
+    fireEvent.click(
+      within(claudeCard as HTMLElement).getByRole("button", { name: "Edit" }),
+    );
 
     const rootInput = screen.getByPlaceholderText(
       "Leave empty to use the default root, e.g. ~/.trae-cn",
@@ -448,14 +479,18 @@ describe("SkillSettings", () => {
     fireEvent.change(rulesInput, { target: { value: "tmp/custom-rule.md" } });
 
     fireEvent.click(
-      within(claudeCard as HTMLElement).getByRole("button", { name: "Use Default" }),
+      within(claudeCard as HTMLElement).getByRole("button", {
+        name: "Use Default",
+      }),
     );
 
     expect(settingsState.updateBuiltinAgentOverride).not.toHaveBeenCalled();
     expect(
-      (screen.getByPlaceholderText(
-        "rules file path (optional)",
-      ) as HTMLInputElement).value,
+      (
+        screen.getByPlaceholderText(
+          "rules file path (optional)",
+        ) as HTMLInputElement
+      ).value,
     ).not.toBe("tmp/custom-rule.md");
   });
 
@@ -475,7 +510,9 @@ describe("SkillSettings", () => {
       await renderWithI18n(<SkillSettings />, { language: "en" });
     });
 
-    const configSection = screen.getByText("Agent Configurations").closest("section, div");
+    const configSection = screen
+      .getByText("Agent Configurations")
+      .closest("section, div");
     expect(configSection).toBeTruthy();
 
     const claudeCard = within(configSection as HTMLElement)
@@ -483,7 +520,9 @@ describe("SkillSettings", () => {
       .closest("[data-platform-config-id]");
     expect(claudeCard).toBeTruthy();
 
-    fireEvent.click(within(claudeCard as HTMLElement).getByRole("button", { name: "Edit" }));
+    fireEvent.click(
+      within(claudeCard as HTMLElement).getByRole("button", { name: "Edit" }),
+    );
 
     const rulesInput = screen.getByPlaceholderText(
       "rules file path (optional)",

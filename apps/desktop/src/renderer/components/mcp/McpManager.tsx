@@ -11,11 +11,15 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   Clock3Icon,
+  DatabaseIcon,
+  FolderIcon,
+  GlobeIcon,
   LayoutGridIcon,
   ListIcon,
   RefreshCwIcon,
   SendIcon,
   ServerIcon,
+  Settings2Icon,
   SquareIcon,
   StarIcon,
   TagsIcon,
@@ -44,8 +48,11 @@ import { McpLibraryDeployDialog } from "./McpLibraryDeployDialog";
 import { McpMarketView } from "./McpMarketView";
 import { McpPlatformPanel } from "./McpPlatformPanel";
 import { McpServerList, type McpServerViewMode } from "./McpServerList";
+import { SkillStoreSourceEditModal } from "../skill/SkillStoreSourceEditModal";
+import { SkillStoreSourceForm } from "../skill/SkillStoreSourceForm";
 import { updateMcpTags, type McpBatchTagMode } from "./batch-utils";
 import { isServerOnPreset } from "./mcp-form-utils";
+import type { CustomStoreSourceType } from "../../services/custom-store-source";
 
 const OPEN_CREATE_MCP_MODAL_EVENT = "open-create-mcp-modal";
 const MCP_VIEW_TRANSITION_CLASS =
@@ -231,10 +238,22 @@ export function McpManager() {
   });
   const [isDeletingServers, setIsDeletingServers] = useState(false);
   const [isRefreshingLibrary, setIsRefreshingLibrary] = useState(false);
+  const [editingCustomSourceId, setEditingCustomSourceId] = useState<
+    string | null
+  >(null);
+  const [pendingDeleteCustomSourceId, setPendingDeleteCustomSourceId] =
+    useState<string | null>(null);
+  const [sourceType, setSourceType] =
+    useState<CustomStoreSourceType>("marketplace-json");
+  const [sourceName, setSourceName] = useState("");
+  const [sourceUrl, setSourceUrl] = useState("");
+  const [sourceBranch, setSourceBranch] = useState("");
+  const [sourceDirectory, setSourceDirectory] = useState("");
   const {
     library,
     marketTemplates,
     marketSources,
+    customStoreSources,
     remoteMarketEntries,
     loadingMarketSourceId,
     marketError,
@@ -261,6 +280,10 @@ export function McpManager() {
     removeTarget,
     removeTargetNames,
     setSearchQuery,
+    addCustomStoreSource,
+    updateCustomStoreSource,
+    removeCustomStoreSource,
+    toggleCustomStoreSource,
   } = useMcpStore();
 
   useEffect(() => {
@@ -322,11 +345,77 @@ export function McpManager() {
     () => new Set(servers.map((server) => server.name)),
     [servers],
   );
+  const handleAddCustomSource = () => {
+    if (!sourceName.trim() || !sourceUrl.trim()) {
+      showToast(t("skill.storeSourceRequired", "Store name and URL are required"), "error");
+      return;
+    }
+    try {
+      addCustomStoreSource(sourceName, sourceUrl, sourceType, {
+        branch: sourceBranch,
+        directory: sourceDirectory,
+      });
+      setSourceName("");
+      setSourceUrl("");
+      setSourceBranch("");
+      setSourceDirectory("");
+    } catch (sourceError) {
+      reportError(sourceError);
+    }
+  };
+  const handleUpdateCustomSource = (payload: {
+    branch?: string;
+    directory?: string;
+    id: string;
+    name: string;
+    type: CustomStoreSourceType;
+    url: string;
+  }) => {
+    try {
+      updateCustomStoreSource(payload);
+      setEditingCustomSourceId(null);
+      void loadMarketSource(payload.id, true);
+    } catch (sourceError) {
+      reportError(sourceError);
+    }
+  };
+  const handleConfirmDeleteCustomSource = () => {
+    if (!pendingDeleteCustomSource) return;
+    removeCustomStoreSource(pendingDeleteCustomSource.id);
+    setPendingDeleteCustomSourceId(null);
+    setEditingCustomSourceId(null);
+  };
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const selectedMarketEntry =
     remoteMarketEntries[
       `${selectedMarketSourceId}:${searchQuery.trim().toLowerCase()}`
     ];
+  const selectedCustomSource = useMemo(
+    () =>
+      customStoreSources.find((source) => source.id === selectedMarketSourceId) ??
+      null,
+    [customStoreSources, selectedMarketSourceId],
+  );
+  const pendingDeleteCustomSource = useMemo(
+    () =>
+      customStoreSources.find(
+        (source) => source.id === pendingDeleteCustomSourceId,
+      ) ?? null,
+    [customStoreSources, pendingDeleteCustomSourceId],
+  );
+  const customSourceTypeOptions = useMemo(
+    () => [
+      {
+        value: "marketplace-json" as const,
+        icon: <DatabaseIcon className="h-4 w-4" />,
+      },
+      {
+        value: "git-repo" as const,
+        icon: <GlobeIcon className="h-4 w-4" />,
+      },
+    ],
+    [],
+  );
   const galleryColumnOptions = useMemo<SelectOption[]>(
     () =>
       MCP_GALLERY_COLUMNS.map((columns) => ({
@@ -1101,27 +1190,61 @@ export function McpManager() {
       </McpViewTransition>
     ) : selectedTab === "market" ? (
       <McpViewTransition viewKey="store">
-        <McpMarketView
-          templates={marketTemplates}
-          remoteTemplates={selectedMarketEntry?.templates ?? []}
-          sources={marketSources}
-          selectedSourceId={selectedMarketSourceId}
-          searchQuery={searchQuery}
-          isLoading={loadingMarketSourceId === selectedMarketSourceId}
-          error={selectedMarketEntry?.error ?? marketError}
-          totalCount={selectedMarketEntry?.totalCount}
-          installedNames={installedNames}
-          onRefresh={() => loadMarketSource(selectedMarketSourceId, true)}
-          onSearchChange={setSearchQuery}
-          onInstall={async (templateId) => {
-            try {
-              await installTemplate(templateId);
-              showToast(t("mcp.installed", "MCP installed"), "success");
-            } catch (installError) {
-              reportError(installError);
-            }
-          }}
-        />
+        {selectedMarketSourceId === "new-custom" ? (
+          <div className="h-full overflow-y-auto app-wallpaper-section p-6">
+            <SkillStoreSourceForm
+              branch={sourceBranch}
+              directory={sourceDirectory}
+              handleAddSource={handleAddCustomSource}
+              setBranch={setSourceBranch}
+              setDirectory={setSourceDirectory}
+              setSourceName={setSourceName}
+              setSourceType={setSourceType}
+              setSourceUrl={setSourceUrl}
+              sourceName={sourceName}
+              sourceType={sourceType}
+              sourceUrl={sourceUrl}
+              t={t}
+              typeOptions={customSourceTypeOptions}
+            />
+          </div>
+        ) : (
+          <div className="flex h-full min-h-0 flex-col">
+            {selectedCustomSource ? (
+              <div className="shrink-0 border-b border-border app-wallpaper-panel-strong px-6 py-2 text-right">
+                <button
+                  type="button"
+                  onClick={() => setEditingCustomSourceId(selectedCustomSource.id)}
+                  className="inline-flex items-center gap-2 rounded-lg border border-border bg-accent/50 px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
+                >
+                  <Settings2Icon aria-hidden="true" className="h-4 w-4" />
+                  {t("common.edit", "Edit")}
+                </button>
+              </div>
+            ) : null}
+            <McpMarketView
+              templates={marketTemplates}
+              remoteTemplates={selectedMarketEntry?.templates ?? []}
+              sources={marketSources}
+              selectedSourceId={selectedMarketSourceId}
+              searchQuery={searchQuery}
+              isLoading={loadingMarketSourceId === selectedMarketSourceId}
+              error={selectedMarketEntry?.error ?? marketError}
+              totalCount={selectedMarketEntry?.totalCount}
+              installedNames={installedNames}
+              onRefresh={() => loadMarketSource(selectedMarketSourceId, true)}
+              onSearchChange={setSearchQuery}
+              onInstall={async (templateId) => {
+                try {
+                  await installTemplate(templateId);
+                  showToast(t("mcp.installed", "MCP installed"), "success");
+                } catch (installError) {
+                  reportError(installError);
+                }
+              }}
+            />
+          </div>
+        )}
       </McpViewTransition>
     ) : selectedTab === "targets" ? (
       <McpViewTransition viewKey="agents">
@@ -1620,6 +1743,37 @@ export function McpManager() {
         cancelText={t("common.cancel", "Cancel")}
         variant="destructive"
         isLoading={isDeletingServers}
+      />
+
+      <SkillStoreSourceEditModal
+        isOpen={editingCustomSourceId !== null}
+        onClose={() => setEditingCustomSourceId(null)}
+        onDelete={setPendingDeleteCustomSourceId}
+        onSave={handleUpdateCustomSource}
+        onToggleEnabled={toggleCustomStoreSource}
+        onRefresh={(sourceId) => void loadMarketSource(sourceId, true)}
+        refreshingSourceId={loadingMarketSourceId}
+        source={
+          customStoreSources.find(
+            (source) => source.id === editingCustomSourceId,
+          ) ?? null
+        }
+        typeOptions={customSourceTypeOptions}
+      />
+
+      <ConfirmDialog
+        isOpen={Boolean(pendingDeleteCustomSource)}
+        onClose={() => setPendingDeleteCustomSourceId(null)}
+        onConfirm={handleConfirmDeleteCustomSource}
+        title={t("skill.deleteStoreSourceTitle", "Delete custom store")}
+        message={t("skill.deleteStoreSourceMessage", {
+          name: pendingDeleteCustomSource?.name ?? "",
+          defaultValue:
+            'Delete custom store "{{name}}"? Installed items will stay in your library, but this source and its cached store entries will be removed.',
+        })}
+        confirmText={t("common.delete", "Delete")}
+        cancelText={t("common.cancel", "Cancel")}
+        variant="destructive"
       />
 
       <ConfirmDialog

@@ -81,10 +81,10 @@ Store entries should not be considered installed by display name alone. Matching
 
 PromptHub should ship with these default Plugin Store sources:
 
-| Source ID            | Display Name       | Repository                              | Marketplace File                   | Raw JSON                                                                                     |
-| -------------------- | ------------------ | --------------------------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------- |
-| `openai-curated`     | Codex official     | `https://github.com/openai/plugins`     | `.agents/plugins/marketplace.json` | `https://raw.githubusercontent.com/openai/plugins/main/.agents/plugins/marketplace.json`     |
-| `prompthub-official` | PromptHub Official | `https://github.com/legeling/PromptHub` | `.agents/plugins/marketplace.json` | `https://raw.githubusercontent.com/legeling/PromptHub/main/.agents/plugins/marketplace.json` |
+| Source ID            | Display Name   | Repository                              | Marketplace File                   | Raw JSON                                                                                     |
+| -------------------- | -------------- | --------------------------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------- |
+| `openai-curated`     | Codex official | `https://github.com/openai/plugins`     | `.agents/plugins/marketplace.json` | `https://raw.githubusercontent.com/openai/plugins/main/.agents/plugins/marketplace.json`     |
+| `prompthub-official` | Official Store | `https://github.com/legeling/PromptHub` | `.agents/plugins/marketplace.json` | `https://raw.githubusercontent.com/legeling/PromptHub/main/.agents/plugins/marketplace.json` |
 
 Implementation notes:
 
@@ -109,7 +109,7 @@ Product behavior:
 - Manifest presentation metadata should be parsed from `interface.displayName`, `interface.shortDescription`, `interface.longDescription`, `interface.composerIcon`, `interface.logo`, and `interface.brandColor`. Relative icon/logo paths are resolved against the plugin package path and converted to the source raw file URL only when they remain inside the package.
 - Manifest presentation metadata should be persisted in `config/plugin-market-cache.json` after preview/background enrichment. Later marketplace listing reads merge this cache into store entries so official icons/descriptions render immediately without refetching every manifest on every app open. Missing entries may be enriched in the background with bounded concurrency.
 - Marketplace policy metadata such as `installation: AVAILABLE` and `authentication: ON_INSTALL` should remain visible so users understand whether setup or app auth is expected.
-- The store chrome label should name the surface as `Plugins Store` / `Plugins 商店`; source rows and provenance badges should name concrete sources such as `Codex Official Store` / `Codex 官方商店` and `PromptHub Official Store` / `PromptHub 官方商店`.
+- The store chrome label should name the surface as `Plugins Store` / `Plugins 商店`; source rows and provenance badges should name concrete sources such as `Codex Official Store` / `Codex 官方商店` for the external Codex source and `Official Store` / `官方商店` for PromptHub's built-in source.
 - Store cards should avoid redundant provenance badges: when a built-in official source label such as `Codex official store` already communicates official provenance, the card should not render a second standalone `Official` trust chip. Non-official or custom sources can still show trust level so users can distinguish provenance.
 - Store card inventory chips should read like product copy, for example `Includes 1 Skill` or `包含 1 个 Skill`, instead of raw internal notation such as `Skills · 1`. Card chips should focus on user-facing capabilities and omit connector/auth implementation groups such as `Apps`; the detail modal keeps the complete inventory for inspection.
 - If a Codex/OpenAI manifest declares `skills` as a directory path such as `./skills/`, preview should expand the GitHub repository tree and count nested `SKILL.md` files under the plugin package path. The tree response should be cached in memory per marketplace source during the process so visible-card enrichment does not make one GitHub tree request per card. If the tree lookup fails, preview falls back to the manifest-field count without blocking the store.
@@ -216,7 +216,9 @@ The Agent Configuration settings own the root and relative path configuration fo
 - Skill relative path.
 - MCP config relative path.
 - Plugin directory relative path.
-- Rules, Agents, Commands, and config file relative paths.
+- Rules, Agents, and config file relative paths.
+
+Commands can remain visible as Plugin inventory when a package declares them, but Agent Configuration settings do not expose command-directory configuration in this implementation.
 
 The final package write path is:
 

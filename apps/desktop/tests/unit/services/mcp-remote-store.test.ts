@@ -8,9 +8,9 @@ import {
   parseSmitheryMcpCatalog,
 } from "../../../src/renderer/services/mcp-remote-store";
 
-const officialSource: McpMarketSource = {
+const registrySource: McpMarketSource = {
   id: "modelcontextprotocol",
-  label: "Official MCP Registry",
+  label: "MCP Registry",
   url: "https://registry.modelcontextprotocol.io",
   trustLevel: "official",
 };
@@ -98,7 +98,7 @@ describe("mcp remote store", () => {
           count: 2,
         },
       }),
-      officialSource,
+      registrySource,
     );
 
     expect(result.nextCursor).toBe("ai.agentdm/agentdm:2.0.0");
@@ -132,25 +132,27 @@ describe("mcp remote store", () => {
 
   it("extracts Glama embedded server JSON instead of relying on static presets", () => {
     const result = parseGlamaMcpCatalog(
-      `<html><script id="__NEXT_DATA__" type="application/json">${JSON.stringify({
-        props: {
-          pageProps: {
-            servers: [
-              {
-                slug: "github",
-                name: "GitHub MCP",
-                description: "Manage GitHub issues and pull requests.",
-                repository: "https://github.com/github/github-mcp-server",
-                homepage: "https://glama.ai/mcp/servers/github",
-                packageName: "@github/github-mcp-server",
-                installCommand: "npx -y @github/github-mcp-server",
-                tags: ["github", "code"],
-              },
-            ],
-            totalCount: 36986,
+      `<html><script id="__NEXT_DATA__" type="application/json">${JSON.stringify(
+        {
+          props: {
+            pageProps: {
+              servers: [
+                {
+                  slug: "github",
+                  name: "GitHub MCP",
+                  description: "Manage GitHub issues and pull requests.",
+                  repository: "https://github.com/github/github-mcp-server",
+                  homepage: "https://glama.ai/mcp/servers/github",
+                  packageName: "@github/github-mcp-server",
+                  installCommand: "npx -y @github/github-mcp-server",
+                  tags: ["github", "code"],
+                },
+              ],
+              totalCount: 36986,
+            },
           },
         },
-      })}</script></html>`,
+      )}</script></html>`,
       glamaSource,
     );
 
@@ -198,7 +200,7 @@ describe("mcp remote store", () => {
 
   it("builds remote URLs with search and pagination parameters", () => {
     expect(
-      buildMcpRemoteStoreUrl(officialSource, { query: "github", cursor: "c1" }),
+      buildMcpRemoteStoreUrl(registrySource, { query: "github", cursor: "c1" }),
     ).toBe("https://registry.modelcontextprotocol.io/v0/servers?cursor=c1");
     expect(buildMcpRemoteStoreUrl(glamaSource, { query: "github" })).toBe(
       "https://glama.ai/mcp/servers?q=github",
@@ -237,7 +239,7 @@ describe("mcp remote store", () => {
     );
 
     const result = await loadMcpRemoteStore({
-      source: officialSource,
+      source: registrySource,
       query: "adeu",
       fetchRemoteContent,
     });
@@ -300,7 +302,7 @@ describe("mcp remote store", () => {
       );
 
     const result = await loadMcpRemoteStore({
-      source: officialSource,
+      source: registrySource,
       query: "github",
       fetchRemoteContent,
     });

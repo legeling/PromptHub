@@ -14,14 +14,20 @@ import type {
 export const pluginApi = {
   getLibrary: (): Promise<PluginLibraryFile> =>
     ipcRenderer.invoke(IPC_CHANNELS.PLUGIN_LIBRARY_GET),
-  listMarket: (): Promise<PluginMarketEntry[]> =>
-    ipcRenderer.invoke(IPC_CHANNELS.PLUGIN_MARKET_LIST),
+  listMarket: (sources?: PluginMarketSource[]): Promise<PluginMarketEntry[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PLUGIN_MARKET_LIST, sources),
   listMarketSources: (): Promise<PluginMarketSource[]> =>
     ipcRenderer.invoke(IPC_CHANNELS.PLUGIN_MARKET_SOURCES),
-  previewMarketPlugin: (entryId: string): Promise<PluginMarketPreview> =>
-    ipcRenderer.invoke(IPC_CHANNELS.PLUGIN_MARKET_PREVIEW, entryId),
-  installMarketPlugin: (entryId: string): Promise<PluginInstallResult> =>
-    ipcRenderer.invoke(IPC_CHANNELS.PLUGIN_MARKET_INSTALL, entryId),
+  previewMarketPlugin: (
+    entryId: string,
+    sources?: PluginMarketSource[],
+  ): Promise<PluginMarketPreview> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PLUGIN_MARKET_PREVIEW, entryId, sources),
+  installMarketPlugin: (
+    entryId: string,
+    sources?: PluginMarketSource[],
+  ): Promise<PluginInstallResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PLUGIN_MARKET_INSTALL, entryId, sources),
   distributePlugin: (
     request: PluginDistributeRequest,
   ): Promise<PluginDistributeResult> =>

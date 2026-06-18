@@ -13,14 +13,17 @@ import {
   CheckSquareIcon,
   Clock3Icon,
   CopyIcon,
+  DatabaseIcon,
   DownloadIcon,
   FolderOpenIcon,
-  InfoIcon,
+  GlobeIcon,
+  ListChecksIcon,
   Loader2Icon,
   PackageIcon,
   PackagePlusIcon,
   RefreshCwIcon,
   SendIcon,
+  Settings2Icon,
   StoreIcon,
   TrashIcon,
   XCircleIcon,
@@ -46,6 +49,9 @@ import { Select, type SelectOption } from "../ui/Select";
 import { useToast } from "../ui/Toast";
 import { PluginAgentTargetPicker } from "./PluginAgentTargetPicker";
 import { PluginFullDetailPage } from "./PluginFullDetailPage";
+import { SkillStoreSourceEditModal } from "../skill/SkillStoreSourceEditModal";
+import { SkillStoreSourceForm } from "../skill/SkillStoreSourceForm";
+import type { CustomStoreSourceType } from "../../services/custom-store-source";
 
 type PluginTab = "library" | "market" | "targets";
 type PluginLibraryFilter = "all" | "distributed" | "pending";
@@ -1402,12 +1408,24 @@ export function PluginManager() {
     string | null
   >(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [editingCustomSourceId, setEditingCustomSourceId] = useState<
+    string | null
+  >(null);
+  const [pendingDeleteCustomSourceId, setPendingDeleteCustomSourceId] =
+    useState<string | null>(null);
+  const [sourceType, setSourceType] =
+    useState<CustomStoreSourceType>("marketplace-json");
+  const [sourceName, setSourceName] = useState("");
+  const [sourceUrl, setSourceUrl] = useState("");
+  const [sourceBranch, setSourceBranch] = useState("");
+  const [sourceDirectory, setSourceDirectory] = useState("");
   const marketPreviewPrefetchInFlightRef = useRef<Set<string>>(new Set());
   const {
     library,
     marketEntries,
     marketPreviews,
     marketSources,
+    customStoreSources,
     targetMatrix,
     selectedTab,
     selectedMarketSourceId,
@@ -1417,6 +1435,10 @@ export function PluginManager() {
     load,
     setSelectedTab,
     setSelectedMarketSourceId,
+    addCustomStoreSource,
+    updateCustomStoreSource,
+    removeCustomStoreSource,
+    toggleCustomStoreSource,
     previewMarketPlugin,
     installMarketPlugin,
     distributePlugin,
@@ -1428,7 +1450,11 @@ export function PluginManager() {
   }, [load]);
 
   useEffect(() => {
-    if (selectedMarketSourceId === "all" || marketSources.length === 0) {
+    if (
+      selectedMarketSourceId === "all" ||
+      selectedMarketSourceId === "new-custom" ||
+      marketSources.length === 0
+    ) {
       return;
     }
     if (marketSources.some((source) => source.id === selectedMarketSourceId)) {
@@ -1439,6 +1465,87 @@ export function PluginManager() {
       marketSources[0];
     setSelectedMarketSourceId(fallback.id);
   }, [marketSources, selectedMarketSourceId, setSelectedMarketSourceId]);
+
+  const selectedCustomSource = useMemo(
+    () =>
+      customStoreSources.find(
+        (source) => source.id === selectedMarketSourceId,
+      ) ?? null,
+    [customStoreSources, selectedMarketSourceId],
+  );
+  const selectedMarketSource = useMemo(
+    () =>
+      marketSources.find((source) => source.id === selectedMarketSourceId) ??
+      null,
+    [marketSources, selectedMarketSourceId],
+  );
+  const pendingDeleteCustomSource = useMemo(
+    () =>
+      customStoreSources.find(
+        (source) => source.id === pendingDeleteCustomSourceId,
+      ) ?? null,
+    [customStoreSources, pendingDeleteCustomSourceId],
+  );
+  const customSourceTypeOptions = useMemo(
+    () => [
+      {
+        value: "marketplace-json" as const,
+        icon: <DatabaseIcon className="h-4 w-4" />,
+      },
+      {
+        value: "git-repo" as const,
+        icon: <GlobeIcon className="h-4 w-4" />,
+      },
+    ],
+    [],
+  );
+
+  const handleAddCustomSource = () => {
+    if (!sourceName.trim() || !sourceUrl.trim()) {
+      showToast(
+        t("skill.storeSourceRequired", "Store name and URL are required"),
+        "error",
+      );
+      return;
+    }
+    try {
+      addCustomStoreSource(sourceName, sourceUrl, sourceType, {
+        branch: sourceBranch,
+        directory: sourceDirectory,
+      });
+      setSourceName("");
+      setSourceUrl("");
+      setSourceBranch("");
+      setSourceDirectory("");
+      void load();
+    } catch (sourceError) {
+      showToast(getErrorMessage(sourceError), "error");
+    }
+  };
+
+  const handleUpdateCustomSource = (payload: {
+    branch?: string;
+    directory?: string;
+    id: string;
+    name: string;
+    type: CustomStoreSourceType;
+    url: string;
+  }) => {
+    try {
+      updateCustomStoreSource(payload);
+      setEditingCustomSourceId(null);
+      void load();
+    } catch (sourceError) {
+      showToast(getErrorMessage(sourceError), "error");
+    }
+  };
+
+  const handleConfirmDeleteCustomSource = () => {
+    if (!pendingDeleteCustomSource) return;
+    removeCustomStoreSource(pendingDeleteCustomSource.id);
+    setPendingDeleteCustomSourceId(null);
+    setEditingCustomSourceId(null);
+  };
 
   const installedPlugins = useMemo(
     () => library?.plugins ?? [],
@@ -1657,10 +1764,26 @@ export function PluginManager() {
     selectedTab === "library"
       ? selectedLibraryPluginIds.size
       : selectedMarketEntryIds.size;
+  const currentMarketTitle =
+    selectedMarketSourceId === "all"
+      ? t("plugin.pluginStore", "Plugins Store")
+      : selectedMarketSourceId === "new-custom"
+        ? t("skill.addStoreSource", "Add Store")
+        : selectedMarketSource
+          ? getMarketSourceLabel(
+              selectedMarketSource.id,
+              selectedMarketSource.displayName,
+              t,
+            )
+          : t("plugin.pluginStore", "Plugins Store");
+  const currentMarketCount =
+    selectedMarketSourceId === "all" || normalizedSearchQuery
+      ? visibleMarketEntries.length
+      : sourceFilteredMarketEntries.length;
   const currentViewTitle =
     selectedTab === "library"
       ? t("plugin.myPlugins", "My Plugins")
-      : t("plugin.pluginStore", "Plugin Store");
+      : currentMarketTitle;
   const currentViewHint =
     selectedTab === "library"
       ? t(
@@ -1677,9 +1800,9 @@ export function PluginManager() {
           defaultValue: "{{count}} installed",
           count: visiblePlugins.length,
         })
-      : t("plugin.statsStoreEntries", {
-          defaultValue: "{{count}} store entries",
-          count: visibleMarketEntries.length,
+      : t("plugin.loadedStoreEntries", {
+          defaultValue: "Loaded {{count}}",
+          count: currentMarketCount,
         });
 
   const tabs: Array<{
@@ -2144,18 +2267,30 @@ export function PluginManager() {
                 aria-pressed={isBatchMode}
                 aria-label={t("plugin.batchManage", "Batch manage plugins")}
                 title={t("plugin.batchManage", "Batch manage plugins")}
-                className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-colors ${
-                  isBatchMode
-                    ? "border-primary/30 bg-primary/10 text-primary hover:bg-primary/15"
-                    : "border-border app-wallpaper-surface text-foreground hover:border-primary/25 hover:bg-accent"
-                }`}
+                className={
+                  selectedTab === "market"
+                    ? `rounded-lg p-2 transition-colors ${
+                        isBatchMode
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                      }`
+                    : `inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-colors ${
+                        isBatchMode
+                          ? "border-primary/30 bg-primary/10 text-primary hover:bg-primary/15"
+                          : "border-border app-wallpaper-surface text-foreground hover:border-primary/25 hover:bg-accent"
+                      }`
+                }
               >
-                {isBatchMode ? (
+                {selectedTab === "market" ? (
+                  <ListChecksIcon aria-hidden="true" className="h-4 w-4" />
+                ) : isBatchMode ? (
                   <XIcon aria-hidden="true" className="h-4 w-4" />
                 ) : (
                   <CheckSquareIcon aria-hidden="true" className="h-4 w-4" />
                 )}
-                {t("plugin.batchManage", "Batch manage plugins")}
+                {selectedTab === "market"
+                  ? null
+                  : t("plugin.batchManage", "Batch manage plugins")}
               </button>
               <button
                 type="button"
@@ -2272,8 +2407,39 @@ export function PluginManager() {
               </div>
             )}
           </div>
+        ) : selectedTab === "market" &&
+          selectedMarketSourceId === "new-custom" ? (
+          <SkillStoreSourceForm
+            branch={sourceBranch}
+            directory={sourceDirectory}
+            handleAddSource={handleAddCustomSource}
+            setBranch={setSourceBranch}
+            setDirectory={setSourceDirectory}
+            setSourceName={setSourceName}
+            setSourceType={setSourceType}
+            setSourceUrl={setSourceUrl}
+            sourceName={sourceName}
+            sourceType={sourceType}
+            sourceUrl={sourceUrl}
+            t={t}
+            typeOptions={customSourceTypeOptions}
+          />
         ) : selectedTab === "market" ? (
           <div className="space-y-8">
+            {selectedCustomSource ? (
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setEditingCustomSourceId(selectedCustomSource.id)
+                  }
+                  className="inline-flex items-center gap-2 rounded-lg border border-border bg-accent/50 px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
+                >
+                  <Settings2Icon aria-hidden="true" className="h-4 w-4" />
+                  {t("common.edit", "Edit")}
+                </button>
+              </div>
+            ) : null}
             {visibleMarketEntries.length > 0 ? (
               <>
                 {installedMarketEntries.length > 0 ? (
@@ -2480,6 +2646,34 @@ export function PluginManager() {
         cancelText={t("common.cancel", "Cancel")}
         variant="destructive"
         isLoading={isDeleting}
+      />
+      <SkillStoreSourceEditModal
+        isOpen={editingCustomSourceId !== null}
+        onClose={() => setEditingCustomSourceId(null)}
+        onDelete={setPendingDeleteCustomSourceId}
+        onSave={handleUpdateCustomSource}
+        onToggleEnabled={toggleCustomStoreSource}
+        onRefresh={() => void load()}
+        source={
+          customStoreSources.find(
+            (source) => source.id === editingCustomSourceId,
+          ) ?? null
+        }
+        typeOptions={customSourceTypeOptions}
+      />
+      <ConfirmDialog
+        isOpen={Boolean(pendingDeleteCustomSource)}
+        onClose={() => setPendingDeleteCustomSourceId(null)}
+        onConfirm={handleConfirmDeleteCustomSource}
+        title={t("skill.deleteStoreSourceTitle", "Delete custom store")}
+        message={t("skill.deleteStoreSourceMessage", {
+          name: pendingDeleteCustomSource?.name ?? "",
+          defaultValue:
+            'Delete custom store "{{name}}"? Installed items will stay in your library, but this source and its cached store entries will be removed.',
+        })}
+        confirmText={t("common.delete", "Delete")}
+        cancelText={t("common.cancel", "Cancel")}
+        variant="destructive"
       />
       <PluginStoreDetailModal
         entry={detailMarketEntry}

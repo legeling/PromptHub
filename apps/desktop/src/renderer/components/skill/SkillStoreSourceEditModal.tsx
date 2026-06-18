@@ -75,6 +75,10 @@ interface SkillStoreSourceEditModalProps {
   onRefresh: (sourceId: string) => void;
   refreshingSourceId?: string | null;
   source: SkillStoreSource | null;
+  typeOptions?: Array<{
+    value: EditableSourceType;
+    icon: React.ReactNode;
+  }>;
 }
 
 export function SkillStoreSourceEditModal({
@@ -86,6 +90,7 @@ export function SkillStoreSourceEditModal({
   onRefresh,
   refreshingSourceId,
   source,
+  typeOptions = TYPE_OPTIONS,
 }: SkillStoreSourceEditModalProps) {
   const { t } = useTranslation();
   const [name, setName] = useState("");
@@ -192,7 +197,7 @@ export function SkillStoreSourceEditModal({
     >
       <div className="space-y-5">
         <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-          {TYPE_OPTIONS.map((option) => {
+          {typeOptions.map((option) => {
             const active = type === option.value;
             const label =
               option.value === "marketplace-json"

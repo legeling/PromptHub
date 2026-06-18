@@ -2480,7 +2480,8 @@
     "myMcp": "My MCP",
     "agentMcp": "Agent MCP",
     "mcpStore": "MCP Store",
-    "officialMcpStore": "Official MCP Store",
+    "officialMcpStore": "Official Store",
+    "officialMcpStoreDesc": "PromptHub-maintained MCP catalog with curated installable servers. The desktop app ships this catalog locally for now and will sync with the official PromptHub MCP website later.",
     "templatesCount": "templates",
     "emptyStore": "No MCP templates",
     "emptyStoreHint": "Curated MCP templates will appear here when available.",
@@ -2706,7 +2707,7 @@
     "pluginTargets": "Agent Plugin",
     "sources": {
       "codexOfficial": "Codex Official Store",
-      "promptHubOfficial": "PromptHub Official Store"
+      "promptHubOfficial": "Official Store"
     },
     "inventory": {
       "skills": "Skills",
@@ -2832,6 +2833,7 @@
     "myPluginsHint": "Installed Plugin bundles stay in PromptHub until you distribute their child assets.",
     "pluginStoreHint": "Browse Plugin bundles, inspect what they include, then install or batch install selected entries.",
     "statsStoreEntries": "{{count}} store entries",
+    "loadedStoreEntries": "Loaded {{count}}",
     "installedSection": "Installed",
     "availableSection": "Available",
     "openPluginDetail": "Open Plugin details {{name}}",

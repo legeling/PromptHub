@@ -15,6 +15,12 @@ import type {
   McpMarketTemplate,
 } from "@prompthub/shared/types/mcp";
 import { McpMarketDetailModal } from "./McpMarketDetailModal";
+import {
+  getMcpMarketSourceDescription,
+  getMcpMarketSourceLabel,
+  getMcpTemplateSourceLabel,
+  OFFICIAL_MCP_SOURCE_ID,
+} from "./mcp-market-labels";
 
 interface McpMarketViewProps {
   error?: string | null;
@@ -29,6 +35,34 @@ interface McpMarketViewProps {
   onInstall: (template: McpMarketTemplate | string) => Promise<void>;
   onRefresh?: () => void;
   onSearchChange?: (query: string) => void;
+}
+
+function matchesTemplateSearch(
+  template: McpMarketTemplate,
+  query: string,
+): boolean {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) {
+    return true;
+  }
+
+  const haystack = [
+    template.displayName,
+    template.name,
+    template.description,
+    template.packageName ?? "",
+    template.runtime ?? "",
+    template.repository ?? "",
+    template.documentationUrl ?? "",
+    ...template.tags,
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  return normalized
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((token) => haystack.includes(token));
 }
 
 /**
@@ -73,16 +107,17 @@ export function McpMarketView({
       (template) => template.source?.id === selectedSource.id,
     );
   }, [selectedSource, templates]);
+  const localVisibleTemplates = useMemo(
+    () =>
+      fallbackTemplates.filter((template) =>
+        matchesTemplateSearch(template, searchQuery),
+      ),
+    [fallbackTemplates, searchQuery],
+  );
   const visibleTemplates =
-    remoteTemplates.length > 0 ? remoteTemplates : fallbackTemplates;
-  const storeTitle =
-    selectedSource?.label ?? t("mcp.mcpStore", "MCP Store");
-  const storeSubtitle =
-    selectedSource?.description ??
-    t(
-      "mcp.mcpStoreSubtitle",
-      "Install ready-to-use MCP templates from the selected channel.",
-    );
+    remoteTemplates.length > 0 ? remoteTemplates : localVisibleTemplates;
+  const storeTitle = getMcpMarketSourceLabel(selectedSource, t);
+  const storeSubtitle = getMcpMarketSourceDescription(selectedSource, t);
   const countLabel =
     typeof totalCount === "number" && totalCount > visibleTemplates.length
       ? `${visibleTemplates.length} / ${totalCount}`
@@ -93,7 +128,11 @@ export function McpMarketView({
       : t("mcp.remoteStoreCount", "{{count}} MCP servers", {
           count: visibleTemplates.length,
         });
-  const isUsingFallback = remoteTemplates.length === 0 && fallbackTemplates.length > 0;
+  const isOfficialSource = selectedSource?.id === OFFICIAL_MCP_SOURCE_ID;
+  const isUsingFallback =
+    !isOfficialSource &&
+    remoteTemplates.length === 0 &&
+    fallbackTemplates.length > 0;
 
   const submitSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -105,9 +144,7 @@ export function McpMarketView({
       <div className="px-6 py-4 border-b border-border shrink-0 app-wallpaper-panel-strong z-10 flex items-start justify-between gap-4">
         <div className="min-w-0 space-y-1">
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold">
-              {storeTitle}
-            </h2>
+            <h2 className="text-lg font-semibold">{storeTitle}</h2>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
             {storeSubtitle}
@@ -126,9 +163,12 @@ export function McpMarketView({
                 {t("mcp.remoteStoreFallback", "Showing built-in fallback")}
               </span>
             ) : null}
-            {error ? (
+            {error && !isOfficialSource ? (
               <span className="text-destructive">
-                {t("mcp.remoteStoreLoadFailed", "Remote catalog failed to load")}
+                {t(
+                  "mcp.remoteStoreLoadFailed",
+                  "Remote catalog failed to load",
+                )}
               </span>
             ) : null}
           </div>
@@ -216,7 +256,7 @@ export function McpMarketView({
                         {template.description}
                       </p>
                       <p className="mt-1 text-[10px] text-muted-foreground/80 truncate">
-                        {template.source?.label ?? selectedSource?.label}
+                        {getMcpTemplateSourceLabel(template, selectedSource, t)}
                       </p>
                       <div
                         aria-hidden="true"
@@ -268,9 +308,9 @@ export function McpMarketView({
       </div>
 
       {selectedTemplate ? (
-          <McpMarketDetailModal
-            template={selectedTemplate}
-            isInstalled={installedNames.has(selectedTemplate.name)}
+        <McpMarketDetailModal
+          template={selectedTemplate}
+          isInstalled={installedNames.has(selectedTemplate.name)}
           onInstall={onInstall}
           onClose={() => setSelectedTemplate(null)}
         />

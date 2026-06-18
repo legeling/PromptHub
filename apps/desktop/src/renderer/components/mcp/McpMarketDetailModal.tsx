@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import type { McpMarketTemplate } from "@prompthub/shared/types/mcp";
 import { copyTextToClipboard } from "../../utils/clipboard";
+import { getMcpTemplateSourceLabel } from "./mcp-market-labels";
 
 interface McpMarketDetailModalProps {
   isInstalled: boolean;
@@ -495,7 +496,7 @@ export function McpMarketDetailModal({
                 />
                 <DetailRow
                   label={t("mcp.source", "Source")}
-                  value={template.source?.label}
+                  value={getMcpTemplateSourceLabel(template, null, t)}
                 />
                 <DetailRow
                   label={t("mcp.runtime", "Runtime")}

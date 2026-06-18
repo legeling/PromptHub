@@ -1233,17 +1233,19 @@ export class CorePluginLibraryService {
     return normalizeMarketCache(raw);
   }
 
-  getMarketSources(): PluginMarketSource[] {
-    return [...this.marketSources];
+  getMarketSources(sources?: PluginMarketSource[]): PluginMarketSource[] {
+    return [...(sources ?? this.marketSources)];
   }
 
   getTargetMatrix(): PluginTargetCompatibility[] {
     return getPluginTargetMatrix();
   }
 
-  async getMarketEntries(): Promise<PluginMarketEntry[]> {
+  async getMarketEntries(
+    sources = this.marketSources,
+  ): Promise<PluginMarketEntry[]> {
     const entries: PluginMarketEntry[] = [];
-    for (const source of this.marketSources) {
+    for (const source of sources) {
       try {
         const sourceEntries = await this.readMarketplace(source);
         entries.push(...sourceEntries);
@@ -1257,15 +1259,21 @@ export class CorePluginLibraryService {
     return entries;
   }
 
-  async previewMarketPlugin(entryId: string): Promise<PluginMarketPreview> {
-    const entry = await this.findMarketEntry(entryId);
-    const preview = await this.buildPreviewForEntry(entry);
+  async previewMarketPlugin(
+    entryId: string,
+    sources = this.marketSources,
+  ): Promise<PluginMarketPreview> {
+    const entry = await this.findMarketEntry(entryId, sources);
+    const preview = await this.buildPreviewForEntry(entry, sources);
     this.writeMarketPreviewCache(preview);
     return preview;
   }
 
-  private async findMarketEntry(entryId: string): Promise<PluginMarketEntry> {
-    const entries = await this.getMarketEntries();
+  private async findMarketEntry(
+    entryId: string,
+    sources = this.marketSources,
+  ): Promise<PluginMarketEntry> {
+    const entries = await this.getMarketEntries(sources);
     const entry = entries.find((item) => item.id === entryId);
     if (!entry) {
       throw new CorePluginError(
@@ -1276,8 +1284,11 @@ export class CorePluginLibraryService {
     return entry;
   }
 
-  async installMarketPlugin(entryId: string): Promise<PluginInstallResult> {
-    const preview = await this.previewMarketPlugin(entryId);
+  async installMarketPlugin(
+    entryId: string,
+    sources = this.marketSources,
+  ): Promise<PluginInstallResult> {
+    const preview = await this.previewMarketPlugin(entryId, sources);
     const entry = preview.entry;
     const inventory = preview.inventory;
     const classification = preview.classification;
@@ -1425,9 +1436,10 @@ export class CorePluginLibraryService {
 
   private async buildPreviewForEntry(
     entry: PluginMarketEntry,
+    sources = this.marketSources,
   ): Promise<PluginMarketPreview> {
-    const manifest = await this.readManifestForEntry(entry);
-    const marketSource = this.marketSources.find(
+    const manifest = await this.readManifestForEntry(entry, sources);
+    const marketSource = sources.find(
       (source) => source.id === entry.marketplaceId,
     );
     if (!marketSource) {
@@ -1458,7 +1470,7 @@ export class CorePluginLibraryService {
       entry.description;
     const longDescription = safeString(interfaceRecord.longDescription);
     const description = shortDescription || longDescription;
-    const manifestUrl = this.getManifestUrlForEntry(entry);
+    const manifestUrl = this.getManifestUrlForEntry(entry, sources);
     const iconUrl =
       resolveManifestAssetUrl(
         marketSource,
@@ -1688,13 +1700,17 @@ export class CorePluginLibraryService {
 
   private async readManifestForEntry(
     entry: PluginMarketEntry,
+    sources = this.marketSources,
   ): Promise<RawRecord> {
-    const manifestUrl = this.getManifestUrlForEntry(entry);
+    const manifestUrl = this.getManifestUrlForEntry(entry, sources);
     const content = await this.fetchText(manifestUrl);
     return parseJsonObject(content, `${entry.displayName} manifest`);
   }
 
-  private getManifestUrlForEntry(entry: PluginMarketEntry): string {
+  private getManifestUrlForEntry(
+    entry: PluginMarketEntry,
+    sources = this.marketSources,
+  ): string {
     if (!entry.source.manifestPath) {
       throw new CorePluginError(
         "MISSING_MANIFEST",
@@ -1702,7 +1718,7 @@ export class CorePluginLibraryService {
       );
     }
 
-    const marketSource = this.marketSources.find(
+    const marketSource = sources.find(
       (source) => source.id === entry.marketplaceId,
     );
     if (!marketSource) {

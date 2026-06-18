@@ -58,7 +58,7 @@ describe("CoreMcpLibraryService", () => {
     }
 
     expect(sources.map((source) => source.id)).toEqual([
-      "modelcontextprotocol",
+      "prompthub-official",
       "smithery",
       "glama",
     ]);
@@ -116,7 +116,7 @@ describe("CoreMcpLibraryService", () => {
       packageName: "adeu",
       source: {
         id: "modelcontextprotocol",
-        label: "Official MCP Registry",
+        label: "MCP Registry",
         url: "https://registry.modelcontextprotocol.io",
         trustLevel: "official",
       },
@@ -130,7 +130,7 @@ describe("CoreMcpLibraryService", () => {
       source: {
         type: "market",
         id: "modelcontextprotocol:ai-adeu-adeu",
-        label: "Official MCP Registry",
+        label: "MCP Registry",
         url: "https://registry.modelcontextprotocol.io",
       },
     });

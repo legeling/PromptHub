@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -81,10 +81,10 @@ describe("SkillStore custom sources", () => {
           ]}
           loadStoreSource={vi.fn()}
           loadingSourceId={null}
+          onRequestDeleteCustomStoreSource={vi.fn()}
           remoteStoreEntries={{
             "team-store": { loadedAt: Date.now(), error: null },
           }}
-          removeCustomStoreSource={vi.fn()}
           selectStoreSource={vi.fn()}
           selectedCustomSource={null}
           selectedStoreSourceId="new-custom"
@@ -103,7 +103,7 @@ describe("SkillStore custom sources", () => {
   it("keeps custom source rows keyboard-selectable and action buttons isolated", async () => {
     const user = userEvent.setup();
     const loadStoreSource = vi.fn().mockResolvedValue(undefined);
-    const removeCustomStoreSource = vi.fn();
+    const onRequestDeleteCustomStoreSource = vi.fn();
     const selectStoreSource = vi.fn();
     const toggleCustomStoreSource = vi.fn();
 
@@ -123,8 +123,8 @@ describe("SkillStore custom sources", () => {
           ]}
           loadStoreSource={loadStoreSource}
           loadingSourceId={null}
+          onRequestDeleteCustomStoreSource={onRequestDeleteCustomStoreSource}
           remoteStoreEntries={{}}
-          removeCustomStoreSource={removeCustomStoreSource}
           selectStoreSource={selectStoreSource}
           selectedCustomSource={null}
           selectedStoreSourceId="team-store"
@@ -164,7 +164,7 @@ describe("SkillStore custom sources", () => {
     await user.click(toggleButton);
 
     expect(loadStoreSource).toHaveBeenCalledWith("team-store", true);
-    expect(removeCustomStoreSource).toHaveBeenCalledWith("team-store");
+    expect(onRequestDeleteCustomStoreSource).toHaveBeenCalledWith("team-store");
     expect(toggleCustomStoreSource).toHaveBeenCalledWith("team-store");
     expect(selectStoreSource).toHaveBeenCalledTimes(2);
   });
@@ -189,8 +189,8 @@ describe("SkillStore custom sources", () => {
           ]}
           loadStoreSource={loadStoreSource}
           loadingSourceId="team-store"
+          onRequestDeleteCustomStoreSource={vi.fn()}
           remoteStoreEntries={{}}
-          removeCustomStoreSource={vi.fn()}
           selectStoreSource={vi.fn()}
           selectedCustomSource={null}
           selectedStoreSourceId="official"
@@ -716,6 +716,74 @@ describe("SkillStore custom sources", () => {
       "release",
     );
     expect(screen.getAllByText("Docs Store Renamed").length).toBeGreaterThan(0);
+  }, 60_000);
+
+  it("requires confirmation before deleting a custom store source from the edit modal", async () => {
+    const user = userEvent.setup();
+    installWindowMocks({
+      api: {
+        skill: {
+          fetchRemoteContent: vi
+            .fn()
+            .mockResolvedValue(JSON.stringify({ skills: [] })),
+          listRemoteBranches: vi.fn().mockResolvedValue(["main"]),
+          scanLocalPreview: vi.fn().mockResolvedValue([]),
+          scanSafety: vi.fn().mockResolvedValue({
+            level: "safe",
+            summary: "safe",
+            findings: [],
+            recommendedAction: "allow",
+            scannedAt: Date.now(),
+            checkedFileCount: 1,
+            scanMethod: "ai",
+          }),
+        },
+      },
+    });
+
+    useSkillStore.setState({
+      storeView: "store",
+      customStoreSources: [
+        {
+          id: "custom-docs",
+          name: "Docs Store",
+          type: "git-repo",
+          url: "https://github.com/example/store",
+          branch: "main",
+          enabled: true,
+          order: 0,
+          createdAt: Date.now(),
+        },
+      ],
+      selectedStoreSourceId: "custom-docs",
+    } as never);
+
+    await act(async () => {
+      await renderWithI18n(<SkillStore />, { language: "en" });
+    });
+
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    const deleteButtons = screen.getAllByRole("button", { name: "Delete" });
+    await user.click(deleteButtons[0]);
+
+    expect(useSkillStore.getState().customStoreSources).toHaveLength(1);
+    const confirmDialog = screen.getByRole("alertdialog");
+    expect(confirmDialog).toBeInTheDocument();
+
+    await user.click(within(confirmDialog).getByRole("button", { name: "Cancel" }));
+    expect(useSkillStore.getState().customStoreSources).toHaveLength(1);
+
+    await user.click(screen.getAllByRole("button", { name: "Delete" })[0]);
+    await user.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: "Delete",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(useSkillStore.getState().customStoreSources).toHaveLength(0);
+    });
+    expect(useSkillStore.getState().selectedStoreSourceId).toBe("official");
   }, 60_000);
 
   it("normalizes GitHub tree URLs before requesting remote branches", async () => {

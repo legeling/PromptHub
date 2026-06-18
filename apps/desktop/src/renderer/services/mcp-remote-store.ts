@@ -118,6 +118,20 @@ function safeJsonParse<T>(raw: string): T | null {
   }
 }
 
+function looksLikeOfficialRegistryCatalog(raw: string): boolean {
+  const data = safeJsonParse<{
+    servers?: Array<{ server?: { name?: string } }>;
+  }>(raw);
+  return Array.isArray(data?.servers)
+    ? data.servers.some(
+        (entry) =>
+          Boolean(entry?.server) &&
+          typeof entry.server?.name === "string" &&
+          entry.server.name.trim().length > 0,
+      )
+    : false;
+}
+
 function getRepositoryUrl(value: unknown): string | undefined {
   if (typeof value === "string") return value;
   if (value && typeof value === "object" && "url" in value) {
@@ -468,6 +482,9 @@ export function parseGlamaMcpCatalog(
   source: McpMarketSource,
   query = "",
 ): McpRemoteStoreResult {
+  if (looksLikeOfficialRegistryCatalog(raw)) {
+    return parseOfficialMcpRegistryCatalog(raw, source, query);
+  }
   return parseGenericCatalog(raw, source, query);
 }
 
@@ -476,6 +493,9 @@ export function parseSmitheryMcpCatalog(
   source: McpMarketSource,
   query = "",
 ): McpRemoteStoreResult {
+  if (looksLikeOfficialRegistryCatalog(raw)) {
+    return parseOfficialMcpRegistryCatalog(raw, source, query);
+  }
   return parseGenericCatalog(raw, source, query);
 }
 

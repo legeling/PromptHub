@@ -64,6 +64,7 @@ import {
   DESKTOP_HOME_MODULES,
   type DesktopHomeModule,
 } from "../../stores/settings.store";
+import { getMcpMarketSourceLabel } from "../mcp/mcp-market-labels";
 
 const RulesSidebarPanel = lazy(() =>
   import("./RulesSidebarPanel").then((module) => ({
@@ -580,7 +581,7 @@ export function Sidebar({
   ]);
 
   const openMcpStoreSource = useCallback(
-    (sourceId = mcpMarketSources[0]?.id ?? "modelcontextprotocol") => {
+    (sourceId = mcpMarketSources[0]?.id ?? "prompthub-official") => {
       setIsMcpStoreGroupExpanded(true);
       setMcpSelectedMarketSourceId(sourceId);
       setMcpSelectedTab("market");
@@ -606,9 +607,7 @@ export function Sidebar({
     }
 
     openMcpStoreSource(
-      mcpMarketSources.some(
-        (source) => source.id === mcpSelectedMarketSourceId,
-      )
+      mcpMarketSources.some((source) => source.id === mcpSelectedMarketSourceId)
         ? mcpSelectedMarketSourceId
         : mcpMarketSources[0]?.id,
     );
@@ -2021,13 +2020,28 @@ export function Sidebar({
                         >
                           <StoreIcon className="w-4 h-4" aria-hidden="true" />
                           <span className="flex-1 text-left truncate">
-                            {source.label}
+                            {getMcpMarketSourceLabel(source, t)}
                           </span>
                           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sidebar-accent/80 text-sidebar-foreground/50 border border-white/5">
                             {mcpMarketSourceCounts.get(source.id) ?? 0}
                           </span>
                         </button>
                       ))}
+                      <button
+                        type="button"
+                        onClick={() => openMcpStoreSource("new-custom")}
+                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed text-sm transition-colors ${
+                          mcpSelectedTab === "market" &&
+                          mcpSelectedMarketSourceId === "new-custom"
+                            ? "border-primary text-primary bg-primary/5"
+                            : "border-sidebar-border/70 text-sidebar-foreground/50 hover:border-primary/50 hover:text-sidebar-foreground hover:bg-sidebar-accent/20"
+                        }`}
+                      >
+                        <PlusIcon className="w-4 h-4" aria-hidden="true" />
+                        <span className="truncate">
+                          {t("skill.addStoreSource", "添加商店")}
+                        </span>
+                      </button>
                     </div>
                   </div>
                 ) : (
@@ -2104,6 +2118,21 @@ export function Sidebar({
                           </span>
                         </button>
                       ))}
+                      <button
+                        type="button"
+                        onClick={() => openPluginStoreSource("new-custom")}
+                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed text-sm transition-colors ${
+                          pluginSelectedTab === "market" &&
+                          pluginSelectedMarketSourceId === "new-custom"
+                            ? "border-primary text-primary bg-primary/5"
+                            : "border-sidebar-border/70 text-sidebar-foreground/50 hover:border-primary/50 hover:text-sidebar-foreground hover:bg-sidebar-accent/20"
+                        }`}
+                      >
+                        <PlusIcon className="w-4 h-4" aria-hidden="true" />
+                        <span className="truncate">
+                          {t("skill.addStoreSource", "添加商店")}
+                        </span>
+                      </button>
                     </div>
                   </div>
                 ) : (

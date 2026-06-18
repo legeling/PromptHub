@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import type { McpTargetPreset } from "@prompthub/core";
 import type {
   McpCreateFromSourceRequest,
@@ -17,10 +18,20 @@ import type {
   McpTargetKind,
   McpTargetStatusEntry,
 } from "@prompthub/shared/types/mcp";
+import { MCP_OFFICIAL_MARKET_SOURCE_ID } from "@prompthub/shared/constants/mcp-market";
 import {
   loadMcpRemoteStore,
   type McpRemoteStoreResult,
 } from "../services/mcp-remote-store";
+import {
+  addCustomStoreSource as addCustomStoreSourceToList,
+  removeCustomStoreSource as removeCustomStoreSourceFromList,
+  toggleCustomStoreSource as toggleCustomStoreSourceInList,
+  toMcpMarketSource,
+  updateCustomStoreSource as updateCustomStoreSourceInList,
+  type CustomStoreSource,
+  type CustomStoreSourceType,
+} from "../services/custom-store-source";
 
 interface McpMarketEntry extends McpRemoteStoreResult {
   error?: string | null;
@@ -33,6 +44,7 @@ interface McpState {
   library: McpLibraryFile | null;
   marketTemplates: McpMarketTemplate[];
   marketSources: McpMarketSource[];
+  customStoreSources: CustomStoreSource[];
   remoteMarketEntries: Record<string, McpMarketEntry>;
   loadingMarketSourceId: string | null;
   marketError: string | null;
@@ -55,6 +67,22 @@ interface McpState {
   setSelectedTab: (tab: McpState["selectedTab"]) => void;
   setSelectedMarketSourceId: (sourceId: string) => void;
   setSelectedTargetId: (id: string | null) => void;
+  addCustomStoreSource: (
+    name: string,
+    url: string,
+    type?: CustomStoreSourceType,
+    options?: { branch?: string; directory?: string },
+  ) => void;
+  updateCustomStoreSource: (payload: {
+    branch?: string;
+    directory?: string;
+    id: string;
+    name: string;
+    type: CustomStoreSourceType;
+    url: string;
+  }) => void;
+  removeCustomStoreSource: (id: string) => void;
+  toggleCustomStoreSource: (id: string) => void;
   createServer: (draft: McpServerDraft) => Promise<McpServerConfig>;
   createFromSource: (
     request: McpCreateFromSourceRequest,
@@ -81,7 +109,7 @@ interface McpState {
   removeTargetNames: (target: McpRemoveTargetNames) => Promise<McpRemoveResult>;
 }
 
-const DEFAULT_MCP_MARKET_SOURCE_ID = "modelcontextprotocol";
+const DEFAULT_MCP_MARKET_SOURCE_ID = MCP_OFFICIAL_MARKET_SOURCE_ID;
 const REMOTE_MARKET_STALE_MS = 10 * 60 * 1000;
 
 function getMarketEntryKey(sourceId: string, query: string): string {
@@ -135,10 +163,37 @@ async function loadMcpSnapshot(): Promise<{
   };
 }
 
-export const useMcpStore = create<McpState>((set, get) => ({
+function mergeMcpMarketSources(
+  builtinSources: McpMarketSource[],
+  customSources: CustomStoreSource[],
+): McpMarketSource[] {
+  const builtinIds = new Set(builtinSources.map((source) => source.id));
+  return [
+    ...builtinSources,
+    ...customSources.flatMap((source) => {
+      const marketSource = toMcpMarketSource(source);
+      return marketSource && !builtinIds.has(marketSource.id)
+        ? [marketSource]
+        : [];
+    }),
+  ];
+}
+
+function getBuiltinMcpMarketSources(
+  marketSources: McpMarketSource[],
+  customSources: CustomStoreSource[],
+): McpMarketSource[] {
+  const customIds = new Set(customSources.map((source) => source.id));
+  return marketSources.filter((source) => !customIds.has(source.id));
+}
+
+export const useMcpStore = create<McpState>()(
+  persist(
+    (set, get) => ({
   library: null,
   marketTemplates: [],
   marketSources: [],
+  customStoreSources: [],
   remoteMarketEntries: {},
   loadingMarketSourceId: null,
   marketError: null,
@@ -158,12 +213,17 @@ export const useMcpStore = create<McpState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const snapshot = await loadMcpSnapshot();
+      const marketSources = mergeMcpMarketSources(
+        snapshot.marketSources,
+        get().customStoreSources,
+      );
       const selectedMarketSourceId = resolveMarketSourceId(
         get().selectedMarketSourceId,
-        snapshot.marketSources,
+        marketSources,
       );
       set({
         ...snapshot,
+        marketSources,
         marketError: null,
         selectedMarketSourceId,
         selectedTargetId:
@@ -188,6 +248,101 @@ export const useMcpStore = create<McpState>((set, get) => ({
   setSelectedMarketSourceId: (sourceId) =>
     set({ selectedMarketSourceId: sourceId }),
   setSelectedTargetId: (id) => set({ selectedTargetId: id }),
+
+  addCustomStoreSource: (
+    name,
+    url,
+    type = "marketplace-json",
+    options,
+  ) => {
+    const result = addCustomStoreSourceToList(get().customStoreSources, {
+      name,
+      url,
+      type,
+      branch: options?.branch,
+      directory: options?.directory,
+    });
+    if (!result) return;
+    const builtinSources = getBuiltinMcpMarketSources(
+      get().marketSources,
+      get().customStoreSources,
+    );
+    set({
+      customStoreSources: result.sources,
+      marketSources: mergeMcpMarketSources(builtinSources, result.sources),
+      selectedMarketSourceId: result.source.id,
+      selectedTab: "market",
+    });
+  },
+
+  updateCustomStoreSource: (payload) => {
+    set((state) => {
+      const nextSources = updateCustomStoreSourceInList(
+        state.customStoreSources,
+        payload,
+      );
+      const builtinSources = getBuiltinMcpMarketSources(
+        state.marketSources,
+        state.customStoreSources,
+      );
+      return {
+        customStoreSources: nextSources,
+        marketSources: mergeMcpMarketSources(builtinSources, nextSources),
+      };
+    });
+  },
+
+  removeCustomStoreSource: (id) => {
+    set((state) => {
+      const next = removeCustomStoreSourceFromList(
+        {
+          customStoreSources: state.customStoreSources,
+          selectedStoreSourceId: state.selectedMarketSourceId,
+        },
+        id,
+        DEFAULT_MCP_MARKET_SOURCE_ID,
+      );
+      const builtinSources = getBuiltinMcpMarketSources(
+        state.marketSources,
+        state.customStoreSources,
+      );
+      const remoteMarketEntries = Object.fromEntries(
+        Object.entries(state.remoteMarketEntries).filter(
+          ([key]) => !key.startsWith(`${id}:`),
+        ),
+      );
+      return {
+        customStoreSources: next.customStoreSources,
+        marketSources: mergeMcpMarketSources(
+          builtinSources,
+          next.customStoreSources,
+        ),
+        remoteMarketEntries,
+        selectedMarketSourceId: next.selectedStoreSourceId,
+      };
+    });
+  },
+
+  toggleCustomStoreSource: (id) => {
+    set((state) => {
+      const nextSources = toggleCustomStoreSourceInList(
+        state.customStoreSources,
+        id,
+      );
+      const builtinSources = getBuiltinMcpMarketSources(
+        state.marketSources,
+        state.customStoreSources,
+      );
+      return {
+        customStoreSources: nextSources,
+        marketSources: mergeMcpMarketSources(builtinSources, nextSources),
+        selectedMarketSourceId:
+          state.selectedMarketSourceId === id
+            ? DEFAULT_MCP_MARKET_SOURCE_ID
+            : state.selectedMarketSourceId,
+      };
+    });
+  },
 
   createServer: async (draft) => {
     const server = await window.api.mcp.createServer(draft);
@@ -229,6 +384,10 @@ export const useMcpStore = create<McpState>((set, get) => ({
       (item) => item.id === selectedSourceId,
     );
     if (!source || typeof window.api.mcp.fetchRemoteContent !== "function") {
+      return;
+    }
+    if (source.id === MCP_OFFICIAL_MARKET_SOURCE_ID) {
+      set({ loadingMarketSourceId: null, marketError: null });
       return;
     }
 
@@ -382,4 +541,28 @@ export const useMcpStore = create<McpState>((set, get) => ({
     set({ preview: result.content });
     return result;
   },
-}));
+    }),
+    {
+      name: "mcp-store",
+      partialize: (state) => ({
+        customStoreSources: state.customStoreSources,
+        selectedMarketSourceId: state.selectedMarketSourceId,
+      }),
+      merge: (persisted, current) => {
+        const persistedState = persisted as Partial<McpState> | undefined;
+        return {
+          ...current,
+          customStoreSources: Array.isArray(
+            persistedState?.customStoreSources,
+          )
+            ? persistedState.customStoreSources
+            : current.customStoreSources,
+          selectedMarketSourceId:
+            typeof persistedState?.selectedMarketSourceId === "string"
+              ? persistedState.selectedMarketSourceId
+              : current.selectedMarketSourceId,
+        };
+      },
+    },
+  ),
+);

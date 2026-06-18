@@ -232,7 +232,7 @@ describe("Sidebar", () => {
       marketSources: [],
       targetPresets: [],
       selectedTab: "library",
-      selectedMarketSourceId: "modelcontextprotocol",
+      selectedMarketSourceId: "prompthub-official",
     } as Partial<ReturnType<typeof useMcpStore.getState>>);
 
     usePluginStore.setState({
@@ -1064,7 +1064,7 @@ describe("Sidebar", () => {
       marketSources: [
         {
           id: "prompthub-official",
-          displayName: "PromptHub Official Store",
+          displayName: "Official Store",
           repository: "https://github.com/legeling/PromptHub",
           marketplaceFile: ".agents/plugins/marketplace.json",
           trustLevel: "official",
@@ -1095,7 +1095,7 @@ describe("Sidebar", () => {
     expect(within(pluginsStoreButton).queryByText("173")).toBeNull();
     expect(
       screen
-        .getByRole("button", { name: /PromptHub 官方商店/i })
+        .getByRole("button", { name: /^官方商店$/i })
         .compareDocumentPosition(
           screen.getByRole("button", { name: /Codex 官方商店/i }),
         ),
@@ -1383,8 +1383,8 @@ describe("Sidebar", () => {
           transport: "stdio",
           tags: ["code"],
           source: {
-            id: "modelcontextprotocol",
-            label: "Official MCP Registry",
+            id: "prompthub-official",
+            label: "Official Store",
           },
         },
         {
@@ -1402,9 +1402,9 @@ describe("Sidebar", () => {
       ],
       marketSources: [
         {
-          id: "modelcontextprotocol",
-          label: "Official MCP Registry",
-          url: "https://registry.modelcontextprotocol.io",
+          id: "prompthub-official",
+          label: "Official Store",
+          url: "https://github.com/legeling/PromptHub",
           trustLevel: "official",
         },
         {
@@ -1444,7 +1444,7 @@ describe("Sidebar", () => {
     fireEvent.click(labels[2]);
     expect(useMcpStore.getState().selectedTab).toBe("market");
     expect(useMcpStore.getState().selectedMarketSourceId).toBe(
-      "modelcontextprotocol",
+      "prompthub-official",
     );
     expect(within(labels[2]).queryByText("2")).not.toBeInTheDocument();
     const sourceScroll = screen.getByTestId("mcp-store-source-scroll");
@@ -1453,7 +1453,7 @@ describe("Sidebar", () => {
     ).not.toBeInTheDocument();
     expect(
       within(sourceScroll).getByRole("button", {
-        name: /Official MCP Registry\s*1/,
+        name: /Official Store\s*1/,
       }),
     ).toBeInTheDocument();
     const curatedButton = within(sourceScroll).getByRole("button", {
@@ -1466,9 +1466,7 @@ describe("Sidebar", () => {
 
     fireEvent.click(curatedButton);
     expect(useMcpStore.getState().selectedTab).toBe("market");
-    expect(useMcpStore.getState().selectedMarketSourceId).toBe(
-      "smithery",
-    );
+    expect(useMcpStore.getState().selectedMarketSourceId).toBe("smithery");
 
     fireEvent.click(labels[2]);
     expect(screen.queryByTestId("mcp-store-source-scroll")).toBeNull();

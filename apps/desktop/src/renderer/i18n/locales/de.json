@@ -2441,7 +2441,8 @@
     "myMcp": "Meine MCP",
     "agentMcp": "Agent MCP",
     "mcpStore": "MCP Store",
-    "officialMcpStore": "Offizieller MCP Store",
+    "officialMcpStore": "Offizieller Store",
+    "officialMcpStoreDesc": "Von PromptHub gepflegter MCP-Katalog mit kuratierten installierbaren Servern. Die Desktop-App liefert diesen Katalog vorerst lokal aus und wird ihn spaeter mit der offiziellen PromptHub-MCP-Website synchronisieren.",
     "templatesCount": "Vorlagen",
     "emptyStore": "Keine MCP-Vorlagen",
     "emptyStoreHint": "Kuratierte MCP-Vorlagen werden hier angezeigt, sobald sie verfügbar sind.",
@@ -2667,7 +2668,7 @@
     "pluginTargets": "Agent Plugin",
     "sources": {
       "codexOfficial": "Offizieller Codex Store",
-      "promptHubOfficial": "Offizieller PromptHub Store"
+      "promptHubOfficial": "Offizieller Store"
     },
     "inventory": {
       "skills": "Skills",
@@ -2777,6 +2778,7 @@
     "myPluginsHint": "Installierte Plugin-Bundles bleiben in PromptHub, bis du ihre Unter-Assets explizit an Agents verteilst.",
     "pluginStoreHint": "Durchsuche Plugin-Bundles, prüfe deren Inhalte und installiere ausgewählte Einträge einzeln oder im Batch.",
     "statsStoreEntries": "{{count}} Store-Einträge",
+    "loadedStoreEntries": "{{count}} geladen",
     "installedSection": "Installiert",
     "availableSection": "Verfügbar",
     "openPluginDetail": "Plugin-Details öffnen {{name}}",

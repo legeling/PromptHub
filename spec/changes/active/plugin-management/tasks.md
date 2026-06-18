@@ -26,7 +26,7 @@
 - [x] Fix Official Store preview prefetch so the visible batch enriches every card instead of only the first card after React effect cleanup.
 - [x] Persist Plugin Store manifest preview metadata in a local cache so reopening the store shows official icons/descriptions without refetching every manifest.
 - [x] Simplify Official Store card badges by removing redundant official trust chips from official-source cards and making inventory counts human-readable.
-- [x] Rename the store surface to `Plugins Store` / `Plugins 商店` while keeping concrete source provenance as `Codex Official Store` / `Codex 官方商店`.
+- [x] Rename the store surface to `Plugins Store` / `Plugins 商店` while keeping concrete source provenance as `Codex Official Store` / `Codex 官方商店` for the external Codex source and `Official Store` / `官方商店` for PromptHub's built-in source.
 - [x] Keep card inventory focused on user-facing capabilities and omit `Apps` connector chips from store cards while preserving full inventory in detail.
 - [x] Expand directory-based Codex manifest `skills` fields through the GitHub repository tree so official plugins with multiple nested `SKILL.md` files do not display as one Skill.
 - [x] Align the first-level Plugin Store sidebar entry with Skill Store by removing marketplace item-count pills from that navigation row.
@@ -37,6 +37,7 @@
 - [x] Align My Plugins list controls and card hover behavior with My Skills: distribution-status/source filters, text batch-manage button, distributed target badges, and quick open/distribute/folder/delete actions.
 - [x] Make My Plugins distribute actions use the paper-plane icon and open a direct Agent target picker instead of routing users to the Agent Plugin workbench.
 - [x] Move My Plugins distribution/source filters into the header panel and remove the redundant card detail-eye action so installed Plugin cards match My Skills interaction density.
+- [x] Align Plugins Store header with Skill Store by showing the selected store source title/count and compact icon-only batch/refresh controls while keeping My Plugins on the My Skills-style text batch button.
 - [x] Replace placeholder Plugin target selection with real Plugin package distribution through core/main IPC, supporting copy and symlink modes.
 - [x] Resolve enabled Agent Plugin targets to configured Agent plugin directories and record successful `distributedTargetIds`.
 - [x] Extend Agent Configuration settings with MCP config and Plugin directory relative paths, including derived path previews for built-in and custom agents.

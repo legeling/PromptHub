@@ -519,6 +519,8 @@ export function SkillStore() {
   const [editingCustomSourceId, setEditingCustomSourceId] = useState<
     string | null
   >(null);
+  const [pendingDeleteCustomSourceId, setPendingDeleteCustomSourceId] =
+    useState<string | null>(null);
   const [sourceType, setSourceType] =
     useState<
       Extract<
@@ -715,13 +717,26 @@ export function SkillStore() {
     [],
   );
 
-  const handleDeleteCustomSource = useCallback(
+  const requestDeleteCustomSource = useCallback((sourceId: string) => {
+    setPendingDeleteCustomSourceId(sourceId);
+  }, []);
+
+  const confirmDeleteCustomSource = useCallback(
     (sourceId: string) => {
       removeCustomStoreSource(sourceId);
       selectStoreSource("official");
       setEditingCustomSourceId(null);
+      setPendingDeleteCustomSourceId(null);
     },
     [removeCustomStoreSource, selectStoreSource],
+  );
+
+  const pendingDeleteCustomSource = useMemo(
+    () =>
+      customStoreSources.find(
+        (source) => source.id === pendingDeleteCustomSourceId,
+      ) ?? null,
+    [customStoreSources, pendingDeleteCustomSourceId],
   );
 
   const handleToggleCustomSource = useCallback(
@@ -1856,8 +1871,8 @@ export function SkillStore() {
               customStoreSources={customStoreSources}
               loadStoreSource={loadStoreSource}
               loadingSourceId={loadingSourceId}
+              onRequestDeleteCustomStoreSource={requestDeleteCustomSource}
               remoteStoreEntries={remoteStoreEntries}
-              removeCustomStoreSource={removeCustomStoreSource}
               selectStoreSource={selectStoreSource}
               selectedCustomSource={selectedCustomSource}
               selectedStoreSourceId={selectedStoreSourceId}
@@ -1995,7 +2010,7 @@ export function SkillStore() {
       <SkillStoreSourceEditModal
         isOpen={editingCustomSourceId !== null}
         onClose={() => setEditingCustomSourceId(null)}
-        onDelete={handleDeleteCustomSource}
+        onDelete={requestDeleteCustomSource}
         onSave={updateCustomStoreSource}
         onToggleEnabled={handleToggleCustomSource}
         onRefresh={handleRefreshCustomSource}
@@ -2005,6 +2020,25 @@ export function SkillStore() {
             (source) => source.id === editingCustomSourceId,
           ) ?? null
         }
+      />
+
+      <ConfirmDialog
+        isOpen={Boolean(pendingDeleteCustomSource)}
+        onClose={() => setPendingDeleteCustomSourceId(null)}
+        onConfirm={() => {
+          if (pendingDeleteCustomSource) {
+            confirmDeleteCustomSource(pendingDeleteCustomSource.id);
+          }
+        }}
+        title={t("skill.deleteStoreSourceTitle", "Delete custom store")}
+        message={t("skill.deleteStoreSourceMessage", {
+          name: pendingDeleteCustomSource?.name ?? "",
+          defaultValue:
+            'Delete custom store "{{name}}"? Installed Skills will stay in My Skills, but this source and its cached store entries will be removed.',
+        })}
+        confirmText={t("common.delete", "Delete")}
+        cancelText={t("common.cancel", "Cancel")}
+        variant="destructive"
       />
 
       <ConfirmDialog

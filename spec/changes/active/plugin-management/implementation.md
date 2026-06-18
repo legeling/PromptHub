@@ -46,7 +46,7 @@
   - Built-in official-source cards no longer render a redundant standalone `Official` trust chip when the source chip already says `Codex official store` or `Official Store`.
   - Inventory chips now render human-readable included capability counts, such as `Includes 1 Skill` / `包含 1 个 Skill`, instead of raw key/count notation like `Skills · 1`.
 - Clarified Plugin Store naming and card inventory semantics:
-  - The store surface is now labeled `Plugins Store` / `Plugins 商店`, while concrete source provenance remains `Codex Official Store` / `Codex 官方商店` or `PromptHub Official Store` / `PromptHub 官方商店`.
+  - The store surface is now labeled `Plugins Store` / `Plugins 商店`, while concrete source provenance remains `Codex Official Store` / `Codex 官方商店` for the external Codex source and `Official Store` / `官方商店` for PromptHub's built-in source.
   - Store cards use a compact user-facing inventory summary and no longer render `Apps` connector/auth chips as primary card metadata; the full inventory is still shown in detail modals.
   - Official GitHub/Codex manifests that declare `skills` as a directory are expanded against the repository tree so nested `SKILL.md` files are counted instead of treating `./skills/` as one Skill.
   - GitHub tree responses are cached in memory per source URL during preview/background enrichment to avoid one tree request per visible card; failed tree lookups fall back to manifest-field counts.
@@ -66,11 +66,12 @@
   - Plugin package distribution is implemented through `CorePluginLibraryService.distributePlugin`, desktop IPC/preload, and the renderer plugin store. The service validates enabled targets, resolves the installed local package path, copies or symlinks the package to the resolved Agent Plugin directory, and persists successful `distributedTargetIds`.
   - Desktop target path resolution maps Plugin target IDs onto existing Agent platform IDs: `codex -> codex`, `claude-code -> claude`, `gemini-cli -> gemini`, `github-copilot -> copilot`, plus direct `cursor` and `kiro` mappings.
   - Default Plugin base directories are configurable through Agent Configuration settings. Codex, Claude, and Cursor default to `plugins/cache/prompthub`; Gemini defaults to `config/plugins`; Kiro defaults to `powers`; GitHub Copilot defaults to `plugins`.
-  - Agent Configuration settings now expose and preview MCP config relative paths and Plugin directory relative paths for built-in and custom agents, alongside the existing Skills, Rules, Agents, Commands, and config file fields.
+  - Agent Configuration settings now expose and preview MCP config relative paths and Plugin directory relative paths for built-in and custom agents, alongside the existing Skills, Rules, Agents, and config file fields. Commands remain Plugin inventory, not an Agent settings directory field.
   - Child asset decomposition into My Skills/My MCP remains a follow-up; this pass writes the installed Plugin package itself into Agent Plugin package directories.
   - My Plugins filters now live in the same header panel position as My Skills filters, including icon-led distribution-status chips and the source selector, instead of rendering as a separate content-area toolbar.
   - Installed Plugin card quick actions no longer include a redundant detail-eye button; whole-card click/keyboard activation remains the detail entry, matching the Skill gallery interaction model.
   - Delete confirmation remains available from the full detail page, so the modal removal does not make the destructive action unreachable.
+  - Plugins Store header now matches Skill Store: the selected store source title and loaded count are shown in the main header, the store batch control is a compact icon-only button beside refresh, and My Plugins keeps the My Skills-style text batch-management button.
 - Added Plugin navigation to the desktop home rail/sidebar and the Appearance settings home-module list.
 - Added Plugin i18n keys across all seven desktop locales, including the installed Plugin detail page.
 
@@ -101,6 +102,10 @@
 - `pnpm exec prettier --check packages/shared/types/plugin.ts packages/core/src/plugin-library.ts apps/desktop/src/main/ipc/plugin.ipc.ts apps/desktop/src/preload/api/plugin.ts apps/desktop/src/renderer/stores/plugin.store.ts apps/desktop/src/renderer/components/plugin/PluginManager.tsx apps/desktop/tests/unit/main/plugin-library.test.ts apps/desktop/src/renderer/i18n/locales/en.json apps/desktop/src/renderer/i18n/locales/zh.json apps/desktop/src/renderer/i18n/locales/zh-TW.json apps/desktop/src/renderer/i18n/locales/ja.json apps/desktop/src/renderer/i18n/locales/fr.json apps/desktop/src/renderer/i18n/locales/de.json apps/desktop/src/renderer/i18n/locales/es.json spec/changes/active/plugin-management/proposal.md spec/changes/active/plugin-management/design.md spec/changes/active/plugin-management/specs/plugins/spec.md spec/changes/active/plugin-management/tasks.md spec/changes/active/plugin-management/implementation.md spec/knowledge/behavior/plugins.md .agents/plugins/marketplace.json`
 - `node -e 'for (const f of ["en","zh","zh-TW","ja","fr","de","es"]) JSON.parse(require("fs").readFileSync("apps/desktop/src/renderer/i18n/locales/"+f+".json","utf8")); console.log("locales ok")'`
 - `git diff --check`
+- `pnpm --filter @prompthub/desktop test -- --run tests/unit/main/plugin-library.test.ts tests/unit/components/sidebar.test.tsx tests/unit/components/plugin-manager.test.tsx tests/unit/components/skill-settings.test.tsx`
+  - Result: passed (4 files, 70 tests).
+- `pnpm --filter @prompthub/desktop typecheck`
+  - Result: passed.
 - Verified against current project document routing rules and existing Skill/MCP boundary docs.
 - Verified local Codex CLI exposes plugin marketplace management commands and currently lists `openai-curated` as a configured marketplace.
 - Verified `https://raw.githubusercontent.com/openai/plugins/main/.agents/plugins/marketplace.json` is public JSON with marketplace name `openai-curated` and display name `Codex official`.

@@ -567,6 +567,10 @@ describe("PluginManager", () => {
     expect(
       screen.queryByRole("button", { name: "Install" }),
     ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Codex Official Store" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Loaded 2")).toBeInTheDocument();
     expect(screen.getAllByText("Codex Official Store").length).toBeGreaterThan(
       0,
     );
@@ -575,6 +579,9 @@ describe("PluginManager", () => {
     expect(screen.queryByText("Official")).not.toBeInTheDocument();
     expect(screen.queryByText("Skills · 2")).not.toBeInTheDocument();
 
+    expect(
+      screen.getByRole("button", { name: "Batch manage Plugins" }),
+    ).toHaveTextContent("");
     fireEvent.click(
       screen.getByRole("button", { name: "Batch manage Plugins" }),
     );
@@ -589,7 +596,10 @@ describe("PluginManager", () => {
     await renderPluginManager("zh");
 
     expect(await screen.findByText("Plugins 商店")).toBeInTheDocument();
-    expect(screen.getByText("2 个商店条目")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Codex 官方商店" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("已加载 2")).toBeInTheDocument();
     expect(
       screen.getByText(
         "浏览 Plugin 能力包，查看包含的能力后再安装或批量安装。",
@@ -623,9 +633,11 @@ describe("PluginManager", () => {
     await waitFor(() => {
       expect(window.api.plugin.previewMarketPlugin).toHaveBeenCalledWith(
         "linear",
+        expect.any(Array),
       );
       expect(window.api.plugin.previewMarketPlugin).toHaveBeenCalledWith(
         "slack",
+        expect.any(Array),
       );
     });
     expect(await screen.findByText("Slack")).toBeInTheDocument();
@@ -660,6 +672,7 @@ describe("PluginManager", () => {
     await waitFor(() => {
       expect(window.api.plugin.previewMarketPlugin).toHaveBeenCalledWith(
         "plugin-30",
+        expect.any(Array),
       );
     });
   });
@@ -675,6 +688,7 @@ describe("PluginManager", () => {
 
     expect(window.api.plugin.previewMarketPlugin).toHaveBeenCalledWith(
       "linear",
+      expect.any(Array),
     );
     const dialog = await screen.findByRole("dialog", { name: "Linear" });
     expect(dialog).toBeInTheDocument();
@@ -712,6 +726,7 @@ describe("PluginManager", () => {
     await waitFor(() => {
       expect(window.api.plugin.installMarketPlugin).toHaveBeenCalledWith(
         "linear",
+        expect.any(Array),
       );
     });
   });

@@ -10,8 +10,8 @@ interface SkillStoreCustomSourcesProps {
   customStoreSources: SkillStoreSource[];
   loadStoreSource: (sourceId: string, forceRefresh?: boolean) => Promise<void>;
   loadingSourceId: string | null;
+  onRequestDeleteCustomStoreSource: (id: string) => void;
   remoteStoreEntries: Record<string, RemoteStoreEntryLike>;
-  removeCustomStoreSource: (id: string) => void;
   selectStoreSource: (id: string) => void;
   selectedCustomSource: SkillStoreSource | null;
   selectedStoreSourceId: string;
@@ -23,8 +23,8 @@ export function SkillStoreCustomSources({
   customStoreSources,
   loadStoreSource,
   loadingSourceId,
+  onRequestDeleteCustomStoreSource,
   remoteStoreEntries,
-  removeCustomStoreSource,
   selectStoreSource,
   selectedCustomSource,
   selectedStoreSourceId,
@@ -151,7 +151,7 @@ export function SkillStoreCustomSources({
               aria-label={t("common.delete", "Delete")}
               onClick={(event) => {
                 event.stopPropagation();
-                removeCustomStoreSource(source.id);
+                onRequestDeleteCustomStoreSource(source.id);
               }}
               className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
               title={t("common.delete", "Delete")}

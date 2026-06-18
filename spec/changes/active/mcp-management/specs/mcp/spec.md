@@ -244,7 +244,7 @@ PromptHub MUST provide a curated MCP template list that can install into the loc
 
 #### Scenario: Select an MCP Store source from the left sidebar
 
-- **GIVEN** PromptHub has preconfigured Official MCP Registry, Smithery, and Glama MCP Directory stores
+- **GIVEN** PromptHub has preconfigured Official Store, Smithery, and Glama MCP Directory stores
 - **WHEN** the user opens MCP Store
 - **THEN** the top-level MCP Store menu does not show a template count badge
 - **AND** the left sidebar shows each preconfigured store channel directly without an `All Sources` pseudo-channel
@@ -257,7 +257,7 @@ PromptHub MUST provide a curated MCP template list that can install into the loc
 - **GIVEN** the user opens a preconfigured MCP Store source
 - **WHEN** PromptHub loads the source catalog
 - **THEN** PromptHub fetches and parses the selected source's remote catalog instead of relying only on the built-in fallback templates
-- **AND** Official MCP Registry entries are loaded from the registry JSON API and mapped from `packages` or `remotes` into installable MCP templates
+- **AND** Official Store entries are loaded from the Model Context Protocol registry JSON API and mapped from `packages` or `remotes` into installable MCP templates
 - **AND** Glama and Smithery entries can be parsed from page HTML, embedded JSON, or Next/RSC-style serialized data
 - **AND** search queries are applied to the selected source catalog
 - **AND** built-in templates are used only as an offline/error fallback when the remote catalog has no usable results

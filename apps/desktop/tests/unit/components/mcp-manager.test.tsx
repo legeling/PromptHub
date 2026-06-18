@@ -46,7 +46,11 @@ const fetchServer = {
   args: ["mcp-server-fetch"],
   enabled: true,
   tags: ["web"],
-  source: { type: "market" as const, id: "fetch", label: "Official MCP Store" },
+  source: {
+    type: "market" as const,
+    id: "fetch",
+    label: "Official Store",
+  },
   createdAt: 1,
   updatedAt: 1,
 };
@@ -83,7 +87,7 @@ const slackServer = {
   source: {
     type: "market" as const,
     id: "slack",
-    label: "Model Context Protocol",
+    label: "Official Store",
   },
   createdAt: 1,
   updatedAt: 1,
@@ -116,9 +120,9 @@ const githubTemplate = {
   runtime: "npx",
   packageName: "@modelcontextprotocol/server-github",
   source: {
-    id: "modelcontextprotocol",
-    label: "Model Context Protocol",
-    url: "https://github.com/modelcontextprotocol/servers",
+    id: "prompthub-official",
+    label: "Official Store",
+    url: "https://github.com/legeling/PromptHub",
     trustLevel: "official",
   },
 };
@@ -192,7 +196,7 @@ function resetMcpStore() {
     healthChecks: [],
     selectedServerId: null,
     selectedTab: "library",
-    selectedMarketSourceId: "modelcontextprotocol",
+    selectedMarketSourceId: "prompthub-official",
     selectedTargetId: null,
     searchQuery: "",
     preview: "",
@@ -260,9 +264,9 @@ function installMcpMocks(options: McpMockOptions = {}) {
         listMarketSources: vi.fn().mockResolvedValue(
           options.marketSources ?? [
             {
-              id: "modelcontextprotocol",
-              label: "Model Context Protocol",
-              url: "https://github.com/modelcontextprotocol/servers",
+              id: "prompthub-official",
+              label: "Official Store",
+              url: "https://github.com/legeling/PromptHub",
               trustLevel: "official",
             },
             {
@@ -809,9 +813,9 @@ describe("McpManager", () => {
       marketTemplates: [githubTemplate],
       marketSources: [
         {
-          id: "modelcontextprotocol",
-          label: "Official MCP Registry",
-          url: "https://registry.modelcontextprotocol.io",
+          id: "prompthub-official",
+          label: "Official Store",
+          url: "https://github.com/legeling/PromptHub",
           trustLevel: "official",
         },
         {
@@ -894,12 +898,6 @@ describe("McpManager", () => {
       marketTemplates: [githubTemplate],
       marketSources: [
         {
-          id: "modelcontextprotocol",
-          label: "Official MCP Registry",
-          url: "https://registry.modelcontextprotocol.io",
-          trustLevel: "official",
-        },
-        {
           id: "smithery",
           label: "Smithery",
           url: "https://smithery.ai",
@@ -914,33 +912,26 @@ describe("McpManager", () => {
       ],
     });
     api.mcp.fetchRemoteContent.mockResolvedValueOnce(
-      JSON.stringify({
-        servers: [
-          {
-            server: {
-              name: "ai.adeu/adeu",
-              title: "ADeu",
+      `<script>self.__next_f.push([1,${JSON.stringify(
+        JSON.stringify({
+          servers: [
+            {
+              qualifiedName: "ai.adeu/adeu",
+              displayName: "ADeu",
               description: "Automated DOCX redlining.",
-              packages: [
-                {
-                  registryType: "pypi",
-                  identifier: "adeu",
-                  transport: { type: "stdio" },
-                },
-              ],
+              installCommand: "uvx adeu",
+              homepage: "https://smithery.ai/server/ai.adeu/adeu",
+              tags: ["docx"],
             },
-            _meta: {
-              "io.modelcontextprotocol.registry/official": {
-                status: "active",
-                isLatest: true,
-              },
-            },
-          },
-        ],
-        metadata: { count: 1 },
-      }),
+          ],
+        }),
+      )}])</script>`,
     );
-    useMcpStore.setState({ selectedTab: "market", searchQuery: "adeu" });
+    useMcpStore.setState({
+      selectedTab: "market",
+      selectedMarketSourceId: "smithery",
+      searchQuery: "adeu",
+    });
 
     await act(async () => {
       await renderWithI18n(<McpManager />, { language: "en" });
@@ -948,7 +939,7 @@ describe("McpManager", () => {
 
     await waitFor(() => {
       expect(api.mcp.fetchRemoteContent).toHaveBeenCalledWith(
-        "https://registry.modelcontextprotocol.io/v0/servers",
+        "https://smithery.ai/?q=adeu",
       );
       expect(screen.getByText("ADeu")).toBeInTheDocument();
     });
@@ -966,7 +957,7 @@ describe("McpManager", () => {
     await waitFor(() => {
       expect(api.mcp.installMarketTemplate).toHaveBeenCalledWith(
         expect.objectContaining({
-          id: "modelcontextprotocol:ai-adeu-adeu",
+          id: "smithery:ai-adeu-adeu",
           command: "uvx",
           args: ["adeu"],
         }),
@@ -1006,7 +997,7 @@ describe("McpManager", () => {
     });
     useMcpStore.setState({
       selectedTab: "market",
-      selectedMarketSourceId: "modelcontextprotocol",
+      selectedMarketSourceId: "prompthub-official",
     });
 
     await act(async () => {
@@ -1015,7 +1006,7 @@ describe("McpManager", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("heading", { name: "Model Context Protocol" }),
+        screen.getByRole("heading", { name: "Official Store" }),
       ).toBeInTheDocument();
       expect(screen.getByText("GitHub")).toBeInTheDocument();
     });
@@ -1042,15 +1033,36 @@ describe("McpManager", () => {
     });
   });
 
+  it("localizes the official MCP store source label", async () => {
+    installMcpMocks({
+      marketTemplates: [githubTemplate],
+    });
+    useMcpStore.setState({
+      selectedTab: "market",
+      selectedMarketSourceId: "prompthub-official",
+    });
+
+    await act(async () => {
+      await renderWithI18n(<McpManager />, { language: "zh" });
+    });
+
+    expect(
+      await screen.findByRole("heading", { name: "官方商店" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/PromptHub 自己维护的 MCP 精选目录/),
+    ).toBeInTheDocument();
+  });
+
   it("keeps preconfigured MCP Store sources installable instead of showing zero-template directories", async () => {
     installMcpMocks({
       marketTemplates: [githubTemplate, smitheryTemplate, playwrightTemplate],
       marketSources: [
         {
-          id: "modelcontextprotocol",
-          label: "Official MCP Registry",
-          url: "https://registry.modelcontextprotocol.io",
-          description: "Official MCP Registry.",
+          id: "prompthub-official",
+          label: "Official Store",
+          url: "https://github.com/legeling/PromptHub",
+          description: "Official Store.",
           trustLevel: "official",
         },
         {
@@ -1079,7 +1091,7 @@ describe("McpManager", () => {
       expect(screen.getByText("GitHub")).toBeInTheDocument();
     });
     expect(
-      screen.getByRole("heading", { name: "Official MCP Registry" }),
+      screen.getByRole("heading", { name: "Official Store" }),
     ).toBeInTheDocument();
     expect(screen.queryByText("Glama MCP Directory")).not.toBeInTheDocument();
 
@@ -1142,7 +1154,7 @@ describe("McpManager", () => {
     await user.click(screen.getByRole("button", { name: /All MCP/ }));
     await user.click(screen.getByLabelText("MCP source"));
     await user.click(
-      await screen.findByRole("option", { name: "Official MCP Store" }),
+      await screen.findByRole("option", { name: "Official Store" }),
     );
     expect(screen.queryByText("Filesystem")).not.toBeInTheDocument();
     expect(screen.getByText("Fetch")).toBeInTheDocument();

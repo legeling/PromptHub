@@ -146,6 +146,15 @@ describe("CorePluginLibraryService", () => {
     fs.rmSync(userDataPath, { recursive: true, force: true });
   });
 
+  it("orders PromptHub official plugin store before Codex official store", () => {
+    const service = new CorePluginLibraryService();
+
+    expect(service.getMarketSources().map((source) => source.id)).toEqual([
+      "prompthub-official",
+      "openai-curated",
+    ]);
+  });
+
   it("persists installed bundle plugins in the PromptHub config directory", async () => {
     const fetchFn = createFetchMock({
       [marketplaceUrl]: createMarketplaceFixture(),
