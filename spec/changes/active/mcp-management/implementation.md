@@ -472,7 +472,7 @@ Implemented first MCP management slice.
 
 - MCP Store usable built-in sources:
   - Corrected the MCP Store preset model so built-in sources are real installable stores, not external directory links with `0` templates.
-  - Reduced the default left-sidebar MCP Store sources to three usable groups: `Official Store`, `PromptHub Curated MCP`, and `PromptHub Community MCP`.
+  - Reduced the default left-sidebar MCP Store sources to three usable channels: `Official Store`, `Smithery`, and `Glama MCP Directory`.
   - Assigned every built-in MCP template to one of those sources so each sidebar source has visible installable cards and no default source renders the external-directory panel.
   - Kept the right-content source chip/filter bar removed; source selection remains in the left sidebar like Skill Store.
   - Added regressions proving `getMarketSources()` returns only usable template stores, every returned source has at least one template, and the sidebar does not show zero-count external directory presets such as Smithery/Postman.
@@ -498,7 +498,7 @@ Implemented first MCP management slice.
 
 - MCP Store channel model correction:
   - Reworked MCP Store navigation from an `All Sources` aggregate/filter model into the Skill Store channel model. The top-level MCP Store nav item no longer shows a template count badge, and its nested entries are the real store channels only.
-  - Changed MCP Store default selection and stale `all` state recovery to select the first real market source, currently `modelcontextprotocol`, rather than preserving an aggregate pseudo-channel.
+  - Changed MCP Store default selection and stale `all` state recovery to select the first real market source, currently `prompthub-official`, rather than preserving an aggregate pseudo-channel.
   - Updated the right-side MCP Store header to render the selected channel label/description and the selected channel's template count, and removed the remaining external-directory fallback panel from the built-in store view path.
   - Updated the MCP active spec to state that store channels own the right-side catalog and that `All Sources` is not part of the MCP Store sidebar.
 - Verification for MCP Store channel model correction:
@@ -517,11 +517,11 @@ Implemented first MCP management slice.
   - Updated the MCP Store detail modal to describe installation as a prompt/template import flow, surface a clearer install label for remote endpoints, and show the template's channel label in the card preview.
   - Expanded Smithery and Glama from a few sample cards into usable preset catalogs with at least eight installable templates per channel, including developer docs, browser automation, scraping, database, Git, maps, Figma, and cloud browser use cases.
 - MCP Store official source naming:
-  - Renamed the PromptHub-preconfigured MCP source from `Official MCP Registry` to `Official Store` / `官方商店`, matching the Skill and Plugin store naming rule.
-  - Kept the underlying source id as `modelcontextprotocol` and the source description as the official Model Context Protocol registry channel, so implementation still distinguishes provenance from the UI store label.
+  - Replaced the old registry-backed official-source semantics with a PromptHub-owned built-in source id, `prompthub-official`, so `Official Store` now means the PromptHub-maintained MCP catalog rather than a renamed third-party registry.
+  - Kept Model Context Protocol registry parsing support available for remote-source adaptation and tests, but it is no longer the desktop app's built-in official MCP channel.
 - Verification for MCP Store community source refresh:
   - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/mcp-library.test.ts --testNamePattern "preconfigures"`
-    - Result: passed after confirming the built-in sources are `modelcontextprotocol`, `smithery`, and `glama`.
+    - Result: passed after confirming the built-in sources are `prompthub-official`, `smithery`, and `glama`.
   - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx --testNamePattern "MCP Store"`
     - Result: passed after confirming the channel-specific store header and per-channel cards render correctly.
   - `pnpm --filter @prompthub/shared typecheck`
@@ -530,12 +530,12 @@ Implemented first MCP management slice.
     - Result: passed, confirming the new npm package names resolve.
 
 - MCP Store remote catalog loading:
-  - Replaced the static-only MCP Store behavior with Skill Store-style remote catalog loading for each selected channel.
-  - Added a renderer `mcp-remote-store` service that parses Official MCP Registry JSON (`servers` plus `metadata.nextCursor`), maps registry `packages` and `remotes` into installable templates, and extracts Glama/Smithery entries from page HTML, embedded JSON, and Next/RSC-style serialized data.
+  - Replaced the static-only MCP Store behavior with Skill Store-style remote catalog loading for community/custom channels while keeping Official Store local and PromptHub-curated.
+  - Added a renderer `mcp-remote-store` service that parses Model Context Protocol registry JSON (`servers` plus `metadata.nextCursor`) when that source is explicitly used, maps registry `packages` and `remotes` into installable templates, and extracts Glama/Smithery entries from page HTML, embedded JSON, and Next/RSC-style serialized data.
   - Added MCP-specific remote fetch IPC/preload methods using the existing safe HTTP/HTTPS fetch implementation.
-  - Added remote market state keyed by selected source and search query, with loading/error metadata, staleness caching, refresh, remote search, and built-in template fallback when a remote catalog fails or returns no usable entries.
+  - Added remote market state keyed by selected source and search query, with loading/error metadata, staleness caching, refresh, remote search, and built-in template fallback when a remote community catalog fails or returns no usable entries.
   - Added `installMarketTemplate` in core/IPC/preload so remote results install by full template payload rather than requiring a static built-in template id.
-  - Updated MCP Store UI to show remote loading/count/fallback status, channel-scoped remote results, search, refresh, and detail-modal installation for remote templates.
+  - Updated MCP Store UI to show remote loading/count/fallback status for community/custom channels, preserve local Official Store search/install behavior, and keep detail-modal installation working for remote templates.
 - Verification for MCP Store remote catalog loading:
   - `pnpm --filter @prompthub/desktop test -- tests/unit/services/mcp-remote-store.test.ts --run`
     - Result: 5 tests passed after adding Official Registry, Glama, Smithery, URL-builder, and remote fetch parser coverage.

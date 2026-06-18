@@ -256,11 +256,11 @@ PromptHub MUST provide a curated MCP template list that can install into the loc
 
 - **GIVEN** the user opens a preconfigured MCP Store source
 - **WHEN** PromptHub loads the source catalog
-- **THEN** PromptHub fetches and parses the selected source's remote catalog instead of relying only on the built-in fallback templates
-- **AND** Official Store entries are loaded from the Model Context Protocol registry JSON API and mapped from `packages` or `remotes` into installable MCP templates
+- **THEN** PromptHub resolves the selected source catalog from that source's own configured channel instead of showing a mixed global catalog
+- **AND** Official Store entries come from the PromptHub-maintained built-in MCP catalog in the current desktop build, with local search and install behavior even when no remote source is available
 - **AND** Glama and Smithery entries can be parsed from page HTML, embedded JSON, or Next/RSC-style serialized data
 - **AND** search queries are applied to the selected source catalog
-- **AND** built-in templates are used only as an offline/error fallback when the remote catalog has no usable results
+- **AND** built-in templates are used as the primary catalog for Official Store and as an offline/error fallback when a remote community catalog has no usable results
 
 #### Scenario: Install a remote MCP store result
 
