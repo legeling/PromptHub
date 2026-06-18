@@ -23,5 +23,6 @@
 - [x] Convert Agent Skill header stat badges into filters for all, managed, unmanaged, copy, and symlink views.
 - [x] Remove Agent-only name fallback matching and use the shared Skill scan status matrix with Project Skills.
 - [x] Normalize current-version persisted custom Agent settings during renderer settings hydration.
+- [x] Add TRAE Work and TRAE Work CN as distinct built-in Agent platforms while keeping existing TRAE IDE IDs stable.
 - [x] Verify related unit tests, typecheck, and lint.
 - [x] Record implementation and verification results.

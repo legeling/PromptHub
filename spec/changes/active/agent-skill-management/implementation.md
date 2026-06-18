@@ -67,6 +67,12 @@ Implemented.
   - Empty custom Agent entries and duplicate root paths are filtered before Agent Skill scanning consumes them.
   - `customAgentRootPaths` and `customSkillScanPaths` are re-derived from normalized `customAgents` so stale legacy arrays do not create extra scan targets.
   - Non-string `configRelativePaths` entries are filtered before relative path normalization.
+- Added `TRAE Work` and `TRAE Work CN` as distinct built-in Agent platforms.
+  - Existing `trae` is displayed as `TRAE IDE` and remains on `~/.trae`, preserving historical settings.
+  - Existing `trae-cn` is displayed as `TRAE IDE CN` and remains on `~/.trae-cn`, preserving historical settings and migration behavior.
+  - New `trae-work` uses an isolated PromptHub-inferred default root of `~/.trae-work` and `skills/`.
+  - New `trae-work-cn` uses an isolated PromptHub-inferred default root of `~/.trae-work-cn` and `skills/`.
+  - The renderer platform icon map reuses the existing Trae icon for both new platforms.
 
 ## Verification
 
@@ -144,4 +150,11 @@ Implemented.
 - `pnpm --filter @prompthub/desktop lint`
   - Result: passed.
 - `git diff --check -- apps/desktop/src/renderer/stores/settings.store.ts apps/desktop/src/renderer/services/agent-root-paths.ts apps/desktop/tests/unit/stores/settings-agent-roots.test.ts spec/changes/active/agent-skill-management spec/issues/active/quality.md`
+  - Result: passed.
+- TRAE Work platform follow-up:
+- `pnpm --filter @prompthub/desktop test -- --run tests/unit/components/use-skill-platform.test.ts tests/unit/main/skill-installer-utils.test.ts`
+  - Result: passed (2 files, 65 tests).
+- `pnpm --filter @prompthub/desktop typecheck`
+  - Result: passed.
+- `git diff --check`
   - Result: passed.

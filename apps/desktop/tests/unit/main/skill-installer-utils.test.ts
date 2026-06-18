@@ -114,6 +114,38 @@ describe("skill-installer-utils", () => {
       expect(resolvedPath).toContain(".trae-cn/skills");
     });
 
+    it("resolves the built-in TRAE Work path without overrides", () => {
+      const getMock = vi.fn().mockReturnValue(undefined);
+      vi.mocked(initDatabase).mockReturnValue({
+        prepare: vi.fn().mockReturnValue({ get: getMock }),
+      } as unknown as ReturnType<typeof initDatabase>);
+
+      const platform = getPlatformById("trae-work");
+      expect(platform).toBeDefined();
+
+      const resolvedRoot = getPlatformRootDir(platform!);
+      const resolvedPath = getPlatformSkillsDir(platform!);
+
+      expect(resolvedRoot).toContain(".trae-work");
+      expect(resolvedPath).toContain(".trae-work/skills");
+    });
+
+    it("resolves the built-in TRAE Work CN path without overrides", () => {
+      const getMock = vi.fn().mockReturnValue(undefined);
+      vi.mocked(initDatabase).mockReturnValue({
+        prepare: vi.fn().mockReturnValue({ get: getMock }),
+      } as unknown as ReturnType<typeof initDatabase>);
+
+      const platform = getPlatformById("trae-work-cn");
+      expect(platform).toBeDefined();
+
+      const resolvedRoot = getPlatformRootDir(platform!);
+      const resolvedPath = getPlatformSkillsDir(platform!);
+
+      expect(resolvedRoot).toContain(".trae-work-cn");
+      expect(resolvedPath).toContain(".trae-work-cn/skills");
+    });
+
     it("resolves the built-in Cline path without overrides", () => {
       const getMock = vi.fn().mockReturnValue(undefined);
       vi.mocked(initDatabase).mockReturnValue({

@@ -120,28 +120,34 @@ Stable product rule:
 
 这些平台当前仍以 PromptHub 的平台根目录兼容目标为主，缺少足够公开官方资料支撑更细的本地资产建模。
 
-| Platform     | ID            | Default Root (macOS)    | Current PromptHub Model                                                                                        | Evidence           |
-| ------------ | ------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------ |
-| Antigravity  | `antigravity` | `~/.gemini/antigravity` | root dir + `skills/` convention only                                                                           | PromptHub inferred |
-| Trae         | `trae`        | `~/.trae`               | root dir + `skills/` convention only                                                                           | PromptHub inferred |
-| Trae CN      | `trae`        | `~/.trae-cn`            | same built-in Trae platform id with localized CN root override already referenced by tests and UI placeholders | PromptHub inferred |
-| Qoder        | `qoder`       | `~/.qoder`              | root dir + `skills/` convention only                                                                           | PromptHub inferred |
-| QoderWorker  | `qoderwork`   | `~/.qoderwork`          | root dir + `skills/` convention only                                                                           | PromptHub inferred |
-| Hermes Agent | `hermes`      | `~/.hermes`             | root dir + `skills/` convention only                                                                           | PromptHub inferred |
-| CodeBuddy    | `codebuddy`   | `~/.codebuddy`          | root dir + `skills/` convention only                                                                           | PromptHub inferred |
+| Platform     | ID             | Default Root (macOS)    | Current PromptHub Model                                                                                | Evidence                                         |
+| ------------ | -------------- | ----------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------ |
+| Antigravity  | `antigravity`  | `~/.gemini/antigravity` | root dir + `skills/` convention only                                                                   | PromptHub inferred                               |
+| TRAE IDE     | `trae`         | `~/.trae`               | TRAE IDE international client; root dir + `skills/` convention only                                     | Product confirmed; local path PromptHub inferred |
+| TRAE Work    | `trae-work`    | `~/.trae-work`          | TRAE Work international client; PromptHub assigns an isolated root + `skills/` convention               | Product confirmed; local path PromptHub inferred |
+| TRAE IDE CN  | `trae-cn`      | `~/.trae-cn`            | China-region TRAE IDE preset; visible built-in platform keeps the existing root convention             | Product confirmed; local path PromptHub inferred |
+| TRAE Work CN | `trae-work-cn` | `~/.trae-work-cn`       | TRAE Work is a separate China-region client; PromptHub assigns an isolated root + `skills/` convention | Product confirmed; local path PromptHub inferred |
+| Qoder        | `qoder`        | `~/.qoder`              | root dir + `skills/` convention only                                                                   | PromptHub inferred                               |
+| QoderWorker  | `qoderwork`    | `~/.qoderwork`          | root dir + `skills/` convention only                                                                   | PromptHub inferred                               |
+| Hermes Agent | `hermes`       | `~/.hermes`             | root dir + `skills/` convention only                                                                   | PromptHub inferred                               |
+| CodeBuddy    | `codebuddy`    | `~/.codebuddy`          | root dir + `skills/` convention only                                                                   | PromptHub inferred                               |
 
 ### Strong Candidates For Future Built-in Support
 
 以下平台在本轮调研中具备比“仅知道产品名”更强的公开本地资产证据，适合作为后续内置 Agent / 预制平台候选。它们当前还没有作为 PromptHub 的一等内置平台进入 `packages/shared/constants/platforms.ts`。
 
-| Platform  | Why it stands out                                                                                                        | Public local asset evidence                                                                                                    | Suggested PromptHub modeling status                                                       |
-| --------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
-| Kilo Code | 官方文档已明确 `.kilo/skills/`、`~/.kilo/skills/`、`kilo.jsonc`、`.kilo/rules/`、`AGENTS.md`、`.agents/skills/` 兼容目录 | `.kilo/skills/`, `~/.kilo/skills/`, `.kilo/rules/`, `kilo.jsonc`, global `~/.config/kilo/kilo.jsonc`, `AGENTS.md`              | High-priority built-in candidate                                                          |
-| Trae CN   | 官网和文案显示中国区独立产品面存在；仓库现有测试和 placeholder 已长期使用 `~/.trae-cn` 作为默认根目录示例                | `~/.trae-cn` is already referenced in PromptHub tests and locale placeholders; product docs entry available via `docs.trae.cn` | Should be made explicit in user-facing platform docs and likely split as a visible preset |
+| Platform     | Why it stands out                                                                                                        | Public local asset evidence                                                                                       | Suggested PromptHub modeling status                      |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| Kilo Code    | 官方文档已明确 `.kilo/skills/`、`~/.kilo/skills/`、`kilo.jsonc`、`.kilo/rules/`、`AGENTS.md`、`.agents/skills/` 兼容目录 | `.kilo/skills/`, `~/.kilo/skills/`, `.kilo/rules/`, `kilo.jsonc`, global `~/.config/kilo/kilo.jsonc`, `AGENTS.md` | High-priority built-in candidate                         |
+| TRAE Work    | 国际站下载页和文档入口展示 TRAE Work，与 TRAE IDE 分开展示；本轮已作为独立内置 Agent 平台落入 `trae-work`                | Product entry available via `trae.ai`; local skills path remains PromptHub inferred                               | Promoted to built-in platform with isolated default root |
+| TRAE Work CN | 中国站和文档显示 TRAE Work 是独立客户端，不依赖 TRAE IDE；本轮已作为独立内置 Agent 平台落入 `trae-work-cn`               | Product docs entry available via `docs.trae.cn`; local skills path remains PromptHub inferred                     | Promoted to built-in platform with isolated default root |
 
 建模建议：
 
-- `Trae CN` 更像是 `Trae` 的区域化 root preset，而不是完全不同的协议；UI 层可以先暴露为内置预设，再决定是否拆成独立 `platform.id`。
+- `TRAE IDE` 是普通 IDE 产品，继续使用已有 `trae` 平台 id 和 `~/.trae` 根目录，避免破坏历史设置。
+- `TRAE IDE CN` 继续使用已有 `trae-cn` 平台 id 和 `~/.trae-cn` 根目录，避免破坏历史设置和迁移逻辑。
+- `TRAE Work` 是国际版新客户端，使用独立 `trae-work` 平台 id 和 `~/.trae-work` 默认根目录；公开资料确认产品存在，本地 skills 目录是 PromptHub 的保守分发约定。
+- `TRAE Work CN` 是新客户端，使用独立 `trae-work-cn` 平台 id 和 `~/.trae-work-cn` 默认根目录；公开资料确认产品存在，本地 skills 目录是 PromptHub 的保守分发约定。
 - `Kilo Code` 仍适合后续新增独立 built-in platform，因为它已经有稳定的 rules / skills / agent assets 结构，不只是单一 `skills/` 目录。
 
 ## Platform Cards
@@ -392,16 +398,17 @@ Stable product rule:
 - Modeling note:
   - keep Amp in the platform list, but do not assert rules / skills / workflow subpaths as official facts until public docs are available.
 
-### Trae / Trae CN
+### TRAE IDE / TRAE Work
 
-- PromptHub currently models Trae with a single built-in platform id: `trae`
-- Public product evidence confirms a China-region Trae surface via `trae.com.cn` / `docs.trae.cn`
+- PromptHub models international TRAE IDE as `trae`, international TRAE Work as `trae-work`, China-region TRAE IDE as `trae-cn`, and China-region TRAE Work as `trae-work-cn`
+- Public product evidence confirms TRAE IDE and TRAE Work are separate products on the international `trae.ai` surface and the China-region `trae.cn` / `docs.trae.cn` surface.
 - Current PromptHub implementation evidence:
   - localized placeholders already use `~/.trae-cn`
   - unit tests already verify custom platform root resolution against `~/.trae-cn`
+  - TRAE Work uses an isolated `~/.trae-work` root to avoid mutating existing TRAE IDE configuration
+  - TRAE Work CN uses an isolated `~/.trae-work-cn` root to avoid mutating existing TRAE IDE CN configuration
 - Modeling note:
-  - this means `Trae CN` is already implicitly part of the product's compatibility story, but the stable platform docs had not been updated to say so explicitly.
-  - until official local skills/rules path docs are captured, treat `Trae CN` as `Trae` root-path preset evidence rather than a fully separate documented filesystem contract.
+  - until official local skills/rules path docs are captured, treat TRAE Work variants as product-confirmed Agent clients with PromptHub-inferred `skills/` conventions.
 
 ## Evidence Links
 
@@ -440,7 +447,7 @@ Stable product rule:
 - GitHub Copilot repository custom instructions: `https://docs.github.com/en/copilot/customizing-copilot/adding-repository-custom-instructions-for-github-copilot`
 - GitHub Copilot CLI plugin reference: `https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference`
 - VS Code Agent Plugins: `https://code.visualstudio.com/docs/agent-customization/agent-plugins`
-- Trae CN docs entry: `https://docs.trae.cn`
+- TRAE Work CN docs entry: `https://docs.trae.cn`
 - SkillManager README supported agents snapshot: `https://raw.githubusercontent.com/eatmoreduck/SkillManager/master/README.md`
 - Cline config layout: `https://docs.cline.bot/getting-started/config`
 - Cline skills: `https://docs.cline.bot/customization/skills.md`

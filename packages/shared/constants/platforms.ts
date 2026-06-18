@@ -111,7 +111,9 @@ export const DEFAULT_SKILL_PLATFORM_ORDER = [
   "kiro",
   "kilo",
   "trae",
+  "trae-work",
   "trae-cn",
+  "trae-work-cn",
   "openclaw",
   "hermes",
 ] as const;
@@ -214,7 +216,7 @@ export const SKILL_PLATFORMS: SkillPlatform[] = [
   },
   {
     id: "trae",
-    name: "Trae",
+    name: "TRAE IDE",
     icon: "Zap",
     rootDir: {
       darwin: "~/.trae",
@@ -225,12 +227,34 @@ export const SKILL_PLATFORMS: SkillPlatform[] = [
   },
   {
     id: "trae-cn",
-    name: "Trae CN",
+    name: "TRAE IDE CN",
     icon: "Zap",
     rootDir: {
       darwin: "~/.trae-cn",
       win32: "%USERPROFILE%\\.trae-cn",
       linux: "~/.trae-cn",
+    },
+    skillsRelativePath: "skills",
+  },
+  {
+    id: "trae-work",
+    name: "TRAE Work",
+    icon: "Zap",
+    rootDir: {
+      darwin: "~/.trae-work",
+      win32: "%USERPROFILE%\\.trae-work",
+      linux: "~/.trae-work",
+    },
+    skillsRelativePath: "skills",
+  },
+  {
+    id: "trae-work-cn",
+    name: "TRAE Work CN",
+    icon: "Zap",
+    rootDir: {
+      darwin: "~/.trae-work-cn",
+      win32: "%USERPROFILE%\\.trae-work-cn",
+      linux: "~/.trae-work-cn",
     },
     skillsRelativePath: "skills",
   },
