@@ -4,6 +4,7 @@ import {
   coreAIConfigService,
   type CoreAIConfigFile,
   type CoreAIModelCapabilities,
+  type CoreAIModelConfig,
   type CoreAIModelRoute,
   type CoreAIModelType,
 } from "../ai-config";
@@ -26,6 +27,12 @@ const ROUTES: CoreAIModelRoute[] = [
   "imageGeneration",
 ];
 
+interface SelectionChoice<T> {
+  value: T;
+  label: string;
+  description?: string;
+}
+
 export const AI_CONFIG_HELP = [
   "AI 命令",
   "",
@@ -37,7 +44,7 @@ export const AI_CONFIG_HELP = [
   "  prompthub ai model-add --provider <provider-id> --model <model>",
   "  prompthub ai model-delete <model-id>",
   "  prompthub ai routes",
-  "  prompthub ai route-set <mainText|fastText|visionText|imageGeneration> <model-id>",
+  "  prompthub ai route-set <mainText|fastText|visionText|imageGeneration> [model-id|name|query]",
   "  prompthub ai route-clear <mainText|fastText|visionText|imageGeneration>",
   "",
   "常用参数:",
@@ -83,7 +90,11 @@ function takeFlag(args: string[], name: string): boolean {
   return true;
 }
 
-function requirePositional(args: string[], index: number, name: string): string {
+function requirePositional(
+  args: string[],
+  index: number,
+  name: string,
+): string {
   const value = args[index]?.trim();
   if (!value) {
     throw new AIConfigError("USAGE_ERROR", `缺少 ${name}`);
@@ -108,7 +119,9 @@ function parseProtocol(value: string | undefined): AIProtocol | undefined {
   throw new AIConfigError("USAGE_ERROR", `不支持的 AI 协议: ${value}`);
 }
 
-function parseModelType(value: string | undefined): CoreAIModelType | undefined {
+function parseModelType(
+  value: string | undefined,
+): CoreAIModelType | undefined {
   if (!value) {
     return undefined;
   }
@@ -156,12 +169,16 @@ function sanitizeValue<T>(value: T): T {
 function tableRows(value: unknown): Array<Record<string, unknown>> {
   if (Array.isArray(value)) {
     return value.map((item) =>
-      item && typeof item === "object" ? (item as Record<string, unknown>) : { value: item },
+      item && typeof item === "object"
+        ? (item as Record<string, unknown>)
+        : { value: item },
     );
   }
   if (value && typeof value === "object") {
     return Object.values(value as Record<string, unknown>).map((item) =>
-      item && typeof item === "object" ? (item as Record<string, unknown>) : { value: item },
+      item && typeof item === "object"
+        ? (item as Record<string, unknown>)
+        : { value: item },
     );
   }
   return [{ value }];
@@ -213,6 +230,220 @@ function renderTable(rows: Array<Record<string, unknown>>): string {
   ].join("\n");
 }
 
+function rankSearchValues(
+  values: Array<string | undefined>,
+  query: string,
+): number | null {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) {
+    return null;
+  }
+
+  let best: number | null = null;
+  for (const value of values) {
+    const normalizedValue = value?.trim().toLowerCase();
+    if (!normalizedValue) {
+      continue;
+    }
+    const rank =
+      normalizedValue === normalizedQuery
+        ? 0
+        : normalizedValue.startsWith(normalizedQuery)
+          ? 1
+          : normalizedValue.includes(normalizedQuery)
+            ? 2
+            : null;
+    if (rank !== null && (best === null || rank < best)) {
+      best = rank;
+    }
+  }
+
+  return best;
+}
+
+function hasExactSearchMatch(
+  values: Array<string | undefined>,
+  query: string,
+): boolean {
+  const normalizedQuery = query.trim().toLowerCase();
+  return values.some(
+    (value) => value?.trim().toLowerCase() === normalizedQuery,
+  );
+}
+
+function findRankedMatches<T>(
+  items: T[],
+  query: string,
+  values: (item: T) => Array<string | undefined>,
+  label: (item: T) => string,
+): T[] {
+  return items
+    .map((item) => ({ item, rank: rankSearchValues(values(item), query) }))
+    .filter((entry): entry is { item: T; rank: number } => entry.rank !== null)
+    .sort(
+      (a, b) => a.rank - b.rank || label(a.item).localeCompare(label(b.item)),
+    )
+    .map((entry) => entry.item);
+}
+
+function readLineFromInput(
+  input: NonNullable<CliIO["stdin"]>,
+): Promise<string> {
+  input.setEncoding("utf8");
+  return new Promise((resolve, reject) => {
+    let buffer = "";
+    const cleanup = () => {
+      input.off("data", onData);
+      input.off("end", onEnd);
+      input.off("error", onError);
+    };
+    const finish = (value: string) => {
+      cleanup();
+      resolve(value);
+    };
+    const onData = (chunk: string | Buffer) => {
+      buffer += chunk.toString();
+      const lineEnd = buffer.search(/\r?\n/);
+      if (lineEnd !== -1) {
+        finish(buffer.slice(0, lineEnd));
+      }
+    };
+    const onEnd = () => finish(buffer);
+    const onError = (error: Error) => {
+      cleanup();
+      reject(error);
+    };
+    input.on("data", onData);
+    input.once("end", onEnd);
+    input.once("error", onError);
+    input.resume();
+  });
+}
+
+async function selectFromTerminal<T>(
+  io: CliIO,
+  title: string,
+  choices: SelectionChoice<T>[],
+  invalidLabel: string,
+): Promise<T> {
+  if (choices.length === 0) {
+    throw new AIConfigError("NOT_FOUND", "没有可选择的 AI model");
+  }
+  if (!io.isInteractive || !io.stdin) {
+    throw new AIConfigError(
+      "USAGE_ERROR",
+      "缺少 model id/name；在交互式终端中可省略并选择，非交互调用请传入模型 id 或查询词",
+    );
+  }
+
+  io.stderr(title);
+  choices.forEach((choice, index) => {
+    const description = choice.description ? ` - ${choice.description}` : "";
+    io.stderr(`  ${index + 1}. ${choice.label}${description}`);
+  });
+  io.stderr("输入编号：");
+
+  const answer = (await readLineFromInput(io.stdin)).trim();
+  const selectedIndex = Number.parseInt(answer, 10);
+  if (
+    !Number.isInteger(selectedIndex) ||
+    selectedIndex < 1 ||
+    selectedIndex > choices.length
+  ) {
+    throw new AIConfigError(
+      "USAGE_ERROR",
+      `无效的 ${invalidLabel}: ${answer || "(empty)"}`,
+    );
+  }
+
+  return choices[selectedIndex - 1].value;
+}
+
+function isModelCompatibleWithRoute(
+  route: CoreAIModelRoute,
+  model: CoreAIModelConfig,
+): boolean {
+  if (route === "imageGeneration") {
+    return (
+      model.type === "image" || model.capabilities?.imageGeneration === true
+    );
+  }
+  if (model.type !== "chat" || model.capabilities?.chat === false) {
+    return false;
+  }
+  return route !== "visionText" || model.capabilities?.vision === true;
+}
+
+function modelChoice(
+  model: CoreAIModelConfig,
+): SelectionChoice<CoreAIModelConfig> {
+  return {
+    value: model,
+    label: model.name || model.model,
+    description: `${model.provider} / ${model.id}`,
+  };
+}
+
+async function resolveRouteModelId(
+  io: CliIO,
+  route: CoreAIModelRoute,
+  identifier: string | undefined,
+): Promise<string> {
+  const models = coreAIConfigService.read().models;
+  if (!identifier?.trim()) {
+    const compatible = models.filter((model) =>
+      isModelCompatibleWithRoute(route, model),
+    );
+    const selected = await selectFromTerminal(
+      io,
+      `选择 ${route} 路由模型：`,
+      compatible.map(modelChoice),
+      "AI model 编号",
+    );
+    return selected.id;
+  }
+
+  const exact = models.find((model) =>
+    hasExactSearchMatch([model.id, model.name, model.model], identifier),
+  );
+  if (exact) {
+    return exact.id;
+  }
+
+  const compatibleMatches = findRankedMatches(
+    models.filter((model) => isModelCompatibleWithRoute(route, model)),
+    identifier,
+    (model) => [model.id, model.name, model.model, model.provider],
+    (model) => model.name || model.model,
+  );
+  if (compatibleMatches.length === 0) {
+    throw new AIConfigError(
+      "NOT_FOUND",
+      `没有匹配 ${route} 路由的兼容 AI model: ${identifier}`,
+    );
+  }
+  if (compatibleMatches.length === 1) {
+    return compatibleMatches[0].id;
+  }
+
+  if (io.isInteractive) {
+    const selected = await selectFromTerminal(
+      io,
+      `选择 ${route} 路由模型（匹配 "${identifier.trim()}"）：`,
+      compatibleMatches.map(modelChoice),
+      "AI model 编号",
+    );
+    return selected.id;
+  }
+
+  throw new AIConfigError(
+    "CONFLICT",
+    `AI model 查询匹配多个兼容结果: ${identifier}; candidates=${compatibleMatches
+      .map((model) => `${model.id}:${model.name || model.model}`)
+      .join(", ")}`,
+  );
+}
+
 function emitSuccess(io: CliIO, output: OutputFormat, value: unknown): void {
   const sanitized = sanitizeValue(value);
   if (output === "table") {
@@ -222,7 +453,10 @@ function emitSuccess(io: CliIO, output: OutputFormat, value: unknown): void {
   emitJson(io, sanitized);
 }
 
-function modelCapabilities(args: string[], type: CoreAIModelType): CoreAIModelCapabilities {
+function modelCapabilities(
+  args: string[],
+  type: CoreAIModelType,
+): CoreAIModelCapabilities {
   return {
     chat: type === "chat",
     vision: takeFlag(args, "--vision"),
@@ -231,7 +465,9 @@ function modelCapabilities(args: string[], type: CoreAIModelType): CoreAIModelCa
   };
 }
 
-function successConfigPayload(config: CoreAIConfigFile): Record<string, unknown> {
+function successConfigPayload(
+  config: CoreAIConfigFile,
+): Record<string, unknown> {
   return {
     providers: config.providers,
     models: config.models,
@@ -347,8 +583,10 @@ export async function handleAIConfigCommand(
 
     if (action === "route-set") {
       const route = parseRoute(requirePositional(args, 1, "route"));
-      const modelId = requirePositional(args, 2, "model id");
-      ensureNoUnknownOptions(args.slice(3));
+      const identifier =
+        args[2]?.trim() && !args[2].startsWith("-") ? args[2] : undefined;
+      const modelId = await resolveRouteModelId(io, route, identifier);
+      ensureNoUnknownOptions(args.slice(identifier ? 3 : 2));
       emitSuccess(
         io,
         output,
@@ -381,7 +619,10 @@ export async function handleAIConfigCommand(
     if (configError.code === "NOT_FOUND") {
       return EXIT_CODES.NOT_FOUND;
     }
-    if (configError.code === "ROUTE_CAPABILITY_MISMATCH") {
+    if (
+      configError.code === "ROUTE_CAPABILITY_MISMATCH" ||
+      configError.code === "CONFLICT"
+    ) {
       return EXIT_CODES.CONFLICT;
     }
     if (configError.code === "USAGE_ERROR") {

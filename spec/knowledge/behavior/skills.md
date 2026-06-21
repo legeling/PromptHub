@@ -38,6 +38,7 @@
 ### 3.2 Project-Local Distribution Contract
 
 - PromptHub 必须支持将项目级 Skill 直接分发到当前项目内的本地目录，而不强制要求先纳入 `My Skills`。
+- PromptHub CLI 必须支持从现有 `My Skills` 中选择一个 Skill，并直接安装到当前项目的本地 Skill 目录，而不强制要求先在桌面端登记项目。
 - 项目级分发默认目标为当前项目的 `.agents/skills`，并允许用户额外选择多个目标目录。
 - 项目级分发必须复制整个 Skill 目录到 `<target>/<skill-name>/`，而不是只写单个 `SKILL.md` 文件；这是全局 Skill package contract 在项目分发场景下的具体要求。
 

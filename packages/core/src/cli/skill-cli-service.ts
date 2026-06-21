@@ -989,6 +989,24 @@ export interface CliSkillService {
     skillMdContent: string,
     platformId: string,
   ): Promise<void>;
+  installSkillToProject(
+    skillDb: SkillDB,
+    skillId: string,
+    options: {
+      projectRoot?: string;
+      targetRootDir?: string;
+      mode?: "copy" | "symlink";
+      ifExists?: "skip" | "overwrite" | "error";
+    },
+  ): Promise<{
+    status: "installed" | "updated" | "skipped";
+    skillId: string;
+    skillName: string;
+    projectRoot: string;
+    targetRootDir: string;
+    skillDir: string;
+    mode: "copy" | "symlink";
+  }>;
   isManagedRepoPath(absolutePath: string): Promise<boolean>;
   listLocalFiles(
     skillDb: SkillDB,
@@ -1408,6 +1426,86 @@ export function createCliSkillService(
     await copyRepoToPlatform(canonicalRepoPath, skillDir);
   }
 
+  async function installSkillToProject(
+    skillDb: SkillDB,
+    skillId: string,
+    options: {
+      projectRoot?: string;
+      targetRootDir?: string;
+      mode?: "copy" | "symlink";
+      ifExists?: "skip" | "overwrite" | "error";
+    },
+  ): Promise<{
+    status: "installed" | "updated" | "skipped";
+    skillId: string;
+    skillName: string;
+    projectRoot: string;
+    targetRootDir: string;
+    skillDir: string;
+    mode: "copy" | "symlink";
+  }> {
+    const skill = await resolveSkill(skillDb, skillId);
+    const repoPath = await resolveRepoPathForSkill(skillDb, skill.id);
+    const projectRoot = path.resolve(options.projectRoot ?? process.cwd());
+    const targetRootDir = path.resolve(
+      options.targetRootDir ?? path.join(projectRoot, ".agents", "skills"),
+    );
+    const skillName = validateSkillName(skill.name);
+    const skillDir = path.join(targetRootDir, skillName);
+    const mode = options.mode ?? "copy";
+    const ifExists = options.ifExists ?? "skip";
+    const canonicalRepoPath = await fs.realpath(repoPath);
+
+    if (
+      canonicalRepoPath === skillDir ||
+      path.resolve(repoPath) === skillDir ||
+      isPathWithin(canonicalRepoPath, targetRootDir) ||
+      isPathWithin(path.resolve(repoPath), targetRootDir)
+    ) {
+      throw new Error(
+        `Target directory must not be the source skill directory or inside it: ${targetRootDir}`,
+      );
+    }
+
+    await fs.mkdir(targetRootDir, { recursive: true });
+    const existed = await fileExists(skillDir);
+    if (existed) {
+      if (ifExists === "skip") {
+        return {
+          status: "skipped",
+          skillId: skill.id,
+          skillName,
+          projectRoot,
+          targetRootDir,
+          skillDir,
+          mode,
+        };
+      }
+      if (ifExists === "error") {
+        throw new Error(
+          `Skill already exists in target directory: ${skillDir}`,
+        );
+      }
+      await fs.rm(skillDir, { recursive: true, force: true });
+    }
+
+    if (mode === "symlink") {
+      await fs.symlink(canonicalRepoPath, skillDir, "dir");
+    } else {
+      await copyRepoToPlatform(canonicalRepoPath, skillDir);
+    }
+
+    return {
+      status: existed ? "updated" : "installed",
+      skillId: skill.id,
+      skillName,
+      projectRoot,
+      targetRootDir,
+      skillDir,
+      mode,
+    };
+  }
+
   async function uninstallSkillMd(
     skillName: string,
     platformId: string,
@@ -1578,6 +1676,7 @@ export function createCliSkillService(
         options,
       ),
     installSkillMd,
+    installSkillToProject,
     isManagedRepoPath,
     listLocalFiles,
     readCurrentFilesSnapshot: createLocalRepoSnapshot,

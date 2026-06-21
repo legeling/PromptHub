@@ -1,6 +1,7 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
+import { PassThrough } from "stream";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -16,12 +17,19 @@ function withDataDir(rootDir: string): string[] {
   return ["--data-dir", path.join(rootDir, "user-data")];
 }
 
-async function execCli(args: string[]) {
+async function execCli(
+  args: string[],
+  ioOptions?: {
+    stdin?: PassThrough;
+    isInteractive?: boolean;
+  },
+) {
   const stdout: string[] = [];
   const stderr: string[] = [];
   const exitCode = await runCli(args, {
     stdout: (message: string) => stdout.push(message),
     stderr: (message: string) => stderr.push(message),
+    ...ioOptions,
   });
 
   const joinedStdout = stdout.join("\n");
@@ -125,6 +133,18 @@ describe("ai config cli", () => {
       chatModelRes.json.id,
     );
 
+    const mainRouteRes = await execCli([
+      ...baseArgs,
+      "ai",
+      "route-set",
+      "mainText",
+      "4.1",
+    ]);
+    expect(mainRouteRes.exitCode).toBe(0);
+    expect(mainRouteRes.json.modelRouteDefaults.mainText).toBe(
+      chatModelRes.json.id,
+    );
+
     const imageRouteRes = await execCli([
       ...baseArgs,
       "ai",
@@ -144,12 +164,7 @@ describe("ai config cli", () => {
       imageGeneration: { model: "gpt-image-2", configured: true },
     });
 
-    const configPath = path.join(
-      root,
-      "user-data",
-      "config",
-      "ai-models.json",
-    );
+    const configPath = path.join(root, "user-data", "config", "ai-models.json");
     const saved = JSON.parse(fs.readFileSync(configPath, "utf8"));
     expect(saved.providers[0].apiKey).toBe("sk-test-secret");
     expect(saved.models[0]).toMatchObject({
@@ -158,6 +173,60 @@ describe("ai config cli", () => {
       model: "gpt-4.1",
     });
     expect(saved.modelRouteDefaults.visionText).toBe(chatModelRes.json.id);
+  });
+
+  it("selects a compatible route model interactively when model id is omitted", async () => {
+    const root = makeTempRoot(tempDirs);
+    const baseArgs = withDataDir(root);
+
+    const providerRes = await execCli([
+      ...baseArgs,
+      "ai",
+      "provider-add",
+      "--provider",
+      "openai",
+      "--api-key",
+      "sk-test-secret",
+      "--api-url",
+      "https://api.openai.com/v1",
+    ]);
+
+    const firstModelRes = await execCli([
+      ...baseArgs,
+      "ai",
+      "model-add",
+      "--provider",
+      providerRes.json.id,
+      "--model",
+      "gpt-4o",
+      "--vision",
+    ]);
+    expect(firstModelRes.exitCode).toBe(0);
+
+    const secondModelRes = await execCli([
+      ...baseArgs,
+      "ai",
+      "model-add",
+      "--provider",
+      providerRes.json.id,
+      "--model",
+      "gpt-4.1",
+      "--vision",
+    ]);
+    expect(secondModelRes.exitCode).toBe(0);
+
+    const stdin = new PassThrough();
+    stdin.end("2\n");
+    const routeRes = await execCli(
+      [...baseArgs, "ai", "route-set", "visionText"],
+      { stdin, isInteractive: true },
+    );
+
+    expect(routeRes.exitCode).toBe(0);
+    expect(routeRes.joinedStderr).toContain("选择 visionText 路由模型");
+    expect(routeRes.json.modelRouteDefaults.visionText).toBe(
+      secondModelRes.json.id,
+    );
   });
 
   it("rejects assigning a non-vision chat model to the vision route", async () => {

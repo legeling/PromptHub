@@ -16,6 +16,14 @@
 - Prompt 文件夹结构和版本快照属于稳定产品能力。
 - 文件夹表达、Prompt 元数据与版本目录的设计应支持后续导入导出、同步和恢复。
 
+### 2.1 CLI Prompt Selection
+
+- CLI 的常用 Prompt 操作应支持通过 id、标题或查询词解析 Prompt，避免用户必须复制数据库 id。
+- 当查询词只匹配一个 Prompt 时，CLI 可以直接执行读取、复制、使用、更新、删除或版本相关操作。
+- 当查询词匹配多个 Prompt 时：
+  - 交互式终端应显示编号列表并让用户选择。
+  - 非交互调用必须返回冲突和候选项，不得静默选择第一个结果。
+
 ### 3. Stable Internal Sources
 
 - Prompt 协议设计见 `spec/knowledge/structure/prompt-protocols-zh.md`。

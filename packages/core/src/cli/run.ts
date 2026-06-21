@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import type { Readable } from "stream";
 
 import {
   closeDatabase,
@@ -24,6 +25,8 @@ import type { SkillPlatform } from "@prompthub/shared/constants/platforms";
 import {
   MCP_TARGET_KINDS,
   type McpApplyTarget,
+  type McpMarketTemplate,
+  type McpServerConfig,
   type McpTargetKind,
 } from "@prompthub/shared/types/mcp";
 import type {
@@ -100,6 +103,8 @@ interface CliRulesBundle {
 export interface CliIO {
   stdout: CliWriter;
   stderr: CliWriter;
+  stdin?: Readable;
+  isInteractive?: boolean;
 }
 
 export interface CliRuntimeHooks {
@@ -121,6 +126,13 @@ interface CliContext {
 interface SkillIdentifierResolution {
   identifier: string;
   skill: Skill;
+}
+
+interface SelectionChoice<T> {
+  value: T;
+  id: string;
+  label: string;
+  description?: string;
 }
 
 class CliError extends Error {
@@ -148,6 +160,8 @@ function defaultIO(): CliIO {
   return {
     stdout: (message) => process.stdout.write(`${message}\n`),
     stderr: (message) => process.stderr.write(`${message}\n`),
+    stdin: process.stdin,
+    isInteractive: Boolean(process.stdin.isTTY),
   };
 }
 
@@ -221,15 +235,15 @@ const PROMPT_HELP = [
   "",
   "用法:",
   "  prompthub prompt list",
-  "  prompthub prompt get <id>",
-  "  prompthub prompt duplicate <id>",
-  "  prompthub prompt versions <id>",
-  "  prompthub prompt create-version <id> [--note <text>]",
-  "  prompthub prompt delete-version <id> <version-id>",
-  "  prompthub prompt diff <id> --from <n> --to <n>",
-  "  prompthub prompt rollback <id> --version <n>",
-  "  prompthub prompt use <id>",
-  "  prompthub prompt copy <id> [--var name=value]...",
+  "  prompthub prompt get <id|title|query>",
+  "  prompthub prompt duplicate <id|title|query>",
+  "  prompthub prompt versions <id|title|query>",
+  "  prompthub prompt create-version <id|title|query> [--note <text>]",
+  "  prompthub prompt delete-version <id|title|query> <version-id>",
+  "  prompthub prompt diff <id|title|query> --from <n> --to <n>",
+  "  prompthub prompt rollback <id|title|query> --version <n>",
+  "  prompthub prompt use [id|title|query]",
+  "  prompthub prompt copy [id|title|query] [--var name=value]...",
   "  prompthub prompt list-tags",
   "  prompthub prompt rename-tag <old> <new>",
   "  prompthub prompt delete-tag <tag>",
@@ -289,6 +303,8 @@ const SKILL_HELP = [
   "  prompthub skill list",
   "  prompthub skill get <id|name>",
   "  prompthub skill install <github-url|local-dir|SKILL.md|json>",
+  "  prompthub skill project-install [id|name|query] [--project <path>] [--target <skills-dir>] [--force]",
+  "  prompthub skill install-project [id|name|query] [--project <path>] [--target <skills-dir>] [--force]",
   "  prompthub skill scan [custom-path...]",
   "  prompthub skill versions <id|name>",
   "  prompthub skill create-version <id|name> [--note <text>]",
@@ -322,6 +338,10 @@ const SKILL_HELP = [
   "  --name <text>             本地 SKILL.md/目录缺少 frontmatter name 时手动指定",
   "  --format skillmd|json     用于 export 指定导出格式",
   "  --platform <platform-id>  指定目标平台",
+  "  --project <path>          项目根目录；默认当前工作目录",
+  "  --target <path>           直接指定项目 skills 目标目录；默认 <project>/.agents/skills",
+  "  --mode copy|symlink       项目安装模式；默认 copy",
+  "  --force                   项目中已存在同名 Skill 时覆盖刷新",
   "  --path <relative-path>    指定 repo 内相对路径",
   "  --from <old> --to <new>   用于 repo-rename",
   "  --content <text> | --content-file <file>",
@@ -332,6 +352,8 @@ const SKILL_HELP = [
   "  prompthub skill list",
   "  prompthub skill install https://github.com/foo/bar",
   "  prompthub skill install ~/.claude/skills/writer --name writer",
+  "  prompthub skill project-install",
+  "  prompthub skill project-install writer --force",
   "  prompthub skill versions writer",
   "  prompthub skill export writer --format skillmd",
   "  prompthub skill platform-status writer",
@@ -348,16 +370,16 @@ const MCP_HELP = [
   "  prompthub mcp get <id|name>",
   "  prompthub mcp market",
   "  prompthub mcp sources",
-  "  prompthub mcp install <template-id>",
+  "  prompthub mcp install [template-id|name|query]",
   "  prompthub mcp import <file>",
   "  prompthub mcp check [id|name]",
   "  prompthub mcp env-import <id|name> --file <.env> [--keys A,B]",
   "  prompthub mcp enable <id|name>",
   "  prompthub mcp disable <id|name>",
   "  prompthub mcp export --target <target> [--servers a,b]",
-  "  prompthub mcp apply --preset <preset-id> [--servers a,b] [--force]",
-  "  prompthub mcp apply --target <target> --path <file> [--servers a,b] [--force]",
-  "  prompthub mcp remove --preset <preset-id> --servers a,b",
+  "  prompthub mcp apply --preset <preset-id> [--servers id,name,query] [--force]",
+  "  prompthub mcp apply --target <target> --path <file> [--servers id,name,query] [--force]",
+  "  prompthub mcp remove --preset <preset-id> --servers id,name,query",
   "",
   "说明:",
   "  MCP CLI 读写与桌面端相同的 PromptHub MCP library。",
@@ -417,13 +439,14 @@ const RULES_HELP = [
   "用法:",
   "  prompthub rules list",
   "  prompthub rules scan",
-  "  prompthub rules read <rule-id>",
-  "  prompthub rules versions <rule-id>",
-  "  prompthub rules version-read <rule-id> <version-id>",
-  "  prompthub rules version-restore <rule-id> <version-id>",
-  "  prompthub rules save <rule-id> --content <text>",
-  "  prompthub rules rewrite <rule-id> --instruction <text> --api-key <key> --api-url <url> --model <model>",
-  "  prompthub rules add-project --name <name> --root-path <path> [--id <id>]",
+  "  prompthub rules read [rule-id|name|query]",
+  "  prompthub rules versions <rule-id|name|query>",
+  "  prompthub rules version-read <rule-id|name|query> <version-id>",
+  "  prompthub rules version-restore <rule-id|name|query> <version-id>",
+  "  prompthub rules save <rule-id|name|query> --content <text>",
+  "  prompthub rules rewrite <rule-id|name|query> --instruction <text> --api-key <key> --api-url <url> --model <model>",
+  "  prompthub rules project-init [--name <name>] [--root-path <path>] [--id <id>]",
+  "  prompthub rules add-project [--name <name>] [--root-path <path>] [--id <id>]",
   "  prompthub rules remove-project <project-id>",
   "  prompthub rules version-delete <rule-id> <version-id>",
   "  prompthub rules export --file <path>",
@@ -616,21 +639,9 @@ function requirePositional(
   return value;
 }
 
-function requireRuleFileId(
-  args: string[],
-  index: number,
-  label: string,
-): RuleFileId {
-  const value = requirePositional(args, index, label);
-  if (!isRuleFileId(value)) {
-    throw new CliError(
-      "USAGE_ERROR",
-      `无效的 rule id: ${value}`,
-      EXIT_CODES.USAGE,
-    );
-  }
-
-  return value;
+function optionalPositional(args: string[], index: number): string | undefined {
+  const value = args[index]?.trim();
+  return value && !value.startsWith("-") ? value : undefined;
 }
 
 function parseCsv(value?: string): string[] | undefined {
@@ -1682,6 +1693,512 @@ function skillPlatformRows(
   }));
 }
 
+function sortSkillChoices(skills: Skill[]): Skill[] {
+  return [...skills].sort((a, b) => {
+    if (a.is_favorite !== b.is_favorite) {
+      return a.is_favorite ? -1 : 1;
+    }
+    if (a.updated_at !== b.updated_at) {
+      return b.updated_at - a.updated_at;
+    }
+    return a.name.localeCompare(b.name);
+  });
+}
+
+function rankSearchValues(
+  values: Array<string | undefined>,
+  query: string,
+): number | null {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) {
+    return null;
+  }
+
+  let best: number | null = null;
+  for (const value of values) {
+    const normalizedValue = value?.trim().toLowerCase();
+    if (!normalizedValue) {
+      continue;
+    }
+    const rank =
+      normalizedValue === normalizedQuery
+        ? 0
+        : normalizedValue.startsWith(normalizedQuery)
+          ? 1
+          : normalizedValue.includes(normalizedQuery)
+            ? 2
+            : null;
+    if (rank !== null && (best === null || rank < best)) {
+      best = rank;
+    }
+  }
+
+  return best;
+}
+
+function findRankedMatches<T>(
+  items: T[],
+  query: string,
+  values: (item: T) => Array<string | undefined>,
+  label: (item: T) => string,
+): T[] {
+  return items
+    .map((item) => ({ item, rank: rankSearchValues(values(item), query) }))
+    .filter((entry): entry is { item: T; rank: number } => entry.rank !== null)
+    .sort(
+      (a, b) => a.rank - b.rank || label(a.item).localeCompare(label(b.item)),
+    )
+    .map((entry) => entry.item);
+}
+
+function hasExactSearchMatch(
+  values: Array<string | undefined>,
+  query: string,
+): boolean {
+  const normalizedQuery = query.trim().toLowerCase();
+  return values.some(
+    (value) => value?.trim().toLowerCase() === normalizedQuery,
+  );
+}
+
+function findSkillMatches(skills: Skill[], query: string): Skill[] {
+  return findRankedMatches(
+    skills,
+    query,
+    (skill) => [skill.id, skill.name, skill.description ?? undefined],
+    (skill) => skill.name,
+  );
+}
+
+function readLineFromInput(input: Readable): Promise<string> {
+  input.setEncoding("utf8");
+  return new Promise((resolve, reject) => {
+    let buffer = "";
+
+    const cleanup = () => {
+      input.off("data", onData);
+      input.off("end", onEnd);
+      input.off("error", onError);
+    };
+    const finish = (value: string) => {
+      cleanup();
+      resolve(value);
+    };
+    const onData = (chunk: string | Buffer) => {
+      buffer += chunk.toString();
+      const lineEnd = buffer.search(/\r?\n/);
+      if (lineEnd !== -1) {
+        finish(buffer.slice(0, lineEnd));
+      }
+    };
+    const onEnd = () => finish(buffer);
+    const onError = (error: Error) => {
+      cleanup();
+      reject(error);
+    };
+
+    input.on("data", onData);
+    input.once("end", onEnd);
+    input.once("error", onError);
+    input.resume();
+  });
+}
+
+async function selectSkillFromTerminal(
+  context: CliContext,
+  skills: Skill[],
+  query?: string,
+): Promise<Skill> {
+  const choices = sortSkillChoices(skills);
+  const title = query?.trim()
+    ? `选择要安装到项目的 Skill（匹配 "${query.trim()}"）：`
+    : "选择要安装到项目的 Skill：";
+  return selectFromTerminal(context, title, choices.map(skillChoice), {
+    emptyMessage: "没有可安装的 My Skills",
+    missingMessage:
+      "缺少 skill id/name；在交互式终端中可省略并选择，非交互调用请传入 skill 名称或查询词",
+    invalidLabel: "Skill 编号",
+  });
+}
+
+function skillChoice(skill: Skill): SelectionChoice<Skill> {
+  return {
+    value: skill,
+    id: skill.id,
+    label: skill.name,
+    description: skill.description ?? undefined,
+  };
+}
+
+async function selectFromTerminal<T>(
+  context: CliContext,
+  title: string,
+  choices: SelectionChoice<T>[],
+  options: {
+    emptyMessage: string;
+    missingMessage: string;
+    invalidLabel: string;
+  },
+): Promise<T> {
+  if (choices.length === 0) {
+    throw new CliError("NOT_FOUND", options.emptyMessage, EXIT_CODES.NOT_FOUND);
+  }
+
+  if (!context.io.isInteractive || !context.io.stdin) {
+    throw new CliError("USAGE_ERROR", options.missingMessage, EXIT_CODES.USAGE);
+  }
+
+  context.io.stderr(title);
+  choices.forEach((choice, index) => {
+    const description = choice.description ? ` - ${choice.description}` : "";
+    context.io.stderr(`  ${index + 1}. ${choice.label}${description}`);
+  });
+  context.io.stderr("输入编号：");
+
+  const answer = (await readLineFromInput(context.io.stdin)).trim();
+  const selectedIndex = Number.parseInt(answer, 10);
+  if (
+    !Number.isInteger(selectedIndex) ||
+    selectedIndex < 1 ||
+    selectedIndex > choices.length
+  ) {
+    throw new CliError(
+      "USAGE_ERROR",
+      `无效的 ${options.invalidLabel}: ${answer || "(empty)"}`,
+      EXIT_CODES.USAGE,
+    );
+  }
+
+  return choices[selectedIndex - 1].value;
+}
+
+async function resolveProjectInstallSkill(
+  context: CliContext,
+  skillDb: SkillDB,
+  identifier?: string,
+): Promise<Skill> {
+  const skills = skillDb.getAll();
+  if (!identifier?.trim()) {
+    return selectSkillFromTerminal(context, skills);
+  }
+
+  const matches = findSkillMatches(skills, identifier);
+  if (matches.length === 0) {
+    throw new CliError(
+      "NOT_FOUND",
+      `Skill 不存在或没有匹配项: ${identifier}`,
+      EXIT_CODES.NOT_FOUND,
+    );
+  }
+  if (matches.length === 1) {
+    return matches[0];
+  }
+
+  const exactMatches = matches.filter(
+    (skill) =>
+      skill.id.toLowerCase() === identifier.toLowerCase() ||
+      skill.name.toLowerCase() === identifier.toLowerCase(),
+  );
+  if (exactMatches.length === 1) {
+    return exactMatches[0];
+  }
+
+  if (context.io.isInteractive) {
+    return selectSkillFromTerminal(context, matches, identifier);
+  }
+
+  throw new CliError(
+    "CONFLICT",
+    `Skill 查询匹配多个结果: ${identifier}`,
+    EXIT_CODES.CONFLICT,
+    {
+      candidates: matches.map((skill) => ({ id: skill.id, name: skill.name })),
+    },
+  );
+}
+
+function promptChoice(prompt: Prompt): SelectionChoice<Prompt> {
+  const description = prompt.description || prompt.tags.join(", ") || undefined;
+  return {
+    value: prompt,
+    id: prompt.id,
+    label: prompt.title,
+    description,
+  };
+}
+
+function promptSearchValues(prompt: Prompt): Array<string | undefined> {
+  return [
+    prompt.id,
+    prompt.title,
+    prompt.description ?? undefined,
+    ...prompt.tags,
+  ];
+}
+
+function sortPromptChoices(prompts: Prompt[]): Prompt[] {
+  return [...prompts].sort((a, b) => {
+    if (a.isPinned !== b.isPinned) {
+      return a.isPinned ? -1 : 1;
+    }
+    if (a.isFavorite !== b.isFavorite) {
+      return a.isFavorite ? -1 : 1;
+    }
+    if (a.updatedAt !== b.updatedAt) {
+      return b.updatedAt.localeCompare(a.updatedAt);
+    }
+    return a.title.localeCompare(b.title);
+  });
+}
+
+async function resolvePromptIdentifier(
+  context: CliContext,
+  promptDb: PromptDB,
+  identifier: string | undefined,
+): Promise<Prompt> {
+  const prompts = promptDb.getAll();
+  if (!identifier?.trim()) {
+    return selectFromTerminal(
+      context,
+      "选择 Prompt：",
+      sortPromptChoices(prompts).map(promptChoice),
+      {
+        emptyMessage: "没有可选择的 Prompt",
+        missingMessage:
+          "缺少 prompt id/title；在交互式终端中可省略并选择，非交互调用请传入 prompt id、标题或查询词",
+        invalidLabel: "Prompt 编号",
+      },
+    );
+  }
+
+  const matches = findRankedMatches(
+    prompts,
+    identifier,
+    promptSearchValues,
+    (prompt) => prompt.title,
+  );
+  if (matches.length === 0) {
+    throw new CliError(
+      "NOT_FOUND",
+      `Prompt 不存在或没有匹配项: ${identifier}`,
+      EXIT_CODES.NOT_FOUND,
+    );
+  }
+
+  const exactMatches = matches.filter((prompt) =>
+    hasExactSearchMatch([prompt.id, prompt.title], identifier),
+  );
+  if (matches.length === 1 || exactMatches.length === 1) {
+    return exactMatches[0] ?? matches[0];
+  }
+
+  if (context.io.isInteractive) {
+    return selectFromTerminal(
+      context,
+      `选择 Prompt（匹配 "${identifier.trim()}"）：`,
+      matches.map(promptChoice),
+      {
+        emptyMessage: "没有可选择的 Prompt",
+        missingMessage: "缺少 prompt id/title",
+        invalidLabel: "Prompt 编号",
+      },
+    );
+  }
+
+  throw new CliError(
+    "CONFLICT",
+    `Prompt 查询匹配多个结果: ${identifier}`,
+    EXIT_CODES.CONFLICT,
+    {
+      candidates: matches.map((prompt) => ({
+        id: prompt.id,
+        title: prompt.title,
+      })),
+    },
+  );
+}
+
+function ruleChoice(
+  rule: RuleFileDescriptor,
+): SelectionChoice<RuleFileDescriptor> {
+  return {
+    value: rule,
+    id: rule.id,
+    label: `${rule.platformName} / ${rule.name}`,
+    description: rule.projectRootPath ?? rule.path,
+  };
+}
+
+function ruleSearchValues(rule: RuleFileDescriptor): Array<string | undefined> {
+  return [
+    rule.id,
+    rule.name,
+    rule.platformName,
+    rule.description,
+    rule.projectRootPath ?? undefined,
+    rule.projectRootPath ? path.basename(rule.projectRootPath) : undefined,
+  ];
+}
+
+async function resolveRuleIdentifier(
+  context: CliContext,
+  identifier: string | undefined,
+): Promise<RuleFileId> {
+  const rules = await coreRulesWorkspaceService.listCachedRuleDescriptors();
+  if (!identifier?.trim()) {
+    return (
+      await selectFromTerminal(context, "选择 Rule：", rules.map(ruleChoice), {
+        emptyMessage: "没有可选择的 Rule",
+        missingMessage:
+          "缺少 rule id/name；在交互式终端中可省略并选择，非交互调用请传入 rule id 或查询词",
+        invalidLabel: "Rule 编号",
+      })
+    ).id;
+  }
+
+  if (isRuleFileId(identifier)) {
+    return identifier;
+  }
+
+  const matches = findRankedMatches(
+    rules,
+    identifier,
+    ruleSearchValues,
+    (rule) => rule.name,
+  );
+  if (matches.length === 0) {
+    throw new CliError(
+      "NOT_FOUND",
+      `Rule 不存在或没有匹配项: ${identifier}`,
+      EXIT_CODES.NOT_FOUND,
+    );
+  }
+
+  const exactMatches = matches.filter((rule) =>
+    hasExactSearchMatch([rule.id, rule.name, rule.platformName], identifier),
+  );
+  if (matches.length === 1 || exactMatches.length === 1) {
+    return (exactMatches[0] ?? matches[0]).id;
+  }
+
+  if (context.io.isInteractive) {
+    return (
+      await selectFromTerminal(
+        context,
+        `选择 Rule（匹配 "${identifier.trim()}"）：`,
+        matches.map(ruleChoice),
+        {
+          emptyMessage: "没有可选择的 Rule",
+          missingMessage: "缺少 rule id/name",
+          invalidLabel: "Rule 编号",
+        },
+      )
+    ).id;
+  }
+
+  throw new CliError(
+    "CONFLICT",
+    `Rule 查询匹配多个结果: ${identifier}`,
+    EXIT_CODES.CONFLICT,
+    {
+      candidates: matches.map((rule) => ({
+        id: rule.id,
+        name: rule.name,
+        platformName: rule.platformName,
+      })),
+    },
+  );
+}
+
+function mcpTemplateChoice(
+  template: McpMarketTemplate,
+): SelectionChoice<McpMarketTemplate> {
+  return {
+    value: template,
+    id: template.id,
+    label: template.displayName || template.name,
+    description: template.description,
+  };
+}
+
+function resolveMcpTemplate(
+  context: CliContext,
+  service: CoreMcpLibraryService,
+  identifier: string | undefined,
+): Promise<McpMarketTemplate> {
+  const templates = service.getMarketTemplates();
+  if (!identifier?.trim()) {
+    return selectFromTerminal(
+      context,
+      "选择要安装的 MCP 模板：",
+      templates.map(mcpTemplateChoice),
+      {
+        emptyMessage: "没有可安装的 MCP 模板",
+        missingMessage:
+          "缺少 MCP template id/name；在交互式终端中可省略并选择，非交互调用请传入模板 id 或查询词",
+        invalidLabel: "MCP 模板编号",
+      },
+    );
+  }
+
+  const matches = findRankedMatches(
+    templates,
+    identifier,
+    (template) => [
+      template.id,
+      template.name,
+      template.displayName,
+      template.description,
+      template.packageName,
+      ...template.tags,
+    ],
+    (template) => template.displayName || template.name,
+  );
+  if (matches.length === 0) {
+    throw new CliError(
+      "NOT_FOUND",
+      `MCP 模板不存在或没有匹配项: ${identifier}`,
+      EXIT_CODES.NOT_FOUND,
+    );
+  }
+
+  const exactMatches = matches.filter((template) =>
+    hasExactSearchMatch(
+      [template.id, template.name, template.displayName],
+      identifier,
+    ),
+  );
+  if (matches.length === 1 || exactMatches.length === 1) {
+    return Promise.resolve(exactMatches[0] ?? matches[0]);
+  }
+
+  if (context.io.isInteractive) {
+    return selectFromTerminal(
+      context,
+      `选择 MCP 模板（匹配 "${identifier.trim()}"）：`,
+      matches.map(mcpTemplateChoice),
+      {
+        emptyMessage: "没有可安装的 MCP 模板",
+        missingMessage: "缺少 MCP template id/name",
+        invalidLabel: "MCP 模板编号",
+      },
+    );
+  }
+
+  throw new CliError(
+    "CONFLICT",
+    `MCP 模板查询匹配多个结果: ${identifier}`,
+    EXIT_CODES.CONFLICT,
+    {
+      candidates: matches.map((template) => ({
+        id: template.id,
+        name: template.name,
+        displayName: template.displayName,
+      })),
+    },
+  );
+}
+
 function mcpServerTableRows(
   servers: ReturnType<CoreMcpLibraryService["read"]>["servers"],
 ): Array<Record<string, unknown>> {
@@ -1719,10 +2236,22 @@ function parseMcpTargetKind(value: string | undefined): McpTargetKind {
   return value as McpTargetKind;
 }
 
-function resolveMcpServerIds(
+function mcpServerChoice(
+  server: McpServerConfig,
+): SelectionChoice<McpServerConfig> {
+  return {
+    value: server,
+    id: server.id,
+    label: server.displayName || server.name,
+    description: server.description,
+  };
+}
+
+async function resolveMcpServerIds(
+  context: CliContext,
   service: CoreMcpLibraryService,
   identifiers?: string[],
-): string[] {
+): Promise<string[]> {
   const servers = service.read().servers;
   if (!identifiers?.length) {
     return servers
@@ -1730,19 +2259,64 @@ function resolveMcpServerIds(
       .map((server) => server.id);
   }
 
-  return identifiers.map((identifier) => {
-    const server = servers.find(
-      (item) => item.id === identifier || item.name === identifier,
+  const resolved: string[] = [];
+  for (const identifier of identifiers) {
+    const matches = findRankedMatches(
+      servers,
+      identifier,
+      (server) => [
+        server.id,
+        server.name,
+        server.displayName,
+        server.description,
+      ],
+      (server) => server.displayName || server.name,
     );
-    if (!server) {
+    if (matches.length === 0) {
       throw new CliError(
         "NOT_FOUND",
         `MCP 服务不存在: ${identifier}`,
         EXIT_CODES.NOT_FOUND,
       );
     }
-    return server.id;
-  });
+    const exactMatches = matches.filter((server) =>
+      hasExactSearchMatch(
+        [server.id, server.name, server.displayName],
+        identifier,
+      ),
+    );
+    if (matches.length === 1 || exactMatches.length === 1) {
+      resolved.push((exactMatches[0] ?? matches[0]).id);
+      continue;
+    }
+    if (context.io.isInteractive) {
+      const selected = await selectFromTerminal(
+        context,
+        `选择 MCP 服务（匹配 "${identifier.trim()}"）：`,
+        matches.map(mcpServerChoice),
+        {
+          emptyMessage: "没有可选择的 MCP 服务",
+          missingMessage: "缺少 MCP 服务 id/name",
+          invalidLabel: "MCP 服务编号",
+        },
+      );
+      resolved.push(selected.id);
+      continue;
+    }
+    throw new CliError(
+      "CONFLICT",
+      `MCP 服务查询匹配多个结果: ${identifier}`,
+      EXIT_CODES.CONFLICT,
+      {
+        candidates: matches.map((server) => ({
+          id: server.id,
+          name: server.name,
+        })),
+      },
+    );
+  }
+
+  return Array.from(new Set(resolved));
 }
 
 function resolveMcpApplyTarget(
@@ -1804,39 +2378,53 @@ async function handlePromptCommand(
   }
 
   if (action === "get") {
-    const id = requirePositional(args, 1, "prompt id");
-    const prompt = requirePrompt(promptDb, id);
+    const prompt = await resolvePromptIdentifier(
+      context,
+      promptDb,
+      optionalPositional(args, 1),
+    );
+    ensureNoUnknownOptions(args.slice(optionalPositional(args, 1) ? 2 : 1));
     emitSuccess(context, prompt);
     return;
   }
 
   if (action === "duplicate") {
-    const id = requirePositional(args, 1, "prompt id");
+    const prompt = await resolvePromptIdentifier(
+      context,
+      promptDb,
+      requirePositional(args, 1, "prompt id 或 title"),
+    );
     ensureNoUnknownOptions(args.slice(2));
-    emitSuccess(context, duplicatePrompt(promptDb, id));
+    emitSuccess(context, duplicatePrompt(promptDb, prompt.id));
     return;
   }
 
   if (action === "versions") {
-    const id = requirePositional(args, 1, "prompt id");
+    const prompt = await resolvePromptIdentifier(
+      context,
+      promptDb,
+      requirePositional(args, 1, "prompt id 或 title"),
+    );
     ensureNoUnknownOptions(args.slice(2));
-    requirePrompt(promptDb, id);
-    const versions = promptDb.getVersions(id);
+    const versions = promptDb.getVersions(prompt.id);
     emitSuccess(context, versions, promptVersionTableRows(versions));
     return;
   }
 
   if (action === "create-version") {
-    const id = requirePositional(args, 1, "prompt id");
+    const prompt = await resolvePromptIdentifier(
+      context,
+      promptDb,
+      requirePositional(args, 1, "prompt id 或 title"),
+    );
     const versionArgs = args.slice(2);
     const note = takeOption(versionArgs, "--note");
     ensureNoUnknownOptions(versionArgs);
-    requirePrompt(promptDb, id);
-    const createdVersion = promptDb.createVersion(id, note);
+    const createdVersion = promptDb.createVersion(prompt.id, note);
     if (!createdVersion) {
       throw new CliError(
         "NOT_FOUND",
-        `Prompt 不存在: ${id}`,
+        `Prompt 不存在: ${prompt.id}`,
         EXIT_CODES.NOT_FOUND,
       );
     }
@@ -1845,10 +2433,13 @@ async function handlePromptCommand(
   }
 
   if (action === "delete-version") {
-    const id = requirePositional(args, 1, "prompt id");
+    const prompt = await resolvePromptIdentifier(
+      context,
+      promptDb,
+      requirePositional(args, 1, "prompt id 或 title"),
+    );
     const versionId = requirePositional(args, 2, "version id");
     ensureNoUnknownOptions(args.slice(3));
-    requirePrompt(promptDb, id);
     if (!promptDb.deleteVersion(versionId)) {
       throw new CliError(
         "NOT_FOUND",
@@ -1856,21 +2447,24 @@ async function handlePromptCommand(
         EXIT_CODES.NOT_FOUND,
       );
     }
-    emitSuccess(context, { deleted: true, promptId: id, versionId });
+    emitSuccess(context, { deleted: true, promptId: prompt.id, versionId });
     return;
   }
 
   if (action === "diff") {
-    const id = requirePositional(args, 1, "prompt id");
+    const prompt = await resolvePromptIdentifier(
+      context,
+      promptDb,
+      requirePositional(args, 1, "prompt id 或 title"),
+    );
     const diffArgs = resolvePromptVersionDiffArgs(args.slice(2));
-    requirePrompt(promptDb, id);
-    const versions = promptDb.getVersions(id);
+    const versions = promptDb.getVersions(prompt.id);
     const fromVersion = versions.find((item) => item.version === diffArgs.from);
     const toVersion = versions.find((item) => item.version === diffArgs.to);
     if (!fromVersion || !toVersion) {
       throw new CliError(
         "NOT_FOUND",
-        `Prompt 版本不存在: ${id}@v${!fromVersion ? diffArgs.from : diffArgs.to}`,
+        `Prompt 版本不存在: ${prompt.id}@v${!fromVersion ? diffArgs.from : diffArgs.to}`,
         EXIT_CODES.NOT_FOUND,
       );
     }
@@ -1880,7 +2474,11 @@ async function handlePromptCommand(
   }
 
   if (action === "rollback") {
-    const id = requirePositional(args, 1, "prompt id");
+    const prompt = await resolvePromptIdentifier(
+      context,
+      promptDb,
+      requirePositional(args, 1, "prompt id 或 title"),
+    );
     const rollbackArgs = args.slice(2);
     const version = parseNumberOption(
       takeOption(rollbackArgs, "--version"),
@@ -1896,12 +2494,11 @@ async function handlePromptCommand(
       );
     }
 
-    requirePrompt(promptDb, id);
-    const rolledBack = promptDb.rollback(id, version);
+    const rolledBack = promptDb.rollback(prompt.id, version);
     if (!rolledBack) {
       throw new CliError(
         "NOT_FOUND",
-        `Prompt 版本不存在: ${id}@v${version}`,
+        `Prompt 版本不存在: ${prompt.id}@v${version}`,
         EXIT_CODES.NOT_FOUND,
       );
     }
@@ -1911,27 +2508,27 @@ async function handlePromptCommand(
   }
 
   if (action === "use") {
-    const id = requirePositional(args, 1, "prompt id");
-    ensureNoUnknownOptions(args.slice(2));
-    requirePrompt(promptDb, id);
-    promptDb.incrementUsage(id);
-    emitSuccess(context, requirePrompt(promptDb, id));
+    const identifier = optionalPositional(args, 1);
+    const prompt = await resolvePromptIdentifier(context, promptDb, identifier);
+    ensureNoUnknownOptions(args.slice(identifier ? 2 : 1));
+    promptDb.incrementUsage(prompt.id);
+    emitSuccess(context, requirePrompt(promptDb, prompt.id));
     return;
   }
 
   if (action === "copy") {
-    const id = requirePositional(args, 1, "prompt id");
-    const copyArgs = args.slice(2);
+    const identifier = optionalPositional(args, 1);
+    const copyArgs = args.slice(identifier ? 2 : 1);
     const variables = parsePromptVariablesMap(copyArgs);
     ensureNoUnknownOptions(copyArgs);
 
-    const prompt = requirePrompt(promptDb, id);
+    const prompt = await resolvePromptIdentifier(context, promptDb, identifier);
     const content = renderPromptCopy(prompt, variables);
-    promptDb.incrementUsage(id);
+    promptDb.incrementUsage(prompt.id);
     emitSuccess(context, {
-      promptId: id,
+      promptId: prompt.id,
       content,
-      usageCount: requirePrompt(promptDb, id).usageCount,
+      usageCount: requirePrompt(promptDb, prompt.id).usageCount,
       variables,
     });
     return;
@@ -1968,12 +2565,16 @@ async function handlePromptCommand(
   }
 
   if (action === "update") {
-    const id = requirePositional(args, 1, "prompt id");
-    const updated = promptDb.update(id, resolvePromptUpdateArgs(args.slice(2)));
+    const identifier = optionalPositional(args, 1);
+    const prompt = await resolvePromptIdentifier(context, promptDb, identifier);
+    const updated = promptDb.update(
+      prompt.id,
+      resolvePromptUpdateArgs(args.slice(identifier ? 2 : 1)),
+    );
     if (!updated) {
       throw new CliError(
         "NOT_FOUND",
-        `Prompt 不存在: ${id}`,
+        `Prompt 不存在: ${prompt.id}`,
         EXIT_CODES.NOT_FOUND,
       );
     }
@@ -1982,15 +2583,17 @@ async function handlePromptCommand(
   }
 
   if (action === "delete") {
-    const id = requirePositional(args, 1, "prompt id");
-    if (!promptDb.delete(id)) {
+    const identifier = optionalPositional(args, 1);
+    const prompt = await resolvePromptIdentifier(context, promptDb, identifier);
+    ensureNoUnknownOptions(args.slice(identifier ? 2 : 1));
+    if (!promptDb.delete(prompt.id)) {
       throw new CliError(
         "NOT_FOUND",
-        `Prompt 不存在: ${id}`,
+        `Prompt 不存在: ${prompt.id}`,
         EXIT_CODES.NOT_FOUND,
       );
     }
-    emitSuccess(context, { deleted: true, id });
+    emitSuccess(context, { deleted: true, id: prompt.id });
     return;
   }
 
@@ -2263,8 +2866,9 @@ async function handleRulesCommand(
   }
 
   if (action === "read") {
-    const ruleId = requireRuleFileId(args, 1, "rule id");
-    ensureNoUnknownOptions(args.slice(2));
+    const identifier = optionalPositional(args, 1);
+    const ruleId = await resolveRuleIdentifier(context, identifier);
+    ensureNoUnknownOptions(args.slice(identifier ? 2 : 1));
     emitSuccess(
       context,
       await coreRulesWorkspaceService.readRuleContent(ruleId),
@@ -2273,7 +2877,10 @@ async function handleRulesCommand(
   }
 
   if (action === "versions") {
-    const ruleId = requireRuleFileId(args, 1, "rule id");
+    const ruleId = await resolveRuleIdentifier(
+      context,
+      requirePositional(args, 1, "rule id 或 name"),
+    );
     ensureNoUnknownOptions(args.slice(2));
     const rule = await coreRulesWorkspaceService.readRuleContent(ruleId);
     emitSuccess(context, rule.versions, ruleVersionTableRows(rule.versions));
@@ -2281,7 +2888,10 @@ async function handleRulesCommand(
   }
 
   if (action === "version-read") {
-    const ruleId = requireRuleFileId(args, 1, "rule id");
+    const ruleId = await resolveRuleIdentifier(
+      context,
+      requirePositional(args, 1, "rule id 或 name"),
+    );
     const versionId = requirePositional(args, 2, "version id");
     ensureNoUnknownOptions(args.slice(3));
     const rule = await coreRulesWorkspaceService.readRuleContent(ruleId);
@@ -2298,7 +2908,10 @@ async function handleRulesCommand(
   }
 
   if (action === "version-restore") {
-    const ruleId = requireRuleFileId(args, 1, "rule id");
+    const ruleId = await resolveRuleIdentifier(
+      context,
+      requirePositional(args, 1, "rule id 或 name"),
+    );
     const versionId = requirePositional(args, 2, "version id");
     ensureNoUnknownOptions(args.slice(3));
     const rule = await coreRulesWorkspaceService.readRuleContent(ruleId);
@@ -2318,7 +2931,10 @@ async function handleRulesCommand(
   }
 
   if (action === "save") {
-    const ruleId = requireRuleFileId(args, 1, "rule id");
+    const ruleId = await resolveRuleIdentifier(
+      context,
+      requirePositional(args, 1, "rule id 或 name"),
+    );
     const saveArgs = args.slice(2);
     const content = readTextOption(saveArgs, "--content", "--content-file");
     ensureNoUnknownOptions(saveArgs);
@@ -2339,7 +2955,10 @@ async function handleRulesCommand(
   }
 
   if (action === "rewrite") {
-    const ruleId = requireRuleFileId(args, 1, "rule id");
+    const ruleId = await resolveRuleIdentifier(
+      context,
+      requirePositional(args, 1, "rule id 或 name"),
+    );
     const rule = await coreRulesWorkspaceService.readRuleContent(ruleId);
     const rewritePayload = resolveRuleRewriteArgs(
       args.slice(2),
@@ -2351,17 +2970,22 @@ async function handleRulesCommand(
     return;
   }
 
-  if (action === "add-project") {
+  if (action === "add-project" || action === "project-init") {
     const addArgs = args.slice(1);
-    const name = takeOption(addArgs, "--name");
-    const rootPath = takeOption(addArgs, "--root-path");
+    const rootPath = path.resolve(
+      takeOption(addArgs, "--root-path") ?? process.cwd(),
+    );
+    const name =
+      takeOption(addArgs, "--name")?.trim() ||
+      path.basename(rootPath) ||
+      "Project";
     const id = takeOption(addArgs, "--id");
     ensureNoUnknownOptions(addArgs);
 
-    if (!name?.trim() || !rootPath?.trim()) {
+    if (!name || !rootPath.trim()) {
       throw new CliError(
         "USAGE_ERROR",
-        "rules add-project 需要 --name 和 --root-path",
+        "rules project-init 需要有效的项目名称和根目录",
         EXIT_CODES.USAGE,
       );
     }
@@ -2370,8 +2994,8 @@ async function handleRulesCommand(
       context,
       await coreRulesWorkspaceService.createProjectRule({
         ...(id?.trim() && { id: id.trim() }),
-        name: name.trim(),
-        rootPath: path.resolve(rootPath.trim()),
+        name,
+        rootPath,
       }),
     );
     return;
@@ -2390,7 +3014,10 @@ async function handleRulesCommand(
   }
 
   if (action === "version-delete") {
-    const ruleId = requireRuleFileId(args, 1, "rule id");
+    const ruleId = await resolveRuleIdentifier(
+      context,
+      requirePositional(args, 1, "rule id 或 name"),
+    );
     const versionId = requirePositional(args, 2, "version id");
     ensureNoUnknownOptions(args.slice(3));
     const versions = await coreRulesWorkspaceService.deleteRuleVersion(
@@ -2479,6 +3106,48 @@ async function handleSkillCommand(
       name,
     });
     emitSuccess(context, skillDb.getById(skillId));
+    return;
+  }
+
+  if (action === "project-install" || action === "install-project") {
+    const installArgs = args.slice(1);
+    const identifier =
+      installArgs[0] && !installArgs[0].startsWith("-")
+        ? installArgs.shift()
+        : undefined;
+    const projectRoot = takeOption(installArgs, "--project");
+    const targetRootDir = takeOption(installArgs, "--target");
+    const mode = takeOption(installArgs, "--mode") ?? "copy";
+    const force = takeFlag(installArgs, "--force");
+    ensureNoUnknownOptions(installArgs);
+
+    if (mode !== "copy" && mode !== "symlink") {
+      throw new CliError(
+        "USAGE_ERROR",
+        "skill project-install 的 --mode 必须是 copy 或 symlink",
+        EXIT_CODES.USAGE,
+      );
+    }
+
+    const skill = await resolveProjectInstallSkill(
+      context,
+      skillDb,
+      identifier,
+    );
+    const result = await context.skills.installSkillToProject(
+      skillDb,
+      skill.id,
+      {
+        projectRoot: projectRoot?.trim() || undefined,
+        targetRootDir: targetRootDir?.trim() || undefined,
+        mode,
+        ifExists: force ? "overwrite" : "skip",
+      },
+    );
+    emitSuccess(context, {
+      ...result,
+      forced: force,
+    });
     return;
   }
 
@@ -2911,9 +3580,10 @@ async function handleMcpCommand(
   }
 
   if (action === "install") {
-    const templateId = requirePositional(args, 1, "template id");
-    ensureNoUnknownOptions(args.slice(2));
-    emitSuccess(context, service.installTemplate(templateId));
+    const identifier = optionalPositional(args, 1);
+    ensureNoUnknownOptions(args.slice(identifier ? 2 : 1));
+    const template = await resolveMcpTemplate(context, service, identifier);
+    emitSuccess(context, service.installMarketTemplate(template));
     return;
   }
 
@@ -2937,7 +3607,8 @@ async function handleMcpCommand(
   if (action === "export") {
     const exportArgs = args.slice(1);
     const target = parseMcpTargetKind(takeOption(exportArgs, "--target"));
-    const serverIds = resolveMcpServerIds(
+    const serverIds = await resolveMcpServerIds(
+      context,
       service,
       parseCsv(takeOption(exportArgs, "--servers")),
     );
@@ -2957,7 +3628,11 @@ async function handleMcpCommand(
         EXIT_CODES.USAGE,
       );
     }
-    const serverIds = resolveMcpServerIds(service, serverIdentifiers);
+    const serverIds = await resolveMcpServerIds(
+      context,
+      service,
+      serverIdentifiers,
+    );
     const target = resolveMcpApplyTarget(targetArgs);
     ensureNoUnknownOptions(targetArgs);
     if (serverIds.length === 0) {

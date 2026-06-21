@@ -34,6 +34,11 @@
   - `opencode-global`
   - `windsurf-global`
 - 手动项目规则使用动态 id：`project:<project-id>`
+- CLI 操作项目规则时必须支持 cwd-aware 初始化：
+  - `prompthub rules project-init` 默认把当前工作目录注册为项目规则目录
+  - 未传 `--name` 时使用当前目录 basename 作为项目名称
+  - 未传 `--root-path` 时使用 `process.cwd()` 解析出的绝对路径
+- CLI 读取、保存、重写和版本操作规则时，应允许使用 rule id、显示名称、平台名称或查询词解析规则；非交互模式遇到多个匹配项必须返回冲突，不得静默选择。
 
 ### 5. Global Rule Support Is Explicit, Not Automatic
 

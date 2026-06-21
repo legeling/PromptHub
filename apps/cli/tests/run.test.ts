@@ -1,6 +1,7 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
+import { PassThrough } from "stream";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -41,6 +42,10 @@ async function withTempHome<T>(
 async function execCli(
   args: string[],
   skillService?: ReturnType<typeof createCliSkillService>,
+  ioOptions?: {
+    stdin?: PassThrough;
+    isInteractive?: boolean;
+  },
 ) {
   const stdout: string[] = [];
   const stderr: string[] = [];
@@ -49,6 +54,7 @@ async function execCli(
     {
       stdout: (message: string) => stdout.push(message),
       stderr: (message: string) => stderr.push(message),
+      ...ioOptions,
     },
     undefined,
     undefined,
@@ -139,6 +145,109 @@ describe("standalone cli wiring", () => {
     expect(listRes.exitCode).toBe(0);
     expect(listRes.json).toHaveLength(1);
     expect(listRes.json[0].title).toBe("CLI Prompt");
+  });
+
+  it("copies prompts by title query and reports ambiguous matches", async () => {
+    const root = makeTempRoot(tempDirs);
+
+    const seoRes = await execCli([
+      ...withDataDir(root),
+      "prompt",
+      "create",
+      "--title",
+      "SEO Blog Writer",
+      "--user-prompt",
+      "Write for {{audience}}",
+    ]);
+    expect(seoRes.exitCode).toBe(0);
+
+    const copyRes = await execCli([
+      ...withDataDir(root),
+      "prompt",
+      "copy",
+      "seo blog",
+      "--var",
+      "audience=developers",
+    ]);
+    expect(copyRes.exitCode).toBe(0);
+    expect(copyRes.json.promptId).toBe(seoRes.json.id);
+    expect(copyRes.json.content).toBe("Write for developers");
+
+    const secondSeoRes = await execCli([
+      ...withDataDir(root),
+      "prompt",
+      "create",
+      "--title",
+      "SEO Checklist",
+      "--user-prompt",
+      "Checklist",
+    ]);
+    expect(secondSeoRes.exitCode).toBe(0);
+
+    const ambiguousRes = await execCli([
+      ...withDataDir(root),
+      "prompt",
+      "copy",
+      "seo",
+    ]);
+    expect(ambiguousRes.exitCode).toBe(4);
+    expect(ambiguousRes.errorJson.error.code).toBe("CONFLICT");
+    expect(ambiguousRes.errorJson.error.details.candidates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ title: "SEO Blog Writer" }),
+        expect.objectContaining({ title: "SEO Checklist" }),
+      ]),
+    );
+  });
+
+  it("selects prompts interactively when a query is ambiguous", async () => {
+    const root = makeTempRoot(tempDirs);
+
+    for (const title of ["Release Alpha", "Release Beta"]) {
+      const createRes = await execCli([
+        ...withDataDir(root),
+        "prompt",
+        "create",
+        "--title",
+        title,
+        "--user-prompt",
+        title,
+      ]);
+      expect(createRes.exitCode).toBe(0);
+    }
+
+    const stdin = new PassThrough();
+    stdin.end("2\n");
+    const copyRes = await execCli(
+      [...withDataDir(root), "prompt", "copy", "release"],
+      undefined,
+      { stdin, isInteractive: true },
+    );
+
+    expect(copyRes.exitCode).toBe(0);
+    expect(copyRes.joinedStderr).toContain("选择 Prompt");
+    expect(copyRes.json.content).toBe("Release Beta");
+  });
+
+  it("installs MCP market templates by query", async () => {
+    const root = makeTempRoot(tempDirs);
+
+    const installRes = await execCli([
+      ...withDataDir(root),
+      "mcp",
+      "install",
+      "up-to-date",
+    ]);
+    expect(installRes.exitCode).toBe(0);
+    expect(installRes.json.name).toBe("context7");
+
+    const listRes = await execCli([...withDataDir(root), "mcp", "list"]);
+    expect(listRes.exitCode).toBe(0);
+    expect(
+      listRes.json.some(
+        (server: { name: string }) => server.name === "context7",
+      ),
+    ).toBe(true);
   });
 
   it("supports MCP market, import, env import, and health check in the shared library", async () => {
@@ -1767,6 +1876,236 @@ describe("standalone cli wiring", () => {
     }
   });
 
+  it("installs a My Skills package into the current project directory", async () => {
+    const root = makeTempRoot(tempDirs);
+    const originalCwd = process.cwd();
+    const skillDir = path.join(root, "project-writer");
+    const projectRoot = path.join(root, "project");
+    fs.mkdirSync(path.join(skillDir, "assets"), { recursive: true });
+    fs.mkdirSync(projectRoot, { recursive: true });
+    fs.writeFileSync(
+      path.join(skillDir, "SKILL.md"),
+      [
+        "---",
+        "name: project-writer",
+        "description: Project writer",
+        "version: 1.0.0",
+        "author: CLI Test",
+        "---",
+        "",
+        "# Project Writer",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(skillDir, "assets", "helper.txt"),
+      "helper v1",
+      "utf8",
+    );
+
+    const installRes = await execCli([
+      ...withDataDir(root),
+      "skill",
+      "install",
+      skillDir,
+    ]);
+    expect(installRes.exitCode).toBe(0);
+
+    try {
+      process.chdir(projectRoot);
+      const resolvedProjectRoot = fs.realpathSync(projectRoot);
+      const projectInstallRes = await execCli([
+        ...withDataDir(root),
+        "skill",
+        "project-install",
+        "project-writer",
+      ]);
+      expect(projectInstallRes.exitCode).toBe(0);
+      expect(projectInstallRes.json).toMatchObject({
+        status: "installed",
+        skillName: "project-writer",
+        projectRoot: resolvedProjectRoot,
+        targetRootDir: path.join(resolvedProjectRoot, ".agents", "skills"),
+        mode: "copy",
+        forced: false,
+      });
+
+      const targetSkillDir = path.join(
+        projectRoot,
+        ".agents",
+        "skills",
+        "project-writer",
+      );
+      expect(fs.existsSync(path.join(targetSkillDir, "SKILL.md"))).toBe(true);
+      expect(
+        fs.readFileSync(
+          path.join(targetSkillDir, "assets", "helper.txt"),
+          "utf8",
+        ),
+      ).toBe("helper v1");
+
+      fs.writeFileSync(
+        path.join(targetSkillDir, "assets", "helper.txt"),
+        "local edit",
+        "utf8",
+      );
+      const skippedRes = await execCli([
+        ...withDataDir(root),
+        "skill",
+        "project-install",
+        "project-writer",
+      ]);
+      expect(skippedRes.exitCode).toBe(0);
+      expect(skippedRes.json.status).toBe("skipped");
+      expect(
+        fs.readFileSync(
+          path.join(targetSkillDir, "assets", "helper.txt"),
+          "utf8",
+        ),
+      ).toBe("local edit");
+
+      const forcedRes = await execCli([
+        ...withDataDir(root),
+        "skill",
+        "project-install",
+        "project-writer",
+        "--force",
+      ]);
+      expect(forcedRes.exitCode).toBe(0);
+      expect(forcedRes.json.status).toBe("updated");
+      expect(forcedRes.json.forced).toBe(true);
+      expect(
+        fs.readFileSync(
+          path.join(targetSkillDir, "assets", "helper.txt"),
+          "utf8",
+        ),
+      ).toBe("helper v1");
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
+
+  it("selects a project Skill interactively when no identifier is provided", async () => {
+    const root = makeTempRoot(tempDirs);
+    const projectRoot = path.join(root, "interactive-project");
+    fs.mkdirSync(projectRoot, { recursive: true });
+
+    for (const skillName of ["alpha-skill", "beta-skill"]) {
+      const skillDir = path.join(root, skillName);
+      fs.mkdirSync(skillDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(skillDir, "SKILL.md"),
+        [
+          "---",
+          `name: ${skillName}`,
+          `description: ${skillName} description`,
+          "version: 1.0.0",
+          "author: CLI Test",
+          "---",
+          "",
+          `# ${skillName}`,
+        ].join("\n"),
+        "utf8",
+      );
+      const installRes = await execCli([
+        ...withDataDir(root),
+        "skill",
+        "install",
+        skillDir,
+      ]);
+      expect(installRes.exitCode).toBe(0);
+    }
+
+    const stdin = new PassThrough();
+    stdin.end("1\n");
+    const result = await execCli(
+      [
+        ...withDataDir(root),
+        "skill",
+        "project-install",
+        "--project",
+        projectRoot,
+      ],
+      undefined,
+      { stdin, isInteractive: true },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.joinedStderr).toContain("选择要安装到项目的 Skill");
+    expect(result.json.status).toBe("installed");
+    expect(
+      fs.existsSync(
+        path.join(
+          projectRoot,
+          ".agents",
+          "skills",
+          result.json.skillName,
+          "SKILL.md",
+        ),
+      ),
+    ).toBe(true);
+  });
+
+  it("supports fuzzy project Skill selection and rejects ambiguous matches", async () => {
+    const root = makeTempRoot(tempDirs);
+    const projectRoot = path.join(root, "fuzzy-project");
+    fs.mkdirSync(projectRoot, { recursive: true });
+
+    for (const skillName of ["writer-alpha", "writer-beta"]) {
+      const skillDir = path.join(root, skillName);
+      fs.mkdirSync(skillDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(skillDir, "SKILL.md"),
+        [
+          "---",
+          `name: ${skillName}`,
+          `description: ${skillName} description`,
+          "version: 1.0.0",
+          "author: CLI Test",
+          "---",
+          "",
+          `# ${skillName}`,
+        ].join("\n"),
+        "utf8",
+      );
+      const installRes = await execCli([
+        ...withDataDir(root),
+        "skill",
+        "install",
+        skillDir,
+      ]);
+      expect(installRes.exitCode).toBe(0);
+    }
+
+    const uniqueRes = await execCli([
+      ...withDataDir(root),
+      "skill",
+      "project-install",
+      "alpha",
+      "--project",
+      projectRoot,
+    ]);
+    expect(uniqueRes.exitCode).toBe(0);
+    expect(uniqueRes.json.skillName).toBe("writer-alpha");
+
+    const ambiguousRes = await execCli([
+      ...withDataDir(root),
+      "skill",
+      "project-install",
+      "writer",
+      "--project",
+      projectRoot,
+    ]);
+    expect(ambiguousRes.exitCode).toBe(4);
+    expect(ambiguousRes.errorJson.error.code).toBe("CONFLICT");
+    expect(ambiguousRes.errorJson.error.details.candidates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "writer-alpha" }),
+        expect.objectContaining({ name: "writer-beta" }),
+      ]),
+    );
+  });
+
   it("supports the full folder lifecycle", async () => {
     const root = makeTempRoot(tempDirs);
 
@@ -2051,6 +2390,41 @@ describe("standalone cli wiring", () => {
     ]);
     expect(removeRes.exitCode).toBe(0);
     expect(removeRes.json.removed).toBe(true);
+  });
+
+  it("initializes project rules from the current working directory", async () => {
+    const root = makeTempRoot(tempDirs);
+    const originalCwd = process.cwd();
+    const projectRoot = path.join(root, "cwd-project");
+    fs.mkdirSync(projectRoot, { recursive: true });
+
+    try {
+      process.chdir(projectRoot);
+      const initRes = await execCli([
+        ...withDataDir(root),
+        "rules",
+        "project-init",
+        "--id",
+        "cwd-project",
+      ]);
+      expect(initRes.exitCode).toBe(0);
+      expect(initRes.json.id).toBe("project:cwd-project");
+      expect(initRes.json.platformName).toBe("cwd-project");
+      expect(initRes.json.projectRootPath).toBe(fs.realpathSync(projectRoot));
+
+      const saveRes = await execCli([
+        ...withDataDir(root),
+        "rules",
+        "save",
+        "cwd-project",
+        "--content",
+        "# CWD Rule",
+      ]);
+      expect(saveRes.exitCode).toBe(0);
+      expect(saveRes.json.content).toBe("# CWD Rule");
+    } finally {
+      process.chdir(originalCwd);
+    }
   });
 
   it("lists, reads, restores, and deletes rule versions", async () => {
