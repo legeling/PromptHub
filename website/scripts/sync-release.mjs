@@ -34,11 +34,10 @@ const isPrerelease = version.includes("-");
 // Prerelease tags stay on GitHub Releases — the CDN mirror is stable-only by
 // policy (see .github/workflows/release.yml `Sync stable artifacts to R2`).
 //
-// The CDN mirror only starts accepting uploads once the release CI pipeline
-// runs after the bucket bootstrap is in place, so we keep an opt-in flag
-// (PROMPTHUB_USE_CDN_MIRROR) that defaults off until v0.5.7 ships. Set it
-// to "1" before running this script once the mirror has its first set of
-// stable artifacts.
+// The CDN mirror is opt-in because docs must not point at R2 until the
+// latest/ objects are confirmed present. Set PROMPTHUB_USE_CDN_MIRROR=1 only
+// after the stable release workflow has synced R2 and the public HEAD checks
+// for latest/latest.json plus the platform binaries return 200.
 const USE_CDN_MIRROR = process.env.PROMPTHUB_USE_CDN_MIRROR === "1";
 const CDN_PUBLIC_BASE = "https://pub-fff1cbc0121241d480624bd3de5a2735.r2.dev";
 

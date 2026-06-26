@@ -33,16 +33,25 @@ In `.github/workflows/release.yml`, after the `Create Release with gh CLI`
 step finishes (so we know `release_assets/` is fully populated), we run:
 
 ```yaml
-- name: Sync stable artifacts to R2
-  if: ${{ stable tag && CLOUDFLARE_API_TOKEN != '' }}
+- name: Check optional publisher secrets
+  id: publish_secrets
   ...
-- name: Skip R2 sync (preview or no token)
-  if: ${{ prerelease tag || CLOUDFLARE_API_TOKEN == '' }}
+- name: Sync stable artifacts to R2
+  if: ${{ stable tag && steps.publish_secrets.outputs.r2_ready == 'true' }}
+  ...
+- name: Skip R2 sync (preview or missing config)
+  if: ${{ prerelease tag || steps.publish_secrets.outputs.r2_ready != 'true' }}
   ...
 ```
 
-The "Skip" twin step exists so forks without the secret get a clear log
-message instead of a silent no-op or a failure.
+The "Check optional publisher secrets" step converts secret presence into
+non-secret boolean outputs. Later `if:` expressions must not read
+`env.CLOUDFLARE_API_TOKEN`, `env.CLOUDFLARE_ACCOUNT_ID`,
+`env.HOMEBREW_TAP_TOKEN`, or `secrets.*` directly. GitHub Actions evaluates
+step `if:` before that step's own `env:` is injected, and direct secret
+access in conditions is brittle. The "Skip" twin step exists so forks or
+misconfigured repos get a clear log message instead of a silent no-op or a
+failure.
 
 The sync step:
 
@@ -100,15 +109,19 @@ shorter audit trail.
 
 ## README transition strategy
 
-Until the next stable release ships and populates the R2 bucket, the README
-shows two columns that **resolve to identical GitHub Releases URLs**, plus a
-one-line note explaining the mirror starts in v0.5.7. After v0.5.7 lands:
+Until a stable release has actually populated the R2 `latest/` prefix, the
+README shows two columns that **resolve to identical GitHub Releases URLs**,
+plus a one-line note explaining the CDN mirror is not the active public
+download lane yet. After R2 is verified:
 
-1. Maintainer runs `PROMPTHUB_USE_CDN_MIRROR=1 node website/scripts/sync-release.mjs`
+1. Verify `latest/latest.json`, `latest/checksums.txt`, and every public
+   platform binary return HTTP 200 from the R2 public URL.
+2. Maintainer runs `PROMPTHUB_USE_CDN_MIRROR=1 node website/scripts/sync-release.mjs`
    to regenerate `website/src/generated/release.ts` with R2 URLs.
-2. Maintainer flips the README "Direct download" column to the
+3. Maintainer flips the README "Direct download" column to the
    `pub-fff1cbc0121241d480624bd3de5a2735.r2.dev/latest/...` URLs.
-3. From v0.5.8 onward the README never needs editing for download links.
+4. From that point onward the README does not need version-specific download
+   link edits for the stable direct-download lane.
 
 We keep the GitHub Releases column forever as the failover lane.
 

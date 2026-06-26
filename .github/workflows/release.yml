@@ -320,6 +320,38 @@ jobs:
           echo "=== Artifact structure ==="
           find artifacts -type f -name "*.yml" -o -name "*.exe" -o -name "*.dmg" | head -50
 
+      - name: Check optional publisher secrets
+        id: publish_secrets
+        shell: bash
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+
+          homebrew_ready=${HOMEBREW_TAP_TOKEN:+true}
+          if [ "${homebrew_ready}" != "true" ]; then
+            homebrew_ready=false
+          fi
+
+          r2_ready=$([ -n "${CLOUDFLARE_API_TOKEN:-}" ] && [ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ] && echo true || echo false)
+
+          echo "homebrew_ready=${homebrew_ready}" >> "$GITHUB_OUTPUT"
+          echo "r2_ready=${r2_ready}" >> "$GITHUB_OUTPUT"
+
+          if [ "${homebrew_ready}" = "true" ]; then
+            echo "Homebrew cask publishing is configured."
+          else
+            echo "HOMEBREW_TAP_TOKEN is not configured; Homebrew cask publishing will be skipped."
+          fi
+
+          if [ "${r2_ready}" = "true" ]; then
+            echo "Cloudflare R2 mirror publishing is configured."
+          else
+            echo "CLOUDFLARE_API_TOKEN and/or CLOUDFLARE_ACCOUNT_ID is not configured; R2 mirror publishing will be skipped."
+          fi
+
       - name: Create Release with gh CLI
         shell: bash
         run: |
@@ -480,7 +512,7 @@ jobs:
         # 对于 draft release（默认新建时状态），跳过；对 beta/alpha 也跳过。
         # 验证通过后执行 `gh release edit <tag> --draft=false --latest` 再手动
         # 重跑该 workflow（workflow_dispatch）或重打 tag 即可触发 Homebrew 更新。
-        if: ${{ !contains(github.ref, 'beta') && !contains(github.ref, 'alpha') && env.HOMEBREW_TAP_TOKEN != '' }}
+        if: ${{ !contains(github.ref, 'beta') && !contains(github.ref, 'alpha') && steps.publish_secrets.outputs.homebrew_ready == 'true' }}
         shell: bash
         run: |
           # 检查 release 是否仍为 draft；是则跳过 Homebrew 更新
@@ -499,19 +531,17 @@ jobs:
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
 
       - name: Skip Homebrew Cask update
-        if: ${{ !contains(github.ref, 'beta') && !contains(github.ref, 'alpha') && env.HOMEBREW_TAP_TOKEN == '' }}
+        if: ${{ !contains(github.ref, 'beta') && !contains(github.ref, 'alpha') && steps.publish_secrets.outputs.homebrew_ready != 'true' }}
         shell: bash
         run: |
           echo "HOMEBREW_TAP_TOKEN is not configured; skipping Homebrew cask publish."
-        env:
-          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
 
       # ─── Cloudflare R2 stable mirror ──────────────────────────────────
       # 把稳定版安装包同时同步到 Cloudflare R2，提供一个固定文件名的"latest"
       # 直链，让 README 和官网下载按钮不必每次发版都改链接。预览版（带 -beta /
       # -alpha / -rc 后缀）不上传 R2，只走 GitHub Releases 通道。
       - name: Sync stable artifacts to R2
-        if: ${{ !contains(github.ref, '-beta') && !contains(github.ref, '-alpha') && !contains(github.ref, '-rc') && env.CLOUDFLARE_API_TOKEN != '' }}
+        if: ${{ !contains(github.ref, '-beta') && !contains(github.ref, '-alpha') && !contains(github.ref, '-rc') && steps.publish_secrets.outputs.r2_ready == 'true' }}
         shell: bash
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -629,14 +659,12 @@ jobs:
           echo "   Latest:   https://pub-fff1cbc0121241d480624bd3de5a2735.r2.dev/latest/"
           echo "   Archive:  https://pub-fff1cbc0121241d480624bd3de5a2735.r2.dev/v${VERSION}/"
 
-      - name: Skip R2 sync (preview or no token)
-        if: ${{ contains(github.ref, '-beta') || contains(github.ref, '-alpha') || contains(github.ref, '-rc') || env.CLOUDFLARE_API_TOKEN == '' }}
+      - name: Skip R2 sync (preview or missing config)
+        if: ${{ contains(github.ref, '-beta') || contains(github.ref, '-alpha') || contains(github.ref, '-rc') || steps.publish_secrets.outputs.r2_ready != 'true' }}
         shell: bash
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
-            echo "CLOUDFLARE_API_TOKEN is not configured; skipping R2 mirror sync."
+          if [ "${{ steps.publish_secrets.outputs.r2_ready }}" != "true" ]; then
+            echo "CLOUDFLARE_API_TOKEN and/or CLOUDFLARE_ACCOUNT_ID is not configured; skipping R2 mirror sync."
           else
             echo "Tag ${GITHUB_REF_NAME} looks like a prerelease; R2 mirror is stable-only."
           fi

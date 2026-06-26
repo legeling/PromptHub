@@ -10,21 +10,54 @@
 - `.github/workflows/release.yml` gains a stable-only `Sync stable artifacts
   to R2` step plus its skip twin. The step:
   - Skips on prerelease tags (`-beta`, `-alpha`, `-rc`).
-  - Skips when `CLOUDFLARE_API_TOKEN` secret is missing (forks-safe).
+  - Skips when `CLOUDFLARE_API_TOKEN` or `CLOUDFLARE_ACCOUNT_ID` is missing
+    (forks-safe).
   - Skips when the GitHub release is still a draft.
   - Stages binaries with version-less names into `r2_staging/latest/`,
     version-suffixed names into `r2_staging/v<version>/`.
   - Generates `checksums.txt` for both directories and `latest/latest.json`.
   - Uploads each file with the right `--content-type`.
+- `.github/workflows/release.yml` now gates optional publishers through a
+  `publish_secrets` readiness step instead of reading step-scoped secret env
+  variables from `if:` expressions. This prevents the R2/Homebrew publisher
+  conditions from evaluating before their step env exists.
+- `apps/desktop/tests/unit/scripts/release-workflow.test.ts` locks the
+  release workflow boundary: optional publisher `if:` expressions must use
+  non-secret readiness outputs and must not directly read secret env values.
 - `website/scripts/sync-release.mjs` learns the `PROMPTHUB_USE_CDN_MIRROR`
-  env flag. Default off (so the website still points at GitHub Releases for
-  v0.5.6); flip to `1` after the first stable release populates R2.
+  env flag. Default off; flip to `1` only after R2 `latest/` has been
+  populated and public HEAD checks return 200.
 - README (zh) plus 6 locale variants now show a two-lane download table:
   "直链下载 / Direct download / 直鏈下載 / etc." in the left column and
   "GitHub Releases" in the right column. Both columns currently resolve to
-  the same GitHub Releases URLs because the R2 mirror has not been
-  populated yet; the inline note explains v0.5.7 will switch the left
-  column to the CDN URLs.
+  the same GitHub Releases URLs because the R2 `latest/` prefix is empty;
+  the inline note explains the direct lane will switch back to CDN URLs only
+  after mirror verification.
+
+## 2026-06-24 regression follow-up
+
+User-visible failure: README "Direct download" buttons pointed at
+`https://pub-fff1cbc0121241d480624bd3de5a2735.r2.dev/latest/...`, but
+`latest/PromptHub-Setup-x64.exe`, `latest/latest.json`, and
+`latest/checksums.txt` were absent from R2 and returned 404. GitHub Releases
+assets for v0.5.8 returned 200.
+
+Root cause: the public docs were switched to the CDN lane before R2
+`latest/` had been populated. In addition, the release workflow used
+step-level secret env values in `if:` conditions (`env.CLOUDFLARE_API_TOKEN`
+and `env.HOMEBREW_TAP_TOKEN`), which is fragile because step `if:` is
+evaluated before the step's own `env:` block is available.
+
+Fix:
+
+- README and all 6 localized README files now temporarily point their
+  "Direct download" column back to the working GitHub v0.5.8 asset URLs.
+- The release workflow now converts optional publishing secrets into
+  non-secret readiness outputs via `steps.publish_secrets.outputs.*`.
+- R2 sync now requires both `CLOUDFLARE_API_TOKEN` and
+  `CLOUDFLARE_ACCOUNT_ID`.
+- A workflow regression test prevents future `if:` expressions from reading
+  secret env values directly.
 
 ## What is intentionally deferred
 
@@ -52,8 +85,13 @@
   the older `article-assets` bucket.
 - `curl -s https://pub-fff1cbc0121241d480624bd3de5a2735.r2.dev/README.md`
   returns the layout doc (HTTP 200, 1971 bytes).
+- `curl -I https://pub-fff1cbc0121241d480624bd3de5a2735.r2.dev/latest/PromptHub-Setup-x64.exe`
+  reproduced the current CDN failure (HTTP 404).
+- `curl -I -L https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.5.8-x64.exe`
+  verified the fallback asset exists (HTTP 200 after redirects).
 - `python3 -c "import yaml; yaml.safe_load(open('.github/workflows/release.yml'))"`
   parses the workflow without error.
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/scripts/release-workflow.test.ts` ✅
 - `pnpm --filter @prompthub/desktop typecheck` ✅
 - `pnpm --filter @prompthub/desktop lint` ✅
 - `pnpm --filter @prompthub/desktop test:unit` ✅ 152 files / 1263 tests.
