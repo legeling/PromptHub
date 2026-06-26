@@ -1054,6 +1054,58 @@ describe("standalone cli wiring", () => {
     expect(JSON.parse(stdout.join("\n")).name).toBe("json-skill");
   });
 
+  it("does not silently truncate long local JSON skill fields", async () => {
+    const root = makeTempRoot(tempDirs);
+    const skillJsonPath = path.join(root, "long-skill.json");
+    const longDescription = `desc-${"d".repeat(12_000)}`;
+    const longInstructions = `# Long JSON Skill\n\n${"Keep this content.\n".repeat(700)}done`;
+    const longTag = `tag-${"x".repeat(180)}`;
+    const longSourceUrl = `https://example.com/${"path/".repeat(300)}`;
+
+    fs.writeFileSync(
+      skillJsonPath,
+      JSON.stringify(
+        {
+          name: "long-json-skill",
+          description: longDescription,
+          version: `1.0.0-${"v".repeat(300)}`,
+          author: `author-${"a".repeat(300)}`,
+          instructions: longInstructions,
+          tags: [longTag],
+          source_url: longSourceUrl,
+        },
+        null,
+        2,
+      ),
+      "utf8",
+    );
+
+    const installRes = await execCli([
+      ...withDataDir(root),
+      "skill",
+      "install",
+      skillJsonPath,
+    ]);
+    expect(installRes.exitCode).toBe(0);
+
+    const exportRes = await execCli([
+      ...withDataDir(root),
+      "skill",
+      "export",
+      "long-json-skill",
+      "--format",
+      "json",
+    ]);
+
+    expect(exportRes.exitCode).toBe(0);
+    expect(exportRes.json.description).toBe(longDescription);
+    expect(exportRes.json.version).toBe(`1.0.0-${"v".repeat(300)}`);
+    expect(exportRes.json.author).toBe(`author-${"a".repeat(300)}`);
+    expect(exportRes.json.instructions).toBe(longInstructions);
+    expect(exportRes.json.tags).toEqual([longTag]);
+    expect(exportRes.json.source_url).toBe(longSourceUrl);
+  });
+
   it("scans a custom local skill directory", async () => {
     const root = makeTempRoot(tempDirs);
     const scanRoot = path.join(root, "scan-root");

@@ -65,13 +65,12 @@ async function fileExists(targetPath: string): Promise<boolean> {
 function sanitizeString(
   value: unknown,
   fallback?: string,
-  maxLength = 10_000,
 ): string | undefined {
   if (typeof value !== "string") {
     return fallback;
   }
 
-  const trimmed = value.trim().slice(0, maxLength);
+  const trimmed = value.trim();
   return trimmed || fallback;
 }
 
@@ -87,13 +86,10 @@ function sanitizeTags(primary: unknown, fallback: unknown): string[] {
       (item): item is string =>
         typeof item === "string" && item.trim().length > 0,
     )
-    .map((item) => item.trim().slice(0, 128));
+    .map((item) => item.trim());
 }
 
-function sanitizeStringList(
-  value: unknown,
-  maxLength = 256,
-): string[] | undefined {
+function sanitizeStringList(value: unknown): string[] | undefined {
   if (!Array.isArray(value)) {
     return undefined;
   }
@@ -103,7 +99,7 @@ function sanitizeStringList(
       (item): item is string =>
         typeof item === "string" && item.trim().length > 0,
     )
-    .map((item) => item.trim().slice(0, maxLength));
+    .map((item) => item.trim());
 
   return items.length > 0 ? items : undefined;
 }
@@ -401,8 +397,8 @@ async function readManifest(skillDir: string): Promise<SkillManifest> {
     return {
       name: sanitizeString(parsed.name),
       description: sanitizeString(parsed.description),
-      version: sanitizeString(parsed.version, undefined, 256),
-      author: sanitizeString(parsed.author, undefined, 256),
+      version: sanitizeString(parsed.version),
+      author: sanitizeString(parsed.author),
       tags: sanitizeTags(parsed.tags, undefined),
       instructions: sanitizeString(parsed.instructions),
     };
@@ -533,14 +529,12 @@ async function installFromSkillContent(
     version:
       sanitizeString(
         parsed?.frontmatter.version,
-        sanitizeString(manifest.version, "1.0.0", 256),
-        256,
+        sanitizeString(manifest.version, "1.0.0"),
       ) || "1.0.0",
     author:
       sanitizeString(
         parsed?.frontmatter.author,
-        sanitizeString(manifest.author, "Local", 256),
-        256,
+        sanitizeString(manifest.author, "Local"),
       ) || "Local",
     tags: [],
     original_tags: sanitizeTags(parsed?.frontmatter.tags, manifest.tags),
@@ -863,20 +857,20 @@ async function importFromJson(
 
   return skillDb.create({
     name: skillName,
-    description: sanitizeString(parsed.description, undefined, 10_000),
-    version: sanitizeString(parsed.version, undefined, 256),
-    author: sanitizeString(parsed.author, undefined, 256),
+    description: sanitizeString(parsed.description),
+    version: sanitizeString(parsed.version),
+    author: sanitizeString(parsed.author),
     instructions: sanitizeString(parsed.instructions),
     content: sanitizeString(parsed.instructions),
     protocol_type: sanitizeProtocolType(parsed.protocol_type),
     tags: sanitizeTags(parsed.tags, ["imported"]),
     is_favorite: false,
-    icon_url: sanitizeString(parsed.icon_url, undefined, 500_000),
-    icon_emoji: sanitizeString(parsed.icon_emoji, undefined, 32),
-    icon_background: sanitizeString(parsed.icon_background, undefined, 64),
+    icon_url: sanitizeString(parsed.icon_url),
+    icon_emoji: sanitizeString(parsed.icon_emoji),
+    icon_background: sanitizeString(parsed.icon_background),
     prerequisites: sanitizeStringList(parsed.prerequisites),
     compatibility: sanitizeStringList(parsed.compatibility),
-    source_url: sanitizeString(parsed.source_url, undefined, 500_000),
+    source_url: sanitizeString(parsed.source_url),
   }).id;
 }
 
@@ -1738,14 +1732,12 @@ export function createCliSkillService(
                   ) || "",
                 version: sanitizeString(
                   parsed?.frontmatter.version,
-                  sanitizeString(manifest.version, undefined, 256),
-                  256,
+                  sanitizeString(manifest.version),
                 ),
                 author:
                   sanitizeString(
                     parsed?.frontmatter.author,
-                    sanitizeString(manifest.author, "Local", 256),
-                    256,
+                    sanitizeString(manifest.author, "Local"),
                   ) || "Local",
                 tags: sanitizeTags(parsed?.frontmatter.tags, manifest.tags),
                 instructions,
