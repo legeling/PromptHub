@@ -21,6 +21,7 @@ function createDeps() {
 const tokenPaths = {
   appDataPath: "/Users/test/Library/Application Support",
   homePath: "/Users/test",
+  localAppDataPath: "C:\\Users\\test\\AppData\\Local",
 };
 
 describe("expandShellOpenPath", () => {
@@ -44,6 +45,24 @@ describe("expandShellOpenPath", () => {
     expect(expandShellOpenPath("%appdata%\\PromptHub", tokenPaths)).toBe(
       "/Users/test/Library/Application Support\\PromptHub",
     );
+  });
+
+  it("expands LOCALAPPDATA tokens case-insensitively", () => {
+    expect(expandShellOpenPath("%LOCALAPPDATA%\\hermes", tokenPaths)).toBe(
+      "C:\\Users\\test\\AppData\\Local\\hermes",
+    );
+    expect(expandShellOpenPath("%localappdata%\\hermes", tokenPaths)).toBe(
+      "C:\\Users\\test\\AppData\\Local\\hermes",
+    );
+  });
+
+  it("falls back to the Windows local app data path when no LOCALAPPDATA path is provided", () => {
+    expect(
+      expandShellOpenPath("%LOCALAPPDATA%\\hermes", {
+        appDataPath: "C:\\Users\\test\\AppData\\Roaming",
+        homePath: "C:\\Users\\test",
+      }),
+    ).toBe("C:\\Users\\test\\AppData\\Local\\hermes");
   });
 });
 

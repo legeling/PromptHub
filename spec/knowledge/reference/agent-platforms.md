@@ -36,7 +36,7 @@ PromptHub MCP 管理第一版建模为“配置库 + 目标文件投影”，不
 | Claude Code | `claude`            | `~/.claude.json`; project `.mcp.json`                              | JSON `mcpServers`                   | Officially documented; scopes include user/project |
 | Cursor      | `cursor`            | `~/.cursor/mcp.json`; project `.cursor/mcp.json`                   | JSON `mcpServers`                   | Officially documented                              |
 | VS Code     | `vscode`            | project `.vscode/mcp.json`; user profile path varies by VS Code UI | JSON `servers`                      | Officially documented                              |
-| Cline       | `cline`             | `~/.cline/cline_mcp_settings.json`                                 | JSON `mcpServers`-style settings    | Officially documented                              |
+| Cline       | `cline`             | `~/.cline/data/settings/cline_mcp_settings.json`                   | JSON `mcpServers`-style settings    | Officially documented                              |
 | Custom JSON | `custom-json`       | user-selected file path                                            | JSON `mcpServers`                   | PromptHub generic projection                       |
 | Custom TOML | `custom-toml`       | user-selected file path                                            | Codex-compatible managed TOML block | PromptHub generic projection                       |
 
@@ -120,27 +120,27 @@ Stable product rule:
 
 这些平台当前仍以 PromptHub 的平台根目录兼容目标为主，缺少足够公开官方资料支撑更细的本地资产建模。
 
-| Platform     | ID             | Default Root (macOS)    | Current PromptHub Model                                                                                | Evidence                                         |
-| ------------ | -------------- | ----------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------ |
-| Antigravity  | `antigravity`  | `~/.gemini/antigravity` | root dir + `skills/` convention only                                                                   | PromptHub inferred                               |
-| TRAE IDE     | `trae`         | `~/.trae`               | TRAE IDE international client; root dir + `skills/` convention only                                     | Product confirmed; local path PromptHub inferred |
-| TRAE Work    | `trae-work`    | `~/.trae-work`          | TRAE Work international client; PromptHub assigns an isolated root + `skills/` convention               | Product confirmed; local path PromptHub inferred |
-| TRAE IDE CN  | `trae-cn`      | `~/.trae-cn`            | China-region TRAE IDE preset; visible built-in platform keeps the existing root convention             | Product confirmed; local path PromptHub inferred |
-| TRAE Work CN | `trae-work-cn` | `~/.trae-work-cn`       | TRAE Work is a separate China-region client; PromptHub assigns an isolated root + `skills/` convention | Product confirmed; local path PromptHub inferred |
-| Qoder        | `qoder`        | `~/.qoder`              | root dir + `skills/` convention only                                                                   | PromptHub inferred                               |
-| QoderWorker  | `qoderwork`    | `~/.qoderwork`          | root dir + `skills/` convention only                                                                   | PromptHub inferred                               |
-| Hermes Agent | `hermes`       | `~/.hermes`             | root dir + `skills/` convention only                                                                   | PromptHub inferred                               |
-| CodeBuddy    | `codebuddy`    | `~/.codebuddy`          | root dir + `skills/` convention only                                                                   | PromptHub inferred                               |
+| Platform     | ID             | Default Root (macOS)                                            | Current PromptHub Model                                                                                | Evidence                                                                  |
+| ------------ | -------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| Antigravity  | `antigravity`  | `~/.gemini/antigravity`                                         | root dir + `skills/` convention only                                                                   | PromptHub inferred                                                        |
+| TRAE IDE     | `trae`         | `~/.trae`                                                       | TRAE IDE international client; root dir + `skills/` convention only                                    | Product confirmed; local path PromptHub inferred                          |
+| TRAE Work    | `trae-work`    | `~/.trae-work`                                                  | TRAE Work international client; PromptHub assigns an isolated root + `skills/` convention              | Product confirmed; local path PromptHub inferred                          |
+| TRAE IDE CN  | `trae-cn`      | `~/.trae-cn`                                                    | China-region TRAE IDE preset; visible built-in platform keeps the existing root convention             | Product confirmed; local path PromptHub inferred                          |
+| TRAE Work CN | `trae-work-cn` | `~/.trae-work-cn`                                               | TRAE Work is a separate China-region client; PromptHub assigns an isolated root + `skills/` convention | Product confirmed; local path PromptHub inferred                          |
+| Qoder        | `qoder`        | `~/.qoder`                                                      | root dir + `skills/` convention only                                                                   | PromptHub inferred                                                        |
+| QoderWorker  | `qoderwork`    | `~/.qoderwork`                                                  | root dir + `skills/` convention only                                                                   | PromptHub inferred                                                        |
+| Hermes Agent | `hermes`       | macOS/Linux `~/.hermes`; Windows Native `%LOCALAPPDATA%\hermes` | root dir + `skills/` convention only                                                                   | Windows Native root officially documented; skills path PromptHub inferred |
+| CodeBuddy    | `codebuddy`    | `~/.codebuddy`                                                  | root dir + `skills/` convention only                                                                   | PromptHub inferred                                                        |
 
 ### Strong Candidates For Future Built-in Support
 
-以下平台在本轮调研中具备比“仅知道产品名”更强的公开本地资产证据，适合作为后续内置 Agent / 预制平台候选。它们当前还没有作为 PromptHub 的一等内置平台进入 `packages/shared/constants/platforms.ts`。
+以下平台在本轮调研中具备比“仅知道产品名”更强的公开本地资产证据，适合作为内置 Agent / 预制平台候选或已升级平台记录。`Kilo Code`、`TRAE Work`、`TRAE Work CN` 已作为 PromptHub 的一等内置平台进入 `packages/shared/constants/platforms.ts`。
 
-| Platform     | Why it stands out                                                                                                        | Public local asset evidence                                                                                       | Suggested PromptHub modeling status                      |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| Kilo Code    | 官方文档已明确 `.kilo/skills/`、`~/.kilo/skills/`、`kilo.jsonc`、`.kilo/rules/`、`AGENTS.md`、`.agents/skills/` 兼容目录 | `.kilo/skills/`, `~/.kilo/skills/`, `.kilo/rules/`, `kilo.jsonc`, global `~/.config/kilo/kilo.jsonc`, `AGENTS.md` | High-priority built-in candidate                         |
-| TRAE Work    | 国际站下载页和文档入口展示 TRAE Work，与 TRAE IDE 分开展示；本轮已作为独立内置 Agent 平台落入 `trae-work`                | Product entry available via `trae.ai`; local skills path remains PromptHub inferred                               | Promoted to built-in platform with isolated default root |
-| TRAE Work CN | 中国站和文档显示 TRAE Work 是独立客户端，不依赖 TRAE IDE；本轮已作为独立内置 Agent 平台落入 `trae-work-cn`               | Product docs entry available via `docs.trae.cn`; local skills path remains PromptHub inferred                     | Promoted to built-in platform with isolated default root |
+| Platform     | Why it stands out                                                                                                                      | Public local asset evidence                                                                                                                                                   | Suggested PromptHub modeling status                      |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| Kilo Code    | 官方文档已明确 `.kilo/skills/`、`~/.kilo/skills/`、`kilo.jsonc`、`.kilo/rules/`、`AGENTS.md`、`.agents/skills/` 兼容目录 | `.kilo/skills/`, `~/.kilo/skills/`, `.kilo/rules/`, default global `~/.config/kilo/kilo.jsonc`, default project `kilo.jsonc`, compatible `.kilo/kilo.jsonc` custom config path, `AGENTS.md` | Built-in platform; MCP target supported                  |
+| TRAE Work    | 国际站下载页和文档入口展示 TRAE Work，与 TRAE IDE 分开展示；本轮已作为独立内置 Agent 平台落入 `trae-work`                              | Product entry available via `trae.ai`; local skills path remains PromptHub inferred                                                                                           | Promoted to built-in platform with isolated default root |
+| TRAE Work CN | 中国站和文档显示 TRAE Work 是独立客户端，不依赖 TRAE IDE；本轮已作为独立内置 Agent 平台落入 `trae-work-cn`                             | Product docs entry available via `docs.trae.cn`; local skills path remains PromptHub inferred                                                                                 | Promoted to built-in platform with isolated default root |
 
 建模建议：
 
@@ -148,7 +148,7 @@ Stable product rule:
 - `TRAE IDE CN` 继续使用已有 `trae-cn` 平台 id 和 `~/.trae-cn` 根目录，避免破坏历史设置和迁移逻辑。
 - `TRAE Work` 是国际版新客户端，使用独立 `trae-work` 平台 id 和 `~/.trae-work` 默认根目录；公开资料确认产品存在，本地 skills 目录是 PromptHub 的保守分发约定。
 - `TRAE Work CN` 是新客户端，使用独立 `trae-work-cn` 平台 id 和 `~/.trae-work-cn` 默认根目录；公开资料确认产品存在，本地 skills 目录是 PromptHub 的保守分发约定。
-- `Kilo Code` 仍适合后续新增独立 built-in platform，因为它已经有稳定的 rules / skills / agent assets 结构，不只是单一 `skills/` 目录。
+- `Kilo Code` 已作为独立 built-in platform 建模，不能与 `Kiro` 混用；MCP 使用 Kilo 自己的 `mcp` JSON/JSONC 配置结构。
 
 ## Platform Cards
 
@@ -339,11 +339,24 @@ Stable product rule:
   - workspace skills: `.kiro/skills/`
   - global skills: `~/.kiro/skills/`
   - skills can also be invoked from slash-command UI
+- MCP config:
+  - user/global: `~/.kiro/settings/mcp.json`
+  - workspace/project: `.kiro/settings/mcp.json`
+  - workspace MCP settings override user MCP settings
 - Inclusion model:
   - steering supports `always`, `fileMatch`, `manual`, and `auto`
   - manual and auto steering files surface like commands, but Kiro does not present a separate dedicated local `commands/` directory in current docs
 - Modeling note:
   - Kiro is documented well enough for asset-level modeling, but its steering-first directory model is not the same thing as a single canonical global rule file, so it is not part of the current `Rules` whitelist.
+
+### Kilo Code MCP Status
+
+- PromptHub tracks Kilo Code as a separate `kilo` Skill/Rules/MCP platform, not as an alias for Kiro.
+- Kilo Code MCP config uses the root `mcp` key. Local servers use `type: "local"` with a combined `command` array and optional `environment`; remote servers use `type: "remote"` with `url` and optional `headers`.
+- Global config: recommended `~/.config/kilo/kilo.jsonc`.
+- Project config: recommended `<projectRoot>/kilo.jsonc`; compatible custom path `<projectRoot>/.kilo/kilo.jsonc`.
+- PromptHub's built-in MCP UI exposes one default Kilo Code target per scope. Compatible JSONC/custom paths are supported as parsing/custom-path inputs, not as duplicate Agent MCP or Project MCP cards.
+- Kilo JSONC config reads must tolerate comments and trailing commas, but PromptHub writes normalized JSON.
 
 ### Roo Code
 
@@ -440,6 +453,7 @@ Stable product rule:
 - Windsurf workflows: `https://docs.windsurf.com/windsurf/cascade/workflows`
 - Kiro steering: `https://kiro.dev/docs/steering/`
 - Kiro agent skills: `https://kiro.dev/docs/skills/`
+- Kiro MCP: `https://kiro.dev/docs/mcp/`
 - Roo Code custom instructions: `https://docs.roocode.com/features/custom-instructions`
 - Roo Code skills: `https://docs.roocode.com/features/skills`
 - Roo Code slash commands: `https://docs.roocode.com/features/slash-commands`
@@ -452,9 +466,11 @@ Stable product rule:
 - Cline config layout: `https://docs.cline.bot/getting-started/config`
 - Cline skills: `https://docs.cline.bot/customization/skills.md`
 - Cline rules: `https://docs.cline.bot/customization/cline-rules`
-- Kilo Code custom rules: `https://docs.kilo.ai/docs/customize/custom-rules`
-- Kilo Code skills: `https://docs.kilo.ai/docs/customize/skills`
-- Kilo Code agents.md: `https://docs.kilo.ai/docs/customize/agents-md`
+- Kilo Code custom rules: `https://kilo.ai/docs/customize/custom-rules`
+- Kilo Code skills: `https://kilo.ai/docs/customize/skills`
+- Kilo Code agents.md: `https://kilo.ai/docs/customize/agents-md`
+- Kilo Code MCP in CLI: `https://kilo.ai/docs/automate/mcp/using-in-cli`
+- Kilo Code MCP in Kilo Code: `https://kilo.ai/docs/automate/mcp/using-in-kilo-code`
 - Cherry Studio storage locations: `https://docs.cherry-ai.com/advanced-basic/data-storage-location`
 - Cherry Studio local source inspected for skill registry behavior:
   - `/Users/lingxiaotian/Programs/public/cherry-studio/src/main/services/agents/skills/SkillService.ts`

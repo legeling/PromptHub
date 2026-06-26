@@ -1,8 +1,10 @@
 import type * as fs from "fs";
+import path from "path";
 
 export interface OpenDirectoryPathDeps {
   appDataPath: string;
   homePath: string;
+  localAppDataPath?: string;
   lstatSync: typeof fs.lstatSync;
   openPath: (path: string) => Promise<string | void>;
   showItemInFolder: (path: string) => void;
@@ -16,11 +18,16 @@ export interface OpenDirectoryPathResult {
 
 export function expandShellOpenPath(
   folderPath: string,
-  paths: { appDataPath: string; homePath: string },
+  paths: { appDataPath: string; homePath: string; localAppDataPath?: string },
 ): string {
+  const localAppDataPath =
+    paths.localAppDataPath ||
+    path.win32.join(paths.homePath, "AppData", "Local");
+
   return folderPath
     .replace(/^~(?=$|[/\\])/, paths.homePath)
-    .replace(/%APPDATA%/gi, paths.appDataPath);
+    .replace(/%APPDATA%/gi, paths.appDataPath)
+    .replace(/%LOCALAPPDATA%/gi, localAppDataPath);
 }
 
 export async function openDirectoryPath(

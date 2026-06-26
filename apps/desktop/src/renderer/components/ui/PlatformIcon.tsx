@@ -93,6 +93,7 @@ const FALLBACK_ICONS: Record<string, React.ReactNode> = {
   codebuddy: <BotIcon />,
   hermes: <BotIcon />,
   "cherry-studio": <BotIcon />,
+  "roo-code": <BotIcon />,
 };
 
 interface PlatformIconProps extends HTMLAttributes<HTMLSpanElement> {

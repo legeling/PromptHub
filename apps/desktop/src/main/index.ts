@@ -1588,9 +1588,12 @@ ipcMain.handle("data:migrate", async (_event, newPath: string) => {
 // Open a folder in the system file manager
 // 在文件管理器中打开文件夹
 ipcMain.handle("shell:openPath", async (_event, folderPath: string) => {
+  const homePath = app.getPath("home");
   return openDirectoryPath(folderPath, {
     appDataPath: app.getPath("appData"),
-    homePath: app.getPath("home"),
+    homePath,
+    localAppDataPath:
+      process.env.LOCALAPPDATA || path.join(homePath, "AppData", "Local"),
     lstatSync: fs.lstatSync,
     openPath: (targetPath) => shell.openPath(targetPath),
     showItemInFolder: (targetPath) => shell.showItemInFolder(targetPath),
