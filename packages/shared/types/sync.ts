@@ -1,11 +1,52 @@
-import type { Folder } from './folder';
-import type { Prompt, PromptVersion } from './prompt';
-import type { RuleBackupRecord } from './rules';
-import type { Settings, SyncProviderKind } from './settings';
-import type { Skill, SkillFileSnapshot, SkillVersion } from './skill';
+import type { Folder } from "./folder";
+import type { McpLibraryFile } from "./mcp";
+import type { PluginLibraryFile, PluginPackageSnapshot } from "./plugin";
+import type { Prompt, PromptVersion } from "./prompt";
+import type { RuleBackupRecord } from "./rules";
+import type { Settings, SyncProviderKind } from "./settings";
+import type { Skill, SkillFileSnapshot, SkillVersion } from "./skill";
 
-export type SyncDirection = 'push' | 'pull';
-export type SyncMode = 'merge' | 'replace' | 'bidirectional';
+export interface StoreSourceSnapshot {
+  id: string;
+  name: string;
+  type:
+    | "official"
+    | "community"
+    | "marketplace-json"
+    | "git-repo"
+    | "local-dir";
+  url: string;
+  branch?: string;
+  directory?: string;
+  enabled?: boolean;
+  order?: number;
+  createdAt?: number;
+}
+
+export interface CustomStoreSourceSnapshot {
+  customStoreSources: StoreSourceSnapshot[];
+  selectedSourceId?: string;
+}
+
+export interface AgentAssetStoreSourcesSnapshot {
+  skills?: CustomStoreSourceSnapshot;
+  mcp?: CustomStoreSourceSnapshot;
+  plugins?: CustomStoreSourceSnapshot;
+}
+
+export interface AgentAssetFileSnapshot {
+  relativePath: string;
+  contentBase64: string;
+  size: number;
+}
+
+export interface AgentAssetFilesSnapshot {
+  mcp?: AgentAssetFileSnapshot[];
+  plugins?: AgentAssetFileSnapshot[];
+}
+
+export type SyncDirection = "push" | "pull";
+export type SyncMode = "merge" | "replace" | "bidirectional";
 
 export interface SyncCapabilities {
   incremental: boolean;
@@ -16,17 +57,19 @@ export interface SyncCapabilities {
 }
 
 export type SyncErrorCode =
-  | 'SYNC_AUTH_FAILED'
-  | 'SYNC_CONNECTIVITY_FAILED'
-  | 'SYNC_REMOTE_NOT_FOUND'
-  | 'SYNC_PAYLOAD_INVALID'
-  | 'SYNC_PROVIDER_UNSUPPORTED';
+  | "SYNC_AUTH_FAILED"
+  | "SYNC_CONNECTIVITY_FAILED"
+  | "SYNC_REMOTE_NOT_FOUND"
+  | "SYNC_PAYLOAD_INVALID"
+  | "SYNC_PROVIDER_UNSUPPORTED";
 
 export interface SyncOperationSummary {
   prompts: number;
   folders: number;
   rules: number;
   skills: number;
+  mcpServers?: number;
+  plugins?: number;
 }
 
 export interface SyncWarning {
@@ -69,6 +112,11 @@ export interface SyncSnapshot {
   skills: Skill[];
   skillVersions: SkillVersion[];
   skillFiles?: Record<string, SkillFileSnapshot[]>;
+  mcpLibrary?: McpLibraryFile;
+  pluginLibrary?: PluginLibraryFile;
+  pluginPackages?: PluginPackageSnapshot[];
+  storeSources?: AgentAssetStoreSourcesSnapshot;
+  agentAssetFiles?: AgentAssetFilesSnapshot;
   settings?: Settings;
   settingsUpdatedAt?: string;
   images?: Record<string, string>;

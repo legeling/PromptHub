@@ -117,7 +117,10 @@ function base64ToUint8Array(base64: string): Uint8Array {
   return bytes;
 }
 
-export async function encryptData(data: string, password: string): Promise<string> {
+export async function encryptData(
+  data: string,
+  password: string,
+): Promise<string> {
   const encoder = new TextEncoder();
   const dataBuffer = encoder.encode(data);
 
@@ -146,7 +149,9 @@ export async function encryptData(data: string, password: string): Promise<strin
     dataBuffer,
   );
 
-  const combined = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
+  const combined = new Uint8Array(
+    salt.length + iv.length + encrypted.byteLength,
+  );
   combined.set(salt, 0);
   combined.set(iv, salt.length);
   combined.set(new Uint8Array(encrypted), salt.length + iv.length);
@@ -211,7 +216,9 @@ function createFailureMessage(
   chinese: string,
   error?: string,
 ): string {
-  return error ? `${english}: ${error} / ${chinese}: ${error}` : `${english} / ${chinese}`;
+  return error
+    ? `${english}: ${error} / ${chinese}: ${error}`
+    : `${english} / ${chinese}`;
 }
 
 function toVersionNumber(version: string | number): number {
@@ -247,6 +254,11 @@ function buildLegacyBackupData(
     skills: fullBackup.skills,
     skillVersions: fullBackup.skillVersions,
     skillFiles: fullBackup.skillFiles,
+    mcpLibrary: fullBackup.mcpLibrary,
+    pluginLibrary: fullBackup.pluginLibrary,
+    pluginPackages: fullBackup.pluginPackages,
+    storeSources: fullBackup.storeSources,
+    agentAssetFiles: fullBackup.agentAssetFiles,
   };
 }
 
@@ -264,6 +276,11 @@ function buildIncrementalCoreData(fullBackup: DatabaseBackup): BackupData {
     skills: fullBackup.skills,
     skillVersions: fullBackup.skillVersions,
     skillFiles: fullBackup.skillFiles,
+    mcpLibrary: fullBackup.mcpLibrary,
+    pluginLibrary: fullBackup.pluginLibrary,
+    pluginPackages: fullBackup.pluginPackages,
+    storeSources: fullBackup.storeSources,
+    agentAssetFiles: fullBackup.agentAssetFiles,
   };
 }
 
@@ -288,6 +305,11 @@ async function serializeLegacyBackup(
     skills: backupData.skills,
     skillVersions: backupData.skillVersions,
     skillFiles: backupData.skillFiles,
+    mcpLibrary: backupData.mcpLibrary,
+    pluginLibrary: backupData.pluginLibrary,
+    pluginPackages: backupData.pluginPackages,
+    storeSources: backupData.storeSources,
+    agentAssetFiles: backupData.agentAssetFiles,
   };
 
   return JSON.stringify({
@@ -367,7 +389,10 @@ async function parseLegacyBackupPayload(
     }
 
     try {
-      const decrypted = await decryptData(parsed.data, options.encryptionPassword);
+      const decrypted = await decryptData(
+        parsed.data,
+        options.encryptionPassword,
+      );
       return {
         data: JSON.parse(decrypted) as BackupData & {
           promptVersions?: PromptVersion[];
@@ -395,7 +420,9 @@ async function parseIncrementalCorePayload(
   options?: SyncBackupOptions,
 ): Promise<BackupData & { promptVersions?: PromptVersion[] }> {
   if (!manifest.encrypted) {
-    return JSON.parse(rawData) as BackupData & { promptVersions?: PromptVersion[] };
+    return JSON.parse(rawData) as BackupData & {
+      promptVersions?: PromptVersion[];
+    };
   }
 
   if (!options?.encryptionPassword) {
@@ -410,7 +437,9 @@ async function parseIncrementalCorePayload(
       parsed.data || "",
       options.encryptionPassword,
     );
-    return JSON.parse(decrypted) as BackupData & { promptVersions?: PromptVersion[] };
+    return JSON.parse(decrypted) as BackupData & {
+      promptVersions?: PromptVersion[];
+    };
   } catch {
     throw new Error(
       "Decryption failed, password may be incorrect / 解密失败，密码可能不正确",
@@ -423,7 +452,10 @@ async function restoreImages(images: Record<string, string>): Promise<number> {
 
   for (const [fileName, base64] of Object.entries(images)) {
     try {
-      const success = await window.electron?.saveImageBase64?.(fileName, base64);
+      const success = await window.electron?.saveImageBase64?.(
+        fileName,
+        base64,
+      );
       if (success) {
         restoredCount++;
       }
@@ -436,10 +468,15 @@ async function restoreImages(images: Record<string, string>): Promise<number> {
 }
 
 async function downloadAndRestoreMedia(
-  entries: Record<string, { hash: string; size: number; uploadedAt: string }> | undefined,
+  entries:
+    | Record<string, { hash: string; size: number; uploadedAt: string }>
+    | undefined,
   resolvePath: (fileName: string) => string,
   downloadText: (path: string) => Promise<RemoteDownloadResult>,
-  restoreFile: (fileName: string, base64: string) => Promise<boolean | undefined>,
+  restoreFile: (
+    fileName: string,
+    base64: string,
+  ) => Promise<boolean | undefined>,
   label: string,
 ): Promise<number> {
   let restoredCount = 0;
@@ -571,10 +608,17 @@ async function downloadLegacySyncBackup(
       skills: data.skills,
       skillVersions: data.skillVersions,
       skillFiles: data.skillFiles,
+      mcpLibrary: data.mcpLibrary,
+      pluginLibrary: data.pluginLibrary,
+      pluginPackages: data.pluginPackages,
+      storeSources: data.storeSources,
+      agentAssetFiles: data.agentAssetFiles,
     });
 
     const imagesRestored =
-      images && Object.keys(images).length > 0 ? await restoreImages(images) : 0;
+      images && Object.keys(images).length > 0
+        ? await restoreImages(images)
+        : 0;
 
     await restoreSharedSnapshots(data);
 
@@ -618,7 +662,10 @@ export async function uploadSyncBackup(
       options?.encryptionPassword,
     );
 
-    const uploadResult = await adapter.uploadText(adapter.paths.legacy, bodyString);
+    const uploadResult = await adapter.uploadText(
+      adapter.paths.legacy,
+      bodyString,
+    );
     if (!uploadResult.success) {
       return {
         success: false,
@@ -689,7 +736,10 @@ export async function incrementalUploadSyncBackup(
     let videosUploaded = 0;
 
     if (!remoteManifest || remoteManifest.dataHash !== dataHash) {
-      const uploadResult = await adapter.uploadText(adapter.paths.data, dataString);
+      const uploadResult = await adapter.uploadText(
+        adapter.paths.data,
+        dataString,
+      );
       if (!uploadResult.success) {
         return {
           success: false,
@@ -878,20 +928,27 @@ export async function incrementalDownloadSyncBackup(
       skills: coreData.skills,
       skillVersions: coreData.skillVersions,
       skillFiles: coreData.skillFiles,
+      mcpLibrary: coreData.mcpLibrary,
+      pluginLibrary: coreData.pluginLibrary,
+      pluginPackages: coreData.pluginPackages,
+      storeSources: coreData.storeSources,
+      agentAssetFiles: coreData.agentAssetFiles,
     });
 
     const imagesDownloaded = await downloadAndRestoreMedia(
       manifest.images,
       adapter.paths.image,
       adapter.downloadText,
-      async (fileName, base64) => window.electron?.saveImageBase64?.(fileName, base64),
+      async (fileName, base64) =>
+        window.electron?.saveImageBase64?.(fileName, base64),
       "image",
     );
     const videosDownloaded = await downloadAndRestoreMedia(
       manifest.videos,
       adapter.paths.video,
       adapter.downloadText,
-      async (fileName, base64) => window.electron?.saveVideoBase64?.(fileName, base64),
+      async (fileName, base64) =>
+        window.electron?.saveVideoBase64?.(fileName, base64),
       "video",
     );
 
@@ -927,7 +984,11 @@ export async function downloadSyncBackup(
       return incrementalDownloadSyncBackup(
         adapter,
         options,
-        () => downloadLegacySyncBackup(adapter, { ...options, incrementalSync: false }),
+        () =>
+          downloadLegacySyncBackup(adapter, {
+            ...options,
+            incrementalSync: false,
+          }),
         manifestResult.data,
       );
     }
@@ -968,7 +1029,10 @@ export async function getRemoteSyncBackupTimestamp(
       }
 
       try {
-        const { data } = await parseLegacyBackupPayload(downloadResult.data, options);
+        const { data } = await parseLegacyBackupPayload(
+          downloadResult.data,
+          options,
+        );
         return {
           exists: true,
           lastModified: data.exportedAt,
@@ -990,7 +1054,10 @@ export async function autoSyncBackup(
 ): Promise<SyncResult> {
   try {
     const localLatestTime = await getLocalLatestTimestamp();
-    const remoteTimestamp = await getRemoteSyncBackupTimestamp(adapter, options);
+    const remoteTimestamp = await getRemoteSyncBackupTimestamp(
+      adapter,
+      options,
+    );
 
     if (!remoteTimestamp.exists) {
       return uploadSyncBackup(adapter, options);

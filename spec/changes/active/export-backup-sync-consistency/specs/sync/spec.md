@@ -3,6 +3,7 @@
 ## Modified
 
 - PromptHub export, backup, and sync entry points must share a recoverable snapshot contract for prompts, folders, versions, rules, skills, settings, and referenced media.
+- PromptHub export, backup, and sync entry points must preserve the complete current-format user-owned agent asset set: My Skills, My MCP, My Plugins, custom store source lists, and the managed `data/mcp` plus `data/plugins` file snapshots.
 - `import-with-prompthub.json` inside desktop ZIP exports must itself be importable without needing ZIP side-channel reconstruction.
 - Web `/api/import` must accept PromptHub backup/export envelopes and normalized sync snapshots with equivalent semantics.
 - When an imported snapshot omits `settings`, web import and sync routes must apply the shared web `DEFAULT_SETTINGS` contract rather than route-local fallback values.
@@ -28,6 +29,12 @@
   - Given a workspace contains media references, rules, skills, and `settingsUpdatedAt`
   - When the user exports a backup, uploads to self-hosted sync, or imports through web
   - Then those flows preserve the same logical snapshot fields and timestamp semantics
+
+- Scenario: User syncs agent asset libraries
+  - Given a desktop workspace contains My Skills, My MCP servers, My Plugins, and custom Skill/MCP/Plugin store sources
+  - When the user exports a backup or syncs through WebDAV, S3, or self-hosted Web
+  - Then the snapshot contains the skill data, MCP library, plugin library, managed plugin package files, custom store source selections, and complete managed file snapshots for `data/mcp` and `data/plugins`
+  - And restoring the snapshot recreates those current-format user libraries without relying on legacy MCP or Plugin formats
 
 - Scenario: Imported snapshot omits settings
   - Given a valid sync snapshot does not include a `settings` object

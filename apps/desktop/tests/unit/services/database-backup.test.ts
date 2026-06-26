@@ -51,7 +51,11 @@ function createTransactionMock(getAllResult: unknown[] = []) {
     objectStore: () => ({
       add: vi.fn(),
       getAll: vi.fn(() => {
-        const request: { result?: unknown[]; onsuccess: (() => void) | null; onerror: (() => void) | null } = {
+        const request: {
+          result?: unknown[];
+          onsuccess: (() => void) | null;
+          onerror: (() => void) | null;
+        } = {
           result: getAllResult,
           onsuccess: null,
           onerror: null,
@@ -76,6 +80,7 @@ function createTransactionMock(getAllResult: unknown[] = []) {
 describe("database-backup restore", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     getAllFoldersMock.mockResolvedValue([]);
     getAllPromptsMock.mockResolvedValue([]);
     getAiConfigSnapshotMock.mockReturnValue(undefined);
@@ -107,19 +112,23 @@ describe("database-backup restore", () => {
     const createObjectURL = vi
       .spyOn(URL, "createObjectURL")
       .mockReturnValue("blob:test-download");
-    const revokeObjectURL = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+    const revokeObjectURL = vi
+      .spyOn(URL, "revokeObjectURL")
+      .mockImplementation(() => {});
 
     const anchor = originalCreateElement("a");
     const clickSpy = vi.spyOn(anchor, "click").mockImplementation(() => {});
 
     const appendChild = vi.spyOn(document.body, "appendChild");
     const removeChild = vi.spyOn(document.body, "removeChild");
-    vi.spyOn(document, "createElement").mockImplementation((tagName: string) => {
-      if (tagName === "a") {
-        return anchor;
-      }
-      return originalCreateElement(tagName);
-    });
+    vi.spyOn(document, "createElement").mockImplementation(
+      (tagName: string) => {
+        if (tagName === "a") {
+          return anchor;
+        }
+        return originalCreateElement(tagName);
+      },
+    );
 
     await downloadBackup();
 
@@ -180,12 +189,14 @@ describe("database-backup restore", () => {
       throw clickError;
     });
     const removeChild = vi.spyOn(document.body, "removeChild");
-    vi.spyOn(document, "createElement").mockImplementation((tagName: string) => {
-      if (tagName === "a") {
-        return anchor;
-      }
-      return originalCreateElement(tagName);
-    });
+    vi.spyOn(document, "createElement").mockImplementation(
+      (tagName: string) => {
+        if (tagName === "a") {
+          return anchor;
+        }
+        return originalCreateElement(tagName);
+      },
+    );
 
     await expect(downloadBackup()).rejects.toThrow("download blocked");
 
@@ -258,12 +269,14 @@ describe("database-backup restore", () => {
       .mockReturnValue("blob:test-gz-download");
     const anchor = originalCreateElement("a");
     const clickSpy = vi.spyOn(anchor, "click").mockImplementation(() => {});
-    vi.spyOn(document, "createElement").mockImplementation((tagName: string) => {
-      if (tagName === "a") {
-        return anchor;
-      }
-      return originalCreateElement(tagName);
-    });
+    vi.spyOn(document, "createElement").mockImplementation(
+      (tagName: string) => {
+        if (tagName === "a") {
+          return anchor;
+        }
+        return originalCreateElement(tagName);
+      },
+    );
 
     await downloadCompressedBackup();
 
@@ -336,6 +349,182 @@ describe("database-backup restore", () => {
     });
     expect(backup.aiConfig).toEqual({ aiProvider: "openai" });
     expect(backup.settings).toEqual({ state: { language: "zh" } });
+  });
+
+  it("exports and restores My MCP, My Plugins, and custom agent store sources", async () => {
+    const mcpLibrary = {
+      kind: "prompthub-mcp-library" as const,
+      version: 1 as const,
+      updatedAt: "2026-06-21T00:00:00.000Z",
+      servers: [{ id: "mcp-1", name: "Local MCP" }],
+      bindings: [],
+    };
+    const pluginLibrary = {
+      kind: "prompthub-plugin-library" as const,
+      version: 1 as const,
+      updatedAt: "2026-06-21T00:00:00.000Z",
+      plugins: [{ id: "plugin-1", name: "writer-kit" }],
+    };
+    const pluginPackages = [
+      {
+        pluginId: "plugin-1",
+        files: [
+          {
+            relativePath: "skill.json",
+            contentBase64: "e30=",
+            size: 2,
+          },
+        ],
+      },
+    ];
+    const customSource = {
+      id: "source-1",
+      name: "Team Store",
+      type: "git-repo" as const,
+      url: "https://github.com/example/team-store",
+      branch: "main",
+      directory: "stores",
+      enabled: true,
+      order: 1,
+      createdAt: 1_780_000_000_000,
+    };
+
+    localStorage.setItem(
+      "skill-store",
+      JSON.stringify({
+        state: {
+          customStoreSources: [customSource],
+          selectedStoreSourceId: "source-1",
+        },
+        version: 0,
+      }),
+    );
+    localStorage.setItem(
+      "mcp-store",
+      JSON.stringify({
+        state: {
+          customStoreSources: [customSource],
+          selectedMarketSourceId: "source-1",
+        },
+        version: 0,
+      }),
+    );
+    localStorage.setItem(
+      "plugin-store",
+      JSON.stringify({
+        state: {
+          customStoreSources: [customSource],
+          selectedMarketSourceId: "source-1",
+        },
+        version: 0,
+      }),
+    );
+    installWindowMocks({
+      api: {
+        mcp: {
+          getLibrary: vi.fn().mockResolvedValue(mcpLibrary),
+          replaceLibrary: vi.fn().mockResolvedValue(mcpLibrary),
+          exportDataFiles: vi.fn().mockResolvedValue([
+            {
+              relativePath: "library.json",
+              contentBase64: "e30=",
+              size: 2,
+            },
+          ]),
+          restoreDataFiles: vi.fn().mockResolvedValue(undefined),
+        },
+        plugin: {
+          exportLibrarySnapshot: vi.fn().mockResolvedValue({
+            library: pluginLibrary,
+            packages: pluginPackages,
+          }),
+          restoreLibrarySnapshot: vi.fn().mockResolvedValue(pluginLibrary),
+          exportDataFiles: vi.fn().mockResolvedValue([
+            {
+              relativePath: "market-cache.json",
+              contentBase64: "e30=",
+              size: 2,
+            },
+            {
+              relativePath: "writer-kit/package/skill.json",
+              contentBase64: "e30=",
+              size: 2,
+            },
+          ]),
+          restoreDataFiles: vi.fn().mockResolvedValue(undefined),
+        },
+      },
+    });
+
+    const backup = await exportDatabase();
+
+    expect(backup.mcpLibrary).toEqual(mcpLibrary);
+    expect(backup.pluginLibrary).toEqual(pluginLibrary);
+    expect(backup.pluginPackages).toEqual(pluginPackages);
+    expect(backup.agentAssetFiles).toEqual({
+      mcp: [{ relativePath: "library.json", contentBase64: "e30=", size: 2 }],
+      plugins: [
+        { relativePath: "market-cache.json", contentBase64: "e30=", size: 2 },
+        {
+          relativePath: "writer-kit/package/skill.json",
+          contentBase64: "e30=",
+          size: 2,
+        },
+      ],
+    });
+    expect(backup.storeSources).toEqual({
+      skills: {
+        customStoreSources: [customSource],
+        selectedSourceId: "source-1",
+      },
+      mcp: {
+        customStoreSources: [customSource],
+        selectedSourceId: "source-1",
+      },
+      plugins: {
+        customStoreSources: [customSource],
+        selectedSourceId: "source-1",
+      },
+    });
+
+    localStorage.clear();
+    await restoreFromBackup(backup);
+
+    expect(window.api.mcp.restoreDataFiles).toHaveBeenCalledWith(
+      backup.agentAssetFiles?.mcp,
+    );
+    expect(window.api.plugin.restoreDataFiles).toHaveBeenCalledWith(
+      backup.agentAssetFiles?.plugins,
+    );
+    expect(window.api.mcp.replaceLibrary).toHaveBeenCalledWith(mcpLibrary);
+    expect(window.api.plugin.restoreLibrarySnapshot).toHaveBeenCalledWith({
+      library: pluginLibrary,
+      packages: pluginPackages,
+    });
+    expect(
+      JSON.parse(localStorage.getItem("skill-store") ?? "{}"),
+    ).toMatchObject({
+      state: {
+        customStoreSources: [customSource],
+        selectedStoreSourceId: "source-1",
+      },
+    });
+    expect(JSON.parse(localStorage.getItem("mcp-store") ?? "{}")).toMatchObject(
+      {
+        state: {
+          customStoreSources: [customSource],
+          selectedMarketSourceId: "source-1",
+        },
+      },
+    );
+    expect(
+      JSON.parse(localStorage.getItem("plugin-store") ?? "{}"),
+    ).toMatchObject({
+      state: {
+        customStoreSources: [customSource],
+        selectedMarketSourceId: "source-1",
+      },
+    });
   });
 
   it("exports rules and restores them through the rules preload API", async () => {
@@ -462,8 +651,14 @@ describe("database-backup restore", () => {
   });
 
   it("exports all referenced media by default even when legacy size and count limits are exceeded", async () => {
-    const imageNames = Array.from({ length: 502 }, (_, index) => `image-${index}.png`);
-    const videoNames = Array.from({ length: 101 }, (_, index) => `video-${index}.mp4`);
+    const imageNames = Array.from(
+      { length: 502 },
+      (_, index) => `image-${index}.png`,
+    );
+    const videoNames = Array.from(
+      { length: 101 },
+      (_, index) => `video-${index}.mp4`,
+    );
 
     getAllPromptsMock.mockResolvedValue([
       {
@@ -656,7 +851,11 @@ describe("database-backup restore", () => {
           versionGetAll: vi.fn().mockResolvedValue([skillVersion]),
           readLocalFiles: vi.fn().mockResolvedValue([
             { path: "SKILL.md", content: "# Writer", isDirectory: false },
-            { path: "notes/example.md", content: "Example", isDirectory: false },
+            {
+              path: "notes/example.md",
+              content: "Example",
+              isDirectory: false,
+            },
           ]),
           deleteAll: vi.fn().mockResolvedValue(undefined),
           create: vi.fn().mockResolvedValue({
@@ -828,8 +1027,14 @@ describe("database-backup restore", () => {
       versions: [],
     });
 
-    expect(window.api.folder.insertDirect).toHaveBeenNthCalledWith(1, parentFolder);
-    expect(window.api.folder.insertDirect).toHaveBeenNthCalledWith(2, childFolder);
+    expect(window.api.folder.insertDirect).toHaveBeenNthCalledWith(
+      1,
+      parentFolder,
+    );
+    expect(window.api.folder.insertDirect).toHaveBeenNthCalledWith(
+      2,
+      childFolder,
+    );
   });
 
   it("restores a selective export file through the normal restore entry", async () => {
@@ -1002,7 +1207,10 @@ describe("database-backup restore", () => {
         images?: Record<string, string>;
         videos?: Record<string, string>;
         skills?: Array<{ name: string }>;
-        skillFiles?: Record<string, Array<{ relativePath: string; content: string }>>;
+        skillFiles?: Record<
+          string,
+          Array<{ relativePath: string; content: string }>
+        >;
         settingsUpdatedAt?: string;
       };
     };
@@ -1021,8 +1229,12 @@ describe("database-backup restore", () => {
     expect(embedded.payload.versions).toEqual([
       expect.objectContaining({ promptId: "prompt-zip-1" }),
     ]);
-    expect(embedded.payload.images).toEqual({ "image-zip.png": "image-base64" });
-    expect(embedded.payload.videos).toEqual({ "video-zip.mp4": "video-base64" });
+    expect(embedded.payload.images).toEqual({
+      "image-zip.png": "image-base64",
+    });
+    expect(embedded.payload.videos).toEqual({
+      "video-zip.mp4": "video-base64",
+    });
     expect(embedded.payload.skills).toEqual([
       expect.objectContaining({ name: "writer" }),
     ]);
@@ -1035,9 +1247,11 @@ describe("database-backup restore", () => {
   it("rejects arbitrary JSON files without clearing existing data", async () => {
     const file = {
       name: "random.json",
-      text: vi.fn().mockResolvedValue(
-        JSON.stringify({ anything: true, nested: { value: 1 } }),
-      ),
+      text: vi
+        .fn()
+        .mockResolvedValue(
+          JSON.stringify({ anything: true, nested: { value: 1 } }),
+        ),
     } as unknown as File;
 
     await expect(restoreFromFile(file)).rejects.toThrow(

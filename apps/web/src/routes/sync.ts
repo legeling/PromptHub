@@ -53,7 +53,14 @@ function validateMergedSyncSettings(settings: SyncSettings): void {
   validateSyncSettings(settings);
 }
 
-function buildSyncStatus(userId: string, payload: { exportedAt: string; prompts: unknown[]; folders: unknown[]; skills: unknown[] }): {
+function buildSyncStatus(userId: string, payload: {
+  exportedAt: string;
+  prompts: unknown[];
+  folders: unknown[];
+  skills: unknown[];
+  mcpLibrary?: { servers: unknown[] };
+  pluginLibrary?: { plugins: unknown[] };
+}): {
   enabled: boolean;
   provider: SyncProviderKind;
   lastSyncAt: string;
@@ -61,6 +68,8 @@ function buildSyncStatus(userId: string, payload: { exportedAt: string; prompts:
     prompts: number;
     folders: number;
     skills: number;
+    mcpServers: number;
+    plugins: number;
   };
   message: string;
   config: SyncSettings;
@@ -90,6 +99,8 @@ function buildSyncStatus(userId: string, payload: { exportedAt: string; prompts:
       prompts: payload.prompts.length,
       folders: payload.folders.length,
       skills: payload.skills.length,
+      mcpServers: payload.mcpLibrary?.servers.length ?? 0,
+      plugins: payload.pluginLibrary?.plugins.length ?? 0,
     },
     message: providerMessage,
     config: syncSettings,
@@ -165,6 +176,8 @@ sync.get('/manifest', async (c) => {
       prompts: payload.prompts.length,
       folders: payload.folders.length,
       skills: payload.skills.length,
+      mcpServers: payload.mcpLibrary?.servers.length ?? 0,
+      plugins: payload.pluginLibrary?.plugins.length ?? 0,
     },
     settingsUpdatedAt: payload.settingsUpdatedAt,
     actor: {

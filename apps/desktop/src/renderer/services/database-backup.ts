@@ -1,4 +1,11 @@
-import type { PromptVersion, RuleBackupRecord } from "@prompthub/shared/types";
+import type {
+  AgentAssetFilesSnapshot,
+  AgentAssetStoreSourcesSnapshot,
+  CustomStoreSourceSnapshot,
+  PromptVersion,
+  RuleBackupRecord,
+  StoreSourceSnapshot,
+} from "@prompthub/shared/types";
 import type {
   Skill,
   SkillFileSnapshot,
@@ -78,7 +85,27 @@ const VIDEO_BATCH_SIZE = 5;
 const VIDEO_MAX_SIZE_BYTES = 100 * 1024 * 1024;
 const VIDEO_MAX_COUNT = 100;
 const SKILL_CONCURRENCY = 5;
-const SUPPORTED_BACKUP_EXTENSIONS = [".phub.gz", ".json", ".phub", ".gz", ".zip"];
+const SUPPORTED_BACKUP_EXTENSIONS = [
+  ".phub.gz",
+  ".json",
+  ".phub",
+  ".gz",
+  ".zip",
+];
+const STORE_SOURCE_SNAPSHOT_TARGETS = {
+  skills: {
+    key: "skill-store",
+    selectedKey: "selectedStoreSourceId",
+  },
+  mcp: {
+    key: "mcp-store",
+    selectedKey: "selectedMarketSourceId",
+  },
+  plugins: {
+    key: "plugin-store",
+    selectedKey: "selectedMarketSourceId",
+  },
+} as const;
 
 export const BACKUP_IMPORT_ACCEPT = ".json,.phub,.gz,.zip";
 
@@ -91,7 +118,8 @@ export function isSupportedBackupFileName(fileName: string): boolean {
 
 export function pickSupportedBackupFile(files: FileList | File[]): File | null {
   return (
-    Array.from(files).find((file) => isSupportedBackupFileName(file.name)) ?? null
+    Array.from(files).find((file) => isSupportedBackupFileName(file.name)) ??
+    null
   );
 }
 
@@ -316,6 +344,222 @@ async function collectSkillData(): Promise<{
   return { skills, skillVersions, skillFiles };
 }
 
+function isStoreSourceType(
+  value: unknown,
+): value is StoreSourceSnapshot["type"] {
+  return (
+    value === "official" ||
+    value === "community" ||
+    value === "marketplace-json" ||
+    value === "git-repo" ||
+    value === "local-dir"
+  );
+}
+
+function normalizeStoreSourceSnapshot(
+  value: unknown,
+): StoreSourceSnapshot | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  const source = value as Record<string, unknown>;
+  if (
+    typeof source.id !== "string" ||
+    typeof source.name !== "string" ||
+    !isStoreSourceType(source.type) ||
+    typeof source.url !== "string"
+  ) {
+    return null;
+  }
+
+  return {
+    id: source.id,
+    name: source.name,
+    type: source.type,
+    url: source.url,
+    branch: typeof source.branch === "string" ? source.branch : undefined,
+    directory:
+      typeof source.directory === "string" ? source.directory : undefined,
+    enabled: typeof source.enabled === "boolean" ? source.enabled : undefined,
+    order: typeof source.order === "number" ? source.order : undefined,
+    createdAt:
+      typeof source.createdAt === "number" ? source.createdAt : undefined,
+  };
+}
+
+function readPersistedStoreState(
+  key: string,
+): {
+  envelope: Record<string, unknown>;
+  state: Record<string, unknown>;
+} | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) {
+      return null;
+    }
+    const envelope = JSON.parse(raw) as unknown;
+    if (!envelope || typeof envelope !== "object" || Array.isArray(envelope)) {
+      return null;
+    }
+    const record = envelope as Record<string, unknown>;
+    const state =
+      record.state &&
+      typeof record.state === "object" &&
+      !Array.isArray(record.state)
+        ? (record.state as Record<string, unknown>)
+        : {};
+    return { envelope: record, state };
+  } catch (error) {
+    console.warn(`Failed to read persisted store ${key}:`, error);
+    return null;
+  }
+}
+
+function collectCustomStoreSourceSnapshot(
+  key: string,
+  selectedKey: string,
+): CustomStoreSourceSnapshot | undefined {
+  const persisted = readPersistedStoreState(key);
+  if (!persisted) {
+    return undefined;
+  }
+
+  const customStoreSources = Array.isArray(persisted.state.customStoreSources)
+    ? persisted.state.customStoreSources
+        .map(normalizeStoreSourceSnapshot)
+        .filter((source): source is StoreSourceSnapshot => Boolean(source))
+    : [];
+  const selectedSourceId =
+    typeof persisted.state[selectedKey] === "string"
+      ? persisted.state[selectedKey]
+      : undefined;
+
+  if (customStoreSources.length === 0 && !selectedSourceId) {
+    return undefined;
+  }
+
+  return {
+    customStoreSources,
+    selectedSourceId,
+  };
+}
+
+function collectStoreSourcesSnapshot():
+  | AgentAssetStoreSourcesSnapshot
+  | undefined {
+  const snapshot: AgentAssetStoreSourcesSnapshot = {};
+  for (const [key, config] of Object.entries(STORE_SOURCE_SNAPSHOT_TARGETS)) {
+    const sourceSnapshot = collectCustomStoreSourceSnapshot(
+      config.key,
+      config.selectedKey,
+    );
+    if (sourceSnapshot) {
+      snapshot[key as keyof AgentAssetStoreSourcesSnapshot] = sourceSnapshot;
+    }
+  }
+
+  return Object.keys(snapshot).length > 0 ? snapshot : undefined;
+}
+
+async function collectAgentAssetFilesSnapshot(): Promise<
+  AgentAssetFilesSnapshot | undefined
+> {
+  const [mcpFiles, pluginFiles] = await Promise.all([
+    window.api?.mcp?.exportDataFiles?.() ?? Promise.resolve([]),
+    window.api?.plugin?.exportDataFiles?.() ?? Promise.resolve([]),
+  ]);
+
+  const snapshot: AgentAssetFilesSnapshot = {};
+  if (mcpFiles.length > 0) {
+    snapshot.mcp = mcpFiles;
+  }
+  if (pluginFiles.length > 0) {
+    snapshot.plugins = pluginFiles;
+  }
+
+  return Object.keys(snapshot).length > 0 ? snapshot : undefined;
+}
+
+function restoreCustomStoreSourceSnapshot(
+  key: string,
+  selectedKey: string,
+  snapshot: CustomStoreSourceSnapshot | undefined,
+): void {
+  if (!snapshot) {
+    return;
+  }
+
+  try {
+    const persisted = readPersistedStoreState(key);
+    const envelope = persisted?.envelope ?? {};
+    const state = persisted?.state ?? {};
+    localStorage.setItem(
+      key,
+      JSON.stringify({
+        ...envelope,
+        state: {
+          ...state,
+          customStoreSources: snapshot.customStoreSources,
+          ...(snapshot.selectedSourceId
+            ? { [selectedKey]: snapshot.selectedSourceId }
+            : {}),
+        },
+      }),
+    );
+  } catch (error) {
+    console.warn(`Failed to restore persisted store ${key}:`, error);
+  }
+}
+
+function restoreStoreSourcesSnapshot(
+  snapshot: AgentAssetStoreSourcesSnapshot | undefined,
+): void {
+  if (!snapshot) {
+    return;
+  }
+
+  restoreCustomStoreSourceSnapshot(
+    STORE_SOURCE_SNAPSHOT_TARGETS.skills.key,
+    STORE_SOURCE_SNAPSHOT_TARGETS.skills.selectedKey,
+    snapshot.skills,
+  );
+  restoreCustomStoreSourceSnapshot(
+    STORE_SOURCE_SNAPSHOT_TARGETS.mcp.key,
+    STORE_SOURCE_SNAPSHOT_TARGETS.mcp.selectedKey,
+    snapshot.mcp,
+  );
+  restoreCustomStoreSourceSnapshot(
+    STORE_SOURCE_SNAPSHOT_TARGETS.plugins.key,
+    STORE_SOURCE_SNAPSHOT_TARGETS.plugins.selectedKey,
+    snapshot.plugins,
+  );
+}
+
+async function collectMcpLibrary(): Promise<DatabaseBackup["mcpLibrary"]> {
+  const library = await window.api?.mcp?.getLibrary?.();
+  if (!library) {
+    return undefined;
+  }
+  return library;
+}
+
+async function collectPluginSnapshot(): Promise<
+  Pick<DatabaseBackup, "pluginLibrary" | "pluginPackages">
+> {
+  const snapshot = await window.api?.plugin?.exportLibrarySnapshot?.();
+  if (!snapshot?.library) {
+    return {};
+  }
+  return {
+    pluginLibrary: snapshot.library,
+    pluginPackages:
+      snapshot.packages && snapshot.packages.length > 0
+        ? snapshot.packages
+        : undefined,
+  };
+}
+
 async function gzipText(text: string): Promise<Blob> {
   const stream = new Blob([text], { type: "application/json" })
     .stream()
@@ -364,6 +608,9 @@ export interface ImportPreviewSummary {
     skills: number;
     skillVersions: number;
     skillFiles: number;
+    mcpServers: number;
+    plugins: number;
+    pluginFiles: number;
     images: number;
     videos: number;
   };
@@ -424,6 +671,12 @@ export async function previewImportFile(
         (count, files) => count + files.length,
         0,
       ),
+      mcpServers: backup.mcpLibrary?.servers.length ?? 0,
+      plugins: backup.pluginLibrary?.plugins.length ?? 0,
+      pluginFiles: (backup.pluginPackages ?? []).reduce(
+        (count, pluginPackage) => count + pluginPackage.files.length,
+        0,
+      ),
       images: Object.keys(backup.images ?? {}).length,
       videos: Object.keys(backup.videos ?? {}).length,
     },
@@ -455,7 +708,9 @@ async function getAllPromptVersions(): Promise<PromptVersion[]> {
   });
 }
 
-function sortFoldersForRestore(folders: DatabaseBackup["folders"]): DatabaseBackup["folders"] {
+function sortFoldersForRestore(
+  folders: DatabaseBackup["folders"],
+): DatabaseBackup["folders"] {
   const remaining = new Map(folders.map((folder) => [folder.id, folder]));
   const restored = new Set<string>();
   const ordered: DatabaseBackup["folders"] = [];
@@ -464,7 +719,11 @@ function sortFoldersForRestore(folders: DatabaseBackup["folders"]): DatabaseBack
     let progressed = false;
 
     for (const [id, folder] of remaining) {
-      if (!folder.parentId || restored.has(folder.parentId) || !remaining.has(folder.parentId)) {
+      if (
+        !folder.parentId ||
+        restored.has(folder.parentId) ||
+        !remaining.has(folder.parentId)
+      ) {
         ordered.push(folder);
         restored.add(id);
         remaining.delete(id);
@@ -545,18 +804,30 @@ export async function exportDatabase(options?: {
       }
     : undefined;
 
-  const [images, videos, skillData, ruleData] = await Promise.all([
+  const [
+    images,
+    videos,
+    skillData,
+    ruleData,
+    mcpLibrary,
+    pluginSnapshot,
+    agentAssetFiles,
+  ] = await Promise.all([
     collectImages(prompts, imageLimits),
     options?.skipVideoContent
       ? Promise.resolve(undefined)
       : collectVideos(prompts, videoLimits),
     collectSkillData(),
     collectRuleData(),
+    collectMcpLibrary(),
+    collectPluginSnapshot(),
+    collectAgentAssetFilesSnapshot(),
   ]);
 
   const settingsSnapshot = getSettingsStateSnapshot({
     updatedAt: new Date().toISOString(),
   });
+  const storeSources = collectStoreSourcesSnapshot();
 
   return {
     version: DB_VERSION,
@@ -577,6 +848,11 @@ export async function exportDatabase(options?: {
       Object.keys(skillData.skillFiles).length > 0
         ? skillData.skillFiles
         : undefined,
+    mcpLibrary,
+    pluginLibrary: pluginSnapshot.pluginLibrary,
+    pluginPackages: pluginSnapshot.pluginPackages,
+    storeSources,
+    agentAssetFiles,
   };
 }
 
@@ -585,11 +861,13 @@ export async function importDatabase(backup: DatabaseBackup): Promise<void> {
 
   // Never clear local data unless the imported payload has already passed the
   // same structural validation as file-based imports.
-  parsePromptHubBackupFileContent(JSON.stringify({
-    kind: "prompthub-backup",
-    exportedAt: normalizedBackup.exportedAt,
-    payload: normalizedBackup,
-  }));
+  parsePromptHubBackupFileContent(
+    JSON.stringify({
+      kind: "prompthub-backup",
+      exportedAt: normalizedBackup.exportedAt,
+      payload: normalizedBackup,
+    }),
+  );
 
   if (!hasMeaningfulBackupContent(normalizedBackup)) {
     throw new Error(
@@ -666,6 +944,8 @@ export async function importDatabase(backup: DatabaseBackup): Promise<void> {
     restoreSettingsStateSnapshot(normalizedBackup.settings);
   }
 
+  restoreStoreSourcesSnapshot(normalizedBackup.storeSources);
+
   if (normalizedBackup.rules && normalizedBackup.rules.length > 0) {
     try {
       await window.api?.rules?.importRecords?.(normalizedBackup.rules, {
@@ -723,7 +1003,10 @@ export async function importDatabase(backup: DatabaseBackup): Promise<void> {
     }
   }
 
-  if (normalizedBackup.skillVersions && normalizedBackup.skillVersions.length > 0) {
+  if (
+    normalizedBackup.skillVersions &&
+    normalizedBackup.skillVersions.length > 0
+  ) {
     const nextCurrentVersionBySkillId = new Map<string, number>();
 
     for (const version of normalizedBackup.skillVersions) {
@@ -767,7 +1050,9 @@ export async function importDatabase(backup: DatabaseBackup): Promise<void> {
   }
 
   if (normalizedBackup.skillFiles) {
-    for (const [skillKey, files] of Object.entries(normalizedBackup.skillFiles)) {
+    for (const [skillKey, files] of Object.entries(
+      normalizedBackup.skillFiles,
+    )) {
       const restoredSkillId =
         restoredSkillIdMap.get(skillKey) ??
         restoredSkillsByName.get(skillKey)?.id ??
@@ -789,6 +1074,49 @@ export async function importDatabase(backup: DatabaseBackup): Promise<void> {
           );
         }
       }
+    }
+  }
+
+  if (normalizedBackup.agentAssetFiles?.mcp) {
+    try {
+      await window.api?.mcp?.restoreDataFiles?.(
+        normalizedBackup.agentAssetFiles.mcp,
+      );
+    } catch (error) {
+      restoreFailures.push("MCP asset files restore");
+      console.warn("Failed to restore MCP asset files:", error);
+    }
+  }
+
+  if (normalizedBackup.agentAssetFiles?.plugins) {
+    try {
+      await window.api?.plugin?.restoreDataFiles?.(
+        normalizedBackup.agentAssetFiles.plugins,
+      );
+    } catch (error) {
+      restoreFailures.push("plugin asset files restore");
+      console.warn("Failed to restore plugin asset files:", error);
+    }
+  }
+
+  if (normalizedBackup.mcpLibrary) {
+    try {
+      await window.api?.mcp?.replaceLibrary?.(normalizedBackup.mcpLibrary);
+    } catch (error) {
+      restoreFailures.push("MCP library restore");
+      console.warn("Failed to restore MCP library:", error);
+    }
+  }
+
+  if (normalizedBackup.pluginLibrary) {
+    try {
+      await window.api?.plugin?.restoreLibrarySnapshot?.({
+        library: normalizedBackup.pluginLibrary,
+        packages: normalizedBackup.pluginPackages,
+      });
+    } catch (error) {
+      restoreFailures.push("plugin library restore");
+      console.warn("Failed to restore plugin library:", error);
     }
   }
 
@@ -866,11 +1194,18 @@ export async function downloadSelectiveExport(
     videos: normalized.videos ? fullBackup.videos : undefined,
     aiConfig: normalized.aiConfig ? fullBackup.aiConfig : undefined,
     settings: normalized.settings ? fullBackup.settings : undefined,
-    settingsUpdatedAt: normalized.settings ? fullBackup.settingsUpdatedAt : undefined,
+    settingsUpdatedAt: normalized.settings
+      ? fullBackup.settingsUpdatedAt
+      : undefined,
     rules: normalized.rules ? fullBackup.rules : undefined,
     skills: normalized.skills ? fullBackup.skills : undefined,
     skillVersions: normalized.skills ? fullBackup.skillVersions : undefined,
     skillFiles: normalized.skills ? fullBackup.skillFiles : undefined,
+    mcpLibrary: normalized.skills ? fullBackup.mcpLibrary : undefined,
+    pluginLibrary: normalized.skills ? fullBackup.pluginLibrary : undefined,
+    pluginPackages: normalized.skills ? fullBackup.pluginPackages : undefined,
+    storeSources: normalized.skills ? fullBackup.storeSources : undefined,
+    agentAssetFiles: normalized.skills ? fullBackup.agentAssetFiles : undefined,
   };
 
   const exportFile: PromptHubFile = {
@@ -931,7 +1266,9 @@ export async function restoreFromFile(file: File): Promise<ImportSkippedStats> {
   return skipped;
 }
 
-export async function restoreFromBackup(backup: DatabaseBackup): Promise<ImportSkippedStats> {
+export async function restoreFromBackup(
+  backup: DatabaseBackup,
+): Promise<ImportSkippedStats> {
   await importDatabase(backup);
   return createEmptySkippedStats();
 }

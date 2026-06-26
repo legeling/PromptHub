@@ -2,15 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DatabaseBackup } from "../../../src/renderer/services/database-backup-format";
 
-const {
-  exportDatabaseMock,
-  restoreFromBackupMock,
-  getSettingsStateMock,
-} = vi.hoisted(() => ({
-  exportDatabaseMock: vi.fn(),
-  restoreFromBackupMock: vi.fn(),
-  getSettingsStateMock: vi.fn(),
-}));
+const { exportDatabaseMock, restoreFromBackupMock, getSettingsStateMock } =
+  vi.hoisted(() => ({
+    exportDatabaseMock: vi.fn(),
+    restoreFromBackupMock: vi.fn(),
+    getSettingsStateMock: vi.fn(),
+  }));
 
 vi.mock("../../../src/renderer/services/database-backup", () => ({
   exportDatabase: exportDatabaseMock,
@@ -271,52 +268,54 @@ describe("self-hosted-sync", () => {
   });
 
   it("falls back to legacy login when an older Web server has no public captcha endpoint", async () => {
-    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = String(input);
+    const fetchMock = vi.fn(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
 
-      if (url === "https://backup.example.com/api/auth/captcha") {
-        return jsonResponse(
-          {
-            error: {
-              code: "UNAUTHORIZED",
-              message: "Missing or invalid Authorization header",
+        if (url === "https://backup.example.com/api/auth/captcha") {
+          return jsonResponse(
+            {
+              error: {
+                code: "UNAUTHORIZED",
+                message: "Missing or invalid Authorization header",
+              },
             },
-          },
-          { status: 401 },
-        );
-      }
+            { status: 401 },
+          );
+        }
 
-      if (url === "https://backup.example.com/api/auth/login") {
-        expect(JSON.parse(String(init?.body))).toEqual({
-          username: "owner",
-          password: "secret",
-        });
-        return jsonResponse({
-          data: { accessToken: "legacy-access-token" },
-        });
-      }
+        if (url === "https://backup.example.com/api/auth/login") {
+          expect(JSON.parse(String(init?.body))).toEqual({
+            username: "owner",
+            password: "secret",
+          });
+          return jsonResponse({
+            data: { accessToken: "legacy-access-token" },
+          });
+        }
 
-      if (url === "https://backup.example.com/api/devices/heartbeat") {
-        return jsonResponse({
-          data: { ok: true },
-        });
-      }
+        if (url === "https://backup.example.com/api/devices/heartbeat") {
+          return jsonResponse({
+            data: { ok: true },
+          });
+        }
 
-      if (url === "https://backup.example.com/api/sync/manifest") {
-        return jsonResponse({
-          data: {
-            counts: {
-              prompts: 2,
-              folders: 1,
-              rules: 0,
-              skills: 0,
+        if (url === "https://backup.example.com/api/sync/manifest") {
+          return jsonResponse({
+            data: {
+              counts: {
+                prompts: 2,
+                folders: 1,
+                rules: 0,
+                skills: 0,
+              },
             },
-          },
-        });
-      }
+          });
+        }
 
-      throw new Error(`Unexpected request: ${url}`);
-    });
+        throw new Error(`Unexpected request: ${url}`);
+      },
+    );
 
     vi.stubGlobal("fetch", fetchMock);
 
@@ -458,92 +457,97 @@ describe("self-hosted-sync", () => {
 
     exportDatabaseMock.mockResolvedValue(backup);
 
-    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = String(input);
+    const fetchMock = vi.fn(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
 
-      if (url.endsWith("/api/auth/captcha")) {
-        return captchaResponse();
-      }
+        if (url.endsWith("/api/auth/captcha")) {
+          return captchaResponse();
+        }
 
-      if (url.endsWith("/api/auth/login")) {
-        return jsonResponse({
-          data: { accessToken: "access-token" },
-        });
-      }
+        if (url.endsWith("/api/auth/login")) {
+          return jsonResponse({
+            data: { accessToken: "access-token" },
+          });
+        }
 
-      if (url.endsWith("/api/devices/heartbeat")) {
-        return jsonResponse({
-          data: { ok: true },
-        });
-      }
+        if (url.endsWith("/api/devices/heartbeat")) {
+          return jsonResponse({
+            data: { ok: true },
+          });
+        }
 
-      if (url.endsWith("/api/media/images/base64")) {
-        return jsonResponse({ data: "remote-image.png" });
-      }
+        if (url.endsWith("/api/media/images/base64")) {
+          return jsonResponse({ data: "remote-image.png" });
+        }
 
-      if (url.endsWith("/api/media/videos/base64")) {
-        return jsonResponse({ data: "remote-video.mp4" });
-      }
+        if (url.endsWith("/api/media/videos/base64")) {
+          return jsonResponse({ data: "remote-video.mp4" });
+        }
 
-      if (url.endsWith("/api/sync/data")) {
-        const parsedBody = JSON.parse(String(init?.body)) as {
-          payload: {
-            prompts: Array<{ images?: string[]; videos?: string[] }>;
-            rules?: Array<{ id: string; content: string }>;
-            skillFiles?: Record<string, Array<{ relativePath: string; content: string }>>;
-            settings: {
-              theme: string;
-              language: string;
-              autoSave: boolean;
-              builtinAgentOverrides: Record<string, { rootPath?: string }>;
-              customPlatformRootPaths: Record<string, string>;
+        if (url.endsWith("/api/sync/data")) {
+          const parsedBody = JSON.parse(String(init?.body)) as {
+            payload: {
+              prompts: Array<{ images?: string[]; videos?: string[] }>;
+              rules?: Array<{ id: string; content: string }>;
+              skillFiles?: Record<
+                string,
+                Array<{ relativePath: string; content: string }>
+              >;
+              settings: {
+                theme: string;
+                language: string;
+                autoSave: boolean;
+                builtinAgentOverrides: Record<string, { rootPath?: string }>;
+                customPlatformRootPaths: Record<string, string>;
+              };
             };
           };
-        };
 
-        expect(parsedBody.payload.prompts).toEqual([
-          expect.objectContaining({
-            images: ["remote-image.png"],
-            videos: ["remote-video.mp4"],
-          }),
-        ]);
-        expect(parsedBody.payload.rules).toEqual([
-          expect.objectContaining({
-            id: "project:docs-site",
-            content: "# Docs rules",
-          }),
-        ]);
-        expect(parsedBody.payload.skillFiles).toEqual({
-          "skill-1": [{ relativePath: "SKILL.md", content: "# Skill One" }],
-        });
-        expect(parsedBody.payload.settings).toEqual({
-          theme: "dark",
-          language: "en",
-          autoSave: false,
-          builtinAgentOverrides: { claude: { rootPath: "/tmp/claude-root" } },
-          customPlatformRootPaths: { claude: "/tmp/claude-root" },
-          customSkillPlatformPaths: {},
-          disabledPlatformIds: [],
-          sync: {
-            enabled: false,
-            provider: "manual",
-            autoSync: false,
-          },
-        });
+          expect(parsedBody.payload.prompts).toEqual([
+            expect.objectContaining({
+              images: ["remote-image.png"],
+              videos: ["remote-video.mp4"],
+            }),
+          ]);
+          expect(parsedBody.payload.rules).toEqual([
+            expect.objectContaining({
+              id: "project:docs-site",
+              content: "# Docs rules",
+            }),
+          ]);
+          expect(parsedBody.payload.skillFiles).toEqual({
+            "skill-1": [{ relativePath: "SKILL.md", content: "# Skill One" }],
+          });
+          expect(parsedBody.payload.settings).toEqual({
+            theme: "dark",
+            language: "en",
+            autoSave: false,
+            builtinAgentOverrides: { claude: { rootPath: "/tmp/claude-root" } },
+            customPlatformRootPaths: { claude: "/tmp/claude-root" },
+            customSkillPlatformPaths: {},
+            disabledPlatformIds: [],
+            sync: {
+              enabled: false,
+              provider: "manual",
+              autoSync: false,
+            },
+          });
 
-        return jsonResponse({
-          data: {
-            ok: true,
-            promptsImported: 1,
-            foldersImported: 1,
-            rulesImported: 1,
-            skillsImported: 1,
-          },
-        });
-      }
+          return jsonResponse({
+            data: {
+              ok: true,
+              promptsImported: 1,
+              foldersImported: 1,
+              rulesImported: 1,
+              skillsImported: 1,
+            },
+          });
+        }
 
-      throw new Error(`Unexpected request: ${url}`);
-    });
+        throw new Error(`Unexpected request: ${url}`);
+      },
+    );
 
     vi.stubGlobal("fetch", fetchMock);
 
@@ -558,6 +562,8 @@ describe("self-hosted-sync", () => {
       folders: 1,
       rules: 1,
       skills: 1,
+      mcpServers: 0,
+      plugins: 0,
     });
 
     expect(exportDatabaseMock).toHaveBeenCalledTimes(1);
@@ -710,6 +716,8 @@ describe("self-hosted-sync", () => {
       folders: 1,
       rules: 1,
       skills: 1,
+      mcpServers: 0,
+      plugins: 0,
     });
 
     expect(restoreFromBackupMock).toHaveBeenCalledTimes(1);
@@ -976,7 +984,9 @@ describe("self-hosted-sync", () => {
             ],
             skillVersions: [],
             skillFiles: {
-              "skill-remote": [{ relativePath: "SKILL.md", content: "# Remote Skill" }],
+              "skill-remote": [
+                { relativePath: "SKILL.md", content: "# Remote Skill" },
+              ],
             },
             settings: {
               theme: "dark",
@@ -1027,7 +1037,10 @@ describe("self-hosted-sync", () => {
         ]),
         folders: expect.arrayContaining([
           expect.objectContaining({ id: "folder-local", name: "Local Folder" }),
-          expect.objectContaining({ id: "folder-remote", name: "Remote Folder" }),
+          expect.objectContaining({
+            id: "folder-remote",
+            name: "Remote Folder",
+          }),
         ]),
         images: {
           "local-image.png": "local-image-base64",
@@ -1055,8 +1068,12 @@ describe("self-hosted-sync", () => {
           expect.objectContaining({ id: "skill-remote", name: "Remote Skill" }),
         ]),
         skillFiles: {
-          "skill-local": [{ relativePath: "SKILL.md", content: "# Local Skill" }],
-          "skill-remote": [{ relativePath: "SKILL.md", content: "# Remote Skill" }],
+          "skill-local": [
+            { relativePath: "SKILL.md", content: "# Local Skill" },
+          ],
+          "skill-remote": [
+            { relativePath: "SKILL.md", content: "# Remote Skill" },
+          ],
         },
       }),
     );
@@ -1223,7 +1240,9 @@ describe("self-hosted-sync", () => {
             ],
             skillVersions: [],
             skillFiles: {
-              "skill-remote": [{ relativePath: "SKILL.md", content: "# Remote Skill" }],
+              "skill-remote": [
+                { relativePath: "SKILL.md", content: "# Remote Skill" },
+              ],
             },
             settings: {
               theme: "dark",
@@ -1277,7 +1296,10 @@ describe("self-hosted-sync", () => {
           }),
         ],
         folders: [
-          expect.objectContaining({ id: "folder-remote", name: "Remote Folder" }),
+          expect.objectContaining({
+            id: "folder-remote",
+            name: "Remote Folder",
+          }),
         ],
         versions: [
           expect.objectContaining({
@@ -1301,7 +1323,9 @@ describe("self-hosted-sync", () => {
           expect.objectContaining({ id: "skill-remote", name: "Remote Skill" }),
         ],
         skillFiles: {
-          "skill-remote": [{ relativePath: "SKILL.md", content: "# Remote Skill" }],
+          "skill-remote": [
+            { relativePath: "SKILL.md", content: "# Remote Skill" },
+          ],
         },
       }),
     );

@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import type {
+  AgentAssetFilesSnapshot,
   Folder,
+  McpLibraryFile,
+  PluginLibraryFile,
+  PluginPackageSnapshot,
   Prompt,
   PromptVersion,
   RuleBackupRecord,
@@ -8,10 +12,15 @@ import type {
   Skill,
   SkillFileSnapshot,
   SkillVersion,
+  AgentAssetStoreSourcesSnapshot,
   SyncOperationSummary,
   SyncSnapshot,
 } from '@prompthub/shared';
-import { DEFAULT_SETTINGS, isRuleFileId, isRulePlatformId } from '@prompthub/shared';
+import {
+  DEFAULT_SETTINGS,
+  isRuleFileId,
+  isRulePlatformId,
+} from '@prompthub/shared';
 import { importedSettingsSchema } from './settings-validation.js';
 import { isHttpUrl, isSafeSkillIconUrl } from './skill-url-validation.js';
 
@@ -34,7 +43,9 @@ const ruleSchema = z.object({
   managedPath: z.string().optional(),
   targetPath: z.string().optional(),
   projectRootPath: z.string().nullable().optional(),
-  syncStatus: z.enum(['synced', 'target-missing', 'out-of-sync', 'sync-error']).optional(),
+  syncStatus: z
+    .enum(['synced', 'target-missing', 'out-of-sync', 'sync-error'])
+    .optional(),
   content: z.string(),
   versions: z.array(ruleVersionSchema),
 });
@@ -97,11 +108,21 @@ function isSafeSkillFileRelativePath(relativePath: string): boolean {
   }
 
   const lower = normalized.toLowerCase();
-  return lower !== 'skill.json' && lower !== 'versions' && !lower.startsWith('versions/');
+  return (
+    lower !== 'skill.json' &&
+    lower !== 'versions' &&
+    !lower.startsWith('versions/')
+  );
+}
+
+function isSafePluginFileRelativePath(relativePath: string): boolean {
+  return normalizeSkillFileRelativePath(relativePath) !== null;
 }
 
 const skillFileSnapshotSchema = z.object({
-  relativePath: z.string().refine(isSafeSkillFileRelativePath, 'Invalid skill file path'),
+  relativePath: z
+    .string()
+    .refine(isSafeSkillFileRelativePath, 'Invalid skill file path'),
   content: z.string(),
 });
 
@@ -116,14 +137,16 @@ const promptSchema = z.object({
   systemPromptEn: z.string().nullable().optional(),
   userPrompt: z.string(),
   userPromptEn: z.string().nullable().optional(),
-  variables: z.array(z.object({
-    name: z.string(),
-    type: z.enum(['text', 'textarea', 'number', 'select']),
-    label: z.string().optional(),
-    defaultValue: z.string().optional(),
-    options: z.array(z.string()).optional(),
-    required: z.boolean(),
-  })),
+  variables: z.array(
+    z.object({
+      name: z.string(),
+      type: z.enum(['text', 'textarea', 'number', 'select']),
+      label: z.string().optional(),
+      defaultValue: z.string().optional(),
+      options: z.array(z.string()).optional(),
+      required: z.boolean(),
+    }),
+  ),
   tags: z.array(z.string()),
   folderId: z.string().nullable().optional(),
   images: z.array(z.string()).optional(),
@@ -148,14 +171,16 @@ const promptVersionSchema = z.object({
   systemPromptEn: z.string().nullable().optional(),
   userPrompt: z.string(),
   userPromptEn: z.string().nullable().optional(),
-  variables: z.array(z.object({
-    name: z.string(),
-    type: z.enum(['text', 'textarea', 'number', 'select']),
-    label: z.string().optional(),
-    defaultValue: z.string().optional(),
-    options: z.array(z.string()).optional(),
-    required: z.boolean(),
-  })),
+  variables: z.array(
+    z.object({
+      name: z.string(),
+      type: z.enum(['text', 'textarea', 'number', 'select']),
+      label: z.string().optional(),
+      defaultValue: z.string().optional(),
+      options: z.array(z.string()).optional(),
+      required: z.boolean(),
+    }),
+  ),
   note: z.string().nullable().optional(),
   aiResponse: z.string().nullable().optional(),
   createdAt: z.union([z.string(), z.number().int().nonnegative()]),
@@ -186,7 +211,10 @@ const skillSchema = z.object({
   protocol_type: z.enum(['skill', 'mcp', 'claude-code']),
   version: z.string().optional(),
   author: z.string().optional(),
-  source_url: z.string().refine(isHttpUrl, 'source_url must use HTTP(S)').optional(),
+  source_url: z
+    .string()
+    .refine(isHttpUrl, 'source_url must use HTTP(S)')
+    .optional(),
   local_repo_path: z.string().optional(),
   tags: z.array(z.string()).optional(),
   original_tags: z.array(z.string()).optional(),
@@ -195,16 +223,35 @@ const skillSchema = z.object({
   versionTrackingEnabled: z.boolean().optional(),
   created_at: z.number().int(),
   updated_at: z.number().int(),
-  icon_url: z.string().refine(
-    isSafeSkillIconUrl,
-    'icon_url must use HTTP(S) or a base64 image data URL',
-  ).optional(),
+  icon_url: z
+    .string()
+    .refine(
+      isSafeSkillIconUrl,
+      'icon_url must use HTTP(S) or a base64 image data URL',
+    )
+    .optional(),
   icon_emoji: z.string().optional(),
   icon_background: z.string().optional(),
-  category: z.enum(['general', 'office', 'dev', 'ai', 'data', 'management', 'deploy', 'design', 'security', 'meta']).optional(),
+  category: z
+    .enum([
+      'general',
+      'office',
+      'dev',
+      'ai',
+      'data',
+      'management',
+      'deploy',
+      'design',
+      'security',
+      'meta',
+    ])
+    .optional(),
   is_builtin: z.boolean().optional(),
   registry_slug: z.string().optional(),
-  content_url: z.string().refine(isHttpUrl, 'content_url must use HTTP(S)').optional(),
+  content_url: z
+    .string()
+    .refine(isHttpUrl, 'content_url must use HTTP(S)')
+    .optional(),
   installed_content_hash: z.string().optional(),
   installed_version: z.string().optional(),
   installed_at: z.number().int().nonnegative().optional(),
@@ -224,6 +271,80 @@ const skillVersionSchema = z.object({
   createdAt: z.union([z.string(), z.number().int().nonnegative()]),
 });
 
+const mcpLibrarySchema = z
+  .object({
+    kind: z.literal('prompthub-mcp-library'),
+    version: z.literal(1),
+    updatedAt: z.string(),
+    servers: z.array(z.unknown()).default([]),
+    bindings: z.array(z.unknown()).default([]),
+  })
+  .passthrough();
+
+const pluginLibrarySchema = z
+  .object({
+    kind: z.literal('prompthub-plugin-library'),
+    version: z.literal(1),
+    updatedAt: z.string(),
+    plugins: z.array(z.unknown()).default([]),
+  })
+  .passthrough();
+
+const pluginFileSnapshotSchema = z.object({
+  relativePath: z
+    .string()
+    .refine(isSafePluginFileRelativePath, 'Invalid plugin file path'),
+  contentBase64: z.string(),
+  size: z.number().int().nonnegative(),
+});
+
+const pluginPackageSnapshotSchema = z.object({
+  pluginId: z.string(),
+  files: z.array(pluginFileSnapshotSchema),
+});
+
+const agentAssetFileSnapshotSchema = z.object({
+  relativePath: z
+    .string()
+    .refine(isSafePluginFileRelativePath, 'Invalid agent asset file path'),
+  contentBase64: z.string(),
+  size: z.number().int().nonnegative(),
+});
+
+const storeSourceSnapshotSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.enum([
+    'official',
+    'community',
+    'marketplace-json',
+    'git-repo',
+    'local-dir',
+  ]),
+  url: z.string(),
+  branch: z.string().optional(),
+  directory: z.string().optional(),
+  enabled: z.boolean().optional(),
+  order: z.number().optional(),
+  createdAt: z.number().optional(),
+});
+
+const customStoreSourceSnapshotSchema = z.object({
+  customStoreSources: z.array(storeSourceSnapshotSchema),
+  selectedSourceId: z.string().optional(),
+});
+
+const agentAssetStoreSourcesSnapshotSchema = z.object({
+  skills: customStoreSourceSnapshotSchema.optional(),
+  mcp: customStoreSourceSnapshotSchema.optional(),
+  plugins: customStoreSourceSnapshotSchema.optional(),
+});
+
+const agentAssetFilesSnapshotSchema = z.object({
+  mcp: z.array(agentAssetFileSnapshotSchema).optional(),
+  plugins: z.array(agentAssetFileSnapshotSchema).optional(),
+});
+
 export const syncSnapshotSchema = z.object({
   version: z.string(),
   exportedAt: z.string(),
@@ -235,6 +356,11 @@ export const syncSnapshotSchema = z.object({
   skills: z.array(skillSchema),
   skillVersions: z.array(skillVersionSchema).default([]),
   skillFiles: z.record(z.array(skillFileSnapshotSchema)).optional(),
+  mcpLibrary: mcpLibrarySchema.optional(),
+  pluginLibrary: pluginLibrarySchema.optional(),
+  pluginPackages: z.array(pluginPackageSnapshotSchema).optional(),
+  storeSources: agentAssetStoreSourcesSnapshotSchema.optional(),
+  agentAssetFiles: agentAssetFilesSnapshotSchema.optional(),
   settings: importedSettingsSchema.optional(),
   settingsUpdatedAt: z.string().optional(),
   images: z.record(z.string()).optional(),
@@ -278,18 +404,24 @@ function normalizeSnapshotVersion(version: unknown): string | null {
   return null;
 }
 
-function assertSupportedSnapshotVersion(payload: Record<string, unknown>): void {
+function assertSupportedSnapshotVersion(
+  payload: Record<string, unknown>,
+): void {
   const version = normalizeSnapshotVersion(payload.version);
   if (!version) {
     return;
   }
 
   if (!SUPPORTED_SYNC_SNAPSHOT_VERSIONS.has(version)) {
-    throw new Error(`Sync snapshot is invalid: unsupported backup version ${version}`);
+    throw new Error(
+      `Sync snapshot is invalid: unsupported backup version ${version}`,
+    );
   }
 }
 
-function normalizeDesktopSettingsSnapshot(settings: unknown): Settings | undefined {
+function normalizeDesktopSettingsSnapshot(
+  settings: unknown,
+): Settings | undefined {
   if (!isRecord(settings)) {
     return undefined;
   }
@@ -303,11 +435,7 @@ function normalizeDesktopSettingsSnapshot(settings: unknown): Settings | undefin
   const language = state.language;
   const autoSave = state.autoSave;
 
-  if (
-    themeMode !== 'light' &&
-    themeMode !== 'dark' &&
-    themeMode !== 'system'
-  ) {
+  if (themeMode !== 'light' && themeMode !== 'dark' && themeMode !== 'system') {
     return undefined;
   }
 
@@ -332,37 +460,44 @@ function normalizeDesktopSettingsSnapshot(settings: unknown): Settings | undefin
     language,
     autoSave,
     defaultFolderId:
-      typeof state.defaultFolderId === 'string' ? state.defaultFolderId : undefined,
-    customPlatformRootPaths:
-      isRecord(state.customPlatformRootPaths)
-        ? Object.fromEntries(
-            Object.entries(state.customPlatformRootPaths).filter(
-              (entry): entry is [string, string] => typeof entry[1] === 'string',
-            ),
-          )
+      typeof state.defaultFolderId === 'string'
+        ? state.defaultFolderId
         : undefined,
+    customPlatformRootPaths: isRecord(state.customPlatformRootPaths)
+      ? Object.fromEntries(
+          Object.entries(state.customPlatformRootPaths).filter(
+            (entry): entry is [string, string] => typeof entry[1] === 'string',
+          ),
+        )
+      : undefined,
     disabledPlatformIds: Array.isArray(state.disabledPlatformIds)
       ? state.disabledPlatformIds.filter(
           (value): value is string => typeof value === 'string',
         )
-      : Array.isArray((state as { trackedRulePlatformIds?: unknown }).trackedRulePlatformIds)
-        ? (state as { trackedRulePlatformIds: unknown[] }).trackedRulePlatformIds.filter(
+      : Array.isArray(
+            (state as { trackedRulePlatformIds?: unknown })
+              .trackedRulePlatformIds,
+          )
+        ? (
+            state as { trackedRulePlatformIds: unknown[] }
+          ).trackedRulePlatformIds.filter(
             (value): value is string => typeof value === 'string',
           )
-      : undefined,
-    customSkillPlatformPaths:
-      isRecord(state.customSkillPlatformPaths)
-        ? Object.fromEntries(
-            Object.entries(state.customSkillPlatformPaths).filter(
-              (entry): entry is [string, string] => typeof entry[1] === 'string',
-            ),
-          )
         : undefined,
+    customSkillPlatformPaths: isRecord(state.customSkillPlatformPaths)
+      ? Object.fromEntries(
+          Object.entries(state.customSkillPlatformPaths).filter(
+            (entry): entry is [string, string] => typeof entry[1] === 'string',
+          ),
+        )
+      : undefined,
     skillPlatformOrder: Array.isArray(state.skillPlatformOrder)
-      ? state.skillPlatformOrder.filter((value): value is string => typeof value === 'string')
+      ? state.skillPlatformOrder.filter(
+          (value): value is string => typeof value === 'string',
+        )
       : undefined,
     skillProjects: Array.isArray(state.skillProjects)
-      ? state.skillProjects as Settings['skillProjects']
+      ? (state.skillProjects as Settings['skillProjects'])
       : undefined,
     backgroundImageFileName:
       typeof state.backgroundImageFileName === 'string'
@@ -377,7 +512,9 @@ function normalizeDesktopSettingsSnapshot(settings: unknown): Settings | undefin
         ? state.backgroundImageBlur
         : undefined,
     lastManualBackupAt:
-      typeof state.lastManualBackupAt === 'string' ? state.lastManualBackupAt : undefined,
+      typeof state.lastManualBackupAt === 'string'
+        ? state.lastManualBackupAt
+        : undefined,
     lastManualBackupVersion:
       typeof state.lastManualBackupVersion === 'string'
         ? state.lastManualBackupVersion
@@ -395,28 +532,46 @@ function normalizeDesktopSettingsSnapshot(settings: unknown): Settings | undefin
             enabled: state.sync.enabled,
             provider: state.sync.provider,
             endpoint:
-              typeof state.sync.endpoint === 'string' ? state.sync.endpoint : undefined,
+              typeof state.sync.endpoint === 'string'
+                ? state.sync.endpoint
+                : undefined,
             username:
-              typeof state.sync.username === 'string' ? state.sync.username : undefined,
+              typeof state.sync.username === 'string'
+                ? state.sync.username
+                : undefined,
             password:
-              typeof state.sync.password === 'string' ? state.sync.password : undefined,
+              typeof state.sync.password === 'string'
+                ? state.sync.password
+                : undefined,
             remotePath:
-              typeof state.sync.remotePath === 'string' ? state.sync.remotePath : undefined,
+              typeof state.sync.remotePath === 'string'
+                ? state.sync.remotePath
+                : undefined,
             autoSync:
-              typeof state.sync.autoSync === 'boolean' ? state.sync.autoSync : undefined,
+              typeof state.sync.autoSync === 'boolean'
+                ? state.sync.autoSync
+                : undefined,
             lastSyncAt:
-              typeof state.sync.lastSyncAt === 'string' ? state.sync.lastSyncAt : undefined,
+              typeof state.sync.lastSyncAt === 'string'
+                ? state.sync.lastSyncAt
+                : undefined,
           }
         : undefined,
-    device: isRecord(state.device) ? state.device as Settings['device'] : undefined,
+    device: isRecord(state.device)
+      ? (state.device as Settings['device'])
+      : undefined,
     updateChannel:
       state.updateChannel === 'stable' || state.updateChannel === 'preview'
         ? state.updateChannel
         : undefined,
     launchAtStartup:
-      typeof state.launchAtStartup === 'boolean' ? state.launchAtStartup : undefined,
+      typeof state.launchAtStartup === 'boolean'
+        ? state.launchAtStartup
+        : undefined,
     minimizeOnLaunch:
-      typeof state.minimizeOnLaunch === 'boolean' ? state.minimizeOnLaunch : undefined,
+      typeof state.minimizeOnLaunch === 'boolean'
+        ? state.minimizeOnLaunch
+        : undefined,
     security:
       isRecord(state.security) &&
       typeof state.security.masterPasswordConfigured === 'boolean' &&
@@ -429,7 +584,9 @@ function normalizeDesktopSettingsSnapshot(settings: unknown): Settings | undefin
   };
 }
 
-function normalizeImportedSettings(payload: Record<string, unknown>): Settings | undefined {
+function normalizeImportedSettings(
+  payload: Record<string, unknown>,
+): Settings | undefined {
   const directSettings = importedSettingsSchema.safeParse(payload.settings);
   if (directSettings.success) {
     return directSettings.data;
@@ -440,7 +597,8 @@ function normalizeImportedSettings(payload: Record<string, unknown>): Settings |
     return undefined;
   }
 
-  const parsedDesktopSettings = importedSettingsSchema.safeParse(desktopSettings);
+  const parsedDesktopSettings =
+    importedSettingsSchema.safeParse(desktopSettings);
   if (parsedDesktopSettings.success) {
     return parsedDesktopSettings.data;
   }
@@ -456,7 +614,9 @@ function normalizeImportedSettings(payload: Record<string, unknown>): Settings |
 }
 
 function validateFolderHierarchy(folders: Folder[]): void {
-  const parentById = new Map(folders.map((folder) => [folder.id, folder.parentId]));
+  const parentById = new Map(
+    folders.map((folder) => [folder.id, folder.parentId]),
+  );
 
   for (const folder of folders) {
     const seen = new Set<string>();
@@ -464,7 +624,9 @@ function validateFolderHierarchy(folders: Folder[]): void {
 
     while (currentId) {
       if (seen.has(currentId)) {
-        throw new Error(`Sync snapshot is invalid: folders contain a parent cycle at ${folder.id}`);
+        throw new Error(
+          `Sync snapshot is invalid: folders contain a parent cycle at ${folder.id}`,
+        );
       }
 
       seen.add(currentId);
@@ -477,7 +639,9 @@ function validateFolderHierarchy(folders: Folder[]): void {
   }
 }
 
-function normalizeImportedSnapshot(rawPayload: unknown): z.infer<typeof syncSnapshotSchema> {
+function normalizeImportedSnapshot(
+  rawPayload: unknown,
+): z.infer<typeof syncSnapshotSchema> {
   const unwrapped = unwrapPromptHubEnvelope(rawPayload);
   if (!isRecord(unwrapped)) {
     throw new Error('Sync snapshot is invalid: expected an object');
@@ -509,7 +673,10 @@ function normalizeImportedSnapshot(rawPayload: unknown): z.infer<typeof syncSnap
     normalized.skillVersions = [];
   }
 
-  if (!Array.isArray(normalized.promptVersions) && Array.isArray(normalized.versions)) {
+  if (
+    !Array.isArray(normalized.promptVersions) &&
+    Array.isArray(normalized.versions)
+  ) {
     normalized.promptVersions = normalized.versions;
   }
 
@@ -577,40 +744,64 @@ function normalizeRuleRecords(
 export function normalizeSyncSnapshot(
   payload: z.infer<typeof syncSnapshotSchema>,
 ): SyncSnapshot {
-  const promptVersions = payload.promptVersions.length > 0
-    ? payload.promptVersions
-    : (payload.versions ?? []);
+  const promptVersions =
+    payload.promptVersions.length > 0
+      ? payload.promptVersions
+      : (payload.versions ?? []);
 
   return {
     version: payload.version,
     exportedAt: payload.exportedAt,
-    prompts: payload.prompts.map((prompt): Prompt => ({
-      ...prompt,
-      createdAt: toIsoString(prompt.createdAt),
-      updatedAt: toIsoString(prompt.updatedAt),
-    })),
-    promptVersions: promptVersions.map((version): PromptVersion => ({
-      ...version,
-      createdAt: toIsoString(version.createdAt),
-    })),
-    versions: promptVersions.map((version): PromptVersion => ({
-      ...version,
-      createdAt: toIsoString(version.createdAt),
-    })),
-    folders: payload.folders.map((folder): Folder => ({
-      ...folder,
-      icon: folder.icon ?? undefined,
-      parentId: folder.parentId ?? undefined,
-      createdAt: toIsoString(folder.createdAt),
-      updatedAt: toIsoString(folder.updatedAt),
-    })),
+    prompts: payload.prompts.map(
+      (prompt): Prompt => ({
+        ...prompt,
+        createdAt: toIsoString(prompt.createdAt),
+        updatedAt: toIsoString(prompt.updatedAt),
+      }),
+    ),
+    promptVersions: promptVersions.map(
+      (version): PromptVersion => ({
+        ...version,
+        createdAt: toIsoString(version.createdAt),
+      }),
+    ),
+    versions: promptVersions.map(
+      (version): PromptVersion => ({
+        ...version,
+        createdAt: toIsoString(version.createdAt),
+      }),
+    ),
+    folders: payload.folders.map(
+      (folder): Folder => ({
+        ...folder,
+        icon: folder.icon ?? undefined,
+        parentId: folder.parentId ?? undefined,
+        createdAt: toIsoString(folder.createdAt),
+        updatedAt: toIsoString(folder.updatedAt),
+      }),
+    ),
     rules: normalizeRuleRecords(payload.rules),
     skills: payload.skills as Skill[],
-    skillVersions: payload.skillVersions.map((version): SkillVersion => ({
-      ...version,
-      createdAt: toIsoString(version.createdAt),
-    })),
-    skillFiles: payload.skillFiles as Record<string, SkillFileSnapshot[]> | undefined,
+    skillVersions: payload.skillVersions.map(
+      (version): SkillVersion => ({
+        ...version,
+        createdAt: toIsoString(version.createdAt),
+      }),
+    ),
+    skillFiles: payload.skillFiles as
+      | Record<string, SkillFileSnapshot[]>
+      | undefined,
+    mcpLibrary: payload.mcpLibrary as McpLibraryFile | undefined,
+    pluginLibrary: payload.pluginLibrary as PluginLibraryFile | undefined,
+    pluginPackages: payload.pluginPackages as
+      | PluginPackageSnapshot[]
+      | undefined,
+    storeSources: payload.storeSources as
+      | AgentAssetStoreSourcesSnapshot
+      | undefined,
+    agentAssetFiles: payload.agentAssetFiles as
+      | AgentAssetFilesSnapshot
+      | undefined,
     settings: payload.settings as Settings | undefined,
     settingsUpdatedAt: payload.settingsUpdatedAt,
     images: payload.images,
@@ -636,12 +827,16 @@ export function buildSyncSummary(payload: {
   folders: unknown[];
   rules?: unknown[];
   skills: unknown[];
+  mcpLibrary?: { servers: unknown[] };
+  pluginLibrary?: { plugins: unknown[] };
 }): SyncOperationSummary {
   return {
     prompts: payload.prompts.length,
     folders: payload.folders.length,
     rules: payload.rules?.length ?? 0,
     skills: payload.skills.length,
+    mcpServers: payload.mcpLibrary?.servers.length ?? 0,
+    plugins: payload.pluginLibrary?.plugins.length ?? 0,
   };
 }
 
@@ -650,11 +845,15 @@ export function buildImportedSyncSummary(result: {
   foldersImported: number;
   rulesImported?: number;
   skillsImported: number;
+  mcpServersImported?: number;
+  pluginsImported?: number;
 }): SyncOperationSummary {
   return {
     prompts: result.promptsImported,
     folders: result.foldersImported,
     rules: result.rulesImported ?? 0,
     skills: result.skillsImported,
+    mcpServers: result.mcpServersImported ?? 0,
+    plugins: result.pluginsImported ?? 0,
   };
 }

@@ -63,6 +63,9 @@
 - Desktop main-process production builds now keep `@aws-sdk/client-s3` external instead of bundling the Smithy CommonJS chain through Vite. This removes the build-time `[commonjs] Cannot read properties of undefined (reading 'resolved')` failure that appeared while transforming `@smithy/core` during desktop production builds.
 - Follow-up S3 sync audit added renderer adapter regression coverage for normalized S3 object keys, incremental `data.json` / `manifest.json` upload, and incremental download restoration of prompts, rules, skills, versions, and `skillFiles`.
 - Desktop cloud target manual action labels now distinguish direction explicitly: `Back up to remote` uploads the current computer's data, while `Update from remote` pulls remote data onto this computer. This keeps the cross-PC setup flow clear and prevents users from mistaking remote pull for the timestamp-based automatic sync path.
+- Desktop backup and sync snapshots now include the complete current-format Agent asset set: structured MCP/Plugin libraries, managed plugin package snapshots, Skill/MCP/Plugin custom store sources, and `agentAssetFiles` snapshots for the managed `data/mcp` and `data/plugins` directories. This intentionally targets the current data layout only; no legacy Agent asset storage migration is part of this change.
+- Desktop restore now restores managed `data/mcp` and `data/plugins` file snapshots first, then rewrites the structured MCP and Plugin libraries. This keeps the directory content complete while ensuring Plugin `library.json` paths are remapped to the current machine's managed `data/plugins/<plugin>/package` directory instead of preserving another machine's absolute paths.
+- Web/self-hosted sync now preserves the same Agent asset fields through snapshot parsing, backup import/export payloads, sync summaries, and a per-user sidecar file under `data/agent-assets/`. Plugin package and Agent asset file path validation are separate from Skill file path validation so plugin package files such as `skill.json` and `versions/*` are legal while Skill workspace snapshots still reject those reserved paths.
 
 ## Verification
 
@@ -116,7 +119,14 @@
 - Passing checks:
   - `pnpm --filter @prompthub/desktop test -- --run tests/unit/stores/settings-background-image.test.ts -t "same-version persisted background"`
   - `pnpm --filter @prompthub/desktop test -- --run tests/unit/stores/settings-background-image.test.ts`
-  - `pnpm --filter @prompthub/desktop typecheck`
+- `pnpm --filter @prompthub/desktop typecheck`
+- `pnpm --filter @prompthub/desktop test:run tests/unit/services/database-backup.test.ts`
+- `pnpm --filter @prompthub/desktop test:run tests/unit/main/agent-asset-file-snapshot.test.ts`
+- `pnpm --filter @prompthub/desktop test:run tests/unit/main/plugin-library.test.ts`
+- `pnpm --filter @prompthub/desktop test:run tests/unit/services/self-hosted-sync.test.ts`
+- `pnpm --filter @prompthub/desktop test:run tests/unit/services/sync-backup-core.test.ts`
+- `pnpm --filter @prompthub/web test src/services/sync-snapshot.test.ts src/services/agent-assets-sync.test.ts`
+- `pnpm --filter @prompthub/web typecheck`
   - `pnpm --filter @prompthub/desktop lint`
 - `pnpm --filter @prompthub/desktop test -- tests/unit/services/sync-backup-core.test.ts --run`
 - `pnpm --filter @prompthub/desktop test -- tests/unit/services/webdav.test.ts --run`

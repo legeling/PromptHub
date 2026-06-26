@@ -11,6 +11,11 @@ The fix is to converge on one logical snapshot contract instead of keeping separ
 - Keep accepting historical PromptHub envelopes (`prompthub-backup`, `prompthub-export`) and legacy `versions` payloads for compatibility.
 - Make desktop `import-with-prompthub.json` contain a full re-importable snapshot, even when the ZIP also includes human-readable file trees.
 - Treat `skillFiles` as part of the recoverable snapshot contract, with the web skill workspace acting as the durable backing store instead of introducing a separate database table.
+- Treat My MCP and My Plugins as first-class current-format sync payloads: MCP uses its `McpLibraryFile`; Plugins use `PluginLibraryFile` plus snapshots of PromptHub-managed plugin package files.
+- Treat `data/mcp` and `data/plugins` as complete managed Agent asset directories. Backup/sync must include file snapshots for those directories in addition to structured library fields, while excluding dependency/VCS/cache directories such as `.git`, `node_modules`, `.venv`, `__pycache__`, and `.cache`.
+- Restore managed Agent asset directory snapshots before rewriting structured MCP/Plugin libraries, so files are complete while Plugin `library.json` still gets remapped to current-machine paths.
+- Treat Skill/MCP/Plugin custom store sources as recoverable desktop store-source state, captured from their current Zustand persisted store keys and restored back into those same stores.
+- Do not design backward compatibility for legacy MCP/Plugin sync formats in this change; absent current-format fields are ignored.
 - Validate imported `skillFiles` and skill-version file snapshot paths in the sync snapshot parser, before database import or workspace writes, so traversal, control-character, and reserved paths cannot leave partial imported records behind.
 - Keep the web skill workspace writer defensive as a second boundary, rejecting unsafe restored file paths even if a future caller bypasses sync snapshot parsing.
 - Prevalidate restored skill workspace file paths before deleting/rebuilding the workspace, so invalid restored `skillFiles` fail without erasing the last good workspace state.
@@ -69,6 +74,13 @@ The fix is to converge on one logical snapshot contract instead of keeping separ
 - `apps/desktop/tests/unit/stores/folder-save-sync.test.ts`
 - `apps/desktop/src/renderer/services/database-backup.ts`
 - `apps/desktop/src/renderer/services/self-hosted-sync.ts`
+- `apps/desktop/src/main/ipc/mcp.ipc.ts`
+- `apps/desktop/src/main/ipc/plugin.ipc.ts`
+- `apps/desktop/src/preload/api/mcp.ts`
+- `apps/desktop/src/preload/api/plugin.ts`
+- `packages/core/src/plugin-library.ts`
+- `packages/shared/types/sync.ts`
+- `packages/shared/types/plugin.ts`
 - `apps/desktop/tests/unit/services/database-backup.test.ts`
 - `apps/desktop/tests/unit/services/self-hosted-sync.test.ts`
 

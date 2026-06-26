@@ -1,11 +1,23 @@
-import type { Folder, Prompt, PromptVersion, RuleBackupRecord } from "@prompthub/shared/types";
+import type {
+  AgentAssetFilesSnapshot,
+  AgentAssetStoreSourcesSnapshot,
+  Folder,
+  McpLibraryFile,
+  PluginLibraryFile,
+  PluginPackageSnapshot,
+  Prompt,
+  PromptVersion,
+  RuleBackupRecord,
+} from "@prompthub/shared/types";
 import type {
   Skill,
   SkillFileSnapshot,
   SkillVersion,
 } from "@prompthub/shared/types/skill";
 
-function normalizeSkillSafetyReport<T extends { safetyReport?: unknown }>(value: T): T {
+function normalizeSkillSafetyReport<T extends { safetyReport?: unknown }>(
+  value: T,
+): T {
   if (!value.safetyReport || typeof value.safetyReport !== "object") {
     return value;
   }
@@ -48,6 +60,11 @@ export interface DatabaseBackup {
   skillFiles?: {
     [skillId: string]: SkillFileSnapshot[];
   };
+  mcpLibrary?: McpLibraryFile;
+  pluginLibrary?: PluginLibraryFile;
+  pluginPackages?: PluginPackageSnapshot[];
+  storeSources?: AgentAssetStoreSourcesSnapshot;
+  agentAssetFiles?: AgentAssetFilesSnapshot;
 }
 
 export type ExportScope = {
@@ -79,9 +96,12 @@ export function normalizeImportedBackup(
   backup: Partial<DatabaseBackup> | null | undefined,
 ): DatabaseBackup {
   // Support web backup format which uses "promptVersions" instead of "versions"
-  const versions = Array.isArray(backup?.versions) && backup.versions.length > 0
-    ? backup.versions
-    : Array.isArray((backup as any)?.promptVersions) ? (backup as any).promptVersions : [];
+  const versions =
+    Array.isArray(backup?.versions) && backup.versions.length > 0
+      ? backup.versions
+      : Array.isArray((backup as any)?.promptVersions)
+        ? (backup as any).promptVersions
+        : [];
 
   return {
     version:
@@ -116,6 +136,25 @@ export function normalizeImportedBackup(
     skillFiles:
       backup?.skillFiles && typeof backup.skillFiles === "object"
         ? backup.skillFiles
+        : undefined,
+    mcpLibrary:
+      backup?.mcpLibrary && typeof backup.mcpLibrary === "object"
+        ? backup.mcpLibrary
+        : undefined,
+    pluginLibrary:
+      backup?.pluginLibrary && typeof backup.pluginLibrary === "object"
+        ? backup.pluginLibrary
+        : undefined,
+    pluginPackages: Array.isArray(backup?.pluginPackages)
+      ? backup.pluginPackages
+      : undefined,
+    storeSources:
+      backup?.storeSources && typeof backup.storeSources === "object"
+        ? backup.storeSources
+        : undefined,
+    agentAssetFiles:
+      backup?.agentAssetFiles && typeof backup.agentAssetFiles === "object"
+        ? backup.agentAssetFiles
         : undefined,
   };
 }
@@ -199,8 +238,7 @@ function hasSkillFileSnapshotShape(value: unknown): boolean {
   }
 
   return (
-    typeof value.relativePath === "string" &&
-    typeof value.content === "string"
+    typeof value.relativePath === "string" && typeof value.content === "string"
   );
 }
 
@@ -239,6 +277,98 @@ function hasRuleShape(value: unknown): boolean {
   );
 }
 
+function hasMcpLibraryShape(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    value.kind === "prompthub-mcp-library" &&
+    value.version === 1 &&
+    typeof value.updatedAt === "string" &&
+    Array.isArray(value.servers) &&
+    Array.isArray(value.bindings)
+  );
+}
+
+function hasPluginLibraryShape(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    value.kind === "prompthub-plugin-library" &&
+    value.version === 1 &&
+    typeof value.updatedAt === "string" &&
+    Array.isArray(value.plugins)
+  );
+}
+
+function hasPluginPackageSnapshotShape(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    typeof value.pluginId === "string" &&
+    Array.isArray(value.files) &&
+    value.files.every(
+      (file) =>
+        isRecord(file) &&
+        typeof file.relativePath === "string" &&
+        typeof file.contentBase64 === "string" &&
+        typeof file.size === "number" &&
+        Number.isFinite(file.size) &&
+        file.size >= 0,
+    )
+  );
+}
+
+function hasAgentAssetFileSnapshotShape(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    typeof value.relativePath === "string" &&
+    typeof value.contentBase64 === "string" &&
+    typeof value.size === "number" &&
+    Number.isFinite(value.size) &&
+    value.size >= 0
+  );
+}
+
+function hasStoreSourceSnapshotShape(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.name === "string" &&
+    typeof value.type === "string" &&
+    typeof value.url === "string"
+  );
+}
+
+function hasCustomStoreSourceSnapshotShape(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    Array.isArray(value.customStoreSources) &&
+    value.customStoreSources.every(hasStoreSourceSnapshotShape) &&
+    (value.selectedSourceId === undefined ||
+      typeof value.selectedSourceId === "string")
+  );
+}
+
+function hasAgentAssetStoreSourcesShape(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    (value.skills === undefined ||
+      hasCustomStoreSourceSnapshotShape(value.skills)) &&
+    (value.mcp === undefined || hasCustomStoreSourceSnapshotShape(value.mcp)) &&
+    (value.plugins === undefined ||
+      hasCustomStoreSourceSnapshotShape(value.plugins))
+  );
+}
+
+function hasAgentAssetFilesShape(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    (value.mcp === undefined ||
+      (Array.isArray(value.mcp) &&
+        value.mcp.every(hasAgentAssetFileSnapshotShape))) &&
+    (value.plugins === undefined ||
+      (Array.isArray(value.plugins) &&
+        value.plugins.every(hasAgentAssetFileSnapshotShape)))
+  );
+}
+
 /**
  * Counts of records that were dropped from an imported backup because they
  * failed structural validation. This lets the UI surface a transparent
@@ -271,6 +401,15 @@ export function hasMeaningfulBackupContent(backup: DatabaseBackup): boolean {
     (backup.skills?.length ?? 0) > 0 ||
     (backup.skillVersions?.length ?? 0) > 0 ||
     Object.values(backup.skillFiles ?? {}).some((files) => files.length > 0) ||
+    (backup.mcpLibrary?.servers.length ?? 0) > 0 ||
+    (backup.pluginLibrary?.plugins.length ?? 0) > 0 ||
+    (backup.pluginPackages?.some(
+      (pluginPackage) => pluginPackage.files.length > 0,
+    ) ??
+      false) ||
+    !!backup.storeSources ||
+    (backup.agentAssetFiles?.mcp?.length ?? 0) > 0 ||
+    (backup.agentAssetFiles?.plugins?.length ?? 0) > 0 ||
     Object.keys(backup.images ?? {}).length > 0 ||
     Object.keys(backup.videos ?? {}).length > 0 ||
     !!backup.aiConfig ||
@@ -303,8 +442,14 @@ export function hasAnySkipped(stats: ImportSkippedStats): boolean {
 }
 
 function validateImportedBackupShape(backup: DatabaseBackup): void {
-  if (!Array.isArray(backup.prompts) || !Array.isArray(backup.folders) || !Array.isArray(backup.versions)) {
-    throw new Error("Invalid PromptHub backup: prompts, folders, and versions must be arrays.");
+  if (
+    !Array.isArray(backup.prompts) ||
+    !Array.isArray(backup.folders) ||
+    !Array.isArray(backup.versions)
+  ) {
+    throw new Error(
+      "Invalid PromptHub backup: prompts, folders, and versions must be arrays.",
+    );
   }
 
   if (!backup.prompts.every(hasPromptShape)) {
@@ -327,16 +472,62 @@ function validateImportedBackupShape(backup: DatabaseBackup): void {
     throw new Error("Invalid PromptHub backup: skills payload is malformed.");
   }
 
-  if (backup.skillVersions && !backup.skillVersions.every(hasSkillVersionShape)) {
-    throw new Error("Invalid PromptHub backup: skill versions payload is malformed.");
+  if (
+    backup.skillVersions &&
+    !backup.skillVersions.every(hasSkillVersionShape)
+  ) {
+    throw new Error(
+      "Invalid PromptHub backup: skill versions payload is malformed.",
+    );
   }
 
   if (backup.skillFiles) {
     for (const files of Object.values(backup.skillFiles)) {
       if (!Array.isArray(files) || !files.every(hasSkillFileSnapshotShape)) {
-        throw new Error("Invalid PromptHub backup: skill files payload is malformed.");
+        throw new Error(
+          "Invalid PromptHub backup: skill files payload is malformed.",
+        );
       }
     }
+  }
+
+  if (backup.mcpLibrary && !hasMcpLibraryShape(backup.mcpLibrary)) {
+    throw new Error(
+      "Invalid PromptHub backup: MCP library payload is malformed.",
+    );
+  }
+
+  if (backup.pluginLibrary && !hasPluginLibraryShape(backup.pluginLibrary)) {
+    throw new Error(
+      "Invalid PromptHub backup: plugin library payload is malformed.",
+    );
+  }
+
+  if (
+    backup.pluginPackages &&
+    !backup.pluginPackages.every(hasPluginPackageSnapshotShape)
+  ) {
+    throw new Error(
+      "Invalid PromptHub backup: plugin packages payload is malformed.",
+    );
+  }
+
+  if (
+    backup.storeSources &&
+    !hasAgentAssetStoreSourcesShape(backup.storeSources)
+  ) {
+    throw new Error(
+      "Invalid PromptHub backup: store sources payload is malformed.",
+    );
+  }
+
+  if (
+    backup.agentAssetFiles &&
+    !hasAgentAssetFilesShape(backup.agentAssetFiles)
+  ) {
+    throw new Error(
+      "Invalid PromptHub backup: agent asset files payload is malformed.",
+    );
   }
 }
 
@@ -358,15 +549,15 @@ function validateImportedBackupShape(backup: DatabaseBackup): void {
  * 数据。同步维护引用完整性：被丢 prompt 对应的 version 一并丢弃；被丢 skill
  * 对应的 version / files 一并丢弃。
  */
-export function sanitizeImportedBackup(
-  raw: DatabaseBackup,
-): ParsedBackup {
+export function sanitizeImportedBackup(raw: DatabaseBackup): ParsedBackup {
   const skipped = createEmptySkippedStats();
 
   const originalFoldersLen = raw.folders.length;
   const structurallyValidFolders = raw.folders.filter(hasFolderShape);
   skipped.folders = originalFoldersLen - structurallyValidFolders.length;
-  const validFolderIds = new Set(structurallyValidFolders.map((folder) => folder.id));
+  const validFolderIds = new Set(
+    structurallyValidFolders.map((folder) => folder.id),
+  );
   const validFolders = structurallyValidFolders.map((folder) => {
     if (folder.parentId && !validFolderIds.has(folder.parentId)) {
       skipped.folders += 1;
@@ -389,7 +580,10 @@ export function sanitizeImportedBackup(
   const validPrompts = structurallyValidPrompts.map((prompt) => {
     let normalizedPrompt = prompt;
 
-    if (normalizedPrompt.folderId && !normalizedFolderIds.has(normalizedPrompt.folderId)) {
+    if (
+      normalizedPrompt.folderId &&
+      !normalizedFolderIds.has(normalizedPrompt.folderId)
+    ) {
       skipped.prompts += 1;
       normalizedPrompt = {
         ...normalizedPrompt,
@@ -454,7 +648,8 @@ export function sanitizeImportedBackup(
           validSkillIds.has((v as unknown as { skillId: string }).skillId),
         )
       : structurallyValid;
-    skipped.skillVersions = originalSkillVersionsLen - validSkillVersions.length;
+    skipped.skillVersions =
+      originalSkillVersionsLen - validSkillVersions.length;
   }
 
   let validSkillFiles = raw.skillFiles;
@@ -500,7 +695,10 @@ function parseEnvelope(text: string): DatabaseBackup {
     throw new Error("Invalid PromptHub backup: expected a JSON object.");
   }
 
-  if (parsed.kind === "prompthub-backup" || parsed.kind === "prompthub-export") {
+  if (
+    parsed.kind === "prompthub-backup" ||
+    parsed.kind === "prompthub-export"
+  ) {
     return normalizeImportedBackup(parsed.payload as Partial<DatabaseBackup>);
   }
 
@@ -510,7 +708,12 @@ function parseEnvelope(text: string): DatabaseBackup {
     "versions" in parsed ||
     "skills" in parsed ||
     "skillVersions" in parsed ||
-    "skillFiles" in parsed;
+    "skillFiles" in parsed ||
+    "mcpLibrary" in parsed ||
+    "pluginLibrary" in parsed ||
+    "pluginPackages" in parsed ||
+    "storeSources" in parsed ||
+    "agentAssetFiles" in parsed;
 
   if (!hasKnownRootFields) {
     throw new Error(

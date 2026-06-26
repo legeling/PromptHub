@@ -46,3 +46,9 @@
 - [x] Normalize startup delay and periodic interval values during settings store `merge` and migration.
 - [x] Add failing regression for desktop backup blob URL cleanup when browser download click fails.
 - [x] Clean up temporary backup download anchors and revoke blob URLs on both success and failure paths.
+- [x] Add current-format My MCP library fields to desktop backup/sync snapshots and restore.
+- [x] Add current-format My Plugin library fields plus managed package file snapshots to desktop backup/sync snapshots and restore.
+- [x] Add Skill/MCP/Plugin custom store source snapshots to backup/sync export and restore.
+- [x] Extend self-hosted Web sync snapshot parsing and payloads to preserve the new current-format agent asset fields.
+- [x] Add focused regression tests for MCP/Plugin/custom-store sync fields.
+- [x] Add complete managed `data/mcp` and `data/plugins` file snapshots to backup/sync export and restore.

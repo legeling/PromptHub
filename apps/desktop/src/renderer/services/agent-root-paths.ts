@@ -1,5 +1,7 @@
 import {
   SKILL_PLATFORMS,
+  getPlatformMcpRelativePath,
+  getPlatformPluginsRelativePath,
   type SkillPlatform,
 } from "@prompthub/shared/constants/platforms";
 import type {
@@ -29,7 +31,10 @@ function joinRootPath(rootPath: string, relativePath: string): string {
       continue;
     }
     if (segment === "..") {
-      if (segments.length > 1 || (segments.length === 1 && segments[0] !== "~")) {
+      if (
+        segments.length > 1 ||
+        (segments.length === 1 && segments[0] !== "~")
+      ) {
         segments.pop();
       }
       continue;
@@ -79,12 +84,15 @@ export function normalizeAgentAssetConfig<T extends AgentAssetConfig>(
       typeof input.rootPath === "string"
         ? normalizeAgentRootPath(input.rootPath)
         : input.rootPath,
-    skillsRelativePath: normalizeRelativePath(input.skillsRelativePath) || undefined,
+    skillsRelativePath:
+      normalizeRelativePath(input.skillsRelativePath) || undefined,
     mcpRelativePath: normalizeRelativePath(input.mcpRelativePath) || undefined,
     pluginsRelativePath:
       normalizeRelativePath(input.pluginsRelativePath) || undefined,
-    rulesRelativePath: normalizeRelativePath(input.rulesRelativePath) || undefined,
-    agentsRelativePath: normalizeRelativePath(input.agentsRelativePath) || undefined,
+    rulesRelativePath:
+      normalizeRelativePath(input.rulesRelativePath) || undefined,
+    agentsRelativePath:
+      normalizeRelativePath(input.agentsRelativePath) || undefined,
     commandsRelativePath:
       normalizeRelativePath(input.commandsRelativePath) || undefined,
     configRelativePaths: uniqNonEmptyRelativePaths(input.configRelativePaths),
@@ -104,19 +112,18 @@ export function normalizeBuiltinAgentOverrides(
     return {};
   }
 
-  return Object.entries(overrides).reduce<Record<string, BuiltinAgentOverrideConfig>>(
-    (acc, [platformId, value]) => {
-      if (!value || typeof value !== "object" || Array.isArray(value)) {
-        return acc;
-      }
-      const normalized = normalizeBuiltinAgentOverride(value);
-      if (Object.keys(normalized).length > 0) {
-        acc[platformId] = normalized;
-      }
+  return Object.entries(overrides).reduce<
+    Record<string, BuiltinAgentOverrideConfig>
+  >((acc, [platformId, value]) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
       return acc;
-    },
-    {},
-  );
+    }
+    const normalized = normalizeBuiltinAgentOverride(value);
+    if (Object.keys(normalized).length > 0) {
+      acc[platformId] = normalized;
+    }
+    return acc;
+  }, {});
 }
 
 export interface EffectiveBuiltinAgentConfig extends AgentAssetConfig {
@@ -134,7 +141,8 @@ export function getEffectiveBuiltinAgentConfig(
   return {
     id: platform.id,
     name: platform.name,
-    rootPath: normalizedOverride.rootPath || normalizeAgentRootPath(defaultRootPath),
+    rootPath:
+      normalizedOverride.rootPath || normalizeAgentRootPath(defaultRootPath),
     skillsRelativePath:
       normalizedOverride.skillsRelativePath ||
       normalizeRelativePath(platform.skillsRelativePath) ||
@@ -159,16 +167,17 @@ export function getEffectiveBuiltinAgentConfig(
       normalizedOverride.commandsRelativePath ||
       normalizeRelativePath("commands") ||
       undefined,
-    configRelativePaths:
-      normalizedOverride.configRelativePaths?.length
-        ? normalizedOverride.configRelativePaths
-        : uniqNonEmptyRelativePaths(platform.configFiles),
+    configRelativePaths: normalizedOverride.configRelativePaths?.length
+      ? normalizedOverride.configRelativePaths
+      : uniqNonEmptyRelativePaths(platform.configFiles),
   };
 }
 
 function uniqPaths(values: string[]): string[] {
   return Array.from(
-    new Set(values.map(normalizeAgentRootPath).filter((value) => value.length > 0)),
+    new Set(
+      values.map(normalizeAgentRootPath).filter((value) => value.length > 0),
+    ),
   );
 }
 
@@ -184,33 +193,14 @@ const KNOWN_CONFIG_RELATIVE_PATHS = uniqPaths(
   SKILL_PLATFORMS.flatMap((platform) => platform.configFiles ?? []),
 );
 
-function getDefaultMcpRelativePath(platformId?: string): string {
-  const paths: Record<string, string> = {
-    claude: "../.claude.json",
-    codex: "config.toml",
-    gemini: "settings.json",
-    opencode: "opencode.json",
-    cursor: "mcp.json",
-    cline: "cline_mcp_settings.json",
-    windsurf: "mcp_config.json",
-    kiro: "settings/mcp.json",
-    copilot: "mcp.json",
-  };
-  return platformId ? paths[platformId] || "mcp.json" : "mcp.json";
+function getDefaultMcpRelativePath(platformId?: string): string | undefined {
+  return platformId ? getPlatformMcpRelativePath(platformId) : "mcp.json";
 }
 
 export function getDefaultPluginsRelativePath(
   platformId?: string,
 ): string | undefined {
-  const paths: Record<string, string> = {
-    claude: "plugins/cache/prompthub",
-    codex: "plugins/cache/prompthub",
-    cursor: "plugins/cache/prompthub",
-    gemini: "config/plugins",
-    kiro: "powers",
-    copilot: "plugins",
-  };
-  return platformId ? paths[platformId] : undefined;
+  return platformId ? getPlatformPluginsRelativePath(platformId) : undefined;
 }
 
 export interface AgentRootAssetPreview {
@@ -346,7 +336,7 @@ export function buildAgentRootAssetPreview(
       );
   const mcpConfigPaths = agent.mcpRelativePath
     ? [joinRootPath(normalizedRoot, agent.mcpRelativePath)]
-    : [joinRootPath(normalizedRoot, getDefaultMcpRelativePath() || "mcp.json")];
+    : [];
   const pluginDirectories = agent.pluginsRelativePath
     ? [joinRootPath(normalizedRoot, agent.pluginsRelativePath)]
     : [];
