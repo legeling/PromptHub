@@ -9,6 +9,7 @@ import { ipcMain } from "electron";
 import https from "https";
 import http from "http";
 import { getE2EWebDAVMode, handleE2EWebDAVRequest, isE2EEnabled } from "./testing/e2e";
+import { getHttpRequestAgent } from "./services/network-proxy";
 
 interface WebDAVConfig {
   url: string;
@@ -40,6 +41,7 @@ async function sendWebDAVRequest(
       const url = new URL(urlString);
       const isHttps = url.protocol === "https:";
       const httpModule = isHttps ? https : http;
+      const agent = getHttpRequestAgent(url);
 
       const options = {
         hostname: url.hostname,
@@ -51,6 +53,7 @@ async function sendWebDAVRequest(
           "User-Agent": "PromptHub/1.0",
           ...headers,
         },
+        agent,
       };
 
       const request = httpModule.request(options, (response) => {

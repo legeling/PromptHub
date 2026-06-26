@@ -5,6 +5,7 @@ import type {
   AITransportRequest,
   AITransportResponse,
 } from "@prompthub/shared/types";
+import { fetchWithNetworkProxy } from "../services/network-proxy";
 
 function normalizeHeaders(headers?: Record<string, string>): HeadersInit | undefined {
   if (!headers) {
@@ -55,7 +56,7 @@ async function performRequest(request: AITransportRequest): Promise<Response> {
   }, timeoutMs);
 
   try {
-    return await fetch(request.url, {
+    return await fetchWithNetworkProxy(request.url, {
       method: request.method,
       headers: normalizeHeaders(request.headers),
       body: request.body,

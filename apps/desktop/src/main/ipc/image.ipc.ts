@@ -9,6 +9,7 @@ import {
   resolvePublicAddress,
   isBlockedHostname,
 } from "../services/skill-installer-remote";
+import { getHttpRequestAgent } from "../services/network-proxy";
 import { getImagesDir, getVideosDir } from "../runtime-paths";
 
 const IMAGE_DOWNLOAD_TIMEOUT_MS = 30_000;
@@ -100,6 +101,7 @@ async function downloadImageBuffer(
 
   const resolvedAddress = await resolvePublicAddress(parsedUrl.hostname);
   const requestModule = getRequestModule(parsedUrl.protocol);
+  const agent = getHttpRequestAgent(parsedUrl);
 
   return new Promise((resolve, reject) => {
     const request = requestModule.request(
@@ -120,6 +122,7 @@ async function downloadImageBuffer(
           "User-Agent": "PromptHub/image-download",
           Accept: "image/*",
         },
+        agent,
         timeout: IMAGE_DOWNLOAD_TIMEOUT_MS,
       },
       (response) => {

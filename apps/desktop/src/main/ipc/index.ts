@@ -1,21 +1,21 @@
-import { ipcMain } from 'electron';
-import Database from '../database/sqlite';
-import { registerPromptIPC } from './prompt.ipc';
-import { registerFolderIPC } from './folder.ipc';
-import { registerSettingsIPC } from './settings.ipc';
-import { registerImageIPC } from './image.ipc';
-import { registerRulesIPC } from './rules.ipc';
-import { registerSkillIPC } from './skill.ipc';
-import { registerAIIPC } from './ai.ipc';
-import { PromptDB } from '../database/prompt';
-import { FolderDB } from '../database/folder';
-import { SkillDB } from '../database/skill';
-import { registerSecurityIPC } from './security.ipc';
-import { registerBackupIPC } from './backup.ipc';
-import { registerCliIPC } from './cli.ipc';
-import { registerMcpIPC } from './mcp.ipc';
-import { registerPluginIPC } from './plugin.ipc';
-import { IPC_CHANNELS } from '@prompthub/shared/constants/ipc-channels';
+import { ipcMain } from "electron";
+import Database from "../database/sqlite";
+import { registerPromptIPC } from "./prompt.ipc";
+import { registerFolderIPC } from "./folder.ipc";
+import { registerSettingsIPC } from "./settings.ipc";
+import { registerImageIPC } from "./image.ipc";
+import { registerRulesIPC } from "./rules.ipc";
+import { registerSkillIPC } from "./skill.ipc";
+import { registerAIIPC } from "./ai.ipc";
+import { PromptDB } from "../database/prompt";
+import { FolderDB } from "../database/folder";
+import { SkillDB } from "../database/skill";
+import { registerSecurityIPC } from "./security.ipc";
+import { registerBackupIPC } from "./backup.ipc";
+import { registerCliIPC } from "./cli.ipc";
+import { registerMcpIPC } from "./mcp.ipc";
+import { registerPluginIPC } from "./plugin.ipc";
+import { IPC_CHANNELS } from "@prompthub/shared/constants/ipc-channels";
 
 const REBINDABLE_DB_CHANNELS = [
   IPC_CHANNELS.PROMPT_CREATE,
@@ -112,9 +112,16 @@ const REBINDABLE_DB_CHANNELS = [
   IPC_CHANNELS.SKILL_DELETE_ALL,
   IPC_CHANNELS.SKILL_INSERT_VERSION_DIRECT,
   IPC_CHANNELS.MCP_LIBRARY_GET,
+  IPC_CHANNELS.MCP_LIBRARY_REPLACE,
+  IPC_CHANNELS.MCP_LIBRARY_EXPORT_FILES,
+  IPC_CHANNELS.MCP_LIBRARY_RESTORE_FILES,
   IPC_CHANNELS.MCP_MARKET_LIST,
+  IPC_CHANNELS.MCP_MARKET_SOURCES,
+  IPC_CHANNELS.MCP_MARKET_INSTALL_TEMPLATE,
+  IPC_CHANNELS.MCP_FETCH_REMOTE_CONTENT,
   IPC_CHANNELS.MCP_TARGET_PRESETS,
   IPC_CHANNELS.MCP_SERVER_CREATE,
+  IPC_CHANNELS.MCP_SERVER_CREATE_FROM_SOURCE,
   IPC_CHANNELS.MCP_SERVER_UPDATE,
   IPC_CHANNELS.MCP_SERVER_DELETE,
   IPC_CHANNELS.MCP_TEMPLATE_INSTALL,
@@ -123,12 +130,21 @@ const REBINDABLE_DB_CHANNELS = [
   IPC_CHANNELS.MCP_REMOVE,
   IPC_CHANNELS.MCP_TARGET_STATUS,
   IPC_CHANNELS.MCP_IMPORT_FILE,
+  IPC_CHANNELS.MCP_HEALTH_CHECK,
+  IPC_CHANNELS.MCP_HEALTH_CHECK_ALL,
+  IPC_CHANNELS.MCP_ENV_IMPORT,
   IPC_CHANNELS.PLUGIN_LIBRARY_GET,
+  IPC_CHANNELS.PLUGIN_LIBRARY_EXPORT_SNAPSHOT,
+  IPC_CHANNELS.PLUGIN_LIBRARY_RESTORE_SNAPSHOT,
+  IPC_CHANNELS.PLUGIN_LIBRARY_EXPORT_FILES,
+  IPC_CHANNELS.PLUGIN_LIBRARY_RESTORE_FILES,
   IPC_CHANNELS.PLUGIN_MARKET_LIST,
   IPC_CHANNELS.PLUGIN_MARKET_SOURCES,
   IPC_CHANNELS.PLUGIN_MARKET_PREVIEW,
   IPC_CHANNELS.PLUGIN_MARKET_INSTALL,
+  IPC_CHANNELS.PLUGIN_IMPORT_LOCAL,
   IPC_CHANNELS.PLUGIN_DELETE,
+  IPC_CHANNELS.PLUGIN_DISTRIBUTE,
   IPC_CHANNELS.PLUGIN_TARGET_MATRIX,
   IPC_CHANNELS.UPGRADE_BACKUP_LIST,
   IPC_CHANNELS.UPGRADE_BACKUP_CREATE,
