@@ -13,13 +13,26 @@
 
 - `active/quality.md`：内部质量与工具链问题跟踪。
 - `active/github-open.md`：当前 `legeling/PromptHub` 仓库 open issues 快照。
+- `active/local-github-status.md`：本地 triage / delivery 状态覆盖层，用于记录已实现但尚未发布的问题。
 - `archive/github-closed.md`：当前 `legeling/PromptHub` 仓库 closed issues 快照。
+
+## GitHub vs Local State
+
+GitHub issue state and PromptHub local delivery state are intentionally separate:
+
+- `github-open.md` / `github-closed.md` only mirror remote GitHub state.
+- `local-github-status.md` records local statuses such as `untriaged`, `accepted`, `in_progress`, `local_done`, `release_pending`, `released`, `wontfix`, and `duplicate`.
+- A locally completed issue remains open on GitHub until the target release has shipped.
+- After a release ships, close the GitHub issue publicly, then refresh both snapshots.
+
+This prevents the project from closing user-reported issues before users can download a build that contains the fix.
 
 ## Sync Note
 
-- 当前 GitHub issue 清单通过 `gh issue list` 手工同步到仓库。
-- 本轮同步时间：`2026-06-03`。
+- 当前 GitHub issue 清单通过 GitHub REST API 手工同步到仓库。
+- 本轮同步时间：`2026-06-24`。
 - 如果 GitHub issue 状态发生明显变化，或某个 active change 依赖 issue 上下文，应优先刷新这里的快照。
+- 如果只是本地实现状态变化，更新 `active/local-github-status.md`，不要手改 GitHub 快照文件。
 
 ## Routing Rule
 

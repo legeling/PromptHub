@@ -3,9 +3,9 @@
 ## Source
 
 - Repository: `legeling/PromptHub`
-- Snapshot date: `2026-06-03`
-- Capture method: `gh issue list --state closed --limit 200 --json ...`
-- Closed issues captured: `120`
+- Snapshot date: `2026-06-24`
+- Capture method: `GitHub REST API /repos/legeling/PromptHub/issues?state=closed&per_page=100`
+- Closed issues captured: `129`
 
 ## Notes
 
@@ -16,7 +16,13 @@
 
 | # | 标题 | 标签 | 创建时间 | 关闭时间 | 链接 |
 |---|---|---|---|---|---|
+| #171 | [Bug]: 软件检查更新出现更新日志频闪问题 | bug, version: 0.5.4 | 2026-06-13 | 2026-06-13 | https://github.com/legeling/PromptHub/issues/171 |
+| #166 | [Bug]: skill 商店超过软件边界时候无法滑动显示最底部 | bug, version: 0.5.8-beta3 | 2026-06-03 | 2026-06-04 | https://github.com/legeling/PromptHub/issues/166 |
+| #165 | [Bug]: 拉取 skill 仓库报错 | bug, version: 0.5.8-beta3 | 2026-06-03 | 2026-06-04 | https://github.com/legeling/PromptHub/issues/165 |
 | #164 | [Bug]: Github API 触发请求限额，未找到设置项 | bug, version: 0.5.8-beta3 | 2026-06-03 | 2026-06-03 | https://github.com/legeling/PromptHub/issues/164 |
+| #163 | [Feature]: 期望 | enhancement, version: 0.5.7 | 2026-06-03 | 2026-06-04 | https://github.com/legeling/PromptHub/issues/163 |
+| #162 | [Bug]: 未选中skill商店时，点击商店的下级菜单，右侧页面不会切换 | bug, version: 0.5.8-beta.3 | 2026-06-03 | 2026-06-04 | https://github.com/legeling/PromptHub/issues/162 |
+| #161 | [Feature]: 增加批量操作skill，安装、删除等 | enhancement, version: 0.5.8-beta.3 | 2026-06-03 | 2026-06-04 | https://github.com/legeling/PromptHub/issues/161 |
 | #156 | [Feature]: 增加对私有化部署gitea的支持 | enhancement, version: 0.5.6 | 2026-05-28 | 2026-05-30 | https://github.com/legeling/PromptHub/issues/156 |
 | #154 | [Feature]: 在 Agent 管理中增加 Kilo Code 内置支持 | version: 0.5.6 | 2026-05-27 | 2026-05-30 | https://github.com/legeling/PromptHub/issues/154 |
 | #153 | [Feature]: 在 Agent 管理中增加 Kilo Code 内置支持 |  | 2026-05-27 | 2026-05-27 | https://github.com/legeling/PromptHub/issues/153 |
@@ -26,6 +32,7 @@
 | #147 | [Bug]: OpenCode的rules路径不正确 | bug, version: 0.5.6 | 2026-05-27 | 2026-05-30 | https://github.com/legeling/PromptHub/issues/147 |
 | #146 | [Bug]: promptHub安装失败 | bug, version: master | 2026-05-26 | 2026-05-30 | https://github.com/legeling/PromptHub/issues/146 |
 | #144 | [Feature]: 建议简化标签的添加和删除操作 | enhancement, version: 0.5.6 | 2026-05-23 | 2026-05-27 | https://github.com/legeling/PromptHub/issues/144 |
+| #143 | [Feature]: 中间插入行的时候，prompthub 可以自动刷新各行行号 | enhancement, version: 0.5.6 | 2026-05-23 | 2026-06-04 | https://github.com/legeling/PromptHub/issues/143 |
 | #142 | [Feature]: 复制功能只复制了SKILL.md，缺失了其他文件 | enhancement, version: 0.5.6 | 2026-05-21 | 2026-05-26 | https://github.com/legeling/PromptHub/issues/142 |
 | #140 | [Feature]: 加入“移动到...”菜单项，点击列出当前所有文件夹，方便提示词整理 | enhancement, version: 0.5.6 | 2026-05-19 | 2026-05-26 | https://github.com/legeling/PromptHub/issues/140 |
 | #138 | [Feature]: 卡片模式下，能否统一显示模式和编辑模式的显示效果呢 | enhancement, version: 0.5.6 | 2026-05-19 | 2026-05-30 | https://github.com/legeling/PromptHub/issues/138 |
@@ -37,6 +44,7 @@
 | #131 | [Bug]: 安装 Skill 导致 skill.md 头部 YAML 前置注释重复叠加 | bug, version: 0.5.5 | 2026-05-13 | 2026-05-16 | https://github.com/legeling/PromptHub/issues/131 |
 | #130 | [Feature]: 支持自定义添加 AI 编程工具 | enhancement, version: 0.5.5 | 2026-05-13 | 2026-05-30 | https://github.com/legeling/PromptHub/issues/130 |
 | #129 | [Bug]: 本地文件夹 Skill 的更新报错问题、重导入本地 skill源不读取最新 skill问题 | bug, version: 0.5.5 | 2026-05-12 | 2026-05-26 | https://github.com/legeling/PromptHub/issues/129 |
+| #128 | [Feature]: 可以增加项目局部skill以及支持skill.sh/skillmp市场 | enhancement, version: 0.5.5 | 2026-05-12 | 2026-06-04 | https://github.com/legeling/PromptHub/issues/128 |
 | #127 | 界面很漂亮，我撸了款Skill完整的创作平台工具SkillNexus，欢迎legeling指点 | enhancement, version: 0.5.5 | 2026-05-10 | 2026-05-26 | https://github.com/legeling/PromptHub/issues/127 |
 | #120 | [Feature]: 希望增加个文件夹直接拖进来自动识别skill功能, | enhancement | 2026-05-09 | 2026-05-26 | https://github.com/legeling/PromptHub/issues/120 |
 | #119 | [Feature]:几个易用性小需求，请 git主考虑 | enhancement, version: 0.5.5 | 2026-05-08 | 2026-05-16 | https://github.com/legeling/PromptHub/issues/119 |
@@ -62,6 +70,7 @@
 | #90 | 更新后数据丢失了 |  | 2026-04-10 | 2026-04-10 | https://github.com/legeling/PromptHub/issues/90 |
 | #88 | skil商店经常会出现找不到技能的情况（实际上是可以看到的） |  | 2026-04-09 | 2026-05-10 | https://github.com/legeling/PromptHub/issues/88 |
 | #87 | 全局快捷键部分失效（显示/隐藏应用），只可显示，无法隐藏 |  | 2026-04-07 | 2026-04-08 | https://github.com/legeling/PromptHub/issues/87 |
+| #86 | 如何添加https://skills.sh/这个商店 |  | 2026-04-07 | 2026-06-04 | https://github.com/legeling/PromptHub/issues/86 |
 | #85 | 我本地有622个技能，非常卡 |  | 2026-04-07 | 2026-04-16 | https://github.com/legeling/PromptHub/issues/85 |
 | #84 | 历史版本可以删除吗？提示词修改验证成功后，有些历史记录就不需要保留了 |  | 2026-04-05 | 2026-04-08 | https://github.com/legeling/PromptHub/issues/84 |
 | #83 | skill描述手动更新后，我的skill预览页并没有更新 |  | 2026-04-04 | 2026-04-09 | https://github.com/legeling/PromptHub/issues/83 |

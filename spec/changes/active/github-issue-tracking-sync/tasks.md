@@ -8,3 +8,6 @@
 - [x] 记录当前 closed issues 到 `spec/issues/archive/`。
 - [x] 同步更新 `spec/README.md` 与 `spec/knowledge/context/system.md`。
 - [x] 更新 implementation.md，记录本次同步方式与快照时间。
+- [x] 明确 GitHub 远端 open/closed 与本地 delivery 状态必须分离。
+- [x] 新增 `spec/issues/active/local-github-status.md` 记录本地 issue triage / delivery 覆盖层。
+- [x] 同步 `AGENTS.md`，禁止本地完成后提前关闭 GitHub issue。
