@@ -23,3 +23,4 @@
 - 是否产生了新的 `[待确认]`
 - 是否有新规则只停留在聊天里，尚未沉淀进 `spec/rules/`
 - 是否只改了 workflow，却忘记同步 knowledge 或 changes
+- commit / PR 是否引用了对应 active change、issue、本地验证结果和发布状态

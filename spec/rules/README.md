@@ -18,6 +18,7 @@
 - `spec/rules/agent-boundary-guardrails.md`
 - `spec/rules/tdd-design-gate.md`
 - `spec/rules/code-quality-architecture.md`
+- `spec/rules/submission-traceability-rules.md`
 
 领域型回归测试矩阵：
 

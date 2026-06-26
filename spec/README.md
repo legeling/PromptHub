@@ -116,6 +116,7 @@ spec/
 - `spec/archive/`：项目级归档入口
 - `spec/adr/`：关键架构决策入口
 - `spec/rules/document-routing-rules.md`：文档语义到目录路径的显式路由规则
+- `spec/rules/submission-traceability-rules.md`：提交、commit、文档编号、引用关联和 PR 说明规则
 
 ### PromptHub 当前长期真相源
 

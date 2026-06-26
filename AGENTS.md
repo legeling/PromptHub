@@ -316,6 +316,17 @@ The expected SSD loop is:
 - `spec/changes/_templates/`: reusable templates for proposal, delta specs, design, tasks, and implementation artifacts.
 - `docs/README.md`: the repository-facing docs index for users and contributors.
 
+#### GitHub Issue State Rule
+
+GitHub issue state and local delivery state are separate records.
+
+- `spec/issues/active/github-open.md` and `spec/issues/archive/github-closed.md` are remote-state snapshots only.
+- `spec/issues/active/local-github-status.md` is the local triage and delivery overlay.
+- Do not close a GitHub issue merely because code, tests, or docs are done locally.
+- When an issue is implemented before release, mark it locally as `local_done` or `release_pending` and leave the GitHub issue open.
+- Close the GitHub issue only after the target version containing the fix or feature has been published, then refresh the open/closed snapshots.
+- If rejecting or merging an issue into another one, record `wontfix` or `duplicate` locally first and close GitHub only after the public explanation is posted.
+
 #### Required Artifacts For Non-Trivial Work
 
 For any non-trivial feature, refactor, migration, cross-process change, or multi-file bug fix, create or update one active change folder under `spec/changes/active/<change-key>/`.
@@ -705,6 +716,8 @@ Markdown content here...
 
 ## 11. Git & Commit Conventions
 
+Detailed submission, traceability, document ID, issue reference, and PR rules live in `spec/rules/submission-traceability-rules.md`. This section is the quick operating summary.
+
 | Rule                     | Description                                                                         |
 | ------------------------ | ----------------------------------------------------------------------------------- |
 | **Conventional Commits** | `feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`, `perf:`, `style:`.        |
@@ -712,7 +725,9 @@ Markdown content here...
 | **Imperative mood**      | "add feature" not "added feature" or "adds feature".                                |
 | **No auto-commit**       | AI agents must never commit without explicit user instruction.                      |
 | **Atomic commits**       | Each commit should represent one logical change. Don't mix features with bug fixes. |
-| **All tests must pass**  | `pnpm test -- --run` and `pnpm lint` must both pass before committing.              |
+| **Traceable docs**       | Non-trivial commits should reference the active change and maintain `FR -> DES -> TEST -> T`. |
+| **Issue references**     | Use `Refs #123` before release; use `Closes #123` only when the published release should close the issue. |
+| **All tests must pass**  | Relevant lint / typecheck / test / build commands must pass, or blockers must be recorded before committing. |
 
 ## 12. Known Caveats & Gotchas
 

@@ -134,13 +134,16 @@ docs/xxx
 refactor/xxx
 ```
 
+更完整的提交、分批 commit、文档编号、`FR -> DES -> TEST -> T` 追踪链、issue 引用与 PR 说明要求，见 [spec/rules/submission-traceability-rules.md](../spec/rules/submission-traceability-rules.md)。
+
 ## PR 检查清单
 
 1. 按改动范围运行对应的 lint、测试、构建或验证命令。
 2. 如果是非 trivial 改动，更新或新建 `spec/changes/active/<change-key>/`。
-3. 同步用户文档、开发文档和 `implementation.md`。
-4. 在 PR 描述中说明变更动机、影响范围、验证方式和残留风险。
-5. 根据 review 反馈继续修正。
+3. 为非 trivial change 建立或更新 `FR -> DES -> TEST -> T` 追踪链。
+4. 同步用户文档、开发文档和 `implementation.md`。
+5. 在 PR 描述中说明变更动机、影响范围、验证方式、相关 issue / active change 和残留风险。
+6. 根据 review 反馈继续修正。
 
 ## 交流
 
