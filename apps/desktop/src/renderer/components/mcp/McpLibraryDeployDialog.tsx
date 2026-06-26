@@ -77,6 +77,10 @@ export function McpLibraryDeployDialog({
     () => servers.filter((server) => selectedServerIds.has(server.id)),
     [selectedServerIds, servers],
   );
+  const targetKindLabel =
+    preset.scope === "workspace"
+      ? t("mcp.projectTarget", "Project")
+      : t("mcp.agentTarget", "Agent");
   const allVisibleSelected =
     selectableServers.length > 0 &&
     selectableServers.every((server) => selectedServerIds.has(server.id));
@@ -334,9 +338,10 @@ export function McpLibraryDeployDialog({
               ) : (
                 <DownloadIcon aria-hidden="true" className="h-4 w-4" />
               )}
-              {t("mcp.addSelectedToAgent", {
+              {t("mcp.addSelectedToTarget", {
                 count: selectedServerIds.size,
-                defaultValue: `Add ${selectedServerIds.size} MCP to Agent`,
+                target: targetKindLabel,
+                defaultValue: `Add ${selectedServerIds.size} MCP to ${targetKindLabel}`,
               })}
             </button>
           </div>

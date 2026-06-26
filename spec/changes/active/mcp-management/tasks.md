@@ -28,10 +28,11 @@
 - [x] Surface MCP health status on My MCP cards.
 - [x] Add MCP Store source filtering so official/verified/community sources can be inspected separately.
 - [x] Add desktop file-picker import entry for JSON and Codex TOML configs.
-- [x] Add curated MCP marketplace templates.
+- [x] Add MCP Store catalog channels backed by real remote sources instead of bundled placeholder templates.
 - [x] Add regression tests for module normalization, projections, safe config merge, import, create, disabled-state distribution guard, bulk enabled-only apply, detail distribution, and marketplace install.
 - [x] Add MCP distribution conflict protection, force overwrite, target atomic writes, and CLI/UI regression tests.
 - [x] Add MCP CRUD/install/apply/remove safety regressions for duplicate rollback, invalid target rollback, disabled-server apply guards, OpenCode projection/removal, and timestamp-stable reads.
+- [x] Fix Codex TOML MCP removal so server child sections like tool approval overrides are removed with the server.
 - [x] Add Agent MCP card actions so external target entries can be imported into My MCP and managed target entries can open My MCP detail.
 - [x] Align Agent MCP server cards with Agent Skill cards by making the card body itself clickable in addition to the action buttons.
 - [x] Make Agent MCP card body clicks open an Agent MCP detail page first, so import/open My MCP remains an explicit user action.
@@ -63,10 +64,23 @@
 - [x] Remove the legacy Roo Code MCP target preset and filter old `roo` MCP bindings from the local library on read.
 - [x] Make MCP health checks warn on known invalid environment variable formats instead of treating any non-empty value as healthy.
 - [x] Remove the redundant custom target form from the My MCP detail platform panel so distribution uses one selected-platform apply flow.
-- [x] Preconfigure 1-3 usable MCP Store sources whose left-sidebar entries all contain installable templates.
+- [x] Move the My MCP library from app config storage to the `data/mcp/library.json` user-data layout, with legacy reads from `config/mcp-library.json`.
+- [x] Auto-migrate the legacy MCP library path into `data/mcp/library.json` on first read.
+- [x] Treat Settings disabled platforms as the single visible target source for MCP distribution UI.
+- [x] Add project-level MCP targets for registered projects: OpenCode `opencode.json`, Kiro `.kiro/settings/mcp.json`, and one default Kilo Code `kilo.jsonc` target.
+- [x] Split Project MCP into its own left navigation entry so project targets do not appear in Agent MCP.
+- [x] Collapse Kilo Code UI presets to one platform entry per scope instead of exposing JSON/JSONC/path variants as separate targets.
+- [x] Research Kiro/Kilo naming: support Kiro workspace MCP separately and add Kilo Code MCP using Kilo's own `mcp` JSON/JSONC config shape.
+- [x] Preconfigure PromptHub Official Store and MCP Registry as MCP Store channels without fake third-party local templates.
 - [x] Align MCP Store with Skill Store's channel model: no top-level count, no `All Sources` pseudo-channel, and selected channel owns the right-side catalog.
 - [x] Make the PromptHub-preconfigured MCP source the real `Official Store` / `官方商店`, instead of treating a third-party registry as the built-in official channel.
-- [x] Replace static-only MCP Store catalogs with Skill Store-style remote source loading, search, parsing, caching, and built-in fallback templates.
+- [x] Replace static-only MCP Store catalogs with Skill Store-style remote source loading, search, parsing, caching, and no third-party local fallback templates.
+- [x] Add Skill Store-style continuation loading for paginated MCP Store sources using remote cursors, append caching, scroll trigger, and duplicate suppression.
+- [x] Split MCP Store total/loaded count display and send search terms to remote catalog endpoints that support search.
 - [x] Add remote MCP Store install flow so catalog results can be installed by template payload, not only by built-in template id.
+- [x] Fix MCP Store first-load empty-state flicker, keep loading and empty states mutually exclusive, remove internal placeholder/fallback wording from user-facing copy, and continue paginated loading while the user remains near the bottom.
+- [x] Localize MCP Store remote-source copy and make source search real: MCP Registry uses remote `search` instead of loaded-result filtering.
+- [x] Consolidate built-in Agent MCP defaults into shared platform metadata so Settings, renderer previews, main-process distribution, and MCP target presets do not drift.
+- [x] Align My MCP base interactions with My Skill: full detail preview uses one vertical detail flow, and the My MCP library surface supports drag-and-drop source import.
 - [x] Verify MCP UI is visible in a browser render with the left entry, library list, detail panel, distribution panel, and generated preview.
 - [x] Run focused tests and record verification.

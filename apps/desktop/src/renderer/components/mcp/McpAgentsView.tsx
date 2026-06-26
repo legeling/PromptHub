@@ -22,10 +22,20 @@ import { AgentMcpPreviewSidebar } from "./AgentMcpPreviewSidebar";
 const MCP_AGENT_SECTION_HEADER_CLASS =
   "h-[132px] border-b border-border app-wallpaper-panel-strong";
 
+type McpTargetIconVariant = "platform" | "project";
+
 interface McpAgentsViewProps {
   servers: McpServerConfig[];
   targetPresets: McpTargetPreset[];
   targetStatus: McpTargetStatusEntry[];
+  addButtonLabel?: string;
+  noTargetsLabel?: string;
+  openConfigLabel?: string;
+  removeEntryLabel?: string;
+  selectTargetLabel?: string;
+  sidebarHint?: string;
+  targetIconVariant?: McpTargetIconVariant;
+  title?: string;
   onAddMcp: (preset: McpTargetPreset) => void;
   onImportExternal: (
     preset: McpTargetPreset,
@@ -54,6 +64,28 @@ function formatRecord(record?: Record<string, string>): string {
   return Object.entries(record ?? {})
     .map(([key, value]) => `${key}=${value}`)
     .join("\n");
+}
+
+function McpTargetIcon({
+  preset,
+  variant,
+}: {
+  preset: McpTargetPreset;
+  variant: McpTargetIconVariant;
+}) {
+  if (variant === "project") {
+    return (
+      <FolderOpenIcon aria-hidden="true" className="h-5 w-5 text-primary" />
+    );
+  }
+
+  return (
+    <PlatformIcon
+      aria-hidden="true"
+      platformId={preset.platformId ?? preset.id}
+      size={20}
+    />
+  );
 }
 
 function buildAgentServerConfig(server: McpServerConfig): string {
@@ -179,6 +211,14 @@ export function McpAgentsView({
   servers,
   targetPresets,
   targetStatus,
+  addButtonLabel,
+  noTargetsLabel,
+  openConfigLabel,
+  removeEntryLabel,
+  selectTargetLabel,
+  sidebarHint,
+  targetIconVariant = "platform",
+  title,
   onAddMcp,
   onImportExternal,
   onOpenManaged,
@@ -187,6 +227,22 @@ export function McpAgentsView({
   onRefresh,
 }: McpAgentsViewProps) {
   const { t } = useTranslation();
+  const resolvedTitle = title ?? t("mcp.agentMcp", "Agent MCP");
+  const resolvedSidebarHint =
+    sidebarHint ??
+    t(
+      "mcp.agentMcpSidebarHint",
+      "Browse each agent config and distribute enabled MCP servers.",
+    );
+  const resolvedNoTargetsLabel =
+    noTargetsLabel ?? t("mcp.noAgentTargets", "No agent targets");
+  const resolvedSelectTargetLabel =
+    selectTargetLabel ?? t("mcp.selectAgentTarget", "Select an agent target");
+  const resolvedOpenConfigLabel =
+    openConfigLabel ?? t("mcp.openAgentConfig", "Open agent config");
+  const resolvedRemoveEntryLabel =
+    removeEntryLabel ?? t("mcp.uninstallFromAgent", "Uninstall from Agent");
+  const resolvedAddButtonLabel = addButtonLabel ?? t("mcp.addMcp", "Add MCP");
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(
     targetPresets[0]?.id ?? null,
   );
@@ -336,6 +392,8 @@ export function McpAgentsView({
               isImporting={isServerBusy}
               isManaged={Boolean(selectedManagedServer)}
               isUninstalling={isServerBusy}
+              openConfigLabel={resolvedOpenConfigLabel}
+              removeEntryLabel={resolvedRemoveEntryLabel}
               onImport={handleImportSelectedAgentServer}
               onOpenAgentConfig={handleOpenSelectedAgentConfig}
               onOpenManagedMcp={handleOpenSelectedManagedServer}
@@ -406,10 +464,13 @@ export function McpAgentsView({
                 isImporting={isServerBusy}
                 isManaged={Boolean(selectedManagedServer)}
                 onImport={handleImportSelectedAgentServer}
+                openConfigLabel={resolvedOpenConfigLabel}
                 onOpenAgentConfig={handleOpenSelectedAgentConfig}
                 onOpenManagedMcp={handleOpenSelectedManagedServer}
                 platformId={selectedPreset.platformId ?? selectedPreset.id}
                 platformName={selectedPreset.label}
+                iconVariant={targetIconVariant}
+                sectionTitle={resolvedTitle}
                 sourcePath={selectedPreset.path}
                 t={t}
               />
@@ -431,13 +492,10 @@ export function McpAgentsView({
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <h2 className="text-lg font-semibold text-foreground">
-                  {t("mcp.agentMcp", "Agent MCP")}
+                  {resolvedTitle}
                 </h2>
                 <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                  {t(
-                    "mcp.agentMcpSidebarHint",
-                    "Browse each agent config and distribute enabled MCP servers.",
-                  )}
+                  {resolvedSidebarHint}
                 </p>
               </div>
             </div>
@@ -464,7 +522,7 @@ export function McpAgentsView({
             <div className="rounded-2xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
               <FolderOpenIcon className="mx-auto mb-3 h-10 w-10 opacity-30" />
               <div className="font-medium text-foreground">
-                {t("mcp.noAgentTargets", "No agent targets")}
+                {resolvedNoTargetsLabel}
               </div>
             </div>
           ) : (
@@ -486,12 +544,12 @@ export function McpAgentsView({
                   <div className="flex items-center gap-3">
                     <div
                       data-testid="mcp-agent-platform-icon-shell"
+                      data-icon-variant={targetIconVariant}
                       className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground"
                     >
-                      <PlatformIcon
-                        aria-hidden="true"
-                        platformId={preset.platformId ?? preset.id}
-                        size={20}
+                      <McpTargetIcon
+                        preset={preset}
+                        variant={targetIconVariant}
                       />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -532,11 +590,10 @@ export function McpAgentsView({
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <h3 className="truncate text-lg font-semibold text-foreground">
-                  {selectedPreset?.label ?? t("mcp.agentMcp", "Agent MCP")}
+                  {selectedPreset?.label ?? resolvedTitle}
                 </h3>
                 <p className="mt-1 line-clamp-2 font-mono text-xs text-muted-foreground">
-                  {selectedPreset?.path ??
-                    t("mcp.selectAgentTarget", "Select an agent target")}
+                  {selectedPreset?.path ?? resolvedSelectTargetLabel}
                 </p>
               </div>
               <button
@@ -596,7 +653,7 @@ export function McpAgentsView({
             <div className="rounded-2xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
               <FolderOpenIcon className="mx-auto mb-3 h-10 w-10 opacity-30" />
               <div className="font-medium text-foreground">
-                {t("mcp.selectAgentTarget", "Select an agent target")}
+                {resolvedSelectTargetLabel}
               </div>
             </div>
           ) : selectedServerNames.length === 0 ? (
@@ -715,11 +772,8 @@ export function McpAgentsView({
                       <button
                         type="button"
                         onClick={() => void onOpenAgentConfig(selectedPreset)}
-                        aria-label={t(
-                          "mcp.openAgentConfig",
-                          "Open agent config",
-                        )}
-                        title={t("mcp.openAgentConfig", "Open agent config")}
+                        aria-label={resolvedOpenConfigLabel}
+                        title={resolvedOpenConfigLabel}
                         className={`${MCP_AGENT_CARD_ICON_BUTTON_CLASS} border-border app-wallpaper-surface hover:bg-accent hover:text-foreground`}
                       >
                         <FileJsonIcon aria-hidden="true" className="h-4 w-4" />
@@ -780,14 +834,8 @@ export function McpAgentsView({
                           )
                         }
                         disabled={isServerBusy}
-                        aria-label={t(
-                          "mcp.uninstallFromAgent",
-                          "Uninstall from Agent",
-                        )}
-                        title={t(
-                          "mcp.uninstallFromAgent",
-                          "Uninstall from Agent",
-                        )}
+                        aria-label={resolvedRemoveEntryLabel}
+                        title={resolvedRemoveEntryLabel}
                         className={`${MCP_AGENT_CARD_ICON_BUTTON_CLASS} border-destructive/20 bg-destructive/5 text-destructive hover:bg-destructive/10`}
                       >
                         {isServerBusy ? (
@@ -815,7 +863,7 @@ export function McpAgentsView({
             className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
           >
             <DownloadIcon className="h-4 w-4" aria-hidden="true" />
-            {t("mcp.addMcp", "Add MCP")}
+            {resolvedAddButtonLabel}
           </button>
         </div>
       </div>

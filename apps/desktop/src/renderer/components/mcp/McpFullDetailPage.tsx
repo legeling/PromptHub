@@ -34,6 +34,10 @@ import type {
 } from "@prompthub/shared/types/mcp";
 import { inferMcpEnvRequirements } from "@prompthub/shared/utils/mcp-config";
 import { copyTextToClipboard } from "../../utils/clipboard";
+import {
+  DETAIL_PAGE_CONTENT_CLASS,
+  DETAIL_PAGE_PREVIEW_GRID_CLASS,
+} from "../layout/detailPageLayout";
 import { Textarea } from "../ui";
 import { McpServerForm } from "./McpServerForm";
 
@@ -508,10 +512,14 @@ export function McpFullDetailPage({
       </div>
 
       <div className="flex-1 flex flex-col overflow-y-auto">
-        <div className="max-w-6xl mx-auto p-6 w-full">
+        <div className={DETAIL_PAGE_CONTENT_CLASS}>
           {activeTab === "preview" ? (
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-stretch">
-              <div className="lg:col-span-2 flex h-full min-h-0 flex-col overflow-hidden space-y-6">
+            <div
+              data-testid="mcp-detail-preview-layout"
+              data-layout="split-sidebar"
+              className={DETAIL_PAGE_PREVIEW_GRID_CLASS}
+            >
+              <div className="flex min-h-0 flex-col space-y-6">
                 <section className="shrink-0 space-y-4">
                   <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] flex items-center gap-2">
                     {t("mcp.detail", "MCP Detail")}
@@ -713,7 +721,7 @@ export function McpFullDetailPage({
                   </section>
                 ) : null}
 
-                <section className="flex min-h-0 flex-1 flex-col overflow-hidden space-y-4">
+                <section className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] flex items-center gap-2">
                       {t("mcp.sourceAndDetails", "Source and details")}
@@ -867,7 +875,7 @@ export function McpFullDetailPage({
               </div>
             </div>
           ) : (
-            <div className="w-full max-w-6xl mx-auto space-y-6">
+            <div className="w-full space-y-6">
               <section className="space-y-4">
                 <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em]">
                   {t("skill.metadata", "Metadata")}

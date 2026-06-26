@@ -11,6 +11,8 @@ interface AgentMcpDetailActionsProps {
   isImporting?: boolean;
   isManaged?: boolean;
   isUninstalling?: boolean;
+  openConfigLabel?: string;
+  removeEntryLabel?: string;
   onImport?: () => void | Promise<void>;
   onOpenAgentConfig?: () => void | Promise<void>;
   onOpenManagedMcp?: () => void | Promise<void>;
@@ -22,12 +24,19 @@ export function AgentMcpDetailActions({
   isImporting = false,
   isManaged = false,
   isUninstalling = false,
+  openConfigLabel,
+  removeEntryLabel,
   onImport,
   onOpenAgentConfig,
   onOpenManagedMcp,
   onUninstall,
   t,
 }: AgentMcpDetailActionsProps) {
+  const resolvedOpenConfigLabel =
+    openConfigLabel ?? t("mcp.openAgentConfig", "Open agent config");
+  const resolvedRemoveEntryLabel =
+    removeEntryLabel ?? t("mcp.uninstallFromAgent", "Uninstall from Agent");
+
   return (
     <>
       {isManaged ? (
@@ -49,10 +58,7 @@ export function AgentMcpDetailActions({
           title={t("mcp.importToMyMcp", "Import to My MCP")}
         >
           {isImporting ? (
-            <Loader2Icon
-              aria-hidden="true"
-              className="h-4 w-4 animate-spin"
-            />
+            <Loader2Icon aria-hidden="true" className="h-4 w-4 animate-spin" />
           ) : (
             <ArrowUpIcon aria-hidden="true" className="h-4 w-4" />
           )}
@@ -61,10 +67,10 @@ export function AgentMcpDetailActions({
       ) : null}
       <button
         type="button"
-        aria-label={t("mcp.openAgentConfig", "Open agent config")}
+        aria-label={resolvedOpenConfigLabel}
         onClick={() => void onOpenAgentConfig?.()}
         className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-2 text-sm font-medium text-muted-foreground transition-all hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
-        title={t("mcp.openAgentConfig", "Open agent config")}
+        title={resolvedOpenConfigLabel}
       >
         <FileJsonIcon aria-hidden="true" className="h-4 w-4" />
         {t("mcp.configFile", "Config file")}
@@ -74,14 +80,14 @@ export function AgentMcpDetailActions({
         onClick={() => void onUninstall?.()}
         disabled={isUninstalling}
         className="inline-flex items-center gap-2 rounded-full border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm font-medium text-destructive transition-all hover:bg-destructive/10 disabled:opacity-60"
-        title={t("mcp.uninstallFromAgent", "Uninstall from Agent")}
+        title={resolvedRemoveEntryLabel}
       >
         {isUninstalling ? (
           <Loader2Icon aria-hidden="true" className="h-4 w-4 animate-spin" />
         ) : (
           <TrashIcon aria-hidden="true" className="h-4 w-4" />
         )}
-        {t("mcp.uninstallFromAgent", "Uninstall from Agent")}
+        {resolvedRemoveEntryLabel}
       </button>
     </>
   );

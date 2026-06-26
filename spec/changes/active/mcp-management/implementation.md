@@ -7,7 +7,11 @@ Implemented first MCP management slice.
 ## Changes
 
 - Added normalized MCP types, built-in market templates, projection helpers, and safe JSON/TOML merge helpers.
-- Added `CoreMcpLibraryService`, storing the local MCP library at `config/mcp-library.json`.
+- Fixed Codex TOML removal to delete a server's nested child sections such as
+  `tools.*` approval overrides. This prevents uninstalling an MCP server from
+  leaving orphan `[mcp_servers.<name>.tools.*]` tables that make Codex CLI
+  reject the config with `invalid transport`.
+- Added `CoreMcpLibraryService`, storing the local MCP library at `data/mcp/library.json` with legacy reads from `config/mcp-library.json`.
 - Added target presets for Codex, Claude Code, Cursor, VS Code, Cline, Gemini, Windsurf, Kiro, OpenCode, and custom JSON/TOML targets.
 - Added desktop MCP IPC and preload API for library read, market listing, target presets, CRUD, template install, preview, apply, JSON import, and Codex TOML import.
 - Added a desktop file-picker bridge for MCP config import.
@@ -36,6 +40,7 @@ Implemented first MCP management slice.
 ## Verification
 
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/services/mcp-config.test.ts tests/unit/main/mcp-library.test.ts tests/unit/stores/settings-desktop-workspace.test.ts tests/unit/stores/ui-columns.test.ts`
+- `pnpm --filter @prompthub/desktop test -- --run tests/unit/services/mcp-config.test.ts tests/unit/main/mcp-library.test.ts`
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/sidebar.test.tsx tests/unit/stores/settings-desktop-workspace.test.ts tests/unit/stores/ui-columns.test.ts tests/unit/services/mcp-config.test.ts tests/unit/main/mcp-library.test.ts`
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx tests/unit/components/sidebar.test.tsx tests/unit/stores/settings-desktop-workspace.test.ts tests/unit/services/mcp-config.test.ts tests/unit/main/mcp-library.test.ts`
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx tests/unit/components/sidebar.test.tsx tests/unit/stores/settings-desktop-workspace.test.ts tests/unit/stores/ui-columns.test.ts tests/unit/services/mcp-config.test.ts tests/unit/main/mcp-library.test.ts`
@@ -127,6 +132,15 @@ Implemented first MCP management slice.
 - Removed the legacy Roo Code MCP target preset. Shared `McpTargetKind`, CLI target validation, JSON target handling, and core target presets no longer include `roo`, and MCP library reads filter old `roo` bindings so stale local data cannot reintroduce the target in UI state.
 - Tightened MCP static health checks for environment variables. Known provider fields such as Slack, GitHub, Google Maps, Brave, AMap, and Firecrawl keys now emit `INVALID_ENV_VALUE` warnings when filled with obviously invalid token/id shapes, and the detail UI shows those fields as "Check format" instead of healthy/filled.
 - Removed the redundant custom target path form from the My MCP detail platform panel. The detail sidebar now has one distribution path: select built-in agent platform cards and use the single Apply to selected platforms action. Custom target config writes remain available through CLI/API-level target commands, not as a second button in the detail sidebar.
+- Changed MCP legacy storage compatibility from "read old path until next write" to one-time migration on first read. When `data/mcp/library.json` is missing and `config/mcp-library.json` exists, `CoreMcpLibraryService.read()` now normalizes the legacy file into `data/mcp/library.json` immediately while preserving the legacy file as a compatibility backup.
+- Added renderer-level MCP target derivation and visibility filtering:
+  - Registered PromptHub projects derive OpenCode workspace targets at `<projectRoot>/opencode.json`.
+  - Registered PromptHub projects derive Kiro workspace targets at `<projectRoot>/.kiro/settings/mcp.json`.
+  - Registered PromptHub projects derive one default Kilo Code workspace target at `<projectRoot>/kilo.jsonc`; compatible JSONC/custom paths remain parse/custom-path support, not duplicate UI target cards.
+  - Settings `disabledPlatformIds` filters every MCP distribution surface: detail platform panel, batch deploy dialog, My MCP card/list distribution counts, Agent MCP view, and stale Agent deploy dialogs.
+  - Desktop `getTargetStatus` IPC now accepts an optional target preset list, allowing the renderer to request status for visible global plus project-level targets without changing existing no-argument callers.
+- Researched the Kiro/Kilo naming issue from the user screenshot. Kiro MCP remains supported through Kiro's `mcpServers` config. Kilo Code is supported as a separate `kilo` MCP target using Kilo's `mcp` JSONC config shape. The visible built-in UI target is one Kilo Code entry per scope; compatible custom paths are compatibility inputs, not extra Agent or Project MCP entries.
+- Split MCP target UI by ownership. Agent MCP now receives only global Agent targets, while Project MCP is a separate left navigation entry and receives project-derived OpenCode, Kiro, and Kilo Code targets. My MCP detail and batch distribution panels use Agent targets so project configs do not leak into Agent distribution workflows.
 - Earlier browser render using Vite web config + Playwright and injected MCP fixture data verified the Skill-style MCP detail page shell has no dialog and uses `detail-mcp_filesystem`. Screenshot: `apps/desktop/output/playwright/mcp-detail-skill-style-page.png`.
 - `git diff --check`
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/services/mcp-config.test.ts tests/unit/main/mcp-library.test.ts tests/unit/components/mcp-manager.test.tsx`
@@ -145,6 +159,16 @@ Implemented first MCP management slice.
   - Result: 30 tests passed after adding known MCP env value format warnings and legacy Roo target filtering.
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx`
   - Result: 40 tests passed after showing invalid env values as health warnings in the MCP detail UI.
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/services/mcp-config.test.ts tests/unit/main/mcp-library.test.ts tests/unit/main/skill-installer-utils.test.ts tests/unit/renderer/mcp-target-presets.test.ts tests/unit/renderer/agent-root-paths.test.ts tests/unit/components/mcp-manager.test.tsx`
+  - Result: 161 tests passed after adding Kilo Code MCP JSON/JSONC target support and path coverage.
+- `pnpm --filter @prompthub/desktop exec tsc --noEmit --pretty false`
+  - Result: passed after Kilo Code MCP target updates.
+- `pnpm --filter @prompthub/core typecheck`
+  - Result: passed after Kilo Code MCP target updates.
+- `pnpm --filter @prompthub/desktop exec eslint src/renderer/services/mcp-target-presets.ts src/renderer/services/agent-root-paths.ts src/main/services/skill-installer-utils.ts tests/unit/services/mcp-config.test.ts tests/unit/main/mcp-library.test.ts tests/unit/main/skill-installer-utils.test.ts tests/unit/renderer/mcp-target-presets.test.ts tests/unit/renderer/agent-root-paths.test.ts tests/unit/components/mcp-manager.test.tsx --max-warnings 0`
+  - Result: passed for desktop-owned touched files. Workspace package files are outside the desktop ESLint base path and were covered by type checks.
+- `git diff --check`
+  - Result: passed after Kilo Code MCP target updates.
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-i18n-smoke.test.ts`
   - Result: 3 tests passed after adding health-check toast and invalid-env locale keys.
 - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/plugin-library.test.ts tests/unit/components/plugin-manager.test.tsx`
@@ -471,8 +495,9 @@ Implemented first MCP management slice.
     - Result: passed.
 
 - MCP Store usable built-in sources:
+  - Superseded by the later real-source correction below. This intermediate fix still treated local templates as store content and has been replaced with remote-backed MCP Store channels.
   - Corrected the MCP Store preset model so built-in sources are real installable stores, not external directory links with `0` templates.
-  - Reduced the default left-sidebar MCP Store sources to three usable channels: `Official Store`, `Smithery`, and `Glama MCP Directory`.
+  - Reduced the default left-sidebar MCP Store sources to usable channels with visible installable cards.
   - Assigned every built-in MCP template to one of those sources so each sidebar source has visible installable cards and no default source renders the external-directory panel.
   - Kept the right-content source chip/filter bar removed; source selection remains in the left sidebar like Skill Store.
   - Added regressions proving `getMarketSources()` returns only usable template stores, every returned source has at least one template, and the sidebar does not show zero-count external directory presets such as Smithery/Postman.
@@ -512,16 +537,17 @@ Implemented first MCP management slice.
     - Result: 1 matching test passed.
 
 - MCP Store community source refresh:
-  - Replaced the placeholder MCP Store channel labels with three real channels: `Official Store`, `Smithery`, and `Glama MCP Directory`.
+  - Superseded by the later real-source correction below. The PromptHub-packaged third-party local template catalogs were removed because they made third-party stores look populated by data that did not come from those stores.
+  - Replaced the placeholder MCP Store channel labels with real channel labels.
   - Kept the built-in market as PromptHub-packaged installable templates rather than live directory scraping, but updated each template/source record with clearer repository/documentation links and source provenance.
   - Updated the MCP Store detail modal to describe installation as a prompt/template import flow, surface a clearer install label for remote endpoints, and show the template's channel label in the card preview.
-  - Expanded Smithery and Glama from a few sample cards into usable preset catalogs with at least eight installable templates per channel, including developer docs, browser automation, scraping, database, Git, maps, Figma, and cloud browser use cases.
+  - Expanded the intermediate third-party sample catalogs before this approach was superseded by real remote source loading.
 - MCP Store official source naming:
   - Replaced the old registry-backed official-source semantics with a PromptHub-owned built-in source id, `prompthub-official`, so `Official Store` now means the PromptHub-maintained MCP catalog rather than a renamed third-party registry.
   - Kept Model Context Protocol registry parsing support available for remote-source adaptation and tests, but it is no longer the desktop app's built-in official MCP channel.
 - Verification for MCP Store community source refresh:
   - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/mcp-library.test.ts --testNamePattern "preconfigures"`
-    - Result: passed after confirming the built-in sources are `prompthub-official`, `smithery`, and `glama`.
+    - Result: passed for the then-current intermediate source list before the real-source correction superseded it.
   - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx --testNamePattern "MCP Store"`
     - Result: passed after confirming the channel-specific store header and per-channel cards render correctly.
   - `pnpm --filter @prompthub/shared typecheck`
@@ -530,18 +556,266 @@ Implemented first MCP management slice.
     - Result: passed, confirming the new npm package names resolve.
 
 - MCP Store remote catalog loading:
-  - Replaced the static-only MCP Store behavior with Skill Store-style remote catalog loading for community/custom channels while keeping Official Store local and PromptHub-curated.
-  - Added a renderer `mcp-remote-store` service that parses Model Context Protocol registry JSON (`servers` plus `metadata.nextCursor`) when that source is explicitly used, maps registry `packages` and `remotes` into installable templates, and extracts Glama/Smithery entries from page HTML, embedded JSON, and Next/RSC-style serialized data.
+  - Replaced the static-only MCP Store behavior with Skill Store-style remote catalog loading for community/custom channels while keeping Official Store local and PromptHub-curated. Later corrected again below so Official Store is reserved for PromptHub-owned content and third-party channels do not use local fallback templates.
+  - Added a renderer `mcp-remote-store` service that parses Model Context Protocol registry JSON (`servers` plus `metadata.nextCursor`) when that source is explicitly used, maps registry `packages` and `remotes` into installable templates, and extracts generic custom-source entries from page HTML, embedded JSON, and Next/RSC-style serialized data.
   - Added MCP-specific remote fetch IPC/preload methods using the existing safe HTTP/HTTPS fetch implementation.
-  - Added remote market state keyed by selected source and search query, with loading/error metadata, staleness caching, refresh, remote search, and built-in template fallback when a remote community catalog fails or returns no usable entries.
+  - Added remote market state keyed by selected source and search query, with loading/error metadata, staleness caching, refresh, remote search, and an initial built-in template fallback when a remote community catalog fails or returns no usable entries. The fallback behavior is superseded below and removed for third-party channels.
   - Added `installMarketTemplate` in core/IPC/preload so remote results install by full template payload rather than requiring a static built-in template id.
   - Updated MCP Store UI to show remote loading/count/fallback status for community/custom channels, preserve local Official Store search/install behavior, and keep detail-modal installation working for remote templates.
 - Verification for MCP Store remote catalog loading:
   - `pnpm --filter @prompthub/desktop test -- tests/unit/services/mcp-remote-store.test.ts --run`
-    - Result: 5 tests passed after adding Official Registry, Glama, Smithery, URL-builder, and remote fetch parser coverage.
+    - Result: 5 tests passed after adding official registry, generic custom-source, URL-builder, and remote fetch parser coverage.
   - `pnpm --filter @prompthub/desktop test -- tests/unit/main/mcp-library.test.ts --run`
     - Result: 32 tests passed after adding remote template payload installation.
   - `pnpm --filter @prompthub/desktop test -- tests/unit/components/mcp-manager.test.tsx --run`
     - Result: 42 tests passed after wiring remote MCP Store search, render, and install into the UI.
   - `pnpm run typecheck`
     - Result: passed after remote MCP Store IPC, store, UI, and parser integration.
+
+- Agent MCP path consolidation:
+  - Moved built-in Agent MCP defaults into `packages/shared/constants/platforms.ts` beside each platform's Skill path, so Settings previews, renderer helpers, and main-process distribution resolve the same source of truth.
+  - Changed built-in platform fallback behavior so unsupported or unconfirmed Agent platforms do not invent a `mcp.json` path. Custom Agent editing still offers `mcp.json` as the manual default starting point.
+  - Corrected Cline's MCP target path to `~/.cline/data/settings/cline_mcp_settings.json`, matching the documented Cline settings directory and the existing config-file preview path.
+  - Added renderer/main tests covering Kilo's config-root exception, Cline's settings path, and unsupported built-in platforms with no confirmed MCP default.
+- Verification for Agent MCP path consolidation:
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/renderer/agent-root-paths.test.ts tests/unit/main/skill-installer-utils.test.ts tests/unit/main/mcp-library.test.ts tests/unit/components/mcp-manager.test.tsx tests/unit/components/platform-icon.test.tsx`
+    - Result: passed (5 files, 150 tests).
+  - `pnpm --filter @prompthub/desktop exec tsc --noEmit --pretty false`
+    - Result: passed.
+  - `pnpm --filter @prompthub/shared typecheck`
+    - Result: passed.
+  - `pnpm --filter @prompthub/core typecheck`
+    - Result: passed.
+  - `pnpm --dir apps/desktop exec eslint src/renderer/services/agent-root-paths.ts src/main/services/skill-installer-utils.ts src/renderer/components/plugin/PluginFullDetailPage.tsx src/renderer/components/plugin/PluginManager.tsx src/renderer/components/plugin/PluginAgentTargetPicker.tsx src/renderer/components/ui/PlatformIcon.tsx src/renderer/components/settings/SkillSettings.tsx tests/unit/renderer/agent-root-paths.test.ts tests/unit/main/skill-installer-utils.test.ts tests/unit/main/mcp-library.test.ts tests/unit/components/mcp-manager.test.tsx tests/unit/components/platform-icon.test.tsx --max-warnings 0`
+    - Result: passed.
+  - `pnpm exec prettier --check packages/shared/constants/platforms.ts packages/core/src/mcp-library.ts apps/desktop/src/renderer/services/agent-root-paths.ts apps/desktop/src/main/services/skill-installer-utils.ts apps/desktop/src/renderer/components/plugin/PluginFullDetailPage.tsx apps/desktop/src/renderer/components/plugin/PluginManager.tsx apps/desktop/src/renderer/components/plugin/PluginAgentTargetPicker.tsx apps/desktop/src/renderer/components/ui/PlatformIcon.tsx apps/desktop/src/renderer/components/settings/SkillSettings.tsx apps/desktop/tests/unit/renderer/agent-root-paths.test.ts apps/desktop/tests/unit/main/skill-installer-utils.test.ts apps/desktop/tests/unit/main/mcp-library.test.ts apps/desktop/tests/unit/components/mcp-manager.test.tsx spec/knowledge/reference/agent-platforms.md spec/changes/active/mcp-management/tasks.md spec/changes/active/mcp-management/implementation.md spec/changes/active/plugin-management/tasks.md spec/changes/active/plugin-management/implementation.md`
+    - Result: passed.
+  - `git diff --check`
+    - Result: passed.
+
+- My MCP base interaction parity:
+  - Changed `McpFullDetailPage` Preview tab from a desktop three-column layout to a single vertical detail flow. Detail, health, env, source metadata, personal notes, and platform integration now render sequentially; MCP still does not gain a Skill file tab because MCP entries are configuration records, not Skill packages.
+  - Added My MCP library-surface drag-and-drop import matching the Skill library surface interaction. Dropped local config files or source folders are resolved through the Electron file-path bridge and imported with the existing `createFromSource({ kind: "path" })` flow, without changing MCP storage, IPC, or library schema.
+  - Added localized drag-import overlay and unsupported-drop copy for all supported desktop locales.
+- Verification for My MCP base interaction parity:
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx -t "Skill-style full detail page|dropped MCP sources"`
+    - Result: passed after first confirming the new tests failed against the previous implementation.
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx`
+    - Result: passed (53 tests).
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-i18n-smoke.test.ts`
+    - Result: passed (3 tests).
+  - `pnpm --filter @prompthub/desktop exec eslint src/renderer/components/mcp/McpManager.tsx src/renderer/components/mcp/McpFullDetailPage.tsx tests/unit/components/mcp-manager.test.tsx --max-warnings 0`
+    - Result: passed.
+  - `pnpm --filter @prompthub/desktop exec tsc --noEmit --pretty false`
+    - Result: passed.
+  - `pnpm exec prettier --check apps/desktop/src/renderer/components/mcp/McpManager.tsx apps/desktop/src/renderer/components/mcp/McpFullDetailPage.tsx apps/desktop/tests/unit/components/mcp-manager.test.tsx apps/desktop/src/renderer/i18n/locales/en.json apps/desktop/src/renderer/i18n/locales/zh.json apps/desktop/src/renderer/i18n/locales/zh-TW.json apps/desktop/src/renderer/i18n/locales/ja.json apps/desktop/src/renderer/i18n/locales/fr.json apps/desktop/src/renderer/i18n/locales/de.json apps/desktop/src/renderer/i18n/locales/es.json spec/changes/active/mcp-management/specs/mcp/spec.md spec/changes/active/mcp-management/tasks.md spec/changes/active/mcp-management/implementation.md`
+    - Result: passed after formatting `McpManager.tsx`.
+  - `git diff --check`
+    - Result: passed.
+
+- MCP Agent/Project target separation:
+  - Agent MCP now receives only global Agent target presets. Project-derived workspace targets are excluded from Agent MCP, My MCP detail distribution panels, and My MCP batch deploy dialogs.
+  - Added a separate Project MCP left navigation entry that shows project-derived OpenCode, Kiro, and Kilo Code targets from registered PromptHub projects.
+  - Collapsed visible Kilo Code presets to one default target per scope: global `~/.config/kilo/kilo.jsonc` and project `<projectRoot>/kilo.jsonc`. Compatible JSONC/custom Kilo paths remain parsing/custom-path support, not extra UI cards.
+  - Made the shared MCP target view accept Project MCP copy so project config actions do not say "Agent" in the project surface.
+- Verification for MCP Agent/Project target separation:
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/renderer/mcp-target-presets.test.ts tests/unit/components/mcp-manager.test.tsx tests/unit/components/sidebar.test.tsx tests/unit/main/mcp-library.test.ts`
+    - Result: passed (4 files, 122 tests).
+  - `pnpm --filter @prompthub/desktop exec tsc --noEmit --pretty false`
+    - Result: passed.
+  - `pnpm --filter @prompthub/desktop exec eslint src/renderer/components/mcp/AgentMcpDetailActions.tsx src/renderer/components/mcp/AgentMcpPreviewSidebar.tsx src/renderer/components/mcp/McpAgentsView.tsx src/renderer/components/mcp/McpLibraryDeployDialog.tsx src/renderer/components/mcp/McpManager.tsx src/renderer/components/layout/Sidebar.tsx src/renderer/services/mcp-target-presets.ts src/renderer/stores/mcp.store.ts tests/unit/components/mcp-manager.test.tsx tests/unit/components/sidebar.test.tsx tests/unit/main/mcp-library.test.ts tests/unit/renderer/mcp-target-presets.test.ts --max-warnings 0`
+    - Result: passed.
+  - `git diff --check`
+    - Result: passed.
+
+- MCP Store source search and i18n correction:
+  - Added MCP Store locale keys for remote source descriptions, search placeholders, loading states, remote load failures, load-more copy, empty-state variants, and loaded/total count labels across all supported desktop locales.
+  - Updated MCP Store source descriptions so MCP Registry renders localized product copy instead of raw English source metadata.
+  - Changed MCP Registry parsing so remote search responses are trusted as server-side search results. PromptHub no longer applies an extra local query filter after requesting `https://registry.modelcontextprotocol.io/v0/servers?search=<term>`.
+  - Documented the source capability boundary: MCP Registry supports cursor continuation through `metadata.nextCursor`; sources without stable continuation metadata do not get invented local pages from already loaded results.
+- Verification for MCP Store source search and i18n correction:
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/services/mcp-remote-store.test.ts`
+    - Result: passed (10 tests).
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx -t "localizes MCP Store remote search"`
+    - Result: passed.
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/services/mcp-remote-store.test.ts tests/unit/components/mcp-manager.test.tsx tests/unit/components/sidebar.test.tsx`
+    - Result: passed (3 files, 94 tests).
+  - `pnpm --filter @prompthub/desktop exec tsc --noEmit --pretty false`
+    - Result: passed.
+  - `pnpm --filter @prompthub/desktop exec eslint src/renderer/services/mcp-remote-store.ts src/renderer/components/mcp/McpMarketView.tsx src/renderer/components/mcp/McpManager.tsx src/renderer/components/mcp/mcp-market-labels.ts tests/unit/services/mcp-remote-store.test.ts tests/unit/components/mcp-manager.test.tsx --max-warnings 0`
+    - Result: passed.
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-i18n-smoke.test.ts tests/unit/components/renderer-i18n-smoke.test.tsx -t "keeps"`
+    - Result: passed for the MCP locale-key parity test; unrelated renderer i18n tests were skipped by the name filter.
+  - `pnpm exec prettier --check apps/desktop/src/renderer/services/mcp-remote-store.ts apps/desktop/src/renderer/components/mcp/McpMarketView.tsx apps/desktop/src/renderer/components/mcp/mcp-market-labels.ts apps/desktop/tests/unit/services/mcp-remote-store.test.ts apps/desktop/tests/unit/components/mcp-manager.test.tsx apps/desktop/src/renderer/i18n/locales/en.json apps/desktop/src/renderer/i18n/locales/zh.json apps/desktop/src/renderer/i18n/locales/zh-TW.json apps/desktop/src/renderer/i18n/locales/ja.json apps/desktop/src/renderer/i18n/locales/fr.json apps/desktop/src/renderer/i18n/locales/de.json apps/desktop/src/renderer/i18n/locales/es.json`
+    - Result: passed.
+
+- MCP Store loading-state and copy cleanup:
+  - Changed remote MCP Store rendering so a remote source with no cached result for the current query is treated as loading before the first catalog page resolves. The loading panel and the empty state are now mutually exclusive, so the first open no longer shows "No MCP servers" while the header says the remote catalog is loading.
+  - Added continuation tracking to `McpMarketView`: after a user scrolls near the bottom, appended pages keep loading while the scroller remains near the bottom and the selected remote source still has `nextCursor`.
+  - Replaced user-facing MCP Store empty-state and source descriptions that mentioned local placeholders, fallback templates, mirroring third-party directories, or implementation parsing details. Store empty states now describe MCP servers and selected catalog sources directly.
+  - Updated the MCP Store regression tests to assert remote initial loading behavior, continuous scroll continuation, source isolation from official entries, and user-facing empty copy.
+- Verification for MCP Store loading-state and copy cleanup:
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx`
+    - Result: passed (1 file, 48 tests).
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx tests/unit/services/mcp-remote-store.test.ts tests/unit/components/sidebar.test.tsx`
+    - Result: passed (3 files, 91 tests).
+  - `pnpm --filter @prompthub/desktop exec tsc --noEmit --pretty false`
+    - Result: passed.
+  - `pnpm --filter @prompthub/desktop exec eslint src/renderer/components/mcp/McpMarketView.tsx src/renderer/components/mcp/McpManager.tsx src/renderer/components/mcp/mcp-market-labels.ts tests/unit/components/mcp-manager.test.tsx --max-warnings 0`
+    - Result: passed.
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-i18n-smoke.test.ts tests/unit/components/renderer-i18n-smoke.test.tsx -t keeps`
+    - Result: passed for the matching MCP locale-key parity test; non-matching renderer i18n tests were skipped by the name filter.
+  - `pnpm exec prettier --check packages/shared/constants/mcp-market.ts apps/desktop/src/renderer/components/mcp/McpMarketView.tsx apps/desktop/src/renderer/components/mcp/McpManager.tsx apps/desktop/src/renderer/components/mcp/mcp-market-labels.ts apps/desktop/tests/unit/components/mcp-manager.test.tsx apps/desktop/src/renderer/i18n/locales/en.json apps/desktop/src/renderer/i18n/locales/zh.json apps/desktop/src/renderer/i18n/locales/zh-TW.json apps/desktop/src/renderer/i18n/locales/ja.json apps/desktop/src/renderer/i18n/locales/fr.json apps/desktop/src/renderer/i18n/locales/de.json apps/desktop/src/renderer/i18n/locales/es.json spec/changes/active/mcp-management/specs/mcp/spec.md spec/changes/active/mcp-management/tasks.md spec/changes/active/mcp-management/implementation.md`
+    - Result: passed.
+  - `git diff --check`
+    - Result: passed.
+
+- MCP Store real-source correction:
+  - Removed the bundled MCP template catalog from `packages/shared/constants/mcp-market.ts`; built-in MCP Store templates are now empty until PromptHub publishes real official MCP marketplace content.
+  - Kept PromptHub Official Store first, but changed its copy to state that it is reserved for PromptHub-owned marketplace content rather than a local bundle of third-party examples.
+  - Replaced the built-in third-party source list with the stable MCP Registry channel: `modelcontextprotocol` (`https://registry.modelcontextprotocol.io`). Other community directories are not default built-ins unless they expose a stable catalog/search/pagination contract.
+  - Changed `McpMarketView` so non-official sources render only remote catalog results and never fall back to local templates on empty/error states.
+  - Changed the MCP Store sidebar source counts so official local templates can count only for PromptHub Official Store; third-party counts come only from `remoteMarketEntries`.
+  - Tightened generic catalog parsing so ordinary directory detail URLs are not converted into fake remote MCP endpoints.
+- Verification for MCP Store real-source correction:
+  - `curl -L https://registry.modelcontextprotocol.io/v0/servers`
+    - Result: returned live MCP Registry JSON with `servers` and `metadata`.
+  - `curl -L 'https://smithery.ai/?q=github'`
+    - Result: returned Smithery CLI/skill documentation rather than a stable catalog listing, so it is not kept as a built-in source.
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/mcp-library.test.ts tests/unit/components/mcp-manager.test.tsx tests/unit/components/sidebar.test.tsx tests/unit/services/mcp-remote-store.test.ts`
+    - Result: passed (4 files, 120 tests).
+  - `pnpm --filter @prompthub/desktop exec tsc --noEmit --pretty false`
+    - Result: passed.
+  - `pnpm --filter @prompthub/shared typecheck`
+    - Result: passed.
+  - `pnpm --filter @prompthub/core typecheck`
+    - Result: passed.
+  - `pnpm --dir apps/desktop exec eslint src/renderer/components/mcp/McpMarketView.tsx src/renderer/components/mcp/mcp-market-labels.ts src/renderer/components/layout/Sidebar.tsx src/renderer/services/mcp-remote-store.ts tests/unit/main/mcp-library.test.ts tests/unit/components/mcp-manager.test.tsx tests/unit/components/sidebar.test.tsx tests/unit/services/mcp-remote-store.test.ts --max-warnings 0`
+    - Result: passed.
+  - `pnpm exec prettier --check packages/shared/constants/mcp-market.ts apps/desktop/src/renderer/components/mcp/McpMarketView.tsx apps/desktop/src/renderer/components/mcp/mcp-market-labels.ts apps/desktop/src/renderer/components/layout/Sidebar.tsx apps/desktop/src/renderer/services/mcp-remote-store.ts apps/desktop/tests/unit/main/mcp-library.test.ts apps/desktop/tests/unit/components/mcp-manager.test.tsx apps/desktop/tests/unit/components/sidebar.test.tsx apps/desktop/tests/unit/services/mcp-remote-store.test.ts apps/desktop/src/renderer/i18n/locales/en.json apps/desktop/src/renderer/i18n/locales/zh.json apps/desktop/src/renderer/i18n/locales/zh-TW.json apps/desktop/src/renderer/i18n/locales/ja.json apps/desktop/src/renderer/i18n/locales/fr.json apps/desktop/src/renderer/i18n/locales/de.json apps/desktop/src/renderer/i18n/locales/es.json spec/changes/active/mcp-management/proposal.md spec/changes/active/mcp-management/design.md spec/changes/active/mcp-management/specs/mcp/spec.md spec/changes/active/mcp-management/tasks.md spec/changes/active/mcp-management/implementation.md`
+    - Result: passed.
+  - `git diff --check`
+    - Result: passed.
+
+- MCP Store paginated remote loading:
+  - Added `loadMoreMarketSource` to the MCP renderer store, with `loadingMoreMarketSourceId`, cursor-based continuation requests, append caching, template-id dedupe, and same-source duplicate-load guards.
+  - Updated MCP Store to match the Skill Store continuation pattern: scrolling near the bottom triggers the next page and a bottom load-more button remains available as a manual fallback.
+  - Changed the MCP Store count model so source counts represent the remote total or known lower-bound total, while the right catalog header separately shows how many templates have been loaded into the current source/query cache.
+  - For MCP Registry, `metadata.count` is treated as the page count. Cursor pages accumulate into `30+`, `60+`, or an exact final number when `nextCursor` is absent.
+  - Changed MCP Registry search from client-only filtering to the registry `search` query parameter; load-more keeps the same selected search term and cursor.
+  - Confirmed the live `https://registry.modelcontextprotocol.io/v0/servers` response currently returns 30 raw entries plus `metadata.nextCursor`; `https://registry.modelcontextprotocol.io/v0/servers?search=github` returns search-scoped registry results.
+- Verification for MCP Store paginated remote loading:
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/services/mcp-remote-store.test.ts tests/unit/components/mcp-manager.test.tsx tests/unit/components/sidebar.test.tsx`
+    - Result: passed (3 files, 89 tests).
+  - `pnpm --filter @prompthub/desktop exec tsc --noEmit --pretty false`
+    - Result: passed.
+  - `pnpm --filter @prompthub/desktop exec eslint src/renderer/services/mcp-remote-store.ts src/renderer/stores/mcp.store.ts src/renderer/components/mcp/McpManager.tsx src/renderer/components/mcp/McpMarketView.tsx src/renderer/components/layout/Sidebar.tsx tests/unit/services/mcp-remote-store.test.ts tests/unit/components/mcp-manager.test.tsx tests/unit/components/sidebar.test.tsx --max-warnings 0`
+    - Result: passed.
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-i18n-smoke.test.ts tests/unit/components/renderer-i18n-smoke.test.tsx -t "keeps"`
+    - Result: passed for the MCP locale-key parity test; unrelated renderer i18n tests were skipped by the name filter.
+  - `pnpm exec prettier --check apps/desktop/src/renderer/services/mcp-remote-store.ts apps/desktop/src/renderer/stores/mcp.store.ts apps/desktop/src/renderer/components/mcp/McpManager.tsx apps/desktop/src/renderer/components/mcp/McpMarketView.tsx apps/desktop/src/renderer/components/layout/Sidebar.tsx apps/desktop/tests/unit/services/mcp-remote-store.test.ts apps/desktop/tests/unit/components/mcp-manager.test.tsx apps/desktop/tests/unit/components/sidebar.test.tsx apps/desktop/src/renderer/i18n/locales/en.json apps/desktop/src/renderer/i18n/locales/zh.json apps/desktop/src/renderer/i18n/locales/zh-TW.json apps/desktop/src/renderer/i18n/locales/ja.json apps/desktop/src/renderer/i18n/locales/fr.json apps/desktop/src/renderer/i18n/locales/de.json apps/desktop/src/renderer/i18n/locales/es.json spec/changes/active/mcp-management/specs/mcp/spec.md spec/changes/active/mcp-management/tasks.md spec/changes/active/mcp-management/implementation.md`
+    - Result: passed.
+  - `git diff --check`
+    - Result: passed.
+
+- Project MCP icon semantics:
+  - Added a target icon variant to the shared Agent/Project MCP target view.
+  - Agent MCP keeps platform icons because those entries represent global Agent targets.
+  - Project MCP target cards and entry source panels now use a project/folder icon so project-level config entries are not visually presented as Agent platforms.
+  - Added regressions that assert Project MCP does not render OpenCode/Kiro/Kilo platform image alt text in project target cards or the entry detail source panel, while Agent MCP still renders platform icons.
+- Verification for Project MCP icon semantics:
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx -t "project-level OpenCode|project icons|project MCP targets out"`
+    - Result: passed (3 matching tests).
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/renderer/mcp-target-presets.test.ts tests/unit/components/mcp-manager.test.tsx tests/unit/components/sidebar.test.tsx tests/unit/main/mcp-library.test.ts`
+    - Result: passed (4 files, 123 tests).
+  - `pnpm --filter @prompthub/desktop exec tsc --noEmit --pretty false`
+    - Result: passed.
+  - `pnpm --filter @prompthub/desktop exec eslint src/renderer/components/mcp/AgentMcpPreviewSidebar.tsx src/renderer/components/mcp/McpAgentsView.tsx src/renderer/components/mcp/McpManager.tsx tests/unit/components/mcp-manager.test.tsx --max-warnings 0`
+    - Result: passed.
+  - `git diff --check`
+    - Result: passed.
+
+- MCP and Plugin Store localStorage cache correction:
+  - Persisted MCP remote market cache entries in `mcp-store`, matching the Skill Store behavior: only entries with loaded templates are cached, transient `loading` and `error` state is stripped during persistence/hydration, and cached entries prevent first-open remote loading until the user explicitly refreshes.
+  - Removed the unstable community directory from the built-in MCP Store source list because it does not expose the same stable catalog/search/pagination contract as MCP Registry.
+  - Removed the directory-specific feed/pseudo-pagination path; MCP Store continuation loading now depends on real remote cursors such as MCP Registry `metadata.nextCursor`.
+  - Persisted Plugin Store marketplace source/entry caches in `plugin-store` localStorage and made first-open loading reuse cached entries while explicit refresh forces a reload.
+  - Cleared MCP/Plugin custom-source cache entries when a custom source is updated or removed so one source id cannot show stale data from a previous URL.
+- Verification for MCP and Plugin Store localStorage cache correction:
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/services/mcp-remote-store.test.ts tests/unit/stores/mcp.store.test.ts tests/unit/stores/plugin.store.test.ts tests/unit/components/mcp-manager.test.tsx tests/unit/main/mcp-library.test.ts`
+    - Result: passed (5 files, 98 tests).
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/plugin-manager.test.tsx tests/unit/components/sidebar.test.tsx`
+    - Result: passed (2 files, 53 tests). Existing React `act(...)` warnings remain in the PluginManager suite.
+  - `pnpm --filter @prompthub/desktop exec tsc --noEmit --pretty false`
+    - Result: passed.
+  - `pnpm --filter @prompthub/desktop exec eslint src/renderer/services/mcp-remote-store.ts src/renderer/stores/mcp.store.ts src/renderer/stores/plugin.store.ts src/renderer/components/mcp/McpMarketView.tsx src/renderer/components/mcp/mcp-market-labels.ts src/renderer/components/plugin/PluginManager.tsx tests/unit/services/mcp-remote-store.test.ts tests/unit/stores/mcp.store.test.ts tests/unit/stores/plugin.store.test.ts tests/unit/components/mcp-manager.test.tsx tests/unit/components/plugin-manager.test.tsx tests/unit/main/mcp-library.test.ts --max-warnings 0`
+    - Result: passed.
+  - `pnpm exec prettier --check packages/shared/constants/mcp-market.ts apps/desktop/src/renderer/services/mcp-remote-store.ts apps/desktop/src/renderer/stores/mcp.store.ts apps/desktop/src/renderer/stores/plugin.store.ts apps/desktop/src/renderer/components/mcp/McpMarketView.tsx apps/desktop/src/renderer/components/mcp/mcp-market-labels.ts apps/desktop/src/renderer/components/plugin/PluginManager.tsx apps/desktop/tests/unit/services/mcp-remote-store.test.ts apps/desktop/tests/unit/stores/mcp.store.test.ts apps/desktop/tests/unit/stores/plugin.store.test.ts apps/desktop/tests/unit/components/mcp-manager.test.tsx apps/desktop/tests/unit/components/plugin-manager.test.tsx apps/desktop/tests/unit/main/mcp-library.test.ts apps/desktop/src/renderer/i18n/locales/en.json apps/desktop/src/renderer/i18n/locales/zh.json apps/desktop/src/renderer/i18n/locales/zh-TW.json apps/desktop/src/renderer/i18n/locales/ja.json apps/desktop/src/renderer/i18n/locales/fr.json apps/desktop/src/renderer/i18n/locales/de.json apps/desktop/src/renderer/i18n/locales/es.json spec/changes/active/mcp-management/specs/mcp/spec.md spec/changes/active/mcp-management/design.md spec/changes/active/mcp-management/tasks.md spec/changes/active/mcp-management/implementation.md`
+    - Result: passed after formatting `mcp.store.ts` and `mcp-remote-store.test.ts`.
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/services/mcp-remote-store.test.ts tests/unit/stores/mcp.store.test.ts`
+    - Result: passed after formatting (2 files, 9 tests).
+  - `git diff --check`
+    - Result: passed.
+
+- Test completeness follow-up:
+  - Updated self-hosted sync expectations so the desktop push/pull summaries assert the new MCP and Plugin asset counts instead of silently ignoring those fields.
+  - Stabilized the MCP library missing-template regression by persisting the empty library baseline before asserting that a removed legacy built-in template id leaves durable library state unchanged.
+  - Re-ran the previously failing `DataSettings` upgrade-backup restore test with the sync and MCP library regression files; the timeout did not reproduce after targeted reruns.
+- Verification for test completeness follow-up:
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/mcp-library.test.ts tests/unit/services/self-hosted-sync.test.ts tests/unit/components/data-settings.test.tsx`
+    - Result: passed (3 files, 71 tests).
+  - `pnpm --filter @prompthub/desktop run test:unit`
+    - Result: passed (269 files, 2566 tests).
+  - `pnpm --filter @prompthub/desktop exec tsc --noEmit --pretty false`
+    - Result: passed.
+  - `pnpm --filter @prompthub/shared run typecheck`
+    - Result: passed.
+  - `pnpm exec eslint tests/unit/main/mcp-library.test.ts tests/unit/services/self-hosted-sync.test.ts`
+    - Result: passed.
+  - `pnpm exec prettier --check apps/desktop/tests/unit/main/mcp-library.test.ts apps/desktop/tests/unit/services/self-hosted-sync.test.ts apps/desktop/src/renderer/services/mcp-remote-store.ts apps/desktop/src/renderer/stores/mcp.store.ts apps/desktop/src/renderer/stores/plugin.store.ts packages/shared/constants/mcp-market.ts spec/changes/active/mcp-management/implementation.md`
+    - Result: passed after formatting `self-hosted-sync.test.ts`.
+  - `git diff --check`
+    - Result: passed.
+
+- Project MCP Kilo Code path correction:
+  - Rechecked Kilo Code's current MCP documentation: global MCP config is `~/.config/kilo/kilo.jsonc`; project-level MCP config is `kilo.jsonc` in the project root, with `.kilo/kilo.jsonc` supported as a custom alternative.
+  - Corrected the built-in Kilo Code global MCP target from `~/.config/kilo/kilo.json` to `~/.config/kilo/kilo.jsonc`.
+  - Corrected registered-project Kilo Code MCP targets from `<projectRoot>/kilo.json` to `<projectRoot>/kilo.jsonc`, which fixes the Project MCP UI path shown before distribution.
+  - Corrected the shared Agent platform MCP path metadata so Settings and Agent asset previews use the same Kilo path as MCP distribution.
+- Verification for Project MCP Kilo Code path correction:
+  - TDD red run before implementation:
+    - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/renderer/mcp-target-presets.test.ts tests/unit/main/mcp-library.test.ts tests/unit/renderer/agent-root-paths.test.ts`
+    - Result: failed as expected because the implementation still returned `kilo.json` for project, global, and platform metadata paths.
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/renderer/mcp-target-presets.test.ts tests/unit/main/mcp-library.test.ts tests/unit/renderer/agent-root-paths.test.ts tests/unit/main/skill-installer-utils.test.ts`
+    - Result: passed (4 files, 111 tests).
+  - `NODE_OPTIONS="--localstorage-file=<tmp>" pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx`
+    - Result: passed (53 tests).
+  - `pnpm --filter @prompthub/desktop exec eslint src/renderer/services/mcp-target-presets.ts tests/unit/renderer/mcp-target-presets.test.ts tests/unit/main/mcp-library.test.ts tests/unit/renderer/agent-root-paths.test.ts tests/unit/main/skill-installer-utils.test.ts tests/unit/components/mcp-manager.test.tsx --max-warnings 0`
+    - Result: passed.
+  - `pnpm --filter @prompthub/desktop exec tsc --noEmit --pretty false`
+    - Result: passed.
+  - `./apps/desktop/node_modules/.bin/tsc -p packages/shared/tsconfig.json --noEmit`
+    - Result: passed.
+  - `./apps/desktop/node_modules/.bin/tsc -p packages/core/tsconfig.json --noEmit`
+    - Result: passed.
+  - `pnpm exec prettier --check apps/desktop/src/renderer/services/mcp-target-presets.ts apps/desktop/tests/unit/renderer/mcp-target-presets.test.ts apps/desktop/tests/unit/main/mcp-library.test.ts apps/desktop/tests/unit/renderer/agent-root-paths.test.ts apps/desktop/tests/unit/main/skill-installer-utils.test.ts apps/desktop/tests/unit/components/mcp-manager.test.tsx packages/core/src/mcp-library.ts packages/shared/constants/platforms.ts spec/changes/active/mcp-management/design.md spec/changes/active/mcp-management/specs/mcp/spec.md spec/changes/active/mcp-management/tasks.md spec/changes/active/mcp-management/implementation.md`
+    - Result: passed.
+  - `git diff --check`
+    - Result: passed.
+
+- MCP detail preview layout correction:
+  - Reconciled the UI with the active spec and the prior product requirement that MCP detail pages should not use a desktop-only right-sidebar layout.
+  - Changed `McpFullDetailPage` Preview from a `lg:grid-cols-3` split-sidebar layout to a single vertical flow. Detail, health, env, source, notes, and platform integration now render in one column.
+  - Restored the regression assertion to require `data-layout="single-column"` and reject the `lg:grid-cols-3` layout class.
+- Verification for MCP detail preview layout correction:
+  - TDD red run before implementation:
+    - `NODE_OPTIONS="--localstorage-file=<tmp>" pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx -t "renders the selected MCP"`
+    - Result: failed as expected because the component still returned `data-layout="split-sidebar"`.
+  - `NODE_OPTIONS="--localstorage-file=<tmp>" pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/mcp-manager.test.tsx`
+    - Result: passed (53 tests).
+  - `pnpm --filter @prompthub/desktop exec vitest run tests/unit/renderer/mcp-target-presets.test.ts tests/unit/main/mcp-library.test.ts tests/unit/renderer/agent-root-paths.test.ts tests/unit/main/skill-installer-utils.test.ts`
+    - Result: passed (4 files, 111 tests).
+  - `pnpm --filter @prompthub/desktop exec eslint src/renderer/services/mcp-target-presets.ts src/renderer/components/mcp/McpFullDetailPage.tsx tests/unit/renderer/mcp-target-presets.test.ts tests/unit/main/mcp-library.test.ts tests/unit/renderer/agent-root-paths.test.ts tests/unit/main/skill-installer-utils.test.ts tests/unit/components/mcp-manager.test.tsx --max-warnings 0`
+    - Result: passed.
+  - `pnpm --filter @prompthub/desktop exec tsc --noEmit --pretty false`
+    - Result: passed.

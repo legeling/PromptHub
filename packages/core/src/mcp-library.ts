@@ -40,16 +40,19 @@ import {
   mergeCodexMcpToml,
   mergeMcpServersJson,
   normalizeMcpServerDraft,
+  parseMcpJsonConfigContent,
   parseMcpDotEnv,
   removeCodexMcpTomlServers,
   removeMcpServersFromJson,
   sanitizeMcpServerName,
 } from "@prompthub/shared/utils/mcp-config";
 
-import { getConfigDir } from "./runtime-paths";
+import { getConfigDir, getDataDir } from "./runtime-paths";
 import { inferMcpSource } from "./mcp-source";
 
-const MCP_LIBRARY_FILE_NAME = "mcp-library.json";
+const MCP_LIBRARY_DIR_NAME = "mcp";
+const MCP_LIBRARY_FILE_NAME = "library.json";
+const LEGACY_MCP_LIBRARY_FILE_NAME = "mcp-library.json";
 
 export class CoreMcpError extends Error {
   code: string;
@@ -75,7 +78,15 @@ export interface McpTargetPreset {
 }
 
 export function getMcpLibraryFilePath(): string {
-  return path.join(getConfigDir(), MCP_LIBRARY_FILE_NAME);
+  return path.join(getDataDir(), MCP_LIBRARY_DIR_NAME, MCP_LIBRARY_FILE_NAME);
+}
+
+export function getLegacyMcpLibraryFilePath(): string {
+  return path.join(getConfigDir(), LEGACY_MCP_LIBRARY_FILE_NAME);
+}
+
+function readMcpLibraryFile(filePath: string): McpLibraryFile {
+  return normalizeLibrary(JSON.parse(fs.readFileSync(filePath, "utf8")));
 }
 
 /**
@@ -155,6 +166,14 @@ export function getMcpTargetPresets(
       platformId: "opencode",
     },
     {
+      id: "kilo",
+      target: "kilo",
+      scope: "global",
+      label: "Kilo Code",
+      path: path.join(homeDir, ".config", "kilo", "kilo.jsonc"),
+      platformId: "kilo",
+    },
+    {
       id: "cursor",
       target: "cursor",
       scope: "global",
@@ -199,7 +218,13 @@ export function getMcpTargetPresets(
       target: "cline",
       scope: "global",
       label: "Cline",
-      path: path.join(homeDir, ".cline", "cline_mcp_settings.json"),
+      path: path.join(
+        homeDir,
+        ".cline",
+        "data",
+        "settings",
+        "cline_mcp_settings.json",
+      ),
       platformId: "cline",
     },
   ];
@@ -321,7 +346,10 @@ function listExistingTargetServerNames(
   }
   return isTomlTarget(target.target)
     ? listMcpServerNamesInToml(existingContent)
-    : listMcpServerNamesInJson(JSON.parse(existingContent), target.target);
+    : listMcpServerNamesInJson(
+        parseMcpJsonConfigContent(existingContent),
+        target.target,
+      );
 }
 
 function findExternalTargetConflicts(
@@ -691,7 +719,7 @@ function parseJsonImportServers(
   content: string,
   now: number,
 ): McpServerConfig[] {
-  const raw = JSON.parse(content) as Record<string, unknown>;
+  const raw = parseMcpJsonConfigContent(content) as Record<string, unknown>;
   const source =
     raw.mcpServers && typeof raw.mcpServers === "object"
       ? raw.mcpServers
@@ -774,13 +802,11 @@ function readTargetServers(
   if (isTomlTarget(target)) {
     return parseCodexTomlServers(content, now);
   }
-  const raw = content.trim()
-    ? (JSON.parse(content) as Record<string, unknown>)
-    : {};
+  const raw = parseMcpJsonConfigContent(content) as Record<string, unknown>;
   const key =
     target === "vscode"
       ? "servers"
-      : target === "opencode"
+      : target === "opencode" || target === "kilo"
         ? "mcp"
         : "mcpServers";
   const source = raw[key];
@@ -798,12 +824,20 @@ function readTargetServers(
 
 export class CoreMcpLibraryService {
   read(): McpLibraryFile {
-    const filePath = getMcpLibraryFilePath();
-    if (!fs.existsSync(filePath)) {
-      return defaultLibrary();
-    }
+    const primaryPath = getMcpLibraryFilePath();
     try {
-      return normalizeLibrary(JSON.parse(fs.readFileSync(filePath, "utf8")));
+      if (fs.existsSync(primaryPath)) {
+        return readMcpLibraryFile(primaryPath);
+      }
+
+      const legacyPath = getLegacyMcpLibraryFilePath();
+      if (!fs.existsSync(legacyPath)) {
+        return defaultLibrary();
+      }
+
+      const migrated = readMcpLibraryFile(legacyPath);
+      writeJsonFileAtomic(primaryPath, migrated);
+      return migrated;
     } catch (error) {
       throw new CoreMcpError(
         "INVALID_LIBRARY",
@@ -982,7 +1016,7 @@ export class CoreMcpLibraryService {
       ? mergeCodexMcpToml(tomlBaseContent, servers)
       : `${JSON.stringify(
           mergeMcpServersJson(
-            existingContent ? JSON.parse(existingContent) : {},
+            parseMcpJsonConfigContent(existingContent),
             target.target,
             servers,
           ),
@@ -1058,7 +1092,7 @@ export class CoreMcpLibraryService {
       ? removeCodexMcpTomlServers(existingContent, serverNames)
       : `${JSON.stringify(
           removeMcpServersFromJson(
-            existingContent ? JSON.parse(existingContent) : {},
+            parseMcpJsonConfigContent(existingContent),
             target.target,
             serverNames,
           ),
@@ -1120,7 +1154,7 @@ export class CoreMcpLibraryService {
       ? removeCodexMcpTomlServers(existingContent, target.serverNames)
       : `${JSON.stringify(
           removeMcpServersFromJson(
-            existingContent ? JSON.parse(existingContent) : {},
+            parseMcpJsonConfigContent(existingContent),
             target.target,
             target.serverNames,
           ),

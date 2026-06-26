@@ -10,6 +10,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { McpManager } from "../../../src/renderer/components/mcp/McpManager";
 import { useMcpStore } from "../../../src/renderer/stores/mcp.store";
+import { useSettingsStore } from "../../../src/renderer/stores/settings.store";
 import type { McpTargetPreset } from "@prompthub/core";
 import type { McpServerConfig } from "@prompthub/shared/types/mcp";
 import { renderWithI18n } from "../../helpers/i18n";
@@ -128,7 +129,7 @@ const githubTemplate = {
 };
 
 const playwrightTemplate = {
-  id: "glama-playwright",
+  id: "modelcontextprotocol-playwright",
   name: "playwright",
   displayName: "Playwright",
   description: "Browser automation",
@@ -139,10 +140,10 @@ const playwrightTemplate = {
   runtime: "npx",
   packageName: "@playwright/mcp@latest",
   source: {
-    id: "glama",
-    label: "Glama MCP Directory",
-    url: "https://github.com/microsoft/playwright-mcp",
-    trustLevel: "community",
+    id: "modelcontextprotocol",
+    label: "MCP Registry",
+    url: "https://registry.modelcontextprotocol.io",
+    trustLevel: "official",
   },
 };
 
@@ -202,6 +203,10 @@ function resetMcpStore() {
     preview: "",
     isLoading: false,
     error: null,
+  });
+  useSettingsStore.setState({
+    disabledPlatformIds: [],
+    skillProjects: [],
   });
   showToast.mockReset();
 }
@@ -270,16 +275,10 @@ function installMcpMocks(options: McpMockOptions = {}) {
               trustLevel: "official",
             },
             {
-              id: "smithery",
-              label: "Smithery",
-              url: "https://smithery.ai",
-              trustLevel: "verified",
-            },
-            {
-              id: "glama",
-              label: "Glama MCP Directory",
-              url: "https://glama.ai/mcp/servers",
-              trustLevel: "community",
+              id: "modelcontextprotocol",
+              label: "MCP Registry",
+              url: "https://registry.modelcontextprotocol.io",
+              trustLevel: "official",
             },
           ],
         ),
@@ -288,7 +287,23 @@ function installMcpMocks(options: McpMockOptions = {}) {
           .mockResolvedValue(
             options.targetPresets ?? [codexTarget, claudeTarget],
           ),
-        getTargetStatus: vi.fn().mockResolvedValue(targetStatus),
+        getTargetStatus: vi.fn(async (presets?: McpTargetPreset[]) => {
+          if (!Array.isArray(presets)) {
+            return targetStatus;
+          }
+          const statusById = new Map(
+            targetStatus.map((entry) => [entry.presetId, entry]),
+          );
+          return presets.map(
+            (preset) =>
+              statusById.get(preset.id) ?? {
+                presetId: preset.id,
+                path: preset.path,
+                exists: false,
+                serverNames: [],
+              },
+          );
+        }),
         createServer: vi.fn().mockResolvedValue({
           ...filesystemServer,
           id: "mcp_created",
@@ -411,6 +426,13 @@ describe("McpManager", () => {
     const detailPage = await openFilesystemDetail(user);
 
     await waitFor(() => {
+      const previewLayout = within(detailPage).getByTestId(
+        "mcp-detail-preview-layout",
+      );
+      expect(previewLayout).toHaveAttribute("data-layout", "split-sidebar");
+      expect(previewLayout.className).toContain(
+        "md:grid-cols-[minmax(0,1fr)_22rem]",
+      );
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
       expect(
         within(detailPage).getAllByRole("button", { name: "Preview" }).length,
@@ -466,6 +488,147 @@ describe("McpManager", () => {
 
     expect(within(detailPage).queryByTitle("Preview")).not.toBeInTheDocument();
     expect(api.mcp.preview).not.toHaveBeenCalled();
+  });
+
+  it("hides disabled Settings platforms from MCP distribution", async () => {
+    const user = userEvent.setup();
+    const { api } = installMcpMocks();
+    useSettingsStore.setState({ disabledPlatformIds: ["codex"] });
+
+    await act(async () => {
+      await renderWithI18n(<McpManager />, { language: "en" });
+    });
+
+    const detailPage = await openFilesystemDetail(user);
+
+    await waitFor(() => {
+      expect(
+        within(detailPage).queryByText("Codex CLI"),
+      ).not.toBeInTheDocument();
+      expect(within(detailPage).getByText("Claude Code")).toBeInTheDocument();
+    });
+
+    await user.click(
+      within(detailPage).getByRole("button", { name: "Select all" }),
+    );
+    await user.click(
+      within(detailPage).getByRole("button", { name: /Apply to 1 platform/ }),
+    );
+
+    await waitFor(() => {
+      expect(api.mcp.apply).toHaveBeenCalledTimes(1);
+      expect(api.mcp.apply).toHaveBeenCalledWith({
+        target: "claude",
+        scope: "global",
+        path: claudeTarget.path,
+        serverIds: ["mcp_filesystem"],
+      });
+    });
+  });
+
+  it("shows project-level OpenCode, Kiro, and Kilo Code MCP targets only in Project MCP", async () => {
+    installMcpMocks();
+    useSettingsStore.setState({
+      skillProjects: [
+        {
+          id: "project_docs",
+          name: "Docs",
+          rootPath: "/workspace/docs",
+          scanPaths: [],
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      ],
+    });
+    useMcpStore.setState({ selectedTab: "projects" });
+
+    await act(async () => {
+      await renderWithI18n(<McpManager />, { language: "en" });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Project MCP")).toBeInTheDocument();
+      expect(screen.getAllByText("Docs / OpenCode").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Docs / Kiro").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Docs / Kilo Code").length).toBeGreaterThan(0);
+      expect(
+        screen.getAllByText("/workspace/docs/opencode.json").length,
+      ).toBeGreaterThan(0);
+      expect(
+        screen.getAllByText("/workspace/docs/.kiro/settings/mcp.json").length,
+      ).toBeGreaterThan(0);
+      expect(
+        screen.getAllByText("/workspace/docs/kilo.jsonc").length,
+      ).toBeGreaterThan(0);
+    });
+    const projectIconShells = screen.getAllByTestId(
+      "mcp-agent-platform-icon-shell",
+    );
+    expect(projectIconShells.length).toBeGreaterThanOrEqual(3);
+    for (const shell of projectIconShells) {
+      expect(shell).toHaveAttribute("data-icon-variant", "project");
+    }
+    expect(screen.queryByAltText("opencode icon")).not.toBeInTheDocument();
+    expect(screen.queryByAltText("kiro icon")).not.toBeInTheDocument();
+    expect(screen.queryByAltText("kilo icon")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Docs / Kilo Code (.kilo)"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Docs / Kilo Code (JSONC)"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("/workspace/docs/.kilo/kilo.json"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("/workspace/docs/.kilo/kilo.jsonc"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("uses project icons in the Project MCP entry detail sidebar", async () => {
+    const user = userEvent.setup();
+    installMcpMocks({
+      servers: [filesystemServer],
+      targetStatus: [
+        {
+          presetId: "project:project_docs:opencode",
+          path: "/workspace/docs/opencode.json",
+          exists: true,
+          serverNames: ["filesystem"],
+        },
+      ],
+    });
+    useSettingsStore.setState({
+      skillProjects: [
+        {
+          id: "project_docs",
+          name: "Docs",
+          rootPath: "/workspace/docs",
+          scanPaths: [],
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      ],
+    });
+    useMcpStore.setState({ selectedTab: "projects" });
+
+    await act(async () => {
+      await renderWithI18n(<McpManager />, { language: "en" });
+    });
+
+    const serverCard = await screen.findByTestId("mcp-agent-server-card");
+    expect(within(serverCard).getByText("Filesystem")).toBeInTheDocument();
+
+    await user.click(serverCard);
+
+    const sidebar = await screen.findByTestId("mcp-agent-source-sidebar");
+    expect(within(sidebar).getByText("Project MCP")).toBeInTheDocument();
+    expect(
+      within(sidebar).getByTestId("mcp-agent-source-icon-shell"),
+    ).toHaveAttribute("data-icon-variant", "project");
+    expect(
+      within(sidebar).queryByAltText("opencode icon"),
+    ).not.toBeInTheDocument();
   });
 
   it("batch applies the selected MCP to checked platforms", async () => {
@@ -819,16 +982,10 @@ describe("McpManager", () => {
           trustLevel: "official",
         },
         {
-          id: "smithery",
-          label: "Smithery",
-          url: "https://smithery.ai",
-          trustLevel: "verified",
-        },
-        {
-          id: "glama",
-          label: "Glama MCP Directory",
-          url: "https://glama.ai/mcp/servers",
-          trustLevel: "community",
+          id: "modelcontextprotocol",
+          label: "MCP Registry",
+          url: "https://registry.modelcontextprotocol.io",
+          trustLevel: "official",
         },
       ],
     });
@@ -898,38 +1055,37 @@ describe("McpManager", () => {
       marketTemplates: [githubTemplate],
       marketSources: [
         {
-          id: "smithery",
-          label: "Smithery",
-          url: "https://smithery.ai",
-          trustLevel: "verified",
-        },
-        {
-          id: "glama",
-          label: "Glama MCP Directory",
-          url: "https://glama.ai/mcp/servers",
-          trustLevel: "community",
+          id: "modelcontextprotocol",
+          label: "MCP Registry",
+          url: "https://registry.modelcontextprotocol.io",
+          trustLevel: "official",
         },
       ],
     });
     api.mcp.fetchRemoteContent.mockResolvedValueOnce(
-      `<script>self.__next_f.push([1,${JSON.stringify(
-        JSON.stringify({
-          servers: [
-            {
-              qualifiedName: "ai.adeu/adeu",
-              displayName: "ADeu",
+      JSON.stringify({
+        servers: [
+          {
+            server: {
+              name: "ai.adeu/adeu",
+              title: "ADeu",
               description: "Automated DOCX redlining.",
-              installCommand: "uvx adeu",
-              homepage: "https://smithery.ai/server/ai.adeu/adeu",
-              tags: ["docx"],
+              packages: [
+                {
+                  registryType: "pypi",
+                  identifier: "adeu",
+                  transport: { type: "stdio" },
+                },
+              ],
             },
-          ],
-        }),
-      )}])</script>`,
+          },
+        ],
+        metadata: { count: 1 },
+      }),
     );
     useMcpStore.setState({
       selectedTab: "market",
-      selectedMarketSourceId: "smithery",
+      selectedMarketSourceId: "modelcontextprotocol",
       searchQuery: "adeu",
     });
 
@@ -939,7 +1095,7 @@ describe("McpManager", () => {
 
     await waitFor(() => {
       expect(api.mcp.fetchRemoteContent).toHaveBeenCalledWith(
-        "https://smithery.ai/?q=adeu",
+        "https://registry.modelcontextprotocol.io/v0/servers?search=adeu",
       );
       expect(screen.getByText("ADeu")).toBeInTheDocument();
     });
@@ -957,12 +1113,365 @@ describe("McpManager", () => {
     await waitFor(() => {
       expect(api.mcp.installMarketTemplate).toHaveBeenCalledWith(
         expect.objectContaining({
-          id: "smithery:ai-adeu-adeu",
+          id: "modelcontextprotocol:ai-adeu-adeu",
           command: "uvx",
           args: ["adeu"],
         }),
       );
     });
+  });
+
+  it("loads more remote MCP store results from the registry cursor", async () => {
+    const user = userEvent.setup();
+    const { api } = installMcpMocks({
+      marketTemplates: [githubTemplate],
+      marketSources: [
+        {
+          id: "modelcontextprotocol",
+          label: "MCP Registry",
+          url: "https://registry.modelcontextprotocol.io",
+          trustLevel: "official",
+        },
+      ],
+    });
+    api.mcp.fetchRemoteContent
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          servers: [
+            {
+              server: {
+                name: "ai.adeu/adeu",
+                title: "ADeu",
+                description: "Automated DOCX redlining.",
+                packages: [
+                  {
+                    registryType: "pypi",
+                    identifier: "adeu",
+                    transport: { type: "stdio" },
+                  },
+                ],
+              },
+            },
+          ],
+          metadata: { nextCursor: "ai.adeu/adeu:1.0.0", count: 30 },
+        }),
+      )
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          servers: [
+            {
+              server: {
+                name: "com.upstash/context7",
+                title: "Context7",
+                description: "Fresh documentation for coding agents.",
+                packages: [
+                  {
+                    registryType: "npm",
+                    identifier: "@upstash/context7-mcp",
+                    transport: { type: "stdio" },
+                  },
+                ],
+              },
+            },
+          ],
+          metadata: { count: 30 },
+        }),
+      );
+    useMcpStore.setState({
+      selectedTab: "market",
+      selectedMarketSourceId: "modelcontextprotocol",
+    });
+
+    await act(async () => {
+      await renderWithI18n(<McpManager />, { language: "en" });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("ADeu")).toBeInTheDocument();
+      expect(screen.getByText("30+ MCP servers")).toBeInTheDocument();
+      expect(screen.getByText("Loaded 1 / 30+")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByTestId("mcp-store-load-more"));
+
+    await waitFor(() => {
+      expect(api.mcp.fetchRemoteContent).toHaveBeenNthCalledWith(
+        2,
+        "https://registry.modelcontextprotocol.io/v0/servers?cursor=ai.adeu%2Fadeu%3A1.0.0",
+      );
+      expect(screen.getByText("Context7")).toBeInTheDocument();
+    });
+    expect(screen.getByText("ADeu")).toBeInTheDocument();
+    expect(screen.getByText("60 MCP servers")).toBeInTheDocument();
+    expect(screen.getByText("Loaded 2 / 60")).toBeInTheDocument();
+    expect(screen.queryByText("2 / 30")).not.toBeInTheDocument();
+  });
+
+  it("keeps the remote MCP store in loading state before the first catalog page resolves", async () => {
+    let resolveCatalog: (content: string) => void = () => undefined;
+    const { api } = installMcpMocks({
+      marketTemplates: [githubTemplate],
+      marketSources: [
+        {
+          id: "modelcontextprotocol",
+          label: "MCP Registry",
+          url: "https://registry.modelcontextprotocol.io",
+          trustLevel: "official",
+        },
+      ],
+    });
+    api.mcp.fetchRemoteContent.mockImplementationOnce(
+      () =>
+        new Promise<string>((resolve) => {
+          resolveCatalog = resolve;
+        }),
+    );
+    useMcpStore.setState({
+      selectedTab: "market",
+      selectedMarketSourceId: "modelcontextprotocol",
+    });
+
+    await act(async () => {
+      await renderWithI18n(<McpManager />, { language: "en" });
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Loading remote MCP catalog...").length).toBe(
+        2,
+      );
+      expect(screen.queryByText("No MCP servers")).not.toBeInTheDocument();
+    });
+
+    await act(async () => {
+      resolveCatalog(JSON.stringify({ servers: [], metadata: { count: 0 } }));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("No MCP servers")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Loading remote MCP catalog..."),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("localizes MCP Store remote search and loading copy in Chinese", async () => {
+    let resolveCatalog: (content: string) => void = () => undefined;
+    const { api } = installMcpMocks({
+      marketTemplates: [githubTemplate],
+      marketSources: [
+        {
+          id: "modelcontextprotocol",
+          label: "MCP Registry",
+          url: "https://registry.modelcontextprotocol.io",
+          trustLevel: "official",
+        },
+      ],
+    });
+    api.mcp.fetchRemoteContent.mockImplementationOnce(
+      () =>
+        new Promise<string>((resolve) => {
+          resolveCatalog = resolve;
+        }),
+    );
+    useMcpStore.setState({
+      selectedTab: "market",
+      selectedMarketSourceId: "modelcontextprotocol",
+    });
+
+    await act(async () => {
+      await renderWithI18n(<McpManager />, { language: "zh" });
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByPlaceholderText("搜索 MCP 服务..."),
+      ).toBeInTheDocument();
+      expect(screen.getAllByText("正在加载远程 MCP 目录...").length).toBe(2);
+      expect(
+        screen.getByText(/官方 Model Context Protocol 注册表/),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Loading remote catalog..."),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByPlaceholderText("Search MCP servers..."),
+      ).not.toBeInTheDocument();
+    });
+
+    await act(async () => {
+      resolveCatalog(JSON.stringify({ servers: [], metadata: { count: 0 } }));
+    });
+  });
+
+  it("continues loading remote MCP store pages while the scroller remains near the bottom", async () => {
+    const { api } = installMcpMocks({
+      marketTemplates: [githubTemplate],
+      marketSources: [
+        {
+          id: "modelcontextprotocol",
+          label: "MCP Registry",
+          url: "https://registry.modelcontextprotocol.io",
+          trustLevel: "official",
+        },
+      ],
+    });
+    api.mcp.fetchRemoteContent
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          servers: [
+            {
+              server: {
+                name: "ai.adeu/adeu",
+                title: "ADeu",
+                description: "Automated DOCX redlining.",
+                packages: [
+                  {
+                    registryType: "pypi",
+                    identifier: "adeu",
+                    transport: { type: "stdio" },
+                  },
+                ],
+              },
+            },
+          ],
+          metadata: { nextCursor: "ai.adeu/adeu:1.0.0", count: 30 },
+        }),
+      )
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          servers: [
+            {
+              server: {
+                name: "com.upstash/context7",
+                title: "Context7",
+                description: "Fresh documentation for coding agents.",
+                packages: [
+                  {
+                    registryType: "npm",
+                    identifier: "@upstash/context7-mcp",
+                    transport: { type: "stdio" },
+                  },
+                ],
+              },
+            },
+          ],
+          metadata: { nextCursor: "com.upstash/context7:1.0.0", count: 30 },
+        }),
+      )
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          servers: [
+            {
+              server: {
+                name: "io.github.browserbase/mcp-server-browserbase",
+                title: "Browserbase",
+                description: "Cloud browser automation for MCP clients.",
+                packages: [
+                  {
+                    registryType: "npm",
+                    identifier: "@browserbasehq/mcp-server-browserbase",
+                    transport: { type: "stdio" },
+                  },
+                ],
+              },
+            },
+          ],
+          metadata: { count: 30 },
+        }),
+      );
+    useMcpStore.setState({
+      selectedTab: "market",
+      selectedMarketSourceId: "modelcontextprotocol",
+    });
+
+    await act(async () => {
+      await renderWithI18n(<McpManager />, { language: "en" });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("ADeu")).toBeInTheDocument();
+    });
+
+    const scroller = screen.getByTestId("mcp-store-scroll");
+    Object.defineProperty(scroller, "scrollHeight", {
+      configurable: true,
+      value: 1000,
+    });
+    Object.defineProperty(scroller, "clientHeight", {
+      configurable: true,
+      value: 600,
+    });
+    Object.defineProperty(scroller, "scrollTop", {
+      configurable: true,
+      value: 450,
+    });
+    fireEvent.scroll(scroller);
+
+    await waitFor(() => {
+      expect(api.mcp.fetchRemoteContent).toHaveBeenNthCalledWith(
+        2,
+        "https://registry.modelcontextprotocol.io/v0/servers?cursor=ai.adeu%2Fadeu%3A1.0.0",
+      );
+      expect(screen.getByText("Context7")).toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(api.mcp.fetchRemoteContent).toHaveBeenNthCalledWith(
+        3,
+        "https://registry.modelcontextprotocol.io/v0/servers?cursor=com.upstash%2Fcontext7%3A1.0.0",
+      );
+      expect(screen.getByText("Browserbase")).toBeInTheDocument();
+    });
+    expect(screen.getByText("ADeu")).toBeInTheDocument();
+    expect(screen.getByText("Context7")).toBeInTheDocument();
+  });
+
+  it("renders cached remote MCP Store entries without first-load refetching", async () => {
+    const { api } = installMcpMocks();
+    useMcpStore.setState({
+      selectedTab: "market",
+      selectedMarketSourceId: "modelcontextprotocol",
+      remoteMarketEntries: {
+        "modelcontextprotocol:": {
+          sourceId: "modelcontextprotocol",
+          templates: [
+            {
+              id: "modelcontextprotocol:cached-server",
+              name: "cached-server",
+              displayName: "Cached Server",
+              description: "Cached MCP Registry server.",
+              transport: "stdio",
+              command: "npx",
+              args: ["-y", "cached-server"],
+              tags: ["registry"],
+              source: {
+                id: "modelcontextprotocol",
+                label: "MCP Registry",
+                trustLevel: "official",
+                url: "https://registry.modelcontextprotocol.io",
+              },
+            },
+          ],
+          loadedAt: Date.now(),
+          loading: false,
+          error: null,
+          nextCursor: "20",
+          totalCount: 500,
+        },
+      },
+    });
+
+    await act(async () => {
+      await renderWithI18n(<McpManager />, { language: "en" });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Cached Server")).toBeInTheDocument();
+      expect(screen.getByText("500 MCP servers")).toBeInTheDocument();
+    });
+    expect(api.mcp.fetchRemoteContent).not.toHaveBeenCalled();
+    expect(
+      screen.queryByText("Loading remote MCP catalog..."),
+    ).not.toBeInTheDocument();
   });
 
   it("localizes the installed state in the MCP Store detail modal", async () => {
@@ -992,12 +1501,29 @@ describe("McpManager", () => {
   });
 
   it("renders MCP Store as channel-specific stores instead of an all-source category", async () => {
+    const remoteRegistryTemplate = {
+      ...playwrightTemplate,
+      id: "modelcontextprotocol:remote-playwright",
+      displayName: "Remote Playwright",
+      description: "Remote browser automation",
+    };
     installMcpMocks({
       marketTemplates: [githubTemplate, playwrightTemplate],
     });
     useMcpStore.setState({
       selectedTab: "market",
       selectedMarketSourceId: "prompthub-official",
+      remoteMarketEntries: {
+        "modelcontextprotocol:": {
+          sourceId: "modelcontextprotocol",
+          templates: [remoteRegistryTemplate],
+          totalCount: 1,
+          loadedAt: Date.now(),
+          loading: false,
+          error: null,
+          query: "",
+        },
+      },
     });
 
     await act(async () => {
@@ -1021,16 +1547,17 @@ describe("McpManager", () => {
     ).not.toBeInTheDocument();
 
     act(() => {
-      useMcpStore.getState().setSelectedMarketSourceId("glama");
+      useMcpStore.getState().setSelectedMarketSourceId("modelcontextprotocol");
     });
 
     await waitFor(() => {
       expect(screen.queryByText("GitHub")).not.toBeInTheDocument();
       expect(
-        screen.getByRole("heading", { name: "Glama MCP Directory" }),
+        screen.getByRole("heading", { name: "MCP Registry" }),
       ).toBeInTheDocument();
-      expect(screen.getByText("Playwright")).toBeInTheDocument();
+      expect(screen.getByText("Remote Playwright")).toBeInTheDocument();
     });
+    expect(screen.queryByText("Browser automation")).not.toBeInTheDocument();
   });
 
   it("localizes the official MCP store source label", async () => {
@@ -1049,12 +1576,10 @@ describe("McpManager", () => {
     expect(
       await screen.findByRole("heading", { name: "官方商店" }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(/PromptHub 自己维护的 MCP 精选目录/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/精选 MCP 服务/)).toBeInTheDocument();
   });
 
-  it("keeps preconfigured MCP Store sources installable instead of showing zero-template directories", async () => {
+  it("keeps third-party MCP Store sources isolated from official entries", async () => {
     installMcpMocks({
       marketTemplates: [githubTemplate, smitheryTemplate, playwrightTemplate],
       marketSources: [
@@ -1072,13 +1597,6 @@ describe("McpManager", () => {
           description: "Smithery MCP channel.",
           trustLevel: "verified",
         },
-        {
-          id: "glama",
-          label: "Glama MCP Directory",
-          url: "https://glama.ai/mcp/servers",
-          description: "Glama MCP channel.",
-          trustLevel: "community",
-        },
       ],
     });
     useMcpStore.setState({ selectedTab: "market" });
@@ -1093,7 +1611,6 @@ describe("McpManager", () => {
     expect(
       screen.getByRole("heading", { name: "Official Store" }),
     ).toBeInTheDocument();
-    expect(screen.queryByText("Glama MCP Directory")).not.toBeInTheDocument();
 
     act(() => {
       useMcpStore.getState().setSelectedMarketSourceId("smithery");
@@ -1104,8 +1621,10 @@ describe("McpManager", () => {
       expect(
         screen.getByRole("heading", { name: "Smithery" }),
       ).toBeInTheDocument();
-      expect(screen.getByText("Sequential Thinking")).toBeInTheDocument();
+      expect(screen.queryByText("Sequential Thinking")).not.toBeInTheDocument();
+      expect(screen.getByText("No MCP servers")).toBeInTheDocument();
     });
+    expect(screen.queryByText(/placeholder/i)).not.toBeInTheDocument();
     expect(
       screen.queryByText("External MCP directory"),
     ).not.toBeInTheDocument();
@@ -1481,7 +2000,7 @@ describe("McpManager", () => {
           target: "cline",
           scope: "global",
           label: "Cline",
-          path: "/Users/test/.cline/mcp.json",
+          path: "/Users/test/.cline/data/settings/cline_mcp_settings.json",
           platformId: "cline",
         },
         {
@@ -1497,7 +2016,7 @@ describe("McpManager", () => {
           target: "opencode",
           scope: "global",
           label: "OpenCode",
-          path: "/Users/test/.config/opencode/mcp.json",
+          path: "/Users/test/.config/opencode/opencode.json",
           platformId: "opencode",
         },
       ],
@@ -1528,7 +2047,7 @@ describe("McpManager", () => {
         },
         {
           presetId: "cline",
-          path: "/Users/test/.cline/mcp.json",
+          path: "/Users/test/.cline/data/settings/cline_mcp_settings.json",
           exists: true,
           serverNames: ["filesystem"],
         },
@@ -1540,7 +2059,7 @@ describe("McpManager", () => {
         },
         {
           presetId: "opencode",
-          path: "/Users/test/.config/opencode/mcp.json",
+          path: "/Users/test/.config/opencode/opencode.json",
           exists: true,
           serverNames: ["filesystem"],
         },
@@ -1813,6 +2332,54 @@ describe("McpManager", () => {
     });
   });
 
+  it("imports dropped MCP sources from the My MCP library surface", async () => {
+    const { api, electron } = installMcpMocks({ servers: [] });
+    api.mcp.createFromSource.mockResolvedValue({
+      imported: [{ ...filesystemServer, id: "mcp_dropped" }],
+      skipped: [],
+      detectedKind: "config-file",
+      warnings: [],
+    });
+    electron.getPathForFile.mockReturnValue("/tmp/mcp.json");
+
+    await act(async () => {
+      await renderWithI18n(<McpManager />, { language: "en" });
+    });
+
+    const surface = screen.getByTestId("mcp-view-transition");
+    const file = new File(["{}"], "mcp.json", { type: "application/json" });
+
+    fireEvent.dragEnter(surface, {
+      dataTransfer: {
+        files: [file],
+        items: [{ kind: "file" }],
+        types: ["Files"],
+      },
+    });
+
+    expect(screen.getByText("Drop MCP sources to import")).toBeInTheDocument();
+
+    fireEvent.drop(surface, {
+      dataTransfer: {
+        files: [file],
+        items: [{ kind: "file" }],
+        types: ["Files"],
+      },
+    });
+
+    await waitFor(() => {
+      expect(electron.getPathForFile).toHaveBeenCalledWith(file);
+      expect(api.mcp.createFromSource).toHaveBeenCalledWith({
+        input: "/tmp/mcp.json",
+        kind: "path",
+      });
+      expect(showToast).toHaveBeenCalledWith(
+        "1 MCP source(s) added",
+        "success",
+      );
+    });
+  });
+
   it("adds a local MCP project from the source folder picker", async () => {
     const user = userEvent.setup();
     const { api, electron } = installMcpMocks({ servers: [] });
@@ -2002,6 +2569,92 @@ describe("McpManager", () => {
       });
       expect(showToast).toHaveBeenCalledWith("MCP applied", "success");
     });
+  });
+
+  it("keeps project MCP targets out of Agent MCP and shows them in Project MCP", async () => {
+    installMcpMocks({
+      targetPresets: [
+        codexTarget,
+        {
+          id: "kilo",
+          target: "kilo",
+          scope: "global",
+          label: "Kilo Code",
+          path: "/Users/test/.config/kilo/kilo.jsonc",
+          platformId: "kilo",
+        },
+      ],
+      targetStatus: [
+        {
+          presetId: codexTarget.id,
+          path: codexTarget.path,
+          exists: true,
+          serverNames: ["filesystem"],
+        },
+        {
+          presetId: "kilo",
+          path: "/Users/test/.config/kilo/kilo.jsonc",
+          exists: false,
+          serverNames: [],
+        },
+      ],
+    });
+    useSettingsStore.setState({
+      skillProjects: [
+        {
+          id: "project-1",
+          name: "shan-hai-odyssey",
+          rootPath: "/Users/test/Projects/shan-hai-odyssey",
+          scanPaths: [],
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      ],
+    });
+
+    useMcpStore.setState({ selectedTab: "targets" });
+    await act(async () => {
+      await renderWithI18n(<McpManager />, { language: "en" });
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Codex CLI").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Kilo Code").length).toBeGreaterThan(0);
+    });
+    expect(
+      screen.getAllByTestId("mcp-agent-platform-icon-shell")[0],
+    ).toHaveAttribute("data-icon-variant", "platform");
+    expect(screen.getByAltText("codex icon")).toBeInTheDocument();
+    expect(screen.queryByText(/shan-hai-odyssey/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Kilo Code \(JSONC\)/)).not.toBeInTheDocument();
+
+    act(() => {
+      useMcpStore.setState({ selectedTab: "projects" });
+    });
+    await waitFor(() => {
+      expect(screen.getByText("Project MCP")).toBeInTheDocument();
+      expect(
+        screen.getAllByText("shan-hai-odyssey / OpenCode").length,
+      ).toBeGreaterThan(0);
+      expect(
+        screen.getAllByText("shan-hai-odyssey / Kiro").length,
+      ).toBeGreaterThan(0);
+      expect(
+        screen.getAllByText("shan-hai-odyssey / Kilo Code").length,
+      ).toBeGreaterThan(0);
+    });
+    const projectIconShells = screen.getAllByTestId(
+      "mcp-agent-platform-icon-shell",
+    );
+    expect(projectIconShells.length).toBeGreaterThanOrEqual(3);
+    for (const shell of projectIconShells) {
+      expect(shell).toHaveAttribute("data-icon-variant", "project");
+    }
+    expect(screen.queryByAltText("opencode icon")).not.toBeInTheDocument();
+    expect(screen.queryByAltText("kiro icon")).not.toBeInTheDocument();
+    expect(screen.queryByAltText("kilo icon")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Kilo Code \(JSONC\)/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Kilo Code \(\.kilo\)/)).not.toBeInTheDocument();
   });
 
   it("imports an external agent MCP entry into My MCP from the detail action", async () => {

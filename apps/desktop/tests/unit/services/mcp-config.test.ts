@@ -14,6 +14,7 @@ import {
   mergeCodexMcpToml,
   mergeMcpServersJson,
   normalizeMcpServerDraft,
+  parseMcpJsonConfigContent,
   parseMcpDotEnv,
   removeCodexMcpTomlServers,
   removeMcpServersFromJson,
@@ -147,6 +148,7 @@ describe("mcp-config", () => {
     expect(getMcpServersJsonKey("claude-desktop")).toBe("mcpServers");
     expect(getMcpServersJsonKey("vscode")).toBe("servers");
     expect(getMcpServersJsonKey("opencode")).toBe("mcp");
+    expect(getMcpServersJsonKey("kilo")).toBe("mcp");
   });
 
   it("projects OpenCode local entries with a combined command array", () => {
@@ -176,6 +178,16 @@ describe("mcp-config", () => {
       enabled: true,
     });
     expect(buildMcpTargetJson("opencode", [remoteServer])).toEqual({
+      mcp: {
+        context7: {
+          type: "remote",
+          url: "https://mcp.context7.com/mcp",
+          headers: { CONTEXT7_API_KEY: "key" },
+          enabled: true,
+        },
+      },
+    });
+    expect(buildMcpTargetJson("kilo", [remoteServer])).toEqual({
       mcp: {
         context7: {
           type: "remote",
@@ -249,8 +261,20 @@ describe("mcp-config", () => {
       'command = "npx"',
       'args = ["@playwright/mcp@latest"]',
       "",
+      "[mcp_servers.playwright.tools.browser_click]",
+      'approval_mode = "approve"',
+      "",
       '[mcp_servers."weird name"]',
       'command = "uvx"',
+      "",
+      '[mcp_servers."weird name".tools.context]',
+      'approval_mode = "approve"',
+      "",
+      "[mcp_servers.playwright-extra]",
+      'command = "keep"',
+      "",
+      "[mcp_servers.playwright-extra.tools.keep]",
+      'approval_mode = "approve"',
       "",
       "[other_table]",
       "keep = true",
@@ -264,9 +288,35 @@ describe("mcp-config", () => {
     expect(removed).toContain('model = "gpt-5"');
     expect(removed).toContain("[other_table]");
     expect(removed).toContain("keep = true");
+    expect(removed).toContain("[mcp_servers.playwright-extra]");
+    expect(removed).toContain("[mcp_servers.playwright-extra.tools.keep]");
     expect(removed).not.toContain("[mcp_servers.playwright]");
+    expect(removed).not.toContain("[mcp_servers.playwright.tools.browser_click]");
     expect(removed).not.toContain('command = "npx"');
     expect(removed).not.toContain("weird name");
+  });
+
+  it("removes orphan Codex TOML child sections left after MCP uninstall", () => {
+    const content = [
+      'model = "gpt-5.5"',
+      "",
+      "[mcp_servers.codegraph.tools.codegraph_status]",
+      'approval_mode = "approve"',
+      "",
+      "[mcp_servers.codegraph.tools.codegraph_context]",
+      'approval_mode = "approve"',
+      "",
+      "[mcp_servers.node_repl]",
+      'command = "node_repl"',
+    ].join("\n");
+
+    const removed = removeCodexMcpTomlServers(content, ["codegraph"]);
+
+    expect(removed).toContain('model = "gpt-5.5"');
+    expect(removed).toContain("[mcp_servers.node_repl]");
+    expect(removed).toContain('command = "node_repl"');
+    expect(removed).not.toContain("codegraph");
+    expect(removed).not.toContain("approval_mode");
   });
 
   it("lists server names present in JSON and TOML configs", () => {
@@ -282,6 +332,7 @@ describe("mcp-config", () => {
     expect(listMcpServerNamesInJson({ mcp: { d: {} } }, "opencode")).toEqual([
       "d",
     ]);
+    expect(listMcpServerNamesInJson({ mcp: { e: {} } }, "kilo")).toEqual(["e"]);
     expect(listMcpServerNamesInJson(null, "claude")).toEqual([]);
     expect(listMcpServerNamesInJson({ mcpServers: [] }, "claude")).toEqual([]);
 
@@ -290,6 +341,31 @@ describe("mcp-config", () => {
         '[mcp_servers.a]\ncommand = "x"\n[mcp_servers."b c"]\nurl = "y"\n[other]\n',
       ),
     ).toEqual(["a", "b c"]);
+  });
+
+  it("parses JSONC MCP target config content for Kilo Code", () => {
+    expect(
+      parseMcpJsonConfigContent(
+        [
+          "{",
+          "  // Kilo Code user settings",
+          '  "mcp": {',
+          '    "playwright": {',
+          '      "type": "local",',
+          '      "command": ["npx", "@playwright/mcp@latest"],',
+          "    },",
+          "  },",
+          "}",
+        ].join("\n"),
+      ),
+    ).toEqual({
+      mcp: {
+        playwright: {
+          type: "local",
+          command: ["npx", "@playwright/mcp@latest"],
+        },
+      },
+    });
   });
 
   it("parses dotenv files without importing comments or invalid keys", () => {

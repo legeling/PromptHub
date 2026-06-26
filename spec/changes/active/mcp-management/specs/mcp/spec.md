@@ -18,6 +18,14 @@ PromptHub MUST maintain a local MCP library containing normalized server definit
 - **WHEN** PromptHub reads or normalizes the library
 - **THEN** existing `createdAt` and `updatedAt` values remain unchanged unless the user performs a real mutation
 
+#### Scenario: Migrate legacy MCP library path on first read
+
+- **GIVEN** a user has an MCP library at the legacy `config/mcp-library.json` path
+- **AND** `data/mcp/library.json` does not exist yet
+- **WHEN** PromptHub reads the MCP library
+- **THEN** PromptHub MUST normalize the legacy library into `data/mcp/library.json`
+- **AND** the legacy file remains available as a compatibility backup
+
 #### Scenario: Save personal MCP notes
 
 - **GIVEN** the user edits personal notes from a My MCP detail page
@@ -40,6 +48,38 @@ PromptHub MUST project normalized MCP servers into the target agent's config sha
 - **GIVEN** enabled MCP servers
 - **WHEN** the user previews Claude, Cursor, Cline, Gemini, Windsurf, Kiro, or custom JSON config
 - **THEN** PromptHub returns a JSON object with `mcpServers`
+
+#### Scenario: Project to OpenCode project config
+
+- **GIVEN** a registered PromptHub project with root path `/workspace/app`
+- **WHEN** PromptHub builds visible MCP targets
+- **THEN** it includes an OpenCode workspace target at `/workspace/app/opencode.json`
+- **AND** applying MCP servers writes OpenCode's `mcp` object shape into that file
+
+#### Scenario: Project to Kiro workspace config
+
+- **GIVEN** a registered PromptHub project with root path `/workspace/app`
+- **WHEN** PromptHub builds visible MCP targets
+- **THEN** it includes a Kiro workspace target at `/workspace/app/.kiro/settings/mcp.json`
+- **AND** applying MCP servers writes the standard `mcpServers` object shape into that file
+
+#### Scenario: Project to Kilo Code project config
+
+- **GIVEN** a registered PromptHub project with root path `/workspace/app`
+- **WHEN** PromptHub builds visible MCP targets
+- **THEN** it includes one default Kilo Code workspace target at `/workspace/app/kilo.jsonc`
+- **AND** applying MCP servers writes Kilo Code's `mcp` object shape into that file
+- **AND** reading Kilo Code JSONC configs tolerates comments and trailing commas
+
+#### Scenario: Keep Agent MCP and Project MCP separate
+
+- **GIVEN** registered PromptHub projects derive project-level MCP targets
+- **WHEN** the user opens Agent MCP
+- **THEN** PromptHub shows only global Agent MCP targets
+- **AND** project-level OpenCode, Kiro, and Kilo Code targets are not shown there
+- **WHEN** the user opens Project MCP from the left navigation
+- **THEN** PromptHub shows the registered project MCP targets
+- **AND** Kilo Code appears as one platform entry instead of JSON/JSONC/path variants
 
 #### Scenario: Omit unsupported Roo Code target
 
@@ -88,11 +128,25 @@ PromptHub MUST apply MCP config by merging only the managed server entries into 
 - **WHEN** the user or API attempts to apply them to an agent target
 - **THEN** PromptHub rejects the write, leaves the target file unchanged, and does not record a target binding
 
+#### Scenario: Settings-disabled platform cannot be selected for MCP distribution
+
+- **GIVEN** Settings contains a platform id in `disabledPlatformIds`
+- **WHEN** the user opens My MCP, Agent MCP, or a batch MCP distribution dialog
+- **THEN** targets whose `platformId` matches that disabled id MUST be hidden from selection and counts
+- **AND** a stale open dialog MUST NOT apply to that target after it becomes hidden
+
 #### Scenario: Invalid target config parse failure
 
 - **GIVEN** an existing target config file cannot be parsed
 - **WHEN** PromptHub attempts to apply MCP servers to that target
 - **THEN** PromptHub rejects the write before creating a backup or modifying any target file or binding
+
+#### Scenario: Remove Codex TOML server child sections
+
+- **GIVEN** a Codex TOML target config contains `[mcp_servers.<name>]` and nested sections such as `[mcp_servers.<name>.tools.<tool>]`
+- **WHEN** PromptHub removes that MCP server from the target
+- **THEN** PromptHub removes both the root server section and every nested server child section
+- **AND** similarly named servers such as `<name>-extra` remain untouched
 
 ### Requirement: MCP Environment Scope
 
@@ -196,12 +250,26 @@ PromptHub MUST expose My MCP as a Skill-style manageable library, not only a pas
 - **THEN** PromptHub toggles that target selection without requiring the user to hit only the small checkbox icon
 - **AND** the selected targets are applied through the existing safe MCP apply flow
 
+#### Scenario: Render MCP detail preview as a single-column flow
+
+- **GIVEN** the user opens a saved MCP server detail page
+- **WHEN** PromptHub renders the Preview tab
+- **THEN** the detail, health, environment, source, notes, and platform integration sections render in one vertical detail flow
+- **AND** the page must not use a desktop-only right sidebar layout for the platform panel
+
 #### Scenario: Hide redundant custom target form in detail distribution
 
 - **GIVEN** the user is viewing the My MCP full detail distribution sidebar
 - **WHEN** PromptHub renders the platform integration panel
 - **THEN** the panel shows built-in agent target cards and the single selected-target apply action
 - **AND** it does not show a separate custom target path form or a second apply button below the platform cards
+
+#### Scenario: Drag MCP sources into My MCP
+
+- **GIVEN** the user is viewing the My MCP library
+- **WHEN** the user drags and drops a local MCP config file or local source folder onto the library surface
+- **THEN** PromptHub imports the dropped filesystem path through the same MCP source creation flow used by the New MCP source picker
+- **AND** the import adds the detected MCP entries to My MCP without changing the MCP library storage contract
 
 #### Scenario: Show list distribution progress
 
@@ -216,9 +284,9 @@ PromptHub MUST expose My MCP as a Skill-style manageable library, not only a pas
 - **THEN** PromptHub shows an in-app destructive confirmation dialog
 - **AND** confirming deletes the selected MCP servers through the same local library delete flow used by MCP detail pages
 
-### Requirement: Marketplace Templates
+### Requirement: MCP Store Catalog Channels
 
-PromptHub MUST provide a curated MCP template list that can install into the local MCP library.
+PromptHub MUST provide MCP Store channels backed by real catalog data. PromptHub Official Store MUST stay first and is reserved for PromptHub-owned marketplace content; third-party/community channels MUST NOT be populated with local placeholder templates that appear to come from those communities.
 
 #### Scenario: Install a market template
 
@@ -235,20 +303,22 @@ PromptHub MUST provide a curated MCP template list that can install into the loc
 - **AND** source, documentation, repository, and trust metadata are shown inline as a normal detail section rather than a separate right-side column
 - **AND** installed-state labels use localized shared copy in every supported desktop locale
 
-#### Scenario: Browse preconfigured usable MCP stores
+#### Scenario: Browse preconfigured MCP stores
 
 - **GIVEN** PromptHub ships built-in MCP Store sources
 - **WHEN** the user expands MCP Store in the left sidebar source navigation
-- **THEN** every preconfigured source represents an installable template store with at least one visible MCP template
-- **AND** PromptHub does not show zero-template external directory links as default MCP Store sources
+- **THEN** PromptHub Official Store appears first
+- **AND** MCP Registry appears as a real remote catalog channel
+- **AND** third-party source counts are hidden until a live remote catalog result is loaded
+- **AND** PromptHub does not show local placeholder templates or fake counts for third-party sources
 
 #### Scenario: Select an MCP Store source from the left sidebar
 
-- **GIVEN** PromptHub has preconfigured Official Store, Smithery, and Glama MCP Directory stores
+- **GIVEN** PromptHub has preconfigured Official Store and MCP Registry stores
 - **WHEN** the user opens MCP Store
 - **THEN** the top-level MCP Store menu does not show a template count badge
 - **AND** the left sidebar shows each preconfigured store channel directly without an `All Sources` pseudo-channel
-- **AND** each preconfigured source count is greater than zero
+- **AND** each third-party source count is derived from `remoteMarketEntries`, not from bundled local templates
 - **AND** the right content area title, description, and cards are scoped to the selected store channel
 - **AND** the right content area does not render a duplicate market-source chip/button filter bar
 
@@ -257,10 +327,74 @@ PromptHub MUST provide a curated MCP template list that can install into the loc
 - **GIVEN** the user opens a preconfigured MCP Store source
 - **WHEN** PromptHub loads the source catalog
 - **THEN** PromptHub resolves the selected source catalog from that source's own configured channel instead of showing a mixed global catalog
-- **AND** Official Store entries come from the PromptHub-maintained built-in MCP catalog in the current desktop build, with local search and install behavior even when no remote source is available
-- **AND** Glama and Smithery entries can be parsed from page HTML, embedded JSON, or Next/RSC-style serialized data
+- **AND** Official Store may be empty until PromptHub publishes an official MCP marketplace catalog
+- **AND** MCP Registry entries are parsed from the official `registry.modelcontextprotocol.io` JSON API
 - **AND** search queries are applied to the selected source catalog
-- **AND** built-in templates are used as the primary catalog for Official Store and as an offline/error fallback when a remote community catalog has no usable results
+- **AND** third-party channels do not fall back to bundled local templates on load failure or empty remote results
+
+#### Scenario: Show remote loading before first catalog page resolves
+
+- **GIVEN** the user opens or switches to a remote MCP Store source with no cached result for the current search query
+- **WHEN** PromptHub starts loading that source catalog
+- **THEN** the right content area shows the remote loading state
+- **AND** it MUST NOT show the empty-state heading or empty hint until the first catalog request resolves or fails
+
+#### Scenario: Use user-facing MCP Store empty copy
+
+- **GIVEN** a selected MCP Store source returns no visible server entries
+- **WHEN** PromptHub renders the empty state
+- **THEN** the copy describes the selected source as having no MCP servers available
+- **AND** the copy MUST NOT expose internal implementation terms such as local placeholders, fake templates, fallback catalogs, or mirroring behavior
+
+#### Scenario: Continue a paginated remote MCP catalog
+
+- **GIVEN** a remote MCP Store response includes `nextCursor`
+- **WHEN** the user scrolls near the bottom of that store or activates the load-more action
+- **THEN** PromptHub loads the next page with that cursor
+- **AND** it appends new templates to the selected source/query cache without removing the already loaded templates
+- **AND** duplicate templates are collapsed by template identity
+- **AND** concurrent continuation loads for the same selected source are ignored
+- **AND** if the user remains near the bottom after that page is appended and the source still has `nextCursor`, PromptHub continues loading the next page without requiring a second scroll gesture
+
+#### Scenario: Show total and loaded counts separately
+
+- **GIVEN** a remote MCP Store source returns a catalog count and a paginated result set
+- **WHEN** PromptHub renders the MCP Store header or left source list
+- **THEN** the source count represents the remote total or known lower-bound total, not only the visible cards
+- **AND** the right catalog header separately shows how many templates have been loaded into the current source/query cache
+- **AND** lower-bound totals with more cursor pages are marked with `+`
+
+#### Scenario: Search a remote MCP Store source
+
+- **GIVEN** the user searches inside a selected remote MCP Store source
+- **WHEN** the source supports a search parameter
+- **THEN** PromptHub sends the search term to that source's remote catalog endpoint
+- **AND** it stores the result under the selected source/query cache key
+- **AND** load-more requests continue using the same search term and cursor
+
+#### Scenario: Delegate source-specific remote search
+
+- **GIVEN** the selected MCP Store source is MCP Registry
+- **WHEN** the user searches for a term
+- **THEN** PromptHub requests the registry API with the `search` query parameter
+- **AND** it must not locally filter the already server-searched response again
+
+#### Scenario: Respect remote pagination capabilities
+
+- **GIVEN** the selected remote source returns a continuation cursor such as MCP Registry `metadata.nextCursor`
+- **WHEN** the user scrolls near the bottom or activates load more
+- **THEN** PromptHub requests the next page with the cursor and appends the returned entries
+- **GIVEN** the selected remote source does not expose a stable pagination cursor or next-page marker
+- **WHEN** the user scrolls near the bottom
+- **THEN** PromptHub must not invent local pages from already loaded content
+- **AND** it may show only the remotely returned page until the source exposes a stable continuation mechanism
+
+#### Scenario: Localize MCP Store remote copy
+
+- **GIVEN** the user opens MCP Store in any supported desktop locale
+- **WHEN** PromptHub renders source descriptions, search placeholders, loading states, load-more copy, error copy, counts, and empty states
+- **THEN** all user-facing copy comes from the `mcp` locale namespace
+- **AND** Chinese and other non-English locales must not fall back to English strings such as `Search MCP servers...` or `Loading remote catalog...`
 
 #### Scenario: Install a remote MCP store result
 

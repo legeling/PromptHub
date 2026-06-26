@@ -24,14 +24,20 @@ export function getMcpMarketSourceDescription(
   if (source?.id === OFFICIAL_MCP_SOURCE_ID) {
     return t(
       "mcp.officialMcpStoreDesc",
-      "PromptHub-maintained MCP catalog with curated installable servers. The desktop app currently ships this catalog locally, and it will later sync with the official PromptHub MCP website.",
+      "PromptHub-maintained MCP catalog for official, curated server listings.",
+    );
+  }
+  if (source?.id === "modelcontextprotocol") {
+    return t(
+      "mcp.mcpRegistryStoreDesc",
+      "Official Model Context Protocol registry with installable community server metadata.",
     );
   }
   return (
     source?.description ??
     t(
       "mcp.mcpStoreSubtitle",
-      "Install ready-to-use MCP templates from the selected channel.",
+      "Install MCP servers from the selected catalog channel.",
     )
   );
 }

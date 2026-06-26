@@ -8,7 +8,7 @@ PromptHub can distribute Skills, Rules, and prompts, but MCP server setup is sti
 
 - Add MCP as a first-class desktop module beside Prompts, Skills, and Rules.
 - Store MCP server definitions in a PromptHub-owned local configuration file.
-- Provide curated MCP market templates for common servers.
+- Provide MCP Store channels backed by real catalog sources, with PromptHub Official Store reserved for PromptHub-owned marketplace content.
 - Generate target-specific config for Codex TOML, `mcpServers` JSON clients, and VS Code `servers` JSON clients.
 - Apply generated config to selected global/workspace targets with a backup before modification.
 - Import existing supported config files into the PromptHub MCP library.
@@ -27,6 +27,6 @@ PromptHub can distribute Skills, Rules, and prompts, but MCP server setup is sti
 
 ## Rollback
 
-- PromptHub MCP library data lives in `config/mcp-library.json`.
+- PromptHub MCP library data lives in `data/mcp/library.json`, with legacy reads from `config/mcp-library.json`.
 - Target apply operations create timestamped `.prompthub-mcp-backup-*` files before writing.
 - Users can delete MCP entries from PromptHub without touching already-applied target configs unless they explicitly remove from a target.

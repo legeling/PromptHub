@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   CheckIcon,
@@ -9,7 +9,7 @@ import {
   ServerIcon,
   StoreIcon,
 } from "lucide-react";
-import type { FormEvent } from "react";
+import type { FormEvent, UIEvent } from "react";
 import type {
   McpMarketSource,
   McpMarketTemplate,
@@ -31,8 +31,12 @@ interface McpMarketViewProps {
   sources: McpMarketSource[];
   selectedSourceId: string;
   installedNames: Set<string>;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
   totalCount?: number;
+  totalCountIsLowerBound?: boolean;
   onInstall: (template: McpMarketTemplate | string) => Promise<void>;
+  onLoadMore?: () => void;
   onRefresh?: () => void;
   onSearchChange?: (query: string) => void;
 }
@@ -66,8 +70,8 @@ function matchesTemplateSearch(
 }
 
 /**
- * Curated MCP template gallery, styled after the Skill Store cards.
- * 内置 MCP 模板市场，样式对齐 Skill Store 卡片。
+ * Curated MCP server gallery, styled after the Skill Store cards.
+ * 内置 MCP 服务目录，样式对齐 Skill Store 卡片。
  */
 export function McpMarketView({
   error,
@@ -78,8 +82,12 @@ export function McpMarketView({
   sources,
   selectedSourceId,
   installedNames,
+  hasMore = false,
+  isLoadingMore = false,
   totalCount,
+  totalCountIsLowerBound = false,
   onInstall,
+  onLoadMore,
   onRefresh,
   onSearchChange,
 }: McpMarketViewProps) {
@@ -87,10 +95,17 @@ export function McpMarketView({
   const [selectedTemplate, setSelectedTemplate] =
     useState<McpMarketTemplate | null>(null);
   const [searchDraft, setSearchDraft] = useState(searchQuery);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const shouldContinueLoadingRef = useRef(false);
 
   useEffect(() => {
     setSearchDraft(searchQuery);
+    shouldContinueLoadingRef.current = false;
   }, [searchQuery]);
+
+  useEffect(() => {
+    shouldContinueLoadingRef.current = false;
+  }, [selectedSourceId]);
 
   const selectedSource = useMemo(
     () =>
@@ -99,14 +114,15 @@ export function McpMarketView({
       null,
     [selectedSourceId, sources],
   );
+  const isOfficialSource = selectedSource?.id === OFFICIAL_MCP_SOURCE_ID;
   const fallbackTemplates = useMemo(() => {
-    if (!selectedSource) {
-      return templates;
+    if (!selectedSource || !isOfficialSource) {
+      return [];
     }
     return templates.filter(
       (template) => template.source?.id === selectedSource.id,
     );
-  }, [selectedSource, templates]);
+  }, [isOfficialSource, selectedSource, templates]);
   const localVisibleTemplates = useMemo(
     () =>
       fallbackTemplates.filter((template) =>
@@ -114,30 +130,76 @@ export function McpMarketView({
       ),
     [fallbackTemplates, searchQuery],
   );
-  const visibleTemplates =
-    remoteTemplates.length > 0 ? remoteTemplates : localVisibleTemplates;
+  const visibleTemplates = isOfficialSource
+    ? localVisibleTemplates
+    : remoteTemplates;
   const storeTitle = getMcpMarketSourceLabel(selectedSource, t);
   const storeSubtitle = getMcpMarketSourceDescription(selectedSource, t);
-  const countLabel =
-    typeof totalCount === "number" && totalCount > visibleTemplates.length
-      ? `${visibleTemplates.length} / ${totalCount}`
-      : `${visibleTemplates.length}`;
-  const countTitle =
-    typeof totalCount === "number" && totalCount > visibleTemplates.length
-      ? countLabel
-      : t("mcp.remoteStoreCount", "{{count}} MCP servers", {
-          count: visibleTemplates.length,
-        });
-  const isOfficialSource = selectedSource?.id === OFFICIAL_MCP_SOURCE_ID;
-  const isUsingFallback =
-    !isOfficialSource &&
-    remoteTemplates.length === 0 &&
-    fallbackTemplates.length > 0;
+  const totalCountLabel =
+    typeof totalCount === "number"
+      ? `${totalCount}${totalCountIsLowerBound ? "+" : ""}`
+      : null;
+  const countTitle = totalCountLabel
+    ? t("mcp.remoteStoreTotalCount", "{{total}} MCP servers", {
+        total: totalCountLabel,
+      })
+    : t("mcp.remoteStoreCount", "{{count}} MCP servers", {
+        count: visibleTemplates.length,
+      });
+  const loadedProgressLabel = totalCountLabel
+    ? t("mcp.remoteStoreLoadedCount", "Loaded {{loaded}} / {{total}}", {
+        loaded: visibleTemplates.length,
+        total: totalCountLabel,
+      })
+    : null;
+  const emptyStoreHint = isOfficialSource
+    ? t(
+        "mcp.emptyOfficialStoreHint",
+        "The official store has no installable MCP servers yet. Use MCP Registry to browse community catalogs.",
+      )
+    : t(
+        "mcp.emptyRemoteStoreHint",
+        "No MCP servers are available from this source right now. Refresh or try a different search term.",
+      );
+  const shouldShowInitialLoading = isLoading && visibleTemplates.length === 0;
+  const canLoadMore =
+    hasMore && !isLoading && !isLoadingMore && Boolean(onLoadMore);
 
   const submitSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     onSearchChange?.(searchDraft.trim());
   };
+  const maybeLoadMore = useCallback(
+    (
+      target: HTMLDivElement | null = scrollContainerRef.current,
+      markContinuation = false,
+    ) => {
+      if (!canLoadMore || !target || !onLoadMore) {
+        return;
+      }
+      const remaining =
+        target.scrollHeight - target.scrollTop - target.clientHeight;
+      if (remaining <= 480) {
+        if (markContinuation) {
+          shouldContinueLoadingRef.current = true;
+        }
+        onLoadMore();
+      }
+    },
+    [canLoadMore, onLoadMore],
+  );
+  const handleScroll = useCallback(
+    (event: UIEvent<HTMLDivElement>) => {
+      maybeLoadMore(event.currentTarget, true);
+    },
+    [maybeLoadMore],
+  );
+
+  useEffect(() => {
+    if (shouldContinueLoadingRef.current) {
+      maybeLoadMore();
+    }
+  }, [maybeLoadMore, visibleTemplates.length]);
 
   return (
     <div className="flex-1 flex flex-col h-full app-wallpaper-section overflow-hidden">
@@ -153,21 +215,21 @@ export function McpMarketView({
             {isLoading ? (
               <span className="inline-flex items-center gap-1">
                 <Loader2Icon className="h-3 w-3 animate-spin" />
-                {t("mcp.loadingRemoteStore", "Loading remote catalog...")}
+                {t("mcp.loadingRemoteStore", "Loading remote MCP catalog...")}
               </span>
             ) : (
               <span>{countTitle}</span>
             )}
-            {isUsingFallback ? (
-              <span className="rounded-full border border-border bg-muted/30 px-2 py-0.5">
-                {t("mcp.remoteStoreFallback", "Showing built-in fallback")}
+            {!isLoading && loadedProgressLabel ? (
+              <span className="rounded-full border border-border bg-muted px-2 py-0.5">
+                {loadedProgressLabel}
               </span>
             ) : null}
             {error && !isOfficialSource ? (
               <span className="text-destructive">
                 {t(
                   "mcp.remoteStoreLoadFailed",
-                  "Remote catalog failed to load",
+                  "Remote MCP catalog failed to load",
                 )}
               </span>
             ) : null}
@@ -211,19 +273,26 @@ export function McpMarketView({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto scrollbar-hide p-6 space-y-8">
-        {visibleTemplates.length === 0 ? (
+      <div
+        ref={scrollContainerRef}
+        data-testid="mcp-store-scroll"
+        className="flex-1 overflow-y-auto scrollbar-hide p-6 space-y-8"
+        onScroll={handleScroll}
+      >
+        {shouldShowInitialLoading ? (
+          <div className="flex min-h-80 flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/20 px-6 py-20 text-center text-muted-foreground">
+            <Loader2Icon className="mb-4 h-10 w-10 animate-spin opacity-60" />
+            <h3 className="mb-2 text-lg font-semibold text-foreground">
+              {t("mcp.loadingRemoteStore", "Loading remote MCP catalog...")}
+            </h3>
+          </div>
+        ) : visibleTemplates.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/20 px-6 py-20 text-center text-muted-foreground">
             <StoreIcon className="mb-4 h-12 w-12 opacity-25" />
             <h3 className="mb-2 text-lg font-semibold text-foreground">
-              {t("mcp.emptyStore", "No MCP templates")}
+              {t("mcp.emptyStore", "No MCP servers")}
             </h3>
-            <p className="max-w-md text-sm">
-              {t(
-                "mcp.emptyStoreHint",
-                "Curated MCP templates will appear here when available.",
-              )}
-            </p>
+            <p className="max-w-md text-sm">{emptyStoreHint}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -305,6 +374,27 @@ export function McpMarketView({
             })}
           </div>
         )}
+        {visibleTemplates.length > 0 && (hasMore || isLoadingMore) ? (
+          <div className="flex flex-col items-center gap-2 pt-1">
+            <button
+              type="button"
+              data-testid="mcp-store-load-more"
+              onClick={onLoadMore}
+              disabled={!hasMore || isLoading || isLoadingMore}
+              className="inline-flex min-w-32 items-center justify-center gap-2 rounded-lg border border-border bg-background/70 px-4 py-2 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isLoadingMore ? (
+                <Loader2Icon className="h-3.5 w-3.5 animate-spin" />
+              ) : null}
+              {isLoadingMore
+                ? t("mcp.storeLoadingMore", "Loading more...")
+                : t("mcp.loadMoreStoreServers", "Load more")}
+            </button>
+            <p className="text-[11px] text-muted-foreground">
+              {t("mcp.storeScrollLoadHint", "Scroll down to load more")}
+            </p>
+          </div>
+        ) : null}
       </div>
 
       {selectedTemplate ? (

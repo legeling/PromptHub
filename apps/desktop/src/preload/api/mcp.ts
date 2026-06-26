@@ -18,11 +18,18 @@ import type {
   McpTargetKind,
   McpTargetStatusEntry,
 } from "@prompthub/shared/types/mcp";
+import type { AgentAssetFileSnapshot } from "@prompthub/shared/types/sync";
 import type { McpTargetPreset } from "@prompthub/core";
 
 export const mcpApi = {
   getLibrary: (): Promise<McpLibraryFile> =>
     ipcRenderer.invoke(IPC_CHANNELS.MCP_LIBRARY_GET),
+  replaceLibrary: (library: McpLibraryFile): Promise<McpLibraryFile> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MCP_LIBRARY_REPLACE, library),
+  exportDataFiles: (): Promise<AgentAssetFileSnapshot[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MCP_LIBRARY_EXPORT_FILES),
+  restoreDataFiles: (files: AgentAssetFileSnapshot[]): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MCP_LIBRARY_RESTORE_FILES, files),
   listMarket: (): Promise<McpMarketTemplate[]> =>
     ipcRenderer.invoke(IPC_CHANNELS.MCP_MARKET_LIST),
   listMarketSources: (): Promise<McpMarketSource[]> =>
@@ -55,8 +62,10 @@ export const mcpApi = {
     ipcRenderer.invoke(IPC_CHANNELS.MCP_REMOVE, target),
   removeNames: (target: McpRemoveTargetNames): Promise<McpRemoveResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.MCP_REMOVE_NAMES, target),
-  getTargetStatus: (): Promise<McpTargetStatusEntry[]> =>
-    ipcRenderer.invoke(IPC_CHANNELS.MCP_TARGET_STATUS),
+  getTargetStatus: (
+    presets?: McpTargetPreset[],
+  ): Promise<McpTargetStatusEntry[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MCP_TARGET_STATUS, presets),
   importFile: (filePath: string): Promise<McpImportResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.MCP_IMPORT_FILE, filePath),
   checkServer: (identifier: string): Promise<McpHealthCheckResult> =>

@@ -5,7 +5,7 @@
 - `packages/shared/types/mcp.ts`: normalized MCP types, target IDs, market template contracts.
 - `packages/shared/utils/mcp-config.ts`: pure validation, normalization, projection, and merge helpers.
 - `packages/core/src/mcp-source.ts`: custom MCP source inference from commands, URLs, GitHub repositories, and local source folders.
-- `packages/core/src/mcp-library.ts`: filesystem-backed local MCP library under `config/mcp-library.json`.
+- `packages/core/src/mcp-library.ts`: filesystem-backed local MCP library under `data/mcp/library.json`.
 - `apps/desktop/src/main/ipc/mcp.ipc.ts`: desktop IPC for CRUD, preview, import, and apply.
 - `apps/desktop/src/preload/api/mcp.ts`: typed renderer bridge.
 - `apps/desktop/src/renderer/stores/mcp.store.ts`: UI state and orchestration.
@@ -13,9 +13,11 @@
 
 ## Data Boundary
 
-MCP records are durable local configuration, not SQLite prompt/skill content. First version stores them in a PromptHub-owned JSON file:
+MCP records are durable user data, not app settings and not SQLite prompt/skill rows. PromptHub stores them in the same `data/` area family as prompts, rules, and skills:
 
-`<userData>/config/mcp-library.json`
+`<userData>/data/mcp/library.json`
+
+Older builds wrote the library to `<userData>/config/mcp-library.json`. The MCP library service still reads that legacy file when the new data file is missing, immediately normalizes it into `data/mcp/library.json`, and keeps the legacy file as a compatibility backup.
 
 The file contains:
 
@@ -31,8 +33,11 @@ This avoids adding a DB migration while keeping MCP state out of React-only loca
 - Codex: TOML tables under `[mcp_servers.<name>]`.
 - Generic MCP clients: JSON `{ "mcpServers": { "<name>": ... } }`.
 - VS Code: JSON `{ "servers": { "<name>": ... } }`.
+- OpenCode: JSON `mcp` object in either global `~/.config/opencode/opencode.json` or project `<projectRoot>/opencode.json`.
+- Kiro: JSON `mcpServers` object in either global `~/.kiro/settings/mcp.json` or workspace `<projectRoot>/.kiro/settings/mcp.json`.
+- Kilo Code: JSONC `mcp` object in global `~/.config/kilo/kilo.jsonc` and project `<projectRoot>/kilo.jsonc`. The UI exposes one default Kilo Code target per scope so Kilo is one platform, not multiple path/format variants. Compatible custom paths such as `.kilo/kilo.jsonc` are handled by static parsing and lower-level custom path flows, not by duplicating Agent or Project MCP cards.
 
-First version models apply targets by path and target type. Built-in path helpers cover common global locations; users can still apply to a custom path.
+First version models apply targets by path and target type. Built-in path helpers cover common global locations; registered PromptHub projects derive workspace targets for OpenCode, Kiro, and one default Kilo Code `kilo.jsonc` target. Users can still apply to a custom path through lower-level CLI/API flows.
 
 ## Safety
 
@@ -45,9 +50,11 @@ First version models apply targets by path and target type. Built-in path helper
 - Static health checks may inspect command availability, URL syntax, cwd existence, required env values, and placeholder values.
 - Do not start unknown MCP server processes, call tools, or proxy traffic in this change.
 - Custom source import is static. PromptHub may read metadata files such as `package.json`, `pyproject.toml`, and `Dockerfile`, but it must not install dependencies or execute repository code while creating the MCP record.
-- MCP env values are local MCP-server-level configuration stored in `config/mcp-library.json`. They are projected into each selected agent target during distribution; PromptHub does not mutate the OS process environment or a global machine env store.
+- MCP env values are local MCP-server-level configuration stored in `data/mcp/library.json`. They are projected into each selected agent target during distribution; PromptHub does not mutate the OS process environment or a global machine env store.
 - `.env` import is selective: PromptHub imports only env keys inferred from the selected MCP server or keys explicitly selected by the caller. It must not bulk-import a whole process env or `.env` file.
 - Required environment variables must also be editable directly in the MCP detail page. `.env` import is a bulk-fill helper, not the primary or only configuration path.
+- Desktop MCP distribution UI treats Settings `disabledPlatformIds` as the single source of truth for visible/enabled agent targets. Disabled platforms are hidden from MCP Agent views, detail distribution panels, batch deploy dialogs, and stale dialog apply actions.
+- Kilo Code is supported as its own MCP target. PromptHub does not alias `kilo` to Kiro; it writes Kilo's `mcp` shape and reads JSON/JSONC config files statically.
 
 ## Market Metadata
 
@@ -55,7 +62,7 @@ Built-in templates carry source metadata, runtime/package hints, homepage, repos
 
 ## CLI
 
-The CLI reads and writes the same `config/mcp-library.json` file as the desktop app. The first MCP CLI surface covers library sync and diagnostics only:
+The CLI reads and writes the same `data/mcp/library.json` file as the desktop app. The first MCP CLI surface covers library sync and diagnostics only:
 
 - `mcp list`
 - `mcp get <id|name>`
@@ -73,13 +80,20 @@ The CLI reads and writes the same `config/mcp-library.json` file as the desktop 
 - `mcp remove --preset <preset-id> --servers a,b`
 - `mcp remove --target <target> --path <file> --servers a,b`
 
+Codex TOML removal treats `[mcp_servers.<name>]` as a subtree boundary. Removing
+`<name>` must also remove child sections such as
+`[mcp_servers.<name>.tools.<tool>]`, because Codex treats those child tables as
+part of the same server configuration. Exact TOML key parsing is required so
+similarly named servers remain untouched.
+
 ## UI
 
 The MCP module follows the Skill management workbench pattern:
 
-- Library: installed MCP servers in a dense left list, with the selected MCP editor and distribution panel on the right.
-- Market: curated installable templates.
-- Targets: bulk preview/apply for all enabled MCP servers.
+- Library: installed MCP servers in a dense left list, with the selected MCP editor and Agent distribution panel on the right.
+- Market: Skill Store-style source channels. PromptHub Official Store is first and reserved for PromptHub-owned catalog content; third-party/community channels such as MCP Registry must load from their real remote catalog responses rather than bundled placeholder templates.
+- Agent MCP: global agent config targets only. Project/workspace targets must not appear here.
+- Project MCP: project-level config targets derived from registered PromptHub projects, kept separate from Agent MCP.
 
 The selected MCP detail owns the normal distribution workflow. Users can choose a built-in or custom target, preview the generated config, apply only the selected MCP server, and see existing applied targets without leaving the detail panel.
 

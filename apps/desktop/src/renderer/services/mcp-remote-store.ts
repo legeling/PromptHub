@@ -7,9 +7,11 @@ import type {
 
 export interface McpRemoteStoreResult {
   nextCursor?: string | null;
+  pageCount?: number;
   query?: string;
   templates: McpMarketTemplate[];
   totalCount?: number;
+  totalCountIsLowerBound?: boolean;
 }
 
 export interface LoadMcpRemoteStoreOptions {
@@ -58,6 +60,7 @@ interface GenericRemoteServer {
   args?: string[];
   command?: string;
   description?: string;
+  detailUrl?: string;
   displayName?: string;
   documentationUrl?: string;
   homepage?: string;
@@ -74,7 +77,6 @@ interface GenericRemoteServer {
 }
 
 const DEFAULT_REMOTE_PAGE_SIZE = 48;
-const MAX_OFFICIAL_SEARCH_PAGES = 8;
 
 function slugify(value: string): string {
   return value
@@ -163,9 +165,9 @@ function parseInstallCommand(commandLine?: string): {
   command?: string;
 } {
   const tokens =
-    commandLine?.match(/"([^"]*)"|'([^']*)'|[^\s]+/g)?.map((token) =>
-      token.replace(/^['"]|['"]$/g, ""),
-    ) ?? [];
+    commandLine
+      ?.match(/"([^"]*)"|'([^']*)'|[^\s]+/g)
+      ?.map((token) => token.replace(/^['"]|['"]$/g, "")) ?? [];
   const [command, ...args] = tokens;
   return { command, args: args.length > 0 ? args : undefined };
 }
@@ -178,19 +180,29 @@ function getPackageCommand(
     return { command: "uvx", args: [identifier], runtime: "uvx" };
   }
   if (item.registryType === "oci") {
-    return { command: "docker", args: ["run", "--rm", "-i", identifier], runtime: "docker" };
+    return {
+      command: "docker",
+      args: ["run", "--rm", "-i", identifier],
+      runtime: "docker",
+    };
   }
   return { command: "npx", args: ["-y", identifier], runtime: "npx" };
 }
 
 function requirementsToEnv(
-  requirements: Array<{ description?: string; isRequired?: boolean; name?: string }>,
+  requirements: Array<{
+    description?: string;
+    isRequired?: boolean;
+    name?: string;
+  }>,
 ): {
   env?: Record<string, string>;
   requiredEnv?: McpEnvRequirement[];
 } {
   const valid = requirements.filter(
-    (item): item is { description?: string; isRequired?: boolean; name: string } =>
+    (
+      item,
+    ): item is { description?: string; isRequired?: boolean; name: string } =>
       typeof item.name === "string" && item.name.trim().length > 0,
   );
   if (valid.length === 0) {
@@ -286,8 +298,8 @@ export function parseOfficialMcpRegistryCatalog(
               documentationUrl: server.websiteUrl || repository,
               source: toSource(source),
               ...env,
-          };
-        });
+            };
+          });
       }
 
       return (server.remotes ?? [])
@@ -315,22 +327,30 @@ export function parseOfficialMcpRegistryCatalog(
         });
     });
 
+  const pageCount = data?.metadata?.count;
+  const nextCursor = data?.metadata?.nextCursor ?? null;
   return {
-    templates: uniqueTemplates(applyQueryFilter(templates, query)),
-    nextCursor: data?.metadata?.nextCursor ?? null,
-    totalCount: data?.metadata?.count,
+    templates: uniqueTemplates(templates),
+    nextCursor,
+    pageCount,
+    totalCount: pageCount,
+    totalCountIsLowerBound: Boolean(nextCursor),
     query,
   };
 }
 
-function collectJsonObjects(value: unknown, output: GenericRemoteServer[]): void {
+function collectJsonObjects(
+  value: unknown,
+  output: GenericRemoteServer[],
+): void {
   if (!value || typeof value !== "object") return;
   if (Array.isArray(value)) {
     value.forEach((item) => collectJsonObjects(item, output));
     return;
   }
   const record = value as Record<string, unknown>;
-  const name = record.name ?? record.slug ?? record.qualifiedName ?? record.title;
+  const name =
+    record.name ?? record.slug ?? record.qualifiedName ?? record.title;
   const description = record.description;
   if (typeof name === "string" && typeof description === "string") {
     output.push(record as GenericRemoteServer);
@@ -348,7 +368,16 @@ function extractJsonCandidates(html: string): unknown[] {
     if (parsed) candidates.push(parsed);
   }
 
-  const jsonPattern = /\{(?=[\s\S]{0,1200}?(?:servers|qualifiedName|installCommand|remoteUrl))[\s\S]*?\}/g;
+  const jsonScriptPattern =
+    /<script[^>]+type=["']application\/(?:ld\+)?json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let scriptMatch: RegExpExecArray | null;
+  while ((scriptMatch = jsonScriptPattern.exec(html)) !== null) {
+    const parsed = safeJsonParse<unknown>(scriptMatch[1]);
+    if (parsed) candidates.push(parsed);
+  }
+
+  const jsonPattern =
+    /\{(?=[\s\S]{0,1200}?(?:servers|qualifiedName|installCommand|remoteUrl))[\s\S]*?\}/g;
   let match: RegExpExecArray | null;
   while ((match = jsonPattern.exec(html)) !== null) {
     const parsed = safeJsonParse<unknown>(match[0].replace(/\\"/g, '"'));
@@ -369,7 +398,25 @@ function extractJsonCandidates(html: string): unknown[] {
   return candidates;
 }
 
-function extractLinkServers(html: string, source: McpMarketSource): GenericRemoteServer[] {
+function isDirectoryDetailUrl(value: string, source: McpMarketSource): boolean {
+  try {
+    const url = new URL(value, source.url);
+    const sourceUrl = new URL(source.url);
+    if (url.hostname !== sourceUrl.hostname) {
+      return false;
+    }
+    return /^\/mcp\/(?:servers|tools|connectors|categories)(?:\/|$)|\/server\//i.test(
+      url.pathname,
+    );
+  } catch {
+    return false;
+  }
+}
+
+function extractLinkServers(
+  html: string,
+  source: McpMarketSource,
+): GenericRemoteServer[] {
   const servers: GenericRemoteServer[] = [];
   const seen = new Set<string>();
   const sourceHost = (() => {
@@ -384,7 +431,9 @@ function extractLinkServers(html: string, source: McpMarketSource): GenericRemot
   while ((match = linkPattern.exec(html)) !== null) {
     const href = match[1];
     if (!/(mcp|server)/i.test(href)) continue;
-    const url = href.startsWith("http") ? href : new URL(href, sourceHost).toString();
+    const url = href.startsWith("http")
+      ? href
+      : new URL(href, sourceHost).toString();
     if (seen.has(url)) continue;
     seen.add(url);
     const text = match[2]
@@ -410,18 +459,25 @@ function genericServerToTemplate(
   const rawName = item.slug || item.qualifiedName || item.name || item.title;
   if (!rawName) return null;
   const name = normalizeName(rawName);
-  const displayName = item.displayName || item.title || item.name || humanizeName(rawName);
+  const displayName =
+    item.displayName || item.title || item.name || humanizeName(rawName);
   const repository = getRepositoryUrl(item.repository);
   const installCommand =
     item.installCommand ||
     (item.packageName ? `npx -y ${item.packageName}` : undefined);
   const parsedCommand = parseInstallCommand(installCommand);
   const remoteUrl = item.remoteUrl || item.url;
-  const shouldUseRemote =
-    remoteUrl &&
-    !installCommand &&
-    /^https?:\/\//.test(remoteUrl) &&
-    !/\/server\//.test(remoteUrl);
+  const hasInstallCommand =
+    Boolean(installCommand || item.command || item.packageName) ||
+    Boolean(item.args && item.args.length > 0);
+  const hasRemoteEndpoint =
+    Boolean(remoteUrl) &&
+    /^https?:\/\//.test(remoteUrl ?? "") &&
+    !isDirectoryDetailUrl(remoteUrl ?? "", source);
+  if (!hasInstallCommand && !hasRemoteEndpoint) {
+    return null;
+  }
+  const shouldUseRemote = Boolean(hasRemoteEndpoint && !hasInstallCommand);
   const tags = Array.from(
     new Set(
       [
@@ -439,17 +495,32 @@ function genericServerToTemplate(
     displayName,
     description: item.description || `${displayName} MCP server`,
     transport: shouldUseRemote ? "streamable-http" : "stdio",
-    command: shouldUseRemote ? undefined : parsedCommand.command || item.command || "npx",
+    command: shouldUseRemote
+      ? undefined
+      : parsedCommand.command || item.command || "npx",
     args: shouldUseRemote
       ? undefined
-      : parsedCommand.args || item.args || (item.packageName ? ["-y", item.packageName] : undefined),
+      : parsedCommand.args ||
+        item.args ||
+        (item.packageName ? ["-y", item.packageName] : undefined),
     url: shouldUseRemote ? remoteUrl : undefined,
     tags,
-    homepage: item.homepage || remoteUrl || repository,
+    homepage:
+      item.homepage || (shouldUseRemote ? undefined : remoteUrl) || repository,
     repository,
-    documentationUrl: item.documentationUrl || item.homepage || remoteUrl || repository,
-    packageName: item.packageName || parsedCommand.args?.find((arg) => /^@?[\w.-]+\/?[\w.-]*(@.+)?$/.test(arg)),
-    runtime: shouldUseRemote ? "streamable-http" : parsedCommand.command || item.command || "npx",
+    documentationUrl:
+      item.documentationUrl ||
+      item.homepage ||
+      (shouldUseRemote ? undefined : remoteUrl) ||
+      repository,
+    packageName:
+      item.packageName ||
+      parsedCommand.args?.find((arg) =>
+        /^@?[\w.-]+\/?[\w.-]*(@.+)?$/.test(arg),
+      ),
+    runtime: shouldUseRemote
+      ? "streamable-http"
+      : parsedCommand.command || item.command || "npx",
     source: toSource(source),
   };
 }
@@ -464,7 +535,9 @@ function parseGenericCatalog(
     collectJsonObjects(candidate, found);
   }
   found.push(...extractLinkServers(raw, source));
-  const totalCountMatch = raw.match(/(?:totalCount|totalServers|serverCount)["']?\s*[:=]\s*(\d+)/i);
+  const totalCountMatch = raw.match(
+    /(?:totalCount|totalServers|serverCount)["']?\s*[:=]\s*(\d+)/i,
+  );
   const templates = uniqueTemplates(
     found
       .map((item) => genericServerToTemplate(item, source))
@@ -472,20 +545,11 @@ function parseGenericCatalog(
   );
   return {
     templates: applyQueryFilter(templates, query),
-    totalCount: totalCountMatch ? Number.parseInt(totalCountMatch[1], 10) : undefined,
+    totalCount: totalCountMatch
+      ? Number.parseInt(totalCountMatch[1], 10)
+      : undefined,
     query,
   };
-}
-
-export function parseGlamaMcpCatalog(
-  raw: string,
-  source: McpMarketSource,
-  query = "",
-): McpRemoteStoreResult {
-  if (looksLikeOfficialRegistryCatalog(raw)) {
-    return parseOfficialMcpRegistryCatalog(raw, source, query);
-  }
-  return parseGenericCatalog(raw, source, query);
 }
 
 export function parseSmitheryMcpCatalog(
@@ -506,6 +570,8 @@ export function buildMcpRemoteStoreUrl(
   if (source.id === "modelcontextprotocol") {
     const url = new URL("/v0/servers", source.url);
     if (options.cursor) url.searchParams.set("cursor", options.cursor);
+    if (options.query?.trim())
+      url.searchParams.set("search", options.query.trim());
     return url.toString();
   }
 
@@ -522,43 +588,15 @@ export async function loadMcpRemoteStore({
   query = "",
   source,
 }: LoadMcpRemoteStoreOptions): Promise<McpRemoteStoreResult> {
-  if (source.id === "modelcontextprotocol" && query.trim() && !cursor) {
-    const collected: McpMarketTemplate[] = [];
-    let nextCursor: string | null | undefined = null;
-    let totalCount: number | undefined;
-
-    for (let pageIndex = 0; pageIndex < MAX_OFFICIAL_SEARCH_PAGES; pageIndex += 1) {
-      const raw = await fetchRemoteContent(
-        buildMcpRemoteStoreUrl(source, { cursor: nextCursor, query }),
-      );
-      const parsed = parseOfficialMcpRegistryCatalog(raw, source, query);
-      collected.push(...parsed.templates);
-      totalCount = parsed.totalCount ?? totalCount;
-      nextCursor = parsed.nextCursor;
-      if (collected.length >= DEFAULT_REMOTE_PAGE_SIZE || !nextCursor) {
-        break;
-      }
-    }
-
-    return {
-      templates: uniqueTemplates(collected).slice(0, DEFAULT_REMOTE_PAGE_SIZE),
-      nextCursor,
-      totalCount,
-      query,
-    };
-  }
-
   const raw = await fetchRemoteContent(
     buildMcpRemoteStoreUrl(source, { cursor, query }),
   );
   const result =
     source.id === "modelcontextprotocol"
       ? parseOfficialMcpRegistryCatalog(raw, source, query)
-      : source.id === "glama"
-        ? parseGlamaMcpCatalog(raw, source, query)
-        : source.id === "smithery"
-          ? parseSmitheryMcpCatalog(raw, source, query)
-          : parseGenericCatalog(raw, source, query);
+      : source.id === "smithery"
+        ? parseSmitheryMcpCatalog(raw, source, query)
+        : parseGenericCatalog(raw, source, query);
 
   return {
     ...result,

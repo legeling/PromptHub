@@ -27,6 +27,7 @@ export const MCP_JSON_TARGETS: McpTargetKind[] = [
   "gemini",
   "windsurf",
   "kiro",
+  "kilo",
   "custom-json",
 ];
 
@@ -40,7 +41,7 @@ export function getMcpServersJsonKey(
   if (target === "vscode") {
     return "servers";
   }
-  if (target === "opencode") {
+  if (target === "opencode" || target === "kilo") {
     return "mcp";
   }
   return "mcpServers";
@@ -349,6 +350,8 @@ export function toMcpServerEntry(
 }
 
 /**
+ * OpenCode and Kilo Code use an MCP entry shape where local stdio
+ * servers store a combined command array and remote servers store url/headers.
  * OpenCode uses its own MCP entry shape:
  * local servers use `type: "local"` with a combined command array,
  * remote servers use `type: "remote"` with url/headers.
@@ -385,9 +388,122 @@ function buildMcpTargetEntry(
   target: McpTargetKind,
   server: McpServerConfig,
 ): Record<string, unknown> {
-  return target === "opencode"
+  return target === "opencode" || target === "kilo"
     ? toOpenCodeMcpEntry(server)
     : toMcpServerEntry(server);
+}
+
+export function parseMcpJsonConfigContent(content: string): unknown {
+  const trimmed = content.trim();
+  if (!trimmed) {
+    return {};
+  }
+  return JSON.parse(stripJsoncSyntax(trimmed));
+}
+
+function stripJsoncSyntax(content: string): string {
+  return stripTrailingJsonCommas(stripJsonComments(content));
+}
+
+function stripJsonComments(content: string): string {
+  let output = "";
+  let inString = false;
+  let quote = "";
+  let escaped = false;
+
+  for (let index = 0; index < content.length; index += 1) {
+    const char = content[index];
+    const next = content[index + 1];
+
+    if (inString) {
+      output += char;
+      if (escaped) {
+        escaped = false;
+      } else if (char === "\\") {
+        escaped = true;
+      } else if (char === quote) {
+        inString = false;
+        quote = "";
+      }
+      continue;
+    }
+
+    if (char === '"' || char === "'") {
+      inString = true;
+      quote = char;
+      output += char;
+      continue;
+    }
+
+    if (char === "/" && next === "/") {
+      while (index < content.length && !/[\r\n]/.test(content[index])) {
+        index += 1;
+      }
+      output += content[index] ?? "";
+      continue;
+    }
+
+    if (char === "/" && next === "*") {
+      index += 2;
+      while (
+        index < content.length &&
+        !(content[index] === "*" && content[index + 1] === "/")
+      ) {
+        index += 1;
+      }
+      index += 1;
+      continue;
+    }
+
+    output += char;
+  }
+
+  return output;
+}
+
+function stripTrailingJsonCommas(content: string): string {
+  let output = "";
+  let inString = false;
+  let quote = "";
+  let escaped = false;
+
+  for (let index = 0; index < content.length; index += 1) {
+    const char = content[index];
+
+    if (inString) {
+      output += char;
+      if (escaped) {
+        escaped = false;
+      } else if (char === "\\") {
+        escaped = true;
+      } else if (char === quote) {
+        inString = false;
+        quote = "";
+      }
+      continue;
+    }
+
+    if (char === '"' || char === "'") {
+      inString = true;
+      quote = char;
+      output += char;
+      continue;
+    }
+
+    if (char === ",") {
+      let lookahead = index + 1;
+      while (/\s/.test(content[lookahead] ?? "")) {
+        lookahead += 1;
+      }
+      if (content[lookahead] === "}" || content[lookahead] === "]") {
+        continue;
+      }
+    }
+
+    output += char;
+  }
+
+  return output;
 }
 
 export function buildMcpServersJson(servers: McpServerConfig[]): {
@@ -531,11 +647,9 @@ export function removeCodexMcpTomlServers(
   let skipping = false;
 
   for (const line of lines) {
-    const sectionMatch = line
-      .trim()
-      .match(/^\[mcp_servers\.("?)([^"\]]+)\1\]$/);
-    if (sectionMatch) {
-      skipping = names.has(sectionMatch[2]);
+    const section = parseCodexMcpTomlSection(line);
+    if (section) {
+      skipping = names.has(section.serverName);
       if (skipping) {
         continue;
       }
@@ -578,12 +692,77 @@ export function listMcpServerNamesInJson(
 export function listMcpServerNamesInToml(content: string): string[] {
   const names: string[] = [];
   for (const rawLine of content.split(/\r?\n/)) {
-    const match = rawLine.trim().match(/^\[mcp_servers\.("?)([^"\]]+)\1\]$/);
-    if (match) {
-      names.push(match[2]);
+    const section = parseCodexMcpTomlSection(rawLine);
+    if (section?.isServerRoot) {
+      names.push(section.serverName);
     }
   }
   return names;
+}
+
+function parseCodexMcpTomlSection(
+  line: string,
+): { serverName: string; isServerRoot: boolean } | null {
+  const trimmed = line.trim();
+  const prefix = "[mcp_servers.";
+
+  if (!trimmed.startsWith(prefix) || !trimmed.endsWith("]")) {
+    return null;
+  }
+
+  const sectionPath = trimmed.slice(prefix.length, -1);
+  const serverKey = parseTomlDottedKeySegment(sectionPath);
+  if (!serverKey) {
+    return null;
+  }
+
+  const remainingPath = sectionPath.slice(serverKey.endIndex);
+  if (remainingPath.length > 0 && !remainingPath.startsWith(".")) {
+    return null;
+  }
+
+  return {
+    serverName: serverKey.value,
+    isServerRoot: remainingPath.length === 0,
+  };
+}
+
+function parseTomlDottedKeySegment(
+  value: string,
+): { value: string; endIndex: number } | null {
+  if (value.startsWith('"')) {
+    let escaped = false;
+    for (let index = 1; index < value.length; index += 1) {
+      const char = value[index];
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (char === "\\") {
+        escaped = true;
+        continue;
+      }
+      if (char !== '"') {
+        continue;
+      }
+
+      const rawSegment = value.slice(0, index + 1);
+      try {
+        const parsed = JSON.parse(rawSegment) as unknown;
+        return typeof parsed === "string"
+          ? { value: parsed, endIndex: index + 1 }
+          : null;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  const bareMatch = value.match(/^[A-Za-z0-9_-]+/);
+  return bareMatch
+    ? { value: bareMatch[0], endIndex: bareMatch[0].length }
+    : null;
 }
 
 const MANAGED_BLOCK_START = "# >>> PromptHub MCP managed block >>>";

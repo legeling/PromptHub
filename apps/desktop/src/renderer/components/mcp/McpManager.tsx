@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -14,6 +15,7 @@ import {
   DatabaseIcon,
   FolderIcon,
   GlobeIcon,
+  InboxIcon,
   LayoutGridIcon,
   ListIcon,
   RefreshCwIcon,
@@ -34,7 +36,9 @@ import type {
   McpServerDraft,
   McpTargetStatusEntry,
 } from "@prompthub/shared/types/mcp";
+import { MCP_OFFICIAL_MARKET_SOURCE_ID } from "@prompthub/shared/constants/mcp-market";
 import { useMcpStore } from "../../stores/mcp.store";
+import { useSettingsStore } from "../../stores/settings.store";
 import { Spinner } from "../ui/Spinner";
 import { Select, type SelectOption } from "../ui/Select";
 import { useToast } from "../ui/Toast";
@@ -53,6 +57,11 @@ import { SkillStoreSourceForm } from "../skill/SkillStoreSourceForm";
 import { updateMcpTags, type McpBatchTagMode } from "./batch-utils";
 import { isServerOnPreset } from "./mcp-form-utils";
 import type { CustomStoreSourceType } from "../../services/custom-store-source";
+import {
+  deriveProjectMcpTargetPresets,
+  filterVisibleMcpTargetPresets,
+  mergeMcpTargetPresets,
+} from "../../services/mcp-target-presets";
 
 const OPEN_CREATE_MCP_MODAL_EVENT = "open-create-mcp-modal";
 const MCP_VIEW_TRANSITION_CLASS =
@@ -107,6 +116,23 @@ function getMcpGalleryGridStyle(columns: McpGalleryColumnMode): CSSProperties {
   return {
     gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, max(${MCP_GALLERY_MANUAL_MIN_WIDTH_PX}px, calc((100% - ${totalGapRem}rem) / ${columnCount}))), 1fr))`,
   };
+}
+
+function hasFileItems(dataTransfer: DataTransfer | null): boolean {
+  if (!dataTransfer) {
+    return false;
+  }
+
+  if (
+    Array.from(dataTransfer.items ?? []).some((item) => item.kind === "file")
+  ) {
+    return true;
+  }
+
+  return (
+    Array.from(dataTransfer.types ?? []).includes("Files") ||
+    (dataTransfer.files?.length ?? 0) > 0
+  );
 }
 
 function getMcpSourceLabel(
@@ -197,13 +223,17 @@ function buildAgentMcpImportDraft(
 /**
  * MCP module orchestrator. Library tab shows the Skill-style list/detail
  * layout with the platform integration panel; Agent tab shows the platform
- * overview; Store tab shows curated templates.
+ * overview; Store tab shows MCP server catalogs.
  * MCP 模块编排组件。Library 为 Skill 风格列表/详情布局（含平台集成
- * 面板）；Agent 为平台总览；Store 为内置模板市场。
+ * 面板）；Agent 为平台总览；Store 为 MCP 服务目录。
  */
 export function McpManager() {
   const { t } = useTranslation();
   const { showToast } = useToast();
+  const disabledPlatformIds = useSettingsStore(
+    (state) => state.disabledPlatformIds,
+  );
+  const skillProjects = useSettingsStore((state) => state.skillProjects);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [detailServerId, setDetailServerId] = useState<string | null>(null);
   const [pendingAgentRemoval, setPendingAgentRemoval] =
@@ -238,6 +268,7 @@ export function McpManager() {
   });
   const [isDeletingServers, setIsDeletingServers] = useState(false);
   const [isRefreshingLibrary, setIsRefreshingLibrary] = useState(false);
+  const [isDropTargetActive, setIsDropTargetActive] = useState(false);
   const [editingCustomSourceId, setEditingCustomSourceId] = useState<
     string | null
   >(null);
@@ -256,6 +287,7 @@ export function McpManager() {
     customStoreSources,
     remoteMarketEntries,
     loadingMarketSourceId,
+    loadingMoreMarketSourceId,
     marketError,
     healthChecks,
     targetPresets,
@@ -263,10 +295,12 @@ export function McpManager() {
     selectedTab,
     selectedMarketSourceId,
     searchQuery,
+    pendingPluginChildDeployServerIds,
     isLoading,
     error,
     load,
     loadMarketSource,
+    loadMoreMarketSource,
     selectServer,
     setSelectedTab,
     createServer,
@@ -284,11 +318,70 @@ export function McpManager() {
     updateCustomStoreSource,
     removeCustomStoreSource,
     toggleCustomStoreSource,
+    consumePluginChildMcpDeployRequest,
   } = useMcpStore();
+
+  const projectTargetPresets = useMemo(
+    () => deriveProjectMcpTargetPresets(skillProjects),
+    [skillProjects],
+  );
+  const visibleAgentTargetPresets = useMemo(
+    () =>
+      filterVisibleMcpTargetPresets(
+        targetPresets.filter((preset) => preset.scope !== "workspace"),
+        disabledPlatformIds,
+      ),
+    [targetPresets, disabledPlatformIds],
+  );
+  const visibleProjectTargetPresets = useMemo(
+    () =>
+      filterVisibleMcpTargetPresets(projectTargetPresets, disabledPlatformIds),
+    [projectTargetPresets, disabledPlatformIds],
+  );
+  const visibleTargetPresets = useMemo(
+    () =>
+      mergeMcpTargetPresets(
+        visibleAgentTargetPresets,
+        visibleProjectTargetPresets,
+      ),
+    [visibleAgentTargetPresets, visibleProjectTargetPresets],
+  );
+  const visibleTargetPresetIds = useMemo(
+    () => new Set(visibleTargetPresets.map((preset) => preset.id)),
+    [visibleTargetPresets],
+  );
+  const [visibleTargetStatus, setVisibleTargetStatus] = useState<
+    McpTargetStatusEntry[]
+  >([]);
+  const refreshVisibleTargetStatus = useCallback(async () => {
+    if (visibleTargetPresets.length === 0) {
+      setVisibleTargetStatus([]);
+      return;
+    }
+
+    const status = await window.api.mcp.getTargetStatus(visibleTargetPresets);
+    const visibleIds = new Set(visibleTargetPresets.map((preset) => preset.id));
+    setVisibleTargetStatus(
+      status.filter((entry) => visibleIds.has(entry.presetId)),
+    );
+  }, [visibleTargetPresets]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    void refreshVisibleTargetStatus();
+  }, [refreshVisibleTargetStatus, targetStatus]);
+
+  useEffect(() => {
+    if (
+      agentDeployPreset &&
+      !visibleTargetPresetIds.has(agentDeployPreset.id)
+    ) {
+      setAgentDeployPreset(null);
+    }
+  }, [agentDeployPreset, visibleTargetPresetIds]);
 
   useEffect(() => {
     if (selectedTab !== "market" || marketSources.length === 0) {
@@ -328,11 +421,11 @@ export function McpManager() {
   const selectedServerTargetCount = useMemo(
     () =>
       detailServer
-        ? targetPresets.filter((preset) =>
-            isServerOnPreset(targetStatus, preset.id, detailServer.name),
+        ? visibleAgentTargetPresets.filter((preset) =>
+            isServerOnPreset(visibleTargetStatus, preset.id, detailServer.name),
           ).length
         : 0,
-    [detailServer, targetPresets, targetStatus],
+    [detailServer, visibleAgentTargetPresets, visibleTargetStatus],
   );
   const selectedServerHealth = useMemo(
     () =>
@@ -347,7 +440,10 @@ export function McpManager() {
   );
   const handleAddCustomSource = () => {
     if (!sourceName.trim() || !sourceUrl.trim()) {
-      showToast(t("skill.storeSourceRequired", "Store name and URL are required"), "error");
+      showToast(
+        t("skill.storeSourceRequired", "Store name and URL are required"),
+        "error",
+      );
       return;
     }
     try {
@@ -390,10 +486,20 @@ export function McpManager() {
     remoteMarketEntries[
       `${selectedMarketSourceId}:${searchQuery.trim().toLowerCase()}`
     ];
+  const selectedMarketSourceIsRemote =
+    selectedMarketSourceId !== MCP_OFFICIAL_MARKET_SOURCE_ID &&
+    selectedMarketSourceId !== "new-custom";
+  const shouldShowMarketLoading =
+    loadingMarketSourceId === selectedMarketSourceId ||
+    (selectedTab === "market" &&
+      selectedMarketSourceIsRemote &&
+      !selectedMarketEntry &&
+      !marketError);
   const selectedCustomSource = useMemo(
     () =>
-      customStoreSources.find((source) => source.id === selectedMarketSourceId) ??
-      null,
+      customStoreSources.find(
+        (source) => source.id === selectedMarketSourceId,
+      ) ?? null,
     [customStoreSources, selectedMarketSourceId],
   );
   const pendingDeleteCustomSource = useMemo(
@@ -439,13 +545,13 @@ export function McpManager() {
     for (const server of servers) {
       next.set(
         server.id,
-        targetPresets.filter((preset) =>
-          isServerOnPreset(targetStatus, preset.id, server.name),
+        visibleAgentTargetPresets.filter((preset) =>
+          isServerOnPreset(visibleTargetStatus, preset.id, server.name),
         ).length,
       );
     }
     return next;
-  }, [servers, targetPresets, targetStatus]);
+  }, [servers, visibleAgentTargetPresets, visibleTargetStatus]);
   const libraryCounts = useMemo(() => {
     let distributed = 0;
     let favorites = 0;
@@ -602,6 +708,40 @@ export function McpManager() {
   const selectedServersAllFavorite =
     selectedServers.length > 0 &&
     selectedServers.every((server) => server.isFavorite);
+
+  useEffect(() => {
+    if (pendingPluginChildDeployServerIds.length === 0) {
+      return;
+    }
+
+    if (servers.length === 0) {
+      return;
+    }
+
+    const serverIds = new Set(servers.map((server) => server.id));
+    const validIds = pendingPluginChildDeployServerIds.filter((id) =>
+      serverIds.has(id),
+    );
+    consumePluginChildMcpDeployRequest();
+
+    if (validIds.length === 0) {
+      return;
+    }
+
+    setSelectedTab("library");
+    selectServer(validIds[0] ?? null);
+    setDetailServerId(null);
+    setSelectedServerIds(new Set(validIds));
+    setIsSelectionMode(true);
+    setQuickDeployServerId(null);
+    setShowBatchDeployDialog(true);
+  }, [
+    consumePluginChildMcpDeployRequest,
+    pendingPluginChildDeployServerIds,
+    selectServer,
+    servers,
+    setSelectedTab,
+  ]);
 
   useEffect(() => {
     if (
@@ -894,14 +1034,26 @@ export function McpManager() {
     presets: McpTargetPreset[],
     serverIds: string[],
   ) => {
+    const allowedPresets = presets.filter((preset) =>
+      visibleTargetPresetIds.has(preset.id),
+    );
+    if (allowedPresets.length === 0) {
+      throw new Error(
+        t(
+          "mcp.noVisibleAgentTargets",
+          "No enabled MCP targets are available. Enable the platform in Settings first.",
+        ),
+      );
+    }
     await applyTargetsWithConflictConfirmation(
-      presets.map((preset) => ({
+      allowedPresets.map((preset) => ({
         target: preset.target,
         scope: preset.scope,
         path: preset.path,
         serverIds,
       })),
     );
+    await refreshVisibleTargetStatus();
     showToast(t("mcp.applied", "MCP applied"), "success");
   };
 
@@ -958,6 +1110,59 @@ export function McpManager() {
     return result;
   };
 
+  const handleDropImport = useCallback(
+    async (files: FileList | File[]) => {
+      const droppedPaths = Array.from(files)
+        .map((file) => window.electron?.getPathForFile?.(file) || "")
+        .map((filePath) => filePath.trim())
+        .filter((filePath) => filePath.length > 0);
+      const uniquePaths = Array.from(new Set(droppedPaths));
+
+      if (uniquePaths.length === 0) {
+        showToast(
+          t(
+            "mcp.dropImportUnsupported",
+            "Drop an MCP config file or local source folder from your filesystem.",
+          ),
+          "error",
+        );
+        return;
+      }
+
+      try {
+        let importedCount = 0;
+        const warnings: string[] = [];
+
+        for (const filePath of uniquePaths) {
+          const result = await createFromSource({
+            input: filePath,
+            kind: "path",
+          });
+          importedCount += result.imported.length;
+          warnings.push(...result.warnings);
+        }
+
+        setSelectedTab("library");
+        showToast(
+          t("mcp.sourceImported", {
+            count: importedCount,
+            defaultValue: `${importedCount} MCP source(s) added`,
+          }),
+          "success",
+        );
+        if (warnings.length > 0) {
+          showToast(warnings.join(" "), "warning");
+        }
+      } catch (dropError) {
+        showToast(
+          dropError instanceof Error ? dropError.message : String(dropError),
+          "error",
+        );
+      }
+    },
+    [createFromSource, setSelectedTab, showToast, t],
+  );
+
   const handleDelete = async (serverId: string) => {
     const server = servers.find((item) => item.id === serverId);
     openDeleteConfirm(
@@ -972,7 +1177,7 @@ export function McpManager() {
   ) => {
     try {
       const agentServer = findAgentMcpServer(
-        targetStatus,
+        visibleTargetStatus,
         preset.id,
         serverName,
       );
@@ -999,9 +1204,14 @@ export function McpManager() {
     try {
       const result = await window.electron?.openPath?.(preset.path);
       if (result && !result.success) {
-        throw new Error(result.error || "Failed to open agent config");
+        throw new Error(result.error || "Failed to open MCP config");
       }
-      showToast(t("mcp.agentConfigOpened", "Agent config opened"), "success");
+      showToast(
+        preset.scope === "workspace"
+          ? t("mcp.projectConfigOpened", "Project config opened")
+          : t("mcp.agentConfigOpened", "Agent config opened"),
+        "success",
+      );
     } catch (openError) {
       reportError(openError);
     }
@@ -1028,6 +1238,7 @@ export function McpManager() {
         path: preset.path,
         serverNames: [serverName],
       });
+      await refreshVisibleTargetStatus();
       setPendingAgentRemoval(null);
       showToast(t("mcp.removed", "MCP removed"), "success");
     } catch (removeError) {
@@ -1120,6 +1331,7 @@ export function McpManager() {
         path: preset.path,
         serverIds,
       });
+      await refreshVisibleTargetStatus();
       showToast(t("mcp.removed", "MCP removed"), "success");
     } catch (removeError) {
       reportError(removeError);
@@ -1168,8 +1380,8 @@ export function McpManager() {
           platformPanel={
             <McpPlatformPanel
               server={detailServer}
-              targetPresets={targetPresets}
-              targetStatus={targetStatus}
+              targetPresets={visibleAgentTargetPresets}
+              targetStatus={visibleTargetStatus}
               onApply={(presets) =>
                 handleApplyPresets(presets, [detailServer.id])
               }
@@ -1214,7 +1426,9 @@ export function McpManager() {
               <div className="shrink-0 border-b border-border app-wallpaper-panel-strong px-6 py-2 text-right">
                 <button
                   type="button"
-                  onClick={() => setEditingCustomSourceId(selectedCustomSource.id)}
+                  onClick={() =>
+                    setEditingCustomSourceId(selectedCustomSource.id)
+                  }
                   className="inline-flex items-center gap-2 rounded-lg border border-border bg-accent/50 px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
                 >
                   <Settings2Icon aria-hidden="true" className="h-4 w-4" />
@@ -1228,10 +1442,18 @@ export function McpManager() {
               sources={marketSources}
               selectedSourceId={selectedMarketSourceId}
               searchQuery={searchQuery}
-              isLoading={loadingMarketSourceId === selectedMarketSourceId}
+              isLoading={shouldShowMarketLoading}
+              isLoadingMore={
+                loadingMoreMarketSourceId === selectedMarketSourceId
+              }
+              hasMore={Boolean(selectedMarketEntry?.nextCursor)}
               error={selectedMarketEntry?.error ?? marketError}
               totalCount={selectedMarketEntry?.totalCount}
+              totalCountIsLowerBound={
+                selectedMarketEntry?.totalCountIsLowerBound
+              }
               installedNames={installedNames}
+              onLoadMore={() => loadMoreMarketSource(selectedMarketSourceId)}
               onRefresh={() => loadMarketSource(selectedMarketSourceId, true)}
               onSearchChange={setSearchQuery}
               onInstall={async (templateId) => {
@@ -1250,20 +1472,90 @@ export function McpManager() {
       <McpViewTransition viewKey="agents">
         <McpAgentsView
           servers={servers}
-          targetPresets={targetPresets}
-          targetStatus={targetStatus}
+          targetPresets={visibleAgentTargetPresets}
+          targetStatus={visibleTargetStatus}
           onAddMcp={handleOpenAgentDeployDialog}
           onImportExternal={handleImportAgentMcp}
           onOpenManaged={openServerDetail}
           onOpenAgentConfig={handleOpenAgentConfig}
           onRemoveAgentEntry={handleRemoveAgentMcp}
-          onRefresh={load}
+          onRefresh={async () => {
+            await load();
+            await refreshVisibleTargetStatus();
+          }}
+        />
+      </McpViewTransition>
+    ) : selectedTab === "projects" ? (
+      <McpViewTransition viewKey="projects">
+        <McpAgentsView
+          servers={servers}
+          targetPresets={visibleProjectTargetPresets}
+          targetStatus={visibleTargetStatus}
+          title={t("mcp.projectMcp", "Project MCP")}
+          sidebarHint={t(
+            "mcp.projectMcpSidebarHint",
+            "Manage project-level MCP configs for registered projects.",
+          )}
+          noTargetsLabel={t("mcp.noProjectTargets", "No project targets")}
+          selectTargetLabel={t(
+            "mcp.selectProjectTarget",
+            "Select a project target",
+          )}
+          targetIconVariant="project"
+          openConfigLabel={t("mcp.openProjectConfig", "Open project config")}
+          removeEntryLabel={t("mcp.removeFromProject", "Remove from Project")}
+          onAddMcp={handleOpenAgentDeployDialog}
+          onImportExternal={handleImportAgentMcp}
+          onOpenManaged={openServerDetail}
+          onOpenAgentConfig={handleOpenAgentConfig}
+          onRemoveAgentEntry={handleRemoveAgentMcp}
+          onRefresh={async () => {
+            await load();
+            await refreshVisibleTargetStatus();
+          }}
         />
       </McpViewTransition>
     ) : (
       <McpViewTransition
         viewKey="my-mcp"
         className="relative flex flex-1 flex-row overflow-hidden app-wallpaper-section"
+        onDragEnter={(event) => {
+          if (!hasFileItems(event.dataTransfer)) {
+            return;
+          }
+
+          event.preventDefault();
+          setIsDropTargetActive(true);
+        }}
+        onDragOver={(event) => {
+          if (!hasFileItems(event.dataTransfer)) {
+            return;
+          }
+
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "copy";
+          if (!isDropTargetActive) {
+            setIsDropTargetActive(true);
+          }
+        }}
+        onDragLeave={(event) => {
+          if (
+            event.currentTarget.contains(event.relatedTarget as Node | null)
+          ) {
+            return;
+          }
+
+          setIsDropTargetActive(false);
+        }}
+        onDrop={(event) => {
+          if (!hasFileItems(event.dataTransfer)) {
+            return;
+          }
+
+          event.preventDefault();
+          setIsDropTargetActive(false);
+          void handleDropImport(event.dataTransfer.files);
+        }}
       >
         <div className="flex-1 flex flex-col min-w-0">
           <div className="border-b border-border app-wallpaper-panel-strong px-4 py-4 z-10 sm:px-6">
@@ -1550,8 +1842,8 @@ export function McpManager() {
                 servers={visibleServers}
                 selectedServerId={detailServerId}
                 healthChecks={healthChecks}
-                targetPresets={targetPresets}
-                targetStatus={targetStatus}
+                targetPresets={visibleAgentTargetPresets}
+                targetStatus={visibleTargetStatus}
                 gridStyle={mcpGalleryGridStyle}
                 viewMode={viewMode}
                 selectionMode={isSelectionMode}
@@ -1577,8 +1869,8 @@ export function McpManager() {
                     servers={visibleServers}
                     selectedServerId={detailServerId}
                     healthChecks={healthChecks}
-                    targetPresets={targetPresets}
-                    targetStatus={targetStatus}
+                    targetPresets={visibleAgentTargetPresets}
+                    targetStatus={visibleTargetStatus}
                     gridStyle={mcpGalleryGridStyle}
                     viewMode={viewMode}
                     selectionMode={isSelectionMode}
@@ -1677,6 +1969,28 @@ export function McpManager() {
             </div>
           ) : null}
         </div>
+        {isDropTargetActive ? (
+          <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-background/70 backdrop-blur-sm">
+            <div className="mx-6 w-full max-w-2xl rounded-3xl border border-primary/30 bg-background/95 px-8 py-10 shadow-2xl">
+              <div className="flex flex-col items-center gap-4 text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-white shadow-lg shadow-primary/25">
+                  <InboxIcon className="h-8 w-8" aria-hidden="true" />
+                </div>
+                <div className="space-y-2">
+                  <div className="text-lg font-semibold text-foreground">
+                    {t("mcp.dropImportTitle", "Drop MCP sources to import")}
+                  </div>
+                  <div className="text-sm leading-6 text-muted-foreground">
+                    {t(
+                      "mcp.dropImportDesc",
+                      "Drop an MCP config file or local source folder here to add it to My MCP.",
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </McpViewTransition>
     );
 
@@ -1704,8 +2018,8 @@ export function McpManager() {
         {deployDialogServers.length > 0 ? (
           <McpBatchDeployDialog
             servers={deployDialogServers}
-            targetPresets={targetPresets}
-            targetStatus={targetStatus}
+            targetPresets={visibleAgentTargetPresets}
+            targetStatus={visibleTargetStatus}
             onClose={closeDeployDialog}
             onApply={
               showBatchDeployDialog
@@ -1719,7 +2033,7 @@ export function McpManager() {
           <McpLibraryDeployDialog
             preset={agentDeployPreset}
             servers={servers}
-            targetStatus={targetStatus}
+            targetStatus={visibleTargetStatus}
             onClose={() => setAgentDeployPreset(null)}
             onApply={handleAgentDeployFromLibrary}
           />
