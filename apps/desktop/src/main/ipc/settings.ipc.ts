@@ -19,6 +19,7 @@ import {
   readGithubTokenSetting,
 } from '../settings/settings-readers';
 import { invalidateCustomPathsCache } from '../services/skill-installer-utils';
+import { applyNetworkProxySettings } from '../services/network-proxy';
 
 export {
   getMinimizeOnLaunchSetting,
@@ -308,6 +309,7 @@ export function registerSettingsIPC(db: Database.Database): void {
 
     migrateTraeCnPlatformState(settings);
     mergeSharedAIConfig(settings);
+    await applyNetworkProxySettings(settings.networkProxy);
 
     return settings;
   });
@@ -333,6 +335,9 @@ export function registerSettingsIPC(db: Database.Database): void {
       Object.prototype.hasOwnProperty.call(newSettings, 'customSkillPlatformPaths')
     ) {
       invalidateCustomPathsCache();
+    }
+    if (Object.prototype.hasOwnProperty.call(newSettings, 'networkProxy')) {
+      await applyNetworkProxySettings(newSettings.networkProxy);
     }
     return true;
   });

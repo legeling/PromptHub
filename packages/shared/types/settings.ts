@@ -31,6 +31,20 @@ export interface CustomAgentConfig {
   configRelativePaths?: string[];
 }
 
+export type NetworkProxyMode = 'system' | 'direct' | 'manual';
+
+export type NetworkProxyProtocol = 'http' | 'https' | 'socks5';
+
+export interface NetworkProxySettings {
+  mode: NetworkProxyMode;
+  protocol: NetworkProxyProtocol;
+  host: string;
+  port: number;
+  username: string;
+  password: string;
+  bypass: string;
+}
+
 export interface Settings {
   theme: Theme;
   language: Language;
@@ -62,6 +76,9 @@ export interface Settings {
   // Never sent to third-party hosts; only attached for api.github.com and
   // raw.githubusercontent.com. See #108.
   githubToken?: string;
+  // Global desktop network proxy. Proxy passwords currently use the same
+  // settings storage path as WebDAV/S3/AI credentials.
+  networkProxy?: NetworkProxySettings;
   // Security
   security?: {
     masterPasswordConfigured: boolean;
@@ -97,6 +114,16 @@ export type Theme = 'light' | 'dark' | 'system';
 export type Language = 'en' | 'zh' | 'zh-TW' | 'ja' | 'fr' | 'de' | 'es';
 export type UpdateChannel = 'stable' | 'preview';
 
+export const DEFAULT_NETWORK_PROXY_SETTINGS: NetworkProxySettings = {
+  mode: 'system',
+  protocol: 'http',
+  host: '',
+  port: 7890,
+  username: '',
+  password: '',
+  bypass: '<local>,localhost,127.0.0.1,::1',
+};
+
 export const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
   language: 'zh',
@@ -124,4 +151,5 @@ export const DEFAULT_SETTINGS: Settings = {
     storeSyncCadence: '1d',
   },
   updateChannel: 'stable',
+  networkProxy: DEFAULT_NETWORK_PROXY_SETTINGS,
 };

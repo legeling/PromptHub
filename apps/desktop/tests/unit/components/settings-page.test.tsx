@@ -10,6 +10,7 @@ const useSettingsStoreMock = vi.fn();
 const generalSettingsModuleLoadMock = vi.hoisted(() => vi.fn());
 const dataSettingsModuleLoadMock = vi.hoisted(() => vi.fn());
 const aiSettingsModuleLoadMock = vi.hoisted(() => vi.fn());
+const networkSettingsModuleLoadMock = vi.hoisted(() => vi.fn());
 
 vi.mock("../../../src/renderer/stores/settings.store", () => ({
   useSettingsStore: (selector?: (state: unknown) => unknown) => {
@@ -56,6 +57,12 @@ vi.mock("../../../src/renderer/components/settings/DataSettings", () => {
   dataSettingsModuleLoadMock();
   return {
     DataSettings: () => <div>data-content</div>,
+  };
+});
+vi.mock("../../../src/renderer/components/settings/NetworkSettings", () => {
+  networkSettingsModuleLoadMock();
+  return {
+    NetworkSettings: () => <div>network-content</div>,
   };
 });
 vi.mock("../../../src/renderer/components/settings/SkillSettings", () => ({
@@ -111,6 +118,7 @@ describe("SettingsPage", () => {
     expect(screen.getByText("general-content")).toBeInTheDocument();
     expect(generalSettingsModuleLoadMock).toHaveBeenCalledTimes(1);
     expect(dataSettingsModuleLoadMock).not.toHaveBeenCalled();
+    expect(networkSettingsModuleLoadMock).not.toHaveBeenCalled();
     expect(aiSettingsModuleLoadMock).not.toHaveBeenCalled();
   });
 
@@ -221,6 +229,7 @@ describe("SettingsPage", () => {
     expect(screen.getByText("general-content")).toBeInTheDocument();
     expect(nav).toHaveTextContent("App Settings");
     expect(nav).toHaveTextContent("Data & Sync");
+    expect(nav).toHaveTextContent("Network Settings");
     expect(nav).toHaveTextContent("Agent Management");
     expect(nav).not.toHaveTextContent("Platform Preview");
     expect(nav).toHaveTextContent("Security");
@@ -232,6 +241,28 @@ describe("SettingsPage", () => {
     });
 
     expect(screen.getByText("skill-content")).toBeInTheDocument();
+  });
+
+  it("opens the dedicated network settings page from the desktop navigation", async () => {
+    useSettingsStoreMock.mockReturnValue({
+      syncProvider: "manual",
+      webdavEnabled: false,
+      selfHostedSyncEnabled: false,
+      s3StorageEnabled: false,
+      desktopHomeModules: ["prompt", "skill", "rules"],
+    });
+
+    await act(async () => {
+      await renderWithI18n(<SettingsPage onBack={vi.fn()} />, {
+        language: "en",
+      });
+    });
+
+    await act(async () => {
+      screen.getByRole("button", { name: "Network Settings" }).click();
+    });
+
+    expect(screen.getByText("network-content")).toBeInTheDocument();
   });
 
   it("opens the agent management section from a pending settings navigation request", async () => {

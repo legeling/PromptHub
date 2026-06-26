@@ -79,6 +79,8 @@ describe("AboutSettings", () => {
       expect(window.electron.updater.getVersion).toHaveBeenCalledTimes(1);
     });
 
+    expect(screen.queryByText("Use Mirror Source")).not.toBeInTheDocument();
+
     const previewToggle = screen
       .getByText("Preview Channel")
       .parentElement?.parentElement?.querySelector("button");

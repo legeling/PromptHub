@@ -17,6 +17,7 @@ import {
   CloudIcon,
   DownloadIcon,
   TerminalSquareIcon,
+  WifiIcon,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { DataSettingsSubsectionId } from "./DataSettings";
@@ -41,6 +42,7 @@ const DESKTOP_SETTINGS_MENU = [
   { id: "general", labelKey: "settings.general", icon: SettingsIcon },
   { id: "appearance", labelKey: "settings.appearance", icon: PaletteIcon },
   { id: "data", labelKey: "settings.data", icon: DatabaseIcon },
+  { id: "network", labelKey: "settings.network", icon: WifiIcon },
   { id: "skill", labelKey: "settings.skill", icon: SparklesIcon },
   { id: "ai", labelKey: "settings.ai", icon: BrainIcon },
   { id: "shortcuts", labelKey: "settings.shortcuts", icon: KeyboardIcon },
@@ -97,6 +99,11 @@ const CLISettings = lazy(() =>
 const DataSettings = lazy(() =>
   import("./DataSettings").then((module) => ({
     default: module.DataSettings,
+  })),
+);
+const NetworkSettings = lazy(() =>
+  import("./NetworkSettings").then((module) => ({
+    default: module.NetworkSettings,
   })),
 );
 const AISettingsPrototype = lazy(() =>
@@ -254,6 +261,8 @@ export function SettingsPage({
             backupImportController={backupImportController}
           />
         );
+      case "network":
+        return <NetworkSettings />;
       case "skill":
         return <SkillSettings />;
       case "ai":

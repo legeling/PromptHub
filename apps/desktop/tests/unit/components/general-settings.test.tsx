@@ -97,4 +97,5 @@ describe("GeneralSettings", () => {
 
     expect(useSettingsStore.getState().tagFilterMode).toBe("single");
   });
+
 });

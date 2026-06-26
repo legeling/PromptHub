@@ -1,13 +1,16 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import i18n, { changeLanguage } from "../i18n";
+import { DEFAULT_NETWORK_PROXY_SETTINGS } from "@prompthub/shared/types";
 import type {
   BuiltinAgentOverrideConfig,
   CustomAgentConfig,
+  NetworkProxySettings,
   Settings,
   SkillProject,
   SyncProviderKind,
 } from "@prompthub/shared/types";
+import { normalizeNetworkProxySettings } from "@prompthub/shared/utils/network-proxy";
 import type { UpdateChannel } from "@prompthub/shared/types";
 import type { AIProtocol } from "@prompthub/shared/types";
 import { isPrereleaseVersion } from "../../utils/version";
@@ -1308,6 +1311,7 @@ interface SettingsState {
   autoScanStoreSkillsBeforeInstall: boolean;
 
   githubToken: string;
+  networkProxy: NetworkProxySettings;
 
   // Actions
   setThemeMode: (mode: ThemeMode) => void;
@@ -1476,6 +1480,7 @@ interface SettingsState {
   setAutoScanStoreSkillsBeforeInstall: (enabled: boolean) => void;
   // GitHub token action — see #108
   setGithubToken: (token: string) => void;
+  setNetworkProxy: (updates: Partial<NetworkProxySettings>) => void;
 }
 
 function syncSettingsToMain(settings: Partial<Settings>): Promise<void> {
@@ -1666,6 +1671,9 @@ export async function loadSettingsFromMainProcess(): Promise<void> {
   const modelRouteDefaults = normalizeModelRouteDefaults(
     aiSettings.modelRouteDefaults ?? state.modelRouteDefaults,
   );
+  const networkProxy = normalizeNetworkProxySettings(
+    settings.networkProxy ?? state.networkProxy,
+  );
   const aiProvider =
     typeof aiSettings.aiProvider === "string"
       ? aiSettings.aiProvider
@@ -1705,6 +1713,7 @@ export async function loadSettingsFromMainProcess(): Promise<void> {
     aiProviders,
     aiModels,
     modelRouteDefaults,
+    networkProxy,
   });
 
   if (typeof settings.launchAtStartup !== "boolean") {
@@ -1717,6 +1726,10 @@ export async function loadSettingsFromMainProcess(): Promise<void> {
 
   if (settings.sync?.provider !== syncProvider) {
     syncSettingsToMain({ sync: buildMainProcessSyncSettings(syncProvider) });
+  }
+
+  if (!settings.networkProxy) {
+    syncSettingsToMain({ networkProxy });
   }
 }
 
@@ -1861,6 +1874,7 @@ export const useSettingsStore = create<SettingsState>()(
         autoScanInstalledSkills: false,
         autoScanStoreSkillsBeforeInstall: false,
         githubToken: "",
+        networkProxy: { ...DEFAULT_NETWORK_PROXY_SETTINGS },
 
         setCreationMode: (mode) =>
           setTouched({ creationMode: normalizeCreationMode(mode) }),
@@ -3027,6 +3041,14 @@ export const useSettingsStore = create<SettingsState>()(
           setTouched({ githubToken: sanitized });
           syncSettingsToMain({ githubToken: sanitized });
         },
+        setNetworkProxy: (updates) => {
+          const networkProxy = normalizeNetworkProxySettings({
+            ...get().networkProxy,
+            ...updates,
+          });
+          setTouched({ networkProxy });
+          syncSettingsToMain({ networkProxy });
+        },
       };
     },
     {
@@ -3069,6 +3091,7 @@ export const useSettingsStore = create<SettingsState>()(
         next.skillListPageSize = normalizeSkillListPageSize(
           next.skillListPageSize,
         );
+        next.networkProxy = normalizeNetworkProxySettings(next.networkProxy);
         normalizeSidebarTagSectionHeights(next);
         next.desktopHomeModules = normalizeDesktopHomeModules(
           next.desktopHomeModules,
@@ -3207,6 +3230,7 @@ export const useSettingsStore = create<SettingsState>()(
         if (typeof next.autoScanStoreSkillsBeforeInstall !== "boolean") {
           next.autoScanStoreSkillsBeforeInstall = false;
         }
+        next.networkProxy = normalizeNetworkProxySettings(next.networkProxy);
         if (typeof next.backgroundImageEnabled !== "boolean") {
           next.backgroundImageEnabled = true;
         }
@@ -3290,6 +3314,7 @@ export const useSettingsStore = create<SettingsState>()(
           customSkillPlatformPaths: state?.customSkillPlatformPaths || {},
           skillPlatformOrder: state?.skillPlatformOrder || [],
           skillProjects: state?.skillProjects || [],
+          networkProxy: normalizeNetworkProxySettings(state?.networkProxy),
           sync: buildMainProcessSyncSettings(hydratedSyncProvider),
         });
       },
