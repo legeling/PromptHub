@@ -11,6 +11,7 @@ export { ImagePreviewModal } from './ImagePreviewModal';
 export { CloseDialog } from './CloseDialog';
 export { getCategoryIcon } from './ModelIcons';
 export { Checkbox } from './Checkbox';
+export { CardStatusBadge } from './CardStatusBadge';
 export { LocalImage } from './LocalImage';
 export { PlatformIcon, getPlatformIconElement } from './PlatformIcon';
 export { Spinner } from './Spinner';

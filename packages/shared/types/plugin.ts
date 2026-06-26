@@ -1,3 +1,6 @@
+import type { McpImportResult } from "./mcp";
+import type { SkillSafetyReport } from "./skill";
+
 export const PLUGIN_INVENTORY_KEYS = [
   "skills",
   "mcpServers",
@@ -65,6 +68,7 @@ export interface PluginPackageSource {
   localRepositoryPath?: string;
   localPackagePath?: string;
   url?: string;
+  branch?: string;
 }
 
 export interface PluginMarketEntry {
@@ -85,6 +89,7 @@ export interface PluginMarketEntry {
   codexDetailUrl?: string;
   inventory?: PluginInventorySummary;
   classification?: PluginSemanticClassification;
+  tags?: string[];
 }
 
 export interface PluginLibraryEntry {
@@ -103,13 +108,20 @@ export interface PluginLibraryEntry {
   inventory: PluginInventorySummary;
   classification: PluginSemanticClassification;
   source: PluginPackageSource;
+  isFavorite?: boolean;
   tags?: string[];
+  userTags?: string[];
+  userNotes?: string;
+  safetyReport?: SkillSafetyReport;
   homepage?: string;
   repository?: string;
   distributedTargetIds?: string[];
   managedPath?: string;
   localRepositoryPath?: string;
   localPackagePath?: string;
+  installedManifestHash?: string;
+  installedPackageHash?: string;
+  updatedFromSourceAt?: number;
   installedAt: number;
   updatedAt: number;
 }
@@ -119,6 +131,56 @@ export interface PluginLibraryFile {
   version: 1;
   updatedAt: string;
   plugins: PluginLibraryEntry[];
+}
+
+export interface PluginFileSnapshot {
+  relativePath: string;
+  contentBase64: string;
+  size: number;
+}
+
+export interface PluginPackageSnapshot {
+  pluginId: string;
+  files: PluginFileSnapshot[];
+}
+
+export interface PluginLibrarySnapshot {
+  library: PluginLibraryFile;
+  packages?: PluginPackageSnapshot[];
+}
+
+export interface PluginVersion {
+  id: string;
+  pluginId: string;
+  version: number;
+  note?: string;
+  createdAt: string;
+  plugin: PluginLibraryEntry;
+  packageSnapshot?: PluginPackageSnapshot;
+}
+
+export interface PluginVersionFile {
+  kind: "prompthub-plugin-versions";
+  version: 1;
+  updatedAt: string;
+  versions: PluginVersion[];
+}
+
+export interface PluginVersionRollbackResult {
+  plugin: PluginLibraryEntry;
+  library: PluginLibraryFile;
+  restoredVersion: PluginVersion;
+  safetyVersion: PluginVersion;
+}
+
+export interface PluginTargetInstalledPlugin {
+  id: string;
+  name: string;
+  displayName: string;
+  description?: string;
+  version?: string;
+  sourcePath?: string;
+  inventory: PluginInventorySummary;
 }
 
 export interface PluginTargetCompatibility {
@@ -131,12 +193,66 @@ export interface PluginTargetCompatibility {
   adapterOutput?: string;
   unsupportedReason?: string;
   description?: string;
+  installedPlugins?: PluginTargetInstalledPlugin[];
+  installedInventoryCount?: number;
 }
 
 export interface PluginInstallResult {
   plugin: PluginLibraryEntry;
   library: PluginLibraryFile;
   warnings: string[];
+}
+
+export type PluginSourceUpdateStatus =
+  | "not-installed"
+  | "up-to-date"
+  | "update-available"
+  | "local-modified"
+  | "conflict";
+
+export interface PluginSourceUpdateCheck {
+  status: PluginSourceUpdateStatus;
+  plugin?: PluginLibraryEntry;
+  preview?: PluginMarketPreview;
+  localPackageHash?: string;
+  installedPackageHash?: string;
+  remoteManifestHash?: string;
+  installedManifestHash?: string;
+  localModified: boolean;
+  remoteChanged: boolean;
+}
+
+export type PluginSourceUpdateResult =
+  | {
+      status: "updated";
+      plugin: PluginLibraryEntry;
+      library: PluginLibraryFile;
+      check: PluginSourceUpdateCheck;
+      warnings: string[];
+    }
+  | {
+      status: "up-to-date";
+      plugin: PluginLibraryEntry;
+      library: PluginLibraryFile;
+      check: PluginSourceUpdateCheck;
+    }
+  | {
+      status: "not-installed" | "local-modified" | "conflict";
+      library: PluginLibraryFile;
+      check: PluginSourceUpdateCheck;
+    };
+
+export interface PluginImportLocalRequest {
+  sourcePath: string;
+  sourceTargetId?: string;
+  sourceTargetName?: string;
+}
+
+export interface PluginImportSourceRequest {
+  branch?: string;
+  label?: string;
+  packagePath?: string;
+  url: string;
 }
 
 export type PluginDistributeMode = "copy" | "symlink";
@@ -157,6 +273,62 @@ export interface PluginDistributeResult {
   plugin: PluginLibraryEntry;
   library: PluginLibraryFile;
   targets: PluginDistributedTarget[];
+}
+
+export interface PluginUndistributeRequest {
+  pluginId: string;
+  targetIds: string[];
+}
+
+export interface PluginUndistributeResult {
+  plugin: PluginLibraryEntry;
+  library: PluginLibraryFile;
+  removedTargetIds: string[];
+  skippedTargetIds: string[];
+}
+
+export interface PluginDeleteOptions {
+  removeDistributedTargets?: boolean;
+}
+
+export interface PluginMetadataUpdate {
+  isFavorite?: boolean;
+  userTags?: string[];
+  userNotes?: string;
+  safetyReport?: SkillSafetyReport;
+}
+
+export interface PluginImportChildMcpFailedFile {
+  path: string;
+  error: string;
+}
+
+export interface PluginImportChildMcpResult extends McpImportResult {
+  scannedFiles: string[];
+  failedFiles: PluginImportChildMcpFailedFile[];
+}
+
+export type PluginPackageHealthStatus =
+  | "ok"
+  | "not-installed"
+  | "missing-package"
+  | "missing-manifest"
+  | "invalid";
+
+export interface PluginPackageHealthFinding {
+  code: string;
+  severity: "error" | "warning" | "info";
+  message: string;
+  path?: string;
+}
+
+export interface PluginPackageHealthCheck {
+  status: PluginPackageHealthStatus;
+  pluginId: string;
+  checkedAt: string;
+  packagePath?: string;
+  manifestPath?: string;
+  findings: PluginPackageHealthFinding[];
 }
 
 export interface PluginMarketPreview {

@@ -13,10 +13,10 @@ OpenAI Codex 官方文档把 Skill 定义为可复用工作流说明，把 Plugi
 - In scope:
   - 新增 Plugin 作为 PromptHub 规划中的一等分发面，和 Prompt / Skill / MCP / Rules 并列。
   - 明确 Plugin、Skill、MCP server、App/connector 的产品边界。
-  - 将 OpenAI 公开 `openai-curated` marketplace 作为 PromptHub 内置和默认聚焦的 Codex 插件商店源，用户可直接浏览、预览 manifest 并下载公开插件包。
-  - 建立 PromptHub 自己的官方 marketplace 入口，作为后续官方插件分发链接。
+  - 建立 PromptHub 自己的官方 marketplace 入口，作为默认预制官方商店和后续官方插件分发链接。
+  - 将 OpenAI 公开 `openai-curated` marketplace 作为 PromptHub 内置 Codex 官方插件商店源，用户可直接浏览、预览 manifest 并下载公开插件包。
   - 实现桌面端 Plugin MVP：My Plugins、Plugin Store、Plugin Targets 三个视图，复用 Skill/MCP 的模块入口和卡片式管理风格。
-  - 使用 `config/plugin-library.json` 作为首版本地 source of truth，避免在商店/目标矩阵 MVP 阶段引入 SQLite 迁移。
+  - 使用 `data/plugins/library.json` 作为首版本地 source of truth，避免在商店/目标矩阵 MVP 阶段引入 SQLite 迁移；旧版 `config/plugin-library.json` 仅作为兼容读取路径。
   - 通过 IPC/preload/core service 暴露插件库读取、商店读取、manifest 预览、商店安装、删除和目标矩阵能力。
   - 规划 Plugin Store、Git/SSH/HTTP/本地目录安装、扫描预览、manifest 校验、安装、更新、卸载和回滚流程。
   - 规划 Plugin 内部 inventory：Skills、MCP servers、Apps/connectors、commands、assets、hooks 等子资产如何展示和分发。
@@ -27,7 +27,7 @@ OpenAI Codex 官方文档把 Skill 定义为可复用工作流说明，把 Plugi
   - 本轮不做 SQLite 迁移，不自动写入外部 Agent 配置。
   - 本轮不把 Codex 官方插件市场完整镜像到 PromptHub。
   - 本轮安装 marketplace plugin 到 PromptHub 管理目录和 PromptHub library；不把 child Skills/MCP 自动复制进 My Skills/My MCP。
-  - 本轮不实现 Git/SSH/HTTP/local 自定义源完整扫描 UI；这些入口保留在 spec 和后续任务中。
+  - 本轮不实现 Git/SSH/HTTP source 的独立预览确认页；直接导入入口先复用静态扫描和语义 gate，完整 scan-preview-confirm 体验保留在后续任务中。
   - 本轮不自动执行插件脚本、安装依赖、启动 MCP server 或完成外部 App 授权。
   - 本轮不改变现有 Skill / MCP 已实现逻辑，只在 Plugin 层记录和展示更高一级的产品边界。
 
@@ -41,6 +41,6 @@ OpenAI Codex 官方文档把 Skill 定义为可复用工作流说明，把 Plugi
 
 ## Rollback Thinking
 
-- 本轮没有数据库迁移；回滚时移除新增 Plugin IPC/preload/core/renderer 文件、`plugin-library.json` 本地记录和同步的文档即可。
+- 本轮没有数据库迁移；回滚时移除新增 Plugin IPC/preload/core/renderer 文件、`data/plugins/library.json` 本地记录和同步的文档即可。
 - PromptHub 官方 marketplace 入口是仓库内 `.agents/plugins/marketplace.json`；若后续改为独立仓库，应保留重定向说明或在应用内继续兼容旧源。
 - 后续实现阶段应保证插件库的 source of truth 可被重建：本地 manifest、repo 目录和 PromptHub 管理记录之间必须有明确 rescan/recover 流程。

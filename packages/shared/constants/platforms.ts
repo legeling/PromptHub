@@ -16,6 +16,8 @@ export interface SkillPlatform {
     linux: string;
   };
   skillsRelativePath: string;
+  mcpRelativePath?: string;
+  pluginsRelativePath?: string;
   globalRuleFile?: string;
   configFiles?: string[];
   isCustom?: boolean;
@@ -99,6 +101,28 @@ export function normalizeLegacySkillPathToRootTemplate(
   return stripTrailingRelativePath(skillPath, platform.skillsRelativePath);
 }
 
+export function getPlatformMcpRelativePath(
+  platformOrId: SkillPlatform | string | undefined,
+): string | undefined {
+  const platform =
+    typeof platformOrId === "string"
+      ? getPlatformById(platformOrId)
+      : platformOrId;
+
+  return platform?.mcpRelativePath;
+}
+
+export function getPlatformPluginsRelativePath(
+  platformOrId: SkillPlatform | string | undefined,
+): string | undefined {
+  const platform =
+    typeof platformOrId === "string"
+      ? getPlatformById(platformOrId)
+      : platformOrId;
+
+  return platform?.pluginsRelativePath;
+}
+
 export const DEFAULT_SKILL_PLATFORM_ORDER = [
   "claude",
   "codex",
@@ -133,6 +157,8 @@ export const SKILL_PLATFORMS: SkillPlatform[] = [
       linux: "~/.claude",
     },
     skillsRelativePath: "skills",
+    mcpRelativePath: "../.claude.json",
+    pluginsRelativePath: "plugins/cache/prompthub",
     globalRuleFile: "CLAUDE.md",
   },
   {
@@ -145,6 +171,7 @@ export const SKILL_PLATFORMS: SkillPlatform[] = [
       linux: "~/.copilot",
     },
     skillsRelativePath: "skills",
+    pluginsRelativePath: "plugins",
   },
   {
     id: "cursor",
@@ -156,6 +183,8 @@ export const SKILL_PLATFORMS: SkillPlatform[] = [
       linux: "~/.cursor",
     },
     skillsRelativePath: "skills",
+    mcpRelativePath: "mcp.json",
+    pluginsRelativePath: "plugins/cache/prompthub",
   },
   {
     id: "cherry-studio",
@@ -178,6 +207,7 @@ export const SKILL_PLATFORMS: SkillPlatform[] = [
       linux: "~/.codeium/windsurf",
     },
     skillsRelativePath: "skills",
+    mcpRelativePath: "mcp_config.json",
     globalRuleFile: "memories/global_rules.md",
   },
   {
@@ -190,6 +220,8 @@ export const SKILL_PLATFORMS: SkillPlatform[] = [
       linux: "~/.kiro",
     },
     skillsRelativePath: "skills",
+    mcpRelativePath: "settings/mcp.json",
+    pluginsRelativePath: "powers",
   },
   {
     id: "gemini",
@@ -201,6 +233,8 @@ export const SKILL_PLATFORMS: SkillPlatform[] = [
       linux: "~/.gemini",
     },
     skillsRelativePath: "skills",
+    mcpRelativePath: "settings.json",
+    pluginsRelativePath: "config/plugins",
     globalRuleFile: "GEMINI.md",
   },
   {
@@ -268,6 +302,7 @@ export const SKILL_PLATFORMS: SkillPlatform[] = [
       linux: "~/.config/opencode",
     },
     skillsRelativePath: "skills",
+    mcpRelativePath: "opencode.json",
     globalRuleFile: "AGENTS.md",
     configFiles: ["opencode.json"],
   },
@@ -281,6 +316,7 @@ export const SKILL_PLATFORMS: SkillPlatform[] = [
       linux: "~/.cline",
     },
     skillsRelativePath: "skills",
+    mcpRelativePath: "data/settings/cline_mcp_settings.json",
     configFiles: [
       "data/settings/global-settings.json",
       "data/settings/providers.json",
@@ -297,6 +333,8 @@ export const SKILL_PLATFORMS: SkillPlatform[] = [
       linux: "~/.codex",
     },
     skillsRelativePath: "skills",
+    mcpRelativePath: "config.toml",
+    pluginsRelativePath: "plugins/cache/prompthub",
     globalRuleFile: "AGENTS.md",
     configFiles: ["config.toml"],
   },
@@ -310,6 +348,7 @@ export const SKILL_PLATFORMS: SkillPlatform[] = [
       linux: "~/.kilo",
     },
     skillsRelativePath: "skills",
+    mcpRelativePath: "../.config/kilo/kilo.jsonc",
     globalRuleFile: "rules/global.md",
   },
   {
@@ -364,7 +403,7 @@ export const SKILL_PLATFORMS: SkillPlatform[] = [
     icon: "Bot",
     rootDir: {
       darwin: "~/.hermes",
-      win32: "%USERPROFILE%\\.hermes",
+      win32: "%LOCALAPPDATA%\\hermes",
       linux: "~/.hermes",
     },
     skillsRelativePath: "skills",

@@ -13,7 +13,7 @@
 - Added `spec/knowledge/reference/plugin-agent-adapter-matrix.md` as the durable adapter reference for target package markers, install surfaces, generated outputs, disabled targets, and evidence links.
 - Implemented shared Plugin contracts in `packages/shared/types/plugin.ts`.
 - Implemented `CorePluginLibraryService` in `packages/core/src/plugin-library.ts`.
-  - Stores installed Plugin metadata in `<userData>/config/plugin-library.json`.
+  - Stores installed Plugin metadata in `<userData>/data/plugins/library.json`, with legacy reads from `<userData>/config/plugin-library.json`.
   - Ships OpenAI `openai-curated` and PromptHub `prompthub-official` built-in marketplace sources.
   - Reads marketplace JSON, resolves Codex plugin manifests, extracts inventory, and enforces the Plugin semantic gate.
   - Exposes lazy marketplace manifest preview with inventory, semantic classification, manifest URL, package path, policy metadata, and Codex detail links.
@@ -23,7 +23,7 @@
   - Exposes the Plugin target matrix with enabled native/adapter targets and disabled runtime-only/composite/pending targets.
 - Added desktop Plugin IPC/preload API and renderer Zustand store.
 - Added desktop Plugin UI module with `My Plugins`, `Plugin Store`, and `Plugin Targets` views.
-  - The Plugin Store defaults to the Codex official `openai-curated` source and keeps an all-sources filter.
+  - The Plugin Store defaults to the PromptHub `prompthub-official` Official Store source, keeps the Codex official `openai-curated` source available, and keeps an all-sources filter.
   - Store cards can preview manifest details lazily and copy Codex deep links.
 - Reworked the `Agent Plugin` view to match the existing `Agent Skill` workspace pattern:
   - Agent Plugin now renders as a left agent target list and right selected-target detail panel instead of a compatibility-card grid.
@@ -40,43 +40,158 @@
   - Official Store cards and Plugin detail modals render the resolved icon/logo instead of a letter placeholder when available.
   - Store cards show two-line manifest descriptions and background-enrich the first visible batch of missing entries without fetching the entire marketplace at once.
   - Fixed the background-enrichment effect so React cleanup after the first preview no longer cancels the rest of the visible batch. Visible Official Store cards now dispatch preview requests concurrently and clear only the in-flight marker after each request settles.
-  - Added `config/plugin-market-cache.json` for manifest presentation metadata. Preview/background enrichment now persists icons, descriptions, inventory, classification, and related manifest fields; later marketplace listings merge cached metadata before reaching the renderer.
+  - Added `data/plugins/market-cache.json` for manifest presentation metadata, with legacy reads from `config/plugin-market-cache.json`. Preview/background enrichment now persists icons, descriptions, inventory, classification, and related manifest fields; later marketplace listings merge cached metadata before reaching the renderer.
+  - Legacy Plugin library/cache compatibility now performs one-time migration on first read. If `data/plugins/library.json` or `data/plugins/market-cache.json` is missing but the old `config/plugin-library.json` or `config/plugin-market-cache.json` exists, the core service normalizes and writes the data-path file immediately while preserving the old config file as a backup.
   - Changed store background enrichment to cover the current visible filtered result set with bounded concurrency instead of relying only on detail-modal previews.
+  - Changed the renderer Plugin Store loader to publish marketplace sources, library metadata, target matrix, and each marketplace source independently as soon as each response returns. The selected store source is requested first and cached store cards remain visible during refresh, so a slow Codex/custom remote source no longer leaves the whole Plugins Store stuck on an empty spinner.
+  - Changed Plugin Store manifest prefetch to run for visible cached or partially loaded cards even while the overall store refresh is still in flight. Official entries such as Attio that already declare `interface.composerIcon` / `interface.logo` in `.codex-plugin/plugin.json` now get their icons/descriptions enriched instead of staying on the letter fallback until all sources finish loading.
+  - Aligned Plugin Store large-catalog scrolling with Skill Store by rendering small catalogs as normal card grids and switching catalogs above the shared large-list threshold to a virtualized row catalog using the page scroll container.
+  - Aligned Plugin Store batch mode with the Skill Store baseline. Store batch mode now exposes install for selected not-yet-installed entries, update for selected installed entries through the existing Plugin source-update flow, and remove for selected installed entries through a confirmation-gated My Plugins removal flow. Store removal keeps Plugin-specific safety semantics: imported child Skills/MCP entries and distributed Agent Plugin packages are not removed by this Store action.
 - Simplified Official Store card metadata:
   - Built-in official-source cards no longer render a redundant standalone `Official` trust chip when the source chip already says `Codex official store` or `Official Store`.
-  - Inventory chips now render human-readable included capability counts, such as `Includes 1 Skill` / `包含 1 个 Skill`, instead of raw key/count notation like `Skills · 1`.
+  - Store cards no longer render child inventory count chips such as `1 Skill`, `2 Hooks`, `1 个 Skill`, `Includes 1 Skill`, or `Skills · 1`; full inventory stays in detail/preview surfaces.
 - Clarified Plugin Store naming and card inventory semantics:
   - The store surface is now labeled `Plugins Store` / `Plugins 商店`, while concrete source provenance remains `Codex Official Store` / `Codex 官方商店` for the external Codex source and `Official Store` / `官方商店` for PromptHub's built-in source.
-  - Store cards use a compact user-facing inventory summary and no longer render `Apps` connector/auth chips as primary card metadata; the full inventory is still shown in detail modals.
+  - Store cards now focus on source, category, icon, and description. Skills, MCP servers, commands, hooks, Apps/connectors, and other child assets remain available in the store detail preview instead of crowding the card grid.
   - Official GitHub/Codex manifests that declare `skills` as a directory are expanded against the repository tree so nested `SKILL.md` files are counted instead of treating `./skills/` as one Skill.
   - GitHub tree responses are cached in memory per source URL during preview/background enrichment to avoid one tree request per visible card; failed tree lookups fall back to manifest-field counts.
   - The first-level `Plugins Store` sidebar entry now follows the Skill Store sidebar pattern and no longer renders marketplace item-count pills; store totals remain in the main content header/list surfaces.
 - Replaced the installed Plugin detail modal with a full My Plugins detail page:
   - Installed Plugin cards now open a full-page detail view with a Skill-style header, preview/source/files tabs, and delete/open/copy actions.
+  - Installed Plugin detail pages now reuse the Skill detail render boundary, so malformed Plugin metadata or detail render failures show a recoverable Back/Retry state instead of crashing the Plugin module.
   - The Files tab reuses `SkillFileEditor` in local-path mode so installed Plugin package files can be browsed through the same file tree/editor surface as Skills.
   - The Files tab now preserves the same full-height flex chain as Skill detail (`main` as a flex column and the file editor panel as `h-full min-h-0 flex-1`) so collapsing/resizing surrounding navigation does not leave unused blank space below the editor.
   - The preview right rail now uses the same visual pattern as Skill platform integration: copy/symlink toggle, select-all row, batch install button, platform icons, and card-style selectable targets.
   - Installed Plugin records now persist manifest `longDescription`, and the detail preview renders a Plugin Content section from long description, homepage, repository, and local package path.
   - The My Plugins list now uses Skill-style large gallery cards with two-column layout, larger icons, expanded description space, and larger card padding instead of compact horizontal cards.
   - The My Plugins list header now mirrors My Skills controls with distribution-status filter chips, a source selector, and a text batch-manage button instead of icon-only management.
+  - My Plugins now supports Skill-style favorite metadata. `isFavorite` is persisted through `plugin:updateMetadata`, normalized on library reads, and preserved when source preview metadata updates an installed Plugin. Favorite state is PromptHub user metadata, not manifest/source metadata.
+  - My Plugins now supports a Favorites filter, manifest/source tag filtering, user tag filtering, tag-aware search, read-only tag chips on installed cards, card/detail star toggles, and Skill-style batch tag editing. Manifest/source tags remain display/filter metadata only; editable Plugin tags are persisted separately as `userTags` so source refresh cannot overwrite them.
+  - Installed Plugin detail now includes a Skill-style Personal Notes section. Notes are persisted as PromptHub-owned `userNotes` metadata in the Plugin library, are editable from the detail Overview tab, and are preserved when a source update refreshes manifest/package metadata.
+  - Installed Plugin detail titles are clickable copy targets, matching the Skill detail behavior while keeping the cursor in a non-editing style.
+  - Installed Plugin detail now shows a Skill-style Back to Top action after long non-files tab scrolling and hides that floating action on the Files tab.
+  - My Plugins now supports Skill-style persisted gallery/list view preferences, configurable gallery columns, shared page-size pagination, previous/next page controls, and right-click context menus for detail, favorite, user tags, Agent target selection, opening package folders, and delete.
+  - My Plugins batch mode now supports Skill-style favorite/unfavorite toggling for selected Plugins. If every selected Plugin is already favorited, the batch action removes favorite state; otherwise it favorites every selected Plugin.
+- Closed the Agent Plugin workbench distribution gap:
+  - The `Agent Plugin` tab now renders the shared `PluginAgentTargetPicker`, so a My Plugins row can distribute directly to the selected Agent target from the Agent Plugin workbench instead of only setting hidden picker state.
+  - Agent Plugin now lets users remove a distributed My Plugins package from the currently selected supported target through a confirmation-gated destructive action. The renderer calls the `plugin:undistribute` contract, the core service deletes only that target package path, and PromptHub keeps the My Plugins entry and other distributed targets intact while updating `distributedTargetIds`.
+  - Agent Plugin filters now distinguish all packages, My Plugins, target-native Agent-installed packages, already distributed packages, and pending packages.
+  - Agent Plugin filter labels and filtered-empty states are localized across all supported desktop locales.
   - Installed Plugin cards now mirror Skill gallery hover behavior: the whole card opens detail, hover actions expose direct Agent target selection, detail, local folder, and delete shortcuts, and the card header shows real distributed Agent target icons when the installed record has `distributedTargetIds`.
   - Installed Plugin metadata now accepts optional `distributedTargetIds`; old library records normalize to an empty list, so cards show "Not distributed" until an adapter-backed distribution flow records real target bindings.
   - The overview includes an Agent Plugin target distribution panel. Once the user selects targets, the primary paper-plane action now performs real package distribution instead of opening another selection placeholder.
   - My Plugins distribution actions now use the paper-plane icon. Clicking distribute from an installed card opens a direct Agent target picker; confirming the picker performs the same real distribution flow instead of routing users to the Agent Plugin workbench.
+  - My Plugins batch mode now includes a paper-plane distribute action. Selected Plugin packages share one Agent target picker, then PromptHub calls the same `plugin:distribute` flow for each selected Plugin with the chosen copy/symlink mode and target IDs.
   - Plugin package distribution is implemented through `CorePluginLibraryService.distributePlugin`, desktop IPC/preload, and the renderer plugin store. The service validates enabled targets, resolves the installed local package path, copies or symlinks the package to the resolved Agent Plugin directory, and persists successful `distributedTargetIds`.
+  - Plugin deletion now mirrors the Skill delete safety pattern for distributed copies. Single and batch delete confirmations preserve Agent Plugin package copies/symlinks by default, but expose an explicit cleanup checkbox when selected Plugins have recorded `distributedTargetIds`; choosing cleanup removes only the resolved Agent Plugin package target paths before the My Plugins entry and PromptHub-managed source package are deleted.
   - Desktop target path resolution maps Plugin target IDs onto existing Agent platform IDs: `codex -> codex`, `claude-code -> claude`, `gemini-cli -> gemini`, `github-copilot -> copilot`, plus direct `cursor` and `kiro` mappings.
   - Default Plugin base directories are configurable through Agent Configuration settings. Codex, Claude, and Cursor default to `plugins/cache/prompthub`; Gemini defaults to `config/plugins`; Kiro defaults to `powers`; GitHub Copilot defaults to `plugins`.
   - Agent Configuration settings now expose and preview MCP config relative paths and Plugin directory relative paths for built-in and custom agents, alongside the existing Skills, Rules, Agents, and config file fields. Commands remain Plugin inventory, not an Agent settings directory field.
-  - Child asset decomposition into My Skills/My MCP remains a follow-up; this pass writes the installed Plugin package itself into Agent Plugin package directories.
+  - Installed Plugin detail now exposes explicit child asset import actions for supported child assets. Skill children reuse the existing local Skill scan preview and copy import flow. MCP children use a new `plugin:import:childMcp` IPC endpoint that statically scans the installed Plugin package for MCP JSON/TOML config files, rejects symlink escapes by realpath, and imports through the existing MCP library importer. After successful child Skill/MCP import, Plugin records a one-time pending deploy handoff and navigates to My Skills/My MCP so the existing Skill/MCP batch distribution dialogs handle Agent target selection. Plugin installation still does not auto-copy child assets.
   - My Plugins filters now live in the same header panel position as My Skills filters, including icon-led distribution-status chips and the source selector, instead of rendering as a separate content-area toolbar.
   - Installed Plugin card quick actions no longer include a redundant detail-eye button; whole-card click/keyboard activation remains the detail entry, matching the Skill gallery interaction model.
   - Delete confirmation remains available from the full detail page, so the modal removal does not make the destructive action unreachable.
   - Plugins Store header now matches Skill Store: the selected store source title and loaded count are shown in the main header, the store batch control is a compact icon-only button beside refresh, and My Plugins keeps the My Skills-style text batch-management button.
+  - Agent Plugin now augments the target matrix with read-only target-native installed Plugin inventory for every first-version bundle target. The desktop IPC scans Codex cache packages with `.codex-plugin/plugin.json`, Claude Code `installed_plugins.json` install paths plus manual package-like directories, Cursor packages with `.cursor-plugin/plugin.json`, Gemini CLI extension packages with `gemini-extension.json` or `plugin.json`, Kiro powers with `POWER.md`, and GitHub Copilot / VS Code Agent Plugin packages with `plugin.json` markers. It reads only static manifests and capability folders, ignores normal Agent state directories, keeps runtime-only/composite/pending targets disabled, and renders Agent-installed packages in the selected target detail without adding them to PromptHub's My Plugins library.
+  - Agent Plugin target-native rows now expose an import-to-My-Plugins action when the scanned package has a local source path. The import path calls `CorePluginLibraryService.importLocalPluginPackage`, performs a static manifest and inventory scan, enforces the same Plugin bundle semantic gate, copies the external Agent package into PromptHub-managed `data/plugins/<plugin-id>/package`, writes My Plugins metadata with Agent source provenance, and leaves the original Agent package in place.
+  - Agent Plugin My Plugins rows now open the same full installed Plugin detail page used by My Plugins, matching Agent Skill's managed-asset detail handoff while preserving direct selected-target distribution buttons.
+  - My Plugins now exposes a direct `Import local Plugin` action in the header. It opens the native folder picker, calls the same `plugin:import:local` API used by Agent Plugin imports, copies valid local Plugin packages into PromptHub-managed storage, updates My Plugins immediately, and leaves rejected sources to the existing semantic gate/error handling.
+  - My Plugins now exposes a direct `Import from URL` action for Git/SSH/HTTPS Plugin sources. The core import path uses local git transport, preserves branch/package path/source label metadata, copies valid packages into PromptHub-managed storage, rejects duplicate URL/package/branch combinations, and rejects single-skill sources through the same Plugin semantic gate.
+  - URL source import now scans before installation. The renderer calls `plugin:source:preview`, shows a confirmation modal with manifest identity, description, source, classification, inventory, and unsupported reasons, and only writes My Plugins metadata after the user confirms `Import Plugin`.
+  - My Plugins cards now surface already-checked source update state from the detail page. Available updates, local changes, and source/local conflicts render as right-side card badges after the source check has run; the card grid does not initiate Git/SSH/network source scans itself.
+  - The checked source-update badge now uses the shared blue `CardStatusBadge` variant for `update-available`, matching the Skill Store / My Skills card treatment instead of sitting over the top-left icon area.
+  - Local and materialized Plugin package scans now validate package safety before inventory extraction or managed copy. Child asset path declarations in manifests cannot traverse outside the package root, package-internal symlinks cannot resolve outside the package root, and package scripts remain inert during scan/import.
+  - Installed Plugin detail now exposes a static Package Check panel. The panel calls `plugin:package:healthCheck`, reuses the same local package manifest path and symlink-boundary validation as import, shows `Package OK` or review states with package/manifest paths, and does not mutate the Plugin library.
+  - Installed Plugin detail now exposes an AI Safety Assessment panel. The renderer builds a static Plugin summary from identity, source provenance, inventory counts, local package path, and explicit no-execution scope, then calls the existing safety scanner with the user's configured AI model. The resulting scored `safetyReport` is persisted through Plugin metadata, rendered in the detail right rail, and preserved across source-update refreshes.
+  - Installed Plugin detail now exposes manual Plugin package snapshots. The core library persists `data/plugins/versions.json`, starts Plugin history at `v1`, captures Plugin metadata plus static package files, restores package files through a managed restored package path, creates a safety snapshot before rollback, and deletes version records without mutating the current Plugin library entry.
+  - Plugin source updates now create an automatic pre-update package snapshot before applying an overwrite. The snapshot captures the old Plugin metadata and static package files; up-to-date checks and blocked local-change conflicts do not create history entries.
+  - Added a Plugin Version History modal that opens from installed Plugin detail, lists version snapshots, previews captured package text files, marks binary snapshots without decoding, restores selected versions, and deletes version entries after confirmation.
+  - Fixed Plugin Version History store selection to use a stable empty version array, removing the repeated Zustand snapshot updates that caused installed Plugin detail and version-history component tests to hit React's maximum update depth guard.
+  - Agent-installed Plugin rows now use the whole row content as a detail entry point. Opening one renders a read-only detail page with Agent source, description, direct inventory-count chips, local source path, import-to-My-Plugins, and open-folder actions; it does not edit or delete the external Agent package.
+  - Agent-installed Plugin detail now includes a read-only Files tab backed by the same inline file browser used for Skills and installed My Plugins. `SkillFileEditor` now accepts a `readOnly` mode that hides edit/create/rename/delete/save controls and suppresses mutation handlers, so external Agent package paths can be inspected without becoming PromptHub-managed or writable.
+  - Agent Plugin target descriptions now use localized renderer copy keyed by target ID, and disabled runtime-only/composite targets show clear unsupported Plugin bundle labels instead of exposing raw adapter metadata such as `Runtime JS/TS plugin modules` or vague internal status chips.
+  - Agent Plugin target status badges now use localized `Native` / `Adapter` labels across non-English locales, and Chinese Agent Plugin count filters no longer leak English plural labels such as `Plugins` or `My Plugins`.
+  - Added desktop IPC/preload/store support for local Plugin package import through `plugin:import:local`.
 - Added Plugin navigation to the desktop home rail/sidebar and the Appearance settings home-module list.
 - Added Plugin i18n keys across all seven desktop locales, including the installed Plugin detail page.
+- Added i18n coverage across all seven desktop locales for My Plugins favorites, tag filtering, title copy, and Plugin/Manifest surface labels so the new parity controls no longer rely on renderer default strings.
+- Consolidated built-in Agent Plugin package directory defaults into `packages/shared/constants/platforms.ts`, so Settings preview, renderer actions, and main-process distribution resolve the same platform metadata.
+- Removed the incorrect `roo-code -> kilo` UI platform mapping from Plugin target cards/detail/picker. Roo Code remains visible only as a disabled composite target and now renders with its own generic Agent fallback icon instead of Kilo identity.
+- Hardened Plugin distribution and undistribution at the core filesystem boundary. Before overwriting or deleting a resolved Agent target path, `CorePluginLibraryService` now requires the path to be missing, an empty directory, a recognizable Plugin package directory, or a PromptHub-managed/recognizable Plugin symlink. If a resolver or custom Agent setting points at a normal config file or unrelated non-Plugin directory, the operation fails before `rm`, `cp`, or `symlink`, leaving the existing file unchanged and preserving `distributedTargetIds`.
 
 ## Verification
 
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/plugin-library.test.ts -t "Agent config files"`
+  - Result: failed before the fix because a resolver returning an existing `settings.json` path allowed distribution/undistribution to proceed instead of rejecting the unsafe target.
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/plugin-library.test.ts -t "Agent config files"`
+  - Result: passed after adding the core target-path safety guard. Verifies existing Agent config files remain byte-for-byte unchanged and `distributedTargetIds` is not updated on rejected distribution.
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/plugin-library.test.ts`
+  - Result: passed (1 file, 40 tests). Verifies marketplace install, static package validation, adapter marker generation, distribution cleanup, and the new unsafe-target rejection together.
+- `pnpm --filter @prompthub/desktop exec tsx --tsconfig tsconfig.json /var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-real-plugin-1782293614708.mts`
+  - Result: passed. Real OpenAI official marketplace smoke test on 2026-06-24 loaded `openai-curated` from `https://raw.githubusercontent.com/openai/plugins/main/.agents/plugins/marketplace.json`, saw 179 entries, previewed `openai-curated:gmail` as a bundle with 2 Skills and 1 App, installed it into a temporary `<userData>/data/plugins/openai-curated-gmail/repo/plugins/gmail`, confirmed `.codex-plugin/plugin.json` exists, and confirmed installation did not distribute to any Agent (`distributedTargetIds: []`).
+- `pnpm --filter @prompthub/desktop exec tsx --tsconfig tsconfig.json /var/folders/mg/8kvpxvzs54g_ygxpmpzkzy1h0000gn/T/prompthub-real-plugin-distribute-1782293780210.mts`
+  - Result: passed. Real distribution smoke test installed `openai-curated:gmail` into a temp user data directory, distributed it to a temp Codex Plugin target package directory, confirmed the copied package contains `.app.json`, `.codex-plugin`, `assets`, and `skills`, removed only that target package directory, and confirmed a sibling simulated `settings.json` stayed unchanged before and after distribution/removal.
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/plugin-i18n-smoke.test.ts`
+  - Result: passed (1 file, 2 tests). Verifies non-English Agent Plugin target status badges do not fall back to English `Native` / `Adapter`, and Chinese Agent Plugin count filters do not leak `Plugins` / `My Plugins`.
+- `NODE_OPTIONS="--localstorage-file=/tmp/prompthub-vitest-localstorage-plugin-manager.json" pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/plugin-manager.test.tsx -t "localizes Agent Plugin target labels in Chinese"`
+  - Result: passed (1 focused test, 44 skipped). Verifies the rendered Chinese Agent Plugin page shows `原生` / `适配器` and no longer renders `Native` / `Adapter`. The run still emits existing React `act(...)` warnings from asynchronous PluginManager state updates.
+- `pnpm exec prettier --check apps/desktop/tests/unit/components/plugin-i18n-smoke.test.ts apps/desktop/tests/unit/components/plugin-manager.test.tsx apps/desktop/src/renderer/i18n/locales/zh.json apps/desktop/src/renderer/i18n/locales/zh-TW.json apps/desktop/src/renderer/i18n/locales/ja.json apps/desktop/src/renderer/i18n/locales/fr.json apps/desktop/src/renderer/i18n/locales/de.json apps/desktop/src/renderer/i18n/locales/es.json`
+  - Result: passed.
+- `node -e "const fs=require('fs'); for (const l of ['en','zh','zh-TW','ja','fr','de','es']) JSON.parse(fs.readFileSync('apps/desktop/src/renderer/i18n/locales/'+l+'.json','utf8')); console.log('locales ok')"`
+  - Result: passed.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/components/plugin-manager.test.tsx --run --silent -t "removes a distributed My Plugins entry from the selected Agent"`
+  - Result: passed. Verifies Agent Plugin shows a direct remove-from-agent action for distributed My Plugins cards, asks for confirmation, and calls `plugin:undistribute` with the selected Agent target.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/main/plugin-library.test.ts tests/unit/stores/plugin.store.test.ts --run --silent`
+  - Result: passed. Verifies the undistribute contract removes the target package path, updates `distributedTargetIds`, and refreshes renderer library state.
+
+- `pnpm --filter @prompthub/desktop test -- tests/unit/components/plugin-manager.test.tsx --run --silent -t "shows a Skill-style back-to-top action|toggles selected My Plugins favorites from batch mode"`
+  - Result: passed (2 focused tests). Verifies installed Plugin detail shows the Skill-style Back to Top action on long non-files tabs and hides it on Files, and My Plugins batch mode can favorite selected Plugins through `plugin:updateMetadata`.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/components/plugin-manager.test.tsx --run --silent`
+  - Result: passed (1 file, 41 tests). Verifies the full PluginManager component suite after adding installed detail Back to Top and batch favorite/unfavorite behavior.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/stores/plugin.store.test.ts tests/unit/main/plugin-library.test.ts tests/unit/main/plugin-target-inventory.test.ts tests/unit/main/plugin-child-mcp-import.test.ts tests/unit/components/plugin-version-history-modal.test.tsx --run --silent`
+  - Result: passed (5 files, 59 tests). Verifies renderer Plugin store, core Plugin library, Agent target inventory, child MCP import, and Plugin version history were not regressed by the My Plugins parity changes.
+- `pnpm --filter @prompthub/desktop typecheck`
+  - Result: passed after the installed detail Back to Top and batch favorite/unfavorite changes.
+- `node -e "const fs=require('fs'); const locales=['en','zh','zh-TW','ja','fr','de','es']; const keys=['batchFavoriteSuccess','batchFavoritePartialFailure']; for (const l of locales){const j=JSON.parse(fs.readFileSync('apps/desktop/src/renderer/i18n/locales/'+l+'.json','utf8')); const miss=keys.filter(k=>!(j.plugin&&Object.prototype.hasOwnProperty.call(j.plugin,k))); if (miss.length) throw new Error(l+': '+miss.join(','));} console.log('plugin batch favorite locale keys ok');"`
+  - Result: passed. Verifies the new Plugin batch favorite result strings exist in all supported desktop locales.
+- `pnpm exec prettier --check apps/desktop/src/renderer/components/plugin/PluginFullDetailPage.tsx apps/desktop/src/renderer/components/plugin/PluginManager.tsx apps/desktop/tests/unit/components/plugin-manager.test.tsx apps/desktop/src/renderer/i18n/locales/en.json apps/desktop/src/renderer/i18n/locales/zh.json apps/desktop/src/renderer/i18n/locales/zh-TW.json apps/desktop/src/renderer/i18n/locales/ja.json apps/desktop/src/renderer/i18n/locales/fr.json apps/desktop/src/renderer/i18n/locales/de.json apps/desktop/src/renderer/i18n/locales/es.json spec/changes/active/plugin-management/tasks.md spec/changes/active/plugin-management/specs/plugins/spec.md spec/changes/active/plugin-management/implementation.md spec/knowledge/behavior/plugins.md`
+  - Result: passed after formatting `PluginFullDetailPage.tsx`.
+- `git diff --check`
+  - Result: passed.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/components/plugin-manager.test.tsx --run --silent`
+  - Result: passed (1 file, 38 tests). Verifies installed Plugin detail can run AI safety assessment from a static Plugin summary, persist a scored `safetyReport`, and render summary/finding output.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/main/plugin-library.test.ts --run --silent`
+  - Result: passed after adding Plugin safety metadata preservation coverage. Verifies Plugin source updates keep `safetyReport` alongside favorite, user tags, user notes, and distributed target metadata.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/main/plugin-library.test.ts --run --silent`
+  - Result: passed (1 file, 37 tests). Verifies source updates create a pre-update Plugin package snapshot with the previous metadata/package files, while blocked local-change conflicts leave version history unchanged.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/components/plugin-manager.test.tsx tests/unit/stores/plugin.store.test.ts tests/unit/main/plugin-library.test.ts tests/unit/main/plugin-target-inventory.test.ts tests/unit/main/plugin-child-mcp-import.test.ts --run --silent`
+  - Result: passed (5 files, 93 tests). Verifies the automatic source-update snapshot change did not regress My Plugins, Plugin Store, Agent Plugin inventory, child MCP import, or renderer Plugin store behavior.
+- `pnpm --filter @prompthub/desktop exec tsc --noEmit`
+  - Result: passed after the automatic source-update snapshot change and settings store value-import fix.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/components/plugin-manager.test.tsx --run --silent`
+  - Result: passed (1 file, 37 tests). Verifies Plugin Store batch mode can install selected not-yet-installed entries, update selected installed entries through `plugin:updateFromSource`, and remove selected installed entries through confirmation-gated `plugin:delete`.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/stores/plugin.store.test.ts tests/unit/components/plugin-manager.test.tsx --run --silent`
+  - Result: passed (2 files, 46 tests). Verifies My Plugins persisted gallery/list view preferences, configurable gallery columns, shared pagination, context menu actions, and Agent Plugin managed-card detail entry while preserving renderer Plugin store behavior.
+- `pnpm --filter @prompthub/desktop exec tsc --noEmit`
+  - Result: passed after the My Plugins view-control and Agent Plugin detail-entry changes.
+- `node -e "const fs=require('fs'); const langs=['en','zh','zh-TW','ja','fr','de','es']; const base=JSON.parse(fs.readFileSync('apps/desktop/src/renderer/i18n/locales/en.json','utf8')).plugin; const keys=o=>Object.keys(o||{}).sort(); const bk=keys(base); for (const l of langs) { const plugin=JSON.parse(fs.readFileSync('apps/desktop/src/renderer/i18n/locales/'+l+'.json','utf8')).plugin; const k=keys(plugin); const missing=bk.filter(x=>!k.includes(x)); const extra=k.filter(x=>!bk.includes(x)); if (missing.length || extra.length) throw new Error(l); } console.log('plugin locale keys ok')"`
+  - Result: passed. Verifies all supported desktop locales contain the same `plugin.*` key set after adding Plugin view-control strings.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/components/plugin-manager.test.tsx --run --silent`
+  - Result: passed (1 file, 33 tests). Verifies the Agent Plugin workbench renders the shared Agent target picker for My Plugins distribution, Agent Plugin filter chips and filtered empty states behave correctly, and Plugin Store cards do not render child inventory count chips.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/components/plugin-manager.test.tsx tests/unit/main/plugin-library.test.ts tests/unit/main/plugin-target-inventory.test.ts tests/unit/main/plugin-child-mcp-import.test.ts tests/unit/stores/plugin.store.test.ts tests/unit/components/plugin-version-history-modal.test.tsx --run --silent`
+  - Result: passed (6 files, 91 tests). Verifies the PluginManager alignment fixes did not regress core Plugin library behavior, target-native Agent Plugin inventory scanning, child MCP import, renderer Plugin store state, or Plugin version history.
+- `pnpm --filter @prompthub/desktop typecheck`
+  - Result: passed after the Agent Plugin picker/i18n/test synchronization.
+- `pnpm exec prettier --check apps/desktop/src/renderer/components/plugin/PluginManager.tsx apps/desktop/tests/unit/components/plugin-manager.test.tsx apps/desktop/src/renderer/i18n/locales/en.json apps/desktop/src/renderer/i18n/locales/zh.json apps/desktop/src/renderer/i18n/locales/zh-TW.json apps/desktop/src/renderer/i18n/locales/ja.json apps/desktop/src/renderer/i18n/locales/fr.json apps/desktop/src/renderer/i18n/locales/de.json apps/desktop/src/renderer/i18n/locales/es.json spec/knowledge/behavior/plugins.md spec/changes/active/plugin-management/design.md spec/changes/active/plugin-management/specs/plugins/spec.md spec/changes/active/plugin-management/tasks.md spec/changes/active/plugin-management/implementation.md`
+  - Result: passed after formatting `PluginManager.tsx`.
+- `node -e 'const fs=require("fs"); const locales=["en","zh","zh-TW","ja","fr","de","es"]; const keys=["agentPluginFilterAll","agentPluginFilterMyPlugins","agentPluginFilterAgentInstalled","agentPluginFilterDistributed","agentPluginFilterPending","noFilteredAgentPlugins","noFilteredAgentPluginsDesc"]; for (const l of locales){const j=JSON.parse(fs.readFileSync("apps/desktop/src/renderer/i18n/locales/"+l+".json","utf8")); const miss=keys.filter(k=>!(j.plugin&&Object.prototype.hasOwnProperty.call(j.plugin,k))); if(miss.length) throw new Error(l+": "+miss.join(","));} console.log("plugin agent filter locale keys ok")'`
+  - Result: passed. Verifies Agent Plugin filter and filtered-empty strings exist in all supported desktop locales.
+- `git diff --check`
+  - Result: passed.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/components/plugin-manager.test.tsx tests/unit/main/plugin-library.test.ts tests/unit/stores/plugin.store.test.ts --run`
+  - Result: passed (3 files, 63 tests). Verifies installed Plugin personal notes can be edited from the full detail page, are persisted through `plugin:updateMetadata`, and are preserved by core source-update refreshes. The run still emits existing React `act(...)` warnings from asynchronous PluginManager state updates.
+- `pnpm --filter @prompthub/desktop typecheck`
+  - Result: passed after adding Plugin personal notes metadata and detail UI.
 - `pnpm --filter @prompthub/desktop test:run tests/unit/main/plugin-library.test.ts tests/unit/stores/settings-desktop-workspace.test.ts -- --runInBand`
 - `pnpm --filter @prompthub/desktop test:run tests/unit/main/ipc-index.test.ts -- --runInBand`
 - `pnpm --filter @prompthub/desktop typecheck`
@@ -90,10 +205,19 @@
 - `pnpm --filter @prompthub/desktop test:run tests/unit/components/plugin-manager.test.tsx -- --runInBand` verifies installed Plugins open a full detail page instead of a dialog, the Files tab receives the installed Plugin package path through the reused file editor, and delete confirmation remains reachable.
 - `pnpm --filter @prompthub/desktop test:run tests/unit/components/plugin-manager.test.tsx -- --runInBand` verifies the installed Plugin Files tab preserves the full-height inline editor flex chain.
 - `pnpm --filter @prompthub/desktop test:run tests/unit/components/plugin-manager.test.tsx tests/unit/main/plugin-library.test.ts -- --runInBand` verifies the installed Plugin detail distribution panel follows the Skill-style platform integration layout and installed library entries preserve manifest long descriptions.
+- Installed Plugin detail now shows target-by-target distributed state inside Platform Integration, keeps undistributed targets selectable for batch distribute, and exposes the same confirmation-gated single-target removal flow from detail that Agent Plugin already used.
 - `pnpm --filter @prompthub/desktop test:run tests/unit/components/plugin-manager.test.tsx -- --runInBand` verifies My Plugins renders installed entries as large gallery cards.
 - `pnpm --filter @prompthub/desktop test:run tests/unit/components/plugin-manager.test.tsx tests/unit/main/plugin-library.test.ts -- --runInBand` verifies My Plugins Skill-style filters, installed-card distributed target badges, hover quick actions, and library normalization for Plugin metadata.
 - `pnpm --filter @prompthub/desktop test:run tests/unit/components/plugin-manager.test.tsx -- --runInBand` verifies My Plugins paper-plane distribution opens the direct Agent target picker from both cards and detail, without navigating to the Agent Plugin workbench.
 - `pnpm --filter @prompthub/desktop test:run tests/unit/components/plugin-manager.test.tsx tests/unit/main/plugin-library.test.ts -- --runInBand` verifies My Plugins filters are mounted inside the header and installed Plugin cards do not render a separate detail-eye quick action.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/main/plugin-library.test.ts tests/unit/components/plugin-manager.test.tsx --run`
+  - Result: passed (2 files, 40 tests). Verifies default preservation of distributed Agent Plugin package copies, explicit cleanup during Plugin delete, and the installed detail delete confirmation passing the cleanup option. The run still emits existing React `act(...)` warnings from asynchronous PluginManager state updates.
+- `pnpm --filter @prompthub/shared typecheck`
+  - Result: passed after adding Plugin delete options to shared contracts.
+- `pnpm --filter @prompthub/core typecheck`
+  - Result: passed after adding distributed package cleanup in the core Plugin library.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/stores/plugin.store.test.ts tests/unit/main/plugin-target-inventory.test.ts --run`
+  - Result: passed (2 files, 9 tests). Verifies renderer Plugin store loading and Agent Plugin target inventory still work after the delete API option change.
 - `pnpm --filter @prompthub/desktop test:run tests/unit/main/plugin-library.test.ts tests/unit/components/plugin-manager.test.tsx tests/unit/components/skill-settings.test.tsx tests/unit/stores/settings-agent-roots.test.ts` verifies real Plugin package distribution, My Plugins direct distribution UI, and Agent root path settings after adding MCP/Plugin path fields.
 - `pnpm --filter @prompthub/desktop typecheck` passes for the real Plugin distribution and Agent path settings pass.
 - `pnpm exec prettier --check packages/shared/types/plugin.ts packages/shared/constants/ipc-channels.ts packages/core/src/plugin-library.ts apps/desktop/src/main/ipc/plugin.ipc.ts apps/desktop/src/main/services/skill-installer-utils.ts apps/desktop/src/preload/api/plugin.ts apps/desktop/src/renderer/stores/plugin.store.ts apps/desktop/src/renderer/components/plugin/PluginAgentTargetPicker.tsx apps/desktop/src/renderer/components/plugin/PluginFullDetailPage.tsx apps/desktop/src/renderer/components/plugin/PluginManager.tsx apps/desktop/src/renderer/components/settings/SkillSettings.tsx apps/desktop/tests/unit/main/plugin-library.test.ts apps/desktop/tests/unit/components/plugin-manager.test.tsx apps/desktop/src/renderer/i18n/locales/en.json apps/desktop/src/renderer/i18n/locales/zh.json apps/desktop/src/renderer/i18n/locales/zh-TW.json apps/desktop/src/renderer/i18n/locales/ja.json apps/desktop/src/renderer/i18n/locales/fr.json apps/desktop/src/renderer/i18n/locales/de.json apps/desktop/src/renderer/i18n/locales/es.json` passes.
@@ -105,6 +229,112 @@
 - `pnpm --filter @prompthub/desktop test -- --run tests/unit/main/plugin-library.test.ts tests/unit/components/sidebar.test.tsx tests/unit/components/plugin-manager.test.tsx tests/unit/components/skill-settings.test.tsx`
   - Result: passed (4 files, 70 tests).
 - `pnpm --filter @prompthub/desktop typecheck`
+  - Result: passed.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/stores/plugin.store.test.ts --run`
+  - Result: passed. Verifies selected-source marketplace entries are merged into renderer state before slower marketplace sources finish.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/components/plugin-manager.test.tsx --run`
+  - Result: passed (17 tests). Verifies cached Plugin Store cards stay visible while the store refresh is still in flight. The run still emits existing React `act(...)` warnings from asynchronous store updates after component mount.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/components/plugin-manager.test.tsx --run`
+  - Result: passed (18 tests). Verifies visible store card manifest prefetch starts while the store is still refreshing, so official icons/descriptions can enrich cached cards before every marketplace source finishes loading. The run still emits existing React `act(...)` warnings from asynchronous store updates after component mount.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/components/plugin-manager.test.tsx --run`
+  - Result: passed (18 tests). Historical run before the no-card-inventory revision; current expectations now verify Store cards do not render child inventory count chips.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/components/plugin-manager.test.tsx --run`
+  - Result: passed (19 tests). Verifies My Plugins can import a local Plugin package through the native folder picker and `plugin:import:local`, updating the installed library immediately.
+- `pnpm --filter @prompthub/desktop typecheck`
+  - Result: passed after adding the My Plugins local import action.
+- `pnpm exec prettier --check apps/desktop/src/renderer/components/plugin/PluginManager.tsx apps/desktop/tests/unit/components/plugin-manager.test.tsx apps/desktop/src/renderer/i18n/locales/en.json apps/desktop/src/renderer/i18n/locales/zh.json apps/desktop/src/renderer/i18n/locales/zh-TW.json apps/desktop/src/renderer/i18n/locales/ja.json apps/desktop/src/renderer/i18n/locales/fr.json apps/desktop/src/renderer/i18n/locales/de.json apps/desktop/src/renderer/i18n/locales/es.json spec/changes/active/plugin-management/tasks.md spec/changes/active/plugin-management/specs/plugins/spec.md spec/changes/active/plugin-management/implementation.md spec/knowledge/behavior/plugins.md`
+  - Result: passed.
+- `node -e 'for (const f of ["en","zh","zh-TW","ja","fr","de","es"]) JSON.parse(require("fs").readFileSync("apps/desktop/src/renderer/i18n/locales/"+f+".json","utf8")); console.log("locales ok")'`
+  - Result: passed.
+- `git diff --check`
+  - Result: passed.
+- `pnpm --filter @prompthub/desktop typecheck`
+  - Result: passed after progressive Plugin Store loading changes.
+- `pnpm --filter @prompthub/desktop typecheck`
+  - Result: passed after removing the manifest prefetch loading gate.
+- `pnpm exec prettier --check apps/desktop/src/renderer/components/plugin/PluginManager.tsx apps/desktop/tests/unit/components/plugin-manager.test.tsx`
+  - Result: passed.
+- `git diff --check`
+  - Result: passed.
+- `pnpm --filter @prompthub/desktop test:run tests/unit/main/plugin-target-inventory.test.ts tests/unit/components/plugin-manager.test.tsx -- --runInBand`
+  - Result: passed (2 files, 19 tests).
+- `pnpm --filter @prompthub/desktop test:run tests/unit/main/plugin-library.test.ts tests/unit/components/plugin-manager.test.tsx -- --runInBand`
+  - Result: passed (2 files, 30 tests).
+- `pnpm --filter @prompthub/desktop test:run tests/unit/components/plugin-manager.test.tsx -- --runInBand`
+  - Result: passed (16 tests). Verifies direct inventory-count chips, read-only Agent-installed Plugin detail entry, and Chinese disabled-target localization.
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/components/plugin-manager.test.tsx tests/unit/main/plugin-library.test.ts tests/unit/main/plugin-target-inventory.test.ts tests/unit/components/skill-settings.test.tsx`
+  - Result: passed (4 files, 46 tests).
+- `pnpm --filter @prompthub/desktop test -- tests/unit/components/plugin-manager.test.tsx tests/unit/main/plugin-child-mcp-import.test.ts tests/unit/main/plugin-target-inventory.test.ts tests/unit/main/plugin-library.test.ts tests/unit/stores/plugin.store.test.ts --run`
+  - Result: passed (5 files, 53 tests). Verifies explicit child Skill import remains wired to the Skill scan flow, child MCP import is available from installed Plugin detail, child MCP import writes through the MCP library, duplicate MCP imports are skipped, and symlink escape configs are not scanned. The run still emits existing React `act(...)` warnings from asynchronous PluginManager state updates after component mount.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/components/plugin-manager.test.tsx tests/unit/main/plugin-child-mcp-import.test.ts tests/unit/main/plugin-target-inventory.test.ts tests/unit/main/plugin-library.test.ts tests/unit/stores/plugin.store.test.ts --run`
+  - Result: passed (5 files, 55 tests). Verifies the Plugin Store uses the Skill Store-style virtual catalog for large catalogs while keeping small catalogs as normal grids. The run still emits existing React `act(...)` warnings from asynchronous PluginManager state updates after component mount.
+- `pnpm --filter @prompthub/desktop typecheck`
+  - Result: passed after adding child MCP import IPC/preload/store/UI contracts.
+- `pnpm --filter @prompthub/desktop typecheck`
+  - Result: passed after the Plugin Store virtual catalog alignment.
+- `pnpm --filter @prompthub/shared typecheck`
+  - Result: passed after moving built-in Agent MCP/Plugin defaults into shared platform metadata.
+- `pnpm --filter @prompthub/core typecheck`
+  - Result: passed after Cline MCP preset path correction.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/main/plugin-library.test.ts --run`
+  - Result: passed (24 tests). Verifies direct HTTPS/SSH Plugin source imports, duplicate handling across branches, branch metadata retention after library readback, source cleanup, and single-skill source rejection.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/main/plugin-library.test.ts tests/unit/stores/plugin.store.test.ts tests/unit/components/plugin-manager.test.tsx --run`
+  - Result: passed (3 files, 55 tests). Verifies Git/SSH/HTTPS Plugin source preview does not mutate the library, renderer store preview delegates to the preload API without switching tabs, and the PluginManager URL flow opens a confirmation modal before import. The run still emits existing React `act(...)` warnings from asynchronous PluginManager state updates.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/components/plugin-manager.test.tsx --run`
+  - Result: passed after adding My Plugins batch distribution coverage. Verifies selected installed Plugins open a shared Agent target picker and each selected Plugin is distributed through the same `plugin:distribute` API.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/components/plugin-manager.test.tsx --run`
+  - Result: passed (1 file, 27 tests). Verifies checked source update states render back on My Plugins cards after the installed Plugin detail page has checked the source. The run still emits existing React `act(...)` warnings from asynchronous PluginManager state updates.
+- `node -e "const fs=require('fs'); const locales=['en','zh','zh-TW','ja','fr','de','es']; const keys=['favorites','allTags','tagFilterLabel','addToFavorites','removeFromFavorites','addFavorite','removeFavorite','copyTitle','pluginSurfaceLabel','manifestLabel']; for (const l of locales){const j=JSON.parse(fs.readFileSync('apps/desktop/src/renderer/i18n/locales/'+l+'.json','utf8')); const miss=keys.filter(k=>!(j.plugin&&Object.prototype.hasOwnProperty.call(j.plugin,k))); if (miss.length) throw new Error(l+': '+miss.join(','));} console.log('plugin locale keys ok');"`
+  - Result: passed. Verifies the new Plugin parity strings exist in all supported desktop locales.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/components/plugin-manager.test.tsx tests/unit/main/plugin-library.test.ts --run`
+  - Result: passed (2 files, 57 tests). Verifies My Plugins favorites, manifest/source tag filtering, title copy, and preservation of user favorite metadata in the core Plugin library. The run still emits existing React `act(...)` warnings from asynchronous PluginManager state updates.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/components/plugin-manager.test.tsx tests/unit/main/plugin-library.test.ts --run`
+  - Result: passed (2 files, 58 tests). Verifies My Plugins user tag batch editing, combined source/user tag filtering, and source-update preservation of `userTags`. The run still emits existing React `act(...)` warnings from asynchronous PluginManager state updates.
+- `node -e "const fs=require('fs'); const locales=['en','zh','zh-TW','ja','fr','de','es']; const keys=['batchTags','batchTagsHint','addTag','removeTag','tag','enterTagHint','batchTagAffected','existingTags','batchTagSuccess','batchTagPartialFailure']; for (const l of locales){const j=JSON.parse(fs.readFileSync('apps/desktop/src/renderer/i18n/locales/'+l+'.json','utf8')); const miss=keys.filter(k=>!(j.plugin&&Object.prototype.hasOwnProperty.call(j.plugin,k))); if (miss.length) throw new Error(l+': '+miss.join(','));} console.log('plugin tag locale keys ok');"`
+  - Result: passed. Verifies Plugin tag-management strings exist in all supported desktop locales.
+- `pnpm --filter @prompthub/desktop typecheck`
+  - Result: passed after adding Plugin metadata update IPC/preload/store contracts.
+- `git diff --check`
+  - Result: passed.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/main/plugin-library.test.ts tests/unit/stores/plugin.store.test.ts tests/unit/components/plugin-manager.test.tsx tests/unit/main/plugin-target-inventory.test.ts tests/unit/main/plugin-child-mcp-import.test.ts --run`
+  - Result: passed (5 files, 65 tests). Verifies the new card-level source update badge did not regress Plugin core library, renderer store, Agent target inventory, child MCP import, or PluginManager behavior.
+- `pnpm --filter @prompthub/desktop typecheck`
+  - Result: passed after adding card-level Plugin source update state.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/main/plugin-library.test.ts --run`
+  - Result: failed before the fix because local Plugin import accepted manifest child paths such as `../outside/skills` and symlinks resolving outside the package root.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/main/plugin-library.test.ts --run`
+  - Result: passed (1 file, 28 tests). Verifies manifest path traversal rejection, package symlink escape rejection, and no script execution during local Plugin import.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/main/plugin-library.test.ts --run --silent`
+  - Result: failed before the fix because adapter targets only received the source package copy/symlink; Claude Code did not receive `.claude-plugin/plugin.json`, and symlink mode created a direct symlink to a Codex-shaped package.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/main/plugin-library.test.ts --run --silent`
+  - Result: passed (1 file, 37 tests). Verifies adapter-native marker generation for Claude Code, Cursor, Gemini CLI, Kiro, and GitHub Copilot / VS Code, preserves copied child files, records `distributedTargetIds`, and materializes adapter targets as generated copies even when symlink mode is requested.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/main/plugin-library.test.ts tests/unit/main/plugin-target-inventory.test.ts tests/unit/main/plugin-child-mcp-import.test.ts tests/unit/stores/plugin.store.test.ts tests/unit/components/plugin-manager.test.tsx tests/unit/components/plugin-version-history-modal.test.tsx --run --silent`
+  - Result: passed (6 files, 89 tests). Verifies the adapter-native package generation did not regress Plugin library, Agent target inventory, child MCP import, renderer store, PluginManager, or Plugin version-history behavior.
+- `pnpm --filter @prompthub/desktop typecheck`
+  - Result: passed after adapter-native package generation changes.
+- `pnpm exec prettier --check packages/core/src/plugin-library.ts apps/desktop/tests/unit/main/plugin-library.test.ts spec/changes/active/plugin-management/tasks.md spec/changes/active/plugin-management/design.md spec/changes/active/plugin-management/specs/plugins/spec.md spec/changes/active/plugin-management/implementation.md spec/knowledge/behavior/plugins.md`
+  - Result: passed after formatting the touched TypeScript files.
+- `git diff --check`
+  - Result: passed.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/main/plugin-library.test.ts tests/unit/stores/plugin.store.test.ts tests/unit/components/plugin-manager.test.tsx tests/unit/main/plugin-target-inventory.test.ts tests/unit/main/plugin-child-mcp-import.test.ts --run`
+  - Result: passed (5 files, 68 tests). Verifies the Plugin package safety validator did not regress marketplace/source import, renderer store behavior, Agent target inventory, child MCP import, or PluginManager UI behavior. The run still emits existing React `act(...)` warnings from asynchronous PluginManager state updates.
+- `pnpm --filter @prompthub/desktop typecheck`
+  - Result: passed after adding Plugin package safety validation.
+- `node -e 'for (const f of ["en","zh","zh-TW","ja","fr","de","es"]) JSON.parse(require("fs").readFileSync("apps/desktop/src/renderer/i18n/locales/"+f+".json","utf8")); console.log("locales ok")'`
+  - Result: passed.
+- `git diff --check`
+  - Result: passed.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/components/plugin-manager.test.tsx --run --silent`
+  - Result: passed (1 file, 41 tests). Verifies Agent-installed Plugin detail now exposes the read-only Files tab and preserves existing My Plugins, Agent Plugin, and Store component behavior.
+- `pnpm --filter @prompthub/desktop test -- tests/unit/components/skill-file-editor.test.tsx --run --silent`
+  - Result: passed (1 file, 15 tests). Verifies `SkillFileEditor` read-only mode hides mutation controls and does not write package files.
+- `pnpm --filter @prompthub/desktop typecheck`
+  - Result: passed after adding `SkillFileEditor.readOnly` and Agent-installed Plugin Files tab wiring.
+- `pnpm exec prettier --check apps/desktop/src/renderer/components/plugin/PluginManager.tsx apps/desktop/src/renderer/components/skill/SkillFileEditor.tsx apps/desktop/tests/unit/components/skill-file-editor.test.tsx apps/desktop/tests/unit/components/plugin-manager.test.tsx apps/desktop/src/renderer/i18n/locales/en.json apps/desktop/src/renderer/i18n/locales/zh.json apps/desktop/src/renderer/i18n/locales/zh-TW.json apps/desktop/src/renderer/i18n/locales/ja.json apps/desktop/src/renderer/i18n/locales/fr.json apps/desktop/src/renderer/i18n/locales/de.json apps/desktop/src/renderer/i18n/locales/es.json spec/changes/active/plugin-management/tasks.md spec/changes/active/plugin-management/specs/plugins/spec.md spec/changes/active/plugin-management/implementation.md spec/knowledge/behavior/plugins.md`
+  - Result: passed.
+- `node -e 'const fs=require("fs"); for (const l of ["en","zh","zh-TW","ja","fr","de","es"]) JSON.parse(fs.readFileSync(`apps/desktop/src/renderer/i18n/locales/${l}.json`,"utf8")); console.log("locales ok")'`
+  - Result: passed.
+- `git diff --check`
   - Result: passed.
 - Verified against current project document routing rules and existing Skill/MCP boundary docs.
 - Verified local Codex CLI exposes plugin marketplace management commands and currently lists `openai-curated` as a configured marketplace.
@@ -134,8 +364,7 @@
 
 ## Follow-ups
 
-- Implement custom Git/SSH/HTTP/local source scan UI and installer.
-- Implement Plugin child asset import/distribution through existing Skill and MCP flows.
-- Add path traversal, symlink escape, rollback, duplicate identity, large inventory, SSH source, and no-code-execution tests before expanding installer writes.
+- Add deeper adapter conformance tests for each target's full native installer semantics beyond the first marker-generation pass.
+- Add duplicate identity, large inventory, SSH source, and no-code-execution tests before expanding installer writes.
 - Decide how Plugin-managed child assets should be updated or removed after they have been copied into My Skills/My MCP or distributed to external agent targets.
 - Decide whether plugin library metadata should migrate from JSON to SQLite/hybrid storage when child bindings, update history, sync, or Assistant actions ship.

@@ -33,7 +33,7 @@ The UI should avoid saying “install Skill” when the package contains multipl
 
 - Data model:
   - New shared plugin types in `packages/shared` for manifest, source, inventory, scan result, install result, conflict, and target distribution summary.
-  - Durable source of truth starts as a local JSON library file similar to MCP: `<userData>/config/plugin-library.json`.
+  - Durable source of truth starts as a local JSON library file under the user data area: `<userData>/data/plugins/library.json`.
   - SQLite remains a later migration option if plugin history, sync, or multi-user ownership requires relational metadata.
 - Core workflows:
   - Shared scan/install/update/uninstall logic should live in `packages/core`.
@@ -56,11 +56,11 @@ Recommended first implementation:
 
 - Store installed plugin repositories under a PromptHub-owned plugin workspace, for example `<userData>/data/plugins/<source-slug>/repo`.
 - Store PromptHub plugin library metadata under a PromptHub-owned source of truth:
-  - option A: `<userData>/config/plugin-library.json`
+  - option A: `<userData>/data/plugins/library.json`
   - option B: SQLite `plugins`, `plugin_sources`, `plugin_assets`, `plugin_bindings`
   - option C: hybrid SQLite metadata plus plugin repo directory
 
-Decision for the first implementation: use option A, `<userData>/config/plugin-library.json`, because the shipped MVP stores installed Plugin metadata, source provenance, inventory summary, and target matrix state only. It does not yet persist child asset bindings, update history, or sync ownership. If those relationships ship later, migrate to option C with a compatibility reader for the JSON file.
+Decision for the first implementation: use option A, `<userData>/data/plugins/library.json`, because installed Plugin metadata is user data and should live beside the managed plugin package workspace. Older builds wrote `<userData>/config/plugin-library.json`; when the data file is missing, the core service reads the legacy file, normalizes it into the data path immediately, and keeps the legacy file as a compatibility backup. If child asset bindings, update history, or sync ownership require relational metadata later, migrate to option C with the same compatibility reader.
 
 No durable business rule should live only in React state. The renderer only chooses filters, selected rows, and confirmation state.
 
@@ -94,24 +94,24 @@ Implementation notes:
 - PromptHub's own marketplace starts at `.agents/plugins/marketplace.json` in this repository. It may begin with an empty `plugins` array and later add official PromptHub plugin packages.
 - If PromptHub later splits official plugins into a dedicated repository, the app should keep the current source as a compatibility alias or migration source.
 
-## Codex Official Store Experience
+## Official Store and Codex Store Experience
 
 `DES-PLUGIN-007`
 
-The OpenAI `openai-curated` marketplace is the primary first-version store, not just another anonymous custom source.
+PromptHub's built-in `prompthub-official` marketplace is the first default Official Store source. The OpenAI `openai-curated` marketplace remains a first-class built-in Codex Official Store source, not an anonymous custom source.
 
 Product behavior:
 
-- Plugin Store should default to the Codex official source when it is available, while still exposing an "all sources" view.
+- Plugin Store should default to PromptHub's `prompthub-official` source when it is available, while still exposing the Codex official source and an "all sources" view.
 - Store list loading should read only marketplace JSON first. It must not fetch every plugin manifest eagerly because the official store can contain many entries.
-- Each store card should expose a lazy manifest preview action. Preview reads `.codex-plugin/plugin.json`, enriches the card with version, author, manifest URL, package path, inventory chips, and semantic classification.
+- Each store card should expose a lazy manifest preview action. Preview reads `.codex-plugin/plugin.json`, enriches the card/detail cache with version, author, manifest URL, package path, presentation metadata, and semantic classification.
 - Store cards may background-enrich the currently visible first batch of entries so the Official Store does not appear as sparse marketplace JSON. This enrichment still uses the same safe manifest preview path and should be capped rather than fetching the whole store at once.
 - Manifest presentation metadata should be parsed from `interface.displayName`, `interface.shortDescription`, `interface.longDescription`, `interface.composerIcon`, `interface.logo`, and `interface.brandColor`. Relative icon/logo paths are resolved against the plugin package path and converted to the source raw file URL only when they remain inside the package.
-- Manifest presentation metadata should be persisted in `config/plugin-market-cache.json` after preview/background enrichment. Later marketplace listing reads merge this cache into store entries so official icons/descriptions render immediately without refetching every manifest on every app open. Missing entries may be enriched in the background with bounded concurrency.
+- Manifest presentation metadata should be persisted in `data/plugins/market-cache.json` after preview/background enrichment. Older `config/plugin-market-cache.json` files remain readable as a legacy cache source and are migrated into the data path on first read when the data cache is missing. Later marketplace listing reads merge this cache into store entries so official icons/descriptions render immediately without refetching every manifest on every app open. Missing entries may be enriched in the background with bounded concurrency.
 - Marketplace policy metadata such as `installation: AVAILABLE` and `authentication: ON_INSTALL` should remain visible so users understand whether setup or app auth is expected.
 - The store chrome label should name the surface as `Plugins Store` / `Plugins 商店`; source rows and provenance badges should name concrete sources such as `Codex Official Store` / `Codex 官方商店` for the external Codex source and `Official Store` / `官方商店` for PromptHub's built-in source.
 - Store cards should avoid redundant provenance badges: when a built-in official source label such as `Codex official store` already communicates official provenance, the card should not render a second standalone `Official` trust chip. Non-official or custom sources can still show trust level so users can distinguish provenance.
-- Store card inventory chips should read like product copy, for example `Includes 1 Skill` or `包含 1 个 Skill`, instead of raw internal notation such as `Skills · 1`. Card chips should focus on user-facing capabilities and omit connector/auth implementation groups such as `Apps`; the detail modal keeps the complete inventory for inspection.
+- Store cards should not render child inventory count chips such as `1 Skill`, `2 Hooks`, `1 个 Skill`, `Includes 1 Skill`, or `Skills · 1`. Cards focus on source, category, icon, and description; the detail modal keeps the complete inventory for inspection.
 - If a Codex/OpenAI manifest declares `skills` as a directory path such as `./skills/`, preview should expand the GitHub repository tree and count nested `SKILL.md` files under the plugin package path. The tree response should be cached in memory per marketplace source during the process so visible-card enrichment does not make one GitHub tree request per card. If the tree lookup fails, preview falls back to the manifest-field count without blocking the store.
 - OpenAI curated entries should expose a Codex detail deep link such as `codex://plugins/openai-developers@openai-curated` for users who also run Codex.
 - PromptHub install must not require the Codex CLI. Desktop install should download the plugin package into PromptHub's managed plugin directory with Git transport, then record the library metadata.
@@ -120,7 +120,7 @@ Product behavior:
 
 Implementation boundary:
 
-- Installed plugin metadata remains in `<userData>/config/plugin-library.json`.
+- Installed plugin metadata remains in `<userData>/data/plugins/library.json`.
 - Downloaded plugin package files live under `<userData>/data/plugins/<plugin-id>/repo`.
 - The installed record stores the managed root, local repository path, and local package path so uninstall can clean only PromptHub-owned files.
 - Child asset import/distribution remains a later explicit action; installing a Codex official plugin does not automatically add child Skills/MCP into their libraries.
@@ -223,6 +223,25 @@ Commands can remain visible as Plugin inventory when a package declares them, bu
 The final package write path is:
 
 `<agent plugin base>/<safe plugin name>/<safe version-or-id>`
+
+Before any package write or removal, the core Plugin library treats the resolved target path as untrusted output from the platform resolver. It may only overwrite or delete:
+
+- a missing path;
+- an empty directory reserved for the target package;
+- a directory containing a recognized Plugin package marker such as `.codex-plugin/plugin.json`, `.claude-plugin/plugin.json`, `.cursor-plugin/plugin.json`, `gemini-extension.json`, `POWER.md`, or `plugin.json`;
+- a symlink that resolves to a recognized Plugin package or to a PromptHub-managed Plugin package path.
+
+If the resolved path is a normal Agent config file, a non-Plugin directory, the Agent root, or any unrelated user-owned path, distribution and undistribution fail before calling `rm`, `cp`, or `symlink`. This protects Agent JSON/config files even if a future resolver or custom Agent path is misconfigured.
+
+Distribution writes now distinguish native passthrough from adapter output:
+
+- Codex targets can keep the source package structure and honor copy or symlink mode when the package already contains `.codex-plugin/plugin.json`.
+- Claude Code targets receive a generated `.claude-plugin/plugin.json` inside a copied package.
+- Cursor targets receive a generated `.cursor-plugin/plugin.json` inside a copied package.
+- Gemini CLI targets receive a generated `gemini-extension.json` inside a copied package.
+- Kiro targets receive a generated `POWER.md` inside a copied package.
+- GitHub Copilot / VS Code targets receive a generated root `plugin.json` inside a copied package.
+- Adapter targets materialize as generated copies even if the user requested symlink mode, because the target-native marker must be written without mutating or pretending the original Codex package is directly loadable by that Agent.
 
 ## Security Rules
 

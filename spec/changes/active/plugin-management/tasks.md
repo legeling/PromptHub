@@ -9,13 +9,15 @@
 - [x] Define Agent bundle adapter matrix across Codex, Claude Code, Cursor, Gemini CLI, Kiro, GitHub Copilot / VS Code Agent Plugins, runtime-only OpenCode/Cline, Windsurf/Devin, Roo, Cherry Studio, and pending targets.
 - [x] Add detailed Plugin Agent Adapter reference with target package markers, install surfaces, adapter outputs, disabled targets, and evidence sources.
 - [x] Tighten Plugin semantic gate so single-skill packages and runtime hook modules are not treated as full Plugin bundles.
-- [x] Decide Plugin source of truth for MVP: `config/plugin-library.json`, with later SQLite/hybrid migration left open for child bindings and sync.
+- [x] Decide Plugin source of truth for MVP: `data/plugins/library.json`, with first-read migration from legacy `config/plugin-library.json` and later SQLite/hybrid migration left open for child bindings and sync.
 - [x] Define shared plugin contracts in `packages/shared`.
 - [x] Implement marketplace manifest parsing and semantic bundle classification in `packages/core` with no code execution.
 - [x] Implement install/delete metadata persistence for marketplace plugins.
 - [x] Add lazy Codex marketplace manifest preview with version, author, inventory, semantic classification, manifest URL, package path, policy metadata, and Codex deep link.
-- [x] Make the Plugin Store default to the Codex official `openai-curated` source while keeping an all-sources filter.
+- [x] Make the Plugin Store default to the PromptHub `prompthub-official` Official Store while keeping the Codex official `openai-curated` source and an all-sources filter.
 - [x] Download marketplace plugins into PromptHub's managed `data/plugins` workspace during desktop install using Git transport, with installed records pointing at managed/local package paths.
+- [x] Store Plugin marketplace preview cache in `data/plugins/market-cache.json`, with legacy reads from `config/plugin-market-cache.json`.
+- [x] Auto-migrate legacy Plugin library/cache files into `data/plugins` on first read when the data-path file is missing.
 - [x] Clean PromptHub-managed plugin package files on uninstall without deleting external child assets or user-owned paths.
 - [x] Add desktop IPC/preload API for plugin management.
 - [x] Build Plugin module UI: My Plugins, Plugin Store, Plugin Targets.
@@ -25,9 +27,11 @@
 - [x] Render Plugin manifest official icons/logos, brand color, and richer card descriptions from preview metadata, with capped background enrichment for the first visible Official Store entries.
 - [x] Fix Official Store preview prefetch so the visible batch enriches every card instead of only the first card after React effect cleanup.
 - [x] Persist Plugin Store manifest preview metadata in a local cache so reopening the store shows official icons/descriptions without refetching every manifest.
+- [x] Start manifest icon/description prefetch for visible Plugin Store cards even while marketplace sources are still refreshing.
 - [x] Simplify Official Store card badges by removing redundant official trust chips from official-source cards and making inventory counts human-readable.
 - [x] Rename the store surface to `Plugins Store` / `Plugins 商店` while keeping concrete source provenance as `Codex Official Store` / `Codex 官方商店` for the external Codex source and `Official Store` / `官方商店` for PromptHub's built-in source.
-- [x] Keep card inventory focused on user-facing capabilities and omit `Apps` connector chips from store cards while preserving full inventory in detail.
+- [x] Keep Plugin Store cards focused on source, category, icon, and description while preserving full child inventory in detail.
+- [x] Remove Plugin Store card-level child inventory count chips; Skills, MCP, commands, hooks, Apps, and other child assets stay visible in detail.
 - [x] Expand directory-based Codex manifest `skills` fields through the GitHub repository tree so official plugins with multiple nested `SKILL.md` files do not display as one Skill.
 - [x] Align the first-level Plugin Store sidebar entry with Skill Store by removing marketplace item-count pills from that navigation row.
 - [x] Replace installed Plugin detail modal with a full My Plugins detail page, including preview/source/files tabs and Agent Plugin target selection entry.
@@ -35,17 +39,48 @@
 - [x] Align installed Plugin detail distribution panel with the Skill platform integration panel and persist manifest long descriptions for the detail preview.
 - [x] Align My Plugins installed cards with the large My Skill gallery card scale instead of compact list cards.
 - [x] Align My Plugins list controls and card hover behavior with My Skills: distribution-status/source filters, text batch-manage button, distributed target badges, and quick open/distribute/folder/delete actions.
+- [x] Add Skill-style My Plugins personal controls: persisted favorites, Favorites filter, manifest/source tag filter, user tag management, personal notes, tag search, card/detail favorite buttons, and title-copy behavior.
+- [x] Add Skill-style My Plugins batch favorite/unfavorite action so selected Plugins can be favorited from batch mode like My Skills.
+- [x] Add Skill-style My Plugins view controls: persisted gallery/list view mode, configurable gallery columns, shared page-size pagination, and card/list-row context menus.
 - [x] Make My Plugins distribute actions use the paper-plane icon and open a direct Agent target picker instead of routing users to the Agent Plugin workbench.
+- [x] Add My Plugins batch distribution so selected Plugin packages can share one Agent target picker, matching My Skills batch deploy ergonomics.
 - [x] Move My Plugins distribution/source filters into the header panel and remove the redundant card detail-eye action so installed Plugin cards match My Skills interaction density.
 - [x] Align Plugins Store header with Skill Store by showing the selected store source title/count and compact icon-only batch/refresh controls while keeping My Plugins on the My Skills-style text batch button.
+- [x] Make Plugin Store load progressively by showing cached/selected-source entries immediately instead of blocking the whole page on every marketplace source.
+- [x] Show target-native installed Plugin inventory in Agent Plugin for supported bundle targets: Codex cache packages, Claude Code registry/manual packages, Cursor plugin packages, Gemini CLI extensions, Kiro powers, and GitHub Copilot / VS Code Agent Plugin packages.
+- [x] Add Agent Plugin import-to-My-Plugins flow for target-native installed packages, backed by static local package scanning and managed package copy.
+- [x] Add direct My Plugins local package import using the native folder picker and the same `plugin:import:local` managed-copy semantic gate.
+- [x] Add direct My Plugins Git/SSH/HTTPS source import with branch/package path metadata, local git/SSH-key transport for SSH, managed package copy, duplicate detection by URL/package/branch, and single-skill rejection.
+- [x] Make Agent-installed Plugin cards clickable into a read-only detail page, with localized Agent source, direct inventory counts, a read-only Files tab, import-to-My-Plugins, and open-folder actions.
+- [x] Make Agent Plugin My Plugins entries clickable into the same full installed Plugin detail page used by My Plugins.
+- [x] Localize Agent Plugin target support descriptions and disabled-target labels so unsupported targets clearly say they do not support PromptHub Plugin bundles.
 - [x] Replace placeholder Plugin target selection with real Plugin package distribution through core/main IPC, supporting copy and symlink modes.
 - [x] Resolve enabled Agent Plugin targets to configured Agent plugin directories and record successful `distributedTargetIds`.
+- [x] Let Agent Plugin remove a distributed My Plugins package from the currently selected Agent target without deleting the My Plugins entry.
+- [x] Align Plugin delete cleanup with Skills by offering optional removal of distributed Agent Plugin package copies/symlinks during single and batch delete.
 - [x] Extend Agent Configuration settings with MCP config and Plugin directory relative paths, including derived path previews for built-in and custom agents.
+- [x] Consolidate built-in Agent Plugin directory defaults into shared platform metadata and stop rendering disabled Roo Code plugin targets with Kilo platform identity.
 - [x] Add Plugin module to desktop home navigation and home-module settings.
 - [x] Add i18n coverage for Plugin UI across all supported desktop locales.
-- [ ] Reuse Skill/MCP distribution flows for child assets.
+- [x] Add explicit installed Plugin detail actions to import child Skills into My Skills and child MCP configs into My MCP without auto-copying child assets during Plugin install.
+- [x] Add child MCP import regression coverage for real MCP library writes, duplicate import skip behavior, and symlink escape rejection during package scan.
+- [x] Align Plugin Store large-catalog scrolling with Skill Store by switching to a virtualized card catalog above the shared threshold.
+- [x] Align Plugin Store batch mode with Skill Store baseline by supporting selected-entry install, installed-entry source update, and installed-entry remove actions.
+- [x] Add preview-and-confirm flow before installing Git/SSH/HTTPS Plugin sources so source URL import matches the Skill local scan preview experience.
+- [x] Show checked Plugin source update/conflict badges on My Plugins cards so known source state remains visible after returning from detail.
+- [x] Add core Plugin package safety coverage for manifest path traversal, symlink escape rejection, and no script execution during local import.
+- [x] Expose installed Plugin package health checks in the full detail page, backed by the same static manifest path and symlink-boundary validation used during local import.
+- [x] Add installed Plugin package version snapshots, starting at v1, with history viewing, package file preview, restore, and delete controls from the full detail page.
+- [x] Fix Plugin version history renderer stability so installed Plugin detail pages no longer trigger repeated Zustand snapshot updates.
+- [x] Add Skill-style installed Plugin detail back-to-top action on long non-files tabs, hidden on the Files tab.
+- [x] Add automatic pre-source-update Plugin snapshots so source updates preserve the old installed package before overwriting it.
+- [x] Reuse Skill/MCP distribution flows for child assets.
+- [x] Generate target-native Agent Plugin package markers during Plugin distribution for Claude Code, Cursor, Gemini CLI, Kiro, and GitHub Copilot / VS Code, while preserving Codex native copy/symlink behavior.
+- [x] Harden Plugin package distribution and undistribution so resolver mistakes cannot overwrite or delete normal Agent config files or unrelated non-Plugin directories.
+- [x] Add installed Plugin AI safety assessment parity with My Skills using a static Plugin package summary, persisted `safetyReport` metadata, and no Plugin code execution.
+- [x] Contain installed Plugin detail render failures with the same recoverable boundary pattern used by My Skills detail pages.
 - [ ] Add Agent Assistant callable action contract for plugin install/distribute.
-- [ ] Add full regression coverage for path traversal, symlink escape, duplicate identity, rollback, large inventories, SSH source scanning, and no execution during scan.
+- [ ] Add full regression coverage for duplicate identity, large inventories, SSH source scanning, and no execution during scan beyond the current adapter-native package-generation coverage.
 
 ## MVP Verification Completed
 
@@ -53,11 +88,39 @@
 - [x] Core Plugin library tests cover directory-based official Skill inventory expansion through GitHub tree fixtures.
 - [x] Settings desktop workspace tests cover adding Plugin into legacy default home modules and preserving user-hidden modules.
 - [x] Sidebar and appearance settings tests pass with Plugin added to the home module set.
-- [x] PluginManager component tests cover the Agent Plugin split layout, My Plugins inventory list, disabled-target detail state, Plugins Store naming, official provenance badges, and card-level inventory chips.
+- [x] PluginManager component tests cover the Agent Plugin split layout, My Plugins inventory list, disabled-target detail state, Plugins Store naming, official provenance badges, and absence of Store card-level inventory chips.
 - [x] PluginManager component tests cover Skill-style My Plugins filters, large installed-card hover target badges, and hover quick actions.
+- [x] PluginManager component tests cover My Plugins gallery/list view controls, configurable columns, shared pagination, context menu actions, and Agent Plugin managed-card detail entry.
+- [x] PluginManager and core library tests cover My Plugins favorites, manifest/source tag filtering, user tag management, title copy, and preservation of user metadata across source normalization/update.
+- [x] PluginManager component tests cover My Plugins batch favorite/unfavorite behavior and installed Plugin detail back-to-top behavior.
+- [x] PluginManager and core library tests cover installed Plugin personal notes, including detail-page editing, library persistence, and preservation across source updates.
+- [x] Core Plugin library and PluginManager component tests cover installed Plugin package health checks, including OK, missing manifest, invalid manifest path, and detail-page result rendering.
+- [x] Core Plugin library, renderer store, Plugin version history modal, and PluginManager component tests cover Plugin package versions starting from v1, manual snapshot creation, package snapshot file preview, restore, delete, and detail-page version history entry.
+- [x] Core Plugin library tests cover automatic pre-update Plugin snapshots before source updates and confirm blocked local-change conflicts do not create snapshot noise.
 - [x] PluginManager component tests cover direct Agent target selection from both installed Plugin detail and My Plugins card paper-plane actions.
+- [x] PluginManager component tests cover batch distributing selected My Plugins to Agent targets through one target picker.
 - [x] PluginManager component tests cover My Plugins header-mounted filters and absence of a separate detail-eye quick action.
+- [x] Plugin Store tests cover progressive selected-source loading and cached card rendering during refresh.
+- [x] PluginManager component tests cover Agent Plugin rendering target-native installed Plugin packages when My Plugins is empty.
+- [x] PluginManager component tests cover importing an Agent-installed Plugin into My Plugins from the Agent Plugin view.
+- [x] PluginManager component tests cover importing a local Plugin package directly from the My Plugins header.
+- [x] PluginManager component tests cover importing a Plugin package from a Git source URL into My Plugins.
+- [x] PluginManager, renderer store, and core library tests cover previewing Git/SSH/HTTPS source imports before writing My Plugins.
+- [x] PluginManager component tests cover direct count inventory chips, read-only Agent-installed Plugin details, and Chinese disabled-target localization.
+- [x] PluginManager component tests cover Agent Plugin filter chips, localized filter copy, filtered empty states, and direct distribution from Agent Plugin through the shared Agent target picker.
+- [x] PluginManager, renderer store, and core library tests cover removing a distributed My Plugins package from the currently selected Agent target through a confirmation-gated Agent Plugin action.
+- [x] Desktop main tests cover target-native installed Plugin inventory for Codex, Claude Code, Cursor, Gemini CLI, Kiro, and GitHub Copilot, including normal Claude state directories not being treated as Plugins.
+- [x] Core Plugin library tests cover importing a target-native Agent Plugin package into My Plugins by copying the package into PromptHub-managed storage.
+- [x] Core Plugin library tests cover HTTPS and SSH Plugin source imports, duplicate handling across branches, branch metadata retention after library readback, and single-skill source rejection.
 - [x] Core Plugin library tests cover package copy distribution to resolved Agent Plugin paths, unsupported target rejection, and `distributedTargetIds` persistence.
+- [x] Core Plugin library tests cover adapter-native Agent Plugin marker generation for Claude Code, Cursor, Gemini CLI, Kiro, and GitHub Copilot / VS Code, including the rule that adapter targets materialize generated copies even when symlink mode was requested.
+- [x] Core Plugin library tests cover unsafe Agent target path rejection so existing config files are not overwritten or removed during distribution cleanup.
+- [x] Core Plugin library and PluginManager component tests cover default preservation of distributed Agent package copies and explicit cleanup during Plugin deletion.
+- [x] PluginManager and main-process tests cover explicit child MCP import from installed Plugin detail, using static package scanning and the existing MCP library importer.
+- [x] PluginManager and core library tests cover installed Plugin AI safety assessment from the detail page, including static inventory/source scan input, score persistence, rendered findings, and preservation across source updates.
+- [x] PluginManager component tests cover installed Plugin detail render failures being contained with a Back action instead of crashing the Plugin module.
+- [x] PluginManager component tests cover Skill Store-style Plugin Store virtualization for large catalogs while keeping small catalogs as normal card grids.
+- [x] PluginManager and renderer store tests cover child Skill/MCP import handoff into the existing Skill/MCP distribution flows without persisting one-time pending deploy state.
 - [x] Skill Settings tests pass after adding derived MCP config and Plugin directory path previews.
 - [x] Desktop typecheck passes with new IPC/preload/renderer contracts.
 
@@ -76,6 +139,7 @@
 - `TEST-PLUGIN-002`: SSH Git source scan uses local git path and does not require anonymous GitHub API metadata.
 - `TEST-PLUGIN-003`: Malicious fixture with scripts, path traversal, null byte, and symlink escape is rejected without executing code.
 - `TEST-PLUGIN-004`: Partial install failure leaves no half-written plugin metadata, repo files, or child bindings.
+- `TEST-PLUGIN-004A`: Manual Plugin snapshots start at v1, preserve package file snapshots, can be restored, and create a safety snapshot before rollback.
 - `TEST-PLUGIN-005`: Assistant action tests prove install/distribute requests call the same API and preserve confirmation gates.
 - `TEST-PLUGIN-006`: Compatibility matrix tests prove Codex appears as native; Claude Code/Cursor/Gemini/Kiro/GitHub Copilot appear as adapter candidates; OpenCode/Cline appear as runtime-only disabled targets; Windsurf/Roo/Cherry Studio appear as composite or lower-priority targets; and evidence-limited targets remain pending/disabled.
 - `TEST-PLUGIN-007`: Semantic gate tests prove single `SKILL.md` sources and single JS/TS hook modules are not rendered as full Plugin bundles.

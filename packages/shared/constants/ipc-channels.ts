@@ -145,6 +145,8 @@ export const IPC_CHANNELS = {
   SKILL_SAVE_TO_REPO: "skill:saveToRepo",
   SKILL_SAVE_REMOTE_GIT_TO_REPO: "skill:saveRemoteGitToRepo",
   SKILL_SAVE_REMOTE_ZIP_TO_REPO: "skill:saveRemoteZipToRepo",
+  SKILL_GET_REMOTE_GIT_PACKAGE_FINGERPRINT:
+    "skill:getRemoteGitPackageFingerprint",
   SKILL_GET_REPO_PATH: "skill:getRepoPath",
   SKILL_SYNC_FROM_REPO: "skill:syncFromRepo",
 
@@ -159,6 +161,9 @@ export const IPC_CHANNELS = {
 
   // MCP
   MCP_LIBRARY_GET: "mcp:library:get",
+  MCP_LIBRARY_REPLACE: "mcp:library:replace",
+  MCP_LIBRARY_EXPORT_FILES: "mcp:library:exportFiles",
+  MCP_LIBRARY_RESTORE_FILES: "mcp:library:restoreFiles",
   MCP_MARKET_LIST: "mcp:market:list",
   MCP_MARKET_SOURCES: "mcp:market:sources",
   MCP_MARKET_INSTALL_TEMPLATE: "mcp:market:installTemplate",
@@ -181,12 +186,31 @@ export const IPC_CHANNELS = {
 
   // Plugins
   PLUGIN_LIBRARY_GET: "plugin:library:get",
+  PLUGIN_LIBRARY_EXPORT_SNAPSHOT: "plugin:library:exportSnapshot",
+  PLUGIN_LIBRARY_RESTORE_SNAPSHOT: "plugin:library:restoreSnapshot",
+  PLUGIN_LIBRARY_EXPORT_FILES: "plugin:library:exportFiles",
+  PLUGIN_LIBRARY_RESTORE_FILES: "plugin:library:restoreFiles",
   PLUGIN_MARKET_LIST: "plugin:market:list",
   PLUGIN_MARKET_SOURCES: "plugin:market:sources",
   PLUGIN_MARKET_PREVIEW: "plugin:market:preview",
   PLUGIN_MARKET_INSTALL: "plugin:market:install",
+  PLUGIN_IMPORT_LOCAL: "plugin:import:local",
+  PLUGIN_SOURCE_PREVIEW: "plugin:source:preview",
+  PLUGIN_IMPORT_SOURCE: "plugin:import:source",
+  PLUGIN_SOURCE_UPDATE_STATUS: "plugin:source:updateStatus",
+  PLUGIN_SOURCE_UPDATE: "plugin:source:update",
+  PLUGIN_UPDATE_METADATA: "plugin:updateMetadata",
   PLUGIN_DELETE: "plugin:delete",
+  PLUGIN_EXPORT_MANIFEST: "plugin:exportManifest",
+  PLUGIN_EXPORT_ZIP: "plugin:exportZip",
   PLUGIN_DISTRIBUTE: "plugin:distribute",
+  PLUGIN_UNDISTRIBUTE: "plugin:undistribute",
+  PLUGIN_IMPORT_CHILD_MCP: "plugin:import:childMcp",
+  PLUGIN_PACKAGE_HEALTH_CHECK: "plugin:package:healthCheck",
+  PLUGIN_VERSION_GET_ALL: "plugin:version:getAll",
+  PLUGIN_VERSION_CREATE: "plugin:version:create",
+  PLUGIN_VERSION_ROLLBACK: "plugin:version:rollback",
+  PLUGIN_VERSION_DELETE: "plugin:version:delete",
   PLUGIN_TARGET_MATRIX: "plugin:target:matrix",
 
   // Data Recovery

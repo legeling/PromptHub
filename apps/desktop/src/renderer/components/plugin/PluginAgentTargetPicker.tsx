@@ -28,6 +28,7 @@ interface PluginAgentTargetPickerProps {
     mode: PluginDistributeMode,
   ) => Promise<void>;
   plugin: PluginLibraryEntry | null;
+  plugins?: PluginLibraryEntry[];
   targetMatrix: PluginTargetCompatibility[];
 }
 
@@ -38,7 +39,6 @@ function getTargetPlatformIconId(targetId: string): string {
     "claude-code": "claude",
     "gemini-cli": "gemini",
     "github-copilot": "copilot",
-    "roo-code": "kilo",
   };
   return iconIds[targetId] ?? targetId;
 }
@@ -47,6 +47,9 @@ function getStatusLabel(
   status: PluginTargetStatus,
   t: ReturnType<typeof useTranslation>["t"],
 ): string {
+  if (status === "runtime-only" || status === "composite") {
+    return t("plugin.targetStatus.unsupportedPlugin", "Unsupported");
+  }
   const labels: Record<PluginTargetStatus, string> = {
     native: t("plugin.targetStatus.native", "Native"),
     adapter: t("plugin.targetStatus.adapter", "Adapter"),
@@ -61,14 +64,19 @@ function getTargetDescription(
   target: PluginTargetCompatibility,
   t: ReturnType<typeof useTranslation>["t"],
 ): string {
+  const localizedDescription = t(`plugin.targetDescriptions.${target.id}`, {
+    defaultValue: "",
+    name: target.displayName,
+  }).trim();
+  if (localizedDescription) {
+    return localizedDescription;
+  }
   if (!target.enabled) {
-    return (
-      target.unsupportedReason ||
-      t(
-        "plugin.targetUnsupportedForBundle",
-        "This target does not support PromptHub Plugin bundles yet.",
-      )
-    );
+    return t("plugin.targetDescriptions.unsupportedBundle", {
+      defaultValue:
+        "{{name}} does not expose a complete PromptHub Plugin bundle surface.",
+      name: target.displayName,
+    });
   }
   return (
     target.adapterOutput ||
@@ -81,8 +89,57 @@ function getTargetDescription(
   );
 }
 
-function PluginPickerSummary({ plugin }: { plugin: PluginLibraryEntry }) {
+function PluginPickerSummary({ plugins }: { plugins: PluginLibraryEntry[] }) {
   const { t } = useTranslation();
+  const plugin = plugins[0];
+
+  if (!plugin) {
+    return null;
+  }
+
+  if (plugins.length > 1) {
+    const visiblePlugins = plugins.slice(0, 4);
+    const remainingCount = plugins.length - visiblePlugins.length;
+
+    return (
+      <div className="rounded-2xl border border-border app-wallpaper-panel p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h3 className="truncate text-base font-semibold text-foreground">
+              {t("plugin.batchDistributeSummaryTitle", {
+                count: plugins.length,
+                defaultValue: "{{count}} selected Plugins",
+              })}
+            </h3>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              {t(
+                "plugin.batchDistributeSummaryDesc",
+                "Choose Agent targets once and PromptHub will distribute each selected Plugin package.",
+              )}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {visiblePlugins.map((entry) => (
+                <span
+                  key={entry.id}
+                  className="rounded-full border border-border bg-muted/50 px-2 py-1 text-xs text-muted-foreground"
+                >
+                  {entry.displayName}
+                </span>
+              ))}
+              {remainingCount > 0 ? (
+                <span className="rounded-full border border-border bg-muted/50 px-2 py-1 text-xs text-muted-foreground">
+                  +{remainingCount}
+                </span>
+              ) : null}
+            </div>
+          </div>
+          <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+            {t("plugin.batchManage", "Batch manage plugins")}
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-2xl border border-border app-wallpaper-panel p-4">
@@ -294,6 +351,7 @@ export function PluginAgentTargetPicker({
   onClose,
   onDistribute,
   plugin,
+  plugins,
   targetMatrix,
 }: PluginAgentTargetPickerProps) {
   const { t } = useTranslation();
@@ -307,6 +365,14 @@ export function PluginAgentTargetPicker({
     () => targetMatrix.filter((target) => target.enabled),
     [targetMatrix],
   );
+  const selectedPlugins = useMemo(() => {
+    if (plugins && plugins.length > 0) {
+      return plugins;
+    }
+    return plugin ? [plugin] : [];
+  }, [plugin, plugins]);
+  const primaryPlugin = selectedPlugins[0] ?? null;
+  const isBatchDistribution = selectedPlugins.length > 1;
   const selectedAll =
     enabledTargets.length > 0 &&
     selectedTargetIds.size === enabledTargets.length;
@@ -337,23 +403,62 @@ export function PluginAgentTargetPicker({
   };
 
   const handleConfirm = async () => {
-    if (!plugin || selectedTargetIds.size === 0 || isDistributing) {
+    if (
+      selectedPlugins.length === 0 ||
+      selectedTargetIds.size === 0 ||
+      isDistributing
+    ) {
       return;
     }
     setIsDistributing(true);
+    const targetIds = Array.from(selectedTargetIds);
+    let succeeded = 0;
+    let failed = 0;
+    let firstError: unknown = null;
+
     try {
-      await onDistribute(plugin, Array.from(selectedTargetIds), installMode);
+      for (const selectedPlugin of selectedPlugins) {
+        try {
+          await onDistribute(selectedPlugin, targetIds, installMode);
+          succeeded += 1;
+        } catch (error) {
+          console.error("Plugin distribution failed:", error);
+          failed += 1;
+          firstError ??= error;
+        }
+      }
+
+      if (failed === 0) {
+        showToast(
+          isBatchDistribution
+            ? t("plugin.batchDistributionResult", {
+                defaultValue:
+                  "Batch distribution finished: {{succeeded}} succeeded, {{failed}} failed",
+                failed,
+                succeeded,
+              })
+            : t("plugin.distributionSuccess", {
+                count: selectedTargetIds.size,
+                defaultValue:
+                  "Distributed Plugin to {{count}} Agent target(s).",
+              }),
+          "success",
+        );
+        onClose();
+        return;
+      }
+
       showToast(
-        t("plugin.distributionSuccess", {
-          count: selectedTargetIds.size,
-          defaultValue: "Distributed Plugin to {{count}} Agent target(s).",
-        }),
-        "success",
-      );
-      onClose();
-    } catch (error) {
-      showToast(
-        error instanceof Error ? error.message : String(error),
+        isBatchDistribution
+          ? t("plugin.batchDistributionResult", {
+              defaultValue:
+                "Batch distribution finished: {{succeeded}} succeeded, {{failed}} failed",
+              failed,
+              succeeded,
+            })
+          : firstError instanceof Error
+            ? firstError.message
+            : String(firstError),
         "error",
       );
     } finally {
@@ -361,7 +466,7 @@ export function PluginAgentTargetPicker({
     }
   };
 
-  if (!plugin) return null;
+  if (!primaryPlugin) return null;
 
   return (
     <Modal
@@ -370,10 +475,17 @@ export function PluginAgentTargetPicker({
       size="lg"
       showCloseButton
       title={t("plugin.selectAgentTargets", "Select Agent targets")}
-      subtitle={plugin.displayName}
+      subtitle={
+        isBatchDistribution
+          ? t("plugin.batchDistributeSubtitle", {
+              count: selectedPlugins.length,
+              defaultValue: "{{count}} Plugins selected",
+            })
+          : primaryPlugin.displayName
+      }
     >
       <div className="space-y-5">
-        <PluginPickerSummary plugin={plugin} />
+        <PluginPickerSummary plugins={selectedPlugins} />
         <PluginInstallModeToggle
           installMode={installMode}
           onChange={setInstallMode}
