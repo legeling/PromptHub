@@ -216,16 +216,6 @@ export function AboutSettings() {
               />
             </SettingItem>
             <SettingItem
-              label={t("settings.tryMirrorSource")}
-              description={t("settings.mirrorSourceRisk")}
-            >
-              <ToggleSwitch
-                ariaLabel={t("settings.tryMirrorSource")}
-                checked={settings.useUpdateMirror}
-                onChange={settings.setUseUpdateMirror}
-              />
-            </SettingItem>
-            <SettingItem
               label={t("settings.joinPreviewChannel")}
               description={t("settings.joinPreviewChannelDesc")}
             >
