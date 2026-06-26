@@ -63,4 +63,38 @@ describe("prompt drag hierarchy utils", () => {
 
     expect(flattened.map((node) => node.prompt.id)).toEqual([parent.id, sibling.id]);
   });
+
+  it("can preserve the caller's sorted sibling order for display lists", () => {
+    const parentA = createPrompt("parent-a", { order: 0 });
+    const parentB = createPrompt("parent-b", { order: 1 });
+    const childB1 = createPrompt("child-b-1", {
+      parentId: parentB.id,
+      order: 0,
+    });
+    const childB2 = createPrompt("child-b-2", {
+      parentId: parentB.id,
+      order: 1,
+    });
+    const sortedByChildCount = [parentB, parentA, childB1, childB2];
+
+    const displayFlattened = flattenPromptTree(
+      sortedByChildCount,
+      new Set(),
+      { siblingOrder: "input" },
+    );
+    const storedFlattened = flattenPromptTree(sortedByChildCount);
+
+    expect(displayFlattened.map((node) => node.prompt.id)).toEqual([
+      parentB.id,
+      childB1.id,
+      childB2.id,
+      parentA.id,
+    ]);
+    expect(storedFlattened.map((node) => node.prompt.id)).toEqual([
+      parentA.id,
+      parentB.id,
+      childB1.id,
+      childB2.id,
+    ]);
+  });
 });

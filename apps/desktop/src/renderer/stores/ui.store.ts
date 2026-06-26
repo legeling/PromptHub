@@ -11,6 +11,7 @@ export type SettingsSectionId =
   | "appearance"
   | "security"
   | "data"
+  | "network"
   | "skill"
   | "ai"
   | "language"

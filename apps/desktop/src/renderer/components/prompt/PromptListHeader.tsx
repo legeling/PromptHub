@@ -24,6 +24,7 @@ export function PromptListHeader({ count }: PromptListHeaderProps) {
   const sortBy = usePromptStore((state) => state.sortBy);
   const sortOrder = usePromptStore((state) => state.sortOrder);
   const viewMode = usePromptStore((state) => state.viewMode);
+  const setSort = usePromptStore((state) => state.setSort);
   const setSortBy = usePromptStore((state) => state.setSortBy);
   const setSortOrder = usePromptStore((state) => state.setSortOrder);
   const setViewMode = usePromptStore((state) => state.setViewMode);
@@ -41,6 +42,8 @@ export function PromptListHeader({ count }: PromptListHeaderProps) {
     { label: t('prompt.sortTitleDesc'), sortBy: 'title', sortOrder: 'desc' },
     { label: t('prompt.sortMostUsed'), sortBy: 'usageCount', sortOrder: 'desc' },
     { label: t('prompt.sortLeastUsed'), sortBy: 'usageCount', sortOrder: 'asc' },
+    { label: t('prompt.sortChildCountDesc'), sortBy: 'childCount', sortOrder: 'desc' },
+    { label: t('prompt.sortChildCountAsc'), sortBy: 'childCount', sortOrder: 'asc' },
   ];
 
   // Get currently selected sort option
@@ -86,8 +89,12 @@ export function PromptListHeader({ count }: PromptListHeaderProps) {
   };
 
   const handleSelectSort = (option: SortOption) => {
-    setSortBy(option.sortBy);
-    setSortOrder(option.sortOrder);
+    if (setSort) {
+      setSort(option.sortBy, option.sortOrder);
+    } else {
+      setSortBy(option.sortBy);
+      setSortOrder(option.sortOrder);
+    }
     setIsOpen(false);
   };
 
@@ -126,7 +133,7 @@ export function PromptListHeader({ count }: PromptListHeaderProps) {
             <div
               ref={dropdownRef}
               role="menu"
-              className="prompt-list-sort-menu fixed w-32 py-1 rounded-lg bg-popover border border-border shadow-lg z-[9999]"
+              className="prompt-list-sort-menu fixed w-48 py-1 rounded-lg bg-popover border border-border shadow-lg z-[9999]"
               style={{ top: menuPosition.top, right: menuPosition.right }}
             >
               {sortOptions.map((option) => (

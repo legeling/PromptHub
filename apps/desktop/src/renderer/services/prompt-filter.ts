@@ -159,10 +159,9 @@ export function sortVisiblePrompts(
   sortOrder: SortOrder,
 ): Prompt[] {
   const sorted = [...prompts];
+  const childCountById =
+    sortBy === "childCount" ? getDirectChildCountById(prompts) : new Map();
   sorted.sort((a, b) => {
-    if (a.isPinned && !b.isPinned) return -1;
-    if (!a.isPinned && b.isPinned) return 1;
-
     let comparison = 0;
     switch (sortBy) {
       case "updatedAt":
@@ -179,14 +178,48 @@ export function sortVisiblePrompts(
       case "usageCount":
         comparison = (a.usageCount || 0) - (b.usageCount || 0);
         break;
+      case "childCount":
+        comparison =
+          (childCountById.get(a.id) ?? 0) - (childCountById.get(b.id) ?? 0);
+        break;
       default:
         comparison = 0;
     }
 
-    return sortOrder === "asc" ? comparison : -comparison;
+    const sortComparison = sortOrder === "asc" ? comparison : -comparison;
+    if (sortBy === "childCount" && sortComparison !== 0) {
+      return sortComparison;
+    }
+
+    const pinComparison = comparePinned(a, b);
+    if (pinComparison !== 0) return pinComparison;
+
+    return sortComparison;
   });
 
   return sorted;
+}
+
+function comparePinned(a: Prompt, b: Prompt): number {
+  if (a.isPinned && !b.isPinned) return -1;
+  if (!a.isPinned && b.isPinned) return 1;
+  return 0;
+}
+
+function getDirectChildCountById(prompts: Prompt[]): Map<string, number> {
+  const promptIds = new Set(prompts.map((prompt) => prompt.id));
+  const childCountById = new Map<string, number>();
+
+  for (const prompt of prompts) {
+    const parentId = prompt.parentId;
+    if (!parentId || parentId === prompt.id || !promptIds.has(parentId)) {
+      continue;
+    }
+
+    childCountById.set(parentId, (childCountById.get(parentId) ?? 0) + 1);
+  }
+
+  return childCountById;
 }
 
 export function buildPromptStats(prompts: Prompt[]): PromptStats {

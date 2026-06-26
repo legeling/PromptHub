@@ -150,8 +150,15 @@ export function PromptTableView({
     [collapsedPromptIds, highlightTerms.length],
   );
   const tablePromptNodes = useMemo(
-    () => flattenPromptTree(prompts, effectiveCollapsedPromptIds),
+    () =>
+      flattenPromptTree(prompts, effectiveCollapsedPromptIds, {
+        siblingOrder: "input",
+      }),
     [effectiveCollapsedPromptIds, prompts],
+  );
+  const promptOrderKey = useMemo(
+    () => tablePromptNodes.map((node) => node.prompt.id).join("\u001f"),
+    [tablePromptNodes],
   );
   const nodeDepthById = useMemo(
     () => new Map(tablePromptNodes.map((node) => [node.prompt.id, node.depth])),
@@ -194,6 +201,10 @@ export function PromptTableView({
       clearCopyTimer();
     };
   }, [clearCopyTimer]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [promptOrderKey]);
 
   const renderTextPreview = (content?: string) => {
     if (!content) {

@@ -1,5 +1,29 @@
 # Implementation
 
+## 2026-06-22 Child Count Sorting Follow-up
+
+- Added prompt sort options for direct child count descending and ascending.
+- Kept the child-count definition aligned with card/table hierarchy badges:
+  only direct children visible in the current prompt collection are counted.
+- Made child count the primary key for child-count sorting; pinned prompts only
+  win ties with the same child count.
+- Updated card and table tree flattening to preserve the already-sorted input
+  sibling order for display, while leaving drag move-target calculations on the
+  stored hierarchy order.
+- Updated the sort selector to write sort key and order atomically, avoiding a
+  transient mixed sort state while the app is running.
+- Reset card, table, gallery, and kanban scroll/page position when the sorted
+  prompt order changes so users immediately see the newly selected sort result.
+- Shortened child-count sort labels so the sort menu remains compact.
+
+Verification:
+
+- `pnpm --filter @prompthub/desktop test -- --run tests/unit/services/prompt-filter.test.ts tests/unit/components/prompt-list-header.test.tsx`
+- `pnpm --filter @prompthub/desktop typecheck`
+- `pnpm --filter @prompthub/desktop test -- --run tests/unit/components/skill-quick-install.test.tsx tests/unit/components/prompt-drag-utils.test.ts tests/unit/services/prompt-filter.test.ts tests/unit/components/prompt-list-header.test.tsx`
+- `pnpm --filter @prompthub/desktop typecheck`
+- `git diff --check`
+
 ## 2026-06-15 Follow-up
 
 - Replaced always-visible prompt relationship panels in the inline detail view

@@ -152,6 +152,18 @@ function createPromptState(prompts: Prompt[]) {
   };
 }
 
+function createPromptStateWithSort(
+  prompts: Prompt[],
+  sortBy: "updatedAt" | "createdAt" | "title" | "usageCount" | "childCount",
+  sortOrder: "desc" | "asc",
+) {
+  return {
+    ...createPromptState(prompts),
+    sortBy,
+    sortOrder,
+  };
+}
+
 function createSettingsState() {
   return {
     renderMarkdown: true,
@@ -232,4 +244,48 @@ describe("MainContent large dataset integration", () => {
     },
     60_000,
   );
+
+  it("updates the rendered card order when prompt sort settings change", async () => {
+    const prompts = [
+      createPrompt(2),
+      createPrompt(1),
+      createPrompt(3),
+    ];
+    usePromptStoreMock.mockImplementation((selector) =>
+      selector(createPromptStateWithSort(prompts, "title", "asc")),
+    );
+
+    const { container, rerender } = await renderWithI18n(<MainContent />, {
+      language: "en",
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const getRenderedPromptTitles = () =>
+      Array.from(container.querySelectorAll('h3[title^="Prompt "]')).map(
+        (node) => node.getAttribute("title"),
+      );
+
+    expect(getRenderedPromptTitles()).toEqual([
+      "Prompt 0001",
+      "Prompt 0002",
+      "Prompt 0003",
+    ]);
+
+    usePromptStoreMock.mockImplementation((selector) =>
+      selector(createPromptStateWithSort(prompts, "title", "desc")),
+    );
+
+    rerender(<MainContent />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(getRenderedPromptTitles()).toEqual([
+      "Prompt 0003",
+      "Prompt 0002",
+      "Prompt 0001",
+    ]);
+  });
 });

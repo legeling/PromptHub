@@ -390,8 +390,15 @@ const VirtualizedPromptList = memo(function VirtualizedPromptList({
     [collapsedPromptIds, highlightTerms.length],
   );
   const treeItems = useMemo(
-    () => flattenPromptTree(prompts, effectiveCollapsedPromptIds),
+    () =>
+      flattenPromptTree(prompts, effectiveCollapsedPromptIds, {
+        siblingOrder: "input",
+      }),
     [effectiveCollapsedPromptIds, prompts],
+  );
+  const promptOrderKey = useMemo(
+    () => treeItems.map((item) => item.prompt.id).join("\u001f"),
+    [treeItems],
   );
   const hierarchyMeta = useMemo(() => getPromptHierarchyMeta(prompts), [prompts]);
 
@@ -402,6 +409,10 @@ const VirtualizedPromptList = memo(function VirtualizedPromptList({
     overscan: 8,
     getItemKey: (index) => treeItems[index]?.prompt.id ?? `__missing-${index}`,
   });
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [promptOrderKey]);
 
   const virtualItems = rowVirtualizer.getVirtualItems();
   const totalHeight = rowVirtualizer.getTotalSize();

@@ -307,6 +307,10 @@ export function PromptGalleryView({
         () => Math.ceil(prompts.length / columns),
         [prompts.length, columns],
     );
+    const promptOrderKey = useMemo(
+        () => prompts.map((prompt) => prompt.id).join('\u001f'),
+        [prompts],
+    );
 
     const columnWidth = useMemo(() => {
         if (containerWidth <= 0) return 240;
@@ -323,6 +327,10 @@ export function PromptGalleryView({
             return firstPromptId ? `${firstPromptId}__${columns}` : `row-${rowIndex}-${columns}`;
         },
     });
+
+    useEffect(() => {
+        scrollParentRef.current?.scrollTo({ top: 0 });
+    }, [promptOrderKey]);
 
     if (prompts.length === 0) {
         return (

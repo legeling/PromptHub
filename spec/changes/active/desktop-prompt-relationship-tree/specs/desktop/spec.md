@@ -142,3 +142,22 @@ child counts appear or disappear.
 - THEN PromptHub does not render an empty collapse affordance before the title
 - AND hierarchy decoration does not draw over the parent prompt label or prompt
   content.
+
+### Requirement: Child Count Sorting
+
+The desktop prompt sort menu MUST include child-count sort options for users
+who want to surface grouping hubs or leaf prompts.
+
+#### Scenario: Sort By Direct Child Count
+
+- GIVEN the current prompt collection contains parent-child prompt hierarchy
+- WHEN the user chooses child count descending
+- THEN prompts with more direct visible child prompts sort before prompts with
+  fewer direct visible child prompts
+- WHEN the user chooses child count ascending
+- THEN prompts with fewer direct visible child prompts sort before prompts with
+  more direct visible child prompts
+- AND pinned prompts only sort before unpinned prompts when their direct child
+  counts are equal.
+- AND the card and table tree display preserves that sort order after
+  flattening parent-child hierarchy for rendering.

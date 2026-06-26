@@ -68,6 +68,15 @@ highlight. Parent rows/cards expose an inline expand/collapse control. The card
 title row uses a fixed control rail so collapse, drag, type, favorite, and child
 count controls do not push titles progressively to the right.
 
+The prompt sort menu exposes child-count sort options. Child count uses the
+same direct-visible-child definition as the card/table hierarchy count: only
+prompts whose `parentId` points to a prompt in the current visible collection
+are counted. Child-count order is the primary sort key for these options;
+pinned prompts only stay ahead when prompts have the same direct child count.
+Card and table display flattening must preserve the caller's already-sorted
+sibling order; drag move-target calculation continues to use the stored sibling
+`order` so drop positions remain deterministic.
+
 The tree is not the whole relationship model. Related links can point to many
 prompts and should be surfaced as lightweight chips or quiet detail-header
 affordances rather than as extra parents in the tree. The UI should make that

@@ -8,8 +8,7 @@ function resetStore() {
   // directly rather than poking internals.
   const store = usePromptStore.getState();
   store.setViewMode("card");
-  store.setSortBy("updatedAt");
-  store.setSortOrder("desc");
+  store.setSort("updatedAt", "desc");
   store.setGalleryImageSize("medium");
   store.setKanbanColumns(3);
 }
@@ -81,6 +80,39 @@ describe("PromptListHeader", () => {
 
     expect(usePromptStore.getState().sortBy).toBe("title");
     expect(usePromptStore.getState().sortOrder).toBe("asc");
+  });
+
+  it("updates sort key and order atomically", () => {
+    const setSortSpy = vi.spyOn(usePromptStore.getState(), "setSort");
+
+    render(<PromptListHeader count={3} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Sort: Newest" }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Title Z-A" }));
+
+    expect(setSortSpy).toHaveBeenCalledWith("title", "desc");
+    expect(usePromptStore.getState().sortBy).toBe("title");
+    expect(usePromptStore.getState().sortOrder).toBe("desc");
+  });
+
+  it("offers child-count sorting options", () => {
+    render(<PromptListHeader count={3} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Sort: Newest" }));
+
+    const childCountDescOption = screen.getByRole("menuitemradio", {
+      name: "More Children",
+    });
+    expect(
+      screen.getByRole("menuitemradio", {
+        name: "Fewer Children",
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(childCountDescOption);
+
+    expect(usePromptStore.getState().sortBy).toBe("childCount");
+    expect(usePromptStore.getState().sortOrder).toBe("desc");
   });
 
   it("switches view mode to gallery and reveals the size picker", () => {

@@ -7,6 +7,12 @@ export interface FlattenedPromptNode {
   depth: number;
 }
 
+export type PromptSiblingOrder = "stored" | "input";
+
+export interface FlattenPromptTreeOptions {
+  siblingOrder?: PromptSiblingOrder;
+}
+
 export interface PromptMoveTarget {
   parentId: string | null;
   order: number;
@@ -37,10 +43,18 @@ export function getPromptDropPosition(
 export function flattenPromptTree(
   prompts: Prompt[],
   collapsedPromptIds: ReadonlySet<string> = new Set(),
+  options: FlattenPromptTreeOptions = {},
 ): FlattenedPromptNode[] {
   const promptById = new Map(prompts.map((prompt) => [prompt.id, prompt]));
-  const inputIndexById = new Map(prompts.map((prompt, index) => [prompt.id, index]));
-  const childrenByParent = buildChildrenByParent(prompts, promptById, inputIndexById);
+  const inputIndexById = new Map(
+    prompts.map((prompt, index) => [prompt.id, index]),
+  );
+  const childrenByParent = buildChildrenByParent(
+    prompts,
+    promptById,
+    inputIndexById,
+    options.siblingOrder ?? "stored",
+  );
   const result: FlattenedPromptNode[] = [];
   const attachedIds = new Set<string>();
 
@@ -168,6 +182,7 @@ function buildChildrenByParent(
   prompts: Prompt[],
   promptById: Map<string, Prompt>,
   inputIndexById: Map<string, number>,
+  siblingOrder: PromptSiblingOrder = "stored",
 ): Map<string | null, Prompt[]> {
   const groups = new Map<string | null, Prompt[]>();
 
@@ -179,7 +194,10 @@ function buildChildrenByParent(
   }
 
   for (const [parentId, siblings] of groups) {
-    groups.set(parentId, sortPromptSiblings(siblings, inputIndexById));
+    groups.set(
+      parentId,
+      sortPromptSiblings(siblings, inputIndexById, siblingOrder),
+    );
   }
 
   return groups;
@@ -188,7 +206,14 @@ function buildChildrenByParent(
 function sortPromptSiblings(
   siblings: Prompt[],
   inputIndexById: Map<string, number>,
+  siblingOrder: PromptSiblingOrder,
 ): Prompt[] {
+  if (siblingOrder === "input") {
+    return [...siblings].sort((left, right) =>
+      comparePromptInputIndex(left, right, inputIndexById),
+    );
+  }
+
   const hasMeaningfulOrder = siblings.some(
     (prompt) => Boolean(prompt.parentId) || (prompt.order ?? 0) !== 0,
   );
@@ -199,8 +224,16 @@ function sortPromptSiblings(
       if (byOrder !== 0) return byOrder;
     }
 
-    return (inputIndexById.get(left.id) ?? 0) - (inputIndexById.get(right.id) ?? 0);
+    return comparePromptInputIndex(left, right, inputIndexById);
   });
+}
+
+function comparePromptInputIndex(
+  left: Prompt,
+  right: Prompt,
+  inputIndexById: Map<string, number>,
+): number {
+  return (inputIndexById.get(left.id) ?? 0) - (inputIndexById.get(right.id) ?? 0);
 }
 
 function getVisibleParentId(

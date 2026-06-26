@@ -17,7 +17,12 @@ import {
 
 // Sort method
 // 排序方式
-export type SortBy = "updatedAt" | "createdAt" | "title" | "usageCount";
+export type SortBy =
+  | "updatedAt"
+  | "createdAt"
+  | "title"
+  | "usageCount"
+  | "childCount";
 export type SortOrder = "desc" | "asc";
 // View mode
 // 视图模式
@@ -78,6 +83,7 @@ interface PromptState {
   togglePinned: (id: string) => Promise<void>;
   // Sort and view
   // 排序和视图
+  setSort: (sortBy: SortBy, sortOrder: SortOrder) => void;
   setSortBy: (sortBy: SortBy) => void;
   setSortOrder: (sortOrder: SortOrder) => void;
   setViewMode: (viewMode: ViewMode) => void;
@@ -315,6 +321,7 @@ export const usePromptStore = create<PromptState>()(
 
       // Sort and view
       // 排序和视图
+      setSort: (sortBy, sortOrder) => set({ sortBy, sortOrder }),
       setSortBy: (sortBy) => set({ sortBy }),
       setSortOrder: (sortOrder) => set({ sortOrder }),
       setViewMode: (viewMode) => set({ viewMode }),
