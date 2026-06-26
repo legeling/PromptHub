@@ -10,6 +10,8 @@ import {
 import type { MCPServerConfig } from "@prompthub/shared/types/skill";
 import {
   getPlatformById,
+  getPlatformMcpRelativePath,
+  getPlatformPluginsRelativePath,
   normalizeLegacySkillPathToRootTemplate,
   type SkillPlatform,
 } from "@prompthub/shared/constants/platforms";
@@ -355,10 +357,13 @@ export function gitGetCurrentBranch(repoDir: string): Promise<string | null> {
 export function resolvePlatformPath(template: string): string {
   const home = os.homedir();
   const appData = process.env.APPDATA || path.join(home, "AppData", "Roaming");
+  const localAppData =
+    process.env.LOCALAPPDATA || path.win32.join(home, "AppData", "Local");
   return template
     .replace(/^~/, home)
     .replace(/%USERPROFILE%/gi, home)
-    .replace(/%APPDATA%/gi, appData);
+    .replace(/%APPDATA%/gi, appData)
+    .replace(/%LOCALAPPDATA%/gi, localAppData);
 }
 
 let _customRootPathsCache: Record<string, string> | null = null;
@@ -435,33 +440,16 @@ function joinRootRelativePath(rootDir: string, relativePath: string): string {
   return path.join(rootDir, ...relativePath.split(/[\\/]+/).filter(Boolean));
 }
 
-export function getDefaultMcpRelativePath(platformId?: string): string {
-  const paths: Record<string, string> = {
-    claude: "../.claude.json",
-    codex: "config.toml",
-    gemini: "settings.json",
-    opencode: "opencode.json",
-    cursor: "mcp.json",
-    cline: "cline_mcp_settings.json",
-    windsurf: "mcp_config.json",
-    kiro: "settings/mcp.json",
-    copilot: "mcp.json",
-  };
-  return platformId ? paths[platformId] || "mcp.json" : "mcp.json";
+export function getDefaultMcpRelativePath(
+  platformId?: string,
+): string | undefined {
+  return platformId ? getPlatformMcpRelativePath(platformId) : "mcp.json";
 }
 
 export function getDefaultPluginsRelativePath(
   platformId?: string,
 ): string | undefined {
-  const paths: Record<string, string> = {
-    claude: "plugins/cache/prompthub",
-    codex: "plugins/cache/prompthub",
-    cursor: "plugins/cache/prompthub",
-    gemini: "config/plugins",
-    kiro: "powers",
-    copilot: "plugins",
-  };
-  return platformId ? paths[platformId] : undefined;
+  return platformId ? getPlatformPluginsRelativePath(platformId) : undefined;
 }
 
 function deriveLegacyRootPathMap(

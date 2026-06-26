@@ -54,6 +54,7 @@ import { updateSkillTags, type SkillBatchTagMode } from "./batch-utils";
 import { filterVisibleSkills } from "../../services/skill-filter";
 import { buildMySkillSourceBadges } from "../../services/skill-source-badges";
 import { getRemoteStoreSkills } from "../../services/remote-store-entry";
+import { hasRegistrySkillVersionChanged } from "../../services/skill-store-update";
 import { getRuntimeCapabilities } from "../../runtime";
 import { useSkillStoreRemoteSync } from "./store-remote-sync";
 import { filterDetectedPlatforms } from "../../services/platform-visibility";
@@ -277,6 +278,12 @@ export function SkillManager() {
   const deployedSkillNames = useSkillStore((state) => state.deployedSkillNames);
   const loadDeployedStatus = useSkillStore((state) => state.loadDeployedStatus);
   const skillFilterTags = useSkillStore((state) => state.filterTags);
+  const pendingPluginChildDeploySkillIds = useSkillStore(
+    (state) => state.pendingPluginChildDeploySkillIds,
+  );
+  const consumePluginChildSkillDeployRequest = useSkillStore(
+    (state) => state.consumePluginChildSkillDeployRequest,
+  );
   const storedSkillListPageSize = useSettingsStore(
     (state) => state.skillListPageSize,
   );
@@ -564,13 +571,10 @@ export function SkillManager() {
           }
 
           if (skill.installed_content_hash) {
-            return skill.installed_version !== registrySkill.version;
+            return hasRegistrySkillVersionChanged(skill, registrySkill);
           }
 
-          const installedVersion = skill.installed_version ?? skill.version;
-          return Boolean(
-            installedVersion && installedVersion !== registrySkill.version,
-          );
+          return hasRegistrySkillVersionChanged(skill, registrySkill);
         })
         .map((skill) => skill.id),
     );
@@ -723,6 +727,46 @@ export function SkillManager() {
       visibleSkills.every((skill) => selectedSkillIds.has(skill.id)),
     [selectedSkillIds, visibleSkills],
   );
+
+  useEffect(() => {
+    if (pendingPluginChildDeploySkillIds.length === 0) {
+      return;
+    }
+
+    if (!runtimeCapabilities.skillDistribution) {
+      consumePluginChildSkillDeployRequest();
+      return;
+    }
+
+    if (skills.length === 0) {
+      return;
+    }
+
+    const skillIds = new Set(skills.map((skill) => skill.id));
+    const validIds = pendingPluginChildDeploySkillIds.filter((id) =>
+      skillIds.has(id),
+    );
+    consumePluginChildSkillDeployRequest();
+
+    if (validIds.length === 0) {
+      return;
+    }
+
+    setStoreView("my-skills");
+    setFilterType("all");
+    selectSkill(validIds[0] ?? null);
+    setSelectedSkillIds(new Set(validIds));
+    setIsSelectionMode(true);
+    setShowBatchDeployDialog(true);
+  }, [
+    consumePluginChildSkillDeployRequest,
+    pendingPluginChildDeploySkillIds,
+    runtimeCapabilities.skillDistribution,
+    selectSkill,
+    setFilterType,
+    setStoreView,
+    skills,
+  ]);
 
   useEffect(() => {
     let disposed = false;

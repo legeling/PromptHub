@@ -81,7 +81,11 @@ describe("skill view tags", () => {
     expect(screen.queryByText("Official")).not.toBeInTheDocument();
     expect(screen.queryByText("Dev")).not.toBeInTheDocument();
     expect(screen.queryByText(".../.curated/writer")).not.toBeInTheDocument();
-    expect(screen.getAllByText("Update available").length).toBeGreaterThan(0);
+    const statusBadge = screen.getByTestId("skill-card-status-skill-1");
+    expect(statusBadge).toHaveClass("bg-primary/10", "text-primary");
+    expect(screen.getByTestId("skill-card-header-meta")).toContainElement(
+      statusBadge,
+    );
   });
 
   it("shows distributed agent targets in gallery cards", () => {
@@ -328,6 +332,32 @@ describe("skill view tags", () => {
     expect(screen.getByText("docs")).toBeInTheDocument();
     expect(screen.getByText("workflow")).toBeInTheDocument();
     expect(screen.queryByText("extra")).not.toBeInTheDocument();
+  });
+
+  it("shows the blue update badge in list view rows", async () => {
+    installWindowMocks({
+      api: {
+        skill: {
+          getSupportedPlatforms: vi.fn().mockResolvedValue([]),
+          detectPlatforms: vi.fn().mockResolvedValue([]),
+          getMdInstallStatusBatch: vi.fn().mockResolvedValue({}),
+        },
+      },
+    });
+
+    await act(async () => {
+      await renderWithI18n(
+        <SkillListView
+          skills={[baseSkill as any]}
+          skillsWithStoreUpdates={new Set([baseSkill.id])}
+          onQuickInstall={vi.fn()}
+        />,
+        { language: "en" },
+      );
+    });
+
+    const statusBadge = screen.getByTestId("skill-row-status-skill-1");
+    expect(statusBadge).toHaveClass("bg-primary/10", "text-primary");
   });
 
   it("does not animate virtualized list rows on mount", async () => {

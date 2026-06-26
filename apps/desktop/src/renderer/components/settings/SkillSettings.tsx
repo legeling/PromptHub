@@ -1061,7 +1061,10 @@ export function SkillSettings() {
           {settings.customAgents.length > 0 ? (
             <div className="rounded-lg border border-border overflow-hidden">
               {settings.customAgents.map((agent, idx) => {
-                const preview = buildAgentRootAssetPreview(agent);
+                const preview = buildAgentRootAssetPreview({
+                  ...agent,
+                  mcpRelativePath: agent.mcpRelativePath || "mcp.json",
+                });
                 const isEditing = editingAgentId === agent.id;
 
                 return (

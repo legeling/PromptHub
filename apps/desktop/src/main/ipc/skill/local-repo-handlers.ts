@@ -203,6 +203,34 @@ export function registerSkillLocalRepoHandlers({ db }: SkillIPCContext): void {
   );
 
   ipcMain.handle(
+    IPC_CHANNELS.SKILL_GET_REMOTE_GIT_PACKAGE_FINGERPRINT,
+    async (
+      _,
+      options?: {
+        repoUrl?: string;
+        branch?: string;
+        directory?: string;
+      },
+    ) => {
+      if (
+        !options ||
+        typeof options.repoUrl !== "string" ||
+        options.repoUrl.trim().length === 0
+      ) {
+        throw new Error(
+          "skill:getRemoteGitPackageFingerprint requires a non-empty repoUrl",
+        );
+      }
+
+      return SkillInstaller.getRemoteGitSkillPackageFingerprint({
+        repoUrl: options.repoUrl,
+        branch: options.branch,
+        directory: options.directory,
+      });
+    },
+  );
+
+  ipcMain.handle(
     IPC_CHANNELS.SKILL_LIST_LOCAL_FILES,
     async (_, skillId: string) => {
       if (typeof skillId !== "string" || skillId.trim() === "") {

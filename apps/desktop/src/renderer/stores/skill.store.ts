@@ -41,6 +41,7 @@ import {
   computeSkillContentHash,
   findInstalledRegistrySkill,
   getRegistrySkillUpdateStatus,
+  hasRegistrySkillVersionChanged,
   type RegistrySkillUpdateCheck,
 } from "../services/skill-store-update";
 import { scheduleAllSaveSync } from "../services/webdav-save-sync";
@@ -212,8 +213,9 @@ function sanitizePersistedAgentScanState(
 
 export type RegistrySkillUpdateResult =
   | { status: "updated"; skill: Skill; check: RegistrySkillUpdateCheck }
+  | { status: "up-to-date"; skill?: Skill | null; check: RegistrySkillUpdateCheck }
   | {
-      status: "up-to-date" | "conflict" | "local-modified" | "not-installed";
+      status: "conflict" | "local-modified" | "not-installed";
       check: RegistrySkillUpdateCheck;
     };
 
@@ -498,7 +500,7 @@ function normalizeLocalRegistryDirectory(
 
 async function syncLocalRegistrySkillRepo(
   skillId: string,
-  regSkill: Pick<RegistrySkill, "content_url" | "source_url">,
+  regSkill: RegistrySkill,
 ): Promise<Skill | null> {
   const localDir = normalizeLocalRegistryDirectory(regSkill);
   if (!localDir) {
@@ -507,7 +509,11 @@ async function syncLocalRegistrySkillRepo(
 
   await window.api.skill.saveToRepo(skillId, localDir, "copy");
   const syncedSkill = await window.api.skill.syncFromRepo(skillId);
-  return refreshInstalledContentHashFromSyncedSkill(skillId, syncedSkill);
+  return refreshInstalledContentHashFromSyncedSkill(
+    skillId,
+    syncedSkill,
+    regSkill,
+  );
 }
 
 async function resolveRegistrySkillContent(
@@ -607,6 +613,25 @@ function parseGitHubSkillLocation(
   return null;
 }
 
+async function resolveRemoteRegistryDirectoryFingerprint(
+  regSkill: RegistrySkill,
+): Promise<string | undefined> {
+  const sourceUrl = regSkill.source_url;
+  if (!sourceUrl || isLikelyLocalSource(sourceUrl) || !parseGitRepo(sourceUrl)) {
+    return regSkill.directory_fingerprint;
+  }
+  const treeLocation = parseGitHubSkillLocation(sourceUrl);
+
+  return (
+    (await window.api.skill.getRemoteGitPackageFingerprint({
+      repoUrl: sourceUrl,
+      branch: regSkill.source_branch || treeLocation?.branch,
+      directory:
+        getRegistrySkillDirectory(regSkill) || treeLocation?.directoryPath,
+    })) || regSkill.directory_fingerprint
+  );
+}
+
 function shouldSkipRemoteRepoFile(relativePath: string): boolean {
   return shouldIgnoreSkillDirectoryEntry(relativePath);
 }
@@ -677,15 +702,21 @@ function shouldCloneRegistrySkillPackage(
     return true;
   }
 
-  if (regSkill.content_url && isGitHubHost(parsedRepo.host)) {
+  const hasPackageMetadata = Boolean(
+    getRegistrySkillDirectory(regSkill) ||
+      regSkill.canonical_skill_path ||
+      regSkill.directory_fingerprint,
+  );
+
+  if (
+    regSkill.content_url &&
+    isGitHubHost(parsedRepo.host) &&
+    !hasPackageMetadata
+  ) {
     return false;
   }
 
-  return Boolean(
-    getRegistrySkillDirectory(regSkill) ||
-    regSkill.canonical_skill_path ||
-    regSkill.directory_fingerprint,
-  );
+  return hasPackageMetadata;
 }
 
 async function syncRemoteGitHubSkillRepo(
@@ -759,7 +790,11 @@ async function syncRemoteRegistrySkillRepo(
       zipUrl: regSkill.package_url,
     });
     const syncedSkill = await window.api.skill.syncFromRepo(skillId);
-    return refreshInstalledContentHashFromSyncedSkill(skillId, syncedSkill);
+    return refreshInstalledContentHashFromSyncedSkill(
+      skillId,
+      syncedSkill,
+      regSkill,
+    );
   }
 
   if (shouldCloneRegistrySkillPackage(regSkill)) {
@@ -769,7 +804,11 @@ async function syncRemoteRegistrySkillRepo(
       directory: getRegistrySkillDirectory(regSkill),
     });
     const syncedSkill = await window.api.skill.syncFromRepo(skillId);
-    return refreshInstalledContentHashFromSyncedSkill(skillId, syncedSkill);
+    return refreshInstalledContentHashFromSyncedSkill(
+      skillId,
+      syncedSkill,
+      regSkill,
+    );
   }
 
   await window.api.skill.writeLocalFile(skillId, "SKILL.md", effectiveContent, {
@@ -786,6 +825,7 @@ async function syncRemoteRegistrySkillRepo(
 async function refreshInstalledContentHashFromSyncedSkill(
   skillId: string,
   syncedSkill: Skill | null | undefined,
+  regSkill: Pick<RegistrySkill, "version">,
 ): Promise<Skill | null> {
   const syncedContent = syncedSkill?.content ?? syncedSkill?.instructions;
   if (typeof syncedContent !== "string" || !syncedContent.trim()) {
@@ -795,6 +835,7 @@ async function refreshInstalledContentHashFromSyncedSkill(
   const installedContentHash = await computeSkillContentHash(syncedContent);
   return window.api.skill.update(skillId, {
     installed_content_hash: installedContentHash,
+    installed_version: regSkill.version,
   });
 }
 
@@ -863,10 +904,13 @@ interface SkillState {
       totalCount?: number;
     }
   >;
+  pendingPluginChildDeploySkillIds: string[];
 
   // Actions
   loadSkills: (options?: { preferCache?: boolean }) => Promise<void>;
   selectSkill: (id: string | null) => void;
+  requestPluginChildSkillDeploy: (skillIds: string[]) => void;
+  consumePluginChildSkillDeployRequest: () => string[];
   createSkill: (data: CreateSkillParams) => Promise<Skill | null>;
   updateSkill: (id: string, data: UpdateSkillParams) => Promise<Skill | null>;
   syncSkillFromRepo: (id: string) => Promise<Skill | null>;
@@ -1189,6 +1233,31 @@ async function applyRegistrySkillUpdateToInstalledSkill(
   return syncedSkill ?? updatedSkill;
 }
 
+async function refreshRegistrySkillBaselineIfNeeded(
+  check: RegistrySkillUpdateCheck,
+  updateSkill: SkillState["updateSkill"],
+): Promise<Skill | null> {
+  const installedSkill = check.installedSkill;
+  if (!installedSkill || check.status !== "up-to-date") {
+    return null;
+  }
+
+  const needsHashRefresh =
+    installedSkill.installed_content_hash !== check.remoteHash;
+  const needsVersionRefresh = hasRegistrySkillVersionChanged(
+    installedSkill,
+    check.registrySkill,
+  );
+  if (!needsHashRefresh && !needsVersionRefresh) {
+    return null;
+  }
+
+  return updateSkill(installedSkill.id, {
+    installed_content_hash: check.remoteHash,
+    installed_version: check.registrySkill.version,
+  });
+}
+
 export const useSkillStore = create<SkillState>()(
   persist(
     (set, get) => ({
@@ -1218,6 +1287,7 @@ export const useSkillStore = create<SkillState>()(
       customStoreSources: [] as SkillStoreSource[],
       selectedStoreSourceId: "official",
       remoteStoreEntries: {},
+      pendingPluginChildDeploySkillIds: [],
 
       loadSkills: async (options) => {
         const hasCachedSkills = get().skills.length > 0;
@@ -1279,6 +1349,19 @@ export const useSkillStore = create<SkillState>()(
 
       selectSkill: (id) => {
         set({ selectedSkillId: id });
+      },
+
+      requestPluginChildSkillDeploy: (skillIds) => {
+        const normalizedIds = Array.from(
+          new Set(skillIds.filter((id) => id.trim().length > 0)),
+        );
+        set({ pendingPluginChildDeploySkillIds: normalizedIds });
+      },
+
+      consumePluginChildSkillDeployRequest: () => {
+        const pendingIds = get().pendingPluginChildDeploySkillIds;
+        set({ pendingPluginChildDeploySkillIds: [] });
+        return pendingIds;
       },
 
       createSkill: async (data) => {
@@ -1880,19 +1963,33 @@ export const useSkillStore = create<SkillState>()(
       computeRegistrySkillHash: computeSkillContentHash,
 
       getRegistrySkillUpdateStatus: async (regSkill) => {
-        const remoteContent = await resolveRegistrySkillContent(regSkill);
+        const remoteDirectoryFingerprint =
+          await resolveRemoteRegistryDirectoryFingerprint(regSkill);
+        const effectiveRegSkill = {
+          ...regSkill,
+          directory_fingerprint: remoteDirectoryFingerprint,
+        };
+        const remoteContent =
+          await resolveRegistrySkillContent(effectiveRegSkill);
 
-        return getRegistrySkillUpdateStatus(
-          findInstalledRegistrySkill(get().skills, regSkill),
-          regSkill,
+        const check = await getRegistrySkillUpdateStatus(
+          findInstalledRegistrySkill(get().skills, effectiveRegSkill),
+          effectiveRegSkill,
           remoteContent,
         );
+        await refreshRegistrySkillBaselineIfNeeded(check, get().updateSkill);
+        return check;
       },
 
       getInstalledSkillSourceUpdateStatus: async (skillId) => {
-        const installedSkill = get().skills.find((skill) => skill.id === skillId);
+        let installedSkill = get().skills.find((skill) => skill.id === skillId);
         if (!installedSkill) {
           return null;
+        }
+
+        if (installedSkill.local_repo_path) {
+          installedSkill =
+            (await get().syncSkillFromRepo(installedSkill.id)) ?? installedSkill;
         }
 
         const regSkill = findInstalledSkillSourceCandidate(
@@ -1903,12 +2000,21 @@ export const useSkillStore = create<SkillState>()(
           return null;
         }
 
-        const remoteContent = await resolveRegistrySkillContent(regSkill);
-        return getRegistrySkillUpdateStatus(
+        const remoteDirectoryFingerprint =
+          await resolveRemoteRegistryDirectoryFingerprint(regSkill);
+        const effectiveRegSkill = {
+          ...regSkill,
+          directory_fingerprint: remoteDirectoryFingerprint,
+        };
+        const remoteContent =
+          await resolveRegistrySkillContent(effectiveRegSkill);
+        const check = await getRegistrySkillUpdateStatus(
           installedSkill,
-          regSkill,
+          effectiveRegSkill,
           remoteContent,
         );
+        await refreshRegistrySkillBaselineIfNeeded(check, get().updateSkill);
+        return check;
       },
 
       updateRegistrySkill: async (sourceId, options) => {
@@ -1920,7 +2026,11 @@ export const useSkillStore = create<SkillState>()(
           return { status: "not-installed", check };
         }
         if (check.status === "up-to-date") {
-          return { status: "up-to-date", check };
+          const refreshedSkill = await refreshRegistrySkillBaselineIfNeeded(
+            check,
+            get().updateSkill,
+          );
+          return { status: "up-to-date", skill: refreshedSkill, check };
         }
         if (
           (check.status === "conflict" || check.status === "local-modified") &&
@@ -1960,7 +2070,11 @@ export const useSkillStore = create<SkillState>()(
           return { status: "not-installed", check };
         }
         if (check.status === "up-to-date") {
-          return { status: "up-to-date", check };
+          const refreshedSkill = await refreshRegistrySkillBaselineIfNeeded(
+            check,
+            get().updateSkill,
+          );
+          return { status: "up-to-date", skill: refreshedSkill, check };
         }
         if (
           (check.status === "conflict" || check.status === "local-modified") &&

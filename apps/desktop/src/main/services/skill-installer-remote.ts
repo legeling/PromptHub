@@ -8,6 +8,7 @@ import * as dns from "dns/promises";
 import * as http from "http";
 import * as https from "https";
 import * as nodeNet from "net";
+import { getHttpRequestAgent } from "./network-proxy";
 
 // ==================== Constants ====================
 
@@ -355,6 +356,7 @@ export async function fetchRemoteText(
   }
   const requestModule = getRequestModule(parsedUrl.protocol);
   const maxBytes = getRemoteFetchMaxBytes(parsedUrl);
+  const agent = getHttpRequestAgent(parsedUrl);
 
   const baseHeaders: Record<string, string> = {
     Host: parsedUrl.host,
@@ -384,6 +386,7 @@ export async function fetchRemoteText(
         path: toRequestPath(parsedUrl),
         method: "GET",
         headers: baseHeaders,
+        agent,
         timeout: REMOTE_FETCH_TIMEOUT_MS,
       },
       (response) => {
@@ -513,6 +516,7 @@ export async function fetchRemoteBytes(
   }
   const requestModule = getRequestModule(parsedUrl.protocol);
   const maxBytes = getRemoteFetchMaxBytes(parsedUrl);
+  const agent = getHttpRequestAgent(parsedUrl);
 
   const baseHeaders: Record<string, string> = {
     Host: parsedUrl.host,
@@ -541,6 +545,7 @@ export async function fetchRemoteBytes(
         path: toRequestPath(parsedUrl),
         method: "GET",
         headers: baseHeaders,
+        agent,
         timeout: REMOTE_FETCH_TIMEOUT_MS,
       },
       (response) => {

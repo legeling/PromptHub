@@ -11,6 +11,7 @@ const batchInstallMock = vi.fn();
 const showToastMock = vi.fn();
 const selectAllPlatformsMock = vi.fn();
 const togglePlatformSelectionMock = vi.fn();
+const useSkillPlatformMock = vi.fn();
 
 vi.mock("../../../src/renderer/stores/settings.store", () => ({
   useSettingsStore: (selector: (state: { skillInstallMethod: "copy" }) => unknown) =>
@@ -26,29 +27,7 @@ vi.mock("../../../src/renderer/components/ui/Toast", async (importOriginal) => {
 });
 
 vi.mock("../../../src/renderer/components/skill/use-skill-platform", () => ({
-  useSkillPlatform: () => ({
-    availablePlatforms: [
-      {
-        id: "claude",
-        name: "Claude Code",
-        icon: "Terminal",
-        rootDir: {
-          darwin: "~/.claude",
-          linux: "~/.claude",
-          win32: "~/.claude",
-        },
-        skillsRelativePath: "skills",
-      },
-    ],
-    batchInstall: batchInstallMock,
-    installProgress: null,
-    installStatus: { claude: false },
-    isBatchInstalling: false,
-    selectedPlatforms: new Set(["claude"]),
-    selectAllPlatforms: selectAllPlatformsMock,
-    togglePlatformSelection: togglePlatformSelectionMock,
-    uninstalledPlatforms: ["claude"],
-  }),
+  useSkillPlatform: (...args: unknown[]) => useSkillPlatformMock(...args),
 }));
 
 function hasHiddenSvgAncestor(element: Element): boolean {
@@ -76,6 +55,29 @@ describe("SkillQuickInstall", () => {
       totalCount: 1,
       failures: [],
       fallbacks: [],
+    });
+    useSkillPlatformMock.mockReturnValue({
+      availablePlatforms: [
+        {
+          id: "claude",
+          name: "Claude Code",
+          icon: "Terminal",
+          rootDir: {
+            darwin: "~/.claude",
+            linux: "~/.claude",
+            win32: "~/.claude",
+          },
+          skillsRelativePath: "skills",
+        },
+      ],
+      batchInstall: batchInstallMock,
+      installProgress: null,
+      installStatus: { claude: false },
+      isBatchInstalling: false,
+      selectedPlatforms: new Set(["claude"]),
+      selectAllPlatforms: selectAllPlatformsMock,
+      togglePlatformSelection: togglePlatformSelectionMock,
+      uninstalledPlatforms: ["claude"],
     });
   });
 
@@ -176,6 +178,13 @@ describe("SkillQuickInstall", () => {
     const selectAllButton = screen.getByRole("button", { name: "Select All" });
     expect(selectAllButton).toHaveAttribute("type", "button");
 
+    const copyModeButton = screen.getByRole("button", { name: "Copy" });
+    const symlinkModeButton = screen.getByRole("button", { name: "Symlink" });
+    expect(copyModeButton).toHaveAttribute("type", "button");
+    expect(copyModeButton).toHaveAttribute("aria-pressed", "true");
+    expect(symlinkModeButton).toHaveAttribute("type", "button");
+    expect(symlinkModeButton).toHaveAttribute("aria-pressed", "false");
+
     const platformButton = screen.getByRole("button", { name: /Claude Code/u });
     expect(platformButton).toHaveAttribute("type", "button");
     expect(platformButton).toHaveAttribute("aria-pressed", "true");
@@ -198,5 +207,35 @@ describe("SkillQuickInstall", () => {
     );
     expect(getExposedButtonMedia(), getExposedButtonMedia().join("\n"))
       .toHaveLength(0);
+  });
+
+  it("lets quick install switch between copy and symlink modes", async () => {
+    const user = userEvent.setup();
+
+    await renderWithI18n(
+      <ToastProvider>
+        <SkillQuickInstall
+          skill={createSkillFixture({ name: "Writer" })}
+          onClose={vi.fn()}
+        />
+      </ToastProvider>,
+      { language: "en" },
+    );
+
+    expect(useSkillPlatformMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ name: "Writer" }),
+      "copy",
+    );
+
+    await user.click(screen.getByRole("button", { name: "Symlink" }));
+
+    expect(screen.getByRole("button", { name: "Symlink" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(useSkillPlatformMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ name: "Writer" }),
+      "symlink",
+    );
   });
 });

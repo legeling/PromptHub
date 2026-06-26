@@ -41,7 +41,7 @@ function getExposedButtonMedia(): string[] {
 
 /**
  * SkillStoreCard renders one of three trailing controls based on its props:
- *   - hasUpdate=true                → amber DownloadIcon (no button)
+ *   - hasUpdate=true                → blue update status badge (no button)
  *   - isInstalled=true (no update)  → green CheckIcon    (no button)
  *   - otherwise                      → install button (PlusIcon or spinner)
  *
@@ -63,7 +63,7 @@ describe("SkillStoreCard", () => {
 
   function getStateBadge(container: HTMLElement): HTMLElement | null {
     return container.querySelector(
-      ".text-green-500, .text-amber-500",
+      ".text-green-500, .text-primary",
     ) as HTMLElement | null;
   }
 
@@ -185,7 +185,7 @@ describe("SkillStoreCard", () => {
       .not.toBeInTheDocument();
   });
 
-  it("renders the amber update badge when hasUpdate is true (overrides installed)", () => {
+  it("renders the blue update badge when hasUpdate is true (overrides installed)", () => {
     const { container } = render(
       <SkillStoreCard
         skill={makeSkill()}
@@ -197,7 +197,9 @@ describe("SkillStoreCard", () => {
     );
     const badge = getStateBadge(container);
     expect(badge).not.toBeNull();
-    expect(badge!.className).toContain("text-amber-500");
+    expect(badge).toHaveClass("bg-primary/10", "text-primary");
+    expect(screen.getByTestId("skill-store-card-status-test-skill"))
+      .toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Install" }))
       .not.toBeInTheDocument();
   });

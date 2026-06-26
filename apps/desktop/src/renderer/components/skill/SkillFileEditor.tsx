@@ -36,9 +36,31 @@ import {
   getSkillCodeEditorLanguageName,
 } from "./SkillCodeEditor";
 import { getSkillFileIconUrl } from "./skill-file-icons";
+import {
+  MAX_RESOURCE_ZOOM,
+  MIN_RESOURCE_ZOOM,
+  RESOURCE_ZOOM_STEP,
+  buildTree,
+  clampResourceZoom,
+  formatFileSize,
+  isEditableFile,
+  isHiddenSkillRepoEntry,
+  isMarkdownFile,
+  normalizeFileTreeEntry,
+  normalizeSkillRelativePath,
+  type ContextMenuState,
+  type FileEntry,
+  type FileTreeEntry,
+  type TreeNode,
+} from "./skill-file-editor-utils";
 import "./SkillFileEditor.css";
 
 // ─── Types ──────────────────────────────────────────────
+
+interface SkillFileEditorSurfaceLabels {
+  noFiles?: string;
+  modalTitle?: string;
+}
 
 interface SkillFileEditorProps {
   skillId: string;
@@ -53,50 +75,11 @@ interface SkillFileEditorProps {
    *  "inline" renders as a plain panel – no portal, no backdrop, no header. */
   mode?: "modal" | "inline";
   onUnsavedChange?: (hasUnsaved: boolean) => void;
-}
-
-interface FileEntry {
-  path: string;
-  content: string;
-  isDirectory: boolean;
-  mimeType?: string;
-  encoding?: "text" | "data-url" | "placeholder";
-  previewKind?: "image" | "audio" | "video" | "pdf";
-}
-
-interface FileTreeEntry {
-  path: string;
-  isDirectory: boolean;
-  size?: number;
-}
-
-interface TreeNode {
-  name: string;
-  path: string;
-  isDirectory: boolean;
-  children: TreeNode[];
-  depth: number;
-}
-
-interface ContextMenuState {
-  x: number;
-  y: number;
-  path: string | null;
-  isDirectory: boolean;
+  readOnly?: boolean;
+  surfaceLabels?: SkillFileEditorSurfaceLabels;
 }
 
 // ─── Helpers ────────────────────────────────────────────
-
-const MIN_RESOURCE_ZOOM = 0.25;
-const MAX_RESOURCE_ZOOM = 4;
-const RESOURCE_ZOOM_STEP = 0.25;
-
-function clampResourceZoom(value: number): number {
-  return Math.min(
-    MAX_RESOURCE_ZOOM,
-    Math.max(MIN_RESOURCE_ZOOM, Number(value.toFixed(2))),
-  );
-}
 
 function getFileIcon(name: string, isDirectory: boolean, isOpen: boolean) {
   return (
@@ -108,84 +91,6 @@ function getFileIcon(name: string, isDirectory: boolean, isOpen: boolean) {
       draggable={false}
     />
   );
-}
-
-function isMarkdownFile(path: string): boolean {
-  const ext = path.split(".").pop()?.toLowerCase() || "";
-  return ["md", "mdx"].includes(ext);
-}
-
-function normalizeSkillRelativePath(path: string): string {
-  return path
-    .replace(/\\/g, "/")
-    .replace(/^\.\/+/, "")
-    .replace(/\/+/g, "/");
-}
-
-function isHiddenSkillRepoEntry(path: string): boolean {
-  return normalizeSkillRelativePath(path)
-    .split("/")
-    .some((segment) => segment === ".git" || segment === ".prompthub");
-}
-
-function normalizeFileTreeEntry(entry: FileTreeEntry): FileTreeEntry {
-  return {
-    ...entry,
-    path: normalizeSkillRelativePath(entry.path),
-  };
-}
-
-function buildTree(files: FileTreeEntry[]): TreeNode[] {
-  const root: TreeNode[] = [];
-
-  // Sort: directories first, then alphabetical
-  const sorted = files.map(normalizeFileTreeEntry).sort((a, b) => {
-    if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1;
-    return a.path.localeCompare(b.path);
-  });
-
-  for (const file of sorted) {
-    const parts = file.path.split("/");
-    let currentLevel = root;
-
-    for (let i = 0; i < parts.length; i++) {
-      const partName = parts[i];
-      const partPath = parts.slice(0, i + 1).join("/");
-      const isLast = i === parts.length - 1;
-
-      let existing = currentLevel.find((n) => n.name === partName);
-
-      if (!existing) {
-        existing = {
-          name: partName,
-          path: partPath,
-          isDirectory: isLast ? file.isDirectory : true,
-          children: [],
-          depth: i,
-        };
-        currentLevel.push(existing);
-      }
-
-      if (!isLast) {
-        currentLevel = existing.children;
-      }
-    }
-  }
-
-  return root;
-}
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function isEditableFile(file: FileEntry | null): boolean {
-  if (!file || file.isDirectory) {
-    return false;
-  }
-  return file.encoding !== "data-url" && file.content !== "[binary file]";
 }
 
 type ResourceImageMode = "inline" | "fullscreen";
@@ -203,8 +108,10 @@ interface ImageZoomControlsProps {
   fullscreenLabel: string;
 }
 
-interface ImageResourceCanvasProps
-  extends Omit<ImageZoomControlsProps, "mode"> {
+interface ImageResourceCanvasProps extends Omit<
+  ImageZoomControlsProps,
+  "mode"
+> {
   file: FileEntry;
   mode?: ResourceImageMode;
   onImageWheelZoom: (event: WheelEvent<HTMLDivElement>) => void;
@@ -458,10 +365,7 @@ function ResourceImageFullscreenPreview({
           title={closeLabel}
           aria-label={closeLabel}
         >
-          <XIcon
-            aria-hidden="true"
-            style={{ width: "1rem", height: "1rem" }}
-          />
+          <XIcon aria-hidden="true" style={{ width: "1rem", height: "1rem" }} />
         </button>
       </div>
       <ImageResourceCanvas
@@ -615,10 +519,17 @@ export function SkillFileEditor({
   onSave,
   mode = "modal",
   onUnsavedChange,
+  readOnly = false,
+  surfaceLabels,
 }: SkillFileEditorProps) {
   const { t } = useTranslation();
   const { showToast } = useToast();
   const isInline = mode === "inline";
+  const noFilesLabel =
+    surfaceLabels?.noFiles ??
+    t("skill.noFiles", "No local files for this skill");
+  const modalTitle =
+    surfaceLabels?.modalTitle ?? t("skill.fileEditor", "File Editor");
 
   // State
   const [files, setFiles] = useState<FileTreeEntry[]>([]);
@@ -672,6 +583,9 @@ export function SkillFileEditor({
 
   const writeFile = useCallback(
     async (relativePath: string, content: string) => {
+      if (readOnly) {
+        return;
+      }
       if (localPath) {
         return window.api.skill.writeLocalFileByPath(
           localPath,
@@ -681,21 +595,27 @@ export function SkillFileEditor({
       }
       return window.api.skill.writeLocalFile(skillId, relativePath, content);
     },
-    [localPath, skillId],
+    [localPath, readOnly, skillId],
   );
 
   const createDir = useCallback(
     async (relativePath: string) => {
+      if (readOnly) {
+        return;
+      }
       if (localPath) {
         return window.api.skill.createLocalDirByPath(localPath, relativePath);
       }
       return window.api.skill.createLocalDir(skillId, relativePath);
     },
-    [localPath, skillId],
+    [localPath, readOnly, skillId],
   );
 
   const renamePath = useCallback(
     async (oldRelativePath: string, newRelativePath: string) => {
+      if (readOnly) {
+        return;
+      }
       if (localPath) {
         return window.api.skill.renameLocalPathByPath(
           localPath,
@@ -709,17 +629,20 @@ export function SkillFileEditor({
         newRelativePath,
       );
     },
-    [localPath, skillId],
+    [localPath, readOnly, skillId],
   );
 
   const deleteFile = useCallback(
     async (relativePath: string) => {
+      if (readOnly) {
+        return;
+      }
       if (localPath) {
         return window.api.skill.deleteLocalFileByPath(localPath, relativePath);
       }
       return window.api.skill.deleteLocalFile(skillId, relativePath);
     },
-    [localPath, skillId],
+    [localPath, readOnly, skillId],
   );
 
   // Load files
@@ -805,6 +728,19 @@ export function SkillFileEditor({
       ).__PROMPTHUB_SKILL_EDITOR_DIRTY = false;
     };
   }, [hasAnyUnsaved, onUnsavedChange]);
+
+  useEffect(() => {
+    if (!readOnly) {
+      return;
+    }
+    setModifiedFiles({});
+    setIsEditingFileContent(false);
+    setNewFileDialogOpen(false);
+    setNewFolderDialogOpen(false);
+    setDeleteDialogFile(null);
+    setRenameDialogPath(null);
+    setContextMenu(null);
+  }, [readOnly]);
 
   useEffect(() => {
     if (!contextMenu) {
@@ -949,7 +885,7 @@ export function SkillFileEditor({
     () => getSkillCodeEditorLanguageName(selectedFile || ""),
     [selectedFile],
   );
-  const canEditCurrentFile = isEditableFile(currentFile);
+  const canEditCurrentFile = !readOnly && isEditableFile(currentFile);
   const fullscreenResourceFile =
     currentFile?.encoding === "data-url" && currentFile.previewKind === "image"
       ? currentFile
@@ -969,7 +905,7 @@ export function SkillFileEditor({
   // Edit content
   const handleContentChange = useCallback(
     (newContent: string) => {
-      if (!selectedFile) return;
+      if (readOnly || !selectedFile) return;
       const original = currentFile?.content || "";
       if (newContent === original) {
         setModifiedFiles((prev) => {
@@ -981,7 +917,7 @@ export function SkillFileEditor({
         setModifiedFiles((prev) => ({ ...prev, [selectedFile]: newContent }));
       }
     },
-    [selectedFile, currentFile],
+    [readOnly, selectedFile, currentFile],
   );
 
   const zoomResourceBy = useCallback((delta: number) => {
@@ -1004,7 +940,7 @@ export function SkillFileEditor({
 
   // Save current file
   const saveCurrentFile = useCallback(async () => {
-    if (!selectedFile || !(selectedFile in modifiedFiles)) return;
+    if (readOnly || !selectedFile || !(selectedFile in modifiedFiles)) return;
     setIsSaving(true);
     try {
       const nextContent = modifiedFiles[selectedFile];
@@ -1048,7 +984,7 @@ export function SkillFileEditor({
     } finally {
       setIsSaving(false);
     }
-  }, [modifiedFiles, onSave, selectedFile, showToast, t, writeFile]);
+  }, [modifiedFiles, onSave, readOnly, selectedFile, showToast, t, writeFile]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -1096,6 +1032,7 @@ export function SkillFileEditor({
 
   // New file
   const handleNewFile = useCallback(async () => {
+    if (readOnly) return;
     const rawName = dialogInput.trim();
     const name = createParentPath
       ? [createParentPath, rawName].filter(Boolean).join("/")
@@ -1129,12 +1066,14 @@ export function SkillFileEditor({
     createParentPath,
     dialogInput,
     loadFiles,
+    readOnly,
     showToast,
     writeFile,
   ]);
 
   // New folder
   const handleNewFolder = useCallback(async () => {
+    if (readOnly) return;
     const rawName = dialogInput.trim();
     const name = createParentPath
       ? [createParentPath, rawName].filter(Boolean).join("/")
@@ -1153,10 +1092,17 @@ export function SkillFileEditor({
       console.error("Failed to create folder:", error);
       showToast(`Failed to create folder: ${String(error)}`, "error");
     }
-  }, [createDir, createParentPath, dialogInput, loadFiles, showToast]);
+  }, [
+    createDir,
+    createParentPath,
+    dialogInput,
+    loadFiles,
+    readOnly,
+    showToast,
+  ]);
 
   const handleRenamePath = useCallback(async () => {
-    if (!renameDialogPath) return;
+    if (readOnly || !renameDialogPath) return;
     const nextName = dialogInput.trim();
     if (!nextName) return;
 
@@ -1203,6 +1149,7 @@ export function SkillFileEditor({
     dialogInput,
     loadFiles,
     renameDialogPath,
+    readOnly,
     selectedFile,
     showToast,
     t,
@@ -1211,7 +1158,7 @@ export function SkillFileEditor({
 
   // Delete file
   const handleDeleteFile = useCallback(async () => {
-    if (!deleteDialogFile) return;
+    if (readOnly || !deleteDialogFile) return;
     try {
       await deleteFile(deleteDialogFile);
       if (selectedFile === deleteDialogFile) {
@@ -1237,7 +1184,14 @@ export function SkillFileEditor({
       console.error("Failed to delete file:", error);
       showToast(`Failed to delete file: ${String(error)}`, "error");
     }
-  }, [deleteFile, deleteDialogFile, selectedFile, loadFiles, showToast]);
+  }, [
+    deleteFile,
+    deleteDialogFile,
+    loadFiles,
+    readOnly,
+    selectedFile,
+    showToast,
+  ]);
 
   const requestSelectFile = useCallback(
     (path: string) => {
@@ -1290,6 +1244,9 @@ export function SkillFileEditor({
             className={`skill-file-editor__tree-item skill-file-editor__tree-item--directory ${depthClass}`}
             onClick={() => toggleDir(node.path)}
             onContextMenu={(event) => {
+              if (readOnly) {
+                return;
+              }
               event.preventDefault();
               event.stopPropagation();
               setContextMenu({
@@ -1323,6 +1280,9 @@ export function SkillFileEditor({
         key={node.path}
         className="skill-file-editor__tree-file-row"
         onContextMenu={(event) => {
+          if (readOnly) {
+            return;
+          }
           event.preventDefault();
           event.stopPropagation();
           setContextMenu({
@@ -1346,20 +1306,22 @@ export function SkillFileEditor({
           <span className="skill-file-editor__tree-item-name">{node.name}</span>
           {modified && <span className="skill-file-editor__tree-item-dot" />}
         </button>
-        <button
-          type="button"
-          className="skill-file-editor__tree-item-delete"
-          onClick={() => {
-            setDeleteDialogFile(node.path);
-          }}
-          title={t("skill.deleteFile", "Delete File")}
-          aria-label={t("skill.deleteFile", "Delete File")}
-        >
-          <Trash2Icon
-            aria-hidden="true"
-            style={{ width: "0.75rem", height: "0.75rem" }}
-          />
-        </button>
+        {!readOnly ? (
+          <button
+            type="button"
+            className="skill-file-editor__tree-item-delete"
+            onClick={() => {
+              setDeleteDialogFile(node.path);
+            }}
+            title={t("skill.deleteFile", "Delete File")}
+            aria-label={t("skill.deleteFile", "Delete File")}
+          >
+            <Trash2Icon
+              aria-hidden="true"
+              style={{ width: "0.75rem", height: "0.75rem" }}
+            />
+          </button>
+        ) : null}
       </div>
     );
   };
@@ -1392,43 +1354,48 @@ export function SkillFileEditor({
             <span className="skill-file-editor__tree-title">
               {t("skill.fileEditor", "Files")}
             </span>
-            <div className="skill-file-editor__tree-actions">
-              <button
-                type="button"
-                className="skill-file-editor__tree-btn"
-                onClick={() => {
-                  setDialogInput("");
-                  setCreateParentPath(null);
-                  setNewFileDialogOpen(true);
-                }}
-                title={t("skill.newFile", "New File")}
-              >
-                <FilePlusIcon
-                  aria-hidden="true"
-                  style={{ width: "0.875rem", height: "0.875rem" }}
-                />
-              </button>
-              <button
-                type="button"
-                className="skill-file-editor__tree-btn"
-                onClick={() => {
-                  setDialogInput("");
-                  setCreateParentPath(null);
-                  setNewFolderDialogOpen(true);
-                }}
-                title={t("skill.newFolder", "New Folder")}
-              >
-                <FolderPlusIcon
-                  aria-hidden="true"
-                  style={{ width: "0.875rem", height: "0.875rem" }}
-                />
-              </button>
-            </div>
+            {!readOnly ? (
+              <div className="skill-file-editor__tree-actions">
+                <button
+                  type="button"
+                  className="skill-file-editor__tree-btn"
+                  onClick={() => {
+                    setDialogInput("");
+                    setCreateParentPath(null);
+                    setNewFileDialogOpen(true);
+                  }}
+                  title={t("skill.newFile", "New File")}
+                >
+                  <FilePlusIcon
+                    aria-hidden="true"
+                    style={{ width: "0.875rem", height: "0.875rem" }}
+                  />
+                </button>
+                <button
+                  type="button"
+                  className="skill-file-editor__tree-btn"
+                  onClick={() => {
+                    setDialogInput("");
+                    setCreateParentPath(null);
+                    setNewFolderDialogOpen(true);
+                  }}
+                  title={t("skill.newFolder", "New Folder")}
+                >
+                  <FolderPlusIcon
+                    aria-hidden="true"
+                    style={{ width: "0.875rem", height: "0.875rem" }}
+                  />
+                </button>
+              </div>
+            ) : null}
           </div>
 
           <div
             className="skill-file-editor__tree-list"
             onContextMenu={(event) => {
+              if (readOnly) {
+                return;
+              }
               if (event.target !== event.currentTarget) {
                 return;
               }
@@ -1450,9 +1417,7 @@ export function SkillFileEditor({
                 <FileIcon
                   style={{ width: "1.5rem", height: "1.5rem", opacity: 0.4 }}
                 />
-                <span>
-                  {t("skill.noFiles", "No local files for this skill")}
-                </span>
+                <span>{noFilesLabel}</span>
               </div>
             ) : (
               tree.map((node) => renderTreeNode(node))
@@ -1484,7 +1449,7 @@ export function SkillFileEditor({
               <span>
                 {files.filter((f) => !f.isDirectory).length > 0
                   ? t("skill.noContent", "Select a file to edit")
-                  : t("skill.noFiles", "No local files for this skill")}
+                  : noFilesLabel}
               </span>
             </div>
           ) : (
@@ -1499,7 +1464,14 @@ export function SkillFileEditor({
                   )}
                 </div>
                 <div className="skill-file-editor__editor-tabs">
-                  {!canEditCurrentFile ? (
+                  {readOnly ? (
+                    <div className="skill-file-editor__edit-state skill-file-editor__edit-state--readonly">
+                      <FileIcon
+                        style={{ width: "0.875rem", height: "0.875rem" }}
+                      />
+                      {t("common.readOnly", "Read only")}
+                    </div>
+                  ) : !canEditCurrentFile ? (
                     !currentFile?.previewKind ? (
                       <div className="skill-file-editor__edit-state skill-file-editor__edit-state--readonly">
                         <FileIcon
@@ -1562,30 +1534,32 @@ export function SkillFileEditor({
                       </button>
                     </>
                   )}
-                  <button
-                    type="button"
-                    className="skill-file-editor__editor-tab skill-file-editor__editor-tab--icon"
-                    onClick={saveCurrentFile}
-                    disabled={isSaving || !isModified(selectedFile)}
-                    title="Cmd/Ctrl+S"
-                    aria-label={t("common.save", "Save")}
-                  >
-                    {isSaving ? (
-                      <Loader2Icon
-                        aria-hidden="true"
-                        style={{
-                          width: "0.875rem",
-                          height: "0.875rem",
-                          animation: "spin 1s linear infinite",
-                        }}
-                      />
-                    ) : (
-                      <SaveIcon
-                        aria-hidden="true"
-                        style={{ width: "0.875rem", height: "0.875rem" }}
-                      />
-                    )}
-                  </button>
+                  {!readOnly ? (
+                    <button
+                      type="button"
+                      className="skill-file-editor__editor-tab skill-file-editor__editor-tab--icon"
+                      onClick={saveCurrentFile}
+                      disabled={isSaving || !isModified(selectedFile)}
+                      title="Cmd/Ctrl+S"
+                      aria-label={t("common.save", "Save")}
+                    >
+                      {isSaving ? (
+                        <Loader2Icon
+                          aria-hidden="true"
+                          style={{
+                            width: "0.875rem",
+                            height: "0.875rem",
+                            animation: "spin 1s linear infinite",
+                          }}
+                        />
+                      ) : (
+                        <SaveIcon
+                          aria-hidden="true"
+                          style={{ width: "0.875rem", height: "0.875rem" }}
+                        />
+                      )}
+                    </button>
+                  ) : null}
                 </div>
               </div>
 
@@ -1819,7 +1793,7 @@ export function SkillFileEditor({
         </div>
       </SimpleDialog>
 
-      {contextMenu && (
+      {contextMenu && !readOnly && (
         <div
           className="skill-file-editor__context-menu"
           style={{ left: contextMenu.x, top: contextMenu.y }}
@@ -1978,7 +1952,7 @@ export function SkillFileEditor({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-3 border-b border-border shrink-0">
           <h2 className="text-base font-semibold flex items-center gap-2">
-            {t("skill.fileEditor", "File Editor")}
+            {modalTitle}
             <span className="text-xs font-normal text-muted-foreground">
               —{" "}
               {skillName ||

@@ -55,6 +55,7 @@ describe("skill identity utils", () => {
       { path: "SKILL.md", content: "# Writer\r\n", isDirectory: false },
       { path: "assets/icon.txt", content: "icon\n", isDirectory: false },
       { path: ".prompthub/source.json", content: '{"a":1}', isDirectory: false },
+      { path: ".prompthub/translations/zh.md", content: "译文", isDirectory: false },
       { path: ".git/config", content: "git", isDirectory: false },
       { path: "node_modules/pkg/index.js", content: "ignored", isDirectory: false },
       { path: ".DS_Store", content: "ignored", isDirectory: false },
@@ -68,6 +69,36 @@ describe("skill identity utils", () => {
     ]);
 
     expect(baseline).toBe(equivalent);
+  });
+
+  it("ignores local environment and runtime state files but keeps example env files", () => {
+    const baseline = computeDirectoryFingerprint([
+      { path: "SKILL.md", content: "# Runtime Skill\n", isDirectory: false },
+      { path: ".env.example", content: "API_URL=\n", isDirectory: false },
+      { path: "config/.env.sample", content: "TOKEN=\n", isDirectory: false },
+    ]);
+
+    const withLocalRuntimeState = computeDirectoryFingerprint([
+      { path: "SKILL.md", content: "# Runtime Skill\n", isDirectory: false },
+      { path: ".env.example", content: "API_URL=\n", isDirectory: false },
+      { path: "config/.env.sample", content: "TOKEN=\n", isDirectory: false },
+      { path: ".env", content: "SECRET=local", isDirectory: false },
+      { path: ".env.local", content: "SECRET=local", isDirectory: false },
+      { path: "config/.env.production", content: "SECRET=prod", isDirectory: false },
+      { path: "server.pid", content: "123", isDirectory: false },
+      { path: "runtime/app.sock", content: "socket", isDirectory: false },
+      { path: ".venv/pyvenv.cfg", content: "venv", isDirectory: false },
+      { path: "venv/bin/python", data: new Uint8Array([1, 2]), isDirectory: false },
+    ]);
+
+    const changedExample = computeDirectoryFingerprint([
+      { path: "SKILL.md", content: "# Runtime Skill\n", isDirectory: false },
+      { path: ".env.example", content: "API_URL=https://example.com\n", isDirectory: false },
+      { path: "config/.env.sample", content: "TOKEN=\n", isDirectory: false },
+    ]);
+
+    expect(withLocalRuntimeState).toBe(baseline);
+    expect(changedExample).not.toBe(baseline);
   });
 
   it("ignores Python runtime and analysis caches in directory fingerprints", () => {

@@ -43,6 +43,10 @@ import { useSettingsStore } from "../../stores/settings.store";
 import { useToast } from "../ui/Toast";
 import { UnsavedChangesDialog } from "../ui/UnsavedChangesDialog";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
+import {
+  DETAIL_PAGE_CONTENT_CLASS,
+  DETAIL_PAGE_PREVIEW_GRID_CLASS,
+} from "../layout/detailPageLayout";
 import { Modal, Spinner, Textarea } from "../ui";
 import "highlight.js/styles/github-dark.css";
 import "./SkillMarkdown.css";
@@ -1911,9 +1915,12 @@ export function SkillFullDetailPage({
             </Suspense>
           </div>
         ) : (
-          <div className="max-w-6xl mx-auto p-6 w-full">
+          <div className={DETAIL_PAGE_CONTENT_CLASS}>
             {activeTab === "preview" ? (
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-stretch">
+              <div
+                data-testid="skill-detail-preview-layout"
+                className={DETAIL_PAGE_PREVIEW_GRID_CLASS}
+              >
                 <SkillPreviewPane
                   cachedInstructionsTranslation={
                     effectiveInstructionsTranslation

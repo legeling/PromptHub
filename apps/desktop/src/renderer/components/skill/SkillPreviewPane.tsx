@@ -82,7 +82,7 @@ export function SkillPreviewPane({
   );
 
   return (
-    <div className="lg:col-span-2 flex h-full min-h-0 flex-col overflow-hidden space-y-6">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden space-y-6">
       <section className="shrink-0 space-y-4">
         <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] flex items-center gap-2">
           {t("skill.skillDescription", "Skill 描述")}

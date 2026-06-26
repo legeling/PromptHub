@@ -7,3 +7,5 @@
 - [x] 补充单测/集成测试覆盖更新提示显示与过滤条件
 - [x] 运行 lint、typecheck、相关 tests 验证
 - [x] 更新 implementation.md
+- [x] 修复 `0.5.9-beta1` / `0.5.9-beta.1` 版本字符串差异和完整目录同步后基线版本未刷新导致的误报
+- [x] 将 My Skills / Skill Store 更新提示统一为右侧蓝色状态徽标，并补充位置与样式回归断言

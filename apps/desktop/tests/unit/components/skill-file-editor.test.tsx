@@ -167,6 +167,43 @@ describe("SkillFileEditor", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("allows package-specific empty file labels for plugin reuse", async () => {
+    installWindowMocks({
+      api: {
+        skill: {
+          listLocalFiles: vi.fn().mockResolvedValue([]),
+        },
+      },
+    });
+
+    const { container } = await renderWithI18n(
+      <SkillFileEditor
+        skillId="plugin-1"
+        skillName="plugin"
+        isOpen={true}
+        mode="inline"
+        surfaceLabels={{ noFiles: "No local files for this Plugin" }}
+      />,
+      { language: "en" },
+    );
+
+    const treeList = container.querySelector(".skill-file-editor__tree-list");
+    expect(treeList).not.toBeNull();
+
+    await waitFor(() => {
+      expect(
+        within(treeList as HTMLElement).getByText(
+          "No local files for this Plugin",
+        ),
+      ).toBeInTheDocument();
+    });
+    expect(
+      within(treeList as HTMLElement).queryByText(
+        "No local files for this skill",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
   it("expands nested synthetic folders to reveal files inside them", async () => {
     installWindowMocks({
       api: {
@@ -611,6 +648,60 @@ describe("SkillFileEditor", () => {
     );
   });
 
+  it("keeps local package file browsing read-only when requested", async () => {
+    const writeLocalFile = vi.fn().mockResolvedValue(undefined);
+    installWindowMocks({
+      api: {
+        skill: {
+          listLocalFiles: vi.fn().mockResolvedValue([
+            {
+              path: "README.md",
+              isDirectory: false,
+              size: 64,
+            },
+          ]),
+          readLocalFile: vi.fn().mockResolvedValue({
+            path: "README.md",
+            isDirectory: false,
+            content: "# Package",
+          }),
+          writeLocalFile,
+        },
+      },
+    });
+
+    const { container } = await renderWithI18n(
+      <SkillFileEditor
+        skillId="skill-1"
+        skillName="writer"
+        isOpen={true}
+        mode="inline"
+        readOnly
+      />,
+      { language: "en" },
+    );
+
+    await screen.findByTestId("skill-code-editor");
+
+    expect(screen.getByText("Read only")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Edit" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Save" }),
+    ).not.toBeInTheDocument();
+    expect(
+      container.querySelector('[title="New File"]'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Delete File" }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "s", ctrlKey: true });
+
+    expect(writeLocalFile).not.toHaveBeenCalled();
+  });
+
   it("can discard current file edits and cancel editing without saving", async () => {
     const writeLocalFile = vi.fn().mockResolvedValue(undefined);
     installWindowMocks({
@@ -784,9 +875,7 @@ describe("SkillFileEditor", () => {
     fireEvent.click(screen.getByRole("button", { name: "Zoom out" }));
     expect(previewStage).toHaveStyle({ width: "125%", height: "125%" });
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Fullscreen preview" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Fullscreen preview" }));
     const fullscreenDialog = screen.getByRole("dialog", {
       name: "Fullscreen preview",
     });

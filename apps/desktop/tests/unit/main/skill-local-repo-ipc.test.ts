@@ -7,6 +7,9 @@ const saveRemoteGitSkillToLocalRepoBySkillIdMock = vi
 const saveRemoteZipSkillToLocalRepoBySkillIdMock = vi
   .fn()
   .mockResolvedValue("/managed/zip-skill/repo");
+const getRemoteGitSkillPackageFingerprintMock = vi
+  .fn()
+  .mockResolvedValue("remote-package-fingerprint");
 const computeRepoDirectoryFingerprintMock = vi
   .fn()
   .mockResolvedValue("fingerprint-after-copy");
@@ -27,6 +30,8 @@ vi.mock("../../../src/main/services/skill-installer", () => ({
       saveRemoteGitSkillToLocalRepoBySkillIdMock,
     saveRemoteZipSkillToLocalRepoBySkillId:
       saveRemoteZipSkillToLocalRepoBySkillIdMock,
+    getRemoteGitSkillPackageFingerprint:
+      getRemoteGitSkillPackageFingerprintMock,
     listLocalRepoFilesByPath: vi.fn().mockResolvedValue([]),
     readLocalRepoFileByPath: vi.fn().mockResolvedValue(null),
     readLocalRepoFilesByPath: vi.fn().mockResolvedValue([]),
@@ -70,6 +75,7 @@ async function setupSkillLocalRepoIpc() {
   handleMock.mockReset();
   saveRemoteGitSkillToLocalRepoBySkillIdMock.mockClear();
   saveRemoteZipSkillToLocalRepoBySkillIdMock.mockClear();
+  getRemoteGitSkillPackageFingerprintMock.mockClear();
   computeRepoDirectoryFingerprintMock.mockClear();
   renameLocalRepoPathByPathMock.mockClear();
   writeLocalRepoFileByPathMock.mockClear();
@@ -97,6 +103,7 @@ describe("skill local repo IPC", () => {
     handleMock.mockReset();
     saveRemoteGitSkillToLocalRepoBySkillIdMock.mockClear();
     saveRemoteZipSkillToLocalRepoBySkillIdMock.mockClear();
+    getRemoteGitSkillPackageFingerprintMock.mockClear();
     computeRepoDirectoryFingerprintMock.mockClear();
     renameLocalRepoPathByPathMock.mockClear();
     writeLocalRepoFileByPathMock.mockClear();
@@ -141,6 +148,25 @@ describe("skill local repo IPC", () => {
       local_repo_path: "/managed/writer/repo",
       directory_fingerprint: "fingerprint-after-copy",
     });
+  });
+
+  it("computes a remote Git package fingerprint without saving the package", async () => {
+    const { handlers, IPC_CHANNELS } = await setupSkillLocalRepoIpc();
+
+    await expect(
+      handlers[IPC_CHANNELS.SKILL_GET_REMOTE_GIT_PACKAGE_FINGERPRINT](null, {
+        repoUrl: "https://github.com/legeling/spec-init",
+        branch: "main",
+        directory: "skills/spec-init",
+      }),
+    ).resolves.toBe("remote-package-fingerprint");
+
+    expect(getRemoteGitSkillPackageFingerprintMock).toHaveBeenCalledWith({
+      repoUrl: "https://github.com/legeling/spec-init",
+      branch: "main",
+      directory: "skills/spec-init",
+    });
+    expect(saveRemoteGitSkillToLocalRepoBySkillIdMock).not.toHaveBeenCalled();
   });
 
   it("saves a remote zip package to the managed repo and persists the fingerprint", async () => {

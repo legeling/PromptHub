@@ -22,6 +22,32 @@ The installed-source path reuses `getRegistrySkillUpdateStatus()`. Applying an u
 - sync the managed local repo from the remote skill package where supported
 - return the same status family as registry updates
 
+## Source Package Update Boundary
+
+Installed-source updates must preserve the original package source semantics. If an installed Skill has package-level metadata such as `source_directory`, `canonical_skill_path`, `directory_fingerprint`, `package_url`, or a managed `local_repo_path`, the update action treats it as a package update, not as a raw `SKILL.md` rewrite.
+
+For Git/GitHub/Gitea package sources, the update action uses the recorded `source_url`, `source_branch`, and package directory to refresh the managed repo through `saveRemoteGitToRepo()` and `syncFromRepo()`. This means an original SSH source such as `git@github.com:owner/repo.git` remains the update transport source instead of being converted into a raw HTTPS download. `content_url` remains useful for checking the entrypoint hash, but it must not force package updates through per-file raw HTTP downloads.
+
+Raw `content_url` update remains valid only for explicit single-file sources that do not advertise package metadata.
+
+## Local Modification Detection Source
+
+For installed package Skills with a managed `local_repo_path`, the managed repo `SKILL.md` is the local package source of truth. Before checking installed-source update status, PromptHub should sync the DB row from the managed repo so stale or previously truncated DB content does not masquerade as a user edit.
+
+Repo-to-DB sync must preserve the complete `SKILL.md` content. Import sanitization may trim surrounding whitespace and reject malformed field types, but it must not silently truncate Skill content, metadata fields, tags, prerequisites, or compatibility entries. Any future size cap belongs at an explicit validation boundary that rejects the payload with a visible error instead of mutating persisted Skill data.
+
+## Package Freshness Detection
+
+Installed package Skills are not fresh merely because the local and remote `SKILL.md` entrypoints match. When package metadata records a full package boundary, the update check must compare the installed `directory_fingerprint` with a remote package fingerprint computed by the same local package algorithm: clone or download the package into a temporary directory, read the package files, ignore the standard generated/internal entries, hash each file's bytes, build the normalized manifest, and compute the directory fingerprint from that manifest.
+
+PromptHub must not compare Git provider tree/blob identifiers directly against local `directory_fingerprint`. GitHub tree or blob SHA values are provider object identifiers, not PromptHub package fingerprints. Mixing them can create false positives where an already-updated local package still appears out of date.
+
+The package fingerprint ignore list is explicit, not a blanket "ignore every hidden file" rule. It excludes PromptHub-owned metadata such as `.prompthub/`, VCS metadata such as `.git/`, dependency folders, cache/build/test byproducts, logs, editor temporary files, OS sidecars, virtual environments, local environment secrets such as `.env` / `.env.local`, and runtime state such as `*.pid` / `*.sock`. It keeps distributable package assets, including hidden template files such as `.env.example`, `.env.sample`, and `.env.template`.
+
+For package Skills, version labels are secondary metadata. A registry or source version label change must not create an `update-available` status when the current local package fingerprint equals the freshly computed remote package fingerprint and the entrypoint content hash also matches. In that case PromptHub may refresh the installed baseline metadata, but the user-facing status remains `up-to-date`.
+
+A changed asset, script, reference, example, or agent config file must report `update-available` even when `SKILL.md` content and `installed_content_hash` are unchanged. After update and repo sync, if the local package fingerprint equals the current remote package fingerprint, the source status is `up-to-date`.
+
 ## UI
 
 The My Skills detail header gets a compact source update action for non-project/non-agent details. A first click checks. If an update is available, the next action applies it. Conflict/local-modified results are surfaced by toast and do not overwrite content by default.

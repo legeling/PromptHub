@@ -1,6 +1,5 @@
 import React from "react";
 import {
-  BellDotIcon,
   CheckSquareIcon,
   SendIcon,
   SquareIcon,
@@ -15,6 +14,7 @@ import { getRuntimeCapabilities } from "../../runtime";
 import { SkillVariantBadgeList } from "./SkillVariantBadgeList";
 import { buildMySkillSourceBadges } from "../../services/skill-source-badges";
 import { PlatformIcon } from "../ui/PlatformIcon";
+import { CardStatusBadge } from "../ui/CardStatusBadge";
 
 function normalizeStringArray(value: unknown): string[] {
   if (Array.isArray(value)) {
@@ -150,18 +150,6 @@ function SkillGalleryCardComponent({
           : "border-border hover:border-primary/50 hover:shadow-xl hover:-translate-y-1"
       }`}
     >
-      {hasStoreUpdate ? (
-        <div
-          className="absolute left-4 top-4 z-10 inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-1 text-[10px] font-medium text-amber-600 dark:text-amber-300"
-          title={t("skill.updateAvailable", "Update available")}
-        >
-          <BellDotIcon
-            aria-hidden="true"
-            className="h-3.5 w-3.5 animate-pulse"
-          />
-          {t("skill.updateAvailable", "Update available")}
-        </div>
-      ) : null}
       {isSelectionMode && (
         <button
           type="button"
@@ -200,6 +188,12 @@ function SkillGalleryCardComponent({
             data-testid="skill-card-header-meta"
             className="flex min-w-0 flex-1 flex-col items-end gap-2"
           >
+            {hasStoreUpdate ? (
+              <CardStatusBadge
+                label={t("skill.updateAvailable", "Update available")}
+                testId={`skill-card-status-${skill.id}`}
+              />
+            ) : null}
             {showDistribution ? (
               <div
                 data-testid="skill-distributed-targets"

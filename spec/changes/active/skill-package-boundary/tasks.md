@@ -37,6 +37,10 @@
 - [x] Fix non-standard `skills.sh` repositories such as `vercel-labs/agent-skills` so install does not guess `skills/<skill-name>` and can resolve the package by `SKILL.md` frontmatter after clone.
 - [x] Fix store quick-install failure to surface as install failure instead of safety scan failure when package persistence fails.
 - [x] Fix source update checks so stale install baselines from package sync do not report local modifications when local content already matches the current remote content.
+- [x] Fix installed package updates so GitHub package sources with raw `content_url` still refresh via clone-backed package sync and do not download package assets from raw HTTP byte fetches.
+- [x] Add installed package update regression coverage for preserving original SSH `source_url` transport.
+- [x] Fix managed repo-to-DB sync so large package `SKILL.md` entrypoints are preserved completely instead of being capped by imported-field length limits.
+- [x] Remove silent truncation from Skill import sanitization; future size caps must be explicit validation errors.
 - [x] Align the Skill detail personal notes panel by moving its title outside the card, matching the right-column section hierarchy.
 - [x] Fix ClawHub store installs so entries use the official zip download package and persist all files.
 - [x] Add zip package IPC/service tests for full inventory copy, fingerprint persistence, traversal rejection, and temp cleanup.

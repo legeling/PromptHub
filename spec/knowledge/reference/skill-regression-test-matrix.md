@@ -68,9 +68,13 @@ caches (`.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`, `.tox/`, `.nox/`,
 `.parcel-cache/`, `.turbo/`, `.next/`, `.nuxt/`, `.svelte-kit/`,
 `.nyc_output/`, `.npm/`, `.pnpm-store/`, `.yarn/cache/`, `.sass-cache/`),
 temporary directories (`tmp/`, `temp/`, `.tmp/`), debug logs, editor swap or
-backup files, and OS sidecar files. They MUST NOT ignore lockfiles or broad
-build output directories such as `dist/` or `build/` unless a future requirement
-proves those directories are never valid Skill assets.
+backup files, OS sidecar files, local environment secret files such as `.env`
+and `.env.local`, virtual environments (`.venv/`, `venv/`), and runtime state
+files such as `*.pid` and `*.sock`. They MUST still include distributable
+template/config assets such as `.env.example`, `.env.sample`, and
+`.env.template`. They MUST NOT ignore broad build output directories such as
+`dist/` or `build/` unless a future requirement proves those directories are
+never valid Skill assets.
 
 ### Completeness Boundary
 

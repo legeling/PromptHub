@@ -21,6 +21,8 @@ import {
   getPlatformRootDir,
   getPlatformSkillsDir,
   getPlatformGlobalRulePath,
+  getDefaultMcpRelativePath,
+  getDefaultPluginsRelativePath,
   validateMCPConfig,
   resolvePlatformPath,
   gitClone,
@@ -430,6 +432,9 @@ describe("skill-installer-utils", () => {
       const skillsDir = getPlatformSkillsDir(platform!);
       expect(skillsDir.startsWith("C:\\Users\\TestUser\\.kilo")).toBe(true);
       expect(skillsDir.endsWith("skills")).toBe(true);
+      expect(getDefaultMcpRelativePath("kilo")).toBe(
+        "../.config/kilo/kilo.jsonc",
+      );
 
       Object.defineProperty(process, "platform", {
         value: originalPlatform,
@@ -438,6 +443,65 @@ describe("skill-installer-utils", () => {
       process.env.HOME = originalHome;
       process.env.USERPROFILE = originalUserProfile;
       invalidateCustomPathsCache();
+    });
+
+    it("uses %LOCALAPPDATA%\\hermes as the default Hermes Agent root on Windows", () => {
+      const originalPlatform = process.platform;
+      const originalHome = process.env.HOME;
+      const originalUserProfile = process.env.USERPROFILE;
+      const originalLocalAppData = process.env.LOCALAPPDATA;
+
+      Object.defineProperty(process, "platform", {
+        value: "win32",
+        configurable: true,
+      });
+      process.env.HOME = "C:\\Users\\TestUser";
+      process.env.USERPROFILE = "C:\\Users\\TestUser";
+      process.env.LOCALAPPDATA = "C:\\Users\\TestUser\\AppData\\Local";
+      vi.mocked(initDatabase).mockReturnValue({
+        prepare: vi
+          .fn()
+          .mockReturnValue({ get: vi.fn().mockReturnValue(undefined) }),
+      } as unknown as ReturnType<typeof initDatabase>);
+      invalidateCustomPathsCache();
+
+      const platform = getPlatformById("hermes");
+      expect(platform).toBeDefined();
+      expect(getPlatformRootDir(platform!)).toBe(
+        "C:\\Users\\TestUser\\AppData\\Local\\hermes",
+      );
+      const skillsDir = getPlatformSkillsDir(platform!);
+      expect(
+        skillsDir.startsWith("C:\\Users\\TestUser\\AppData\\Local\\hermes"),
+      ).toBe(true);
+      expect(skillsDir.endsWith("skills")).toBe(true);
+
+      Object.defineProperty(process, "platform", {
+        value: originalPlatform,
+        configurable: true,
+      });
+      process.env.HOME = originalHome;
+      process.env.USERPROFILE = originalUserProfile;
+      process.env.LOCALAPPDATA = originalLocalAppData;
+      invalidateCustomPathsCache();
+    });
+
+    it("returns shared MCP defaults only for confirmed built-in targets", () => {
+      expect(getDefaultMcpRelativePath("cline")).toBe(
+        "data/settings/cline_mcp_settings.json",
+      );
+      expect(getDefaultMcpRelativePath("kilo")).toBe(
+        "../.config/kilo/kilo.jsonc",
+      );
+      expect(getDefaultMcpRelativePath("trae-work")).toBeUndefined();
+    });
+
+    it("returns shared Plugin package defaults only for supported targets", () => {
+      expect(getDefaultPluginsRelativePath("claude")).toBe(
+        "plugins/cache/prompthub",
+      );
+      expect(getDefaultPluginsRelativePath("copilot")).toBe("plugins");
+      expect(getDefaultPluginsRelativePath("cline")).toBeUndefined();
     });
   });
 
@@ -640,6 +704,34 @@ describe("skill-installer-utils", () => {
       expect(result).toContain("opencode");
     });
 
+    it("expands %LOCALAPPDATA%", () => {
+      const originalLocalAppData = process.env.LOCALAPPDATA;
+      process.env.LOCALAPPDATA = "C:\\Users\\TestUser\\AppData\\Local";
+
+      const result = resolvePlatformPath("%LOCALAPPDATA%\\hermes\\skills");
+
+      expect(result).toBe(
+        "C:\\Users\\TestUser\\AppData\\Local\\hermes\\skills",
+      );
+      process.env.LOCALAPPDATA = originalLocalAppData;
+    });
+
+    it("falls back to the Windows local app data path when LOCALAPPDATA is unset", () => {
+      const originalHome = process.env.HOME;
+      const originalUserProfile = process.env.USERPROFILE;
+      const originalLocalAppData = process.env.LOCALAPPDATA;
+      process.env.HOME = "C:\\Users\\FallbackUser";
+      process.env.USERPROFILE = "C:\\Users\\FallbackUser";
+      delete process.env.LOCALAPPDATA;
+
+      const result = resolvePlatformPath("%LOCALAPPDATA%\\hermes");
+
+      expect(result).toBe("C:\\Users\\FallbackUser\\AppData\\Local\\hermes");
+      process.env.HOME = originalHome;
+      process.env.USERPROFILE = originalUserProfile;
+      process.env.LOCALAPPDATA = originalLocalAppData;
+    });
+
     it("returns plain path unchanged (no placeholders)", () => {
       const result = resolvePlatformPath("/usr/local/skills");
       expect(result).toBe("/usr/local/skills");
@@ -654,6 +746,16 @@ describe("skill-installer-utils", () => {
     it("handles case-insensitive %USERPROFILE%", () => {
       const result = resolvePlatformPath("%userprofile%\\.test");
       expect(result).not.toContain("%userprofile%");
+    });
+
+    it("handles case-insensitive %LOCALAPPDATA%", () => {
+      const originalLocalAppData = process.env.LOCALAPPDATA;
+      process.env.LOCALAPPDATA = "C:\\Users\\TestUser\\AppData\\Local";
+
+      const result = resolvePlatformPath("%localappdata%\\hermes");
+
+      expect(result).toBe("C:\\Users\\TestUser\\AppData\\Local\\hermes");
+      process.env.LOCALAPPDATA = originalLocalAppData;
     });
 
     it("expands only ~ at the start of the string", () => {

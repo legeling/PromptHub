@@ -155,6 +155,26 @@ describe("buildSkillSyncUpdateFromRepo", () => {
       directory_fingerprint: "new-directory-fingerprint",
     });
   });
+
+  it("preserves full SKILL.md content above the generic import field limit", () => {
+    const largeBody = `# Large Skill\n\n${"Use this long package instruction.\n".repeat(600)}`;
+    const skillMd = [
+      "---",
+      "description: Large package skill",
+      "version: 2.0.0",
+      "---",
+      "",
+      largeBody,
+    ].join("\n");
+
+    expect(skillMd.length).toBeGreaterThan(10_000);
+
+    const next = buildSkillSyncUpdateFromRepo(baseSkill, skillMd);
+
+    expect(next?.instructions).toBe(skillMd);
+    expect(next?.content).toBe(skillMd);
+    expect(next?.instructions?.length).toBe(skillMd.length);
+  });
 });
 
 describe("computeRepoDirectoryFingerprint", () => {

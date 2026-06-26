@@ -166,6 +166,15 @@ export const skillApi = {
       skillId,
       options,
     ),
+  getRemoteGitPackageFingerprint: (options: {
+    repoUrl: string;
+    branch?: string;
+    directory?: string;
+  }): Promise<string | undefined> =>
+    ipcRenderer.invoke(
+      IPC_CHANNELS.SKILL_GET_REMOTE_GIT_PACKAGE_FINGERPRINT,
+      options,
+    ),
   listLocalFiles: (skillId: string): Promise<SkillLocalFileTreeEntry[]> =>
     ipcRenderer.invoke(IPC_CHANNELS.SKILL_LIST_LOCAL_FILES, skillId),
   readLocalFile: (

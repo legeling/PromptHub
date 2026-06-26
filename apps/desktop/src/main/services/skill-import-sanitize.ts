@@ -1,6 +1,5 @@
 import type { Skill, SkillCategory } from "@prompthub/shared/types";
 
-const IMPORT_FIELD_MAX_LENGTH = 10_000;
 const SKILL_CATEGORIES = new Set<SkillCategory>([
   "general",
   "office",
@@ -68,13 +67,12 @@ export interface SanitizedImportedSkill {
 function sanitizeImportedString(
   value: unknown,
   fallback?: string,
-  maxLength = IMPORT_FIELD_MAX_LENGTH,
 ): string | undefined {
   if (typeof value !== "string") {
     return fallback;
   }
 
-  const trimmed = value.trim().slice(0, maxLength);
+  const trimmed = value.trim();
   return trimmed || fallback;
 }
 
@@ -88,7 +86,7 @@ function sanitizeImportedTags(
     .filter(
       (tag): tag is string => typeof tag === "string" && tag.trim().length > 0,
     )
-    .map((tag) => tag.trim().slice(0, 128));
+    .map((tag) => tag.trim());
 
   return tags.length > 0 ? tags : [...defaultTags];
 }
@@ -103,7 +101,7 @@ function sanitizeImportedStringList(value: unknown): string[] | undefined {
       (item): item is string =>
         typeof item === "string" && item.trim().length > 0,
     )
-    .map((item) => item.trim().slice(0, 256));
+    .map((item) => item.trim());
 
   return items.length > 0 ? items : undefined;
 }
@@ -134,42 +132,24 @@ export function sanitizeImportedSkillDraft(
     ),
     version: sanitizeImportedString(
       draft.version,
-      sanitizeImportedString(draft.fallbackVersion, undefined, 256),
-      256,
+      sanitizeImportedString(draft.fallbackVersion),
     ),
     author: sanitizeImportedString(
       draft.author,
-      sanitizeImportedString(draft.fallbackAuthor, undefined, 256),
-      256,
+      sanitizeImportedString(draft.fallbackAuthor),
     ),
     tags: sanitizeImportedTags(draft.tags, draft.fallbackTags, defaultTags),
     instructions: sanitizeImportedString(draft.instructions),
-    source_url: sanitizeImportedString(draft.source_url, undefined, 500000),
-    source_id: sanitizeImportedString(draft.source_id, undefined, 500000),
-    source_label: sanitizeImportedString(draft.source_label, undefined, 500000),
-    source_branch: sanitizeImportedString(draft.source_branch, undefined, 256),
-    source_directory: sanitizeImportedString(
-      draft.source_directory,
-      undefined,
-      500000,
-    ),
-    canonical_skill_path: sanitizeImportedString(
-      draft.canonical_skill_path,
-      undefined,
-      500000,
-    ),
-    local_repo_path: sanitizeImportedString(
-      draft.local_repo_path,
-      undefined,
-      500000,
-    ),
-    icon_url: sanitizeImportedString(draft.icon_url, undefined, 500000),
-    icon_emoji: sanitizeImportedString(draft.icon_emoji, undefined, 32),
-    icon_background: sanitizeImportedString(
-      draft.icon_background,
-      undefined,
-      64,
-    ),
+    source_url: sanitizeImportedString(draft.source_url),
+    source_id: sanitizeImportedString(draft.source_id),
+    source_label: sanitizeImportedString(draft.source_label),
+    source_branch: sanitizeImportedString(draft.source_branch),
+    source_directory: sanitizeImportedString(draft.source_directory),
+    canonical_skill_path: sanitizeImportedString(draft.canonical_skill_path),
+    local_repo_path: sanitizeImportedString(draft.local_repo_path),
+    icon_url: sanitizeImportedString(draft.icon_url),
+    icon_emoji: sanitizeImportedString(draft.icon_emoji),
+    icon_background: sanitizeImportedString(draft.icon_background),
     category: sanitizeImportedCategory(draft.category),
     prerequisites: sanitizeImportedStringList(draft.prerequisites),
     compatibility: sanitizeImportedStringList(draft.compatibility),

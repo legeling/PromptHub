@@ -1,5 +1,17 @@
 # Implementation
 
+## 2026-06-22 Quick Install Follow-up
+
+- Added a compact copy/symlink segmented control to `SkillQuickInstall`.
+- The quick install modal still defaults to the global Skill install setting,
+  but users can switch the mode before installing to selected platforms.
+- `useSkillPlatform` now receives the modal-selected mode from this surface,
+  matching the existing full detail and batch deployment behavior.
+
+Verification:
+
+- `pnpm --filter @prompthub/desktop test -- --run tests/unit/components/skill-quick-install.test.tsx tests/unit/components/prompt-drag-utils.test.ts tests/unit/services/prompt-filter.test.ts tests/unit/components/prompt-list-header.test.tsx`
+
 ## Investigation Notes
 
 - `SkillBatchDeployDialog` stores the selected mode in `installMode` and passes it directly to `syncSkillsToPlatforms`.

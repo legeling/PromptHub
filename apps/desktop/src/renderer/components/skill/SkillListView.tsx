@@ -4,7 +4,6 @@ import {
   StarIcon,
   TrashIcon,
   SendIcon,
-  BellDotIcon,
   CheckSquareIcon,
   SquareIcon,
   ShieldCheckIcon,
@@ -23,6 +22,7 @@ import type { SkillPlatform } from "@prompthub/shared/constants/platforms";
 import { getRuntimeCapabilities } from "../../runtime";
 import { SkillVariantBadgeList } from "./SkillVariantBadgeList";
 import { buildMySkillSourceBadges } from "../../services/skill-source-badges";
+import { CardStatusBadge } from "../ui/CardStatusBadge";
 
 function normalizeStringArray(value: unknown): string[] {
   if (Array.isArray(value)) {
@@ -439,16 +439,10 @@ export function SkillListView({
                       {skill.name}
                     </h3>
                     {hasStoreUpdate ? (
-                      <span
-                        className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-300"
-                        title={t("skill.updateAvailable", "Update available")}
-                      >
-                        <BellDotIcon
-                          aria-hidden="true"
-                          className="h-3 w-3 animate-pulse"
-                        />
-                        {t("skill.updateAvailable", "Update available")}
-                      </span>
+                      <CardStatusBadge
+                        label={t("skill.updateAvailable", "Update available")}
+                        testId={`skill-row-status-${skill.id}`}
+                      />
                     ) : null}
                     {/* Safety shield icon */}
                     {skill.safetyReport ? (

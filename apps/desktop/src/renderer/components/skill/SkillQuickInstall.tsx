@@ -2,7 +2,9 @@ import { useTranslation } from "react-i18next";
 import {
   XIcon,
   CheckIcon,
+  CopyPlusIcon,
   Loader2Icon,
+  LinkIcon,
   CuboidIcon,
   SendIcon,
 } from "lucide-react";
@@ -12,7 +14,7 @@ import { useToast } from "../ui/Toast";
 import type { Skill } from "@prompthub/shared/types";
 import { PlatformIcon } from "../ui/PlatformIcon";
 import { getErrorMessage } from "./detail-utils";
-import { useSkillPlatform } from "./use-skill-platform";
+import { useSkillPlatform, type SkillInstallMode } from "./use-skill-platform";
 
 interface SkillQuickInstallProps {
   skill: Skill;
@@ -31,6 +33,8 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
   const { showToast } = useToast();
   const [isClosingSoon, setIsClosingSoon] = useState(false);
   const [isInstallPending, setIsInstallPending] = useState(false);
+  const [installMode, setInstallMode] =
+    useState<SkillInstallMode>(skillInstallMethod);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const installPendingRef = useRef(false);
   const {
@@ -43,7 +47,7 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
     selectAllPlatforms,
     togglePlatformSelection,
     uninstalledPlatforms,
-  } = useSkillPlatform(skill, skillInstallMethod);
+  } = useSkillPlatform(skill, installMode);
 
   const clearCloseTimer = useCallback(() => {
     if (closeTimerRef.current) {
@@ -57,6 +61,10 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
       clearCloseTimer();
     };
   }, [clearCloseTimer]);
+
+  useEffect(() => {
+    setInstallMode(skillInstallMethod);
+  }, [skill.id, skillInstallMethod]);
 
   const handleInstall = async () => {
     if (
@@ -196,6 +204,37 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
                   disabled={isInstalling}
                 >
                   {t("skill.selectAll")}
+                </button>
+              </div>
+
+              <div className="flex items-center gap-1 rounded-lg bg-accent/50 p-1">
+                <button
+                  type="button"
+                  aria-pressed={installMode === "copy"}
+                  onClick={() => setInstallMode("copy")}
+                  disabled={isInstalling}
+                  className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    installMode === "copy"
+                      ? "bg-primary text-white shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <CopyPlusIcon aria-hidden="true" className="w-3.5 h-3.5" />
+                  {t("skill.copyMode", "Copy")}
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={installMode === "symlink"}
+                  onClick={() => setInstallMode("symlink")}
+                  disabled={isInstalling}
+                  className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    installMode === "symlink"
+                      ? "bg-primary text-white shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <LinkIcon aria-hidden="true" className="w-3.5 h-3.5" />
+                  {t("skill.symlink", "Symlink")}
                 </button>
               </div>
 

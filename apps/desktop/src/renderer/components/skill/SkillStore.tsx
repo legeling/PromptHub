@@ -54,7 +54,10 @@ import {
   formatSkillSafetyScanError,
   getSafetyScanAIConfig,
 } from "./detail-utils";
-import { findInstalledRegistrySkill } from "../../services/skill-store-update";
+import {
+  findInstalledRegistrySkill,
+  hasRegistrySkillVersionChanged,
+} from "../../services/skill-store-update";
 import { filterRegistrySkills } from "../../services/skill-store-search";
 import { useSkillStoreRemoteSync } from "./store-remote-sync";
 import { normalizeGitStoreSourceInput } from "../../services/skill-store-source";
@@ -663,11 +666,9 @@ export function SkillStore() {
       const installedSkill = findInstalledRegistrySkill(skills, regSkill);
       if (!installedSkill) return false;
       if (installedSkill.installed_content_hash) {
-        return installedSkill.installed_version !== regSkill.version;
+        return hasRegistrySkillVersionChanged(installedSkill, regSkill);
       }
-      const installedVersion =
-        installedSkill.installed_version ?? installedSkill.version;
-      return Boolean(installedVersion && installedVersion !== regSkill.version);
+      return hasRegistrySkillVersionChanged(installedSkill, regSkill);
     },
     [skills],
   );

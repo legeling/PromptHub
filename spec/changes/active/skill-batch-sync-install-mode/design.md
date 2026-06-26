@@ -5,10 +5,12 @@
 The install mode boundary is:
 
 1. Batch deploy dialog mode selection.
-2. `syncSkillsToPlatforms(..., installMode)`.
-3. Preload `window.api.skill.installMd` or `installMdSymlink`.
-4. Main-process `installSkillMd` or `installSkillMdSymlink`.
-5. Filesystem operation: `fs.cp` for copy, `fs.symlink` for symlink.
+2. Quick install modal mode selection.
+3. `syncSkillsToPlatforms(..., installMode)` or direct `useSkillPlatform`
+   batch installation with the chosen mode.
+4. Preload `window.api.skill.installMd` or `installMdSymlink`.
+5. Main-process `installSkillMd` or `installSkillMdSymlink`.
+6. Filesystem operation: `fs.cp` for copy, `fs.symlink` for symlink.
 
 ## Intended Behavior
 

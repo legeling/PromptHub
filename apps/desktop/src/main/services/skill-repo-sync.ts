@@ -40,7 +40,6 @@ export function buildSkillSyncUpdateFromRepo(
       author: parsed?.frontmatter.author,
       tags: parsed?.frontmatter.tags,
       compatibility: normalizeCompatibility(parsed?.frontmatter.compatibility),
-      instructions: skillMdContent,
       protocol_type: skill.protocol_type,
     },
     { defaultTags: skill.tags ?? [] },
@@ -49,10 +48,9 @@ export function buildSkillSyncUpdateFromRepo(
   const update: UpdateSkillParams = {};
   let changed = false;
 
-  const nextContent = sanitized.instructions ?? skillMdContent;
-  if ((skill.instructions ?? skill.content ?? "") !== nextContent) {
-    update.instructions = nextContent;
-    update.content = nextContent;
+  if ((skill.instructions ?? skill.content ?? "") !== skillMdContent) {
+    update.instructions = skillMdContent;
+    update.content = skillMdContent;
     changed = true;
   }
 

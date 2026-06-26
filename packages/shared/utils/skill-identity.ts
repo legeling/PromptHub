@@ -29,9 +29,11 @@ const GENERATED_DIRECTORY_NAMES = new Set([
   ".npm",
   ".pnpm-store",
   ".sass-cache",
+  ".venv",
   ".tmp",
   "tmp",
   "temp",
+  "venv",
 ]);
 
 const GENERATED_PATH_PREFIXES = [".yarn/cache/"];
@@ -42,6 +44,8 @@ const GENERATED_FILE_SUFFIXES = [
   ".log",
   ".tmp",
   ".temp",
+  ".pid",
+  ".sock",
   ".swp",
   ".swo",
   ".tsbuildinfo",
@@ -60,6 +64,18 @@ const GENERATED_FILE_NAMES = new Set([
   "Thumbs.db",
   "desktop.ini",
 ]);
+
+function isLocalEnvFile(fileName: string): boolean {
+  if (fileName === ".env") {
+    return true;
+  }
+  if (!fileName.startsWith(".env.")) {
+    return false;
+  }
+  return ![".env.example", ".env.sample", ".env.template"].includes(
+    fileName.toLowerCase(),
+  );
+}
 
 function normalizeLineEndings(content: string): string {
   return content.replace(/\r\n?/g, "\n");
@@ -122,6 +138,7 @@ export function shouldIgnoreSkillDirectoryEntry(relativePath: string): boolean {
   if (
     fileName === ".DS_Store" ||
     GENERATED_FILE_NAMES.has(fileName) ||
+    isLocalEnvFile(fileName) ||
     fileName.startsWith(".coverage.") ||
     fileName.endsWith("~")
   ) {

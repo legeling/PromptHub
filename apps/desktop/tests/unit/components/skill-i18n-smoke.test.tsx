@@ -863,6 +863,10 @@ describe("skill i18n smoke", () => {
     await waitFor(() => {
       expect(screen.getByText("Platform Integration")).toBeInTheDocument();
     });
+    const previewLayout = screen.getByTestId("skill-detail-preview-layout");
+    expect(previewLayout.className).toContain(
+      "md:grid-cols-[minmax(0,1fr)_22rem]",
+    );
     await waitFor(() => {
       expect(screen.getByText("Write helper")).toBeInTheDocument();
     });

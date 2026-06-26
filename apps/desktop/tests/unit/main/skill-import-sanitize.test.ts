@@ -54,4 +54,32 @@ describe("skill-import-sanitize", () => {
 
     expect(sanitized.tags).toEqual(["imported"]);
   });
+
+  it("does not silently truncate long imported strings or list items", () => {
+    const longInstructions = `# Long Skill\n\n${"Keep this package content.\n".repeat(599)}Keep this package content.`;
+    const longTag = `tag-${"x".repeat(180)}`;
+    const longPrerequisite = `tool-${"y".repeat(300)}`;
+    const longSourceUrl = `https://example.com/${"path/".repeat(300)}`;
+
+    const sanitized = sanitizeImportedSkillDraft({
+      name: `skill-${"n".repeat(300)}`,
+      description: `desc-${"d".repeat(12_000)}`,
+      version: `1.0.0-${"v".repeat(300)}`,
+      author: `author-${"a".repeat(300)}`,
+      tags: [longTag],
+      instructions: longInstructions,
+      source_url: longSourceUrl,
+      prerequisites: [longPrerequisite],
+      compatibility: [`runtime-${"z".repeat(300)}`],
+    });
+
+    expect(sanitized.instructions).toBe(longInstructions);
+    expect(sanitized.description).toBe(`desc-${"d".repeat(12_000)}`);
+    expect(sanitized.version).toBe(`1.0.0-${"v".repeat(300)}`);
+    expect(sanitized.author).toBe(`author-${"a".repeat(300)}`);
+    expect(sanitized.tags).toEqual([longTag]);
+    expect(sanitized.source_url).toBe(longSourceUrl);
+    expect(sanitized.prerequisites).toEqual([longPrerequisite]);
+    expect(sanitized.compatibility).toEqual([`runtime-${"z".repeat(300)}`]);
+  });
 });

@@ -960,6 +960,60 @@ export class SkillInstaller {
     }
   }
 
+  static async getRemoteGitSkillPackageFingerprint(options: {
+    repoUrl: string;
+    branch?: string;
+    directory?: string;
+  }): Promise<string | undefined> {
+    await this.init();
+
+    const parsedRepo = parseGitRepo(options.repoUrl);
+    if (!parsedRepo) {
+      throw new Error(
+        "Invalid git repository URL: must be https://<host>/{owner}/{repo} or git@<host>:{owner}/{repo}.git",
+      );
+    }
+
+    const tempRoot = await fs.mkdtemp(
+      path.join(this.skillsDir, ".remote-fingerprint-"),
+    );
+    const repoDir = path.join(
+      tempRoot,
+      `${parsedRepo.owner}-${parsedRepo.repo}`,
+    );
+
+    try {
+      await gitClone(parsedRepo.cloneUrl, repoDir, options.branch);
+
+      const requestedDirectory = options.directory
+        ?.trim()
+        .replace(/^\/+|\/+$/g, "");
+      let skillDir: string;
+
+      if (requestedDirectory) {
+        const candidateDir = path.resolve(repoDir, requestedDirectory);
+        if (!isPathWithin(repoDir, candidateDir)) {
+          throw new Error(
+            "Path traversal detected: skill directory is outside repository",
+          );
+        }
+        if (!(await fileExists(path.join(candidateDir, "SKILL.md")))) {
+          throw new Error(
+            `SKILL.md not found in directory: ${requestedDirectory}`,
+          );
+        }
+        skillDir = candidateDir;
+      } else {
+        skillDir = await this.resolveSingleSkillDirFromRepo(repoDir);
+      }
+
+      const repoFiles = await this.readLocalRepoFileBuffersByPath(skillDir);
+      return computeDirectoryFingerprint(repoFiles);
+    } finally {
+      await fs.rm(tempRoot, { recursive: true, force: true }).catch(() => {});
+    }
+  }
+
   static async saveRemoteZipSkillToLocalRepoBySkillId(
     skill: Pick<
       Skill,

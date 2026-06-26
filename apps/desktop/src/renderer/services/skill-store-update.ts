@@ -15,9 +15,53 @@ export interface RegistrySkillUpdateCheck {
   localHash?: string;
   installedHash?: string;
   remoteHash: string;
+  localDirectoryFingerprint?: string;
+  remoteDirectoryFingerprint?: string;
   remoteContent: string;
   localModified: boolean;
   remoteChanged: boolean;
+}
+
+const PRERELEASE_VERSION_ALIASES = ["alpha", "beta", "rc", "pre", "preview"];
+
+export function normalizeSkillStoreVersion(version?: string | null): string {
+  const normalized = (version ?? "").trim().toLowerCase().replace(/^v/, "");
+  if (!normalized) {
+    return "";
+  }
+
+  return PRERELEASE_VERSION_ALIASES.reduce(
+    (current, label) =>
+      current.replace(
+        new RegExp(`[-_.]?${label}[-_.]?(\\d+)$`, "i"),
+        `-${label}.$1`,
+      ),
+    normalized,
+  );
+}
+
+export function areSkillStoreVersionsEqual(
+  left?: string | null,
+  right?: string | null,
+): boolean {
+  const normalizedLeft = normalizeSkillStoreVersion(left);
+  const normalizedRight = normalizeSkillStoreVersion(right);
+  return (
+    Boolean(normalizedLeft && normalizedRight) &&
+    normalizedLeft === normalizedRight
+  );
+}
+
+export function hasRegistrySkillVersionChanged(
+  installedSkill: Skill,
+  registrySkill: RegistrySkill,
+): boolean {
+  const installedVersion =
+    installedSkill.installed_version ?? installedSkill.version;
+  if (!installedVersion || !registrySkill.version) {
+    return false;
+  }
+  return !areSkillStoreVersionsEqual(installedVersion, registrySkill.version);
 }
 
 function normalizeFrontmatter(content: string): string {
@@ -53,7 +97,9 @@ export function computeSkillContentFingerprint(content: string): string {
   return computeStableTextHash(normalizeSkillContentForHash(content));
 }
 
-export async function computeSkillContentHash(content: string): Promise<string> {
+export async function computeSkillContentHash(
+  content: string,
+): Promise<string> {
   const normalized = normalizeSkillContentForHash(content);
   const subtle = globalThis.crypto?.subtle;
 
@@ -76,7 +122,9 @@ export function findInstalledRegistrySkill(
   const sourceId = registrySkill.source_id?.toLowerCase();
   const contentUrl = registrySkill.content_url?.toLowerCase();
   const sourceUrl = registrySkill.source_url?.toLowerCase();
-  const installName = (registrySkill.install_name || registrySkill.slug).toLowerCase();
+  const installName = (
+    registrySkill.install_name || registrySkill.slug
+  ).toLowerCase();
   const hasInstalledSourceIdentity = (skill: Skill) =>
     Boolean(skill.source_id || skill.content_url || skill.source_url);
 
@@ -120,18 +168,28 @@ export async function getRegistrySkillUpdateStatus(
     };
   }
 
-  const localContent = installedSkill.content ?? installedSkill.instructions ?? "";
+  const localContent =
+    installedSkill.content ?? installedSkill.instructions ?? "";
   const localHash = await computeSkillContentHash(localContent);
   const installedHash = installedSkill.installed_content_hash;
+  const localDirectoryFingerprint = installedSkill.directory_fingerprint;
+  const remoteDirectoryFingerprint = registrySkill.directory_fingerprint;
   const localMatchesRemote = localHash === remoteHash;
   const localModified = localMatchesRemote
     ? false
     : Boolean(installedHash && localHash !== installedHash);
-  const remoteChanged = localMatchesRemote
+  const directoryChanged = Boolean(
+    localDirectoryFingerprint &&
+      remoteDirectoryFingerprint &&
+      localDirectoryFingerprint !== remoteDirectoryFingerprint,
+  );
+  const contentRemoteChanged = localMatchesRemote
     ? false
     : installedHash
       ? remoteHash !== installedHash
-      : remoteHash !== localHash || registrySkill.version !== installedSkill.version;
+      : remoteHash !== localHash ||
+        hasRegistrySkillVersionChanged(installedSkill, registrySkill);
+  const remoteChanged = directoryChanged || contentRemoteChanged;
 
   let status: RegistrySkillUpdateStatus = "up-to-date";
   if (localModified && remoteChanged) {
@@ -149,6 +207,8 @@ export async function getRegistrySkillUpdateStatus(
     localHash,
     installedHash,
     remoteHash,
+    localDirectoryFingerprint,
+    remoteDirectoryFingerprint,
     remoteContent,
     localModified,
     remoteChanged,

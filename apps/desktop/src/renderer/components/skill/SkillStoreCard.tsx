@@ -1,6 +1,5 @@
 import {
   CheckIcon,
-  DownloadIcon,
   EyeIcon,
   Loader2Icon,
   PlusIcon,
@@ -10,6 +9,7 @@ import type { RegistrySkill } from "@prompthub/shared/types";
 import { SkillIcon } from "./SkillIcon";
 import { SkillVariantBadgeList } from "./SkillVariantBadgeList";
 import { buildSkillVariantBadges } from "../../services/skill-variant-badges";
+import { CardStatusBadge } from "../ui/CardStatusBadge";
 
 const MAX_STAGGERED_STORE_CARDS = 12;
 
@@ -191,12 +191,10 @@ export function SkillStoreCard({
             <EyeIcon aria-hidden="true" className="h-4 w-4" />
           </button>
         ) : hasUpdate ? (
-          <div
-            className="p-1.5 text-amber-500"
-            title={t("skill.updateAvailable", "Update available")}
-          >
-            <DownloadIcon aria-hidden="true" className="w-4 h-4" />
-          </div>
+          <CardStatusBadge
+            label={t("skill.updateAvailable", "Update available")}
+            testId={`skill-store-card-status-${skill.slug}`}
+          />
         ) : isInstalled ? (
           <div
             className="p-1.5 text-green-500"
