@@ -1,11 +1,11 @@
 ---
 name: spec-init
 description: 面向新项目或现有项目的文档驱动开发 skill。Use when the user wants to create,补齐,更新, or refine specs such as workflow, knowledge, verification, changes, README, or AGENTS for a real project.
-compatibility: Works best in Claude Code, Codex, OpenCode, and other Agent Skills compatible tools.
 metadata:
   stage: beta
   language: zh-CN
   workflow: agent-driven-spec
+  prompthub_profile: spec-directory-first
 ---
 
 # /spec-init — Agent 驱动的文档开发 skill
@@ -102,6 +102,37 @@ metadata:
 
 例如 PromptHub 项目使用 `spec/workflow/*`、`spec/knowledge/*`、`spec/rules/*`、`spec/changes/active/*` 作为内部 SSD 真相源；在该项目中不得新建平行的 `docs/workflow/*` 来承载内部变更。
 
+## PromptHub 内部执行规则
+
+当这个 skill 在 PromptHub 仓库内执行时，必须启用 PromptHub profile：
+
+- 先读 `AGENTS.md`、`spec/README.md`、`spec/rules/document-routing-rules.md`，再读相关稳定文档和 active change。
+- 内部需求、设计、验证、任务、问题、规则、发布与归档默认写入 `spec/`，不是 `docs/`。
+- `docs/` 只用于仓库对外说明、用户文档或 README 系列文档；不要把内部 SSD 内容写成新的 `docs/workflow/*`。
+- 非 trivial 的功能、迁移、重构、跨模块 bugfix、存储/同步/API/IPC/CLI/用户流程变化，必须创建或更新 `spec/changes/active/<change-key>/`。
+- active change 至少包含 `proposal.md`、`specs/<domain>/spec.md`、`design.md`、`tasks.md`、`implementation.md`。
+- delta spec 必须放在 `specs/<domain>/spec.md`，不要新建平铺的 `spec.md`。
+- 稳定真相只在变更落地后同步回 `spec/workflow/*`、`spec/knowledge/*`、`spec/rules/`、`spec/releases/` 或 `spec/adr/`。
+- 如果代码、稳定文档和 active change 互相冲突，先记录冲突并要求用户确认，不要静默选择最小改动。
+
+### PromptHub Issue 状态规则
+
+PromptHub 的 GitHub issue 远端状态和本地交付状态是两套记录：
+
+- `spec/issues/active/github-open.md` 和 `spec/issues/archive/github-closed.md` 只是 GitHub 远端快照。
+- `spec/issues/active/local-github-status.md` 记录本地 triage / delivery 状态。
+- 本地实现完成但版本尚未发布时，标记 `local_done` 或 `release_pending`，不要关闭 GitHub issue。
+- 目标版本发布后，才关闭 GitHub issue，并刷新 open / closed 快照。
+
+### PromptHub 测试与完成规则
+
+在 PromptHub 内处理 bugfix 或非 trivial feature 时：
+
+- 优先写能复现风险的失败测试或补充最小回归测试。
+- 测试要覆盖用户可见行为、持久化副作用、边界条件和失败路径，而不是只断言函数被调用。
+- `implementation.md` 必须记录实际验证命令、跳过项、警告和后续风险。
+- 不要把“已写代码”当成完成；完成必须包含文档记录和验证结果。
+
 ## 文档边界
 
 先阅读并遵循：
@@ -109,7 +140,7 @@ metadata:
 - `references/doc-boundaries.md`
 - `references/example-idea-to-docs.md`
 
-边界如下：
+边界如下。路径里的 `docs/` 是通用新项目示例；在 PromptHub 内执行时按项目路由替换为 `spec/`：
 
 - `docs/workflow/00-intake/README.md`: 为什么做，谁来用，什么不做
 - `docs/workflow/01-requirements/README.md`: 做什么，为什么做，怎么验收
@@ -142,6 +173,7 @@ metadata:
 - 先读目录结构
 - 先读 README / docs / 关键入口代码
 - 先梳理真实调用链和模块边界
+- 如果仓库有 `AGENTS.md`、`spec/README.md`、`spec/rules/*` 或 active change，先按这些文件确定文档路由和工作流边界
 
 如果是新项目：
 
@@ -299,6 +331,8 @@ spec 应该随着项目推进不断完善。每轮需求澄清、设计决策、
 - `README.md`、`AGENTS.md`、`docs/rules/`、`spec-init.topology.yml` 是否需要同步
 
 不要把 spec 当成“初始化时写一次，以后不更新”的静态文档。
+
+在 PromptHub 内，上述 `docs/*` 检查点对应 `spec/*` 的当前拓扑；只有对外文档才同步到 `docs/`。
 
 ### Step 5.2: 变更记录规则
 

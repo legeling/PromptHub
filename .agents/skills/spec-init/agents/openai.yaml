@@ -1,8 +1,8 @@
 interface:
   display_name: "spec-init"
-  short_description: "Kick off a project with workflow, knowledge, verification, change-workspace, README, and AGENTS scaffolding."
+  short_description: "Create or update spec-first workflow, knowledge, verification, issue, and active-change records for new or existing projects."
   brand_color: "#0F766E"
-  default_prompt: "Use $spec-init to kick off a new project with spec-first documentation, verification planning, and change-workspace scaffolding before implementation starts."
+  default_prompt: "Use $spec-init to update this project's spec-first documentation. Read AGENTS.md and the existing spec topology first, then create or update the right workflow, knowledge, issue, active-change, verification, README, or AGENTS records."
 
 policy:
   allow_implicit_invocation: true

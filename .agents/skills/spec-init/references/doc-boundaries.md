@@ -2,6 +2,28 @@
 
 这个文件用来帮开发者区分“需求”“设计”“实现计划”“测试计划”“任务拆解”和“项目规则”。
 
+## 路径拓扑适配
+
+本文档里的 `docs/` 路径是通用新项目示例，不是固定要求。执行前必须先看项目自己的拓扑规则。
+
+在 PromptHub 仓库内，内部 SSD 文档使用：
+
+- `spec/workflow/*` 替代 `docs/workflow/*`
+- `spec/knowledge/*` 替代 `docs/knowledge/*`
+- `spec/changes/active/<change-key>/` 替代 `docs/changes/active/<change-key>/`
+- `spec/issues/` 替代 `docs/issues/`
+- `spec/rules/`、`spec/releases/`、`spec/archive/`、`spec/adr/` 承载内部 records
+
+`docs/` 在 PromptHub 中主要保留对外文档，不承载内部 active change 或稳定 SSD 真相。
+
+PromptHub 的非 trivial 工作还要求 active change 目录包含：
+
+- `proposal.md`
+- `specs/<domain>/spec.md`
+- `design.md`
+- `tasks.md`
+- `implementation.md`
+
 ## 一句话区分
 
 - project intake: 这个问题值不值得做
