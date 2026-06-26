@@ -28,6 +28,7 @@
   ],
   "vars": {
     "ALLOW_REGISTRATION": "false",
+    "AUTH_CAPTCHA_ENABLED": "true",
     "ACCESS_TOKEN_TTL_SECONDS": "86400"
   }
 }

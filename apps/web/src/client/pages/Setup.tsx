@@ -12,6 +12,7 @@ export function SetupPage() {
     isAuthenticated,
     isBootstrapLoading,
     isInitialized,
+    captchaEnabled,
   } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -23,12 +24,22 @@ export function SetupPage() {
   const [captchaLoading, setCaptchaLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isSubmittingRef = useRef(false);
-  const canSubmit = !captchaLoading && Boolean(captchaId) && !isSubmitting;
+  const canSubmit =
+    (!captchaEnabled || (!captchaLoading && Boolean(captchaId))) &&
+    !isSubmitting;
 
   useEffect(() => {
     let cancelled = false;
 
     const loadCaptcha = async () => {
+      if (!captchaEnabled) {
+        setCaptchaLoading(false);
+        setCaptchaId('');
+        setCaptchaImageData('');
+        setCaptchaAnswer('');
+        return;
+      }
+
       setCaptchaLoading(true);
       try {
         const captcha = await getCaptcha();
@@ -60,9 +71,13 @@ export function SetupPage() {
     return () => {
       cancelled = true;
     };
-  }, [getCaptcha, t]);
+  }, [captchaEnabled, getCaptcha, t]);
 
   const refreshCaptcha = async () => {
+    if (!captchaEnabled) {
+      return;
+    }
+
     setCaptchaLoading(true);
     try {
       const captcha = await getCaptcha();
@@ -94,7 +109,10 @@ export function SetupPage() {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (isSubmittingRef.current || !captchaId || captchaLoading) {
+    if (
+      isSubmittingRef.current ||
+      (captchaEnabled && (!captchaId || captchaLoading))
+    ) {
       return;
     }
 
@@ -110,7 +128,11 @@ export function SetupPage() {
     }
 
     try {
-      await register({ username, password, captchaId, captchaAnswer });
+      await register({
+        username,
+        password,
+        ...(captchaEnabled ? { captchaId, captchaAnswer } : {}),
+      });
       navigate('/', { replace: true });
     } catch (setupError: unknown) {
       try {
@@ -194,46 +216,48 @@ export function SetupPage() {
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="setup-captcha" className="text-sm font-semibold text-slate-700">
-              {t('auth.captchaLabel')}
-            </label>
-            <div className="web-auth-captcha-row">
-              <div className="web-auth-captcha-prompt" aria-live="polite">
-                {captchaLoading ? (
-                  <span>{t('auth.captchaLoading')}</span>
-                ) : captchaImageData ? (
-                  <img
-                    src={captchaImageData}
-                    alt={t('auth.captchaImageAlt')}
-                    className="web-auth-captcha-image"
-                  />
-                ) : (
-                  <span>{t('common.requestFailed')}</span>
-                )}
+          {captchaEnabled ? (
+            <div className="form-group">
+              <label htmlFor="setup-captcha" className="text-sm font-semibold text-slate-700">
+                {t('auth.captchaLabel')}
+              </label>
+              <div className="web-auth-captcha-row">
+                <div className="web-auth-captcha-prompt" aria-live="polite">
+                  {captchaLoading ? (
+                    <span>{t('auth.captchaLoading')}</span>
+                  ) : captchaImageData ? (
+                    <img
+                      src={captchaImageData}
+                      alt={t('auth.captchaImageAlt')}
+                      className="web-auth-captcha-image"
+                    />
+                  ) : (
+                    <span>{t('common.requestFailed')}</span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className="secondary-button web-auth-captcha-refresh"
+                  onClick={() => void refreshCaptcha()}
+                  disabled={captchaLoading}
+                >
+                  {t('auth.captchaRefresh')}
+                </button>
               </div>
-              <button
-                type="button"
-                className="secondary-button web-auth-captcha-refresh"
-                onClick={() => void refreshCaptcha()}
-                disabled={captchaLoading}
-              >
-                {t('auth.captchaRefresh')}
-              </button>
+              <input
+                id="setup-captcha"
+                type="text"
+                autoCapitalize="characters"
+                autoCorrect="off"
+                spellCheck={false}
+                value={captchaAnswer}
+                onChange={(event) => setCaptchaAnswer(event.target.value)}
+                required
+                className="web-auth-input web-auth-captcha-answer"
+                placeholder={t('auth.captchaPlaceholder')}
+              />
             </div>
-            <input
-              id="setup-captcha"
-              type="text"
-              autoCapitalize="characters"
-              autoCorrect="off"
-              spellCheck={false}
-              value={captchaAnswer}
-              onChange={(event) => setCaptchaAnswer(event.target.value)}
-              required
-              className="web-auth-input web-auth-captcha-answer"
-              placeholder={t('auth.captchaPlaceholder')}
-            />
-          </div>
+          ) : null}
 
           <button type="submit" className="login-submit web-auth-submit" disabled={!canSubmit}>
             <span className="text-white">{t('auth.completeSetup')}</span>

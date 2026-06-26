@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import {
+  type AuthCaptchaResponse,
   getCaptcha as apiGetCaptcha,
   getBootstrapStatus,
   getMe,
@@ -30,6 +31,7 @@ interface AuthContextType {
   isLoading: boolean;
   isBootstrapLoading: boolean;
   isInitialized: boolean;
+  captchaEnabled: boolean;
   registrationAllowed: boolean;
   getCaptcha: () => Promise<CaptchaPayload>;
   login: (credentials: LoginCredentials) => Promise<void>;
@@ -53,6 +55,24 @@ function normalizeCaptchaPayload(captcha: CaptchaPayload): CaptchaPayload {
   };
 }
 
+function requireCaptchaPayload(
+  captcha: AuthCaptchaResponse['data'],
+): CaptchaPayload {
+  if (
+    typeof captcha.captchaId !== 'string' ||
+    typeof captcha.expiresInSeconds !== 'number' ||
+    typeof captcha.imageData !== 'string'
+  ) {
+    throw new Error('Invalid captcha challenge payload');
+  }
+
+  return normalizeCaptchaPayload({
+    captchaId: captcha.captchaId,
+    expiresInSeconds: captcha.expiresInSeconds,
+    imageData: captcha.imageData,
+  });
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(getStoredAccessToken());
@@ -60,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isBootstrapLoading, setIsBootstrapLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(true);
+  const [captchaEnabled, setCaptchaEnabled] = useState(true);
   const [registrationAllowed, setRegistrationAllowed] = useState(false);
 
   function clearSession(): void {
@@ -90,11 +111,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const status = await getBootstrapStatus();
         if (!cancelled) {
           setIsInitialized(status.data.initialized);
+          setCaptchaEnabled(status.data.captchaEnabled);
           setRegistrationAllowed(status.data.registrationAllowed);
         }
       } catch {
         if (!cancelled) {
           setIsInitialized(true);
+          setCaptchaEnabled(true);
           setRegistrationAllowed(false);
         }
       } finally {
@@ -117,9 +140,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const status = await getBootstrapStatus();
       setIsInitialized(status.data.initialized);
+      setCaptchaEnabled(status.data.captchaEnabled);
       setRegistrationAllowed(status.data.registrationAllowed);
     } catch {
       setIsInitialized(true);
+      setCaptchaEnabled(true);
       setRegistrationAllowed(false);
     } finally {
       setIsBootstrapLoading(false);
@@ -181,7 +206,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const getCaptcha = async () => {
     const res = await apiGetCaptcha();
-    return normalizeCaptchaPayload(res.data);
+    if (res.data.captchaEnabled === false) {
+      throw new Error('Captcha is disabled');
+    }
+    return requireCaptchaPayload(res.data);
   };
 
   const logout = async () => {
@@ -207,6 +235,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         isBootstrapLoading,
         isInitialized,
+        captchaEnabled,
         registrationAllowed,
         getCaptcha,
         login,

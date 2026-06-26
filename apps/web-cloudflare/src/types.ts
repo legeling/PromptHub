@@ -6,6 +6,7 @@ export interface Env {
   ASSETS?: Fetcher;
   JWT_SECRET: string;
   ALLOW_REGISTRATION?: string;
+  AUTH_CAPTCHA_ENABLED?: string;
   ACCESS_TOKEN_TTL_SECONDS?: string;
 }
 

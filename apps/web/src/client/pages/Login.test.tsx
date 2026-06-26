@@ -39,6 +39,7 @@ function createAuthValue(isAuthenticated: boolean): AuthValue {
     isBootstrapLoading: false,
     isInitialized: true,
     registrationAllowed: true,
+    captchaEnabled: true,
     logout: vi.fn(),
     refreshBootstrap: vi.fn(),
   };
@@ -227,5 +228,38 @@ describe('LoginPage', () => {
     expect(screen.queryByRole('img', { name: 'auth.captchaImageAlt' })).toBeNull();
     expect(screen.getByText('common.requestFailed')).toBeTruthy();
     expect(screen.getByRole<HTMLButtonElement>('button', { name: 'auth.signIn' }).disabled).toBe(true);
+  });
+
+  it('hides captcha and submits credentials when captcha is disabled', async () => {
+    const getCaptcha = vi.fn();
+    render(
+      <TestWrapper
+        authOverrides={{
+          captchaEnabled: false,
+          getCaptcha,
+        }}
+      />,
+    );
+
+    expect(screen.queryByLabelText('auth.captchaLabel')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'auth.captchaRefresh' })).toBeNull();
+    expect(getCaptcha).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText('auth.username'), {
+      target: { value: 'user' },
+    });
+    fireEvent.change(screen.getByLabelText('auth.password'), {
+      target: { value: 'password123' },
+    });
+    loginMock.mockResolvedValueOnce(undefined);
+
+    fireEvent.click(screen.getByRole('button', { name: 'auth.signIn' }));
+
+    await waitFor(() => {
+      expect(loginMock).toHaveBeenCalledWith({
+        username: 'user',
+        password: 'password123',
+      });
+    });
   });
 });

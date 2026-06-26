@@ -1,15 +1,16 @@
 export interface LoginCredentials {
   username: string;
   password: string;
-  captchaId: string;
-  captchaAnswer: string;
+  captchaId?: string;
+  captchaAnswer?: string;
 }
 
 export interface AuthCaptchaResponse {
   data: {
-    captchaId: string;
-    expiresInSeconds: number;
-    imageData: string;
+    captchaEnabled?: boolean;
+    captchaId?: string;
+    expiresInSeconds?: number;
+    imageData?: string;
   };
 }
 
@@ -29,6 +30,7 @@ export interface AuthResponse {
 
 export interface BootstrapStatusResponse {
   data: {
+    captchaEnabled: boolean;
     initialized: boolean;
     registrationAllowed: boolean;
   };

@@ -28,6 +28,10 @@ const envSchema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((v) => v === 'true'),
+  AUTH_CAPTCHA_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((v) => v === 'true'),
 
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
 });
@@ -75,6 +79,7 @@ function loadConfig(): Config {
 
     allowRegistration: env.ALLOW_REGISTRATION,
     trustProxyHeaders: env.TRUST_PROXY_HEADERS,
+    authCaptchaEnabled: env.AUTH_CAPTCHA_ENABLED,
     logLevel: env.LOG_LEVEL,
   };
 }
@@ -109,6 +114,7 @@ export interface Config {
 
   allowRegistration: boolean;
   trustProxyHeaders: boolean;
+  authCaptchaEnabled: boolean;
   logLevel: 'debug' | 'info' | 'warn' | 'error';
 }
 

@@ -49,8 +49,8 @@ const captchaAnswerSchema = z
 const registerSchema = z.object({
   username: usernameSchema,
   password: passwordSchema,
-  captchaId: captchaIdSchema,
-  captchaAnswer: captchaAnswerSchema,
+  captchaId: captchaIdSchema.optional(),
+  captchaAnswer: captchaAnswerSchema.optional(),
 });
 
 const loginSchema = registerSchema;
@@ -157,7 +157,10 @@ async function parseAuthJsonBody<T extends z.ZodTypeAny>(
 
 auth.get('/bootstrap', async (c) => {
   try {
-    return success(c, await authService.getBootstrapStatus());
+    return success(c, {
+      ...(await authService.getBootstrapStatus()),
+      captchaEnabled: config.authCaptchaEnabled,
+    });
   } catch (routeError) {
     return toAuthErrorResponse(c, routeError);
   }
@@ -165,6 +168,9 @@ auth.get('/bootstrap', async (c) => {
 
 auth.get('/captcha', (c) => {
   try {
+    if (!config.authCaptchaEnabled) {
+      return success(c, { captchaEnabled: false });
+    }
     return success(c, issueAuthCaptcha(getClientIdentifier(c)));
   } catch (routeError) {
     return toAuthErrorResponse(c, routeError);
@@ -196,7 +202,7 @@ auth.post('/register', async (c) => {
   }
 
   try {
-    verifyAuthCaptcha(clientId, parsed.data.captchaId, parsed.data.captchaAnswer);
+    verifyCaptchaIfEnabled(clientId, parsed.data.captchaId, parsed.data.captchaAnswer);
     const result = await authService.register(parsed.data.username, parsed.data.password);
     setAuthCookies(c, result.accessToken, result.refreshToken);
     clearRateLimit(rateLimitKeys);
@@ -231,7 +237,7 @@ auth.post('/login', async (c) => {
   }
 
   try {
-    verifyAuthCaptcha(clientId, parsed.data.captchaId, parsed.data.captchaAnswer);
+    verifyCaptchaIfEnabled(clientId, parsed.data.captchaId, parsed.data.captchaAnswer);
     const result = await authService.login(parsed.data.username, parsed.data.password);
     setAuthCookies(c, result.accessToken, result.refreshToken);
     clearRateLimit(rateLimitKeys);
@@ -326,6 +332,35 @@ auth.put('/password', async (c) => {
     return toAuthErrorResponse(c, routeError);
   }
 });
+
+function verifyCaptchaIfEnabled(
+  clientId: string,
+  captchaId: string | undefined,
+  captchaAnswer: string | undefined,
+): void {
+  if (!config.authCaptchaEnabled) {
+    return;
+  }
+
+  const parsed = z
+    .object({
+      captchaId: captchaIdSchema,
+      captchaAnswer: captchaAnswerSchema,
+    })
+    .safeParse({ captchaId, captchaAnswer });
+
+  if (!parsed.success) {
+    const message = parsed.error.issues
+      .map((issue) => {
+        const pathLabel = issue.path.join('.');
+        return pathLabel ? `${pathLabel}: ${issue.message}` : issue.message;
+      })
+      .join('; ');
+    throw new AuthCaptchaError(422, ErrorCode.VALIDATION_ERROR, message);
+  }
+
+  verifyAuthCaptcha(clientId, parsed.data.captchaId, parsed.data.captchaAnswer);
+}
 
 function toAuthErrorResponse(c: Context, routeError: unknown): Response {
   if (routeError instanceof AuthCaptchaError) {

@@ -83,6 +83,10 @@ function getJwtSecret(env: Env): Uint8Array {
   return new TextEncoder().encode(env.JWT_SECRET);
 }
 
+function isCaptchaEnabled(env: Env): boolean {
+  return env.AUTH_CAPTCHA_ENABLED !== "false";
+}
+
 function accessTokenTtl(env: Env): number {
   const parsed = Number(env.ACCESS_TOKEN_TTL_SECONDS);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 86400;
@@ -257,6 +261,10 @@ function buildCaptchaSvg(answer: string): string {
 }
 
 async function verifyCaptcha(c: Context<{ Bindings: Env }>, captchaId: unknown, captchaAnswer: unknown): Promise<void> {
+  if (!isCaptchaEnabled(c.env)) {
+    return;
+  }
+
   if (typeof captchaId !== "string" || typeof captchaAnswer !== "string") {
     throw new Error("captchaId and captchaAnswer are required");
   }
@@ -279,6 +287,10 @@ async function verifyCaptcha(c: Context<{ Bindings: Env }>, captchaId: unknown, 
 }
 
 export async function issueCaptcha(c: Context<{ Bindings: Env }>): Promise<Response> {
+  if (!isCaptchaEnabled(c.env)) {
+    return success(c, { captchaEnabled: false });
+  }
+
   const answer = buildCaptchaAnswer();
   const id = crypto.randomUUID();
   const createdAt = nowMs();
@@ -300,6 +312,7 @@ export async function issueCaptcha(c: Context<{ Bindings: Env }>): Promise<Respo
 export async function bootstrapStatus(c: Context<{ Bindings: Env }>): Promise<Response> {
   const users = await countUsers(c.env.DB);
   return success(c, {
+    captchaEnabled: isCaptchaEnabled(c.env),
     initialized: users > 0,
     needsSetup: users === 0,
     registrationAllowed: users === 0 || c.env.ALLOW_REGISTRATION === "true",

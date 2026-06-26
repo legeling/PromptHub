@@ -85,7 +85,24 @@ Important variables:
 - `JWT_SECRET`: required, at least 32 characters
 - `DATA_ROOT`: root directory for all PromptHub data (default: `./`). The app writes `data/`, `config/`, `logs/`, and `backups/` under this path.
 - `ALLOW_REGISTRATION=false`: keep this disabled; the first admin is created only through `/setup`
+- `AUTH_CAPTCHA_ENABLED=true`: keep image captcha enabled by default. For trusted private/LAN personal deployments, set `AUTH_CAPTCHA_ENABLED=false` to remove setup/login captcha.
 - `TRUST_PROXY_HEADERS=false`: keep this disabled unless your reverse proxy strips client-supplied forwarding headers and writes trusted `X-Forwarded-For` / `X-Real-IP` values.
+
+### Auth Captcha
+
+PromptHub Web requires an image captcha on setup and login by default. This is the recommended setting for any public or internet-reachable deployment:
+
+```env
+AUTH_CAPTCHA_ENABLED=true
+```
+
+For trusted private/LAN personal deployments, you can explicitly disable the setup/login captcha:
+
+```env
+AUTH_CAPTCHA_ENABLED=false
+```
+
+When disabled, `/api/auth/bootstrap` reports `captchaEnabled: false`, the setup/login pages hide the captcha field, and the server accepts register/login requests without `captchaId` or `captchaAnswer`. This switch does not change passwords, JWT cookies, registration policy, or auth rate limits.
 
 ## Local Development
 
@@ -134,6 +151,7 @@ Then edit `.env` and set at least:
 ```env
 JWT_SECRET=replace-with-a-random-secret-at-least-32-chars
 ALLOW_REGISTRATION=false
+AUTH_CAPTCHA_ENABLED=true
 TRUST_PROXY_HEADERS=false
 ```
 
@@ -158,6 +176,7 @@ docker run -d \
   -p 3871:3000 \
   -e JWT_SECRET='replace-with-a-random-secret-at-least-32-chars' \
   -e ALLOW_REGISTRATION=false \
+  -e AUTH_CAPTCHA_ENABLED=true \
   -e TRUST_PROXY_HEADERS=false \
   -v "$(pwd)/apps/web/data:/app/data" \
   ghcr.io/legeling/prompthub-web:latest

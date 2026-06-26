@@ -43,6 +43,15 @@
 - When trusted proxy headers are disabled, auth rate limits intentionally use a
   coarse fallback client bucket rather than a spoofable header-derived identity.
 
+### 6.1 Web Auth Captcha Configuration
+
+- Web auth captcha is enabled by default for setup and login.
+- Self-hosted deployments may set `AUTH_CAPTCHA_ENABLED=false` only for trusted private/LAN personal deployments where captcha friction is not useful.
+- When captcha is disabled, `/api/auth/bootstrap` must report `captchaEnabled: false`, setup/login UI must not request or render captcha, and register/login routes must not require `captchaId` or `captchaAnswer`.
+- `AUTH_CAPTCHA_ENABLED=false` must not disable password validation, JWT cookie behavior, registration restrictions, or auth rate limits.
+- `apps/web-cloudflare` must mirror the same `AUTH_CAPTCHA_ENABLED` contract for captcha issue, register, login, and bootstrap behavior.
+- Public or internet-reachable deployments should leave `AUTH_CAPTCHA_ENABLED=true`.
+
 ### 7. Web Runtime JSON State
 
 - Small Web runtime JSON state files that mirror active server state should use

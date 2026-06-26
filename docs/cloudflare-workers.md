@@ -64,11 +64,18 @@
       "bucket_name": "prompthub-media",
       "preview_bucket_name": "prompthub-media-preview"
     }
-  ]
+  ],
+  "vars": {
+    "ALLOW_REGISTRATION": "false",
+    "AUTH_CAPTCHA_ENABLED": "true",
+    "ACCESS_TOKEN_TTL_SECONDS": "86400"
+  }
 }
 ```
 
 `database_id` 来自 `wrangler d1 create` 的输出。它是你的 Cloudflare 资源标识，提交上游前请确认没有真实值残留。
+
+`AUTH_CAPTCHA_ENABLED` 默认建议保持 `true`。如果 Worker 只用于可信内网、个人自用或受控访问环境，可以设置为 `false`，这样首次 setup 和 login 都不会要求验证码。公网可访问部署不建议关闭验证码。
 
 ## 部署
 
@@ -115,7 +122,7 @@ curl.exe https://<your-worker-url>/api/auth/bootstrap
   -Username "admin"
 ```
 
-脚本会在本地终端提示输入密码。密码不会写入仓库。验证码图片会保存到系统临时目录，你需要按图片内容手动输入验证码。
+脚本会在本地终端提示输入密码。密码不会写入仓库。验证码开启时，验证码图片会保存到系统临时目录，你需要按图片内容手动输入验证码。若已将 `AUTH_CAPTCHA_ENABLED=false`，可以直接通过浏览器首次 setup 页面创建管理员；当前脚本仍按验证码开启流程设计。
 
 ## 桌面客户端同步
 

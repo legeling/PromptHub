@@ -40,6 +40,7 @@ function renderSetup(
     isBootstrapLoading: false,
     isInitialized: false,
     registrationAllowed: true,
+    captchaEnabled: true,
     logout: vi.fn(),
     refreshBootstrap: vi.fn(),
     ...overrides,
@@ -163,5 +164,36 @@ describe('SetupPage', () => {
     expect(screen.queryByRole('img', { name: 'auth.captchaImageAlt' })).toBeNull();
     expect(screen.getByText('common.requestFailed')).toBeTruthy();
     expect(screen.getByRole<HTMLButtonElement>('button', { name: 'auth.completeSetup' }).disabled).toBe(true);
+  });
+
+  it('hides captcha and creates the first account when captcha is disabled', async () => {
+    const getCaptcha = vi.fn();
+    registerMock.mockResolvedValueOnce(undefined);
+    renderSetup({
+      captchaEnabled: false,
+      getCaptcha,
+    });
+
+    expect(screen.queryByLabelText('auth.captchaLabel')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'auth.captchaRefresh' })).toBeNull();
+    expect(getCaptcha).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText('auth.username'), {
+      target: { value: 'owner' },
+    });
+    fireEvent.change(screen.getByLabelText('auth.password'), {
+      target: { value: 'debugpass001' },
+    });
+    fireEvent.change(screen.getByLabelText('auth.confirmPassword'), {
+      target: { value: 'debugpass001' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'auth.completeSetup' }));
+
+    await waitFor(() => {
+      expect(registerMock).toHaveBeenCalledWith({
+        username: 'owner',
+        password: 'debugpass001',
+      });
+    });
   });
 });

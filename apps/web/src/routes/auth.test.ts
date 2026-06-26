@@ -16,6 +16,7 @@ const ENV_KEYS = [
   'ALLOW_REGISTRATION',
   'LOG_LEVEL',
   'TRUST_PROXY_HEADERS',
+  'AUTH_CAPTCHA_ENABLED',
 ] as const;
 
 const originalEnv = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]));
@@ -33,7 +34,11 @@ function getSetCookieHeaders(response: Response): string[] {
 
 async function createTestApp(
   dataDir: string,
-  options?: { allowRegistration?: boolean; trustProxyHeaders?: boolean },
+  options?: {
+    allowRegistration?: boolean;
+    authCaptchaEnabled?: boolean;
+    trustProxyHeaders?: boolean;
+  },
 ) {
   process.env.PORT = '3997';
   process.env.HOST = '127.0.0.1';
@@ -44,6 +49,7 @@ async function createTestApp(
   process.env.ALLOW_REGISTRATION = options?.allowRegistration === false ? 'false' : 'true';
   process.env.LOG_LEVEL = 'debug';
   process.env.TRUST_PROXY_HEADERS = options?.trustProxyHeaders ? 'true' : 'false';
+  process.env.AUTH_CAPTCHA_ENABLED = options?.authCaptchaEnabled === false ? 'false' : 'true';
 
   const [{ createApp }] = await Promise.all([
     import('../app'),
@@ -141,6 +147,7 @@ describe('web auth routes', () => {
       expect(beforeResponse.status).toBe(200);
       const beforePayload = await beforeResponse.json() as {
         data: {
+          captchaEnabled: boolean;
           initialized: boolean;
           registrationAllowed: boolean;
         };
@@ -148,6 +155,7 @@ describe('web auth routes', () => {
 
       expect(beforePayload.data.initialized).toBe(false);
       expect(beforePayload.data.registrationAllowed).toBe(true);
+      expect(beforePayload.data.captchaEnabled).toBe(true);
 
       await registerUser(app, 'bootstrapadmin', 'debugpass001');
 
@@ -553,6 +561,59 @@ describe('web auth routes', () => {
       const payload = await response.json() as { error: { code: string; message: string } };
       expect(payload.error.code).toBe('VALIDATION_ERROR');
       expect(payload.error.message).toContain('captchaId');
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  }, TEST_TIMEOUT);
+
+  it('allows setup and login without captcha when captcha is disabled', async () => {
+    const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prompthub-web-auth-test-'));
+
+    try {
+      const app = await createTestApp(dataDir, { authCaptchaEnabled: false });
+
+      const bootstrapResponse = await app.request('http://local/api/auth/bootstrap');
+      expect(bootstrapResponse.status).toBe(200);
+      const bootstrapPayload = await bootstrapResponse.json() as {
+        data: {
+          captchaEnabled: boolean;
+          initialized: boolean;
+          registrationAllowed: boolean;
+        };
+      };
+      expect(bootstrapPayload.data).toMatchObject({
+        captchaEnabled: false,
+        initialized: false,
+        registrationAllowed: true,
+      });
+
+      const registerResponse = await app.request(
+        new Request('http://local/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: 'nocaptchaadmin',
+            password: 'debugpass001',
+          }),
+        }),
+      );
+      expect(registerResponse.status).toBe(201);
+
+      const loginResponse = await app.request(
+        new Request('http://local/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: 'nocaptchaadmin',
+            password: 'debugpass001',
+          }),
+        }),
+      );
+      expect(loginResponse.status).toBe(200);
+      const loginPayload = await loginResponse.json() as {
+        data: { user: { username: string } };
+      };
+      expect(loginPayload.data.user.username).toBe('nocaptchaadmin');
     } finally {
       fs.rmSync(dataDir, { recursive: true, force: true });
     }

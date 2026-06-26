@@ -70,6 +70,7 @@ describe('AuthContext', () => {
     vi.clearAllMocks();
     vi.mocked(getBootstrapStatus).mockResolvedValue({
       data: {
+        captchaEnabled: true,
         initialized: true,
         registrationAllowed: true,
       },
@@ -108,6 +109,7 @@ describe('AuthContext', () => {
   it('exposes bootstrap state when the instance is not initialized yet', async () => {
     vi.mocked(getBootstrapStatus).mockResolvedValueOnce({
       data: {
+        captchaEnabled: true,
         initialized: false,
         registrationAllowed: true,
       },
