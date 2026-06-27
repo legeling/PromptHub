@@ -43,6 +43,15 @@ When a file approaches the limit, split by responsibility:
 
 Do not bypass these boundaries for convenience. If the correct dependency direction is unclear, record the design conflict before coding.
 
+## Reuse Rules
+
+Existing PromptHub components, stores, services, adapters, and shared helpers are part of the architecture. Before adding a new implementation, check the owning surface for an existing pattern.
+
+- Skill, Plugin, MCP, Agent, Store, Prompt, Settings, and Sync surfaces should share card structure, status badges, destructive confirmations, update indicators, install/distribution actions, and layout primitives where the product behavior is intentionally consistent.
+- Business rules such as update detection, source comparison, filesystem filtering, sort comparators, proxy/mirror routing, and sync inclusion must live in reusable helpers or services when more than one surface needs them.
+- Renderer components may compose and display state, but they must not become the only owner of durable rules, cross-surface policy, or storage semantics.
+- If a new component or helper is added instead of reusing an existing one, the active change must record the reason and any follow-up extraction plan.
+
 ## State and Data Rules
 
 Every new state or data path must define:
@@ -84,8 +93,11 @@ Before marking work done:
 
 - No touched file exceeds 2,000 lines unless the change only extracts from it.
 - New or changed code has one clear owner and source of truth.
+- Existing components, helpers, services, and design patterns were checked before adding new UI or logic.
 - Public contracts are typed and validated.
 - Dependencies follow the allowed direction.
 - Failure paths do not leave half-written DB rows, files, or UI state.
 - Tests prove behavior with the correct methods, not only mock calls.
+- UI-visible work has been operated in the running product surface or an equivalent automated browser/app surface.
+- Targeted static scans or white-box audits were recorded for duplicate UI, unsafe side effects, direct network paths, hardcoded paths, truncation, ignored errors, and other relevant risk patterns.
 - Active change docs record design decisions, coverage gaps, and follow-up debt.
