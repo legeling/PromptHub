@@ -1,34 +1,34 @@
 <div align="center">
   <img src="./imgs/icon.png" alt="PromptHub Logo" width="128" height="128" />
 
-  # PromptHub
+# PromptHub
 
-  Un espacio de trabajo local-first para prompts, skills y assets de codificación con IA.
-
-  <br/>
-
-  [![GitHub Stars](https://img.shields.io/github/stars/legeling/PromptHub?style=for-the-badge&logo=github&color=yellow)](https://github.com/legeling/PromptHub/stargazers)
-  [![Downloads](https://img.shields.io/github/downloads/legeling/PromptHub/total?style=for-the-badge&logo=github&color=blue)](https://github.com/legeling/PromptHub/releases)
-  [![Version](https://img.shields.io/badge/release-v0.5.8_stable-22C55E?style=for-the-badge)](https://github.com/legeling/PromptHub/releases/latest)
-  [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](../LICENSE)
+Un espacio de trabajo local-first para prompts, skills y assets de codificación con IA.
 
   <br/>
 
-  ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)
-  ![Electron](https://img.shields.io/badge/Electron-47848F?style=flat-square&logo=electron&logoColor=white)
-  ![React](https://img.shields.io/badge/React-61DAFB?style=flat-square&logo=react&logoColor=black)
-  ![TailwindCSS](https://img.shields.io/badge/Tailwind-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white)
-  ![SQLite](https://img.shields.io/badge/SQLite-003B57?style=flat-square&logo=sqlite&logoColor=white)
+[![GitHub Stars](https://img.shields.io/github/stars/legeling/PromptHub?style=for-the-badge&logo=github&color=yellow)](https://github.com/legeling/PromptHub/stargazers)
+[![Downloads](https://img.shields.io/github/downloads/legeling/PromptHub/total?style=for-the-badge&logo=github&color=blue)](https://github.com/legeling/PromptHub/releases)
+[![Version](https://img.shields.io/badge/release-v0.5.8_stable-22C55E?style=for-the-badge)](https://github.com/legeling/PromptHub/releases/latest)
+[![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](../LICENSE)
 
   <br/>
 
-  ![macOS](https://img.shields.io/badge/macOS-000000?style=flat-square&logo=apple&logoColor=white)
-  ![Windows](https://img.shields.io/badge/Windows-0078D6?style=flat-square&logo=windows&logoColor=white)
-  ![Linux](https://img.shields.io/badge/Linux-FCC624?style=flat-square&logo=linux&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![Electron](https://img.shields.io/badge/Electron-47848F?style=flat-square&logo=electron&logoColor=white)
+![React](https://img.shields.io/badge/React-61DAFB?style=flat-square&logo=react&logoColor=black)
+![TailwindCSS](https://img.shields.io/badge/Tailwind-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-003B57?style=flat-square&logo=sqlite&logoColor=white)
 
   <br/>
 
-  [简体中文](../README.md) · [繁體中文](./README.zh-TW.md) · [English](./README.en.md) · [日本語](./README.ja.md) · [Deutsch](./README.de.md) · [Español](./README.es.md) · [Français](./README.fr.md)
+![macOS](https://img.shields.io/badge/macOS-000000?style=flat-square&logo=apple&logoColor=white)
+![Windows](https://img.shields.io/badge/Windows-0078D6?style=flat-square&logo=windows&logoColor=white)
+![Linux](https://img.shields.io/badge/Linux-FCC624?style=flat-square&logo=linux&logoColor=black)
+
+  <br/>
+
+[简体中文](../README.md) · [繁體中文](./README.zh-TW.md) · [English](./README.en.md) · [日本語](./README.ja.md) · [Deutsch](./README.de.md) · [Español](./README.es.md) · [Français](./README.fr.md)
 
   <br/>
 
@@ -66,17 +66,17 @@ Tus datos se quedan en tu máquina.
 
 ## 📥 Descarga
 
-Última estable: **v0.5.8**; preview actual: **v0.5.9-beta.1**. Los enlaces directos estables siguen apuntando a v0.5.8; las builds preview están en GitHub Prereleases:
+Última estable: **v0.5.8**; preview actual: **v0.5.9-beta.2**. Los enlaces directos estables siguen apuntando a v0.5.8; las builds preview están en GitHub Prereleases:
 
 - **Descarga directa** — apunta temporalmente a los assets estables de GitHub para evitar 404 mientras el mirror CDN está vacío; volverá a usar enlaces CDN con nombres fijos cuando el mirror esté poblado.
 - **GitHub Releases** — página oficial con archivo histórico, firmas y notas de versión completas.
 
-| Plataforma | Descarga directa | GitHub Releases |
-| ---------- | ---------------- | --------------- |
-| Windows    | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.5.8-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.5.8-arm64.exe) | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.5.8-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.5.8-arm64.exe) |
-| macOS      | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.8-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.8-x64.dmg) | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.8-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.8-x64.dmg) |
-| Linux      | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.8-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.8-amd64.deb) | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.8-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.8-amd64.deb) |
-| Vista previa | [![Preview v0.5.9-beta.1](https://img.shields.io/badge/Preview-0.5.9--beta.1-8B5CF6?style=for-the-badge&logo=github&logoColor=white)](https://github.com/legeling/PromptHub/releases/tag/v0.5.9-beta.1) | [GitHub Prerelease v0.5.9-beta.1](https://github.com/legeling/PromptHub/releases/tag/v0.5.9-beta.1) |
+| Plataforma   | Descarga directa                                                                                                                                                                                                                                                                                                                                                                                                                        | GitHub Releases                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Windows      | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.5.8-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.5.8-arm64.exe) | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.5.8-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-Setup-0.5.8-arm64.exe) |
+| macOS        | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.8-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.8-x64.dmg)     | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.8-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.8-x64.dmg)     |
+| Linux        | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.8-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.8-amd64.deb)              | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.8-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/legeling/PromptHub/releases/latest/download/PromptHub-0.5.8-amd64.deb)              |
+| Vista previa | [![Preview v0.5.9-beta.2](https://img.shields.io/badge/Preview-0.5.9--beta.2-8B5CF6?style=for-the-badge&logo=github&logoColor=white)](https://github.com/legeling/PromptHub/releases/tag/v0.5.9-beta.2)                                                                                                                                                                                                                                 | [GitHub Prerelease v0.5.9-beta.2](https://github.com/legeling/PromptHub/releases/tag/v0.5.9-beta.2)                                                                                                                                                                                                                                                                                                                                     |
 
 > **Apple Silicon o Intel?** M1/M2/M3/M4 → `arm64`. Macs Intel → `x64`.
 > **Windows arch?** La mayoría → `x64`. Solo en hardware ARM tipo Surface Pro X → `arm64`.
@@ -106,7 +106,7 @@ Vuelve a abrir la app. Sustituye la ruta si la instalaste en otro sitio.
 
 ### Canal de vista previa
 
-¿Quieres probar la próxima versión preliminar? Abre *Ajustes → Acerca de* y activa el canal de vista previa. La app consultará entonces los Prereleases de GitHub. Al desactivarlo vuelve a la estable; PromptHub no degrada automáticamente de una preview más nueva a una estable más antigua.
+¿Quieres probar la próxima versión preliminar? Abre _Ajustes → Acerca de_ y activa el canal de vista previa. La app consultará entonces los Prereleases de GitHub. Al desactivarlo vuelve a la estable; PromptHub no degrada automáticamente de una preview más nueva a una estable más antigua.
 
 <div id="screenshots"></div>
 
@@ -208,11 +208,11 @@ Vuelve a abrir la app. Sustituye la ruta si la instalaste en otro sitio.
 
 1. **Crea tu primer prompt.** Pulsa **+ Nuevo**, completa título, descripción, prompt de sistema y prompt de usuario. `{{nombre}}` crea una variable; copiar o probar abrirá un formulario.
 
-2. **Trae Skills.** Abre la pestaña Skills. Elige algunos del store o pulsa *Escanear local* para localizar SKILL.md ya presentes.
+2. **Trae Skills.** Abre la pestaña Skills. Elige algunos del store o pulsa _Escanear local_ para localizar SKILL.md ya presentes.
 
 3. **Instala en herramientas IA.** Desde el detalle del Skill, elige la plataforma destino. PromptHub instalará el SKILL.md en el directorio esperado por la plataforma, como symlink (edición compartida) o copia independiente.
 
-4. **Sincronización (opcional).** *Ajustes → Datos* configura WebDAV, o auto-hospeda PromptHub Web como destino de sync.
+4. **Sincronización (opcional).** _Ajustes → Datos_ configura WebDAV, o auto-hospeda PromptHub Web como destino de sync.
 
 <div id="self-hosted-web"></div>
 
@@ -238,7 +238,7 @@ En `.env`, como mínimo:
 
 Por defecto: `http://localhost:3871`. La primera visita lleva a `/setup`; el primer usuario será administrador.
 
-Para conectar el escritorio: *Ajustes → Datos → Self-Hosted PromptHub*. Prueba la conexión, sube el workspace local, baja desde Web, activa pull al iniciar o push en segundo plano.
+Para conectar el escritorio: _Ajustes → Datos → Self-Hosted PromptHub_. Prueba la conexión, sube el workspace local, baja desde Web, activa pull al iniciar o push en segundo plano.
 
 Notas detalladas de despliegue / actualización / backup / imagen GHCR / desarrollo en [`web-self-hosted.md`](./web-self-hosted.md).
 
@@ -301,6 +301,15 @@ Flags globales habituales:
 ## Registro de cambios
 
 Changelog completo: **[CHANGELOG.md](../CHANGELOG.md)**
+
+### v0.5.9-beta.2 (2026-06-27, vista previa)
+
+- Gestión Plugin ampliada: My Plugins / Plugin Store / Agent Plugin siguen mejor el estilo de Skill con instalación, detalle, snapshots de versión, actualizaciones de origen, acciones batch, distribución a Agent e importación de Skill / MCP hijos
+- Sincronización completa de assets de Agent: sync autoalojada y backup/restore incluyen My Skills, My MCP, My Plugins, Rules y datos relacionados
+- Centro de configuración de red: Settings agrupa proxy y mirrors para que las peticiones de red compartan una sola política
+- Mejoras CLI para proyectos: instalación desde el directorio actual, selección interactiva de My Skills, instalación por ruta y comandos de configuración IA más completos
+- Las comprobaciones de actualización de Skill usan fingerprint de contenido y comparación de directorios, ignorando cachés, artefactos ocultos y metadatos de PromptHub
+- MCP / Plugin UI reutiliza patrones de Skill para filtros de tags abajo a la izquierda, anchos de tarjetas, badges de actualización, detalles y entradas de distribución
 
 ### v0.5.9-beta.1 (2026-06-14, vista previa)
 
@@ -374,11 +383,11 @@ Changelog completo: **[CHANGELOG.md](../CHANGELOG.md)**
 
 ## Hoja de ruta
 
-### v0.5.9-beta.1 ← preview actual
+### v0.5.9-beta.2 ← preview actual
 
-- La gestión MCP entra en preview de escritorio con biblioteca, tienda de plantillas, distribución a agentes, health checks y comandos CLI
-- Árboles de relaciones de Prompt, paneles semánticos y agrupación por arrastre llegan al flujo existente de Prompts
-- Se pulen importación Git / SSH de Skills, navegación de repos grandes, vista previa de imágenes y copia de título
+- Plugin / MCP Management sigue convergiendo con la experiencia Skill en stores, distribución Agent, detalles, filtros de tags y badges de actualización
+- Sync de assets Agent, proxy de red, instalación CLI de proyectos y comprobaciones de origen Skill entran en validación beta2
+- Árbol de relaciones Prompt, rutas Agent en Windows, toggle de captcha Web y fixes de release pipeline se incluyen para usuarios preview
 
 ### v0.5.8 ← estable actual
 
@@ -444,16 +453,16 @@ pnpm build:web
 
 `pnpm build` solo compila la app de escritorio. El bundle Web requiere `pnpm build:web`.
 
-| Comando | Uso |
-| ------- | --- |
-| `pnpm electron:dev` | Entorno de desarrollo Vite + Electron |
-| `pnpm dev:web` | Servidor de desarrollo Web |
-| `pnpm lint` / `pnpm lint:web` | Lint |
-| `pnpm typecheck` / `pnpm typecheck:web` | Comprobaciones de TypeScript |
-| `pnpm test -- --run` | Tests unitarios + integración del escritorio |
-| `pnpm test:e2e` | Playwright e2e |
-| `pnpm verify:web` | Web lint + typecheck + test + build |
-| `pnpm test:release` | Compuerta previa a release del escritorio |
+| Comando                                          | Uso                                                  |
+| ------------------------------------------------ | ---------------------------------------------------- |
+| `pnpm electron:dev`                              | Entorno de desarrollo Vite + Electron                |
+| `pnpm dev:web`                                   | Servidor de desarrollo Web                           |
+| `pnpm lint` / `pnpm lint:web`                    | Lint                                                 |
+| `pnpm typecheck` / `pnpm typecheck:web`          | Comprobaciones de TypeScript                         |
+| `pnpm test -- --run`                             | Tests unitarios + integración del escritorio         |
+| `pnpm test:e2e`                                  | Playwright e2e                                       |
+| `pnpm verify:web`                                | Web lint + typecheck + test + build                  |
+| `pnpm test:release`                              | Compuerta previa a release del escritorio            |
 | `pnpm --filter @prompthub/desktop bundle:budget` | Verificación de presupuesto del bundle de escritorio |
 
 <div id="project-structure"></div>

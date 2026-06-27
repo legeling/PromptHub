@@ -1,5 +1,44 @@
 ## [Unreleased]
 
+## [0.5.9-beta.2] - 2026-06-27
+
+### 新功能 / Features
+
+- 🧩 **Plugin 管理预览扩展**：新增 My Plugins / Plugin Store / Agent Plugin 的 Skill 风格管理体验，支持安装、详情、版本快照、来源更新、批量操作、Agent 分发、子 Skill / MCP 导入和静态安全评估
+  - **Expanded Plugin Management Preview**: Added Skill-style My Plugins / Plugin Store / Agent Plugin management with install, detail, version snapshots, source updates, batch actions, Agent distribution, child Skill / MCP import, and static safety assessment
+- 🔄 **整套 Agent 资产同步**：自托管同步和备份恢复纳入 My Skills、My MCP、My Plugins、Rules 等 Agent 资产，减少跨设备恢复后的能力缺口
+  - **Full Agent Asset Sync**: Self-hosted sync and backup/restore now include Agent assets such as My Skills, My MCP, My Plugins, and Rules to reduce cross-device recovery gaps
+- 🌐 **网络配置中心**：设置页新增网络分类，集中管理代理与镜像源相关配置，网络请求可复用统一代理策略
+  - **Network Configuration Center**: Settings now include a Network category for proxy and mirror-source configuration, with network requests sharing one proxy policy
+- 🧑‍💻 **CLI 项目工作流优化**：CLI 支持从当前目录出发的项目 Skill 工作流、交互式选择我的 Skill、路径安装和更完整的 AI 配置命令
+  - **CLI Project Workflow Improvements**: CLI workflows now support current-directory project Skill installs, interactive My Skill selection, path-based installs, and fuller AI configuration commands
+- 🛒 **统一自定义商店源**：Skill / MCP / Plugin 的自定义商店源交互收口到同一套来源编辑、删除确认、启用禁用和镜像/代理语义
+  - **Unified Custom Store Sources**: Skill / MCP / Plugin custom store sources now share source editing, delete confirmation, enable/disable, and mirror/proxy semantics
+
+### 问题修复 / Fixes
+
+- 🔎 **Skill 来源更新校验更可靠**：更新检查改为内容指纹/目录对比，忽略缓存、隐藏产物和 PromptHub 自身元数据，减少“本地未修改却提示有修改”以及“远端有更新却显示最新”的误判
+  - **More Reliable Skill Source Update Checks**: Source update checks now use content fingerprints and directory comparison while ignoring caches, generated artifacts, and PromptHub metadata, reducing false local-change and false up-to-date results
+- 🪟 **Windows / Agent 路径兼容**：补齐 `%LOCALAPPDATA%`、Hermes、Trae Work 等平台路径和 shell 打开路径处理，减少 Windows 桌面版 Agent 资产识别失败
+  - **Windows / Agent Path Compatibility**: Added `%LOCALAPPDATA%`, Hermes, Trae Work, and shell-open path handling to reduce Agent asset detection failures on Windows desktop
+- 📋 **Prompt 复制与关系树回归修复**：修复 Web Prompt 复制兜底、Prompt 树折叠/标题缩进/关系按钮显著度、子项排序和关系图入口等交互问题
+  - **Prompt Copy and Relationship Tree Fixes**: Fixed Web prompt copy fallback plus Prompt tree collapse, title indentation, relation-button prominence, child-count sorting, and relationship graph entry interactions
+- 🧰 **MCP 卸载配置清理**：Codex TOML MCP 删除现在会同时移除 server 子配置和 tool approval override，避免卸载后残留无效 MCP 配置导致 CLI 报错
+  - **MCP Uninstall Config Cleanup**: Codex TOML MCP removal now deletes server child sections and tool approval overrides together, avoiding invalid leftover MCP config after uninstall
+- 🚀 **发布链路加固**：发布 workflow 对可选镜像发布增加保护，避免 preview 发布因未配置镜像凭据或镜像路径而失败
+  - **Release Pipeline Hardening**: Release workflows now guard optional mirror publishing so preview releases do not fail when mirror credentials or paths are unavailable
+- 🌐 **自部署 Web 验证码开关**：自部署 Web 登录验证码支持通过环境变量关闭，方便内网个人部署
+  - **Self-hosted Web Captcha Toggle**: Self-hosted Web login captcha can be disabled through an environment variable for private intranet deployments
+
+### 优化 / Improvements
+
+- 🎛️ **MCP / Plugin UI 与 Skill 对齐**：My MCP、Agent MCP、Plugin Store、Agent Plugin、标签筛选、详情页、卡片宽度、更新提示和分发入口继续复用 Skill 的布局与交互模式
+  - **MCP / Plugin UI Aligned with Skills**: My MCP, Agent MCP, Plugin Store, Agent Plugin, tag filters, detail pages, card widths, update badges, and distribution entry points now reuse Skill layout and interaction patterns more consistently
+- 🧪 **测试与文档标准补强**：补充白盒/黑盒/边界/安全/性能/回滚验证要求，扩展 MCP、Plugin、同步、CLI、设置和 UI 回归测试覆盖
+  - **Testing and Documentation Standards Expanded**: Added stronger white-box, black-box, boundary, security, performance, and rollback verification requirements with broader MCP, Plugin, sync, CLI, settings, and UI regression coverage
+- 🧾 **本地 Issue 状态工作流**：新增 GitHub issue 远端状态和本地交付状态分离规则，已完成但未随版本发布的问题标记为本地完成/待发布
+  - **Local Issue Status Workflow**: Added a split between remote GitHub issue state and local delivery state so implemented-but-unreleased issues can be tracked as local done / release pending
+
 ## [0.5.9-beta.1] - 2026-06-14
 
 ### 新功能 / Features
