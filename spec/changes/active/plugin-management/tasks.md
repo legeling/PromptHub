@@ -105,6 +105,7 @@
 - [x] PluginManager component tests cover importing an Agent-installed Plugin into My Plugins from the Agent Plugin view.
 - [x] PluginManager component tests cover importing a local Plugin package directly from the My Plugins header.
 - [x] PluginManager component tests cover importing a Plugin package from a Git source URL into My Plugins.
+- [x] PluginManager component tests cover the Skill-style My Plugins `New Plugin` chooser, including hidden initial import/batch actions and modal-routed URL, local, and batch flows.
 - [x] PluginManager, renderer store, and core library tests cover previewing Git/SSH/HTTPS source imports before writing My Plugins.
 - [x] PluginManager component tests cover direct count inventory chips, read-only Agent-installed Plugin details, and Chinese disabled-target localization.
 - [x] PluginManager component tests cover Agent Plugin filter chips, localized filter copy, filtered empty states, and direct distribution from Agent Plugin through the shared Agent target picker.

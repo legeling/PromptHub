@@ -3046,6 +3046,7 @@ export function PluginManager() {
   >(null);
   const [isImportingLocalPlugin, setIsImportingLocalPlugin] = useState(false);
   const [isDropTargetActive, setIsDropTargetActive] = useState(false);
+  const [isAddPluginModalOpen, setIsAddPluginModalOpen] = useState(false);
   const [isSourceImportOpen, setIsSourceImportOpen] = useState(false);
   const [isPreviewingSourcePlugin, setIsPreviewingSourcePlugin] =
     useState(false);
@@ -4969,81 +4970,33 @@ export function PluginManager() {
 
             <div className="flex shrink-0 items-center gap-2 self-start lg:self-center lg:justify-end">
               {selectedTab === "library" ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setIsSourceImportOpen(true)}
-                    disabled={
-                      isImportingSourcePlugin || isPreviewingSourcePlugin
-                    }
-                    aria-label={t("plugin.importFromUrl", "Import from URL")}
-                    title={t("plugin.importFromUrl", "Import from URL")}
-                    className="inline-flex items-center gap-2 rounded-xl border border-border app-wallpaper-surface px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/25 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {isImportingSourcePlugin || isPreviewingSourcePlugin ? (
-                      <Loader2Icon
-                        aria-hidden="true"
-                        className="h-4 w-4 animate-spin"
-                      />
-                    ) : (
-                      <GlobeIcon aria-hidden="true" className="h-4 w-4" />
-                    )}
-                    {t("plugin.importFromUrl", "Import from URL")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void handleImportLocalPlugin()}
-                    disabled={isImportingLocalPlugin}
-                    aria-label={t(
-                      "plugin.importLocalPlugin",
-                      "Import local Plugin",
-                    )}
-                    title={t("plugin.importLocalPlugin", "Import local Plugin")}
-                    className="inline-flex items-center gap-2 rounded-xl border border-border app-wallpaper-surface px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/25 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {isImportingLocalPlugin ? (
-                      <Loader2Icon
-                        aria-hidden="true"
-                        className="h-4 w-4 animate-spin"
-                      />
-                    ) : (
-                      <PackagePlusIcon aria-hidden="true" className="h-4 w-4" />
-                    )}
-                    {t("plugin.importLocalPlugin", "Import local Plugin")}
-                  </button>
-                </>
+                <button
+                  type="button"
+                  onClick={() => setIsAddPluginModalOpen(true)}
+                  aria-label={t("plugin.addPlugin", "New Plugin")}
+                  title={t("plugin.addPlugin", "New Plugin")}
+                  className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                >
+                  <PackagePlusIcon aria-hidden="true" className="h-4 w-4" />
+                  {t("plugin.addPlugin", "New Plugin")}
+                </button>
               ) : null}
-              <button
-                type="button"
-                onClick={handleToggleBatchMode}
-                aria-pressed={isBatchMode}
-                aria-label={t("plugin.batchManage", "Batch manage plugins")}
-                title={t("plugin.batchManage", "Batch manage plugins")}
-                className={
-                  selectedTab === "market"
-                    ? `rounded-lg p-2 transition-colors ${
-                        isBatchMode
-                          ? "bg-primary text-primary-foreground shadow-sm"
-                          : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                      }`
-                    : `inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-colors ${
-                        isBatchMode
-                          ? "border-primary/30 bg-primary/10 text-primary hover:bg-primary/15"
-                          : "border-border app-wallpaper-surface text-foreground hover:border-primary/25 hover:bg-accent"
-                      }`
-                }
-              >
-                {selectedTab === "market" ? (
+              {selectedTab === "market" ? (
+                <button
+                  type="button"
+                  onClick={handleToggleBatchMode}
+                  aria-pressed={isBatchMode}
+                  aria-label={t("plugin.batchManage", "Batch manage plugins")}
+                  title={t("plugin.batchManage", "Batch manage plugins")}
+                  className={`rounded-lg p-2 transition-colors ${
+                    isBatchMode
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                  }`}
+                >
                   <ListChecksIcon aria-hidden="true" className="h-4 w-4" />
-                ) : isBatchMode ? (
-                  <XIcon aria-hidden="true" className="h-4 w-4" />
-                ) : (
-                  <CheckSquareIcon aria-hidden="true" className="h-4 w-4" />
-                )}
-                {selectedTab === "market"
-                  ? null
-                  : t("plugin.batchManage", "Batch manage plugins")}
-              </button>
+                </button>
+              ) : null}
               {selectedTab === "library" ? (
                 <>
                   <div className="flex items-center rounded-lg bg-muted p-0.5">
@@ -5775,6 +5728,120 @@ export function PluginManager() {
         onCopyCodexLink={handleCopyCodexLink}
         onInstall={handleInstall}
       />
+      <Modal
+        isOpen={isAddPluginModalOpen}
+        onClose={() => setIsAddPluginModalOpen(false)}
+        size="md"
+        showCloseButton
+        title={t("plugin.addPlugin", "New Plugin")}
+        subtitle={t(
+          "plugin.chooseAddMethod",
+          "Choose how you want to add or manage Plugins.",
+        )}
+      >
+        <div className="space-y-3 px-6 py-5">
+          <button
+            type="button"
+            aria-label={t("plugin.importFromUrl", "Import from URL")}
+            onClick={() => {
+              setIsAddPluginModalOpen(false);
+              setIsSourceImportOpen(true);
+            }}
+            disabled={isImportingSourcePlugin || isPreviewingSourcePlugin}
+            className="group flex w-full items-center gap-4 rounded-xl border border-primary/30 bg-primary/5 p-4 text-left transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <div className="rounded-lg bg-primary p-3 text-primary-foreground">
+              {isImportingSourcePlugin || isPreviewingSourcePlugin ? (
+                <Loader2Icon
+                  aria-hidden="true"
+                  className="h-6 w-6 animate-spin"
+                />
+              ) : (
+                <GlobeIcon aria-hidden="true" className="h-6 w-6" />
+              )}
+            </div>
+            <span className="min-w-0">
+              <span className="block font-medium text-foreground">
+                {t("plugin.importFromUrl", "Import from URL")}
+              </span>
+              <span className="mt-1 block text-sm text-muted-foreground">
+                {t(
+                  "plugin.importFromUrlOptionDesc",
+                  "Paste a Git, SSH, or HTTPS Plugin source URL.",
+                )}
+              </span>
+            </span>
+          </button>
+
+          <button
+            type="button"
+            aria-label={t("plugin.importLocalPlugin", "Import local Plugin")}
+            onClick={() => {
+              setIsAddPluginModalOpen(false);
+              void handleImportLocalPlugin();
+            }}
+            disabled={isImportingLocalPlugin}
+            className="group flex w-full items-center gap-4 rounded-xl border border-border bg-accent/50 p-4 text-left transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <div className="rounded-lg bg-background p-3 transition-colors group-hover:bg-primary/10">
+              {isImportingLocalPlugin ? (
+                <Loader2Icon
+                  aria-hidden="true"
+                  className="h-6 w-6 animate-spin text-foreground"
+                />
+              ) : (
+                <FolderOpenIcon
+                  aria-hidden="true"
+                  className="h-6 w-6 text-foreground"
+                />
+              )}
+            </div>
+            <span className="min-w-0">
+              <span className="block font-medium text-foreground">
+                {t("plugin.importLocalPlugin", "Import local Plugin")}
+              </span>
+              <span className="mt-1 block text-sm text-muted-foreground">
+                {t(
+                  "plugin.importLocalPluginOptionDesc",
+                  "Choose a local Plugin package folder.",
+                )}
+              </span>
+            </span>
+          </button>
+
+          <button
+            type="button"
+            aria-label={t("plugin.batchManage", "Batch manage Plugins")}
+            onClick={() => {
+              setIsAddPluginModalOpen(false);
+              handleToggleBatchMode();
+            }}
+            className="group flex w-full items-center gap-4 rounded-xl border border-border bg-accent/50 p-4 text-left transition-colors hover:bg-accent"
+          >
+            <div className="rounded-lg bg-background p-3 transition-colors group-hover:bg-primary/10">
+              {isBatchMode ? (
+                <XIcon aria-hidden="true" className="h-6 w-6 text-foreground" />
+              ) : (
+                <CheckSquareIcon
+                  aria-hidden="true"
+                  className="h-6 w-6 text-foreground"
+                />
+              )}
+            </div>
+            <span className="min-w-0">
+              <span className="block font-medium text-foreground">
+                {t("plugin.batchManage", "Batch manage Plugins")}
+              </span>
+              <span className="mt-1 block text-sm text-muted-foreground">
+                {t(
+                  "plugin.batchManageOptionDesc",
+                  "Select multiple installed Plugins for tags, distribution, or deletion.",
+                )}
+              </span>
+            </span>
+          </button>
+        </div>
+      </Modal>
       <Modal
         isOpen={isSourceImportOpen}
         onClose={handleCloseSourceImport}

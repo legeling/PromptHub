@@ -51,10 +51,18 @@ PromptHub MUST support plugin intake from marketplace entries, Git repository UR
 #### Scenario: Import local plugin package from My Plugins
 
 - **GIVEN** the user has a local folder containing a valid Plugin package manifest
-- **WHEN** the user chooses Import local Plugin from My Plugins and selects that folder
+- **WHEN** the user opens the My Plugins `New Plugin` menu, chooses Import local Plugin, and selects that folder
 - **THEN** PromptHub imports the package through the same local Plugin package scanner used for Agent Plugin imports
 - **AND** PromptHub copies the package into managed Plugin storage before writing My Plugins metadata
 - **AND** PromptHub rejects sources that fail the Plugin bundle semantic gate
+
+#### Scenario: My Plugins add actions use a single Skill-style entry
+
+- **GIVEN** the user is viewing My Plugins
+- **WHEN** the header is rendered
+- **THEN** PromptHub shows one top-right `New Plugin` action instead of permanently showing URL import, local import, and batch-management buttons in the page chrome
+- **AND** opening `New Plugin` presents the available add/manage methods in a modal chooser that matches the Skill add flow pattern
+- **AND** choosing a method reuses the existing URL import, local folder import, or batch-management flow
 
 #### Scenario: Install from SSH git source
 

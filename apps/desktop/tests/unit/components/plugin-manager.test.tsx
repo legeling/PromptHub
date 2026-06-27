@@ -560,6 +560,16 @@ async function renderPluginManager(language: "en" | "zh" = "en") {
   );
 }
 
+async function openPluginAddMenu() {
+  fireEvent.click(await screen.findByRole("button", { name: "New Plugin" }));
+  return screen.findByRole("dialog", { name: "New Plugin" });
+}
+
+async function chooseAddPluginAction(name: string) {
+  const dialog = await openPluginAddMenu();
+  fireEvent.click(within(dialog).getByRole("button", { name }));
+}
+
 describe("PluginManager", () => {
   beforeEach(() => {
     resetPluginStore();
@@ -590,8 +600,31 @@ describe("PluginManager", () => {
       "0",
     );
     expect(
-      screen.getByRole("button", { name: "Batch manage Plugins" }),
-    ).toHaveTextContent("Batch manage Plugins");
+      screen.getByRole("button", { name: "New Plugin" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Batch manage Plugins" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Import local Plugin" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Import from URL" }),
+    ).not.toBeInTheDocument();
+
+    const addDialog = await openPluginAddMenu();
+    expect(
+      within(addDialog).getByRole("button", { name: "Import from URL" }),
+    ).toBeInTheDocument();
+    expect(
+      within(addDialog).getByRole("button", { name: "Import local Plugin" }),
+    ).toBeInTheDocument();
+    expect(
+      within(addDialog).getByRole("button", {
+        name: "Batch manage Plugins",
+      }),
+    ).toBeInTheDocument();
+    fireEvent.click(within(addDialog).getByRole("button", { name: "Close" }));
 
     const grid = await screen.findByTestId("plugin-library-grid");
     expect(grid).toHaveStyle({
@@ -827,9 +860,7 @@ describe("PluginManager", () => {
 
     await renderPluginManager();
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Batch manage Plugins" }),
-    );
+    await chooseAddPluginAction("Batch manage Plugins");
     fireEvent.click(
       screen.getByRole("button", { name: "Gmail. Read and manage Gmail" }),
     );
@@ -858,9 +889,7 @@ describe("PluginManager", () => {
 
     await renderPluginManager();
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Batch manage Plugins" }),
-    );
+    await chooseAddPluginAction("Batch manage Plugins");
     fireEvent.click(
       screen.getByRole("button", { name: "Gmail. Read and manage Gmail" }),
     );
@@ -892,9 +921,7 @@ describe("PluginManager", () => {
 
     await renderPluginManager();
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Import local Plugin" }),
-    );
+    await chooseAddPluginAction("Import local Plugin");
 
     await waitFor(() => {
       expect(window.electron.selectFolder).toHaveBeenCalled();
@@ -943,9 +970,7 @@ describe("PluginManager", () => {
 
     await renderPluginManager();
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Import from URL" }),
-    );
+    await chooseAddPluginAction("Import from URL");
     fireEvent.change(screen.getByLabelText("Plugin URL"), {
       target: { value: "git@github.com:example/plugins.git" },
     });
@@ -1014,9 +1039,7 @@ describe("PluginManager", () => {
       expect(writeText).toHaveBeenCalledWith("Gmail");
     });
     writeText.mockClear();
-    fireEvent.click(
-      screen.getByRole("button", { name: "Copy Plugin path" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Copy Plugin path" }));
     await waitFor(() => {
       expect(writeText).toHaveBeenCalledWith(
         "/tmp/prompthub/plugins/gmail/repo/plugins/gmail",
@@ -1796,9 +1819,7 @@ describe("PluginManager", () => {
 
     await renderPluginManager();
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Batch manage Plugins" }),
-    );
+    await chooseAddPluginAction("Batch manage Plugins");
     fireEvent.click(
       screen.getByRole("button", { name: "Select visible Plugins" }),
     );

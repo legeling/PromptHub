@@ -97,6 +97,7 @@
   - Agent Plugin My Plugins rows now open the same full installed Plugin detail page used by My Plugins, matching Agent Skill's managed-asset detail handoff while preserving direct selected-target distribution buttons.
   - My Plugins now exposes a direct `Import local Plugin` action in the header. It opens the native folder picker, calls the same `plugin:import:local` API used by Agent Plugin imports, copies valid local Plugin packages into PromptHub-managed storage, updates My Plugins immediately, and leaves rejected sources to the existing semantic gate/error handling.
   - My Plugins now exposes a direct `Import from URL` action for Git/SSH/HTTPS Plugin sources. The core import path uses local git transport, preserves branch/package path/source label metadata, copies valid packages into PromptHub-managed storage, rejects duplicate URL/package/branch combinations, and rejects single-skill sources through the same Plugin semantic gate.
+  - My Plugins now presents those add/manage actions through a single top-right `New Plugin` button, matching the Skill add chooser pattern. The initial header no longer permanently renders URL import, local import, or text batch-management buttons; the chooser routes into the existing URL preview/import, local folder import, and batch selection flows.
   - URL source import now scans before installation. The renderer calls `plugin:source:preview`, shows a confirmation modal with manifest identity, description, source, classification, inventory, and unsupported reasons, and only writes My Plugins metadata after the user confirms `Import Plugin`.
   - My Plugins cards now surface already-checked source update state from the detail page. Available updates, local changes, and source/local conflicts render as right-side card badges after the source check has run; the card grid does not initiate Git/SSH/network source scans itself.
   - The checked source-update badge now uses the shared blue `CardStatusBadge` variant for `update-available`, matching the Skill Store / My Skills card treatment instead of sitting over the top-left icon area.
@@ -351,6 +352,14 @@
   - `https://developers.openai.com/codex/skills`
   - `https://developers.openai.com/codex/plugins`
   - `https://developers.openai.com/codex/plugins/build`
+- `pnpm --filter @prompthub/desktop test -- tests/unit/components/plugin-manager.test.tsx --run`
+  - Result: passed (1 file, 45 tests). Verifies My Plugins initially shows only the `New Plugin` header entry, hides the permanent URL/local/batch actions from page chrome, routes URL/local/batch actions through the chooser, and preserves Plugin Store batch behavior. The run still emits existing React `act(...)` warnings from asynchronous PluginManager state updates.
+- `pnpm --filter @prompthub/desktop typecheck`
+  - Result: passed after consolidating the My Plugins add/manage entry.
+- `pnpm exec prettier --check apps/desktop/src/renderer/components/plugin/PluginManager.tsx apps/desktop/tests/unit/components/plugin-manager.test.tsx spec/changes/active/plugin-management/specs/plugins/spec.md spec/changes/active/plugin-management/tasks.md spec/changes/active/plugin-management/implementation.md`
+  - Result: passed after formatting the touched TSX files.
+- `git diff --check`
+  - Result: passed.
 
 ## Synced Docs
 
