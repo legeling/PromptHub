@@ -23,6 +23,9 @@
 - [x] Align relationship docs with the two visible concepts: parent-child hierarchy and related prompt links.
 - [x] Add direct child-count ascending/descending options to the prompt sort menu.
 - [x] Keep child-count sorting effective after the prompt list/table is flattened into a tree.
+- [x] Rename child-count sort options to explicit node-count high-to-low / low-to-high labels across locales.
+- [x] Default top-bar prompt creation to the selected prompt node as parent.
+- [x] Increase compact child-card indentation so children read more clearly under parents.
 - [x] Preserve hierarchy fields in prompt workspace frontmatter.
 - [x] Sanitize hierarchy fields during backup import.
 - [x] Add DB and UI regression tests.

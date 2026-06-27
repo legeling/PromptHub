@@ -74,6 +74,7 @@ import { getFlattenedTree } from './tree/utilities';
 import { renderFolderIcon } from './folderIconHelper';
 
 const PROMPT_CARD_ESTIMATED_HEIGHT = 76;
+const PROMPT_CARD_TREE_INDENT_PX = 16;
 
 let aiServicePromise: Promise<typeof import('../../services/ai')> | null = null;
 
@@ -197,7 +198,8 @@ export const PromptCard = memo(function PromptCard({
   const hierarchyTone = isSelected ? 'text-white/75 border-white/20 bg-white/10' : 'text-muted-foreground border-border/70 bg-muted/40';
   const showDropBadge = Boolean(isDropTarget && dropPosition);
   const canCollapse = childCount > 0;
-  const depthIndent = Math.min(Math.max(depth, 0), 5) * 12;
+  const depthIndent =
+    Math.min(Math.max(depth, 0), 5) * PROMPT_CARD_TREE_INDENT_PX;
   const parentChipIndent = depthIndent + 18;
 
   return (
@@ -2247,7 +2249,7 @@ function PromptSkillMainContent() {
           )}
           {/* Drag-to-resize handle for the prompt list pane (#119) */}
           {/* Prompt 列表栏的拖拽手柄 (#119) */}
-          <div className="absolute inset-y-0 right-0 z-10 flex">
+          <div className="absolute inset-y-0 -right-2 z-10 flex">
             <ColumnResizer
               currentWidth={promptListPaneWidth}
               min={PROMPT_LIST_PANE_WIDTH_MIN}
@@ -2255,6 +2257,7 @@ function PromptSkillMainContent() {
               defaultWidth={PROMPT_LIST_PANE_WIDTH_DEFAULT}
               onResize={setPromptListPaneWidth}
               ariaLabel={t('prompt.resizeListPaneAria', 'Resize prompt list')}
+              barPosition="start"
             />
           </div>
         </div>

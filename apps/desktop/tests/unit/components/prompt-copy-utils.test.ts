@@ -94,6 +94,18 @@ describe("prompt-copy-utils", () => {
     ).toBe("User");
   });
 
+  it("does not include system prompt or role labels when copying user prompt text", () => {
+    const copyText = buildPromptCopyText({
+      systemPrompt: "System-only instructions",
+      userPrompt: "User-only task",
+    });
+
+    expect(copyText).toBe("User-only task");
+    expect(copyText).not.toContain("[System]");
+    expect(copyText).not.toContain("[User]");
+    expect(copyText).not.toContain("System-only instructions");
+  });
+
   it("detects default-value user variables by normalized variable name", () => {
     expect(
       hasUserDefinedPromptVariables(

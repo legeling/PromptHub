@@ -77,6 +77,18 @@ Card and table display flattening must preserve the caller's already-sorted
 sibling order; drag move-target calculation continues to use the stored sibling
 `order` so drop positions remain deterministic.
 
+When the prompt module has a selected prompt node, the top-bar prompt create
+flow treats that selected prompt as the default tree parent. This default lives
+in the create payload orchestration rather than in the modal form state, so
+manual, quick-add, generated, and image-reverse prompt creation share the same
+parent default. Explicit `parentId` values from a caller still win, including
+`null` for root-level creation. New child prompts inherit the selected parent
+prompt's folder when the create request does not provide a folder.
+
+Nested compact prompt cards use a larger per-depth indent than the original
+compact tree rail so child rows are visibly separated from their parent while
+still clamping very deep nesting to a bounded offset.
+
 The tree is not the whole relationship model. Related links can point to many
 prompts and should be surfaced as lightweight chips or quiet detail-header
 affordances rather than as extra parents in the tree. The UI should make that

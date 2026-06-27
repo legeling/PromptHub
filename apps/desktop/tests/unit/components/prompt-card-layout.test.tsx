@@ -54,7 +54,7 @@ describe("PromptCard layout", () => {
     );
 
     expect(screen.getByTestId("prompt-card-title-row")).toHaveStyle({
-      paddingLeft: "36px",
+      paddingLeft: "48px",
     });
     expect(screen.getByTestId("prompt-card-title")).toHaveClass("min-w-0");
   });
@@ -92,7 +92,7 @@ describe("PromptCard layout", () => {
       container.querySelector(".absolute.bottom-3.top-3.w-px"),
     ).not.toBeInTheDocument();
     expect(screen.getByTestId("prompt-card-parent-chip")).toHaveStyle({
-      marginLeft: "30px",
+      marginLeft: "34px",
     });
   });
 });

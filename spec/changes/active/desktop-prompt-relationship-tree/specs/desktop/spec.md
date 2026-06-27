@@ -161,3 +161,32 @@ who want to surface grouping hubs or leaf prompts.
   counts are equal.
 - AND the card and table tree display preserves that sort order after
   flattening parent-child hierarchy for rendering.
+
+### Requirement: Create Child From Selected Prompt Node
+
+When users create a prompt while a prompt node is selected, PromptHub MUST
+default the new prompt to that selected node's child instead of creating a
+same-level sibling.
+
+#### Scenario: Create Prompt Under Selected Prompt Node
+
+- GIVEN the desktop prompt module has prompt A selected
+- WHEN the user creates a new prompt from the top-bar create action
+- THEN the created prompt payload uses prompt A's id as `parentId`
+- AND the created prompt inherits prompt A's folder when the create form does
+  not explicitly provide another folder
+- AND callers can still explicitly pass `parentId: null` to create a root
+  prompt.
+
+### Requirement: Stronger Child Indentation
+
+Prompt tree rows/cards MUST use enough indentation for users to visually
+distinguish children from parents.
+
+#### Scenario: Render Child Prompt Indentation
+
+- GIVEN a nested prompt is displayed in the compact card tree
+- WHEN PromptHub renders that prompt at depth N
+- THEN the title row is indented by the configured per-level tree indent
+- AND parent chips stay aligned with the title content instead of collapsing
+  back toward the parent row.

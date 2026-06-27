@@ -47,6 +47,12 @@ export interface ColumnResizerProps {
   ariaLabel: string;
   /** Optional className to merge onto the root handle. */
   className?: string;
+  /**
+   * Where the visible 1px divider line sits inside the hit target. `center`
+   * works for in-flow handles. `start` lets callers place the hit target
+   * outside an adjacent scroll pane without moving the visual divider.
+   */
+  barPosition?: "center" | "start";
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -61,6 +67,7 @@ export function ColumnResizer({
   onResize,
   ariaLabel,
   className = "",
+  barPosition = "center",
 }: ColumnResizerProps) {
   const [isDragging, setIsDragging] = useState(false);
   const dragStateRef = useRef<{
@@ -189,7 +196,9 @@ export function ColumnResizer({
       data-testid="column-resizer"
     >
       <div
-        className={`pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 transition-colors duration-quick ${
+        className={`pointer-events-none absolute inset-y-0 w-px transition-colors duration-quick ${
+          barPosition === "start" ? "left-0" : "left-1/2 -translate-x-1/2"
+        } ${
           isDragging
             ? "bg-primary/80"
             : "bg-border/40 group-hover:bg-primary/60"

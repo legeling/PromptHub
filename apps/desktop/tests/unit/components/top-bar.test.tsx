@@ -14,7 +14,31 @@ import { renderWithI18n } from "../../helpers/i18n";
 import { installWindowMocks } from "../../helpers/window";
 
 vi.mock("../../../src/renderer/components/prompt/CreatePromptModal", () => ({
-  CreatePromptModal: () => null,
+  CreatePromptModal: ({
+    isOpen,
+    onCreate,
+  }: {
+    isOpen: boolean;
+    onCreate: (data: {
+      title: string;
+      userPrompt: string;
+      tags: string[];
+    }) => Promise<unknown> | unknown;
+  }) =>
+    isOpen ? (
+      <button
+        type="button"
+        onClick={() =>
+          void onCreate({
+            title: "Child prompt",
+            userPrompt: "Write a child prompt.",
+            tags: [],
+          })
+        }
+      >
+        Mock create prompt
+      </button>
+    ) : null,
 }));
 
 vi.mock("../../../src/renderer/components/prompt/QuickAddModal", () => ({
@@ -180,6 +204,58 @@ describe("TopBar", () => {
     expect(screen.queryByText("Quick Add")).not.toBeInTheDocument();
     expect(screen.queryByText("New")).not.toBeInTheDocument();
     expect(screen.queryByText(/results/i)).not.toBeInTheDocument();
+  });
+
+  it("creates a child prompt when a prompt node is selected", async () => {
+    const parentPrompt = {
+      id: "prompt-parent",
+      title: "Parent prompt",
+      userPrompt: "Parent body",
+      variables: [],
+      tags: [],
+      folderId: "folder-a",
+      isFavorite: false,
+      isPinned: false,
+      version: 1,
+      currentVersion: 1,
+      usageCount: 0,
+      createdAt: new Date(0).toISOString(),
+      updatedAt: new Date(0).toISOString(),
+    };
+    const createPrompt = vi.fn().mockResolvedValue({
+      ...parentPrompt,
+      id: "prompt-child",
+      title: "Child prompt",
+      parentId: parentPrompt.id,
+    });
+
+    usePromptStore.setState({
+      prompts: [parentPrompt],
+      selectedId: parentPrompt.id,
+      selectedIds: [parentPrompt.id],
+      createPrompt,
+    } as Partial<ReturnType<typeof usePromptStore.getState>>);
+
+    await act(async () => {
+      await renderWithI18n(
+        <TopBar onOpenSettings={vi.fn()} updateAvailable={null} />,
+        { language: "en" },
+      );
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "New" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Mock create prompt" }));
+
+    await waitFor(() => {
+      expect(createPrompt).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Child prompt",
+          userPrompt: "Write a child prompt.",
+          folderId: parentPrompt.folderId,
+          parentId: parentPrompt.id,
+        }),
+      );
+    });
   });
 
   it("closes the create mode dropdown when clicking outside", async () => {
@@ -685,6 +761,137 @@ describe("TopBar", () => {
     fireEvent.click(clearSearch);
 
     expect(usePromptStore.getState().searchQuery).toBe("");
+    expect(searchInput).toHaveValue("");
+  });
+
+  it("clears only the Skill top bar search query", async () => {
+    usePromptStore.setState({ searchQuery: "prompt query" });
+    useUIStore.setState({
+      appModule: "skill",
+      viewMode: "skill",
+      isSidebarCollapsed: false,
+    });
+    useSkillStore.setState({
+      storeView: "my-skills",
+      searchQuery: "writer",
+      filterType: "all",
+      filterTags: [],
+      deployedSkillNames: new Set<string>(),
+      skills: [
+        {
+          id: "skill-1",
+          name: "writer",
+          description: "Write better",
+          instructions: "# Writer",
+          content: "# Writer",
+          protocol_type: "skill",
+          is_favorite: false,
+          tags: ["writing"],
+          created_at: 1,
+          updated_at: 1,
+        },
+      ],
+    } as Partial<ReturnType<typeof useSkillStore.getState>>);
+
+    await act(async () => {
+      await renderWithI18n(
+        <TopBar onOpenSettings={vi.fn()} updateAvailable={null} />,
+        { language: "en" },
+      );
+    });
+
+    const searchInput = screen.getByPlaceholderText("Search skills...");
+    expect(searchInput).toHaveValue("writer");
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
+
+    expect(useSkillStore.getState().searchQuery).toBe("");
+    expect(usePromptStore.getState().searchQuery).toBe("prompt query");
+    expect(searchInput).toHaveValue("");
+  });
+
+  it("clears only the MCP top bar search query", async () => {
+    usePromptStore.setState({ searchQuery: "prompt query" });
+    useUIStore.setState({
+      appModule: "mcp",
+      viewMode: "prompt",
+      isSidebarCollapsed: false,
+    });
+    useMcpStore.setState({
+      selectedTab: "library",
+      searchQuery: "filesystem",
+      library: {
+        kind: "prompthub-mcp-library",
+        version: 1,
+        updatedAt: "2026-01-01T00:00:00.000Z",
+        bindings: [],
+        servers: [
+          {
+            id: "mcp_filesystem",
+            name: "filesystem",
+            displayName: "Filesystem",
+            description: "Read local files",
+            transport: "stdio",
+            command: "npx",
+            args: ["@modelcontextprotocol/server-filesystem"],
+            enabled: true,
+            tags: ["files"],
+            source: { type: "manual" },
+            createdAt: 1,
+            updatedAt: 1,
+          },
+        ],
+      },
+    } as Partial<ReturnType<typeof useMcpStore.getState>>);
+
+    await act(async () => {
+      await renderWithI18n(
+        <TopBar onOpenSettings={vi.fn()} updateAvailable={null} />,
+        { language: "en" },
+      );
+    });
+
+    const searchInput = screen.getByPlaceholderText("Search MCP...");
+    expect(searchInput).toHaveValue("filesystem");
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
+
+    expect(useMcpStore.getState().searchQuery).toBe("");
+    expect(usePromptStore.getState().searchQuery).toBe("prompt query");
+    expect(searchInput).toHaveValue("");
+  });
+
+  it("clears only the Plugin top bar search query", async () => {
+    usePromptStore.setState({ searchQuery: "prompt query" });
+    useUIStore.setState({
+      appModule: "plugin",
+      viewMode: "prompt",
+      isSidebarCollapsed: false,
+    });
+    usePluginStore.setState({
+      searchQuery: "linear",
+      selectedTab: "market",
+      marketEntries: [],
+      marketPreviews: {},
+      marketSources: [],
+      targetMatrix: [],
+      library: null,
+    } as Partial<ReturnType<typeof usePluginStore.getState>>);
+
+    await act(async () => {
+      await renderWithI18n(
+        <TopBar onOpenSettings={vi.fn()} updateAvailable={null} />,
+        { language: "en" },
+      );
+    });
+
+    const searchInput = screen.getByPlaceholderText("Search Plugins");
+    expect(searchInput).toHaveValue("linear");
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
+
+    expect(usePluginStore.getState().searchQuery).toBe("");
+    expect(usePromptStore.getState().searchQuery).toBe("prompt query");
     expect(searchInput).toHaveValue("");
   });
 

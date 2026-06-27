@@ -101,11 +101,11 @@ describe("PromptListHeader", () => {
     fireEvent.click(screen.getByRole("button", { name: "Sort: Newest" }));
 
     const childCountDescOption = screen.getByRole("menuitemradio", {
-      name: "More Children",
+      name: "Node Count (High to Low)",
     });
     expect(
       screen.getByRole("menuitemradio", {
-        name: "Fewer Children",
+        name: "Node Count (Low to High)",
       }),
     ).toBeInTheDocument();
 

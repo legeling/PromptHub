@@ -144,4 +144,13 @@ describe("ColumnResizer", () => {
     expect(handle.getAttribute("aria-valuemax")).toBe("600");
     expect(handle.getAttribute("aria-orientation")).toBe("vertical");
   });
+
+  it("can pin the visible divider to the start of an external hit target", () => {
+    const { handle } = renderResizer({ barPosition: "start" });
+    const divider = handle.querySelector("[aria-hidden='true']");
+
+    expect(divider).toHaveClass("left-0");
+    expect(divider).not.toHaveClass("left-1/2");
+    expect(divider).not.toHaveClass("-translate-x-1/2");
+  });
 });
