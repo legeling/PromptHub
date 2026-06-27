@@ -103,6 +103,8 @@ describe("Sidebar", () => {
     useSettingsStore.setState({
       tagsSectionHeight: 140,
       isTagsSectionCollapsed: false,
+      resourceTagsSectionHeight: 140,
+      isResourceTagsSectionCollapsed: false,
       skillTagsSectionHeight: 140,
       isSkillTagsSectionCollapsed: false,
       desktopHomeModules: ["prompt", "skill", "rules"],

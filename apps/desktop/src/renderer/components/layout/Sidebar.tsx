@@ -757,18 +757,18 @@ export function Sidebar({
     pluginSelectedTab,
   ]);
 
-  // Skill tags section settings (mirrors prompt tags behavior)
-  const skillTagsSectionHeight = useSettingsStore(
-    (state) => state.skillTagsSectionHeight,
+  // Shared resource tag section settings for Skill, MCP, and Plugin.
+  const resourceTagsSectionHeight = useSettingsStore(
+    (state) => state.resourceTagsSectionHeight,
   );
-  const setSkillTagsSectionHeight = useSettingsStore(
-    (state) => state.setSkillTagsSectionHeight,
+  const setResourceTagsSectionHeight = useSettingsStore(
+    (state) => state.setResourceTagsSectionHeight,
   );
-  const isSkillTagsCollapsed = useSettingsStore(
-    (state) => state.isSkillTagsSectionCollapsed,
+  const isResourceTagsCollapsed = useSettingsStore(
+    (state) => state.isResourceTagsSectionCollapsed,
   );
-  const setIsSkillTagsCollapsed = useSettingsStore(
-    (state) => state.setIsSkillTagsSectionCollapsed,
+  const setIsResourceTagsCollapsed = useSettingsStore(
+    (state) => state.setIsResourceTagsSectionCollapsed,
   );
 
   const [isResizing, setIsResizing] = useState(false);
@@ -1033,19 +1033,19 @@ export function Sidebar({
     [moveFolder],
   );
 
-  // Resize handler (shared for prompt and skill tags sections)
-  const resizeTarget = useRef<"prompt" | "skill">("prompt");
+  // Resize handler (shared for prompt and resource tag sections)
+  const resizeTarget = useRef<"prompt" | "resource">("prompt");
 
   const handleResizeStart = (
     e: React.MouseEvent,
-    target: "prompt" | "skill" = "prompt",
+    target: "prompt" | "resource" = "prompt",
   ) => {
     e.preventDefault();
     setIsResizing(true);
     resizeTarget.current = target;
     dragStartY.current = e.clientY;
     dragStartHeight.current =
-      target === "prompt" ? tagsSectionHeight : skillTagsSectionHeight;
+      target === "prompt" ? tagsSectionHeight : resourceTagsSectionHeight;
     document.body.style.cursor = "ns-resize";
   };
 
@@ -1061,7 +1061,7 @@ export function Sidebar({
       if (resizeTarget.current === "prompt") {
         setTagsSectionHeight(clampedHeight);
       } else {
-        setSkillTagsSectionHeight(clampedHeight);
+        setResourceTagsSectionHeight(clampedHeight);
       }
     };
     const handleMouseUp = () => {
@@ -1076,7 +1076,7 @@ export function Sidebar({
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [isResizing, setTagsSectionHeight, setSkillTagsSectionHeight]);
+  }, [isResizing, setTagsSectionHeight, setResourceTagsSectionHeight]);
 
   const renderResourceTagsSection = ({
     activeTags,
@@ -1103,7 +1103,7 @@ export function Sidebar({
       {!isCollapsed && !isSectionCollapsed ? (
         <div
           className={`h-1 cursor-ns-resize hover:bg-primary/40 transition-colors z-30 shrink-0 mx-2 rounded-full ${isResizing ? "bg-primary/60" : "bg-transparent"}`}
-          onMouseDown={(event) => handleResizeStart(event, "skill")}
+          onMouseDown={(event) => handleResizeStart(event, "resource")}
         />
       ) : null}
 
@@ -1113,7 +1113,7 @@ export function Sidebar({
           height:
             isCollapsed || isSectionCollapsed
               ? "auto"
-              : `${skillTagsSectionHeight}px`,
+              : `${resourceTagsSectionHeight}px`,
         }}
       >
         {!isCollapsed ? (
@@ -2057,9 +2057,9 @@ export function Sidebar({
                   ? renderResourceTagsSection({
                       activeTags: skillFilterTags,
                       clearTags: clearSkillFilterTags,
-                      isSectionCollapsed: isSkillTagsCollapsed,
+                      isSectionCollapsed: isResourceTagsCollapsed,
                       onManage: () => setTagManagerScope("skill"),
-                      setIsSectionCollapsed: setIsSkillTagsCollapsed,
+                      setIsSectionCollapsed: setIsResourceTagsCollapsed,
                       setShowAll: setShowAllSkillTags,
                       showAll: showAllSkillTags,
                       tags: uniqueSkillTags,
@@ -2178,8 +2178,8 @@ export function Sidebar({
                   ? renderResourceTagsSection({
                       activeTags: mcpFilterTags,
                       clearTags: clearMcpFilterTags,
-                      isSectionCollapsed: isSkillTagsCollapsed,
-                      setIsSectionCollapsed: setIsSkillTagsCollapsed,
+                      isSectionCollapsed: isResourceTagsCollapsed,
+                      setIsSectionCollapsed: setIsResourceTagsCollapsed,
                       setShowAll: setShowAllMcpTags,
                       showAll: showAllMcpTags,
                       tags: uniqueMcpTags,
@@ -2284,8 +2284,8 @@ export function Sidebar({
                   ? renderResourceTagsSection({
                       activeTags: pluginFilterTags,
                       clearTags: clearPluginFilterTags,
-                      isSectionCollapsed: isSkillTagsCollapsed,
-                      setIsSectionCollapsed: setIsSkillTagsCollapsed,
+                      isSectionCollapsed: isResourceTagsCollapsed,
+                      setIsSectionCollapsed: setIsResourceTagsCollapsed,
                       setShowAll: setShowAllPluginTags,
                       showAll: showAllPluginTags,
                       tags: uniquePluginTags,

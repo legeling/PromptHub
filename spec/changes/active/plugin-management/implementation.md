@@ -376,6 +376,9 @@
   - Reused the Sidebar bottom tag-section layout for My Plugins, collecting both manifest/source `tags` and PromptHub-owned `userTags`.
   - Kept source filtering in the My Plugins header while tag filtering now lives in the same left-bottom location as My Skills.
   - Fixed the existing Plugin Store virtual catalog Hook ordering by moving `useVirtualizer` before the small-catalog early return, so the touched PluginManager file satisfies React Hook linting.
+- White-box follow-up for the shared resource tag section:
+  - Moved the shared Skill/MCP/Plugin tag-section height and collapse state to generic `resourceTagsSectionHeight` / `isResourceTagsSectionCollapsed` settings.
+  - Kept the legacy `skillTagsSectionHeight` / `isSkillTagsSectionCollapsed` settings synchronized as compatibility aliases so existing user preferences hydrate without visual resets.
 - Verification for Plugin sidebar tag filter alignment:
   - `pnpm --filter @prompthub/desktop test -- tests/unit/components/sidebar.test.tsx tests/unit/components/plugin-manager.test.tsx tests/unit/components/mcp-manager.test.tsx --run`
     - Result: passed (3 files, 136 tests). Existing React `act(...)` warnings remain in the PluginManager suite.

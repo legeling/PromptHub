@@ -825,6 +825,9 @@ Implemented first MCP management slice.
   - Reused the Sidebar bottom tag-section layout for My MCP, collecting tags from saved local MCP library server records.
   - Kept MCP source filtering in the My MCP header while tag filtering now lives in the same left-bottom location as My Skills.
   - Added My MCP filtering so active sidebar tags restrict the visible server list before source filtering and pagination.
+- White-box follow-up for the shared resource tag section:
+  - Moved the shared Skill/MCP/Plugin tag-section height and collapse state to generic `resourceTagsSectionHeight` / `isResourceTagsSectionCollapsed` settings.
+  - Kept legacy `skillTagsSectionHeight` / `isSkillTagsSectionCollapsed` synchronized as compatibility aliases so existing sidebar preferences migrate without resetting.
 - Verification for MCP sidebar tag filter alignment:
   - `pnpm --filter @prompthub/desktop test -- tests/unit/components/sidebar.test.tsx tests/unit/components/plugin-manager.test.tsx tests/unit/components/mcp-manager.test.tsx --run`
     - Result: passed (3 files, 136 tests).

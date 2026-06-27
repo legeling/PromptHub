@@ -20,9 +20,8 @@ describe("settings desktop workspace actions", () => {
   });
 
   it("keeps at least one desktop module enabled", async () => {
-    const { useSettingsStore } = await import(
-      "../../../src/renderer/stores/settings.store"
-    );
+    const { useSettingsStore } =
+      await import("../../../src/renderer/stores/settings.store");
 
     useSettingsStore.getState().toggleDesktopHomeModule("prompt");
     useSettingsStore.getState().toggleDesktopHomeModule("skill");
@@ -37,9 +36,8 @@ describe("settings desktop workspace actions", () => {
   });
 
   it("reorders enabled desktop modules without introducing hidden entries", async () => {
-    const { useSettingsStore } = await import(
-      "../../../src/renderer/stores/settings.store"
-    );
+    const { useSettingsStore } =
+      await import("../../../src/renderer/stores/settings.store");
 
     useSettingsStore.setState({ desktopHomeModules: ["prompt", "rules"] });
     useSettingsStore.getState().reorderDesktopHomeModules(["rules", "prompt"]);
@@ -49,11 +47,9 @@ describe("settings desktop workspace actions", () => {
       "prompt",
     ]);
 
-    useSettingsStore.getState().reorderDesktopHomeModules([
-      "rules",
-      "prompt",
-      "ghost" as never,
-    ]);
+    useSettingsStore
+      .getState()
+      .reorderDesktopHomeModules(["rules", "prompt", "ghost" as never]);
 
     expect(useSettingsStore.getState().desktopHomeModules).toEqual([
       "rules",
@@ -73,9 +69,8 @@ describe("settings desktop workspace actions", () => {
       }),
     );
 
-    const { useSettingsStore } = await import(
-      "../../../src/renderer/stores/settings.store"
-    );
+    const { useSettingsStore } =
+      await import("../../../src/renderer/stores/settings.store");
 
     expect(useSettingsStore.getState().desktopHomeModules).toEqual([
       "skill",
@@ -94,9 +89,8 @@ describe("settings desktop workspace actions", () => {
       }),
     );
 
-    const { useSettingsStore } = await import(
-      "../../../src/renderer/stores/settings.store"
-    );
+    const { useSettingsStore } =
+      await import("../../../src/renderer/stores/settings.store");
 
     expect(useSettingsStore.getState().desktopHomeModules).toEqual([
       "skill",
@@ -108,9 +102,8 @@ describe("settings desktop workspace actions", () => {
   });
 
   it("lets users hide MCP after it has been introduced", async () => {
-    const { useSettingsStore } = await import(
-      "../../../src/renderer/stores/settings.store"
-    );
+    const { useSettingsStore } =
+      await import("../../../src/renderer/stores/settings.store");
 
     useSettingsStore.setState({
       desktopHomeModules: ["prompt", "skill", "mcp", "plugin", "rules"],
@@ -136,9 +129,8 @@ describe("settings desktop workspace actions", () => {
       }),
     );
 
-    const { useSettingsStore } = await import(
-      "../../../src/renderer/stores/settings.store"
-    );
+    const { useSettingsStore } =
+      await import("../../../src/renderer/stores/settings.store");
 
     expect(useSettingsStore.getState().desktopHomeModules).toEqual([
       "skill",
@@ -157,9 +149,8 @@ describe("settings desktop workspace actions", () => {
       }),
     );
 
-    const { useSettingsStore } = await import(
-      "../../../src/renderer/stores/settings.store"
-    );
+    const { useSettingsStore } =
+      await import("../../../src/renderer/stores/settings.store");
 
     expect(useSettingsStore.getState().desktopHomeModules).toEqual([
       "skill",
@@ -174,23 +165,59 @@ describe("settings desktop workspace actions", () => {
         state: {
           tagsSectionHeight: -1,
           skillTagsSectionHeight: "invalid",
+          resourceTagsSectionHeight: "invalid",
         },
         version: 16,
       }),
     );
 
-    const { useSettingsStore } = await import(
-      "../../../src/renderer/stores/settings.store"
-    );
+    const { useSettingsStore } =
+      await import("../../../src/renderer/stores/settings.store");
 
     expect(useSettingsStore.getState().tagsSectionHeight).toBe(140);
     expect(useSettingsStore.getState().skillTagsSectionHeight).toBe(140);
+    expect(useSettingsStore.getState().resourceTagsSectionHeight).toBe(140);
+  });
+
+  it("hydrates resource tag section settings from legacy skill tag settings", async () => {
+    localStorage.setItem(
+      "prompthub-settings",
+      JSON.stringify({
+        state: {
+          skillTagsSectionHeight: 260,
+          isSkillTagsSectionCollapsed: true,
+        },
+        version: 16,
+      }),
+    );
+
+    const { useSettingsStore } =
+      await import("../../../src/renderer/stores/settings.store");
+
+    expect(useSettingsStore.getState().resourceTagsSectionHeight).toBe(260);
+    expect(useSettingsStore.getState().isResourceTagsSectionCollapsed).toBe(
+      true,
+    );
+  });
+
+  it("keeps legacy skill tag settings in sync with resource tag settings", async () => {
+    const { useSettingsStore } =
+      await import("../../../src/renderer/stores/settings.store");
+
+    useSettingsStore.getState().setResourceTagsSectionHeight(300);
+    useSettingsStore.getState().setIsResourceTagsSectionCollapsed(true);
+
+    expect(useSettingsStore.getState().resourceTagsSectionHeight).toBe(300);
+    expect(useSettingsStore.getState().skillTagsSectionHeight).toBe(300);
+    expect(useSettingsStore.getState().isResourceTagsSectionCollapsed).toBe(
+      true,
+    );
+    expect(useSettingsStore.getState().isSkillTagsSectionCollapsed).toBe(true);
   });
 
   it("persists and normalizes the skill list page size preference", async () => {
-    const { useSettingsStore } = await import(
-      "../../../src/renderer/stores/settings.store"
-    );
+    const { useSettingsStore } =
+      await import("../../../src/renderer/stores/settings.store");
 
     useSettingsStore.getState().setSkillListPageSize(25);
 
@@ -215,9 +242,8 @@ describe("settings desktop workspace actions", () => {
       }),
     );
 
-    const { useSettingsStore } = await import(
-      "../../../src/renderer/stores/settings.store"
-    );
+    const { useSettingsStore } =
+      await import("../../../src/renderer/stores/settings.store");
 
     expect(useSettingsStore.getState().skillListPageSize).toBe(10);
   });
