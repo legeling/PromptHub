@@ -181,7 +181,7 @@ describe("TopBar", () => {
     ).toBeInTheDocument();
   });
 
-  it("uses plugin search and hides quick add controls on the Plugins module", async () => {
+  it("uses plugin search and keeps quick add controls hidden on the Plugins module", async () => {
     usePromptStore.setState({ searchQuery: "prompt query" });
     useUIStore.setState({
       appModule: "plugin",
@@ -202,8 +202,31 @@ describe("TopBar", () => {
     expect(usePluginStore.getState().searchQuery).toBe("linear");
     expect(usePromptStore.getState().searchQuery).toBe("prompt query");
     expect(screen.queryByText("Quick Add")).not.toBeInTheDocument();
-    expect(screen.queryByText("New")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "New" })).toBeInTheDocument();
     expect(screen.queryByText(/results/i)).not.toBeInTheDocument();
+  });
+
+  it("uses the top bar New button to open Plugin creation", async () => {
+    const addPluginListener = vi.fn();
+    document.addEventListener("open-add-plugin-modal", addPluginListener);
+
+    useUIStore.setState({
+      appModule: "plugin",
+      viewMode: "prompt",
+      isSidebarCollapsed: false,
+    });
+
+    await act(async () => {
+      await renderWithI18n(
+        <TopBar onOpenSettings={vi.fn()} updateAvailable={null} />,
+        { language: "zh" },
+      );
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "新建" }));
+
+    expect(addPluginListener).toHaveBeenCalledTimes(1);
+    document.removeEventListener("open-add-plugin-modal", addPluginListener);
   });
 
   it("creates a child prompt when a prompt node is selected", async () => {
@@ -244,7 +267,9 @@ describe("TopBar", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "New" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Mock create prompt" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Mock create prompt" }),
+    );
 
     await waitFor(() => {
       expect(createPrompt).toHaveBeenCalledWith(

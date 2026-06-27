@@ -77,6 +77,7 @@ const TopBarRulesSearch = lazy(() =>
 
 const OPEN_CREATE_SKILL_PROJECT_MODAL_EVENT = "open-create-skill-project-modal";
 const OPEN_CREATE_MCP_MODAL_EVENT = "open-create-mcp-modal";
+const OPEN_ADD_PLUGIN_MODAL_EVENT = "open-add-plugin-modal";
 
 interface TopBarProps {
   onOpenSettings: () => void;
@@ -159,7 +160,8 @@ export function TopBar({
   const isSkillView = appModule === "skill";
   const isPromptView = appModule === "prompt";
   const showTopBarSearch = !isSkillStoreCatalogView;
-  const showCreateButton = isPromptView || isSkillView || isMcpView;
+  const showCreateButton =
+    isPromptView || isSkillView || isMcpView || isPluginView;
   const selectedPromptForCreate = useMemo(() => {
     if (!isPromptView || !selectedPromptId) {
       return null;
@@ -784,7 +786,7 @@ export function TopBar({
               </>
             )}
 
-          {/* Split Button for New Prompt / New Skill / New MCP */}
+          {/* Split Button for New Prompt / New Skill / New MCP / New Plugin */}
           {showCreateButton && (
             <div
               ref={createMenuRef}
@@ -805,6 +807,10 @@ export function TopBar({
                   } else if (appModule === "mcp") {
                     document.dispatchEvent(
                       new CustomEvent(OPEN_CREATE_MCP_MODAL_EVENT),
+                    );
+                  } else if (appModule === "plugin") {
+                    document.dispatchEvent(
+                      new CustomEvent(OPEN_ADD_PLUGIN_MODAL_EVENT),
                     );
                   } else {
                     const mode = useSettingsStore.getState().creationMode;
@@ -827,7 +833,7 @@ export function TopBar({
                   ) : (
                     <PlusIcon aria-hidden="true" className="w-4 h-4" />
                   )
-                ) : appModule === "mcp" ? (
+                ) : appModule === "mcp" || appModule === "plugin" ? (
                   <PlusIcon aria-hidden="true" className="w-4 h-4" />
                 ) : creationMode === "manual" ? (
                   <PlusIcon aria-hidden="true" className="w-4 h-4" />
@@ -839,7 +845,7 @@ export function TopBar({
                     ? isProjectSkillView
                       ? t("skill.addProject", "Add Project")
                       : t("header.new")
-                    : appModule === "mcp"
+                    : appModule === "mcp" || appModule === "plugin"
                       ? t("header.new")
                       : creationMode === "manual"
                         ? t("header.new")

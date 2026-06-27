@@ -60,7 +60,7 @@ PromptHub MUST support plugin intake from marketplace entries, Git repository UR
 
 - **GIVEN** the user is viewing My Plugins
 - **WHEN** the header is rendered
-- **THEN** PromptHub shows one top-right `New Plugin` action instead of permanently showing URL import, local import, and batch-management buttons in the page chrome
+- **THEN** PromptHub shows one top app bar `New` action instead of permanently showing URL import, local import, and batch-management buttons in the page chrome or content header
 - **AND** opening `New Plugin` presents the available add/manage methods in a modal chooser that matches the Skill add flow pattern
 - **AND** choosing a method reuses the existing URL import, local folder import, or batch-management flow
 

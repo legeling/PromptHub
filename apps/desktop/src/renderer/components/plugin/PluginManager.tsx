@@ -115,6 +115,7 @@ const PLUGIN_LIBRARY_GALLERY_COLUMNS: PluginLibraryGalleryColumnMode[] = [
   "3",
   "4",
 ];
+const OPEN_ADD_PLUGIN_MODAL_EVENT = "open-add-plugin-modal";
 const SAFE_PLUGIN_ICON_DATA_URL_PATTERN =
   /^data:image\/(?:png|jpeg|jpg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/i;
 
@@ -3767,6 +3768,21 @@ export function PluginManager() {
     }
   }, [detailLibraryPlugin, selectedTab]);
 
+  useEffect(() => {
+    const openAddPluginModal = () => {
+      setSelectedTab("library");
+      setIsAddPluginModalOpen(true);
+    };
+
+    document.addEventListener(OPEN_ADD_PLUGIN_MODAL_EVENT, openAddPluginModal);
+    return () => {
+      document.removeEventListener(
+        OPEN_ADD_PLUGIN_MODAL_EVENT,
+        openAddPluginModal,
+      );
+    };
+  }, [setSelectedTab]);
+
   const handleInstall = async (entry: PluginMarketEntry) => {
     setInstallingId(entry.id);
     try {
@@ -4969,18 +4985,6 @@ export function PluginManager() {
             </div>
 
             <div className="flex shrink-0 items-center gap-2 self-start lg:self-center lg:justify-end">
-              {selectedTab === "library" ? (
-                <button
-                  type="button"
-                  onClick={() => setIsAddPluginModalOpen(true)}
-                  aria-label={t("plugin.addPlugin", "New Plugin")}
-                  title={t("plugin.addPlugin", "New Plugin")}
-                  className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-                >
-                  <PackagePlusIcon aria-hidden="true" className="h-4 w-4" />
-                  {t("plugin.addPlugin", "New Plugin")}
-                </button>
-              ) : null}
               {selectedTab === "market" ? (
                 <button
                   type="button"

@@ -561,7 +561,7 @@ async function renderPluginManager(language: "en" | "zh" = "en") {
 }
 
 async function openPluginAddMenu() {
-  fireEvent.click(await screen.findByRole("button", { name: "New Plugin" }));
+  document.dispatchEvent(new CustomEvent("open-add-plugin-modal"));
   return screen.findByRole("dialog", { name: "New Plugin" });
 }
 
@@ -600,8 +600,8 @@ describe("PluginManager", () => {
       "0",
     );
     expect(
-      screen.getByRole("button", { name: "New Plugin" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: "New Plugin" }),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Batch manage Plugins" }),
     ).not.toBeInTheDocument();
