@@ -1,5 +1,32 @@
 # Implementation log
 
+## Verification acceptance hardening follow-up
+
+- The shared desktop test setup now installs an in-memory `localStorage`
+  implementation before tests run. This keeps Zustand persisted stores from
+  failing under the current Node/Vitest environment when tests exercise
+  `setItem`, `getItem`, or `clear`.
+- The same setup file now provides `Element.prototype.scrollTo` in jsdom, so
+  virtualized prompt-list integration tests can exercise scroll-dependent UI
+  code without crashing in the test environment.
+- A Plugin clipboard reuse audit found two direct `navigator.clipboard.writeText`
+  call sites in Plugin surfaces. `PluginManager` and `PluginFullDetailPage` now
+  route local path / Codex link copying through the shared
+  `copyTextToClipboard()` utility.
+- `plugin-manager.test.tsx` now verifies that opening an installed Plugin detail
+  page can copy the local Plugin package path through the mocked shared
+  clipboard path.
+- Verification:
+  - `pnpm --filter @prompthub/desktop typecheck`: passing.
+  - Targeted desktop regression suite covering prompt filtering, large prompt
+    list integration, prompt relationships, Skill store update/source/status,
+    Plugin manager, MCP manager, Plugin/MCP stores, and network settings:
+    **16 files / 210 tests**, passing.
+  - `pnpm --filter @prompthub/desktop test -- --run tests/unit/components/plugin-manager.test.tsx -t "opens installed plugins as a full detail page"`:
+    **1 focused test**, passing.
+  - Clipboard static scan now leaves direct clipboard writes only in the shared
+    desktop clipboard helper.
+
 ## Wave 1 — UI primitives (12 / 12 planned)
 
 Shipped:
@@ -3526,3 +3553,42 @@ work could land cleanly):
   - `pnpm --filter @prompthub/desktop test -- --run tests/unit/components/about-settings.test.tsx`:
     **1 file / 9 tests**, passing.
   - `pnpm --filter @prompthub/desktop typecheck`: passing.
+
+## MCP and Plugin parity coverage follow-up
+
+- A module coverage scan found that Skill surfaces already had much denser
+  focused regression coverage than MCP and Plugin surfaces. MCP/Plugin coverage
+  was strengthened without expanding the existing oversized manager test files.
+- Added a Plugin store regression for delete behavior. The test verifies that
+  delete options are passed through to the desktop bridge, and that deleting one
+  Plugin clears only that Plugin's package health, source update, and version
+  caches while preserving unrelated Plugin runtime caches.
+- Added an MCP store regression for delete behavior. The test verifies that
+  deleting the selected MCP server removes it from the library, moves selection
+  to the first remaining server, and clears stale preview state.
+- Added standalone MCP batch deploy dialog coverage. The tests verify enabled
+  target filtering, disabled-target warnings, select/deselect behavior,
+  non-submit button semantics, hidden decorative media, and duplicate-click
+  protection while a batch deploy is pending.
+- Added standalone Plugin Agent target picker coverage. The tests verify
+  copy/symlink distribution mode, selected Agent target payloads,
+  non-submit button semantics, hidden decorative media, clear/empty selection
+  behavior, and duplicate-click protection while distribution is pending.
+- The new duplicate-click tests exposed two real race conditions: rapid repeated
+  clicks could call MCP batch deploy or Plugin Agent distribution twice before
+  React re-rendered the disabled state. Both components now use a local
+  in-flight ref guard in addition to visible loading state.
+- Verification:
+  - `pnpm --filter @prompthub/desktop test -- tests/unit/stores/plugin.store.test.ts --run`:
+    **1 file / 13 tests**, passing.
+  - `pnpm --filter @prompthub/desktop test -- tests/unit/stores/mcp.store.test.ts --run`:
+    **1 file / 4 tests**, passing.
+  - `pnpm --filter @prompthub/desktop test -- tests/unit/components/mcp-batch-deploy-dialog.test.tsx --run`:
+    **1 file / 4 tests**, passing.
+  - `pnpm --filter @prompthub/desktop test -- tests/unit/components/plugin-agent-target-picker.test.tsx --run`:
+    **1 file / 3 tests**, passing.
+  - MCP/Plugin focused suite:
+    `pnpm --filter @prompthub/desktop test -- tests/unit/components/mcp-batch-deploy-dialog.test.tsx tests/unit/components/plugin-agent-target-picker.test.tsx tests/unit/stores/plugin.store.test.ts tests/unit/stores/mcp.store.test.ts --run`:
+    **4 files / 24 tests**, passing.
+  - `pnpm --filter @prompthub/desktop typecheck`: passing.
+  - `git diff --check`: passing.

@@ -1,7 +1,11 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useMcpStore } from "../../../src/renderer/stores/mcp.store";
-import type { McpMarketTemplate } from "@prompthub/shared/types/mcp";
+import type {
+  McpLibraryFile,
+  McpMarketTemplate,
+  McpServerConfig,
+} from "@prompthub/shared/types/mcp";
 
 const cachedTemplate: McpMarketTemplate = {
   id: "modelcontextprotocol:cached-server",
@@ -18,6 +22,44 @@ const cachedTemplate: McpMarketTemplate = {
     trustLevel: "official",
     url: "https://registry.modelcontextprotocol.io",
   },
+};
+
+const filesystemServer: McpServerConfig = {
+  id: "mcp_filesystem",
+  name: "filesystem",
+  displayName: "Filesystem",
+  description: "Read local files",
+  transport: "stdio",
+  command: "npx",
+  args: ["@modelcontextprotocol/server-filesystem"],
+  enabled: true,
+  tags: ["files"],
+  source: { type: "manual" },
+  createdAt: 1,
+  updatedAt: 1,
+};
+
+const slackServer: McpServerConfig = {
+  id: "mcp_slack",
+  name: "slack",
+  displayName: "Slack",
+  description: "Read Slack messages",
+  transport: "stdio",
+  command: "npx",
+  args: ["@modelcontextprotocol/server-slack"],
+  enabled: true,
+  tags: ["chat"],
+  source: { type: "manual" },
+  createdAt: 2,
+  updatedAt: 2,
+};
+
+const mcpLibrary: McpLibraryFile = {
+  kind: "prompthub-mcp-library",
+  version: 1,
+  updatedAt: "2026-06-27T00:00:00.000Z",
+  bindings: [],
+  servers: [filesystemServer, slackServer],
 };
 
 function resetMcpStoreForTest() {
@@ -159,5 +201,30 @@ describe("mcp store remote market cache persistence", () => {
 
     const persisted = JSON.parse(localStorage.getItem("mcp-store") ?? "{}");
     expect(persisted.state.pendingPluginChildDeployServerIds).toBeUndefined();
+  });
+
+  it("deletes MCP servers and clears stale detail preview state", async () => {
+    const nextLibrary: McpLibraryFile = {
+      ...mcpLibrary,
+      servers: [slackServer],
+    };
+    window.api.mcp = {
+      ...(window.api.mcp ?? {}),
+      deleteServer: vi.fn().mockResolvedValue(nextLibrary),
+    };
+    useMcpStore.setState({
+      library: mcpLibrary,
+      selectedServerId: filesystemServer.id,
+      preview: "stale filesystem preview",
+    });
+
+    await useMcpStore.getState().deleteServer(filesystemServer.id);
+
+    expect(window.api.mcp.deleteServer).toHaveBeenCalledWith(
+      filesystemServer.id,
+    );
+    expect(useMcpStore.getState().library).toEqual(nextLibrary);
+    expect(useMcpStore.getState().selectedServerId).toBe(slackServer.id);
+    expect(useMcpStore.getState().preview).toBe("");
   });
 });

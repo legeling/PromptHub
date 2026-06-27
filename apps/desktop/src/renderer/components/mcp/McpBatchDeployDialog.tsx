@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   CheckSquareIcon,
@@ -35,6 +35,7 @@ export function McpBatchDeployDialog({
     new Set(),
   );
   const [isApplying, setIsApplying] = useState(false);
+  const isApplyingRef = useRef(false);
 
   const enabledServers = useMemo(
     () => servers.filter((server) => server.enabled),
@@ -77,12 +78,13 @@ export function McpBatchDeployDialog({
 
   const handleApply = async () => {
     if (
-      isApplying ||
+      isApplyingRef.current ||
       enabledServers.length === 0 ||
       selectedPresets.length === 0
     ) {
       return;
     }
+    isApplyingRef.current = true;
     setIsApplying(true);
     try {
       await onApply(
@@ -91,6 +93,7 @@ export function McpBatchDeployDialog({
       );
       onClose();
     } finally {
+      isApplyingRef.current = false;
       setIsApplying(false);
     }
   };

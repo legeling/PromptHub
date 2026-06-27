@@ -529,4 +529,100 @@ describe("plugin store", () => {
       [importedSourcePlugin.id]: [],
     });
   });
+
+  it("deletes plugins with options and clears plugin-scoped runtime caches", async () => {
+    const otherPlugin: PluginLibraryEntry = {
+      ...importedSourcePlugin,
+      id: "http-source:other-kit",
+      name: "other-kit",
+      displayName: "Other Kit",
+    };
+    const nextLibrary: PluginLibraryFile = {
+      ...library,
+      plugins: [otherPlugin],
+    };
+    const deletedHealth: PluginPackageHealthCheck = {
+      status: "ok",
+      pluginId: importedSourcePlugin.id,
+      checkedAt: "2026-06-21T00:00:00.000Z",
+      packagePath: "/tmp/assist-kit",
+      manifestPath: "/tmp/assist-kit/.codex-plugin/plugin.json",
+      findings: [],
+    };
+    const keptHealth: PluginPackageHealthCheck = {
+      ...deletedHealth,
+      pluginId: otherPlugin.id,
+      packagePath: "/tmp/other-kit",
+      manifestPath: "/tmp/other-kit/.codex-plugin/plugin.json",
+    };
+    const deletedVersion: PluginVersion = {
+      id: "assist-kit-v1",
+      pluginId: importedSourcePlugin.id,
+      version: 1,
+      createdAt: "2026-06-21T00:00:00.000Z",
+      plugin: importedSourcePlugin,
+    };
+    const keptVersion: PluginVersion = {
+      ...deletedVersion,
+      id: "other-kit-v1",
+      pluginId: otherPlugin.id,
+      plugin: otherPlugin,
+    };
+    vi.mocked(window.api.plugin.deletePlugin).mockResolvedValue(nextLibrary);
+    usePluginStore.setState({
+      library: {
+        ...library,
+        plugins: [importedSourcePlugin, otherPlugin],
+      },
+      packageHealthChecks: {
+        [importedSourcePlugin.id]: deletedHealth,
+        [otherPlugin.id]: keptHealth,
+      },
+      sourceUpdateChecks: {
+        [importedSourcePlugin.id]: {
+          status: "update-available",
+          plugin: importedSourcePlugin,
+          checkedAt: "2026-06-21T00:00:00.000Z",
+          localModified: false,
+          remoteChanged: true,
+        },
+        [otherPlugin.id]: {
+          status: "up-to-date",
+          plugin: otherPlugin,
+          checkedAt: "2026-06-21T00:00:00.000Z",
+          localModified: false,
+          remoteChanged: false,
+        },
+      },
+      versionsByPluginId: {
+        [importedSourcePlugin.id]: [deletedVersion],
+        [otherPlugin.id]: [keptVersion],
+      },
+    });
+
+    await usePluginStore.getState().deletePlugin(importedSourcePlugin.id, {
+      removeDistributedTargets: true,
+    });
+
+    expect(window.api.plugin.deletePlugin).toHaveBeenCalledWith(
+      importedSourcePlugin.id,
+      { removeDistributedTargets: true },
+    );
+    expect(usePluginStore.getState().library).toEqual(nextLibrary);
+    expect(usePluginStore.getState().packageHealthChecks).toEqual({
+      [otherPlugin.id]: keptHealth,
+    });
+    expect(usePluginStore.getState().sourceUpdateChecks).toEqual({
+      [otherPlugin.id]: {
+        status: "up-to-date",
+        plugin: otherPlugin,
+        checkedAt: "2026-06-21T00:00:00.000Z",
+        localModified: false,
+        remoteChanged: false,
+      },
+    });
+    expect(usePluginStore.getState().versionsByPluginId).toEqual({
+      [otherPlugin.id]: [keptVersion],
+    });
+  });
 });

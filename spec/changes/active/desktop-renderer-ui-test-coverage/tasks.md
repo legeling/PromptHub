@@ -413,6 +413,15 @@
 - [x] `tests/unit/main/data-recovery.test.ts` follow-up recovery database-file
       symlink rejection for directory candidates, standalone backup files, and
       restore sources
+- [x] `tests/unit/components/mcp-batch-deploy-dialog.test.tsx` and
+      `tests/unit/stores/mcp.store.test.ts` follow-up MCP delete-state,
+      disabled-target, selection, non-submit, decorative-media, and duplicate
+      batch deploy click regressions
+- [x] `tests/unit/components/plugin-agent-target-picker.test.tsx` and
+      `tests/unit/stores/plugin.store.test.ts` follow-up Plugin delete-cache,
+      Agent target distribution, copy/symlink mode, non-submit,
+      decorative-media, clear-selection, and duplicate distribution click
+      regressions
 
 ## Verification
 

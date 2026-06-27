@@ -12,6 +12,50 @@ declare global {
     }
 }
 
+function createMemoryStorage(): Storage {
+    const values = new Map<string, string>();
+
+    return {
+        get length() {
+            return values.size;
+        },
+        clear() {
+            values.clear();
+        },
+        getItem(key: string) {
+            return values.has(key) ? values.get(key)! : null;
+        },
+        key(index: number) {
+            return Array.from(values.keys())[index] ?? null;
+        },
+        removeItem(key: string) {
+            values.delete(key);
+        },
+        setItem(key: string, value: string) {
+            values.set(key, String(value));
+        },
+    };
+}
+
+function installLocalStorageMock() {
+    const storage = createMemoryStorage();
+
+    Object.defineProperty(globalThis, 'localStorage', {
+        configurable: true,
+        value: storage,
+        writable: true,
+    });
+
+    if (typeof window !== 'undefined') {
+        Object.defineProperty(window, 'localStorage', {
+            configurable: true,
+            value: storage,
+        });
+    }
+}
+
+installLocalStorageMock();
+
 // 每次测试后清理 DOM
 // Cleanup DOM after each test
 afterEach(() => {
@@ -104,6 +148,13 @@ if (typeof window !== 'undefined') {
             unobserve() {}
             disconnect() {}
         } as unknown as typeof ResizeObserver;
+    }
+
+    if (typeof Element !== 'undefined' && !Element.prototype.scrollTo) {
+        Object.defineProperty(Element.prototype, 'scrollTo', {
+            configurable: true,
+            value: vi.fn(),
+        });
     }
 
     Object.defineProperty(window.navigator, 'clipboard', {

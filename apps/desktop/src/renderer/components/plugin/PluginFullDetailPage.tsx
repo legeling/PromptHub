@@ -2019,7 +2019,7 @@ export function PluginFullDetailPage({
   const copyLocalPackagePath = async () => {
     if (!localPackagePath) return;
     try {
-      await navigator.clipboard.writeText(localPackagePath);
+      await copyTextToClipboard(localPackagePath);
       showToast(t("plugin.localPathCopied", "Plugin path copied"));
     } catch (error) {
       showToast(

@@ -1013,6 +1013,15 @@ describe("PluginManager", () => {
     await waitFor(() => {
       expect(writeText).toHaveBeenCalledWith("Gmail");
     });
+    writeText.mockClear();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Copy Plugin path" }),
+    );
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith(
+        "/tmp/prompthub/plugins/gmail/repo/plugins/gmail",
+      );
+    });
     expect(screen.getByText("Platform Integration")).toBeInTheDocument();
     expect(screen.getByText("Plugin Content")).toBeInTheDocument();
     expect(

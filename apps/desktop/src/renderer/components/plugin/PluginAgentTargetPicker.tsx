@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CheckIcon,
   CheckSquareIcon,
@@ -358,6 +358,7 @@ export function PluginAgentTargetPicker({
   const { showToast } = useToast();
   const [installMode, setInstallMode] = useState<"copy" | "symlink">("copy");
   const [isDistributing, setIsDistributing] = useState(false);
+  const isDistributingRef = useRef(false);
   const [selectedTargetIds, setSelectedTargetIds] = useState<Set<string>>(
     () => new Set(initialTargetIds ?? EMPTY_TARGET_IDS),
   );
@@ -406,10 +407,11 @@ export function PluginAgentTargetPicker({
     if (
       selectedPlugins.length === 0 ||
       selectedTargetIds.size === 0 ||
-      isDistributing
+      isDistributingRef.current
     ) {
       return;
     }
+    isDistributingRef.current = true;
     setIsDistributing(true);
     const targetIds = Array.from(selectedTargetIds);
     let succeeded = 0;
@@ -462,6 +464,7 @@ export function PluginAgentTargetPicker({
         "error",
       );
     } finally {
+      isDistributingRef.current = false;
       setIsDistributing(false);
     }
   };

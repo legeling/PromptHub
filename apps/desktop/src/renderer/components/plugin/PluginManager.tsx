@@ -79,6 +79,7 @@ import { PlatformIcon } from "../ui/PlatformIcon";
 import { CardStatusBadge } from "../ui/CardStatusBadge";
 import { Select, type SelectOption } from "../ui/Select";
 import { useToast } from "../ui/Toast";
+import { copyTextToClipboard } from "../../utils/clipboard";
 import { PluginAgentTargetPicker } from "./PluginAgentTargetPicker";
 import { PluginFullDetailPage } from "./PluginFullDetailPage";
 import { buildAgentDetailPlugin } from "./agent-plugin-detail-adapter";
@@ -4252,7 +4253,7 @@ export function PluginManager() {
       return;
     }
     try {
-      await navigator.clipboard.writeText(link);
+      await copyTextToClipboard(link);
       showToast(t("plugin.codexLinkCopied", "Copied Codex link"));
     } catch (copyError) {
       showToast(getErrorMessage(copyError), "error");
