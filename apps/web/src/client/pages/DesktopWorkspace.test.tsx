@@ -34,6 +34,21 @@ vi.mock('../api/auth-session', () => ({
 
 import { DesktopWorkspacePage } from './DesktopWorkspace';
 
+function createMemoryStorage(): Storage {
+  const values = new Map<string, string>();
+
+  return {
+    get length() {
+      return values.size;
+    },
+    clear: () => values.clear(),
+    getItem: (key: string) => values.get(key) ?? null,
+    key: (index: number) => Array.from(values.keys())[index] ?? null,
+    removeItem: (key: string) => values.delete(key),
+    setItem: (key: string, value: string) => values.set(key, value),
+  };
+}
+
 describe('DesktopWorkspacePage', () => {
   beforeEach(() => {
     Reflect.deleteProperty(window, '__PROMPTHUB_WEB__');
@@ -41,6 +56,10 @@ describe('DesktopWorkspacePage', () => {
     Reflect.deleteProperty(window, '__PROMPTHUB_WEB_LOGOUT__');
     Reflect.deleteProperty(window, 'api');
     Reflect.deleteProperty(window, 'electron');
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      value: createMemoryStorage(),
+    });
     window.localStorage.clear();
     fetchWithAuthRetryMock.mockReset();
     fetchWithAuthRetryMock.mockResolvedValue(new Response('{}', { status: 200 }));

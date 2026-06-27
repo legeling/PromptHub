@@ -533,6 +533,8 @@ describe('web import/export routes', () => {
           foldersImported: number;
           rulesImported: number;
           skillsImported: number;
+          pluginsImported: number;
+          mcpServersImported: number;
           settingsUpdated: boolean;
         };
       };
@@ -541,6 +543,8 @@ describe('web import/export routes', () => {
         foldersImported: 2,
         rulesImported: 1,
         skillsImported: 1,
+        pluginsImported: 0,
+        mcpServersImported: 0,
         settingsUpdated: true,
       });
 

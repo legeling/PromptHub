@@ -204,6 +204,12 @@ describe("SkillBatchDeployDialog install mode", () => {
     const copyButton = screen.getByRole("button", { name: /Copy/ });
     const symlinkButton = screen.getByRole("button", { name: /Symlink/ });
     const platformButton = screen.getByRole("button", { name: /Claude Code/ });
+    const selectAllButton = screen.queryByRole("button", {
+      name: "Select All",
+    });
+    if (selectAllButton) {
+      fireEvent.click(selectAllButton);
+    }
     const toggleAllButton = screen.getByRole("button", {
       name: "Deselect All",
     });

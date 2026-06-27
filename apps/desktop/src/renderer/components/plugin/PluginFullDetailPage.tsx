@@ -1930,7 +1930,6 @@ export function PluginFullDetailPage({
 
   useEffect(() => {
     void checkSourceUpdate(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plugin.id]);
 
   useEffect(() => {

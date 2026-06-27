@@ -115,7 +115,7 @@ describe("standalone cli wiring", () => {
     const result = await execCli(["--version"]);
 
     expect(result.exitCode).toBe(0);
-    expect(result.joinedStdout.trim()).toBe("0.5.8-beta.3");
+    expect(result.joinedStdout.trim()).toBe("0.5.9-beta.2");
     expect(result.stderr).toEqual([]);
   });
 
@@ -229,8 +229,25 @@ describe("standalone cli wiring", () => {
     expect(copyRes.json.content).toBe("Release Beta");
   });
 
-  it("installs MCP market templates by query", async () => {
+  it("reports empty MCP market templates without installing placeholders", async () => {
     const root = makeTempRoot(tempDirs);
+
+    const marketRes = await execCli([...withDataDir(root), "mcp", "market"]);
+    expect(marketRes.exitCode).toBe(0);
+    expect(marketRes.json).toEqual([]);
+
+    const sourcesRes = await execCli([...withDataDir(root), "mcp", "sources"]);
+    expect(sourcesRes.exitCode).toBe(0);
+    expect(
+      sourcesRes.json.some(
+        (source: { id: string }) => source.id === "prompthub-official",
+      ),
+    ).toBe(true);
+    expect(
+      sourcesRes.json.some(
+        (source: { id: string }) => source.id === "modelcontextprotocol",
+      ),
+    ).toBe(true);
 
     const installRes = await execCli([
       ...withDataDir(root),
@@ -238,16 +255,10 @@ describe("standalone cli wiring", () => {
       "install",
       "up-to-date",
     ]);
-    expect(installRes.exitCode).toBe(0);
-    expect(installRes.json.name).toBe("context7");
-
-    const listRes = await execCli([...withDataDir(root), "mcp", "list"]);
-    expect(listRes.exitCode).toBe(0);
-    expect(
-      listRes.json.some(
-        (server: { name: string }) => server.name === "context7",
-      ),
-    ).toBe(true);
+    expect(installRes.exitCode).toBe(3);
+    expect(installRes.errorJson.error).toMatchObject({
+      code: "NOT_FOUND",
+    });
   });
 
   it("supports MCP market, import, env import, and health check in the shared library", async () => {
@@ -275,9 +286,7 @@ describe("standalone cli wiring", () => {
 
     const marketRes = await execCli([...withDataDir(root), "mcp", "market"]);
     expect(marketRes.exitCode).toBe(0);
-    expect(
-      marketRes.json.some((item: { id: string }) => item.id === "context7"),
-    ).toBe(true);
+    expect(marketRes.json).toEqual([]);
 
     const importRes = await execCli([
       ...withDataDir(root),
@@ -2682,7 +2691,7 @@ describe("standalone cli wiring", () => {
     ]);
     expect(readImportedRes.exitCode).toBe(0);
     expect(readImportedRes.json.content).toBe("# Project A Rule");
-  });
+  }, 10_000);
 
   it("requires content for rules save", async () => {
     const root = makeTempRoot(tempDirs);

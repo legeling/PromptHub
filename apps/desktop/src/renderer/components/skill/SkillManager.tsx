@@ -279,7 +279,7 @@ export function SkillManager() {
   const loadDeployedStatus = useSkillStore((state) => state.loadDeployedStatus);
   const skillFilterTags = useSkillStore((state) => state.filterTags);
   const pendingPluginChildDeploySkillIds = useSkillStore(
-    (state) => state.pendingPluginChildDeploySkillIds,
+    (state) => state.pendingPluginChildDeploySkillIds ?? [],
   );
   const consumePluginChildSkillDeployRequest = useSkillStore(
     (state) => state.consumePluginChildSkillDeployRequest,

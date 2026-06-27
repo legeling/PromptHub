@@ -526,12 +526,24 @@ describe('web sync routes', () => {
       const manifestBody = await manifestResponse.json() as {
         data: {
           version: string;
-          counts: { prompts: number; folders: number; skills: number };
+          counts: {
+            prompts: number;
+            folders: number;
+            skills: number;
+            plugins: number;
+            mcpServers: number;
+          };
           actor: { userId: string; role: 'admin' | 'user' };
         };
       };
       expect(manifestBody.data.version).toBe('web-backup-v2');
-      expect(manifestBody.data.counts).toEqual({ prompts: 1, folders: 1, skills: 1 });
+      expect(manifestBody.data.counts).toEqual({
+        prompts: 1,
+        folders: 1,
+        skills: 1,
+        plugins: 0,
+        mcpServers: 0,
+      });
       expect(manifestBody.data.actor).toEqual({
         userId: registerPayload.data.user.id,
         role: registerPayload.data.user.role,
@@ -609,14 +621,26 @@ describe('web sync routes', () => {
         data: {
           enabled: boolean;
           provider: string;
-          summary: { prompts: number; folders: number; skills: number };
+          summary: {
+            prompts: number;
+            folders: number;
+            skills: number;
+            plugins: number;
+            mcpServers: number;
+          };
           config: { endpoint?: string; autoSync?: boolean };
           capabilities: { pull: boolean; push: boolean; autoSync: boolean };
         };
       };
       expect(statusBody.data.enabled).toBe(true);
       expect(statusBody.data.provider).toBe('webdav');
-      expect(statusBody.data.summary).toEqual({ prompts: 1, folders: 1, skills: 1 });
+      expect(statusBody.data.summary).toEqual({
+        prompts: 1,
+        folders: 1,
+        skills: 1,
+        plugins: 0,
+        mcpServers: 0,
+      });
       expect(statusBody.data.config.endpoint).toBe('https://dav.example.com/remote.php/dav/files/sync');
       expect(statusBody.data.capabilities).toEqual({ pull: true, push: true, autoSync: true });
 
@@ -1679,6 +1703,8 @@ describe('web sync routes', () => {
             folders: number;
             rules: number;
             skills: number;
+            plugins: number;
+            mcpServers: number;
           };
         };
       };
@@ -1696,6 +1722,8 @@ describe('web sync routes', () => {
         folders: 1,
         rules: 0,
         skills: 0,
+        plugins: 0,
+        mcpServers: 0,
       });
       expect(testWebDavConnection).toHaveBeenCalledTimes(1);
       expect(pushWebDavFile).toHaveBeenCalledTimes(4); // image + video + data.json + manifest.json
@@ -1801,6 +1829,8 @@ describe('web sync routes', () => {
             folders: number;
             rules: number;
             skills: number;
+            plugins: number;
+            mcpServers: number;
           };
         };
       };
@@ -1814,6 +1844,8 @@ describe('web sync routes', () => {
         folders: 2,
         rules: 1,
         skills: 1,
+        plugins: 0,
+        mcpServers: 0,
       });
       expect(pullBody.data.provider).toBe('webdav');
       expect(pullBody.data.remoteFile).toBe('prompthub-backup/data.json');

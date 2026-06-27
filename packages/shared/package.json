@@ -14,6 +14,9 @@
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  },
   "files": [
     "types",
     "constants",

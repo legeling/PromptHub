@@ -833,7 +833,7 @@ export async function updateFolder(c: AppContext): Promise<Response> {
   if (nextVisibility !== resourceVisibility(current) && user.role !== "admin") {
     return failure(c, 403, ErrorCode.FORBIDDEN, "Only admin can change shared visibility");
   }
-  const parentId = patch.parentId === undefined ? current.parentId : patch.parentId;
+  const parentId = (patch.parentId === undefined ? current.parentId : patch.parentId) ?? undefined;
   const parentError = assertParentFolderAllowed(c, snapshot.folders.filter((item) => item.id !== folderId), parentId, nextVisibility);
   if (parentError) return parentError;
   if (parentId && collectFolderDescendants(snapshot.folders, folderId).has(parentId)) {
