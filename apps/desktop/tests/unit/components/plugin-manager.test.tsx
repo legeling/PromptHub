@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   PluginInventorySummary,
@@ -372,6 +372,7 @@ function resetPluginStore() {
     selectedMarketSourceId: "prompthub-official",
     libraryViewMode: "gallery",
     libraryGalleryColumns: "auto",
+    filterTags: [],
     searchQuery: "",
     isLoading: false,
     error: null,
@@ -611,6 +612,7 @@ describe("PluginManager", () => {
     expect(
       screen.queryByRole("button", { name: "Import from URL" }),
     ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Plugin tag")).not.toBeInTheDocument();
 
     const addDialog = await openPluginAddMenu();
     expect(
@@ -803,15 +805,17 @@ describe("PluginManager", () => {
     expect(screen.getByText("Favorite Review")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "All Plugins" }));
-    fireEvent.click(screen.getByLabelText("Plugin tag"));
-    fireEvent.click(screen.getByRole("option", { name: "automation" }));
+    act(() => {
+      usePluginStore.setState({ filterTags: ["automation"] });
+    });
 
     expect(screen.queryByText("Gmail")).not.toBeInTheDocument();
     expect(screen.getByText("Local Helper")).toBeInTheDocument();
     expect(screen.queryByText("Favorite Review")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByLabelText("Plugin tag"));
-    fireEvent.click(screen.getByRole("option", { name: "personal" }));
+    act(() => {
+      usePluginStore.setState({ filterTags: ["personal"] });
+    });
 
     expect(screen.getByText("Gmail")).toBeInTheDocument();
     expect(screen.queryByText("Local Helper")).not.toBeInTheDocument();

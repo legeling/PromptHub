@@ -819,3 +819,18 @@ Implemented first MCP management slice.
     - Result: passed.
   - `pnpm --filter @prompthub/desktop exec tsc --noEmit --pretty false`
     - Result: passed.
+
+- Unified My MCP tag filtering with the Skill sidebar pattern:
+  - Added MCP store `filterTags`, `toggleFilterTag`, and `clearFilterTags` state so the shared sidebar tag section can drive My MCP filtering.
+  - Reused the Sidebar bottom tag-section layout for My MCP, collecting tags from saved local MCP library server records.
+  - Kept MCP source filtering in the My MCP header while tag filtering now lives in the same left-bottom location as My Skills.
+  - Added My MCP filtering so active sidebar tags restrict the visible server list before source filtering and pagination.
+- Verification for MCP sidebar tag filter alignment:
+  - `pnpm --filter @prompthub/desktop test -- tests/unit/components/sidebar.test.tsx tests/unit/components/plugin-manager.test.tsx tests/unit/components/mcp-manager.test.tsx --run`
+    - Result: passed (3 files, 136 tests).
+  - `pnpm --filter @prompthub/desktop exec eslint src/renderer/components/layout/Sidebar.tsx src/renderer/components/mcp/McpManager.tsx src/renderer/components/plugin/PluginManager.tsx src/renderer/stores/mcp.store.ts src/renderer/stores/plugin.store.ts tests/unit/components/sidebar.test.tsx tests/unit/components/mcp-manager.test.tsx tests/unit/components/plugin-manager.test.tsx --max-warnings 0`
+    - Result: passed.
+  - `pnpm --filter @prompthub/desktop typecheck`
+    - Result: passed.
+  - `git diff --check`
+    - Result: passed.

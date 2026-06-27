@@ -233,6 +233,7 @@ describe("Sidebar", () => {
       targetPresets: [],
       selectedTab: "library",
       selectedMarketSourceId: "prompthub-official",
+      filterTags: [],
     } as Partial<ReturnType<typeof useMcpStore.getState>>);
 
     usePluginStore.setState({
@@ -248,6 +249,7 @@ describe("Sidebar", () => {
       targetMatrix: [],
       selectedTab: "market",
       selectedMarketSourceId: "openai-curated",
+      filterTags: [],
       searchQuery: "",
       isLoading: false,
       error: null,
@@ -1100,6 +1102,109 @@ describe("Sidebar", () => {
           screen.getByRole("button", { name: /Codex 官方商店/i }),
         ),
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it("renders My Plugin tags in the same bottom sidebar tag area", async () => {
+    useSettingsStore.setState({
+      desktopHomeModules: ["plugin"],
+    } as Partial<ReturnType<typeof useSettingsStore.getState>>);
+    useUIStore.setState({
+      appModule: "plugin",
+      viewMode: "plugin",
+      isSidebarCollapsed: false,
+    });
+    usePluginStore.setState({
+      selectedTab: "library",
+      library: {
+        kind: "prompthub-plugin-library",
+        version: 1,
+        updatedAt: "2026-01-01T00:00:00.000Z",
+        plugins: [
+          {
+            id: "gmail",
+            name: "gmail",
+            displayName: "Gmail",
+            trustLevel: "official",
+            tags: ["automation"],
+            userTags: ["personal"],
+            source: { kind: "market", label: "Codex Plugin Store" },
+            installedAt: 1,
+            updatedAt: 1,
+          },
+        ],
+      },
+    } as Partial<ReturnType<typeof usePluginStore.getState>>);
+
+    await act(async () => {
+      await renderWithI18n(
+        <Sidebar currentPage="home" onNavigate={vi.fn()} />,
+        { language: "en" },
+      );
+    });
+
+    const tagSection = document.querySelector(".sidebar-tag-section");
+    expect(tagSection).not.toBeNull();
+    expect(
+      within(tagSection as HTMLElement).getByRole("button", {
+        name: "automation",
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      within(tagSection as HTMLElement).getByRole("button", {
+        name: "personal",
+      }),
+    );
+    expect(usePluginStore.getState().filterTags).toEqual(["personal"]);
+  });
+
+  it("renders My MCP tags in the same bottom sidebar tag area", async () => {
+    useSettingsStore.setState({
+      desktopHomeModules: ["mcp"],
+    } as Partial<ReturnType<typeof useSettingsStore.getState>>);
+    useUIStore.setState({
+      appModule: "mcp",
+      viewMode: "mcp",
+      isSidebarCollapsed: false,
+    });
+    useMcpStore.setState({
+      selectedTab: "library",
+      library: {
+        kind: "prompthub-mcp-library",
+        version: 1,
+        updatedAt: "2026-01-01T00:00:00.000Z",
+        bindings: [],
+        servers: [
+          {
+            id: "fetch",
+            name: "fetch",
+            displayName: "Fetch",
+            transport: "stdio",
+            command: "uvx",
+            enabled: true,
+            tags: ["web"],
+            source: { type: "market", id: "fetch", label: "Official Store" },
+            createdAt: 1,
+            updatedAt: 1,
+          },
+        ],
+      },
+    } as Partial<ReturnType<typeof useMcpStore.getState>>);
+
+    await act(async () => {
+      await renderWithI18n(
+        <Sidebar currentPage="home" onNavigate={vi.fn()} />,
+        { language: "en" },
+      );
+    });
+
+    const tagSection = document.querySelector(".sidebar-tag-section");
+    expect(tagSection).not.toBeNull();
+    fireEvent.click(
+      within(tagSection as HTMLElement).getByRole("button", { name: "web" }),
+    );
+
+    expect(useMcpStore.getState().filterTags).toEqual(["web"]);
   });
 
   it("keeps Rules visible but hides project-directory actions in web runtime", async () => {

@@ -48,6 +48,7 @@
 - [x] Add My MCP Skill-style batch management, gallery/list switching, pagination, favorite toggles, and card/list delete actions.
 - [x] Persist MCP favorite state in the local MCP library normalization/update flow.
 - [x] Add My MCP Skill-style batch tag management through the MCP library update flow.
+- [x] Add My MCP Skill-style tag filtering from the shared left-bottom sidebar tag section instead of page-top tag controls.
 - [x] Add My MCP Skill-style batch sync to agent platforms through the safe MCP apply flow.
 - [x] Add My MCP card/list quick sync actions for single MCP distribution.
 - [x] Align My MCP List View with My Skill List View row structure and distribution progress.

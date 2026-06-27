@@ -294,6 +294,7 @@ export function McpManager() {
     targetStatus,
     selectedTab,
     selectedMarketSourceId,
+    filterTags: mcpFilterTags,
     searchQuery,
     pendingPluginChildDeployServerIds,
     isLoading,
@@ -617,9 +618,21 @@ export function McpManager() {
       if (libraryFilter === "pending" && distributedCount > 0) {
         return false;
       }
+      if (
+        mcpFilterTags.length > 0 &&
+        !mcpFilterTags.some((tag) => (server.tags ?? []).includes(tag))
+      ) {
+        return false;
+      }
       return matchesMcpSearch(server, normalizedSearchQuery);
     });
-  }, [libraryFilter, normalizedSearchQuery, serverDistributionById, servers]);
+  }, [
+    libraryFilter,
+    mcpFilterTags,
+    normalizedSearchQuery,
+    serverDistributionById,
+    servers,
+  ]);
   const sourceFilterEntries = useMemo(() => {
     const entries = new Map<string, { label: string; count: number }>();
 
@@ -754,7 +767,13 @@ export function McpManager() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeSourceFilterKey, libraryFilter, normalizedSearchQuery, pageSize]);
+  }, [
+    activeSourceFilterKey,
+    libraryFilter,
+    mcpFilterTags,
+    normalizedSearchQuery,
+    pageSize,
+  ]);
 
   useEffect(() => {
     if (

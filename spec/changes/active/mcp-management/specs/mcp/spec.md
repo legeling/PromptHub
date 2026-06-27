@@ -228,6 +228,14 @@ PromptHub MUST expose My MCP as a Skill-style manageable library, not only a pas
 - **THEN** PromptHub updates each selected MCP server's `tags` through the local MCP library update flow
 - **AND** the batch toolbar, dialog, and result copy are localized for every supported desktop locale
 
+#### Scenario: Filter My MCP from the shared sidebar tag section
+
+- **GIVEN** saved MCP servers have tags in the local MCP library
+- **WHEN** the user views My MCP
+- **THEN** PromptHub renders those tags in the shared left-bottom sidebar tag section, matching My Skills
+- **AND** PromptHub does not render MCP tag filters in the page-top filter row
+- **AND** clicking a sidebar tag filters the My MCP library by that tag
+
 #### Scenario: Batch sync MCP servers to agent platforms
 
 - **GIVEN** the user selects enabled MCP servers in My MCP batch mode

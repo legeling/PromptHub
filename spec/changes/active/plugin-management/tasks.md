@@ -39,7 +39,7 @@
 - [x] Align installed Plugin detail distribution panel with the Skill platform integration panel and persist manifest long descriptions for the detail preview.
 - [x] Align My Plugins installed cards with the large My Skill gallery card scale instead of compact list cards.
 - [x] Align My Plugins list controls and card hover behavior with My Skills: distribution-status/source filters, text batch-manage button, distributed target badges, and quick open/distribute/folder/delete actions.
-- [x] Add Skill-style My Plugins personal controls: persisted favorites, Favorites filter, manifest/source tag filter, user tag management, personal notes, tag search, card/detail favorite buttons, and title-copy behavior.
+- [x] Add Skill-style My Plugins personal controls: persisted favorites, Favorites filter, manifest/source tag filter from the shared left-bottom sidebar tag section, user tag management, personal notes, tag search, card/detail favorite buttons, and title-copy behavior.
 - [x] Add Skill-style My Plugins batch favorite/unfavorite action so selected Plugins can be favorited from batch mode like My Skills.
 - [x] Add Skill-style My Plugins view controls: persisted gallery/list view mode, configurable gallery columns, shared page-size pagination, and card/list-row context menus.
 - [x] Make My Plugins distribute actions use the paper-plane icon and open a direct Agent target picker instead of routing users to the Agent Plugin workbench.

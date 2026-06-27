@@ -370,6 +370,21 @@
   - Result: passed after formatting the touched TSX files.
 - `git diff --check`
   - Result: passed.
+- Unified My Plugins tag filtering with the Skill sidebar pattern:
+  - Removed the page-top Plugin tag selector from the My Plugins filter row.
+  - Added Plugin store `filterTags`, `toggleFilterTag`, and `clearFilterTags` state so the shared sidebar tag section can drive My Plugins filtering.
+  - Reused the Sidebar bottom tag-section layout for My Plugins, collecting both manifest/source `tags` and PromptHub-owned `userTags`.
+  - Kept source filtering in the My Plugins header while tag filtering now lives in the same left-bottom location as My Skills.
+  - Fixed the existing Plugin Store virtual catalog Hook ordering by moving `useVirtualizer` before the small-catalog early return, so the touched PluginManager file satisfies React Hook linting.
+- Verification for Plugin sidebar tag filter alignment:
+  - `pnpm --filter @prompthub/desktop test -- tests/unit/components/sidebar.test.tsx tests/unit/components/plugin-manager.test.tsx tests/unit/components/mcp-manager.test.tsx --run`
+    - Result: passed (3 files, 136 tests). Existing React `act(...)` warnings remain in the PluginManager suite.
+  - `pnpm --filter @prompthub/desktop exec eslint src/renderer/components/layout/Sidebar.tsx src/renderer/components/mcp/McpManager.tsx src/renderer/components/plugin/PluginManager.tsx src/renderer/stores/mcp.store.ts src/renderer/stores/plugin.store.ts tests/unit/components/sidebar.test.tsx tests/unit/components/mcp-manager.test.tsx tests/unit/components/plugin-manager.test.tsx --max-warnings 0`
+    - Result: passed.
+  - `pnpm --filter @prompthub/desktop typecheck`
+    - Result: passed.
+  - `git diff --check`
+    - Result: passed.
 
 ## Synced Docs
 

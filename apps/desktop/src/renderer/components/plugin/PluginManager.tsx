@@ -1603,6 +1603,20 @@ function PluginStoreCatalog({
     />
   );
 
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scrollRef.current,
+    scrollMargin,
+    estimateSize: (index) =>
+      rows[index]?.type === "section"
+        ? MARKET_GRID_HEADER_HEIGHT_PX
+        : MARKET_GRID_ROW_HEIGHT_PX + MARKET_GRID_GAP_PX,
+    overscan: 5,
+    getItemKey: (index) => rows[index]?.key ?? `plugin-store-row-${index}`,
+  });
+  const virtualRows = rowVirtualizer.getVirtualItems();
+  const totalHeight = rowVirtualizer.getTotalSize();
+
   if (totalCount <= MARKET_CATALOG_VIRTUALIZE_THRESHOLD) {
     return (
       <div className="space-y-8">
@@ -1634,20 +1648,6 @@ function PluginStoreCatalog({
       </div>
     );
   }
-
-  const rowVirtualizer = useVirtualizer({
-    count: rows.length,
-    getScrollElement: () => scrollRef.current,
-    scrollMargin,
-    estimateSize: (index) =>
-      rows[index]?.type === "section"
-        ? MARKET_GRID_HEADER_HEIGHT_PX
-        : MARKET_GRID_ROW_HEIGHT_PX + MARKET_GRID_GAP_PX,
-    overscan: 5,
-    getItemKey: (index) => rows[index]?.key ?? `plugin-store-row-${index}`,
-  });
-  const virtualRows = rowVirtualizer.getVirtualItems();
-  const totalHeight = rowVirtualizer.getTotalSize();
 
   return (
     <div
@@ -3095,6 +3095,7 @@ export function PluginManager() {
     selectedMarketSourceId,
     libraryViewMode,
     libraryGalleryColumns,
+    filterTags: libraryTagFilters,
     searchQuery,
     isLoading,
     error,
@@ -3276,7 +3277,6 @@ export function PluginManager() {
   const [libraryFilter, setLibraryFilter] =
     useState<PluginLibraryFilter>("all");
   const [librarySourceFilter, setLibrarySourceFilter] = useState("all");
-  const [libraryTagFilter, setLibraryTagFilter] = useState("all");
   const libraryGalleryColumnOptions = useMemo<SelectOption[]>(
     () =>
       PLUGIN_LIBRARY_GALLERY_COLUMNS.map((columns) => ({
@@ -3405,27 +3405,6 @@ export function PluginManager() {
   )
     ? librarySourceFilter
     : "all";
-  const libraryTagEntries = useMemo(() => {
-    const entries = new Map<string, number>();
-
-    for (const plugin of baseVisiblePlugins) {
-      for (const tag of getPluginDisplayTags(plugin)) {
-        const normalized = tag.trim();
-        if (!normalized) continue;
-        entries.set(normalized, (entries.get(normalized) ?? 0) + 1);
-      }
-    }
-
-    return Array.from(entries.entries())
-      .map(([value, count]) => ({ value, count }))
-      .sort((left, right) => left.value.localeCompare(right.value));
-  }, [baseVisiblePlugins]);
-  const activeLibraryTagFilter = libraryTagEntries.some(
-    (entry) => entry.value === libraryTagFilter,
-  )
-    ? libraryTagFilter
-    : "all";
-  const hasActiveLibraryTagFilter = activeLibraryTagFilter !== "all";
   const librarySourceOptions = useMemo<SelectOption[]>(
     () => [
       {
@@ -3453,44 +3432,19 @@ export function PluginManager() {
     ],
     [baseVisiblePlugins.length, librarySourceEntries, t],
   );
-  const libraryTagOptions = useMemo<SelectOption[]>(
-    () => [
-      {
-        value: "all",
-        label: (
-          <span className="flex w-full items-center justify-between gap-2">
-            <span>{t("plugin.allTags", "All tags")}</span>
-            <span className="text-xs text-muted-foreground">
-              {baseVisiblePlugins.length}
-            </span>
-          </span>
-        ),
-        labelText: t("plugin.allTags", "All tags"),
-      },
-      ...libraryTagEntries.map((entry) => ({
-        value: entry.value,
-        label: (
-          <span className="flex w-full items-center justify-between gap-2">
-            <span className="truncate">{entry.value}</span>
-            <span className="text-xs text-muted-foreground">{entry.count}</span>
-          </span>
-        ),
-        labelText: entry.value,
-      })),
-    ],
-    [baseVisiblePlugins.length, libraryTagEntries, t],
-  );
   const filteredLibraryPlugins = useMemo(() => {
     return baseVisiblePlugins.filter((plugin) => {
       const matchesSource =
         activeLibrarySourceFilter === "all" ||
         getPluginLibrarySourceKey(plugin) === activeLibrarySourceFilter;
       const matchesTag =
-        activeLibraryTagFilter === "all" ||
-        getPluginDisplayTags(plugin).includes(activeLibraryTagFilter);
+        libraryTagFilters.length === 0 ||
+        libraryTagFilters.some((tag) =>
+          getPluginDisplayTags(plugin).includes(tag),
+        );
       return matchesSource && matchesTag;
     });
-  }, [activeLibrarySourceFilter, activeLibraryTagFilter, baseVisiblePlugins]);
+  }, [activeLibrarySourceFilter, baseVisiblePlugins, libraryTagFilters]);
   const libraryTotalPages = Math.max(
     1,
     Math.ceil(filteredLibraryPlugins.length / pageSize),
@@ -3512,7 +3466,7 @@ export function PluginManager() {
     setCurrentLibraryPage(1);
   }, [
     activeLibrarySourceFilter,
-    activeLibraryTagFilter,
+    libraryTagFilters,
     libraryFilter,
     normalizedSearchQuery,
     pageSize,
@@ -5112,18 +5066,6 @@ export function PluginManager() {
                 className="min-w-[13rem] flex-1 sm:flex-none"
                 triggerClassName={`h-9 w-full rounded-xl border px-3 text-sm font-medium shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30 flex items-center justify-between gap-2 ${
                   hasActiveLibrarySourceFilter
-                    ? "border-primary/30 bg-primary/10 text-primary"
-                    : "border-border app-wallpaper-surface text-muted-foreground hover:border-primary/25 hover:bg-accent hover:text-foreground"
-                }`}
-              />
-              <Select
-                ariaLabel={t("plugin.tagFilterLabel", "Plugin tag")}
-                value={activeLibraryTagFilter}
-                onChange={(value) => setLibraryTagFilter(value)}
-                options={libraryTagOptions}
-                className="min-w-[12rem] flex-1 sm:flex-none"
-                triggerClassName={`h-9 w-full rounded-xl border px-3 text-sm font-medium shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30 flex items-center justify-between gap-2 ${
-                  hasActiveLibraryTagFilter
                     ? "border-primary/30 bg-primary/10 text-primary"
                     : "border-border app-wallpaper-surface text-muted-foreground hover:border-primary/25 hover:bg-accent hover:text-foreground"
                 }`}

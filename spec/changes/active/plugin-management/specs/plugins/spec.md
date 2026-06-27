@@ -209,7 +209,8 @@ PromptHub MUST separate plugin installation from child capability distribution.
 - **AND** batch mode lets users favorite or unfavorite selected Plugins with the same all-selected-favorite toggle rule as My Skills
 - **AND** favorite state is persisted as PromptHub user metadata and preserved across source refresh or source-update operations
 - **AND** My Plugins supports All, Favorites, Distributed, and Pending distribution filters
-- **AND** My Plugins supports source filtering plus combined manifest/source tag and user tag filtering
+- **AND** My Plugins supports source filtering in the My Plugins header
+- **AND** My Plugins supports combined manifest/source tag and user tag filtering from the shared left-bottom sidebar tag section, matching My Skills instead of rendering a tag selector in the page-top filter row
 - **AND** My Plugins supports the same gallery/list view toggle pattern as My Skills
 - **AND** gallery view supports persisted card column preferences, including auto and fixed column counts
 - **AND** My Plugins paginates large installed libraries with the shared page-size selector and previous/next page controls

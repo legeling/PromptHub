@@ -80,6 +80,18 @@ const RulesSidebarPanel = lazy(() =>
 type PageType = "home" | "settings";
 type SidebarLayout = "combined" | "rail" | "panel";
 
+function collectUniqueTags(
+  tagGroups: Array<readonly string[] | undefined>,
+): string[] {
+  return Array.from(
+    new Set(
+      tagGroups.flatMap((tags) =>
+        (tags ?? []).map((tag) => tag.trim()).filter(Boolean),
+      ),
+    ),
+  ).sort((left, right) => left.localeCompare(right));
+}
+
 interface SidebarProps {
   currentPage: PageType;
   onNavigate: (page: PageType) => void;
@@ -286,6 +298,9 @@ export function Sidebar({
   const mcpSelectedMarketSourceId = useMcpStore(
     (state) => state.selectedMarketSourceId,
   );
+  const mcpFilterTags = useMcpStore((state) => state.filterTags);
+  const toggleMcpFilterTag = useMcpStore((state) => state.toggleFilterTag);
+  const clearMcpFilterTags = useMcpStore((state) => state.clearFilterTags);
   const setMcpSelectedTab = useMcpStore((state) => state.setSelectedTab);
   const setMcpSelectedMarketSourceId = useMcpStore(
     (state) => state.setSelectedMarketSourceId,
@@ -299,6 +314,13 @@ export function Sidebar({
   const pluginSelectedTab = usePluginStore((state) => state.selectedTab);
   const pluginSelectedMarketSourceId = usePluginStore(
     (state) => state.selectedMarketSourceId,
+  );
+  const pluginFilterTags = usePluginStore((state) => state.filterTags);
+  const togglePluginFilterTag = usePluginStore(
+    (state) => state.toggleFilterTag,
+  );
+  const clearPluginFilterTags = usePluginStore(
+    (state) => state.clearFilterTags,
   );
   const setPluginSelectedTab = usePluginStore((state) => state.setSelectedTab);
   const setPluginSelectedMarketSourceId = usePluginStore(
@@ -373,6 +395,8 @@ export function Sidebar({
     return counts;
   }, [mcpMarketSources, mcpMarketTemplates, mcpRemoteMarketEntries]);
   const [showAllSkillTags, setShowAllSkillTags] = useState(false);
+  const [showAllMcpTags, setShowAllMcpTags] = useState(false);
+  const [showAllPluginTags, setShowAllPluginTags] = useState(false);
   const [detectedSkillAgentCount, setDetectedSkillAgentCount] = useState<
     number | null
   >(null);
@@ -427,6 +451,27 @@ export function Sidebar({
   const uniqueSkillTags = skillStats.uniqueUserTags;
   const shouldShowSkillTags =
     storeView === "my-skills" && uniqueSkillTags.length > 0;
+  const uniqueMcpTags = useMemo(
+    () =>
+      collectUniqueTags(
+        (mcpLibrary?.servers ?? []).map((server) => server.tags),
+      ),
+    [mcpLibrary?.servers],
+  );
+  const shouldShowMcpTags =
+    mcpSelectedTab === "library" && uniqueMcpTags.length > 0;
+  const uniquePluginTags = useMemo(
+    () =>
+      collectUniqueTags(
+        (pluginLibrary?.plugins ?? []).map((plugin) => [
+          ...(plugin.tags ?? []),
+          ...(plugin.userTags ?? []),
+        ]),
+      ),
+    [pluginLibrary?.plugins],
+  );
+  const shouldShowPluginTags =
+    pluginSelectedTab === "library" && uniquePluginTags.length > 0;
   const runtimeCapabilities = getRuntimeCapabilities();
   const webRuntime = isWebRuntime();
   const canAddRuleProject = !webRuntime;
@@ -1032,6 +1077,238 @@ export function Sidebar({
       window.removeEventListener("mouseup", handleMouseUp);
     };
   }, [isResizing, setTagsSectionHeight, setSkillTagsSectionHeight]);
+
+  const renderResourceTagsSection = ({
+    activeTags,
+    clearTags,
+    isSectionCollapsed,
+    onManage,
+    setIsSectionCollapsed,
+    setShowAll,
+    showAll,
+    tags,
+    toggleTag,
+  }: {
+    activeTags: string[];
+    clearTags: () => void;
+    isSectionCollapsed: boolean;
+    onManage?: () => void;
+    setIsSectionCollapsed: (collapsed: boolean) => void;
+    setShowAll: (show: boolean) => void;
+    showAll: boolean;
+    tags: string[];
+    toggleTag: (tag: string) => void;
+  }) => (
+    <>
+      {!isCollapsed && !isSectionCollapsed ? (
+        <div
+          className={`h-1 cursor-ns-resize hover:bg-primary/40 transition-colors z-30 shrink-0 mx-2 rounded-full ${isResizing ? "bg-primary/60" : "bg-transparent"}`}
+          onMouseDown={(event) => handleResizeStart(event, "skill")}
+        />
+      ) : null}
+
+      <div
+        className={`sidebar-tag-section shrink-0 flex flex-col overflow-hidden app-wallpaper-panel ${isCollapsed ? "items-center" : ""}`}
+        style={{
+          height:
+            isCollapsed || isSectionCollapsed
+              ? "auto"
+              : `${skillTagsSectionHeight}px`,
+        }}
+      >
+        {!isCollapsed ? (
+          <div className="flex items-center justify-between px-6 py-2 border-t border-sidebar-border/50 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsSectionCollapsed(!isSectionCollapsed)}
+              aria-expanded={!isSectionCollapsed}
+              className="flex items-center gap-1 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider hover:text-sidebar-foreground/80 transition-colors"
+            >
+              {isSectionCollapsed ? (
+                <ChevronUpIcon className="w-3 h-3" aria-hidden="true" />
+              ) : (
+                <ChevronDownIcon className="w-3 h-3" aria-hidden="true" />
+              )}
+              {t("nav.tags")}
+            </button>
+            {!isSectionCollapsed ? (
+              <div className="flex items-center gap-2">
+                {onManage ? (
+                  <button
+                    type="button"
+                    onClick={onManage}
+                    className="text-sidebar-foreground/50 hover:text-sidebar-foreground/80 transition-colors"
+                    title={t("common.edit", "Edit")}
+                    aria-label={t("common.edit", "Edit")}
+                  >
+                    <SettingsIcon className="w-3.5 h-3.5" aria-hidden="true" />
+                  </button>
+                ) : null}
+                {activeTags.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={clearTags}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    {t("common.clear", "清空")}
+                  </button>
+                ) : null}
+                {tags.length > 8 ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowAll(!showAll)}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    {showAll
+                      ? t("common.collapse")
+                      : `${t("common.showAll")} ${tags.length}`}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {!isCollapsed ? (
+          !isSectionCollapsed ? (
+            <div className="flex-1 overflow-y-auto px-6 pb-4 scrollbar-hide animate-in fade-in slide-in-from-bottom-2 duration-smooth">
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {(showAll ? tags : tags.slice(0, 8)).map((tag, index) => (
+                  <button
+                    type="button"
+                    key={tag}
+                    draggable
+                    onDragStart={handlePromptTagDragStart(tag)}
+                    onClick={() => {
+                      toggleTag(tag);
+                      if (currentPage !== "home") onNavigate("home");
+                    }}
+                    style={{
+                      animationDelay: `${index * 30}ms`,
+                      animationFillMode: "both",
+                    }}
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors duration-base animate-in fade-in slide-in-from-left-1 ${
+                      activeTags.includes(tag) && currentPage === "home"
+                        ? "bg-primary text-white"
+                        : "bg-sidebar-accent text-sidebar-foreground/70 hover:bg-primary hover:text-white"
+                    }`}
+                  >
+                    <HashIcon className="w-3 h-3" aria-hidden="true" />
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null
+        ) : (
+          <div className="pt-2 border-t border-sidebar-border/50 flex flex-col items-center gap-2 pb-2">
+            <button
+              type="button"
+              ref={tagButtonRef}
+              onClick={() => {
+                if (isTagPopoverOpen) {
+                  closeTagPopover();
+                } else {
+                  openTagPopover();
+                  if (currentPage !== "home") onNavigate("home");
+                }
+              }}
+              title={t("nav.tags")}
+              aria-expanded={isTagPopoverOpen}
+              className={`w-10 h-10 flex flex-col items-center justify-center rounded-lg transition-colors duration-base ${
+                activeTags.length > 0 && currentPage === "home"
+                  ? "bg-primary text-white"
+                  : "bg-sidebar-accent text-sidebar-foreground/70 hover:bg-primary hover:text-white"
+              }`}
+            >
+              <HashIcon className="w-4 h-4" aria-hidden="true" />
+              <span className="text-[10px] leading-none mt-0.5">
+                {activeTags.length > 0
+                  ? activeTags.length
+                  : t("nav.tags").slice(0, 2)}
+              </span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {isTagPopoverOpen ? (
+        <div
+          ref={tagPopoverRef}
+          className={`fixed z-[9999] transition-all duration-quick ${
+            tagPopoverPos.bottom !== undefined
+              ? "origin-bottom-left"
+              : "origin-top-left"
+          } ${isTagPopoverVisible ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-95 translate-y-1"}`}
+          style={{
+            top: tagPopoverPos.top,
+            bottom: tagPopoverPos.bottom,
+            left: tagPopoverPos.left,
+            width: 320,
+            maxHeight: "min(420px, calc(100vh - 24px))",
+          }}
+        >
+          <div className="app-wallpaper-panel-strong border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <div className="text-sm font-medium text-foreground">
+                {t("nav.tags")}
+              </div>
+              <div className="flex items-center gap-2">
+                {activeTags.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      clearTags();
+                      if (currentPage !== "home") onNavigate("home");
+                    }}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    {t("common.clear", "清空")}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={closeTagPopover}
+                  className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  aria-label={t("common.close", "Close")}
+                >
+                  <XIcon className="w-4 h-4" aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+            <div className="p-4 overflow-y-auto">
+              <div className="flex flex-wrap gap-2">
+                {tags.map((tag) => {
+                  const active =
+                    activeTags.includes(tag) && currentPage === "home";
+                  return (
+                    <button
+                      type="button"
+                      key={tag}
+                      draggable
+                      onDragStart={handlePromptTagDragStart(tag)}
+                      onClick={() => {
+                        toggleTag(tag);
+                        if (currentPage !== "home") onNavigate("home");
+                      }}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                        active
+                          ? "bg-primary text-white"
+                          : "app-wallpaper-surface text-foreground/80 hover:bg-primary hover:text-white"
+                      }`}
+                    >
+                      <HashIcon className="w-4 h-4" aria-hidden="true" />
+                      <span className="truncate max-w-[14rem]">{tag}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
+  );
   return (
     <aside
       ref={sidebarRef}
@@ -1776,248 +2053,23 @@ export function Sidebar({
                   <div className="flex-1" />
                 )}
 
-                {/* Resize Handle */}
-                {shouldShowSkillTags &&
-                  !isCollapsed &&
-                  !isSkillTagsCollapsed && (
-                    <div
-                      className={`h-1 cursor-ns-resize hover:bg-primary/40 transition-colors z-30 shrink-0 mx-2 rounded-full ${isResizing ? "bg-primary/60" : "bg-transparent"}`}
-                      onMouseDown={(e) => handleResizeStart(e, "skill")}
-                    />
-                  )}
-
-                {/* Tags Content */}
-                {shouldShowSkillTags && (
-                  <div
-                    className={`sidebar-tag-section shrink-0 flex flex-col overflow-hidden app-wallpaper-panel ${isCollapsed ? "items-center" : ""}`}
-                    style={{
-                      height:
-                        isCollapsed || isSkillTagsCollapsed
-                          ? "auto"
-                          : `${skillTagsSectionHeight}px`,
-                    }}
-                  >
-                    {!isCollapsed && (
-                      <div className="flex items-center justify-between px-6 py-2 border-t border-sidebar-border/50 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setIsSkillTagsCollapsed(!isSkillTagsCollapsed)
-                          }
-                          aria-expanded={!isSkillTagsCollapsed}
-                          className="flex items-center gap-1 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider hover:text-sidebar-foreground/80 transition-colors"
-                        >
-                          {isSkillTagsCollapsed ? (
-                            <ChevronUpIcon
-                              className="w-3 h-3"
-                              aria-hidden="true"
-                            />
-                          ) : (
-                            <ChevronDownIcon
-                              className="w-3 h-3"
-                              aria-hidden="true"
-                            />
-                          )}
-                          {t("nav.tags")}
-                        </button>
-                        {!isSkillTagsCollapsed && (
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setTagManagerScope("skill")}
-                              className="text-sidebar-foreground/50 hover:text-sidebar-foreground/80 transition-colors"
-                              title={t("common.edit", "Edit")}
-                              aria-label={t("common.edit", "Edit")}
-                            >
-                              <SettingsIcon
-                                className="w-3.5 h-3.5"
-                                aria-hidden="true"
-                              />
-                            </button>
-                            {skillFilterTags.length > 0 && (
-                              <button
-                                type="button"
-                                onClick={() => clearSkillFilterTags()}
-                                className="text-xs text-primary hover:underline"
-                              >
-                                {t("common.clear", "清空")}
-                              </button>
-                            )}
-                            {uniqueSkillTags.length > 8 && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setShowAllSkillTags(!showAllSkillTags)
-                                }
-                                className="text-xs text-primary hover:underline"
-                              >
-                                {showAllSkillTags
-                                  ? t("common.collapse")
-                                  : `${t("common.showAll")} ${uniqueSkillTags.length}`}
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {!isCollapsed ? (
-                      !isSkillTagsCollapsed && (
-                        <div className="flex-1 overflow-y-auto px-6 pb-4 scrollbar-hide animate-in fade-in slide-in-from-bottom-2 duration-smooth">
-                          <div className="flex flex-wrap gap-1.5 pt-1">
-                            {(showAllSkillTags
-                              ? uniqueSkillTags
-                              : uniqueSkillTags.slice(0, 8)
-                            ).map((tag, index) => (
-                              <button
-                                type="button"
-                                key={tag}
-                                draggable
-                                onDragStart={handlePromptTagDragStart(tag)}
-                                onClick={() => {
-                                  toggleSkillFilterTag(tag);
-                                  setStoreView("my-skills");
-                                  if (currentPage !== "home")
-                                    onNavigate("home");
-                                }}
-                                style={{
-                                  animationDelay: `${index * 30}ms`,
-                                  animationFillMode: "both",
-                                }}
-                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors duration-base animate-in fade-in slide-in-from-left-1 ${
-                                  skillFilterTags.includes(tag) &&
-                                  currentPage === "home"
-                                    ? "bg-primary text-white"
-                                    : "bg-sidebar-accent text-sidebar-foreground/70 hover:bg-primary hover:text-white"
-                                }`}
-                              >
-                                <HashIcon
-                                  className="w-3 h-3"
-                                  aria-hidden="true"
-                                />
-                                {tag}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )
-                    ) : (
-                      <div className="pt-2 border-t border-sidebar-border/50 flex flex-col items-center gap-2 pb-2">
-                        <button
-                          type="button"
-                          ref={tagButtonRef}
-                          onClick={() => {
-                            if (isTagPopoverOpen) {
-                              closeTagPopover();
-                            } else {
-                              openTagPopover();
-                              if (currentPage !== "home") onNavigate("home");
-                            }
-                          }}
-                          title={t("nav.tags")}
-                          aria-expanded={isTagPopoverOpen}
-                          className={`w-10 h-10 flex flex-col items-center justify-center rounded-lg transition-colors duration-base ${
-                            skillFilterTags.length > 0 && currentPage === "home"
-                              ? "bg-primary text-white"
-                              : "bg-sidebar-accent text-sidebar-foreground/70 hover:bg-primary hover:text-white"
-                          }`}
-                        >
-                          <HashIcon className="w-4 h-4" aria-hidden="true" />
-                          <span className="text-[10px] leading-none mt-0.5">
-                            {skillFilterTags.length > 0
-                              ? skillFilterTags.length
-                              : t("nav.tags").slice(0, 2)}
-                          </span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
+                {shouldShowSkillTags
+                  ? renderResourceTagsSection({
+                      activeTags: skillFilterTags,
+                      clearTags: clearSkillFilterTags,
+                      isSectionCollapsed: isSkillTagsCollapsed,
+                      onManage: () => setTagManagerScope("skill"),
+                      setIsSectionCollapsed: setIsSkillTagsCollapsed,
+                      setShowAll: setShowAllSkillTags,
+                      showAll: showAllSkillTags,
+                      tags: uniqueSkillTags,
+                      toggleTag: (tag) => {
+                        toggleSkillFilterTag(tag);
+                        setStoreView("my-skills");
+                      },
+                    })
+                  : null}
               </div>
-
-              {/* Skill Tags Popover (collapsed sidebar) */}
-              {shouldShowSkillTags && isTagPopoverOpen && (
-                <div
-                  ref={tagPopoverRef}
-                  className={`fixed z-[9999] transition-all duration-quick ${
-                    tagPopoverPos.bottom !== undefined
-                      ? "origin-bottom-left"
-                      : "origin-top-left"
-                  } ${isTagPopoverVisible ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-95 translate-y-1"}`}
-                  style={{
-                    top: tagPopoverPos.top,
-                    bottom: tagPopoverPos.bottom,
-                    left: tagPopoverPos.left,
-                    width: 320,
-                    maxHeight: "min(420px, calc(100vh - 24px))",
-                  }}
-                >
-                  <div className="app-wallpaper-panel-strong border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col">
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-                      <div className="text-sm font-medium text-foreground">
-                        {t("nav.tags")}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {skillFilterTags.length > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              clearSkillFilterTags();
-                              if (currentPage !== "home") onNavigate("home");
-                            }}
-                            className="text-xs text-primary hover:underline"
-                          >
-                            {t("common.clear", "清空")}
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={closeTagPopover}
-                          className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                          aria-label={t("common.close", "Close")}
-                        >
-                          <XIcon className="w-4 h-4" aria-hidden="true" />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="p-4 overflow-y-auto">
-                      <div className="flex flex-wrap gap-2">
-                        {uniqueSkillTags.map((tag) => {
-                          const active =
-                            skillFilterTags.includes(tag) &&
-                            currentPage === "home";
-                          return (
-                            <button
-                              type="button"
-                              key={tag}
-                              draggable
-                              onDragStart={handlePromptTagDragStart(tag)}
-                              onClick={() => {
-                                toggleSkillFilterTag(tag);
-                                setStoreView("my-skills");
-                                if (currentPage !== "home") onNavigate("home");
-                              }}
-                              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                                active
-                                  ? "bg-primary text-white"
-                                  : "app-wallpaper-surface text-foreground/80 hover:bg-primary hover:text-white"
-                              }`}
-                            >
-                              <HashIcon
-                                className="w-4 h-4"
-                                aria-hidden="true"
-                              />
-                              <span className="truncate max-w-[14rem]">
-                                {tag}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
             </>
           ) : activeModule === "mcp" ? (
             <>
@@ -2122,6 +2174,21 @@ export function Sidebar({
                 ) : (
                   <div className="flex-1" />
                 )}
+                {shouldShowMcpTags
+                  ? renderResourceTagsSection({
+                      activeTags: mcpFilterTags,
+                      clearTags: clearMcpFilterTags,
+                      isSectionCollapsed: isSkillTagsCollapsed,
+                      setIsSectionCollapsed: setIsSkillTagsCollapsed,
+                      setShowAll: setShowAllMcpTags,
+                      showAll: showAllMcpTags,
+                      tags: uniqueMcpTags,
+                      toggleTag: (tag) => {
+                        toggleMcpFilterTag(tag);
+                        setMcpSelectedTab("library");
+                      },
+                    })
+                  : null}
               </div>
             </>
           ) : activeModule === "plugin" ? (
@@ -2213,6 +2280,21 @@ export function Sidebar({
                 ) : (
                   <div className="flex-1" />
                 )}
+                {shouldShowPluginTags
+                  ? renderResourceTagsSection({
+                      activeTags: pluginFilterTags,
+                      clearTags: clearPluginFilterTags,
+                      isSectionCollapsed: isSkillTagsCollapsed,
+                      setIsSectionCollapsed: setIsSkillTagsCollapsed,
+                      setShowAll: setShowAllPluginTags,
+                      showAll: showAllPluginTags,
+                      tags: uniquePluginTags,
+                      toggleTag: (tag) => {
+                        togglePluginFilterTag(tag);
+                        setPluginSelectedTab("library");
+                      },
+                    })
+                  : null}
               </div>
             </>
           ) : (

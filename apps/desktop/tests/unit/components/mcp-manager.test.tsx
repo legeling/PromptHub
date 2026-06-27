@@ -199,6 +199,7 @@ function resetMcpStore() {
     selectedTab: "library",
     selectedMarketSourceId: "prompthub-official",
     selectedTargetId: null,
+    filterTags: [],
     searchQuery: "",
     preview: "",
     isLoading: false,
@@ -488,6 +489,25 @@ describe("McpManager", () => {
 
     expect(within(detailPage).queryByTitle("Preview")).not.toBeInTheDocument();
     expect(api.mcp.preview).not.toHaveBeenCalled();
+  });
+
+  it("filters My MCP servers from the shared sidebar tag state", async () => {
+    installMcpMocks({ servers: [filesystemServer, fetchServer] });
+    useMcpStore.setState({ filterTags: ["web"] });
+
+    await act(async () => {
+      await renderWithI18n(<McpManager />, { language: "en" });
+    });
+
+    expect(await screen.findByText("Fetch")).toBeInTheDocument();
+    expect(screen.queryByText("Filesystem")).not.toBeInTheDocument();
+
+    act(() => {
+      useMcpStore.setState({ filterTags: ["files"] });
+    });
+
+    expect(await screen.findByText("Filesystem")).toBeInTheDocument();
+    expect(screen.queryByText("Fetch")).not.toBeInTheDocument();
   });
 
   it("hides disabled Settings platforms from MCP distribution", async () => {

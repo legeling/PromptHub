@@ -56,6 +56,7 @@ interface McpState {
   selectedTab: "library" | "market" | "projects" | "targets";
   selectedMarketSourceId: string;
   selectedTargetId: string | null;
+  filterTags: string[];
   searchQuery: string;
   preview: string;
   pendingPluginChildDeployServerIds: string[];
@@ -72,6 +73,8 @@ interface McpState {
   setSelectedTab: (tab: McpState["selectedTab"]) => void;
   setSelectedMarketSourceId: (sourceId: string) => void;
   setSelectedTargetId: (id: string | null) => void;
+  toggleFilterTag: (tag: string) => void;
+  clearFilterTags: () => void;
   addCustomStoreSource: (
     name: string,
     url: string,
@@ -300,6 +303,7 @@ export const useMcpStore = create<McpState>()(
       selectedTab: "library",
       selectedMarketSourceId: DEFAULT_MCP_MARKET_SOURCE_ID,
       selectedTargetId: null,
+      filterTags: [],
       searchQuery: "",
       preview: "",
       pendingPluginChildDeployServerIds: [],
@@ -360,6 +364,13 @@ export const useMcpStore = create<McpState>()(
       setSelectedMarketSourceId: (sourceId) =>
         set({ selectedMarketSourceId: sourceId }),
       setSelectedTargetId: (id) => set({ selectedTargetId: id }),
+      toggleFilterTag: (tag) =>
+        set((state) => ({
+          filterTags: state.filterTags.includes(tag)
+            ? state.filterTags.filter((item) => item !== tag)
+            : [...state.filterTags, tag],
+        })),
+      clearFilterTags: () => set({ filterTags: [] }),
 
       addCustomStoreSource: (name, url, type = "marketplace-json", options) => {
         const result = addCustomStoreSourceToList(get().customStoreSources, {

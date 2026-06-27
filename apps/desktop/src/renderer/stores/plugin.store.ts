@@ -48,6 +48,7 @@ interface PluginState {
   selectedMarketSourceId: string;
   libraryViewMode: PluginLibraryViewMode;
   libraryGalleryColumns: PluginLibraryGalleryColumnMode;
+  filterTags: string[];
   searchQuery: string;
   isLoading: boolean;
   error: string | null;
@@ -56,6 +57,8 @@ interface PluginState {
   setSelectedMarketSourceId: (sourceId: string) => void;
   setLibraryViewMode: (mode: PluginLibraryViewMode) => void;
   setLibraryGalleryColumns: (mode: PluginLibraryGalleryColumnMode) => void;
+  toggleFilterTag: (tag: string) => void;
+  clearFilterTags: () => void;
   setSearchQuery: (query: string) => void;
   addCustomStoreSource: (
     name: string,
@@ -284,6 +287,7 @@ export const usePluginStore = create<PluginState>()(
       selectedMarketSourceId: "prompthub-official",
       libraryViewMode: "gallery",
       libraryGalleryColumns: "auto",
+      filterTags: [],
       searchQuery: "",
       isLoading: false,
       error: null,
@@ -366,6 +370,13 @@ export const usePluginStore = create<PluginState>()(
         set({ selectedMarketSourceId: sourceId }),
       setLibraryViewMode: (mode) => set({ libraryViewMode: mode }),
       setLibraryGalleryColumns: (mode) => set({ libraryGalleryColumns: mode }),
+      toggleFilterTag: (tag) =>
+        set((state) => ({
+          filterTags: state.filterTags.includes(tag)
+            ? state.filterTags.filter((item) => item !== tag)
+            : [...state.filterTags, tag],
+        })),
+      clearFilterTags: () => set({ filterTags: [] }),
       setSearchQuery: (query) => set({ searchQuery: query }),
 
       addCustomStoreSource: (name, url, type = "marketplace-json", options) => {
