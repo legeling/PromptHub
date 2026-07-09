@@ -1,17 +1,20 @@
 import { ipcMain } from 'electron';
 import { IPC_CHANNELS } from '@prompthub/shared/constants';
 import { PromptDB } from '../database/prompt';
-import { PromptRelationDB } from '../database';
+import { PromptOutputFormatDB, PromptRelationDB } from '../database';
 import { FolderDB } from '../database/folder';
 import type Database from '../database/sqlite';
 import type {
+  CreateOutputFormatItemDTO,
   CreatePromptRelationDTO,
   CreatePromptDTO,
   Folder,
+  OutputFormatItemQuery,
   Prompt,
   PromptRelationQuery,
   PromptVersion,
   SearchQuery,
+  UpdateOutputFormatItemDTO,
   UpdatePromptRelationDTO,
   UpdatePromptDTO,
 } from '@prompthub/shared/types';
@@ -23,6 +26,7 @@ import { syncPromptWorkspaceFromDatabase } from "../services/prompt-workspace";
  */
 export function registerPromptIPC(db: PromptDB, folderDb: FolderDB, rawDb: Database.Database): void {
   const relationDb = new PromptRelationDB(rawDb);
+  const outputFormatDb = new PromptOutputFormatDB(rawDb);
   const syncWorkspace = () => {
     syncPromptWorkspaceFromDatabase(db, folderDb);
   };
@@ -305,5 +309,37 @@ export function registerPromptIPC(db: PromptDB, folderDb: FolderDB, rawDb: Datab
       syncWorkspace();
     }
     return deleted;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.PROMPT_OUTPUT_FORMAT_CREATE, async (_, data: CreateOutputFormatItemDTO) => {
+    const item = outputFormatDb.create(data);
+    syncWorkspace();
+    return item;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.PROMPT_OUTPUT_FORMAT_LIST, async (_, query?: OutputFormatItemQuery) => {
+    return outputFormatDb.list(query);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.PROMPT_OUTPUT_FORMAT_UPDATE, async (_, id: string, data: UpdateOutputFormatItemDTO) => {
+    const item = outputFormatDb.update(id, data);
+    if (item) {
+      syncWorkspace();
+    }
+    return item;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.PROMPT_OUTPUT_FORMAT_DELETE, async (_, id: string) => {
+    const deleted = outputFormatDb.delete(id);
+    if (deleted) {
+      syncWorkspace();
+    }
+    return deleted;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.PROMPT_OUTPUT_FORMAT_REORDER, async (_, sourcePromptId: string, itemId: string, newSortOrder: number) => {
+    outputFormatDb.reorder(sourcePromptId, itemId, newSortOrder);
+    syncWorkspace();
+    return true;
   });
 }

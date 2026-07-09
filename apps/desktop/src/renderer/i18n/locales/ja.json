@@ -395,7 +395,18 @@
     "batchFavorite": "一括お気に入り",
     "batchMove": "一括移動",
     "batchDelete": "一括削除",
-    "confirmBatchDelete": "これらの {{count}} 件の Prompt を削除してもよろしいですか？"
+    "confirmBatchDelete": "これらの {{count}} 件の Prompt を削除してもよろしいですか？",
+    "customOutputFormat": {
+      "title": "カスタム出力形式",
+      "searchPlaceholder": "追加するプロンプトを検索...",
+      "noMatches": "一致するプロンプトがありません",
+      "empty": "出力形式が設定されていません。プロンプトを追加してカスタム出力シーケンスを作成します。",
+      "addSelf": "現在のプロンプトを追加",
+      "self": "自分自身",
+      "missing": "見つかりません",
+      "removeItem": "{{title}} を削除",
+      "openPrompt": "プロンプト {{title}} を開く"
+    }
   },
   "folder": {
     "new": "新規フォルダ",

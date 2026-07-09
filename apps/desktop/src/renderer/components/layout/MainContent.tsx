@@ -54,6 +54,7 @@ import {
 import { resolvePromptMarkdownHref } from '../prompt/prompt-markdown-url';
 import { PromptQuickRewriteTrigger } from '../prompt/PromptQuickRewriteTrigger';
 import { PromptRelationshipPanel } from '../prompt/PromptRelationshipPanel';
+import { PromptOutputFormatPanel } from '../prompt/PromptOutputFormatPanel';
 import { PromptAiResponsePanel } from '../prompt/PromptAiResponsePanel';
 import { PromptDetailMetadata } from '../prompt/PromptDetailMetadata';
 import { PromptViewContainers } from '../prompt/PromptViewContainers';
@@ -699,10 +700,14 @@ function PromptSkillMainContent() {
   const selectedIds = usePromptStore((state) => state.selectedIds);
   const lastSelectedId = usePromptStore((state) => state.lastSelectedId);
   const relations = usePromptStore((state) => state.relations ?? []);
+  const outputFormatItems = usePromptStore((state) => state.outputFormatItems ?? []);
   const selectPrompt = usePromptStore((state) => state.selectPrompt);
   const setSelectedIds = usePromptStore((state) => state.setSelectedIds);
   const createPrompt = usePromptStore((state) => state.createPrompt);
   const createRelation = usePromptStore((state) => state.createRelation);
+  const createOutputFormatItem = usePromptStore((state) => state.createOutputFormatItem);
+  const deleteOutputFormatItem = usePromptStore((state) => state.deleteOutputFormatItem);
+  const reorderOutputFormatItem = usePromptStore((state) => state.reorderOutputFormatItem);
   const toggleFavorite = usePromptStore((state) => state.toggleFavorite);
   const togglePinned = usePromptStore((state) => state.togglePinned);
   const deletePrompt = usePromptStore((state) => state.deletePrompt);
@@ -735,6 +740,10 @@ function PromptSkillMainContent() {
   // 用于列表/画廊视图复制时的变量弹窗
   const [isCopyVariableModalOpen, setIsCopyVariableModalOpen] = useState(false);
   const [copyPrompt, setCopyPrompt] = useState<Prompt | null>(null);
+  const [copyPromptQueue, setCopyPromptQueue] = useState<Prompt[]>([]);
+  const [copyPromptResults, setCopyPromptResults] = useState<string[]>([]);
+  const [copyPromptQueueIndex, setCopyPromptQueueIndex] = useState(-1);
+  const [copyPromptSourceId, setCopyPromptSourceId] = useState<string | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; prompt: Prompt } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; prompt: Prompt | null }>({ isOpen: false, prompt: null });
@@ -1480,6 +1489,9 @@ function PromptSkillMainContent() {
     selectedPromptRelations.length +
     (selectedParentPrompt ? 1 : 0) +
     selectedChildPrompts.length;
+  const selectedOutputFormatCount = selectedPrompt
+    ? outputFormatItems.filter((item) => item.sourcePromptId === selectedPrompt.id).length
+    : 0;
 
   // Auto-select prompt language based on UI language (if English version exists)
   // 根据界面语言自动选择 Prompt 语言（如果有英文版本）
@@ -1503,6 +1515,7 @@ function PromptSkillMainContent() {
   const [isDetailInlineEditing, setIsDetailInlineEditing] = useState(false);
   const [isDetailInlineSaving, setIsDetailInlineSaving] = useState(false);
   const [isDetailRelationshipsOpen, setIsDetailRelationshipsOpen] = useState(false);
+  const [isDetailOutputFormatOpen, setIsDetailOutputFormatOpen] = useState(false);
   const [detailInlineActiveField, setDetailInlineActiveField] =
     useState<DetailInlineEditField>('title');
   const [detailInlineDraft, setDetailInlineDraft] = useState<DetailInlineEditDraft>({
@@ -1550,6 +1563,7 @@ function PromptSkillMainContent() {
     setIsDetailInlineEditing(false);
     setIsDetailInlineSaving(false);
     setIsDetailRelationshipsOpen(false);
+    setIsDetailOutputFormatOpen(false);
     setDetailInlineActiveField('title');
     setInlineAiTestImages([]);
   }, [selectedPrompt?.id]);
@@ -1729,21 +1743,110 @@ function PromptSkillMainContent() {
     [cancelDetailInlineEdit, saveDetailInlineEdit],
   );
 
+  const getOutputFormatPromptQueue = useCallback(
+    (prompt: Prompt): Prompt[] => {
+      const configuredItems = outputFormatItems
+        .filter((item) => item.sourcePromptId === prompt.id)
+        .sort((left, right) => {
+          const byOrder = left.sortOrder - right.sortOrder;
+          if (byOrder !== 0) return byOrder;
+          return left.createdAt.localeCompare(right.createdAt);
+        });
+
+      if (configuredItems.length === 0) {
+        return [prompt];
+      }
+
+      const queue = configuredItems
+        .map((item) => {
+          if (!item.targetPromptId) {
+            return prompt;
+          }
+          return promptById.get(item.targetPromptId) ?? null;
+        })
+        .filter((item): item is Prompt => item !== null);
+
+      return queue.length > 0 ? queue : [prompt];
+    },
+    [outputFormatItems, promptById],
+  );
+
   // Handle copying prompt - check for variables first
   // 处理复制 Prompt - 先检查是否有变量
   const handleCopyPrompt = async (prompt: Prompt) => {
-    const resolvedPrompt = resolvePromptContentByLanguage(prompt, showEnglish);
+    const queue = getOutputFormatPromptQueue(prompt);
+
+    if (queue.length > 1) {
+      setCopyPromptQueue(queue);
+      setCopyPromptResults(new Array(queue.length).fill(""));
+      setCopyPromptQueueIndex(0);
+      setCopyPromptSourceId(prompt.id);
+      return;
+    }
+
+    const resolvedPrompt = resolvePromptContentByLanguage(queue[0], showEnglish);
 
     if (hasUserDefinedPromptVariables(undefined, resolvedPrompt.userPrompt)) {
       // 有变量，打开弹窗让用户填写
-      setCopyPrompt(prompt);
+      setCopyPrompt(queue[0]);
       setIsCopyVariableModalOpen(true);
     } else {
       await copyTextToClipboard(buildPromptCopyText(resolvedPrompt));
-      await incrementUsageCount(prompt.id);
+      await incrementUsageCount(queue[0].id);
       showToast(t('toast.copied'), 'success', showCopyNotification);
     }
   };
+
+  useEffect(() => {
+    if (copyPromptQueue.length === 0 || copyPromptQueueIndex < 0) {
+      return;
+    }
+
+    if (copyPromptQueueIndex >= copyPromptQueue.length) {
+      const finalText = copyPromptResults.filter((text) => text.trim()).join("\n\n");
+      void copyTextToClipboard(finalText).then(async () => {
+        if (copyPromptSourceId) {
+          await incrementUsageCount(copyPromptSourceId);
+        }
+        triggerCopied();
+        showToast(t('toast.copied'), 'success', showCopyNotification);
+      }).finally(() => {
+        setIsCopyVariableModalOpen(false);
+        setCopyPrompt(null);
+        setCopyPromptQueue([]);
+        setCopyPromptResults([]);
+        setCopyPromptQueueIndex(-1);
+        setCopyPromptSourceId(null);
+      });
+      return;
+    }
+
+    const currentPrompt = copyPromptQueue[copyPromptQueueIndex];
+    const resolvedPrompt = resolvePromptContentByLanguage(currentPrompt, showEnglish);
+    if (hasUserDefinedPromptVariables(undefined, resolvedPrompt.userPrompt)) {
+      setCopyPrompt(currentPrompt);
+      setIsCopyVariableModalOpen(true);
+      return;
+    }
+
+    setCopyPromptResults((currentResults) => {
+      const nextResults = [...currentResults];
+      nextResults[copyPromptQueueIndex] = buildPromptCopyText(resolvedPrompt);
+      return nextResults;
+    });
+    setCopyPromptQueueIndex((currentIndex) => currentIndex + 1);
+  }, [
+    copyPromptQueue,
+    copyPromptQueueIndex,
+    copyPromptResults,
+    copyPromptSourceId,
+    incrementUsageCount,
+    showCopyNotification,
+    showEnglish,
+    showToast,
+    t,
+    triggerCopied,
+  ]);
 
   const handleDuplicatePrompt = useCallback(async (prompt: Prompt) => {
     const duplicatedPrompt = await createPrompt({
@@ -2530,8 +2633,11 @@ function PromptSkillMainContent() {
                     childPrompts={selectedChildPrompts}
                     folderOptions={detailFolderOptions}
                     relationshipCount={selectedRelationshipCount}
+                    outputFormatCount={selectedOutputFormatCount}
                     isRelatedPromptsOpen={isDetailRelationshipsOpen}
+                    isOutputFormatOpen={isDetailOutputFormatOpen}
                     isRelatedPromptsDisabled={isDetailInlineEditing}
+                    isOutputFormatDisabled={isDetailInlineEditing}
                     t={t}
                     onMoveToFolder={(prompt, folderId) => {
                       void handleMovePrompt(prompt, folderId);
@@ -2539,6 +2645,9 @@ function PromptSkillMainContent() {
                     onSelectPrompt={selectPrompt}
                     onToggleRelatedPrompts={() =>
                       setIsDetailRelationshipsOpen((open) => !open)
+                    }
+                    onToggleOutputFormat={() =>
+                      setIsDetailOutputFormatOpen((open) => !open)
                     }
                   />
 
@@ -2551,6 +2660,20 @@ function PromptSkillMainContent() {
                       onCreateRelation={handleCreatePromptRelation}
                       onDeleteRelation={handleDeletePromptRelation}
                       onSelectPrompt={(promptId) => selectPrompt(promptId)}
+                      disabled={isDetailInlineEditing}
+                      className="mb-4"
+                    />
+                  )}
+
+                  {isDetailOutputFormatOpen && (
+                    <PromptOutputFormatPanel
+                      currentPrompt={selectedPrompt}
+                      prompts={prompts}
+                      outputFormatItems={outputFormatItems}
+                      onCreateOutputFormatItem={createOutputFormatItem}
+                      onDeleteOutputFormatItem={deleteOutputFormatItem}
+                      onReorderOutputFormatItem={reorderOutputFormatItem}
+                      onSelectPrompt={selectPrompt}
                       disabled={isDetailInlineEditing}
                       className="mb-4"
                     />
@@ -3036,12 +3159,28 @@ function PromptSkillMainContent() {
             onClose={() => {
               setIsCopyVariableModalOpen(false);
               setCopyPrompt(null);
+              setCopyPromptQueue([]);
+              setCopyPromptResults([]);
+              setCopyPromptQueueIndex(-1);
+              setCopyPromptSourceId(null);
             }}
             promptId={copyPrompt.id}
             systemPrompt={undefined}
             userPrompt={resolvePromptContentByLanguage(copyPrompt, showEnglish).userPrompt}
             mode="copy"
             onCopy={async (text) => {
+              if (copyPromptQueue.length > 0 && copyPromptQueueIndex >= 0) {
+                setCopyPromptResults((currentResults) => {
+                  const nextResults = [...currentResults];
+                  nextResults[copyPromptQueueIndex] = text;
+                  return nextResults;
+                });
+                setIsCopyVariableModalOpen(false);
+                setCopyPrompt(null);
+                setCopyPromptQueueIndex((currentIndex) => currentIndex + 1);
+                return;
+              }
+
               await copyTextToClipboard(text);
               await incrementUsageCount(copyPrompt.id);
               triggerCopied();

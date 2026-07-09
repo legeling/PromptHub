@@ -1,13 +1,16 @@
 import { ipcRenderer } from "electron";
 import { IPC_CHANNELS } from "@prompthub/shared/constants/ipc-channels";
 import type {
+  CreateOutputFormatItemDTO,
   CreatePromptRelationDTO,
   CreatePromptDTO,
   Folder,
+  OutputFormatItemQuery,
   Prompt,
   PromptRelationQuery,
   PromptVersion,
   SearchQuery,
+  UpdateOutputFormatItemDTO,
   UpdatePromptRelationDTO,
   UpdatePromptDTO,
 } from "@prompthub/shared/types";
@@ -53,4 +56,14 @@ export const promptApi = {
     ipcRenderer.invoke(IPC_CHANNELS.PROMPT_RELATION_UPDATE, id, data),
   deleteRelation: (id: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.PROMPT_RELATION_DELETE, id),
+  createOutputFormat: (data: CreateOutputFormatItemDTO) =>
+    ipcRenderer.invoke(IPC_CHANNELS.PROMPT_OUTPUT_FORMAT_CREATE, data),
+  listOutputFormat: (query?: OutputFormatItemQuery) =>
+    ipcRenderer.invoke(IPC_CHANNELS.PROMPT_OUTPUT_FORMAT_LIST, query),
+  updateOutputFormat: (id: string, data: UpdateOutputFormatItemDTO) =>
+    ipcRenderer.invoke(IPC_CHANNELS.PROMPT_OUTPUT_FORMAT_UPDATE, id, data),
+  deleteOutputFormat: (id: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.PROMPT_OUTPUT_FORMAT_DELETE, id),
+  reorderOutputFormat: (sourcePromptId: string, itemId: string, newSortOrder: number) =>
+    ipcRenderer.invoke(IPC_CHANNELS.PROMPT_OUTPUT_FORMAT_REORDER, sourcePromptId, itemId, newSortOrder),
 };

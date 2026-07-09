@@ -396,7 +396,18 @@
     "batchFavorite": "Batch Favorite",
     "batchMove": "Batch Move",
     "batchDelete": "Batch Delete",
-    "confirmBatchDelete": "Are you sure you want to delete these {{count}} prompts?"
+    "confirmBatchDelete": "Are you sure you want to delete these {{count}} prompts?",
+    "customOutputFormat": {
+      "title": "Custom Output Format",
+      "searchPlaceholder": "Search prompts to add...",
+      "noMatches": "No matching prompts",
+      "empty": "No output format configured. Add prompts to create a custom output sequence.",
+      "addSelf": "Add current prompt",
+      "self": "Self",
+      "missing": "Missing",
+      "removeItem": "Remove {{title}}",
+      "openPrompt": "Open prompt {{title}}"
+    }
   },
   "rules": {
     "title": "Rules",

@@ -3,6 +3,7 @@ import {
   ClockIcon,
   CornerDownRightIcon,
   GitBranchIcon,
+  HashIcon,
   ImageIcon,
   MessageSquareTextIcon,
 } from "lucide-react";
@@ -16,12 +17,16 @@ interface PromptDetailMetadataProps {
   childPrompts: Prompt[];
   folderOptions: SelectOption[];
   relationshipCount?: number;
+  outputFormatCount?: number;
   isRelatedPromptsOpen?: boolean;
+  isOutputFormatOpen?: boolean;
   isRelatedPromptsDisabled?: boolean;
+  isOutputFormatDisabled?: boolean;
   t: ReturnType<typeof useTranslation>["t"];
   onMoveToFolder: (prompt: Prompt, folderId: string | null) => void;
   onSelectPrompt: (promptId: string) => void;
   onToggleRelatedPrompts?: () => void;
+  onToggleOutputFormat?: () => void;
 }
 
 const MAX_VISIBLE_CHILDREN = 4;
@@ -32,16 +37,23 @@ export function PromptDetailMetadata({
   childPrompts,
   folderOptions,
   relationshipCount = 0,
+  outputFormatCount = 0,
   isRelatedPromptsOpen = false,
+  isOutputFormatOpen = false,
   isRelatedPromptsDisabled = false,
+  isOutputFormatDisabled = false,
   t,
   onMoveToFolder,
   onSelectPrompt,
   onToggleRelatedPrompts,
+  onToggleOutputFormat,
 }: PromptDetailMetadataProps) {
   const promptType = prompt.promptType || "text";
   const showRelationshipRow =
-    parentPrompt || childPrompts.length > 0 || onToggleRelatedPrompts;
+    parentPrompt ||
+    childPrompts.length > 0 ||
+    onToggleRelatedPrompts ||
+    onToggleOutputFormat;
   const renderRelatedPromptsButton = () => {
     if (!onToggleRelatedPrompts) {
       return null;
@@ -68,6 +80,38 @@ export function PromptDetailMetadata({
           aria-hidden="true"
           className={`h-3.5 w-3.5 text-muted-foreground/70 transition-transform ${
             isRelatedPromptsOpen ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+    );
+  };
+
+  const renderOutputFormatButton = () => {
+    if (!onToggleOutputFormat) {
+      return null;
+    }
+
+    return (
+      <button
+        type="button"
+        onClick={onToggleOutputFormat}
+        disabled={isOutputFormatDisabled}
+        aria-expanded={isOutputFormatOpen}
+        aria-label={t("prompt.customOutputFormat.title")}
+        className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-muted-foreground transition-colors hover:bg-accent/45 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <HashIcon
+          aria-hidden="true"
+          className="h-3.5 w-3.5 shrink-0 text-muted-foreground/75"
+        />
+        <span>{t("prompt.customOutputFormat.title")}</span>
+        <span className="text-[11px] text-muted-foreground/75">
+          {outputFormatCount}
+        </span>
+        <ChevronDownIcon
+          aria-hidden="true"
+          className={`h-3.5 w-3.5 text-muted-foreground/70 transition-transform ${
+            isOutputFormatOpen ? "rotate-180" : ""
           }`}
         />
       </button>
@@ -131,7 +175,10 @@ export function PromptDetailMetadata({
               })}
               className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border/70 bg-card px-2.5 py-1 text-muted-foreground shadow-sm transition-colors hover:border-primary/40 hover:text-primary"
             >
-              <CornerDownRightIcon aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+              <CornerDownRightIcon
+                aria-hidden="true"
+                className="h-3.5 w-3.5 shrink-0"
+              />
               <span className="shrink-0">{t("prompt.parentPrompt")}</span>
               <span className="max-w-[16rem] truncate text-foreground">
                 {parentPrompt.title}
@@ -146,19 +193,21 @@ export function PromptDetailMetadata({
                 {t("prompt.childPrompts")}
               </span>
               {renderRelatedPromptsButton()}
-              {childPrompts.slice(0, MAX_VISIBLE_CHILDREN).map((childPrompt) => (
-                <button
-                  key={childPrompt.id}
-                  type="button"
-                  onClick={() => onSelectPrompt(childPrompt.id)}
-                  aria-label={t("prompt.openChildPrompt", {
-                    title: childPrompt.title,
-                  })}
-                  className="max-w-[12rem] truncate rounded-full border border-border/70 bg-card px-2.5 py-1 text-foreground shadow-sm transition-colors hover:border-primary/40 hover:text-primary"
-                >
-                  {childPrompt.title}
-                </button>
-              ))}
+              {childPrompts
+                .slice(0, MAX_VISIBLE_CHILDREN)
+                .map((childPrompt) => (
+                  <button
+                    key={childPrompt.id}
+                    type="button"
+                    onClick={() => onSelectPrompt(childPrompt.id)}
+                    aria-label={t("prompt.openChildPrompt", {
+                      title: childPrompt.title,
+                    })}
+                    className="max-w-[12rem] truncate rounded-full border border-border/70 bg-card px-2.5 py-1 text-foreground shadow-sm transition-colors hover:border-primary/40 hover:text-primary"
+                  >
+                    {childPrompt.title}
+                  </button>
+                ))}
               {childPrompts.length > MAX_VISIBLE_CHILDREN && (
                 <span className="rounded-full border border-border/70 bg-muted/40 px-2 py-1 text-muted-foreground">
                   {t("prompt.moreChildPrompts", {
@@ -170,6 +219,7 @@ export function PromptDetailMetadata({
           )}
 
           {childPrompts.length === 0 && renderRelatedPromptsButton()}
+          {renderOutputFormatButton()}
         </div>
       )}
     </>

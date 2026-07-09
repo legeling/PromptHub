@@ -31,6 +31,11 @@ export const IPC_CHANNELS = {
   PROMPT_RELATION_LIST: "promptRelation:list",
   PROMPT_RELATION_UPDATE: "promptRelation:update",
   PROMPT_RELATION_DELETE: "promptRelation:delete",
+  PROMPT_OUTPUT_FORMAT_CREATE: "promptOutputFormat:create",
+  PROMPT_OUTPUT_FORMAT_LIST: "promptOutputFormat:list",
+  PROMPT_OUTPUT_FORMAT_UPDATE: "promptOutputFormat:update",
+  PROMPT_OUTPUT_FORMAT_DELETE: "promptOutputFormat:delete",
+  PROMPT_OUTPUT_FORMAT_REORDER: "promptOutputFormat:reorder",
 
   // Version
   VERSION_GET_ALL: "version:getAll",

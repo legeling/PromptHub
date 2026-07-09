@@ -72,6 +72,20 @@ CREATE TABLE IF NOT EXISTS prompt_relations (
   UNIQUE(source_prompt_id, target_prompt_id, kind)
 );
 
+-- Custom output format items. Stores the ordered prompt list copied from a
+-- source prompt when users need several prompts to become one clipboard text.
+CREATE TABLE IF NOT EXISTS prompt_output_format_items (
+  id TEXT PRIMARY KEY,
+  source_prompt_id TEXT NOT NULL,
+  target_prompt_id TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  FOREIGN KEY (source_prompt_id) REFERENCES prompts(id) ON DELETE CASCADE,
+  FOREIGN KEY (target_prompt_id) REFERENCES prompts(id) ON DELETE CASCADE,
+  UNIQUE(source_prompt_id, target_prompt_id)
+);
+
 -- 文件夹表
 CREATE TABLE IF NOT EXISTS folders (
   id TEXT PRIMARY KEY,
@@ -221,6 +235,8 @@ CREATE INDEX IF NOT EXISTS idx_versions_prompt ON prompt_versions(prompt_id);
 CREATE INDEX IF NOT EXISTS idx_prompt_relations_source ON prompt_relations(source_prompt_id);
 CREATE INDEX IF NOT EXISTS idx_prompt_relations_target ON prompt_relations(target_prompt_id);
 CREATE INDEX IF NOT EXISTS idx_prompt_relations_kind ON prompt_relations(kind);
+CREATE INDEX IF NOT EXISTS idx_prompt_output_format_source ON prompt_output_format_items(source_prompt_id);
+CREATE INDEX IF NOT EXISTS idx_prompt_output_format_target ON prompt_output_format_items(target_prompt_id);
 CREATE INDEX IF NOT EXISTS idx_folders_parent ON folders(parent_id);
 CREATE INDEX IF NOT EXISTS idx_folders_owner ON folders(owner_user_id);
 CREATE INDEX IF NOT EXISTS idx_folders_visibility ON folders(visibility);

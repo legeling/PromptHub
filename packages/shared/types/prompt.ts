@@ -145,6 +145,29 @@ export interface PromptRelationQuery {
   direction?: "outgoing" | "incoming" | "both";
 }
 
+export interface OutputFormatItem {
+  id: string;
+  sourcePromptId: string;
+  targetPromptId: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateOutputFormatItemDTO {
+  sourcePromptId: string;
+  targetPromptId: string | null;
+  sortOrder?: number;
+}
+
+export interface UpdateOutputFormatItemDTO {
+  sortOrder?: number;
+}
+
+export interface OutputFormatItemQuery {
+  sourcePromptId?: string;
+}
+
 export interface SearchQuery {
   scope?: 'private' | 'shared' | 'all';
   keyword?: string;

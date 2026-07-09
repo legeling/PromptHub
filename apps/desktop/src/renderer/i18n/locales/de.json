@@ -395,7 +395,18 @@
     "batchFavorite": "Stapel-Favoriten",
     "batchMove": "Stapel-Verschieben",
     "batchDelete": "Stapel-Löschen",
-    "confirmBatchDelete": "Diese {{count}} Prompts löschen?"
+    "confirmBatchDelete": "Diese {{count}} Prompts löschen?",
+    "customOutputFormat": {
+      "title": "Benutzerdefiniertes Ausgabeformat",
+      "searchPlaceholder": "Prompts zum Hinzufügen suchen...",
+      "noMatches": "Keine passenden Prompts",
+      "empty": "Kein Ausgabeformat konfiguriert. Fügen Sie Prompts hinzu, um eine benutzerdefinierte Ausgabesequenz zu erstellen.",
+      "addSelf": "Aktuellen Prompt hinzufügen",
+      "self": "Selbst",
+      "missing": "Fehlt",
+      "removeItem": "{{title}} entfernen",
+      "openPrompt": "Prompt {{title}} öffnen"
+    }
   },
   "folder": {
     "new": "Neuer Ordner",

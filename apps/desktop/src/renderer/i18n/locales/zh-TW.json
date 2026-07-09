@@ -395,7 +395,18 @@
     "batchFavorite": "批次收藏",
     "batchMove": "批次移動",
     "batchDelete": "批次刪除",
-    "confirmBatchDelete": "確定要刪除這 {{count}} 個 Prompt 嗎？"
+    "confirmBatchDelete": "確定要刪除這 {{count}} 個 Prompt 嗎？",
+    "customOutputFormat": {
+      "title": "自定義輸出格式",
+      "searchPlaceholder": "搜尋要新增的 Prompt...",
+      "noMatches": "沒有匹配的 Prompt",
+      "empty": "未配置輸出格式。新增 Prompt 以建立自定義輸出序列。",
+      "addSelf": "新增目前 Prompt",
+      "self": "目前",
+      "missing": "遺失",
+      "removeItem": "移除 {{title}}",
+      "openPrompt": "開啟 Prompt {{title}}"
+    }
   },
   "folder": {
     "new": "新增資料夾",

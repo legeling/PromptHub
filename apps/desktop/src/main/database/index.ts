@@ -32,6 +32,7 @@ export type { Database } from "@prompthub/db";
 export { SCHEMA_TABLES, SCHEMA_INDEXES, SCHEMA } from "@prompthub/db";
 export { PromptDB } from "@prompthub/db";
 export { PromptRelationDB } from "@prompthub/db";
+export { PromptOutputFormatDB } from "@prompthub/db";
 export { FolderDB } from "@prompthub/db";
 export { SkillDB } from "@prompthub/db";
 export { RuleDB } from "@prompthub/db";

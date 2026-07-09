@@ -395,7 +395,18 @@
     "batchFavorite": "Favoritos en lote",
     "batchMove": "Mover en lote",
     "batchDelete": "Eliminar en lote",
-    "confirmBatchDelete": "¿Eliminar estos {{count}} Prompts?"
+    "confirmBatchDelete": "¿Eliminar estos {{count}} Prompts?",
+    "customOutputFormat": {
+      "title": "Formato de salida personalizado",
+      "searchPlaceholder": "Buscar prompts para agregar...",
+      "noMatches": "No hay prompts coincidentes",
+      "empty": "No hay formato de salida configurado. Agrega prompts para crear una secuencia de salida personalizada.",
+      "addSelf": "Agregar prompt actual",
+      "self": "Propio",
+      "missing": "Faltante",
+      "removeItem": "Eliminar {{title}}",
+      "openPrompt": "Abrir prompt {{title}}"
+    }
   },
   "folder": {
     "new": "Nueva carpeta",

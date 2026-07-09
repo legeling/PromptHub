@@ -396,7 +396,18 @@
     "batchFavorite": "批量收藏",
     "batchMove": "批量移动",
     "batchDelete": "批量删除",
-    "confirmBatchDelete": "确定要删除这 {{count}} 个 Prompt 吗？"
+    "confirmBatchDelete": "确定要删除这 {{count}} 个 Prompt 吗？",
+    "customOutputFormat": {
+      "title": "自定义输出格式",
+      "searchPlaceholder": "搜索要添加的 Prompt...",
+      "noMatches": "没有匹配的 Prompt",
+      "empty": "未配置输出格式。添加 Prompt 以创建自定义输出序列。",
+      "addSelf": "添加当前 Prompt",
+      "self": "当前",
+      "missing": "缺失",
+      "removeItem": "移除 {{title}}",
+      "openPrompt": "打开 Prompt {{title}}"
+    }
   },
   "rules": {
     "title": "Rules",

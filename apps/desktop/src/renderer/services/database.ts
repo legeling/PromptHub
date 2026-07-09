@@ -5,12 +5,16 @@
  */
 
 import type {
+  CreateOutputFormatItemDTO,
   CreatePromptRelationDTO,
   Folder,
+  OutputFormatItem,
+  OutputFormatItemQuery,
   Prompt,
   PromptRelation,
   PromptRelationQuery,
   PromptVersion,
+  UpdateOutputFormatItemDTO,
   UpdatePromptRelationDTO,
 } from "@prompthub/shared/types";
 import { DB_BACKUP_VERSION } from "./database-backup-format";
@@ -461,6 +465,57 @@ export async function deletePromptRelation(id: string): Promise<boolean> {
   }
 
   return window.api.prompt.deleteRelation(id);
+}
+
+export async function createOutputFormatItem(
+  data: CreateOutputFormatItemDTO,
+): Promise<OutputFormatItem> {
+  if (!window.api?.prompt?.createOutputFormat) {
+    throw new Error("Output format requires the desktop database API");
+  }
+
+  return window.api.prompt.createOutputFormat(data);
+}
+
+export async function listOutputFormatItems(
+  query?: OutputFormatItemQuery,
+): Promise<OutputFormatItem[]> {
+  if (!window.api?.prompt?.listOutputFormat) {
+    return [];
+  }
+
+  return (await window.api.prompt.listOutputFormat(query)) ?? [];
+}
+
+export async function updateOutputFormatItem(
+  id: string,
+  data: UpdateOutputFormatItemDTO,
+): Promise<OutputFormatItem | null> {
+  if (!window.api?.prompt?.updateOutputFormat) {
+    throw new Error("Output format requires the desktop database API");
+  }
+
+  return window.api.prompt.updateOutputFormat(id, data);
+}
+
+export async function deleteOutputFormatItem(id: string): Promise<boolean> {
+  if (!window.api?.prompt?.deleteOutputFormat) {
+    return false;
+  }
+
+  return window.api.prompt.deleteOutputFormat(id);
+}
+
+export async function reorderOutputFormatItem(
+  sourcePromptId: string,
+  itemId: string,
+  newSortOrder: number,
+): Promise<boolean> {
+  if (!window.api?.prompt?.reorderOutputFormat) {
+    return false;
+  }
+
+  return window.api.prompt.reorderOutputFormat(sourcePromptId, itemId, newSortOrder);
 }
 
 function assertPromptMoveAllowed(
