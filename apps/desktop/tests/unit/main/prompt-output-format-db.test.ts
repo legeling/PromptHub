@@ -75,6 +75,29 @@ describe("PromptOutputFormatDB", () => {
     expect(outputFormatDb.list({ sourcePromptId: source.id })).toHaveLength(2);
   });
 
+  it("enforces a single self item per source prompt at the database boundary", () => {
+    const source = createPrompt("Source");
+    const now = Date.now();
+
+    rawDb
+      .prepare(
+        `INSERT INTO prompt_output_format_items (
+          id, source_prompt_id, target_prompt_id, sort_order, created_at, updated_at
+        ) VALUES (?, ?, NULL, ?, ?, ?)`,
+      )
+      .run("self-1", source.id, 0, now, now);
+
+    expect(() =>
+      rawDb
+        .prepare(
+          `INSERT INTO prompt_output_format_items (
+            id, source_prompt_id, target_prompt_id, sort_order, created_at, updated_at
+          ) VALUES (?, ?, NULL, ?, ?, ?)`,
+        )
+        .run("self-2", source.id, 1, now, now),
+    ).toThrow();
+  });
+
   it("reorders items and normalizes remaining sort order after delete", () => {
     const source = createPrompt("Source");
     const firstTarget = createPrompt("First");

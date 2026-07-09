@@ -12,6 +12,13 @@ Add `prompt_output_format_items`:
 - `target_prompt_id`: target Prompt to append, or `NULL` for the source Prompt itself.
 - `sort_order`: display and copy order.
 - foreign keys cascade on Prompt deletion.
+- a partial unique index keeps only one self-reference row per source Prompt.
+
+Output format items are part of the Prompt data boundary:
+
+- full backups include `outputFormatItems`;
+- selective Prompt exports include them when the Prompt scope is selected;
+- imports validate item shape and drop rows that reference missing Prompts.
 
 ## Contract
 

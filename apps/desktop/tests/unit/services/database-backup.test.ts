@@ -15,6 +15,8 @@ const clearDatabaseMock = vi.fn().mockResolvedValue(undefined);
 const getDatabaseMock = vi.fn();
 const getAllFoldersMock = vi.fn();
 const getAllPromptsMock = vi.fn();
+const createOutputFormatItemMock = vi.fn();
+const listOutputFormatItemsMock = vi.fn();
 const restoreAiConfigSnapshotMock = vi.fn();
 const restoreSettingsStateSnapshotMock = vi.fn();
 const getAiConfigSnapshotMock = vi.fn();
@@ -22,9 +24,13 @@ const getSettingsStateSnapshotMock = vi.fn();
 
 vi.mock("../../../src/renderer/services/database", () => ({
   clearDatabase: () => clearDatabaseMock(),
+  createOutputFormatItem: (...args: unknown[]) =>
+    createOutputFormatItemMock(...args),
   getAllFolders: () => getAllFoldersMock(),
   getAllPrompts: () => getAllPromptsMock(),
   getDatabase: () => getDatabaseMock(),
+  listOutputFormatItems: (...args: unknown[]) =>
+    listOutputFormatItemsMock(...args),
 }));
 
 vi.mock("../../../src/renderer/services/settings-snapshot", () => ({
@@ -83,6 +89,8 @@ describe("database-backup restore", () => {
     localStorage.clear();
     getAllFoldersMock.mockResolvedValue([]);
     getAllPromptsMock.mockResolvedValue([]);
+    createOutputFormatItemMock.mockResolvedValue(undefined);
+    listOutputFormatItemsMock.mockResolvedValue([]);
     getAiConfigSnapshotMock.mockReturnValue(undefined);
     getSettingsStateSnapshotMock.mockReturnValue(undefined);
     getDatabaseMock.mockResolvedValue({
@@ -792,6 +800,14 @@ describe("database-backup restore", () => {
       userPrompt: "Old user",
       createdAt: "2026-04-06T00:00:00.000Z",
     };
+    const outputFormatItem = {
+      id: "output-format-1",
+      sourcePromptId: "prompt-1",
+      targetPromptId: null,
+      sortOrder: 0,
+      createdAt: "2026-04-07T00:00:00.000Z",
+      updatedAt: "2026-04-07T00:00:00.000Z",
+    };
     const skill = {
       id: "skill-1",
       name: "writer",
@@ -818,6 +834,7 @@ describe("database-backup restore", () => {
 
     getAllPromptsMock.mockResolvedValue([prompt]);
     getAllFoldersMock.mockResolvedValue([folder]);
+    listOutputFormatItemsMock.mockResolvedValue([outputFormatItem]);
     getDatabaseMock.mockResolvedValue({
       transaction: () => createTransactionMock([version]),
     });
@@ -882,6 +899,7 @@ describe("database-backup restore", () => {
     expect(backup.prompts).toEqual([prompt]);
     expect(backup.folders).toEqual([folder]);
     expect(backup.versions).toEqual([version]);
+    expect(backup.outputFormatItems).toEqual([outputFormatItem]);
     expect(backup.images).toEqual({ "image-1.png": "base64-image" });
     expect(backup.videos).toEqual({ "video-1.mp4": "base64-video" });
     expect(backup.skills).toEqual([skill]);
@@ -907,6 +925,11 @@ describe("database-backup restore", () => {
     expect(window.api.folder.insertDirect).toHaveBeenCalledWith(folder);
     expect(window.api.prompt.insertDirect).toHaveBeenCalledWith(prompt);
     expect(window.api.version.insertDirect).toHaveBeenCalledWith(version);
+    expect(createOutputFormatItemMock).toHaveBeenCalledWith({
+      sourcePromptId: "prompt-1",
+      targetPromptId: null,
+      sortOrder: 0,
+    });
     expect(window.api.prompt.syncWorkspace).toHaveBeenCalledTimes(1);
     expect(window.electron.saveImageBase64).toHaveBeenCalledWith(
       "image-1.png",

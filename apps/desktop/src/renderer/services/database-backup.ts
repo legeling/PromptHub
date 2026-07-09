@@ -14,9 +14,11 @@ import type {
 } from "@prompthub/shared/types/skill";
 import {
   clearDatabase,
+  createOutputFormatItem,
   getAllFolders,
   getAllPrompts,
   getDatabase,
+  listOutputFormatItems,
 } from "./database";
 import {
   DB_BACKUP_VERSION,
@@ -604,6 +606,7 @@ export interface ImportPreviewSummary {
     prompts: number;
     folders: number;
     versions: number;
+    outputFormatItems: number;
     rules: number;
     skills: number;
     skillVersions: number;
@@ -664,6 +667,7 @@ export async function previewImportFile(
       prompts: backup.prompts.length,
       folders: backup.folders.length,
       versions: backup.versions.length,
+      outputFormatItems: backup.outputFormatItems?.length ?? 0,
       rules: backup.rules?.length ?? 0,
       skills: backup.skills?.length ?? 0,
       skillVersions: backup.skillVersions?.length ?? 0,
@@ -777,6 +781,16 @@ async function importDatabaseViaMainProcess(
     await window.api.version.insertDirect(version);
   }
 
+  if (normalizedBackup.outputFormatItems) {
+    for (const item of normalizedBackup.outputFormatItems) {
+      await createOutputFormatItem({
+        sourcePromptId: item.sourcePromptId,
+        targetPromptId: item.targetPromptId,
+        sortOrder: item.sortOrder,
+      });
+    }
+  }
+
   await window.api.prompt.syncWorkspace?.();
   return true;
 }
@@ -812,6 +826,7 @@ export async function exportDatabase(options?: {
     mcpLibrary,
     pluginSnapshot,
     agentAssetFiles,
+    outputFormatItems,
   ] = await Promise.all([
     collectImages(prompts, imageLimits),
     options?.skipVideoContent
@@ -822,6 +837,7 @@ export async function exportDatabase(options?: {
     collectMcpLibrary(),
     collectPluginSnapshot(),
     collectAgentAssetFilesSnapshot(),
+    listOutputFormatItems(),
   ]);
 
   const settingsSnapshot = getSettingsStateSnapshot({
@@ -835,6 +851,8 @@ export async function exportDatabase(options?: {
     prompts,
     folders,
     versions,
+    outputFormatItems:
+      outputFormatItems.length > 0 ? outputFormatItems : undefined,
     images,
     videos,
     aiConfig: getAiConfigSnapshot({ includeRootApiKey: true }),
@@ -912,6 +930,21 @@ export async function importDatabase(backup: DatabaseBackup): Promise<void> {
       transaction.oncomplete = () => resolve();
       transaction.onerror = () => reject(transaction.error);
     });
+  }
+
+  if (!restoredViaMainProcess && normalizedBackup.outputFormatItems) {
+    for (const item of normalizedBackup.outputFormatItems) {
+      try {
+        await createOutputFormatItem({
+          sourcePromptId: item.sourcePromptId,
+          targetPromptId: item.targetPromptId,
+          sortOrder: item.sortOrder,
+        });
+      } catch (error) {
+        restoreFailures.push(`output format ${item.id}`);
+        console.warn(`Failed to restore output format ${item.id}:`, error);
+      }
+    }
   }
 
   if (normalizedBackup.images) {
@@ -1190,6 +1223,9 @@ export async function downloadSelectiveExport(
     prompts: normalized.prompts ? fullBackup.prompts : [],
     folders: normalized.folders ? fullBackup.folders : [],
     versions: normalized.versions ? fullBackup.versions : [],
+    outputFormatItems: normalized.prompts
+      ? fullBackup.outputFormatItems
+      : undefined,
     images: normalized.images ? fullBackup.images : undefined,
     videos: normalized.videos ? fullBackup.videos : undefined,
     aiConfig: normalized.aiConfig ? fullBackup.aiConfig : undefined,

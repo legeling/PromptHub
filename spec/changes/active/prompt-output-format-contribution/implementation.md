@@ -8,11 +8,15 @@
 - Added a Prompt detail panel for configuring output sequences.
 - Updated copy behavior so configured sequences are copied as one combined clipboard text.
 - Added seven-locale i18n keys and DB regression tests.
+- Added backup/export/import support for output format items, including import-shape validation, orphan filtering, preview counts, and selective Prompt export inclusion.
+- Added a partial unique index for source self-reference rows so SQLite enforces the one-self-item invariant even outside the app service path.
 
 ## Verification
 
 - `pnpm typecheck`
 - `pnpm --filter @prompthub/desktop test -- tests/unit/main/prompt-output-format-db.test.ts tests/unit/components/prompt-detail-metadata.test.tsx --run`
+- `pnpm --filter @prompthub/desktop test -- tests/unit/main/prompt-output-format-db.test.ts tests/unit/services/database-backup-format.test.ts tests/unit/services/database-backup.test.ts --run`
+- `git diff --check`
 
 ## Notes
 

@@ -40,7 +40,7 @@ export function BackupImportConfirmDialog({
               ).toLocaleString()}
             </p>
             <p>
-              {t("settings.importPreviewCounts", "Will import")}: {importPreview.summary.counts.prompts} prompts, {importPreview.summary.counts.folders} folders, {importPreview.summary.counts.versions} versions, {importPreview.summary.counts.rules} rules, {importPreview.summary.counts.skills} skills
+              {t("settings.importPreviewCounts", "Will import")}: {importPreview.summary.counts.prompts} prompts, {importPreview.summary.counts.folders} folders, {importPreview.summary.counts.versions} versions, {importPreview.summary.counts.outputFormatItems} output format items, {importPreview.summary.counts.rules} rules, {importPreview.summary.counts.skills} skills
             </p>
             <p>
               {t(

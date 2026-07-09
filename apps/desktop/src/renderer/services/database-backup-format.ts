@@ -6,6 +6,7 @@ import type {
   PluginLibraryFile,
   PluginPackageSnapshot,
   Prompt,
+  OutputFormatItem,
   PromptVersion,
   RuleBackupRecord,
 } from "@prompthub/shared/types";
@@ -39,6 +40,7 @@ export interface DatabaseBackup {
   prompts: Prompt[];
   folders: Folder[];
   versions: PromptVersion[];
+  outputFormatItems?: OutputFormatItem[];
   images?: { [fileName: string]: string };
   videos?: { [fileName: string]: string };
   aiConfig?: {
@@ -115,6 +117,9 @@ export function normalizeImportedBackup(
     prompts: Array.isArray(backup?.prompts) ? backup.prompts : [],
     folders: Array.isArray(backup?.folders) ? backup.folders : [],
     versions,
+    outputFormatItems: Array.isArray(backup?.outputFormatItems)
+      ? backup.outputFormatItems
+      : undefined,
     images:
       backup?.images && typeof backup.images === "object"
         ? backup.images
@@ -201,6 +206,20 @@ function hasPromptVersionShape(value: unknown): boolean {
     typeof value.version === "number" &&
     typeof value.userPrompt === "string" &&
     typeof value.createdAt === "string"
+  );
+}
+
+function hasOutputFormatItemShape(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.sourcePromptId === "string" &&
+    (value.targetPromptId === null ||
+      typeof value.targetPromptId === "string") &&
+    typeof value.sortOrder === "number" &&
+    Number.isFinite(value.sortOrder) &&
+    typeof value.createdAt === "string" &&
+    typeof value.updatedAt === "string"
   );
 }
 
@@ -381,6 +400,7 @@ export interface ImportSkippedStats {
   prompts: number;
   folders: number;
   versions: number;
+  outputFormatItems: number;
   rules: number;
   skills: number;
   skillVersions: number;
@@ -397,6 +417,7 @@ export function hasMeaningfulBackupContent(backup: DatabaseBackup): boolean {
     backup.prompts.length > 0 ||
     backup.folders.length > 0 ||
     backup.versions.length > 0 ||
+    (backup.outputFormatItems?.length ?? 0) > 0 ||
     (backup.rules?.length ?? 0) > 0 ||
     (backup.skills?.length ?? 0) > 0 ||
     (backup.skillVersions?.length ?? 0) > 0 ||
@@ -422,6 +443,7 @@ export function createEmptySkippedStats(): ImportSkippedStats {
     prompts: 0,
     folders: 0,
     versions: 0,
+    outputFormatItems: 0,
     rules: 0,
     skills: 0,
     skillVersions: 0,
@@ -434,6 +456,7 @@ export function hasAnySkipped(stats: ImportSkippedStats): boolean {
     stats.prompts > 0 ||
     stats.folders > 0 ||
     stats.versions > 0 ||
+    stats.outputFormatItems > 0 ||
     stats.rules > 0 ||
     stats.skills > 0 ||
     stats.skillVersions > 0 ||
@@ -462,6 +485,15 @@ function validateImportedBackupShape(backup: DatabaseBackup): void {
 
   if (!backup.versions.every(hasPromptVersionShape)) {
     throw new Error("Invalid PromptHub backup: versions payload is malformed.");
+  }
+
+  if (
+    backup.outputFormatItems &&
+    !backup.outputFormatItems.every(hasOutputFormatItemShape)
+  ) {
+    throw new Error(
+      "Invalid PromptHub backup: output format payload is malformed.",
+    );
   }
 
   if (backup.rules && !backup.rules.every(hasRuleShape)) {
@@ -621,6 +653,27 @@ export function sanitizeImportedBackup(raw: DatabaseBackup): ParsedBackup {
   );
   skipped.versions = originalVersionsLen - validVersions.length;
 
+  let validOutputFormatItems = raw.outputFormatItems;
+  if (raw.outputFormatItems) {
+    const originalOutputFormatLen = raw.outputFormatItems.length;
+    const structurallyValid = raw.outputFormatItems.filter(
+      hasOutputFormatItemShape,
+    );
+    validOutputFormatItems = structurallyValid.filter((item) => {
+      const { sourcePromptId, targetPromptId } = item as unknown as {
+        sourcePromptId: string;
+        targetPromptId: string | null;
+      };
+
+      return (
+        validPromptIds.has(sourcePromptId) &&
+        (targetPromptId === null || validPromptIds.has(targetPromptId))
+      );
+    });
+    skipped.outputFormatItems =
+      originalOutputFormatLen - validOutputFormatItems.length;
+  }
+
   let validRules = raw.rules;
   if (raw.rules) {
     const originalRulesLen = raw.rules.length;
@@ -679,6 +732,7 @@ export function sanitizeImportedBackup(raw: DatabaseBackup): ParsedBackup {
       prompts: validPrompts,
       folders: validFolders,
       versions: validVersions,
+      outputFormatItems: validOutputFormatItems,
       rules: validRules,
       skills: validSkills,
       skillVersions: validSkillVersions,
@@ -706,6 +760,7 @@ function parseEnvelope(text: string): DatabaseBackup {
     "prompts" in parsed ||
     "folders" in parsed ||
     "versions" in parsed ||
+    "outputFormatItems" in parsed ||
     "skills" in parsed ||
     "skillVersions" in parsed ||
     "skillFiles" in parsed ||

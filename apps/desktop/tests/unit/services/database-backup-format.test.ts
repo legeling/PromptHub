@@ -214,9 +214,72 @@ describe("database-backup-format", () => {
     expect(skipped.prompts).toBe(0);
     expect(skipped.folders).toBe(0);
     expect(skipped.versions).toBe(0);
+    expect(skipped.outputFormatItems).toBe(0);
     expect(skipped.skills).toBe(0);
     expect(skipped.skillVersions).toBe(0);
     expect(skipped.skillFiles).toBe(0);
+  });
+
+  it("lenient parser drops output format items that reference missing prompts", () => {
+    const prompt = {
+      id: "prompt-1",
+      title: "Imported",
+      userPrompt: "User",
+      variables: [],
+      tags: [],
+      isFavorite: false,
+      isPinned: false,
+      version: 1,
+      currentVersion: 1,
+      usageCount: 0,
+      createdAt: "2026-04-07T00:00:00.000Z",
+      updatedAt: "2026-04-07T00:00:00.000Z",
+    };
+
+    const { backup, skipped } = parsePromptHubBackupFile(
+      JSON.stringify({
+        kind: "prompthub-backup",
+        exportedAt: "2026-04-07T00:00:00.000Z",
+        payload: {
+          exportedAt: "2026-04-07T00:00:00.000Z",
+          version: 1,
+          prompts: [prompt],
+          folders: [],
+          versions: [],
+          outputFormatItems: [
+            {
+              id: "keep-self",
+              sourcePromptId: "prompt-1",
+              targetPromptId: null,
+              sortOrder: 0,
+              createdAt: "2026-04-07T00:00:00.000Z",
+              updatedAt: "2026-04-07T00:00:00.000Z",
+            },
+            {
+              id: "drop-source",
+              sourcePromptId: "missing-source",
+              targetPromptId: null,
+              sortOrder: 1,
+              createdAt: "2026-04-07T00:00:00.000Z",
+              updatedAt: "2026-04-07T00:00:00.000Z",
+            },
+            {
+              id: "drop-target",
+              sourcePromptId: "prompt-1",
+              targetPromptId: "missing-target",
+              sortOrder: 2,
+              createdAt: "2026-04-07T00:00:00.000Z",
+              updatedAt: "2026-04-07T00:00:00.000Z",
+            },
+          ],
+        },
+      }),
+    );
+
+    expect(backup.outputFormatItems?.map((item) => item.id)).toEqual([
+      "keep-self",
+    ]);
+    expect(skipped.outputFormatItems).toBe(2);
   });
 
   it("lenient parser clears invalid folder parent references instead of keeping broken links", () => {

@@ -26,6 +26,9 @@ export function formatImportSkippedDetails(
     skipped.prompts > 0 ? `prompts: ${skipped.prompts}` : null,
     skipped.folders > 0 ? `folders: ${skipped.folders}` : null,
     skipped.versions > 0 ? `versions: ${skipped.versions}` : null,
+    skipped.outputFormatItems > 0
+      ? `output format items: ${skipped.outputFormatItems}`
+      : null,
     skipped.rules > 0 ? `rules: ${skipped.rules}` : null,
     skipped.skills > 0 ? `skills: ${skipped.skills}` : null,
     skipped.skillVersions > 0 ? `skill versions: ${skipped.skillVersions}` : null,

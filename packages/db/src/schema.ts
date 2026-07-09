@@ -237,6 +237,9 @@ CREATE INDEX IF NOT EXISTS idx_prompt_relations_target ON prompt_relations(targe
 CREATE INDEX IF NOT EXISTS idx_prompt_relations_kind ON prompt_relations(kind);
 CREATE INDEX IF NOT EXISTS idx_prompt_output_format_source ON prompt_output_format_items(source_prompt_id);
 CREATE INDEX IF NOT EXISTS idx_prompt_output_format_target ON prompt_output_format_items(target_prompt_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_prompt_output_format_self_unique
+  ON prompt_output_format_items(source_prompt_id)
+  WHERE target_prompt_id IS NULL;
 CREATE INDEX IF NOT EXISTS idx_folders_parent ON folders(parent_id);
 CREATE INDEX IF NOT EXISTS idx_folders_owner ON folders(owner_user_id);
 CREATE INDEX IF NOT EXISTS idx_folders_visibility ON folders(visibility);

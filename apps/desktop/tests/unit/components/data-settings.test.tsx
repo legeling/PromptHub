@@ -785,6 +785,7 @@ describe("DataSettings", { timeout: 60_000 }, () => {
           prompts: 0,
           folders: 0,
           versions: 0,
+          outputFormatItems: 0,
           skills: 0,
           skillVersions: 0,
           skillFiles: 0,
@@ -804,6 +805,7 @@ describe("DataSettings", { timeout: 60_000 }, () => {
     vi.mocked(restoreFromFile).mockResolvedValue({
       folders: 0,
       prompts: 0,
+      outputFormatItems: 0,
       skillFiles: 0,
       skillVersions: 0,
       skills: 0,
