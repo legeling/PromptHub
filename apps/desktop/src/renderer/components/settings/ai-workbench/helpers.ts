@@ -1,3 +1,5 @@
+import type { TFunction } from "i18next";
+
 import type {
   AIModelConfig,
   ChatModelParams,
@@ -245,11 +247,40 @@ export function getProviderLabel(providerId: string): string {
   return getProviderInfo(providerId)?.name || providerId || "Unknown";
 }
 
+export function getProviderDisplayName(
+  provider: ProviderOption,
+  t: TFunction,
+): string {
+  return provider.labelKey
+    ? t(provider.labelKey, { defaultValue: provider.name })
+    : provider.name;
+}
+
+export function getProviderDisplayLabel(
+  providerId: string,
+  t: TFunction,
+): string {
+  const provider = getProviderInfo(providerId);
+  return provider
+    ? getProviderDisplayName(provider, t)
+    : providerId || "Unknown";
+}
+
 export function getEndpointDisplayName(input: {
   name?: string;
   provider: string;
 }): string {
   return input.name?.trim() || getProviderLabel(input.provider);
+}
+
+export function getEndpointDisplayLabel(
+  input: {
+    name?: string;
+    provider: string;
+  },
+  t: TFunction,
+): string {
+  return input.name?.trim() || getProviderDisplayLabel(input.provider, t);
 }
 
 export function getProviderIconCategory(providerId: string): string {

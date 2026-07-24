@@ -33,6 +33,7 @@ import {
 import type { AIModelConfig } from "../../../stores/settings.store";
 import { getCategoryIcon } from "../../ui/ModelIcons";
 import {
+  getEndpointDisplayLabel,
   getEndpointDisplayName,
   getEndpointCategory,
   getEndpointHost,
@@ -168,7 +169,8 @@ export function EndpointsSection({
       null,
     [endpointGroups, selectedEndpointKey],
   );
-  const selectedApiKey = selectedGroup?.apiKey || selectedGroup?.models[0]?.apiKey || "";
+  const selectedApiKey =
+    selectedGroup?.apiKey || selectedGroup?.models[0]?.apiKey || "";
   const selectedApiUrl = selectedGroup?.apiUrl || "";
   const [credentialDraft, setCredentialDraft] = useState({
     groupKey: selectedGroup?.key ?? "",
@@ -324,7 +326,10 @@ export function EndpointsSection({
                 <div className="h-px flex-1 bg-border" />
               </div>
               <div className="relative">
-                <SearchIcon aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <SearchIcon
+                  aria-hidden="true"
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                />
                 <input
                   type="search"
                   value={searchText}
@@ -417,7 +422,10 @@ export function EndpointsSection({
               <div className="h-px flex-1 bg-border" />
             </div>
             <div className="relative mt-3">
-              <SearchIcon aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <SearchIcon
+                aria-hidden="true"
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+              />
               <input
                 type="search"
                 value={searchText}
@@ -461,7 +469,7 @@ export function EndpointsSection({
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-medium">
-                        {getEndpointDisplayName(group)}
+                        {getEndpointDisplayLabel(group, t)}
                       </span>
                       <span className="block truncate text-[11px] text-muted-foreground">
                         {groupDetail}
@@ -524,7 +532,7 @@ export function EndpointsSection({
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <h4 className="truncate text-base font-semibold">
-                          {getEndpointDisplayName(selectedGroup)}
+                          {getEndpointDisplayLabel(selectedGroup, t)}
                         </h4>
                         <span className="rounded-md border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                           {providerMetaLabel}
@@ -533,9 +541,15 @@ export function EndpointsSection({
                           className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${getStatusToneClass(endpointStatus.tone)}`}
                         >
                           {endpointStatus.tone === "ready" ? (
-                            <CheckCircle2Icon aria-hidden="true" className="h-3 w-3" />
+                            <CheckCircle2Icon
+                              aria-hidden="true"
+                              className="h-3 w-3"
+                            />
                           ) : (
-                            <AlertCircleIcon aria-hidden="true" className="h-3 w-3" />
+                            <AlertCircleIcon
+                              aria-hidden="true"
+                              className="h-3 w-3"
+                            />
                           )}
                           {endpointStatus.label}
                         </span>
@@ -553,9 +567,15 @@ export function EndpointsSection({
                       className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-2.5 text-xs text-muted-foreground hover:bg-muted disabled:opacity-50"
                     >
                       {testingDefault ? (
-                        <Loader2Icon aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+                        <Loader2Icon
+                          aria-hidden="true"
+                          className="h-3.5 w-3.5 animate-spin"
+                        />
                       ) : (
-                        <TestTubeIcon aria-hidden="true" className="h-3.5 w-3.5" />
+                        <TestTubeIcon
+                          aria-hidden="true"
+                          className="h-3.5 w-3.5"
+                        />
                       )}
                       {t("settings.aiWorkbenchTestDefault")}
                     </button>
@@ -566,9 +586,15 @@ export function EndpointsSection({
                       className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-2.5 text-xs text-muted-foreground hover:bg-muted disabled:opacity-50"
                     >
                       {testingEndpointKey === selectedGroup.key ? (
-                        <Loader2Icon aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+                        <Loader2Icon
+                          aria-hidden="true"
+                          className="h-3.5 w-3.5 animate-spin"
+                        />
                       ) : (
-                        <TestTubeIcon aria-hidden="true" className="h-3.5 w-3.5" />
+                        <TestTubeIcon
+                          aria-hidden="true"
+                          className="h-3.5 w-3.5"
+                        />
                       )}
                       {t("settings.testConnection")}
                     </button>
@@ -587,7 +613,10 @@ export function EndpointsSection({
                   <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
                     <div className="mb-3 flex items-start justify-between gap-3">
                       <div className="text-xs font-medium text-muted-foreground">
-                        {t("settings.aiWorkbenchEndpointCredentials", "Endpoint credentials")}
+                        {t(
+                          "settings.aiWorkbenchEndpointCredentials",
+                          "Endpoint credentials",
+                        )}
                       </div>
                       {credentialsDirty ? (
                         <div className="flex shrink-0 items-center gap-1">
@@ -615,7 +644,10 @@ export function EndpointsSection({
                     </div>
                     <div className="space-y-2">
                       <div className="flex min-w-0 items-center gap-3">
-                        <LinkIcon aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <LinkIcon
+                          aria-hidden="true"
+                          className="h-4 w-4 shrink-0 text-muted-foreground"
+                        />
                         <label className="min-w-0 flex-1">
                           <span className="mb-1 block text-xs text-muted-foreground">
                             {t("settings.apiUrl")}
@@ -647,7 +679,10 @@ export function EndpointsSection({
                         </label>
                       </div>
                       <div className="flex min-w-0 items-center gap-3">
-                        <KeyRoundIcon aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <KeyRoundIcon
+                          aria-hidden="true"
+                          className="h-4 w-4 shrink-0 text-muted-foreground"
+                        />
                         <label className="min-w-0 flex-1">
                           <span className="mb-1 block text-xs text-muted-foreground">
                             {t("settings.apiKey")}
@@ -695,9 +730,15 @@ export function EndpointsSection({
                               className="absolute right-1 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                             >
                               {showApiKey ? (
-                                <EyeOffIcon aria-hidden="true" className="h-4 w-4" />
+                                <EyeOffIcon
+                                  aria-hidden="true"
+                                  className="h-4 w-4"
+                                />
                               ) : (
-                                <EyeIcon aria-hidden="true" className="h-4 w-4" />
+                                <EyeIcon
+                                  aria-hidden="true"
+                                  className="h-4 w-4"
+                                />
                               )}
                             </button>
                           </span>
@@ -846,9 +887,15 @@ export function EndpointsSection({
                             className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted disabled:opacity-50"
                           >
                             {testingModelId === model.id ? (
-                              <Loader2Icon aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+                              <Loader2Icon
+                                aria-hidden="true"
+                                className="h-3.5 w-3.5 animate-spin"
+                              />
                             ) : (
-                              <TestTubeIcon aria-hidden="true" className="h-3.5 w-3.5" />
+                              <TestTubeIcon
+                                aria-hidden="true"
+                                className="h-3.5 w-3.5"
+                              />
                             )}
                           </button>
                           {!model.isDefault ? (
@@ -859,7 +906,10 @@ export function EndpointsSection({
                               title={t("settings.setDefault")}
                               className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
                             >
-                              <StarIcon aria-hidden="true" className="h-3.5 w-3.5" />
+                              <StarIcon
+                                aria-hidden="true"
+                                className="h-3.5 w-3.5"
+                              />
                             </button>
                           ) : null}
                           <button
@@ -869,7 +919,10 @@ export function EndpointsSection({
                             title={t("common.edit")}
                             className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
                           >
-                            <PencilIcon aria-hidden="true" className="h-3.5 w-3.5" />
+                            <PencilIcon
+                              aria-hidden="true"
+                              className="h-3.5 w-3.5"
+                            />
                           </button>
                           <button
                             type="button"
@@ -878,7 +931,10 @@ export function EndpointsSection({
                             title={t("common.delete")}
                             className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-red-500 hover:bg-red-500/5"
                           >
-                            <Trash2Icon aria-hidden="true" className="h-3.5 w-3.5" />
+                            <Trash2Icon
+                              aria-hidden="true"
+                              className="h-3.5 w-3.5"
+                            />
                           </button>
                         </div>
                       </div>

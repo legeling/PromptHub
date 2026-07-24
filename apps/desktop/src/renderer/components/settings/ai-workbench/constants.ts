@@ -114,6 +114,7 @@ export const PROVIDER_OPTIONS: ProviderOption[] = [
   {
     id: "atlascloud",
     name: "Atlas Cloud",
+    labelKey: "settings.aiWorkbenchProviderAtlasCloud",
     defaultUrl: "https://api.atlascloud.ai/v1",
     recommendedProtocol: "openai",
     allowsCustomProtocol: false,

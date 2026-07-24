@@ -98,6 +98,11 @@ export function AvailableModelsList({
     if (category === "Other") {
       return t("settings.other");
     }
+    if (category === "Atlas Cloud") {
+      return t("settings.aiWorkbenchProviderAtlasCloud", {
+        defaultValue: "Atlas Cloud",
+      });
+    }
     return category;
   };
 

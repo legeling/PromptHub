@@ -47,10 +47,18 @@ const CATEGORY_ICON_SRC: Record<string, string> = {
   ERNIE: "", // Placeholder for ERNIE
 };
 
-const SPECIAL_CATEGORY_ICON: Record<string, LucideIcon> = {
-  "Atlas Cloud": CloudIcon,
-  Custom: SlidersHorizontalIcon,
-  Other: CircleDotDashedIcon,
+const SPECIAL_CATEGORY_ICON: Record<
+  string,
+  { Icon: LucideIcon; iconName: string }
+> = {
+  "Atlas Cloud": { Icon: CloudIcon, iconName: "CloudIcon" },
+  Custom: { Icon: SlidersHorizontalIcon, iconName: "SlidersHorizontalIcon" },
+  Other: { Icon: CircleDotDashedIcon, iconName: "CircleDotDashedIcon" },
+};
+
+const SPECIAL_CATEGORY_ICON_CLASS: Record<string, string> = {
+  "Atlas Cloud":
+    "border border-cyan-700/20 bg-gradient-to-br from-cyan-50 to-blue-100 text-cyan-700 dark:border-cyan-300/25 dark:from-cyan-950/80 dark:to-blue-950/70 dark:text-cyan-200",
 };
 
 const SPECIAL_CATEGORY_ICON_STYLE: Record<
@@ -61,11 +69,6 @@ const SPECIAL_CATEGORY_ICON_STYLE: Record<
     background: "linear-gradient(135deg, #eef2ff 0%, #dbeafe 100%)",
     color: "#2563eb",
     border: "1px solid rgba(37,99,235,0.18)",
-  },
-  "Atlas Cloud": {
-    background: "linear-gradient(135deg, #ecfeff 0%, #dbeafe 100%)",
-    color: "#0e7490",
-    border: "1px solid rgba(14,116,144,0.18)",
   },
   Other: {
     background: "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)",
@@ -84,31 +87,49 @@ function renderSpecialCategoryIcon(
   category: string,
   size: number,
 ): React.ReactNode {
-  const Icon = SPECIAL_CATEGORY_ICON[category];
-  if (!Icon) {
+  const iconConfig = SPECIAL_CATEGORY_ICON[category];
+  if (!iconConfig) {
     return null;
   }
 
+  const className = SPECIAL_CATEGORY_ICON_CLASS[category];
+  const IconComponent = iconConfig.Icon as React.ElementType<{
+    size: number;
+    strokeWidth: number;
+  }>;
   const style =
     SPECIAL_CATEGORY_ICON_STYLE[category] ?? SPECIAL_CATEGORY_ICON_STYLE.Other;
   return (
     <div
       data-category-icon={category}
-      style={{
-        width: size,
-        height: size,
-        borderRadius: 6,
-        background: style.background,
-        border: style.border,
-        color: style.color,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flexShrink: 0,
-        boxShadow: "0 1px 2px rgba(15,23,42,0.06)",
-      }}
+      data-category-icon-name={iconConfig.iconName}
+      className={
+        className
+          ? `flex shrink-0 items-center justify-center rounded-md shadow-sm ${className}`
+          : undefined
+      }
+      style={
+        className
+          ? {
+              width: size,
+              height: size,
+            }
+          : {
+              width: size,
+              height: size,
+              borderRadius: 6,
+              background: style.background,
+              border: style.border,
+              color: style.color,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+              boxShadow: "0 1px 2px rgba(15,23,42,0.06)",
+            }
+      }
     >
-      <Icon size={size * 0.68} strokeWidth={2.2} />
+      <IconComponent size={size * 0.68} strokeWidth={2.2} />
     </div>
   );
 }

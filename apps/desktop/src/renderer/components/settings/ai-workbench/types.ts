@@ -10,6 +10,7 @@ import type {
 export type ProviderOption = {
   id: string;
   name: string;
+  labelKey?: string;
   defaultUrl: string;
   recommendedProtocol: AIProtocol;
   allowsCustomProtocol: boolean;

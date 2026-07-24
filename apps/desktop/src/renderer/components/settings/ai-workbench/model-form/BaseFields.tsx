@@ -25,7 +25,7 @@ import { Select } from "../../../ui/Select";
 import { getCategoryIcon } from "../../../ui/ModelIcons";
 import { PasswordInput } from "../../shared";
 import { PROVIDER_OPTIONS } from "../constants";
-import { getProviderInfo } from "../helpers";
+import { getProviderDisplayName, getProviderInfo } from "../helpers";
 import type { ModelFormState } from "../types";
 
 function CapabilityCheckbox({
@@ -162,18 +162,21 @@ export function BaseFields({
     [modelForm.provider],
   );
   const showProtocolField = providerInfo?.allowsCustomProtocol === true;
-  const providerOptions = PROVIDER_OPTIONS.map((item) => ({
-    value: item.id,
-    label: (
-      <span className="flex min-w-0 items-center gap-2">
-        <span aria-hidden="true" className="shrink-0">
-          {getCategoryIcon(item.iconCategory, 18)}
+  const providerOptions = PROVIDER_OPTIONS.map((item) => {
+    const providerName = getProviderDisplayName(item, t);
+    return {
+      value: item.id,
+      label: (
+        <span className="flex min-w-0 items-center gap-2">
+          <span aria-hidden="true" className="shrink-0">
+            {getCategoryIcon(item.iconCategory, 18)}
+          </span>
+          <span className="truncate">{providerName}</span>
         </span>
-        <span className="truncate">{item.name}</span>
-      </span>
-    ),
-    labelText: item.name,
-  }));
+      ),
+      labelText: providerName,
+    };
+  });
 
   return (
     <>
@@ -386,14 +389,14 @@ export function BaseFields({
             title={t("settings.imageModel")}
             description={t("settings.aiWorkbenchRouteImageGenerationDesc")}
             onChange={(checked) => {
-                setModelForm((prev) => ({
-                  ...prev,
-                  type: checked ? "image" : "chat",
-                  capabilities: {
-                    ...prev.capabilities,
-                    imageGeneration: checked,
-                  },
-                }));
+              setModelForm((prev) => ({
+                ...prev,
+                type: checked ? "image" : "chat",
+                capabilities: {
+                  ...prev.capabilities,
+                  imageGeneration: checked,
+                },
+              }));
             }}
           />
 
@@ -406,14 +409,14 @@ export function BaseFields({
             title={t("settings.aiWorkbenchVisionCapability")}
             description={t("settings.aiWorkbenchVisionCapabilityDesc")}
             onChange={(checked) => {
-                setModelForm((prev) => ({
-                  ...prev,
-                  capabilities: {
-                    ...prev.capabilities,
-                    chat: true,
-                    vision: checked,
-                  },
-                }));
+              setModelForm((prev) => ({
+                ...prev,
+                capabilities: {
+                  ...prev.capabilities,
+                  chat: true,
+                  vision: checked,
+                },
+              }));
             }}
           />
 
@@ -426,14 +429,14 @@ export function BaseFields({
             title={t("settings.aiWorkbenchReasoningCapability")}
             description={t("settings.aiWorkbenchReasoningCapabilityDesc")}
             onChange={(checked) => {
-                setModelForm((prev) => ({
-                  ...prev,
-                  capabilities: {
-                    ...prev.capabilities,
-                    chat: true,
-                    reasoning: checked,
-                  },
-                }));
+              setModelForm((prev) => ({
+                ...prev,
+                capabilities: {
+                  ...prev.capabilities,
+                  chat: true,
+                  reasoning: checked,
+                },
+              }));
             }}
           />
         </div>

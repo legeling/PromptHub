@@ -5,6 +5,10 @@ import { describe, expect, it, vi } from "vitest";
 import { BaseFields } from "../../../src/renderer/components/settings/ai-workbench/model-form/BaseFields";
 import { PROVIDER_OPTIONS } from "../../../src/renderer/components/settings/ai-workbench/constants";
 import {
+  getEndpointCategory,
+  getProviderIconCategory,
+} from "../../../src/renderer/components/settings/ai-workbench/helpers";
+import {
   getCategoryIcon,
   hasDedicatedCategoryIcon,
 } from "../../../src/renderer/components/ui/ModelIcons";
@@ -91,6 +95,7 @@ describe("BaseFields", () => {
       expect.objectContaining({
         id: "atlascloud",
         name: "Atlas Cloud",
+        labelKey: "settings.aiWorkbenchProviderAtlasCloud",
         defaultUrl: "https://api.atlascloud.ai/v1",
         recommendedProtocol: "openai",
         allowsCustomProtocol: false,
@@ -118,9 +123,15 @@ describe("BaseFields", () => {
     ]) {
       const { container, unmount } = render(<>{getCategoryIcon(category)}</>);
       if (category === "Atlas Cloud") {
-        expect(
-          container.querySelector('[data-category-icon="Atlas Cloud"]'),
-        ).not.toBeNull();
+        const atlasIcon = container.querySelector(
+          '[data-category-icon="Atlas Cloud"]',
+        );
+        expect(atlasIcon).not.toBeNull();
+        expect(atlasIcon).toHaveAttribute(
+          "data-category-icon-name",
+          "CloudIcon",
+        );
+        expect(atlasIcon).toHaveClass("dark:text-cyan-200");
       } else {
         expect(
           container.querySelector(`img[alt="${category}"]`),
@@ -128,6 +139,16 @@ describe("BaseFields", () => {
       }
       unmount();
     }
+  });
+
+  it("maps Atlas Cloud aliases to the dedicated endpoint and provider icon category", () => {
+    for (const provider of ["atlas", "atlascloud", "atlas-cloud"]) {
+      expect(getProviderIconCategory(provider)).toBe("Atlas Cloud");
+      expect(getEndpointCategory(provider, [])).toBe("Atlas Cloud");
+    }
+
+    expect(getProviderIconCategory("unknown-provider")).toBe("Other");
+    expect(getEndpointCategory("unknown-provider", [])).toBe("Other");
   });
 
   it("prefills Atlas Cloud as an OpenAI-compatible endpoint preset", async () => {

@@ -6,7 +6,11 @@ import { Select } from "../../ui/Select";
 import { getCategoryIcon } from "../../ui/ModelIcons";
 import { PasswordInput } from "../shared";
 import { PROVIDER_OPTIONS } from "./constants";
-import { getProviderInfo } from "./helpers";
+import {
+  getProviderDisplayName,
+  getProviderDisplayLabel,
+  getProviderInfo,
+} from "./helpers";
 import { Modal } from "../../ui/Modal";
 import type { EndpointDraft } from "./types";
 import {
@@ -30,7 +34,7 @@ export function EndpointFormModal({
   const providerInfo = getProviderInfo(endpointDraft.provider);
   const showProtocolField = providerInfo?.allowsCustomProtocol === true;
   const isAddingProvider = endpointDraft.key === "";
-  const providerTypeLabel = providerInfo?.name || endpointDraft.provider;
+  const providerTypeLabel = getProviderDisplayLabel(endpointDraft.provider, t);
   const trimmedApiUrl = endpointDraft.apiUrl.trim();
   const normalizedInput = useMemo(
     () => normalizeApiUrlInput(endpointDraft.apiUrl),
@@ -66,18 +70,21 @@ export function EndpointFormModal({
     baseUrlPreview &&
     baseUrlPreview !== trimmedApiUrl.replace(/\/$/, ""),
   );
-  const providerOptions = PROVIDER_OPTIONS.map((item) => ({
-    value: item.id,
-    label: (
-      <span className="flex min-w-0 items-center gap-2">
-        <span aria-hidden="true" className="shrink-0">
-          {getCategoryIcon(item.iconCategory, 18)}
+  const providerOptions = PROVIDER_OPTIONS.map((item) => {
+    const providerName = getProviderDisplayName(item, t);
+    return {
+      value: item.id,
+      label: (
+        <span className="flex min-w-0 items-center gap-2">
+          <span aria-hidden="true" className="shrink-0">
+            {getCategoryIcon(item.iconCategory, 18)}
+          </span>
+          <span className="truncate">{providerName}</span>
         </span>
-        <span className="truncate">{item.name}</span>
-      </span>
-    ),
-    labelText: item.name,
-  }));
+      ),
+      labelText: providerName,
+    };
+  });
 
   return (
     <Modal
@@ -127,8 +134,10 @@ export function EndpointFormModal({
               setEndpointDraft((prev) =>
                 prev
                   ? (() => {
-                      const previousTypeName =
-                        getProviderInfo(prev.provider)?.name || prev.provider;
+                      const previousTypeName = getProviderDisplayLabel(
+                        prev.provider,
+                        t,
+                      );
                       const shouldReplaceName =
                         isAddingProvider &&
                         (!prev.name.trim() ||
@@ -137,7 +146,9 @@ export function EndpointFormModal({
                       return {
                         ...prev,
                         name: shouldReplaceName
-                          ? provider?.name || value
+                          ? provider
+                            ? getProviderDisplayName(provider, t)
+                            : value
                           : prev.name,
                         provider: value,
                         apiProtocol:

@@ -1356,6 +1356,7 @@
     "aiWorkbenchProviderDisplayName": "Nom du fournisseur",
     "aiWorkbenchProviderDisplayNamePlaceholder": "Ex: OpenAI travail, New API",
     "aiWorkbenchProviderType": "Type de fournisseur",
+    "aiWorkbenchProviderAtlasCloud": "Atlas Cloud",
     "aiWorkbenchProviderTypeHint": "Utilise le préréglage de protocole et les règles d'endpoint {{type}}.",
     "modelName": "Nom du modèle",
     "modelNamePlaceholder": "Ex: gpt-4o, deepseek-chat",

@@ -1355,6 +1355,7 @@
     "aiWorkbenchProviderDisplayName": "プロバイダー名",
     "aiWorkbenchProviderDisplayNamePlaceholder": "例：Work OpenAI、New API",
     "aiWorkbenchProviderType": "プロバイダー種別",
+    "aiWorkbenchProviderAtlasCloud": "Atlas Cloud",
     "aiWorkbenchProviderTypeHint": "{{type}} のプロトコルプリセットとエンドポイント規則を使用します。",
     "modelName": "モデル名",
     "modelNamePlaceholder": "例：gpt-4o、deepseek-chat",
