@@ -1356,6 +1356,7 @@
     "aiWorkbenchProviderDisplayNamePlaceholder": "例如：工作 OpenAI、New API",
     "aiWorkbenchProviderType": "供應商類型",
     "aiWorkbenchProviderAtlasCloud": "Atlas Cloud",
+    "aiWorkbenchUnknownProvider": "未知供應商",
     "aiWorkbenchProviderTypeHint": "使用 {{type}} 的協定預設與位址規則。",
     "modelName": "模型名稱",
     "modelNamePlaceholder": "例如：gpt-4o、deepseek-chat",

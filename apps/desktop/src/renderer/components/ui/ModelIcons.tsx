@@ -93,10 +93,7 @@ function renderSpecialCategoryIcon(
   }
 
   const className = SPECIAL_CATEGORY_ICON_CLASS[category];
-  const IconComponent = iconConfig.Icon as React.ElementType<{
-    size: number;
-    strokeWidth: number;
-  }>;
+  const IconComponent = iconConfig.Icon;
   const style =
     SPECIAL_CATEGORY_ICON_STYLE[category] ?? SPECIAL_CATEGORY_ICON_STYLE.Other;
   return (

@@ -266,7 +266,10 @@ export function getProviderDisplayLabel(
   const provider = getProviderInfo(providerId);
   return provider
     ? getProviderDisplayName(provider, t)
-    : providerId || "Unknown";
+    : providerId ||
+        t("settings.aiWorkbenchUnknownProvider", {
+          defaultValue: "Unknown provider",
+        });
 }
 
 export function getEndpointDisplayName(input: {
