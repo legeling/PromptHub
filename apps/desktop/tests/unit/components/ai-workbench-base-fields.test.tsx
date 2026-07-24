@@ -87,6 +87,16 @@ describe("BaseFields", () => {
       "new-api",
       "ollama",
     ]);
+    expect(PROVIDER_OPTIONS).toContainEqual(
+      expect.objectContaining({
+        id: "atlascloud",
+        name: "Atlas Cloud",
+        defaultUrl: "https://api.atlascloud.ai/v1",
+        recommendedProtocol: "openai",
+        allowsCustomProtocol: false,
+        iconCategory: "Atlas Cloud",
+      }),
+    );
   });
 
   it("keeps every preset provider on a dedicated icon instead of a letter fallback", () => {
@@ -104,11 +114,46 @@ describe("BaseFields", () => {
       "Llama",
       "Grok",
       "Qwen",
+      "Atlas Cloud",
     ]) {
       const { container, unmount } = render(<>{getCategoryIcon(category)}</>);
-      expect(container.querySelector(`img[alt="${category}"]`)).not.toBeNull();
+      if (category === "Atlas Cloud") {
+        expect(
+          container.querySelector('[data-category-icon="Atlas Cloud"]'),
+        ).not.toBeNull();
+      } else {
+        expect(
+          container.querySelector(`img[alt="${category}"]`),
+        ).not.toBeNull();
+      }
       unmount();
     }
+  });
+
+  it("prefills Atlas Cloud as an OpenAI-compatible endpoint preset", async () => {
+    const setModelForm = vi.fn();
+
+    await renderWithI18n(
+      <BaseFields
+        modelForm={createModelForm("custom")}
+        setModelForm={setModelForm}
+        fetchingModels={false}
+        onFetchModels={() => undefined}
+      />,
+      { language: "en" },
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Provider" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Atlas Cloud" }));
+
+    expect(setModelForm).toHaveBeenCalledWith(expect.any(Function));
+    const updater = setModelForm.mock.calls.at(-1)?.[0];
+    expect(typeof updater).toBe("function");
+    expect(updater(createModelForm("custom"))).toMatchObject({
+      provider: "atlascloud",
+      apiProtocol: "openai",
+      apiUrl: "https://api.atlascloud.ai/v1",
+    });
   });
 
   it("shows protocol selection for providers that support custom protocols", async () => {
@@ -230,11 +275,7 @@ describe("BaseFields", () => {
       { language: "en" },
     );
 
-    for (const label of [
-      "Image generation",
-      "Vision input",
-      "Reasoning",
-    ]) {
+    for (const label of ["Image generation", "Vision input", "Reasoning"]) {
       expect(screen.getByLabelText(label)).toBeInTheDocument();
     }
 

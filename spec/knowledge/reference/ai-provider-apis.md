@@ -60,6 +60,7 @@
 | Moonshot / Kimi | `https://api.moonshot.cn` | SDK base URL commonly `https://api.moonshot.cn/v1` | `Authorization: Bearer` | `POST /v1/chat/completions` | not separately confirmed in this pass | PromptHub 默认 host 不含 `/v1`，传输层自动补齐 `/v1/chat/completions` | Officially documented (partial) |
 | 智谱 AI / BigModel | `https://open.bigmodel.cn/api/paas` | OpenAI compat examples use `https://open.bigmodel.cn/api/paas/v4/` | OpenAI SDK compat with API key / bearer-style auth | `POST /chat/completions` under `/api/paas/v4/` | not separately confirmed in this pass | PromptHub 默认 host 缺少 `/v4`，当前 generic `/v1/chat/completions` 归一化与官方 compat 文档不完全一致 | Officially documented (partial) |
 | 阿里百炼 / Qwen (DashScope) | `https://dashscope.aliyuncs.com/compatible-mode` | OpenAI compat SDK base URL commonly `https://dashscope.aliyuncs.com/compatible-mode/v1` | `Authorization: Bearer` | `POST /compatible-mode/v1/chat/completions` | not separately confirmed in this pass | PromptHub 默认 host 不含 `/v1`，传输层负责自动补齐 | Officially documented |
+| Atlas Cloud | `https://api.atlascloud.ai/v1` | `https://api.atlascloud.ai/v1` | `Authorization: Bearer` | `POST /chat/completions` | `GET /models` | PromptHub 作为 OpenAI-compatible provider preset，保存 `/v1` base URL 并由共享传输层构造 chat/model endpoints | Live catalog verified |
 | 豆包 / Ark | `https://ark.cn-beijing.volces.com/api` | Data plane: `https://ark.cn-beijing.volces.com/api/v3`; Control plane: `https://ark.cn-beijing.volcengineapi.com/` | Data plane: `Authorization: Bearer`; Control plane uses HMAC auth | `POST /chat/completions` | not confirmed in this pass | PromptHub 默认 host 缺少 `/v3`，当前 generic `/v1/chat/completions` 建模与官方数据面接口不一致 | Officially documented (partial) |
 | 文心一言 / Qianfan | `https://qianfan.baidubce.com/v2` | `https://qianfan.baidubce.com/v2` | `Authorization: Bearer` | `POST /chat/completions` | `GET /models` | PromptHub 默认 host 已含 `/v2`，renderer / main 当前都会直接补成 `/chat/completions` 与 `/models`，与本轮官方 OpenAI-compatible 文档一致 | Officially documented |
 | 讯飞星火 | `https://spark-api-open.xf-yun.com` | OpenAI SDK compat base URL `https://spark-api-open.xf-yun.com/v1/` | `Authorization: Bearer <APIPassword>` | `POST /v1/chat/completions` | not confirmed in this pass | PromptHub 默认 host 不含 `/v1`，传输层会自动补齐 | Officially documented (partial) |
@@ -82,6 +83,7 @@
 | OpenRouter | no | `https://openrouter.ai/api/v1` | `Authorization: Bearer` | `POST /chat/completions` | 多模型路由平台，不是单一模型厂商；也支持 OpenAI SDK 指向其 `api/v1` base URL | Officially documented |
 | SiliconFlow | no | `https://api.siliconflow.cn/v1` | `Authorization: Bearer` | `POST /chat/completions` | 聚合/云平台；官方文档明确采用 OpenAI-compatible chat completions 形态 | Officially documented |
 | ModelScope | no | official API inference platform exists | provider-specific | platform supports API inference, but stable chat endpoint details were not fully captured in this pass | 更像模型平台/推理平台，不应直接等同于某一模型族 | Evidence limited |
+
 ## Common Provider Alias Mapping
 
 下表优先收录御三家与国内主流厂商的常见标签、别名与模型族映射，避免把模型名、英文别名或平台标签误记为独立厂商。
@@ -95,6 +97,7 @@
 | `Moonshot`, `Kimi`, `Kimi k2` | provider / model-family alias | Moonshot / Kimi | `Kimi k2` 是模型族名称，不是新的 provider | Officially documented (partial) |
 | `智谱 AI`, `BigModel`, `GLM`, `Zhipu GLM`, `Zhipu GLM en` | provider / model-family alias | 智谱 AI / BigModel | GLM 家族标签应统一映射回智谱生态 | Officially documented (partial) |
 | `通义千问`, `Qwen`, `DashScope` | provider / model-family / platform alias | 阿里百炼 / Qwen (DashScope) | `Qwen` 是模型族，`DashScope` 是平台入口 | Officially documented |
+| `Atlas Cloud`, `AtlasCloud`, `atlascloud`, `atlas-cloud`, `atlas` | canonical provider / provider alias | Atlas Cloud | Atlas Cloud 是 OpenAI-compatible 聚合平台；模型名仍应按原始 model id 保存，例如 `qwen/qwen3.5-flash` | Live catalog verified |
 | `腾讯混元`, `Hunyuan` | provider / model-family alias | 腾讯混元 / Hunyuan | 国内主流厂商标签；官方提供 OpenAI 兼容接口 | Officially documented |
 | `豆包`, `Doubao`, `Ark`, `DouBaoSeed` | provider / platform / seed-family label | 豆包 / Ark | `Ark` 是官方平台标签；`DouBaoSeed` 仍混合了平台与 Seed 家族命名 | Officially documented (partial) |
 | `文心一言`, `ERNIE`, `Qianfan` | provider / model-family / platform alias | 文心一言 / Qianfan | `Qianfan` 是平台标签，`ERNIE` 更接近模型族名称；PromptHub 当前默认接的是 Qianfan V2 OpenAI-compatible 面 | Officially documented |

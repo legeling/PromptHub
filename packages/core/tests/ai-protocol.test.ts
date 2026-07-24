@@ -32,10 +32,23 @@ describe("shared AI protocol derivation", () => {
       "https://api.anthropic.com",
       "https://api.anthropic.com/v1/messages",
     ],
+    [
+      "openai",
+      "https://api.atlascloud.ai/v1",
+      "https://api.atlascloud.ai/v1/chat/completions",
+    ],
   ] as const)("builds the %s chat endpoint", (protocol, input, expected) => {
     expect(
       buildChatEndpointFromBase(resolveProtocolBase(input, protocol)),
     ).toBe(expected);
+  });
+
+  it("builds the Atlas Cloud OpenAI-compatible model discovery endpoint", () => {
+    expect(
+      buildModelsEndpointFromBase(
+        resolveProtocolBase("https://api.atlascloud.ai/v1", "openai"),
+      ),
+    ).toBe("https://api.atlascloud.ai/v1/models");
   });
 
   it("treats a trailing hash as an exact final endpoint on every surface", () => {

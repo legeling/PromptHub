@@ -112,6 +112,14 @@ export const PROVIDER_OPTIONS: ProviderOption[] = [
     iconCategory: "Qwen",
   },
   {
+    id: "atlascloud",
+    name: "Atlas Cloud",
+    defaultUrl: "https://api.atlascloud.ai/v1",
+    recommendedProtocol: "openai",
+    allowsCustomProtocol: false,
+    iconCategory: "Atlas Cloud",
+  },
+  {
     id: "doubao",
     name: "豆包",
     defaultUrl: "https://ark.cn-beijing.volces.com/api",

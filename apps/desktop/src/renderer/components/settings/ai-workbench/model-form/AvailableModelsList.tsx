@@ -9,6 +9,7 @@ import { applyModelIdToForm, getModelCategory } from "../helpers";
 import type { ModelFormState } from "../types";
 
 const CATEGORY_ORDER = [
+  "Atlas Cloud",
   "GPT",
   "Claude",
   "Gemini",

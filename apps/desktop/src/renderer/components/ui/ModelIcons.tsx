@@ -1,5 +1,9 @@
 import React from "react";
-import { CircleDotDashedIcon, SlidersHorizontalIcon } from "lucide-react";
+import {
+  CircleDotDashedIcon,
+  CloudIcon,
+  SlidersHorizontalIcon,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 // AI model provider icon component
@@ -44,6 +48,7 @@ const CATEGORY_ICON_SRC: Record<string, string> = {
 };
 
 const SPECIAL_CATEGORY_ICON: Record<string, LucideIcon> = {
+  "Atlas Cloud": CloudIcon,
   Custom: SlidersHorizontalIcon,
   Other: CircleDotDashedIcon,
 };
@@ -56,6 +61,11 @@ const SPECIAL_CATEGORY_ICON_STYLE: Record<
     background: "linear-gradient(135deg, #eef2ff 0%, #dbeafe 100%)",
     color: "#2563eb",
     border: "1px solid rgba(37,99,235,0.18)",
+  },
+  "Atlas Cloud": {
+    background: "linear-gradient(135deg, #ecfeff 0%, #dbeafe 100%)",
+    color: "#0e7490",
+    border: "1px solid rgba(14,116,144,0.18)",
   },
   Other: {
     background: "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)",

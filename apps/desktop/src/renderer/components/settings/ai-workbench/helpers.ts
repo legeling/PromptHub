@@ -113,6 +113,9 @@ const MODEL_CATEGORY_CONFIG: Array<{
 ];
 
 const PROVIDER_CATEGORY_MAP: Record<string, string> = {
+  atlas: "Atlas Cloud",
+  atlascloud: "Atlas Cloud",
+  "atlas-cloud": "Atlas Cloud",
   openai: "GPT",
   "openai-responses": "GPT",
   "azure-openai": "GPT",
@@ -444,12 +447,9 @@ export function inferModelAttributes(
     "grok-3",
     "grok-4",
   ].some((keyword) => normalized.includes(keyword));
-  const hasWebSearch = [
-    "search",
-    "sonar",
-    "perplexity",
-    "grok",
-  ].some((keyword) => normalized.includes(keyword));
+  const hasWebSearch = ["search", "sonar", "perplexity", "grok"].some(
+    (keyword) => normalized.includes(keyword),
+  );
 
   return {
     type: "chat",
