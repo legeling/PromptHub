@@ -11,6 +11,7 @@ export type ProviderOption = {
   id: string;
   name: string;
   labelKey?: string;
+  labelDefault?: string;
   defaultUrl: string;
   recommendedProtocol: AIProtocol;
   allowsCustomProtocol: boolean;

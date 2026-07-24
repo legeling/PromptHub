@@ -94,8 +94,9 @@ describe("BaseFields", () => {
     expect(PROVIDER_OPTIONS).toContainEqual(
       expect.objectContaining({
         id: "atlascloud",
-        name: "Atlas Cloud",
+        name: "atlascloud",
         labelKey: "settings.aiWorkbenchProviderAtlasCloud",
+        labelDefault: "Atlas Cloud",
         defaultUrl: "https://api.atlascloud.ai/v1",
         recommendedProtocol: "openai",
         allowsCustomProtocol: false,

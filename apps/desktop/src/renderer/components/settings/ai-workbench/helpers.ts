@@ -244,7 +244,8 @@ export function getProviderInfo(
 }
 
 export function getProviderLabel(providerId: string): string {
-  return getProviderInfo(providerId)?.name || providerId || "Unknown";
+  const provider = getProviderInfo(providerId);
+  return provider?.labelDefault || provider?.name || providerId || "Unknown";
 }
 
 export function getProviderDisplayName(
@@ -252,7 +253,9 @@ export function getProviderDisplayName(
   t: TFunction,
 ): string {
   return provider.labelKey
-    ? t(provider.labelKey, { defaultValue: provider.name })
+    ? t(provider.labelKey, {
+        defaultValue: provider.labelDefault || provider.name,
+      })
     : provider.name;
 }
 
