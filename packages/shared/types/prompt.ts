@@ -213,3 +213,17 @@ export interface SearchQuery {
   limit?: number;
   offset?: number;
 }
+
+/**
+ * Result of deleting a prompt tag.
+ *
+ * `deleted: true` when the tag is no longer referenced by any prompt.
+ * `referenced` reports how many prompts still reference the tag when deletion
+ * was refused (e.g. desktop/web enforce a "tag still in use" guard). Kept a
+ * single shared type so desktop IPC and self-hosted web return the same shape.
+ * 删除标签的统一返回：deleted 表示已删除，referenced 给出仍引用条数（拒绝时）。
+ */
+export interface PromptTagDeleteResult {
+  deleted: boolean;
+  referenced: number;
+}

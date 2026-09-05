@@ -49,6 +49,7 @@
   "prompt": {
     "title": "標題",
     "description": "描述",
+    "deleteBlockedByTagReference": "此標籤仍被 {{count}} 則提示詞使用，無法刪除。",
     "systemPrompt": "系統提示詞",
     "systemPromptEn": "系統提示詞（英文）",
     "userPrompt": "使用者提示詞",

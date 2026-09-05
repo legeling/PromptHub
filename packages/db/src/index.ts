@@ -74,6 +74,10 @@ export type {
 
 // DB classes
 export { PromptDB } from "./prompt";
+export {
+  repairPromptVersionConsistency,
+  type PromptVersionConsistencyRepair,
+} from "./prompt-version-consistency";
 export { PromptRelationDB } from "./prompt-relation";
 export { PromptOutputFormatDB } from "./prompt-output-format";
 export { FolderDB } from "./folder";

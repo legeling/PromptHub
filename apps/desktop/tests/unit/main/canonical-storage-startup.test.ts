@@ -16,9 +16,98 @@ import {
   writeRuntimeLayoutState,
 } from "@prompthub/core";
 import { closeDatabase, initDatabase } from "@prompthub/db";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ensureCanonicalStorageAuthorityOnStartup } from "../../../src/main/services/canonical-storage-startup";
+import {
+  ensureCanonicalStorageAuthorityOnStartup,
+  relocateTrashedPromptWorkspaceFromCanonicalRoot,
+} from "../../../src/main/services/canonical-storage-startup";
+
+describe("prompt workspace trash relocation from the canonical root", () => {
+  let activeRoot2: string;
+  let dataRoot2: string;
+
+  beforeEach(() => {
+    activeRoot2 = fs.mkdtempSync(
+      path.join(os.tmpdir(), "prompthub-trash-relocate-"),
+    );
+    dataRoot2 = path.join(activeRoot2, "data");
+    fs.mkdirSync(dataRoot2, { recursive: true });
+  });
+
+  afterEach(() => {
+    fs.rmSync(activeRoot2, { recursive: true, force: true });
+  });
+
+  function canonicalTrashSnapshot(): string {
+    return path.join(dataRoot2, ".trash", "cache", "prompt-workspace");
+  }
+
+  it("relocates an old prompt-workspace leftover without deleting its content", () => {
+    const source = canonicalTrashSnapshot();
+    fs.mkdirSync(path.join(source, "123"), { recursive: true });
+    fs.writeFileSync(path.join(source, "123", "123.md"), "keep me", "utf8");
+
+    relocateTrashedPromptWorkspaceFromCanonicalRoot(dataRoot2, activeRoot2);
+
+    expect(fs.existsSync(source)).toBe(false);
+    const recoveryRoot = path.join(
+      activeRoot2,
+      "recovery",
+      "canonical-prompt-trash",
+    );
+    const dirs = fs
+      .readdirSync(recoveryRoot, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory());
+    expect(dirs.length).toBe(1);
+    const movedFile = path.join(
+      recoveryRoot,
+      dirs[0].name,
+      "123",
+      "123.md",
+    );
+    expect(fs.readFileSync(movedFile, "utf8")).toBe("keep me");
+  });
+
+  it("leaves other trash directories under the canonical root untouched", () => {
+    const conflicts = path.join(dataRoot2, ".trash", "conflicts");
+    fs.mkdirSync(conflicts, { recursive: true });
+    fs.writeFileSync(path.join(conflicts, "note.txt"), "keep", "utf8");
+
+    relocateTrashedPromptWorkspaceFromCanonicalRoot(dataRoot2, activeRoot2);
+
+    expect(fs.readFileSync(path.join(conflicts, "note.txt"), "utf8")).toBe(
+      "keep",
+    );
+  });
+
+  it("does nothing when no stale prompt-workspace snapshot exists", () => {
+    relocateTrashedPromptWorkspaceFromCanonicalRoot(dataRoot2, activeRoot2);
+    expect(fs.existsSync(canonicalTrashSnapshot())).toBe(false);
+  });
+
+  it("does not throw when relocation fails and keeps the snapshot in place", () => {
+    const source = canonicalTrashSnapshot();
+    fs.mkdirSync(path.join(source, "keep"), { recursive: true });
+    fs.writeFileSync(path.join(source, "keep", "note.txt"), "preserve me");
+
+    // Make the recovery target unusable so mkdir/rename raises (e.g. EACCES/EXDEV).
+    const recoveryRoot = path.join(
+      activeRoot2,
+      "recovery",
+      "canonical-prompt-trash",
+    );
+    fs.mkdirSync(path.dirname(recoveryRoot), { recursive: true });
+    fs.writeFileSync(recoveryRoot, "not-a-directory", "utf8");
+
+    expect(() =>
+      relocateTrashedPromptWorkspaceFromCanonicalRoot(dataRoot2, activeRoot2),
+    ).not.toThrow();
+
+    // Stale snapshot is preserved; startup can continue without this heal.
+    expect(fs.existsSync(path.join(source, "keep", "note.txt"))).toBe(true);
+  });
+});
 
 describe("canonical storage startup", () => {
   const roots: string[] = [];

@@ -172,7 +172,7 @@ describe("installDesktopBridge media helpers", () => {
       prompt: {
         getAllTags: () => Promise<string[]>;
         renameTag: (oldTag: string, newTag: string) => Promise<boolean>;
-        deleteTag: (tag: string) => Promise<boolean>;
+        deleteTag: (tag: string) => Promise<{ deleted: boolean; referenced: number }>;
       };
       rules: {
         list: () => Promise<unknown[]>;
@@ -187,7 +187,10 @@ describe("installDesktopBridge media helpers", () => {
 
     await expect(api.prompt.getAllTags()).resolves.toEqual(["alpha", "beta"]);
     await expect(api.prompt.renameTag("alpha", "beta")).resolves.toBe(true);
-    await expect(api.prompt.deleteTag("beta")).resolves.toBe(true);
+    await expect(api.prompt.deleteTag("beta")).resolves.toEqual({
+      deleted: true,
+      referenced: 0,
+    });
     await expect(api.rules.list()).resolves.toEqual([]);
     await expect(api.rules.scan()).resolves.toEqual([]);
     await expect(

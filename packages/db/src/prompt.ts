@@ -664,8 +664,11 @@ export class PromptDB {
   }
 
   /**
-   * Rename a tag across all prompts
-   * 全局重命名标签
+   * Rename a tag across all prompts.
+   * Each changed prompt records a real `prompt_versions` row (via createVersion)
+   * before its pointer advances, so the canonical graph never carries a
+   * `current_version` that has no matching version row.
+   * 全局重命名标签：每次变更都新建一条版本行，确保 current_version 有对应行。
    */
   renameTag(oldTag: string, newTag: string): void {
     if (!oldTag || !newTag || oldTag === newTag) return;
@@ -678,13 +681,12 @@ export class PromptDB {
         .all(`%"${oldTag}"%`) as { id: string; tags: string }[];
 
       const updateStmt = this.db.prepare(`
-        UPDATE prompts 
-        SET tags = ?, current_version = current_version + 1, updated_at = ?
+        UPDATE prompts
+        SET tags = ?, updated_at = ?
         WHERE id = ?
       `);
 
       const now = Date.now();
-      let hasUpdates = false;
 
       for (const row of rows) {
         try {
@@ -696,7 +698,8 @@ export class PromptDB {
               new Set(tags.map((t) => (t === oldTag ? newTag : t))),
             );
             updateStmt.run(JSON.stringify(newTags), now, row.id);
-            hasUpdates = true;
+            // Persist a version row then let createVersion advance the pointer.
+            this.createVersion(row.id);
           }
         } catch (e) {
           // ignore invalid json
@@ -708,8 +711,11 @@ export class PromptDB {
   }
 
   /**
-   * Delete a tag across all prompts
-   * 全局删除标签
+   * Delete a tag across all prompts.
+   * Each changed prompt records a real `prompt_versions` row (via createVersion)
+   * before its pointer advances, so the canonical graph never carries a
+   * `current_version` without a matching version row.
+   * 全局删除标签：每次删除都同步保留一条新版本行，指针与版本集合保持一致。
    */
   deleteTag(tag: string): void {
     if (!tag) return;
@@ -720,8 +726,8 @@ export class PromptDB {
         .all(`%"${tag}"%`) as { id: string; tags: string }[];
 
       const updateStmt = this.db.prepare(`
-        UPDATE prompts 
-        SET tags = ?, current_version = current_version + 1, updated_at = ?
+        UPDATE prompts
+        SET tags = ?, updated_at = ?
         WHERE id = ?
       `);
 
@@ -733,6 +739,7 @@ export class PromptDB {
           if (Array.isArray(tags) && tags.includes(tag)) {
             const newTags = tags.filter((t) => t !== tag);
             updateStmt.run(JSON.stringify(newTags), now, row.id);
+            this.createVersion(row.id);
           }
         } catch (e) {
           // ignore
@@ -741,6 +748,53 @@ export class PromptDB {
     });
 
     txn();
+  }
+
+  /**
+   * Atomically delete a tag only when no prompt currently references it.
+   * Runs the reference check and the removal inside one SQLite transaction so
+   * a concurrent writer cannot slip a new reference between a separate
+   * "count then delete" call pair. Returns how many prompts still reference the
+   * tag when deletion is refused (0 when the tag is gone/unreferenced).
+   *
+   * 事务化：仅当没有任何 prompt 引用该标签时才删除，防止竞态；返回仍引用数。
+   */
+  deleteTagIfUnreferenced(tag: string): {
+    deleted: boolean;
+    referenced: number;
+  } {
+    if (!tag) return { deleted: true, referenced: 0 };
+
+    const result = {
+      deleted: false,
+      referenced: 0,
+    };
+    const run = this.db.transaction(() => {
+      const rows = this.db
+        .prepare(`SELECT id, tags FROM prompts WHERE tags LIKE ?`)
+        .all(`%"${tag}"%`) as { id: string; tags: string }[];
+
+      const matched: Array<{ id: string; tags: string[] }> = [];
+      for (const row of rows) {
+        try {
+          const parsed = JSON.parse(row.tags ?? "[]") as unknown;
+          if (Array.isArray(parsed) && parsed.includes(tag)) {
+            matched.push({ id: row.id, tags: parsed as string[] });
+          }
+        } catch {
+          // ignore unparseable rows, mirroring deleteTag behavior
+        }
+      }
+
+      if (matched.length > 0) {
+        result.referenced = matched.length;
+        return;
+      }
+
+      result.deleted = true;
+    });
+    run();
+    return result;
   }
 
   /**

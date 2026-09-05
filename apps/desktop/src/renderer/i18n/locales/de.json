@@ -49,6 +49,7 @@
   "prompt": {
     "title": "Titel",
     "description": "Beschreibung",
+    "deleteBlockedByTagReference": "Dieses Tag wird noch von {{count}} Prompt(s) verwendet und kann nicht gelöscht werden.",
     "systemPrompt": "System-Prompt",
     "systemPromptEn": "System-Prompt (Englisch)",
     "userPrompt": "Benutzer-Prompt",

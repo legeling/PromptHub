@@ -50,6 +50,7 @@
   "prompt": {
     "title": "标题",
     "description": "描述",
+    "deleteBlockedByTagReference": "此标签仍被 {{count}} 条提示词使用，无法删除。",
     "systemPrompt": "系统提示词",
     "systemPromptEn": "系统提示词（英文）",
     "userPrompt": "用户提示词",

@@ -49,6 +49,7 @@
   "prompt": {
     "title": "Título",
     "description": "Descripción",
+    "deleteBlockedByTagReference": "Esta etiqueta todavía la usan {{count}} prompt(s) y no se puede eliminar mientras esté en uso.",
     "systemPrompt": "Prompt del sistema",
     "systemPromptEn": "Prompt del sistema (inglés)",
     "userPrompt": "Prompt del usuario",

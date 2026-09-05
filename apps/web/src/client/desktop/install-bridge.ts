@@ -307,8 +307,10 @@ export function installDesktopBridge(): void {
       getAllTags: () => apiJson<string[]>("/api/prompts/meta/tags"),
       renameTag: (oldTag: string, newTag: string) =>
         apiOk("/api/prompts/meta/tags/rename", "POST", { oldTag, newTag }),
-      deleteTag: (tag: string) =>
-        apiOk("/api/prompts/meta/tags/delete", "POST", { tag }),
+      deleteTag: async (tag: string): Promise<{ deleted: boolean; referenced: number }> => {
+        await apiOk("/api/prompts/meta/tags/delete", "POST", { tag });
+        return { deleted: true, referenced: 0 };
+      },
       update: (id: string, data: UpdatePromptDTO) =>
         apiJsonBody<Prompt>(
           `/api/prompts/${encodePathSegment(id)}`,

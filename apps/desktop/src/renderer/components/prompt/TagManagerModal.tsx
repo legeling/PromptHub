@@ -147,7 +147,18 @@ export function TagManagerModal({
           throw new Error(`Failed to delete skill tag: ${tag}`);
         }
       } else {
-        await window.api.prompt.deleteTag(tag);
+        const deleteResult = await window.api.prompt.deleteTag(tag);
+        if (!deleteResult.deleted && deleteResult.referenced > 0) {
+          showToast(
+            t('prompt.deleteBlockedByTagReference', {
+              count: deleteResult.referenced,
+              defaultValue:
+                'This tag is still used by {{count}} prompt(s) and cannot be deleted while in use.',
+            }),
+            'error',
+          );
+          return;
+        }
         deletePromptTagCatalogEntry(tag);
         await fetchPrompts();
         await loadPromptTags();

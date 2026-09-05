@@ -49,6 +49,7 @@
   "prompt": {
     "title": "Titre",
     "description": "Description",
+    "deleteBlockedByTagReference": "Cette balise est encore utilisée par {{count}} prompt(s) et ne peut pas être supprimée.",
     "systemPrompt": "Prompt système",
     "systemPromptEn": "Prompt système (anglais)",
     "userPrompt": "Prompt utilisateur",

@@ -49,6 +49,7 @@
   "prompt": {
     "title": "タイトル",
     "description": "説明",
+    "deleteBlockedByTagReference": "このタグは {{count}} 件のプロンプトで使用中のため、削除できません。",
     "systemPrompt": "システムプロンプト",
     "systemPromptEn": "システムプロンプト（英語）",
     "userPrompt": "ユーザープロンプト",

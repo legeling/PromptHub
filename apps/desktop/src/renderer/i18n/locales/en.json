@@ -50,6 +50,7 @@
   "prompt": {
     "title": "Title",
     "description": "Description",
+    "deleteBlockedByTagReference": "This tag is still used by {{count}} prompt(s) and cannot be deleted while in use.",
     "systemPrompt": "System Prompt",
     "systemPromptEn": "System Prompt (English)",
     "userPrompt": "User Prompt",

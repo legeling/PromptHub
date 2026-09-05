@@ -619,7 +619,7 @@ prompts.post('/meta/tags/delete', async (c) => {
 
   try {
     promptService.deleteTag(getAuthUser(c), parsed.data.tag);
-    return success(c, { ok: true });
+    return success(c, { ok: true, deleted: true, referenced: 0 });
   } catch (routeError) {
     return toPromptErrorResponse(c, routeError);
   }
