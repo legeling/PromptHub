@@ -202,6 +202,8 @@ export interface SettingsState {
   isSkillTagsSectionCollapsed: boolean;
   desktopHomeModules: DesktopHomeModule[];
   skillListPageSize: number;
+  /** Include SKILL.md frontmatter (original_tags) labels in the My Skills tag filter candidates. */
+  skillTagFilterIncludeFrontmatter: boolean;
   aiProvider: string;
   aiApiProtocol: AIProtocol;
   aiApiKey: string;
@@ -320,6 +322,7 @@ export interface SettingsState {
   toggleDesktopHomeModule: (moduleId: DesktopHomeModule) => void;
   reorderDesktopHomeModules: (modules: DesktopHomeModule[]) => void;
   setSkillListPageSize: (pageSize: number) => void;
+  setSkillTagFilterIncludeFrontmatter: (value: boolean) => void;
   setAiProvider: (provider: string) => void;
   setAiApiProtocol: (protocol: AIProtocol) => void;
   setAiApiKey: (key: string) => void;

@@ -59,10 +59,13 @@ describe("buildSkillSyncUpdateFromRepo", () => {
       description: "Updated description",
       version: "2.0.0",
       author: "Repo Author",
-      tags: ["writing", "local"],
+      original_tags: ["writing", "local"],
       compatibility: ["claude", "cursor"],
       directory_fingerprint: "repo-fingerprint-1",
     });
+    // Frontmatter (source) tags must not overwrite the user/DB tag set.
+    expect(next).not.toHaveProperty("tags");
+    expect(next?.tags).toBeUndefined();
     expect(next?.instructions).toContain("Updated body.");
     expect(next?.content).toContain("Updated body.");
   });

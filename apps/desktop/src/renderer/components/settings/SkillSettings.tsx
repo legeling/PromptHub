@@ -451,6 +451,37 @@ export function SkillSettings() {
       <GithubTokenSettings />
 
       <SettingSection
+        title={t("settings.skillTagFilter", "Skill tag filter")}
+      >
+        <div className="p-4 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-sm font-medium text-foreground">
+                {t(
+                  "settings.skillTagFilterIncludeFrontmatterTitle",
+                  "Include SKILL.md frontmatter labels",
+                )}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {t(
+                  "settings.skillTagFilterIncludeFrontmatterDesc",
+                  "Also offer SKILL.md frontmatter (original) labels as filter candidates in My Skills. Local skills whose tags were migrated into original_tags stay filterable when this is on.",
+                )}
+              </div>
+            </div>
+            <ToggleSwitch
+              ariaLabel={t(
+                "settings.skillTagFilterIncludeFrontmatterTitle",
+                "Include SKILL.md frontmatter labels",
+              )}
+              checked={settings.skillTagFilterIncludeFrontmatter}
+              onChange={settings.setSkillTagFilterIncludeFrontmatter}
+            />
+          </div>
+        </div>
+      </SettingSection>
+
+      <SettingSection
         title={t("settings.skillInstallMethod", "Skill Install Method")}
       >
         <div className="p-4 space-y-3">

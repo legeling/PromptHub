@@ -36,12 +36,22 @@ export function buildSkillSyncUpdateFromRepo(
   directoryFingerprint?: string,
 ): UpdateSkillParams | null {
   const parsed = parseSkillMd(skillMdContent);
+  // SKILL.md frontmatter tags are the *source* (original) tag set. They must be
+  // kept out of `tags` (the user/DB tag set) so that the My Skills tag display
+  // stays governed by the `skillTagFilterIncludeFrontmatter` setting; otherwise
+  // a repo sync (e.g. opening a skill detail) would merge them into `tags` and
+  // make them reappear in the list even when that setting is off.
+  const rawFrontmatterTags = parsed?.frontmatter.tags;
+  const sourceTags = Array.isArray(rawFrontmatterTags)
+    ? rawFrontmatterTags
+        .map((tag) => (typeof tag === "string" ? tag.trim() : ""))
+        .filter((tag) => tag.length > 0)
+    : [];
   const sanitized = sanitizeImportedSkillDraft(
     {
       description: parsed?.frontmatter.description,
       version: parsed?.frontmatter.version,
       author: parsed?.frontmatter.author,
-      tags: parsed?.frontmatter.tags,
       compatibility: normalizeCompatibility(parsed?.frontmatter.compatibility),
       protocol_type: skill.protocol_type,
     },
@@ -83,6 +93,11 @@ export function buildSkillSyncUpdateFromRepo(
 
   if (!arraysEqual(sanitized.tags, skill.tags)) {
     update.tags = sanitized.tags;
+    changed = true;
+  }
+
+  if (!arraysEqual(sourceTags, skill.original_tags ?? [])) {
+    update.original_tags = sourceTags;
     changed = true;
   }
 

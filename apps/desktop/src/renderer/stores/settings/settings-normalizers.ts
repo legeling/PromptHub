@@ -383,6 +383,12 @@ export function normalizeSkillListPageSize(value: unknown): number {
     : DEFAULT_SKILL_LIST_PAGE_SIZE;
 }
 
+export function normalizeSkillTagFilterIncludeFrontmatter(
+  value: unknown,
+): boolean {
+  return value === true;
+}
+
 export function normalizeSyncProvider(value: unknown): SyncProviderKind {
   return value === "webdav" || value === "s3" ? value : "manual";
 }

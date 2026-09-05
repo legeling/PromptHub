@@ -17,6 +17,7 @@ import type {
   SkillGalleryColumnMode,
 } from "../../stores/skill.store";
 import { Select, type SelectOption } from "../ui/Select";
+import { SkillTagSearchFilter } from "./SkillTagSearchFilter";
 
 export interface SkillManagerFilterOption {
   count: number;
@@ -57,6 +58,10 @@ interface SkillManagerLibraryHeaderProps {
   pageSize: number;
   selectedCount: number;
   selectedSkillsAreFavorites: boolean;
+  skillActiveTags: string[];
+  skillTagOptions: string[];
+  onToggleSkillTag: (tag: string) => void;
+  onClearSkillTags: () => void;
   sourceFilterOptions: SelectOption[];
   t: TFunction;
   totalPages: number;
@@ -259,6 +264,14 @@ function LibraryFilterBar(props: HeaderProps) {
           </button>
         );
       })}
+      {props.skillTagOptions.length > 0 || props.skillActiveTags.length > 0 ? (
+        <SkillTagSearchFilter
+          options={props.skillTagOptions}
+          selected={props.skillActiveTags}
+          onToggle={props.onToggleSkillTag}
+          onClear={props.onClearSkillTags}
+        />
+      ) : null}
       <Select
         ariaLabel={props.t("skill.sourceFilterLabel", "Skill source")}
         value={props.activeSourceFilterKey}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Skill } from "@prompthub/shared/types";
-import { buildSkillStats } from "../../../src/renderer/services/skill-stats";
+import { buildSkillStats, buildSkillTagCandidates } from "../../../src/renderer/services/skill-stats";
 
 function createSkill(index: number): Skill {
   return {
@@ -39,5 +39,68 @@ describe("buildSkillStats", () => {
       "user-3",
       "user-4",
     ]);
+  });
+});
+
+describe("buildSkillTagCandidates", () => {
+  const baseSkills: Skill[] = [
+    {
+      id: "skill-a",
+      name: "a",
+      protocol_type: "skill",
+      tags: ["user-a", "shared"],
+      original_tags: ["shared", "doc"],
+      is_favorite: false,
+      created_at: 1,
+      updated_at: 1,
+    },
+    {
+      id: "skill-b",
+      name: "b",
+      protocol_type: "skill",
+      tags: ["user-b", "shared"],
+      original_tags: ["shared", "readme"],
+      is_favorite: false,
+      created_at: 1,
+      updated_at: 1,
+    },
+    {
+      id: "skill-c",
+      name: "c",
+      protocol_type: "skill",
+      tags: ["registry-1"],
+      registry_slug: "store-skill",
+      is_favorite: false,
+      created_at: 1,
+      updated_at: 1,
+    },
+  ];
+
+  it("defaults to the same user-tag set as buildSkillStats", () => {
+    const candidates = buildSkillTagCandidates(baseSkills, false);
+    expect(candidates).toEqual(
+      buildSkillStats(baseSkills, new Set()).uniqueUserTags,
+    );
+    // shared/doc/readme are original (frontmatter) labels and stay excluded.
+    expect(candidates).toEqual(["user-a", "user-b"]);
+  });
+
+  it("unions SKILL.md frontmatter labels when enabled", () => {
+    const candidates = buildSkillTagCandidates(baseSkills, true);
+    expect(candidates).toEqual([
+      "doc",
+      "readme",
+      "registry-1",
+      "shared",
+      "user-a",
+      "user-b",
+    ]);
+  });
+
+  it("still treats registry-owned tags as original so they only appear when enabled", () => {
+    expect(buildSkillTagCandidates(baseSkills, false)).not.toContain(
+      "registry-1",
+    );
+    expect(buildSkillTagCandidates(baseSkills, true)).toContain("registry-1");
   });
 });

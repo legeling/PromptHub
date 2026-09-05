@@ -154,6 +154,57 @@ describe("canonical Skill database adapter", () => {
     expect(restored.skill.content).toBe("Pending");
   });
 
+  it("excludes the user .prompthub sidecar from canonical bundle content", () => {
+    fs.mkdirSync(path.join(sourcePath, ".prompthub"));
+    fs.writeFileSync(
+      path.join(sourcePath, ".prompthub", "user.json"),
+      JSON.stringify({ note: "draft" }),
+    );
+    const created = skillDb.create({
+      name: "sidecar-excluded",
+      protocol_type: "skill",
+      content: "Initial",
+      is_favorite: false,
+      local_repo_path: sourcePath,
+    });
+    const bundlePath = path.join(root, "data", "skills", created.id);
+    const payloadPaths = readSkillResourceBundle(bundlePath).packageFiles.map(
+      (file) => file.path,
+    );
+    expect(payloadPaths).toContain("SKILL.md");
+    expect(payloadPaths.some((filePath) => filePath.startsWith(".prompthub"))).toBe(
+      false,
+    );
+    expect(fs.existsSync(path.join(bundlePath, ".prompthub"))).toBe(false);
+  });
+
+  it.each([".prompthub", "repo"])(
+    "clears an undeclared %s dir from an existing bundle on the next republish",
+    (leftoverDir) => {
+      const created = skillDb.create({
+        name: `stale-${leftoverDir.replace(".", "dot")}-cleanup`,
+        protocol_type: "skill",
+        content: "Initial",
+        is_favorite: false,
+        local_repo_path: sourcePath,
+      });
+      const bundlePath = path.join(root, "data", "skills", created.id);
+      fs.mkdirSync(path.join(bundlePath, leftoverDir));
+      fs.writeFileSync(
+        path.join(bundlePath, leftoverDir, "user.json"),
+        JSON.stringify({ note: "stale" }),
+      );
+      expect(readSkillResourceBundle(bundlePath).skill.content).toBe("Initial");
+
+      skillDb.update(created.id, {
+        content: "Updated",
+        directory_fingerprint: "f".repeat(64),
+      });
+      expect(fs.existsSync(path.join(bundlePath, leftoverDir))).toBe(false);
+      expect(readSkillResourceBundle(bundlePath).skill.content).toBe("Updated");
+    },
+  );
+
   it("hydrates canonical Skill workspaces only once per database connection", () => {
     const created = skillDb.create({
       name: "one-shot-hydration",

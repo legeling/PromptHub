@@ -62,3 +62,36 @@ export function buildSkillStats(
     uniqueUserTags: Array.from(tagSet).sort((a, b) => a.localeCompare(b)),
   };
 }
+
+/**
+ * Build the candidate tag list shown in the My Skills tag filter.
+ *
+ * By default it returns the same user-tag set as `buildSkillStats(...).uniqueUserTags`,
+ * so the header and the sidebar tag panel stay consistent. When
+ * `includeFrontmatter` is enabled the SKILL.md frontmatter labels
+ * (`original_tags`) are unioned in, so locally authored skills whose tags were
+ * backfilled into `original_tags` can still be filtered without hiding the
+ * platform-managed user tags.
+ *
+ * “我的 Skill”标签过滤控件的候选标签。默认与侧栏面板一致，只取用户标签
+ * (`buildSkillStats(...).uniqueUserTags`)；开启 `includeFrontmatter` 后并集
+ * SKILL.md frontmatter 标签（`original_tags`），使本地创建技能因迁移回填
+ * `original_tags` 而被隐藏的标签也能重新参与过滤，同时不丢弃平台侧用户标签。
+ */
+export function buildSkillTagCandidates(
+  skills: Skill[],
+  includeFrontmatter: boolean,
+): string[] {
+  const tagSet = new Set<string>();
+  for (const skill of skills) {
+    for (const tag of getUserSkillTags(skill)) {
+      tagSet.add(tag);
+    }
+    if (includeFrontmatter) {
+      for (const tag of inferOriginalSkillTags(skill)) {
+        tagSet.add(tag);
+      }
+    }
+  }
+  return Array.from(tagSet).sort((a, b) => a.localeCompare(b));
+}

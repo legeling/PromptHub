@@ -1,10 +1,15 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SkillGalleryCard } from "../../../src/renderer/components/skill/SkillGalleryCard";
 import { SkillListView } from "../../../src/renderer/components/skill/SkillListView";
 import { renderWithI18n } from "../../helpers/i18n";
 import { installWindowMocks } from "../../helpers/window";
+import { useSettingsStore } from "../../../src/renderer/stores/settings.store";
+
+beforeEach(() => {
+  useSettingsStore.setState({ skillTagFilterIncludeFrontmatter: false });
+});
 
 vi.mock("../../../src/renderer/components/ui/PlatformIcon", () => ({
   PlatformIcon: ({
@@ -333,6 +338,70 @@ describe("skill view tags", () => {
     expect(screen.getByText("workflow")).toBeInTheDocument();
     expect(screen.queryByText("extra")).not.toBeInTheDocument();
   });
+
+  it("shows migrated frontmatter tags in list rows when the frontmatter filter mode is enabled", async () => {
+    useSettingsStore.setState({ skillTagFilterIncludeFrontmatter: true });
+    installWindowMocks({
+      api: {
+        skill: {
+          getSupportedPlatforms: vi.fn().mockResolvedValue([]),
+          detectPlatforms: vi.fn().mockResolvedValue([]),
+          getMdInstallStatusBatch: vi.fn().mockResolvedValue({}),
+        },
+      },
+    });
+    const importedSkill = {
+      ...baseSkill,
+      tags: [],
+      original_tags: ["agentic", "github", "review"],
+    };
+
+    await act(async () => {
+      await renderWithI18n(
+        <SkillListView
+          skills={[importedSkill as any]}
+          onQuickInstall={vi.fn()}
+        />,
+        { language: "en" },
+      );
+    });
+
+    expect(screen.getByText("agentic")).toBeInTheDocument();
+    expect(screen.getByText("github")).toBeInTheDocument();
+    expect(screen.getByText("review")).toBeInTheDocument();
+  });
+
+  it("hides migrated frontmatter tags in list rows when the frontmatter filter mode is disabled", async () => {
+    installWindowMocks({
+      api: {
+        skill: {
+          getSupportedPlatforms: vi.fn().mockResolvedValue([]),
+          detectPlatforms: vi.fn().mockResolvedValue([]),
+          getMdInstallStatusBatch: vi.fn().mockResolvedValue({}),
+        },
+      },
+    });
+    const importedSkill = {
+      ...baseSkill,
+      tags: [],
+      original_tags: ["agentic", "github", "review"],
+    };
+
+    await act(async () => {
+      await renderWithI18n(
+        <SkillListView
+          skills={[importedSkill as any]}
+          onQuickInstall={vi.fn()}
+        />,
+        { language: "en" },
+      );
+    });
+
+    expect(screen.queryByText("agentic")).not.toBeInTheDocument();
+    expect(screen.queryByText("github")).not.toBeInTheDocument();
+    expect(screen.queryByText("review")).not.toBeInTheDocument();
+  });
+
 
   it("shows the blue update badge in list view rows", async () => {
     installWindowMocks({

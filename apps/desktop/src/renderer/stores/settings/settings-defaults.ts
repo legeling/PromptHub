@@ -115,6 +115,7 @@ function createDefaultWorkspaceValues() {
     isSkillTagsSectionCollapsed: false,
     desktopHomeModules: [...DESKTOP_HOME_MODULES],
     skillListPageSize: DEFAULT_SKILL_LIST_PAGE_SIZE,
+    skillTagFilterIncludeFrontmatter: false,
   } satisfies Partial<SettingsValues>;
 }
 

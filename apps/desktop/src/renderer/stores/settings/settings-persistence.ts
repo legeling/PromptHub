@@ -33,6 +33,7 @@ import {
   normalizeShortcutModes,
   normalizeSidebarTagSectionHeights,
   normalizeSkillListPageSize,
+  normalizeSkillTagFilterIncludeFrontmatter,
   normalizeSyncProvider,
   normalizeSyncTimingSettings,
   normalizeTagFilterMode,
@@ -81,6 +82,7 @@ const DESKTOP_RENDERER_PREFERENCE_FIELDS = new Set<keyof SettingsState>([
   "isSkillTagsSectionCollapsed",
   "desktopHomeModules",
   "skillListPageSize",
+  "skillTagFilterIncludeFrontmatter",
   "translationMode",
   "imageReverseAttachReferenceByDefault",
 ]);
@@ -146,6 +148,10 @@ function normalizeSharedSettingsState(next: SettingsState): void {
   next.skillProjects = normalizeSkillProjects(next.skillProjects);
   next.shortcutModes = normalizeShortcutModes(next.shortcutModes);
   next.skillListPageSize = normalizeSkillListPageSize(next.skillListPageSize);
+  next.skillTagFilterIncludeFrontmatter =
+    normalizeSkillTagFilterIncludeFrontmatter(
+      next.skillTagFilterIncludeFrontmatter,
+    );
   normalizeSkillTrustSettings(next);
   next.networkProxy = normalizeNetworkProxySettings(next.networkProxy);
   next.agentIdentityPreferences = normalizeAgentIdentityPreferences(
@@ -364,6 +370,10 @@ function normalizeMigratedCoreState(
   next.tagFilterMode = normalizeTagFilterMode(next.tagFilterMode);
   next.shortcutModes = normalizeShortcutModes(next.shortcutModes);
   next.skillListPageSize = normalizeSkillListPageSize(next.skillListPageSize);
+  next.skillTagFilterIncludeFrontmatter =
+    normalizeSkillTagFilterIncludeFrontmatter(
+      next.skillTagFilterIncludeFrontmatter,
+    );
   normalizeLegacyAgentSettings(next, version);
   next.skillProjects = normalizeSkillProjects(next.skillProjects);
   normalizeSkillTrustSettings(next);

@@ -73,6 +73,16 @@ export interface ReadResourceBundleOptions {
   expectedResourceType?: string;
   expectedResourceId?: string;
   limits?: Partial<ResourceBundleLimits>;
+  /**
+   * Relative bundle directories that may exist without being declared as
+   * payload files or in the manifest. When such a directory is encountered
+   * its entire subtree is skipped during inventory: it is never reported as
+   * undeclared and its contents are never added to the discovered payload
+   * set (so a manifest that nevertheless references one of those files will
+   * still fail verification as a missing payload). Owners pass this only for
+   * runtime sidecar directories that must not be part of a published bundle.
+   */
+  ignoredDirectories?: readonly string[];
 }
 
 export interface VerifiedResourceBundle {
@@ -733,6 +743,7 @@ function inspectInventoryEntry(
   entry: fs.Dirent,
   declared: ReadonlySet<string>,
   allowedDirectories: ReadonlySet<string>,
+  ignoredDirectories: ReadonlySet<string>,
   found: Set<string>,
   queue: string[],
 ): void {
@@ -748,6 +759,7 @@ function inspectInventoryEntry(
     );
   }
   if (stat.isDirectory()) {
+    if (ignoredDirectories.has(relativePath)) return;
     if (!allowedDirectories.has(relativePath)) {
       throw new Error(
         `resource bundle contains undeclared directory: ${relativePath}`,
@@ -775,6 +787,7 @@ function inspectInventoryEntry(
 function inventoryBundle(
   bundlePath: string,
   manifest: ResourceBundleManifest,
+  ignoredDirectories: ReadonlySet<string>,
 ): Set<string> {
   const declared = new Set(manifest.payloadFiles.map((file) => file.path));
   const allowedDirectories = declaredDirectories(manifest.payloadFiles);
@@ -791,6 +804,7 @@ function inventoryBundle(
         entry,
         declared,
         allowedDirectories,
+        ignoredDirectories,
         found,
         queue,
       );
@@ -865,7 +879,11 @@ export function readResourceBundle(
       "resource bundle resource identity does not match the expected owner",
     );
   }
-  const found = inventoryBundle(bundlePath, manifest);
+  const found = inventoryBundle(
+    bundlePath,
+    manifest,
+    new Set(options.ignoredDirectories ?? []),
+  );
   let totalPayloadBytes = 0;
   for (const file of manifest.payloadFiles) {
     if (!found.has(file.path))

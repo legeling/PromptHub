@@ -40,10 +40,25 @@ export function filterVisibleSkills({
   }
 
   if (filterTags.length > 0) {
-    result = result.filter(
-      (skill) =>
-        skill.tags && filterTags.some((tag) => skill.tags?.includes(tag)),
-    );
+    // Normalize both sides so a tag stored with surrounding whitespace in a
+    // skill still matches the trimmed candidate shown in the filter UI. The
+    // sidebar tags and the My Skills tag filter both surface trimmed values,
+    // while persisted `skill.tags` may keep raw spaces.
+    // 对双方统一 trim：列表候选/侧栏展示的都是 trim 后的标签值，而持久化的
+    // skill.tags 可能带前后空格，这样点选“editor”也能命中原始“  editor  ”。
+    const normalizedTags = filterTags
+      .map((tag) => tag.trim())
+      .filter((tag) => tag.length > 0);
+    if (normalizedTags.length > 0) {
+      result = result.filter(
+        (skill) =>
+          skill.tags &&
+          skill.tags.some((rawTag) => {
+            const trimmed = rawTag.trim();
+            return trimmed.length > 0 && normalizedTags.includes(trimmed);
+          }),
+      );
+    }
   }
 
   const query = searchQuery.trim().toLowerCase();

@@ -34,6 +34,7 @@ import type { Skill, ScannedSkill } from "@prompthub/shared/types";
 import type { SkillPlatform } from "@prompthub/shared/constants/platforms";
 import { updateSkillTags, type SkillBatchTagMode } from "./batch-utils";
 import { filterVisibleSkills } from "../../services/skill-filter";
+import { buildSkillTagCandidates } from "../../services/skill-stats";
 import { buildMySkillSourceBadges } from "../../services/skill-source-badges";
 import { getRemoteStoreSkills } from "../../services/remote-store-entry";
 import { getSkillsWithStoreUpdates } from "../../services/skill-library-update-status";
@@ -125,6 +126,8 @@ export function SkillManager() {
   const deployedSkillNames = useSkillStore((state) => state.deployedSkillNames);
   const loadDeployedStatus = useSkillStore((state) => state.loadDeployedStatus);
   const skillFilterTags = useSkillStore((state) => state.filterTags);
+  const toggleSkillFilterTag = useSkillStore((state) => state.toggleFilterTag);
+  const clearSkillFilterTags = useSkillStore((state) => state.clearFilterTags);
   const pendingPluginChildDeploySkillIds = useSkillStore(
     (state) => state.pendingPluginChildDeploySkillIds ?? [],
   );
@@ -136,6 +139,9 @@ export function SkillManager() {
   );
   const setSkillListPageSize = useSettingsStore(
     (state) => state.setSkillListPageSize,
+  );
+  const skillTagFilterIncludeFrontmatter = useSettingsStore(
+    (state) => state.skillTagFilterIncludeFrontmatter,
   );
   const disabledPlatformIds =
     useSettingsStore((state) => state.disabledPlatformIds) ?? [];
@@ -273,6 +279,30 @@ export function SkillManager() {
     setFilterType(nextFilter);
     selectSkill(null);
   };
+
+  const handleToggleSkillTag = (tag: string) => {
+    setStoreView("my-skills");
+    toggleSkillFilterTag(tag);
+    selectSkill(null);
+  };
+
+  const handleClearSkillTags = () => {
+    setStoreView("my-skills");
+    clearSkillFilterTags();
+    selectSkill(null);
+  };
+
+  // Candidate tags for the My-Skills tag filter control (user tags, sorted).
+  // Reuses the exact user-tag derivation the sidebar tag panel shows
+  // (`buildSkillStats(...).uniqueUserTags`), so both entry points expose the
+  // same candidate set and stay consistent without a second collection path.
+  // 候选标签：默认与侧栏标签面板共用的 user-tag 推导一致；开启
+  // `skillTagFilterIncludeFrontmatter` 后并集 SKILL.md frontmatter (original_tags)
+  // 标签，使本地创建技能因迁移回填 original_tags 的标签也能被筛选。
+  const skillTagOptions = useMemo(
+    () => buildSkillTagCandidates(skills, skillTagFilterIncludeFrontmatter),
+    [skillTagFilterIncludeFrontmatter, skills],
+  );
 
   const [sourceFilterKey, setSourceFilterKey] = useState(
     ALL_SKILL_SOURCE_FILTER,
@@ -1274,6 +1304,10 @@ export function SkillManager() {
           onBatchDeploy={handleBatchDeploy}
           onBatchFavorite={() => void handleBatchFavorite()}
           onBatchTags={handleBatchTags}
+          onClearSkillTags={handleClearSkillTags}
+          onToggleSkillTag={handleToggleSkillTag}
+          skillActiveTags={skillFilterTags}
+          skillTagOptions={skillTagOptions}
           onFilterChange={handleMySkillFilterChange}
           onGalleryColumnsChange={setGalleryColumns}
           onRefresh={() => void handleRefreshLibrary()}

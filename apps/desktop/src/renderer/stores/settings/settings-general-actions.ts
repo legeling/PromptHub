@@ -22,6 +22,7 @@ import {
   normalizeDesktopHomeModules,
   normalizeLanguage,
   normalizeSkillListPageSize,
+  normalizeSkillTagFilterIncludeFrontmatter,
   normalizeSourceHistory,
   normalizeTagsSectionHeight,
   normalizeTranslationMode,
@@ -75,6 +76,7 @@ type GeneralActionKey =
   | "setSkillTagsSectionHeight"
   | "setIsSkillTagsSectionCollapsed"
   | "setSkillListPageSize"
+  | "setSkillTagFilterIncludeFrontmatter"
   | "toggleDesktopHomeModule"
   | "reorderDesktopHomeModules"
   | "applyTheme";
@@ -474,6 +476,12 @@ function createSidebarTagActions(context: SettingsActionContext) {
       setTouched({
         skillListPageSize: normalizeSkillListPageSize(skillListPageSize),
       }),
+    setSkillTagFilterIncludeFrontmatter: (value) =>
+      setTouched({
+        skillTagFilterIncludeFrontmatter: normalizeSkillTagFilterIncludeFrontmatter(
+          value,
+        ),
+      }),
   } satisfies SettingsActionGroup<
     | "setTagsSectionHeight"
     | "setIsTagsSectionCollapsed"
@@ -482,6 +490,7 @@ function createSidebarTagActions(context: SettingsActionContext) {
     | "setSkillTagsSectionHeight"
     | "setIsSkillTagsSectionCollapsed"
     | "setSkillListPageSize"
+    | "setSkillTagFilterIncludeFrontmatter"
   >;
 }
 

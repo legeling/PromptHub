@@ -19,7 +19,7 @@ import { getCacheDir, getDataDir, getUserDataPath } from "./runtime-paths";
 const OPERATION_KEY = "skill-library";
 const MAX_PACKAGE_FILES = 4_000;
 const MAX_PACKAGE_FILE_BYTES = 16 * 1024 * 1024;
-const IGNORED_ROOTS = new Set([".git", ".package-lifecycle"]);
+const IGNORED_ROOTS = new Set([".git", ".package-lifecycle", ".prompthub"]);
 
 function bundlePath(skillId: string): string {
   return path.join(
@@ -152,14 +152,95 @@ export function deleteCanonicalSkill(skillId: string): void {
   });
 }
 
+// Windows transient file errors (another short-lived holder such as a scanner,
+// indexer or an editor briefly opening a file under the tree) make a recursive
+// delete or a same-path replace fail with these codes. They are only tolerated
+// when removing a *stale/deprecated* tree or a leftover stage/prior tree, where
+// failure must not abort hydration nor tear the canonical working copy.
+function isTransientOwnershipCode(code: string | undefined): boolean {
+  return code === "EPERM" || code === "EBUSY";
+}
+
+// Best-effort removal of a deprecatable tree. Failure on a short ownership
+// hold is not an error: the removal targets a stale/prior/stage tree only, and
+// a leftover is harmless because it is not referenced and gets pruned by the
+// next cleanup. Other IO failures still surface.
+function removeDeprecatedTree(targetPath: string): void {
+  try {
+    fs.rmSync(targetPath, { recursive: true, force: true });
+  } catch (error) {
+    if (
+      !isTransientOwnershipCode((error as NodeJS.ErrnoException).code) ||
+      !fs.existsSync(targetPath)
+    ) {
+      throw error;
+    }
+  }
+}
+
+// Synchronous short backoff for a transient Windows file-lock hold. Mirrors the
+// pattern already used in database-migration-intent.ts; a few milliseconds of
+// busy-wait lets a closing handle / AV scan release before we retry the rename.
+function syncWaitMs(milliseconds: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
+}
+
+const OWNED_REMOVE_MAX_ATTEMPTS = 5;
+
+// Removing the superseded live workspace. This mirrors the original main-branch
+// strategy (rm -rf the old tree, then rename the staged replacement in) instead
+// of first renaming the old tree aside: on Windows, renaming a directory that
+// contains a held file is far more likely to EPERM than deleting it, and the
+// rename-first approach reintroduced a regression. A transient hold (AV scan /
+// indexer) is retried briefly; if it persists we rethrow so the caller keeps
+// the (possibly partially removed) existing tree and restores consistently.
+function removeOwnedTreeWithRetry(targetPath: string): void {
+  for (let attempt = 0; attempt < OWNED_REMOVE_MAX_ATTEMPTS; attempt++) {
+    try {
+      fs.rmSync(targetPath, { recursive: true, force: true });
+      return;
+    } catch (error) {
+      if (
+        !isTransientOwnershipCode((error as NodeJS.ErrnoException).code) ||
+        attempt === OWNED_REMOVE_MAX_ATTEMPTS - 1
+      ) {
+        throw error;
+      }
+      syncWaitMs(50 * (attempt + 1));
+    }
+  }
+}
+
+// Replaces the live workspace: build the full replacement into `staged`, remove
+// the old `workspacePath` tree (with a brief transient-hold retry), then rename
+// the staged tree into place. This is the original main-branch structure; it
+// does not rename the old tree aside, avoiding the Windows EPERM on a held
+// directory. Removing the old tree is authoritative, so a persistent hold still
+// throws (keeping whatever remains and letting the caller restore/retry).
+function replaceOwnedWorkspace(
+  workspacePath: string,
+  stagedPath: string,
+): void {
+  const parentPath = path.dirname(workspacePath);
+  fs.mkdirSync(parentPath, { recursive: true, mode: 0o700 });
+  if (!fs.existsSync(workspacePath)) {
+    fs.renameSync(stagedPath, workspacePath);
+    return;
+  }
+  removeOwnedTreeWithRetry(workspacePath);
+  fs.renameSync(stagedPath, workspacePath);
+}
+
 export function hydrateCanonicalSkillWorkspace(skillId: string): string | null {
   const resourcePath = bundlePath(skillId);
   if (!fs.existsSync(resourcePath)) return null;
   const resource = readSkillResourceBundle(resourcePath);
   if (resource.packageFiles.length === 0) return null;
   const workspacePath = getCanonicalSkillWorkspacePath(skillId);
-  const stagePath = `${workspacePath}.stage-${process.pid}`;
-  fs.rmSync(stagePath, { recursive: true, force: true });
+  const parentPath = path.dirname(workspacePath);
+  fs.mkdirSync(parentPath, { recursive: true, mode: 0o700 });
+  const stagePath = `${workspacePath}.stage-${process.pid}-${Date.now().toString(36)}`;
+  removeDeprecatedTree(stagePath);
   fs.mkdirSync(stagePath, { recursive: true, mode: 0o700 });
   try {
     for (const file of resource.packageFiles) {
@@ -172,11 +253,9 @@ export function hydrateCanonicalSkillWorkspace(skillId: string): string | null {
       resource.bundleManifest.contentHash,
       { encoding: "utf8", mode: 0o600 },
     );
-    fs.rmSync(workspacePath, { recursive: true, force: true });
-    fs.mkdirSync(path.dirname(workspacePath), { recursive: true, mode: 0o700 });
-    fs.renameSync(stagePath, workspacePath);
+    replaceOwnedWorkspace(workspacePath, stagePath);
     return workspacePath;
   } finally {
-    fs.rmSync(stagePath, { recursive: true, force: true });
+    removeDeprecatedTree(stagePath);
   }
 }
