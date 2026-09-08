@@ -5,6 +5,7 @@ import {
   PromptRelationDB,
   SkillDB,
 } from '@prompthub/db';
+import { decodeSkillFileSnapshot, hasEncodedSkillSnapshots, SKILL_SNAPSHOT_SYNC_VERSION } from '@prompthub/shared/utils/skill-file-snapshot';
 import type {
   AgentAssetFilesSnapshot,
   AgentAssetStoreSourcesSnapshot,
@@ -151,7 +152,7 @@ export class BackupService {
     const agentAssets = readAgentAssetsSnapshot(actor.userId);
 
     return {
-      version: 'web-backup-v2',
+      version: hasEncodedSkillSnapshots({ skillFiles, skillVersions }) ? SKILL_SNAPSHOT_SYNC_VERSION : 'web-backup-v2',
       exportedAt: new Date().toISOString(),
       prompts,
       promptVersions,
@@ -760,9 +761,10 @@ export class BackupService {
         (file) => file.relativePath.toLowerCase() === 'skill.md',
       );
       if (primarySkillFile) {
+        const content = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(decodeSkillFileSnapshot(primarySkillFile));
         this.skillDb.update(resolvedSkillId, {
-          content: primarySkillFile.content,
-          instructions: primarySkillFile.content,
+          content,
+          instructions: content,
         });
       }
     }

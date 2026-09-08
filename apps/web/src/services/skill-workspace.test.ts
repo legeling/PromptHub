@@ -137,6 +137,8 @@ describe('web skill workspace storage', () => {
 
         fs.mkdirSync(path.join(skillDir, 'templates'), { recursive: true });
         fs.writeFileSync(extraFile, '# Existing checklist', 'utf8');
+        const binaryPath = path.join(skillDir, 'templates', 'icon.bin');
+        fs.writeFileSync(binaryPath, Buffer.from([0, 255, 128]));
 
         workspaceModule.syncSkillWorkspaceFromDatabase(db, skillDb);
 
@@ -145,6 +147,8 @@ describe('web skill workspace storage', () => {
         expect(fs.existsSync(versionFile)).toBe(true);
         expect(fs.existsSync(extraFile)).toBe(true);
         expect(fs.readFileSync(extraFile, 'utf8')).toBe('# Existing checklist');
+        expect(fs.readFileSync(binaryPath)).toEqual(Buffer.from([0, 255, 128]));
+        expect(workspaceModule.collectSkillWorkspaceFiles(skillDb.getAll())[skill.id]).toContainEqual({ relativePath: 'templates/icon.bin', content: 'AP+A', encoding: 'base64' });
 
         const metadata = JSON.parse(fs.readFileSync(metadataFile, 'utf8')) as {
           id: string;
@@ -404,7 +408,7 @@ describe('web skill workspace storage', () => {
             workspaceModule.syncSkillWorkspaceFromDatabase(db, skillDb, {
               [skill.id]: [file],
             }),
-          ).toThrow(/Invalid skill file path|Reserved skill file path/u);
+          ).toThrow(/Invalid skill file path|Reserved skill file path|Invalid Skill snapshot relative path/u);
           expect(fs.readFileSync(existingFile, 'utf8')).toBe('# Keep this file');
         }
 

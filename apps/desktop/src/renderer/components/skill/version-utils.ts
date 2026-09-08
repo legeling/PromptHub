@@ -3,12 +3,19 @@ import type {
   SkillLocalFileEntry,
   SkillVersion,
 } from "@prompthub/shared/types";
+import {
+  decodeSkillFileSnapshot,
+  skillSnapshotByteLength,
+} from "@prompthub/shared/utils/skill-file-snapshot";
 
 export interface SkillVersionFileDiffEntry {
   path: string;
   oldContent: string;
   newContent: string;
   unchanged: boolean;
+  binary?: boolean;
+  oldBytes?: number;
+  newBytes?: number;
 }
 
 function compareFilePath(a: string, b: string): number {
@@ -24,7 +31,9 @@ function ensureSkillMdSnapshot(
   fallbackContent: string,
 ): SkillFileSnapshot[] {
   if (
-    snapshots.some((snapshot) => snapshot.relativePath.toLowerCase() === "skill.md")
+    snapshots.some(
+      (snapshot) => snapshot.relativePath.toLowerCase() === "skill.md",
+    )
   ) {
     return snapshots;
   }
@@ -48,12 +57,7 @@ export function normalizeVersionSnapshot(
 ): SkillFileSnapshot[] {
   const normalized = (snapshots || [])
     .filter(
-      (
-        snapshot,
-      ): snapshot is {
-        relativePath: string;
-        content: string;
-      } =>
+      (snapshot): snapshot is SkillFileSnapshot =>
         !!snapshot &&
         typeof snapshot.relativePath === "string" &&
         typeof snapshot.content === "string" &&
@@ -62,6 +66,7 @@ export function normalizeVersionSnapshot(
     .map((snapshot) => ({
       relativePath: snapshot.relativePath,
       content: snapshot.content,
+      ...(snapshot.encoding ? { encoding: snapshot.encoding } : {}),
     }));
 
   return ensureSkillMdSnapshot(normalized, fallbackContent);
@@ -93,24 +98,48 @@ export function buildVersionFileDiffEntries(
   newSnapshots: SkillFileSnapshot[],
 ): SkillVersionFileDiffEntry[] {
   const oldMap = new Map(
-    oldSnapshots.map((snapshot) => [snapshot.relativePath, snapshot.content]),
+    oldSnapshots.map((snapshot) => [snapshot.relativePath, snapshot]),
   );
   const newMap = new Map(
-    newSnapshots.map((snapshot) => [snapshot.relativePath, snapshot.content]),
+    newSnapshots.map((snapshot) => [snapshot.relativePath, snapshot]),
   );
 
-  const paths = Array.from(
-    new Set([...oldMap.keys(), ...newMap.keys()]),
-  ).sort(compareFilePath);
+  const paths = Array.from(new Set([...oldMap.keys(), ...newMap.keys()])).sort(
+    compareFilePath,
+  );
 
   return paths.map((path) => {
-    const oldContent = oldMap.get(path) || "";
-    const newContent = newMap.get(path) || "";
+    const oldFile = oldMap.get(path);
+    const newFile = newMap.get(path);
+    const binary =
+      oldFile?.encoding === "base64" || newFile?.encoding === "base64";
+    const oldContent = binary ? "" : (oldFile?.content ?? "");
+    const newContent = binary ? "" : (newFile?.content ?? "");
+    let unchanged = Boolean(
+      oldFile &&
+      newFile &&
+      oldFile.content === newFile.content &&
+      (oldFile.encoding ?? "utf8") === (newFile.encoding ?? "utf8"),
+    );
+    if (binary && oldFile && newFile && !unchanged) {
+      const left = decodeSkillFileSnapshot(oldFile);
+      const right = decodeSkillFileSnapshot(newFile);
+      unchanged =
+        left.length === right.length &&
+        left.every((byte, index) => byte === right[index]);
+    }
     return {
       path,
       oldContent,
       newContent,
-      unchanged: oldContent === newContent,
+      unchanged,
+      ...(binary
+        ? {
+            binary: true,
+            oldBytes: oldFile ? skillSnapshotByteLength(oldFile) : 0,
+            newBytes: newFile ? skillSnapshotByteLength(newFile) : 0,
+          }
+        : {}),
     };
   });
 }

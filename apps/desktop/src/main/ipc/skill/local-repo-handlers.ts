@@ -1,4 +1,5 @@
 import { ipcMain } from "electron";
+import { mutateCanonicalSkillPackage } from "@prompthub/core/skills/canonical-package-mutation";
 import { IPC_CHANNELS } from "@prompthub/shared/constants";
 import type {
   SkillPackageSnapshot,
@@ -491,6 +492,7 @@ export function registerSkillLocalRepoHandlers({ db }: SkillIPCContext): void {
           "skill:renameLocalPath requires a non-empty newRelativePath",
         );
       }
+      if (await mutateCanonicalSkillPackage(db, skillId, { kind: "rename", relativePath: oldRelativePath, newRelativePath })) return true;
       const repoPath = await resolveManagedRepoPath({ db }, skillId);
       const result = await SkillInstaller.renameLocalRepoPathByPath(
         repoPath,
@@ -556,6 +558,8 @@ export function registerSkillLocalRepoHandlers({ db }: SkillIPCContext): void {
       if (typeof skillId !== "string" || skillId.trim() === "") {
         throw new Error("skill:writeLocalFile requires a non-empty skillId");
       }
+      if (typeof content !== "string") throw new Error("skill:writeLocalFile requires string content");
+      if (await mutateCanonicalSkillPackage(db, skillId, { kind: "write", relativePath, content })) return true;
       const repoPath = await resolveManagedRepoPath({ db }, skillId);
       const result = await SkillInstaller.writeLocalRepoFileByPath(
         repoPath,
@@ -631,6 +635,7 @@ export function registerSkillLocalRepoHandlers({ db }: SkillIPCContext): void {
       if (typeof skillId !== "string" || skillId.trim() === "") {
         throw new Error("skill:deleteLocalFile requires a non-empty skillId");
       }
+      if (await mutateCanonicalSkillPackage(db, skillId, { kind: "delete", relativePath })) return true;
       const repoPath = await resolveManagedRepoPath({ db }, skillId);
       const result = await SkillInstaller.deleteLocalRepoFileByPath(
         repoPath,

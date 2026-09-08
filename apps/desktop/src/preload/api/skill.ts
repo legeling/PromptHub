@@ -237,6 +237,10 @@ export const skillApi = {
     ),
   readLocalFiles: (skillId: string): Promise<SkillLocalFileEntry[]> =>
     ipcRenderer.invoke(IPC_CHANNELS.SKILL_READ_LOCAL_FILES, skillId),
+  readFilesSnapshot: (skillId: string): Promise<SkillFileSnapshot[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SKILL_READ_FILES_SNAPSHOT, skillId),
+  replaceFilesSnapshot: (skillId: string, files: SkillFileSnapshot[]): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SKILL_REPLACE_FILES_SNAPSHOT, skillId, files),
   renameLocalPath: (
     skillId: string,
     oldRelativePath: string,

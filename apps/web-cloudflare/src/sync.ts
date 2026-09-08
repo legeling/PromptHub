@@ -1,5 +1,6 @@
 import type { Context } from "hono";
 import type { SyncSnapshot } from "@prompthub/shared/types/sync";
+import { assertSkillSnapshotCapability, validateEncodedSkillSnapshots, SKILL_SNAPSHOT_CAPABILITY_HEADER, SKILL_SNAPSHOT_CAPABILITY } from "@prompthub/shared/utils/skill-file-snapshot";
 import { ErrorCode, failure, readJson, success } from "./response";
 import type { AuthUser, Env } from "./types";
 
@@ -29,6 +30,7 @@ export function emptySnapshot(): SyncSnapshot {
 }
 
 export function normalizeSnapshot(input: unknown): SyncSnapshot {
+  validateEncodedSkillSnapshots(input);
   const value = input && typeof input === "object" ? input as Partial<SyncSnapshot> : {};
   return {
     version: typeof value.version === "string" ? value.version : "web-cloudflare-backup-v1",
@@ -129,7 +131,11 @@ export async function saveSnapshot(db: D1Database, userId: string, snapshotInput
 
 export async function getSyncData(c: Context<{ Bindings: Env; Variables: { authUser: AuthUser } }>): Promise<Response> {
   const user = c.get("authUser");
-  return success(c, await loadSnapshot(c.env.DB, user.userId));
+  const snapshot = await loadSnapshot(c.env.DB, user.userId);
+  try { assertSkillSnapshotCapability(snapshot, c.req.header(SKILL_SNAPSHOT_CAPABILITY_HEADER)); }
+  catch (error) { return failure(c, 422, ErrorCode.VALIDATION_ERROR, error instanceof Error ? error.message : "Lossless Skill snapshot support is required"); }
+  c.header(SKILL_SNAPSHOT_CAPABILITY_HEADER, SKILL_SNAPSHOT_CAPABILITY);
+  return success(c, snapshot);
 }
 
 export async function getManifest(c: Context<{ Bindings: Env; Variables: { authUser: AuthUser } }>): Promise<Response> {
@@ -155,6 +161,7 @@ export async function getManifest(c: Context<{ Bindings: Env; Variables: { authU
 
   return success(c, {
     version: "web-cloudflare-backup-v1",
+    skillSnapshotCapability: SKILL_SNAPSHOT_CAPABILITY,
     exportedAt: row?.exported_at ?? new Date(0).toISOString(),
     counts: {
       prompts: row?.prompts_count ?? 0,
@@ -180,7 +187,15 @@ export async function putSyncData(c: Context<{ Bindings: Env; Variables: { authU
     return failure(c, 400, ErrorCode.BAD_REQUEST, "payload is required");
   }
 
-  const snapshot = normalizeSnapshot(body.payload);
+  let snapshot: SyncSnapshot;
+  try {
+    snapshot = normalizeSnapshot(body.payload);
+    const capability = c.req.header(SKILL_SNAPSHOT_CAPABILITY_HEADER);
+    assertSkillSnapshotCapability(snapshot, capability);
+    if (capability !== SKILL_SNAPSHOT_CAPABILITY) {
+      assertSkillSnapshotCapability(await loadSnapshot(c.env.DB, user.userId), capability);
+    }
+  } catch (error) { return failure(c, 422, ErrorCode.VALIDATION_ERROR, error instanceof Error ? error.message : "Lossless Skill snapshot support is required"); }
   const summary = await saveSnapshot(c.env.DB, user.userId, snapshot);
 
   return success(c, {

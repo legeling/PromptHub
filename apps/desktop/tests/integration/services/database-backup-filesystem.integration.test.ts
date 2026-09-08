@@ -8,6 +8,8 @@ import {
   restoreFromBackup,
 } from "../../../src/renderer/services/database-backup";
 import { installWindowMocks } from "../../helpers/window";
+import { readSkillFileSnapshots, replaceSkillFileSnapshots } from "@prompthub/core/skills/file-snapshot";
+import type { SkillFileSnapshot } from "@prompthub/shared/types";
 
 const state = vi.hoisted(() => ({
   folders: [] as any[],
@@ -263,16 +265,12 @@ describe("database-backup filesystem integration", () => {
           versionGetAll: vi.fn(
             async (skillId: string) => state.skillVersions.get(skillId) ?? [],
           ),
-          readLocalFiles: vi.fn(async (skillId: string) => {
+          readFilesSnapshot: vi.fn(async (skillId: string) => {
             const repoPath = state.skillRepoPaths.get(skillId);
             if (!repoPath) {
               return [];
             }
-            return (await listFilesRecursively(repoPath)).map((file) => ({
-              path: file.path,
-              content: file.content,
-              isDirectory: false,
-            }));
+            return readSkillFileSnapshots(repoPath);
           }),
           deleteAll: vi.fn(async () => {
             state.skills = [];
@@ -304,15 +302,13 @@ describe("database-backup filesystem integration", () => {
               skill.id === skillId ? { ...skill, ...patch } : skill,
             );
           }),
-          writeLocalFile: vi.fn(
-            async (skillId: string, relativePath: string, content: string) => {
+          replaceFilesSnapshot: vi.fn(
+            async (skillId: string, files: SkillFileSnapshot[]) => {
               const repoPath = state.skillRepoPaths.get(skillId);
               if (!repoPath) {
                 throw new Error(`Unknown skill repo path for ${skillId}`);
               }
-              const filePath = path.join(repoPath, relativePath);
-              await fs.mkdir(path.dirname(filePath), { recursive: true });
-              await fs.writeFile(filePath, content, "utf8");
+              await replaceSkillFileSnapshots(repoPath, files);
             },
           ),
         },
@@ -357,7 +353,12 @@ describe("database-backup filesystem integration", () => {
   });
 
   it("round-trips media files and skill files through the backup service with real filesystem IO", async () => {
+    const binary = Buffer.from([0, 137, 255, 128]);
+    const largeText = "完整文本\r\n".repeat(100_000);
+    await fs.writeFile(path.join(state.skillRepoPaths.get("skill-1")!, "icon.bin"), binary);
+    await fs.writeFile(path.join(state.skillRepoPaths.get("skill-1")!, "large.md"), largeText);
     const backup = await exportDatabase();
+    expect(backup.skillFiles?.["skill-1"]).toContainEqual({ relativePath: "icon.bin", content: binary.toString("base64"), encoding: "base64" });
 
     expect(backup.versions).toEqual([
       expect.objectContaining({
@@ -451,6 +452,8 @@ describe("database-backup filesystem integration", () => {
     );
     expect(restoredImageBytes).toBe("integration-image-bytes");
     expect(restoredVideoBytes).toBe("integration-video-bytes");
+    expect(await fs.readFile(path.join(state.skillRepoPaths.get(restoredSkill.id)!, "icon.bin"))).toEqual(binary);
+    expect(await fs.readFile(path.join(state.skillRepoPaths.get(restoredSkill.id)!, "large.md"), "utf8")).toBe(largeText);
 
     const restoredSkillFiles = await listFilesRecursively(
       state.skillRepoPaths.get(restoredSkill.id)!,

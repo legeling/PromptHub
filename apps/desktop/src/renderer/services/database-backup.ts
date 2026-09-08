@@ -1,8 +1,8 @@
 import type { PromptVersion, RuleBackupRecord } from "@prompthub/shared/types";
+import { skillSnapshotEnvelopeKind } from "@prompthub/shared/utils/skill-file-snapshot";
 import type {
   Skill,
   SkillFileSnapshot,
-  SkillLocalFileEntry,
   SkillVersion,
 } from "@prompthub/shared/types/skill";
 import {
@@ -295,12 +295,15 @@ async function collectSkillData(includeFiles = true): Promise<{
   }
 
   skills.push(...allSkills);
+  if (includeFiles && allSkills.length && !skillApi.readFilesSnapshot) {
+    throw new Error("Lossless Skill snapshot API is unavailable; update the desktop client before backing up");
+  }
 
   await processBatched(allSkills, SKILL_CONCURRENCY, async (skill) => {
     const [versionsResult, filesResult] = await Promise.allSettled([
       skillApi.versionGetAll?.(skill.id),
       includeFiles
-        ? skillApi.readLocalFiles?.(skill.id)
+        ? skillApi.readFilesSnapshot?.(skill.id)
         : Promise.resolve(undefined),
     ]);
 
@@ -315,14 +318,7 @@ async function collectSkillData(includeFiles = true): Promise<{
     }
 
     if (filesResult.status === "fulfilled" && filesResult.value) {
-      const fileSnapshots: SkillFileSnapshot[] = (
-        filesResult.value as SkillLocalFileEntry[]
-      )
-        .filter((file) => !file.isDirectory)
-        .map((file) => ({
-          relativePath: file.path,
-          content: file.content,
-        }));
+      const fileSnapshots = filesResult.value;
 
       if (fileSnapshots.length > 0) {
         skillFiles[skill.id] = fileSnapshots;
@@ -439,7 +435,7 @@ function parsePromptHubFileKind(text: string): ImportPreviewSummary["kind"] {
     parsed &&
     typeof parsed === "object" &&
     "kind" in parsed &&
-    (parsed.kind === "prompthub-backup" || parsed.kind === "prompthub-export")
+    (parsed.kind === "prompthub-backup" || parsed.kind === "prompthub-export" || parsed.kind === "prompthub-backup-v2" || parsed.kind === "prompthub-export-v2")
   ) {
     return parsed.kind;
   }
@@ -991,21 +987,11 @@ export async function importDatabase(backup: DatabaseBackup): Promise<void> {
         restoredSkillsByName.get(skillKey)?.id ??
         skillKey;
 
-      for (const file of files) {
-        try {
-          await window.api?.skill?.writeLocalFile(
-            restoredSkillId,
-            file.relativePath,
-            file.content,
-            { skipVersionSnapshot: true },
-          );
-        } catch (error) {
-          restoreFailures.push(`skill file ${skillKey}/${file.relativePath}`);
-          console.warn(
-            `Failed to restore skill file ${skillKey}/${file.relativePath}:`,
-            error,
-          );
-        }
+      try {
+        await window.api.skill.replaceFilesSnapshot(restoredSkillId, files);
+      } catch (error) {
+        restoreFailures.push(`skill package ${skillKey}`);
+        console.warn(`Failed to restore skill package ${skillKey}:`, error);
       }
     }
   }
@@ -1071,7 +1057,7 @@ export function getDatabaseInfo(): { name: string; description: string } {
 export async function downloadBackup(): Promise<void> {
   const backup = await exportDatabase();
   const file: PromptHubFile = {
-    kind: "prompthub-backup",
+    kind: skillSnapshotEnvelopeKind("prompthub-backup", backup),
     exportedAt: backup.exportedAt,
     payload: backup,
   };
@@ -1087,7 +1073,7 @@ export async function downloadBackup(): Promise<void> {
 export async function downloadCompressedBackup(): Promise<void> {
   const backup = await exportDatabase();
   const file: PromptHubFile = {
-    kind: "prompthub-backup",
+    kind: skillSnapshotEnvelopeKind("prompthub-backup", backup),
     exportedAt: backup.exportedAt,
     payload: backup,
   };
@@ -1180,7 +1166,7 @@ export async function downloadSelectiveExport(
   };
 
   const exportFile: PromptHubFile = {
-    kind: "prompthub-export",
+    kind: skillSnapshotEnvelopeKind("prompthub-export", payload),
     exportedAt: payload.exportedAt || new Date().toISOString(),
     scope: normalized,
     payload,

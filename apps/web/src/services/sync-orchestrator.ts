@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { serializeSkillSnapshotTransport } from '@prompthub/shared/utils/skill-file-snapshot';
 import type { SyncSettings } from '@prompthub/shared';
 import type { WebBackupPayload } from './backup.service.js';
 import { decodeMediaBase64 } from './media-base64.js';
@@ -224,7 +225,7 @@ export async function pushWebDavSnapshot(
   await ensureWebDavDirectory(settings, REMOTE_BACKUP_DIR);
 
   const syncedAt = new Date().toISOString();
-  const payloadString = JSON.stringify(payload);
+  const payloadString = serializeSkillSnapshotTransport(payload);
   const dataHash = createHash('sha256').update(payloadString).digest('hex');
   const mediaBundle = buildSyncMediaBundle(userId, payload.prompts, syncedAt);
 

@@ -272,6 +272,8 @@ export interface SkillVersion {
 export interface SkillFileSnapshot {
   relativePath: string;
   content: string;
+  /** Missing means legacy UTF-8. Base64 is used only for non-text bytes. */
+  encoding?: "utf8" | "base64";
 }
 
 /**

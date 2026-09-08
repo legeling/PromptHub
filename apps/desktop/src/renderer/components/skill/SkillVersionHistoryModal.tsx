@@ -15,13 +15,13 @@ import {
 } from "lucide-react";
 import { Modal } from "../ui";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
-import type { Skill, SkillVersion } from "@prompthub/shared/types";
+import type { Skill, SkillVersion, SkillFileSnapshot } from "@prompthub/shared/types";
 import { generateTextDiff, restoreSkillVersion } from "./detail-utils";
 import { scheduleAllSaveSync } from "../../services/webdav-save-sync";
 import {
   buildVersionFileDiffEntries,
   resolveVersionSnapshots,
-  snapshotsFromLocalFiles,
+  normalizeVersionSnapshot,
 } from "./version-utils";
 
 interface SkillVersionHistoryModalProps {
@@ -145,7 +145,7 @@ export function SkillVersionHistoryModal({
     null,
   );
   const [currentFilesSnapshot, setCurrentFilesSnapshot] = useState<
-    Array<{ relativePath: string; content: string }>
+    SkillFileSnapshot[]
   >([]);
   const [expandedFilePaths, setExpandedFilePaths] = useState<Set<string>>(
     new Set(),
@@ -156,7 +156,7 @@ export function SkillVersionHistoryModal({
     try {
       const [versionsResult, currentFilesResult] = await Promise.allSettled([
         window.api.skill.versionGetAll(skill.id),
-        window.api.skill.readLocalFiles(skill.id),
+        window.api.skill.readFilesSnapshot(skill.id),
       ]);
       if (versionsResult.status !== "fulfilled") {
         throw versionsResult.reason;
@@ -165,7 +165,7 @@ export function SkillVersionHistoryModal({
       setVersions(nextVersions);
       setCurrentFilesSnapshot(
         currentFilesResult.status === "fulfilled"
-          ? snapshotsFromLocalFiles(currentFilesResult.value, currentContent)
+          ? normalizeVersionSnapshot(currentFilesResult.value, currentContent)
           : resolveVersionSnapshots(null, currentContent),
       );
       setSelectedVersionId(nextVersions[0]?.id ?? null);
@@ -593,12 +593,17 @@ export function SkillVersionHistoryModal({
                           </button>
                           {isExpanded ? (
                             <div className="border-t border-border px-4 py-4">
-                              <SkillDiffView
+                              {entry.binary ? (
+                                <div className="text-sm text-muted-foreground">
+                                  {t("skill.binaryFile")}
+                                  <span className="ml-2 font-mono">{entry.oldBytes} B → {entry.newBytes} B</span>
+                                </div>
+                              ) : <SkillDiffView
                                 oldText={entry.oldContent}
                                 newText={entry.newContent}
                                 label={entry.path}
                                 emptyLabel={t("skill.noChanges", "No changes")}
-                              />
+                              />}
                             </div>
                           ) : null}
                         </div>

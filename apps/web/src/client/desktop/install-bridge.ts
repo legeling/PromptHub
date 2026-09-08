@@ -24,6 +24,7 @@ import type {
   SearchQuery,
   Settings,
   Skill,
+  SkillFileSnapshot,
   SkillPlatformScanResult,
   SkillSafetyScanInput,
   SkillSafetyReport,
@@ -540,6 +541,10 @@ export function installDesktopBridge(): void {
         unsupportedDesktopOperation("Direct skill-version restore"),
       readLocalFiles: async (_skillId: string) =>
         unsupportedDesktopOperation("Local skill-file reads"),
+      readFilesSnapshot: async (_skillId: string) =>
+        unsupportedDesktopOperation("Local skill-file snapshots"),
+      replaceFilesSnapshot: async (_skillId: string, _files: SkillFileSnapshot[]) =>
+        unsupportedDesktopOperation("Local skill-file snapshot restore"),
       listLocalFiles: async (_skillId: string) =>
         unsupportedDesktopOperation("Local skill-file listing"),
       readLocalFile: async (_skillId: string, _path: string) =>

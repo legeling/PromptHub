@@ -1,4 +1,5 @@
 import { ipcMain } from "electron";
+import { validateSkillFileSnapshots } from "@prompthub/shared/utils/skill-file-snapshot";
 import { IPC_CHANNELS } from "@prompthub/shared/constants";
 import type { SkillFileSnapshot, SkillVersion } from "@prompthub/shared/types";
 import type { SkillIPCContext } from "./shared";
@@ -20,6 +21,15 @@ function isValidSkillVersionCreatedAt(value: unknown): boolean {
 }
 
 export function registerSkillVersionHandlers({ db }: SkillIPCContext): void {
+  ipcMain.handle(IPC_CHANNELS.SKILL_READ_FILES_SNAPSHOT, async (_, skillId: string) => {
+    if (typeof skillId !== "string" || !skillId.trim()) throw new Error("Skill snapshot requires a non-empty skillId");
+    return readCurrentFilesSnapshot(db, skillId);
+  });
+  ipcMain.handle(IPC_CHANNELS.SKILL_REPLACE_FILES_SNAPSHOT, async (_, skillId: string, files: SkillFileSnapshot[]) => {
+    if (typeof skillId !== "string" || !skillId.trim()) throw new Error("Skill snapshot requires a non-empty skillId");
+    validateSkillFileSnapshots(files);
+    await replaceRepoFiles(db, skillId, files);
+  });
   ipcMain.handle(
     IPC_CHANNELS.SKILL_VERSION_GET_ALL,
     async (_, skillId: string) => {
@@ -51,6 +61,7 @@ export function registerSkillVersionHandlers({ db }: SkillIPCContext): void {
       }
       const snapshot =
         filesSnapshot ?? (await readCurrentFilesSnapshot(db, skillId));
+      validateSkillFileSnapshots(snapshot);
       return db.createVersion(skillId, note, snapshot);
     },
   );
@@ -84,6 +95,7 @@ export function registerSkillVersionHandlers({ db }: SkillIPCContext): void {
         db,
         skillId,
         targetVersion.filesSnapshot,
+        targetVersion.content,
       );
       const directoryFingerprint = restoredRepoPath
         ? await computeRepoDirectoryFingerprint(restoredRepoPath)
@@ -168,6 +180,7 @@ export function registerSkillVersionHandlers({ db }: SkillIPCContext): void {
           "skill:insertVersionDirect requires createdAt to be a valid ISO date string or finite timestamp",
         );
       }
+      if (version.filesSnapshot !== undefined) validateSkillFileSnapshots(version.filesSnapshot);
       return db.insertVersionDirect(version);
     },
   );

@@ -41,7 +41,6 @@ function collectPackageFiles(
   directoryPath: string,
 ): SkillPackagePayloadSource[] {
   const root = path.resolve(directoryPath);
-  if (!fs.existsSync(root)) return [];
   const rootStats = fs.lstatSync(root);
   if (!rootStats.isDirectory() || rootStats.isSymbolicLink())
     throw new Error("Canonical Skill package root is unsafe");
@@ -93,7 +92,9 @@ export function publishCanonicalSkill(input: {
     ? readSkillResourceBundle(targetPath)
     : null;
   const sourcePath = input.packageSourcePath ?? input.skill.local_repo_path;
-  const packageFiles = sourcePath
+  const missingWorkspace = sourcePath === getCanonicalSkillWorkspacePath(input.skill.id) &&
+    !fs.existsSync(sourcePath);
+  const packageFiles = sourcePath && !missingWorkspace
     ? collectPackageFiles(sourcePath)
     : (current?.packageFiles.map((file) => ({
         path: file.path,

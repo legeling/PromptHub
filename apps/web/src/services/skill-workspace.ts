@@ -1,5 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { decodeSkillFileSnapshot, encodeSkillFileSnapshot, validateSkillFileSnapshots, withSkillSnapshotEntrypoint } from '@prompthub/shared/utils/skill-file-snapshot';
+import { MAX_SKILL_PACKAGE_DEPTH, MAX_SKILL_PACKAGE_ENTRIES, MAX_SKILL_PACKAGE_FILES, MAX_SKILL_PACKAGE_FILE_BYTES, MAX_SKILL_PACKAGE_TOTAL_BYTES } from '@prompthub/shared/constants/skill-package';
 import type { Database, SkillDB } from '@prompthub/db';
 import type { Skill, SkillFileSnapshot, SkillVersion } from '@prompthub/shared';
 import { getSkillsDir } from '../runtime-paths.js';
@@ -162,6 +164,8 @@ function isPrimarySkillFile(relativePath: string): boolean {
 function collectAdditionalSkillFiles(
   skillDir: string,
   rootDir: string = skillDir,
+  budget = { entries: 0, files: 0, bytes: 0 },
+  depth = 0,
 ): SkillFileSnapshot[] {
   if (!fs.existsSync(skillDir)) {
     return [];
@@ -169,13 +173,15 @@ function collectAdditionalSkillFiles(
 
   const snapshots: SkillFileSnapshot[] = [];
   for (const entry of fs.readdirSync(skillDir, { withFileTypes: true }).sort((left, right) => left.name.localeCompare(right.name))) {
+    if (++budget.entries > MAX_SKILL_PACKAGE_ENTRIES) throw new Error('Skill snapshot entry limit exceeded');
     const entryPath = path.join(skillDir, entry.name);
     if (entry.isDirectory()) {
       if (entry.name === VERSIONS_DIR_NAME) {
         continue;
       }
 
-      snapshots.push(...collectAdditionalSkillFiles(entryPath, rootDir));
+      if (depth >= MAX_SKILL_PACKAGE_DEPTH) throw new Error('Skill snapshot depth limit exceeded');
+      snapshots.push(...collectAdditionalSkillFiles(entryPath, rootDir, budget, depth + 1));
       continue;
     }
 
@@ -184,12 +190,26 @@ function collectAdditionalSkillFiles(
       continue;
     }
 
-    snapshots.push({
-      relativePath,
-      content: fs.readFileSync(entryPath, 'utf8'),
-    });
+    if (entry.isSymbolicLink() || !entry.isFile()) throw new Error('Unsafe Skill snapshot file');
+    if (++budget.files > MAX_SKILL_PACKAGE_FILES) throw new Error('Skill snapshot file count limit exceeded');
+    const descriptor = fs.openSync(entryPath, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+    try {
+      const stat = fs.fstatSync(descriptor);
+      if (!stat.isFile() || stat.size > MAX_SKILL_PACKAGE_FILE_BYTES || budget.bytes + stat.size > MAX_SKILL_PACKAGE_TOTAL_BYTES) throw new Error('Skill snapshot byte limit exceeded');
+      const bytes = Buffer.alloc(stat.size + 1);
+      let size = 0;
+      while (size < bytes.length) {
+        const read = fs.readSync(descriptor, bytes, size, bytes.length - size, size);
+        if (!read) break;
+        size += read;
+      }
+      if (size !== stat.size) throw new Error('Skill snapshot file changed during reading');
+      budget.bytes += size;
+      snapshots.push(encodeSkillFileSnapshot(relativePath, bytes.subarray(0, size)));
+    } finally { fs.closeSync(descriptor); }
   }
 
+  validateSkillFileSnapshots(snapshots);
   return snapshots;
 }
 
@@ -207,6 +227,7 @@ function readAdditionalSkillFileMap(skillsDir: string): Map<string, SkillFileSna
 }
 
 function writeSkillFileSnapshots(skillDir: string, files: SkillFileSnapshot[]): void {
+  validateSkillFileSnapshots(files);
   for (const file of files) {
     const relativePath = normalizeWorkspaceRelativePath(file.relativePath);
     if (isReservedWorkspaceFile(relativePath)) {
@@ -215,7 +236,7 @@ function writeSkillFileSnapshots(skillDir: string, files: SkillFileSnapshot[]): 
 
     const targetPath = path.join(skillDir, relativePath);
     ensureDir(path.dirname(targetPath));
-    fs.writeFileSync(targetPath, file.content, 'utf8');
+    fs.writeFileSync(targetPath, decodeSkillFileSnapshot(file));
   }
 }
 
@@ -226,6 +247,10 @@ export function validateSkillWorkspaceSnapshotPaths(
 ): void {
   const skillsDir = getSkillsDir();
   const skillById = new Map(skills.map((skill) => [skill.id, skill]));
+  for (const [id, files] of Object.entries(skillFilesById ?? {})) withSkillSnapshotEntrypoint(files, skillById.get(id)?.content ?? '');
+  for (const version of skillVersions) {
+    if (version.filesSnapshot !== undefined) validateSkillFileSnapshots(version.filesSnapshot);
+  }
 
   for (const skill of skills) {
     const skillDir = getSkillDirectory(skillsDir, skill);

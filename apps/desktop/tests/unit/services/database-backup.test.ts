@@ -297,16 +297,10 @@ describe("database-backup restore", () => {
         version: 1,
       },
     ]);
-    window.api.skill.readLocalFiles.mockResolvedValue([
+    window.api.skill.readFilesSnapshot.mockResolvedValue([
       {
-        path: "SKILL.md",
+        relativePath: "SKILL.md",
         content: "# Writer",
-        isDirectory: false,
-      },
-      {
-        path: "examples",
-        content: "",
-        isDirectory: true,
       },
     ]);
     getAiConfigSnapshotMock.mockReturnValue({ aiProvider: "openai" });
@@ -767,7 +761,7 @@ describe("database-backup restore", () => {
       },
     ]);
     window.api.skill.versionGetAll.mockRejectedValue(new Error("db busy"));
-    window.api.skill.readLocalFiles.mockResolvedValue([]);
+    window.api.skill.readFilesSnapshot.mockResolvedValue([]);
 
     await expect(exportDatabase()).rejects.toThrow(
       "Backup export failed to read 1 skill records: skill versions writer",
@@ -896,12 +890,11 @@ describe("database-backup restore", () => {
         skill: {
           getAll: vi.fn().mockResolvedValue([skill]),
           versionGetAll: vi.fn().mockResolvedValue([skillVersion]),
-          readLocalFiles: vi.fn().mockResolvedValue([
-            { path: "SKILL.md", content: "# Writer", isDirectory: false },
+          readFilesSnapshot: vi.fn().mockResolvedValue([
+            { relativePath: "SKILL.md", content: "# Writer" },
             {
-              path: "notes/example.md",
+              relativePath: "notes/example.md",
               content: "Example",
-              isDirectory: false,
             },
           ]),
           deleteAll: vi.fn().mockResolvedValue(undefined),
@@ -911,7 +904,7 @@ describe("database-backup restore", () => {
           }),
           insertVersionDirect: vi.fn().mockResolvedValue(undefined),
           update: vi.fn().mockResolvedValue(undefined),
-          writeLocalFile: vi.fn().mockResolvedValue(undefined),
+          replaceFilesSnapshot: vi.fn().mockResolvedValue(undefined),
         },
       },
       electron: {
@@ -1012,17 +1005,12 @@ describe("database-backup restore", () => {
     expect(window.api.skill.update).toHaveBeenCalledWith("restored-skill-1", {
       currentVersion: 2,
     });
-    expect(window.api.skill.writeLocalFile).toHaveBeenCalledWith(
+    expect(window.api.skill.replaceFilesSnapshot).toHaveBeenCalledWith(
       "restored-skill-1",
-      "SKILL.md",
-      "# Writer",
-      { skipVersionSnapshot: true },
-    );
-    expect(window.api.skill.writeLocalFile).toHaveBeenCalledWith(
-      "restored-skill-1",
-      "notes/example.md",
-      "Example",
-      { skipVersionSnapshot: true },
+      [
+        { relativePath: "SKILL.md", content: "# Writer" },
+        { relativePath: "notes/example.md", content: "Example" },
+      ],
     );
   });
 
@@ -1266,11 +1254,10 @@ describe("database-backup restore", () => {
             },
           ]),
           versionGetAll: vi.fn().mockResolvedValue([]),
-          readLocalFiles: vi.fn().mockResolvedValue([
+          readFilesSnapshot: vi.fn().mockResolvedValue([
             {
-              path: "SKILL.md",
+              relativePath: "SKILL.md",
               content: "# Writer",
-              isDirectory: false,
             },
           ]),
         },
@@ -1345,7 +1332,7 @@ describe("database-backup restore", () => {
     expect(embedded.payload.skillFiles).toBeUndefined();
     expect(window.electron.readImageBase64).not.toHaveBeenCalled();
     expect(window.electron.readVideoBase64).not.toHaveBeenCalled();
-    expect(window.api.skill.readLocalFiles).not.toHaveBeenCalled();
+    expect(window.api.skill.readFilesSnapshot).not.toHaveBeenCalled();
     expect(embedded.payload.settingsUpdatedAt).toBe("2026-04-21T00:00:00.000Z");
   });
 

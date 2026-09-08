@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import fs from "fs";
+import { decodeSkillFileSnapshot, validateSkillFileSnapshots } from "@prompthub/shared/utils/skill-file-snapshot";
 import path from "path";
 
 import {
@@ -761,6 +762,7 @@ function restoreFileDomains(
       });
       for (const skill of payload.skills ?? []) {
         const files = payload.skillFiles[skill.id] ?? [];
+        validateSkillFileSnapshots(files);
         for (const file of files) {
           const relativePath = safeRelativePath(file.relativePath);
           const targetPath = path.join(
@@ -774,7 +776,7 @@ function restoreFileDomains(
             recursive: true,
             mode: 0o700,
           });
-          fs.writeFileSync(targetPath, file.content, { mode: 0o600 });
+          fs.writeFileSync(targetPath, decodeSkillFileSnapshot(file), { mode: 0o600 });
         }
       }
     }

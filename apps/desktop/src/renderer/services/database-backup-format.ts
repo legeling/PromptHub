@@ -1,3 +1,4 @@
+import { validateEncodedSkillSnapshots } from "@prompthub/shared/utils/skill-file-snapshot";
 import type {
   AgentManagementBackup,
   AgentAssetFilesSnapshot,
@@ -76,13 +77,13 @@ export type ExportScope = {
 
 export type PromptHubFile =
   | {
-      kind: "prompthub-export";
+      kind: "prompthub-export" | "prompthub-export-v2";
       exportedAt: string;
       scope: Required<ExportScope>;
       payload: Partial<DatabaseBackup>;
     }
   | {
-      kind: "prompthub-backup";
+      kind: "prompthub-backup" | "prompthub-backup-v2";
       exportedAt: string;
       payload: DatabaseBackup;
     };
@@ -489,6 +490,7 @@ export function hasAnySkipped(stats: ImportSkippedStats): boolean {
 }
 
 function validateImportedBackupShape(backup: DatabaseBackup): void {
+  validateEncodedSkillSnapshots(backup);
   if (
     !Array.isArray(backup.prompts) ||
     !Array.isArray(backup.folders) ||
@@ -811,8 +813,9 @@ function parseEnvelope(text: string): DatabaseBackup {
 
   if (
     parsed.kind === "prompthub-backup" ||
-    parsed.kind === "prompthub-export"
+    parsed.kind === "prompthub-export" || parsed.kind === "prompthub-backup-v2" || parsed.kind === "prompthub-export-v2"
   ) {
+    validateEncodedSkillSnapshots(parsed.payload);
     return normalizeImportedBackup(parsed.payload as Partial<DatabaseBackup>);
   }
 
@@ -838,6 +841,7 @@ function parseEnvelope(text: string): DatabaseBackup {
     );
   }
 
+  validateEncodedSkillSnapshots(parsed);
   return normalizeImportedBackup(parsed as Partial<DatabaseBackup>);
 }
 

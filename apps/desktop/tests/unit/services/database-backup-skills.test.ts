@@ -111,11 +111,9 @@ describe("database-backup skill restore", () => {
     expect(window.api.skill.update).toHaveBeenCalledWith("restored-skill-1", {
       currentVersion: 2,
     });
-    expect(window.api.skill.writeLocalFile).toHaveBeenCalledWith(
+    expect(window.api.skill.replaceFilesSnapshot).toHaveBeenCalledWith(
       "restored-skill-1",
-      "SKILL.md",
-      "# Writer",
-      { skipVersionSnapshot: true },
+      [{ relativePath: "SKILL.md", content: "# Writer" }],
     );
   });
 });

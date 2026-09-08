@@ -1,4 +1,5 @@
 import { SELF_HOSTED_BACKUP_PROTOCOL_VERSION } from "@prompthub/shared/types";
+import { SKILL_SNAPSHOT_CAPABILITY_HEADER, SKILL_SNAPSHOT_CAPABILITY, SKILL_SNAPSHOT_SYNC_VERSION, hasEncodedSkillSnapshots } from "@prompthub/shared/utils/skill-file-snapshot";
 import type {
   AgentAssetFilesSnapshot,
   AgentAssetStoreSourcesSnapshot,
@@ -337,6 +338,7 @@ async function apiGet<T>(
     {
       headers: {
         Authorization: `Bearer ${accessToken}`,
+        [SKILL_SNAPSHOT_CAPABILITY_HEADER]: SKILL_SNAPSHOT_CAPABILITY,
       },
       cache: "no-store",
     },
@@ -356,6 +358,7 @@ async function apiPut<T>(
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
+      [SKILL_SNAPSHOT_CAPABILITY_HEADER]: SKILL_SNAPSHOT_CAPABILITY,
     },
     cache: "no-store",
     body: JSON.stringify(body),
@@ -1020,7 +1023,7 @@ function buildDesktopBackupFromRemote(
 
 function buildRemoteBackupSnapshot(backup: DatabaseBackup): WebSyncPayload {
   return {
-    version: "desktop-backup-v1",
+    version: hasEncodedSkillSnapshots(backup) ? SKILL_SNAPSHOT_SYNC_VERSION : "desktop-backup-v1",
     exportedAt: backup.exportedAt,
     prompts: backup.prompts,
     promptVersions: backup.versions,
@@ -1171,13 +1174,21 @@ export async function pushToSelfHostedWeb(
 ): Promise<SelfHostedSyncSummary> {
   const { baseUrl, accessToken } = await loginToSelfHostedWeb(config);
   const backup = await exportDatabase();
+  if (hasEncodedSkillSnapshots(backup)) {
+    const manifest = await apiGet<{ skillSnapshotCapability?: string }>(
+      baseUrl, accessToken, "/api/sync/manifest",
+    );
+    if (manifest.skillSnapshotCapability !== SKILL_SNAPSHOT_CAPABILITY) {
+      throw new SelfHostedBackupCompatibilityError("Remote sync server does not support lossless Skill snapshots; upgrade the server before syncing binary Skill files");
+    }
+  }
   const [imageMap, videoMap] = await Promise.all([
     uploadMediaMap(baseUrl, accessToken, "images", backup.images),
     uploadMediaMap(baseUrl, accessToken, "videos", backup.videos),
   ]);
 
   const payload: WebSyncPayload = {
-    version: "desktop-backup-v1",
+    version: hasEncodedSkillSnapshots(backup) ? SKILL_SNAPSHOT_SYNC_VERSION : "desktop-backup-v1",
     exportedAt: backup.exportedAt,
     prompts: remapPromptMedia(backup.prompts, imageMap, videoMap),
     promptVersions: backup.versions,

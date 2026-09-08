@@ -133,6 +133,7 @@ describe("skill version IPC", () => {
       db,
       "skill-1",
       targetVersion.filesSnapshot,
+      targetVersion.content,
     );
     expect(computeRepoDirectoryFingerprintMock).toHaveBeenCalledWith(
       "/managed/skill-1/repo",

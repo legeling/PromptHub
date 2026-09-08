@@ -1,4 +1,6 @@
 import { Hono } from 'hono';
+import { parseSkillSnapshotTransport } from '@prompthub/shared/utils/skill-file-snapshot';
+import { assertSkillSnapshotCapability, SKILL_SNAPSHOT_CAPABILITY_HEADER, SKILL_SNAPSHOT_CAPABILITY } from '@prompthub/shared/utils/skill-file-snapshot';
 import { z } from 'zod';
 import type { Settings, SyncProviderKind, SyncSettings, SyncSnapshot } from '@prompthub/shared';
 import { getAuthUser } from '../middleware/auth.js';
@@ -115,7 +117,7 @@ function buildSyncStatus(userId: string, payload: {
 function parseRemoteSyncSnapshot(body: string): SyncSnapshot {
   let rawPayload: unknown;
   try {
-    rawPayload = JSON.parse(body);
+    rawPayload = parseSkillSnapshotTransport(body);
   } catch {
     throw new Error('Invalid JSON in remote sync payload');
   }
@@ -171,6 +173,7 @@ sync.get('/manifest', async (c) => {
 
   return success(c, {
     version: payload.version,
+    skillSnapshotCapability: SKILL_SNAPSHOT_CAPABILITY,
     exportedAt: payload.exportedAt,
     counts: {
       prompts: payload.prompts.length,
@@ -189,6 +192,9 @@ sync.get('/manifest', async (c) => {
 
 sync.get('/data', async (c) => {
   const payload = backupService.export(getAuthUser(c));
+  try { assertSkillSnapshotCapability(payload, c.req.header(SKILL_SNAPSHOT_CAPABILITY_HEADER)); }
+  catch (routeError) { return toSyncValidationError(c, routeError, 'Lossless Skill snapshot support is required'); }
+  c.header(SKILL_SNAPSHOT_CAPABILITY_HEADER, SKILL_SNAPSHOT_CAPABILITY);
   return success(c, payload);
 });
 
@@ -209,6 +215,11 @@ sync.put('/data', async (c) => {
   let snapshot: SyncSnapshot;
   try {
     snapshot = parseSyncSnapshot(parsed.data.payload);
+    const capability = c.req.header(SKILL_SNAPSHOT_CAPABILITY_HEADER);
+    assertSkillSnapshotCapability(snapshot, capability);
+    if (capability !== SKILL_SNAPSHOT_CAPABILITY) {
+      assertSkillSnapshotCapability(backupService.export(getAuthUser(c)), capability);
+    }
   } catch (routeError) {
     return toSyncValidationError(c, routeError, 'Sync payload is invalid');
   }

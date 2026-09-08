@@ -2,7 +2,9 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
-import type { Skill, SkillVersion } from "@prompthub/shared/types";
+import type { Skill, SkillFileSnapshot, SkillVersion } from "@prompthub/shared/types";
+import { hasEncodedSkillSnapshots, validateSkillFileSnapshots } from "@prompthub/shared/utils/skill-file-snapshot";
+import { MAX_SKILL_PACKAGE_TOTAL_BYTES } from "@prompthub/shared/constants/skill-package";
 
 import {
   readResourceBundle,
@@ -19,20 +21,20 @@ export const SKILL_RESOURCE_KIND = "prompthub-skill-resource";
 export const SKILL_VERSION_RESOURCE_KIND = "prompthub-skill-version-resource";
 export const SKILL_RESOURCE_SCHEMA_VERSION = 1;
 
-const MAX_DOCUMENT_BYTES = 8 * 1024 * 1024;
+const MAX_DOCUMENT_BYTES = 2 * MAX_SKILL_PACKAGE_TOTAL_BYTES + 8 * 1024 * 1024;
 const PROTOCOL_TYPES = new Set(["skill", "mcp", "claude-code"]);
 const VISIBILITIES = new Set(["private", "shared"]);
 
 export interface SkillResourceDocument {
   kind: typeof SKILL_RESOURCE_KIND;
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
   skill: Skill;
   [key: string]: unknown;
 }
 
 export interface SkillVersionResourceDocument {
   kind: typeof SKILL_VERSION_RESOURCE_KIND;
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
   version: SkillVersion;
   [key: string]: unknown;
 }
@@ -228,6 +230,7 @@ function validateVersion(value: unknown, skillId: string): SkillVersion {
       }
       validatePackagePath(file.relativePath);
     }
+    validateSkillFileSnapshots(value.filesSnapshot as SkillFileSnapshot[]);
   }
   return value as unknown as SkillVersion;
 }
@@ -285,7 +288,7 @@ function preparePayloads(
 ): ResourceBundlePayloadSource[] {
   const document: SkillResourceDocument = {
     kind: SKILL_RESOURCE_KIND,
-    schemaVersion: 1,
+    schemaVersion: hasEncodedSkillSnapshots({ skillVersions: versions }) ? 2 : 1,
     skill,
   };
   const payloads: ResourceBundlePayloadSource[] = [
@@ -299,7 +302,7 @@ function preparePayloads(
     const relativePath = versionPath(version.version);
     const versionDocument: SkillVersionResourceDocument = {
       kind: SKILL_VERSION_RESOURCE_KIND,
-      schemaVersion: 1,
+      schemaVersion: hasEncodedSkillSnapshots({ skillVersions: [version] }) ? 2 : 1,
       version,
     };
     payloads.push({
@@ -393,14 +396,14 @@ function parseCurrent(bundlePath: string): {
   skill: Skill;
 } {
   const value = parseJsonRecord(path.join(bundlePath, "skill.json"));
-  if (value.kind !== SKILL_RESOURCE_KIND || value.schemaVersion !== 1)
+  if (value.kind !== SKILL_RESOURCE_KIND || (value.schemaVersion !== 1 && value.schemaVersion !== 2))
     throw new Error("Skill resource document header is unsupported");
   const skill = validateSkill(value.skill);
   return {
     document: {
       ...value,
       kind: SKILL_RESOURCE_KIND,
-      schemaVersion: 1,
+      schemaVersion: value.schemaVersion,
       skill,
     } as SkillResourceDocument,
     skill,
@@ -439,7 +442,7 @@ export function readSkillResourceBundle(
       );
       if (
         value.kind !== SKILL_VERSION_RESOURCE_KIND ||
-        value.schemaVersion !== 1 ||
+        (value.schemaVersion !== 1 && value.schemaVersion !== 2) ||
         file.path !==
           versionPath(
             Number((value.version as Record<string, unknown>)?.version),

@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SKILL_PACKAGE_FINGERPRINT_ALGORITHM } from "@prompthub/shared/utils/skill-source-update";
 
+vi.mock("@prompthub/core/runtime-paths", () => ({
+  getRuntimeStorageContext: () => ({ localAuthority: "database-catalog" }),
+}));
+
 const handleMock = vi.fn();
 const saveRemoteGitSkillToLocalRepoBySkillIdMock = vi
   .fn()

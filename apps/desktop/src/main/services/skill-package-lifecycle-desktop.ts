@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "crypto";
 import fs from "fs/promises";
 import path from "path";
+import { readSkillFileSnapshots } from "@prompthub/core/skills/file-snapshot";
 import type {
   CreateSkillParams,
   Skill,
@@ -18,7 +19,6 @@ import {
 import { normalizeSkillMdForHash } from "@prompthub/core/skills/skill-frontmatter";
 import { sanitizeSkillPackageSourceUrl } from "@prompthub/core/skills/package-operation";
 import { getSkillsDirAccessor, isPathWithin } from "./skill-installer-internal";
-import { isInternalSkillRepoEntry } from "./skill-installer-repo";
 import { computeRepoDirectoryFingerprint } from "./skill-repo-sync";
 import { SkillInstaller } from "./skill-installer";
 import { validateMaterializedSkillPackage } from "./skill-package-validation";
@@ -327,10 +327,7 @@ async function writeRecoveryManifest(
 async function readFilesSnapshot(
   repoPath: string,
 ): Promise<SkillFileSnapshot[]> {
-  const files = await SkillInstaller.readLocalRepoFilesByPath(repoPath);
-  return files
-    .filter((file) => !file.isDirectory && !isInternalSkillRepoEntry(file.path))
-    .map((file) => ({ relativePath: file.path, content: file.content }));
+  return readSkillFileSnapshots(repoPath);
 }
 
 function isRecoveryManifest(value: unknown): value is PackageRecoveryManifest {

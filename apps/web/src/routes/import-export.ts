@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { hasEncodedSkillSnapshots, skillSnapshotEnvelopeKind } from '@prompthub/shared/utils/skill-file-snapshot';
 import type { Context } from 'hono';
 import { z } from 'zod';
 import { getAuthUser } from '../middleware/auth.js';
@@ -73,11 +74,14 @@ importExport.get('/export', async (c) => {
     const media = getMediaBase64Map(actor.userId, payload.prompts);
     c.header('Content-Type', 'application/json; charset=utf-8');
     c.header('Content-Disposition', `attachment; filename="prompthub-web-export-${Date.now()}.json"`);
-    return c.body(JSON.stringify({
+    const portable = {
       ...payload,
       images: media.images,
       videos: media.videos,
-    }, null, 2), 200);
+    };
+    return c.body(JSON.stringify(hasEncodedSkillSnapshots(portable)
+      ? { kind: skillSnapshotEnvelopeKind('prompthub-backup', portable), exportedAt: payload.exportedAt, payload: portable }
+      : portable, null, 2), 200);
   } catch (routeError) {
     return toRouteErrorResponse(c, routeError);
   }

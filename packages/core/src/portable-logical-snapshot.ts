@@ -12,9 +12,11 @@ import type {
   PromptVersion,
   RuleBackupRecord,
   Skill,
+  SkillFileSnapshot,
   SkillVersion,
 } from "@prompthub/shared/types";
 import { parseAgentManagementBackup } from "@prompthub/shared/utils/agent-management-backup";
+import { skillSnapshotEnvelopeKind, validateEncodedSkillSnapshots } from "@prompthub/shared/utils/skill-file-snapshot";
 
 const MAX_LOGICAL_RECORDS = 100_000;
 
@@ -49,7 +51,7 @@ export interface PortableLogicalSnapshot {
   rules?: RuleBackupRecord[];
   skills?: Skill[];
   skillVersions?: SkillVersion[];
-  skillFiles?: Record<string, Array<{ relativePath: string; content: string }>>;
+  skillFiles?: Record<string, SkillFileSnapshot[]>;
   mcpLibrary?: McpLibraryFile;
   pluginLibrary?: PluginLibraryFile;
   pluginPackages?: PluginPackageSnapshot[];
@@ -59,7 +61,7 @@ export interface PortableLogicalSnapshot {
 }
 
 export interface PortableLogicalEnvelope {
-  kind: "prompthub-export";
+  kind: "prompthub-export" | "prompthub-export-v2";
   exportedAt: string;
   scope: PortableLogicalScope;
   payload: PortableLogicalSnapshot;
@@ -160,7 +162,7 @@ export function parsePortableLogicalEnvelope(
   const raw = JSON.parse(text) as unknown;
   if (
     !isRecord(raw) ||
-    raw.kind !== "prompthub-export" ||
+    (raw.kind !== "prompthub-export" && raw.kind !== "prompthub-export-v2") ||
     typeof raw.exportedAt !== "string" ||
     !Number.isFinite(Date.parse(raw.exportedAt)) ||
     !isRecord(raw.payload)
@@ -169,6 +171,7 @@ export function parsePortableLogicalEnvelope(
   }
   const scope = requireScope(raw.scope);
   const value = raw.payload;
+  validateEncodedSkillSnapshots(value);
   const settings = optionalRecord<{ state?: unknown }>(
     value.settings,
     "settings",
@@ -242,7 +245,7 @@ export function parsePortableLogicalEnvelope(
   };
   assertSelectedPayload(scope, payload);
   return {
-    kind: "prompthub-export",
+    kind: skillSnapshotEnvelopeKind("prompthub-export", payload),
     exportedAt: raw.exportedAt,
     scope,
     payload,

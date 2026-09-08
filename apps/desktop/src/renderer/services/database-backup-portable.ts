@@ -1,4 +1,5 @@
 import { redactMcpLibraryForTransport } from "@prompthub/shared/utils/mcp-config";
+import { skillSnapshotEnvelopeKind } from "@prompthub/shared/utils/skill-file-snapshot";
 
 import type { DatabaseBackup, ExportScope } from "./database-backup-format";
 
@@ -44,7 +45,7 @@ export function createAtomicLogicalImportEnvelope(
       ? (raw.payload as Record<string, unknown>)
       : raw;
   const requested =
-    raw.kind === "prompthub-export" &&
+    (raw.kind === "prompthub-export" || raw.kind === "prompthub-export-v2") &&
     raw.scope &&
     typeof raw.scope === "object"
       ? (raw.scope as Partial<ExportScope>)
@@ -66,7 +67,7 @@ export function createAtomicLogicalImportEnvelope(
     ].map((key) => [key, requested[key as keyof ExportScope] === true]),
   ) as Required<ExportScope>;
   return JSON.stringify({
-    kind: "prompthub-export",
+    kind: skillSnapshotEnvelopeKind("prompthub-export", backup),
     exportedAt: backup.exportedAt,
     scope,
     payload: {

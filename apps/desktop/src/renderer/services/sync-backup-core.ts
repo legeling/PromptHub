@@ -1,4 +1,5 @@
 import type { PromptVersion } from "@prompthub/shared/types";
+import { serializeSkillSnapshotTransport, parseSkillSnapshotTransport } from "@prompthub/shared/utils/skill-file-snapshot";
 
 import { getAllFolders, getAllPrompts } from "./database";
 import { exportDatabase, restoreFromBackup } from "./database-backup";
@@ -337,7 +338,7 @@ async function serializeLegacyBackup(
   encryptionPassword?: string,
 ): Promise<string> {
   if (!encryptionPassword) {
-    return JSON.stringify(backupData, null, 2);
+    return serializeSkillSnapshotTransport(backupData, 2);
   }
 
   const dataToEncrypt: BackupData = {
@@ -364,7 +365,7 @@ async function serializeLegacyBackup(
 
   return JSON.stringify({
     encrypted: true,
-    data: await encryptData(JSON.stringify(dataToEncrypt), encryptionPassword),
+    data: await encryptData(serializeSkillSnapshotTransport(dataToEncrypt), encryptionPassword),
     images: backupData.images,
     videos: backupData.videos,
   });
@@ -374,7 +375,7 @@ async function serializeIncrementalCoreData(
   coreData: BackupData,
   encryptionPassword?: string,
 ): Promise<string> {
-  const json = JSON.stringify(coreData);
+  const json = serializeSkillSnapshotTransport(coreData);
   if (!encryptionPassword) {
     return json;
   }
@@ -423,7 +424,7 @@ async function parseLegacyBackupPayload(
   images?: Record<string, string>;
   videos?: Record<string, string>;
 }> {
-  const parsed = JSON.parse(rawData) as BackupData & {
+  const parsed = parseSkillSnapshotTransport(rawData) as BackupData & {
     encrypted?: boolean;
     data?: string;
     images?: Record<string, string>;
@@ -444,7 +445,7 @@ async function parseLegacyBackupPayload(
         options.encryptionPassword,
       );
       return {
-        data: JSON.parse(decrypted) as BackupData & {
+        data: parseSkillSnapshotTransport(decrypted) as BackupData & {
           promptVersions?: PromptVersion[];
         },
         images: parsed.images,
@@ -470,7 +471,7 @@ async function parseIncrementalCorePayload(
   options?: SyncBackupOptions,
 ): Promise<BackupData & { promptVersions?: PromptVersion[] }> {
   if (!manifest.encrypted) {
-    return JSON.parse(rawData) as BackupData & {
+    return parseSkillSnapshotTransport(rawData) as BackupData & {
       promptVersions?: PromptVersion[];
     };
   }
@@ -487,7 +488,7 @@ async function parseIncrementalCorePayload(
       parsed.data || "",
       options.encryptionPassword,
     );
-    return JSON.parse(decrypted) as BackupData & {
+    return parseSkillSnapshotTransport(decrypted) as BackupData & {
       promptVersions?: PromptVersion[];
     };
   } catch {

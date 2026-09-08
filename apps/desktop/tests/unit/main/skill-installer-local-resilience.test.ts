@@ -207,9 +207,9 @@ describe("P1-9: null byte rejection", () => {
         { relativePath: "ok.md", content: "fine" },
         { relativePath: "bad\x00file.md", content: "data" },
       ]),
-    ).rejects.toThrow(/must not contain null bytes/);
+    ).rejects.toThrow("Invalid Skill snapshot relative path");
 
-    // Verify original is preserved (atomic replacement rolled back)
+    // Invalid snapshots are rejected before replacing the original package.
     const content = await fs.readFile(path.join(repoPath, "SKILL.md"), "utf-8");
     expect(content).toBe("original");
   });
@@ -243,7 +243,7 @@ describe("P1-10: atomic replaceLocalRepoFilesByPath", () => {
     await expect(fs.access(path.join(repoPath, "extra.txt"))).rejects.toThrow();
   });
 
-  it("preserves original files when staging write fails (path traversal)", async () => {
+  it("preserves original files when snapshot validation rejects path traversal", async () => {
     await SkillInstaller.init();
     const repoPath = SkillInstaller.getLocalRepoPath("rollback-test");
     await fs.mkdir(repoPath, { recursive: true });
@@ -253,7 +253,7 @@ describe("P1-10: atomic replaceLocalRepoFilesByPath", () => {
       SkillInstaller.replaceLocalRepoFilesByPath(repoPath, [
         { relativePath: "../escape.txt", content: "malicious" },
       ]),
-    ).rejects.toThrow(/must not contain/);
+    ).rejects.toThrow("Invalid Skill snapshot relative path");
 
     // Original preserved
     const content = await fs.readFile(path.join(repoPath, "SKILL.md"), "utf-8");

@@ -367,6 +367,8 @@ export function createWindowApiMock(overrides?: DeepPartial<MockRecord>) {
         readLocalFileByPath: vi.fn().mockResolvedValue(null),
         readLocalFile: vi.fn().mockResolvedValue(null),
         readLocalFiles: vi.fn().mockResolvedValue([]),
+        readFilesSnapshot: vi.fn().mockResolvedValue([]),
+        replaceFilesSnapshot: vi.fn().mockResolvedValue(undefined),
         renameLocalPath: vi.fn().mockResolvedValue(undefined),
         writeLocalFile: vi.fn().mockResolvedValue(undefined),
         writeLocalFileBufferByPath: vi.fn().mockResolvedValue(undefined),

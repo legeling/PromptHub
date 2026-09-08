@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { SKILL_SNAPSHOT_CAPABILITY_HEADER } from "@prompthub/shared/utils/skill-file-snapshot";
 import { cors } from "hono/cors";
 import { bootstrapStatus, issueCaptcha, login, logout, me, refresh, register, requireAuth } from "./auth";
 import { heartbeat } from "./devices";
@@ -49,7 +50,7 @@ function notImplemented(message: string) {
 
 app.use("*", cors({
   origin: "*",
-  allowHeaders: ["Authorization", "Content-Type"],
+  allowHeaders: ["Authorization", "Content-Type", SKILL_SNAPSHOT_CAPABILITY_HEADER],
   allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   maxAge: 86400,
 }));

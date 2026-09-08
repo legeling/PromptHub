@@ -5,7 +5,6 @@ import { SkillVersionHistoryModal } from "../../../src/renderer/components/skill
 import {
   createSkillFileSnapshotFixture,
   createSkillFixture,
-  createSkillLocalFileEntryFixture,
   createSkillVersionFixture,
 } from "../../fixtures/skills";
 import { renderWithI18n } from "../../helpers/i18n";
@@ -21,8 +20,8 @@ describe("SkillVersionHistoryModal", () => {
           versionGetAll: vi.fn().mockResolvedValue([
             createSkillVersionFixture(),
           ]),
-          readLocalFiles: vi.fn().mockResolvedValue([
-            createSkillLocalFileEntryFixture(),
+          readFilesSnapshot: vi.fn().mockResolvedValue([
+            createSkillFileSnapshotFixture(),
           ]),
           versionDelete: vi.fn().mockResolvedValue(true),
           versionRollback: vi.fn().mockResolvedValue(undefined),
@@ -118,8 +117,8 @@ describe("SkillVersionHistoryModal", () => {
         ],
       }),
     ]);
-    window.api.skill.readLocalFiles = vi.fn().mockResolvedValue([
-      createSkillLocalFileEntryFixture({
+    window.api.skill.readFilesSnapshot = vi.fn().mockResolvedValue([
+      createSkillFileSnapshotFixture({
         content: "# Write\n\nCurrent live content",
       }),
     ]);

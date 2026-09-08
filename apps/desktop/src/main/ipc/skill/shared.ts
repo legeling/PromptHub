@@ -1,10 +1,13 @@
 import fs from "fs/promises";
+import { withSkillSnapshotEntrypoint } from "@prompthub/shared/utils/skill-file-snapshot";
+import { readSkillFileSnapshots } from "@prompthub/core/skills/file-snapshot";
+import { mutateCanonicalSkillPackage } from "@prompthub/core/skills/canonical-package-mutation";
+import { getCanonicalSkillWorkspacePath, hydrateCanonicalSkillWorkspace } from "@prompthub/core/canonical-skill-library";
+import { getRuntimeStorageContext } from "@prompthub/core/runtime-paths";
 import type { SkillDB } from "../../database/skill";
 import { SkillInstaller } from "../../services/skill-installer";
-import { isInternalSkillRepoEntry } from "../../services/skill-installer-repo";
 import type {
   SkillFileSnapshot,
-  SkillLocalFileEntry,
 } from "@prompthub/shared/types";
 
 export interface SkillIPCContext {
@@ -26,6 +29,12 @@ export async function ensureLocalRepoPath(
 ): Promise<string | null> {
   const skill = db.getById(skillId);
   if (!skill) return null;
+
+  if (getRuntimeStorageContext().localAuthority === "canonical-files" &&
+    skill.local_repo_path === getCanonicalSkillWorkspacePath(skillId) &&
+    !(await isExistingDirectory(skill.local_repo_path))) {
+    return hydrateCanonicalSkillWorkspace(skillId);
+  }
 
   if (
     skill.local_repo_path &&
@@ -106,28 +115,27 @@ export async function readCurrentFilesSnapshot(
   const skill = db.getById(skillId);
   if (!skill) return [];
 
-  const files: SkillLocalFileEntry[] = ensuredRepoPath
-    ? await SkillInstaller.readLocalRepoFilesByPath(ensuredRepoPath)
-    : await SkillInstaller.readLocalRepoFiles(skill.name);
-
-  return files
-    .filter((file) => !file.isDirectory && !isInternalSkillRepoEntry(file.path))
-    .map((file) => ({
-      relativePath: file.path,
-      content: file.content,
-    }));
+  if (!ensuredRepoPath) throw new Error(`Unable to read Skill package: ${skillId}`);
+  return readSkillFileSnapshots(ensuredRepoPath);
 }
 
 export async function replaceRepoFiles(
   db: SkillDB,
   skillId: string,
   filesSnapshot?: SkillFileSnapshot[],
+  entrypointContent?: string,
 ): Promise<string | null> {
   if (!filesSnapshot) return null;
 
   const skill = db.getById(skillId);
   if (!skill) {
     throw new Error(`Skill not found: ${skillId}`);
+  }
+
+  filesSnapshot = withSkillSnapshotEntrypoint(filesSnapshot, entrypointContent ?? skill.content ?? skill.instructions ?? "");
+
+  if (await mutateCanonicalSkillPackage(db, skillId, { kind: "replace", files: filesSnapshot })) {
+    return db.getById(skillId)?.local_repo_path ?? null;
   }
 
   const repoPath = await ensureLocalRepoPath(db, skillId);

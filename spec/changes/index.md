@@ -7,8 +7,8 @@ file manually. Run the generator after adding, moving, or archiving a change.
 
 | State | Count |
 | --- | ---: |
-| Active | 34 |
-| Archived | 231 |
+| Active | 35 |
+| Archived | 232 |
 | Legacy | 1 |
 
 ## Active
@@ -33,6 +33,7 @@ file manually. Run the generator after adding, moving, or archiving a change.
 | `pi-agent-separation` | release-pending | `spec/changes/active/pi-agent-separation/` |
 | `plugin-issue-190-multi-native-manifests` | active | `spec/changes/active/plugin-issue-190-multi-native-manifests/` |
 | `plugin-management` | active | `spec/changes/active/plugin-management/` |
+| `prompt-current-version-missing-self-heal` | active | `spec/changes/active/prompt-current-version-missing-self-heal/` |
 | `r2-direct-downloads` | active | `spec/changes/active/r2-direct-downloads/` |
 | `release-0-6-0-version-alignment` | active | `spec/changes/active/release-0-6-0-version-alignment/` |
 | `risk-aware-verification-harness` | active | `spec/changes/active/risk-aware-verification-harness/` |
@@ -285,6 +286,7 @@ file manually. Run the generator after adding, moving, or archiving a change.
 | `2026-08-21-skill-package-canonical-finalization` | archived | `spec/changes/archive/2026/08/2026-08-21-skill-package-canonical-finalization/` |
 | `2026-08-31-apimart-sponsor-readme` | archived | `spec/changes/archive/2026/08/2026-08-31-apimart-sponsor-readme/` |
 | `2026-09-03-release-0-6-0-beta-2-readiness` | archived | `spec/changes/archive/2026/09/2026-09-03-release-0-6-0-beta-2-readiness/` |
+| `2026-09-08-skill-package-durability-lossless-snapshots` | archived | `spec/changes/archive/2026/09/2026-09-08-skill-package-durability-lossless-snapshots/` |
 
 ## Legacy
 

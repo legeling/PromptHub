@@ -1,5 +1,10 @@
 import type { DatabaseAdapter, FolderDB, PromptDB, SkillDB } from "../database";
 import {
+  SKILL_SNAPSHOT_CAPABILITY_HEADER,
+  SKILL_SNAPSHOT_CAPABILITY,
+  hasEncodedSkillSnapshots,
+} from "@prompthub/shared/utils/skill-file-snapshot";
+import {
   clearCliWorkspaceData,
   createCliWorkspaceBundle,
   createCliWorkspaceSummary,
@@ -65,6 +70,7 @@ async function requestSyncJson(
     ...init,
     headers: {
       Authorization: `Bearer ${options.token}`,
+      [SKILL_SNAPSHOT_CAPABILITY_HEADER]: SKILL_SNAPSHOT_CAPABILITY,
       ...(init?.body ? { "Content-Type": "application/json" } : {}),
       ...init?.headers,
     },
@@ -108,6 +114,16 @@ export async function pushRemoteSyncSnapshot(
     undefined,
     db,
   );
+  if (hasEncodedSkillSnapshots(bundle.payload)) {
+    const manifest = (await requestSyncJson(options, "/api/sync/manifest", {
+      signal: AbortSignal.timeout(30_000),
+    })) as { skillSnapshotCapability?: string } | null;
+    if (manifest?.skillSnapshotCapability !== SKILL_SNAPSHOT_CAPABILITY) {
+      throw new CliRemoteSyncError(
+        "Remote sync server does not support lossless Skill snapshots; upgrade the server before syncing binary Skill files",
+      );
+    }
+  }
   const remote = await requestSyncJson(options, "/api/sync/data", {
     method: "PUT",
     body: JSON.stringify({ payload: bundle.payload }),

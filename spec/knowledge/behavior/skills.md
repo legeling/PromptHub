@@ -202,3 +202,22 @@ When historical Skill plans or test rounds are still useful but no longer curren
 
 - they remain readable under `spec/changes/legacy/`
 - they are not deleted or replaced with git-history placeholders
+
+## Lossless package snapshots
+
+Canonical Skill bundles own package bytes; working caches are rebuildable. Metadata
+updates retain canonical files when a cache is missing, and managed edits publish a
+validated complete package before replacing the cache. An explicitly invalid source
+is an error, not an empty package. Concurrent stale edits require reload/retry.
+
+Persistence snapshots are separate from file previews. Text remains the historical
+`{ relativePath, content }` shape; non-text bytes carry `encoding: "base64"`. All
+supported restoration consumers decode bytes and reject unknown encoding. Old text
+history is readable, including auxiliary-only snapshots with a separately stored
+entrypoint. Historical `[binary file]`/`[file too large]` text cannot recover lost bytes.
+
+Binary snapshots require new-format file envelopes/CLI bundles/canonical documents
+and sync capability 2. Raw WebDAV/S3 binary snapshots have a non-JSON version prefix,
+so old readers fail before restoration. Do not use an old client with a writable
+upgraded root; downgrade from an independently retained pre-upgrade backup. Package
+limits remain the shared Skill limits; byte snapshots do not inherit preview limits.

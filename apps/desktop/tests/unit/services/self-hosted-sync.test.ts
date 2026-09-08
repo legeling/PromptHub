@@ -62,6 +62,64 @@ describe("self-hosted-sync", () => {
     });
   });
 
+  it.each([undefined, "2"])(
+    "negotiates server support before pushing binary Skill snapshots (%s)",
+    async (capability) => {
+      exportDatabaseMock.mockResolvedValue({
+        version: 1,
+        exportedAt: "2026-09-08T00:00:00Z",
+        prompts: [],
+        folders: [],
+        versions: [],
+        skills: [],
+        skillVersions: [],
+        skillFiles: {
+          s: [
+            { relativePath: "icon.bin", content: "AP8=", encoding: "base64" },
+          ],
+        },
+      });
+      const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith("/api/auth/captcha")) return captchaResponse();
+        if (url.endsWith("/api/auth/login"))
+          return jsonResponse({ data: { accessToken: "access-token" } });
+        if (url.endsWith("/api/devices/heartbeat"))
+          return jsonResponse({ data: { ok: true } });
+        if (url.endsWith("/api/sync/manifest"))
+          return jsonResponse({
+            data: { skillSnapshotCapability: capability },
+          });
+        if (url.endsWith("/api/sync/data"))
+          return jsonResponse({
+            data: { promptsImported: 0, foldersImported: 0, skillsImported: 0 },
+          });
+        throw new Error(`Unexpected request: ${url}`);
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      const result = pushToSelfHostedWeb({
+        url: "https://sync.example.com",
+        username: "owner",
+        password: "secret",
+      });
+      if (capability === "2") {
+        await expect(result).resolves.toMatchObject({ skills: 0 });
+        expect(
+          fetchMock.mock.calls.some(([url]) =>
+            String(url).endsWith("/api/sync/data"),
+          ),
+        ).toBe(true);
+      } else {
+        await expect(result).rejects.toThrow(/lossless Skill snapshots/);
+        expect(
+          fetchMock.mock.calls.some(([url]) =>
+            String(url).endsWith("/api/sync/data"),
+          ),
+        ).toBe(false);
+      }
+    },
+  );
+
   it("tests the remote self-hosted connection through login and manifest", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);

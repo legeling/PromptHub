@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { skillSnapshotByteLength, SKILL_SNAPSHOT_SYNC_VERSION } from "@prompthub/shared/utils/skill-file-snapshot";
 import type {
   AgentAssetFilesSnapshot,
   Folder,
@@ -125,6 +126,10 @@ const skillFileSnapshotSchema = z.object({
     .string()
     .refine(isSafeSkillFileRelativePath, "Invalid skill file path"),
   content: z.string(),
+  encoding: z.enum(["utf8", "base64"]).optional(),
+}).superRefine((file, context) => {
+  try { skillSnapshotByteLength(file); }
+  catch { context.addIssue({ code: z.ZodIssueCode.custom, message: "Invalid Skill file encoding or size" }); }
 });
 
 const promptSchema = z.object({
@@ -410,12 +415,13 @@ export const syncSnapshotSchema = z.object({
 });
 
 const promptHubEnvelopeSchema = z.object({
-  kind: z.enum(["prompthub-backup", "prompthub-export"]),
+  kind: z.enum(["prompthub-backup", "prompthub-export", "prompthub-backup-v2", "prompthub-export-v2"]),
   exportedAt: z.string(),
   payload: z.unknown(),
 });
 
 const SUPPORTED_SYNC_SNAPSHOT_VERSIONS = new Set([
+  SKILL_SNAPSHOT_SYNC_VERSION,
   "1",
   "desktop-backup-v1",
   "web-backup-v2",

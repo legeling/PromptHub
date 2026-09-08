@@ -18,6 +18,7 @@ import {
 } from "../plugin-library";
 import { coreRulesWorkspaceService } from "../rules-workspace-default";
 import { getImagesDir, getVideosDir } from "../runtime-paths";
+import { hasEncodedSkillSnapshots, SKILL_SNAPSHOT_SYNC_VERSION, validateSkillFileSnapshots } from "@prompthub/shared/utils/skill-file-snapshot";
 import type {
   AgentAssetFileSnapshot,
   AgentAssetFilesSnapshot,
@@ -50,7 +51,7 @@ const IGNORED_DIRECTORIES = new Set([
 
 export interface CliWorkspaceBundleV2 {
   kind: typeof WORKSPACE_BUNDLE_KIND;
-  version: typeof WORKSPACE_BUNDLE_VERSION;
+  version: typeof WORKSPACE_BUNDLE_VERSION | 3;
   exportedAt: string;
   payload: SyncSnapshot;
 }
@@ -81,7 +82,7 @@ export interface CliWorkspaceSummary {
 export interface ParsedCliWorkspaceBundle {
   exportedAt: string;
   payload: SyncSnapshot;
-  legacyVersion: 1 | 2 | "raw-sync";
+  legacyVersion: 1 | 2 | 3 | "raw-sync";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -332,16 +333,9 @@ async function collectSkillFilesSnapshot(
   const skills = skillDb.getAll();
   const skillFiles: Record<string, SkillFileSnapshot[]> = {};
   for (const skill of skills) {
-    try {
-      const files = await skillService.readCurrentFilesSnapshot(
-        skillDb,
-        skill.id,
-      );
-      if (files && files.length > 0) {
-        skillFiles[skill.id] = files;
-      }
-    } catch {
-      // Skip skills whose repos are missing or unreadable; metadata still exports.
+    const files = await skillService.readCurrentFilesSnapshot(skillDb, skill.id);
+    if (files && files.length > 0) {
+      skillFiles[skill.id] = files;
     }
   }
   return Object.keys(skillFiles).length > 0 ? skillFiles : undefined;
@@ -370,7 +364,7 @@ export async function createCliWorkspaceBundle(
   const outputFormatItems = outputFormatDb?.list() ?? [];
   const exportedAt = new Date().toISOString();
   const payload: SyncSnapshot = {
-    version: "prompthub-cli-workspace-v2",
+    version: hasEncodedSkillSnapshots({ skillFiles, skillVersions }) ? SKILL_SNAPSHOT_SYNC_VERSION : "prompthub-cli-workspace-v2",
     exportedAt,
     prompts,
     promptVersions,
@@ -394,7 +388,7 @@ export async function createCliWorkspaceBundle(
 
   return {
     kind: WORKSPACE_BUNDLE_KIND,
-    version: WORKSPACE_BUNDLE_VERSION,
+    version: hasEncodedSkillSnapshots(payload) ? 3 : WORKSPACE_BUNDLE_VERSION,
     exportedAt,
     payload,
   };
@@ -417,6 +411,13 @@ function snapshotFromLegacyBundle(
 }
 
 function assertSyncSnapshotShape(value: Record<string, unknown>): SyncSnapshot {
+  const skillFiles = value.skillFiles as SyncSnapshot["skillFiles"];
+  for (const files of Object.values(skillFiles ?? {})) validateSkillFileSnapshots(files);
+  if (Array.isArray(value.skillVersions)) {
+    for (const version of value.skillVersions) {
+      if (version.filesSnapshot !== undefined) validateSkillFileSnapshots(version.filesSnapshot);
+    }
+  }
   if (
     typeof value.version !== "string" ||
     typeof value.exportedAt !== "string" ||
@@ -468,7 +469,7 @@ export function parseCliWorkspaceBundle(
 
   if (
     parsed.kind === WORKSPACE_BUNDLE_KIND &&
-    parsed.version === 2 &&
+    (parsed.version === 2 || parsed.version === 3) &&
     isRecord(parsed.payload)
   ) {
     const payload = assertSyncSnapshotShape(parsed.payload);
@@ -478,7 +479,7 @@ export function parseCliWorkspaceBundle(
           ? parsed.exportedAt
           : payload.exportedAt,
       payload,
-      legacyVersion: 2,
+      legacyVersion: parsed.version,
     };
   }
 

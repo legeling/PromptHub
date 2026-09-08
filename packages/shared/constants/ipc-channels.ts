@@ -279,6 +279,8 @@ export const IPC_CHANNELS = {
   SKILL_LIST_LOCAL_FILES: "skill:listLocalFiles",
   SKILL_READ_LOCAL_FILE: "skill:readLocalFile",
   SKILL_READ_LOCAL_FILES: "skill:readLocalFiles",
+  SKILL_READ_FILES_SNAPSHOT: "skill:readFilesSnapshot",
+  SKILL_REPLACE_FILES_SNAPSHOT: "skill:replaceFilesSnapshot",
   SKILL_RENAME_LOCAL_PATH: "skill:renameLocalPath",
   SKILL_WRITE_LOCAL_FILE: "skill:writeLocalFile",
   SKILL_DELETE_LOCAL_FILE: "skill:deleteLocalFile",

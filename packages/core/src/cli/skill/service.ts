@@ -1,5 +1,8 @@
 import fs from "fs/promises";
 import path from "path";
+import { readSkillFileSnapshots, replaceSkillFileSnapshots } from "../../skills/file-snapshot";
+import { mutateCanonicalSkillPackage } from "../../skills/canonical-package-mutation";
+import { withSkillSnapshotEntrypoint } from "@prompthub/shared/utils/skill-file-snapshot";
 
 import type { SkillDB } from "@prompthub/db";
 import {
@@ -253,6 +256,7 @@ export function createCliSkillService(
     relativePath: string,
     content: string,
   ): Promise<void> {
+    if (await mutateCanonicalSkillPackage(skillDb, skillId, { kind: "write", relativePath, content })) return;
     const repoPath = await resolveRepoPathForSkill(skillDb, skillId);
     const { fullPath } = await resolveRepoTargetPath(repoPath, relativePath, {
       ensureBaseExists: true,
@@ -267,6 +271,7 @@ export function createCliSkillService(
     skillId: string,
     relativePath: string,
   ): Promise<void> {
+    if (await mutateCanonicalSkillPackage(skillDb, skillId, { kind: "delete", relativePath })) return;
     const repoPath = await resolveRepoPathForSkill(skillDb, skillId);
     const { fullPath } = await resolveRepoTargetPath(repoPath, relativePath, {
       ensureBaseExists: false,
@@ -294,6 +299,7 @@ export function createCliSkillService(
     oldRelativePath: string,
     newRelativePath: string,
   ): Promise<void> {
+    if (await mutateCanonicalSkillPackage(skillDb, skillId, { kind: "rename", relativePath: oldRelativePath, newRelativePath })) return;
     const repoPath = await resolveRepoPathForSkill(skillDb, skillId);
     const { fullPath: oldFullPath } = await resolveRepoTargetPath(
       repoPath,
@@ -313,16 +319,16 @@ export function createCliSkillService(
     skillDb: SkillDB,
     skillId: string,
     filesSnapshot?: SkillFileSnapshot[],
+    entrypointContent?: string,
   ): Promise<void> {
     if (!filesSnapshot) {
       return;
     }
+    const skill = await resolveSkill(skillDb, skillId);
+    filesSnapshot = withSkillSnapshotEntrypoint(filesSnapshot, entrypointContent ?? skill.content ?? skill.instructions ?? "");
+    if (await mutateCanonicalSkillPackage(skillDb, skillId, { kind: "replace", files: filesSnapshot })) return;
     const repoPath = await resolveRepoPathForSkill(skillDb, skillId);
-    await fs.rm(repoPath, { recursive: true, force: true });
-    await fs.mkdir(repoPath, { recursive: true });
-    for (const file of filesSnapshot) {
-      await writeLocalFile(skillDb, skillId, file.relativePath, file.content);
-    }
+    await replaceSkillFileSnapshots(repoPath, filesSnapshot);
   }
 
   async function createVersion(
@@ -362,11 +368,11 @@ export function createCliSkillService(
       currentFilesSnapshot,
       skill,
     );
+    await replaceRepoFiles(skillDb, skill.id, targetVersion.filesSnapshot, targetVersion.content);
     const updatedSkill = skillDb.update(skill.id, {
       content: targetVersion.content,
       instructions: targetVersion.content,
     });
-    await replaceRepoFiles(skillDb, skill.id, targetVersion.filesSnapshot);
     return updatedSkill;
   }
 
@@ -769,12 +775,7 @@ export function createCliSkillService(
   ): Promise<SkillFileSnapshot[]> {
     const repoPath = await resolveRepoPathForSkill(skillDb, skillId);
     assertSkillPackageEntriesSafe(await readRepoSecretScanEntries(repoPath));
-    const files = await readLocalFiles(skillDb, skillId);
-    return files
-      .filter(
-        (file) => !file.isDirectory && !isInternalSkillRepoEntry(file.path),
-      )
-      .map((file) => ({ relativePath: file.path, content: file.content }));
+    return readSkillFileSnapshots(repoPath);
   }
 
   return {

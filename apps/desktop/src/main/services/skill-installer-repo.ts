@@ -6,8 +6,10 @@
  */
 import * as fs from "fs/promises";
 import * as path from "path";
+import { decodeSkillFileSnapshot, validateSkillFileSnapshots } from "@prompthub/shared/utils/skill-file-snapshot";
 import type {
   Skill,
+  SkillFileSnapshot,
   SkillLocalFileBufferEntry,
   SkillLocalFileEntry,
   SkillLocalFileTreeEntry,
@@ -1352,8 +1354,9 @@ export async function deleteAllLocalRepos(): Promise<void> {
  */
 export async function replaceLocalRepoFilesByPath(
   absoluteBasePath: string,
-  filesSnapshot: { relativePath: string; content: string }[],
+  filesSnapshot: SkillFileSnapshot[],
 ): Promise<void> {
+  validateSkillFileSnapshots(filesSnapshot);
   const normalizedBasePath = normalizeRepoBaseDirectory(absoluteBasePath);
   const { resolvedBasePath } = await resolveRepoBasePath(normalizedBasePath, {
     ensureExists: true,
@@ -1381,7 +1384,7 @@ export async function replaceLocalRepoFilesByPath(
         throw new Error("Path traversal detected while restoring repo files");
       }
       await fs.mkdir(path.dirname(fullPath), { recursive: true });
-      await fs.writeFile(fullPath, file.content, "utf-8");
+      await fs.writeFile(fullPath, decodeSkillFileSnapshot(file));
     }
 
     // Atomic swap: remove old, rename staging into place
