@@ -27,54 +27,7 @@ routes:
   records.archive: spec/archive/
   records.rules: spec/rules/
 
-workflow_phases:
-  specify:
-    - workflow.intake
-    - workflow.requirements
-  clarify:
-    - workflow.intake
-    - workflow.requirements
-    - records.issues
-  plan:
-    - workflow.design
-    - workflow.implementation
-    - workflow.verification
-    - knowledge.context
-    - knowledge.structure
-    - knowledge.behavior
-    - knowledge.reference
-  tasks:
-    - workflow.tasks
-    - changes.active
-  analyze:
-    - workflow.requirements
-    - workflow.design
-    - workflow.verification
-    - workflow.tasks
-    - changes.active
-  implement:
-    - workflow.tasks
-    - changes.active
-  converge:
-    - workflow.requirements
-    - workflow.design
-    - workflow.verification
-    - workflow.tasks
-    - knowledge.context
-    - knowledge.structure
-    - knowledge.behavior
-    - changes.archive
-    - records.issues
-    - records.releases
-    - records.decisions
-    - records.archive
-
 notes:
-  - "PromptHub keeps internal SSD under `spec/` instead of `docs/`."
-  - "`workflow` is the project-level planning layer used with `spec-init`."
-  - "`knowledge` is the long-lived truth layer mapped to PromptHub's stable specs, architecture, logic, and assets."
-  - "`changes` stays aligned with PromptHub's existing active/archive/legacy change flow."
-  - "`records` captures issues, rules, release summaries, ADRs, and archive entry points."
-  - "`workflow_phases` tracks the current spec-init specify/clarify/plan/tasks/analyze/implement/converge loop."
-  - "`changes.completed` is a compatibility route; completed PromptHub changes converge into `changes.archive`."
-  - "Embedded spec-init baseline: `f83def11e7b3e1753cd6f32eacdf09b72b3b29ae`."
+  - "Routes describe existing locations, not required scaffolding."
+  - "Documentation scope is owned by spec/rules/document-routing-rules.md."
+  - "One authoritative topic; an optional plan links to it. Existing paths remain compatible."

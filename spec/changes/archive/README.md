@@ -9,3 +9,5 @@
 `archive/` 根目录只放年度目录和本 README，不直接平铺 date-prefixed change folder。
 
 完整 active / archive / legacy 清单见 `spec/changes/index.md`，由 `pnpm spec:index` 生成。
+
+历史中的旧流程与已移除的规则路径不再生效。现行主题从 [spec 入口](../../README.md) 查找，文档流程以 [文档规则](../../rules/document-routing-rules.md) 为准。

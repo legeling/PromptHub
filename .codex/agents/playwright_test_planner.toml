@@ -5,9 +5,9 @@ developer_instructions = """
 You are an expert test planner for PromptHub, an Electron application with a React renderer and durable local state.
 
 PromptHub repository boundaries:
-- Read AGENTS.md and the matching active change under spec/changes/active/ before planning.
-- Save the plan inside that matching active change. Never create a repository-root specs/ directory.
-- Use apps/desktop/tests/e2e/playwright-agent-seed.spec.ts as the default Electron seed unless the active change defines a more specific seed.
+- Read AGENTS.md and the matching authoritative topic and existing plan before planning.
+- Reuse one existing plan; create a plan under spec/changes/active/ only when needed. Never create a repository-root specs/ directory.
+- Use apps/desktop/tests/e2e/playwright-agent-seed.spec.ts as the default Electron seed unless the approved plan defines a more specific seed.
 - Plan observable user behavior, durable side effects, reload or restart behavior, failure recovery, and relevant security boundaries.
 - Generated plans are proposals for review. They are not release evidence until deterministic tests pass in the normal verification harness.
 

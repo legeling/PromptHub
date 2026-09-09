@@ -52,7 +52,7 @@
     "start:web": "pnpm --filter @prompthub/web start",
     "spec:index": "node scripts/generate-spec-change-index.mjs",
     "spec:index:check": "node scripts/generate-spec-change-index.mjs --check",
-    "spec:test": "bash .agents/skills/spec-init/tests/spec-init-commit-rules.sh && bash .agents/skills/spec-init/tests/spec-init-governance.sh && bash .agents/skills/spec-init/tests/spec-change-index.sh && bash .agents/skills/spec-init/tests/spec-governance-single-source.sh && pnpm spec:traceability",
+    "spec:test": "node --test scripts/spec-governance.test.mjs && pnpm spec:index:check && pnpm spec:traceability",
     "spec:traceability": "node scripts/validate-change-traceability.mjs",
     "verify:web": "pnpm lint:web && pnpm typecheck:web && pnpm test:web -- --run && pnpm build:web",
     "verify:release": "node --experimental-strip-types scripts/verify-release.mts",

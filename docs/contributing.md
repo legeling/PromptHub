@@ -71,43 +71,9 @@ pnpm --filter @prompthub/cli dev -- --help
 
 Test Agent 不是发布门禁。生成的 `.spec.ts` 必须经过审查，并能通过普通 `playwright test` 独立重复执行。完整适用范围、Planner/Generator/Healer 提示词和运行命令见 [Playwright Test Agents 使用指南](./testing-playwright-agents.md)。
 
-## 文档与 SSD 工作流
+## 文档
 
-PromptHub 对非 trivial 改动采用 SSD（Specification / Design / Delivery）工作流：
-
-- `docs/`：对外文档，面向用户、部署者、贡献者
-- `spec/`：内部 SSD、稳定领域文档、稳定逻辑、固定资产、活跃变更与归档
-
-以下改动通常都应先建立或更新 `spec/changes/active/<change-key>/`：
-
-- 新功能
-- 多文件 bug 修复
-- 重构
-- 迁移
-- 跨 `desktop / web / packages` 的联动修改
-- 重要文档结构重构
-
-每个重要变更至少包含：
-
-- `proposal.md`
-- `specs/<domain>/spec.md`
-- `design.md`
-- `tasks.md`
-- `implementation.md`
-
-实施完成后需要同步：
-
-- 项目级稳定入口到 `spec/workflow/*`
-- 稳定行为与规则到 `spec/knowledge/behavior/`
-- 固定参考资料到 `spec/knowledge/reference/`
-- 长期工程约束到 `spec/knowledge/structure/`
-- 发布规则与版本摘要到 `spec/releases/`
-- 对外契约到 `docs/` 或根 `README.md`
-
-更多入口见：
-
-- [docs/README.md](./README.md)
-- [spec/README.md](../spec/README.md)
+内部主题从 [spec 入口](../spec/README.md) 定向查找；用户与贡献者说明保留在 `docs/`。文档投入、需求权威及计划统一遵循 [文档规则](../spec/rules/document-routing-rules.md)。已有主题原位更新，只有独立新主题才新建说明，跨会话工作按需保留一份计划。
 
 ## 代码与文档约束
 
@@ -140,16 +106,14 @@ docs/xxx
 refactor/xxx
 ```
 
-更完整的提交、分批 commit、文档编号、`FR -> DES -> TEST -> T` 追踪链、issue 引用与 PR 说明要求，见 [spec/rules/submission-traceability-rules.md](../spec/rules/submission-traceability-rules.md)。
+更完整的提交、分批 commit、文档关联、issue 引用与 PR 说明要求，见 [spec/rules/submission-traceability-rules.md](../spec/rules/submission-traceability-rules.md)。
 
 ## PR 检查清单
 
-1. 按改动范围运行对应的 lint、测试、构建或验证命令。
-2. 如果是非 trivial 改动，更新或新建 `spec/changes/active/<change-key>/`。
-3. 为非 trivial change 建立或更新 `FR -> DES -> TEST -> T` 追踪链。
-4. 同步用户文档、开发文档和 `implementation.md`。
-5. 在 PR 描述中说明变更动机、影响范围、验证方式、相关 issue / active change 和残留风险。
-6. 根据 review 反馈继续修正。
+1. 按改动范围运行必要的 lint、测试、构建或验证命令。
+2. 更新本次受影响的权威约定、现行引用和已有计划状态。
+3. 在 PR 中说明问题、结果、验证、残余风险及现有主题或 issue 关联。
+4. 根据 review 修正，不把未发布的本地完成误记为 issue 已关闭。
 
 ## 交流
 

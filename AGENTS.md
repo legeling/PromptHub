@@ -22,17 +22,12 @@ defer to those project sources. Do not add parallel project constraints under
 `.agents/rules/`, `.agents/workflows/`, generic `docs/rules/`, or tool-specific
 instruction files.
 
-### 0.2 Mandatory Change Gate
+### 0.2 Documentation Scope
 
-Create or update an active change folder before implementation when the work touches any of these:
-
-- database schema, migrations, adapters, indexes, or persistence semantics
-- filesystem data layout, backup/restore, sync, or recovery
-- IPC/API contracts, preload exposure, route contracts, or shared types
-- cross-package behavior in `packages/*`
-- multi-file feature work, refactors, or user-visible workflow changes
-
-Small local fixes can skip a new change folder only when they do not alter behavior boundaries, storage, public contracts, or user workflows.
+Use [document-routing-rules.md](spec/rules/document-routing-rules.md) as the
+single authority for documentation scope, current requirements, plans, and
+history. Update the existing topic in place; documentation volume follows risk.
+A non-trivial code change does not by itself require a new change folder.
 
 ### 0.3 Existing-Feature Modification Rule
 
@@ -43,7 +38,7 @@ When modifying existing behavior, first identify:
 - the existing tests or missing regression gap
 - the stable doc or active change that defines the boundary
 
-If the implementation and docs disagree, do not silently pick one. Record the discrepancy in the active change and make the intended source of truth explicit.
+If the implementation and docs disagree, do not silently pick one. Record the discrepancy in the affected topic or existing plan and make the intended source of truth explicit.
 
 ### 0.4 New-Feature Addition Rule
 
@@ -59,46 +54,18 @@ Do not put durable business rules only in React components or one-off IPC handle
 
 ### 0.5 Test-First Rule
 
-For bug fixes and non-trivial features, write or update the failing test before implementation unless the change is documentation-only or pure mechanical cleanup.
+Follow [testing-standards.md](spec/rules/testing-standards.md) for test-first
+changes, coverage, adversarial cases, real UI evidence, and failure recovery.
+Write regression tests before the fix; finish the implementation batch before
+running checks. Explain any missing evidence without claiming it passed.
 
-The test must prove the real risk:
+### 0.6 Design Conflicts
 
-- For a bug, reproduce the user-visible failure or the broken invariant first.
-- For a feature, encode acceptance behavior and at least one relevant failure or boundary path.
-- For persistence, assert stored data, migration behavior, and reload/rescan behavior where relevant.
-- For UI state, assert the visible state users depend on, not only internal callbacks.
-- For filesystem/sync/platform behavior, assert durable side effects, not only function calls.
-
-Coverage is a gate, not decoration:
-
-- New or changed production code must target 100% line, function, branch, and condition coverage in its touched module.
-- Critical boundary modules, including database, filesystem persistence, sync, IPC/preload contracts, installer/import/export logic, security, and release harness code, require 100% branch and condition coverage for the changed behavior before merging.
-- If the whole legacy file cannot reach 100% immediately, the active change must record the uncovered legacy branches and the PR must still provide 100% coverage for every new branch and changed condition.
-- Coverage numbers do not replace adversarial tests. A change can have 100% coverage and still be rejected if it lacks boundary, error, rollback, fuzz, or performance tests for the risk it introduces.
-
-Coverage is not the test plan. For each non-trivial change, choose and record the required test methods:
-
-- Black-box behavior: assert user-visible behavior and durable outputs without relying on implementation details.
-- White-box branch/condition: exercise each changed decision branch, guard, fallback, and error path.
-- Boundary and fuzz: test malformed inputs, empty values, path traversal, Unicode/special characters, oversized payloads, duplicate identities, and adversarial fixtures relevant to the module.
-- Security: test permission boundaries, injection/traversal/SSRF-like inputs, unsafe source handling, symlink behavior, secret handling, and tamper detection where relevant.
-- Performance/stress: test large inventories, bulk operations, repeated mutations, concurrency-like calls, and acceptable time/memory bounds for changed critical paths.
-- Integration/contract: test DB, filesystem, IPC/preload, CLI/API, sync, and platform boundaries with real adapters or faithful fixtures when mocks would hide the bug.
-- Failure/rollback: test partial failure at each external boundary and assert no half-written DB rows, repos, files, status, or UI state remain.
-
-If a test cannot be written before the fix, record why in the active change and identify the verification substitute. "Too hard" is not a sufficient reason.
-
-### 0.6 Design Conflict Stop Rule
-
-Before changing design, compare the proposed approach with existing docs and implementation. Stop and ask the user for confirmation when any of these are true:
-
-- current code and stable docs disagree about the intended behavior
-- the requested change conflicts with an existing active change or accepted design boundary
-- the fix requires changing the source of truth for data or state
-- the feature can be implemented in two materially different ways with different user/data consequences
-- preserving backward compatibility would require a migration, fallback, or breaking behavior change
-
-Do not resolve these conflicts by silently choosing the smallest code change. Record the conflict, present the options, and wait for direction.
+Resolve routine choices from current code, tests, docs, and confirmed user
+decisions. Ask only when an unresolved choice materially affects scope, user
+data, security, ownership, or compatibility. An explicit user decision updates
+the authoritative requirement immediately; record any implementation gap there.
+Do not ask again merely because an obsolete process document disagrees.
 
 ### 0.7 Code Quality and Architecture Rule
 
@@ -117,8 +84,8 @@ Core engineering principles:
 Size and complexity limits:
 
 - A single source or test file must not exceed 2,000 lines. Existing files above this limit are legacy debt: do not expand them except to extract code or tests into smaller files.
-- New files should stay below 1,000 lines by default. Crossing 1,000 lines requires a clear reason in the active change.
-- Functions should stay under 50 lines unless the active change records why a longer function is clearer and what tests cover it.
+- New files should stay below 1,000 lines by default. Crossing 1,000 lines requires a clear reason in the affected topic or existing plan.
+- Functions should stay under 50 lines unless the affected topic records why a longer function is clearer and what tests cover it.
 - Avoid "god" services, stores, components, and test files. Split by domain responsibility, not by arbitrary helper buckets.
 - Prefer small pure helpers for parsing, normalization, identity, and policy decisions; keep side effects in orchestration functions.
 
@@ -149,8 +116,8 @@ Before any commit, split commit, history rewrite, or push operation:
 
 1. Read `spec/rules/submission-traceability-rules.md`; the quick summary in Section 11 does not replace the full rule.
 2. Run `git status --short` and separate current work from user or parallel-agent changes.
-3. Confirm the commit is one independently reversible logical unit and its active change maintains `FR -> DES -> TEST -> T` traceability.
-4. For every non-trivial commit, include a body with the primary change or issue reference and the actual verification status. A Conventional Commit title by itself is not sufficient.
+3. Confirm the commit is one independently reversible logical unit with a clear purpose and actual verification evidence.
+4. For every non-trivial commit, include a body with the relevant topic, change, or issue reference when one exists and the actual verification status. A Conventional Commit title by itself is not sufficient.
 5. Use `Refs #<issue>` before release. Use `Closes #<issue>` only when the containing version is already published and the issue should be closed.
 
 ## 1. Project Overview
@@ -304,118 +271,33 @@ Historical single-app paths such as `src/main`, `src/renderer`, and `src/shared`
 
 ## 6. Development Workflow
 
-### 6.1 Documentation Operating System (DOS)
+### 6.1 Documentation
 
-PromptHub uses a project-native Documentation Operating System (DOS). Internal SSD assets live under `spec/`, while repository-facing docs stay under `docs/`.
+Start at [spec/README.md](spec/README.md) and read only the affected topic.
+Documentation scope and lifecycle are owned by
+[document-routing-rules.md](spec/rules/document-routing-rules.md).
+Public contributor/user documentation stays under `docs/`; internal product
+contracts and records stay under `spec/`. Embedded Skill templates are reusable
+procedures, not a second set of project rules.
 
-PromptHub now uses `spec-init` directories for stable project docs and an OpenSpec-style change workflow for deltas:
+### 6.2 Implementation and Delivery
 
-- `spec-init` provides the project-level document boundaries for workflow / knowledge / changes / records
-- PromptHub's change-management backbone remains `spec/changes/active/<change-key>/specs/<domain>/spec.md` plus `spec/changes/archive/`; stable truth now lives in `spec/workflow/*`, `spec/knowledge/*`, `spec/rules/`, `spec/releases/`, and related record folders
+1. Identify the owner, data authority, intended behavior, and verification.
+2. Update affected confirmed requirements in place, marking implementation gaps.
+3. Write regression tests, then finish source, tests, config, migration, and
+   relevant documentation as one batch before running checks.
+4. Run focused checks, then broader checks justified by the affected boundary.
+5. Report actual results and limitations; update the existing plan if present.
 
-The expected SSD loop keeps PromptHub's document layout while applying the
-current `spec-init` phases:
-
-`specify -> clarify -> plan -> tasks -> analyze -> implement -> converge`
-
-- `analyze` is required before implementation: requirements, design,
-  verification, tasks, and the active change must have no blocking conflict,
-  orphan traceability ID, or unresolved material decision.
-- `converge` is required before completion: actual behavior, verification,
-  stable knowledge, issues/releases/ADRs, and change lifecycle state must agree.
-- A completed change cannot remain under `spec/changes/active/`; PromptHub maps
-  upstream completed semantics to its authoritative dated archive layout.
-
-#### Document Roles
-
-- `spec/workflow/00-intake/`: project-level intake entry for why the work matters, target users, constraints, and non-goals.
-- `spec/workflow/01-requirements/`: project-level requirements entry for FR / NFR / AC style requirements.
-- `spec/workflow/02-design/`: project-level design entry for architecture, module boundaries, data, interfaces, and tradeoffs.
-- `spec/workflow/03-implementation/`: project-level implementation-planning entry for sequencing and milestones.
-- `spec/workflow/04-verification/`: project-level verification-planning entry.
-- `spec/workflow/05-tasks/`: project-level executable task entry.
-- `spec/knowledge/context/`: long-lived context docs for stable terminology, actors, entities, and business boundaries.
-- `spec/knowledge/structure/`: long-lived docs for stable system structure and module boundaries.
-- `spec/knowledge/behavior/`: long-lived docs for stable workflows, state transitions, and business rules.
-- `spec/knowledge/reference/`: long-lived reference docs for schemas, samples, fixtures, and protocols.
-- `spec/rules/`: project-level default engineering rules entry.
-- `spec/releases/`: project-level release-summary entry.
-- `spec/archive/`: project-level archive entry.
-- `spec/adr/`: project-level ADR entry.
-- `spec/README.md`: the internal SSD entry point.
-- `spec/changes/active/<change-key>/`: active change folders for feature work, larger bug fixes, refactors, and migrations.
-- `spec/changes/archive/<YYYY>/<MM>/<YYYY-MM-DD>-<change-key>/`: completed or superseded changes kept for history.
-- `spec/changes/legacy/`: recovered historical internal docs that are still useful but are not the current source of truth.
-- `spec/issues/active/`: ongoing defects, quality risks, and follow-up issues that are not yet a scoped implementation change.
-- `spec/changes/_templates/`: reusable templates for proposal, delta specs, design, tasks, and implementation artifacts.
-- `docs/README.md`: the repository-facing docs index for users and contributors.
-
-#### GitHub Issue State Rule
-
-GitHub issue state and local delivery state are separate records.
-
-- `spec/issues/active/github-open.md` and `spec/issues/archive/github-closed.md` are remote-state snapshots only.
-- `spec/issues/active/local-github-status.md` is the local triage and delivery overlay.
-- Do not close a GitHub issue merely because code, tests, or docs are done locally.
-- When an issue is implemented before release, mark it locally as `local_done` or `release_pending` and leave the GitHub issue open.
-- Close the GitHub issue only after the target version containing the fix or feature has been published, then refresh the open/closed snapshots.
-- If rejecting or merging an issue into another one, record `wontfix` or `duplicate` locally first and close GitHub only after the public explanation is posted.
-
-#### Required Artifacts For Non-Trivial Work
-
-For any non-trivial feature, refactor, migration, cross-process change, or multi-file bug fix, create or update one active change folder under `spec/changes/active/<change-key>/`.
-
-Each active change should contain:
-
-1. `proposal.md` — why the change exists, scope, risks, rollback thinking, and impacted user flows.
-2. `specs/<domain>/spec.md` — the intended behavior delta, including added, modified, and removed requirements or scenarios.
-3. `design.md` — technical approach, affected modules, data model / IPC / sync / migration impact, and tradeoffs.
-4. `tasks.md` — a concrete implementation checklist with verification items.
-5. `implementation.md` — what actually shipped, what changed during execution, what was verified, and which stable docs were synced.
-
-Use one or more domain spec files under `specs/` when the change spans multiple stable domains. Do not create a flat top-level `spec.md` file inside the change folder for new work.
-
-#### Workflow Expectations
-
-1. Start with the change folder before writing significant code.
-2. Use the `spec-init` document boundaries to decide what kind of document a piece of content belongs in, but keep non-trivial implementation work inside `spec/changes/active/<change-key>/`.
-3. Refine `proposal.md`, `specs/<domain>/spec.md`, and `design.md` as understanding improves; the workflow is iterative, not phase-locked.
-4. Use `tasks.md` as the implementation checklist and mark items complete as work lands.
-5. Update `implementation.md` during or immediately after implementation so the executed work does not live only in git diff or chat history.
-6. Before implementation, complete an analyze check covering `FR -> DES -> TEST -> T`, document conflicts, blockers, and `[待确认]` items.
-7. When the change ships, sync current behavior back into `spec/workflow/*` and `spec/knowledge/*`, and sync stable rules, release summaries, or decisions into `spec/rules/`, `spec/releases/`, or `spec/adr/` where appropriate.
-8. Complete the converge check, then move completed or abandoned work to `spec/changes/archive/<YYYY>/<MM>/<YYYY-MM-DD>-<change-key>/` rather than leaving it active or deleting it.
-
-#### When To Update Existing Change vs Start New One
-
-- Update the existing change when the user problem and intended outcome stay the same, but execution details or scope boundaries evolve.
-- Start a new change when the objective materially changes, the original work can stand on its own, or the history would become confusing if kept in one folder.
-
-#### Implementation Discipline
-
-- Do not let requirements live only in chat history when the work is significant.
-- Do not confuse the new `spec/workflow/*` and `spec/knowledge/*` project-level entry points with replacements for active change records; they classify document intent, while `spec/changes/active/` remains the execution record for non-trivial work.
-- Do not edit `spec/workflow/*`, `spec/knowledge/*`, `spec/rules/`, `spec/releases/`, or `spec/adr/` as if they were scratchpads for active work; active deltas belong in `spec/changes/active/` first.
-- Do not treat `tasks.md` as optional for substantial changes; it is the execution contract.
-- Do not treat `implementation.md` as optional for substantial changes; it is the executed record of what really landed.
-- Do not close a change folder without updating its verification status and follow-up notes.
-- Repository-facing documentation should live under `docs/` unless it must remain at the repository root for tooling or platform conventions, such as `README.md`, `CHANGELOG.md`, or `AGENTS.md`. Internal SSD, specs, and architecture records belong in `spec/`.
-- PromptHub's `spec-init` rule surface is adapted under `spec/rules/`: bug-fix, clarification, coding standards, issue management, document routing, testing, doc sync, change management, definition of done, agent boundary, TDD/design gate, code quality, and submission traceability. Use these project rules instead of copying generic `docs/rules/*` templates into the repository.
-
-### 6.2 Engineering Flow
-
-1. **Specify / clarify:** Identify the owning app/package, source-of-truth docs, user outcome, constraints, and material decisions requiring confirmation.
-2. **Plan:** For non-trivial work, create or update a change folder in `spec/changes/active/` and define requirements, design, verification, and tasks.
-3. **Analyze:** Confirm the `FR -> DES -> TEST -> T` chain, active change, stable docs, and implementation boundary do not conflict.
-4. **Modify:** Put shared business logic in `packages/core`, storage primitives in `packages/db`, shared contracts in `packages/shared`, and app-specific UI/platform glue in the relevant `apps/*` package.
-5. **IPC/API:** If adding backend access, update shared constants/types, implement the handler/route, expose the bridge/client, and add validation tests.
-6. **Test:** Run the lowest effective test layer first, then the relevant harness (`pnpm verify:release:quick` or `pnpm verify:release`) when release risk exists.
-7. **Converge:** Update `implementation.md`, stable workflow/knowledge/rules, issues/releases/ADRs, and the change lifecycle to match what actually shipped.
-8. **Commit:** Follow `spec/rules/submission-traceability-rules.md`; a non-trivial Conventional Commit requires a traceable body and verification state.
+GitHub issue state is separate from local delivery: `github-open.md` and
+`github-closed.md` are remote snapshots; `local-github-status.md` is the local
+overlay. Local completion is `local_done` or `release_pending`. Close a remote
+issue only after its containing version is published, then refresh snapshots.
+See [issue-management-rules.md](spec/rules/issue-management-rules.md).
 
 ### 6.3 Data and Storage Change Gate
 
-Before changing persistence or storage, document the following in the active change:
+Before changing persistence or storage, document the following in the affected topic (necessary design may share that file):
 
 - current source of truth: SQLite table, filesystem directory, SKILL.md frontmatter, settings key, remote payload, or derived UI state
 - schema/layout delta: table/column/index/trigger, JSON shape, directory/file path, or sync contract
@@ -434,161 +316,10 @@ Rules for storage ownership:
 
 ## 7. Testing Standards
 
-### 7.1 Core Principles
-
-> Tests exist to **find bugs**, not to inflate coverage numbers. Every test must have a clear reason to exist — if a test can never fail, it is worthless. If a test only verifies the happy path with obvious inputs, it is insufficient.
-
-| Principle                             | Description                                                                                                                                                                                |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Real bugs, not rubber stamps**      | Every test must target a scenario that could realistically fail in production. Avoid trivially-passing tests that merely confirm a function returns the same hardcoded value it was given. |
-| **Test behavior, not implementation** | Assert on observable outcomes (return values, DB state, side effects), not internal private methods or call counts. Tests that break on harmless refactors are fragile.                    |
-| **Root cause verification**           | After fixing a bug, the regression test must reproduce the original failure condition — not merely call the fixed code path.                                                               |
-| **No fake implementations**           | Prohibited: `setTimeout` to simulate async, hardcoded mock return values that bypass real logic, `jest.fn().mockReturnValue(expectedResult)` that makes the test a tautology.              |
-| **No lazy assertions**                | Prohibited: `expect(result).toBeDefined()` when the actual value matters; `expect(fn).not.toThrow()` without checking the return value; `.toMatchSnapshot()` for dynamic data.             |
-
-### 7.2 Test Categories (All Required for New Modules)
-
-#### 7.2.1 Functional Tests
-
-| Aspect                  | Requirements                                                                                                                       |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| **Happy path**          | Cover the primary use case with realistic inputs.                                                                                  |
-| **Boundary conditions** | Empty string, null, undefined, zero, negative numbers, MAX_SAFE_INTEGER, empty arrays, single-element arrays.                      |
-| **Error paths**         | Invalid inputs must produce correct errors, not silent failures. Verify error messages/types, not just that an error was thrown.   |
-| **State transitions**   | For stateful modules (stores, DB, auth): test the full lifecycle (create → read → update → delete) and verify intermediate states. |
-
-#### 7.2.2 Adversarial / Fuzz Tests
-
-| Aspect                    | Requirements                                                                                                                                                                                                               |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **SQL injection**         | All user-facing string inputs (title, description, tags, search keywords) must be tested with SQL injection payloads: `'; DROP TABLE x; --`, `" OR 1=1 --`, `UNION SELECT`. Verify the table is intact after each attempt. |
-| **XSS-like content**      | Store and retrieve `<script>alert(1)</script>`, HTML entities, and JS event handlers in all text fields.                                                                                                                   |
-| **Unicode / CJK / Emoji** | Full round-trip (write → read) with CJK characters, emoji (including multi-codepoint like 🏳️‍🌈), RTL text (Arabic/Hebrew), zero-width characters.                                                                            |
-| **Null bytes**            | Test `\x00` in string fields because SQLite adapter behavior can cause silent data loss. Document the observed behavior in tests.                                                                                          |
-| **Extreme sizes**         | 10KB+ strings, 100+ element arrays, 1MB payloads for encryption. Verify no crashes and data integrity.                                                                                                                     |
-| **Special characters**    | Backslashes, quotes (single/double), newlines, tabs, CRLF, Unicode BOM, control characters (0x01–0x1F).                                                                                                                    |
-
-#### 7.2.3 Security Tests
-
-| Aspect                             | Requirements                                                                                                                                                   |
-| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Cryptographic tamper detection** | For encrypted data: test bit-flips in IV, auth tag, and ciphertext independently. Verify all produce rejection (null/error), not silent decryption to garbage. |
-| **Key/password boundaries**        | Empty password, 10KB password, unicode password, password with null bytes. Verify old password fails after reset.                                              |
-| **Timing safety**                  | Where `timingSafeEqual` is used, verify that wrong-length inputs don't crash (Node.js throws if buffers differ in length).                                     |
-| **Input validation**               | All IPC handlers must reject malformed inputs. Test with wrong types, missing required fields, extra unknown fields.                                           |
-| **Path traversal**                 | File path inputs must be tested with `../`, absolute paths, symlinks, and null bytes.                                                                          |
-
-#### 7.2.4 Performance / Stress Tests
-
-| Aspect                         | Requirements                                                                                                        |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
-| **Batch operations**           | 100+ creates followed by bulk delete. Verify count accuracy and no orphaned records.                                |
-| **Rapid sequential mutations** | 50+ updates to same record in tight loop. Verify final state is deterministic and no version/counter drift.         |
-| **Concurrent-like access**     | Multiple operations in same transaction/tick. Verify data consistency (especially for version numbers, sort_order). |
-| **State cycling**              | 10+ cycles of set→lock→unlock, create→delete, enable→disable. Verify no state leaks across cycles.                  |
-
-#### 7.2.5 Integration Tests (Database)
-
-| Aspect                    | Requirements                                                                                                                                                                                                                 |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Use real SQLite**       | Database tests MUST use `new DatabaseAdapter(":memory:")` with the real schema (`SCHEMA_TABLES` + `SCHEMA_INDEXES`), NOT mocks. Mocked databases cannot catch SQL syntax errors, constraint violations, or trigger behavior. |
-| **Foreign key behavior**  | Test CASCADE deletes, SET NULL behavior, and constraint violations explicitly.                                                                                                                                               |
-| **Transaction atomicity** | For operations wrapped in `db.transaction()`: verify that partial failures roll back completely.                                                                                                                             |
-| **FTS correctness**       | Full-text search tests must include special FTS5 operators (`AND`, `OR`, `NOT`, `NEAR`, `*`, `^`, `"phrase"`, `column:`) and verify they don't cause SQL errors.                                                             |
-
-### 7.3 Prohibited Anti-Patterns
-
-| Anti-Pattern                                      | Why It's Harmful                           | Correct Approach                                                       |
-| ------------------------------------------------- | ------------------------------------------ | ---------------------------------------------------------------------- |
-| `expect(result).toBeDefined()` alone              | Passes for any value including wrong ones  | Assert the specific expected value                                     |
-| `expect(fn).not.toThrow()` without value check    | Confirms no crash but not correctness      | Assert both no-throw AND correct return value                          |
-| Mock that returns the expected value              | Test becomes a tautology (always passes)   | Mock dependencies, assert on SUT behavior                              |
-| `as any` / `@ts-ignore` in test code              | Hides type errors that are real bugs       | Fix the types; if testing JS interop, use explicit casts with comments |
-| Testing private methods directly                  | Couples test to implementation             | Test through public API                                                |
-| `toMatchSnapshot()` for dynamic data              | Snapshot bloat, meaningless diffs          | Use specific assertions                                                |
-| Copy-paste test blocks with minor variations      | Hard to maintain, masks missing edge cases | Use `it.each()` or parameterized tests                                 |
-| `beforeEach` that creates unnecessary fixtures    | Slow tests, hidden dependencies            | Create fixtures in the specific test that needs them                   |
-| Catching errors just to assert `instanceof Error` | Doesn't verify the error message or cause  | Assert `error.message` contains specific text                          |
-
-### 7.4 Test File Organization
-
-```
-tests/
-├── unit/
-│   ├── main/               # Main process tests (DB, services, security)
-│   ├── components/          # React component tests (render, interaction)
-│   ├── services/            # Frontend service tests (AI clients, etc.)
-│   ├── stores/              # Zustand store tests
-│   ├── hooks/               # Hook tests
-│   └── cli/                 # CLI tests
-├── integration/             # Integration tests
-├── e2e/                     # Playwright end-to-end tests
-├── fixtures/                # Shared test fixtures
-├── helpers/                 # Shared test helpers
-└── setup.ts                 # Global test setup
-```
-
-**Naming convention:** `<module-name>.test.ts` — matches the source file it tests.
-
-**Structure within test files:**
-
-```typescript
-describe("ModuleName", () => {
-  describe("methodName", () => {
-    it("does X when given Y", () => { ... });         // Happy path
-    it("returns null for non-existent id", () => { ... }); // Error path
-  });
-  describe("adversarial inputs", () => {
-    // Fuzz / boundary / injection tests grouped together
-  });
-});
-```
-
-### 7.5 Running Tests
-
-| Command                                 | Purpose                        |
-| --------------------------------------- | ------------------------------ |
-| `pnpm test -- --run`                    | Full test suite (all files)    |
-| `pnpm test -- <path> --run`             | Single file                    |
-| `pnpm test -- --run --reporter=verbose` | Verbose output with test names |
-| `pnpm test -- --run --coverage`         | With coverage report           |
-
-**Rule:** After adding new tests, always run the full suite (`pnpm test -- --run`) to ensure no regressions. Every PR must have 0 test failures and 0 lint errors.
-
-### 7.6 Coverage Targets
-
-| Layer                                                                                                                              | Minimum                                                 | Priority                                |
-| ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | --------------------------------------- |
-| New/changed production code                                                                                                        | 100% lines, functions, branches, and conditions         | **Required** — no untested new behavior |
-| Critical boundary modules: database, filesystem persistence, sync, IPC/preload, installer/import/export, security, release harness | 100% branch and condition coverage for touched behavior | **Required** — data/user trust boundary |
-| `packages/db/src/`                                                                                                                 | 100% for changed files; legacy gaps must be recorded    | **Critical** — data integrity           |
-| `apps/desktop/src/main/security.ts`                                                                                                | 100% for changed files; legacy gaps must be recorded    | **Critical** — encryption correctness   |
-| `packages/core/src/` and app services                                                                                              | 100% for changed files; legacy gaps must be recorded    | High — business logic                   |
-| `apps/desktop/src/main/ipc/`                                                                                                       | 100% for changed handlers and validation branches       | High — input validation                 |
-| `apps/desktop/src/renderer/stores/`                                                                                                | 100% for changed actions and state branches             | High — state management                 |
-| `apps/desktop/src/renderer/services/`                                                                                              | 100% for changed services and error paths               | High — client correctness               |
-| `apps/desktop/src/renderer/components/`                                                                                            | 100% for changed user-visible states and interactions   | Medium — UI behavior                    |
-
-Coverage acceptance must include branch and condition review, not only line coverage. Any uncovered branch in touched code must be either tested or explicitly documented in the active change with a reason and a follow-up task.
-
-### 7.7 What Makes a Test "Good"
-
-A good test:
-
-1. **Fails when the code is broken** — If you comment out the implementation, the test must fail.
-2. **Passes when the code is correct** — No flaky behavior, no timing dependencies.
-3. **Documents the expected behavior** — The test name and assertions serve as living documentation.
-4. **Catches regressions** — A future developer changing the code incorrectly will be stopped by this test.
-5. **Is independent** — Can run in any order, doesn't depend on other tests' side effects.
-6. **Is fast** — Unit tests should complete in milliseconds, not seconds.
-
-A bad test:
-
-1. Always passes regardless of implementation.
-2. Tests implementation details that change on refactor.
-3. Has vague assertions (`toBeDefined`, `toBeTruthy`) when specific values are known.
-4. Requires network, filesystem, or timing to pass.
-5. Is a copy-paste of another test with one variable changed.
+[testing-standards.md](spec/rules/testing-standards.md) owns test design,
+coverage targets, fixtures, and UI evidence requirements.
+[Verification](spec/workflow/04-verification/README.md) lists executable checks
+and the release harness boundary. Quick checks do not prove release readiness.
 
 ## 8. Code Quality Rules
 
@@ -642,7 +373,7 @@ Additional database workflow:
 3. Update the relevant DB class in `packages/db/src/*.ts`.
 4. Update shared types in `packages/shared/types` if the field crosses app/package boundaries.
 5. Add real SQLite tests using `DatabaseAdapter(":memory:")` plus migration/compatibility tests when existing data is affected.
-6. Record migration, rollback, and verification in the active change `implementation.md`.
+6. Record migration, rollback, and verification in the affected topic or existing plan.
 
 ### 8.5 Security Rules
 
@@ -685,7 +416,7 @@ When adding a new IPC endpoint:
 4. **Expose in preload** via `apps/desktop/src/preload/` (`contextBridge.exposeInMainWorld`).
 5. **Call from renderer** via the typed `window.api` method.
 6. **Add tests** for the handler (valid inputs, invalid inputs, error paths).
-7. **Record contract impact** in the active change when the endpoint changes user-visible behavior or persistent data.
+7. **Record contract impact** in the affected topic or existing plan when the endpoint changes user-visible behavior or persistent data.
 
 ## 10. Skill System Conventions
 
@@ -761,7 +492,7 @@ Detailed submission, traceability, document ID, issue reference, and PR rules li
 | **No auto-commit**       | AI agents must never commit without explicit user instruction.                      |
 | **Atomic commits**       | Each commit should represent one logical change. Don't mix features with bug fixes. |
 | **Required body**        | Every non-trivial commit body must record its primary change/issue and actual verification status. |
-| **Traceable docs**       | Non-trivial commits must reference the active change and maintain `FR -> DES -> TEST -> T`. |
+| **Traceable docs**       | Non-trivial commits explain purpose and verification; link the existing topic, plan, or issue when present. |
 | **Issue references**     | Use `Refs #123` before release; use `Closes #123` only when the published release should close the issue. |
 | **All tests must pass**  | Relevant lint / typecheck / test / build commands must pass, or blockers must be recorded before committing. |
 

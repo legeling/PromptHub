@@ -1,27 +1,13 @@
-# Spec Delta: <Domain>
+# <主题>
 
-## Added Requirements
+## 已确认需求
 
-### `FR-<DOMAIN>-001`: <Observable requirement>
+写明目标、非目标、行为边界及验收，链接实际测试或人工步骤。需求变化直接替换旧要求，不追加相互矛盾的版本。
 
-PromptHub MUST <observable behavior>.
+## 实现状态
 
-#### Scenario: <Primary behavior>
+说明已实现、待实施及已知差距；不要把目标当作已交付。
 
-- **GIVEN** <starting state>
-- **WHEN** <user/system action>
-- **THEN** <observable result>
-- **AND** <boundary or failure behavior>.
+## 必要设计与验证
 
-## Modified Requirements
-
-- None unless the change intentionally updates existing behavior.
-
-## Removed Requirements
-
-- None unless the change intentionally removes behavior and records migration
-  or compatibility impact.
-
-## Verification
-
-- `TEST-<DOMAIN>-001`: <test layer, fixture, invariant, and expected result>.
+仅在风险需要时说明所有者、契约、兼容迁移、失败恢复及验收方式；已有协议或 schema 用链接。无需独立设计时删除本节。

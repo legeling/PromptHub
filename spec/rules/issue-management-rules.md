@@ -39,7 +39,7 @@
 
 ## 归档要求
 
-- 归档 active change 前必须更新 `implementation.md` 的结果、验证、跳过项和后续风险。
+- 完成计划前更新已有记录中的结果、验证、跳过项和后续风险。
 - 归档被替代文档时必须写明替代文档路径和废弃原因。
 - 不直接删除仍有历史解释价值的文档。
 - 不把 release-pending 的 issue 从本地记录里抹掉。
@@ -54,6 +54,5 @@
 ## 相关规则
 
 - `spec/rules/submission-traceability-rules.md`
-- `spec/rules/change-management-rules.md`
-- `spec/rules/doc-sync-rules.md`
+- `spec/rules/document-routing-rules.md`
 - `spec/releases/release-rules.md`

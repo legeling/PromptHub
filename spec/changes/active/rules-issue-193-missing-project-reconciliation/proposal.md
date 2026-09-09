@@ -64,5 +64,4 @@ version history remain the recovery path.
 - Stable behavior:
   `spec/knowledge/behavior/rules-workspace.md`
 - Governing rules:
-  `spec/rules/bug-fix-rules.md`,
-  `spec/rules/tdd-design-gate.md`
+  `spec/rules/testing-standards.md`

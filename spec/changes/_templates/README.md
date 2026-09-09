@@ -1,56 +1,8 @@
-# Change Templates
+# 可选文档模板
 
-This directory provides the default template set for new `spec/changes/active/<change-key>/` folders.
+先遵循 [文档规则](../../rules/document-routing-rules.md)，不要自动复制整个目录。
 
-## How This Aligns With OpenSpec
+- [主题说明](change/specs/domain/spec.md)：仅独立新主题使用，通常放入相应 knowledge 领域；已有主题原位更新。
+- [活动计划](change/tasks.md)：仅跨会话或多人协作需要，链接权威主题，记录动作、进度、阻塞及实际验证。
 
-PromptHub borrows OpenSpec's core artifact-guided workflow:
-
-- stable project docs live in `spec/workflow/*`, `spec/knowledge/*`, `spec/rules/`, `spec/releases/`, and `spec/adr/`
-- active changes live in `spec/changes/active/<change-key>/`
-- each change owns delta specs under `specs/<domain>/spec.md`
-- completed changes move to `spec/changes/archive/`
-
-PromptHub keeps a few project-specific additions:
-
-- `implementation.md` is required
-- `spec/knowledge/structure/` stores stable engineering guidance
-- `spec/issues/` stores ongoing risk and quality tracking
-- `spec/changes/legacy/` stores historical documents that are still useful but not current truth
-
-## Expected New Change Layout
-
-```text
-spec/changes/active/<change-key>/
-├── proposal.md
-├── design.md
-├── tasks.md
-├── implementation.md
-└── specs/
-    └── <domain>/  # start from _templates/change/specs/domain/spec.md
-        └── spec.md
-```
-
-## Template Usage
-
-Use the files under `change/` as the starting point for every non-trivial change.
-
-Recommended order:
-
-1. `proposal.md`
-2. `specs/<domain>/spec.md`
-3. `design.md`
-4. `tasks.md`
-5. `implementation.md`
-
-## Rules
-
-1. A non-trivial change is incomplete if it has no delta spec.
-2. Delta specs must live under `specs/<domain>/spec.md`, not as a flat top-level `spec.md` file.
-3. `implementation.md` should describe what actually landed, not just restate the original plan.
-4. When the change ships, sync durable truth into `spec/workflow/*`, `spec/knowledge/*`, `spec/rules/`, `spec/releases/`, or `spec/adr/` before archiving.
-5. New active change directories use semantic lowercase kebab-case and no serial number prefix.
-6. GitHub issue changes should include the issue number in the change key, preferably as `<surface>-issue-<number>-<slug>`.
-7. Requirement, design, verification, and task IDs belong inside the markdown files as `FR-###`, `DES-###`, `TEST-###`, and `T-###`, not in folder names.
-8. Before implementation, record Analyze results proving the artifacts do not conflict and no blocking `[待确认]` remains.
-9. Before completion, record Converge results, sync stable docs/records, and move the change to the dated archive path.
+设计、兼容、恢复和验收可作为主题中的必要章节，不强制 proposal、design、implementation 独立文件。模板中的提示应按实际风险裁剪，不能留下空章节或占位验收。

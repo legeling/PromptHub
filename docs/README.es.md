@@ -543,7 +543,7 @@ PromptHub/
 - Índice de docs públicas: [`docs/README.md`](./README.md)
 - SSD / specs internas: [`spec/README.md`](../spec/README.md)
 
-Para cambios no triviales, crea una carpeta de cambio en `spec/changes/active/<change-key>/` (`proposal.md` / `specs/<domain>/spec.md` / `design.md` / `tasks.md` / `implementation.md`). Tras el lanzamiento, sincroniza lo perdurable a `spec/workflow/*`, `spec/knowledge/*`, `spec/releases/` o `spec/adr/`, y actualiza `docs/` o el `README.md` raíz si cambian los contratos hacia el usuario.
+La documentación depende del riesgo: actualiza el tema existente y conserva un único plan opcional para el trabajo entre sesiones. Consulta las [reglas de documentación](../spec/rules/document-routing-rules.md); no se exige un conjunto de cinco archivos por cambio.
 
 <div id="meta"></div>
 

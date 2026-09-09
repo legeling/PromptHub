@@ -577,7 +577,7 @@ PromptHub/
 - Public doc index: [`docs/README.md`](./README.md)
 - Internal SSD / specs: [`spec/README.md`](../spec/README.md)
 
-For non-trivial changes, start a change folder under `spec/changes/active/<change-key>/` (with `proposal.md` / `specs/<domain>/spec.md` / `design.md` / `tasks.md` / `implementation.md`). Once it ships, sync the durable bits back to `spec/workflow/*`, `spec/knowledge/*`, `spec/releases/`, or `spec/adr/`, and update `docs/` or the root `README.md` if user-facing contracts changed.
+Documentation follows risk: update the existing authoritative topic in place and keep one optional plan for work across sessions. See the [documentation rules](../spec/rules/document-routing-rules.md); separate proposal, design, and delivery files are not required.
 
 <div id="meta"></div>
 

@@ -75,5 +75,4 @@ receipts after verifying targets, but rollback itself performs no deletion.
   `spec/knowledge/behavior/skills.md`,
   `spec/knowledge/reference/agent-platforms.md`
 - Governing rules:
-  `spec/rules/tdd-design-gate.md`,
   `spec/rules/testing-standards.md`

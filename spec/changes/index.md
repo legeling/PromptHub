@@ -8,6 +8,7 @@ file manually. Run the generator after adding, moving, or archiving a change.
 | State | Count |
 | --- | ---: |
 | Active | 35 |
+| Recorded complete (original path) | 0 |
 | Archived | 233 |
 | Legacy | 1 |
 
@@ -50,6 +51,16 @@ file manually. Run the generator after adding, moving, or archiving a change.
 | `update-channel-hardening` | active | `spec/changes/active/update-channel-hardening/` |
 | `web-agent-service-parity` | active | `spec/changes/active/web-agent-service-parity/` |
 | `web-sync-contract-completion` | active | `spec/changes/active/web-sync-contract-completion/` |
+
+## Recorded complete
+
+These records keep their original paths for compatibility and are not active
+work. Recorded status alone does not prove release or acceptance. Historical
+rules are superseded by [current documentation policy](../rules/document-routing-rules.md).
+
+| Change | Recorded status | Path |
+| --- | --- | --- |
+
 
 ## Archived
 

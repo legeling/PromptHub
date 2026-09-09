@@ -12,7 +12,7 @@ PromptHub 当前稳定架构事实主要保存在：
 
 新 ADR 使用 `ADR-YYYYMMDD-NNN-<slug>.md`，从
 `spec/adr/record-template.md` 开始，并按
-`spec/rules/document-archive-rules.md` 更新本索引。现有稳定架构文档不因
+`spec/rules/document-routing-rules.md` 更新本索引。现有稳定架构文档不因
 此规则被追溯重命名。
 
 ## ADR Index

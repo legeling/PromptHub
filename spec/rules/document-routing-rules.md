@@ -1,97 +1,55 @@
-# PromptHub Document Routing Rules
+# PromptHub 文档规则
 
-这个文件定义 PromptHub 在接入锁定的 `spec-init` 基线（`f83def1`）后的文档语义到目录路径映射规则。
+本文件是文档投入、需求真源、计划及历史维护的唯一规则源。2026-09-09 起采用更新后的 Spec Init 风险分级方式；旧的五文件 change、七份测试说明、强制编号和逐阶段登记要求不再生效。
 
-## 目标
+## 需要写多少
 
-- 让 agent 和贡献者知道“这份内容该写去哪”
-- 让 `spec-init.topology.yml`、`README.md`、`AGENTS.md` 和 `spec/` 目录结构保持一致
-- 避免把项目级 workflow / knowledge 文档和单次 change 工作区混在一起
+| 工作 | 最小文档投入 |
+| --- | --- |
+| 小修复、局部调整、普通重构 | 可以零文档；已有说明失真时原位更新 |
+| 普通功能 | 更新已有主题；独立新主题至多新建一份权威说明 |
+| 跨会话、多人或长期工作 | 按需保留一份计划，同一目标继续更新 |
+| 数据、权限、公共契约、迁移、不可逆操作 | 在相关主题补设计、兼容、失败恢复和验收；重大独立决策才另写 ADR |
 
-## 路由规则
+文档能指导安全实施和验收就停止扩写。不按改动文件数强制建 change，不强制 proposal/design/spec/tasks/implementation 五件套，不为一次需求铺满 workflow 目录或手工追踪矩阵。
 
-### Workflow
+## 一份主题，一份权威需求
 
-- 背景、用户、目标、非目标、约束：`spec/workflow/00-intake/README.md`
-- FR / NFR / AC、范围外：`spec/workflow/01-requirements/README.md`
-- 当前阶段 how、架构、模块、接口、数据、权衡：`spec/workflow/02-design/README.md`
-- 里程碑、依赖、阶段顺序：`spec/workflow/03-implementation/README.md`
-- 需求到测试映射、回归策略、验证方式：`spec/workflow/04-verification/README.md`
-- 当前可执行动作：`spec/workflow/05-tasks/README.md`
+先读 AGENTS、相关业务文档、匹配的活动计划和真实代码测试；只定位当前任务的边界。已有主题沿用原路径，入口指向它。新主题优先放在对应的 `spec/knowledge/` 领域；已有 `specs/<domain>/spec.md` 若仍是该主题权威则继续维护，无需搬迁。
 
-### Knowledge
+用户确认需求变化后，立即原位替换权威文档中的旧要求和验收，未实现处标注“待实施”及差距。提议不能冒充已确认决定，代码现状不能覆盖已确认需求。其他文档中的需求副本改为引用；设计只补实现方案、取舍和差距。
 
-- 长期稳定的术语、角色、实体、产品边界：`spec/knowledge/context/`
-- 长期稳定的模块边界、系统结构、集成关系：`spec/knowledge/structure/`
-- 长期稳定的关键流程、规则、状态流转：`spec/knowledge/behavior/`
-- 协议、schema、样例、fixtures、固定参考资料：`spec/knowledge/reference/`
+不把代码/文档不一致本身当作重新确认的理由；先核对最新授权。只有尚未解决、会实质影响范围、安全、数据或兼容性的选择才需澄清。保护既有用户数据、脏工作区、进程及 Git/GUI 授权边界。
 
-### Changes
+## 计划、验证和完成
 
-- 单次需求、bugfix、重构、流程变化：`spec/changes/active/<change-key>/`
-- 已完成 change 语义入口：`spec/changes/completed/`
-- PromptHub 当前真实归档目录：`spec/changes/archive/<YYYY>/<MM>/<YYYY-MM-DD>-<change-key>/`
-- 仅保留历史价值的旧变更资料：`spec/changes/legacy/`
+计划只记动作、进度、阻塞、实际验证及剩余工作，并链接权威需求。可沿用 `spec/changes/active/<change-key>/tasks.md`，新计划可用 `plan.md`；不同时维护同一目标的两份计划或另一套验收定义。
 
-### Records
+验收直接关联测试路径、命令或人工步骤。测试先行、覆盖、安全、失败恢复和发布门禁仍按 [测试规则](testing-standards.md)、[存储规则](storage-evolution-rules.md) 和 [发布规则](../releases/release-rules.md) 执行。缺编号、一般格式或无关历史索引不阻塞实施。
 
-- 未解决问题、风险、技术债：`spec/issues/`
-- 项目默认规则：`spec/rules/`
-- 版本级交付摘要：`spec/releases/`
-- 架构决策记录：`spec/adr/`
-- 项目级归档入口：`spec/archive/`
+完成标准是目标满足、必要验证完成或限制已说明、受影响约定准确。只同步本主题的权威说明、相关引用和状态。普通修改历史交给 Git；不为“无文档变化”创建记录。
 
-### Rules
+完成或被替代的计划移出活动入口。已有 change 可移至 `spec/changes/archive/<YYYY>/<MM>/<YYYY-MM-DD>-<change-key>/`；若移动会破坏外部引用，可保留原路径并标记状态，由索引移出活动列表。未完成设计、发布或真实环境验收不得伪装为完成。
 
-- bug 修复工作流、根因、回归要求：`spec/rules/bug-fix-rules.md`
-- 需求澄清、设计冲突、待确认记录：`spec/rules/clarification-rules.md`
-- 编码标准、错误处理、安全和结构要求入口：`spec/rules/coding-standards.md`
-- 文档语义到路径映射：`spec/rules/document-routing-rules.md`
-- issue、技术债、本地交付状态和归档：`spec/rules/issue-management-rules.md`
-- 测试方法、覆盖、UI 操作验证和回归矩阵：`spec/rules/testing-standards.md`
-- 文档同步要求：`spec/rules/doc-sync-rules.md`
-- active change、发布和变更记录：`spec/rules/change-management-rules.md`
-- 完成定义：`spec/rules/definition-of-done.md`
-- agent 边界保护：`spec/rules/agent-boundary-guardrails.md`
-- TDD 和设计门禁：`spec/rules/tdd-design-gate.md`
-- 代码质量和架构边界：`spec/rules/code-quality-architecture.md`
-- 持久化所有权、布局、迁移、备份和云存储演进：`spec/rules/storage-evolution-rules.md`
-- 提交、编号、PR 和发布引用：`spec/rules/submission-traceability-rules.md`
-- 记录 ID、索引、生命周期目录和年月归档：`spec/rules/document-archive-rules.md`
+## 路径与兼容
 
-## PromptHub 当前稳定真相源
+- `spec/README.md`：任务入口，指向各主题，不复制需求。
+- `spec/knowledge/{context,structure,behavior,reference}/`：按领域维护需求、设计、协议及必要参考。
+- `spec/workflow/`：保留现有项目级入口，不要求每个需求更新六个阶段。
+- `spec/changes/active/`：按需使用的活动计划及尚未合并的既有主题。
+- `spec/issues/`、`spec/releases/`、`spec/adr/`：真实问题、发布和重大决策，已有记录优先复用。
+- `spec/changes/archive/`、`spec/changes/legacy/`、`spec/archive/`：历史证据，不能作为现行执行要求；由入口指向现行规则，无需批量重写历史。
+- `docs/` 和根 README：用户及贡献者文档；Skill 模板不承载本仓库约束。
+- `spec-init.topology.yml`：现有路径路由，不是必须创建的目录清单。
 
-PromptHub 已经完成第一轮稳定文档迁移，当前长期真相源直接落在以下目录：
+保留已被引用的 ID，不重新编号；新工作不默认要求 FR/DES/TEST/T。显式启用 `<!-- traceability: enforced -->` 的既有 change 继续检查自身关系。已有 issue/ADR 编号和历史名称保持兼容，不为普通主题新增全局流水号。
 
-- `spec/workflow/*`：项目级背景、需求、设计、实施、验证与任务入口
-- `spec/knowledge/context/`：长期稳定的角色、术语、产品边界
-- `spec/knowledge/structure/`：长期稳定的结构、架构、模块边界
-- `spec/knowledge/behavior/`：长期稳定的行为、规则、流程、状态流转
-- `spec/knowledge/reference/`：平台矩阵、协议、schema、固定参考资料
-- `spec/releases/`：发布规则与版本级交付摘要
+整理时只合并已确认重复的内容，保留独有约定与验证证据。移动或删除当前文档要修正其现行引用；历史入口明确旧路径失效。提交授权、原子提交、实际验证和 issue 发布后关闭规则见 [提交规则](submission-traceability-rules.md)。
 
-## 当前规则
+## 迁移验证（2026-09-09）
 
-- 新增项目级文档统一写入 `spec/workflow/*`
-- 根目录下不再保留重复的 `00-intake` ~ `05-tasks` 目录
-- 根目录下不再保留 `spec/domains/`、`spec/architecture/`、`spec/logic/`、`spec/assets/` 旧稳定层
-- 从 `spec-init` 同步规则时必须改写通用 `docs/*` 路由，不能在 PromptHub 内新增平行内部 `docs/workflow/*`、`docs/issues/*` 或 `docs/rules/*` 真相源
+已合并 8 份重复流程规则、7 份测试分册并移除 3 份强制模板；业务主题、未完成工作及历史证据保持原路径。根级 `spec:test` 改用仓库自有测试，不依赖已移除的 Skill 测试脚本。
 
-## 目录命名与编号规则
+验证：5 项 Node 回归通过，覆盖单计划、旧记录回退、无状态、完成项退出活动列表、空清单、归档、索引过期和可选追踪；工作区 16 个显式启用的既有 change 校验通过；仅包含本次提交的隔离快照中，5 项回归、索引一致性和 15 个已提交 change 校验通过。脚本覆盖率为 97.78% 行、91.67% 分支、94.44% 函数；未覆盖行位于未修改的 CLI 参数错误处理（21–22、27–28），既有索引边界未宣称全覆盖。相关格式、引用和 `git diff --check` 通过。
 
-- 只有有固定执行顺序的 workflow 阶段目录使用两位数字前缀：`00-intake`、`01-requirements`、`02-design`、`03-implementation`、`04-verification`、`05-tasks`。
-- `spec/knowledge/*`、`spec/rules/*`、`spec/issues/*`、`spec/releases/*`、`spec/adr/*`、`spec/archive/*` 使用语义化小写 kebab-case 名称；不要为了排序给这些目录新增数字前缀。
-- `spec/changes/active/<change-key>/` 使用语义化小写 kebab-case 变更 key，不使用流水号前缀。
-- 关联 GitHub issue 的 change key 优先使用 `<surface>-issue-<number>-<slug>`，例如 `desktop-issue-161-skill-store-batch`；只有无法确定 surface 时才使用 `issue-<number>-<slug>`。
-- 已完成或放弃的 change 归档到 `spec/changes/archive/<YYYY>/<MM>/<YYYY-MM-DD>-<change-key>/`，日期前缀只用于归档时间，不用于 active 排序；`archive/` 根目录不平铺 date-prefixed change folder。
-- 需求、设计、验证、任务编号写在文件内容里：`FR-###`、`DES-###`、`TEST-###`、`T-###`；不要把这些编号编码进文件夹名。
-- 重命名已有 active change 目录必须作为单独整理任务处理，并同步更新所有仓库引用，不能在无引用检查的情况下批量改路径。
-- 新建 standalone issue / bug / change request / ADR 使用 `ISS-YYYYMMDD-NNN`、`BUG-YYYYMMDD-NNN`、`CR-YYYYMMDD-NNN`、`ADR-YYYYMMDD-NNN`；已有 change key、GitHub snapshot 和历史归档不追溯重命名。
-
-## 同步要求
-
-- 目录结构变化时，必须同步更新 `spec-init.topology.yml`
-- 目录结构变化时，必须同步更新 `README.md`
-- 目录结构变化时，必须同步更新 `AGENTS.md`
-- 文档边界变化时，必须同步更新本文件
-- 规则分类变化时，必须同步更新 `spec/rules/README.md`、本文件和相关 active change
+本次仅修改文档流程和配套索引工具，未运行应用全量测试、GUI 或发布构建；不改变现有业务验收结论。回退时只还原本次流程与脚本差异，保留工作区其他改动，不回滚用户已更新的 Skill。

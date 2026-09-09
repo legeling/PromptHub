@@ -1,78 +1,88 @@
-# PromptHub Workflow Verification
+# PromptHub 验证入口
 
-`spec/workflow/04-verification/README.md` 是 PromptHub 当前项目级 verification 主入口，对齐锁定的 `spec-init` 基线（`f83def1`）中的 workflow/verification 边界，回答“怎么证明做对了”。
+测试设计与验收约束只在 [测试标准](../../rules/testing-standards.md) 维护。本文保存命令、fixture 和发布 harness 的项目接入方式；一次任务的执行结果放在已有计划或交付说明中，不另建七份测试文档或强制手工覆盖矩阵。
 
-## 当前验证原则
+Skill 领域继续使用 [缺陷分类](../../knowledge/reference/skill-defect-taxonomy.md) 和 [回归矩阵](../../knowledge/reference/skill-regression-test-matrix.md)。E2E 操作说明见 [Playwright 测试协作](../../../docs/testing-playwright-agents.md)；执行仍遵守用户的 GUI 与委派授权。
 
-- 高优先级需求必须有自动化验证
-- bug fix 必须补回归测试
-- 测试应验证行为，而不是堆覆盖率数字
-- 需求、设计、验证、任务之间应尽量形成追踪链
-- 非平凡变更必须证明功能能被真实用户直接使用，而不是只证明代码能编译
-- UI 可见变更必须实际操作被影响的界面、控件和状态
-- 新 UI 或工作流逻辑必须先检查并复用现有组件、样式、store、service 或契约
-- 非平凡变更必须记录单元/白盒、静态扫描、防护/回滚和性能风险的适用性
+## Standard Commands
 
-## 当前验证真相源
+| Scope          | Command                                           | Use                                      |
+| -------------- | ------------------------------------------------- | ---------------------------------------- |
+| Focused        | `pnpm --filter <package> exec vitest run <files>` | first feedback for the changed invariant |
+| Desktop unit   | `pnpm --filter @prompthub/desktop test:unit`      | renderer/main/service regression         |
+| Desktop E2E    | `pnpm test:e2e`                                   | critical Electron workflows              |
+| Root quick     | `pnpm verify:release:quick`                       | local multi-package diagnosis            |
+| Root changed   | `pnpm verify:changed`                             | affected-surface local/PR diagnosis      |
+| Root release   | `pnpm verify:release`                             | release approval                         |
+| Harness unit   | `pnpm test:verification-harness`                  | registry/executor/report regression      |
+| Lint/typecheck | package-specific or root scripts                  | static contract and quality gates        |
 
-- `AGENTS.md` 中的测试标准
-- `spec/rules/testing-standards.md`
-- `spec/workflow/04-verification/01-test-strategy-and-quality-gates.md`
-- `spec/workflow/04-verification/02-test-standards.md`
-- `spec/workflow/04-verification/03-test-design-methodology.md`
-- `spec/workflow/04-verification/04-test-case-matrix.md`
-- `spec/workflow/04-verification/05-regression-suite.md`
-- `spec/workflow/04-verification/06-test-data-and-fixtures.md`
-- `spec/workflow/04-verification/07-coverage-map.md`
-- 各 active change 的 `tasks.md` / `implementation.md`
-- 已存在的单元、集成与 E2E 测试文件
+## Trigger Rules
 
-## 当前推荐做法
+- Run focused tests before broader suites.
+- Run affected package lint/typecheck for production-code changes.
+- Run integration/E2E only when the risk crosses the corresponding boundary.
+- Run the full release harness for release candidates and release-risk changes.
+- Use `--surface`, `--exclude-layer`, and `--list --format json` for bounded CI
+  selection; do not replace the registry with handwritten workflow commands.
+- `--report <path>` is opt-in, writes a bounded redacted JSON report, and treats
+  an unwritable explicit report path as a command failure.
+- A failed aggregate run followed by passing focused tests is not silently
+  converted to success; record both the failure and confirmation run.
 
-- 项目级长期验证策略逐步沉淀到这里
-- 单次变更的验证计划继续写在对应 change 中
-- 单次变更的 `implementation.md` 应记录实际执行的验收矩阵，而不是只写“已测试”
 
-## 验收基线
+## 风险用例选择
 
-非平凡变更在标记完成前，至少满足以下基线：
+## Selection Methods
 
-| Gate      | 必须证明什么                                                                                |
-| --------- | ------------------------------------------------------------------------------------------- |
-| 功能可用  | 主流程端到端可运行，结果符合预期，没有明显阻断性 bug                                        |
-| UI 实操   | 已在运行中的桌面端、Web 页面、浏览器自动化或等价页面中操作触达控件                          |
-| 状态完整  | loading、empty、error、conflict、delete、update、sync、install 等相关状态已验证或说明不适用 |
-| 复用审计  | 已检查现有 UI 组件、布局模式、store、service、IPC/API 或 shared helper，新增实现有理由      |
-| 单元/白盒 | 新增或修改的判断、guard、fallback、错误路径、派生状态有最低有效层测试                       |
-| 静态扫描  | 按风险运行针对性扫描或审计，并记录命令、范围和结果                                          |
-| 防护路径  | 删除、写入、同步、安装、迁移、网络、权限等风险路径有失败/回滚/恢复验证                      |
-| 性能压力  | 长列表、批量操作、图谱、同步 payload、文件 inventory 等场景有压力验证或明确不适用           |
+Use the smallest combination that can expose the real risk:
 
-## UI 实操验证
+- Equivalence classes for valid/invalid input families.
+- Boundary values for empty, zero, one, maximum, oversized, and malformed
+  inputs.
+- State transitions for install/update/delete/sync/conflict/recovery flows.
+- Decision tables for multi-guard policies and platform/source matrices.
+- Property or fuzz tests for parsers, paths, identities, and serialized data.
+- Fault injection at every external write/read boundary.
+- Contract tests across shared types, IPC/preload, routes, CLI, and adapters.
+- Concurrency-like repeated actions for deduplication and stale-result guards.
+- Security cases for traversal, symlink escape, injection, SSRF-like sources,
+  secret handling, and tampering.
 
-UI 可见变更不能只通过截图或代码审阅验收。验证记录必须写清：
 
-- 操作入口：用户从哪个页面、按钮、菜单、快捷行为进入。
-- 操作步骤：实际点击、输入、拖拽、筛选、排序、安装、删除、更新或同步的步骤。
-- 期望结果：用户应该看到或得到什么。
-- 观察结果：实际是否一致，有无布局重叠、控件无响应、状态错误、文案截断或数据不同步。
-- 证据：能用 Playwright、in-app browser、桌面自动化或截图时，应附命令或截图路径；无法自动化时记录阻塞原因。
+## Current Sources
 
-### Playwright Test Agents 优先级
+- Shared desktop fixture builders: `apps/desktop/tests/fixtures/`.
+- Test-local temporary SQLite databases and filesystem workspaces.
+- Repository-local Git fixtures created in temporary directories for clone,
+  package, and branch behavior.
+- Component fixtures and service mocks colocated with their owning tests when
+  they model only one surface.
 
-- 桌面端用户可见多步骤流程、跨进程行为、持久化/重启、安装/删除、同步/恢复和真实 UI 回归，优先使用仓库级 Playwright Test Agents 辅助形成计划并生成 E2E。
-- 纯逻辑、解析、数据库 primitive 和分支错误路径先使用最低有效层 unit/integration；E2E 负责证明完整用户流程，不能代替这些测试。
-- Planner 产物进入匹配 active change，Generator 只写桌面 E2E，Healer 只修已证明的测试漂移。产品缺陷不得通过放宽断言或跳过测试解决。
-- Agent 产物必须经过审核并由普通 `playwright test` 独立通过，之后才能进入 release harness 证据链。
-- 具体提示词、Seed 和命令见 `docs/testing-playwright-agents.md`。
+## Fixture Rules
 
-## 复用与一致性验证
+- Use synthetic, deterministic, non-secret data.
+- Never use a developer's real home directory, credentials, tokens, or private
+  deployment URLs.
+- Filesystem fixtures cover Unicode, special characters, nested paths, hidden
+  files, symlinks, duplicate identities, empty packages, and large inventories
+  when relevant.
+- Network fixtures preserve protocol and error semantics instead of returning
+  the expected answer directly.
+- Persistence fixtures prove reopen/rescan/reload behavior and clean up their
+  temporary resources.
+- Normal-path SQLite suites may copy a closed, current-schema template into an
+  isolated temporary directory. Migration, lock, corruption, recovery, and
+  concurrent-open tests must create their own precondition and bypass the
+  template.
+- Template lifetime is bounded to the suite/worker setup; teardown closes the
+  database before removing the template directory.
+- Security fixtures remain inert and must never execute imported package code.
 
-涉及 Skill、Plugin、MCP、Agent、Prompt、设置、商店、分发和同步的 UI 变更，应先确认已有同类界面是否能复用。
+## Promotion Rule
 
-- My Skill、My Plugin、My MCP 与 Agent 内对应列表应优先共享卡片、状态徽标、删除确认、更新提示和分发/安装操作模式。
-- 设置类网络配置、镜像源、代理等应优先共享同一配置模型和表单模式。
-- 如果确实需要新增组件或变体，必须记录不能复用的原因和后续是否需要抽象。
+Promote repeated domain fixtures into an owning shared fixture module. Do not
+create a generic fixture bucket for unrelated domains.
 
 ## 当前稳定补充
 
@@ -83,7 +93,7 @@ UI 可见变更不能只通过截图或代码审阅验收。验证记录必须�
   全仓快速诊断、发布候选准入和单平台非发布打包。默认并发上限为 2，
   每个 check 必须有超时；失败依赖会阻塞下游，但不会取消独立 check。
 - Pull Request 的 `Quality Checks` 必须始终执行 spec 治理、CI 配置契约、
-  traceability 和文件大小门禁；`scripts/detect-ci-surfaces.mjs` 只作为
+ 显式启用的 traceability 和文件大小门禁；`scripts/detect-ci-surfaces.mjs` 只作为
   `scripts/verification/surface-graph.mjs` 的兼容输出层。
 - Self-Hosted Web workflow 负责 `apps/web` 与 Docker；独立的 Cloudflare
   Worker workflow 通过同一 registry 验证 `apps/web-cloudflare`，Worker-only

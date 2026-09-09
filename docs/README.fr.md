@@ -543,7 +543,7 @@ PromptHub/
 - Index docs publiques : [`docs/README.md`](./README.md)
 - SSD interne / specs : [`spec/README.md`](../spec/README.md)
 
-Pour des changements non triviaux, créez un dossier de change dans `spec/changes/active/<change-key>/` (`proposal.md` / `specs/<domain>/spec.md` / `design.md` / `tasks.md` / `implementation.md`). Une fois livré, synchronisez les éléments durables vers `spec/workflow/*`, `spec/knowledge/*`, `spec/releases/` ou `spec/adr/`, et mettez à jour `docs/` ou `README.md` à la racine si les contrats utilisateur ont changé.
+Le volume de documentation dépend du risque : mettez à jour le sujet existant et gardez, si nécessaire, un seul plan pour le travail sur plusieurs sessions. Consultez les [règles de documentation](../spec/rules/document-routing-rules.md) ; cinq fichiers par changement ne sont plus obligatoires.
 
 <div id="meta"></div>
 

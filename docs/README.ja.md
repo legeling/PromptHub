@@ -543,7 +543,7 @@ PromptHub/
 - 公開ドキュメントインデックス：[`docs/README.md`](./README.md)
 - 内部 SSD / spec：[`spec/README.md`](../spec/README.md)
 
-非自明な変更は、まず `spec/changes/active/<change-key>/` 配下に変更フォルダを作成（`proposal.md` / `specs/<domain>/spec.md` / `design.md` / `tasks.md` / `implementation.md`）、リリース後に永続的な内容を `spec/workflow/*`、`spec/knowledge/*`、`spec/releases/`、`spec/adr/` に同期し、必要に応じて `docs/` や `README.md` も更新してください。
+文書の量はリスクに応じて決めます。既存の主題をその場で更新し、複数セッションにまたがる作業では必要に応じて計画を1つ残します。[文書ルール](../spec/rules/document-routing-rules.md)に従い、5つの変更文書を一律に作成する必要はありません。
 
 <div id="meta"></div>
 

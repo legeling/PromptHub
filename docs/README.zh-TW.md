@@ -545,7 +545,7 @@ PromptHub/
 - 對外文件索引：[`docs/README.md`](./README.md)
 - 內部 SSD / spec：[`spec/README.md`](../spec/README.md)
 
-非平凡改動建議先在 `spec/changes/active/<change-key>/` 下建立一個 change 資料夾（`proposal.md` / `specs/<domain>/spec.md` / `design.md` / `tasks.md` / `implementation.md`），完成後把穩定事實回填到 `spec/workflow/*`、`spec/knowledge/*`、`spec/releases/` 或 `spec/adr/`，並在需要時更新 `docs/`、`README.md`。
+文件投入依風險決定：原位更新既有主題，跨會話工作按需保留一份計畫。請遵循 [文件規則](../spec/rules/document-routing-rules.md)，不再強制建立五份 change 文件。
 
 <div id="meta"></div>
 

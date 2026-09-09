@@ -64,5 +64,4 @@ written remotely, so parser failure must remain side-effect free.
   `spec/knowledge/behavior/skills.md`,
   `spec/knowledge/behavior/sync.md`
 - Governing rules:
-  `spec/rules/bug-fix-rules.md`,
-  `spec/rules/tdd-design-gate.md`
+  `spec/rules/testing-standards.md`

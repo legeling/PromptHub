@@ -1,6 +1,6 @@
 # Completed Changes
 
-兼容入口，对齐锁定的 `spec-init` 基线（`f83def1`）中的 `changes.completed` 语义。
+既有完成记录的兼容入口；现行生命周期见 `spec/rules/document-routing-rules.md`。
 
 PromptHub 当前已完成 change 的真实归档目录仍然是：
 

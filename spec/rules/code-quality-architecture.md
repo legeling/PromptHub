@@ -51,7 +51,7 @@ Existing PromptHub components, stores, services, adapters, and shared helpers ar
 - Skill, Plugin, MCP, Agent, Store, Prompt, Settings, and Sync surfaces should share card structure, status badges, destructive confirmations, update indicators, install/distribution actions, and layout primitives where the product behavior is intentionally consistent.
 - Business rules such as update detection, source comparison, filesystem filtering, sort comparators, proxy/mirror routing, and sync inclusion must live in reusable helpers or services when more than one surface needs them.
 - Renderer components may compose and display state, but they must not become the only owner of durable rules, cross-surface policy, or storage semantics.
-- If a new component or helper is added instead of reusing an existing one, the active change must record the reason and any follow-up extraction plan.
+- If a new component or helper is added instead of reusing an existing one, the affected topic or existing plan must record the reason and any follow-up extraction plan.
 
 ## State and Data Rules
 
@@ -86,7 +86,7 @@ Coverage is required, but coverage is not sufficient. For non-trivial changes, c
 - integration/contract tests
 - failure and rollback tests
 
-The active change must record which methods were used and why any relevant method was omitted.
+The verification evidence must record which methods were used and why any relevant method was omitted.
 
 ## Review Checklist
 
@@ -101,4 +101,4 @@ Before marking work done:
 - Tests prove behavior with the correct methods, not only mock calls.
 - UI-visible work has been operated in the running product surface or an equivalent automated browser/app surface.
 - Targeted static scans or white-box audits were recorded for duplicate UI, unsafe side effects, direct network paths, hardcoded paths, truncation, ignored errors, and other relevant risk patterns.
-- Active change docs record design decisions, coverage gaps, and follow-up debt.
+- The affected topic or existing plan records design decisions, coverage gaps, and follow-up debt.

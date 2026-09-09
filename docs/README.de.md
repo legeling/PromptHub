@@ -543,7 +543,7 @@ PromptHub/
 - Docs-Index: [`docs/README.md`](./README.md)
 - Interne SSD / Specs: [`spec/README.md`](../spec/README.md)
 
-Für nicht-triviale Änderungen ein Change-Verzeichnis unter `spec/changes/active/<change-key>/` anlegen (`proposal.md` / `specs/<domain>/spec.md` / `design.md` / `tasks.md` / `implementation.md`). Nach dem Release haltbare Inhalte nach `spec/workflow/*`, `spec/knowledge/*`, `spec/releases/` oder `spec/adr/` zurückspielen und bei Bedarf `docs/` oder die Root-`README.md` aktualisieren.
+Der Dokumentationsumfang richtet sich nach dem Risiko: Bestehende Themen werden direkt aktualisiert; bei Bedarf genügt ein zusätzlicher Arbeitsplan. Es gelten die [Dokumentationsregeln](../spec/rules/document-routing-rules.md), ohne verpflichtenden Satz aus fünf Change-Dateien.
 
 <div id="meta"></div>
 

@@ -65,5 +65,4 @@ readable.
   `spec/knowledge/behavior/plugins.md`,
   `spec/knowledge/reference/plugin-agent-adapter-matrix.md`
 - Governing rules:
-  `spec/rules/bug-fix-rules.md`,
-  `spec/rules/tdd-design-gate.md`
+  `spec/rules/testing-standards.md`

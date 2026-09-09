@@ -1,10 +1,15 @@
-# Tasks
+# <主题>实施计划
 
-- [ ] `T-<DOMAIN>-001` 明确 `FR / DES / TEST / T` 变更边界
-- [ ] `T-<DOMAIN>-002` 完成 `specs/<domain>/spec.md` delta spec
-- [ ] `T-<DOMAIN>-003` 完成 Analyze：无冲突、孤立 ID、阻塞性 `[待确认]`
-- [ ] `T-<DOMAIN>-004` 先补失败测试，再实施代码或文档变更
-- [ ] `T-<DOMAIN>-005` 完成验证并记录实际命令、失败和跳过项
-- [ ] `T-<DOMAIN>-006` 更新 `implementation.md` 和稳定 workflow/knowledge/rules
-- [ ] `T-<DOMAIN>-007` 完成 Converge 并更新 issues/releases/ADRs/索引
-- [ ] `T-<DOMAIN>-008` 将已完成 change 移出 `active/` 并更新引用路径
+权威需求：<已有主题路径>。本文件只维护执行状态，不复制需求与验收。
+
+## Status
+
+active
+
+## 待办与阻塞
+
+- [ ] <动作及其实际验证方式>
+
+## 执行记录
+
+<实际修改、命令及结果、未验证边界；已失效待办及时撤下>

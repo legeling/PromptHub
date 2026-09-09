@@ -48,10 +48,15 @@ function toRepoPath(absolutePath) {
 }
 
 function readActiveStatus(changePath) {
-  const implementationPath = path.join(changePath, "implementation.md");
-  if (!fs.existsSync(implementationPath)) return "missing implementation";
-  const content = fs.readFileSync(implementationPath, "utf8");
-  const statusLine = content.match(/^## Status\s*\n+\s*([^\n]+)/im)?.[1];
+  let statusLine;
+  for (const name of ["plan.md", "tasks.md", "implementation.md"]) {
+    const file = path.join(changePath, name);
+    if (!fs.existsSync(file)) continue;
+    statusLine = fs
+      .readFileSync(file, "utf8")
+      .match(/^## Status\s*\n+\s*([^\n]+)/im)?.[1];
+    if (statusLine) break;
+  }
   if (!statusLine) return "active";
   if (
     /\b(?:not|never)\s+(?:implemented|completed|shipped)\b/i.test(statusLine) ||
@@ -60,7 +65,7 @@ function readActiveStatus(changePath) {
     return "active";
   }
   const knownStatus = statusLine.match(
-    /\b(needs-convergence|review-pending|release-pending|in progress|implemented|completed|shipped|active)\b/i,
+    /\b(blocked|superseded|needs-convergence|review-pending|release-pending|in progress|implemented|completed|shipped|active)\b/i,
   );
   return knownStatus?.[1].toLowerCase() || "active";
 }
@@ -110,7 +115,10 @@ function renderRows(records, status) {
 }
 
 function renderIndex() {
-  const active = collectActiveChanges();
+  const inventory = collectActiveChanges();
+  const terminal = new Set(["completed", "shipped", "superseded"]);
+  const active = inventory.filter((record) => !terminal.has(record.status));
+  const complete = inventory.filter((record) => terminal.has(record.status));
   const archived = collectArchivedChanges();
   const legacy = collectLegacyChanges();
   return `# PromptHub Change Inventory
@@ -123,6 +131,7 @@ file manually. Run the generator after adding, moving, or archiving a change.
 | State | Count |
 | --- | ---: |
 | Active | ${active.length} |
+| Recorded complete (original path) | ${complete.length} |
 | Archived | ${archived.length} |
 | Legacy | ${legacy.length} |
 
@@ -131,6 +140,16 @@ file manually. Run the generator after adding, moving, or archiving a change.
 | Change | Recorded status | Path |
 | --- | --- | --- |
 ${renderRows(active, "active")}
+
+## Recorded complete
+
+These records keep their original paths for compatibility and are not active
+work. Recorded status alone does not prove release or acceptance. Historical
+rules are superseded by [current documentation policy](../rules/document-routing-rules.md).
+
+| Change | Recorded status | Path |
+| --- | --- | --- |
+${renderRows(complete, "completed")}
 
 ## Archived
 

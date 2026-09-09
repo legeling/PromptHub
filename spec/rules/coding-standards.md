@@ -1,6 +1,6 @@
 # PromptHub Coding Standards
 
-本规则是 PromptHub 编码标准的项目入口。详细架构、测试和提交要求分别由 `code-quality-architecture.md`、`testing-standards.md`、`tdd-design-gate.md` 和 `submission-traceability-rules.md` 承担。
+本规则是 PromptHub 编码标准的项目入口。详细架构、测试和提交要求分别由 `code-quality-architecture.md`、`testing-standards.md` 和 `submission-traceability-rules.md` 承担。
 
 ## 基本原则
 
@@ -20,9 +20,9 @@
 
 ## 变更要求
 
-- 非 trivial 变更必须能回链到 active change 的 `FR / DES / TEST / T`。
-- 接口、数据结构、配置、IPC/API、filesystem layout 或 sync payload 变化必须同步设计文档和稳定知识文档。
-- 关键技术取舍进入 `spec/changes/active/<change-key>/design.md`；长期有效时同步到 `spec/adr/` 或 `spec/knowledge/structure/`。
+- 变更必须有可验证目标；文档投入与关联按 `spec/rules/document-routing-rules.md`，不额外要求编号。
+- 接口、数据结构、配置、IPC/API、filesystem layout 或 sync payload 变化必须更新所属主题及受影响引用。
+- 关键技术取舍记录在所属主题；只有独立重大决策才另建 ADR，其他文档引用该决定。
 - 修改 UI 时优先复用现有组件、状态模式、i18n key、Tailwind token 和 Lucide 图标。
 - 新增用户可见字符串必须使用 i18n，不能硬编码单语言 UI。
 
@@ -51,7 +51,6 @@
 ## 相关规则
 
 - `spec/rules/code-quality-architecture.md`
-- `spec/rules/tdd-design-gate.md`
 - `spec/rules/testing-standards.md`
-- `spec/rules/definition-of-done.md`
+- `spec/rules/document-routing-rules.md`
 - `spec/rules/submission-traceability-rules.md`

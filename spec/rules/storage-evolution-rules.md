@@ -23,7 +23,7 @@ sync protocol, recovery behavior, or cloud object lifecycle.
 
 ## Adding A Feature Or Asset Domain
 
-Before a new durable domain writes production data, its active change must
+Before a new durable domain writes production data, its authoritative topic must
 define:
 
 1. stable resource identity and ownership;
@@ -120,8 +120,4 @@ Corrections receive a new ordered identifier and checksum.
 
 ## Documentation Gate
 
-- Target topology and unshipped migrations stay in an active change and ADR.
-- Stable knowledge describes actual verified behavior only after convergence.
-- Any persistent path, schema, authority, backup, sync, or retention change must
-  update its active requirements, design, verification mapping, tasks,
-  implementation record, and upgrade/rollback documentation before release.
+Follow [document-routing-rules.md](document-routing-rules.md) for scope and ownership. Record target topology, unshipped migration status, compatibility, verification, and upgrade/rollback instructions in the affected topic before release. A separate ADR is needed only for a material independent decision. Confirmed requirements update immediately; clearly distinguish verified behavior from pending implementation.

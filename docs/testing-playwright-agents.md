@@ -43,7 +43,7 @@ apps/desktop/tests/e2e/playwright-agent-seed.spec.ts
 
 ## 1. 使用 Planner
 
-先建立或确认匹配的 active change，再在 Codex 对话中明确点名 Agent、授权测试窗口操作并指定计划路径：
+先定位权威主题和可复用的测试计划，再在 Codex 对话中明确点名 Agent、授权测试窗口操作并指定计划路径：
 
 ```text
 请显式使用 playwright_test_planner 子 Agent。
@@ -87,7 +87,7 @@ pnpm --dir apps/desktop exec playwright test tests/e2e/close-choice-persistence.
 pnpm test:e2e
 ```
 
-测试结果、实际操作步骤和残留风险应记录到对应 active change 的 `implementation.md`。Agent 报告“计划已保存”或“测试已生成”不代表测试通过。
+测试结果、实际操作步骤和残留风险应记录到已有计划的执行记录。Agent 报告“计划已保存”或“测试已生成”不代表测试通过。
 
 ## 4. 使用 Healer
 
@@ -108,7 +108,7 @@ Healer 不得用 `skip`、`fixme`、删除断言、放宽期望值、任意等�
 ## 推荐工作流
 
 ```text
-active change 与失败风险
+权威主题与失败风险
   -> 最低有效层失败测试
   -> Planner 探索并保存 E2E 计划（适用时）
   -> 审核产品预期
@@ -116,7 +116,7 @@ active change 与失败风险
   -> 普通 Playwright 独立执行
   -> 产品缺陷则修产品；仅测试漂移才用 Healer
   -> verification harness
-  -> implementation.md 记录证据
+  -> 已有计划记录证据
 ```
 
 不要把三个 Agent 无审核地串成自动改写循环。Planner、Generator 和 Healer 分工不同，前一步产物必须在进入下一步前确认没有偏离需求。

@@ -602,7 +602,7 @@ PromptHub/
 - `spec-init` 上游仓库：[`git@github.com:legeling/spec-init.git`](git@github.com:legeling/spec-init.git)
 - 文档拓扑路由：[`spec-init.topology.yml`](./spec-init.topology.yml)
 
-PromptHub 当前采用的是 `spec-init` 文档边界 + `spec/changes/active/<change-key>/` 变更流：项目级稳定文档主入口使用 `spec/workflow/*`、`spec/knowledge/*`、`spec/rules/`、`spec/releases/`，非平凡改动继续在 change 文件夹里写 `proposal.md` / `specs/<domain>/spec.md` / `design.md` / `tasks.md` / `implementation.md`，完成后再把稳定事实同步回这些长期真相源。
+PromptHub 按风险维护文档：已有主题原位更新，独立新主题保留一份权威说明，跨会话工作按需增加一份计划。具体规则见 [文档规则](./spec/rules/document-routing-rules.md)，业务和历史资料从 [spec 入口](./spec/README.md) 定向查找。
 
 <div id="meta"></div>
 

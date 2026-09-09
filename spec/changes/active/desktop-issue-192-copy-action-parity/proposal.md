@@ -61,5 +61,4 @@ only after the canonical flow has assembled the final content.
 - Stable behavior:
   `spec/knowledge/behavior/prompt-workspace.md`
 - Governing rules:
-  `spec/rules/bug-fix-rules.md`,
-  `spec/rules/tdd-design-gate.md`
+  `spec/rules/testing-standards.md`

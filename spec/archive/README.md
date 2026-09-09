@@ -2,7 +2,7 @@
 
 `spec/archive/` 对齐 `spec-init` 的 archive 边界，用来承接已经废弃但仍需保留的项目级文档。
 
-在锁定的 `spec-init` 基线（`f83def1`）中，这一层属于 `records.archive`。
+这里只保存历史证据；当前文档维护规则见 [文档规则](../rules/document-routing-rules.md)。
 
 PromptHub 当前已有的归档层分别是：
 
