@@ -58,6 +58,8 @@ type AgentActionKey =
   | "moveSkillPlatformOrder"
   | "resetSkillPlatformOrder"
   | "setSkillInstallMethod"
+  | "setSkillSafetyScanEnabled"
+  | "setSkillSafetyScanMethod"
   | "setAutoScanInstalledSkills"
   | "setAutoScanStoreSkillsBeforeInstall"
   | "setSkillSafetyChannelPolicy"
@@ -540,6 +542,10 @@ function createSkillUpdateSettingsActions(context: SettingsActionContext) {
   return {
     setSkillInstallMethod: (skillInstallMethod) =>
       setTouched({ skillInstallMethod }),
+    setSkillSafetyScanEnabled: (skillSafetyScanEnabled) =>
+      setTouched({ skillSafetyScanEnabled }),
+    setSkillSafetyScanMethod: (skillSafetyScanMethod) =>
+      setTouched({ skillSafetyScanMethod }),
     setAutoScanInstalledSkills: (autoScanInstalledSkills) =>
       setTouched({ autoScanInstalledSkills }),
     setAutoScanStoreSkillsBeforeInstall: (autoScanStoreSkillsBeforeInstall) =>
@@ -600,6 +606,8 @@ function createSkillUpdateSettingsActions(context: SettingsActionContext) {
     },
   } satisfies SettingsActionGroup<
     | "setSkillInstallMethod"
+    | "setSkillSafetyScanEnabled"
+    | "setSkillSafetyScanMethod"
     | "setAutoScanInstalledSkills"
     | "setAutoScanStoreSkillsBeforeInstall"
     | "setSkillSafetyChannelPolicy"

@@ -1486,6 +1486,13 @@
     "clawSection": "Claw"
   },
   "settings": {
+    "contentScanTitle": "コンテンツ安全性スキャン",
+    "contentScanEnable": "手動コンテンツスキャンを有効化",
+    "contentScanDescription": "既定では無効です。手動操作で内容のみを確認します。配布元は評価せず、インストール・更新・インポート・配布には関与しません。",
+    "contentScanMethod": "スキャン方式",
+    "contentScanStatic": "ローカル静的解析",
+    "contentScanAI": "AI コンテンツレビュー",
+    "contentScanDisabled": "設定でコンテンツスキャンを有効にしてください。",
     "developer": "開発者オプション",
     "debugMode": "デバッグモード",
     "debugModeDesc": "コンソールデバッグを有効にする (Ctrl+Shift+I / Cmd+Option+I)",

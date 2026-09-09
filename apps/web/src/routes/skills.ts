@@ -133,6 +133,8 @@ const safetyReportSchema = z.object({
 });
 
 const safetyScanInputSchema = z.object({
+  enabled: z.boolean().optional(),
+  method: z.enum(['static', 'ai']).optional(),
   name: z.string().trim().min(1).max(120).optional(),
   content: z.string().max(MAX_SKILL_SAFETY_SCAN_CONTENT_LENGTH).optional(),
   sourceUrl: z.string().url().max(MAX_SKILL_SAFETY_SCAN_AI_CONFIG_LENGTH).optional(),
@@ -432,8 +434,8 @@ function toSkillErrorResponse(c: Context, routeError: unknown): Response {
     if (routeError.message === 'AI_NOT_CONFIGURED') {
       return error(c, 422, ErrorCode.VALIDATION_ERROR, 'AI_NOT_CONFIGURED');
     }
-    if (routeError.message === 'SAFETY_SCAN_BLOCKED_SOURCE') {
-      return error(c, 422, ErrorCode.VALIDATION_ERROR, 'SAFETY_SCAN_BLOCKED_SOURCE');
+    if (routeError.message === 'SAFETY_SCAN_DISABLED') {
+      return error(c, 422, ErrorCode.VALIDATION_ERROR, 'SAFETY_SCAN_DISABLED');
     }
   }
 

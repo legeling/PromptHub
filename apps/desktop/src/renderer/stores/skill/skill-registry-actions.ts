@@ -29,21 +29,10 @@ import {
 import {
   buildSkillPackageOperationSource,
   resolveSkillPackageOperationResult,
-  runTrustedSkillPackageOperation,
 } from "../../services/skill-package-operation";
-import {
-  getRegistrySkillSafetySourceContext,
-  resolveSkillSafetyScanMode,
-  type SkillSafetySourceContext,
-} from "../../services/skill-safety-policy";
 import { computeSkillPackageFingerprintV1Sync } from "@prompthub/shared/utils/skill-source-update";
 import { createTextSkillPackageSnapshot } from "../../services/skill-package-snapshot";
-import {
-  getErrorMessage,
-  getSafetyScanAIConfig,
-  hasMeaningfulSkillBody,
-} from "./skill-store-domain";
-import { useSettingsStore } from "../settings.store";
+import { getErrorMessage, hasMeaningfulSkillBody } from "./skill-store-domain";
 import {
   findInstalledSkillSourceCandidate,
   findRegistrySkillCandidateByKey,
@@ -364,38 +353,11 @@ type RegistryPackageOperationInput = {
   packageFiles?: SkillPackageFileInput[];
   markAsBuiltin?: boolean;
   note?: string;
-  approvedPackageFingerprint?: string;
-  safetyScanMode?: RegistrySkillInstallOptions["safetyScanMode"];
-  safetySourceContext: SkillSafetySourceContext;
 };
-
-function getPackageOperationSafetyScan(
-  requestedMode?: RegistrySkillInstallOptions["safetyScanMode"],
-  sourceContext?: SkillSafetySourceContext,
-): NonNullable<SkillPackageOperationRequest["safetyScan"]> {
-  const settings = useSettingsStore.getState();
-  const mode =
-    requestedMode ??
-    resolveSkillSafetyScanMode(
-      settings,
-      sourceContext ?? {
-        storeId: "unattributed",
-        channel: "community",
-      },
-    );
-  if (mode === "disabled") return { mode };
-  const aiConfig = getSafetyScanAIConfig(settings.aiModels);
-  return aiConfig ? { mode, aiConfig } : { mode };
-}
 
 async function runRegistryPackageOperation(
   input: RegistryPackageOperationInput,
 ) {
-  const settings = useSettingsStore.getState();
-  const safetyScan = getPackageOperationSafetyScan(
-    input.safetyScanMode,
-    input.safetySourceContext,
-  );
   const request: SkillPackageOperationRequest = {
     operation: input.operation,
     skillId: input.skillId,
@@ -408,13 +370,8 @@ async function runRegistryPackageOperation(
     content: input.content,
     markAsBuiltin: input.markAsBuiltin,
     note: input.note,
-    approvedPackageFingerprint: input.approvedPackageFingerprint,
-    safetyScan,
   };
-  const result = await runTrustedSkillPackageOperation(
-    request,
-    settings.trustedSkillUpdateSourceKeys,
-  );
+  const result = await window.api.skill.runPackageOperation(request);
   return resolveSkillPackageOperationResult(result);
 }
 
@@ -494,12 +451,6 @@ async function materializeRegistryUpdate(
       packageFiles: cloudPackage?.files,
       markAsBuiltin,
       note: `${notePrefix}: ${check.installedSkill!.version || "unknown"} -> ${operationSkill.version}`,
-      approvedPackageFingerprint: options?.approvedPackageFingerprint,
-      safetyScanMode: options?.safetyScanMode,
-      safetySourceContext: getRegistrySkillSafetySourceContext(
-        registrySkill,
-        get().customStoreSources,
-      ),
     });
     if (result.status === "review-required") {
       return { status: "safety-review-required", check, review: result.review };
@@ -696,12 +647,6 @@ async function installRegistrySkill(
       content,
       packageFiles: cloudPackage?.files,
       markAsBuiltin: true,
-      approvedPackageFingerprint: options?.approvedPackageFingerprint,
-      safetyScanMode: options?.safetyScanMode,
-      safetySourceContext: getRegistrySkillSafetySourceContext(
-        registrySkill,
-        get().customStoreSources,
-      ),
     });
     if (result.status === "review-required") {
       return { status: "safety-review-required", review: result.review };

@@ -259,142 +259,31 @@ describe("Skill package policy", () => {
     });
   });
 
-  it("blocks secrets before managed copy and before a later version snapshot", async () => {
-    const root = makeTempRoot(tempDirs);
-    const unsafeDir = writeSkill(root, "unsafe-package-skill");
-    fs.writeFileSync(
-      path.join(unsafeDir, "private-key.pem"),
-      "-----BEGIN OPENSSH PRIVATE KEY-----\nfake-test-material\n-----END OPENSSH PRIVATE KEY-----",
-      "utf8",
-    );
-
-    const unsafeInstall = await execCli([
-      ...withDataDir(root),
-      "skill",
-      "install",
-      unsafeDir,
-    ]);
-    expect(unsafeInstall.exitCode).toBe(4);
-    expect(unsafeInstall.errorJson).toMatchObject({
-      error: {
-        code: "SKILL_PACKAGE_SECRETS_DETECTED",
-        details: {
-          findings: [
-            {
-              code: "private-key",
-              path: "private-key.pem",
-              line: 1,
-            },
-          ],
-        },
-      },
-    });
-    expect(unsafeInstall.joinedStderr).not.toContain("fake-test-material");
-    expect(
-      fs.existsSync(
-        path.join(root, "user-data", "data", "skills", "unsafe-package-skill"),
-      ),
-    ).toBe(false);
-
-    const safeDir = writeSkill(root, "snapshot-guard-skill");
-    expect(
-      (await execCli([...withDataDir(root), "skill", "install", safeDir]))
-        .exitCode,
-    ).toBe(0);
-    expect(
-      (
-        await execCli([
-          ...withDataDir(root),
-          "skill",
-          "repo-write",
-          "snapshot-guard-skill",
-          "--path",
-          "credentials.txt",
-          "--content",
-          "node_password=correct-horse-battery-staple",
-        ])
-      ).exitCode,
-    ).toBe(0);
-
-    const snapshot = await execCli([
-      ...withDataDir(root),
-      "skill",
-      "create-version",
-      "snapshot-guard-skill",
-    ]);
-    expect(snapshot.exitCode).toBe(4);
-    expect(snapshot.errorJson.error.code).toBe(
-      "SKILL_PACKAGE_SECRETS_DETECTED",
-    );
-
-    const projectTargets = path.join(root, "project-skills");
-    const existingTarget = path.join(projectTargets, "snapshot-guard-skill");
-    fs.mkdirSync(existingTarget, { recursive: true });
-    fs.writeFileSync(path.join(existingTarget, "sentinel.txt"), "old", "utf8");
-    const projectCopy = await execCli([
-      ...withDataDir(root),
-      "skill",
-      "project-install",
-      "snapshot-guard-skill",
-      "--target",
-      projectTargets,
-      "--force",
-    ]);
-    expect(projectCopy.exitCode).toBe(4);
-    expect(
-      fs.readFileSync(path.join(existingTarget, "sentinel.txt"), "utf8"),
-    ).toBe("old");
-
-    const symlinkTargets = path.join(root, "symlink-targets");
-    const projectSymlink = await execCli([
-      ...withDataDir(root),
-      "skill",
-      "project-install",
-      "snapshot-guard-skill",
-      "--target",
-      symlinkTargets,
-      "--mode",
-      "symlink",
-    ]);
-    expect(projectSymlink.exitCode).toBe(4);
-    expect(
-      fs.existsSync(path.join(symlinkTargets, "snapshot-guard-skill")),
-    ).toBe(false);
-
-    const versions = await execCli([
-      ...withDataDir(root),
-      "--full",
-      "skill",
-      "versions",
-      "snapshot-guard-skill",
-    ]);
-    expect(versions.json).toEqual([]);
+  it("keeps install, snapshots and project deployment independent of content findings", async () => {
+    const root = makeTempRoot(tempDirs), name = "content-only-skill";
+    const source = writeSkill(root, name), text = "password=correct-horse-battery-staple";
+    fs.writeFileSync(path.join(source, "credentials.txt"), text);
+    const install = await execCli([...withDataDir(root), "skill", "install", source]);
+    expect(install.exitCode).toBe(0);
+    const managed = path.join(root, "user-data", "data", "skills", name);
+    expect(fs.readFileSync(path.join(managed, "credentials.txt"), "utf8")).toBe(text);
+    const scan = await execCli([...withDataDir(root), "--full", "skill", "scan-safety", name]);
+    expect(scan.exitCode).toBe(0); expect(scan.json).toMatchObject({level: "high-risk", scanMethod: "preflight", recommendedAction: "review"});
+    expect(JSON.stringify(scan.json)).not.toContain("correct-horse");
+    const snapshot = await execCli([...withDataDir(root), "--full", "skill", "create-version", name]);
+    expect(snapshot.exitCode).toBe(0); expect(snapshot.json.filesSnapshot).toContainEqual(expect.objectContaining({relativePath: "credentials.txt", content: text}));
+    const target = path.join(root, "project-skills");
+    const copy = await execCli([...withDataDir(root), "skill", "project-install", name, "--target", target]);
+    expect(copy.exitCode).toBe(0); expect(fs.readFileSync(path.join(target, name, "credentials.txt"), "utf8")).toBe(text);
+    const symlinkTarget = path.join(root, "project-links");
+    const linked = await execCli([...withDataDir(root), "skill", "project-install", name, "--target", symlinkTarget, "--mode", "symlink"]);
+    expect(linked.exitCode).toBe(0); expect(fs.readFileSync(path.join(symlinkTarget, name, "credentials.txt"), "utf8")).toBe(text);
   });
-
-  it("reports bounded scan limits without echoing package contents", async () => {
-    const root = makeTempRoot(tempDirs);
-    const skillDir = writeSkill(root, "oversized-policy-skill");
-    fs.writeFileSync(
-      path.join(skillDir, "large.txt"),
-      Buffer.alloc(SKILL_SECRET_SCAN_MAX_FILE_BYTES + 1, 0x63),
-    );
-
-    const result = await execCli([
-      ...withDataDir(root),
-      "skill",
-      "import",
-      skillDir,
-    ]);
-    expect(result.exitCode).toBe(4);
-    expect(result.errorJson.error).toMatchObject({
-      code: "SKILL_PACKAGE_SCAN_LIMIT_EXCEEDED",
-      details: {
-        path: "large.txt",
-        limitKind: "file",
-        limitBytes: SKILL_SECRET_SCAN_MAX_FILE_BYTES,
-      },
-    });
-    expect(result.joinedStderr).not.toContain("cccc");
+  it("does not apply the retired content-scan byte limit to imports", async () => {
+    const root = makeTempRoot(tempDirs), source = writeSkill(root, "large-content-skill");
+    fs.writeFileSync(path.join(source, "large.txt"), Buffer.alloc(SKILL_SECRET_SCAN_MAX_FILE_BYTES + 1, 0x63));
+    expect((await execCli([...withDataDir(root), "skill", "import", source])).exitCode).toBe(0);
+    expect(fs.statSync(path.join(root, "user-data", "data", "skills", "large-content-skill", "large.txt")).size).toBe(SKILL_SECRET_SCAN_MAX_FILE_BYTES + 1);
   });
 
   it("fails closed when the filtered package exceeds the entry budget", async () => {
@@ -435,7 +324,7 @@ describe("Skill package policy", () => {
     ).toBe(false);
   });
 
-  it("scans a temporary GitHub checkout before creating the managed package", async () => {
+  it("imports Git content without source or credential assessments", async () => {
     const root = makeTempRoot(tempDirs);
     const gitCloneImpl = async (_url: string, destinationDir: string) => {
       fs.mkdirSync(destinationDir, { recursive: true });
@@ -464,19 +353,18 @@ describe("Skill package policy", () => {
       createCliSkillService({ gitCloneImpl }),
     );
 
-    expect(result.exitCode).toBe(4);
-    expect(result.errorJson.error.code).toBe("SKILL_PACKAGE_SECRETS_DETECTED");
+    expect(result.exitCode).toBe(0);
     expect(result.joinedStderr).not.toContain("ghp_");
     const managedRoot = path.join(root, "user-data", "data", "skills");
     expect(
       fs.existsSync(path.join(managedRoot, "acme-unsafe-github-skill")),
-    ).toBe(false);
+    ).toBe(true);
     expect(
       fs.existsSync(managedRoot) ? fs.readdirSync(managedRoot) : [],
-    ).toEqual([]);
+    ).not.toEqual([]);
   });
 
-  it("rejects secret-bearing JSON imports before creating a database record", async () => {
+  it("allows content-bearing JSON imports before creating a database record", async () => {
     const root = makeTempRoot(tempDirs);
     const sourcePath = path.join(root, "unsafe-skill.json");
     fs.writeFileSync(
@@ -497,13 +385,10 @@ describe("Skill package policy", () => {
       "import",
       sourcePath,
     ]);
-    expect(rejected.exitCode).toBe(4);
-    expect(rejected.errorJson.error.code).toBe(
-      "SKILL_PACKAGE_SECRETS_DETECTED",
-    );
+    expect(rejected.exitCode).toBe(0);
     expect(rejected.joinedStderr).not.toContain("sk-");
 
     const listed = await execCli([...withDataDir(root), "skill", "list"]);
-    expect(listed.json).toEqual([]);
+    expect(listed.json).toHaveLength(1);
   });
 });

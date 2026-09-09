@@ -591,7 +591,7 @@ export function PluginFullDetailView({
       >
         <PluginSafetyAssessmentPanel
           isScanning={isScanningSafety}
-          onRunSafetyAssessment={runSafetyAssessment}
+          onRunSafetyAssessment={async () => { await runSafetyAssessment(); }}
           report={plugin.safetyReport}
         />
       </Modal>

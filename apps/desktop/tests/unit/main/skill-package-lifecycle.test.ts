@@ -181,41 +181,11 @@ describe("Skill package lifecycle", () => {
     harness = createHarness();
   });
 
-  it("returns review before creating a durable row", async () => {
-    const review = new SkillSafetyReviewRequiredError(
-      report,
-      "a".repeat(64),
-      "source-writer",
-    );
-    vi.mocked(harness.dependencies.stagePackage).mockRejectedValue(review);
-
-    await expect(harness.service.run(request)).resolves.toEqual({
-      status: "review-required",
-      operation: "install",
-      review: {
-        report,
-        packageFingerprint: "a".repeat(64),
-        sourceKey: "source-writer",
-      },
-    });
-    expect(harness.db.create).not.toHaveBeenCalled();
-    expect(harness.dependencies.cleanupStagingRoot).toHaveBeenCalled();
-  });
-
-  it("returns a structured blocked result without mutating storage", async () => {
-    const blocked = { ...report, level: "blocked" as const };
-    vi.mocked(harness.dependencies.stagePackage).mockRejectedValue(
-      new SkillSafetyBlockedError(blocked),
-    );
-
+  it("does not let an advisory staged report block persistence", async () => {
+    vi.mocked(harness.dependencies.stagePackage).mockResolvedValue({repoPath: "/staged/repo", content: "# Writer", contentHash: "hash", directoryFingerprint: "a".repeat(64), safetyReport: {...report, level: "blocked"}});
     const result = await harness.service.run(request);
-
-    expect(result).toMatchObject({
-      status: "blocked",
-      failure: { code: "SAFETY_BLOCKED", phase: "scanning" },
-      report: blocked,
-    });
-    expect(harness.db.create).not.toHaveBeenCalled();
+    expect(result.status).toBe("completed");
+    expect(harness.db.create).toHaveBeenCalled();
   });
 
   it("returns bounded validation failures with the requested operation and source label", async () => {

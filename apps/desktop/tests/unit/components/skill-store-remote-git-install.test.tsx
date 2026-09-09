@@ -832,7 +832,6 @@ describe("SkillStore remote loading", () => {
 
     expect(installRegistrySkill).toHaveBeenCalledWith(
       expect.objectContaining({ source_id: "source-icelemon-gitea" }),
-      { safetyScanMode: "enabled" },
     );
     expect(container.querySelector(".animate-spin")).not.toBeNull();
     expect(screen.getByTitle("Installing...")).toBeDisabled();

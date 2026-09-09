@@ -1487,6 +1487,13 @@
     "clawSection": "Claw"
   },
   "settings": {
+    "contentScanTitle": "Análisis de seguridad del contenido",
+    "contentScanEnable": "Activar análisis manuales",
+    "contentScanDescription": "Desactivado por defecto. Revisa solo el contenido bajo petición, sin juzgar el origen ni intervenir en instalaciones, actualizaciones, importaciones o despliegues.",
+    "contentScanMethod": "Método",
+    "contentScanStatic": "Análisis estático local",
+    "contentScanAI": "Revisión de contenido con IA",
+    "contentScanDisabled": "Activa el análisis de contenido en Configuración.",
     "developer": "Opciones de desarrollador",
     "debugMode": "Modo de depuración",
     "debugModeDesc": "Habilitar depuración de consola (Soporta Ctrl+Shift+I / Cmd+Option+I)",

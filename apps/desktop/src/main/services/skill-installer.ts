@@ -307,7 +307,6 @@ import {
   exportAsSkillMd,
   importFromJson,
 } from "./skill-installer-export";
-import { scanSkillSafety } from "./skill-safety-scan";
 import {
   getRemoteGitSkillPackageFingerprint,
   getRemoteGitSkillPackageSnapshot,
@@ -1308,14 +1307,6 @@ export class SkillInstaller {
                 localPath: skillFolderPath,
                 platforms: [platformName],
                 symlinkTargetPath: installMetadata.symlinkTargetPath,
-                safetyReport: aiConfig
-                  ? await scanSkillSafety({
-                      name: sanitized.name,
-                      content: sanitized.instructions || instructions,
-                      localRepoPath: skillFolderPath,
-                      aiConfig,
-                    })
-                  : undefined,
               });
             } catch (err) {
               console.warn(`Failed to parse skill at ${skillMdPath}:`, err);

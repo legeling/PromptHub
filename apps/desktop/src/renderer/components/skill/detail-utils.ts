@@ -92,11 +92,8 @@ export function formatSkillSafetyScanError(
     );
   }
 
-  if (rawMessage === "SAFETY_SCAN_BLOCKED_SOURCE") {
-    return t(
-      "skill.safetyScanBlockedSource",
-      "Safety scan blocked this source because it resolves to an internal or restricted address.",
-    );
+  if (rawMessage === "SAFETY_SCAN_DISABLED") {
+    return t("settings.contentScanDisabled");
   }
 
   if (

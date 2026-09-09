@@ -1,6 +1,10 @@
 import fs from "fs/promises";
+import { scanSkillContent } from "@prompthub/shared/utils/skill-content-scan";
 import path from "path";
-import { readSkillFileSnapshots, replaceSkillFileSnapshots } from "../../skills/file-snapshot";
+import {
+  readSkillFileSnapshots,
+  replaceSkillFileSnapshots,
+} from "../../skills/file-snapshot";
 import { mutateCanonicalSkillPackage } from "../../skills/canonical-package-mutation";
 import { withSkillSnapshotEntrypoint } from "@prompthub/shared/utils/skill-file-snapshot";
 
@@ -32,7 +36,6 @@ import {
   sharedSkillDistributionService,
 } from "../../skill-distribution-targets";
 import { serializeSkillMd } from "../../skills/skill-frontmatter";
-import { assertSkillPackageEntriesSafe } from "../../skills/package-policy";
 import {
   parseSkillMd,
   sanitizeString,
@@ -47,7 +50,7 @@ import {
   isPathWithin,
   normalizeExistingPath,
   readFileContent,
-  readRepoSecretScanEntries,
+  validateRepoPackageInventory,
   resolvePlatformPath,
   resolveRepoBasePath,
   resolveRepoTargetPath,
@@ -591,9 +594,7 @@ export function createCliSkillService(
       );
     }
 
-    assertSkillPackageEntriesSafe(
-      await readRepoSecretScanEntries(canonicalRepoPath),
-    );
+    await validateRepoPackageInventory(canonicalRepoPath);
 
     await fs.mkdir(targetRootDir, { recursive: true });
     const existed = await fileExists(skillDir);
@@ -736,37 +737,16 @@ export function createCliSkillService(
     );
   }
 
-  function scanSafety(input: SkillSafetyScanInput): Promise<SkillSafetyReport> {
-    const text = [
-      input.content ?? "",
-      input.sourceUrl ?? "",
-      input.contentUrl ?? "",
-      input.localRepoPath ?? "",
-    ].join("\n");
-    const findings: SkillSafetyReport["findings"] = [];
-    if (/\b(?:sudo|rm\s+-rf|powershell|wget|curl)\b/i.test(text)) {
-      findings.push({
-        code: "dangerous-command",
-        severity: "high",
-        title: "Detected potentially dangerous command",
-        detail: "CLI safety scan detected a high-risk command pattern.",
-        evidence: text.slice(0, 160),
-      });
-    }
-
-    return Promise.resolve({
-      level: findings.length > 0 ? "warn" : "safe",
-      summary:
-        findings.length > 0
-          ? "Potentially risky content detected."
-          : "No obvious issues detected.",
-      findings,
-      recommendedAction: findings.length > 0 ? "review" : "allow",
-      scannedAt: Date.now(),
-      checkedFileCount: input.content ? 1 : 0,
-      scanMethod: "ai",
-      score: findings.length > 0 ? 60 : 95,
-    });
+  async function scanSafety(
+    input: SkillSafetyScanInput,
+  ): Promise<SkillSafetyReport> {
+    if (input.enabled !== true) throw new Error("SAFETY_SCAN_DISABLED");
+    if (input.method && input.method !== "static")
+      throw new Error("CLI safety scan supports static content analysis only");
+    const files = input.localRepoPath
+      ? await readSkillFileSnapshots(input.localRepoPath)
+      : undefined;
+    return scanSkillContent({ ...input, files });
   }
 
   async function createLocalRepoSnapshot(
@@ -774,7 +754,7 @@ export function createCliSkillService(
     skillId: string,
   ): Promise<SkillFileSnapshot[]> {
     const repoPath = await resolveRepoPathForSkill(skillDb, skillId);
-    assertSkillPackageEntriesSafe(await readRepoSecretScanEntries(repoPath));
+    await validateRepoPackageInventory(repoPath);
     return readSkillFileSnapshots(repoPath);
   }
 

@@ -1486,6 +1486,13 @@
     "clawSection": "龍蝦 Claw"
   },
   "settings": {
+    "contentScanTitle": "內容安全掃描",
+    "contentScanEnable": "開啟手動內容掃描",
+    "contentScanDescription": "預設關閉。僅在手動掃描時檢查內容，不評判來源管道，也不參與或阻止安裝、更新、匯入和部署。",
+    "contentScanMethod": "掃描方式",
+    "contentScanStatic": "本機靜態檢查",
+    "contentScanAI": "AI 內容審查",
+    "contentScanDisabled": "請先在設定中開啟內容掃描。",
     "developer": "開發者選項",
     "debugMode": "調試模式",
     "debugModeDesc": "啟用控制台調試 (支持 Ctrl+Shift+I / Cmd+Option+I 喚起)",

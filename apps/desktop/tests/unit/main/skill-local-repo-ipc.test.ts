@@ -510,80 +510,12 @@ describe("skill local repo IPC", () => {
     expect(saveRemoteGitSkillToLocalRepoBySkillIdMock).not.toHaveBeenCalled();
   });
 
-  it("returns a structured review without changing DB metadata", async () => {
+  it("ignores legacy scan and approval options while persisting package metadata", async () => {
     const { db, handlers, IPC_CHANNELS } = await setupSkillLocalRepoIpc();
-    const skill = {
-      id: "skill-private",
-      name: "private-skill",
-      source_id: "gitea:team/private-skill",
-    };
-    const report = {
-      level: "high-risk",
-      summary: "Detected one high-risk finding",
-      findings: [],
-      recommendedAction: "review",
-      scannedAt: 1,
-      checkedFileCount: 4,
-      scanMethod: "preflight",
-    };
-    db.getById.mockReturnValue(skill);
-    saveRemoteGitSkillToLocalRepoBySkillIdMock.mockRejectedValueOnce(
-      new SkillSafetyReviewRequiredErrorMock(
-        report,
-        "a".repeat(64),
-        "gitea:team/private-skill",
-      ),
-    );
-
-    await expect(
-      handlers[IPC_CHANNELS.SKILL_SAVE_REMOTE_GIT_TO_REPO](
-        null,
-        "skill-private",
-        { repoUrl: "https://gitea.example.com/team/private-skill.git" },
-      ),
-    ).resolves.toEqual({
-      status: "safety-review-required",
-      review: {
-        report,
-        packageFingerprint: "a".repeat(64),
-        sourceKey: "gitea:team/private-skill",
-      },
-    });
-    expect(computeRepoDirectoryFingerprintMock).not.toHaveBeenCalled();
-    expect(db.update).not.toHaveBeenCalled();
-  });
-
-  it("validates and forwards an exact package approval fingerprint", async () => {
-    const { db, handlers, IPC_CHANNELS } = await setupSkillLocalRepoIpc();
-    const skill = { id: "skill-private", name: "private-skill" };
-    db.getById.mockReturnValue(skill);
-
-    await expect(
-      handlers[IPC_CHANNELS.SKILL_SAVE_REMOTE_GIT_TO_REPO](
-        null,
-        "skill-private",
-        {
-          repoUrl: "https://gitea.example.com/team/private-skill.git",
-          approvedPackageFingerprint: "A".repeat(64),
-        },
-      ),
-    ).rejects.toThrow(/must be a SHA-256 hex string/);
-    expect(saveRemoteGitSkillToLocalRepoBySkillIdMock).not.toHaveBeenCalled();
-
-    await handlers[IPC_CHANNELS.SKILL_SAVE_REMOTE_GIT_TO_REPO](
-      null,
-      "skill-private",
-      {
-        repoUrl: "https://gitea.example.com/team/private-skill.git",
-        approvedPackageFingerprint: "b".repeat(64),
-      },
-    );
-    expect(saveRemoteGitSkillToLocalRepoBySkillIdMock).toHaveBeenCalledWith(
-      skill,
-      expect.objectContaining({
-        approvedPackageFingerprint: "b".repeat(64),
-      }),
-    );
+    const skill = {id: "skill-private", name: "private-skill"}; db.getById.mockReturnValue(skill);
+    await handlers[IPC_CHANNELS.SKILL_SAVE_REMOTE_GIT_TO_REPO](null, skill.id, {repoUrl:"https://gitea.example.com/team/private-skill.git", safetyScan:{mode:"enabled"}, approvedPackageFingerprint:"not-sha256"});
+    expect(saveRemoteGitSkillToLocalRepoBySkillIdMock).toHaveBeenCalledWith(skill, {repoUrl:"https://gitea.example.com/team/private-skill.git", branch:undefined, directory:undefined});
+    expect(db.update).toHaveBeenCalled();
   });
 
   it.each([

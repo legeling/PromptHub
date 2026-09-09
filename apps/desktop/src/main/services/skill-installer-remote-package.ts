@@ -33,10 +33,7 @@ import {
   GitExecutableUnavailableError,
   gitClone,
 } from "./skill-installer-utils";
-import {
-  assertStagedRemoteSkillPackageSafe,
-  type RemoteSkillPackageSafetyScanOptions,
-} from "./skill-update-safety";
+import { type RemoteSkillPackageSafetyScanOptions } from "./skill-update-safety";
 import { validateMaterializedSkillPackage } from "./skill-package-validation";
 import { readSkillPackageSnapshotFromValidatedDirectory } from "./skill-package-snapshot";
 import { SkillPackageTransportError } from "./skill-package-transport-error";
@@ -76,37 +73,6 @@ export interface RemoteZipPackageOptions {
 
 export interface RemoteZipSnapshotOptions {
   zipUrl: string;
-}
-
-function buildRemoteGitSourceKey(
-  skill: RemotePackageSkill,
-  repo: NonNullable<ReturnType<typeof parseGitRepo>>,
-  branch?: string,
-  directory?: string,
-  skillName?: string,
-): string {
-  if (skill.source_id?.trim()) return skill.source_id.trim();
-  const repository = sanitizeSkillPackageSourceUrl(repo.repositoryUrl)
-    .replace(/^https?:\/\//u, "")
-    .replace(/\/$/u, "");
-  return `git:${repository}@${branch?.trim() || "default"}:${directory?.trim() || skillName?.trim() || "."}`;
-}
-
-function buildRemoteZipSourceKey(
-  skill: RemotePackageSkill,
-  zipUrl: string,
-): string {
-  if (skill.source_id?.trim()) return skill.source_id.trim();
-  try {
-    const url = new URL(zipUrl);
-    url.username = "";
-    url.password = "";
-    url.search = "";
-    url.hash = "";
-    return `zip:${url.toString()}`;
-  } catch {
-    return `zip:skill:${skill.id}`;
-  }
 }
 
 function parseRequiredGitRepo(repoUrl: string) {
@@ -268,23 +234,6 @@ export async function saveRemoteGitSkillPackage(
       options.skillName,
     );
     await validateMaterializedSkillPackage(skillDir);
-    const packageFingerprint = await computePackageFingerprint(skillDir);
-    const safetyReport = await assertStagedRemoteSkillPackageSafe({
-      skill,
-      skillDir,
-      sourceUrl: sanitizeSkillPackageSourceUrl(options.repoUrl),
-      safetyScan: options.safetyScan,
-      packageFingerprint,
-      approvedPackageFingerprint: options.approvedPackageFingerprint,
-      sourceKey: buildRemoteGitSourceKey(
-        skill,
-        parsedRepo,
-        options.branch,
-        requestedDirectory,
-        options.skillName,
-      ),
-    });
-    if (safetyReport) options.onSafetyReport?.(safetyReport);
     return await persistStagedPackage(skill, skillDir, options.targetRootDir);
   } finally {
     await fs.rm(tempRoot, { recursive: true, force: true }).catch(() => {});
@@ -415,7 +364,7 @@ export async function getRemoteZipSkillPackageSnapshot(
   );
 }
 
-/** Download, validate, review, and materialize one ZIP-backed Skill package. */
+/** Download, validate, and materialize one ZIP-backed Skill package. */
 export async function saveRemoteZipSkillPackage(
   skill: RemotePackageSkill,
   options: RemoteZipPackageOptions,
@@ -425,18 +374,7 @@ export async function saveRemoteZipSkillPackage(
     options,
     fetchArchive,
     (extractDir) => resolveSkillDirFromRepo(extractDir, skill),
-    async (skillDir, zipUrl) => {
-      const packageFingerprint = await computePackageFingerprint(skillDir);
-      const safetyReport = await assertStagedRemoteSkillPackageSafe({
-        skill,
-        skillDir,
-        sourceUrl: sanitizeSkillPackageSourceUrl(zipUrl),
-        safetyScan: options.safetyScan,
-        packageFingerprint,
-        approvedPackageFingerprint: options.approvedPackageFingerprint,
-        sourceKey: buildRemoteZipSourceKey(skill, zipUrl),
-      });
-      if (safetyReport) options.onSafetyReport?.(safetyReport);
+    async (skillDir) => {
       return await persistStagedPackage(skill, skillDir, options.targetRootDir);
     },
   );

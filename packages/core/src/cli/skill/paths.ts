@@ -1,4 +1,8 @@
 import fs from "fs/promises";
+import {
+  MAX_SKILL_PACKAGE_FILE_BYTES,
+  MAX_SKILL_PACKAGE_TOTAL_BYTES,
+} from "@prompthub/shared/constants/skill-package";
 import os from "os";
 import path from "path";
 
@@ -14,15 +18,11 @@ import { computeSkillPackageFingerprintV1Sync } from "@prompthub/shared/utils/sk
 import {
   createSkillPackageIgnoreMatcher,
   type SkillPackageIgnoreMatcher,
-  type SkillPackageTextEntry,
 } from "@prompthub/shared/utils/skill-package-policy";
 import { getSkillsDir } from "../../runtime-paths";
 import {
   SKILL_PACKAGE_MAX_ENTRIES,
-  SKILL_SECRET_SCAN_MAX_FILE_BYTES,
-  SKILL_SECRET_SCAN_MAX_TOTAL_BYTES,
   SkillPackageEntryLimitError,
-  SkillPackageScanLimitError,
 } from "../../skills/package-policy";
 import { validateSkillName } from "./parse";
 
@@ -316,59 +316,19 @@ export async function readRepoFileBuffers(
   });
 }
 
-async function readBoundedTextFile(
-  fullPath: string,
-  relativePath: string,
-): Promise<{ content: string; bytes: number } | null> {
-  const handle = await fs.open(fullPath, "r");
-  const chunks: Buffer[] = [];
-  let bytes = 0;
-  try {
-    while (bytes <= SKILL_SECRET_SCAN_MAX_FILE_BYTES) {
-      const remaining = SKILL_SECRET_SCAN_MAX_FILE_BYTES + 1 - bytes;
-      const chunk = Buffer.allocUnsafe(Math.min(64 * 1024, remaining));
-      const result = await handle.read(chunk, 0, chunk.length, bytes);
-      if (result.bytesRead === 0) {
-        break;
-      }
-      const data = chunk.subarray(0, result.bytesRead);
-      if (data.includes(0)) {
-        return null;
-      }
-      chunks.push(data);
-      bytes += result.bytesRead;
-    }
-  } finally {
-    await handle.close();
-  }
-
-  if (bytes > SKILL_SECRET_SCAN_MAX_FILE_BYTES) {
-    throw new SkillPackageScanLimitError({
-      path: relativePath,
-      observedBytes: bytes,
-      limitBytes: SKILL_SECRET_SCAN_MAX_FILE_BYTES,
-      limitKind: "file",
-    });
-  }
-  return { content: Buffer.concat(chunks, bytes).toString("utf8"), bytes };
-}
-
-export async function readRepoSecretScanEntries(
+/** Capacity validation reads metadata only; content assessment is a separate action. */
+export async function validateRepoPackageInventory(
   absoluteBasePath: string,
-): Promise<SkillPackageTextEntry[]> {
+): Promise<void> {
   const { resolvedBasePath, realBasePath } = await resolveRepoBasePath(
     absoluteBasePath,
     { allowOutsideSkillsDir: true },
   );
-  if (!(await fileExists(resolvedBasePath))) {
-    return [];
-  }
-
   let totalBytes = 0;
-  return walkRepoDir<SkillPackageTextEntry>({
+  await walkRepoDir<void>({
     baseDir: resolvedBasePath,
-    entryLimit: SKILL_PACKAGE_MAX_ENTRIES,
     realBasePath,
+    entryLimit: SKILL_PACKAGE_MAX_ENTRIES,
     onEntryLimit: ({ relativePath, limit }) => {
       throw new SkillPackageEntryLimitError({
         path: relativePath,
@@ -376,24 +336,17 @@ export async function readRepoSecretScanEntries(
         limitEntries: limit,
       });
     },
-    onEntry: async ({ relativePath, fullPath, isDirectory }) => {
-      if (isDirectory) {
-        return null;
+    onEntry: async ({ fullPath, isDirectory }) => {
+      if (isDirectory) return null;
+      const { size } = await fs.stat(fullPath);
+      totalBytes += size;
+      if (
+        size > MAX_SKILL_PACKAGE_FILE_BYTES ||
+        totalBytes > MAX_SKILL_PACKAGE_TOTAL_BYTES
+      ) {
+        throw new Error("Skill package exceeds capacity limits");
       }
-      const entry = await readBoundedTextFile(fullPath, relativePath);
-      if (!entry) {
-        return null;
-      }
-      totalBytes += entry.bytes;
-      if (totalBytes > SKILL_SECRET_SCAN_MAX_TOTAL_BYTES) {
-        throw new SkillPackageScanLimitError({
-          path: relativePath,
-          observedBytes: totalBytes,
-          limitBytes: SKILL_SECRET_SCAN_MAX_TOTAL_BYTES,
-          limitKind: "package",
-        });
-      }
-      return { path: relativePath, content: entry.content };
+      return null;
     },
   });
 }

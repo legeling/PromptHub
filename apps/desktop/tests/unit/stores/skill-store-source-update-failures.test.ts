@@ -476,10 +476,6 @@ describe("skill store", () => {
     expect(runPackageOperation).toHaveBeenCalledWith(
       expect.objectContaining({
         content: remoteContent,
-        safetyScan: expect.objectContaining({
-          mode: "enabled",
-          aiConfig: expect.any(Object),
-        }),
       }),
     );
     expect(scanSafety).not.toHaveBeenCalled();
@@ -1269,6 +1265,7 @@ describe("skill store", () => {
   });
 
   it("aggregates safety levels when batch scanning installed skills", async () => {
+    useSettingsStore.setState({skillSafetyScanEnabled: true, skillSafetyScanMethod: "static"});
     const scanSafety = vi
       .fn()
       .mockResolvedValueOnce({ level: "safe" })

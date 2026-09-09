@@ -19,10 +19,6 @@ import {
   sanitizeSkillPackageDiagnostic,
   validateSkillPackageOperationRequest,
 } from "@prompthub/core/skills/package-operation";
-import {
-  SkillSafetyBlockedError,
-  SkillSafetyReviewRequiredError,
-} from "./skill-update-safety";
 import { SkillPackageTransportError } from "./skill-package-transport-error";
 
 const PENDING_INSTALL_MARKER = "PACKAGE_OPERATION_PENDING";
@@ -236,34 +232,6 @@ function getStageFailure(
   );
 }
 
-function safetyResult(
-  request: SkillPackageOperationRequest,
-  error: SkillSafetyReviewRequiredError | SkillSafetyBlockedError,
-): SkillPackageOperationResult {
-  if (error instanceof SkillSafetyReviewRequiredError) {
-    return {
-      status: "review-required",
-      operation: request.operation,
-      review: {
-        report: error.report,
-        packageFingerprint: error.packageFingerprint,
-        sourceKey: error.sourceKey,
-      },
-    };
-  }
-  return {
-    status: "blocked",
-    operation: request.operation,
-    report: error.report,
-    failure: createFailure(
-      request,
-      "SAFETY_BLOCKED",
-      "scanning",
-      error.message,
-    ),
-  };
-}
-
 /** Main-process owner for atomic, reviewable Skill package mutations. */
 export class SkillPackageLifecycleService {
   private readonly inFlight = new Map<
@@ -312,12 +280,6 @@ export class SkillPackageLifecycleService {
         ? await this.install(request, stagingRoot, sourceId, staged)
         : await this.update(request, stagingRoot, sourceId, staged);
     } catch (error) {
-      if (
-        error instanceof SkillSafetyReviewRequiredError ||
-        error instanceof SkillSafetyBlockedError
-      ) {
-        return safetyResult(request, error);
-      }
       return failureResult(
         request,
         error instanceof LifecycleStepError
@@ -349,12 +311,6 @@ export class SkillPackageLifecycleService {
         sourceId,
       });
     } catch (error) {
-      if (
-        error instanceof SkillSafetyReviewRequiredError ||
-        error instanceof SkillSafetyBlockedError
-      ) {
-        throw error;
-      }
       throw getStageFailure(request, error);
     }
   }
@@ -463,7 +419,6 @@ export class SkillPackageLifecycleService {
       directoryFingerprint: staged.directoryFingerprint,
       sourceId,
       now: this.dependencies.now(),
-      safetyReport: staged.safetyReport,
     });
   }
 
@@ -642,7 +597,6 @@ export class SkillPackageLifecycleService {
         sourceId,
         now: this.dependencies.now(),
         markAsBuiltin: request.markAsBuiltin ?? true,
-        safetyReport: staged.safetyReport,
       }),
       local_repo_path: replacement.repoPath,
     };

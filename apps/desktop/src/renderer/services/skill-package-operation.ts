@@ -144,24 +144,6 @@ export function buildSkillPackageOperationSource(
   };
 }
 
-/** Preserve the trusted-source policy while pinning approval to exact bytes. */
-export async function runTrustedSkillPackageOperation(
-  request: SkillPackageOperationRequest,
-  trustedSourceKeys: string[],
-): Promise<SkillPackageOperationResult> {
-  const result = await window.api.skill.runPackageOperation(request);
-  if (
-    result.status !== "review-required" ||
-    !trustedSourceKeys.includes(result.review.sourceKey)
-  ) {
-    return result;
-  }
-  return window.api.skill.runPackageOperation({
-    ...request,
-    approvedPackageFingerprint: result.review.packageFingerprint,
-  });
-}
-
 export type ResolvedSkillPackageOperation =
   | { status: "completed"; skill: Skill }
   | { status: "review-required"; review: SkillUpdateSafetyReview }

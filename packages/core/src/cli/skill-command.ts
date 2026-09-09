@@ -542,6 +542,8 @@ export async function handleSkillCommand(
     ensureNoUnknownOptions(args.slice(2));
     const { skill } = resolveSkillIdentifier(skillDb, identifier);
     const report = await context.skills.scanSafety({
+      enabled: true,
+      method: "static",
       name: skill.name,
       content: skill.instructions || skill.content,
       sourceUrl: skill.source_url,

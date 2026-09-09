@@ -51,6 +51,8 @@ const storeState = {
 };
 
 const settingsState = {
+  skillSafetyScanEnabled: false,
+  skillSafetyScanMethod: "static",
   translationMode: "full",
   skillInstallMethod: "symlink",
   autoScanInstalledSkills: false,
@@ -70,8 +72,11 @@ vi.mock("../../../src/renderer/stores/skill.store", () => ({
 }));
 
 vi.mock("../../../src/renderer/stores/settings.store", () => ({
-  useSettingsStore: (selector: (state: typeof settingsState) => unknown) =>
-    selector(settingsState),
+  useSettingsStore: Object.assign(
+    (selector: (state: typeof settingsState) => unknown) =>
+      selector(settingsState),
+    { getState: () => settingsState },
+  ),
 }));
 
 vi.mock("../../../src/renderer/components/ui/Toast", () => ({
@@ -323,6 +328,7 @@ describe("SkillFullDetailPage async actions", () => {
   });
 
   it("shares one safety scan for repeated safety assessment clicks while the first scan is pending", async () => {
+    settingsState.skillSafetyScanEnabled = true;
     let resolveScan:
       | ((value: {
           level: "safe";

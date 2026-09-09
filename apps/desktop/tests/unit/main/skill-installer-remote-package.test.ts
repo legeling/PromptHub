@@ -159,11 +159,7 @@ describe("remote Skill package adapter", () => {
 
     expect(result).toBe("/managed/repo");
     expect(mocks.resolveSkillDirFromRepo).toHaveBeenCalled();
-    expect(mocks.assertStagedRemoteSkillPackageSafe).toHaveBeenCalledWith(
-      expect.objectContaining({
-        sourceKey: "git:gitea.example.com/team/skills@default:.",
-      }),
-    );
+    expect(mocks.assertStagedRemoteSkillPackageSafe).not.toHaveBeenCalled();
     expect(mocks.rm).toHaveBeenCalled();
   });
 
@@ -172,17 +168,7 @@ describe("remote Skill package adapter", () => {
       repoUrl: "https://alice:secret@gitea.example.com/team/skills",
     });
 
-    expect(mocks.assertStagedRemoteSkillPackageSafe).toHaveBeenCalledWith(
-      expect.objectContaining({
-        sourceKey: "git:gitea.example.com/team/skills@default:.",
-      }),
-    );
-    const scanInput =
-      mocks.assertStagedRemoteSkillPackageSafe.mock.calls[0]?.[0];
-    expect(scanInput?.sourceKey).not.toContain("alice");
-    expect(scanInput?.sourceKey).not.toContain("secret");
-    expect(scanInput?.sourceKey).not.toContain("private-token");
-    expect(scanInput?.sourceUrl).toBe("https://gitea.example.com/team/skills");
+    expect(mocks.assertStagedRemoteSkillPackageSafe).not.toHaveBeenCalled();
   });
 
   it("uses the exact source id for Git package review", async () => {
@@ -191,9 +177,7 @@ describe("remote Skill package adapter", () => {
       { repoUrl: "https://gitea.example.com/team/skills" },
     );
 
-    expect(mocks.assertStagedRemoteSkillPackageSafe).toHaveBeenCalledWith(
-      expect.objectContaining({ sourceKey: "exact-git-source" }),
-    );
+    expect(mocks.assertStagedRemoteSkillPackageSafe).not.toHaveBeenCalled();
   });
 
   it("keeps package validation active when content safety scanning is disabled", async () => {
@@ -205,11 +189,7 @@ describe("remote Skill package adapter", () => {
     });
 
     expect(mocks.validateMaterializedSkillPackage).toHaveBeenCalledTimes(1);
-    expect(mocks.assertStagedRemoteSkillPackageSafe).toHaveBeenCalledWith(
-      expect.objectContaining({
-        safetyScan: { mode: "disabled" },
-      }),
-    );
+    expect(mocks.assertStagedRemoteSkillPackageSafe).not.toHaveBeenCalled();
   });
 
   it("uses an explicit or source fallback directory and target staging root", async () => {
@@ -235,7 +215,7 @@ describe("remote Skill package adapter", () => {
       "/target",
       { ifExists: "error" },
     );
-    expect(onSafetyReport).toHaveBeenCalledWith(safeReport);
+    expect(onSafetyReport).not.toHaveBeenCalled();
   });
 
   it("falls back to one bounded GitHub archive when Git is unavailable", async () => {
@@ -492,11 +472,7 @@ describe("remote Skill package adapter", () => {
     expect(mocks.fetchRemoteBytes).toHaveBeenCalledWith(
       "https://user:secret@example.com/writer.zip?token=secret#fragment",
     );
-    expect(mocks.assertStagedRemoteSkillPackageSafe).toHaveBeenCalledWith(
-      expect.objectContaining({
-        sourceKey: "zip:https://example.com/writer.zip",
-      }),
-    );
+    expect(mocks.assertStagedRemoteSkillPackageSafe).not.toHaveBeenCalled();
   });
 
   it("falls back to Skill identity for a non-URL Zip source", async () => {
@@ -507,10 +483,8 @@ describe("remote Skill package adapter", () => {
       vi.fn().mockResolvedValue(new Uint8Array([2])),
     );
 
-    expect(mocks.assertStagedRemoteSkillPackageSafe).toHaveBeenCalledWith(
-      expect.objectContaining({ sourceKey: "zip:skill:skill-writer" }),
-    );
-    expect(onSafetyReport).toHaveBeenCalledWith(safeReport);
+    expect(mocks.assertStagedRemoteSkillPackageSafe).not.toHaveBeenCalled();
+    expect(onSafetyReport).not.toHaveBeenCalled();
   });
 
   it("uses an exact source id for Zip review and rejects empty package URLs", async () => {
@@ -519,9 +493,7 @@ describe("remote Skill package adapter", () => {
       { zipUrl: "https://example.com/writer.zip" },
       vi.fn().mockResolvedValue(new Uint8Array([3])),
     );
-    expect(mocks.assertStagedRemoteSkillPackageSafe).toHaveBeenCalledWith(
-      expect.objectContaining({ sourceKey: "exact-source" }),
-    );
+    expect(mocks.assertStagedRemoteSkillPackageSafe).not.toHaveBeenCalled();
 
     await expect(
       saveRemoteZipSkillPackage(createRemoteSkill(), { zipUrl: "  " }),

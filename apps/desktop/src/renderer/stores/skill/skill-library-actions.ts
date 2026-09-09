@@ -1,3 +1,4 @@
+import { runSkillContentSafetyScan } from "../../services/skill-content-scan";
 import type {
   ScanLocalResult,
   ScannedSkill,
@@ -486,12 +487,8 @@ function createLibraryScanActions(set: SkillStoreSet, get: SkillStoreGet) {
     scanLocalPreview: async (customPaths) => {
       set({ isLoading: true, error: null });
       try {
-        const aiConfig = getSafetyScanAIConfig(
-          useSettingsStore.getState().aiModels,
-        );
         const scannedSkills = await window.api.skill.scanLocalPreview(
           customPaths,
-          aiConfig,
         );
         set({ isLoading: false });
         return scannedSkills;
@@ -579,7 +576,7 @@ async function scanAndPersistSkillSafety(
   skill: Skill,
   aiConfig: Parameters<SkillLibrarySlice["scanInstalledSkillSafety"]>[1],
 ): Promise<void> {
-  const report = await window.api.skill.scanSafety({
+  const report = await runSkillContentSafetyScan({
     name: skill.name,
     content: skill.instructions || skill.content,
     sourceUrl: skill.source_url,

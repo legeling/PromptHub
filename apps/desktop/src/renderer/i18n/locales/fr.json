@@ -1487,6 +1487,13 @@
     "clawSection": "Claw"
   },
   "settings": {
+    "contentScanTitle": "Analyse de sécurité du contenu",
+    "contentScanEnable": "Activer les analyses manuelles",
+    "contentScanDescription": "Désactivée par défaut. Analyse le contenu uniquement sur demande, sans juger la provenance ni intervenir dans les installations, mises à jour, imports ou déploiements.",
+    "contentScanMethod": "Méthode",
+    "contentScanStatic": "Analyse statique locale",
+    "contentScanAI": "Revue du contenu par IA",
+    "contentScanDisabled": "Activez les analyses de contenu dans les paramètres.",
     "developer": "Options pour les développeurs",
     "debugMode": "Mode débogage",
     "debugModeDesc": "Activer le débogage de la console (Supporte Ctrl+Shift+I / Cmd+Option+I)",

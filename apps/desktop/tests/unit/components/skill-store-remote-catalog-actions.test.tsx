@@ -289,7 +289,7 @@ describe("SkillStore remote loading", () => {
     expect(screen.getByText("file:///tmp/store").closest("a")).toBeNull();
   });
 
-  it("requires explicit confirmation before installing a high-risk skill", async () => {
+  it("keeps package confirmation but does not scan installation content", async () => {
     const installFromRegistry = vi.fn().mockResolvedValue({
       id: "installed",
       name: "PDF",
@@ -359,7 +359,8 @@ describe("SkillStore remote loading", () => {
       expect(
         screen.getByText("Review Skill before adding"),
       ).toBeInTheDocument();
-      expect(screen.getByText("static false positive")).toBeInTheDocument();
+      expect(screen.queryByText("static false positive")).toBeNull();
+      expect(window.api.skill.scanSafety).not.toHaveBeenCalled();
     });
 
     await act(async () => {
@@ -368,7 +369,7 @@ describe("SkillStore remote loading", () => {
 
     expect(installRegistrySkill).toHaveBeenCalledWith(
       expect.objectContaining({ slug: "pdf" }),
-      { safetyScanMode: "enabled" },
+      {},
     );
   });
 
@@ -465,7 +466,6 @@ describe("SkillStore remote loading", () => {
     await waitFor(() => expect(installRegistrySkill).toHaveBeenCalledTimes(2));
     expect(installRegistrySkill).toHaveBeenLastCalledWith(skill, {
       approvedPackageFingerprint: review.packageFingerprint,
-      safetyScanMode: "enabled",
     });
     expect(trustSkillUpdateSource).toHaveBeenCalledWith(review.sourceKey);
     expect(showToast).toHaveBeenCalledWith(
@@ -625,7 +625,6 @@ describe("SkillStore remote loading", () => {
 
     expect(updateRegistrySkill).toHaveBeenCalledWith("source-update-ready", {
       overwriteLocalChanges: false,
-      safetyScanMode: "disabled",
     });
   });
 

@@ -1,3 +1,4 @@
+import { runSkillContentSafetyScan } from "../../services/skill-content-scan";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangleIcon,
@@ -549,27 +550,15 @@ export function usePluginFullDetailController({
       return safetyScanInFlightRef.current;
     }
 
-    const aiConfig = getSafetyScanAIConfig(aiModels);
-    if (!aiConfig) {
-      showToast(
-        t(
-          "plugin.configureAiForSafety",
-          "Please configure an AI model in settings first",
-        ),
-        "error",
-      );
-      return Promise.resolve(null);
-    }
 
     const scanPromise = (async () => {
       setIsScanningSafety(true);
       try {
-        const report = await window.api.skill.scanSafety({
+        const report = await runSkillContentSafetyScan({
           name: plugin.displayName || plugin.name,
-          content: buildPluginSafetyScanContent(plugin, localPackagePath),
+          content: buildPluginSafetyScanContent(plugin),
           sourceUrl: getPluginSafetySourceUrl(plugin),
           localRepoPath: localPackagePath || undefined,
-          aiConfig,
         });
         const scoredReport: SkillSafetyReport = {
           ...report,

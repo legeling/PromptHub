@@ -316,109 +316,13 @@ describe("SkillSettings", () => {
     expect(screen.queryByText("Trusted Update Sources")).toBeNull();
   });
 
-  it("lists and revokes valid trusted update sources", async () => {
-    const revokeSkillUpdateSourceTrust = vi.fn();
-    useSettingsStoreMock.mockReturnValue({
-      ...createSettingsState(),
-      trustedSkillUpdateSourceKeys: ["github.com/example/skills"],
-      revokeSkillUpdateSourceTrust,
-    });
-
-    await act(async () => {
-      await renderWithI18n(<SkillSafetySettingsSection />, {
-        language: "en",
-      });
-    });
-
-    expect(screen.getByText("github.com/example/skills")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Remove" }));
-
-    expect(revokeSkillUpdateSourceTrust).toHaveBeenCalledWith(
-      "github.com/example/skills",
-    );
-  });
-
-  it("edits channel and exact custom-store scan policies", async () => {
-    const settingsState = createSettingsState();
-    customStoreSourcesMock = [
-      {
-        id: "team-gitea",
-        name: "Team Gitea",
-        type: "git-repo",
-        url: "https://gitea.example.com/team/skills",
-        enabled: true,
-        createdAt: 1,
-      },
-    ];
-    useSettingsStoreMock.mockReturnValue(settingsState);
-
-    await act(async () => {
-      await renderWithI18n(<SkillSafetySettingsSection />, {
-        language: "en",
-      });
-    });
-
-    fireEvent.change(
-      screen.getByRole("combobox", { name: "Git repositories" }),
-      { target: { value: "disabled" } },
-    );
-    fireEvent.change(screen.getByRole("combobox", { name: "Team Gitea" }), {
-      target: { value: "enabled" },
-    });
-
-    expect(settingsState.setSkillSafetyChannelPolicy).toHaveBeenCalledWith(
-      "git-repo",
-      "disabled",
-    );
-    expect(settingsState.setSkillSafetyStorePolicy).toHaveBeenCalledWith(
-      "team-gitea",
-      "enabled",
-    );
-  });
-
-  it("shows trusted source labels and matching Skill names instead of opaque keys", async () => {
-    const sourceKey = "59495259d8865efe81cf0ca7b5d992584d7f";
-    const revokeSkillUpdateSourceTrust = vi.fn();
-    installedSkillsMock = [
-      {
-        id: "skill-review",
-        name: "review-workflow",
-        source_id: sourceKey,
-        source_label: "Team Gitea",
-        source_url:
-          "https://alice:secret@gitea.internal/team/skills?token=hidden#main",
-      },
-      {
-        id: "skill-release",
-        name: "release-workflow",
-        source_id: sourceKey,
-        source_label: "Team Gitea",
-        source_url:
-          "https://alice:secret@gitea.internal/team/skills?token=hidden#main",
-      },
-    ];
-    useSettingsStoreMock.mockReturnValue({
-      ...createSettingsState(),
-      trustedSkillUpdateSourceKeys: [sourceKey],
-      revokeSkillUpdateSourceTrust,
-    });
-
-    await act(async () => {
-      await renderWithI18n(<SkillSafetySettingsSection />, {
-        language: "en",
-      });
-    });
-
-    expect(screen.getByText("Team Gitea")).toBeTruthy();
-    expect(screen.getByText("review-workflow, release-workflow")).toBeTruthy();
-    expect(screen.getByText("gitea.internal/team/skills")).toBeTruthy();
-    expect(screen.queryByText(sourceKey)).toBeNull();
-    expect(document.body.textContent).not.toContain("alice");
-    expect(document.body.textContent).not.toContain("secret");
-    expect(document.body.textContent).not.toContain("hidden");
-
-    fireEvent.click(screen.getByRole("button", { name: "Remove" }));
-    expect(revokeSkillUpdateSourceTrust).toHaveBeenCalledWith(sourceKey);
+  it("does not expose retired source or channel controls", async () => {
+    useSettingsStoreMock.mockReturnValue({...createSettingsState(), skillSafetyScanEnabled: false, trustedSkillUpdateSourceKeys: ["team"], skillSafetyChannelPolicies: {official: "enabled"}});
+    await act(async () => { await renderWithI18n(<SkillSafetySettingsSection />, {language: "en"}); });
+    expect(screen.queryByText("Trusted Update Sources")).toBeNull();
+    expect(screen.queryByRole("combobox")).toBeNull();
+    expect(screen.getByRole("button", {name: /Enable manual content scans/})).toBeInTheDocument();
+    expect(scanInstalledSkillSafetyMock).not.toHaveBeenCalled();
   });
 
   it("adds a custom agent root and shows derived asset previews", async () => {

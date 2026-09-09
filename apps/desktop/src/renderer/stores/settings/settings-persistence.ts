@@ -108,9 +108,10 @@ export function stripEphemeralSettings(
     window.api?.settings?.rendererPersistence
   ) {
     return Object.fromEntries(
-      Object.entries(persistedState).filter(([key, value]) =>
-        DESKTOP_RENDERER_PREFERENCE_FIELDS.has(key as keyof SettingsState) &&
-        typeof value !== "function",
+      Object.entries(persistedState).filter(
+        ([key, value]) =>
+          DESKTOP_RENDERER_PREFERENCE_FIELDS.has(key as keyof SettingsState) &&
+          typeof value !== "function",
       ),
     ) as PersistedSettingsState;
   }
@@ -310,42 +311,14 @@ function normalizeLegacyAgentSettings(
 }
 
 function normalizeSkillTrustSettings(next: SettingsState): void {
-  if (typeof next.autoScanInstalledSkills !== "boolean") {
-    next.autoScanInstalledSkills = false;
-  }
-  if (typeof next.autoScanStoreSkillsBeforeInstall !== "boolean") {
-    next.autoScanStoreSkillsBeforeInstall = false;
-  }
-  next.skillSafetyChannelPolicies = Object.fromEntries(
-    Object.entries(next.skillSafetyChannelPolicies ?? {}).filter(
-      (entry): entry is [SkillSafetyChannel, SkillSafetyPolicyValue] =>
-        isSkillSafetyChannel(entry[0]) && isSkillSafetyPolicyValue(entry[1]),
-    ),
-  );
-  next.skillSafetyStorePolicies = Object.fromEntries(
-    Object.entries(next.skillSafetyStorePolicies ?? {})
-      .map(([storeId, policy]) => [
-        normalizeSkillSafetyStoreId(storeId),
-        policy,
-      ])
-      .filter(
-        (entry): entry is [string, SkillSafetyPolicyValue] =>
-          Boolean(entry[0]) && isSkillSafetyPolicyValue(entry[1]),
-      )
-      .slice(0, 512),
-  );
-  next.trustedSkillUpdateSourceKeys = Array.isArray(
-    next.trustedSkillUpdateSourceKeys,
-  )
-    ? Array.from(
-        new Set(
-          next.trustedSkillUpdateSourceKeys
-            .filter((key): key is string => typeof key === "string")
-            .map((key) => key.trim().slice(0, 512))
-            .filter(Boolean),
-        ),
-      ).slice(-512)
-    : [];
+  next.skillSafetyScanEnabled = next.skillSafetyScanEnabled === true;
+  next.skillSafetyScanMethod =
+    next.skillSafetyScanMethod === "ai" ? "ai" : "static";
+  next.autoScanInstalledSkills = false;
+  next.autoScanStoreSkillsBeforeInstall = false;
+  next.skillSafetyChannelPolicies = {};
+  next.skillSafetyStorePolicies = {};
+  next.trustedSkillUpdateSourceKeys = [];
 }
 
 function normalizeMigratedCoreState(

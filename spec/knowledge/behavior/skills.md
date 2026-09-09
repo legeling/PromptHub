@@ -33,15 +33,9 @@
 - `.DS_Store`、VCS/PromptHub 内部目录、依赖、缓存、日志、临时文件、本地 `.env*`
   凭据和常见构建输出默认不进入托管副本、fingerprint、快照或分发目标；可分发的
   `.env.example` / `.env.sample` / `.env.template` 继续参与 package。
-- 托管复制、版本快照、Project/Agent 分发和 JSON 内容写入前必须扫描非忽略文本文件，
-  并阻止高置信私钥、provider token 与非占位 credential assignment。错误只返回 finding
-  类型、规范化相对路径与行号，不得回显命中的值。
-- package 扫描必须有明确容量边界：单文本文件最多 2 MiB、累计文本最多 16 MiB、
-  过滤后最多 500 个文件系统项、最多返回 100 条 finding。超过边界必须 fail closed，
-  不得静默截断后继续复制或分发。
-- 托管、Project 与 Agent copy 替换必须通过同级 staging/backup 原子交换；扫描、复制、
-  rename 或清理失败时必须恢复原目标。GitHub 导入必须先在临时 checkout 完成选择、
-  ignore 与 secret 检查，再创建最终托管 package。
+- 内容审查不参与托管复制、版本快照、Project/Agent 分发或 JSON 导入。凭据示例、脚本和其他可表示内容按既有 ignore 规则保留，不按内容扫描结论拦截。
+- package 路径、容量与原子性校验独立于扫描。CLI 复制入口保留过滤后 500 项上限，单文件与累计容量使用共享 package 20 MiB / 100 MiB 上限；不再读取文本以执行旧的 2 MiB / 16 MiB 扫描门禁。
+- 托管、Project 与 Agent copy 替换继续使用同级 staging/backup 原子交换；复制、rename 或清理失败时必须恢复原目标。GitHub 导入先在临时 checkout 完成选择、ignore 与 package 校验，再创建最终托管 package。
 
 ### 2. Sync Contract
 
@@ -81,19 +75,16 @@
 - 来源解析必须先归类为明确 adapter kind：`remote-store`、`remote-git`、`remote-zip`、`content-url`、`local-linked` 或 `managed-copy`。raw `content-url` 是单文件来源，安装基线与远程 package fingerprint 必须等于该 `SKILL.md` 的内容 hash，不得信任 registry 中陈旧或外部提供的目录指纹。
 - 来源检查必须使用与来源类型一致的 transport：`local-linked` 与 `managed-copy` 只读取本地目录；`remote-git` 优先通过经过校验的 Git clone 读取 package，Git 启动或 clone 失败时可以对同一个 HTTPS 仓库执行一次受控 HTTP archive 回退；`remote-zip` 下载并校验解压后的 package；只有纯 `content-url` 才使用通用 HTTP 内容接口。Git archive 回退必须复用现有代理、DNS/SSRF、重定向、超时、下载容量、archive 路径与 package 安全门禁，不得把 SSH 凭据静默转换为匿名 HTTPS，也不得在 Git 成功时额外下载。local/Git/Zip adapter 都必须从同一份经过校验的文件清单产生 `SKILL.md` 和完整 package fingerprint。用户明确配置的私有 Gitea 可以走 Git transport，但不得因此放宽通用 HTTP 的 SSRF 私网拦截。旧记录只剩 GitHub/Gitea raw/file URL 时必须恢复 repo/branch/directory；已安装 Skill 保存的具体本地来源路径优先于复用同一 `source_id` 的远程目录项。
 - skills.sh 等目录型商店只提供 repo 与 Skill selector 时不得猜测物理子目录；安装、指纹检查和更新快照必须把同一份已校验 selector 传给主进程，并将 selector 纳入缺少稳定目录/source id 时的来源身份，避免同仓库多个 Skill 冲突。显式 selector 即使面对只有一个 Skill 的仓库也必须匹配，不能静默安装无关 package。克隆后按 frontmatter 精确身份优先、目录名回退的规则执行有深度与目录数上限的递归发现；名称归一化必须支持 Unicode。标准 `skills` / `data/skills` 容器优先于隐藏 Agent Skill 容器，隐藏 Agent Skill 容器优先于普通示例目录；同优先级仍存在多个候选时必须明确失败，不得任意选择。远程发现不得跟随 symlink，必须跳过 VCS 与共享 ignore 规则命中的生成目录，但不得笼统跳过 `.agents/skills`、`.cursor/skills` 等合法隐藏 Agent 容器。
-- 非本地远程来源更新必须先完成内容落盘，再写入 DB 元数据和来源基线。远程 Git/Zip package 更新必须先通过暂存/安全检查/落盘流程；raw `content-url` 更新在单文件写入前也必须运行安全扫描，且只有 `SKILL.md` 写入成功后才允许刷新基线。任何远程内容落盘失败都不得提前把 DB 标记为已更新。
-- 远程 Git/Zip 更新的本地 package 结构、路径穿越与禁止模式预检始终启用；可选 AI 扫描与本地预检的结果必须在首次人工复核前合并。`blocked`、路径穿越、无效 package 结构和不安全 archive 不可绕过；`high-risk` 必须返回结构化 findings 供用户复核，不得退化为仅含错误字符串的 IPC 失败。
-- `high-risk` 更新批准必须绑定本次暂存 package 的 SHA-256 fingerprint，并在重试时重新暂存、扫描与比对；内容变化后旧批准失效。复核未产生内容变更时不得留下多余版本快照。
-- 用户可显式信任一个确切 Skill 来源，作用域必须是 `source_id` 或规范化的 repo/branch/directory，不得扩大为整个 Git/Gitea host。信任只允许扫描后的 fingerprint 自动重试，不跳过扫描；首次信任只能在人工批准成功后持久化，并且必须可在设置中撤销。持久化来源键、Git 诊断与 AI 安全扫描提示不得包含 URL userinfo、query 或 fragment；认证信息只允许进入 Git transport。
-- 设置页展示可信 Skill 来源时必须用确切授权键反查已安装 Skill，显示可识别的来源标签、脱敏位置和所有匹配 Skill 名称；授权与撤销仍使用原始确切键。无法反查的旧键只能显示有界摘要，不得把凭据、query 或 fragment 还原到界面。
-- 来源地址验证必须有超时边界。对于已经暂存并完成本地 package 扫描的更新，无法解析的自建来源只能产生可见的 provenance warning，不得令更新请求长期挂起；尚未物化本地 package 的内部/不可验证来源继续采用严格阻断策略。若用户已配置 PromptHub 代理，代理 DNS 使用 RFC 2544 `198.18/15` 合成地址表示公网上游，远程抓取器可以放行该合成地址并把原始域名交给代理；这不放行 loopback、RFC1918 或其他真实内网地址。
+- 非本地远程来源更新必须先完成内容落盘，再写入 DB 元数据和来源基线。Git/Zip 继续暂存并校验 package，raw content-url 在 SKILL.md 写入成功后刷新基线；任何落盘失败都不得提前标记为已更新。所有来源均不运行内容扫描。
+- package 结构、路径、archive、容量、fingerprint 和回滚校验继续生效；内容报告不构成批准或阻断条件，不再按来源信任进行扫描重试。认证信息仅供传输使用，持久化诊断必须脱敏。
+- 实际网络传输保留超时、代理和 SSRF 边界。配置代理时，远程抓取器保留既有 RFC 2544 合成 DNS 地址处理，不放行真实 loopback/RFC1918 内网地址；独立内容扫描不解析或验证来源地址。
 - 如果 raw `content-url` 已写入但最终 DB 基线写入失败，必须通过更新前创建的版本快照回滚，避免本地文件内容与数据库来源基线长期不一致。
 - PromptHub 托管 repo 替换必须使用 staging/backup swap；复制、校验或 sidecar 写入失败时，应保留上一个可用 managed repo。
 - 来源检查失败时，PromptHub 应保留本地内容，返回 `source-unavailable`，并只保存净化后的 `source_last_error` 摘要，避免把 URL userinfo、token、query secret、堆栈换行等细节暴露到持久化错误字段。
 - `source-unavailable` 检查结果还必须携带来源 adapter kind、脱敏后的来源位置和脱敏失败原因；本地目录、托管副本、Git、ZIP、内容地址和商店来源必须按实际类型展示，不能把所有来源都文案化为 URL。
 - Git 可执行文件缺失且 HTTP archive 不适用时，安装/更新失败必须明确提示安装 Git 或配置 `PATH` 后重启 PromptHub；Git 与 HTTP archive 都失败时必须明确说明两条 transport 均失败，并引导检查 Git/PATH、网络/代理和来源权限。结构化失败只保存有界 reason 与脱敏摘要，不得向 renderer 暴露原始命令、凭据或本地路径。
-- Cloud Store 的安装与更新必须先读取已发布 package，展示版本、文件/内容差异和安全扫描结果，等待用户明确确认后才写入本地；“检查更新”本身不得直接覆盖 Skill。
-- My Skills 详情页只能保留一个“检查来源更新”入口，不得在检查后把顶部按钮改成更新动作，也不得追加“覆盖本地修改”按钮。`update-available`、`local-modified`、`conflict` 和 `baseline-missing` 必须先打开本地版本与来源最新版本的差异对比；关闭或保留本地版本不得写入任何内容，只有用户明确选择来源版本后才能进入既有安全扫描、暂存、快照和回滚流程，需要覆盖授权的状态必须显式携带该授权。
+- Cloud Store 的安装与更新必须先读取已发布 package，展示版本、文件/内容差异，等待用户明确确认后才写入本地；“检查更新”本身不得直接覆盖 Skill。
+- My Skills 详情页只能保留一个“检查来源更新”入口，不得在检查后把顶部按钮改成更新动作，也不得追加“覆盖本地修改”按钮。`update-available`、`local-modified`、`conflict` 和 `baseline-missing` 必须先打开本地版本与来源最新版本的差异对比；关闭或保留本地版本不得写入任何内容，只有用户明确选择来源版本后才能进入既有暂存、快照和回滚流程，需要覆盖授权的状态必须显式携带该授权。
 - package 来源的更新对比必须使用与 fingerprint 相同的完整有效文件清单，逐项展示新增、修改和删除，并允许用户查看每个变更文本文件的行级差异。二进制或超过安全预览上限的文本文件必须保留在清单中并显示大小/完整摘要比较语义，不得静默忽略或强制解码。raw `content-url` 只对比 `SKILL.md`，不得把本地辅助文件误报为来源删除。
 - 同一 Git 仓库包含多个 Skill 时，来源恢复不得仅凭共享的 `source_url` 选择首个目录项；必须优先使用精确 `source_id`、`content_url`、`registry_slug`、已验证目录/路径或唯一 Skill 身份，歧义时回退已安装绑定而不是跨 Skill 更新。成功的 `up-to-date` 对账应修复非空规范来源元数据。skills.sh 页面中带省略号的 Repository 展示值不得保存为 Git URL。来源更新弹窗展示 Skill 身份与完整内容差异，不展示不能代表实际 package 决策的本地/来源版本卡片。
 - PromptHub Cloud 的桌面账号与 Skill Store 入口必须受同一个 renderer capability 控制；生产 endpoint 与发布证据未完成时默认关闭。关闭后设置导航、商店来源、程序化选择、持久化恢复和后台刷新都不得访问 Cloud，旧选中状态回退到官方商店。
@@ -101,16 +92,15 @@
 - Cloud 多文件 package 写入失败时必须恢复已写入文件并清理新建文件；安装失败不得留下半成品 Skill，更新失败不得提前刷新来源基线。
 - 扫描复制导入只有在完整 package 已写入 PromptHub 托管 repo 且 `local_repo_path` 已持久化后才能计为成功。复制、返回路径或路径持久化失败必须删除临时 Skill 记录；补偿删除失败必须报告原始失败与回滚失败，不得吞错或保留假成功状态。
 
-### 2.2 Install And Update Safety Review Contract
+### 2.2 Standalone Content Safety Scan Contract
 
-- 商店安装、快捷安装、批量安装、Git/GitHub/Gitea 导入与来源更新在完整 package 扫描命中可复核的 `high-risk` 时，必须返回结构化 review；不得把它退化为 `SAFETY_REVIEW_REQUIRED` 字符串或普通安装失败。
-- 初始列表或 `SKILL.md` 预览扫描只用于提前提示；安装与更新的最终授权以完整暂存 package 的扫描结果和 SHA-256 package fingerprint 为准。
-- 用户主动触发的 AI 安全评估必须保持严格语义：未配置模型、凭据失效或供应商不可用时应返回可操作且脱敏的错误，不得把本地规则扫描伪装成 AI 结论。安装与更新预览可以在 AI 不可用时显式降级为 `scanMethod: preflight`，但完整暂存 package 仍必须执行确定性的结构、路径、禁止模式与内容预检；`blocked` 始终阻断，`high-risk` 仍进入 fingerprint 绑定的人工复核，AI 故障不得跳过这些门禁。
-- 人工批准必须绑定 review 中的确切 package fingerprint。重试时必须重新取源、重新扫描并比对；任何内容变化都必须产生新的 review，旧批准不得继续使用。
-- “信任此确切来源”只能在复核后的安装或更新真正完成后持久化。取消、失败、fingerprint 变化或 `blocked` 结果不得写入信任列表；信任来源也不得跳过后续扫描。
-- 批量安装与批量更新必须把待复核项目排队并单独计数，不得把它们计为成功或普通失败。Git 导入同样不得在复核完成前计为已导入。
-- `blocked`、路径穿越、无效 package 结构与不安全 archive 始终不可绕过。raw `content-url` 的可复核高风险与 Git/Zip package 使用同一 review 语义，而不是直接硬阻断。
-- 标准生命周期必须在完整暂存、扫描和授权后才创建持久化 Skill 记录。兼容扫描导入等需要临时记录的边界必须确认补偿删除成功；若补偿失败，必须返回稳定的回滚诊断，并禁止继续展示可恢复批准流程，避免用户在不确定持久化状态上重复安装。
+- 安全扫描是默认关闭的独立功能。开启后仍只响应用户手动操作，不在导航、安装、快捷/批量安装、导入、更新、编辑、版本、同步、备份或部署时自动运行。
+- 设置使用独立的 skillSafetyScanEnabled 和 static/ai 方式。旧自动扫描、渠道策略和来源信任设置归零，不启用新功能；历史报告继续可读。回退旧版本前应检查其旧设置，旧程序可能恢复旧策略；不改写 package 或历史报告。
+- Desktop/Web 扫描请求必须显式 enabled=true；CLI skill scan-safety 命令即本次显式授权。默认本地静态内容检查，不联网；AI 方式须手动选择并配置模型，失败明确报错，不以静态结果冒充 AI。
+- 只检查内容意图和上下文，不根据来源域名、Git/Gitea/目录等渠道、source URL 是否存在、DNS、商店审计或脚本文件名判断风险。AI 输入不携带来源信任元数据，不执行被审查内容，不回显凭据值。
+- 报告仅供阅读，任何风险等级都不批准或阻止业务写入；旧操作请求的 safetyScan、safetyScanMode、approvedPackageFingerprint 为不生效的兼容字段。安装/更新不保存扫描结论或写入信任列表。
+- 路径穿越、不安全 archive、无效 package 结构、容量超限和写入/回滚错误仍按各自业务契约处理。内容扫描预算不得缩减可备份、版本化或安装的 package 内容。
+- 标准生命周期在完整暂存和结构校验后创建持久化 Skill 记录。兼容扫描导入的临时记录仍必须验证补偿删除成功，失败返回回滚诊断。
 - Desktop 进程启动时必须在接受新的 Skill package 请求前恢复上一进程留下的全部
   lifecycle journal 与 pending 记录，不受运行时清理所用年龄租约限制；进程运行期间
   的维护清理仍必须保留租约，避免把正在执行的安装或更新当作中断操作回滚。

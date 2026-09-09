@@ -1487,6 +1487,13 @@
     "clawSection": "Claw"
   },
   "settings": {
+    "contentScanTitle": "Inhaltssicherheitsprüfung",
+    "contentScanEnable": "Manuelle Inhaltsprüfung aktivieren",
+    "contentScanDescription": "Standardmäßig deaktiviert. Prüft Inhalte nur auf Anfrage, ohne Quellenbewertung oder Eingriff in Installation, Updates, Import oder Bereitstellung.",
+    "contentScanMethod": "Prüfmethode",
+    "contentScanStatic": "Lokale statische Analyse",
+    "contentScanAI": "KI-Inhaltsprüfung",
+    "contentScanDisabled": "Aktivieren Sie die Inhaltsprüfung in den Einstellungen.",
     "developer": "Entwickleroptionen",
     "debugMode": "Debug-Modus",
     "debugModeDesc": "Konsolen-Debugging aktivieren (Unterstützt Ctrl+Shift+I / Cmd+Option+I)",

@@ -1,28 +1,20 @@
 import { useMemo } from "react";
 import { createPortal } from "react-dom";
 import {
-  AlertTriangleIcon,
-  CheckCircle2Icon,
   DownloadIcon,
   FilePlus2Icon,
   FileTextIcon,
   Loader2Icon,
-  ShieldAlertIcon,
   XIcon,
 } from "lucide-react";
 import type { TFunction } from "i18next";
-import type {
-  CloudStoreDiff,
-  RegistrySkill,
-  SkillSafetyReport,
-} from "@prompthub/shared/types";
+import type { CloudStoreDiff, RegistrySkill } from "@prompthub/shared/types";
 import { generateTextDiff } from "./detail-utils";
 
 interface SkillStoreInstallReviewDialogProps {
   skill: RegistrySkill | null;
   content: string;
   cloudDiff?: CloudStoreDiff | null;
-  safetyReport?: SkillSafetyReport | null;
   isLoading: boolean;
   t: TFunction;
   onClose: () => void;
@@ -35,7 +27,6 @@ export function SkillStoreInstallReviewDialog({
   skill,
   content,
   cloudDiff,
-  safetyReport,
   isLoading,
   t,
   onClose,
@@ -43,9 +34,14 @@ export function SkillStoreInstallReviewDialog({
 }: SkillStoreInstallReviewDialogProps) {
   const diff = useMemo(() => generateTextDiff("", content), [content]);
   const changedFiles = cloudDiff
-    ? [...new Set([...cloudDiff.added, ...cloudDiff.modified, ...cloudDiff.removed])]
+    ? [
+        ...new Set([
+          ...cloudDiff.added,
+          ...cloudDiff.modified,
+          ...cloudDiff.removed,
+        ]),
+      ]
     : [];
-  const isBlocked = safetyReport?.level === "blocked";
 
   if (!skill) return null;
 
@@ -88,10 +84,13 @@ export function SkillStoreInstallReviewDialog({
         </header>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-xl border border-border bg-muted/30 p-3">
               <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-                <FileTextIcon className="h-4 w-4 text-primary" aria-hidden="true" />
+                <FileTextIcon
+                  className="h-4 w-4 text-primary"
+                  aria-hidden="true"
+                />
                 SKILL.md
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
@@ -102,27 +101,21 @@ export function SkillStoreInstallReviewDialog({
             </div>
             <div className="rounded-xl border border-border bg-muted/30 p-3">
               <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-                {safetyReport?.level === "safe" ? (
-                  <CheckCircle2Icon className="h-4 w-4 text-emerald-600" aria-hidden="true" />
-                ) : (
-                  <ShieldAlertIcon className="h-4 w-4 text-amber-600" aria-hidden="true" />
-                )}
-                {t("skill.updateReviewSafety", "Safety scan")}
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                {safetyReport?.level || t("skill.updateReviewSafetyPending", "Not run")}
-              </p>
-            </div>
-            <div className="rounded-xl border border-border bg-muted/30 p-3">
-              <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-                <FilePlus2Icon className="h-4 w-4 text-primary" aria-hidden="true" />
+                <FilePlus2Icon
+                  className="h-4 w-4 text-primary"
+                  aria-hidden="true"
+                />
                 {t("skill.updateReviewPackage", "Package")}
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
                 {cloudDiff
-                  ? t("skill.updateReviewChangedFiles", "{{count}} changed files", {
-                      count: changedFiles.length,
-                    })
+                  ? t(
+                      "skill.updateReviewChangedFiles",
+                      "{{count}} changed files",
+                      {
+                        count: changedFiles.length,
+                      },
+                    )
                   : t("skill.installReviewPackageSource", "Source package")}
               </p>
             </div>
@@ -155,38 +148,14 @@ export function SkillStoreInstallReviewDialog({
                   key={`${line.type}-${index}`}
                   className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
                 >
-                  <span className="mr-2 inline-block w-3 select-none text-center opacity-70">+</span>
+                  <span className="mr-2 inline-block w-3 select-none text-center opacity-70">
+                    +
+                  </span>
                   {line.content || " "}
                 </div>
               ))}
             </pre>
           </section>
-
-          {safetyReport && (
-            <section
-              className={`rounded-xl border p-3 ${
-                isBlocked
-                  ? "border-red-500/30 bg-red-500/5"
-                  : safetyReport.level === "high-risk"
-                    ? "border-amber-500/30 bg-amber-500/5"
-                    : "border-emerald-500/20 bg-emerald-500/5"
-              }`}
-            >
-              <div className="flex items-start gap-2">
-                {isBlocked ? (
-                  <AlertTriangleIcon className="mt-0.5 h-4 w-4 text-red-600" aria-hidden="true" />
-                ) : (
-                  <ShieldAlertIcon className="mt-0.5 h-4 w-4 text-amber-600" aria-hidden="true" />
-                )}
-                <div className="min-w-0 text-xs">
-                  <p className="font-semibold text-foreground">
-                    {t("skill.updateReviewSafetyResult", "Safety result")}: {safetyReport.level}
-                  </p>
-                  <p className="mt-1 text-muted-foreground">{safetyReport.summary}</p>
-                </div>
-              </div>
-            </section>
-          )}
         </div>
 
         <footer className="flex items-center justify-end gap-2 border-t border-border p-4">
@@ -201,11 +170,14 @@ export function SkillStoreInstallReviewDialog({
           <button
             type="button"
             onClick={onConfirm}
-            disabled={isLoading || isBlocked}
+            disabled={isLoading}
             className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isLoading ? (
-              <Loader2Icon className="h-4 w-4 animate-spin" aria-hidden="true" />
+              <Loader2Icon
+                className="h-4 w-4 animate-spin"
+                aria-hidden="true"
+              />
             ) : (
               <DownloadIcon className="h-4 w-4" aria-hidden="true" />
             )}

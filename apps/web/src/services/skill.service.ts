@@ -257,6 +257,8 @@ export class SkillService {
   ): Promise<SkillSafetyReport> {
     const skill = this.getById(actor, skillId);
     const input: SkillSafetyScanInput = {
+      enabled: overrides.enabled,
+      method: overrides.method,
       name: overrides.name ?? skill.name,
       content: overrides.content ?? skill.content ?? skill.instructions ?? '',
       sourceUrl: overrides.sourceUrl ?? skill.source_url,

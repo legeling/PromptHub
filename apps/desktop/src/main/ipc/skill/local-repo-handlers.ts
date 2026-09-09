@@ -8,7 +8,6 @@ import type {
 } from "@prompthub/shared/types";
 import { SKILL_PACKAGE_FINGERPRINT_ALGORITHM } from "@prompthub/shared/utils/skill-source-update";
 import { SkillInstaller } from "../../services/skill-installer";
-import { SkillSafetyReviewRequiredError } from "../../services/skill-update-safety";
 import {
   buildSkillSyncUpdateFromRepo,
   computeRepoDirectoryFingerprint,
@@ -16,16 +15,6 @@ import {
 import { validateMaterializedSkillPackage } from "../../services/skill-package-validation";
 import type { SkillIPCContext } from "./shared";
 import { ensureLocalRepoPath } from "./shared";
-
-function validateApprovedPackageFingerprint(
-  value: unknown,
-): string | undefined {
-  if (value === undefined) return undefined;
-  if (typeof value !== "string" || !/^[a-f0-9]{64}$/.test(value)) {
-    throw new Error("approvedPackageFingerprint must be a SHA-256 hex string");
-  }
-  return value;
-}
 
 async function resolveManagedRepoPath(
   context: SkillIPCContext,
@@ -172,16 +161,11 @@ export function registerSkillLocalRepoHandlers({ db }: SkillIPCContext): void {
       }
 
       try {
-        const approvedPackageFingerprint = validateApprovedPackageFingerprint(
-          options.approvedPackageFingerprint,
-        );
         const repoPath =
           await SkillInstaller.saveRemoteGitSkillToLocalRepoBySkillId(skill, {
             repoUrl: options.repoUrl,
             branch: options.branch,
             directory: options.directory,
-            safetyScan: options.safetyScan,
-            approvedPackageFingerprint,
           });
         const directoryFingerprint =
           await computeRepoDirectoryFingerprint(repoPath);
@@ -195,16 +179,6 @@ export function registerSkillLocalRepoHandlers({ db }: SkillIPCContext): void {
           repoPath,
         } satisfies RemoteSkillPackageSaveResult;
       } catch (error) {
-        if (error instanceof SkillSafetyReviewRequiredError) {
-          return {
-            status: "safety-review-required",
-            review: {
-              report: error.report,
-              packageFingerprint: error.packageFingerprint,
-              sourceKey: error.sourceKey,
-            },
-          } satisfies RemoteSkillPackageSaveResult;
-        }
         throw error;
       }
     },
@@ -244,14 +218,9 @@ export function registerSkillLocalRepoHandlers({ db }: SkillIPCContext): void {
       }
 
       try {
-        const approvedPackageFingerprint = validateApprovedPackageFingerprint(
-          options.approvedPackageFingerprint,
-        );
         const repoPath =
           await SkillInstaller.saveRemoteZipSkillToLocalRepoBySkillId(skill, {
             zipUrl: options.zipUrl,
-            safetyScan: options.safetyScan,
-            approvedPackageFingerprint,
           });
         const directoryFingerprint =
           await computeRepoDirectoryFingerprint(repoPath);
@@ -265,16 +234,6 @@ export function registerSkillLocalRepoHandlers({ db }: SkillIPCContext): void {
           repoPath,
         } satisfies RemoteSkillPackageSaveResult;
       } catch (error) {
-        if (error instanceof SkillSafetyReviewRequiredError) {
-          return {
-            status: "safety-review-required",
-            review: {
-              report: error.report,
-              packageFingerprint: error.packageFingerprint,
-              sourceKey: error.sourceKey,
-            },
-          } satisfies RemoteSkillPackageSaveResult;
-        }
         throw error;
       }
     },

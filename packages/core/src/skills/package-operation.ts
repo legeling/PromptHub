@@ -209,36 +209,6 @@ function validateRegistrySkill(value: unknown): asserts value is RegistrySkill {
   }
 }
 
-function validateSafetyScan(value: unknown): void {
-  if (value === undefined) return;
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new Error("safetyScan must be an object");
-  }
-  const safetyScan = value as Record<string, unknown>;
-  if (
-    safetyScan.mode !== undefined &&
-    safetyScan.mode !== "enabled" &&
-    safetyScan.mode !== "disabled"
-  ) {
-    throw new Error("safetyScan.mode must be enabled or disabled");
-  }
-  const aiConfig = safetyScan.aiConfig;
-  if (aiConfig === undefined) return;
-  if (!aiConfig || typeof aiConfig !== "object" || Array.isArray(aiConfig)) {
-    throw new Error("safetyScan.aiConfig must be an object");
-  }
-  const config = aiConfig as Record<string, unknown>;
-  for (const field of [
-    "provider",
-    "apiProtocol",
-    "apiKey",
-    "apiUrl",
-    "model",
-  ]) {
-    requireNonEmptyString(config[field], `safetyScan.aiConfig.${field}`);
-  }
-}
-
 /** Validate the renderer-to-main lifecycle contract before any side effect. */
 export function validateSkillPackageOperationRequest(
   value: unknown,
@@ -272,14 +242,6 @@ export function validateSkillPackageOperationRequest(
     throw new Error("markAsBuiltin must be a boolean");
   }
   validateOptionalString(request.note, "note");
-  validateSafetyScan(request.safetyScan);
-  if (
-    request.approvedPackageFingerprint !== undefined &&
-    (typeof request.approvedPackageFingerprint !== "string" ||
-      !/^[a-f0-9]{64}$/.test(request.approvedPackageFingerprint))
-  ) {
-    throw new Error("approvedPackageFingerprint must be a SHA-256 hex string");
-  }
   return request;
 }
 
@@ -422,7 +384,6 @@ export function buildStoreInstallSkillData(
     updated_from_store_at: input.now,
     prerequisites: skill.prerequisites,
     compatibility: packageMetadata.compatibility ?? skill.compatibility,
-    safetyReport: input.safetyReport,
     ...buildSourceBaseline(input),
   };
 }
@@ -468,7 +429,6 @@ export function buildStoreUpdateSkillData(
     installed_content_hash: input.contentHash,
     installed_version: installedVersion,
     updated_from_store_at: input.now,
-    safetyReport: input.safetyReport,
     ...buildSourceBaseline(input),
   };
 }

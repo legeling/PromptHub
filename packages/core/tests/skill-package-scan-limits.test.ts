@@ -1,77 +1,63 @@
-import fs from "fs/promises";
-import os from "os";
-import path from "path";
-
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-
-import { readRepoSecretScanEntries } from "../src/cli/skill/paths";
+import { validateRepoPackageInventory } from "../src/cli/skill/paths";
 import {
-  SKILL_SECRET_SCAN_MAX_FILE_BYTES,
-  SKILL_SECRET_SCAN_MAX_TOTAL_BYTES,
-  SkillPackageScanLimitError,
-} from "../src/skills/package-policy";
-
-describe("Skill package secret scan limits", () => {
-  const tempDirs: string[] = [];
-
-  async function makePackage(): Promise<string> {
-    const root = await fs.mkdtemp(path.join(os.tmpdir(), "prompthub-scan-"));
-    tempDirs.push(root);
+  MAX_SKILL_PACKAGE_FILE_BYTES,
+  MAX_SKILL_PACKAGE_TOTAL_BYTES,
+} from "@prompthub/shared/constants/skill-package";
+describe("package capacity independent of content scanning", () => {
+  const roots: string[] = [];
+  const makeRoot = async () => {
+    const root = await fs.mkdtemp(
+      path.join(os.tmpdir(), "prompthub-inventory-"),
+    );
+    roots.push(root);
     return root;
-  }
-
-  afterEach(async () => {
-    await Promise.all(
-      tempDirs
-        .splice(0)
-        .map((dir) => fs.rm(dir, { recursive: true, force: true })),
-    );
-  });
-
-  it("rejects an oversized text file without returning its contents", async () => {
-    const root = await makePackage();
-    await fs.writeFile(
-      path.join(root, "large.txt"),
-      Buffer.alloc(SKILL_SECRET_SCAN_MAX_FILE_BYTES + 1, 0x61),
-    );
-
-    const error = await readRepoSecretScanEntries(root).catch(
-      (caught) => caught,
-    );
-    expect(error).toBeInstanceOf(SkillPackageScanLimitError);
-    expect(error).toMatchObject({
-      path: "large.txt",
-      limitKind: "file",
-      limitBytes: SKILL_SECRET_SCAN_MAX_FILE_BYTES,
-    });
-    expect(JSON.stringify(error)).not.toContain("aaaa");
-  });
-
-  it("enforces a bounded total text budget across the package", async () => {
-    const root = await makePackage();
-    const chunk = Buffer.alloc(SKILL_SECRET_SCAN_MAX_FILE_BYTES, 0x62);
-    for (let index = 0; index < 8; index += 1) {
-      await fs.writeFile(path.join(root, `chunk-${index}.txt`), chunk);
+  };
+  const sparseFile = async (file: string, bytes: number) => {
+    const handle = await fs.open(file, "w");
+    try {
+      await handle.truncate(bytes);
+    } finally {
+      await handle.close();
     }
-    await fs.writeFile(path.join(root, "SKILL.md"), "# Skill", "utf8");
-
-    const error = await readRepoSecretScanEntries(root).catch(
-      (caught) => caught,
-    );
-    expect(error).toBeInstanceOf(SkillPackageScanLimitError);
-    expect(error).toMatchObject({
-      limitKind: "package",
-      limitBytes: SKILL_SECRET_SCAN_MAX_TOTAL_BYTES,
-    });
+  };
+  afterEach(async () => {
+    for (const root of roots.splice(0))
+      await fs.rm(root, { recursive: true, force: true });
   });
-
-  it("skips large binary files after bounded null-byte detection", async () => {
-    const root = await makePackage();
+  it("allows empty inventories and content beyond the retired scan budget", async () => {
+    const root = await makeRoot();
+    await expect(validateRepoPackageInventory(root)).resolves.toBeUndefined();
+    await fs.mkdir(path.join(root, "nested"));
+    await sparseFile(path.join(root, "nested", "file.bin"), 3 * 1024 * 1024);
     await fs.writeFile(
-      path.join(root, "archive.bin"),
-      Buffer.alloc(SKILL_SECRET_SCAN_MAX_FILE_BYTES + 1),
+      path.join(root, "credentials.txt"),
+      "password=correct-horse-battery-staple",
     );
-
-    await expect(readRepoSecretScanEntries(root)).resolves.toEqual([]);
+    await expect(validateRepoPackageInventory(root)).resolves.toBeUndefined();
+  });
+  it("rejects oversized binary and text packages using metadata only", async () => {
+    const root = await makeRoot();
+    const file = path.join(root, "large.bin");
+    await sparseFile(file, MAX_SKILL_PACKAGE_FILE_BYTES + 1);
+    await expect(validateRepoPackageInventory(root)).rejects.toThrow(
+      "capacity",
+    );
+    await fs.unlink(file);
+    for (
+      let i = 0;
+      i < MAX_SKILL_PACKAGE_TOTAL_BYTES / MAX_SKILL_PACKAGE_FILE_BYTES + 1;
+      i++
+    )
+      await sparseFile(
+        path.join(root, i + ".bin"),
+        MAX_SKILL_PACKAGE_FILE_BYTES,
+      );
+    await expect(validateRepoPackageInventory(root)).rejects.toThrow(
+      "capacity",
+    );
   });
 });

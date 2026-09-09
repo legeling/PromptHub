@@ -1,3 +1,4 @@
+import { runSkillContentSafetyScan } from "../../services/skill-content-scan";
 import { useTranslation } from "react-i18next";
 import { SaveIcon } from "lucide-react";
 import {
@@ -142,9 +143,6 @@ export function SkillFullDetailPage({
   const translationMode = useSettingsStore((state) => state.translationMode);
   const skillInstallMethod = useSettingsStore(
     (state) => state.skillInstallMethod,
-  );
-  const autoScanInstalledSkills = useSettingsStore(
-    (state) => state.autoScanInstalledSkills,
   );
   const projectSkillImportPreferencesByProjectId = useSettingsStore(
     (state) => state.projectSkillImportPreferencesByProjectId,
@@ -512,59 +510,6 @@ export function SkillFullDetailPage({
     selectedSkill?.id,
   ]);
 
-  useEffect(() => {
-    if (!selectedSkill || !autoScanInstalledSkills || isAgentDetail) {
-      return;
-    }
-
-    let cancelled = false;
-
-    const runScan = async () => {
-      setIsScanningSafety(true);
-      try {
-        const report = await window.api.skill.scanSafety({
-          name: selectedSkill.name,
-          content:
-            resolvedSkillMdContent ||
-            selectedSkill.instructions ||
-            selectedSkill.content,
-          sourceUrl: selectedSkill.source_url,
-          contentUrl: selectedSkill.content_url,
-          localRepoPath: selectedSkill.local_repo_path,
-          aiConfig: getSafetyScanAIConfig(aiModels),
-        });
-        if (!cancelled) {
-          setSafetyReport(report);
-          // Persist to DB + update store
-          try {
-            await saveSafetyReport(selectedSkill.id, report);
-          } catch (err) {
-            console.warn("Failed to persist auto-scan safety report:", err);
-          }
-        }
-      } catch (error) {
-        if (!cancelled) {
-          console.warn("Failed to auto-scan skill safety:", error);
-        }
-      } finally {
-        if (!cancelled) {
-          setIsScanningSafety(false);
-        }
-      }
-    };
-
-    void runScan();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    aiModels,
-    autoScanInstalledSkills,
-    resolvedSkillMdContent,
-    selectedSkill,
-    isAgentDetail,
-  ]);
   const {
     availablePlatforms,
     batchInstall: installSelectedPlatforms,
@@ -743,7 +688,7 @@ export function SkillFullDetailPage({
     scanPromise = (async () => {
       setIsScanningSafety(true);
       try {
-        const report = await window.api.skill.scanSafety({
+        const report = await runSkillContentSafetyScan({
           name: selectedSkill.name,
           content:
             resolvedSkillMdContent ||

@@ -207,51 +207,8 @@ export function getPluginSafetySourceUrl(plugin: PluginLibraryEntry): string {
   );
 }
 
-export function buildPluginSafetyScanContent(
-  plugin: PluginLibraryEntry,
-  localPackagePath: string,
-): string {
-  const sourceUrl = getPluginSafetySourceUrl(plugin);
-  const lines = [
-    "# Plugin Safety Assessment Input",
-    "",
-    "This is a static PromptHub Plugin package summary. Review metadata, source provenance, inventory, and package signals. Do not assume any plugin scripts, hooks, MCP servers, commands, apps, or tools have been executed.",
-    "",
-    "## Identity",
-    `id: ${plugin.id}`,
-    `name: ${plugin.name}`,
-    `displayName: ${plugin.displayName}`,
-    `version: ${plugin.version || "unknown"}`,
-    `trustLevel: ${plugin.trustLevel}`,
-    `classification: ${plugin.classification}`,
-    `category: ${plugin.category || "unknown"}`,
-    "",
-    "## Description",
-    plugin.description || "No short description provided.",
-    "",
-    "## Long Description",
-    plugin.longDescription || "No long description provided.",
-    "",
-    "## Inventory",
-    ...PLUGIN_INVENTORY_KEYS.map((key) => `${key}: ${plugin.inventory[key]}`),
-    "",
-    "## Source",
-    `sourceKind: ${plugin.source.kind}`,
-    `sourceLabel: ${plugin.source.label || "unknown"}`,
-    `sourceUrl: ${sourceUrl || "unknown"}`,
-    `repository: ${plugin.repository || plugin.source.repository || "unknown"}`,
-    `homepage: ${plugin.homepage || "unknown"}`,
-    `packagePath: ${plugin.source.packagePath || "unknown"}`,
-    `localPackagePath: ${localPackagePath || "unknown"}`,
-    `managedPath: ${plugin.managedPath || "unknown"}`,
-    "",
-    "## Static Review Scope",
-    "- Plugin installation records only the bundle in My Plugins.",
-    "- Child Skills and MCP configs require explicit import before distribution.",
-    "- Apps/connectors, commands, hooks, scripts, and MCP servers must not be executed during this scan.",
-  ];
-
-  return lines.join("\n");
+export function buildPluginSafetyScanContent(plugin: PluginLibraryEntry): string {
+  return [plugin.description, plugin.longDescription].filter(Boolean).join("\n\n");
 }
 
 export function getPluginDescriptionText(

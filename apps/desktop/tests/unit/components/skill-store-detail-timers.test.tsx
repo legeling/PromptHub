@@ -261,6 +261,7 @@ describe("SkillStoreDetail timer lifecycle", () => {
   });
 
   it("shares one safety scan for repeated run-scan clicks while the first scan is pending", async () => {
+    useSettingsStore.setState({ skillSafetyScanEnabled: true, skillSafetyScanMethod: "static" });
     let resolveScan:
       | ((value: {
           level: "safe";

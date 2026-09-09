@@ -268,6 +268,8 @@ Extends existing `SkillFullDetailPage` with:
 
 ## 6. Installation & Management Flow
 
+Content safety scanning is an independent, disabled-by-default manual feature. It never participates in the following workflows or evaluates source/channel reputation.
+
 ### 6.1 Install from Store
 
 ```
@@ -275,12 +277,10 @@ Browse store → Click skill → View detail → Click Install
                                              ↓
                                    1. Fetch the current package
                                    2. Validate package integrity
-                                   3. Resolve store > channel > global scan policy
-                                   4. If enabled, run content/AI safety scan
-                                   5. Show package/content diff
-                                   6. Require explicit confirmation
-                                   7. Write local package and update list
-                                   8. Optional: install to platforms
+                                   3. Show package/content diff
+                                   4. Require explicit confirmation
+                                   5. Write local package and update list
+                                   6. Optional: install to platforms
 ```
 
 ### 6.2 Quick Install (+ button)
@@ -290,11 +290,9 @@ Click + → Open install preview
           ↓
    1. Fetch the current package
    2. Validate package integrity
-   3. Resolve store > channel > global scan policy
-   4. If enabled, run the safety scan
-   5. Show the content diff and require explicit confirmation
-   6. Store locally and report the result
-   7. Move from Recommended to Installed
+   3. Show the content diff and require explicit confirmation
+   4. Store locally and report the result
+   5. Move from Recommended to Installed
 ```
 
 ### 6.3 Uninstall

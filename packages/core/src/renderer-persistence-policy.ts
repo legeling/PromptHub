@@ -55,6 +55,8 @@ export const APP_SETTING_KEYS = new Set([
   "customSkillPlatformPaths",
   "skillPlatformOrder",
   "skillInstallMethod",
+  "skillSafetyScanEnabled",
+  "skillSafetyScanMethod",
   "autoScanInstalledSkills",
   "autoScanStoreSkillsBeforeInstall",
   "skillSafetyChannelPolicies",

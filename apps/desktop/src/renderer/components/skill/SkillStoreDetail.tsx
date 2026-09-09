@@ -1,3 +1,4 @@
+import { runSkillContentSafetyScan } from "../../services/skill-content-scan";
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -75,10 +76,6 @@ import {
   getVisibleSkillCategoryLabel,
   SKILL_STORE_DETAIL_FOOTER_STYLES,
 } from "./skill-store-presentation";
-import {
-  getSkillSafetyChannelForStore,
-  resolveSkillSafetyScanMode,
-} from "../../services/skill-safety-policy";
 
 interface SkillStoreDetailProps {
   skill: RegistrySkill;
@@ -128,15 +125,7 @@ export function SkillStoreDetail({
   const clearTranslation = useSkillStore((state) => state.clearTranslation);
   const translationMode = useSettingsStore((state) => state.translationMode);
   const aiModels = useSettingsStore((state) => state.aiModels);
-  const autoScanStoreSkillsBeforeInstall = useSettingsStore(
-    (state) => state.autoScanStoreSkillsBeforeInstall,
-  );
-  const skillSafetyChannelPolicies = useSettingsStore(
-    (state) => state.skillSafetyChannelPolicies,
-  );
-  const skillSafetyStorePolicies = useSettingsStore(
-    (state) => state.skillSafetyStorePolicies,
-  );
+  const scanEnabled = useSettingsStore((state) => state.skillSafetyScanEnabled);
   const trustSkillUpdateSource = useSettingsStore(
     (state) => state.trustSkillUpdateSource,
   );
@@ -155,15 +144,11 @@ export function SkillStoreDetail({
   const [pendingInstallContent, setPendingInstallContent] = useState("");
   const [pendingInstallPackage, setPendingInstallPackage] =
     useState<CloudStorePackageResponse | null>(null);
-  const [pendingInstallSafetyReport, setPendingInstallSafetyReport] =
-    useState<SkillSafetyReport | null>(null);
   const [showInstallReview, setShowInstallReview] = useState(false);
   const [pendingUpdateCheck, setPendingUpdateCheck] =
     useState<RegistrySkillUpdateCheck | null>(null);
   const [pendingUpdatePackage, setPendingUpdatePackage] =
     useState<CloudStorePackageResponse | null>(null);
-  const [pendingUpdateSafetyReport, setPendingUpdateSafetyReport] =
-    useState<SkillSafetyReport | null>(null);
   const [showUpdateReview, setShowUpdateReview] = useState(false);
   const [overwritePendingUpdate, setOverwritePendingUpdate] = useState(false);
   const [pendingSafetyReview, setPendingSafetyReview] = useState<{
@@ -198,20 +183,6 @@ export function SkillStoreDetail({
     useState<SkillTranslationSidecar | null>(null);
   const skillSourceKey = skill.source_id || skill.slug || skill.source_url;
   const effectiveStoreSourceId = storeSourceId || skill.source_id || "official";
-  const safetyScanMode = resolveSkillSafetyScanMode(
-    {
-      autoScanStoreSkillsBeforeInstall,
-      skillSafetyChannelPolicies,
-      skillSafetyStorePolicies,
-    },
-    {
-      storeId: effectiveStoreSourceId,
-      channel: getSkillSafetyChannelForStore(
-        effectiveStoreSourceId,
-        storeSourceType,
-      ),
-    },
-  );
   const cloudSourceId = skill.source_id;
   const isCloudSkill = isCloudRegistrySkill(skill);
   const safeSourceUrl = resolveSkillExternalUrl(skill.source_url);
@@ -364,7 +335,7 @@ export function SkillStoreDetail({
     scanPromise = (async () => {
       setIsScanningSafety(true);
       try {
-        const report = await window.api.skill.scanSafety({
+        const report = await runSkillContentSafetyScan({
           name: skill.name,
           content: installedSkillMdContent || registrySkillMdContent,
           sourceUrl: isCloudSkill ? undefined : skill.source_url,
@@ -509,12 +480,10 @@ export function SkillStoreDetail({
     setTranslationSidecar(null);
     setPendingUpdateCheck(null);
     setPendingUpdatePackage(null);
-    setPendingUpdateSafetyReport(null);
     setShowUpdateReview(false);
     setPendingSafetyReview(null);
     setPendingInstallContent("");
     setPendingInstallPackage(null);
-    setPendingInstallSafetyReport(null);
     setShowInstallReview(false);
   }, [skill.slug]);
 
@@ -625,21 +594,9 @@ export function SkillStoreDetail({
       if (!content.trim()) {
         throw new Error("STORE_SKILL_CONTENT_EMPTY");
       }
-      const report =
-        safetyScanMode === "enabled"
-          ? await window.api.skill.scanSafety({
-              name: skill.name,
-              content,
-              sourceUrl: isCloudSkill ? undefined : skill.source_url,
-              contentUrl: isCloudSkill ? undefined : skill.content_url,
-              securityAudits: skill.security_audits,
-              aiConfig: getSafetyScanAIConfig(aiModels),
-              fallbackToPreflight: true,
-            })
-          : null;
+
       setPendingInstallContent(content);
       setPendingInstallPackage(packageResponse);
-      setPendingInstallSafetyReport(report);
       setShowInstallReview(true);
     } catch (e) {
       showToast(formatSkillInstallError(e, t), "error");
@@ -680,21 +637,8 @@ export function SkillStoreDetail({
           latestPackage.release.id !== pendingInstallPackage.release.id,
         );
         if (releaseChanged || latestContent !== pendingInstallContent) {
-          const latestReport =
-            safetyScanMode === "enabled"
-              ? await window.api.skill.scanSafety({
-                  name: skill.name,
-                  content: latestContent,
-                  sourceUrl: isCloudSkill ? undefined : skill.source_url,
-                  contentUrl: isCloudSkill ? undefined : skill.content_url,
-                  securityAudits: skill.security_audits,
-                  aiConfig: getSafetyScanAIConfig(aiModels),
-                  fallbackToPreflight: true,
-                })
-              : null;
           setPendingInstallContent(latestContent);
           setPendingInstallPackage(latestPackage);
-          setPendingInstallSafetyReport(latestReport);
           showToast(
             t(
               "skill.installReviewChanged",
@@ -705,9 +649,7 @@ export function SkillStoreDetail({
           return;
         }
       }
-      const result = await installOperation.install(installableSkill, {
-        safetyScanMode,
-      });
+      const result = await installOperation.install(installableSkill, {});
       if (result?.status === "safety-review-required") {
         setShowInstallReview(false);
         return;
@@ -775,7 +717,6 @@ export function SkillStoreDetail({
       setUpdateStatus(check.status);
       setPendingUpdateCheck(check);
       setPendingUpdatePackage(null);
-      setPendingUpdateSafetyReport(null);
       let message = t("skill.notInstalled", "Not installed");
       if (check.status === "update-available") {
         message = t("skill.updateAvailable", "Update available");
@@ -818,22 +759,6 @@ export function SkillStoreDetail({
             );
           }
         }
-        if (safetyScanMode === "enabled") {
-          try {
-            const report = await window.api.skill.scanSafety({
-              name: skill.name,
-              content: check.remoteContent,
-              sourceUrl: isCloudSkill ? undefined : skill.source_url,
-              contentUrl: isCloudSkill ? undefined : skill.content_url,
-              securityAudits: skill.security_audits,
-              aiConfig: getSafetyScanAIConfig(aiModels),
-              fallbackToPreflight: true,
-            });
-            setPendingUpdateSafetyReport(report);
-          } catch (error) {
-            showToast(formatSkillSafetyScanError(error, t), "warning");
-          }
-        }
         setOverwritePendingUpdate(check.status !== "update-available");
         setShowUpdateReview(true);
       }
@@ -868,7 +793,6 @@ export function SkillStoreDetail({
     try {
       const result = await updateRegistrySkill(skillSourceKey, {
         overwriteLocalChanges,
-        safetyScanMode,
         ...(approvedPackageFingerprint ? { approvedPackageFingerprint } : {}),
       });
       if (!result) {
@@ -1231,7 +1155,10 @@ export function SkillStoreDetail({
                 <button
                   type="button"
                   onClick={() => void scanSafety()}
-                  disabled={isScanningSafety}
+                  title={
+                    !scanEnabled ? t("settings.contentScanDisabled") : undefined
+                  }
+                  disabled={isScanningSafety || !scanEnabled}
                   className="shrink-0 text-[10px] font-medium text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
                 >
                   {isScanningSafety
@@ -1436,7 +1363,6 @@ export function SkillStoreDetail({
         onCloseDeploy={() => setDeploySkill(null)}
         updateCheck={showUpdateReview ? pendingUpdateCheck : null}
         updateCloudDiff={pendingUpdatePackage?.release.diff}
-        updateSafetyReport={pendingUpdateSafetyReport}
         overwriteLocalChanges={overwritePendingUpdate}
         isUpdating={isUpdating}
         onCloseUpdatePreview={() => {
@@ -1446,7 +1372,6 @@ export function SkillStoreDetail({
         installSkill={showInstallReview ? installableSkill : null}
         installContent={pendingInstallContent}
         installCloudDiff={pendingInstallPackage?.release.diff}
-        installSafetyReport={pendingInstallSafetyReport}
         isInstalling={isInstalling}
         onCloseInstallPreview={() => {
           if (!isInstalling) setShowInstallReview(false);

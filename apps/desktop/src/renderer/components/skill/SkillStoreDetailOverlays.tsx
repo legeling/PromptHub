@@ -3,7 +3,6 @@ import type {
   CloudStorePackageResponse,
   RegistrySkill,
   Skill,
-  SkillSafetyReport,
   SkillUpdateSafetyReview,
 } from "@prompthub/shared/types";
 import type { RegistrySkillUpdateCheck } from "../../services/skill-store-update";
@@ -28,7 +27,6 @@ interface SkillStoreDetailOverlaysProps {
   onCloseDeploy: () => void;
   updateCheck: RegistrySkillUpdateCheck | null;
   updateCloudDiff?: CloudStorePackageResponse["release"]["diff"];
-  updateSafetyReport: SkillSafetyReport | null;
   overwriteLocalChanges: boolean;
   isUpdating: boolean;
   onCloseUpdatePreview: () => void;
@@ -36,7 +34,6 @@ interface SkillStoreDetailOverlaysProps {
   installSkill: RegistrySkill | null;
   installContent: string;
   installCloudDiff?: CloudStorePackageResponse["release"]["diff"];
-  installSafetyReport: SkillSafetyReport | null;
   isInstalling: boolean;
   onCloseInstallPreview: () => void;
   onConfirmInstallPreview: () => void;
@@ -59,7 +56,6 @@ export function SkillStoreDetailOverlays(props: SkillStoreDetailOverlaysProps) {
       <SkillStoreUpdateReviewDialog
         check={props.updateCheck}
         cloudDiff={props.updateCloudDiff}
-        safetyReport={props.updateSafetyReport}
         overwriteLocalChanges={props.overwriteLocalChanges}
         isLoading={props.isUpdating}
         t={props.t}
@@ -70,7 +66,6 @@ export function SkillStoreDetailOverlays(props: SkillStoreDetailOverlaysProps) {
         skill={props.installSkill}
         content={props.installContent}
         cloudDiff={props.installCloudDiff}
-        safetyReport={props.installSafetyReport}
         isLoading={props.isInstalling}
         t={props.t}
         onClose={props.onCloseInstallPreview}

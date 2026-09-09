@@ -8,7 +8,7 @@ file manually. Run the generator after adding, moving, or archiving a change.
 | State | Count |
 | --- | ---: |
 | Active | 35 |
-| Archived | 232 |
+| Archived | 233 |
 | Legacy | 1 |
 
 ## Active
@@ -287,6 +287,7 @@ file manually. Run the generator after adding, moving, or archiving a change.
 | `2026-08-31-apimart-sponsor-readme` | archived | `spec/changes/archive/2026/08/2026-08-31-apimart-sponsor-readme/` |
 | `2026-09-03-release-0-6-0-beta-2-readiness` | archived | `spec/changes/archive/2026/09/2026-09-03-release-0-6-0-beta-2-readiness/` |
 | `2026-09-08-skill-package-durability-lossless-snapshots` | archived | `spec/changes/archive/2026/09/2026-09-08-skill-package-durability-lossless-snapshots/` |
+| `2026-09-09-skill-content-scan-separation` | archived | `spec/changes/archive/2026/09/2026-09-09-skill-content-scan-separation/` |
 
 ## Legacy
 

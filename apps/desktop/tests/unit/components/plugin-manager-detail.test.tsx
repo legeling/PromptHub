@@ -860,6 +860,7 @@ describe("PluginManager", () => {
   });
 
   it("runs AI safety assessments for installed Plugins and stores the report", async () => {
+    useSettingsStore.setState({ skillSafetyScanEnabled: true, skillSafetyScanMethod: "ai" });
     const scannedAt = Date.parse("2026-06-21T10:00:00.000Z");
     vi.mocked(window.api.skill.scanSafety).mockResolvedValue({
       level: "warn",
@@ -913,7 +914,7 @@ describe("PluginManager", () => {
       expect(window.api.skill.scanSafety).toHaveBeenCalledWith(
         expect.objectContaining({
           name: "Gmail",
-          sourceUrl: "https://github.com/openai/plugins",
+          enabled: true, method: "ai",
           localRepoPath: "/tmp/prompthub/plugins/gmail/repo/plugins/gmail",
           aiConfig: {
             provider: "openai-compatible",
@@ -927,10 +928,10 @@ describe("PluginManager", () => {
     });
     expect(
       vi.mocked(window.api.skill.scanSafety).mock.calls[0][0].content,
-    ).toContain("Inventory");
+    ).not.toContain("Inventory");
     expect(
       vi.mocked(window.api.skill.scanSafety).mock.calls[0][0].content,
-    ).toContain("skills: 4");
+    ).not.toContain("skills: 4");
 
     await waitFor(() => {
       expect(window.api.plugin.updatePluginMetadata).toHaveBeenCalledWith(

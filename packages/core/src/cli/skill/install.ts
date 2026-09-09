@@ -10,7 +10,6 @@ import {
   SKILL_PACKAGE_FINGERPRINT_ALGORITHM,
 } from "@prompthub/shared/utils/skill-source-update";
 import { getSkillsDir } from "../../runtime-paths";
-import { assertSkillPackageEntriesSafe } from "../../skills/package-policy";
 import {
   parseSkillMd,
   sanitizeProtocolType,
@@ -24,7 +23,7 @@ import {
   fileExists,
   GIT_CLONE_TIMEOUT_MS,
   loadSkillPackageIgnoreMatcher,
-  readRepoSecretScanEntries,
+  validateRepoPackageInventory,
 } from "./paths";
 
 export type FetchLike = typeof fetch;
@@ -269,7 +268,7 @@ export async function saveRepo(
   );
   await fs.mkdir(managedSkillsDir, { recursive: true });
 
-  assertSkillPackageEntriesSafe(await readRepoSecretScanEntries(sourceDir));
+  await validateRepoPackageInventory(sourceDir);
   const shouldIgnore = await loadSkillPackageIgnoreMatcher(sourceDir);
   await replaceSkillRepo(sourceDir, destinationDir, shouldIgnore);
 
@@ -282,7 +281,7 @@ export async function copyRepoToPlatform(
   options: { policyChecked?: boolean } = {},
 ): Promise<void> {
   if (!options.policyChecked) {
-    assertSkillPackageEntriesSafe(await readRepoSecretScanEntries(sourceDir));
+    await validateRepoPackageInventory(sourceDir);
   }
   const shouldIgnore = await loadSkillPackageIgnoreMatcher(sourceDir);
   await replaceSkillRepo(sourceDir, destinationDir, shouldIgnore);
@@ -292,7 +291,6 @@ export async function saveContent(
   skillName: string,
   content: string,
 ): Promise<string> {
-  assertSkillPackageEntriesSafe([{ path: "SKILL.md", content }]);
   const managedSkillsDir = getSkillsDir();
   const destinationDir = path.join(
     managedSkillsDir,
@@ -472,7 +470,7 @@ export async function installFromGithub(
       }
     }
 
-    assertSkillPackageEntriesSafe(await readRepoSecretScanEntries(skillDir));
+    await validateRepoPackageInventory(skillDir);
     const shouldIgnore = await loadSkillPackageIgnoreMatcher(skillDir);
     await copySkillRepoToNewDestination(skillDir, installDir, shouldIgnore);
     managedPackageCreated = true;
@@ -517,11 +515,6 @@ export async function importFromJson(
     throw new Error("Invalid skill JSON: missing name");
   }
   const instructions = sanitizeString(parsed.instructions);
-  if (instructions) {
-    assertSkillPackageEntriesSafe([
-      { path: "SKILL.md", content: instructions },
-    ]);
-  }
 
   return skillDb.create({
     name: skillName,

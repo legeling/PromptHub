@@ -1,13 +1,10 @@
 import type {
   RegistrySkill,
-  SafetyScanAIConfig,
   Skill,
   SkillSafetyScanMode,
-  SkillSafetyReport,
   UpdateSkillParams,
 } from "@prompthub/shared/types";
 import { shouldIgnoreSkillDirectoryEntry } from "@prompthub/shared/utils/skill-identity";
-import { computeSkillPackageFingerprintV1Sync } from "@prompthub/shared/utils/skill-source-update";
 import {
   getRegistrySkillDirectory,
   isLocalRegistrySkill,
@@ -20,13 +17,7 @@ import {
   computeSkillContentHash,
   type RegistrySkillUpdateCheck,
 } from "../../services/skill-store-update";
-import {
-  saveRemotePackageWithTrustedReview,
-  SkillUpdateSafetyReviewRequiredError,
-} from "../../services/skill-source-update-review";
 import { scheduleAllSaveSync } from "../../services/webdav-save-sync";
-import { useSettingsStore } from "../settings.store";
-import { getSafetyScanAIConfig } from "./skill-store-domain";
 import {
   getCloudSkillMarkdown,
   getCloudStorePackage,
@@ -36,69 +27,6 @@ import { buildSourceBaselineFields } from "./skill-source-update-baseline";
 import type { SkillState } from "./skill-store-types";
 
 const REMOTE_REPO_SYNC_CONCURRENCY = 6;
-
-function getRemoteUpdateSafetyScanOptions(
-  requestedMode?: SkillSafetyScanMode,
-): { mode: SkillSafetyScanMode; aiConfig?: SafetyScanAIConfig } {
-  const settings = useSettingsStore.getState();
-  const mode =
-    requestedMode ??
-    (settings.autoScanStoreSkillsBeforeInstall ? "enabled" : "disabled");
-  if (mode === "disabled") return { mode };
-  const aiConfig = getSafetyScanAIConfig(settings.aiModels);
-  return aiConfig ? { mode, aiConfig } : { mode };
-}
-
-function createRawContentSafetyBlockedError(
-  report: Pick<SkillSafetyReport, "level" | "summary">,
-): Error {
-  return new Error(
-    `SAFETY_SCAN_BLOCKED_UPDATE: staged remote Skill content was flagged as ${report.level}: ${report.summary || "review required"}`,
-  );
-}
-
-async function assertRemoteContentUrlSkillSafe(
-  registrySkill: RegistrySkill,
-  content: string,
-  approvedPackageFingerprint?: string,
-  packageFingerprint = computeSkillPackageFingerprintV1Sync([
-    { path: "SKILL.md", content },
-  ]).fingerprint,
-  safetyScanMode?: SkillSafetyScanMode,
-): Promise<void> {
-  const safetyScan = getRemoteUpdateSafetyScanOptions(safetyScanMode);
-  if (safetyScan.mode === "disabled") return;
-  const report = await window.api.skill.scanSafety({
-    name:
-      registrySkill.install_name || registrySkill.name || registrySkill.slug,
-    content,
-    sourceUrl: registrySkill.source_url,
-    contentUrl: registrySkill.content_url,
-    securityAudits: registrySkill.security_audits,
-    aiConfig: safetyScan.aiConfig,
-    fallbackToPreflight: true,
-  });
-  if (report.level === "blocked") {
-    throw createRawContentSafetyBlockedError(report);
-  }
-  const sourceKey =
-    registrySkill.source_id?.trim() ||
-    registrySkill.content_url?.trim() ||
-    registrySkill.source_url?.trim() ||
-    registrySkill.slug;
-  const isTrusted = getTrustedSkillUpdateSourceKeys().includes(sourceKey);
-  if (
-    report.level === "high-risk" &&
-    approvedPackageFingerprint !== packageFingerprint &&
-    !isTrusted
-  ) {
-    throw new SkillUpdateSafetyReviewRequiredError({
-      report,
-      packageFingerprint,
-      sourceKey,
-    });
-  }
-}
 
 function shouldSkipRemoteRepoFile(relativePath: string): boolean {
   return shouldIgnoreSkillDirectoryEntry(relativePath);
@@ -210,10 +138,6 @@ type RemoteRegistrySyncOptions = {
   safetyScanMode?: SkillSafetyScanMode;
 };
 
-function getTrustedSkillUpdateSourceKeys(): string[] {
-  return useSettingsStore.getState().trustedSkillUpdateSourceKeys;
-}
-
 async function refreshSyncedRegistrySkill(
   skillId: string,
   registrySkill: RegistrySkill,
@@ -233,17 +157,9 @@ async function syncRemoteZipPackage(
   registrySkill: RegistrySkill,
   options: RemoteRegistrySyncOptions,
 ): Promise<Skill | null> {
-  const safetyScan = getRemoteUpdateSafetyScanOptions(options.safetyScanMode);
-  await saveRemotePackageWithTrustedReview(
-    ({ approvedPackageFingerprint }) =>
-      window.api.skill.saveRemoteZipToRepo(skillId, {
-        zipUrl: registrySkill.package_url!,
-        safetyScan,
-        approvedPackageFingerprint,
-      }),
-    getTrustedSkillUpdateSourceKeys(),
-    options.approvedPackageFingerprint,
-  );
+  await window.api.skill.saveRemoteZipToRepo(skillId, {
+    zipUrl: registrySkill.package_url!,
+  });
   return refreshSyncedRegistrySkill(
     skillId,
     registrySkill,
@@ -260,17 +176,7 @@ async function syncRemoteGitPackage(
   if (!gitPackage) {
     throw new Error("Git-backed Skill source is missing repository metadata");
   }
-  const safetyScan = getRemoteUpdateSafetyScanOptions(options.safetyScanMode);
-  await saveRemotePackageWithTrustedReview(
-    ({ approvedPackageFingerprint }) =>
-      window.api.skill.saveRemoteGitToRepo(skillId, {
-        ...gitPackage,
-        safetyScan,
-        approvedPackageFingerprint,
-      }),
-    getTrustedSkillUpdateSourceKeys(),
-    options.approvedPackageFingerprint,
-  );
+  await window.api.skill.saveRemoteGitToRepo(skillId, gitPackage);
   return refreshSyncedRegistrySkill(
     skillId,
     registrySkill,
@@ -284,13 +190,6 @@ async function syncRemoteContentUrlSkill(
   effectiveContent: string,
   options: RemoteRegistrySyncOptions,
 ): Promise<void> {
-  await assertRemoteContentUrlSkillSafe(
-    registrySkill,
-    effectiveContent,
-    options.approvedPackageFingerprint,
-    undefined,
-    options.safetyScanMode,
-  );
   await window.api.skill.writeLocalFile(skillId, "SKILL.md", effectiveContent, {
     skipVersionSnapshot: true,
   });
@@ -339,19 +238,6 @@ async function syncCloudSkillPackage(
 ): Promise<void> {
   const packageResponse = await getCloudStorePackage(registrySkill);
   const effectiveCloudContent = getCloudSkillMarkdown(packageResponse);
-  const packageFingerprint = computeSkillPackageFingerprintV1Sync(
-    packageResponse.package.files.map((file) => ({
-      path: file.path,
-      content: file.content,
-    })),
-  ).fingerprint;
-  await assertRemoteContentUrlSkillSafe(
-    registrySkill,
-    effectiveCloudContent,
-    options.approvedPackageFingerprint,
-    packageFingerprint,
-    options.safetyScanMode,
-  );
   const previousFiles = (await window.api.skill.readLocalFiles(skillId))
     .filter((file) => !file.isDirectory)
     .map((file) => ({ path: file.path, content: file.content }));
@@ -681,9 +567,6 @@ async function handleSourceUpdateFailure(
   materialization: SourceMaterialization,
   error: unknown,
 ): Promise<void> {
-  if (error instanceof SkillUpdateSafetyReviewRequiredError) {
-    await discardUnchangedSourceUpdateSnapshot(installedSkill.id, snapshot);
-  }
   if (materialization.didMaterializeRemoteSource) {
     await rollbackMaterializedSourceUpdate(installedSkill.id, snapshot);
   }

@@ -113,7 +113,6 @@ describe("registry Skill install safety review", () => {
       expect.objectContaining({
         operation: "install",
         registrySkill: GITEA_SKILL,
-        safetyScan: { mode: "disabled" },
         source: {
           kind: "remote-git",
           repoUrl: GITEA_SKILL.source_url,
@@ -127,7 +126,7 @@ describe("registry Skill install safety review", () => {
     expect((window as any).api.skill.getAll).not.toHaveBeenCalled();
   });
 
-  it("installs after an exact fingerprint approval and forwards the approval to the package scan", async () => {
+  it("installs while ignoring legacy content approval fields", async () => {
     const installed = createSkillFixture({
       id: "approved-private-writer",
       name: "private-writer",
@@ -163,13 +162,11 @@ describe("registry Skill install safety review", () => {
       content: GITEA_SKILL.content,
       markAsBuiltin: true,
       note: undefined,
-      safetyScan: { mode: "disabled" },
-      approvedPackageFingerprint: REVIEW.packageFingerprint,
     });
     expect(getAll).toHaveBeenCalledTimes(1);
   });
 
-  it("passes an explicit enabled mode even when no AI model is configured", async () => {
+  it("does not forward automatic scanning settings to package operations", async () => {
     useSettingsStore.setState({
       autoScanStoreSkillsBeforeInstall: true,
     });
@@ -188,14 +185,10 @@ describe("registry Skill install safety review", () => {
 
     await useSkillStore.getState().installRegistrySkill(GITEA_SKILL);
 
-    expect(runPackageOperation).toHaveBeenCalledWith(
-      expect.objectContaining({
-        safetyScan: { mode: "enabled" },
-      }),
-    );
+    expect(runPackageOperation.mock.calls[0][0].safetyScan).toBeUndefined();
   });
 
-  it("recovers an exact custom-store override when callers omit the mode", async () => {
+  it("does not forward channel overrides to package operations", async () => {
     useSettingsStore.setState({
       autoScanStoreSkillsBeforeInstall: true,
       skillSafetyChannelPolicies: { "git-repo": "enabled" },
@@ -231,7 +224,6 @@ describe("registry Skill install safety review", () => {
 
     expect(runPackageOperation).toHaveBeenCalledWith(
       expect.objectContaining({
-        safetyScan: { mode: "disabled" },
       }),
     );
   });

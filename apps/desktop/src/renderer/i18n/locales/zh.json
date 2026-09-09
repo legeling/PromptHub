@@ -1488,6 +1488,13 @@
     "iconOption": "{{name}} 图标"
   },
   "settings": {
+    "contentScanTitle": "内容安全扫描",
+    "contentScanEnable": "开启手动内容扫描",
+    "contentScanDescription": "默认关闭。仅在手动扫描时检查内容，不评判来源渠道，也不参与或阻止安装、更新、导入和部署。",
+    "contentScanMethod": "扫描方式",
+    "contentScanStatic": "本地静态检查",
+    "contentScanAI": "AI 内容审查",
+    "contentScanDisabled": "请先在设置中开启内容扫描。",
     "developer": "开发者选项",
     "debugMode": "调试模式",
     "debugModeDesc": "启用控制台调试 (支持 Ctrl+Shift+I / Cmd+Option+I 唤起)",

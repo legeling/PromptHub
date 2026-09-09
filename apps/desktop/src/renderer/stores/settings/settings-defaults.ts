@@ -154,6 +154,8 @@ function createDefaultSkillValues() {
     customSkillPlatformPaths: {},
     skillPlatformOrder: [],
     skillInstallMethod: "symlink",
+    skillSafetyScanEnabled: false,
+    skillSafetyScanMethod: "static",
     autoScanInstalledSkills: false,
     autoScanStoreSkillsBeforeInstall: false,
     skillSafetyChannelPolicies: {},

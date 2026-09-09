@@ -1,3 +1,4 @@
+import { useSettingsStore } from "../../stores/settings.store";
 import { useTranslation } from "react-i18next";
 import {
   BookOpenIcon,
@@ -32,6 +33,7 @@ export function SkillDetailTabs({
   onSelectTab,
 }: SkillDetailTabsProps) {
   const { t } = useTranslation();
+  const scanEnabled = useSettingsStore((state) => state.skillSafetyScanEnabled);
   return (
     <div className="flex items-center px-6 gap-6 border-b border-border bg-accent/20">
       <TabButton
@@ -60,11 +62,13 @@ export function SkillDetailTabs({
           if (safetyReport && !isScanningSafety) onOpenSafetyReport();
           else if (!isScanningSafety) void onRunSafetyScan();
         }}
-        disabled={isScanningSafety}
+        disabled={isScanningSafety || (!safetyReport && !scanEnabled)}
         title={
-          safetyReport
-            ? t("skill.safetyModalTitle", "Safety Report")
-            : t("skill.safetyAssessmentEmpty", "No safety scan run yet")
+          !scanEnabled && !safetyReport
+            ? t("settings.contentScanDisabled")
+            : safetyReport
+              ? t("skill.safetyModalTitle", "Safety Report")
+              : t("skill.safetyAssessmentEmpty", "No safety scan run yet")
         }
         className={`ml-auto my-auto flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors disabled:opacity-50 ${
           safetyReport

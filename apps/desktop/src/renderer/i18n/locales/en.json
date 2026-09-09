@@ -1488,6 +1488,13 @@
     "iconOption": "{{name}} icon"
   },
   "settings": {
+    "contentScanTitle": "Content Safety Scan",
+    "contentScanEnable": "Enable manual content scans",
+    "contentScanDescription": "Off by default. Review content only when you request a scan. Scans never run during or block installation, updates, import, or deployment.",
+    "contentScanMethod": "Scan method",
+    "contentScanStatic": "Local static analysis",
+    "contentScanAI": "AI content review",
+    "contentScanDisabled": "Enable content scans in Settings to run an assessment.",
     "developer": "Developer Options",
     "debugMode": "Debug Mode",
     "debugModeDesc": "Enable console debugging (Supports Ctrl+Shift+I / Cmd+Option+I)",

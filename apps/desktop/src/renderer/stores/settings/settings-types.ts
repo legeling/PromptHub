@@ -232,6 +232,11 @@ export interface SettingsState {
   customSkillPlatformPaths: Record<string, string>;
   skillPlatformOrder: string[];
   skillInstallMethod: "symlink" | "copy";
+  skillSafetyScanEnabled: boolean;
+  skillSafetyScanMethod: "static" | "ai";
+  setSkillSafetyScanEnabled: (enabled: boolean) => void;
+  setSkillSafetyScanMethod: (method: "static" | "ai") => void;
+  /** @deprecated Automatic and source-based scanning is retired. */
   autoScanInstalledSkills: boolean;
   autoScanStoreSkillsBeforeInstall: boolean;
   skillSafetyChannelPolicies: Partial<

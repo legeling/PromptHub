@@ -156,7 +156,7 @@ export const useSettingsStore = create<SettingsState>()(
     },
     {
       name: "prompthub-settings",
-      version: 19,
+      version: 20,
       partialize: stripEphemeralSettings,
       merge: (persistedState, currentState) => {
         persistedRendererLanguage = getPersistedLanguageSetting(persistedState);

@@ -8,7 +8,6 @@ import type {
   SkillFileSnapshot,
   SkillPackageFileInput,
   SkillPackageOperationRequest,
-  SkillSafetyReport,
   SkillVersion,
   UpdateSkillParams,
 } from "@prompthub/shared/types";
@@ -22,7 +21,6 @@ import { getSkillsDirAccessor, isPathWithin } from "./skill-installer-internal";
 import { computeRepoDirectoryFingerprint } from "./skill-repo-sync";
 import { SkillInstaller } from "./skill-installer";
 import { validateMaterializedSkillPackage } from "./skill-package-validation";
-import { assertStagedRemoteSkillPackageSafe } from "./skill-update-safety";
 import {
   PENDING_INSTALL_MARKER,
   type PackageReplacement,
@@ -187,11 +185,9 @@ async function materializeNonRemoteSource(
 }
 
 async function materializeRemoteSource(
-  request: SkillPackageOperationRequest,
   source: RemotePackageSource,
   stagingRoot: string,
   stageSkill: Skill,
-  onSafetyReport: (report: SkillSafetyReport) => void,
 ): Promise<string> {
   if (source.kind === "remote-git") {
     return SkillInstaller.saveRemoteGitSkillToLocalRepoBySkillId(stageSkill, {
@@ -199,18 +195,12 @@ async function materializeRemoteSource(
       branch: source.branch,
       directory: source.directory,
       skillName: source.skillName,
-      safetyScan: request.safetyScan,
-      approvedPackageFingerprint: request.approvedPackageFingerprint,
       targetRootDir: stagingRoot,
-      onSafetyReport,
     });
   }
   return SkillInstaller.saveRemoteZipSkillToLocalRepoBySkillId(stageSkill, {
     zipUrl: source.zipUrl,
-    safetyScan: request.safetyScan,
-    approvedPackageFingerprint: request.approvedPackageFingerprint,
     targetRootDir: stagingRoot,
-    onSafetyReport,
   });
 }
 
@@ -226,61 +216,24 @@ function computeContentHash(content: string): string {
     .digest("hex");
 }
 
-async function scanNonRemoteStage(
-  request: SkillPackageOperationRequest,
-  sourceId: string,
-  repoPath: string,
-  directoryFingerprint: string,
-  stageSkill: Skill,
-): Promise<SkillSafetyReport | undefined> {
-  return assertStagedRemoteSkillPackageSafe({
-    skill: stageSkill,
-    skillDir: repoPath,
-    sourceUrl: getSourceUrl(request),
-    safetyScan: request.safetyScan,
-    packageFingerprint: directoryFingerprint,
-    approvedPackageFingerprint: request.approvedPackageFingerprint,
-    sourceKey: sourceId,
-  });
-}
-
 async function stagePackage(
   request: SkillPackageOperationRequest,
   context: { stagingRoot: string; sourceId: string },
 ): Promise<StagedSkillPackage> {
   const stageSkill = createStageSkill(request, context.sourceId);
-  let safetyReport: SkillSafetyReport | undefined;
   const source = request.source;
   const remote = isRemotePackageSource(source);
   const repoPath = remote
-    ? await materializeRemoteSource(
-        request,
-        source,
-        context.stagingRoot,
-        stageSkill,
-        (report) => {
-          safetyReport = report;
-        },
-      )
+    ? await materializeRemoteSource(source, context.stagingRoot, stageSkill)
     : await materializeNonRemoteSource(source, context.stagingRoot);
   await validateMaterializedSkillPackage(repoPath);
   const directoryFingerprint = await computeRepoDirectoryFingerprint(repoPath);
-  if (!remote) {
-    safetyReport = await scanNonRemoteStage(
-      request,
-      context.sourceId,
-      repoPath,
-      directoryFingerprint,
-      stageSkill,
-    );
-  }
   const content = await fs.readFile(path.join(repoPath, "SKILL.md"), "utf8");
   return {
     repoPath,
     content,
     contentHash: computeContentHash(content),
     directoryFingerprint,
-    safetyReport,
   };
 }
 

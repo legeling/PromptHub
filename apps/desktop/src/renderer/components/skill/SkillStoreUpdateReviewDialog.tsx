@@ -1,20 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  AlertTriangleIcon,
-  CheckCircle2Icon,
   DownloadIcon,
   FilePlus2Icon,
   FileTextIcon,
   Loader2Icon,
-  ShieldAlertIcon,
   XIcon,
 } from "lucide-react";
 import type { TFunction } from "i18next";
 import type {
   CloudStoreDiff,
   SkillPackageSnapshot,
-  SkillSafetyReport,
 } from "@prompthub/shared/types";
 import type { RegistrySkillUpdateCheck } from "../../services/skill-store-update";
 import {
@@ -26,7 +22,6 @@ import { generateTextDiff } from "./detail-utils";
 interface SkillStoreUpdateReviewDialogProps {
   check: RegistrySkillUpdateCheck | null;
   cloudDiff?: CloudStoreDiff | null;
-  safetyReport?: SkillSafetyReport | null;
   overwriteLocalChanges: boolean;
   decisionMode?: boolean;
   isLoading: boolean;
@@ -103,7 +98,6 @@ function formatFileSize(sizeBytes: number | undefined): string {
 export function SkillStoreUpdateReviewDialog({
   check,
   cloudDiff,
-  safetyReport,
   overwriteLocalChanges,
   decisionMode = false,
   isLoading,
@@ -150,7 +144,6 @@ export function SkillStoreUpdateReviewDialog({
     (file) => file.status === "modified",
   );
   const removedFiles = packageDiff.filter((file) => file.status === "removed");
-  const isBlocked = safetyReport?.level === "blocked";
 
   if (!check) return null;
 
@@ -194,7 +187,7 @@ export function SkillStoreUpdateReviewDialog({
         </header>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-xl border border-border bg-muted/30 p-3">
               <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
                 <FileTextIcon
@@ -211,27 +204,6 @@ export function SkillStoreUpdateReviewDialog({
                     count: changedFiles.length,
                   },
                 )}
-              </p>
-            </div>
-            <div className="rounded-xl border border-border bg-muted/30 p-3">
-              <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-                {safetyReport?.level === "safe" ? (
-                  <CheckCircle2Icon
-                    className="h-4 w-4 text-emerald-600"
-                    aria-hidden="true"
-                  />
-                ) : (
-                  <ShieldAlertIcon
-                    className="h-4 w-4 text-amber-600"
-                    aria-hidden="true"
-                  />
-                )}
-                {t("skill.updateReviewSafety", "Safety scan")}
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                {safetyReport
-                  ? safetyReport.level
-                  : t("skill.updateReviewSafetyPending", "Not run")}
               </p>
             </div>
             <div className="rounded-xl border border-border bg-muted/30 p-3">
@@ -395,41 +367,6 @@ export function SkillStoreUpdateReviewDialog({
             )}
           </section>
 
-          {safetyReport && (
-            <section
-              className={`rounded-xl border p-3 ${
-                isBlocked
-                  ? "border-red-500/30 bg-red-500/5"
-                  : safetyReport.level === "high-risk"
-                    ? "border-amber-500/30 bg-amber-500/5"
-                    : "border-emerald-500/20 bg-emerald-500/5"
-              }`}
-            >
-              <div className="flex items-start gap-2">
-                {isBlocked ? (
-                  <AlertTriangleIcon
-                    className="mt-0.5 h-4 w-4 text-red-600"
-                    aria-hidden="true"
-                  />
-                ) : (
-                  <ShieldAlertIcon
-                    className="mt-0.5 h-4 w-4 text-amber-600"
-                    aria-hidden="true"
-                  />
-                )}
-                <div className="min-w-0 text-xs">
-                  <p className="font-semibold text-foreground">
-                    {t("skill.updateReviewSafetyResult", "Safety result")}:{" "}
-                    {safetyReport.level}
-                  </p>
-                  <p className="mt-1 text-muted-foreground">
-                    {safetyReport.summary}
-                  </p>
-                </div>
-              </div>
-            </section>
-          )}
-
           {overwriteLocalChanges && (
             <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
               {t(
@@ -454,7 +391,7 @@ export function SkillStoreUpdateReviewDialog({
           <button
             type="button"
             onClick={onConfirm}
-            disabled={isLoading || isBlocked}
+            disabled={isLoading}
             className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isLoading ? (

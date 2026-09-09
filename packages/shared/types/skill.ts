@@ -433,7 +433,7 @@ export interface SkillSafetyReport {
   recommendedAction: "allow" | "review" | "block";
   scannedAt: number;
   checkedFileCount: number;
-  /** Active model scan or mandatory local package preflight. */
+  /** AI assessment or explicit static content analysis; neither is a business gate. */
   scanMethod: "ai" | "preflight";
   /**
    * Numeric safety score 0-100 (higher = safer).
@@ -450,9 +450,11 @@ export interface SkillUpdateSafetyReview {
 
 export type SkillSafetyScanMode = "enabled" | "disabled";
 
-/** Fingerprint-pinned authorization for a registry package installation. */
+/** Legacy content-review options are accepted but ignored by package operations. */
 export interface RegistrySkillInstallOptions {
+  /** @deprecated Content assessment no longer authorizes package writes. */
   approvedPackageFingerprint?: string;
+  /** @deprecated Automatic content assessment is retired. */
   safetyScanMode?: SkillSafetyScanMode;
 }
 
@@ -521,6 +523,7 @@ export interface SkillPackageOperationRequest {
   content: string;
   markAsBuiltin?: boolean;
   note?: string;
+  /** @deprecated Ignored: use the explicit standalone scan API. */
   safetyScan?: {
     mode?: SkillSafetyScanMode;
     aiConfig?: SafetyScanAIConfig;
@@ -611,15 +614,19 @@ export interface SafetyScanAIConfig {
 }
 
 export interface SkillSafetyScanInput {
+  /** Explicit opt-in for this standalone request. Missing means disabled. */
+  enabled?: boolean;
+  /** Static content analysis by default; AI must be explicitly selected. */
+  method?: "static" | "ai";
   name?: string;
   content?: string;
   sourceUrl?: string;
   contentUrl?: string;
   localRepoPath?: string;
   securityAudits?: string[];
-  /** AI model config for safety scanning. Required for active safety scans. */
+  /** Model config used only when method is ai. */
   aiConfig?: SafetyScanAIConfig;
-  /** Install/update flows may retain the mandatory local preflight if AI is unavailable. */
+  /** @deprecated Ignored. AI failures are not presented as successful static scans. */
   fallbackToPreflight?: boolean;
 }
 

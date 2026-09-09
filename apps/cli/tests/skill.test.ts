@@ -671,15 +671,9 @@ describe("CLI skill commands", () => {
       "writer-skill",
     ]);
     expect(safetyRes.exitCode).toBe(0);
-    expect(safetyRes.json.level).toBe("warn");
-    expect(safetyRes.json.findings).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          code: "dangerous-command",
-          severity: "high",
-        }),
-      ]),
-    );
+    expect(safetyRes.json.level).toBe("safe");
+    expect(safetyRes.json.scanMethod).toBe("preflight");
+    expect(safetyRes.json.findings).toEqual([]);
 
     const createSyncedVersionRes = await execCli([
       ...withDataDir(root),
