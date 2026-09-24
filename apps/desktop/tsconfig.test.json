@@ -2,8 +2,16 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": true,
-    "types": ["vitest/globals", "@testing-library/jest-dom"]
+    "types": ["node", "vitest/globals", "@testing-library/jest-dom"],
+    "allowImportingTsExtensions": true
   },
-  "include": ["src/**/*", "tests/**/*", "../../packages/**/*"],
-  "exclude": ["node_modules", "out", "tests/e2e/**/*"]
+  "include": [
+    "src/**/*",
+    "tests/**/*",
+    "vitest.config.ts",
+    "vitest.workspace.ts",
+    "playwright.config.ts",
+    "../../packages/**/*"
+  ],
+  "exclude": ["node_modules", "out"]
 }

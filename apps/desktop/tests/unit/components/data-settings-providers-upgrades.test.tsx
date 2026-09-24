@@ -27,7 +27,13 @@ import {
   runS3Upload,
   runSelfHostedConnectionCheck,
   runWebDAVConnectionCheck,
+  runWebDAVUpload,
 } from "../../../src/renderer/services/backup-orchestrator";
+
+const syncHistoryMocks = vi.hoisted(() => ({
+  read: vi.fn().mockResolvedValue([]),
+  record: vi.fn().mockResolvedValue(undefined),
+}));
 
 const useSettingsStoreMock = vi.fn();
 const useToastMock = vi.fn();
@@ -39,6 +45,12 @@ vi.mock("../../../src/renderer/stores/settings.store", () => ({
 
 vi.mock("../../../src/renderer/components/ui/Toast", () => ({
   useToast: () => useToastMock(),
+}));
+
+vi.mock("../../../src/renderer/services/sync-history", () => ({
+  AUTO_SYNC_HISTORY_UPDATED_EVENT: "prompthub:auto-sync-history-updated",
+  readAutoSyncHistory: syncHistoryMocks.read,
+  recordAutoSyncHistory: syncHistoryMocks.record,
 }));
 
 vi.mock("../../../src/renderer/stores/skill.store", () => ({
@@ -215,6 +227,8 @@ describe("DataSettings", { timeout: 60_000 }, () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
+    syncHistoryMocks.read.mockResolvedValue([]);
+    syncHistoryMocks.record.mockResolvedValue(undefined);
     originalCreateElement = document.createElement.bind(document);
     useSkillStoreMock.mockResolvedValue({
       total: 0,
@@ -309,6 +323,7 @@ describe("DataSettings", { timeout: 60_000 }, () => {
   it("enables WebDAV sync-on-save once WebDAV is enabled", async () => {
     const settingsState = createSettingsState();
     settingsState.webdavEnabled = true;
+    settingsState.syncProvider = "webdav";
     useSettingsStoreMock.mockReturnValue(settingsState);
 
     await act(async () => {
@@ -435,6 +450,111 @@ describe("DataSettings", { timeout: 60_000 }, () => {
           encryptionPassword: undefined,
         },
       });
+    });
+    expect(syncHistoryMocks.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "s3",
+        reason: "manual",
+        status: "success",
+        message: "Upload successful",
+      }),
+    );
+  });
+
+  it("records thrown S3 backup failures in sync history", async () => {
+    const settingsState = createSettingsState();
+    settingsState.s3StorageEnabled = true;
+    settingsState.s3Endpoint = "https://s3.example.com";
+    settingsState.s3Region = "us-east-1";
+    settingsState.s3Bucket = "prompthub-backups";
+    settingsState.s3AccessKeyId = "access";
+    settingsState.s3SecretAccessKey = "secret";
+    useSettingsStoreMock.mockReturnValue(settingsState);
+    vi.mocked(runS3Upload).mockRejectedValue(new Error("S3 unavailable"));
+
+    await act(async () => {
+      await renderWithI18n(<DataSettings activeSubsection="s3" />, {
+        language: "en",
+      });
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Create remote backup" }),
+    );
+
+    await waitFor(() => {
+      expect(syncHistoryMocks.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          provider: "s3",
+          reason: "manual",
+          status: "failed",
+          message: "S3 unavailable",
+        }),
+      );
+    });
+  });
+
+  it("records successful manual WebDAV backups in sync history", async () => {
+    const settingsState = createSettingsState();
+    settingsState.webdavEnabled = true;
+    settingsState.webdavUrl = "https://webdav.example.com";
+    settingsState.webdavUsername = "owner";
+    settingsState.webdavPassword = "secret";
+    useSettingsStoreMock.mockReturnValue(settingsState);
+    vi.mocked(runWebDAVUpload).mockResolvedValue({
+      success: true,
+      message: "1 skill backed up",
+      localChanged: false,
+    });
+
+    await act(async () => {
+      await renderWithI18n(<DataSettings activeSubsection="webdav" />, {
+        language: "en",
+      });
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Create remote backup" }),
+    );
+
+    await waitFor(() => {
+      expect(syncHistoryMocks.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          provider: "webdav",
+          reason: "manual",
+          status: "success",
+          message: "1 skill backed up",
+          localChanged: false,
+        }),
+      );
+    });
+  });
+
+  it("records failed manual WebDAV backups in sync history", async () => {
+    const settingsState = createSettingsState();
+    settingsState.webdavEnabled = true;
+    settingsState.webdavUrl = "https://webdav.example.com";
+    settingsState.webdavUsername = "owner";
+    settingsState.webdavPassword = "secret";
+    useSettingsStoreMock.mockReturnValue(settingsState);
+    vi.mocked(runWebDAVUpload).mockRejectedValue(new Error("Upload failed"));
+
+    await act(async () => {
+      await renderWithI18n(<DataSettings activeSubsection="webdav" />, {
+        language: "en",
+      });
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Create remote backup" }),
+    );
+
+    await waitFor(() => {
+      expect(syncHistoryMocks.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          provider: "webdav",
+          reason: "manual",
+          status: "failed",
+          message: "Upload failed",
+        }),
+      );
     });
   });
 

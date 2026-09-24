@@ -5,6 +5,7 @@ import type {
   AgentScannedSkill,
   ManagedAgentSummary,
   PluginLibraryEntry,
+  RuleFileDescriptor,
   ScannedSkill,
   Skill,
 } from "@prompthub/shared/types";
@@ -163,7 +164,7 @@ function seedSkillScan(
 }
 
 function seedStores() {
-  const claudeRule = {
+  const claudeRule: RuleFileDescriptor = {
     id: "claude-global",
     platformId: "claude",
     platformName: "Claude Code",
@@ -298,7 +299,7 @@ function seedStores() {
   });
 }
 
-function cardFor(name: string): Element {
+function cardFor(name: string): HTMLElement {
   const card = screen.getByText(name).closest("article");
   if (!card) {
     throw new Error(`No skill card rendered for "${name}"`);

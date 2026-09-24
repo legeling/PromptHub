@@ -5,14 +5,13 @@ import path from "path";
 export default defineConfig({
   test: {
     globals: true,
-    environment: "jsdom",
-    setupFiles: "./tests/setup.ts",
-    include: ["tests/**/*.{test,spec}.{ts,tsx}"],
+    include: [],
     exclude: ["tests/e2e/**/*", "node_modules/**/*"],
     testTimeout: 30_000,
     hookTimeout: 30_000,
-    minWorkers: 2,
-    maxWorkers: 4,
+    minWorkers: 1,
+    maxWorkers: 2,
+    passWithNoTests: false,
   },
   resolve: {
     alias: {
@@ -22,10 +21,6 @@ export default defineConfig({
       "@shared": path.resolve(__dirname, "../../packages/shared"),
       "@prompthub/shared": path.resolve(__dirname, "../../packages/shared"),
       "@prompthub/db": path.resolve(__dirname, "../../packages/db/src"),
-      "@tanstack/react-virtual": path.resolve(
-        __dirname,
-        "tests/mocks/tanstack-react-virtual.ts",
-      ),
     },
   },
 });

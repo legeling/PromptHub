@@ -58,7 +58,8 @@
     "verify:release": "node --experimental-strip-types scripts/verify-release.mts",
     "verify:release:quick": "node --experimental-strip-types scripts/verify-release.mts --profile quick",
     "verify:changed": "node --experimental-strip-types scripts/verify-release.mts --profile changed",
-    "docker:web:build": "docker build -f apps/web/Dockerfile -t prompthub-web:local ."
+    "docker:web:build": "docker build -f apps/web/Dockerfile -t prompthub-web:local .",
+    "typecheck:tests": "pnpm --filter @prompthub/desktop typecheck:tests"
   },
   "devDependencies": {
     "@types/react": "18.3.27"

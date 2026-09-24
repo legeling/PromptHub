@@ -40,7 +40,10 @@ vi.mock("../../../src/renderer/stores/settings.store", async () => {
 });
 
 vi.mock("../../../src/renderer/stores/ui.store", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../../src/renderer/stores/ui.store")>();
+  const actual =
+    await importOriginal<
+      typeof import("../../../src/renderer/stores/ui.store")
+    >();
   return {
     ...actual,
     useUIStore: (selector: (state: Record<string, unknown>) => unknown) =>
@@ -179,7 +182,7 @@ function createSettingsState() {
   };
 }
 
-describe("MainContent large dataset integration", () => {
+describe("MainContent large dataset component contract", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
@@ -194,15 +197,11 @@ describe("MainContent large dataset integration", () => {
     const uiState = { viewMode: "prompt" };
 
     useToastMock.mockReturnValue({ showToast: vi.fn() });
-    useFolderStoreMock.mockImplementation((selector) =>
-      selector(folderState),
-    );
+    useFolderStoreMock.mockImplementation((selector) => selector(folderState));
     useSettingsStoreMock.mockImplementation((selector) =>
       selector(settingsState),
     );
-    useUIStoreMock.mockImplementation((selector) =>
-      selector(uiState),
-    );
+    useUIStoreMock.mockImplementation((selector) => selector(uiState));
   });
 
   afterEach(async () => {
@@ -213,48 +212,40 @@ describe("MainContent large dataset integration", () => {
     vi.useRealTimers();
   });
 
-  it(
-    "renders large prompt datasets through virtualization without dropping rows",
-    async () => {
-      const prompts = Array.from({ length: 1000 }, (_, index) =>
-        createPrompt(index),
-      );
-      usePromptStoreMock.mockImplementation((selector) =>
-        selector(createPromptState(prompts)),
-      );
+  it("renders large prompt datasets through virtualization without dropping rows", async () => {
+    const prompts = Array.from({ length: 1000 }, (_, index) =>
+      createPrompt(index),
+    );
+    usePromptStoreMock.mockImplementation((selector) =>
+      selector(createPromptState(prompts)),
+    );
 
-      const { container } = await renderWithI18n(<MainContent />, {
-        language: "en",
-      });
-      await act(async () => {
-        await Promise.resolve();
-      });
+    const { container } = await renderWithI18n(<MainContent />, {
+      language: "en",
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
 
-      // First and last prompts must both reach the user. Older builds capped
-      // the inline list at 160 cards via a setTimeout-based chunk renderer;
-      // virtualization replaces that and the test setup mocks the virtualizer
-      // to render every row, so the full 1000 must be present.
-      // 第一条与最后一条 prompt 都必须能呈现给用户。旧版用 setTimeout 分批渲染
-      // 把卡片数限制在 160 以内；虚拟化已替代该方案，测试 setup 中把虚拟化 mock
-      // 成"全量渲染"，所以这里能看到全部 1000 条。
-      expect(screen.getByText("Prompt 0000")).toBeInTheDocument();
-      expect(screen.getByText("Prompt 0999")).toBeInTheDocument();
-      // Only the active card route owns a list header. Hidden table/gallery/
-      // kanban routes must not stay mounted just to preserve their count.
-      expect(screen.getAllByText("count:1000")).toHaveLength(1);
-      expect(container.querySelectorAll('h3[title^="Prompt "]')).toHaveLength(
-        prompts.length,
-      );
-    },
-    60_000,
-  );
+    // First and last prompts must both reach the user. Older builds capped
+    // the inline list at 160 cards via a setTimeout-based chunk renderer;
+    // virtualization replaces that and the test setup mocks the virtualizer
+    // to render every row, so the full 1000 must be present.
+    // 第一条与最后一条 prompt 都必须能呈现给用户。旧版用 setTimeout 分批渲染
+    // 把卡片数限制在 160 以内；虚拟化已替代该方案，测试 setup 中把虚拟化 mock
+    // 成"全量渲染"，所以这里能看到全部 1000 条。
+    expect(screen.getByText("Prompt 0000")).toBeInTheDocument();
+    expect(screen.getByText("Prompt 0999")).toBeInTheDocument();
+    // Only the active card route owns a list header. Hidden table/gallery/
+    // kanban routes must not stay mounted just to preserve their count.
+    expect(screen.getAllByText("count:1000")).toHaveLength(1);
+    expect(container.querySelectorAll('h3[title^="Prompt "]')).toHaveLength(
+      prompts.length,
+    );
+  }, 60_000);
 
   it("updates the rendered card order when prompt sort settings change", async () => {
-    const prompts = [
-      createPrompt(2),
-      createPrompt(1),
-      createPrompt(3),
-    ];
+    const prompts = [createPrompt(2), createPrompt(1), createPrompt(3)];
     usePromptStoreMock.mockImplementation((selector) =>
       selector(createPromptStateWithSort(prompts, "title", "asc")),
     );

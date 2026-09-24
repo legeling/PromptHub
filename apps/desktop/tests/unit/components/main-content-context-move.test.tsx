@@ -104,7 +104,7 @@ function createPrompt(overrides?: Partial<Prompt>): Prompt {
   };
 }
 
-describe("MainContent context move integration", () => {
+describe("MainContent context move component contract", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     installWindowMocks();

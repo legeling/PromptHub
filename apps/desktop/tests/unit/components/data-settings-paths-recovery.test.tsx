@@ -352,7 +352,7 @@ describe("DataSettings", { timeout: 60_000 }, () => {
     );
   });
 
-  it("shows recent automatic sync history on cloud sync settings", async () => {
+  it("shows recent manual and automatic sync history on cloud sync settings", async () => {
     installWindowMocks({
       api: {
         security: {
@@ -361,6 +361,16 @@ describe("DataSettings", { timeout: 60_000 }, () => {
         settings: {
           get: vi.fn().mockResolvedValue({
             autoSyncHistory: [
+              {
+                id: "sync-manual",
+                provider: "webdav",
+                reason: "manual",
+                status: "success",
+                startedAt: "2026-07-01T00:01:00.000Z",
+                finishedAt: "2026-07-01T00:01:01.000Z",
+                message: "1 skill backed up",
+                localChanged: false,
+              },
               {
                 id: "sync-1",
                 provider: "self-hosted",
@@ -392,11 +402,13 @@ describe("DataSettings", { timeout: 60_000 }, () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("Automatic sync history")).toBeInTheDocument();
+      expect(screen.getByText("Sync history")).toBeInTheDocument();
     });
+    expect(screen.getByText("Manual")).toBeInTheDocument();
+    expect(screen.getByText("1 skill backed up")).toBeInTheDocument();
     expect(screen.getByText("Self-Hosted PromptHub")).toBeInTheDocument();
     expect(screen.getByText("Startup resume")).toBeInTheDocument();
-    expect(screen.getByText("Success")).toBeInTheDocument();
+    expect(screen.getAllByText("Success")).toHaveLength(2);
     expect(screen.getByText("Updated local data")).toBeInTheDocument();
     expect(
       screen.getByText("self-hosted pull synced: 2 prompts"),

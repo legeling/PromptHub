@@ -93,7 +93,7 @@ function createPrompt(id: string, folderId: string | undefined): Prompt {
   };
 }
 
-describe("MainContent selection restore integration", () => {
+describe("MainContent selection restore component contract", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     installWindowMocks();

@@ -40,7 +40,7 @@ but it does not define or delay current migration safety work.
 | Local design backlog                       | #44, #74, #195, #196, #197, #198            | Designs are retained and implementation can be scheduled after the historical audit as independently reversible work.                                |
 | External or operational dependency backlog | #15, #27, #92, #106, #132, #177             | Accepted and designed, but not in the current implementation queue.                                                                                  |
 | New integration or security review         | #204, #205                                  | Verify the external `npx skills` contract and review PR #206's scanner supply chain, permissions, maintenance, and signal quality before acceptance. |
-| Untriaged or support follow-up             | #64, #71, #79, #107, #139, #141, #145, #188 | Require current reproduction/capability evidence before routing or claiming delivery; broad feedback alone is not an implementation plan.            |
+| Untriaged or support follow-up             | #64, #71, #107, #139, #141, #145, #188 | Require current reproduction/capability evidence before routing or claiming delivery; broad feedback alone is not an implementation plan.            |
 
 Issues #187 and #200 through #202 shipped in the public `0.6.0-beta.1`
 prerelease and are now remotely closed. Issue #199 was publicly linked to #198

@@ -7,9 +7,9 @@ file manually. Run the generator after adding, moving, or archiving a change.
 
 | State | Count |
 | --- | ---: |
-| Active | 35 |
+| Active | 37 |
 | Recorded complete (original path) | 0 |
-| Archived | 233 |
+| Archived | 235 |
 | Legacy | 1 |
 
 ## Active
@@ -26,6 +26,7 @@ file manually. Run the generator after adding, moving, or archiving a change.
 | `desktop-prompt-list-projection` | active | `spec/changes/active/desktop-prompt-list-projection/` |
 | `desktop-settings-authority-convergence` | active | `spec/changes/active/desktop-settings-authority-convergence/` |
 | `desktop-upgrade-snapshot-lock-recovery` | active | `spec/changes/active/desktop-upgrade-snapshot-lock-recovery/` |
+| `foundation-integrity-redesign` | in progress | `spec/changes/active/foundation-integrity-redesign/` |
 | `grok-build-platform-support` | active | `spec/changes/active/grok-build-platform-support/` |
 | `infistar-sponsor-promotion` | active | `spec/changes/active/infistar-sponsor-promotion/` |
 | `legacy-upgrade-recovery-audit` | active | `spec/changes/active/legacy-upgrade-recovery-audit/` |
@@ -51,6 +52,7 @@ file manually. Run the generator after adding, moving, or archiving a change.
 | `update-channel-hardening` | active | `spec/changes/active/update-channel-hardening/` |
 | `web-agent-service-parity` | active | `spec/changes/active/web-agent-service-parity/` |
 | `web-sync-contract-completion` | active | `spec/changes/active/web-sync-contract-completion/` |
+| `webdav-skill-backup-observability` | active | `spec/changes/active/webdav-skill-backup-observability/` |
 
 ## Recorded complete
 
@@ -297,7 +299,9 @@ rules are superseded by [current documentation policy](../rules/document-routing
 | `2026-08-21-skill-package-canonical-finalization` | archived | `spec/changes/archive/2026/08/2026-08-21-skill-package-canonical-finalization/` |
 | `2026-08-31-apimart-sponsor-readme` | archived | `spec/changes/archive/2026/08/2026-08-31-apimart-sponsor-readme/` |
 | `2026-09-03-release-0-6-0-beta-2-readiness` | archived | `spec/changes/archive/2026/09/2026-09-03-release-0-6-0-beta-2-readiness/` |
+| `2026-09-08-ai-request-timeout-unification` | archived | `spec/changes/archive/2026/09/2026-09-08-ai-request-timeout-unification/` |
 | `2026-09-08-skill-package-durability-lossless-snapshots` | archived | `spec/changes/archive/2026/09/2026-09-08-skill-package-durability-lossless-snapshots/` |
+| `2026-09-08-skill-translation-long-request-timeout` | archived | `spec/changes/archive/2026/09/2026-09-08-skill-translation-long-request-timeout/` |
 | `2026-09-09-skill-content-scan-separation` | archived | `spec/changes/archive/2026/09/2026-09-09-skill-content-scan-separation/` |
 
 ## Legacy

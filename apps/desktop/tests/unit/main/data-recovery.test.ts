@@ -594,7 +594,7 @@ describe("Data Recovery", () => {
       // Verify the recovered database has the data
       const recoveredDb = new DatabaseAdapter(
         path.join(targetDir, "prompthub.db"),
-        { readonly: true },
+        { readOnly: true },
       );
       const row = recoveredDb
         .prepare("SELECT COUNT(*) as count FROM prompts")
@@ -912,7 +912,7 @@ describe("Data Recovery", () => {
 
       const recoveredDb = new DatabaseAdapter(
         path.join(targetDir, "prompthub.db"),
-        { readonly: true },
+        { readOnly: true },
       );
       const promptRow = recoveredDb
         .prepare("SELECT COUNT(*) as count FROM prompts")
@@ -949,7 +949,7 @@ describe("Data Recovery", () => {
       expect(result.success).toBe(true);
       const recoveredDb = new DatabaseAdapter(
         path.join(targetDir, "prompthub.db"),
-        { readonly: true },
+        { readOnly: true },
       );
       expect(
         (
@@ -1041,7 +1041,7 @@ describe("Data Recovery", () => {
       const targetDb = new DatabaseAdapter(
         path.join(targetDir, "prompthub.db"),
         {
-          readonly: true,
+          readOnly: true,
         },
       );
       const promptRow = targetDb
@@ -1077,7 +1077,7 @@ describe("Data Recovery", () => {
       const targetDb = new DatabaseAdapter(
         path.join(targetDir, "prompthub.db"),
         {
-          readonly: true,
+          readOnly: true,
         },
       );
       const promptRow = targetDb
@@ -1116,7 +1116,7 @@ describe("Data Recovery", () => {
       // Verify the data was copied
       const recoveredDb = new DatabaseAdapter(
         path.join(targetDir, "data", "prompthub.db"),
-        { readonly: true },
+        { readOnly: true },
       );
       const row = recoveredDb
         .prepare("SELECT COUNT(*) as count FROM prompts")

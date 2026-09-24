@@ -41,13 +41,11 @@ describe("AgentUsageMeter", () => {
 
     expect(screen.getByText("Monthly quota")).toBeVisible();
     expect(screen.getByText("750 / 1,000 credits remaining")).toBeVisible();
-    expect(
-      screen.getByRole("progressbar", {
-        name: "Monthly quota: 75% remaining",
-      }),
-    )
-      .toHaveAttribute("aria-valuenow", "75")
-      .toHaveAttribute("data-usage-visual", "bar");
+    const progress = screen.getByRole("progressbar", {
+      name: "Monthly quota: 75% remaining",
+    });
+    expect(progress).toHaveAttribute("aria-valuenow", "75");
+    expect(progress).toHaveAttribute("data-usage-visual", "bar");
   });
 
   it("preserves unlimited and unknown provider states without fake bars", async () => {

@@ -107,23 +107,26 @@ describe("settings language actions", () => {
     expect(changeLanguageMock).not.toHaveBeenCalledWith("zh");
   });
 
-  it("treats an unsupported persisted renderer language as absent", async () => {
-    window.api.settings.get = vi.fn().mockResolvedValue({ language: "zh" });
-    localStorage.setItem(
-      "prompthub-settings",
-      JSON.stringify({
-        state: { language: "unsupported" },
-        version: 19,
-      }),
-    );
-    const { loadSettingsFromMainProcess, useSettingsStore } =
-      await import("../../../src/renderer/stores/settings.store");
+  it.each([20, 19])(
+    "treats an unsupported persisted renderer language in version %s as absent",
+    async (version) => {
+      window.api.settings.get = vi.fn().mockResolvedValue({ language: "zh" });
+      localStorage.setItem(
+        "prompthub-settings",
+        JSON.stringify({
+          state: { language: "unsupported" },
+          version,
+        }),
+      );
+      const { loadSettingsFromMainProcess, useSettingsStore } =
+        await import("../../../src/renderer/stores/settings.store");
 
-    await loadSettingsFromMainProcess();
+      await loadSettingsFromMainProcess();
 
-    expect(useSettingsStore.getState().language).toBe("zh");
-    expect(changeLanguageMock).toHaveBeenCalledWith("zh");
-  });
+      expect(useSettingsStore.getState().language).toBe("zh");
+      expect(changeLanguageMock).toHaveBeenCalledWith("zh");
+    },
+  );
 
   it("ignores an unsupported main-process language", async () => {
     window.api.settings.get = vi

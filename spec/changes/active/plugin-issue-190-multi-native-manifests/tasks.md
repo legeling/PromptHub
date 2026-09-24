@@ -24,8 +24,10 @@
 
 ## Verification And Convergence
 
-- [ ] `T-PLUG190-007`: Run focused Core/Desktop Plugin lifecycle tests with
-      100% coverage for changed branches, followed by the changed-surface harness.
+- [ ] `T-PLUG190-007`: Verify normal Core/Desktop Plugin lifecycle workflows
+      and package/target results, then affected black-box inputs and recovery under
+      the [testing standard](../../../rules/testing-standards.md). Run the
+      changed-surface harness and record any functional layers it does not select.
 - [ ] `T-PLUG190-008`: Run Core/Shared/Desktop typechecks, targeted lint,
       file-size gate, `pnpm spec:test`, `pnpm spec:index:check`, and
       `git diff --check`.

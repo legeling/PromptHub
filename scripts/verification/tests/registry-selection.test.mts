@@ -44,10 +44,8 @@ test("the maintained registry is valid and includes previously omitted gates", (
     "desktop-unit-6",
     "desktop-unit-7",
     "desktop-unit-8",
-    "desktop-integration-1",
-    "desktop-integration-2",
-    "desktop-integration-3",
-    "desktop-integration-4",
+    "desktop-integration",
+    "desktop-test-typecheck",
     "mobile-test",
     "web-smoke",
     "web-cloudflare-build",
@@ -99,25 +97,42 @@ test("desktop unit coverage uses bounded serial shards", () => {
   }
 });
 
-test("desktop integration coverage uses single-worker release shards", () => {
-  const shards = VERIFICATION_CHECKS.filter((item) =>
-    item.id.startsWith("desktop-integration-"),
-  );
-
-  assert.deepEqual(
-    shards.map((item) => item.id),
-    [
-      "desktop-integration-1",
-      "desktop-integration-2",
-      "desktop-integration-3",
-      "desktop-integration-4",
-    ],
-  );
-  for (const [index, shard] of shards.entries()) {
-    assert.deepEqual(shard.profiles, ["release", "package"]);
-    assert.equal(shard.resourceGroup, "test-heavy");
-    assert.equal(shard.command.args.includes(`${index + 1}/4`), true);
-    assert.equal(shard.command.args.at(-1), "1");
+test("every desktop profile selects real integration and test typechecking", () => {
+  for (const profile of ["changed", "quick", "release", "package"] as const) {
+    const selected = selectChecks(VERIFICATION_CHECKS, {
+      profile,
+      surfaces: new Set(["desktop"]),
+    });
+    const integration = selected.filter(
+      (item) => item.id === "desktop-integration",
+    );
+    assert.equal(integration.length, 1, profile);
+    assert.equal(
+      selected.filter((item) => item.id === "desktop-test-typecheck").length,
+      1,
+      profile,
+    );
+    assert.deepEqual(integration[0].command.args, [
+      "--filter",
+      "@prompthub/desktop",
+      "test:integration",
+    ]);
+    assert.equal(integration[0].resourceGroup, "test-heavy");
+    assert.equal(
+      selected.filter((item) => item.id.startsWith("desktop-integration-"))
+        .length,
+      0,
+      "retired shards must not duplicate or hide the functional baseline",
+    );
+    for (const unit of selected.filter((item) =>
+      item.id.startsWith("desktop-unit-"),
+    )) {
+      assert.ok(unit.dependsOn?.includes("desktop-integration"));
+    }
+    assert.equal(
+      selected.some((item) => item.id === "desktop-e2e-smoke"),
+      profile === "release" || profile === "package",
+    );
   }
 });
 

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RendererErrorBoundary } from "../../../src/renderer/components/app/RendererErrorBoundary";
 import { renderWithI18n } from "../../helpers/i18n";
 
-function BrokenRenderer() {
+function BrokenRenderer(): never {
   throw new Error("renderer failed");
 }
 

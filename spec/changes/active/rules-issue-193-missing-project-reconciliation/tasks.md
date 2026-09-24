@@ -22,8 +22,10 @@
 
 ## Verification And Convergence
 
-- [ ] `T-RULE193-007`: Run focused Core/DB/Desktop tests with 100% coverage for
-      changed branches, plus the changed-surface harness.
+- [ ] `T-RULE193-007`: Verify normal Core/DB/Desktop delete/rescan/cleanup
+      workflows and durable results, then affected black-box inputs and recovery
+      under the [testing standard](../../../rules/testing-standards.md). Run the
+      changed-surface harness and record any functional layers it does not select.
 - [ ] `T-RULE193-008`: Run Core/Desktop typechecks, targeted lint, file-size
       gate, `pnpm spec:test`, `pnpm spec:index:check`, and
       `git diff --check`.

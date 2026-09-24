@@ -48,28 +48,30 @@ pnpm --filter @prompthub/cli dev -- --help
 
 ## 常用命令
 
-| 场景             | 命令                 |
-| ---------------- | -------------------- |
-| 桌面端开发       | `pnpm electron:dev`  |
-| Web 开发         | `pnpm dev:web`       |
-| 桌面端构建       | `pnpm build`         |
-| Web 构建         | `pnpm build:web`     |
-| 桌面端 lint      | `pnpm lint`          |
-| Web lint         | `pnpm lint:web`      |
-| 桌面端 typecheck | `pnpm typecheck`     |
-| Web typecheck    | `pnpm typecheck:web` |
-| 桌面端全量测试   | `pnpm test -- --run` |
-| Web 全量验证     | `pnpm verify:web`    |
-| E2E              | `pnpm test:e2e`      |
-| 发布前桌面门禁   | `pnpm test:release`  |
+| 场景             | 命令                  |
+| ---------------- | --------------------- |
+| 桌面端开发       | `pnpm electron:dev`   |
+| Web 开发         | `pnpm dev:web`        |
+| 桌面端构建       | `pnpm build`          |
+| Web 构建         | `pnpm build:web`      |
+| 桌面端 lint      | `pnpm lint`           |
+| Web lint         | `pnpm lint:web`       |
+| 桌面端 typecheck | `pnpm typecheck`      |
+| Web typecheck    | `pnpm typecheck:web`  |
+| 桌面端测试验收   | `pnpm test:run`       |
+| Web 全量验证     | `pnpm verify:web`     |
+| E2E              | `pnpm test:e2e`       |
+| 根级发布候选门禁 | `pnpm verify:release` |
 
 > `pnpm build` 在仓库根默认只构建桌面版；如果改动了 Web，请显式执行 `pnpm build:web` 或 `pnpm verify:web`。
 
-## 桌面 E2E 与 Test Agents
+## 测试与验收
 
-涉及用户可见多步骤流程、Electron 跨进程行为、持久化/重启、安装/删除、同步/恢复或真实 UI 回归时，应优先使用仓库级 Playwright Test Agents 辅助规划和生成 E2E。纯逻辑与数据边界仍应先补最低有效层的 unit 或 integration 测试。
+测试设计与完成标准统一见 [测试标准](../spec/rules/testing-standards.md)。先从真实入口完成正常流程并检查结果，再从同一入口验证异常输入和失败后的状态；覆盖率与 mock 调用不能替代功能验收。
 
-Test Agent 不是发布门禁。生成的 `.spec.ts` 必须经过审查，并能通过普通 `playwright test` 独立重复执行。完整适用范围、Planner/Generator/Healer 提示词和运行命令见 [Playwright Test Agents 使用指南](./testing-playwright-agents.md)。
+提交测试时说明前置数据、触发操作、具体预期和实际验证边界。持久化检查实际读回及必要的重开，UI 变更记录真实操作结果。测试代码也要接受静态检查；Vitest 通过不等于类型检查通过。使用 `pnpm typecheck:tests` 检查测试与 E2E 类型；`pnpm test:run` 依次运行真实集成基线、测试类型检查和单元回归。当前目录结构与命令边界见 [验证入口](../spec/workflow/04-verification/README.md)。
+
+Playwright Test Agents 可辅助规划、生成或诊断 E2E，使用时遵守 GUI 与委派授权。生成源码只是待审查产物，须由普通 Playwright 独立执行后才有测试结果；不要求每次测试调用 Agent。操作方式见 [使用指南](./testing-playwright-agents.md)。
 
 ## 文档
 

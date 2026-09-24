@@ -1,3 +1,7 @@
+/** @vitest-environment jsdom */
+/// <reference types="vitest/jsdom" />
+// Exercises backup serialization and file snapshots with real filesystem IO.
+// Metadata and media IPC are fixtures; this does not prove SQLite/IPC restore.
 import fs from "fs/promises";
 import os from "os";
 import path from "path";
@@ -8,8 +12,14 @@ import {
   restoreFromBackup,
 } from "../../../src/renderer/services/database-backup";
 import { installWindowMocks } from "../../helpers/window";
-import { readSkillFileSnapshots, replaceSkillFileSnapshots } from "@prompthub/core/skills/file-snapshot";
-import type { SkillFileSnapshot } from "@prompthub/shared/types";
+import {
+  readSkillFileSnapshots,
+  replaceSkillFileSnapshots,
+} from "@prompthub/core/skills/file-snapshot";
+import type {
+  RestorePromptGraphInput,
+  SkillFileSnapshot,
+} from "@prompthub/shared/types";
 
 const state = vi.hoisted(() => ({
   folders: [] as any[],
@@ -90,6 +100,9 @@ describe("database-backup filesystem integration", () => {
   let skillsRoot: string;
 
   beforeEach(async () => {
+    // Use this test's jsdom storage; Node's host global may be an unavailable getter.
+    vi.stubGlobal("localStorage", jsdom.window.localStorage);
+    localStorage.clear();
     tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "prompthub-backup-fs-"));
     imagesDir = path.join(tempRoot, "images");
     videosDir = path.join(tempRoot, "videos");
@@ -225,6 +238,23 @@ describe("database-backup filesystem integration", () => {
       api: {
         prompt: {
           getAll: vi.fn(async () => state.prompts),
+          restoreGraph: vi.fn(async (input: RestorePromptGraphInput) => {
+            state.prompts = structuredClone(input.prompts);
+            state.folders = structuredClone(input.folders);
+            state.promptVersions = new Map();
+            for (const version of input.versions) {
+              const versions = state.promptVersions.get(version.promptId) ?? [];
+              versions.push(structuredClone(version));
+              state.promptVersions.set(version.promptId, versions);
+            }
+            return {
+              promptCount: input.prompts.length,
+              folderCount: input.folders.length,
+              versionCount: input.versions.length,
+              relationCount: input.promptRelations?.length ?? 0,
+              outputFormatItemCount: input.outputFormatItems?.length ?? 0,
+            };
+          }),
           delete: vi.fn(async (promptId: string) => {
             state.prompts = state.prompts.filter(
               (prompt) => prompt.id !== promptId,
@@ -349,16 +379,40 @@ describe("database-backup filesystem integration", () => {
   });
 
   afterEach(async () => {
-    await fs.rm(tempRoot, { recursive: true, force: true });
+    try {
+      if (tempRoot) await fs.rm(tempRoot, { recursive: true, force: true });
+    } finally {
+      jsdom.window.localStorage.clear();
+      vi.unstubAllGlobals();
+      vi.restoreAllMocks();
+    }
   });
 
   it("round-trips media files and skill files through the backup service with real filesystem IO", async () => {
     const binary = Buffer.from([0, 137, 255, 128]);
     const largeText = "完整文本\r\n".repeat(100_000);
-    await fs.writeFile(path.join(state.skillRepoPaths.get("skill-1")!, "icon.bin"), binary);
-    await fs.writeFile(path.join(state.skillRepoPaths.get("skill-1")!, "large.md"), largeText);
+    await fs.writeFile(
+      path.join(state.skillRepoPaths.get("skill-1")!, "icon.bin"),
+      binary,
+    );
+    await fs.writeFile(
+      path.join(state.skillRepoPaths.get("skill-1")!, "large.md"),
+      largeText,
+    );
+    const warnings = vi.spyOn(console, "warn");
     const backup = await exportDatabase();
-    expect(backup.skillFiles?.["skill-1"]).toContainEqual({ relativePath: "icon.bin", content: binary.toString("base64"), encoding: "base64" });
+    expect(
+      warnings.mock.calls.filter(
+        ([message]) =>
+          typeof message === "string" &&
+          message.startsWith("Failed to read persisted store"),
+      ),
+    ).toEqual([]);
+    expect(backup.skillFiles?.["skill-1"]).toContainEqual({
+      relativePath: "icon.bin",
+      content: binary.toString("base64"),
+      encoding: "base64",
+    });
 
     expect(backup.versions).toEqual([
       expect.objectContaining({
@@ -452,8 +506,17 @@ describe("database-backup filesystem integration", () => {
     );
     expect(restoredImageBytes).toBe("integration-image-bytes");
     expect(restoredVideoBytes).toBe("integration-video-bytes");
-    expect(await fs.readFile(path.join(state.skillRepoPaths.get(restoredSkill.id)!, "icon.bin"))).toEqual(binary);
-    expect(await fs.readFile(path.join(state.skillRepoPaths.get(restoredSkill.id)!, "large.md"), "utf8")).toBe(largeText);
+    expect(
+      await fs.readFile(
+        path.join(state.skillRepoPaths.get(restoredSkill.id)!, "icon.bin"),
+      ),
+    ).toEqual(binary);
+    expect(
+      await fs.readFile(
+        path.join(state.skillRepoPaths.get(restoredSkill.id)!, "large.md"),
+        "utf8",
+      ),
+    ).toBe(largeText);
 
     const restoredSkillFiles = await listFilesRecursively(
       state.skillRepoPaths.get(restoredSkill.id)!,

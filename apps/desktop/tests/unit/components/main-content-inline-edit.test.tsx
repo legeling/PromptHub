@@ -149,7 +149,7 @@ function hasHiddenSvgAncestor(element: Element): boolean {
   return false;
 }
 
-describe("MainContent inline edit integration", () => {
+describe("MainContent inline edit component contract", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     installWindowMocks();
@@ -268,120 +268,110 @@ describe("MainContent inline edit integration", () => {
     });
   });
 
-  it(
-    "changes the selected prompt folder from the detail metadata row",
-    async () => {
-      const promptState = createPromptState(
-        createPrompt({ folderId: "folder-a" }),
-      );
+  it("changes the selected prompt folder from the detail metadata row", async () => {
+    const promptState = createPromptState(
+      createPrompt({ folderId: "folder-a" }),
+    );
 
-      usePromptStoreMock.mockImplementation((selector) => selector(promptState));
-      useFolderStoreMock.mockImplementation((selector) =>
-        selector({
-          selectedFolderId: null,
-          unlockedFolderIds: new Set<string>(),
-          folders: [
-            {
-              id: "folder-a",
-              name: "Folder A",
-              order: 0,
-              icon: "",
-              createdAt: "",
-              updatedAt: "",
-            },
-            {
-              id: "folder-b",
-              name: "Folder B",
-              order: 1,
-              icon: "",
-              createdAt: "",
-              updatedAt: "",
-            },
-          ],
-        }),
-      );
+    usePromptStoreMock.mockImplementation((selector) => selector(promptState));
+    useFolderStoreMock.mockImplementation((selector) =>
+      selector({
+        selectedFolderId: null,
+        unlockedFolderIds: new Set<string>(),
+        folders: [
+          {
+            id: "folder-a",
+            name: "Folder A",
+            order: 0,
+            icon: "",
+            createdAt: "",
+            updatedAt: "",
+          },
+          {
+            id: "folder-b",
+            name: "Folder B",
+            order: 1,
+            icon: "",
+            createdAt: "",
+            updatedAt: "",
+          },
+        ],
+      }),
+    );
 
-      await act(async () => {
-        await renderWithI18n(<MainContent />, { language: "en" });
+    await act(async () => {
+      await renderWithI18n(<MainContent />, { language: "en" });
+    });
+
+    expect(
+      screen.queryByRole("combobox", { name: "Folder (Optional)" }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Folder (Optional)" }));
+    fireEvent.click(await screen.findByText("Folder B"));
+
+    await waitFor(() => {
+      expect(promptState.updatePrompt).toHaveBeenCalledWith("prompt-1", {
+        folderId: "folder-b",
       });
+    });
+  }, 60_000);
 
-      expect(
-        screen.queryByRole("combobox", { name: "Folder (Optional)" }),
-      ).not.toBeInTheDocument();
+  it("allows changing the detail folder while inline editing", async () => {
+    const promptState = createPromptState(
+      createPrompt({ folderId: "folder-a" }),
+    );
 
-      fireEvent.click(
-        screen.getByRole("button", { name: "Folder (Optional)" }),
-      );
-      fireEvent.click(await screen.findByText("Folder B"));
+    usePromptStoreMock.mockImplementation((selector) => selector(promptState));
+    useFolderStoreMock.mockImplementation((selector) =>
+      selector({
+        selectedFolderId: null,
+        unlockedFolderIds: new Set<string>(),
+        folders: [
+          {
+            id: "folder-a",
+            name: "Folder A",
+            order: 0,
+            icon: "",
+            createdAt: "",
+            updatedAt: "",
+          },
+          {
+            id: "folder-b",
+            name: "Folder B",
+            order: 1,
+            icon: "",
+            createdAt: "",
+            updatedAt: "",
+          },
+        ],
+      }),
+    );
 
-      await waitFor(() => {
-        expect(promptState.updatePrompt).toHaveBeenCalledWith("prompt-1", {
-          folderId: "folder-b",
-        });
+    await act(async () => {
+      await renderWithI18n(<MainContent />, { language: "en" });
+    });
+
+    fireEvent.doubleClick(
+      screen.getByRole("heading", { name: "Original Title", level: 2 }),
+    );
+
+    expect(screen.getByRole("textbox", { name: "Title" })).toBeInTheDocument();
+
+    const folderButton = screen.getByRole("button", {
+      name: "Folder (Optional)",
+    });
+    expect(folderButton).not.toBeDisabled();
+
+    fireEvent.click(folderButton);
+    fireEvent.click(await screen.findByText("Folder B"));
+
+    await waitFor(() => {
+      expect(promptState.updatePrompt).toHaveBeenCalledWith("prompt-1", {
+        folderId: "folder-b",
       });
-    },
-    60_000,
-  );
-
-  it(
-    "allows changing the detail folder while inline editing",
-    async () => {
-      const promptState = createPromptState(
-        createPrompt({ folderId: "folder-a" }),
-      );
-
-      usePromptStoreMock.mockImplementation((selector) => selector(promptState));
-      useFolderStoreMock.mockImplementation((selector) =>
-        selector({
-          selectedFolderId: null,
-          unlockedFolderIds: new Set<string>(),
-          folders: [
-            {
-              id: "folder-a",
-              name: "Folder A",
-              order: 0,
-              icon: "",
-              createdAt: "",
-              updatedAt: "",
-            },
-            {
-              id: "folder-b",
-              name: "Folder B",
-              order: 1,
-              icon: "",
-              createdAt: "",
-              updatedAt: "",
-            },
-          ],
-        }),
-      );
-
-      await act(async () => {
-        await renderWithI18n(<MainContent />, { language: "en" });
-      });
-
-      fireEvent.doubleClick(
-        screen.getByRole("heading", { name: "Original Title", level: 2 }),
-      );
-
-      expect(screen.getByRole("textbox", { name: "Title" })).toBeInTheDocument();
-
-      const folderButton = screen.getByRole("button", {
-        name: "Folder (Optional)",
-      });
-      expect(folderButton).not.toBeDisabled();
-
-      fireEvent.click(folderButton);
-      fireEvent.click(await screen.findByText("Folder B"));
-
-      await waitFor(() => {
-        expect(promptState.updatePrompt).toHaveBeenCalledWith("prompt-1", {
-          folderId: "folder-b",
-        });
-      });
-    },
-    60_000,
-  );
+    });
+  }, 60_000);
 
   it("discards inline draft changes on cancel", async () => {
     const promptState = createPromptState(createPrompt());
@@ -405,9 +395,13 @@ describe("MainContent inline edit integration", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
-    expect(screen.queryByRole("textbox", { name: "Title" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("textbox", { name: "Title" }),
+    ).not.toBeInTheDocument();
     expect(screen.getAllByText("Original Title").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Original user prompt").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Original user prompt").length).toBeGreaterThan(
+      0,
+    );
     expect(promptState.updatePrompt).not.toHaveBeenCalled();
   });
 
@@ -502,8 +496,12 @@ describe("MainContent inline edit integration", () => {
     expect(
       screen.getByRole("textbox", { name: "User Prompt" }).className,
     ).not.toContain("font-mono");
-    expect(screen.getByRole("button", { name: "Show Plain Text" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /Run Comparison/i })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Show Plain Text" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /Run Comparison/i }),
+    ).toBeDisabled();
   });
 
   it("keeps selected prompt detail actions from submitting surrounding forms", async () => {
@@ -612,9 +610,7 @@ describe("MainContent inline edit integration", () => {
     expect(screen.queryByText("Select existing tags:")).not.toBeInTheDocument();
   });
 
-  it(
-    "removes a tag directly from the selected prompt detail",
-    async () => {
+  it("removes a tag directly from the selected prompt detail", async () => {
     const promptState = createPromptState(
       createPrompt({ tags: ["tag-a", "tag-b"] }),
     );
@@ -636,9 +632,7 @@ describe("MainContent inline edit integration", () => {
     });
 
     expect(showToast).toHaveBeenCalledWith("Saved successfully", "success");
-    },
-    15000,
-  );
+  }, 15000);
 
   it("adds a tag to the selected prompt when a sidebar tag is dropped", async () => {
     const promptState = createPromptState(createPrompt({ tags: ["tag-a"] }));
@@ -674,7 +668,9 @@ describe("MainContent inline edit integration", () => {
   });
 
   it("keeps a stable bordered dropzone while a sidebar tag is dragged over the detail tags area", async () => {
-    const promptState = createPromptState(createPrompt({ tags: ["tag-a", "tag-b"] }));
+    const promptState = createPromptState(
+      createPrompt({ tags: ["tag-a", "tag-b"] }),
+    );
 
     usePromptStoreMock.mockImplementation((selector) => selector(promptState));
 
@@ -699,7 +695,9 @@ describe("MainContent inline edit integration", () => {
 
     expect(dropzone.className).toContain("border-primary/25");
     expect(dropzone.className).toContain("bg-primary/6");
-    expect(dropzone.className).toContain("shadow-[0_0_0_1px_rgba(59,130,246,0.18)]");
+    expect(dropzone.className).toContain(
+      "shadow-[0_0_0_1px_rgba(59,130,246,0.18)]",
+    );
   });
 
   it("clears copied feedback timers when unmounted after copying", async () => {
@@ -733,5 +731,4 @@ describe("MainContent inline edit integration", () => {
 
     expect(clearTimeoutSpy).toHaveBeenCalledWith(expect.anything());
   });
-
 });

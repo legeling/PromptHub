@@ -99,7 +99,7 @@ function createSkillStoreState(skills: Skill[]) {
   };
 }
 
-describe("SkillManager large dataset integration", () => {
+describe("SkillManager large dataset component contract", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
@@ -123,9 +123,13 @@ describe("SkillManager large dataset integration", () => {
   });
 
   it("renders only the first page for 1000 skills in gallery mode", async () => {
-    const skills = Array.from({ length: 1000 }, (_, index) => createSkill(index));
+    const skills = Array.from({ length: 1000 }, (_, index) =>
+      createSkill(index),
+    );
     const skillStoreState = createSkillStoreState(skills);
-    useSkillStoreMock.mockImplementation((selector) => selector(skillStoreState));
+    useSkillStoreMock.mockImplementation((selector) =>
+      selector(skillStoreState),
+    );
 
     await act(async () => {
       await renderWithI18n(<SkillManager />, { language: "en" });

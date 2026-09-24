@@ -6,12 +6,14 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { RegistrySkill } from "@prompthub/shared/types";
 
 import { SkillFullDetailPage } from "../../../src/renderer/components/skill/SkillFullDetailPage";
 import { SkillManager } from "../../../src/renderer/components/skill/SkillManager";
 import { SkillStoreDetail } from "../../../src/renderer/components/skill/SkillStoreDetail";
 import {
   createSkillFixture,
+  createScannedSkillFixture,
   createSkillLocalFileEntryFixture,
 } from "../../fixtures/skills";
 import { renderWithI18n } from "../../helpers/i18n";
@@ -152,7 +154,7 @@ function createSettingsState(overrides: Partial<Record<string, unknown>> = {}) {
   };
 }
 
-describe("skill ui integration", () => {
+describe("skill ui component contract", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
@@ -596,7 +598,12 @@ describe("skill ui integration", () => {
       content: "# Local Writer\n\nInstalled stale content",
     });
 
-    const localSourceSkill = {
+    installRegistrySkill.mockResolvedValue({
+      status: "installed",
+      skill: installedLocalSkill,
+    });
+
+    const localSourceSkill: RegistrySkill = {
       slug: "local-writer",
       name: "local-writer",
       description: "Local source skill",
@@ -635,7 +642,7 @@ describe("skill ui integration", () => {
     await act(async () => {
       await renderWithI18n(
         <SkillStoreDetail
-          skill={localSourceSkill as never}
+          skill={localSourceSkill}
           isInstalled={false}
           onClose={vi.fn()}
         />,
@@ -664,8 +671,13 @@ describe("skill ui integration", () => {
 
     expect(installRegistrySkill).toHaveBeenCalledWith(
       expect.objectContaining({ slug: "local-writer" }),
-      { safetyScanMode: "disabled" },
+      {},
     );
+
+    expect(showToast).toHaveBeenCalledWith("Imported: local-writer", "success");
+    expect(
+      screen.queryByRole("dialog", { name: "Review Skill before adding" }),
+    ).not.toBeInTheDocument();
 
     cleanup();
 
@@ -684,7 +696,7 @@ describe("skill ui integration", () => {
     await act(async () => {
       await renderWithI18n(
         <SkillStoreDetail
-          skill={localSourceSkill as never}
+          skill={localSourceSkill}
           isInstalled={true}
           onClose={vi.fn()}
         />,
@@ -703,11 +715,14 @@ describe("skill ui integration", () => {
 
     expect(updateRegistrySkill).toHaveBeenCalledWith("local-writer", {
       overwriteLocalChanges: false,
-      safetyScanMode: "disabled",
     });
+    expect(showToast).toHaveBeenCalledWith("Updated: local-writer", "success");
+    expect(
+      screen.queryByRole("button", { name: "Confirm update" }),
+    ).not.toBeInTheDocument();
   }, 15000);
 
-  it("reads project detail SKILL.md content when source_url points to the SKILL.md file", async () => {
+  it("reads project detail SKILL.md from the scanned package directory", async () => {
     const projectFileSkill = createSkillFixture({
       id: "project-file-skill",
       name: "project-file-skill",
@@ -751,14 +766,14 @@ describe("skill ui integration", () => {
       await renderWithI18n(
         <SkillFullDetailPage
           projectContext={{
-            project: {
-              id: "project-1",
-              name: "Project 1",
-              rootPath: "/tmp/project-skill",
-              scanPaths: [],
-              createdAt: Date.now(),
-              updatedAt: Date.now(),
-            },
+            scannedSkill: createScannedSkillFixture({
+              name: projectFileSkill.name,
+              localPath: "/tmp/project-skill",
+              instructions: projectFileSkill.instructions,
+            }),
+            importedSkill: projectFileSkill,
+            projectName: "Project 1",
+            projectRootPath: "/tmp/project-skill",
           }}
         />,
         {

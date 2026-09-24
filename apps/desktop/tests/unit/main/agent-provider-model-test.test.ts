@@ -1,3 +1,4 @@
+import type { RequestListener } from "node:http";
 /**
  * @vitest-environment node
  */
@@ -18,7 +19,7 @@ import { testOpenAICompatibleProviderModel } from "../../../src/main/services/ag
 const servers: Server[] = [];
 
 async function listen(
-  handler: Parameters<typeof createServer>[0],
+  handler: RequestListener,
 ): Promise<{ server: Server; endpoint: string }> {
   const server = createServer(handler);
   servers.push(server);
@@ -691,7 +692,6 @@ describe("OpenAI-compatible Provider model test", () => {
               ...options,
               protocol: "http:",
               hostname: "127.0.0.1",
-              servername: undefined,
               family: 4,
               port: Number(local.port),
               agent: undefined,

@@ -1,271 +1,132 @@
 # PromptHub Testing Standards
 
-## 基本原则
+本文件是 PromptHub 测试设计与验收的唯一规则源。执行命令、当前工具边界和 fixture 入口见 [验证入口](../workflow/04-verification/README.md)；领域预期由对应的稳定主题定义。AGENTS、贡献指南和测试 Agent 指令引用本文件，不另设覆盖率或验收标准。
 
-- bugfix 和非平凡新功能默认先写失败测试，再实现。
-- 高优先级需求必须有自动化验证。
-- bug 修复必须补回归测试。
-- 测试必须服务真实风险，而不是为了制造覆盖率数字。
-- 测试应验证行为，不应过度绑定内部实现。
-- 新增或修改的生产代码必须以 100% 行覆盖、函数覆盖、分支覆盖、条件覆盖为门禁目标。
-- 数据库、文件系统持久化、同步、IPC/preload、安装/导入/导出、安全、发布 harness 等关键边界模块，变更行为必须做到 100% 分支和条件覆盖。
-- 如果历史文件整体暂时达不到 100%，相关主题或已有计划必须记录遗留未覆盖分支；本次新增和修改的分支/条件仍必须 100% 覆盖。
-- 覆盖率不能替代测试质量。即使覆盖率达到 100%，缺少边界、异常、回滚、fuzz、安全或性能验证时，也不能视为完成。
+## 1. 目标与优先级
 
-## 测试方法矩阵
+测试的首要目标是发现“用户按正常方式操作，功能却不可用或结果错误”的问题。功能测试必须真实执行被测行为，证明正常输入得到正确结果，再证明异常输入和失败不会破坏约定。测试数量、覆盖率、类型检查和构建成功都不能替代这两类证据。
 
-非平凡变更不能只看覆盖率数字，必须按风险选择并记录测试方法：
+1. **先建立正常功能基线。** 每项受影响的核心能力都要有代表性正常场景；先跑通用户依赖的主流程，再扩展边界和故障组合。
+2. **再验证黑盒输入与失败状态。** 从同一公开入口提交其他合法输入、边界值和非法输入，按产品契约断言接受或拒绝后的结果。
+3. **按风险补充白盒、故障注入、安全和性能测试。** 用它们查找前两步遗漏的判断和恢复路径，不要求每个模块机械凑齐所有测试类别。
 
-- 黑盒行为测试：只看用户可见行为、持久化结果、文件系统结果、API/IPC 返回，不依赖内部实现。
-- 白盒分支测试：覆盖新增或修改的判断、guard、fallback、错误路径、条件组合。
-- 边界与 fuzz 测试：覆盖空值、非法类型、路径穿越、Unicode/特殊字符、大 payload、重复身份、奇怪文件名、缺失字段等。
-- 安全测试：覆盖注入、路径穿越、SSRF/内网源、软链接、权限边界、敏感信息、篡改检测等相关风险。
-- 性能/压力测试：覆盖大批量数据、大文件/多文件、重复快速操作、并发式调用、时间和内存预算。
-- 集成/契约测试：覆盖真实 DB、文件系统、IPC/preload、CLI/API、同步、平台目录等边界；mock 会隐藏 bug 时必须用真实或等价 fixture。
-- 失败/回滚测试：覆盖 clone/copy/sync/DB/API 任一外部边界失败后的状态，不允许留下半成品。
+正常路径本身就是必要且有效的测试，不应因“只测 happy path”被否定；整个功能的验收仍须包含适用的异常与边界。新增异常用例不能弥补缺失或失败的正常基线。
 
-## UI 操作验证
+## 2. 什么是一条有效用例
 
-UI 可见变更必须有实际操作证据。执行 GUI 控制前仍需用户明确授权；未获授权时完成允许的检查并如实标注 UI 验收未执行，不能以此规则推定授权。单元测试和静态截图不能替代实际操作。
+用例名称、准备数据、操作和断言应足以说明以下内容，无须为每条测试另写文档：
 
-- 桌面端变更应优先运行 Electron/Vite 开发环境或可替代页面，操作入口、按钮、菜单、弹窗、拖拽、筛选、排序、安装、删除、更新、同步等关键行为。
-- Web 变更应优先使用 Playwright 或 in-app browser 执行主流程，并在关键 viewport / 状态下截图或记录观察结果。
-- 不能自动化时，必须在已有计划或验收记录中 记录手动步骤、观察结果和自动化阻塞原因。
-- UI 验收必须检查主流程可用性、控件可点击、文本不重叠、不截断关键内容、状态提示位置合理、loading/empty/error 状态不破坏布局。
-- 对已经被用户指出的问题，回归验证必须操作同一个入口和同一类数据，而不能只检查代码路径。
+| 要素       | 要求                                                                                                         |
+| ---------- | ------------------------------------------------------------------------------------------------------------ |
+| 前置状态   | 明确是新用户、已有数据、已安装、已重启或故障中间态；fixture 只能准备前提，不能预先写入本次操作应产生的结果   |
+| 入口与输入 | 使用该层真实公开入口和代表性输入；功能集成不能绕过本次被验收的注册、校验、编排或持久化步骤                   |
+| 触发动作   | 实际调用、输入、点击或提交并等待操作完成；只 import 源码、匹配源码文本、渲染静态界面或记录调用不等于执行功能 |
+| 预期结果   | 来自产品契约或已确认需求，使用明确字段值、文件内容、状态或错误码；不能从当前实现复制计算过程生成预期值       |
+| 后置状态   | 写操作检查实际读回及必要的关闭重开、刷新或重扫；失败检查原数据、半成品和越界影响                             |
+| 失败能力   | 能指出功能不执行、写错位置、丢文件、未持久化或错误地返回成功时，哪条断言会失败                               |
 
-## Agent 辅助测试边界
+审查用例时，必须确认它在需求被破坏时会失败、正确实现下能稳定通过。对难以判断的关键回归，可在隔离副本中还原缺陷或做最小变异来验证断言；不得改动用户工作区来制造失败，也不要求全仓引入变异测试框架。没有实际运行旧实现时，不得声称已经获得红测证据。
 
-- 用户可见多步骤流程、Electron 跨进程行为、持久化/重启、安装/删除、同步/恢复和真实 UI 回归，应该优先使用仓库级 Playwright Test Agents 辅助制定 E2E 计划和生成测试；纯逻辑或单一数据边界仍优先使用最低有效层测试。
-- 已有确定性 E2E 只需重复执行时，直接运行聚焦 Playwright 测试，不得为了形式完整重复调用 Planner 或 Generator。
-- 仓库级 Playwright Test Agents 只负责测试计划、E2E 测试生成和失败诊断；它们不是发布门禁本身。
-- Agent 定义必须保存在 `.codex/agents/`，使用仓库锁定的 Playwright 版本和桌面配置，不得依赖或修改用户全局 Codex 配置。
-- 测试计划复用匹配的活动计划，不得创建根目录 `specs/` 或其它平行文档真相源。
-- Generator 只允许写入桌面 E2E 测试范围；Healer 不得修改生产代码、降低既定断言、删除失败步骤或用 `skip` 掩盖产品缺陷。
-- Agent 生成或修改的测试必须能脱离 Agent 通过普通 `playwright test` 重复执行，才可作为自动化证据。
-- Electron Agent seed 必须使用隔离用户目录，关闭任务创建的应用进程并清理临时 profile；不得读取或写入真实用户数据。
-- 贡献者操作流程与标准提示词见 `docs/testing-playwright-agents.md`。
+例如，Skill 安装正常用例应提交一个包含入口、嵌套文本和二进制文件的目录包，执行安装，读回目录清单和字节，重新打开后确认仍可读取。异常用例从同一入口提交缺失入口文件的包，检查具体错误及原包保持不变。单独断言 `install` 被调用或返回 `success: true` 都不能证明安装成功。
 
-## 单元测试与白盒审计
+## 3. 选择能发现问题的测试层
 
-UI 流程背后的业务逻辑不能只靠端到端操作兜底。以下逻辑变更必须优先补最低有效层测试：
+选择能覆盖实际失败边界的最低有效层；同一核心流程可以由少量集成/E2E 基线加聚焦单元测试组成，不需要在每层复制全部用例。
 
-- prompt 排序、筛选、关系统计、复制、语言模式和派生状态。
-- Skill / Plugin / MCP 的安装、删除、分发、更新检测、来源比较、软链接/复制策略、路径过滤和回滚。
-- 网络代理、镜像源、同步范围、备份/恢复、远端差异比较和版本检测。
-- 设置项迁移、配置卸载、残留清理、权限判断和默认值合并。
+| 层次           | 可以证明                                                                | 不能据此宣称                                             |
+| -------------- | ----------------------------------------------------------------------- | -------------------------------------------------------- |
+| 静态检查与构建 | 被选入的源码/测试可解析、类型和 lint 约束成立，目标可构建               | 功能已执行、接口已部署、持久化正确                       |
+| 单元与组件契约 | 真实函数、状态转换或组件对输入的局部行为；允许替换其边界外依赖          | 被 mock 的服务、数据库、安装器或整个用户流程可用         |
+| 功能集成       | 公开 CLI/API/preload 入口连接真实业务、存储和相关模块，验证完整操作结果 | 被替换的运输层、真实远端、未启动的 Electron 或 UI 已验收 |
+| 真实 UI/E2E    | 在应用中实际操作，观察界面及相关持久化、刷新或重启结果                  | 未运行的平台、发行包、设备或外部服务同样通过             |
 
-白盒测试必须覆盖新增或修改的判断、guard、fallback、错误路径和条件组合。只验证 happy path 或只断言 mock 被调用，不能作为完成依据。
+桌面接口集成可以替换 Electron 消息运输层，但必须调用真实 preload API、注册的 IPC handler 和被测业务服务。使用 mock store、mock editor 或 mock installer 的组件测试，应标明局部契约范围；放在 `integration/` 目录不自动成为完整功能集成。
 
-## 静态扫描与复用审计
+### 正常流程与真实入口
 
-非平凡变更必须记录一次有针对性的静态扫描或人工白盒审计。扫描命令应服务具体风险，而不是机械执行固定命令。
+- 持久化 CRUD 覆盖创建、读取、修改、删除及中间状态；安装、导入、同步、恢复等覆盖各自实际成功后的消费方式。断言范围以该能力的产品契约为准。
+- 至少一条核心正常流程使用产品的初始化、配置解析和注册路径。不能靠 fixture 手工补齐用户运行时缺失的表、路径、handler 或状态来让测试通过。
+- 列表、详情、计数、状态 badge 和动作结果应按各自可见契约检查；不能只证明其中一个 selector 或回调被执行。
+- 对用户已报告的问题，保留原触发入口、数据类别和必要状态。修复保存问题需验证保存后的读取，重启丢失问题需真正关闭并重开对应运行时。
+- 核心正常自动化和缺陷回归必须接入所属 package 的常用测试入口及适用的根级 harness。检查实际选择结果；未被选择的文件不能记为门禁覆盖。
 
-常见扫描方向：
+### Mock 与 fixture 边界
 
-- 重复 UI / 重复逻辑：同类 card、badge、delete confirmation、store selector、service helper 是否已有实现。
-- 网络路径：是否存在绕过代理或镜像源配置的 `fetch`、`axios`、`git clone`、下载逻辑。
-- 文件系统风险：硬编码用户目录、路径穿越、隐藏文件误对比、元数据误同步、软链接处理、删除无确认。
-- 数据完整性：内容截断、语言字段串用、系统/用户提示词混复制、排序比较器未接入 UI state。
-- 安全风险：raw HTML、命令注入、SSRF-like 源、敏感信息落日志、空 catch 或吞错。
-- 临时代码：TODO 占位、假数据、硬编码 mock、只为本机路径工作的分支。
+- 可以 mock 被测范围外的第三方服务、时钟、随机源或注入明确的 I/O 故障；必须写清被替换的边界和仍未验证的部分。
+- 不得 mock 本次要证明可用的业务操作，不得让 mock 直接返回测试期望结果后据此宣布功能通过。调用参数/次数只用于局部协作契约，不是持久化或用户结果的替代断言。
+- 数据库行为使用真实 SQLite 和项目 adapter/schema。内存库适合 SQL、约束、事务等测试；文件持久化、初始化、重开和恢复必须使用临时磁盘库及相应真实路径。
+- 正常数据操作可复制已关闭的当前 schema 模板来减少重复初始化；初始化、迁移、锁、损坏、恢复和并发打开用例必须自行构造前置状态，不能用模板跳过被测过程。
+- 真实临时文件系统、临时本地 Git 仓库和受控本地协议服务是有效的集成 fixture。问题在于依赖不可控环境，并非使用文件或网络本身。
+- fixture 使用确定性、非敏感数据，隔离用户目录、配置、数据库和平台目标。禁止使用真实用户数据或凭据，安全样本不得执行导入的代码。
+- 避免所有测试共用可变状态或依赖运行顺序；复用 fixture 时保持数据隔离，只把重复的领域准备逻辑提取到所属领域。
 
-扫描结果必须记录在已有计划或交付说明中；如果发现重复实现，应优先复用或记录为什么暂不抽象。
+## 4. 黑盒输入与失败验证
 
-## 当前测试层次
+先按公开契约划分合法/非法等价类，再选择边界值。不能把所有“奇怪输入”都当成错误：允许的 Unicode、中文、Emoji、引号、换行、HTML 样式文本或 SQL 样式文本应按契约正确往返，不能截断、执行或损坏其他数据。
 
-- White-box Unit：验证纯逻辑、边界条件、规则与数据转换
-- Integration：验证模块协作、数据库、IPC、服务编排
-- E2E：验证最关键的用户流程
-- Performance：验证关键路径与长列表 / 大数据量场景
-- Security：验证鉴权、权限、输入校验与敏感信息处理
+| 相关边界            | 代表性输入与操作                                                 | 主要断言                                                       |
+| ------------------- | ---------------------------------------------------------------- | -------------------------------------------------------------- |
+| API、IPC、CLI、表单 | 正常值、缺失必填字段、错误类型、空值、未知字段                   | 按契约接受或拒绝；返回明确结果/错误，不能误报成功              |
+| 字符串与结构化数据  | Unicode、特殊字符、null byte、损坏 JSON/YAML、重复身份           | 内容往返或明确校验失败；防止截断、解析歧义和串改其他记录       |
+| 容量限制            | 空、单个、上限前、上限、超过上限                                 | 结果、计数及拒绝边界正确；数值来自实际约束，不机械采用固定大数 |
+| 文件与包            | 嵌套文件、二进制、缺失入口、内部目录、穿越、绝对路径、软链接逃逸 | 清单与字节正确，过滤规则正确，未读写授权范围外内容             |
+| 状态与重复操作      | 已存在、已删除、重复提交、陈旧版本、来源失效                     | 身份、冲突、幂等性与最终状态符合契约                           |
+| 外部失败与中断      | 数据库、文件、协议调用失败；部分写入后失败或重开                 | 错误可观察，原状态保留或进入明确可恢复状态，重试不会重复破坏   |
 
-## PromptHub 项目要求
+对当前修改引入或影响的持久化失败路径，注入能暴露部分成功的故障，验证回滚、补偿、幂等重试或恢复行为。成功补偿和补偿失败必须可区分；不能仅断言“抛了某个 Error”“未成功”或“调用了 rollback”。
 
-- 修改需求或行为前，先检查 `spec/workflow/04-verification/README.md` 是否需要同步。
-- 引入新风险路径时，要把回归策略写进 verification 或当前 change 工作区。
-- 非文档/非机械改动必须遵循本文件的测试先行约定：先理解设计边界，先写能失败的测试，再实现。
-- TDD 不能只写 happy path；每个非平凡变更至少覆盖黑盒行为、白盒分支、边界输入、失败/回滚路径。关键持久化和安全路径还必须覆盖 fuzz/adversarial 和压力场景。
-- 关键设计冲突按文档规则处理；已确认需求直接更新，未解决的数据、安全、范围或兼容选择才需澄清。
-- 发布准入必须走根级 release harness；不要把 desktop-only、web-only 或重复嵌套的聚合脚本当成完整发布验证。
-- 本地和 CI 的 package 命令清单必须来自
-  `scripts/verification/checks.mts`；workflow 只允许选择 profile、surface 和
-  risk layer，不得复制一份会漂移的 lint/typecheck/test/build 列表。
-- 正常路径数据库测试允许复制已关闭的当前 schema 模板提升速度；迁移、锁、
-  恢复、损坏和并发打开测试禁止使用模板，且模板与测试副本必须在 teardown
-  关闭并清理。
-- 用户报告的线上 bug 修复时，必须补一条能复现原失败条件的回归测试，并记录它属于哪个 harness 层。优先选择最低有效层，只有跨模块、跨进程或真实 UI 流程风险才升级到 integration / E2E。
-- Skill 系统 bugfix 必须先检查 `spec/knowledge/reference/skill-defect-taxonomy.md` 给 bug 定性，再检查 `spec/knowledge/reference/skill-regression-test-matrix.md` 选择代表性回归测试。先补失败测试，再修代码。
-- Skill 安装、删除、分发、扫描、商店状态测试不能只断言 mock 被调用；必须断言用户依赖的持久化结果、文件系统结果或 UI 可见状态。
-- 自定义 Git/Gitea、软链接、复制安装、同名不同源、嵌套目录文件浏览必须作为 Skill 回归测试的标准 fixture 组合，不得只用单个 `SKILL.md` happy path。
-- Skill package 边界测试必须覆盖：真实或等价本地 Git fixture、完整目录 inventory、`.git`/`.prompthub` 过滤、软链接过滤、路径穿越、缺失 `SKILL.md`、多 Skill 歧义、同 slug 不同 source、安装失败回滚、大量文件压力、文件树/安全扫描下游消费。
-- UI 可见变更必须记录真实操作步骤和观察结果；涉及桌面界面时，不能只用 `git diff --check` 或单元测试代替验收。
-- 复用是验收项：同一类 Skill / Plugin / MCP / Agent / Store / Settings UI 不能随意重复造一套样式或逻辑。
-- PromptHub 已有的长期测试标准以本文件为唯一规则源，AGENTS 和 verification 入口只引用本文件。
+安全输入测试按涉及的边界补齐注入、路径/软链接、SSRF、鉴权、敏感信息泄漏等风险。加密变更需要验证错误密钥，以及 IV、认证标签和密文分别篡改后的拒绝；长度校验不得令比较函数崩溃。
 
-## 当前主要真相源
+解析、路径、身份和序列化等组合输入多的边界适合 property/fuzz；保存随机种子与失败样本使其可复现。性能敏感或高数据量变更须按实际规模测量时间、内存或 I/O，限制并发并给出预算；单次本机结果不能推断跨平台能力。
 
-- `AGENTS.md`
-- `spec/workflow/04-verification/README.md`
+## 5. UI 操作证据
 
-## 缺陷与测试先行
+UI 可见变更需要在实际应用中操作并观察结果。GUI 控制遵守用户明确授权；本规则本身不构成授权。未执行时完成允许的检查，并标注 UI 验收未执行及原因。
 
-修复前确认症状、触发入口、调用链、根因和数据权威；无法复现时说明已知证据。先写能复现原失败条件的测试，再实现；文档或机械调整可不写测试，其他无法先写测试的情况须说明具体原因及替代验证。不得用默认值、空 catch、假数据或跳过校验掩盖错误。测试覆盖 reopen/rescan/reload、失败后 durable state 及适用的幂等恢复。
+- 通过实际入口操作按钮、输入、菜单、弹窗或其他受影响控件，检查最终可见结果；涉及持久化时补充刷新、重开或重启。
+- Electron 桌面流程使用真实应用与隔离 profile；替代页面或浏览器中的组件演示只证明对应页面，不能替代 Electron/preload/IPC 验收。
+- 检查相关主流程、loading/empty/error 状态、关键文本与控件的可见性和可操作性。截图可以补充布局证据，单张截图不能证明操作成功。
+- 人工验证只有实际执行后才能记录观察结果；尚未执行的手动步骤只是待验收方案。
+- UI 测试可用 API/数据库准备无关前提及读取后置状态，但不得用它们代替本次要验证的点击、编辑、保存等用户动作。
 
-## 详细测试约束
+## 6. 测试先行与执行节奏
 
-### 1 Core Principles
+1. 修复前确认症状、触发入口、预期、数据权威和根因；先写能复现缺陷的回归测试，或先写新行为的验收用例，再实现。
+2. 集中完成源码、测试、配置和必要文档，静态自审后再统一运行检查。遵循 AGENTS 的完整批次规则，不逐函数反复执行门禁。
+3. 验证阶段先运行受影响的正常功能基线和聚焦回归，再运行必要的更广测试。正常基线失败须先定位原因，不能靠补异常用例或降低预期掩盖它。
+4. 静态检查单独执行，并核实测试文件是否被 typecheck/lint 配置选入。Vitest 转译运行不等于 TypeScript 类型检查；检查通过只能声明实际包含的范围。
+5. 失败后完整收集证据，区分产品缺陷、测试漂移和环境问题；集中修复同源问题，再运行受影响的最小检查。同一代码状态不无理由重跑。
+6. 只改文档或机械调整可用对应的链接、格式、契约检查替代行为测试；其他无法补测试的情况记录具体原因与未覆盖边界。
 
-> Tests exist to **find bugs**, not to inflate coverage numbers. Every test must have a clear reason to exist — if a test can never fail, it is worthless. If a test only verifies the happy path with obvious inputs, it is insufficient.
+所有异步操作和断言必须被等待，测试需有明确超时。使用条件等待或可控时钟，不能靠任意 sleep 和无限重试制造稳定。测试创建的进程、监听端口、数据库、连接、临时目录必须可追踪，并在失败和成功路径都关闭清理；不得停止用户已有进程。
 
-| Principle                             | Description                                                                                                                                                                                |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Real bugs, not rubber stamps**      | Every test must target a scenario that could realistically fail in production. Avoid trivially-passing tests that merely confirm a function returns the same hardcoded value it was given. |
-| **Test behavior, not implementation** | Assert on observable outcomes (return values, DB state, side effects), not internal private methods or call counts. Tests that break on harmless refactors are fragile.                    |
-| **Root cause verification**           | After fixing a bug, the regression test must reproduce the original failure condition — not merely call the fixed code path.                                                               |
-| **No fake implementations**           | Prohibited: `setTimeout` to simulate async, hardcoded mock return values that bypass real logic, `jest.fn().mockReturnValue(expectedResult)` that makes the test a tautology.              |
-| **No lazy assertions**                | Prohibited: `expect(result).toBeDefined()` when the actual value matters; `expect(fn).not.toThrow()` without checking the return value; `.toMatchSnapshot()` for dynamic data.             |
+## 7. 审查、覆盖率与验收结论
 
-### 2 Test Categories (All Required for New Modules)
+### 必须拒绝的假通过
 
-#### 2.1 Functional Tests
+- 实际值有业务含义，却只断言 `toBeDefined`、`toBeTruthy` 或 `not.toThrow`。
+- 用 mock 的成功返回值证明被 mock 的功能可用，或用源码字符串匹配代替执行行为。
+- 只点按钮不检查结果、只查内存不查应落盘的状态、只检查返回成功而不检查文件/数据。
+- 为通过而跳过失败步骤、删除或放宽正确断言、重录错误快照、过滤掉失败用例，或使用 `any`/`@ts-ignore` 隐藏契约错误。
+- 把框架成功启动、零用例、全 skip、重试后偶然成功或 Agent 生成源码记为功能通过。
+- 将测试预期改成当前错误结果，或用兼容分支、默认值、空 catch、假数据掩盖产品缺陷。预期变化必须有需求依据。
 
-| Aspect                  | Requirements                                                                                                                       |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| **Happy path**          | Cover the primary use case with realistic inputs.                                                                                  |
-| **Boundary conditions** | Empty string, null, undefined, zero, negative numbers, MAX_SAFE_INTEGER, empty arrays, single-element arrays.                      |
-| **Error paths**         | Invalid inputs must produce correct errors, not silent failures. Verify error messages/types, not just that an error was thrown.   |
-| **State transitions**   | For stateful modules (stores, DB, auth): test the full lifecycle (create → read → update → delete) and verify intermediate states. |
+### 覆盖率的用途
 
-#### 2.2 Adversarial / Fuzz Tests
+覆盖率用于发现未执行的代码，再判断遗漏了什么行为和风险；不再对所有新增/修改代码统一要求 100% 行、函数、分支和条件覆盖。它不能成为功能正确的替代目标，也不能成为删除有效正常用例的理由。
 
-| Aspect                    | Requirements                                                                                                                                                                                                               |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **SQL injection**         | All user-facing string inputs (title, description, tags, search keywords) must be tested with SQL injection payloads: `'; DROP TABLE x; --`, `" OR 1=1 --`, `UNION SELECT`. Verify the table is intact after each attempt. |
-| **XSS-like content**      | Store and retrieve `<script>alert(1)</script>`, HTML entities, and JS event handlers in all text fields.                                                                                                                   |
-| **Unicode / CJK / Emoji** | Full round-trip (write → read) with CJK characters, emoji (including multi-codepoint like 🏳️‍🌈), RTL text (Arabic/Hebrew), zero-width characters.                                                                            |
-| **Null bytes**            | Test `\x00` in string fields because SQLite adapter behavior can cause silent data loss. Document the observed behavior in tests.                                                                                          |
-| **Extreme sizes**         | 10KB+ strings, 100+ element arrays, 1MB payloads for encryption. Verify no crashes and data integrity.                                                                                                                     |
-| **Special characters**    | Backslashes, quotes (single/double), newlines, tabs, CRLF, Unicode BOM, control characters (0x01–0x1F).                                                                                                                    |
+关键业务判断、输入校验和恢复分支必须有对应行为证据或明确的未验收原因。数值阈值只在确有领域理由、且有对应工具和统计范围时设置；不能悄悄调低已有可执行阈值、排除被测源码或 mock 掉生产模块使报告变绿。报告应包含实际测量的文件和指标，空报告或未度量的条件覆盖不能宣称通过。
 
-#### 2.3 Security Tests
+### 最小验收记录
 
-| Aspect                             | Requirements                                                                                                                                                   |
-| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Cryptographic tamper detection** | For encrypted data: test bit-flips in IV, auth tag, and ciphertext independently. Verify all produce rejection (null/error), not silent decryption to garbage. |
-| **Key/password boundaries**        | Empty password, 10KB password, unicode password, password with null bytes. Verify old password fails after reset.                                              |
-| **Timing safety**                  | Where `timingSafeEqual` is used, verify that wrong-length inputs don't crash (Node.js throws if buffers differ in length).                                     |
-| **Input validation**               | All IPC handlers must reject malformed inputs. Test with wrong types, missing required fields, extra unknown fields.                                           |
-| **Path traversal**                 | File path inputs must be tested with `../`, absolute paths, symlinks, and null bytes.                                                                          |
+在已有主题、计划或交付说明中简要记录：场景及预期、测试文件/命令、实际入口与替换边界、观察结果、通过/失败/未执行/阻塞状态。无需为此另建多份文档或全仓手工矩阵。
 
-#### 2.4 Performance / Stress Tests
+只有受影响的正常流程、适用异常/恢复验证和必要静态检查实际通过，才能宣布对应范围验收完成。缺少真实 UI、重启、远端或平台证据时，明确保留该边界。聚焦检查通过不能覆盖先前失败的聚合结果；quick/changed、desktop-only 或未选中功能测试的命令不能宣称发布就绪。发布候选仍使用根级 release harness，并审阅失败、跳过与阻塞项。
 
-| Aspect                         | Requirements                                                                                                        |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
-| **Batch operations**           | 100+ creates followed by bulk delete. Verify count accuracy and no orphaned records.                                |
-| **Rapid sequential mutations** | 50+ updates to same record in tight loop. Verify final state is deterministic and no version/counter drift.         |
-| **Concurrent-like access**     | Multiple operations in same transaction/tick. Verify data consistency (especially for version numbers, sort_order). |
-| **State cycling**              | 10+ cycles of set→lock→unlock, create→delete, enable→disable. Verify no state leaks across cycles.                  |
+## 8. 领域规则与辅助工具
 
-#### 2.5 Integration Tests (Database)
+Skill 缺陷先对照 [缺陷分类](../knowledge/reference/skill-defect-taxonomy.md)，再从 [回归矩阵](../knowledge/reference/skill-regression-test-matrix.md) 选择相关场景。包操作正常基线必须保留整个目录及内容；自定义 Git/Gitea、复制/软链接、同名不同源和嵌套文件消费等按受影响边界补齐，不能只有单个 `SKILL.md` 或 mock 调用断言。
 
-| Aspect                    | Requirements                                                                                                                                                                                                                 |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Use real SQLite**       | Database tests MUST use `new DatabaseAdapter(":memory:")` with the real schema (`SCHEMA_TABLES` + `SCHEMA_INDEXES`), NOT mocks. Mocked databases cannot catch SQL syntax errors, constraint violations, or trigger behavior. |
-| **Foreign key behavior**  | Test CASCADE deletes, SET NULL behavior, and constraint violations explicitly.                                                                                                                                               |
-| **Transaction atomicity** | For operations wrapped in `db.transaction()`: verify that partial failures roll back completely.                                                                                                                             |
-| **FTS correctness**       | Full-text search tests must include special FTS5 operators (`AND`, `OR`, `NOT`, `NEAR`, `*`, `^`, `"phrase"`, `column:`) and verify they don't cause SQL errors.                                                             |
+非平凡变更还需做针对具体风险的静态/白盒审查，检查真实消费者、重复实现、状态权威、网络配置、路径安全、错误传播与资源回收。审查可发现补测点，但不替代功能运行。
 
-### 3 Prohibited Anti-Patterns
-
-| Anti-Pattern                                      | Why It's Harmful                           | Correct Approach                                                       |
-| ------------------------------------------------- | ------------------------------------------ | ---------------------------------------------------------------------- |
-| `expect(result).toBeDefined()` alone              | Passes for any value including wrong ones  | Assert the specific expected value                                     |
-| `expect(fn).not.toThrow()` without value check    | Confirms no crash but not correctness      | Assert both no-throw AND correct return value                          |
-| Mock that returns the expected value              | Test becomes a tautology (always passes)   | Mock dependencies, assert on SUT behavior                              |
-| `as any` / `@ts-ignore` in test code              | Hides type errors that are real bugs       | Fix the types; if testing JS interop, use explicit casts with comments |
-| Testing private methods directly                  | Couples test to implementation             | Test through public API                                                |
-| `toMatchSnapshot()` for dynamic data              | Snapshot bloat, meaningless diffs          | Use specific assertions                                                |
-| Copy-paste test blocks with minor variations      | Hard to maintain, masks missing edge cases | Use `it.each()` or parameterized tests                                 |
-| `beforeEach` that creates unnecessary fixtures    | Slow tests, hidden dependencies            | Create fixtures in the specific test that needs them                   |
-| Catching errors just to assert `instanceof Error` | Doesn't verify the error message or cause  | Assert `error.message` contains specific text                          |
-
-### 4 Test File Organization
-
-```
-tests/
-├── unit/
-│   ├── main/               # Main process tests (DB, services, security)
-│   ├── components/          # React component tests (render, interaction)
-│   ├── services/            # Frontend service tests (AI clients, etc.)
-│   ├── stores/              # Zustand store tests
-│   ├── hooks/               # Hook tests
-│   └── cli/                 # CLI tests
-├── integration/             # Integration tests
-├── e2e/                     # Playwright end-to-end tests
-├── fixtures/                # Shared test fixtures
-├── helpers/                 # Shared test helpers
-└── setup.ts                 # Global test setup
-```
-
-**Naming convention:** `<module-name>.test.ts` — matches the source file it tests.
-
-**Structure within test files:**
-
-```typescript
-describe("ModuleName", () => {
-  describe("methodName", () => {
-    it("does X when given Y", () => { ... });         // Happy path
-    it("returns null for non-existent id", () => { ... }); // Error path
-  });
-  describe("adversarial inputs", () => {
-    // Fuzz / boundary / injection tests grouped together
-  });
-});
-```
-
-### 5 Running Tests
-
-| Command                                 | Purpose                        |
-| --------------------------------------- | ------------------------------ |
-| `pnpm test -- --run`                    | Full test suite (all files)    |
-| `pnpm test -- <path> --run`             | Single file                    |
-| `pnpm test -- --run --reporter=verbose` | Verbose output with test names |
-| `pnpm test -- --run --coverage`         | With coverage report           |
-
-Choose the smallest effective checks after the complete implementation batch, then broaden for cross-package or release risk. Every PR must have no unresolved test failures or lint errors.
-
-### 6 Coverage Targets
-
-| Layer                                                                                                                              | Minimum                                                 | Priority                                |
-| ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | --------------------------------------- |
-| New/changed production code                                                                                                        | 100% lines, functions, branches, and conditions         | **Required** — no untested new behavior |
-| Critical boundary modules: database, filesystem persistence, sync, IPC/preload, installer/import/export, security, release harness | 100% branch and condition coverage for touched behavior | **Required** — data/user trust boundary |
-| `packages/db/src/`                                                                                                                 | 100% for changed files; legacy gaps must be recorded    | **Critical** — data integrity           |
-| `apps/desktop/src/main/security.ts`                                                                                                | 100% for changed files; legacy gaps must be recorded    | **Critical** — encryption correctness   |
-| `packages/core/src/` and app services                                                                                              | 100% for changed files; legacy gaps must be recorded    | High — business logic                   |
-| `apps/desktop/src/main/ipc/`                                                                                                       | 100% for changed handlers and validation branches       | High — input validation                 |
-| `apps/desktop/src/renderer/stores/`                                                                                                | 100% for changed actions and state branches             | High — state management                 |
-| `apps/desktop/src/renderer/services/`                                                                                              | 100% for changed services and error paths               | High — client correctness               |
-| `apps/desktop/src/renderer/components/`                                                                                            | 100% for changed user-visible states and interactions   | Medium — UI behavior                    |
-
-Coverage acceptance must include branch and condition review, not only line coverage. Any uncovered branch in touched code must be either tested or explicitly documented in the existing topic or plan with a reason and a follow-up task.
-
-### 7 What Makes a Test "Good"
-
-A good test:
-
-1. **Fails when the code is broken** — If you comment out the implementation, the test must fail.
-2. **Passes when the code is correct** — No flaky behavior, no timing dependencies.
-3. **Documents the expected behavior** — The test name and assertions serve as living documentation.
-4. **Catches regressions** — A future developer changing the code incorrectly will be stopped by this test.
-5. **Is independent** — Can run in any order, doesn't depend on other tests' side effects.
-6. **Is fast** — Unit tests should complete in milliseconds, not seconds.
-
-A bad test:
-
-1. Always passes regardless of implementation.
-2. Tests implementation details that change on refactor.
-3. Has vague assertions (`toBeDefined`, `toBeTruthy`) when specific values are known.
-4. Requires network, filesystem, or timing to pass.
-5. Is a copy-paste of another test with one variable changed.
+Playwright Test Agents 是可选辅助工具，委派和 GUI 操作遵循用户授权及 AGENTS；不因使用本规则而自动创建 Agent。计划和生成测试不是验收证据，普通 Playwright 必须能独立执行。Generator 限于约定测试范围，Healer 只修已证实的测试漂移，不得修改产品预期或掩盖产品缺陷。具体操作见 [使用指南](../../docs/testing-playwright-agents.md)。

@@ -1,3 +1,4 @@
+import type { RequestListener, RequestOptions } from "node:http";
 /**
  * @vitest-environment node
  */
@@ -17,9 +18,7 @@ import * as networkProxy from "../../../src/main/services/network-proxy";
 
 const servers: Server[] = [];
 
-async function listen(
-  handler: Parameters<typeof createServer>[0],
-): Promise<string> {
+async function listen(handler: RequestListener): Promise<string> {
   const server = createServer(handler);
   servers.push(server);
   server.listen(0, "127.0.0.1");
@@ -297,7 +296,6 @@ describe("Agent provider connectivity", () => {
               ...options,
               protocol: "http:",
               hostname: "127.0.0.1",
-              servername: undefined,
               family: 4,
               port: Number(localEndpoint.port),
               agent: undefined,
@@ -324,8 +322,8 @@ describe("Agent provider connectivity", () => {
       }),
     );
     const connectLocally = (
-      options: Parameters<typeof httpRequest>[0],
-      listener: Parameters<typeof httpRequest>[1],
+      options: RequestOptions,
+      listener: (response: IncomingMessage) => void,
     ) =>
       httpRequest(
         {
@@ -377,15 +375,14 @@ describe("Agent provider connectivity", () => {
     const proxyAgent = new HttpAgent();
     vi.spyOn(networkProxy, "getHttpRequestAgent").mockReturnValue(proxyAgent);
     const connectLocally = (
-      options: Parameters<typeof httpRequest>[0],
-      listener: Parameters<typeof httpRequest>[1],
+      options: RequestOptions,
+      listener: (response: IncomingMessage) => void,
     ) =>
       httpRequest(
         {
           ...options,
           protocol: "http:",
           hostname: "127.0.0.1",
-          servername: undefined,
           family: 4,
           port: Number(localEndpoint.port),
           agent: undefined,
