@@ -9,6 +9,7 @@ import { getAuthUser } from '../middleware/auth.js';
 import { PromptService, PromptServiceError } from '../services/prompt.service.js';
 import { error, ErrorCode, paginated, success } from '../utils/response.js';
 import { parseJsonBody } from '../utils/validation.js';
+import { MAX_IMPORT_REQUEST_BYTES } from '../utils/import-limits.js';
 
 const prompts = new Hono();
 const promptService = new PromptService();
@@ -274,7 +275,10 @@ const graphRestoreSchema = z.object({
 });
 
 prompts.post('/graph/restore', async (c) => {
-  const parsed = await parseJsonBody(c, graphRestoreSchema);
+  const parsed = await parseJsonBody(c, graphRestoreSchema, {
+    maxBytes: MAX_IMPORT_REQUEST_BYTES,
+    maxBytesMessage: 'Import request body exceeds size limit',
+  });
   if (!parsed.success) return parsed.response;
   try {
     validatePromptWorkspaceSnapshotPaths(parsed.data.folders, parsed.data.prompts, parsed.data.versions);

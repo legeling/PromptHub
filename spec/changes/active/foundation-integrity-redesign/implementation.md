@@ -200,3 +200,8 @@ The SQLite round trip found and corrected `createVersion` returning an undefined
 note while reopening returned null. No browser/Electron transport is claimed by
 that test. The IDB tests model its request callbacks; real historical-client profile,
 Electron UI and complete 0.6.0 migration acceptance remain pending.
+
+Graph restore reuses the existing archive-import byte limit rather than the
+ordinary JSON request limit. An authenticated route test restored 12 prompts and
+their versions (over 2 MB), then read the content back successfully. The affected
+Web typecheck and scoped ESLint passed on the staged snapshot.

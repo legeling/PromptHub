@@ -84,4 +84,27 @@ it("restores a graph through the authenticated route and rejects invalid input w
     ).status,
   ).toBe(401);
   expect((await (await read()).json()).data.title).toBe("Restored");
+  const bodyPerPrompt = "x".repeat(90_000);
+  const restoredPromptCount = 12;
+  const largeGraph = {
+    folders: [],
+    prompts: Array.from({ length: restoredPromptCount }, (_, index) => ({
+      ...prompt,
+      id: `large-${index}`,
+      userPrompt: bodyPerPrompt,
+    })),
+    versions: Array.from({ length: restoredPromptCount }, (_, index) => ({
+      ...versions[0],
+      id: `large-version-${index}`,
+      promptId: `large-${index}`,
+      userPrompt: bodyPerPrompt,
+    })),
+  };
+  const largeRestore = await restore(largeGraph);
+  expect(largeRestore.status).toBe(200);
+  expect((await largeRestore.json()).data.promptCount).toBe(
+    restoredPromptCount,
+  );
+  const reread = await app.request("/api/prompts/large-11", { headers });
+  expect((await reread.json()).data.userPrompt).toBe(bodyPerPrompt);
 }, 30000);

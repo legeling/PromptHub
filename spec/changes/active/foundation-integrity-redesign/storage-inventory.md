@@ -293,6 +293,11 @@ Core `renderer-persistence-migration.test.ts` 与 Desktop `idb-migration.test.ts
 
 ## 正常业务路径兼容审查（2026-09-15）
 
+2026-09-24 实现进度：BC02 的 Renderer CRUD/整图恢复后端 fallback 已移除；BC03 的
+IDB 迁移失败、读取错误透传和超时放行已修正并通过定向验证，详见 implementation.md。
+这些结果不覆盖完整 Electron 启动或真实历史客户端验收。BC01、BC04–BC08 尚未收敛，
+下表保留原始审查证据，不代表所有列出的旧行号仍对应当前源码。
+
 审查标准：历史数据只能在升级、导入、恢复边界转换；正常读写仅使用当前契约。
 以下是当前工作区的调用链检查，覆盖 Desktop/Core 的 Prompt、Folder、版本、设置、
 Skill、Rule、MCP、Plugin、Agent 配置、Generation 与路径选择。未穷尽所有 UI、

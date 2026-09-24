@@ -14,11 +14,11 @@ import {
 import { validateSkillWorkspaceSnapshotPaths } from '../services/skill-workspace.js';
 import { error, ErrorCode, success } from '../utils/response.js';
 import { parseJsonBody, readRequestBytesBody } from '../utils/validation.js';
+import { MAX_IMPORT_REQUEST_BYTES } from '../utils/import-limits.js';
 import { unzipSync, strFromU8 } from 'fflate';
 
 const importExport = new Hono();
 const backupService = new BackupService();
-const MAX_IMPORT_REQUEST_BYTES = 50 * 1024 * 1024;
 
 function rejectOversizedImportRequest(c: Context): Response | null {
   const contentLength = c.req.header('content-length');
