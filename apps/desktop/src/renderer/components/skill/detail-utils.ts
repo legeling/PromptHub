@@ -53,6 +53,7 @@ export function formatSkillTranslationError(
     normalized.includes("(504)") ||
     normalized.includes(" 504") ||
     normalized.includes("gateway timeout") ||
+    normalized.includes("request timeout after") ||
     normalized.includes("网关超时")
   ) {
     return t(

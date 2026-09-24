@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { AI_REQUEST_TIMEOUT_MS } from "@prompthub/shared/constants/ai";
 
 import {
   buildMessagesFromPrompt,
@@ -7,6 +8,7 @@ import {
   generateImage,
   testAIConnection,
 } from "../../../src/renderer/services/ai";
+import { requestAIEndpoint } from "../../../src/renderer/services/ai-request";
 import { installWindowMocks } from "../../helpers/window";
 
 describe("ai transport", () => {
@@ -94,7 +96,7 @@ describe("ai transport", () => {
         Accept: "application/json",
         Authorization: "Bearer test-key",
       },
-      timeoutMs: 12_000,
+      timeoutMs: AI_REQUEST_TIMEOUT_MS,
     });
     expect(fetch).not.toHaveBeenCalled();
     expect(result).toEqual({
@@ -156,7 +158,7 @@ describe("ai transport", () => {
       expect.objectContaining({
         method: "POST",
         url: "http://127.0.0.1:8000/v1/chat/completions",
-        timeoutMs: 12_000,
+        timeoutMs: AI_REQUEST_TIMEOUT_MS,
       }),
     );
 
@@ -168,6 +170,130 @@ describe("ai transport", () => {
     expect(body.stream).toBe(false);
     expect(body.enable_thinking).toBe(false);
     expect(body.temperature).toBe(0);
+  });
+
+  it("routes bounded non-streaming chat requests to intranet HTTP endpoints through the main process", async () => {
+    window.api.ai.request.mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      body: JSON.stringify({
+        choices: [{ message: { content: "内网译文" } }],
+      }),
+      headers: { "content-type": "application/json" },
+    });
+
+    const result = await chatCompletion(
+      {
+        provider: "custom",
+        apiProtocol: "openai",
+        apiKey: "local-key",
+        apiUrl: "http://192.168.10.20:8000/v1",
+        model: "local-translator",
+      },
+      [{ role: "user", content: "Translate this Skill" }],
+      { stream: false },
+    );
+
+    expect(result.content).toBe("内网译文");
+    expect(window.api.ai.request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        method: "POST",
+        url: "http://192.168.10.20:8000/v1/chat/completions",
+        timeoutMs: AI_REQUEST_TIMEOUT_MS,
+      }),
+    );
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("keeps the shared deadline active while the browser fallback reads the response body", async () => {
+    vi.useFakeTimers();
+    const originalAI = window.api.ai;
+    (window.api as { ai?: typeof window.api.ai }).ai = undefined;
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockImplementation(async (_url, init) => {
+      const signal = init?.signal as AbortSignal;
+      return {
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        headers: new Headers({ "content-type": "application/json" }),
+        text: () =>
+          new Promise<string>((_resolve, reject) => {
+            signal.addEventListener("abort", () => reject(signal.reason), {
+              once: true,
+            });
+          }),
+      } as Response;
+    });
+
+    try {
+      const pending = requestAIEndpoint({
+        method: "POST",
+        url: "https://api.example.com/v1/chat/completions",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+      const timeoutExpectation = expect(pending).rejects.toThrow(
+        `Request timeout after ${AI_REQUEST_TIMEOUT_MS}ms`,
+      );
+
+      await vi.advanceTimersByTimeAsync(AI_REQUEST_TIMEOUT_MS - 1);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(1);
+
+      await timeoutExpectation;
+    } finally {
+      (window.api as { ai?: typeof window.api.ai }).ai = originalAI;
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps the shared deadline active until the browser fallback stream finishes", async () => {
+    vi.useFakeTimers();
+    const originalAI = window.api.ai;
+    (window.api as { ai?: typeof window.api.ai }).ai = undefined;
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockImplementation(async (_url, init) => {
+      const signal = init?.signal as AbortSignal;
+      return new Response(
+        new ReadableStream({
+          start(controller) {
+            signal.addEventListener(
+              "abort",
+              () => controller.error(signal.reason),
+              { once: true },
+            );
+          },
+        }),
+        { status: 200 },
+      );
+    });
+
+    try {
+      const pending = chatCompletion(
+        {
+          provider: "custom",
+          apiProtocol: "openai",
+          apiKey: "local-key",
+          apiUrl: "https://api.example.com/v1",
+          model: "streaming-model",
+          chatParams: { stream: true },
+        },
+        [{ role: "user", content: "Stream this" }],
+        { stream: true },
+      );
+      const timeoutExpectation = expect(pending).rejects.toThrow(
+        `Request timeout after ${AI_REQUEST_TIMEOUT_MS}ms`,
+      );
+
+      await vi.advanceTimersByTimeAsync(AI_REQUEST_TIMEOUT_MS);
+
+      await timeoutExpectation;
+    } finally {
+      (window.api as { ai?: typeof window.api.ai }).ai = originalAI;
+      vi.useRealTimers();
+    }
   });
 
   it("uses the main-process request transport for OpenAI-compatible image generation", async () => {
@@ -207,7 +333,7 @@ describe("ai transport", () => {
         prompt: "a reusable image prompt",
         model: "gpt-image-1",
       }),
-      timeoutMs: 300_000,
+      timeoutMs: AI_REQUEST_TIMEOUT_MS,
     });
     expect(fetch).not.toHaveBeenCalled();
   });
@@ -422,7 +548,7 @@ describe("ai transport", () => {
           method: "POST",
           url: expectedUrl,
           headers: expectedHeaders,
-          timeoutMs: 300_000,
+          timeoutMs: AI_REQUEST_TIMEOUT_MS,
         }),
       );
       expect(fetch).not.toHaveBeenCalled();
@@ -462,7 +588,7 @@ describe("ai transport", () => {
           Authorization: "Bearer stability-key",
           Accept: "application/json",
         },
-        timeoutMs: 300_000,
+        timeoutMs: AI_REQUEST_TIMEOUT_MS,
       }),
     );
     expect(fetch).not.toHaveBeenCalled();
@@ -514,7 +640,7 @@ describe("ai transport", () => {
         expect.objectContaining({
           method: "POST",
           url: "https://api.replicate.com/v1/predictions",
-          timeoutMs: 300_000,
+          timeoutMs: AI_REQUEST_TIMEOUT_MS,
         }),
       );
       expect(window.api.ai.request).toHaveBeenNthCalledWith(
@@ -523,7 +649,7 @@ describe("ai transport", () => {
           method: "GET",
           url: "https://api.replicate.com/v1/predictions/abc",
           headers: { Authorization: "Bearer replicate-key" },
-          timeoutMs: 300_000,
+          timeoutMs: AI_REQUEST_TIMEOUT_MS,
         }),
       );
       expect(fetch).not.toHaveBeenCalled();
@@ -722,7 +848,7 @@ describe("ai transport", () => {
         Accept: "application/json",
         "x-goog-api-key": "gemini-key",
       },
-      timeoutMs: 12_000,
+      timeoutMs: AI_REQUEST_TIMEOUT_MS,
     });
   });
 
@@ -733,7 +859,7 @@ describe("ai transport", () => {
       statusText: "",
       body: "",
       headers: {},
-      error: "Request timeout after 12000ms",
+      error: `Request timeout after ${AI_REQUEST_TIMEOUT_MS}ms`,
     });
 
     const result = await fetchAvailableModels(
@@ -744,7 +870,7 @@ describe("ai transport", () => {
     expect(result).toEqual({
       success: false,
       models: [],
-      error: "Request timeout after 12000ms",
+      error: `Request timeout after ${AI_REQUEST_TIMEOUT_MS}ms`,
       reason: "network",
       endpoint: "https://api.openai.com/v1/models",
       status: 0,

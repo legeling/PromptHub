@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { TFunction } from "i18next";
 import {
   downloadSkillZipExport,
+  formatSkillTranslationError,
   formatSkillSafetyScanError,
   generateTextDiff,
   getSkillSourceMeta,
@@ -15,6 +16,17 @@ import {
 } from "../../../src/renderer/components/skill/detail-utils";
 
 describe("skill detail utils", () => {
+  it("reports a transport deadline as a translation timeout", () => {
+    const message = formatSkillTranslationError(
+      new Error("Request timeout after 300000ms"),
+      ((_key: string, fallback: string) => fallback) as TFunction,
+    );
+
+    expect(message).toBe(
+      "The AI service timed out while translating. Please try again in a moment, or switch to a faster / more stable model endpoint.",
+    );
+  });
+
   it("does not expose provider request ids when an AI safety token is rejected", () => {
     const message = formatSkillSafetyScanError(
       new Error(

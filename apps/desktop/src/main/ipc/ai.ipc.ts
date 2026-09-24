@@ -1,6 +1,7 @@
 import { ipcMain } from "electron";
 
 import { IPC_CHANNELS } from "@prompthub/shared/constants/ipc-channels";
+import { AI_REQUEST_TIMEOUT_MS } from "@prompthub/shared/constants/ai";
 import type {
   AITransportRequest,
   AITransportResponse,
@@ -125,24 +126,28 @@ async function requestToResponse(
   };
 }
 
-async function performRequest(request: AITransportRequest): Promise<Response> {
+async function performRequest<T>(
+  request: AITransportRequest,
+  consume: (response: Response) => Promise<T>,
+): Promise<T> {
   const controller = new AbortController();
   const timeoutMs =
     typeof request.timeoutMs === "number" && request.timeoutMs > 0
       ? request.timeoutMs
-      : 30_000;
+      : AI_REQUEST_TIMEOUT_MS;
   const timeoutId = setTimeout(() => {
     controller.abort(new Error(`Request timeout after ${timeoutMs}ms`));
   }, timeoutMs);
 
   try {
     const multipartBody = buildMultipartBody(request);
-    return await fetchWithNetworkProxy(request.url, {
+    const response = await fetchWithNetworkProxy(request.url, {
       method: request.method,
       headers: normalizeHeaders(request.headers, Boolean(multipartBody)),
       body: multipartBody ?? request.body,
       signal: controller.signal,
     });
+    return await consume(response);
   } finally {
     clearTimeout(timeoutId);
   }
@@ -156,8 +161,7 @@ export function registerAIIPC(): void {
       request: AITransportRequest,
     ): Promise<AITransportResponse> => {
       try {
-        const response = await performRequest(request);
-        return await requestToResponse(response);
+        return await performRequest(request, requestToResponse);
       } catch (error) {
         return toErrorResponse(error);
       }
@@ -171,56 +175,57 @@ export function registerAIIPC(): void {
       request: AITransportRequest,
     ): Promise<AITransportResponse> => {
       try {
-        const response = await performRequest(request);
-        if (!response.ok || !response.body) {
-          return await requestToResponse(response);
-        }
+        return await performRequest(request, async (response) => {
+          if (!response.ok || !response.body) {
+            return await requestToResponse(response);
+          }
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
 
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) {
-              break;
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) {
+                break;
+              }
+
+              const chunk = decoder.decode(value, { stream: true });
+              if (chunk) {
+                event.sender.send(IPC_CHANNELS.AI_HTTP_STREAM_CHUNK, {
+                  requestId: request.requestId,
+                  chunk,
+                });
+              }
             }
 
-            const chunk = decoder.decode(value, { stream: true });
-            if (chunk) {
+            const tail = decoder.decode();
+            if (tail) {
               event.sender.send(IPC_CHANNELS.AI_HTTP_STREAM_CHUNK, {
                 requestId: request.requestId,
-                chunk,
+                chunk: tail,
               });
             }
-          }
-
-          const tail = decoder.decode();
-          if (tail) {
-            event.sender.send(IPC_CHANNELS.AI_HTTP_STREAM_CHUNK, {
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : "Unknown stream error";
+            event.sender.send(IPC_CHANNELS.AI_HTTP_STREAM_ERROR, {
               requestId: request.requestId,
-              chunk: tail,
+              error: message,
             });
+            return toErrorResponse(error);
+          } finally {
+            reader.releaseLock();
           }
-        } catch (error) {
-          const message =
-            error instanceof Error ? error.message : "Unknown stream error";
-          event.sender.send(IPC_CHANNELS.AI_HTTP_STREAM_ERROR, {
-            requestId: request.requestId,
-            error: message,
-          });
-          return toErrorResponse(error);
-        } finally {
-          reader.releaseLock();
-        }
 
-        return {
-          ok: true,
-          status: response.status,
-          statusText: response.statusText,
-          body: "",
-          headers: headersToObject(response.headers),
-        };
+          return {
+            ok: true,
+            status: response.status,
+            statusText: response.statusText,
+            body: "",
+            headers: headersToObject(response.headers),
+          };
+        });
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Unknown stream error";

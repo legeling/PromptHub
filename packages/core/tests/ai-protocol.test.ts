@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { AI_REQUEST_TIMEOUT_MS } from "@prompthub/shared/constants/ai";
 
 import {
   buildChatEndpointFromBase,
@@ -12,6 +13,7 @@ import {
 import { chatCompletion } from "../src/ai-client";
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
@@ -121,5 +123,43 @@ describe("shared AI protocol derivation", () => {
         }),
       }),
     );
+    const signal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal;
+    expect(signal.aborted).toBe(false);
+  });
+
+  it("aborts the core AI client at the shared deadline", async () => {
+    vi.useFakeTimers();
+    let requestSignal: AbortSignal | undefined;
+    const fetchMock = vi.fn().mockImplementation((_url, init: RequestInit) => {
+      requestSignal = init.signal ?? undefined;
+      return new Promise((_resolve, reject) => {
+        requestSignal?.addEventListener(
+          "abort",
+          () => reject(requestSignal?.reason),
+          { once: true },
+        );
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const pending = chatCompletion(
+      {
+        provider: "openai",
+        apiProtocol: "openai",
+        apiKey: "secret",
+        apiUrl: "https://api.example.com",
+        model: "slow-model",
+      },
+      [{ role: "user", content: "Review" }],
+    );
+    const timeoutExpectation = expect(pending).rejects.toMatchObject({
+      name: "AbortError",
+    });
+
+    await vi.advanceTimersByTimeAsync(AI_REQUEST_TIMEOUT_MS - 1);
+    expect(requestSignal?.aborted).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+
+    await timeoutExpectation;
   });
 });

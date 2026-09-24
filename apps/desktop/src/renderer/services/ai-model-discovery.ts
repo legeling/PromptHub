@@ -1,4 +1,5 @@
 import type { AIProtocol } from "@prompthub/shared/types";
+import { AI_REQUEST_TIMEOUT_MS } from "@prompthub/shared/constants/ai";
 import {
   buildChatEndpointFromBase,
   buildHeadersForProtocol,
@@ -87,7 +88,7 @@ export async function fetchAvailableModels(
         accept: "application/json",
         useNativeGeminiAuth: resolvedProtocol === "gemini",
       }),
-      timeoutMs: 12_000,
+      timeoutMs: AI_REQUEST_TIMEOUT_MS,
     });
 
     if (!response.ok) {

@@ -2,13 +2,12 @@ import type {
   ImageGenerationResponse,
   ImageReferenceAttachment,
 } from "./ai-types";
+import { AI_REQUEST_TIMEOUT_MS } from "@prompthub/shared/constants/ai";
 import {
   getFormattedErrorMessageFromResponse,
   isGptImageModel,
   requestAIEndpoint,
 } from "./ai-request";
-
-const IMAGE_GENERATION_TIMEOUT_MS = 300_000;
 
 interface OpenAIImageOptions {
   size?: string;
@@ -77,7 +76,7 @@ async function editImage(
       }),
     },
     url: resolveOpenAIImageEndpoint(apiUrl, "edits"),
-    timeoutMs: IMAGE_GENERATION_TIMEOUT_MS,
+    timeoutMs: AI_REQUEST_TIMEOUT_MS,
   });
   if (!response.ok) {
     throw new Error(
@@ -123,7 +122,7 @@ export async function generateImageOpenAI(
     },
     body: JSON.stringify(body),
     url: resolveOpenAIImageEndpoint(apiUrl, "generations"),
-    timeoutMs: IMAGE_GENERATION_TIMEOUT_MS,
+    timeoutMs: AI_REQUEST_TIMEOUT_MS,
   });
   if (!response.ok) {
     throw new Error(

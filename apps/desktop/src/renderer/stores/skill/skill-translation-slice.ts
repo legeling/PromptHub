@@ -1,4 +1,5 @@
 import { computeSkillContentFingerprint } from "../../services/skill-store-update";
+import { AI_REQUEST_TIMEOUT_MS } from "@prompthub/shared/constants/ai";
 import { resolveScenarioAIConfig } from "../../services/ai-defaults";
 import {
   getSkillTranslationCacheState,
@@ -129,7 +130,11 @@ async function requestTranslation(
       },
       { role: "user", content },
     ],
-    { temperature: 0.3, maxTokens: 8192 },
+    {
+      temperature: 0.3,
+      maxTokens: 8192,
+      timeoutMs: AI_REQUEST_TIMEOUT_MS,
+    },
   );
   return result.content;
 }

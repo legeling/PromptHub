@@ -2,6 +2,7 @@ import type {
   AITransportMultipartBody,
   AITransportResponse,
 } from "@prompthub/shared/types";
+import { AI_REQUEST_TIMEOUT_MS } from "@prompthub/shared/constants/ai";
 
 export interface ResponseLike {
   ok: boolean;
@@ -32,14 +33,17 @@ export function createResponseLike(
   };
 }
 
-export function createFetchResponseLike(response: Response): ResponseLike {
+export function createFetchResponseLike(
+  response: Response,
+  body: string,
+): ResponseLike {
   return {
     ok: response.ok,
     status: response.status,
     statusText: response.statusText,
     headers: Object.fromEntries(response.headers.entries()),
-    text: async () => response.text(),
-    json: async <T = unknown>() => response.json() as Promise<T>,
+    text: async () => body,
+    json: async <T = unknown>() => JSON.parse(body) as T,
   };
 }
 
@@ -51,9 +55,11 @@ export async function requestAIEndpoint(request: {
   multipart?: AITransportMultipartBody;
   timeoutMs?: number;
 }): Promise<ResponseLike> {
+  const timeoutMs = request.timeoutMs ?? AI_REQUEST_TIMEOUT_MS;
+  const normalizedRequest = { ...request, timeoutMs };
   const transport = getAITransport();
   if (transport) {
-    return createResponseLike(await transport.request(request));
+    return createResponseLike(await transport.request(normalizedRequest));
   }
 
   if (request.body !== undefined && request.multipart) {
@@ -85,13 +91,22 @@ export async function requestAIEndpoint(request: {
         ),
       )
     : request.headers;
-  return createFetchResponseLike(
-    await fetch(request.url, {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(
+    () => controller.abort(new Error(`Request timeout after ${timeoutMs}ms`)),
+    timeoutMs,
+  );
+  try {
+    const response = await fetch(request.url, {
       method: request.method,
       headers,
       body: form ?? request.body,
-    }),
-  );
+      signal: controller.signal,
+    });
+    return createFetchResponseLike(response, await response.text());
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 function getResponseHeader(

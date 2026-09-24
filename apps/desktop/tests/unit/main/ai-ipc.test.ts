@@ -3,6 +3,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { IPC_CHANNELS } from "@prompthub/shared/constants/ipc-channels";
+import { AI_REQUEST_TIMEOUT_MS } from "@prompthub/shared/constants/ai";
 
 const handlers = new Map<string, (...args: any[]) => any>();
 const fetchWithNetworkProxy = vi.hoisted(() => vi.fn());
@@ -131,5 +132,100 @@ describe("AI IPC multipart transport", () => {
     );
     expect(response).toMatchObject({ ok: false, status: 0 });
     expect(fetchWithNetworkProxy).not.toHaveBeenCalled();
+  });
+
+  it("uses the shared AI deadline when a caller omits timeoutMs", async () => {
+    vi.useFakeTimers();
+    let requestSignal: AbortSignal | undefined;
+    fetchWithNetworkProxy.mockImplementation(
+      async (_url, init: RequestInit) => {
+        requestSignal = init.signal ?? undefined;
+        return {
+          ok: true,
+          status: 200,
+          statusText: "OK",
+          headers: new Headers({ "content-type": "application/json" }),
+          text: () =>
+            new Promise<string>((_resolve, reject) => {
+              requestSignal?.addEventListener(
+                "abort",
+                () => reject(requestSignal?.reason),
+                { once: true },
+              );
+            }),
+        } as Response;
+      },
+    );
+
+    try {
+      const pending = handlers.get(IPC_CHANNELS.AI_HTTP_REQUEST)?.(
+        {},
+        {
+          method: "POST",
+          url: "http://192.168.10.20:8000/v1/chat/completions",
+          body: "{}",
+        },
+      );
+
+      await vi.advanceTimersByTimeAsync(AI_REQUEST_TIMEOUT_MS - 1);
+      expect(requestSignal?.aborted).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+
+      await expect(pending).resolves.toMatchObject({
+        ok: false,
+        status: 0,
+        error: `Request timeout after ${AI_REQUEST_TIMEOUT_MS}ms`,
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps the shared deadline active until a streamed response finishes", async () => {
+    vi.useFakeTimers();
+    const send = vi.fn();
+    fetchWithNetworkProxy.mockImplementation(
+      async (_url, init: RequestInit) => {
+        const signal = init.signal as AbortSignal;
+        return new Response(
+          new ReadableStream({
+            start(controller) {
+              signal.addEventListener(
+                "abort",
+                () => controller.error(signal.reason),
+                { once: true },
+              );
+            },
+          }),
+          { status: 200 },
+        );
+      },
+    );
+
+    try {
+      const pending = handlers.get(IPC_CHANNELS.AI_HTTP_STREAM)?.(
+        { sender: { send } },
+        {
+          method: "POST",
+          url: "https://api.example.com/v1/chat/completions",
+          body: "{}",
+          requestId: "stream-timeout",
+        },
+      );
+
+      await vi.advanceTimersByTimeAsync(AI_REQUEST_TIMEOUT_MS);
+
+      await expect(pending).resolves.toMatchObject({
+        ok: false,
+        status: 0,
+        error: `Request timeout after ${AI_REQUEST_TIMEOUT_MS}ms`,
+      });
+      expect(send).toHaveBeenCalledWith(IPC_CHANNELS.AI_HTTP_STREAM_ERROR, {
+        requestId: "stream-timeout",
+        error: `Request timeout after ${AI_REQUEST_TIMEOUT_MS}ms`,
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

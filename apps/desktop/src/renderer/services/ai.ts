@@ -4,6 +4,7 @@ import {
   resolveAIProtocol,
   resolveProtocolBase,
 } from "@prompthub/shared/utils/ai-protocol";
+import { AI_REQUEST_TIMEOUT_MS } from "@prompthub/shared/constants/ai";
 import type {
   AIConfig,
   AITestResult,
@@ -30,7 +31,6 @@ import {
   rewritePromptDraftWithCompletion,
 } from "./ai-content-workflows";
 import {
-  createFetchResponseLike,
   createResponseLike,
   getAITransport,
   getErrorMessageFromResponse,
@@ -71,9 +71,7 @@ interface StreamState {
   chunkCount: number;
 }
 
-const IMAGE_GENERATION_TIMEOUT_MS = 300_000;
 const AI_CONNECTION_TEST_MAX_TOKENS = 8;
-const AI_CONNECTION_TEST_TIMEOUT_MS = 12_000;
 const AI_CONNECTION_TEST_PROMPT = "Reply with exactly: OK";
 
 function createStreamState(): StreamState {
@@ -192,6 +190,7 @@ export async function chatCompletion(
   const isGemini = protocol === "gemini";
   const isAnthropic = protocol === "anthropic";
   const normalizedModel = isGemini ? model.replace(/^models\//, "") : model;
+  const requestTimeoutMs = options?.timeoutMs ?? AI_REQUEST_TIMEOUT_MS;
 
   if (!apiKey) {
     throw new Error("API Key is not configured");
@@ -273,24 +272,13 @@ export async function chatCompletion(
     }
 
     const requestBody = JSON.stringify(anthropicBody);
-    const transport = getAITransport();
-    const response = transport
-      ? createResponseLike(
-          await transport.request({
-            method: "POST",
-            url: endpoint,
-            headers,
-            body: requestBody,
-            timeoutMs: options?.timeoutMs,
-          }),
-        )
-      : createFetchResponseLike(
-          await fetch(endpoint, {
-            method: "POST",
-            headers,
-            body: requestBody,
-          }),
-        );
+    const response = await requestAIEndpoint({
+      method: "POST",
+      url: endpoint,
+      headers,
+      body: requestBody,
+      timeoutMs: requestTimeoutMs,
+    });
 
     if (!response.ok) {
       throw new Error(await getErrorMessageFromResponse(response));
@@ -402,7 +390,7 @@ export async function chatCompletion(
           url: endpoint,
           headers,
           body: requestBody,
-          timeoutMs: options?.timeoutMs,
+          timeoutMs: requestTimeoutMs,
         },
         {
           onChunk: (chunk) => {
@@ -449,28 +437,48 @@ export async function chatCompletion(
         url: endpoint,
         headers,
         body: requestBody,
-        timeoutMs: options?.timeoutMs,
+        timeoutMs: requestTimeoutMs,
       });
       return { response: createResponseLike(response) };
     }
 
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers,
-      body: requestBody,
-    });
-
     if (mergedParams.stream) {
-      return {
-        streamResult: await handleStreamResponse(
-          response,
-          options?.onStream,
-          options?.streamCallbacks,
-        ),
-      };
+      const controller = new AbortController();
+      const timeoutId = setTimeout(
+        () =>
+          controller.abort(
+            new Error(`Request timeout after ${requestTimeoutMs}ms`),
+          ),
+        requestTimeoutMs,
+      );
+      try {
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers,
+          body: requestBody,
+          signal: controller.signal,
+        });
+        return {
+          streamResult: await handleStreamResponse(
+            response,
+            options?.onStream,
+            options?.streamCallbacks,
+          ),
+        };
+      } finally {
+        clearTimeout(timeoutId);
+      }
     }
 
-    return { response: createFetchResponseLike(response) };
+    return {
+      response: await requestAIEndpoint({
+        method: "POST",
+        url: endpoint,
+        headers,
+        body: requestBody,
+        timeoutMs: requestTimeoutMs,
+      }),
+    };
   };
 
   try {
@@ -634,7 +642,7 @@ export async function testAIConnection(
         stream: false,
         enableThinking: false,
         streamCallbacks,
-        timeoutMs: AI_CONNECTION_TEST_TIMEOUT_MS,
+        timeoutMs: AI_REQUEST_TIMEOUT_MS,
       },
     );
 
@@ -877,7 +885,7 @@ async function generateImageGemini(
     headers,
     body: JSON.stringify(body),
     url: endpoint,
-    timeoutMs: IMAGE_GENERATION_TIMEOUT_MS,
+    timeoutMs: AI_REQUEST_TIMEOUT_MS,
   });
 
   if (!response.ok) {
@@ -1057,7 +1065,7 @@ async function generateImageFlux(
       "X-Key": apiKey,
     },
     body: JSON.stringify(body),
-    timeoutMs: IMAGE_GENERATION_TIMEOUT_MS,
+    timeoutMs: AI_REQUEST_TIMEOUT_MS,
   });
 
   if (!response.ok) {
@@ -1102,7 +1110,7 @@ async function generateImageIdeogram(
       "Api-Key": apiKey,
     },
     body: JSON.stringify(body),
-    timeoutMs: IMAGE_GENERATION_TIMEOUT_MS,
+    timeoutMs: AI_REQUEST_TIMEOUT_MS,
   });
 
   if (!response.ok) {
@@ -1148,7 +1156,7 @@ async function generateImageRecraft(
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify(body),
-    timeoutMs: IMAGE_GENERATION_TIMEOUT_MS,
+    timeoutMs: AI_REQUEST_TIMEOUT_MS,
   });
 
   if (!response.ok) {
@@ -1198,7 +1206,7 @@ async function generateImageReplicate(
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify(body),
-    timeoutMs: IMAGE_GENERATION_TIMEOUT_MS,
+    timeoutMs: AI_REQUEST_TIMEOUT_MS,
   });
 
   if (!response.ok) {
@@ -1221,7 +1229,7 @@ async function generateImageReplicate(
       method: "GET",
       url: result.urls.get,
       headers: { Authorization: `Bearer ${apiKey}` },
-      timeoutMs: IMAGE_GENERATION_TIMEOUT_MS,
+      timeoutMs: AI_REQUEST_TIMEOUT_MS,
     });
     if (!pollResponse.ok) {
       throw new Error(
@@ -1285,7 +1293,7 @@ async function generateImageStability(
       Accept: "application/json",
     },
     body: JSON.stringify(body),
-    timeoutMs: IMAGE_GENERATION_TIMEOUT_MS,
+    timeoutMs: AI_REQUEST_TIMEOUT_MS,
   });
 
   if (!response.ok) {

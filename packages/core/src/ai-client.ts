@@ -1,4 +1,5 @@
 import type { SafetyScanAIConfig } from "@prompthub/shared/types";
+import { AI_REQUEST_TIMEOUT_MS } from "@prompthub/shared/constants/ai";
 import {
   buildChatEndpointFromBase,
   buildHeadersForProtocol,
@@ -14,8 +15,6 @@ export interface AIChatMessage {
 export interface AIChatResult {
   content: string;
 }
-
-const AI_REQUEST_TIMEOUT_MS = 60_000;
 
 export async function chatCompletion(
   config: SafetyScanAIConfig,
