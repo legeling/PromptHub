@@ -2,10 +2,14 @@ import fs from "fs";
 import path from "path";
 import { expect, test } from "@playwright/test";
 
-import { closePromptHub, launchPromptHub, setAppLanguage } from "./helpers/electron";
+import {
+  closePromptHub,
+  launchPromptHub,
+  setAppLanguage,
+} from "./helpers/electron";
 
 test.describe("E2E: create skill structure", () => {
-  test("creates a new skill inside the managed variant container", async () => {
+  test("creates a canonical package and a readable workspace from the manual UI", async () => {
     const { app, page, userDataDir } = await launchPromptHub(null);
 
     try {
@@ -22,11 +26,18 @@ test.describe("E2E: create skill structure", () => {
       await modal
         .getByPlaceholder("Briefly describe what this skill does")
         .fill("E2E created skill");
-      await modal.locator("textarea").first().fill(
-        "# E2E Created Skill\n\nUse this skill for end-to-end verification.",
-      );
+      await modal
+        .locator("textarea")
+        .first()
+        .fill(
+          "# E2E Created Skill\n\nUse this skill for end-to-end verification.",
+        );
 
       await modal.getByRole("button", { name: "Create Skill" }).click();
+      await expect(modal).not.toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: "e2e-created-skill", exact: true }),
+      ).toBeVisible();
 
       await expect
         .poll(() =>
@@ -41,30 +52,44 @@ test.describe("E2E: create skill structure", () => {
 
       const installedSkill = await page.evaluate(async () => {
         const skills = await window.api.skill.getAll();
-        return skills.find((skill) => skill.name === "e2e-created-skill") ?? null;
+        return (
+          skills.find((skill) => skill.name === "e2e-created-skill") ?? null
+        );
       });
 
       expect(installedSkill?.id).toBeTruthy();
       expect(installedSkill?.local_repo_path).toBeTruthy();
 
-      const managedSkillDir = path.dirname(String(installedSkill!.local_repo_path));
-      const repoSkillMdPath = path.join(managedSkillDir, "repo", "SKILL.md");
-      const sourceMetadataPath = path.join(managedSkillDir, ".prompthub", "source.json");
-      const variantMetadataPath = path.join(managedSkillDir, ".prompthub", "variant.json");
-
-      expect(fs.existsSync(repoSkillMdPath)).toBe(true);
-      expect(fs.existsSync(sourceMetadataPath)).toBe(true);
-      expect(fs.existsSync(variantMetadataPath)).toBe(true);
-
-      expect(fs.readFileSync(repoSkillMdPath, "utf8")).toContain(
-        "E2E Created Skill",
+      const skillId = encodeURIComponent(installedSkill!.id);
+      const bundlePath = path.join(userDataDir, "data", "skills", skillId);
+      const workspacePath = path.join(
+        userDataDir,
+        "cache",
+        "skill-workspaces",
+        skillId,
       );
-      expect(fs.readFileSync(sourceMetadataPath, "utf8")).toContain(
-        '"logicalName": "e2e-created-skill"',
+      expect(installedSkill!.local_repo_path).toBe(workspacePath);
+      const canonicalContent = fs.readFileSync(
+        path.join(bundlePath, "files", "SKILL.md"),
+        "utf8",
       );
-      expect(fs.readFileSync(variantMetadataPath, "utf8")).toContain(
-        '"repoMode": "copy"',
-      );
+      expect(canonicalContent).toContain("E2E Created Skill");
+      expect(
+        fs.readFileSync(path.join(workspacePath, "SKILL.md"), "utf8"),
+      ).toBe(canonicalContent);
+      expect(
+        JSON.parse(
+          fs.readFileSync(path.join(bundlePath, "skill.json"), "utf8"),
+        ),
+      ).toMatchObject({
+        skill: { id: installedSkill!.id, name: "e2e-created-skill" },
+      });
+      expect(
+        await page.evaluate(
+          (id) => window.api.skill.versionGetAll(id),
+          installedSkill!.id,
+        ),
+      ).toHaveLength(1);
     } finally {
       await closePromptHub(app, userDataDir);
     }

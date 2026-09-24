@@ -32,9 +32,10 @@
 
 ## Verification And Convergence
 
-- [ ] `T-SKILL194-009`: Run focused Shared/Core/CLI/Desktop tests with 100%
-      coverage for changed branches, followed by changed and release-risk harness
-      profiles as required.
+- [ ] `T-SKILL194-009`: Verify normal Shared/Core/CLI/Desktop Skill workflows
+      and durable target results first, then affected black-box inputs and recovery
+      under the [testing standard](../../../rules/testing-standards.md). Run the
+      applicable changed and release-risk harness profiles and record selection gaps.
 - [ ] `T-SKILL194-010`: Run Shared/Core/CLI/Desktop typechecks, targeted lint,
       file-size gate, `pnpm spec:test`, `pnpm spec:index:check`, and
       `git diff --check`.

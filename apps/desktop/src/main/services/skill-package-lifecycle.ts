@@ -276,6 +276,18 @@ export class SkillPackageLifecycleService {
       }
       stagingRoot = await this.dependencies.createStagingRoot(request);
       const staged = await this.stage(request, stagingRoot, sourceId);
+      if (
+        request.expectedSourceFingerprint &&
+        request.expectedSourceFingerprint !== staged.directoryFingerprint
+      ) {
+        throw new LifecycleStepError(
+          "CONFLICT",
+          "staging",
+          new Error(
+            "Skill source changed after checking; check the source again",
+          ),
+        );
+      }
       return request.operation === "install"
         ? await this.install(request, stagingRoot, sourceId, staged)
         : await this.update(request, stagingRoot, sourceId, staged);

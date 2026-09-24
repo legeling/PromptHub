@@ -314,6 +314,7 @@ export function SkillManager() {
     return filterVisibleSkills({
       deployedSkillNames,
       filterTags: skillFilterTags,
+      includeFrontmatter: skillTagFilterIncludeFrontmatter,
       filterType: effectiveFilterType,
       searchQuery,
       skills,
@@ -324,6 +325,7 @@ export function SkillManager() {
     effectiveFilterType,
     effectiveStoreView,
     skillFilterTags,
+    skillTagFilterIncludeFrontmatter,
     searchQuery,
     skills,
   ]);
@@ -420,9 +422,7 @@ export function SkillManager() {
     y: number;
     skill: Skill;
   } | null>(null);
-  const remoteStoreEntries = useSkillStore(
-    (state) => state.remoteStoreEntries,
-  );
+  const remoteStoreEntries = useSkillStore((state) => state.remoteStoreEntries);
   const registrySkills = useSkillStore((state) => state.registrySkills);
   const loadRegistry = useSkillStore((state) => state.loadRegistry);
 

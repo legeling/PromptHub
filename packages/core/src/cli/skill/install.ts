@@ -1,3 +1,4 @@
+import { replaceSkillDestination } from "../../skills/destination";
 import * as childProcess from "child_process";
 import { randomUUID } from "crypto";
 import fs from "fs/promises";
@@ -168,52 +169,6 @@ async function pathEntryExists(targetPath: string): Promise<boolean> {
     return true;
   } catch {
     return false;
-  }
-}
-
-async function rollbackManagedRepoReplacement(
-  destinationDir: string,
-  stagingDir: string,
-  backupDir: string,
-): Promise<void> {
-  if (await pathEntryExists(backupDir)) {
-    await fs.rm(destinationDir, { recursive: true, force: true });
-    await fs.rename(backupDir, destinationDir);
-  }
-  await fs.rm(stagingDir, { recursive: true, force: true });
-}
-
-async function replaceSkillDestination(
-  destinationDir: string,
-  createStaging: (stagingDir: string) => Promise<void>,
-): Promise<void> {
-  const suffix = `${process.pid}-${randomUUID()}`;
-  const stagingDir = `${destinationDir}.staging-${suffix}`;
-  const backupDir = `${destinationDir}.backup-${suffix}`;
-  const hadDestination = await pathEntryExists(destinationDir);
-  try {
-    await createStaging(stagingDir);
-    if (hadDestination) {
-      await fs.rename(destinationDir, backupDir);
-    }
-    await fs.rename(stagingDir, destinationDir);
-    if (hadDestination) {
-      await fs.rm(backupDir, { recursive: true, force: true });
-    }
-  } catch (error) {
-    try {
-      await rollbackManagedRepoReplacement(
-        destinationDir,
-        stagingDir,
-        backupDir,
-      );
-    } catch (rollbackError) {
-      throw new AggregateError(
-        [error, rollbackError],
-        "Failed to replace Skill target and restore the previous copy",
-      );
-    }
-    throw error;
   }
 }
 

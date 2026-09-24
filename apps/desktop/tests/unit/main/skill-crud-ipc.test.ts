@@ -1,268 +1,299 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+/** @vitest-environment node */
+import { CanonicalPostCommitError } from "@prompthub/core/canonical-entry-publication";
+import { getOperationsDir } from "@prompthub/core/runtime-paths";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { DatabaseAdapter, SCHEMA } from "@prompthub/db";
+import { CanonicalSkillDB } from "@prompthub/core/canonical-skill-db";
+import {
+  configureRuntimePaths,
+  resetRuntimePaths,
+} from "@prompthub/core/runtime-paths";
+import {
+  sharedSkillDistributionService,
+  writeCanonicalStorageAuthority,
+  writeRuntimeLayoutState,
+} from "@prompthub/core";
+import { IPC_CHANNELS } from "@prompthub/shared/constants";
+import { registerSkillCrudHandlers } from "../../../src/main/ipc/skill/crud-handlers";
 
-const handleMock = vi.fn();
-const uninstallSkillMdForSkillMock = vi.fn().mockResolvedValue(undefined);
-const getSkillMdInstallStatusDetailsForSkillMock = vi.fn().mockResolvedValue({
-  claude: { installed: true, mode: "copy" },
-});
-const getSupportedPlatformsMock = vi.fn(() => [
-  { id: "claude", name: "Claude" },
-]);
-const getManagedContainerPathForSkillMock = vi
-  .fn()
-  .mockResolvedValue("/prompthub/skills/writer--7dc211f6");
-const isManagedRepoPathMock = vi.fn().mockResolvedValue(true);
-const deleteManagedVariantContainerMock = vi.fn().mockResolvedValue(undefined);
-
-vi.mock("electron", () => ({
-  ipcMain: {
-    handle: handleMock,
-  },
+const mocks = vi.hoisted(() => ({
+  root: "",
+  platforms: vi.fn(() => [{ id: "claude" }]),
+  handle: vi.fn(),
+  inspect: vi.fn(),
+  conflicts: vi.fn(),
+  install: vi.fn(),
+  link: vi.fn(),
+  uninstall: vi.fn(),
 }));
-
+vi.mock("electron", () => ({ ipcMain: { handle: mocks.handle } }));
 vi.mock("../../../src/main/services/skill-installer", () => ({
   SkillInstaller: {
-    uninstallSkillMdForSkill: uninstallSkillMdForSkillMock,
-    getSkillMdInstallStatusDetailsForSkill:
-      getSkillMdInstallStatusDetailsForSkillMock,
-    getSupportedPlatforms: getSupportedPlatformsMock,
-    getManagedContainerPathForSkill: getManagedContainerPathForSkillMock,
-    isManagedRepoPath: isManagedRepoPathMock,
-    deleteManagedVariantContainer: deleteManagedVariantContainerMock,
+    getSupportedPlatforms: mocks.platforms,
+    getSkillMdInstallStatusDetailsForSkill: mocks.inspect,
+    getSkillMdInstallStatusDetails: mocks.conflicts,
+    installSkillMdForSkill: mocks.install,
+    installSkillMdSymlinkForSkill: mocks.link,
+    uninstallSkillMdForSkill: mocks.uninstall,
   },
 }));
-
+vi.mock("../../../src/main/services/skill-installer-utils", () => ({
+  getPlatformSkillsDir: () => path.join(mocks.root, "platform"),
+}));
+vi.mock("../../../src/main/ipc/skill/shared", () => ({
+  ensureLocalRepoPath: vi.fn(),
+}));
 vi.mock("../../../src/main/services/skill-installer-repo", () => ({
   isInternalSkillRepoEntry: vi.fn(() => false),
 }));
 
-vi.mock("../../../src/main/ipc/skill/shared", () => ({
-  ensureLocalRepoPath: vi.fn(),
-  readCurrentFilesSnapshot: vi.fn().mockResolvedValue([]),
-}));
-
-vi.mock("../../../src/main/services/skill-repo-sync", () => ({
-  hasMetadataChanges: vi.fn(() => false),
-  syncFrontmatterToRepo: vi.fn().mockResolvedValue(undefined),
-}));
-
-type RegisteredHandlers = Record<string, (...args: unknown[]) => unknown>;
-
-function createSkillDbMock() {
-  return {
-    getById: vi.fn(),
-    getAll: vi.fn().mockReturnValue([]),
-    create: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn().mockReturnValue(true),
-    createVersion: vi.fn(),
-  };
-}
-
-async function setupSkillCrudIpc() {
-  vi.resetModules();
-  handleMock.mockReset();
-  uninstallSkillMdForSkillMock.mockClear();
-  getSkillMdInstallStatusDetailsForSkillMock.mockClear();
-  getSkillMdInstallStatusDetailsForSkillMock.mockResolvedValue({
-    claude: { installed: true, mode: "copy" },
-  });
-  getSupportedPlatformsMock.mockClear();
-  getManagedContainerPathForSkillMock.mockClear();
-  isManagedRepoPathMock.mockClear();
-  deleteManagedVariantContainerMock.mockClear();
-
-  const [{ registerSkillCrudHandlers }, { IPC_CHANNELS }] = await Promise.all([
-    import("../../../src/main/ipc/skill/crud-handlers"),
-    import("@prompthub/shared/constants/ipc-channels"),
-  ]);
-
-  const db = createSkillDbMock();
-  registerSkillCrudHandlers({ db } as never);
-
-  const handlers = Object.fromEntries(
-    handleMock.mock.calls.map(([channel, handler]) => [channel, handler]),
-  ) as RegisteredHandlers;
-
-  return { db, handlers, IPC_CHANNELS };
-}
-
-describe("skill crud IPC", () => {
+describe("Skill CRUD IPC", () => {
+  let root: string;
+  let database: DatabaseAdapter.Database;
+  let db: CanonicalSkillDB;
+  let handlers: Map<string, (...args: unknown[]) => Promise<unknown>>;
   beforeEach(() => {
-    handleMock.mockReset();
-    uninstallSkillMdForSkillMock.mockClear();
-    getSkillMdInstallStatusDetailsForSkillMock.mockClear();
-    getSkillMdInstallStatusDetailsForSkillMock.mockResolvedValue({
+    vi.clearAllMocks();
+    mocks.inspect.mockResolvedValue({});
+    mocks.conflicts.mockResolvedValue({});
+    mocks.install.mockResolvedValue(undefined);
+    mocks.link.mockResolvedValue({ effectiveMode: "symlink" });
+    mocks.uninstall.mockResolvedValue(undefined);
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "skill-ipc-crud-"));
+    mocks.root = root;
+    fs.mkdirSync(path.join(root, "platform/writer"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, "platform/writer/SKILL.md"),
+      "Platform modified",
+    );
+    configureRuntimePaths({ userDataPath: root });
+    writeRuntimeLayoutState(root);
+    writeCanonicalStorageAuthority(root, {
+      consistencyId: "d".repeat(64),
+      operationId: "crud-ipc",
+    });
+    database = new DatabaseAdapter(":memory:");
+    database.exec(SCHEMA);
+    db = new CanonicalSkillDB(database);
+    registerSkillCrudHandlers({ db });
+    handlers = new Map(mocks.handle.mock.calls);
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    database.close();
+    resetRuntimePaths();
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+  const call = (channel: string, ...args: unknown[]) =>
+    handlers.get(channel)!(null, ...args);
+  async function create() {
+    await call(IPC_CHANNELS.SKILL_CREATE, {
+      name: "writer",
+      protocol_type: "skill",
+      content: "Original",
+    });
+    return db.getAll()[0];
+  }
+  it("creates and updates the actual package through a single IPC call", async () => {
+    const skill = await create();
+    await call(IPC_CHANNELS.SKILL_UPDATE, skill.id, { content: "Updated" });
+    expect(
+      fs.readFileSync(path.join(skill.local_repo_path!, "SKILL.md"), "utf8"),
+    ).toContain("Updated");
+    expect(
+      db.getVersions(skill.id).at(-1)?.filesSnapshot?.[0].content,
+    ).toContain("Original");
+  });
+  it("renames distributions using exact old/new identities without cross-name cleanup", async () => {
+    const skill = await create();
+    mocks.inspect.mockResolvedValue({
+      claude: { installed: true, mode: "copy" },
+      codex: { installed: true, mode: "symlink" },
+    });
+    await call(IPC_CHANNELS.SKILL_UPDATE, skill.id, { name: "author" });
+    expect(mocks.install.mock.calls[0][0].name).toBe("author");
+    expect(mocks.link.mock.calls[0][0].name).toBe("author");
+    expect(
+      mocks.uninstall.mock.calls.map((c) => [c[0].name, c.length]),
+    ).toEqual([
+      ["writer", 2],
+      ["writer", 2],
+    ]);
+    expect(db.getById(skill.id)?.name).toBe("author");
+    expect(db.getById(skill.id)?.local_repo_path).toBe(skill.local_repo_path);
+  });
+  it("preserves the library identity and reports failed deployment during rename", async () => {
+    const skill = await create();
+    mocks.inspect.mockResolvedValue({
       claude: { installed: true, mode: "copy" },
     });
-    getSupportedPlatformsMock.mockClear();
-    getManagedContainerPathForSkillMock.mockClear();
-    isManagedRepoPathMock.mockClear();
-    deleteManagedVariantContainerMock.mockClear();
-  });
-
-  it("rejects legacy source-only Git creates that bypass package review", async () => {
-    const { db, handlers, IPC_CHANNELS } = await setupSkillCrudIpc();
-
+    mocks.install.mockRejectedValueOnce(new Error("ENOSPC"));
     await expect(
-      handlers[IPC_CHANNELS.SKILL_CREATE](null, {
+      call(IPC_CHANNELS.SKILL_UPDATE, skill.id, { name: "author" }),
+    ).rejects.toThrow("ENOSPC");
+    expect(db.getById(skill.id)?.name).toBe("writer");
+    expect(mocks.uninstall).not.toHaveBeenCalledWith(
+      expect.objectContaining({ name: "writer" }),
+      expect.anything(),
+    );
+  });
+  it("rejects rename collisions without modifying the library or distribution", async () => {
+    const skill = await create();
+    mocks.inspect.mockResolvedValue({
+      claude: { installed: true, mode: "copy" },
+    });
+    mocks.conflicts.mockResolvedValue({
+      claude: { installed: true, mode: "copy" },
+    });
+    await expect(
+      call(IPC_CHANNELS.SKILL_UPDATE, skill.id, { name: "author" }),
+    ).rejects.toThrow(/already exists/);
+    expect(mocks.install).not.toHaveBeenCalled();
+    expect(db.getById(skill.id)?.name).toBe("writer");
+  });
+  it("retains the canonical package and library record when uninstall fails, then supports retry", async () => {
+    const skill = await create();
+    mocks.inspect.mockResolvedValue({
+      claude: { installed: true, mode: "copy" },
+    });
+    mocks.uninstall.mockRejectedValueOnce(new Error("EACCES"));
+    await expect(call(IPC_CHANNELS.SKILL_DELETE, skill.id)).rejects.toThrow(
+      "EACCES",
+    );
+    expect(db.getById(skill.id)).not.toBeNull();
+    expect(fs.existsSync(skill.local_repo_path!)).toBe(true);
+    await expect(call(IPC_CHANNELS.SKILL_DELETE, skill.id)).resolves.toBe(true);
+    expect(db.getById(skill.id)).toBeNull();
+    expect(fs.existsSync(skill.local_repo_path!)).toBe(false);
+  });
+  it("honors copy retention while removing symlinks and the shared target", async () => {
+    const skill = await create();
+    mocks.inspect.mockResolvedValue({
+      claude: { installed: true, mode: "copy" },
+      codex: { installed: true, mode: "symlink" },
+      "agent-skills-global": { installed: true, mode: "symlink" },
+    });
+    await call(IPC_CHANNELS.SKILL_DELETE, skill.id, {
+      removeCopyInstallations: false,
+    });
+    expect(mocks.uninstall.mock.calls.map((c) => c[1])).toEqual([
+      "codex",
+      "agent-skills-global",
+    ]);
+  });
+  it("propagates canonical delete failures and rejects invalid CRUD input", async () => {
+    const skill = await create();
+    vi.spyOn(db, "delete").mockImplementationOnce(() => {
+      throw new Error("EACCES");
+    });
+    await expect(call(IPC_CHANNELS.SKILL_DELETE, skill.id)).rejects.toThrow(
+      "EACCES",
+    );
+    expect(db.getById(skill.id)).not.toBeNull();
+    await expect(
+      call(IPC_CHANNELS.SKILL_DELETE, skill.id, {
+        removeCopyInstallations: "yes",
+      }),
+    ).rejects.toThrow(/boolean/);
+    await expect(
+      call(IPC_CHANNELS.SKILL_CREATE, {
         name: "writer",
         source_url: "https://github.com/example/skills",
       }),
     ).rejects.toThrow(/runPackageOperation/);
-
-    expect(db.create).not.toHaveBeenCalled();
-  });
-
-  it("deletes PromptHub-managed repo containers when deleting a skill", async () => {
-    const { db, handlers, IPC_CHANNELS } = await setupSkillCrudIpc();
-
-    const skill = {
-      id: "skill-1",
-      name: "writer",
-      local_repo_path: "/prompthub/skills/writer--7dc211f6/repo",
-    };
-    db.getById.mockReturnValue(skill);
-
-    await expect(
-      handlers[IPC_CHANNELS.SKILL_DELETE](null, "skill-1"),
-    ).resolves.toBe(true);
-
-    expect(getManagedContainerPathForSkillMock).toHaveBeenCalledWith(skill);
-    expect(isManagedRepoPathMock).toHaveBeenCalledWith(
-      "/prompthub/skills/writer--7dc211f6",
+    await expect(call(IPC_CHANNELS.SKILL_UPDATE, "", {})).rejects.toThrow(/id/);
+    await expect(call(IPC_CHANNELS.SKILL_UPDATE, skill.id, [])).rejects.toThrow(
+      /object/,
     );
-    expect(deleteManagedVariantContainerMock).toHaveBeenCalledWith(skill);
-    expect(db.delete).toHaveBeenCalledWith("skill-1");
   });
-
-  it("uninstalls every platform distribution before deleting the PromptHub skill", async () => {
-    const { db, handlers, IPC_CHANNELS } = await setupSkillCrudIpc();
-
-    const skill = {
-      id: "skill-platform-delete",
-      name: "writer",
-      local_repo_path: "/prompthub/skills/writer--7dc211f6/repo",
-    };
-    db.getById.mockReturnValue(skill);
-    getSupportedPlatformsMock.mockReturnValueOnce([
-      { id: "claude", name: "Claude Code" },
-      { id: "codex", name: "Codex" },
-    ]);
-    getSkillMdInstallStatusDetailsForSkillMock.mockResolvedValueOnce({
+  it("reports incomplete rename recovery and retains the actual copied backup", async () => {
+    const skill = await create();
+    mocks.inspect.mockResolvedValue({
       claude: { installed: true, mode: "copy" },
+    });
+    mocks.install
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error("restore denied"));
+    mocks.uninstall
+      .mockRejectedValueOnce(new Error("remove denied"))
+      .mockRejectedValueOnce(new Error("cleanup denied"));
+    await expect(
+      call(IPC_CHANNELS.SKILL_UPDATE, skill.id, { name: "author" }),
+    ).rejects.toThrow(/files retained/);
+    expect(db.getById(skill.id)?.name).toBe("writer");
+    const backup = fs
+      .readdirSync(getOperationsDir())
+      .find((name) => name.startsWith("skill-rename-"));
+    expect(
+      fs.readFileSync(
+        path.join(getOperationsDir(), backup!, "0/SKILL.md"),
+        "utf8",
+      ),
+    ).toBe("Platform modified");
+  });
+  it("does not undo distributions after a committed canonical publication", async () => {
+    const skill = await create();
+    mocks.inspect.mockResolvedValue({
       codex: { installed: true, mode: "symlink" },
     });
-
+    const commit = db.finalizePackageUpdate.bind(db);
+    vi.spyOn(db, "finalizePackageUpdate").mockImplementationOnce((...args) => {
+      commit(...args);
+      throw new CanonicalPostCommitError("test", new Error("cache busy"));
+    });
     await expect(
-      handlers[IPC_CHANNELS.SKILL_DELETE](null, "skill-platform-delete"),
-    ).resolves.toBe(true);
-
-    expect(uninstallSkillMdForSkillMock).toHaveBeenCalledWith(skill, "claude", [
+      call(IPC_CHANNELS.SKILL_UPDATE, skill.id, { name: "author" }),
+    ).rejects.toThrow();
+    expect(db.getById(skill.id)?.name).toBe("author");
+    expect(mocks.uninstall.mock.calls.map((c) => c[0].name)).toEqual([
       "writer",
     ]);
-    expect(uninstallSkillMdForSkillMock).toHaveBeenCalledWith(skill, "codex", [
-      "writer",
-    ]);
-    expect(db.delete).toHaveBeenCalledWith("skill-platform-delete");
   });
-
-  it("keeps copied platform distributions but removes symlinks when requested", async () => {
-    const { db, handlers, IPC_CHANNELS } = await setupSkillCrudIpc();
-
-    const skill = {
-      id: "skill-platform-delete",
-      name: "writer",
-      local_repo_path: "/prompthub/skills/writer--7dc211f6/repo",
-    };
-    db.getById.mockReturnValue(skill);
-    getSupportedPlatformsMock.mockReturnValueOnce([
-      { id: "claude", name: "Claude Code" },
-      { id: "codex", name: "Codex" },
-    ]);
-    getSkillMdInstallStatusDetailsForSkillMock.mockResolvedValueOnce({
-      claude: { installed: true, mode: "copy" },
+  it("restores symlink targets when deletion fails and rejects unknown target paths", async () => {
+    const skill = await create();
+    mocks.inspect.mockResolvedValue({
       codex: { installed: true, mode: "symlink" },
     });
-
+    mocks.uninstall.mockRejectedValueOnce(new Error("remove denied"));
     await expect(
-      handlers[IPC_CHANNELS.SKILL_DELETE](null, "skill-platform-delete", {
-        removeCopyInstallations: false,
-      }),
-    ).resolves.toBe(true);
-
-    expect(uninstallSkillMdForSkillMock).not.toHaveBeenCalledWith(
-      skill,
-      "claude",
-      ["writer"],
-    );
-    expect(uninstallSkillMdForSkillMock).toHaveBeenCalledWith(skill, "codex", [
+      call(IPC_CHANNELS.SKILL_UPDATE, skill.id, { name: "author" }),
+    ).rejects.toThrow("remove denied");
+    expect(mocks.link.mock.calls.map((c) => c[0].name)).toEqual([
+      "author",
       "writer",
     ]);
-    expect(db.delete).toHaveBeenCalledWith("skill-platform-delete");
-  });
-
-  it("routes delete-with-copy-cleanup through Cherry Studio uninstall so built-ins cannot be bypassed", async () => {
-    const { db, handlers, IPC_CHANNELS } = await setupSkillCrudIpc();
-
-    const skill = {
-      id: "skill-imported-builtin",
-      name: "find-skills",
-      local_repo_path: "/Users/demo/CherryStudio/Data/Skills/find-skills",
-      source_url: "/Users/demo/CherryStudio/Data/Skills/find-skills",
-    };
-    db.getById.mockReturnValue(skill);
-    getSupportedPlatformsMock.mockReturnValueOnce([
-      { id: "cherry-studio", name: "Cherry Studio" },
-    ]);
-    getSkillMdInstallStatusDetailsForSkillMock.mockResolvedValueOnce({
-      "cherry-studio": { installed: true, mode: "copy" },
+    mocks.inspect.mockResolvedValue({
+      unknown: { installed: true, mode: "copy" },
     });
-    uninstallSkillMdForSkillMock.mockRejectedValueOnce(
-      new Error("Cannot uninstall Cherry Studio built-in skill"),
-    );
-    getManagedContainerPathForSkillMock.mockResolvedValueOnce(
-      "/Users/demo/CherryStudio/Data/Skills/find-skills",
-    );
-    isManagedRepoPathMock.mockResolvedValueOnce(false);
-
     await expect(
-      handlers[IPC_CHANNELS.SKILL_DELETE](null, "skill-imported-builtin", {
-        removeCopyInstallations: true,
-      }),
-    ).resolves.toBe(true);
-
-    expect(uninstallSkillMdForSkillMock).toHaveBeenCalledWith(
-      skill,
-      "cherry-studio",
-      ["find-skills"],
+      call(IPC_CHANNELS.SKILL_UPDATE, skill.id, { name: "author" }),
+    ).rejects.toThrow(/Cannot resolve/);
+    await expect(
+      call(IPC_CHANNELS.SKILL_UPDATE, "missing", {}),
+    ).resolves.toBeNull();
+    await expect(call(IPC_CHANNELS.SKILL_DELETE, "missing")).resolves.toBe(
+      false,
     );
-    expect(deleteManagedVariantContainerMock).not.toHaveBeenCalled();
-    expect(db.delete).toHaveBeenCalledWith("skill-imported-builtin");
   });
-
-  it("does not delete external source directories when the resolved path is not managed", async () => {
-    const { db, handlers, IPC_CHANNELS } = await setupSkillCrudIpc();
-
-    const skill = {
-      id: "skill-2",
-      name: "writer",
-      local_repo_path: "/Users/demo/external/writer",
-    };
-    db.getById.mockReturnValue(skill);
-    getManagedContainerPathForSkillMock.mockResolvedValueOnce(
-      "/Users/demo/external/writer",
+  it("backs up the shared copy target before renaming it", async () => {
+    const skill = await create();
+    mocks.inspect.mockResolvedValue({
+      "agent-skills-global": { installed: true, mode: "copy" },
+    });
+    vi.spyOn(sharedSkillDistributionService, "getStatus").mockResolvedValueOnce(
+      {
+        state: "managed-clean",
+        targetId: "agent-skills-global",
+        targetRoot: path.join(root, "platform"),
+        targetPath: path.join(root, "platform/writer"),
+        effectiveMode: "copy",
+      },
     );
-    isManagedRepoPathMock.mockResolvedValueOnce(false);
-
-    await expect(
-      handlers[IPC_CHANNELS.SKILL_DELETE](null, "skill-2"),
-    ).resolves.toBe(true);
-
-    expect(isManagedRepoPathMock).toHaveBeenCalledWith(
-      "/Users/demo/external/writer",
-    );
-    expect(deleteManagedVariantContainerMock).not.toHaveBeenCalledWith(skill);
-    expect(db.delete).toHaveBeenCalledWith("skill-2");
+    await call(IPC_CHANNELS.SKILL_UPDATE, skill.id, { name: "author" });
+    expect(mocks.install.mock.calls[0][2]).toBe("agent-skills-global");
+    expect(db.getById(skill.id)?.name).toBe("author");
   });
 });

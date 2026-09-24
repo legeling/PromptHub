@@ -9,12 +9,13 @@ import { registerSkillVersionHandlers } from "./skill/version-handlers";
  * Register Skill-related IPC handlers.
  * Keep the public channel surface stable while organizing handlers by domain.
  */
-export function registerSkillIPC(db: SkillDB): void {
+export function registerSkillIPC(db: SkillDB): Promise<void> {
   const context = { db };
 
   registerSkillCrudHandlers(context);
   registerSkillPlatformHandlers(context);
   registerSkillLocalRepoHandlers(context);
-  registerSkillPackageOperationHandlers(context);
+  const ready = registerSkillPackageOperationHandlers(context);
   registerSkillVersionHandlers(context);
+  return ready;
 }

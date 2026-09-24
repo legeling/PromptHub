@@ -1,3 +1,4 @@
+import { replaceSkillDestination } from "@prompthub/core/skills/destination";
 /**
  * Platform management for MCP skill installation (Claude, Cursor, etc.)
  * and SKILL.md multi-platform distribution.
@@ -227,9 +228,7 @@ async function removePlatformSkillDir(
   validateSkillName(platformSkillName);
   const skillsDir = getPlatformSkillsDir(platform);
   const skillDir = path.join(skillsDir, platformSkillName);
-  if (await fileExists(skillDir)) {
-    await fs.rm(skillDir, { recursive: true, force: true });
-  }
+  await fs.rm(skillDir, { recursive: true, force: true });
 }
 
 async function cleanupLegacyPlatformSkillDirs(
@@ -456,18 +455,13 @@ async function copySkillRepoToPlatform(
   targetDir: string,
 ): Promise<void> {
   const canonicalSourceDir = await fs.realpath(sourceDir);
-  await fs.rm(targetDir, { recursive: true, force: true });
-  await fs.cp(canonicalSourceDir, targetDir, {
-    recursive: true,
-    filter: async (_src, dest) => {
-      const relativePath = path.relative(targetDir, dest);
-      if (!relativePath || relativePath === "") {
-        return true;
-      }
-
-      return !isInternalSkillRepoEntry(relativePath);
-    },
-  });
+  await replaceSkillDestination(targetDir, (stage) =>
+    fs.cp(canonicalSourceDir, stage, {
+      recursive: true,
+      filter: (_src, dest) =>
+        !isInternalSkillRepoEntry(path.relative(stage, dest)),
+    }),
+  );
 }
 
 /**
@@ -822,18 +816,9 @@ export async function installSkillMdSymlink(
     // Ensure parent exists
     await fs.mkdir(platformSkillsDir, { recursive: true });
 
-    // Remove existing target if present (file, dir, or broken symlink)
-    try {
-      const stat = await fs.lstat(platformSkillDir);
-      if (stat.isSymbolicLink() || stat.isDirectory() || stat.isFile()) {
-        await fs.rm(platformSkillDir, { recursive: true, force: true });
-      }
-    } catch (error: unknown) {
-      if (getErrorCode(error) !== "ENOENT") throw error;
-    }
-
-    // Create directory symlink
-    await fs.symlink(canonicalDir, platformSkillDir, "dir");
+    await replaceSkillDestination(platformSkillDir, (stage) =>
+      fs.symlink(canonicalDir, stage, "dir"),
+    );
     await cleanupLegacyPlatformSkillDirs(
       platform,
       skillName,

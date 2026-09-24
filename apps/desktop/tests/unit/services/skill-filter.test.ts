@@ -29,6 +29,45 @@ const skills = [
 ] as any;
 
 describe("filterVisibleSkills", () => {
+  it("matches explicit user tags even when the source contains the same name", () => {
+    const skill: Skill = {
+      id: "overlap",
+      name: "overlap",
+      protocol_type: "skill",
+      tags: ["review"],
+      original_tags: ["review"],
+      is_favorite: false,
+      created_at: 1,
+      updated_at: 1,
+    };
+    for (const includeFrontmatter of [false, true]) {
+      expect(
+        filterVisibleSkills({
+          skills: [skill],
+          filterTags: ["review"],
+          includeFrontmatter,
+          filterType: "all",
+          storeView: "my-skills",
+          deployedSkillNames: new Set(),
+        }),
+      ).toEqual([skill]);
+    }
+  });
+  it("matches source-only tags when frontmatter filtering is enabled", () => {
+    const input = {
+      skills: [{ ...skills[0], tags: [], original_tags: ["review"] }],
+      filterTags: ["review"],
+      filterType: "all" as const,
+      storeView: "my-skills" as const,
+      deployedSkillNames: new Set<string>(),
+    };
+    expect(
+      filterVisibleSkills({ ...input, includeFrontmatter: true }),
+    ).toHaveLength(1);
+    expect(
+      filterVisibleSkills({ ...input, includeFrontmatter: false }),
+    ).toHaveLength(0);
+  });
   it("uses distribution view as deployed-only source of truth", () => {
     const result = filterVisibleSkills({
       deployedSkillNames: new Set(["alpha"]),

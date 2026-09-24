@@ -242,6 +242,13 @@ export function validateSkillPackageOperationRequest(
     throw new Error("markAsBuiltin must be a boolean");
   }
   validateOptionalString(request.note, "note");
+  if (
+    request.expectedSourceFingerprint !== undefined &&
+    (typeof request.expectedSourceFingerprint !== "string" ||
+      !/^[a-f0-9]{64}$/.test(request.expectedSourceFingerprint))
+  ) {
+    throw new Error("expectedSourceFingerprint must be a SHA-256 fingerprint");
+  }
   return request;
 }
 

@@ -59,3 +59,14 @@ prior 清理），从而清除 `.prompthub` 残留并恢复技能。无需手工
 当前分支直接 revert 上述四处改动即可；因为 `.prompthub` 不再被写入新 bundle
 （第 1、2 条）属行为演进，回滚会让新发布再次把该 sidecar 收进（若源码仍含），
 但与历史行为一致。读取忽略为增量只读宽容，不会损坏既有数据。
+
+## Maintainer follow-up after merge (2026-09-05)
+
+This section supersedes conflicting pre-merge behavior and status above. PRs #213
+and #214 are merged; the follow-up is implemented locally, not yet committed or
+released. Remaining release acceptance is recorded below.
+
+Reject undeclared bundle directories instead of skipping their subtree or deleting them on republish. Existing files remain available for explicit recovery; clean source packages still exclude .prompthub before publication.
+
+Traceability: FR-FOLLOWUP-001 -> DES-FOLLOWUP-001 -> TEST-FOLLOWUP-001 -> T-FOLLOWUP-001.
+Verification: focused regressions passed; see the final verification boundary in implementation.md.

@@ -110,7 +110,9 @@ const PREVIEW_MIME_TYPES = new Map<
   [".pdf", { mimeType: "application/pdf", previewKind: "pdf" }],
 ]);
 
-const INTERNAL_REPO_DIRS = new Set([".git", ".prompthub"]);
+const INTERNAL_REPO_DIRS = new Set([
+  ".git", ".prompthub", ".canonical-bundle-hash",
+]);
 
 interface SkillVariantSourceMetadata {
   logicalName: string;
@@ -1241,40 +1243,6 @@ export async function saveContentToLocalRepoBySkillId(
     buildSkillVariantSourceMetadata(skill, "copy", path.basename(containerDir)),
   );
   return repoDir;
-}
-
-export async function renameManagedLocalRepo(
-  oldSkillName: string,
-  newSkillName: string,
-  existingRepoPath?: string | null,
-): Promise<string | null> {
-  validateSkillName(oldSkillName);
-  validateSkillName(newSkillName);
-  await initSkillsDir();
-
-  if (existingRepoPath && !(await isManagedRepoPath(existingRepoPath))) {
-    return existingRepoPath;
-  }
-
-  const sourcePath = existingRepoPath
-    ? path.resolve(existingRepoPath)
-    : getLocalRepoPath(oldSkillName);
-  const targetPath = getLocalRepoPath(newSkillName);
-
-  if (sourcePath === targetPath) {
-    return targetPath;
-  }
-
-  if (!(await fileExists(sourcePath))) {
-    return targetPath;
-  }
-
-  if (await fileExists(targetPath)) {
-    throw new Error(`Local repo already exists for skill: ${newSkillName}`);
-  }
-
-  await fs.rename(sourcePath, targetPath);
-  return targetPath;
 }
 
 /**

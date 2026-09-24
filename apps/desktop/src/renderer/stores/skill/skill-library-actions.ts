@@ -125,39 +125,6 @@ function createLibrarySelectionActions(set: SkillStoreSet, get: SkillStoreGet) {
   >;
 }
 
-function hasSkillContentUpdate(data: Record<string, unknown>): boolean {
-  return (
-    Object.prototype.hasOwnProperty.call(data, "instructions") ||
-    Object.prototype.hasOwnProperty.call(data, "content")
-  );
-}
-
-function getSkillContent(
-  data: Record<string, unknown>,
-  skill: Pick<Skill, "instructions" | "content">,
-): string | undefined {
-  const content =
-    data.instructions ?? data.content ?? skill.instructions ?? skill.content;
-  return typeof content === "string" ? content : undefined;
-}
-
-async function writeSkillContentToRepo(
-  skill: Skill,
-  content: string,
-  warningPrefix: string,
-): Promise<Skill> {
-  try {
-    await window.api.skill.writeLocalFile(skill.id, "SKILL.md", content, {
-      skipVersionSnapshot: true,
-    });
-    const localRepoPath = await window.api.skill.getRepoPath(skill.id);
-    return localRepoPath ? { ...skill, local_repo_path: localRepoPath } : skill;
-  } catch (error) {
-    console.warn(`${warningPrefix} "${skill.name}":`, error);
-    return skill;
-  }
-}
-
 async function createSkill(
   set: SkillStoreSet,
   data: Parameters<SkillLibrarySlice["createSkill"]>[0],
@@ -165,16 +132,11 @@ async function createSkill(
   set({ isLoading: true, error: null });
   try {
     const created = await window.api.skill.create(data);
-    if (!created) return null;
-    const content = getSkillContent(data, created);
-    const skill =
-      content !== undefined
-        ? await writeSkillContentToRepo(
-            normalizeSkill(created),
-            content,
-            "Failed to write local repo for skill",
-          )
-        : normalizeSkill(created);
+    if (!created) {
+      set({ isLoading: false });
+      return null;
+    }
+    const skill = normalizeSkill(created);
     set((state) => ({
       skills: [skill, ...state.skills],
       selectedSkillId: skill.id,
@@ -197,16 +159,7 @@ async function updateSkill(
   try {
     const updated = await window.api.skill.update(id, data);
     if (!updated) return null;
-    const normalized = normalizeSkill(updated);
-    const content = getSkillContent(data, updated);
-    const skill =
-      hasSkillContentUpdate(data) && content !== undefined
-        ? await writeSkillContentToRepo(
-            normalized,
-            content,
-            "Failed to sync local repo for skill",
-          )
-        : normalized;
+    const skill = normalizeSkill(updated);
     set((state) => ({
       skills: state.skills.map((item) => (item.id === id ? skill : item)),
     }));
@@ -686,6 +639,8 @@ function createLibraryViewActions(set: SkillStoreSet, get: SkillStoreGet) {
       return filterVisibleSkills({
         deployedSkillNames: state.deployedSkillNames,
         filterTags: state.filterTags,
+        includeFrontmatter:
+          useSettingsStore.getState().skillTagFilterIncludeFrontmatter,
         filterType: state.filterType,
         searchQuery: state.searchQuery,
         skills: state.skills,

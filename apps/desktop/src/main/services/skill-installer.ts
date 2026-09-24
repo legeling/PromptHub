@@ -258,7 +258,6 @@ import {
   readLocalRepoFileBuffersByPath,
   readLocalRepoFiles,
   readLocalRepoFilesByPath,
-  renameManagedLocalRepo,
   renameLocalRepoPathByPath,
   replaceLocalRepoFilesByPath,
   saveContentToLocalRepo,
@@ -370,7 +369,6 @@ export class SkillInstaller {
     getPreferredLocalRepoContainerPathForSkill;
   static getPreferredLocalRepoPathForSkill = getPreferredLocalRepoPathForSkill;
   static materializeManagedRepoSymlink = materializeManagedRepoSymlink;
-  static renameManagedLocalRepo = renameManagedLocalRepo;
   static deleteLocalRepo = deleteLocalRepo;
   static deleteManagedVariantContainer = deleteManagedVariantContainer;
   static deleteRepoByPath = deleteRepoByPath;

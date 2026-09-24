@@ -16,6 +16,15 @@
 
 ### 1.1 Skill File Contract
 
+- 已发布 canonical Skill bundle 的 inventory 必须完整校验，未声明的目录
+  （包括 `.prompthub` 和 `repo`）不能整棵豁免。校验失败必须保留文件，未知数据
+  只能通过显式恢复流程处理；源码发布前排除 sidecar 不等于读取时忽略它。
+- My Skills 的标签候选、实际过滤、计数、侧栏、列表和卡片统一从
+  `getSkillFilterTags` 派生。默认仅含用户标签；开启来源标签设置后并入
+  `original_tags`，不能出现候选可选但实际过滤不命中的分歧。
+  两字段明确分开时，来源集合中出现同名标签不影响该用户标签；仅对缺失来源字段
+  的远程旧记录继续使用兼容推断，不改写持久化数据。
+
 - Skill 采用 `SKILL.md` 文件与 YAML frontmatter。
 - `name` 为必填字段，且必须符合小写短横线命名规则。
 - Desktop、CLI、Web、市场源适配器与 Skill 详情展示必须复用 `packages/core` 所有的标准 YAML parser/serializer，不得各自维护逐行切分或正则提取的 frontmatter 子集。
@@ -92,6 +101,27 @@
 - Cloud 多文件 package 写入失败时必须恢复已写入文件并清理新建文件；安装失败不得留下半成品 Skill，更新失败不得提前刷新来源基线。
 - 扫描复制导入只有在完整 package 已写入 PromptHub 托管 repo 且 `local_repo_path` 已持久化后才能计为成功。复制、返回路径或路径持久化失败必须删除临时 Skill 记录；补偿删除失败必须报告原始失败与回滚失败，不得吞错或保留假成功状态。
 
+### 2.1.1 Library CRUD command boundary
+
+- Desktop 创建、编辑、改名和删除只使用已迁移完成的 canonical 文件权威。移除 CRUD 中旧式按名称移动托管目录、独立 frontmatter 补写、renderer 再写 SKILL.md 和忽略失败的路径；未完成迁移明确报错，不启动第二套存储逻辑。
+- 创建先准备入口文件，再一次发布完整 bundle。编辑从 canonical inventory 暂存完整包，正文、元数据、fingerprint 和修改前版本在一次 finalize 中发布；用户 tags 不写入来源 frontmatter，未知 YAML 字段和二进制资源保留。仅收藏/用户标签等修改不复制暂存包。源布局和 schema 不变，缓存仍使用稳定 Skill ID。
+- 改名只迁移明确安装的目标，不传旧名/新名兼容清理列表；目标冲突提前失败。原分发副本暂存用于失败恢复，符号链接保持模式。全部目标处理完才提交库内名称；失败保留旧名称并恢复分发，恢复失败明确报告保留的临时备份位置。备份、分发和清理按目标顺序执行，有界占用为本次包和已部署副本总大小。
+- 删除先撤回指定分发，再由 canonical 层删除 bundle 和缓存。任何前置撤回失败保留库内记录供重试，不显示完成；外部来源不删除。调用者可保留 copy，symlink 必须撤回。canonical 提交后缓存清理失败沿用已提交错误语义，不能伪装为未提交或完整成功。
+- Desktop 和 CLI 使用同一份 Skill 目标替换函数：在同级暂存复制/链接完成后移动旧目标并发布新目标；发布前失败恢复旧目标。发布后的备份清理失败明确报错且保留新目标，不用可能已部分删除的备份覆盖它。
+- 来源更新携带检查时的完整 package fingerprint，暂存结果不匹配时在写入前返回 conflict。预览只包含有界文本和摘要，不能用预览重建二进制包；检查和实际获取仍各执行一次，避免另建长期暂存缓存及其过期协议。
+- 暂存与历史快照成本为 O(package bytes + file count)，分发为 O(sum of target package bytes)，无递归请求或无界并发。已有 canonical 发布失败恢复仍适用；回退程序前应保留独立备份，不改写用户源目录。
+- 本批回归覆盖单次创建/编辑、二进制和未知 YAML 保留、版本和陈旧编辑、改名失败与冲突、删除失败/重试、复制/链接替换失败及来源变化。核心 6 个相关测试文件共 54 项、桌面 8 个相关测试文件共 116 项通过；Desktop TypeScript、相关源码和新增测试 ESLint、文件大小门禁及 diff whitespace 检查通过。目标替换函数达到 100% 行/函数/分支；library command 为 100% 行/函数、95.60% 分支，Desktop CRUD 为 100% 行/函数、95.38% 分支。剩余未命中分支为正文/名称 nullish 防御、创建失败后 ID 回读，以及错误传播的 finally 路径；它们没有被计为完整覆盖，后续需补投影缺字段和组合故障夹具。128 文件、2 MiB 同级目标替换实测 96 ms，单次本机观察不代表所有文件系统。GUI、真实远程服务、跨平台、全量发布构建和中断进程后的分发恢复未执行。改名跨目标补偿和完整包准备函数按顺序集中处理，允许超过 50 行以保持快照、提交和恢复顺序可审查。
+
+### 2.1.2 Functional acceptance
+
+- `apps/desktop/tests/integration/skill-public-workflow.test.ts` 从生产 preload API 和完整 IPC 注册入口执行真实服务、磁盘 SQLite、首次 canonical 迁移与关闭重开。正常流程覆盖手工创建、元数据和嵌套文件编辑、版本、完整目录导入、二进制、copy/symlink 分发、改名、来源更新、卸载和删除；之后从同一 IPC 边界验证非法输入、路径穿越、缺失入口和陈旧来源，检查错误类型与持久化结果。Electron 消息运输及隔离 home 属于测试环境边界，不替换业务服务。
+- 该功能用例由现有 desktop integration shards 自动纳入。真实按钮流程 `agent-skill-lifecycle.spec.ts` 纳入既有 E2E smoke；`skill-create-structure.spec.ts` 检查当前 canonical bundle 和 workspace，移除过期 variant container 断言。接口流程与 E2E 证据分别记录，mock 组件/store 测试只证明局部交互。
+- 多步骤正常流程测试保留顺序断言，允许超过 50 行以直接呈现输入、结果和关闭重开边界；文件 inventory 一次线性遍历，只在临时小包上比较完整字节。此前 170 项聚焦测试与覆盖率仅证明各自局部边界，不作为完整功能可用的结论。
+- 首轮真实流程发现本地导入的 `source_url` 在 catalog 重建后丢失。`config/devices/skill-sources/<skill-id>.json` 现在持有本设备的本地来源地址，portable bundle 仍不保存本机路径；设备标识不匹配时不应用该路径。来源记录与 Skill bundle 在同一 canonical publication 内新增、更新和删除，失败一起回滚。启动投影通过设备记录恢复来源，不从 workspace 猜测来源。
+- 升级在首次 authority 发布或首次 catalog 对账之前，一次性将现有 SQLite 本地来源移交给设备配置，完成标记位于 `data/operations/migrations/skill-source-bindings-v1.json`；标记和来源记录原子发布，之后不再保留 SQLite 回退读取路径。已被旧程序丢失的来源不可凭包内容恢复，需要重新选择来源；回退旧程序前保留完整 data/config 备份，旧程序不能消费新设备记录。单条绑定读取上限 16 KiB，迁移一次 O(skill count)，正常修改仅写本 Skill 的小型绑定。
+- 包操作必须等待启动恢复完成后再执行，恢复失败明确拒绝写入；IPC 注册返回就绪 Promise，隔离测试在关闭数据库前等待该任务。缓存标记 `.canonical-bundle-hash` 仅属于 workspace，不能进入包快照、导出或平台 copy。
+- 2026-09-12 非 GUI 验证：两条正常公共接口流程和 14 组黑盒异常输入通过，实际检查完整字节、版本、安装状态、关闭重开及外部来源保留。相关目录操作、authority/startup、IPC 与功能用例 7 文件 131 项通过；另有 canonical lifecycle 5 项、Core 来源绑定/Skill DB/catalog 对账 43 项通过。Desktop TypeScript、额外将本次桌面测试纳入 compiler program 的类型检查、相关 ESLint、文件大小门禁和 Desktop main/preload/renderer 构建通过。没有以覆盖率数字证明功能；GUI 实际点击、真实网络来源、跨设备备份恢复、跨平台及完整发布 harness 未执行，不能据此宣称全部应用功能可用。临时测试目录和进程已回收。
+
 ### 2.2 Standalone Content Safety Scan Contract
 
 - 安全扫描是默认关闭的独立功能。开启后仍只响应用户手动操作，不在导航、安装、快捷/批量安装、导入、更新、编辑、版本、同步、备份或部署时自动运行。
@@ -153,6 +183,8 @@
 ### 4. Translation Contract
 
 - Skill 详情页的 AI 翻译结果属于可恢复的本地用户状态。
+- 完整 Skill 文档翻译必须通过 Desktop 主进程 AI transport 访问已配置端点，支持用户明确配置的内网 HTTP base URL；翻译与其他 AI HTTP 请求统一使用 300 秒有界请求超时，不得维护更短的操作级 timeout 或新增自动重试。
+- 主进程 transport 的 deadline 必须显示为翻译超时，不得误报为无法连接；超时失败不能写入部分译文缓存。
 - 翻译结果不得改写原始 `SKILL.md`，应作为 sidecar 文档保存在 Skill 本地 repo 的 `.prompthub/translations/` 目录下。
 - 翻译是否仍然有效必须基于当前 `SKILL.md` 内容 fingerprint 判断，而不是仅凭页面内存态。
 - 当 `SKILL.md` 变化导致旧译文失效时，UI 必须回退原文并提供明确的重翻入口。

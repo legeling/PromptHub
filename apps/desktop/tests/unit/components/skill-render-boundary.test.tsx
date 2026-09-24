@@ -4,7 +4,7 @@ import type { FormEvent } from "react";
 
 import { SkillRenderBoundary } from "../../../src/renderer/components/skill/SkillRenderBoundary";
 
-function BrokenSkillPreview() {
+function BrokenSkillPreview(): never {
   throw new Error("preview failed");
 }
 

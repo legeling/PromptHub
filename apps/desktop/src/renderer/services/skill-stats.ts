@@ -1,4 +1,5 @@
 import type { Skill } from "@prompthub/shared/types";
+import { normalizeStringArray } from "./skill-normalize";
 
 function isRemoteSourceUrl(sourceUrl?: string): boolean {
   return /^https?:\/\//i.test(sourceUrl || "");
@@ -8,11 +9,11 @@ function inferOriginalSkillTags(
   skill: Pick<Skill, "tags" | "original_tags" | "registry_slug" | "source_url">,
 ): string[] {
   if (Array.isArray(skill.original_tags)) {
-    return skill.original_tags;
+    return normalizeStringArray(skill.original_tags);
   }
 
   if (skill.registry_slug || isRemoteSourceUrl(skill.source_url)) {
-    return skill.tags || [];
+    return normalizeStringArray(skill.tags);
   }
 
   return [];
@@ -21,8 +22,25 @@ function inferOriginalSkillTags(
 function getUserSkillTags(
   skill: Pick<Skill, "tags" | "original_tags" | "registry_slug" | "source_url">,
 ): string[] {
-  const originalTags = new Set(inferOriginalSkillTags(skill));
-  return (skill.tags || []).filter((tag) => !originalTags.has(tag));
+  // Only legacy records lack a separate source-tag field. An explicit user tag
+  // remains user-owned even when the source happens to use the same label.
+  if (
+    !Array.isArray(skill.original_tags) &&
+    (skill.registry_slug || isRemoteSourceUrl(skill.source_url))
+  )
+    return [];
+  return normalizeStringArray(skill.tags);
+}
+
+export function getSkillFilterTags(
+  skill: Skill,
+  includeFrontmatter = false,
+): string[] {
+  return includeFrontmatter
+    ? Array.from(
+        new Set([...getUserSkillTags(skill), ...inferOriginalSkillTags(skill)]),
+      )
+    : getUserSkillTags(skill);
 }
 
 export interface SkillStats {
@@ -32,7 +50,10 @@ export interface SkillStats {
   uniqueUserTags: string[];
 }
 
-function isSkillDeployed(skill: Skill, deployedSkillNames: Set<string>): boolean {
+function isSkillDeployed(
+  skill: Skill,
+  deployedSkillNames: Set<string>,
+): boolean {
   return deployedSkillNames.has(skill.id) || deployedSkillNames.has(skill.name);
 }
 
@@ -84,13 +105,8 @@ export function buildSkillTagCandidates(
 ): string[] {
   const tagSet = new Set<string>();
   for (const skill of skills) {
-    for (const tag of getUserSkillTags(skill)) {
+    for (const tag of getSkillFilterTags(skill, includeFrontmatter)) {
       tagSet.add(tag);
-    }
-    if (includeFrontmatter) {
-      for (const tag of inferOriginalSkillTags(skill)) {
-        tagSet.add(tag);
-      }
     }
   }
   return Array.from(tagSet).sort((a, b) => a.localeCompare(b));

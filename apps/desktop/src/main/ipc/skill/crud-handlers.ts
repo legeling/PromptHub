@@ -5,9 +5,10 @@ import { SkillInstaller } from "../../services/skill-installer";
 import { isInternalSkillRepoEntry } from "../../services/skill-installer-repo";
 import { ensureLocalRepoPath } from "./shared";
 import {
-  hasMetadataChanges,
-  syncFrontmatterToRepo,
-} from "../../services/skill-repo-sync";
+  createLibrarySkill,
+  updateLibrarySkill,
+  deleteLibrarySkill,
+} from "../../services/skill-library-crud";
 import type {
   CreateSkillParams,
   SkillDeleteOptions,
@@ -16,7 +17,6 @@ import type {
 } from "@prompthub/shared/types";
 import { parseGitRepo } from "@prompthub/shared/utils/git-repo";
 import type { SkillIPCContext } from "./shared";
-import { readCurrentFilesSnapshot } from "./shared";
 
 export function registerSkillCrudHandlers({ db }: SkillIPCContext): void {
   ipcMain.handle(
@@ -54,7 +54,7 @@ export function registerSkillCrudHandlers({ db }: SkillIPCContext): void {
         ? { skipInitialVersion: options.skipInitialVersion }
         : undefined;
 
-      return db.create(data, safeOptions);
+      return createLibrarySkill(db, data, safeOptions);
     },
   );
 
@@ -77,116 +77,7 @@ export function registerSkillCrudHandlers({ db }: SkillIPCContext): void {
         throw new Error("skill:update requires a non-null data object");
       }
 
-      const existingSkill = db.getById(id);
-      if (!existingSkill) {
-        return null;
-      }
-
-      const nextName =
-        typeof data.name === "string" ? data.name.trim() : undefined;
-      const isRenaming =
-        typeof nextName === "string" && nextName !== existingSkill.name;
-      const nextData: UpdateSkillParams = { ...data };
-      let deployedPlatforms: string[] = [];
-
-      if (isRenaming && nextName) {
-        try {
-          const platformStatus =
-            await SkillInstaller.getSkillMdInstallStatusForSkill(
-              existingSkill,
-              [existingSkill.name],
-            );
-          deployedPlatforms = Object.entries(platformStatus)
-            .filter(([, installed]) => installed)
-            .map(([platformId]) => platformId);
-        } catch (error) {
-          console.warn(
-            `Failed to inspect deployed status before renaming "${existingSkill.name}":`,
-            error,
-          );
-        }
-
-        const migratedRepoPath = await SkillInstaller.renameManagedLocalRepo(
-          existingSkill.name,
-          nextName,
-          existingSkill.local_repo_path,
-        );
-        if (migratedRepoPath !== existingSkill.local_repo_path) {
-          nextData.local_repo_path = migratedRepoPath ?? undefined;
-        }
-        nextData.name = nextName;
-      }
-
-      if (data.instructions !== undefined || data.content !== undefined) {
-        const filesSnapshot = await readCurrentFilesSnapshot(db, id);
-        db.createVersion(
-          id,
-          "Before updating SKILL.md",
-          filesSnapshot,
-          existingSkill,
-        );
-      }
-
-      const updatedSkill = db.update(id, nextData);
-
-      // When metadata-only fields changed (no instructions/content update),
-      // sync the frontmatter back to SKILL.md so that `syncSkillFromRepo`
-      // does not revert the edit with stale file data.
-      if (
-        updatedSkill &&
-        hasMetadataChanges(data) &&
-        data.instructions === undefined &&
-        data.content === undefined
-      ) {
-        try {
-          const repoPath = await ensureLocalRepoPath(db, id);
-          await syncFrontmatterToRepo(updatedSkill, repoPath);
-        } catch (err) {
-          console.warn(
-            `Failed to sync frontmatter to SKILL.md for "${updatedSkill.name}":`,
-            err,
-          );
-        }
-      }
-
-      if (
-        updatedSkill &&
-        isRenaming &&
-        nextName &&
-        deployedPlatforms.length > 0
-      ) {
-        const nextContent =
-          updatedSkill.instructions ??
-          updatedSkill.content ??
-          existingSkill.instructions ??
-          existingSkill.content ??
-          "";
-
-        await Promise.allSettled(
-          deployedPlatforms.map(async (platformId) => {
-            if (nextContent.trim()) {
-              await SkillInstaller.installSkillMdForSkill(
-                {
-                  id: updatedSkill.id,
-                  name: nextName,
-                  source_id: updatedSkill.source_id,
-                },
-                nextContent,
-                platformId,
-                updatedSkill.local_repo_path ?? undefined,
-                [existingSkill.name, nextName],
-              );
-            }
-            await SkillInstaller.uninstallSkillMdForSkill(
-              existingSkill,
-              platformId,
-              [existingSkill.name, nextName],
-            );
-          }),
-        );
-      }
-
-      return updatedSkill;
+      return updateLibrarySkill(db, id, data);
     },
   );
 
@@ -203,58 +94,15 @@ export function registerSkillCrudHandlers({ db }: SkillIPCContext): void {
         throw new Error("skill:delete options must be an object");
       }
 
-      const skill = db.getById(id);
-      if (skill?.name) {
-        // Remove platform distributions independently from the source package.
-        try {
-          const platforms = SkillInstaller.getSupportedPlatforms();
-          const installDetails =
-            await SkillInstaller.getSkillMdInstallStatusDetailsForSkill(skill, [
-              skill.name,
-            ]);
-          const shouldRemoveCopyInstallations =
-            options?.removeCopyInstallations ?? true;
-          await Promise.allSettled(
-            platforms
-              .filter((platform) => {
-                const installStatus = installDetails[platform.id];
-                if (!installStatus?.installed) {
-                  return false;
-                }
-                if (installStatus.mode === "symlink") {
-                  return true;
-                }
-                return shouldRemoveCopyInstallations;
-              })
-              .map((platform) =>
-                SkillInstaller.uninstallSkillMdForSkill(skill, platform.id, [
-                  skill.name,
-                ]),
-              ),
-          );
-        } catch (error) {
-          console.warn(
-            `Failed to uninstall SKILL.md for skill "${skill.name}":`,
-            error,
-          );
-        }
-
-        try {
-          const managedContainerPath =
-            await SkillInstaller.getManagedContainerPathForSkill(skill);
-          // PromptHub owns managed containers; linked external sources stay untouched.
-          if (await SkillInstaller.isManagedRepoPath(managedContainerPath)) {
-            await SkillInstaller.deleteManagedVariantContainer(skill);
-          }
-        } catch (error) {
-          console.warn(
-            `Failed to delete managed repo container for skill "${skill.name}":`,
-            error,
-          );
-        }
+      if (
+        options?.removeCopyInstallations !== undefined &&
+        typeof options.removeCopyInstallations !== "boolean"
+      ) {
+        throw new Error(
+          "skill:delete removeCopyInstallations must be a boolean",
+        );
       }
-
-      return db.delete(id);
+      return deleteLibrarySkill(db, id, options);
     },
   );
 

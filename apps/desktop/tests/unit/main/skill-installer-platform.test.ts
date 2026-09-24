@@ -51,6 +51,14 @@ const cherryStudioMocks = vi.hoisted(() => ({
   uninstallCherryStudioSkill: vi.fn().mockResolvedValue(undefined),
 }));
 
+// Target replacement is covered with real filesystem failure injection in core.
+vi.mock("@prompthub/core/skills/destination", () => ({
+  replaceSkillDestination: (
+    target: string,
+    prepare: (stage: string) => Promise<void>,
+  ) => prepare(target),
+}));
+
 vi.mock("fs/promises", () => fsMocks);
 
 vi.mock("../../../src/main/services/skill-installer-internal", () => ({

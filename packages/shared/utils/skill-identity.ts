@@ -63,6 +63,7 @@ const GENERATED_FILE_PREFIXES = [
 ];
 
 const GENERATED_FILE_NAMES = new Set([
+  ".canonical-bundle-hash",
   ".coverage",
   ".eslintcache",
   "Thumbs.db",

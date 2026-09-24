@@ -161,16 +161,9 @@ describe("SkillStore custom sources", () => {
       useSkillStore.getState().remoteStoreEntries["custom-local"]?.skills[0]
         ?.content,
     ).not.toContain("Old content");
-    expect(scanLocalPreview).toHaveBeenNthCalledWith(
-      1,
-      ["/tmp/local-writer"],
-      undefined,
-    );
-    expect(scanLocalPreview).toHaveBeenNthCalledWith(
-      2,
-      ["/tmp/local-writer"],
-      undefined,
-    );
+    expect(window.api.skill.scanSafety).not.toHaveBeenCalled();
+    expect(scanLocalPreview).toHaveBeenNthCalledWith(1, ["/tmp/local-writer"]);
+    expect(scanLocalPreview).toHaveBeenNthCalledWith(2, ["/tmp/local-writer"]);
   });
 
   it("keeps branch and directory identity for local-path git-repo sources", async () => {
@@ -236,10 +229,9 @@ describe("SkillStore custom sources", () => {
 
     const skill =
       useSkillStore.getState().remoteStoreEntries["local-git"]?.skills[0];
-    expect(scanLocalPreview).toHaveBeenCalledWith(
-      ["/Users/demo/repos/skills/packs"],
-      undefined,
-    );
+    expect(scanLocalPreview).toHaveBeenCalledWith([
+      "/Users/demo/repos/skills/packs",
+    ]);
     expect(skill).toEqual(
       expect.objectContaining({
         source_id: buildSkillSourceId({

@@ -64,7 +64,7 @@ describe("Skill package operation IPC", () => {
     expect(cleanupMock).toHaveBeenCalledWith(db, { recoverAll: true });
   });
 
-  it("keeps the IPC available when startup recovery cannot finish", async () => {
+  it("rejects package writes when startup recovery cannot finish", async () => {
     const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
     cleanupMock.mockRejectedValueOnce(new Error("recovery unavailable"));
     runMock.mockResolvedValue({ status: "cancelled", operation: "install" });
@@ -73,10 +73,37 @@ describe("Skill package operation IPC", () => {
     await Promise.resolve();
 
     expect(handler).toBeTypeOf("function");
+    await expect(handler!(null, { operation: "install" })).rejects.toThrow(
+      "Skill package recovery failed",
+    );
+    expect(runMock).not.toHaveBeenCalled();
     expect(warning).toHaveBeenCalledWith(
       "Failed to recover abandoned Skill package operations:",
       expect.any(Error),
     );
     warning.mockRestore();
+  });
+
+  it("does not start a package operation while startup recovery is pending", async () => {
+    let completeRecovery: () => void = () => {
+      throw new Error("Recovery not initialized");
+    };
+    cleanupMock.mockReturnValue(
+      new Promise<void>((resolve) => {
+        completeRecovery = resolve;
+      }),
+    );
+    runMock.mockResolvedValue({
+      status: "completed",
+      operation: "install",
+      skill: { id: "new-skill" },
+    });
+    const { handler } = await setup();
+    const operation = handler!(null, { operation: "install" });
+    await Promise.resolve();
+    expect(runMock).not.toHaveBeenCalled();
+    completeRecovery();
+    await expect(operation).resolves.toMatchObject({ status: "completed" });
+    expect(runMock).toHaveBeenCalledTimes(1);
   });
 });

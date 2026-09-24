@@ -517,6 +517,8 @@ export type SkillPackageOperationSource =
 
 export interface SkillPackageOperationRequest {
   operation: SkillPackageOperationKind;
+  /** Source package fingerprint reviewed before applying an update. */
+  expectedSourceFingerprint?: string;
   skillId?: string;
   registrySkill: RegistrySkill;
   source: SkillPackageOperationSource;

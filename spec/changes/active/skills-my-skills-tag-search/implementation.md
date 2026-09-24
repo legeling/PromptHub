@@ -113,3 +113,42 @@ Follow-up verification（同前执行方式）：
 - `pnpm typecheck`：exit 0；`eslint`（改动文件，max-warnings 0）：RC 0。
 - UI 开关为与文件内其它 `ToggleSwitch` 同构的受控绑定；行为核心由 `buildSkillTagCandidates` 单测覆盖。
 - 全量 `pnpm test:run` 仍为跨环境长跑（本 feature 改动后需 CI/宽松环境最终确认）。
+
+## Review correction (2026-09-05)
+
+### Review verification
+
+- Desktop focused regression command: `pnpm --filter @prompthub/desktop exec vitest run` with prompt-version-consistency, prompt-tag-references, canonical-storage-startup, skill-filter, skill-stats, skill-view-tags, skill-i18n-manager and sidebar-skills: 109 passed.
+- Core canonical-skill-db/resource-bundle: 31 passed. Web prompts routes/install-bridge: 30 passed. Total: 170 unique cases, excluding coverage reruns.
+- Database and Desktop typechecks, focused ESLint, spec:traceability and git diff --check passed.
+- `pnpm --filter @prompthub/desktop build`: renderer, main and preload production builds passed.
+- V8 coverage required glob-based include correction (initial empty report is not coverage evidence). Prompt-version-consistency and skill-stats: 100% lines/statements/functions/branches in their respective final targeted runs.
+- PromptDB is a legacy 1000+ line CRUD module; this batch does not claim full-file coverage of unrelated search, relations, pagination, CRUD and version rollback branches. Changed tag matching is checked for quote/backslash/newline/wildcard/Unicode escapes, nonmatching neighbors and transaction failures.
+- No live user database was changed. Temporary SQLite fixtures and coverage output were cleaned. Real Electron GUI, real remote sync, full monorepo release harness and signed/cross-platform packaging were not run in this correction batch. Existing overall release acceptance remains open; no commit or push performed.
+
+
+FR-REVIEW-001 / DES-REVIEW-001 / TEST-REVIEW-001 / T-REVIEW-001: When original_tags is explicitly present, tags is the user-owned set even when names overlap. Retain the legacy remote-source inference only when original_tags is absent. Candidate, filter, sidebar, gallery and list reuse the shared policy. No persisted metadata is rewritten. Verify explicit overlap, source-only and legacy records, on/off settings and a 1000-skill inventory.
+
+Supersedes conflicting earlier repair/tag-inference behavior. Authorized by the
+maintainer after the three reproducible review findings. Implemented and verified;
+see Review verification below in implementation.md.
+
+## Maintainer follow-up after merge (2026-09-05)
+
+This section supersedes conflicting pre-merge behavior and status above. PRs #213
+and #214 are merged; the follow-up is implemented locally, not yet committed or
+released. Remaining release acceptance is recorded below.
+
+Use one normalized user/source-tag derivation for header, sidebar, gallery, list and filtering; source-only tags must match when enabled.
+
+Traceability: FR-FOLLOWUP-001 -> DES-FOLLOWUP-001 -> TEST-FOLLOWUP-001 -> T-FOLLOWUP-001.
+Verification: focused regressions passed; see the final verification boundary in implementation.md.
+
+### Final verification boundary (2026-09-05)
+
+- Desktop focused suites passed: skill-filter, skill-stats, skill-view-tags, skill-i18n-manager and sidebar-skills.
+- Desktop typecheck and lint passed.
+- Shared normalized tag policy is reused across candidates, filtering, counts and tag badges. Work is linear in inventory/tag count, with sorting only for unique candidates; no persisted tag migration.
+- Combined focused regressions: Desktop 98, Core 31, Web 30 passed (unique test cases, excluding reruns).
+- Cross-surface changed harness passed governance, file-size, shared/database/core checks, CLI checks, Desktop lint/typecheck, Web/Worker static checks, Mobile checks and the first two Desktop shards. It was interrupted to finish the snapshot JSON rollback fix; cancellation returned kill EPERM, and a process audit confirmed no remaining harness/Vitest child processes. This is not a full harness pass.
+- Real Electron restart, real remote sync, Windows packaging, and quantitative 100% changed-branch coverage are not established by these runs. Release acceptance remains open; no new release or follow-up commit/push was performed.

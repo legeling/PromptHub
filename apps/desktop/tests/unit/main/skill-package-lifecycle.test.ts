@@ -181,8 +181,28 @@ describe("Skill package lifecycle", () => {
     harness = createHarness();
   });
 
+  it("rejects a changed source fingerprint before creating or replacing any Skill", async () => {
+    const result = await harness.service.run({
+      ...request,
+      expectedSourceFingerprint: "f".repeat(64),
+    });
+    expect(result).toMatchObject({
+      status: "conflict",
+      failure: { code: "CONFLICT", phase: "staging" },
+    });
+    expect(harness.db.create).not.toHaveBeenCalled();
+    expect(harness.dependencies.beginReplacement).not.toHaveBeenCalled();
+    expect(harness.dependencies.cleanupStagingRoot).toHaveBeenCalled();
+  });
+
   it("does not let an advisory staged report block persistence", async () => {
-    vi.mocked(harness.dependencies.stagePackage).mockResolvedValue({repoPath: "/staged/repo", content: "# Writer", contentHash: "hash", directoryFingerprint: "a".repeat(64), safetyReport: {...report, level: "blocked"}});
+    vi.mocked(harness.dependencies.stagePackage).mockResolvedValue({
+      repoPath: "/staged/repo",
+      content: "# Writer",
+      contentHash: "hash",
+      directoryFingerprint: "a".repeat(64),
+      safetyReport: { ...report, level: "blocked" },
+    });
     const result = await harness.service.run(request);
     expect(result.status).toBe("completed");
     expect(harness.db.create).toHaveBeenCalled();

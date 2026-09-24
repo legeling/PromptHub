@@ -10,22 +10,34 @@ import type { SkillIPCContext } from "./shared";
 /** Register the single main-process owner for Skill package installation and updates. */
 export function registerSkillPackageOperationHandlers({
   db,
-}: SkillIPCContext): void {
+}: SkillIPCContext): Promise<void> {
   const lifecycle = new SkillPackageLifecycleService(
     createDesktopSkillPackageLifecycleDependencies(db),
   );
 
-  void cleanupAbandonedSkillPackageOperations(db, { recoverAll: true }).catch(
-    (error) => {
-      console.warn(
-        "Failed to recover abandoned Skill package operations:",
-        error,
-      );
-    },
-  );
+  let recoveryError: unknown;
+  let recoveryFailed = false;
+  const ready = cleanupAbandonedSkillPackageOperations(db, {
+    recoverAll: true,
+  }).catch((error) => {
+    recoveryError = error;
+    recoveryFailed = true;
+    console.warn(
+      "Failed to recover abandoned Skill package operations:",
+      error,
+    );
+  });
 
   ipcMain.handle(
     IPC_CHANNELS.SKILL_RUN_PACKAGE_OPERATION,
-    (_event, request: unknown) => lifecycle.run(request),
+    async (_event, request: unknown) => {
+      await ready;
+      if (recoveryFailed)
+        throw new Error("Skill package recovery failed", {
+          cause: recoveryError,
+        });
+      return lifecycle.run(request);
+    },
   );
+  return ready;
 }

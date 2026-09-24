@@ -1,10 +1,19 @@
 # Skill Regression Test Matrix
 
-This matrix turns escaped user-reported skill bugs into required regression tests. It is a test-design contract, not a bug-fix plan.
+This matrix maps escaped user-reported Skill bugs to domain regression scenarios. Test design, evidence levels, coverage policy, and acceptance are owned by the [testing standard](../../rules/testing-standards.md); this matrix defines Skill-specific expectations, not a separate global gate.
 
 For defect classification, start with `spec/knowledge/reference/skill-defect-taxonomy.md`. This matrix is the concrete regression layer after the bug has been typed.
 
-## TDD Failure Pattern
+## Normal Workflow Baseline
+
+Begin with the affected normal user workflow, then select the relevant defect rows below. Regression rows supplement that baseline; they do not prove normal functionality on their own.
+
+- Package operations use a real public entrypoint, real services, and isolated durable storage. Verify the complete package inventory and content, then read it again after reopen/rescan where required.
+- Submit malformed or boundary inputs through the same entrypoint and assert the specified error and preserved/recoverable state.
+- Mocked store, component, and failure-injection tests prove only their local contracts. Pair them with the functional baseline when accepting install, edit, distribute, update, or delete behavior.
+- Current executable examples and their harness selection are listed in the [verification entry](../../workflow/04-verification/README.md#功能基线入口与证据边界). Actual Electron UI evidence is separate from transport-substituted integration evidence.
+
+## Escaped Defect Patterns
 
 The escaped bugs share these testing gaps:
 
@@ -281,9 +290,9 @@ test before they are allowed.
 
 ## Package Boundary Test Rule
 
-For any path named import, install, sync, export, distribute, or deploy, the test fixture must be a Skill directory, not a bare `SKILL.md` file. A single-file Skill fixture is allowed only when the test explicitly verifies the single-file compatibility case, and the expected result must still be a directory containing `SKILL.md`.
+For import, install, sync, export, distribute, or deploy, the package-fidelity baseline must use a Skill directory with nested text and binary content. A directory containing only `SKILL.md` is also a valid Skill package; test that case separately where relevant, but it cannot prove multi-file package fidelity.
 
-The minimum file-inventory assertion for package fidelity is:
+A representative file inventory for package fidelity is:
 
 ```text
 SKILL.md
@@ -292,20 +301,19 @@ scripts/setup.sh
 assets/icon.png
 ```
 
-The test must compare relative paths in the managed repo after the operation. Asserting `writeLocalFile("SKILL.md")` or `saveToRepo` was called is not sufficient.
+Compare relative paths and file bytes in the persisted package/workspace after the operation, and the platform target when distribution is involved. Include excluded internal entries in the input so their absence in the output is meaningful. Asserting `writeLocalFile("SKILL.md")` or `saveToRepo` was called is not sufficient.
 
-## Coverage and Harness Rule
+## Harness Selection
 
-Skill package-boundary changes require 100% line, function, branch, and condition coverage for new or changed production code. The harness must include:
+Select the affected scenarios under the [testing standard](../../rules/testing-standards.md), beginning with the successful package workflow and its observable filesystem results. Depending on the changed boundary, add:
 
-- black-box filesystem assertions against the managed repo inventory
-- white-box branch coverage for GitHub raw-content vs custom Git/Gitea clone-backed paths
-- IPC validation for malformed inputs and missing skills
-- failure/rollback coverage for clone, copy, sync, and persistence errors
-- adversarial path coverage for `../`, absolute paths, hidden internal directories, symlinks, and missing `SKILL.md`
-- stress coverage for large package inventories
+- GitHub and custom Git/Gitea normal paths, using local Git/protocol fixtures where appropriate
+- public-entry validation for malformed inputs and missing Skills
+- failure/recovery assertions for affected clone, copy, sync, and persistence boundaries
+- adversarial paths, internal-directory filtering, symlinks, and missing `SKILL.md`
+- measured large-inventory cases for package traversal, copying, or capacity changes
 
-If a legacy file cannot reach 100% overall in one change, the active change must list the unrelated uncovered branches and still prove every new/changed branch and condition.
+Connect the normal baseline and selected regressions to the owning package and applicable root harness. Record the actual selected layer, mocks, observed results, and missing UI/remote/platform evidence. This matrix adds no separate percentage target and does not require unrelated risk categories for every change.
 
 ## Test Acceptance Rules
 

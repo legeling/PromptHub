@@ -23,31 +23,7 @@ import { getRuntimeCapabilities } from "../../runtime";
 import { SkillVariantBadgeList } from "./SkillVariantBadgeList";
 import { buildMySkillSourceBadges } from "../../services/skill-source-badges";
 import { CardStatusBadge } from "../ui/CardStatusBadge";
-
-function normalizeStringArray(value: unknown): string[] {
-  if (Array.isArray(value)) {
-    return value.filter(
-      (item): item is string =>
-        typeof item === "string" && item.trim().length > 0,
-    );
-  }
-
-  if (typeof value === "string") {
-    try {
-      const parsed = JSON.parse(value) as unknown;
-      return Array.isArray(parsed)
-        ? parsed.filter(
-            (item): item is string =>
-              typeof item === "string" && item.trim().length > 0,
-          )
-        : [];
-    } catch {
-      return [];
-    }
-  }
-
-  return [];
-}
+import { getSkillFilterTags } from "../../services/skill-stats";
 
 // Estimated row height for the virtualizer. Real heights are measured via
 // `measureElement` once a row is rendered so the scrollbar stays accurate.
@@ -318,22 +294,10 @@ export function SkillListView({
           const installCount = getInstallCount(skill.id);
           const totalPlatforms = availablePlatforms.length;
           const hasStoreUpdate = skillsWithStoreUpdates.has(skill.id);
-          // Show user-assigned tags together with the SKILL.md frontmatter
-          // (source) tags the import migrated into original_tags, de-duplicated,
-          // so a freshly imported skill already carries its tags in the list
-          // without requiring a detail-view round trip. This only affects tag
-          // badge display; filtering semantics stay unchanged.
-          const sourceTags = normalizeStringArray(skill.original_tags);
-          const seenRowTags = new Set(normalizeStringArray(skill.tags));
-          // 与筛选候选一致：仅当 `skillTagFilterIncludeFrontmatter` 开启时才把
-          // SKILL.md frontmatter(original)标签并入行徽标展示；默认关闭时不显示，
-          // 避免“不用该方式筛选”时面板却仍显示这些标签的不一致。
-          const displayTags = skillTagFilterIncludeFrontmatter
-            ? normalizeStringArray(skill.tags).concat(
-                sourceTags.filter((tag) => !seenRowTags.has(tag)),
-              )
-            : normalizeStringArray(skill.tags);
-          const visibleTags = displayTags.slice(0, 3);
+          const visibleTags = getSkillFilterTags(
+            skill,
+            skillTagFilterIncludeFrontmatter,
+          ).slice(0, 3);
           const sourceBadges = buildMySkillSourceBadges(skill, t);
           const hasMetadata = sourceBadges.length > 0 || visibleTags.length > 0;
           const isFirstRow = virtualRow.index === 0;

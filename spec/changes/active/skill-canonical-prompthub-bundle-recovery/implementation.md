@@ -47,3 +47,24 @@
   纳入其它 domain，将沿同参数扩展，不影响通用严格默认。
 - 已污染 bundle 的自愈依赖用户下一次对该技能 update（整目录替换发布）；不执行
   自动后台扫描。
+
+## Maintainer follow-up after merge (2026-09-05)
+
+This section supersedes conflicting pre-merge behavior and status above. PRs #213
+and #214 are merged; the follow-up is implemented locally, not yet committed or
+released. Remaining release acceptance is recorded below.
+
+Reject undeclared bundle directories instead of skipping their subtree or deleting them on republish. Existing files remain available for explicit recovery; clean source packages still exclude .prompthub before publication.
+
+Traceability: FR-FOLLOWUP-001 -> DES-FOLLOWUP-001 -> TEST-FOLLOWUP-001 -> T-FOLLOWUP-001.
+Verification: focused regressions passed; see the final verification boundary in implementation.md.
+
+### Final verification boundary (2026-09-05)
+
+- Core: canonical-skill-db (7 tests) and resource-bundle (24) passed.
+- Undeclared .prompthub/repo injections reject reads and updates while preserving injected content. Source-side exclusion remains tested.
+- Core typecheck and full core tests passed.
+- Bundle format is unchanged; the generic directory-ignore escape hatch is removed. Already-corrupt bundles intentionally require explicit recovery rather than automatic deletion.
+- Combined focused regressions: Desktop 98, Core 31, Web 30 passed (unique test cases, excluding reruns).
+- Cross-surface changed harness passed governance, file-size, shared/database/core checks, CLI checks, Desktop lint/typecheck, Web/Worker static checks, Mobile checks and the first two Desktop shards. It was interrupted to finish the snapshot JSON rollback fix; cancellation returned kill EPERM, and a process audit confirmed no remaining harness/Vitest child processes. This is not a full harness pass.
+- Real Electron restart, real remote sync, Windows packaging, and quantitative 100% changed-branch coverage are not established by these runs. Release acceptance remains open; no new release or follow-up commit/push was performed.

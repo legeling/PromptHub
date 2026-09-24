@@ -4,7 +4,7 @@ import { useMcpStore } from "../../stores/mcp.store";
 import { usePluginStore } from "../../stores/plugin.store";
 import { useSettingsStore } from "../../stores/settings.store";
 import { getRemoteStoreSkillCount } from "../../services/remote-store-entry";
-import { buildSkillStats } from "../../services/skill-stats";
+import { buildSkillTagCandidates } from "../../services/skill-stats";
 import { filterDeployablePlatforms } from "../../services/platform-visibility";
 import {
   deriveProjectMcpTargetPresets,
@@ -232,9 +232,12 @@ function useSidebarResourceTags(
   mcp: ReturnType<typeof useSidebarMcpBindings>,
   plugin: ReturnType<typeof useSidebarPluginBindings>,
 ) {
-  const skillStats = useMemo(
-    () => buildSkillStats(skill.skills, skill.deployedSkillNames),
-    [skill.deployedSkillNames, skill.skills],
+  const includeFrontmatter = useSettingsStore(
+    (state) => state.skillTagFilterIncludeFrontmatter,
+  );
+  const skillTags = useMemo(
+    () => buildSkillTagCandidates(skill.skills, includeFrontmatter),
+    [includeFrontmatter, skill.skills],
   );
   const uniqueMcpTags = useMemo(
     () =>
@@ -254,9 +257,9 @@ function useSidebarResourceTags(
     [plugin.pluginLibrary?.plugins],
   );
   return {
-    uniqueSkillTags: skillStats.uniqueUserTags,
+    uniqueSkillTags: skillTags,
     shouldShowSkillTags:
-      skill.storeView === "my-skills" && skillStats.uniqueUserTags.length > 0,
+      skill.storeView === "my-skills" && skillTags.length > 0,
     uniqueMcpTags,
     shouldShowMcpTags:
       mcp.mcpSelectedTab === "library" && uniqueMcpTags.length > 0,

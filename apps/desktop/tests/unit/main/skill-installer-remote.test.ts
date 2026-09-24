@@ -3,6 +3,13 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { EventEmitter } from "events";
+import type { LookupAddress, LookupAllOptions } from "node:dns";
+
+const lookupAllMock = vi.hoisted(() =>
+  vi.fn<
+    (hostname: string, options: LookupAllOptions) => Promise<LookupAddress[]>
+  >(),
+);
 
 const httpRequestMock = vi.hoisted(() => vi.fn());
 const getHttpRequestAgentMock = vi.hoisted(() => vi.fn());
@@ -24,14 +31,13 @@ vi.mock("https", async () => {
 });
 
 vi.mock("dns/promises", () => ({
-  lookup: vi.fn(),
+  lookup: lookupAllMock,
 }));
 
 vi.mock("../../../src/main/services/network-proxy", () => ({
   getHttpRequestAgent: getHttpRequestAgentMock,
 }));
 
-import * as dns from "dns/promises";
 import {
   fetchRemoteBytes,
   fetchRemoteText,
@@ -43,7 +49,7 @@ const REMOTE_FETCH_MAX_BYTES = 10 * 1024 * 1024;
 
 describe("skill-installer-remote", () => {
   beforeEach(() => {
-    vi.mocked(dns.lookup).mockReset();
+    lookupAllMock.mockReset();
     httpRequestMock.mockReset();
     getHttpRequestAgentMock.mockReset().mockReturnValue(undefined);
   });
@@ -75,7 +81,7 @@ describe("skill-installer-remote", () => {
   });
 
   it("allows trusted remote hosts when DNS is mapped to 198.18.x.x compatibility addresses", async () => {
-    vi.mocked(dns.lookup).mockResolvedValueOnce([
+    lookupAllMock.mockResolvedValueOnce([
       { address: "198.18.0.195", family: 4 },
     ]);
 
@@ -85,7 +91,7 @@ describe("skill-installer-remote", () => {
   });
 
   it("allows trusted remote hosts when DNS is mapped to translated IPv6 compatibility addresses", async () => {
-    vi.mocked(dns.lookup).mockResolvedValueOnce([
+    lookupAllMock.mockResolvedValueOnce([
       { address: "::ffff:0:c612:c3", family: 6 },
     ]);
 
@@ -95,7 +101,7 @@ describe("skill-installer-remote", () => {
   });
 
   it("allows ClawHub as a trusted preconfigured store host", async () => {
-    vi.mocked(dns.lookup).mockResolvedValueOnce([
+    lookupAllMock.mockResolvedValueOnce([
       { address: "198.18.0.195", family: 4 },
     ]);
 
@@ -106,7 +112,7 @@ describe("skill-installer-remote", () => {
   });
 
   it("allows the www ClawHub host used by redirects or canonical URLs", async () => {
-    vi.mocked(dns.lookup).mockResolvedValueOnce([
+    lookupAllMock.mockResolvedValueOnce([
       { address: "198.18.0.196", family: 4 },
     ]);
 
@@ -117,7 +123,7 @@ describe("skill-installer-remote", () => {
   });
 
   it("still blocks untrusted hosts that resolve to 198.18.x.x", async () => {
-    vi.mocked(dns.lookup).mockResolvedValueOnce([
+    lookupAllMock.mockResolvedValueOnce([
       { address: "198.18.0.42", family: 4 },
     ]);
 
@@ -129,7 +135,7 @@ describe("skill-installer-remote", () => {
   it("allows proxy compatibility DNS answers for arbitrary public hosts", async () => {
     const proxyAgent = { proxy: true };
     getHttpRequestAgentMock.mockReturnValue(proxyAgent);
-    vi.mocked(dns.lookup).mockResolvedValueOnce([
+    lookupAllMock.mockResolvedValueOnce([
       { address: "198.18.0.42", family: 4 },
     ]);
     httpRequestMock.mockImplementationOnce((options, callback) => {
@@ -169,7 +175,7 @@ describe("skill-installer-remote", () => {
 
   it("still blocks real private addresses when a proxy is configured", async () => {
     getHttpRequestAgentMock.mockReturnValue({ proxy: true });
-    vi.mocked(dns.lookup).mockResolvedValueOnce([
+    lookupAllMock.mockResolvedValueOnce([
       { address: "192.168.31.12", family: 4 },
     ]);
 
@@ -182,7 +188,7 @@ describe("skill-installer-remote", () => {
   it("allows proxy compatibility DNS answers for remote package bytes", async () => {
     const proxyAgent = { proxy: true };
     getHttpRequestAgentMock.mockReturnValue(proxyAgent);
-    vi.mocked(dns.lookup).mockResolvedValueOnce([
+    lookupAllMock.mockResolvedValueOnce([
       { address: "198.19.0.42", family: 4 },
     ]);
     httpRequestMock.mockImplementationOnce((options, callback) => {
@@ -220,7 +226,7 @@ describe("skill-installer-remote", () => {
   });
 
   it("blocks private network addresses by default", async () => {
-    vi.mocked(dns.lookup).mockResolvedValueOnce([
+    lookupAllMock.mockResolvedValueOnce([
       { address: "192.168.31.12", family: 4 },
     ]);
 
@@ -230,7 +236,7 @@ describe("skill-installer-remote", () => {
   });
 
   it("allows explicit private network access for user-selected Git hosts", async () => {
-    vi.mocked(dns.lookup).mockResolvedValueOnce([
+    lookupAllMock.mockResolvedValueOnce([
       { address: "192.168.31.12", family: 4 },
     ]);
 
@@ -248,7 +254,7 @@ describe("skill-installer-remote", () => {
   });
 
   it("rejects public HTTP even when private network access is enabled", async () => {
-    vi.mocked(dns.lookup).mockResolvedValueOnce([
+    lookupAllMock.mockResolvedValueOnce([
       { address: "93.184.216.34", family: 4 },
     ]);
 
@@ -262,7 +268,7 @@ describe("skill-installer-remote", () => {
   });
 
   it("allows HTTP only for explicitly trusted private Git hosts", async () => {
-    vi.mocked(dns.lookup).mockResolvedValueOnce([
+    lookupAllMock.mockResolvedValueOnce([
       { address: "192.168.31.12", family: 4 },
     ]);
     httpRequestMock.mockImplementationOnce((options, callback) => {

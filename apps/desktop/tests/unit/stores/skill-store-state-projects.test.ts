@@ -323,12 +323,12 @@ describe("skill store", () => {
     ]);
   });
 
-  it("syncs an intentionally empty SKILL.md back to the local repo on update", async () => {
+  it("submits empty instructions through update and adopts the published result", async () => {
     const update = vi.fn().mockResolvedValue({
       id: "skill-1",
       name: "alpha",
-      instructions: "",
-      content: "",
+      instructions: "---\nname: alpha\n---\n",
+      content: "---\nname: alpha\n---\n",
       local_repo_path: "/tmp/skills/alpha",
       protocol_type: "skill",
       is_favorite: false,
@@ -338,9 +338,9 @@ describe("skill store", () => {
     const writeLocalFile = vi.fn().mockResolvedValue(undefined);
     const getRepoPath = vi.fn().mockResolvedValue("/tmp/skills/alpha");
 
-    (window as any).api.skill.update = update;
-    (window as any).api.skill.writeLocalFile = writeLocalFile;
-    (window as any).api.skill.getRepoPath = getRepoPath;
+    window.api.skill.update = update;
+    window.api.skill.writeLocalFile = writeLocalFile;
+    window.api.skill.getRepoPath = getRepoPath;
 
     useSkillStore.setState({
       skills: [
@@ -358,9 +358,14 @@ describe("skill store", () => {
       content: "",
     });
 
-    expect(writeLocalFile).toHaveBeenCalledWith("skill-1", "SKILL.md", "", {
-      skipVersionSnapshot: true,
+    expect(update).toHaveBeenCalledWith("skill-1", {
+      instructions: "",
+      content: "",
     });
+    expect(writeLocalFile).not.toHaveBeenCalled();
+    expect(useSkillStore.getState().skills[0]?.instructions).toBe(
+      "---\nname: alpha\n---\n",
+    );
     expect(useSkillStore.getState().skills[0]?.local_repo_path).toBe(
       "/tmp/skills/alpha",
     );

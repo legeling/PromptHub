@@ -351,6 +351,7 @@ type RegistryPackageOperationInput = {
   registrySkill: RegistrySkill;
   content: string;
   packageFiles?: SkillPackageFileInput[];
+  expectedSourceFingerprint?: string;
   markAsBuiltin?: boolean;
   note?: string;
 };
@@ -360,6 +361,7 @@ async function runRegistryPackageOperation(
 ) {
   const request: SkillPackageOperationRequest = {
     operation: input.operation,
+    expectedSourceFingerprint: input.expectedSourceFingerprint,
     skillId: input.skillId,
     registrySkill: input.registrySkill,
     source: buildSkillPackageOperationSource(
@@ -449,6 +451,7 @@ async function materializeRegistryUpdate(
       registrySkill: operationSkill,
       content: operationContent,
       packageFiles: cloudPackage?.files,
+      expectedSourceFingerprint: check.remoteDirectoryFingerprint,
       markAsBuiltin,
       note: `${notePrefix}: ${check.installedSkill!.version || "unknown"} -> ${operationSkill.version}`,
     });

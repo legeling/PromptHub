@@ -1,25 +1,28 @@
 import type { ScannedSkill, Skill } from "@prompthub/shared/types";
-import type {
-  SkillFilterType,
-  SkillStoreView,
-} from "../stores/skill.store";
+import { getSkillFilterTags } from "./skill-stats";
+import type { SkillFilterType, SkillStoreView } from "../stores/skill.store";
 
 interface FilterVisibleSkillsOptions {
   deployedSkillNames: Set<string>;
   filterTags?: string[];
+  includeFrontmatter?: boolean;
   filterType: SkillFilterType;
   searchQuery?: string;
   skills: Skill[];
   storeView: SkillStoreView;
 }
 
-function isSkillDeployed(skill: Skill, deployedSkillNames: Set<string>): boolean {
+function isSkillDeployed(
+  skill: Skill,
+  deployedSkillNames: Set<string>,
+): boolean {
   return deployedSkillNames.has(skill.id) || deployedSkillNames.has(skill.name);
 }
 
 export function filterVisibleSkills({
   deployedSkillNames,
   filterTags = [],
+  includeFrontmatter = false,
   filterType,
   searchQuery = "",
   skills,
@@ -28,15 +31,21 @@ export function filterVisibleSkills({
   let result = skills;
 
   if (storeView === "distribution") {
-    result = result.filter((skill) => isSkillDeployed(skill, deployedSkillNames));
+    result = result.filter((skill) =>
+      isSkillDeployed(skill, deployedSkillNames),
+    );
   } else if (filterType === "favorites") {
     result = result.filter((skill) => skill.is_favorite);
   } else if (filterType === "installed") {
     result = result.filter((skill) => Boolean(skill.registry_slug));
   } else if (filterType === "deployed") {
-    result = result.filter((skill) => isSkillDeployed(skill, deployedSkillNames));
+    result = result.filter((skill) =>
+      isSkillDeployed(skill, deployedSkillNames),
+    );
   } else if (filterType === "pending") {
-    result = result.filter((skill) => !isSkillDeployed(skill, deployedSkillNames));
+    result = result.filter(
+      (skill) => !isSkillDeployed(skill, deployedSkillNames),
+    );
   }
 
   if (filterTags.length > 0) {
@@ -50,13 +59,11 @@ export function filterVisibleSkills({
       .map((tag) => tag.trim())
       .filter((tag) => tag.length > 0);
     if (normalizedTags.length > 0) {
-      result = result.filter(
-        (skill) =>
-          skill.tags &&
-          skill.tags.some((rawTag) => {
-            const trimmed = rawTag.trim();
-            return trimmed.length > 0 && normalizedTags.includes(trimmed);
-          }),
+      result = result.filter((skill) =>
+        getSkillFilterTags(skill, includeFrontmatter).some((rawTag) => {
+          const trimmed = rawTag.trim();
+          return trimmed.length > 0 && normalizedTags.includes(trimmed);
+        }),
       );
     }
   }

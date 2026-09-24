@@ -46,3 +46,22 @@ Compatibility / rollback
 - 组件无状态，逻辑全在 props：UI 单测可直接断言回调与 aria 状态。
 - i18n 多语语种对齐由既有“parity”测试保证。
 - typecheck/lint 全绿后再交用户确认（不自动提交 / 提 PR）。
+
+## Review correction (2026-09-05)
+
+FR-REVIEW-001 / DES-REVIEW-001 / TEST-REVIEW-001 / T-REVIEW-001: When original_tags is explicitly present, tags is the user-owned set even when names overlap. Retain the legacy remote-source inference only when original_tags is absent. Candidate, filter, sidebar, gallery and list reuse the shared policy. No persisted metadata is rewritten. Verify explicit overlap, source-only and legacy records, on/off settings and a 1000-skill inventory.
+
+Supersedes conflicting earlier repair/tag-inference behavior. Authorized by the
+maintainer after the three reproducible review findings. Implemented and verified;
+see Review verification below in implementation.md.
+
+## Maintainer follow-up after merge (2026-09-05)
+
+This section supersedes conflicting pre-merge behavior and status above. PRs #213
+and #214 are merged; the follow-up is implemented locally, not yet committed or
+released. Remaining release acceptance is recorded below.
+
+Use one normalized user/source-tag derivation for header, sidebar, gallery, list and filtering; source-only tags must match when enabled.
+
+Traceability: FR-FOLLOWUP-001 -> DES-FOLLOWUP-001 -> TEST-FOLLOWUP-001 -> T-FOLLOWUP-001.
+Verification: focused regressions passed; see the final verification boundary in implementation.md.

@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import type { Skill } from "@prompthub/shared/types";
-import { buildSkillStats, buildSkillTagCandidates } from "../../../src/renderer/services/skill-stats";
+import {
+  buildSkillStats,
+  buildSkillTagCandidates,
+  getSkillFilterTags,
+} from "../../../src/renderer/services/skill-stats";
 
 function createSkill(index: number): Skill {
   return {
@@ -9,10 +13,7 @@ function createSkill(index: number): Skill {
     name: `skill-${String(index).padStart(4, "0")}`,
     description: `Skill ${index}`,
     protocol_type: "skill",
-    tags: [
-      `base-${index % 12}`,
-      ...(index % 4 === 0 ? [`user-${index % 5}`] : []),
-    ],
+    tags: [...(index % 4 === 0 ? [`user-${index % 5}`] : [])],
     original_tags: [`base-${index % 12}`],
     is_favorite: index % 7 === 0,
     created_at: index,
@@ -43,6 +44,38 @@ describe("buildSkillStats", () => {
 });
 
 describe("buildSkillTagCandidates", () => {
+  it("distinguishes explicit user tags from legacy remote-only tags", () => {
+    const base: Skill = {
+      id: "s",
+      name: "s",
+      protocol_type: "skill",
+      tags: ["review"],
+      is_favorite: false,
+      created_at: 1,
+      updated_at: 1,
+    };
+    expect(getSkillFilterTags(base)).toEqual(["review"]);
+    expect(getSkillFilterTags(base, true)).toEqual(["review"]);
+    expect(
+      getSkillFilterTags({ ...base, source_url: "https://example.com/skill" }),
+    ).toEqual([]);
+    expect(
+      getSkillFilterTags(
+        { ...base, source_url: "https://example.com/skill" },
+        true,
+      ),
+    ).toEqual(["review"]);
+    expect(getSkillFilterTags({ ...base, original_tags: ["review"] })).toEqual([
+      "review",
+    ]);
+    expect(
+      getSkillFilterTags({
+        ...base,
+        original_tags: [],
+        registry_slug: "remote",
+      }),
+    ).toEqual(["review"]);
+  });
   const baseSkills: Skill[] = [
     {
       id: "skill-a",
@@ -81,8 +114,8 @@ describe("buildSkillTagCandidates", () => {
     expect(candidates).toEqual(
       buildSkillStats(baseSkills, new Set()).uniqueUserTags,
     );
-    // shared/doc/readme are original (frontmatter) labels and stay excluded.
-    expect(candidates).toEqual(["user-a", "user-b"]);
+    // Explicit user tags win even if the source has the same label.
+    expect(candidates).toEqual(["shared", "user-a", "user-b"]);
   });
 
   it("unions SKILL.md frontmatter labels when enabled", () => {

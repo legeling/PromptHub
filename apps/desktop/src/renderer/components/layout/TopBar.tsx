@@ -110,6 +110,9 @@ export function TopBar({
   const skills = useSkillStore((state) => state.skills);
   const skillFilterType = useSkillStore((state) => state.filterType);
   const skillFilterTags = useSkillStore((state) => state.filterTags);
+  const includeFrontmatter = useSettingsStore(
+    (state) => state.skillTagFilterIncludeFrontmatter,
+  );
   const deployedSkillNames = useSkillStore((state) => state.deployedSkillNames);
   const skillStoreView = useSkillStore((state) => state.storeView);
   const selectedProjectId = useSkillStore((state) => state.selectedProjectId);
@@ -302,6 +305,7 @@ export function TopBar({
     return filterVisibleSkills({
       deployedSkillNames,
       filterTags: skillFilterTags,
+      includeFrontmatter,
       filterType: skillFilterType,
       searchQuery: deferredSkillSearchQuery,
       skills,
@@ -311,6 +315,7 @@ export function TopBar({
     deferredSkillSearchQuery,
     deployedSkillNames,
     skillFilterTags,
+    includeFrontmatter,
     skillFilterType,
     skillStoreView,
     skills,

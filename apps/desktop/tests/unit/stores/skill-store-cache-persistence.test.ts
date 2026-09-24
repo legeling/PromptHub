@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { AI_REQUEST_TIMEOUT_MS } from "@prompthub/shared/constants/ai";
 
 vi.mock("../../../src/renderer/services/ai", () => ({
   chatCompletion: vi.fn(),
@@ -59,6 +60,8 @@ describe("skill store", () => {
       aiModels: [],
       scenarioModelDefaults: {},
       translationMode: "full",
+      skillSafetyScanEnabled: false,
+      skillSafetyScanMethod: "static",
     });
     installWindowMocks({
       api: {
@@ -77,8 +80,17 @@ describe("skill store", () => {
   });
 
   it("passes installed local repo paths into batch safety scans", async () => {
-    const scanSafety = vi.fn().mockResolvedValue({ level: "safe" });
-    (window as any).api.skill.scanSafety = scanSafety;
+    useSettingsStore.setState({ skillSafetyScanEnabled: true });
+    const scanSafety = vi.fn().mockResolvedValue({
+      level: "safe",
+      summary: "No findings",
+      findings: [],
+      recommendedAction: "allow",
+      scannedAt: 1,
+      checkedFileCount: 1,
+      scanMethod: "static",
+    });
+    window.api.skill.scanSafety = scanSafety;
 
     useSkillStore.setState({
       skills: [
@@ -94,18 +106,23 @@ describe("skill store", () => {
       ],
     });
 
-    await useSkillStore.getState().scanInstalledSkillSafety(["skill-1"]);
+    const summary = await useSkillStore
+      .getState()
+      .scanInstalledSkillSafety(["skill-1"]);
 
-    expect(scanSafety).toHaveBeenCalledWith(
-      expect.objectContaining({
-        name: "managed-package",
-        content: "# Managed Package",
-        sourceUrl: "https://gitea.internal.example/team/skills",
-        contentUrl:
-          "https://gitea.internal.example/team/skills/raw/branch/main/SKILL.md",
-        localRepoPath: "/managed/skills/managed-package--abc123",
-      }),
-    );
+    expect(scanSafety).toHaveBeenCalledWith({
+      enabled: true,
+      method: "static",
+      name: "managed-package",
+      content: "# Managed Package",
+      localRepoPath: "/managed/skills/managed-package--abc123",
+      aiConfig: undefined,
+    });
+    expect(summary).toMatchObject({ total: 1, safe: 1, blocked: 0 });
+    expect(useSkillStore.getState().skills[0]?.safetyReport).toMatchObject({
+      level: "safe",
+      summary: "No findings",
+    });
   });
 
   it("does not persist filesystem-derived Agent Skill scan results", async () => {
@@ -851,6 +868,7 @@ describe("skill store", () => {
         aiModels: [
           {
             id: "broken-translation",
+            apiProtocol: "openai",
             name: "Broken Translation",
             type: "chat",
             provider: "openai",
@@ -882,6 +900,41 @@ describe("skill store", () => {
         }),
         expect.any(Array),
         expect.any(Object),
+      );
+    });
+
+    it("allows bounded long-running translation through an intranet model", async () => {
+      useSettingsStore.setState({
+        aiModels: [
+          {
+            id: "intranet-translation",
+            name: "Intranet Translation",
+            type: "chat",
+            provider: "custom",
+            apiProtocol: "openai",
+            apiKey: "local-key",
+            apiUrl: "http://192.168.10.20:8000/v1",
+            model: "local-translator",
+          },
+        ],
+        scenarioModelDefaults: { translation: "intranet-translation" },
+        translationMode: "full",
+      });
+      vi.mocked(chatCompletion).mockResolvedValue({
+        content: "translated on intranet",
+      } as never);
+
+      await useSkillStore
+        .getState()
+        .translateContent("# Skill\n\nOriginal", "intranet-cache", "中文");
+
+      expect(chatCompletion).toHaveBeenCalledWith(
+        expect.objectContaining({
+          apiUrl: "http://192.168.10.20:8000/v1",
+          model: "local-translator",
+        }),
+        expect.any(Array),
+        expect.objectContaining({ timeoutMs: AI_REQUEST_TIMEOUT_MS }),
       );
     });
   });

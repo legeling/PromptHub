@@ -6,6 +6,7 @@ import {
   within,
 } from "@testing-library/react";
 import type { FormEvent } from "react";
+import type { RegistrySkill } from "@prompthub/shared/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SkillStore } from "../../../src/renderer/components/skill/SkillStore";
@@ -441,7 +442,7 @@ describe("SkillStore remote loading", () => {
       }),
     } as never);
 
-    const skill = {
+    const skill: RegistrySkill = {
       slug: "placeholder-version",
       name: "Placeholder Version",
       source_id: "placeholder-version",
@@ -452,7 +453,7 @@ describe("SkillStore remote loading", () => {
       content: "# Placeholder Version\n\nNo display version.",
       source_url: "https://example.com/placeholder-version",
       author: "PromptHub",
-    } as never;
+    };
 
     await renderWithI18n(
       <SkillStoreDetail skill={skill} isInstalled={false} onClose={vi.fn()} />,
@@ -480,7 +481,7 @@ describe("SkillStore remote loading", () => {
     expect(screen.queryByText("v2")).not.toBeInTheDocument();
   });
 
-  it("opens install review without an automatic scan when the resolved policy is disabled", async () => {
+  it("opens install review and enables confirmation with content scanning disabled", async () => {
     const scanSafety = vi.fn();
     installWindowMocks({
       api: {
@@ -490,9 +491,7 @@ describe("SkillStore remote loading", () => {
       },
     });
     useSettingsStore.setState({
-      autoScanStoreSkillsBeforeInstall: false,
-      skillSafetyChannelPolicies: {},
-      skillSafetyStorePolicies: {},
+      skillSafetyScanEnabled: false,
     } as never);
     useSkillStore.setState({
       getTranslationState: vi.fn().mockReturnValue({
@@ -534,7 +533,9 @@ describe("SkillStore remote loading", () => {
         name: "Review Skill before adding",
       }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Not run")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Confirm and add" }),
+    ).toBeEnabled();
     expect(scanSafety).not.toHaveBeenCalled();
   });
 

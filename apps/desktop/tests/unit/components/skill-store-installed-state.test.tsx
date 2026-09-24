@@ -1,4 +1,10 @@
-import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SkillStore } from "../../../src/renderer/components/skill/SkillStore";
@@ -105,7 +111,8 @@ describe("SkillStore installed state", () => {
               description: "Official Claude Code writer",
               category: "general",
               author: "Anthropic",
-              source_url: "https://github.com/anthropics/skills/tree/main/writer",
+              source_url:
+                "https://github.com/anthropics/skills/tree/main/writer",
               content_url:
                 "https://raw.githubusercontent.com/anthropics/skills/main/writer/SKILL.md",
               tags: ["writing"],
@@ -138,18 +145,23 @@ describe("SkillStore installed state", () => {
       await renderWithI18n(<SkillStore />, { language: "en" });
     });
 
-    const importedSection = screen.getByRole("heading", {
-      name: "Imported",
-    }).closest("section");
-    const availableSection = screen.getByRole("heading", {
-      name: "Available",
-    }).closest("section");
+    const importedSection = screen
+      .getByRole("heading", {
+        name: "Imported",
+      })
+      .closest("section");
+    const availableSection = screen
+      .getByRole("heading", {
+        name: "Available",
+      })
+      .closest("section");
 
     expect(importedSection).not.toBeNull();
     expect(availableSection).not.toBeNull();
     expect(within(importedSection!).getByTitle("Imported")).toBeInTheDocument();
-    expect(within(importedSection!).getByText("Official Claude Code writer"))
-      .toBeInTheDocument();
+    expect(
+      within(importedSection!).getByText("Official Claude Code writer"),
+    ).toBeInTheDocument();
     expect(
       within(availableSection!).getByText(
         "A different package with the same install name",
@@ -166,28 +178,14 @@ describe("SkillStore installed state", () => {
       recommendedAction: "allow",
       scannedAt: Date.now(),
       checkedFileCount: 3,
-      scanMethod: "ai",
+      scanMethod: "static",
     });
-    (window as any).api.skill.scanSafety = scanSafety;
+    window.api.skill.scanSafety = scanSafety;
 
     useSettingsStore.setState({
-      aiModels: [
-        {
-          id: "fast-model",
-          name: "Fast Model",
-          provider: "openai",
-          apiProtocol: "openai",
-          apiKey: "test-key",
-          apiUrl: "https://api.example.com/v1/chat/completions",
-          model: "gpt-4.1-mini",
-          enabled: true,
-          useFor: ["chat"],
-        },
-      ],
-      scenarioModelDefaults: {
-        safetyScan: "fast-model",
-      },
-    } as never);
+      skillSafetyScanEnabled: true,
+      skillSafetyScanMethod: "static",
+    });
 
     const installedSkill = createSkillFixture({
       id: "skill-gitea-writer",
@@ -235,16 +233,19 @@ describe("SkillStore installed state", () => {
     });
 
     await waitFor(() => {
-      expect(scanSafety).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: "Writer",
-          sourceUrl: "https://gitea.internal.example/team/skills",
-          contentUrl:
-            "https://gitea.internal.example/team/skills/raw/branch/main/skills/writer/SKILL.md",
-          localRepoPath: "/managed/skills/writer--abc123",
-          content: "# Writer\n\nInstalled content",
-        }),
-      );
+      expect(scanSafety).toHaveBeenCalledWith({
+        enabled: true,
+        method: "static",
+        name: "Writer",
+        localRepoPath: "/managed/skills/writer--abc123",
+        content: "# Writer\n\nInstalled content",
+        aiConfig: undefined,
+      });
     });
+    expect(
+      await screen.findByText(
+        "No obvious malicious patterns were detected across 3 scanned files.",
+      ),
+    ).toBeVisible();
   });
 });

@@ -15,31 +15,8 @@ import { SkillVariantBadgeList } from "./SkillVariantBadgeList";
 import { buildMySkillSourceBadges } from "../../services/skill-source-badges";
 import { PlatformIcon } from "../ui/PlatformIcon";
 import { CardStatusBadge } from "../ui/CardStatusBadge";
-
-function normalizeStringArray(value: unknown): string[] {
-  if (Array.isArray(value)) {
-    return value.filter(
-      (item): item is string =>
-        typeof item === "string" && item.trim().length > 0,
-    );
-  }
-
-  if (typeof value === "string") {
-    try {
-      const parsed = JSON.parse(value) as unknown;
-      return Array.isArray(parsed)
-        ? parsed.filter(
-            (item): item is string =>
-              typeof item === "string" && item.trim().length > 0,
-          )
-        : [];
-    } catch {
-      return [];
-    }
-  }
-
-  return [];
-}
+import { useSettingsStore } from "../../stores/settings.store";
+import { getSkillFilterTags } from "../../services/skill-stats";
 
 interface SkillGalleryCardProps {
   animationDelayMs: number;
@@ -74,7 +51,10 @@ function SkillGalleryCardComponent({
 }: SkillGalleryCardProps) {
   const { t } = useTranslation();
   const runtimeCapabilities = getRuntimeCapabilities();
-  const visibleTags = normalizeStringArray(skill.tags).slice(0, 4);
+  const includeFrontmatter = useSettingsStore(
+    (state) => state.skillTagFilterIncludeFrontmatter,
+  );
+  const visibleTags = getSkillFilterTags(skill, includeFrontmatter).slice(0, 4);
   const sourceBadges = buildMySkillSourceBadges(skill, t);
   const showDistribution =
     runtimeCapabilities.skillPlatformIntegration &&

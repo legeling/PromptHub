@@ -38,3 +38,14 @@ rename 至 target，成功后再删 prior）。此机制天然会把目标目录
 写死默认（不传时为空集合），prompts/rules/mcp/… 全部走原有严格路径，测试
 `resource-bundle.test.ts`、`resource-bundle-publication.test.ts` 的既有断言
 （除 Windows symlink EPERM 环境失败外）不受影响。
+
+## Maintainer follow-up after merge (2026-09-05)
+
+This section supersedes conflicting pre-merge behavior and status above. PRs #213
+and #214 are merged; the follow-up is implemented locally, not yet committed or
+released. Remaining release acceptance is recorded below.
+
+Reject undeclared bundle directories instead of skipping their subtree or deleting them on republish. Existing files remain available for explicit recovery; clean source packages still exclude .prompthub before publication.
+
+Traceability: FR-FOLLOWUP-001 -> DES-FOLLOWUP-001 -> TEST-FOLLOWUP-001 -> T-FOLLOWUP-001.
+Verification: focused regressions passed; see the final verification boundary in implementation.md.
