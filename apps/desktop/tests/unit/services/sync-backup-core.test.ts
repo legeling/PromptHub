@@ -455,6 +455,63 @@ describe("sync-backup-core", () => {
   });
 
   describe("incrementalUploadSyncBackup", () => {
+    it("reports uploaded skill metadata, versions, and files", async () => {
+      exportDatabaseMock.mockResolvedValue({
+        version: 1,
+        exportedAt: "2026-01-01T00:00:00.000Z",
+        prompts: [],
+        folders: [],
+        versions: [],
+        skills: [{ id: "skill-1", name: "writer" }],
+        skillVersions: [
+          { id: "skill-version-1", skillId: "skill-1", version: 1 },
+        ],
+        skillFiles: {
+          "skill-1": [
+            { relativePath: "SKILL.md", content: "# Writer" },
+            { relativePath: "references/example.md", content: "Example" },
+          ],
+        },
+      });
+
+      const legacyUpload = vi.fn().mockResolvedValue({ success: true });
+      const legacyResult = await uploadSyncBackup(
+        createAdapter({ uploadText: legacyUpload }),
+        {
+          incrementalSync: false,
+        },
+      );
+      const incrementalUpload = vi.fn().mockResolvedValue({ success: true });
+      const incrementalResult = await incrementalUploadSyncBackup(
+        createAdapter({ uploadText: incrementalUpload }),
+      );
+
+      for (const result of [legacyResult, incrementalResult]) {
+        expect(result.success).toBe(true);
+        expect(result.message).toContain("1 skill");
+        expect(result.message).toContain("1 skill version");
+        expect(result.message).toContain("2 skill files");
+        expect(result.details).toEqual(
+          expect.objectContaining({
+            skillsUploaded: 1,
+            skillVersionsUploaded: 1,
+            skillFilesUploaded: 2,
+          }),
+        );
+      }
+
+      const legacyPayload = JSON.parse(String(legacyUpload.mock.calls[0]?.[1]));
+      const incrementalDataCall = incrementalUpload.mock.calls.find((call) =>
+        String(call[0]).includes("data.json"),
+      );
+      const incrementalPayload = JSON.parse(String(incrementalDataCall?.[1]));
+      for (const payload of [legacyPayload, incrementalPayload]) {
+        expect(payload.skills).toHaveLength(1);
+        expect(payload.skillVersions).toHaveLength(1);
+        expect(payload.skillFiles["skill-1"]).toHaveLength(2);
+      }
+    });
+
     it("preserves prompt graph collections in legacy and incremental payloads", async () => {
       const graph = {
         promptRelations: [
@@ -570,6 +627,10 @@ describe("sync-backup-core", () => {
       const downloadText = vi.fn(async (path: string) => {
         if (path.includes("manifest")) {
           return { success: true, data: manifest };
+        }
+
+        if (path.includes("data.json")) {
+          return { success: true, data: expectedDataString };
         }
 
         return { success: false, notFound: true };

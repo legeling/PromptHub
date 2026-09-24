@@ -49,7 +49,11 @@ describe("s3-sync", () => {
         subtle: {
           digest: vi
             .fn()
-            .mockResolvedValue(new Uint8Array([0xde, 0xad, 0xbe, 0xef]).buffer),
+            .mockImplementation(() => {
+              const digest = new Uint8Array(32);
+              digest.set([0xde, 0xad, 0xbe, 0xef]);
+              return Promise.resolve(digest.buffer);
+            }),
         },
       },
     });
@@ -106,7 +110,9 @@ describe("s3-sync", () => {
       mainConfig,
     );
     expect(window.electron?.s3?.upload).toHaveBeenCalledWith(
-      "team/prompthub-backup/data.json",
+      expect.stringMatching(
+        /^team\/prompthub-backup\/data\.json\.[0-9a-f]{64}$/,
+      ),
       mainConfig,
       expect.stringContaining('"Home edit"'),
     );
@@ -124,7 +130,7 @@ describe("s3-sync", () => {
       version: "4.0",
       createdAt: "2026-06-02T00:00:00.000Z",
       updatedAt: "2026-06-02T00:00:00.000Z",
-      dataHash: "deadbeef",
+      dataHash: "deadbeef00000000",
       images: {},
       videos: {},
       encrypted: false,

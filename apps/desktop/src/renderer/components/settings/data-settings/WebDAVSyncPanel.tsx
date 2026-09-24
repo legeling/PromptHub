@@ -150,6 +150,7 @@ export function WebDAVSyncPanel() {
                     <Select
                       ariaLabel={`${t("settings.webdavSyncMenu", "WebDAV")} ${t("settings.webdavAutoRun", "Auto Run")}`}
                       value={String(settings.webdavAutoSyncInterval)}
+                      disabled={!settings.webdavEnabled || !webdavIsSyncSource}
                       onChange={(val) =>
                         settings.setWebdavAutoSyncInterval(Number(val))
                       }
@@ -194,6 +195,7 @@ export function WebDAVSyncPanel() {
                           ? settings.webdavSyncOnStartupDelay
                           : -1,
                       )}
+                      disabled={!settings.webdavEnabled || !webdavIsSyncSource}
                       onChange={(val) => {
                         const num = Number(val);
                         if (num === -1) {
@@ -258,7 +260,9 @@ export function WebDAVSyncPanel() {
                     checked={settings.webdavSyncOnSave}
                     onChange={settings.setWebdavSyncOnSave}
                     disabled={
-                      !settings.webdavEnabled || !WEBDAV_SYNC_ON_SAVE_AVAILABLE
+                      !settings.webdavEnabled ||
+                      !webdavIsSyncSource ||
+                      !WEBDAV_SYNC_ON_SAVE_AVAILABLE
                     }
                   />
                 </div>

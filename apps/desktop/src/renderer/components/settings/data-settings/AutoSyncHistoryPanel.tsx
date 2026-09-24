@@ -21,13 +21,13 @@ export function AutoSyncHistoryPanel() {
     <>
       {showAutoSyncHistory ? (
         <DataSettingsSection
-          title={t("settings.autoSyncHistoryTitle", "Automatic sync history")}
+          title={t("settings.autoSyncHistoryTitle", "Sync history")}
         >
           <div className="p-4 space-y-3">
             <p className="text-xs text-muted-foreground">
               {t(
                 "settings.autoSyncHistoryDesc",
-                "Recent automatic sync attempts. Credentials and remote addresses are never stored here.",
+                "Recent manual backups and automatic sync attempts. Credentials and remote addresses are never stored here.",
               )}
             </p>
             {autoSyncHistory.length === 0 ? (
@@ -39,7 +39,7 @@ export function AutoSyncHistoryPanel() {
                 <p className="text-sm text-muted-foreground">
                   {t(
                     "settings.autoSyncHistoryEmpty",
-                    "No automatic sync has been recorded yet.",
+                    "No sync has been recorded yet.",
                   )}
                 </p>
               </div>

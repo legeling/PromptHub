@@ -48,7 +48,11 @@ describe("WebDAV Service", () => {
         subtle: {
           digest: vi
             .fn()
-            .mockResolvedValue(new Uint8Array([0xde, 0xad, 0xbe, 0xef]).buffer),
+            .mockImplementation(() => {
+              const digest = new Uint8Array(32);
+              digest.set([0xde, 0xad, 0xbe, 0xef]);
+              return Promise.resolve(digest.buffer);
+            }),
           importKey: vi.fn(),
           deriveKey: vi.fn(),
           encrypt: vi.fn(),
@@ -158,7 +162,7 @@ describe("WebDAV Service", () => {
         mockConfig,
       );
       expect(mockUpload).toHaveBeenCalledWith(
-        expect.stringContaining("data.json"),
+        expect.stringMatching(/data\.json\.[0-9a-f]{64}$/),
         mockConfig,
         expect.any(String),
       );
@@ -207,7 +211,7 @@ describe("WebDAV Service", () => {
       await incrementalUpload(mockConfig);
 
       const dataUploadCall = mockUpload.mock.calls.find(([url]) =>
-        String(url).includes("data.json"),
+        /data\.json\.[0-9a-f]{64}$/.test(String(url)),
       );
       expect(dataUploadCall).toBeTruthy();
 
@@ -239,15 +243,29 @@ describe("WebDAV Service", () => {
         version: "4.0",
         createdAt: "2026-01-01T00:00:00.000Z",
         updatedAt: "2026-01-01T00:00:00.000Z",
-        dataHash: "deadbeef",
+        dataHash: "deadbeef00000000",
         images: {},
         videos: {},
         encrypted: false,
       });
+      const unchangedData = JSON.stringify({
+        version: "4.0",
+        exportedAt: "2026-01-01T00:00:00.000Z",
+        prompts: [{ id: 1, content: "test", videos: [] }],
+        folders: [],
+        versions: [],
+        aiConfig: {},
+        settings: {},
+      });
       const mockEnsureDir = vi.fn().mockResolvedValue(undefined);
-      const mockDownload = vi.fn().mockResolvedValue({
-        success: true,
-        data: unchangedManifest,
+      const mockDownload = vi.fn(async (url: string) => {
+        if (url.includes("manifest.json")) {
+          return { success: true, data: unchangedManifest };
+        }
+        if (url.includes("data.json")) {
+          return { success: true, data: unchangedData };
+        }
+        return { success: false, notFound: true };
       });
       const mockUpload = vi.fn().mockResolvedValue({ success: true });
 
@@ -331,7 +349,7 @@ describe("WebDAV Service", () => {
         version: "4.0",
         createdAt: "2026-01-01T00:00:00.000Z",
         updatedAt: "2026-01-01T00:00:00.000Z",
-        dataHash: "deadbeef",
+        dataHash: "deadbeef00000000",
         images: {},
         videos: {},
         encrypted: false,
@@ -431,7 +449,7 @@ describe("WebDAV Service", () => {
         version: "4.0",
         createdAt: "2026-01-01T00:00:00.000Z",
         updatedAt: "2026-01-02T00:00:00.000Z",
-        dataHash: "deadbeef",
+        dataHash: "deadbeef00000000",
         images: {},
         videos: {},
         encrypted: false,

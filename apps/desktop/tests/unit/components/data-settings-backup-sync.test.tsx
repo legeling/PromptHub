@@ -752,11 +752,12 @@ describe("DataSettings", { timeout: 60_000 }, () => {
     expect(settingsState.setSyncProvider).toHaveBeenCalledWith("webdav");
   });
 
-  it("exposes sync cadence selects by their setting labels", async () => {
+  it("enables sync cadence only for the current live sync source", async () => {
     const settingsState = createSettingsState();
     settingsState.selfHostedSyncEnabled = true;
     settingsState.webdavEnabled = true;
     settingsState.s3StorageEnabled = true;
+    settingsState.syncProvider = "webdav";
     useSettingsStoreMock.mockReturnValue(settingsState);
 
     await act(async () => {
@@ -799,17 +800,20 @@ describe("DataSettings", { timeout: 60_000 }, () => {
       screen.getByRole("button", {
         name: "S3 Compatible Storage Auto Run",
       }),
-    ).toBeEnabled();
+    ).toBeDisabled();
     expect(
       screen.getByRole("button", {
         name: "S3 Compatible Storage Run Once on Startup",
       }),
-    ).toBeEnabled();
+    ).toBeDisabled();
   });
 
   it("shows inactive sync-source guidance when a backup target is enabled but not selected", async () => {
     const settingsState = createSettingsState();
     settingsState.webdavEnabled = true;
+    settingsState.webdavUrl = "https://webdav.example.com";
+    settingsState.webdavUsername = "owner";
+    settingsState.webdavPassword = "secret";
     settingsState.syncProvider = "s3";
     useSettingsStoreMock.mockReturnValue(settingsState);
 
@@ -824,5 +828,17 @@ describe("DataSettings", { timeout: 60_000 }, () => {
         "This target stays available for manual backup and restore, but automatic sync only runs for the current sync source.",
       ),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "WebDAV Auto Run" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "WebDAV Run Once on Startup" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("switch", { name: "Sync on Save (Experimental)" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Create remote backup" }),
+    ).toBeEnabled();
   });
 });

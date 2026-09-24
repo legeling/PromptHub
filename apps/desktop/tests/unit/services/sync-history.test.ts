@@ -15,7 +15,7 @@ describe("sync-history", () => {
     useSettingsStore.setState({ autoSyncHistory: [] });
   });
 
-  it("normalizes only valid automatic sync history entries", () => {
+  it("normalizes automatic and manual sync history entries", () => {
     const history = normalizeAutoSyncHistory([
       {
         id: "ok",
@@ -28,8 +28,17 @@ describe("sync-history", () => {
         localChanged: true,
       },
       {
+        id: "manual",
+        provider: "webdav",
+        reason: "manual",
+        status: "success",
+        startedAt: "2026-07-01T00:00:00.000Z",
+        finishedAt: "2026-07-01T00:00:01.000Z",
+        message: "manual backup",
+      },
+      {
         provider: "manual",
-        reason: "startup",
+        reason: "manual",
         status: "success",
         startedAt: "2026-07-01T00:00:00.000Z",
         finishedAt: "2026-07-01T00:00:01.000Z",
@@ -39,7 +48,7 @@ describe("sync-history", () => {
       "bad",
     ]);
 
-    expect(history).toHaveLength(1);
+    expect(history).toHaveLength(2);
     expect(history[0]).toMatchObject({
       id: "ok",
       provider: "webdav",
@@ -47,6 +56,12 @@ describe("sync-history", () => {
       status: "success",
       message: "synced",
       localChanged: true,
+    });
+    expect(history[1]).toMatchObject({
+      id: "manual",
+      provider: "webdav",
+      reason: "manual",
+      message: "manual backup",
     });
   });
 

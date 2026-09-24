@@ -13,6 +13,7 @@ import {
 } from "../../../services/backup-orchestrator";
 import { useSettingsStore } from "../../../stores/settings.store";
 import type { SettingsState } from "../../../stores/settings/settings-types";
+import { recordAutoSyncHistory } from "../../../services/sync-history";
 import { useToast } from "../../ui/Toast";
 import {
   getErrorMessage,
@@ -106,6 +107,21 @@ function createS3Options(settings: SettingsState) {
 function createS3DownloadOptions(settings: SettingsState) {
   const { incrementalSync, encryptionPassword } = createS3Options(settings);
   return { incrementalSync, encryptionPassword };
+}
+
+async function recordManualSyncOutcome(
+  provider: "webdav" | "s3",
+  startedAt: string,
+  result: { success: boolean; message: string; localChanged?: boolean },
+): Promise<void> {
+  await recordAutoSyncHistory({
+    provider,
+    reason: "manual",
+    status: result.success ? "success" : "failed",
+    startedAt,
+    message: result.message,
+    localChanged: result.localChanged,
+  });
 }
 
 function getSyncAvailability(settings: SettingsState) {
@@ -260,6 +276,7 @@ function useWebDAVActions(
 
   const handleWebDAVUpload = async () => {
     if (!configured()) return;
+    const startedAt = new Date().toISOString();
     try {
       const result = await operations.webdavUploading.run(() =>
         runWebDAVUpload({
@@ -267,9 +284,15 @@ function useWebDAVActions(
           options: createWebDAVOptions(settings),
         }),
       );
+      await recordManualSyncOutcome("webdav", startedAt, result);
       showToast(result.message, result.success ? "success" : "error");
     } catch (error) {
-      showToast(getErrorMessage(error), "error");
+      const message = getErrorMessage(error);
+      await recordManualSyncOutcome("webdav", startedAt, {
+        success: false,
+        message,
+      });
+      showToast(message, "error");
     }
   };
 
@@ -324,6 +347,7 @@ function useS3Actions(
 
   const handleS3Upload = async () => {
     if (!configured()) return;
+    const startedAt = new Date().toISOString();
     try {
       const result = await operations.s3Uploading.run(() =>
         runS3Upload({
@@ -331,9 +355,15 @@ function useS3Actions(
           options: createS3Options(settings),
         }),
       );
+      await recordManualSyncOutcome("s3", startedAt, result);
       showToast(result.message, result.success ? "success" : "error");
     } catch (error) {
-      showToast(getErrorMessage(error), "error");
+      const message = getErrorMessage(error);
+      await recordManualSyncOutcome("s3", startedAt, {
+        success: false,
+        message,
+      });
+      showToast(message, "error");
     }
   };
 

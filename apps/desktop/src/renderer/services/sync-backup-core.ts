@@ -10,6 +10,31 @@ import {
   restoreSettingsStateSnapshot,
   SENSITIVE_SETTINGS_FIELDS,
 } from "./settings-snapshot";
+import {
+  assertSafeAssetName,
+  computeFullHash,
+  computeSemanticHash,
+  CURRENT_MANIFEST_VERSION,
+  deriveImmutableObjectPath,
+  LEGACY_MANIFEST_VERSION,
+  mediaEntriesMatch,
+  parseManifestText,
+  validateManifestReferences,
+} from "./sync-backup-publication";
+import type {
+  BackupManifest,
+  BackupObjectReference,
+  LocalMediaObjects,
+} from "./sync-backup-publication";
+
+export {
+  CURRENT_MANIFEST_VERSION,
+  LEGACY_MANIFEST_VERSION,
+} from "./sync-backup-publication";
+export type {
+  BackupManifest,
+  BackupObjectReference,
+} from "./sync-backup-publication";
 
 export interface SyncResult {
   success: boolean;
@@ -23,31 +48,12 @@ export interface SyncResult {
     imagesDownloaded?: number;
     videosUploaded?: number;
     videosDownloaded?: number;
+    skillsUploaded?: number;
+    skillVersionsUploaded?: number;
+    skillFilesUploaded?: number;
     skillsDownloaded?: number;
     skipped?: number;
   };
-}
-
-export interface BackupManifest {
-  version: string;
-  createdAt: string;
-  updatedAt: string;
-  dataHash: string;
-  images: {
-    [fileName: string]: {
-      hash: string;
-      size: number;
-      uploadedAt: string;
-    };
-  };
-  videos: {
-    [fileName: string]: {
-      hash: string;
-      size: number;
-      uploadedAt: string;
-    };
-  };
-  encrypted?: boolean;
 }
 
 export interface BackupData extends Omit<DatabaseBackup, "version"> {
@@ -142,6 +148,13 @@ export const DATA_FILENAME = "data.json";
 export const IMAGES_DIR = "images";
 export const VIDEOS_DIR = "videos";
 export const LEGACY_BACKUP_FILENAME = "prompthub-backup.json";
+
+function countSkillFiles(backup: DatabaseBackup): number {
+  return Object.values(backup.skillFiles ?? {}).reduce(
+    (count, files) => count + files.length,
+    0,
+  );
+}
 
 function uint8ArrayToBase64(bytes: Uint8Array): string {
   let binary = "";
@@ -241,15 +254,9 @@ export async function decryptData(
   return decoder.decode(decrypted);
 }
 
+/** v4 compatibility digest; v5 object identities use the full SHA-256 above. */
 export async function computeHash(data: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const dataBuffer = encoder.encode(data);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", dataBuffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("")
-    .substring(0, 16);
+  return (await computeFullHash(data)).substring(0, 16);
 }
 
 function isIncrementalSyncEnabled(options?: SyncBackupOptions): boolean {
@@ -306,6 +313,7 @@ function buildLegacyBackupData(
     pluginPackages: fullBackup.pluginPackages,
     storeSources: fullBackup.storeSources,
     agentAssetFiles: fullBackup.agentAssetFiles,
+    agentManagement: fullBackup.agentManagement,
   };
 }
 
@@ -330,6 +338,7 @@ function buildIncrementalCoreData(fullBackup: DatabaseBackup): BackupData {
     pluginPackages: fullBackup.pluginPackages,
     storeSources: fullBackup.storeSources,
     agentAssetFiles: fullBackup.agentAssetFiles,
+    agentManagement: fullBackup.agentManagement,
   };
 }
 
@@ -361,6 +370,7 @@ async function serializeLegacyBackup(
     pluginPackages: backupData.pluginPackages,
     storeSources: backupData.storeSources,
     agentAssetFiles: backupData.agentAssetFiles,
+    agentManagement: backupData.agentManagement,
   };
 
   return JSON.stringify({
@@ -384,36 +394,6 @@ async function serializeIncrementalCoreData(
     encrypted: true,
     data: await encryptData(json, encryptionPassword),
   });
-}
-
-function parseManifestText(rawData: string): BackupManifest {
-  let cleanData = rawData;
-
-  if (cleanData.charCodeAt(0) === 0xfeff) {
-    cleanData = cleanData.slice(1);
-  }
-
-  const firstBrace = cleanData.indexOf("{");
-  const lastBrace = cleanData.lastIndexOf("}");
-  if (firstBrace !== -1 && lastBrace !== -1) {
-    cleanData = cleanData.substring(firstBrace, lastBrace + 1);
-  }
-
-  cleanData = cleanData.trim();
-  if (cleanData.startsWith("<")) {
-    throw new Error(
-      "Server returned HTML instead of JSON, please check remote sync server status / 服务器返回了 HTML 而非 JSON，请检查远程同步服务状态",
-    );
-  }
-
-  try {
-    return JSON.parse(cleanData) as BackupManifest;
-  } catch {
-    const preview = rawData.substring(0, 50);
-    throw new Error(
-      `Invalid manifest file format / manifest 文件格式错误 (${preview}...)`,
-    );
-  }
 }
 
 async function parseLegacyBackupPayload(
@@ -516,22 +496,45 @@ type VerifiedMedia = Record<string, string>;
 
 async function downloadAndVerifyMedia(
   entries:
-    | Record<string, { hash: string; size: number; uploadedAt: string }>
+    | Record<
+        string,
+        { hash: string; size: number; uploadedAt: string; path?: string }
+      >
     | undefined,
   resolvePath: (fileName: string) => string,
   downloadText: (path: string) => Promise<RemoteDownloadResult>,
   label: string,
+  immutable = false,
 ): Promise<VerifiedMedia> {
   const verified: VerifiedMedia = {};
 
   for (const fileName of Object.keys(entries || {})) {
-    const result = await downloadText(resolvePath(fileName));
-    if (!result.success || result.data === undefined) {
+    assertSafeAssetName(fileName);
+    const expected = entries?.[fileName];
+    const basePath = resolvePath(fileName);
+    let path = basePath;
+    if (immutable) {
+      if (
+        !expected?.path ||
+        expected.path !== deriveImmutableObjectPath(basePath, expected.hash)
+      ) {
+        throw new Error(`Unsafe remote path: ${expected?.path || ""}`);
+      }
+      path = expected.path;
+    }
+    const result = await downloadText(path);
+    if (!result.success && !result.notFound) {
+      throw new Error(
+        `Failed to download ${label} ${fileName}: ${result.error || "unknown error"}`,
+      );
+    }
+    if (result.notFound || result.data === undefined) {
       throw new Error(`Missing ${label} payload: ${fileName}`);
     }
 
-    const expected = entries?.[fileName];
-    const actualHash = await computeHash(result.data);
+    const actualHash = await (immutable
+      ? computeFullHash(result.data)
+      : computeHash(result.data));
     if (actualHash !== expected?.hash) {
       throw new Error(`media hash mismatch: ${label} ${fileName}`);
     }
@@ -714,6 +717,7 @@ async function downloadLegacySyncBackup(
         pluginPackages: data.pluginPackages,
         storeSources: data.storeSources,
         agentAssetFiles: data.agentAssetFiles,
+        agentManagement: data.agentManagement,
       });
 
       const restored =
@@ -785,14 +789,20 @@ export async function uploadSyncBackup(
     const videosCount = Object.keys(backupData.videos || {}).length;
     const promptsCount = fullBackup.prompts.length;
     const versionsCount = fullBackup.versions?.length || 0;
+    const skillsCount = fullBackup.skills?.length || 0;
+    const skillVersionsCount = fullBackup.skillVersions?.length || 0;
+    const skillFilesCount = countSkillFiles(fullBackup);
 
     return {
       success: true,
-      message: `Upload successful (${promptsCount} prompts, ${versionsCount} versions, ${imagesCount} images, ${videosCount} videos) / 上传成功 (${promptsCount} 条 Prompt, ${versionsCount} 个版本, ${imagesCount} 张图片, ${videosCount} 个视频)`,
+      message: `Upload successful (${promptsCount} prompts, ${versionsCount} versions, ${skillsCount} skills, ${skillVersionsCount} skill versions, ${skillFilesCount} skill files, ${imagesCount} images, ${videosCount} videos) / 上传成功 (${promptsCount} 条 Prompt, ${versionsCount} 个 Prompt 版本, ${skillsCount} 个 Skill, ${skillVersionsCount} 个 Skill 版本, ${skillFilesCount} 个 Skill 文件, ${imagesCount} 张图片, ${videosCount} 个视频)`,
       timestamp: new Date().toISOString(),
       localChanged: false,
       details: {
         promptsUploaded: promptsCount,
+        skillsUploaded: skillsCount,
+        skillVersionsUploaded: skillVersionsCount,
+        skillFilesUploaded: skillFilesCount,
         imagesUploaded: imagesCount,
         videosUploaded: videosCount,
       },
@@ -803,6 +813,188 @@ export async function uploadSyncBackup(
       message: `Upload failed: ${error instanceof Error ? error.message : "Unknown error"} / 上传失败: ${error instanceof Error ? error.message : "未知错误"}`,
     };
   }
+}
+
+async function readRemoteManifest(
+  adapter: RemoteSyncAdapter,
+): Promise<BackupManifest | null> {
+  const result = await adapter.downloadText(adapter.paths.manifest);
+  if (result.notFound) {
+    return null;
+  }
+  if (!result.success || result.data === undefined) {
+    throw new Error(
+      createFailureMessage(
+        "Failed to read remote manifest",
+        "读取远程 manifest 失败",
+        result.error,
+      ),
+    );
+  }
+
+  const manifest = parseManifestText(result.data);
+  validateManifestReferences(adapter.paths, manifest);
+  return manifest;
+}
+
+interface RemoteIncrementalSnapshot {
+  coreData: BackupData & { promptVersions?: PromptVersion[] };
+  semanticHash: string;
+}
+
+async function readRemoteIncrementalSnapshot(
+  adapter: RemoteSyncAdapter,
+  manifest: BackupManifest,
+  options?: SyncBackupOptions,
+): Promise<RemoteIncrementalSnapshot> {
+  const dataPath =
+    manifest.version === CURRENT_MANIFEST_VERSION
+      ? manifest.data?.path
+      : adapter.paths.data;
+  const result = await adapter.downloadText(dataPath || adapter.paths.data);
+  if (!result.success && !result.notFound) {
+    throw new Error(
+      createFailureMessage(
+        "Failed to download data file",
+        "下载数据文件失败",
+        result.error,
+      ),
+    );
+  }
+  if (result.notFound || result.data === undefined) {
+    throw new Error("Missing data file / 远程数据文件缺失");
+  }
+
+  const expectedHash =
+    manifest.version === CURRENT_MANIFEST_VERSION
+      ? manifest.data?.hash
+      : manifest.dataHash;
+  const actualHash = await (manifest.version === CURRENT_MANIFEST_VERSION
+    ? computeFullHash(result.data)
+    : computeHash(result.data));
+  if (!expectedHash || actualHash !== expectedHash) {
+    throw new Error("Incremental data hash mismatch");
+  }
+  if (
+    manifest.version === CURRENT_MANIFEST_VERSION &&
+    manifest.data &&
+    result.data.length !== manifest.data.size
+  ) {
+    throw new Error("Incremental data size mismatch");
+  }
+
+  const coreData = await parseIncrementalCorePayload(
+    result.data,
+    manifest,
+    options,
+  );
+  const semanticHash = await computeSemanticHash(coreData);
+  if (
+    manifest.version === CURRENT_MANIFEST_VERSION &&
+    !manifest.encrypted &&
+    semanticHash !== manifest.semanticHash
+  ) {
+    throw new Error("Incremental semantic hash mismatch");
+  }
+  return { coreData, semanticHash };
+}
+
+async function collectLocalImages(
+  fullBackup: DatabaseBackup,
+): Promise<LocalMediaObjects> {
+  const media: LocalMediaObjects = {};
+  for (const [fileName, content] of Object.entries(fullBackup.images || {})) {
+    assertSafeAssetName(fileName);
+    if (typeof content !== "string") {
+      throw new Error(`Invalid image payload: ${fileName}`);
+    }
+    media[fileName] = {
+      content,
+      hash: await computeFullHash(content),
+      size: content.length,
+    };
+  }
+  return media;
+}
+
+async function collectLocalVideos(
+  fullBackup: DatabaseBackup,
+): Promise<LocalMediaObjects> {
+  const media: LocalMediaObjects = {};
+  const videoFiles = new Set<string>();
+  for (const prompt of fullBackup.prompts || []) {
+    for (const fileName of prompt.videos || []) {
+      assertSafeAssetName(fileName);
+      videoFiles.add(fileName);
+    }
+  }
+
+  for (const fileName of videoFiles) {
+    const content = await window.electron?.readVideoBase64?.(fileName);
+    if (!content) {
+      throw new Error(`Missing local video payload: ${fileName}`);
+    }
+    media[fileName] = {
+      content,
+      hash: await computeFullHash(content),
+      size: content.length,
+    };
+  }
+  return media;
+}
+
+async function publishMediaObjects(
+  adapter: RemoteSyncAdapter,
+  local: LocalMediaObjects,
+  remote: BackupManifest["images"] | undefined,
+  resolvePath: (fileName: string) => string,
+  label: string,
+  allowReuse: boolean,
+): Promise<{
+  entries: BackupManifest["images"];
+  uploaded: number;
+  skipped: number;
+}> {
+  const entries: BackupManifest["images"] = {};
+  let uploaded = 0;
+  let skipped = 0;
+
+  for (const [fileName, media] of Object.entries(local)) {
+    const existing = remote?.[fileName];
+    if (
+      allowReuse &&
+      existing?.path &&
+      existing.hash === media.hash &&
+      Number(existing.size) === media.size &&
+      existing.path ===
+        deriveImmutableObjectPath(resolvePath(fileName), media.hash)
+    ) {
+      entries[fileName] = existing;
+      skipped++;
+      continue;
+    }
+
+    const path = deriveImmutableObjectPath(resolvePath(fileName), media.hash);
+    const uploadResult = await adapter.uploadText(path, media.content);
+    if (!uploadResult.success) {
+      throw new Error(
+        createFailureMessage(
+          `Failed to upload ${label} file`,
+          `上传${label}文件失败`,
+          uploadResult.error,
+        ),
+      );
+    }
+    entries[fileName] = {
+      path,
+      hash: media.hash,
+      size: media.size,
+      uploadedAt: new Date().toISOString(),
+    };
+    uploaded++;
+  }
+
+  return { entries, uploaded, skipped };
 }
 
 export async function incrementalUploadSyncBackup(
@@ -818,123 +1010,140 @@ export async function incrementalUploadSyncBackup(
       limitMedia: true,
     });
     const coreData = buildIncrementalCoreData(fullBackup);
+    const semanticHash = await computeSemanticHash(coreData);
     const dataString = await serializeIncrementalCoreData(
       coreData,
       options?.encryptionPassword,
     );
-    const dataHash = await computeHash(dataString);
+    const dataHash = await computeFullHash(dataString);
 
-    let remoteManifest: BackupManifest | null = null;
-    const manifestResult = await adapter.downloadText(adapter.paths.manifest);
-    if (manifestResult.success && manifestResult.data) {
-      try {
-        remoteManifest = parseManifestText(manifestResult.data);
-      } catch {
-        remoteManifest = null;
-      }
+    const localImages = includeMedia
+      ? await collectLocalImages(fullBackup)
+      : {};
+    const localVideos = includeMedia
+      ? await collectLocalVideos(fullBackup)
+      : {};
+    const remoteManifest = await readRemoteManifest(adapter);
+    const remoteSnapshot = remoteManifest
+      ? await readRemoteIncrementalSnapshot(adapter, remoteManifest, options)
+      : null;
+    if (remoteManifest?.version === CURRENT_MANIFEST_VERSION) {
+      await downloadAndVerifyMedia(
+        remoteManifest.images,
+        adapter.paths.image,
+        adapter.downloadText,
+        "remote media image",
+        true,
+      );
+      await downloadAndVerifyMedia(
+        remoteManifest.videos,
+        adapter.paths.video,
+        adapter.downloadText,
+        "remote media video",
+        true,
+      );
+    }
+    const encrypted = Boolean(options?.encryptionPassword);
+    const sameEncryption = remoteManifest?.encrypted === encrypted;
+    const mediaUnchanged =
+      !includeMedia ||
+      (remoteManifest !== null &&
+        mediaEntriesMatch(
+          localImages,
+          remoteManifest.images,
+          remoteManifest.version === LEGACY_MANIFEST_VERSION,
+        ) &&
+        mediaEntriesMatch(
+          localVideos,
+          remoteManifest.videos,
+          remoteManifest.version === LEGACY_MANIFEST_VERSION,
+        ));
+    const semanticUnchanged =
+      sameEncryption &&
+      remoteSnapshot !== null &&
+      remoteSnapshot.semanticHash === semanticHash;
+
+    if (remoteManifest && semanticUnchanged && mediaUnchanged) {
+      return createNoopSyncResult(
+        1 + Object.keys(localImages).length + Object.keys(localVideos).length,
+      );
     }
 
-    let uploadedCount = 0;
     let skippedCount = 0;
-    let imagesUploaded = 0;
-    let videosUploaded = 0;
-
-    if (!remoteManifest || remoteManifest.dataHash !== dataHash) {
-      const uploadResult = await adapter.uploadText(
-        adapter.paths.data,
-        dataString,
-      );
+    let dataReference: BackupObjectReference;
+    const reusableData =
+      remoteManifest?.version === CURRENT_MANIFEST_VERSION && semanticUnchanged
+        ? remoteManifest.data
+        : undefined;
+    if (reusableData) {
+      dataReference = reusableData;
+      skippedCount++;
+    } else {
+      const dataPath = deriveImmutableObjectPath(adapter.paths.data, dataHash);
+      const uploadResult = await adapter.uploadText(dataPath, dataString);
       if (!uploadResult.success) {
-        return {
-          success: false,
-          message: createFailureMessage(
+        throw new Error(
+          createFailureMessage(
             "Failed to upload data file",
             "上传数据文件失败",
             uploadResult.error,
           ),
+        );
+      }
+      dataReference = {
+        path: dataPath,
+        hash: dataHash,
+        size: dataString.length,
+        uploadedAt: new Date().toISOString(),
+      };
+    }
+
+    const imageResult = includeMedia
+      ? await publishMediaObjects(
+          adapter,
+          localImages,
+          remoteManifest?.images,
+          adapter.paths.image,
+          "image",
+          remoteManifest?.version === CURRENT_MANIFEST_VERSION,
+        )
+      : {
+          entries:
+            remoteManifest?.version === CURRENT_MANIFEST_VERSION
+              ? remoteManifest.images
+              : {},
+          uploaded: 0,
+          skipped: 0,
         };
-      }
-      uploadedCount++;
-    } else {
-      skippedCount++;
-    }
-
-    const newImageManifest: BackupManifest["images"] = {};
-    if (includeMedia && fullBackup.images) {
-      for (const [fileName, base64] of Object.entries(fullBackup.images)) {
-        const imageHash = await computeHash(base64);
-        const remoteImage = remoteManifest?.images?.[fileName];
-        if (!remoteImage || remoteImage.hash !== imageHash) {
-          const uploadResult = await adapter.uploadText(
-            adapter.paths.image(fileName),
-            base64,
-          );
-          if (uploadResult.success) {
-            imagesUploaded++;
-          }
-        } else {
-          skippedCount++;
-        }
-
-        newImageManifest[fileName] = {
-          hash: imageHash,
-          size: base64.length,
-          uploadedAt: new Date().toISOString(),
+    const videoResult = includeMedia
+      ? await publishMediaObjects(
+          adapter,
+          localVideos,
+          remoteManifest?.videos,
+          adapter.paths.video,
+          "video",
+          remoteManifest?.version === CURRENT_MANIFEST_VERSION,
+        )
+      : {
+          entries:
+            remoteManifest?.version === CURRENT_MANIFEST_VERSION
+              ? remoteManifest.videos
+              : {},
+          uploaded: 0,
+          skipped: 0,
         };
-      }
-    }
-
-    const newVideoManifest: BackupManifest["videos"] = {};
-    if (includeMedia) {
-      const videoFiles = new Set<string>();
-      (fullBackup.prompts || []).forEach((prompt) =>
-        prompt.videos?.forEach((video) => videoFiles.add(video)),
-      );
-
-      for (const fileName of videoFiles) {
-        try {
-          const base64 = await window.electron?.readVideoBase64?.(fileName);
-          if (!base64) {
-            continue;
-          }
-
-          const videoHash = await computeHash(base64);
-          const remoteVideo = remoteManifest?.videos?.[fileName];
-          if (!remoteVideo || remoteVideo.hash !== videoHash) {
-            const uploadResult = await adapter.uploadText(
-              adapter.paths.video(fileName),
-              base64,
-            );
-            if (uploadResult.success) {
-              videosUploaded++;
-            }
-          } else {
-            skippedCount++;
-          }
-
-          newVideoManifest[fileName] = {
-            hash: videoHash,
-            size: base64.length,
-            uploadedAt: new Date().toISOString(),
-          };
-        } catch (error) {
-          console.error(`[Sync] Failed to process video ${fileName}:`, error);
-        }
-      }
-    }
-
-    if (uploadedCount === 0 && imagesUploaded === 0 && videosUploaded === 0) {
-      return createNoopSyncResult(skippedCount);
-    }
+    skippedCount += imageResult.skipped + videoResult.skipped;
 
     const newManifest: BackupManifest = {
-      version: "4.0",
+      version: CURRENT_MANIFEST_VERSION,
       createdAt: remoteManifest?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      dataHash,
-      images: newImageManifest,
-      videos: newVideoManifest,
-      encrypted: !!options?.encryptionPassword,
+      dataHash: dataReference.hash,
+      data: dataReference,
+      semanticHash: encrypted ? undefined : semanticHash,
+      images: imageResult.entries,
+      videos: videoResult.entries,
+      encrypted,
     };
 
     const manifestUploadResult = await adapter.uploadText(
@@ -942,26 +1151,33 @@ export async function incrementalUploadSyncBackup(
       JSON.stringify(newManifest, null, 2),
     );
     if (!manifestUploadResult.success) {
-      return {
-        success: false,
-        message: createFailureMessage(
+      throw new Error(
+        createFailureMessage(
           "Failed to upload manifest",
           "上传 manifest 失败",
           manifestUploadResult.error,
         ),
-      };
+      );
     }
 
-    const totalImages = Object.keys(newImageManifest).length;
-    const totalVideos = Object.keys(newVideoManifest).length;
+    const imagesUploaded = imageResult.uploaded;
+    const videosUploaded = videoResult.uploaded;
+    const totalImages = Object.keys(imageResult.entries).length;
+    const totalVideos = Object.keys(videoResult.entries).length;
+    const skillsCount = fullBackup.skills?.length || 0;
+    const skillVersionsCount = fullBackup.skillVersions?.length || 0;
+    const skillFilesCount = countSkillFiles(fullBackup);
 
     return {
       success: true,
-      message: `Incremental upload completed (${fullBackup.prompts.length} prompts, ${fullBackup.versions?.length || 0} versions, ${imagesUploaded}/${totalImages} images updated, ${videosUploaded}/${totalVideos} videos updated, ${skippedCount} files skipped) / 增量上传完成 (${fullBackup.prompts.length} 条 Prompt, ${fullBackup.versions?.length || 0} 个版本, ${imagesUploaded}/${totalImages} 张图片更新, ${videosUploaded}/${totalVideos} 个视频更新, ${skippedCount} 个文件跳过)`,
+      message: `Incremental upload completed (${fullBackup.prompts.length} prompts, ${fullBackup.versions?.length || 0} versions, ${skillsCount} skills, ${skillVersionsCount} skill versions, ${skillFilesCount} skill files, ${imagesUploaded}/${totalImages} images updated, ${videosUploaded}/${totalVideos} videos updated, ${skippedCount} files skipped) / 增量上传完成 (${fullBackup.prompts.length} 条 Prompt, ${fullBackup.versions?.length || 0} 个 Prompt 版本, ${skillsCount} 个 Skill, ${skillVersionsCount} 个 Skill 版本, ${skillFilesCount} 个 Skill 文件, ${imagesUploaded}/${totalImages} 张图片更新, ${videosUploaded}/${totalVideos} 个视频更新, ${skippedCount} 个文件跳过)`,
       timestamp: new Date().toISOString(),
       localChanged: false,
       details: {
         promptsUploaded: fullBackup.prompts.length,
+        skillsUploaded: skillsCount,
+        skillVersionsUploaded: skillVersionsCount,
+        skillFilesUploaded: skillFilesCount,
         imagesUploaded,
         videosUploaded,
         skipped: skippedCount,
@@ -985,8 +1201,18 @@ export async function incrementalDownloadSyncBackup(
     let manifestText = preloadedManifestText;
     if (!manifestText) {
       const manifestResult = await adapter.downloadText(adapter.paths.manifest);
-      if (!manifestResult.success || !manifestResult.data) {
+      if (manifestResult.notFound) {
         return fallbackToLegacy();
+      }
+      if (!manifestResult.success || manifestResult.data === undefined) {
+        return {
+          success: false,
+          message: createFailureMessage(
+            "Failed to read remote manifest",
+            "读取远程 manifest 失败",
+            manifestResult.error,
+          ),
+        };
       }
       manifestText = manifestResult.data;
     }
@@ -1004,8 +1230,33 @@ export async function incrementalDownloadSyncBackup(
       };
     }
 
-    const dataResult = await adapter.downloadText(adapter.paths.data);
-    if (!dataResult.success || !dataResult.data) {
+    try {
+      validateManifestReferences(adapter.paths, manifest);
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Invalid manifest",
+      };
+    }
+
+    const dataPath =
+      manifest.version === CURRENT_MANIFEST_VERSION
+        ? manifest.data?.path
+        : adapter.paths.data;
+    const dataResult = await adapter.downloadText(
+      dataPath || adapter.paths.data,
+    );
+    if (!dataResult.success && !dataResult.notFound) {
+      return {
+        success: false,
+        message: createFailureMessage(
+          "Failed to download data file",
+          "下载数据文件失败",
+          dataResult.error,
+        ),
+      };
+    }
+    if (dataResult.notFound || dataResult.data === undefined) {
       return {
         success: false,
         message: createFailureMessage(
@@ -1016,9 +1267,22 @@ export async function incrementalDownloadSyncBackup(
       };
     }
 
-    const actualDataHash = await computeHash(dataResult.data);
-    if (actualDataHash !== manifest.dataHash) {
+    const actualDataHash = await (manifest.version === CURRENT_MANIFEST_VERSION
+      ? computeFullHash(dataResult.data)
+      : computeHash(dataResult.data));
+    const expectedDataHash =
+      manifest.version === CURRENT_MANIFEST_VERSION
+        ? manifest.data?.hash
+        : manifest.dataHash;
+    if (actualDataHash !== expectedDataHash) {
       throw new Error("Incremental data hash mismatch");
+    }
+    if (
+      manifest.version === CURRENT_MANIFEST_VERSION &&
+      manifest.data &&
+      dataResult.data.length !== manifest.data.size
+    ) {
+      throw new Error("Incremental data size mismatch");
     }
 
     const coreData = await parseIncrementalCorePayload(
@@ -1026,18 +1290,27 @@ export async function incrementalDownloadSyncBackup(
       manifest,
       options,
     );
+    if (
+      manifest.version === CURRENT_MANIFEST_VERSION &&
+      !manifest.encrypted &&
+      (await computeSemanticHash(coreData)) !== manifest.semanticHash
+    ) {
+      throw new Error("Incremental semantic hash mismatch");
+    }
 
     const verifiedImages = await downloadAndVerifyMedia(
       manifest.images,
       adapter.paths.image,
       adapter.downloadText,
       "media image",
+      manifest.version === CURRENT_MANIFEST_VERSION,
     );
     const verifiedVideos = await downloadAndVerifyMedia(
       manifest.videos,
       adapter.paths.video,
       adapter.downloadText,
       "media video",
+      manifest.version === CURRENT_MANIFEST_VERSION,
     );
 
     const { imagesDownloaded, videosDownloaded } = await runGuardedRestore(
@@ -1060,6 +1333,7 @@ export async function incrementalDownloadSyncBackup(
           pluginPackages: coreData.pluginPackages,
           storeSources: coreData.storeSources,
           agentAssetFiles: coreData.agentAssetFiles,
+          agentManagement: coreData.agentManagement,
         });
 
         const restoredImages = await restoreVerifiedMedia(
@@ -1110,7 +1384,7 @@ export async function downloadSyncBackup(
 ): Promise<SyncResult> {
   if (isIncrementalSyncEnabled(options)) {
     const manifestResult = await adapter.downloadText(adapter.paths.manifest);
-    if (manifestResult.success && manifestResult.data) {
+    if (manifestResult.success && manifestResult.data !== undefined) {
       return incrementalDownloadSyncBackup(
         adapter,
         options,
@@ -1122,6 +1396,16 @@ export async function downloadSyncBackup(
         manifestResult.data,
       );
     }
+    if (!manifestResult.notFound) {
+      return {
+        success: false,
+        message: createFailureMessage(
+          "Failed to read remote manifest",
+          "读取远程 manifest 失败",
+          manifestResult.error,
+        ),
+      };
+    }
   }
 
   return downloadLegacySyncBackup(adapter, options);
@@ -1131,51 +1415,48 @@ export async function getRemoteSyncBackupTimestamp(
   adapter: RemoteSyncAdapter,
   options?: SyncBackupOptions,
 ): Promise<{ exists: boolean; lastModified?: string }> {
-  try {
-    for (const path of getTimestampCandidates(adapter, options)) {
-      if (adapter.stat) {
-        const statResult = await adapter.stat(path);
-        if (statResult.exists) {
-          return statResult;
-        }
-        continue;
-      }
-
-      const downloadResult = await adapter.downloadText(path);
-      if (!downloadResult.success || !downloadResult.data) {
-        continue;
-      }
-
-      if (path === adapter.paths.manifest) {
-        try {
-          const manifest = parseManifestText(downloadResult.data);
-          return {
-            exists: true,
-            lastModified: manifest.updatedAt,
-          };
-        } catch {
-          continue;
-        }
-      }
-
-      try {
-        const { data } = await parseLegacyBackupPayload(
-          downloadResult.data,
-          options,
-        );
-        return {
-          exists: true,
-          lastModified: data.exportedAt,
-        };
-      } catch {
-        continue;
+  for (const path of getTimestampCandidates(adapter, options)) {
+    if (adapter.stat) {
+      const statResult = await adapter.stat(path);
+      if (statResult.exists) {
+        return statResult;
       }
     }
 
-    return { exists: false };
-  } catch {
-    return { exists: false };
+    const downloadResult = await adapter.downloadText(path);
+    if (downloadResult.notFound) {
+      continue;
+    }
+    if (!downloadResult.success || downloadResult.data === undefined) {
+      throw new Error(
+        createFailureMessage(
+          "Failed to read remote backup",
+          "读取远程备份失败",
+          downloadResult.error,
+        ),
+      );
+    }
+
+    if (path === adapter.paths.manifest) {
+      const manifest = parseManifestText(downloadResult.data);
+        validateManifestReferences(adapter.paths, manifest);
+      return {
+        exists: true,
+        lastModified: manifest.updatedAt,
+      };
+    }
+
+    const { data } = await parseLegacyBackupPayload(
+      downloadResult.data,
+      options,
+    );
+    return {
+      exists: true,
+      lastModified: data.exportedAt,
+    };
   }
+
+  return { exists: false };
 }
 
 export async function autoSyncBackup(

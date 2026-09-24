@@ -218,7 +218,7 @@ export function S3SyncPanel() {
                       onChange={(val) =>
                         settings.setS3AutoSyncInterval(Number(val))
                       }
-                      disabled={!settings.s3StorageEnabled}
+                      disabled={!settings.s3StorageEnabled || !s3IsSyncSource}
                       options={[
                         { value: "0", label: t("common.off", "Off") },
                         {
@@ -268,7 +268,7 @@ export function S3SyncPanel() {
                           settings.setS3SyncOnStartupDelay(num);
                         }
                       }}
-                      disabled={!settings.s3StorageEnabled}
+                      disabled={!settings.s3StorageEnabled || !s3IsSyncSource}
                       options={[
                         { value: "-1", label: t("common.off", "Off") },
                         {
@@ -323,7 +323,7 @@ export function S3SyncPanel() {
                     )}
                     checked={settings.s3SyncOnSave}
                     onChange={settings.setS3SyncOnSave}
-                    disabled={!settings.s3StorageEnabled}
+                    disabled={!settings.s3StorageEnabled || !s3IsSyncSource}
                   />
                 </div>
 

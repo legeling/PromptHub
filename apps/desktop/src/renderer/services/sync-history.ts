@@ -34,7 +34,10 @@ function isProvider(value: unknown): value is AutoSyncProviderKind {
 
 function isReason(value: unknown): value is AutoSyncReason {
   return (
-    value === "startup" || value === "startup-resume" || value === "interval"
+    value === "manual" ||
+    value === "startup" ||
+    value === "startup-resume" ||
+    value === "interval"
   );
 }
 

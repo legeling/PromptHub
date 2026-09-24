@@ -14,6 +14,8 @@ export function useAutoSyncPresentation() {
   };
 
   const getAutoSyncReasonLabel = (reason: AutoSyncHistoryEntry["reason"]) => {
+    if (reason === "manual")
+      return t("settings.autoSyncReasonManual", "Manual");
     if (reason === "startup")
       return t("settings.autoSyncReasonStartup", "Startup");
     if (reason === "startup-resume") {

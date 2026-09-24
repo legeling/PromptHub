@@ -15,7 +15,8 @@
 - 自部署 Web 是独立的远程备份目标，不受 `syncProvider` 选择限制。启用后可以与一个 WebDAV/S3 自动同步任务并行配置，但它的启动与定时任务只能上传新快照，不得拉取、合并或修改本地及 Web 在线工作区。
 - 桌面端数据设置中的云备份导航应使用 provider 导向命名，并直接显示每个 provider 是否已启用。
 - 对 `webdav` push/pull 的编排必须通过路由/页面外的 orchestrator 服务完成，避免在入口层直接堆叠远端流程细节。
-- 桌面端必须记录最近的自动操作，覆盖 WebDAV/S3 在线同步和自部署 Web 的启动、恢复启动、定时备份。记录只包含 provider、触发原因、状态、时间、是否更新本地数据和脱敏摘要，不得保存凭据、远端地址、token、bucket、remote path 或 payload。最近记录保存在设置摘要中，同时追加写入单个本地日志文件 `logs/auto-sync.jsonl`，不是每条记录一个文件。
+- 桌面端必须记录最近的远端操作，覆盖 WebDAV/S3 手动备份与在线同步，以及自部署 Web 的启动、恢复启动、定时备份。记录只包含 provider、触发原因、状态、时间、是否更新本地数据和脱敏摘要，不得保存凭据、远端地址、token、bucket、remote path 或 payload。最近记录保存在兼容设置字段 `autoSyncHistory` 中，同时追加写入单个本地日志文件 `logs/auto-sync.jsonl`，不是每条记录一个文件。
+- WebDAV/S3 legacy 与 incremental 上传成功结果必须明确报告 Prompt、Skill、Skill 版本、Skill 文件和媒体数量；零 Prompt 不得被呈现为无法判断 Skill 是否进入备份的“零数据”结果。
 
 ### 1.1 Stable Web Sync Response Shape
 
@@ -115,17 +116,26 @@ When desktop users enable more than one cloud backup target:
 
 - manual backup, download, and restore actions can remain available for every enabled target
 - WebDAV/S3 startup, interval, and save-triggered live sync run only for the selected `syncProvider`
+- WebDAV/S3 automatic cadence, startup, and save-triggered controls are disabled when that target is not the selected `syncProvider`; changing these dormant values must not appear actionable
 - self-hosted startup and interval backup can run independently, but only uploads immutable snapshots
 - settings navigation keeps provider-oriented labels and shows which providers are enabled without entering each panel
 
-### Scenario: Desktop user checks automatic sync history
+### Scenario: Desktop user checks sync history
 
-When desktop automatic sync or self-hosted automatic backup is enabled:
+When a desktop user runs a manual WebDAV/S3 backup or enables automatic sync or self-hosted automatic backup:
 
-- each automatic attempt records success, failure, or skipped state
+- each manual backup records success or failure, and each automatic attempt records success, failure, or skipped state
 - skipped state explains common reasons such as offline, hidden window, an in-flight operation, inactive live-sync provider, incomplete config, or Desktop/Web version mismatch
 - the data settings UI shows recent entries so users can confirm background sync activity without opening developer tools
 - the local data paths UI exposes `logs/auto-sync.jsonl` so users can open the durable local log file directly
+
+### Scenario: Desktop user backs up Skills to WebDAV or S3
+
+When a workspace contains Skills and the user creates a remote backup:
+
+- the remote snapshot carries Skill metadata, versions, and complete filtered file snapshots
+- the success message and typed result details report all three Skill counts even when the workspace has zero Prompts
+- a Skill metadata/version/file read failure fails the backup instead of reporting zero Skills
 
 ### Scenario: User needs deployment-level sync guidance
 

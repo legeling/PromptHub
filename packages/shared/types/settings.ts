@@ -117,7 +117,11 @@ export type SyncProviderKind = "manual" | "webdav" | "self-hosted" | "s3";
 
 export type AutoSyncProviderKind = Exclude<SyncProviderKind, "manual">;
 
-export type AutoSyncReason = "startup" | "startup-resume" | "interval";
+export type AutoSyncReason =
+  | "manual"
+  | "startup"
+  | "startup-resume"
+  | "interval";
 
 export type AutoSyncStatus = "success" | "failed" | "skipped";
 
