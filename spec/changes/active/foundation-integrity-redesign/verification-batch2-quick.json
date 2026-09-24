@@ -1,0 +1,405 @@
+{
+  "schemaVersion": 1,
+  "profile": "quick",
+  "surfaces": ["cli", "core", "desktop"],
+  "status": "failed",
+  "startedAt": 1788868393758,
+  "endedAt": 1788868872410,
+  "durationMs": 478652,
+  "maxConcurrency": 2,
+  "results": [
+    {
+      "id": "governance-ci-config",
+      "label": "CI surface selection tests",
+      "command": {
+        "executable": "pnpm",
+        "args": ["test:ci-config"]
+      },
+      "status": "passed",
+      "startedAt": 1788868393758,
+      "endedAt": 1788868394301,
+      "durationMs": 543,
+      "exitCode": 0,
+      "signal": null,
+      "outputTail": "b-monorepo@0.6.0-beta.2 test:ci-config /Users/lingxiaotian/Programs/personal/PromptHub\n> node --test scripts/detect-ci-surfaces.test.mjs scripts/react-type-boundaries.test.mjs scripts/version-alignment.test.mjs\n\n\u2714 maps direct app changes to their owning surface (1.467666ms)\n\u2714 fans shared and core changes out to their consumers (0.100375ms)\n\u2714 fans root build changes out but leaves documentation to governance (0.060542ms)\n\u2714 fails safe for unknown paths and uses the shared graph for web consumers (0.061292ms)\n\u2714 quality workflow preserves unconditional governance and surface gates (0.415208ms)\n\u2714 Cloudflare Worker workflow has an independent bounded gate (0.261041ms)\n\u2714 pins the public-hoisted React type boundary for mixed React workspaces (1.861042ms)\n\u2714 keeps every shipped distribution on the release candidate version (1.683084ms)\n\u2714 keeps the standalone CLI runtime version aligned (0.390625ms)\n\u2139 tests 9\n\u2139 suites 0\n\u2139 pass 9\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 44.435125\n",
+      "outputTruncated": true
+    },
+    {
+      "id": "governance-spec",
+      "label": "Specification governance",
+      "command": {
+        "executable": "pnpm",
+        "args": ["spec:test"]
+      },
+      "status": "failed",
+      "startedAt": 1788868393759,
+      "endedAt": 1788868394244,
+      "durationMs": 485,
+      "exitCode": 1,
+      "signal": null,
+      "outputTail": "\n> prompthub-monorepo@0.6.0-beta.2 spec:test /Users/lingxiaotian/Programs/personal/PromptHub\n> bash .agents/skills/spec-init/tests/spec-init-commit-rules.sh && bash .agents/skills/spec-init/tests/spec-init-governance.sh && bash .agents/skills/spec-init/tests/spec-change-index.sh && bash .agents/skills/spec-init/tests/spec-governance-single-source.sh && pnpm spec:traceability\n\nbash: .agents/skills/spec-init/tests/spec-init-commit-rules.sh: No such file or directory\n\u2009ELIFECYCLE\u2009 Command failed.\n",
+      "outputTruncated": false
+    },
+    {
+      "id": "governance-file-size",
+      "label": "Source file size limits",
+      "command": {
+        "executable": "pnpm",
+        "args": ["lint:file-size"]
+      },
+      "status": "passed",
+      "startedAt": 1788868394244,
+      "endedAt": 1788868395121,
+      "durationMs": 877,
+      "exitCode": 0,
+      "signal": null,
+      "outputTail": "\n> prompthub-monorepo@0.6.0-beta.2 lint:file-size /Users/lingxiaotian/Programs/personal/PromptHub\n> node scripts/check-file-line-limits.mjs\n\nFile line limit passed: new files <= 1500; legacy files did not grow; hard limit 2000.\n",
+      "outputTruncated": false
+    },
+    {
+      "id": "core-typecheck",
+      "label": "Core package typecheck",
+      "command": {
+        "executable": "pnpm",
+        "args": ["--filter", "@prompthub/core", "typecheck"]
+      },
+      "status": "passed",
+      "startedAt": 1788868394301,
+      "endedAt": 1788868396048,
+      "durationMs": 1747,
+      "exitCode": 0,
+      "signal": null,
+      "outputTail": "\n> @prompthub/core@0.1.0 typecheck /Users/lingxiaotian/Programs/personal/PromptHub/packages/core\n> tsc --noEmit\n\n",
+      "outputTruncated": false
+    },
+    {
+      "id": "core-test",
+      "label": "Core package tests",
+      "command": {
+        "executable": "pnpm",
+        "args": ["--filter", "@prompthub/core", "test"]
+      },
+      "status": "passed",
+      "startedAt": 1788868395121,
+      "endedAt": 1788868428153,
+      "durationMs": 33032,
+      "exitCode": 0,
+      "signal": null,
+      "outputTail": "Test Files  59 passed (59)\nTests  630 passed (630)\nDuration  32.34s (transform 984ms, setup 0ms, collect 4.43s, tests 52.78s, environment 6ms, prepare 1.88s)",
+      "outputTruncated": true
+    },
+    {
+      "id": "cli-lint",
+      "label": "CLI lint",
+      "command": {
+        "executable": "pnpm",
+        "args": ["--filter", "@prompthub/cli", "lint"]
+      },
+      "status": "passed",
+      "startedAt": 1788868396048,
+      "endedAt": 1788868397276,
+      "durationMs": 1228,
+      "exitCode": 0,
+      "signal": null,
+      "outputTail": "\n> @prompthub/cli@0.6.0-beta.2 lint /Users/lingxiaotian/Programs/personal/PromptHub/apps/cli\n> eslint . --ext ts --report-unused-disable-directives --max-warnings 0\n\n",
+      "outputTruncated": false
+    },
+    {
+      "id": "cli-typecheck",
+      "label": "CLI typecheck",
+      "command": {
+        "executable": "pnpm",
+        "args": ["--filter", "@prompthub/cli", "typecheck"]
+      },
+      "status": "passed",
+      "startedAt": 1788868397276,
+      "endedAt": 1788868398968,
+      "durationMs": 1692,
+      "exitCode": 0,
+      "signal": null,
+      "outputTail": "\n> @prompthub/cli@0.6.0-beta.2 typecheck /Users/lingxiaotian/Programs/personal/PromptHub/apps/cli\n> tsc --noEmit\n\n",
+      "outputTruncated": false
+    },
+    {
+      "id": "cli-test",
+      "label": "CLI tests",
+      "command": {
+        "executable": "pnpm",
+        "args": ["--filter", "@prompthub/cli", "test"]
+      },
+      "status": "passed",
+      "startedAt": 1788868428153,
+      "endedAt": 1788868457758,
+      "durationMs": 29605,
+      "exitCode": 0,
+      "signal": null,
+      "outputTail": "Test Files  16 passed (16)\nTests  123 passed (123)\nDuration  28.93s (transform 522ms, setup 0ms, collect 1.72s, tests 52.03s, environment 1ms, prepare 326ms)",
+      "outputTruncated": true
+    },
+    {
+      "id": "desktop-lint",
+      "label": "Desktop lint",
+      "command": {
+        "executable": "pnpm",
+        "args": ["--filter", "@prompthub/desktop", "lint"]
+      },
+      "status": "passed",
+      "startedAt": 1788868398968,
+      "endedAt": 1788868406913,
+      "durationMs": 7945,
+      "exitCode": 0,
+      "signal": null,
+      "outputTail": "\n> @prompthub/desktop@0.6.0-beta.2 lint /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> eslint . --ext ts,tsx,mts --report-unused-disable-directives --max-warnings 0\n\n",
+      "outputTruncated": false
+    },
+    {
+      "id": "desktop-typecheck",
+      "label": "Desktop typecheck",
+      "command": {
+        "executable": "pnpm",
+        "args": ["--filter", "@prompthub/desktop", "typecheck"]
+      },
+      "status": "passed",
+      "startedAt": 1788868406913,
+      "endedAt": 1788868421974,
+      "durationMs": 15061,
+      "exitCode": 0,
+      "signal": null,
+      "outputTail": "\n> @prompthub/desktop@0.6.0-beta.2 typecheck /Users/lingxiaotian/Programs/personal/PromptHub/apps/desktop\n> tsc --noEmit\n\n",
+      "outputTruncated": false
+    },
+    {
+      "id": "desktop-unit-1",
+      "label": "Desktop unit tests (shard 1/8)",
+      "command": {
+        "executable": "pnpm",
+        "args": [
+          "--filter",
+          "@prompthub/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "tests/unit",
+          "--shard",
+          "1/8",
+          "--minWorkers",
+          "2",
+          "--maxWorkers",
+          "2"
+        ]
+      },
+      "status": "passed",
+      "startedAt": 1788868457759,
+      "endedAt": 1788868509324,
+      "durationMs": 51565,
+      "exitCode": 0,
+      "signal": null,
+      "outputTail": "Test Files  78 passed (78)\nTests  682 passed (682)\nDuration  50.94s (transform 3.49s, setup 8.31s, collect 12.88s, tests 51.27s, environment 17.62s, prepare 2.59s)",
+      "outputTruncated": true
+    },
+    {
+      "id": "desktop-unit-2",
+      "label": "Desktop unit tests (shard 2/8)",
+      "command": {
+        "executable": "pnpm",
+        "args": [
+          "--filter",
+          "@prompthub/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "tests/unit",
+          "--shard",
+          "2/8",
+          "--minWorkers",
+          "2",
+          "--maxWorkers",
+          "2"
+        ]
+      },
+      "status": "passed",
+      "startedAt": 1788868509324,
+      "endedAt": 1788868534796,
+      "durationMs": 25472,
+      "exitCode": 0,
+      "signal": null,
+      "outputTail": "Test Files  78 passed (78)\nTests  760 passed (760)\nDuration  24.84s (transform 2.82s, setup 4.79s, collect 10.19s, tests 15.96s, environment 10.01s, prepare 1.81s)",
+      "outputTruncated": true
+    },
+    {
+      "id": "desktop-unit-3",
+      "label": "Desktop unit tests (shard 3/8)",
+      "command": {
+        "executable": "pnpm",
+        "args": [
+          "--filter",
+          "@prompthub/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "tests/unit",
+          "--shard",
+          "3/8",
+          "--minWorkers",
+          "2",
+          "--maxWorkers",
+          "2"
+        ]
+      },
+      "status": "passed",
+      "startedAt": 1788868534796,
+      "endedAt": 1788868572425,
+      "durationMs": 37629,
+      "exitCode": 0,
+      "signal": null,
+      "outputTail": "Test Files  78 passed (78)\nTests  726 passed (726)\nDuration  36.97s (transform 3.00s, setup 4.93s, collect 9.29s, tests 36.86s, environment 11.44s, prepare 1.88s)",
+      "outputTruncated": true
+    },
+    {
+      "id": "desktop-unit-4",
+      "label": "Desktop unit tests (shard 4/8)",
+      "command": {
+        "executable": "pnpm",
+        "args": [
+          "--filter",
+          "@prompthub/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "tests/unit",
+          "--shard",
+          "4/8",
+          "--minWorkers",
+          "2",
+          "--maxWorkers",
+          "2"
+        ]
+      },
+      "status": "passed",
+      "startedAt": 1788868572425,
+      "endedAt": 1788868620250,
+      "durationMs": 47825,
+      "exitCode": 0,
+      "signal": null,
+      "outputTail": "Test Files  78 passed (78)\nTests  790 passed (790)\nDuration  47.21s (transform 2.96s, setup 4.63s, collect 8.92s, tests 63.99s, environment 8.99s, prepare 1.73s)",
+      "outputTruncated": true
+    },
+    {
+      "id": "desktop-unit-5",
+      "label": "Desktop unit tests (shard 5/8)",
+      "command": {
+        "executable": "pnpm",
+        "args": [
+          "--filter",
+          "@prompthub/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "tests/unit",
+          "--shard",
+          "5/8",
+          "--minWorkers",
+          "2",
+          "--maxWorkers",
+          "2"
+        ]
+      },
+      "status": "passed",
+      "startedAt": 1788868620251,
+      "endedAt": 1788868653396,
+      "durationMs": 33145,
+      "exitCode": 0,
+      "signal": null,
+      "outputTail": "Test Files  78 passed (78)\nTests  693 passed (693)\nDuration  32.54s (transform 3.06s, setup 5.00s, collect 9.22s, tests 31.58s, environment 10.85s, prepare 1.91s)",
+      "outputTruncated": true
+    },
+    {
+      "id": "desktop-unit-6",
+      "label": "Desktop unit tests (shard 6/8)",
+      "command": {
+        "executable": "pnpm",
+        "args": [
+          "--filter",
+          "@prompthub/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "tests/unit",
+          "--shard",
+          "6/8",
+          "--minWorkers",
+          "2",
+          "--maxWorkers",
+          "2"
+        ]
+      },
+      "status": "passed",
+      "startedAt": 1788868653396,
+      "endedAt": 1788868741454,
+      "durationMs": 88058,
+      "exitCode": 0,
+      "signal": null,
+      "outputTail": "Test Files  78 passed (78)\nTests  675 passed (675)\nDuration  87.31s (transform 4.86s, setup 7.80s, collect 16.46s, tests 128.41s, environment 9.91s, prepare 2.68s)",
+      "outputTruncated": true
+    },
+    {
+      "id": "desktop-unit-7",
+      "label": "Desktop unit tests (shard 7/8)",
+      "command": {
+        "executable": "pnpm",
+        "args": [
+          "--filter",
+          "@prompthub/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "tests/unit",
+          "--shard",
+          "7/8",
+          "--minWorkers",
+          "2",
+          "--maxWorkers",
+          "2"
+        ]
+      },
+      "status": "passed",
+      "startedAt": 1788868741454,
+      "endedAt": 1788868798786,
+      "durationMs": 57332,
+      "exitCode": 0,
+      "signal": null,
+      "outputTail": "Test Files  78 passed (78)\nTests  628 passed (628)\nDuration  55.39s (transform 6.29s, setup 8.47s, collect 18.13s, tests 51.78s, environment 17.96s, prepare 3.40s)",
+      "outputTruncated": true
+    },
+    {
+      "id": "desktop-unit-8",
+      "label": "Desktop unit tests (shard 8/8)",
+      "command": {
+        "executable": "pnpm",
+        "args": [
+          "--filter",
+          "@prompthub/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "tests/unit",
+          "--shard",
+          "8/8",
+          "--minWorkers",
+          "2",
+          "--maxWorkers",
+          "2"
+        ]
+      },
+      "status": "passed",
+      "startedAt": 1788868798786,
+      "endedAt": 1788868872410,
+      "durationMs": 73624,
+      "exitCode": 0,
+      "signal": null,
+      "outputTail": "Test Files  71 passed (71)\nTests  668 passed (668)\nDuration  72.41s (transform 4.59s, setup 7.53s, collect 13.52s, tests 89.23s, environment 16.59s, prepare 2.61s)",
+      "outputTruncated": true
+    }
+  ],
+  "recordNote": "Passed output condensed to original test summaries or last 1000 characters; failure output retained. Detailed transient logs are not retained."
+}

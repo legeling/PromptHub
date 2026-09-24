@@ -1,0 +1,53 @@
+{
+  "recordedAt": "2026-09-05T08:39:05.356Z",
+  "status": "batch-1-focused-verification; full-redesign-in-progress",
+  "tests": {
+    "core": 91,
+    "desktop": 70,
+    "worker": 26,
+    "cli": 20,
+    "selfHostedWebPromptRoutes": 17,
+    "totalDistinctCases": 224,
+    "note": "Counts combine disjoint suites and targeted reruns after fixes, not one full-repository invocation."
+  },
+  "canonicalEntryPublicationCoverage": {
+    "lines": {
+      "total": 569,
+      "covered": 569,
+      "skipped": 0,
+      "pct": 100
+    },
+    "statements": {
+      "total": 569,
+      "covered": 569,
+      "skipped": 0,
+      "pct": 100
+    },
+    "functions": {
+      "total": 22,
+      "covered": 22,
+      "skipped": 0,
+      "pct": 100
+    },
+    "branches": {
+      "total": 249,
+      "covered": 242,
+      "skipped": 0,
+      "pct": 97.18
+    },
+    "branchesTrue": {
+      "total": 0,
+      "covered": 0,
+      "skipped": 0,
+      "pct": "Unknown"
+    }
+  },
+  "unmetReleaseGates": [
+    "100% changed branch/condition coverage",
+    "whole-root owner IPC and legacy-writer isolation",
+    "three-way sync and conditional remote HEAD",
+    "server normalized row migration",
+    "full release harness",
+    "native Windows and real remote-service acceptance"
+  ]
+}

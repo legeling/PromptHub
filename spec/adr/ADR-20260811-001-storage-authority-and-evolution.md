@@ -2,6 +2,12 @@
 
 ## Status
 
+The local universal file-first / SQLite-projection decision is superseded for the
+new client target by [FR-FOUNDATION-003](../changes/active/foundation-integrity-redesign/specs/foundation/spec.md#fr-foundation-003-data-ownership-and-invariants)
+on 2026-09-15. The sections below record the prior decision and existing data
+layout, not instructions to add more canonical copies. Implementation of the
+replacement remains pending. Unrelated cloud decisions are unchanged.
+
 Accepted on 2026-08-11 and implemented locally on 2026-08-12. File-first local
 authority is active through the guarded startup migration; official backup and
 SaaS portions remain gated by their child changes and verification evidence.

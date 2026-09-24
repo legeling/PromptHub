@@ -1,5 +1,13 @@
 # Desktop Settings Authority Delta
 
+The physical authority decision below is superseded for the new client target by
+[FR-FOUNDATION-003](../../../foundation-integrity-redesign/specs/foundation/spec.md#fr-foundation-003-data-ownership-and-invariants):
+SQLite owns durable application settings. Existing config files are protected
+upgrade inputs until conversion is verified. The former file-authority scenarios
+below describe prior behavior, not the target acceptance. Field classification,
+secret protection, atomic update, reload and device/portable distinctions still
+apply; they do not require a second writable copy of settings.
+
 ## Added Requirements
 
 ### `FR-CONFIG-001`: Canonical Config Is The Sole Durable Authority

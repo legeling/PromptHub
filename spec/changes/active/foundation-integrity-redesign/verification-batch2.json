@@ -1,0 +1,125 @@
+{
+  "recordedAt": "2026-09-08",
+  "status": "catalog-startup-focused-verification-passed",
+  "focusedTests": {
+    "coreStartup": 32,
+    "coreStorageShadow": 22,
+    "coreCommandOutcomes": 3,
+    "coreInvalidatedDatabase": 1,
+    "desktopStartupAndSelfHeal": 22,
+    "cliPromptAndWorkspace": 20,
+    "totalDistinctCases": 100
+  },
+  "coverage": {
+    "canonical-catalog-reconciliation.ts": {
+      "lines": {
+        "total": 165,
+        "covered": 165,
+        "skipped": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 10,
+        "covered": 10,
+        "skipped": 0,
+        "pct": 100
+      },
+      "statements": {
+        "total": 165,
+        "covered": 165,
+        "skipped": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 42,
+        "covered": 42,
+        "skipped": 0,
+        "pct": 100
+      }
+    },
+    "database.ts": {
+      "lines": {
+        "total": 30,
+        "covered": 30,
+        "skipped": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 1,
+        "covered": 1,
+        "skipped": 0,
+        "pct": 100
+      },
+      "statements": {
+        "total": 30,
+        "covered": 30,
+        "skipped": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 7,
+        "covered": 7,
+        "skipped": 0,
+        "pct": 100
+      }
+    }
+  },
+  "conditionMatrix": [
+    "first-open canonical; repeated-open canonical; non-canonical startup",
+    "valid, logically stale, missing and unreadable database",
+    "quick_check empty, non-ok, missing row and ok",
+    "default reject and Desktop explicit unreadable rebuild policy",
+    "missing primary with each existing journal/shm/wal sidecar; missing primary with none",
+    "matching hashes, changed Prompt graph, changed resource catalog and unreadable derived graph",
+    "no clients, live client, unknown client; migration already held",
+    "bound path, external path, file and ancestor symlink, directory instead of file",
+    "replacement succeeds, replacement fails, published verification mismatches, committed recovery",
+    "future schema, incompatible operational columns, invalid canonical graph and other-domain bundle"
+  ],
+  "staticChecks": [
+    "Core tsc --noEmit passed",
+    "Desktop tsc --noEmit passed",
+    "scoped Desktop ESLint passed",
+    "file-size gate passed",
+    "traceability passed"
+  ],
+  "boundaries": [
+    "real temporary filesystem and WASM SQLite on macOS",
+    "CLI entrypoint exercised in-process",
+    "no live profile or desktop GUI",
+    "V8 branch coverage plus explicit condition cases; not formal MC/DC",
+    "full redesign, OS root owner, native Windows, real remote providers and release acceptance remain incomplete",
+    "current-catalog equality retains Prompt graph and resource manifest hashes; independent drift in other domain SQL projections remains open"
+  ],
+  "quickProfile": {
+    "status": "failed",
+    "passedChecks": 17,
+    "failedChecks": 1,
+    "coreTests": 630,
+    "cliTests": 123,
+    "desktopUnitTests": 5622,
+    "totalProductTests": 6375,
+    "failure": "governance-spec: pre-existing deleted .agents/skills/spec-init/tests/spec-init-commit-rules.sh",
+    "report": "verification-batch2-quick.json",
+    "workers": "harness concurrency 2; Vitest thread/fork maxima 2"
+  },
+  "startupMeasurement": {
+    "promptCount": 1000,
+    "bodyBytes": 1024,
+    "currentMs": 1365.8587499999999,
+    "rebuildMs": 1437.6781249999995,
+    "maxRssDeltaKiB": 6416,
+    "node": "v26.7.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "testCount": 1,
+    "samplesPerState": 1,
+    "command": "node_modules/.bin/vitest run --config vitest.performance.config.ts performance/canonical-catalog-startup.perf.ts",
+    "note": "Observation after quick tests finished; cumulative process maxRSS delta, not absolute peak or isolated allocation; not P95, 10k or native Windows acceptance."
+  },
+  "cleanup": {
+    "processes": "All task test, typecheck and harness sessions exited; no service retained.",
+    "fixtures": "Test-owned temporary roots removed by finally/afterEach.",
+    "coverage": "Raw transient coverage removed after recording summary."
+  }
+}

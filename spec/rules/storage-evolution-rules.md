@@ -9,17 +9,15 @@ sync protocol, recovery behavior, or cloud object lifecycle.
 - Every persistent value must have one declared authority, owner, physical
   class, retention policy, reload behavior, migration path, rollback behavior,
   and verification layer before implementation.
-- PromptHub-owned local user assets must have a versioned canonical
-  representation below `data/`. The local SQLite catalog, renderer storage,
-  cache, external Agent projection, and adjacent backup file must not be their
-  only copy.
-- Local SQLite may authoritatively own only explicitly classified operational
-  state. Server authentication, tenancy, leases, and remote service state remain
-  database-authoritative in their server product boundary.
-- Non-secret device/application configuration belongs under the classified
-  `config/` owner. Secrets belong in an OS facility or encrypted device-bound
-  vault. Cache, logs, recovery artifacts, and portable exports are not user
-  asset domains.
+- Client persistence uses only SQLite and the filesystem. The current ownership
+  contract is [FR-FOUNDATION-003](../changes/active/foundation-integrity-redesign/specs/foundation/spec.md#fr-foundation-003-data-ownership-and-invariants).
+  It supersedes the former universal file-first/projection requirement; existing
+  installations must be converted without data loss before obsolete copies go.
+- Server authentication, tenancy and remote state retain their server database
+  authority; the client decision does not migrate or restructure server data.
+- Credentials must remain protected. Cache, logs, backups and recovery artifacts
+  are derived/operational uses of the two storage mechanisms, not independently
+  writable business authorities.
 
 ## Adding A Feature Or Asset Domain
 
@@ -27,7 +25,7 @@ Before a new durable domain writes production data, its authoritative topic must
 define:
 
 1. stable resource identity and ownership;
-2. canonical `data/<domain>/` bundle or explicit server-authoritative exception;
+2. owning SQLite entity or actual filesystem resource, with no duplicate authority;
 3. domain schema version and user-visible revision behavior;
 4. referenced media/object behavior and deletion semantics;
 5. local catalog/search projection and rebuild behavior;
@@ -56,22 +54,35 @@ application version:
 Historical converter entries and committed database migrations are immutable.
 Corrections receive a new ordered identifier and checksum.
 
+The accepted client **0.6.0 migration baseline** and adoption acceptance are
+owned by [the foundation requirements](../changes/active/foundation-integrity-redesign/specs/foundation/spec.md#client-migration-baseline-060).
+The baseline is pending implementation and release verification.
+
 ## Compatibility And Publication
 
 - A process binds one complete root and layout epoch before opening storage. It
   must not mix independently selected legacy and canonical domain paths.
-- Supported older resources use ordered converters. Additive readers preserve
-  unknown fields. Unknown newer resources fail closed or open read-only and are
-  never rewritten by an older client.
+- Old data is supported by migration, not by version branches in ordinary
+  business code. Historical schema/field/path readers belong only to the
+  explicit upgrade/import boundary. After migration, every business reader and
+  writer uses the single current contract; it must not try old fields, paths,
+  response shapes or storage backends as fallbacks.
+- Startup validates or completes the required upgrade before enabling normal
+  business access. A failed/partial upgrade preserves recoverable source data
+  and reports failure; it never activates an old-mode business implementation.
+  Unknown newer formats are not downgraded or rewritten.
+- Restored/imported old data passes through the same conversion boundary before
+  it enters normal business storage. Historical migration scripts remain for
+  users skipping releases; old runtime implementations do not remain with them.
 - Layout, schema, restore, and authority changes use staging, bounded capacity
   preflight, integrity verification, durable journal/state markers, atomic
   publication, reopen verification, and a tested rollback path.
-- Existing authority remains active until a shadow rebuild proves stable IDs,
-  counts, hashes, versions, relations, and media references match.
-- After local file-first authority is active, every production mutation of a
-  user-owned domain must publish its canonical bundle/object state through the
-  domain coordinator. SQLite-only writes are permitted only for explicitly
-  classified catalog, compatibility, server-authoritative, or operational rows.
+- Source data remains intact for recovery until conversion verifies stable IDs,
+  counts, content, versions, relations and media references. Preserving that
+  source does not authorize running parallel old/new business implementations.
+- Structured business mutations commit through their SQLite transaction. Actual
+  file changes use the necessary file publication/recovery boundary; ordinary
+  row edits do not require a second canonical-file publication.
 - Migration code must be idempotent and restartable. It must never call an
   empty target directory or partially populated database a completed upgrade.
 
@@ -112,9 +123,9 @@ Corrections receive a new ordered identifier and checksum.
   malformed input, Unicode, traversal and symlink attacks, low disk, large
   inventories, concurrent access, interruption at every publication boundary,
   restart, rollback, cleanup, and unknown newer versions.
-- A local authority change is not complete until deleting/staging a rebuild of
-  the catalog from canonical files reproduces all user-owned assets, versions,
-  relations, and media references.
+- A local authority change is not complete until upgraded data can be read,
+  edited, reopened and restored with all assets, versions, relations and file
+  references intact. A business database must not be treated as disposable.
 - A cloud storage change is not complete without tenant-isolation, idempotency,
   quota, corruption, migration, object cleanup, and restore-drill evidence.
 

@@ -52,12 +52,14 @@ For new features, define the boundary before writing code:
 
 Do not put durable business rules only in React components or one-off IPC handlers. Shared behavior belongs in `packages/core`; storage primitives belong in `packages/db`; shared contracts belong in `packages/shared`.
 
-### 0.5 Test-First Rule
+### 0.5 Functional Acceptance and Test-First Rule
 
-Follow [testing-standards.md](spec/rules/testing-standards.md) for test-first
-changes, coverage, adversarial cases, real UI evidence, and failure recovery.
+[testing-standards.md](spec/rules/testing-standards.md) owns test design and
+acceptance. Establish the normal workflow through real entrypoints and observable
+results first, then test black-box inputs and applicable failure recovery.
 Write regression tests before the fix; finish the implementation batch before
-running checks. Explain any missing evidence without claiming it passed.
+running checks. Mock calls, coverage, static checks, or generated tests alone
+do not prove functionality. Report only the boundaries actually exercised.
 
 ### 0.6 Design Conflicts
 
@@ -468,10 +470,9 @@ Markdown content here...
 
 ### Sync Rules
 
-- **DB is the source of truth** for metadata displayed in the UI.
-- **SKILL.md files** are the source of truth for instructions/content.
-- When metadata is edited in the UI (`EditSkillModal`), both DB and SKILL.md frontmatter are updated (`syncFrontmatterToRepo()`).
-- When SKILL.md file changes on disk, the DB is synced via `syncSkillFromRepo()`.
+- Current storage ownership and migration requirements live in [the foundation requirements](spec/changes/active/foundation-integrity-redesign/specs/foundation/spec.md#fr-foundation-003-data-ownership-and-invariants). SQLite owns structured records; actual package files remain on the filesystem. The previous canonical-file authority is historical input, not a second supported business mode.
+- Historical data is converted only at versioned upgrade/import/restore boundaries. Normal business code uses one current contract, without old-field, old-path, backend or downgrade fallback. Migration and removal of the corresponding old runtime ship together.
+- Package edits and database metadata must use one domain operation. Renderer saves never perform a second file write. External file changes enter through explicit scan/import, not read-time migration.
 - The `METADATA_KEYS` constant in `skill-repo-sync.ts` defines which fields are considered metadata: `name`, `description`, `version`, `tags`, `author`, `model`.
 
 ### Validation
@@ -503,6 +504,6 @@ Detailed submission, traceability, document ID, issue reference, and PR rules li
 | **SQLite null byte handling** | Null bytes in text fields can cause silent data loss depending on adapter/runtime behavior. Strip or reject `\x00` before database writes.                                                                                                         |
 | **FTS5 special operators**    | Search queries containing `AND`, `OR`, `NOT`, `NEAR`, `*`, `^`, `"`, or `column:` are interpreted as FTS5 operators and may cause syntax errors if not properly escaped.                                                                           |
 | **Electron process boundary** | Objects passed via IPC are serialized (structured clone). Functions, class instances, and circular references cannot cross the IPC boundary.                                                                                                       |
-| **Skill sync race condition** | `useEffect` in `SkillFullDetailPage` triggers `syncSkillFromRepo()` on `updated_at` change, which can overwrite metadata edits if the SKILL.md file hasn't been updated yet. This is mitigated by `syncFrontmatterToRepo()` in the update handler. |
+| **Skill sync race condition** | UI metadata and entrypoint updates must publish together through one library command; do not restore separate renderer or post-save frontmatter writes. |
 | **Empty string vs null**      | Some DB methods convert `""` to `null` via `value                                                                                                                                                                                                  |     | null`. Be explicit about whether empty strings should be preserved. |
 | **Flaky time-based tests**    | Avoid relying on `Date.now()` for ordering. Use explicit timestamps or deterministic sequencing in tests.                                                                                                                                          |
