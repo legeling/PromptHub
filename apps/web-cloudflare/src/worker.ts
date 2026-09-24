@@ -4,7 +4,7 @@ import { cors } from "hono/cors";
 import { bootstrapStatus, issueCaptcha, login, logout, me, refresh, register, requireAuth } from "./auth";
 import { heartbeat } from "./devices";
 import { getMediaBase64, getMediaFile, getMediaSize, listMedia, mediaExists, uploadMediaBase64 } from "./media";
-import { ErrorCode, failure, success } from "./response";
+import { ErrorCode, failure, HttpError, success } from "./response";
 import { getManifest, getSyncData, putSyncData } from "./sync";
 import type { AuthUser, Env } from "./types";
 import {
@@ -166,6 +166,9 @@ app.notFound(async (c) => {
 });
 
 app.onError((error, c) => {
+  if (error instanceof HttpError) {
+    return failure(c, error.status, error.code, error.message);
+  }
   console.error(error);
   return failure(c, 500, ErrorCode.INTERNAL_ERROR, "Internal server error");
 });

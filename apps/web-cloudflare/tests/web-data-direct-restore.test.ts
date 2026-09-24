@@ -30,13 +30,29 @@ function createMemoryD1(initial?: SyncSnapshot): D1Database {
         first: vi.fn(async () => row),
         run: vi.fn(async () => {
           if (sql.includes("INSERT INTO sync_snapshots")) {
+            if (row) {
+              return { success: true, meta: { changes: 0 } };
+            }
             row = {
               payload_json: String(args[1]),
               exported_at: String(args[2]),
               settings_updated_at: typeof args[3] === "string" ? args[3] : null,
             };
+            return { success: true, meta: { changes: 1 } };
           }
-          return { success: true };
+          if (sql.startsWith("UPDATE sync_snapshots")) {
+            const expectedPayload = String(args[args.length - 1]);
+            if (!row || row.payload_json !== expectedPayload) {
+              return { success: true, meta: { changes: 0 } };
+            }
+            row = {
+              payload_json: String(args[0]),
+              exported_at: String(args[1]),
+              settings_updated_at: typeof args[2] === "string" ? args[2] : null,
+            };
+            return { success: true, meta: { changes: 1 } };
+          }
+          return { success: true, meta: { changes: 1 } };
         }),
       })),
     })),
@@ -72,59 +88,67 @@ describe("Cloudflare web-data direct restore compatibility", () => {
     const db = createMemoryD1();
     const timestamp = "2026-06-01T00:00:00.000Z";
 
-    const folderResponse = await insertFolderDirect(createContext({
-      db,
-      body: {
-        id: "folder_restore",
-        name: "Restored Folder",
-        order: 0,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      },
-    }));
+    const folderResponse = await insertFolderDirect(
+      createContext({
+        db,
+        body: {
+          id: "folder_restore",
+          name: "Restored Folder",
+          order: 0,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        },
+      }),
+    );
     expect(folderResponse.status).toBe(201);
 
-    const promptResponse = await insertPromptDirect(createContext({
-      db,
-      body: {
-        id: "prompt_restore",
-        title: "Restored Prompt",
-        userPrompt: "Restored body",
-        variables: [],
-        tags: ["restore"],
-        folderId: "folder_restore",
-        images: [],
-        videos: [],
-        isFavorite: true,
-        isPinned: false,
-        version: 2,
-        currentVersion: 2,
-        usageCount: 3,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      },
-    }));
+    const promptResponse = await insertPromptDirect(
+      createContext({
+        db,
+        body: {
+          id: "prompt_restore",
+          title: "Restored Prompt",
+          userPrompt: "Restored body",
+          variables: [],
+          tags: ["restore"],
+          folderId: "folder_restore",
+          images: [],
+          videos: [],
+          isFavorite: true,
+          isPinned: false,
+          version: 2,
+          currentVersion: 2,
+          usageCount: 3,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        },
+      }),
+    );
     expect(promptResponse.status).toBe(201);
 
-    const versionResponse = await insertPromptVersionDirect(createContext({
-      db,
-      body: {
-        id: "version_restore",
-        promptId: "prompt_restore",
-        version: 2,
-        userPrompt: "Restored body",
-        variables: [],
-        note: "desktop restore",
-        createdAt: timestamp,
-      },
-    }));
+    const versionResponse = await insertPromptVersionDirect(
+      createContext({
+        db,
+        body: {
+          id: "version_restore",
+          promptId: "prompt_restore",
+          version: 2,
+          userPrompt: "Restored body",
+          variables: [],
+          note: "desktop restore",
+          createdAt: timestamp,
+        },
+      }),
+    );
     expect(versionResponse.status).toBe(201);
 
-    const promptReadResponse = await getPrompt(createContext({
-      db,
-      params: { id: "prompt_restore" },
-    }));
-    const promptReadPayload = await promptReadResponse.json() as {
+    const promptReadResponse = await getPrompt(
+      createContext({
+        db,
+        params: { id: "prompt_restore" },
+      }),
+    );
+    const promptReadPayload = (await promptReadResponse.json()) as {
       data: { id: string; title: string; folderId: string; usageCount: number };
     };
     expect(promptReadPayload.data).toMatchObject({
@@ -134,11 +158,13 @@ describe("Cloudflare web-data direct restore compatibility", () => {
       usageCount: 3,
     });
 
-    const versionsResponse = await listPromptVersions(createContext({
-      db,
-      params: { id: "prompt_restore" },
-    }));
-    const versionsPayload = await versionsResponse.json() as {
+    const versionsResponse = await listPromptVersions(
+      createContext({
+        db,
+        params: { id: "prompt_restore" },
+      }),
+    );
+    const versionsPayload = (await versionsResponse.json()) as {
       data: Array<{ id: string; note?: string | null }>;
     };
     expect(versionsPayload.data).toEqual([
@@ -148,21 +174,28 @@ describe("Cloudflare web-data direct restore compatibility", () => {
       }),
     ]);
 
-    const deleteResponse = await deletePromptVersionById(createContext({
-      db,
-      params: { versionId: "version_restore" },
-    }));
+    const deleteResponse = await deletePromptVersionById(
+      createContext({
+        db,
+        params: { versionId: "version_restore" },
+      }),
+    );
     expect(deleteResponse.status).toBe(200);
 
-    const afterDeleteVersionsResponse = await listPromptVersions(createContext({
-      db,
-      params: { id: "prompt_restore" },
-    }));
-    const afterDeleteVersionsPayload = await afterDeleteVersionsResponse.json() as {
-      data: Array<{ id: string }>;
-    };
+    const afterDeleteVersionsResponse = await listPromptVersions(
+      createContext({
+        db,
+        params: { id: "prompt_restore" },
+      }),
+    );
+    const afterDeleteVersionsPayload =
+      (await afterDeleteVersionsResponse.json()) as {
+        data: Array<{ id: string }>;
+      };
     expect(afterDeleteVersionsPayload.data).toEqual([]);
 
-    await expect(syncPromptWorkspace(createContext({ db }))).resolves.toHaveProperty("status", 200);
+    await expect(
+      syncPromptWorkspace(createContext({ db })),
+    ).resolves.toHaveProperty("status", 200);
   });
 });
