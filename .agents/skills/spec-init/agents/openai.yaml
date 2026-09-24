@@ -1,8 +1,8 @@
 interface:
   display_name: "spec-init"
-  short_description: "Run a Spec Kit-inspired docs workflow with workflow, knowledge, changes, analysis, convergence, README, and AGENTS."
+  short_description: "Keep project specs current with risk-proportional documentation."
   brand_color: "#0F766E"
-  default_prompt: "Use $spec-init to specify, clarify, plan, task, analyze, implement, and converge project docs around workflow, knowledge, changes, README, and AGENTS."
+  default_prompt: "Use $spec-init to maintain the relevant project agreements, keep proposed changes distinct, and move authorized work through implementation and verification."
 
 policy:
   allow_implicit_invocation: true

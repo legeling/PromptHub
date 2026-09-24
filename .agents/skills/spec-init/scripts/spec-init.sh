@@ -2,367 +2,154 @@
 set -euo pipefail
 
 usage() {
-  cat <<'EOF'
-Usage:
-  spec-init.sh [target_dir] [--here] [--name NAME] [--type TYPE] [--lang LANG] [--force]
-
-Examples:
-  spec-init.sh my-app
-  spec-init.sh ./demo-service --type api
-  spec-init.sh --here --name "Demo Project" --type web
-  spec-init.sh my-cli --type cli --lang en
-EOF
+  cat <<'HELP'
+Usage: spec-init.sh [target_dir] [--here] [--name NAME] [--type TYPE] [--lang LANG] [--force]
+Creates README.md, AGENTS.md, and docs/README.md only.
+Types: web, api, cli, library, service. Languages: zh (default), en.
+Existing files are preserved. --force backs up and replaces these three files only.
+HELP
 }
-
-escape_replacement() {
-  printf '%s' "$1" | sed -e 's/[\/&]/\\&/g'
+fail() { printf 'Error: %s\n' "$1" >&2; exit 1; }
+value() {
+  [[ -n "${2:-}" && "$2" != --* ]] || fail "$1 requires a value"
 }
-
-SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-SKILL_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
-TEMPLATE_ROOT="$SKILL_ROOT/assets/templates/project"
-
-TARGET_DIR=""
-PROJECT_NAME=""
-PROJECT_TYPE=""
-PROJECT_TYPE_REASON=""
-LANGUAGE="zh"
+TARGET=""
+NAME=""
+TYPE=""
+LANGUAGE=zh
 FORCE=0
-
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --here)
-      TARGET_DIR="."
-      shift
-      ;;
-    --name)
-      PROJECT_NAME="${2:-}"
-      shift 2
-      ;;
-    --name=*)
-      PROJECT_NAME="${1#*=}"
-      shift
-      ;;
-    --type)
-      PROJECT_TYPE="${2:-}"
-      shift 2
-      ;;
-    --type=*)
-      PROJECT_TYPE="${1#*=}"
-      shift
-      ;;
-    --lang)
-      LANGUAGE="${2:-}"
-      shift 2
-      ;;
-    --lang=*)
-      LANGUAGE="${1#*=}"
-      shift
-      ;;
-    --force)
-      FORCE=1
-      shift
-      ;;
-    -h|--help)
-      usage
-      exit 0
-      ;;
-    *)
-      if [[ -z "$TARGET_DIR" ]]; then
-        TARGET_DIR="$1"
-        shift
-      else
-        printf 'Unexpected argument: %s\n\n' "$1" >&2
-        usage >&2
-        exit 1
-      fi
-      ;;
+    --here) [[ -z "$TARGET" ]] || fail 'multiple targets'; TARGET=.; shift ;;
+    --name|--type|--lang)
+      value "$1" "${2:-}"
+      case "$1" in --name) NAME="$2";; --type) TYPE="$2";; --lang) LANGUAGE="$2";; esac
+      shift 2 ;;
+    --name=*) NAME="${1#*=}"; [[ -n "$NAME" ]] || fail '--name requires a value'; shift ;;
+    --type=*) TYPE="${1#*=}"; [[ -n "$TYPE" ]] || fail '--type requires a value'; shift ;;
+    --lang=*) LANGUAGE="${1#*=}"; [[ -n "$LANGUAGE" ]] || fail '--lang requires a value'; shift ;;
+    --force) FORCE=1; shift ;;
+    -h|--help) usage; exit 0 ;;
+    -*) fail "unknown option: $1" ;;
+    *) [[ -z "$TARGET" ]] || fail 'multiple targets'; TARGET="$1"; shift ;;
   esac
 done
+LANGUAGE="$(printf '%s' "$LANGUAGE" | tr '[:upper:]' '[:lower:]')"
+TYPE="$(printf '%s' "$TYPE" | tr '[:upper:]' '[:lower:]')"
+case "$LANGUAGE" in zh|en) ;; *) fail "Unsupported language: $LANGUAGE";; esac
+case "$TYPE" in ''|web|api|cli|library|service) ;; *) fail "Unsupported project type: $TYPE";; esac
+[[ "$NAME" != *$'\n'* && "$NAME" != *$'\r'* ]] || fail 'project name must be one line'
+TARGET="${TARGET:-.}"
 
-if [[ -z "$TARGET_DIR" ]]; then
-  TARGET_DIR="."
-fi
-
-mkdir -p "$TARGET_DIR"
-TARGET_DIR="$(cd -- "$TARGET_DIR" && pwd)"
-
-if [[ -z "$PROJECT_NAME" ]]; then
-  PROJECT_NAME="$(basename "$TARGET_DIR")"
-fi
-
-normalize_language() {
-  printf '%s' "$1" | tr '[:upper:]' '[:lower:]'
+# Inspect each component before normalizing '..', so links cannot hide in a path.
+safe_directory() {
+  local input="$1" current=/ part
+  local -a components
+  [[ "$input" == /* ]] || input="$(pwd -P)/$input"
+  IFS=/ read -r -a components <<< "$input"
+  for part in "${components[@]}"; do
+    case "$part" in ''|.) continue;; ..) current="$(dirname "$current")"; continue;; esac
+    current="${current%/}/$part"
+    [[ ! -L "$current" ]] || fail "symlink directory refused: $current"
+    [[ ! -e "$current" || -d "$current" ]] || fail "not a directory: $current"
+  done
+  printf '%s' "$current"
 }
-
-normalize_project_type() {
-  printf '%s' "$1" | tr '[:upper:]' '[:lower:]'
-}
-
-localized_text() {
-  local zh_text="$1"
-  local en_text="$2"
-
-  if [[ "$LANGUAGE" == "en" ]]; then
-    printf '%s' "$en_text"
-    return
-  fi
-
-  printf '%s' "$zh_text"
-}
-
-is_supported_language() {
-  case "$1" in
-    zh|en)
-      return 0
-      ;;
-    *)
-      return 1
-      ;;
-  esac
-}
-
-is_supported_project_type() {
-  case "$1" in
-    web|api|cli|library|service)
-      return 0
-      ;;
-    *)
-      return 1
-      ;;
-  esac
-}
-
-LANGUAGE="$(normalize_language "$LANGUAGE")"
-
-if ! is_supported_language "$LANGUAGE"; then
-  printf 'Unsupported language: %s\n' "$LANGUAGE" >&2
-  printf 'Supported languages: zh, en\n' >&2
-  exit 1
-fi
-
-WORKFLOW_ROOT="docs/workflow"
-KNOWLEDGE_ROOT="docs/knowledge"
-CHANGES_ROOT="docs/changes"
-RULES_ROOT="docs/rules"
-
-INTAKE_DOC="$WORKFLOW_ROOT/00-intake/README.md"
-REQUIREMENTS_DOC="$WORKFLOW_ROOT/01-requirements/README.md"
-DESIGN_DOC="$WORKFLOW_ROOT/02-design/README.md"
-IMPLEMENTATION_DOC="$WORKFLOW_ROOT/03-implementation/README.md"
-VERIFICATION_DOC="$WORKFLOW_ROOT/04-verification/README.md"
-TASKS_DOC="$WORKFLOW_ROOT/05-tasks/README.md"
-
-CONTEXT_DOC="$KNOWLEDGE_ROOT/context/README.md"
-STRUCTURE_DOC="$KNOWLEDGE_ROOT/structure/README.md"
-BEHAVIOR_DOC="$KNOWLEDGE_ROOT/behavior/README.md"
-REFERENCE_DOC="$KNOWLEDGE_ROOT/reference/README.md"
-
-CHANGES_INDEX_DOC="$CHANGES_ROOT/README.md"
-ADR_INDEX_DOC="docs/adr/README.md"
-RULES_INDEX_DOC="$RULES_ROOT/README.md"
-ROUTING_RULES_DOC="$RULES_ROOT/document-routing-rules.md"
-TOPOLOGY_FILE="spec-init.topology.yml"
-
-LANGUAGE_ROOT="$TEMPLATE_ROOT/$LANGUAGE"
-
-infer_project_type() {
-  local keywords
-  keywords="$(normalize_project_type "$PROJECT_NAME $(basename "$TARGET_DIR")")"
-
+[[ "$TARGET" != *$'\n'* && "$TARGET" != *$'\r'* ]] || fail 'target must be one line'
+TARGET="$(safe_directory "$TARGET")"
+safe_directory "$TARGET/docs" >/dev/null
+[[ -n "$NAME" ]] || NAME="$(basename "$TARGET")"
+REASON='explicit --type'
+if [[ -z "$TYPE" ]]; then
+  keywords="$(printf '%s' "$NAME $(basename "$TARGET")" | tr '[:upper:]' '[:lower:]')"
   case "$keywords" in
-    *cli*|*command*|*cmd*|*tool*)
-      PROJECT_TYPE="cli"
-      PROJECT_TYPE_REASON="$(localized_text '根据项目名或目录名中的关键词 cli/command/cmd/tool 推断为 cli。' 'Inferred as cli from project or directory keywords: cli/command/cmd/tool.')"
-      ;;
-    *api*|*backend*|*server*|*bff*)
-      PROJECT_TYPE="api"
-      PROJECT_TYPE_REASON="$(localized_text '根据项目名或目录名中的关键词 api/backend/server/bff 推断为 api。' 'Inferred as api from project or directory keywords: api/backend/server/bff.')"
-      ;;
-    *web*|*site*|*frontend*|*admin*|*dashboard*|*portal*|*ui*)
-      PROJECT_TYPE="web"
-      PROJECT_TYPE_REASON="$(localized_text '根据项目名或目录名中的关键词 web/site/frontend/admin/dashboard/portal/ui 推断为 web。' 'Inferred as web from project or directory keywords: web/site/frontend/admin/dashboard/portal/ui.')"
-      ;;
-    *sdk*|*lib*|*library*|*package*|*plugin*|*kit*)
-      PROJECT_TYPE="library"
-      PROJECT_TYPE_REASON="$(localized_text '根据项目名或目录名中的关键词 sdk/lib/library/package/plugin/kit 推断为 library。' 'Inferred as library from project or directory keywords: sdk/lib/library/package/plugin/kit.')"
-      ;;
-    *worker*|*consumer*|*queue*|*job*|*scheduler*|*daemon*|*service*)
-      PROJECT_TYPE="service"
-      PROJECT_TYPE_REASON="$(localized_text '根据项目名或目录名中的关键词 worker/consumer/queue/job/scheduler/daemon/service 推断为 service。' 'Inferred as service from project or directory keywords: worker/consumer/queue/job/scheduler/daemon/service.')"
-      ;;
-    *)
-      PROJECT_TYPE="service"
-      PROJECT_TYPE_REASON="$(localized_text "未提供项目类型，且无法从项目名或目录名稳定推断，默认按 service 初始化；请在 ${INTAKE_DOC} 中确认。" "No project type was provided and no stable keyword matched the project or directory name, so the scaffold defaults to service. Confirm this in ${INTAKE_DOC}.")"
-      ;;
+    *cli*|*command*|*cmd*|*tool*) TYPE=cli;;
+    *api*|*backend*|*server*|*bff*) TYPE=api;;
+    *web*|*site*|*frontend*|*admin*|*dashboard*|*portal*|*ui*) TYPE=web;;
+    *sdk*|*lib*|*library*|*package*|*plugin*|*kit*) TYPE=library;;
+    *) TYPE=service;;
   esac
-}
-
-if [[ -n "$PROJECT_TYPE" ]]; then
-  PROJECT_TYPE="$(normalize_project_type "$PROJECT_TYPE")"
-
-  if ! is_supported_project_type "$PROJECT_TYPE"; then
-    printf 'Unsupported project type: %s\n' "$PROJECT_TYPE" >&2
-    printf 'Supported types: web, api, cli, library, service\n' >&2
-    exit 1
-  fi
-
-  PROJECT_TYPE_REASON="$(localized_text "用户明确通过命令参数指定项目类型：${PROJECT_TYPE}。" "Project type explicitly provided via --type: ${PROJECT_TYPE}.")"
-else
-  infer_project_type
+  REASON='name-based hint; confirm against actual code'
 fi
+ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
+FILES=(README.md AGENTS.md docs/README.md)
+for file in "${FILES[@]}"; do
+  [[ -f "$ROOT/assets/templates/project/$LANGUAGE/$file.tmpl" ]] || fail "missing template: $file"
+  [[ ! -L "$TARGET/$file" ]] || fail "symlink file refused: $TARGET/$file"
+  [[ ! -e "$TARGET/$file" || -f "$TARGET/$file" ]] || fail "not a regular file: $TARGET/$file"
+done
 
-TODAY="$(date +%F)"
-
-render_template() {
-  local source_path="$1"
-  local destination_path="$2"
-
-  if [[ -e "$destination_path" && "$FORCE" -ne 1 ]]; then
-    printf 'skip  %s (already exists)\n' "$destination_path"
-    return
-  fi
-
-  mkdir -p "$(dirname "$destination_path")"
-
-  sed \
-    -e "s/__PROJECT_NAME__/$(escape_replacement "$PROJECT_NAME")/g" \
-    -e "s/__PROJECT_TYPE__/$(escape_replacement "$PROJECT_TYPE")/g" \
-    -e "s/__PROJECT_TYPE_REASON__/$(escape_replacement "$PROJECT_TYPE_REASON")/g" \
-    -e "s/__DATE__/$(escape_replacement "$TODAY")/g" \
-    "$source_path" > "$destination_path"
-
-  printf 'write %s\n' "$destination_path"
+STAGE="$(mktemp -d "${TMPDIR:-/tmp}/spec-init-render.XXXXXX")"
+WRITE_TEMP=""
+cleanup() {
+  [[ -z "$WRITE_TEMP" ]] || rm -f -- "$WRITE_TEMP"
+  rm -rf -- "$STAGE"
 }
+trap cleanup EXIT
+export SPEC_INIT_NAME="$NAME" SPEC_INIT_TYPE="$TYPE" SPEC_INIT_REASON="$REASON"
+export SPEC_INIT_DATE="$(date +%F)"
+for file in "${FILES[@]}"; do
+  mkdir -p "$STAGE/$(dirname "$file")"
+  # Substitute once: project names containing placeholder syntax remain literal.
+  awk '
+    BEGIN {
+      values["__PROJECT_NAME__"]=ENVIRON["SPEC_INIT_NAME"]
+      values["__PROJECT_TYPE__"]=ENVIRON["SPEC_INIT_TYPE"]
+      values["__PROJECT_TYPE_REASON__"]=ENVIRON["SPEC_INIT_REASON"]
+      values["__DATE__"]=ENVIRON["SPEC_INIT_DATE"]
+    }
+    {
+      line=$0
+      while (match(line, /__PROJECT_NAME__|__PROJECT_TYPE__|__PROJECT_TYPE_REASON__|__DATE__/)) {
+        printf "%s%s", substr(line,1,RSTART-1), values[substr(line,RSTART,RLENGTH)]
+        line=substr(line,RSTART+RLENGTH)
+      }
+      print line
+    }
+  ' "$ROOT/assets/templates/project/$LANGUAGE/$file.tmpl" > "$STAGE/$file"
+done
 
-resolve_template_path() {
-  local relative_path="$1"
-  local type_specific_path="$LANGUAGE_ROOT/types/$PROJECT_TYPE/$relative_path"
-  local default_path="$LANGUAGE_ROOT/$relative_path"
-
-  if [[ -f "$type_specific_path" ]]; then
-    printf '%s' "$type_specific_path"
-    return
-  fi
-
-  printf '%s' "$default_path"
-}
-
-render_project_template() {
-  local relative_path="$1"
-  local destination_path="$2"
-
-  render_template "$(resolve_template_path "$relative_path")" "$destination_path"
-}
-
-ensure_placeholder_file() {
-  local file_path="$1"
-
-  if [[ -e "$file_path" ]]; then
-    return
-  fi
-
-  mkdir -p "$(dirname "$file_path")"
-  : > "$file_path"
-  printf 'write %s\n' "$file_path"
-}
-
-cleanup_legacy_scaffold() {
-  local target_root="$1"
-
-  rm -rf \
-    "$target_root/docs/00-intake" \
-    "$target_root/docs/01-requirements" \
-    "$target_root/docs/02-design" \
-    "$target_root/docs/03-implementation" \
-    "$target_root/docs/04-tdd" \
-    "$target_root/docs/05-tasks" \
-    "$target_root/docs/changes/CR-0001-template.md" \
-    "$target_root/docs/changes/BUG-0001-template.md"
-}
-
+BACKUP_ROOT=""
 if [[ "$FORCE" -eq 1 ]]; then
-  cleanup_legacy_scaffold "$TARGET_DIR"
+  for file in "${FILES[@]}"; do
+    if [[ -f "$TARGET/$file" ]]; then
+      BACKUP_ROOT="${SPEC_INIT_BACKUP_ROOT:-${XDG_STATE_HOME:-$HOME/.local/state}/spec-init/backups}"
+      [[ "$BACKUP_ROOT" != *$'\n'* && "$BACKUP_ROOT" != *$'\r'* ]] || fail 'backup root must be one line'
+      BACKUP_ROOT="$(safe_directory "$BACKUP_ROOT")"
+      [[ "$TARGET" != / && "$BACKUP_ROOT" != "$TARGET" && "$BACKUP_ROOT" != "$TARGET/"* ]] || fail 'backup root must be outside the project'
+      break
+    fi
+  done
 fi
-
-mkdir -p \
-  "$TARGET_DIR/$WORKFLOW_ROOT/00-intake" \
-  "$TARGET_DIR/$WORKFLOW_ROOT/01-requirements" \
-  "$TARGET_DIR/$WORKFLOW_ROOT/02-design" \
-  "$TARGET_DIR/$WORKFLOW_ROOT/03-implementation" \
-  "$TARGET_DIR/$WORKFLOW_ROOT/04-verification" \
-  "$TARGET_DIR/$WORKFLOW_ROOT/05-tasks" \
-  "$TARGET_DIR/$KNOWLEDGE_ROOT/context" \
-  "$TARGET_DIR/$KNOWLEDGE_ROOT/structure" \
-  "$TARGET_DIR/$KNOWLEDGE_ROOT/behavior" \
-  "$TARGET_DIR/$KNOWLEDGE_ROOT/reference" \
-  "$TARGET_DIR/docs/issues" \
-  "$TARGET_DIR/$CHANGES_ROOT/active/CHG-0001-template" \
-  "$TARGET_DIR/$CHANGES_ROOT/completed" \
-  "$TARGET_DIR/$CHANGES_ROOT/legacy" \
-  "$TARGET_DIR/docs/releases" \
-  "$TARGET_DIR/docs/archive" \
-  "$TARGET_DIR/docs/adr" \
-  "$TARGET_DIR/docs/rules" \
-  "$TARGET_DIR/src" \
-  "$TARGET_DIR/tests" \
-  "$TARGET_DIR/scripts"
-
-ensure_placeholder_file "$TARGET_DIR/src/.gitkeep"
-ensure_placeholder_file "$TARGET_DIR/tests/.gitkeep"
-ensure_placeholder_file "$TARGET_DIR/scripts/.gitkeep"
-
-render_project_template "spec-init.topology.yml.tmpl" "$TARGET_DIR/$TOPOLOGY_FILE"
-render_project_template "README.md.tmpl" "$TARGET_DIR/README.md"
-render_project_template "AGENTS.md.tmpl" "$TARGET_DIR/AGENTS.md"
-render_project_template "docs/00-intake/README.md.tmpl" "$TARGET_DIR/$INTAKE_DOC"
-render_project_template "docs/01-requirements/README.md.tmpl" "$TARGET_DIR/$REQUIREMENTS_DOC"
-render_project_template "docs/02-design/README.md.tmpl" "$TARGET_DIR/$DESIGN_DOC"
-render_project_template "docs/03-implementation/README.md.tmpl" "$TARGET_DIR/$IMPLEMENTATION_DOC"
-render_project_template "docs/04-verification/README.md.tmpl" "$TARGET_DIR/$VERIFICATION_DOC"
-render_project_template "docs/05-tasks/README.md.tmpl" "$TARGET_DIR/$TASKS_DOC"
-render_project_template "docs/knowledge/context/README.md.tmpl" "$TARGET_DIR/$CONTEXT_DOC"
-render_project_template "docs/knowledge/structure/README.md.tmpl" "$TARGET_DIR/$STRUCTURE_DOC"
-render_project_template "docs/knowledge/behavior/README.md.tmpl" "$TARGET_DIR/$BEHAVIOR_DOC"
-render_project_template "docs/knowledge/reference/README.md.tmpl" "$TARGET_DIR/$REFERENCE_DOC"
-render_project_template "docs/issues/README.md.tmpl" "$TARGET_DIR/docs/issues/README.md"
-render_project_template "docs/changes/README.md.tmpl" "$TARGET_DIR/$CHANGES_INDEX_DOC"
-render_project_template "docs/changes/active/CHG-0001-template/overview.md.tmpl" "$TARGET_DIR/$CHANGES_ROOT/active/CHG-0001-template/overview.md"
-render_project_template "docs/changes/active/CHG-0001-template/design.md.tmpl" "$TARGET_DIR/$CHANGES_ROOT/active/CHG-0001-template/design.md"
-render_project_template "docs/changes/active/CHG-0001-template/verification.md.tmpl" "$TARGET_DIR/$CHANGES_ROOT/active/CHG-0001-template/verification.md"
-render_project_template "docs/changes/active/CHG-0001-template/tasks.md.tmpl" "$TARGET_DIR/$CHANGES_ROOT/active/CHG-0001-template/tasks.md"
-render_project_template "docs/changes/active/CHG-0001-template/impact.md.tmpl" "$TARGET_DIR/$CHANGES_ROOT/active/CHG-0001-template/impact.md"
-render_project_template "docs/changes/completed/README.md.tmpl" "$TARGET_DIR/$CHANGES_ROOT/completed/README.md"
-render_project_template "docs/changes/legacy/README.md.tmpl" "$TARGET_DIR/$CHANGES_ROOT/legacy/README.md"
-render_project_template "docs/releases/README.md.tmpl" "$TARGET_DIR/docs/releases/README.md"
-render_project_template "docs/releases/v0.1.0-template.md.tmpl" "$TARGET_DIR/docs/releases/v0.1.0-template.md"
-render_project_template "docs/archive/README.md.tmpl" "$TARGET_DIR/docs/archive/README.md"
-render_project_template "docs/adr/README.md.tmpl" "$TARGET_DIR/$ADR_INDEX_DOC"
-render_project_template "docs/adr/0000-record-template.md.tmpl" "$TARGET_DIR/docs/adr/0000-record-template.md"
-render_project_template "docs/rules/README.md.tmpl" "$TARGET_DIR/$RULES_INDEX_DOC"
-render_project_template "docs/rules/clarification-rules.md.tmpl" "$TARGET_DIR/docs/rules/clarification-rules.md"
-render_project_template "docs/rules/coding-standards.md.tmpl" "$TARGET_DIR/docs/rules/coding-standards.md"
-render_project_template "docs/rules/testing-standards.md.tmpl" "$TARGET_DIR/docs/rules/testing-standards.md"
-render_project_template "docs/rules/bug-fix-rules.md.tmpl" "$TARGET_DIR/docs/rules/bug-fix-rules.md"
-render_project_template "docs/rules/doc-sync-rules.md.tmpl" "$TARGET_DIR/docs/rules/doc-sync-rules.md"
-render_project_template "docs/rules/change-management-rules.md.tmpl" "$TARGET_DIR/docs/rules/change-management-rules.md"
-render_project_template "docs/rules/commit-rules.md.tmpl" "$TARGET_DIR/docs/rules/commit-rules.md"
-render_project_template "docs/rules/document-archive-rules.md.tmpl" "$TARGET_DIR/docs/rules/document-archive-rules.md"
-render_project_template "docs/rules/issue-management-rules.md.tmpl" "$TARGET_DIR/docs/rules/issue-management-rules.md"
-render_project_template "docs/rules/definition-of-done.md.tmpl" "$TARGET_DIR/docs/rules/definition-of-done.md"
-render_project_template "docs/rules/document-routing-rules.md.tmpl" "$TARGET_DIR/$ROUTING_RULES_DOC"
-
-printf '\n%s %s\n' "$(localized_text '已初始化目录：' 'Initialized project scaffold in:')" "$TARGET_DIR"
-printf '%s %s\n' "$(localized_text '项目名：' 'Project name:')" "$PROJECT_NAME"
-printf '%s %s\n' "$(localized_text '项目类型：' 'Project type:')" "$PROJECT_TYPE"
-printf '%s %s\n' "$(localized_text '输出语言：' 'Output language:')" "$LANGUAGE"
-printf '%s %s\n\n' "$(localized_text '类型依据：' 'Type reason:')" "$PROJECT_TYPE_REASON"
-
-printf '%s\n' "$(localized_text '建议下一步：' 'Recommended next steps:')"
-printf '1. %s\n' "$(localized_text "补齐 ${INTAKE_DOC}" "Complete ${INTAKE_DOC}")"
-printf '2. %s\n' "$(localized_text "把目标整理为 ${REQUIREMENTS_DOC}" "Turn the project goals into ${REQUIREMENTS_DOC}")"
-printf '3. %s\n' "$(localized_text "在编码前完成 ${DESIGN_DOC}" "Complete ${DESIGN_DOC} before coding")"
-printf '4. %s\n' "$(localized_text "先定义 ${VERIFICATION_DOC} 中的验证方式" "Define the verification approach in ${VERIFICATION_DOC} first")"
-printf '5. %s\n' "$(localized_text "补齐 ${CONTEXT_DOC}、${STRUCTURE_DOC}、${BEHAVIOR_DOC}、${REFERENCE_DOC} 中的长期真相" "Capture long-lived truth in ${CONTEXT_DOC}, ${STRUCTURE_DOC}, ${BEHAVIOR_DOC}, and ${REFERENCE_DOC}")"
-printf '6. %s\n' "$(localized_text "检查 ${TOPOLOGY_FILE} 与 ${ROUTING_RULES_DOC}，再把首个 change 拆进 ${CHANGES_ROOT}/active/CHG-0001-template/" "Review ${TOPOLOGY_FILE} and ${ROUTING_RULES_DOC}, then break the first change into ${CHANGES_ROOT}/active/CHG-0001-template/")"
-printf '7. %s\n' "$(localized_text "实现前完成 analyze 检查，实现后完成 converge 回写" "Run analyze before implementation and converge after implementation")"
+mkdir -p "$TARGET/docs"
+BACKUP=""
+if [[ "$FORCE" -eq 1 ]]; then
+  for file in "${FILES[@]}"; do
+    if [[ -f "$TARGET/$file" ]]; then
+      if [[ -z "$BACKUP" ]]; then
+        mkdir -p "$BACKUP_ROOT"
+        BACKUP="$(mktemp -d "$BACKUP_ROOT/scaffold.XXXXXX")"
+        printf 'Historical backup only. Not current project instructions.\nOriginal project: %s\nRestore files/ to the original relative paths, preserving later edits.\n' "$TARGET" > "$BACKUP/RESTORE.txt"
+        printf 'Backup: %s\n' "$BACKUP"
+        printf 'Restore only the saved files to their original relative paths; preserve later edits.\n'
+      fi
+      mkdir -p "$BACKUP/files/$(dirname "$file")"
+      cp -p "$TARGET/$file" "$BACKUP/files/$file"
+    fi
+  done
+fi
+for file in "${FILES[@]}"; do
+  if [[ -f "$TARGET/$file" && "$FORCE" -eq 0 ]]; then
+    printf 'skip  %s (already exists)\n' "$TARGET/$file"
+  else
+    # Stage beside the destination so replacement is an atomic rename on its filesystem.
+    WRITE_TEMP="$(mktemp "$TARGET/$(dirname "$file")/.spec-init-write.XXXXXX")"
+    if ! cp "$STAGE/$file" "$WRITE_TEMP" || ! chmod 644 "$WRITE_TEMP" || ! mv -f "$WRITE_TEMP" "$TARGET/$file"; then
+      fail "write failed: $TARGET/$file; restore saved files from ${BACKUP:-no backup (new files only)}"
+    fi
+    WRITE_TEMP=""
+    printf 'write %s\n' "$TARGET/$file"
+  fi
+done
+printf 'Scaffold ready: %s\n' "$TARGET"
+printf 'Read relevant code and fill real agreements only when needed. No project rules were migrated.\n'
