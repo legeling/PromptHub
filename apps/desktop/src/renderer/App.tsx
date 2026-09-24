@@ -1,3 +1,4 @@
+import { migrateLegacyIndexedDbToMainProcess } from "./services/migrations/indexeddb";
 import {
   useCallback,
   useEffect,
@@ -16,10 +17,6 @@ import {
   getRenderedBackgroundImageOpacity,
   loadSettingsFromMainProcess,
 } from "./stores/settings.store";
-import {
-  initDatabase,
-  migrateLegacyIndexedDbToMainProcess,
-} from "./services/database";
 import type { ImportedPromptData } from "./components/prompt/ImportPromptModal";
 import {
   runS3AutoSync,
@@ -122,6 +119,7 @@ function App() {
   );
   const [currentPage, setCurrentPage] = useState<PageType>("home");
   const [isLoading, setIsLoading] = useState(true);
+  const [startupError, setStartupError] = useState<Error | null>(null);
   const { showToast } = useToast();
   const backupImportController = useBackupImportController();
 
@@ -975,46 +973,11 @@ function App() {
       }
     };
 
-    const init = async (retryCount = 0) => {
-      // Set max loading time to avoid waiting forever
-      // 设置最大加载时间，防止无限等待
-      const maxLoadingTime = setTimeout(() => {
-        console.warn("⚠️ Loading timeout, showing UI anyway");
-        setIsLoading(false);
-      }, 5000);
-
-      try {
-        await initDatabase();
-        if (!isWebRuntime()) {
-          const migration = await migrateLegacyIndexedDbToMainProcess();
-          if (migration.migrated) {
-            logWhenDebugEnabled(
-              `Migrated legacy IndexedDB data to SQLite (${migration.promptCount} prompts, ${migration.folderCount} folders, ${migration.versionCount} versions)`,
-            );
-          }
-        }
-        await fetchPrompts();
-        await fetchFolders();
-        logWhenDebugEnabled("✅ App initialized");
-
-      } catch (error) {
-        console.error("❌ Init failed:", error);
-        // Retry once for timeout errors
-        // 如果是超时错误，尝试重试一次
-        if (
-          retryCount < 1 &&
-          error instanceof Error &&
-          error.message.includes("timeout")
-        ) {
-          logWhenDebugEnabled("🔄 Retrying database initialization...");
-          await new Promise((resolve) => setTimeout(resolve, 500));
-          clearTimeout(maxLoadingTime);
-          return init(retryCount + 1);
-        }
-      } finally {
-        clearTimeout(maxLoadingTime);
-        setIsLoading(false);
-      }
+    const init = async () => {
+      if (!isWebRuntime()) await migrateLegacyIndexedDbToMainProcess();
+      await fetchPrompts();
+      await fetchFolders();
+      setIsLoading(false);
 
       // Sync after startup (run after data is loaded; do not block UI)
       // 启动后同步（在数据加载完成后执行，不阻塞 UI）
@@ -1151,7 +1114,13 @@ function App() {
         },
         log: (message) => logWhenDebugEnabled(`🔄 ${message}`),
       }).dispose;
-    })();
+    })().catch((error: unknown) => {
+      console.error("Application startup failed:", error);
+      if (!disposed)
+        setStartupError(
+          error instanceof Error ? error : new Error(String(error)),
+        );
+    });
 
     return () => {
       disposed = true;
@@ -1171,6 +1140,26 @@ function App() {
       window.removeEventListener("online", handleBackgroundTaskResume);
     };
   }, [applyTheme, inferUpdateChannel]);
+
+  if (startupError) {
+    return (
+      <main
+        role="alert"
+        className="flex h-screen flex-col items-center justify-center gap-4 bg-background p-8 text-foreground"
+      >
+        <h1 className="text-xl font-semibold">
+          {t("common.storageInitializationFailed")}
+        </h1>
+        <p>{t("common.storageInitializationFailedDescription")}</p>
+        <button
+          className="rounded bg-primary px-4 py-2 text-primary-foreground"
+          onClick={() => window.location.reload()}
+        >
+          {t("common.reloadPromptHub")}
+        </button>
+      </main>
+    );
+  }
 
   if (isLoading) {
     return (

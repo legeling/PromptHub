@@ -1,3 +1,7 @@
+import { directFolderSchema } from './folder-schemas.js';
+import { restorePromptGraph, GraphRestoreError } from '../services/prompt-graph-restore.js';
+import { getServerDatabase } from '../database.js';
+import { validatePromptWorkspaceSnapshotPaths } from '../services/prompt-workspace.js';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { Context } from 'hono';
@@ -259,6 +263,28 @@ const outputFormatListQuerySchema = z.object({
 const reorderOutputFormatSchema = z.object({
   sourcePromptId: promptIdSchema,
   sortOrder: outputFormatSortOrderSchema,
+});
+
+const graphRestoreSchema = z.object({
+  folders: z.array(directFolderSchema.extend({ visibility: z.enum(['private', 'shared']).default('private') }).transform((folder) => ({ ...folder, icon: folder.icon ?? undefined, parentId: folder.parentId ?? undefined }))),
+  prompts: z.array(directPromptSchema.extend({ parentId: promptIdSchema.nullable().optional(), order: z.number().int().nonnegative().optional() })),
+  versions: z.array(directVersionSchema),
+  promptRelations: z.array(createRelationSchema.extend({ id: promptIdSchema, createdAt: z.string().datetime(), updatedAt: z.string().datetime() })).optional(),
+  outputFormatItems: z.array(createOutputFormatSchema.extend({ id: promptIdSchema, sortOrder: outputFormatSortOrderSchema, createdAt: z.string().datetime(), updatedAt: z.string().datetime() })).optional(),
+});
+
+prompts.post('/graph/restore', async (c) => {
+  const parsed = await parseJsonBody(c, graphRestoreSchema);
+  if (!parsed.success) return parsed.response;
+  try {
+    validatePromptWorkspaceSnapshotPaths(parsed.data.folders, parsed.data.prompts, parsed.data.versions);
+    const result = restorePromptGraph(getServerDatabase(), getAuthUser(c), parsed.data);
+    promptService.syncWorkspace();
+    return success(c, result);
+  } catch (restoreError) {
+    if (restoreError instanceof GraphRestoreError) return error(c, 422, ErrorCode.VALIDATION_ERROR, restoreError.message);
+    return toPromptErrorResponse(c, restoreError);
+  }
 });
 
 prompts.post('/', async (c) => {

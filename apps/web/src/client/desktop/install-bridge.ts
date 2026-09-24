@@ -1,3 +1,4 @@
+import { promptToSummary } from "@prompthub/shared/utils/prompt-summary";
 import type {
   AITransportRequest,
   AITransportResponse,
@@ -14,6 +15,8 @@ import type {
   PromptRelation,
   PromptRelationQuery,
   PromptVersion,
+  RestorePromptGraphInput,
+  RestorePromptGraphResult,
   RuleBackupRecord,
   RuleFileContent,
   RuleFileDescriptor,
@@ -305,6 +308,8 @@ export function installDesktopBridge(): void {
       get: (id: string) =>
         apiJson<Prompt>(`/api/prompts/${encodePathSegment(id)}`),
       getAll: () => apiJson<Prompt[]>("/api/prompts?scope=all"),
+      getAllMeta: async () => (await apiJson<Prompt[]>("/api/prompts?scope=all")).map(promptToSummary),
+      restoreGraph: (input: RestorePromptGraphInput) => apiJsonBody<RestorePromptGraphResult>("/api/prompts/graph/restore", "POST", input),
       getAllTags: () => apiJson<string[]>("/api/prompts/meta/tags"),
       renameTag: (oldTag: string, newTag: string) =>
         apiOk("/api/prompts/meta/tags/rename", "POST", { oldTag, newTag }),

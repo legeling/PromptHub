@@ -2580,6 +2580,8 @@
     "mcpQuickstartDesc": "面向工具、 Skill 与集成的协议快速入门"
   },
   "common": {
+    "storageInitializationFailed": "无法初始化本地数据",
+    "storageInitializationFailedDescription": "数据迁移未完成，源数据已保留。请处理错误后重新加载。",
     "install": "安装",
     "installed": "已安装",
     "confirm": "确认",

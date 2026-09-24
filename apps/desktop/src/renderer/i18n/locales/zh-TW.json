@@ -2570,6 +2570,8 @@
     "mcpQuickstartDesc": "面向工具、 Skill 與整合的協議快速入門"
   },
   "common": {
+    "storageInitializationFailed": "無法初始化本機資料",
+    "storageInitializationFailedDescription": "資料遷移尚未完成，來源資料已保留。請處理錯誤後重新載入。",
     "install": "安裝",
     "installed": "已安裝",
     "confirm": "確認",

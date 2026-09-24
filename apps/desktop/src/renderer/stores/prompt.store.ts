@@ -158,6 +158,7 @@ export const usePromptStore = create<PromptState>()(
           set({ prompts, relations, outputFormatItems });
         } catch (error) {
           console.error("Failed to fetch prompts:", error);
+          throw error;
         } finally {
           set({ isLoading: false });
         }

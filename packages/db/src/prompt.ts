@@ -496,7 +496,7 @@ export class PromptDB {
         userPrompt: prompt.userPrompt,
         userPromptEn: prompt.userPromptEn,
         variables: prompt.variables,
-        note,
+        note: note ?? null,
         aiResponse: prompt.lastAiResponse,
         createdAt: new Date(now).toISOString(),
       } as PromptVersion;

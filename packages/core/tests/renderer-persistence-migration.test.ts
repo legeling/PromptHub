@@ -362,7 +362,7 @@ describe("renderer persistence migration", () => {
       rootPath: root,
       encryption,
     });
-    await store.migrate({ settings: persisted({ language: "en" }) });
+    await store.migrate({ settings: persisted({ language: "en" }), indexedDbMigrationDone: "1" });
 
     expect(await store.isIndexedDbMigrationDone()).toBe(false);
     await store.markIndexedDbMigrationDone();

@@ -2570,6 +2570,8 @@
     "mcpQuickstartDesc": "Protokoll-Schnellstart für Tools, Skills und Integrationen"
   },
   "common": {
+    "storageInitializationFailed": "Lokale Daten konnten nicht initialisiert werden",
+    "storageInitializationFailedDescription": "Die Migration ist unvollständig. Die Quelldaten bleiben erhalten. Beheben Sie den Fehler vor dem Neuladen.",
     "install": "Installieren",
     "installed": "Installiert",
     "confirm": "Bestätigen",

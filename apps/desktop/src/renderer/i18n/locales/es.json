@@ -2570,6 +2570,8 @@
     "mcpQuickstartDesc": "Inicio rápido del protocolo para tools, skills e integraciones"
   },
   "common": {
+    "storageInitializationFailed": "No se pudieron inicializar los datos locales",
+    "storageInitializationFailedDescription": "La migración está incompleta. Los datos originales se conservan. Resuelve el error antes de recargar.",
     "install": "Instalar",
     "installed": "Instalado",
     "confirm": "Confirmar",

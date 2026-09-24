@@ -38,7 +38,7 @@ export function createWindowApiMock(overrides?: DeepPartial<MockRecord>) {
       minimize: vi.fn(),
       maximize: vi.fn(),
       close: vi.fn(),
-      prompt: {},
+      prompt: { restoreGraph: vi.fn().mockResolvedValue({ promptCount: 0, folderCount: 0, versionCount: 0, relationCount: 0, outputFormatItemCount: 0 }) },
       agent: {
         listHarnessProfiles: vi.fn().mockResolvedValue({
           agentId: "deepseek-harness",
@@ -170,7 +170,7 @@ export function createWindowApiMock(overrides?: DeepPartial<MockRecord>) {
           invalidPetCount: 0,
         }),
       },
-      version: {},
+      version: { getAll: vi.fn().mockResolvedValue([]) },
       folder: {},
       settings: {},
       upgradeBackup: {

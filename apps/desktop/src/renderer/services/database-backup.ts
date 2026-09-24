@@ -8,7 +8,6 @@ import type {
 import {
   getAllFolders,
   getAllPrompts,
-  getDatabase,
   listPromptRelations,
   listOutputFormatItems,
 } from "./database";
@@ -81,7 +80,6 @@ async function collectRuleData(): Promise<RuleBackupRecord[]> {
   );
 }
 const DB_VERSION = DB_BACKUP_VERSION;
-const VERSION_STORE = "versions";
 const IMAGE_BATCH_SIZE = 10;
 const IMAGE_MAX_SIZE_BYTES = 10 * 1024 * 1024;
 const IMAGE_MAX_COUNT = 500;
@@ -296,7 +294,9 @@ async function collectSkillData(includeFiles = true): Promise<{
 
   skills.push(...allSkills);
   if (includeFiles && allSkills.length && !skillApi.readFilesSnapshot) {
-    throw new Error("Lossless Skill snapshot API is unavailable; update the desktop client before backing up");
+    throw new Error(
+      "Lossless Skill snapshot API is unavailable; update the desktop client before backing up",
+    );
   }
 
   await processBatched(allSkills, SKILL_CONCURRENCY, async (skill) => {
@@ -435,7 +435,10 @@ function parsePromptHubFileKind(text: string): ImportPreviewSummary["kind"] {
     parsed &&
     typeof parsed === "object" &&
     "kind" in parsed &&
-    (parsed.kind === "prompthub-backup" || parsed.kind === "prompthub-export" || parsed.kind === "prompthub-backup-v2" || parsed.kind === "prompthub-export-v2")
+    (parsed.kind === "prompthub-backup" ||
+      parsed.kind === "prompthub-export" ||
+      parsed.kind === "prompthub-backup-v2" ||
+      parsed.kind === "prompthub-export-v2")
   ) {
     return parsed.kind;
   }
@@ -482,147 +485,25 @@ export async function previewImportFile(
 }
 
 async function getAllPromptVersions(): Promise<PromptVersion[]> {
-  if (window.api?.version?.getAll) {
-    const prompts = await getAllPrompts();
-    const versionLists = await Promise.all(
-      prompts.map(async (prompt) => {
-        const versions = await window.api?.version?.getAll?.(prompt.id);
-        return versions ?? [];
-      }),
-    );
-    return versionLists.flat();
+  const versions: PromptVersion[] = [];
+  for (const prompt of await getAllPrompts()) {
+    versions.push(...(await window.api.version.getAll(prompt.id)));
   }
-
-  const database = await getDatabase();
-  return new Promise<PromptVersion[]>((resolve, reject) => {
-    const transaction = database.transaction(VERSION_STORE, "readonly");
-    const store = transaction.objectStore(VERSION_STORE);
-    const request = store.getAll();
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
-
-function sortFoldersForRestore(
-  folders: DatabaseBackup["folders"],
-): DatabaseBackup["folders"] {
-  const remaining = new Map(folders.map((folder) => [folder.id, folder]));
-  const restored = new Set<string>();
-  const ordered: DatabaseBackup["folders"] = [];
-
-  while (remaining.size > 0) {
-    let progressed = false;
-
-    for (const [id, folder] of remaining) {
-      if (
-        !folder.parentId ||
-        restored.has(folder.parentId) ||
-        !remaining.has(folder.parentId)
-      ) {
-        ordered.push(folder);
-        restored.add(id);
-        remaining.delete(id);
-        progressed = true;
-      }
-    }
-
-    if (!progressed) {
-      ordered.push(...remaining.values());
-      break;
-    }
-  }
-
-  return ordered;
+  return versions;
 }
 
 async function importDatabaseViaMainProcess(
-  normalizedBackup: DatabaseBackup,
-): Promise<boolean> {
-  if (window.api?.prompt?.restoreGraph) {
-    await window.api.prompt.restoreGraph({
-      folders: normalizedBackup.folders,
-      prompts: normalizedBackup.prompts,
-      versions: normalizedBackup.versions,
-      promptRelations: normalizedBackup.promptRelations,
-      outputFormatItems: normalizedBackup.outputFormatItems,
-    });
-    return true;
-  }
-
-  if (
-    !window.api?.prompt?.getAll ||
-    !window.api?.prompt?.delete ||
-    !window.api?.prompt?.insertDirect ||
-    !window.api?.folder?.getAll ||
-    !window.api?.folder?.delete ||
-    !window.api?.folder?.insertDirect ||
-    !window.api?.version?.insertDirect
-  ) {
-    return false;
-  }
-
-  if (
-    (normalizedBackup.promptRelations?.length ?? 0) > 0 &&
-    !window.api.prompt.insertRelationDirect
-  ) {
-    return false;
-  }
-  if (
-    (normalizedBackup.outputFormatItems?.length ?? 0) > 0 &&
-    !window.api.prompt.insertOutputFormatDirect
-  ) {
-    return false;
-  }
-
-  const existingPrompts = await getAllPrompts();
-  for (const prompt of existingPrompts) {
-    await window.api.prompt.delete(prompt.id);
-  }
-
-  const existingFolders = await getAllFolders();
-  for (const folder of existingFolders) {
-    await window.api.folder.delete(folder.id);
-  }
-
-  for (const folder of sortFoldersForRestore(normalizedBackup.folders)) {
-    await window.api.folder.insertDirect(folder);
-  }
-
-  for (const prompt of normalizedBackup.prompts) {
-    await window.api.prompt.insertDirect(prompt);
-  }
-
-  for (const version of normalizedBackup.versions) {
-    await window.api.version.insertDirect(version);
-  }
-
-  const restoredPromptIds = new Set(
-    normalizedBackup.prompts.map((prompt) => prompt.id),
-  );
-  for (const relation of normalizedBackup.promptRelations ?? []) {
-    if (
-      relation.sourcePromptId === relation.targetPromptId ||
-      !restoredPromptIds.has(relation.sourcePromptId) ||
-      !restoredPromptIds.has(relation.targetPromptId)
-    ) {
-      continue;
-    }
-    await window.api.prompt.insertRelationDirect(relation);
-  }
-
-  for (const item of normalizedBackup.outputFormatItems ?? []) {
-    if (
-      !restoredPromptIds.has(item.sourcePromptId) ||
-      (item.targetPromptId !== null &&
-        !restoredPromptIds.has(item.targetPromptId))
-    ) {
-      continue;
-    }
-    await window.api.prompt.insertOutputFormatDirect(item);
-  }
-
-  await window.api.prompt.syncWorkspace?.();
-  return true;
+  backup: DatabaseBackup,
+): Promise<void> {
+  if (typeof window.api?.prompt?.restoreGraph !== "function")
+    throw new Error("Current graph restore API is unavailable");
+  await window.api.prompt.restoreGraph({
+    folders: backup.folders,
+    prompts: backup.prompts,
+    versions: backup.versions,
+    promptRelations: backup.promptRelations,
+    outputFormatItems: backup.outputFormatItems,
+  });
 }
 
 export async function exportDatabase(options?: {
@@ -777,52 +658,7 @@ export async function importDatabase(backup: DatabaseBackup): Promise<void> {
   const restoredSkillIdMap = new Map<string, string>();
   const restoredSkillsByName = new Map<string, Skill>();
   const restoreFailures: string[] = [];
-  const restoredViaMainProcess =
-    await importDatabaseViaMainProcess(normalizedBackup);
-
-  const hasGraphRecords =
-    (normalizedBackup.promptRelations?.length ?? 0) > 0 ||
-    (normalizedBackup.outputFormatItems?.length ?? 0) > 0;
-  if (!restoredViaMainProcess && hasGraphRecords) {
-    throw new Error(
-      "Backup restore was blocked because this runtime cannot preserve " +
-        "prompt relation/output IDs. Local data was not cleared.",
-    );
-  }
-
-  if (!restoredViaMainProcess) {
-    const database = await getDatabase();
-
-    const transaction = database.transaction(
-      ["prompts", "folders", VERSION_STORE],
-      "readwrite",
-    );
-
-    const promptStore = transaction.objectStore("prompts");
-    const folderStore = transaction.objectStore("folders");
-    const versionStore = transaction.objectStore(VERSION_STORE);
-
-    promptStore.clear();
-    folderStore.clear();
-    versionStore.clear();
-
-    for (const prompt of normalizedBackup.prompts) {
-      promptStore.add(prompt);
-    }
-
-    for (const folder of sortFoldersForRestore(normalizedBackup.folders)) {
-      folderStore.add(folder);
-    }
-
-    for (const version of normalizedBackup.versions) {
-      versionStore.add(version);
-    }
-
-    await new Promise<void>((resolve, reject) => {
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error);
-    });
-  }
+  await importDatabaseViaMainProcess(normalizedBackup);
 
   if (normalizedBackup.images) {
     for (const [fileName, base64] of Object.entries(normalizedBackup.images)) {
@@ -1047,12 +883,7 @@ export async function importDatabase(backup: DatabaseBackup): Promise<void> {
   }
 }
 
-export function getDatabaseInfo(): { name: string; description: string } {
-  return {
-    name: "PromptHubDB",
-    description: "数据存储在浏览器 IndexedDB 中，位于用户数据目录下",
-  };
-}
+export { getDatabaseInfo } from "./database";
 
 export async function downloadBackup(): Promise<void> {
   const backup = await exportDatabase();

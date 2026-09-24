@@ -1,356 +1,207 @@
-/**
- * @vitest-environment jsdom
- */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { migrateLegacyIndexedDbToMainProcess } from "../../../src/renderer/services/migrations/indexeddb";
 
-import type { Folder, Prompt, PromptVersion } from "@prompthub/shared/types";
+const prompt = {
+  id: "p",
+  title: "Original",
+  userPrompt: "Saved content",
+  version: 1,
+};
+const folder = { id: "f", name: "Folder", order: 0 };
+const version = {
+  id: "v",
+  promptId: "p",
+  version: 1,
+  userPrompt: "Saved content",
+};
+const source = { prompts: [prompt], folders: [folder], versions: [version] };
 
-const DONE_KEY = "prompthub:idb-migration-done";
-
-interface LegacyDataset {
-  prompts: Prompt[];
-  folders: Folder[];
-  versions: PromptVersion[];
-}
-
-function asyncRequest<T>(result: T): IDBRequest<T> {
-  const request = {
-    onsuccess: null,
-    onerror: null,
-    result,
-    error: null,
-  } as unknown as IDBRequest<T>;
-
-  setTimeout(() => {
-    request.onsuccess?.(new Event("success"));
-  }, 0);
-
-  return request;
-}
-
-function installIndexedDbMock(dataset: LegacyDataset): void {
-  const db = {
-    close: vi.fn(),
-    onversionchange: null,
-    transaction: vi.fn((_storeName: string) => ({
-      objectStore: (storeName: string) => {
-        if (storeName === "prompts") {
-          return {
-            getAll: () => asyncRequest(dataset.prompts),
-          };
-        }
-
-        if (storeName === "folders") {
-          return {
-            getAll: () => asyncRequest(dataset.folders),
-          };
-        }
-
-        if (storeName === "versions") {
-          return {
-            index: (indexName: string) => {
-              if (indexName !== "promptId") {
-                throw new Error(`Unexpected index lookup: ${indexName}`);
-              }
-              return {
-                getAll: (promptId: string) =>
-                  asyncRequest(
-                    dataset.versions.filter((version) => version.promptId === promptId),
-                  ),
-              };
-            },
-          };
-        }
-
-        throw new Error(`Unexpected object store: ${storeName}`);
+function installSource(data = source) {
+  const close = vi.fn();
+  const transaction = vi.fn((names: string[], mode: string) => {
+    expect(mode).toBe("readonly");
+    const tx = {
+      error: null,
+      oncomplete: null as (() => void) | null,
+      onerror: null,
+      onabort: null,
+      objectStore(name: keyof typeof source) {
+        return {
+          getAll: () => {
+            const request = {
+              result: data[name],
+              onsuccess: null as (() => void) | null,
+              onerror: null,
+            };
+            queueMicrotask(() => request.onsuccess?.());
+            return request;
+          },
+        };
       },
-    })),
-  } as unknown as IDBDatabase;
-
-  vi.stubGlobal("indexedDB", {
-    open: vi.fn(() => {
-      const request = {
-        onsuccess: null,
-        onerror: null,
-        onblocked: null,
-        onupgradeneeded: null,
-        result: db,
-        error: null,
-      } as unknown as IDBOpenDBRequest;
-
-      setTimeout(() => {
-        request.onsuccess?.(new Event("success"));
-      }, 0);
-
-      return request;
-    }),
+    };
+    setTimeout(() => tx.oncomplete?.(), 0);
+    return tx;
   });
+  const database = { close, transaction, objectStoreNames: Object.keys(data) };
+  const open = vi.fn(() => {
+    const request = {
+      result: database,
+      onsuccess: null as (() => void) | null,
+      onerror: null,
+      onupgradeneeded: null,
+      onblocked: null,
+    };
+    queueMicrotask(() => request.onsuccess?.());
+    return request;
+  });
+  vi.stubGlobal("indexedDB", {
+    databases: vi.fn().mockResolvedValue([{ name: "PromptHubDB" }]),
+    open,
+  });
+  return { close, open };
 }
 
-describe("migrateLegacyIndexedDbToMainProcess", () => {
-  const legacyPrompt: Prompt = {
-    id: "prompt-1",
-    title: "Prompt 1",
-    description: null,
-    promptType: "text",
-    systemPrompt: null,
-    systemPromptEn: null,
-    userPrompt: "hello",
-    userPromptEn: null,
-    variables: [],
-    tags: [],
-    folderId: "folder-1",
-    images: [],
-    videos: [],
-    isFavorite: false,
-    isPinned: false,
-    currentVersion: 1,
-    version: 1,
-    usageCount: 0,
-    source: null,
-    notes: null,
-    lastAiResponse: null,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+function installTarget() {
+  let target = {
+    prompts: [] as unknown[],
+    folders: [] as unknown[],
+    versions: [] as unknown[],
   };
-
-  const legacyFolder: Folder = {
-    id: "folder-1",
-    name: "Folder 1",
-    icon: null,
-    parentId: null,
-    order: 0,
-    isPrivate: false,
-    visibility: "private",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-
-  const legacyVersion: PromptVersion = {
-    id: "version-1",
-    promptId: "prompt-1",
-    version: 1,
-    systemPrompt: null,
-    systemPromptEn: null,
-    userPrompt: "hello",
-    userPromptEn: null,
-    variables: [],
-    note: null,
-    aiResponse: null,
-    createdAt: new Date().toISOString(),
-  };
-
-  beforeEach(() => {
-    vi.resetModules();
-    localStorage.clear();
+  const mark = vi.fn().mockResolvedValue(undefined);
+  const status = vi.fn().mockResolvedValue(false);
+  const migrate = vi.fn(async (input: typeof source) => {
+    target = structuredClone(input);
+    return { imported: true };
   });
+  const api = {
+    prompt: {
+      migrateIdbBatch: migrate,
+      getAll: vi.fn(async () => target.prompts),
+    },
+    folder: { getAll: vi.fn(async () => target.folders) },
+    version: { getAll: vi.fn(async () => target.versions) },
+    settings: {
+      rendererPersistence: {
+        isIndexedDbMigrationDone: status,
+        markIndexedDbMigrationDone: mark,
+      },
+    },
+  };
+  Object.defineProperty(window, "api", { configurable: true, value: api });
+  return {
+    api,
+    migrate,
+    mark,
+    status,
+    setTarget(value: typeof target) {
+      target = value;
+    },
+  };
+}
 
+describe("historical IndexedDB conversion", () => {
+  beforeEach(() => localStorage.clear());
   afterEach(() => {
     vi.unstubAllGlobals();
-    vi.clearAllMocks();
-    delete (window as Window & { api?: unknown }).api;
+    vi.restoreAllMocks();
   });
 
-  it("does not write the done marker when SQLite already has partial migrated data", async () => {
-    installIndexedDbMock({
-      prompts: [legacyPrompt],
-      folders: [legacyFolder],
-      versions: [legacyVersion],
-    });
-
-    const migrateIdbBatch = vi.fn();
-    (window as Window & { api: any }).api = {
-      prompt: {
-        getAll: vi.fn().mockResolvedValue([legacyPrompt]),
-        migrateIdbBatch,
-      },
-      folder: {
-        getAll: vi.fn().mockResolvedValue([legacyFolder]),
-      },
-      version: {
-        getAll: vi.fn().mockResolvedValue([]),
-      },
-    };
-
-    const { migrateLegacyIndexedDbToMainProcess } = await import(
-      "../../../src/renderer/services/database"
-    );
-
-    const result = await migrateLegacyIndexedDbToMainProcess();
-
-    expect(result.migrated).toBe(false);
-    expect(localStorage.getItem(DONE_KEY)).toBeNull();
-    expect(migrateIdbBatch).not.toHaveBeenCalled();
-  });
-
-  it("writes the done marker when SQLite already fully contains the legacy data", async () => {
-    installIndexedDbMock({
-      prompts: [legacyPrompt],
-      folders: [legacyFolder],
-      versions: [legacyVersion],
-    });
-
-    const migrateIdbBatch = vi.fn();
-    (window as Window & { api: any }).api = {
-      prompt: {
-        getAll: vi.fn().mockResolvedValue([legacyPrompt]),
-        migrateIdbBatch,
-      },
-      folder: {
-        getAll: vi.fn().mockResolvedValue([legacyFolder]),
-      },
-      version: {
-        getAll: vi.fn().mockResolvedValue([legacyVersion]),
-      },
-    };
-
-    const { migrateLegacyIndexedDbToMainProcess } = await import(
-      "../../../src/renderer/services/database"
-    );
-
-    const result = await migrateLegacyIndexedDbToMainProcess();
-
-    expect(result.migrated).toBe(false);
-    expect(localStorage.getItem(DONE_KEY)).toBe("1");
-    expect(migrateIdbBatch).not.toHaveBeenCalled();
-  });
-
-  it("refuses the old non-atomic fallback path when migrateIdbBatch is unavailable", async () => {
-    installIndexedDbMock({
-      prompts: [legacyPrompt],
-      folders: [legacyFolder],
-      versions: [legacyVersion],
-    });
-
-    const insertDirect = vi.fn();
-    (window as Window & { api: any }).api = {
-      prompt: {
-        getAll: vi.fn().mockResolvedValue([]),
-        insertDirect,
-      },
-      folder: {
-        getAll: vi.fn().mockResolvedValue([]),
-        insertDirect,
-      },
-      version: {
-        getAll: vi.fn().mockResolvedValue([]),
-        insertDirect,
-      },
-    };
-
-    const { migrateLegacyIndexedDbToMainProcess } = await import(
-      "../../../src/renderer/services/database"
-    );
-
-    const result = await migrateLegacyIndexedDbToMainProcess();
-
-    expect(result.migrated).toBe(false);
-    expect(localStorage.getItem(DONE_KEY)).toBeNull();
-  });
-
-  it("re-fetches main-process data when migrateIdbBatch reports imported false", async () => {
-    installIndexedDbMock({
-      prompts: [legacyPrompt],
-      folders: [legacyFolder],
-      versions: [legacyVersion],
-    });
-
-    const migrateIdbBatch = vi.fn().mockResolvedValue({ imported: false });
-    const promptGetAll = vi
-      .fn()
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([legacyPrompt]);
-    const folderGetAll = vi
-      .fn()
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([legacyFolder]);
-
-    (window as Window & { api: any }).api = {
-      prompt: {
-        getAll: promptGetAll,
-        migrateIdbBatch,
-      },
-      folder: {
-        getAll: folderGetAll,
-      },
-      version: {
-        getAll: vi.fn().mockResolvedValue([legacyVersion]),
-      },
-    };
-
-    const { migrateLegacyIndexedDbToMainProcess } = await import(
-      "../../../src/renderer/services/database"
-    );
-
-    const result = await migrateLegacyIndexedDbToMainProcess();
-
-    expect(result.migrated).toBe(false);
-    expect(localStorage.getItem(DONE_KEY)).toBe("1");
-    expect(promptGetAll).toHaveBeenCalledTimes(2);
-    expect(folderGetAll).toHaveBeenCalledTimes(2);
-  });
-
-  it("passes parent folders before child folders during batch migration", async () => {
-    const parentFolder: Folder = {
-      ...legacyFolder,
-      id: "folder-parent",
-      name: "Parent",
-      parentId: null,
-    };
-    const childFolder: Folder = {
-      ...legacyFolder,
-      id: "folder-child",
-      name: "Child",
-      parentId: "folder-parent",
-    };
-    const childPrompt: Prompt = {
-      ...legacyPrompt,
-      id: "prompt-child",
-      folderId: "folder-child",
-    };
-    const childVersion: PromptVersion = {
-      ...legacyVersion,
-      id: "version-child",
-      promptId: "prompt-child",
-    };
-
-    installIndexedDbMock({
-      prompts: [childPrompt],
-      folders: [childFolder, parentFolder],
-      versions: [childVersion],
-    });
-
-    const migrateIdbBatch = vi.fn().mockResolvedValue({
-      imported: true,
+  it("converts all records, verifies content, closes the source and records completion", async () => {
+    const input = installSource();
+    const target = installTarget();
+    expect(await migrateLegacyIndexedDbToMainProcess()).toEqual({
+      migrated: true,
       promptCount: 1,
-      folderCount: 2,
+      folderCount: 1,
       versionCount: 1,
     });
+    expect(target.migrate).toHaveBeenCalledWith(source);
+    expect(target.mark).toHaveBeenCalledOnce();
+    expect(input.close).toHaveBeenCalledOnce();
+  });
 
-    (window as Window & { api: any }).api = {
-      prompt: {
-        getAll: vi.fn().mockResolvedValue([]),
-        migrateIdbBatch,
-      },
-      folder: {
-        getAll: vi.fn().mockResolvedValue([]),
-      },
-      version: {
-        getAll: vi.fn().mockResolvedValue([]),
-      },
-    };
+  it("does not open browser storage after confirmed migration", async () => {
+    const input = installSource();
+    const target = installTarget();
+    target.status.mockResolvedValue(true);
+    await migrateLegacyIndexedDbToMainProcess();
+    expect(input.open).not.toHaveBeenCalled();
+  });
 
-    const { migrateLegacyIndexedDbToMainProcess } = await import(
-      "../../../src/renderer/services/database"
+  it("does not create a browser database on a fresh install", async () => {
+    const input = installSource();
+    installTarget();
+    vi.mocked(indexedDB.databases).mockResolvedValue([]);
+    await migrateLegacyIndexedDbToMainProcess();
+    expect(input.open).not.toHaveBeenCalled();
+  });
+
+  it("accepts an already fully converted target without another import", async () => {
+    installSource();
+    const target = installTarget();
+    target.setTarget(structuredClone(source));
+    await migrateLegacyIndexedDbToMainProcess();
+    expect(target.migrate).not.toHaveBeenCalled();
+    expect(target.mark).toHaveBeenCalledOnce();
+  });
+
+  it.each(["missing-version", "changed-content"])(
+    "rejects %s instead of declaring ready",
+    async (scenario) => {
+      const input = installSource();
+      const target = installTarget();
+      target.setTarget({
+        ...source,
+        ...(scenario === "missing-version"
+          ? { versions: [] }
+          : { prompts: [{ ...prompt, userPrompt: "Different" }] }),
+      });
+      await expect(migrateLegacyIndexedDbToMainProcess()).rejects.toThrow(
+        /incomplete|conflict/i,
+      );
+      expect(target.mark).not.toHaveBeenCalled();
+      expect(target.migrate).not.toHaveBeenCalled();
+      expect(input.close).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("propagates import failure and preserves the completion state", async () => {
+    const input = installSource();
+    const target = installTarget();
+    target.migrate.mockRejectedValue(new Error("transaction failed"));
+    await expect(migrateLegacyIndexedDbToMainProcess()).rejects.toThrow(
+      "transaction failed",
     );
+    expect(target.mark).not.toHaveBeenCalled();
+    expect(input.close).toHaveBeenCalledOnce();
+  });
 
-    const result = await migrateLegacyIndexedDbToMainProcess();
+  it("verifies data even when import claims success", async () => {
+    installSource();
+    const target = installTarget();
+    target.migrate.mockImplementation(async () => ({ imported: true }));
+    await expect(migrateLegacyIndexedDbToMainProcess()).rejects.toThrow(
+      /verification/i,
+    );
+    expect(target.mark).not.toHaveBeenCalled();
+  });
 
-    expect(result.migrated).toBe(true);
-    expect(migrateIdbBatch).toHaveBeenCalledWith({
-      folders: [childFolder, parentFolder],
-      prompts: [childPrompt],
-      versions: [childVersion],
-    });
+  it("does not trust a legacy localStorage done marker", async () => {
+    installSource();
+    const target = installTarget();
+    localStorage.setItem("prompthub:idb-migration-done", "1");
+    await migrateLegacyIndexedDbToMainProcess();
+    expect(target.migrate).toHaveBeenCalledOnce();
+  });
+
+  it("fails explicitly when the atomic import interface is missing", async () => {
+    const input = installSource();
+    const target = installTarget();
+    Reflect.deleteProperty(target.api.prompt, "migrateIdbBatch");
+    await expect(migrateLegacyIndexedDbToMainProcess()).rejects.toThrow(
+      /migrateIdbBatch/,
+    );
+    expect(input.open).not.toHaveBeenCalled();
+    expect(target.mark).not.toHaveBeenCalled();
   });
 });

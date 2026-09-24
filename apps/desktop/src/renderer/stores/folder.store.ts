@@ -38,14 +38,8 @@ export const useFolderStore = create<FolderState>((set, get) => ({
   unlockedFolderIds: new Set(),
 
   fetchFolders: async () => {
-    try {
-      // seedDatabase will be called in prompt.store, fetch directly here
-      // seedDatabase 会在 prompt.store 中调用，这里直接获取
-      const folders = await db.getAllFolders();
-      set({ folders });
-    } catch (error) {
-      console.error("Failed to fetch folders:", error);
-    }
+    const folders = await db.getAllFolders();
+    set({ folders });
   },
 
   createFolder: async (data) => {

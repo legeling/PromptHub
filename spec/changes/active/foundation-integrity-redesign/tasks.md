@@ -106,7 +106,7 @@ Findings and required conversions are maintained in
 ## Migration-only implementation (2026-09-24)
 
 - [x] Replace conflicting file-first design and align current requirements with the single business implementation.
-- [ ] Remove renderer IndexedDB CRUD and backup/restore fallbacks; isolate historical conversion and block startup on failure.
+- [x] Remove renderer IndexedDB CRUD and graph backup/restore fallbacks; isolate historical conversion and propagate startup errors. Focused evidence is recorded in implementation.md; complete native startup acceptance remains open.
 - [ ] Convert Core domain/configuration/path sources through ordered migrations; remove corresponding authority modes and read-time conversion together.
 - [ ] Verify full historical upgrade, restore, current functionality and repeated startup before baseline release.
 - [ ] Commit and push verified logical batches without unrelated worktree changes.

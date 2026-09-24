@@ -498,7 +498,8 @@ describe("database-backup restore", () => {
     });
   });
 
-  it("blocks graph restore before clearing when direct restore IPC is unavailable", async () => {
+  it("blocks graph restore before clearing when the current restore IPC is unavailable", async () => {
+    Reflect.deleteProperty(window.api.prompt, "restoreGraph");
     const prompt = {
       id: "prompt-graph-fallback",
       title: "Graph prompt",
@@ -533,7 +534,7 @@ describe("database-backup restore", () => {
         ],
       }),
     ).rejects.toThrow(
-      "Backup restore was blocked because this runtime cannot preserve",
+      "Current graph restore API is unavailable",
     );
 
     expect(clearDatabaseMock).not.toHaveBeenCalled();
@@ -917,6 +918,7 @@ describe("database-backup restore", () => {
       },
     });
 
+    window.api.version.getAll.mockImplementation(async (id: string) => id === prompt.id ? [version] : []);
     const backup = await exportDatabase();
 
     expect(backup.prompts).toEqual([prompt, targetPrompt]);
@@ -950,18 +952,9 @@ describe("database-backup restore", () => {
 
     await restoreFromBackup(backup);
 
-    expect(window.api.folder.delete).toHaveBeenCalledWith("folder-1");
-    expect(window.api.prompt.delete).toHaveBeenCalledWith("prompt-1");
-    expect(window.api.folder.insertDirect).toHaveBeenCalledWith(folder);
-    expect(window.api.prompt.insertDirect).toHaveBeenCalledWith(prompt);
-    expect(window.api.version.insertDirect).toHaveBeenCalledWith(version);
-    expect(window.api.prompt.insertRelationDirect).toHaveBeenCalledWith(
-      promptRelation,
-    );
-    expect(window.api.prompt.insertOutputFormatDirect).toHaveBeenCalledWith(
-      outputFormatItem,
-    );
-    expect(window.api.prompt.syncWorkspace).toHaveBeenCalledTimes(1);
+    expect(window.api.prompt.restoreGraph).toHaveBeenCalledWith({ folders: [folder], prompts: [prompt, targetPrompt], versions: [version], promptRelations: [promptRelation], outputFormatItems: [outputFormatItem] });
+    expect(window.api.prompt.insertDirect).not.toHaveBeenCalled();
+    expect(window.api.folder.delete).not.toHaveBeenCalled();
     expect(window.electron.saveImageBase64).toHaveBeenCalledWith(
       "image-1.png",
       "base64-image",
@@ -1076,7 +1069,7 @@ describe("database-backup restore", () => {
     expect(getDatabaseMock).not.toHaveBeenCalled();
   });
 
-  it("restores folders in parent-first order even when backup payload is unsorted", async () => {
+  it("passes the complete folder graph to the atomic owner", async () => {
     const parentFolder = {
       id: "folder-parent",
       name: "Parent",
@@ -1123,14 +1116,8 @@ describe("database-backup restore", () => {
       versions: [],
     });
 
-    expect(window.api.folder.insertDirect).toHaveBeenNthCalledWith(
-      1,
-      parentFolder,
-    );
-    expect(window.api.folder.insertDirect).toHaveBeenNthCalledWith(
-      2,
-      childFolder,
-    );
+    expect(window.api.prompt.restoreGraph).toHaveBeenCalledWith(expect.objectContaining({ folders: [childFolder, parentFolder] }));
+    expect(window.api.folder.insertDirect).not.toHaveBeenCalled();
   });
 
   it("restores a selective export file through the normal restore entry", async () => {

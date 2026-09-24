@@ -95,6 +95,7 @@ export interface RendererPersistenceMarkerDocument {
   state: "complete";
   completedAt: string;
   indexedDbMigrationDone: boolean;
+  indexedDbVerificationVersion?: 1;
 }
 
 interface CanonicalDocument {
@@ -299,7 +300,8 @@ export function createRendererPersistenceStore(options: {
     },
 
     async isIndexedDbMigrationDone() {
-      return readMarker(markerPath)?.indexedDbMigrationDone === true;
+      const marker = readMarker(markerPath);
+      return marker?.indexedDbMigrationDone === true && marker.indexedDbVerificationVersion === 1;
     },
 
     async markIndexedDbMigrationDone() {
@@ -307,12 +309,14 @@ export function createRendererPersistenceStore(options: {
       if (!marker) {
         throw new Error("RENDERER_PERSISTENCE_MIGRATION_INCOMPLETE");
       }
-      if (marker.indexedDbMigrationDone) return;
+      if (marker.indexedDbMigrationDone && marker.indexedDbVerificationVersion === 1) return;
       writeAtomicJson(markerPath, {
         ...marker,
         indexedDbMigrationDone: true,
+        indexedDbVerificationVersion: 1,
       });
-      if (!readMarker(markerPath)?.indexedDbMigrationDone) {
+      const verified = readMarker(markerPath);
+      if (!verified?.indexedDbMigrationDone || verified.indexedDbVerificationVersion !== 1) {
         throw new Error("INDEXEDDB_MIGRATION_MARKER_VERIFY_FAILED");
       }
     },

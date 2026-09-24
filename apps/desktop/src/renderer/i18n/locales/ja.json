@@ -2570,6 +2570,8 @@
     "mcpQuickstartDesc": "ツール、スキル、統合向けのプロトコル入門"
   },
   "common": {
+    "storageInitializationFailed": "ローカルデータを初期化できません",
+    "storageInitializationFailedDescription": "データ移行が完了していません。元のデータは保持されています。エラーを解決してから再読み込みしてください。",
     "install": "インストール",
     "installed": "インストール済み",
     "confirm": "確認",

@@ -173,7 +173,7 @@ process or service remains running.
 
 ## 2026-09-24 — Migration-only renderer boundary
 
-Implementation prepared; verification pending. Renderer Prompt/Folder/version/graph
+Renderer Prompt/Folder/version/graph
 operations now require the current bridge. Historical IndexedDB conversion lives
 under services/migrations, opens sources read-only, compares source content after
 import, preserves source files and propagates failure. A legacy browser done flag
@@ -186,7 +186,17 @@ validation; summary reads implement the current bridge contract. This batch does
 not retire Core canonical-file authority, migrate all settings to SQL, remove
 read-time MCP/Plugin/Rule conversion, or establish the complete 0.6.0 baseline.
 
-Verification targets: renderer-to-real-SQLite CRUD/version/relation/reopen,
-read-only historical conversion and failure preservation, web scoped graph
-restore and rollback, affected backup units, Core migration markers and typechecks.
-Electron UI and real historical-client profile acceptance remain separate gates.
+Verified from an exported Git index, without unrelated worktree changes:
+
+- Desktop: 48 focused cases across renderer-to-real-SQLite CRUD/version/relation/reopen,
+  historical conversion, backups, persistence and readiness error propagation.
+- Web: 19 cases across bridge, real SQLite graph restore/rollback and an authenticated
+  HTTP route round trip, including malformed input, broken references and unauthorized access.
+- Core: 17 renderer migration/marker cases. Legacy browser flags are not accepted as proof.
+- Desktop and Web `pnpm exec tsc --noEmit`: passed. Scoped Desktop ESLint and
+  `git diff --cached --check`: passed.
+
+The SQLite round trip found and corrected `createVersion` returning an undefined
+note while reopening returned null. No browser/Electron transport is claimed by
+that test. The IDB tests model its request callbacks; real historical-client profile,
+Electron UI and complete 0.6.0 migration acceptance remain pending.

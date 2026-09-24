@@ -169,7 +169,8 @@ function startCanonicalPersistenceSubscriptions(): void {
     ),
     subscribeCanonicalSources(
       "mcp",
-      () => normalizeCanonicalSources(useMcpStore.getState().customStoreSources),
+      () =>
+        normalizeCanonicalSources(useMcpStore.getState().customStoreSources),
       useMcpStore.subscribe,
     ),
     subscribeCanonicalSources(
@@ -182,11 +183,15 @@ function startCanonicalPersistenceSubscriptions(): void {
 }
 
 export async function migrateRendererPersistence(): Promise<void> {
-  if (initialized || typeof window === "undefined" || window.__PROMPTHUB_WEB__) {
+  if (
+    initialized ||
+    typeof window === "undefined" ||
+    window.__PROMPTHUB_WEB__
+  ) {
     return;
   }
   const api = window.api?.settings?.rendererPersistence;
-  if (!api) return;
+  if (!api) throw new Error("Required renderer persistence API is missing");
   const input = collectLegacyRendererPersistence(window.localStorage);
   const result = (await api.migrate(
     input,

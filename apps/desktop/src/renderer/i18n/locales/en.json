@@ -2580,6 +2580,8 @@
     "mcpQuickstartDesc": "Protocol quickstart for tools, skills, and integrations"
   },
   "common": {
+    "storageInitializationFailed": "Unable to initialize local data",
+    "storageInitializationFailedDescription": "Data migration did not complete. Your source data has been preserved. Resolve the reported error before reloading.",
     "install": "Install",
     "installed": "Installed",
     "confirm": "Confirm",
