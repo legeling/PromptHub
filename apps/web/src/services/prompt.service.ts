@@ -9,6 +9,7 @@ import type {
   PromptRelation,
   PromptRelationQuery,
   PromptVersion,
+  PromptTagDeleteResult,
   SearchQuery,
   UpdateOutputFormatItemDTO,
   UpdatePromptDTO,
@@ -475,19 +476,13 @@ export class PromptService {
     syncPromptWorkspaceFromDatabase(this.db, this.promptDb, this.folderDb);
   }
 
-  deleteTag(actor: PromptActor, tag: string): void {
-    if (!tag) {
-      return;
-    }
-
-    this.updateScopedTags(actor, (tags) => {
-      if (!tags.includes(tag)) {
-        return null;
-      }
-
-      return tags.filter((item) => item !== tag);
-    });
-    syncPromptWorkspaceFromDatabase(this.db, this.promptDb, this.folderDb);
+  deleteTag(actor: PromptActor, tag: string): PromptTagDeleteResult {
+    return this.db.transaction(() => {
+      const referenced = this.getTagRowsForWrite(actor).filter(
+        (row) => this.parseTags(row.tags).includes(tag),
+      ).length;
+      return { deleted: referenced === 0, referenced };
+    })();
   }
 
   syncWorkspace(): void {
@@ -682,7 +677,7 @@ export class PromptService {
     const rows = this.getTagRowsForWrite(actor);
     const updateStmt = this.db.prepare(`
       UPDATE prompts
-      SET tags = ?, current_version = current_version + 1, updated_at = ?
+      SET tags = ?, updated_at = ?
       WHERE id = ?
     `);
     const now = Date.now();
@@ -695,6 +690,7 @@ export class PromptService {
         }
 
         updateStmt.run(JSON.stringify(nextTags), now, row.id);
+        this.promptDb.createVersion(row.id);
       }
     });
 

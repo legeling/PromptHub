@@ -153,6 +153,12 @@ describe("installDesktopBridge media helpers", () => {
             headers: { "Content-Type": "application/json" },
           });
         }
+        if (url.endsWith("/api/prompts/meta/tags/delete")) {
+          return new Response(
+            JSON.stringify({ data: { deleted: false, referenced: 2 } }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
         if (url.endsWith("/api/rules") || url.endsWith("/api/rules/scan")) {
           return new Response(JSON.stringify({ data: [] }), {
             status: 200,
@@ -172,7 +178,9 @@ describe("installDesktopBridge media helpers", () => {
       prompt: {
         getAllTags: () => Promise<string[]>;
         renameTag: (oldTag: string, newTag: string) => Promise<boolean>;
-        deleteTag: (tag: string) => Promise<{ deleted: boolean; referenced: number }>;
+        deleteTag: (
+          tag: string,
+        ) => Promise<{ deleted: boolean; referenced: number }>;
       };
       rules: {
         list: () => Promise<unknown[]>;
@@ -188,8 +196,8 @@ describe("installDesktopBridge media helpers", () => {
     await expect(api.prompt.getAllTags()).resolves.toEqual(["alpha", "beta"]);
     await expect(api.prompt.renameTag("alpha", "beta")).resolves.toBe(true);
     await expect(api.prompt.deleteTag("beta")).resolves.toEqual({
-      deleted: true,
-      referenced: 0,
+      deleted: false,
+      referenced: 2,
     });
     await expect(api.rules.list()).resolves.toEqual([]);
     await expect(api.rules.scan()).resolves.toEqual([]);

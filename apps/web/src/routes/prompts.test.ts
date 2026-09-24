@@ -880,6 +880,7 @@ describe('web prompt routes', () => {
         }),
       );
       expect(deleteResponse.status).toBe(200);
+      expect(await deleteResponse.json()).toMatchObject({ data: { deleted: false, referenced: 1 } });
 
       const ownerAfterResponse = await app.request(
         new Request(`http://local/api/prompts/${ownerPrompt.payload.data!.id}`, {
@@ -887,7 +888,7 @@ describe('web prompt routes', () => {
         }),
       );
       const ownerAfterPayload = await ownerAfterResponse.json() as { data: { tags: string[] } };
-      expect(ownerAfterPayload.data.tags).toEqual(['renamed-owner', 'owner-only']);
+      expect(ownerAfterPayload.data.tags).toEqual(['renamed-owner', 'delete-me', 'owner-only']);
 
       const otherAfterResponse = await app.request(
         new Request(`http://local/api/prompts/${otherPrompt.payload.data!.id}`, {

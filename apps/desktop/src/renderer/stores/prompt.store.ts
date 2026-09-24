@@ -52,6 +52,147 @@ function isViewMode(value: unknown): value is ViewMode {
   return typeof value === "string" && VIEW_MODES.includes(value as ViewMode);
 }
 
+const PROMPT_DETAIL_CACHE_LIMIT = 100;
+const PROMPT_DETAIL_REQUEST_LIMIT = 100;
+
+interface PromptDetailRequest {
+  generation: number;
+  promise: Promise<Prompt | null>;
+}
+
+/**
+ * Read-side coordination lives outside the persisted Zustand state. These
+ * values fence late responses without exposing transport details to callers.
+ *
+ * 读侧协调状态不进入持久化 Zustand 状态。它用来阻止迟到响应覆盖新结果，
+ * 同时不把传输细节暴露给调用方。
+ */
+const promptReadRuntime = {
+  fetchGeneration: 0,
+  latestFetchGeneration: 0,
+  detailGenerations: new Map<string, number>(),
+  detailRequests: new Map<string, PromptDetailRequest>(),
+  activeDetailRequests: 0,
+  detailCacheOrder: [] as string[],
+};
+
+function nextFetchGeneration(): number {
+  const generation = ++promptReadRuntime.fetchGeneration;
+  promptReadRuntime.latestFetchGeneration = generation;
+  return generation;
+}
+
+function currentDetailGeneration(id: string): number {
+  return promptReadRuntime.detailGenerations.get(id) ?? 0;
+}
+
+function isCurrentDetailRequest(
+  id: string,
+  request: PromptDetailRequest,
+): boolean {
+  return (
+    promptReadRuntime.detailRequests.get(id) === request &&
+    currentDetailGeneration(id) === request.generation
+  );
+}
+
+function invalidateDetailRead(id: string): void {
+  const inFlight = promptReadRuntime.detailRequests.get(id);
+  if (inFlight) {
+    // Keep the old request registered until finally() runs. A new generation
+    // may replace it, but the old response still needs this fence value.
+    promptReadRuntime.detailGenerations.set(
+      id,
+      currentDetailGeneration(id) + 1,
+    );
+  } else {
+    // Without a pending response, no generation tombstone is needed.
+    promptReadRuntime.detailGenerations.delete(id);
+  }
+  promptReadRuntime.detailCacheOrder =
+    promptReadRuntime.detailCacheOrder.filter((cacheId) => cacheId !== id);
+}
+
+function invalidatePromptReads(ids: readonly string[] = []): void {
+  // A mutation fences every list fetch already in flight, even when it has no
+  // prompt id yet (for example createPrompt).
+  promptReadRuntime.fetchGeneration += 1;
+  for (const id of new Set(ids)) invalidateDetailRead(id);
+}
+
+function invalidateAllDetailReads(): void {
+  const ids = new Set([
+    ...promptReadRuntime.detailRequests.keys(),
+    ...promptReadRuntime.detailCacheOrder,
+  ]);
+  for (const id of ids) {
+    if (promptReadRuntime.detailRequests.has(id)) {
+      promptReadRuntime.detailGenerations.set(
+        id,
+        currentDetailGeneration(id) + 1,
+      );
+    } else {
+      promptReadRuntime.detailGenerations.delete(id);
+    }
+  }
+  promptReadRuntime.detailCacheOrder = [];
+}
+
+function removeCachedDetails(
+  cache: Record<string, Prompt>,
+  ids: readonly string[],
+): Record<string, Prompt> {
+  const nextCache = { ...cache };
+  for (const id of ids) delete nextCache[id];
+  for (const id of ids) {
+    if (!promptReadRuntime.detailRequests.has(id)) {
+      promptReadRuntime.detailGenerations.delete(id);
+    }
+  }
+  promptReadRuntime.detailCacheOrder =
+    promptReadRuntime.detailCacheOrder.filter((id) => !ids.includes(id));
+  return nextCache;
+}
+
+function cacheDetail(
+  cache: Record<string, Prompt>,
+  id: string,
+  detail: Prompt,
+): Record<string, Prompt> {
+  const presentIds = new Set(Object.keys(cache));
+  const order = promptReadRuntime.detailCacheOrder.filter((cacheId) =>
+    presentIds.has(cacheId),
+  );
+  for (const cacheId of presentIds) {
+    if (!order.includes(cacheId)) order.push(cacheId);
+  }
+
+  const nextCache = { ...cache, [id]: detail };
+  const nextOrder = order.filter((cacheId) => cacheId !== id);
+  nextOrder.push(id);
+  while (nextOrder.length > PROMPT_DETAIL_CACHE_LIMIT) {
+    const evictedId = nextOrder.shift();
+    if (evictedId) delete nextCache[evictedId];
+  }
+  promptReadRuntime.detailCacheOrder = nextOrder;
+  return nextCache;
+}
+
+function touchCachedDetail(id: string, cache: Record<string, Prompt>): void {
+  if (!cache[id]) return;
+  const presentIds = new Set(Object.keys(cache));
+  const order = promptReadRuntime.detailCacheOrder.filter((cacheId) =>
+    presentIds.has(cacheId),
+  );
+  for (const cacheId of presentIds) {
+    if (!order.includes(cacheId)) order.push(cacheId);
+  }
+  promptReadRuntime.detailCacheOrder = [
+    ...order.filter((cacheId) => cacheId !== id),
+    id,
+  ];
+}
+
 interface PromptState {
   prompts: PromptSummary[];
   /**
@@ -148,6 +289,7 @@ export const usePromptStore = create<PromptState>()(
       kanbanColumns: 3 as KanbanColumns,
 
       fetchPrompts: async () => {
+        const generation = nextFetchGeneration();
         set({ isLoading: true });
         try {
           const [prompts, relations, outputFormatItems] = await Promise.all([
@@ -155,27 +297,102 @@ export const usePromptStore = create<PromptState>()(
             db.listPromptRelations(),
             db.listOutputFormatItems(),
           ]);
-          set({ prompts, relations, outputFormatItems });
+          // A mutation or a newer fetch may have started while this request
+          // was in flight. Its result is no longer a valid list projection.
+          if (generation !== promptReadRuntime.fetchGeneration) return;
+
+          invalidateAllDetailReads();
+          const promptIds = new Set(prompts.map((prompt) => prompt.id));
+          set((state) => {
+            const selectedIds = state.selectedIds.filter((id) =>
+              promptIds.has(id),
+            );
+            return {
+              prompts,
+              relations,
+              outputFormatItems,
+              promptDetailCache: {},
+              selectedIds,
+              selectedId:
+                state.selectedId && promptIds.has(state.selectedId)
+                  ? state.selectedId
+                  : null,
+              lastSelectedId:
+                state.lastSelectedId && promptIds.has(state.lastSelectedId)
+                  ? state.lastSelectedId
+                  : null,
+            };
+          });
         } catch (error) {
           console.error("Failed to fetch prompts:", error);
           throw error;
         } finally {
-          set({ isLoading: false });
+          // isLoading represents the latest request. An older, fenced
+          // request must not keep the UI loading after the latest settles.
+          if (generation === promptReadRuntime.latestFetchGeneration) {
+            set({ isLoading: false });
+          }
         }
       },
 
       getPromptDetail: async (id) => {
         const cached = get().promptDetailCache[id];
-        if (cached) return cached;
-        const detail = await db.getPromptById(id);
-        if (!detail) return null;
-        set((state) => ({
-          promptDetailCache: { ...state.promptDetailCache, [id]: detail },
-        }));
-        return detail;
+        if (cached) {
+          touchCachedDetail(id, get().promptDetailCache);
+          return cached;
+        }
+
+        const generation = currentDetailGeneration(id);
+        const inFlight = promptReadRuntime.detailRequests.get(id);
+        if (inFlight?.generation === generation) return inFlight.promise;
+        if (
+          promptReadRuntime.activeDetailRequests >= PROMPT_DETAIL_REQUEST_LIMIT
+        ) {
+          throw new Error(
+            `Prompt detail request limit exceeded: maximum ${PROMPT_DETAIL_REQUEST_LIMIT} requests may be in flight`,
+          );
+        }
+
+        const request: PromptDetailRequest = {
+          generation,
+          promise: Promise.resolve(null),
+        };
+        promptReadRuntime.activeDetailRequests += 1;
+        request.promise = db
+          .getPromptById(id)
+          .then((detail) => {
+            if (!detail) return null;
+            if (!isCurrentDetailRequest(id, request)) {
+              // The caller may still be awaiting the old request. Return the
+              // current cache when available, never the fenced old detail.
+              return get().promptDetailCache[id] ?? null;
+            }
+
+            set((state) => {
+              if (!isCurrentDetailRequest(id, request)) return state;
+              return {
+                promptDetailCache: cacheDetail(
+                  state.promptDetailCache,
+                  id,
+                  detail,
+                ),
+              };
+            });
+            return detail;
+          })
+          .finally(() => {
+            promptReadRuntime.activeDetailRequests -= 1;
+            if (promptReadRuntime.detailRequests.get(id) === request) {
+              promptReadRuntime.detailRequests.delete(id);
+              promptReadRuntime.detailGenerations.delete(id);
+            }
+          });
+        promptReadRuntime.detailRequests.set(id, request);
+        return request.promise;
       },
 
       createPrompt: async (data) => {
+        invalidatePromptReads();
         const prompt = await db.createPrompt({
           ...data,
           variables: data.variables || [],
@@ -185,6 +402,7 @@ export const usePromptStore = create<PromptState>()(
           usageCount: 0,
           currentVersion: 1,
         });
+        invalidatePromptReads();
         set((state) => ({
           prompts: [promptToSummary(prompt), ...state.prompts],
         }));
@@ -193,7 +411,12 @@ export const usePromptStore = create<PromptState>()(
       },
 
       updatePrompt: async (id, data) => {
+        invalidatePromptReads([id]);
+        set((state) => ({
+          promptDetailCache: removeCachedDetails(state.promptDetailCache, [id]),
+        }));
         const updated = await db.updatePrompt(id, data);
+        invalidatePromptReads([id]);
         set((state) => ({
           prompts: state.prompts.map((p) =>
             p.id === id ? { ...p, ...promptToSummary(updated) } : p,
@@ -202,8 +425,7 @@ export const usePromptStore = create<PromptState>()(
           // content after an edit (edit modal / inline editor / AI test).
           // 保持详情缓存最新，避免编辑后详情面板展示脏数据。
           promptDetailCache: {
-            ...state.promptDetailCache,
-            [id]: updated,
+            ...cacheDetail(state.promptDetailCache, id, updated),
           },
         }));
 
@@ -253,7 +475,9 @@ export const usePromptStore = create<PromptState>()(
       },
 
       createRelation: async (data) => {
+        invalidatePromptReads();
         const relation = await db.createPromptRelation(data);
+        invalidatePromptReads();
         set((state) => ({
           relations: [
             relation,
@@ -265,8 +489,10 @@ export const usePromptStore = create<PromptState>()(
       },
 
       updateRelation: async (id, data) => {
+        invalidatePromptReads();
         const relation = await db.updatePromptRelation(id, data);
         if (!relation) return;
+        invalidatePromptReads();
         set((state) => ({
           relations: state.relations.map((item) =>
             item.id === id ? relation : item,
@@ -276,8 +502,10 @@ export const usePromptStore = create<PromptState>()(
       },
 
       deleteRelation: async (id) => {
+        invalidatePromptReads();
         const deleted = await db.deletePromptRelation(id);
         if (!deleted) return;
+        invalidatePromptReads();
         set((state) => ({
           relations: state.relations.filter((item) => item.id !== id),
         }));
@@ -290,7 +518,9 @@ export const usePromptStore = create<PromptState>()(
       },
 
       createOutputFormatItem: async (data) => {
+        invalidatePromptReads();
         const item = await db.createOutputFormatItem(data);
+        invalidatePromptReads();
         set((state) => ({
           outputFormatItems: [
             item,
@@ -304,8 +534,10 @@ export const usePromptStore = create<PromptState>()(
       },
 
       deleteOutputFormatItem: async (id) => {
+        invalidatePromptReads();
         const deleted = await db.deleteOutputFormatItem(id);
         if (!deleted) return;
+        invalidatePromptReads();
         set((state) => ({
           outputFormatItems: state.outputFormatItems.filter(
             (item) => item.id !== id,
@@ -315,13 +547,20 @@ export const usePromptStore = create<PromptState>()(
       },
 
       reorderOutputFormatItem: async (sourcePromptId, itemId, newSortOrder) => {
+        invalidatePromptReads();
         await db.reorderOutputFormatItem(sourcePromptId, itemId, newSortOrder);
+        invalidatePromptReads();
         await get().fetchOutputFormatItems();
         scheduleAllSaveSync("prompt:output-format:reorder");
       },
 
       movePrompts: async (ids, folderId) => {
+        invalidatePromptReads(ids);
+        set((state) => ({
+          promptDetailCache: removeCachedDetails(state.promptDetailCache, ids),
+        }));
         await db.movePrompts(ids, folderId);
+        invalidatePromptReads(ids);
         set((state) => ({
           prompts: state.prompts.map((p) =>
             ids.includes(p.id)
@@ -333,13 +572,25 @@ export const usePromptStore = create<PromptState>()(
       },
 
       movePrompt: async (promptId, newParentId, newOrder) => {
+        invalidatePromptReads([promptId]);
+        set((state) => ({
+          promptDetailCache: removeCachedDetails(state.promptDetailCache, [
+            promptId,
+          ]),
+        }));
         await db.movePrompt(promptId, newParentId, newOrder);
+        invalidatePromptReads([promptId]);
         await get().fetchPrompts();
         scheduleAllSaveSync("prompt:move");
       },
 
       deletePrompt: async (id) => {
+        invalidatePromptReads([id]);
+        set((state) => ({
+          promptDetailCache: removeCachedDetails(state.promptDetailCache, [id]),
+        }));
         await db.deletePrompt(id);
+        invalidatePromptReads([id]);
         set((state) => {
           const nextCache = { ...state.promptDetailCache };
           delete nextCache[id];
@@ -348,15 +599,19 @@ export const usePromptStore = create<PromptState>()(
             promptDetailCache: nextCache,
             relations: state.relations.filter(
               (relation) =>
-                relation.sourcePromptId !== id && relation.targetPromptId !== id,
+                relation.sourcePromptId !== id &&
+                relation.targetPromptId !== id,
             ),
             outputFormatItems: state.outputFormatItems.filter(
-              (item) => item.sourcePromptId !== id && item.targetPromptId !== id,
+              (item) =>
+                item.sourcePromptId !== id && item.targetPromptId !== id,
             ),
             selectedId: state.selectedId === id ? null : state.selectedId,
             selectedIds: state.selectedIds.filter(
               (selectedId) => selectedId !== id,
             ),
+            lastSelectedId:
+              state.lastSelectedId === id ? null : state.lastSelectedId,
           };
         });
         scheduleAllSaveSync("prompt:delete");
@@ -404,17 +659,25 @@ export const usePromptStore = create<PromptState>()(
       toggleFavorite: async (id) => {
         const prompt = get().prompts.find((p) => p.id === id);
         if (prompt) {
+          invalidatePromptReads([id]);
+          set((state) => ({
+            promptDetailCache: removeCachedDetails(state.promptDetailCache, [
+              id,
+            ]),
+          }));
           const updated = await db.updatePrompt(id, {
             isFavorite: !prompt.isFavorite,
           });
+          invalidatePromptReads([id]);
           set((state) => ({
             prompts: state.prompts.map((p) =>
               p.id === id ? { ...p, ...promptToSummary(updated) } : p,
             ),
-            promptDetailCache: {
-              ...state.promptDetailCache,
-              [id]: updated,
-            },
+            promptDetailCache: cacheDetail(
+              state.promptDetailCache,
+              id,
+              updated,
+            ),
           }));
         }
       },
@@ -422,17 +685,25 @@ export const usePromptStore = create<PromptState>()(
       togglePinned: async (id) => {
         const prompt = get().prompts.find((p) => p.id === id);
         if (prompt) {
+          invalidatePromptReads([id]);
+          set((state) => ({
+            promptDetailCache: removeCachedDetails(state.promptDetailCache, [
+              id,
+            ]),
+          }));
           const updated = await db.updatePrompt(id, {
             isPinned: !prompt.isPinned,
           });
+          invalidatePromptReads([id]);
           set((state) => ({
             prompts: state.prompts.map((p) =>
               p.id === id ? { ...p, ...promptToSummary(updated) } : p,
             ),
-            promptDetailCache: {
-              ...state.promptDetailCache,
-              [id]: updated,
-            },
+            promptDetailCache: cacheDetail(
+              state.promptDetailCache,
+              id,
+              updated,
+            ),
           }));
         }
       },
@@ -449,17 +720,25 @@ export const usePromptStore = create<PromptState>()(
       incrementUsageCount: async (id) => {
         const prompt = get().prompts.find((p) => p.id === id);
         if (prompt) {
+          invalidatePromptReads([id]);
+          set((state) => ({
+            promptDetailCache: removeCachedDetails(state.promptDetailCache, [
+              id,
+            ]),
+          }));
           const updated = await db.updatePrompt(id, {
             usageCount: (prompt.usageCount || 0) + 1,
           });
+          invalidatePromptReads([id]);
           set((state) => ({
             prompts: state.prompts.map((p) =>
               p.id === id ? { ...p, ...promptToSummary(updated) } : p,
             ),
-            promptDetailCache: {
-              ...state.promptDetailCache,
-              [id]: updated,
-            },
+            promptDetailCache: cacheDetail(
+              state.promptDetailCache,
+              id,
+              updated,
+            ),
           }));
         }
       },
