@@ -25,4 +25,3 @@ payload 已包含 Skill 元数据、版本和文件树，但 WebDAV/S3 上传结
 - 历史记录继续使用兼容字段 `autoSyncHistory`，只扩展 `reason=manual`，旧记录无需迁移。
 - UI 回滚只需恢复文案和 disabled 条件；远端备份格式没有变化。
 - Skill 内容读取失败仍保持 fail closed，不得以零 Skill 成功掩盖读取错误。
-

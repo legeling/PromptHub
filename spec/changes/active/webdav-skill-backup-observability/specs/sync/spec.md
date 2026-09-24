@@ -17,4 +17,3 @@
 - `autoSyncHistory` 存储键和既有 provider/status 值保持不变。
 - 旧记录不含 `manual` 仍可读取；新增记录只扩展 reason 联合类型。
 - WebDAV/S3 `data.json`、manifest 和媒体路径不变。
-
