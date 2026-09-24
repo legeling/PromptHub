@@ -9,10 +9,16 @@ import { SkillDB as BaseSkillDB, type DatabaseAdapter } from "@prompthub/db";
 
 import {
   deleteCanonicalSkill,
+  deleteCanonicalSkills,
   hydrateCanonicalSkillWorkspace,
   publishCanonicalSkill,
 } from "./canonical-skill-library";
-import { getRuntimeStorageContext } from "./runtime-paths";
+import { getRuntimeStorageContext, getUserDataPath } from "./runtime-paths";
+import { readCanonicalSkillSource } from "./canonical-skill-sources";
+import {
+  CanonicalPostCommitError,
+  isCanonicalCommitOutcomeError,
+} from "./canonical-entry-publication";
 
 const reconciledSkillDatabases = new WeakSet<DatabaseAdapter.Database>();
 
@@ -63,16 +69,23 @@ export class CanonicalSkillDB extends BaseSkillDB {
       versions: super.getVersions(id),
       packageSourcePath,
     });
-    const workspacePath = hydrateCanonicalSkillWorkspace(id);
-    if (workspacePath) {
-      this.db
-        .prepare("UPDATE skills SET local_repo_path = ? WHERE id = ?")
-        .run(workspacePath, id);
+    try {
+      const workspacePath = hydrateCanonicalSkillWorkspace(id);
+      if (workspacePath) {
+        this.db
+          .prepare("UPDATE skills SET local_repo_path = ? WHERE id = ?")
+          .run(workspacePath, id);
+      }
+    } catch (error) {
+      reconciledSkillDatabases.delete(this.db);
+      throw new CanonicalPostCommitError(`skill:${id}`, error);
     }
   }
 
   private mutate<T>(id: string, mutation: () => T): T {
     if (!this.canonical() || this.mutationDepth > 0) return mutation();
+    if (this.db.inTransaction)
+      throw new Error("Canonical mutation requires its own command boundary");
     const before = this.snapshot(id);
     this.mutationDepth += 1;
     try {
@@ -81,6 +94,7 @@ export class CanonicalSkillDB extends BaseSkillDB {
       this.publish(id, sourcePath);
       return result;
     } catch (error) {
+      if (isCanonicalCommitOutcomeError(error)) throw error;
       this.restore(id, before);
       throw error;
     } finally {
@@ -94,6 +108,8 @@ export class CanonicalSkillDB extends BaseSkillDB {
   ): Skill {
     if (!this.canonical() || this.mutationDepth > 0)
       return super.create(data, options);
+    if (this.db.inTransaction)
+      throw new Error("Canonical mutation requires its own command boundary");
     const existing = data.source_id
       ? super.getBySourceId(data.source_id)
       : super.getByName(data.name);
@@ -104,6 +120,7 @@ export class CanonicalSkillDB extends BaseSkillDB {
       this.publish(created.id, created.local_repo_path);
       return super.getById(created.id)!;
     } catch (error) {
+      if (isCanonicalCommitOutcomeError(error)) throw error;
       this.restore(created.id, { skill: null, versions: [] });
       throw error;
     }
@@ -191,12 +208,18 @@ export class CanonicalSkillDB extends BaseSkillDB {
 
   override deleteAll(): void {
     if (!this.canonical() || this.mutationDepth > 0) return super.deleteAll();
+    if (this.db.inTransaction)
+      throw new Error("Canonical mutation requires its own command boundary");
     const snapshots = super.getAll().map((skill) => this.snapshot(skill.id));
     try {
       super.deleteAll();
-      for (const snapshot of snapshots)
-        if (snapshot.skill) deleteCanonicalSkill(snapshot.skill.id);
+      deleteCanonicalSkills(
+        snapshots.flatMap((snapshot) =>
+          snapshot.skill ? [snapshot.skill.id] : [],
+        ),
+      );
     } catch (error) {
+      if (isCanonicalCommitOutcomeError(error)) throw error;
       for (const snapshot of snapshots)
         if (snapshot.skill) this.restore(snapshot.skill.id, snapshot);
       throw error;
@@ -208,6 +231,12 @@ export class CanonicalSkillDB extends BaseSkillDB {
     try {
       for (const skill of super.getAll()) {
         const workspacePath = hydrateCanonicalSkillWorkspace(skill.id);
+        const sourceUrl = readCanonicalSkillSource(getUserDataPath(), skill.id);
+        if (sourceUrl && sourceUrl !== skill.source_url) {
+          this.db
+            .prepare("UPDATE skills SET source_url = ? WHERE id = ?")
+            .run(sourceUrl, skill.id);
+        }
         if (workspacePath && skill.local_repo_path !== workspacePath) {
           this.db
             .prepare("UPDATE skills SET local_repo_path = ? WHERE id = ?")

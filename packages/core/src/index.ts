@@ -40,6 +40,7 @@ export * from "./agent-resource-schema";
 export * from "./canonical-agent-provider-db";
 export * from "./canonical-agent-device-config";
 export * from "./canonical-storage-shadow";
+export * from "./canonical-catalog-reconciliation";
 export * from "./canonical-resource-path";
 export * from "./resource-schema-registry";
 export * from "./resource-schema-conversion";

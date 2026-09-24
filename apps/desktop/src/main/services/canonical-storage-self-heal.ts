@@ -3,24 +3,19 @@ import fs from "node:fs";
 import path from "node:path";
 
 import {
-  acquireStorageMaintenanceIntent,
-  calculateCanonicalResourceCatalogHash,
-  calculatePromptCanonicalGraphHash,
   collectPromptCanonicalGraph,
   createStorageInventory,
   listRecoveryArtifacts,
   materializePromptCanonicalGraph,
-  publishCanonicalEntries,
-  recoverCanonicalEntryPublication,
   runJournaledStorageRestore,
   stageCanonicalStorageDatabase,
+  reconcileCanonicalStorageCatalog as reconcileCoreCatalog,
   writeCanonicalStorageAuthority,
   writeRuntimeLayoutState,
   type StorageRestorePublicationStage,
 } from "@prompthub/core";
 import {
   acquireDatabaseMigrationIntent,
-  CanonicalResourceDB,
   DatabaseAdapter,
   FolderDB,
   PromptDB,
@@ -41,9 +36,7 @@ import {
 import { listUpgradeBackups } from "./upgrade-backup";
 import { isGeneratedDatabaseBackupFileName } from "./recovery-candidates";
 
-const CATALOG_PUBLICATION_KEY = "canonical-catalog";
 const CAPACITY_HEADROOM_BYTES = 16 * 1024 * 1024;
-const DATABASE_SUFFIXES = ["", "-journal", "-shm", "-wal"] as const;
 const LEGACY_WORKSPACE_ENTRIES = [
   ".prompthub-0.5.3-backup-done",
   ".trash",
@@ -60,11 +53,6 @@ const PROMPT_GRAPH_ENTRIES = [
   "relations",
   "output-formats",
 ] as const;
-
-interface CatalogHashes {
-  promptGraphHash: string;
-  resourceCatalogHash: string;
-}
 
 export interface RepairCanonicalStorageFromPromptWorkspaceOptions {
   activeRoot: string;
@@ -98,32 +86,6 @@ function removeDatabaseFiles(databasePath: string): void {
   cleanupOwnedTemporaryDatabase(databasePath);
 }
 
-function readCatalogHashes(databasePath: string): CatalogHashes {
-  const database = new DatabaseAdapter(databasePath, { readOnly: true });
-  try {
-    const quickCheck = database.pragma("quick_check") as Array<{
-      quick_check?: unknown;
-    }>;
-    if (quickCheck.length !== 1 || quickCheck[0]?.quick_check !== "ok") {
-      throw new Error("Canonical SQLite projection failed quick_check");
-    }
-    return {
-      promptGraphHash: calculatePromptCanonicalGraphHash(
-        collectPromptCanonicalGraph(
-          new PromptDB(database),
-          new FolderDB(database),
-          database,
-        ),
-      ),
-      resourceCatalogHash: calculateCanonicalResourceCatalogHash(
-        new CanonicalResourceDB(database).list(),
-      ),
-    };
-  } finally {
-    database.close();
-  }
-}
-
 function isReadableDatabaseImage(databasePath: string): boolean {
   try {
     const stats = fs.lstatSync(databasePath);
@@ -142,16 +104,6 @@ function isReadableDatabaseImage(databasePath: string): boolean {
   }
 }
 
-function isReadableCatalog(databasePath: string): boolean {
-  try {
-    if (!isReadableDatabaseImage(databasePath)) return false;
-    readCatalogHashes(databasePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 function stageCatalog(
   dataPath: string,
   stagedPath: string,
@@ -164,39 +116,6 @@ function stageCatalog(
   });
 }
 
-function publishCatalog(
-  activeRoot: string,
-  databasePath: string,
-  stagedPath: string,
-  expected: CatalogHashes,
-): void {
-  publishCanonicalEntries({
-    rootPath: activeRoot,
-    operationKey: CATALOG_PUBLICATION_KEY,
-    entries: [
-      {
-        targetPath: databasePath,
-        prepare(stagePath) {
-          fs.renameSync(stagedPath, stagePath);
-        },
-      },
-      ...DATABASE_SUFFIXES.slice(1).map((suffix) => ({
-        targetPath: `${databasePath}${suffix}`,
-        delete: true as const,
-      })),
-    ],
-    verify() {
-      const actual = readCatalogHashes(databasePath);
-      if (
-        actual.promptGraphHash !== expected.promptGraphHash ||
-        actual.resourceCatalogHash !== expected.resourceCatalogHash
-      ) {
-        throw new Error("Canonical SQLite projection verification failed");
-      }
-    },
-  });
-}
-
 function assertDatabaseClientsClosed(databasePath: string): void {
   const leases = inspectDatabaseClientLeases(databasePath);
   if (leases.livePids.length > 0 || leases.unknownEntries.length > 0) {
@@ -206,65 +125,11 @@ function assertDatabaseClientsClosed(databasePath: string): void {
   }
 }
 
-function reconcileCatalogWithMaintenance(options: {
-  activeRoot: string;
-  databasePath: string;
-}): { status: "current" | "rebuilt" } {
-  recoverCanonicalEntryPublication(options.activeRoot, CATALOG_PUBLICATION_KEY);
-  assertDatabaseClientsClosed(options.databasePath);
-  const dataPath = path.join(options.activeRoot, "data");
-  const stagedPath = createOwnedTemporaryDatabasePath(
-    dataPath,
-    "catalog-rebuild",
-  );
-  try {
-    const catalogIsReadable = isReadableCatalog(options.databasePath);
-    const operationalSource = isReadableDatabaseImage(options.databasePath)
-      ? options.databasePath
-      : undefined;
-    const staged = stageCatalog(dataPath, stagedPath, operationalSource);
-    if (catalogIsReadable) {
-      const current = readCatalogHashes(options.databasePath);
-      if (
-        current.promptGraphHash === staged.promptGraphHash &&
-        current.resourceCatalogHash === staged.resourceCatalogHash
-      ) {
-        return { status: "current" };
-      }
-    }
-    publishCatalog(
-      options.activeRoot,
-      options.databasePath,
-      stagedPath,
-      staged,
-    );
-    return { status: "rebuilt" };
-  } finally {
-    removeDatabaseFiles(stagedPath);
-  }
-}
-
 export function reconcileCanonicalStorageCatalog(options: {
   activeRoot: string;
   databasePath: string;
 }): { status: "current" | "rebuilt" } {
-  const activeRoot = path.resolve(options.activeRoot);
-  const databasePath = path.resolve(options.databasePath);
-  const operationId = `catalog-reconcile-${crypto.randomUUID()}`;
-  const maintenance = acquireStorageMaintenanceIntent(activeRoot, {
-    operationId,
-    operationKind: "catalog-reconcile",
-  });
-  try {
-    const migration = acquireDatabaseMigrationIntent(databasePath);
-    try {
-      return reconcileCatalogWithMaintenance({ activeRoot, databasePath });
-    } finally {
-      migration.release();
-    }
-  } finally {
-    maintenance.release();
-  }
+  return reconcileCoreCatalog({ ...options, unreadableDatabase: "rebuild" });
 }
 
 function regularFileSize(filePath: string): number {

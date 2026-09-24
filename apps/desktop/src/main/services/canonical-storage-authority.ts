@@ -15,6 +15,7 @@ import {
   type StorageRestorePublicationStage,
 } from "@prompthub/core";
 import { DatabaseAdapter } from "@prompthub/db";
+import { migrateCanonicalSkillSources } from "@prompthub/core/canonical-skill-sources";
 
 import {
   createCanonicalCheckpointFromClosedDatabase,
@@ -266,6 +267,7 @@ async function publishCanonicalStorageAuthorityInternal(
   });
   let ownsCheckpoint = false;
   try {
+    migrateCanonicalSkillSources(activeRoot, options.sourceDatabasePath);
     const checkpoint = await createCanonicalCheckpointFromClosedDatabase({
       ...options,
       activeRoot,

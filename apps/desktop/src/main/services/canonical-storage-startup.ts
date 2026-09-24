@@ -8,12 +8,10 @@ import {
   readPromptCanonicalGraph,
   readRendererPersistenceMigrationMarker,
   refreshRuntimeStorageContext,
+  recoverCanonicalEntryPublications,
 } from "@prompthub/core";
 
-import {
-  DatabaseAdapter,
-  repairPromptVersionConsistency,
-} from "@prompthub/db";
+import { DatabaseAdapter, repairPromptVersionConsistency } from "@prompthub/db";
 
 import {
   publishCanonicalStorageAuthority,
@@ -278,6 +276,7 @@ export async function ensureCanonicalStorageAuthorityOnStartup(
   options: EnsureCanonicalStorageAuthorityOnStartupOptions,
 ): Promise<CanonicalStorageAuthorityStartupResult> {
   const activeRoot = path.resolve(options.activeRoot);
+  recoverCanonicalEntryPublications(activeRoot);
   if (readCanonicalStorageAuthority(activeRoot)) {
     // Existing authority: relocate any leftover prompt-workspace snapshot found
     // under the canonical root. Pure filesystem relocation is safe here; do NOT

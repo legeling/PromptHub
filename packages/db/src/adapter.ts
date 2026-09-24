@@ -43,6 +43,7 @@ class Statement {
     private readonly prepareStatement: () => WasmStatement,
     private stmt: WasmStatement | null,
     private readonly onRelease: () => void,
+    private readonly assertAvailable: () => void,
   ) {}
 
   private normalizeParams(params: unknown[]): unknown[] | unknown {
@@ -88,6 +89,7 @@ class Statement {
   }
 
   private execute<T>(operation: (stmt: WasmStatement) => T): T {
+    this.assertAvailable();
     if (this.isFinalized) {
       throw new Error("Statement already finalized");
     }
@@ -122,6 +124,19 @@ class Statement {
 class DatabaseAdapter {
   private _db: InstanceType<WasmDatabaseConstructor>;
   private statements = new Set<Statement>();
+  private invalidation: Error | null = null;
+
+  invalidate(reason: Error): void {
+    this.invalidation ??= reason;
+  }
+
+  assertAvailable(): void {
+    if (this.invalidation) throw this.invalidation;
+  }
+
+  get inTransaction(): boolean {
+    return this._db.inTransaction ?? false;
+  }
 
   constructor(path: string, options?: { readOnly?: boolean }) {
     this._db = new WasmDatabase(path, options);
@@ -133,6 +148,7 @@ class DatabaseAdapter {
    * - GET form  (e.g. 'table_info(prompts)') → returns row array
    */
   pragma(source: string): unknown {
+    this.assertAvailable();
     if (source.includes("=")) {
       this._db.exec(`PRAGMA ${source}`);
       return undefined;
@@ -146,6 +162,7 @@ class DatabaseAdapter {
   }
 
   exec(sql: string): void {
+    this.assertAvailable();
     this._db.exec(sql);
   }
 
@@ -165,6 +182,7 @@ class DatabaseAdapter {
     sql: string,
     ...params: unknown[]
   ): { changes: number; lastInsertRowid: number | bigint } {
+    this.assertAvailable();
     const stmt = this._db.prepare(sql);
     const normalized = this.normalizeParams(params);
 
@@ -178,6 +196,7 @@ class DatabaseAdapter {
   }
 
   get(sql: string, ...params: unknown[]): unknown {
+    this.assertAvailable();
     const stmt = this._db.prepare(sql);
     const normalized = this.normalizeParams(params);
 
@@ -191,6 +210,7 @@ class DatabaseAdapter {
   }
 
   all(sql: string, ...params: unknown[]): unknown[] {
+    this.assertAvailable();
     const stmt = this._db.prepare(sql);
     const normalized = this.normalizeParams(params);
 
@@ -204,11 +224,16 @@ class DatabaseAdapter {
   }
 
   prepare(sql: string): Statement {
+    this.assertAvailable();
     let statement: Statement;
     statement = new Statement(
-      () => this._db.prepare(sql),
+      () => {
+        this.assertAvailable();
+        return this._db.prepare(sql);
+      },
       this._db.prepare(sql),
       () => this.statements.delete(statement),
+      () => this.assertAvailable(),
     );
     this.statements.add(statement);
     return statement;
@@ -220,6 +245,7 @@ class DatabaseAdapter {
    */
   transaction<T extends (...args: unknown[]) => unknown>(fn: T): T {
     return ((...args: unknown[]) => {
+      this.assertAvailable();
       const wasInTransaction = this._db.inTransaction ?? false;
       if (!wasInTransaction) {
         this._db.exec("BEGIN");

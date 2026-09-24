@@ -74,3 +74,44 @@ desktop `typecheck`、`eslint`、`pnpm build` 全部 exit 0（重建 `out/main/i
 
 `spec/changes/active/prompt-current-version-missing-self-heal/`: proposal、specs/storage/spec、
 design、tasks、implementation。无跨语法 stable knowledge/rules 变更。
+
+## Review correction (2026-09-05)
+
+### Review verification
+
+- Desktop focused regression command: `pnpm --filter @prompthub/desktop exec vitest run` with prompt-version-consistency, prompt-tag-references, canonical-storage-startup, skill-filter, skill-stats, skill-view-tags, skill-i18n-manager and sidebar-skills: 109 passed.
+- Core canonical-skill-db/resource-bundle: 31 passed. Web prompts routes/install-bridge: 30 passed. Total: 170 unique cases, excluding coverage reruns.
+- Database and Desktop typechecks, focused ESLint, spec:traceability and git diff --check passed.
+- `pnpm --filter @prompthub/desktop build`: renderer, main and preload production builds passed.
+- V8 coverage required glob-based include correction (initial empty report is not coverage evidence). Prompt-version-consistency and skill-stats: 100% lines/statements/functions/branches in their respective final targeted runs.
+- PromptDB is a legacy 1000+ line CRUD module; this batch does not claim full-file coverage of unrelated search, relations, pagination, CRUD and version rollback branches. Changed tag matching is checked for quote/backslash/newline/wildcard/Unicode escapes, nonmatching neighbors and transaction failures.
+- No live user database was changed. Temporary SQLite fixtures and coverage output were cleaned. Real Electron GUI, real remote sync, full monorepo release harness and signed/cross-platform packaging were not run in this correction batch. Existing overall release acceptance remains open; no commit or push performed.
+
+
+FR-REVIEW-001 / DES-REVIEW-001 / TEST-REVIEW-001 / T-REVIEW-001: Preserve renumbered legacy snapshots as selectable history by appending a real snapshot of the current prompt after their new maximum. Preserve IDs/content/timestamps of all existing rows and positive version numbers. Only a repair with non-positive history adds this snapshot; a repeated pass is a no-op. Match tag mutations by parsed JSON array elements, including JSON escapes, rather than raw LIKE patterns. Both operations remain transactional. No schema or public contract changes; rollback by restoring the pre-upgrade database copy. Scan cost remains linear in tag text/history size (LIKE already required a full scan); no new JSON1 dependency. Verification uses real SQLite, history visibility projection, rollback failure injection, escaped/unicode tags and repeated repair.
+
+Supersedes conflicting earlier repair/tag-inference behavior. Authorized by the
+maintainer after the three reproducible review findings. Implemented and verified;
+see Review verification below in implementation.md.
+
+## Maintainer follow-up after merge (2026-09-05)
+
+This section supersedes conflicting pre-merge behavior and status above. PRs #213
+and #214 are merged; the follow-up is implemented locally, not yet committed or
+released. Remaining release acceptance is recorded below.
+
+Preserve invalid version snapshots by assigning unused positive numbers without changing IDs, bodies, notes or timestamps. Database write errors must roll back tag mutations. Web must return actual actor-scoped reference counts and preserve referenced tags.
+
+Traceability: FR-FOLLOWUP-001 -> DES-FOLLOWUP-001 -> TEST-FOLLOWUP-001 -> T-FOLLOWUP-001.
+Verification: focused regressions passed; see the final verification boundary in implementation.md.
+
+### Final verification boundary (2026-09-05)
+
+- Desktop: prompt-version-consistency (14 tests), prompt-tag-references (4), and canonical-storage-startup passed.
+- Web: prompts route (17) and install-bridge (13) tests passed; actor-scoped referenced tags are retained.
+- Database, Desktop, Core and Web typechecks passed. The final narrow JSON-catch change was rechecked with the 18 database regressions and database typecheck.
+- Repair remains transactional and idempotent; positive versions are unchanged, invalid versions only receive unused numbers. No schema or payload-format migration is introduced.
+- Runtime cost remains a prompt scan with indexed per-prompt history lookups and one update per invalid snapshot. No remote calls or unbounded concurrency added.
+- Combined focused regressions: Desktop 98, Core 31, Web 30 passed (unique test cases, excluding reruns).
+- Cross-surface changed harness passed governance, file-size, shared/database/core checks, CLI checks, Desktop lint/typecheck, Web/Worker static checks, Mobile checks and the first two Desktop shards. It was interrupted to finish the snapshot JSON rollback fix; cancellation returned kill EPERM, and a process audit confirmed no remaining harness/Vitest child processes. This is not a full harness pass.
+- Real Electron restart, real remote sync, Windows packaging, and quantitative 100% changed-branch coverage are not established by these runs. Release acceptance remains open; no new release or follow-up commit/push was performed.

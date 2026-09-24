@@ -14,6 +14,8 @@ import type { Prompt, PromptVersion } from "@prompthub/shared/types";
 import {
   publishCanonicalEntries,
   recoverCanonicalEntryPublication,
+  CanonicalPostCommitError,
+  isCanonicalCommitOutcomeError,
   type CanonicalEntryMutation,
 } from "./canonical-entry-publication";
 import { encodeCanonicalResourceDirectory } from "./canonical-resource-path";
@@ -225,6 +227,30 @@ function graphHashIfReadable(
   );
 }
 
+export function assertCanonicalPromptCatalogCurrent(
+  database: DatabaseAdapter.Database,
+): void {
+  if (getRuntimeStorageContext().localAuthority !== "canonical-files") return;
+  try {
+    const snapshot = collectPromptCanonicalGraph(
+      new BasePromptDB(database),
+      new BaseFolderDB(database),
+      database,
+    );
+    if (graphHashIfReadable() !== calculatePromptCanonicalGraphHash(snapshot))
+      throw new Error("Canonical Prompt catalog requires recovery from files");
+  } catch (error) {
+    const reason =
+      error instanceof Error
+        ? error
+        : new Error("Canonical Prompt catalog requires recovery", {
+            cause: error,
+          });
+    database.invalidate(reason);
+    throw reason;
+  }
+}
+
 export function publishCanonicalPromptGraph(
   database: DatabaseAdapter.Database,
 ): "not-authority" | "unchanged" | "published" {
@@ -247,6 +273,7 @@ export function publishCanonicalPromptGraph(
     "operations",
     `prompt-graph-stage-${process.pid}-${crypto.randomUUID()}`,
   );
+  let published = false;
   try {
     materializePromptCanonicalGraph(stageRoot, snapshot, {
       resolveMediaSource: (prompt, kind, reference) =>
@@ -308,9 +335,15 @@ export function publishCanonicalPromptGraph(
         }
       },
     });
+    published = true;
     return "published";
   } finally {
-    fs.rmSync(stageRoot, { recursive: true, force: true });
+    try {
+      fs.rmSync(stageRoot, { recursive: true, force: true });
+    } catch (error) {
+      if (!published) throw error;
+      console.warn("Committed Prompt staging cleanup is pending", error);
+    }
   }
 }
 
@@ -326,14 +359,28 @@ class CanonicalPromptCoordinator {
     ) {
       return operation();
     }
+    if (this.database.inTransaction) {
+      throw new Error("Canonical mutation requires its own command boundary");
+    }
+    this.database.assertAvailable();
     this.depth += 1;
+    let published = false;
     try {
       return this.database.transaction(() => {
         const result = operation();
-        publishCanonicalPromptGraph(this.database);
+        published = publishCanonicalPromptGraph(this.database) === "published";
         return result;
       })();
     } catch (error) {
+      if (isCanonicalCommitOutcomeError(error)) {
+        this.database.invalidate(error);
+        throw error;
+      }
+      if (published) {
+        const pending = new CanonicalPostCommitError("prompt-graph", error);
+        this.database.invalidate(pending);
+        throw pending;
+      }
       try {
         publishCanonicalPromptGraph(this.database);
       } catch (reconciliationError) {

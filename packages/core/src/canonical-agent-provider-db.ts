@@ -19,6 +19,8 @@ import type {
 import {
   publishCanonicalEntries,
   recoverCanonicalEntryPublication,
+  isCanonicalCommitOutcomeError,
+  CanonicalPostCommitError,
   type CanonicalEntryMutation,
 } from "./canonical-entry-publication";
 import { encodeCanonicalResourceDirectory } from "./canonical-resource-path";
@@ -75,7 +77,7 @@ function sameGraph(resourcePath: string, graph: ProviderGraph | null): boolean {
 function publishGraphs(
   beforeIds: ReadonlySet<string>,
   graphs: readonly ProviderGraph[],
-): void {
+): boolean {
   if (graphs.length > MAX_PROVIDER_PROFILES_PER_PUBLICATION) {
     throw new Error("Canonical Agent provider publication limit exceeded");
   }
@@ -110,7 +112,7 @@ function publishGraphs(
       },
     });
   }
-  if (entries.length === 0) return;
+  if (entries.length === 0) return false;
   publishCanonicalEntries({
     rootPath: getUserDataPath(),
     operationKey: OPERATION_KEY,
@@ -125,6 +127,7 @@ function publishGraphs(
       }
     },
   });
+  return true;
 }
 
 export class CanonicalAgentProviderProfileDB extends BaseAgentProviderProfileDB {
@@ -154,16 +157,31 @@ export class CanonicalAgentProviderProfileDB extends BaseAgentProviderProfileDB 
 
   private mutate<T>(profileId: string, operation: () => T): T {
     if (!this.canonical() || this.mutationDepth > 0) return operation();
+    if (this.db.inTransaction)
+      throw new Error("Canonical mutation requires its own command boundary");
     const before = this.graph(profileId);
+    let committed = false;
     this.mutationDepth += 1;
     try {
       return this.db.transaction(() => {
         const result = operation();
         const after = this.graph(profileId);
-        publishGraphs(new Set(before ? [profileId] : []), after ? [after] : []);
+        committed = publishGraphs(
+          new Set(before ? [profileId] : []),
+          after ? [after] : [],
+        );
         return result;
       })();
     } catch (error) {
+      if (isCanonicalCommitOutcomeError(error)) {
+        this.db.invalidate(error);
+        throw error;
+      }
+      if (committed) {
+        const pending = new CanonicalPostCommitError(profileId, error);
+        this.db.invalidate(pending);
+        throw pending;
+      }
       if (!sameGraph(bundlePath(profileId), before)) {
         publishGraphs(new Set([profileId]), before ? [before] : []);
       }
@@ -178,16 +196,31 @@ export class CanonicalAgentProviderProfileDB extends BaseAgentProviderProfileDB 
   ): AgentProviderProfile {
     if (!this.canonical() || this.mutationDepth > 0)
       return super.createProfile(input);
+    if (this.db.inTransaction)
+      throw new Error("Canonical mutation requires its own command boundary");
     let profileId: string | null = null;
+    let committed = false;
     this.mutationDepth += 1;
     try {
       return this.db.transaction(() => {
         const profile = super.createProfile(input);
         profileId = profile.id;
-        publishGraphs(new Set(), [this.graph(profile.id)!]);
+        committed = publishGraphs(new Set(), [this.graph(profile.id)!]);
         return profile;
       })();
     } catch (error) {
+      if (isCanonicalCommitOutcomeError(error)) {
+        this.db.invalidate(error);
+        throw error;
+      }
+      if (committed) {
+        const pending = new CanonicalPostCommitError(
+          profileId ?? "agent-create",
+          error,
+        );
+        this.db.invalidate(pending);
+        throw pending;
+      }
       if (profileId && fs.existsSync(bundlePath(profileId))) {
         publishGraphs(new Set([profileId]), []);
       }
@@ -203,16 +236,31 @@ export class CanonicalAgentProviderProfileDB extends BaseAgentProviderProfileDB 
   ): AgentProviderProfile {
     if (!this.canonical() || this.mutationDepth > 0)
       return super.createProfileWithMappings(input, mappings);
+    if (this.db.inTransaction)
+      throw new Error("Canonical mutation requires its own command boundary");
     let profileId: string | null = null;
+    let committed = false;
     this.mutationDepth += 1;
     try {
       return this.db.transaction(() => {
         const profile = super.createProfileWithMappings(input, mappings);
         profileId = profile.id;
-        publishGraphs(new Set(), [this.graph(profile.id)!]);
+        committed = publishGraphs(new Set(), [this.graph(profile.id)!]);
         return profile;
       })();
     } catch (error) {
+      if (isCanonicalCommitOutcomeError(error)) {
+        this.db.invalidate(error);
+        throw error;
+      }
+      if (committed) {
+        const pending = new CanonicalPostCommitError(
+          profileId ?? "agent-create",
+          error,
+        );
+        this.db.invalidate(pending);
+        throw pending;
+      }
       if (profileId && fs.existsSync(bundlePath(profileId))) {
         publishGraphs(new Set([profileId]), []);
       }
@@ -265,15 +313,27 @@ export class CanonicalAgentProviderProfileDB extends BaseAgentProviderProfileDB 
   override replacePortableBackup(input: AgentManagementBackup): void {
     if (!this.canonical() || this.mutationDepth > 0)
       return super.replacePortableBackup(input);
+    if (this.db.inTransaction)
+      throw new Error("Canonical mutation requires its own command boundary");
     const before = this.allGraphs();
+    let committed = false;
     const beforeIds = new Set(before.map((graph) => graph.profile.id));
     this.mutationDepth += 1;
     try {
       this.db.transaction(() => {
         super.replacePortableBackup(input);
-        publishGraphs(beforeIds, this.allGraphs());
+        committed = publishGraphs(beforeIds, this.allGraphs());
       })();
     } catch (error) {
+      if (isCanonicalCommitOutcomeError(error)) {
+        this.db.invalidate(error);
+        throw error;
+      }
+      if (committed) {
+        const pending = new CanonicalPostCommitError("agent-restore", error);
+        this.db.invalidate(pending);
+        throw pending;
+      }
       const currentIds = new Set(
         this.allGraphs().map((graph) => graph.profile.id),
       );
@@ -294,7 +354,7 @@ export class CanonicalAgentProviderProfileDB extends BaseAgentProviderProfileDB 
     }
   }
 
-  recoverInterruptedPublication(): "none" | "rolled-back" {
+  recoverInterruptedPublication(): "none" | "rolled-back" | "committed" {
     return recoverCanonicalEntryPublication(getUserDataPath(), OPERATION_KEY);
   }
 }

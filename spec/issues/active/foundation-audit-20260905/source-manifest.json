@@ -1,0 +1,88 @@
+{
+  "record": "ISS-20260905-001",
+  "recordedAt": "2026-09-05T07:08:34.368314+00:00",
+  "head": "18c08482690ece022c3dd39567fde60b0d0813ed",
+  "note": "Working-tree hashes captured after verification; unrelated concurrent work is not attributed to this audit.",
+  "sources": [
+    {
+      "path": "packages/core/src/canonical-entry-publication.ts",
+      "sha256": "1023ca4e8a948b9dbdcdd0ca8e7d073cf8d05b2307a00250e1de4bb4d14497d2",
+      "modifiedAgainstHead": false
+    },
+    {
+      "path": "packages/core/src/canonical-prompt-graph-db.ts",
+      "sha256": "75d19ce7e5f3f437261c3b04d8c67316ecb93eb8ee601546c0e9bec26a3e3807",
+      "modifiedAgainstHead": false
+    },
+    {
+      "path": "packages/core/src/canonical-skill-db.ts",
+      "sha256": "2fb81695ef7702497345e4248ce59a44db0b392835f563ff1c77043e9010ffd9",
+      "modifiedAgainstHead": false
+    },
+    {
+      "path": "packages/core/src/canonical-skill-library.ts",
+      "sha256": "e2637e26b93a2822ff014550293bea8eef7ad7f91f5658d93e5f4a8cf220065b",
+      "modifiedAgainstHead": false
+    },
+    {
+      "path": "packages/core/src/skill-resource-schema.ts",
+      "sha256": "68df8be81620261424a5d22fe6aca7417c2556b4be76fcc3917c2be599451e89",
+      "modifiedAgainstHead": true
+    },
+    {
+      "path": "packages/db/src/adapter.ts",
+      "sha256": "bf24d27bcb45931afd6dd7a1cdb155f3d7d04cc5984b694f927f14a5427bf529",
+      "modifiedAgainstHead": false
+    },
+    {
+      "path": "packages/db/src/prompt.ts",
+      "sha256": "22a1551c40104f674e79b4d17c01e9d697b32f5d336203bb4c1d1ad667b70fac",
+      "modifiedAgainstHead": true
+    },
+    {
+      "path": "packages/db/src/schema.ts",
+      "sha256": "51a3a82947ea032d288c07d8c4f314bb56d175378de30837ddeff6aec05022ad",
+      "modifiedAgainstHead": false
+    },
+    {
+      "path": "packages/db/src/init.ts",
+      "sha256": "0c5b69dd016a7251ec9451fb1bbc2a8d81f21dd636234d492539602fde2f397b",
+      "modifiedAgainstHead": false
+    },
+    {
+      "path": "apps/desktop/src/renderer/stores/prompt.store.ts",
+      "sha256": "931a8f1ae5f52e86f8637a6026d8abe66a76f21b3fae9bc8d7527884e50fe449",
+      "modifiedAgainstHead": false
+    },
+    {
+      "path": "apps/desktop/src/renderer/services/sync-backup-core.ts",
+      "sha256": "40dbc3955041b5f8743b7fa076626a5dfe84806e12f3b4fc8abd16a65ad73544",
+      "modifiedAgainstHead": true
+    },
+    {
+      "path": "apps/web-cloudflare/src/sync.ts",
+      "sha256": "a8d8c3fb9314dfa80a594828906cf13f3dc1f7e3a6b17d67d3b488821ce12739",
+      "modifiedAgainstHead": false
+    },
+    {
+      "path": "apps/web-cloudflare/src/web-data.ts",
+      "sha256": "907464b0205af5b5fcfeb21fb46722bd77a624dd6e1798d16ef73fb15297f25e",
+      "modifiedAgainstHead": false
+    },
+    {
+      "path": "apps/web/src/services/prompt.service.ts",
+      "sha256": "110f5e012e82ac7fd689b401d109c11a18fc2c188a806ffe2085d4952dc57786",
+      "modifiedAgainstHead": true
+    },
+    {
+      "path": "scripts/verification/checks.mts",
+      "sha256": "1b6b3aabe710abaeaa6336def294d85cf4726115e8ce2c276f960b1ad5e82c48",
+      "modifiedAgainstHead": false
+    },
+    {
+      "path": "apps/desktop/vitest.config.ts",
+      "sha256": "e7bed49d80ad50009044acfe91290aea3decc0beec6b5d7c97f23849070e9bde",
+      "modifiedAgainstHead": false
+    }
+  ]
+}

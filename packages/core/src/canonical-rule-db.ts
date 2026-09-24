@@ -13,6 +13,8 @@ import type {
 import {
   publishCanonicalEntries,
   recoverCanonicalEntryPublication,
+  isCanonicalCommitOutcomeError,
+  CanonicalPostCommitError,
 } from "./canonical-entry-publication";
 import { encodeCanonicalResourceDirectory } from "./canonical-resource-path";
 import {
@@ -409,6 +411,7 @@ export class CanonicalRuleDB extends BaseRuleDB {
       this.pending.delete(ruleId);
     } catch (error) {
       this.pending.delete(ruleId);
+      if (isCanonicalCommitOutcomeError(error)) throw error;
       this.restore(before, ruleId);
       throw error;
     }
@@ -417,9 +420,11 @@ export class CanonicalRuleDB extends BaseRuleDB {
   override delete(id: string): void {
     if (!this.canonical()) return super.delete(id);
     const before = this.snapshot(id);
+    let published = false;
     try {
       super.delete(id);
       deleteRuleBundle(id);
+      published = true;
       if (before.rule)
         fs.rmSync(path.dirname(managedPath(before.rule)), {
           recursive: true,
@@ -431,6 +436,8 @@ export class CanonicalRuleDB extends BaseRuleDB {
           force: true,
         });
     } catch (error) {
+      if (isCanonicalCommitOutcomeError(error)) throw error;
+      if (published) throw new CanonicalPostCommitError(`rule:${id}`, error);
       this.restore(before, id);
       throw error;
     }

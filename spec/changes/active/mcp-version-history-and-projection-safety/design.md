@@ -228,9 +228,11 @@ Migration time and I/O are `O(N * S)` for `N` servers and average snapshot size
 | `TEST-MCPVER-009` | UI/CLI behavior            | history, diff, restore, delete, cleanup preview, confirmation, loading, empty, and error states are usable                              |
 | `TEST-MCPVER-010` | Migration + schema         | empty placeholders migrate into files, non-empty values remain vault-only, and unavailable vaults still permit redacted inventory reads |
 
-Changed critical filesystem modules require 100% branch and condition coverage
-for new behavior plus adversarial rollback tests. UI acceptance requires actual
-desktop interaction or Playwright evidence, not only component callbacks.
+Acceptance follows the [testing standard](../../../rules/testing-standards.md):
+first prove normal version workflows and durable filesystem results, then validate
+the affected black-box inputs and failure/recovery scenarios above. UI acceptance
+requires actual desktop interaction or Playwright evidence, not only component
+callbacks; coverage metrics are supplementary.
 
 ## Analyze Result
 

@@ -172,14 +172,14 @@ describe("canonical Skill database adapter", () => {
       (file) => file.path,
     );
     expect(payloadPaths).toContain("SKILL.md");
-    expect(payloadPaths.some((filePath) => filePath.startsWith(".prompthub"))).toBe(
-      false,
-    );
+    expect(
+      payloadPaths.some((filePath) => filePath.startsWith(".prompthub")),
+    ).toBe(false);
     expect(fs.existsSync(path.join(bundlePath, ".prompthub"))).toBe(false);
   });
 
   it.each([".prompthub", "repo"])(
-    "clears an undeclared %s dir from an existing bundle on the next republish",
+    "rejects an undeclared %s dir without discarding its content",
     (leftoverDir) => {
       const created = skillDb.create({
         name: `stale-${leftoverDir.replace(".", "dot")}-cleanup`,
@@ -194,14 +194,18 @@ describe("canonical Skill database adapter", () => {
         path.join(bundlePath, leftoverDir, "user.json"),
         JSON.stringify({ note: "stale" }),
       );
-      expect(readSkillResourceBundle(bundlePath).skill.content).toBe("Initial");
-
-      skillDb.update(created.id, {
-        content: "Updated",
-        directory_fingerprint: "f".repeat(64),
-      });
-      expect(fs.existsSync(path.join(bundlePath, leftoverDir))).toBe(false);
-      expect(readSkillResourceBundle(bundlePath).skill.content).toBe("Updated");
+      expect(() => readSkillResourceBundle(bundlePath)).toThrow(
+        "undeclared directory",
+      );
+      expect(() => skillDb.update(created.id, { content: "Updated" })).toThrow(
+        "undeclared directory",
+      );
+      expect(
+        fs.readFileSync(
+          path.join(bundlePath, leftoverDir, "user.json"),
+          "utf8",
+        ),
+      ).toContain("stale");
     },
   );
 

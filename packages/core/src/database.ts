@@ -1,5 +1,6 @@
 import {
   DatabaseAdapter,
+  db as activeDatabase,
   closeDatabase,
   getDatabase,
   initDatabase as dbInit,
@@ -12,7 +13,9 @@ import type { InitDatabaseHooks } from "@prompthub/db";
 
 import { getDataDir, getDatabasePath, getUserDataPath } from "./runtime-paths";
 import { recoverCanonicalResourcePublications } from "./resource-bundle-publication";
+import { recoverCanonicalEntryPublications } from "./canonical-entry-publication";
 import { assertStorageMaintenanceAvailable } from "./storage-maintenance-intent";
+import { reconcileCanonicalStorageCatalog } from "./canonical-catalog-reconciliation";
 import { CanonicalSkillDB } from "./canonical-skill-db";
 import { CanonicalRuleDB } from "./canonical-rule-db";
 import {
@@ -20,6 +23,7 @@ import {
   CanonicalPromptDB,
   CanonicalPromptOutputFormatDB,
   CanonicalPromptRelationDB,
+  assertCanonicalPromptCatalogCurrent,
 } from "./canonical-prompt-graph-db";
 import { getRuntimeStorageContext } from "./runtime-paths";
 
@@ -27,11 +31,28 @@ export function initDatabase(
   hooks?: InitDatabaseHooks,
 ): DatabaseAdapter.Database {
   assertStorageMaintenanceAvailable(getUserDataPath());
-  recoverCanonicalResourcePublications(getDataDir());
+  if (
+    !activeDatabase &&
+    getRuntimeStorageContext().localAuthority === "canonical-files"
+  ) {
+    reconcileCanonicalStorageCatalog({
+      activeRoot: getUserDataPath(),
+      databasePath: getDatabasePath(),
+    });
+  } else {
+    recoverCanonicalEntryPublications(getUserDataPath());
+    recoverCanonicalResourcePublications(getDataDir());
+  }
   const database = dbInit(getDatabasePath(), hooks);
   if (getRuntimeStorageContext().localAuthority === "canonical-files") {
-    new CanonicalSkillDB(database).reconcileCanonicalWorkspaces();
-    new CanonicalRuleDB(database).reconcileCanonicalWorkspaces();
+    try {
+      assertCanonicalPromptCatalogCurrent(database);
+      new CanonicalSkillDB(database).reconcileCanonicalWorkspaces();
+      new CanonicalRuleDB(database).reconcileCanonicalWorkspaces();
+    } catch (error) {
+      closeDatabase();
+      throw error;
+    }
   }
   return database;
 }

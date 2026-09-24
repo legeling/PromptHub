@@ -410,21 +410,11 @@ function parseCurrent(bundlePath: string): {
   };
 }
 
-/**
- * Runtime/internal directories that may legitimately exist inside a published
- * skill bundle tree without being declared as payload files (for example a
- * user-sidecar `.prompthub` dir, or a leftover `repo`/clone dir from an
- * earlier ingest). Reads tolerate them by skipping their whole subtree; the
- * next full republish replaces the bundle and drops the leftover directory.
- */
-const SKILL_BUNDLE_IGNORED_DIRECTORIES = [".prompthub", "repo"];
-
 export function readSkillResourceBundle(
   bundlePath: string,
 ): ReadSkillResourceResult {
   const bundle = readResourceBundle(bundlePath, {
     expectedResourceType: "skill",
-    ignoredDirectories: SKILL_BUNDLE_IGNORED_DIRECTORIES,
   });
   const currentFiles = bundle.manifest.payloadFiles.filter(
     (file) => file.role === "current",

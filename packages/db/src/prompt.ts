@@ -62,6 +62,10 @@ export class PromptDB {
    * 创建 Prompt
    */
   create(data: CreatePromptDTO): Prompt {
+    return this.db.transaction(() => this.createWithInitialVersion(data))();
+  }
+
+  private createWithInitialVersion(data: CreatePromptDTO): Prompt {
     const id = uuidv4();
     const now = Date.now();
 
@@ -674,11 +678,12 @@ export class PromptDB {
     if (!oldTag || !newTag || oldTag === newTag) return;
 
     const txn = this.db.transaction(() => {
-      // Find all prompts containing the old tag
-      // LIKE '%"oldTag"%' is a fast initial filter
+      // Match parsed values: JSON can encode the same tag with different escapes.
       const rows = this.db
-        .prepare(`SELECT id, tags FROM prompts WHERE tags LIKE ?`)
-        .all(`%"${oldTag}"%`) as { id: string; tags: string }[];
+        .prepare(
+          `SELECT id, tags FROM prompts WHERE tags IS NOT NULL AND tags != '[]'`,
+        )
+        .all() as { id: string; tags: string }[];
 
       const updateStmt = this.db.prepare(`
         UPDATE prompts
@@ -689,20 +694,22 @@ export class PromptDB {
       const now = Date.now();
 
       for (const row of rows) {
+        let tags: unknown;
         try {
-          const tags = JSON.parse(row.tags);
-          if (Array.isArray(tags) && tags.includes(oldTag)) {
-            // Replace oldTag with newTag.
-            // If newTag already exists in the array, just remove oldTag (to avoid duplicates)
-            const newTags = Array.from(
-              new Set(tags.map((t) => (t === oldTag ? newTag : t))),
-            );
-            updateStmt.run(JSON.stringify(newTags), now, row.id);
-            // Persist a version row then let createVersion advance the pointer.
-            this.createVersion(row.id);
-          }
-        } catch (e) {
-          // ignore invalid json
+          tags = JSON.parse(row.tags);
+        } catch {
+          // Skip only malformed tag JSON; snapshot/write failures must roll back.
+          continue;
+        }
+        if (Array.isArray(tags) && tags.includes(oldTag)) {
+          // Replace oldTag with newTag.
+          // If newTag already exists in the array, just remove oldTag (to avoid duplicates)
+          const newTags = Array.from(
+            new Set(tags.map((t) => (t === oldTag ? newTag : t))),
+          );
+          updateStmt.run(JSON.stringify(newTags), now, row.id);
+          // Persist a version row then let createVersion advance the pointer.
+          this.createVersion(row.id);
         }
       }
     });
@@ -722,8 +729,10 @@ export class PromptDB {
 
     const txn = this.db.transaction(() => {
       const rows = this.db
-        .prepare(`SELECT id, tags FROM prompts WHERE tags LIKE ?`)
-        .all(`%"${tag}"%`) as { id: string; tags: string }[];
+        .prepare(
+          `SELECT id, tags FROM prompts WHERE tags IS NOT NULL AND tags != '[]'`,
+        )
+        .all() as { id: string; tags: string }[];
 
       const updateStmt = this.db.prepare(`
         UPDATE prompts
@@ -734,15 +743,17 @@ export class PromptDB {
       const now = Date.now();
 
       for (const row of rows) {
+        let tags: unknown;
         try {
-          const tags = JSON.parse(row.tags);
-          if (Array.isArray(tags) && tags.includes(tag)) {
-            const newTags = tags.filter((t) => t !== tag);
-            updateStmt.run(JSON.stringify(newTags), now, row.id);
-            this.createVersion(row.id);
-          }
-        } catch (e) {
-          // ignore
+          tags = JSON.parse(row.tags);
+        } catch {
+          // Skip only malformed tag JSON; snapshot/write failures must roll back.
+          continue;
+        }
+        if (Array.isArray(tags) && tags.includes(tag)) {
+          const newTags = tags.filter((t) => t !== tag);
+          updateStmt.run(JSON.stringify(newTags), now, row.id);
+          this.createVersion(row.id);
         }
       }
     });

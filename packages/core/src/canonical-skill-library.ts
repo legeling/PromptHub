@@ -6,6 +6,7 @@ import type { Skill, SkillVersion } from "@prompthub/shared/types";
 import {
   publishCanonicalEntries,
   recoverCanonicalEntryPublication,
+  CanonicalPostCommitError,
 } from "./canonical-entry-publication";
 import { encodeCanonicalResourceDirectory } from "./canonical-resource-path";
 import {
@@ -15,6 +16,7 @@ import {
   type SkillPackagePayloadSource,
 } from "./skill-resource-schema";
 import { getCacheDir, getDataDir, getUserDataPath } from "./runtime-paths";
+import { canonicalSkillSourceMutations } from "./canonical-skill-sources";
 
 const OPERATION_KEY = "skill-library";
 const MAX_PACKAGE_FILES = 4_000;
@@ -104,6 +106,7 @@ export function publishCanonicalSkill(input: {
     rootPath: getUserDataPath(),
     operationKey: OPERATION_KEY,
     entries: [
+      ...canonicalSkillSourceMutations(getUserDataPath(), input.skill),
       {
         targetPath,
         prepare(stagePath) {
@@ -139,18 +142,37 @@ export function publishCanonicalSkill(input: {
 }
 
 export function deleteCanonicalSkill(skillId: string): void {
+  deleteCanonicalSkills([skillId]);
+}
+
+export function deleteCanonicalSkills(skillIds: readonly string[]): void {
   recoverCanonicalEntryPublication(getUserDataPath(), OPERATION_KEY);
-  const targetPath = bundlePath(skillId);
-  if (!fs.existsSync(targetPath)) return;
-  publishCanonicalEntries({
+  const uniqueIds = [...new Set(skillIds)];
+  const result = publishCanonicalEntries({
     rootPath: getUserDataPath(),
     operationKey: OPERATION_KEY,
-    entries: [{ targetPath, delete: true }],
+    entries: [
+      ...uniqueIds.flatMap((id) =>
+        canonicalSkillSourceMutations(getUserDataPath(), { id }),
+      ),
+      ...uniqueIds
+        .map(bundlePath)
+        .filter((targetPath) => fs.existsSync(targetPath))
+        .map((targetPath) => ({ targetPath, delete: true })),
+    ],
   });
-  fs.rmSync(getCanonicalSkillWorkspacePath(skillId), {
-    recursive: true,
-    force: true,
-  });
+  try {
+    for (const id of uniqueIds)
+      fs.rmSync(getCanonicalSkillWorkspacePath(id), {
+        recursive: true,
+        force: true,
+      });
+  } catch (error) {
+    throw new CanonicalPostCommitError(
+      result.operationId ?? "skill-delete",
+      error,
+    );
+  }
 }
 
 // Windows transient file errors (another short-lived holder such as a scanner,

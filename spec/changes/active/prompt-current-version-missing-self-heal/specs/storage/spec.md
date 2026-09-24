@@ -11,8 +11,22 @@ taken from the current prompt fields, before projecting validated canonical file
 
 ### `FR-PCVMISS-002`
 The repair MUST be idempotent, MUST NOT modify prompt content or unrelated
-metadata, and MUST NOT fabricate a version number larger than what already exists
-in `prompt_versions`.
+metadata. Existing positive versions retain their numbers. Legacy non-positive
+versions MUST retain their IDs, content, notes and timestamps, and receive unused
+positive numbers after the existing maximum in deterministic version/time/ID order.
+After renumbering, append a snapshot of the actual current prompt fields and point
+current_version to it; renumbered legacy rows remain selectable history. No
+existing snapshot is deleted or overwritten. No additional snapshot is created
+on a second pass.
+
+### `FR-REVIEW-001`
+Tag rename/delete MUST match parsed tag values, independent of their JSON escape
+spelling. Repair MUST preserve historical accessibility as well as stored rows.
+
+### `FR-FOLLOWUP-001`
+Tag mutation and version creation MUST share a transaction: database failures roll
+back both. Web tag deletion MUST preserve referenced tags and return the actual
+reference count within the actor's writable scope, matching the Desktop contract.
 
 ### `FR-PCVMISS-003`
 The startup wiring MUST run only for a recognized real SQLite image at the source
@@ -36,3 +50,5 @@ startup fixtures keep their existing behavior.
 | FR-PCVMISS-001 | DES-PCV-001 | TEST-PCV-001..003 | T-PCV-001..003 |
 | FR-PCVMISS-002 | DES-PCV-001 | TEST-PCV-004 | T-PCV-003 |
 | FR-PCVMISS-003 | DES-PCV-002 | TEST-PCV-005 | T-PCV-004 |
+| FR-FOLLOWUP-001 | DES-FOLLOWUP-001 | TEST-FOLLOWUP-001 | T-FOLLOWUP-001 |
+| FR-REVIEW-001 | DES-REVIEW-001 | TEST-REVIEW-001 | T-REVIEW-001 |

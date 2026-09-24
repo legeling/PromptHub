@@ -22,6 +22,7 @@ import {
   CanonicalSkillDB,
   getRuntimeStorageContext,
   recoverCanonicalResourcePublications,
+  recoverCanonicalEntryPublications,
 } from "@prompthub/core";
 import type { RecoveryContentCounts } from "@prompthub/shared/types";
 import {
@@ -169,6 +170,7 @@ function resolveSkillRepoPath(skill: {
  */
 export function initDatabase(): DatabaseAdapter.Database {
   assertStorageMaintenanceAvailable(getUserDataPath());
+  recoverCanonicalEntryPublications(getUserDataPath());
   recoverCanonicalResourcePublications(getDataDir());
   const dbPath = getDatabasePath();
   const database = dbInit(dbPath, {
