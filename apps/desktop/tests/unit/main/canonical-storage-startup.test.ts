@@ -11,6 +11,8 @@ import {
   deriveLocalResourceDeviceId,
   getRuntimeStorageContext,
   materializePromptCanonicalGraph,
+  materializeResourceBundle,
+  readSkillResourceBundle,
   resetRuntimePaths,
   writeCanonicalStorageAuthority,
   writeRuntimeLayoutState,
@@ -60,12 +62,7 @@ describe("prompt workspace trash relocation from the canonical root", () => {
       .readdirSync(recoveryRoot, { withFileTypes: true })
       .filter((entry) => entry.isDirectory());
     expect(dirs.length).toBe(1);
-    const movedFile = path.join(
-      recoveryRoot,
-      dirs[0].name,
-      "123",
-      "123.md",
-    );
+    const movedFile = path.join(recoveryRoot, dirs[0].name, "123", "123.md");
     expect(fs.readFileSync(movedFile, "utf8")).toBe("keep me");
   });
 
@@ -275,6 +272,64 @@ describe("canonical storage startup", () => {
     expect(publish).not.toHaveBeenCalled();
     expect(repairInvalidAuthority).toHaveBeenCalledOnce();
     expect(input.prepareSourceDatabase).not.toHaveBeenCalled();
+  });
+
+  it("upgrades historical Skill payloads before entering Prompt recovery", async () => {
+    const input = fixture();
+    writeCanonicalStorageAuthority(input.activeRoot, {
+      consistencyId: "a".repeat(64),
+      operationId: "legacy-authority",
+    });
+    materializeEmptyPromptGraph(input.activeRoot);
+    fs.writeFileSync(
+      path.join(input.activeRoot, "data", ".prompthub-0.5.3-backup-done"),
+      "legacy",
+    );
+    const source = path.join(input.activeRoot, "source.json");
+    fs.writeFileSync(
+      source,
+      JSON.stringify({
+        kind: "prompthub-skill-resource",
+        schemaVersion: 1,
+        skill: {
+          id: "legacy",
+          name: "Legacy",
+          protocol_type: "skill",
+          visibility: "private",
+          is_favorite: false,
+          created_at: 1,
+          updated_at: 2,
+        },
+      }),
+    );
+    const bundle = path.join(input.activeRoot, "data", "skills", "legacy");
+    materializeResourceBundle({
+      bundlePath: bundle,
+      resourceType: "skill",
+      resourceId: "legacy",
+      schemaVersion: 1,
+      revision: 1,
+      createdAt: "2026-09-01T00:00:00.000Z",
+      updatedAt: "2026-09-01T00:00:00.000Z",
+      payloads: [
+        { path: "skill.json", role: "current", sourcePath: source },
+        {
+          path: "files/.prompthub/translations/中文/full/SKILL.md",
+          role: "package",
+          sourcePath: source,
+        },
+      ],
+    });
+    const repairInvalidAuthority = vi.fn(async () => {
+      expect(readSkillResourceBundle(bundle).packageFiles).toEqual([]);
+      return { recoveryArtifactPath: "/recovery/prior" };
+    });
+    const result = await ensureCanonicalStorageAuthorityOnStartup({
+      ...input,
+      repairInvalidAuthority,
+    });
+    expect(result.status).toBe("self-healed");
+    expect(repairInvalidAuthority).toHaveBeenCalledOnce();
   });
 
   it("self-heals an invalid Prompt graph from deterministic files", async () => {

@@ -1,3 +1,4 @@
+import { upgradeSkillPackageInternals } from "@prompthub/core/migrations/skill-package-internals-v1";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -125,6 +126,7 @@ async function ensureExistingCanonicalAuthority(
   options: EnsureCanonicalStorageAuthorityOnStartupOptions,
   activeRoot: string,
 ): Promise<CanonicalStorageAuthorityStartupResult> {
+  upgradeSkillPackageInternals(activeRoot);
   const graphError = canonicalPromptGraphError(activeRoot);
   if (graphError) {
     return repairInvalidAuthority(options, activeRoot, graphError);

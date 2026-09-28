@@ -205,3 +205,62 @@ Graph restore reuses the existing archive-import byte limit rather than the
 ordinary JSON request limit. An authenticated route test restored 12 prompts and
 their versions (over 2 MB), then read the content back successfully. The affected
 Web typecheck and scoped ESLint passed on the staged snapshot.
+
+## 2026-09-28 — Historical Skill internal-package startup migration
+
+The historical canonical Skill exporter included `.prompthub/translations/`
+files as package payloads. The current Skill reader rejects internal package
+roots, preventing startup workspace reconciliation. Two bundles in the reported
+profile contain four such payloads; version snapshots are unaffected.
+
+`skill-package-internals-v1` runs before Desktop selects catalog reconciliation
+or Prompt recovery, under the existing storage maintenance lock. Core catalog
+reconciliation runs the same idempotent step under its existing maintenance and
+database migration locks. It verifies each
+affected source, preserves its complete original bundle under
+`recovery/skill-package-internals-v1/<bundle-directory>/<source-hash>`, then
+publishes a bundle without `.prompthub/` package payloads using the existing
+publication journal. Metadata, history, actual package files and unknown manifest
+fields remain intact. The strict business reader validates staged and published
+results. Invalid hashes, symlinks, unknown roles or other schema errors stop the
+upgrade without falling back. This is a targeted historical data repair; it does
+not complete the broader SQLite-authority redesign.
+
+The versioned step records its source hash in manifest provenance. It scans
+bounded manifests on reopen, performs full byte verification/copies only for
+affected bundles and does no rewrite once current. Work is linear in manifest
+entries plus affected package bytes; copies use filesystem operations rather than
+loading all packages into memory. Recovery storage retains one full original per
+affected source hash. A publication failure rolls back through the existing
+journal; successful bundles remain independently migrated if a later bundle fails.
+
+Recovery: stop all writers, preserve the repaired bundle, restore its complete
+original from the verified recovery directory and rebuild the derived catalog
+using a source-compatible application. Do not restore historical bundles into the
+current business reader without running the upgrade step. Recovery archives are
+retained, not automatically deleted. Restored historical roots use the same
+catalog reconciliation entrypoint.
+
+Validation: Core catalog/schema/migration tests passed (32 + 4 + 5 cases),
+Desktop startup routing passed (16 cases), and Core/Desktop source typechecks
+passed. The routing test replaces the Prompt repairer and proves migration
+ordering, not the repairer's implementation. Real SQLite/filesystem tests cover
+catalog rebuild, workspace hydration, metadata/history/binary preservation,
+read/write/reopen, repeated execution, publication rollback, corrupt bytes and
+symlinks. The longer fixture and end-to-end test keep the full historical input
+and assertions together so the data-preservation contract remains reviewable.
+
+On the reported profile, two migrated bundles retained 25 metadata/history/package
+files byte-for-byte; all four internal payloads were verified in their original
+recovery bundles. A separate unregistered single-file legacy workspace was moved
+intact to recovery/unregistered-skill-workspace-20260928 after confirming no SQLite
+repo path referenced it; its SHA-256 was unchanged. This was profile recovery,
+not a general loose-workspace migration. Loose directories stay outside this
+migration's recognized bundle scope. The existing Prompt recovery subsequently
+reported self-healed and retained its own full recovery artifact.
+
+The repaired Desktop startup reached `startup:window_ready` on 2026-09-28.
+Its initialized workspace reported 127 Prompts, 10 folders and 140 versions.
+This confirms the startup error was cleared; interactive GUI workflows were not
+automated or accepted. The single development instance remains available for
+manual use. Desktop scoped ESLint and diff whitespace checks passed.

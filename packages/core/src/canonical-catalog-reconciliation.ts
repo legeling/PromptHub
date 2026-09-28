@@ -27,6 +27,8 @@ import { assertStoragePathComponentsSafe } from "./runtime-storage-context";
 import { acquireStorageMaintenanceIntent } from "./storage-maintenance-intent";
 import { migrateCanonicalSkillSources } from "./canonical-skill-sources";
 
+import { migrateSkillPackageInternalsV1 } from "./migrations/skill-package-internals-v1";
+
 const DATABASE_SIDECARS = ["-journal", "-shm", "-wal"] as const;
 
 export interface ReconcileCanonicalStorageCatalogOptions {
@@ -171,6 +173,7 @@ function reconcileWithMaintenance(
   recoverCanonicalEntryPublications(options.activeRoot);
   const dataPath = path.dirname(options.databasePath);
   recoverCanonicalResourcePublications(dataPath);
+  migrateSkillPackageInternalsV1(options.activeRoot);
   const sourcePath = operationalSource(options);
   if (sourcePath) migrateCanonicalSkillSources(options.activeRoot, sourcePath);
   const current = sourcePath ? currentCatalogHashes(sourcePath) : undefined;
