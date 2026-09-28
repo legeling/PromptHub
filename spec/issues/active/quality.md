@@ -700,3 +700,25 @@
   logical prompt folder hierarchy, skill identity, and rule identity in
   metadata, and must record migration/compatibility behavior before changing
   durable layout.
+
+## 2026-09-28
+
+### 历史 issue 回归追踪
+
+已检查顶层 14 份本地 `ISS-*.md` 的回归关联。9 份本地已修复记录补齐了完整
+测试路径、场景边界及根目录命令；Rules 的部分修复单独区分 #210 覆盖与尚未
+复现的 #209 触发。Agent 设置持久化仍未验收，其 Electron 用例不在默认 smoke
+清单中。规范债务、路线图及未解决的 Git 传输问题不计作已修复软件缺陷。
+
+本批不是全部历史 GitHub issue 或全部断言的逐条验收。按
+`spec/rules/testing-standards.md` 的缺陷回归要求继续处理：
+
+- 从已有 GitHub 快照按启动、数据丢失、安全、核心功能风险核查历史已关闭缺陷；
+  审查实际断言，在所属 issue 中记录缺口。
+- 保留 #209 与 Agent 设置的待复现/验收状态，不用其他通过用例替代。
+- 修复既有测试类型检查错误，不排除文件或弱化契约；选定 Vitest 用例通过
+  不解除全量类型检查门禁。
+
+本次重跑通过 93 个相关用例（Desktop 完整六文件 78 个、Core 14 个、usage 筛选 1 个；
+usage 其余 57 个未选中，不计入通过数）。新增会话重开及删除失败保全两条回归。
+测试文件 ESLint、spec 治理/索引/追踪检查通过；未重跑全仓测试类型检查与 Electron GUI。

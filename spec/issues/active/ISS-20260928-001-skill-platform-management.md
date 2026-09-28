@@ -48,3 +48,10 @@
 变更处理为 O(P) 的平台扫描和顺序写入，不增加数据库表、持久化选择状态或并发层。
 `applyPlatformChanges` 保留单个较长编排回调，以便明确安装、卸载、状态刷新与失败
 保留的顺序；集成用例覆盖这个边界，避免为拆行引入额外状态层。
+
+## 可重跑回归入口（2026-09-28 核对）
+
+- 测试：`apps/desktop/tests/integration/skill-platform-management.test.tsx`。
+- 场景与边界：反选卸载、混合操作、失败重试、批量卸载与 Antigravity 默认目录。真实 DOM 操作连接 preload/IPC、SQLite 和文件系统；替换 Electron 传输、UI 偏好及 badge 刷新，不证明原生 Agent 消费。
+- 根目录命令：`pnpm --filter @prompthub/desktop exec vitest run tests/integration/skill-platform-management.test.tsx`。
+- 接入：所属 package 的常用 Vitest 入口；本文历史通过结果不代表本次已重跑。

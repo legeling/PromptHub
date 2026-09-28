@@ -75,3 +75,10 @@ safety-snapshot layout and lifecycle.
   behavior. The focused Desktop and CLI suites pass 42 and 8 tests respectively.
 - #209's exact current-build reopen trigger is not part of the completed #210
   implementation and remains open for independent reproduction.
+
+## 可重跑回归入口（2026-09-28 核对）
+
+- 测试：`apps/desktop/tests/unit/main/rules-workspace-import.test.ts`。
+- 场景与边界：`preserves divergent, empty, symlinked, and missing targets` 与 `rolls back managed and history files when version staging fails` 等用例检查导入目标、历史保全与失败恢复；只对应 #210 已定位边界。#209 的原始重新打开触发仍待复现，不能用此测试替代。
+- 根目录命令：`pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/rules-workspace-import.test.ts`。
+- 接入：所属 package 的常用 Vitest 入口；本次完整文件重跑通过：13 个用例；未执行 #209 的真实重启复现。

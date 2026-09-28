@@ -93,3 +93,10 @@ T-AGENT-222`, with defect record `ISS-20260825-002`.
 - `pnpm --dir apps/desktop exec playwright test tests/e2e/agent-provider-workbench.spec.ts`
   passed: 4 real Electron tests covering shared workbench behavior, Provider
   CRUD/restart/delete, credential rollback, and duplicate labels across restart.
+
+## 可重跑回归入口（2026-09-28 核对）
+
+- 测试：`apps/desktop/tests/unit/main/agent-provider-profile-db.test.ts`。
+- 场景与边界：`persists non-secret metadata and treats names as duplicate display labels`：真实 SQLite 中同名显示名具有不同稳定 ID，独立读写。
+- 根目录命令：`pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/agent-provider-profile-db.test.ts`。
+- 接入：所属 package 的常用 Vitest 入口；本次完整 DB 文件重跑通过：14 个用例；未重跑 Electron。

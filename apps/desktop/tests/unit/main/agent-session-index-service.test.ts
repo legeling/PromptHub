@@ -242,6 +242,74 @@ describe("Agent session index service", () => {
     ).resolves.toMatchObject({ sessions: [], total: 0, hasMore: false });
   });
 
+  function reopenIndexService(): void {
+    database.close();
+    database = new Database(path.join(homeDir, "prompthub.db"));
+    database.pragma("foreign_keys = ON");
+    index = new AgentSessionIndexDB(database);
+    service = createAgentSessionIndexService({
+      index,
+      reader: createAgentSessionService({ homeDir }),
+    });
+  }
+
+  it("[ISS-20260825-009] keeps a deleted session absent after reopening while preserving its sibling", async () => {
+    const deletedPath = await writeClaudeSession(
+      homeDir,
+      "workspace",
+      SESSION_A,
+      claudeLine(SESSION_A, "Delete this session"),
+    );
+    const siblingContent = claudeLine(SESSION_B, "Keep this session");
+    const siblingPath = await writeClaudeSession(
+      homeDir,
+      "workspace",
+      SESSION_B,
+      siblingContent,
+    );
+    service.setEnabled("claude", true);
+    await service.refresh("claude");
+    expect((await service.list("claude", { limit: 10 })).total).toBe(2);
+
+    await service.delete("claude", SESSION_A);
+    await expect(fs.stat(deletedPath)).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+    reopenIndexService();
+    // Do not refresh: the first indexed read after reopening exposed the bug.
+    const result = await service.list("claude", { limit: 10 });
+    expect(result.total).toBe(1);
+    expect(result.sessions.map((session) => session.id)).toEqual([SESSION_B]);
+    expect(await fs.readFile(siblingPath, "utf8")).toBe(siblingContent);
+  });
+
+  it("[ISS-20260825-009] preserves the native file and persisted index when native deletion fails", async () => {
+    const content = claudeLine(SESSION_A, "Must survive failure");
+    const sourcePath = await writeClaudeSession(
+      homeDir,
+      "workspace",
+      SESSION_A,
+      content,
+    );
+    service.setEnabled("claude", true);
+    await service.refresh("claude");
+    const reader = createAgentSessionService({ homeDir });
+    // Inject only the native deletion failure; SQLite and reads remain real.
+    vi.spyOn(reader, "delete").mockRejectedValueOnce(
+      new Error("EACCES: native deletion denied"),
+    );
+    const failingService = createAgentSessionIndexService({ index, reader });
+    await expect(failingService.delete("claude", SESSION_A)).rejects.toThrow(
+      "EACCES",
+    );
+
+    reopenIndexService();
+    const result = await service.list("claude", { limit: 10 });
+    expect(result.total).toBe(1);
+    expect(result.sessions.map((session) => session.id)).toEqual([SESSION_A]);
+    expect(await fs.readFile(sourcePath, "utf8")).toBe(content);
+  });
+
   it("limits Cline live search to title and project metadata", async () => {
     const snapshotPath = path.join(
       homeDir,

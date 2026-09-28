@@ -42,3 +42,10 @@ T-AGENT-226`.
 - The canonical local-source update test passes with root files, nested Skill,
   command, workflow, manifest, MCP, and unrelated files.
 - Desktop and Core typechecks and the desktop production build passed.
+
+## 可重跑回归入口（2026-09-28 核对）
+
+- 测试：`apps/desktop/tests/unit/main/plugin-library-validation-versions.test.ts`。
+- 场景与边界：`exports and restores managed plugin package snapshots`：直接断言 snapshot 返回顺序，不先排序实际值掩盖问题；跨发布/更新验证另见 `packages/core/tests/canonical-plugin-library.test.ts`。
+- 根目录命令：`pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/plugin-library-validation-versions.test.ts`。
+- 接入：所属 package 的常用 Vitest 入口；本次完整 snapshot 文件重跑通过：15 个用例；共用 Core 文件的 14 个用例也通过，不重复计数。

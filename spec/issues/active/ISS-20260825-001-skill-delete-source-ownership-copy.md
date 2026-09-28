@@ -113,3 +113,10 @@ T-AGENT-221`, with stable operation contract `OP-013` and defect record
   sources.
 - Every confirmation string matches the ownership class and resulting durable
   side effects.
+
+## 可重跑回归入口（2026-09-28 核对）
+
+- 测试：`apps/desktop/tests/unit/main/skill-crud-ipc.test.ts`。
+- 场景与边界：`honors copy retention while removing symlinks and the shared target`、`retains the canonical package and library record when uninstall fails, then supports retry`，覆盖 copy 保留与卸载失败保全。IPC 单元用例的替换依赖不能证明完整包删除；真实包与来源保全另见 `apps/desktop/tests/integration/skill-public-workflow.test.ts`。
+- 根目录命令：`pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/skill-crud-ipc.test.ts`。
+- 接入：所属 package 的常用 Vitest 入口；本次完整 IPC 文件重跑通过：11 个用例；未重跑 Electron。

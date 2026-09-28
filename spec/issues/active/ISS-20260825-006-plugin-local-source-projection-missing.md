@@ -53,3 +53,10 @@ T-AGENT-226`.
   copy distribution/removal, restart, source update, previous-package snapshot,
   UI delete, and final restart absence while preserving an unrelated target
   file.
+
+## 可重跑回归入口（2026-09-28 核对）
+
+- 测试：`packages/core/tests/canonical-plugin-library.test.ts`。
+- 场景与边界：`persists a local source outside the canonical bundle and updates after reread`：重新读取服务后仍能从原来源发现并应用更新，核对实际包文件及版本。与 namespace 缺陷共享此流程，不复制一套测试。
+- 根目录命令：`pnpm --filter @prompthub/core exec vitest run tests/canonical-plugin-library.test.ts`。
+- 接入：所属 package 的常用 Vitest 入口；与 ISS-20260825-005 共用本次 Core 验证：14 个用例通过，不重复计数；未重跑 Electron。

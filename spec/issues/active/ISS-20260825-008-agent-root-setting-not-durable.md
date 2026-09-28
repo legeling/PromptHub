@@ -61,6 +61,16 @@ with the accepted settings-authority change.
 
 ## Required Verification
 
+2026-09-28 regression audit: the reproduction remains in
+`apps/desktop/tests/e2e/agent-settings-dialog.spec.ts`, named
+`saves the Agent root and persists selection and pinning across restart`.
+From the repository root, after building and with GUI authorization, run
+`pnpm --filter @prompthub/desktop exec playwright test tests/e2e/agent-settings-dialog.spec.ts`.
+It is not part of the narrow default E2E smoke selection. This audit did not run
+the GUI or confirm a fix; keep this issue open. The diagnosis/design above is
+historical: current storage ownership follows the foundation redesign's SQLite
+and filesystem contract, not a new parallel settings authority.
+
 - Save, read back, restart twice, clear renderer storage, and rebuild SQLite;
   the exact Agent root remains unchanged.
 - Cancel and failed publication leave all durable stores and visible state

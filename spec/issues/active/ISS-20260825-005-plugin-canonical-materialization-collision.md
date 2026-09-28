@@ -60,3 +60,10 @@ T-AGENT-225`.
   and final restart while preserving an unrelated target file.
 - Local source update remains blocked by the separately recorded device
   projection issue `ISS-20260825-006`.
+
+## 可重跑回归入口（2026-09-28 核对）
+
+- 测试：`packages/core/tests/canonical-plugin-library.test.ts`。
+- 场景与边界：`persists a local source outside the canonical bundle and updates after reread`：真实导入完整多文件包，检查 managed 目录、来源和重新读取后的更新。
+- 根目录命令：`pnpm --filter @prompthub/core exec vitest run tests/canonical-plugin-library.test.ts`。
+- 接入：所属 package 的常用 Vitest 入口；本次完整 Core 文件重跑通过：14 个用例；未重跑 Electron。

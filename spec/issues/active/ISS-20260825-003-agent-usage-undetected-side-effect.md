@@ -60,3 +60,10 @@ T-AGENT-223`.
   passed in a real isolated Electron profile after waiting for the startup tray
   scan: Claude remained visible, Antigravity and Gemini remained absent, and
   `.gemini` was not created.
+
+## 可重跑回归入口（2026-09-28 核对）
+
+- 测试：`apps/desktop/tests/unit/main/agent-usage-service-providers.test.ts`。
+- 场景与边界：`does not probe an Agent whose configured root is not detected`：未检测到的 Agent 不执行探测。局部服务测试不能代替本文已有的 Electron 原生目录副作用验证。
+- 根目录命令：`pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/agent-usage-service-providers.test.ts -t "does not probe an Agent whose configured root is not detected"`。
+- 接入：所属 package 的常用 Vitest 入口；本次按上述名称筛选：1 个用例通过，其余 57 个未选中；不是整个 usage 套件或 Electron 验收。

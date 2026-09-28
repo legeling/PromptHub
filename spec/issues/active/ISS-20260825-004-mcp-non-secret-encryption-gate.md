@@ -52,3 +52,10 @@ T-AGENT-224`.
 - The real Electron lifecycle passed: create, durable read, update, canonical
   resource and manifest, restart recovery, delete, and final restart with no
   residual resource.
+
+## 可重跑回归入口（2026-09-28 核对）
+
+- 测试：`apps/desktop/tests/unit/main/mcp-resource-secret-store.test.ts`。
+- 场景与边界：`allows an empty canonical update when no secret needs encryption`：设备加密不可用时，无秘密更新仍写出正确 stage 内容；有秘密的写入必须失败且不能发布文件。
+- 根目录命令：`pnpm --filter @prompthub/desktop exec vitest run tests/unit/main/mcp-resource-secret-store.test.ts`。
+- 接入：所属 package 的常用 Vitest 入口；本次完整文件重跑通过：5 个用例；未重跑 Electron。
