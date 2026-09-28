@@ -67,6 +67,29 @@
   接管外部断链或覆盖非链接内容；其它解析故障保留有界诊断，单个坏链接不得让
   整个扫描失败或把有效清单变为空。
 
+### Antigravity Historical Link Upgrade
+
+Antigravity 历史默认目录的受托管软链接通过启动迁移
+`antigravity-skill-links-v1` 转换至当前平台定义的目录；迁移在 workspace
+物化之后、业务入口开放之前执行。SQLite 的 `schema_migrations` 记录完成，
+文件系统保存链接及 activation。仅处理 activation 的 id/name 与现存 Skill
+一致、指向历史托管 repo 或当前 workspace 的链接；复制目录、非托管文件和
+不同的自定义目标不在这项断链修复范围内，必须保留。
+
+迁移先在 profile 的 `recovery/antigravity-skill-links-v1/` 保存原始链接和
+身份记录，独占创建新链接并验证可读，再原子写入新 activation，最后撤去旧链接
+和旧 activation。目标冲突或缺失源包必须报错且不记录完成；中断后仅凭匹配的
+恢复记录接续发布，不覆盖不相关目标。回滚需先退出应用，按恢复记录重建旧链接
+与旧 activation，确认后仅撤去仍指向记录 workspace 的新链接及匹配的新 activation，
+并删除该迁移的完成记录；历史 repo 已不存在时，恢复其历史包或前向重跑迁移，
+不能仅恢复旧链接就声称可用。正常分发不读取历史目录。
+
+迁移扫描为 O(S + A)，S 为 Skill 数、A 为旧目录 activation 数；不复制包正文。
+回归入口为 `tests/integration/antigravity-skill-migration.test.ts`，使用真实
+SQLite、临时旧目录、完整 package、公开状态及卸载 API 验证升级/重开/失败重试。
+`prepareRecord` 保留连续的身份、来源与恢复记录核验；迁移编排保留批次发布及
+清理顺序，两函数允许超过 50 行，避免拆散必须一起审查的状态转换。
+
 ### 2.1 Source Update Reconciliation Contract
 
 - My Skills 的来源更新必须按三方对账处理：`B` 是上次来源安装基线，`L` 是当前本地 package，`R` 是当前来源 package。

@@ -129,6 +129,7 @@ import { registerWindowControlIPC } from "./ipc/window-control.ipc";
 import { registerNativeShellIPC } from "./ipc/native-shell.ipc";
 import { readRendererSettingsWithAIRecovery } from "./services/renderer-ai-config-recovery";
 import { reconcileManagedSkillSymlinksOnStartup } from "./services/skill-platform-symlink-startup";
+import { upgradeSkillPlatformDataOnStartup } from "./services/skill-platform-data-upgrade";
 let mainWindow: BrowserWindow | null = null;
 let minimizeToTray = false;
 // Database instance (module-level for access in createWindow)
@@ -1325,6 +1326,11 @@ app.whenReady().then(async () => {
     // 初始化数据库
     const db = initDatabase();
     applyE2ESeed(db);
+    const migratedSkillLinks = upgradeSkillPlatformDataOnStartup(db);
+    logStartupEvent({
+      event: "startup:skill_platform_data_upgrade",
+      migratedSkillLinks,
+    });
     await reconcileManagedSkillSymlinksOnStartup(db);
     try {
       await applyStoredNetworkProxySettings(db);

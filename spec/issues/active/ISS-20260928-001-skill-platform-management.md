@@ -1,7 +1,7 @@
 # Skill 平台安装、卸载与入口反馈
 
 - ID: `ISS-20260928-001`
-- Status: partial（平台管理修复 release_pending；Antigravity 历史安装迁移缺口待修复，原反馈客户端与原生 Agent 验收待核实）
+- Status: local_done / release_pending（已修复本机确认的历史托管软链接迁移缺口；原反馈客户端与原生 Agent 消费验收待核实）
 - 来源：2026-09-18 用户反馈截图，2026-09-28 本地核查；反馈所用版本未知。
 - Owner: desktop Skill distribution
 - Contract: `spec/knowledge/behavior/skills.md`
@@ -99,3 +99,35 @@ the source Skill`，其余 3 个用例未选中。运行日志确认转换实际
 现有目标冲突和源包完整性，保留自定义路径与非托管文件；失败不得抹除原记录。
 回归需从旧默认目录的真实安装夹具执行升级，验证完整包可读、安装状态、重启、
 重复执行和失败保全。现有“当前默认目录新安装”用例不覆盖这个升级边界。
+
+## 历史软链接迁移实现与验证（2026-09-28）
+
+- 增加启动升级入口和 `antigravity-skill-links-v1`：workspace 物化后、业务入口
+  开放前，将旧默认目录中身份匹配的 PromptHub 托管软链接发布到当前目录。
+  正常安装代码不增加历史目录读取或 Gemini 绕行。自定义目标、复制目录与非托管
+  文件保留；本次修复不声称完成其它历史安装模式的迁移。
+- 每个链接先保存原目标、Skill 身份和新目标的恢复记录，整批新链接验证后原子
+  写入 activation，再撤去旧链接。全部成功才在既有 `schema_migrations` 记录完成。
+  目标冲突不覆盖；失败不记录成功，重启凭匹配的恢复记录接续。恢复说明见 Skills
+  稳定主题的 Antigravity Historical Link Upgrade。
+- 新增 `antigravity-skill-migration.test.ts`，8 条通过：旧断链升级后的完整包、
+  公开状态 API、SQLite 关闭重开、卸载不复活、目标冲突保全、新链接发布/归属写入/
+  旧链接撤去后三处故障重启、自定义路径与非托管文件、越界输入、软链接根目录。
+  夹具使用 `v0.5.9` 路径与 activation 形状，源包由真实产品 API 创建；不是整个
+  历史版本数据库或 Windows/Linux 的验收。
+- 首轮重试用例发现 macOS `/var` 与 `/private/var` 导致恢复路径误判冲突；修复
+  为按已有父目录 realpath 解析未创建目录后，上述 8 条全部通过。
+- 现有平台管理 4 条、软链接 reconciliation 8 条、启动接线 2 条通过。
+  Desktop 源码 typecheck、修改范围 ESLint、`pnpm spec:test`、diff 检查通过。
+- 故障变异只在临时测试进程中将升级入口替换成空操作：选中正常升级用例，
+  1 条预期失败、7 条未选中；失败为新目录目标 `lstat` 的 `ENOENT`，不是 mock
+  调用次数或源码字符串断言。工作区源码未被变异，临时配置已清理。
+- 实际运行顺序：停止 pnpm 父进程未立即终止 Vite 子进程，首次主进程热重载
+  于 `07:04:50Z` 执行了 4 项迁移，早于集中测试；随后已停止本任务拥有的 Vite
+  子进程。测试通过后于 `07:08:22Z` 恢复开发实例，升级记录为 0 项，随后
+  `startup:window_ready`。不能把后续验证写成首次真实迁移前完成的门禁。
+- 最终只读核对：本机 4 个旧链接均指向现存 workspace，入口可读、4 条新
+  activation 身份正确、4 份恢复记录存在；旧链接及其 activation 已撤去，SQLite
+  完成记录存在。未自动控制 Antigravity 界面或验证模型调用 Skill。
+
+回归命令：`pnpm --filter @prompthub/desktop exec vitest run tests/integration/antigravity-skill-migration.test.ts`。
