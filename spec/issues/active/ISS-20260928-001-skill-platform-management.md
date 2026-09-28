@@ -1,7 +1,7 @@
 # Skill 平台安装、卸载与入口反馈
 
 - ID: `ISS-20260928-001`
-- Status: local_done / release_pending（原反馈客户端与原生 Agent 验收待核实）
+- Status: partial（平台管理修复 release_pending；Antigravity 历史安装迁移缺口待修复，原反馈客户端与原生 Agent 验收待核实）
 - 来源：2026-09-18 用户反馈截图，2026-09-28 本地核查；反馈所用版本未知。
 - Owner: desktop Skill distribution
 - Contract: `spec/knowledge/behavior/skills.md`
@@ -71,3 +71,31 @@ the source Skill`，其余 3 个用例未选中。运行日志确认转换实际
 
 这是针对两个明确故障的变异验证，不是检出整个历史版本的红测，也不是对所有
 可能缺陷的保证。原生 Electron 界面与 Antigravity 消费结果仍遵循上文未验收边界。
+
+## Antigravity 历史安装核查（2026-09-28）
+
+- Git 标签核对：`v0.5.9` 的默认根目录是 `.gemini/antigravity`；
+  `5ee86dcf` 改成 `.gemini/config`，`v0.6.0-beta.1` 和
+  `v0.6.0-beta.2` 均包含该提交。标签包含关系不证明反馈者已安装对应版本。
+- 官方当前文档区分 2.0、CLI 和 IDE。2.0 使用 `.gemini/config/skills`，
+  CLI 使用 `.gemini/antigravity-cli/skills`；IDE 文档明确仍支持历史
+  `.gemini/antigravity/skills`。不能把截图中 AI 回答的“旧目录全部无效”当作证据。
+- 本机 Antigravity 为 2.8.1。只读核对运行中 PromptHub 打开的 SQLite：
+  `builtinAgentOverrides`、`customPlatformRootPaths`、
+  `customSkillPlatformPaths` 均无 Antigravity/Gemini 覆盖项。
+- 旧 Antigravity 目录保留 4 个受 PromptHub activation 记录标识的软链接；
+  链接仍指向已不存在的历史 `data/skills/<name>--<id>/repo`。
+  4 个 Skill 在 SQLite 中仍存在，当前 `cache/skill-workspaces/<id>/SKILL.md`
+  均存在。新 Antigravity 目录没有对应的安装包。用户数据未在此次核查中改写。
+- `skill-platform-symlink-startup.ts` 仅从当前平台配置生成待扫描目录。
+  默认路径改变后，旧目录不进入 `reconcileManagedSkillSymlinks`，因此现有
+  链接修复无法覆盖这些记录。这是本机可确认的历史安装迁移缺口；尚不能证明
+  群友截图由同一原因触发。
+- 前次隔离失败还遗留一个仅含 `antigravity-package` 的测试 activation 文件。
+  已核对唯一条目及测试 Skill ID 后删除；该文件不属于上述 4 个用户安装记录。
+
+后续修复必须在版本化数据迁移边界处理受 PromptHub 管理的旧安装数据，不给
+日常分发增加旧目录 fallback、双写或 Gemini 绕行。迁移需核对 activation 身份、
+现有目标冲突和源包完整性，保留自定义路径与非托管文件；失败不得抹除原记录。
+回归需从旧默认目录的真实安装夹具执行升级，验证完整包可读、安装状态、重启、
+重复执行和失败保全。现有“当前默认目录新安装”用例不覆盖这个升级边界。
