@@ -55,3 +55,19 @@
 - 场景与边界：反选卸载、混合操作、失败重试、批量卸载与 Antigravity 默认目录。真实 DOM 操作连接 preload/IPC、SQLite 和文件系统；替换 Electron 传输、UI 偏好及 badge 刷新，不证明原生 Agent 消费。
 - 根目录命令：`pnpm --filter @prompthub/desktop exec vitest run tests/integration/skill-platform-management.test.tsx`。
 - 接入：所属 package 的常用 Vitest 入口；本文历史通过结果不代表本次已重跑。
+
+## 回归失败能力验证（2026-09-28）
+
+以 `5eb2df43` 为基线，使用临时 Vitest project 和 `enforce: pre` 的源码转换插件，
+仅在测试进程内注入下列变异；工作区源码与正在运行的开发应用未被改写。
+每个变异只选中 `applies an install and a deselection uninstall without deleting
+the source Skill`，其余 3 个用例未选中。运行日志确认转换实际生效。
+
+| 变异 | 实际结果 | 证明的失败边界 |
+| --- | --- | --- |
+| 平台按钮恢复 `disabled={isInstalled || isInstalling}` | 1 条预期失败：无法找到安装 1、卸载 1 的应用按钮 | 已安装平台无法反选时，真实组件操作不能通过 |
+| `applyPlatformChanges` 调用 `unsyncSkillsFromPlatforms` 时把 `removals` 改为 `[]` | 1 条预期失败：平台目录存在性实际为 true，预期为 false | 卸载未执行，即使流程返回也不能通过文件后置状态断言 |
+| 相同 project 配置移除变异插件，运行原代码 | 4 条用例通过 | 正常混合变更、权限失败与重试、批量卸载、默认路径仍可用 |
+
+这是针对两个明确故障的变异验证，不是检出整个历史版本的红测，也不是对所有
+可能缺陷的保证。原生 Electron 界面与 Antigravity 消费结果仍遵循上文未验收边界。
