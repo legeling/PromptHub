@@ -5,19 +5,15 @@ import type {
   CustomAgentConfig,
 } from "@prompthub/shared/types";
 
-import { normalizeAgentIdentityPreferences } from "./agent-query";
 import {
   normalizeAgentRootPath,
   normalizeBuiltinAgentOverride,
-  normalizeBuiltinAgentOverrides,
   normalizeCustomAgentDraft,
-  normalizeCustomAgents,
 } from "./agent-root-config";
 import {
-  ensureCanonicalAgentDeviceConfig,
-  publishCanonicalAgentDeviceConfig,
-} from "../canonical-agent-device-config";
-import { getRuntimeStorageContext } from "../runtime-paths";
+  AGENT_SETTING_KEYS,
+  parseAgentManagementSettings,
+} from "./agent-settings-contract";
 
 interface StatementLike {
   get(...params: unknown[]): unknown;
@@ -60,69 +56,17 @@ function readJsonSetting(
   if (typeof row?.value !== "string") return undefined;
   try {
     return JSON.parse(row.value);
-  } catch {
-    return undefined;
+  } catch (cause) {
+    throw new Error(`Invalid Agent setting JSON: ${key}`, { cause });
   }
-}
-
-function normalizeStringArray(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return Array.from(
-    new Set(
-      value
-        .filter((entry): entry is string => typeof entry === "string")
-        .map((entry) => entry.trim())
-        .filter(Boolean),
-    ),
-  );
-}
-
-function normalizeStoredCustomAgents(value: unknown): CustomAgentConfig[] {
-  return normalizeCustomAgents(
-    Array.isArray(value)
-      ? value.filter(
-          (entry): entry is CustomAgentConfig =>
-            Boolean(entry) && typeof entry === "object",
-        )
-      : [],
-  );
 }
 
 export function readAgentManagementSettings(
   database: AgentSettingsDatabase,
 ): AgentManagementSettings {
-  return {
-    builtinAgentOverrides: normalizeBuiltinAgentOverrides(
-      readJsonSetting(database, "builtinAgentOverrides") as
-        | Record<string, BuiltinAgentOverrideConfig>
-        | undefined,
-    ),
-    customAgents: normalizeStoredCustomAgents(
-      readJsonSetting(database, "customAgents"),
-    ),
-    disabledPlatformIds: normalizeStringArray(
-      readJsonSetting(database, "disabledPlatformIds"),
-    ),
-    agentIdentityPreferences: normalizeAgentIdentityPreferences(
-      readJsonSetting(database, "agentIdentityPreferences"),
-    ),
-  };
-}
-
-function isCanonicalAuthority(): boolean {
-  return getRuntimeStorageContext().localAuthority === "canonical-files";
-}
-
-function customRootPaths(customAgents: CustomAgentConfig[]): string[] {
-  return customAgents.map((agent) => agent.rootPath);
-}
-
-function builtinRootPaths(
-  overrides: Record<string, BuiltinAgentOverrideConfig>,
-): Record<string, string> {
-  return Object.fromEntries(
-    Object.entries(overrides).flatMap(([id, override]) =>
-      override.rootPath ? [[id, override.rootPath] as const] : [],
+  return parseAgentManagementSettings(
+    Object.fromEntries(
+      AGENT_SETTING_KEYS.map((key) => [key, readJsonSetting(database, key)]),
     ),
   );
 }
@@ -162,15 +106,7 @@ export class AgentSettingsRepository {
   constructor(private readonly database: AgentSettingsDatabase) {}
 
   read(): AgentManagementSettings {
-    const databaseSettings = readAgentManagementSettings(this.database);
-    if (!isCanonicalAuthority()) return databaseSettings;
-    const canonical = ensureCanonicalAgentDeviceConfig(databaseSettings);
-    return {
-      builtinAgentOverrides: canonical.builtinAgentOverrides,
-      customAgents: canonical.customAgents,
-      disabledPlatformIds: canonical.disabledPlatformIds,
-      agentIdentityPreferences: canonical.agentIdentityPreferences,
-    };
+    return readAgentManagementSettings(this.database);
   }
 
   private writeDatabase(entries: Record<string, unknown>): void {
@@ -184,26 +120,20 @@ export class AgentSettingsRepository {
     })();
   }
 
-  private write(entries: Record<string, unknown>): void {
-    if (!isCanonicalAuthority()) return this.writeDatabase(entries);
-    const current = this.read();
-    const next: AgentManagementSettings = {
-      builtinAgentOverrides:
-        (entries.builtinAgentOverrides as
-          | Record<string, BuiltinAgentOverrideConfig>
-          | undefined) ?? current.builtinAgentOverrides,
-      customAgents:
-        (entries.customAgents as CustomAgentConfig[] | undefined) ??
-        current.customAgents,
-      disabledPlatformIds:
-        (entries.disabledPlatformIds as string[] | undefined) ??
-        current.disabledPlatformIds,
-      agentIdentityPreferences:
-        (entries.agentIdentityPreferences as
-          | AgentIdentityPreferences
-          | undefined) ?? current.agentIdentityPreferences,
-    };
-    publishCanonicalAgentDeviceConfig(next, () => this.writeDatabase(entries));
+  patch(entries: Partial<AgentManagementSettings>): AgentManagementSettings {
+    const next = parseAgentManagementSettings({ ...this.read(), ...entries });
+    this.writeDatabase(
+      Object.fromEntries(
+        AGENT_SETTING_KEYS.filter((key) =>
+          Object.prototype.hasOwnProperty.call(entries, key),
+        ).map((key) => [key, next[key]]),
+      ),
+    );
+    return this.read();
+  }
+
+  private write(entries: Partial<AgentManagementSettings>): void {
+    this.patch(entries);
   }
 
   setEnabled(
@@ -251,7 +181,6 @@ export class AgentSettingsRepository {
     validateCustomAgentCollection(customAgents, builtinIds);
     this.write({
       customAgents,
-      customAgentRootPaths: customRootPaths(customAgents),
       disabledPlatformIds: settings.disabledPlatformIds.filter(
         (platformId) => platformId !== input.id,
       ),
@@ -286,7 +215,6 @@ export class AgentSettingsRepository {
     else if (updates.enabled === false) disabled.add(agentId);
     this.write({
       customAgents,
-      customAgentRootPaths: customRootPaths(customAgents),
       disabledPlatformIds: [...disabled],
     });
     return this.read();
@@ -314,7 +242,6 @@ export class AgentSettingsRepository {
     }
     this.write({
       customAgents,
-      customAgentRootPaths: customRootPaths(customAgents),
       disabledPlatformIds: settings.disabledPlatformIds.filter(
         (platformId) => platformId !== agentId,
       ),
@@ -343,7 +270,6 @@ export class AgentSettingsRepository {
     }
     this.write({
       builtinAgentOverrides,
-      customPlatformRootPaths: builtinRootPaths(builtinAgentOverrides),
     });
     return this.read();
   }

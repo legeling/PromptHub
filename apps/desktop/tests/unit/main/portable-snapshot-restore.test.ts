@@ -8,6 +8,7 @@ import path from "path";
 
 import {
   createPortableSnapshot,
+  AgentSettingsRepository,
   materializeCanonicalStorageShadow,
   stageCanonicalStorageDatabase,
 } from "@prompthub/core";
@@ -46,6 +47,7 @@ function prompt(id: string, title: string): Prompt {
     videos: [],
     isFavorite: false,
     isPinned: false,
+    version: 1,
     currentVersion: 1,
     usageCount: 0,
     createdAt: "2026-08-11T00:00:00.000Z",
@@ -549,7 +551,7 @@ describe("portable snapshot restore", () => {
         images: false,
         videos: false,
         aiConfig: false,
-        settings: false,
+        settings: true,
         rules: false,
         skills: false,
         mcp: false,
@@ -562,6 +564,13 @@ describe("portable snapshot restore", () => {
         prompts: [prompt("logical", "Logical")],
         folders: [],
         versions: [],
+        settings: {
+          state: {
+            customPlatformRootPaths: {
+              codex: path.join(root, "restored-agent"),
+            },
+          },
+        },
       },
     });
 
@@ -583,6 +592,14 @@ describe("portable snapshot restore", () => {
       expect(new PromptDB(database).getAll().map((item) => item.id)).toEqual([
         "logical",
       ]);
+      expect(
+        new AgentSettingsRepository(database).read().builtinAgentOverrides,
+      ).toEqual({ codex: { rootPath: path.join(root, "restored-agent") } });
+      expect(
+        database
+          .prepare("SELECT value FROM settings WHERE key = ?")
+          .get("customPlatformRootPaths"),
+      ).toBeNull();
     } finally {
       database.close();
     }
@@ -598,7 +615,7 @@ describe("portable snapshot restore", () => {
         id: "folder-1",
         name: "Before",
         parentId: null,
-        sortOrder: 0,
+        order: 0,
         createdAt: "2026-08-11T00:00:00.000Z",
         updatedAt: "2026-08-11T00:00:00.000Z",
       });

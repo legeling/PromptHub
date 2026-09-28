@@ -52,7 +52,8 @@ describe("self-hosted-sync", () => {
       updater: {
         getVersion: vi.fn().mockResolvedValue("0.5.2"),
       },
-    } as typeof window.electron;
+      // This transport fixture exposes only the updater method consumed by sync.
+    } as unknown as typeof window.electron;
 
     getSettingsStateMock.mockReturnValue({
       themeMode: "light",
@@ -568,6 +569,8 @@ describe("self-hosted-sync", () => {
           const parsedBody = JSON.parse(String(init?.body)) as {
             payload: {
               prompts: Array<{ images?: string[]; videos?: string[] }>;
+              promptRelations: unknown[];
+              outputFormatItems: unknown[];
               rules?: Array<{ id: string; content: string }>;
               skillFiles?: Record<
                 string,
@@ -578,7 +581,6 @@ describe("self-hosted-sync", () => {
                 language: string;
                 autoSave: boolean;
                 builtinAgentOverrides: Record<string, { rootPath?: string }>;
-                customPlatformRootPaths: Record<string, string>;
               };
             };
           };
@@ -607,8 +609,8 @@ describe("self-hosted-sync", () => {
             language: "en",
             autoSave: false,
             builtinAgentOverrides: { claude: { rootPath: "/tmp/claude-root" } },
-            customPlatformRootPaths: { claude: "/tmp/claude-root" },
-            customSkillPlatformPaths: {},
+            customAgents: [],
+            agentIdentityPreferences: {},
             disabledPlatformIds: [],
             sync: {
               enabled: false,

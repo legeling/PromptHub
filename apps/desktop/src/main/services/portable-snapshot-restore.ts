@@ -1,6 +1,10 @@
+import { importAgentSettingsV1 } from "@prompthub/core/migrations/agent-settings-v1";
 import crypto from "crypto";
 import fs from "fs";
-import { decodeSkillFileSnapshot, validateSkillFileSnapshots } from "@prompthub/shared/utils/skill-file-snapshot";
+import {
+  decodeSkillFileSnapshot,
+  validateSkillFileSnapshots,
+} from "@prompthub/shared/utils/skill-file-snapshot";
 import path from "path";
 
 import {
@@ -640,6 +644,9 @@ function restoreDatabase(
   try {
     database.pragma("foreign_keys = ON");
     restorePromptAndSkillDatabase(database, activeRoot, envelope);
+    if (envelope.scope.settings && envelope.payload.settings?.state) {
+      importAgentSettingsV1(database, envelope.payload.settings.state);
+    }
     if (envelope.scope.rules) {
       restoreRules(database, activeRoot, envelope.payload.rules ?? []);
     }
@@ -776,7 +783,9 @@ function restoreFileDomains(
             recursive: true,
             mode: 0o700,
           });
-          fs.writeFileSync(targetPath, decodeSkillFileSnapshot(file), { mode: 0o600 });
+          fs.writeFileSync(targetPath, decodeSkillFileSnapshot(file), {
+            mode: 0o600,
+          });
         }
       }
     }

@@ -1,3 +1,4 @@
+import { migrateAgentSettingsV1 } from "@prompthub/core/migrations/agent-settings-v1";
 /**
  * Desktop-specific database initialization and recovery.
  *
@@ -193,6 +194,7 @@ export function initDatabase(): DatabaseAdapter.Database {
         resolveSkillRepoPath,
       );
     }
+    migrateAgentSettingsV1(database, getUserDataPath());
     return database;
   } catch (error) {
     closeDatabase();

@@ -20,10 +20,8 @@ import {
 import {
   buildMainProcessSyncSettings,
   clampSyncProvider,
-  deriveLegacyCustomPlatformRootPaths,
   inferLegacySyncProvider,
   migrateResourceTagSectionSettings,
-  migrateTraeCnPlatformState,
   normalizeCustomAgentSettings,
   normalizeDesktopHomeModules,
   normalizeLanguage,
@@ -38,7 +36,6 @@ import {
   normalizeSyncTimingSettings,
   normalizeTagFilterMode,
 } from "./settings-normalizers";
-import { normalizeBuiltinAgentOverrides } from "../../services/agent-root-paths";
 import { normalizeSkillProjects } from "../../services/skill-project-settings";
 import {
   SUPPORTED_LANGUAGES,
@@ -161,9 +158,8 @@ function normalizeSharedSettingsState(next: SettingsState): void {
 }
 
 function normalizeMergedAgentSettings(next: SettingsState): void {
-  normalizeCustomAgentSettings(next, { migrateLegacyScanPaths: false });
+  normalizeCustomAgentSettings(next);
   normalizePlatformVisibilitySettings(next);
-  migrateTraeCnPlatformState(next);
 }
 
 function normalizeMergedPresentationSettings(
@@ -232,84 +228,6 @@ export function mergeSettingsState(
   return normalizeMergedState(next, persistedState);
 }
 
-function ensureObjectSetting(value: unknown): Record<string, unknown> {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
-}
-
-function normalizeLegacyAgentOverrideShape(
-  next: SettingsState,
-  version: number,
-): void {
-  normalizeCustomAgentSettings(next, { migrateLegacyScanPaths: version < 12 });
-  next.builtinAgentOverrides = normalizeBuiltinAgentOverrides(
-    ensureObjectSetting(next.builtinAgentOverrides),
-  );
-  next.customPlatformRootPaths = ensureObjectSetting(
-    next.customPlatformRootPaths,
-  ) as SettingsState["customPlatformRootPaths"];
-  next.customSkillPlatformPaths = ensureObjectSetting(
-    next.customSkillPlatformPaths,
-  ) as SettingsState["customSkillPlatformPaths"];
-}
-
-function migrateLegacyRuleTrackingState(next: SettingsState): void {
-  const legacy = next as Partial<SettingsState> & {
-    trackedRulePlatformIds?: unknown;
-    rulePlatformTrackingInitialized?: unknown;
-  };
-  if (!Array.isArray(next.disabledPlatformIds)) {
-    next.disabledPlatformIds = Array.isArray(legacy.trackedRulePlatformIds)
-      ? legacy.trackedRulePlatformIds
-      : [];
-  }
-  delete legacy.rulePlatformTrackingInitialized;
-  delete legacy.trackedRulePlatformIds;
-}
-
-function migrateLegacyPlatformPaths(
-  next: SettingsState,
-  version: number,
-): void {
-  if (
-    version < 7 &&
-    Object.keys(next.customPlatformRootPaths).length === 0 &&
-    Object.keys(next.customSkillPlatformPaths).length > 0
-  ) {
-    next.customPlatformRootPaths = { ...next.customSkillPlatformPaths };
-  }
-  if (
-    Object.keys(next.builtinAgentOverrides).length === 0 &&
-    Object.keys(next.customPlatformRootPaths).length > 0
-  ) {
-    next.builtinAgentOverrides = normalizeBuiltinAgentOverrides(
-      Object.fromEntries(
-        Object.entries(next.customPlatformRootPaths).map(
-          ([platformId, rootPath]) => [platformId, { rootPath }],
-        ),
-      ),
-    );
-  }
-  next.customPlatformRootPaths = deriveLegacyCustomPlatformRootPaths(
-    next.builtinAgentOverrides,
-  );
-  if (version <= 11 && next.disabledPlatformIds.length > 0) {
-    next.disabledPlatformIds = [];
-  }
-}
-
-function normalizeLegacyAgentSettings(
-  next: SettingsState,
-  version: number,
-): void {
-  normalizeLegacyAgentOverrideShape(next, version);
-  migrateLegacyRuleTrackingState(next);
-  migrateLegacyPlatformPaths(next, version);
-  normalizePlatformVisibilitySettings(next);
-  migrateTraeCnPlatformState(next);
-}
-
 function normalizeSkillTrustSettings(next: SettingsState): void {
   next.skillSafetyScanEnabled = next.skillSafetyScanEnabled === true;
   next.skillSafetyScanMethod =
@@ -347,7 +265,7 @@ function normalizeMigratedCoreState(
     normalizeSkillTagFilterIncludeFrontmatter(
       next.skillTagFilterIncludeFrontmatter,
     );
-  normalizeLegacyAgentSettings(next, version);
+  normalizeMergedAgentSettings(next);
   next.skillProjects = normalizeSkillProjects(next.skillProjects);
   normalizeSkillTrustSettings(next);
   next.networkProxy = normalizeNetworkProxySettings(next.networkProxy);
@@ -463,15 +381,6 @@ export function rehydrateSettingsState(
     backgroundImageBlur: state?.backgroundImageBlur,
   });
   const mainProcessSettings: Partial<Settings> = {
-    builtinAgentOverrides: state?.builtinAgentOverrides || {},
-    agentIdentityPreferences: normalizeAgentIdentityPreferences(
-      state?.agentIdentityPreferences,
-    ),
-    customAgents: state?.customAgents || [],
-    customAgentRootPaths: state?.customAgentRootPaths || [],
-    customPlatformRootPaths: state?.customPlatformRootPaths || {},
-    disabledPlatformIds: state?.disabledPlatformIds || [],
-    customSkillPlatformPaths: state?.customSkillPlatformPaths || {},
     skillPlatformOrder: state?.skillPlatformOrder || [],
     skillProjects: state?.skillProjects || [],
     networkProxy: normalizeNetworkProxySettings(state?.networkProxy),

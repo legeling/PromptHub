@@ -105,7 +105,6 @@ describe("skill-installer-utils", () => {
               claude: { rootPath: "~/.agent" },
               codex: { skillsRelativePath: "custom-skills" },
               opencode: {},
-              cursor: { rootPath: "   " },
             }),
           };
         }
@@ -121,7 +120,7 @@ describe("skill-installer-utils", () => {
       ]);
     });
 
-    it("falls back to customPlatformRootPaths when builtin overrides are empty", () => {
+    it("does not read retired root aliases when current overrides are empty", () => {
       const getMock = vi.fn().mockImplementation((key: string) => {
         if (key === "customPlatformRootPaths") {
           return {
@@ -134,10 +133,10 @@ describe("skill-installer-utils", () => {
         prepare: vi.fn().mockReturnValue({ get: getMock }),
       } as unknown as ReturnType<typeof getDatabase>);
 
-      expect(getConfiguredBuiltinAgentPlatformIds()).toEqual(["claude"]);
+      expect(getConfiguredBuiltinAgentPlatformIds()).toEqual([]);
     });
 
-    it("falls back to legacy customSkillPlatformPaths roots", () => {
+    it("does not read retired Skill path aliases", () => {
       const getMock = vi.fn().mockImplementation((key: string) => {
         if (key === "customSkillPlatformPaths") {
           return {
@@ -150,7 +149,7 @@ describe("skill-installer-utils", () => {
         prepare: vi.fn().mockReturnValue({ get: getMock }),
       } as unknown as ReturnType<typeof getDatabase>);
 
-      expect(getConfiguredBuiltinAgentPlatformIds()).toEqual(["claude"]);
+      expect(getConfiguredBuiltinAgentPlatformIds()).toEqual([]);
     });
   });
 
@@ -159,8 +158,10 @@ describe("skill-installer-utils", () => {
   describe("getPlatformSkillsDir", () => {
     it("uses the saved platform override when one exists", () => {
       const getMock = vi.fn().mockImplementation((key: string) => {
-        if (key === "customPlatformRootPaths") {
-          return { value: JSON.stringify({ trae: "~/.trae-cn" }) };
+        if (key === "builtinAgentOverrides") {
+          return {
+            value: JSON.stringify({ trae: { rootPath: "~/.trae-cn" } }),
+          };
         }
         return undefined;
       });
@@ -173,11 +174,11 @@ describe("skill-installer-utils", () => {
 
       const resolvedPath = getPlatformSkillsDir(platform!);
 
-      expect(getMock).toHaveBeenCalledWith("customPlatformRootPaths");
+      expect(getMock).toHaveBeenCalledWith("builtinAgentOverrides");
       expect(resolvedPath).toContain(".trae-cn/skills");
     });
 
-    it("migrates legacy saved skills path back to platform root", () => {
+    it("does not interpret legacy Skill paths during ordinary reads", () => {
       const getMock = vi.fn().mockImplementation((key: string) => {
         if (key === "customPlatformRootPaths") {
           return undefined;
@@ -197,10 +198,10 @@ describe("skill-installer-utils", () => {
       const resolvedRoot = getPlatformRootDir(platform!);
       const resolvedPath = getPlatformSkillsDir(platform!);
 
-      expect(getMock).toHaveBeenCalledWith("customPlatformRootPaths");
-      expect(getMock).toHaveBeenCalledWith("customSkillPlatformPaths");
-      expect(resolvedRoot).toContain(".trae-cn");
-      expect(resolvedPath).toContain(".trae-cn/skills");
+      expect(getMock).not.toHaveBeenCalledWith("customPlatformRootPaths");
+      expect(getMock).not.toHaveBeenCalledWith("customSkillPlatformPaths");
+      expect(resolvedRoot).toContain(".trae");
+      expect(resolvedPath).toContain(".trae/skills");
       expect(resolvedPath.endsWith("/skills/skills")).toBe(false);
     });
 
@@ -474,7 +475,7 @@ describe("skill-installer-utils", () => {
       expect(resolvedPath).toContain(".cursor/skills");
     });
 
-    it("handles DB read failure gracefully (returns built-in path)", () => {
+    it("propagates database read failure without changing target", () => {
       vi.mocked(getDatabase).mockImplementation(() => {
         throw new Error("DB not available");
       });
@@ -482,12 +483,10 @@ describe("skill-installer-utils", () => {
       const platform = getPlatformById("claude");
       expect(platform).toBeDefined();
 
-      // Should not throw — falls back to built-in
-      const resolvedPath = getPlatformSkillsDir(platform!);
-      expect(resolvedPath).toContain(".claude/skills");
+      expect(() => getPlatformSkillsDir(platform!)).toThrow("DB not available");
     });
 
-    it("handles malformed JSON in DB gracefully", () => {
+    it("rejects malformed configuration without changing target", () => {
       const getMock = vi.fn().mockReturnValue({
         value: "not valid json!",
       });
@@ -498,9 +497,9 @@ describe("skill-installer-utils", () => {
       const platform = getPlatformById("claude");
       expect(platform).toBeDefined();
 
-      // Should not throw — falls back to built-in
-      const resolvedPath = getPlatformSkillsDir(platform!);
-      expect(resolvedPath).toContain(".claude/skills");
+      expect(() => getPlatformSkillsDir(platform!)).toThrow(
+        "Invalid Agent setting JSON",
+      );
     });
   });
 
@@ -1090,7 +1089,8 @@ describe("skill-installer-utils", () => {
         },
         on: vi.fn((event, cb) => event === "close" && closeHandlers.push(cb)),
         kill: vi.fn(),
-      } as childProcess.ChildProcess);
+        // Only the streams and process events consumed by gitClone are mocked.
+      } as unknown as childProcess.ChildProcess);
 
       const promise = gitClone(
         "https://alice:secret@gitea.example.com/team/skills",

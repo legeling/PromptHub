@@ -1,3 +1,9 @@
+import {
+  AGENT_SETTING_KEYS,
+  RETIRED_AGENT_SETTING_KEYS,
+  parseAgentManagementSettings,
+} from "./agent-management/agent-settings-contract";
+import { convertAgentSettingsV1 } from "./migrations/agent-settings-v1";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -11,7 +17,6 @@ import {
 } from "./renderer-persistence-policy";
 import {
   createAgentDeviceConfigDocument,
-  parseAgentDeviceConfigDocument,
   type AgentDeviceConfigDocument,
 } from "./agent-resource-schema";
 import { deriveLocalResourceDeviceId } from "./storage-root-identity";
@@ -119,7 +124,7 @@ interface CanonicalRendererState {
   syncProviders: CanonicalDocument;
   marketplaceSources: CanonicalDocument;
   devices: CanonicalDocument;
-  agents: AgentDeviceConfigDocument;
+  agents: AgentDeviceConfigDocument | null;
   recovery: CanonicalDocument;
   vault: SecretVaultDocument;
   marker: RendererPersistenceMarkerDocument;
@@ -152,7 +157,6 @@ export function createRendererPersistenceStore(options: {
       typeof devices?.selfHostedDeviceId === "string"
         ? devices.selfHostedDeviceId
         : null;
-    const agents = readOptionalAgentDeviceDocument(rootPath);
     const recovery = readOptionalDocument(
       rootPath,
       "config/recovery-paths.json",
@@ -160,17 +164,9 @@ export function createRendererPersistenceStore(options: {
     const marker = readMarker(markerPath);
     const secrets = readVault(rootPath, options.encryption);
     const settings = {
-      ...asRecord(app?.settings),
+      ...pickSettings(asRecord(app?.settings), APP_SETTING_KEYS),
       ...asRecord(sync?.settings),
       ...asRecord(providers?.settings),
-      ...(agents
-        ? {
-            builtinAgentOverrides: agents.builtinAgentOverrides,
-            customAgents: agents.customAgents,
-            disabledPlatformIds: agents.disabledPlatformIds,
-            agentIdentityPreferences: agents.agentIdentityPreferences,
-          }
-        : {}),
     };
     hydrateFlatSecrets(settings, app, sync, providers, secrets);
     hydrateProviderSecrets(settings, providers, secrets);
@@ -201,8 +197,24 @@ export function createRendererPersistenceStore(options: {
       }
       assertSnapshotSize(input);
       const completedAt = now();
+      const legacySettings = parsePersistedState(input.settings);
+      const hasAgentSettings = [
+        ...AGENT_SETTING_KEYS,
+        ...RETIRED_AGENT_SETTING_KEYS,
+      ].some((key) =>
+        Object.prototype.hasOwnProperty.call(legacySettings, key),
+      );
+      const migrationInput = hasAgentSettings
+        ? {
+            ...input,
+            settings: {
+              ...legacySettings,
+              ...convertAgentSettingsV1(legacySettings),
+            },
+          }
+        : input;
       const canonical = buildCanonicalState(
-        input,
+        migrationInput,
         completedAt,
         options.encryption,
         localResourceDeviceId,
@@ -235,7 +247,6 @@ export function createRendererPersistenceStore(options: {
           ["config/providers.json", canonical.providers],
           ["config/ai-models.json", canonical.legacyAIConfig],
           ["config/sync-providers.json", canonical.syncProviders],
-          ["config/devices/agents.json", canonical.agents],
           ["secrets/vault.enc", canonical.vault],
         ],
         options.failPublicationAt,
@@ -301,7 +312,10 @@ export function createRendererPersistenceStore(options: {
 
     async isIndexedDbMigrationDone() {
       const marker = readMarker(markerPath);
-      return marker?.indexedDbMigrationDone === true && marker.indexedDbVerificationVersion === 1;
+      return (
+        marker?.indexedDbMigrationDone === true &&
+        marker.indexedDbVerificationVersion === 1
+      );
     },
 
     async markIndexedDbMigrationDone() {
@@ -309,14 +323,21 @@ export function createRendererPersistenceStore(options: {
       if (!marker) {
         throw new Error("RENDERER_PERSISTENCE_MIGRATION_INCOMPLETE");
       }
-      if (marker.indexedDbMigrationDone && marker.indexedDbVerificationVersion === 1) return;
+      if (
+        marker.indexedDbMigrationDone &&
+        marker.indexedDbVerificationVersion === 1
+      )
+        return;
       writeAtomicJson(markerPath, {
         ...marker,
         indexedDbMigrationDone: true,
         indexedDbVerificationVersion: 1,
       });
       const verified = readMarker(markerPath);
-      if (!verified?.indexedDbMigrationDone || verified.indexedDbVerificationVersion !== 1) {
+      if (
+        !verified?.indexedDbMigrationDone ||
+        verified.indexedDbVerificationVersion !== 1
+      ) {
         throw new Error("INDEXEDDB_MIGRATION_MARKER_VERIFY_FAILED");
       }
     },
@@ -428,22 +449,15 @@ function buildCanonicalState(
       updatedAt,
       selfHostedDeviceId,
     },
-    agents: createAgentDeviceConfigDocument({
-      deviceId: localResourceDeviceId,
-      updatedAt,
-      builtinAgentOverrides: asRecord(
-        settings.builtinAgentOverrides,
-      ) as AgentDeviceConfigDocument["builtinAgentOverrides"],
-      customAgents: Array.isArray(settings.customAgents)
-        ? (settings.customAgents as AgentDeviceConfigDocument["customAgents"])
-        : [],
-      disabledPlatformIds: Array.isArray(settings.disabledPlatformIds)
-        ? (settings.disabledPlatformIds as string[])
-        : [],
-      agentIdentityPreferences: asRecord(
-        settings.agentIdentityPreferences,
-      ) as AgentDeviceConfigDocument["agentIdentityPreferences"],
-    }),
+    agents: [...AGENT_SETTING_KEYS, ...RETIRED_AGENT_SETTING_KEYS].some((key) =>
+      Object.prototype.hasOwnProperty.call(settings, key),
+    )
+      ? createAgentDeviceConfigDocument({
+          deviceId: localResourceDeviceId,
+          updatedAt,
+          ...parseAgentManagementSettings(settings),
+        })
+      : null,
     recovery: {
       kind: "prompthub-recovery-path-registry",
       version: 1,
@@ -480,7 +494,9 @@ function publishCanonicalState(
       ["config/sync-providers.json", state.syncProviders],
       ["config/marketplace-sources.json", state.marketplaceSources],
       ["config/devices/renderer.json", state.devices],
-      ["config/devices/agents.json", state.agents],
+      ...(state.agents
+        ? [["config/devices/agents.json", state.agents] as [string, unknown]]
+        : []),
       ["config/recovery-paths.json", state.recovery],
       ["secrets/vault.enc", state.vault],
       [RENDERER_PERSISTENCE_MARKER, state.marker],
@@ -888,26 +904,6 @@ function readOptionalDocument(
     );
   }
   return document;
-}
-
-function readOptionalAgentDeviceDocument(
-  rootPath: string,
-): AgentDeviceConfigDocument | null {
-  const relativePath = "config/devices/agents.json";
-  const filePath = resolveOwnedPath(rootPath, relativePath);
-  if (!fs.existsSync(filePath)) return null;
-  const stat = fs.lstatSync(filePath);
-  if (!stat.isFile() || stat.isSymbolicLink()) {
-    throw new Error(`Invalid renderer persistence file: ${relativePath}`);
-  }
-  const content = fs.readFileSync(filePath, "utf8");
-  const parsed = asRecord(parseJson(content, relativePath));
-  if (typeof parsed.deviceId !== "string") {
-    throw new Error(`Invalid renderer persistence file: ${relativePath}`);
-  }
-  return parseAgentDeviceConfigDocument(content, {
-    expectedDeviceId: parsed.deviceId,
-  });
 }
 
 function readMarker(

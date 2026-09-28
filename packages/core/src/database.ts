@@ -1,3 +1,4 @@
+import { migrateAgentSettingsV1 } from "./migrations/agent-settings-v1";
 import {
   DatabaseAdapter,
   db as activeDatabase,
@@ -53,6 +54,12 @@ export function initDatabase(
       closeDatabase();
       throw error;
     }
+  }
+  try {
+    migrateAgentSettingsV1(database, getUserDataPath());
+  } catch (error) {
+    closeDatabase();
+    throw error;
   }
   return database;
 }

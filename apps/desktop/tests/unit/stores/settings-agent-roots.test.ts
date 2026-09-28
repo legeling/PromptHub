@@ -12,9 +12,9 @@ async function importStore(settingsFromMain?: Record<string, unknown>) {
   vi.resetModules();
   const setSpy = vi.fn().mockResolvedValue(undefined);
   window.api = {
-    ...(window.api ?? {}),
+    ...window.api,
     settings: {
-      ...(window.api?.settings ?? {}),
+      ...window.api.settings,
       get: vi
         .fn()
         .mockResolvedValue({ githubToken: "", ...(settingsFromMain ?? {}) }),
@@ -102,33 +102,6 @@ describe("settings store agent roots", () => {
     });
   });
 
-  it("migrates legacy custom skill scan paths into custom agent roots", async () => {
-    localStorage.setItem(
-      "prompthub-settings",
-      JSON.stringify({
-        state: {
-          customSkillScanPaths: ["~/.agents", "~/.agents/"],
-        },
-        version: 11,
-      }),
-    );
-
-    const { useSettingsStore } = await importStore();
-
-    expect(useSettingsStore.getState().customAgents).toEqual([
-      expect.objectContaining({
-        name: "Custom Agent 1",
-        rootPath: "~/.agents",
-      }),
-    ]);
-    expect(useSettingsStore.getState().customAgentRootPaths).toEqual([
-      "~/.agents",
-    ]);
-    expect(useSettingsStore.getState().customSkillScanPaths).toEqual([
-      "~/.agents",
-    ]);
-  });
-
   it("preserves custom agent capability fields when updating one property", async () => {
     const { useSettingsStore } = await importStore();
 
@@ -205,12 +178,10 @@ describe("settings store agent roots", () => {
         configRelativePaths: ["config.json"],
       }),
     ]);
-    expect(useSettingsStore.getState().customAgentRootPaths).toEqual([
-      "/tmp/team-agent",
-    ]);
-    expect(useSettingsStore.getState().customSkillScanPaths).toEqual([
-      "/tmp/team-agent",
-    ]);
+    expect(
+      JSON.parse(localStorage.getItem("prompthub-settings")!).state
+        .customAgentRootPaths,
+    ).toEqual(["/tmp/stale-root", 42]);
   });
 
   it("adds default project deploy targets under .agents/skills", async () => {
@@ -274,34 +245,6 @@ describe("settings store agent roots", () => {
     ]);
   });
 
-  it("migrates legacy Trae CN root overrides onto the trae-cn platform", async () => {
-    localStorage.setItem(
-      "prompthub-settings",
-      JSON.stringify({
-        state: {
-          customPlatformRootPaths: { trae: "~/.trae-cn" },
-          disabledPlatformIds: ["trae"],
-          skillPlatformOrder: ["claude", "trae", "codex"],
-        },
-        version: 12,
-      }),
-    );
-
-    const { useSettingsStore } = await importStore();
-
-    expect(useSettingsStore.getState().customPlatformRootPaths).toEqual({
-      "trae-cn": "~/.trae-cn",
-    });
-    expect(useSettingsStore.getState().disabledPlatformIds).toEqual([
-      "trae-cn",
-    ]);
-    expect(useSettingsStore.getState().skillPlatformOrder).toEqual([
-      "claude",
-      "trae-cn",
-      "codex",
-    ]);
-  });
-
   it("normalizes same-version persisted platform visibility settings during hydration", async () => {
     localStorage.setItem(
       "prompthub-settings",
@@ -319,60 +262,57 @@ describe("settings store agent roots", () => {
     const { useSettingsStore } = await importStore();
 
     expect(useSettingsStore.getState().builtinAgentOverrides).toEqual({
-      "trae-cn": { rootPath: "~/.trae-cn" },
-    });
-    expect(useSettingsStore.getState().customPlatformRootPaths).toEqual({
-      "trae-cn": "~/.trae-cn",
+      trae: { rootPath: "~/.trae-cn" },
     });
     expect(useSettingsStore.getState().disabledPlatformIds).toEqual([
-      "trae-cn",
+      "trae",
       "codex",
     ]);
     expect(useSettingsStore.getState().skillPlatformOrder).toEqual([
       "claude",
-      "trae-cn",
+      "trae",
       "codex",
     ]);
   });
 
-  it("loads legacy custom agent root paths from main process when custom agents are absent", async () => {
-    const { useSettingsStore, loadSettingsFromMainProcess } = await importStore(
-      {
-        customAgents: [],
-        customAgentRootPaths: ["~/.legacy-agents"],
-        githubToken: "",
-      },
-    );
-
-    await loadSettingsFromMainProcess();
-
-    expect(useSettingsStore.getState().customAgents).toEqual([]);
-    expect(useSettingsStore.getState().customAgentRootPaths).toEqual([
-      "~/.legacy-agents",
-    ]);
-    expect(useSettingsStore.getState().customSkillScanPaths).toEqual([
-      "~/.legacy-agents",
-    ]);
+  it("does not publish default Agent values while rehydrating renderer preferences", async () => {
+    const { setSpy } = await importStore();
+    for (const [payload] of setSpy.mock.calls) {
+      expect(payload).not.toHaveProperty("builtinAgentOverrides");
+      expect(payload).not.toHaveProperty("customAgents");
+      expect(payload).not.toHaveProperty("customPlatformRootPaths");
+    }
   });
 
-  it("migrates legacy built-in root overrides into builtinAgentOverrides", async () => {
-    localStorage.setItem(
-      "prompthub-settings",
-      JSON.stringify({
-        state: {
-          customPlatformRootPaths: { opencode: "~/.opencode-custom" },
-        },
-        version: 13,
-      }),
+  it("keeps an explicitly empty current override and writes only the current key", async () => {
+    const { useSettingsStore, loadSettingsFromMainProcess, setSpy } =
+      await importStore({ builtinAgentOverrides: {} });
+    await loadSettingsFromMainProcess();
+    expect(useSettingsStore.getState().builtinAgentOverrides).toEqual({});
+    useSettingsStore
+      .getState()
+      .updateBuiltinAgentOverride("codex", { rootPath: "/tmp/current" });
+    useSettingsStore.getState().resetBuiltinAgentOverride("codex");
+    expect(setSpy).toHaveBeenLastCalledWith({ builtinAgentOverrides: {} });
+    expect(useSettingsStore.getState()).not.toHaveProperty(
+      "customPlatformRootPaths",
     );
-
-    const { useSettingsStore } = await importStore();
-
-    expect(useSettingsStore.getState().builtinAgentOverrides).toEqual({
-      opencode: { rootPath: "~/.opencode-custom" },
+  });
+  it("preserves the exact legacy snapshot before desktop main-process migration", async () => {
+    const snapshot = JSON.stringify({
+      state: { customSkillScanPaths: ["/original/skills"] },
+      version: 11,
     });
-    expect(useSettingsStore.getState().customPlatformRootPaths).toEqual({
-      opencode: "~/.opencode-custom",
-    });
+    localStorage.setItem("prompthub-settings", snapshot);
+    const previous = window.api.settings.rendererPersistence;
+    window.api.settings.rendererPersistence = { ...previous, get: vi.fn() };
+    try {
+      const { useSettingsStore, setSpy } = await importStore();
+      expect(localStorage.getItem("prompthub-settings")).toBe(snapshot);
+      expect(useSettingsStore.getState().customAgents).toEqual([]);
+      expect(setSpy).not.toHaveBeenCalled();
+    } finally {
+      window.api.settings.rendererPersistence = previous;
+    }
   });
 });

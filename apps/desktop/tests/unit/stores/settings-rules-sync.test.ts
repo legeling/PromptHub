@@ -37,28 +37,27 @@ describe("settings store -> rules sync", () => {
     }));
 
     window.api = {
-      ...(window.api ?? {}),
+      ...window.api,
       settings: {
-        ...(window.api?.settings ?? {}),
-        get: vi.fn().mockResolvedValue({ customPlatformRootPaths: {} }),
+        ...window.api.settings,
+        get: vi.fn().mockResolvedValue({ builtinAgentOverrides: {} }),
         set: settingsSetMock,
       },
     };
 
-    const { useSettingsStore } = await import(
-      "../../../src/renderer/stores/settings.store"
-    );
+    const { useSettingsStore } =
+      await import("../../../src/renderer/stores/settings.store");
 
-    useSettingsStore.getState().setCustomPlatformRootPath(
-      "opencode",
-      "/tmp/opencode-root",
-    );
+    useSettingsStore
+      .getState()
+      .updateBuiltinAgentOverride("opencode", {
+        rootPath: "/tmp/opencode-root",
+      });
     await vi.dynamicImportSettled();
 
     expect(loadFilesMock).not.toHaveBeenCalled();
     expect(settingsSetMock).toHaveBeenLastCalledWith({
       builtinAgentOverrides: { opencode: { rootPath: "/tmp/opencode-root" } },
-      customPlatformRootPaths: { opencode: "/tmp/opencode-root" },
     });
 
     resolveSettingsSet();
@@ -86,9 +85,9 @@ describe("settings store -> rules sync", () => {
     }));
 
     window.api = {
-      ...(window.api ?? {}),
+      ...window.api,
       settings: {
-        ...(window.api?.settings ?? {}),
+        ...window.api.settings,
         get: vi.fn().mockResolvedValue({
           customAgents: [
             {
@@ -103,9 +102,8 @@ describe("settings store -> rules sync", () => {
       },
     };
 
-    const { useSettingsStore } = await import(
-      "../../../src/renderer/stores/settings.store"
-    );
+    const { useSettingsStore } =
+      await import("../../../src/renderer/stores/settings.store");
 
     useSettingsStore.setState({
       customAgents: [
@@ -131,7 +129,6 @@ describe("settings store -> rules sync", () => {
           rulesRelativePath: "config/AGENTS.md",
         }),
       ],
-      customAgentRootPaths: ["/tmp/team-agents"],
     });
 
     resolveSettingsSet();

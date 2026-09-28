@@ -465,7 +465,8 @@ package failed validation. Its manifest, size, or file paths are invalid`.
 
 ## Current Contract Convergence
 
-`TEST-AGENT-219` validates FR-AGENT-138 / DES-AGENT-157. Status: planned, not run.
+`TEST-AGENT-219` validates FR-AGENT-138 / DES-AGENT-157. Status: partially exercised;
+the full acceptance gate remains open.
 The fixture, normal-path, failure and mutation matrix is defined once in
 [current-contract-design.md, section 6](current-contract-design.md#6-测试与成本).
 Existing symlink-to-copy and old-field hydration tests must change together with
@@ -473,3 +474,22 @@ the migrated implementation; their previous green results are not this gate.
 Run normal complete-package and settings lifecycle first, then direct malformed
 inputs and recovery after each durable publication boundary. Native desktop, CLI
 and OS evidence are recorded separately. UI automation requires user authorization.
+
+2026-09-28 configuration evidence:
+
+- `packages/core/tests/agent-settings-upgrade.test.ts`: real SQLite upgrade,
+  original device bytes, reset/reopen, restored input after a completion marker,
+  conflicting inputs, transaction failure/rollback/retry and malformed inputs.
+- `apps/desktop/tests/integration/agent-settings-workflow.test.ts`: registered
+  settings IPC and renderer migration IPC, shared installer/repository reads,
+  current-only writes and SQLite reopen. Electron transport is mocked; storage
+  and business services are real. This is not GUI acceptance.
+- `apps/cli/tests/agent-settings-upgrade.test.ts`: actual CLI dispatcher startup,
+  historical SQLite roots, reset and subsequent startup with no resurrection.
+- Core migration replaced with a no-op in an isolated copy: the normal upgrade
+  test failed on the persisted current root, proving the regression detects the
+  missing conversion. The temporary copy was removed.
+- Focused checks and limitations are recorded in the design implementation
+  record. Broken-link status, explicit-mode failures, complete historical-profile
+  upgrades, unified migration checksums, Web and native-product acceptance remain
+  outstanding; these configuration checks cannot substitute for them.

@@ -15,6 +15,11 @@ vi.mock("electron", () => ({
   },
 }));
 
+// Agent upgrade storage is exercised by agent-settings-workflow integration tests.
+vi.mock("@prompthub/core/migrations/agent-settings-v1", () => ({
+  migrateAgentSettingsV1: vi.fn(),
+}));
+
 vi.mock("@prompthub/core", () => ({
   coreAIConfigService: {
     read: vi.fn(() => ({
@@ -38,8 +43,9 @@ describe("settings renderer persistence IPC", () => {
 
   it("routes migration, canonical updates, device identity, and IDB state through main", async () => {
     const persistence = {
+      readHydratedStateSync: vi.fn(),
       migrate: vi.fn(async () => ({
-        status: "migrated",
+        status: "migrated" as const,
         redactLegacyKeys: [],
       })),
       readHydratedState: vi.fn(async () => ({
@@ -58,7 +64,11 @@ describe("settings renderer persistence IPC", () => {
       markIndexedDbMigrationDone: vi.fn(async () => undefined),
     };
     const database = {
-      prepare: vi.fn(() => ({ all: vi.fn(() => []), run: vi.fn() })),
+      prepare: vi.fn(() => ({
+        all: vi.fn(() => []),
+        get: vi.fn(() => null),
+        run: vi.fn(),
+      })),
       transaction: vi.fn((callback: () => void) => callback),
     };
     const { registerSettingsIPC } =

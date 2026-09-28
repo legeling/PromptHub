@@ -4,7 +4,6 @@ import type {
 } from "@prompthub/shared/types";
 import { normalizeNetworkProxySettings } from "@prompthub/shared/utils/network-proxy";
 import {
-  normalizeAgentRootPath,
   normalizeBuiltinAgentOverrides,
   normalizeCustomAgentDraft,
   normalizeCustomAgents,
@@ -25,9 +24,6 @@ import type {
 import {
   areStringArraysEqual,
   createProjectRecordId,
-  deriveLegacyCustomPlatformRootPaths,
-  getCustomAgentRootPaths,
-  normalizeAgentRootPaths,
 } from "./settings-normalizers";
 import type { ProjectSkillImportPreferences } from "./settings-types";
 import { normalizeAgentIdentityPreferences } from "../../services/agent-identity";
@@ -37,9 +33,6 @@ type AgentActionKey =
   | "addCustomAgent"
   | "updateCustomAgent"
   | "removeCustomAgent"
-  | "setCustomSkillScanPaths"
-  | "addCustomSkillScanPath"
-  | "removeCustomSkillScanPath"
   | "setProjectSkillImportModePreference"
   | "setProjectSkillImportPreferences"
   | "addSkillProject"
@@ -48,12 +41,8 @@ type AgentActionKey =
   | "updateBuiltinAgentOverride"
   | "resetBuiltinAgentOverride"
   | "setCodexIdentityPreference"
-  | "setCustomPlatformRootPath"
-  | "resetCustomPlatformRootPath"
   | "setDisabledPlatformIds"
   | "setRulePlatformTracked"
-  | "setCustomSkillPlatformPath"
-  | "resetCustomSkillPlatformPath"
   | "setSkillPlatformOrder"
   | "moveSkillPlatformOrder"
   | "resetSkillPlatformOrder"
@@ -114,15 +103,11 @@ function createAgentCollectionActions(context: SettingsActionContext) {
   return {
     setCustomAgents: (agents) => {
       const customAgents = normalizeCustomAgents(agents);
-      const paths = getCustomAgentRootPaths(customAgents);
       setTouched({
         customAgents,
-        customAgentRootPaths: paths,
-        customSkillScanPaths: paths,
       });
       syncSettingsToMainThenRefreshRules({
         customAgents,
-        customAgentRootPaths: paths,
       });
     },
     addCustomAgent: (input) => {
@@ -179,40 +164,10 @@ function createCustomAgentMutationActions(context: SettingsActionContext) {
   } satisfies SettingsActionGroup<"updateCustomAgent" | "removeCustomAgent">;
 }
 
-function createLegacyAgentPathActions(context: SettingsActionContext) {
-  const { get } = context;
-  return {
-    setCustomSkillScanPaths: (paths) =>
-      get().setCustomAgents(
-        normalizeAgentRootPaths(paths).map((rootPath, index) => ({
-          id: `legacy_agent_${index}_${rootPath}`,
-          name: `Custom Agent ${index + 1}`,
-          rootPath,
-        })),
-      ),
-    addCustomSkillScanPath: (rootPath) =>
-      get().addCustomAgent({
-        name: `Custom Agent ${get().customAgents.length + 1}`,
-        rootPath,
-      }),
-    removeCustomSkillScanPath: (rootPath) =>
-      get()
-        .customAgents.filter(
-          (agent) => agent.rootPath === normalizeAgentRootPath(rootPath),
-        )
-        .forEach((agent) => get().removeCustomAgent(agent.id)),
-  } satisfies SettingsActionGroup<
-    | "setCustomSkillScanPaths"
-    | "addCustomSkillScanPath"
-    | "removeCustomSkillScanPath"
-  >;
-}
-
 function createCustomAgentActions(context: SettingsActionContext) {
   return {
     ...createAgentCollectionActions(context),
     ...createCustomAgentMutationActions(context),
-    ...createLegacyAgentPathActions(context),
   };
 }
 
@@ -391,15 +346,11 @@ function writeBuiltinOverrides(
   context: SettingsActionContext,
   overrides: ReturnType<typeof normalizeBuiltinAgentOverrides>,
 ): void {
-  const customPlatformRootPaths =
-    deriveLegacyCustomPlatformRootPaths(overrides);
   context.setTouched({
     builtinAgentOverrides: overrides,
-    customPlatformRootPaths,
   });
   context.syncSettingsToMainThenRefreshRules({
     builtinAgentOverrides: overrides,
-    customPlatformRootPaths,
   });
 }
 
@@ -419,21 +370,8 @@ function createBuiltinOverrideActions(context: SettingsActionContext) {
       delete next[platformId];
       writeBuiltinOverrides(context, normalizeBuiltinAgentOverrides(next));
     },
-    setCustomPlatformRootPath: (platformId, rootPath) =>
-      get().updateBuiltinAgentOverride(platformId, { rootPath }),
-    resetCustomPlatformRootPath: (platformId) =>
-      get().resetBuiltinAgentOverride(platformId),
-    setCustomSkillPlatformPath: (platformId, rootPath) =>
-      get().setCustomPlatformRootPath(platformId, rootPath),
-    resetCustomSkillPlatformPath: (platformId) =>
-      get().resetCustomPlatformRootPath(platformId),
   } satisfies SettingsActionGroup<
-    | "updateBuiltinAgentOverride"
-    | "resetBuiltinAgentOverride"
-    | "setCustomPlatformRootPath"
-    | "resetCustomPlatformRootPath"
-    | "setCustomSkillPlatformPath"
-    | "resetCustomSkillPlatformPath"
+    "updateBuiltinAgentOverride" | "resetBuiltinAgentOverride"
   >;
 }
 

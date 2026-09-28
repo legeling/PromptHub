@@ -25,9 +25,6 @@ import { createGeneralSettingsActions } from "./settings/settings-general-action
 import {
   buildMainProcessSyncSettings,
   clampSyncProvider,
-  deriveLegacyCustomPlatformRootPaths,
-  getCustomAgentRootPaths,
-  normalizeAgentRootPaths,
   normalizeSyncProvider,
 } from "./settings/settings-normalizers";
 import {
@@ -157,6 +154,11 @@ export const useSettingsStore = create<SettingsState>()(
     {
       name: "prompthub-settings",
       version: 20,
+      // Preserve the original snapshot until the main-process migration acknowledges it.
+      skipHydration:
+        typeof window !== "undefined" &&
+        window.__PROMPTHUB_WEB__ !== true &&
+        Boolean(window.api?.settings?.rendererPersistence),
       partialize: stripEphemeralSettings,
       merge: (persistedState, currentState) => {
         persistedRendererLanguage = getPersistedLanguageSetting(persistedState);
@@ -232,26 +234,7 @@ export async function loadSettingsFromMainProcess(): Promise<void> {
   const configuredOverrides = normalizeBuiltinAgentOverrides(
     settings.builtinAgentOverrides ?? state.builtinAgentOverrides,
   );
-  const legacyOverrides = Object.entries(
-    settings.customPlatformRootPaths ?? {},
-  ).reduce<Record<string, BuiltinAgentOverrideConfig>>(
-    (acc, [platformId, rootPath]) => {
-      if (typeof rootPath === "string") acc[platformId] = { rootPath };
-      return acc;
-    },
-    {},
-  );
-  const builtinAgentOverrides =
-    Object.keys(configuredOverrides).length > 0
-      ? configuredOverrides
-      : normalizeBuiltinAgentOverrides(legacyOverrides);
-  const fallbackRootPaths = normalizeAgentRootPaths(
-    customAgents.length > 0
-      ? customAgents.map((agent) => agent.rootPath)
-      : (settings.customAgentRootPaths ??
-          settings.customSkillScanPaths ??
-          state.customAgentRootPaths),
-  );
+  const builtinAgentOverrides = configuredOverrides;
   const aiProviders = Array.isArray(aiSettings.aiProviders)
     ? normalizePersistedAIProviders(aiSettings.aiProviders)
     : state.aiProviders;
@@ -281,14 +264,6 @@ export async function loadSettingsFromMainProcess(): Promise<void> {
     customAgents,
     builtinAgentOverrides,
     agentIdentityPreferences,
-    customPlatformRootPaths: deriveLegacyCustomPlatformRootPaths(
-      builtinAgentOverrides,
-    ),
-    customAgentRootPaths:
-      customAgents.length > 0
-        ? getCustomAgentRootPaths(customAgents)
-        : fallbackRootPaths,
-    customSkillScanPaths: fallbackRootPaths,
     launchAtStartup,
     minimizeOnLaunch,
     githubToken,

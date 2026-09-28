@@ -217,8 +217,6 @@ export interface SettingsState {
   imageReverseAttachReferenceByDefault: boolean;
   sourceHistory: string[];
   customAgents: CustomAgentConfig[];
-  customAgentRootPaths: string[];
-  customSkillScanPaths: string[];
   skillProjects: SkillProject[];
   projectSkillImportModePreference: "copy" | "symlink";
   projectSkillImportPreferencesByProjectId: Record<
@@ -227,9 +225,7 @@ export interface SettingsState {
   >;
   builtinAgentOverrides: Record<string, BuiltinAgentOverrideConfig>;
   agentIdentityPreferences: AgentIdentityPreferences;
-  customPlatformRootPaths: Record<string, string>;
   disabledPlatformIds: string[];
-  customSkillPlatformPaths: Record<string, string>;
   skillPlatformOrder: string[];
   skillInstallMethod: "symlink" | "copy";
   skillSafetyScanEnabled: boolean;
@@ -371,9 +367,6 @@ export interface SettingsState {
     >,
   ) => void;
   removeCustomAgent: (agentId: string) => void;
-  setCustomSkillScanPaths: (paths: string[]) => void;
-  addCustomSkillScanPath: (path: string) => void;
-  removeCustomSkillScanPath: (path: string) => void;
   setProjectSkillImportModePreference: (method: "copy" | "symlink") => void;
   setProjectSkillImportPreferences: (
     projectId: string,
@@ -403,12 +396,8 @@ export interface SettingsState {
   setCodexIdentityPreference: (
     updates: Partial<AgentIdentityPreference>,
   ) => void;
-  setCustomPlatformRootPath: (platformId: string, path: string) => void;
-  resetCustomPlatformRootPath: (platformId: string) => void;
   setDisabledPlatformIds: (platformIds: string[]) => void;
   setRulePlatformTracked: (platformId: string, tracked: boolean) => void;
-  setCustomSkillPlatformPath: (platformId: string, path: string) => void;
-  resetCustomSkillPlatformPath: (platformId: string) => void;
   setSkillPlatformOrder: (order: string[]) => void;
   moveSkillPlatformOrder: (
     platformId: string,

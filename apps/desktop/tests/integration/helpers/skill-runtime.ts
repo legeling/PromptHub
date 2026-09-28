@@ -59,6 +59,7 @@ vi.mock("electron", () => ({
     },
   },
   ipcRenderer: { invoke: transport.invoke },
+  session: { defaultSession: { setProxy: async () => undefined } },
 }));
 
 export const invokeSkillIPC = transport.invoke;

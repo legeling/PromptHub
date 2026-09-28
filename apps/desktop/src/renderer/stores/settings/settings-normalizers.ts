@@ -1,15 +1,5 @@
-import type {
-  BuiltinAgentOverrideConfig,
-  CustomAgentConfig,
-  Settings,
-  SyncProviderKind,
-} from "@prompthub/shared/types";
-import {
-  normalizeBuiltinAgentOverrides,
-  normalizeCustomAgentDraft,
-  normalizeCustomAgents,
-  normalizeAgentRootPath,
-} from "../../services/agent-root-paths";
+import type { Settings, SyncProviderKind } from "@prompthub/shared/types";
+import { normalizeCustomAgents } from "../../services/agent-root-paths";
 import type {
   DesktopHomeModule,
   SettingsState,
@@ -57,64 +47,12 @@ export function normalizeLanguage(lang: string): SupportedLanguage {
   return "en";
 }
 
-export function normalizeAgentRootPaths(paths: string[] | undefined): string[] {
-  return Array.from(
-    new Set(
-      (paths ?? [])
-        .map((entry) => normalizeAgentRootPath(entry))
-        .filter((entry) => entry.length > 0),
-    ),
-  );
-}
-
-export function getCustomAgentRootPaths(agents: CustomAgentConfig[]): string[] {
-  return normalizeAgentRootPaths(agents.map((agent) => agent.rootPath));
-}
-
 export function normalizeCustomAgentSettings(
-  next: Pick<
-    SettingsState,
-    "customAgents" | "customAgentRootPaths" | "customSkillScanPaths"
-  >,
-  options: { migrateLegacyScanPaths: boolean },
+  next: Pick<SettingsState, "customAgents">,
 ): void {
   next.customAgents = normalizeCustomAgents(
     Array.isArray(next.customAgents) ? next.customAgents : [],
   );
-  next.customAgentRootPaths = normalizeAgentRootPaths(
-    Array.isArray(next.customAgentRootPaths) &&
-      next.customAgentRootPaths.every((entry) => typeof entry === "string")
-      ? next.customAgentRootPaths
-      : [],
-  );
-  next.customSkillScanPaths = normalizeAgentRootPaths(
-    Array.isArray(next.customSkillScanPaths) &&
-      next.customSkillScanPaths.every((entry) => typeof entry === "string")
-      ? next.customSkillScanPaths
-      : [],
-  );
-
-  if (
-    options.migrateLegacyScanPaths &&
-    next.customAgents.length === 0 &&
-    next.customAgentRootPaths.length === 0 &&
-    next.customSkillScanPaths.length > 0
-  ) {
-    next.customAgentRootPaths = [...next.customSkillScanPaths];
-  }
-  if (next.customAgents.length === 0 && next.customAgentRootPaths.length > 0) {
-    next.customAgents = next.customAgentRootPaths.map((rootPath, index) =>
-      normalizeCustomAgentDraft({
-        id: `migrated_agent_${index}`,
-        name: `Custom Agent ${index + 1}`,
-        rootPath,
-      }),
-    );
-  }
-  next.customAgentRootPaths = getCustomAgentRootPaths(next.customAgents);
-  if (next.customAgentRootPaths.length > 0) {
-    next.customSkillScanPaths = [...next.customAgentRootPaths];
-  }
 }
 
 export function normalizePlatformVisibilitySettings(
@@ -144,73 +82,6 @@ export function normalizeShortcutModes(
     if (mode === "global" || mode === "local") normalized[action] = mode;
   }
   return normalized;
-}
-
-export function deriveLegacyCustomPlatformRootPaths(
-  overrides: Record<string, BuiltinAgentOverrideConfig>,
-): Record<string, string> {
-  return Object.entries(overrides).reduce<Record<string, string>>(
-    (acc, [platformId, value]) => {
-      if (typeof value.rootPath === "string" && value.rootPath.trim()) {
-        acc[platformId] = value.rootPath.trim();
-      }
-      return acc;
-    },
-    {},
-  );
-}
-
-function isTraeCnLikePath(value: string | undefined): boolean {
-  return (
-    typeof value === "string" &&
-    /(?:^|[\\/])\.trae-cn(?:$|[\\/])/i.test(value.trim())
-  );
-}
-
-export function migrateTraeCnPlatformState(
-  next: Pick<
-    SettingsState,
-    | "builtinAgentOverrides"
-    | "customPlatformRootPaths"
-    | "disabledPlatformIds"
-    | "skillPlatformOrder"
-  >,
-): void {
-  const traeOverride = next.builtinAgentOverrides.trae;
-  const traeCnOverride = next.builtinAgentOverrides["trae-cn"];
-  const traeRoot = next.customPlatformRootPaths.trae;
-  const traeCnRoot = next.customPlatformRootPaths["trae-cn"];
-  if (
-    traeOverride?.rootPath &&
-    isTraeCnLikePath(traeOverride.rootPath) &&
-    !traeCnOverride?.rootPath?.trim()
-  ) {
-    next.builtinAgentOverrides["trae-cn"] = {
-      ...traeOverride,
-      rootPath: traeOverride.rootPath.trim(),
-    };
-    delete next.builtinAgentOverrides.trae;
-  }
-  if (isTraeCnLikePath(traeRoot) && !traeCnRoot?.trim()) {
-    next.customPlatformRootPaths["trae-cn"] = traeRoot.trim();
-    delete next.customPlatformRootPaths.trae;
-  }
-  if (
-    next.disabledPlatformIds.includes("trae") &&
-    !next.disabledPlatformIds.includes("trae-cn")
-  ) {
-    next.disabledPlatformIds = next.disabledPlatformIds.map((id) =>
-      id === "trae" ? "trae-cn" : id,
-    );
-  }
-  if (
-    next.skillPlatformOrder.includes("trae") &&
-    !next.skillPlatformOrder.includes("trae-cn")
-  ) {
-    next.skillPlatformOrder = next.skillPlatformOrder.map((id) =>
-      id === "trae" ? "trae-cn" : id,
-    );
-  }
 }
 
 export function normalizeDesktopHomeModules(

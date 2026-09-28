@@ -1,11 +1,11 @@
 # Agent 当前契约统一设计
 
-日期：2026-09-28。审查基线：`4863ebc0`。状态：设计完成，实施待执行。
+日期：2026-09-28。审查基线：`4863ebc0`。状态：第一批配置收口已实施，完整计划未完成。
 
 权威需求为 [FR-AGENT-138](specs/agent-management/spec.md#fr-agent-138-one-current-contract-per-agent-capability)；
 存储归属遵循 [foundation 当前需求](../foundation-integrity-redesign/specs/foundation/spec.md)。
 执行进度只维护在 [tasks.md](tasks.md#agent-current-contract-convergence)，不建立第二份计划。
-本轮仅审查代码与现行文档，没有执行或验收下列业务改造。
+下述问题表记录审查基线；已实施范围与验证证据见末尾实施记录。
 
 ## 1. 目标与边界
 
@@ -24,7 +24,7 @@
 下表是静态阅读确认的分支与依赖，不把它们都宣称为已复现的用户故障。
 路径以仓库根目录为基准，函数名为主要定位依据。
 
-| 优先级 | 代码位置 | 当前行为与后果 | 处理方向 |
+| 优先级 | 代码位置 | 基线行为与后果 | 处理方向 |
 | --- | --- | --- | --- |
 | P0 | `packages/core/src/agent-management/agent-settings-repository.ts`：`read/write`；`canonical-agent-device-config.ts`；`renderer-persistence-migration.ts:readHydratedState` | SQLite、设备 JSON、renderer hydration 存在多条设置读取/回写路径；当前 `localAuthority` 选择业务实现 | Agent 结构化设置收口到现有 SQLite `settings`，JSON 只作升级输入或备份导出；同步阻止启动重建/恢复回写旧真源 |
 | P0 | `skill-installer-utils.ts:readBuiltinAgentOverridesFromSettings`（desktop main services） | 当前 overrides 为空时再尝试两代旧字段；解析失败返回空配置，可能落到默认目录 | 旧字段迁移后删除运行时读取；损坏配置明确失败，缺失值采用唯一正式默认值 |
@@ -187,3 +187,40 @@ config 称为 CLI 与桌面的共享 Skill 根目录，与该证据不符；本�
   普通状态扫描 O(I)，I 为请求范围中的安装数；完整包迁移 O(F + B)，F 为文件数、
   B 为字节数。共享一次解析结果，不在 renderer/main/CLI 重复全量扫描；包复制按
   已有单包 staging/恢复设施顺序执行，不预建并发池或额外缓存。
+
+## 第一批实施记录（2026-09-28）
+
+- AgentSettingsRepository 改为 SQLite 唯一读写边界；CLI 与 Desktop 使用同一
+  当前结构校验。旧设备文件只由 `agent-settings-v1` 升级读取。
+- 升级复用 `schema_migrations` 的版本步骤和现有文件发布恢复机制；原始相关
+  SQLite 设置与设备文件字节保存在 `recovery/agent-settings-v1/<sha256>.json`。
+  当前文件不再常驻，正常读取不重建它。该领域步骤尚未并入 foundation 的统一
+  checksum manifest，不能据此宣称整个升级序列改造完成。
+- 设备文档存在时沿用该历史版本明确的文件归属；无设备文档时按字段存在性转换。
+  当前空值与非空历史别名冲突时保留原数据并报告冲突，不以“非空优先”复活设置。
+  TRAE 仅在历史覆盖目录明确指向 `.trae-cn` 时转换身份，不猜测无目录证据的记录。
+- renderer 普通 hydration 不读取设备 Agent 文件；全量偏好订阅不回写 Agent 设置，
+  初始化也不再推送默认 Agent 空值。显式 Agent 动作通过 settings IPC 写当前字段。
+  老 renderer 导入仍先发布版本化迁移输入，IPC 完成 SQLite 转换后才允许清理源存储。
+- portable restore 在隔离 staging 数据库中调用相同转换；完整旧 profile 恢复由启动
+  升级处理，已有完成标记不会跳过新恢复的旧设备文档。
+- 回滚须关闭数据库客户端，用升级安全点还原完整 profile；领域恢复 JSON 另保留
+  精确旧字段及设备文件以支持前向修复。禁止仅回退代码而保留新数据状态。
+- 本批不新增安装归属表、不改 Antigravity 产品身份和原生能力，后续批次仍待执行。
+  Web 服务自身旧设置合同及历史全量快照转换也必须在切换共享类型前独立覆盖。
+- 验证：core 的 `agent-settings-upgrade`、`canonical-agent-device-config`、
+  `renderer-persistence-migration`、`renderer-persistence-ai-file-authority` 共 29 条通过。
+  Desktop 注册 IPC、配置 store、安装工具、portable restore 及既有 Skill 完整包/
+  Antigravity 历史链接回归通过；CLI 的 `agent.test.ts` 和
+  `agent-settings-upgrade.test.ts` 共 8 条通过，后者真实执行启动读取、重置及重开。
+- 变异证据：隔离临时 core 副本中令 `migrateAgentSettingsV1` 直接返回，正常升级
+  测试在 SQLite 当前 rootPath 断言失败（exit 1）；生产源码没有被变异，临时副本已清理。
+- Desktop/core/CLI 源码类型检查及此前作用域 lint 通过；Desktop 全量测试类型检查
+  未通过。用同一编译器读取 HEAD 文件内容的对照得到基线 353 条诊断，本批修正
+  所触及测试后剩余 343 条，所触及文件为零；该结果不代表全仓类型门禁通过。
+- 三个线性边界函数 `parseAgentManagementSettings`、`convertAgentSettingsV1`、
+  `migrateAgentSettingsV1` 超过 50 行：集中展示四个字段的校验、历史转换顺序和
+  文件/事务切换，避免把相关迁移分支散到业务辅助层。真实 SQLite 升级、坏输入、
+  触发器失败回滚及重试覆盖这些边界；不新增通用迁移框架。
+- 未执行 Electron GUI 或 Antigravity 原生消费验收，未升级用户真实 profile。
+  本任务此前启动的开发实例已停止，验证只使用隔离临时数据。

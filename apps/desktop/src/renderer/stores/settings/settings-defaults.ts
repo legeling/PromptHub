@@ -140,8 +140,6 @@ function createDefaultSkillValues() {
     imageReverseAttachReferenceByDefault: true,
     sourceHistory: [],
     customAgents: [],
-    customAgentRootPaths: [],
-    customSkillScanPaths: [],
     skillProjects: [],
     projectSkillImportModePreference: "copy",
     projectSkillImportPreferencesByProjectId: {},
@@ -149,9 +147,7 @@ function createDefaultSkillValues() {
     agentIdentityPreferences: {
       codex: { name: "codex", icon: "codex" },
     },
-    customPlatformRootPaths: {},
     disabledPlatformIds: [],
-    customSkillPlatformPaths: {},
     skillPlatformOrder: [],
     skillInstallMethod: "symlink",
     skillSafetyScanEnabled: false,

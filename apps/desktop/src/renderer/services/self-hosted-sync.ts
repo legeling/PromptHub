@@ -1,5 +1,10 @@
 import { SELF_HOSTED_BACKUP_PROTOCOL_VERSION } from "@prompthub/shared/types";
-import { SKILL_SNAPSHOT_CAPABILITY_HEADER, SKILL_SNAPSHOT_CAPABILITY, SKILL_SNAPSHOT_SYNC_VERSION, hasEncodedSkillSnapshots } from "@prompthub/shared/utils/skill-file-snapshot";
+import {
+  SKILL_SNAPSHOT_CAPABILITY_HEADER,
+  SKILL_SNAPSHOT_CAPABILITY,
+  SKILL_SNAPSHOT_SYNC_VERSION,
+  hasEncodedSkillSnapshots,
+} from "@prompthub/shared/utils/skill-file-snapshot";
 import type {
   AgentAssetFilesSnapshot,
   AgentAssetStoreSourcesSnapshot,
@@ -589,45 +594,10 @@ function toWebSettings(backup: DatabaseBackup): Settings {
     theme,
     language,
     autoSave: state.autoSave !== false,
-    builtinAgentOverrides:
-      state.builtinAgentOverrides &&
-      typeof state.builtinAgentOverrides === "object"
-        ? state.builtinAgentOverrides
-        : state.customPlatformRootPaths &&
-            typeof state.customPlatformRootPaths === "object"
-          ? Object.fromEntries(
-              Object.entries(state.customPlatformRootPaths).map(
-                ([platformId, rootPath]) => [platformId, { rootPath }],
-              ),
-            )
-          : {},
-    customPlatformRootPaths:
-      state.customPlatformRootPaths &&
-      typeof state.customPlatformRootPaths === "object"
-        ? state.customPlatformRootPaths
-        : state.customSkillPlatformPaths &&
-            typeof state.customSkillPlatformPaths === "object"
-          ? state.customSkillPlatformPaths
-          : {},
-    disabledPlatformIds: Array.isArray(state.disabledPlatformIds)
-      ? state.disabledPlatformIds.filter(
-          (value): value is string => typeof value === "string",
-        )
-      : Array.isArray(
-            (state as { trackedRulePlatformIds?: unknown })
-              .trackedRulePlatformIds,
-          )
-        ? (
-            state as { trackedRulePlatformIds: unknown[] }
-          ).trackedRulePlatformIds.filter(
-            (value): value is string => typeof value === "string",
-          )
-        : [],
-    customSkillPlatformPaths:
-      state.customSkillPlatformPaths &&
-      typeof state.customSkillPlatformPaths === "object"
-        ? state.customSkillPlatformPaths
-        : {},
+    builtinAgentOverrides: state.builtinAgentOverrides ?? {},
+    customAgents: state.customAgents ?? [],
+    agentIdentityPreferences: state.agentIdentityPreferences ?? {},
+    disabledPlatformIds: state.disabledPlatformIds ?? [],
     sync: {
       enabled: false,
       provider: "manual",
@@ -1023,7 +993,9 @@ function buildDesktopBackupFromRemote(
 
 function buildRemoteBackupSnapshot(backup: DatabaseBackup): WebSyncPayload {
   return {
-    version: hasEncodedSkillSnapshots(backup) ? SKILL_SNAPSHOT_SYNC_VERSION : "desktop-backup-v1",
+    version: hasEncodedSkillSnapshots(backup)
+      ? SKILL_SNAPSHOT_SYNC_VERSION
+      : "desktop-backup-v1",
     exportedAt: backup.exportedAt,
     prompts: backup.prompts,
     promptVersions: backup.versions,
@@ -1176,10 +1148,14 @@ export async function pushToSelfHostedWeb(
   const backup = await exportDatabase();
   if (hasEncodedSkillSnapshots(backup)) {
     const manifest = await apiGet<{ skillSnapshotCapability?: string }>(
-      baseUrl, accessToken, "/api/sync/manifest",
+      baseUrl,
+      accessToken,
+      "/api/sync/manifest",
     );
     if (manifest.skillSnapshotCapability !== SKILL_SNAPSHOT_CAPABILITY) {
-      throw new SelfHostedBackupCompatibilityError("Remote sync server does not support lossless Skill snapshots; upgrade the server before syncing binary Skill files");
+      throw new SelfHostedBackupCompatibilityError(
+        "Remote sync server does not support lossless Skill snapshots; upgrade the server before syncing binary Skill files",
+      );
     }
   }
   const [imageMap, videoMap] = await Promise.all([
@@ -1188,7 +1164,9 @@ export async function pushToSelfHostedWeb(
   ]);
 
   const payload: WebSyncPayload = {
-    version: hasEncodedSkillSnapshots(backup) ? SKILL_SNAPSHOT_SYNC_VERSION : "desktop-backup-v1",
+    version: hasEncodedSkillSnapshots(backup)
+      ? SKILL_SNAPSHOT_SYNC_VERSION
+      : "desktop-backup-v1",
     exportedAt: backup.exportedAt,
     prompts: remapPromptMedia(backup.prompts, imageMap, videoMap),
     promptVersions: backup.versions,

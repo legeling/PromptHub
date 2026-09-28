@@ -137,4 +137,9 @@ the source Skill`，其余 3 个用例未选中。运行日志确认转换实际
 历史托管软链接修复不等于 Agent 全链路完成。2026-09-28 进一步静态审查确认
 旧配置多处读取/双写、symlink 自动 copy、断链 installed 误报及桌面/CLI 能力
 归属混用，纳入 [Agent 当前契约设计](../../changes/active/agent-management-workbench/current-contract-design.md)
-与该 change 的 tasks.md；这些事项均待实施，不由本 issue 的窄范围 local_done 代表完成。
+与该 change 的 tasks.md；不由本 issue 的窄范围 local_done 代表完成。
+
+2026-09-28 已实施其中的 Desktop/CLI 配置收口：普通业务只读写 SQLite 当前字段，
+旧设备文件和别名转入迁移边界；补齐真实 SQLite、注册 IPC、CLI 启动/重置/重开、
+恢复和失败回滚回归，跳过迁移的变异可触发真实结果断言失败。完整收敛仍未完成，
+特别是统一路径、安装模式/所有权、Web 和原生产品能力，按原计划继续追踪。

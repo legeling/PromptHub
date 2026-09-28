@@ -1,3 +1,4 @@
+import { AgentSettingsRepository } from "@prompthub/core/agent-management/agent-settings-repository";
 import * as childProcess from "child_process";
 import * as fs from "fs";
 import * as os from "os";
@@ -397,72 +398,6 @@ let _customRootPathsCache: Record<string, string> | null = null;
 let _customRootPathsCacheTs = 0;
 const CUSTOM_PATHS_CACHE_TTL = 5000; // 5 seconds
 
-let _builtinAgentOverridesCache: Record<
-  string,
-  BuiltinAgentOverrideConfig
-> | null = null;
-let _builtinAgentOverridesCacheTs = 0;
-
-function normalizeBuiltinAgentOverrides(
-  input: unknown,
-): Record<string, BuiltinAgentOverrideConfig> {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
-    return {};
-  }
-
-  return Object.entries(input as Record<string, unknown>).reduce<
-    Record<string, BuiltinAgentOverrideConfig>
-  >((acc, [platformId, value]) => {
-    if (!value || typeof value !== "object" || Array.isArray(value)) {
-      return acc;
-    }
-    const record = value as Record<string, unknown>;
-    acc[platformId] = {
-      rootPath:
-        typeof record.rootPath === "string" && record.rootPath.trim().length > 0
-          ? record.rootPath.trim()
-          : undefined,
-      skillsRelativePath:
-        typeof record.skillsRelativePath === "string" &&
-        record.skillsRelativePath.trim().length > 0
-          ? record.skillsRelativePath.trim().replace(/^[\\/]+|[\\/]+$/g, "")
-          : undefined,
-      mcpRelativePath:
-        typeof record.mcpRelativePath === "string" &&
-        record.mcpRelativePath.trim().length > 0
-          ? record.mcpRelativePath.trim().replace(/^[\\/]+|[\\/]+$/g, "")
-          : undefined,
-      pluginsRelativePath:
-        typeof record.pluginsRelativePath === "string" &&
-        record.pluginsRelativePath.trim().length > 0
-          ? record.pluginsRelativePath.trim().replace(/^[\\/]+|[\\/]+$/g, "")
-          : undefined,
-      rulesRelativePath:
-        typeof record.rulesRelativePath === "string" &&
-        record.rulesRelativePath.trim().length > 0
-          ? record.rulesRelativePath.trim().replace(/^[\\/]+|[\\/]+$/g, "")
-          : undefined,
-      agentsRelativePath:
-        typeof record.agentsRelativePath === "string" &&
-        record.agentsRelativePath.trim().length > 0
-          ? record.agentsRelativePath.trim().replace(/^[\\/]+|[\\/]+$/g, "")
-          : undefined,
-      commandsRelativePath:
-        typeof record.commandsRelativePath === "string" &&
-        record.commandsRelativePath.trim().length > 0
-          ? record.commandsRelativePath.trim().replace(/^[\\/]+|[\\/]+$/g, "")
-          : undefined,
-      configRelativePaths: Array.isArray(record.configRelativePaths)
-        ? record.configRelativePaths
-            .filter((entry): entry is string => typeof entry === "string")
-            .map((entry) => entry.trim().replace(/^[\\/]+|[\\/]+$/g, ""))
-            .filter((entry) => entry.length > 0)
-        : undefined,
-    };
-    return acc;
-  }, {});
-}
-
 function joinRootRelativePath(rootDir: string, relativePath: string): string {
   return path.join(rootDir, ...relativePath.split(/[\\/]+/).filter(Boolean));
 }
@@ -479,7 +414,7 @@ export function getDefaultPluginsRelativePath(
   return platformId ? getPlatformPluginsRelativePath(platformId) : undefined;
 }
 
-function deriveLegacyRootPathMap(
+function deriveRootPathMap(
   overrides: Record<string, BuiltinAgentOverrideConfig>,
 ): Record<string, string> {
   return Object.fromEntries(
@@ -512,93 +447,12 @@ function hasBuiltinAgentOverrideConfig(
   );
 }
 
-function parseJsonSetting<T>(rawValue: string | undefined, fallback: T): T {
-  if (!rawValue) {
-    return fallback;
-  }
-
-  return JSON.parse(rawValue) as T;
-}
-
 function readBuiltinAgentOverridesFromSettings(): Record<
   string,
   BuiltinAgentOverrideConfig
 > {
-  const now = Date.now();
-  if (
-    _builtinAgentOverridesCache &&
-    now - _builtinAgentOverridesCacheTs < CUSTOM_PATHS_CACHE_TTL
-  ) {
-    return _builtinAgentOverridesCache;
-  }
-
-  try {
-    const db = getDatabase();
-    if (!db || typeof db.prepare !== "function") {
-      _builtinAgentOverridesCache = {};
-      _builtinAgentOverridesCacheTs = now;
-      return _builtinAgentOverridesCache;
-    }
-
-    const stmt = db.prepare("SELECT value FROM settings WHERE key = ?");
-    const overridesRow = stmt.get("builtinAgentOverrides") as
-      | { value: string }
-      | undefined;
-    const rootRow = stmt.get("customPlatformRootPaths") as
-      | { value: string }
-      | undefined;
-    const legacyRow = stmt.get("customSkillPlatformPaths") as
-      | { value: string }
-      | undefined;
-
-    const parsedOverrides = normalizeBuiltinAgentOverrides(
-      parseJsonSetting(overridesRow?.value, {}),
-    );
-    if (Object.keys(parsedOverrides).length > 0) {
-      _builtinAgentOverridesCache = parsedOverrides;
-      _builtinAgentOverridesCacheTs = now;
-      return _builtinAgentOverridesCache;
-    }
-
-    const parsedRootPaths = normalizeBuiltinAgentOverrides(
-      Object.fromEntries(
-        Object.entries(
-          parseJsonSetting<Record<string, string>>(rootRow?.value, {}),
-        ).map(([platformId, rootPath]) => [platformId, { rootPath }]),
-      ),
-    );
-    if (Object.keys(parsedRootPaths).length > 0) {
-      _builtinAgentOverridesCache = parsedRootPaths;
-      _builtinAgentOverridesCacheTs = now;
-      return _builtinAgentOverridesCache;
-    }
-
-    const parsedLegacyPaths = parseJsonSetting<Record<string, string>>(
-      legacyRow?.value,
-      {},
-    );
-    _builtinAgentOverridesCache = normalizeBuiltinAgentOverrides(
-      Object.fromEntries(
-        Object.entries(parsedLegacyPaths).map(([platformId, value]) => {
-          const platform = getPlatformById(platformId);
-          if (!platform) {
-            return [platformId, { rootPath: value }];
-          }
-          return [
-            platformId,
-            { rootPath: migrateLegacySkillPathToRootPath(platform, value) },
-          ];
-        }),
-      ),
-    );
-    _builtinAgentOverridesCacheTs = now;
-    return _builtinAgentOverridesCache;
-  } catch (error) {
-    console.warn("Failed to read built-in agent overrides:", error);
-    _builtinAgentOverridesCache = {};
-    _builtinAgentOverridesCacheTs = now;
-    return _builtinAgentOverridesCache;
-  }
+  return new AgentSettingsRepository(getDatabase()).read()
+    .builtinAgentOverrides;
 }
 
 function readPlatformRootPathsFromSettings(): Record<string, string> {
@@ -609,47 +463,15 @@ function readPlatformRootPathsFromSettings(): Record<string, string> {
   ) {
     return _customRootPathsCache;
   }
-  try {
-    _customRootPathsCache = deriveLegacyRootPathMap(
-      readBuiltinAgentOverridesFromSettings(),
-    );
-    _customRootPathsCacheTs = now;
-    return _customRootPathsCache;
-  } catch (error) {
-    console.warn("Failed to read custom platform root paths:", error);
-    _customRootPathsCache = {};
-    _customRootPathsCacheTs = now;
-    return _customRootPathsCache;
-  }
+  _customRootPathsCache = deriveRootPathMap(
+    readBuiltinAgentOverridesFromSettings(),
+  );
+  _customRootPathsCacheTs = now;
+  return _customRootPathsCache;
 }
 
 export function readCustomAgentsFromSettings(): CustomAgentConfig[] {
-  try {
-    const db = getDatabase();
-    if (!db || typeof db.prepare !== "function") {
-      return [];
-    }
-    const stmt = db.prepare("SELECT value FROM settings WHERE key = ?");
-    const row = stmt.get("customAgents") as { value: string } | undefined;
-    if (!row?.value) {
-      return [];
-    }
-    const parsed = JSON.parse(row.value) as unknown;
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-    return parsed.filter(
-      (entry): entry is CustomAgentConfig =>
-        Boolean(entry) &&
-        typeof entry === "object" &&
-        typeof (entry as CustomAgentConfig).id === "string" &&
-        typeof (entry as CustomAgentConfig).name === "string" &&
-        typeof (entry as CustomAgentConfig).rootPath === "string",
-    );
-  } catch (error) {
-    console.warn("Failed to read custom agents from settings:", error);
-    return [];
-  }
+  return new AgentSettingsRepository(getDatabase()).read().customAgents;
 }
 
 export function getCustomAgentPlatforms(): SkillPlatform[] {
@@ -685,8 +507,6 @@ export function getConfiguredBuiltinAgentPlatformIds(): string[] {
 export function invalidateCustomPathsCache(): void {
   _customRootPathsCache = null;
   _customRootPathsCacheTs = 0;
-  _builtinAgentOverridesCache = null;
-  _builtinAgentOverridesCacheTs = 0;
 }
 
 export function getBuiltinAgentOverride(

@@ -644,3 +644,10 @@ Registry、shell、allowlisted raw config、非敏感 model config 和只读 ses
 - [ ] `T-AGENT-232` 第四批（依赖 229 的身份清单及 230）：按已冻结产品边界修正 Antigravity 供应商、会话、额度和 capability 声明；保留未知归属数据，不借用 Gemini/CLI 结果补成功。Skill 原生验收依赖 231。
 - [ ] `T-AGENT-233` 第五批（依赖 230、231）：依据当前官方合同与原生样本，收敛 Kimi 历史根、Cherry 多 schema 等 adapter；保留第三方数据，逐个平台记录当前支持范围，不能只搜索并删除 legacy 关键字。
 - [ ] `T-AGENT-234` 第六批（依赖 229–233）：运行所涉 Desktop/core/CLI 检查、旧 profile/恢复/重启与故障变异；有授权时完成原生 UI/Agent 消费验收。逐批提交并保留恢复说明，所有未验证平台与全量门禁失败单列，发布后再关闭相关 issue。
+
+2026-09-28 部分交付：T-AGENT-229 的 Desktop/CLI 配置读写已收口 SQLite，旧字段/
+设备文件仅在升级及恢复边界转换；正常 hydration、保存和分发读取已移除对应旧键
+回退与双写。配置生命周期、真实 CLI 启动、恢复和迁移故障变异已有通过证据，见
+current-contract-design.md 的第一批实施记录。统一 checksum 升级清单、Web 合同、
+完整旧版本 authority 清单及 Antigravity 身份冻结尚未完成，因此 T-AGENT-229 和
+TEST-AGENT-219 保持未勾选，后续批次不得据此宣称已完成。

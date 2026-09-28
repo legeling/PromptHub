@@ -1,3 +1,4 @@
+import { AGENT_SETTING_KEYS } from "@prompthub/core/agent-management/agent-settings-contract";
 import type {
   MarketplaceSourceRecord,
   RendererHydratedState,
@@ -71,7 +72,9 @@ function applyCanonicalSources(state: RendererHydratedState): void {
 function extractSettingsState(): Record<string, unknown> {
   return Object.fromEntries(
     Object.entries(useSettingsStore.getState()).filter(
-      ([, value]) => typeof value !== "function",
+      ([key, value]) =>
+        typeof value !== "function" &&
+        !AGENT_SETTING_KEYS.some((agentKey) => agentKey === key),
     ),
   );
 }
