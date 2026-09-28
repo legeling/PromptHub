@@ -2653,6 +2653,11 @@
     "continueEditing": "Continuer a modifier"
   },
   "skill": {
+    "managePlatforms": "Gérer les installations sur les plateformes",
+    "platformSelectionHint": "Cochez pour installer, décochez pour désinstaller. Confirmez les modifications ci-dessous.",
+    "applyPlatformChanges": "Appliquer (installer {{install}}, désinstaller {{uninstall}})",
+    "platformChangesFailed": "Certaines modifications ont échoué\n{{details}}",
+    "batchManagePlatforms": "Installer / désinstaller en lot",
     "title": "Compétence",
     "name": "Nom de la compétence",
     "description": "Description",

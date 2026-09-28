@@ -262,7 +262,7 @@ export function SkillBatchDeployDialog({
             <div className="flex items-center gap-2">
               <SendIcon aria-hidden="true" className="h-5 w-5 text-primary" />
               <h2 className="text-lg font-semibold">
-                {t("skill.batchDeploy", "Batch Deploy")}
+                {t("skill.batchManagePlatforms")}
               </h2>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">

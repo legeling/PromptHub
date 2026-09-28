@@ -2662,6 +2662,11 @@
     "continueEditing": "继续编辑"
   },
   "skill": {
+    "managePlatforms": "管理平台安装",
+    "platformSelectionHint": "勾选表示安装，取消勾选表示卸载，点击下方按钮后生效。",
+    "applyPlatformChanges": "应用变更（安装 {{install}}，卸载 {{uninstall}}）",
+    "platformChangesFailed": "部分平台变更失败\n{{details}}",
+    "batchManagePlatforms": "批量安装 / 卸载",
     "title": "Skill",
     "name": "Skill 名称",
     "description": "描述",

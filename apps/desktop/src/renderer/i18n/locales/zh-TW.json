@@ -2652,6 +2652,11 @@
     "continueEditing": "繼續編輯"
   },
   "skill": {
+    "managePlatforms": "管理平台安裝",
+    "platformSelectionHint": "勾選表示安裝，取消勾選表示解除安裝，點擊下方按鈕後生效。",
+    "applyPlatformChanges": "套用變更（安裝 {{install}}，解除安裝 {{uninstall}}）",
+    "platformChangesFailed": "部分平台變更失敗\n{{details}}",
+    "batchManagePlatforms": "批次安裝 / 解除安裝",
     "title": "Skill",
     "name": "Skill 名稱",
     "description": "描述",

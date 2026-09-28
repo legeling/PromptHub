@@ -2652,6 +2652,11 @@
     "continueEditing": "編集を続ける"
   },
   "skill": {
+    "managePlatforms": "プラットフォームへのインストールを管理",
+    "platformSelectionHint": "選択するとインストール、選択を解除するとアンインストールします。下のボタンで変更を適用します。",
+    "applyPlatformChanges": "変更を適用（インストール {{install}}、アンインストール {{uninstall}}）",
+    "platformChangesFailed": "一部のプラットフォームで変更に失敗しました\n{{details}}",
+    "batchManagePlatforms": "一括インストール / アンインストール",
     "title": "スキル",
     "name": "スキル名",
     "description": "説明",

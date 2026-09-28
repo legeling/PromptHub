@@ -1020,13 +1020,14 @@ export function SkillStore() {
               aria-pressed={isStoreBatchMode}
               aria-label={t("skill.batchStoreManage", "Batch manage store")}
               title={t("skill.batchStoreManage", "Batch manage store")}
-              className={`rounded-lg p-2 transition-colors disabled:opacity-40 ${
+              className={`inline-flex items-center gap-2 rounded-lg p-2 text-sm transition-colors disabled:opacity-40 ${
                 isStoreBatchMode
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:bg-accent hover:text-foreground"
               }`}
             >
               <ListChecksIcon aria-hidden="true" className="h-4 w-4" />
+              <span>{t("skill.batchStoreManage")}</span>
             </button>
           )}
           {sourceMeta.canRefresh && (

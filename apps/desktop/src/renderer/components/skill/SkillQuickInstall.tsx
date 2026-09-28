@@ -39,14 +39,15 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
   const installPendingRef = useRef(false);
   const {
     availablePlatforms,
-    batchInstall,
+    applyPlatformChanges,
+    isLoading,
+    platformError,
     installProgress,
     installStatus,
     isBatchInstalling,
     selectedPlatforms,
     selectAllPlatforms,
     togglePlatformSelection,
-    uninstalledPlatforms,
   } = useSkillPlatform(skill, installMode);
 
   const clearCloseTimer = useCallback(() => {
@@ -69,6 +70,8 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
   const handleInstall = async () => {
     if (
       selectedPlatforms.size === 0 ||
+      isLoading ||
+      platformError ||
       isClosingSoon ||
       isBatchInstalling ||
       installPendingRef.current
@@ -79,7 +82,7 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
     installPendingRef.current = true;
     setIsInstallPending(true);
     try {
-      const result = await batchInstall();
+      const result = await applyPlatformChanges();
       if (result.successCount > 0) {
         showToast(
           `${t("skill.installSuccess", "Operation successful")} ${result.successCount}/${result.totalCount}`,
@@ -105,9 +108,9 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
           })
           .join("\n");
         showToast(
-          t("skill.installPartialFailure", {
+          t("skill.platformChangesFailed", {
             details,
-            defaultValue: "Some platforms could not be installed\n{{details}}",
+            defaultValue: "Some platform changes failed\n{{details}}",
           }),
           "error",
         );
@@ -134,10 +137,15 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
     }
   };
 
-  // All platforms installed
-  const allInstalled =
-    availablePlatforms.length > 0 && uninstalledPlatforms.length === 0;
-  const isInstalling = isBatchInstalling || isInstallPending;
+  const installCount = availablePlatforms.filter(
+    (platform) =>
+      selectedPlatforms.has(platform.id) && !installStatus[platform.id],
+  ).length;
+  const uninstallCount = availablePlatforms.filter(
+    (platform) =>
+      selectedPlatforms.has(platform.id) && installStatus[platform.id],
+  ).length;
+  const isInstalling = isBatchInstalling || isInstallPending || isClosingSoon;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-base">
@@ -150,7 +158,7 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
             </div>
             <div>
               <h3 className="font-bold text-foreground">
-                {t("skill.quickInstall", "Install to Platforms")}
+                {t("skill.managePlatforms")}
               </h3>
               <p className="text-xs text-muted-foreground truncate max-w-[200px]">
                 {skill.name}
@@ -161,6 +169,7 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
             type="button"
             aria-label={t("common.close", "Close")}
             onClick={onClose}
+            disabled={isInstalling}
             className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
           >
             <XIcon aria-hidden="true" className="w-5 h-5" />
@@ -169,33 +178,23 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
 
         {/* Content */}
         <div className="p-5 space-y-4 overflow-y-auto flex-1 min-h-0 scrollbar-hide">
-          {availablePlatforms.length === 0 ? (
+          {platformError ? (
+            <p role="alert" className="text-sm text-destructive">
+              {platformError}
+            </p>
+          ) : isLoading ? (
+            <p role="status">{t("common.loading")}</p>
+          ) : availablePlatforms.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <p className="text-sm">
                 {t("skill.noPlatformsDetected", "No platforms detected")}
-              </p>
-            </div>
-          ) : allInstalled ? (
-            <div className="text-center py-8">
-              <CheckIcon
-                aria-hidden="true"
-                className="w-12 h-12 text-green-500 mx-auto mb-3"
-              />
-              <p className="text-foreground font-medium">
-                {t("skill.allPlatformsInstalled", "Installed on all platforms")}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {t(
-                  "skill.alreadyInstalled",
-                  "This skill is already installed on all detected platforms",
-                )}
               </p>
             </div>
           ) : (
             <>
               <div className="flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">
-                  {t("skill.selectPlatforms", "Select platforms to install")}
+                  {t("skill.platformSelectionHint")}
                 </p>
                 <button
                   type="button"
@@ -241,24 +240,23 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
               <div className="grid grid-cols-2 gap-2">
                 {availablePlatforms.map((platform) => {
                   const isInstalled = installStatus[platform.id];
-                  const isSelected = selectedPlatforms.has(platform.id);
+                  const isSelected =
+                    Boolean(isInstalled) !== selectedPlatforms.has(platform.id);
 
                   return (
                     <button
                       type="button"
                       key={platform.id}
-                      aria-pressed={isInstalled ? undefined : isSelected}
-                      disabled={isInstalled || isInstalling}
+                      aria-pressed={isSelected}
+                      disabled={isInstalling}
                       onClick={() => {
                         togglePlatformSelection(platform.id);
                       }}
                       className={`flex items-center justify-between p-3 rounded-xl border text-left transition-all ${
-                        isInstalled
-                          ? "bg-green-500/5 border-green-500/20 cursor-default"
-                          : isSelected
-                            ? "bg-primary/10 border-primary cursor-pointer"
-                            : "bg-accent/30 border-border hover:bg-accent/50 cursor-pointer"
-                      } ${isInstalling && !isInstalled ? "opacity-60 cursor-wait" : ""}`}
+                        isSelected
+                          ? "bg-primary/10 border-primary cursor-pointer"
+                          : "bg-accent/30 border-border hover:bg-accent/50 cursor-pointer"
+                      } ${isInstalling ? "opacity-60 cursor-wait" : ""}`}
                     >
                       <div className="flex items-center gap-3">
                         <div
@@ -275,29 +273,20 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
                           {platform.name}
                         </span>
                       </div>
-                      {isInstalled ? (
-                        <div className="flex items-center gap-1 text-green-500">
-                          <CheckIcon aria-hidden="true" className="w-4 h-4" />
-                          <span className="text-xs">
-                            {t("skill.installed")}
-                          </span>
-                        </div>
-                      ) : (
-                        <div
-                          className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                            isSelected
-                              ? "bg-primary border-primary"
-                              : "border-muted-foreground/30"
-                          }`}
-                        >
-                          {isSelected && (
-                            <CheckIcon
-                              aria-hidden="true"
-                              className="w-3 h-3 text-white"
-                            />
-                          )}
-                        </div>
-                      )}
+                      <div
+                        className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                          isSelected
+                            ? "bg-primary border-primary"
+                            : "border-muted-foreground/30"
+                        }`}
+                      >
+                        {isSelected && (
+                          <CheckIcon
+                            aria-hidden="true"
+                            className="w-3 h-3 text-white"
+                          />
+                        )}
+                      </div>
                     </button>
                   );
                 })}
@@ -307,7 +296,7 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
         </div>
 
         {/* Footer */}
-        {!allInstalled && availablePlatforms.length > 0 && (
+        {!isLoading && !platformError && availablePlatforms.length > 0 && (
           <div className="p-5 border-t border-border shrink-0">
             <button
               type="button"
@@ -328,8 +317,10 @@ export function SkillQuickInstall({ skill, onClose }: SkillQuickInstallProps) {
               ) : (
                 <>
                   <SendIcon aria-hidden="true" className="w-4 h-4" />
-                  {t("skill.installSelected", "Install Selected")}{" "}
-                  {selectedPlatforms.size > 0 && `(${selectedPlatforms.size})`}
+                  {t("skill.applyPlatformChanges", {
+                    install: installCount,
+                    uninstall: uninstallCount,
+                  })}
                 </>
               )}
             </button>

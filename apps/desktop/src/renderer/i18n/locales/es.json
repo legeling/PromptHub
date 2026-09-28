@@ -2652,6 +2652,11 @@
     "continueEditing": "Seguir editando"
   },
   "skill": {
+    "managePlatforms": "Gestionar instalaciones en plataformas",
+    "platformSelectionHint": "Marca para instalar y desmarca para desinstalar. Confirma los cambios abajo.",
+    "applyPlatformChanges": "Aplicar cambios (instalar {{install}}, desinstalar {{uninstall}})",
+    "platformChangesFailed": "Algunos cambios de plataforma fallaron\n{{details}}",
+    "batchManagePlatforms": "Instalar / desinstalar en lote",
     "title": "Habilidad",
     "name": "Nombre de la habilidad",
     "description": "Descripción",

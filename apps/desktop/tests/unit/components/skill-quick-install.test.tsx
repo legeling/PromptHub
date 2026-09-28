@@ -7,19 +7,23 @@ import { ToastProvider } from "../../../src/renderer/components/ui/Toast";
 import { createSkillFixture } from "../../fixtures/skills";
 import { renderWithI18n } from "../../helpers/i18n";
 
-const batchInstallMock = vi.fn();
+const applyPlatformChangesMock = vi.fn();
 const showToastMock = vi.fn();
 const selectAllPlatformsMock = vi.fn();
 const togglePlatformSelectionMock = vi.fn();
 const useSkillPlatformMock = vi.fn();
 
 vi.mock("../../../src/renderer/stores/settings.store", () => ({
-  useSettingsStore: (selector: (state: { skillInstallMethod: "copy" }) => unknown) =>
-    selector({ skillInstallMethod: "copy" }),
+  useSettingsStore: (
+    selector: (state: { skillInstallMethod: "copy" }) => unknown,
+  ) => selector({ skillInstallMethod: "copy" }),
 }));
 
 vi.mock("../../../src/renderer/components/ui/Toast", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../../src/renderer/components/ui/Toast")>();
+  const actual =
+    await importOriginal<
+      typeof import("../../../src/renderer/components/ui/Toast")
+    >();
   return {
     ...actual,
     useToast: () => ({ showToast: showToastMock }),
@@ -41,7 +45,9 @@ function hasHiddenSvgAncestor(element: Element): boolean {
 
 function getExposedButtonMedia(): string[] {
   return Array.from(
-    document.body.querySelectorAll('button svg, button img, button [role="img"]'),
+    document.body.querySelectorAll(
+      'button svg, button img, button [role="img"]',
+    ),
   )
     .filter((element) => !hasHiddenSvgAncestor(element))
     .map((element) => element.outerHTML);
@@ -50,7 +56,7 @@ function getExposedButtonMedia(): string[] {
 describe("SkillQuickInstall", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    batchInstallMock.mockResolvedValue({
+    applyPlatformChangesMock.mockResolvedValue({
       successCount: 1,
       totalCount: 1,
       failures: [],
@@ -70,7 +76,9 @@ describe("SkillQuickInstall", () => {
           skillsRelativePath: "skills",
         },
       ],
-      batchInstall: batchInstallMock,
+      applyPlatformChanges: applyPlatformChangesMock,
+      isLoading: false,
+      platformError: null,
       installProgress: null,
       installStatus: { claude: false },
       isBatchInstalling: false,
@@ -86,6 +94,43 @@ describe("SkillQuickInstall", () => {
     vi.restoreAllMocks();
   });
 
+  it("keeps installed platforms editable even when every platform is installed", async () => {
+    const state = useSkillPlatformMock();
+    useSkillPlatformMock.mockReturnValue({
+      ...state,
+      installStatus: { claude: true },
+      selectedPlatforms: new Set(),
+    });
+    await renderWithI18n(
+      <SkillQuickInstall skill={createSkillFixture()} onClose={vi.fn()} />,
+    );
+    const platform = screen.getByRole("button", { name: /Claude Code/ });
+    expect(platform).toBeEnabled();
+    expect(platform).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(platform);
+    expect(togglePlatformSelectionMock).toHaveBeenCalledWith("claude");
+    expect(
+      screen.getByRole("button", {
+        name: "Apply changes (install 0, uninstall 0)",
+      }),
+    ).toBeDisabled();
+  });
+
+  it("does not offer changes when the initial platform status could not be read", async () => {
+    useSkillPlatformMock.mockReturnValue({
+      ...useSkillPlatformMock(),
+      platformError: "Status read failed",
+    });
+    await renderWithI18n(
+      <SkillQuickInstall skill={createSkillFixture()} onClose={vi.fn()} />,
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent("Status read failed");
+    expect(
+      screen.queryByRole("button", { name: /Apply changes/ }),
+    ).not.toBeInTheDocument();
+    expect(applyPlatformChangesMock).not.toHaveBeenCalled();
+  });
+
   it("clears the delayed auto-close timer when unmounted after a successful install", async () => {
     const setTimeoutSpy = vi.spyOn(window, "setTimeout");
     const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
@@ -93,17 +138,24 @@ describe("SkillQuickInstall", () => {
 
     const { unmount } = await renderWithI18n(
       <ToastProvider>
-        <SkillQuickInstall skill={createSkillFixture({ name: "Writer" })} onClose={onClose} />
+        <SkillQuickInstall
+          skill={createSkillFixture({ name: "Writer" })}
+          onClose={onClose}
+        />
       </ToastProvider>,
       { language: "en" },
     );
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Install Selected (1)" }));
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: "Apply changes (install 1, uninstall 0)",
+        }),
+      );
       await Promise.resolve();
     });
 
-    expect(batchInstallMock).toHaveBeenCalledTimes(1);
+    expect(applyPlatformChangesMock).toHaveBeenCalledTimes(1);
     expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 1000);
 
     clearTimeoutSpy.mockClear();
@@ -114,13 +166,15 @@ describe("SkillQuickInstall", () => {
   });
 
   it("ignores repeated install clicks while the first install is pending", async () => {
-    let resolveInstall: ((value: {
-      successCount: number;
-      totalCount: number;
-      failures: [];
-      fallbacks: [];
-    }) => void) | undefined;
-    batchInstallMock.mockReturnValue(
+    let resolveInstall:
+      | ((value: {
+          successCount: number;
+          totalCount: number;
+          failures: [];
+          fallbacks: [];
+        }) => void)
+      | undefined;
+    applyPlatformChangesMock.mockReturnValue(
       new Promise((resolve) => {
         resolveInstall = resolve;
       }),
@@ -137,12 +191,12 @@ describe("SkillQuickInstall", () => {
     );
 
     const installButton = screen.getByRole("button", {
-      name: "Install Selected (1)",
+      name: "Apply changes (install 1, uninstall 0)",
     });
     fireEvent.click(installButton);
     fireEvent.click(installButton);
 
-    expect(batchInstallMock).toHaveBeenCalledTimes(1);
+    expect(applyPlatformChangesMock).toHaveBeenCalledTimes(1);
 
     await act(async () => {
       resolveInstall?.({
@@ -198,15 +252,17 @@ describe("SkillQuickInstall", () => {
     expect(togglePlatformSelectionMock).toHaveBeenNthCalledWith(2, "claude");
 
     const installButton = screen.getByRole("button", {
-      name: "Install Selected (1)",
+      name: "Apply changes (install 1, uninstall 0)",
     });
     expect(installButton).toHaveAttribute("type", "button");
     expect(installButton.querySelector("svg")).toHaveAttribute(
       "aria-hidden",
       "true",
     );
-    expect(getExposedButtonMedia(), getExposedButtonMedia().join("\n"))
-      .toHaveLength(0);
+    expect(
+      getExposedButtonMedia(),
+      getExposedButtonMedia().join("\n"),
+    ).toHaveLength(0);
   });
 
   it("lets quick install switch between copy and symlink modes", async () => {

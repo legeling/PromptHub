@@ -19,8 +19,22 @@ import {
 } from "../../../src/main/runtime-paths";
 import { registerSkillIPC } from "../../../src/main/ipc/skill.ipc";
 import { ensureCanonicalStorageAuthorityOnStartup } from "../../../src/main/services/canonical-storage-startup";
-import { invalidateCustomPathsCache } from "../../../src/main/services/skill-installer-utils";
+import {
+  invalidateCustomPathsCache,
+  resolvePlatformPath,
+} from "../../../src/main/services/skill-installer-utils";
 export { skillApi } from "../../../src/preload/api/skill";
+
+const isolatedHomePath = vi.hoisted((): { current: string | null } => ({
+  current: null,
+}));
+// A late spy on the default export does not replace homedir captured by
+// `import * as os`. Both import forms must resolve the same isolated home.
+vi.mock("os", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:os")>();
+  const homedir = () => isolatedHomePath.current ?? actual.homedir();
+  return { ...actual, homedir, default: { ...actual, homedir } };
+});
 
 const transport = vi.hoisted(() => {
   const handlers = new Map<string, (...args: unknown[]) => unknown>();
@@ -34,8 +48,8 @@ const transport = vi.hoisted(() => {
   };
 });
 
-// Only Electron transport is substituted. Every registered handler, business
-// service, storage publisher, SQLite query and filesystem operation is real.
+// Electron transport and the home path are substituted. Every registered
+// handler, business service, SQLite query and filesystem operation is real.
 vi.mock("electron", () => ({
   ipcMain: {
     handle(channel: string, handler: (...args: unknown[]) => unknown) {
@@ -111,17 +125,22 @@ export async function createSkillTestRuntime(): Promise<SkillTestRuntime> {
   const isolatedHome = path.join(root, "home");
   fs.mkdirSync(profile);
   fs.mkdirSync(isolatedHome);
-  const home = vi.spyOn(os, "homedir").mockReturnValue(isolatedHome);
+  isolatedHomePath.current = isolatedHome;
   const platformRoot = (id: string) => path.join(root, "platforms", id);
   const dispose = () => {
     transport.handlers.clear();
     closeDatabase();
     invalidateCustomPathsCache();
     resetRuntimePaths();
-    home.mockRestore();
+    isolatedHomePath.current = null;
     fs.rmSync(root, { recursive: true, force: true });
   };
   try {
+    if (resolvePlatformPath("~") !== isolatedHome) {
+      throw new Error(
+        "Skill test home isolation must be active before loading services",
+      );
+    }
     await prepareFreshProfile(profile);
     await openSkillRuntime(profile, platformRoot);
     return {

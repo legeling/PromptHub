@@ -2652,6 +2652,11 @@
     "continueEditing": "Weiter bearbeiten"
   },
   "skill": {
+    "managePlatforms": "Plattforminstallationen verwalten",
+    "platformSelectionHint": "Zum Installieren auswählen, zum Deinstallieren abwählen. Änderungen unten bestätigen.",
+    "applyPlatformChanges": "Änderungen anwenden (installieren {{install}}, deinstallieren {{uninstall}})",
+    "platformChangesFailed": "Einige Plattformänderungen sind fehlgeschlagen\n{{details}}",
+    "batchManagePlatforms": "Mehrere installieren / deinstallieren",
     "title": "Skill",
     "name": "Skill-Name",
     "description": "Beschreibung",

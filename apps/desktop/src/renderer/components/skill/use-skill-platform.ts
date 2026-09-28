@@ -15,6 +15,11 @@ import { getRuntimeCapabilities } from "../../runtime";
 import { filterDeployablePlatforms } from "../../services/platform-visibility";
 import { appendSharedSkillDistributionTarget } from "../../services/shared-skill-distribution-target";
 
+import {
+  syncSkillsToPlatforms,
+  unsyncSkillsFromPlatforms,
+} from "../../services/skill-platform-sync";
+
 export type { SkillInstallMode } from "@prompthub/shared/types";
 
 export interface BatchInstallFallback {
@@ -64,9 +69,7 @@ export function resolveSkillPlatformOrder(
       .slice(0, defaultIndex)
       .reverse()
       .find((candidate) => preferredIdSet.has(candidate));
-    const predecessorIndex = predecessor
-      ? orderedIds.indexOf(predecessor)
-      : -1;
+    const predecessorIndex = predecessor ? orderedIds.indexOf(predecessor) : -1;
     const successor = orderedIds
       .slice(predecessorIndex + 1)
       .find((candidate) => preferredIdSet.has(candidate));
@@ -161,6 +164,8 @@ export function useSkillPlatform(
   const disabledPlatformIds =
     useSettingsStore((state) => state.disabledPlatformIds) ?? [];
   const runtimeCapabilities = getRuntimeCapabilities();
+  const [isLoading, setIsLoading] = useState(true);
+  const [platformError, setPlatformError] = useState<string | null>(null);
   const [supportedPlatforms, setSupportedPlatforms] = useState<SkillPlatform[]>(
     [],
   );
@@ -201,17 +206,7 @@ export function useSkillPlatform(
       setSelectedPlatforms(new Set());
       return;
     }
-    const details =
-      typeof window.api.skill.getMdInstallStatusDetails === "function"
-        ? await window.api.skill.getMdInstallStatusDetails(skill.id)
-        : Object.fromEntries(
-            Object.entries(
-              await window.api.skill.getMdInstallStatus(skill.id),
-            ).map(([platformId, installed]) => [
-              platformId,
-              { installed: Boolean(installed) },
-            ]),
-          );
+    const details = await window.api.skill.getMdInstallStatusDetails(skill.id);
     const status = Object.fromEntries(
       Object.entries(details).map(([platformId, installStatus]) => [
         platformId,
@@ -225,13 +220,16 @@ export function useSkillPlatform(
   }, [loadDeployedStatus, runtimeCapabilities.skillPlatformIntegration, skill]);
 
   useEffect(() => {
-    void loadPlatforms();
-  }, [loadPlatforms]);
-
-  useEffect(() => {
-    if (!skill) return;
-    void refreshInstallStatus();
-  }, [refreshInstallStatus, skill]);
+    setIsLoading(true);
+    setPlatformError(null);
+    void Promise.all([loadPlatforms(), refreshInstallStatus()])
+      .catch((error: unknown) => {
+        setPlatformError(
+          error instanceof Error ? error.message : String(error),
+        );
+      })
+      .finally(() => setIsLoading(false));
+  }, [loadPlatforms, refreshInstallStatus]);
 
   const availablePlatforms = useMemo(
     () =>
@@ -356,6 +354,78 @@ export function useSkillPlatform(
     skill,
   ]);
 
+  const applyPlatformChanges =
+    useCallback(async (): Promise<BatchInstallResult> => {
+      if (
+        !skill ||
+        isLoading ||
+        platformError ||
+        !runtimeCapabilities.skillPlatformIntegration
+      ) {
+        throw new Error("Skill platform status is not ready");
+      }
+      const changes = availablePlatforms.filter((platform) =>
+        selectedPlatforms.has(platform.id),
+      );
+      const installs = changes
+        .filter((platform) => !installStatus[platform.id])
+        .map((platform) => platform.id);
+      const removals = changes
+        .filter((platform) => installStatus[platform.id])
+        .map((platform) => platform.id);
+      setIsBatchInstalling(true);
+      try {
+        const installed = await syncSkillsToPlatforms(
+          [skill],
+          installs,
+          installMode,
+          (progress) =>
+            setInstallProgress({
+              current: progress.current,
+              total: changes.length,
+            }),
+        );
+        const removed = await unsyncSkillsFromPlatforms(
+          [skill],
+          removals,
+          (progress) =>
+            setInstallProgress({
+              current: installs.length + progress.current,
+              total: changes.length,
+            }),
+        );
+        const failures = [...installed.failures, ...removed.failures];
+        await refreshInstallStatus();
+        setSelectedPlatforms(
+          new Set(failures.map((failure) => failure.platformId)),
+        );
+        return {
+          successCount: installed.successCount + removed.successCount,
+          totalCount: changes.length,
+          failures,
+          fallbacks: installed.fallbacks,
+        };
+      } catch (error) {
+        setPlatformError(
+          error instanceof Error ? error.message : String(error),
+        );
+        throw error;
+      } finally {
+        setIsBatchInstalling(false);
+        setInstallProgress(null);
+      }
+    }, [
+      availablePlatforms,
+      installMode,
+      installStatus,
+      isLoading,
+      platformError,
+      refreshInstallStatus,
+      runtimeCapabilities.skillPlatformIntegration,
+      selectedPlatforms,
+      skill,
+    ]);
+
   const uninstallFromPlatform = useCallback(
     async (platformId: string) => {
       if (!runtimeCapabilities.skillPlatformIntegration || !skill) return;
@@ -366,6 +436,9 @@ export function useSkillPlatform(
   );
 
   return {
+    isLoading,
+    platformError,
+    applyPlatformChanges,
     availablePlatforms,
     installProgress,
     installDetails,

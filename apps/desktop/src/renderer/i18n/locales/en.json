@@ -2662,6 +2662,11 @@
     "continueEditing": "Continue editing"
   },
   "skill": {
+    "managePlatforms": "Manage platform installations",
+    "platformSelectionHint": "Check to install; uncheck to uninstall. Changes apply when you confirm below.",
+    "applyPlatformChanges": "Apply changes (install {{install}}, uninstall {{uninstall}})",
+    "platformChangesFailed": "Some platform changes failed\n{{details}}",
+    "batchManagePlatforms": "Batch install / uninstall",
     "title": "Skill",
     "name": "Skill Name",
     "description": "Description",
