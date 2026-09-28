@@ -630,3 +630,17 @@ Registry、shell、allowlisted raw config、非敏感 model config 和只读 ses
 
 - [x] `TEST-AGENT-218` 先锁定 Doubao Work 的 macOS workspace、`.user_skills` 写入目标、`.skills` 排除、保守 capability、应用启动白名单、内置 registry 唯一性与现有豆包图标复用。
 - [x] `T-AGENT-227` 按 `FR-AGENT-137` / `DES-AGENT-156` 复用现有 registry、检测和完整 Skill 包分发链路接入 Doubao Work；不得写内置 `.skills`、借用 Codex/Agents 共享目录、复制未授权品牌资源或宣称未验证的深度 adapter。
+
+## Agent Current Contract Convergence
+
+需求：`FR-AGENT-138`；设计：`DES-AGENT-157` /
+[current-contract-design.md](current-contract-design.md)。旧勾选项不代表下列新要求已完成。
+
+- [x] `T-AGENT-228` 审查配置、持久化、路径、安装/状态/卸载、原生产品与测试边界，形成有代码依据的收敛方案；仅设计交付。
+- [ ] `TEST-AGENT-219` 建立真实旧 profile → 当前配置 → 正常安装/读取/卸载/重开的功能基线，再覆盖配置冲突、断链、明确模式失败、中断恢复与原生产品错配；按 test-plan 的 Current Contract Convergence 执行故障变异，不能用 mock 成功或静态检查替代。
+- [ ] `T-AGENT-229` 第一批：先评审并确定 Antigravity 桌面/CLI 身份、安装归属表提议及旧版本 authority 清单；将 Agent 配置迁入唯一 SQLite 读写路径，同批删除旧字段 fallback/双写以及设备 JSON 的业务覆盖。覆盖启动、恢复、导入，不扩建迁移平台。
+- [ ] `T-AGENT-230` 第二批（依赖 229）：统一 core 路径解析并迁移所有当前调用方；移除旧根候选和读时迁移；证明工作台、Skill、MCP、Rules、Plugin 与 CLI 路径一致。
+- [ ] `T-AGENT-231` 第三批（依赖 229、230）：统一 Skill 实际状态、明确模式执行与撤回所有权；迁移旧名称、复制安装及 activation 归属，同批移除旧名候选与自动 copy；同步 shared types、IPC、renderer 和相关旧测试预期。
+- [ ] `T-AGENT-232` 第四批（依赖 229 的身份清单及 230）：按已冻结产品边界修正 Antigravity 供应商、会话、额度和 capability 声明；保留未知归属数据，不借用 Gemini/CLI 结果补成功。Skill 原生验收依赖 231。
+- [ ] `T-AGENT-233` 第五批（依赖 230、231）：依据当前官方合同与原生样本，收敛 Kimi 历史根、Cherry 多 schema 等 adapter；保留第三方数据，逐个平台记录当前支持范围，不能只搜索并删除 legacy 关键字。
+- [ ] `T-AGENT-234` 第六批（依赖 229–233）：运行所涉 Desktop/core/CLI 检查、旧 profile/恢复/重启与故障变异；有授权时完成原生 UI/Agent 消费验收。逐批提交并保留恢复说明，所有未验证平台与全量门禁失败单列，发布后再关闭相关 issue。

@@ -462,3 +462,14 @@ package failed validation. Its manifest, size, or file paths are invalid`.
   excluded from the green aggregate because `ISS-20260825-008` still fails with
   a committed Agent root of `undefined`; it is reported separately rather than
   hidden by the passing domains.
+
+## Current Contract Convergence
+
+`TEST-AGENT-219` validates FR-AGENT-138 / DES-AGENT-157. Status: planned, not run.
+The fixture, normal-path, failure and mutation matrix is defined once in
+[current-contract-design.md, section 6](current-contract-design.md#6-测试与成本).
+Existing symlink-to-copy and old-field hydration tests must change together with
+the migrated implementation; their previous green results are not this gate.
+Run normal complete-package and settings lifecycle first, then direct malformed
+inputs and recovery after each durable publication boundary. Native desktop, CLI
+and OS evidence are recorded separately. UI automation requires user authorization.

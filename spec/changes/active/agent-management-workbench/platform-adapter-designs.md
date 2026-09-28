@@ -6,6 +6,11 @@ parallel change, registry, or source of truth. The architecture and
 traceability table remain in `design.md`; platform-specific designs may live
 here to keep the main design document below the project size limit.
 
+2026-09-28 状态修订：本文中旧数据库/schema 候选、历史根和备用文件写入的描述
+属于待收敛实现；[FR-AGENT-138](specs/agent-management/spec.md#fr-agent-138-one-current-contract-per-agent-capability)
+已替换对应的兼容要求。原生当前合同仍须按产品和版本核实，不能迁移第三方私有数据库。
+执行方案见 [当前契约设计](current-contract-design.md)。
+
 ## `DES-AGENT-038`: Cursor Current Asset And Native Plugin Boundary
 
 ### Ownership and path projection

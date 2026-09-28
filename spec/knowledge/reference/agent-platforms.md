@@ -13,6 +13,13 @@
 
 ## Stable Asset Rules
 
+2026-09-28：Agent 历史根回退、配置别名与跨产品降级按
+[当前契约要求](../../changes/active/agent-management-workbench/specs/agent-management/spec.md#fr-agent-138-one-current-contract-per-agent-capability) 收敛，实施待完成。
+下文上游产品自己的格式/作用域优先级属于参考证据，不自动授权 PromptHub 实现降级。
+Antigravity 桌面与 CLI 的全局 Skill 目录分别为 `.gemini/config/skills` 和
+`.gemini/antigravity-cli/skills`；旧的共享根描述已被
+[官方 Skills 文档](https://antigravity.google/docs/skills)（本日核对）及 FR-AGENT-021 修正。
+
 - 本文档记录的是长期稳定的平台资产清单，不是单次变更 proposal。
 - 当 `packages/shared/constants/platforms.ts` 中的平台根目录、默认规则文件或配置文件发生稳定变化时，应同步更新本文档。
 - 当 `packages/shared/constants/rules.ts` 中的全局规则支持集合发生稳定变化时，应同步更新本文档中的 `Rules Support Snapshot`。
@@ -388,7 +395,7 @@ Current support boundary:
 - `ZCode Agent` 使用 `zcode` 平台 id 和官方用户根目录 `~/.zcode`；Skills、Rules 和 MCP 走已确认的路径，Plugin 只保留 pending 状态，直到官方确认本地包 marker 与安装路径。
 - `Qoder` 继续表示 Qoder IDE / CLI，不复用 Qwen Code 的本地资产合同。
 - `Qwen Code` 使用独立 `qwen` 平台 id；默认用户根为 `~/.qwen`，支持 `QWEN_HOME`，而 `QWEN_RUNTIME_DIR` 只影响会话/日志等运行态输出。
-- `Kimi Code` 保留 `kimi` 平台 id；优先解析 `KIMI_CODE_HOME` / `~/.kimi-code`，仅在 current root 缺失时回退 `KIMI_SHARE_DIR` / `~/.kimi`。Agent 工作台允许编辑 current `config.toml` / `tui.toml` / `mcp.json`，但不把 Kimi 伪装成尚未实现的结构化 MCP writer。
+- `Kimi Code` 保留 `kimi` 平台 id；当前目标使用 `KIMI_CODE_HOME` / `~/.kimi-code`；源码仍保留的 `KIMI_SHARE_DIR` / `~/.kimi` 存在性回退是待移入数据迁移的实现差距。Agent 工作台允许编辑 current `config.toml` / `tui.toml` / `mcp.json`，但不把 Kimi 伪装成尚未实现的结构化 MCP writer。
 - `Reasonix` 使用 `reasonix` 平台 id，管理 `~/.reasonix/skills/`，并把 `config.toml`、`settings.json`、`trust.json` 标记为发现/配置预览；Reasonix 的 TOML Plugin/MCP 语法不复用 Codex writer。
 - `Augment` 使用 `augment` 平台 id，管理 `~/.augment/skills/`，预览 `settings.json`，并通过 Rules 暴露官方 `~/.augment/user-guidelines.md` 用户指南入口；其 `rules/` 目录和 frontmatter 不压平成单一文件。
 - `QClaw` 使用独立 `qclaw` 平台 id，默认根目录为 PromptHub 兼容约定 `~/.qclaw`；由于官方强调基于 OpenClaw 并可关联 OpenClaw，当前复用 OpenClaw 的 workspace/SOUL.md 规则候选和 `skills/` 兼容面，但不创建未确认的 MCP 配置路径。

@@ -48,6 +48,10 @@
 
 ### 2. Sync Contract
 
+Agent 分发的当前契约以 [FR-AGENT-138](../../changes/active/agent-management-workbench/specs/agent-management/spec.md#fr-agent-138-one-current-contract-per-agent-capability) 为准（2026-09-28 确认，收敛待实施）。
+当前源码仍含旧配置读取、自动复制降级和断链状态误报，不能以历史通过记录声称已清理。
+设计与分批计划见 [Agent 当前契约设计](../../changes/active/agent-management-workbench/current-contract-design.md)。
+
 - PromptHub 必须支持 DB 与本地 Skill 仓库之间的双向同步。
 - UI 编辑元数据后，需要同步 frontmatter；文件系统变更后，需要同步回 DB。
 - My Skills 的本地 package source 有两种合法形态：

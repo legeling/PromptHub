@@ -131,3 +131,10 @@ the source Skill`，其余 3 个用例未选中。运行日志确认转换实际
   完成记录存在。未自动控制 Antigravity 界面或验证模型调用 Skill。
 
 回归命令：`pnpm --filter @prompthub/desktop exec vitest run tests/integration/antigravity-skill-migration.test.ts`。
+
+## 全链路收敛的后续范围
+
+历史托管软链接修复不等于 Agent 全链路完成。2026-09-28 进一步静态审查确认
+旧配置多处读取/双写、symlink 自动 copy、断链 installed 误报及桌面/CLI 能力
+归属混用，纳入 [Agent 当前契约设计](../../changes/active/agent-management-workbench/current-contract-design.md)
+与该 change 的 tasks.md；这些事项均待实施，不由本 issue 的窄范围 local_done 代表完成。

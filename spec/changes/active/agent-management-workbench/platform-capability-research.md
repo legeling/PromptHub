@@ -1,5 +1,12 @@
 # Agent Provider, Model And Session Capability Research
 
+2026-09-28 修订：本文较早的共享 Antigravity CLI/桌面 Skill 根目录结论已被
+[当前官方 Skills 文档](https://antigravity.google/docs/skills) 修正：桌面为
+`.gemini/config/skills`，CLI 为 `.gemini/antigravity-cli/skills`。历史根与凭据
+fallback 的实现记录不再是现行产品要求；以 [FR-AGENT-138](specs/agent-management/spec.md#fr-agent-138-one-current-contract-per-agent-capability)
+及 [当前契约设计](current-contract-design.md) 为准。旧日期的原生验证仍只证明当时的边界。
+
+
 ## Scope And Evidence Policy
 
 This inventory records only capabilities supported by first-party documentation,

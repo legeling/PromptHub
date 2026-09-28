@@ -2,6 +2,52 @@
 
 ## Added Requirements
 
+### `FR-AGENT-138`: One Current Contract Per Agent Capability
+
+Confirmed by the user on 2026-09-28; implementation pending. Each Agent capability
+MUST have one current input/data contract, resolved target and execution path.
+Platform-native differences belong to the owning adapter. Historical PromptHub
+settings, paths, identities and installation records MUST be converted only at
+versioned startup/import/restore boundaries; normal repositories, IPC, renderer
+and CLI MUST NOT read old aliases, dual-write old fields or select an older path
+because the current target is missing. Structured Agent settings and installation
+ownership belong to SQLite; package bytes and native files remain on the filesystem,
+under the accepted foundation ownership contract.
+
+An explicit copy or symlink request MUST retain its mode. Failure MUST NOT switch
+mode, product, account or credential source. A valid current default is distinct
+from malformed configuration, which MUST report an error. Installation success
+requires observable package availability and required native registration; a dangling
+link or historical receipt alone MUST NOT imply installed. Removal requires verified
+ownership and MUST preserve unrelated packages and external source directories.
+
+Current upstream format precedence, project/user scopes and supported native
+protocols may be handled inside one adapter; they are not permission to guess
+historical formats. PromptHub MUST NOT migrate third-party databases or credentials
+to conceal an unsupported native version. Unknown native support is reported with
+its actual capability state and does not remove otherwise supported capabilities.
+
+#### Scenario: Upgrade and clear an old Agent configuration
+
+- Given a recognized old profile with historical path settings and installation data
+- When its versioned conversion completes and the user clears a current override
+- Then all entrypoints read the same current SQLite configuration after restart
+- And no historical alias or device file silently recreates the cleared value
+- And conflicts or interrupted publication preserve recoverable source data
+
+#### Scenario: A chosen installation mode or native source fails
+
+- Given a supported Agent and a valid Skill package
+- When symlink creation fails or the chosen native capability cannot be read
+- Then the existing installation and external source remain intact
+- And the result reports the actual error without trying copy or another product
+- And a broken link is never displayed as an available installed Skill
+
+The proposed implementation and evidence inventory are in
+[current-contract-design.md](../../current-contract-design.md). Existing conflicting
+fallback requirements below have been superseded; historical test results remain
+records of the old implementation, not acceptance of this requirement.
+
 ### `FR-AGENT-136`: Local Plugin Sources Remain Device-Owned
 
 Importing a local Plugin MUST publish the complete package under
@@ -171,15 +217,14 @@ Each managed Agent MUST expose installation detection, executable version where 
 - And unsupported capability controls are visibly disabled with a concise reason
 - And the Agent row and detail page themselves remain clickable
 
-#### Scenario: Current and legacy Kimi Code roots
+#### Scenario: A current Kimi Code root is absent
 
-- Given current Kimi Code uses `KIMI_CODE_HOME` or `~/.kimi-code`
-- And legacy kimi-cli may still use `KIMI_SHARE_DIR` or `~/.kimi`
-- When PromptHub resolves the Kimi installation
-- Then an explicit PromptHub root override remains highest priority
-- And a valid current Kimi Code root is preferred over the legacy root
-- And the legacy root is used only when the current root is absent
-- And configuration, assets, credentials, and sessions from the two roots are never merged implicitly
+- Given current Kimi Code uses its declared environment variable or default root
+- When that root does not exist
+- Then detection reports the current root as absent
+- And configuration, credentials and sessions are not read from an older root
+- And recognized historical PromptHub configuration is converted only by the
+  versioned migration boundary defined in FR-AGENT-138
 
 ### `FR-AGENT-003`: Per-Agent Provider Profiles And Model Mapping
 
@@ -694,28 +739,25 @@ the 8x11 contract. Reduced-motion mode MUST keep the first idle frame static.
 
 ### `FR-AGENT-021`: Google Coding Surface Lifecycle
 
-PromptHub MUST present Google Antigravity as the current consumer Agent and
-MUST NOT present Gemini CLI as a generally available consumer CLI after
-2026-06-18. Gemini CLI keeps its existing `gemini` identity and `~/.gemini`
-root as an enterprise/paid-API compatibility target so existing users do not
-lose access to managed assets. Google Antigravity keeps the `antigravity`
-identity and uses
-`~/.gemini/config` as the managed customization root for Antigravity CLI and
-Antigravity 2.0. Product-owned runtime state under
-`~/.gemini/antigravity-cli` and `~/.gemini/antigravity` MUST NOT be treated as
-the Skill distribution root.
+Gemini and Antigravity identities and their existing data MUST remain explicit;
+Gemini MUST NOT act as an Antigravity fallback. Antigravity desktop and CLI
+capabilities MUST be attributed to the product that actually consumes their files.
+The current desktop global Skill path is `~/.gemini/config/skills`; the current
+CLI global path is `~/.gemini/antigravity-cli/skills`, per the
+[official Skills contract](https://antigravity.google/docs/skills) checked on
+2026-09-28. The former shared-Skill-root requirement is superseded.
 
-#### Scenario: Google coding Agents are listed
+#### Scenario: Manage Antigravity Skills and deeper capabilities
 
-- Given the user has Gemini CLI and Antigravity CLI or Antigravity 2.0
-- When PromptHub builds the Managed Agent registry
-- Then `Antigravity` is prioritized as the current entry
-- And `Gemini` remains available with an enterprise compatibility label
-- And neither built-in display name carries a `CLI` suffix
-- And the Gemini detail view directs consumer users to Antigravity while preserving the enterprise and paid API exception
-- And Antigravity Skills resolve to `~/.gemini/config/skills`
-- And its global MCP, Plugin, and Rules paths resolve to the documented shared customization files
-- And PromptHub does not delete or silently migrate the existing `gemini` platform identity
+- Given a selected Antigravity product with a declared current capability
+- When PromptHub resolves its Skill, provider, session or usage operation
+- Then the owning adapter uses that product's declared target and source
+- And it does not silently substitute a CLI result for desktop behavior
+- And unverified capabilities retain an explicit partial/planned status
+- And existing Gemini data is not renamed, deleted or used as a fallback
+
+The desktop/CLI identity split is proposed in the current-contract design and
+requires its first implementation batch to map existing records before switching.
 
 ### `FR-AGENT-022`: Overview As Navigation Hub
 
@@ -935,7 +977,7 @@ OpenAI provider mark.
 
 ### `FR-AGENT-027`: Polymorphic Multi-Agent Quota
 
-The usage contract MUST describe provider quotas as an ordered list of metrics (`kind: "window" | "quota"`) instead of fixed window fields, and the Overview banner MUST render each metric by semantic shape: ring gauges for reset windows, and progress bars only for credit/balance totals that report numeric used and total amounts. Kimi, Antigravity, Gemini CLI, and Copilot MUST be supported through verified native sessions, credentials, and endpoints (Kimi: coding usages API with weekly + rolling windows; Antigravity: the authenticated desktop language-service session first, then Cloud Code Assist credential fallbacks; Gemini: Cloud Code Assist per-model remaining fractions; Copilot: `copilot_internal/user` premium/chat snapshots). Cursor MUST remain `planned` because no public quota API exists; this is a documented exclusion, not a failure state.
+The usage contract MUST describe provider quotas as an ordered list of metrics (`kind: "window" | "quota"`) instead of fixed window fields, and the Overview banner MUST render each metric by semantic shape: ring gauges for reset windows, and progress bars only for credit/balance totals that report numeric used and total amounts. Kimi, Antigravity, Gemini CLI, and Copilot MUST be supported through verified native sessions, credentials, and endpoints (Kimi: coding usages API with weekly + rolling windows; Antigravity: the current authenticated desktop language-service session, with explicit not-running/session-unavailable results and no CLI or Gemini credential fallback; Gemini: Cloud Code Assist per-model remaining fractions; Copilot: `copilot_internal/user` premium/chat snapshots). Cursor MUST remain `planned` because no public quota API exists; this is a documented exclusion, not a failure state.
 
 #### Scenario: Kimi dual quota
 

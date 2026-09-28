@@ -3592,3 +3592,15 @@ verified boundary has no material unresolved decision.
 | Requirement    | Design          | Verification     | Task          |
 | -------------- | --------------- | ---------------- | ------------- |
 | `FR-AGENT-137` | `DES-AGENT-156` | `TEST-AGENT-218` | `T-AGENT-227` |
+
+## `DES-AGENT-157`: One Current Agent Contract
+
+The evidence inventory, ownership changes, migration/recovery design and ordered
+implementation batches are in [current-contract-design.md](current-contract-design.md).
+This implements the accepted FR-AGENT-138 direction; implementation is pending.
+Earlier read-time canonical/legacy modes and native-source fallback descriptions
+in this change record remain implementation debt, not alternative accepted modes.
+
+| Requirement | Design | Verification | Tasks |
+| --- | --- | --- | --- |
+| `FR-AGENT-138` | `DES-AGENT-157` | `TEST-AGENT-219` | `T-AGENT-228`, `T-AGENT-229`, `T-AGENT-230`, `T-AGENT-231`, `T-AGENT-232`, `T-AGENT-233`, `T-AGENT-234` |
