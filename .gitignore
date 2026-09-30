@@ -128,3 +128,4 @@ packages/shared/types/index.js.map
 # 本地备份压缩包与发布产物目录（禁止入库）
 *备份*.zip
 发布版/
+task-plan/build-log.txt
