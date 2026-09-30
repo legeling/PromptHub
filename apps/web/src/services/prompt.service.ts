@@ -106,7 +106,14 @@ export class PromptService {
   private readonly outputFormatDb = new PromptOutputFormatDB(this.db);
 
   create(actor: PromptActor, data: CreatePromptDTO): Prompt {
-    const visibility = data.visibility ?? 'private';
+    // Upstream #219: when the client omits visibility for a folder assignment,
+    // derive it from the target folder instead of forcing the private default
+    // into a guaranteed 422 mismatch. Inference never escalates actor
+    // permissions: a non-admin targeting a shared folder keeps the original
+    // 422 validation failure instead of surfacing a different error class.
+    const visibility =
+      data.visibility ??
+      this.resolveInferredVisibility(actor, data.folderId, 'private', 'create');
     this.assertCanCreate(actor, visibility);
     this.assertFolderAllowed(actor, data.folderId ?? undefined, visibility);
     this.assertMediaReferencesAllowed(data.images, 'image');
@@ -168,16 +175,25 @@ export class PromptService {
     const row = this.getRequiredRow(id);
     this.assertCanWrite(actor, row);
 
-    const nextVisibility = data.visibility ?? row.visibility;
-    if (nextVisibility !== row.visibility && actor.role !== 'admin') {
-      throw new PromptServiceError(403, ErrorCode.FORBIDDEN, 'Only admin can change shared visibility');
-    }
-
     const existing = this.promptDb.getById(id);
     if (!existing) {
       throw new PromptServiceError(404, ErrorCode.NOT_FOUND, 'Prompt not found');
     }
     const nextFolderId = data.folderId !== undefined ? data.folderId : existing.folderId;
+    // Upstream #219: derive visibility from the destination folder when the
+    // update actually moves the prompt and the client sent no explicit
+    // visibility. Folder-preserving edits keep the stored visibility as-is,
+    // and inference never escalates actor permissions.
+    const folderIsChanging = nextFolderId !== existing.folderId;
+    const nextVisibility =
+      data.visibility ??
+      (folderIsChanging
+        ? this.resolveInferredVisibility(actor, nextFolderId, row.visibility, 'update')
+        : row.visibility);
+    if (nextVisibility !== row.visibility && actor.role !== 'admin') {
+      throw new PromptServiceError(403, ErrorCode.FORBIDDEN, 'Only admin can change shared visibility');
+    }
+
     this.assertFolderAllowed(actor, nextFolderId ?? undefined, nextVisibility);
     this.assertMediaReferencesAllowed(data.images, 'image');
     this.assertMediaReferencesAllowed(data.videos, 'video');
@@ -187,8 +203,8 @@ export class PromptService {
       throw new PromptServiceError(404, ErrorCode.NOT_FOUND, 'Prompt not found');
     }
 
-    if (data.visibility !== undefined) {
-      this.db.prepare('UPDATE prompts SET visibility = ? WHERE id = ?').run(data.visibility, id);
+    if (nextVisibility !== row.visibility) {
+      this.db.prepare('UPDATE prompts SET visibility = ? WHERE id = ?').run(nextVisibility, id);
     }
 
     syncPromptWorkspaceFromDatabase(this.db, this.promptDb, this.folderDb);
@@ -818,6 +834,40 @@ export class PromptService {
     if (visibility === 'shared' && actor.role !== 'admin') {
       throw new PromptServiceError(403, ErrorCode.FORBIDDEN, 'Only admin can create shared prompts');
     }
+  }
+
+  private resolveFolderVisibility(
+    folderId: string | null | undefined,
+  ): 'private' | 'shared' | undefined {
+    if (!folderId) {
+      return undefined;
+    }
+    return this.getFolderRow(folderId)?.visibility ?? undefined;
+  }
+
+  /**
+   * Folder-derived visibility used when a request omits an explicit value.
+   * The derived value is honored only when the actor could legitimately hold
+   * it (shared requires admin); otherwise the previous/default visibility is
+   * preserved so existing validation errors stay identical.
+   */
+  private resolveInferredVisibility(
+    actor: PromptActor,
+    folderId: string | null | undefined,
+    fallback: 'private' | 'shared',
+    intent: 'create' | 'update',
+  ): 'private' | 'shared' {
+    const inferred = this.resolveFolderVisibility(folderId);
+    if (!inferred || inferred === fallback) {
+      return fallback;
+    }
+    if (intent === 'create' && actor.role !== 'admin' && inferred === 'shared') {
+      return fallback;
+    }
+    if (intent === 'update' && actor.role !== 'admin') {
+      return fallback;
+    }
+    return inferred;
   }
 
   private getFolderRow(id: string): FolderRow | null {
