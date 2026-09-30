@@ -124,3 +124,7 @@ packages/shared/types/index.js.map
 *.temp
 *.tsbuildinfo
 .omx/
+
+# 本地备份压缩包与发布产物目录（禁止入库）
+*备份*.zip
+发布版/
