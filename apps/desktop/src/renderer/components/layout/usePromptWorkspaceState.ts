@@ -51,6 +51,7 @@ function usePromptDialogState() {
   const [isVersionModalOpen, setIsVersionModalOpen] = useState(false);
   const [versionHistoryPrompt, setVersionHistoryPrompt] =
     useState<Prompt | null>(null);
+  const [quickTagPrompt, setQuickTagPrompt] = useState<Prompt | null>(null);
   return {
     previewImage,
     setPreviewImage,
@@ -70,6 +71,8 @@ function usePromptDialogState() {
     setIsVersionModalOpen,
     versionHistoryPrompt,
     setVersionHistoryPrompt,
+    quickTagPrompt,
+    setQuickTagPrompt,
   };
 }
 

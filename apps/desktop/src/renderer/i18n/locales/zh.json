@@ -407,7 +407,16 @@
       "missing": "缺失",
       "removeItem": "移除 {{title}}",
       "openPrompt": "打开 Prompt {{title}}"
-    }
+    },
+    "quickAddTag": "添加标签",
+    "currentTags": "当前标签",
+    "noTags": "暂无标签",
+    "addNewTag": "添加新标签",
+    "tagInputPlaceholder": "输入标签名，按回车添加",
+    "existingTags": "现有标签",
+    "tagAdded": "标签已添加",
+    "tagRemoved": "标签已移除",
+    "tagAlreadyExists": "标签已存在"
   },
   "rules": {
     "title": "Rules",

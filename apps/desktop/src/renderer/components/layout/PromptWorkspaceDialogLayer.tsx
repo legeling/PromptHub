@@ -15,6 +15,7 @@ type DialogModalStateProps = Pick<
   | "isVersionModalOpen"
   | "previewImage"
   | "quickRewritePrompt"
+  | "quickTagPrompt"
   | "versionHistoryPrompt"
 >;
 type DialogModalSetterProps = Pick<
@@ -28,6 +29,7 @@ type DialogModalSetterProps = Pick<
   | "setIsVersionModalOpen"
   | "setPreviewImage"
   | "setQuickRewritePrompt"
+  | "setQuickTagPrompt"
   | "setVersionHistoryPrompt"
 >;
 
@@ -51,6 +53,7 @@ function getDialogModalState(controller: Controller): DialogModalStateProps {
     isVersionModalOpen: state.dialogs.isVersionModalOpen,
     previewImage: state.dialogs.previewImage,
     quickRewritePrompt: state.dialogs.quickRewritePrompt,
+    quickTagPrompt: state.dialogs.quickTagPrompt,
     versionHistoryPrompt: state.dialogs.versionHistoryPrompt,
   };
 }
@@ -67,6 +70,7 @@ function getDialogModalSetters(controller: Controller): DialogModalSetterProps {
     setIsVersionModalOpen: state.dialogs.setIsVersionModalOpen,
     setPreviewImage: state.dialogs.setPreviewImage,
     setQuickRewritePrompt: state.dialogs.setQuickRewritePrompt,
+    setQuickTagPrompt: state.dialogs.setQuickTagPrompt,
     setVersionHistoryPrompt: state.dialogs.setVersionHistoryPrompt,
   };
 }

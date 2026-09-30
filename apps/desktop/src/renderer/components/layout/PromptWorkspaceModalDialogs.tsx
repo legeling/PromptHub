@@ -12,6 +12,11 @@ const PromptDetailModal = lazy(() =>
     default: module.PromptDetailModal,
   })),
 );
+const QuickTagModal = lazy(() =>
+  import("../prompt/QuickTagModal").then((module) => ({
+    default: module.QuickTagModal,
+  })),
+);
 
 function PromptAiTestDialog({
   aiTestInitialMode,
@@ -121,6 +126,25 @@ function closePromptDetail(
   setPrompt(null);
 }
 
+function PromptQuickTagDialog({
+  quickTagPrompt,
+  setQuickTagPrompt,
+}: Pick<
+  PromptWorkspaceDialogsProps,
+  "quickTagPrompt" | "setQuickTagPrompt"
+>) {
+  if (!quickTagPrompt) return null;
+  return (
+    <Suspense fallback={null}>
+      <QuickTagModal
+        isOpen
+        onClose={() => setQuickTagPrompt(null)}
+        prompt={quickTagPrompt}
+      />
+    </Suspense>
+  );
+}
+
 export function PromptWorkspaceModalDialogs(
   props: PromptWorkspaceDialogsProps,
 ) {
@@ -128,6 +152,7 @@ export function PromptWorkspaceModalDialogs(
     <>
       <PromptAiTestDialog {...props} />
       <PromptDetailDialog {...props} />
+      <PromptQuickTagDialog {...props} />
     </>
   );
 }

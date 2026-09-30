@@ -39,6 +39,7 @@ export interface PromptWorkspaceDialogsProps {
   onDeleteRelation: (relationId: string) => Promise<void> | void;
   previewImage: string | null;
   quickRewritePrompt: Prompt | null;
+  quickTagPrompt: Prompt | null;
   runAiTest: AiWorkbench["runAiTest"];
   runModelCompare: AiWorkbench["runModelCompare"];
   selectedPrompt: Prompt | undefined;
@@ -61,6 +62,7 @@ export interface PromptWorkspaceDialogsProps {
   setIsVersionModalOpen: Setter<boolean>;
   setPreviewImage: Setter<string | null>;
   setQuickRewritePrompt: Setter<Prompt | null>;
+  setQuickTagPrompt: Setter<Prompt | null>;
   setVersionHistoryPrompt: Setter<Prompt | null>;
   showEnglish: boolean;
   triggerCopied: () => void;

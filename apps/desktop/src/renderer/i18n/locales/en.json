@@ -407,7 +407,16 @@
       "missing": "Missing",
       "removeItem": "Remove {{title}}",
       "openPrompt": "Open prompt {{title}}"
-    }
+    },
+    "quickAddTag": "Add Tags",
+    "currentTags": "Current Tags",
+    "noTags": "No tags yet",
+    "addNewTag": "Add New Tag",
+    "tagInputPlaceholder": "Enter a tag name, press Enter to add",
+    "existingTags": "Existing Tags",
+    "tagAdded": "Tag added",
+    "tagRemoved": "Tag removed",
+    "tagAlreadyExists": "Tag already exists"
   },
   "rules": {
     "title": "Rules",

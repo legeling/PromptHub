@@ -300,6 +300,7 @@ function useWorkspaceMenuItems(
     prompts: inputs.stores.promptData.prompts,
     setEditingPrompt: inputs.state.dialogs.setEditingPrompt,
     setQuickRewritePrompt: inputs.state.dialogs.setQuickRewritePrompt,
+    setQuickTagPrompt: inputs.state.dialogs.setQuickTagPrompt,
     t: inputs.t,
     toggleFavorite: inputs.stores.promptActions.toggleFavorite,
     togglePinned: inputs.stores.promptActions.togglePinned,

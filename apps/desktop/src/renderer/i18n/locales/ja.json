@@ -406,7 +406,16 @@
       "missing": "見つかりません",
       "removeItem": "{{title}} を削除",
       "openPrompt": "プロンプト {{title}} を開く"
-    }
+    },
+    "quickAddTag": "タグを追加",
+    "currentTags": "現在のタグ",
+    "noTags": "タグはありません",
+    "addNewTag": "新タグを追加",
+    "tagInputPlaceholder": "タグ名を入力して Enter で追加",
+    "existingTags": "既存のタグ",
+    "tagAdded": "タグを追加しました",
+    "tagRemoved": "タグを削除しました",
+    "tagAlreadyExists": "タグは既に存在します"
   },
   "folder": {
     "new": "新規フォルダ",

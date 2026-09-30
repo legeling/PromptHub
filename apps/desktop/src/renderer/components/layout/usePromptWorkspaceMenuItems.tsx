@@ -6,6 +6,7 @@ import {
   EditIcon,
   FolderIcon,
   GitBranchIcon,
+  HashIcon,
   HistoryIcon,
   PinIcon,
   PlayIcon,
@@ -45,6 +46,7 @@ interface PromptWorkspaceMenuParams {
   prompts: Prompt[];
   setEditingPrompt: (prompt: Prompt) => void;
   setQuickRewritePrompt: (prompt: Prompt) => void;
+  setQuickTagPrompt: (prompt: Prompt) => void;
   t: TFunction;
   toggleFavorite: (id: string) => Promise<void>;
   togglePinned: (id: string) => Promise<void>;
@@ -76,6 +78,11 @@ function createPromptOverviewItems(
       label: params.t("prompt.viewDetail"),
       icon: <CheckIcon className="w-4 h-4" />,
       onClick: () => params.handleViewDetail(prompt),
+    },
+    {
+      label: params.t("prompt.quickAddTag", "Add Tags"),
+      icon: <HashIcon className="w-4 h-4" />,
+      onClick: () => params.setQuickTagPrompt(prompt),
     },
     {
       label: params.t("prompt.collapseAllPrompts", "Collapse all prompts"),

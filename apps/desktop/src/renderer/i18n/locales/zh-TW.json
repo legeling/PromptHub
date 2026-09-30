@@ -406,7 +406,16 @@
       "missing": "遺失",
       "removeItem": "移除 {{title}}",
       "openPrompt": "開啟 Prompt {{title}}"
-    }
+    },
+    "quickAddTag": "新增標籤",
+    "currentTags": "目前標籤",
+    "noTags": "暫無標籤",
+    "addNewTag": "新增新標籤",
+    "tagInputPlaceholder": "輸入標籤名，按 Enter 新增",
+    "existingTags": "現有標籤",
+    "tagAdded": "標籤已新增",
+    "tagRemoved": "標籤已移除",
+    "tagAlreadyExists": "標籤已存在"
   },
   "folder": {
     "new": "新增資料夾",

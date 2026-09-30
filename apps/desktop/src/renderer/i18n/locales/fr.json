@@ -406,7 +406,16 @@
       "missing": "Manquant",
       "removeItem": "Supprimer {{title}}",
       "openPrompt": "Ouvrir le prompt {{title}}"
-    }
+    },
+    "quickAddTag": "Ajouter des tags",
+    "currentTags": "Tags actuels",
+    "noTags": "Aucun tag",
+    "addNewTag": "Ajouter un nouveau tag",
+    "tagInputPlaceholder": "Saisissez un nom de tag, Entrée pour ajouter",
+    "existingTags": "Tags existants",
+    "tagAdded": "Tag ajouté",
+    "tagRemoved": "Tag supprimé",
+    "tagAlreadyExists": "Le tag existe déjà"
   },
   "folder": {
     "new": "Nouveau dossier",

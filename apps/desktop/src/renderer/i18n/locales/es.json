@@ -406,7 +406,16 @@
       "missing": "Faltante",
       "removeItem": "Eliminar {{title}}",
       "openPrompt": "Abrir prompt {{title}}"
-    }
+    },
+    "quickAddTag": "Añadir etiquetas",
+    "currentTags": "Etiquetas actuales",
+    "noTags": "Sin etiquetas",
+    "addNewTag": "Añadir nueva etiqueta",
+    "tagInputPlaceholder": "Escribe un nombre de etiqueta, Enter para añadir",
+    "existingTags": "Etiquetas existentes",
+    "tagAdded": "Etiqueta añadida",
+    "tagRemoved": "Etiqueta eliminada",
+    "tagAlreadyExists": "La etiqueta ya existe"
   },
   "folder": {
     "new": "Nueva carpeta",
