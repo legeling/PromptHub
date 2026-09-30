@@ -1,5 +1,6 @@
 import fs from "fs";
 import fsp from "fs/promises";
+import os from "node:os";
 import path from "path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createRulesWorkspaceService } from "@prompthub/core";
@@ -27,7 +28,7 @@ describe("rules workspace storage", () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(process.env.TMPDIR || "/tmp", "prompthub-rules-"));
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "prompthub-rules-"));
     configureRuntimePaths({ userDataPath: tempDir });
     initDatabase();
   });
@@ -807,5 +808,122 @@ describe("rules workspace storage", () => {
       "# Latest Claude rule",
       "# Older Claude rule",
     ]);
+  });
+
+  describe("backup import conflict protection (upstream #210)", () => {
+    const conflictRoot = () => path.join(tempDir, "conflict-site");
+    const conflictRecord = (content: string, extraVersion: boolean) => ({
+      id: "project:conflict-site" as const,
+      platformId: "workspace" as const,
+      platformName: "Conflict Site",
+      platformIcon: "FolderRoot",
+      platformDescription: "Imported project rules",
+      name: "AGENTS.md",
+      description: "Conflict protection fixture",
+      path: path.join(conflictRoot(), "AGENTS.md"),
+      managedPath: undefined,
+      targetPath: path.join(conflictRoot(), "AGENTS.md"),
+      projectRootPath: conflictRoot(),
+      syncStatus: "target-missing",
+      content,
+      versions: [
+        {
+          id: "conflict-version-1",
+          savedAt: "2026-05-09T00:00:00.000Z",
+          source: "create" as const,
+          content: "# Base v1",
+        },
+        ...(extraVersion
+          ? [
+              {
+                id: "conflict-version-2",
+                savedAt: "2026-05-10T00:00:00.000Z",
+                source: "manual-save" as const,
+                content,
+              },
+            ]
+          : []),
+      ],
+    });
+
+    async function seedImportedBaseline(): Promise<string> {
+      fs.mkdirSync(conflictRoot(), { recursive: true });
+      await importRuleBackupRecords([conflictRecord("# Base v1", false)]);
+      const baseline = await readRuleContent("project:conflict-site");
+      return baseline.targetPath;
+    }
+
+    it("applies a clean import and reports the imported ids", async () => {
+      const targetPath = await seedImportedBaseline();
+
+      const result = await importRuleBackupRecords([
+        conflictRecord("# Backup copy", true),
+      ]);
+
+      expect(result.imported).toEqual(["project:conflict-site"]);
+      expect(result.conflicts).toEqual([]);
+      expect(result.skipped).toEqual([]);
+      expect(fs.readFileSync(targetPath, "utf8")).toBe("# Backup copy");
+    });
+
+    it("does not overwrite a target the user edited outside PromptHub", async () => {
+      const targetPath = await seedImportedBaseline();
+      await fsp.writeFile(targetPath, "# Hand edited outside the app", "utf8");
+
+      const result = await importRuleBackupRecords([
+        conflictRecord("# Stale backup copy", true),
+      ]);
+
+      expect(result.conflicts.map((entry) => entry.id)).toEqual([
+        "project:conflict-site",
+      ]);
+      expect(result.imported).toEqual([]);
+      expect(fs.readFileSync(targetPath, "utf8")).toBe(
+        "# Hand edited outside the app",
+      );
+      const content = await readRuleContent("project:conflict-site");
+      expect(content.content).toBe("# Base v1");
+      expect(content.versions.map((version) => version.id)).toContain(
+        "conflict-version-1",
+      );
+    });
+
+    it("skips empty backup content that would zero a non-empty target", async () => {
+      const targetPath = await seedImportedBaseline();
+
+      const result = await importRuleBackupRecords([conflictRecord("", true)]);
+
+      expect(result.skipped).toEqual([
+        { id: "project:conflict-site", reason: "empty-content" },
+      ]);
+      expect(result.imported).toEqual([]);
+      expect(fs.readFileSync(targetPath, "utf8")).toBe("# Base v1");
+    });
+
+    it("keeps the legacy unconditional overwrite when forceOverwriteTargets is set", async () => {
+      const targetPath = await seedImportedBaseline();
+      await fsp.writeFile(targetPath, "# Hand edited outside the app", "utf8");
+
+      const result = await importRuleBackupRecords(
+        [conflictRecord("# Forced restore", true)],
+        { forceOverwriteTargets: true },
+      );
+
+      expect(result.imported).toEqual(["project:conflict-site"]);
+      expect(result.conflicts).toEqual([]);
+      expect(fs.readFileSync(targetPath, "utf8")).toBe("# Forced restore");
+    });
+
+    it("imports into a fresh project rule without conflicts", async () => {
+      fs.mkdirSync(conflictRoot(), { recursive: true });
+
+      const result = await importRuleBackupRecords([
+        conflictRecord("# Seed restore", false),
+      ]);
+
+      expect(result.imported).toEqual(["project:conflict-site"]);
+      expect(result.conflicts).toEqual([]);
+      expect(result.skipped).toEqual([]);
+    });
   });
 });

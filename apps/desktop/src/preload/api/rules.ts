@@ -34,8 +34,13 @@ export const rulesApi = {
     ipcRenderer.invoke(IPC_CHANNELS.RULES_REMOVE_PROJECT, projectId),
   importRecords: (
     records: RuleBackupRecord[],
-    options?: { replace?: boolean },
-  ): Promise<{ success: boolean }> =>
+    options?: { replace?: boolean; forceOverwriteTargets?: boolean },
+  ): Promise<{
+    success: boolean;
+    imported: string[];
+    conflicts: Array<{ id: string; targetPath: string }>;
+    skipped: Array<{ id: string; reason: "empty-content" }>;
+  }> =>
     ipcRenderer.invoke(IPC_CHANNELS.RULES_IMPORT_RECORDS, records, options),
   deleteVersion: (ruleId: RuleFileId, versionId: string): Promise<RuleVersionSnapshot[]> =>
     ipcRenderer.invoke(IPC_CHANNELS.RULES_VERSION_DELETE, ruleId, versionId),

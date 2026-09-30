@@ -29,7 +29,21 @@ import {
   getDefaultPlatformGlobalRulePath,
   getDefaultPlatformRootDir,
 } from "./platform-paths";
+import {
+  createRuleBackupIo,
+  type ImportRuleBackupRecordsOptions,
+  type ImportRuleBackupRecordsResult,
+  type ProjectRuleId,
+  type StoredRuleMeta,
+} from "./rules-backup-io";
 import { getRulesDir } from "./runtime-paths";
+
+export type {
+  ImportRuleBackupRecordsOptions,
+  ImportRuleBackupRecordsResult,
+  ProjectRuleId,
+  StoredRuleMeta,
+} from "./rules-backup-io";
 
 const RULE_VERSION_LIMIT = 20;
 const RULE_META_FILE_NAME = "_rule.json";
@@ -38,8 +52,6 @@ const RULE_VERSION_STAGING_PREFIX = ".versions-staging-";
 const RULE_VERSION_BACKUP_PREFIX = ".versions-backup-";
 const LEGACY_RULE_HISTORY_DIR_NAME = "rule-history";
 const SAFE_PROJECT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/u;
-
-type ProjectRuleId = `project:${string}`;
 
 export interface ExtraGlobalRuleTemplate {
   id: CustomRuleFileId;
@@ -63,32 +75,11 @@ interface ReadRuleVersionsResult {
   repaired: boolean;
 }
 
-interface StoredRuleMeta {
-  id: RuleFileId;
-  scope: "global" | "project";
-  platformId: RuleFileDescriptor["platformId"];
-  platformName: string;
-  platformIcon: string;
-  platformDescription: string;
-  canonicalFileName: string;
-  description: string;
-  managedPath: string;
-  targetPath: string;
-  projectRootPath?: string | null;
-  syncStatus?: RuleSyncStatus;
-  createdAt: string;
-  updatedAt: string;
-}
-
 interface StoredRuleVersionIndexEntry {
   id: string;
   savedAt: string;
   source: RuleVersionSnapshot["source"];
   fileName: string;
-}
-
-interface ImportRuleBackupRecordsOptions {
-  replace?: boolean;
 }
 
 export interface RulesWorkspaceServiceDeps {
@@ -120,7 +111,7 @@ export interface RulesWorkspaceService {
   importRuleBackupRecords: (
     records: RuleBackupRecord[],
     options?: ImportRuleBackupRecordsOptions,
-  ) => Promise<void>;
+  ) => Promise<ImportRuleBackupRecordsResult>;
 }
 
 function isProjectRuleFileId(ruleId: RuleFileId): ruleId is ProjectRuleId {
@@ -1388,67 +1379,28 @@ export function createRulesWorkspaceService(
     getRuleDb().delete(meta.id);
   }
 
-  async function exportRuleBackupRecords(): Promise<RuleBackupRecord[]> {
-    const descriptors = await listRuleDescriptors();
-    return Promise.all(
-      descriptors.map(async (descriptor) => {
-        const content = await readRuleContent(descriptor.id);
-        return {
-          id: content.id,
-          platformId: content.platformId,
-          platformName: content.platformName,
-          platformIcon: content.platformIcon,
-          platformDescription: content.platformDescription,
-          name: content.name,
-          description: content.description,
-          path: content.path,
-          managedPath: content.managedPath,
-          targetPath: content.targetPath,
-          projectRootPath: content.projectRootPath ?? null,
-          syncStatus: content.syncStatus,
-          content: content.content,
-          versions: content.versions,
-        } satisfies RuleBackupRecord;
-      }),
-    );
-  }
-
-  async function importRuleBackupRecords(
-    records: RuleBackupRecord[],
-    options: ImportRuleBackupRecordsOptions = {},
-  ): Promise<void> {
-    await bootstrapRuleWorkspace();
-
-    if (options.replace) {
-      await removeMissingProjectRules(records);
-    }
-
-    for (const record of records) {
-      if (isProjectRuleFileId(record.id)) {
-        const projectId = record.id.slice("project:".length);
-        const existing = await getProjectMetaById(record.id);
-        if (!existing) {
-          await createProjectRule({
-            id: projectId,
-            name: record.platformName,
-            rootPath: record.projectRootPath ?? path.dirname(record.targetPath ?? record.path),
-          });
-        }
+  const backupIo = createRuleBackupIo({
+    listRuleDescriptors,
+    readRuleContent,
+    bootstrapRuleWorkspace,
+    removeMissingProjectRules,
+    getProjectMetaById,
+    createProjectRule,
+    resolveRuleMeta,
+    writeManagedRule,
+    writeTargetRule,
+    syncStatusForMeta,
+    readTargetContent: async (meta) => {
+      try {
+        return await fsp.readFile(meta.targetPath, "utf-8");
+      } catch {
+        return null;
       }
-
-      const meta = await resolveRuleMeta(record.id);
-      await writeManagedRule(meta, record.content);
-      const restoredSyncStatus = await writeTargetRule(meta, record.content);
-      const index = await replaceRuleVersions(record.id, record.versions);
-      const nextMeta: StoredRuleMeta = {
-        ...meta,
-        syncStatus: restoredSyncStatus,
-        updatedAt: new Date().toISOString(),
-      };
-      await writeMeta(nextMeta);
-      await syncRuleIndex(nextMeta);
-    }
-  }
+    },
+    replaceRuleVersions,
+    writeMeta,
+    syncRuleIndex,
+  });
 
   return {
     listRuleDescriptors,
@@ -1463,8 +1415,8 @@ export function createRulesWorkspaceService(
     createProjectRule,
     bootstrapRuleWorkspace,
     removeProjectRule,
-    exportRuleBackupRecords,
-    importRuleBackupRecords,
+    exportRuleBackupRecords: backupIo.exportRuleBackupRecords,
+    importRuleBackupRecords: backupIo.importRuleBackupRecords,
   };
 }
 

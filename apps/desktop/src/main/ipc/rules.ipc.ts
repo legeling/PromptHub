@@ -108,15 +108,21 @@ export function registerRulesIPC(): void {
     async (
       _event,
       records: RuleBackupRecord[],
-      options?: { replace?: boolean },
-    ): Promise<{ success: boolean }> => {
+      options?: { replace?: boolean; forceOverwriteTargets?: boolean },
+    ): Promise<{
+      success: boolean;
+      imported: string[];
+      conflicts: Array<{ id: string; targetPath: string }>;
+      skipped: Array<{ id: string; reason: "empty-content" }>;
+    }> => {
       if (!Array.isArray(records)) {
         throw new Error("rules:importRecords requires an array payload");
       }
-      await importRuleBackupRecords(records, {
-        replace: options?.replace === true,
+      const result = await importRuleBackupRecords(records, {
+        replace: options?.replace,
+        forceOverwriteTargets: options?.forceOverwriteTargets,
       });
-      return { success: true };
+      return { success: true, ...result };
     },
   );
 

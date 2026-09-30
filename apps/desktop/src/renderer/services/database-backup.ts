@@ -1009,9 +1009,23 @@ export async function importDatabase(backup: DatabaseBackup): Promise<void> {
 
   if (normalizedBackup.rules && normalizedBackup.rules.length > 0) {
     try {
-      await window.api?.rules?.importRecords?.(normalizedBackup.rules, {
-        replace: true,
-      });
+      const rulesImport = await window.api?.rules?.importRecords?.(
+        normalizedBackup.rules,
+        { replace: true },
+      );
+      if (
+        rulesImport &&
+        ((rulesImport.conflicts?.length ?? 0) > 0 ||
+          (rulesImport.skipped?.length ?? 0) > 0)
+      ) {
+        console.warn(
+          "Rules restore kept local files for the following records:",
+          JSON.stringify({
+            conflicts: rulesImport.conflicts,
+            skippedEmptyContent: rulesImport.skipped,
+          }),
+        );
+      }
     } catch (error) {
       restoreFailures.push("rules restore");
       console.warn("Failed to restore rules:", error);
