@@ -1,0 +1,187 @@
+==> 构建发布版 v0.6.0
+[36mvite v6.4.1 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 3622 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mout/renderer/[22m[32mindex.html                                          [39m[1m[2m  0.96 kB[22m[1m[22m[2m │ gzip:   0.45 kB[22m
+[2mout/renderer/[22m[32massets/workbuddy-DOMpQkxJ.svg                       [39m[1m[2m  4.17 kB[22m[1m[22m[2m │ gzip:   1.90 kB[22m
+[2mout/renderer/[22m[32massets/codebuddy-dark-Dxr25PWV.svg                  [39m[1m[2m  4.19 kB[22m[1m[22m[2m │ gzip:   1.83 kB[22m
+[2mout/renderer/[22m[32massets/qwen-DBJ8PR-V.svg                            [39m[1m[2m  4.34 kB[22m[1m[22m[2m │ gzip:   2.01 kB[22m
+[2mout/renderer/[22m[32massets/codex-BRzJLNbo.png                           [39m[1m[2m  4.79 kB[22m[1m[22m
+[2mout/renderer/[22m[32massets/openclaw-Cv4UIFLH.png                        [39m[1m[2m  5.92 kB[22m[1m[22m
+[2mout/renderer/[22m[32massets/ollama-DnKtaWSt.svg                          [39m[1m[2m  6.92 kB[22m[1m[22m[2m │ gzip:   3.11 kB[22m
+[2mout/renderer/[22m[32massets/moonshot-QnkYTk5v.svg                        [39m[1m[2m  7.04 kB[22m[1m[22m[2m │ gzip:   3.17 kB[22m
+[2mout/renderer/[22m[32massets/cursor-B8reDX7Y.png                          [39m[1m[2m  7.05 kB[22m[1m[22m
+[2mout/renderer/[22m[32massets/kimi-Dq9k-BkP.png                            [39m[1m[2m  7.30 kB[22m[1m[22m
+[2mout/renderer/[22m[32massets/antigravity-C87BHcWp.svg                     [39m[1m[2m  7.61 kB[22m[1m[22m[2m │ gzip:   1.72 kB[22m
+[2mout/renderer/[22m[32massets/zcode-BPNAnxo-.svg                           [39m[1m[2m 11.26 kB[22m[1m[22m[2m │ gzip:   2.18 kB[22m
+[2mout/renderer/[22m[32massets/zhipu-Soq4xQMS.svg                           [39m[1m[2m 12.51 kB[22m[1m[22m[2m │ gzip:   5.19 kB[22m
+[2mout/renderer/[22m[32massets/windsurf-XfjLtL8L.png                        [39m[1m[2m 13.41 kB[22m[1m[22m
+[2mout/renderer/[22m[32massets/trae-Dkz-r5Se.png                            [39m[1m[2m 20.31 kB[22m[1m[22m
+[2mout/renderer/[22m[32massets/qclaw-BYNw6m4R.png                           [39m[1m[2m 22.65 kB[22m[1m[22m
+[2mout/renderer/[22m[32massets/cherry-studio-CMONqZ8c.png                   [39m[1m[2m 24.54 kB[22m[1m[22m
+[2mout/renderer/[22m[32massets/kiro-Pc-BD8ql.png                            [39m[1m[2m 25.40 kB[22m[1m[22m
+[2mout/renderer/[22m[32massets/doubao-VHKZ6SAq.svg                          [39m[1m[2m 31.75 kB[22m[1m[22m[2m │ gzip:  23.80 kB[22m
+[2mout/renderer/[22m[32massets/copilot-C4zrg3Yb.png                         [39m[1m[2m 32.35 kB[22m[1m[22m
+[2mout/renderer/[22m[32massets/icon-DoP3v5cB.png                            [39m[1m[2m 52.90 kB[22m[1m[22m
+[2mout/renderer/[22m[32massets/claude-CmeYjUz9.png                          [39m[1m[2m 58.15 kB[22m[1m[22m
+[2mout/renderer/[22m[32massets/gemini-ajOb7iAl.png                          [39m[1m[2m253.15 kB[22m[1m[22m
+[2mout/renderer/[22m[35massets/SkillFullDetailPage-CrMVDieh.css             [39m[1m[2m  4.55 kB[22m[1m[22m[2m │ gzip:   1.37 kB[22m
+[2mout/renderer/[22m[35massets/SkillFileEditor-BSsMhZtH.css                 [39m[1m[2m 14.25 kB[22m[1m[22m[2m │ gzip:   2.53 kB[22m
+[2mout/renderer/[22m[35massets/index-hFRujwUJ.css                           [39m[1m[2m117.47 kB[22m[1m[22m[2m │ gzip:  19.05 kB[22m
+[2mout/renderer/[22m[36massets/detailPageLayout-if8RCK1R.js                 [39m[1m[2m  0.21 kB[22m[1m[22m[2m │ gzip:   0.15 kB[22m
+[2mout/renderer/[22m[36massets/skill-categories-BDnoA5Df.js                 [39m[1m[2m  0.68 kB[22m[1m[22m[2m │ gzip:   0.38 kB[22m
+[2mout/renderer/[22m[36massets/download-generated-image-Bejl8dbJ.js         [39m[1m[2m  0.90 kB[22m[1m[22m[2m │ gzip:   0.57 kB[22m
+[2mout/renderer/[22m[36massets/LanguageSettings-BA7aJ-2U.js                 [39m[1m[2m  1.03 kB[22m[1m[22m[2m │ gzip:   0.58 kB[22m
+[2mout/renderer/[22m[36massets/skill-scan-status-BLG5Pjkx.js                [39m[1m[2m  1.03 kB[22m[1m[22m[2m │ gzip:   0.53 kB[22m
+[2mout/renderer/[22m[36massets/project-skill-targets-CeY_uvQj.js            [39m[1m[2m  1.20 kB[22m[1m[22m[2m │ gzip:   0.55 kB[22m
+[2mout/renderer/[22m[36massets/Checkbox-CFJZ7hYY.js                         [39m[1m[2m  1.26 kB[22m[1m[22m[2m │ gzip:   0.65 kB[22m
+[2mout/renderer/[22m[36massets/safety-i18n-BJaf4jin.js                      [39m[1m[2m  1.64 kB[22m[1m[22m[2m │ gzip:   0.64 kB[22m
+[2mout/renderer/[22m[36massets/BackupImportConfirmDialog-1IkB7mnY.js        [39m[1m[2m  1.77 kB[22m[1m[22m[2m │ gzip:   0.80 kB[22m
+[2mout/renderer/[22m[36massets/SkillMarkdown-GiIOZTZb.js                    [39m[1m[2m  2.23 kB[22m[1m[22m[2m │ gzip:   1.11 kB[22m
+[2mout/renderer/[22m[36massets/index-HvjMSp7B.js                            [39m[1m[2m  2.34 kB[22m[1m[22m[2m │ gzip:   1.45 kB[22m
+[2mout/renderer/[22m[36massets/useSkillPackageInstall-Dfs1ZwWc.js           [39m[1m[2m  2.52 kB[22m[1m[22m[2m │ gzip:   0.88 kB[22m
+[2mout/renderer/[22m[36massets/SkillRenderBoundary-DwlTDCSc.js              [39m[1m[2m  2.74 kB[22m[1m[22m[2m │ gzip:   1.19 kB[22m
+[2mout/renderer/[22m[36massets/PromptMarkdownContent-CPqoYRvy.js            [39m[1m[2m  2.83 kB[22m[1m[22m[2m │ gzip:   1.30 kB[22m
+[2mout/renderer/[22m[36massets/UnsavedChangesDialog-CQF8S-sA.js             [39m[1m[2m  2.86 kB[22m[1m[22m[2m │ gzip:   1.29 kB[22m
+[2mout/renderer/[22m[36massets/use-skill-platform-DG4avjSz.js               [39m[1m[2m  3.19 kB[22m[1m[22m[2m │ gzip:   1.35 kB[22m
+[2mout/renderer/[22m[36massets/TopBarRulesSearch-Dq6DLEWb.js                [39m[1m[2m  3.27 kB[22m[1m[22m[2m │ gzip:   1.42 kB[22m
+[2mout/renderer/[22m[36massets/ShortcutsSettings-wwwcs_gb.js                [39m[1m[2m  3.49 kB[22m[1m[22m[2m │ gzip:   1.21 kB[22m
+[2mout/renderer/[22m[36massets/NetworkSettings-Be9KHn-V.js                  [39m[1m[2m  3.91 kB[22m[1m[22m[2m │ gzip:   1.38 kB[22m
+[2mout/renderer/[22m[36massets/GeneralSettings-MpkCWwf5.js                  [39m[1m[2m  3.97 kB[22m[1m[22m[2m │ gzip:   1.28 kB[22m
+[2mout/renderer/[22m[36massets/SkillBatchTagDialog-ZwaOiu6y.js              [39m[1m[2m  3.98 kB[22m[1m[22m[2m │ gzip:   1.61 kB[22m
+[2mout/renderer/[22m[36massets/CloseDialog-lt0bwgB2.js                      [39m[1m[2m  4.15 kB[22m[1m[22m[2m │ gzip:   1.49 kB[22m
+[2mout/renderer/[22m[36massets/quick-add-utils-BznQUvmY.js                  [39m[1m[2m  4.54 kB[22m[1m[22m[2m │ gzip:   2.20 kB[22m
+[2mout/renderer/[22m[36massets/QuickTagModal-CLFGA1J1.js                    [39m[1m[2m  4.86 kB[22m[1m[22m[2m │ gzip:   2.03 kB[22m
+[2mout/renderer/[22m[36massets/shared-0tGEUPCG.js                           [39m[1m[2m  5.10 kB[22m[1m[22m[2m │ gzip:   1.99 kB[22m
+[2mout/renderer/[22m[36massets/browser-B-cVdNk9.js                          [39m[1m[2m  5.41 kB[22m[1m[22m[2m │ gzip:   2.73 kB[22m
+[2mout/renderer/[22m[36massets/SkillSafetySettingsSection-D1GtXqgf.js       [39m[1m[2m  5.45 kB[22m[1m[22m[2m │ gzip:   2.12 kB[22m
+[2mout/renderer/[22m[36massets/rules.store-CJIFJZnz.js                      [39m[1m[2m  6.05 kB[22m[1m[22m[2m │ gzip:   2.05 kB[22m
+[2mout/renderer/[22m[36massets/WebWorkspaceSettings-D2OE3Pl0.js             [39m[1m[2m  6.30 kB[22m[1m[22m[2m │ gzip:   1.74 kB[22m
+[2mout/renderer/[22m[36massets/SecuritySettings-Zx3L1i6c.js                 [39m[1m[2m  6.37 kB[22m[1m[22m[2m │ gzip:   1.80 kB[22m
+[2mout/renderer/[22m[36massets/CLISettings-DJeQ_cUg.js                      [39m[1m[2m  6.46 kB[22m[1m[22m[2m │ gzip:   1.96 kB[22m
+[2mout/renderer/[22m[36massets/PromptQuickRewriteDialog-B5s35Ad2.js         [39m[1m[2m  6.59 kB[22m[1m[22m[2m │ gzip:   2.15 kB[22m
+[2mout/renderer/[22m[36massets/usePromptNativeFullscreen-5rcpX9UL.js        [39m[1m[2m  6.69 kB[22m[1m[22m[2m │ gzip:   2.47 kB[22m
+[2mout/renderer/[22m[36massets/RulesSidebarPanel-D9mnzcZT.js                [39m[1m[2m  6.70 kB[22m[1m[22m[2m │ gzip:   2.17 kB[22m
+[2mout/renderer/[22m[36massets/DataSettingsDialogs-DYQi5EZH.js              [39m[1m[2m  6.76 kB[22m[1m[22m[2m │ gzip:   2.35 kB[22m
+[2mout/renderer/[22m[36massets/PromptGalleryView-RMNaINET.js                [39m[1m[2m  6.82 kB[22m[1m[22m[2m │ gzip:   2.98 kB[22m
+[2mout/renderer/[22m[36massets/WebDeviceSettings-Cym6JwUx.js                [39m[1m[2m  7.45 kB[22m[1m[22m[2m │ gzip:   2.38 kB[22m
+[2mout/renderer/[22m[36massets/SkillIconPicker-Cv482vAD.js                  [39m[1m[2m  8.87 kB[22m[1m[22m[2m │ gzip:   2.72 kB[22m
+[2mout/renderer/[22m[36massets/SkillIcon-BxQrmLvA.js                        [39m[1m[2m  8.93 kB[22m[1m[22m[2m │ gzip:   3.37 kB[22m
+[2mout/renderer/[22m[36massets/SkillListView-CvCF02dM.js                    [39m[1m[2m  9.34 kB[22m[1m[22m[2m │ gzip:   3.81 kB[22m
+[2mout/renderer/[22m[36massets/SettingsPage-B6yjlPXk.js                     [39m[1m[2m  9.98 kB[22m[1m[22m[2m │ gzip:   3.01 kB[22m
+[2mout/renderer/[22m[36massets/DataRecoveryDialog-DkOkNdJY.js               [39m[1m[2m 10.09 kB[22m[1m[22m[2m │ gzip:   2.81 kB[22m
+[2mout/renderer/[22m[36massets/QuickAddModal-lAV5osY7.js                    [39m[1m[2m 10.42 kB[22m[1m[22m[2m │ gzip:   3.67 kB[22m
+[2mout/renderer/[22m[36massets/EditSkillModal-BarV3Azm.js                   [39m[1m[2m 11.06 kB[22m[1m[22m[2m │ gzip:   3.84 kB[22m
+[2mout/renderer/[22m[36massets/VariableInputModal-BJBNrElX.js               [39m[1m[2m 11.25 kB[22m[1m[22m[2m │ gzip:   3.75 kB[22m
+[2mout/renderer/[22m[36massets/AboutSettings-C7VdwMNa.js                    [39m[1m[2m 11.60 kB[22m[1m[22m[2m │ gzip:   3.63 kB[22m
+[2mout/renderer/[22m[36massets/detail-utils-CgmdL2sx.js                     [39m[1m[2m 11.90 kB[22m[1m[22m[2m │ gzip:   4.35 kB[22m
+[2mout/renderer/[22m[36massets/index-CtbxAyh3.js                            [39m[1m[2m 11.91 kB[22m[1m[22m[2m │ gzip:   5.34 kB[22m
+[2mout/renderer/[22m[36massets/PromptDetailModal-DrhiqWXw.js                [39m[1m[2m 13.24 kB[22m[1m[22m[2m │ gzip:   3.74 kB[22m
+[2mout/renderer/[22m[36massets/SkillLibraryImportModal-DX0uYTy3.js          [39m[1m[2m 13.31 kB[22m[1m[22m[2m │ gzip:   3.91 kB[22m
+[2mout/renderer/[22m[36massets/skill-source-update-diagnostics-BCGR-6Vr.js  [39m[1m[2m 13.63 kB[22m[1m[22m[2m │ gzip:   4.42 kB[22m
+[2mout/renderer/[22m[36massets/PromptKanbanView-Ci_iq5u5.js                 [39m[1m[2m 13.67 kB[22m[1m[22m[2m │ gzip:   4.39 kB[22m
+[2mout/renderer/[22m[36massets/SkillStoreSourceForm-BZ_dh1zZ.js             [39m[1m[2m 13.88 kB[22m[1m[22m[2m │ gzip:   3.49 kB[22m
+[2mout/renderer/[22m[36massets/SkillScanPreview-D-ERLZIB.js                 [39m[1m[2m 14.02 kB[22m[1m[22m[2m │ gzip:   4.02 kB[22m
+[2mout/renderer/[22m[36massets/index-BbybgEsm.js                            [39m[1m[2m 14.32 kB[22m[1m[22m[2m │ gzip:   6.25 kB[22m
+[2mout/renderer/[22m[36massets/UpdateDialog-BrhHS-nL.js                     [39m[1m[2m 15.02 kB[22m[1m[22m[2m │ gzip:   3.89 kB[22m
+[2mout/renderer/[22m[36massets/SkillBatchDeployDialog-SLnbMAa7.js           [39m[1m[2m 15.13 kB[22m[1m[22m[2m │ gzip:   4.07 kB[22m
+[2mout/renderer/[22m[36massets/VersionHistoryModal-VeXFYzUd.js              [39m[1m[2m 15.49 kB[22m[1m[22m[2m │ gzip:   4.52 kB[22m
+[2mout/renderer/[22m[36massets/AppearanceSettings-DhuBaO6O.js               [39m[1m[2m 18.55 kB[22m[1m[22m[2m │ gzip:   4.78 kB[22m
+[2mout/renderer/[22m[36massets/ImagePromptReverseModal-DIffR8NV.js          [39m[1m[2m 19.32 kB[22m[1m[22m[2m │ gzip:   6.77 kB[22m
+[2mout/renderer/[22m[36massets/CloudAccountSettings-tdZHU5EE.js             [39m[1m[2m 20.37 kB[22m[1m[22m[2m │ gzip:   4.34 kB[22m
+[2mout/renderer/[22m[36massets/SkillAgentsView-v9ZfjYeC.js                  [39m[1m[2m 21.11 kB[22m[1m[22m[2m │ gzip:   5.86 kB[22m
+[2mout/renderer/[22m[36massets/CreatePromptModal-CUy_F9RH.js                [39m[1m[2m 22.06 kB[22m[1m[22m[2m │ gzip:   5.27 kB[22m
+[2mout/renderer/[22m[36massets/RulesManager-B3ztX0sU.js                     [39m[1m[2m 22.22 kB[22m[1m[22m[2m │ gzip:   5.74 kB[22m
+[2mout/renderer/[22m[36massets/PlatformIcon-CdOc6aXw.js                     [39m[1m[2m 24.99 kB[22m[1m[22m[2m │ gzip:  10.03 kB[22m
+[2mout/renderer/[22m[36massets/PromptTableView-BEb-Zhio.js                  [39m[1m[2m 25.34 kB[22m[1m[22m[2m │ gzip:   7.26 kB[22m
+[2mout/renderer/[22m[36massets/index-D1mMgluU.js                            [39m[1m[2m 26.53 kB[22m[1m[22m[2m │ gzip:   8.82 kB[22m
+[2mout/renderer/[22m[36massets/AiTestModal--mmF9yjC.js                      [39m[1m[2m 26.91 kB[22m[1m[22m[2m │ gzip:   7.42 kB[22m
+[2mout/renderer/[22m[36massets/index-RQAT1Xsr.js                            [39m[1m[2m 27.52 kB[22m[1m[22m[2m │ gzip:  12.44 kB[22m
+[2mout/renderer/[22m[36massets/SkillProjectsView-C3dUFVC6.js                [39m[1m[2m 28.32 kB[22m[1m[22m[2m │ gzip:   7.59 kB[22m
+[2mout/renderer/[22m[36massets/index-BTJvI2cF.js                            [39m[1m[2m 29.01 kB[22m[1m[22m[2m │ gzip:  11.82 kB[22m
+[2mout/renderer/[22m[36massets/ai-DlmKBZuH.js                               [39m[1m[2m 31.78 kB[22m[1m[22m[2m │ gzip:  10.50 kB[22m
+[2mout/renderer/[22m[36massets/SkillSettings-B6uj3roG.js                    [39m[1m[2m 32.71 kB[22m[1m[22m[2m │ gzip:   6.91 kB[22m
+[2mout/renderer/[22m[36massets/EditPromptModal-r_GUJLGm.js                  [39m[1m[2m 33.24 kB[22m[1m[22m[2m │ gzip:   8.42 kB[22m
+[2mout/renderer/[22m[36massets/skill-icons-YSjTM530.js                      [39m[1m[2m 43.03 kB[22m[1m[22m[2m │ gzip:  15.62 kB[22m
+[2mout/renderer/[22m[36massets/index-C9n_Asti.js                            [39m[1m[2m 44.48 kB[22m[1m[22m[2m │ gzip:  15.50 kB[22m
+[2mout/renderer/[22m[36massets/index-rpzP_Q8b.js                            [39m[1m[2m 45.43 kB[22m[1m[22m[2m │ gzip:  19.32 kB[22m
+[2mout/renderer/[22m[36massets/skill-registry-B_f_irC4.js                   [39m[1m[2m 47.21 kB[22m[1m[22m[2m │ gzip:  11.70 kB[22m
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[2mout/renderer/[22m[36massets/database-backup-B5oznYTJ.js                  [39m[1m[2m 48.02 kB[22m[1m[22m[2m │ gzip:  13.19 kB[22m
+[2mout/renderer/[22m[36massets/i18n-vendor-CY_-wCHY.js                      [39m[1m[2m 49.39 kB[22m[1m[22m[2m │ gzip:  15.41 kB[22m
+[2mout/renderer/[22m[36massets/ui-vendor-DJZjomw1.js                        [39m[1m[2m 50.60 kB[22m[1m[22m[2m │ gzip:  16.74 kB[22m
+[2mout/renderer/[22m[36massets/webdav-save-sync-BcqXNpSg.js                 [39m[1m[2m 51.31 kB[22m[1m[22m[2m │ gzip:  13.16 kB[22m
+[2mout/renderer/[22m[36massets/CreateSkillModal-XX4TpM0W.js                 [39m[1m[2m 62.59 kB[22m[1m[22m[2m │ gzip:  15.32 kB[22m
+[2mout/renderer/[22m[36massets/DataSettings-qjjfztjT.js                     [39m[1m[2m 66.94 kB[22m[1m[22m[2m │ gzip:  14.34 kB[22m
+[2mout/renderer/[22m[36massets/index-BMMkKFk8.js                            [39m[1m[2m 73.11 kB[22m[1m[22m[2m │ gzip:  20.52 kB[22m
+[2mout/renderer/[22m[36massets/SkillManager-CE6zHVVl.js                     [39m[1m[2m 74.13 kB[22m[1m[22m[2m │ gzip:  23.43 kB[22m
+[2mout/renderer/[22m[36massets/icons-BOoCi5PN.js                            [39m[1m[2m 78.65 kB[22m[1m[22m[2m │ gzip:  15.06 kB[22m
+[2mout/renderer/[22m[36massets/index-SAMBiVfi.js                            [39m[1m[2m 84.96 kB[22m[1m[22m[2m │ gzip:  33.66 kB[22m
+[2mout/renderer/[22m[36massets/SkillStore-TGK69zIt.js                       [39m[1m[2m 87.61 kB[22m[1m[22m[2m │ gzip:  23.59 kB[22m
+[2mout/renderer/[22m[36massets/AISettingsPrototype-CcOSAj95.js              [39m[1m[2m109.74 kB[22m[1m[22m[2m │ gzip:  27.53 kB[22m
+[2mout/renderer/[22m[36massets/SkillFullDetailPage-C18UrKyQ.js              [39m[1m[2m110.04 kB[22m[1m[22m[2m │ gzip:  27.10 kB[22m
+[2mout/renderer/[22m[36massets/react-vendor-CRB3T2We.js                     [39m[1m[2m141.74 kB[22m[1m[22m[2m │ gzip:  45.48 kB[22m
+[2mout/renderer/[22m[36massets/zh-TW-5OOMGP1U.js                            [39m[1m[2m162.47 kB[22m[1m[22m[2m │ gzip:  54.74 kB[22m
+[2mout/renderer/[22m[36massets/zh-BXaWCGVs.js                               [39m[1m[2m163.54 kB[22m[1m[22m[2m │ gzip:  54.40 kB[22m
+[2mout/renderer/[22m[36massets/en-CmgVSb_D.js                               [39m[1m[2m167.86 kB[22m[1m[22m[2m │ gzip:  49.74 kB[22m
+[2mout/renderer/[22m[36massets/McpManager-DhEm7KhA.js                       [39m[1m[2m177.98 kB[22m[1m[22m[2m │ gzip:  39.13 kB[22m
+[2mout/renderer/[22m[36massets/de-Cp7vUSAt.js                               [39m[1m[2m185.29 kB[22m[1m[22m[2m │ gzip:  55.74 kB[22m
+[2mout/renderer/[22m[36massets/es-DN6SaV7p.js                               [39m[1m[2m186.28 kB[22m[1m[22m[2m │ gzip:  54.97 kB[22m
+[2mout/renderer/[22m[36massets/fr-yZWT_2Ik.js                               [39m[1m[2m190.87 kB[22m[1m[22m[2m │ gzip:  56.19 kB[22m
+[2mout/renderer/[22m[36massets/PromptGraphView-CedzBuPN.js                  [39m[1m[2m200.49 kB[22m[1m[22m[2m │ gzip:  66.91 kB[22m
+[2mout/renderer/[22m[36massets/PluginManager-DFGocLEq.js                    [39m[1m[2m207.76 kB[22m[1m[22m[2m │ gzip:  45.10 kB[22m
+[2mout/renderer/[22m[36massets/ja-D5gM-Dmo.js                               [39m[1m[2m209.01 kB[22m[1m[22m[2m │ gzip:  58.04 kB[22m
+[2mout/renderer/[22m[36massets/markdown-vendor-CtKNWiEf.js                  [39m[1m[2m330.74 kB[22m[1m[22m[2m │ gzip: 101.42 kB[22m
+[2mout/renderer/[22m[36massets/SkillFileEditor-T6-T5Zfq.js                  [39m[1m[2m412.48 kB[22m[1m[22m[2m │ gzip: 131.85 kB[22m
+[2mout/renderer/[22m[36massets/App-S4a5XRWd.js                              [39m[1m[33m529.14 kB[39m[22m[2m │ gzip: 147.15 kB[22m
+[32m✓ built in 13.31s[39m
+[36mvite v6.4.1 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 678 modules transformed.
+[plugin vite:reporter] 
+(!) H:/VSCODE/github_复刻/PromptHub-main/node_modules/.pnpm/fflate@0.8.2/node_modules/fflate/esm/index.mjs is dynamically imported by H:/VSCODE/github_复刻/PromptHub-main/apps/desktop/src/main/index.ts, H:/VSCODE/github_复刻/PromptHub-main/apps/desktop/src/main/ipc/skill/crud-handlers.ts but also statically imported by H:/VSCODE/github_复刻/PromptHub-main/apps/desktop/src/main/services/skill-archive-extractor.ts, dynamic import will not move module into another chunk.
+
+rendering chunks...
+computing gzip size...
+[2mout/main/[22m[36mindex.js  [39m[1m[33m992.88 kB[39m[22m[2m │ gzip: 293.17 kB[22m
+[32m✓ built in 3.06s[39m
+[36mvite v6.4.1 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 16 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mout/preload/[22m[36mindex.js  [39m[1m[2m32.13 kB[22m[1m[22m[2m │ gzip: 7.28 kB[22m
+[32m✓ built in 54ms[39m
+  • electron-builder  version=25.1.8 os=10.0.19045
+  • loaded configuration  file=H:\VSCODE\github_复刻\PromptHub-main\apps\desktop\electron-builder.config.cjs
+  • skipped dependencies rebuild  reason=npmRebuild is set to false
+  • packaging       platform=win32 arch=x64 electron=33.4.11 appOutDir=dist\win-unpacked
+  • updating asar integrity executable resource  executablePath=dist\win-unpacked\PromptHub.exe
+  • skipped dependencies rebuild  reason=npmRebuild is set to false
+  • packaging       platform=win32 arch=arm64 electron=33.4.11 appOutDir=dist\win-arm64-unpacked
+  • updating asar integrity executable resource  executablePath=dist\win-arm64-unpacked\PromptHub.exe
+  • building        target=nsis file=dist\PromptHub-Setup-0.6.0.exe archs=x64, arm64 oneClick=false perMachine=false
+  • signing with signtool.exe  path=dist\__uninstaller-nsis-@prompthubdesktop.exe
+  • no signing info identified, signing is skipped  signHook=false cscInfo=null
+  • signing with signtool.exe  path=dist\PromptHub-Setup-0.6.0.exe
+  • no signing info identified, signing is skipped  signHook=false cscInfo=null
+  • building        target=nsis file=dist\PromptHub-Setup-0.6.0-x64.exe archs=x64 oneClick=false perMachine=false
+  • signing with signtool.exe  path=dist\__uninstaller-nsis-@prompthubdesktop.exe
+  • no signing info identified, signing is skipped  signHook=false cscInfo=null
+  • signing with signtool.exe  path=dist\PromptHub-Setup-0.6.0-x64.exe
+  • no signing info identified, signing is skipped  signHook=false cscInfo=null
+  • building        target=nsis file=dist\PromptHub-Setup-0.6.0-arm64.exe archs=arm64 oneClick=false perMachine=false
+  • signing with signtool.exe  path=dist\__uninstaller-nsis-@prompthubdesktop.exe
+  • no signing info identified, signing is skipped  signHook=false cscInfo=null
+  • signing with signtool.exe  path=dist\PromptHub-Setup-0.6.0-arm64.exe
+  • no signing info identified, signing is skipped  signHook=false cscInfo=null
+==> 完成，产物已放入：H:\VSCODE\github_复刻\PromptHub-main\发布版\0.6.0
+        83.4 MB  PromptHub-Setup-0.6.0-arm64.exe
+        77.4 MB  PromptHub-Setup-0.6.0-x64.exe
+       160.2 MB  PromptHub-Setup-0.6.0.exe
