@@ -46,7 +46,7 @@ interface PromptWorkspaceMenuParams {
   prompts: Prompt[];
   setEditingPrompt: (prompt: Prompt) => void;
   setQuickRewritePrompt: (prompt: Prompt) => void;
-  setQuickTagPrompt: (prompt: Prompt) => void;
+  openQuickTag: (prompt: Prompt) => void;
   t: TFunction;
   toggleFavorite: (id: string) => Promise<void>;
   togglePinned: (id: string) => Promise<void>;
@@ -82,7 +82,7 @@ function createPromptOverviewItems(
     {
       label: params.t("prompt.quickAddTag", "Add Tags"),
       icon: <HashIcon className="w-4 h-4" />,
-      onClick: () => params.setQuickTagPrompt(prompt),
+      onClick: () => params.openQuickTag(prompt),
     },
     {
       label: params.t("prompt.collapseAllPrompts", "Collapse all prompts"),

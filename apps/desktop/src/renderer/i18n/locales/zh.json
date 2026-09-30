@@ -416,7 +416,13 @@
     "existingTags": "现有标签",
     "tagAdded": "标签已添加",
     "tagRemoved": "标签已移除",
-    "tagAlreadyExists": "标签已存在"
+    "tagAlreadyExists": "标签已存在",
+    "batchTags": "标签",
+    "noSharedTags": "无共同标签",
+    "batchTagTitle": "为 {{count}} 个提示词打标签",
+    "batchTagAdded": "标签已添加到 {{count}} 个提示词",
+    "batchTagRemoved": "标签已从 {{count}} 个提示词移除",
+    "batchTagPartial": "{{failed}}/{{total}} 个提示词更新失败"
   },
   "rules": {
     "title": "Rules",

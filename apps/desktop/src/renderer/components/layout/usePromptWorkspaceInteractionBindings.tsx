@@ -63,6 +63,10 @@ export function usePromptWorkspaceInteractionBindings(
   const handleContextMenu = usePromptContextMenuAction(
     inputs.state.dialogs.setContextMenu,
   );
+  const openQuickTagForIds = useQuickTagForIdsAction(
+    inputs.stores.promptData.prompts,
+    inputs.state.dialogs.setQuickTagPrompts,
+  );
   const toggleRenderMarkdown = useRenderMarkdownToggle(
     inputs.state.detail.renderMarkdownEnabled,
     inputs.state.detail.setRenderMarkdownEnabled,
@@ -81,6 +85,7 @@ export function usePromptWorkspaceInteractionBindings(
     ...tree,
     handleSelectPrompt,
     handleContextMenu,
+    openQuickTagForIds,
     toggleRenderMarkdown,
     menuItems,
   };
@@ -248,6 +253,22 @@ function usePromptContextMenuAction(
   );
 }
 
+function useQuickTagForIdsAction(
+  prompts: Prompt[],
+  setQuickTagPrompts: WorkspaceState["dialogs"]["setQuickTagPrompts"],
+) {
+  return useCallback(
+    (ids: string[]) => {
+      const idSet = new Set(ids);
+      const selected = prompts.filter((prompt) => idSet.has(prompt.id));
+      if (selected.length > 0) {
+        setQuickTagPrompts(selected);
+      }
+    },
+    [prompts, setQuickTagPrompts],
+  );
+}
+
 function useRenderMarkdownToggle(
   enabled: boolean,
   setEnabled: WorkspaceState["detail"]["setRenderMarkdownEnabled"],
@@ -300,7 +321,8 @@ function useWorkspaceMenuItems(
     prompts: inputs.stores.promptData.prompts,
     setEditingPrompt: inputs.state.dialogs.setEditingPrompt,
     setQuickRewritePrompt: inputs.state.dialogs.setQuickRewritePrompt,
-    setQuickTagPrompt: inputs.state.dialogs.setQuickTagPrompt,
+    openQuickTag: (prompt: Prompt) =>
+      inputs.state.dialogs.setQuickTagPrompts([prompt]),
     t: inputs.t,
     toggleFavorite: inputs.stores.promptActions.toggleFavorite,
     togglePinned: inputs.stores.promptActions.togglePinned,

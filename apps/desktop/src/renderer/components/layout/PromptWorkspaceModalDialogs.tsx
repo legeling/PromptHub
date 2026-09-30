@@ -127,19 +127,19 @@ function closePromptDetail(
 }
 
 function PromptQuickTagDialog({
-  quickTagPrompt,
-  setQuickTagPrompt,
+  quickTagPrompts,
+  setQuickTagPrompts,
 }: Pick<
   PromptWorkspaceDialogsProps,
-  "quickTagPrompt" | "setQuickTagPrompt"
+  "quickTagPrompts" | "setQuickTagPrompts"
 >) {
-  if (!quickTagPrompt) return null;
+  if (quickTagPrompts.length === 0) return null;
   return (
     <Suspense fallback={null}>
       <QuickTagModal
         isOpen
-        onClose={() => setQuickTagPrompt(null)}
-        prompt={quickTagPrompt}
+        onClose={() => setQuickTagPrompts([])}
+        prompts={quickTagPrompts}
       />
     </Suspense>
   );

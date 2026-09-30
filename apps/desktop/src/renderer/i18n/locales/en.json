@@ -416,7 +416,13 @@
     "existingTags": "Existing Tags",
     "tagAdded": "Tag added",
     "tagRemoved": "Tag removed",
-    "tagAlreadyExists": "Tag already exists"
+    "tagAlreadyExists": "Tag already exists",
+    "batchTags": "Tags",
+    "noSharedTags": "No shared tags",
+    "batchTagTitle": "Tag {{count}} prompts",
+    "batchTagAdded": "Tag added to {{count}} prompts",
+    "batchTagRemoved": "Tag removed from {{count}} prompts",
+    "batchTagPartial": "{{failed}} of {{total}} prompts failed to update"
   },
   "rules": {
     "title": "Rules",

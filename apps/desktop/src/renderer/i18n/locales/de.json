@@ -415,7 +415,13 @@
     "existingTags": "Vorhandene Tags",
     "tagAdded": "Tag hinzugefügt",
     "tagRemoved": "Tag entfernt",
-    "tagAlreadyExists": "Tag existiert bereits"
+    "tagAlreadyExists": "Tag existiert bereits",
+    "batchTags": "Tags",
+    "noSharedTags": "Keine gemeinsamen Tags",
+    "batchTagTitle": "{{count}} Prompts taggen",
+    "batchTagAdded": "Tag zu {{count}} Prompts hinzugefügt",
+    "batchTagRemoved": "Tag von {{count}} Prompts entfernt",
+    "batchTagPartial": "Aktualisierung bei {{failed}} von {{total}} Prompts fehlgeschlagen"
   },
   "folder": {
     "new": "Neuer Ordner",

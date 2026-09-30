@@ -415,7 +415,13 @@
     "existingTags": "Etiquetas existentes",
     "tagAdded": "Etiqueta añadida",
     "tagRemoved": "Etiqueta eliminada",
-    "tagAlreadyExists": "La etiqueta ya existe"
+    "tagAlreadyExists": "La etiqueta ya existe",
+    "batchTags": "Etiquetas",
+    "noSharedTags": "Sin etiquetas comunes",
+    "batchTagTitle": "Etiquetar {{count}} prompts",
+    "batchTagAdded": "Etiqueta añadida a {{count}} prompts",
+    "batchTagRemoved": "Etiqueta eliminada de {{count}} prompts",
+    "batchTagPartial": "Falló la actualización de {{failed}} de {{total}} prompts"
   },
   "folder": {
     "new": "Nueva carpeta",

@@ -415,7 +415,13 @@
     "existingTags": "既存のタグ",
     "tagAdded": "タグを追加しました",
     "tagRemoved": "タグを削除しました",
-    "tagAlreadyExists": "タグは既に存在します"
+    "tagAlreadyExists": "タグは既に存在します",
+    "batchTags": "タグ",
+    "noSharedTags": "共通タグなし",
+    "batchTagTitle": "{{count}} 件のプロンプトにタグ付け",
+    "batchTagAdded": "{{count}} 件のプロンプトにタグを追加しました",
+    "batchTagRemoved": "{{count}} 件のプロンプトからタグを削除しました",
+    "batchTagPartial": "{{total}} 件中 {{failed}} 件の更新に失敗しました"
   },
   "folder": {
     "new": "新規フォルダ",
