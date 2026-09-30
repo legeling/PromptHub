@@ -1,5 +1,26 @@
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-01
+
+### 新功能 / Features
+
+- 🏷️ **批量 Prompt 标签**：表格视图多选后可对全部选中项统一添加 / 移除标签，共享标签以交集展示，部分失败按条粒度如实回滚，单条入口（右键「添加标签」）行为不变
+  - **Batch Prompt Tagging**: Tag every selected prompt from the table view batch bar with an intersection-based shared tag list; per-prompt persistence keeps partial successes intact, and the single context-menu "Add Tags" flow is unchanged
+- 🛡️ **Rules 备份导入冲突保护**（对齐上游 #210）：导入不再无条件覆盖被用户在 PromptHub 外编辑过的目标规则文件，不再用空备份内容清零非空目标，冲突项保留本地版本历史并可走既有冲突解决流程；新增 `forceOverwriteTargets` 显式恢复旧覆盖语义；返回 imported / conflicts / skipped 结构化摘要并透传至 IPC
+  - **Rules Backup Import Conflict Protection**: Importing a backup no longer silently overwrites targets edited outside PromptHub, never zeroes a non-empty target with empty records, preserves local version history for conflicted rules, and reports an import summary through IPC; `forceOverwriteTargets` restores legacy behavior explicitly
+
+### 问题修复 / Fixes
+
+- 🗂️ **自托管 Web 分类无法保存**（修复上游 #219）：新建 / 移动 Prompt 到分类且请求未显式携带 visibility 时，服务端按目标分类可见性推断，消除 100% 复现的 422 死锁；显式传值与权限校验行为不变
+  - **Self-hosted Web Folder Assignments**: when a request omits visibility, the server now derives it from the destination folder, eliminating the guaranteed 422; explicit visibility and admin checks are unchanged
+- 🔁 **快速标签弹窗写失败回滚加固**：显式快照回滚替代脆弱的渲染闭包，保存进行中的 Enter 竞态被封锁
+  - **Quick Tag Dialog Resilience**: explicit snapshot rollback replaces the stale-closure revert, and the Enter hotpath is blocked while a save request is pending
+
+### 优化 / Improvements
+
+- 🧪 **规则工作区测试 Windows 兼容**：临时目录改用跨平台 `os.tmpdir()`，修复 `/tmp` 硬编码在 Windows 上导致整套 rules 存储测试失败的问题
+  - **Rules Workspace Tests on Windows**: temp directories now use the portable `os.tmpdir()`, fixing the entire rules storage suite that failed on Windows due to a hardcoded `/tmp`
+
 ## [0.5.9] - 2026-07-14
 
 ### 新功能 / Features

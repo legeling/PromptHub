@@ -1,6 +1,6 @@
 {
   "name": "@prompthub/web-cloudflare",
-  "version": "0.5.9",
+  "version": "0.6.0",
   "description": "Cloudflare Workers self-hosted sync backend for PromptHub",
   "license": "AGPL-3.0",
   "private": true,
