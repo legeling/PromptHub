@@ -327,7 +327,7 @@ describe("PromptTableView", () => {
 
     fireEvent.click(screen.getByRole("checkbox", { name: "Select Prompt 2" }));
 
-    expect(screen.getByText("1 selected")).toBeInTheDocument();
+    expect(screen.getByText("1 of 2 selected")).toBeInTheDocument();
 
     rerender(
       <PromptTableView
@@ -344,8 +344,35 @@ describe("PromptTableView", () => {
       />,
     );
 
-    expect(screen.queryByText("1 selected")).not.toBeInTheDocument();
+    expect(screen.queryByText("1 of 2 selected")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Batch Delete" })).not.toBeInTheDocument();
+  });
+
+  it("opens the batch tag dialog for the current selection (v0.6.2 restored entry)", async () => {
+    const onBatchTags = vi.fn<(ids: string[]) => void>();
+    const prompts = [createPrompt(1), createPrompt(2)];
+    await renderWithI18n(
+      <PromptTableView
+        prompts={prompts}
+        onSelect={vi.fn()}
+        onToggleFavorite={vi.fn()}
+        onCopy={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onAiTest={vi.fn()}
+        onVersionHistory={vi.fn()}
+        onViewDetail={vi.fn()}
+        onContextMenu={vi.fn()}
+        onBatchTags={onBatchTags}
+      />,
+      { language: "en" },
+    );
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Prompt 2" }));
+    expect(screen.getByText("1 of 2 selected")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Tags/ }));
+    expect(onBatchTags).toHaveBeenCalledWith(["prompt-table-2"]);
   });
 
   it("selects the current page even when another page has the same selected count", async () => {
@@ -360,7 +387,7 @@ describe("PromptTableView", () => {
 
     fireEvent.click(selectAll);
 
-    expect(screen.getByText("2 selected")).toBeInTheDocument();
+    expect(screen.getByText("2 of 11 selected")).toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: "Select Prompt 11" })).toHaveAttribute(
       "aria-checked",
       "true",

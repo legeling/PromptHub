@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState, useCallback, type DragEvent as ReactDragEvent, type MouseEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StarIcon, CopyIcon, PlayIcon, EditIcon, TrashIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon, HistoryIcon, FolderIcon, Trash2Icon, GripVerticalIcon, CornerDownRightIcon, GitBranchIcon } from 'lucide-react';
+import { StarIcon, CopyIcon, PlayIcon, EditIcon, TrashIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon, HistoryIcon, GripVerticalIcon, CornerDownRightIcon, GitBranchIcon } from 'lucide-react';
 import type { Prompt } from '@prompthub/shared/types';
-import { useFolderStore } from '../../stores/folder.store';
 import { useTableConfig, type ColumnConfig } from '../../hooks/useTableConfig';
 import { ResizableHeader } from './ResizableHeader';
 import { ColumnConfigMenu } from './ColumnConfigMenu';
+import { PromptBatchActionBar } from './PromptBatchActionBar';
+import { usePromptBatchSelection } from './usePromptBatchSelection';
 import { parsePromptVariables } from './prompt-modal-utils';
 import {
   flattenPromptTree,
@@ -104,6 +105,8 @@ interface PromptTableViewProps {
   onBatchFavorite?: (ids: string[], favorite: boolean) => void;
   onBatchMove?: (ids: string[], folderId: string | undefined) => void;
   onBatchDelete?: (ids: string[]) => void;
+  /** v0.6.0 batch-tag entry restored on the shared actions bar (opens QuickTagModal with the selection). */
+  onBatchTags?: (ids: string[]) => void;
   onContextMenu: (e: React.MouseEvent, prompt: Prompt) => void;
   onMovePrompt?: (
     promptId: string,
@@ -131,6 +134,7 @@ export function PromptTableView({
   onBatchFavorite,
   onBatchMove,
   onBatchDelete,
+  onBatchTags,
   onContextMenu,
   onMovePrompt,
 }: PromptTableViewProps) {
@@ -141,13 +145,10 @@ export function PromptTableView({
   const isMountedRef = useRef(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [showFolderMenu, setShowFolderMenu] = useState(false);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<PromptDropPosition | null>(null);
   const [localCollapsedPromptIds, setLocalCollapsedPromptIds] = useState<Set<string>>(() => new Set());
-  const folders = useFolderStore((state) => state.folders);
   const collapsedPromptIds = controlledCollapsedPromptIds ?? localCollapsedPromptIds;
   const setCollapsedPromptIds = onCollapsedPromptIdsChange ?? setLocalCollapsedPromptIds;
   const promptIds = useMemo(() => new Set(prompts.map((prompt) => prompt.id)), [prompts]);
@@ -234,19 +235,18 @@ export function PromptTableView({
   const currentPrompts = tablePromptNodes
     .slice(startIndex, endIndex)
     .map((node) => node.prompt);
-  const currentPageAllSelected =
-    currentPrompts.length > 0 && currentPrompts.every((prompt) => selectedIds.has(prompt.id));
+  const scopeIds = useMemo(
+    () => currentPrompts.map((prompt) => prompt.id),
+    [promptOrderKey, currentPage, pageSize],
+  );
+  const selection = usePromptBatchSelection({
+    allIdSet: promptIds,
+    scopeIds,
+  });
 
   useEffect(() => {
     setCurrentPage((page) => Math.min(page, totalPages));
   }, [totalPages]);
-
-  useEffect(() => {
-    setSelectedIds((currentIds) => {
-      const visibleIds = new Set(Array.from(currentIds).filter((id) => promptIds.has(id)));
-      return visibleIds.size === currentIds.size ? currentIds : visibleIds;
-    });
-  }, [promptIds]);
 
   useEffect(() => {
     setCollapsedPromptIds((currentIds) => {
@@ -302,17 +302,10 @@ export function PromptTableView({
     }
   };
 
-  // Multi-select
-  // 多选功能
-  const toggleSelect = (id: string) => {
-    const newSelected = new Set(selectedIds);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
-    } else {
-      newSelected.add(id);
-    }
-    setSelectedIds(newSelected);
-  };
+  // Multi-select state and batch action handlers live in
+  // usePromptBatchSelection + PromptBatchActionBar (shared with
+  // gallery/card views since v0.6.2).
+  // 多选与批量操作已抽到共享 hook 与批量条（v0.6.2 起三视图共用）。
 
   const togglePromptCollapse = (promptId: string) => {
     setCollapsedPromptIds((currentIds) => {
@@ -324,45 +317,6 @@ export function PromptTableView({
       }
       return nextIds;
     });
-  };
-
-  const toggleSelectAll = () => {
-    setSelectedIds((currentIds) => {
-      const nextIds = new Set(currentIds);
-      if (currentPageAllSelected) {
-        currentPrompts.forEach((prompt) => nextIds.delete(prompt.id));
-        return nextIds;
-      }
-
-      currentPrompts.forEach((prompt) => nextIds.add(prompt.id));
-      return nextIds;
-    });
-  };
-
-  const clearSelection = () => setSelectedIds(new Set());
-
-  // Batch actions
-  // 批量操作
-  const handleBatchFavorite = (favorite: boolean) => {
-    if (onBatchFavorite && selectedIds.size > 0) {
-      onBatchFavorite(Array.from(selectedIds), favorite);
-      clearSelection();
-    }
-  };
-
-  const handleBatchMove = (folderId: string | undefined) => {
-    if (onBatchMove && selectedIds.size > 0) {
-      onBatchMove(Array.from(selectedIds), folderId);
-      clearSelection();
-      setShowFolderMenu(false);
-    }
-  };
-
-  const handleBatchDelete = () => {
-    if (onBatchDelete && selectedIds.size > 0) {
-      onBatchDelete(Array.from(selectedIds));
-      clearSelection();
-    }
   };
 
   const resetDropState = useCallback(() => {
@@ -466,77 +420,22 @@ export function PromptTableView({
 
   // Whether there are selected items
   // 是否有选中项
-  const hasSelection = selectedIds.size > 0;
+  const hasSelection = selection.selectedIdList.length > 0;
 
   return (
     <div className="flex flex-col h-full">
-      {/* Batch actions bar */}
-      {/* 批量操作栏 */}
+      {/* Shared batch actions bar (extracted for gallery/card reuse in v0.6.2) */}
+      {/* 共享批量操作栏（v0.6.2 起与画廊/卡片视图共用） */}
       {hasSelection && (
-        <div className="flex items-center gap-3 px-4 py-2">
-          <span className="text-sm text-primary font-medium">
-            {t('prompt.selected', { count: selectedIds.size }) || `已选择 ${selectedIds.size} 项`}
-          </span>
-          <div className="flex items-center gap-2 ml-auto">
-            <button
-              type="button"
-              onClick={() => handleBatchFavorite(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-yellow-500/30 text-yellow-600 dark:text-yellow-500 hover:bg-yellow-500/10 transition-colors"
-            >
-              <StarIcon aria-hidden="true" className="w-4 h-4" />
-              {t('prompt.batchFavorite') || '批量收藏'}
-            </button>
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowFolderMenu(!showFolderMenu)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-primary/30 text-primary hover:bg-primary/10 transition-colors"
-              >
-                <FolderIcon aria-hidden="true" className="w-4 h-4" />
-                {t('prompt.batchMove') || '批量移动'}
-              </button>
-              {showFolderMenu && (
-                <div className="absolute top-full left-0 mt-1 w-48 bg-popover border border-border rounded-lg shadow-lg z-50">
-                  <div className="py-1">
-                    <button
-                      type="button"
-                      onClick={() => handleBatchMove(undefined)}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors rounded-md"
-                    >
-                      {t('prompt.noFolder') || '不选择文件夹'}
-                    </button>
-                    {folders.map((folder) => (
-                      <button
-                        key={folder.id}
-                        type="button"
-                        onClick={() => handleBatchMove(folder.id)}
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center gap-2 rounded-md"
-                      >
-                        <span>{folder.icon}</span>
-                        <span>{folder.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={handleBatchDelete}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-destructive/30 text-destructive hover:bg-destructive/10 transition-colors"
-            >
-              <Trash2Icon aria-hidden="true" className="w-4 h-4" />
-              {t('prompt.batchDelete') || '批量删除'}
-            </button>
-            <button
-              type="button"
-              onClick={clearSelection}
-              className="px-3 py-1.5 text-sm rounded-lg text-muted-foreground hover:bg-accent transition-colors"
-            >
-              {t('common.cancel') || '取消'}
-            </button>
-          </div>
-        </div>
+        <PromptBatchActionBar
+          selectedIds={selection.selectedIdList}
+          totalCount={prompts.length}
+          onClear={selection.clear}
+          onFavorite={(ids, favorite) => onBatchFavorite?.(ids, favorite)}
+          onMove={(ids, folderId) => onBatchMove?.(ids, folderId)}
+          onDelete={(ids) => onBatchDelete?.(ids)}
+          onTag={onBatchTags}
+        />
       )}
 
       {/* Table - supports horizontal scrolling */}
@@ -561,8 +460,8 @@ export function PromptTableView({
                     return (
                       <th key={column.id} className="px-4 py-3" style={{ width: column.width }}>
                         <Checkbox
-                          checked={currentPageAllSelected}
-                          onChange={toggleSelectAll}
+                          checked={selection.allScopeSelected}
+                          onChange={selection.toggleSelectAllScope}
                           ariaLabel={t('prompt.selectAllPrompts', 'Select all prompts')}
                         />
                       </th>
@@ -602,7 +501,7 @@ export function PromptTableView({
             </thead>
             <tbody>
               {currentPrompts.map((prompt) => {
-                const isSelected = selectedIds.has(prompt.id);
+                const isSelected = selection.selectedIds.has(prompt.id);
                 const aiContent = prompt.lastAiResponse || aiResults[prompt.id] || '';
                 const promptDepth = nodeDepthById.get(prompt.id) ?? 0;
                 const promptChildCount = hierarchyMeta.childCountById.get(prompt.id) ?? 0;
@@ -623,7 +522,7 @@ export function PromptTableView({
                         <td key={column.id} className="px-4 py-3" style={colWidth}>
                           <Checkbox
                             checked={isSelected}
-                            onChange={() => toggleSelect(prompt.id)}
+                            onChange={() => selection.toggle(prompt.id)}
                             ariaLabel={t('prompt.selectPromptRow', {
                               title: prompt.title,
                               defaultValue: 'Select {{title}}',

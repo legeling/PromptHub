@@ -44,6 +44,8 @@ export interface PromptTableActions {
   onBatchFavorite: (ids: string[], favorite: boolean) => void;
   onBatchMove: (ids: string[], folderId: string | undefined) => void;
   onBatchDelete: (ids: string[]) => void;
+  /** Restored v0.6.0 batch-tag entry (opens QuickTagModal for the selection). */
+  onBatchTags: (ids: string[]) => void;
   onMovePrompt: (sourceId: string, targetParentId: string | null, order: number) => void;
 }
 
@@ -114,6 +116,7 @@ export function PromptViewContainers({
               onBatchFavorite={tableActions.onBatchFavorite}
               onBatchMove={tableActions.onBatchMove}
               onBatchDelete={tableActions.onBatchDelete}
+              onBatchTags={tableActions.onBatchTags}
               onContextMenu={cardActions.onContextMenu}
               onMovePrompt={tableActions.onMovePrompt}
             />
@@ -138,6 +141,10 @@ export function PromptViewContainers({
               onVersionHistory={cardActions.onVersionHistory}
               onViewDetail={cardActions.onViewDetail}
               onContextMenu={cardActions.onContextMenu}
+              onBatchTags={tableActions.onBatchTags}
+              onBatchFavorite={tableActions.onBatchFavorite}
+              onBatchMove={tableActions.onBatchMove}
+              onBatchDelete={tableActions.onBatchDelete}
             />
           </Suspense>
         )}

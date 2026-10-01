@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { ColumnResizer } from "../ui/ColumnResizer";
 import { PromptListHeader } from "../prompt/PromptListHeader";
+import { PromptBatchActionBar } from "../prompt/PromptBatchActionBar";
 import { SparklesIcon } from "lucide-react";
 import {
   PROMPT_LIST_PANE_WIDTH_DEFAULT,
@@ -55,8 +56,9 @@ function PromptWorkspaceVirtualizedList() {
 }
 
 function PromptWorkspaceListPane() {
-  const { derived, stores, t } = usePromptWorkspaceContext();
+  const { actions, derived, stores, t } = usePromptWorkspaceContext();
   const { promptListPaneWidth, setPromptListPaneWidth } = stores.preferences;
+  const selectedIds = stores.promptData.selectedIds;
   const style = {
     "--prompt-list-pane-width": `${promptListPaneWidth}px`,
   } as CSSProperties;
@@ -65,6 +67,22 @@ function PromptWorkspaceListPane() {
       className="prompt-list-pane relative w-[var(--prompt-list-pane-width)] shrink-0 border-r border-border flex flex-col bg-card/50"
       style={style}
     >
+      {/* Card view already has store-level multi-select; the shared batch bar
+          makes those actions reachable here too (v0.6.2).
+          卡片视图的多选早已存在，本行接入共享批量条。 */}
+      {selectedIds.length > 0 && (
+        <div className="border-b border-border flex-shrink-0">
+          <PromptBatchActionBar
+            selectedIds={selectedIds}
+            totalCount={derived.sortedPrompts.length}
+            onClear={() => stores.promptActions.setSelectedIds([])}
+            onFavorite={actions.handleBatchFavorite}
+            onMove={actions.handleBatchMove}
+            onDelete={actions.handleBatchDelete}
+            onTag={actions.openQuickTagForIds}
+          />
+        </div>
+      )}
       <PromptListHeader count={derived.sortedPrompts.length} />
       {derived.sortedPrompts.length === 0 ? (
         <PromptWorkspaceEmptyList />
