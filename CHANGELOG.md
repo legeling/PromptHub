@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+## [0.6.1] - 2026-10-01
+
+### 问题修复 / Fixes
+
+- 🖱️ **恢复"拖拽备份包到程序窗口任意位置即可恢复"能力**：v0.5.9 底座升级时错误地以上游设置页拖拽（#135）替代了 fork 的窗口级全局拖拽，本版以 `BackupDropRestoreLayer` 恢复入口——拖入备份包即显示全屏释放提示层，drop 后复用上游统一的预览确认对话框与导入控制器（与设置页拖拽行为、i18n、安全确认完全一致；确认弹窗已打开时不重复响应）
+  - **Window-wide backup drop-to-restore restored**: the v0.5.9 upgrade wrongly treated the settings-page drop (#135) as a replacement for this fork's window-level drag; v0.6.1 reinstates the entry via `BackupDropRestoreLayer`, which previews the archive and reuses the shared confirmation dialog and import controller so both drop paths behave identically
+
 ## [0.6.0] - 2026-10-01
 
 ### 新功能 / Features

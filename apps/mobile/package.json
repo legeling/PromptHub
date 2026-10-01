@@ -1,7 +1,7 @@
 {
   "name": "@prompthub/mobile",
   "main": "expo-router/entry",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "license": "AGPL-3.0",
   "dependencies": {
     "@prompthub/shared": "workspace:*",
