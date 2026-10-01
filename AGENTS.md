@@ -765,6 +765,19 @@ Detailed submission, traceability, document ID, issue reference, and PR rules li
 | **Issue references**     | Use `Refs #123` before release; use `Closes #123` only when the published release should close the issue. |
 | **All tests must pass**  | Relevant lint / typecheck / test / build commands must pass, or blockers must be recorded before committing. |
 
+### 11.1 Fork Iteration Branches and Tags (v0.6.0+)
+
+This fork self-manages versions from `0.6.0` onward on top of the upstream
+`0.5.9` base. These rules keep version work, tags, and upstream sync separate.
+
+| Rule                        | Requirement                                                                                                                                       |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Tag namespace**           | Upstream `v*` tag names are reserved for upstream releases. Fork releases use annotated tags `fork-vX.Y.Z`, created on the `chore(release): X.Y.Z version bump` commit. |
+| **One branch per version iteration** | A new version iteration must start its own branch from the latest fork release tag, e.g. `git switch -c feature/v0.6.3 fork-v0.6.2`. Continuing the next version's development on a previous version's branch is not allowed. |
+| **Kickoff branch check**    | Before opening the active change folder for new iteration work, verify the current branch matches the target version (`feature/vX.Y.Z`). If it does not, create the version branch first; record the branch name in the iteration report. |
+| **Release push**            | After the release build is verified, push the branch and its `fork-vX.Y.Z` tag to `origin`. GitHub issues fixed by the released version close only after publication, per the GitHub Issue State Rule. |
+| **Convergence**             | Once the version ships, move its `spec/changes/active/` folders to the dated archive layout and mark `spec/releases/` records for the version.       |
+
 ## 12. Known Caveats & Gotchas
 
 | Issue                         | Details                                                                                                                                                                                                                                            |
