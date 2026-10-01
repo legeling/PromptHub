@@ -84,6 +84,7 @@ interface PromptState {
   setSelectedIds: (ids: string[]) => void;
   setSearchQuery: (query: string) => void;
   toggleFilterTag: (tag: string) => void;
+  setFilterTags: (tags: string[]) => void;
   clearFilterTags: () => void;
   setPromptTypeFilter: (filter: "all" | "text" | "image") => void;
   toggleFavorite: (id: string) => Promise<void>;
@@ -334,6 +335,10 @@ export const usePromptStore = create<PromptState>()(
             ? state.filterTags.filter((t) => t !== tag)
             : [...state.filterTags, tag],
         })),
+
+      // v0.6.3 tag manager "view prompts" jump: replace the filter wholesale.
+      // 标签管理直达：整体替换筛选。
+      setFilterTags: (tags) => set({ filterTags: tags }),
 
       clearFilterTags: () => set({ filterTags: [] }),
 

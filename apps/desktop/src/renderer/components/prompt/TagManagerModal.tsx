@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EditIcon, Trash2Icon, SearchIcon, CheckIcon, XIcon, Loader2Icon } from 'lucide-react';
+import { EditIcon, Trash2Icon, SearchIcon, CheckIcon, XIcon, Loader2Icon, EyeIcon } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -41,6 +41,11 @@ export function TagManagerModal({
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [newTagValue, setNewTagValue] = useState('');
+  // v0.6.3 #145: usage-count sorting and one-click jump to filtered list.
+  // 按用量排序 + 一键直达筛选。
+  const [sortMode, setSortMode] = useState<'usage-desc' | 'usage-asc' | 'name'>('usage-desc');
+  const filterTags = usePromptStore((state) => state.filterTags);
+  const setFilterTags = usePromptStore((state) => state.setFilterTags);
 
   const [editingTag, setEditingTag] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -163,11 +168,37 @@ export function TagManagerModal({
     }
   };
 
+  const usageCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const tag of tags) {
+      counts.set(
+        tag,
+        isSkillManager
+          ? skills.filter((skill) => getUserSkillTags(skill).includes(tag))
+              .length
+          : prompts.filter((prompt) => prompt.tags?.includes(tag)).length,
+      );
+    }
+    return counts;
+  }, [tags, isSkillManager, skills, prompts]);
+
   const filteredTags = useMemo(() => {
-    if (!search.trim()) return tags;
-    const lowerSearch = search.toLowerCase();
-    return tags.filter((tag) => tag.toLowerCase().includes(lowerSearch));
-  }, [tags, search]);
+    const lowerSearch = search.trim().toLowerCase();
+    const matched = lowerSearch
+      ? tags.filter((tag) => tag.toLowerCase().includes(lowerSearch))
+      : [...tags];
+    matched.sort((left, right) => {
+      if (sortMode === 'name') {
+        return left.localeCompare(right);
+      }
+      const delta = (usageCounts.get(left) ?? 0) - (usageCounts.get(right) ?? 0);
+      if (delta !== 0) {
+        return sortMode === 'usage-desc' ? -delta : delta;
+      }
+      return left.localeCompare(right);
+    });
+    return matched;
+  }, [tags, search, sortMode, usageCounts]);
 
   const handleCreateTag = async () => {
     const nextTag = newTagValue.trim();
@@ -201,18 +232,35 @@ export function TagManagerModal({
       size="lg"
     >
       <div className="flex h-[56vh] max-h-[620px] flex-col">
-        <div className="relative mb-4 shrink-0">
-          <SearchIcon
-            aria-hidden="true"
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
-          />
-          <Input
-            aria-label={t('prompt.filterByTag', 'Filter by tag')}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t('common.search', 'Search...')}
-            className="pl-9 w-full"
-          />
+        <div className="relative mb-4 shrink-0 flex items-center gap-2">
+          <div className="relative flex-1 min-w-0">
+            <SearchIcon
+              aria-hidden="true"
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
+            />
+            <Input
+              aria-label={t('prompt.filterByTag', 'Filter by tag')}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t('common.search', 'Search...')}
+              className="pl-9 w-full"
+            />
+          </div>
+          {!isSkillManager && (
+            <Select
+              ariaLabel={t('prompt.tagSortBy')}
+              value={sortMode}
+              onChange={(value) =>
+                setSortMode(value as 'usage-desc' | 'usage-asc' | 'name')
+              }
+              options={[
+                { value: 'usage-desc', label: t('prompt.tagSortUsageDesc') },
+                { value: 'usage-asc', label: t('prompt.tagSortUsageAsc') },
+                { value: 'name', label: t('prompt.tagSortName') },
+              ]}
+              className="w-40 shrink-0"
+            />
+          )}
         </div>
 
         {!isSkillManager ? (
@@ -326,7 +374,27 @@ export function TagManagerModal({
                     <span className="text-sm font-medium truncate flex-1" title={tag}>
                       {tag}
                     </span>
+                    {/* usage count badge / 用量计数 */}
+                    <span className="text-xs text-muted-foreground tabular-nums mr-2 shrink-0" title={t('prompt.tagUsedCount', { count: usageCounts.get(tag) ?? 0 })}>
+                      {usageCounts.get(tag) ?? 0}
+                    </span>
                     <div className="flex items-center gap-1 opacity-70 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 shrink-0">
+                      {!isSkillManager && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={`h-9 w-9 rounded-lg px-0 ${filterTags.includes(tag) ? 'text-primary' : 'text-muted-foreground'} hover:bg-background/80 hover:text-foreground`}
+                          onClick={() => {
+                            setFilterTags([tag]);
+                            onClose();
+                          }}
+                          disabled={processingTag !== null}
+                          title={filterTags.includes(tag) ? t('prompt.tagFilterActive') : t('prompt.tagViewPrompts')}
+                          aria-label={`${filterTags.includes(tag) ? t('prompt.tagFilterActive') : t('prompt.tagViewPrompts')} ${tag}`}
+                        >
+                          {filterTags.includes(tag) ? <CheckIcon className="h-[18px] w-[18px]" /> : <EyeIcon className="h-[18px] w-[18px]" />}
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"
