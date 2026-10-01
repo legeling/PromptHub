@@ -2,8 +2,9 @@
 # 用法：直接双击 build-release.cmd（推荐），或终端执行：
 #   powershell -ExecutionPolicy Bypass -File .\build-release.ps1
 #   pwsh -File .\build-release.ps1
-# 流程：vite 构建 -> electron-builder 打 Windows x64 包 -> 复制到 .\发布版\<实际版本号>\
-# 注意：本文件必须保存为 UTF-8 with BOM，否则 Windows PowerShell 5.1 会对中文乱码解析崩溃
+# 流程：自检 NSIS 工具缓存 -> vite 构建 -> electron-builder 打 Windows x64 包
+#       -> 瞬断自动重试 -> 复制到 .\发布版\<实际版本号>\
+# 注意：本文件必须保存为 UTF-8 with BOM，否则 Windows PowerShell 5.1 无法解析中文
 
 $ErrorActionPreference = 'Stop'
 
@@ -11,6 +12,27 @@ function Pause-IfInteractive {
     if ([Environment]::UserInteractive -and -not [Console]::IsInputRedirected) {
         Read-Host '按回车键退出' | Out-Null
     }
+}
+
+function Invoke-NsisCacheSelfHeal {
+    # NSIS 工具缓存缺关键文件（典型：elevate.exe 被杀毒软件移走）时，
+    # electron-builder 不会自动重建缓存、构建必然 ENOENT。
+    # 处置：把残破版本目录改名移走（不删除，可回滚），触发下次构建重新下载。
+    $cacheRoot = Join-Path $env:LOCALAPPDATA 'electron-builder\Cache\nsis'
+    if (-not (Test-Path $cacheRoot)) { return $false }
+
+    $badDirs = @(
+        Get-ChildItem $cacheRoot -Directory |
+            Where-Object { $_.Name -like 'nsis-*' -and $_.Name -notlike 'nsis-resources-*' -and $_.Name -notlike '*.broken-*' } |
+            Where-Object { -not (Test-Path (Join-Path $_.FullName 'elevate.exe')) }
+    )
+    foreach ($dir in $badDirs) {
+        $stamp = Get-Date -Format 'yyyyMMddHHmmss'
+        $movedName = $dir.FullName + ".broken-$stamp"
+        Move-Item $dir.FullName $movedName -Force
+        Write-Host ("==> 自检：NSIS 缓存 " + $dir.Name + " 缺少 elevate.exe，已移走待重建（备份名 " + $movedName + '）') -ForegroundColor Yellow
+    }
+    return ($badDirs.Count -gt 0)
 }
 
 try {
@@ -31,15 +53,30 @@ try {
     $env:ELECTRON_MIRROR = 'https://npmmirror.com/mirrors/electron/'
     $env:ELECTRON_BUILDER_BINARIES_MIRROR = 'https://npmmirror.com/mirrors/electron-builder-binaries/'
 
-    # 4) 构建与打包
+    # 4) NSIS 缓存自检 + 构建 + 打包（瞬断自动重试一次）
+    Invoke-NsisCacheSelfHeal | Out-Null
+
+    $builderArgs = @(
+        'electron-builder',
+        '--config', 'electron-builder.config.cjs',
+        '--config.win.signAndEditExecutable=false',
+        '--win', '--x64', '--publish', 'never'
+    )
+
     Push-Location apps/desktop
     try {
         npx vite build
         if ($LASTEXITCODE -ne 0) { throw "vite build 失败（退出码 $LASTEXITCODE）" }
 
-        # 本机无签名证书，跳过 exe 资源编辑（见项目排障记录）
-        npx electron-builder --config electron-builder.config.cjs --config.win.signAndEditExecutable=false --win --x64 --publish never
-        if ($LASTEXITCODE -ne 0) { throw "electron-builder 打包失败（退出码 $LASTEXITCODE）" }
+        npx $builderArgs
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host '==> 首次打包失败，执行缓存自检后重试一次...' -ForegroundColor Yellow
+            Invoke-NsisCacheSelfHeal | Out-Null
+            npx $builderArgs
+            if ($LASTEXITCODE -ne 0) {
+                throw "electron-builder 打包失败（退出码 $LASTEXITCODE，已自动重试一次）"
+            }
+        }
     }
     finally {
         Pop-Location
@@ -58,9 +95,9 @@ try {
 catch {
     Write-Host ('==> 构建失败：' + $_.Exception.Message) -ForegroundColor Red
     if ($_.Exception.Message -match 'elevate\.exe|electron-builder\\Cache') {
-        Write-Host '   修复：杀毒软件可能隔离了 electron-builder 缓存。删除该目录后重跑本脚本即可自动重建：' -ForegroundColor Yellow
+        Write-Host '   本脚本已自带 NSIS 缓存自愈仍未恢复时，请手动清理缓存目录后重跑：' -ForegroundColor Yellow
         Write-Host ("   rd /s /q `"$env:LOCALAPPDATA\electron-builder\Cache\nsis`"") -ForegroundColor Yellow
-        Write-Host '   建议：把 %LOCALAPPDATA%\electron-builder 加入 Windows 安全中心 排除项（防复发起见）。' -ForegroundColor Yellow
+        Write-Host '   并把 %LOCALAPPDATA%\electron-builder 加入 Windows 安全中心排除项（根治隔离问题）。' -ForegroundColor Yellow
     }
     if ($_.InvocationInfo.PositionMessage) {
         Write-Host $_.InvocationInfo.PositionMessage -ForegroundColor DarkGray
