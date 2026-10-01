@@ -21,8 +21,8 @@ jobs:
             arch: x64
           - os: windows-latest
             platform: win
-架构: arm64
-          - 操作系统: ubuntu-latest
+            arch: arm64
+          - os: ubuntu-latest
             platform: linux
 
     runs-on: ${{ matrix.os }}
