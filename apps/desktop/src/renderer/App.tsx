@@ -7,7 +7,7 @@ import {
   Suspense,
 } from "react";
 import type { RecoveryCandidate } from "@prompthub/shared/types";
-import { Sidebar, TopBar, MainContent, TitleBar } from "./components/layout";
+import { Sidebar, TopBar, MainContent, TitleBar, BackupDropRestoreLayer } from "./components/layout";
 import { usePromptStore } from "./stores/prompt.store";
 import { useFolderStore } from "./stores/folder.store";
 import { useSettingsStore } from "./stores/settings.store";
@@ -1310,6 +1310,12 @@ function App() {
                 databases={recoverableDatabases}
               />
             </Suspense>
+          ) : null}
+
+          {/* Window-level "drop backup anywhere" restore entry (shares the
+              confirmation dialog and controller with the settings page) */}
+          {!webRuntime ? (
+            <BackupDropRestoreLayer controller={backupImportController} />
           ) : null}
 
           {backupImportController.importPreview ? (

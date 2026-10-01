@@ -1,7 +1,9 @@
 {
   "app": {
     "name": "PromptHub",
-    "description": "ローカル版 Prompt マネージャー、バージョン管理付き"
+    "description": "ローカル版 Prompt マネージャー、バージョン管理付き",
+    "dropToRestore": "ドロップしてバックアップを復元",
+    "dropToRestoreHint": "復元プレビューが開き、既存データを上書きします。"
   },
   "filter": {
     "all": "すべて",

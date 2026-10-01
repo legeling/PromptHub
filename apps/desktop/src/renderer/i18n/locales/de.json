@@ -1,7 +1,9 @@
 {
   "app": {
     "name": "PromptHub",
-    "description": "Lokaler Prompt-Manager mit Versionskontrolle"
+    "description": "Lokaler Prompt-Manager mit Versionskontrolle",
+    "dropToRestore": "Loslassen, um Sicherung wiederherzustellen",
+    "dropToRestoreHint": "Dadurch die Wiederherstellungsvorschau geöffnet und vorhandene Daten überschrieben."
   },
   "filter": {
     "all": "Alle",
