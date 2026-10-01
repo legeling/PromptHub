@@ -174,7 +174,8 @@ export function TopBar({
 
     return prompts.find((prompt) => prompt.id === selectedPromptId) ?? null;
   }, [isPromptView, prompts, selectedPromptId]);
-  const defaultCreateParentId = selectedPromptForCreate?.id;
+  // Top-bar creation always produces a root prompt. Child prompts come from the
+  // tree context menu only, never as an implicit side effect of node selection.
   const defaultCreateFolderId = selectedPromptForCreate
     ? selectedPromptForCreate.folderId || undefined
     : selectedFolderId || undefined;
@@ -612,8 +613,7 @@ export function TopBar({
         videos: data.videos,
         folderId:
           data.folderId !== undefined ? data.folderId : defaultCreateFolderId,
-        parentId:
-          data.parentId !== undefined ? data.parentId : defaultCreateParentId,
+        parentId: data.parentId,
         order: data.order,
         visibility: data.visibility,
         source: data.source,
