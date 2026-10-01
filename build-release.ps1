@@ -21,10 +21,21 @@ function Invoke-NsisCacheSelfHeal {
     $cacheRoot = Join-Path $env:LOCALAPPDATA 'electron-builder\Cache\nsis'
     if (-not (Test-Path $cacheRoot)) { return $false }
 
+    # 每个缓存目录按类型探活关键文件：主包看 elevate.exe，
+    # 插件资源包看 plugins\x86-unicode\UAC.dll——任一缺失都会导致
+    # 构建 ENOENT / Plugin not found，且 electron-builder 不自愈。
+    function script:Get-NsisKeyFile($dirName) {
+        if ($dirName -like 'nsis-resources-*') { return 'plugins\x86-unicode\UAC.dll' }
+        if ($dirName -like 'nsis-*') { return 'elevate.exe' }
+        return $null
+    }
     $badDirs = @(
         Get-ChildItem $cacheRoot -Directory |
-            Where-Object { $_.Name -like 'nsis-*' -and $_.Name -notlike 'nsis-resources-*' -and $_.Name -notlike '*.broken-*' } |
-            Where-Object { -not (Test-Path (Join-Path $_.FullName 'elevate.exe')) }
+            Where-Object { $_.Name -like 'nsis-*' -and $_.Name -notlike '*.broken-*' } |
+            Where-Object {
+                $key = script:Get-NsisKeyFile $_.Name
+                $key -and -not (Test-Path (Join-Path $_.FullName $key))
+            }
     )
     foreach ($dir in $badDirs) {
         $stamp = Get-Date -Format 'yyyyMMddHHmmss'
