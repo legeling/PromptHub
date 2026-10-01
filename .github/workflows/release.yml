@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*"
+      - "fork-v*"
   workflow_dispatch:
 
 jobs:
