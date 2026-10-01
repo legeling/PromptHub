@@ -17,5 +17,8 @@ card（默认）视图在 store `selectedIds` 非空时在列表面板头部显�
 ### FR-BAT-005 i18n 展示卫生
 批量条内不得存在 `t(...) || '中文'` 形式兜底；全部使用既有 key（`prompt.selected`/`prompt.batchFavorite`/`prompt.batchMove`/`prompt.batchDelete`/`prompt.noFolder`/`prompt.batchTagTitle` 或新增 key），新增 key 同步 7 locale。
 
+### FR-BAT-007 单行紧凑批量条（交付后反馈，2026-10-01）
+窄容器（卡片视图列表面板）下批量条必须保持单行：操作按钮为 32px 纯图标按钮（`flex-nowrap`），完整文案通过 tooltip（title）与无障碍名称保留；文件夹弹出菜单右对齐防止窄面板溢出。图标按钮不得存在可见文字子节点（可测约束）。
+
 ## 移除的需求
 无。

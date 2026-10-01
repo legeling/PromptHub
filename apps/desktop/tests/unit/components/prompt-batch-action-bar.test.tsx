@@ -119,4 +119,35 @@ describe("PromptBatchActionBar", () => {
     fireEvent.click(screen.getByRole("button", { name: "Clear Selection" }));
     expect(props.onClear).toHaveBeenCalledTimes(1);
   });
+
+  it("keeps icon-only buttons on a single nowrap row", async () => {
+    const props = setupProps();
+    await renderBar(props);
+    const actions = screen
+      .getByRole("button", { name: "Batch Favorite" })
+      .closest("div");
+    expect(actions).not.toBeNull();
+    expect(actions?.className).toContain("flex-nowrap");
+    // the bar root must not itself wrap the count and actions together
+    const bar = actions?.parentElement as HTMLElement;
+    expect(bar.className).toContain("flex-nowrap");
+  });
+
+  it("keeps icon-only buttons discoverable via tooltips matching accessible names", async () => {
+    const props = setupProps();
+    await renderBar(props);
+
+    for (const name of [
+      "Tags",
+      "Batch Favorite",
+      "Batch Move",
+      "Batch Delete",
+      "Clear Selection",
+    ]) {
+      const button = screen.getByRole("button", { name });
+      expect(button).toHaveAttribute("title", name);
+      // icon-only: the button carries no visible text child
+      expect(button.textContent).toBe("");
+    }
+  });
 });

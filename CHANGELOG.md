@@ -22,8 +22,8 @@
   - **Gallery and card batch actions**: gallery cards gained selection checkboxes and all three views share one batch actions bar, so favorite/move/delete/tag behave identically to the table view
 - 🧺 **编辑弹窗次要信息可折叠**：新建与编辑 Prompt 对话框把"来源 + 备注"收入默认折叠分组（内容不卸载、收起/展开不影响保存值，含 emoji/尖括号/引号对抗用例），核心提示词编辑区可见面积显著增大（响应上游 #76）
   - **Collapsible secondary fields**: source and notes move into a always-mounted folded section, keeping values and save behavior untouched while enlarging the main prompt editors
-- 🚀 **表格批量条选中计数带总数**：选中提示从"已选 n 项"升级为"已选 n / 共 m 项"并清理 `t() || 硬编码中文` 兜底与批量条硬编码中文
-  - **Selection count with denominator**: the batch bar now shows selected/total and no longer carries hardcoded Chinese fallback strings
+- 🚀 **表格批量条选中计数带总数**：选中提示从"已选 n 项"升级为"已选 n / 共 m 项"并清理 `t() || 硬编码中文` 兜底与批量条硬编码中文；批量条整体压缩为单行纯图标按钮（悬停提示保留完整文案），窄面板（卡片视图列表栏）不再竖排堆叠占屏
+  - **Selection count with denominator**: the batch bar now shows selected/total and no longer carries hardcoded Chinese fallback strings; actions collapse to a single-row icon set with tooltips so narrow panes keep the bar one line tall
 - 🧩 **超大巨型文件瘦身**：`PromptTableView.tsx` 由 1046 行降至 875 行（批量逻辑抽为共享 hook 与批量条），`PromptGalleryView.tsx` 由 412 行降至 287 行（卡片组件拆分独立文件），两视图行为与对外 API 不变
   - **Oversized view files slimmed**: extraction reduces two legacy giant files without external behavior changes
 

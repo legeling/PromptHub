@@ -7,6 +7,7 @@
 - [x] T5 CardRoute 列表面板批量条（TEST-BAT-004，验证以 typecheck + 全套替代）
 - [x] T6 i18n 新 key 落 7 locale（prompt.selectedOfTotal、prompt.deselectPromptRow）
 - [x] T7 `pnpm test` 全绿（新增用例范围）+ desktop typecheck/lint 通过；全套基线对照无新增回归
+- [x] T8（交付后反馈）批量条单行图标化（FR-BAT-007）：bar 测试 9/9、相关四文件 47+ 全绿、typecheck/lint/行数门禁通过
 
 ## 验证替代说明（TEST-BAT-004）
 CardRoute 为 workspace 装配层（context 注入链无组件测试先例），其接线正确性由 desktop typecheck + `PromptBatchActionBar` 行为测试 + 全套回归覆盖；交互回归以基线对照实锤（main-content-inline-edit 集成用例最初暴露批量条"Cancel"同名歧义，已改名"清除选择"修复并复跑通过）。
