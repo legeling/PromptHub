@@ -15,7 +15,7 @@ import type {
   SettingsState,
   SupportedLanguage,
 } from "./settings-types";
-import { DESKTOP_HOME_MODULES, SUPPORTED_LANGUAGES } from "./settings-types";
+import { DESKTOP_HOME_MODULES, STARTUP_FOLDER_MODES, SUPPORTED_LANGUAGES } from "./settings-types";
 
 export const DEFAULT_TAGS_SECTION_HEIGHT = 140;
 export const SKILL_LIST_PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
@@ -449,4 +449,27 @@ export function areStringArraysEqual(left: string[], right: string[]): boolean {
     left.length === right.length &&
     left.every((entry, index) => entry === right[index])
   );
+}
+
+/**
+ * v0.6.2 #74: normalize startup-folder preference in place, shared by the
+ * persist `merge` and `migrate` paths so a same-version localStorage snapshot
+ * with malformed values cannot reach the restore logic unchecked.
+ * 启动文件夹偏好归一化：merge 与 migrate 共用，防止同版本快照坏值直达恢复逻辑。
+ */
+export function normalizeStartupFolderSettings(
+  next: Record<string, unknown>,
+): void {
+  const mode = next.startupFolderMode;
+  next.startupFolderMode =
+    typeof mode === "string" &&
+    (STARTUP_FOLDER_MODES as readonly string[]).includes(mode)
+      ? next.startupFolderMode
+      : "default";
+
+  const normalizeId = (value: unknown): string | null =>
+    typeof value === "string" && value.trim() !== "" ? value : null;
+
+  next.pinnedStartFolderId = normalizeId(next.pinnedStartFolderId);
+  next.lastActiveFolderId = normalizeId(next.lastActiveFolderId);
 }

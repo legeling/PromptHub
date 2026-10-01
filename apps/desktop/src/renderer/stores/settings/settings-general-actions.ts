@@ -26,6 +26,7 @@ import {
   normalizeTagsSectionHeight,
   normalizeTranslationMode,
 } from "./settings-normalizers";
+import { STARTUP_FOLDER_MODES } from "./settings-types";
 
 type GeneralActionKey =
   | "setCreationMode"
@@ -51,6 +52,9 @@ type GeneralActionKey =
   | "setLaunchAtStartup"
   | "setMinimizeOnLaunch"
   | "setCloseAction"
+  | "setStartupFolderMode"
+  | "setPinnedStartFolder"
+  | "recordLastActiveFolder"
   | "setDebugMode"
   | "setShortcutMode"
   | "setEnableNotifications"
@@ -295,7 +299,7 @@ function createEditorActions(context: SettingsActionContext) {
 }
 
 function createDesktopIntegrationActions(context: SettingsActionContext) {
-  const { get, setTouched, syncSettingsToMain } = context;
+  const { get, set, setTouched, syncSettingsToMain } = context;
   return {
     setLaunchAtStartup: (launchAtStartup) => {
       setTouched({ launchAtStartup });
@@ -315,6 +319,36 @@ function createDesktopIntegrationActions(context: SettingsActionContext) {
       setTouched({ closeAction });
       window.electron?.setCloseAction?.(closeAction);
     },
+    // v0.6.2 #74 startup-folder preferences (renderer-local, not synced to main).
+    // 启动文件夹偏好仅存本地渲染层设置，不同步主进程。
+    setStartupFolderMode: (startupFolderMode) => {
+      setTouched({
+        startupFolderMode: (STARTUP_FOLDER_MODES as readonly string[]).includes(
+          startupFolderMode,
+        )
+          ? startupFolderMode
+          : "default",
+      });
+    },
+    setPinnedStartFolder: (folderId) => {
+      const pinnedStartFolderId =
+        typeof folderId === "string" && folderId.trim() !== ""
+          ? folderId
+          : null;
+      setTouched({
+        pinnedStartFolderId,
+        startupFolderMode: pinnedStartFolderId ? "pinned" : "default",
+      });
+    },
+    recordLastActiveFolder: (folderId) => {
+      if (typeof folderId !== "string" || folderId.trim() === "") {
+        return;
+      }
+      if (get().lastActiveFolderId === folderId) {
+        return;
+      }
+      set({ lastActiveFolderId: folderId });
+    },
     setDebugMode: (debugMode) => {
       setTouched({ debugMode });
       window.electron?.setDebugMode?.(debugMode);
@@ -323,6 +357,9 @@ function createDesktopIntegrationActions(context: SettingsActionContext) {
     | "setLaunchAtStartup"
     | "setMinimizeOnLaunch"
     | "setCloseAction"
+    | "setStartupFolderMode"
+    | "setPinnedStartFolder"
+    | "recordLastActiveFolder"
     | "setDebugMode"
   >;
 }

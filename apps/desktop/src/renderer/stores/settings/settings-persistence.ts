@@ -33,6 +33,7 @@ import {
   normalizeShortcutModes,
   normalizeSidebarTagSectionHeights,
   normalizeSkillListPageSize,
+  normalizeStartupFolderSettings,
   normalizeSyncProvider,
   normalizeSyncTimingSettings,
   normalizeTagFilterMode,
@@ -82,6 +83,9 @@ function normalizeSharedSettingsState(next: SettingsState): void {
   next.shortcutModes = normalizeShortcutModes(next.shortcutModes);
   next.skillListPageSize = normalizeSkillListPageSize(next.skillListPageSize);
   next.networkProxy = normalizeNetworkProxySettings(next.networkProxy);
+  normalizeStartupFolderSettings(
+    next as unknown as Record<string, unknown>,
+  );
 }
 
 function normalizeMergedAgentSettings(next: SettingsState): void {
@@ -282,6 +286,9 @@ function normalizeMigratedCoreState(
   next.skillProjects = normalizeSkillProjects(next.skillProjects);
   normalizeSkillTrustSettings(next);
   next.networkProxy = normalizeNetworkProxySettings(next.networkProxy);
+  normalizeStartupFolderSettings(
+    next as unknown as Record<string, unknown>,
+  );
 }
 
 function normalizeMigratedPresentationState(next: SettingsState): void {

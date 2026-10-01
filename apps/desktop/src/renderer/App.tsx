@@ -46,6 +46,7 @@ import {
   type AutoSyncReason,
 } from "./services/sync-history";
 import { useToast } from "./components/ui/Toast";
+import { useStartupFolderRestore } from "./hooks/useStartupFolderRestore";
 import { DndContext, pointerWithin, type DragEndEvent } from "@dnd-kit/core";
 import i18n from "./i18n";
 import { useTranslation } from "react-i18next";
@@ -127,6 +128,8 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const { showToast } = useToast();
   const backupImportController = useBackupImportController();
+  // v0.6.2 #74: enter configured/last folder once after startup when enabled.
+  useStartupFolderRestore();
 
   const clipboardImportEnabled = useSettingsStore(
     (state) => state.clipboardImportEnabled,

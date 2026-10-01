@@ -1,7 +1,9 @@
 import { useTranslation } from "react-i18next";
 import { useSettingsStore } from "../../stores/settings.store";
+import { useFolderStore } from "../../stores/folder.store";
 import { SettingSection, SettingItem, ToggleSwitch } from "./shared";
 import { Select } from "../ui/Select";
+import type { StartupFolderMode } from "../../stores/settings/settings-types";
 
 const LANGUAGE_OPTIONS = [
   { value: "zh", label: "简体中文" },
@@ -16,6 +18,7 @@ const LANGUAGE_OPTIONS = [
 export function GeneralSettings() {
   const { t } = useTranslation();
   const settings = useSettingsStore();
+  const folders = useFolderStore((state) => state.folders);
 
   return (
     <div className="space-y-6">
@@ -40,6 +43,49 @@ export function GeneralSettings() {
             onChange={settings.setMinimizeOnLaunch}
           />
         </SettingItem>
+        {/* v0.6.2 #74: which folder the app enters after a cold start. */}
+        {/* 启动后进入哪个文件夹（GitHub #74 需求） */}
+        <SettingItem
+          label={t("settings.startupFolder")}
+          description={t("settings.startupFolderDesc")}
+        >
+          <Select
+            ariaLabel={t("settings.startupFolder")}
+            value={settings.startupFolderMode}
+            onChange={(value) =>
+              settings.setStartupFolderMode(value as StartupFolderMode)
+            }
+            options={[
+              {
+                value: "default",
+                label: t("settings.startupFolderDefault"),
+              },
+              { value: "last", label: t("settings.startupFolderLast") },
+              { value: "pinned", label: t("settings.startupFolderPinned") },
+            ]}
+          />
+        </SettingItem>
+        {settings.startupFolderMode === "pinned" && (
+          <SettingItem
+            label={t("settings.startupFolderTarget")}
+            description={t("settings.startupFolderTargetDesc")}
+          >
+            <Select
+              ariaLabel={t("settings.startupFolderTarget")}
+              value={settings.pinnedStartFolderId ?? ""}
+              onChange={(value) =>
+                settings.setPinnedStartFolder(value || null)
+              }
+              options={[
+                { value: "", label: t("settings.startupFolderTargetNone") },
+                ...folders.map((folder) => ({
+                  value: folder.id,
+                  label: folder.name,
+                })),
+              ]}
+            />
+          </SettingItem>
+        )}
         <SettingItem
           label={t("settings.clipboardImport", "剪切板快速导入")}
           description={t(

@@ -32,6 +32,15 @@ export type DesktopHomeModule = (typeof DESKTOP_HOME_MODULES)[number];
 export type ThemeMode = "light" | "dark" | "system";
 export type AIModelType = "chat" | "image";
 export type CreationMode = "manual" | "quick";
+
+/** v0.6.2 #74 startup-folder modes. */
+export type StartupFolderMode = "default" | "last" | "pinned";
+
+export const STARTUP_FOLDER_MODES: readonly StartupFolderMode[] = [
+  "default",
+  "last",
+  "pinned",
+];
 export type TranslationMode = "immersive" | "full";
 export type TagFilterMode = "single" | "multi";
 export type AIUsageScenario =
@@ -134,6 +143,12 @@ export interface SettingsState {
   minimizeOnLaunch: boolean;
   debugMode: boolean;
   closeAction: "ask" | "minimize" | "exit";
+  /** v0.6.2 #74: which folder the app enters after a cold start. */
+  startupFolderMode: StartupFolderMode;
+  /** Folder pinned via context menu for `pinned` mode. */
+  pinnedStartFolderId: string | null;
+  /** Last non-root folder activated while using `last` mode. */
+  lastActiveFolderId: string | null;
   shortcutModes: Record<string, "global" | "local">;
   enableNotifications: boolean;
   showCopyNotification: boolean;
@@ -243,6 +258,9 @@ export interface SettingsState {
   setDebugMode: (enabled: boolean) => void;
   setEnableNotifications: (enabled: boolean) => void;
   setCloseAction: (action: "ask" | "minimize" | "exit") => void;
+  setStartupFolderMode: (mode: StartupFolderMode) => void;
+  setPinnedStartFolder: (folderId: string | null) => void;
+  recordLastActiveFolder: (folderId: string | null) => void;
   setShortcutMode: (key: string, mode: "global" | "local") => void;
   setShowCopyNotification: (enabled: boolean) => void;
   setShowSaveNotification: (enabled: boolean) => void;
