@@ -25,4 +25,4 @@
 - 现象：卡片视图窄列表面板内批量条因 `flex-wrap` + 图标文字按钮过宽被挤成 6 行竖排，占屏严重。
 - 修复：`PromptBatchActionBar` 单行化（根与按钮组显式 `flex-nowrap`），5 个 32px 纯图标按钮（标签/收藏/移动/删除/清除选择），完整文案保留在 `title` tooltip 与 `aria-label`；文件夹弹出菜单 `left-0` → `right-0` 防窄面板溢出；计数文案降为 `text-xs`。
 - 兼容：既有测试全部按 accessible name 断言，aria-label 未变 → 零断言改动通过；新增 2 用例锁定 tooltip 一致性与单行不换行（FR-BAT-007）。
-- 验证：bar 9/9、table/gallery/inline-edit 相关 47+ 全绿；typecheck/lint/行数门禁通过。提交为 fork-v0.6.2 tag 之后、0.6.2 打包发布之前。
+- 验证：bar 9/9、table/gallery/inline-edit 相关 47+ 全绿；typecheck/lint/行数门禁通过。修复提交（`5e7f32f3`）先于首次 tag 锚点产生，发布前已将 `fork-v0.6.2` 挪至该提交，保持 tag=发布终态。
