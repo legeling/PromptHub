@@ -57,6 +57,11 @@ try {
 }
 catch {
     Write-Host ('==> 构建失败：' + $_.Exception.Message) -ForegroundColor Red
+    if ($_.Exception.Message -match 'elevate\.exe|electron-builder\\Cache') {
+        Write-Host '   修复：杀毒软件可能隔离了 electron-builder 缓存。删除该目录后重跑本脚本即可自动重建：' -ForegroundColor Yellow
+        Write-Host ("   rd /s /q `"$env:LOCALAPPDATA\electron-builder\Cache\nsis`"") -ForegroundColor Yellow
+        Write-Host '   建议：把 %LOCALAPPDATA%\electron-builder 加入 Windows 安全中心 排除项（防复发起见）。' -ForegroundColor Yellow
+    }
     if ($_.InvocationInfo.PositionMessage) {
         Write-Host $_.InvocationInfo.PositionMessage -ForegroundColor DarkGray
     }
