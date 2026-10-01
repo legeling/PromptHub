@@ -416,6 +416,54 @@ describe("PromptDB (in-memory SQLite)", () => {
       const results = db.search({ keyword: 'test"OR"hack' });
       expect(results.length).toBe(0);
     });
+
+    // ─── v0.6.2 db-prompt-fts-tokenized-search (FR-FTS-001..003) ───
+
+    it("matches prompts when multi-word terms are non-adjacent", () => {
+      // "alpha" only exists in the title and "content" only in user_prompt;
+      // the legacy whole-keyword phrase query returned nothing here.
+      const results = db.search({ keyword: "alpha content" });
+      expect(results.map((r) => r.title)).toEqual(["Alpha Prompt"]);
+    });
+
+    it("requires all terms present (AND semantics, no cross-row mixing)", () => {
+      // no single prompt contains both "alpha" and "beta"
+      expect(db.search({ keyword: "alpha beta" })).toEqual([]);
+    });
+
+    it("treats whitespace-only keywords as no keyword filter", () => {
+      expect(db.search({ keyword: "   " }).length).toBe(3);
+      expect(db.search({ keyword: "\t " }).length).toBe(3);
+    });
+
+    it("keeps single-word keyword behavior unchanged", () => {
+      expect(db.search({ keyword: "gamma" }).map((r) => r.title)).toEqual([
+        "Gamma Prompt",
+      ]);
+    });
+
+    it("survives FTS operator terms and unbalanced quotes without corrupting data", () => {
+      const hostile = [
+        "a AND b",
+        "OR",
+        "(alpha)",
+        "alpha*",
+        "^beta",
+        "NEAR alpha",
+        'alpha " " beta',
+        '"',
+        '""',
+        `"alpha" "beta"`,
+      ];
+      for (const keyword of hostile) {
+        const results = db.search({ keyword });
+        expect(Array.isArray(results)).toBe(true);
+      }
+      const count = rawDb
+        .prepare("SELECT COUNT(*) AS c FROM prompts")
+        .get() as { c: number };
+      expect(count.c).toBe(3);
+    });
   });
 
   // ─────────────────────────────────────────────

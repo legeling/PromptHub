@@ -16,7 +16,7 @@ export {
 export type { InitDatabaseHooks } from "./init";
 
 // DB classes
-export { PromptDB } from "./prompt";
+export { PromptDB, buildFtsPhraseQuery } from "./prompt";
 export { PromptRelationDB } from "./prompt-relation";
 export { PromptOutputFormatDB } from "./prompt-output-format";
 export { FolderDB } from "./folder";

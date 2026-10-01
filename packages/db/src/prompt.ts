@@ -10,10 +10,32 @@ import type {
   ResourceVisibility,
 } from "@prompthub/shared/types";
 
+/**
+ * Build an FTS5 MATCH expression from a user keyword.
+ * 将用户搜索关键词构建为 FTS5 MATCH 表达式。
+ *
+ * Each whitespace-separated term becomes a quoted phrase (with embedded
+ * quotes doubled for FTS5 escaping) and terms are joined with AND, so a
+ * query matches records containing every term rather than requiring one
+ * exact adjacency. Returns null when nothing searchable remains, letting
+ * the caller skip keyword filtering entirely.
+ */
+export function buildFtsPhraseQuery(keyword: string): string | null {
+  const phrases = keyword
+    .trim()
+    .split(/\s+/)
+    .filter((term) => term.replace(/"/g, "") !== "")
+    .map((term) => `"${term.replace(/"/g, '""')}"`);
+
+  if (phrases.length === 0) {
+    return null;
+  }
+  return phrases.join(" AND ");
+}
+
 interface PromptRow {
   id: string;
-  owner_user_id: string | null;
-  visibility: string;
+  owner_user_id: string | null;  visibility: string;
   title: string;
   description: string | null;
   prompt_type: PromptType | null;
@@ -320,10 +342,15 @@ export class PromptDB {
     const params: Array<string | number> = [];
 
     if (query.keyword) {
-      sql +=
-        " AND rowid IN (SELECT rowid FROM prompts_fts WHERE prompts_fts MATCH ?)";
-      // Escape FTS5 special characters by wrapping in double quotes
-      params.push(`"${query.keyword.replace(/"/g, '""')}"`);
+      // Per-term quoted phrases joined with AND: multi-word terms no longer
+      // have to be adjacent (v0.6.2), while every term keeps the FTS5
+      // double-quote escaping that neutralizes operator characters.
+      const ftsQuery = buildFtsPhraseQuery(query.keyword);
+      if (ftsQuery !== null) {
+        sql +=
+          " AND rowid IN (SELECT rowid FROM prompts_fts WHERE prompts_fts MATCH ?)";
+        params.push(ftsQuery);
+      }
     }
 
     if (query.scope && query.scope !== "all") {
