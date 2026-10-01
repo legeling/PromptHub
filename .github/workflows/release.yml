@@ -10,23 +10,19 @@ on:
 jobs:
   build:
     strategy:
+      # fork 适配：单平台失败不牵连其他平台产物构建
+      fail-fast: false
       matrix:
         include:
-          # macOS: Use Intel runner for x64, Apple Silicon runner for arm64
-          # CRITICAL: macos-15-intel is x86_64, macos-15 is Apple Silicon (arm64)
-          - os: macos-15-intel # Intel (x86_64) runner for x64 builds
-            platform: mac
-            arch: x64
-          - os: macos-15 # Apple Silicon (arm64) runner for arm64 builds
-            platform: mac
-            arch: arm64
+          # fork 仓库未配置 Apple 签名/公证 secrets，macOS 构建整段停用；
+          # 若将来拿到开发者账号，恢复下面两个 mac 条目并在 Settings 配齐 secrets。
           - os: windows-latest
             platform: win
             arch: x64
           - os: windows-latest
             platform: win
-            arch: arm64
-          - os: ubuntu-latest
+架构: arm64
+          - 操作系统: ubuntu-latest
             platform: linux
 
     runs-on: ${{ matrix.os }}
@@ -421,12 +417,12 @@ jobs:
           echo "RELEASE_TAG=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
           if [[ "${GITHUB_REF_NAME}" == *-* ]]; then
             echo "IS_PRERELEASE=true" >> "$GITHUB_ENV"
-            echo "DOWNLOAD_BASE_URL=https://github.com/legeling/PromptHub/releases/download/${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
-            echo "PREVIEW_RELEASE_URL=https://github.com/legeling/PromptHub/releases/tag/${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+            echo "DOWNLOAD_BASE_URL=https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+            echo "PREVIEW_RELEASE_URL=https://github.com/${GITHUB_REPOSITORY}/releases/tag/${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
           else
             echo "IS_PRERELEASE=false" >> "$GITHUB_ENV"
-            echo "DOWNLOAD_BASE_URL=https://github.com/legeling/PromptHub/releases/latest/download" >> "$GITHUB_ENV"
-            echo "PREVIEW_RELEASE_URL=https://github.com/legeling/PromptHub/releases?q=prerelease%3Atrue" >> "$GITHUB_ENV"
+            echo "DOWNLOAD_BASE_URL=https://github.com/$GITHUB_REPOSITORY/releases/latest/download" >> "$GITHUB_ENV"
+            echo "PREVIEW_RELEASE_URL=https://github.com/$GITHUB_REPOSITORY/releases?q=prerelease%3Atrue" >> "$GITHUB_ENV"
           fi
 
       - name: List artifacts for debugging
@@ -483,12 +479,10 @@ jobs:
           | 平台 | 下载 |
           |------|------|
           | Windows | [![Windows x64](https://img.shields.io/badge/Windows_x64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](${DOWNLOAD_BASE_URL}/PromptHub-Setup-${VERSION}-x64.exe) [![Windows arm64](https://img.shields.io/badge/Windows_arm64-0078D6?style=for-the-badge&logo=windows&logoColor=white)](${DOWNLOAD_BASE_URL}/PromptHub-Setup-${VERSION}-arm64.exe) |
-          | macOS | [![macOS Apple Silicon](https://img.shields.io/badge/macOS_Apple_Silicon-000000?style=for-the-badge&logo=apple&logoColor=white)](${DOWNLOAD_BASE_URL}/PromptHub-${VERSION}-arm64.dmg) [![macOS Intel](https://img.shields.io/badge/macOS_Intel-000000?style=for-the-badge&logo=apple&logoColor=white)](${DOWNLOAD_BASE_URL}/PromptHub-${VERSION}-x64.dmg) |
           | Linux | [![Linux AppImage](https://img.shields.io/badge/Linux_AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](${DOWNLOAD_BASE_URL}/PromptHub-${VERSION}-x64.AppImage) [![Linux deb](https://img.shields.io/badge/Linux_deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](${DOWNLOAD_BASE_URL}/PromptHub-${VERSION}-amd64.deb) |
           | 预览版 | [![Preview Prereleases](https://img.shields.io/badge/Preview_Prereleases-8B5CF6?style=for-the-badge&logo=github&logoColor=white)](${PREVIEW_RELEASE_URL}) |
 
-          ### macOS 安全说明
-          macOS 安装包已使用 Developer ID 签名并完成 Apple 公证。请优先从本 Release 或官网镜像下载；如果系统仍提示无法验证，请重新下载当前 Release 中的 DMG。
+          > 注：本 fork 未配置 Apple 开发者签名，暂不提供 macOS 安装包；Windows 包为未签名构建，首次运行请在 SmartScreen 选择"仍要运行"。
 
           ${PREVIEW_NOTE}
 
@@ -496,7 +490,7 @@ jobs:
 
           ## 🔄 本次更新
 
-          详细更新日志请查看 [更新日志](https://github.com/legeling/PromptHub#-更新日志)
+          详细更新日志请查看 [更新日志](https://github.com/$GITHUB_REPOSITORY#-更新日志)
           EOF
 
           # 2. Collect release assets deterministically.
@@ -514,8 +508,9 @@ jobs:
             done < <(find artifacts -type f -name "$pattern" | sort)
 
             if [ "${#matches[@]}" -eq 0 ]; then
-              echo "Missing release asset: $pattern"
-              exit 1
+              # fork 适配：缺产物（如停用的 macOS 平台）跳过而非炸链
+              echo "Release asset missing, skipped: $pattern"
+              return 0
             fi
 
             if [ "${#matches[@]}" -gt 1 ]; then
