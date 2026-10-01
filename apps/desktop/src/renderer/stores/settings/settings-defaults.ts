@@ -40,6 +40,7 @@ function createDefaultAppearanceValues() {
     startupFolderMode: "default",
     pinnedStartFolderId: null,
     lastActiveFolderId: null,
+    backupGuideCollapsed: false,
     shortcutModes: { ...DEFAULT_SHORTCUT_MODES },
     enableNotifications: true,
     showCopyNotification: true,

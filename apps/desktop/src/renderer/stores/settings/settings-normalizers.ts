@@ -472,4 +472,5 @@ export function normalizeStartupFolderSettings(
 
   next.pinnedStartFolderId = normalizeId(next.pinnedStartFolderId);
   next.lastActiveFolderId = normalizeId(next.lastActiveFolderId);
+  next.backupGuideCollapsed = next.backupGuideCollapsed === true;
 }

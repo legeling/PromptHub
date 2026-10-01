@@ -8,6 +8,7 @@ import {
   ChevronUpIcon,
 } from "lucide-react";
 import { Checkbox } from "../../ui";
+import { BackupGuidanceCard } from "./BackupGuidanceCard";
 
 export function BackupPanel() {
   const {
@@ -44,6 +45,11 @@ export function BackupPanel() {
     <>
       {webRuntime || activeSubsection === "backup" ? (
         <DataSettingsSection title={t("settings.backup")}>
+          {/* v0.6.3 #97/#139: end-to-end migration/rollback path, one glance. */}
+          {/* 备份迁移回退三步指引。 */}
+          <div className="p-4 pb-0">
+            <BackupGuidanceCard />
+          </div>
           {/* 选择性导出（只导出） */}
           <div className="p-4 space-y-3">
             <div className="flex items-center justify-between gap-3">

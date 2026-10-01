@@ -149,6 +149,8 @@ export interface SettingsState {
   pinnedStartFolderId: string | null;
   /** Last non-root folder activated while using `last` mode. */
   lastActiveFolderId: string | null;
+  /** v0.6.3 #97/#139: collapsed state of the backup/migration guidance card. */
+  backupGuideCollapsed: boolean;
   shortcutModes: Record<string, "global" | "local">;
   enableNotifications: boolean;
   showCopyNotification: boolean;
@@ -261,6 +263,7 @@ export interface SettingsState {
   setStartupFolderMode: (mode: StartupFolderMode) => void;
   setPinnedStartFolder: (folderId: string | null) => void;
   recordLastActiveFolder: (folderId: string | null) => void;
+  setBackupGuideCollapsed: (collapsed: boolean) => void;
   setShortcutMode: (key: string, mode: "global" | "local") => void;
   setShowCopyNotification: (enabled: boolean) => void;
   setShowSaveNotification: (enabled: boolean) => void;

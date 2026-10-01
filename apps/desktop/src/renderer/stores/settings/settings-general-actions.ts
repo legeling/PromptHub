@@ -55,6 +55,7 @@ type GeneralActionKey =
   | "setStartupFolderMode"
   | "setPinnedStartFolder"
   | "recordLastActiveFolder"
+  | "setBackupGuideCollapsed"
   | "setDebugMode"
   | "setShortcutMode"
   | "setEnableNotifications"
@@ -349,6 +350,11 @@ function createDesktopIntegrationActions(context: SettingsActionContext) {
       }
       set({ lastActiveFolderId: folderId });
     },
+    // v0.6.3: collapse preference for the backup/migration guidance card.
+    // 备份迁移指引卡折叠偏好。
+    setBackupGuideCollapsed: (collapsed) => {
+      setTouched({ backupGuideCollapsed: collapsed === true });
+    },
     setDebugMode: (debugMode) => {
       setTouched({ debugMode });
       window.electron?.setDebugMode?.(debugMode);
@@ -360,6 +366,7 @@ function createDesktopIntegrationActions(context: SettingsActionContext) {
     | "setStartupFolderMode"
     | "setPinnedStartFolder"
     | "recordLastActiveFolder"
+    | "setBackupGuideCollapsed"
     | "setDebugMode"
   >;
 }
