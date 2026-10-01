@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { KeyIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useToast } from "../ui/Toast";
+import { getSecurityErrorCopy } from "./security-error-copy";
 import { SettingSection, PasswordInput } from "./shared";
 import { SkillSafetySettingsSection } from "./SkillSettings";
 
@@ -29,7 +30,7 @@ export function SecuritySettings() {
       const status = await window.api.security.status();
       setSecurityStatus(status);
     } catch (e: any) {
-      showToast(e?.message || t("settings.statusFetchFail"), "error");
+      showToast(getSecurityErrorCopy(e, t), "error");
     }
   };
 
@@ -56,7 +57,7 @@ export function SecuritySettings() {
       setNewMasterPwdConfirm("");
       showToast(t("settings.masterSetSuccess"), "success");
     } catch (e: any) {
-      showToast(e?.message || t("settings.masterSetFail"), "error");
+      showToast(getSecurityErrorCopy(e, t), "error");
     } finally {
       setSecLoading(false);
     }
@@ -78,7 +79,7 @@ export function SecuritySettings() {
         showToast(t("settings.pwdWrong"), "error");
       }
     } catch (e: any) {
-      showToast(e?.message || t("settings.unlockFail"), "error");
+      showToast(getSecurityErrorCopy(e, t), "error");
     } finally {
       setSecLoading(false);
     }
@@ -91,7 +92,7 @@ export function SecuritySettings() {
       await refreshSecurityStatus();
       showToast(t("settings.lockSuccess"), "success");
     } catch (e: any) {
-      showToast(e?.message || t("settings.lockFail"), "error");
+      showToast(getSecurityErrorCopy(e, t), "error");
     } finally {
       setSecLoading(false);
     }
@@ -120,11 +121,7 @@ export function SecuritySettings() {
       setShowChangePwd(false);
       showToast(t("settings.changePwdSuccess"), "success");
     } catch (e: any) {
-      if (e?.message === "Current password is incorrect") {
-        showToast(t("settings.currentPwdWrong"), "error");
-      } else {
-        showToast(e?.message || t("settings.changePwdFail"), "error");
-      }
+      showToast(getSecurityErrorCopy(e, t), "error");
     } finally {
       setSecLoading(false);
     }
