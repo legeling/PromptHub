@@ -562,22 +562,19 @@ jobs:
           # DMG/ZIP is fully written, causing SHA512/size drift.  Patch the
           # manifests so published updater metadata always matches the real
           # artifacts that users will download.
-          node apps/desktop/scripts/fix-manifest-hashes.js \
-            release_assets/latest.yml \
-            release_assets/latest-arm64.yml \
-            release_assets/latest-x64.yml \
-            release_assets/latest-mac.yml \
-            release_assets/latest-mac-arm64.yml \
-            release_assets/latest-mac-x64.yml
+          # fork 适配：只处理实际存在的 manifest（macOS 平台停用时对应
+          # 清单不会产出，固定传参会让脚本以 "Manifest not found" 炸链）。
+          MANIFEST_ARGS=""
+          for m in latest.yml latest-arm64.yml latest-x64.yml latest-mac.yml latest-mac-arm64.yml latest-mac-x64.yml; do
+            if [ -f "release_assets/$m" ]; then
+              MANIFEST_ARGS="$MANIFEST_ARGS release_assets/$m"
+            fi
+          done
+          echo "Manifests to process:${MANIFEST_ARGS:+$MANIFEST_ARGS}"
+          node apps/desktop/scripts/fix-manifest-hashes.js $MANIFEST_ARGS
 
           # 5. Verify manifest hashes before publishing. A mismatch here would become a broken auto update.
-          node apps/desktop/scripts/verify-update-manifest.js \
-            release_assets/latest.yml \
-            release_assets/latest-arm64.yml \
-            release_assets/latest-x64.yml \
-            release_assets/latest-mac.yml \
-            release_assets/latest-mac-arm64.yml \
-            release_assets/latest-mac-x64.yml
+          node apps/desktop/scripts/verify-update-manifest.js $MANIFEST_ARGS
 
           # 6. Create or refresh the Release as a DRAFT.
           # 所有 tag 打包产物默认为 Draft Release，不会被 auto-updater 拉取，
