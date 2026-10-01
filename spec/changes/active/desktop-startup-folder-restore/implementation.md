@@ -18,3 +18,9 @@
 ## 验证
 - `settings-startup-folder.test.ts`（normalizer 3 组 + setters 4 组，12 用例含 5 文件合计）；`use-startup-folder-restore.test.ts`（default/last/pinned/缺失/单次共 5 用例）全绿。
 - 全套 desktop 回归与基线文件集合一致，零新增失败。
+
+## v0.6.3 追加：FR-STARTUP-005 恢复可见反馈
+- `useStartupFolderRestore(notify?)` 改依赖注入（App 传 `showToast`），恢复成功 info toast（含文件夹名插值）、目标缺失 warning toast；default 模式零提示不打扰。
+- 设置页 pinned 目标下拉：失效 id 显示"（已不存在）"项而非静默消失，用户可直接重选。
+- i18n 新键 3（startupFolderRestored/Missing/TargetMissing）× 7 locale。
+- hook 测试新增 3 用例（成功通知含名/失效警告/default 静默），8/8 全绿。

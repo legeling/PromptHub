@@ -17,3 +17,10 @@ settings 新增 `startupFolderMode: 'default' | 'last' | 'pinned'`（默认 `'de
 
 ### FR-STARTUP-004 坏值防护（hydration 边界）
 同版本 localStorage 快照中的非法 mode/非字符串 id 在 zustand `merge` 时归一：mode 回 `default`，id 回 `null`。与仓库既有 same-version hydration 规范一致。
+
+### FR-STARTUP-005 恢复结果可见反馈（v0.6.3 X5 追加）
+启动文件夹恢复动作需可感知：
+- 恢复成功进入目标文件夹 → 轻量 info toast"已进入启动文件夹「X」"（1.5s 内列表刷新前不打断操作）。
+- 目标文件夹已不存在而回落默认 → warning toast"启动文件夹已不存在，已回到默认视图"，并将失效的 pinned 配置在设置页可见（目标下拉显示"（已失效）"态，用户可重选）。
+- `default` 模式无任何提示（保持零打扰）。
+- toast 文案走 i18n × 7；反馈层不改变选择路径与持久化语义。

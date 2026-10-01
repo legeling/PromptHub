@@ -486,6 +486,9 @@ export function TopBar({
     };
     const handleSearch = () => {
       searchInputRef.current?.focus();
+      // Select existing query so Ctrl+F + typing replaces it in one motion.
+      // 聚焦后全选，便于直接改词。
+      searchInputRef.current?.select();
     };
 
     window.addEventListener("shortcut:newPrompt", handleNewPrompt);
@@ -713,7 +716,11 @@ export function TopBar({
                       ? t("header.searchMcp", "Search MCP...")
                       : appModule === "plugin"
                         ? t("plugin.searchPlaceholder", "Search Plugins")
-                        : t("header.search")
+                        : t("header.searchWithShortcut", {
+                            key: /mac/i.test(navigator.userAgent)
+                              ? "⌘F"
+                              : "Ctrl+F",
+                          })
                 }
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}

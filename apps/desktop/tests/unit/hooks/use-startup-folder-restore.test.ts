@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from "vitest";
+import { describe, expect, it, beforeEach, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 
 import { useStartupFolderRestore } from "../../../src/renderer/hooks/useStartupFolderRestore";
@@ -101,5 +101,47 @@ describe("useStartupFolderRestore", () => {
     rerender();
     act(() => undefined);
     expect(useFolderStore.getState().selectedFolderId).toBe("b");
+  });
+
+  it("notifies with an info toast naming the restored folder (FR-STARTUP-005)", () => {
+    useSettingsStore.setState({
+      startupFolderMode: "last",
+      lastActiveFolderId: "b",
+    });
+    seedFolderStore(["a", "b"]);
+
+    const notify = vi.fn<(message: string, tone: "info" | "warning") => void>();
+    renderHook(() => useStartupFolderRestore(notify));
+    act(() => undefined);
+
+    expect(notify).toHaveBeenCalledTimes(1);
+    const [message, tone] = notify.mock.calls[0];
+    expect(tone).toBe("info");
+    expect(message).toContain("Folder b");
+  });
+
+  it("warns when the configured startup folder no longer exists", () => {
+    useSettingsStore.setState({
+      startupFolderMode: "pinned",
+      pinnedStartFolderId: "gone",
+    });
+    seedFolderStore(["a", "b"]);
+
+    const notify = vi.fn<(message: string, tone: "info" | "warning") => void>();
+    renderHook(() => useStartupFolderRestore(notify));
+    act(() => undefined);
+
+    expect(notify).toHaveBeenCalledTimes(1);
+    expect(notify.mock.calls[0][1]).toBe("warning");
+    expect(notify.mock.calls[0][0].length).toBeGreaterThan(0);
+    expect(useFolderStore.getState().selectedFolderId).toBeNull();
+  });
+
+  it("stays silent in default mode", () => {
+    seedFolderStore(["a"]);
+    const notify = vi.fn();
+    renderHook(() => useStartupFolderRestore(notify));
+    act(() => undefined);
+    expect(notify).not.toHaveBeenCalled();
   });
 });

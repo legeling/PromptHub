@@ -1123,7 +1123,9 @@ describe("TopBar", () => {
       );
     });
 
-    const searchInput = screen.getByPlaceholderText("Search Prompt...");
+    // v0.6.3 X4: the prompt-search placeholder now advertises the shortcut
+    // (platform-dependent suffix), so match the stable prefix.
+    const searchInput = screen.getByPlaceholderText(/^Search prompts/);
     expect(screen.getByText("1/2")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Previous (Shift+Tab)" }),

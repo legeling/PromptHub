@@ -78,6 +78,18 @@ export function GeneralSettings() {
               }
               options={[
                 { value: "", label: t("settings.startupFolderTargetNone") },
+                // v0.6.3 FR-STARTUP-005: an invalid target stays visible and
+                // marked instead of silently disappearing from the list.
+                // 失效目标可见可标注，不再静默消失。
+                ...(settings.pinnedStartFolderId &&
+                !folders.some((f) => f.id === settings.pinnedStartFolderId)
+                  ? [
+                      {
+                        value: settings.pinnedStartFolderId,
+                        label: t("settings.startupFolderTargetMissing"),
+                      },
+                    ]
+                  : []),
                 ...folders.map((folder) => ({
                   value: folder.id,
                   label: folder.name,
