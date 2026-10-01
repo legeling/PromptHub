@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import { ColumnResizer } from "../ui/ColumnResizer";
 import { PromptListHeader } from "../prompt/PromptListHeader";
 import { PromptBatchActionBar } from "../prompt/PromptBatchActionBar";
-import { SparklesIcon } from "lucide-react";
+import { PromptListEmptyState } from "../prompt/PromptListEmptyState";
 import {
   PROMPT_LIST_PANE_WIDTH_DEFAULT,
   PROMPT_LIST_PANE_WIDTH_MAX,
@@ -22,17 +22,10 @@ function getCardRouteClass(
 }
 
 function PromptWorkspaceEmptyList() {
-  const { t } = usePromptWorkspaceContext();
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-          <SparklesIcon className="w-8 h-8 text-primary" />
-        </div>
-        <p className="text-lg font-medium text-foreground mb-1">
-          {t("prompt.noPrompts")}
-        </p>
-        <p className="text-sm text-muted-foreground">{t("prompt.addFirst")}</p>
+        <PromptListEmptyState />
       </div>
     </div>
   );

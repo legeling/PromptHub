@@ -7,6 +7,7 @@ import { useFolderStore } from '../../stores/folder.store';
 import { usePromptStore } from '../../stores/prompt.store';
 import { GalleryCard } from './PromptGalleryCard';
 import { PromptBatchActionBar } from './PromptBatchActionBar';
+import { PromptListEmptyState } from './PromptListEmptyState';
 import { usePromptBatchSelection } from './usePromptBatchSelection';
 
 interface PromptGalleryViewProps {
@@ -199,8 +200,7 @@ export function PromptGalleryView({
     if (prompts.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                <ImageIcon className="w-16 h-16 mb-4 opacity-20" />
-                <p>{t('prompt.noPrompts', '暂无 Prompt')}</p>
+                <PromptListEmptyState />
             </div>
         );
     }

@@ -6,6 +6,7 @@ import { useTableConfig, type ColumnConfig } from '../../hooks/useTableConfig';
 import { ResizableHeader } from './ResizableHeader';
 import { ColumnConfigMenu } from './ColumnConfigMenu';
 import { PromptBatchActionBar } from './PromptBatchActionBar';
+import { PromptListEmptyState } from './PromptListEmptyState';
 import { usePromptBatchSelection } from './usePromptBatchSelection';
 import { parsePromptVariables } from './prompt-modal-utils';
 import {
@@ -848,7 +849,7 @@ export function PromptTableView({
 
         {prompts.length === 0 && (
           <div className="flex items-center justify-center h-40 text-muted-foreground rounded-xl border border-border app-wallpaper-surface mt-2">
-            {t('prompt.noPrompts')}
+            <PromptListEmptyState />
           </div>
         )}
       </div>
