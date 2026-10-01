@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef, useId } from "react";
-import { Modal, Button, Input, Textarea, UnsavedChangesDialog } from "../ui";
+import { Modal, Button, Input, Textarea, UnsavedChangesDialog, CollapsibleSection } from "../ui";
+import { PromptSourceNotesFields } from "./PromptSourceNotesFields";
 import { handleMarkdownListKeyDown } from "../ui/Textarea";
 import { Select } from "../ui/Select";
 import {
@@ -1451,65 +1452,23 @@ export function EditPromptModal({
                 </div>
               </div>
 
-              {/* 来源 / Source */}
-              <div className="space-y-1.5 relative">
-                <label className="block text-sm font-medium text-foreground">
-                  {t("prompt.sourceOptional") || "Source (Optional)"}
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder={
-                      t("prompt.sourcePlaceholder") ||
-                      "Record prompt source (e.g. website, book)"
-                    }
-                    value={source}
-                    onChange={(e) => setSource(e.target.value)}
-                    onFocus={handleSourceFocus}
-                    onBlur={handleSourceBlur}
-                    className="w-full h-10 px-4 rounded-xl bg-muted/50 border-0 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:bg-background transition-all duration-base"
-                  />
-                  {showSourceSuggestions && sourceHistory.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto">
-                      {sourceHistory
-                        .filter((s) =>
-                          s.toLowerCase().includes(source.toLowerCase()),
-                        )
-                        .slice(0, 8)
-                        .map((item, idx) => (
-                          <button
-                            key={idx}
-                            type="button"
-                            className="w-full px-3 py-2 text-sm text-left hover:bg-accent/50 transition-colors truncate"
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              setSource(item);
-                              setShowSourceSuggestions(false);
-                            }}
-                          >
-                            {item}
-                          </button>
-                        ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* 备注 / Notes */}
-              <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-foreground">
-                  {t("prompt.notesOptional", "备注（可选）")}
-                </label>
-                <textarea
-                  placeholder={t(
-                    "prompt.notesPlaceholder",
-                    "记录关于这个 Prompt 的个人笔记...",
-                  )}
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="w-full min-h-[80px] px-4 py-3 rounded-xl bg-muted/50 border-0 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:bg-background transition-all duration-base resize-none"
+              {/* v0.6.2 #76: secondary fields (source & notes) moved into a
+                  collapsible group; content stays mounted so collapsing never
+                  affects saved values.
+                  次要字段折叠分组：收起仅隐藏，保存内容不受影响。 */}
+              <CollapsibleSection title={t("prompt.supplementaryInfo")}>
+                <PromptSourceNotesFields
+                  source={source}
+                  setSource={setSource}
+                  notes={notes}
+                  setNotes={setNotes}
+                  handleSourceFocus={handleSourceFocus}
+                  handleSourceBlur={handleSourceBlur}
+                  showSourceSuggestions={showSourceSuggestions}
+                  setShowSourceSuggestions={setShowSourceSuggestions}
+                  sourceHistory={sourceHistory}
                 />
-              </div>
+              </CollapsibleSection>
 
               {promptType !== "image" && renderReferenceMediaSection()}
             </div>
