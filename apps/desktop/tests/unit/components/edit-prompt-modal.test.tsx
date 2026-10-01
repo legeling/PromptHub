@@ -132,6 +132,34 @@ describe("EditPromptModal", () => {
     expect(payload.notes).toBe("keep <this> — 🎯");
   });
 
+  it("renders reference media in the main flow with the real size hint (v0.6.3 #64)", async () => {
+    await renderEditPromptModal();
+
+    // FR-MEDIA-001: media is first-class — visible without expanding the
+    // More Settings panel at all.
+    const media = screen.getByText("Reference Media");
+    expect(
+      screen.queryByRole("button", { name: /Supplementary information/ }),
+    ).toBeNull();
+
+    // FR-MEDIA-002: the enforced limits are stated next to the affordance.
+    expect(screen.getByText(/Local files up to 20MB/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/images from URLs up to 10MB/i),
+    ).toBeInTheDocument();
+
+    // after expanding More Settings, media still follows the supplementary
+    // group in DOM order (user prompt → media last in the main flow).
+    fireEvent.click(screen.getByRole("button", { name: /More Settings/ }));
+    const supplementary = screen.getByRole("button", {
+      name: /Supplementary information/,
+    });
+    expect(
+      supplementary.compareDocumentPosition(media) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("exposes core prompt fields and type selection state", async () => {
     await renderEditPromptModal();
 

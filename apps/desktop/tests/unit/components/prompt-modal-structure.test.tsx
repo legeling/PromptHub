@@ -226,7 +226,7 @@ describe("Prompt modal structure", () => {
     expect(screen.getByPlaceholderText("Name your Prompt")).toHaveValue("");
   });
 
-  it("keeps text prompt reference media inside more settings when editing", async () => {
+  it("shows text prompt reference media in the main flow without expanding more settings (v0.6.3 #64)", async () => {
     const user = userEvent.setup();
 
     await renderWithI18n(
@@ -245,7 +245,8 @@ describe("Prompt modal structure", () => {
 
     expect(screen.getByText("Basic Info")).toBeInTheDocument();
     expect(screen.getByText("Description (Optional)")).toBeInTheDocument();
-    expect(screen.queryByText("Reference Media")).not.toBeInTheDocument();
+    // v0.6.3: media left the More Settings panel and is first-class now.
+    expect(screen.getByText("Reference Media")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /More Settings/i }));
 

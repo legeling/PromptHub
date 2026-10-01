@@ -18,6 +18,10 @@ import {
   MessageSquareTextIcon,
 } from "lucide-react";
 import { useFolderStore } from "../../stores/folder.store";
+import {
+  IMAGE_DOWNLOAD_MAX_MB,
+  MEDIA_SAVE_MAX_MB,
+} from "@prompthub/shared/constants";
 import { usePromptStore } from "../../stores/prompt.store";
 import { useSettingsStore } from "../../stores/settings.store";
 import { useTranslation } from "react-i18next";
@@ -371,8 +375,17 @@ export function CreatePromptModal({
       onDrop={handleMediaDrop}
     >
       <label className="block text-sm font-medium text-foreground">
-        {t("prompt.referenceMedia")}
-      </label>
+            {t("prompt.referenceMedia")}
+          </label>
+          {/* v0.6.3 #64: real limits next to the upload affordance (shared
+              constants with the main-process enforcement).
+              上传入口旁直接写明真实限制。 */}
+          <p className="text-xs text-muted-foreground">
+            {t("prompt.mediaLimitHint", {
+              local: MEDIA_SAVE_MAX_MB,
+              remote: IMAGE_DOWNLOAD_MAX_MB,
+            })}
+          </p>
       <div className="flex flex-wrap gap-3">
         {images.map((img, index) => (
           <div

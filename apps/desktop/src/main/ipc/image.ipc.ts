@@ -4,7 +4,16 @@ import * as https from "https";
 import path from "path";
 import fs from "fs/promises";
 import { v4 as uuidv4 } from "uuid";
-import { IPC_CHANNELS } from "@prompthub/shared/constants";
+import {
+  IPC_CHANNELS,
+  // Limits live in @prompthub/shared/constants (media-limits) so the renderer
+  // hint copy cannot drift from what the main process actually enforces.
+  // 限制值收敛到 shared：提示文案与强制值不可能漂移。
+  IMAGE_DOWNLOAD_TIMEOUT_MS,
+  IMAGE_DOWNLOAD_MAX_BYTES,
+  IMAGE_DOWNLOAD_MAX_REDIRECTS,
+  MEDIA_SAVE_MAX_BYTES,
+} from "@prompthub/shared/constants";
 import {
   resolvePublicAddress,
   isBlockedHostname,
@@ -12,10 +21,6 @@ import {
 import { getHttpRequestAgent } from "../services/network-proxy";
 import { getImagesDir, getVideosDir } from "../runtime-paths";
 
-const IMAGE_DOWNLOAD_TIMEOUT_MS = 30_000;
-const IMAGE_DOWNLOAD_MAX_BYTES = 10 * 1024 * 1024;
-const IMAGE_DOWNLOAD_MAX_REDIRECTS = 5;
-const MEDIA_SAVE_MAX_BYTES = 20 * 1024 * 1024;
 const BASE64_PATTERN = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u;
 const IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".gif", ".webp"]);
 const VIDEO_EXTENSIONS = new Set([".mp4", ".webm", ".mov", ".avi", ".mkv"]);
