@@ -7,7 +7,7 @@ file manually. Run the generator after adding, moving, or archiving a change.
 
 | State | Count |
 | --- | ---: |
-| Active | 33 |
+| Active | 40 |
 | Archived | 164 |
 | Legacy | 1 |
 
@@ -19,13 +19,18 @@ file manually. Run the generator after adding, moving, or archiving a change.
 | `cli-feature-completeness` | active | `spec/changes/active/cli-feature-completeness/` |
 | `cli-install-manual-fallback` | active | `spec/changes/active/cli-install-manual-fallback/` |
 | `cloud-account-store-client` | active | `spec/changes/active/cloud-account-store-client/` |
+| `database-integrity-repair` | implemented | `spec/changes/active/database-integrity-repair/` |
+| `db-prompt-fts-tokenized-search` | active | `spec/changes/active/db-prompt-fts-tokenized-search/` |
 | `desktop-agent-asset-tray-actions` | implemented | `spec/changes/active/desktop-agent-asset-tray-actions/` |
 | `desktop-frontend-animation-system` | active | `spec/changes/active/desktop-frontend-animation-system/` |
 | `desktop-frontend-perf-tuneup` | active | `spec/changes/active/desktop-frontend-perf-tuneup/` |
 | `desktop-home-layout-controls` | active | `spec/changes/active/desktop-home-layout-controls/` |
 | `desktop-issue-179-configured-skill-targets` | active | `spec/changes/active/desktop-issue-179-configured-skill-targets/` |
+| `desktop-prompt-batch-ux-hardening` | active | `spec/changes/active/desktop-prompt-batch-ux-hardening/` |
 | `desktop-prompt-context-move` | active | `spec/changes/active/desktop-prompt-context-move/` |
+| `desktop-prompt-editor-section-collapse` | active | `spec/changes/active/desktop-prompt-editor-section-collapse/` |
 | `desktop-renderer-ui-test-coverage` | active | `spec/changes/active/desktop-renderer-ui-test-coverage/` |
+| `desktop-startup-folder-restore` | active | `spec/changes/active/desktop-startup-folder-restore/` |
 | `desktop-update-dialog-polish` | active | `spec/changes/active/desktop-update-dialog-polish/` |
 | `grok-build-platform-support` | active | `spec/changes/active/grok-build-platform-support/` |
 | `homepage-changelog-route-retirement` | active | `spec/changes/active/homepage-changelog-route-retirement/` |
@@ -40,8 +45,10 @@ file manually. Run the generator after adding, moving, or archiving a change.
 | `prompt-output-format-contribution` | active | `spec/changes/active/prompt-output-format-contribution/` |
 | `r2-direct-downloads` | active | `spec/changes/active/r2-direct-downloads/` |
 | `readme-screenshots-v0-5-6` | active | `spec/changes/active/readme-screenshots-v0-5-6/` |
+| `republish-0-5-9-20260714` | active | `spec/changes/active/republish-0-5-9-20260714/` |
 | `rules-managed-copies` | in progress | `spec/changes/active/rules-managed-copies/` |
 | `self-hosted-skill-sync-reliability` | active | `spec/changes/active/self-hosted-skill-sync-reliability/` |
+| `skill-install-safety-resilience` | implemented | `spec/changes/active/skill-install-safety-resilience/` |
 | `skill-source-update-reconciliation` | completed | `spec/changes/active/skill-source-update-reconciliation/` |
 | `skill-uninstall-lifecycle` | active | `spec/changes/active/skill-uninstall-lifecycle/` |
 | `source-trust-and-mcp-market-updates` | implemented | `spec/changes/active/source-trust-and-mcp-market-updates/` |

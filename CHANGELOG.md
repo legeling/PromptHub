@@ -1,5 +1,32 @@
 ## [Unreleased]
 
+## [0.6.2] - 2026-10-01
+
+### 新功能 / Features
+
+- 🔍 **多词搜索按词匹配**：FTS 搜索从"整串短语"改为按空格分词后逐词转义并以 AND 组合——搜「提示词 管理」不再要求两词相邻；特殊字符（`AND`/`OR`、引号、括号、星号等）依旧安全；纯空白关键词回到"无关键词"行为（全库列表），与直觉一致
+  - **Tokenized search**: multi-word queries now match each term independently instead of requiring an exact phrase; quote escaping and safety against FTS5 operators are preserved; whitespace-only keywords behave like no keyword
+- 🖱️ **启动文件夹偏好**：设置页新增"启动文件夹"三选一（默认视图 / 上次打开的文件夹 / 固定文件夹），固定项可在下拉中直接选定；默认保持现有行为，目标文件夹被删除时静默回落默认视图（响应上游 #74）
+  - **Startup folder preference**: new settings to reopen the last folder or a pinned folder after cold start; defaults keep current behavior and missing folders fall back silently
+
+### 问题修复 / Fixes
+
+- 🏷️ **表格视图批量「标签」入口复原**：v0.6.0 交付的"多选→标签"入口在升级上游 0.5.9 容器结构时被静默断线（`onBatchTags` 无接口声明、`PromptTableView` 不消费），本版在共享批量条上重新接线并同步画廊/卡片视图，`openQuickTagForIds` 全链路恢复可用
+  - **Batch tag entry restored**: the v0.6.0 bulk-tag wiring was dropped while replaying on the upstream 0.5.9 container; the entry is restored via a shared batch bar and wired through gallery/card views
+- 📝 **搜索结果列表内联编辑"取消"按钮冲突消除**：批量条取消项改名"清除选择"（i18n key 已存在），修复内联编辑集成测试发现的同名按钮歧义
+  - **Clear-selection rename**: the batch bar's dismiss action now reads "Clear Selection" to remove duplicate-button-name ambiguity with inline editing
+
+### 优化 / Improvements
+
+- 🃏 **画廊/卡片视图批量操作补齐**：图片视图卡片支持多选复选框并共享同一批量条；卡片默认视图在存在旧 store 级多选的同时补上可见操作条，收藏/移动/删除/标签入口与表格视图完全一致，操作后清除选择的时序与表格一致
+  - **Gallery and card batch actions**: gallery cards gained selection checkboxes and all three views share one batch actions bar, so favorite/move/delete/tag behave identically to the table view
+- 🧺 **编辑弹窗次要信息可折叠**：新建与编辑 Prompt 对话框把"来源 + 备注"收入默认折叠分组（内容不卸载、收起/展开不影响保存值，含 emoji/尖括号/引号对抗用例），核心提示词编辑区可见面积显著增大（响应上游 #76）
+  - **Collapsible secondary fields**: source and notes move into a always-mounted folded section, keeping values and save behavior untouched while enlarging the main prompt editors
+- 🚀 **表格批量条选中计数带总数**：选中提示从"已选 n 项"升级为"已选 n / 共 m 项"并清理 `t() || 硬编码中文` 兜底与批量条硬编码中文
+  - **Selection count with denominator**: the batch bar now shows selected/total and no longer carries hardcoded Chinese fallback strings
+- 🧩 **超大巨型文件瘦身**：`PromptTableView.tsx` 由 1046 行降至 875 行（批量逻辑抽为共享 hook 与批量条），`PromptGalleryView.tsx` 由 412 行降至 287 行（卡片组件拆分独立文件），两视图行为与对外 API 不变
+  - **Oversized view files slimmed**: extraction reduces two legacy giant files without external behavior changes
+
 ## [0.6.1] - 2026-10-01
 
 ### 问题修复 / Fixes
