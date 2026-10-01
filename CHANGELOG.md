@@ -1,5 +1,30 @@
 ## [Unreleased]
 
+## [0.6.3] - 2026-10-01
+
+### 新功能 / Features
+
+- 🔍 **Ctrl+F 直达搜索**：窗口内按 Ctrl+F（mac ⌘F）聚焦顶栏搜索框并全选已有内容，直接改词；placeholder 显示当前平台快捷键；用户若已将该组合键配置给其他动作则自动让位
+  - **Ctrl+F focuses search**: one keystroke to the top-bar search with the current query selected; the placeholder advertises the shortcut; user-assigned bindings take precedence
+- 🧭 **备份/迁移/回退自助指引**：设置页备份区顶部新增可折叠三步指引卡（导出全量备份 → 新设备或回退版本安装 → 拖入 .zip 或点导入恢复），折叠状态本地持久化（响应上游 #97/#139/#71 的"能力在但找不到"问题）
+  - **Backup guidance card**: a persistent, collapsible three-step self-help path for migration and rollback at the top of the backup settings
+
+### 问题修复 / Fixes
+
+- 🔑 **安全错误不再英文透传**：主密码设置/修改/解锁失败时不再向用户弹出主进程原始英文报错（如 "Password too short"），已知错误映射为界面语言的行动提示，未知错误显示通用文案并保留原始信息到日志（响应上游 #64）
+  - **Humanized security errors**: known master-password failures now show localized, actionable copy instead of raw English IPC messages; unknown failures fall back to generic copy with details kept in the console
+- 🃏 **空列表不再"无话可说"**：搜索词/标签/文件夹任一筛选导致 0 结果时，表格/画廊/卡片视图显示"没有符合当前筛选的 Prompt"并提供〔清除筛选〕一键复位；库真正为空时显示新建引导（复用既有新建弹窗事件路径）
+  - **Empty states explain themselves**: filtered emptiness offers one-click "clear filters"; a genuinely empty library offers a create action, across card/table/gallery views
+
+### 优化 / Improvements
+
+- 🖼️ **图片上传入口提层 + 真实限制提示**：文本类 Prompt 编辑弹窗的参考媒体区移出"更多设置"折叠区进入主流程；上传入口旁标注实际限制（本地文件 ≤20MB、URL 图片 ≤10MB），限制值收敛为 shared 常量单一事实源，提示与强制值不可能漂移（响应上游 #64）
+  - **Media upload promoted**: reference media is first-class in the text-prompt editor with the enforced size limits stated inline, backed by shared constants so hints can never drift from enforcement
+- 🏷️ **标签管理界面完善**：标签列表新增用量计数与排序（默认按使用量降序，可切升序/名称序），每行"查看"一键关闭弹窗并筛选出使用该标签的 Prompt，筛选中的标签带高亮标记（响应上游 #145）
+  - **Tag manager usability**: per-tag usage counts with sorting and a one-click jump that filters the list to the tag, with an active-filter marker
+- 👀 **启动文件夹恢复可感知**：按设置进入上次/固定文件夹时显示轻量提示；目标文件夹已被删除时给出警告提示，且设置页固定项显示"（已不存在）"而非静默消失
+  - **Startup folder feedback**: successful restores and missing-folder fallbacks now surface a toast, and the settings dropdown marks stale pins
+
 ## [0.6.2] - 2026-10-01
 
 ### 新功能 / Features

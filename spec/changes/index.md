@@ -7,7 +7,7 @@ file manually. Run the generator after adding, moving, or archiving a change.
 
 | State | Count |
 | --- | ---: |
-| Active | 40 |
+| Active | 46 |
 | Archived | 164 |
 | Legacy | 1 |
 
@@ -22,15 +22,21 @@ file manually. Run the generator after adding, moving, or archiving a change.
 | `database-integrity-repair` | implemented | `spec/changes/active/database-integrity-repair/` |
 | `db-prompt-fts-tokenized-search` | active | `spec/changes/active/db-prompt-fts-tokenized-search/` |
 | `desktop-agent-asset-tray-actions` | implemented | `spec/changes/active/desktop-agent-asset-tray-actions/` |
+| `desktop-backup-guidance-card` | active | `spec/changes/active/desktop-backup-guidance-card/` |
+| `desktop-editor-media-visibility` | active | `spec/changes/active/desktop-editor-media-visibility/` |
+| `desktop-error-copy-humanization` | active | `spec/changes/active/desktop-error-copy-humanization/` |
 | `desktop-frontend-animation-system` | active | `spec/changes/active/desktop-frontend-animation-system/` |
 | `desktop-frontend-perf-tuneup` | active | `spec/changes/active/desktop-frontend-perf-tuneup/` |
 | `desktop-home-layout-controls` | active | `spec/changes/active/desktop-home-layout-controls/` |
 | `desktop-issue-179-configured-skill-targets` | active | `spec/changes/active/desktop-issue-179-configured-skill-targets/` |
+| `desktop-list-empty-state-guidance` | active | `spec/changes/active/desktop-list-empty-state-guidance/` |
 | `desktop-prompt-batch-ux-hardening` | active | `spec/changes/active/desktop-prompt-batch-ux-hardening/` |
 | `desktop-prompt-context-move` | active | `spec/changes/active/desktop-prompt-context-move/` |
 | `desktop-prompt-editor-section-collapse` | active | `spec/changes/active/desktop-prompt-editor-section-collapse/` |
 | `desktop-renderer-ui-test-coverage` | active | `spec/changes/active/desktop-renderer-ui-test-coverage/` |
+| `desktop-search-focus-shortcut` | active | `spec/changes/active/desktop-search-focus-shortcut/` |
 | `desktop-startup-folder-restore` | active | `spec/changes/active/desktop-startup-folder-restore/` |
+| `desktop-tag-manager-usability` | active | `spec/changes/active/desktop-tag-manager-usability/` |
 | `desktop-update-dialog-polish` | active | `spec/changes/active/desktop-update-dialog-polish/` |
 | `grok-build-platform-support` | active | `spec/changes/active/grok-build-platform-support/` |
 | `homepage-changelog-route-retirement` | active | `spec/changes/active/homepage-changelog-route-retirement/` |
