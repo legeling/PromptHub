@@ -1,5 +1,19 @@
 ## [Unreleased]
 
+## [0.6.4] - 2026-10-03
+
+### 问题修复 / Fixes
+
+- 🧩 **Prompt 层级与文件夹归属打通**：移动到另一个 Prompt 节点时，被移动 Prompt 及其全部后代同步继承目标父节点所在文件夹；移动到根节点时只解除父子引用、保留自身文件夹。修复了跨文件夹移动后 SQLite/工作区已写入层级，但列表因父节点不在当前文件夹视图而被压平、看似"没变成子项"的问题。
+  - **Hierarchy follows folder scope**: moving a prompt into another prompt moves the whole subtree into the parent's folder, while moving to root preserves its own folder; folder-scoped views now keep the relationship visible.
+- 🖱️ **内部 Prompt 拖拽不再被备份拖放层拦截**：全局备份恢复入口仅在拖拽携带文件时改写 `dropEffect=copy`，不再劫持应用内部的 Prompt MIME/文本拖拽；修复 Prompt 卡片之间拖到目标节点出现 no-drop 🚫、`drop` 不触发而看似"拖不动"的问题。
+  - **Prompt drag-and-drop restored**: the window-level backup drop zone is now file-payload only, ending the `copy`/`move` conflict that made Chromium reject prompt hierarchy drops.
+
+### 优化 / Improvements
+
+- 🌲 **Prompt 树选中手风琴**：选中或重复选中 Prompt 时自动展开自身及祖先分支，同时收起其他有子节点的分支；点击同一节点可从手动折叠状态重新展开，不再要求逐项手动收起/展开。
+  - **Selection-driven tree accordion**: expanding and collapsing no longer requires manual per-branch cleanup; selecting a prompt reveals its path while keeping the tree readable.
+
 ## [0.6.3] - 2026-10-01
 
 ### 新功能 / Features
