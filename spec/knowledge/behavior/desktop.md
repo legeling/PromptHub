@@ -122,6 +122,12 @@
 - MCP 上游更新只能由用户显式应用。安全更新可直接执行；本地修改、双向冲突和无基线旧记录必须要求明确复核。应用更新必须保留密钥值、用户状态、记录身份、绑定和目标文件；目标文件只由既有显式分发/同步流程写入。
 - MCP Registry 的 npm/PyPI 模板必须固定已发布版本；无法正确映射为受支持运行时的 package 类型必须跳过，不得生成猜测命令。未来官方商店条目复用同一版本与 fingerprint 合同。
 
+### 14. Prompt Tree Drag Global DnD And Selection Accordion
+
+- `BackupDropRestoreLayer` 是桌面窗口的**文件**拖放兜底层：只有当 `DataTransfer` 携带文件（`files` / file items / `Files` type）时才能 `preventDefault` 并把 `dropEffect` 设为 `copy`；应用内部 Prompt 层级拖拽（自定义 MIME / 文本）必须保持透明，避免与 `effectAllowed=move` 冲突导致 Chromium no-drop 🚫。
+- 非备份文件仍由该层阻止默认导航与丢档，但不得调用导入；备份文件命中时才进入导入预览。
+- Prompt 列表/卡片树采用选择驱动的手风琴：单节点选中或重复选中时展开自身及祖先链，并把其他有子节点的分支置为 collapsed；取消选中保持原 collapsed 引用。`selectionRevision` 是 renderer store 内非持久化信号，仅用于让同一 ID 的重复点击也能重新展开。
+
 ## Stable Scenarios
 
 ### Scenario: Contributor changes desktop runtime behavior

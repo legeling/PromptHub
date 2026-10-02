@@ -89,6 +89,10 @@
   readable and unchanged.
 - Prompt frontmatter must retain `parentId` and `order` so hierarchy moves
   survive workspace export and bootstrap import.
+- Hierarchy moves must keep parent and child in the same folder: moving a
+  prompt under another prompt adopts the parent's `folderId` for the whole
+  subtree; moving to the root keeps the prompt's own `folderId`. Folder views
+  must not silently flatten a persisted parent-child link.
 - Workspace import must restore prompts in parent-before-child order inside a
   transaction. A missing or cyclic parent reference must fail without making a
   partial prompt hierarchy visible.
