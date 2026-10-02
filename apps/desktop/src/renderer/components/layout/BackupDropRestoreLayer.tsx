@@ -36,7 +36,32 @@ export function BackupDropRestoreLayer({
     const hasBackupFile = (dataTransfer: DataTransfer | null): boolean =>
       !!dataTransfer && pickSupportedBackupFile(dataTransfer.files) !== null;
 
+    // Only file-system drags may enter the global backup-restore contract.
+    // Application-internal drags (prompt hierarchy MIME / text-only) must stay
+    // transparent: a blanket `dropEffect = "copy"` conflicts with their
+    // `effectAllowed = "move"` and Chromium shows no-drop 🚫 and never fires drop.
+    const hasFilePayload = (dataTransfer: DataTransfer | null): boolean => {
+      if (!dataTransfer) {
+        return false;
+      }
+      if (dataTransfer.files && dataTransfer.files.length > 0) {
+        return true;
+      }
+      if (
+        dataTransfer.items &&
+        Array.from(dataTransfer.items).some((item) => item.kind === "file")
+      ) {
+        return true;
+      }
+      return (
+        !!dataTransfer.types && Array.from(dataTransfer.types).includes("Files")
+      );
+    };
+
     const handleDragEnter = (event: globalThis.DragEvent) => {
+      if (!hasFilePayload(event.dataTransfer)) {
+        return;
+      }
       event.preventDefault();
       dragCounterRef.current += 1;
       if (hasBackupFile(event.dataTransfer) && !previewOpenRef.current) {
@@ -45,6 +70,9 @@ export function BackupDropRestoreLayer({
     };
 
     const handleDragOver = (event: globalThis.DragEvent) => {
+      if (!hasFilePayload(event.dataTransfer)) {
+        return;
+      }
       event.preventDefault();
       if (event.dataTransfer) {
         event.dataTransfer.dropEffect = "copy";
@@ -52,6 +80,9 @@ export function BackupDropRestoreLayer({
     };
 
     const handleDragLeave = (event: globalThis.DragEvent) => {
+      if (!hasFilePayload(event.dataTransfer)) {
+        return;
+      }
       event.preventDefault();
       dragCounterRef.current -= 1;
       if (dragCounterRef.current <= 0) {
@@ -61,6 +92,9 @@ export function BackupDropRestoreLayer({
     };
 
     const handleDrop = async (event: globalThis.DragEvent) => {
+      if (!hasFilePayload(event.dataTransfer)) {
+        return;
+      }
       event.preventDefault();
       dragCounterRef.current = 0;
       setIsDraggingBackup(false);

@@ -145,3 +145,93 @@ describe("BackupDropRestoreLayer", () => {
     removeSpy.mockRestore();
   });
 });
+
+describe("BackupDropRestoreLayer DnD boundary", () => {
+  const makeDataTransfer = (init: {
+    files?: File[];
+    types?: string[];
+    effectAllowed?: string;
+    dropEffect?: string;
+  }) => ({
+    files: init.files ?? [],
+    items: (init.files ?? []).map(() => ({ kind: "file" })),
+    types: init.types ?? [],
+    effectAllowed: init.effectAllowed ?? "move",
+    dropEffect: init.dropEffect ?? "none",
+    setData: vi.fn(),
+    getData: vi.fn().mockReturnValue(""),
+  });
+
+  function fire(type: string, dataTransfer: ReturnType<typeof makeDataTransfer>) {
+    const event = new window.Event(type, { bubbles: true, cancelable: true });
+    Object.defineProperty(event, "dataTransfer", { value: dataTransfer });
+    act(() => {
+      screen.getByTestId("drop-host").dispatchEvent(event);
+    });
+    return event;
+  }
+
+  beforeEach(() => {
+    beginImportFromFile.mockReset();
+  });
+
+  it("leaves application-internal prompt drag contract untouched", async () => {
+    await act(async () => {
+      renderWithI18n(<Host controller={controllerMock()} />, { language: "en" });
+    });
+
+    const dataTransfer = makeDataTransfer({
+      types: ["application/x-prompthub-prompt-id", "text/plain"],
+      effectAllowed: "move",
+      dropEffect: "move",
+    });
+    fire("dragenter", dataTransfer);
+    const over = fire("dragover", dataTransfer);
+    const drop = fire("drop", dataTransfer);
+
+    expect(dataTransfer.dropEffect).toBe("move");
+    expect(over.defaultPrevented).toBe(false);
+    expect(drop.defaultPrevented).toBe(false);
+    expect(beginImportFromFile).not.toHaveBeenCalled();
+  });
+
+  it("still blocks navigation for non-backup files without running import", async () => {
+    await act(async () => {
+      renderWithI18n(<Host controller={controllerMock()} />, { language: "en" });
+    });
+
+    const dataTransfer = makeDataTransfer({
+      files: [new File(["x"], "image.png", { type: "image/png" })],
+      types: ["Files"],
+      effectAllowed: "copy",
+    });
+    fire("dragenter", dataTransfer);
+    const over = fire("dragover", dataTransfer);
+    const drop = fire("drop", dataTransfer);
+
+    expect(dataTransfer.dropEffect).toBe("copy");
+    expect(over.defaultPrevented).toBe(true);
+    expect(drop.defaultPrevented).toBe(true);
+    expect(beginImportFromFile).not.toHaveBeenCalled();
+  });
+
+  it("claims backup archives and imports them", async () => {
+    await act(async () => {
+      renderWithI18n(<Host controller={controllerMock()} />, { language: "en" });
+    });
+
+    const file = new File(["x"], "prompthub-backup.zip");
+    const dataTransfer = makeDataTransfer({
+      files: [file],
+      types: ["Files"],
+    });
+    fire("dragenter", dataTransfer);
+    const over = fire("dragover", dataTransfer);
+    const drop = fire("drop", dataTransfer);
+
+    expect(over.defaultPrevented).toBe(true);
+    expect(dataTransfer.dropEffect).toBe("copy");
+    expect(drop.defaultPrevented).toBe(true);
+    expect(beginImportFromFile).toHaveBeenCalledWith(file);
+  });
+});
