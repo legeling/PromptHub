@@ -409,6 +409,14 @@ export async function movePrompt(
           newOrder,
         );
         const now = new Date().toISOString();
+        if (targetParentId !== null) {
+          applyParentFolderToPromptSubtree(
+            reorderedPrompts,
+            promptId,
+            targetParentId,
+            now,
+          );
+        }
 
         for (const item of reorderedPrompts) {
           const putRequest = store.put({
@@ -549,6 +557,52 @@ function assertPromptMoveAllowed(
       throw new Error("Parent prompt does not exist");
     }
     currentParentId = parent.parentId;
+  }
+}
+
+function applyParentFolderToPromptSubtree(
+  prompts: Prompt[],
+  movedPromptId: string,
+  parentId: string,
+  timestamp: string,
+): void {
+  const parent = prompts.find((item) => item.id === parentId);
+  if (!parent) {
+    return;
+  }
+
+  const parentFolderId = parent.folderId ?? null;
+  const childrenByParentId = new Map<string, Prompt[]>();
+  for (const item of prompts) {
+    const itemParentId = item.parentId ?? null;
+    if (!itemParentId) {
+      continue;
+    }
+    const siblings = childrenByParentId.get(itemParentId) ?? [];
+    siblings.push(item);
+    childrenByParentId.set(itemParentId, siblings);
+  }
+
+  const stack: string[] = [movedPromptId];
+  const visited = new Set<string>();
+  while (stack.length > 0) {
+    const id = stack.pop();
+    if (id === undefined || visited.has(id)) {
+      continue;
+    }
+    visited.add(id);
+
+    const node = prompts.find((item) => item.id === id);
+    if (node) {
+      node.folderId = parentFolderId;
+      node.updatedAt = timestamp;
+    }
+
+    for (const child of childrenByParentId.get(id) ?? []) {
+      if (!visited.has(child.id)) {
+        stack.push(child.id);
+      }
+    }
   }
 }
 

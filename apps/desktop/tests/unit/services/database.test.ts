@@ -265,6 +265,99 @@ describe('Database Service', () => {
         });
     });
 
+    describe('movePrompt (IndexedDB fallback keeps folder in sync)', () => {
+        it('adopts the parent folder for the moved prompt and its descendants', async () => {
+            const old = '2025-01-01T00:00:00.000Z';
+            const fixture: any[] = [
+                { id: 'p-keep', title: 'Keep', updatedAt: old, order: 0, folderId: 'other-folder' },
+                { id: 'p-parent', title: 'Parent', updatedAt: old, order: 0, folderId: 'folder-Y' },
+                { id: 'p-child', title: 'Child', updatedAt: old, order: 0, folderId: 'folder-X' },
+                { id: 'p-grand', title: 'Grand', parentId: 'p-child', updatedAt: old, order: 0, folderId: 'folder-X' },
+            ];
+
+            const putCalls: any[] = [];
+            mockObjectStore.put.mockImplementation((value: any) => {
+                putCalls.push(value);
+                return { onsuccess: null, onerror: null };
+            });
+
+            Object.defineProperty(mockTransaction, 'oncomplete', {
+                configurable: true,
+                enumerable: true,
+                set(handler: any) {
+                    (mockTransaction as any)._oncomplete = handler;
+                    if (typeof handler === 'function') {
+                        setTimeout(() => (mockTransaction as any)._oncomplete?.(), 0);
+                    }
+                },
+                get() {
+                    return (mockTransaction as any)._oncomplete ?? null;
+                },
+            });
+
+            const getAllRequest: any = {
+                onsuccess: null,
+                onerror: null,
+                result: fixture,
+            };
+            Object.defineProperty(getAllRequest, 'onsuccess', {
+                configurable: true,
+                set(handler: any) {
+                    getAllRequest._success = handler;
+                    if (typeof handler === 'function') {
+                        setTimeout(() => getAllRequest._success?.(), 0);
+                    }
+                },
+            });
+            mockObjectStore.getAll.mockReturnValue(getAllRequest);
+
+            const { movePrompt } = await import('../../../src/renderer/services/database');
+            await movePrompt('p-child', 'p-parent', 2);
+
+            const child = putCalls.find((p) => p.id === 'p-child');
+            const grand = putCalls.find((p) => p.id === 'p-grand');
+            const kept = putCalls.find((p) => p.id === 'p-keep');
+            expect(child?.folderId).toBe('folder-Y');
+            expect(child?.parentId).toBe('p-parent');
+            expect(grand?.folderId).toBe('folder-Y');
+            expect(kept?.folderId).toBe('other-folder');
+        });
+
+        it('keeps a prompt folder untouched when moved to the root level', async () => {
+            const movedStamp = '2026-10-02T00:00:00.000Z';
+            const fixture: any[] = [
+                { id: 'p-root-target', title: 'Target', updatedAt: movedStamp, order: 5, folderId: 'root-folder' },
+            ];
+
+            const putCalls: any[] = [];
+            mockObjectStore.put.mockImplementation((value: any) => {
+                putCalls.push(value);
+                return { onsuccess: null, onerror: null };
+            });
+            Object.defineProperty(mockTransaction, 'oncomplete', {
+                configurable: true,
+                set(handler: any) {
+                    (mockTransaction as any)._oncomplete = handler;
+                    if (typeof handler === 'function') setTimeout(() => (mockTransaction as any)._oncomplete?.(), 0);
+                },
+            });
+            const getAllRequest: any = { onsuccess: null, onerror: null, result: fixture };
+            Object.defineProperty(getAllRequest, 'onsuccess', {
+                configurable: true,
+                set(handler: any) {
+                    getAllRequest._success = handler;
+                    if (typeof handler === 'function') setTimeout(() => getAllRequest._success?.(), 0);
+                },
+            });
+            mockObjectStore.getAll.mockReturnValue(getAllRequest);
+
+            const { movePrompt } = await import('../../../src/renderer/services/database');
+            await movePrompt('p-root-target', null, 0);
+
+            expect(putCalls[0].folderId).toBe('root-folder');
+        });
+    });
+
     describe('Error Handling', () => {
         it('should handle database open error', async () => {
             const mockError = new Error('Database open failed');

@@ -757,9 +757,62 @@ export class PromptDB {
         promptId,
         Date.now(),
       );
+
+      // Keep the hierarchy and folder scopes aligned: when a prompt is moved
+      // under a parent, the whole subtree adopts the parent's folder so folder
+      // views never silently flatten the relationship (folder filtering hides
+      // the parent → getVisibleParentId drops it → child renders as a root).
+      // Moving to the root keeps its own folder untouched.
+      if (targetParentId !== null) {
+        this.syncPromptSubtreeFolder(
+          promptId,
+          targetParentId,
+          Date.now(),
+        );
+      }
     });
 
     txn();
+  }
+
+  /**
+   * Recursively adopt the parent's folder for the moved subtree.
+   * 将移动子树的 folder_id 同步为目标父节点的 folder_id；移动到根不动。
+   */
+  private syncPromptSubtreeFolder(
+    promptId: string,
+    parentId: string,
+    timestamp: number,
+  ): void {
+    const parentRow = this.db
+      .prepare("SELECT folder_id FROM prompts WHERE id = ?")
+      .get(parentId) as { folder_id: string | null } | undefined;
+    const parentFolderId = parentRow ? parentRow.folder_id ?? null : null;
+
+    const childStmt = this.db.prepare(
+      "SELECT id FROM prompts WHERE parent_id = ?",
+    );
+    const updateStmt = this.db.prepare(
+      "UPDATE prompts SET folder_id = ?, updated_at = ? WHERE id = ?",
+    );
+
+    const visited = new Set<string>();
+    const stack: string[] = [promptId];
+    while (stack.length > 0) {
+      const id = stack.pop();
+      if (id === undefined || visited.has(id)) {
+        continue;
+      }
+      visited.add(id);
+      updateStmt.run(parentFolderId, timestamp, id);
+
+      const children = childStmt.all(id) as Array<{ id: string }>;
+      for (const child of children) {
+        if (!visited.has(child.id)) {
+          stack.push(child.id);
+        }
+      }
+    }
   }
 
   private assertValidPromptParent(promptId: string, parentId: string | null): void {
