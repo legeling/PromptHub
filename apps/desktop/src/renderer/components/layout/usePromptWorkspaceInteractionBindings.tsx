@@ -29,6 +29,7 @@ import {
   useMovePromptTreeActions,
   usePromptBatchActions,
 } from "./usePromptWorkspaceTreeActions";
+import { usePromptTreeAutoCollapseOnSelect } from "./usePromptTreeAutoCollapse";
 
 type StoreBindings = ReturnType<typeof usePromptWorkspaceStoreBindings>;
 type WorkspaceState = ReturnType<typeof usePromptWorkspaceState>;
@@ -201,6 +202,13 @@ function usePromptWorkspaceTreeBindings(inputs: WorkspaceActionInputs) {
     setCollapsedPromptIds: inputs.state.detail.setCollapsedPromptIds,
     visibleHierarchyMeta: inputs.derived.visibleHierarchyMeta,
     visiblePrompts: inputs.derived.visiblePrompts,
+  });
+  usePromptTreeAutoCollapseOnSelect({
+    prompts: inputs.stores.promptData.prompts,
+    collapsedPromptIds: inputs.state.detail.collapsedPromptIds,
+    setCollapsedPromptIds: inputs.state.detail.setCollapsedPromptIds,
+    selectedPromptId: inputs.derived.selectedPrompt?.id ?? null,
+    selectionRevision: inputs.stores.promptData.selectionRevision,
   });
   const tree = useMovePromptTreeActions({
     movePrompt: inputs.stores.promptActions.movePrompt,

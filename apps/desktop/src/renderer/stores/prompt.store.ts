@@ -50,6 +50,8 @@ interface PromptState {
   selectedId: string | null;
   selectedIds: string[];
   lastSelectedId: string | null;
+  /** Bumped on every explicit single-prompt selection click, including repeat clicks. */
+  selectionRevision: number;
   isLoading: boolean;
   searchQuery: string;
   filterTags: string[];
@@ -109,6 +111,7 @@ export const usePromptStore = create<PromptState>()(
       selectedId: null,
       selectedIds: [],
       lastSelectedId: null,
+      selectionRevision: 0,
       isLoading: false,
       searchQuery: "",
       filterTags: [],
@@ -306,26 +309,35 @@ export const usePromptStore = create<PromptState>()(
           selectedId: id,
           selectedIds: id ? [id] : [],
           lastSelectedId: id ?? state.lastSelectedId,
+          selectionRevision: id ? state.selectionRevision + 1 : state.selectionRevision,
         })),
 
       setSelectedIds: (ids) =>
-        set((state) => ({
-          selectedIds: ids,
-          // If only one is selected, update selectedId for compatibility
-          // 如果只选中一个，更新 selectedId 以保持兼容性
-          selectedId:
+        set((state) => {
+          const nextSelectedId =
             ids.length === 1
               ? ids[0]
               : ids.includes(state.selectedId || "")
                 ? state.selectedId
-                : null,
-          lastSelectedId:
+                : null;
+          const nextLastSelectedId =
             ids.length === 1
               ? ids[0]
               : ids.includes(state.lastSelectedId || "")
                 ? state.lastSelectedId
-                : state.lastSelectedId,
-        })),
+                : state.lastSelectedId;
+          return {
+            selectedIds: ids,
+            // If only one is selected, update selectedId for compatibility
+            // 如果只选中一个，更新 selectedId 以保持兼容性
+            selectedId: nextSelectedId,
+            lastSelectedId: nextLastSelectedId,
+            selectionRevision:
+              ids.length === 1
+                ? state.selectionRevision + 1
+                : state.selectionRevision,
+          };
+        }),
 
       setSearchQuery: (query) => set({ searchQuery: query }),
 

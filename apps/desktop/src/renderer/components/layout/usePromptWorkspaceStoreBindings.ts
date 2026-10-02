@@ -8,6 +8,7 @@ function usePromptWorkspacePromptData() {
   const selectedId = usePromptStore((state) => state.selectedId);
   const selectedIds = usePromptStore((state) => state.selectedIds);
   const lastSelectedId = usePromptStore((state) => state.lastSelectedId);
+  const selectionRevision = usePromptStore((state) => state.selectionRevision);
   const relations = usePromptStore((state) => state.relations ?? []);
   const outputFormatItems = usePromptStore(
     (state) => state.outputFormatItems ?? [],
@@ -23,6 +24,7 @@ function usePromptWorkspacePromptData() {
     selectedId,
     selectedIds,
     lastSelectedId,
+    selectionRevision,
     relations,
     outputFormatItems,
     searchQuery,

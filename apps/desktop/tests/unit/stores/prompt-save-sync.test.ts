@@ -24,6 +24,7 @@ describe("prompt store save-sync", () => {
       selectedId: null,
       selectedIds: [],
       lastSelectedId: null,
+      selectionRevision: 0,
       isLoading: false,
       searchQuery: "",
       filterTags: [],
@@ -105,6 +106,22 @@ describe("prompt store save-sync", () => {
     expect(usePromptStore.getState().selectedId).toBeNull();
     expect(usePromptStore.getState().selectedIds).toEqual([]);
     expect(usePromptStore.getState().lastSelectedId).toBe("prompt-1");
+  });
+
+  it("bumps selectionRevision for every explicit single selection and leaves multi-select unchanged", () => {
+    const before = usePromptStore.getState().selectionRevision;
+    usePromptStore.getState().selectPrompt("prompt-1");
+    const first = usePromptStore.getState().selectionRevision;
+    expect(first).toBe(before + 1);
+    // repeat click on the already selected prompt still counts as an interaction
+    usePromptStore.getState().selectPrompt("prompt-1");
+    expect(usePromptStore.getState().selectionRevision).toBe(first + 1);
+    usePromptStore.getState().setSelectedIds(["prompt-1", "prompt-2"]);
+    expect(usePromptStore.getState().selectionRevision).toBe(first + 1);
+    usePromptStore.getState().setSelectedIds(["prompt-2"]);
+    expect(usePromptStore.getState().selectionRevision).toBe(first + 2);
+    usePromptStore.getState().selectPrompt(null);
+    expect(usePromptStore.getState().selectionRevision).toBe(first + 2);
   });
 
   it("updates lastSelectedId only for single explicit selections", () => {
