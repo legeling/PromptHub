@@ -1,7 +1,9 @@
 {
   "app": {
     "name": "PromptHub",
-    "description": "Local Prompt Manager with Version Control"
+    "description": "Local Prompt Manager with Version Control",
+    "dropToRestore": "Drop to restore backup",
+    "dropToRestoreHint": "This opens the restore review and will overwrite existing data."
   },
   "filter": {
     "all": "All",

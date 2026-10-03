@@ -43,6 +43,7 @@ import {
 } from "./services/sync-history";
 import { useToast } from "./components/ui/Toast";
 import { useStartupFolderRestore } from "./hooks/useStartupFolderRestore";
+import { BackupDropRestoreLayer } from "./components/layout/BackupDropRestoreLayer";
 import i18n from "./i18n";
 import { useTranslation } from "react-i18next";
 import type { UpdateStatus } from "./components/UpdateDialog";
@@ -1194,6 +1195,9 @@ function App() {
 
   const overlayContent = (
     <>
+      {!webRuntime ? (
+        <BackupDropRestoreLayer controller={backupImportController} />
+      ) : null}
       {showUpdateDialog ? (
         <Suspense fallback={null}>
           <UpdateDialog

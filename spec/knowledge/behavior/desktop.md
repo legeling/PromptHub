@@ -295,6 +295,11 @@
 - main-process rebuild 必须串行停止并等待当前 PromptHub Electron 子进程退出后再启动替代实例；同一保存批次的并发 build callback 必须合并到最新 generation，且 coordinator 必须跨 Vite config reload 保持唯一。重启失败可以记录错误并等待下一次 rebuild 恢复，但不得通过未处理的 child-exit 或 Promise rejection 关闭 Vite。
 - 应用进入退出阶段后，迟到的窗口可见性事件不得再刷新 tray、发送 renderer 消息或读取已关闭的应用数据库。
 
+### 15. Prompt Tree Drag Global DnD And Selection Accordion
+
+- `BackupDropRestoreLayer` 是桌面窗口的**文件**拖放兜底层：只有当 `DataTransfer` 携带文件（`files` / file items / `Files` type）时才能 `preventDefault` 并把 `dropEffect` 设为 `copy`；应用内部 Prompt 层级拖拽（自定义 MIME / 文本）必须保持透明，避免与 `effectAllowed=move` 冲突导致 Chromium no-drop 🚫。
+- 非备份文件仍由该层阻止默认导航与丢档，但不得调用导入；备份文件命中时才进入导入预览。
+
 ## Stable Scenarios
 
 ### Scenario: Contributor changes desktop runtime behavior

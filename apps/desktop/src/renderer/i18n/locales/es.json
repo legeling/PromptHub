@@ -1,7 +1,9 @@
 {
   "app": {
     "name": "PromptHub",
-    "description": "Gestor de Prompts local con control de versiones"
+    "description": "Gestor de Prompts local con control de versiones",
+    "dropToRestore": "Suelta para restaurar la copia de seguridad",
+    "dropToRestoreHint": "Se abrirá la vista previa de restauración y sobrescribirá los datos existentes."
   },
   "filter": {
     "all": "Todo",

@@ -1,7 +1,9 @@
 {
   "app": {
     "name": "PromptHub",
-    "description": "Gestionnaire de Prompts local avec contrôle de version"
+    "description": "Gestionnaire de Prompts local avec contrôle de version",
+    "dropToRestore": "Déposer pour restaurer la sauvegarde",
+    "dropToRestoreHint": "Cela ouvre la prévisualisation de restauration et écrasera les données existantes."
   },
   "filter": {
     "all": "Tout",

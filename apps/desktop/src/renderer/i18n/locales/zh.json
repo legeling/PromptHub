@@ -1,7 +1,9 @@
 {
   "app": {
     "name": "PromptHub",
-    "description": "本地版的 Prompt 管理器，带版本控制"
+    "description": "本地版的 Prompt 管理器，带版本控制",
+    "dropToRestore": "释放以恢复备份",
+    "dropToRestoreHint": "将打开恢复预览，并覆盖现有数据。"
   },
   "filter": {
     "all": "全部",
