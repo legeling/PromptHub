@@ -34,6 +34,7 @@
   },
   "header": {
     "search": "Rechercher un Prompt...",
+    "searchWithShortcut": "Rechercher des prompts ({{key}})",
     "new": "Nouveau",
     "settings": "Paramètres",
     "topbarWebTitle": "PromptHub Web",

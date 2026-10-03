@@ -306,8 +306,10 @@ function App() {
       const pressed = parts.join("+");
 
       // Check matching
+      let matchedUserShortcut = false;
       for (const [action, accelerator] of Object.entries(localShortcuts)) {
         if (accelerator === pressed) {
+          matchedUserShortcut = true;
           // Check mode for this specific action
           // 检查此特定操作的模式
           const mode = (shortcutModes && shortcutModes[action]) || "local"; // Default to local
@@ -331,6 +333,21 @@ function App() {
             }
           }
         }
+      }
+
+      // v0.6.3 #74-adjacent (X4): Ctrl/Cmd+F always focuses search as a
+      // convention fallback, unless the user already assigned that exact
+      // combination to some local shortcut above.
+      // Ctrl/Cmd+F 兜底聚焦搜索；用户已占用该组合键时不生效。
+      if (
+        !matchedUserShortcut &&
+        (isMac ? e.metaKey : e.ctrlKey) &&
+        !e.altKey &&
+        !e.shiftKey &&
+        key.toLowerCase() === "f"
+      ) {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent("shortcut:search"));
       }
     };
 

@@ -34,6 +34,7 @@
   },
   "header": {
     "search": "搜尋 Prompt...",
+    "searchWithShortcut": "搜尋 Prompt ({{key}})",
     "new": "新建",
     "settings": "設定",
     "topbarWebTitle": "PromptHub 網頁版",

@@ -35,6 +35,7 @@
   },
   "header": {
     "search": "搜索 Prompt...",
+    "searchWithShortcut": "搜索 Prompt ({{key}})",
     "new": "新建",
     "settings": "设置",
     "topbarWebTitle": "PromptHub 网页版",

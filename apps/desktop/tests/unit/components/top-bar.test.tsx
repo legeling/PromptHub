@@ -278,7 +278,7 @@ describe("TopBar", () => {
     document.removeEventListener("open-add-plugin-modal", addPluginListener);
   });
 
-  it("creates a child prompt when a prompt node is selected", async () => {
+  it("creates a root prompt when a prompt node is selected", async () => {
     const parentPrompt = {
       id: "prompt-parent",
       title: "Parent prompt",
@@ -296,9 +296,9 @@ describe("TopBar", () => {
     };
     const createPrompt = vi.fn().mockResolvedValue({
       ...parentPrompt,
-      id: "prompt-child",
+      id: "prompt-new",
       title: "Child prompt",
-      parentId: parentPrompt.id,
+      parentId: undefined,
     });
 
     usePromptStore.setState({
@@ -321,12 +321,15 @@ describe("TopBar", () => {
     );
 
     await waitFor(() => {
+      // Creating from the top bar must NOT silently attach the new prompt as a
+      // child of the currently selected prompt node; it is created as a root
+      // item within the selected prompt's folder.
       expect(createPrompt).toHaveBeenCalledWith(
         expect.objectContaining({
           title: "Child prompt",
           userPrompt: "Write a child prompt.",
           folderId: parentPrompt.folderId,
-          parentId: parentPrompt.id,
+          parentId: undefined,
         }),
       );
     });
@@ -1124,7 +1127,9 @@ describe("TopBar", () => {
       );
     });
 
-    const searchInput = screen.getByPlaceholderText("Search Prompt...");
+    // v0.6.3 X4: the prompt-search placeholder now advertises the shortcut
+    // (platform-dependent suffix), so match the stable prefix.
+    const searchInput = screen.getByPlaceholderText(/^Search prompts/);
     expect(screen.getByText("1/2")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Previous (Shift+Tab)" }),
