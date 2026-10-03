@@ -27,6 +27,7 @@ import {
   normalizeTagsSectionHeight,
   normalizeTranslationMode,
 } from "./settings-normalizers";
+import { STARTUP_FOLDER_MODES } from "./settings-types";
 
 type GeneralActionKey =
   | "setCreationMode"
@@ -53,6 +54,10 @@ type GeneralActionKey =
   | "setMinimizeOnLaunch"
   | "setCloseAction"
   | "persistCloseAction"
+  | "setStartupFolderMode"
+  | "setPinnedStartFolder"
+  | "recordLastActiveFolder"
+  | "setBackupGuideCollapsed"
   | "setDebugMode"
   | "setShortcutMode"
   | "setEnableNotifications"
@@ -301,6 +306,58 @@ function createEditorActions(context: SettingsActionContext) {
   >;
 }
 
+function createStartupFolderActions(context: SettingsActionContext) {
+  const { get, setTouched, syncSettingsToMain } = context;
+  return {
+    setStartupFolderMode: (startupFolderMode) => {
+      const settings = {
+        startupFolderMode: (STARTUP_FOLDER_MODES as readonly string[]).includes(
+          startupFolderMode,
+        )
+          ? startupFolderMode
+          : ("default" as const),
+      };
+      setTouched(settings);
+      void syncSettingsToMain(settings);
+    },
+    setPinnedStartFolder: (folderId) => {
+      const pinnedStartFolderId =
+        typeof folderId === "string" && folderId.trim() !== ""
+          ? folderId
+          : null;
+      const settings = {
+        pinnedStartFolderId,
+        startupFolderMode: pinnedStartFolderId
+          ? ("pinned" as const)
+          : ("default" as const),
+      };
+      setTouched(settings);
+      void syncSettingsToMain(settings);
+    },
+    recordLastActiveFolder: (folderId) => {
+      if (typeof folderId !== "string" || folderId.trim() === "") {
+        return;
+      }
+      if (get().lastActiveFolderId === folderId) {
+        return;
+      }
+      setTouched({ lastActiveFolderId: folderId });
+      void syncSettingsToMain({ lastActiveFolderId: folderId });
+    },
+    // v0.6.3: collapse preference for the backup/migration guidance card.
+    // 备份迁移指引卡折叠偏好。
+    setBackupGuideCollapsed: (collapsed) => {
+      setTouched({ backupGuideCollapsed: collapsed === true });
+      void syncSettingsToMain({ backupGuideCollapsed: collapsed === true });
+    },
+  } satisfies SettingsActionGroup<
+    | "setStartupFolderMode"
+    | "setPinnedStartFolder"
+    | "recordLastActiveFolder"
+    | "setBackupGuideCollapsed"
+  >;
+}
+
 function createDesktopIntegrationActions(context: SettingsActionContext) {
   const { get, persistSettingsToMain, setTouched, syncSettingsToMain } =
     context;
@@ -478,9 +535,8 @@ function createSidebarTagActions(context: SettingsActionContext) {
       }),
     setSkillTagFilterIncludeFrontmatter: (value) =>
       setTouched({
-        skillTagFilterIncludeFrontmatter: normalizeSkillTagFilterIncludeFrontmatter(
-          value,
-        ),
+        skillTagFilterIncludeFrontmatter:
+          normalizeSkillTagFilterIncludeFrontmatter(value),
       }),
   } satisfies SettingsActionGroup<
     | "setTagsSectionHeight"
@@ -557,6 +613,7 @@ export function createGeneralSettingsActions(
     createAppearanceActions(context),
     createEditorActions(context),
     createDesktopIntegrationActions(context),
+    createStartupFolderActions(context),
     createShortcutActions(context),
     createTagCatalogActions(context),
     createTagCatalogRemovalAction(context),

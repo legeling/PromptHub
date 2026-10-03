@@ -10,7 +10,10 @@ import {
 import { migrateAgentSettingsV1 } from "@prompthub/core/migrations/agent-settings-v1";
 import { IPC_CHANNELS } from "@prompthub/shared/constants";
 import type { CloseAction, Settings } from "@prompthub/shared/types";
-import { DEFAULT_SETTINGS } from "@prompthub/shared/types";
+import {
+  DEFAULT_SETTINGS,
+  STARTUP_FOLDER_MODES,
+} from "@prompthub/shared/types";
 import type {
   CoreAIConfigFile,
   CoreAIModelConfig,
@@ -32,6 +35,28 @@ export {
   getMinimizeOnLaunchSetting,
   readGithubTokenSetting as getGithubTokenSetting,
 } from "../settings/settings-readers";
+
+function validateStartupPreferences(settings: Partial<Settings>): void {
+  if (
+    "startupFolderMode" in settings &&
+    !STARTUP_FOLDER_MODES.some((mode) => mode === settings.startupFolderMode)
+  )
+    throw new Error("Invalid startup folder mode");
+  for (const key of ["pinnedStartFolderId", "lastActiveFolderId"] as const) {
+    if (!(key in settings)) continue;
+    const value = settings[key];
+    if (
+      value !== null &&
+      (typeof value !== "string" || !value.trim() || value.includes("\0"))
+    )
+      throw new Error(`Invalid startup folder id: ${key}`);
+  }
+  if (
+    "backupGuideCollapsed" in settings &&
+    typeof settings.backupGuideCollapsed !== "boolean"
+  )
+    throw new Error("Invalid backup guidance preference");
+}
 
 function closeActionFromPatch(
   settings: Partial<Settings>,
@@ -259,6 +284,7 @@ export function registerSettingsIPC(
   ipcMain.handle(
     IPC_CHANNELS.SETTINGS_SET,
     async (_event, newSettings: Partial<Settings>) => {
+      validateStartupPreferences(newSettings);
       for (const key of RETIRED_AGENT_SETTING_KEYS) {
         if (Object.prototype.hasOwnProperty.call(newSettings, key))
           throw new Error(

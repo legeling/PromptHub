@@ -58,6 +58,16 @@ export interface NetworkProxySettings {
   bypass: string;
 }
 
+export const STARTUP_FOLDER_MODES = ["default", "last", "pinned"] as const;
+export type StartupFolderMode = (typeof STARTUP_FOLDER_MODES)[number];
+
+export const PROMPT_WORKSPACE_PREFERENCE_KEYS = [
+  "startupFolderMode",
+  "pinnedStartFolderId",
+  "lastActiveFolderId",
+  "backupGuideCollapsed",
+] as const;
+
 export interface Settings {
   theme: Theme;
   language: Language;
@@ -87,6 +97,10 @@ export interface Settings {
   launchAtStartup?: boolean;
   minimizeOnLaunch?: boolean;
   closeAction?: CloseAction;
+  startupFolderMode?: StartupFolderMode;
+  pinnedStartFolderId?: string | null;
+  lastActiveFolderId?: string | null;
+  backupGuideCollapsed?: boolean;
   // GitHub personal access token (optional). Used to authenticate GitHub
   // API calls in the skill store so the user isn't limited to 60 req/h.
   // Never sent to third-party hosts; only attached for api.github.com and

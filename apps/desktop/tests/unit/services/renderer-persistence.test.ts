@@ -46,7 +46,7 @@ function installApi(status: "migrated" | "already-complete") {
           : [],
     })),
     get: vi.fn(async () => canonical),
-    replaceSettings: vi.fn(async () => true),
+    replaceSettings: vi.fn(async (_settings: Record<string, unknown>) => true),
     replaceSources: vi.fn(async () => true),
     replaceRecoveryPaths: vi.fn(async () => true),
     getOrCreateDeviceId: vi.fn(async () => "desktop-device-1"),
@@ -77,6 +77,25 @@ afterEach(() => {
 });
 
 describe("renderer persistence bridge", () => {
+  it("does not duplicate SQLite-owned prompt preferences in renderer settings", async () => {
+    const api = installApi("already-complete");
+    await migrateRendererPersistence();
+    useSettingsStore.setState({
+      startupFolderMode: "pinned",
+      pinnedStartFolderId: "folder-pinned",
+      lastActiveFolderId: "folder-last",
+      backupGuideCollapsed: true,
+      language: "ja",
+    });
+    await Promise.resolve();
+    expect(api.replaceSettings).toHaveBeenCalledOnce();
+    const [settings] = api.replaceSettings.mock.calls[0];
+    expect(settings).toMatchObject({ language: "ja" });
+    for (const key of ["startupFolderMode", "pinnedStartFolderId", "lastActiveFolderId", "backupGuideCollapsed"]) {
+      expect(settings).not.toHaveProperty(key);
+    }
+  });
+
   it("collects only the explicitly routed legacy keys", () => {
     localStorage.setItem("prompthub-settings", "settings");
     localStorage.setItem("skill-store", "skills");

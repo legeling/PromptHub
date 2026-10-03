@@ -32,6 +32,7 @@ import {
   normalizeSidebarTagSectionHeights,
   normalizeSkillListPageSize,
   normalizeSkillTagFilterIncludeFrontmatter,
+  normalizeStartupFolderSettings,
   normalizeSyncProvider,
   normalizeSyncTimingSettings,
   normalizeTagFilterMode,
@@ -155,6 +156,7 @@ function normalizeSharedSettingsState(next: SettingsState): void {
   next.agentIdentityPreferences = normalizeAgentIdentityPreferences(
     next.agentIdentityPreferences,
   );
+  normalizeStartupFolderSettings(next);
 }
 
 function normalizeMergedAgentSettings(next: SettingsState): void {
@@ -272,6 +274,7 @@ function normalizeMigratedCoreState(
   next.agentIdentityPreferences = normalizeAgentIdentityPreferences(
     next.agentIdentityPreferences,
   );
+  normalizeStartupFolderSettings(next);
 }
 
 function normalizeMigratedPresentationState(

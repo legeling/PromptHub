@@ -1,4 +1,5 @@
 import { AGENT_SETTING_KEYS } from "@prompthub/core/agent-management/agent-settings-contract";
+import { PROMPT_WORKSPACE_PREFERENCE_KEYS } from "@prompthub/shared/types/settings";
 import type {
   MarketplaceSourceRecord,
   RendererHydratedState,
@@ -74,7 +75,8 @@ function extractSettingsState(): Record<string, unknown> {
     Object.entries(useSettingsStore.getState()).filter(
       ([key, value]) =>
         typeof value !== "function" &&
-        !AGENT_SETTING_KEYS.some((agentKey) => agentKey === key),
+        !AGENT_SETTING_KEYS.some((agentKey) => agentKey === key) &&
+        !PROMPT_WORKSPACE_PREFERENCE_KEYS.some((preferenceKey) => preferenceKey === key),
     ),
   );
 }

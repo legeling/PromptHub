@@ -7,6 +7,7 @@ import type {
   CustomAgentConfig,
   NetworkProxySettings,
   SkillProject,
+  StartupFolderMode,
   SyncProviderKind,
   UpdateChannel,
 } from "@prompthub/shared/types";
@@ -42,6 +43,11 @@ export type DesktopHomeModule = (typeof DESKTOP_HOME_MODULES)[number];
 export type ThemeMode = "light" | "dark" | "system";
 export type AIModelType = "chat" | "image";
 export type CreationMode = "manual" | "quick";
+
+/** v0.6.2 #74 startup-folder modes. */
+export type { StartupFolderMode } from "@prompthub/shared/types";
+
+export { STARTUP_FOLDER_MODES } from "@prompthub/shared/types";
 export type TranslationMode = "immersive" | "full";
 export type TagFilterMode = "single" | "multi";
 export type AIUsageScenario =
@@ -144,6 +150,14 @@ export interface SettingsState {
   minimizeOnLaunch: boolean;
   debugMode: boolean;
   closeAction: CloseAction;
+  /** v0.6.2 #74: which folder the app enters after a cold start. */
+  startupFolderMode: StartupFolderMode;
+  /** Folder pinned via context menu for `pinned` mode. */
+  pinnedStartFolderId: string | null;
+  /** Last non-root folder activated while using `last` mode. */
+  lastActiveFolderId: string | null;
+  /** v0.6.3 #97/#139: collapsed state of the backup/migration guidance card. */
+  backupGuideCollapsed: boolean;
   shortcutModes: Record<string, "global" | "local">;
   enableNotifications: boolean;
   showCopyNotification: boolean;
@@ -264,6 +278,10 @@ export interface SettingsState {
   setEnableNotifications: (enabled: boolean) => void;
   setCloseAction: (action: CloseAction) => void;
   persistCloseAction: (action: Exclude<CloseAction, "ask">) => Promise<void>;
+  setStartupFolderMode: (mode: StartupFolderMode) => void;
+  setPinnedStartFolder: (folderId: string | null) => void;
+  recordLastActiveFolder: (folderId: string | null) => void;
+  setBackupGuideCollapsed: (collapsed: boolean) => void;
   setShortcutMode: (key: string, mode: "global" | "local") => void;
   setShowCopyNotification: (enabled: boolean) => void;
   setShowSaveNotification: (enabled: boolean) => void;
