@@ -207,4 +207,62 @@ describe('TagManagerModal', () => {
 
     expect(useSettingsStore.getState().tagFilterMode).toBe('single');
   });
+
+  it('sorts tags by usage count by default and supports the view-prompts jump (v0.6.3 #145)', async () => {
+    installWindowMocks({
+      api: {
+        prompt: {
+          getAllTags: vi.fn().mockResolvedValue(['beta', 'alpha']),
+        },
+      },
+    });
+    usePromptStore.setState({
+      prompts: [
+        { id: 'p1', title: 'one', tags: ['alpha', 'beta'] },
+        { id: 'p2', title: 'two', tags: ['alpha'] },
+      ],
+      filterTags: [],
+    } as Partial<ReturnType<typeof usePromptStore.getState>>);
+    const onClose = vi.fn();
+
+    await act(async () => {
+      await renderWithI18n(
+        <TagManagerModal isOpen onClose={onClose} resourceType="prompt" />,
+        { language: 'en' },
+      );
+    });
+
+    // usage badges: alpha used by 2 prompts, beta by 1
+    expect(
+      screen.getByTitle('2 prompts use this tag'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTitle('1 prompts use this tag'),
+    ).toBeInTheDocument();
+
+    // default usage-desc order: alpha before beta
+    const alpha = screen.getByTitle('alpha');
+    const beta = screen.getByTitle('beta');
+    expect(
+      alpha.compareDocumentPosition(beta) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    // switch to least-used-first: beta (1) before alpha (2)
+    fireEvent.click(screen.getByRole('button', { name: 'Sort tags' }));
+    fireEvent.click(screen.getByRole('option', { name: 'Least used first' }));
+    await waitFor(() => {
+      expect(
+        screen.getByTitle('alpha').compareDocumentPosition(
+          screen.getByTitle('beta'),
+        ) & Node.DOCUMENT_POSITION_PRECEDING,
+      ).toBeTruthy();
+    });
+
+    // view-prompts jumps the list filter and closes the modal
+    fireEvent.click(
+      screen.getByRole('button', { name: 'View prompts alpha' }),
+    );
+    expect(usePromptStore.getState().filterTags).toEqual(['alpha']);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });
