@@ -78,6 +78,8 @@
 
 ### 3. Stable Internal Sources
 
+- 多词全文检索将各词分别转义后用 AND 组合，不要求词语相邻；操作符作为普通文本处理。
+
 - Prompt 协议设计见 `spec/knowledge/structure/prompt-protocols-zh.md`。
 - 数据布局事实见 `spec/knowledge/structure/data-layout-v0.5.5-zh.md`。
 

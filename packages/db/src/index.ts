@@ -73,7 +73,7 @@ export type {
 } from "./database-migration-intent";
 
 // DB classes
-export { PromptDB } from "./prompt";
+export { PromptDB, buildFtsPhraseQuery } from "./prompt";
 export {
   repairPromptVersionConsistency,
   type PromptVersionConsistencyRepair,

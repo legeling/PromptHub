@@ -40,6 +40,7 @@ import { reconcileDesktopSkillRepoPaths } from "../services/skill-repo-reconcili
 // All consumers in the desktop app can continue importing from this file.
 export { getDatabase, closeDatabase, isDatabaseEmpty };
 export { DatabaseAdapter } from "@prompthub/db";
+export { buildFtsPhraseQuery } from "@prompthub/db";
 export type { Database } from "@prompthub/db";
 export { SCHEMA_TABLES, SCHEMA_INDEXES, SCHEMA } from "@prompthub/db";
 export {
