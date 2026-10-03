@@ -85,6 +85,7 @@
     "notes": "備註",
     "notesPlaceholder": "記錄關於這個 Prompt 的個人筆記...",
     "source": "來源",
+    "supplementaryInfo": "補充資訊",
     "sourceOptional": "來源（可選）",
     "sourcePlaceholder": "記錄 Prompt 的來源，如網站連結、書籍等",
     "variables": "變數",

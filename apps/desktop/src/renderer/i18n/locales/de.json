@@ -85,6 +85,7 @@
     "notes": "Notizen",
     "notesPlaceholder": "Persönliche Notizen zu diesem Prompt...",
     "source": "Quelle",
+    "supplementaryInfo": "Zusätzliche Informationen",
     "sourceOptional": "Quelle (Optional)",
     "sourcePlaceholder": "Woher hast du diesen Prompt? z.B. URL, Buch, etc.",
     "variables": "Variablen",

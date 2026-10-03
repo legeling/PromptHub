@@ -93,6 +93,45 @@ function expectButtonIconsHidden(button: HTMLElement) {
 }
 
 describe("EditPromptModal", () => {
+  it("keeps source and notes mounted and persisted across collapse (v0.6.2 #76)", async () => {
+    await renderEditPromptModal();
+    fireEvent.click(screen.getByRole("button", { name: /More Settings/ }));
+
+    const toggle = screen.getByRole("button", {
+      name: /Supplementary information/,
+    });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+
+    const controlsId = toggle.getAttribute("aria-controls") as string;
+    const panel = document.getElementById(controlsId) as HTMLElement;
+    expect(panel.hidden).toBe(true);
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(panel.hidden).toBe(false);
+
+    const sourceInput = panel.querySelector('input[type="text"]') as HTMLInputElement;
+    const notesTextarea = panel.querySelector("textarea") as HTMLTextAreaElement;
+    fireEvent.change(sourceInput, { target: { value: "github.example/repo" } });
+    fireEvent.change(notesTextarea, { target: { value: "keep <this> — 🎯" } });
+
+    // Collapse again: content stays mounted, values survive.
+    // 再次折叠：内容不卸载，值保留（含特殊字符/emoji/尖括号对抗样本）。
+    fireEvent.click(toggle);
+    expect(panel.hidden).toBe(true);
+    fireEvent.click(toggle);
+    expect(sourceInput.value).toBe("github.example/repo");
+    expect(notesTextarea.value).toBe("keep <this> — 🎯");
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await screen.findByText(/saved|success/i).catch(() => undefined);
+    expect(updatePromptMock).toHaveBeenCalledTimes(1);
+    const payload = updatePromptMock.mock.calls[0][1] as Record<string, unknown>;
+    expect(payload.source).toBe("github.example/repo");
+    expect(payload.notes).toBe("keep <this> — 🎯");
+  });
+
   it("exposes core prompt fields and type selection state", async () => {
     await renderEditPromptModal();
 

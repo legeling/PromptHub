@@ -85,6 +85,7 @@
     "notes": "Notes",
     "notesPlaceholder": "Notes personnelles sur ce prompt...",
     "source": "Source",
+    "supplementaryInfo": "Informations complémentaires",
     "sourceOptional": "Source (optionnel)",
     "sourcePlaceholder": "Où as-tu trouvé ce Prompt ? ex: URL, livre, etc.",
     "variables": "Variables",

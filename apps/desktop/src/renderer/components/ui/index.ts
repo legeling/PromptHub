@@ -15,3 +15,4 @@ export { CardStatusBadge } from './CardStatusBadge';
 export { LocalImage } from './LocalImage';
 export { PlatformIcon, getPlatformIconElement } from './PlatformIcon';
 export { Spinner } from './Spinner';
+export { CollapsibleSection } from './CollapsibleSection';

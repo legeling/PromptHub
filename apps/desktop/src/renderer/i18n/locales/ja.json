@@ -85,6 +85,7 @@
     "notes": "メモ",
     "notesPlaceholder": "このプロンプトに関する個人的なメモ...",
     "source": "ソース",
+    "supplementaryInfo": "補足情報",
     "sourceOptional": "ソース (任意)",
     "sourcePlaceholder": "このプロンプトをどこで見つけましたか？（例：URL、書籍など）",
     "variables": "変数",

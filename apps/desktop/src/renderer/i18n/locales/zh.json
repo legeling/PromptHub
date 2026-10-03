@@ -86,6 +86,7 @@
     "notes": "备注",
     "notesPlaceholder": "记录关于这个 Prompt 的个人笔记...",
     "source": "来源",
+    "supplementaryInfo": "补充信息",
     "sourceOptional": "来源（可选）",
     "sourcePlaceholder": "记录 Prompt 的来源，如网站链接、书籍等",
     "variables": "变量",

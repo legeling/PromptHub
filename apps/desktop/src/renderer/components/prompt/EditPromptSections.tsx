@@ -14,7 +14,8 @@ import {
   XIcon,
 } from "lucide-react";
 
-import { Button, Textarea } from "../ui";
+import { Button, Textarea, CollapsibleSection } from "../ui";
+import { PromptSourceNotesFields } from "./PromptSourceNotesFields";
 import { Select } from "../ui/Select";
 import { renderFolderIcon } from "../layout/folderIconHelper";
 
@@ -199,63 +200,19 @@ export function EditPromptMoreSettings({
             </div>
           </div>
 
-          <div className="space-y-1.5 relative">
-            <label className="block text-sm font-medium text-foreground">
-              {t("prompt.sourceOptional") || "Source (Optional)"}
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                placeholder={
-                  t("prompt.sourcePlaceholder") ||
-                  "Record prompt source (e.g. website, book)"
-                }
-                value={source}
-                onChange={(event) => setSource(event.target.value)}
-                onFocus={onSourceFocus}
-                onBlur={onSourceBlur}
-                className="w-full h-10 px-4 rounded-xl bg-muted/50 border-0 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:bg-background transition-all duration-base"
-              />
-              {showSourceSuggestions && sourceHistory.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto">
-                  {sourceHistory
-                    .filter((item) =>
-                      item.toLowerCase().includes(source.toLowerCase()),
-                    )
-                    .slice(0, 8)
-                    .map((item) => (
-                      <button
-                        key={item}
-                        type="button"
-                        className="w-full px-3 py-2 text-sm text-left hover:bg-accent/50 transition-colors truncate"
-                        onMouseDown={(event) => {
-                          event.preventDefault();
-                          setSource(item);
-                          setShowSourceSuggestions(false);
-                        }}
-                      >
-                        {item}
-                      </button>
-                    ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-foreground">
-              {t("prompt.notesOptional", "备注（可选）")}
-            </label>
-            <textarea
-              placeholder={t(
-                "prompt.notesPlaceholder",
-                "记录关于这个 Prompt 的个人笔记...",
-              )}
-              value={notes}
-              onChange={(event) => onNotesChange(event.target.value)}
-              className="w-full min-h-[80px] px-4 py-3 rounded-xl bg-muted/50 border-0 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:bg-background transition-all duration-base resize-none"
+          <CollapsibleSection title={t("prompt.supplementaryInfo")}>
+            <PromptSourceNotesFields
+              source={source}
+              setSource={setSource}
+              notes={notes}
+              setNotes={onNotesChange}
+              handleSourceFocus={onSourceFocus}
+              handleSourceBlur={onSourceBlur}
+              showSourceSuggestions={showSourceSuggestions}
+              setShowSourceSuggestions={setShowSourceSuggestions}
+              sourceHistory={sourceHistory}
             />
-          </div>
+          </CollapsibleSection>
 
           {promptType !== "image" && referenceMedia}
         </div>
