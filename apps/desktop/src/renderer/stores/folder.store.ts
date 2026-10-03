@@ -6,6 +6,7 @@ import type {
 } from "@prompthub/shared/types";
 import * as db from "../services/database";
 import { scheduleAllSaveSync } from "../services/webdav-save-sync";
+import { useSettingsStore } from "./settings.store";
 
 interface FolderState {
   folders: Folder[];
@@ -74,13 +75,12 @@ export const useFolderStore = create<FolderState>((set, get) => ({
     scheduleAllSaveSync("folder:delete");
   },
 
-  selectFolder: (id) =>
+  selectFolder: (id) => {
     set((state) => {
       // If switching folders and the previous folder is private, clear unlock state
       // Simple approach: clear all unlock states when switching folders
       // User requirement: auto-lock when selecting other folders or all prompts
       // Safest approach: reset unlock states whenever switching folders
-      // But if user is operating within the same private folder (selectFolder won't change), no need to lock
       // 如果切换了文件夹，且之前的文件夹是私密的，则清除解锁状态
       // 这里简单处理：切换文件夹时，清除所有解锁状态（或者只清除当前选中的）
       // 用户需求：如果选择了其他文件夹或者选择了全部Prompts后自动锁住
@@ -88,7 +88,6 @@ export const useFolderStore = create<FolderState>((set, get) => ({
       // 但如果用户只是在同一个私密文件夹内操作（虽然selectFolder不会变），不需要锁住
       // If id !== state.selectedFolderId,说明切换了
       // If id !== state.selectedFolderId, indicates switched
-      // 如果 id !== state.selectedFolderId，说明切换了
       if (id !== state.selectedFolderId) {
         return {
           selectedFolderId: id,
@@ -97,7 +96,12 @@ export const useFolderStore = create<FolderState>((set, get) => ({
         };
       }
       return { selectedFolderId: id };
-    }),
+    });
+    // v0.6.2 #74: remember real folder activations for "restore last folder"
+    // startup mode. Root selection (null) keeps the previous memory.
+    // 记录真实激活的文件夹；选择“全部”（null）不覆盖记忆。
+    useSettingsStore.getState().recordLastActiveFolder(id);
+  },
 
   toggleExpand: (id) =>
     set((state) => {

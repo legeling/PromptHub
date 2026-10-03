@@ -1,0 +1,164 @@
+import { describe, expect, it, beforeEach, vi } from "vitest";
+import { act, renderHook } from "@testing-library/react";
+
+import { useStartupFolderRestore } from "../../../src/renderer/hooks/useStartupFolderRestore";
+import { useFolderStore } from "../../../src/renderer/stores/folder.store";
+import { useSettingsStore } from "../../../src/renderer/stores/settings.store";
+
+function seedFolderStore(ids: string[]) {
+  useFolderStore.setState({
+    folders: ids.map((id, index) => ({
+      id,
+      name: `Folder ${id}`,
+      createdAt: "2026-05-01T00:00:00.000Z",
+      updatedAt: "2026-05-01T00:00:00.000Z",
+      order: index,
+      icon: "folder",
+    })),
+    selectedFolderId: null,
+    expandedIds: new Set<string>(),
+    unlockedFolderIds: new Set<string>(),
+  } as Partial<ReturnType<typeof useFolderStore.getState>>);
+}
+
+describe("useStartupFolderRestore", () => {
+  beforeEach(() => {
+    useSettingsStore.setState({
+      startupFolderMode: "default",
+      pinnedStartFolderId: null,
+      lastActiveFolderId: null,
+    });
+    seedFolderStore([]);
+  });
+
+  it("does nothing in default mode", () => {
+    seedFolderStore(["a", "b"]);
+    useSettingsStore.setState({ lastActiveFolderId: "b" });
+
+    renderHook(() => useStartupFolderRestore());
+    act(() => undefined);
+
+    expect(useFolderStore.getState().selectedFolderId).toBeNull();
+  });
+
+  it("restores the last active folder once folders are loaded", () => {
+    useSettingsStore.setState({
+      startupFolderMode: "last",
+      lastActiveFolderId: "b",
+    });
+
+    const { rerender } = renderHook(() => useStartupFolderRestore());
+
+    // folders not loaded yet
+    expect(useFolderStore.getState().selectedFolderId).toBeNull();
+
+    seedFolderStore(["a", "b"]);
+    rerender();
+    act(() => undefined);
+
+    expect(useFolderStore.getState().selectedFolderId).toBe("b");
+  });
+
+  it("restores the pinned folder", () => {
+    useSettingsStore.setState({
+      startupFolderMode: "pinned",
+      pinnedStartFolderId: "a",
+    });
+    seedFolderStore(["a", "b"]);
+
+    renderHook(() => useStartupFolderRestore());
+    act(() => undefined);
+
+    expect(useFolderStore.getState().selectedFolderId).toBe("a");
+  });
+
+  it("waits for startup settings before selecting a saved folder", () => {
+    seedFolderStore(["a", "b"]);
+    const { rerender } = renderHook(
+      ({ ready }) => useStartupFolderRestore(undefined, ready),
+      { initialProps: { ready: false } },
+    );
+    expect(useFolderStore.getState().selectedFolderId).toBeNull();
+    act(() => {
+      useSettingsStore.setState({
+        startupFolderMode: "pinned",
+        pinnedStartFolderId: "b",
+      });
+    });
+    rerender({ ready: true });
+    expect(useFolderStore.getState().selectedFolderId).toBe("b");
+  });
+
+  it("falls back silently when the saved folder no longer exists", () => {
+    useSettingsStore.setState({
+      startupFolderMode: "last",
+      lastActiveFolderId: "gone",
+    });
+    seedFolderStore(["a", "b"]);
+
+    renderHook(() => useStartupFolderRestore());
+    act(() => undefined);
+
+    expect(useFolderStore.getState().selectedFolderId).toBeNull();
+  });
+
+  it("applies at most once per mount", () => {
+    useSettingsStore.setState({
+      startupFolderMode: "last",
+      lastActiveFolderId: "a",
+    });
+    seedFolderStore(["a", "b"]);
+
+    const { rerender } = renderHook(() => useStartupFolderRestore());
+    act(() => undefined);
+    expect(useFolderStore.getState().selectedFolderId).toBe("a");
+
+    // user switches away; a later re-render must not snap the selection back.
+    useFolderStore.setState({ selectedFolderId: "b" });
+    rerender();
+    act(() => undefined);
+    expect(useFolderStore.getState().selectedFolderId).toBe("b");
+  });
+
+  it("notifies with an info toast naming the restored folder (FR-STARTUP-005)", () => {
+    useSettingsStore.setState({
+      startupFolderMode: "last",
+      lastActiveFolderId: "b",
+    });
+    seedFolderStore(["a", "b"]);
+
+    const notify = vi.fn<(message: string, tone: "info" | "warning") => void>();
+    renderHook(() => useStartupFolderRestore(notify));
+    act(() => undefined);
+
+    expect(notify).toHaveBeenCalledTimes(1);
+    const [message, tone] = notify.mock.calls[0];
+    expect(tone).toBe("info");
+    expect(message).toContain("Folder b");
+  });
+
+  it("warns when the configured startup folder no longer exists", () => {
+    useSettingsStore.setState({
+      startupFolderMode: "pinned",
+      pinnedStartFolderId: "gone",
+    });
+    seedFolderStore(["a", "b"]);
+
+    const notify = vi.fn<(message: string, tone: "info" | "warning") => void>();
+    renderHook(() => useStartupFolderRestore(notify));
+    act(() => undefined);
+
+    expect(notify).toHaveBeenCalledTimes(1);
+    expect(notify.mock.calls[0][1]).toBe("warning");
+    expect(notify.mock.calls[0][0].length).toBeGreaterThan(0);
+    expect(useFolderStore.getState().selectedFolderId).toBeNull();
+  });
+
+  it("stays silent in default mode", () => {
+    seedFolderStore(["a"]);
+    const notify = vi.fn();
+    renderHook(() => useStartupFolderRestore(notify));
+    act(() => undefined);
+    expect(notify).not.toHaveBeenCalled();
+  });
+});
