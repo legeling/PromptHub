@@ -153,4 +153,158 @@ describe('PromptService', () => {
     expect(preparedSql.some((sql) => /LIMIT \? OFFSET \?/i.test(sql))).toBe(true);
     expect(prepareSpy).toHaveBeenCalledTimes(2);
   });
+
+  describe('folder visibility inference (upstream #219)', () => {
+    async function setup() {
+      const [{ PromptService }, { getServerDatabase }, { FolderDB }] = await Promise.all([
+        import('./prompt.service'),
+        import('../database'),
+        import('@prompthub/db'),
+      ]);
+      const db = getServerDatabase();
+      const service = new PromptService();
+      const now = Date.now();
+      const insertUser = (userId: string, role: 'admin' | 'user') =>
+        db.prepare(
+          `INSERT INTO users (id, username, password_hash, role, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+        ).run(userId, userId, 'test-password-hash', role, now, now);
+      insertUser('vis-admin', 'admin');
+      insertUser('vis-member', 'user');
+      const adminActor = { userId: 'vis-admin', role: 'admin' as const };
+      const memberActor = { userId: 'vis-member', role: 'user' as const };
+      // Same persistence shape as the web folder service: FolderDB stores the
+      // base row and the server layer writes the visibility column explicitly.
+      const sharedFolderId = new FolderDB(db).create({
+        name: 'shared-category',
+      }).id;
+      db.prepare('UPDATE folders SET visibility = ? WHERE id = ?').run(
+        'shared',
+        sharedFolderId,
+      );
+      return { db, service, adminActor, memberActor, sharedFolderId };
+    }
+
+    it("derives 'shared' from the target folder on create when visibility is omitted", async () => {
+      const { service, adminActor, sharedFolderId } = await setup();
+
+      const prompt = service.create(adminActor, {
+        title: 'assigned-to-shared',
+        userPrompt: 'body',
+        folderId: sharedFolderId,
+      });
+
+      expect(prompt.visibility).toBe('shared');
+    });
+
+    it("keeps the 'private' default on create when no folder is provided", async () => {
+      const { service, adminActor } = await setup();
+
+      const prompt = service.create(adminActor, {
+        title: 'no-folder',
+        userPrompt: 'body',
+      });
+
+      expect(prompt.visibility).toBe('private');
+    });
+
+    it('still rejects an explicit create visibility that mismatches the folder', async () => {
+      const { service, adminActor, sharedFolderId } = await setup();
+
+      expect(() =>
+        service.create(adminActor, {
+          title: 'explicit-mismatch',
+          userPrompt: 'body',
+          folderId: sharedFolderId,
+          visibility: 'private',
+        }),
+      ).toThrow(/visibility must match/i);
+    });
+
+    it('keeps the original 422 when folder inference would exceed a non-admin create boundary', async () => {
+      const { service, memberActor, sharedFolderId } = await setup();
+
+      expect(() =>
+        service.create(memberActor, {
+          title: 'member-into-shared',
+          userPrompt: 'body',
+          folderId: sharedFolderId,
+        }),
+      ).toThrow(/visibility must match/i);
+    });
+
+    it("moves a private prompt into a shared folder on update when visibility is omitted", async () => {
+      const { service, adminActor, sharedFolderId } = await setup();
+      const prompt = service.create(adminActor, {
+        title: 'move-to-shared',
+        userPrompt: 'body',
+      });
+      expect(prompt.visibility).toBe('private');
+
+      const updated = service.update(adminActor, prompt.id, {
+        folderId: sharedFolderId,
+      });
+
+      expect(updated.folderId).toBe(sharedFolderId);
+      expect(updated.visibility).toBe('shared');
+    });
+
+    it('persists the derived shared visibility in the stored row', async () => {
+      const { db, service, adminActor, sharedFolderId } = await setup();
+      const prompt = service.create(adminActor, {
+        title: 'move-durable',
+        userPrompt: 'body',
+      });
+
+      service.update(adminActor, prompt.id, { folderId: sharedFolderId });
+
+      const stored = db
+        .prepare('SELECT visibility FROM prompts WHERE id = ?')
+        .get(prompt.id) as { visibility: string };
+      expect(stored.visibility).toBe('shared');
+    });
+
+    it('does not touch visibility when an update keeps the folder unchanged', async () => {
+      const { service, adminActor } = await setup();
+      const prompt = service.create(adminActor, {
+        title: 'title-only',
+        userPrompt: 'body',
+      });
+
+      const updated = service.update(adminActor, prompt.id, {
+        title: 'renamed',
+      });
+
+      expect(updated.title).toBe('renamed');
+      expect(updated.visibility).toBe('private');
+    });
+
+    it('still rejects an explicit update visibility that mismatches the new folder', async () => {
+      const { service, adminActor, sharedFolderId } = await setup();
+      const prompt = service.create(adminActor, {
+        title: 'explicit-update',
+        userPrompt: 'body',
+      });
+
+      expect(() =>
+        service.update(adminActor, prompt.id, {
+          folderId: sharedFolderId,
+          visibility: 'private',
+        }),
+      ).toThrow(/visibility must match/i);
+    });
+
+    it('keeps the original 422 when update inference would exceed a non-admin boundary', async () => {
+      const { service, memberActor, sharedFolderId } = await setup();
+      const prompt = service.create(memberActor, {
+        title: 'member-private',
+        userPrompt: 'body',
+      });
+      expect(prompt.visibility).toBe('private');
+
+      expect(() =>
+        service.update(memberActor, prompt.id, { folderId: sharedFolderId }),
+      ).toThrow(/visibility must match/i);
+    });
+  });
 });
