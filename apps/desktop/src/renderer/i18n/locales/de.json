@@ -258,6 +258,7 @@
     "enterImageUrl": "Bild-URL eingeben",
     "pasteImageHint": "Sie können Bilder direkt einfügen",
     "referenceMedia": "Referenzmedien",
+    "mediaLimitHint": "Lokale Dateien bis {{local}}MB; Bilder von URLs bis {{remote}}MB",
     "videoLabel": "Video",
     "videoOptional": "Vorschau-Video (optional)",
     "videoHint": "Unterstützt die Formate MP4, WebM, MOV",

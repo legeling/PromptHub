@@ -258,6 +258,7 @@
     "enterImageUrl": "Enter image URL",
     "pasteImageHint": "Paste image directly",
     "referenceMedia": "Reference Media",
+    "mediaLimitHint": "Local files up to {{local}}MB; images from URLs up to {{remote}}MB",
     "videoLabel": "Video",
     "videoOptional": "Preview Video (Optional)",
     "videoHint": "Supports MP4, WebM, MOV formats",

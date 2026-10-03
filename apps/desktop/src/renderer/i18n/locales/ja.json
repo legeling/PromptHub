@@ -257,6 +257,7 @@
     "enterImageUrl": "画像リンクを入力してください",
     "pasteImageHint": "画像を直接貼り付けできます",
     "referenceMedia": "参考メディア",
+    "mediaLimitHint": "ローカルファイルは最大 {{local}}MB、URL 画像は最大 {{remote}}MB",
     "videoLabel": "動画",
     "videoOptional": "プレビュー動画 (任意)",
     "videoHint": "MP4, WebM, MOV 形式に対応",

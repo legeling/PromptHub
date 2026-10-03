@@ -257,6 +257,7 @@
     "enterImageUrl": "請輸入圖片連結",
     "pasteImageHint": "支援直接貼上圖片",
     "referenceMedia": "參考多媒體",
+    "mediaLimitHint": "本地檔案最大 {{local}}MB；連結圖片最大 {{remote}}MB",
     "videoLabel": "影片",
     "videoOptional": "預覽影片 (可選)",
     "videoHint": "支持 MP4, WebM, MOV 格式",

@@ -25,6 +25,10 @@ import {
 
 import { usePromptStore } from "../../stores/prompt.store";
 import { useFolderStore } from "../../stores/folder.store";
+import {
+  IMAGE_DOWNLOAD_MAX_MB,
+  MEDIA_SAVE_MAX_MB,
+} from "@prompthub/shared/constants";
 import { useSettingsStore } from "../../stores/settings.store";
 import { resolveScenarioModel } from "../../services/ai-defaults";
 import { chatCompletion, rewritePromptDraft } from "../../services/ai";
@@ -792,6 +796,14 @@ export function EditPromptModal({
       <label className="block text-sm font-medium text-foreground">
         {t("prompt.referenceMedia")}
       </label>
+      {/* v0.6.3 #64: state the real limits next to the upload affordance.
+          上传入口旁直接写明真实限制（与主进程强制值同源）。 */}
+      <p className="text-xs text-muted-foreground">
+        {t("prompt.mediaLimitHint", {
+          local: MEDIA_SAVE_MAX_MB,
+          remote: IMAGE_DOWNLOAD_MAX_MB,
+        })}
+      </p>
       <div className="flex flex-wrap gap-3">
         {images.map((img, index) => (
           <div
@@ -1228,7 +1240,7 @@ export function EditPromptModal({
           onSourceFocus={handleSourceFocus}
           onTagKeyDown={handleTagKeyDown}
           promptType={promptType}
-          referenceMedia={renderReferenceMediaSection()}
+          referenceMedia={null}
           setFolderId={setFolderId}
           setShowAttributes={setShowAttributes}
           setShowSourceSuggestions={setShowSourceSuggestions}
@@ -1393,6 +1405,7 @@ export function EditPromptModal({
           t={t}
           value={userPrompt}
         />
+        {promptType !== "image" && renderReferenceMediaSection()}
       </div>
 
       {/* 未保存更改提示弹窗 */}

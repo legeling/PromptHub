@@ -258,6 +258,7 @@
     "enterImageUrl": "请输入图片链接",
     "pasteImageHint": "支持直接粘贴图片",
     "referenceMedia": "参考媒体",
+    "mediaLimitHint": "本地文件最大 {{local}}MB；链接图片最大 {{remote}}MB",
     "videoLabel": "视频",
     "videoOptional": "预览视频（可选）",
     "videoHint": "支持 MP4, WebM, MOV 格式",
