@@ -1,6 +1,7 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PromptListEmptyState } from './PromptListEmptyState';
 import { PromptSummary } from '@prompthub/shared/types';
 import { ImageIcon, FolderIcon, StarIcon, PlayIcon, VideoIcon } from 'lucide-react';
 import { useVirtualizer } from '@tanstack/react-virtual';
@@ -335,8 +336,7 @@ export function PromptGalleryView({
     if (prompts.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                <ImageIcon className="w-16 h-16 mb-4 opacity-20" />
-                <p>{t('prompt.noPrompts', '暂无 Prompt')}</p>
+                <PromptListEmptyState />
             </div>
         );
     }

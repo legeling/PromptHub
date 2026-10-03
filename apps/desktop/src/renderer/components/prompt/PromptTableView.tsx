@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback, type DragEvent as ReactDragEvent, type MouseEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PromptListEmptyState } from './PromptListEmptyState';
 import { StarIcon, CopyIcon, PlayIcon, EditIcon, TrashIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon, HistoryIcon, FolderIcon, Trash2Icon, GripVerticalIcon, CornerDownRightIcon, GitBranchIcon } from 'lucide-react';
 import type { PromptSummary } from '@prompthub/shared/types';
 import { useFolderStore } from '../../stores/folder.store';
@@ -976,7 +977,7 @@ export function PromptTableView({
 
         {prompts.length === 0 && (
           <div className="flex items-center justify-center h-40 text-muted-foreground rounded-xl border border-border app-wallpaper-surface mt-2">
-            {t('prompt.noPrompts')}
+            <PromptListEmptyState />
           </div>
         )}
       </div>
