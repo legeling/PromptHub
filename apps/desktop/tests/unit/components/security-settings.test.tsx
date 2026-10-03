@@ -74,6 +74,37 @@ describe("SecuritySettings", () => {
     });
   });
 
+  it("surfaces localized copy instead of raw English IPC errors when setting a master password fails (v0.6.3 #64)", async () => {
+    const showToast = vi.fn();
+    useToastMock.mockReturnValue({ showToast });
+    (
+      window.api.security.setMasterPassword as ReturnType<typeof vi.fn>
+    ).mockRejectedValueOnce(new Error("Password too short"));
+
+    await renderWithI18n(<SecuritySettings />, { language: "en" });
+    await waitFor(() => expect(window.api.security.status).toHaveBeenCalled());
+
+    const setInputs = screen.getAllByPlaceholderText(/master password/i);
+    fireEvent.change(setInputs[0], { target: { value: "abcd1234" } });
+    fireEvent.change(setInputs[1], { target: { value: "abcd1234" } });
+
+    fireEvent.click(screen.getByRole("button", { name: /set master password/i }));
+
+    await waitFor(() => {
+      expect(window.api.security.setMasterPassword).toHaveBeenCalledWith(
+        "abcd1234",
+      );
+      expect(showToast).toHaveBeenCalledWith(
+        "Password is too short (minimum 4 characters)",
+        "error",
+      );
+    });
+    const rawEnglishToast = showToast.mock.calls.some(
+      ([message]) => message === "Password too short",
+    );
+    expect(rawEnglishToast).toBe(false);
+  });
+
   it("does not submit when setting a master password with mismatched confirmation", async () => {
     const showToast = vi.fn();
     useToastMock.mockReturnValue({ showToast });
@@ -339,7 +370,10 @@ describe("SecuritySettings", () => {
     });
   });
 
-  it("surfaces unexpected change-password failures instead of mapping them away", async () => {
+  it("maps unexpected change-password failures to generic localized copy instead of raw English (v0.6.3 #64)", async () => {
+    const consoleSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
     const showToast = vi.fn();
     useToastMock.mockReturnValue({ showToast });
 
@@ -373,8 +407,19 @@ describe("SecuritySettings", () => {
     fireEvent.click(screen.getByRole("button", { name: /confirm change/i }));
 
     await waitFor(() => {
-      expect(showToast).toHaveBeenCalledWith("Disk write failed", "error");
+      expect(showToast).toHaveBeenCalledWith(
+        "Security operation failed, please try again",
+        "error",
+      );
     });
+    // the raw message must not reach the toast, but stays in the console
+    expect(
+      showToast.mock.calls.some(([message]) => message === "Disk write failed"),
+    ).toBe(false);
+    expect(console.error).toHaveBeenCalledWith(
+      "Security operation failed:",
+      "Disk write failed",
+    );
   });
 
   it("shows an incorrect-password toast when unlock returns success false", async () => {
