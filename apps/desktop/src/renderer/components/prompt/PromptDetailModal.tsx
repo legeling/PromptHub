@@ -50,7 +50,8 @@ interface PromptDetailModalProps {
   relations?: PromptRelation[];
   onCreateRelation?: (data: CreatePromptRelationDTO) => Promise<void> | void;
   onDeleteRelation?: (id: string) => Promise<void> | void;
-  onSelectPrompt?: (promptId: string) => void;
+  onDetachPrompt?: (promptId: string) => Promise<void> | void;
+  onSelectPrompt?: (promptId: string) => boolean | void;
 }
 
 export function PromptDetailModal({
@@ -64,6 +65,7 @@ export function PromptDetailModal({
   relations = [],
   onCreateRelation,
   onDeleteRelation,
+  onDetachPrompt,
   onSelectPrompt,
 }: PromptDetailModalProps) {
   const { t, i18n } = useTranslation();
@@ -241,6 +243,7 @@ export function PromptDetailModal({
   };
 
   if (!prompt) return null;
+  const relationshipPrompt = prompts.find((candidate) => candidate.id === prompt.id) ?? prompt;
   const promptSourceHref = resolvePromptMarkdownHref(prompt.source);
   const modalRelations = relations.filter(
     (relation) =>
@@ -249,7 +252,7 @@ export function PromptDetailModal({
   );
   const modalRelationshipCount =
     modalRelations.length +
-    (prompt.parentId ? 1 : 0) +
+    (relationshipPrompt.parentId ? 1 : 0) +
     prompts.filter((candidate) => candidate.parentId === prompt.id).length;
   const canEditRelations = Boolean(
     onCreateRelation && onDeleteRelation && onSelectPrompt,
@@ -587,14 +590,15 @@ export function PromptDetailModal({
         {/* 关系（内联展开） */}
         {canEditRelations && isRelationshipModalOpen && (
           <PromptRelationshipPanel
-            currentPrompt={prompt}
+            currentPrompt={relationshipPrompt}
             prompts={prompts}
             relations={modalRelations}
             relationshipCount={modalRelationshipCount}
             onCreateRelation={onCreateRelation!}
             onDeleteRelation={onDeleteRelation!}
+            onDetachPrompt={onDetachPrompt}
             onSelectPrompt={(promptId) => {
-              onSelectPrompt!(promptId);
+              if (onSelectPrompt!(promptId) === false) return;
               setIsRelationshipModalOpen(false);
               onClose();
             }}

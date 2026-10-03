@@ -192,6 +192,8 @@
     "openChildPrompt": "Open child prompt {{title}}",
     "moreChildPrompts": "+{{count}} more",
     "relationships": {
+      "unlinkHierarchy": "Unlink {{title}} (keep both prompts)",
+      "openFolderFirst": "Open and unlock this prompt’s folder first.",
       "title": "Prompt relationships",
       "openButton": "Relations",
       "openPanel": "Open prompt relationships",

@@ -38,6 +38,8 @@ export interface PromptWorkspaceDialogsProps {
   menuItems: ContextMenuItem[];
   onCreateRelation: (data: CreatePromptRelationDTO) => Promise<void> | void;
   onDeleteRelation: (relationId: string) => Promise<void> | void;
+  onDetachPrompt: (promptId: string) => Promise<void>;
+  onRevealPrompt: (promptId: string) => boolean;
   previewImage: string | null;
   quickRewritePrompt: Prompt | null;
   runAiTest: AiWorkbench["runAiTest"];

@@ -64,6 +64,7 @@ export const VirtualizedPromptList = memo(function VirtualizedPromptList({
   const model = useVirtualizedPromptListModel(
     prompts,
     effectiveCollapsedPromptIds,
+    selectedPromptIdSet.size === 1 ? Array.from(selectedPromptIdSet)[0] : null,
   );
 
   const togglePromptCollapse = useCollapsedPromptIds({

@@ -40,7 +40,7 @@ function PromptDetailMetadataSummary({
   selectPrompt,
 }: {
   prompt: SelectedPrompt;
-  selectPrompt: PromptStoreState["selectPrompt"];
+  selectPrompt: (promptId: string) => void;
 }) {
   const { t } = useTranslation();
   const detail = usePromptWorkspaceDetailContext();
@@ -78,7 +78,7 @@ function PromptDetailRelationshipPanel({
 }: {
   prompt: SelectedPrompt;
   prompts: PromptStoreState["prompts"];
-  selectPrompt: PromptStoreState["selectPrompt"];
+  selectPrompt: (promptId: string) => void;
 }) {
   const detail = usePromptWorkspaceDetailContext();
   return detail.isDetailRelationshipsOpen ? (
@@ -89,6 +89,7 @@ function PromptDetailRelationshipPanel({
       relationshipCount={detail.relationshipCount}
       onCreateRelation={detail.onCreateRelation}
       onDeleteRelation={detail.onDeleteRelation}
+      onDetachPrompt={detail.onDetachPrompt}
       onSelectPrompt={selectPrompt}
       disabled={detail.isDetailInlineEditing}
       className="mb-4"
@@ -122,17 +123,18 @@ function PromptDetailOutputFormatPanel({
 
 export function PromptDetailMetadataPanels() {
   const store = usePromptDetailPanelStore();
-  const prompt = usePromptWorkspaceDetailContext().selectedPrompt!;
+  const detail = usePromptWorkspaceDetailContext();
+  const prompt = detail.selectedPrompt!;
   return (
     <>
       <PromptDetailMetadataSummary
         prompt={prompt}
-        selectPrompt={store.selectPrompt}
+        selectPrompt={detail.onRevealPrompt}
       />
       <PromptDetailRelationshipPanel
         prompt={prompt}
         prompts={store.prompts}
-        selectPrompt={store.selectPrompt}
+        selectPrompt={detail.onRevealPrompt}
       />
       <PromptDetailOutputFormatPanel prompt={prompt} store={store} />
     </>

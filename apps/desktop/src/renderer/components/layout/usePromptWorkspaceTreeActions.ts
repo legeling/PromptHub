@@ -3,8 +3,62 @@ import type { Dispatch, SetStateAction } from "react";
 import type { PromptSummary, UpdatePromptDTO } from "@prompthub/shared/types";
 import type { TFunction } from "i18next";
 import type { useToast } from "../ui/Toast";
+import { getPromptRevealPlan, type PromptRelationshipScope } from "../../services/prompt-relationship-navigation";
 
 type ShowToast = ReturnType<typeof useToast>["showToast"];
+
+interface RelationshipNavigationParams extends PromptRelationshipScope {
+  selectFolder: (id: string | null) => void;
+  selectPrompt: (id: string | null) => void;
+  setSearchQuery: (query: string) => void;
+  clearFilterTags: () => void;
+  setPromptTypeFilter: (filter: "all" | "text" | "image") => void;
+  setCollapsedPromptIds: Dispatch<SetStateAction<Set<string>>>;
+  movePrompt: (id: string, parentId: string | null, order: number) => Promise<void>;
+  showToast: ShowToast;
+  t: TFunction;
+}
+
+export function usePromptRelationshipActions(params: RelationshipNavigationParams) {
+  const handleRevealPrompt = useCallback((promptId: string): boolean => {
+    const plan = getPromptRevealPlan(promptId, params);
+    if (!plan) {
+      params.showToast(params.t("prompt.relationships.openFolderFirst"), "info");
+      return false;
+    }
+    if (plan.folderId !== params.selectedFolderId) params.selectFolder(plan.folderId);
+    params.setSearchQuery("");
+    params.clearFilterTags();
+    params.setPromptTypeFilter("all");
+    params.setCollapsedPromptIds((ids) => {
+      const next = new Set(ids);
+      for (const id of plan.ancestorIds) next.delete(id);
+      return next;
+    });
+    params.selectPrompt(promptId);
+    return true;
+  }, [params]);
+  const handleDetachPrompt = useCallback(
+    (promptId: string) => detachPromptFromParent(promptId, params),
+    [params],
+  );
+  return { handleRevealPrompt, handleDetachPrompt };
+}
+
+async function detachPromptFromParent(promptId: string, params: RelationshipNavigationParams): Promise<void> {
+  if (!getPromptRevealPlan(promptId, params)) {
+    params.showToast(params.t("prompt.relationships.openFolderFirst"), "info");
+    return;
+  }
+  try {
+    const order = params.prompts.filter((prompt) => !prompt.parentId && prompt.id !== promptId).length;
+    await params.movePrompt(promptId, null, order);
+    params.showToast(params.t("prompt.relationships.removed"), "success");
+  } catch (error) {
+    console.error("Failed to unlink prompt hierarchy:", error);
+    params.showToast(params.t("prompt.relationships.removeFailed"), "error");
+  }
+}
 
 interface CollapsePromptTreeParams {
   setCollapsedPromptIds: Dispatch<SetStateAction<Set<string>>>;

@@ -57,6 +57,25 @@
   follow the same flow. Usage remains attributed to the source Prompt even
   when the copied body comes from one or more mapped target Prompts.
 
+### 2.4 Relationship Navigation And Unlinking
+
+- Parent/child chips in the relationship panel offer an explicit unlink action.
+  Unlinking moves the child to the root through the existing `movePrompt`
+  operation. Both Prompts, their content, folders, descendants and semantic
+  links remain intact. Errors keep the relationship visible and report failure.
+- Opening a relationship from the workspace detail or detail modal reveals the
+  target in the list: clear search/tag/type filters, retain the current folder
+  scope when it contains the target, otherwise switch to All for public targets,
+  expand target ancestors and scroll the selected row into view.
+- Private targets outside the accessible current folder scope require the user
+  to open/unlock their folder first. Relationship navigation and unlinking do
+  not unlock folders or bypass their visibility rules.
+- Folder and tag filtering still apply to normal list browsing; opening a
+  relationship is the explicit action that changes the browsing filters.
+- Ownership remains SQLite `parent_id`/`sort_order` through the existing Core/DB
+  move contract. No storage schema, migration or additional durable state is
+  introduced; reverting the UI retains valid root-level Prompts.
+
 ### 3. Stable Internal Sources
 
 - Prompt 协议设计见 `spec/knowledge/structure/prompt-protocols-zh.md`。

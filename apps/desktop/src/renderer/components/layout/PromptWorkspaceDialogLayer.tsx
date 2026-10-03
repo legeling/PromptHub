@@ -158,6 +158,8 @@ function getDialogActionProps(
   | "menuItems"
   | "onCreateRelation"
   | "onDeleteRelation"
+  | "onDetachPrompt"
+  | "onRevealPrompt"
 > {
   const { actions } = controller;
   return {
@@ -166,6 +168,8 @@ function getDialogActionProps(
     menuItems: actions.menuItems,
     onCreateRelation: actions.handleCreatePromptRelation,
     onDeleteRelation: actions.handleDeletePromptRelation,
+    onDetachPrompt: actions.handleDetachPrompt,
+    onRevealPrompt: actions.handleRevealPrompt,
   };
 }
 

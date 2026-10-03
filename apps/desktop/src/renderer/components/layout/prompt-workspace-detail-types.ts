@@ -65,6 +65,8 @@ export interface PromptWorkspaceDetailPaneProps {
   isTestingAI: boolean;
   onCreateRelation: (data: CreatePromptRelationDTO) => Promise<void> | void;
   onDeleteRelation: (relationId: string) => Promise<void> | void;
+  onDetachPrompt: (promptId: string) => Promise<void>;
+  onRevealPrompt: (promptId: string) => boolean;
   openDetailInlineEdit: (field?: DetailInlineEditField) => void;
   outputFormatCount: number;
   parentPrompt: PromptSummary | null;

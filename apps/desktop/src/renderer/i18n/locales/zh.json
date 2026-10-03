@@ -192,6 +192,8 @@
     "openChildPrompt": "打开子项 Prompt {{title}}",
     "moreChildPrompts": "+{{count}} 个",
     "relationships": {
+      "unlinkHierarchy": "解除与「{{title}}」的父子关系（保留内容）",
+      "openFolderFirst": "请先打开并解锁此 Prompt 所在的文件夹。",
       "title": "Prompt 关系",
       "openButton": "关系",
       "openPanel": "打开 Prompt 关系",

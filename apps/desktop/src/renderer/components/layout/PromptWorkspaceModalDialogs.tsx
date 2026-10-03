@@ -76,6 +76,8 @@ function PromptDetailDialog({
   isDetailModalOpen,
   onCreateRelation,
   onDeleteRelation,
+  onDetachPrompt,
+  onRevealPrompt,
   setDetailPrompt,
   setEditingPrompt,
   setIsDetailModalOpen,
@@ -86,13 +88,14 @@ function PromptDetailDialog({
   | "isDetailModalOpen"
   | "onCreateRelation"
   | "onDeleteRelation"
+  | "onDetachPrompt"
+  | "onRevealPrompt"
   | "setDetailPrompt"
   | "setEditingPrompt"
   | "setIsDetailModalOpen"
 >) {
   const prompts = usePromptStore((state) => state.prompts);
   const relations = usePromptStore((state) => state.relations ?? []);
-  const selectPrompt = usePromptStore((state) => state.selectPrompt);
   if (!isDetailModalOpen) return null;
   return (
     <Suspense fallback={null}>
@@ -107,7 +110,8 @@ function PromptDetailDialog({
         relations={relations}
         onCreateRelation={onCreateRelation}
         onDeleteRelation={onDeleteRelation}
-        onSelectPrompt={selectPrompt}
+        onDetachPrompt={onDetachPrompt}
+        onSelectPrompt={onRevealPrompt}
       />
     </Suspense>
   );

@@ -70,6 +70,7 @@ async function renderPanel({
   onCreateRelation = vi.fn(),
   onDeleteRelation = vi.fn(),
   onSelectPrompt = vi.fn(),
+  onDetachPrompt = vi.fn(),
   prompts = [
     currentPrompt,
     parentPrompt,
@@ -92,6 +93,7 @@ async function renderPanel({
   onSelectPrompt?: Parameters<
     typeof PromptRelationshipPanel
   >[0]["onSelectPrompt"];
+  onDetachPrompt?: (promptId: string) => Promise<void> | void;
   prompts?: Prompt[];
 } = {}) {
   await renderWithI18n(
@@ -103,6 +105,7 @@ async function renderPanel({
       onCreateRelation={onCreateRelation}
       onDeleteRelation={onDeleteRelation}
       onSelectPrompt={onSelectPrompt}
+      onDetachPrompt={onDetachPrompt}
     />,
     { language: "en" },
   );
@@ -178,14 +181,34 @@ describe("PromptRelationshipPanel", () => {
     ).toHaveTextContent("Children");
     expect(
       screen.queryByRole("button", {
-        name: "Remove relation to Campaign system",
+        name: "Unlink Campaign system (keep both prompts)",
       }),
-    ).not.toBeInTheDocument();
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", {
-        name: "Remove relation to Launch variant",
+        name: "Unlink Launch variant (keep both prompts)",
       }),
-    ).not.toBeInTheDocument();
+    ).toBeInTheDocument();
+  });
+
+  it.each([
+    ["Campaign system", currentPrompt.id],
+    ["Launch variant", childPrompt.id],
+  ])("unlinks %s by moving the child, never deleting a prompt", async (title, childId) => {
+    const onDetachPrompt = vi.fn().mockResolvedValue(undefined);
+    const onDeleteRelation = vi.fn();
+    await renderPanel({
+      currentPrompt: { ...currentPrompt, parentId: parentPrompt.id },
+      onDetachPrompt,
+      onDeleteRelation,
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", {
+        name: `Unlink ${title} (keep both prompts)`,
+      }));
+    });
+    expect(onDetachPrompt).toHaveBeenCalledWith(childId);
+    expect(onDeleteRelation).not.toHaveBeenCalled();
   });
 
   it("creates a related_to relation by searching and picking a prompt", async () => {

@@ -56,6 +56,9 @@ function usePromptWorkspacePromptActions() {
   const updatePrompt = usePromptStore((state) => state.updatePrompt);
   const movePrompt = usePromptStore((state) => state.movePrompt);
   const toggleFilterTag = usePromptStore((state) => state.toggleFilterTag);
+  const setSearchQuery = usePromptStore((state) => state.setSearchQuery);
+  const clearFilterTags = usePromptStore((state) => state.clearFilterTags);
+  const setPromptTypeFilter = usePromptStore((state) => state.setPromptTypeFilter);
   const incrementUsageCount = usePromptStore(
     (state) => state.incrementUsageCount,
   );
@@ -75,6 +78,9 @@ function usePromptWorkspacePromptActions() {
     updatePrompt,
     movePrompt,
     toggleFilterTag,
+    setSearchQuery,
+    clearFilterTags,
+    setPromptTypeFilter,
     incrementUsageCount,
   };
 }
@@ -83,7 +89,8 @@ function usePromptWorkspaceFolderBindings() {
   const selectedFolderId = useFolderStore((state) => state.selectedFolderId);
   const unlockedFolderIds = useFolderStore((state) => state.unlockedFolderIds);
   const folders = useFolderStore((state) => state.folders);
-  return { selectedFolderId, unlockedFolderIds, folders };
+  const selectFolder = useFolderStore((state) => state.selectFolder);
+  return { selectedFolderId, unlockedFolderIds, folders, selectFolder };
 }
 
 function usePromptWorkspacePreferences() {

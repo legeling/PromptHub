@@ -191,6 +191,8 @@
     "openChildPrompt": "Abrir prompt hijo {{title}}",
     "moreChildPrompts": "+{{count}} más",
     "relationships": {
+      "unlinkHierarchy": "Desvincular {{title}} (conservar ambos prompts)",
+      "openFolderFirst": "Primero abre y desbloquea la carpeta de este prompt.",
       "title": "Relaciones de Prompt",
       "openButton": "Relaciones",
       "openPanel": "Abrir relaciones de Prompt",

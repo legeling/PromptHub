@@ -28,6 +28,7 @@ import {
   useCollapsePromptTreeAction,
   useMovePromptTreeActions,
   usePromptBatchActions,
+  usePromptRelationshipActions,
 } from "./usePromptWorkspaceTreeActions";
 
 type StoreBindings = ReturnType<typeof usePromptWorkspaceStoreBindings>;
@@ -198,6 +199,14 @@ function usePromptWorkspaceDetailBindings(inputs: WorkspaceActionInputs) {
 }
 
 function usePromptWorkspaceTreeBindings(inputs: WorkspaceActionInputs) {
+  const relationships = usePromptRelationshipActions({
+    ...inputs.stores.folderData,
+    ...inputs.stores.promptActions,
+    prompts: inputs.stores.promptData.prompts,
+    setCollapsedPromptIds: inputs.state.detail.setCollapsedPromptIds,
+    showToast: inputs.showToast,
+    t: inputs.t,
+  });
   const handleCollapseAllPrompts = useCollapsePromptTreeAction({
     setCollapsedPromptIds: inputs.state.detail.setCollapsedPromptIds,
     visibleHierarchyMeta: inputs.derived.visibleHierarchyMeta,
@@ -218,7 +227,7 @@ function usePromptWorkspaceTreeBindings(inputs: WorkspaceActionInputs) {
     toggleFavorite: inputs.stores.promptActions.toggleFavorite,
     updatePrompt: inputs.stores.promptActions.updatePrompt,
   });
-  return { handleCollapseAllPrompts, ...tree, ...batch };
+  return { handleCollapseAllPrompts, ...tree, ...batch, ...relationships };
 }
 
 function usePromptSelectionAction(

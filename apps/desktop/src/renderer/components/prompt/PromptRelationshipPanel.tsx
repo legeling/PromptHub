@@ -8,6 +8,7 @@ import {
   SearchIcon,
   SparklesIcon,
   Trash2Icon,
+  UnlinkIcon,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type {
@@ -101,6 +102,7 @@ export interface PromptRelationshipPanelProps {
   relationshipCount?: number;
   onCreateRelation: (data: CreatePromptRelationDTO) => Promise<void> | void;
   onDeleteRelation: (id: string) => Promise<void> | void;
+  onDetachPrompt?: (promptId: string) => Promise<void> | void;
   onSelectPrompt: (promptId: string) => void;
   disabled?: boolean;
   className?: string;
@@ -192,6 +194,7 @@ function usePromptRelationshipPanelState({
   relationshipCount,
   onCreateRelation,
   onDeleteRelation,
+  onDetachPrompt,
 }: Pick<
   PromptRelationshipPanelProps,
   | "currentPrompt"
@@ -200,6 +203,7 @@ function usePromptRelationshipPanelState({
   | "relationshipCount"
   | "onCreateRelation"
   | "onDeleteRelation"
+  | "onDetachPrompt"
 >) {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
@@ -264,14 +268,18 @@ function usePromptRelationshipPanelState({
     }
   };
 
-  const handleDelete = async (relation: PromptRelation) => {
+  const handleDelete = async (item: RelationViewItem) => {
     if (deletingId) {
       return;
     }
 
-    setDeletingId(relation.id);
+    setDeletingId(item.key);
     try {
-      await onDeleteRelation(relation.id);
+      if (item.isTreeRelation && onDetachPrompt) {
+        await onDetachPrompt(item.direction === "incoming" ? currentPrompt.id : item.targetPrompt.id);
+      } else if (item.relation) {
+        await onDeleteRelation(item.relation.id);
+      }
     } finally {
       setDeletingId(null);
     }
@@ -393,13 +401,15 @@ function RelationChip({
   disabled,
   isDeleting,
   onDelete,
+  canDetach,
   onSelectPrompt,
   t,
 }: {
   item: RelationViewItem;
   disabled: boolean;
   isDeleting: boolean;
-  onDelete: (relation: PromptRelation) => void;
+  onDelete: (item: RelationViewItem) => void;
+  canDetach: boolean;
   onSelectPrompt: (promptId: string) => void;
   t: ReturnType<typeof useTranslation>["t"];
 }) {
@@ -409,11 +419,11 @@ function RelationChip({
       : item.direction === "outgoing"
         ? ArrowUpRightIcon
         : Link2Icon;
-  const removeLabel = t("prompt.relationships.removeRelation", {
+  const removeLabel = t(item.isTreeRelation ? "prompt.relationships.unlinkHierarchy" : "prompt.relationships.removeRelation", {
     title: item.targetPrompt.title,
-    defaultValue: `Remove relation to ${item.targetPrompt.title}`,
   });
-  const canDelete = item.relation !== null && !item.isTreeRelation;
+  const canDelete = item.isTreeRelation ? canDetach : item.relation !== null;
+  const RemoveIcon = item.isTreeRelation ? UnlinkIcon : Trash2Icon;
 
   return (
     <span className="inline-flex max-w-full items-stretch overflow-hidden rounded-full border border-border/70 bg-card text-xs shadow-sm">
@@ -432,16 +442,16 @@ function RelationChip({
         </span>
         <span className="max-w-[12rem] truncate">{item.targetPrompt.title}</span>
       </button>
-      {canDelete && item.relation && (
+      {canDelete && (
         <button
           type="button"
           disabled={disabled || isDeleting}
-          onClick={() => onDelete(item.relation)}
+          onClick={() => onDelete(item)}
           aria-label={removeLabel}
           title={removeLabel}
           className="inline-flex w-7 items-center justify-center border-l border-border/70 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50"
         >
-          <Trash2Icon aria-hidden="true" className="h-3.5 w-3.5" />
+          <RemoveIcon aria-hidden="true" className="h-3.5 w-3.5" />
         </button>
       )}
     </span>
@@ -455,13 +465,15 @@ function RelationList({
   t,
   onDelete,
   onSelectPrompt,
+  canDetach,
 }: {
   relationItems: RelationViewItem[];
   deletingId: string | null;
   disabled: boolean;
   t: ReturnType<typeof useTranslation>["t"];
-  onDelete: (relation: PromptRelation) => void;
+  onDelete: (item: RelationViewItem) => void;
   onSelectPrompt: (promptId: string) => void;
+  canDetach: boolean;
 }) {
   if (relationItems.length === 0) {
     return (
@@ -481,9 +493,10 @@ function RelationList({
           key={item.key}
           item={item}
           disabled={disabled}
-          isDeleting={deletingId === item.relation?.id}
+          isDeleting={deletingId === item.key}
           onDelete={onDelete}
           onSelectPrompt={onSelectPrompt}
+          canDetach={canDetach}
           t={t}
         />
       ))}
@@ -567,6 +580,7 @@ export function PromptRelationshipPanel({
   relationshipCount,
   onCreateRelation,
   onDeleteRelation,
+  onDetachPrompt,
   onSelectPrompt,
   disabled = false,
   className = "",
@@ -578,6 +592,7 @@ export function PromptRelationshipPanel({
     relationshipCount,
     onCreateRelation,
     onDeleteRelation,
+    onDetachPrompt,
   });
 
   return (
@@ -601,6 +616,7 @@ export function PromptRelationshipPanel({
         t={state.t}
         onDelete={(relation) => void state.handleDelete(relation)}
         onSelectPrompt={onSelectPrompt}
+        canDetach={Boolean(onDetachPrompt)}
       />
       <RelationSuggestions
         suggestions={state.suggestions}

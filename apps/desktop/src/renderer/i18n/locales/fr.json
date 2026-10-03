@@ -191,6 +191,8 @@
     "openChildPrompt": "Ouvrir le prompt enfant {{title}}",
     "moreChildPrompts": "+{{count}} de plus",
     "relationships": {
+      "unlinkHierarchy": "Dissocier {{title}} (conserver les deux prompts)",
+      "openFolderFirst": "Ouvrez et déverrouillez d’abord le dossier de ce prompt.",
       "title": "Relations du prompt",
       "openButton": "Relations",
       "openPanel": "Ouvrir les relations du prompt",

@@ -113,6 +113,8 @@ function getDetailActionProps(
   | "handleVersionHistory"
   | "onCreateRelation"
   | "onDeleteRelation"
+  | "onDetachPrompt"
+  | "onRevealPrompt"
 > {
   const { actions } = controller;
   return {
@@ -129,6 +131,8 @@ function getDetailActionProps(
     handleVersionHistory: actions.handleVersionHistory,
     onCreateRelation: actions.handleCreatePromptRelation,
     onDeleteRelation: actions.handleDeletePromptRelation,
+    onDetachPrompt: actions.handleDetachPrompt,
+    onRevealPrompt: actions.handleRevealPrompt,
   };
 }
 

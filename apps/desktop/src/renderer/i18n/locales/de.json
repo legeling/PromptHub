@@ -191,6 +191,8 @@
     "openChildPrompt": "Untergeordneten Prompt {{title}} öffnen",
     "moreChildPrompts": "+{{count}} weitere",
     "relationships": {
+      "unlinkHierarchy": "Verknüpfung mit {{title}} lösen (beide Prompts behalten)",
+      "openFolderFirst": "Öffnen und entsperren Sie zuerst den Ordner dieses Prompts.",
       "title": "Prompt-Beziehungen",
       "openButton": "Beziehungen",
       "openPanel": "Prompt-Beziehungen öffnen",
