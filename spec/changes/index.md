@@ -7,7 +7,7 @@ file manually. Run the generator after adding, moving, or archiving a change.
 
 | State | Count |
 | --- | ---: |
-| Active | 37 |
+| Active | 47 |
 | Recorded complete (original path) | 0 |
 | Archived | 235 |
 | Legacy | 1 |
@@ -20,11 +20,21 @@ file manually. Run the generator after adding, moving, or archiving a change.
 | `agent-provider-protocol-bridge` | active | `spec/changes/active/agent-provider-protocol-bridge/` |
 | `backup-safety-point-coordination` | active | `spec/changes/active/backup-safety-point-coordination/` |
 | `cloud-account-store-client` | active | `spec/changes/active/cloud-account-store-client/` |
+| `db-prompt-fts-tokenized-search` | active | `spec/changes/active/db-prompt-fts-tokenized-search/` |
+| `desktop-backup-guidance-card` | active | `spec/changes/active/desktop-backup-guidance-card/` |
 | `desktop-close-choice-persistence` | active | `spec/changes/active/desktop-close-choice-persistence/` |
+| `desktop-editor-media-visibility` | active | `spec/changes/active/desktop-editor-media-visibility/` |
+| `desktop-error-copy-humanization` | active | `spec/changes/active/desktop-error-copy-humanization/` |
 | `desktop-image-generation-workbench` | active | `spec/changes/active/desktop-image-generation-workbench/` |
 | `desktop-issue-192-copy-action-parity` | active | `spec/changes/active/desktop-issue-192-copy-action-parity/` |
+| `desktop-list-empty-state-guidance` | active | `spec/changes/active/desktop-list-empty-state-guidance/` |
+| `desktop-prompt-batch-ux-hardening` | active | `spec/changes/active/desktop-prompt-batch-ux-hardening/` |
+| `desktop-prompt-editor-section-collapse` | active | `spec/changes/active/desktop-prompt-editor-section-collapse/` |
 | `desktop-prompt-list-projection` | active | `spec/changes/active/desktop-prompt-list-projection/` |
+| `desktop-search-focus-shortcut` | active | `spec/changes/active/desktop-search-focus-shortcut/` |
 | `desktop-settings-authority-convergence` | active | `spec/changes/active/desktop-settings-authority-convergence/` |
+| `desktop-startup-folder-restore` | active | `spec/changes/active/desktop-startup-folder-restore/` |
+| `desktop-tag-manager-usability` | active | `spec/changes/active/desktop-tag-manager-usability/` |
 | `desktop-upgrade-snapshot-lock-recovery` | active | `spec/changes/active/desktop-upgrade-snapshot-lock-recovery/` |
 | `foundation-integrity-redesign` | in progress | `spec/changes/active/foundation-integrity-redesign/` |
 | `grok-build-platform-support` | active | `spec/changes/active/grok-build-platform-support/` |

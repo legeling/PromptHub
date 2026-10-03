@@ -303,6 +303,16 @@
 
 ## Stable Scenarios
 
+### Local integration of PR #222 / #223 (2026-10-03)
+
+- #223 includes #222. Integration targets the current `main` contracts, not the fork's release configuration: version `0.6.0-beta.2`, signed macOS packaging, release asset completeness checks, current database entrypoints and existing recovery workflows remain unchanged.
+- Prompt list/card projections remain `PromptSummary`; full content is loaded through the current detail boundary. Subtree folder moves use one recursive SQLite update inside the existing move transaction, including rollback on failure.
+- Startup-folder and backup-guidance preferences use the main-process SQLite settings API. Neither renderer local storage nor the canonical renderer-settings subscription stores a second copy. Folder restoration waits for workspace initialization.
+- The fork's rules-backup implementation is superseded by the current import workflow: backup import must not write external Agent/project targets. Fork-only release scripts and obsolete IndexedDB fallbacks are not introduced.
+- Focused verification covers FTS search, subtree move rollback, list/card batch interactions, settings persistence/reopen through preload and real SQLite, rules recovery, image IPC, and Web folder visibility. Desktop production build and Desktop/Web/CLI source type checks passed. GUI and release packaging were not exercised. Fork change records describe their original verification, not current-main release acceptance.
+- Full desktop test type checking remains blocked by 298 diagnostics also present in the pre-merge main snapshot (comparison by file and diagnostic, ignoring shifted line numbers). Web client build passed; Web server build hits the unchanged `@prompthub/db` alias resolving a subpath below `index.ts`, also reproduced against the pre-merge configuration. These are not release-ready results.
+- After restoring the pre-existing relationship-navigation edits, all 46 tests across relationship navigation/panels, tree collapse, gallery/table views and variable-copy dialogs passed; desktop source type checking and changed-file lint also passed on that combined working tree.
+
 ### Scenario: Contributor changes desktop runtime behavior
 
 When a contributor changes desktop runtime behavior materially:

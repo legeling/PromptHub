@@ -10,6 +10,7 @@
 
 - Prompt 内容必须有稳定的持久化表示，允许后续索引、版本、导入导出和同步围绕其工作。
 - 数据库存储与文件系统存储的职责应明确，避免真相源混乱。
+- 当前目标以 [foundation 数据所有权约定](../../changes/active/foundation-integrity-redesign/specs/foundation/spec.md#fr-foundation-003-data-ownership-and-invariants) 为准：SQLite 拥有结构化记录，文件系统拥有实际文件。下文 canonical 文件/投影说明记录尚未完成替换的历史实现，不是另一种可选业务模式；合入旧分支不得恢复 IndexedDB 业务回退或绕过 Core 的写入入口。
 
 ### 2. Folder And Versioning Behavior
 
