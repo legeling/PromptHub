@@ -1007,14 +1007,14 @@ describe("PromptDB (in-memory SQLite)", () => {
     });
 
     it("does NOT leak large text fields into the summary", () => {
-      db.create({
+      const prompt = db.create({
         title: "Secret",
         userPrompt: "A very long user prompt body ".repeat(200),
         systemPrompt: "system body".repeat(100),
         notes: "private notes".repeat(50),
-        lastAiResponse: "ai output".repeat(80),
         variables: [{ name: "v", type: "text", required: true }],
       });
+      db.update(prompt.id, { lastAiResponse: "ai output".repeat(80) });
 
       const meta = db.getAllMeta()[0];
       const serialized = JSON.stringify(meta);
