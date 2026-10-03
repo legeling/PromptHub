@@ -4,8 +4,7 @@
 
 本地优先的 Prompt、Skill 与 AI 编程资产工作台。
 
-<img width="3778" height="2040" alt="image" src="https://github.com/user-attachments/assets/1313b0a4-7e0e-4ace-9c6d-6c21321ee89f" /><div align="center">
-  <img src="./docs/imgs/icon.png" alt="PromptHub Logo" width="128" height="128" />
+
   <br/>
 
   <!-- 徽章 -->
@@ -44,12 +43,13 @@
 
 <br/>
 
-PromptHub 把你的 Prompt、SKILL.md 和项目级 AI 编程资产放进一个本地工作区。它能把同一份 Skill 一键安装到 Claude Code、Cursor、Codex、Windsurf、Gemini CLI、Cline 等十几个工具，给 Prompt 做版本管理与多模型测试，并通过 WebDAV 或自部署 Web 同步到其他设备。
+PromptHub 将您的 Prompt、SKILL.md 以及项目级 AI 编程资产集中于一个本地工作区。它支持将同一份 Skill 一键部署至 Claude Code、Cursor、Codex、Windsurf、Gemini CLI、Cline 等十余款工具，同时为 Prompt 提供版本管理与多模型测试功能，并可通过 WebDAV 或自部署的 Web 服务同步至其他设备。
 
 数据默认存在你自己的电脑上。
 
 ---
-
+<img width="3778" height="2040" alt="image" src="https://github.com/user-attachments/assets/1313b0a4-7e0e-4ace-9c6d-6c21321ee89f" /><div align="center">
+  <img src="./docs/imgs/icon.png" alt="PromptHub Logo" width="128" height="128" />
 ## 目录
 
 - [桌面版下载](#install)
