@@ -3,7 +3,7 @@
 # PromptHub
 
 本地优先的 Prompt、Skill 与 AI 编程资产工作台。
-![正在上传image.png…]()
+
 <img width="3778" height="2040" alt="image" src="https://github.com/user-attachments/assets/1313b0a4-7e0e-4ace-9c6d-6c21321ee89f" /><div align="center">
   <img src="./docs/imgs/icon.png" alt="PromptHub Logo" width="128" height="128" />
   <br/>
