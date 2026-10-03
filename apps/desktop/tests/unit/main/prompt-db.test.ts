@@ -304,6 +304,96 @@ describe("PromptDB (in-memory SQLite)", () => {
       expect(db.getById(grandchild.id)?.parentId).toBe(child.id);
     });
 
+    it("rolls back hierarchy and folder changes when a descendant folder write fails", () => {
+      const folderId = "move-target-folder";
+      rawDb.prepare("INSERT INTO folders (id, name, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?)").run(folderId, "Target", 0, 1, 1);
+      const parent = db.create({ title: "Target", userPrompt: "target", folderId });
+      const root = db.create({ title: "Moved root", userPrompt: "root" });
+      const child = db.create({ title: "Descendant", userPrompt: "child", parentId: root.id });
+      rawDb.exec("CREATE TEMP TRIGGER reject_descendant_folder BEFORE UPDATE OF folder_id ON prompts WHEN OLD.title = 'Descendant' BEGIN SELECT RAISE(ABORT, 'Injected folder update failure'); END");
+      const before = db.getAll();
+      expect(() => db.movePrompt(root.id, parent.id, 0)).toThrow("Injected folder update failure");
+      expect(db.getAll()).toEqual(before);
+      rawDb.exec("DROP TRIGGER reject_descendant_folder");
+      db.movePrompt(root.id, parent.id, 0);
+      expect(db.getById(root.id)).toMatchObject({ parentId: parent.id, folderId });
+      expect(db.getById(child.id)).toMatchObject({ parentId: root.id, folderId });
+    });
+
+    it("adopts the parent folder and cascades to the whole subtree when moving under a node in another folder", () => {
+      const seedFolder = (id: string) => {
+        rawDb
+          .prepare(
+            "INSERT INTO folders (id, name, created_at) VALUES (?, ?, ?)"
+          )
+          .run(id, id, 1_700_000_000_000);
+      };
+      seedFolder("folder-Y-test");
+      seedFolder("folder-X-test");
+      const parentY = db.create({
+        title: "ParentY",
+        userPrompt: "p",
+        folderId: "folder-Y-test",
+      });
+      const childX = db.create({
+        title: "ChildX",
+        userPrompt: "p",
+        folderId: "folder-X-test",
+      });
+      const grandX = db.create({
+        title: "GrandX",
+        userPrompt: "p",
+        folderId: "folder-X-test",
+      });
+
+      // Build A(fX) -> grand(fX) subtree first.
+      db.movePrompt(grandX.id, childX.id, 0);
+
+      // Now move the whole subtree under a different-folder parent.
+      db.movePrompt(childX.id, parentY.id, 0);
+
+      expect(db.getById(childX.id)?.folderId).toBe("folder-Y-test");
+      expect(db.getById(grandX.id)?.folderId).toBe("folder-Y-test");
+    });
+
+    it("adopts a null folder when the target parent itself has no folder", () => {
+      rawDb
+        .prepare(
+          "INSERT INTO folders (id, name, created_at) VALUES (?, ?, ?)"
+        )
+        .run("folder-adopt-null", "adopt-null", 1_700_000_000_000);
+      const rootlessParent = db.create({
+        title: "Rootless",
+        userPrompt: "p",
+      });
+      const folderChild = db.create({
+        title: "FolderChild",
+        userPrompt: "p",
+        folderId: "folder-adopt-null",
+      });
+
+      db.movePrompt(folderChild.id, rootlessParent.id, 0);
+
+      expect(db.getById(folderChild.id)?.folderId).toBeNull();
+    });
+
+    it("keeps the moved prompt's own folder when moving it to the root level", () => {
+      rawDb
+        .prepare(
+          "INSERT INTO folders (id, name, created_at) VALUES (?, ?, ?)"
+        )
+        .run("keep-folder", "keep", 1_700_000_000_000);
+      const node = db.create({
+        title: "KeepFolder",
+        userPrompt: "p",
+        folderId: "keep-folder",
+      });
+
+      db.movePrompt(node.id, null, 0);
+
+      expect(db.getById(node.id)?.folderId).toBe("keep-folder");
+    });
+
     it("clears child parentId instead of deleting children when a parent prompt is deleted", () => {
       const parent = db.create({ title: "Parent", userPrompt: "p" });
       const child = db.create({ title: "Child", userPrompt: "p" });

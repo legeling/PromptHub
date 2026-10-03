@@ -888,9 +888,45 @@ export class PromptDB {
         promptId,
         Date.now(),
       );
+
+      // Keep the hierarchy and folder scopes aligned: when a prompt is moved
+      // under a parent, the whole subtree adopts the parent's folder so folder
+      // views never silently flatten the relationship (folder filtering hides
+      // the parent → getVisibleParentId drops it → child renders as a root).
+      // Moving to the root keeps its own folder untouched.
+      if (targetParentId !== null) {
+        this.syncPromptSubtreeFolder(promptId, targetParentId, Date.now());
+      }
     });
 
     txn();
+  }
+
+  /**
+   * Recursively adopt the parent's folder for the moved subtree.
+   * 将移动子树的 folder_id 同步为目标父节点的 folder_id；移动到根不动。
+   */
+  private syncPromptSubtreeFolder(
+    promptId: string,
+    parentId: string,
+    timestamp: number,
+  ): void {
+    // UNION also terminates malformed cycles; the move's outer transaction
+    // keeps hierarchy, sibling order and every descendant folder atomic.
+    this.db
+      .prepare(
+        `
+      WITH RECURSIVE subtree(id) AS (
+        SELECT id FROM prompts WHERE id = ?
+        UNION
+        SELECT prompts.id FROM prompts JOIN subtree ON prompts.parent_id = subtree.id
+      )
+      UPDATE prompts
+      SET folder_id = (SELECT folder_id FROM prompts WHERE id = ?), updated_at = ?
+      WHERE id IN (SELECT id FROM subtree)
+    `,
+      )
+      .run(promptId, parentId, timestamp);
   }
 
   private assertValidPromptParent(
