@@ -71,6 +71,7 @@ function getPromptTableActions(
     onBatchFavorite: actions.handleBatchFavorite,
     onBatchMove: actions.handleBatchMove,
     onBatchDelete: actions.handleBatchDelete,
+    onBatchTags: actions.openQuickTagForIds,
     onMovePrompt: actions.handleMovePromptInTree,
   };
 }

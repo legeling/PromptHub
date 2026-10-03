@@ -301,4 +301,73 @@ describe("PromptGalleryView", () => {
     expect(firstRow?.style.paddingBottom).toBe("16px");
     expect(firstRow?.style.boxSizing).toBe("border-box");
   });
+
+  it("supports checkbox multi-select and shows the shared batch actions bar (v0.6.2)", async () => {
+    usePromptStore.setState({ galleryImageSize: "medium" });
+
+    const prompts = [
+      { ...basePrompt, id: "gb-1", title: "Batch Alpha" },
+      { ...basePrompt, id: "gb-2", title: "Batch Beta" },
+    ];
+    const onBatchTags = vi.fn<(ids: string[]) => void>();
+    const onBatchFavorite = vi.fn<(ids: string[], favorite: boolean) => void>();
+
+    await act(async () => {
+      await renderWithI18n(
+        <PromptGalleryView
+          prompts={prompts}
+          onSelect={vi.fn()}
+          onToggleFavorite={vi.fn()}
+          onCopy={vi.fn()}
+          onEdit={vi.fn()}
+          onDelete={vi.fn()}
+          onAiTest={vi.fn()}
+          onVersionHistory={vi.fn()}
+          onViewDetail={vi.fn()}
+          onContextMenu={vi.fn()}
+          onBatchTags={onBatchTags}
+          onBatchFavorite={onBatchFavorite}
+        />,
+        { language: "en" },
+      );
+    });
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Batch Alpha" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Batch Beta" }));
+    expect(screen.getByText("2 of 2 selected")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Tags/ }));
+    expect(onBatchTags).toHaveBeenCalledWith(["gb-1", "gb-2"]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Batch Favorite" }));
+    expect(onBatchFavorite).toHaveBeenCalledWith(["gb-1", "gb-2"], true);
+    expect(screen.queryByText("2 of 2 selected")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: "Select Batch Alpha" }),
+    ).toHaveAttribute("aria-checked", "false");
+  });
+
+  it("hides batch UI entirely when no batch handlers are provided", async () => {
+    usePromptStore.setState({ galleryImageSize: "medium" });
+
+    await act(async () => {
+      await renderWithI18n(
+        <PromptGalleryView
+          prompts={[{ ...basePrompt, id: "gb-plain", title: "Plain Prompt" }]}
+          onSelect={vi.fn()}
+          onToggleFavorite={vi.fn()}
+          onCopy={vi.fn()}
+          onEdit={vi.fn()}
+          onDelete={vi.fn()}
+          onAiTest={vi.fn()}
+          onVersionHistory={vi.fn()}
+          onViewDetail={vi.fn()}
+          onContextMenu={vi.fn()}
+        />,
+        { language: "en" },
+      );
+    });
+
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+  });
 });

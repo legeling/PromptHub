@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import type { MouseEvent } from "react";
-import type { Prompt } from "@prompthub/shared/types";
+import type { Prompt, PromptSummary } from "@prompthub/shared/types";
 import type { TFunction } from "i18next";
 import type { usePromptAiWorkbench } from "./usePromptAiWorkbench";
 import type { usePromptWorkspaceDerived } from "./usePromptWorkspaceDerived";
@@ -64,6 +64,10 @@ export function usePromptWorkspaceInteractionBindings(
   const handleContextMenu = usePromptContextMenuAction(
     inputs.state.dialogs.setContextMenu,
   );
+  const openQuickTagForIds = useQuickTagForIdsAction(
+    inputs.stores.promptData.prompts,
+    inputs.state.dialogs.setQuickTagPrompts,
+  );
   const toggleRenderMarkdown = useRenderMarkdownToggle(
     inputs.state.detail.renderMarkdownEnabled,
     inputs.state.detail.setRenderMarkdownEnabled,
@@ -82,6 +86,7 @@ export function usePromptWorkspaceInteractionBindings(
     ...tree,
     handleSelectPrompt,
     handleContextMenu,
+    openQuickTagForIds,
     toggleRenderMarkdown,
     menuItems,
   };
@@ -263,6 +268,22 @@ function usePromptContextMenuAction(
   );
 }
 
+function useQuickTagForIdsAction(
+  prompts: PromptSummary[],
+  setQuickTagPrompts: WorkspaceState["dialogs"]["setQuickTagPrompts"],
+) {
+  return useCallback(
+    (ids: string[]) => {
+      const idSet = new Set(ids);
+      const selected = prompts.filter((prompt) => idSet.has(prompt.id));
+      if (selected.length > 0) {
+        setQuickTagPrompts(selected);
+      }
+    },
+    [prompts, setQuickTagPrompts],
+  );
+}
+
 function useRenderMarkdownToggle(
   enabled: boolean,
   setEnabled: WorkspaceState["detail"]["setRenderMarkdownEnabled"],
@@ -329,6 +350,7 @@ function useWorkspaceMenuItems(
           if (detail) inputs.state.dialogs.setQuickRewritePrompt(detail);
         });
     },
+    openQuickTag: (prompt) => inputs.state.dialogs.setQuickTagPrompts([prompt]),
     t: inputs.t,
     toggleFavorite: inputs.stores.promptActions.toggleFavorite,
     togglePinned: inputs.stores.promptActions.togglePinned,

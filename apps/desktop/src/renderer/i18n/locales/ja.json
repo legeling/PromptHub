@@ -415,10 +415,12 @@
     "enterValue": "値を入力",
     "selectAllPrompts": "すべての Prompt を選択",
     "selectPromptRow": "{{title}} を選択",
+    "deselectPromptRow": "{{title}} の選択を解除",
     "previousPage": "前のページ",
     "nextPage": "次のページ",
     "pageNumber": "{{page}} ページ",
     "selected": "{{count}} 件選択中",
+    "selectedOfTotal": "{{selected}} / {{total}} 件を選択中",
     "batchFavorite": "一括お気に入り",
     "batchMove": "一括移動",
     "batchDelete": "一括削除",
@@ -433,7 +435,22 @@
       "missing": "見つかりません",
       "removeItem": "{{title}} を削除",
       "openPrompt": "プロンプト {{title}} を開く"
-    }
+    },
+    "quickAddTag": "タグを追加",
+    "currentTags": "現在のタグ",
+    "noTags": "タグはありません",
+    "addNewTag": "新タグを追加",
+    "tagInputPlaceholder": "タグ名を入力して Enter で追加",
+    "existingTags": "既存のタグ",
+    "tagAdded": "タグを追加しました",
+    "tagRemoved": "タグを削除しました",
+    "tagAlreadyExists": "タグは既に存在します",
+    "batchTags": "タグ",
+    "noSharedTags": "共通タグなし",
+    "batchTagTitle": "{{count}} 件のプロンプトにタグ付け",
+    "batchTagAdded": "{{count}} 件のプロンプトにタグを追加しました",
+    "batchTagRemoved": "{{count}} 件のプロンプトからタグを削除しました",
+    "batchTagPartial": "{{total}} 件中 {{failed}} 件の更新に失敗しました"
   },
   "agents": {
     "webService": {

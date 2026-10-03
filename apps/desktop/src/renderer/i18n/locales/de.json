@@ -416,10 +416,12 @@
     "enterValue": "Wert eingeben",
     "selectAllPrompts": "Alle Prompts auswählen",
     "selectPromptRow": "{{title}} auswählen",
+    "deselectPromptRow": "{{title}} abwählen",
     "previousPage": "Vorherige Seite",
     "nextPage": "Nächste Seite",
     "pageNumber": "Seite {{page}}",
     "selected": "{{count}} ausgewählt",
+    "selectedOfTotal": "{{selected}} von {{total}} ausgewählt",
     "batchFavorite": "Stapel-Favoriten",
     "batchMove": "Stapel-Verschieben",
     "batchDelete": "Stapel-Löschen",
@@ -434,7 +436,22 @@
       "missing": "Fehlt",
       "removeItem": "{{title}} entfernen",
       "openPrompt": "Prompt {{title}} öffnen"
-    }
+    },
+    "quickAddTag": "Tags hinzufügen",
+    "currentTags": "Aktuelle Tags",
+    "noTags": "Keine Tags vorhanden",
+    "addNewTag": "Neues Tag hinzufügen",
+    "tagInputPlaceholder": "Tag-Namen eingeben, Enter zum Hinzufügen",
+    "existingTags": "Vorhandene Tags",
+    "tagAdded": "Tag hinzugefügt",
+    "tagRemoved": "Tag entfernt",
+    "tagAlreadyExists": "Tag existiert bereits",
+    "batchTags": "Tags",
+    "noSharedTags": "Keine gemeinsamen Tags",
+    "batchTagTitle": "{{count}} Prompts taggen",
+    "batchTagAdded": "Tag zu {{count}} Prompts hinzugefügt",
+    "batchTagRemoved": "Tag von {{count}} Prompts entfernt",
+    "batchTagPartial": "Aktualisierung bei {{failed}} von {{total}} Prompts fehlgeschlagen"
   },
   "agents": {
     "webService": {

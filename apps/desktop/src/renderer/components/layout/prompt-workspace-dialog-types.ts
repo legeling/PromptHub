@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from "react";
 import type {
   CreatePromptRelationDTO,
   Prompt,
+  PromptSummary,
   PromptVersion,
 } from "@prompthub/shared/types";
 import type { ContextMenuItem } from "../ui/ContextMenu";
@@ -42,6 +43,7 @@ export interface PromptWorkspaceDialogsProps {
   onRevealPrompt: (promptId: string) => boolean;
   previewImage: string | null;
   quickRewritePrompt: Prompt | null;
+  quickTagPrompts: PromptSummary[];
   runAiTest: AiWorkbench["runAiTest"];
   runModelCompare: AiWorkbench["runModelCompare"];
   selectedPrompt: Prompt | undefined;
@@ -64,6 +66,7 @@ export interface PromptWorkspaceDialogsProps {
   setIsVersionModalOpen: Setter<boolean>;
   setPreviewImage: Setter<string | null>;
   setQuickRewritePrompt: Setter<Prompt | null>;
+  setQuickTagPrompts: Setter<PromptSummary[]>;
   setVersionHistoryPrompt: Setter<Prompt | null>;
   showEnglish: boolean;
   triggerCopied: () => void;

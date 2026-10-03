@@ -416,10 +416,12 @@
     "enterValue": "输入值",
     "selectAllPrompts": "选择全部 Prompt",
     "selectPromptRow": "选择 {{title}}",
+    "deselectPromptRow": "取消选择 {{title}}",
     "previousPage": "上一页",
     "nextPage": "下一页",
     "pageNumber": "第 {{page}} 页",
     "selected": "已选择 {{count}} 项",
+    "selectedOfTotal": "已选择 {{selected}} 项 / 共 {{total}} 项",
     "batchFavorite": "批量收藏",
     "batchMove": "批量移动",
     "batchDelete": "批量删除",
@@ -434,7 +436,22 @@
       "missing": "缺失",
       "removeItem": "移除 {{title}}",
       "openPrompt": "打开 Prompt {{title}}"
-    }
+    },
+    "quickAddTag": "添加标签",
+    "currentTags": "当前标签",
+    "noTags": "暂无标签",
+    "addNewTag": "添加新标签",
+    "tagInputPlaceholder": "输入标签名，按回车添加",
+    "existingTags": "现有标签",
+    "tagAdded": "标签已添加",
+    "tagRemoved": "标签已移除",
+    "tagAlreadyExists": "标签已存在",
+    "batchTags": "标签",
+    "noSharedTags": "无共同标签",
+    "batchTagTitle": "为 {{count}} 个提示词打标签",
+    "batchTagAdded": "标签已添加到 {{count}} 个提示词",
+    "batchTagRemoved": "标签已从 {{count}} 个提示词移除",
+    "batchTagPartial": "{{failed}}/{{total}} 个提示词更新失败"
   },
   "agents": {
     "webService": {

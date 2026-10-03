@@ -83,6 +83,8 @@
 ### 3. Stable Internal Sources
 
 - 多词全文检索将各词分别转义后用 AND 组合，不要求词语相邻；操作符作为普通文本处理。
+- 标签批量修改接受摘要记录，只更新标签字段；逐条复用现有持久化入口，部分失败保留已成功记录并明确报告，不能把失败当作全部成功。
+- 表格和画廊继续使用当前摘要列表、按需详情缓存及虚拟化；编辑和复制必须先获取正文，不得用摘要覆盖完整内容。
 
 - Prompt 协议设计见 `spec/knowledge/structure/prompt-protocols-zh.md`。
 - 数据布局事实见 `spec/knowledge/structure/data-layout-v0.5.5-zh.md`。

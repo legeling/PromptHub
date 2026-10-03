@@ -57,6 +57,7 @@ export interface PromptTableActions {
   onBatchFavorite: (ids: string[], favorite: boolean) => void;
   onBatchMove: (ids: string[], folderId: string | undefined) => void;
   onBatchDelete: (ids: string[]) => void;
+  onBatchTags: (ids: string[]) => void;
   onMovePrompt: (
     sourceId: string,
     targetParentId: string | null,
@@ -143,6 +144,7 @@ export function PromptViewContainers({
               onBatchFavorite={tableActions.onBatchFavorite}
               onBatchMove={tableActions.onBatchMove}
               onBatchDelete={tableActions.onBatchDelete}
+              onBatchTags={tableActions.onBatchTags}
               onContextMenu={cardActions.onContextMenu}
               onMovePrompt={tableActions.onMovePrompt}
             />
@@ -169,6 +171,10 @@ export function PromptViewContainers({
             onVersionHistory={cardActions.onVersionHistory}
             onViewDetail={cardActions.onViewDetail}
             onContextMenu={cardActions.onContextMenu}
+            onBatchTags={tableActions.onBatchTags}
+            onBatchFavorite={tableActions.onBatchFavorite}
+            onBatchMove={tableActions.onBatchMove}
+            onBatchDelete={tableActions.onBatchDelete}
           />
         </Suspense>
       </div>

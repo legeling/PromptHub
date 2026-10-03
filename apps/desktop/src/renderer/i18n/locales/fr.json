@@ -416,10 +416,12 @@
     "enterValue": "Entrer une valeur",
     "selectAllPrompts": "Sélectionner tous les Prompts",
     "selectPromptRow": "Sélectionner {{title}}",
+    "deselectPromptRow": "Désélectionner {{title}}",
     "previousPage": "Page précédente",
     "nextPage": "Page suivante",
     "pageNumber": "Page {{page}}",
     "selected": "{{count}} sélectionnés",
+    "selectedOfTotal": "{{selected}} sur {{total}} sélectionné(s)",
     "batchFavorite": "Favoris en lot",
     "batchMove": "Déplacer en lot",
     "batchDelete": "Supprimer en lot",
@@ -434,7 +436,22 @@
       "missing": "Manquant",
       "removeItem": "Supprimer {{title}}",
       "openPrompt": "Ouvrir le prompt {{title}}"
-    }
+    },
+    "quickAddTag": "Ajouter des tags",
+    "currentTags": "Tags actuels",
+    "noTags": "Aucun tag",
+    "addNewTag": "Ajouter un nouveau tag",
+    "tagInputPlaceholder": "Saisissez un nom de tag, Entrée pour ajouter",
+    "existingTags": "Tags existants",
+    "tagAdded": "Tag ajouté",
+    "tagRemoved": "Tag supprimé",
+    "tagAlreadyExists": "Le tag existe déjà",
+    "batchTags": "Tags",
+    "noSharedTags": "Aucun tag commun",
+    "batchTagTitle": "Taguer {{count}} prompts",
+    "batchTagAdded": "Tag ajouté à {{count}} prompts",
+    "batchTagRemoved": "Tag retiré de {{count}} prompts",
+    "batchTagPartial": "Échec de mise à jour pour {{failed}} prompts sur {{total}}"
   },
   "agents": {
     "webService": {

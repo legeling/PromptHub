@@ -95,6 +95,7 @@ function renderView(viewMode: ViewMode) {
         onBatchFavorite: vi.fn(),
         onBatchMove: vi.fn(),
         onBatchDelete: vi.fn(),
+        onBatchTags: vi.fn(),
         onMovePrompt: vi.fn(),
       }}
     />,

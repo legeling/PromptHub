@@ -95,6 +95,8 @@ function createProps(): PromptWorkspaceDialogsProps {
     deleteConfirm: { isOpen: false, prompt: null },
     detailPrompt: null,
     editingPrompt: null,
+    quickTagPrompts: null,
+    setQuickTagPrompts: noop,
     onDetachPrompt: vi.fn().mockResolvedValue(undefined),
     onRevealPrompt: vi.fn().mockReturnValue(true),
     handleCopyPrompt: vi.fn(),

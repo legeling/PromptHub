@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Prompt } from "@prompthub/shared/types";
+import type { Prompt, PromptSummary } from "@prompthub/shared/types";
 import type { VariableInputImageAttachment } from "../prompt/VariableInputModal";
 import { useTemporaryFlag } from "../../hooks/useTemporaryFlag";
 
@@ -51,6 +51,7 @@ function usePromptDialogState() {
   const [isVersionModalOpen, setIsVersionModalOpen] = useState(false);
   const [versionHistoryPrompt, setVersionHistoryPrompt] =
     useState<Prompt | null>(null);
+  const [quickTagPrompts, setQuickTagPrompts] = useState<PromptSummary[]>([]);
   return {
     previewImage,
     setPreviewImage,
@@ -70,6 +71,8 @@ function usePromptDialogState() {
     setIsVersionModalOpen,
     versionHistoryPrompt,
     setVersionHistoryPrompt,
+    quickTagPrompts,
+    setQuickTagPrompts,
   };
 }
 

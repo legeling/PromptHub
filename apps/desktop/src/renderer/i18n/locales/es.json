@@ -416,10 +416,12 @@
     "enterValue": "Introducir valor",
     "selectAllPrompts": "Seleccionar todos los Prompts",
     "selectPromptRow": "Seleccionar {{title}}",
+    "deselectPromptRow": "Deseleccionar {{title}}",
     "previousPage": "Página anterior",
     "nextPage": "Página siguiente",
     "pageNumber": "Página {{page}}",
     "selected": "{{count}} seleccionados",
+    "selectedOfTotal": "{{selected}} de {{total}} seleccionados",
     "batchFavorite": "Favoritos en lote",
     "batchMove": "Mover en lote",
     "batchDelete": "Eliminar en lote",
@@ -434,7 +436,22 @@
       "missing": "Faltante",
       "removeItem": "Eliminar {{title}}",
       "openPrompt": "Abrir prompt {{title}}"
-    }
+    },
+    "quickAddTag": "Añadir etiquetas",
+    "currentTags": "Etiquetas actuales",
+    "noTags": "Sin etiquetas",
+    "addNewTag": "Añadir nueva etiqueta",
+    "tagInputPlaceholder": "Escribe un nombre de etiqueta, Enter para añadir",
+    "existingTags": "Etiquetas existentes",
+    "tagAdded": "Etiqueta añadida",
+    "tagRemoved": "Etiqueta eliminada",
+    "tagAlreadyExists": "La etiqueta ya existe",
+    "batchTags": "Etiquetas",
+    "noSharedTags": "Sin etiquetas comunes",
+    "batchTagTitle": "Etiquetar {{count}} prompts",
+    "batchTagAdded": "Etiqueta añadida a {{count}} prompts",
+    "batchTagRemoved": "Etiqueta eliminada de {{count}} prompts",
+    "batchTagPartial": "Falló la actualización de {{failed}} de {{total}} prompts"
   },
   "agents": {
     "webService": {
