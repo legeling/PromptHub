@@ -47,6 +47,11 @@
     "searchMcp": "Buscar MCP..."
   },
   "prompt": {
+    "detailActions": {
+      "copy": "Copiar",
+      "test": "Probar",
+      "history": "Historial"
+    },
     "title": "Título",
     "description": "Descripción",
     "deleteBlockedByTagReference": "Esta etiqueta todavía la usan {{count}} prompt(s) y no se puede eliminar mientras esté en uso.",

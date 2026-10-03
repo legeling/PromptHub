@@ -55,6 +55,8 @@ function PromptDetailDefaultActions() {
       <button
         type="button"
         onClick={() => void detail.handleCopyPrompt(prompt)}
+        aria-label={detail.copied ? t("prompt.copied") : t("prompt.copy")}
+        title={t("prompt.copy")}
         className="flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
       >
         {detail.copied ? (
@@ -62,23 +64,29 @@ function PromptDetailDefaultActions() {
         ) : (
           <CopyIcon aria-hidden="true" className="w-4 h-4" />
         )}
-        <span>{detail.copied ? t("prompt.copied") : t("prompt.copy")}</span>
+        <span>
+          {detail.copied ? t("prompt.copied") : t("prompt.detailActions.copy")}
+        </span>
       </button>
       <button
         type="button"
         onClick={() => detail.handleAiTest(prompt, "single")}
+        aria-label={t("prompt.aiTest")}
+        title={t("prompt.aiTest")}
         className="flex items-center gap-2 h-9 px-4 rounded-lg bg-primary/90 text-white text-sm font-medium hover:bg-primary disabled:opacity-50 transition-colors"
       >
         <PlayIcon aria-hidden="true" className="w-4 h-4" />
-        <span>{t("prompt.aiTest")}</span>
+        <span>{t("prompt.detailActions.test")}</span>
       </button>
       <button
         type="button"
         onClick={() => detail.handleVersionHistory(prompt)}
+        aria-label={t("prompt.history")}
+        title={t("prompt.history")}
         className="flex items-center gap-2 h-9 px-4 rounded-lg app-wallpaper-surface-strong border border-border text-sm font-medium hover:bg-accent/60 disabled:opacity-50 transition-colors"
       >
         <HistoryIcon aria-hidden="true" className="w-4 h-4" />
-        <span>{t("prompt.history")}</span>
+        <span>{t("prompt.detailActions.history")}</span>
       </button>
       <button
         type="button"

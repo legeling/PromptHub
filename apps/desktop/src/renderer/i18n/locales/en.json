@@ -48,6 +48,11 @@
     "searchMcp": "Search MCP..."
   },
   "prompt": {
+    "detailActions": {
+      "copy": "Copy",
+      "test": "Test",
+      "history": "History"
+    },
     "title": "Title",
     "description": "Description",
     "deleteBlockedByTagReference": "This tag is still used by {{count}} prompt(s) and cannot be deleted while in use.",

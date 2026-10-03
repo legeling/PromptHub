@@ -48,6 +48,11 @@
     "searchMcp": "搜索 MCP..."
   },
   "prompt": {
+    "detailActions": {
+      "copy": "复制",
+      "test": "测试",
+      "history": "历史"
+    },
     "title": "标题",
     "description": "描述",
     "deleteBlockedByTagReference": "此标签仍被 {{count}} 条提示词使用，无法删除。",

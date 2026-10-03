@@ -47,6 +47,11 @@
     "searchMcp": "MCP を検索..."
   },
   "prompt": {
+    "detailActions": {
+      "copy": "コピー",
+      "test": "テスト",
+      "history": "履歴"
+    },
     "title": "タイトル",
     "description": "説明",
     "deleteBlockedByTagReference": "このタグは {{count}} 件のプロンプトで使用中のため、削除できません。",

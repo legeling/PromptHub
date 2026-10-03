@@ -47,6 +47,11 @@
     "searchMcp": "搜尋 MCP..."
   },
   "prompt": {
+    "detailActions": {
+      "copy": "複製",
+      "test": "測試",
+      "history": "歷史"
+    },
     "title": "標題",
     "description": "描述",
     "deleteBlockedByTagReference": "此標籤仍被 {{count}} 則提示詞使用，無法刪除。",

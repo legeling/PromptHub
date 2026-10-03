@@ -47,6 +47,11 @@
     "searchMcp": "Rechercher MCP..."
   },
   "prompt": {
+    "detailActions": {
+      "copy": "Copier",
+      "test": "Tester",
+      "history": "Historique"
+    },
     "title": "Titre",
     "description": "Description",
     "deleteBlockedByTagReference": "Cette balise est encore utilisée par {{count}} prompt(s) et ne peut pas être supprimée.",
