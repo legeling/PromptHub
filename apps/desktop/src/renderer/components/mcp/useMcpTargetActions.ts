@@ -1,3 +1,4 @@
+import { requestConfirmation } from "../ui/confirmation";
 import type { McpTargetPreset } from "@prompthub/core";
 import type {
   McpApplyTarget,
@@ -28,14 +29,14 @@ function isMcpTargetConflict(error: unknown) {
 }
 
 function createTargetOverwriteConfirmation(bindings: McpManagerBindings) {
-  return (error: unknown) => {
+  return async (error: unknown) => {
     const message = error instanceof Error ? error.message : String(error);
-    return window.confirm(
-      bindings.t("mcp.confirmTargetOverwrite", {
+    return (await requestConfirmation({
+      message: bindings.t("mcp.confirmTargetOverwrite", {
         message,
         defaultValue: `${message}\n\nOverwrite the existing target MCP entry?`,
       }),
-    );
+    }));
   };
 }
 
@@ -46,7 +47,7 @@ function createConflictAwareTargetApply(options: McpTargetActionOptions) {
       try {
         await options.bindings.mcpStore.applyTarget(target);
       } catch (error) {
-        if (!isMcpTargetConflict(error) || !confirmOverwrite(error))
+        if (!isMcpTargetConflict(error) || !(await confirmOverwrite(error)))
           throw error;
         await options.bindings.mcpStore.applyTarget({ ...target, force: true });
       }

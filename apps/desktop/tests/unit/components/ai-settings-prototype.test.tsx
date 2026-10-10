@@ -1,3 +1,4 @@
+import { ConfirmationHost } from "../../../src/renderer/components/ui/ConfirmationHost";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import type { FormEvent } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -954,13 +955,15 @@ describe("AISettingsPrototype", () => {
       }),
     ];
     useSettingsStoreMock.mockReturnValue(settingsState);
-    const originalConfirm = window.confirm;
-    window.confirm = vi.fn(() => true);
-
-    try {
-      await renderWithI18n(<AISettingsPrototype />, { language: "en" });
+    const nativeConfirm = vi.spyOn(window, "confirm");
+    {
+      await renderWithI18n(<><ConfirmationHost /><AISettingsPrototype /></>, { language: "en" });
 
       fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+      expect(settingsState.deleteAiModel).not.toHaveBeenCalled();
+      fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Delete" }));
+      await waitFor(() => expect(settingsState.deleteAiModel).toHaveBeenCalled());
+      expect(nativeConfirm).not.toHaveBeenCalled();
 
       expect(settingsState.addAiProvider).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -972,8 +975,6 @@ describe("AISettingsPrototype", () => {
       );
       expect(settingsState.deleteAiModel).toHaveBeenCalledWith("legacy-model");
       expect(settingsState.deleteAiProvider).not.toHaveBeenCalled();
-    } finally {
-      window.confirm = originalConfirm;
     }
   });
 

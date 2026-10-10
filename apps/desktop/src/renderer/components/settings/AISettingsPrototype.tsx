@@ -1,3 +1,4 @@
+import { requestConfirmation } from "../ui/confirmation";
 import { useMemo, useState } from "react";
 
 import {
@@ -700,8 +701,12 @@ export function AISettingsPrototype() {
     closeModelFetch();
   };
 
-  const handleDeleteModel = (model: AIModelConfig) => {
-    if (!confirm(t("settings.confirmDelete"))) {
+  const handleDeleteModel = async (model: AIModelConfig) => {
+    if (!(await requestConfirmation({
+      message: t("settings.confirmDelete"),
+      variant: "destructive",
+      confirmText: t("common.delete"),
+    }))) {
       return;
     }
 

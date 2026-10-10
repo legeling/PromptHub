@@ -1,3 +1,4 @@
+import { ConfirmationHost } from "../../../src/renderer/components/ui/ConfirmationHost";
 import type { FormEvent } from "react";
 import {
   act,
@@ -500,7 +501,7 @@ describe("DataSettings", { timeout: 60_000 }, () => {
       newPath: "/copied/PromptHub",
       needsRestart: true,
     });
-    vi.spyOn(window, "confirm").mockReturnValue(true);
+    await renderWithI18n(<ConfirmationHost />);
 
     installWindowMocks({
       api: {
@@ -568,6 +569,7 @@ describe("DataSettings", { timeout: 60_000 }, () => {
       "success",
     );
 
+    fireEvent.click(await screen.findByRole("button", { name: "Confirm" }));
     await waitFor(
       () => {
         expect(relaunchApp).toHaveBeenCalledTimes(1);
@@ -582,7 +584,7 @@ describe("DataSettings", { timeout: 60_000 }, () => {
       newPath: "/empty/PromptHub",
       needsRestart: false,
     });
-    vi.spyOn(window, "confirm").mockReturnValue(true);
+    await renderWithI18n(<ConfirmationHost />);
 
     installWindowMocks({
       api: {
@@ -619,6 +621,8 @@ describe("DataSettings", { timeout: 60_000 }, () => {
       fireEvent.click(screen.getByRole("button", { name: "Change" }));
     });
 
+    expect(applyDataPathChange).not.toHaveBeenCalled();
+    fireEvent.click(await screen.findByRole("button", { name: "Confirm" }));
     await waitFor(() => {
       expect(applyDataPathChange).toHaveBeenCalledWith(
         "/empty/PromptHub",

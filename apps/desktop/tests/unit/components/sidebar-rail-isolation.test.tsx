@@ -1,5 +1,6 @@
+import { ConfirmationHost } from "../../../src/renderer/components/ui/ConfirmationHost";
 import { Profiler, type ReactElement } from "react";
-import { act, fireEvent, screen } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Skill } from "@prompthub/shared/types";
 
@@ -113,4 +114,27 @@ describe("Desktop navigation rail isolation", () => {
     expect(onRender).not.toHaveBeenCalled();
   });
 
+  it("preserves settings navigation and the dirty editor confirmation", async () => {
+    const onNavigate = vi.fn();
+    await renderWithI18n(<ConfirmationHost />);
+    const confirm = vi.spyOn(window, "confirm");
+    await renderSidebar(
+      <Sidebar layout="rail" currentPage="home" onNavigate={onNavigate} />,
+    );
+    Object.defineProperty(window, "__PROMPTHUB_SKILL_EDITOR_DIRTY", {
+      value: true,
+      configurable: true,
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(confirm).not.toHaveBeenCalled();
+    expect(onNavigate).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+    await waitFor(() => expect(onNavigate).toHaveBeenCalledWith("settings"));
+    Reflect.deleteProperty(window, "__PROMPTHUB_SKILL_EDITOR_DIRTY");
+    confirm.mockRestore();
+  });
 });

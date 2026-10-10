@@ -138,9 +138,9 @@ export function AgentsSidebarPanel() {
                     <button
                       type="button"
                       aria-label={agent.name}
-                      onClick={() => {
+                      onClick={async () => {
                         if (agent.id === selectedAgentId) return;
-                        if (!confirmLeaveDirtySkillEditor()) return;
+                        if (!(await confirmLeaveDirtySkillEditor())) return;
                         selectAgent(agent.id);
                       }}
                       className="flex h-full w-full items-center gap-3 px-3 py-2.5 pr-14 text-left"

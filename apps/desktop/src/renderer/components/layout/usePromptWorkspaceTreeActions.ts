@@ -1,4 +1,5 @@
-import { useCallback } from "react";
+import { requestConfirmation } from "../ui/confirmation";
+import { useCallback, useRef } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { PromptSummary, UpdatePromptDTO } from "@prompthub/shared/types";
 import type { TFunction } from "i18next";
@@ -162,6 +163,7 @@ interface BatchPromptParams {
 }
 
 export function usePromptBatchActions(params: BatchPromptParams) {
+  const deleting = useRef(false);
   const handleBatchFavorite = useCallback(
     (ids: string[], favorite: boolean) =>
       batchFavoritePrompts(ids, favorite, params),
@@ -173,7 +175,18 @@ export function usePromptBatchActions(params: BatchPromptParams) {
     [params],
   );
   const handleBatchDelete = useCallback(
-    (ids: string[]) => batchDeletePrompts(ids, params),
+    async (ids: string[]) => {
+      if (deleting.current || ids.length === 0) return;
+      deleting.current = true;
+      try {
+        await batchDeletePrompts([...ids], params);
+      } catch (error) {
+        console.error("Failed to delete selected prompts:", error);
+        params.showToast(params.t("prompt.deleteFailed"), "error");
+      } finally {
+        deleting.current = false;
+      }
+    },
     [params],
   );
   return { handleBatchFavorite, handleBatchMove, handleBatchDelete };
@@ -203,7 +216,11 @@ async function batchMovePrompts(
 }
 
 async function batchDeletePrompts(ids: string[], params: BatchPromptParams) {
-  if (!confirm(params.t("prompt.confirmBatchDelete", { count: ids.length })))
+  if (!(await requestConfirmation({
+    message: params.t("prompt.confirmBatchDelete", { count: ids.length }),
+    variant: "destructive",
+    confirmText: params.t("common.delete"),
+  })))
     return;
   for (const id of ids) await params.deletePrompt(id);
   params.showToast(params.t("toast.batchDeleted"), "success");

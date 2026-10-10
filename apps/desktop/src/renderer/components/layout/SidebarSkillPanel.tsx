@@ -28,8 +28,8 @@ function SidebarSkillNavigation({
 }
 
 function useSkillViewNavigation(controller: SidebarController) {
-  const openView = (view: "my-skills" | "projects" | "agents") => () => {
-    if (!controller.confirmLeaveDirtySkillEditor()) return;
+  const openView = (view: "my-skills" | "projects" | "agents") => async () => {
+    if (!(await controller.confirmLeaveDirtySkillEditor())) return;
     if (view === "my-skills") controller.setSkillFilterType("all");
     controller.setStoreView(view);
     controller.selectSkill(null);

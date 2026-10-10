@@ -46,8 +46,8 @@ function SidebarRailItems({ controller }: SidebarRailProps) {
 }
 
 function SidebarRailSettings({ controller }: SidebarRailProps) {
-  const openSettings = () => {
-    if (controller.confirmLeaveDirtySkillEditor())
+  const openSettings = async () => {
+    if (await controller.confirmLeaveDirtySkillEditor())
       controller.onNavigate("settings");
   };
   return (

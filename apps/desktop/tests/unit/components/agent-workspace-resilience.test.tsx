@@ -1,3 +1,4 @@
+import { ConfirmationHost } from "../../../src/renderer/components/ui/ConfirmationHost";
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -144,7 +145,7 @@ describe("Agent workspace resilience", () => {
       target: { value: "Agent 059" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Agent 059" }));
-    expect(useAgentStore.getState().selectedAgentId).toBe("custom-agent-059");
+    await waitFor(() => expect(useAgentStore.getState().selectedAgentId).toBe("custom-agent-059"));
   });
 
   it("confirms before switching Agents with unsaved config changes", async () => {
@@ -153,17 +154,21 @@ describe("Agent workspace resilience", () => {
     (
       window as Window & { __PROMPTHUB_SKILL_EDITOR_DIRTY?: boolean }
     ).__PROMPTHUB_SKILL_EDITOR_DIRTY = true;
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    await renderWithI18n(<ConfirmationHost />);
+    const confirm = vi.spyOn(window, "confirm");
 
     await renderWithI18n(<AgentsSidebarPanel />);
     fireEvent.click(screen.getByRole("button", { name: agents[1].name }));
 
-    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(confirm).not.toHaveBeenCalled();
     expect(useAgentStore.getState().selectedAgentId).toBe(agents[0].id);
 
-    confirm.mockReturnValue(true);
+
     fireEvent.click(screen.getByRole("button", { name: agents[1].name }));
-    expect(useAgentStore.getState().selectedAgentId).toBe(agents[1].id);
+    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+    await waitFor(() => expect(useAgentStore.getState().selectedAgentId).toBe(agents[1].id));
     confirm.mockRestore();
   });
 

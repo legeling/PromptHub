@@ -1,3 +1,4 @@
+import { requestConfirmation } from "../ui/confirmation";
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EditIcon, Trash2Icon, SearchIcon, CheckIcon, XIcon, Loader2Icon, EyeIcon } from 'lucide-react';
@@ -129,7 +130,11 @@ export function TagManagerModal({
   };
 
   const handleDelete = async (tag: string) => {
-    if (!window.confirm(t('common.confirmDelete', 'Are you sure you want to delete this?'))) {
+    if (!(await requestConfirmation({
+      message: t('common.confirmDelete', 'Are you sure you want to delete this?'),
+      variant: 'destructive',
+      confirmText: t('common.delete'),
+    }))) {
       return;
     }
 

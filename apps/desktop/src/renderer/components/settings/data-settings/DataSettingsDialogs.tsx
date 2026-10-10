@@ -1,3 +1,4 @@
+import { requestConfirmation } from "../../ui/confirmation";
 import { useDataSettingsControllerContext } from "./useDataSettingsController";
 import {
   DataSettingsSection,
@@ -117,13 +118,15 @@ export function DataSettingsDialogs() {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  const confirmed = window.confirm(
-                    t(
+                onClick={async () => {
+                  const confirmed = (await requestConfirmation({
+                    message: t(
                       "settings.confirmOverwriteDataPath",
                       "Overwrite the data in this directory with the current computer's data? A backup of the target directory will be created first.",
                     ),
-                  );
+                    variant: "destructive",
+                    confirmText: t("settings.overwriteAndMigrateDataPath"),
+                  }));
                   if (confirmed) {
                     void applyDataPathChange(
                       pendingDataPathChange.targetPath || "",

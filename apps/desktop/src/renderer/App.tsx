@@ -1,3 +1,4 @@
+import { ConfirmationHost } from "./components/ui/ConfirmationHost";
 import { migrateLegacyIndexedDbToMainProcess } from "./services/migrations/indexeddb";
 import {
   useCallback,
@@ -1280,6 +1281,8 @@ function App() {
   );
 
   return (
+    <>
+    <ConfirmationHost />
     <Suspense
       fallback={
         <div className="flex h-screen items-center justify-center bg-background">
@@ -1303,6 +1306,7 @@ function App() {
         overlayContent={overlayContent}
       />
     </Suspense>
+    </>
   );
 }
 

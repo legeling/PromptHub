@@ -396,11 +396,11 @@ function useSidebarSkillStoreNavigation(
   currentPage: PageType,
   onNavigate: (page: PageType) => void,
   skill: ReturnType<typeof useSidebarSkillBindings>,
-  confirmLeaveDirtySkillEditor: () => boolean,
+  confirmLeaveDirtySkillEditor: () => Promise<boolean>,
 ) {
   const openSkillStoreSource = useCallback(
-    (sourceId: string) => {
-      if (!confirmLeaveDirtySkillEditor()) return;
+    async (sourceId: string) => {
+      if (!(await confirmLeaveDirtySkillEditor())) return;
       skill.setIsSkillStoreGroupExpanded(true);
       skill.setStoreView("store");
       skill.selectSkill(null);
@@ -491,7 +491,7 @@ function useSidebarStoreNavigation(
   skill: ReturnType<typeof useSidebarSkillBindings>,
   mcp: ReturnType<typeof useSidebarMcpBindings>,
   plugin: ReturnType<typeof useSidebarPluginBindings>,
-  confirmLeaveDirtySkillEditor: () => boolean,
+  confirmLeaveDirtySkillEditor: () => Promise<boolean>,
 ) {
   const skillNavigation = useSidebarSkillStoreNavigation(
     currentPage,
@@ -517,7 +517,7 @@ export function useSidebarResourceController(
   onNavigate: (page: PageType) => void,
   activeModule: string,
   skillLocalScan: boolean,
-  confirmLeaveDirtySkillEditor: () => boolean,
+  confirmLeaveDirtySkillEditor: () => Promise<boolean>,
 ) {
   const skill = useSidebarSkillBindings();
   const mcp = useSidebarMcpBindings();

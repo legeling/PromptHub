@@ -1,3 +1,4 @@
+import { requestConfirmation } from "../ui/confirmation";
 import { useState, type ReactNode } from "react";
 import {
   AlertTriangleIcon,
@@ -492,11 +493,15 @@ export function AgentAppearancePanel({
           window.api.agent.importAppearanceTheme(agent.id),
         )
       : run("import-pet", () => window.api.agent.importAgentPet(agent.id));
-  const confirmDelete = (
+  const confirmDelete = async (
     message: string,
     operation: () => Promise<unknown>,
   ) => {
-    if (!window.confirm(message)) return;
+    if (!(await requestConfirmation({
+      message: message,
+      variant: "destructive",
+      confirmText: t("common.delete"),
+    }))) return;
     void operation();
   };
 

@@ -1,8 +1,49 @@
+import { createTestI18n } from "../../helpers/i18n";
 import { render, screen, fireEvent, act } from "@testing-library/react";
-import { afterEach, describe, it, expect, vi } from "vitest";
+import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import { ConfirmDialog } from "../../../src/renderer/components/ui/ConfirmDialog";
 
 describe("ConfirmDialog", () => {
+  beforeEach(async () => { await createTestI18n("en"); });
+  it("includes message controls in the focus cycle without treating Enter as consent", () => {
+    const onConfirm = vi.fn();
+    render(<ConfirmDialog isOpen onClose={vi.fn()} onConfirm={onConfirm}
+      message={<label><input type="checkbox" />Remove installed copies</label>} />);
+    const option = screen.getByRole("checkbox");
+    const confirm = screen.getByRole("button", { name: "Confirm" });
+    confirm.focus();
+    fireEvent.keyDown(confirm, { key: "Tab" });
+    expect(option).toHaveFocus();
+    fireEvent.keyDown(option, { key: "Enter" });
+    expect(onConfirm).not.toHaveBeenCalled();
+    fireEvent.keyDown(option, { key: "Tab", shiftKey: true });
+    expect(confirm).toHaveFocus();
+  });
+
+  it("keeps keyboard focus inside and Enter respects the focused cancel action", () => {
+    const onClose = vi.fn();
+    const onConfirm = vi.fn();
+    render(<ConfirmDialog isOpen message="Delete?" onClose={onClose} onConfirm={onConfirm} />);
+    const cancel = screen.getByRole("button", { name: "Cancel" });
+    const confirm = screen.getByRole("button", { name: "Confirm" });
+    confirm.focus();
+    fireEvent.keyDown(confirm, { key: "Tab" });
+    expect(cancel).toHaveFocus();
+    fireEvent.keyDown(cancel, { key: "Tab", shiftKey: true });
+    expect(confirm).toHaveFocus();
+    cancel.focus();
+    fireEvent.keyDown(cancel, { key: "Enter" });
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it("blocks backdrop dismissal while an operation is running", () => {
+    const onClose = vi.fn();
+    render(<ConfirmDialog isOpen isLoading message="Deleting" onClose={onClose} onConfirm={vi.fn()} />);
+    fireEvent.click(screen.getByTestId("confirm-dialog-backdrop"));
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
     vi.useRealTimers();

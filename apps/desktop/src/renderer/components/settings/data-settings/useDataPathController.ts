@@ -1,3 +1,4 @@
+import { requestConfirmation } from "../../ui/confirmation";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSettingsStore } from "../../../stores/settings.store";
@@ -51,13 +52,13 @@ function getChangeMessage(
   return ["toast.dataPathChanged", "Data path changed"];
 }
 
-function confirmMigration(translate: ReturnType<typeof useTranslation>["t"]) {
-  return window.confirm(
-    translate(
+async function confirmMigration(translate: ReturnType<typeof useTranslation>["t"]) {
+  return (await requestConfirmation({
+    message: translate(
       "settings.confirmDataMigration",
       "Are you sure you want to migrate data to the new directory?\n\nRestart is required after migration.",
     ),
-  );
+  }));
 }
 
 export function useDataPathController() {
@@ -142,18 +143,9 @@ export function useDataPathController() {
         "success",
       );
       if (requiresRestart) {
-        setTimeout(() => {
-          if (
-            window.confirm(
-              t(
-                "settings.restartNow",
-                "Data migration completed. Restart app now?",
-              ),
-            )
-          ) {
-            void restartApp();
-          }
-        }, 1000);
+        if (await requestConfirmation({ message: t("settings.restartNow") })) {
+          await restartApp();
+        }
       }
     },
     [
@@ -185,7 +177,7 @@ export function useDataPathController() {
     const selectedPath = await window.electron?.selectFolder?.();
     if (!selectedPath) return;
     if (!window.electron?.previewDataPathChange) {
-      if (confirmMigration(t))
+      if (await confirmMigration(t))
         await applyDataPathChange(selectedPath, "migrate");
       return;
     }
@@ -212,7 +204,7 @@ export function useDataPathController() {
     }
     if (preview.hasPromptHubData) {
       setPendingDataPathChange(preview);
-    } else if (confirmMigration(t)) {
+    } else if (await confirmMigration(t)) {
       await applyDataPathChange(preview.targetPath || selectedPath, "migrate");
     }
   }, [

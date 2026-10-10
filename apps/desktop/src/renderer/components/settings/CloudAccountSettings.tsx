@@ -1,3 +1,4 @@
+import { requestConfirmation } from "../ui/confirmation";
 import { useEffect, useState } from "react";
 import {
   CloudIcon,
@@ -222,7 +223,14 @@ export function CloudAccountSettings() {
   };
 
   const handleDeletion = async () => {
-    if (!window.confirm(t("settings.cloudAccountDeleteConfirm", "Request account deletion? You can cancel during the grace period."))) return;
+    if (!(await requestConfirmation({
+      message: t(
+        "settings.cloudAccountDeleteConfirm",
+        "Request account deletion? You can cancel during the grace period.",
+      ),
+      variant: "destructive",
+      confirmText: t("common.delete"),
+    }))) return;
     setAccountSubmitting(true);
     try {
       await window.api.cloud.account.requestDeletion();

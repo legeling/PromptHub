@@ -175,7 +175,7 @@ export function PromptGalleryView({
 
     // Shared batch-bar handlers keep the "clear after action" timing of the
     // table view so both views behave identically.
-    // 与表格视图相同的“操作后清除选择”时机，保证两视图行为一致。
+    // Deletion keeps selection until the records disappear after confirmation.
     const batch = {
         clear: selection.clear,
         onFavorite: (ids: string[], favorite: boolean) => {
@@ -188,7 +188,6 @@ export function PromptGalleryView({
         },
         onDelete: (ids: string[]) => {
             onBatchDelete?.(ids);
-            selection.clear();
         },
         onTag: onBatchTags
             ? (ids: string[]) => onBatchTags(ids)

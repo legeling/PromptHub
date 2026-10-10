@@ -1,3 +1,4 @@
+import { requestConfirmation } from "../ui/confirmation";
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal } from '../ui';
@@ -535,14 +536,14 @@ export function VersionHistoryModal({ isOpen, onClose, prompt, onRestore }: Vers
     }
   };
 
-  const handleRestore = () => {
+  const handleRestore = async () => {
     if (selectedVersion) {
       if (
-        confirm(
-          t('prompt.restoreConfirm', {
+        (await requestConfirmation({
+          message: t('prompt.restoreConfirm', {
             version: selectedVersion.version,
           }),
-        )
+        }))
       ) {
         onRestore(selectedVersion);
         onClose();

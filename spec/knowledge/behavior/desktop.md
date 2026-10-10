@@ -40,6 +40,26 @@
 - 未勾选记住时只执行本次选择，不改变持久 close action。持久化失败时必须保留对话框、
   恢复之前的 renderer/main 内存值并显示可重试错误，不得假装记忆成功后继续退出。
 
+### 2.3 Business Confirmation Dialogs
+
+- Desktop 页面及复用 Desktop workspace 的 Web 页面，业务确认统一使用现有
+  `ConfirmDialog` 自定义组件；禁止浏览器 `alert / confirm / prompt`。批量删除、
+  覆盖、恢复、迁移与未保存离开都必须等待用户决定，取消不得继续写入或导航。
+- 跨页面的异步确认由 renderer UI 的 `ConfirmationHost` 单独呈现；待确认内容和
+  Promise continuation 仅属于瞬时 UI 状态，不持久化，不增加 IPC 或数据真源。
+  替换请求或卸载 host 时明确取消旧请求，不保留队列或悬挂的 Promise。
+- 确认 / 取消文案复用 i18n；破坏性操作使用 destructive 样式。对话框循环管理
+  焦点，Enter 尊重当前聚焦的取消按钮，Escape 只取消当前确认，不穿透到底层
+  编辑窗口；执行中的 loading 对话框禁用按钮、键盘和遮罩关闭。
+- 文件 / 文件夹选择属于系统文件集成；main-process 托盘的 Provider 切换与结果
+  通知保留 Electron OS dialog，供主窗口隐藏时使用；renderer 尚未启动时的
+  启动失败提示保留 OS dialog。浏览器关闭 / 刷新页面的 beforeunload 未保存保护
+  由宿主控制，不能用异步 React 弹窗代替而丢失保护。React Native Mobile 的
+  `platformAlerts` 属于独立产品界面，本轮未迁移其 Alert 及 Web fallback。
+- Prompt 批量删除保留原有逐项持久化契约；确认期间及执行期间不重复提交，
+  失败显示错误且不得报告全部成功，不宣称整个批次具备新增的原子事务。画廊
+  批量删除在取消 / 失败时保留选择，成功移除的记录由既有选择裁剪机制清除。
+
 ### 3. Stable Internal Sources
 
 - 长期工程边界和代码结构治理见 `spec/knowledge/structure/code-structure-guidelines.md`。

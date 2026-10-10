@@ -311,6 +311,7 @@ describe("PromptGalleryView", () => {
     ];
     const onBatchTags = vi.fn<(ids: string[]) => void>();
     const onBatchFavorite = vi.fn<(ids: string[], favorite: boolean) => void>();
+    const onBatchDelete = vi.fn<(ids: string[]) => void>();
 
     await act(async () => {
       await renderWithI18n(
@@ -327,6 +328,7 @@ describe("PromptGalleryView", () => {
           onContextMenu={vi.fn()}
           onBatchTags={onBatchTags}
           onBatchFavorite={onBatchFavorite}
+          onBatchDelete={onBatchDelete}
         />,
         { language: "en" },
       );
@@ -338,6 +340,11 @@ describe("PromptGalleryView", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Tags/ }));
     expect(onBatchTags).toHaveBeenCalledWith(["gb-1", "gb-2"]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Batch Delete" }));
+    expect(onBatchDelete).toHaveBeenCalledWith(["gb-1", "gb-2"]);
+    expect(screen.getByText("2 of 2 selected")).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Deselect Batch Alpha" })).toHaveAttribute("aria-checked", "true");
 
     fireEvent.click(screen.getByRole("button", { name: "Batch Favorite" }));
     expect(onBatchFavorite).toHaveBeenCalledWith(["gb-1", "gb-2"], true);

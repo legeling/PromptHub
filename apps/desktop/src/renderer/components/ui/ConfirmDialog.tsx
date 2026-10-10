@@ -1,6 +1,7 @@
 import { ReactNode, useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertTriangleIcon, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -14,17 +15,31 @@ interface ConfirmDialogProps {
   isLoading?: boolean;
 }
 
+function cycleDialogFocus(dialog: HTMLElement | null, backwards: boolean): void {
+  if (!dialog) return;
+  const controls = Array.from(dialog.querySelectorAll<HTMLElement>(
+    'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]',
+  )).filter((control) => !control.closest('[hidden], [aria-hidden="true"]'));
+  const index = controls.findIndex((control) => control === document.activeElement);
+  const next = index < 0 ? (backwards ? controls.length - 1 : 0)
+    : (index + (backwards ? -1 : 1) + controls.length) % controls.length;
+  controls[next]?.focus();
+}
+
 export function ConfirmDialog({
   isOpen,
   onClose,
   onConfirm,
   title,
   message,
-  confirmText = 'Confirm',
-  cancelText = 'Cancel',
+  confirmText,
+  cancelText,
   variant = 'default',
   isLoading = false,
 }: ConfirmDialogProps) {
+  const { t } = useTranslation();
+  const confirmLabel = confirmText ?? t('common.confirm');
+  const cancelLabel = cancelText ?? t('common.cancel');
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -70,18 +85,28 @@ export function ConfirmDialog({
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isLoading) return;
+      const dialogs = document.querySelectorAll('[role="alertdialog"]');
+      if (dialogs[dialogs.length - 1] !== dialogRef.current) return;
+      if (!['Escape', 'Enter', 'Tab'].includes(e.key)) return;
+      e.stopImmediatePropagation();
+      if (isLoading) { e.preventDefault(); return; }
+      const active = document.activeElement;
+      if (e.key === 'Enter' && active instanceof HTMLElement &&
+        dialogRef.current?.contains(active) &&
+        active !== confirmButtonRef.current && active !== cancelButtonRef.current) return;
+      e.preventDefault();
       if (e.key === 'Escape') {
-        e.preventDefault();
         onClose();
       } else if (e.key === 'Enter') {
-        e.preventDefault();
-        onConfirm();
+        if (document.activeElement === cancelButtonRef.current) onClose();
+        else onConfirm();
+      } else {
+        cycleDialogFocus(dialogRef.current, e.shiftKey);
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
   }, [isOpen, isLoading, onClose, onConfirm]);
 
   if (!isOpen) return null;
@@ -105,7 +130,7 @@ export function ConfirmDialog({
         role="alertdialog"
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
-        aria-label={title ? undefined : confirmText}
+        aria-label={title ? undefined : confirmLabel}
         aria-describedby={messageId}
         className="relative app-wallpaper-panel-strong rounded-xl shadow-2xl border border-border w-full max-w-sm p-6 animate-in fade-in zoom-in-95 duration-base"
       >
@@ -141,7 +166,7 @@ export function ConfirmDialog({
             disabled={isLoading}
             className="flex-1 h-10 px-4 rounded-lg border border-border app-wallpaper-surface hover:bg-accent transition-colors text-sm font-medium disabled:opacity-50"
           >
-            {cancelText}
+            {cancelLabel}
           </button>
           <button
             type="button"
@@ -155,7 +180,7 @@ export function ConfirmDialog({
             }`}
           >
             {isLoading && <Loader2 aria-hidden="true" className="w-4 h-4 animate-spin shrink-0" />}
-            {confirmText}
+            {confirmLabel}
           </button>
         </div>
       </div>

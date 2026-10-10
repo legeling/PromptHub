@@ -6,7 +6,8 @@
  * - selection is pruned when underlying prompts disappear;
  * - "select all" only toggles the current action scope (page rows for the
  *   table, visible cards for the gallery);
- * - handlers clear the selection after invoking a batch action.
+ * - deletion retains selection until removed records are pruned, so cancellation
+ *   and failures keep the remaining action scope visible.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 

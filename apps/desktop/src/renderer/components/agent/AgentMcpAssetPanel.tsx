@@ -1,3 +1,4 @@
+import { requestConfirmation } from "../ui/confirmation";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -426,12 +427,12 @@ export function AgentMcpAssetPanel({
         message.includes("同名 MCP 服务");
       if (
         !isConflict ||
-        !window.confirm(
-          t("mcp.confirmTargetOverwrite", {
+        !(await requestConfirmation({
+          message: t("mcp.confirmTargetOverwrite", {
             message,
             defaultValue: `${message}\n\nOverwrite the existing target MCP entry?`,
           }),
-        )
+        }))
       ) {
         throw actionError;
       }

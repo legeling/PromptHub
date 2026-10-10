@@ -286,7 +286,7 @@ describe("Sidebar", () => {
       );
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Project Skills/i }));
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: /Project Skills/i })); });
 
     expect(useSkillStore.getState().storeView).toBe("projects");
     expect(screen.getByText("Project Skills")).toBeInTheDocument();
@@ -346,7 +346,7 @@ describe("Sidebar", () => {
       }
     }
 
-    fireEvent.click(screen.getByRole("button", { name: /My Skills/i }));
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: /My Skills/i })); });
     fireEvent.click(screen.getByRole("button", { name: /Official Store/i }));
     expect(onSubmit).not.toHaveBeenCalled();
   });
@@ -667,7 +667,7 @@ describe("Sidebar", () => {
       );
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Agent Skills/i }));
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: /Agent Skills/i })); });
 
     expect(useSkillStore.getState().storeView).toBe("agents");
     expect(screen.getByText("Agent Skills")).toBeInTheDocument();
@@ -727,7 +727,7 @@ describe("Sidebar", () => {
       );
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /My Skills/i }));
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: /My Skills/i })); });
 
     expect(useSkillStore.getState().storeView).toBe("my-skills");
     expect(useSkillStore.getState().selectedSkillId).toBeNull();
@@ -961,14 +961,14 @@ describe("Sidebar", () => {
 
     expect(screen.getByTestId("skill-store-source-scroll")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /Skill Store/i }));
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: /Skill Store/i })); });
 
     expect(
       screen.queryByTestId("skill-store-source-scroll"),
     ).not.toBeInTheDocument();
     expect(useSkillStore.getState().storeView).toBe("store");
 
-    fireEvent.click(screen.getByRole("button", { name: /Skill Store/i }));
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: /Skill Store/i })); });
 
     expect(screen.getByTestId("skill-store-source-scroll")).toBeInTheDocument();
     expect(useSkillStore.getState().selectedStoreSourceId).toBe("claude-code");
@@ -1003,7 +1003,7 @@ describe("Sidebar", () => {
       screen.getByRole("button", { name: /Claude Code Store/i }),
     ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /My Skills/i }));
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: /My Skills/i })); });
 
     expect(useSkillStore.getState().storeView).toBe("my-skills");
     expect(
@@ -1050,9 +1050,9 @@ describe("Sidebar", () => {
     expect(
       screen.getByRole("button", { name: /Personal Store/i }),
     ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /My Skills/i }));
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: /My Skills/i })); });
     expect(useSkillStore.getState().storeView).toBe("my-skills");
-    fireEvent.click(screen.getByRole("button", { name: /Personal Store/i }));
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: /Personal Store/i })); });
 
     expect(useSkillStore.getState().selectedStoreSourceId).toBe(
       "personal-store",

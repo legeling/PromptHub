@@ -1,3 +1,4 @@
+import { ConfirmationHost } from "../../../src/renderer/components/ui/ConfirmationHost";
 import {
   act,
   fireEvent,
@@ -890,7 +891,8 @@ describe("McpManager", () => {
   it("confirms before force-overwriting conflicting target MCP entries", async () => {
     const user = userEvent.setup();
     const { api } = installMcpMocks();
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    await renderWithI18n(<ConfirmationHost />);
+    const confirmSpy = vi.spyOn(window, "confirm");
     api.mcp.apply
       .mockRejectedValueOnce(
         new Error("目标配置已存在同名 MCP 服务: filesystem"),
@@ -915,8 +917,11 @@ describe("McpManager", () => {
       within(detailPage).getByRole("button", { name: /Apply to 2 platform/ }),
     );
 
+    const confirmation = await screen.findByRole("alertdialog");
+    expect(api.mcp.apply).toHaveBeenCalledTimes(1);
+    await user.click(within(confirmation).getByRole("button", { name: "Confirm" }));
     await waitFor(() => {
-      expect(confirmSpy).toHaveBeenCalled();
+      expect(confirmSpy).not.toHaveBeenCalled();
       expect(api.mcp.apply).toHaveBeenNthCalledWith(1, {
         target: "codex",
         scope: "global",
