@@ -2,7 +2,20 @@ import { SettingsIcon } from "lucide-react";
 import type { SidebarController } from "./sidebar-view-types";
 
 interface SidebarRailProps {
-  controller: SidebarController;
+  controller: Pick<
+    SidebarController,
+    | "railNavItems"
+    | "confirmLeaveDirtySkillEditor"
+    | "onNavigate"
+    | "t"
+    | "currentPage"
+    | "railWidthClass"
+    | "layout"
+    | "isCollapsed"
+    | "webRuntime"
+    | "isMac"
+    | "isFullscreen"
+  >;
 }
 
 function SidebarRailItems({ controller }: SidebarRailProps) {

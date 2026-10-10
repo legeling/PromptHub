@@ -79,6 +79,7 @@ Renderer startup entry (`index-*.js`) 不应静态 import 与当前首屏无关�
 - 纯分类、来源元数据和状态投影应放在纯 view-model helper 中，并由 `useMemo` 以真实输入缓存。
 - 组件拆分应为 1,500 行门禁留出余量；不能以移动空行或压缩格式作为通过手段。新文件继续以 1,000 行以内为默认目标。
 - 每个新增渲染隔离边界至少有一个可失败的测试，证明稳定输入不会重复执行昂贵子树。
+- 桌面最左侧模块图标栏只订阅模块选择、可见菜单、窗口状态及必要的轻量 UI 偏好；不得挂载分类栏的完整控制器、资产统计、平台探测或对话框。分类栏由当前可见 panel 拥有这些读取，避免同一次模块切换重复探测和随资产快照更新重绘图标栏。
 
 ### 8. 重量级工作区只挂载当前视图
 
@@ -118,6 +119,7 @@ Electron 主进程中的 `initDatabase()` 只属于启动、恢复重开和显�
 - 普通读取不得隐式执行 schema/migration、canonical publication recovery 或 workspace reconciliation。
 - 数据库尚未初始化时，非关键 selector 保持既有容错降级；不得为了显示路径或平台列表自行初始化数据库。
 - Canonical Skill workspace reconciliation 只在真实初始化后执行一次，不能随着组件挂载、列表枚举或 IPC 查询重复执行。
+- Agent 路径解析复用 `skill-installer-utils` 已有的五秒设置缓存；缓存持有同一组规范 builtin override，根路径与资产相对路径共同读取它。`settings:update` 保存 override 后立即清除该缓存；数据库恢复或重开更换连接时，旧快照也立即失效。不得在逐 Skill / 逐平台路径解析中反复查询或解析相同设置。
 - 性能诊断需区分 renderer 卡顿与 Electron main-process 同步文件 I/O；主进程持续高 CPU 时应使用 CPU profile 确认真实调用链。
 
 ## Stable Scenarios

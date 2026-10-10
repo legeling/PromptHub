@@ -394,9 +394,13 @@ export function resolvePlatformPath(template: string): string {
     .replace(/%LOCALAPPDATA%/gi, localAppData);
 }
 
-let _customRootPathsCache: Record<string, string> | null = null;
-let _customRootPathsCacheTs = 0;
-const CUSTOM_PATHS_CACHE_TTL = 5000; // 5 seconds
+let builtinAgentOverridesCache: Record<
+  string,
+  BuiltinAgentOverrideConfig
+> | null = null;
+let builtinAgentOverridesDatabase: ReturnType<typeof getDatabase> | null = null;
+let builtinAgentOverridesLoadedAtMs = 0;
+export const BUILTIN_AGENT_OVERRIDES_CACHE_TTL_MS = 5000;
 
 function joinRootRelativePath(rootDir: string, relativePath: string): string {
   return path.join(rootDir, ...relativePath.split(/[\\/]+/).filter(Boolean));
@@ -412,18 +416,6 @@ export function getDefaultPluginsRelativePath(
   platformId?: string,
 ): string | undefined {
   return platformId ? getPlatformPluginsRelativePath(platformId) : undefined;
-}
-
-function deriveRootPathMap(
-  overrides: Record<string, BuiltinAgentOverrideConfig>,
-): Record<string, string> {
-  return Object.fromEntries(
-    Object.entries(overrides).flatMap(([platformId, value]) =>
-      typeof value.rootPath === "string" && value.rootPath.trim().length > 0
-        ? [[platformId, value.rootPath.trim()] as const]
-        : [],
-    ),
-  );
 }
 
 function hasBuiltinAgentOverrideConfig(
@@ -451,23 +443,21 @@ function readBuiltinAgentOverridesFromSettings(): Record<
   string,
   BuiltinAgentOverrideConfig
 > {
-  return new AgentSettingsRepository(getDatabase()).read()
-    .builtinAgentOverrides;
-}
-
-function readPlatformRootPathsFromSettings(): Record<string, string> {
-  const now = Date.now();
+  const database = getDatabase();
+  const nowMs = Date.now();
   if (
-    _customRootPathsCache &&
-    now - _customRootPathsCacheTs < CUSTOM_PATHS_CACHE_TTL
+    builtinAgentOverridesCache !== null &&
+    builtinAgentOverridesDatabase === database &&
+    nowMs - builtinAgentOverridesLoadedAtMs <
+      BUILTIN_AGENT_OVERRIDES_CACHE_TTL_MS
   ) {
-    return _customRootPathsCache;
+    return builtinAgentOverridesCache;
   }
-  _customRootPathsCache = deriveRootPathMap(
-    readBuiltinAgentOverridesFromSettings(),
-  );
-  _customRootPathsCacheTs = now;
-  return _customRootPathsCache;
+  builtinAgentOverridesCache = new AgentSettingsRepository(database).read()
+    .builtinAgentOverrides;
+  builtinAgentOverridesDatabase = database;
+  builtinAgentOverridesLoadedAtMs = nowMs;
+  return builtinAgentOverridesCache;
 }
 
 export function readCustomAgentsFromSettings(): CustomAgentConfig[] {
@@ -505,8 +495,9 @@ export function getConfiguredBuiltinAgentPlatformIds(): string[] {
  * Invalidate the cached custom platform paths so the next call reads from DB.
  */
 export function invalidateCustomPathsCache(): void {
-  _customRootPathsCache = null;
-  _customRootPathsCacheTs = 0;
+  builtinAgentOverridesCache = null;
+  builtinAgentOverridesDatabase = null;
+  builtinAgentOverridesLoadedAtMs = 0;
 }
 
 export function getBuiltinAgentOverride(
@@ -525,10 +516,7 @@ export function getPlatformRootDir(
   } = {},
 ): string {
   const builtinOverride = getBuiltinAgentOverride(platform.id);
-  const overridePath =
-    overrides?.[platform.id] ??
-    builtinOverride?.rootPath ??
-    readPlatformRootPathsFromSettings()[platform.id];
+  const overridePath = overrides?.[platform.id] ?? builtinOverride?.rootPath;
 
   if (typeof overridePath === "string" && overridePath.trim()) {
     return resolvePlatformPath(overridePath.trim());

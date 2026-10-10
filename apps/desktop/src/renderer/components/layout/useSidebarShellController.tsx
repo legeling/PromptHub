@@ -167,7 +167,7 @@ function useSidebarRailItems(
   onNavigate: (page: PageType) => void,
   ui: ReturnType<typeof useSidebarUiBindings>,
   modules: ReturnType<typeof useVisibleSidebarModules>,
-  closeTagPopover: () => void,
+  closeTagPopover: (() => void) | null,
 ) {
   const { t } = useTranslation();
   return useMemo(
@@ -179,7 +179,7 @@ function useSidebarRailItems(
         active: ui.appModule === module,
         onClick: () => {
           ui.setAppModule(module);
-          closeTagPopover();
+          if (closeTagPopover) closeTagPopover();
           if (currentPage !== "home") onNavigate("home");
         },
       })),
@@ -198,7 +198,7 @@ export function useSidebarShellController(
   currentPage: PageType,
   onNavigate: (page: PageType) => void,
   layout: SidebarLayout,
-  closeTagPopover: () => void,
+  closeTagPopover: (() => void) | null,
   promptViewMode: PromptViewMode,
 ) {
   const { t } = useTranslation();
