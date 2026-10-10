@@ -167,6 +167,7 @@
     "versionLabel": "バージョン {{version}}",
     "confirmDeletePrompt": "この Prompt を削除してもよろしいですか？",
     "promptDeleted": "Prompt が削除されました",
+    "deleteFailed": "Prompt の削除に失敗しました",
     "promptDuplicated": "Prompt の複製を作成しました",
     "unsavedChanges": "未保存の変更",
     "unsavedChangesMessage": "保存されていない変更があります。保存しますか？",

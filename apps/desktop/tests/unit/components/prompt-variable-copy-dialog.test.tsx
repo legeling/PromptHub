@@ -87,6 +87,7 @@ function createProps(): PromptWorkspaceDialogsProps {
     aiTestInitialMode: "single",
     aiTestPrompt: null,
     confirmDelete: vi.fn(),
+    isDeletingPrompt: false,
     contextMenu: null,
     copyPrompt: createPrompt(),
     copyPromptQueue: [],

@@ -168,6 +168,7 @@
     "versionLabel": "版本 {{version}}",
     "confirmDeletePrompt": "确定要删除这个 Prompt 吗？",
     "promptDeleted": "Prompt 已删除",
+    "deleteFailed": "删除 Prompt 失败",
     "promptDuplicated": "已创建 Prompt 副本",
     "unsavedChanges": "未保存的更改",
     "unsavedChangesMessage": "您有未保存的更改，是否要保存？",

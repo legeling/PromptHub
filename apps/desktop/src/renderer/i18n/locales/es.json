@@ -167,6 +167,7 @@
     "versionLabel": "Versión {{version}}",
     "confirmDeletePrompt": "¿Estás seguro de eliminar este Prompt?",
     "promptDeleted": "Prompt eliminado",
+    "deleteFailed": "No se pudo eliminar el Prompt",
     "promptDuplicated": "Se creó un duplicado del Prompt",
     "unsavedChanges": "Cambios sin guardar",
     "unsavedChangesMessage": "Tienes cambios sin guardar. ¿Deseas guardarlos?",

@@ -33,6 +33,7 @@ export interface PromptWorkspaceDialogsProps {
   isCompareVariableModalOpen: boolean;
   isCopyVariableModalOpen: boolean;
   isDetailModalOpen: boolean;
+  isDeletingPrompt: boolean;
   isTestingAI: boolean;
   isVariableModalOpen: boolean;
   isVersionModalOpen: boolean;

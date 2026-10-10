@@ -95,7 +95,7 @@ export function ConfirmDialog({
         role="presentation"
         aria-hidden="true"
         className="absolute inset-0 bg-background/60 backdrop-blur-sm"
-        onClick={onClose}
+        onClick={() => { if (!isLoading) onClose(); }}
       />
 
       {/* Dialog */}

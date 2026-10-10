@@ -117,14 +117,11 @@ function promptStateFromSnapshot(
   );
 }
 
-function readExistingPromptStates(): Map<string, ExistingPromptState> {
-  const catalogPath = path.join(
-    getDataDir(),
-    PROMPT_CANONICAL_GRAPH_MANIFEST_FILE,
-  );
-  if (!fs.existsSync(catalogPath)) return new Map();
-  const graph = readPromptCanonicalGraph(getDataDir()).snapshot;
-  const states = promptStateFromSnapshot(graph);
+function readExistingPromptStates(
+  snapshot: PromptCanonicalGraphSnapshot | null,
+): Map<string, ExistingPromptState> {
+  if (!snapshot) return new Map();
+  const states = promptStateFromSnapshot(snapshot);
   return new Map(
     [...states].map(([promptId, state]) => {
       const bundlePath = promptBundlePath(promptId);
@@ -264,10 +261,32 @@ export function publishCanonicalPromptGraph(
     database,
   );
   const expectedHash = calculatePromptCanonicalGraphHash(snapshot);
-  if (graphHashIfReadable() === expectedHash) return "unchanged";
+  const catalogPath = path.join(
+    getDataDir(),
+    PROMPT_CANONICAL_GRAPH_MANIFEST_FILE,
+  );
+  const priorGraph = fs.existsSync(catalogPath)
+    ? readPromptCanonicalGraph(getDataDir())
+    : null;
+  if (
+    priorGraph &&
+    calculatePromptCanonicalGraphHash(priorGraph.snapshot) === expectedHash
+  )
+    return "unchanged";
 
-  const existing = readExistingPromptStates();
+  const existing = readExistingPromptStates(priorGraph?.snapshot ?? null);
   const next = promptStateFromSnapshot(snapshot);
+  const retainedIds = new Set(
+    [...next]
+      .filter(([id, state]) => {
+        const prior = existing.get(id);
+        return prior !== undefined && samePromptState(prior, state);
+      })
+      .map(([id]) => id),
+  );
+  const retainedDirectories = new Set(
+    [...retainedIds].map(encodeCanonicalResourceDirectory),
+  );
   const stageRoot = path.join(
     getDataDir(),
     "operations",
@@ -276,6 +295,12 @@ export function publishCanonicalPromptGraph(
   let published = false;
   try {
     materializePromptCanonicalGraph(stageRoot, snapshot, {
+      retainedFiles: priorGraph?.manifest.files.filter(
+        (file) =>
+          (file.path.startsWith("prompts/") &&
+            retainedDirectories.has(file.path.split("/")[1])) ||
+          file.path.startsWith("assets/objects/sha256/"),
+      ),
       resolveMediaSource: (prompt, kind, reference) =>
         resolveMediaSource(existing, prompt, kind, reference),
       resolvePromptRevision(prompt, defaultRevision) {
@@ -287,9 +312,7 @@ export function publishCanonicalPromptGraph(
         return prior ? prior.revision + 1 : defaultRevision;
       },
       resolveExistingPromptBundle(prompt) {
-        const prior = existing.get(prompt.id);
-        const current = next.get(prompt.id)!;
-        return prior && samePromptState(prior, current)
+        return retainedIds.has(prompt.id)
           ? promptBundlePath(prompt.id)
           : undefined;
       },
@@ -305,17 +328,39 @@ export function publishCanonicalPromptGraph(
       },
     });
     publishStagedObjects(stageRoot);
-    const entries: CanonicalEntryMutation[] = GRAPH_DIRECTORIES.map(
-      (directory) => ({
-        targetPath: path.join(getDataDir(), directory),
-        prepare(targetStagePath: string) {
-          const sourcePath = path.join(stageRoot, directory);
-          if (fs.existsSync(sourcePath))
-            fs.renameSync(sourcePath, targetStagePath);
-          else fs.mkdirSync(targetStagePath, { recursive: true, mode: 0o700 });
-        },
-      }),
-    );
+    const entries: CanonicalEntryMutation[] = GRAPH_DIRECTORIES.filter(
+      (directory) => directory !== "prompts" || priorGraph === null,
+    ).map((directory) => ({
+      targetPath: path.join(getDataDir(), directory),
+      prepare(targetStagePath: string) {
+        const sourcePath = path.join(stageRoot, directory);
+        if (fs.existsSync(sourcePath))
+          fs.renameSync(sourcePath, targetStagePath);
+        else fs.mkdirSync(targetStagePath, { recursive: true, mode: 0o700 });
+      },
+    }));
+    if (priorGraph) {
+      for (const id of next.keys()) {
+        if (retainedIds.has(id)) continue;
+        entries.push({
+          targetPath: promptBundlePath(id),
+          prepare(targetStagePath) {
+            fs.renameSync(
+              path.join(
+                stageRoot,
+                "prompts",
+                encodeCanonicalResourceDirectory(id),
+              ),
+              targetStagePath,
+            );
+          },
+        });
+      }
+      for (const id of existing.keys()) {
+        if (!next.has(id))
+          entries.push({ targetPath: promptBundlePath(id), delete: true });
+      }
+    }
     entries.push({
       targetPath: path.join(getDataDir(), PROMPT_CANONICAL_GRAPH_MANIFEST_FILE),
       prepare(targetStagePath) {

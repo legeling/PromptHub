@@ -958,12 +958,20 @@ function pruneEmptyDirs(rootDir: string): void {
   walk(rootDir);
 }
 
+export function syncPromptWorkspaceAfterMutation(
+  promptDb: PromptDB,
+  folderDb: FolderDB,
+): void {
+  // Core has already published canonical mutations inside their transaction.
+  // The legacy workspace export is only needed by the database-catalog runtime.
+  if (getRuntimeStorageContext().localAuthority === "canonical-files") return;
+  syncPromptWorkspaceFromDatabase(promptDb, folderDb);
+}
+
 /**
- * Incrementally sync DB → workspace. Writes one file per DB prompt and trashes
- * orphan files/directories. Never calls `fs.rmSync` on user data.
- *
- * v0.5.3: 增量同步 DB → 工作区。按 DB 内容逐个写文件，将孤立文件/目录移入回收站，
- *         永不对用户数据调用 fs.rmSync。
+ * Export the full DB workspace and trash orphan files/directories.
+ * Ordinary mutations use syncPromptWorkspaceAfterMutation to avoid exporting
+ * a second workspace after Core has already published the canonical graph.
  */
 export function syncPromptWorkspaceFromDatabase(
   promptDb: PromptDB,

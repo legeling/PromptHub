@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type {
   CreatePromptDTO,
@@ -76,20 +76,36 @@ interface DeletePromptParams {
   t: TFunction;
 }
 
-export function useDeletePromptActions(params: DeletePromptParams) {
+export function useDeletePromptActions(params: DeletePromptParams): {
+  handleDeletePrompt: (prompt: PromptSummary) => void;
+  confirmDelete: () => Promise<void>;
+  isDeletingPrompt: boolean;
+} {
+  const deletionInFlight = useRef(false);
+  const [isDeletingPrompt, setIsDeletingPrompt] = useState(false);
   const handleDeletePrompt = useCallback(
     (prompt: PromptSummary) =>
       params.setDeleteConfirm({ isOpen: true, prompt: prompt as Prompt }),
     [params],
   );
   const confirmDelete = useCallback(async () => {
-    if (params.deleteConfirm.prompt) {
-      await params.deletePrompt(params.deleteConfirm.prompt.id);
+    const prompt = params.deleteConfirm.prompt;
+    if (!prompt || deletionInFlight.current) return;
+    deletionInFlight.current = true;
+    setIsDeletingPrompt(true);
+    try {
+      await params.deletePrompt(prompt.id);
       params.showToast(params.t("prompt.promptDeleted"), "success");
+      params.setDeleteConfirm({ isOpen: false, prompt: null });
+    } catch (error) {
+      console.error("Failed to delete Prompt:", error);
+      params.showToast(params.t("prompt.deleteFailed"), "error");
+    } finally {
+      deletionInFlight.current = false;
+      setIsDeletingPrompt(false);
     }
-    params.setDeleteConfirm({ isOpen: false, prompt: null });
   }, [params]);
-  return { handleDeletePrompt, confirmDelete };
+  return { handleDeletePrompt, confirmDelete, isDeletingPrompt };
 }
 
 interface AiTestParams {

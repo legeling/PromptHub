@@ -221,10 +221,12 @@ function inventoryRoot(
         throw new Error("canonical graph contains a symlink");
       if (
         options.ignorePublicationArtifacts &&
-        !relativePath.includes("/") &&
-        /^\.(?:catalog\.json|prompts|folders|tags|relations|output-formats)\.(?:prior|stage)-[a-f0-9-]+$/u.test(
+        (/^\.(?:catalog\.json|prompts|folders|tags|relations|output-formats)\.(?:prior|stage)-[a-f0-9-]+$/u.test(
           relativePath,
-        )
+        ) ||
+          /^prompts\/\.[A-Za-z0-9._%-]+\.(?:prior|stage)-[a-f0-9-]+$/u.test(
+            relativePath,
+          ))
       ) {
         continue;
       }

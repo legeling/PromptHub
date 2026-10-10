@@ -12,6 +12,7 @@ type DialogModalStateProps = Pick<
   | "editingPrompt"
   | "isAiTestModalOpen"
   | "isDetailModalOpen"
+  | "isDeletingPrompt"
   | "isVersionModalOpen"
   | "previewImage"
   | "quickRewritePrompt"
@@ -50,6 +51,7 @@ function getDialogModalState(controller: Controller): DialogModalStateProps {
     editingPrompt: state.dialogs.editingPrompt,
     isAiTestModalOpen: state.ai.isAiTestModalOpen,
     isDetailModalOpen: state.dialogs.isDetailModalOpen,
+    isDeletingPrompt: actions.isDeletingPrompt,
     isVersionModalOpen: state.dialogs.isVersionModalOpen,
     previewImage: state.dialogs.previewImage,
     quickRewritePrompt: state.dialogs.quickRewritePrompt,

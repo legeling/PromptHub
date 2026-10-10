@@ -78,6 +78,8 @@ export interface MaterializePromptCanonicalGraphOptions {
   resolvePromptRevision?: (prompt: Prompt, defaultRevision: number) => number;
   resolveExistingPromptBundle?: (prompt: Prompt) => string | undefined;
   resolveExistingObjectSource?: (sha256: string) => string;
+  /** Verified files retained at the live target during atomic publication. */
+  retainedFiles?: PromptCanonicalGraphManifest["files"];
 }
 
 interface ValidatedPromptEntry {
@@ -423,6 +425,7 @@ function materializePrompt(
   resolvePromptRevision?: MaterializePromptCanonicalGraphOptions["resolvePromptRevision"],
   resolveExistingPromptBundle?: MaterializePromptCanonicalGraphOptions["resolveExistingPromptBundle"],
   resolveExistingObjectSource?: MaterializePromptCanonicalGraphOptions["resolveExistingObjectSource"],
+  retainExistingBundles = false,
 ): void {
   const prompt = entry.prompt;
   const existingBundle = resolveExistingPromptBundle?.(prompt);
@@ -431,6 +434,7 @@ function materializePrompt(
     if (!stats.isDirectory() || stats.isSymbolicLink()) {
       throw new Error("Existing Prompt bundle reuse source is unsafe");
     }
+    if (retainExistingBundles) return;
     fs.cpSync(
       existingBundle,
       path.join(
@@ -635,6 +639,7 @@ function materializeStage(
   resolvePromptRevision?: MaterializePromptCanonicalGraphOptions["resolvePromptRevision"],
   resolveExistingPromptBundle?: MaterializePromptCanonicalGraphOptions["resolveExistingPromptBundle"],
   resolveExistingObjectSource?: MaterializePromptCanonicalGraphOptions["resolveExistingObjectSource"],
+  retainExistingBundles = false,
 ): void {
   fs.mkdirSync(stagePath, { mode: 0o700 });
   const sourcePath = path.join(stagePath, ".sources");
@@ -647,6 +652,7 @@ function materializeStage(
       resolvePromptRevision,
       resolveExistingPromptBundle,
       resolveExistingObjectSource,
+      retainExistingBundles,
     );
   }
   writeGraphRecords(stagePath, graph);
@@ -680,8 +686,15 @@ export function materializePromptCanonicalGraph(
       options.resolvePromptRevision,
       options.resolveExistingPromptBundle,
       options.resolveExistingObjectSource,
+      options.retainedFiles !== undefined,
     );
-    const files = inventoryFiles(stagePath);
+    const files = [
+      ...new Map(
+        [...(options.retainedFiles ?? []), ...inventoryFiles(stagePath)].map(
+          (file) => [file.path, file],
+        ),
+      ).values(),
+    ].sort((left, right) => compareText(left.path, right.path));
     options.materializeAdditionalDomains?.(stagePath);
     const manifest: PromptCanonicalGraphManifest = {
       kind: PROMPT_CANONICAL_GRAPH_KIND,

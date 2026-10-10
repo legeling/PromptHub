@@ -7,7 +7,7 @@ import type {
   Folder,
   UpdateFolderDTO,
 } from "@prompthub/shared/types";
-import { syncPromptWorkspaceFromDatabase } from "../services/prompt-workspace";
+import { syncPromptWorkspaceAfterMutation } from "../services/prompt-workspace";
 
 /**
  * Register folder-related IPC handlers
@@ -15,7 +15,7 @@ import { syncPromptWorkspaceFromDatabase } from "../services/prompt-workspace";
  */
 export function registerFolderIPC(db: FolderDB, promptDb: PromptDB): void {
   const syncWorkspace = () => {
-    syncPromptWorkspaceFromDatabase(promptDb, db);
+    syncPromptWorkspaceAfterMutation(promptDb, db);
   };
 
   // Create folder
@@ -70,6 +70,7 @@ export function registerFolderIPC(db: FolderDB, promptDb: PromptDB): void {
     IPC_CHANNELS.FOLDER_INSERT_DIRECT,
     async (_event, folder: Folder) => {
       db.insertFolderDirect(folder);
+      promptDb.publishCanonicalGraph();
       syncWorkspace();
       return true;
     },

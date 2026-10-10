@@ -84,8 +84,10 @@ export async function updatePrompt(
 }
 
 export async function deletePrompt(id: string): Promise<void> {
-  await window.api.prompt.delete(id);
-  return;
+  const deleted = await window.api.prompt.delete(id);
+  if (!deleted) {
+    throw new Error(`Prompt not found: ${id}`);
+  }
 }
 
 export async function movePrompts(

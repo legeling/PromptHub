@@ -62,17 +62,23 @@ function PromptImagePreview({
 function PromptDeleteConfirmation({
   confirmDelete,
   deleteConfirm,
+  isDeletingPrompt,
   setDeleteConfirm,
 }: Pick<
   PromptWorkspaceDialogsProps,
-  "confirmDelete" | "deleteConfirm" | "setDeleteConfirm"
+  "confirmDelete" | "deleteConfirm" | "isDeletingPrompt" | "setDeleteConfirm"
 >) {
   const { t } = useTranslation();
   return (
     <ConfirmDialog
       isOpen={deleteConfirm.isOpen}
-      onClose={() => setDeleteConfirm({ isOpen: false, prompt: null })}
+      onClose={() => {
+        if (!isDeletingPrompt) {
+          setDeleteConfirm({ isOpen: false, prompt: null });
+        }
+      }}
       onConfirm={confirmDelete}
+      isLoading={isDeletingPrompt}
       title={t("prompt.delete")}
       message={t("prompt.confirmDeletePrompt")}
       confirmText={t("common.confirm")}

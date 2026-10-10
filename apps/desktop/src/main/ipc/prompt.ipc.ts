@@ -22,7 +22,7 @@ import type {
   UpdatePromptRelationDTO,
   UpdatePromptDTO,
 } from "@prompthub/shared/types";
-import { syncPromptWorkspaceFromDatabase } from "../services/prompt-workspace";
+import { syncPromptWorkspaceAfterMutation } from "../services/prompt-workspace";
 
 /**
  * Register Prompt-related IPC handlers
@@ -35,8 +35,9 @@ export function registerPromptIPC(
 ): void {
   const relationDb = new PromptRelationDB(rawDb);
   const outputFormatDb = new PromptOutputFormatDB(rawDb);
-  const syncWorkspace = () => {
-    syncPromptWorkspaceFromDatabase(db, folderDb);
+  const syncWorkspace = (options?: { publishCanonicalGraph: boolean }) => {
+    if (options?.publishCanonicalGraph) db.publishCanonicalGraph();
+    syncPromptWorkspaceAfterMutation(db, folderDb);
   };
 
   const sortFoldersForInsert = (folders: Folder[]): Folder[] => {
@@ -205,7 +206,7 @@ export function registerPromptIPC(
     IPC_CHANNELS.PROMPT_INSERT_DIRECT,
     async (_, prompt: Prompt) => {
       db.insertPromptDirect(prompt);
-      syncWorkspace();
+      syncWorkspace({ publishCanonicalGraph: true });
       return true;
     },
   );
@@ -314,7 +315,7 @@ export function registerPromptIPC(
       });
 
       restore();
-      syncWorkspace();
+      syncWorkspace({ publishCanonicalGraph: true });
       return {
         promptCount: payload.prompts.length,
         folderCount: payload.folders.length,
@@ -398,7 +399,7 @@ export function registerPromptIPC(
       });
 
       migrate();
-      syncWorkspace();
+      syncWorkspace({ publishCanonicalGraph: true });
 
       return {
         imported: true,
@@ -410,7 +411,7 @@ export function registerPromptIPC(
   );
 
   ipcMain.handle(IPC_CHANNELS.PROMPT_SYNC_WORKSPACE, async () => {
-    syncWorkspace();
+    syncWorkspace({ publishCanonicalGraph: true });
     return true;
   });
 
@@ -456,7 +457,7 @@ export function registerPromptIPC(
     IPC_CHANNELS.VERSION_INSERT_DIRECT,
     async (_, version: PromptVersion) => {
       db.insertVersionDirect(version);
-      syncWorkspace();
+      syncWorkspace({ publishCanonicalGraph: true });
       return true;
     },
   );
@@ -489,7 +490,7 @@ export function registerPromptIPC(
     IPC_CHANNELS.PROMPT_RELATION_INSERT_DIRECT,
     async (_, relation: PromptRelation) => {
       relationDb.insertRelationDirect(relation);
-      syncWorkspace();
+      syncWorkspace({ publishCanonicalGraph: true });
       return true;
     },
   );
@@ -533,7 +534,7 @@ export function registerPromptIPC(
     IPC_CHANNELS.PROMPT_OUTPUT_FORMAT_INSERT_DIRECT,
     async (_, item: OutputFormatItem) => {
       outputFormatDb.insertItemDirect(item);
-      syncWorkspace();
+      syncWorkspace({ publishCanonicalGraph: true });
       return true;
     },
   );
