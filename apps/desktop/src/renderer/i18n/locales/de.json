@@ -146,6 +146,7 @@
     "deleteVersionConfirm": "v{{version}} löschen? Dieser Verlaufseintrag geht dauerhaft verloren.",
     "noChanges": "Keine Änderungen",
     "noContent": "(leer)",
+    "detailLoadFailed": "Dieser Prompt konnte nicht geladen werden.",
     "changeNote": "Änderungsnotiz",
     "aiTest": "KI-Test",
     "outputFormat": "Ausgabeformat",

@@ -21,6 +21,10 @@ function usePromptWorkspacePresentation(
   base: ReturnType<typeof usePromptWorkspaceBase>,
 ) {
   const { promptData } = base.stores;
+  useFolderSelectionReset(
+    base.stores.folderData.selectedFolderId,
+    base.stores.promptActions.selectPrompt,
+  );
   const derived = usePromptWorkspaceDerived({
     ...promptData,
     ...base.stores.folderData,
@@ -33,10 +37,6 @@ function usePromptWorkspacePresentation(
   const inlineEditor = usePromptDetailInlineEditor(
     derived.selectedPrompt,
     base.state.detail.showEnglish,
-  );
-  useFolderSelectionReset(
-    base.stores.folderData.selectedFolderId,
-    base.stores.promptActions.selectPrompt,
   );
   useTagDropReset(promptData.selectedId, base.state.detail.setIsTagDropActive);
   return { derived, inlineEditor };

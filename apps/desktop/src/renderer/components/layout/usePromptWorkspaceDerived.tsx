@@ -41,6 +41,7 @@ function getLanguageTag(language: string) {
 }
 
 interface PromptVisibilityParams {
+  isBatchSelectionActive: boolean;
   filterTags: string[];
   folders: Folder[];
   lastSelectedId: string | null;
@@ -71,6 +72,7 @@ function usePromptWorkspaceVisibility(params: PromptVisibilityParams) {
     [sortedPrompts],
   );
   usePromptSelectionRestore(
+    params.isBatchSelectionActive,
     params.selectedId,
     params.lastSelectedId,
     sortedPrompts,
@@ -110,6 +112,7 @@ function useFilteredPrompts(params: PromptVisibilityParams) {
 }
 
 function usePromptSelectionRestore(
+  isBatchSelectionActive: boolean,
   selectedId: string | null,
   lastSelectedId: string | null,
   prompts: PromptSummary[],
@@ -117,12 +120,13 @@ function usePromptSelectionRestore(
 ) {
   useEffect(() => {
     if (
+      !isBatchSelectionActive &&
       !selectedId &&
       lastSelectedId &&
       prompts.some((prompt) => prompt.id === lastSelectedId)
     )
       selectPrompt(lastSelectedId);
-  }, [lastSelectedId, prompts, selectPrompt, selectedId]);
+  }, [isBatchSelectionActive, lastSelectedId, prompts, selectPrompt, selectedId]);
 }
 
 function useCollapsedPromptCleanup(

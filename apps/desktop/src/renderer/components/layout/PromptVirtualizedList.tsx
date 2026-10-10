@@ -49,6 +49,8 @@ export function getPromptDescendantIds(
 export const VirtualizedPromptList = memo(function VirtualizedPromptList({
   prompts,
   selectedPromptIdSet,
+  isBatchSelectionActive,
+  onToggleBatchSelection,
   highlightTerms,
   collapsedPromptIds,
   onCollapsedPromptIdsChange,
@@ -77,6 +79,8 @@ export const VirtualizedPromptList = memo(function VirtualizedPromptList({
       {...{
         prompts,
         selectedPromptIdSet,
+        isBatchSelectionActive,
+        onToggleBatchSelection,
         highlightTerms,
         collapsedPromptIds,
         onCollapsedPromptIdsChange,

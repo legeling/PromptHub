@@ -43,6 +43,7 @@ export function usePromptDetail(id: string | null | undefined): UsePromptDetailR
     // whenever the cache changes (e.g. updatePrompt refreshes the cache).
     if (cached) {
       setPrompt(cached);
+      setIsLoading(false);
       setHasError(false);
       return;
     }

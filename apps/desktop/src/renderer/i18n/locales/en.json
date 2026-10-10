@@ -147,6 +147,7 @@
     "deleteVersionConfirm": "Delete v{{version}}? This history entry will be removed permanently.",
     "noChanges": "No changes",
     "noContent": "(None)",
+    "detailLoadFailed": "Could not load this Prompt.",
     "changeNote": "Change Note",
     "aiTest": "AI Test",
     "outputFormat": "Output Format",

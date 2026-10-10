@@ -23,11 +23,14 @@ function PromptWorkspaceEmptyList() {
 }
 
 function PromptWorkspaceVirtualizedList() {
-  const { actions, derived, inlineEditor, state } = usePromptWorkspaceContext();
+  const { actions, derived, inlineEditor, state, stores } =
+    usePromptWorkspaceContext();
   return (
     <VirtualizedPromptList
       prompts={derived.visiblePrompts}
       selectedPromptIdSet={derived.selectedPromptIdSet}
+      isBatchSelectionActive={stores.promptData.isBatchSelectionActive}
+      onToggleBatchSelection={stores.promptActions.toggleBatchSelection}
       highlightTerms={derived.highlightTerms}
       collapsedPromptIds={state.detail.collapsedPromptIds}
       onCollapsedPromptIdsChange={state.detail.setCollapsedPromptIds}
@@ -51,10 +54,7 @@ function PromptWorkspaceListPane() {
       className="prompt-list-pane relative w-[var(--prompt-list-pane-width)] shrink-0 border-r border-border flex flex-col bg-card/50"
       style={style}
     >
-      {/* Card view already has store-level multi-select; the shared batch bar
-          makes those actions reachable here too (v0.6.2).
-          卡片视图的多选早已存在，本行接入共享批量条。 */}
-      {selectedIds.length > 0 && (
+      {stores.promptData.isBatchSelectionActive && selectedIds.length > 0 && (
         <div className="border-b border-border flex-shrink-0">
           <PromptBatchActionBar
             selectedIds={selectedIds}

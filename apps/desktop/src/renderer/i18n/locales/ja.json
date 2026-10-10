@@ -146,6 +146,7 @@
     "deleteVersionConfirm": "v{{version}} を削除すると、この履歴は完全に失われます。続行しますか？",
     "noChanges": "変更なし",
     "noContent": "(なし)",
+    "detailLoadFailed": "この Prompt を読み込めませんでした。",
     "changeNote": "変更メモ",
     "aiTest": "AI テスト",
     "outputFormat": "出力形式",

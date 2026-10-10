@@ -146,6 +146,7 @@
     "deleteVersionConfirm": "刪除 v{{version}} 後將無法恢復這條歷史記錄。是否繼續？",
     "noChanges": "沒有變化",
     "noContent": "(無)",
+    "detailLoadFailed": "無法載入此 Prompt。",
     "changeNote": "修改說明",
     "aiTest": "AI 測試",
     "outputFormat": "輸出格式",

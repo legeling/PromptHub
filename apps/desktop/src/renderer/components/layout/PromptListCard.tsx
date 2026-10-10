@@ -14,6 +14,7 @@ import { useTranslation } from "react-i18next";
 import type { PromptSummary } from "@prompthub/shared/types";
 import type { PromptCardProps } from "./prompt-list-types";
 import { renderHighlightedText } from "./prompt-list-highlight";
+import { Checkbox } from "../ui/Checkbox";
 
 const PROMPT_CARD_TREE_INDENT_PX = 16;
 
@@ -48,7 +49,7 @@ function getCardClassName({
           ? "border-t-2 border-t-primary"
           : "border-b-2 border-b-primary"
       : "";
-  return `w-full text-left px-3 py-2.5 rounded-lg cursor-pointer relative transition-all duration-base animate-in fade-in slide-in-from-left-2 outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${surface} ${isDragging ? "opacity-50" : ""} ${dropClass}`;
+  return `w-full text-left px-3 py-2.5 rounded-lg cursor-pointer relative transition-colors duration-base outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${surface} ${isDragging ? "opacity-50" : ""} ${dropClass}`;
 }
 
 function PromptCardStatus({
@@ -276,9 +277,36 @@ function selectWithKeyboard(
   event: React.KeyboardEvent,
   onSelect: (event: MouseEvent) => void,
 ) {
+  if (event.target !== event.currentTarget) return;
   if (event.key !== "Enter" && event.key !== " ") return;
   event.preventDefault();
   onSelect(event as unknown as MouseEvent);
+}
+
+function PromptCardBatchCheckbox({
+  prompt,
+  isBatchSelected = false,
+  onToggleBatchSelection,
+}: Pick<PromptCardProps, "prompt" | "isBatchSelected" | "onToggleBatchSelection">) {
+  const { t } = useTranslation();
+  if (!onToggleBatchSelection) return null;
+  return (
+    <span
+      className="shrink-0 pt-0.5"
+      onClick={(event) => event.stopPropagation()}
+      onDoubleClick={(event) => event.stopPropagation()}
+      onKeyDown={(event) => event.stopPropagation()}
+    >
+      <Checkbox
+        checked={isBatchSelected}
+        onChange={onToggleBatchSelection}
+        ariaLabel={t(
+          isBatchSelected ? "prompt.deselectPromptRow" : "prompt.selectPromptRow",
+          { title: prompt.title },
+        )}
+      />
+    </span>
+  );
 }
 
 export const PromptCard = memo(function PromptCard(props: PromptCardProps) {
@@ -291,6 +319,7 @@ export const PromptCard = memo(function PromptCard(props: PromptCardProps) {
       tabIndex={0}
       draggable
       aria-pressed={props.isSelected}
+      aria-label={props.prompt.title}
       onClick={props.onSelect}
       onDoubleClick={props.onDoubleClick}
       onKeyDown={(event) => selectWithKeyboard(event, props.onSelect)}
@@ -303,20 +332,25 @@ export const PromptCard = memo(function PromptCard(props: PromptCardProps) {
       onDrop={props.onDrop}
       className={getCardClassName(props)}
     >
-      <div className="flex items-center justify-between gap-2">
-        <PromptCardTitle
-          prompt={props.prompt}
-          depth={props.depth}
-          highlightTerms={props.highlightTerms}
-          highlightClassName={highlightClassName}
-          isSelected={props.isSelected}
-        />
-        <PromptCardStatus {...props} />
+      <div className="flex items-start gap-2">
+        <PromptCardBatchCheckbox {...props} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <PromptCardTitle
+              prompt={props.prompt}
+              depth={props.depth}
+              highlightTerms={props.highlightTerms}
+              highlightClassName={highlightClassName}
+              isSelected={props.isSelected}
+            />
+            <PromptCardStatus {...props} />
+          </div>
+          <PromptCardSupplement
+            {...props}
+            highlightClassName={highlightClassName}
+          />
+        </div>
       </div>
-      <PromptCardSupplement
-        {...props}
-        highlightClassName={highlightClassName}
-      />
     </div>
   );
 });

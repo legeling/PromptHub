@@ -146,6 +146,7 @@
     "deleteVersionConfirm": "Supprimer la v{{version}} ? Cette entrée d’historique sera définitivement perdue.",
     "noChanges": "Aucun changement",
     "noContent": "(vide)",
+    "detailLoadFailed": "Impossible de charger ce Prompt.",
     "changeNote": "Note de modification",
     "aiTest": "Test IA",
     "outputFormat": "Format de sortie",

@@ -14,6 +14,8 @@ export interface PromptCardProps {
   parentTitle?: string;
   isCollapsed: boolean;
   isSelected: boolean;
+  isBatchSelected?: boolean;
+  onToggleBatchSelection?: () => void;
   isDragging: boolean;
   isDropTarget: boolean;
   dropPosition: PromptDropPosition | null;
@@ -33,6 +35,8 @@ export interface PromptCardProps {
 export interface VirtualizedPromptListProps {
   prompts: PromptSummary[];
   selectedPromptIdSet: Set<string>;
+  isBatchSelectionActive?: boolean;
+  onToggleBatchSelection?: (id: string) => void;
   highlightTerms: string[];
   collapsedPromptIds: Set<string>;
   onCollapsedPromptIdsChange: Dispatch<SetStateAction<Set<string>>>;

@@ -207,6 +207,7 @@ interface PromptState {
   outputFormatItems: OutputFormatItem[];
   selectedId: string | null;
   selectedIds: string[];
+  isBatchSelectionActive: boolean;
   lastSelectedId: string | null;
   /** Bumped on every explicit single-prompt selection click, including repeat clicks. */
   selectionRevision: number;
@@ -253,6 +254,7 @@ interface PromptState {
   deletePrompt: (id: string) => Promise<void>;
   selectPrompt: (id: string | null) => void;
   setSelectedIds: (ids: string[]) => void;
+  toggleBatchSelection: (id: string) => void;
   setSearchQuery: (query: string) => void;
   toggleFilterTag: (tag: string) => void;
   setFilterTags: (tags: string[]) => void;
@@ -280,6 +282,7 @@ export const usePromptStore = create<PromptState>()(
       outputFormatItems: [],
       selectedId: null,
       selectedIds: [],
+      isBatchSelectionActive: false,
       lastSelectedId: null,
       selectionRevision: 0,
       isLoading: false,
@@ -317,6 +320,8 @@ export const usePromptStore = create<PromptState>()(
               outputFormatItems,
               promptDetailCache: {},
               selectedIds,
+              isBatchSelectionActive:
+                state.isBatchSelectionActive && selectedIds.length > 0,
               selectedId:
                 state.selectedId && promptIds.has(state.selectedId)
                   ? state.selectedId
@@ -598,6 +603,9 @@ export const usePromptStore = create<PromptState>()(
         set((state) => {
           const nextCache = { ...state.promptDetailCache };
           delete nextCache[id];
+          const selectedIds = state.selectedIds.filter(
+            (selectedId) => selectedId !== id,
+          );
           return {
             prompts: state.prompts.filter((p) => p.id !== id),
             promptDetailCache: nextCache,
@@ -611,9 +619,9 @@ export const usePromptStore = create<PromptState>()(
                 item.sourcePromptId !== id && item.targetPromptId !== id,
             ),
             selectedId: state.selectedId === id ? null : state.selectedId,
-            selectedIds: state.selectedIds.filter(
-              (selectedId) => selectedId !== id,
-            ),
+            selectedIds,
+            isBatchSelectionActive:
+              state.isBatchSelectionActive && selectedIds.length > 0,
             lastSelectedId:
               state.lastSelectedId === id ? null : state.lastSelectedId,
           };
@@ -625,6 +633,7 @@ export const usePromptStore = create<PromptState>()(
         set((state) => ({
           selectedId: id,
           selectedIds: id ? [id] : [],
+          isBatchSelectionActive: false,
           lastSelectedId: id ?? state.lastSelectedId,
           selectionRevision: id ? state.selectionRevision + 1 : state.selectionRevision,
         })),
@@ -645,6 +654,7 @@ export const usePromptStore = create<PromptState>()(
                 : state.lastSelectedId;
           return {
             selectedIds: ids,
+            isBatchSelectionActive: ids.length > 0,
             // If only one is selected, update selectedId for compatibility
             // 如果只选中一个，更新 selectedId 以保持兼容性
             selectedId: nextSelectedId,
@@ -655,6 +665,16 @@ export const usePromptStore = create<PromptState>()(
                 : state.selectionRevision,
           };
         }),
+
+      toggleBatchSelection: (id) => {
+        const state = get();
+        const selectedIds = state.isBatchSelectionActive ? state.selectedIds : [];
+        state.setSelectedIds(
+          selectedIds.includes(id)
+            ? selectedIds.filter((selectedId) => selectedId !== id)
+            : [...selectedIds, id],
+        );
+      },
 
       setSearchQuery: (query) => set({ searchQuery: query }),
 

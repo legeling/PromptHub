@@ -82,6 +82,7 @@ function PromptVirtualizedCard({
   isDropTarget: boolean;
   props: PromptVirtualizedRowsProps;
 }) {
+  const toggleBatchSelection = props.onToggleBatchSelection;
   return (
     <PromptCard
       prompt={prompt}
@@ -90,6 +91,13 @@ function PromptVirtualizedCard({
       parentTitle={props.hierarchyMeta.parentTitleById.get(prompt.id)}
       isCollapsed={props.effectiveCollapsedPromptIds.has(prompt.id)}
       isSelected={props.selectedPromptIdSet.has(prompt.id)}
+      isBatchSelected={
+        props.isBatchSelectionActive === true &&
+        props.selectedPromptIdSet.has(prompt.id)
+      }
+      onToggleBatchSelection={
+        toggleBatchSelection ? () => toggleBatchSelection(prompt.id) : undefined
+      }
       isDragging={props.draggingId === prompt.id}
       isDropTarget={isDropTarget}
       dropPosition={isDropTarget ? props.dropPosition : null}

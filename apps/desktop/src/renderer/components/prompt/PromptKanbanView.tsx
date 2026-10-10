@@ -1,18 +1,12 @@
-import { useState, useCallback, memo, useEffect, useMemo, useRef, useId } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PromptSummary } from '@prompthub/shared/types';
 import {
   XIcon,
-  StarIcon,
-  CopyIcon,
-  EditIcon,
-  PlayIcon,
   MaximizeIcon,
   MinimizeIcon,
   PinIcon,
-  FolderIcon,
   SparklesIcon,
-  BracesIcon,
   ChevronDownIcon,
   ChevronRightIcon
 } from 'lucide-react';
@@ -20,7 +14,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { useFolderStore } from '../../stores/folder.store';
 import { usePromptStore } from '../../stores/prompt.store';
 import { Reveal } from '../ui/motion';
-import { parsePromptVariables } from './prompt-modal-utils';
+import { KanbanCard } from './PromptKanbanCard';
 
 interface PromptKanbanViewProps {
   prompts: PromptSummary[];
@@ -41,262 +35,6 @@ interface PinnedCard {
   isExpanded: boolean;
 }
 
-// Kanban Card Component
-const KanbanCard = memo(({
-  prompt,
-  isPinned,
-  isExpanded,
-  onPin,
-  onUnpin,
-  onExpand,
-  onCollapse,
-  onCopy,
-  onEdit,
-  onAiTest,
-  onToggleFavorite,
-  onViewDetail,
-  folderName,
-}: {
-  prompt: PromptSummary;
-  isPinned: boolean;
-  isExpanded: boolean;
-  onPin: () => void;
-  onUnpin: () => void;
-  onExpand: () => void;
-  onCollapse: () => void;
-  onCopy: () => void;
-  onEdit: () => void;
-  onAiTest: () => void;
-  onToggleFavorite: () => void;
-  onViewDetail: () => void;
-  folderName: string;
-}) => {
-  const { t } = useTranslation();
-  // Content may not be present in the list projection; read from the detail
-  // cache (populated on demand by the parent / detail pane).
-  // 列表投影可能不含内容，从详情缓存读取。
-  const detail = usePromptStore((state) => state.promptDetailCache[prompt.id]);
-  const expandLabel = isExpanded ? t('common.collapse', '收起') : t('common.expand', '展开');
-  const pinLabel = t('prompt.pin', '固定');
-  const unpinLabel = t('prompt.unpin', '取消固定');
-  const favoriteLabel = prompt.isFavorite
-    ? t('prompt.removeFromFavorites', 'Remove from Favorites')
-    : t('prompt.addToFavorites', 'Add to Favorites');
-  const copyLabel = t('prompt.copy', '复制');
-  const editLabel = t('prompt.edit', '编辑');
-  const aiTestLabel = t('prompt.aiTest', 'AI 测试');
-  const viewDetailLabel = t('prompt.viewDetail', '查看详情');
-
-  const allVariables = [
-    ...parsePromptVariables(detail?.systemPrompt || ''),
-    ...parsePromptVariables(detail?.userPrompt || ''),
-  ].map((variable) => variable.name)
-    .filter((v, i, arr) => arr.indexOf(v) === i);
-
-  // Fixed heights for alignment:
-  // - Pinned expanded: 500px
-  // - Pinned normal: 320px (fixed, not max-h, for alignment)
-  // - Unpinned: 280px
-  const cardHeightClass = isExpanded
-    ? 'h-[500px]'
-    : isPinned
-      ? 'h-[320px]'
-      : 'h-[280px]';
-
-  return (
-    <div
-      className={`
-        group relative flex flex-col app-wallpaper-panel rounded-xl border transition-all duration-smooth
-        ${isPinned
-          ? 'border-primary/50 shadow-lg shadow-primary/10 ring-2 ring-primary/20'
-          : 'border-border hover:border-primary/30 hover:shadow-md'
-        }
-        ${cardHeightClass} overflow-hidden
-      `}
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border/50 app-wallpaper-surface flex-shrink-0">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          {/* Title */}
-          <h3 className="min-w-0 text-sm font-semibold">
-            <button
-              type="button"
-              className="min-w-0 max-w-full truncate text-left hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 transition-colors"
-              onClick={onViewDetail}
-              title={prompt.title}
-              aria-label={`${viewDetailLabel}: ${prompt.title}`}
-            >
-              {prompt.title}
-            </button>
-          </h3>
-
-          {/* Favorite star */}
-          {prompt.isFavorite && (
-            <StarIcon className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400 flex-shrink-0" />
-          )}
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center gap-1 flex-shrink-0">
-          {isPinned ? (
-            <>
-              <button
-                type="button"
-                onClick={isExpanded ? onCollapse : onExpand}
-                className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                title={expandLabel}
-                aria-label={expandLabel}
-                aria-expanded={isExpanded}
-              >
-                {isExpanded ? <MinimizeIcon aria-hidden="true" className="w-3.5 h-3.5" /> : <MaximizeIcon aria-hidden="true" className="w-3.5 h-3.5" />}
-              </button>
-              <button
-                type="button"
-                onClick={onUnpin}
-                className="p-1 rounded-md text-primary hover:text-primary/80 hover:bg-primary/10 transition-colors"
-                title={unpinLabel}
-                aria-label={unpinLabel}
-              >
-                <XIcon aria-hidden="true" className="w-3.5 h-3.5" />
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              onClick={onPin}
-              className="p-1 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors opacity-0 group-hover:opacity-100"
-              title={pinLabel}
-              aria-label={pinLabel}
-            >
-              <PinIcon aria-hidden="true" className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Content - flex-1 to fill remaining space */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-3">
-        {/* Description */}
-        {prompt.description && (
-          <p className="text-xs text-muted-foreground line-clamp-2">
-            {prompt.description}
-          </p>
-        )}
-
-        {/* Variables */}
-        {allVariables.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            <BracesIcon className="w-3 h-3 text-muted-foreground mt-0.5" />
-            {allVariables.slice(0, isPinned ? 10 : 5).map(v => (
-              <span key={v} className="text-[10px] px-1.5 py-0.5 rounded bg-accent text-accent-foreground font-mono">
-                {`{{${v}}}`}
-              </span>
-            ))}
-            {allVariables.length > (isPinned ? 10 : 5) && (
-              <span className="text-[10px] text-muted-foreground">+{allVariables.length - (isPinned ? 10 : 5)}</span>
-            )}
-          </div>
-        )}
-
-        {/* System PromptSummary Preview */}
-        {detail?.systemPrompt && (
-          <div className="space-y-1">
-            <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-              <SparklesIcon className="w-3 h-3" />
-              System PromptSummary
-            </div>
-            <div className={`text-xs text-foreground/80 app-wallpaper-surface rounded-lg p-2 border border-border/70 ${isExpanded ? '' : 'line-clamp-4'}`}>
-              {detail.systemPrompt}
-            </div>
-          </div>
-        )}
-
-        {/* User PromptSummary Preview */}
-        <div className="space-y-1">
-          <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-            User PromptSummary
-          </div>
-          <div className={`text-xs text-foreground/80 app-wallpaper-surface rounded-lg p-2 border border-border/70 ${isExpanded ? '' : isPinned ? 'line-clamp-6' : 'line-clamp-3'}`}>
-            {detail?.userPrompt}
-          </div>
-        </div>
-
-        {/* Tags */}
-        {prompt.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {prompt.tags.slice(0, 5).map(tag => (
-              <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">
-                #{tag}
-              </span>
-            ))}
-            {prompt.tags.length > 5 && (
-              <span className="text-[10px] text-muted-foreground">+{prompt.tags.length - 5}</span>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Footer - fixed at bottom */}
-      <div className="flex items-center justify-between gap-2 px-3 py-2 border-t border-border/50 bg-muted/20 flex-shrink-0">
-        {/* Meta info */}
-        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <FolderIcon className="w-3 h-3" />
-            <span className="truncate max-w-[80px]">{folderName}</span>
-          </div>
-          <span>•</span>
-          <span>{new Date(prompt.updatedAt).toLocaleDateString()}</span>
-        </div>
-
-        {/* Quick actions */}
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
-            className={`p-1 rounded-md transition-colors ${
-              prompt.isFavorite
-                ? 'text-yellow-400 hover:bg-yellow-400/10'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-            }`}
-            title={favoriteLabel}
-            aria-label={favoriteLabel}
-            aria-pressed={prompt.isFavorite}
-          >
-            <StarIcon aria-hidden="true" className={`w-3.5 h-3.5 ${prompt.isFavorite ? 'fill-current' : ''}`} />
-          </button>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onCopy(); }}
-            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            title={copyLabel}
-            aria-label={copyLabel}
-          >
-            <CopyIcon aria-hidden="true" className="w-3.5 h-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onEdit(); }}
-            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            title={editLabel}
-            aria-label={editLabel}
-          >
-            <EditIcon aria-hidden="true" className="w-3.5 h-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onAiTest(); }}
-            className="p-1 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-            title={aiTestLabel}
-            aria-label={aiTestLabel}
-          >
-            <PlayIcon aria-hidden="true" className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-});
-
 export function PromptKanbanView({
   prompts,
   highlightTerms = [],
@@ -315,19 +53,6 @@ export function PromptKanbanView({
   const folders = useFolderStore(state => state.folders);
   const kanbanColumns = usePromptStore(state => state.kanbanColumns);
   const uncategorizedLabel = t('folder.uncategorized', '未分类');
-
-  // Prefetch full content for the kanban cards so the previews render.
-  // Only loads ids not already cached; repeat visits hit the cache.
-  // 预取看板卡片完整内容供预览渲染，缓存命中后不再发 IPC。
-  const promptDetailCache = usePromptStore((state) => state.promptDetailCache);
-  const getPromptDetail = usePromptStore((state) => state.getPromptDetail);
-  useEffect(() => {
-    const missing = prompts
-      .map((prompt) => prompt.id)
-      .filter((id) => !promptDetailCache[id]);
-    if (missing.length === 0) return;
-    void Promise.all(missing.map((id) => getPromptDetail(id)));
-  }, [prompts, getPromptDetail, promptDetailCache]);
 
   // State for pinned cards
   const [pinnedCards, setPinnedCards] = useState<PinnedCard[]>([]);
@@ -423,7 +148,7 @@ export function PromptKanbanView({
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <div className="h-full min-h-0 flex flex-col overflow-hidden">
       {/* Pinned Cards Section */}
       {pinnedPrompts.length > 0 && (
         <div className="flex-shrink-0 border-b border-border bg-muted/20">
@@ -534,21 +259,19 @@ export function PromptKanbanView({
   );
 }
 
-// Kanban target column widths chosen to roughly match the previous
-// Tailwind viewport-based grid, but driven by container width so the
-// resizable pane stays visually consistent.
-// 看板目标列宽：用容器宽度而非 viewport 决定列数，避免父级面板尺寸变化
-// 时列数与原 Tailwind 响应式 grid 不一致。
-const KANBAN_TARGET_COLUMN_WIDTH = 280;
+// The minimum card width leaves room for the compact metadata/action footer.
+// Column preferences apply whenever that width fits inside the current pane.
+const KANBAN_MIN_COLUMN_WIDTH = 240;
 
-const UNPINNED_CARD_HEIGHT = 280; // h-[280px] from KanbanCard
+const UNPINNED_CARD_HEIGHT = 280;
 const KANBAN_GAP_PX = 16; // gap-4
 const KANBAN_PADDING_PX = 16; // p-4
 const KANBAN_BOTTOM_GUTTER = 80; // pb-20
+const KANBAN_CARD_HEIGHT_PROPERTY = "--prompt-kanban-card-height";
 
 function getKanbanColumns(preference: 2 | 3 | 4, width: number): number {
   if (width <= 0) return 1;
-  const raw = Math.floor((width + KANBAN_GAP_PX) / (KANBAN_TARGET_COLUMN_WIDTH + KANBAN_GAP_PX));
+  const raw = Math.floor((width + KANBAN_GAP_PX) / (KANBAN_MIN_COLUMN_WIDTH + KANBAN_GAP_PX));
   return Math.max(1, Math.min(preference, raw));
 }
 
@@ -568,8 +291,8 @@ interface UnpinnedKanbanGridProps {
 
 /**
  * Virtualized grid for the kanban unpinned section. Cards have a fixed height
- * (280 px) so estimateSize is exact; we still call measureElement to handle
- * future variant heights without revisiting the math.
+ * (280 px) plus a measured row gap. The card inherits its height from the
+ * row's CSS variable so measurement and styling share the same source.
  *
  * Earlier revisions used framer-motion `motion.div` with layout animations
  * here, which churned on every virtualization mount/unmount during scroll.
@@ -643,13 +366,18 @@ function UnpinnedKanbanGrid({
 
   const virtualRows = rowVirtualizer.getVirtualItems();
   const totalHeight = rowVirtualizer.getTotalSize();
+  const gridStyle = {
+    gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+    gap: `${KANBAN_GAP_PX}px`,
+    [KANBAN_CARD_HEIGHT_PROPERTY]: `${UNPINNED_CARD_HEIGHT}px`,
+  };
 
   return (
-    <div ref={scrollRef} className="flex-1 overflow-y-auto">
+    <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto">
       <div
         style={{
           position: 'relative',
-          height: `${totalHeight + KANBAN_BOTTOM_GUTTER}px`,
+          height: `${totalHeight + KANBAN_PADDING_PX + KANBAN_BOTTOM_GUTTER}px`,
           paddingLeft: `${KANBAN_PADDING_PX}px`,
           paddingRight: `${KANBAN_PADDING_PX}px`,
           paddingTop: `${KANBAN_PADDING_PX}px`,
@@ -670,14 +398,13 @@ function UnpinnedKanbanGrid({
                 left: KANBAN_PADDING_PX,
                 right: KANBAN_PADDING_PX,
                 transform: `translateY(${virtualRow.start + KANBAN_PADDING_PX}px)`,
+                paddingBottom: KANBAN_GAP_PX,
+                boxSizing: "border-box",
               }}
             >
               <div
                 className="grid"
-                style={{
-                  gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
-                  gap: `${KANBAN_GAP_PX}px`,
-                }}
+                style={gridStyle}
               >
                 {rowItems.map((prompt) => (
                   <div

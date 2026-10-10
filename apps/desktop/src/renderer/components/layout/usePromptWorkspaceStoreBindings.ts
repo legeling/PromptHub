@@ -7,6 +7,9 @@ function usePromptWorkspacePromptData() {
   const prompts = usePromptStore((state) => state.prompts);
   const selectedId = usePromptStore((state) => state.selectedId);
   const selectedIds = usePromptStore((state) => state.selectedIds);
+  const isBatchSelectionActive = usePromptStore(
+    (state) => state.isBatchSelectionActive,
+  );
   const lastSelectedId = usePromptStore((state) => state.lastSelectedId);
   const selectionRevision = usePromptStore((state) => state.selectionRevision);
   const relations = usePromptStore((state) => state.relations ?? []);
@@ -23,6 +26,7 @@ function usePromptWorkspacePromptData() {
     prompts,
     selectedId,
     selectedIds,
+    isBatchSelectionActive,
     lastSelectedId,
     selectionRevision,
     relations,
@@ -39,6 +43,9 @@ function usePromptWorkspacePromptData() {
 function usePromptWorkspacePromptActions() {
   const selectPrompt = usePromptStore((state) => state.selectPrompt);
   const setSelectedIds = usePromptStore((state) => state.setSelectedIds);
+  const toggleBatchSelection = usePromptStore(
+    (state) => state.toggleBatchSelection,
+  );
   const getPromptDetail = usePromptStore((state) => state.getPromptDetail);
   const createPrompt = usePromptStore((state) => state.createPrompt);
   const createRelation = usePromptStore((state) => state.createRelation);
@@ -67,6 +74,7 @@ function usePromptWorkspacePromptActions() {
   return {
     selectPrompt,
     setSelectedIds,
+    toggleBatchSelection,
     getPromptDetail,
     createPrompt,
     createRelation,
