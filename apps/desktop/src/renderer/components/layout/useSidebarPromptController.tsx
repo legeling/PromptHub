@@ -157,7 +157,12 @@ function useSidebarPromptNavigation(
 ) {
   const openPromptTypeFilter = useCallback(
     (filter: "all" | "text" | "image") => {
-      prompt.setPromptViewMode("card");
+      if (
+        prompt.promptViewMode === "graph" ||
+        prompt.promptViewMode === "generation"
+      ) {
+        prompt.setPromptViewMode("card");
+      }
       prompt.setPromptTypeFilter(filter);
       folders.selectFolder(null);
       if (currentPage !== "home") onNavigate("home");
