@@ -1,6 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { RendererHydratedState } from "@prompthub/core";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { createRendererPersistenceStore } from "@prompthub/core/renderer-persistence-migration";
+import type {
+  RendererHydratedState,
+  RendererPersistenceMigrationInput,
+} from "@prompthub/core";
 import {
   collectLegacyRendererPersistence,
   migrateRendererPersistence,
@@ -34,7 +41,7 @@ const canonical: RendererHydratedState = {
 
 function installApi(status: "migrated" | "already-complete") {
   const rendererPersistence = {
-    migrate: vi.fn(async () => ({
+    migrate: vi.fn(async (_input: RendererPersistenceMigrationInput) => ({
       status,
       redactLegacyKeys:
         status === "migrated"
@@ -54,7 +61,7 @@ function installApi(status: "migrated" | "already-complete") {
     markIndexedDbMigrationDone: vi.fn(async () => true),
   };
   window.api.settings = {
-    ...(window.api.settings ?? {}),
+    ...window.api.settings,
     rendererPersistence,
   };
   return rendererPersistence;
@@ -66,6 +73,8 @@ function expectNoDurableSkillSourcesInRendererStorage(): void {
   expect(JSON.parse(raw).state.customStoreSources).toBeUndefined();
 }
 
+const roots: string[] = [];
+
 beforeEach(() => {
   localStorage.clear();
   resetRendererPersistenceForTests();
@@ -74,6 +83,8 @@ beforeEach(() => {
 afterEach(() => {
   resetRendererPersistenceForTests();
   if (window.api.settings) delete window.api.settings.rendererPersistence;
+  for (const root of roots.splice(0))
+    fs.rmSync(root, { recursive: true, force: true });
 });
 
 describe("renderer persistence bridge", () => {
@@ -91,18 +102,26 @@ describe("renderer persistence bridge", () => {
     expect(api.replaceSettings).toHaveBeenCalledOnce();
     const [settings] = api.replaceSettings.mock.calls[0];
     expect(settings).toMatchObject({ language: "ja" });
-    for (const key of ["startupFolderMode", "pinnedStartFolderId", "lastActiveFolderId", "backupGuideCollapsed"]) {
+    for (const key of [
+      "startupFolderMode",
+      "pinnedStartFolderId",
+      "lastActiveFolderId",
+      "backupGuideCollapsed",
+    ]) {
       expect(settings).not.toHaveProperty(key);
     }
   });
 
   it("collects only the explicitly routed legacy keys", () => {
     localStorage.setItem("prompthub-settings", "settings");
-    localStorage.setItem("skill-store", "skills");
+    localStorage.setItem(
+      "skill-store",
+      JSON.stringify({ state: { customStoreSources: [] } }),
+    );
     localStorage.setItem("unrelated", "keep");
     expect(collectLegacyRendererPersistence(localStorage)).toMatchObject({
       settings: "settings",
-      skillStore: "skills",
+      skillStore: { customStoreSources: [] },
     });
     expect(
       Object.values(collectLegacyRendererPersistence(localStorage)),
@@ -111,11 +130,11 @@ describe("renderer persistence bridge", () => {
 
   it("redacts migrated copies, restores canonical sources, and persists later changes", async () => {
     localStorage.setItem("prompthub-settings", "legacy-settings");
-    localStorage.setItem("skill-store", "legacy-skills");
     localStorage.setItem(
-      "prompthub-self-hosted-device-id",
-      "legacy-device",
+      "skill-store",
+      JSON.stringify({ state: { customStoreSources: [] } }),
     );
+    localStorage.setItem("prompthub-self-hosted-device-id", "legacy-device");
     const api = installApi("migrated");
 
     await migrateRendererPersistence();
@@ -123,7 +142,7 @@ describe("renderer persistence bridge", () => {
     expect(api.migrate).toHaveBeenCalledWith(
       expect.objectContaining({
         settings: "legacy-settings",
-        skillStore: "legacy-skills",
+        skillStore: { customStoreSources: [] },
         selfHostedDeviceId: "legacy-device",
       }),
     );
@@ -172,5 +191,89 @@ describe("renderer persistence bridge", () => {
       canonical.marketplaceSources.skill,
     );
     expectNoDurableSkillSourcesInRendererStorage();
+  });
+
+  it("migrates source configuration beside large legacy caches and reopens it", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "prompthub-issue-216-"));
+    roots.push(root);
+    const options = {
+      rootPath: root,
+      encryption: {
+        isEncryptionAvailable: () => false,
+        encryptString: (): Buffer => {
+          throw new Error("No fixture secrets");
+        },
+        decryptString: (): string => {
+          throw new Error("No fixture secrets");
+        },
+      },
+    };
+    const store = createRendererPersistenceStore(options);
+    const cacheCharacterCount = 2 * 1024 * 1024;
+    const raw = JSON.stringify({
+      state: {
+        customStoreSources: canonical.marketplaceSources.skill,
+        remoteStoreEntries: { cached: "界".repeat(cacheCharacterCount) },
+      },
+    });
+    localStorage.setItem("skill-store", raw);
+    localStorage.setItem("mcp-store", raw);
+    await expect(
+      store.migrate({ skillStore: raw, mcpStore: raw }),
+    ).rejects.toThrow("snapshot exceeds byte limit");
+    const api = installApi("migrated");
+    api.migrate.mockImplementation((input) => store.migrate(input));
+    api.get.mockImplementation(() => store.readHydratedState());
+
+    await migrateRendererPersistence();
+
+    const reopened = createRendererPersistenceStore(options);
+    expect((await reopened.readHydratedState()).marketplaceSources).toEqual({
+      skill: canonical.marketplaceSources.skill,
+      mcp: canonical.marketplaceSources.skill,
+      plugin: [],
+    });
+    expectNoDurableSkillSourcesInRendererStorage();
+    await expect(reopened.migrate({})).resolves.toMatchObject({
+      status: "already-complete",
+    });
+  });
+
+  it.each(["skill-store", "mcp-store", "plugin-store"])(
+    "retains malformed %s data without publishing migration",
+    async (key) => {
+      const raw = "{broken";
+      localStorage.setItem(key, raw);
+      const api = installApi("migrated");
+      await expect(migrateRendererPersistence()).rejects.toThrow(key);
+      expect(api.migrate).not.toHaveBeenCalled();
+      expect(localStorage.getItem(key)).toBe(raw);
+    },
+  );
+
+  it.each(["null", "[]", '{"state":null}', '{"state":[]}'])(
+    "rejects an invalid legacy store shape (%s) without clearing it",
+    async (raw) => {
+      localStorage.setItem("skill-store", raw);
+      const api = installApi("migrated");
+      await expect(migrateRendererPersistence()).rejects.toThrow("skill-store");
+      expect(api.migrate).not.toHaveBeenCalled();
+      expect(localStorage.getItem("skill-store")).toBe(raw);
+    },
+  );
+
+  it("keeps legacy source data when publication fails and permits retry", async () => {
+    const raw = JSON.stringify({
+      state: { customStoreSources: canonical.marketplaceSources.skill },
+    });
+    localStorage.setItem("skill-store", raw);
+    const api = installApi("migrated");
+    api.migrate.mockRejectedValueOnce(new Error("publication failed"));
+    await expect(migrateRendererPersistence()).rejects.toThrow(
+      "publication failed",
+    );
+    expect(localStorage.getItem("skill-store")).toBe(raw);
+    await migrateRendererPersistence();
+    expect(api.migrate).toHaveBeenCalledTimes(2);
   });
 });

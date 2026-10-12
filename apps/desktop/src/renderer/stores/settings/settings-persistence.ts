@@ -352,7 +352,7 @@ function normalizeMigratedBackgroundImage(
 export function migrateSettingsState(
   state: unknown,
   version: number,
-): SettingsState {
+): PersistedSettingsState {
   if (!state || typeof state !== "object") return state as SettingsState;
   const next = { ...(state as SettingsState) };
   normalizeMigratedCoreState(next, state, version);
@@ -360,6 +360,11 @@ export function migrateSettingsState(
   normalizeMigratedSyncProvider(next, version);
   normalizeLegacyAiProtocol(next, version);
   normalizeMigratedBackgroundImage(next, version);
+  if (getPersistedLanguageSetting(state) === null) {
+    // A normalized default is not an explicit preference over main-process settings.
+    const { language: _language, ...withoutLanguage } = next;
+    return withoutLanguage;
+  }
   return next;
 }
 

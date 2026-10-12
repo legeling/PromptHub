@@ -31,6 +31,33 @@ function readStorageValue(storage: Storage, key: string): string | undefined {
   return value === null ? undefined : value;
 }
 
+function collectLegacyMarketplaceSources(
+  storage: Storage,
+  key: string,
+): { customStoreSources: unknown } | undefined {
+  const raw = readStorageValue(storage, key);
+  if (raw === undefined || raw === "") return undefined;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error(`Invalid renderer persistence JSON: ${key}`);
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error(`Invalid renderer persistence store: ${key}`);
+  }
+  const state = "state" in parsed ? parsed.state : parsed;
+  if (!state || typeof state !== "object" || Array.isArray(state)) {
+    throw new Error(`Invalid renderer persistence state: ${key}`);
+  }
+  // Catalog results and UI caches are rebuildable, not migration payloads.
+  // Leave source validation and publication with the existing Core owner.
+  return {
+    customStoreSources:
+      "customStoreSources" in state ? state.customStoreSources : undefined,
+  };
+}
+
 export function collectLegacyRendererPersistence(
   storage: Storage,
 ): RendererPersistenceMigrationInput {
@@ -38,9 +65,15 @@ export function collectLegacyRendererPersistence(
     settings:
       readStorageValue(storage, LEGACY_KEYS.settings) ??
       readStorageValue(storage, LEGACY_KEYS.legacySettings),
-    skillStore: readStorageValue(storage, LEGACY_KEYS.skillStore),
-    mcpStore: readStorageValue(storage, LEGACY_KEYS.mcpStore),
-    pluginStore: readStorageValue(storage, LEGACY_KEYS.pluginStore),
+    skillStore: collectLegacyMarketplaceSources(
+      storage,
+      LEGACY_KEYS.skillStore,
+    ),
+    mcpStore: collectLegacyMarketplaceSources(storage, LEGACY_KEYS.mcpStore),
+    pluginStore: collectLegacyMarketplaceSources(
+      storage,
+      LEGACY_KEYS.pluginStore,
+    ),
     selfHostedDeviceId: readStorageValue(
       storage,
       LEGACY_KEYS.selfHostedDeviceId,
@@ -76,7 +109,9 @@ function extractSettingsState(): Record<string, unknown> {
       ([key, value]) =>
         typeof value !== "function" &&
         !AGENT_SETTING_KEYS.some((agentKey) => agentKey === key) &&
-        !PROMPT_WORKSPACE_PREFERENCE_KEYS.some((preferenceKey) => preferenceKey === key),
+        !PROMPT_WORKSPACE_PREFERENCE_KEYS.some(
+          (preferenceKey) => preferenceKey === key,
+        ),
     ),
   );
 }

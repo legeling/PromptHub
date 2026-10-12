@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const rendererPersistence = window.api.settings.rendererPersistence;
+
 const changeLanguageMock = vi.fn<() => Promise<void>>();
 
 vi.mock("../../../src/renderer/i18n", () => ({
@@ -10,6 +12,7 @@ vi.mock("../../../src/renderer/i18n", () => ({
 
 describe("settings language actions", () => {
   beforeEach(() => {
+    window.api.settings.rendererPersistence = rendererPersistence;
     vi.resetModules();
     localStorage.clear();
     changeLanguageMock.mockReset();
@@ -19,6 +22,7 @@ describe("settings language actions", () => {
   });
 
   afterEach(() => {
+    window.api.settings.rendererPersistence = rendererPersistence;
     localStorage.clear();
   });
 
@@ -41,6 +45,8 @@ describe("settings language actions", () => {
   it("migrates the persisted renderer language to main-process settings", async () => {
     const setSettings = vi.fn().mockResolvedValue(true);
     window.api.settings.set = setSettings;
+    // Legacy snapshots predate the canonical renderer-persistence bridge.
+    Reflect.deleteProperty(window.api.settings, "rendererPersistence");
     localStorage.setItem(
       "prompthub-settings",
       JSON.stringify({
@@ -59,6 +65,7 @@ describe("settings language actions", () => {
   });
 
   it("does not sync a temporary language when renderer persistence is absent", async () => {
+    Reflect.deleteProperty(window.api.settings, "rendererPersistence");
     const setSettings = vi.fn().mockResolvedValue(true);
     window.api.settings.set = setSettings;
 
@@ -91,6 +98,8 @@ describe("settings language actions", () => {
     const setSettings = vi.fn().mockResolvedValue(true);
     window.api.settings.set = setSettings;
     window.api.settings.get = vi.fn().mockResolvedValue({ language: "zh" });
+    // Legacy snapshots predate the canonical renderer-persistence bridge.
+    Reflect.deleteProperty(window.api.settings, "rendererPersistence");
     localStorage.setItem(
       "prompthub-settings",
       JSON.stringify({
@@ -111,6 +120,8 @@ describe("settings language actions", () => {
     "treats an unsupported persisted renderer language in version %s as absent",
     async (version) => {
       window.api.settings.get = vi.fn().mockResolvedValue({ language: "zh" });
+      // Legacy snapshots predate the canonical renderer-persistence bridge.
+      Reflect.deleteProperty(window.api.settings, "rendererPersistence");
       localStorage.setItem(
         "prompthub-settings",
         JSON.stringify({
@@ -121,10 +132,37 @@ describe("settings language actions", () => {
       const { loadSettingsFromMainProcess, useSettingsStore } =
         await import("../../../src/renderer/stores/settings.store");
 
+      await Promise.resolve();
+      expect(window.api.settings.set).not.toHaveBeenCalledWith(
+        expect.objectContaining({ language: "en" }),
+      );
       await loadSettingsFromMainProcess();
 
       expect(useSettingsStore.getState().language).toBe("zh");
       expect(changeLanguageMock).toHaveBeenCalledWith("zh");
+    },
+  );
+
+  it.each([19, 20])(
+    "restores the main language when version %s contains only other preferences",
+    async (version) => {
+      window.api.settings.get = vi.fn().mockResolvedValue({ language: "ja" });
+      // Legacy snapshots predate the canonical renderer-persistence bridge.
+      Reflect.deleteProperty(window.api.settings, "rendererPersistence");
+      localStorage.setItem(
+        "prompthub-settings",
+        JSON.stringify({ state: { fontSize: "large" }, version }),
+      );
+      const { loadSettingsFromMainProcess, useSettingsStore } =
+        await import("../../../src/renderer/stores/settings.store");
+
+      await loadSettingsFromMainProcess();
+
+      expect(useSettingsStore.getState().language).toBe("ja");
+      expect(useSettingsStore.getState().fontSize).toBe("large");
+      expect(window.api.settings.set).not.toHaveBeenCalledWith(
+        expect.objectContaining({ language: "en" }),
+      );
     },
   );
 
@@ -153,6 +191,8 @@ describe("settings language actions", () => {
   });
 
   it("logs storage hydration failures with the original error", async () => {
+    // This failure belongs to legacy LocalStorage hydration, not canonical IPC.
+    Reflect.deleteProperty(window.api.settings, "rendererPersistence");
     const error = new Error("local storage unavailable");
     const consoleError = vi
       .spyOn(console, "error")
