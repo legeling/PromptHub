@@ -4,7 +4,7 @@ import {
   ImageIcon,
   XIcon,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { resolveLocalImageSrc } from "../../utils/media-url";
@@ -59,6 +59,35 @@ function useBodyScrollLock(locked: boolean) {
       document.body.style.overflow = previousOverflow;
     };
   }, [locked]);
+}
+
+function usePreviewFocus(enabled: boolean) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!enabled || !dialog) return;
+    const trigger = document.activeElement;
+    dialog.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
+    const trapFocus = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab') return;
+      const buttons = dialog.querySelectorAll<HTMLButtonElement>('button:not(:disabled)');
+      const first = buttons[0];
+      const last = buttons[buttons.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    };
+    dialog.addEventListener('keydown', trapFocus);
+    return () => {
+      dialog.removeEventListener('keydown', trapFocus);
+      if (trigger instanceof HTMLElement && trigger.isConnected) trigger.focus({ preventScroll: true });
+    };
+  }, [enabled]);
+  return dialogRef;
 }
 
 function useGalleryKeyboard({
@@ -202,6 +231,7 @@ export function ImagePreviewModal({
   const gallery = useImageGallery(imageSrc, imageSources, isOpen);
   const [imageError, setImageError] = useState(false);
   const enabled = isOpen && Boolean(gallery.activeSrc);
+  const dialogRef = usePreviewFocus(enabled);
   useBodyScrollLock(enabled);
   useGalleryKeyboard({
     activeIndex: gallery.activeIndex,
@@ -214,6 +244,7 @@ export function ImagePreviewModal({
 
   return createPortal(
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-label={t("prompt.preview")}

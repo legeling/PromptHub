@@ -1,5 +1,5 @@
 import { act, fireEvent, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Prompt } from "@prompthub/shared/types";
 
 import { PromptTableView } from "../../../src/renderer/components/prompt/PromptTableView";
@@ -117,7 +117,9 @@ async function clickCopyButton() {
 }
 
 describe("PromptTableView", () => {
+  beforeEach(() => localStorage.removeItem('prompthub-table-config'));
   afterEach(() => {
+    localStorage.removeItem('prompthub-table-config');
     vi.restoreAllMocks();
     vi.useRealTimers();
   });
@@ -429,7 +431,28 @@ describe("PromptTableView", () => {
       ],
     });
 
+    fireEvent.click(screen.getByRole('button', { name: 'Column Settings' }));
+    fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Variables' }));
     expect(screen.getByText("2")).toBeInTheDocument();
     expect(screen.queryByText("3")).not.toBeInTheDocument();
+  });
+
+  it('keeps AI responses optional and opens image thumbnails without selecting a row', async () => {
+    await renderTableView({ prompts: [{ ...prompt, promptType: 'image', images: ['data:image/png;base64,aGVsbG8='] }] });
+    expect(screen.queryByRole('columnheader', { name: 'AI Response' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Select Release notes' })).toHaveAttribute('aria-checked', 'false');
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Column Settings' }));
+    fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'AI Response' }));
+    expect(screen.getByRole('columnheader', { name: 'AI Response' })).toBeInTheDocument();
+  });
+
+  it('does not offer an empty preview for an image prompt without images', async () => {
+    await renderTableView({ prompts: [{ ...prompt, promptType: 'image', images: [] }] });
+    expect(screen.queryByRole('button', { name: 'Preview' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: prompt.title })).toBeInTheDocument();
   });
 });

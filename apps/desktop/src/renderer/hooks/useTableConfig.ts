@@ -22,16 +22,16 @@ const STORAGE_KEY = 'prompthub-table-config';
 
 const DEFAULT_COLUMNS: ColumnConfig[] = [
   { id: 'checkbox', label: '', visible: true, width: 40, minWidth: 40, resizable: false, reorderable: false, sticky: 'left' },
-  { id: 'title', label: 'prompt.title', visible: true, width: 160, minWidth: 100, maxWidth: 300, resizable: true, reorderable: true },
+  { id: 'title', label: 'prompt.title', visible: true, width: 300, minWidth: 160, maxWidth: 600, resizable: true, reorderable: true },
   { id: 'description', label: 'prompt.description', visible: false, width: 200, minWidth: 100, maxWidth: 400, resizable: true, reorderable: true },
   { id: 'systemPrompt', label: 'prompt.systemPrompt', visible: false, width: 200, minWidth: 100, maxWidth: 400, resizable: true, reorderable: true },
-  { id: 'userPrompt', label: 'prompt.userPrompt', visible: true, width: 220, minWidth: 120, maxWidth: 400, resizable: true, reorderable: true },
-  { id: 'aiResponse', label: 'prompt.aiResponse', visible: true, width: 220, minWidth: 120, maxWidth: 400, resizable: true, reorderable: true },
+  { id: 'userPrompt', label: 'prompt.userPrompt', visible: true, width: 480, minWidth: 200, maxWidth: 1000, resizable: true, reorderable: true },
+  { id: 'aiResponse', label: 'prompt.aiResponse', visible: false, width: 220, minWidth: 120, maxWidth: 400, resizable: true, reorderable: true },
   { id: 'tags', label: 'prompt.tags', visible: false, width: 150, minWidth: 80, maxWidth: 300, resizable: true, reorderable: true },
-  { id: 'variables', label: 'prompt.variables', visible: true, width: 80, minWidth: 60, maxWidth: 120, resizable: true, reorderable: true },
-  { id: 'usageCount', label: 'prompt.usageCount', visible: true, width: 90, minWidth: 70, maxWidth: 120, resizable: true, reorderable: true },
+  { id: 'variables', label: 'prompt.variables', visible: false, width: 80, minWidth: 60, maxWidth: 120, resizable: true, reorderable: true },
+  { id: 'usageCount', label: 'prompt.usageCount', visible: false, width: 90, minWidth: 70, maxWidth: 120, resizable: true, reorderable: true },
   { id: 'updatedAt', label: 'prompt.updatedAt', visible: false, width: 140, minWidth: 120, maxWidth: 200, resizable: true, reorderable: true },
-  { id: 'actions', label: 'prompt.actions', visible: true, width: 140, minWidth: 120, resizable: false, reorderable: false, sticky: 'right' },
+  { id: 'actions', label: 'prompt.actions', visible: true, width: 200, minWidth: 200, resizable: false, reorderable: false, sticky: 'right' },
 ];
 
 const DEFAULT_ORDER = DEFAULT_COLUMNS.map(col => col.id);

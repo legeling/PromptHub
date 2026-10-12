@@ -6,6 +6,24 @@ import type { PromptWorkspaceDialogsProps } from "../../../src/renderer/componen
 import { renderWithI18n } from "../../helpers/i18n";
 
 describe("ImagePreviewModal", () => {
+  it('traps keyboard focus and restores the trigger when closed', async () => {
+    const trigger = document.createElement('button');
+    document.body.append(trigger);
+    trigger.focus();
+    const { unmount } = await renderWithI18n(
+      <ImagePreviewModal isOpen onClose={vi.fn()} imageSrc="/path.png" />,
+      { language: 'en' },
+    );
+    const close = screen.getByRole('button', { name: 'Close' });
+    expect(close).toHaveFocus();
+    fireEvent.keyDown(close, { key: 'Tab' });
+    expect(close).toHaveFocus();
+    fireEvent.keyDown(close, { key: 'Tab', shiftKey: true });
+    expect(close).toHaveFocus();
+    unmount();
+    expect(trigger).toHaveFocus();
+    trigger.remove();
+  });
   afterEach(() => {
     vi.restoreAllMocks();
     document.body.style.overflow = "";

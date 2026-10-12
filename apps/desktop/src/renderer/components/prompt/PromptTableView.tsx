@@ -6,6 +6,7 @@ import { usePromptStore } from '../../stores/prompt.store';
 import { useTableConfig, type ColumnConfig } from '../../hooks/useTableConfig';
 import { ResizableHeader } from './ResizableHeader';
 import { ColumnConfigMenu } from './ColumnConfigMenu';
+import { PromptTableThumbnail } from './PromptTableThumbnail';
 import { PromptBatchActionBar } from './PromptBatchActionBar';
 import { PromptListEmptyState } from './PromptListEmptyState';
 import { usePromptBatchSelection } from './usePromptBatchSelection';
@@ -76,7 +77,7 @@ function Checkbox({
       onClick={(e) => { e.stopPropagation(); onChange(); }}
       className={`w-[18px] h-[18px] rounded border-2 flex items-center justify-center transition-all ${checked
         ? 'bg-primary border-primary text-white'
-        : 'border-gray-300 dark:border-gray-600 hover:border-primary/50 bg-white dark:bg-gray-800'
+        : 'border-border hover:border-primary/50 bg-card'
         } ${className}`}
     >
       {checked && (
@@ -214,15 +215,13 @@ export function PromptTableView({
     setCurrentPage(1);
   }, [promptOrderKey]);
 
-  const renderTextPreview = (content?: string) => {
+  const renderTextPreview = (content?: string, multiline = false) => {
     if (!content) {
       return <span className="text-muted-foreground/40 text-xs">-</span>;
     }
-    // Show plain text only; truncate to a single line
-    // 只显示纯文本，截断为单行
     const plainText = content.replace(/\n/g, ' ').trim();
     return (
-      <span className="text-xs text-muted-foreground truncate block max-w-[220px]" title={content}>
+      <span className={`text-sm leading-relaxed text-muted-foreground ${multiline ? 'line-clamp-2 break-words' : 'truncate block'}`} title={content}>
         {renderHighlightedText(plainText, highlightTerms, highlightClassName)}
       </span>
     );
@@ -442,7 +441,10 @@ export function PromptTableView({
   const hasSelection = selection.selectedIdList.length > 0;
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-card">
+      <div className="flex shrink-0 items-center justify-end px-4 py-2">
+        <ColumnConfigMenu columns={columns} onToggleVisibility={toggleColumnVisibility} onReset={resetToDefaults} />
+      </div>
       {/* Shared batch actions bar (extracted for gallery/card reuse in v0.6.2) */}
       {/* 共享批量操作栏（v0.6.2 起与画廊/卡片视图共用） */}
       {hasSelection && (
@@ -459,19 +461,11 @@ export function PromptTableView({
 
       {/* Table - supports horizontal scrolling */}
       {/* 表格 - 支持横向滚动 */}
-      <div className="flex-1 overflow-auto px-4 py-2">
-        {/* Table toolbar / 表格工具栏 */}
-        <div className="flex items-center justify-end mb-2">
-          <ColumnConfigMenu
-            columns={columns}
-            onToggleVisibility={toggleColumnVisibility}
-            onReset={resetToDefaults}
-          />
-        </div>
-        <div className="rounded-xl border border-border overflow-x-auto app-wallpaper-panel">
-          <table className="w-full text-sm min-w-[1000px]">
+      <div className="flex-1 overflow-auto">
+        <div className="min-w-full">
+          <table className="w-full table-fixed text-sm min-w-[860px]">
             <thead className="sticky top-0 z-20">
-              <tr className="bg-muted/30 dark:bg-muted/20 border-b border-border">
+              <tr className="bg-muted border-b border-border text-xs">
                 {getVisibleColumns().map((column) => {
                   // Render different content based on column id
                   // 根据列 ID 渲染不同内容
@@ -491,10 +485,9 @@ export function PromptTableView({
                     return (
                       <th
                         key={column.id}
-                        className="sticky right-0 z-40 p-0 app-wallpaper-surface-strong shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.15)]"
+                        className="sticky right-0 z-40 p-0 bg-muted"
                         style={{ width: column.width }}
                       >
-                        <div className="absolute inset-0 bg-muted/30 dark:bg-muted/20" />
                         <div className="relative flex items-center justify-center px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">
                           <span>{t('prompt.actions')}</span>
                         </div>
@@ -558,7 +551,7 @@ export function PromptTableView({
                       return (
                         <td
                           key={column.id}
-                          className={`relative px-4 py-3 ${promptDepth > 0 ? 'bg-primary/[0.02]' : ''}`}
+                          className="relative px-4 py-3"
                           style={colWidth}
                         >
                           {promptDepth > 0 && (
@@ -601,7 +594,7 @@ export function PromptTableView({
                                 )}
                               </button>
                             ) : (
-                              <span aria-hidden="true" className="h-5 w-5 shrink-0" />
+                              null
                             )}
                             <GripVerticalIcon
                               aria-hidden="true"
@@ -613,11 +606,11 @@ export function PromptTableView({
                                 className="h-3.5 w-3.5 shrink-0 text-primary/70"
                               />
                             )}
+                            <PromptTableThumbnail prompt={prompt} />
                             <button
                               type="button"
                               onClick={() => onViewDetail(prompt)}
-                              className="font-medium text-primary hover:text-primary/80 hover:underline truncate text-left block"
-                              style={{ maxWidth: column.width - 56 }}
+                              className="min-w-0 font-medium text-foreground hover:text-primary truncate text-left block"
                               title={prompt.title}
                             >
                               {renderHighlightedText(prompt.title, highlightTerms, highlightClassName)}
@@ -634,8 +627,7 @@ export function PromptTableView({
                           </div>
                           {promptParentTitle && (
                             <div
-                              className="mt-1 inline-flex max-w-full items-center gap-1 rounded border border-border/70 bg-muted/40 px-1.5 py-0.5 text-[11px] leading-none text-muted-foreground"
-                              style={{ marginLeft: `${promptDepth * 16 + 22}px` }}
+                              className="sr-only"
                             >
                               <CornerDownRightIcon aria-hidden="true" className="h-3 w-3 shrink-0" />
                               <span className="shrink-0">{t('prompt.parentPrompt')}</span>
@@ -675,11 +667,10 @@ export function PromptTableView({
                       return (
                         <td key={column.id} className="px-4 py-3" style={colWidth}>
                           <span
-                            className="text-xs text-muted-foreground truncate block"
-                            style={{ maxWidth: column.width - 32 }}
+                            className="block min-w-0"
                             title={preferEnglish ? (detail?.userPromptEn || detail?.userPrompt || '') : (detail?.userPrompt || '')}
                           >
-                            {renderTextPreview(preferEnglish ? (detail?.userPromptEn || detail?.userPrompt) : detail?.userPrompt)}
+                            {renderTextPreview(preferEnglish ? (detail?.userPromptEn || detail?.userPrompt) : detail?.userPrompt, prompt.promptType === 'image')}
                           </span>
                         </td>
                       );
@@ -746,7 +737,7 @@ export function PromptTableView({
                       return (
                         <td
                           key={column.id}
-                           className="sticky right-0 z-30 p-0 app-wallpaper-surface-strong shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.15)]"
+                           className="sticky right-0 z-10 p-0 bg-card group-hover:bg-accent"
                           style={colWidth}
                         >
                           {isSelected && <div className="absolute inset-0 bg-primary/5 pointer-events-none" />}
@@ -843,7 +834,7 @@ export function PromptTableView({
                     onDragLeave={handleDragLeave}
                     onDrop={(event) => handleDrop(event, prompt.id)}
                     onContextMenu={(e) => onContextMenu(e, prompt)}
-                    className={`border-b border-border/50 last:border-b-0 hover:bg-accent/50 dark:hover:bg-accent/20 transition-colors ${
+                    className={`group border-b border-border/50 hover:bg-accent transition-colors ${
                       isSelected ? 'bg-primary/5' : ''
                     } ${
                       draggingId === prompt.id ? 'opacity-50' : ''
@@ -879,7 +870,7 @@ export function PromptTableView({
       {/* Pagination */}
       {/* 分页 */}
       {prompts.length > 0 && (
-        <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-4">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>{t('prompt.promptCount', { count: prompts.length })}</span>
           </div>
