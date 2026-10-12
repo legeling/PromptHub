@@ -47,6 +47,9 @@
 - 初始化中途失败必须清理本进程刚创建的租约，避免制造新的假所有者。
 - CLI 必须通过不打开 SQLite 的显式 `doctor database-lock` 命令报告 lock、live
   lease、stale lease 与未知项；普通业务命令不得因发现 ownerless lock 自动删除它。
+- `doctor --help` / `doctor -h` 返回帮助与退出码 0；帮助优先于动作校验、路径检查和恢复，
+  即使同时带 `database-lock --recover` 也不得修改锁或打开 SQLite。无参数 `doctor`
+  仍按缺少动作返回 usage error / 2。
 - 只有用户明确执行 `doctor database-lock --recover` 时，CLI 才能恢复没有 live/unknown
   owner 的非符号链接普通 lock 目录。活跃 PID、未知 lease 项、符号链接、非目录 lock
   或非目录 clients 路径都必须 fail closed 并保留现场。

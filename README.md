@@ -292,8 +292,8 @@ prompthub --help
 也可以不安装直接跑：
 
 ```bash
-pnpm --filter @prompthub/cli dev -- prompt list
-pnpm --filter @prompthub/cli dev -- skill scan
+pnpm --filter @prompthub/cli run dev prompt list
+pnpm --filter @prompthub/cli run dev skill scan
 ```
 
 支持的资源命令一览（每个命令都有 `--help`）：

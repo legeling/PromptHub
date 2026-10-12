@@ -51,6 +51,19 @@ export const ROOT_HELP = [
   "  prompthub plugin --help",
   "  prompthub sync --help",
   "  prompthub ai --help",
+  "  prompthub doctor --help",
+].join("\n");
+
+export const DOCTOR_HELP = [
+  "Doctor commands",
+  "",
+  "Usage:",
+  "  prompthub doctor database-lock [--recover]",
+  "",
+  "Inspect database lock and client leases without opening SQLite.",
+  "  --recover  Recover an ownerless lock and stale leases when safe.",
+  "Live clients, unknown lease entries, and unsafe paths prevent recovery.",
+  "  --help, -h Show this help without inspecting or changing lock state.",
 ].join("\n");
 
 export const AGENT_HELP = [
