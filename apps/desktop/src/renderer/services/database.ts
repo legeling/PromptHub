@@ -67,7 +67,7 @@ export async function updatePrompt(
     userPromptEn: keepEmptyString(data.userPromptEn),
     variables: data.variables,
     tags: data.tags,
-    folderId: data.folderId ?? undefined,
+    folderId: data.folderId,
     images: data.images,
     videos: data.videos,
     isFavorite: data.isFavorite,

@@ -211,7 +211,8 @@ async function batchMovePrompts(
   folderId: string | undefined,
   params: BatchPromptParams,
 ) {
-  for (const id of ids) await params.updatePrompt(id, { folderId });
+  for (const id of ids)
+    await params.updatePrompt(id, { folderId: folderId ?? null });
   params.showToast(params.t("toast.batchMoved"), "success");
 }
 
