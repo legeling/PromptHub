@@ -12,6 +12,8 @@
 
 - Mobile Prompt records are stored durably in an Expo SQLite database inside
   the mobile application sandbox.
+- The Settings capability declaration reports `sqlite` for this implemented
+  storage boundary; it does not imply that deferred sync or Skill persistence exists.
 - The mobile database has its own schema version and migration boundary.
 - The mobile `prompthub.db` file is not interchangeable with the desktop
   database file; cross-device data exchange must use a defined sync or
@@ -30,6 +32,9 @@
   confirmation on every supported target.
 - Loading, validation, empty, confirmation, and error states use the seven
   supported locale resources.
+- Navigation, screen metrics, search labels and Prompt workflow messages must
+  resolve in the selected locale. Locale resources must contain their translated
+  messages rather than inherit English or Simplified Chinese workflow text.
 
 ## Deferred Boundaries
 

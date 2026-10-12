@@ -36,7 +36,6 @@ const promptWorkflowEn = {
 } as const;
 
 const promptWorkflowZh = {
-  ...promptWorkflowEn,
   back: "返回",
   cancel: "取消",
   createTitle: "新建 Prompt",
@@ -68,10 +67,12 @@ const promptWorkflowZh = {
   validationRequired: "标题和 User Prompt 为必填项。",
   validationTitle: "请填写必填项",
   notFound: "Prompt 不存在。",
+  detailTitle: "Prompt",
+  systemPrompt: "System Prompt",
+  userPrompt: "User Prompt",
 } as const;
 
 const promptWorkflowZhTw = {
-  ...promptWorkflowZh,
   back: "返回",
   cancel: "取消",
   deleteMessage: "確定永久刪除「{{title}}」嗎？",
@@ -83,10 +84,32 @@ const promptWorkflowZhTw = {
   tags: "標籤",
   title: "標題",
   updatedAt: "更新時間",
+  detailTitle: "Prompt",
+  systemPrompt: "System Prompt",
+  userPrompt: "User Prompt",
+  createTitle: "新增 Prompt",
+  delete: "刪除",
+  deleteError: "無法刪除 Prompt，請重試。",
+  deleteErrorTitle: "刪除失敗",
+  deleteTitle: "刪除 Prompt",
+  descriptionPlaceholder: "簡要說明這個 Prompt 的用途",
+  edit: "編輯 Prompt",
+  editTitle: "編輯 Prompt",
+  loadError: "無法載入 Prompt。",
+  loadErrorTitle: "載入失敗",
+  noSystemPrompt: "未設定 System Prompt",
+  none: "無",
+  saveError: "無法儲存 Prompt，請重試。",
+  saveErrorTitle: "儲存失敗",
+  systemPromptPlaceholder: "你是一位專業助手...",
+  titlePlaceholder: "例如：程式碼審查助手",
+  userPromptPlaceholder: "請審查以下程式碼...",
+  validationRequired: "標題和 User Prompt 為必填欄位。",
+  validationTitle: "請填寫必填欄位",
+  notFound: "Prompt 不存在。",
 } as const;
 
 const promptWorkflowJa = {
-  ...promptWorkflowEn,
   back: "戻る",
   cancel: "キャンセル",
   createTitle: "新しい Prompt",
@@ -104,10 +127,26 @@ const promptWorkflowJa = {
   tags: "タグ",
   title: "タイトル",
   updatedAt: "更新日時",
+  detailTitle: "Prompt",
+  systemPrompt: "System Prompt",
+  userPrompt: "User Prompt",
+  deleteError: "Prompt を削除できませんでした。もう一度お試しください。",
+  deleteErrorTitle: "削除に失敗しました",
+  descriptionPlaceholder: "この Prompt の用途を簡潔に説明してください",
+  loadError: "Prompt を読み込めませんでした。",
+  loadErrorTitle: "読み込みに失敗しました",
+  noSystemPrompt: "System Prompt がありません",
+  saveError: "Prompt を保存できませんでした。もう一度お試しください。",
+  saveErrorTitle: "保存に失敗しました",
+  systemPromptPlaceholder: "あなたは専門知識を持つアシスタントです...",
+  titlePlaceholder: "例：コードレビューアシスタント",
+  userPromptPlaceholder: "次のコードをレビューしてください...",
+  validationRequired: "タイトルと User Prompt は必須です。",
+  validationTitle: "必須項目",
+  notFound: "Prompt が見つかりません。",
 } as const;
 
 const promptWorkflowEs = {
-  ...promptWorkflowEn,
   back: "Atrás",
   cancel: "Cancelar",
   createTitle: "Nuevo Prompt",
@@ -125,10 +164,26 @@ const promptWorkflowEs = {
   tags: "Etiquetas",
   title: "Título",
   updatedAt: "Actualizado",
+  detailTitle: "Prompt",
+  systemPrompt: "System Prompt",
+  userPrompt: "User Prompt",
+  deleteError: "No se pudo eliminar el Prompt. Inténtalo de nuevo.",
+  deleteErrorTitle: "Error al eliminar",
+  descriptionPlaceholder: "Describe brevemente para qué sirve este Prompt",
+  loadError: "No se pudo cargar el Prompt.",
+  loadErrorTitle: "Error al cargar",
+  noSystemPrompt: "Sin System Prompt",
+  saveError: "No se pudo guardar el Prompt. Inténtalo de nuevo.",
+  saveErrorTitle: "Error al guardar",
+  systemPromptPlaceholder: "Eres un asistente experto...",
+  titlePlaceholder: "Por ejemplo: asistente de revisión de código",
+  userPromptPlaceholder: "Revisa el siguiente código...",
+  validationRequired: "El título y el User Prompt son obligatorios.",
+  validationTitle: "Campos obligatorios",
+  notFound: "Prompt no encontrado.",
 } as const;
 
 const promptWorkflowDe = {
-  ...promptWorkflowEn,
   back: "Zurück",
   cancel: "Abbrechen",
   createTitle: "Neuer Prompt",
@@ -146,10 +201,28 @@ const promptWorkflowDe = {
   tags: "Tags",
   title: "Titel",
   updatedAt: "Aktualisiert",
+  detailTitle: "Prompt",
+  systemPrompt: "System Prompt",
+  userPrompt: "User Prompt",
+  deleteError:
+    "Der Prompt konnte nicht gelöscht werden. Bitte erneut versuchen.",
+  deleteErrorTitle: "Löschen fehlgeschlagen",
+  descriptionPlaceholder: "Den Zweck dieses Prompts kurz beschreiben",
+  loadError: "Der Prompt konnte nicht geladen werden.",
+  loadErrorTitle: "Laden fehlgeschlagen",
+  noSystemPrompt: "Kein System Prompt",
+  saveError:
+    "Der Prompt konnte nicht gespeichert werden. Bitte erneut versuchen.",
+  saveErrorTitle: "Speichern fehlgeschlagen",
+  systemPromptPlaceholder: "Du bist ein fachkundiger Assistent...",
+  titlePlaceholder: "Zum Beispiel: Assistent für Code-Reviews",
+  userPromptPlaceholder: "Prüfe den folgenden Code...",
+  validationRequired: "Titel und User Prompt sind erforderlich.",
+  validationTitle: "Pflichtfelder",
+  notFound: "Prompt nicht gefunden.",
 } as const;
 
 const promptWorkflowFr = {
-  ...promptWorkflowEn,
   back: "Retour",
   cancel: "Annuler",
   createTitle: "Nouveau Prompt",
@@ -167,6 +240,23 @@ const promptWorkflowFr = {
   tags: "Tags",
   title: "Titre",
   updatedAt: "Mis à jour",
+  detailTitle: "Prompt",
+  systemPrompt: "System Prompt",
+  userPrompt: "User Prompt",
+  deleteError: "Impossible de supprimer le Prompt. Réessayez.",
+  deleteErrorTitle: "Échec de la suppression",
+  descriptionPlaceholder: "Décrivez brièvement le rôle de ce Prompt",
+  loadError: "Impossible de charger le Prompt.",
+  loadErrorTitle: "Échec du chargement",
+  noSystemPrompt: "Aucun System Prompt",
+  saveError: "Impossible d'enregistrer le Prompt. Réessayez.",
+  saveErrorTitle: "Échec de l'enregistrement",
+  systemPromptPlaceholder: "Vous êtes un assistant expert...",
+  titlePlaceholder: "Par exemple : assistant de revue de code",
+  userPromptPlaceholder: "Examinez le code suivant...",
+  validationRequired: "Le titre et le User Prompt sont obligatoires.",
+  validationTitle: "Champs obligatoires",
+  notFound: "Prompt introuvable.",
 } as const;
 
 export const resources = {
@@ -254,8 +344,21 @@ export const resources = {
   "zh-TW": {
     translation: {
       common: {
+        discovery: "探索中心",
+        distributionCenter: "集中管理",
+        items: "項",
+        system: "系統",
+        workspace: "工作區",
         notFound: "頁面不存在",
         notFoundDescription: "這個行動端入口還沒有對應頁面。",
+      },
+      filters: {
+        all: "全部",
+        favorite: "收藏",
+        installed: "已匯入",
+        recent: "最近",
+        store: "商店",
+        tags: "標籤",
       },
       tabs: {
         prompts: "Prompts",
@@ -264,23 +367,54 @@ export const resources = {
         settings: "設定",
       },
       prompts: {
+        recent: "最近更新",
+        searchPlaceholder: "搜尋 Prompt、標籤或用途...",
+        metrics: {
+          favorite: "收藏",
+          local: "本地",
+          tags: "標籤",
+        },
         workflow: promptWorkflowZhTw,
         title: "Prompt 工作台",
         subtitle: "高效管理、搜尋和執行你的 Prompt。",
         localCount: "本地預覽",
       },
       skills: {
+        localPackages: "本地套件",
+        searchPlaceholder: "搜尋 Skill、來源或套件...",
+        metrics: {
+          packages: "套件",
+          sources: "來源",
+        },
         title: "Skill 管理",
         subtitle: "安裝並管理本地 AI 代理與工具包。",
         package: "Package",
       },
       store: {
+        searchPlaceholder: "搜尋遠端 Skill 或商店來源...",
+        sources: "商店來源",
+        featured: "精選推薦",
+        featuredPromptDescription: "將靈感轉化為可實作的 Prompt 範本。",
+        metrics: {
+          cached: "快取",
+          ready: "可匯入",
+          sources: "來源",
+        },
         title: "Skill 商店",
         subtitle: "探索官方與社群精選的 AI 技能。",
         official: "官方源",
         custom: "自訂源",
       },
       settings: {
+        dataCopy: "管理本地資料庫與儲存空間。",
+        dataLayer: "資料管理",
+        files: "檔案",
+        sync: "同步",
+        metrics: {
+          files: "檔案",
+          share: "分享",
+          storage: "儲存",
+        },
         title: "行動端設定",
         subtitle: "配置應用偏好、資料同步與儲存設定。",
         platform: "跨端同步",
@@ -373,8 +507,21 @@ export const resources = {
   ja: {
     translation: {
       common: {
+        discovery: "発見",
+        distributionCenter: "管理センター",
+        items: "件",
+        system: "システム",
+        workspace: "ワークスペース",
         notFound: "ページが見つかりません",
         notFoundDescription: "このモバイルルートにはまだ画面がありません。",
+      },
+      filters: {
+        all: "すべて",
+        favorite: "お気に入り",
+        installed: "インポート済み",
+        recent: "最近",
+        store: "ストア",
+        tags: "タグ",
       },
       tabs: {
         prompts: "Prompts",
@@ -383,24 +530,55 @@ export const resources = {
         settings: "設定",
       },
       prompts: {
+        recent: "最近の更新",
+        searchPlaceholder: "Prompt、タグ、用途を検索...",
+        metrics: {
+          favorite: "お気に入り",
+          local: "ローカル",
+          tags: "タグ",
+        },
         workflow: promptWorkflowJa,
         title: "Prompt ワークスペース",
         subtitle: "AIプロンプトを効率的に管理および実行します。",
         localCount: "ローカルプレビュー",
       },
       skills: {
+        localPackages: "ローカルパッケージ",
+        searchPlaceholder: "Skill、ソース、パッケージを検索...",
+        metrics: {
+          packages: "パッケージ",
+          sources: "ソース",
+        },
         title: "Skill 管理",
         subtitle:
           "AIエージェントとツールパッケージをインストールして管理します。",
         package: "Package",
       },
       store: {
+        searchPlaceholder: "リモート Skill やストアのソースを検索...",
+        sources: "ストアのソース",
+        featured: "おすすめ",
+        featuredPromptDescription: "アイデアを実用的な Prompt テンプレートに。",
+        metrics: {
+          cached: "キャッシュ済み",
+          ready: "インポート可能",
+          sources: "ソース",
+        },
         title: "Skill ストア",
         subtitle: "公式およびコミュニティで厳選されたAIスキルを発見します。",
         official: "公式",
         custom: "カスタム",
       },
       settings: {
+        dataCopy: "ローカルデータベースとストレージを管理します。",
+        dataLayer: "データ管理",
+        files: "ファイル",
+        sync: "同期",
+        metrics: {
+          files: "ファイル",
+          share: "共有",
+          storage: "ストレージ",
+        },
         title: "モバイル設定",
         subtitle: "アプリの環境設定、データ同期、ストレージを構成します。",
         platform: "クロスデバイス同期",
@@ -411,8 +589,21 @@ export const resources = {
   es: {
     translation: {
       common: {
+        discovery: "Descubrir",
+        distributionCenter: "Centro de gestión",
+        items: "elementos",
+        system: "Sistema",
+        workspace: "Espacio de trabajo",
         notFound: "Página no encontrada",
         notFoundDescription: "Esta ruta móvil aún no tiene pantalla.",
+      },
+      filters: {
+        all: "Todos",
+        favorite: "Favoritos",
+        installed: "Importados",
+        recent: "Recientes",
+        store: "Tienda",
+        tags: "Etiquetas",
       },
       tabs: {
         prompts: "Prompts",
@@ -421,6 +612,13 @@ export const resources = {
         settings: "Ajustes",
       },
       prompts: {
+        recent: "Actualizaciones recientes",
+        searchPlaceholder: "Buscar Prompts, etiquetas o usos...",
+        metrics: {
+          favorite: "Favoritos",
+          local: "Local",
+          tags: "Etiquetas",
+        },
         workflow: promptWorkflowEs,
         title: "Espacio de Prompts",
         subtitle:
@@ -428,18 +626,43 @@ export const resources = {
         localCount: "Vista local",
       },
       skills: {
+        localPackages: "Paquetes locales",
+        searchPlaceholder: "Buscar Skills, fuentes o paquetes...",
+        metrics: {
+          packages: "Paquetes",
+          sources: "Fuentes",
+        },
         title: "Gestor de Skills",
         subtitle:
           "Instale y administre agentes de IA y paquetes de herramientas.",
         package: "Package",
       },
       store: {
+        searchPlaceholder: "Buscar Skills remotos o fuentes de la tienda...",
+        sources: "Fuentes de la tienda",
+        featured: "Destacados",
+        featuredPromptDescription:
+          "Convierte ideas en plantillas de Prompt listas para usar.",
+        metrics: {
+          cached: "En caché",
+          ready: "Listos para importar",
+          sources: "Fuentes",
+        },
         title: "Tienda de Skills",
         subtitle: "Descubra habilidades de IA oficiales y de la comunidad.",
         official: "Oficial",
         custom: "Personalizada",
       },
       settings: {
+        dataCopy: "Administra la base de datos local y el almacenamiento.",
+        dataLayer: "Gestión de datos",
+        files: "Archivos",
+        sync: "Sincronizar",
+        metrics: {
+          files: "Archivos",
+          share: "Compartir",
+          storage: "Almacenamiento",
+        },
         title: "Ajustes móviles",
         subtitle: "Configure preferencias, sincronización y almacenamiento.",
         platform: "Sincronización de dispositivos",
@@ -451,9 +674,22 @@ export const resources = {
   de: {
     translation: {
       common: {
+        discovery: "Entdecken",
+        distributionCenter: "Verwaltungszentrale",
+        items: "Einträge",
+        system: "System",
+        workspace: "Arbeitsbereich",
         notFound: "Seite nicht gefunden",
         notFoundDescription:
           "Für diese mobile Route gibt es noch keinen Screen.",
+      },
+      filters: {
+        all: "Alle",
+        favorite: "Favoriten",
+        installed: "Importiert",
+        recent: "Zuletzt",
+        store: "Store",
+        tags: "Tags",
       },
       tabs: {
         prompts: "Prompts",
@@ -462,17 +698,40 @@ export const resources = {
         settings: "Einstellungen",
       },
       prompts: {
+        recent: "Zuletzt aktualisiert",
+        searchPlaceholder: "Prompts, Tags oder Anwendungsfälle suchen...",
+        metrics: {
+          favorite: "Favoriten",
+          local: "Lokal",
+          tags: "Tags",
+        },
         workflow: promptWorkflowDe,
         title: "Prompt Workspace",
         subtitle: "Verwalten und führen Sie Ihre KI-Prompts effizient aus.",
         localCount: "Lokale Vorschau",
       },
       skills: {
+        localPackages: "Lokale Pakete",
+        searchPlaceholder: "Skills, Quellen oder Pakete suchen...",
+        metrics: {
+          packages: "Pakete",
+          sources: "Quellen",
+        },
         title: "Skill Manager",
         subtitle: "Installieren und verwalten Sie KI-Agenten und Tool-Pakete.",
         package: "Package",
       },
       store: {
+        searchPlaceholder: "Remote-Skills oder Store-Quellen suchen...",
+        sources: "Store-Quellen",
+        featured: "Empfehlungen",
+        featuredPromptDescription:
+          "Ideen in einsatzbereite Prompt-Vorlagen verwandeln.",
+        metrics: {
+          cached: "Im Cache",
+          ready: "Importierbar",
+          sources: "Quellen",
+        },
         title: "Skill Store",
         subtitle:
           "Entdecken Sie offizielle und von der Community kuratierte KI-Skills.",
@@ -480,6 +739,15 @@ export const resources = {
         custom: "Eigene",
       },
       settings: {
+        dataCopy: "Lokale Datenbank und Speicher verwalten.",
+        dataLayer: "Datenverwaltung",
+        files: "Dateien",
+        sync: "Synchronisieren",
+        metrics: {
+          files: "Dateien",
+          share: "Teilen",
+          storage: "Speicher",
+        },
         title: "Mobile Einstellungen",
         subtitle:
           "Konfigurieren Sie App-Einstellungen, Datensynchronisierung und Speicher.",
@@ -492,8 +760,21 @@ export const resources = {
   fr: {
     translation: {
       common: {
+        discovery: "Découvrir",
+        distributionCenter: "Centre de gestion",
+        items: "éléments",
+        system: "Système",
+        workspace: "Espace de travail",
         notFound: "Page introuvable",
         notFoundDescription: "Cette route mobile n'a pas encore d'écran.",
+      },
+      filters: {
+        all: "Tous",
+        favorite: "Favoris",
+        installed: "Importés",
+        recent: "Récents",
+        store: "Boutique",
+        tags: "Tags",
       },
       tabs: {
         prompts: "Prompts",
@@ -502,17 +783,40 @@ export const resources = {
         settings: "Réglages",
       },
       prompts: {
+        recent: "Mises à jour récentes",
+        searchPlaceholder: "Rechercher des Prompts, tags ou usages...",
+        metrics: {
+          favorite: "Favoris",
+          local: "Local",
+          tags: "Tags",
+        },
         workflow: promptWorkflowFr,
         title: "Espace Prompts",
         subtitle: "Gérez et exécutez vos requêtes d'IA efficacement.",
         localCount: "Aperçu local",
       },
       skills: {
+        localPackages: "Paquets locaux",
+        searchPlaceholder: "Rechercher des Skills, sources ou paquets...",
+        metrics: {
+          packages: "Paquets",
+          sources: "Sources",
+        },
         title: "Gestion des Skills",
         subtitle: "Installez et gérez des agents d'IA et des outils.",
         package: "Package",
       },
       store: {
+        searchPlaceholder: "Rechercher des Skills distants ou des sources...",
+        sources: "Sources de la boutique",
+        featured: "À la une",
+        featuredPromptDescription:
+          "Transformez vos idées en modèles de Prompt prêts à utiliser.",
+        metrics: {
+          cached: "En cache",
+          ready: "Prêts à importer",
+          sources: "Sources",
+        },
         title: "Skill Store",
         subtitle:
           "Découvrez des compétences en IA officielles et communautaires.",
@@ -520,6 +824,15 @@ export const resources = {
         custom: "Personnalisé",
       },
       settings: {
+        dataCopy: "Gérez la base de données locale et le stockage.",
+        dataLayer: "Gestion des données",
+        files: "Fichiers",
+        sync: "Synchroniser",
+        metrics: {
+          files: "Fichiers",
+          share: "Partager",
+          storage: "Stockage",
+        },
         title: "Réglages mobile",
         subtitle:
           "Configurez les préférences, la synchronisation et le stockage.",

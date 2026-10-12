@@ -8,6 +8,6 @@ export interface MobileCapabilities {
 export const mobileCapabilities: MobileCapabilities = {
   canPickDocuments: true,
   canShareFiles: true,
-  durableStorage: 'pending',
+  durableStorage: 'sqlite',
   primaryTarget: 'android-first-ios-compatible',
 };
