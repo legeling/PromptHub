@@ -25,6 +25,8 @@ Skill 领域入口为 [缺陷分类](../../knowledge/reference/skill-defect-taxo
 
 根级 `test`、`test:run`、`typecheck` 和 `build` 默认转发桌面命令，不能称为全仓验证。共享包、自部署 Web、CLI 和 Worker 使用各自命令，由根级 registry 组织；不能用多个重复嵌套的聚合脚本扩大“通过数量”。
 
+`pnpm --filter @prompthub/desktop perf:budget` 使用项目已有的 `tsx` loader 执行 `scripts/check-large-data-budgets.ts`，遵循 Desktop 当前模块格式并解析被测模块的扩展名省略 import；脚本同时进入 `typecheck:tests`。不改变业务模块或预算阈值。它测量本地 Prompt/Skill selector 的固定数据集，不证明真实窗口滚动或大型 SQLite 工作流。
+
 ## 功能基线入口与证据边界
 
 以下是现有用例入口和配置范围，不是本文件对其当前通过状态的声明。

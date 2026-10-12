@@ -1,6 +1,6 @@
 import { performance } from "node:perf_hooks";
 
-import type { Folder, Prompt, Skill } from "../src/shared/types/index.ts";
+import type { Folder, Prompt, Skill } from "@prompthub/shared/types";
 import {
   buildPromptStats,
   filterVisiblePrompts,
@@ -99,7 +99,7 @@ function benchmark(
   };
 }
 
-function readNumericArg(name: string, fallback: number) {
+function readNumericArg(name: string, fallback: number): number {
   const raw = process.argv.find((arg) => arg.startsWith(`--${name}=`));
   if (!raw) return fallback;
 
@@ -154,40 +154,60 @@ const deployedSkillNames = new Set(
     .map((skill) => skill.name),
 );
 
-const promptStatsResult = benchmark("buildPromptStats", () => {
-  buildPromptStats(prompts);
-}, iterations);
+const promptStatsResult = benchmark(
+  "buildPromptStats",
+  () => {
+    buildPromptStats(prompts);
+  },
+  iterations,
+);
 
-const filterPromptsResult = benchmark("filterVisiblePrompts", () => {
-  filterVisiblePrompts({
-    prompts,
-    selectedFolderId: "folder-b",
-    folders,
-    unlockedFolderIds: new Set<string>(),
-    searchQuery: "batch deploy",
-    filterTags: ["tag-1"],
-    promptTypeFilter: "text",
-  });
-}, iterations);
+const filterPromptsResult = benchmark(
+  "filterVisiblePrompts",
+  () => {
+    filterVisiblePrompts({
+      prompts,
+      selectedFolderId: "folder-b",
+      folders,
+      unlockedFolderIds: new Set<string>(),
+      searchQuery: "batch deploy",
+      filterTags: ["tag-1"],
+      promptTypeFilter: "text",
+    });
+  },
+  iterations,
+);
 
-const sortPromptsResult = benchmark("sortVisiblePrompts", () => {
-  sortVisiblePrompts(prompts, "updatedAt", "desc");
-}, iterations);
+const sortPromptsResult = benchmark(
+  "sortVisiblePrompts",
+  () => {
+    sortVisiblePrompts(prompts, "updatedAt", "desc");
+  },
+  iterations,
+);
 
-const skillStatsResult = benchmark("buildSkillStats", () => {
-  buildSkillStats(skills, deployedSkillNames);
-}, iterations);
+const skillStatsResult = benchmark(
+  "buildSkillStats",
+  () => {
+    buildSkillStats(skills, deployedSkillNames);
+  },
+  iterations,
+);
 
-const filterSkillsResult = benchmark("filterVisibleSkills", () => {
-  filterVisibleSkills({
-    deployedSkillNames,
-    filterTags: ["user-1"],
-    filterType: "pending",
-    searchQuery: "batch deploy",
-    skills,
-    storeView: "my-skills",
-  });
-}, iterations);
+const filterSkillsResult = benchmark(
+  "filterVisibleSkills",
+  () => {
+    filterVisibleSkills({
+      deployedSkillNames,
+      filterTags: ["user-1"],
+      filterType: "pending",
+      searchQuery: "batch deploy",
+      skills,
+      storeView: "my-skills",
+    });
+  },
+  iterations,
+);
 
 const memory = process.memoryUsage();
 const heapUsedMb = memory.heapUsed / 1024 / 1024;

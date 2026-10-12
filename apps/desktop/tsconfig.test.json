@@ -8,6 +8,7 @@
   "include": [
     "src/**/*",
     "tests/**/*",
+    "scripts/check-large-data-budgets.ts",
     "vitest.config.ts",
     "vitest.workspace.ts",
     "playwright.config.ts",

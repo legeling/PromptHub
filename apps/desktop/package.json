@@ -52,7 +52,7 @@
     "typecheck": "tsc --noEmit",
     "perf:large-data": "node --experimental-strip-types scripts/profile-large-datasets.mts",
     "perf:large-data:heavy": "node --experimental-strip-types scripts/profile-large-datasets.mts --prompts=5000 --skills=2000 --iterations=20",
-    "perf:budget": "node --experimental-strip-types scripts/check-large-data-budgets.mts",
+    "perf:budget": "node --import tsx scripts/check-large-data-budgets.ts",
     "perf:budget:ci": "node --experimental-strip-types scripts/profile-large-datasets.mts --prompts=5000 --skills=2000 --iterations=20",
     "typecheck:tests": "tsc --noEmit -p tsconfig.test.json"
   },
