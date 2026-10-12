@@ -1,4 +1,5 @@
 import type { Settings, SyncProviderKind } from "@prompthub/shared/types";
+import { DEFAULT_DISABLED_PLATFORM_IDS } from "@prompthub/shared/types";
 import { normalizeCustomAgents } from "../../services/agent-root-paths";
 import type {
   DesktopHomeModule,
@@ -66,7 +67,7 @@ export function normalizePlatformVisibilitySettings(
     ? next.disabledPlatformIds.filter(
         (platformId): platformId is string => typeof platformId === "string",
       )
-    : [];
+    : [...DEFAULT_DISABLED_PLATFORM_IDS];
   next.skillPlatformOrder = Array.isArray(next.skillPlatformOrder)
     ? next.skillPlatformOrder.filter(
         (platformId): platformId is string => typeof platformId === "string",

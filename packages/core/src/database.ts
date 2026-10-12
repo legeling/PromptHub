@@ -1,4 +1,5 @@
 import { migrateAgentSettingsV1 } from "./migrations/agent-settings-v1";
+import { migrateGeminiDefaultDisabled } from "./migrations/gemini-default-disabled-v1";
 import {
   DatabaseAdapter,
   db as activeDatabase,
@@ -57,6 +58,7 @@ export function initDatabase(
   }
   try {
     migrateAgentSettingsV1(database, getUserDataPath());
+    migrateGeminiDefaultDisabled(database);
   } catch (error) {
     closeDatabase();
     throw error;

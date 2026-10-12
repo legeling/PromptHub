@@ -1,4 +1,7 @@
-import { DEFAULT_NETWORK_PROXY_SETTINGS } from "@prompthub/shared/types";
+import {
+  DEFAULT_DISABLED_PLATFORM_IDS,
+  DEFAULT_NETWORK_PROXY_SETTINGS,
+} from "@prompthub/shared/types";
 import i18n from "../../i18n";
 import {
   DEFAULT_BACKGROUND_IMAGE_BLUR,
@@ -151,7 +154,7 @@ function createDefaultSkillValues() {
     agentIdentityPreferences: {
       codex: { name: "codex", icon: "codex" },
     },
-    disabledPlatformIds: [],
+    disabledPlatformIds: [...DEFAULT_DISABLED_PLATFORM_IDS],
     skillPlatformOrder: [],
     skillInstallMethod: "symlink",
     skillSafetyScanEnabled: false,

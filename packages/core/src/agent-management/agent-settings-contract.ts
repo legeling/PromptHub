@@ -1,4 +1,5 @@
 import type { AgentManagementSettings } from "./agent-settings-repository";
+import { DEFAULT_DISABLED_PLATFORM_IDS } from "@prompthub/shared/types";
 import { normalizeAgentIdentityPreferences } from "./agent-query";
 import {
   normalizeBuiltinAgentOverrides,
@@ -93,7 +94,7 @@ export function parseAgentManagementSettings(
   const agents = input.customAgents ?? [];
   if (!Array.isArray(agents)) throw new Error("Invalid Agent customAgents");
   agents.forEach((agent) => validateAsset(agent, true));
-  const disabled = input.disabledPlatformIds ?? [];
+  const disabled = input.disabledPlatformIds ?? DEFAULT_DISABLED_PLATFORM_IDS;
   if (!Array.isArray(disabled))
     throw new Error("Invalid Agent disabledPlatformIds");
   disabled.forEach((id) => requireText(id, "disabledPlatformIds"));

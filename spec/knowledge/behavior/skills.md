@@ -193,6 +193,7 @@ My Skills 批量入口必须明确包含安装与卸载；商店批量导入入�
 - Skill 平台分发的可见目标由“已检测到的平台”与“用户显式配置的平台”共同决定。
 - 已启用的 custom Agent 和存在用户覆盖配置的 built-in Agent 必须作为可分发目标显示，即使其根目录当前还不存在；安装流程负责创建缺失目录。
 - `disabledPlatformIds` 始终优先于检测和显式配置，用于隐藏用户不希望看到的平台。
+- Gemini CLI 默认关闭，默认禁用平台集合由 shared settings 的 `DEFAULT_DISABLED_PLATFORM_IDS` 定义；设置中保留手动开启入口，开启后持久保留。现有安装在 `agent-settings-v1` 之后执行一次 `gemini-default-disabled-v1` 迁移，将 Gemini 加入现有禁用集合；偏好更新和迁移记录在同一 SQLite 事务中提交，失败完整回滚并可重试。此迁移保留其他平台偏好、本地文件和会话，不改变 Gemini API 模型支持。用户可通过现有平台开关撤销禁用，后续启动不重复禁用；恢复明确的设置快照继续以快照中的选择为准。
 - 平台检测仍用于默认 built-in 平台降噪和状态提示，但不得单独作为分发目标可见性的唯一门禁。
 - `agent-skills-global` 是实验性的共享 Skill 分发目标，不是 Agent 平台，
   因此不得进入 Agent 检测、Agent 数量或 `SKILL_PLATFORMS`。它把完整 package

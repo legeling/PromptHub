@@ -1,4 +1,5 @@
 import { migrateAgentSettingsV1 } from "@prompthub/core/migrations/agent-settings-v1";
+import { migrateGeminiDefaultDisabled } from "@prompthub/core/migrations/gemini-default-disabled-v1";
 /**
  * Desktop-specific database initialization and recovery.
  *
@@ -196,6 +197,7 @@ export function initDatabase(): DatabaseAdapter.Database {
       );
     }
     migrateAgentSettingsV1(database, getUserDataPath());
+    migrateGeminiDefaultDisabled(database);
     return database;
   } catch (error) {
     closeDatabase();

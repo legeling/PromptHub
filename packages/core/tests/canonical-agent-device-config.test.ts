@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { DatabaseAdapter, SCHEMA } from "@prompthub/db";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { DEFAULT_DISABLED_PLATFORM_IDS } from "@prompthub/shared/types";
 import { AgentSettingsRepository } from "../src/agent-management/agent-settings-repository";
 import {
   configureRuntimePaths,
@@ -48,7 +49,7 @@ describe("current Agent settings ignore former storage authority modes", () => {
     expect(new AgentSettingsRepository(database).read()).toMatchObject({
       builtinAgentOverrides: { codex: { rootPath: path.join(root, ".codex") } },
       customAgents: [{ id: "local", enabled: false }],
-      disabledPlatformIds: ["local"],
+      disabledPlatformIds: [...DEFAULT_DISABLED_PLATFORM_IDS, "local"],
       agentIdentityPreferences: { codex: { name: "chatgpt", icon: "codex" } },
     });
     expect(fs.existsSync(path.join(root, "config/devices/agents.json"))).toBe(

@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { closeDatabase } from '@prompthub/db';
+import { DEFAULT_DISABLED_PLATFORM_IDS } from '@prompthub/shared/types';
 import { issueSolvedCaptcha } from '../test-helpers/auth-captcha';
 
 const ENV_KEYS = [
@@ -980,7 +981,7 @@ describe('web settings routes', () => {
       };
       expect(settingsBody.data.builtinAgentOverrides).toEqual({});
       expect(settingsBody.data.customPlatformRootPaths).toEqual({});
-      expect(settingsBody.data.disabledPlatformIds).toEqual([]);
+      expect(settingsBody.data.disabledPlatformIds).toEqual(DEFAULT_DISABLED_PLATFORM_IDS);
       expect(settingsBody.data.skillPlatformOrder).toEqual([]);
     } finally {
       fs.rmSync(dataDir, { recursive: true, force: true });

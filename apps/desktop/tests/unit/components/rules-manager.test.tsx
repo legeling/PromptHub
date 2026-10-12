@@ -76,6 +76,7 @@ describe("RulesManager", () => {
       hasLoadedFiles: false,
     });
     useSettingsStore.setState({
+      disabledPlatformIds: [],
       aiProvider: "openai",
       aiApiKey: "test-key",
       aiApiUrl: "https://api.openai.com/v1",

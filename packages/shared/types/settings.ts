@@ -170,6 +170,10 @@ export const DEFAULT_NETWORK_PROXY_SETTINGS: NetworkProxySettings = {
   bypass: "<local>,localhost,127.0.0.1,::1",
 };
 
+export const DEFAULT_DISABLED_PLATFORM_IDS: readonly string[] = Object.freeze([
+  "gemini",
+]);
+
 export const DEFAULT_SETTINGS: Settings = {
   theme: "system",
   language: "zh",
@@ -182,7 +186,7 @@ export const DEFAULT_SETTINGS: Settings = {
   customPlatformRootPaths: {},
   customAgents: [],
   customAgentRootPaths: [],
-  disabledPlatformIds: [],
+  disabledPlatformIds: [...DEFAULT_DISABLED_PLATFORM_IDS],
   customSkillPlatformPaths: {},
   skillPlatformOrder: [],
   skillProjects: [],
