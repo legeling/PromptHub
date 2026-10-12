@@ -30,7 +30,7 @@
   `0.6.0-beta.1`, `v0.6.0-beta.1`, and `sha-6c08b5e` tags for the beta
   candidate; it did not publish `latest`.
 
-## Verification
+## Historical Verification
 
 - `TEST-REL-001`:
   - Command: exact manifest assertion over seven product version sources
@@ -121,3 +121,49 @@ this change has no visible product UI delta.
   any stable-facing surface from `0.5.9`.
 - The beta.2 prerelease was published independently through
   `release-0-6-0-beta-2-readiness`; stable `0.6.0` preparation remains active.
+
+## Mainline Documentation Reconciliation (2026-10-12)
+
+- Main includes PR #223 through merge commit `4ab857b0`; a fast-forward-only
+  pull confirmed the checkout was already synchronized with origin/main.
+- Product manifests and CLI runtime remain `0.6.0-beta.2`; the mainline target
+  remains `0.6.0`, not the contribution branch's `0.6.4`.
+- Seven product READMEs now show a separate development badge and unreleased
+  summary. The docs index links to the current release boundary; dated beta
+  history and stable downloads remain unchanged.
+- The unreleased changelog summarizes the integrated Prompt UX/search/hierarchy,
+  backup guidance, localized errors, and Web visibility changes. The 0.6.0
+  preparation record uses the accepted SQLite/filesystem target and marks
+  foundation migration/acceptance as incomplete rather than preserving the
+  superseded file-first requirement.
+- Version-alignment regressions read the candidate from the root manifest and
+  cover all README channels, unreleased history, and generated website metadata.
+- Desktop locale files and screenshots are unchanged by this task: no runtime
+  UI copy is added and no new GUI evidence is claimed. Native GUI automation,
+  signing, packaging, tagging, and publication are outside this request.
+
+### Verification
+
+- `pnpm exec node --test --test-reporter=spec scripts/version-alignment.test.mjs`:
+  passed 5 tests covering the 0.6.0 line, all seven manifest sources, CLI
+  runtime, development/stable README separation, and website changelog parity.
+- `pnpm --dir website sync:release`: passed; generated stable metadata remains
+  `v0.5.9` with date `2026-07-14`. Only the generated changelog content changed;
+  stable metadata and both introduction files remain byte-for-byte unchanged.
+- `pnpm --dir website test:release-sync`: passed 4 tests; the stable selector
+  has 100% line, branch, and function coverage for preparation, ordering, and
+  invalid publication records.
+- Scoped `prettier --check`: passed for all 17 changed release/document/test
+  files. `git diff --check` passed for the same task scope.
+- Readback assertions: all seven README HTML wrappers balance; published
+  README/changelog history from the beta.2 heading onward is unchanged.
+- `pnpm verify:release:quick --surface governance --concurrency 1`: passed all
+  3 selected checks (CI configuration, spec governance, and source-size rules)
+  in 2.5 seconds. This is a scoped quick diagnostic, not an all-product or
+  release-acceptance result.
+- Product runtime checks were not rerun because product manifests, CLI version,
+  and application source are unchanged by this task. Full quick/release, GUI,
+  packaging, signing, and publication remain unexecuted for this reconciliation.
+- Website production build was not run: `website/node_modules` is absent.
+  Existing Node/pnpm dependencies were reused for synchronization and metadata
+  tests; no dependency installation or development server was started.

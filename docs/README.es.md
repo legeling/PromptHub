@@ -11,6 +11,7 @@ Un espacio de trabajo local-first para prompts, skills y assets de codificación
 [![Downloads](https://img.shields.io/github/downloads/legeling/PromptHub/total?style=for-the-badge&logo=github&color=blue)](https://github.com/legeling/PromptHub/releases)
 [![Version](https://img.shields.io/badge/release-v0.5.9_stable-22C55E?style=for-the-badge)](https://github.com/legeling/PromptHub/releases/latest)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](../LICENSE)
+[![Desarrollo](https://img.shields.io/badge/development-v0.6.0--beta.2-8B5CF6?style=for-the-badge)](../CHANGELOG.md#unreleased)
 
   <br/>
 
@@ -330,6 +331,17 @@ Flags globales habituales:
 ## Registro de cambios
 
 Changelog completo: **[CHANGELOG.md](../CHANGELOG.md)**
+
+### v0.6.0 (en desarrollo, sin publicar)
+
+La versión del código sigue siendo `0.6.0-beta.2`. Estas mejoras están integradas en la rama principal, pero no se han publicado en un paquete nuevo; la descarga publicada de beta.2 no incluye todos los cambios posteriores.
+
+- Etiquetas desde el menú contextual, etiquetas por lotes y recuentos de uso, ordenación y acceso al filtro por etiqueta
+- Acciones por lotes de favoritos, mover, eliminar y etiquetas en tabla/tarjetas/galería, restauración de carpeta inicial y búsqueda con Ctrl+F / Cmd+F
+- Origen/notas plegables, acceso directo a medios de referencia, limpieza de filtros sin resultados y errores de seguridad localizados
+- Búsqueda AND de varios términos, creación raíz desde la barra superior, carpetas coherentes al mover subárboles y expansión según la selección
+- Vista previa de importación de copias al arrastrarlas a la ventana, guía de migración e inferencia de visibilidad de carpetas Web con los controles de permisos existentes
+- La línea de versiones sigue siendo `0.6.0`; las descargas estables, vistas previas publicadas y cambios en desarrollo se distinguen sin adoptar la identidad `0.6.4` de la rama contribuyente
 
 ### v0.6.0-beta.2 (2026-09-03, vista previa)
 

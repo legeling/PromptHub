@@ -53,6 +53,12 @@ docs/
 
 - `docs/testing-playwright-agents.md`：仓库级 Playwright Test Agents 的适用范围、调用方法、Electron Seed、独立执行和失败诊断边界。
 
+## 版本与更新说明
+
+- [主 README](../README.md) 区分最新稳定下载、已发布预览版和当前开发版本。
+- [CHANGELOG.md 的 Unreleased](../CHANGELOG.md#unreleased) 记录尚未随新发行包发布的主线改动；合并贡献分支不等于发布其版本号。
+- [0.6.0 发布准备记录](../spec/releases/0.6.0.md) 维护版本线、当前候选身份和发布门禁，历史预览说明不被后续主线改动覆盖。
+
 ## 内部文档入口
 
 - `spec/README.md`

@@ -2,7 +2,8 @@
 
 - [x] `T-REL-000` Define and analyze the `FR -> DES -> TEST -> T` release
       boundary before implementation.
-- [x] `T-REL-001` Align all shipped product manifests to `0.6.0` and verify
+- [x] `T-REL-001` Align all shipped product manifests to the root's selected
+      `0.6.0`-line candidate and verify
       exact equality (`FR-REL-001`, `DES-REL-001`, `TEST-REL-001`).
 - [x] `T-REL-002` Verify the archived website publication-boundary change
       against preparation, ordering, and invalid-state paths (`FR-REL-002`,
@@ -20,3 +21,6 @@
       `DES-REL-004`, `TEST-REL-006`).
 - [x] `T-REL-007` Verify the corrected tag workflow publishes beta-versioned
       images without changing stable `latest`, then record remote evidence.
+- [x] Reconcile post-merge README/changelog content on the existing `0.6.0`
+      line, synchronize website output, and run focused checks plus the quick
+      governance diagnostic gate without changing published preview history.

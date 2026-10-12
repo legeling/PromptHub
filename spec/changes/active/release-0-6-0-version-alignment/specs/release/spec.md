@@ -4,13 +4,18 @@
 
 ### `FR-REL-001`: Product Version Alignment
 
-The root monorepo and every shipped application distribution must report
-`0.6.0` from its authoritative manifest.
+The root manifest owns the current build identity on the `0.6.0` release line.
+Every shipped application distribution and the standalone CLI runtime must
+report that exact candidate version. The current candidate is `0.6.0-beta.2`;
+explicit stable promotion uses `0.6.0`. Contribution-branch version labels must
+not change this identity merely because their commits were merged.
 
 #### `AC-REL-001`
 
-Root, Desktop, CLI, self-hosted Web, Cloudflare Worker, Mobile package, and Expo
-application manifests all report exactly `0.6.0`.
+Desktop, CLI, self-hosted Web, Cloudflare Worker, Mobile package, Expo metadata,
+and CLI runtime all match the root manifest. Public READMEs distinguish that
+development identity and unreleased changes from stable downloads and historical
+published previews.
 
 ### `FR-REL-002`: Published Stable Isolation
 
@@ -47,7 +52,9 @@ as `v0.6.0`, the same workflow emits `latest` in addition to versioned tags.
 
 ## Verification
 
-- `TEST-REL-001`: assert all authoritative product manifests equal `0.6.0`.
+- `TEST-REL-001`: read the candidate identity from the root manifest, assert the
+  `0.6.0` release line, and verify all product manifests and CLI runtime match;
+  also verify development/stable README separation and website changelog sync.
 - `TEST-REL-002`: assert a preparation record does not replace the published
   stable record.
 - `TEST-REL-003`: assert the highest explicitly published stable semver is

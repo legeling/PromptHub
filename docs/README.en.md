@@ -11,6 +11,7 @@ A local-first workspace for prompts, skills, and AI coding assets.
 [![Downloads](https://img.shields.io/github/downloads/legeling/PromptHub/total?style=for-the-badge&logo=github&color=blue)](https://github.com/legeling/PromptHub/releases)
 [![Version](https://img.shields.io/badge/release-v0.5.9_stable-22C55E?style=for-the-badge)](https://github.com/legeling/PromptHub/releases/latest)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](../LICENSE)
+[![Development](https://img.shields.io/badge/development-v0.6.0--beta.2-8B5CF6?style=for-the-badge)](../CHANGELOG.md#unreleased)
 
   <br/>
 
@@ -347,6 +348,17 @@ Common global flags:
 ## Changelog
 
 Full changelog: **[CHANGELOG.md](../CHANGELOG.md)**
+
+### v0.6.0 (in development, unreleased)
+
+The source version remains `0.6.0-beta.2`. These mainline improvements have not shipped in a new package; the published beta.2 download does not include all subsequent changes.
+
+- Context-menu quick tagging, batch tags, and tag usage counts, sorting, and filter jumps
+- Batch favorite, move, delete, and tag actions in table/card/gallery views, startup-folder restoration, and Ctrl+F / Cmd+F search
+- Collapsible source/notes, promoted reference-media access, empty-result filter reset, and localized security errors
+- Multi-term AND full-text search, root creation from the top bar, subtree folder consistency, and selection-driven tree expansion
+- Window-wide backup import preview, migration guidance, and Web folder-visibility inference with existing permission checks
+- The release line remains `0.6.0`; stable downloads, published previews, and development changes stay distinct instead of adopting the contribution branch's `0.6.4` release identity
 
 ### v0.6.0-beta.2 (2026-09-03, preview)
 

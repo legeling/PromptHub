@@ -5,14 +5,17 @@
 - Phase: converge
 - Status: release-pending
 - Primary requirement: `FR-REL-001`
-- Exit condition: all product distributions report `0.6.0`, while public
+- Exit condition: all product distributions report the selected `0.6.0`-line
+  candidate from the root manifest, while public
   stable-facing surfaces continue to advertise the latest published stable
   version until `0.6.0` is explicitly promoted to a stable release record.
 
 ## Why
 
-PromptHub is beginning the `0.6.0` release line. The monorepo currently reports
-`0.5.9` from the root, Desktop, CLI, Web, Worker, and Mobile manifests.
+PromptHub is preparing the `0.6.0` release line. The current build identity is
+`0.6.0-beta.2` across Root, Desktop, CLI, Web, Worker, Mobile, and Expo. The
+root manifest owns that candidate identity; contribution branches named
+`0.6.3` or `0.6.4` do not advance the mainline release version.
 
 The website release generator previously treated the root package version as an
 already-published release. That boundary is now hardened by the related website
@@ -22,7 +25,8 @@ advertising nonexistent `0.6.0` downloads.
 ## Scope
 
 - In scope:
-  - align product distribution manifests to `0.6.0`
+  - align product distribution manifests and CLI runtime to the selected
+    `0.6.0`-line candidate; stable promotion uses `0.6.0`
   - align the project context version in `AGENTS.md`
   - record `0.6.0` as a release preparation
   - keep public stable downloads and badges on the latest explicit stable
@@ -48,9 +52,10 @@ advertising nonexistent `0.6.0` downloads.
 
 ## Rollback Thinking
 
-Before publication, rollback consists of restoring the affected manifests to
-`0.5.9`, removing the preparation record, and retaining the existing public
-stable metadata. No database, filesystem, or user-data migration is involved.
+Documentation reconciliation can be reverted without changing manifests or
+published beta records. A future candidate identity rollback uses the previous
+candidate's release record while retaining public stable metadata. No database,
+filesystem, or user-data migration is introduced by version alignment.
 
 ## Related Records
 

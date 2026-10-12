@@ -1,5 +1,38 @@
 ## [Unreleased]
 
+主线继续准备 `0.6.0`，当前构建身份为 `0.6.0-beta.2`。以下改动尚未随新发行包发布，不属于已发布 beta.2 的历史内容，也不代表主线发布了贡献分支的 `0.6.4`。
+
+Main continues to prepare `0.6.0` with the current build identity `0.6.0-beta.2`. The changes below are not yet included in a new published package, do not amend the historical beta.2 release, and do not establish a mainline `0.6.4` release.
+
+### 新功能 / Features
+
+- **快捷与批量标签**：右键菜单可直接添加、选择或移除标签；批量编辑展示共同标签、保留每条 Prompt 的其他标签，并反馈部分保存失败。标签管理器增加使用次数、排序和按标签查看 Prompt 的入口
+  - **Quick And Batch Tagging**: The context menu opens direct tag editing; batch edits show shared tags, preserve each Prompt's other tags, and report partial save failures. The tag manager adds usage counts, sorting, and a jump to matching Prompts
+- **多视图批量操作**：表格、卡片和画廊复用批量操作栏，提供收藏、移动文件夹、删除、标签和取消选择，并显示选中数量；画廊增加选择复选框
+  - **Multi-View Batch Actions**: Table, card, and gallery views share favorite, folder move, delete, tag, and clear-selection actions with selection counts; gallery cards add selection checkboxes
+- **启动位置与搜索入口**：支持默认位置、上次文件夹和固定文件夹启动模式，恢复时显示反馈；Ctrl+F / Cmd+F 可聚焦搜索框
+  - **Startup Location And Search Access**: Default, last-folder, and pinned-folder startup modes include restoration feedback; Ctrl+F / Cmd+F focuses search
+- **编辑与空结果引导**：来源和备注改为可折叠区，文本 Prompt 的参考媒体移入主要编辑流程并显示现有大小限制；卡片、表格和画廊的空状态提供新建或清除筛选入口
+  - **Editor And Empty-State Guidance**: Source and notes become collapsible sections, text Prompt reference media moves into the main edit flow with existing size-limit hints, and empty card/table/gallery views offer creation or filter-reset actions
+- **窗口级备份入口与说明**：拖入备份文件进入既有导入预览与确认流程；设置页增加可折叠的备份、迁移和回滚步骤说明，不新增自动回滚或备份格式
+  - **Window-Wide Backup Access And Guidance**: Dropped backups enter the existing import preview and confirmation flow; settings add collapsible backup, migration, and rollback instructions without adding automatic rollback or new backup formats
+
+### 问题修复 / Fixes
+
+- **多词全文搜索**：空格分隔的搜索词按 AND 匹配，允许分别命中标题和正文，不再要求整串词连续出现，并保留特殊字符转义
+  - **Multi-Term Full-Text Search**: Whitespace-separated terms use AND matching across title and body instead of requiring one contiguous phrase, while preserving special-character escaping
+- **Prompt 层级与文件夹一致性**：顶栏新建不再自动成为选中节点的子项；移动节点到新父级时，整棵子树采用父级文件夹；选中或重复选中节点会展开自身及祖先并收起其他父分支
+  - **Prompt Hierarchy And Folder Consistency**: Top-bar creation no longer silently attaches to the selected node; moving a node under a new parent adopts that parent's folder for its subtree; selecting or reselecting a node expands its path and collapses other parent branches
+- **安全错误文案本地化**：主密码相关已知错误映射为本地化提示，未知错误显示通用信息并保留诊断日志，不改变密码或加密策略
+  - **Localized Security Errors**: Known master-password failures map to localized messages; unknown failures retain diagnostic logs while displaying generic copy, without changing password or encryption policy
+- **Web 文件夹保存**：创建或更换文件夹时，未显式提供的可见性从目标文件夹推导并持久化，保留显式冲突校验与管理员权限边界
+  - **Web Folder Saves**: Omitted visibility is inferred from the target folder and persisted on creation or folder changes, preserving explicit mismatch validation and administrator permission boundaries
+
+### 维护 / Maintenance
+
+- **主线版本与发布边界**：整合贡献改动时保留 `0.6.0` 版本线、主线签名与完整产物门禁，以及 Rules 只恢复管理副本的既有行为；默认下载仍指向已发布稳定版，不引入贡献分支专用发布脚本或旧 IndexedDB 路径
+  - **Mainline Version And Release Boundaries**: Contribution integration retains the `0.6.0` line, mainline signing and complete-asset gates, and managed-copy-only Rules restore. Default downloads remain on the published stable release; fork-specific release scripts and obsolete IndexedDB paths are not introduced
+
 ## [0.6.0-beta.2] - 2026-09-03
 
 ### 新功能 / Features

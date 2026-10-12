@@ -11,6 +11,7 @@ Un espace de travail local-first pour les prompts, les skills et les assets de c
 [![Downloads](https://img.shields.io/github/downloads/legeling/PromptHub/total?style=for-the-badge&logo=github&color=blue)](https://github.com/legeling/PromptHub/releases)
 [![Version](https://img.shields.io/badge/release-v0.5.9_stable-22C55E?style=for-the-badge)](https://github.com/legeling/PromptHub/releases/latest)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](../LICENSE)
+[![Développement](https://img.shields.io/badge/development-v0.6.0--beta.2-8B5CF6?style=for-the-badge)](../CHANGELOG.md#unreleased)
 
   <br/>
 
@@ -330,6 +331,17 @@ Options globales courantes :
 ## Journal des modifications
 
 Journal complet : **[CHANGELOG.md](../CHANGELOG.md)**
+
+### v0.6.0 (en développement, non publié)
+
+La version du code reste `0.6.0-beta.2`. Ces améliorations sont intégrées à la branche principale sans être publiées dans un nouveau paquet ; le téléchargement beta.2 publié ne contient pas toutes les modifications ultérieures.
+
+- Édition des tags depuis le menu contextuel, tags par lot, compteurs d'utilisation, tri et accès au filtre par tag
+- Actions par lot de favoris, déplacement, suppression et tags dans les vues tableau/cartes/galerie, restauration du dossier initial et recherche Ctrl+F / Cmd+F
+- Sources/notes repliables, accès direct aux médias de référence, remise à zéro des filtres sans résultat et erreurs de sécurité localisées
+- Recherche AND à plusieurs termes, création à la racine depuis la barre supérieure, dossiers cohérents lors du déplacement de sous-arbres et expansion liée à la sélection
+- Aperçu d'import de sauvegarde par glisser-déposer dans la fenêtre, guide de migration et visibilité des dossiers Web déduite avec les contrôles de permissions existants
+- La ligne de versions reste `0.6.0` ; téléchargements stables, aperçus publiés et développement restent distincts sans reprendre l'identité `0.6.4` de la branche contributrice
 
 ### v0.6.0-beta.2 (2026-09-03, aperçu)
 

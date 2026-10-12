@@ -11,6 +11,7 @@
 [![Downloads](https://img.shields.io/github/downloads/legeling/PromptHub/total?style=for-the-badge&logo=github&color=blue)](https://github.com/legeling/PromptHub/releases)
 [![Version](https://img.shields.io/badge/release-v0.5.9_stable-22C55E?style=for-the-badge)](https://github.com/legeling/PromptHub/releases/latest)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](../LICENSE)
+[![開發版本](https://img.shields.io/badge/development-v0.6.0--beta.2-8B5CF6?style=for-the-badge)](../CHANGELOG.md#unreleased)
 
   <br/>
 
@@ -330,6 +331,17 @@ Skill 匯入、版本快照與分發會統一套用內建忽略規則和根目�
 ## 更新日誌
 
 完整版本說明：**[CHANGELOG.md](../CHANGELOG.md)**
+
+### v0.6.0（開發中，尚未發布）
+
+目前原始碼版本仍為 `0.6.0-beta.2`。以下是合入主線但尚未隨新套件發布的改進；已發布的 beta.2 下載不包含之後的全部修改。
+
+- 右鍵快捷標籤、批次標籤，以及標籤使用次數、排序與篩選跳轉
+- 表格、卡片、圖庫的批次收藏、移動、刪除與標籤操作；啟動資料夾還原及 Ctrl+F / Cmd+F 搜尋
+- 來源與備註摺疊、參考媒體入口前移、空結果清除篩選，以及本地化安全錯誤提示
+- 多詞 AND 全文搜尋、頂欄建立根節點、移動子樹的資料夾一致性與選取驅動的樹展開
+- 全域拖入備份預覽、備份遷移指引，以及保留權限檢查的 Web 資料夾可見性推導
+- 版本繼續使用 `0.6.0` 發布線；穩定下載、已發布預覽與開發改動分開標示，不沿用貢獻分支的 `0.6.4` 發布身份
 
 ### v0.6.0-beta.2（2026-09-03，預覽版）
 

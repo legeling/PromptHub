@@ -13,6 +13,7 @@
 [![下载量](https://img.shields.io/github/downloads/legeling/PromptHub/total?style=for-the-badge&logo=github&color=blue)](https://github.com/legeling/PromptHub/releases)
 [![版本](https://img.shields.io/badge/release-v0.5.9_stable-22C55E?style=for-the-badge)](https://github.com/legeling/PromptHub/releases/latest)
 [![许可证](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](./LICENSE)
+[![开发版本](https://img.shields.io/badge/development-v0.6.0--beta.2-8B5CF6?style=for-the-badge)](./CHANGELOG.md#unreleased)
 
   <br/>
 
@@ -366,6 +367,17 @@ Skill 导入、版本快照和分发统一应用内置忽略规则与根目录 `
 ## 更新日志
 
 完整版本说明：**[CHANGELOG.md](./CHANGELOG.md)**
+
+### v0.6.0（开发中，尚未发布）
+
+当前源码版本仍为 `0.6.0-beta.2`。以下是合入主线但尚未随新发行包发布的改进；已发布的 beta.2 下载不包含此后的全部修改。
+
+- 右键快捷标签、批量标签，以及标签使用次数、排序和筛选跳转
+- 表格、卡片、画廊的批量收藏、移动、删除和标签操作；启动文件夹恢复与 Ctrl+F / Cmd+F 搜索
+- 来源与备注折叠、参考媒体入口前移、空结果清除筛选，以及本地化安全错误提示
+- 多词 AND 全文搜索、顶栏新建根节点、移动子树的文件夹一致性与选择驱动的树展开
+- 全局拖入备份预览、备份迁移指引，以及保留权限校验的 Web 文件夹可见性推导
+- 版本继续使用 `0.6.0` 发布线；稳定下载、已发布预览和当前开发改动分别标注，不沿用贡献分支的 `0.6.4` 发布身份
 
 ### v0.6.0-beta.2（2026-09-03，预览版）
 

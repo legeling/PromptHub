@@ -11,6 +11,7 @@
 [![Downloads](https://img.shields.io/github/downloads/legeling/PromptHub/total?style=for-the-badge&logo=github&color=blue)](https://github.com/legeling/PromptHub/releases)
 [![Version](https://img.shields.io/badge/release-v0.5.9_stable-22C55E?style=for-the-badge)](https://github.com/legeling/PromptHub/releases/latest)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](../LICENSE)
+[![開発版](https://img.shields.io/badge/development-v0.6.0--beta.2-8B5CF6?style=for-the-badge)](../CHANGELOG.md#unreleased)
 
   <br/>
 
@@ -330,6 +331,17 @@ Skill のインポート、バージョンスナップショット、配布で�
 ## 変更履歴
 
 完全な変更履歴: **[CHANGELOG.md](../CHANGELOG.md)**
+
+### v0.6.0（開発中・未公開）
+
+ソースのバージョンは引き続き `0.6.0-beta.2` です。以下は主線に統合済みですが新しい配布パッケージには未収録で、公開済み beta.2 には以後の変更すべてが含まれるわけではありません。
+
+- 右クリックからのタグ編集、一括タグ操作、使用件数・並べ替え・タグ絞り込みへの移動
+- 表・カード・ギャラリーの一括お気に入り、移動、削除、タグ操作、起動フォルダーの復元と Ctrl+F / Cmd+F 検索
+- 折りたためる出典・メモ、参照メディアの入口改善、空結果のフィルター解除、安全エラーのローカライズ
+- 複数語の AND 全文検索、トップバーからのルート作成、サブツリー移動時のフォルダー統一、選択に応じたツリー展開
+- ウィンドウ全体でのバックアップ取り込みプレビュー、移行ガイド、権限検証を維持した Web フォルダー可視性の推論
+- リリース系列は `0.6.0` のままです。安定版、公開プレビュー、開発中の変更を区別し、貢献ブランチの `0.6.4` を主線の公開版とは扱いません
 
 ### v0.6.0-beta.2（2026-09-03、プレビュー）
 

@@ -11,6 +11,7 @@ Ein Local-First-Arbeitsbereich für Prompts, Skills und KI-Coding-Assets.
 [![Downloads](https://img.shields.io/github/downloads/legeling/PromptHub/total?style=for-the-badge&logo=github&color=blue)](https://github.com/legeling/PromptHub/releases)
 [![Version](https://img.shields.io/badge/release-v0.5.9_stable-22C55E?style=for-the-badge)](https://github.com/legeling/PromptHub/releases/latest)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge)](../LICENSE)
+[![Entwicklung](https://img.shields.io/badge/development-v0.6.0--beta.2-8B5CF6?style=for-the-badge)](../CHANGELOG.md#unreleased)
 
   <br/>
 
@@ -330,6 +331,17 @@ Häufige globale Flags:
 ## Änderungsprotokoll
 
 Vollständiges Changelog: **[CHANGELOG.md](../CHANGELOG.md)**
+
+### v0.6.0 (in Entwicklung, unveröffentlicht)
+
+Die Quellversion bleibt `0.6.0-beta.2`. Diese Änderungen sind im Hauptzweig integriert, aber noch nicht als neues Paket veröffentlicht; der veröffentlichte beta.2-Download enthält nicht alle späteren Änderungen.
+
+- Tags direkt im Kontextmenü, Stapel-Tags sowie Nutzungszahlen, Sortierung und Sprünge zum Tag-Filter
+- Stapelaktionen für Favoriten, Verschieben, Löschen und Tags in Tabellen-, Karten- und Galerieansichten, Startordner-Wiederherstellung und Ctrl+F / Cmd+F-Suche
+- Einklappbare Quellen/Notizen, leichter zugängliche Referenzmedien, Filter-Reset bei leeren Ergebnissen und lokalisierte Sicherheitsfehler
+- AND-Volltextsuche mit mehreren Begriffen, Root-Erstellung über die obere Leiste, konsistente Ordner beim Verschieben von Teilbäumen und auswahlgesteuerte Baumexpansion
+- Fensterweite Backup-Importvorschau, Migrationshinweise und Web-Ordnersichtbarkeit mit unveränderten Berechtigungsprüfungen
+- Die Release-Linie bleibt `0.6.0`; stabile Downloads, veröffentlichte Previews und Entwicklung bleiben getrennt, statt die `0.6.4`-Identität des Beitragszweigs zu übernehmen
 
 ### v0.6.0-beta.2 (2026-09-03, Preview)
 
