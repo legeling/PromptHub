@@ -29,6 +29,7 @@ import type {
 } from "@prompthub/shared/types";
 
 import { RuleDB } from "./database";
+import { getProjectRuleManagedDirectory } from "./canonical-rule-db";
 import { createRuleBackupImporter } from "./rules-workspace-import";
 export type {
   ExtraGlobalRuleTemplate,
@@ -64,7 +65,6 @@ import {
   replaceDirectoryAtomic,
   resolveDisplayedRuleFileName,
   ruleGroupForKnownId,
-  slugify,
   writeJsonFile,
   writeTextFileAtomic,
   type ExtraGlobalRuleTemplate,
@@ -1244,11 +1244,12 @@ export function createRulesWorkspaceService(
 
     const projectId = input.id ?? crypto.randomUUID();
     assertSafeProjectId(projectId);
-    const ruleId = `project:${projectId}` as RuleFileId;
-    const dirName = `${slugify(name)}__${projectId}`;
+    const ruleId: ProjectRuleId = `project:${projectId}`;
+    if (existingProjectMeta.some((meta) => meta?.id === ruleId)) {
+      throw new Error("Rule project id already exists");
+    }
     const managedPath = path.join(
-      getRuleProjectsRoot(),
-      dirName,
+      getProjectRuleManagedDirectory(getRuleProjectsRoot(), projectId),
       template.canonicalFileName,
     );
     const now = new Date().toISOString();
@@ -1315,32 +1316,9 @@ export function createRulesWorkspaceService(
 
   async function removeProjectRule(projectId: string): Promise<void> {
     assertStorageAvailable();
+    assertSafeProjectId(projectId);
     const ruleId: ProjectRuleId = `project:${projectId}`;
-    const records = await Promise.all(
-      (await listProjectMetaPaths()).map(async (metaPath) => ({
-        meta: await readStoredMeta(metaPath),
-        metaPath,
-      })),
-    );
-    const record = records.find(({ meta }) => meta?.id === ruleId);
-    if (!record?.meta) {
-      return;
-    }
-    const managedDir = path.dirname(record.metaPath);
-    const expectedManagedPath = path.join(managedDir, "AGENTS.md");
-    if (
-      record.meta.scope !== "project" ||
-      !pathsEqual(record.meta.managedPath, expectedManagedPath)
-    ) {
-      throw new Error(`Unsafe managed rule path for ${ruleId}`);
-    }
-
-    await fsp.rm(managedDir, { recursive: true, force: true });
-    await fsp.rm(getRuleVersionsDir(record.meta.id), {
-      recursive: true,
-      force: true,
-    });
-    getRuleDb().delete(record.meta.id);
+    getRuleDb().delete(ruleId);
   }
 
   async function removeMissingProjectRules(

@@ -4,6 +4,8 @@ import fsp from "fs/promises";
 import path from "path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createRulesWorkspaceService } from "@prompthub/core";
+import { SKILL_PLATFORMS } from "@prompthub/shared/constants/platforms";
+import { invalidateCustomPathsCache } from "../../../src/main/services/skill-installer-utils";
 import type { RuleBackupRecord } from "@prompthub/shared/types";
 
 import {
@@ -32,12 +34,26 @@ describe("rules workspace backup import", () => {
       path.join(process.env.TMPDIR || "/tmp", "prompthub-rules-import-"),
     );
     configureRuntimePaths({ userDataPath: tempDir });
-    initDatabase();
+    initDatabase()
+      .prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)")
+      .run(
+        "builtinAgentOverrides",
+        JSON.stringify(
+          Object.fromEntries(
+            SKILL_PLATFORMS.map((platform) => [
+              platform.id,
+              { rootPath: path.join(tempDir, "platforms", platform.id) },
+            ]),
+          ),
+        ),
+      );
+    invalidateCustomPathsCache();
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
     closeDatabase();
+    invalidateCustomPathsCache();
     resetRuntimePaths();
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
@@ -204,12 +220,7 @@ describe("rules workspace backup import", () => {
     await saveRuleContent("project:history-site", "# previous");
     fs.writeFileSync(targetPath, "# external", "utf8");
     fs.writeFileSync(
-      path.join(
-        getRulesDir(),
-        "projects",
-        "history-site__history-site",
-        "AGENTS.md",
-      ),
+      path.join(getRulesDir(), "projects", "history-site", "AGENTS.md"),
       "# pre-import-only",
       "utf8",
     );
@@ -506,9 +517,7 @@ describe("rules workspace backup import", () => {
       new RuleDB(initDatabase()).getById("project:stale-site"),
     ).not.toBeNull();
     expect(
-      fs.existsSync(
-        path.join(getRulesDir(), "projects", "broken-site__broken-site"),
-      ),
+      fs.existsSync(path.join(getRulesDir(), "projects", "broken-site")),
     ).toBe(false);
   });
 
@@ -604,12 +613,7 @@ describe("rules workspace backup import", () => {
     ]);
     expect(
       fs.existsSync(
-        path.join(
-          getRulesDir(),
-          "projects",
-          "cursor-imported__cursor-import",
-          "prompthub.mdc",
-        ),
+        path.join(getRulesDir(), "projects", "cursor-import", "prompthub.mdc"),
       ),
     ).toBe(true);
     expect(fs.existsSync(cursorTarget)).toBe(false);
@@ -674,13 +678,7 @@ describe("rules workspace backup import", () => {
       ]),
     ).rejects.toThrow("simulated new project failure");
     expect(
-      fs.existsSync(
-        path.join(
-          getRulesDir(),
-          "projects",
-          "new-failure-site__new-failure-site",
-        ),
-      ),
+      fs.existsSync(path.join(getRulesDir(), "projects", "new-failure-site")),
     ).toBe(false);
     expect(
       new RuleDB(initDatabase()).getById("project:new-failure-site"),
@@ -712,11 +710,7 @@ describe("rules workspace backup import", () => {
     ).rejects.toThrow("simulated initial publication failure");
     expect(
       fs.existsSync(
-        path.join(
-          getRulesDir(),
-          "projects",
-          "initial-failure-site__initial-failure-site",
-        ),
+        path.join(getRulesDir(), "projects", "initial-failure-site"),
       ),
     ).toBe(false);
     expect(

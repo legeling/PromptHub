@@ -215,9 +215,11 @@ function validateRule(value: unknown): CanonicalRuleResource {
 }
 
 function portableRule(input: RuleFileContent): CanonicalRuleResource {
+  const targetPath = input.targetPath ?? input.path;
   const projectPlacement = input.id.startsWith("project:")
     ? {
-        targetPath: input.targetPath ?? input.path,
+        // Detached DB Rules use an empty path; bundles omit deployment placement.
+        targetPath: targetPath === "" ? undefined : targetPath,
         projectRootPath: input.projectRootPath ?? null,
       }
     : {};

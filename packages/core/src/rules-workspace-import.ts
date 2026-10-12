@@ -10,14 +10,13 @@ import type {
 } from "@prompthub/shared/types";
 
 import type { RuleDB } from "./database";
+import { getProjectRuleManagedDirectory } from "./canonical-rule-db";
 import {
   RULE_VERSION_LIMIT,
-  assertSafeProjectId,
   encodeRuleId,
   fileExists,
   hashContent,
   isProjectRuleFileId,
-  slugify,
   writeJsonFile,
   writeTextFileAtomic,
   type ImportRuleBackupRecordsOptions,
@@ -370,15 +369,7 @@ function importedProjectManagedDirectory(
   record: RuleBackupRecord,
 ): string {
   const projectId = record.id.slice("project:".length);
-  assertSafeProjectId(projectId);
-  const name =
-    record.platformId === "cursor"
-      ? record.platformName.replace(/ \/ Cursor$/u, "")
-      : record.platformName;
-  return path.join(
-    deps.getRuleProjectsRoot(),
-    `${slugify(name)}__${projectId}`,
-  );
+  return getProjectRuleManagedDirectory(deps.getRuleProjectsRoot(), projectId);
 }
 
 async function removeFailedImportedProject(

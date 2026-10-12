@@ -60,6 +60,42 @@ afterEach(() => {
 });
 
 describe("Rule canonical resource schema", () => {
+  it.each(["", "/former/project/AGENTS.md"])(
+    "preserves a detached project Rule without restoring the former path %s",
+    (formerPath) => {
+      const input: RuleFileContent = {
+        ...rule(),
+        id: "project:detached",
+        path: formerPath,
+        targetPath: "",
+        projectRootPath: null,
+      };
+      const bundlePath = path.join(root(), "detached-rule");
+      materializeRuleResourceBundle({ bundlePath, rule: input });
+      const restored = readRuleResourceBundle(bundlePath).rule;
+      expect(restored.targetPath).toBeUndefined();
+      expect(restored.projectRootPath).toBeUndefined();
+      expect(restored.content).toBe(input.content);
+      expect(restored.versions).toEqual(input.versions);
+      expect(restored.name).toBe("AGENTS.md");
+    },
+  );
+
+  it("continues rejecting control characters in a project Rule deployment path", () => {
+    const bundlePath = path.join(root(), "invalid-project-rule");
+    expect(() =>
+      materializeRuleResourceBundle({
+        bundlePath,
+        rule: {
+          ...rule(),
+          id: "project:invalid",
+          targetPath: "/project/\u0000AGENTS.md",
+        },
+      }),
+    ).toThrow(/targetPath is invalid/);
+    expect(fs.existsSync(bundlePath)).toBe(false);
+  });
+
   it("publishes a new resource revision when Rule history advances", () => {
     const base = root();
     const bundlePath = path.join(base, "rule");

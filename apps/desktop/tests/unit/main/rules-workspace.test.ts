@@ -3,7 +3,10 @@ import fsp from "fs/promises";
 import path from "path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createRulesWorkspaceService } from "@prompthub/core";
-import { getPlatformById } from "@prompthub/shared/constants/platforms";
+import {
+  getPlatformById,
+  SKILL_PLATFORMS,
+} from "@prompthub/shared/constants/platforms";
 
 import {
   closeDatabase,
@@ -26,7 +29,10 @@ import {
   saveRuleContent,
   scanRuleDescriptors,
 } from "../../../src/main/services/rules-workspace";
-import { getPlatformGlobalRulePath } from "../../../src/main/services/skill-installer-utils";
+import {
+  getPlatformGlobalRulePath,
+  invalidateCustomPathsCache,
+} from "../../../src/main/services/skill-installer-utils";
 
 describe("rules workspace storage", () => {
   let tempDir: string;
@@ -36,12 +42,26 @@ describe("rules workspace storage", () => {
       path.join(process.env.TMPDIR || "/tmp", "prompthub-rules-"),
     );
     configureRuntimePaths({ userDataPath: tempDir });
-    initDatabase();
+    initDatabase()
+      .prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)")
+      .run(
+        "builtinAgentOverrides",
+        JSON.stringify(
+          Object.fromEntries(
+            SKILL_PLATFORMS.map((platform) => [
+              platform.id,
+              { rootPath: path.join(tempDir, "platforms", platform.id) },
+            ]),
+          ),
+        ),
+      );
+    invalidateCustomPathsCache();
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
     closeDatabase();
+    invalidateCustomPathsCache();
     resetRuntimePaths();
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
@@ -101,7 +121,7 @@ describe("rules workspace storage", () => {
     const managedPath = path.join(
       getRulesDir(),
       "projects",
-      "docs-site__docs-site",
+      "docs-site",
       "AGENTS.md",
     );
     expect(fs.existsSync(managedPath)).toBe(true);
@@ -214,12 +234,7 @@ describe("rules workspace storage", () => {
     );
     expect(
       fs.readFileSync(
-        path.join(
-          getRulesDir(),
-          "projects",
-          "missing-site__missing-site",
-          "AGENTS.md",
-        ),
+        path.join(getRulesDir(), "projects", "missing-site", "AGENTS.md"),
         "utf8",
       ),
     ).toBe("# Recoverable project rule");
@@ -302,7 +317,7 @@ describe("rules workspace storage", () => {
     const managedPath = path.join(
       getRulesDir(),
       "projects",
-      "docs-site__docs-site",
+      "docs-site",
       "AGENTS.md",
     );
     const originalWriteFile = fsp.writeFile.bind(fsp);
@@ -376,7 +391,7 @@ describe("rules workspace storage", () => {
     const managedPath = path.join(
       getRulesDir(),
       "projects",
-      "docs-site__docs-site",
+      "docs-site",
       "AGENTS.md",
     );
     expect(fs.readFileSync(managedPath, "utf8")).toBe(
@@ -430,9 +445,7 @@ describe("rules workspace storage", () => {
     await removeProjectRule("docs-site");
 
     expect(
-      fs.existsSync(
-        path.join(getRulesDir(), "projects", "docs-site__docs-site"),
-      ),
+      fs.existsSync(path.join(getRulesDir(), "projects", "docs-site")),
     ).toBe(false);
     expect(
       fs.existsSync(
@@ -556,12 +569,14 @@ describe("rules workspace storage", () => {
       fs.rmSync(path.join(projectRoot, "AGENTS.md"));
     }
 
-    const originalRm = fsp.rm.bind(fsp);
-    vi.spyOn(fsp, "rm").mockImplementation(async (target, options) => {
-      if (String(target).includes("cleanup-fails__cleanup-fails")) {
+    const originalRename = fs.renameSync.bind(fs);
+    vi.spyOn(fs, "renameSync").mockImplementation((target, destination) => {
+      if (
+        String(target) === path.join(getRulesDir(), "projects", "cleanup-fails")
+      ) {
         throw new Error("simulated cleanup failure");
       }
-      return originalRm(target, options);
+      return originalRename(target, destination);
     });
 
     await expect(

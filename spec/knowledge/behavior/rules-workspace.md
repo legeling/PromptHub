@@ -105,9 +105,21 @@
   是当前正文，`rule.json` 是逻辑元数据与外部 placement，`versions/` 保存版本正文。
 - `cache/rules-workspace/` 只用于运行期兼容工作区和索引 hydration，可以删除并从 canonical bundle 重建。
 - `prompthub.db` 仅承担 Rules 的索引/状态缓存角色，业务正文不应只存在于数据库中
-- 项目规则的 `targetPath` 与 `projectRootPath` 必须随 canonical Rule 文件保存，
+- 已绑定项目规则的 `targetPath` 与 `projectRootPath` 必须随 canonical Rule 文件保存，
   使删除或迁移 SQLite 后仍能恢复项目绑定；全局规则路径由当前设备 agent
   配置派生，`managedPath` 和 `syncStatus` 是可重建状态。
+- portable 恢复的未部署项目规则保留正文、文件名和完整历史；当前 DB 的空
+  `targetPath` 在 bundle 输入转换处归一为省略字段，不重新采用源设备的旧路径。
+  非空路径仍执行现有校验。以上描述当前恢复格式；SQLite 权威转换仍按
+  [foundation](../../changes/active/foundation-integrity-redesign/specs/foundation/spec.md#fr-foundation-003-data-ownership-and-invariants)
+  推进，不能据此将旧 catalog 重建模式视为目标已完成。
+- Hydrated 项目 `_rule.json` 使用 `targetPath: ""` 与
+  `projectRootPath: null` 表示明确未部署状态。启动读取必须保留该配对和
+  项目身份，并在找到它时结束旧绑定扫描，不恢复之前设备的部署路径。
+  当前规范受管目录的绑定优先于历史目录，不由文件枚举顺序决定部署状态。
+  非字符串、null byte、空目标配非空项目根仍须拒绝；正文、历史、列表和
+  删除行为沿用当前合同。此修复不改变 bundle schema 或增加迁移，旧代码
+  回退后仍保全 bundle，但可能再次拒绝第二次启动；升级后可正常重试。
 - 内置全局规则在读取时以当前设备平台注册表和 agent override 重新派生外部目标，
   不得把 canonical `rule.md` 或旧设备路径当作部署目标。
 - 旧版 settings 里的 `ruleProjects` 只作为迁移来源，不再是长期真相源
@@ -152,6 +164,27 @@
   `project:` IDs whose targets are still absent. It deletes PromptHub-managed
   rule/version data and the matching RuleDB row, never the external project
   root or target path, and reports removed, skipped, and failed IDs.
+- Project workspace creation, canonical hydration and import cleanup share
+  `getProjectRuleManagedDirectory`: the cache directory is keyed by stable
+  project ID, never by its display name. Workspace and Cursor project rules
+  retain their declared `AGENTS.md` or `prompthub.mdc` filename.
+  Reusing an existing project ID for another target is rejected before any
+  managed body, binding, version or external file is overwritten.
+- Project deletion validates every `_rule.json` binding with the requested
+  Rule ID before any mutation. The bound directory must contain the declared
+  managed path and a supported project filename. All verified current and
+  historical cache bindings, versions and the canonical bundle are removed in
+  the existing journaled publication transaction; a pre-commit failure restores
+  the files and database record. Matching directory names alone never authorize
+  removal. External targets and bindings to other Rule IDs remain untouched;
+  repeated removal is harmless and scan/reopen must not restore a deleted Rule.
+- This correction changes rebuildable workspace paths only, not the canonical
+  Rule schema or the foundation redesign's SQLite ownership requirement.
+  Existing name-prefixed cache bindings remain discoverable by their metadata
+  until explicit removal; they are not a second path-construction convention.
+  Rollback to earlier code preserves canonical bodies and versions but can
+  recreate the duplicate-cache defect; upgrading again and removing the selected
+  Rule cleans its validated bindings without deleting the external file.
 - legacy cached-list API 必须直接委托给一次有界文件扫描并重建 SQLite 投影，
   不得从 DB 复制另一套可见性或路径判定；用户不需要先点击 Rescan 才能看到
   文件持有的规则。
@@ -186,6 +219,12 @@
 
 - `rules:rewrite` IPC 成功返回时，必须同时包含重写后的 `content` 与非空的可读 `summary` 字段。
 - renderer 侧 Rules 工作台会把该 `summary` 作为当前 AI 草稿状态文案展示；成功路径不应依赖 `null`/空字符串回退值来补齐摘要。
+- Web 的 `/api/rules/rewrite` 和 `/:id/rewrite` 复用 Core 的提示词、协议序列化与响应解析，
+  只返回供应商生成的草稿，不保存规则正文或版本。缺少有效 AI 配置返回 422；供应商、网络
+  或空正文错误返回通用错误，不得追加指令注释后宣称 AI 成功。
+- Web 重写通过现有 `remote-http` 执行 HTTPS、地址检查、重定向与响应边界；Core 只传递
+  共享 AI deadline，由实际运输层单独执行。CLI 默认运输仍使用有 deadline 的 fetch，
+  不因 Web 注入运输增加第二层 timer、重试或放宽 SSRF 约束。
 
 ### 14. Conflict Comparison Scrolling
 

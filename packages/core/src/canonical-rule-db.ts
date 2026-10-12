@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { RuleDB as BaseRuleDB, type DatabaseAdapter } from "@prompthub/db";
+import { PROJECT_RULE_FILE_TEMPLATES } from "@prompthub/shared/constants/rules";
 import type {
   RuleFileContent,
   RuleFileId,
@@ -14,7 +15,6 @@ import {
   publishCanonicalEntries,
   recoverCanonicalEntryPublication,
   isCanonicalCommitOutcomeError,
-  CanonicalPostCommitError,
 } from "./canonical-entry-publication";
 import { encodeCanonicalResourceDirectory } from "./canonical-resource-path";
 import {
@@ -25,6 +25,9 @@ import {
   RULE_META_FILE_NAME,
   RULE_VERSION_INDEX_FILE_NAME,
   encodeRuleId,
+  assertSafeProjectId,
+  isRecord,
+  pathsEqual,
   ruleGroupForKnownId,
   type StoredRuleMeta,
   type StoredRuleVersionIndexEntry,
@@ -54,12 +57,21 @@ function bundlePath(ruleId: string): string {
   );
 }
 
+export function getProjectRuleManagedDirectory(
+  projectsRoot: string,
+  projectId: string,
+): string {
+  assertSafeProjectId(projectId);
+  return path.join(projectsRoot, encodeCanonicalResourceDirectory(projectId));
+}
+
 function managedPath(record: RuleRecord): string {
   return record.scope === "project"
     ? path.join(
-        getRulesDir(),
-        "projects",
-        encodeCanonicalResourceDirectory(record.id.slice("project:".length)),
+        getProjectRuleManagedDirectory(
+          path.join(getRulesDir(), "projects"),
+          record.id.slice("project:".length),
+        ),
         record.canonicalFileName,
       )
     : path.join(
@@ -74,10 +86,7 @@ function versionDirectory(ruleId: RuleFileId): string {
   return path.join(getRulesDir(), ".versions", encodeRuleId(ruleId));
 }
 
-function readProjectPlacement(
-  metaPath: string,
-  ruleId: string,
-): { targetPath: string; projectRootPath: string | null } | null {
+function readProjectBinding(metaPath: string): Record<string, unknown> | null {
   const stats = fs.lstatSync(metaPath);
   if (
     !stats.isFile() ||
@@ -94,25 +103,79 @@ function readProjectPlacement(
       cause: error,
     });
   }
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  const meta = value as Partial<StoredRuleMeta>;
+  return isRecord(value) ? value : null;
+}
+
+function readProjectPlacement(
+  metaPath: string,
+  ruleId: string,
+): { targetPath: string; projectRootPath: string | null } | null {
+  const meta = readProjectBinding(metaPath);
+  if (!meta) return null;
   if (meta.id !== ruleId) return null;
+  const targetPath = meta.targetPath;
+  const projectRootPath = meta.projectRootPath ?? null;
   if (
-    typeof meta.targetPath !== "string" ||
-    meta.targetPath.length === 0 ||
-    meta.targetPath.includes("\0") ||
-    (meta.projectRootPath !== null &&
-      meta.projectRootPath !== undefined &&
-      (typeof meta.projectRootPath !== "string" ||
-        meta.projectRootPath.length === 0 ||
-        meta.projectRootPath.includes("\0")))
+    typeof targetPath !== "string" ||
+    (targetPath.length === 0 && projectRootPath !== null) ||
+    targetPath.includes("\0") ||
+    (projectRootPath !== null &&
+      (typeof projectRootPath !== "string" ||
+        projectRootPath.length === 0 ||
+        projectRootPath.includes("\0")))
   ) {
     throw new Error("Canonical Rule project binding is invalid");
   }
   return {
-    targetPath: meta.targetPath,
-    projectRootPath: meta.projectRootPath ?? null,
+    targetPath,
+    projectRootPath:
+      typeof projectRootPath === "string" ? projectRootPath : null,
   };
+}
+
+function projectBindingPaths(): string[] {
+  const projectsRoot = path.join(getRulesDir(), "projects");
+  if (!fs.existsSync(projectsRoot)) {
+    return [];
+  }
+  const rootStats = fs.lstatSync(projectsRoot);
+  if (!rootStats.isDirectory() || rootStats.isSymbolicLink()) {
+    throw new Error("Canonical Rule project workspace path is unsafe");
+  }
+  const entries = fs.readdirSync(projectsRoot, { withFileTypes: true });
+  if (entries.length > MAX_PROJECT_BINDINGS) {
+    throw new Error("Canonical Rule project binding limit exceeded");
+  }
+  return entries
+    .filter((entry) => entry.isDirectory() && !entry.isSymbolicLink())
+    .map((entry) => path.join(projectsRoot, entry.name, RULE_META_FILE_NAME))
+    .filter((metaPath) => fs.existsSync(metaPath));
+}
+
+function boundProjectDirectories(ruleId: string): string[] {
+  assertSafeProjectId(ruleId.slice("project:".length));
+  const directories: string[] = [];
+  for (const metaPath of projectBindingPaths()) {
+    const meta = readProjectBinding(metaPath);
+    if (meta?.id !== ruleId) continue;
+    const directory = path.dirname(metaPath);
+    if (
+      meta.scope !== "project" ||
+      typeof meta.canonicalFileName !== "string" ||
+      !Object.values(PROJECT_RULE_FILE_TEMPLATES).some(
+        (template) => template.canonicalFileName === meta.canonicalFileName,
+      ) ||
+      typeof meta.managedPath !== "string" ||
+      !pathsEqual(
+        meta.managedPath,
+        path.join(directory, meta.canonicalFileName),
+      )
+    ) {
+      throw new Error(`Unsafe managed rule path for ${ruleId}`);
+    }
+    directories.push(directory);
+  }
+  return directories;
 }
 
 function recoverProjectPlacement(record: RuleRecord): {
@@ -125,22 +188,20 @@ function recoverProjectPlacement(record: RuleRecord): {
       projectRootPath: record.projectRootPath ?? null,
     };
   }
-  const projectsRoot = path.join(getRulesDir(), "projects");
-  if (!fs.existsSync(projectsRoot)) {
-    return { targetPath: "", projectRootPath: null };
+  const metaPaths = projectBindingPaths();
+  const currentMetaPath = path.join(
+    path.dirname(managedPath(record)),
+    RULE_META_FILE_NAME,
+  );
+  const currentBinding = metaPaths.find((metaPath) =>
+    pathsEqual(metaPath, currentMetaPath),
+  );
+  if (currentBinding) {
+    const placement = readProjectPlacement(currentBinding, record.id);
+    if (placement) return placement;
   }
-  const rootStats = fs.lstatSync(projectsRoot);
-  if (!rootStats.isDirectory() || rootStats.isSymbolicLink()) {
-    throw new Error("Canonical Rule project workspace path is unsafe");
-  }
-  const entries = fs.readdirSync(projectsRoot, { withFileTypes: true });
-  if (entries.length > MAX_PROJECT_BINDINGS) {
-    throw new Error("Canonical Rule project binding limit exceeded");
-  }
-  for (const entry of entries) {
-    if (!entry.isDirectory() || entry.isSymbolicLink()) continue;
-    const metaPath = path.join(projectsRoot, entry.name, RULE_META_FILE_NAME);
-    if (!fs.existsSync(metaPath)) continue;
+  for (const metaPath of metaPaths) {
+    if (metaPath === currentBinding) continue;
     const placement = readProjectPlacement(metaPath, record.id);
     if (placement) return placement;
   }
@@ -246,14 +307,18 @@ function publishRule(
   });
 }
 
-function deleteRuleBundle(ruleId: string): void {
-  recoverCanonicalEntryPublication(getUserDataPath(), OPERATION_KEY);
-  const targetPath = bundlePath(ruleId);
-  if (fs.existsSync(targetPath)) {
+function deleteRuleFiles(targetPaths: string[]): void {
+  const existingPaths = targetPaths.filter((targetPath) =>
+    fs.existsSync(targetPath),
+  );
+  if (existingPaths.length > 0) {
     publishCanonicalEntries({
       rootPath: getUserDataPath(),
       operationKey: OPERATION_KEY,
-      entries: [{ targetPath, delete: true }],
+      entries: existingPaths.map((targetPath) => ({
+        targetPath,
+        delete: true,
+      })),
     });
   }
 }
@@ -418,26 +483,24 @@ export class CanonicalRuleDB extends BaseRuleDB {
   }
 
   override delete(id: string): void {
-    if (!this.canonical()) return super.delete(id);
+    const canonical = this.canonical();
+    const project = id.startsWith("project:");
+    if (!canonical && !project) return super.delete(id);
+    recoverCanonicalEntryPublication(getUserDataPath(), OPERATION_KEY);
     const before = this.snapshot(id);
-    let published = false;
+    // Validate every binding before publication; directory names are not identities.
+    const targets = project ? boundProjectDirectories(id) : [];
+    if (!project && before.rule)
+      targets.push(path.dirname(managedPath(before.rule)));
+    if (canonical) targets.push(bundlePath(id));
+    if (before.rule) targets.push(versionDirectory(before.rule.id));
+    else if (project)
+      targets.push(versionDirectory(`project:${id.slice("project:".length)}`));
     try {
       super.delete(id);
-      deleteRuleBundle(id);
-      published = true;
-      if (before.rule)
-        fs.rmSync(path.dirname(managedPath(before.rule)), {
-          recursive: true,
-          force: true,
-        });
-      if (before.rule)
-        fs.rmSync(versionDirectory(before.rule.id), {
-          recursive: true,
-          force: true,
-        });
+      deleteRuleFiles(targets);
     } catch (error) {
       if (isCanonicalCommitOutcomeError(error)) throw error;
-      if (published) throw new CanonicalPostCommitError(`rule:${id}`, error);
       this.restore(before, id);
       throw error;
     }
