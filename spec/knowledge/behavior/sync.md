@@ -29,6 +29,7 @@
 - Web push/pull 失败路径必须走统一错误映射（当前为 `VALIDATION_ERROR`），并保留可诊断消息（例如连接失败 HTTP 状态、payload 非法原因）。
 - WebDAV 结构化备份必须保持可恢复：`data.json`、`manifest.json`、以及被 Prompt 引用的媒体文件必须一起参与 push/pull；仅 `404` 可视为远端备份缺失并触发 legacy fallback，其他 HTTP 失败必须原样暴露为诊断错误。
 - WebDAV structured push must upload referenced media before publishing `data.json` and `manifest.json`; pull must verify `data.json` and media bytes against the manifest hash/size before import can continue.
+- Desktop WebDAV responses must decode UTF-8 across HTTP chunks; a chunk boundary inside a multibyte character must not change backup text or its content hash.
 
 ### 1.2 Complete prompt snapshot
 
@@ -53,6 +54,29 @@
   tokens, proxy credentials, and provider/model secrets even when transport
   encryption is enabled. Restore merges portable settings while retaining the
   destination device's local credentials.
+- Desktop ZIP/logical restore first merges the selected scopes into a detached
+  candidate. The existing canonical projector rebuilds its file graph and
+  catalog; the same restore journal verifies both before publication and after
+  publication. Successful restore must survive normal initialization and reopen.
+  Candidate projection reads only candidate files, never native Agent targets.
+  Its catalog paths refer to the final destination root. Unselected domains,
+  operation/migration records, conversations, attachments and unreferenced media
+  remain intact; any failure restores the prior root through the same journal.
+  A Prompt selected without its history receives one snapshot at its existing
+  current version, preserving its text, variables, AI response and timestamp.
+  Selected histories must satisfy the current-version contract; restore does
+  not fabricate missing entries in a selected history. Independent marketplace
+  metadata retained by the scope merge survives candidate projection.
+- Selecting settings imports all four `AGENT_SETTING_KEYS` through the existing
+  `agent-settings-v1` import boundary, including when the target is nonempty.
+  Unselected settings, nonportable device configuration and local secret bytes
+  remain unchanged. Selecting MCP retains device bindings only for server IDs
+  present after restore; unselected MCP retains all bindings. Canonical MCP
+  bundles retain their complete history and secret references without decrypting
+  secrets. Missing local credentials remain unavailable, never replaced with a
+  redaction marker. Restore does not apply files to external Agent installations.
+  These checks cover the current canonical runtime, not the pending foundation
+  conversion to SQLite ownership.
 - WebDAV/S3 pull and download create a lazy local safety snapshot only after the
   remote payload has passed validation and immediately before mutation. Any
   subsequent restore failure triggers rollback; rollback failure is reported
@@ -143,3 +167,10 @@ When a user asks how desktop and self-hosted web interact:
 
 - the public operational guide remains in `docs/web-self-hosted.md`
 - deeper contracts and change history remain in `spec/`
+
+## Current Verification Gaps (2026-10-12)
+
+- Portable restore still fails the selected Agent settings equality check: normal startup adds Gemini to the imported disabled-platform list. The imported explicit setting remains the required result; the failing assertion is retained.
+- The combined nonempty Provider/Generation ZIP cases still fail stable mapping identity and generation artifact equality after reopen. Successful candidate publication does not establish complete restore fidelity.
+- Private-folder integration tests still demonstrate a usable encryption key in the persisted verifier and plaintext content in durable storage. Password rotation/reopen passing does not establish encrypted-at-rest protection.
+- Evidence: Desktop integration suites `release-acceptance-data-recovery-portable.test.ts` and `release-acceptance-data-recovery-privacy.test.ts`; isolated SQLite/filesystem and registered IPC, without GUI or release-package acceptance.

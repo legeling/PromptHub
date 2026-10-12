@@ -250,6 +250,50 @@
 
 ## 已确认差距与调用链证据
 
+### #216 renderer cache migration correction (2026-10-03)
+
+The Desktop legacy collector must extract only `customStoreSources` from each
+Skill/MCP/Plugin persisted store before invoking the existing Core migration.
+Remote catalog results, translation and view caches are not durable source
+configuration and must not consume its snapshot budget. Settings, device identity,
+recovery paths and IndexedDB migration status keep their existing conversion.
+Core remains responsible for source validation, secret handling, publication and
+the completion marker; this correction does not introduce a new storage owner,
+schema, migration version or alternate business implementation.
+
+Parsing is linear in legacy bytes, one store at a time; IPC carries only source
+configuration rather than another serialized copy of the catalog caches. Invalid
+JSON/store shapes fail with the affected key and no raw content in the error.
+Legacy storage is retained until publication and hydration succeed, so failure
+can be retried without clearing user data. Existing atomic publication rollback
+and marker idempotency remain unchanged.
+
+Regression: `apps/desktop/tests/unit/services/renderer-persistence.test.ts`
+exercises cache-heavy legacy input through the real Core file publisher, reopen,
+malformed stores, and publication-failure retry. The Electron transport is replaced
+in the renderer fixture; Core publication and reopened configuration files are real.
+It does not establish the reporter's complete historical macOS profile upgrade.
+The cache/reopen test stays sequential beyond 50 lines to keep fixture creation,
+the original rejection, migration and durable readback visible in one scenario.
+
+Validation on 2026-10-03:
+
+- `pnpm --filter @prompthub/desktop exec vitest run tests/unit/services/renderer-persistence.test.ts tests/unit/main/settings-renderer-persistence-ipc.test.ts`:
+  21 tests initially passed; after adding four malformed-shape cases, the affected
+  renderer file passed all 13 tests. IPC's unchanged 12 tests retain their result.
+- `pnpm --filter @prompthub/core exec vitest run tests/renderer-persistence-migration.test.ts tests/renderer-persistence-ai-file-authority.test.ts`:
+  19 passed, including source validation, encrypted credentials, interrupted
+  publication, rollback and migration idempotency.
+- Desktop source typecheck and focused ESLint passed. A compiler program using
+  the Desktop configuration plus the changed renderer test passed with zero
+  diagnostics after correcting its existing optional-settings mock assignment.
+- Two caches each containing 2 Mi characters (12 MiB of UTF-8 cache text combined)
+  reproduce the raw-input rejection and migrate after source extraction. The final
+  13-test bridge suite took 166 ms of test time on this host; this is not a
+  cross-platform performance guarantee or an Electron startup measurement.
+- Real Electron UI, reporter profile, Windows release packaging and full release
+  harness were not run. No live profile, external Agent files or remote state changed.
+
 以下保留 2026-09-15 旧设计盘点的证据。表中关于配置去 SQL 化、文件 authority 和投影重建的处理目标已失效；当前处理以本文末尾 BC01–BC08 和 design.md 为准。
 
 | 优先次序 | 当前证据 | 必须收敛的结果 |

@@ -10,11 +10,18 @@
 
 - Prompt 内容必须有稳定的持久化表示，允许后续索引、版本、导入导出和同步围绕其工作。
 - 数据库存储与文件系统存储的职责应明确，避免真相源混乱。
+- Prompt DB 在创建、更新、版本备注及直接恢复写入前，统一拒绝含 null byte
+  的直接绑定文本字段，错误指出字段而不回显正文；拒绝不得改变当前记录或历史。
+  JSON 编码的数组/对象由序列化保留字符，不做正文截断或静默清洗。已有被截断
+  的内容无法自动恢复，应使用完整历史或备份；此校验不引入 schema 迁移。
 - 当前目标以 [foundation 数据所有权约定](../../changes/active/foundation-integrity-redesign/specs/foundation/spec.md#fr-foundation-003-data-ownership-and-invariants) 为准：SQLite 拥有结构化记录，文件系统拥有实际文件。下文 canonical 文件/投影说明记录尚未完成替换的历史实现，不是另一种可选业务模式；合入旧分支不得恢复 IndexedDB 业务回退或绕过 Core 的写入入口。
 
 ### 2. Folder And Versioning Behavior
 
 - Prompt 文件夹结构和版本快照属于稳定产品能力。
+- 工作区 `.trash` 保存删除/改名产生的恢复文件，属于内部恢复目录，不参与
+  活跃 Prompt graph 清单、计数或发布。读取器必须验证根 `.trash` 是真实目录，
+  拒绝符号链接或同名普通文件；忽略内容不意味着删除恢复文件或放宽活跃记录校验。
 - 文件夹表达、Prompt 元数据与版本目录的设计应支持后续导入导出、同步和恢复。
 - canonical 发布前可将损坏的 `current_version` 指针收敛到实际版本链；只有
   完全没有历史行时才创建当前正文的 v1 快照。非正数历史版本必须无损重编号，
@@ -51,6 +58,8 @@
   该 Prompt 及其后代所在 `folderId` 必须与目标父节点一致（移动到根层级则保持
   自身 `folderId`）；不得产生「父节点存在但因 folder 过滤而在当前文件夹视图
   不可见」的派生压平状态。权威落库实现在 `packages/db`。
+- 批量移动到根目录通过现有更新合同显式提交 `folderId: null`；`undefined`
+  表示不更新归属。renderer 服务必须保留两者差异，普通字段修改不得移出文件夹。
 
 ### 2.3 Copy Action Contract
 
@@ -61,6 +70,13 @@
 - Variable prompts, language selection, copied feedback, and usage attribution
   follow the same flow. Usage remains attributed to the source Prompt even
   when the copied body comes from one or more mapped target Prompts.
+- The public `prompt.copy` entry treats variable names and values literally.
+  Dollar sequences such as `$&` and `$$` must survive unchanged; using a
+  variable does not change the stored template and still records source usage.
+- Standalone CLI `prompt copy --var name=value` follows the same literal
+  substitution contract, including regex metacharacters in names. It preserves
+  variable processing order, the saved template and version history, and records
+  one source usage per successful copy.
 
 ### 2.4 Relationship Navigation And Unlinking
 
@@ -111,6 +127,55 @@
   声明式组合函数，使固定卡片生命周期与滚动几何各自集中；看板动作回归及
   viewport 稳定性回归覆盖这两个边界，避免为行数拆散同一副作用的所有权。
 
+### 2.7 Prompt Type And List Layout
+
+- “全部 / 文本 / 绘图”筛选与列表布局独立。在 card、gallery、kanban、list
+  布局中切换类型，必须保留当前布局；布局按钮也不改变当前类型。
+- 类型入口仍清除文件夹范围并返回主页，保留搜索词与标签筛选。从 graph 或
+  generation 专用工作区点击类型入口时，仍返回 card 提示词列表。
+- 继续使用 Prompt renderer store 的 `promptTypeFilter` 与 `viewMode`，不新增
+  持久化字段或按类型保存的布局副本。
+- 回归入口：`apps/desktop/tests/unit/components/sidebar-prompt-view-mode.test.tsx`。
+  通过真实 Sidebar、PromptListHeader 和 renderer stores 检查展开 / 折叠侧栏、
+  四种布局连续切换类型、设置页返回与专用工作区退出；不替代 Electron GUI 验收。
+- 验证（2026-10-10）：`pnpm --dir apps/desktop exec vitest run --project unit
+  tests/unit/components/sidebar-prompt-view-mode.test.tsx
+  tests/unit/components/sidebar-skills.test.tsx
+  tests/unit/components/sidebar-mcp-shell-tags.test.tsx` 共 36 通过、6 失败；新增
+  15 项全部通过，失败均为 `sidebar-skills.test.tsx` 的 Skills 导航 / 商店切换
+  场景，未修改其实现或预期。`pnpm --dir apps/desktop typecheck:tests` 与本次
+  controller / 回归文件的定向 ESLint 通过。未执行 Electron GUI 或发布验收。
+
+### 2.8 Prompt Table Presentation
+
+- 改造范围仅限列表内部：标题 / 正文 / 操作列、绘图缩略图、行样式与列设置。
+  应用导航、左侧类型筛选、文件夹 / 标签面板、顶部工具栏和其他视图保持原样。
+  不增加“提示词库”页面标题、主列表分类分组或右侧详情栏，不修改全局主题。
+- 表格默认显示选择框、标题、用户提示词、操作。AI 响应、变量数、使用次数为
+  可选列，不再默认占据正文空间。现有 `prompthub-table-config` 中明确保存的
+  可见性与可调整列宽继续生效；重置列设置采用新的默认布局，不迁移业务数据。
+- 绘图提示词在标题单元格中显示 48px 预览图，取摘要 `images` 的第一项；没有
+  图片时显示中性占位图标。缩略图打开既有图片预览，标题打开提示词详情，正文
+  最多两行。预览支持 Escape 关闭、Tab 焦点约束与关闭后返回触发按钮。
+- 图片继续通过现有本地图片协议加载；正文仍仅预取当前页未缓存的详情，不增加
+  全库正文读取、远程图片请求或新的持久化副本。渲染与原有分页规模相同。
+- `PromptTableView` 保留现有超过 50 行的声明式列 / 行组合，缩略图预览拆为独立
+  组件；共享工具栏保持原样，列设置仍由表格内部持有。
+- 回归覆盖默认列、显式偏好与重置、缩略图预览、无图占位、原有表格交互，以及
+  独立 Electron profile 中的类型 / 布局切换、真实本地图片加载与列设置重载。
+  验收入口：`tests/e2e/prompt-table-design.spec.ts`，图片仅用仓库图标作为隔离
+  测试夹具，不向用户数据写入设计稿示例。
+- 验证（2026-10-10，范围纠正后）：43 项受影响的组件回归、定向 ESLint、桌面
+  构建和 1 项隔离 Electron 流程通过。流程覆盖类型筛选保持表格、本地图片预览、
+  列设置与重载、主题切换、1100px 窗口；无捕获的 renderer 异常或 console error。
+  导航轨道、左侧筛选、共享工具栏、视图容器、全局 CSS 与 Tailwind 配置均恢复
+  到任务前内容，相关文件无本次 diff。此前未受恢复影响的默认列 / 图片预览
+  回归及测试类型检查已通过；未执行发布包或全仓库验收。
+- 视觉证据：`output/playwright/prompt-table-design/light.png`（1650×954 CSS px，
+  截图使用 CSS 像素）、`table-detail.png`、`dark.png`、`compact.png`。页面外围以
+  原有样式为准，设计稿仅用于列表；不再以整页设计稿作为验收目标。测试窗口与
+  profile 已关闭 / 清理。深色侧栏的既有外观不在本次修复范围。
+
 ### 3. Stable Internal Sources
 
 - 桌面 Prompt 普通增删改、版本、关系、输出格式及文件夹写入，由 Core 的现有
@@ -152,3 +217,7 @@ When prompt file layout, metadata contract, or versioning semantics change mater
 When another system feature relies on prompt storage semantics:
 
 - it should treat this spec and the linked architecture docs as the current truth source
+
+## Current Verification Gap (2026-10-12)
+
+The PA-01 delete-then-edit regression in `release-acceptance-prompts-ai-workflow.test.ts` stops at the expected recovery inventory: deleting a Prompt produces no bytes under the workspace trash path checked by the test. The recovery-location contract and deletion publication need reconciliation before this scenario can pass; subsequent edit/reopen assertions in that case were not reached. The test remains failing.

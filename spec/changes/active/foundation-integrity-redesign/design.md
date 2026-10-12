@@ -228,6 +228,22 @@ journal 完成恢复，不能直接回退数据库制造文件/数据库混合�
 canonical 已存在而 DB 缺失等状态，不能用统一最新 schema + 旧版本标签替代历史输入。
 最终基线清单及支持源的证据闭合前，不宣称全历史升级可用。
 
+**近期来源样本（2026-10-09）。**
+`packages/core/tests/fixtures/historical-runtime/` 保存 v0.5.9、beta.1、beta.2
+三个精确发布 commit 的完整合成 profile、归档 hash、文件清单、SQLite schema/全部行、
+正式 writer 的结果及第二个旧源码进程重开结果。生成器由同一历史 commit 加载
+Core/DB/shared，来源测试逐个核对实际加载文件与 Git blob 的 SHA-256；三个样本均通过。
+这些 profile 使用历史 CLI/Core 的默认初始化，不手写 Desktop authority 或 renderer
+迁移完成标记；运行环境复用本机 Node 26 和现有第三方依赖，不能据此声称历史发行包
+或 Desktop 原生环境已通过。beta.2 样本保留同名 active provider，不能在接入时恢复
+beta.1 的唯一约束而丢弃记录。
+
+样本目前仅完成来源与旧版重开验证，没有执行连续跨版升级或当前权威转换。
+转换必须通过实际启动入口消费这些来源，并保全稳定 ID、全部版本、关联、配置和
+Skill/Plugin 包字节；其中固化的旧活动根路径须在单一升级边界重绑定，不能修改归档
+掩盖路径问题，也不能在正常 reader 增加旧路径 fallback。Desktop file-first 来源、
+旧设备加密凭据、早期结构组与部分完成状态仍需要分别准备样本。
+
 ### 分批实施和回滚
 
 1. **文档。** 原位统一数据归属、唯一业务合同、版本升级和失败处理；不宣称代码已完成。

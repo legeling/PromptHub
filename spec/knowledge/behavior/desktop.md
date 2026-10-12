@@ -88,10 +88,23 @@
 - 用户侧统一使用“供应商”术语；内部 `ProviderProfile` 类型、存储和 IPC 名称仅作为兼容合同保留，不得直接成为界面文案。
 - Agent 当前原生配置是只读投影，不得提供“导入当前配置”或“转为可编辑配置”入口。供应商侧栏保留“从 PromptHub 导入”和新增供应商操作；两者必须显示图标与本地化文字，固定宽度侧栏允许纵向滚动，但列表行、内边距和 focus state 不得制造横向滚动条。
 - 从 PromptHub 导入供应商时必须复用 Model Services 的供应商图标，并按模型标识推断模型家族图标；协议选项由 main process 计算 PromptHub 上游协议与目标 Agent 可写协议的直接交集。界面必须显示并提交所选协议，main 必须重新验证；官方 OpenAI 直连优先 Responses，第三方兼容端点优先 Chat/Completions，不得通过本地代理伪装协议转换。
-- 当前平台级 native model adapter 覆盖 Claude Code、Codex、Gemini、Antigravity、Grok、Kimi Code、OpenCode、Pi、Oh My Pi、Qwen Code、GitHub Copilot、Kiro、OpenClaw、CoPaw、AutoClaw、QClaw、Qoder 与 Hermes。`supported` 表示完整 Provider adapter，`partial` 表示只投影原生模型字段；两者都必须明确声明 capability evidence。
+- 初期供应商/模型配置仅支持 Claude Code、Codex、Antigravity、Pi、OpenCode。`supported` 表示完整 Provider adapter，`partial` 表示已有原生模型适配；Antigravity 不因此获得第三方供应商接入能力。其他 Agent 在此能力上标为暂不支持，不开放配置、导入、激活或探活入口。共享 capability registry 是页面、主进程与托盘的唯一支持范围真源。
+- 收敛范围不删除既有供应商档案、密钥、原生文件或会话，不新增数据库迁移；旧档案仍可备份、导出或删除，但不可新建、修改或激活到暂不支持的平台。恢复支持只需更新 registry 并重新验证适配器，不需要数据回迁。其他 Agent 保留既有 Skill、MCP、Plugin、规则与配置文件能力；没有原生 Plugin 协议的平台不因本轮扩大支持。已有历史会话读取保留，不新增适配，也不作为初期交付门槛。
 - Antigravity 的 Skills/MCP root 仍是 `~/.gemini/config`，模型设置单独解析到 `~/.gemini/antigravity-cli/settings.json`。Claw family 只用于展示分组，各成员继续使用自己的 root、文件格式和安全边界，不得继承 OpenClaw adapter。
 - native model adapter 只能向 renderer 返回 model、provider、脱敏 endpoint、可用模型与 credential status；API key、token 和独立 secret store 不得进入 IPC。写入只更新模型选择字段，并使用 2 MiB 有界读取、symlink/路径 containment 校验、私有备份、并发修改检测、原子替换、语义重读和失败回滚。
-- CoPaw 只更新全局配置明确选中的 active Agent workspace；不得读取其 provider secret store。NanoClaw 的模型来源是 per-Agent-Group `container_configs`，在 Provider context 增加显式 child target 前继续保持 planned，不得选择任意 group 或修改生成的 container 文件。
+- 暂不支持的平台底层适配代码仅保留，不注册到供应商运行时；不得绕过 capability registry 恢复配置读写。
+
+初期范围验证（2026-10-10）：18 个桌面定向测试文件共 253 项经分批修正与复测通过，另有 10 项深链接测试、4 项真实 SQLite/文件/注册 IPC 集成通过；文案变更后单独复测置灰组件用例。Core 类型检查、Desktop 源码及测试类型检查、定向 ESLint 通过。外部额度响应与 Electron 消息运输层使用测试替身；未执行真实账号请求、GUI、发行包或全量发布门禁。支持收敛使用常量时间 capability 查询，平台列表仅按现有 registry 线性过滤，不新增扫描、网络或持久化开销。
+
+核心回归可从仓库根目录重跑：
+
+```sh
+pnpm --dir apps/desktop exec vitest run --project unit tests/unit/main/agent-initial-support.test.ts tests/unit/main/agent-platform-context.test.ts tests/unit/main/agent-provider-runtime.test.ts --minWorkers=1 --maxWorkers=1
+pnpm --dir apps/desktop exec vitest run --project integration tests/integration/release-acceptance-agents-assets-providers.test.ts tests/integration/release-acceptance-agents-assets-provider-activation.test.ts --minWorkers=1 --maxWorkers=1
+pnpm --dir packages/shared exec node --experimental-strip-types --test tests/agent-deep-link.test.ts
+```
+
+断言覆盖支持集合、托盘与工作区投影一致、范围外额度零凭据读取/零网络、原生文件不变、旧档案保全与导出、禁止新建/修改/激活，以及保留平台导入激活后的重开和故障回滚。旧范围内 Gemini/Copilot/Grok 额度与 Kiro/Copilot 激活的成功用例已替换为当前“暂不支持且无副作用”合同，不再把保留的底层实现作为发布支持承诺。
 
 ### 5.2 Agent Native Config Editor Surfaces
 
@@ -160,9 +173,11 @@
 - preload 必须缓冲 renderer 尚未订阅时收到的状态栏命令。MCP 与 Plugin 等按需加载工作台必须先注册创建监听器，再发布就绪状态；卸载时必须先撤销就绪状态，再清理监听器，避免首次点击或重渲染期间因 lazy mount 竞态而丢失命令。
 - 状态栏菜单文案必须覆盖桌面端七种语言，优先读取应用内已保存语言，并在数据库尚未可用时回退到系统语言。Renderer 的语言设置在用户切换和旧版本地状态恢复时都必须同步到 Main 设置数据库；同步恢复回调只能在 Zustand Store 完成初始化后执行，避免界面语言与原生菜单语言分叉。Renderer 没有持久化语言时，Zustand 临时默认值不得覆盖 Main 设置，必须由 Main 返回的已验证语言恢复界面；已有 Renderer 明确偏好继续优先并回写 Main。
 - 未来 Agent 管理入口只有在对应能力真正可用时才显示；不得展示不可执行的灰色占位项。
+- 旧版 Renderer 设置迁移必须保留语言字段的有效性：缺失或不支持的原值按未选择处理，不得把规范化产生的默认 `en` 作为明确偏好回写 Main。其他有效偏好照常迁移；本规则不增加持久化字段或改动 canonical renderer persistence。
 
 ### 9.4 Desktop Tray Agent Quotas
 
+- 初期额度查询仅支持 Claude Code、Codex、Antigravity 和已有的 Kimi Code；其他平台统一暂不支持，不读其额度凭据、不发出额度请求、不进入托盘额度列表。Overview 和调用入口使用同一共享 capability registry，不将未知额度伪造为零。
 - 状态栏额度只能通过 Electron 原生 `Menu` / submenu 呈现；不得为额度创建 renderer `BrowserWindow`、vibrancy 外壳、自绘卡片、产品图标行、套餐胶囊、环形/条形进度或展开控件。macOS、Windows 与 Linux 共享同一原生菜单信息层级。
 - 原生状态栏菜单必须复用 Agent 工作区的进程级 usage service，不得创建第二套凭据读取、网络请求或额度缓存。
 - 菜单打开时先同步展示最近一次内存快照，再在后台通过 adapter 自身的 60 秒缓存更新；只有用户点击“刷新额度”时才绕过缓存。
@@ -177,8 +192,7 @@
 - Kimi Code 额度只将 coding usages 的顶层 `usage` 作为周额度、`limits[]` 作为滚动窗口；当前 `remaining`/`limit` 与旧 `used`/`limit` 都必须兼容，`300 TIME_UNIT_MINUTE` 必须归一为 5 小时。跨 Kimi 产品共享的月度会员总额度不得从不可信 `totalQuota` 或本地用量推算。
 - Kimi Code 套餐在 Overview 使用现有 badge、在原生菜单使用普通文本行，两者都只显示公开 tempo 名称，不展示内部 `LEVEL_*` 枚举；当前映射为 `Moderato`、`Allegretto`、`Allegro`、`Vivace`，未知值只做安全可读化。
 - Kimi Code 历史列表通过有界 `session_index.jsonl` 候选读取 `state.json`，过滤没有 `lastPrompt` 的默认 `New Session` 空壳；可读会话仍以 contained `agents/main/wire.jsonl` 作为精确正文来源，但大小覆盖永久删除所拥有的完整 session 目录，正文仍按 2 MiB 上限只读投影。
-- Grok Build usage 只接受有界 `auth.json` 中 `https://auth.x.ai::` 官方主机记录，由 main 进程使用 bearer token 并行查询官方 user 与 billing 端点；正常刷新复用 60 秒缓存，每个请求使用 10 秒超时，token、账户身份和原始响应不得进入 renderer、日志或持久化存储。
-- Grok Build 的 `subscriptionTier` 通过共享套餐 formatter 显示为公开可读名称；billing 的 `creditUsagePercent` 必须转换为剩余百分比，并以 provider current-period end 作为账户级周额度重置时间。Overview 周额度复用共享圆环，原生菜单使用普通文本，不得新增 Grok 专用前端。
+- Grok、Gemini CLI 与 GitHub Copilot 的既有额度适配暂不开放；保留源码不代表产品支持或外部服务验收通过。
 - Grok Build 历史列表以 contained `chat_history.jsonl` 的精确 real path 作为正文来源；会话大小覆盖永久删除所拥有的完整 session 目录，包括 summary 和该会话的运行附件。
 
 ### 9.5 Agent Conversation Storage Actions
@@ -199,6 +213,7 @@
 - 会话历史的第二个选择器是已加载清单排序，不是 PromptHub 元数据状态筛选；必须提供最近更新、最早更新、占用最大和占用最小，未知时间或大小在两个方向中都排在已知值之后，后续加载的分页按当前模式重新合并。
 - OpenCode 会话清单必须通过只读 `opencode db` 全局分页，不得使用会受 PromptHub 当前工作目录影响的 `opencode session list`；详情继续使用脱敏导出，插件 sidecar 和缓存不得冒充会话。
 - 会话显示标题的优先级固定为 PromptHub 非空改名、Agent 原生非空标题、适配器第一条可见用户消息回退、会话 id。列表、删除确认和跨 Agent 交接必须使用同一有效标题投影。
+- Markdown/JSON 会话导出与跨 Agent 交接复用同一去敏投影；识别到的 API key、token、password、secret 赋值保留原字段名，并以 `[REDACTED]` 替换值。去敏不得写回原生 transcript 或 PromptHub 会话元数据。
 - Codex 原生标题来自只读、至多 8 MiB 的 `session_index.jsonl` tail；同一安全 session id 取最后一条合法 `thread_name`，控制字符被清理，畸形、超限、软链接或缺失索引回退到 rollout 的第一条可见用户消息。PromptHub 不写入或迁移该索引。
 - 移除状态筛选后，PromptHub 归档元数据不得让仍存在的原生会话不可达；列表以紧凑归档图标表示该状态。会话域不存在软删除、已移除筛选或恢复动作。归档不修改原生 transcript，永久删除继续遵守适配器所有权和二次确认边界。
 
