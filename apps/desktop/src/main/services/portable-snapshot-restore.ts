@@ -15,7 +15,6 @@ import {
   normalizeSlug,
   parsePortableLogicalEnvelope,
   runJournaledStorageRestore,
-  writeRuntimeLayoutState,
   type PortableLogicalEnvelope,
   type PortableSnapshotResult,
   type RendererPersistenceEncryption,
@@ -40,7 +39,12 @@ import type {
 import { mergeMcpLibraryFromTransport } from "@prompthub/shared/utils/mcp-config";
 
 import Database from "../database/sqlite";
-import { verifyCanonicalStorageCheckpointContent } from "./canonical-storage-checkpoint";
+import {
+  verifyCanonicalStorageCheckpointContent,
+  type CanonicalStorageCheckpointManifest,
+} from "./canonical-storage-checkpoint";
+import { verifyCanonicalAuthorityRoot } from "./canonical-storage-authority";
+import { prepareCanonicalPortableCandidate } from "./portable-snapshot-candidate";
 import { extractPortableSnapshotZip } from "./portable-snapshot-import";
 
 const LOGICAL_FILE_NAME = "import-with-prompthub.json";
@@ -426,6 +430,20 @@ function restorePromptAndSkillDatabase(
             );
           }
           promptDb.insertPromptDirect(prompt);
+          if (!scope.versions) {
+            promptDb.insertVersionDirect({
+              id: crypto.randomUUID(),
+              promptId: prompt.id,
+              version: prompt.currentVersion,
+              systemPrompt: prompt.systemPrompt,
+              systemPromptEn: prompt.systemPromptEn,
+              userPrompt: prompt.userPrompt,
+              userPromptEn: prompt.userPromptEn,
+              variables: prompt.variables,
+              aiResponse: prompt.lastAiResponse,
+              createdAt: prompt.updatedAt,
+            });
+          }
         }
         if (scope.versions) {
           for (const version of payload.versions) {
@@ -532,7 +550,7 @@ function restoreRules(
           "rules",
           ".versions",
           encodedId,
-          `${version.id}.md`,
+          `${encodeURIComponent(version.id)}.md`,
         ),
         source: version.source,
         createdAt: version.savedAt,
@@ -545,10 +563,10 @@ function restoreRules(
       platformName: record.platformName,
       platformIcon: record.platformIcon,
       platformDescription: record.platformDescription,
-      canonicalFileName: path.basename(record.path || `${encodedId}.md`),
+      canonicalFileName: record.name,
       description: record.description,
       managedPath,
-      targetPath: managedPath,
+      targetPath: "",
       projectRootPath: null,
       syncStatus: "target-missing",
       currentVersion: Math.max(1, versions.length),
@@ -666,22 +684,6 @@ function restoreDatabase(
   }
 }
 
-function verifyDatabase(rootPath: string): void {
-  const database = new Database(path.join(rootPath, "data", "prompthub.db"), {
-    readOnly: true,
-  });
-  try {
-    const check = database.pragma("quick_check") as Array<
-      Record<string, unknown>
-    >;
-    if (check.length !== 1 || Object.values(check[0] ?? {})[0] !== "ok") {
-      throw new Error("Portable restore database failed quick_check");
-    }
-  } finally {
-    database.close();
-  }
-}
-
 async function restoreConfiguration(
   stageRoot: string,
   envelope: PortableLogicalEnvelope,
@@ -791,8 +793,7 @@ function restoreFileDomains(
     }
   }
   if (scope.rules) {
-    const copied = replaceSnapshotPrefix(snapshot, "data/rules", stageRoot);
-    if (!copied) restoreRuleFiles(stageRoot, payload.rules ?? []);
+    restoreRuleFiles(stageRoot, payload.rules ?? []);
   }
   if (scope.images) {
     const copied = replaceSnapshotPrefix(
@@ -874,7 +875,7 @@ async function prepareCandidate(
   envelope: PortableLogicalEnvelope,
   encryption: RendererPersistenceEncryption,
   operationId: string,
-): Promise<void> {
+): Promise<CanonicalStorageCheckpointManifest> {
   const databaseRelativePath = "data/prompthub.db";
   const inventoryWithoutDatabase = createStorageInventory(activeRoot, {
     includeSecrets: true,
@@ -888,9 +889,27 @@ async function prepareCandidate(
   restoreFileDomains(snapshot, stageRoot, activeRoot, envelope);
   restoreDatabase(stageRoot, activeRoot, envelope);
   await restoreConfiguration(stageRoot, envelope, encryption);
-  writeRuntimeLayoutState(stageRoot, {
-    identityRoot: activeRoot,
-    lastVerifiedOperation: operationId,
+  // Portable settings cannot authorize replacement of the device's encrypted
+  // vault. The settings store may re-encrypt it while producing merged config.
+  const stagedSecrets = path.join(stageRoot, "secrets");
+  fs.rmSync(stagedSecrets, { recursive: true, force: true });
+  const deviceSecrets = path.join(activeRoot, "secrets");
+  if (fs.existsSync(deviceSecrets)) {
+    fs.cpSync(deviceSecrets, stagedSecrets, {
+      recursive: true,
+      dereference: false,
+    });
+  }
+  createRendererPersistenceStore({
+    rootPath: stageRoot,
+    encryption,
+  }).readHydratedStateSync();
+  return prepareCanonicalPortableCandidate({
+    activeRoot,
+    stageRoot,
+    envelope,
+    encryption,
+    operationId,
   });
 }
 
@@ -924,21 +943,28 @@ export async function restorePortableSnapshotArchive(
     if (canonicalPath) {
       assertPortableLogicalMatchesCanonicalStorage(logicalText, canonicalPath);
     }
+    let manifest: CanonicalStorageCheckpointManifest | undefined;
+    const verify = (root: string): void => {
+      if (!manifest)
+        throw new Error("Portable restore candidate has no checkpoint");
+      verifyCanonicalAuthorityRoot(root, manifest, activeRoot);
+    };
     const restore = await runJournaledStorageRestore({
       activeRoot,
       operationId,
       entryNames: RESTORE_ENTRY_NAMES,
-      prepareCandidate: (stageRoot) =>
-        prepareCandidate(
+      prepareCandidate: async (stageRoot) => {
+        manifest = await prepareCandidate(
           activeRoot,
           stageRoot,
           snapshot,
           envelope,
           options.encryption,
           operationId,
-        ),
-      verifyCandidate: verifyDatabase,
-      verifyActive: verifyDatabase,
+        );
+      },
+      verifyCandidate: verify,
+      verifyActive: verify,
     });
     return {
       success: true,
@@ -980,21 +1006,28 @@ export async function restorePortableLogicalSnapshot(
       activeInventory.totalBytes + logicalBytes + CAPACITY_HEADROOM_BYTES,
       options.getAvailableBytes,
     );
+    let manifest: CanonicalStorageCheckpointManifest | undefined;
+    const verify = (root: string): void => {
+      if (!manifest)
+        throw new Error("Portable restore candidate has no checkpoint");
+      verifyCanonicalAuthorityRoot(root, manifest, activeRoot);
+    };
     const restore = await runJournaledStorageRestore({
       activeRoot,
       operationId,
       entryNames: RESTORE_ENTRY_NAMES,
-      prepareCandidate: (stageRoot) =>
-        prepareCandidate(
+      prepareCandidate: async (stageRoot) => {
+        manifest = await prepareCandidate(
           activeRoot,
           stageRoot,
           null,
           envelope,
           options.encryption,
           operationId,
-        ),
-      verifyCandidate: verifyDatabase,
-      verifyActive: verifyDatabase,
+        );
+      },
+      verifyCandidate: verify,
+      verifyActive: verify,
     });
     return {
       success: true,

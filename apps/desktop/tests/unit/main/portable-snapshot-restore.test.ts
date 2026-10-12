@@ -11,6 +11,13 @@ import {
   AgentSettingsRepository,
   materializeCanonicalStorageShadow,
   stageCanonicalStorageDatabase,
+  readPromptCanonicalGraph,
+  readRuleResourceBundle,
+  readPluginResourceBundle,
+  encodeCanonicalResourceDirectory,
+  materializeGenerationResourceBundle,
+  readGenerationResourceBundle,
+  readContentAddressedObject,
 } from "@prompthub/core";
 import {
   DatabaseAdapter,
@@ -21,7 +28,7 @@ import {
   SCHEMA_TABLES,
   recordCurrentDatabaseMigration,
 } from "@prompthub/db";
-import type { Prompt } from "@prompthub/shared/types";
+import type { GenerationBatchManifest, Prompt } from "@prompthub/shared/types";
 import { afterEach, describe, expect, it } from "vitest";
 import { zipSync } from "fflate";
 
@@ -55,6 +62,59 @@ function prompt(id: string, title: string): Prompt {
   };
 }
 
+function seedGeneration(root: string, content: string, id = "batch-1"): void {
+  const bytes = Buffer.from(content);
+  const source = path.join(root, `${id}.png`);
+  fs.mkdirSync(root, { recursive: true });
+  fs.writeFileSync(source, bytes);
+  const timestamp = "2026-08-11T00:00:00.000Z";
+  const manifest: GenerationBatchManifest = {
+    kind: "prompthub-generation-batch",
+    version: 1,
+    id,
+    title: "Portable output",
+    status: "succeeded",
+    resolvedPrompt: "Fixture",
+    model: { id: "model", provider: "openai", model: "fixture" },
+    parameters: {},
+    targetCount: 1,
+    slots: [
+      {
+        index: 0,
+        status: "succeeded",
+        output: {
+          id: "output-1",
+          slotIndex: 0,
+          fileName: "output.png",
+          mimeType: "image/png",
+          byteSize: bytes.length,
+          sha256: crypto.createHash("sha256").update(bytes).digest("hex"),
+          createdAt: timestamp,
+          favorite: true,
+        },
+      },
+    ],
+    counts: {
+      total: 1,
+      pending: 0,
+      running: 0,
+      succeeded: 1,
+      failed: 0,
+      cancelled: 0,
+      interrupted: 0,
+    },
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    completedAt: timestamp,
+  };
+  materializeGenerationResourceBundle({
+    bundlePath: path.join(root, "data", "generations", id),
+    objectsRoot: path.join(root, "data", "assets", "objects"),
+    manifest,
+    outputSources: { "output.png": source },
+  });
+}
+
 describe("portable snapshot restore", () => {
   const roots: string[] = [];
 
@@ -83,6 +143,14 @@ describe("portable snapshot restore", () => {
       database.exec(SCHEMA_INDEXES);
       recordCurrentDatabaseMigration(database, 0);
       new PromptDB(database).insertPromptDirect(prompt("old", "Old"));
+      new PromptDB(database).insertVersionDirect({
+        id: "old-version",
+        promptId: "old",
+        version: 1,
+        userPrompt: "Old",
+        variables: [],
+        createdAt: "2026-08-11T00:00:00.000Z",
+      });
     } finally {
       database.close();
     }
@@ -101,12 +169,7 @@ describe("portable snapshot restore", () => {
     const snapshotPath = path.join(root, "portable-snapshot");
     const generationPath = path.join(sourceRoot, "data", "generations");
     if (options.generationFile) {
-      fs.mkdirSync(generationPath, { recursive: true });
-      fs.writeFileSync(
-        path.join(generationPath, "batch.json"),
-        options.generationFile,
-        "utf8",
-      );
+      seedGeneration(sourceRoot, options.generationFile);
     }
     const canonicalPath = path.join(sourceRoot, "canonical");
     if (options.orphanCanonical) {
@@ -128,6 +191,11 @@ describe("portable snapshot restore", () => {
                 id: "generations",
                 sourcePath: generationPath,
                 archivePath: "data/generations",
+              },
+              {
+                id: "generation-objects",
+                sourcePath: path.join(sourceRoot, "data", "assets", "objects"),
+                archivePath: "data/assets/objects",
               },
             ]
           : []),
@@ -344,7 +412,10 @@ describe("portable snapshot restore", () => {
       getAvailableBytes: () => Number.MAX_SAFE_INTEGER,
     });
 
-    expect(result).toMatchObject({ success: true, needsRestart: true });
+    expect(result, JSON.stringify(result)).toMatchObject({
+      success: true,
+      needsRestart: true,
+    });
     const database = new DatabaseAdapter(
       path.join(root, "data", "prompthub.db"),
       { readOnly: true },
@@ -357,22 +428,17 @@ describe("portable snapshot restore", () => {
       database.close();
     }
     expect(
-      fs.readFileSync(path.join(root, "data", "prompts", "new.json"), "utf8"),
-    ).toBe("new projection");
+      readPromptCanonicalGraph(path.join(root, "data")).snapshot.prompts,
+    ).toMatchObject([prompt("new", "New")]);
     expect(result.recoveryArtifactPath).toBeTruthy();
     expect(
       fs.existsSync(path.join(result.recoveryArtifactPath!, "manifest.json")),
     ).toBe(true);
   });
 
-  it("restores raw generation files when the portable manifest declares the domain", async () => {
+  it("restores verified generation bundles and output bytes when the portable manifest declares the domain", async () => {
     const root = createActiveRoot();
-    fs.mkdirSync(path.join(root, "data", "generations"), { recursive: true });
-    fs.writeFileSync(
-      path.join(root, "data", "generations", "old.json"),
-      "old generation",
-      "utf8",
-    );
+    seedGeneration(root, "old generation", "old-batch");
     const archivePath = createArchive(
       root,
       {
@@ -394,15 +460,22 @@ describe("portable snapshot restore", () => {
       getAvailableBytes: () => Number.MAX_SAFE_INTEGER,
     });
 
-    expect(result.success).toBe(true);
+    expect(result.success, JSON.stringify(result)).toBe(true);
+    const objectsRoot = path.join(root, "data", "assets", "objects");
+    const resource = readGenerationResourceBundle(
+      path.join(root, "data", "generations", "batch-1"),
+      objectsRoot,
+    );
+    expect(resource.manifest.id).toBe("batch-1");
+    expect(resource.outputs).toHaveLength(1);
+    const output = resource.outputs[0];
     expect(
       fs.readFileSync(
-        path.join(root, "data", "generations", "batch.json"),
-        "utf8",
+        readContentAddressedObject(objectsRoot, output.sha256).path,
       ),
-    ).toBe("new generation");
+    ).toEqual(Buffer.from("new generation"));
     expect(
-      fs.existsSync(path.join(root, "data", "generations", "old.json")),
+      fs.existsSync(path.join(root, "data", "generations", "old-batch")),
     ).toBe(false);
   });
 
@@ -561,7 +634,25 @@ describe("portable snapshot restore", () => {
       payload: {
         version: 1,
         exportedAt: "2026-08-11T00:00:00.000Z",
-        prompts: [prompt("logical", "Logical")],
+        prompts: [
+          {
+            ...prompt("logical", "Logical"),
+            version: 3,
+            currentVersion: 3,
+            systemPrompt: "System",
+            systemPromptEn: "English system",
+            userPromptEn: "English user",
+            variables: [
+              {
+                name: "subject",
+                type: "text",
+                required: true,
+                defaultValue: "SQLite",
+              },
+            ],
+            lastAiResponse: "Saved response",
+          },
+        ],
         folders: [],
         versions: [],
         settings: {
@@ -582,7 +673,10 @@ describe("portable snapshot restore", () => {
       getAvailableBytes: () => Number.MAX_SAFE_INTEGER,
     });
 
-    expect(result).toMatchObject({ success: true, needsRestart: true });
+    expect(result, JSON.stringify(result)).toMatchObject({
+      success: true,
+      needsRestart: true,
+    });
     expect(result.consistencyId).toMatch(/^[a-f0-9]{64}$/);
     const database = new DatabaseAdapter(
       path.join(root, "data", "prompthub.db"),
@@ -592,6 +686,28 @@ describe("portable snapshot restore", () => {
       expect(new PromptDB(database).getAll().map((item) => item.id)).toEqual([
         "logical",
       ]);
+      expect(new PromptDB(database).getVersions("logical")).toMatchObject([
+        {
+          promptId: "logical",
+          version: 3,
+          systemPrompt: "System",
+          systemPromptEn: "English system",
+          userPrompt: "Logical",
+          userPromptEn: "English user",
+          variables: [
+            {
+              name: "subject",
+              type: "text",
+              required: true,
+              defaultValue: "SQLite",
+            },
+          ],
+          aiResponse: "Saved response",
+          createdAt: prompt("logical", "Logical").updatedAt,
+        },
+      ]);
+      expect(new PromptDB(database).getVersions("logical")).toHaveLength(1);
+      expect(new PromptDB(database).getById("logical")?.currentVersion).toBe(3);
       expect(
         new AgentSettingsRepository(database).read().builtinAgentOverrides,
       ).toEqual({ codex: { rootPath: path.join(root, "restored-agent") } });
@@ -667,7 +783,7 @@ describe("portable snapshot restore", () => {
       encryption,
       getAvailableBytes: () => Number.MAX_SAFE_INTEGER,
     });
-    expect(result.success).toBe(true);
+    expect(result.success, JSON.stringify(result)).toBe(true);
     const restored = new DatabaseAdapter(
       path.join(root, "data", "prompthub.db"),
       { readOnly: true },
@@ -678,9 +794,10 @@ describe("portable snapshot restore", () => {
     } finally {
       restored.close();
     }
-    expect(fs.existsSync(path.join(root, "data", "prompts", "old.json"))).toBe(
-      true,
-    );
+    expect(
+      readPromptCanonicalGraph(path.join(root, "data")).snapshot.prompts[0]
+        .folderId,
+    ).toBe("folder-1");
   });
 
   it("restores Rule files and chronological version metadata together", async () => {
@@ -720,7 +837,7 @@ describe("portable snapshot restore", () => {
             description: "Managed rules",
             group: "assistant",
             path: "AGENTS.md",
-            content: "current",
+            content: "newer",
             versions: [
               {
                 id: "newer",
@@ -746,19 +863,24 @@ describe("portable snapshot restore", () => {
       encryption,
       getAvailableBytes: () => Number.MAX_SAFE_INTEGER,
     });
-    expect(result.success).toBe(true);
+    expect(result.success, JSON.stringify(result)).toBe(true);
     const encodedId = encodeURIComponent(ruleId);
     expect(
       fs.readFileSync(
-        path.join(root, "data", "rules", "managed", `${encodedId}.md`),
+        path.join(root, "data", "rules", encodedId, "rule.md"),
         "utf8",
       ),
-    ).toBe("current");
+    ).toBe("newer");
     const restored = new DatabaseAdapter(
       path.join(root, "data", "prompthub.db"),
       { readOnly: true },
     );
     try {
+      expect(
+        readRuleResourceBundle(
+          path.join(root, "data", "rules", encodedId),
+        ).rule.versions.map((version) => version.id),
+      ).toEqual(["older", "newer"]);
       const versions = new RuleDB(restored).getVersions(ruleId);
       expect(versions.map((version) => version.id)).toEqual(["newer", "older"]);
       expect(versions.find((version) => version.id === "older")?.version).toBe(
@@ -852,6 +974,24 @@ describe("portable snapshot restore", () => {
             {
               id: "custom:demo",
               name: "Demo",
+              displayName: "Demo",
+              trustLevel: "custom",
+              classification: "bundle",
+              distributedTargetIds: [],
+              inventory: {
+                skills: 0,
+                mcpServers: 0,
+                apps: 0,
+                commands: 0,
+                hooks: 0,
+                agents: 0,
+                assets: 0,
+                docs: 0,
+                lspServers: 0,
+                scripts: 0,
+              },
+              installedAt: 1,
+              updatedAt: 1,
               source: {
                 kind: "local",
                 localPackagePath: "/another-machine/package",
@@ -883,24 +1023,22 @@ describe("portable snapshot restore", () => {
       encryption,
       getAvailableBytes: () => Number.MAX_SAFE_INTEGER,
     });
-    expect(result.success).toBe(true);
-    const pluginRoot = path.join(root, "data", "plugins", "custom-demo");
+    expect(result.success, JSON.stringify(result)).toBe(true);
+    const pluginRoot = path.join(
+      root,
+      "data",
+      "plugins",
+      encodeCanonicalResourceDirectory("custom:demo"),
+    );
     expect(
       fs.readFileSync(
-        path.join(pluginRoot, "package", ".codex-plugin", "plugin.json"),
+        path.join(pluginRoot, "files", ".codex-plugin", "plugin.json"),
         "utf8",
       ),
     ).toBe('{"name":"demo"}');
-    const library = JSON.parse(
-      fs.readFileSync(
-        path.join(root, "data", "plugins", "library.json"),
-        "utf8",
-      ),
-    );
-    expect(library.plugins[0].managedPath).toBe(pluginRoot);
-    expect(library.plugins[0].localPackagePath).toBe(
-      path.join(pluginRoot, "package"),
-    );
-    expect(JSON.stringify(library)).not.toContain("another-machine");
+    const plugin = readPluginResourceBundle(pluginRoot).plugin;
+    expect(plugin.id).toBe("custom:demo");
+    expect(plugin.source.kind).toBe("local");
+    expect(JSON.stringify(plugin)).not.toContain("another-machine");
   });
 });

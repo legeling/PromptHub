@@ -59,7 +59,9 @@ export interface CanonicalStorageProjectorOptions {
   database: DatabaseAdapter.Database;
   targetPath: string;
   readRules?: () => Promise<RuleFileContent[]>;
+  skills?: readonly CanonicalSkillShadowInput[];
   mcpLibrary?: McpLibraryFile;
+  mcpResourceBundles?: readonly string[];
   plugins?: readonly PluginLibraryEntry[];
   pluginVersions?: ReadonlyMap<string, readonly PluginVersion[]>;
   generations?: readonly CanonicalGenerationShadowInput[];
@@ -388,11 +390,18 @@ async function collectCanonicalStorageInput(
       new FolderDB(options.database),
       options.database,
     ),
-    skills: collectSkills(options.database),
+    skills: options.skills ?? collectSkills(options.database),
     rules: options.readRules
       ? await options.readRules()
       : collectRules(options.database),
-    mcpLibrary: options.mcpLibrary ?? new CoreMcpLibraryService().read(),
+    ...(options.mcpResourceBundles !== undefined
+      ? {
+          mcpResourceBundles: options.mcpResourceBundles,
+          mcpLibrary: options.mcpLibrary,
+        }
+      : {
+          mcpLibrary: options.mcpLibrary ?? new CoreMcpLibraryService().read(),
+        }),
     plugins: collectPlugins(plugins, pluginVersions),
     agentProviders: profiles.map((profile) => ({
       profile,

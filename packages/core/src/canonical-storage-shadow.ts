@@ -100,6 +100,7 @@ export interface MaterializeCanonicalStorageShadowInput {
   skills?: readonly CanonicalSkillShadowInput[];
   rules?: readonly RuleFileContent[];
   mcpLibrary?: McpLibraryFile;
+  mcpResourceBundles?: readonly string[];
   plugins?: readonly CanonicalPluginShadowInput[];
   agentProviders?: readonly CanonicalAgentProviderShadowInput[];
   generations?: readonly CanonicalGenerationShadowInput[];
@@ -187,6 +188,42 @@ function assertUniqueIds<T>(
   }
 }
 
+function copyMcpResourceBundles(
+  stagePath: string,
+  sources: readonly string[],
+): number {
+  const mcpBundles = sources.map((bundlePath) => ({
+    bundlePath: path.resolve(bundlePath),
+    resource: readMcpServerResourceBundle(bundlePath),
+  }));
+  assertUniqueIds(
+    mcpBundles,
+    (entry) => entry.resource.server.id,
+    "MCP server",
+  );
+  for (const entry of mcpBundles) {
+    const destination = path.join(
+      stagePath,
+      "mcp",
+      encodeCanonicalResourceDirectory(entry.resource.server.id),
+    );
+    fs.cpSync(entry.bundlePath, destination, {
+      recursive: true,
+      dereference: false,
+      errorOnExist: true,
+      force: false,
+    });
+    const copied = readMcpServerResourceBundle(destination);
+    if (
+      copied.bundleManifest.contentHash !==
+      entry.resource.bundleManifest.contentHash
+    ) {
+      throw new Error("Canonical MCP bundle changed during projection");
+    }
+  }
+  return mcpBundles.length;
+}
+
 function materializeAdditionalDomains(
   stagePath: string,
   input: MaterializeCanonicalStorageShadowInput,
@@ -241,6 +278,10 @@ function materializeAdditionalDomains(
     });
     extractedSecrets.push(...result.extractedSecrets);
   }
+  const mcpBundleCount = copyMcpResourceBundles(
+    stagePath,
+    input.mcpResourceBundles ?? [],
+  );
   for (const entry of plugins) {
     materializePluginResourceBundle({
       bundlePath: path.join(
@@ -280,7 +321,7 @@ function materializeAdditionalDomains(
   return {
     skills: skills.length,
     rules: rules.length,
-    "mcp-servers": mcpServers.length,
+    "mcp-servers": mcpServers.length + mcpBundleCount,
     plugins: plugins.length,
     "agent-providers": agentProviders.length,
     generations: generations.length,
@@ -290,6 +331,14 @@ function materializeAdditionalDomains(
 export function materializeCanonicalStorageShadow(
   input: MaterializeCanonicalStorageShadowInput,
 ): MaterializeCanonicalStorageShadowResult {
+  if (
+    input.mcpLibrary !== undefined &&
+    input.mcpResourceBundles !== undefined
+  ) {
+    throw new Error(
+      "Canonical MCP library and resource bundle inputs are mutually exclusive",
+    );
+  }
   if (
     input.mcpLibrary &&
     input.mcpLibrary.bindings.length > 0 &&

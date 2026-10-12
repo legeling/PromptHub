@@ -34,6 +34,11 @@ import {
   materializeSkillResourceBundle,
   readSkillResourceBundle,
 } from "../src/skill-resource-schema";
+import {
+  materializeMcpServerResourceBundle,
+  readMcpServerResourceBundle,
+} from "../src/mcp-resource-schema";
+import type { McpServerConfig } from "@prompthub/shared/types";
 
 const roots: string[] = [];
 
@@ -106,6 +111,102 @@ function emptyPrompts() {
     outputFormatItems: [],
   };
 }
+
+function versionedMcpBundle(directory: string): string {
+  const source = path.join(directory, "source-mcp");
+  const server: McpServerConfig = {
+    id: "retained-mcp",
+    name: "retained",
+    displayName: "Retained",
+    transport: "stdio",
+    command: "fixture-command",
+    args: [],
+    enabled: true,
+    env: { TOKEN: "synthetic-fixture-secret" },
+    source: { type: "manual" },
+    createdAt: 1,
+    updatedAt: 2,
+  };
+  materializeMcpServerResourceBundle({
+    bundlePath: source,
+    server,
+    currentVersion: 2,
+    versions: [
+      {
+        version: 1,
+        server: { ...server, updatedAt: 1 },
+        createdAt: new Date(1).toISOString(),
+      },
+      { version: 2, server, createdAt: new Date(2).toISOString() },
+    ],
+  });
+  return source;
+}
+
+describe("canonical MCP bundle preservation during portable projection", () => {
+  it("preserves every verified bundle byte and version without a secret store", () => {
+    const directory = root();
+    const source = versionedMcpBundle(directory);
+    const expected = readMcpServerResourceBundle(source);
+    const targetPath = path.join(directory, "candidate");
+    const projected = materializeCanonicalStorageShadow({
+      targetPath,
+      prompts: emptyPrompts(),
+      mcpResourceBundles: [source],
+    });
+    expect(projected.extractedMcpSecrets).toEqual([]);
+    expect(projected.domainCounts["mcp-servers"]).toBe(1);
+    const destination = path.join(targetPath, "mcp", "retained-mcp");
+    expect(readMcpServerResourceBundle(destination)).toEqual(expected);
+    expect(expected.currentVersion).toBe(2);
+    expect(expected.versions).toHaveLength(2);
+    expect(Object.keys(expected.secretReferences.env)).toEqual(["TOKEN"]);
+    for (const file of [
+      "manifest.json",
+      ...expected.bundleManifest.payloadFiles.map((entry) => entry.path),
+    ]) {
+      expect(fs.readFileSync(path.join(destination, file))).toEqual(
+        fs.readFileSync(path.join(source, file)),
+      );
+    }
+    expect(readCanonicalStorageShadow(targetPath).mcpServers).toHaveLength(1);
+  });
+
+  it.each(["duplicate", "corrupt", "mixed"])(
+    "rejects %s bundle input without publishing a candidate",
+    (failure) => {
+      const directory = root();
+      const source = versionedMcpBundle(directory);
+      const targetPath = path.join(directory, "candidate");
+      const before = fs.readFileSync(path.join(source, "manifest.json"));
+      if (failure === "corrupt")
+        fs.appendFileSync(path.join(source, "server.json"), "corrupt");
+      expect(() =>
+        materializeCanonicalStorageShadow({
+          targetPath,
+          prompts: emptyPrompts(),
+          mcpResourceBundles:
+            failure === "duplicate" ? [source, source] : [source],
+          ...(failure === "mixed"
+            ? {
+                mcpLibrary: {
+                  kind: "prompthub-mcp-library",
+                  version: 1,
+                  updatedAt: new Date(0).toISOString(),
+                  servers: [],
+                  bindings: [],
+                },
+              }
+            : {}),
+        }),
+      ).toThrow();
+      expect(fs.existsSync(targetPath)).toBe(false);
+      expect(fs.readFileSync(path.join(source, "manifest.json"))).toEqual(
+        before,
+      );
+    },
+  );
+});
 
 function rule(): RuleFileContent {
   return {
