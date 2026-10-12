@@ -442,22 +442,25 @@ export function PromptTableView({
 
   return (
     <div className="flex flex-col h-full bg-card">
-      <div className="flex shrink-0 items-center justify-end px-4 py-2">
-        <ColumnConfigMenu columns={columns} onToggleVisibility={toggleColumnVisibility} onReset={resetToDefaults} />
+      <div className="flex shrink-0 items-center gap-3 border-b border-border px-4 py-2">
+        {hasSelection && (
+          <PromptBatchActionBar
+            layout="table"
+            selectedIds={selection.selectedIdList}
+            totalCount={prompts.length}
+            onSelectAll={selection.selectAllScope}
+            onInvertSelection={selection.invertScopeSelection}
+            onClear={selection.clear}
+            onFavorite={(ids, favorite) => onBatchFavorite?.(ids, favorite)}
+            onMove={(ids, folderId) => onBatchMove?.(ids, folderId)}
+            onDelete={(ids) => onBatchDelete?.(ids)}
+            onTag={onBatchTags}
+          />
+        )}
+        <div className="ml-auto shrink-0">
+          <ColumnConfigMenu columns={columns} onToggleVisibility={toggleColumnVisibility} onReset={resetToDefaults} />
+        </div>
       </div>
-      {/* Shared batch actions bar (extracted for gallery/card reuse in v0.6.2) */}
-      {/* 共享批量操作栏（v0.6.2 起与画廊/卡片视图共用） */}
-      {hasSelection && (
-        <PromptBatchActionBar
-          selectedIds={selection.selectedIdList}
-          totalCount={prompts.length}
-          onClear={selection.clear}
-          onFavorite={(ids, favorite) => onBatchFavorite?.(ids, favorite)}
-          onMove={(ids, folderId) => onBatchMove?.(ids, folderId)}
-          onDelete={(ids) => onBatchDelete?.(ids)}
-          onTag={onBatchTags}
-        />
-      )}
 
       {/* Table - supports horizontal scrolling */}
       {/* 表格 - 支持横向滚动 */}

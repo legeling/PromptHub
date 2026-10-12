@@ -1,7 +1,11 @@
-import type { CSSProperties } from "react";
+import { useMemo, type CSSProperties } from "react";
 import { ColumnResizer } from "../ui/ColumnResizer";
 import { PromptListHeader } from "../prompt/PromptListHeader";
 import { PromptBatchActionBar } from "../prompt/PromptBatchActionBar";
+import {
+  invertPromptSelection,
+  selectAllPromptIds,
+} from "../prompt/prompt-batch-selection-utils";
 import { PromptListEmptyState } from "../prompt/PromptListEmptyState";
 import {
   PROMPT_LIST_PANE_WIDTH_DEFAULT,
@@ -42,10 +46,35 @@ function PromptWorkspaceVirtualizedList() {
   );
 }
 
-function PromptWorkspaceListPane() {
-  const { actions, derived, stores, t } = usePromptWorkspaceContext();
-  const { promptListPaneWidth, setPromptListPaneWidth } = stores.preferences;
+function PromptWorkspaceBatchBar() {
+  const { actions, derived, stores } = usePromptWorkspaceContext();
   const selectedIds = stores.promptData.selectedIds;
+  const scopeIds = useMemo(
+    () => derived.sortedPrompts.map((prompt) => prompt.id),
+    [derived.sortedPrompts],
+  );
+  if (!stores.promptData.isBatchSelectionActive || selectedIds.length === 0) return null;
+  return (
+    <div className="flex-shrink-0">
+      <PromptBatchActionBar
+        layout="card"
+        selectedIds={selectedIds}
+        totalCount={derived.sortedPrompts.length}
+        onSelectAll={() => stores.promptActions.setSelectedIds(Array.from(selectAllPromptIds(selectedIds, scopeIds)))}
+        onInvertSelection={() => stores.promptActions.setSelectedIds(Array.from(invertPromptSelection(selectedIds, scopeIds)))}
+        onClear={() => stores.promptActions.setSelectedIds([])}
+        onFavorite={actions.handleBatchFavorite}
+        onMove={actions.handleBatchMove}
+        onDelete={actions.handleBatchDelete}
+        onTag={actions.openQuickTagForIds}
+      />
+    </div>
+  );
+}
+
+function PromptWorkspaceListPane() {
+  const { derived, stores, t } = usePromptWorkspaceContext();
+  const { promptListPaneWidth, setPromptListPaneWidth } = stores.preferences;
   const style = {
     "--prompt-list-pane-width": `${promptListPaneWidth}px`,
   } as CSSProperties;
@@ -54,19 +83,7 @@ function PromptWorkspaceListPane() {
       className="prompt-list-pane relative w-[var(--prompt-list-pane-width)] shrink-0 border-r border-border flex flex-col bg-card/50"
       style={style}
     >
-      {stores.promptData.isBatchSelectionActive && selectedIds.length > 0 && (
-        <div className="border-b border-border flex-shrink-0">
-          <PromptBatchActionBar
-            selectedIds={selectedIds}
-            totalCount={derived.sortedPrompts.length}
-            onClear={() => stores.promptActions.setSelectedIds([])}
-            onFavorite={actions.handleBatchFavorite}
-            onMove={actions.handleBatchMove}
-            onDelete={actions.handleBatchDelete}
-            onTag={actions.openQuickTagForIds}
-          />
-        </div>
-      )}
+      <PromptWorkspaceBatchBar />
       <PromptListHeader count={derived.sortedPrompts.length} />
       {derived.sortedPrompts.length === 0 ? (
         <PromptWorkspaceEmptyList />

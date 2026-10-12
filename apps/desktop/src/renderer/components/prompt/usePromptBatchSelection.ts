@@ -10,6 +10,10 @@
  *   and failures keep the remaining action scope visible.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  invertPromptSelection,
+  selectAllPromptIds,
+} from "./prompt-batch-selection-utils";
 
 interface UsePromptBatchSelectionParams {
   /** All ids the view can currently hold; stale selections are pruned against it. */
@@ -24,6 +28,8 @@ interface PromptBatchSelection {
   allScopeSelected: boolean;
   toggle: (id: string) => void;
   toggleSelectAllScope: () => void;
+  selectAllScope: () => void;
+  invertScopeSelection: () => void;
   clear: () => void;
 }
 
@@ -80,6 +86,14 @@ export function usePromptBatchSelection({
     setSelectedIds(new Set<string>());
   }, []);
 
+  const selectAllScope = useCallback(() => {
+    setSelectedIds((current) => selectAllPromptIds(current, scopeIds));
+  }, [scopeIds]);
+
+  const invertScopeSelection = useCallback(() => {
+    setSelectedIds((current) => invertPromptSelection(current, scopeIds));
+  }, [scopeIds]);
+
   const selectedIdList = useMemo(
     () => Array.from(selectedIds),
     [selectedIds],
@@ -91,6 +105,8 @@ export function usePromptBatchSelection({
     allScopeSelected,
     toggle,
     toggleSelectAllScope,
+    selectAllScope,
+    invertScopeSelection,
     clear,
   };
 }

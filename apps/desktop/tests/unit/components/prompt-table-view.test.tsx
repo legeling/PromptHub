@@ -370,7 +370,7 @@ describe("PromptTableView", () => {
     );
 
     expect(screen.queryByText("1 of 2 selected")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Batch Delete" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("toolbar", { name: "Batch actions" })).not.toBeInTheDocument();
   });
 
   it("opens the batch tag dialog for the current selection (v0.6.2 restored entry)", async () => {
@@ -395,8 +395,11 @@ describe("PromptTableView", () => {
 
     fireEvent.click(screen.getByRole("checkbox", { name: "Select Prompt 2" }));
     expect(screen.getByText("1 of 2 selected")).toBeInTheDocument();
+    const toolbar = screen.getByRole("toolbar", { name: "Batch actions" });
+    expect(toolbar.parentElement).toContainElement(screen.getByRole("button", { name: "Column Settings" }));
 
-    fireEvent.click(screen.getByRole("button", { name: /Tags/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Batch actions" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /Tags/ }));
     expect(onBatchTags).toHaveBeenCalledWith(["prompt-table-2"]);
   });
 
@@ -417,6 +420,21 @@ describe("PromptTableView", () => {
       "aria-checked",
       "true",
     );
+  });
+
+  it("selects and inverts only the current page while retaining other page selections", async () => {
+    const prompts = Array.from({ length: 11 }, (_, index) => createPrompt(index + 1));
+    await renderTableView({ prompts });
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Prompt 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Page 2" }));
+    fireEvent.click(screen.getByRole("button", { name: "Select All" }));
+    expect(screen.getByText("2 of 11 selected")).toBeVisible();
+    expect(screen.getByRole("checkbox", { name: "Select Prompt 11" })).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(screen.getByRole("button", { name: "Invert Selection" }));
+    expect(screen.getByText("1 of 11 selected")).toBeVisible();
+    expect(screen.getByRole("checkbox", { name: "Select Prompt 11" })).toHaveAttribute("aria-checked", "false");
+    fireEvent.click(screen.getByRole("button", { name: "Page 1" }));
+    expect(screen.getByRole("checkbox", { name: "Select Prompt 1" })).toHaveAttribute("aria-checked", "true");
   });
 
   it("normalizes default-value variables in the variables column count", async () => {

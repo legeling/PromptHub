@@ -338,20 +338,69 @@ describe("PromptGalleryView", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: "Select Batch Beta" }));
     expect(screen.getByText("2 of 2 selected")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /Tags/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Batch actions" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /Tags/ }));
     expect(onBatchTags).toHaveBeenCalledWith(["gb-1", "gb-2"]);
 
-    fireEvent.click(screen.getByRole("button", { name: "Batch Delete" }));
+    fireEvent.click(screen.getByRole("button", { name: "Batch actions" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Batch Delete" }));
     expect(onBatchDelete).toHaveBeenCalledWith(["gb-1", "gb-2"]);
     expect(screen.getByText("2 of 2 selected")).toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: "Deselect Batch Alpha" })).toHaveAttribute("aria-checked", "true");
 
-    fireEvent.click(screen.getByRole("button", { name: "Batch Favorite" }));
+    fireEvent.click(screen.getByRole("button", { name: "Batch actions" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Batch Favorite" }));
     expect(onBatchFavorite).toHaveBeenCalledWith(["gb-1", "gb-2"], true);
     expect(screen.queryByText("2 of 2 selected")).not.toBeInTheDocument();
     expect(
       screen.getByRole("checkbox", { name: "Select Batch Alpha" }),
     ).toHaveAttribute("aria-checked", "false");
+  });
+
+  it("toggles gallery cards instead of opening details while batch selection is active", async () => {
+    const prompts = [
+      { ...basePrompt, id: "gb-1", title: "Batch Alpha" },
+      { ...basePrompt, id: "gb-2", title: "Batch Beta" },
+    ];
+    const onViewDetail = vi.fn<(prompt: Prompt) => void>();
+    await renderWithI18n(
+      <PromptGalleryView
+        prompts={prompts}
+        onSelect={vi.fn()}
+        onToggleFavorite={vi.fn()}
+        onCopy={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onAiTest={vi.fn()}
+        onVersionHistory={vi.fn()}
+        onViewDetail={onViewDetail}
+        onContextMenu={vi.fn()}
+        onBatchDelete={vi.fn()}
+      />,
+      { language: "en" },
+    );
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Batch Alpha" }));
+    const beta = screen.getByRole("button", { name: "Batch Beta" });
+    fireEvent.click(beta);
+    expect(screen.getByText("2 of 2 selected")).toBeVisible();
+    expect(screen.getByRole("checkbox", { name: "Deselect Batch Alpha" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("checkbox", { name: "Deselect Batch Beta" })).toHaveAttribute("aria-checked", "true");
+    expect(onViewDetail).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Invert Selection" }));
+    expect(screen.queryByRole("toolbar", { name: "Batch actions" })).toBeNull();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Batch Alpha" }));
+    fireEvent.click(screen.getByRole("button", { name: "Invert Selection" }));
+    expect(screen.getByRole("checkbox", { name: "Deselect Batch Beta" })).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(screen.getByRole("button", { name: "Select All" }));
+    expect(screen.getByText("2 of 2 selected")).toBeVisible();
+    fireEvent.keyDown(beta, { key: "Enter" });
+    expect(screen.getByText("1 of 2 selected")).toBeVisible();
+    fireEvent.keyDown(beta, { key: " " });
+    expect(screen.getByText("2 of 2 selected")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Clear Selection" }));
+    fireEvent.click(beta);
+    expect(onViewDetail).toHaveBeenCalledTimes(1);
+    expect(onViewDetail).toHaveBeenCalledWith(prompts[1]);
   });
 
   it("hides batch UI entirely when no batch handlers are provided", async () => {

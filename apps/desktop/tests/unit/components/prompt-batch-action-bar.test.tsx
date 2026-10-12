@@ -1,29 +1,37 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-import { PromptBatchActionBar } from "../../../src/renderer/components/prompt/PromptBatchActionBar";
+import {
+  PromptBatchActionBar,
+  type PromptBatchActionBarProps,
+} from "../../../src/renderer/components/prompt/PromptBatchActionBar";
 import { useFolderStore } from "../../../src/renderer/stores/folder.store";
 import { renderWithI18n } from "../../helpers/i18n";
 
 const ids = ["prompt-a", "prompt-b"];
-
 function setupProps() {
   return {
     selectedIds: ids,
     totalCount: 5,
+    onSelectAll: vi.fn(),
+    onInvertSelection: vi.fn(),
     onClear: vi.fn(),
-    onFavorite: vi.fn<(batchIds: string[], favorite: boolean) => void>(),
-    onMove: vi.fn<(batchIds: string[], folderId: string | undefined) => void>(),
-    onDelete: vi.fn<(batchIds: string[]) => void>(),
-    onTag: vi.fn<(batchIds: string[]) => void>(),
+    onFavorite: vi.fn<(ids: string[], favorite: boolean) => void>(),
+    onMove: vi.fn<(ids: string[], folderId: string | undefined) => void>(),
+    onDelete: vi.fn<(ids: string[]) => void>(),
+    onTag: vi.fn<(ids: string[]) => void>(),
   };
 }
-
 async function renderBar(
-  props: ReturnType<typeof setupProps>,
+  props: Omit<PromptBatchActionBarProps, "layout"> = setupProps(),
+  layout: "card" | "gallery" | "table" = "gallery",
   language: "en" | "zh" = "en",
 ) {
-  return renderWithI18n(<PromptBatchActionBar {...props} />, { language });
+  return renderWithI18n(<PromptBatchActionBar {...props} layout={layout} />, {
+    language,
+  });
+}
+function openActions() {
+  fireEvent.click(screen.getByRole("button", { name: "Batch actions" }));
 }
 
 describe("PromptBatchActionBar", () => {
@@ -39,115 +47,121 @@ describe("PromptBatchActionBar", () => {
           icon: "folder",
         },
       ],
-      selectedFolderId: null,
-      expandedIds: new Set<string>(),
-      unlockedFolderIds: new Set<string>(),
-    } as Partial<ReturnType<typeof useFolderStore.getState>>);
+    });
   });
-
-  it("renders nothing when there is no selection", async () => {
-    const props = setupProps();
-    await renderBar({ ...props, selectedIds: [] });
-    expect(
-      screen.queryByRole("button", { name: "Batch Favorite" }),
-    ).not.toBeInTheDocument();
+  it("renders nothing without a selection", async () => {
+    await renderBar({ ...setupProps(), selectedIds: [] });
+    expect(screen.queryByRole("toolbar")).toBeNull();
   });
-
-  it("shows the selection denominator instead of a hardcoded Chinese fallback", async () => {
+  it("shows the denominator and two lightweight selection controls in gallery", async () => {
     const props = setupProps();
     await renderBar(props);
-    expect(
-      screen.getByText("2 of 5 selected"),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/已选择/)).not.toBeInTheDocument();
-
-    const zh = await renderBar(props, "zh");
-    expect(zh.getByText("已选择 2 项 / 共 5 项")).toBeInTheDocument();
+    expect(screen.getByText("2 of 5 selected")).toBeVisible();
+    expect(screen.queryByRole("menuitem")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Select All" }));
+    fireEvent.click(screen.getByRole("button", { name: "Invert Selection" }));
+    expect(props.onSelectAll).toHaveBeenCalledTimes(1);
+    expect(props.onInvertSelection).toHaveBeenCalledTimes(1);
   });
-
-  it("passes every selected id to each batch action", async () => {
+  it("keeps only selection, actions and cancel triggers in the narrow card pane", async () => {
     const props = setupProps();
-    await renderBar(props);
-
-    fireEvent.click(screen.getByRole("button", { name: /Tags/ }));
-    expect(props.onTag).toHaveBeenCalledWith(ids);
-
+    await renderBar(props, "card");
+    expect(
+      within(screen.getByRole("toolbar")).getAllByRole("button"),
+    ).toHaveLength(3);
+    expect(screen.queryByRole("button", { name: "Select All" })).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "2 of 5 selected" }),
+    ).toHaveTextContent("2 selected");
+    fireEvent.click(screen.getByRole("button", { name: "2 of 5 selected" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Select All" }));
+    expect(props.onSelectAll).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("menu")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "2 of 5 selected" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Invert Selection" }));
+    expect(props.onInvertSelection).toHaveBeenCalledTimes(1);
+  });
+  it("shows full localized selection commands in the card menu", async () => {
+    await renderBar(setupProps(), "card", "zh");
     fireEvent.click(
-      screen.getByRole("button", { name: "Batch Favorite" }),
+      screen.getByRole("button", { name: "已选择 2 项 / 共 5 项" }),
     );
+    expect(screen.getByRole("menuitem", { name: "全选" })).toBeVisible();
+    expect(screen.getByRole("menuitem", { name: "反选" })).toBeVisible();
+  });
+  it("runs each batch action with every selected id from one actions menu", async () => {
+    const props = setupProps();
+    await renderBar(props);
+    for (const name of ["Tags", "Batch Favorite", "Batch Delete"]) {
+      expect(screen.queryByRole("button", { name })).toBeNull();
+      openActions();
+      fireEvent.click(screen.getByRole("menuitem", { name }));
+      expect(screen.queryByRole("menu")).toBeNull();
+    }
+    expect(props.onTag).toHaveBeenCalledWith(ids);
     expect(props.onFavorite).toHaveBeenCalledWith(ids, true);
-
-    fireEvent.click(screen.getByRole("button", { name: "Batch Delete" }));
     expect(props.onDelete).toHaveBeenCalledWith(ids);
   });
-
-  it("routes a move to the root (no folder) through the folder menu", async () => {
-    const props = setupProps();
-    await renderBar(props);
-
-    fireEvent.click(screen.getByRole("button", { name: "Batch Move" }));
-    fireEvent.click(screen.getByRole("button", { name: "No folder" }));
-    expect(props.onMove).toHaveBeenCalledWith(ids, undefined);
+  it.each([undefined, "folder-1"])(
+    "moves to folder %s without losing the selected ids",
+    async (folderId) => {
+      const props = setupProps();
+      await renderBar(props);
+      openActions();
+      fireEvent.click(screen.getByRole("menuitem", { name: "Batch Move" }));
+      fireEvent.click(
+        screen.getByRole("menuitem", {
+          name: folderId ? "Examples" : "No folder",
+        }),
+      );
+      expect(props.onMove).toHaveBeenCalledWith(ids, folderId);
+      expect(screen.queryByRole("menu")).toBeNull();
+    },
+  );
+  it("returns from folder choices to batch actions", async () => {
+    await renderBar();
+    openActions();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Batch Move" }));
+    expect(screen.getByRole("menuitem", { name: "Back" })).toHaveFocus();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Back" }));
     expect(
-      screen.queryByRole("button", { name: /Examples/ }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("menuitem", { name: "Batch Favorite" }),
+    ).toBeVisible();
   });
-
-  it("routes a move to a concrete folder through the folder menu", async () => {
-    const props = setupProps();
-    await renderBar(props);
-
-    fireEvent.click(screen.getByRole("button", { name: "Batch Move" }));
-    fireEvent.click(screen.getByRole("button", { name: /Examples/ }));
-    expect(props.onMove).toHaveBeenCalledWith(ids, "folder-1");
-  });
-
-  it("hides the tag entry when no handler is provided", async () => {
-    const props = setupProps();
-    await renderBar({ ...props, onTag: undefined });
+  it("omits tags when its handler is absent", async () => {
+    await renderBar({ ...setupProps(), onTag: undefined });
+    openActions();
+    expect(screen.queryByRole("menuitem", { name: "Tags" })).toBeNull();
     expect(
-      screen.queryByRole("button", { name: /Tags/ }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Batch Favorite" }),
-    ).toBeInTheDocument();
+      screen.getByRole("menuitem", { name: "Batch Favorite" }),
+    ).toBeVisible();
   });
-
-  it("clears selection through the cancel button", async () => {
+  it("closes on Escape and restores focus to the trigger", async () => {
+    await renderBar();
+    openActions();
+    const first = screen.getByRole("menuitem", { name: "Tags" });
+    expect(first).toHaveFocus();
+    fireEvent.keyDown(first, { key: "ArrowDown" });
+    expect(
+      screen.getByRole("menuitem", { name: "Batch Favorite" }),
+    ).toHaveFocus();
+    fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(screen.getByRole("button", { name: "Batch actions" })).toHaveFocus();
+  });
+  it("dismisses menus on outside click and resets folder choices", async () => {
+    await renderBar();
+    openActions();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Batch Move" }));
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByRole("menu")).toBeNull();
+    openActions();
+    expect(screen.getByRole("menuitem", { name: "Batch Move" })).toBeVisible();
+  });
+  it("clears selection through the remaining cancel trigger", async () => {
     const props = setupProps();
     await renderBar(props);
     fireEvent.click(screen.getByRole("button", { name: "Clear Selection" }));
     expect(props.onClear).toHaveBeenCalledTimes(1);
-  });
-
-  it("keeps icon-only buttons on a single nowrap row", async () => {
-    const props = setupProps();
-    await renderBar(props);
-    const actions = screen
-      .getByRole("button", { name: "Batch Favorite" })
-      .closest("div");
-    expect(actions).not.toBeNull();
-    expect(actions?.className).toContain("flex-nowrap");
-    // the bar root must not itself wrap the count and actions together
-    const bar = actions?.parentElement as HTMLElement;
-    expect(bar.className).toContain("flex-nowrap");
-  });
-
-  it("keeps icon-only buttons discoverable via tooltips matching accessible names", async () => {
-    const props = setupProps();
-    await renderBar(props);
-
-    for (const name of [
-      "Tags",
-      "Batch Favorite",
-      "Batch Move",
-      "Batch Delete",
-      "Clear Selection",
-    ]) {
-      const button = screen.getByRole("button", { name });
-      expect(button).toHaveAttribute("title", name);
-      // icon-only: the button carries no visible text child
-      expect(button.textContent).toBe("");
-    }
   });
 });

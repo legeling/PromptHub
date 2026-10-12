@@ -59,6 +59,7 @@ export function usePromptWorkspaceInteractionBindings(
   const tree = usePromptWorkspaceTreeBindings(inputs);
   const handleSelectPrompt = usePromptSelectionAction(
     inputs.stores.promptData.selectedIds,
+    inputs.stores.promptData.isBatchSelectionActive,
     inputs.stores.promptActions.selectPrompt,
     inputs.stores.promptActions.setSelectedIds,
   );
@@ -245,22 +246,31 @@ function usePromptWorkspaceTreeBindings(inputs: WorkspaceActionInputs) {
 
 function usePromptSelectionAction(
   selectedIds: string[],
+  isBatchSelectionActive: boolean,
   selectPrompt: (id: string | null) => void,
   setSelectedIds: (ids: string[]) => void,
 ) {
   return useCallback(
     (prompt: Prompt, event: MouseEvent) => {
-      if (event.metaKey || event.ctrlKey)
+      if (
+        event.metaKey ||
+        event.ctrlKey ||
+        (isBatchSelectionActive && !event.shiftKey)
+      )
         return setSelectedIds(
           selectedIds.includes(prompt.id)
             ? selectedIds.filter((id) => id !== prompt.id)
             : [...selectedIds, prompt.id],
         );
-      if (event.shiftKey && !selectedIds.includes(prompt.id))
-        return setSelectedIds([...selectedIds, prompt.id]);
+      if (event.shiftKey)
+        return setSelectedIds(
+          selectedIds.includes(prompt.id)
+            ? selectedIds
+            : [...selectedIds, prompt.id],
+        );
       selectPrompt(prompt.id);
     },
-    [selectPrompt, selectedIds, setSelectedIds],
+    [isBatchSelectionActive, selectPrompt, selectedIds, setSelectedIds],
   );
 }
 

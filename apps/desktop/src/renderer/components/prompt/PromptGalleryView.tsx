@@ -209,8 +209,11 @@ export function PromptGalleryView({
         <>
             {canBatch && (
                 <PromptBatchActionBar
+                    layout="gallery"
                     selectedIds={selection.selectedIdList}
                     totalCount={prompts.length}
+                    onSelectAll={selection.selectAllScope}
+                    onInvertSelection={selection.invertScopeSelection}
                     onClear={batch.clear}
                     onFavorite={batch.onFavorite}
                     onMove={batch.onMove}
@@ -263,7 +266,13 @@ export function PromptGalleryView({
                                     >
                                         <GalleryCard
                                             prompt={prompt}
-                                            onSelect={() => onViewDetail(prompt)}
+                                            onSelect={() => {
+                                                if (canBatch && selection.selectedIds.size > 0) {
+                                                    selection.toggle(prompt.id);
+                                                } else {
+                                                    onViewDetail(prompt);
+                                                }
+                                            }}
                                             onToggleFavorite={(e) => {
                                                 e.stopPropagation();
                                                 onToggleFavorite(prompt.id);
