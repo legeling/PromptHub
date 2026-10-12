@@ -440,7 +440,7 @@ function redactText(value: string, homeDir: string): string {
     "[REDACTED]",
   );
   redacted = redacted.replace(
-    /\b(?:api[_-]?key|token|password|secret)\s*[:=]\s*[^\s,;]+/gi,
+    /\b(api[_-]?key|token|password|secret)\s*[:=]\s*[^\s,;]+/gi,
     "$1=[REDACTED]",
   );
   return redacted;

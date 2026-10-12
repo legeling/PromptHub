@@ -1,3 +1,4 @@
+import { AgentConversationService } from "../../../src/main/services/agent-conversation-service";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const handleMock = vi.fn();
@@ -16,36 +17,82 @@ async function setup() {
       import("../../../src/main/ipc/agent-conversation.ipc"),
       import("@prompthub/shared/constants/ipc-channels"),
     ]);
-  const service = {
-    listMetadata: vi.fn(() => []),
-    updateMetadata: vi.fn((input) => ({ ...input, id: "metadata-1" })),
-    deleteConversation: vi.fn(async (agentId, sessionId) => ({
-      agentId,
-      sessionId,
-    })),
-    resume: vi.fn(async () => ({
+  const unexpected = (): never => {
+    throw new Error(
+      "Unexpected conversation dependency call in IPC contract test",
+    );
+  };
+  const service = new AgentConversationService({
+    repository: {
+      listMetadata: unexpected,
+      upsertMetadata: unexpected,
+      deleteMetadata: unexpected,
+      createHandoff: unexpected,
+      updateHandoff: unexpected,
+    },
+    sessions: {
+      list: unexpected,
+      read: unexpected,
+      canDelete: unexpected,
+      delete: unexpected,
+    },
+    resolveExecutable: unexpected,
+    launch: unexpected,
+    copyText: unexpected,
+    homeDir: "/unused-ipc-fixture",
+  });
+  const methods = {
+    listMetadata: vi.fn<AgentConversationService["listMetadata"]>(() => []),
+    updateMetadata: vi.fn<AgentConversationService["updateMetadata"]>(
+      (input) => ({
+        ...input,
+        id: "metadata-1",
+        title: input.title ?? null,
+        projectId: input.projectId ?? null,
+        projectPath: input.projectPath ?? null,
+        note: input.note ?? null,
+        favorite: input.favorite ?? false,
+        archivedAt: input.archived ? 1 : null,
+        createdAt: 1,
+        updatedAt: 1,
+      }),
+    ),
+    deleteConversation: vi.fn<AgentConversationService["deleteConversation"]>(
+      async (agentId, sessionId) => ({
+        agentId,
+        sessionId,
+      }),
+    ),
+    resume: vi.fn<AgentConversationService["resume"]>(async () => ({
       status: "launched",
       mode: "native-resume",
     })),
-    previewHandoff: vi.fn(async (request) => ({
-      ...request,
-      previewToken: "00000000-0000-4000-8000-000000000001",
-      sourceTitle: "Session",
-      payload: "portable context",
-      payloadDigest: `sha256:${"a".repeat(64)}`,
-      transport: "direct",
-      cliCommand: "cd '/workspace/project' && codex 'portable context'",
-    })),
-    continueInAgent: vi.fn(async () => ({
-      status: "launched",
-      mode: "cross-agent",
-    })),
-    exportConversation: vi.fn(async () => ({
-      fileName: "session.md",
-      content: "# Session",
-      mimeType: "text/markdown",
-    })),
+    previewHandoff: vi.fn<AgentConversationService["previewHandoff"]>(
+      async (request) => ({
+        ...request,
+        previewToken: "00000000-0000-4000-8000-000000000001",
+        sourceTitle: "Session",
+        payload: "portable context",
+        payloadDigest: `sha256:${"a".repeat(64)}`,
+        transport: "direct",
+        cliCommand: "cd '/workspace/project' && codex 'portable context'",
+      }),
+    ),
+    continueInAgent: vi.fn<AgentConversationService["continueInAgent"]>(
+      async () => ({
+        status: "launched",
+        mode: "cross-agent",
+      }),
+    ),
+    exportConversation: vi.fn<AgentConversationService["exportConversation"]>(
+      async () => ({
+        fileName: "session.md",
+        content: "# Session",
+        mimeType: "text/markdown",
+      }),
+    ),
   };
+  Object.assign(service, methods);
   const saveExport = vi.fn(async () => "/tmp/session.md");
   registerAgentConversationIPC({ service, saveExport });
   return {
