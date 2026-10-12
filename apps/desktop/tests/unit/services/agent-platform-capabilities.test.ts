@@ -12,23 +12,10 @@ import {
 
 const expectedProviderAdapters = [
   "antigravity",
-  "autoclaw",
   "claude",
   "codex",
-  "copaw",
-  "copilot",
-  "gemini",
-  "grok",
-  "hermes",
-  "kimi",
-  "kiro",
-  "oh-my-pi",
-  "openclaw",
   "opencode",
   "pi",
-  "qclaw",
-  "qoder",
-  "qwen",
 ];
 
 const expectedSessionAdapters = [
@@ -77,15 +64,7 @@ const expectedPlannedSessionAdapters = [
   "zcode",
 ];
 
-const expectedUsageAdapters = [
-  "antigravity",
-  "claude",
-  "codex",
-  "copilot",
-  "gemini",
-  "grok",
-  "kimi",
-];
+const expectedUsageAdapters = ["antigravity", "claude", "codex", "kimi"];
 
 function supportedPlatformIds(
   capability: "providerModel" | "sessions" | "usage",
@@ -139,15 +118,13 @@ describe("Agent platform capability inventory", () => {
       );
 
       const inventory = getAgentPlatformCapabilityInventory(platform!);
-      expect(inventory.providerModel.status, platformId).toBe(
-        platformId === "nanoclaw" ? "planned" : "partial",
-      );
+      expect(inventory.providerModel.status, platformId).toBe("unsupported");
       expect(inventory.sessions.status, platformId).toBe(
         platformId === "nanoclaw" || platformId === "copaw"
           ? "supported"
           : "planned",
       );
-      expect(inventory.usage.status, platformId).toBe("planned");
+      expect(inventory.usage.status, platformId).toBe("unsupported");
       expect(inventory.maintenanceCli.status, platformId).toBe("planned");
       expect(inventory.skills.status, platformId).toBe("partial");
     }
@@ -173,11 +150,7 @@ describe("Agent platform capability inventory", () => {
     expect(supportedPlatformIds("providerModel")).toEqual([
       "claude",
       "codex",
-      "gemini",
-      "grok",
-      "kimi",
       "opencode",
-      "qwen",
     ]);
     expect(
       SKILL_PLATFORMS.filter((platform) => {
@@ -280,16 +253,16 @@ describe("Agent platform capability inventory", () => {
         evidence: "protocol-evidence-pending",
       },
       providerModel: {
-        status: "planned",
-        evidence: "adapter-evidence-pending",
+        status: "unsupported",
+        evidence: "outside-initial-support-scope",
       },
       sessions: {
         status: "planned",
         evidence: "adapter-evidence-pending",
       },
       usage: {
-        status: "planned",
-        evidence: "adapter-evidence-pending",
+        status: "unsupported",
+        evidence: "outside-initial-support-scope",
       },
       maintenanceCli: {
         status: "planned",
@@ -308,8 +281,8 @@ describe("Agent platform capability inventory", () => {
         evidence: "platform-root-declaration",
       },
       providerModel: {
-        status: "planned",
-        evidence: "adapter-evidence-pending",
+        status: "unsupported",
+        evidence: "outside-initial-support-scope",
       },
       skills: {
         status: "partial",
@@ -336,8 +309,8 @@ describe("Agent platform capability inventory", () => {
         evidence: "verified-readonly-agent-transcripts",
       },
       usage: {
-        status: "planned",
-        evidence: "adapter-evidence-pending",
+        status: "unsupported",
+        evidence: "outside-initial-support-scope",
       },
       launch: {
         status: "supported",
@@ -442,8 +415,8 @@ describe("Agent platform capability inventory", () => {
         evidence: "platform-root-declaration",
       },
       providerModel: {
-        status: "planned",
-        evidence: "adapter-evidence-pending",
+        status: "unsupported",
+        evidence: "outside-initial-support-scope",
       },
       skills: {
         status: "partial",
@@ -470,8 +443,8 @@ describe("Agent platform capability inventory", () => {
         evidence: "verified-cherry-agent-session-db",
       },
       usage: {
-        status: "planned",
-        evidence: "adapter-evidence-pending",
+        status: "unsupported",
+        evidence: "outside-initial-support-scope",
       },
       launch: {
         status: "supported",
@@ -558,8 +531,8 @@ describe("Agent platform capability inventory", () => {
         evidence: "platform-root-declaration",
       },
       providerModel: {
-        status: "planned",
-        evidence: "adapter-evidence-pending",
+        status: "unsupported",
+        evidence: "outside-initial-support-scope",
       },
       skills: {
         status: "partial",
@@ -586,8 +559,8 @@ describe("Agent platform capability inventory", () => {
         evidence: "verified-transcript-hook-adapter",
       },
       usage: {
-        status: "planned",
-        evidence: "adapter-evidence-pending",
+        status: "unsupported",
+        evidence: "outside-initial-support-scope",
       },
       launch: {
         status: "supported",
@@ -617,16 +590,16 @@ describe("Agent platform capability inventory", () => {
     expect(kiro).toBeDefined();
     expect(getAgentPlatformCapabilityInventory(kiro!)).toMatchObject({
       providerModel: {
-        status: "partial",
-        evidence: "model-config-adapter",
+        status: "unsupported",
+        evidence: "outside-initial-support-scope",
       },
       sessions: {
         status: "partial",
         evidence: "verified-local-session-adapter",
       },
       usage: {
-        status: "planned",
-        evidence: "adapter-evidence-pending",
+        status: "unsupported",
+        evidence: "outside-initial-support-scope",
       },
       launch: {
         status: "supported",

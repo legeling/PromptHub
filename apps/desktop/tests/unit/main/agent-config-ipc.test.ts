@@ -1,3 +1,4 @@
+import type { AgentUsageQuota } from "@prompthub/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentUsageService } from "../../../src/main/services/agent-usage-service";
 
@@ -189,15 +190,18 @@ describe("Agent config file IPC", () => {
   });
 
   it("uses an injected process-wide usage service", async () => {
-    const getUsage = vi.fn(async (agentId: string) => ({
-      agentId,
-      adapter: "test",
-      status: "ok" as const,
-      source: "provider" as const,
-      plan: "pro",
-      fetchedAt: 1,
-      metrics: [],
-    }));
+    const getUsage = vi.fn(
+      async (agentId: string): Promise<AgentUsageQuota> => ({
+        schemaVersion: 2,
+        agentId,
+        adapter: "test",
+        status: "ok" as const,
+        source: "provider" as const,
+        plan: "pro",
+        fetchedAt: 1,
+        metrics: [],
+      }),
+    );
     const { handlers, IPC_CHANNELS } = await setup({ getUsage });
 
     await expect(
@@ -519,7 +523,7 @@ describe("Agent config file IPC", () => {
     expect(updatePiCustomModelMock).not.toHaveBeenCalled();
   });
 
-  it("runs Kimi's native doctor against the written config when available", async () => {
+  it("rejects Kimi model configuration before writes or native validation", async () => {
     resolveNativeCommandMock.mockResolvedValue("/usr/local/bin/kimi");
     runNativeCommandMock.mockResolvedValue({ stdout: "", stderr: "" });
     updateAgentModelConfigMock.mockImplementation(async (_context, options) => {
@@ -531,15 +535,14 @@ describe("Agent config file IPC", () => {
     });
     const { handlers, IPC_CHANNELS } = await setup();
 
-    await handlers[IPC_CHANNELS.AGENT_MODEL_CONFIG_SET](null, {
-      agentId: "kimi",
-      model: "kimi-code/kimi-for-coding",
-    });
-
-    expect(runNativeCommandMock).toHaveBeenCalledWith(
-      "/usr/local/bin/kimi",
-      ["doctor", "config", "/Users/test/.kimi-code/config.toml"],
-      { timeout: 15_000, maxBuffer: 64 * 1024 },
-    );
+    await expect(
+      handlers[IPC_CHANNELS.AGENT_MODEL_CONFIG_SET](null, {
+        agentId: "kimi",
+        model: "kimi-code/kimi-for-coding",
+      }),
+    ).rejects.toThrow("AGENT_PROVIDER_ADAPTER_UNSUPPORTED");
+    expect(updateAgentModelConfigMock).not.toHaveBeenCalled();
+    expect(writeConfigFileMock).not.toHaveBeenCalled();
+    expect(runNativeCommandMock).not.toHaveBeenCalled();
   });
 });

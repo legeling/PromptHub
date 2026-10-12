@@ -2,7 +2,8 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { closeDatabase, initDatabase } from "../../../src/main/database";
 
 import {
   inspectAgentModelConfig,
@@ -15,12 +16,11 @@ import {
 import { getPlatformRootDir } from "../../../src/main/services/skill-installer-utils";
 import { getAgentPlatformCapabilityInventory } from "@prompthub/shared/constants/agent-platform-capabilities";
 import { getPlatformById } from "@prompthub/shared/constants/platforms";
-import type {
-  AgentProviderAdapterContext,
-  AgentProviderProfile,
-} from "@prompthub/shared/types";
 
 const temporaryRoots: string[] = [];
+beforeEach(() => {
+  initDatabase();
+});
 
 async function temporaryRoot(): Promise<string> {
   const root = await fs.mkdtemp(
@@ -31,6 +31,7 @@ async function temporaryRoot(): Promise<string> {
 }
 
 afterEach(async () => {
+  closeDatabase();
   await Promise.all(
     temporaryRoots
       .splice(0)
@@ -61,17 +62,17 @@ describe("Kiro CLI model-only boundary", () => {
     expect(platform.globalRuleFile).toBe("steering/AGENTS.md");
     expect(getAgentPlatformCapabilityInventory(platform)).toMatchObject({
       providerModel: {
-        status: "partial",
-        evidence: "model-config-adapter",
+        status: "unsupported",
+        evidence: "outside-initial-support-scope",
       },
       sessions: {
         status: "partial",
         evidence: "verified-local-session-adapter",
       },
-      usage: { status: "planned" },
+      usage: { status: "unsupported" },
       launch: { status: "supported" },
     });
-    expect(AGENT_MODEL_PROVIDER_PLATFORM_IDS).toContain("kiro");
+    expect(AGENT_MODEL_PROVIDER_PLATFORM_IDS).not.toContain("kiro");
     expect(
       getPlatformRootDir(
         platform,
@@ -84,64 +85,18 @@ describe("Kiro CLI model-only boundary", () => {
     ).toBe("/tmp/custom-kiro-home");
   });
 
-  it("activates and rolls back the nested settings path", async () => {
+  it("rejects temporarily unsupported provider activation without modifying native files", async () => {
     const rootPath = await temporaryRoot();
-    const targetPath = path.join(rootPath, "settings", "cli.json");
-    const backupRoot = path.join(rootPath, "backups");
+    const targetPath = path.join(rootPath, "settings/cli.json");
     await fs.mkdir(path.dirname(targetPath), { recursive: true });
-    const original =
-      '{\n  "chat": { "defaultModel": "claude-sonnet-4" },\n  "theme": "dark"\n}\n';
-    await fs.writeFile(targetPath, original, "utf8");
-    const adapter = createAgentModelProviderAdapter("kiro", { backupRoot });
-    const context: AgentProviderAdapterContext = {
-      platformId: "kiro",
-      agentId: "kiro",
-      rootPath,
-    };
-    const profile: AgentProviderProfile = {
-      id: "kiro-native",
-      platformId: "kiro",
-      name: "Kiro native",
-      providerKind: "kiro",
-      protocol: "platform-native",
-      endpoint: null,
-      config: {},
-      secretRef: null,
-      source: "native-import",
-      isDefault: false,
-      isArchived: false,
-      createdAt: 1,
-      updatedAt: 1,
-    };
-    const baseline = await adapter.inspect(context);
-    const plan = await adapter.planActivation({
-      context,
-      profile,
-      modelMappings: [
-        {
-          id: "kiro-primary",
-          profileId: profile.id,
-          routeKey: "primary",
-          modelId: "claude-opus-4",
-          parameters: {},
-          createdAt: 1,
-          updatedAt: 1,
-        },
-      ],
-      baseline,
-      resolutions: {},
-    });
-    const receipt = await adapter.apply(context, plan);
-    await expect(adapter.verify(context, plan, receipt)).resolves.toMatchObject(
-      {
-        verified: true,
-      },
-    );
-    await expect(adapter.rollback(context, receipt)).resolves.toMatchObject({
-      restored: true,
-    });
+    const original = '{"model":"preserve-user-model"}';
+    await fs.writeFile(targetPath, original);
+    expect(() =>
+      createAgentModelProviderAdapter("kiro", {
+        backupRoot: path.join(rootPath, "backups"),
+      }),
+    ).toThrow("AGENT_PROVIDER_ADAPTER_UNSUPPORTED");
     await expect(fs.readFile(targetPath, "utf8")).resolves.toBe(original);
-    await expect(fs.access(path.join(rootPath, "cli.json"))).rejects.toThrow();
   });
 
   it("inspects and updates only chat.defaultModel in JSONC settings", async () => {

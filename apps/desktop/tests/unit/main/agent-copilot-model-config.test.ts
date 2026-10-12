@@ -1,7 +1,8 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { closeDatabase, initDatabase } from "../../../src/main/database";
 
 import {
   createAgentModelProviderAdapter,
@@ -18,14 +19,11 @@ import {
   KNOWN_RULE_FILE_TEMPLATES,
   RULE_PLATFORM_ORDER,
 } from "@prompthub/shared/constants/rules";
-import type {
-  AgentProviderActivationInput,
-  AgentProviderAdapterContext,
-  AgentProviderComparableState,
-  AgentProviderProfile,
-} from "@prompthub/shared/types";
 
 const temporaryRoots: string[] = [];
+beforeEach(() => {
+  initDatabase();
+});
 
 async function temporaryRoot(): Promise<string> {
   const root = await fs.mkdtemp(
@@ -36,57 +34,13 @@ async function temporaryRoot(): Promise<string> {
 }
 
 afterEach(async () => {
+  closeDatabase();
   await Promise.all(
     temporaryRoots
       .splice(0)
       .map((root) => fs.rm(root, { recursive: true, force: true })),
   );
 });
-
-function nativeProfile(
-  overrides: Partial<AgentProviderProfile> = {},
-): AgentProviderProfile {
-  return {
-    id: "copilot-native",
-    platformId: "copilot",
-    name: "GitHub Copilot native",
-    providerKind: "github-copilot",
-    protocol: "platform-native",
-    endpoint: null,
-    config: {},
-    secretRef: null,
-    source: "manual",
-    isDefault: false,
-    isArchived: false,
-    createdAt: 1,
-    updatedAt: 1,
-    ...overrides,
-  };
-}
-
-function activationInput(
-  context: AgentProviderAdapterContext,
-  baseline: AgentProviderComparableState,
-  profile = nativeProfile(),
-): AgentProviderActivationInput {
-  return {
-    context,
-    profile,
-    modelMappings: [
-      {
-        id: "copilot-primary",
-        profileId: profile.id,
-        routeKey: "primary",
-        modelId: "gpt-5.4",
-        parameters: {},
-        createdAt: 1,
-        updatedAt: 1,
-      },
-    ],
-    baseline,
-    resolutions: {},
-  };
-}
 
 describe("GitHub Copilot CLI native model boundary", () => {
   it("declares the current root and user-owned asset paths", () => {
@@ -110,16 +64,16 @@ describe("GitHub Copilot CLI native model boundary", () => {
       getAgentPlatformCapabilityInventory(getPlatformById("copilot")!),
     ).toMatchObject({
       providerModel: {
-        status: "partial",
-        evidence: "model-config-adapter",
+        status: "unsupported",
+        evidence: "outside-initial-support-scope",
       },
       sessions: {
         status: "partial",
         evidence: "verified-readonly-session-store",
       },
-      usage: { status: "supported" },
+      usage: { status: "unsupported" },
     });
-    expect(AGENT_MODEL_PROVIDER_PLATFORM_IDS).toContain("copilot");
+    expect(AGENT_MODEL_PROVIDER_PLATFORM_IDS).not.toContain("copilot");
     expect(RULE_PLATFORM_ORDER).toContain("copilot");
     expect(KNOWN_RULE_FILE_TEMPLATES["copilot-global"]).toMatchObject({
       platformId: "copilot",
@@ -269,53 +223,17 @@ describe("GitHub Copilot CLI native model boundary", () => {
     }
   });
 
-  it("applies, verifies, rolls back, and rejects environment-only BYOK fields", async () => {
+  it("rejects temporarily unsupported provider activation without modifying native files", async () => {
     const rootPath = await temporaryRoot();
     const targetPath = path.join(rootPath, "settings.json");
-    const original = '{\n  "model": "claude-sonnet-4.6"\n}\n';
+    await fs.mkdir(path.dirname(targetPath), { recursive: true });
+    const original = '{"model":"preserve-user-model"}';
     await fs.writeFile(targetPath, original);
-    const context = {
-      agentId: "copilot",
-      platformId: "copilot",
-      rootPath,
-    };
-    const adapter = createAgentModelProviderAdapter("copilot", {
-      backupRoot: path.join(rootPath, "backups"),
-      now: () => 42,
-    });
-    const current = await adapter.inspect(context);
-    const plan = await adapter.planActivation(
-      activationInput(context, current),
-    );
-    const receipt = await adapter.apply(context, plan);
-
-    await expect(adapter.verify(context, plan, receipt)).resolves.toMatchObject(
-      {
-        verified: true,
-        state: { values: { model: "gpt-5.4" } },
-      },
-    );
-    await expect(adapter.rollback(context, receipt)).resolves.toMatchObject({
-      restored: true,
-      nativeDigest: current.nativeDigest,
-    });
+    expect(() =>
+      createAgentModelProviderAdapter("copilot", {
+        backupRoot: path.join(rootPath, "backups"),
+      }),
+    ).toThrow("AGENT_PROVIDER_ADAPTER_UNSUPPORTED");
     await expect(fs.readFile(targetPath, "utf8")).resolves.toBe(original);
-
-    const direct = nativeProfile({
-      endpoint: "https://gateway.example/v1",
-      secretRef: "agent-provider:copilot-direct",
-      protocol: "openai-responses",
-    });
-    await expect(
-      adapter.planActivation(activationInput(context, current, direct)),
-    ).resolves.toMatchObject({
-      status: "blocked",
-      canApply: false,
-      blockedReasons: expect.arrayContaining([
-        "provider-endpoint-unsupported",
-        "provider-secret-unsupported",
-        "provider-protocol-unsupported",
-      ]),
-    });
   });
 });

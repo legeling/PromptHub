@@ -289,10 +289,14 @@ describe("Kimi Provider adapter boundaries", () => {
       }),
     ).rejects.toThrow("AGENT_PROVIDER_PROFILE_PLATFORM_MISMATCH");
     await expect(
-      adapter.testModel!(context(root), {
-        profile: wrongPlatform,
-        modelMappings: mappings(),
-      }),
+      adapter.testModel!(
+        context(root),
+        {
+          profile: wrongPlatform,
+          modelMappings: mappings(),
+        },
+        new AbortController().signal,
+      ),
     ).rejects.toThrow("AGENT_PROVIDER_PROFILE_PLATFORM_MISMATCH");
 
     const mismatchPlan = await adapter.planActivation({
@@ -324,10 +328,14 @@ describe("Kimi Provider adapter boundaries", () => {
       "native-provider-state-mismatch",
     );
     await expect(
-      adapter.testModel!(context(root), {
-        profile: nativeProfile,
-        modelMappings: staleMappings,
-      }),
+      adapter.testModel!(
+        context(root),
+        {
+          profile: nativeProfile,
+          modelMappings: staleMappings,
+        },
+        new AbortController().signal,
+      ),
     ).resolves.toMatchObject({
       status: "unsupported",
       model: "different-upstream",
@@ -340,10 +348,14 @@ describe("Kimi Provider adapter boundaries", () => {
       maxContextSize: 1_048_576,
     });
     await expect(
-      adapter.testModel!(context(root), {
-        profile: nativeProfile,
-        modelMappings: currentMappings,
-      }),
+      adapter.testModel!(
+        context(root),
+        {
+          profile: nativeProfile,
+          modelMappings: currentMappings,
+        },
+        new AbortController().signal,
+      ),
     ).resolves.toMatchObject({
       status: "unsupported",
       model: "k3",
@@ -383,7 +395,7 @@ describe("Kimi Provider adapter boundaries", () => {
       model: null,
     });
     await expect(
-      adapter.testModel!(context(root), target),
+      adapter.testModel!(context(root), target, new AbortController().signal),
     ).resolves.toMatchObject({
       status: "no-credentials",
       model: null,

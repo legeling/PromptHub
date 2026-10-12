@@ -295,7 +295,7 @@ describe("Qwen Provider adapter boundaries", () => {
       finishedAt: 42,
     });
     await expect(
-      adapter.testModel!(context(root), current),
+      adapter.testModel!(context(root), current, new AbortController().signal),
     ).resolves.toMatchObject({
       status: "unsupported",
       model: "qwen-oauth-model",
@@ -342,10 +342,14 @@ describe("Qwen Provider adapter boundaries", () => {
       }),
     ).rejects.toThrow("AGENT_PROVIDER_PROFILE_PLATFORM_MISMATCH");
     await expect(
-      adapter.testModel!(context(root), {
-        profile: wrongProfile,
-        modelMappings: mappings(),
-      }),
+      adapter.testModel!(
+        context(root),
+        {
+          profile: wrongProfile,
+          modelMappings: mappings(),
+        },
+        new AbortController().signal,
+      ),
     ).rejects.toThrow("AGENT_PROVIDER_PROFILE_PLATFORM_MISMATCH");
     const plan = await adapter.planActivation({
       context: context(root),
@@ -371,7 +375,7 @@ describe("Qwen Provider adapter boundaries", () => {
       adapter.testConnection!(context(root), target),
     ).resolves.toMatchObject({ status: "no-credentials", model: null });
     await expect(
-      adapter.testModel!(context(root), target),
+      adapter.testModel!(context(root), target, new AbortController().signal),
     ).resolves.toMatchObject({ status: "no-credentials", model: null });
 
     const unsupportedTarget = {
@@ -383,7 +387,11 @@ describe("Qwen Provider adapter boundaries", () => {
       unsupportedAdapter.testConnection!(context(root), unsupportedTarget),
     ).resolves.toMatchObject({ status: "unsupported" });
     await expect(
-      unsupportedAdapter.testModel!(context(root), unsupportedTarget),
+      unsupportedAdapter.testModel!(
+        context(root),
+        unsupportedTarget,
+        new AbortController().signal,
+      ),
     ).resolves.toMatchObject({ status: "unsupported" });
   });
 

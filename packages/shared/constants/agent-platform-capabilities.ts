@@ -23,6 +23,10 @@ function declaration(
 }
 
 const PLANNED_ADAPTER = declaration("planned", "adapter-evidence-pending");
+const OUTSIDE_INITIAL_SCOPE = declaration(
+  "unsupported",
+  "outside-initial-support-scope",
+);
 const UNSUPPORTED_APPEARANCE = declaration(
   "unsupported",
   "appearance-adapter-unavailable",
@@ -36,9 +40,9 @@ function depthCapabilities(
   overrides: Partial<DepthCapabilityInventory> = {},
 ): DepthCapabilityInventory {
   return {
-    providerModel: PLANNED_ADAPTER,
+    providerModel: OUTSIDE_INITIAL_SCOPE,
     sessions: PLANNED_ADAPTER,
-    usage: PLANNED_ADAPTER,
+    usage: OUTSIDE_INITIAL_SCOPE,
     appearance: UNSUPPORTED_APPEARANCE,
     ...overrides,
   };
@@ -86,9 +90,7 @@ export const AGENT_PLATFORM_DEPTH_CAPABILITIES = {
   }),
   "deepseek-harness": depthCapabilities(),
   copilot: depthCapabilities({
-    providerModel: MODEL_CONFIG_ONLY,
     sessions: VERIFIED_READONLY_DATABASE_SESSION,
-    usage: VERIFIED_USAGE,
   }),
   cursor: depthCapabilities({
     sessions: VERIFIED_READONLY_AGENT_TRANSCRIPT_SESSION,
@@ -99,13 +101,10 @@ export const AGENT_PLATFORM_DEPTH_CAPABILITIES = {
   doubao: depthCapabilities(),
   windsurf: depthCapabilities({ sessions: VERIFIED_TRANSCRIPT_HOOK_SESSION }),
   kiro: depthCapabilities({
-    providerModel: MODEL_CONFIG_ONLY,
     sessions: VERIFIED_LOCAL_PARTIAL_SESSION,
   }),
   gemini: depthCapabilities({
-    providerModel: declaration("supported", "verified-provider-adapter"),
     sessions: VERIFIED_SESSION,
-    usage: VERIFIED_USAGE,
   }),
   antigravity: depthCapabilities({
     providerModel: MODEL_CONFIG_ONLY,
@@ -125,7 +124,6 @@ export const AGENT_PLATFORM_DEPTH_CAPABILITIES = {
     sessions: VERIFIED_SESSION,
   }),
   "oh-my-pi": depthCapabilities({
-    providerModel: MODEL_CONFIG_ONLY,
     sessions: VERIFIED_SESSION,
   }),
   cline: depthCapabilities({ sessions: VERIFIED_READONLY_SNAPSHOT_SESSION }),
@@ -136,7 +134,6 @@ export const AGENT_PLATFORM_DEPTH_CAPABILITIES = {
     appearance: declaration("supported", "verified-appearance-adapter"),
   }),
   kimi: depthCapabilities({
-    providerModel: declaration("supported", "verified-provider-adapter"),
     sessions: VERIFIED_SESSION,
     usage: VERIFIED_USAGE,
   }),
@@ -148,12 +145,9 @@ export const AGENT_PLATFORM_DEPTH_CAPABILITIES = {
   }),
   zcode: depthCapabilities(),
   grok: depthCapabilities({
-    providerModel: declaration("supported", "verified-provider-adapter"),
     sessions: VERIFIED_SESSION,
-    usage: VERIFIED_USAGE,
   }),
   qwen: depthCapabilities({
-    providerModel: declaration("supported", "verified-provider-adapter"),
     sessions: VERIFIED_SESSION,
   }),
   kilo: depthCapabilities({
@@ -163,25 +157,21 @@ export const AGENT_PLATFORM_DEPTH_CAPABILITIES = {
     providerModel: SERVICE_MANAGED_PROVIDER,
   }),
   openclaw: depthCapabilities({
-    providerModel: MODEL_CONFIG_ONLY,
     sessions: VERIFIED_SESSION,
   }),
   copaw: depthCapabilities({
-    providerModel: MODEL_CONFIG_ONLY,
     sessions: declaration("supported", "verified-copaw-safe-json-session-v2"),
   }),
-  autoclaw: depthCapabilities({ providerModel: MODEL_CONFIG_ONLY }),
+  autoclaw: depthCapabilities(),
   nanoclaw: depthCapabilities({
     sessions: declaration("supported", "verified-nanoclaw-v2-sqlite"),
   }),
-  qclaw: depthCapabilities({ providerModel: MODEL_CONFIG_ONLY }),
+  qclaw: depthCapabilities(),
   qoder: depthCapabilities({
-    providerModel: MODEL_CONFIG_ONLY,
     sessions: declaration("supported", "verified-qoder-transcript-jsonl-v1"),
   }),
   qoderwork: depthCapabilities(),
   hermes: depthCapabilities({
-    providerModel: MODEL_CONFIG_ONLY,
     sessions: declaration("supported", "verified-hermes-state-db"),
   }),
   codebuddy: depthCapabilities(),
@@ -189,6 +179,23 @@ export const AGENT_PLATFORM_DEPTH_CAPABILITIES = {
 } satisfies Record<string, DepthCapabilityInventory>;
 
 const FALLBACK_DEPTH_CAPABILITIES = depthCapabilities();
+
+export function isAgentDepthCapabilityAvailable(
+  platformId: string,
+  capability: "providerModel" | "usage",
+): boolean {
+  // External platform identities are resolved against this closed registry.
+  const depth = Object.prototype.hasOwnProperty.call(
+    AGENT_PLATFORM_DEPTH_CAPABILITIES,
+    platformId,
+  )
+    ? AGENT_PLATFORM_DEPTH_CAPABILITIES[
+        platformId as keyof typeof AGENT_PLATFORM_DEPTH_CAPABILITIES
+      ]
+    : FALLBACK_DEPTH_CAPABILITIES;
+  const { status } = depth[capability];
+  return status === "supported" || status === "partial";
+}
 
 function hasLaunchPath(platform: SkillPlatform): boolean {
   return Object.values(platform.launchPaths || {}).some(
@@ -219,14 +226,14 @@ export function getAgentPlatformCapabilityInventory(
   if (platform.assetModel === "plugin-harness") {
     return {
       installationPath: declaration("partial", "platform-root-declaration"),
-      providerModel: declaration("planned", "harness-plugin-owned-capability"),
+      providerModel: depth.providerModel,
       skills: declaration("unsupported", "harness-plugin-owned-capability"),
       mcp: declaration("unsupported", "harness-plugin-owned-capability"),
       rules: declaration("unsupported", "harness-plugin-owned-capability"),
       plugins: declaration("partial", "dsh-profile-bundle-adapter"),
       configFiles: declaration("planned", "harness-profile-editor-pending"),
       sessions: declaration("planned", "harness-session-adapter-pending"),
-      usage: declaration("planned", "harness-usage-adapter-pending"),
+      usage: depth.usage,
       launch: declaration("planned", "harness-launch-adapter-pending"),
       maintenanceCli: declaration("partial", platform.cli!.evidence),
       backupExportImport: declaration(

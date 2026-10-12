@@ -579,10 +579,14 @@ describe("Gemini CLI unified Provider Profile adapter", () => {
       secretRef: null,
     });
     await expect(
-      adapter.testModel?.(context(root), {
-        profile: native,
-        modelMappings: mappings(),
-      }),
+      adapter.testModel?.(
+        context(root),
+        {
+          profile: native,
+          modelMappings: mappings(),
+        },
+        new AbortController().signal,
+      ),
     ).resolves.toMatchObject({
       status: "unsupported",
       startedAt: 7,
@@ -594,10 +598,14 @@ describe("Gemini CLI unified Provider Profile adapter", () => {
       now: () => 9,
     });
     await expect(
-      noSecretAdapter.testModel?.(context(root), {
-        profile: base,
-        modelMappings: [],
-      }),
+      noSecretAdapter.testModel?.(
+        context(root),
+        {
+          profile: base,
+          modelMappings: [],
+        },
+        new AbortController().signal,
+      ),
     ).resolves.toMatchObject({
       status: "no-credentials",
       model: null,

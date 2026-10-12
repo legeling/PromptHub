@@ -7,9 +7,11 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { closeDatabase } from "@prompthub/db";
+import type { CreateAgentProviderProfileInput } from "@prompthub/shared";
 import Database from "../../../src/main/database/sqlite";
-import { SCHEMA } from "../../../src/main/database/schema";
 import { createAgentProviderRuntime } from "../../../src/main/services/agent-provider-runtime";
+import { resetRuntimePaths } from "../../../src/main/runtime-paths";
+import { initializeAgentSettingsFixture } from "../../helpers/agent-settings";
 
 describe("agent provider runtime", () => {
   let database: Database.Database;
@@ -19,15 +21,65 @@ describe("agent provider runtime", () => {
     tempDir = fs.mkdtempSync(
       path.join(os.tmpdir(), "prompthub-agent-provider-runtime-"),
     );
-    database = new Database(path.join(tempDir, "prompthub.db"));
-    database.pragma("foreign_keys = ON");
-    database.exec(SCHEMA);
+    database = initializeAgentSettingsFixture(tempDir);
   });
 
   afterEach(() => {
-    database.close();
     closeDatabase();
+    resetRuntimePaths();
     fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("preserves historical unsupported profiles while refusing new writes and activation", async () => {
+    const runtime = createAgentProviderRuntime({
+      database,
+      userDataPath: tempDir,
+      encryption: {
+        isEncryptionAvailable: () => true,
+        encryptString: (value) => Buffer.from(value, "utf8"),
+        decryptString: (value) => value.toString("utf8"),
+      },
+    });
+    const input: Omit<CreateAgentProviderProfileInput, "secretRef"> = {
+      platformId: "qwen",
+      name: "Existing Qwen",
+      providerKind: "openai-compatible",
+      protocol: "openai-chat",
+      endpoint: "https://example.com",
+      config: {},
+      source: "manual",
+    };
+    const existing = runtime.profileDb.createProfileWithMappings(
+      { ...input, secretRef: null },
+      [],
+    );
+    await expect(
+      runtime.profileService.create({ profile: input, modelMappings: [] }),
+    ).rejects.toThrow("AGENT_PROVIDER_ADAPTER_UNSUPPORTED");
+    await expect(
+      runtime.profileService.update({
+        id: existing.id,
+        expectedUpdatedAt: existing.updatedAt,
+        profile: { name: "Changed" },
+        secretAction: "preserve",
+      }),
+    ).rejects.toThrow("AGENT_PROVIDER_ADAPTER_UNSUPPORTED");
+    await expect(
+      runtime.activationService.importCurrent({
+        context: { agentId: "qwen", platformId: "qwen", rootPath: tempDir },
+      }),
+    ).rejects.toThrow("AGENT_PROVIDER_ADAPTER_UNSUPPORTED");
+    expect(runtime.profileDb.getProfileById(existing.id)).toEqual(existing);
+    await expect(runtime.trayService.listGroups()).resolves.toEqual([]);
+    expect(
+      (await runtime.profileService.list({ platformId: "qwen" })).map(
+        ({ name }) => name,
+      ),
+    ).toEqual(["Existing Qwen"]);
+    expect(runtime.profileService.export(existing.id).profile).toMatchObject({
+      platformId: "qwen",
+      name: "Existing Qwen",
+    });
   });
 
   it("shares one profile and activation runtime with the tray projection", async () => {
@@ -43,8 +95,8 @@ describe("agent provider runtime", () => {
 
     await runtime.profileService.create({
       profile: {
-        platformId: "qwen",
-        name: "Qwen Primary",
+        platformId: "opencode",
+        name: "OpenCode Primary",
         providerKind: "openai-compatible",
         protocol: "openai-chat",
         endpoint: "https://example.com",
@@ -62,13 +114,13 @@ describe("agent provider runtime", () => {
 
     await expect(runtime.trayService.listGroups()).resolves.toEqual([
       expect.objectContaining({
-        agentId: "qwen",
+        agentId: "opencode",
         currentProfileId: null,
-        name: "Qwen Code",
+        name: "OpenCode",
         profiles: [
           expect.objectContaining({
             model: "qwen3-coder",
-            name: "Qwen Primary",
+            name: "OpenCode Primary",
           }),
         ],
       }),

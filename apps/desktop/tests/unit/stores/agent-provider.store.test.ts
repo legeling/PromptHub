@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   AgentProviderActivationPlan,
+  AgentProviderActivationExecutionResult,
   AgentProviderConnectionTestResult,
   AgentProviderImportPreview,
   AgentProviderModelTestResult,
@@ -25,12 +26,10 @@ const profile: AgentProviderProfilePublic = {
   modelMappings: [
     {
       id: "mapping-1",
-      profileId: "profile-1",
+      providerProfileId: "profile-1",
       routeKey: "primary",
       modelId: "gpt-5.4",
       parameters: {},
-      createdAt: 1,
-      updatedAt: 1,
     },
   ],
   secretState: "none",
@@ -452,6 +451,7 @@ describe("Agent Provider renderer store", () => {
         config: {},
         source: "manual",
       },
+      modelMappings: [],
     });
     expect(
       useAgentProviderStore.getState().profiles.map(({ id }) => id),
@@ -502,7 +502,9 @@ describe("Agent Provider renderer store", () => {
       modelMappings: importPreview.modelMappings,
     });
     expect(
-      JSON.stringify(window.api.agent.createProviderProfile.mock.calls),
+      JSON.stringify(
+        vi.mocked(window.api.agent.createProviderProfile).mock.calls,
+      ),
     ).not.toContain("secretRef");
   });
 
@@ -667,6 +669,7 @@ describe("Agent Provider renderer store", () => {
       profiles: [profile],
       selectedProfileId: "profile-1",
       currentState: {
+        nativeConfig: null,
         platformId: "codex",
         status: "verified",
         currentProfileId: "profile-1",
@@ -686,6 +689,7 @@ describe("Agent Provider renderer store", () => {
       profiles: [profile],
       selectedProfileId: "profile-1",
       currentState: {
+        nativeConfig: null,
         platformId: "codex",
         status: "verified",
         currentProfileId: "profile-1",
@@ -701,22 +705,12 @@ describe("Agent Provider renderer store", () => {
   });
 
   it("does not apply a late activation result to another Agent", async () => {
-    let finishActivation!: (result: {
-      status: "verified";
-      plan: AgentProviderActivationPlan;
-      verification: {
-        verified: true;
-        nativeDigest: string;
-        state: {
-          platformId: string;
-          adapterVersion: string;
-          nativeDigest: string;
-          values: Record<string, unknown>;
-        };
-      };
-      rollback: null;
-    }) => void;
-    window.api.agent.activateProvider = vi.fn(
+    let finishActivation!: (
+      result: AgentProviderActivationExecutionResult,
+    ) => void;
+    window.api.agent.activateProvider = vi.fn<
+      typeof window.api.agent.activateProvider
+    >(
       () =>
         new Promise((resolve) => {
           finishActivation = resolve;
@@ -828,6 +822,7 @@ describe("Agent Provider renderer store", () => {
 
     await expect(
       useAgentProviderStore.getState().createProfile({
+        modelMappings: [],
         profile: {
           platformId: "codex",
           name: "Work",
@@ -843,6 +838,7 @@ describe("Agent Provider renderer store", () => {
         id: "profile-1",
         expectedUpdatedAt: 1,
         profile: {},
+        secretAction: "preserve",
       }),
     ).resolves.toBeNull();
     await expect(

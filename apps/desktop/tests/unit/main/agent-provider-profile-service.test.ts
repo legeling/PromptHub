@@ -106,6 +106,30 @@ describe("AgentProviderProfileService", () => {
     harness = createHarness();
   });
 
+  it("rejects unsupported profile writes before persistence or secret access", async () => {
+    await expect(
+      harness.service.create({
+        profile: { ...PROFILE_INPUT, platformId: "kimi" },
+        modelMappings: MAPPINGS,
+      }),
+    ).rejects.toThrow("AGENT_PROVIDER_ADAPTER_UNSUPPORTED");
+    vi.mocked(harness.storage.getProfileById).mockReturnValue(
+      profile({ platformId: "kimi" }),
+    );
+    await expect(
+      harness.service.update({
+        id: "profile-1",
+        expectedUpdatedAt: 1,
+        profile: { name: "Changed" },
+        secretAction: "preserve",
+      }),
+    ).rejects.toThrow("AGENT_PROVIDER_ADAPTER_UNSUPPORTED");
+    expect(harness.storage.createProfileWithMappings).not.toHaveBeenCalled();
+    expect(harness.storage.updateProfileWithMappings).not.toHaveBeenCalled();
+    expect(harness.secrets.read).not.toHaveBeenCalled();
+    expect(harness.secrets.write).not.toHaveBeenCalled();
+  });
+
   it("lists public records with one bounded secret lookup and never exposes refs", async () => {
     vi.mocked(harness.storage.listProfiles).mockReturnValue([
       profile({

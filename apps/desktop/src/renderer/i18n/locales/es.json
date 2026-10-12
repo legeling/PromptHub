@@ -1175,7 +1175,7 @@
     "maintenance": "Mantenimiento",
     "adapterPending": "Adaptador planificado",
     "adapterPlannedDescription": "Este adaptador está planificado y todavía no está disponible.",
-    "adapterUnsupportedDescription": "No hay un adaptador verificado disponible para este Agent.",
+    "adapterUnsupportedDescription": "Esta función no está disponible actualmente para este Agent.",
     "agentNotDetected": "Agent no detectado",
     "agentNotDetectedDesc": "Este Agent no está instalado o no se puede detectar la instalación. Instálalo y luego actualiza.",
     "pathConfiguration": "Rutas",

@@ -44,6 +44,23 @@ describe("Agent platform context", () => {
     });
   });
 
+  it.each(["kimi", "gemini", "grok", "qwen", "cursor"])(
+    "rejects provider access for %s without changing asset access",
+    async (id) => {
+      getSupportedPlatformsMock.mockReturnValue([
+        { id, configFiles: ["settings.json"] },
+      ]);
+      const { resolveAgentProviderContext, getAgentConfigContext } =
+        await loadModule();
+      expect(() => resolveAgentProviderContext(id)).toThrow(
+        "AGENT_PROVIDER_ADAPTER_UNSUPPORTED",
+      );
+      expect(getAgentConfigContext(id).relativePaths).toEqual([
+        "settings.json",
+      ]);
+    },
+  );
+
   it("separates Antigravity's CLI model root from its shared asset root", async () => {
     getSupportedPlatformsMock.mockReturnValue([{ id: "antigravity" }]);
     getPlatformRootDirMock.mockReturnValue("/Users/test/.gemini/config");

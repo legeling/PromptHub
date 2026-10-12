@@ -19,10 +19,6 @@ import {
   type AgentCodexAccountService,
 } from "./agent-codex-account-service";
 import { createAgentCodexProviderService } from "./agent-codex-provider-service";
-import { createAgentGeminiProviderAdapter } from "./agent-gemini-provider-adapter";
-import { createAgentGrokProviderAdapter } from "./agent-grok-provider-adapter";
-import { validateKimiConfigFile } from "./agent-kimi-config-validator";
-import { createAgentKimiProviderAdapter } from "./agent-kimi-provider-adapter";
 import {
   AGENT_MODEL_PROVIDER_PLATFORM_IDS,
   createAgentModelProviderAdapter,
@@ -31,7 +27,6 @@ import { createAgentOpenCodeProviderAdapter } from "./agent-opencode-provider-ad
 import { resolveAgentProviderContext } from "./agent-platform-context";
 import { createAgentProviderActivationRepository } from "./agent-provider-activation-repository";
 import { AgentProviderProfileService } from "./agent-provider-profile-service";
-import { createAgentQwenProviderAdapter } from "./agent-qwen-provider-adapter";
 import { resolveAgentSessionIndexSource } from "./agent-session-index-operations";
 import {
   createAgentSecretStore,
@@ -113,39 +108,13 @@ export function createAgentProviderRuntime({
                 backupEncryption: encryption,
                 secretStore,
               })
-            : platformId === "gemini"
-              ? createAgentGeminiProviderAdapter({
+            : platformId === "opencode"
+              ? createAgentOpenCodeProviderAdapter({
                   backupRoot,
                   backupEncryption: encryption,
                   secretStore,
                 })
-              : platformId === "grok"
-                ? createAgentGrokProviderAdapter({
-                    backupRoot,
-                    backupEncryption: encryption,
-                  })
-                : platformId === "kimi"
-                  ? createAgentKimiProviderAdapter({
-                      backupRoot,
-                      backupEncryption: encryption,
-                      secretStore,
-                      validateNativeConfig: validateKimiConfigFile,
-                    })
-                  : platformId === "qwen"
-                    ? createAgentQwenProviderAdapter({
-                        backupRoot,
-                        backupEncryption: encryption,
-                        secretStore,
-                      })
-                    : platformId === "opencode"
-                      ? createAgentOpenCodeProviderAdapter({
-                          backupRoot,
-                          backupEncryption: encryption,
-                          secretStore,
-                        })
-                      : createAgentModelProviderAdapter(platformId, {
-                          backupRoot,
-                        }),
+              : createAgentModelProviderAdapter(platformId, { backupRoot }),
     });
   }
 

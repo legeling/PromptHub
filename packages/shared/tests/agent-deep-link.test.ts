@@ -83,9 +83,9 @@ describe("Agent Provider Profile deep links", () => {
   it("accepts every declared protocol and public optional-value branch", () => {
     const cases = [
       ["claude", "anthropic-messages", "manual"],
-      ["gemini", "google-generative-ai", "native-import"],
+      ["opencode", "google-generative-ai", "native-import"],
       ["opencode", "openai-chat", "universal"],
-      ["qwen", "platform-native", "import"],
+      ["claude", "platform-native", "import"],
     ] as const;
 
     for (const [platformId, protocol, source] of cases) {
@@ -132,6 +132,21 @@ describe("Agent Provider Profile deep links", () => {
       "not a url",
     ]) {
       expectError(link, "AGENT_DEEP_LINK_INVALID");
+    }
+  });
+
+  it("rejects temporarily unsupported provider targets", () => {
+    for (const platformId of [
+      "gemini",
+      "qwen",
+      "kimi",
+      "grok",
+      "copilot",
+      "kiro",
+    ]) {
+      const envelope = validEnvelope();
+      envelope.value.profile.platformId = platformId;
+      expectError(linkFor(envelope), "AGENT_DEEP_LINK_UNSUPPORTED");
     }
   });
 

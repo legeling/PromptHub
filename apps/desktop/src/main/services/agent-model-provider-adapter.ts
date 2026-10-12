@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { SKILL_PLATFORMS } from "@prompthub/shared/constants/platforms";
+import { isAgentDepthCapabilityAvailable } from "@prompthub/shared/constants/agent-platform-capabilities";
 
 import {
   reconcileAgentProviderState,
@@ -35,26 +37,9 @@ interface AgentModelProviderAdapterOptions {
 }
 
 const ADAPTER_VERSION = "model-profile-v1";
-export const AGENT_MODEL_PROVIDER_PLATFORM_IDS = [
-  "antigravity",
-  "autoclaw",
-  "claude",
-  "copilot",
-  "codex",
-  "copaw",
-  "gemini",
-  "grok",
-  "hermes",
-  "kiro",
-  "kimi",
-  "opencode",
-  "pi",
-  "openclaw",
-  "qclaw",
-  "qoder",
-  "qwen",
-  "oh-my-pi",
-] as const;
+export const AGENT_MODEL_PROVIDER_PLATFORM_IDS = SKILL_PLATFORMS.filter(
+  ({ id }) => isAgentDepthCapabilityAvailable(id, "providerModel"),
+).map(({ id }) => id);
 const SUPPORTED_PLATFORM_IDS = new Set<string>(
   AGENT_MODEL_PROVIDER_PLATFORM_IDS,
 );

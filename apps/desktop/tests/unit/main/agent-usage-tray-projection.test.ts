@@ -40,7 +40,12 @@ describe("Agent usage tray projection", () => {
         quota: null,
       })),
     );
-    expect(AGENT_USAGE_TRAY_AGENTS.map((agent) => agent.id)).toContain("grok");
+    expect(AGENT_USAGE_TRAY_AGENTS.map((agent) => agent.id)).toEqual([
+      "claude",
+      "codex",
+      "kimi",
+      "antigravity",
+    ]);
   });
 
   it("loads with two workers, publishes each row, and forwards force refresh", async () => {

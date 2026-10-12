@@ -173,7 +173,7 @@ export function getAgentCapabilityGuidance(
   if (status === "unsupported") {
     return {
       key: "agents.adapterUnsupportedDescription",
-      fallback: "No verified adapter is available for this Agent.",
+      fallback: "This feature is not currently supported for this Agent.",
     };
   }
   return null;

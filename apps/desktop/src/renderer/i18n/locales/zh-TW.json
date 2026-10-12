@@ -1174,7 +1174,7 @@
     "maintenance": "維護",
     "adapterPending": "適配器規劃中",
     "adapterPlannedDescription": "此適配器仍在規劃中，目前尚不可用。",
-    "adapterUnsupportedDescription": "此 Agent 目前沒有經過驗證的適配器。",
+    "adapterUnsupportedDescription": "此 Agent 暫不支援此功能。",
     "agentNotDetected": "未偵測到 Agent",
     "agentNotDetectedDesc": "此 Agent 尚未安裝或無法偵測到安裝。請先安裝，然後重新整理。",
     "pathConfiguration": "路徑",

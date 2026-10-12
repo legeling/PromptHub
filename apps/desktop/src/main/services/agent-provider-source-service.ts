@@ -12,6 +12,7 @@ import type {
   ImportAgentProviderSourceRequest,
 } from "@prompthub/shared";
 import { normalizeAgentProviderEndpoint } from "@prompthub/shared/utils/agent-provider-config";
+import { isAgentDepthCapabilityAvailable } from "@prompthub/shared/constants/agent-platform-capabilities";
 
 interface AgentProviderSourceServiceOptions {
   readConfig: () => CoreAIConfigFile;
@@ -90,7 +91,11 @@ function protocolOptionsFor(
   platformId: string,
   provider: CoreAIProviderConfig,
 ): string[] {
-  if (!IMPORT_PLATFORM_IDS.has(platformId)) return [];
+  if (
+    !IMPORT_PLATFORM_IDS.has(platformId) ||
+    !isAgentDepthCapabilityAvailable(platformId, "providerModel")
+  )
+    return [];
   switch (provider.apiProtocol) {
     case "openai": {
       const protocols = [...(OPENAI_PROTOCOL_OPTIONS[platformId] ?? [])];
@@ -214,7 +219,8 @@ function candidateFor(
     ? "invalid-endpoint"
     : models.length === 0
       ? "no-chat-model"
-      : !IMPORT_PLATFORM_IDS.has(platformId)
+      : !IMPORT_PLATFORM_IDS.has(platformId) ||
+          !isAgentDepthCapabilityAvailable(platformId, "providerModel")
         ? "platform-unsupported"
         : projection
           ? null

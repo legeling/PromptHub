@@ -245,7 +245,15 @@ describe("Agent model Provider Profile adapter", () => {
       ),
     );
 
-    const receipt = await adapter.apply(context, plan);
+    const receipt = await adapter.apply(
+      context,
+      plan,
+      activationInput(
+        context,
+        [mapping("primary", "claude-opus-4-1")],
+        current,
+      ),
+    );
     await expect(adapter.verify(context, plan, receipt)).resolves.toMatchObject(
       {
         verified: true,
@@ -289,7 +297,18 @@ describe("Agent model Provider Profile adapter", () => {
         current,
       ),
     );
-    const receipt = await adapter.apply(context, plan);
+    const receipt = await adapter.apply(
+      context,
+      plan,
+      activationInput(
+        context,
+        [
+          mapping("primary", "anthropic/claude-sonnet-4-5"),
+          mapping("secondary", "anthropic/claude-haiku-4-5"),
+        ],
+        current,
+      ),
+    );
 
     await expect(adapter.verify(context, plan, receipt)).resolves.toMatchObject(
       {
@@ -494,9 +513,9 @@ describe("Agent model Provider Profile adapter", () => {
       { ...valid, canApply: false },
     ];
     for (const invalid of invalidPlans) {
-      await expect(adapter.apply(context, invalid)).rejects.toThrow(
-        "AGENT_PROVIDER_APPLY_PLAN_INVALID",
-      );
+      await expect(
+        adapter.apply(context, invalid, activationInput(context, [])),
+      ).rejects.toThrow("AGENT_PROVIDER_APPLY_PLAN_INVALID");
     }
 
     const noPrimaryPlan: AgentProviderActivationPlan = {
@@ -515,10 +534,18 @@ describe("Agent model Provider Profile adapter", () => {
       update: vi.fn(),
     });
     await expect(
-      noPrimaryAdapter.apply(context, {
-        ...noPrimaryPlan,
-        currentDigest: (await noPrimaryAdapter.inspect(context)).nativeDigest,
-      }),
+      noPrimaryAdapter.apply(
+        context,
+        {
+          ...noPrimaryPlan,
+          currentDigest: (await noPrimaryAdapter.inspect(context)).nativeDigest,
+        },
+        activationInput(
+          context,
+          [mapping("primary", "claude-opus-4-1")],
+          current,
+        ),
+      ),
     ).rejects.toThrow("AGENT_PROVIDER_PRIMARY_MODEL_REQUIRED");
   });
 
@@ -596,7 +623,15 @@ describe("Agent model Provider Profile adapter", () => {
         current,
       ),
     );
-    const receipt = await adapter.apply(context, plan);
+    const receipt = await adapter.apply(
+      context,
+      plan,
+      activationInput(
+        context,
+        [mapping("primary", "claude-opus-4-1")],
+        current,
+      ),
+    );
     expect(receipt.backupRef).toBeNull();
     await expect(adapter.rollback(context, receipt)).resolves.toEqual({
       restored: true,
@@ -682,7 +717,11 @@ describe("Agent model Provider Profile adapter", () => {
     const plan = await adapter.planActivation(
       activationInput(context, [mapping("primary", "new")], before),
     );
-    const receipt = await adapter.apply(context, plan);
+    const receipt = await adapter.apply(
+      context,
+      plan,
+      activationInput(context, [mapping("primary", "new")], before),
+    );
 
     await expect(
       adapter.rollback(context, {
@@ -743,7 +782,7 @@ describe("Agent model Provider Profile adapter", () => {
       blockedReasons: [],
     };
 
-    await adapter.apply(context, plan);
+    await adapter.apply(context, plan, activationInput(context, []));
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({
         model: "openai/gpt-5",
@@ -765,17 +804,21 @@ describe("Agent model Provider Profile adapter", () => {
       update,
     });
     const existingState = await withExistingSecondary.inspect(context);
-    await withExistingSecondary.apply(context, {
-      ...plan,
-      currentDigest: existingState.nativeDigest,
-      decisions: [
-        {
-          field: "model",
-          status: "apply",
-          desired: "openai/gpt-5.1",
-        },
-      ],
-    });
+    await withExistingSecondary.apply(
+      context,
+      {
+        ...plan,
+        currentDigest: existingState.nativeDigest,
+        decisions: [
+          {
+            field: "model",
+            status: "apply",
+            desired: "openai/gpt-5.1",
+          },
+        ],
+      },
+      activationInput(context, []),
+    );
     expect(update).toHaveBeenLastCalledWith(
       expect.objectContaining({
         model: "openai/gpt-5.1",
@@ -789,16 +832,20 @@ describe("Agent model Provider Profile adapter", () => {
       inspect,
       update,
     });
-    await withoutSecondary.apply(context, {
-      ...plan,
-      decisions: [
-        {
-          field: "model",
-          status: "apply",
-          desired: "openai/gpt-5.1",
-        },
-      ],
-    });
+    await withoutSecondary.apply(
+      context,
+      {
+        ...plan,
+        decisions: [
+          {
+            field: "model",
+            status: "apply",
+            desired: "openai/gpt-5.1",
+          },
+        ],
+      },
+      activationInput(context, []),
+    );
     expect(update).toHaveBeenLastCalledWith(
       expect.objectContaining({ secondaryModel: null }),
       expect.anything(),

@@ -1174,7 +1174,7 @@
     "maintenance": "メンテナンス",
     "adapterPending": "アダプターは計画中です",
     "adapterPlannedDescription": "このアダプターは計画中で、現在は利用できません。",
-    "adapterUnsupportedDescription": "この Agent で検証済みのアダプターはありません。",
+    "adapterUnsupportedDescription": "この Agent では現在この機能に対応していません。",
     "agentNotDetected": "Agent が検出されません",
     "agentNotDetectedDesc": "この Agent は未インストールか、インストールを検出できません。インストール後に更新してください。",
     "pathConfiguration": "パス",

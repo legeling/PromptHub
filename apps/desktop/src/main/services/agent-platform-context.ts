@@ -1,4 +1,5 @@
 import path from "node:path";
+import { isAgentDepthCapabilityAvailable } from "@prompthub/shared/constants/agent-platform-capabilities";
 
 import type { AgentProviderAdapterContext } from "@prompthub/shared";
 
@@ -77,6 +78,9 @@ export function resolveAgentProviderContext(
   agentId: string,
 ): AgentProviderAdapterContext {
   const normalizedAgentId = agentId.trim();
+  if (!isAgentDepthCapabilityAvailable(normalizedAgentId, "providerModel")) {
+    throw new Error("AGENT_PROVIDER_ADAPTER_UNSUPPORTED");
+  }
   const context = getAgentConfigContext(normalizedAgentId);
   const rootPath =
     normalizedAgentId === "antigravity" &&

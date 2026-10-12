@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { parse as parseToml } from "smol-toml";
+import { isAgentDepthCapabilityAvailable } from "@prompthub/shared/constants/agent-platform-capabilities";
 
 import type {
   AgentUsageMetric,
@@ -1391,6 +1392,12 @@ export function createAgentUsageService(
     // Resolving the config root through the platform registry doubles as the
     // agentId allowlist check; unknown ids throw before any lookup happens.
     const configRoot = resolveConfigRoot(agentId);
+    if (!isAgentDepthCapabilityAvailable(agentId, "usage")) {
+      return buildQuota(agentId, "unavailable", now(), {
+        adapter: "unsupported",
+        errorCode: "unsupported-agent",
+      });
+    }
     if (!(await pathExists(configRoot))) {
       return buildQuota(agentId, "unavailable", now(), {
         adapter: "agent-installation-guard-v1",

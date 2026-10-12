@@ -9,6 +9,13 @@ import type {
   UpdateAgentProviderProfileInput,
   UpdateAgentProviderProfileRequest,
 } from "@prompthub/shared";
+import { isAgentDepthCapabilityAvailable } from "@prompthub/shared/constants/agent-platform-capabilities";
+
+function requireSupportedProvider(platformId: string): void {
+  if (!isAgentDepthCapabilityAvailable(platformId, "providerModel")) {
+    throw new Error("AGENT_PROVIDER_ADAPTER_UNSUPPORTED");
+  }
+}
 
 export interface AgentProviderProfileServiceStorage {
   createProfileWithMappings(
@@ -134,6 +141,7 @@ export class AgentProviderProfileService {
     request: CreateAgentProviderProfileRequest,
   ): Promise<AgentProviderProfilePublic> {
     assertProfileInput(request.profile);
+    requireSupportedProvider(request.profile.platformId);
     const secret =
       request.secret === undefined || request.secret === null
         ? null
@@ -193,6 +201,7 @@ export class AgentProviderProfileService {
     }
     const existing = this.storage.getProfileById(id);
     if (!existing) throw new Error("AGENT_PROVIDER_PROFILE_NOT_FOUND");
+    requireSupportedProvider(existing.platformId);
     const priorMappings = this.storage.listModelMappings(id);
     const priorRef = existing.secretRef;
     const priorSecret = priorRef ? await this.secrets.read(priorRef) : null;

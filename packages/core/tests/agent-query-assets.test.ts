@@ -136,7 +136,7 @@ describe("core Agent query", () => {
     });
     expect(
       agents.find((agent) => agent.id === "custom-team")?.capabilities.provider,
-    ).toEqual({ status: "planned", reason: "adapter-pending" });
+    ).toEqual({ status: "unsupported", reason: "adapter-pending" });
   });
 
   it("filters from the same projected list instead of rebuilding state", () => {

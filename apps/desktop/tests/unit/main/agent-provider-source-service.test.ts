@@ -1,3 +1,4 @@
+import type { CreateAgentProviderProfileRequest } from "@prompthub/shared";
 import { describe, expect, it, vi } from "vitest";
 
 import type { CoreAIConfigFile } from "@prompthub/core";
@@ -93,7 +94,11 @@ function config(): CoreAIConfigFile {
 }
 
 function harness(read = vi.fn(() => config())) {
-  const create = vi.fn(async () => CREATED_PROFILE);
+  const create = vi.fn<
+    (
+      request: CreateAgentProviderProfileRequest,
+    ) => Promise<typeof CREATED_PROFILE>
+  >(async () => CREATED_PROFILE);
   const importPiProvider = vi.fn(
     async (): Promise<AgentPiWriteResult> => ({ backupPath: null }),
   );
@@ -323,7 +328,7 @@ describe("Agent Provider source service", () => {
     expect(create.mock.calls[0]?.[0]).not.toHaveProperty("secret");
   });
 
-  it("maps Anthropic, Gemini, OpenCode and Qwen platform fields explicitly", async () => {
+  it("imports supported platform fields and refuses retired Gemini and Qwen targets", async () => {
     const source = config();
     source.providers.push({
       id: "provider-gemini",
@@ -360,12 +365,14 @@ describe("Agent Provider source service", () => {
       modelId: "model-anthropic",
       protocol: "anthropic-messages",
     });
-    await service.importSource({
-      platformId: "gemini",
-      sourceId: "provider-gemini",
-      modelId: "model-gemini",
-      protocol: "google-generative-ai",
-    });
+    await expect(
+      service.importSource({
+        platformId: "gemini",
+        sourceId: "provider-gemini",
+        modelId: "model-gemini",
+        protocol: "google-generative-ai",
+      }),
+    ).rejects.toThrow("AGENT_PROVIDER_SOURCE_INCOMPATIBLE");
     await service.importSource({
       platformId: "opencode",
       sourceId: "provider-work",
@@ -378,21 +385,19 @@ describe("Agent Provider source service", () => {
       modelId: "model-chat",
       protocol: "openai-responses",
     });
-    await service.importSource({
-      platformId: "qwen",
-      sourceId: "provider-anthropic",
-      modelId: "model-anthropic",
-      protocol: "anthropic-messages",
-    });
+    await expect(
+      service.importSource({
+        platformId: "qwen",
+        sourceId: "provider-anthropic",
+        modelId: "model-anthropic",
+        protocol: "anthropic-messages",
+      }),
+    ).rejects.toThrow("AGENT_PROVIDER_SOURCE_INCOMPATIBLE");
 
     expect(create.mock.calls.map(([request]) => request.profile)).toEqual([
       expect.objectContaining({
         protocol: "anthropic-messages",
         config: { credentialEnvKey: "ANTHROPIC_API_KEY" },
-      }),
-      expect.objectContaining({
-        protocol: "google-generative-ai",
-        config: { credentialEnvKey: "GEMINI_API_KEY" },
       }),
       expect.objectContaining({
         protocol: "openai-chat",
@@ -407,13 +412,6 @@ describe("Agent Provider source service", () => {
         config: {
           providerId: "provider-work",
           package: "@ai-sdk/openai",
-        },
-      }),
-      expect.objectContaining({
-        protocol: "anthropic-messages",
-        config: {
-          providerId: "provider-anthropic",
-          envKey: "ANTHROPIC_API_KEY",
         },
       }),
     ]);

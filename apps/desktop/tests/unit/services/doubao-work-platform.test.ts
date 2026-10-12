@@ -1,14 +1,36 @@
-import { describe, expect, it, vi } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { buildManagedAgents } from "@prompthub/core";
+import { AgentSettingsRepository, buildManagedAgents } from "@prompthub/core";
+import { closeDatabase, getDatabase } from "@prompthub/db";
 import {
   DEFAULT_SKILL_PLATFORM_ORDER,
   getPlatformById,
 } from "@prompthub/shared/constants/platforms";
 import { detectInstalledPlatforms } from "../../../src/main/services/skill-installer-platform";
-import { resolvePlatformPath } from "../../../src/main/services/skill-installer-utils";
+import {
+  invalidateCustomPathsCache,
+  resolvePlatformPath,
+} from "../../../src/main/services/skill-installer-utils";
+import { resetRuntimePaths } from "../../../src/main/runtime-paths";
+import { initializeAgentSettingsFixture } from "../../helpers/agent-settings";
 
 describe("Doubao Work platform support", () => {
+  let root: string;
+
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "prompthub-doubao-platform-"));
+    initializeAgentSettingsFixture(root);
+  });
+
+  afterEach(() => {
+    closeDatabase();
+    resetRuntimePaths();
+    invalidateCustomPathsCache();
+    fs.rmSync(root, { recursive: true, force: true });
+  });
   it("uses the verified user Skill workspace without exposing built-in Skills", () => {
     const platform = getPlatformById("doubao");
 
@@ -56,10 +78,10 @@ describe("Doubao Work platform support", () => {
         configFileRelativePaths: [],
       },
       capabilities: {
-        provider: { status: "planned", reason: "adapter-pending" },
+        provider: { status: "unsupported", reason: "adapter-pending" },
         assets: { status: "partial", reason: "asset-paths-only" },
         sessions: { status: "planned", reason: "adapter-pending" },
-        usage: { status: "planned", reason: "adapter-pending" },
+        usage: { status: "unsupported", reason: "adapter-pending" },
       },
     });
     expect(agent.paths.mcp).toBeUndefined();
@@ -73,6 +95,14 @@ describe("Doubao Work platform support", () => {
     const workspace = resolvePlatformPath(
       platform.rootDir[osKey] || platform.rootDir.linux,
     );
+    const settings = new AgentSettingsRepository(getDatabase());
+    settings.patch({
+      builtinAgentOverrides: {
+        ...settings.read().builtinAgentOverrides,
+        doubao: { rootPath: workspace },
+      },
+    });
+    invalidateCustomPathsCache();
     const pathExists = vi.fn(
       async (candidate: string) => candidate === workspace,
     );
