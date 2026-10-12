@@ -18,6 +18,23 @@ afterEach(() => {
 });
 
 describe("shared AI protocol derivation", () => {
+  it("delegates the shared deadline to an injected transport without starting a fetch timer", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn(() => { throw new Error("Default transport must not run"); });
+    vi.stubGlobal("fetch", fetchMock);
+    const transport = vi.fn(async () => {
+      expect(vi.getTimerCount()).toBe(0);
+      return { ok: true, status: 200, statusText: "OK", headers: {}, body: JSON.stringify({ choices: [{ message: { content: "Transport result" } }] }) };
+    });
+    await expect(chatCompletion({
+      apiKey: "fixture-key", apiUrl: "https://fixture.invalid", model: "fixture-model",
+      provider: "openai", apiProtocol: "openai",
+    }, [{ role: "user", content: "Rewrite" }], undefined, transport)).resolves.toEqual({ content: "Transport result" });
+    expect(transport).toHaveBeenCalledWith(expect.objectContaining({ timeoutMs: AI_REQUEST_TIMEOUT_MS }));
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it.each([
     [
       "openai",
@@ -95,11 +112,10 @@ describe("shared AI protocol derivation", () => {
   });
 
   it("uses the shared exact-endpoint policy in the core AI client", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ content: [{ type: "text", text: "safe" }] }),
-      text: async () => "",
-    });
+    const fetchMock = vi.fn().mockResolvedValue(new Response(
+      JSON.stringify({ content: [{ type: "text", text: "safe" }] }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    ));
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(

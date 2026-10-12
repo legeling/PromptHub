@@ -24,6 +24,7 @@ import {
 } from '../services/rule.service.js';
 import { error, ErrorCode, success } from '../utils/response.js';
 import { parseJsonBody } from '../utils/validation.js';
+import { rewriteRuleDraft } from '../services/rule-rewrite.service.js';
 
 const rules = new Hono();
 const MAX_RULE_CONTENT_LENGTH = 200000;
@@ -58,13 +59,12 @@ const rewriteRuleSchema = z.object({
   platformName: z.string().trim().min(1).max(MAX_RULE_LABEL_LENGTH),
   aiConfig: z
     .object({
-      apiKey: z.string().max(MAX_RULE_AI_CONFIG_FIELD_LENGTH),
+      apiKey: z.string().trim().min(1).max(MAX_RULE_AI_CONFIG_FIELD_LENGTH),
       apiUrl: z.string().url().max(MAX_RULE_AI_CONFIG_FIELD_LENGTH),
       model: z.string().trim().min(1).max(MAX_RULE_LABEL_LENGTH),
       provider: z.string().trim().min(1).max(MAX_RULE_LABEL_LENGTH),
-      apiProtocol: z.string().trim().min(1).max(MAX_RULE_LABEL_LENGTH),
-    })
-    .optional(),
+      apiProtocol: z.enum(['openai', 'gemini', 'anthropic']),
+    }),
 });
 
 const importRecordsSchema = z.object({
@@ -207,27 +207,20 @@ rules.put('/:id', async (c) => {
   return success(c, updated);
 });
 
-function buildRewriteResult(payload: z.infer<typeof rewriteRuleSchema>): RuleRewriteResult {
-  const current = payload.currentContent.trim();
-  const instruction = payload.instruction.trim();
-  const rewrittenContent = current
-    ? `${current}\n\n<!-- ${instruction} -->`
-    : `<!-- ${instruction} -->`;
-
-  return {
-    content: rewrittenContent,
-    summary: 'AI rewrite generated a new draft.',
-  };
-}
-
-rules.post('/rewrite', async (c) => {
+async function rewriteDraftResponse(c: Context): Promise<Response> {
   const parsed = await parseJsonBody(c, rewriteRuleSchema);
   if (!parsed.success) {
     return parsed.response;
   }
 
-  return success(c, buildRewriteResult(parsed.data));
-});
+  try {
+    return success(c, await rewriteRuleDraft(parsed.data));
+  } catch (routeError) {
+    return toRuleErrorResponse(c, routeError);
+  }
+}
+
+rules.post('/rewrite', rewriteDraftResponse);
 
 rules.post('/:id/rewrite', async (c) => {
   const idParsed = ruleIdSchema.safeParse(c.req.param('id'));
@@ -235,12 +228,7 @@ rules.post('/:id/rewrite', async (c) => {
     return error(c, 422, ErrorCode.VALIDATION_ERROR, 'rule id is required');
   }
 
-  const parsed = await parseJsonBody(c, rewriteRuleSchema);
-  if (!parsed.success) {
-    return parsed.response;
-  }
-
-  return success(c, buildRewriteResult(parsed.data));
+  return rewriteDraftResponse(c);
 });
 
 rules.post('/import-records', async (c) => {

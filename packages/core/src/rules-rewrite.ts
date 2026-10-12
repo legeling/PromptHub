@@ -22,6 +22,7 @@ export function buildRuleRewritePrompt(payload: RuleRewriteRequest): string {
 
 export async function rewriteRuleWithAi(
   payload: RuleRewriteRequest,
+  transport?: Parameters<typeof chatCompletion>[3],
 ): Promise<RuleRewriteResult> {
   if (!payload.aiConfig || !payload.aiConfig.apiKey) {
     throw new Error("AI API Key is not configured. Please set it in Settings.");
@@ -42,7 +43,7 @@ export async function rewriteRuleWithAi(
   const result = await chatCompletion(payload.aiConfig, messages, {
     temperature: 0.3,
     maxTokens: 4096,
-  });
+  }, transport);
 
   const content = result.content?.trim();
   if (!content) {

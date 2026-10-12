@@ -143,6 +143,9 @@
 
 - The authenticated browser workspace supports server-backed Prompt, Folder,
   Rules, media, settings, and browser-safe Skill workflows.
+- Worker `POST /api/prompts/:id/render-copy` matches variable keys literally
+  and inserts values as literal text, including dollar replacement sequences.
+  Rendering increments usage once and preserves the saved template and versions.
 - Prompt hierarchy moves, graph relations, and output-format sequences must
   use authenticated Web APIs backed by the existing SQLite contracts; browser
   code must not fall back to IndexedDB for these records.
@@ -211,3 +214,7 @@ When a contributor changes `apps/web-cloudflare` runtime bindings, scripts, or s
 - they keep the package installable from the monorepo root
 - they rerun Cloudflare type generation after wrangler binding changes
 - they verify `typecheck`, `lint`, `test`, and `build:web:cf`
+
+## Current Verification Gap (2026-10-12)
+
+The stale Provider mapping case in `tests/release-acceptance-cross-surface-agents.test.ts` returns HTTP 500 where the conflict contract requires 409. The real HTTP regression remains failing; successful profile persistence and rule rewrite tests do not establish this error mapping.
