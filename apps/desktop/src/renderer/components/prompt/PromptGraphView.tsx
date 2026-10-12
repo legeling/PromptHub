@@ -12,6 +12,7 @@ import ForceGraph2D, {
   type NodeObject,
 } from "react-force-graph-2d";
 import type { PromptSummary, PromptRelation } from "@prompthub/shared/types";
+import { usePromptGraphTheme } from "./prompt-graph-theme";
 import { useSettingsStore } from "../../stores/settings.store";
 import {
   buildNeighborIndex,
@@ -29,55 +30,6 @@ interface PromptGraphViewProps {
   selectedPromptId: string | null;
   onSelectPrompt: (promptId: string) => void;
 }
-
-interface GraphThemeColors {
-  background: string;
-  nodeIsolated: string;
-  nodeConnected: string;
-  nodeAccent: string;
-  nodeSelected: string;
-  nodeDimmed: string;
-  nodeSelectedRing: string;
-  link: string;
-  linkActive: string;
-  linkSelected: string;
-  label: string;
-  labelActive: string;
-  labelHalo: string;
-}
-
-const GRAPH_THEME: { dark: GraphThemeColors; light: GraphThemeColors } = {
-  dark: {
-    background: "#1a1a1a",
-    nodeIsolated: "#9aa0a8",
-    nodeConnected: "#c2c8d2",
-    nodeAccent: "#e2e7ef",
-    nodeSelected: "#4c8dff",
-    nodeDimmed: "rgba(150, 156, 166, 0.28)",
-    nodeSelectedRing: "rgba(76, 141, 255, 0.4)",
-    link: "rgba(190, 196, 208, 0.22)",
-    linkActive: "rgba(96, 160, 255, 0.9)",
-    linkSelected: "rgba(76, 141, 255, 0.6)",
-    label: "rgba(214, 220, 230, 0.92)",
-    labelActive: "#ffffff",
-    labelHalo: "#1a1a1a",
-  },
-  light: {
-    background: "#fafafa",
-    nodeIsolated: "#9298a2",
-    nodeConnected: "#6f7682",
-    nodeAccent: "#454c58",
-    nodeSelected: "#2f7bf6",
-    nodeDimmed: "rgba(110, 118, 130, 0.22)",
-    nodeSelectedRing: "rgba(47, 123, 246, 0.35)",
-    link: "rgba(60, 66, 78, 0.28)",
-    linkActive: "rgba(47, 123, 246, 0.9)",
-    linkSelected: "rgba(47, 123, 246, 0.55)",
-    label: "rgba(42, 48, 58, 0.95)",
-    labelActive: "#10151f",
-    labelHalo: "#fafafa",
-  },
-};
 
 const ZOOM_STEP = 1.35;
 
@@ -125,9 +77,8 @@ export function PromptGraphView({
   onSelectPrompt,
 }: PromptGraphViewProps) {
   const { t } = useTranslation();
-  const isDarkMode = useSettingsStore((state) => state.isDarkMode);
   const motionPreference = useSettingsStore((state) => state.motionPreference);
-  const theme = isDarkMode ? GRAPH_THEME.dark : GRAPH_THEME.light;
+  const theme = usePromptGraphTheme();
 
   const graphRef = useRef<ForceGraphRef | undefined>(undefined);
   const [containerRef, size] = useContainerSize();
@@ -382,10 +333,7 @@ export function PromptGraphView({
 
   if (graphData.nodes.length === 0) {
     return (
-      <div
-        className="flex h-full min-h-0 flex-col"
-        style={{ backgroundColor: theme.background }}
-      >
+      <div className="flex h-full min-h-0 flex-col bg-background">
         <div className="flex h-full items-center justify-center px-6 text-sm text-muted-foreground">
           {t("prompt.graph.empty")}
         </div>
@@ -394,10 +342,7 @@ export function PromptGraphView({
   }
 
   return (
-    <div
-      className="relative flex h-full min-h-0 flex-col"
-      style={{ backgroundColor: theme.background }}
-    >
+    <div className="relative flex h-full min-h-0 flex-col bg-background">
       <h2 className="sr-only">{t("prompt.graph.title")}</h2>
       <div
         ref={containerRef}
@@ -412,7 +357,6 @@ export function PromptGraphView({
         <GraphControls
           zoomPercent={zoomPercent}
           t={t}
-          isDarkMode={isDarkMode}
           onZoomIn={() => zoomBy(ZOOM_STEP)}
           onZoomOut={() => zoomBy(1 / ZOOM_STEP)}
           onFit={fitView}
@@ -455,7 +399,6 @@ export function PromptGraphView({
 function GraphControls({
   zoomPercent,
   t,
-  isDarkMode,
   onZoomIn,
   onZoomOut,
   onFit,
@@ -463,51 +406,36 @@ function GraphControls({
 }: {
   zoomPercent: string;
   t: ReturnType<typeof useTranslation>["t"];
-  isDarkMode: boolean;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onFit: () => void;
   onReset: () => void;
 }) {
   return (
-    <div
-      className={`absolute bottom-4 right-4 z-10 flex flex-col items-center gap-1 rounded-lg p-1 text-xs shadow-lg backdrop-blur ${
-        isDarkMode
-          ? "bg-[#242424]/80 text-zinc-400 shadow-black/30 ring-1 ring-white/5"
-          : "bg-white/85 text-zinc-500 shadow-black/10 ring-1 ring-black/5"
-      }`}
-    >
+    <div className="absolute bottom-4 right-4 z-10 flex flex-col items-center gap-1 rounded-lg border border-border bg-popover/90 p-1 text-xs text-muted-foreground shadow-lg backdrop-blur">
       <GraphControlButton
         label={t("prompt.graph.fitView", "Fit graph to screen")}
-        isDarkMode={isDarkMode}
         onClick={onFit}
       >
         <Maximize2Icon aria-hidden="true" className="h-3.5 w-3.5" />
       </GraphControlButton>
       <GraphControlButton
         label={t("prompt.graph.zoomOut", "Zoom out graph")}
-        isDarkMode={isDarkMode}
         onClick={onZoomOut}
       >
         <MinusIcon aria-hidden="true" className="h-3.5 w-3.5" />
       </GraphControlButton>
-      <span
-        className={`min-w-10 rounded-md px-1 py-0.5 text-center font-medium tabular-nums ${
-          isDarkMode ? "text-zinc-500" : "text-zinc-400"
-        }`}
-      >
+      <span className="min-w-10 rounded-md px-1 py-0.5 text-center font-medium tabular-nums text-muted-foreground">
         {zoomPercent}
       </span>
       <GraphControlButton
         label={t("prompt.graph.zoomIn", "Zoom in graph")}
-        isDarkMode={isDarkMode}
         onClick={onZoomIn}
       >
         <PlusIcon aria-hidden="true" className="h-3.5 w-3.5" />
       </GraphControlButton>
       <GraphControlButton
         label={t("prompt.graph.resetView", "Reset graph view")}
-        isDarkMode={isDarkMode}
         onClick={onReset}
       >
         <RotateCcwIcon aria-hidden="true" className="h-3.5 w-3.5" />
@@ -519,12 +447,10 @@ function GraphControls({
 function GraphControlButton({
   label,
   children,
-  isDarkMode,
   onClick,
 }: {
   label: string;
   children: React.ReactNode;
-  isDarkMode: boolean;
   onClick: () => void;
 }) {
   return (
@@ -533,11 +459,7 @@ function GraphControlButton({
       aria-label={label}
       title={label}
       onClick={onClick}
-      className={`inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
-        isDarkMode
-          ? "text-zinc-400 hover:bg-white/10 hover:text-zinc-100"
-          : "text-zinc-500 hover:bg-black/5 hover:text-zinc-900"
-      }`}
+      className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     >
       {children}
     </button>

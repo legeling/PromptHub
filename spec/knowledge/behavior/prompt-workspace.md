@@ -214,6 +214,22 @@ pnpm --dir apps/desktop exec vitest run --project unit tests/unit/components/mai
   原有样式为准，设计稿仅用于列表；不再以整页设计稿作为验收目标。测试窗口与
   profile 已关闭 / 清理。深色侧栏的既有外观不在本次修复范围。
 
+### 2.9 Relationship Graph Theme
+
+- 图谱画布与空态复用全局 `--background`，缩放控件复用 popover/border/foreground
+  主题 token，不能另外定义中性黑灰背景。Canvas 绘制通过 `prompt-graph-theme.ts`
+  在主题模式、色相或饱和度变化时解析全局 CSS token，不复制浅色/深色配色表。
+- 普通节点使用冷色 muted-foreground，连接节点与邻居使用 accent-foreground，
+  选中节点、选中环和活动连线使用 primary；文字使用 foreground，文字描边与画布同色。
+  非邻居仍按现有交互降低透明度，正常连线的透明度提高以保持关系可辨识。
+- 配色解析为固定数量的 CSS 读取，不增加图数据遍历、持久化状态、网络请求或观察器；
+  节点布局、选择、缩放和私密文件夹可见范围沿用现有合同。
+
+验证（2026-10-12）：图谱数据/控件 9 项与主题集成 4 项通过；主题测试读取实际
+全局 CSS，覆盖浅色/深色底色、节点色、运行期模式切换与自定义主题色联动。Desktop
+源码/测试类型检查、定向 ESLint 和规范检查通过。Canvas 运输由测试替身替换，
+不构成实际 Canvas 视觉验收；现有开发服务已提供新配色模块，未执行 Electron GUI 控制。
+
 ### 3. Stable Internal Sources
 
 - 桌面 Prompt 普通增删改、版本、关系、输出格式及文件夹写入，由 Core 的现有
