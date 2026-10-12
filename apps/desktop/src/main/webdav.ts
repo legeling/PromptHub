@@ -58,9 +58,11 @@ async function sendWebDAVRequest(
 
       const request = httpModule.request(options, (response) => {
         let responseData = "";
+        // Decode across network chunks so split UTF-8 sequences stay intact.
+        response.setEncoding("utf8");
 
-        response.on("data", (chunk) => {
-          responseData += chunk.toString();
+        response.on("data", (chunk: string) => {
+          responseData += chunk;
         });
 
         response.on("end", () => {

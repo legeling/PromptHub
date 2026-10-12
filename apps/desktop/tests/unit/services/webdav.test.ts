@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { afterEach, describe, it, expect, vi, beforeEach } from "vitest";
+import { installWindowMocks } from "../../helpers/window";
 import {
   testConnection,
   incrementalUpload,
@@ -31,8 +32,9 @@ describe("WebDAV Service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    global.fetch = vi.fn();
-    window.api.skill.create.mockReset();
+    installWindowMocks();
+    vi.stubGlobal("fetch", vi.fn());
+    vi.mocked(window.api.skill.create).mockReset();
     vi.mocked(database.getAllPrompts).mockResolvedValue([]);
     vi.mocked(database.getAllFolders).mockResolvedValue([]);
     vi.mocked(backup.exportDatabase).mockResolvedValue({
@@ -43,28 +45,30 @@ describe("WebDAV Service", () => {
       versions: [],
     });
 
-    Object.defineProperty(global, "crypto", {
-      value: {
-        subtle: {
-          digest: vi
-            .fn()
-            .mockImplementation(() => {
-              const digest = new Uint8Array(32);
-              digest.set([0xde, 0xad, 0xbe, 0xef]);
-              return Promise.resolve(digest.buffer);
-            }),
-          importKey: vi.fn(),
-          deriveKey: vi.fn(),
-          encrypt: vi.fn(),
-          decrypt: vi.fn(),
-        },
-        getRandomValues: vi.fn((arr) => {
-          for (let i = 0; i < arr.length; i++) arr[i] = 0;
-          return arr;
-        }),
+    vi.stubGlobal("crypto", {
+      subtle: {
+        digest: vi
+          .fn()
+          .mockImplementation(() => {
+            const digest = new Uint8Array(32);
+            digest.set([0xde, 0xad, 0xbe, 0xef]);
+            return Promise.resolve(digest.buffer);
+          }),
+        importKey: vi.fn(),
+        deriveKey: vi.fn(),
+        encrypt: vi.fn(),
+        decrypt: vi.fn(),
       },
-      writable: true,
+      getRandomValues: vi.fn((arr) => {
+        for (let i = 0; i < arr.length; i++) arr[i] = 0;
+        return arr;
+      }),
     });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   describe("testConnection", () => {
@@ -89,7 +93,7 @@ describe("WebDAV Service", () => {
     });
 
     it("should fallback to fetch if electron API is missing", async () => {
-      window.electron = { ipcRenderer: window.electron.ipcRenderer } as any;
+      Reflect.deleteProperty(window.electron, "webdav");
 
       (global.fetch as any).mockResolvedValue({
         ok: true,
@@ -112,7 +116,7 @@ describe("WebDAV Service", () => {
     });
 
     it("should handle 401 Unauthorized", async () => {
-      window.electron = { ipcRenderer: window.electron.ipcRenderer } as any;
+      Reflect.deleteProperty(window.electron, "webdav");
 
       (global.fetch as any).mockResolvedValue({
         ok: false,
