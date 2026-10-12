@@ -249,6 +249,13 @@ function inventoryRoot(
         }
         continue;
       }
+      if (relativePath === ".trash") {
+        if (!stat.isDirectory()) {
+          throw new Error("canonical graph Prompt trash path is invalid");
+        }
+        // Recovery files are not active records and must remain untouched.
+        continue;
+      }
       if (relativePath === "agent-appearance") {
         if (!stat.isDirectory()) {
           throw new Error(

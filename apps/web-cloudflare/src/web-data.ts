@@ -420,7 +420,7 @@ export async function renderPromptCopy(c: AppContext): Promise<Response> {
 
   let content = prompt.userPrompt;
   for (const [key, value] of Object.entries(body.variables || {})) {
-    content = content.replace(new RegExp(`\\{\\{${escapeRegExp(key)}\\}\\}`, "g"), value);
+    content = content.replace(new RegExp(`\\{\\{${escapeRegExp(key)}\\}\\}`, "g"), () => value);
   }
 
   snapshot.prompts[promptIndex] = {

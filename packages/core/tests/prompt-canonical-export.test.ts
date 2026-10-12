@@ -429,6 +429,29 @@ describe("prompt canonical export", () => {
     );
   });
 
+  it("preserves trash without treating recovery files as active graph records", () => {
+    const root = createRoot();
+    const target = path.join(root, "canonical-data");
+    materializePromptCanonicalGraph(target, {
+      prompts: [], promptVersions: [], folders: [],
+      promptRelations: [], outputFormatItems: [],
+    });
+    const trash = path.join(target, ".trash");
+    fs.mkdirSync(trash);
+    const recoveryPath = path.join(trash, "deleted-prompt.md");
+    const recoveryBytes = Buffer.from("# Recoverable body\n\0after");
+    fs.writeFileSync(recoveryPath, recoveryBytes);
+    expect(readPromptCanonicalGraph(target).snapshot.prompts).toEqual([]);
+    expect(fs.readFileSync(recoveryPath)).toEqual(recoveryBytes);
+
+    fs.rmSync(trash, { recursive: true });
+    fs.writeFileSync(trash, "not a directory");
+    expect(() => readPromptCanonicalGraph(target)).toThrow(/trash.*invalid/iu);
+    fs.rmSync(trash);
+    fs.symlinkSync(root, trash, "dir");
+    expect(() => readPromptCanonicalGraph(target)).toThrow(/symlink/u);
+  });
+
   it("ignores the validated Agent appearance workspace", () => {
     const root = createRoot();
     const target = path.join(root, "canonical-data");

@@ -359,7 +359,7 @@ export function renderPromptCopy(
 ): string {
   let content = prompt.userPrompt;
   for (const [key, value] of Object.entries(variables)) {
-    content = content.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
+    content = content.replaceAll(`{{${key}}}`, () => value);
   }
   return content;
 }

@@ -802,6 +802,36 @@ describe("PromptDB (in-memory SQLite)", () => {
   // Adversarial / fuzz-style boundary tests
   // ─────────────────────────────────────────────
   describe("adversarial inputs", () => {
+    it.each([
+      "title", "description", "systemPrompt", "systemPromptEn",
+      "userPrompt", "userPromptEn", "source", "notes",
+    ])("rejects null bytes in %s before create or update writes", (field) => {
+      const original = db.create({ title: "Safe", userPrompt: "intact suffix" });
+      const versions = db.getVersions(original.id);
+      expect(() => db.create({
+        title: "Rejected", userPrompt: "body", [field]: "before\0after",
+      })).toThrow(/null bytes/u);
+      expect(() => db.update(original.id, { [field]: "before\0after" }))
+        .toThrow(/null bytes/u);
+      expect(db.getAll()).toEqual([original]);
+      expect(db.getVersions(original.id)).toEqual(versions);
+    });
+
+    it("rejects truncated AI responses, version notes and direct restore rows atomically", () => {
+      const original = db.create({ title: "Safe", userPrompt: "intact suffix" });
+      const versions = db.getVersions(original.id);
+      expect(() => db.update(original.id, { lastAiResponse: "before\0after" }))
+        .toThrow(/null bytes/u);
+      expect(() => db.createVersion(original.id, "before\0after"))
+        .toThrow(/null bytes/u);
+      expect(() => db.insertPromptDirect({ ...original, userPrompt: "before\0after" }))
+        .toThrow(/null bytes/u);
+      expect(() => db.insertVersionDirect({ ...versions[0], id: "restored", aiResponse: "before\0after" }))
+        .toThrow(/null bytes/u);
+      expect(db.getAll()).toEqual([original]);
+      expect(db.getVersions(original.id)).toEqual(versions);
+    });
+
     // SQL injection attempts — the search method uses parameterized queries
     // but the tag filter uses LIKE with string interpolation (`%"${tag}"%`)
     it("keyword with SQL injection attempt does not corrupt results", () => {
@@ -1173,11 +1203,8 @@ describe("PromptDB (in-memory SQLite)", () => {
 
     it("handles null-byte-laden titles without silent data loss", () => {
       const title = "Null\u0000byte title";
-      const p = db.create({ title, userPrompt: "p" });
-      const meta = db.getAllMeta();
-      const m = meta.find((x) => x.id === p.id);
-      expect(m).toBeDefined();
-      expect(m!.title).toBeDefined();
+      expect(() => db.create({ title, userPrompt: "p" })).toThrow(/null bytes/u);
+      expect(db.getAllMeta()).toEqual([]);
     });
 
     it("returns an empty array when there are no prompts", () => {

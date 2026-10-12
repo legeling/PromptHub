@@ -77,6 +77,22 @@ interface PromptVersionRow {
   created_at: number;
 }
 
+function assertPromptTextHasNoNullBytes(
+  data:
+    | CreatePromptDTO
+    | UpdatePromptDTO
+    | Prompt
+    | PromptVersion
+    | { note?: string },
+): void {
+  // JSON-encoded fields escape null bytes; directly bound text would truncate.
+  for (const [field, value] of Object.entries(data)) {
+    if (typeof value === "string" && value.includes("\0")) {
+      throw new Error(`Prompt ${field} must not contain null bytes`);
+    }
+  }
+}
+
 export class PromptDB {
   constructor(protected readonly db: Database.Database) {}
 
@@ -85,6 +101,7 @@ export class PromptDB {
    * 创建 Prompt
    */
   create(data: CreatePromptDTO): Prompt {
+    assertPromptTextHasNoNullBytes(data);
     return this.db.transaction(() => this.createWithInitialVersion(data))();
   }
 
@@ -208,6 +225,7 @@ export class PromptDB {
    * 性能优化：在内存中构建返回对象，而不是重新查询
    */
   update(id: string, data: UpdatePromptDTO): Prompt | null {
+    assertPromptTextHasNoNullBytes(data);
     const existingPrompt = this.getById(id);
     if (!existingPrompt) return null;
 
@@ -476,6 +494,7 @@ export class PromptDB {
    * 创建版本
    */
   createVersion(promptId: string, note?: string): PromptVersion | null {
+    assertPromptTextHasNoNullBytes({ note });
     const prompt = this.getById(promptId);
     if (!prompt) return null;
 
@@ -567,6 +586,7 @@ export class PromptDB {
    * 直接插入版本行（用于备份恢复）。
    */
   insertVersionDirect(version: PromptVersion): void {
+    assertPromptTextHasNoNullBytes(version);
     this.db
       .prepare(
         `INSERT OR IGNORE INTO prompt_versions (
@@ -595,6 +615,7 @@ export class PromptDB {
   }
 
   insertPromptDirect(prompt: Prompt): void {
+    assertPromptTextHasNoNullBytes(prompt);
     this.db
       .prepare(
         `INSERT OR REPLACE INTO prompts (
